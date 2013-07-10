@@ -8,32 +8,33 @@ Inkamath supports the definition of functions, matrices and sequences of complex
 The syntax is meant to be simple, powerful and as close as possible to the common math syntax.
 
 *Overview :*
-  
-  >> [pi, e]
-	3.14159265 2.71828183
+```
+>> [pi, e]
+3.14159265 2.71828183
 
-	>> A=[a a; a a]
-	0 0
-	0 0
+>> A=[a a; a a]
+0 0
+0 0
 
-	>> a=[1 2;3 4]
-	1 2
-	3 4
+>> a=[1 2;3 4]
+1 2
+3 4
 
-	>> A
-	1 2 1 2
-	3 4 3 4
-	1 2 1 2
-	3 4 3 4
+>> A
+1 2 1 2
+3 4 3 4
+1 2 1 2
+3 4 3 4
 
-	>> exp(x)_n=exp(x)_(n-1)+x^n/!n
-	0
+>> exp(x)_n=exp(x)_(n-1)+x^n/!n
+0
 
-	>> exp(1)
-	2.71828183
+>> exp(1)
+2.71828183
 
-	>> cos(x)=(exp(i*x)+exp(-i*x))/2
-	0
+>> cos(x)=(exp(i*x)+exp(-i*x))/2
+0
+```
   
 ### Introduction ###
 
@@ -48,19 +49,20 @@ La console affiche à nouveau les caractères >> vous invitant à taper votre
 prochaine expression.
 
 *Exemple* :
-  
-	>> 1+1
-	2
-	
-	>> 3*(4+5)
-	27
-	
-	>> a=1+2+3
-	6
-	
-	>> a
-	6
-	
+```
+>> 1+1
+2
+
+>> 3*(4+5)
+27
+
+>> a=1+2+3
+6
+
+>> a
+6
+```
+
 Inkamath n'est pas une simple calculatrice,
 l'interpréteur d'expressions mathématique permet les usages les plus simples
 comme les plus avancés en toute simplicité.
@@ -96,8 +98,10 @@ Les paragraphes suivants constituent une référence rapide de la syntaxe utilis
 - 'f', 'x', 'y'	référence quelconque (void définition).
 - 'a' 			référence associée à une expression s'évaluant à la matrice 2x2 suivante
 
-	1 2
-	3 4
+```
+1 2
+3 4
+```
 
 #####1. Expressions unaires#####
 - +expr : plus unaire
@@ -132,29 +136,33 @@ Si 'expr' est de dimension 2x1 alors :
 	
 Ainsi 'a' s'évalue à :
 
-	1 2
-	3 4
+```
+1 2
+3 4
+```
 	
 et [a, a; a, a] s'évalue à :
-
-	1 2 1 2
-	3 4 1 2
-	1 2 1 2
-	3 4 1 2
+```
+1 2 1 2
+3 4 1 2
+1 2 1 2
+3 4 1 2
+```
 			
 #####4. Réferences#####
 Inkamath est un langage que l'on pourrait qualifier de "fonctionnel". Les identifiants définis par l'utilsateur et que l'on pourrait au premier regard associer à des variables ou des fonctions sont en fait exclusivement des *fonctions lambda*. Les "Références" définies par l'utilsateur sont donc des identifiants associés à des expressions et non pas à des valeurs.
 
 *Exemple :*
-
-	>> a = 1
-	1
-	>> b=a+a
-	2
-	>> a = 2
-	2
-	>> b
-	4
+```
+>> a = 1
+1
+>> b=a+a
+2
+>> a = 2
+2
+>> b
+4
+```
 
 *Exemples de défintion de références utilisateur :*
 
@@ -165,44 +173,94 @@ Inkamath est un langage que l'on pourrait qualifier de "fonctionnel". Les identi
 
 On peut distinguer 3 types définitions différents d'assignations dont le sémantique est radicalement différentes.
 
-1. Assignation simple d'une référence
+######4.1. Assignation d'une référence simple######
 
 C'est l'assignation usuelle qui associe l'identifiant de la référence à une expression. L'assignation simple permet de définir ce qui se rapprocherait le plus des notions variables et de fonctions dans d'autres langages de programmation.
 
 Si l'expression 'expr' assignée à une référence 'f' ne contient que des constantes litérales (ex: expr=1+2), alors la référence est une fonction lambda ne prenant pas de paramètre. Si toutefois la référence est appelée avec des paramètres, ces derniers sont ignorés.
 
 Exemple :
-	>> f=1+2
-	3
+```
+>> f=1+2
+3
 
-	>> f
-	3
+>> f
+3
 
-	>> f(1)
-	3
-
+>> f(1)
+3
+```
 Si l'expression 'expr' assignée à une référence 'f' contient (directement ou indirectement) des références utilisateurs, alors la référence 'f' définie par 'expr' est une fonction lambda prenant en paramètre des expressions à associer à chacune des références contenues dans 'expr'.
 
-Exemple :
-	>> f=x^2+y
-	0
+*Exemple :*
+```
+>> f=x^2+y
+0
 
-	>> f(2, 1)
-	5
+>> f(2, 1)
+5
 
-	>> f(x=3, y=2)
-	11
+>> f(x=3, y=2)
+11
+```
+
+######4.2. Assignation d'une référence indexée######
+
+Les références indexées permettent de définir des suites et des séries au sens mathématique. Une référence indexée associe à une valeur entière une expression qui la définie. Une référence indexée peut ainsi être associée à plusieurs expressions.
+
+*Exemple :*
+```
+>> f_0=1+2
+3
+
+>> f_1=3+4
+7
+
+>> f_0
+3
+
+>> f_1
+7
+```
+
+Dans l'exemple ci-dessus, l'expression '1+2' est associée à l'indice 0 de la référence 'f' et l'expression '3+4' est associée à l'indice 1 de la référence 'f'.
+
+Il est important de noter que l'assignation à un indice ne peut se faire qu'à une expression constante et entière. 
+
+*Exemple :*
+```
+>> f_(0.5)=1
+```
+L'exemple ci-dessus est mal-formé car 0.5 n'est pas une valeur entière.
 
 
-2. Assignation à un index d'une référence indexée
+######4.3. Assignation du terme général d'une référence indexée######
 
-Exemple :
-	f_0=expr	: assignation d'une expression à une référence indexée
+*....A compléter....*
 
-3. Assignation du terme général d'une référence indexée
+*Exemple :*
+```
+f_n=expr
+```
 
-Exemple :
-	f_n=expr	: assignation d'une expression au terme général d'une référence indexée par l'identifiant n.
+L'exemple ci-dessous assigne une expression 'expr' au terme général d'une référence 'f' indexée par l'identifiant 'n'.
+	
+Si l'identifiant utilisé pour la définition du terme général d'une référence a été préalablement associé à une autre référence, cet identifiant perd la sémantique de la référence dans le contexte de la définition de la référence.
+
+*Exemple :*
+```
+>> x=1
+1
+
+>> f_x=2*x
+0
+
+>> f_1
+2
+
+>>f_2
+4
+```
 
 #####5. Constantes et fonctions built-in #####
 Les constantes 'e' (2.71828182846) et 'i' (unité imaginaire) sont actuellement les seules définitions de constantes disponibles par défaut. La constante imaginaire pur 'i' permet le support des nombres complexes dans inkamath.
