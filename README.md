@@ -357,6 +357,7 @@ Lorsqu'une référence est définie au plus au niveau, celle-ci est accessible d
 Lorsque des paramètres sont passés à une référence, l'utilisateur a la possibilité de nommer explicitement les paramètres ou non. Lorsque les paramètres ne sont pas nommé, l'ordre des paramètres de la définition de la référence est utilisé pour assigner les expressions des paramètres.
 
 Lorsqu'une référence définie explicitement avec des paramètres est appelée sans paramètre ou lorsque le nombre de paramètre d'appel est inférieur au nombre des paramètres explicites, les paramètres d'appels non initialisé prennent leur valeur par défaut par ordre de priorité comme suit :
+
 	- l'expression par défaut spécifié pour le paramètre lors de la définition de la référence
 	- l'expression associée à la première référence visible portant le nom du paramètre
 	- l'expression '0'
