@@ -83,15 +83,25 @@ public:
     {
         p.second.reset();
     }
-     static void ExprEval(std::pair<std::string, PExpression > p) {T ret = 0; if(p.second) ret = p.second->Eval(); ExprDeleter(p); p.second.reset(new ValExpression<T>(ret));}
+     static void ExprEval(std::pair<std::string, PExpression > p) 
+	{
+		T ret = 0;
+		if(p.second) 
+			ret = p.second->Eval();
+		ExprDeleter(p);
+		p.second.reset(new ValExpression<T>(ret));
+	}
+
     bool empty()
     {
         return m_emap.empty();
     }
+
     void reset()
     {
         m_modified=false;
     }
+
     bool modified()
     {
         return m_modified;
