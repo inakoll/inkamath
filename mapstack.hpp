@@ -10,91 +10,67 @@
 #include <boost/type_traits.hpp>
 #include <cassert>
 
-template <typename key_type, typename value_type>
-class t_iterator {
-    typedef typename std::map<key_type, std::stack<value_type>>::iterator t_it;
-    typedef typename std::map<key_type, std::stack<value_type>>::const_iterator t_constit;
-    t_it m_it;
+template <typename KeyType, typename ValueType, typename InternalIterator>
+class mapstack_iterator_base {
+	typedef mapstack_iterator_base self_type;
+	typedef InternalIterator internal_iterator;
+    internal_iterator m_it;
+	typedef ValueType  value_type;
+	typedef ValueType& reference;
+	typedef ValueType* pointer;
 public:
-    t_iterator(const t_it& ai_it) :
+    mapstack_iterator_base(const internal_iterator& ai_it) :
         m_it(ai_it) {}
 
-    value_type& operator*() {
+    reference operator*() {
         return m_it->top();
     }
-
-    const value_type& operator*() const {
-        return m_it->top();
-    }
-
-    t_it& operator->() {
+	
+    internal_iterator& operator->() {
         return m_it;
     }
 
-    const t_it& operator->() const {
+    const internal_iterator& operator->() const {
         return m_it;
     }
 
-    t_iterator& operator++() {
+    mapstack_iterator_base& operator++() {
         ++m_it;
         return *this;
     }
 
-    t_iterator operator++(int) {
-        t_it w_it = m_it++;
-        return t_iterator(w_it);
+    mapstack_iterator_base operator++(int) {
+        return mapstack_iterator_base(m_it++);
     }
 
-    bool operator!=(const t_iterator& ai_it) const {
-        return t_it(ai_it) != m_it;
+	friend
+    bool operator==(const self_type& x, const self_type& y) {
+        return x.m_it == y.m_it;
     }
-private:
-    operator t_it() const {
-        return m_it;
+	
+	friend
+    bool operator!=(const self_type& x, const self_type& y) {
+        return !(x == y);
     }
-
-    operator t_constit() const {
-        return m_it;
+	
+	friend
+    bool operator<(const self_type& x, const self_type& y) {
+        return x.m_it< y.m_it;
     }
-};
-
-template <typename key_type, typename value_type>
-class t_constiterator {
-    typedef typename std::map<key_type, std::stack<value_type>>::iterator t_it;
-    typedef typename std::map<key_type, std::stack<value_type>>::const_iterator t_constit;
-    t_constit m_it;
-public:
-    t_constiterator(const t_it& ai_it) :
-        m_it(ai_it) {}
-
-    t_constiterator(const t_constit& ai_it) :
-        m_it(ai_it) {}
-
-    const value_type& operator*() const {
-        return m_it->top();
+	
+	friend
+    bool operator>(const self_type& x, const self_type& y) {
+        return y < x;
     }
-
-    const t_constit& operator->() const {
-        return m_it;
+	
+	friend
+    bool operator<=(const self_type& x, const self_type& y) {
+        return !(y < x);
     }
-
-    t_constiterator& operator++() {
-        ++m_it;
-        return *this;
-    }
-
-    t_constiterator operator++(int) {
-        t_constit w_it = m_it++;
-        return t_constiterator(w_it);
-    }
-
-    bool operator!=(const t_constiterator& ai_it) const {
-        return t_constit(ai_it) != m_it;
-    }
-
-private:
-    operator t_constit() const {
-        return m_it;
+	
+	friend
+    bool operator>=(const self_type& x, const self_type& y) {
+        return !(x < y);
     }
 };
 
@@ -107,9 +83,12 @@ public:
     Mapstack() {
         m_stack.push(std::list<key_type>());
     }
+	
+	typedef typename std::map<key_type, std::stack<value_type>>::iterator  		internal_iterator;
+	typedef typename std::map<key_type, std::stack<value_type>>::const_iterator  internal_const_iterator;
 
-    typedef t_iterator<key_type, value_type> iterator;
-    typedef t_constiterator<key_type, value_type> const_iterator;
+    typedef mapstack_iterator_base<key_type, value_type, internal_iterator> 				iterator;
+    typedef mapstack_iterator_base<key_type, const value_type, internal_const_iterator> 	const_iterator;
     typedef typename std::list<key_type>::const_iterator current_const_iterator;
 
     const_iterator begin() const {
