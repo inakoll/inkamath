@@ -2,31 +2,12 @@
 #include <iostream>
 #include <limits>
 
+
 #define BOOST_TEST_MODULE inkamath_mapstack
 #include <boost/test/unit_test.hpp>
 
 using namespace std;
 
-#if 0
-// legacy test function helpers
-void print(const Mapstack<string, int>& ai_mapstack, string ai_key)
-{
-    int w_value;
-
-    if(!ai_mapstack.Get(ai_key, w_value))
-        cout << "Can't get '" << ai_key << "'!" << endl;
-
-    else
-        cout << ai_key << " = " << w_value << endl;
-}
-
-void printall(const Mapstack<string, int>& ai_mapstack)
-{
-    for(Mapstack<string, int>::const_iterator it = ai_mapstack.begin(); it != ai_mapstack.end() ; ++it) {
-        print(ai_mapstack, it->first);
-    }
-}
-# endif
 
 struct MapstackFixture {
     Mapstack<string, int> mapstack;
@@ -155,6 +136,13 @@ BOOST_AUTO_TEST_CASE( multiple_entry_3 )
 
 BOOST_AUTO_TEST_CASE( multiple_entry_4 )
 {
+	// Initialy there is no element in the current list
+    for(Mapstack<string, int>::current_const_iterator it = mapstack.CurrentBegin();
+            it != mapstack.CurrentEnd();
+            ++it) {
+        BOOST_CHECK_MESSAGE(false, "Current list shouldn't have any element here!");
+    }
+	
     mapstack.Set("a", 1);
     mapstack.Set("b", 2);
     mapstack.Push();
@@ -176,28 +164,33 @@ BOOST_AUTO_TEST_CASE( multiple_entry_4 )
     BOOST_CHECK_MESSAGE(mapstack.Get("d", value) == true, "mapstack.Get : can't get value!");
     BOOST_CHECK_EQUAL(value, 4);
 
+	// Mapstack current keys are {"a", "b", "c", "d"}
     string result[4] = {"a", "b", "c", "d"};
     int i = 0;
-
-    for(Mapstack<string, int>::current_const_iterator it = mapstack.CurrentBegin();
-            it != mapstack.CurrentEnd();
-            ++it) {
+    for(auto it = mapstack.CurrentBegin();
+            i < 4;
+            ++it, ++i) {
         BOOST_CHECK_EQUAL(*it, result[i]);
-        ++i;
     }
 
+	// After pop mapstack current keys are {"a", "b"}
     mapstack.Pop();
     i = 0;
-
-    for(Mapstack<string, int>::current_const_iterator it = mapstack.CurrentBegin();
+	auto it = mapstack.CurrentBegin();
+    for(;
+            i < 2;
+            ++it, ++i) {
+        BOOST_CHECK_EQUAL(*it, result[i]);
+    }
+	for(;
             it != mapstack.CurrentEnd();
             ++it) {
-        BOOST_CHECK_EQUAL(*it, result[i]);
-        ++i;
+		std::cout << *it << std::endl;
+		BOOST_CHECK_MESSAGE(false, "Current list shouldn't have any element here!");
     }
 
+	// After pop mapstack keys are empty again
     mapstack.Pop();
-
     for(Mapstack<string, int>::current_const_iterator it = mapstack.CurrentBegin();
             it != mapstack.CurrentEnd();
             ++it) {
@@ -205,4 +198,64 @@ BOOST_AUTO_TEST_CASE( multiple_entry_4 )
     }
 }
 
+BOOST_AUTO_TEST_CASE( iteration )
+{
+	std::vector<std::pair<const std::string, int>> input 
+					{ {"a", 1}
+					, {"b", 2}
+					, {"c", 3}
+					, {"d", 4} };
+					
+	// initializing the mapstack with input
+	for(auto elm : input) {
+		mapstack.Set(elm.first, elm.second);
+	}
+		
+	// iterating over the two container to check for equality	
+	auto input_it = input.begin();
+	for(auto mapstack_it = mapstack.begin(); 
+			mapstack_it != mapstack.end();
+			++mapstack_it, ++input_it) 
+	{
+		BOOST_CHECK_MESSAGE(*mapstack_it == *input_it, "mapstack and input should be equel here!");
+	}
+	
+	mapstack.Push();
+	
+	// Pushing new values
+	std::vector<std::pair<const std::string, int>> push  =
+					{ {"a", 11}
+					, {"b", 12} };
+	for(auto elm : push) {
+		mapstack.Set(elm.first, elm.second);
+	}
+	
+	// mapstack content should now be equal to :
+	std::vector<std::pair<const std::string, int>> output
+					{ {"a", 11}
+					, {"b", 12}
+					, {"c", 3}
+					, {"d", 4} };	
+	// iterating over the two container to check for equality	
+	auto output_it = output.begin();
+	for(auto mapstack_it = mapstack.begin(); 
+			mapstack_it != mapstack.end();
+			++mapstack_it, ++output_it) 
+	{
+		BOOST_CHECK_MESSAGE(*mapstack_it == *output_it, "mapstack and output should be equel here!");
+	}
+	
+	// After pop, mapstack should retrieve it's previous values
+	mapstack.Pop();
+	// iterating over the two container to check for equality	
+	input_it = input.begin();
+	for(auto mapstack_it = mapstack.begin(); 
+			mapstack_it != mapstack.end();
+			++mapstack_it, ++input_it) 
+	{
+		BOOST_CHECK_MESSAGE(*mapstack_it == *input_it, "mapstack and input should be equel here!");
+	}
+	
+	
+}
 BOOST_AUTO_TEST_SUITE_END()

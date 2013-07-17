@@ -3,36 +3,37 @@
 
 #include <list>
 #include <map>
+#include <utility>
 #include <stack>
 #include <string>
 #include <algorithm>
+#include <type_traits>
 #include <boost/variant.hpp>
-#include <boost/type_traits.hpp>
 #include <cassert>
 
 template <typename KeyType, typename ValueType, typename InternalIterator>
-class mapstack_iterator_base {
+struct mapstack_iterator_base {
 	typedef mapstack_iterator_base self_type;
 	typedef InternalIterator internal_iterator;
-    internal_iterator m_it;
+	
+	typedef typename InternalIterator::value_type::first_type key_type;
+	typedef typename InternalIterator::value_type::second_type stack_type;
+	typedef typename stack_type::value_type stack_value_type;
+	
+	typedef std::pair<key_type, stack_value_type> pair_type;
+
 	typedef ValueType  value_type;
 	typedef ValueType& reference;
 	typedef ValueType* pointer;
-public:
+
     mapstack_iterator_base(const internal_iterator& ai_it) :
         m_it(ai_it) {}
 
-    reference operator*() {
-        return m_it->top();
+    pair_type operator*() {
+        return pair_type(m_it->first, m_it->second.top());
     }
 	
-    internal_iterator& operator->() {
-        return m_it;
-    }
-
-    const internal_iterator& operator->() const {
-        return m_it;
-    }
+	// no operator->() since operator* return a temporary (moved) object
 
     mapstack_iterator_base& operator++() {
         ++m_it;
@@ -72,6 +73,8 @@ public:
     bool operator>=(const self_type& x, const self_type& y) {
         return !(x < y);
     }
+private:
+	internal_iterator m_it;
 };
 
 template <typename T1, typename T2>
@@ -98,7 +101,7 @@ public:
     const_iterator end() const {
         return m_map.end();
     }
-    /*
+    
     iterator begin()
     {
     	return m_map.begin();
@@ -107,8 +110,8 @@ public:
     iterator end()
     {
     	return m_map.end();
-    }*/
-
+    }
+	
     current_const_iterator CurrentBegin() const {
         return m_stack.top().begin();
     }
@@ -146,7 +149,6 @@ void Mapstack<T1, T2>::Push()
 
     m_stack.push(std::list<key_type>());
 }
-
 
 template <typename T1, typename T2>
 void Mapstack<T1, T2>::Pop()
@@ -208,22 +210,6 @@ void Mapstack<T1, T2>::Set(const key_type& ai_key, const value_type&  ai_value)
 }
 
 template <typename T1, typename T2>
-template <typename T>
-bool Mapstack<T1, T2>::Get(const key_type& ai_key, T& ao_value) const
-{
-    value_type w_variant;
-    bool w_bRet = Get(ai_key, w_variant) && boost::get<T>(&w_variant);
-
-    if(w_bRet) {
-        ao_value = boost::get<T>(w_variant);
-    }
-
-    return w_bRet;
-}
-
-
-
-template <typename T1, typename T2>
 bool Mapstack<T1, T2>::Get(const key_type& ai_key, value_type& ao_value) const
 {
     typename std::map<key_type, std::stack<value_type>>::const_iterator it = m_map.find(ai_key);
@@ -232,6 +218,21 @@ bool Mapstack<T1, T2>::Get(const key_type& ai_key, value_type& ao_value) const
     if(w_bRet) {
         assert(!it->second.empty());
         ao_value = it->second.top();
+    }
+
+    return w_bRet;
+}
+
+// Boost::variant aware Get function overload, suppose that Mapstack::value_type is a boost variant 
+template <typename T1, typename T2>
+template <typename T>
+bool Mapstack<T1, T2>::Get(const key_type& ai_key, T& ao_value) const
+{
+    value_type w_variant;
+    bool w_bRet = Get(ai_key, w_variant) && boost::get<T>(&w_variant);
+
+    if(w_bRet) {
+        ao_value = boost::get<T>(w_variant);
     }
 
     return w_bRet;
