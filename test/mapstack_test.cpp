@@ -1,6 +1,7 @@
 #include "mapstack.hpp"
 #include <iostream>
 #include <limits>
+#include <set>
 
 
 #define BOOST_TEST_MODULE inkamath_mapstack
@@ -211,14 +212,10 @@ BOOST_AUTO_TEST_CASE( iteration )
 		mapstack.Set(elm.first, elm.second);
 	}
 		
-	// iterating over the two container to check for equality	
-	auto input_it = input.begin();
-	for(auto mapstack_it = mapstack.begin(); 
-			mapstack_it != mapstack.end();
-			++mapstack_it, ++input_it) 
-	{
-		BOOST_CHECK_MESSAGE(*mapstack_it == *input_it, "mapstack and input should be equel here!");
-	}
+	// check for equality of the two containers using std::set
+	std::set<std::pair<const std::string, int>> set1(mapstack.begin(), mapstack.end());
+	std::set<std::pair<const std::string, int>> set2(input.begin(),input.end());
+	BOOST_CHECK_MESSAGE(set1 == set2, "mapstack and input should be equel here!");
 	
 	mapstack.Push();
 	
@@ -231,30 +228,20 @@ BOOST_AUTO_TEST_CASE( iteration )
 	}
 	
 	// mapstack content should now be equal to :
-	std::vector<std::pair<const std::string, int>> output
+	std::set<std::pair<const std::string, int>> set3
 					{ {"a", 11}
 					, {"b", 12}
 					, {"c", 3}
 					, {"d", 4} };	
-	// iterating over the two container to check for equality	
-	auto output_it = output.begin();
-	for(auto mapstack_it = mapstack.begin(); 
-			mapstack_it != mapstack.end();
-			++mapstack_it, ++output_it) 
-	{
-		BOOST_CHECK_MESSAGE(*mapstack_it == *output_it, "mapstack and output should be equel here!");
-	}
+	set1.clear();
+	set1.insert(mapstack.begin(), mapstack.end());
+	BOOST_CHECK_MESSAGE(set1 == set3, "mapstack and input should be equel here!");
 	
 	// After pop, mapstack should retrieve it's previous values
 	mapstack.Pop();
-	// iterating over the two container to check for equality	
-	input_it = input.begin();
-	for(auto mapstack_it = mapstack.begin(); 
-			mapstack_it != mapstack.end();
-			++mapstack_it, ++input_it) 
-	{
-		BOOST_CHECK_MESSAGE(*mapstack_it == *input_it, "mapstack and input should be equel here!");
-	}
+	set1.clear();
+	set1.insert(mapstack.begin(), mapstack.end());
+	BOOST_CHECK_MESSAGE(set1 == set2, "mapstack and input should be equel here!");
 	
 	
 }

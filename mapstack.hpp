@@ -2,14 +2,17 @@
 #define HPP_MAPSTACK
 
 #include <list>
-#include <map>
+#include <unordered_map>
 #include <utility>
 #include <stack>
 #include <string>
 #include <algorithm>
 #include <type_traits>
-#include <boost/variant.hpp>
 #include <cassert>
+
+#ifdef INKAMATH_USING_BOOST
+#include <boost/variant.hpp>
+#endif
 
 template <typename KeyType, typename ValueType, typename InternalIterator>
 struct mapstack_iterator_base {
@@ -77,22 +80,31 @@ private:
 	internal_iterator m_it;
 };
 
-template <typename T1, typename T2>
+template <typename T1, typename T2, 
+		template <class, class, class...> class MapType = std::unordered_map
+		>
 class Mapstack {
 public:
-    typedef T1 key_type;
-    typedef T2 value_type;
+    typedef T1 											key_type;
+    typedef T2 											value_type;
+	typedef MapType<key_type, std::stack<value_type>>	map_type;
+	typedef std::stack<std::list<key_type>> 			current_stack_type;
 
     Mapstack() {
         m_stack.push(std::list<key_type>());
     }
 	
-	typedef typename std::map<key_type, std::stack<value_type>>::iterator  		internal_iterator;
-	typedef typename std::map<key_type, std::stack<value_type>>::const_iterator  internal_const_iterator;
-
-    typedef mapstack_iterator_base<key_type, value_type, internal_iterator> 				iterator;
-    typedef mapstack_iterator_base<key_type, const value_type, internal_const_iterator> 	const_iterator;
-    typedef typename std::list<key_type>::const_iterator current_const_iterator;
+	typedef typename map_type::iterator	internal_iterator;
+	typedef typename map_type::const_iterator internal_const_iterator;
+    typedef mapstack_iterator_base<key_type, value_type, internal_iterator>
+		iterator;
+		
+    typedef mapstack_iterator_base<key_type, const value_type, internal_const_iterator>
+		const_iterator;
+		
+    typedef typename 
+		std::list<key_type>::const_iterator
+		current_const_iterator;
 
     const_iterator begin() const {
         return m_map.begin();
@@ -133,12 +145,12 @@ public:
     void Clear();
 
 private:
-    std::stack<std::list<key_type>>  m_stack;
-    std::map<key_type, std::stack<value_type>> m_map;
+    current_stack_type  m_stack;
+    map_type 			m_map;
 };
 
-template <typename T1, typename T2>
-void Mapstack<T1, T2>::Push()
+template <typename T1, typename T2, template <class, class, class...> class MapType>
+void Mapstack<T1, T2, MapType>::Push()
 {
     typename std::list<key_type>::iterator first = m_stack.top().begin();
 
@@ -150,8 +162,8 @@ void Mapstack<T1, T2>::Push()
     m_stack.push(std::list<key_type>());
 }
 
-template <typename T1, typename T2>
-void Mapstack<T1, T2>::Pop()
+template <typename T1, typename T2, template <class, class, class...> class MapType>
+void Mapstack<T1, T2, MapType>::Pop()
 {
     if(m_stack.top().empty()) {
         m_stack.pop();
@@ -189,8 +201,8 @@ void Mapstack<T1, T2>::Pop()
     }
 }
 
-template <typename T1, typename T2>
-void Mapstack<T1, T2>::Set(const key_type& ai_key, const value_type&  ai_value)
+template <typename T1, typename T2, template <class, class, class...> class MapType>
+void Mapstack<T1, T2, MapType>::Set(const key_type& ai_key, const value_type&  ai_value)
 {
     std::stack<value_type>& w_valueStack = m_map[ai_key];
 
@@ -209,10 +221,10 @@ void Mapstack<T1, T2>::Set(const key_type& ai_key, const value_type&  ai_value)
     return;
 }
 
-template <typename T1, typename T2>
-bool Mapstack<T1, T2>::Get(const key_type& ai_key, value_type& ao_value) const
+template <typename T1, typename T2, template <class, class, class...> class MapType>
+bool Mapstack<T1, T2, MapType>::Get(const key_type& ai_key, value_type& ao_value) const
 {
-    typename std::map<key_type, std::stack<value_type>>::const_iterator it = m_map.find(ai_key);
+    auto it = m_map.find(ai_key);
     bool w_bRet = it != m_map.end();
 
     if(w_bRet) {
@@ -224,9 +236,10 @@ bool Mapstack<T1, T2>::Get(const key_type& ai_key, value_type& ao_value) const
 }
 
 // Boost::variant aware Get function overload, suppose that Mapstack::value_type is a boost variant 
-template <typename T1, typename T2>
+#ifdef INKAMATH_USING_BOOST
+template <typename T1, typename T2, template <class, class, class...> class MapType>
 template <typename T>
-bool Mapstack<T1, T2>::Get(const key_type& ai_key, T& ao_value) const
+bool Mapstack<T1, T2, MapType>::Get(const key_type& ai_key, T& ao_value) const
 {
     value_type w_variant;
     bool w_bRet = Get(ai_key, w_variant) && boost::get<T>(&w_variant);
@@ -237,9 +250,10 @@ bool Mapstack<T1, T2>::Get(const key_type& ai_key, T& ao_value) const
 
     return w_bRet;
 }
+#endif
 
-template <typename T1, typename T2>
-void Mapstack<T1, T2>::Clear()
+template <typename T1, typename T2, template <class, class, class...> class MapType>
+void Mapstack<T1, T2, MapType>::Clear()
 {
     while(!m_stack.empty())
         m_stack.pop();
