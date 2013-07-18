@@ -215,7 +215,7 @@ BOOST_AUTO_TEST_CASE( iteration )
 	// check for equality of the two containers using std::set
 	std::set<std::pair<const std::string, int>> set1(mapstack.begin(), mapstack.end());
 	std::set<std::pair<const std::string, int>> set2(input.begin(),input.end());
-	BOOST_CHECK_MESSAGE(set1 == set2, "mapstack and input should be equel here!");
+	BOOST_CHECK_MESSAGE(set1 == set2, "mapstack and input should be equal here!");
 	
 	mapstack.Push();
 	
@@ -235,13 +235,13 @@ BOOST_AUTO_TEST_CASE( iteration )
 					, {"d", 4} };	
 	set1.clear();
 	set1.insert(mapstack.begin(), mapstack.end());
-	BOOST_CHECK_MESSAGE(set1 == set3, "mapstack and input should be equel here!");
+	BOOST_CHECK_MESSAGE(set1 == set3, "mapstack and input should be equal here!");
 	
 	// After pop, mapstack should retrieve it's previous values
 	mapstack.Pop();
 	set1.clear();
 	set1.insert(mapstack.begin(), mapstack.end());
-	BOOST_CHECK_MESSAGE(set1 == set2, "mapstack and input should be equel here!");
+	BOOST_CHECK_MESSAGE(set1 == set2, "mapstack and input should be equal here!");
 	
 	
 }
