@@ -42,9 +42,6 @@ template <typename T>
 class MatExpression;
 
 template <typename T>
-class ParametersDefExpression;
-
-template <typename T>
 class RefExpression;
 
 template <typename T>
