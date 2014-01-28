@@ -2,7 +2,8 @@
 #define HPP_INKREFERENCE
 
 #include "expression.hpp"
-#define PExpression std::shared_ptr<Expression<T> >
+template <typename T>
+using PExpression = std::shared_ptr<Expression<T>>;
 
 #include <map>
 
@@ -10,14 +11,14 @@ template <typename T>
 class Reference {
 	
 	/* Return the simple assigned expression if it makes sense */
-	PExpression GetExpr() {
+	PExpression<T> GetExpr() {
 		if(single_expr_.get() == nullptr)
 			throw std::runtime_exception("This reference cannot be evaluated in this context.");
 		return single_expr_;			
 	}
 	
 	/* Return the indexed expression associated to i if it makes sense */
-	PExpression GetExpr(size_t i) {
+	PExpression<T> GetExpr(size_t i) {
 		if(indexed_expr_.count(i) != 0) {
 			// If the reference is singulary defined for i then return this expression
 			return indexed_expr_[i];
@@ -33,23 +34,23 @@ class Reference {
 	
 	
 private:
-	typedef std::map<size_t, PExpression> Indexed_expr;
+	typedef std::map<size_t, PExpression<T>> Indexed_expr;
 	
 	/* Associated expression in simple assignation */
-	PExpression 	single_expr_;
+	PExpression<T> 	single_expr_;
 	
 	/* Associated expressions for indexed expression */
 	Indexed_expr 	indexed_expr_;
-	PExpression 	general_expr_;
+	PExpression<T> 	general_expr_;
 	
 	/* The weak indexed expression are value expression created to resolve the 
 	   potential recursion of general_expr_ */
 	Indexed_expr 	weak_indexed_expr_;
 
 	/* Evaluate the general expression and manage potential recursion */
-	PExpression GetExprFromGeneralExpr(size_t i) {
+	PExpression<T> GetExprFromGeneralExpr(size_t i) {
 		// TODO: implement this.
-		return PExpression();
+		return PExpression<T>();
 	}	
 };
 

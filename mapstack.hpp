@@ -4,7 +4,7 @@
 #include <list>
 #include <unordered_map>
 #include <utility>
-#include <stack>
+#include <vector>
 #include <string>
 #include <algorithm>
 #include <type_traits>
@@ -87,7 +87,7 @@ class Mapstack {
 public:
     typedef T1 											key_type;
     typedef T2 											value_type;
-	typedef MapType<key_type, std::stack<value_type>>	map_type;
+    typedef MapType<key_type, std::vector<value_type>>	map_type;
 	typedef std::stack<std::list<key_type>> 			current_stack_type;
 
     Mapstack() {
@@ -155,7 +155,7 @@ void Mapstack<T1, T2, MapType>::Push()
     typename std::list<key_type>::iterator first = m_stack.top().begin();
 
     while(first != m_stack.top().end()) {
-        m_map[*first].push(m_map[*first].top());
+        m_map[*first].push_back(m_map[*first].back());
         ++first;
     }
 
@@ -204,18 +204,18 @@ void Mapstack<T1, T2, MapType>::Pop()
 template <typename T1, typename T2, template <class, class, class...> class MapType>
 void Mapstack<T1, T2, MapType>::Set(const key_type& ai_key, const value_type&  ai_value)
 {
-    std::stack<value_type>& w_valueStack = m_map[ai_key];
+    std::vector<value_type>& w_valueStack = m_map[ai_key];
 
     if(w_valueStack.empty()) {
         m_stack.top().push_back(ai_key);
-        w_valueStack.push(ai_value);
+        w_valueStack.push_back(ai_value);
 
     } else {
         if(std::find(m_stack.top().begin(), m_stack.top().end(), ai_key) == m_stack.top().end()) {
             m_stack.top().push_back(ai_key);
         }
 
-        w_valueStack.top() = ai_value;
+        w_valueStack.back() = ai_value;
     }
 
     return;

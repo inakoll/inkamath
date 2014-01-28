@@ -18,7 +18,9 @@
 #include "workspace_manager.hpp"
 #include "numeric_interface.hpp"
 
-#define PExpression std::shared_ptr<Expression<T> >
+template <typename T>
+using PExpression = std::shared_ptr<Expression<T>>;
+
 #define _EXPRESION_EPSILON 1E-10
 
 template <typename T>
@@ -28,23 +30,23 @@ template <typename T>
 class Expression;
 
 template <typename T>
-using ExprContext = std::unordered_map<std::string,PExpression >;
+using ExprContext = std::unordered_map<std::string,PExpression<T> >;
 
 template <typename T>
-class Expression : std::enable_shared_from_this<Expression>
+class Expression : public std::enable_shared_from_this<Expression<T>>
 {
 public:
     Expression() {}
     virtual ~Expression() {}
     virtual T Eval(void) const = 0;
-    virtual PExpression Clone() const = 0;
+    virtual PExpression<T> Clone() const = 0;
 	
-    PExpression self() {
-        return shared_from_this();
+    PExpression<T> self() {
+        return this->shared_from_this();
     }
 	
 
-	virtual void accept(class ExprVisitor<T> &v) = 0;
+    virtual PExpression<T> accept(class ExprVisitor<T> &v) = 0;
     virtual bool isEmpty(void) const
     {
         return false;
@@ -65,9 +67,9 @@ public:
     {
         return (this->Size().first)*(this->Size().second);
     }
-    virtual PExpression GetExpr(size_t)
+    virtual PExpression<T> GetExpr(size_t)
     {
-        return PExpression(this);
+        return PExpression<T>(this);
     }
     virtual bool isRef()
     {
@@ -77,16 +79,16 @@ public:
     {
         return m_params;
     }
-    virtual PExpression SubExpr() const
+    virtual PExpression<T> SubExpr() const
     {
-        return PExpression(new EmptyExpression<T>());
+        return PExpression<T>(new EmptyExpression<T>());
     }
     virtual void SetParameters(std::list<std::string> params)
     {
         m_params=params;
     }
 	
-	void setDefinitions(const ExprContext& definitions) {
+    void setDefinitions(const ExprContext<T>& definitions) {
 		definitions_ = definitions;
 	}
 
@@ -97,7 +99,7 @@ private:
     Expression(const Expression<T>& e);
     Expression& operator=(const Expression<T>& e);
 	
-	ExprContext definitions_;
+    ExprContext<T> definitions_;
 };
 
 template <typename T>
@@ -109,14 +111,19 @@ public:
     {
         return std::make_pair(0,0);
     }
-    virtual PExpression Clone() const
+    virtual PExpression<T> Clone() const
     {
-        return PExpression(new EmptyExpression());
+        return PExpression<T>(new EmptyExpression());
     }
     virtual T Eval(void) const
     {
         return T();
     }
+
+    virtual PExpression<T> accept(class ExprVisitor<T> &v) {
+        return v.visit(this);
+    }
+
     virtual bool isEmpty(void) const
     {
         return true;
@@ -127,7 +134,7 @@ template <typename T>
 class UnaryExpression : public Expression<T>
 {
 public:
-    UnaryExpression(PExpression e) : m_e(e)
+    UnaryExpression(PExpression<T> e) : m_e(e)
     {
         if (e) Expression<T>::m_params = e->Expression<T>::m_params;
     }
@@ -135,14 +142,15 @@ public:
     {
         m_e.reset();
     }
-    PExpression m_e;
+    PExpression<T> m_e;
+
 };
 
 template <typename T>
 class BinaryExpression : public Expression<T>
 {
 public:
-    BinaryExpression(PExpression e1, PExpression e2) : m_e1(e1), m_e2(e2)
+    BinaryExpression(PExpression<T> e1, PExpression<T> e2) : m_e1(e1), m_e2(e2)
     {
         if (e1 && e2)
         {
@@ -157,16 +165,17 @@ public:
         m_e1.reset();
         m_e2.reset();
     }
+
 	
-    PExpression m_e1;
-    PExpression m_e2;
+    PExpression<T> m_e1;
+    PExpression<T> m_e2;
 };
 
 template <typename T>
 class EqualExpression : public BinaryExpression<T>
 {
 public:
-    EqualExpression(PExpression e1, PExpression e2)
+    EqualExpression(PExpression<T> e1, PExpression<T> e2)
     : BinaryExpression<T>(e1,e2)
     {}
 
@@ -177,9 +186,9 @@ public:
         BinaryExpression<T>::m_e2->Size().second);
     }
 
-    virtual PExpression Clone() const
+    virtual PExpression<T> Clone() const
     {
-        return PExpression(new EqualExpression(
+        return PExpression<T>(new EqualExpression(
                                  BinaryExpression<T>::m_e1->Clone(),
                                  BinaryExpression<T>::m_e2->Clone()));
     }
@@ -188,7 +197,7 @@ public:
     {
         T ret;
         std::string name = BinaryExpression<T>::m_e1->Name();
-        PExpression SubExpr = BinaryExpression<T>::m_e1->SubExpr();
+        PExpression<T> SubExpr = BinaryExpression<T>::m_e1->SubExpr();
         if (!SubExpr->isEmpty() && SubExpr->Name() == "")
         {
             T subval = SubExpr->Eval();
@@ -207,6 +216,10 @@ public:
         }
         return ret;
     }
+
+    virtual PExpression<T> accept(class ExprVisitor<T> &v) {
+        return v.visit(this);
+    }
 protected:
 };
 
@@ -215,7 +228,7 @@ template <typename T>
 class AddExpression : public BinaryExpression<T>
 {
 public:
-    AddExpression(PExpression e1, PExpression e2)
+    AddExpression(PExpression<T> e1, PExpression<T> e2)
     : BinaryExpression<T>(e1,e2)
     {}
 
@@ -226,9 +239,9 @@ public:
             BinaryExpression<T>::m_e1->Size().second);
     }
 
-    virtual PExpression Clone() const
+    virtual PExpression<T> Clone() const
     {
-        return PExpression(new AddExpression(
+        return PExpression<T>(new AddExpression(
                 BinaryExpression<T>::m_e1->Clone(),
                 BinaryExpression<T>::m_e2->Clone()));
     }
@@ -238,6 +251,10 @@ public:
         return (BinaryExpression<T>::m_e1)->Eval() +
                (BinaryExpression<T>::m_e2)->Eval();
     }
+
+    virtual PExpression<T> accept(class ExprVisitor<T> &v) {
+        return v.visit(this);
+    }
 protected:
 };
 
@@ -245,20 +262,24 @@ template <typename T>
 class NegExpression : public UnaryExpression<T>
 {
 public:
-    NegExpression(PExpression e) : UnaryExpression<T>(e) {}
+    NegExpression(PExpression<T> e) : UnaryExpression<T>(e) {}
     virtual std::pair<size_t,size_t> Size() const
     {
         return std::make_pair(
             UnaryExpression<T>::m_e->Size().first,
             UnaryExpression<T>::m_e->Size().second);
     }
-    virtual PExpression Clone() const
+    virtual PExpression<T> Clone() const
     {
-        return PExpression(new NegExpression(UnaryExpression<T>::m_e->Clone()));
+        return PExpression<T>(new NegExpression(UnaryExpression<T>::m_e->Clone()));
     }
     virtual T Eval(void) const
     {
         return -((UnaryExpression<T>::m_e)->Eval());
+    }
+
+    virtual PExpression<T> accept(class ExprVisitor<T> &v) {
+        return v.visit(this);
     }
 protected:
 };
@@ -267,7 +288,7 @@ template <typename T>
 class MultExpression : public BinaryExpression<T>
 {
 public:
-    MultExpression(PExpression e1, PExpression e2)
+    MultExpression(PExpression<T> e1, PExpression<T> e2)
     : BinaryExpression<T>(e1,e2)
     {}
     virtual std::pair<size_t,size_t> Size() const
@@ -276,9 +297,9 @@ public:
                 BinaryExpression<T>::m_e1->Size().first,
                 BinaryExpression<T>::m_e2->Size().second);
     }
-    virtual PExpression Clone() const
+    virtual PExpression<T> Clone() const
     {
-        return PExpression(new MultExpression(
+        return PExpression<T>(new MultExpression(
             BinaryExpression<T>::m_e1->Clone(),
             BinaryExpression<T>::m_e2->Clone()));
     }
@@ -287,6 +308,10 @@ public:
         return (BinaryExpression<T>::m_e1)->Eval() *
                (BinaryExpression<T>::m_e2)->Eval();
     }
+
+    virtual PExpression<T> accept(class ExprVisitor<T> &v) {
+        return v.visit(this);
+    }
 protected:
 };
 
@@ -294,16 +319,16 @@ template <typename T>
 class DivExpression : public BinaryExpression<T>
 {
 public:
-    DivExpression(PExpression e1, PExpression e2) : BinaryExpression<T>(e1,e2) {}
+    DivExpression(PExpression<T> e1, PExpression<T> e2) : BinaryExpression<T>(e1,e2) {}
     virtual std::pair<size_t,size_t> Size() const
     {
         return std::make_pair(
             BinaryExpression<T>::m_e1->Size().first,
             BinaryExpression<T>::m_e1->Size().second);
     }
-    virtual PExpression Clone() const
+    virtual PExpression<T> Clone() const
     {
-        return PExpression(new DivExpression(
+        return PExpression<T>(new DivExpression(
             BinaryExpression<T>::m_e1->Clone(),
             BinaryExpression<T>::m_e2->Clone()));
     }
@@ -312,6 +337,10 @@ public:
         return ((BinaryExpression<T>::m_e1)->Eval())/
                 ((BinaryExpression<T>::m_e2)->Eval());
     }
+
+    virtual PExpression<T> accept(class ExprVisitor<T> &v) {
+        return v.visit(this);
+    }
 protected:
 };
 
@@ -319,7 +348,7 @@ template <typename T>
 class PowExpression : public BinaryExpression<T>
 {
 public:
-    PowExpression(PExpression e1, PExpression e2)
+    PowExpression(PExpression<T> e1, PExpression<T> e2)
     : BinaryExpression<T>(e1,e2)
     {}
     virtual std::pair<size_t,size_t> Size() const
@@ -328,9 +357,9 @@ public:
             BinaryExpression<T>::m_e1->Size().first,
             BinaryExpression<T>::m_e1->Size().second);
     }
-    virtual PExpression Clone() const
+    virtual PExpression<T> Clone() const
     {
-        return PExpression(new PowExpression(
+        return PExpression<T>(new PowExpression(
             BinaryExpression<T>::m_e1->Clone(),
             BinaryExpression<T>::m_e2->Clone()));
     }
@@ -339,6 +368,10 @@ public:
         return numeric_interface<T>::pow(BinaryExpression<T>::m_e1->Eval(),
                                          BinaryExpression<T>::m_e2->Eval() );
     }
+
+    virtual PExpression<T> accept(class ExprVisitor<T> &v) {
+        return v.visit(this);
+    }
 protected:
 };
 
@@ -346,18 +379,22 @@ template <typename T>
 class FactExpression : public UnaryExpression<T>
 {
 public:
-    FactExpression(PExpression e) : UnaryExpression<T>(e) {}
+    FactExpression(PExpression<T> e) : UnaryExpression<T>(e) {}
     virtual std::pair<size_t,size_t> Size() const
     {
         return std::make_pair(1,1);
     }
-    virtual PExpression Clone() const
+    virtual PExpression<T> Clone() const
     {
-        return PExpression(new FactExpression(UnaryExpression<T>::m_e->Clone()));
+        return PExpression<T>(new FactExpression(UnaryExpression<T>::m_e->Clone()));
     }
     virtual T Eval(void) const
     {
         return T(numeric_interface<T>::fact((UnaryExpression<T>::m_e)->Eval()));
+    }
+
+    virtual PExpression<T> accept(class ExprVisitor<T> &v) {
+        return v.visit(this);
     }
 protected:
 };
@@ -373,13 +410,17 @@ public:
                 m_value.Size().first,
                 m_value.Size().second);
     }
-    virtual PExpression Clone() const
+    virtual PExpression<T> Clone() const
     {
-        return PExpression(new ValExpression(m_value));
+        return PExpression<T>(new ValExpression(m_value));
     }
     virtual T Eval(void) const
     {
         return m_value;
+    }
+
+    virtual PExpression<T> accept(class ExprVisitor<T> &v) {
+        return v.visit(this);
     }
 protected:
     T m_value;
@@ -390,13 +431,13 @@ class MatExpression : public Expression<T>
 {
 public:
     MatExpression(size_t i, size_t j)
-    : m_matrix(i,j,PExpression(new EmptyExpression<T>))
+    : m_matrix(i,j,PExpression<T>(new EmptyExpression<T>))
     {}
-    MatExpression(PExpression e) : m_matrix(1,1)
+    MatExpression(PExpression<T> e) : m_matrix(1,1)
     {
         m_matrix(1,1)=e;
     }
-    MatExpression(std::vector<std::vector<PExpression > >& mat) : m_matrix(mat)
+    MatExpression(std::vector<std::vector<PExpression<T> > >& mat) : m_matrix(mat)
     {
         for (size_t i = 1; i<=m_matrix.Size().first; ++i)
         {
@@ -434,7 +475,7 @@ public:
     }
 
 
-    virtual PExpression Clone() const
+    virtual PExpression<T> Clone() const
     {
         MatExpression* mat = new MatExpression<T>(
             m_matrix.Size().first,
@@ -446,7 +487,7 @@ public:
                 mat->m_matrix(i,j)=m_matrix(i,j)->Clone();
         }
         mat->SetParameters(Expression<T>::m_params);
-        PExpression ret(mat);
+        PExpression<T> ret(mat);
         return ret;
     }
     virtual T Eval(void) const
@@ -476,6 +517,10 @@ public:
         return val;
     }
 
+    virtual PExpression<T> accept(class ExprVisitor<T> &v) {
+        return v.visit(this);
+    }
+
     virtual ~MatExpression()
     {
         for (size_t i = 1; i<=m_matrix.Size().first; ++i)
@@ -491,7 +536,7 @@ public:
     {
         return m_matrix.Size().first*m_matrix.Size().second;
     }
-    virtual PExpression GetExpr(size_t i)
+    virtual PExpression<T> GetExpr(size_t i)
     {
         if (i<m_matrix.Size().first*m_matrix.Size().second)
             return m_matrix.get(i);
@@ -499,47 +544,7 @@ public:
             throw(std::logic_error("Out of matrix range."));
     }
 protected:
-    Matrix<PExpression > m_matrix;
-};
-
-template <typename T>
-class ParametersDefExpression : public Expression<T>
-{
-public:
-    ParametersDefExpression(
-			const std::vector<std::string>& parameters_names;
-			const ExprDict& parameters_dict;
-			const std::string& index_name;
-			const T& a;
-			const T& b;
-		) : 
-			parameters_names_(parameters_names),
-			parameters_dict_(parameters_dict),
-			index_name_(index_name),
-			a_(a),
-			b_(b)
-    { }
-    ~ParametersDefExpression() {}
-
-    virtual std::pair<size_t,size_t> Size() const
-    {
-        return std::pair<size_t,size_t>(0,0);
-    }
-    virtual PExpression Clone() const
-    {
-        return PExpression(new ParametersDefExpression(parameters_names, parameters_dict, index_name, a, b));
-    }
-
-    virtual T Eval(void) const
-    {
-        return WorkSpManager<T>::Get()->GetExpr(m_name)->Eval();
-    }
-protected:
-	std::vector<std::string> parameters_names_;
-	ExprDict parameters_dict_;
-	std::string index_name_;
-	T a_;
-	T b_;
+    Matrix<PExpression<T> > m_matrix;
 };
 
 template <typename T>
@@ -556,9 +561,9 @@ public:
     {
         return WorkSpManager<T>::Get()->GetExpr(m_name)->Size();
     }
-    virtual PExpression Clone() const
+    virtual PExpression<T> Clone() const
     {
-        return PExpression(new RefExpression(m_name));
+        return PExpression<T>(new RefExpression(m_name));
     }
     virtual std::string Name()
     {
@@ -572,6 +577,10 @@ public:
     {
         return true;
     }
+
+    virtual PExpression<T> accept(class ExprVisitor<T> &v) {
+        return v.visit(this);
+    }
 protected:
     std::string m_name;
 };
@@ -580,7 +589,7 @@ template <typename T>
 class FuncExpression : public BinaryExpression<T>
 {
 public:
-    FuncExpression(const std::string& name, PExpression e1 = PExpression(new  EmptyExpression<T>), PExpression e2 = PExpression(new  EmptyExpression<T>))
+    FuncExpression(const std::string& name, PExpression<T> e1 = PExpression<T>(new  EmptyExpression<T>), PExpression<T> e2 = PExpression<T>(new  EmptyExpression<T>))
     : BinaryExpression<T>(e1,e2), m_name(name)
     {
         Expression<T>::m_params=std::list<std::string>(1,m_name);
@@ -593,13 +602,13 @@ public:
     {
         return BinaryExpression<T>::m_e1->Parameters();
     }
-    virtual PExpression SubExpr() const
+    virtual PExpression<T> SubExpr() const
     {
         return BinaryExpression<T>::m_e2;
     }
-    virtual PExpression Clone() const
+    virtual PExpression<T> Clone() const
     {
-        return PExpression(new FuncExpression(
+        return PExpression<T>(new FuncExpression(
                 m_name,
                 BinaryExpression<T>::m_e1->Clone(),
                 BinaryExpression<T>::m_e2->Clone()));
@@ -630,7 +639,7 @@ public:
                 (it!=params.end() && i<BinaryExpression<T>::m_e1->VirtualSize());
                 ++it, ++i)
             {
-                WorkSpManager<T>::Get()->SetFunc(*it,PExpression(
+                WorkSpManager<T>::Get()->SetFunc(*it,PExpression<T>(
                     new ValExpression<T>(
                         BinaryExpression<T>::m_e1->GetExpr(i)->Eval())));
             }
@@ -647,7 +656,7 @@ public:
 				int subval =  numeric_interface<T>::toInt(BinaryExpression<T>::m_e2->Eval());
 				
 				WorkSpManager<T>::Get()->
-                SetFunc(subname,PExpression(new FuncExpression<T>(subname)), PExpression(new ValExpression<T>(T(subval))) );
+                SetFunc(subname,PExpression<T>(new FuncExpression<T>(subname)), PExpression<T>(new ValExpression<T>(T(subval))) );
 				if (subval >= 0)
 				{
 					ret = WorkSpManager<T>::Get()->
@@ -662,7 +671,7 @@ public:
 			{
 				int subval = 0;
 				WorkSpManager<T>::Get()->
-					SetFunc(subname,PExpression(new FuncExpression<T>(subname)), PExpression(new ValExpression<T>(T(subval))) );
+					SetFunc(subname,PExpression<T>(new FuncExpression<T>(subname)), PExpression<T>(new ValExpression<T>(T(subval))) );
 				T first =  WorkSpManager<T>::Get()->
 					GetExpr(m_name, subval)->Eval();
 				typedef typename numeric_interface_imp_types<T>::abs difference_type;
@@ -671,7 +680,7 @@ public:
 				{
 					++subval;
 					WorkSpManager<T>::Get()->
-						SetFunc(subname,PExpression(new FuncExpression<T>(subname)), PExpression(new ValExpression<T>(T(subval))) );
+						SetFunc(subname,PExpression<T>(new FuncExpression<T>(subname)), PExpression<T>(new ValExpression<T>(T(subval))) );
 					ret =  WorkSpManager<T>::Get()->
 					GetExpr(m_name,subval)->Eval();
 					difference = numeric_interface<T>::abs(first - ret);
@@ -692,10 +701,43 @@ public:
         WorkSpManager<T>::Pop();
         return ret;
     }
+
+    virtual PExpression<T> accept(class ExprVisitor<T> &v) {
+        return v.visit(this);
+    }
 protected:
     std::string m_name;
 };
 
-#undef PExpression
+
+template <typename T>
+class ParametersDefinition
+{
+public:
+    ParametersDefinition() {}
+    ParametersDefinition(
+            const std::vector<std::string>& parameters_names,
+            const ExprDict<T>& parameters_dict,
+            const std::string& index_name,
+            const int& a,
+            const int& b
+        ) :
+            parameters_names_(parameters_names),
+            parameters_dict_(parameters_dict),
+            index_name_(index_name),
+            a_(a),
+            b_(b)
+    { }
+    ~ParametersDefinition() {}
+
+
+protected:
+    std::vector<std::string> parameters_names_;
+    ExprDict<T> parameters_dict_;
+    std::string index_name_;
+    int a_;
+    int b_;
+};
+
 
 #endif

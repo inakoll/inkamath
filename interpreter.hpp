@@ -17,7 +17,8 @@
 #include "workspace_manager.hpp"
 #include "numeric_interface.hpp"
 
-#define PExpression std::shared_ptr<Expression<U> >
+template <typename T>
+using PExpression = std::shared_ptr<Expression<T>>;
 
 template <typename T, typename U=Matrix<T> >
 class Interpreter
@@ -39,21 +40,23 @@ private:
     void Number_Lexer(const std::string& s, size_t& i);
     void Reference_Lexer(const std::string& s, size_t& i);
 
-    PExpression ParseAll();
-    PExpression Parse();
-    PExpression ParseEqualExpr();
-    PExpression ParseAddExpr();
-    PExpression ParseMultExpr();
-    PExpression ParsePowExpr();
-    PExpression ParseMatrix();
-    PExpression ParseSimpleExpr();
-    PExpression ParseParameters();
-    PExpression ParseSubExpr();
+    PExpression<U> ParseAll();
+    PExpression<U> Parse();
+    PExpression<U> ParseEqualExpr();
+    PExpression<U> ParseAddExpr();
+    PExpression<U> ParseMultExpr();
+    PExpression<U> ParsePowExpr();
+    PExpression<U> ParseMatrix();
+    PExpression<U> ParseSimpleExpr();
+    PExpression<U> ParseParameters();
+    PExpression<U> ParseSubExpr();
+
+    bool TransformParametersDefinition(PExpression<U> params, PExpression<U> subexpr, ParametersDefinition<U>& params_defintion);
 
     std::list< Token<T> > m_toklist;
     typename std::list< Token<T> >::iterator m_i;
 
-    PExpression m_E;
+    PExpression<U> m_E;
     std::ostringstream oss;
 };
 
@@ -192,10 +195,10 @@ void Interpreter<T,U>::Reference_Lexer(const std::string &s, size_t& i)
 
 
 template <typename T, typename U>
-PExpression Interpreter<T,U>::ParseAll()
+PExpression<U> Interpreter<T,U>::ParseAll()
 {
     m_i = m_toklist.begin();
-    PExpression e = Parse();
+    PExpression<U> e = Parse();
     if (m_i != m_toklist.end())
     {
         oss << "Syntax error before '" << m_i->Print() << "'" << std::endl;
@@ -213,7 +216,7 @@ PExpression Interpreter<T,U>::ParseAll()
 }
 
 template <typename T, typename U>
-PExpression Interpreter<T,U>::Parse()
+PExpression<U> Interpreter<T,U>::Parse()
 {
     if(m_i != m_toklist.end() && m_i->type == Comma)
         ++m_i;
@@ -221,9 +224,9 @@ PExpression Interpreter<T,U>::Parse()
 }
 
 template <typename T, typename U>
-PExpression Interpreter<T,U>::ParseEqualExpr()
+PExpression<U> Interpreter<T,U>::ParseEqualExpr()
 {
-    PExpression e,params,expr,sub;
+    PExpression<U> e,params,expr,sub;
     typename std::list< Token<T> >::iterator m_s = m_i;
     if (m_i != m_toklist.end() && m_i->type == Func)
     {
@@ -233,17 +236,12 @@ PExpression Interpreter<T,U>::ParseEqualExpr()
         if (m_i != m_toklist.end() && m_i++->type == Equal)
         {
             expr = Parse();
-			if(!params && !sub) {
-				e.reset(new EqualExpression<U>(PExpression(new RefExpression<U>(name), expr)));
+            ParametersDefinition<U> params_def;
+            if(!TransformParametersDefinition(params, sub, params_def)) {
+                e.reset(new EqualExpression<U>(PExpression<U>(new RefExpression<U>(name)), expr));
 			}
 			else {
-				if(!params) {
-					params = PExpression(new EmptyExpression());
-				}
-				else if(!sub) {
-					sub = PExpression(new EmptyExpression());
-				}
-				e.reset(new EqualExpression<U>(PExpression(new FuncExpression<U>(name,params,sub)),expr));
+                e.reset(new EqualExpression<U>(PExpression<U>(new FuncExpression<U>(name, params, sub)),expr));
 			}
             WorkSpManager<U>::Get()->SetExpr(name,e);
         }
@@ -260,9 +258,9 @@ PExpression Interpreter<T,U>::ParseEqualExpr()
 }
 
 template <typename T, typename U>
-PExpression Interpreter<T,U>::ParseAddExpr()
+PExpression<U> Interpreter<T,U>::ParseAddExpr()
 {
-    PExpression e = ParseMultExpr();
+    PExpression<U> e = ParseMultExpr();
     while (m_i != m_toklist.end() && (m_i->type == Add || m_i->type == Min) )
     {
         if ((m_i++)->type == Add)
@@ -271,7 +269,7 @@ PExpression Interpreter<T,U>::ParseAddExpr()
         }
         else
         {
-            PExpression tmp;
+            PExpression<U> tmp;
             tmp.reset(new NegExpression<U>(ParseMultExpr()));
             e.reset(new AddExpression<U>(e,tmp));
         }
@@ -280,9 +278,9 @@ PExpression Interpreter<T,U>::ParseAddExpr()
 }
 
 template <typename T, typename U>
-PExpression Interpreter<T,U>::ParseMultExpr()
+PExpression<U> Interpreter<T,U>::ParseMultExpr()
 {
-    PExpression e = ParsePowExpr();
+    PExpression<U> e = ParsePowExpr();
     while (m_i != m_toklist.end() && (m_i->type == Mult || m_i->type == Div) )
     {
         if ((m_i++)->type == Mult)
@@ -298,9 +296,9 @@ PExpression Interpreter<T,U>::ParseMultExpr()
 }
 
 template <typename T, typename U>
-PExpression Interpreter<T,U>::ParsePowExpr()
+PExpression<U> Interpreter<T,U>::ParsePowExpr()
 {
-    PExpression e = ParseSimpleExpr();
+    PExpression<U> e = ParseSimpleExpr();
     if (m_i != m_toklist.end() && m_i->type == Pow)
     {
         ++m_i;
@@ -310,17 +308,17 @@ PExpression Interpreter<T,U>::ParsePowExpr()
 }
 
 template <typename T, typename U>
-PExpression Interpreter<T,U>::ParseMatrix()
+PExpression<U> Interpreter<T,U>::ParseMatrix()
 {
-    std::vector<std::vector<PExpression > > mat(1, std::vector<PExpression > (0));
-    PExpression e;
+    std::vector<std::vector<PExpression<U> > > mat(1, std::vector<PExpression<U> > (0));
+    PExpression<U> e;
 
     while ((m_i != m_toklist.end()) && (m_i->type != RBra) && (m_i->type != RPar))
     {
         switch (m_i->type)
         {
         case Semico :
-            mat.push_back(std::vector<PExpression > ());
+            mat.push_back(std::vector<PExpression<U> > ());
             ++m_i;
             break;
 
@@ -335,9 +333,9 @@ PExpression Interpreter<T,U>::ParseMatrix()
 }
 
 template <typename T, typename U>
-PExpression  Interpreter<T,U>::ParseSimpleExpr()
+PExpression<U>  Interpreter<T,U>::ParseSimpleExpr()
 {
-    PExpression e,func,sub;
+    PExpression<U> e,func,sub;
     std::string name;
     if (m_i != m_toklist.end())
     {
@@ -413,9 +411,9 @@ void print(std::string s)
 }
 
 template <typename T, typename U>
-PExpression Interpreter<T,U>::ParseParameters()
+PExpression<U> Interpreter<T,U>::ParseParameters()
 {
-    PExpression e;
+    PExpression<U> e;
     typename std::list< Token<T> >::iterator m_s = m_i;
     if (m_i != m_toklist.end() && m_i++->type == LPar && m_i != m_toklist.end() && m_i->type != RPar)
     {
@@ -432,9 +430,9 @@ PExpression Interpreter<T,U>::ParseParameters()
 }
 
 template <typename T, typename U>
-PExpression Interpreter<T,U>::ParseSubExpr()
+PExpression<U> Interpreter<T,U>::ParseSubExpr()
 {
-    PExpression e;
+    PExpression<U> e;
     typename std::list< Token<T> >::iterator m_s = m_i;
     if (m_i != m_toklist.end() && m_i++->type == Sub)
     {
@@ -450,22 +448,22 @@ PExpression Interpreter<T,U>::ParseSubExpr()
 #include "expression_visitor.hpp"
 
 template <typename T, typename U>
-PExpression Interpreter<T,U>::TransformParametersDefinition(PExpression params, PExpression subexpr)
+bool Interpreter<T,U>::TransformParametersDefinition(PExpression<U> params, PExpression<U> subexpr, ParametersDefinition<U>& params_defintion)
 {
-	PExpression e;
-	ParametersVisitor params_visitor;
-	SubVisitor subexpr_visitor;	
+    ParametersVisitor<U> params_visitor;
+    SubVisitor<U> subexpr_visitor;
 	if(params) {
 		try {
-			params->accept(&params_visitor);
+            params->accept(params_visitor);
 					
 		}
-		catch(const std::exception& e) {
-			e.reset();
+        catch(const std::exception&) {
+            return false;
 		}
 	}
 	
-	if(!params_visitor.parameters_expr.empty()) {
+    auto parameters_expr = params_visitor.get_parameters_expr();
+    if(!parameters_expr.empty()) {
 		throw std::runtime_error("Parameters definition only includes parameters names followed by parameters defaulted.");
 	}	
 	
@@ -473,10 +471,16 @@ PExpression Interpreter<T,U>::TransformParametersDefinition(PExpression params, 
 		try {	
 			subexpr->accept(subexpr_visitor);
 		}
-		catch(const std::exception& e) {
-			e.reset();
+        catch(const std::exception& ) {
+            return false;
 		}	
 	}
+    params_defintion = ParametersDefinition<U>(params_visitor.get_parameters_names(),
+                                               params_visitor.get_parameters_dict(),
+                                               subexpr_visitor.get_index_name(),
+                                               subexpr_visitor.get_a(),
+                                               subexpr_visitor.get_b());
+    return true;
 }
 
 template <typename T, typename U>
@@ -514,6 +518,5 @@ void Interpreter<T,U>::PrintTokens(void)
     std::cout << std::endl;
 }
 
-#undef PExpression
 
 #endif

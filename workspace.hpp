@@ -13,7 +13,9 @@
 #include "sequence.hpp"
 
 
-#define PExpression		std::shared_ptr<Expression<T> >
+template <typename T>
+using PExpression = std::shared_ptr<Expression<T>>;
+
 #define PFuncExpression	std::shared_ptr<FuncExpression<T> >
 
 template <typename T>
@@ -41,11 +43,11 @@ class FuncExpression;
 template <typename T>
 struct ExprCopy
 {
-    std::map<std::string, PExpression >& m_map;
-    ExprCopy(std::map<std::string, PExpression >& map) : m_map(map) {}
-    void operator()(std::pair<std::string, PExpression > p)
+    std::map<std::string, PExpression<T> >& m_map;
+    ExprCopy(std::map<std::string, PExpression<T> >& map) : m_map(map) {}
+    void operator()(std::pair<std::string, PExpression<T> > p)
     {
-        m_map.insert(std::pair<std::string, PExpression >(p.first,p.second->Clone()));
+        m_map.insert(std::pair<std::string, PExpression<T> >(p.first,p.second->Clone()));
     }
 };
 
@@ -70,20 +72,20 @@ public:
     WorkSp(const WorkSp&);
     WorkSp(const std::list<std::string>&);
     WorkSp operator=(const WorkSp& w);
-    const PExpression GetExpr(const std::string&);
-    const PExpression GetExpr(const std::string&, size_t);
-    const PExpression SetExpr(const std::string&,  PExpression);
-    void SetSub(const std::string& name, size_t i, PExpression exp);
-    const PExpression GetFunc(const std::string&);
-	const PExpression SetFunc(const std::string&, PExpression);
-    const PExpression SetFunc(const std::string&,  PExpression, PExpression);
+    const PExpression<T> GetExpr(const std::string&);
+    const PExpression<T> GetExpr(const std::string&, size_t);
+    const PExpression<T> SetExpr(const std::string&,  PExpression<T>);
+    void SetSub(const std::string& name, size_t i, PExpression<T> exp);
+    const PExpression<T> GetFunc(const std::string&);
+    const PExpression<T> SetFunc(const std::string&, PExpression<T>);
+    const PExpression<T> SetFunc(const std::string&,  PExpression<T>, PExpression<T>);
     void EvalAllExpr(void);
 
-    static void ExprDeleter(std::pair<std::string, PExpression > p)
+    static void ExprDeleter(std::pair<std::string, PExpression<T> > p)
     {
         p.second.reset();
     }
-     static void ExprEval(std::pair<std::string, PExpression > p) 
+     static void ExprEval(std::pair<std::string, PExpression<T> > p)
 	{
 		T ret = 0;
 		if(p.second) 
@@ -111,7 +113,7 @@ public:
 
     friend class WorkSpManager<T>;
 protected:
-    std::map<std::string,PExpression >		m_emap;
+    std::map<std::string,PExpression<T> >		m_emap;
     std::map<std::string,PFuncExpression >	m_fmap;
     std::map<std::string,Sequence<T> >		m_smap;
 
@@ -169,18 +171,18 @@ WorkSp<T>::~WorkSp()
 }
 
 template <typename T>
-const PExpression WorkSp<T>::GetExpr(const std::string& name)
+const PExpression<T> WorkSp<T>::GetExpr(const std::string& name)
 {
     if (m_emap.count(name) == 0)
     {
         m_emap[name].reset(new ValExpression<T>(T(0)));
     }
-    PExpression ret(m_emap[name]);
+    PExpression<T> ret(m_emap[name]);
     return ret;
 }
 
 template <typename T>
-const PExpression WorkSp<T>::GetExpr(const std::string& name, size_t i)
+const PExpression<T> WorkSp<T>::GetExpr(const std::string& name, size_t i)
 {
     T val;
     if (m_emap.count(name) == 0)
@@ -192,20 +194,20 @@ const PExpression WorkSp<T>::GetExpr(const std::string& name, size_t i)
         for (size_t j = m_smap[name].Size(); j<=i; ++j)
         {
             std::string subname = WorkSpManager<T>::Get()->GetFunc(name)->SubExpr()->Name();
-            WorkSpManager<T>::Get()->SetFunc(subname,PExpression(new FuncExpression<T>(subname)),
-																  PExpression(new ValExpression<T>(T(j))));
+            WorkSpManager<T>::Get()->SetFunc(subname,PExpression<T>(new FuncExpression<T>(subname)),
+                                                                  PExpression<T>(new ValExpression<T>(T(j))));
             val = m_emap[name]->Eval();
             m_smap[name].Set(j,val);
             //std::cout << name << "[" << j << "]=" << val << std::endl;
         }
         m_smap[name].Clear();
     }
-    PExpression ret(new ValExpression<T>(val));
+    PExpression<T> ret(new ValExpression<T>(val));
     return ret;
 }
 
 template <typename T>
-const PExpression WorkSp<T>::SetExpr(const std::string& name, PExpression exp)
+const PExpression<T> WorkSp<T>::SetExpr(const std::string& name, PExpression<T> exp)
 {
     m_emap[name].reset();
     m_modified = true;
@@ -222,7 +224,7 @@ const PExpression WorkSp<T>::SetExpr(const std::string& name, PExpression exp)
 }
 
 template <typename T>
-void WorkSp<T>::SetSub(const std::string& name, size_t i, PExpression exp)
+void WorkSp<T>::SetSub(const std::string& name, size_t i, PExpression<T> exp)
 {
     // Assure que l'expression existe dorénavant dans les maps
     WorkSpManager<T>::Get()->GetExpr(name);
@@ -242,19 +244,19 @@ void WorkSp<T>::SetSub(const std::string& name, size_t i, PExpression exp)
 }
 
 template <typename T>
-const PExpression WorkSp<T>::GetFunc(const std::string& name)
+const PExpression<T> WorkSp<T>::GetFunc(const std::string& name)
 {
     if (m_fmap.count(name) == 0)
     {
-		m_fmap[name].reset(new FuncExpression<T>(name, PExpression(new EmptyExpression<T>), PExpression(new EmptyExpression<T>))); 
+        m_fmap[name].reset(new FuncExpression<T>(name, PExpression<T>(new EmptyExpression<T>), PExpression<T>(new EmptyExpression<T>)));
         m_emap[name].reset(new ValExpression<T>(T(0)));
     }
-    PExpression ret(m_fmap[name]);
+    PExpression<T> ret(m_fmap[name]);
     return ret;
 }
 
 template <typename T>
-const PExpression WorkSp<T>::SetFunc(const std::string& name, PExpression funcExp, PExpression valExp)
+const PExpression<T> WorkSp<T>::SetFunc(const std::string& name, PExpression<T> funcExp, PExpression<T> valExp)
 {
     m_fmap[name].reset();
     m_modified = true;
@@ -272,10 +274,10 @@ const PExpression WorkSp<T>::SetFunc(const std::string& name, PExpression funcEx
 }
 
 template <typename T>
-const PExpression WorkSp<T>::SetFunc(const std::string& name, PExpression valExp)
+const PExpression<T> WorkSp<T>::SetFunc(const std::string& name, PExpression<T> valExp)
 {
     m_fmap[name].reset();
-	m_fmap[name] = PFuncExpression(new FuncExpression<T>(name, PExpression(new EmptyExpression<T>),PExpression(new EmptyExpression<T>) ) );
+    m_fmap[name] = PFuncExpression(new FuncExpression<T>(name, PExpression<T>(new EmptyExpression<T>),PExpression<T>(new EmptyExpression<T>) ) );
     m_modified = true;
 	SetExpr(name, valExp);
     return m_fmap[name];
@@ -291,7 +293,7 @@ template <typename T>
 std::list<std::string> WorkSp<T>::toStringList() const
 {
     std::list<std::string> ls;
-    for (typename std::map<std::string,PExpression >::iterator it =m_emap.begin(); it !=m_emap.end(); ++it)
+    for (typename std::map<std::string,PExpression<T> >::iterator it =m_emap.begin(); it !=m_emap.end(); ++it)
     {
         ls.push_back(it->first);
     }
@@ -303,8 +305,5 @@ bool isRecursive(const std::string& name)
 {
     return false;
 }
-
-#undef PExpression
-#undef PFuncExpression
 
 #endif
