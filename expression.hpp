@@ -8,10 +8,12 @@
 #include <list>
 #include <utility> // pair
 #include <iterator> // back_inserter
+#include <unordered_map>
 
 #include <memory>
 
 #include "pmath.hpp"
+#include "expression_visitor.hpp"
 #include "matrix.hpp"
 #include "workspace_manager.hpp"
 #include "numeric_interface.hpp"
@@ -23,13 +25,26 @@ template <typename T>
 class EmptyExpression;
 
 template <typename T>
-class Expression
+class Expression;
+
+template <typename T>
+using ExprContext = std::unordered_map<std::string,PExpression >;
+
+template <typename T>
+class Expression : std::enable_shared_from_this<Expression>
 {
 public:
     Expression() {}
     virtual ~Expression() {}
     virtual T Eval(void) const = 0;
     virtual PExpression Clone() const = 0;
+	
+    PExpression self() {
+        return shared_from_this();
+    }
+	
+
+	virtual void accept(class ExprVisitor<T> &v) = 0;
     virtual bool isEmpty(void) const
     {
         return false;
@@ -70,6 +85,10 @@ public:
     {
         m_params=params;
     }
+	
+	void setDefinitions(const ExprContext& definitions) {
+		definitions_ = definitions;
+	}
 
     std::list<std::string> m_params;
 protected:
@@ -77,6 +96,8 @@ private:
     // interdiction de la copie
     Expression(const Expression<T>& e);
     Expression& operator=(const Expression<T>& e);
+	
+	ExprContext definitions_;
 };
 
 template <typename T>
@@ -114,7 +135,6 @@ public:
     {
         m_e.reset();
     }
-protected:
     PExpression m_e;
 };
 
@@ -137,7 +157,7 @@ public:
         m_e1.reset();
         m_e2.reset();
     }
-protected:
+	
     PExpression m_e1;
     PExpression m_e2;
 };
@@ -480,6 +500,46 @@ public:
     }
 protected:
     Matrix<PExpression > m_matrix;
+};
+
+template <typename T>
+class ParametersDefExpression : public Expression<T>
+{
+public:
+    ParametersDefExpression(
+			const std::vector<std::string>& parameters_names;
+			const ExprDict& parameters_dict;
+			const std::string& index_name;
+			const T& a;
+			const T& b;
+		) : 
+			parameters_names_(parameters_names),
+			parameters_dict_(parameters_dict),
+			index_name_(index_name),
+			a_(a),
+			b_(b)
+    { }
+    ~ParametersDefExpression() {}
+
+    virtual std::pair<size_t,size_t> Size() const
+    {
+        return std::pair<size_t,size_t>(0,0);
+    }
+    virtual PExpression Clone() const
+    {
+        return PExpression(new ParametersDefExpression(parameters_names, parameters_dict, index_name, a, b));
+    }
+
+    virtual T Eval(void) const
+    {
+        return WorkSpManager<T>::Get()->GetExpr(m_name)->Eval();
+    }
+protected:
+	std::vector<std::string> parameters_names_;
+	ExprDict parameters_dict_;
+	std::string index_name_;
+	T a_;
+	T b_;
 };
 
 template <typename T>

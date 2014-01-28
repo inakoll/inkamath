@@ -224,7 +224,7 @@ const PExpression WorkSp<T>::SetExpr(const std::string& name, PExpression exp)
 template <typename T>
 void WorkSp<T>::SetSub(const std::string& name, size_t i, PExpression exp)
 {
-    // Assure que l'expression existe dorénavant dans les maps
+    // Assure que l'expression existe dorÃ©navant dans les maps
     WorkSpManager<T>::Get()->GetExpr(name);
     WorkSpManager<T>::Get()->GetFunc(name);
 

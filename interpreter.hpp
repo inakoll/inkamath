@@ -223,21 +223,31 @@ PExpression Interpreter<T,U>::Parse()
 template <typename T, typename U>
 PExpression Interpreter<T,U>::ParseEqualExpr()
 {
-    PExpression e,func,expr,sub;
+    PExpression e,params,expr,sub;
     typename std::list< Token<T> >::iterator m_s = m_i;
     if (m_i != m_toklist.end() && m_i->type == Func)
     {
         std::string name = m_i++->name;
-        func = ParseParameters();
+        params = ParseParameters();
         sub = ParseSubExpr();
         if (m_i != m_toklist.end() && m_i++->type == Equal)
         {
             expr = Parse();
-            e.reset(new EqualExpression<U>(PExpression(new FuncExpression<U>(name,func,sub)),expr));
+			if(!params && !sub) {
+				e.reset(new EqualExpression<U>(PExpression(new RefExpression<U>(name), expr)));
+			}
+			else {
+				if(!params) {
+					params = PExpression(new EmptyExpression());
+				}
+				else if(!sub) {
+					sub = PExpression(new EmptyExpression());
+				}
+				e.reset(new EqualExpression<U>(PExpression(new FuncExpression<U>(name,params,sub)),expr));
+			}
             WorkSpManager<U>::Get()->SetExpr(name,e);
         }
-        else
-        {
+        else {
             m_i = m_s;
             e = ParseAddExpr();
         }
@@ -319,7 +329,7 @@ PExpression Interpreter<T,U>::ParseMatrix()
             (mat.at(mat.size()-1)).push_back(e);
         }
     }
-    /* ATTENTION :  'mat' est libéré dans ~MatExpression */
+    /* ATTENTION :  'mat' est libÃ©rÃ© dans ~MatExpression */
     e.reset(new MatExpression<U>(mat));
     return e;
 }
@@ -416,7 +426,6 @@ PExpression Interpreter<T,U>::ParseParameters()
     }
     else
     {
-        e.reset(new EmptyExpression<U>());
         m_i=m_s;
     }
     return e;
@@ -433,10 +442,41 @@ PExpression Interpreter<T,U>::ParseSubExpr()
     }
     else
     {
-        e.reset(new EmptyExpression<U>());
         m_i=m_s;
     }
     return e;
+}
+
+#include "expression_visitor.hpp"
+
+template <typename T, typename U>
+PExpression Interpreter<T,U>::TransformParametersDefinition(PExpression params, PExpression subexpr)
+{
+	PExpression e;
+	ParametersVisitor params_visitor;
+	SubVisitor subexpr_visitor;	
+	if(params) {
+		try {
+			params->accept(&params_visitor);
+					
+		}
+		catch(const std::exception& e) {
+			e.reset();
+		}
+	}
+	
+	if(!params_visitor.parameters_expr.empty()) {
+		throw std::runtime_error("Parameters definition only includes parameters names followed by parameters defaulted.");
+	}	
+	
+	if(subexpr) {
+		try {	
+			subexpr->accept(subexpr_visitor);
+		}
+		catch(const std::exception& e) {
+			e.reset();
+		}	
+	}
 }
 
 template <typename T, typename U>
