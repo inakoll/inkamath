@@ -5,6 +5,7 @@
 #include <unordered_map>
 #include <utility>
 #include <vector>
+#include <stack>
 #include <string>
 #include <algorithm>
 #include <type_traits>
@@ -33,7 +34,7 @@ struct mapstack_iterator_base {
         m_it(ai_it) {}
 
     pair_type operator*() {
-        return pair_type(m_it->first, m_it->second.top());
+        return pair_type(m_it->first, m_it->second.back());
     }
 	
 	// no operator->() since operator* return a temporary (moved) object
@@ -181,7 +182,7 @@ void Mapstack<T1, T2, MapType>::Pop()
 
     while(first != m_stack.top().end()) {
         assert(!m_map.at(*first).empty());
-        m_map.at(*first).pop();
+        m_map.at(*first).pop_back();
 
         if(m_map.at(*first).empty()) {
             m_map.erase(*first);
@@ -229,7 +230,7 @@ bool Mapstack<T1, T2, MapType>::Get(const key_type& ai_key, value_type& ao_value
 
     if(w_bRet) {
         assert(!it->second.empty());
-        ao_value = it->second.top();
+        ao_value = it->second.back();
     }
 
     return w_bRet;

@@ -140,7 +140,7 @@ csx
 AppPackages/
 
 # Qt
-*.pro
+*.pro.user
 
 # Others
 sql/
