@@ -2,6 +2,7 @@
 #include <iostream>
 #include <limits>
 #include <set>
+#include <tuple>
 
 
 #define BOOST_TEST_MODULE inkamath_mapstack
@@ -199,40 +200,40 @@ BOOST_AUTO_TEST_CASE( multiple_entry_4 )
     }
 }
 
-BOOST_AUTO_TEST_CASE( iteration )
+BOOST_AUTO_TEST_CASE( const_iteration )
 {
-	std::vector<std::pair<const std::string, int>> input 
-					{ {"a", 1}
-					, {"b", 2}
-					, {"c", 3}
-					, {"d", 4} };
+    std::vector<std::tuple<const std::string, int>> input
+                    { std::make_tuple("a", 1)
+                    , std::make_tuple("b", 2)
+                    , std::make_tuple("c", 3)
+                    , std::make_tuple("d", 4) };
 					
 	// initializing the mapstack with input
 	for(auto elm : input) {
-		mapstack.Set(elm.first, elm.second);
+        mapstack.Set(std::get<0>(elm), std::get<1>(elm));
 	}
 		
 	// check for equality of the two containers using std::set
-	std::set<std::pair<const std::string, int>> set1(mapstack.begin(), mapstack.end());
-	std::set<std::pair<const std::string, int>> set2(input.begin(),input.end());
+    std::set<std::tuple<const std::string, int>> set1(mapstack.begin(), mapstack.end());
+    std::set<std::tuple<const std::string, int>> set2(input.begin(),input.end());
 	BOOST_CHECK_MESSAGE(set1 == set2, "mapstack and input should be equal here!");
 	
 	mapstack.Push();
 	
 	// Pushing new values
-	std::vector<std::pair<const std::string, int>> push  =
-					{ {"a", 11}
-					, {"b", 12} };
+    std::vector<std::tuple<const std::string, int>> push  =
+    {  std::make_tuple("a", 11)
+     , std::make_tuple("b", 12)};
 	for(auto elm : push) {
-		mapstack.Set(elm.first, elm.second);
+        mapstack.Set(std::get<0>(elm), std::get<1>(elm));
 	}
 	
 	// mapstack content should now be equal to :
-	std::set<std::pair<const std::string, int>> set3
-					{ {"a", 11}
-					, {"b", 12}
-					, {"c", 3}
-					, {"d", 4} };	
+    std::set<std::tuple<const std::string, int>> set3
+                    { std::make_tuple("a", 11)
+                    , std::make_tuple("b", 12)
+                    , std::make_tuple("c", 3)
+                    , std::make_tuple("d", 4) };
 	set1.clear();
 	set1.insert(mapstack.begin(), mapstack.end());
 	BOOST_CHECK_MESSAGE(set1 == set3, "mapstack and input should be equal here!");
@@ -245,4 +246,41 @@ BOOST_AUTO_TEST_CASE( iteration )
 	
 	
 }
+
+BOOST_AUTO_TEST_CASE( iteration )
+{
+    std::vector<std::tuple<const std::string, int>> input
+                    { std::make_tuple("a", 1)
+                    , std::make_tuple("b", 2)
+                    , std::make_tuple("c", 3)
+                    , std::make_tuple("d", 4) };
+
+    // initializing the mapstack with input
+    for(auto elm : input) {
+        mapstack.Set(std::get<0>(elm), std::get<1>(elm));
+    }
+
+    // check for equality of the two containers using std::set
+    std::set<std::tuple<const std::string, int>> set1(mapstack.begin(), mapstack.end());
+    std::set<std::tuple<const std::string, int>> set2(input.begin(),input.end());
+    BOOST_CHECK_MESSAGE(set1 == set2, "mapstack and input should be equal here!");
+
+    // mutate the mapstack from an iterator
+    for(auto elem : mapstack) {
+        std::get<1>(elem) -= 1;
+    }
+
+    // mapstack content should now be equal to :
+    std::vector<std::tuple<const std::string, int>> output
+                    { std::make_tuple("a", 0)
+                    , std::make_tuple("b", 1)
+                    , std::make_tuple("c", 2)
+                    , std::make_tuple("d", 3) };
+
+    set1.insert(mapstack.begin(), mapstack.end());
+    set2.insert(output.begin(),output.end());
+    BOOST_CHECK_MESSAGE(set1 == set2, "mapstack and output should be equal here!");
+
+}
+
 BOOST_AUTO_TEST_SUITE_END()

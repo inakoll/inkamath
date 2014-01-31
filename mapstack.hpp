@@ -3,9 +3,9 @@
 
 #include <list>
 #include <unordered_map>
-#include <utility>
 #include <vector>
 #include <stack>
+#include <tuple>
 #include <string>
 #include <algorithm>
 #include <type_traits>
@@ -24,7 +24,7 @@ struct mapstack_iterator_base {
 	typedef typename InternalIterator::value_type::second_type stack_type;
 	typedef typename stack_type::value_type stack_value_type;
 	
-	typedef std::pair<key_type, stack_value_type> pair_type;
+    typedef std::tuple<key_type, stack_value_type&> pair_type;
 
 	typedef ValueType  value_type;
 	typedef ValueType& reference;
@@ -33,7 +33,7 @@ struct mapstack_iterator_base {
     mapstack_iterator_base(const internal_iterator& ai_it) :
         m_it(ai_it) {}
 
-    pair_type operator*() {
+    pair_type operator*() const {
         return pair_type(m_it->first, m_it->second.back());
     }
 	
