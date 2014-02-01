@@ -14,13 +14,10 @@ template <typename T>
 class Reference;
 
 template <typename T>
-using PReference = std::shared_ptr<Reference<T>>;
-
-template <typename T>
 class ParametersDefinition;
 
 template <typename T>
-class ExpressionStack {
+class ReferenceStack {
 public:
 
     void Set(const std::string& ai_reference_name, const ParametersDefinition& ai_parameters, PExpression  ai_expression) {
@@ -42,9 +39,9 @@ public:
         Context guard(stack_);
 
         // Just evaluate the reference with the parameters if it's in the stack
-        PReference<T> reference;
+        Reference<T> reference;
         if(stack_.Get(ai_reference_name, reference)) {
-            return reference->Eval(ai_parameters);
+            return reference.Eval(ai_parameters);
         }
         else {
             return T();
@@ -56,7 +53,7 @@ public:
     }
 
 private:
-    mutable mapstack<std::string, PReference<T>> stack_;
+    mutable mapstack<std::string, Reference<T>> stack_;
 };
 
 #endif // EXPRESSION_STACK_HPP
