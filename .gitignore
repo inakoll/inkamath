@@ -141,6 +141,7 @@ AppPackages/
 
 # Qt
 *.pro.user
+*.autosave
 
 # Others
 sql/

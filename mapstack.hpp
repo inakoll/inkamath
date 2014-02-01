@@ -145,6 +145,19 @@ public:
 
     void Clear();
 
+    class Context {
+        Context(Mapstack parent) : parent_(parent) {
+            parent.Push();
+        }
+        ~Context() {
+            parent.Pop();
+        }
+
+    private:
+        Mapstack& parent_;
+    };
+
+
 private:
     current_stack_type  m_stack;
     map_type 			m_map;
