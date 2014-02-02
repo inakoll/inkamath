@@ -730,6 +730,12 @@ public:
     { }
     ~ParametersDefinition() {}
 
+    int a() {return a_;}
+    int b() {return b_;}
+    const std::string& index_name() {return index_name_;}
+    const std::vector<std::string>& parameters_names() {return parameters_names_;}
+    const ExprDict<T>& parameters_dict() {return parameters_dict_;}
+
 
 protected:
     std::vector<std::string> parameters_names_;
@@ -738,6 +744,42 @@ protected:
     int a_;
     int b_;
 };
+
+template <typename T>
+class ParametersCall
+{
+public:
+    ParametersCall() {}
+    ParametersCall(
+            const std::vector<PExpression<T>>& parameters_exprs,
+            const ExprDict<T>& parameters_dict,
+            const std::string& index_name,
+            const int& a,
+            const int& b
+        ) :
+            parameters_exprs_(parameters_exprs),
+            parameters_dict_(parameters_dict),
+            index_name_(index_name),
+            a_(a),
+            b_(b)
+    { }
+    ~ParametersCall() {}
+
+    int a() {return a_;}
+    int b() {return b_;}
+    const std::string& index_name() {return index_name_;}
+    const std::vector<PExpression<T>>& parameters_expression() {return parameters_exprs_;}
+    const ExprDict<T>& parameters_dict() {return parameters_dict_;}
+
+
+protected:
+    std::vector<PExpression<T>> parameters_exprs_;
+    ExprDict<T> parameters_dict_;
+    std::string index_name_;
+    int a_;
+    int b_;
+};
+
 
 
 #endif

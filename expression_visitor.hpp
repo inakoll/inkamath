@@ -285,5 +285,22 @@ private:
 	
 };
 
+template <typename T>
+class RecursiveExprVisitor : public ExprVisitor<T> {
+public:
+    virtual PExpression<T> visit(EmptyExpression<T>* expr) = 0;
+    virtual PExpression<T> visit(EqualExpression<T>* expr) = 0;
+    virtual PExpression<T> visit(AddExpression<T>* expr) = 0;
+    virtual PExpression<T> visit(NegExpression<T>* expr) = 0;
+    virtual PExpression<T> visit(MultExpression<T>* expr) = 0;
+    virtual PExpression<T> visit(DivExpression<T>* expr) = 0;
+    virtual PExpression<T> visit(PowExpression<T>* expr) = 0;
+    virtual PExpression<T> visit(FactExpression<T>* expr) = 0;
+    virtual PExpression<T> visit(ValExpression<T>* expr) = 0;
+    virtual PExpression<T> visit(MatExpression<T>* expr) = 0;
+    virtual PExpression<T> visit(RefExpression<T>* expr) = 0;
+    virtual PExpression<T> visit(FuncExpression<T>* expr) = 0;
+};
+
 
 #endif // H_EXPR_VISITOR

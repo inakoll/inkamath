@@ -17,10 +17,13 @@ template <typename T>
 class ParametersDefinition;
 
 template <typename T>
+class ParametersCall;
+
+template <typename T>
 class ReferenceStack {
 public:
 
-    void Set(const std::string& ai_reference_name, const ParametersDefinition& ai_parameters, PExpression  ai_expression) {
+    void Set(const std::string& ai_reference_name, const ParametersDefinition<T>& ai_parameters, PExpression  ai_expression) {
         // Try to get a copy of the actual reference
         Reference<T> reference;
         stack_.Get(ai_reference_name, reference);
@@ -32,7 +35,7 @@ public:
     }
 
 
-    T Eval(const std::string& ai_reference_name, const ParametersDefinition& ai_parameters) const {
+    T Eval(const std::string& ai_reference_name, const ParametersCall<T>& ai_parameters) const {
         // Evaluation of an expression might mutate the internal stack_ object
         // The following line ensure that the stack will be restored at the end of the function
         // or in case of an exception thanks to RAII.
