@@ -51,20 +51,26 @@ template <typename T>
 class EmptyExpression;
 
 template <typename T>
+class RecursivePlaceholderExpression;
+
+template <typename T>
+class ParametersCall;
+
+template <typename T>
 class ExprVisitor {
 public:
     virtual PExpression<T> visit(EmptyExpression<T>* expr) = 0;
-	virtual PExpression<T> visit(EqualExpression<T>* expr) = 0;
-	virtual PExpression<T> visit(AddExpression<T>* expr) = 0;
-	virtual PExpression<T> visit(NegExpression<T>* expr) = 0;
-	virtual PExpression<T> visit(MultExpression<T>* expr) = 0;
-	virtual PExpression<T> visit(DivExpression<T>* expr) = 0;
-	virtual PExpression<T> visit(PowExpression<T>* expr) = 0;
-	virtual PExpression<T> visit(FactExpression<T>* expr) = 0;
-	virtual PExpression<T> visit(ValExpression<T>* expr) = 0;
-	virtual PExpression<T> visit(MatExpression<T>* expr) = 0;
-	virtual PExpression<T> visit(RefExpression<T>* expr) = 0;
-	virtual PExpression<T> visit(FuncExpression<T>* expr) = 0;
+    virtual PExpression<T> visit(EqualExpression<T>* expr) = 0;
+    virtual PExpression<T> visit(AddExpression<T>* expr) = 0;
+    virtual PExpression<T> visit(NegExpression<T>* expr) = 0;
+    virtual PExpression<T> visit(MultExpression<T>* expr) = 0;
+    virtual PExpression<T> visit(DivExpression<T>* expr) = 0;
+    virtual PExpression<T> visit(PowExpression<T>* expr) = 0;
+    virtual PExpression<T> visit(FactExpression<T>* expr) = 0;
+    virtual PExpression<T> visit(ValExpression<T>* expr) = 0;
+    virtual PExpression<T> visit(MatExpression<T>* expr) = 0;
+    virtual PExpression<T> visit(RefExpression<T>* expr) = 0;
+    virtual PExpression<T> visit(FuncExpression<T>* expr) = 0;
 };
 
 
@@ -288,18 +294,193 @@ private:
 template <typename T>
 class RecursiveExprVisitor : public ExprVisitor<T> {
 public:
-    virtual PExpression<T> visit(EmptyExpression<T>* expr) = 0;
-    virtual PExpression<T> visit(EqualExpression<T>* expr) = 0;
-    virtual PExpression<T> visit(AddExpression<T>* expr) = 0;
-    virtual PExpression<T> visit(NegExpression<T>* expr) = 0;
-    virtual PExpression<T> visit(MultExpression<T>* expr) = 0;
-    virtual PExpression<T> visit(DivExpression<T>* expr) = 0;
-    virtual PExpression<T> visit(PowExpression<T>* expr) = 0;
-    virtual PExpression<T> visit(FactExpression<T>* expr) = 0;
-    virtual PExpression<T> visit(ValExpression<T>* expr) = 0;
-    virtual PExpression<T> visit(MatExpression<T>* expr) = 0;
-    virtual PExpression<T> visit(RefExpression<T>* expr) = 0;
-    virtual PExpression<T> visit(FuncExpression<T>* expr) = 0;
+    RecursiveExprVisitor(const std::string& name, PExpression<T> recexp)
+        : name_(name)
+    {
+        recexp->accept(*this);
+    }
+
+    virtual PExpression<T> visit(EmptyExpression<T>* expr) {
+        return PExpression<T>();
+    }
+
+    template <typename U>
+    PExpression<T> binary_visit(U* expr) {
+        auto e1 = expr->m_e1->accept(*this);
+        auto e2 = expr->m_e2->accept(*this);
+        if(e1) {
+            expr->m_e1 = e1;
+        }
+        if(e2) {
+            expr->m_e2 = e2;
+        }
+        return PExpression<T>();
+    }
+
+    template <typename U>
+    PExpression<T> unary_visit(U* expr) {
+        auto e = expr->m_e->accept(*this);
+        if(e) {
+            expr->m_e = e;
+        }
+        return PExpression<T>();
+    }
+
+    virtual PExpression<T> visit(EqualExpression<T>* expr) {
+        return binary_visit(expr);
+    }
+
+    virtual PExpression<T> visit(AddExpression<T>* expr) {
+        return binary_visit(expr);
+    }
+
+    virtual PExpression<T> visit(NegExpression<T>* expr) {
+        return unary_visit(expr);
+    }
+
+    virtual PExpression<T> visit(MultExpression<T>* expr) {
+        return binary_visit(expr);
+    }
+
+    virtual PExpression<T> visit(DivExpression<T>* expr) {
+        return binary_visit(expr);
+    }
+
+    virtual PExpression<T> visit(PowExpression<T>* expr) {
+        return binary_visit(expr);
+    }
+
+    virtual PExpression<T> visit(FactExpression<T>* expr) {
+        return unary_visit(expr);
+    }
+
+    virtual PExpression<T> visit(ValExpression<T>* expr) {
+        return PExpression<T>();
+    }
+
+    virtual PExpression<T> visit(MatExpression<T>* expr) {
+        for(size_t i = 0; i < expr->VirtualSize(); ++i) {
+            auto e = expr->GetExpr(i)->accept(*this);
+            if(e) {
+                expr->GetExpr(i) = e;
+            }
+        }
+        return PExpression<T>();
+    }
+
+    virtual PExpression<T> visit(RefExpression<T>* expr) {
+        PExpression<T> e;
+        if(expr->Name() == name_) {
+            e.reset(new RecursivePlaceholderExpression<T>(name_, ParametersCall<T>()));
+            wrapped_.push_back(e);
+        }
+        return e;
+    }
+
+    virtual PExpression<T> visit(FuncExpression<T>* expr) {
+        PExpression<T> e;
+        if(expr->Name() == name_) {
+            e.reset(new RecursivePlaceholderExpression<T>(name_, expr->parameters_call()));
+            wrapped_.push_back(e);
+        }
+        return e;
+    }
+
+    std::vector<PExpression<T>> wrapped() {
+        return wrapped_;
+    }
+
+private:
+    std::string name_;
+    std::vector<PExpression<T>> wrapped_;
+};
+
+#include "reference_stack.hpp"
+
+template <typename T>
+class EvaluationVisitor : public ExprVisitor<T> {
+public:
+    EvaluationVisitor(PExpression<T> evalexpr, ReferenceStack<T>& stack) : stack_(stack), value_() {
+        evalexpr->accept(*this);
+    }
+
+    virtual PExpression<T> visit(EmptyExpression<T>*) {
+        return PExpression<T>();
+    }
+
+    virtual PExpression<T> visit(EqualExpression<T>* expr) {
+        this->stack_.Set(expr->Name(), expr->parameters_definition(), expr->m_e2);
+        value_ = EvaluationVisitor<T>(expr->m_e1, stack_).value();
+        return PExpression<T>();
+    }
+
+    virtual PExpression<T> visit(AddExpression<T>* expr) {
+        value_ = EvaluationVisitor<T>(expr->m_e1, stack_).value()
+               + EvaluationVisitor<T>(expr->m_e2, stack_).value();
+        return PExpression<T>();
+    }
+
+    virtual PExpression<T> visit(NegExpression<T>* expr) {
+        value_ = - EvaluationVisitor<T>(expr->m_e, stack_).value();
+        return PExpression<T>();
+    }
+
+    virtual PExpression<T> visit(MultExpression<T>* expr) {
+        value_ = EvaluationVisitor<T>(expr->m_e1, stack_).value()
+               * EvaluationVisitor<T>(expr->m_e2, stack_).value();
+        return PExpression<T>();
+    }
+
+    virtual PExpression<T> visit(DivExpression<T>* expr) {
+        value_ = EvaluationVisitor<T>(expr->m_e1, stack_).value()
+               / EvaluationVisitor<T>(expr->m_e2, stack_).value();
+        return PExpression<T>();
+    }
+
+    virtual PExpression<T> visit(PowExpression<T>* expr) {
+        value_ =  numeric_interface<T>::pow(
+                    EvaluationVisitor<T>(expr->m_e1, stack_).value(),
+                    EvaluationVisitor<T>(expr->m_e2, stack_).value());
+        return PExpression<T>();
+    }
+
+    virtual PExpression<T> visit(FactExpression<T>* expr) {
+        value_ =  T(numeric_interface<T>::fact(
+                    EvaluationVisitor<T>(expr->m_e, stack_).value()));
+        return PExpression<T>();
+    }
+
+    virtual PExpression<T> visit(ValExpression<T>* expr) {
+        value_ = expr->m_value;
+        return PExpression<T>();
+    }
+
+    virtual PExpression<T> visit(MatExpression<T>* expr) {
+        // TODO Implement real evaluation for MatExpression
+        // For the time being, one dimension only...
+        value_ = EvaluationVisitor<T>(expr->GetExpr(0),stack_).value();
+        return PExpression<T>();
+    }
+
+    virtual PExpression<T> visit(RefExpression<T>* expr) {
+        value_ = stack_.Eval(expr->Name(), ParametersCall<T>());
+        return PExpression<T>();
+    }
+
+    virtual PExpression<T> visit(FuncExpression<T>* expr) {
+        // TODO Implement real evaluation for FuncExpression
+        // For the time being, no paramters...
+        value_ = stack_.Eval(expr->Name(), ParametersCall<T>());
+        return PExpression<T>();
+    }
+
+    T value() {
+        return value_;
+    }
+
+private:
+    ReferenceStack<T>& stack_;
+    T value_;
 };
 
 

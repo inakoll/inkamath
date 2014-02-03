@@ -483,6 +483,8 @@ bool Interpreter<T,U>::TransformParametersDefinition(PExpression<U> params, PExp
     return true;
 }
 
+#include "expression_visitor.hpp"
+
 template <typename T, typename U>
 U Interpreter<T,U>::Eval(const std::string& s)
 {
@@ -492,7 +494,9 @@ U Interpreter<T,U>::Eval(const std::string& s)
         /* the following functions might throw some evaluation errors */
         Lexer(s);
         m_E = ParseAll();
-        ret = m_E->Eval();
+        //ret = m_E->Eval();
+        ReferenceStack<U> stack;
+        ret = EvaluationVisitor<U>(m_E, stack).value();
     }
     catch (const std::exception& e)
     {

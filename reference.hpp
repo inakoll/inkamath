@@ -8,6 +8,7 @@ using PExpression = std::shared_ptr<Expression<T>>;
 
 #include <map>
 #include <tuple>
+#include <stdexcept>
 
 template <typename T>
 using ExpressionDefinition =
@@ -21,8 +22,8 @@ using ExpressionDefinition =
 
 template <typename T>
 class Reference {
-
-    void add_expression(const std::string& ai_reference_name, const ParametersDefinition<T>& ai_parameters, PExpression  ai_expression) {
+public:
+    void add_expression(const std::string& ai_reference_name, const ParametersDefinition<T>& ai_parameters, PExpression<T>  ai_expression) {
         if(reference_name_.empty()) {
             reference_name_ = ai_reference_name;
         }
@@ -31,13 +32,13 @@ class Reference {
         }
 
         if(ai_parameters.a() != 0) {
-            general_expr_ = {ai_parameters, ai_expression};
+            general_expr_ = ExpressionDefinition<T>(ai_parameters, ai_expression);
         }
         else if(ai_parameters.b() != 0) {
-            indexed_expr_[ai_parameters.b()] = {ai_parameters, ai_expression};
+            indexed_expr_[ai_parameters.b()] = ExpressionDefinition<T>(ai_parameters, ai_expression);
         }
         else {
-            single_expr_ = {ai_parameters, ai_expression};
+            single_expr_ = ExpressionDefinition<T>(ai_parameters, ai_expression);
         }
     }
 	
@@ -48,6 +49,7 @@ class Reference {
         std::tie(gen_params_def, gen_expr_def) = general_expr_;
 
         if(ai_parameters.a() == 0 || ai_parameters.b() != 0) {
+            // Evaluation to an index is requested
             auto ind_definition = indexed_expr_.find(ai_parameters.b());
             if(ind_definition != indexed_expr_.end()) {
                 ParametersDefinition<T> ind_params_def;
@@ -68,8 +70,11 @@ class Reference {
 
         }
         else {
-            single_expr_ = {ai_parameters, ai_expression};
+            // Evaluation not at an index
+            // TODO
         }
+        // TODO
+        return T();
 
     }
 	
@@ -79,7 +84,7 @@ private:
     /* Return the simple assigned expression if it makes sense */
     ExpressionDefinition<T> GetExpr() {
         if(std::get<1>(single_expr_).get() == nullptr)
-            throw std::runtime_exception("This reference cannot be evaluated in this context.");
+            throw std::runtime_error("This reference cannot be evaluated in this context.");
         return single_expr_;
     }
 
@@ -102,7 +107,7 @@ private:
 
     typedef std::map<size_t, ExpressionDefinition<T>> Indexed_expr;
 
-    const std::string& reference_name_;
+    std::string reference_name_;
 	
 	/* Associated expression in simple assignation */
     ExpressionDefinition<T> 	single_expr_;

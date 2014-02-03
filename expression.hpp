@@ -30,7 +30,80 @@ template <typename T>
 class Expression;
 
 template <typename T>
-using ExprContext = std::unordered_map<std::string,PExpression<T> >;
+using ExprContext = std::unordered_map<std::string,PExpression<T>>;
+
+template <typename T>
+class ParametersDefinition
+{
+public:
+    ParametersDefinition() {}
+    ParametersDefinition(
+            const std::vector<std::string>& parameters_names,
+            const ExprDict<T>& parameters_dict,
+            const std::string& index_name,
+            const int& a,
+            const int& b
+        ) :
+            parameters_names_(parameters_names),
+            parameters_dict_(parameters_dict),
+            index_name_(index_name),
+            a_(a),
+            b_(b)
+    { }
+    ~ParametersDefinition() {}
+
+    int a() const {return a_;}
+    int b() const {return b_;}
+    const std::string& index_name() const {return index_name_;}
+    const std::vector<std::string>& parameters_names() const {return parameters_names_;}
+    const ExprDict<T>& parameters_dict() const {return parameters_dict_;}
+
+
+protected:
+    std::vector<std::string> parameters_names_;
+    ExprDict<T> parameters_dict_;
+    std::string index_name_;
+    int a_;
+    int b_;
+};
+
+template <typename T>
+class ParametersCall
+{
+public:
+    ParametersCall() {}
+    ParametersCall(
+            const std::vector<PExpression<T>>& parameters_exprs,
+            const ExprDict<T>& parameters_dict,
+            const std::string& index_name,
+            const int& a,
+            const int& b
+        ) :
+            parameters_exprs_(parameters_exprs),
+            parameters_dict_(parameters_dict),
+            index_name_(index_name),
+            a_(a),
+            b_(b)
+    { }
+    ~ParametersCall() {}
+
+    int a() const {return a_;}
+    int b() const {return b_;}
+    const std::string& index_name() const {return index_name_;}
+    const std::vector<PExpression<T>>& parameters_expression() const {return parameters_exprs_;}
+    const ExprDict<T>& parameters_dict() const {return parameters_dict_;}
+
+
+protected:
+    std::vector<PExpression<T>> parameters_exprs_;
+    ExprDict<T> parameters_dict_;
+    std::string index_name_;
+    int a_;
+    int b_;
+};
+
+
+
 
 template <typename T>
 class Expression : public std::enable_shared_from_this<Expression<T>>
@@ -75,6 +148,11 @@ public:
     {
         return false;
     }
+
+    virtual ParametersDefinition<T> parameters_definition() const {
+        return ParametersDefinition<T>();
+    }
+
     virtual std::list<std::string> Parameters(void) const
     {
         return m_params;
@@ -191,6 +269,14 @@ public:
         return PExpression<T>(new EqualExpression(
                                  BinaryExpression<T>::m_e1->Clone(),
                                  BinaryExpression<T>::m_e2->Clone()));
+    }
+
+    virtual std::string Name() const {
+        return BinaryExpression<T>::m_e1->Name();
+    }
+
+    virtual ParametersDefinition<T> parameters_definition() const {
+        return BinaryExpression<T>::m_e1->parameters_definition();
     }
 
     virtual T Eval(void) const
@@ -422,8 +508,47 @@ public:
     virtual PExpression<T> accept(class ExprVisitor<T> &v) {
         return v.visit(this);
     }
+
+    const T m_value;
+};
+
+template <typename T>
+class RecursivePlaceholderExpression : public Expression<T>
+{
+public:
+    RecursivePlaceholderExpression(const std::string& name, const ParametersCall<T>& params) : Expression<T>(), value_(), name_(name), params_(params) {}
+    virtual std::pair<size_t,size_t> Size() const
+    {
+        return std::make_pair(
+                value_.Size().first,
+                value_.Size().second);
+    }
+    virtual PExpression<T> Clone() const
+    {
+        return PExpression<T>(new RecursivePlaceholderExpression(name_, params_));
+    }
+    virtual T Eval(void) const
+    {
+        return value_;
+    }
+
+    virtual std::string Name()
+    {
+        return name_;
+    }
+
+    virtual void Set(const T& value)
+    {
+        value_ = value;
+    }
+
+    virtual PExpression<T> accept(class ExprVisitor<T> &v) {
+        return v.visit(this);
+    }
 protected:
-    T m_value;
+    T value_;
+    std::string name_;
+    ParametersCall<T> params_;
 };
 
 template <typename T>
@@ -702,6 +827,10 @@ public:
         return ret;
     }
 
+    ParametersCall<T> parameters_call() {
+        return ParametersCall<T>();
+    }
+
     virtual PExpression<T> accept(class ExprVisitor<T> &v) {
         return v.visit(this);
     }
@@ -710,75 +839,8 @@ protected:
 };
 
 
-template <typename T>
-class ParametersDefinition
-{
-public:
-    ParametersDefinition() {}
-    ParametersDefinition(
-            const std::vector<std::string>& parameters_names,
-            const ExprDict<T>& parameters_dict,
-            const std::string& index_name,
-            const int& a,
-            const int& b
-        ) :
-            parameters_names_(parameters_names),
-            parameters_dict_(parameters_dict),
-            index_name_(index_name),
-            a_(a),
-            b_(b)
-    { }
-    ~ParametersDefinition() {}
-
-    int a() {return a_;}
-    int b() {return b_;}
-    const std::string& index_name() {return index_name_;}
-    const std::vector<std::string>& parameters_names() {return parameters_names_;}
-    const ExprDict<T>& parameters_dict() {return parameters_dict_;}
 
 
-protected:
-    std::vector<std::string> parameters_names_;
-    ExprDict<T> parameters_dict_;
-    std::string index_name_;
-    int a_;
-    int b_;
-};
-
-template <typename T>
-class ParametersCall
-{
-public:
-    ParametersCall() {}
-    ParametersCall(
-            const std::vector<PExpression<T>>& parameters_exprs,
-            const ExprDict<T>& parameters_dict,
-            const std::string& index_name,
-            const int& a,
-            const int& b
-        ) :
-            parameters_exprs_(parameters_exprs),
-            parameters_dict_(parameters_dict),
-            index_name_(index_name),
-            a_(a),
-            b_(b)
-    { }
-    ~ParametersCall() {}
-
-    int a() {return a_;}
-    int b() {return b_;}
-    const std::string& index_name() {return index_name_;}
-    const std::vector<PExpression<T>>& parameters_expression() {return parameters_exprs_;}
-    const ExprDict<T>& parameters_dict() {return parameters_dict_;}
-
-
-protected:
-    std::vector<PExpression<T>> parameters_exprs_;
-    ExprDict<T> parameters_dict_;
-    std::string index_name_;
-    int a_;
-    int b_;
-};
 
 
 

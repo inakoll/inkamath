@@ -145,13 +145,13 @@ public:
 
     void Clear();
 
-    class Context {
+    struct Context {
         Context(Mapstack parent) : parent_(parent) {
-            parent.Push();
+            parent_.Push();
         }
         ~Context() {
-            parent.Pop();
-        }
+            parent_.Pop();
+        };
 
     private:
         Mapstack& parent_;
