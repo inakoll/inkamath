@@ -89,10 +89,10 @@ public:
     typedef T1 											key_type;
     typedef T2 											value_type;
     typedef MapType<key_type, std::vector<value_type>>	map_type;
-	typedef std::stack<std::list<key_type>> 			current_stack_type;
+    typedef std::stack<std::vector<key_type>> 			current_stack_type;
 
     Mapstack() {
-        m_stack.push(std::list<key_type>());
+        m_stack.push(std::vector<key_type>());
     }
 	
 	typedef typename map_type::iterator	internal_iterator;
@@ -104,7 +104,7 @@ public:
 		const_iterator;
 		
     typedef typename 
-		std::list<key_type>::const_iterator
+        std::vector<key_type>::const_iterator
 		current_const_iterator;
 
     const_iterator begin() const {
@@ -166,51 +166,49 @@ private:
 template <typename T1, typename T2, template <class, class, class...> class MapType>
 void Mapstack<T1, T2, MapType>::Push()
 {
-    typename std::list<key_type>::iterator first = m_stack.top().begin();
+    typename std::vector<key_type>::iterator first = m_stack.top().begin();
 
     while(first != m_stack.top().end()) {
         m_map[*first].push_back(m_map[*first].back());
         ++first;
     }
 
-    m_stack.push(std::list<key_type>());
+    m_stack.push(std::vector<key_type>());
 }
 
 template <typename T1, typename T2, template <class, class, class...> class MapType>
 void Mapstack<T1, T2, MapType>::Pop()
 {
-    if(m_stack.top().empty()) {
-        m_stack.pop();
+    if(!m_stack.empty()) {
+        if(m_stack.top().empty()) {
+            m_stack.pop();
 
-        if(m_stack.empty()) {
-            m_stack.push(std::list<key_type>());
-            m_map.clear();
-        }
+            if(m_stack.empty()) {
+                m_stack.push(std::vector<key_type>());
+                m_map.clear();
+            }
 
-        return;
-    }
-
-
-    typename std::list<key_type>::iterator first = m_stack.top().begin();
-
-    while(first != m_stack.top().end()) {
-        assert(!m_map.at(*first).empty());
-        m_map.at(*first).pop_back();
-
-        if(m_map.at(*first).empty()) {
-            m_map.erase(*first);
-        }
-
-        ++first;
-    }
-
-    if(!m_stack.top().empty()) {
-        m_stack.pop();
-
-        if(m_stack.empty()) {
-            m_stack.push(std::list<key_type>());
-            m_map.clear();
             return;
+        }
+
+
+        for(auto first = m_stack.top().begin(); first != m_stack.top().end(); ++first) {
+            assert(!m_map.at(*first).empty());
+            m_map.at(*first).pop_back();
+
+            if(m_map.at(*first).empty()) {
+                m_map.erase(*first);
+            }
+        }
+
+        if(!m_stack.top().empty()) {
+            m_stack.pop();
+
+            if(m_stack.empty()) {
+                m_stack.push(std::vector<key_type>());
+                m_map.clear();
+                return;
+            }
         }
     }
 }
@@ -273,7 +271,7 @@ void Mapstack<T1, T2, MapType>::Clear()
         m_stack.pop();
 
     m_map.clear();
-    m_stack.push(std::list<key_type>());
+    m_stack.push(std::vector<key_type>());
     return;
 }
 

@@ -194,8 +194,8 @@ const PExpression<T> WorkSp<T>::GetExpr(const std::string& name, size_t i)
         for (size_t j = m_smap[name].Size(); j<=i; ++j)
         {
             std::string subname = WorkSpManager<T>::Get()->GetFunc(name)->SubExpr()->Name();
-            WorkSpManager<T>::Get()->SetFunc(subname,PExpression<T>(new FuncExpression<T>(subname)),
-                                                                  PExpression<T>(new ValExpression<T>(T(j))));
+            //WorkSpManager<T>::Get()->SetFunc(subname,PExpression<T>(new FuncExpression<T>(subname)),
+            //                                                      PExpression<T>(new ValExpression<T>(T(j))));
             val = m_emap[name]->Eval();
             m_smap[name].Set(j,val);
             //std::cout << name << "[" << j << "]=" << val << std::endl;
@@ -248,7 +248,7 @@ const PExpression<T> WorkSp<T>::GetFunc(const std::string& name)
 {
     if (m_fmap.count(name) == 0)
     {
-        m_fmap[name].reset(new FuncExpression<T>(name, PExpression<T>(new EmptyExpression<T>), PExpression<T>(new EmptyExpression<T>)));
+        //m_fmap[name].reset(new FuncExpression<T>(name, PExpression<T>(new EmptyExpression<T>), PExpression<T>(new EmptyExpression<T>)));
         m_emap[name].reset(new ValExpression<T>(T(0)));
     }
     PExpression<T> ret(m_fmap[name]);
@@ -277,7 +277,7 @@ template <typename T>
 const PExpression<T> WorkSp<T>::SetFunc(const std::string& name, PExpression<T> valExp)
 {
     m_fmap[name].reset();
-    m_fmap[name] = PFuncExpression(new FuncExpression<T>(name, PExpression<T>(new EmptyExpression<T>),PExpression<T>(new EmptyExpression<T>) ) );
+    //m_fmap[name] = PFuncExpression(new FuncExpression<T>(name, PExpression<T>(new EmptyExpression<T>),PExpression<T>(new EmptyExpression<T>) ) );
     m_modified = true;
 	SetExpr(name, valExp);
     return m_fmap[name];

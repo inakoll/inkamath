@@ -39,7 +39,7 @@ public:
     }
 
 
-    T Eval(const std::string& ai_reference_name, const ParametersCall<T>& ai_parameters) const {
+    T Eval(const std::string& ai_reference_name, const ParametersCall<T>& ai_parameters)  {
         // Evaluation of an expression might mutate the internal stack_ object
         // The following line ensure that the stack will be restored at the end of the function
         // or in case of an exception thanks to RAII.
@@ -48,7 +48,7 @@ public:
         // Just evaluate the reference with the parameters if it's in the stack
         Reference<T> reference;
         if(stack_.Get(ai_reference_name, reference)) {
-            return reference.Eval(ai_parameters);
+            return reference.Eval(ai_parameters,*this);
         }
         else {
             return T();

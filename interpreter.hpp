@@ -57,6 +57,7 @@ private:
     typename std::list< Token<T> >::iterator m_i;
 
     PExpression<U> m_E;
+    ReferenceStack<U> stack_;
     std::ostringstream oss;
 };
 
@@ -226,23 +227,23 @@ PExpression<U> Interpreter<T,U>::Parse()
 template <typename T, typename U>
 PExpression<U> Interpreter<T,U>::ParseEqualExpr()
 {
-    PExpression<U> e,params,expr,sub;
+    PExpression<U> e,ref,params,expr,sub;
     typename std::list< Token<T> >::iterator m_s = m_i;
     if (m_i != m_toklist.end() && m_i->type == Func)
     {
         std::string name = m_i++->name;
+        ref = PExpression<U>(new RefExpression<U>(name));
         params = ParseParameters();
         sub = ParseSubExpr();
         if (m_i != m_toklist.end() && m_i++->type == Equal)
         {
             expr = Parse();
-            ParametersDefinition<U> params_def;
-            if(!TransformParametersDefinition(params, sub, params_def)) {
-                e.reset(new EqualExpression<U>(PExpression<U>(new RefExpression<U>(name)), expr));
-			}
-			else {
-                e.reset(new EqualExpression<U>(PExpression<U>(new FuncExpression<U>(name, params, sub)),expr));
-			}
+            if(params || sub) {
+                e.reset(new EqualExpression<U>(PExpression<U>(new FuncExpression<U>(ref, params, sub)),expr));
+            }
+            else {
+                e.reset(new EqualExpression<U>(ref, expr));
+            }
             WorkSpManager<U>::Get()->SetExpr(name,e);
         }
         else {
@@ -335,7 +336,7 @@ PExpression<U> Interpreter<T,U>::ParseMatrix()
 template <typename T, typename U>
 PExpression<U>  Interpreter<T,U>::ParseSimpleExpr()
 {
-    PExpression<U> e,func,sub;
+    PExpression<U> e,ref,param,sub;
     std::string name;
     if (m_i != m_toklist.end())
     {
@@ -346,10 +347,10 @@ PExpression<U>  Interpreter<T,U>::ParseSimpleExpr()
 			break;
 
         case Func:
-            name = m_i++->name;
-            func = ParseParameters();
+            ref.reset(new RefExpression<U>(m_i++->name));
+            param = ParseParameters();
             sub = ParseSubExpr();
-            e.reset(new FuncExpression<U>(name,func,sub));
+            e.reset(new FuncExpression<U>(ref,param,sub));
 			break;
 
         case Min:
@@ -495,8 +496,8 @@ U Interpreter<T,U>::Eval(const std::string& s)
         Lexer(s);
         m_E = ParseAll();
         //ret = m_E->Eval();
-        ReferenceStack<U> stack;
-        ret = EvaluationVisitor<U>(m_E, stack).value();
+
+        ret = EvaluationVisitor<U>(m_E, stack_).value();
     }
     catch (const std::exception& e)
     {

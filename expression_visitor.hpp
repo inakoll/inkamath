@@ -470,7 +470,7 @@ public:
     virtual PExpression<T> visit(FuncExpression<T>* expr) {
         // TODO Implement real evaluation for FuncExpression
         // For the time being, no paramters...
-        value_ = stack_.Eval(expr->Name(), ParametersCall<T>());
+        value_ = stack_.Eval(expr->Name(), ParametersCall<T>(expr->m_e1, expr->m_e2));
         return PExpression<T>();
     }
 

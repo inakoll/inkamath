@@ -50,6 +50,35 @@ public:
             a_(a),
             b_(b)
     { }
+
+    ParametersDefinition(PExpression<T> params, PExpression<T> subexpr) {
+        ParametersVisitor<T> params_visitor;
+        SubVisitor<T> subexpr_visitor;
+
+        if(params) {
+            try {
+                params->accept(params_visitor);
+
+            }
+            catch(const std::exception&) {
+                return;
+            }
+        }
+
+        if(subexpr) {
+            try {
+                subexpr->accept(subexpr_visitor);
+            }
+            catch(const std::exception& ) {
+                return;
+            }
+        }
+        parameters_names_ = params_visitor.get_parameters_names();
+        parameters_dict_ = params_visitor.get_parameters_dict();
+        index_name_ = subexpr_visitor.get_index_name();
+        a_ = subexpr_visitor.get_a();
+        b_ = subexpr_visitor.get_b();
+    }
     ~ParametersDefinition() {}
 
     int a() const {return a_;}
@@ -85,6 +114,36 @@ public:
             a_(a),
             b_(b)
     { }
+
+    ParametersCall(PExpression<T> params, PExpression<T> subexpr) {
+        ParametersVisitor<T> params_visitor;
+        SubVisitor<T> subexpr_visitor;
+
+        if(params) {
+            try {
+                params->accept(params_visitor);
+
+            }
+            catch(const std::exception&) {
+                return;
+            }
+        }
+
+        if(subexpr) {
+            try {
+                subexpr->accept(subexpr_visitor);
+            }
+            catch(const std::exception& ) {
+                return;
+            }
+        }
+        parameters_exprs_ = params_visitor.get_parameters_expr();
+        parameters_dict_ = params_visitor.get_parameters_dict();
+        index_name_ = subexpr_visitor.get_index_name();
+        a_ = subexpr_visitor.get_a();
+        b_ = subexpr_visitor.get_b();
+    }
+
     ~ParametersCall() {}
 
     int a() const {return a_;}
@@ -714,8 +773,8 @@ template <typename T>
 class FuncExpression : public BinaryExpression<T>
 {
 public:
-    FuncExpression(const std::string& name, PExpression<T> e1 = PExpression<T>(new  EmptyExpression<T>), PExpression<T> e2 = PExpression<T>(new  EmptyExpression<T>))
-    : BinaryExpression<T>(e1,e2), m_name(name)
+    FuncExpression(PExpression<T> ref_expression, PExpression<T> e1 = PExpression<T>(new  EmptyExpression<T>), PExpression<T> e2 = PExpression<T>(new  EmptyExpression<T>))
+        : BinaryExpression<T>(e1,e2), m_name(ref_expression->Name()), ref_expression_(ref_expression)
     {
         Expression<T>::m_params=std::list<std::string>(1,m_name);
     }
@@ -734,7 +793,7 @@ public:
     virtual PExpression<T> Clone() const
     {
         return PExpression<T>(new FuncExpression(
-                m_name,
+                ref_expression_->Clone(),
                 BinaryExpression<T>::m_e1->Clone(),
                 BinaryExpression<T>::m_e2->Clone()));
     }
@@ -780,8 +839,8 @@ public:
 			{
 				int subval =  numeric_interface<T>::toInt(BinaryExpression<T>::m_e2->Eval());
 				
-				WorkSpManager<T>::Get()->
-                SetFunc(subname,PExpression<T>(new FuncExpression<T>(subname)), PExpression<T>(new ValExpression<T>(T(subval))) );
+                //WorkSpManager<T>::Get()->
+                //SetFunc(subname,PExpression<T>(new FuncExpression<T>(subname)), PExpression<T>(new ValExpression<T>(T(subval))) );
 				if (subval >= 0)
 				{
 					ret = WorkSpManager<T>::Get()->
@@ -795,8 +854,8 @@ public:
 			else
 			{
 				int subval = 0;
-				WorkSpManager<T>::Get()->
-					SetFunc(subname,PExpression<T>(new FuncExpression<T>(subname)), PExpression<T>(new ValExpression<T>(T(subval))) );
+                //WorkSpManager<T>::Get()->
+                //	SetFunc(subname,PExpression<T>(new FuncExpression<T>(subname)), PExpression<T>(new ValExpression<T>(T(subval))) );
 				T first =  WorkSpManager<T>::Get()->
 					GetExpr(m_name, subval)->Eval();
 				typedef typename numeric_interface_imp_types<T>::abs difference_type;
@@ -804,8 +863,8 @@ public:
 				do
 				{
 					++subval;
-					WorkSpManager<T>::Get()->
-						SetFunc(subname,PExpression<T>(new FuncExpression<T>(subname)), PExpression<T>(new ValExpression<T>(T(subval))) );
+                    //WorkSpManager<T>::Get()->
+                    //	SetFunc(subname,PExpression<T>(new FuncExpression<T>(subname)), PExpression<T>(new ValExpression<T>(T(subval))) );
 					ret =  WorkSpManager<T>::Get()->
 					GetExpr(m_name,subval)->Eval();
 					difference = numeric_interface<T>::abs(first - ret);
@@ -836,6 +895,7 @@ public:
     }
 protected:
     std::string m_name;
+    PExpression<T> ref_expression_;
 };
 
 

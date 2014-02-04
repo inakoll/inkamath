@@ -2,6 +2,7 @@
 #define HPP_INKREFERENCE
 
 #include "expression.hpp"
+
 template <typename T>
 using PExpression = std::shared_ptr<Expression<T>>;
 
@@ -9,6 +10,10 @@ using PExpression = std::shared_ptr<Expression<T>>;
 #include <map>
 #include <tuple>
 #include <stdexcept>
+
+
+#include "expression_visitor.hpp"
+//#include "reference_stack.hpp"
 
 template <typename T>
 using ExpressionDefinition =
@@ -18,7 +23,11 @@ using ExpressionDefinition =
         >;
 
 
+template <typename T>
+class ReferenceStack;
 
+template <typename T>
+class EvaluationVisitor;
 
 template <typename T>
 class Reference {
@@ -42,13 +51,13 @@ public:
         }
     }
 	
-    T Eval( const ParametersCall<T>& ai_parameters) {
+    T Eval( const ParametersCall<T>& ai_parameters, ReferenceStack<T>& stack) {
 
         ParametersDefinition<T> gen_params_def;
         PExpression<T> gen_expr_def;
         std::tie(gen_params_def, gen_expr_def) = general_expr_;
 
-        if(ai_parameters.a() == 0 || ai_parameters.b() != 0) {
+        if(ai_parameters.a() == 0 && ai_parameters.b() != 0) {
             // Evaluation to an index is requested
             auto ind_definition = indexed_expr_.find(ai_parameters.b());
             if(ind_definition != indexed_expr_.end()) {
@@ -60,6 +69,7 @@ public:
                     throw std::runtime_error(std::string("Invalid index value for '") + reference_name_ + "'.");
                 }
                 else {
+                    index_value;
                     // TODO : Eval index_expr_[b]
                     // 1) parameters definition dictionnary
                     // 2) parameters call expression in parameters definition names
@@ -71,7 +81,7 @@ public:
         }
         else {
             // Evaluation not at an index
-            // TODO
+            return EvaluationVisitor<T>(gen_expr_def, stack).value();
         }
         // TODO
         return T();
