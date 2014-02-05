@@ -48,6 +48,28 @@ BOOST_AUTO_TEST_CASE( single_entry )
     BOOST_CHECK_MESSAGE(mapstack.Get("a", value) == false, "mapstack.Get : shouldn't get value!");
 }
 
+BOOST_AUTO_TEST_CASE( single_entry2 )
+{
+    mapstack.Set("a", 1);
+    BOOST_CHECK_MESSAGE(mapstack.Get("a", value) == true, "mapstack.Get : can't get value!");
+    BOOST_CHECK_EQUAL(value, 1);
+
+    mapstack.Push();
+    mapstack.Pop();
+
+    BOOST_CHECK_MESSAGE(mapstack.Get("a", value) == true, "mapstack.Get : can't get value!");
+    BOOST_CHECK_EQUAL(value, 1);
+    mapstack.Set("a", 2);
+    BOOST_CHECK_MESSAGE(mapstack.Get("a", value) == true, "mapstack.Get : can't get value!");
+    BOOST_CHECK_EQUAL(value, 2);
+
+    mapstack.Push();
+    mapstack.Pop();
+
+    BOOST_CHECK_MESSAGE(mapstack.Get("a", value) == true, "mapstack.Get : can't get value!");
+    BOOST_CHECK_EQUAL(value, 2);
+}
+
 BOOST_AUTO_TEST_CASE( multiple_entry_1 )
 {
     mapstack.Set("a", 1);

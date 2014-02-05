@@ -53,9 +53,10 @@ public:
 	
     T Eval( const ParametersCall<T>& ai_parameters, ReferenceStack<T>& stack) {
 
-        ParametersDefinition<T> gen_params_def;
-        PExpression<T> gen_expr_def;
+        ParametersDefinition<T> gen_params_def, single_params_def;
+        PExpression<T> gen_expr_def, single_expr_def;
         std::tie(gen_params_def, gen_expr_def) = general_expr_;
+        std::tie(single_params_def, single_expr_def) = single_expr_;
 
         if(ai_parameters.a() == 0 && ai_parameters.b() != 0) {
             // Evaluation to an index is requested
@@ -82,7 +83,7 @@ public:
         else {
             // Evaluation not at an index
             EvaluationVisitor<T> evaluator(stack);
-            return gen_expr_def->accept(evaluator);
+            return single_expr_def->accept(evaluator);
         }
         // TODO
         return T();

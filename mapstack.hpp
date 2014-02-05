@@ -146,7 +146,7 @@ public:
     void Clear();
 
     struct Context {
-        Context(Mapstack parent) : parent_(parent) {
+        Context(Mapstack& parent) : parent_(parent) {
             parent_.Push();
         }
         ~Context() {
@@ -179,19 +179,16 @@ void Mapstack<T1, T2, MapType>::Push()
 template <typename T1, typename T2, template <class, class, class...> class MapType>
 void Mapstack<T1, T2, MapType>::Pop()
 {
-    if(!m_stack.empty()) {
-        if(m_stack.top().empty()) {
-            m_stack.pop();
+    if(m_stack.top().empty()) {
+        m_stack.pop();
 
-            if(m_stack.empty()) {
-                m_stack.push(std::vector<key_type>());
-                m_map.clear();
-            }
+        if(m_stack.empty()) {
+            m_stack.push(std::vector<key_type>());
+            m_map.clear();
 
-            return;
         }
-
-
+    }
+    else {
         for(auto first = m_stack.top().begin(); first != m_stack.top().end(); ++first) {
             assert(!m_map.at(*first).empty());
             m_map.at(*first).pop_back();
@@ -201,14 +198,9 @@ void Mapstack<T1, T2, MapType>::Pop()
             }
         }
 
-        if(!m_stack.top().empty()) {
-            m_stack.pop();
-
-            if(m_stack.empty()) {
-                m_stack.push(std::vector<key_type>());
-                m_map.clear();
-                return;
-            }
+        m_stack.pop();
+        if(m_stack.empty()) {
+            m_stack.push(std::vector<key_type>());
         }
     }
 }
