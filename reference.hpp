@@ -81,7 +81,8 @@ public:
         }
         else {
             // Evaluation not at an index
-            return EvaluationVisitor<T>(gen_expr_def, stack).value();
+            EvaluationVisitor<T> evaluator(stack);
+            return gen_expr_def->accept(evaluator);
         }
         // TODO
         return T();

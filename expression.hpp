@@ -177,8 +177,8 @@ public:
         return this->shared_from_this();
     }
 	
-
-    virtual PExpression<T> accept(class ExprVisitor<T> &v) = 0;
+    virtual T accept(FoldingVisitor<T> &v) = 0;
+    virtual PExpression<T> accept(TransformationVisitor<T> &v) = 0;
     virtual bool isEmpty(void) const
     {
         return false;
@@ -257,7 +257,11 @@ public:
         return T();
     }
 
-    virtual PExpression<T> accept(class ExprVisitor<T> &v) {
+    virtual PExpression<T> accept(TransformationVisitor<T> &v) {
+        return v.visit(this);
+    }
+
+    virtual T accept(FoldingVisitor<T> &v) {
         return v.visit(this);
     }
 
@@ -362,7 +366,11 @@ public:
         return ret;
     }
 
-    virtual PExpression<T> accept(class ExprVisitor<T> &v) {
+    virtual PExpression<T> accept(TransformationVisitor<T> &v) {
+        return v.visit(this);
+    }
+
+    virtual T accept(FoldingVisitor<T> &v) {
         return v.visit(this);
     }
 protected:
@@ -397,7 +405,11 @@ public:
                (BinaryExpression<T>::m_e2)->Eval();
     }
 
-    virtual PExpression<T> accept(class ExprVisitor<T> &v) {
+    virtual PExpression<T> accept(TransformationVisitor<T> &v) {
+        return v.visit(this);
+    }
+
+    virtual T accept(FoldingVisitor<T> &v) {
         return v.visit(this);
     }
 protected:
@@ -423,7 +435,11 @@ public:
         return -((UnaryExpression<T>::m_e)->Eval());
     }
 
-    virtual PExpression<T> accept(class ExprVisitor<T> &v) {
+    virtual PExpression<T> accept(TransformationVisitor<T> &v) {
+        return v.visit(this);
+    }
+
+    virtual T accept(FoldingVisitor<T> &v) {
         return v.visit(this);
     }
 protected:
@@ -454,7 +470,11 @@ public:
                (BinaryExpression<T>::m_e2)->Eval();
     }
 
-    virtual PExpression<T> accept(class ExprVisitor<T> &v) {
+    virtual PExpression<T> accept(TransformationVisitor<T> &v) {
+        return v.visit(this);
+    }
+
+    virtual T accept(FoldingVisitor<T> &v) {
         return v.visit(this);
     }
 protected:
@@ -483,7 +503,11 @@ public:
                 ((BinaryExpression<T>::m_e2)->Eval());
     }
 
-    virtual PExpression<T> accept(class ExprVisitor<T> &v) {
+    virtual PExpression<T> accept(TransformationVisitor<T> &v) {
+        return v.visit(this);
+    }
+
+    virtual T accept(FoldingVisitor<T> &v) {
         return v.visit(this);
     }
 protected:
@@ -514,7 +538,11 @@ public:
                                          BinaryExpression<T>::m_e2->Eval() );
     }
 
-    virtual PExpression<T> accept(class ExprVisitor<T> &v) {
+    virtual PExpression<T> accept(TransformationVisitor<T> &v) {
+        return v.visit(this);
+    }
+
+    virtual T accept(FoldingVisitor<T> &v) {
         return v.visit(this);
     }
 protected:
@@ -538,7 +566,11 @@ public:
         return T(numeric_interface<T>::fact((UnaryExpression<T>::m_e)->Eval()));
     }
 
-    virtual PExpression<T> accept(class ExprVisitor<T> &v) {
+    virtual PExpression<T> accept(TransformationVisitor<T> &v) {
+        return v.visit(this);
+    }
+
+    virtual T accept(FoldingVisitor<T> &v) {
         return v.visit(this);
     }
 protected:
@@ -564,7 +596,11 @@ public:
         return m_value;
     }
 
-    virtual PExpression<T> accept(class ExprVisitor<T> &v) {
+    virtual PExpression<T> accept(TransformationVisitor<T> &v) {
+        return v.visit(this);
+    }
+
+    virtual T accept(FoldingVisitor<T> &v) {
         return v.visit(this);
     }
 
@@ -601,7 +637,11 @@ public:
         value_ = value;
     }
 
-    virtual PExpression<T> accept(class ExprVisitor<T> &v) {
+    virtual PExpression<T> accept(TransformationVisitor<T> &v) {
+        return v.visit(this);
+    }
+
+    virtual T accept(FoldingVisitor<T> &v) {
         return v.visit(this);
     }
 protected:
@@ -701,7 +741,11 @@ public:
         return val;
     }
 
-    virtual PExpression<T> accept(class ExprVisitor<T> &v) {
+    virtual PExpression<T> accept(TransformationVisitor<T> &v) {
+        return v.visit(this);
+    }
+
+    virtual T accept(FoldingVisitor<T> &v) {
         return v.visit(this);
     }
 
@@ -762,7 +806,11 @@ public:
         return true;
     }
 
-    virtual PExpression<T> accept(class ExprVisitor<T> &v) {
+    virtual PExpression<T> accept(TransformationVisitor<T> &v) {
+        return v.visit(this);
+    }
+
+    virtual T accept(FoldingVisitor<T> &v) {
         return v.visit(this);
     }
 protected:
@@ -890,7 +938,11 @@ public:
         return ParametersCall<T>();
     }
 
-    virtual PExpression<T> accept(class ExprVisitor<T> &v) {
+    virtual PExpression<T> accept(TransformationVisitor<T> &v) {
+        return v.visit(this);
+    }
+
+    virtual T accept(FoldingVisitor<T> &v) {
         return v.visit(this);
     }
 protected:

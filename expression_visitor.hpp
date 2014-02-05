@@ -56,27 +56,72 @@ class RecursivePlaceholderExpression;
 template <typename T>
 class ParametersCall;
 
-template <typename T>
-class ExprVisitor {
+template <typename T, typename ReturnType>
+class ExpressionVisitor {
 public:
-    virtual PExpression<T> visit(EmptyExpression<T>* expr) = 0;
-    virtual PExpression<T> visit(EqualExpression<T>* expr) = 0;
-    virtual PExpression<T> visit(AddExpression<T>* expr) = 0;
-    virtual PExpression<T> visit(NegExpression<T>* expr) = 0;
-    virtual PExpression<T> visit(MultExpression<T>* expr) = 0;
-    virtual PExpression<T> visit(DivExpression<T>* expr) = 0;
-    virtual PExpression<T> visit(PowExpression<T>* expr) = 0;
-    virtual PExpression<T> visit(FactExpression<T>* expr) = 0;
-    virtual PExpression<T> visit(ValExpression<T>* expr) = 0;
-    virtual PExpression<T> visit(MatExpression<T>* expr) = 0;
-    virtual PExpression<T> visit(RefExpression<T>* expr) = 0;
-    virtual PExpression<T> visit(FuncExpression<T>* expr) = 0;
+    virtual ReturnType visit(EmptyExpression<T>* expr) = 0;
+    virtual ReturnType visit(EqualExpression<T>* expr) = 0;
+    virtual ReturnType visit(AddExpression<T>* expr) = 0;
+    virtual ReturnType visit(NegExpression<T>* expr) = 0;
+    virtual ReturnType visit(MultExpression<T>* expr) = 0;
+    virtual ReturnType visit(DivExpression<T>* expr) = 0;
+    virtual ReturnType visit(PowExpression<T>* expr) = 0;
+    virtual ReturnType visit(FactExpression<T>* expr) = 0;
+    virtual ReturnType visit(ValExpression<T>* expr) = 0;
+    virtual ReturnType visit(MatExpression<T>* expr) = 0;
+    virtual ReturnType visit(RefExpression<T>* expr) = 0;
+    virtual ReturnType visit(FuncExpression<T>* expr) = 0;
+};
+
+// Design choice: limit the number of visitors base class.
+// => Only two visitors base class that any AST node should accept explicitly:
+// - TransformationVisitor returning a PExpression<T>
+// - FoldingVisitor returning a T
+
+// class TransformationVisitor
+// This is the base class of visitors that modify the parser-AST to :
+// - add semantic nodes
+// - simplify the tree
+// - change the representation of the expression (example: pretty printing
+//    that would use the special string node to accumulate the representation)
+template <typename T>
+class TransformationVisitor : public ExpressionVisitor<T, PExpression<T>> {
+};
+
+template <typename T>
+inline void transform_visitation(TransformationVisitor<T>& v, PExpression<T>& to_transform) {
+    PExpression<T> e = to_transform->accept(v);
+    if(e) {
+        to_transform = e;
+    }
+}
+
+// class FoldingVisitor
+// This is the base class of visitors that "folds" the tree to :
+// - evaluate the expression (interpreter)
+// - generate code (compiler)
+template <typename T>
+class FoldingVisitor : public ExpressionVisitor<T, T> {
+};
+
+// class StatefullVisitor
+// This base class is provided for convenience (and sanity reasons).
+// This is simply a TransformationVisitor that is not supposed to modify
+// the AST but rather gather some information about an AST in its internal state.
+// Use TransformationVisitor instead if you mean to modify the AST.
+// Visitor derived from TransformationVisitor can have an internal state too...
+// If you choose StatefullVisitor, just remember that nothing prevents you
+// from modifying the AST in secret... (don't do that).
+template <typename T>
+class StatefulVisitor : public TransformationVisitor<T> {
 };
 
 
 
+
+
 template <typename T>
-class ParametersVisitor : public ExprVisitor<T> {
+class ParametersVisitor : public StatefulVisitor<T> {
 public:
 
 	virtual PExpression<T> visit(MatExpression<T>* expr) {
@@ -176,7 +221,7 @@ private:
 };
 
 template <typename T>
-class SubVisitor : public ExprVisitor<T> {
+class SubVisitor : public StatefulVisitor<T> {
 public:
 	virtual PExpression<T> visit(RefExpression<T>* expr) {
 		this->index_name = expr->Name();
@@ -292,7 +337,7 @@ private:
 };
 
 template <typename T>
-class RecursiveExprVisitor : public ExprVisitor<T> {
+class RecursiveExprVisitor : public TransformationVisitor<T> {
 public:
     RecursiveExprVisitor(const std::string& name, PExpression<T> recexp)
         : name_(name)
@@ -306,23 +351,14 @@ public:
 
     template <typename U>
     PExpression<T> binary_visit(U* expr) {
-        auto e1 = expr->m_e1->accept(*this);
-        auto e2 = expr->m_e2->accept(*this);
-        if(e1) {
-            expr->m_e1 = e1;
-        }
-        if(e2) {
-            expr->m_e2 = e2;
-        }
+        transform_visitation(*this, expr->m_e1);
+        transform_visitation(*this, expr->m_e2);
         return PExpression<T>();
     }
 
     template <typename U>
     PExpression<T> unary_visit(U* expr) {
-        auto e = expr->m_e->accept(*this);
-        if(e) {
-            expr->m_e = e;
-        }
+        transform_visitation(*this, expr->m_e);
         return PExpression<T>();
     }
 
@@ -360,10 +396,7 @@ public:
 
     virtual PExpression<T> visit(MatExpression<T>* expr) {
         for(size_t i = 0; i < expr->VirtualSize(); ++i) {
-            auto e = expr->GetExpr(i)->accept(*this);
-            if(e) {
-                expr->GetExpr(i) = e;
-            }
+            transform_visitation(*this, expr->GetExpr(i));
         }
         return PExpression<T>();
     }
@@ -398,89 +431,72 @@ private:
 #include "reference_stack.hpp"
 
 template <typename T>
-class EvaluationVisitor : public ExprVisitor<T> {
+class EvaluationVisitor : public FoldingVisitor<T> {
 public:
-    EvaluationVisitor(PExpression<T> evalexpr, ReferenceStack<T>& stack) : stack_(stack), value_() {
-        evalexpr->accept(*this);
+
+    EvaluationVisitor<T>(ReferenceStack<T>& stack) : stack_(stack) {}
+
+    virtual T visit(EmptyExpression<T>*) {
+        return T();
     }
 
-    virtual PExpression<T> visit(EmptyExpression<T>*) {
-        return PExpression<T>();
-    }
-
-    virtual PExpression<T> visit(EqualExpression<T>* expr) {
+    virtual T visit(EqualExpression<T>* expr) {
         this->stack_.Set(expr->Name(), expr->parameters_definition(), expr->m_e2);
-        value_ = EvaluationVisitor<T>(expr->m_e1, stack_).value();
-        return PExpression<T>();
+        return expr->m_e1->accept(*this);
     }
 
-    virtual PExpression<T> visit(AddExpression<T>* expr) {
-        value_ = EvaluationVisitor<T>(expr->m_e1, stack_).value()
-               + EvaluationVisitor<T>(expr->m_e2, stack_).value();
-        return PExpression<T>();
+    virtual T visit(AddExpression<T>* expr) {
+        return expr->m_e1->accept(*this)
+             + expr->m_e2->accept(*this);
     }
 
-    virtual PExpression<T> visit(NegExpression<T>* expr) {
-        value_ = - EvaluationVisitor<T>(expr->m_e, stack_).value();
-        return PExpression<T>();
+    virtual T visit(NegExpression<T>* expr) {
+        return -expr->m_e->accept(*this);
     }
 
-    virtual PExpression<T> visit(MultExpression<T>* expr) {
-        value_ = EvaluationVisitor<T>(expr->m_e1, stack_).value()
-               * EvaluationVisitor<T>(expr->m_e2, stack_).value();
-        return PExpression<T>();
+    virtual T visit(MultExpression<T>* expr) {
+        return expr->m_e1->accept(*this)
+             * expr->m_e2->accept(*this);
     }
 
-    virtual PExpression<T> visit(DivExpression<T>* expr) {
-        value_ = EvaluationVisitor<T>(expr->m_e1, stack_).value()
-               / EvaluationVisitor<T>(expr->m_e2, stack_).value();
-        return PExpression<T>();
+    virtual T visit(DivExpression<T>* expr) {
+        return expr->m_e1->accept(*this)
+             * expr->m_e2->accept(*this);
     }
 
-    virtual PExpression<T> visit(PowExpression<T>* expr) {
-        value_ =  numeric_interface<T>::pow(
-                    EvaluationVisitor<T>(expr->m_e1, stack_).value(),
-                    EvaluationVisitor<T>(expr->m_e2, stack_).value());
-        return PExpression<T>();
+    virtual T visit(PowExpression<T>* expr) {
+        return  numeric_interface<T>::pow(
+                    expr->m_e1->accept(*this),
+                    expr->m_e2->accept(*this));
     }
 
-    virtual PExpression<T> visit(FactExpression<T>* expr) {
-        value_ =  T(numeric_interface<T>::fact(
-                    EvaluationVisitor<T>(expr->m_e, stack_).value()));
-        return PExpression<T>();
+    virtual T visit(FactExpression<T>* expr) {
+        return  T(numeric_interface<T>::fact(expr->m_e->accept(*this)));
     }
 
-    virtual PExpression<T> visit(ValExpression<T>* expr) {
-        value_ = expr->m_value;
-        return PExpression<T>();
+    virtual T visit(ValExpression<T>* expr) {
+        return expr->m_value;
     }
 
-    virtual PExpression<T> visit(MatExpression<T>* expr) {
+    virtual T visit(MatExpression<T>* expr) {
         // TODO Implement real evaluation for MatExpression
         // For the time being, one dimension only...
-        value_ = EvaluationVisitor<T>(expr->GetExpr(0),stack_).value();
-        return PExpression<T>();
+        return expr->GetExpr(0)->accept(*this);
     }
 
-    virtual PExpression<T> visit(RefExpression<T>* expr) {
-        value_ = stack_.Eval(expr->Name(), ParametersCall<T>());
-        return PExpression<T>();
+    virtual T visit(RefExpression<T>* expr) {
+        return stack_.Eval(expr->Name(), ParametersCall<T>());
     }
 
-    virtual PExpression<T> visit(FuncExpression<T>* expr) {
+    virtual T visit(FuncExpression<T>* expr) {
         // TODO Implement real evaluation for FuncExpression
         // For the time being, no paramters...
-        value_ = stack_.Eval(expr->Name(), ParametersCall<T>(expr->m_e1, expr->m_e2));
-        return PExpression<T>();
+        return stack_.Eval(expr->Name(), ParametersCall<T>(expr->m_e1, expr->m_e2));
     }
 
-    T value() {
-        return value_;
-    }
 
 private:
     ReferenceStack<T>& stack_;
-    T value_;
 };
 
 

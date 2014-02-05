@@ -497,7 +497,8 @@ U Interpreter<T,U>::Eval(const std::string& s)
         m_E = ParseAll();
         //ret = m_E->Eval();
 
-        ret = EvaluationVisitor<U>(m_E, stack_).value();
+        EvaluationVisitor<U> evaluator(stack_);
+        ret = m_E->accept(evaluator);
     }
     catch (const std::exception& e)
     {
