@@ -18,7 +18,7 @@ struct MapstackFixture {
 
 BOOST_FIXTURE_TEST_SUITE(mapstack_tests, MapstackFixture)
 
-BOOST_AUTO_TEST_CASE( single_entry )
+BOOST_AUTO_TEST_CASE( single_entry_1 )
 {
     mapstack.Set("a", 1);
     BOOST_CHECK_MESSAGE(mapstack.Get("a", value) == true, "mapstack.Get : can't get value!");
@@ -48,7 +48,7 @@ BOOST_AUTO_TEST_CASE( single_entry )
     BOOST_CHECK_MESSAGE(mapstack.Get("a", value) == false, "mapstack.Get : shouldn't get value!");
 }
 
-BOOST_AUTO_TEST_CASE( single_entry2 )
+BOOST_AUTO_TEST_CASE( single_entry_2 )
 {
     mapstack.Set("a", 1);
     BOOST_CHECK_MESSAGE(mapstack.Get("a", value) == true, "mapstack.Get : can't get value!");
