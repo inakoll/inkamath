@@ -52,6 +52,7 @@ public:
     }
 	
     T Eval( const ParametersCall<T>& ai_parameters, ReferenceStack<T>& stack) {
+        EvaluationVisitor<T> evaluator(stack);
 
         ParametersDefinition<T> gen_params_def, single_params_def;
         PExpression<T> gen_expr_def, single_expr_def;
@@ -65,24 +66,23 @@ public:
                 ParametersDefinition<T> ind_params_def;
                 PExpression<T> ind_expr_def;
                 std::tie(ind_params_def, ind_expr_def) = ind_definition->second;
-                size_t index_value = (ai_parameters.b() - ind_params_def.b()) / ind_params_def.a();
-                if((ai_parameters.b() - ind_params_def.b()) % ind_params_def.a() != 0) {
-                    throw std::runtime_error(std::string("Invalid index value for '") + reference_name_ + "'.");
-                }
-                else {
-                    index_value;
-                    // TODO : Eval index_expr_[b]
-                    // 1) parameters definition dictionnary
-                    // 2) parameters call expression in parameters definition names
-                    // 3) parameters call dictionnary
-                    // 4) associated expression
-                }
+
+                // TODO : Eval index_expr_[b]
+                // 1) parameters definition dictionnary
+                // 2) parameters call expression in parameters definition names
+                // 3) parameters call dictionnary
+                // 4) associated expression
+                return ind_expr_def->accept(evaluator);
             }
 
         }
-        else {
+        else if(single_expr_def) {
             // Evaluation not at an index
-            EvaluationVisitor<T> evaluator(stack);
+            // TODO
+            // 1) parameters definition dictionnary
+            // 2) parameters call expression in parameters definition names
+            // 3) parameters call dictionnary
+            // 4) associated expression
             return single_expr_def->accept(evaluator);
         }
         // TODO

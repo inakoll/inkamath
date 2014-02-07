@@ -36,7 +36,7 @@ template <typename T>
 class ParametersDefinition
 {
 public:
-    ParametersDefinition() {}
+    ParametersDefinition() : a_(0), b_(0) {}
     ParametersDefinition(
             const std::vector<std::string>& parameters_names,
             const ExprDict<T>& parameters_dict,
@@ -100,7 +100,7 @@ template <typename T>
 class ParametersCall
 {
 public:
-    ParametersCall() {}
+    ParametersCall() : a_(0), b_(0) {}
     ParametersCall(
             const std::vector<PExpression<T>>& parameters_exprs,
             const ExprDict<T>& parameters_dict,
@@ -206,6 +206,10 @@ public:
     virtual bool isRef()
     {
         return false;
+    }
+
+    virtual ParametersCall<T> parameters_call() const {
+        return ParametersCall<T>();
     }
 
     virtual ParametersDefinition<T> parameters_definition() const {
@@ -934,8 +938,12 @@ public:
         return ret;
     }
 
-    ParametersCall<T> parameters_call() {
-        return ParametersCall<T>();
+    virtual ParametersCall<T> parameters_call() const {
+        return ParametersCall<T>(this->m_e1, this->m_e2);
+    }
+
+    virtual ParametersDefinition<T> parameters_definition() const {
+        return ParametersDefinition<T>(this->m_e1, this->m_e2);
     }
 
     virtual PExpression<T> accept(TransformationVisitor<T> &v) {

@@ -350,7 +350,12 @@ PExpression<U>  Interpreter<T,U>::ParseSimpleExpr()
             ref.reset(new RefExpression<U>(m_i++->name));
             param = ParseParameters();
             sub = ParseSubExpr();
-            e.reset(new FuncExpression<U>(ref,param,sub));
+            if(param || sub) {
+                e.reset(new FuncExpression<U>(ref,param,sub));
+            }
+            else {
+                e = ref;
+            }
 			break;
 
         case Min:

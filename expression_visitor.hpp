@@ -331,8 +331,8 @@ public:
 
 private:
 	std::string index_name;
-    int a;
-    int b;
+    int a = 0;
+    int b = 0;
 	
 };
 
@@ -491,7 +491,7 @@ public:
     virtual T visit(FuncExpression<T>* expr) {
         // TODO Implement real evaluation for FuncExpression
         // For the time being, no paramters...
-        return stack_.Eval(expr->Name(), ParametersCall<T>(expr->m_e1, expr->m_e2));
+        return stack_.Eval(expr->Name(), expr->parameters_call());
     }
 
 
