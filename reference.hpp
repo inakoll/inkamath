@@ -53,40 +53,20 @@ public:
 	
     T Eval( const ParametersCall<T>& ai_parameters, ReferenceStack<T>& stack) {
         EvaluationVisitor<T> evaluator(stack);
+        T result;
 
-        ParametersDefinition<T> gen_params_def, single_params_def;
-        PExpression<T> gen_expr_def, single_expr_def;
-        std::tie(gen_params_def, gen_expr_def) = general_expr_;
-        std::tie(single_params_def, single_expr_def) = single_expr_;
-
-        if(ai_parameters.a() == 0 && ai_parameters.b() != 0) {
-            // Evaluation to an index is requested
-            auto ind_definition = indexed_expr_.find(ai_parameters.b());
-            if(ind_definition != indexed_expr_.end()) {
-                ParametersDefinition<T> ind_params_def;
-                PExpression<T> ind_expr_def;
-                std::tie(ind_params_def, ind_expr_def) = ind_definition->second;
-
-                // TODO : Eval index_expr_[b]
-                // 1) parameters definition dictionnary
-                // 2) parameters call expression in parameters definition names
-                // 3) parameters call dictionnary
-                // 4) associated expression
-                return ind_expr_def->accept(evaluator);
-            }
-
+        if(TryEvaluateIndexedExpression(ai_parameters, evaluator, stack, result)) {
+            return result;
         }
-        else if(single_expr_def) {
-            // Evaluation not at an index
-            // TODO
-            // 1) parameters definition dictionnary
-            // 2) parameters call expression in parameters definition names
-            // 3) parameters call dictionnary
-            // 4) associated expression
-            return single_expr_def->accept(evaluator);
+        else if(TryEvaluateGeneralExpression(ai_parameters, evaluator, stack, result)) {
+            return result;
         }
-        // TODO
-        return T();
+        else if(TryEvaluateSimpleExpression(ai_parameters, evaluator, stack, result)) {
+            return result;
+        }
+
+
+        throw std::runtime_error(reference_name_ + " not defined (internal interpreter error");
 
     }
 	
@@ -112,6 +92,75 @@ private:
         }
         // Else try to return the simple assigned expression
         return this->GetExpr();
+    }
+
+    bool TryEvaluateIndexedExpression(const ParametersCall<T>& ai_parameters, EvaluationVisitor<T>& evaluator, ReferenceStack<T>&, T& evaluation) {
+        bool succeed = false;
+
+        if(ai_parameters.a() == 0 && ai_parameters.b() != 0) {
+            // Evaluation to an index is requested
+            auto ind_definition = indexed_expr_.find(ai_parameters.b());
+            if(ind_definition != indexed_expr_.end()) {
+                ParametersDefinition<T> ind_params_def;
+                PExpression<T> ind_expr_def;
+                std::tie(ind_params_def, ind_expr_def) = ind_definition->second;
+
+                // TODO : Eval index_expr_[b]
+                // 1) parameters definition dictionnary
+                // 2) parameters call expression in parameters definition names
+                // 3) parameters call dictionnary
+                // 4) associated expression
+                if(ind_expr_def) {
+                    evaluation = ind_expr_def->accept(evaluator);
+                    succeed = true;
+                }
+            }
+       }
+       return succeed;
+    }
+
+    bool TryEvaluateGeneralExpression(const ParametersCall<T>& ai_parameters, EvaluationVisitor<T>& evaluator, ReferenceStack<T>& stack, T& evaluation) {
+        bool succeed = false;
+        PExpression<T> gen_expr_def;
+        ParametersDefinition<T> gen_params_def;
+        std::tie(gen_params_def, gen_expr_def) = general_expr_;
+        if(gen_expr_def && (ai_parameters.a() != 0 || ai_parameters.b() != 0)) {
+            size_t index = ai_parameters.b() - gen_params_def.b();
+            if(ai_parameters.a() != 0) {
+                index *= ai_parameters.a();
+            }
+            if(gen_params_def.a() != 0) {
+                index /= gen_params_def.a();
+            }
+            // TODO:
+            // 1) parameters definition dictionnary
+            // 2) parameters call expression in parameters definition names
+            // 3) parameters call dictionnary
+            // 4) associated expression
+            stack.Set(gen_params_def.index_name(), ParametersDefinition<T>(), PExpression<T>(new ValExpression<T>(T(index))));
+            evaluation = gen_expr_def->accept(evaluator);
+            succeed = true;
+        }
+        return succeed;
+    }
+
+    bool TryEvaluateSimpleExpression(const ParametersCall<T>&, EvaluationVisitor<T>& evaluator, ReferenceStack<T>&, T& evaluation) {
+        bool succeed = false;
+        ParametersDefinition<T> single_params_def;
+        PExpression<T> single_expr_def;
+        std::tie(single_params_def, single_expr_def) = single_expr_;
+        if(single_expr_def) {
+
+            // Evaluation not at an index
+            // TODO
+            // 1) parameters definition dictionnary
+            // 2) parameters call expression in parameters definition names
+            // 3) parameters call dictionnary
+            // 4) associated expression
+            evaluation = single_expr_def->accept(evaluator);
+            succeed = true;
+        }
+        return succeed;
     }
 
 

@@ -170,18 +170,18 @@ void Mapstack<T1, T2, MapType>::Push()
         m_map[key].push_back(m_map[key].back());
     }
 
-    m_stack.push(std::vector<key_type>());
+    m_stack.push(m_stack.top());
 }
 
 template <typename T1, typename T2, template <class, class, class...> class MapType>
 void Mapstack<T1, T2, MapType>::Pop()
 {
-    for(const auto& key: m_stack.top()) {
-        assert(!m_map.at(key).empty());
-        m_map.at(key).pop_back();
+    for(const auto& key_top: m_stack.top()) {
+        assert(!m_map.at(key_top).empty());
+        m_map.at(key_top).pop_back();
 
-        if(m_map.at(key).empty()) {
-            m_map.erase(key);
+        if(m_map.at(key_top).empty()) {
+            m_map.erase(key_top);
         }
     }
 

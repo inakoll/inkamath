@@ -43,6 +43,8 @@ public:
         // Evaluation of an expression might mutate the internal stack_ object
         // The following line ensure that the stack will be restored at the end of the function
         // or in case of an exception thanks to RAII.
+        // The context guard might have a huge impact on performance.
+        // Consider to move it closer to the reference parameters assignation as a future optimisation.
         typename stack_type::Context guard(stack_);
 
         // Just evaluate the reference with the parameters if it's in the stack
@@ -53,6 +55,10 @@ public:
         else {
             return T();
         }
+    }
+
+    void Pop() {
+        stack_.Pop();
     }
 
     void Clear() {

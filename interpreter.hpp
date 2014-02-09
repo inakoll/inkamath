@@ -454,44 +454,6 @@ PExpression<U> Interpreter<T,U>::ParseSubExpr()
 #include "expression_visitor.hpp"
 
 template <typename T, typename U>
-bool Interpreter<T,U>::TransformParametersDefinition(PExpression<U> params, PExpression<U> subexpr, ParametersDefinition<U>& params_defintion)
-{
-    ParametersVisitor<U> params_visitor;
-    SubVisitor<U> subexpr_visitor;
-	if(params) {
-		try {
-            params->accept(params_visitor);
-					
-		}
-        catch(const std::exception&) {
-            return false;
-		}
-	}
-	
-    auto parameters_expr = params_visitor.get_parameters_expr();
-    if(!parameters_expr.empty()) {
-		throw std::runtime_error("Parameters definition only includes parameters names followed by parameters defaulted.");
-	}	
-	
-	if(subexpr) {
-		try {	
-			subexpr->accept(subexpr_visitor);
-		}
-        catch(const std::exception& ) {
-            return false;
-		}	
-	}
-    params_defintion = ParametersDefinition<U>(params_visitor.get_parameters_names(),
-                                               params_visitor.get_parameters_dict(),
-                                               subexpr_visitor.get_index_name(),
-                                               subexpr_visitor.get_a(),
-                                               subexpr_visitor.get_b());
-    return true;
-}
-
-#include "expression_visitor.hpp"
-
-template <typename T, typename U>
 U Interpreter<T,U>::Eval(const std::string& s)
 {
     U ret = U(); // relatively exception safe :o
@@ -500,8 +462,10 @@ U Interpreter<T,U>::Eval(const std::string& s)
         /* the following functions might throw some evaluation errors */
         Lexer(s);
         m_E = ParseAll();
-        //ret = m_E->Eval();
 
+        //ret = m_E->Eval(); // The old evaluation chain
+
+        // New evaluation chain
         EvaluationVisitor<U> evaluator(stack_);
         ret = m_E->accept(evaluator);
     }
