@@ -11,9 +11,7 @@ using PExpression = std::shared_ptr<Expression<T>>;
 #include <tuple>
 #include <stdexcept>
 
-
 #include "expression_visitor.hpp"
-//#include "reference_stack.hpp"
 
 template <typename T>
 using ExpressionDefinition =
@@ -70,46 +68,20 @@ public:
 
     }
 	
-	
-	
 private:
-    /* Return the simple assigned expression if it makes sense */
-    ExpressionDefinition<T> GetExpr() {
-        if(std::get<1>(single_expr_).get() == nullptr)
-            throw std::runtime_error("This reference cannot be evaluated in this context.");
-        return single_expr_;
-    }
-
-    /* Return the indexed expression associated to i if it makes sense */
-    ExpressionDefinition<T> GetExpr(size_t i) {
-        if(indexed_expr_.count(i) != 0) {
-            // If the reference is singulary defined for i then return this expression
-            return indexed_expr_[i];
-        }
-        else if(std::get<1>(general_expr_).get() != nullptr) {
-            // Or try to get the expression from the general definition
-            return GetExprFromGeneralExpr(i);
-        }
-        // Else try to return the simple assigned expression
-        return this->GetExpr();
-    }
-
-    bool TryEvaluateIndexedExpression(const ParametersCall<T>& ai_parameters, EvaluationVisitor<T>& evaluator, ReferenceStack<T>&, T& evaluation) {
+    bool TryEvaluateIndexedExpression(const ParametersCall<T>& ai_parameters, EvaluationVisitor<T>& evaluator, ReferenceStack<T>& stack, T& evaluation) {
         bool succeed = false;
 
-        if(ai_parameters.a() == 0 && ai_parameters.b() != 0) {
+        int index_value;
+        if(ai_parameters.TryEvalIndex(stack, index_value)) {
             // Evaluation to an index is requested
-            auto ind_definition = indexed_expr_.find(ai_parameters.b());
+            auto ind_definition = indexed_expr_.find(index_value);
             if(ind_definition != indexed_expr_.end()) {
                 ParametersDefinition<T> ind_params_def;
                 PExpression<T> ind_expr_def;
                 std::tie(ind_params_def, ind_expr_def) = ind_definition->second;
 
-                // TODO : Eval index_expr_[b]
-                // 1) parameters definition dictionnary
-                // 2) parameters call expression in parameters definition names
-                // 3) parameters call dictionnary
-                // 4) associated expression
+                ind_params_def.SetCallParameters(ai_parameters, stack);
                 if(ind_expr_def) {
                     evaluation = ind_expr_def->accept(evaluator);
                     succeed = true;
@@ -132,11 +104,7 @@ private:
             if(gen_params_def.a() != 0) {
                 index /= gen_params_def.a();
             }
-            // TODO:
-            // 1) parameters definition dictionnary
-            // 2) parameters call expression in parameters definition names
-            // 3) parameters call dictionnary
-            // 4) associated expression
+            gen_params_def.SetCallParameters(ai_parameters, stack);
             stack.Set(gen_params_def.index_name(), ParametersDefinition<T>(), PExpression<T>(new ValExpression<T>(T(index))));
             evaluation = gen_expr_def->accept(evaluator);
             succeed = true;
@@ -144,27 +112,19 @@ private:
         return succeed;
     }
 
-    bool TryEvaluateSimpleExpression(const ParametersCall<T>&, EvaluationVisitor<T>& evaluator, ReferenceStack<T>&, T& evaluation) {
+    bool TryEvaluateSimpleExpression(const ParametersCall<T>& ai_parameters, EvaluationVisitor<T>& evaluator, ReferenceStack<T>& stack, T& evaluation) {
         bool succeed = false;
         ParametersDefinition<T> single_params_def;
         PExpression<T> single_expr_def;
         std::tie(single_params_def, single_expr_def) = single_expr_;
         if(single_expr_def) {
 
-            // Evaluation not at an index
-            // TODO
-            // 1) parameters definition dictionnary
-            // 2) parameters call expression in parameters definition names
-            // 3) parameters call dictionnary
-            // 4) associated expression
+            single_params_def.SetCallParameters(ai_parameters, stack);
             evaluation = single_expr_def->accept(evaluator);
             succeed = true;
         }
         return succeed;
     }
-
-
-
 
     typedef std::map<size_t, ExpressionDefinition<T>> Indexed_expr;
 
@@ -177,15 +137,6 @@ private:
     Indexed_expr                indexed_expr_;
     ExpressionDefinition<T> 	general_expr_;
 	
-	/* The weak indexed expression are value expression created to resolve the 
-	   potential recursion of general_expr_ */
-	Indexed_expr 	weak_indexed_expr_;
-
-	/* Evaluate the general expression and manage potential recursion */
-	PExpression<T> GetExprFromGeneralExpr(size_t i) {
-		// TODO: implement this.
-		return PExpression<T>();
-	}	
 };
 
 #endif // HPP_INKREFERENCE

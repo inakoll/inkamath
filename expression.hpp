@@ -33,23 +33,13 @@ template <typename T>
 using ExprContext = std::unordered_map<std::string,PExpression<T>>;
 
 template <typename T>
+class ParametersCall;
+
+template <typename T>
 class ParametersDefinition
 {
 public:
     ParametersDefinition() : a_(0), b_(0) {}
-    ParametersDefinition(
-            const std::vector<std::string>& parameters_names,
-            const ExprDict<T>& parameters_dict,
-            const std::string& index_name,
-            const int& a,
-            const int& b
-        ) :
-            parameters_names_(parameters_names),
-            parameters_dict_(parameters_dict),
-            index_name_(index_name),
-            a_(a),
-            b_(b)
-    { }
 
     ParametersDefinition(PExpression<T> params, PExpression<T> subexpr) {
         ParametersVisitor<T> params_visitor;
@@ -58,7 +48,6 @@ public:
         if(params) {
             try {
                 params->accept(params_visitor);
-
             }
             catch(const std::exception&) {
                 return;
@@ -81,6 +70,22 @@ public:
     }
     ~ParametersDefinition() {}
 
+    void SetCallParameters(const ParametersCall<T>& param_call, ReferenceStack<T>& stack_) {
+        for(auto definition : parameters_dict_) {
+            stack_.Set(definition.first, ParametersDefinition<T>(), definition.second);
+        }
+        auto pname = parameters_names_.begin();
+        for(auto expr : param_call.parameters_expression()) {
+            if(pname != parameters_names_.end()) {
+                stack_.Set(*pname, ParametersDefinition<T>(), expr);
+                ++pname;
+            }
+        }
+        for(auto kwarg : param_call.parameters_dict_) {
+            stack_.Set(kwarg.first, ParametersDefinition<T>(), kwarg.second);
+        }
+    }
+
     int a() const {return a_;}
     int b() const {return b_;}
     const std::string& index_name() const {return index_name_;}
@@ -100,20 +105,9 @@ template <typename T>
 class ParametersCall
 {
 public:
-    ParametersCall() : a_(0), b_(0) {}
-    ParametersCall(
-            const std::vector<PExpression<T>>& parameters_exprs,
-            const ExprDict<T>& parameters_dict,
-            const std::string& index_name,
-            const int& a,
-            const int& b
-        ) :
-            parameters_exprs_(parameters_exprs),
-            parameters_dict_(parameters_dict),
-            index_name_(index_name),
-            a_(a),
-            b_(b)
-    { }
+
+    friend class ParametersDefinition<T>;
+    ParametersCall() : a_(0), b_(0), indexed_(false) {}
 
     ParametersCall(PExpression<T> params, PExpression<T> subexpr) {
         ParametersVisitor<T> params_visitor;
@@ -130,12 +124,17 @@ public:
         }
 
         if(subexpr) {
+            indexed_ = true;
             try {
                 subexpr->accept(subexpr_visitor);
             }
             catch(const std::exception& ) {
                 return;
+                subexpr_ = subexpr;
             }
+        }
+        else {
+            indexed_ = false;
         }
         parameters_exprs_ = params_visitor.get_parameters_expr();
         parameters_dict_ = params_visitor.get_parameters_dict();
@@ -146,9 +145,26 @@ public:
 
     ~ParametersCall() {}
 
+    bool TryEvalIndex(ReferenceStack<T>& stack, int& index_evaluation) const {
+        EvaluationVisitor<T> evaluator(stack);
+        if(indexed_) {
+            if(subexpr_) {
+                index_evaluation = numeric_interface<T>::toInt(subexpr_->accept(evaluator));
+            }
+            else if (index_name_ != "") {
+                index_evaluation = numeric_interface<T>::toInt(T(a_)*stack.Eval(index_name_, ParametersCall<T>())+T(b_));
+            }
+            else {
+                index_evaluation = b_;
+            }
+        }
+        return indexed_;
+    }
+
     int a() const {return a_;}
     int b() const {return b_;}
     const std::string& index_name() const {return index_name_;}
+    PExpression<T> subexpr() const {return subexpr_;}
     const std::vector<PExpression<T>>& parameters_expression() const {return parameters_exprs_;}
     const ExprDict<T>& parameters_dict() const {return parameters_dict_;}
 
@@ -157,8 +173,10 @@ protected:
     std::vector<PExpression<T>> parameters_exprs_;
     ExprDict<T> parameters_dict_;
     std::string index_name_;
+    PExpression<T> subexpr_;
     int a_;
     int b_;
+    bool indexed_;
 };
 
 

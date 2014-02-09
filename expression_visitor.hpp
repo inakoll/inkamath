@@ -285,7 +285,7 @@ public:
 		a = 0;
 		b = 0;
 		index_name = "";
-		throw std::runtime_error("Unexpected expression inside an sub expression.");
+        throw std::runtime_error("Unexpected expression inside a sub expression.");
 		return PExpression<T>();
 	}
 

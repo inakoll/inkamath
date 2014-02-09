@@ -51,8 +51,6 @@ private:
     PExpression<U> ParseParameters();
     PExpression<U> ParseSubExpr();
 
-    bool TransformParametersDefinition(PExpression<U> params, PExpression<U> subexpr, ParametersDefinition<U>& params_defintion);
-
     std::list< Token<T> > m_toklist;
     typename std::list< Token<T> >::iterator m_i;
 
