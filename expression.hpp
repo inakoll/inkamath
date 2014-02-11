@@ -13,13 +13,11 @@
 #include <memory>
 
 #include "pmath.hpp"
-#include "expression_visitor.hpp"
 #include "matrix.hpp"
 #include "workspace_manager.hpp"
 #include "numeric_interface.hpp"
+#include "expression_dict.hpp"
 
-template <typename T>
-using PExpression = std::shared_ptr<Expression<T>>;
 
 #define _EXPRESION_EPSILON 1E-10
 
@@ -30,154 +28,16 @@ template <typename T>
 class Expression;
 
 template <typename T>
-using ExprContext = std::unordered_map<std::string,PExpression<T>>;
+using PExpression = std::shared_ptr<Expression<T>>;
 
 template <typename T>
-class ParametersCall;
+class FoldingVisitor;
 
 template <typename T>
-class ParametersDefinition
-{
-public:
-    ParametersDefinition() : a_(0), b_(0) {}
-
-    ParametersDefinition(PExpression<T> params, PExpression<T> subexpr) {
-        ParametersVisitor<T> params_visitor;
-        SubVisitor<T> subexpr_visitor;
-
-        if(params) {
-            try {
-                params->accept(params_visitor);
-            }
-            catch(const std::exception&) {
-                return;
-            }
-        }
-
-        if(subexpr) {
-            try {
-                subexpr->accept(subexpr_visitor);
-            }
-            catch(const std::exception& ) {
-                return;
-            }
-        }
-        parameters_names_ = params_visitor.get_parameters_names();
-        parameters_dict_ = params_visitor.get_parameters_dict();
-        index_name_ = subexpr_visitor.get_index_name();
-        a_ = subexpr_visitor.get_a();
-        b_ = subexpr_visitor.get_b();
-    }
-    ~ParametersDefinition() {}
-
-    void SetCallParameters(const ParametersCall<T>& param_call, ReferenceStack<T>& stack_) {
-        for(auto definition : parameters_dict_) {
-            stack_.Set(definition.first, ParametersDefinition<T>(), definition.second);
-        }
-        auto pname = parameters_names_.begin();
-        for(auto expr : param_call.parameters_expression()) {
-            if(pname != parameters_names_.end()) {
-                stack_.Set(*pname, ParametersDefinition<T>(), expr);
-                ++pname;
-            }
-        }
-        for(auto kwarg : param_call.parameters_dict_) {
-            stack_.Set(kwarg.first, ParametersDefinition<T>(), kwarg.second);
-        }
-    }
-
-    int a() const {return a_;}
-    int b() const {return b_;}
-    const std::string& index_name() const {return index_name_;}
-    const std::vector<std::string>& parameters_names() const {return parameters_names_;}
-    const ExprDict<T>& parameters_dict() const {return parameters_dict_;}
+class TransformationVisitor;
 
 
-protected:
-    std::vector<std::string> parameters_names_;
-    ExprDict<T> parameters_dict_;
-    std::string index_name_;
-    int a_;
-    int b_;
-};
 
-template <typename T>
-class ParametersCall
-{
-public:
-
-    friend class ParametersDefinition<T>;
-    ParametersCall() : a_(0), b_(0), indexed_(false) {}
-
-    ParametersCall(PExpression<T> params, PExpression<T> subexpr) {
-        ParametersVisitor<T> params_visitor;
-        SubVisitor<T> subexpr_visitor;
-
-        if(params) {
-            try {
-                params->accept(params_visitor);
-
-            }
-            catch(const std::exception&) {
-                return;
-            }
-        }
-
-        if(subexpr) {
-            indexed_ = true;
-            try {
-                subexpr->accept(subexpr_visitor);
-            }
-            catch(const std::exception& ) {
-                return;
-                subexpr_ = subexpr;
-            }
-        }
-        else {
-            indexed_ = false;
-        }
-        parameters_exprs_ = params_visitor.get_parameters_expr();
-        parameters_dict_ = params_visitor.get_parameters_dict();
-        index_name_ = subexpr_visitor.get_index_name();
-        a_ = subexpr_visitor.get_a();
-        b_ = subexpr_visitor.get_b();
-    }
-
-    ~ParametersCall() {}
-
-    bool TryEvalIndex(ReferenceStack<T>& stack, int& index_evaluation) const {
-        EvaluationVisitor<T> evaluator(stack);
-        if(indexed_) {
-            if(subexpr_) {
-                index_evaluation = numeric_interface<T>::toInt(subexpr_->accept(evaluator));
-            }
-            else if (index_name_ != "") {
-                index_evaluation = numeric_interface<T>::toInt(T(a_)*stack.Eval(index_name_, ParametersCall<T>())+T(b_));
-            }
-            else {
-                index_evaluation = b_;
-            }
-        }
-        return indexed_;
-    }
-
-    int a() const {return a_;}
-    int b() const {return b_;}
-    const std::string& index_name() const {return index_name_;}
-    PExpression<T> subexpr() const {return subexpr_;}
-    const std::vector<PExpression<T>>& parameters_expression() const {return parameters_exprs_;}
-    const ExprDict<T>& parameters_dict() const {return parameters_dict_;}
-
-
-protected:
-    std::vector<PExpression<T>> parameters_exprs_;
-    ExprDict<T> parameters_dict_;
-    std::string index_name_;
-    PExpression<T> subexpr_;
-    int a_;
-    int b_;
-    bool indexed_;
-};
 
 
 
@@ -187,6 +47,10 @@ class Expression : public std::enable_shared_from_this<Expression<T>>
 {
 public:
     Expression() {}
+
+    Expression(std::initializer_list<PExpression<T>> expressions) : children{expressions} {}
+    Expression(std::vector<PExpression<T>> exprs) : children{std::move(exprs)} {}
+
     virtual ~Expression() {}
     virtual T Eval(void) const = 0;
     virtual PExpression<T> Clone() const = 0;
@@ -226,14 +90,6 @@ public:
         return false;
     }
 
-    virtual ParametersCall<T> parameters_call() const {
-        return ParametersCall<T>();
-    }
-
-    virtual ParametersDefinition<T> parameters_definition() const {
-        return ParametersDefinition<T>();
-    }
-
     virtual std::list<std::string> Parameters(void) const
     {
         return m_params;
@@ -247,10 +103,11 @@ public:
         m_params=params;
     }
 	
-    void setDefinitions(const ExprContext<T>& definitions) {
+    void setDefinitions(const ExprDict<T>& definitions) {
 		definitions_ = definitions;
 	}
 
+    std::vector<PExpression<T>> children;
     std::list<std::string> m_params;
 protected:
 private:
@@ -258,7 +115,7 @@ private:
     Expression(const Expression<T>& e);
     Expression& operator=(const Expression<T>& e);
 	
-    ExprContext<T> definitions_;
+    ExprDict<T> definitions_;
 };
 
 template <typename T>
@@ -297,15 +154,16 @@ template <typename T>
 class UnaryExpression : public Expression<T>
 {
 public:
-    UnaryExpression(PExpression<T> e) : m_e(e)
+    UnaryExpression(PExpression<T> e) : Expression<T>{e}
     {
         if (e) Expression<T>::m_params = e->Expression<T>::m_params;
     }
     virtual ~UnaryExpression()
     {
-        m_e.reset();
+        m_e().reset();
     }
-    PExpression<T> m_e;
+    inline PExpression<T> m_e() const {return this->children[0];}
+    inline PExpression<T> m_e() {return this->children[0];}
 
 };
 
@@ -313,7 +171,7 @@ template <typename T>
 class BinaryExpression : public Expression<T>
 {
 public:
-    BinaryExpression(PExpression<T> e1, PExpression<T> e2) : m_e1(e1), m_e2(e2)
+    BinaryExpression(PExpression<T> e1, PExpression<T> e2) : Expression<T>{e1, e2}
     {
         if (e1 && e2)
         {
@@ -325,13 +183,15 @@ public:
     }
     virtual ~BinaryExpression()
     {
-        m_e1.reset();
-        m_e2.reset();
+        m_e1().reset();
+        m_e2().reset();
     }
 
 	
-    PExpression<T> m_e1;
-    PExpression<T> m_e2;
+    inline PExpression<T> m_e1() const {return this->children[0];}
+    inline PExpression<T> m_e2() const {return this->children[1];}
+    inline PExpression<T> m_e1() {return this->children[0];}
+    inline PExpression<T> m_e2() {return this->children[1];}
 };
 
 template <typename T>
@@ -345,35 +205,31 @@ public:
     virtual std::pair<size_t,size_t> Size() const
     {
         return std::make_pair(
-        BinaryExpression<T>::m_e2->Size().first,
-        BinaryExpression<T>::m_e2->Size().second);
+        BinaryExpression<T>::m_e2()->Size().first,
+        BinaryExpression<T>::m_e2()->Size().second);
     }
 
     virtual PExpression<T> Clone() const
     {
         return PExpression<T>(new EqualExpression(
-                                 BinaryExpression<T>::m_e1->Clone(),
-                                 BinaryExpression<T>::m_e2->Clone()));
+                                 BinaryExpression<T>::m_e1()->Clone(),
+                                 BinaryExpression<T>::m_e2()->Clone()));
     }
 
     virtual std::string Name() const {
-        return BinaryExpression<T>::m_e1->Name();
-    }
-
-    virtual ParametersDefinition<T> parameters_definition() const {
-        return BinaryExpression<T>::m_e1->parameters_definition();
+        return BinaryExpression<T>::m_e1()->Name();
     }
 
     virtual T Eval(void) const
     {
         T ret;
-        std::string name = BinaryExpression<T>::m_e1->Name();
-        PExpression<T> SubExpr = BinaryExpression<T>::m_e1->SubExpr();
+        std::string name = BinaryExpression<T>::m_e1()->Name();
+        PExpression<T> SubExpr = BinaryExpression<T>::m_e1()->SubExpr();
         if (!SubExpr->isEmpty() && SubExpr->Name() == "")
         {
             T subval = SubExpr->Eval();
             WorkSpManager<T>::Get()->
-                    SetSub(name,numeric_interface<T>::toInt(subval),BinaryExpression<T>::m_e2);
+                    SetSub(name,numeric_interface<T>::toInt(subval),BinaryExpression<T>::m_e2());
 
             ret = WorkSpManager<T>::Get()->
                     GetExpr(name,numeric_interface<T>::toInt(subval))->Eval();
@@ -381,9 +237,9 @@ public:
         else
         {
             WorkSpManager<T>::Get()->
-                    SetFunc(name,BinaryExpression<T>::m_e1, BinaryExpression<T>::m_e2);
+                    SetFunc(name,BinaryExpression<T>::m_e1(), BinaryExpression<T>::m_e2());
 
-            ret = BinaryExpression<T>::m_e1->Eval();
+            ret = BinaryExpression<T>::m_e1()->Eval();
         }
         return ret;
     }
@@ -410,21 +266,21 @@ public:
     virtual std::pair<size_t,size_t> Size() const
     {
         return std::make_pair(
-            BinaryExpression<T>::m_e1->Size().first,
-            BinaryExpression<T>::m_e1->Size().second);
+            BinaryExpression<T>::m_e1()->Size().first,
+            BinaryExpression<T>::m_e1()->Size().second);
     }
 
     virtual PExpression<T> Clone() const
     {
         return PExpression<T>(new AddExpression(
-                BinaryExpression<T>::m_e1->Clone(),
-                BinaryExpression<T>::m_e2->Clone()));
+                BinaryExpression<T>::m_e1()->Clone(),
+                BinaryExpression<T>::m_e2()->Clone()));
     }
 
     virtual T Eval(void) const
     {
-        return (BinaryExpression<T>::m_e1)->Eval() +
-               (BinaryExpression<T>::m_e2)->Eval();
+        return (BinaryExpression<T>::m_e1())->Eval() +
+                (BinaryExpression<T>::m_e2())->Eval();
     }
 
     virtual PExpression<T> accept(TransformationVisitor<T> &v) {
@@ -445,16 +301,16 @@ public:
     virtual std::pair<size_t,size_t> Size() const
     {
         return std::make_pair(
-            UnaryExpression<T>::m_e->Size().first,
-            UnaryExpression<T>::m_e->Size().second);
+            UnaryExpression<T>::m_e()->Size().first,
+            UnaryExpression<T>::m_e()->Size().second);
     }
     virtual PExpression<T> Clone() const
     {
-        return PExpression<T>(new NegExpression(UnaryExpression<T>::m_e->Clone()));
+        return PExpression<T>(new NegExpression(UnaryExpression<T>::m_e()->Clone()));
     }
     virtual T Eval(void) const
     {
-        return -((UnaryExpression<T>::m_e)->Eval());
+        return -((UnaryExpression<T>::m_e())->Eval());
     }
 
     virtual PExpression<T> accept(TransformationVisitor<T> &v) {
@@ -477,19 +333,19 @@ public:
     virtual std::pair<size_t,size_t> Size() const
     {
         return std::make_pair(
-                BinaryExpression<T>::m_e1->Size().first,
-                BinaryExpression<T>::m_e2->Size().second);
+                BinaryExpression<T>::m_e1()->Size().first,
+                BinaryExpression<T>::m_e2()->Size().second);
     }
     virtual PExpression<T> Clone() const
     {
         return PExpression<T>(new MultExpression(
-            BinaryExpression<T>::m_e1->Clone(),
-            BinaryExpression<T>::m_e2->Clone()));
+            BinaryExpression<T>::m_e1()->Clone(),
+            BinaryExpression<T>::m_e2()->Clone()));
     }
     virtual T Eval(void) const
     {
-        return (BinaryExpression<T>::m_e1)->Eval() *
-               (BinaryExpression<T>::m_e2)->Eval();
+        return (BinaryExpression<T>::m_e1())->Eval() *
+                (BinaryExpression<T>::m_e2())->Eval();
     }
 
     virtual PExpression<T> accept(TransformationVisitor<T> &v) {
@@ -510,19 +366,19 @@ public:
     virtual std::pair<size_t,size_t> Size() const
     {
         return std::make_pair(
-            BinaryExpression<T>::m_e1->Size().first,
-            BinaryExpression<T>::m_e1->Size().second);
+            BinaryExpression<T>::m_e1()->Size().first,
+            BinaryExpression<T>::m_e1()->Size().second);
     }
     virtual PExpression<T> Clone() const
     {
         return PExpression<T>(new DivExpression(
-            BinaryExpression<T>::m_e1->Clone(),
-            BinaryExpression<T>::m_e2->Clone()));
+            BinaryExpression<T>::m_e1()->Clone(),
+            BinaryExpression<T>::m_e2()->Clone()));
     }
     virtual T Eval(void) const
     {
-        return ((BinaryExpression<T>::m_e1)->Eval())/
-                ((BinaryExpression<T>::m_e2)->Eval());
+        return ((BinaryExpression<T>::m_e1()->Eval())/
+                (BinaryExpression<T>::m_e2()->Eval()));
     }
 
     virtual PExpression<T> accept(TransformationVisitor<T> &v) {
@@ -545,19 +401,19 @@ public:
     virtual std::pair<size_t,size_t> Size() const
     {
         return std::make_pair(
-            BinaryExpression<T>::m_e1->Size().first,
-            BinaryExpression<T>::m_e1->Size().second);
+            BinaryExpression<T>::m_e1()->Size().first,
+            BinaryExpression<T>::m_e1()->Size().second);
     }
     virtual PExpression<T> Clone() const
     {
         return PExpression<T>(new PowExpression(
-            BinaryExpression<T>::m_e1->Clone(),
-            BinaryExpression<T>::m_e2->Clone()));
+            BinaryExpression<T>::m_e1()->Clone(),
+            BinaryExpression<T>::m_e2()->Clone()));
     }
     virtual T Eval(void) const
     {
-        return numeric_interface<T>::pow(BinaryExpression<T>::m_e1->Eval(),
-                                         BinaryExpression<T>::m_e2->Eval() );
+        return numeric_interface<T>::pow(BinaryExpression<T>::m_e1()->Eval(),
+                                         BinaryExpression<T>::m_e2()->Eval() );
     }
 
     virtual PExpression<T> accept(TransformationVisitor<T> &v) {
@@ -581,11 +437,11 @@ public:
     }
     virtual PExpression<T> Clone() const
     {
-        return PExpression<T>(new FactExpression(UnaryExpression<T>::m_e->Clone()));
+        return PExpression<T>(new FactExpression(UnaryExpression<T>::m_e()->Clone()));
     }
     virtual T Eval(void) const
     {
-        return T(numeric_interface<T>::fact((UnaryExpression<T>::m_e)->Eval()));
+        return T(numeric_interface<T>::fact((UnaryExpression<T>::m_e())->Eval()));
     }
 
     virtual PExpression<T> accept(TransformationVisitor<T> &v) {
@@ -628,6 +484,9 @@ public:
 
     const T m_value;
 };
+
+template <typename T>
+class ParametersCall;
 
 template <typename T>
 class RecursivePlaceholderExpression : public Expression<T>
@@ -854,18 +713,18 @@ public:
     }
     virtual std::list<std::string> Parameters(void) const
     {
-        return BinaryExpression<T>::m_e1->Parameters();
+        return BinaryExpression<T>::m_e1()->Parameters();
     }
     virtual PExpression<T> SubExpr() const
     {
-        return BinaryExpression<T>::m_e2;
+        return BinaryExpression<T>::m_e2();
     }
     virtual PExpression<T> Clone() const
     {
         return PExpression<T>(new FuncExpression(
                 ref_expression_->Clone(),
-                BinaryExpression<T>::m_e1->Clone(),
-                BinaryExpression<T>::m_e2->Clone()));
+                BinaryExpression<T>::m_e1()->Clone(),
+                BinaryExpression<T>::m_e2()->Clone()));
     }
     virtual std::string Name()
     {
@@ -873,7 +732,7 @@ public:
     }
     virtual T EvalParameters(void) const
     {
-        return BinaryExpression<T>::m_e1->Eval();
+        return BinaryExpression<T>::m_e1()->Eval();
     }
     virtual T Eval(void) const
     {
@@ -882,7 +741,7 @@ public:
 
         WorkSpManager<T>::Get()->GetFunc(m_name)->EvalParameters();
         WorkSpManager<T>::Get()->reset();
-        BinaryExpression<T>::m_e1->Eval();
+        BinaryExpression<T>::m_e1()->Eval();
         if (!WorkSpManager<T>::Get()->modified())
         {
             std::list<std::string> params=WorkSpManager<T>::Get()->
@@ -890,12 +749,12 @@ public:
             size_t i = 0;
             std::list<std::string>::iterator it = params.begin();
             for(;
-                (it!=params.end() && i<BinaryExpression<T>::m_e1->VirtualSize());
+                (it!=params.end() && i<BinaryExpression<T>::m_e1()->VirtualSize());
                 ++it, ++i)
             {
                 WorkSpManager<T>::Get()->SetFunc(*it,PExpression<T>(
                     new ValExpression<T>(
-                        BinaryExpression<T>::m_e1->GetExpr(i)->Eval())));
+                        BinaryExpression<T>::m_e1()->GetExpr(i)->Eval())));
             }
         }
         std::string subname = WorkSpManager<T>::Get()->
@@ -905,9 +764,9 @@ public:
 
         if (subname != "")
         {	
-			if (!BinaryExpression<T>::m_e2->isEmpty())
+            if (!BinaryExpression<T>::m_e2()->isEmpty())
 			{
-				int subval =  numeric_interface<T>::toInt(BinaryExpression<T>::m_e2->Eval());
+                int subval =  numeric_interface<T>::toInt(BinaryExpression<T>::m_e2()->Eval());
 				
                 //WorkSpManager<T>::Get()->
                 //SetFunc(subname,PExpression<T>(new FuncExpression<T>(subname)), PExpression<T>(new ValExpression<T>(T(subval))) );
@@ -944,7 +803,7 @@ public:
         }
 		else
 		{
-			if (!BinaryExpression<T>::m_e2->isEmpty())
+            if (!BinaryExpression<T>::m_e2()->isEmpty())
 			{
 				 throw(std::logic_error("This expression has no defined subvalue."));
 			}
@@ -956,13 +815,6 @@ public:
         return ret;
     }
 
-    virtual ParametersCall<T> parameters_call() const {
-        return ParametersCall<T>(this->m_e1, this->m_e2);
-    }
-
-    virtual ParametersDefinition<T> parameters_definition() const {
-        return ParametersDefinition<T>(this->m_e1, this->m_e2);
-    }
 
     virtual PExpression<T> accept(TransformationVisitor<T> &v) {
         return v.visit(this);

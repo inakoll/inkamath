@@ -11,9 +11,6 @@ template <typename T>
 using PExpression = std::shared_ptr<Expression<T>>;
 
 template <typename T>
-class Reference;
-
-template <typename T>
 class ParametersDefinition;
 
 template <typename T>

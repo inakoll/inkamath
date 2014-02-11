@@ -2,6 +2,7 @@
 #define HPP_INKREFERENCE
 
 #include "expression.hpp"
+#include "parameters.hpp"
 
 template <typename T>
 using PExpression = std::shared_ptr<Expression<T>>;
@@ -53,13 +54,13 @@ public:
         EvaluationVisitor<T> evaluator(stack);
         T result;
 
-        if(TryEvaluateIndexedExpression(ai_parameters, evaluator, stack, result)) {
+        if(TryEvaluateIndexedExpression(ai_parameters, evaluator, result)) {
             return result;
         }
-        else if(TryEvaluateGeneralExpression(ai_parameters, evaluator, stack, result)) {
+        else if(TryEvaluateGeneralExpression(ai_parameters, evaluator, result)) {
             return result;
         }
-        else if(TryEvaluateSimpleExpression(ai_parameters, evaluator, stack, result)) {
+        else if(TryEvaluateSimpleExpression(ai_parameters, evaluator, result)) {
             return result;
         }
 
@@ -69,9 +70,9 @@ public:
     }
 	
 private:
-    bool TryEvaluateIndexedExpression(const ParametersCall<T>& ai_parameters, EvaluationVisitor<T>& evaluator, ReferenceStack<T>& stack, T& evaluation) {
+    bool TryEvaluateIndexedExpression(const ParametersCall<T>& ai_parameters, EvaluationVisitor<T>& evaluator, T& evaluation) {
         bool succeed = false;
-
+        ReferenceStack<T>& stack = evaluator.stack();
         int index_value;
         if(ai_parameters.TryEvalIndex(stack, index_value)) {
             // Evaluation to an index is requested
@@ -81,7 +82,7 @@ private:
                 PExpression<T> ind_expr_def;
                 std::tie(ind_params_def, ind_expr_def) = ind_definition->second;
 
-                ind_params_def.SetCallParameters(ai_parameters, stack);
+                ind_params_def.SetCallParameters(ai_parameters, evaluator);
                 if(ind_expr_def) {
                     evaluation = ind_expr_def->accept(evaluator);
                     succeed = true;
@@ -91,8 +92,9 @@ private:
        return succeed;
     }
 
-    bool TryEvaluateGeneralExpression(const ParametersCall<T>& ai_parameters, EvaluationVisitor<T>& evaluator, ReferenceStack<T>& stack, T& evaluation) {
+    bool TryEvaluateGeneralExpression(const ParametersCall<T>& ai_parameters, EvaluationVisitor<T>& evaluator, T& evaluation) {
         bool succeed = false;
+        ReferenceStack<T>& stack = evaluator.stack();
         PExpression<T> gen_expr_def;
         ParametersDefinition<T> gen_params_def;
         std::tie(gen_params_def, gen_expr_def) = general_expr_;
@@ -104,7 +106,7 @@ private:
             if(gen_params_def.a() != 0) {
                 index /= gen_params_def.a();
             }
-            gen_params_def.SetCallParameters(ai_parameters, stack);
+            gen_params_def.SetCallParameters(ai_parameters, evaluator);
             stack.Set(gen_params_def.index_name(), ParametersDefinition<T>(), PExpression<T>(new ValExpression<T>(T(index))));
             evaluation = gen_expr_def->accept(evaluator);
             succeed = true;
@@ -112,14 +114,14 @@ private:
         return succeed;
     }
 
-    bool TryEvaluateSimpleExpression(const ParametersCall<T>& ai_parameters, EvaluationVisitor<T>& evaluator, ReferenceStack<T>& stack, T& evaluation) {
+    bool TryEvaluateSimpleExpression(const ParametersCall<T>& ai_parameters, EvaluationVisitor<T>& evaluator, T& evaluation) {
         bool succeed = false;
         ParametersDefinition<T> single_params_def;
         PExpression<T> single_expr_def;
         std::tie(single_params_def, single_expr_def) = single_expr_;
         if(single_expr_def) {
 
-            single_params_def.SetCallParameters(ai_parameters, stack);
+            single_params_def.SetCallParameters(ai_parameters, evaluator);
             evaluation = single_expr_def->accept(evaluator);
             succeed = true;
         }

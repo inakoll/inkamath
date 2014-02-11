@@ -16,6 +16,7 @@
 #include "token.hpp"
 #include "workspace_manager.hpp"
 #include "numeric_interface.hpp"
+#include "reference_stack.hpp"
 
 template <typename T>
 using PExpression = std::shared_ptr<Expression<T>>;

@@ -13,8 +13,7 @@
 #include "sequence.hpp"
 
 
-template <typename T>
-using PExpression = std::shared_ptr<Expression<T>>;
+
 
 #define PFuncExpression	std::shared_ptr<FuncExpression<T> >
 
@@ -23,6 +22,9 @@ class WorkSpManager;
 
 template <typename T>
 class Expression;
+
+template <typename T>
+using PExpression = std::shared_ptr<Expression<T>>;
 
 template <typename T>
 class EmptyExpression;

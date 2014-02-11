@@ -136,7 +136,8 @@ public:
 	
 	virtual PExpression<T> visit(EqualExpression<T>* expr) {
 		kewword_params_begin = true;
-		this->parameters_dict[expr->m_e1->Name()] = expr->m_e2;
+        this->parameters_dict[expr->m_e1()->Name()] = expr->m_e2();
+        this->parameters_names.push_back(expr->m_e1()->Name());
 		++visitor_depth;
 		return PExpression<T>();
 	}
@@ -144,6 +145,7 @@ public:
 	virtual PExpression<T> visit(RefExpression<T>* expr) {
 		if(!kewword_params_begin) {
 			this->parameters_names.push_back(expr->Name());
+            this->parameters_expr.push_back(expr->self());
 		}
 		else {
 			throw(std::runtime_error("Invalid parameters. Non-keyword argument found after a keyword argument."));
@@ -236,8 +238,8 @@ public:
 
 	virtual PExpression<T> visit(AddExpression<T>* expr) {
 		SubVisitor l,r;
-        expr->m_e1->accept(l);
-        expr->m_e2->accept(r);
+        expr->m_e1()->accept(l);
+        expr->m_e2()->accept(r);
 		if(l.index_name != "" && r.index_name != "" && l.index_name != r.index_name) {
 			a = 0;
 			b = 0;
@@ -252,7 +254,7 @@ public:
 	
 	virtual PExpression<T> visit(NegExpression<T>* expr) {
 		SubVisitor l;
-        expr->m_e->accept(l);
+        expr->m_e()->accept(l);
 		a = -l.a;
 		b = -l.b;
 		this->index_name = l.index_name;
@@ -261,8 +263,8 @@ public:
 
 	virtual PExpression<T> visit(MultExpression<T>* expr) {
 		SubVisitor l,r;
-        expr->m_e1->accept(l);
-        expr->m_e2->accept(r);
+        expr->m_e1()->accept(l);
+        expr->m_e2()->accept(r);
 		if(l.a == 0) {
 			this->index_name = r.index_name;
 			a = l.b * r.a;
@@ -413,7 +415,7 @@ public:
     virtual PExpression<T> visit(FuncExpression<T>* expr) {
         PExpression<T> e;
         if(expr->Name() == name_) {
-            e.reset(new RecursivePlaceholderExpression<T>(name_, expr->parameters_call()));
+            e.reset(new RecursivePlaceholderExpression<T>(name_, ParametersCall<T>(expr->m_e1, expr->m_e2)));
             wrapped_.push_back(e);
         }
         return e;
@@ -428,7 +430,8 @@ private:
     std::vector<PExpression<T>> wrapped_;
 };
 
-#include "reference_stack.hpp"
+template <typename T>
+class ReferenceStack;
 
 template <typename T>
 class EvaluationVisitor : public FoldingVisitor<T> {
@@ -436,42 +439,49 @@ public:
 
     EvaluationVisitor<T>(ReferenceStack<T>& stack) : stack_(stack) {}
 
+    ReferenceStack<T>& stack() {return stack_;}
+
     virtual T visit(EmptyExpression<T>*) {
         return T();
     }
 
     virtual T visit(EqualExpression<T>* expr) {
-        this->stack_.Set(expr->Name(), expr->parameters_definition(), expr->m_e2);
-        return expr->m_e1->accept(*this);
+        if(expr->children[0]->children.size() > 0) {
+            this->stack_.Set(expr->Name(), ParametersDefinition<T>(expr->children[0]->children[0], expr->children[0]->children[1]), expr->children[1]);
+        }
+        else {
+            this->stack_.Set(expr->Name(), ParametersDefinition<T>(), expr->children[1]);
+        }
+        return expr->m_e1()->accept(*this);
     }
 
     virtual T visit(AddExpression<T>* expr) {
-        return expr->m_e1->accept(*this)
-             + expr->m_e2->accept(*this);
+        return expr->m_e1()->accept(*this)
+             + expr->m_e2()->accept(*this);
     }
 
     virtual T visit(NegExpression<T>* expr) {
-        return -expr->m_e->accept(*this);
+        return -expr->m_e()->accept(*this);
     }
 
     virtual T visit(MultExpression<T>* expr) {
-        return expr->m_e1->accept(*this)
-             * expr->m_e2->accept(*this);
+        return expr->m_e1()->accept(*this)
+             * expr->m_e2()->accept(*this);
     }
 
     virtual T visit(DivExpression<T>* expr) {
-        return expr->m_e1->accept(*this)
-             * expr->m_e2->accept(*this);
+        return expr->m_e1()->accept(*this)
+             * expr->m_e2()->accept(*this);
     }
 
     virtual T visit(PowExpression<T>* expr) {
         return  numeric_interface<T>::pow(
-                    expr->m_e1->accept(*this),
-                    expr->m_e2->accept(*this));
+                    expr->m_e1()->accept(*this),
+                    expr->m_e2()->accept(*this));
     }
 
     virtual T visit(FactExpression<T>* expr) {
-        return  T(numeric_interface<T>::fact(expr->m_e->accept(*this)));
+        return  T(numeric_interface<T>::fact(expr->m_e()->accept(*this)));
     }
 
     virtual T visit(ValExpression<T>* expr) {
@@ -491,7 +501,7 @@ public:
     virtual T visit(FuncExpression<T>* expr) {
         // TODO Implement real evaluation for FuncExpression
         // For the time being, no paramters...
-        return stack_.Eval(expr->Name(), expr->parameters_call());
+        return stack_.Eval(expr->Name(), ParametersCall<T>(expr->m_e1(), expr->m_e2()));
     }
 
 

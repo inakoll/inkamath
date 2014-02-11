@@ -26,7 +26,8 @@ HEADERS += \
     token.hpp \
     workspace.hpp \
     workspace_manager.hpp \
-    reference_stack.hpp
+    reference_stack.hpp \
+    parameters.hpp
 
 OTHER_FILES += \
     .gitignore
