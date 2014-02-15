@@ -17,6 +17,7 @@
 #include "workspace_manager.hpp"
 #include "numeric_interface.hpp"
 #include "expression_dict.hpp"
+#include "dynarraylike.hpp"
 
 
 #define _EXPRESION_EPSILON 1E-10
@@ -107,7 +108,7 @@ public:
 		definitions_ = definitions;
 	}
 
-    std::vector<PExpression<T>> children;
+    dynarray<PExpression<T>> children;
     std::list<std::string> m_params;
 protected:
 private:

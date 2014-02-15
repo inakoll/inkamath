@@ -27,7 +27,8 @@ HEADERS += \
     workspace.hpp \
     workspace_manager.hpp \
     reference_stack.hpp \
-    parameters.hpp
+    parameters.hpp \
+    dynarraylike.hpp
 
 OTHER_FILES += \
     .gitignore
