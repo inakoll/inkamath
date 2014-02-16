@@ -4,8 +4,6 @@
 #include <set>
 #include <tuple>
 
-
-#define BOOST_TEST_MODULE inkamath_mapstack
 #include <boost/test/unit_test.hpp>
 
 using namespace std;

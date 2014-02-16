@@ -9,6 +9,9 @@ LIBS += -lboost_unit_test_framework-mgw48-mt-d-1_55
 INCLUDEPATH += D:\boost\boost_1_55_0
 INCLUDEPATH += ..\
 
+
 SOURCES += \
-    mapstack_test.cpp
+    mapstack_test.cpp \
+    dynarray_test.cpp \
+    inkamath_test.cpp
 

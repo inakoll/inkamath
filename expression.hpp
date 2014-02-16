@@ -49,8 +49,8 @@ class Expression : public std::enable_shared_from_this<Expression<T>>
 public:
     Expression() {}
 
-    Expression(std::initializer_list<PExpression<T>> expressions) : children{expressions} {}
-    Expression(std::vector<PExpression<T>> exprs) : children{std::move(exprs)} {}
+    Expression(std::initializer_list<PExpression<T>> expressions) : children{std::move(expressions)} {}
+    Expression(dynarray<PExpression<T>> exprs) : children{std::move(exprs)} {}
 
     virtual ~Expression() {}
     virtual T Eval(void) const = 0;
@@ -539,10 +539,16 @@ public:
     MatExpression(size_t i, size_t j)
     : m_matrix(i,j,PExpression<T>(new EmptyExpression<T>))
     {}
+
     MatExpression(PExpression<T> e) : m_matrix(1,1)
     {
         m_matrix(1,1)=e;
     }
+
+    MatExpression(size_t n, size_t m, dynarray<PExpression<T>> expr)
+        : Expression<T>(expr), n_(n), m_(m)
+    {}
+
     MatExpression(std::vector<std::vector<PExpression<T> > >& mat) : m_matrix(mat)
     {
         for (size_t i = 1; i<=m_matrix.Size().first; ++i)
@@ -563,21 +569,21 @@ public:
 
     virtual std::pair<size_t,size_t> Size() const
     {
-        size_t m=0, m1=0;
-        size_t n=0, n1=0;
-        for (size_t i = 1; i<=m_matrix.Size().first; ++i)
-        {
-            for (size_t j = 1; j<=m_matrix.Size().second; ++j)
-            {
-                n1+=m_matrix(i,j)->Size().second;
-                m1=std::max(m_matrix(i,j)->Size().first,m1);
-            }
-            m+=m1;
-            n=std::max(n,n1);
-            n1=0;
-            m1=0;
-        }
-        return std::make_pair(m,n);
+//        size_t m=0, m1=0;
+//        size_t n=0, n1=0;
+//        for (size_t i = 1; i<=m_matrix.Size().first; ++i)
+//        {
+//            for (size_t j = 1; j<=m_matrix.Size().second; ++j)
+//            {
+//                n1+=m_matrix(i,j)->Size().second;
+//                m1=std::max(m_matrix(i,j)->Size().first,m1);
+//            }
+//            m+=m1;
+//            n=std::max(n,n1);
+//            n1=0;
+//            m1=0;
+//        }
+        return std::make_pair(n_,m_);
     }
 
 
@@ -655,6 +661,8 @@ public:
     }
 protected:
     Matrix<PExpression<T> > m_matrix;
+    size_t n_;
+    size_t m_;
 };
 
 template <typename T>

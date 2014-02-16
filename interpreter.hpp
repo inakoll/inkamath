@@ -4,6 +4,7 @@
 #include <iostream>
 #include <string>
 #include <sstream>
+#include <algorithm>
 #include <list>
 #include <vector>
 #include <utility>
@@ -17,6 +18,7 @@
 #include "workspace_manager.hpp"
 #include "numeric_interface.hpp"
 #include "reference_stack.hpp"
+#include "dynarraylike.hpp"
 
 template <typename T>
 using PExpression = std::shared_ptr<Expression<T>>;
@@ -310,7 +312,8 @@ PExpression<U> Interpreter<T,U>::ParsePowExpr()
 template <typename T, typename U>
 PExpression<U> Interpreter<T,U>::ParseMatrix()
 {
-    std::vector<std::vector<PExpression<U> > > mat(1, std::vector<PExpression<U> > (0));
+    std::vector<PExpression<U>> mat;
+    std::vector<size_t> size(1, 0);
     PExpression<U> e;
 
     while ((m_i != m_toklist.end()) && (m_i->type != RBra) && (m_i->type != RPar))
@@ -318,18 +321,37 @@ PExpression<U> Interpreter<T,U>::ParseMatrix()
         switch (m_i->type)
         {
         case Semico :
-            mat.push_back(std::vector<PExpression<U> > ());
+            size.push_back(0);
             ++m_i;
             break;
 
         default:
             e = Parse();
-            (mat.at(mat.size()-1)).push_back(e);
+            mat.push_back(e);
+            ++size.back();
         }
     }
-    /* ATTENTION :  'mat' est libéré dans ~MatExpression */
-    e.reset(new MatExpression<U>(mat));
+    size_t n = size.size();
+    size_t m = *std::max_element(size.begin(), size.end());
+    e.reset(new MatExpression<U>(n, m, make_matrix_array_from_vector(n, m, mat, size)));
     return e;
+}
+
+template <typename T>
+dynarray<PExpression<T>>
+ make_matrix_array_from_vector(size_t n, size_t m, std::vector<PExpression<T>>& mat,
+                           std::vector<size_t>& size)
+{
+    auto exprs = dynarray<PExpression<T>>(n*m);
+    size_t prev = 0;
+    for(size_t i = 0; i < n; ++i) {
+        std::move(mat.begin()+prev, mat.begin()+prev+size[i], exprs.begin()+i*m);
+        for(size_t j = size[i]; j <m; ++j) {
+            exprs[i*m+j] = PExpression<T>(new ValExpression<T>(T(0)));
+        }
+        prev += size[i];
+    }
+    return exprs;
 }
 
 template <typename T, typename U>

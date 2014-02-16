@@ -5,6 +5,8 @@
 #include <vector>
 #include <string>
 #include <stdexcept>
+#include <algorithm>
+#include "dynarraylike.hpp"
 #include "expression_dict.hpp"
 #include "numeric_interface.hpp"
 
@@ -126,8 +128,8 @@ public:
 
 	virtual PExpression<T> visit(MatExpression<T>* expr) {
 		if(visitor_depth == 0) {
-			for(size_t i = 0; i < expr->VirtualSize(); ++i) {
-                expr->GetExpr(i)->accept(*this);
+            for(auto e : expr->children) {
+                e->accept(*this);
 			}
 		}
 		++visitor_depth;
@@ -397,8 +399,8 @@ public:
     }
 
     virtual PExpression<T> visit(MatExpression<T>* expr) {
-        for(size_t i = 0; i < expr->VirtualSize(); ++i) {
-            transform_visitation(*this, expr->GetExpr(i));
+        for(auto e : expr->children) {
+            transform_visitation(*this, e);
         }
         return PExpression<T>();
     }
@@ -489,9 +491,49 @@ public:
     }
 
     virtual T visit(MatExpression<T>* expr) {
-        // TODO Implement real evaluation for MatExpression
+
+        size_t n, m;
+        std::tie(n, m) = expr->Size();
+        dynarray<T> evaluation(n*m);
+        dynarray<std::pair<size_t, size_t>> sizes(n*m);
+        for(size_t i = 0; i < n; ++i) {
+            for(size_t j = 0; j < m; ++j) {
+                evaluation[i*m+j] = expr->children[i*m+j]->accept(*this);
+                sizes[i*m+j] = evaluation[i*m+j].Size();
+            }
+        }
+
+        dynarray<size_t> i_rows(n);
+        dynarray<size_t> j_cols(m);
+        i_rows.fill(1);
+        j_cols.fill(1);
+        for(size_t i = 0; i < n; ++i) {
+            for(size_t j = 0; j < m; ++j) {
+                i_rows[i] = std::max(i_rows[i], sizes[i*m+j].first);
+                j_cols[j] = std::max(j_cols[j], sizes[i*m+j].second);
+            }
+        }
+
+        size_t rn = std::accumulate(i_rows.begin(), i_rows.end(), 0);
+        size_t rm = std::accumulate(j_cols.begin(), j_cols.end(), 0);
+
+        // TODO Continue implementing real evaluation for MatExpression
+//        T reval(rn, rm);
+//        for(size_t i = 0; i < n; ++i) {
+//            for(size_t j = 0; j < m; ++j) {
+//                for(size_t ri = 0; i < i_rows[i]; ++ri) {
+//                    for(size_t rj = 0; rj < j_cols[j]; ++rj) {
+//                        if(ri < sizes[i*m+j].first && rj < sizes[i*m+j].first)
+//                        {
+
+//                        }
+//                    }
+//                }
+//            }
+//        }
+
         // For the time being, one dimension only...
-        return expr->GetExpr(0)->accept(*this);
+        return expr->children.front()->accept(*this);
     }
 
     virtual T visit(RefExpression<T>* expr) {
