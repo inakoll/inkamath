@@ -50,9 +50,6 @@ template <typename T>
 class FuncExpression;
 
 template <typename T>
-class EmptyExpression;
-
-template <typename T>
 class RecursivePlaceholderExpression;
 
 template <typename T>
@@ -61,7 +58,6 @@ class ParametersCall;
 template <typename T, typename ReturnType>
 class ExpressionVisitor {
 public:
-    virtual ReturnType visit(EmptyExpression<T>* expr) = 0;
     virtual ReturnType visit(EqualExpression<T>* expr) = 0;
     virtual ReturnType visit(AddExpression<T>* expr) = 0;
     virtual ReturnType visit(NegExpression<T>* expr) = 0;
@@ -166,10 +162,6 @@ public:
 		++visitor_depth;
 		return PExpression<T>();
 	}
-
-    virtual PExpression<T> visit(EmptyExpression<T>* expr) {
-        return visit_others_expr_imp(expr);
-    }
 	
 	virtual PExpression<T> visit(FuncExpression<T>* expr) {
 		return visit_others_expr_imp(expr);
@@ -234,7 +226,7 @@ public:
 	}
 	
 	virtual PExpression<T> visit(ValExpression<T>* expr) {
-        b = numeric_interface<T>::toInt(expr->Eval());
+        b = numeric_interface<T>::toInt(expr->value);
 		return PExpression<T>();
 	}
 
@@ -292,10 +284,6 @@ public:
         throw std::runtime_error("Unexpected expression inside a sub expression.");
 		return PExpression<T>();
 	}
-
-    virtual PExpression<T> visit(EmptyExpression<T>*) {
-        return visit_unexpected_expression();
-    }
 	
     virtual PExpression<T> visit(MatExpression<T>* ) {
 		return visit_unexpected_expression();
@@ -349,20 +337,16 @@ public:
         recexp->accept(*this);
     }
 
-    virtual PExpression<T> visit(EmptyExpression<T>* expr) {
-        return PExpression<T>();
-    }
-
     template <typename U>
     PExpression<T> binary_visit(U* expr) {
-        transform_visitation(*this, expr->m_e1);
-        transform_visitation(*this, expr->m_e2);
+        transform_visitation(*this, expr->m_e1());
+        transform_visitation(*this, expr->m_e2());
         return PExpression<T>();
     }
 
     template <typename U>
     PExpression<T> unary_visit(U* expr) {
-        transform_visitation(*this, expr->m_e);
+        transform_visitation(*this, expr->m_e());
         return PExpression<T>();
     }
 
@@ -394,7 +378,7 @@ public:
         return unary_visit(expr);
     }
 
-    virtual PExpression<T> visit(ValExpression<T>* expr) {
+    virtual PExpression<T> visit(ValExpression<T>*) {
         return PExpression<T>();
     }
 
@@ -408,7 +392,7 @@ public:
     virtual PExpression<T> visit(RefExpression<T>* expr) {
         PExpression<T> e;
         if(expr->Name() == name_) {
-            e.reset(new RecursivePlaceholderExpression<T>(name_, ParametersCall<T>()));
+            e = std::make_shared<RecursivePlaceholderExpression<T>>(name_, ParametersCall<T>());
             wrapped_.push_back(e);
         }
         return e;
@@ -417,7 +401,7 @@ public:
     virtual PExpression<T> visit(FuncExpression<T>* expr) {
         PExpression<T> e;
         if(expr->Name() == name_) {
-            e.reset(new RecursivePlaceholderExpression<T>(name_, ParametersCall<T>(expr->m_e1, expr->m_e2)));
+            e = std::make_shared<RecursivePlaceholderExpression<T>>(name_, ParametersCall<T>(expr->m_e1(), expr->m_e2()));
             wrapped_.push_back(e);
         }
         return e;
@@ -442,10 +426,6 @@ public:
     EvaluationVisitor<T>(ReferenceStack<T>& stack) : stack_(stack) {}
 
     ReferenceStack<T>& stack() {return stack_;}
-
-    virtual T visit(EmptyExpression<T>*) {
-        return T();
-    }
 
     virtual T visit(EqualExpression<T>* expr) {
         if(expr->children[0]->children.size() > 0) {
@@ -487,7 +467,7 @@ public:
     }
 
     virtual T visit(ValExpression<T>* expr) {
-        return expr->m_value;
+        return expr->value;
     }
 
     virtual T visit(MatExpression<T>* expr) {
@@ -496,6 +476,8 @@ public:
         std::tie(n, m) = expr->Size();
         dynarray<T> evaluation(n*m);
         dynarray<std::pair<size_t, size_t>> sizes(n*m);
+
+        // Evaluating the matrix expression
         for(size_t i = 0; i < n; ++i) {
             for(size_t j = 0; j < m; ++j) {
                 evaluation[i*m+j] = expr->children[i*m+j]->accept(*this);
@@ -503,6 +485,7 @@ public:
             }
         }
 
+        // Compute the result size of each row and col in the matrix expression
         dynarray<size_t> i_rows(n);
         dynarray<size_t> j_cols(m);
         i_rows.fill(1);
@@ -514,26 +497,47 @@ public:
             }
         }
 
-        size_t rn = std::accumulate(i_rows.begin(), i_rows.end(), 0);
-        size_t rm = std::accumulate(j_cols.begin(), j_cols.end(), 0);
+        // Compute the size of each previous (up and left) result matrix blocks
+        dynarray<size_t> ri_rows = i_rows;
+        dynarray<size_t> rj_cols = j_cols;
 
-        // TODO Continue implementing real evaluation for MatExpression
-//        T reval(rn, rm);
-//        for(size_t i = 0; i < n; ++i) {
-//            for(size_t j = 0; j < m; ++j) {
-//                for(size_t ri = 0; i < i_rows[i]; ++ri) {
-//                    for(size_t rj = 0; rj < j_cols[j]; ++rj) {
-//                        if(ri < sizes[i*m+j].first && rj < sizes[i*m+j].first)
-//                        {
+        for(size_t i = 1; i < n; ++i) {
+            ri_rows[i] += i_rows[i-1];
+        }
+        size_t rn = ri_rows.back();
+        ri_rows.back() = 0;
+        std::rotate(ri_rows.begin(), ri_rows.end()-1, ri_rows.end());
 
-//                        }
-//                    }
-//                }
-//            }
-//        }
+        for(size_t j = 1; j < m; ++j) {
+            rj_cols[j] += j_cols[j-1];
+        }
+        size_t rm = rj_cols.back();
+        rj_cols.back() = 0;
+        std::rotate(rj_cols.begin(), rj_cols.end()-1, rj_cols.end());
 
-        // For the time being, one dimension only...
-        return expr->children.front()->accept(*this);
+        // Populate the final matrix with the right size
+        T retval(rn, rm);
+        for(size_t i = 0; i < n; ++i) {
+            for(size_t j = 0; j < m; ++j) {
+                for(size_t ri = 0; ri < i_rows[i]; ++ri) {
+                    for(size_t rj = 0; rj < j_cols[j]; ++rj) {
+                        auto s = sizes[i*m+j];
+                        if(ri < s.first && rj < s.second) {
+                            // get the evaluated cell result
+                            retval((ri_rows[i]+ri+1), (rj_cols[j]+rj+1)) = evaluation[i*m+j](ri+1, rj+1);
+                        }
+                        else {
+                            // extend the previous (up and left) evaluated cell result
+                            retval((ri_rows[i]+ri+1), (rj_cols[j]+rj+1)) = evaluation[i*m+j](s.first, s.second);
+                        }
+                    }
+                }
+            }
+        }
+
+        // Surprisingly it just works (at least for now).
+        // Note to self : refactor later
+        return retval; // finally
     }
 
     virtual T visit(RefExpression<T>* expr) {
@@ -541,8 +545,6 @@ public:
     }
 
     virtual T visit(FuncExpression<T>* expr) {
-        // TODO Implement real evaluation for FuncExpression
-        // For the time being, no paramters...
         return stack_.Eval(expr->Name(), ParametersCall<T>(expr->m_e1(), expr->m_e2()));
     }
 

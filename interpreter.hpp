@@ -15,7 +15,6 @@
 #include "expression.hpp"
 #include "matrix.hpp"
 #include "token.hpp"
-#include "workspace_manager.hpp"
 #include "numeric_interface.hpp"
 #include "reference_stack.hpp"
 #include "dynarraylike.hpp"
@@ -245,7 +244,6 @@ PExpression<U> Interpreter<T,U>::ParseEqualExpr()
             else {
                 e.reset(new EqualExpression<U>(ref, expr));
             }
-            WorkSpManager<U>::Get()->SetExpr(name,e);
         }
         else {
             m_i = m_s;

@@ -22,10 +22,7 @@ HEADERS += \
     pmath.hpp \
     reference.hpp \
     sequence.hpp \
-    stdworkspace.hpp \
     token.hpp \
-    workspace.hpp \
-    workspace_manager.hpp \
     reference_stack.hpp \
     parameters.hpp \
     dynarraylike.hpp

@@ -178,9 +178,9 @@ void swap(dynarray<T>& a, dynarray<T>& b) {
 }
 
 template <typename T>
-dynarray<T> make_dynarray(const std::initializer_list<T>& init)
+dynarray<T> make_dynarray(std::initializer_list<T> init)
 {
-    return dynarray<T>(init);
+    return dynarray<T>(std::move(init));
 }
 
 template <typename T>
