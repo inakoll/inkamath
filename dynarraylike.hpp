@@ -72,7 +72,7 @@ public:
         this->p.reset(new value_type[x.size_]);
       }
       this->size_ = x.size_;
-      std::move(x.cbegin(), x.cend(), this->begin());
+      std::copy(x.cbegin(), x.cend(), this->begin());
       return *this;
   }
 

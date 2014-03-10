@@ -58,36 +58,52 @@ public:
             return reference.Eval(ai_parameters,*this);
         }
         else {
-            return T();
+            return {};
+        }
+    }
+
+    T SafeRecursiveEval(const std::string& ai_reference_name, const ParametersCall<T>& ai_parameters)  {
+        // Just evaluate the reference with the parameters if it's in the stack
+        Reference<T> reference;
+        if(stack_.Get(ai_reference_name, reference)) {
+            return reference.SafeRecursiveEval(ai_parameters,*this);
+        }
+        else {
+            return {};
         }
     }
 
     PExpression<T> WrapRecursiveExpression(const std::string& ai_reference_name, const ParametersDefinition<T>& ai_parameters, PExpression<T>  ai_expression) {
-         auto wrapped_exprs = RecursiveExprVisitor<T>(ai_reference_name, ai_expression).wrapped();
-
-         // Compute the relative index difference between the current reference definition
-         // and all the encountered recursive references.
-         dynarray<long long int> diff(wrapped_exprs.size());
-         int i = 0;
-         for(auto w : wrapped_exprs) {
-             auto wrapped = std::static_pointer_cast<RecursivePlaceholderExpression<T>>(w);
-             if(wrapped->params().a() == ai_parameters.a()) {
-                 if(wrapped->params().a() != 0) {
-                     diff[i] = (wrapped->params().b()-ai_parameters.b())/wrapped->params().a();
+         auto wrapped_recursive_expr = ai_expression;
+         auto root_expr = ai_expression->Clone();
+         auto wrapped_exprs = RecursiveExprVisitor<T>(ai_reference_name, ai_parameters, root_expr).wrapped();
+         using map_type = decltype(wrapped_exprs);
+         using value_type = typename map_type::value_type;
+         if(wrapped_exprs.size() != 0) {
+             dynarray<PExpression<T>> recursive_placeholders(wrapped_exprs.size());
+             auto it = std::adjacent_find(wrapped_exprs.begin(), wrapped_exprs.end(),
+                                [](const value_type& a,
+                                const value_type& b) {
+                                    return (a.first+1)!=(b.first);
+                                });
+             if(it == wrapped_exprs.end()) {
+                 size_t i = 0;
+                 for(auto expr_tuple : wrapped_exprs) {
+                     *std::get<0>(expr_tuple.second) = std::get<1>(expr_tuple.second);
+                     recursive_placeholders[i] = *std::get<0>(expr_tuple.second);
                  }
-                 else if(wrapped->params().b() == 0 && ai_parameters.b() == 0) {
-                     diff[i] = -1;
-                 }
-                 // what else ?? try to stop before stack overflow : http://stackoverflow.com/questions/1578878/catching-stack-overflow-exceptions-in-recursive-c-functions
              }
-             ++i;
+             wrapped_recursive_expr = std::make_shared<RecursiveExpression<T>>(root_expr, std::move(recursive_placeholders));
          }
-         // to be continuated...
-
-
-         // For now, no recursion handling. Return the expression unchanged.
-         return ai_expression;
+         return wrapped_recursive_expr;
     }
+    friend struct Guard;
+    struct Guard {
+    public:
+        Guard(ReferenceStack<T>& stack) : guard(stack.stack_) {}
+    private:
+        typename stack_type::Context guard;
+    };
 
     void Pop() {
         stack_.Pop();

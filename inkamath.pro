@@ -5,6 +5,11 @@ CONFIG -= qt
 
 QMAKE_CXXFLAGS += -std=c++11
 QMAKE_CXXFLAGS += -W -Wall
+QMAKE_CXXFLAGS +=-m32 -g -fno-inline -fno-omit-frame-pointer
+QMAKE_CXXFLAGS +=-static-libgcc -static-libstdc++ -ggdb
+
+QMAKE_CXXFLAGS_RELEASE *= -O3
+
 INCLUDEPATH += D:\boost\boost_1_55_0
 
 SOURCES += main.cpp \

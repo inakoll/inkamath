@@ -42,11 +42,20 @@ public:
         if(ai_parameters.a() != 0) {
             general_expr_ = ExpressionDefinition<T>(ai_parameters, ai_expression);
         }
-        else if(ai_parameters.b() != 0) {
+        else if(ai_parameters.indexed()) {
             indexed_expr_[ai_parameters.b()] = ExpressionDefinition<T>(ai_parameters, ai_expression);
         }
         else {
             single_expr_ = ExpressionDefinition<T>(ai_parameters, ai_expression);
+        }
+
+        ParametersDefinition<T> gen_params_def;
+        gen_params_def = std::get<0>(general_expr_);
+        if( gen_params_def.parameters_dict() != ai_parameters.parameters_dict()
+                || gen_params_def.parameters_names() != ai_parameters.parameters_names()) {
+            // memoized index is invalidated when adding a new expression
+            // with different parameters
+            memoized_index_.clear();
         }
     }
 	
@@ -64,9 +73,42 @@ public:
             return result;
         }
 
+        return result;
+    }
 
-        throw std::runtime_error(reference_name_ + " not defined (internal interpreter error");
+    T SafeRecursiveEval( const ParametersCall<T>& ai_parameters, ReferenceStack<T>& stack) {
+        // if functionnal parameters are identical to the general expr
+        // return the memoized value at the evaluated index of this potentially recursive function
+        // or return {}
+        T evaluation = {};
+        EvaluationVisitor<T> evaluator(stack);
 
+        // Important note: Indexed expression shall not be recursive! ==> stack overflow
+        if(!TryEvaluateIndexedExpression(ai_parameters, evaluator, evaluation)) {
+            PExpression<T> gen_expr_def;
+            ParametersDefinition<T> gen_params_def;
+            std::tie(gen_params_def, gen_expr_def) = general_expr_;
+            if(     gen_params_def.a() == ai_parameters.a()
+                    &&  gen_params_def.parameters_dict().empty()
+                    &&  ai_parameters.parameters_dict().empty()
+                    &&  gen_params_def.parameters_names() == ai_parameters.parameters_names()) {
+                int index_value;
+                if(ai_parameters.TryEvalIndex(stack, index_value)) {
+                    auto it = memoized_index_.find(index_value);
+                    if(it != memoized_index_.end()) {
+                        evaluation = it->second;
+                    }
+                    else if(index_value < 0) {
+                        evaluation = {};
+                    }
+                    else if(!TryEvaluateIndexedExpression(ai_parameters, evaluator, evaluation)) {
+                        ParametersCall<T> fwd_parameter(0,index_value,true);
+                        TryEvaluateGeneralExpression(fwd_parameter, evaluator, evaluation);
+                    }
+                }
+            }
+        }
+        return evaluation;
     }
 	
 private:
@@ -98,18 +140,59 @@ private:
         PExpression<T> gen_expr_def;
         ParametersDefinition<T> gen_params_def;
         std::tie(gen_params_def, gen_expr_def) = general_expr_;
-        if(gen_expr_def && (ai_parameters.a() != 0 || ai_parameters.b() != 0)) {
-            size_t index = ai_parameters.b() - gen_params_def.b();
-            if(ai_parameters.a() != 0) {
-                index *= ai_parameters.a();
+        if(gen_expr_def) {
+            if(ai_parameters.indexed()) {
+                size_t index = ai_parameters.b() - gen_params_def.b();
+                if(ai_parameters.a() != 0) {
+                    index *= ai_parameters.a();
+                }
+                if(gen_params_def.a() != 0) {
+                    index /= gen_params_def.a();
+                }
+                gen_params_def.SetCallParameters(ai_parameters, evaluator);
+                typename ReferenceStack<T>::Guard guard(stack);
+                stack.Set(gen_params_def.index_name(), ParametersDefinition<T>(), PExpression<T>(new ValExpression<T>(T(index))));
+                evaluation = gen_expr_def->accept(evaluator);
+                succeed = true;
             }
-            if(gen_params_def.a() != 0) {
-                index /= gen_params_def.a();
+            else {
+                size_t start_index = 0;
+                T start_evaluation;
+                if(!memoized_index_.empty() || !indexed_expr_.empty()) {
+                    if(!memoized_index_.empty()) {
+                        start_index = memoized_index_.rbegin()->first;
+                    }
+                    if(!indexed_expr_.empty()) {
+                        start_index = std::max(start_index, indexed_expr_.rbegin()->first);
+                    }
+                    if(start_index == memoized_index_.rbegin()->first) {
+                        start_evaluation = memoized_index_.rbegin()->second;
+                    }
+                    else {
+
+                        ParametersDefinition<T> ind_params_def;
+                        PExpression<T> ind_expr_def;
+                        std::tie(ind_params_def, ind_expr_def) = indexed_expr_.rbegin()->second;
+
+                        ind_params_def.SetCallParameters(ai_parameters, evaluator);
+                        start_evaluation = ind_expr_def->accept(evaluator);
+                    }
+                }
+                gen_params_def.SetCallParameters(ai_parameters, evaluator);
+                stack.Set(gen_params_def.index_name(), ParametersDefinition<T>(), PExpression<T>(new ValExpression<T>(T(start_index))));
+                evaluation = start_evaluation;
+                using difference_type = decltype(numeric_interface<T>::abs(std::declval<T>()));
+                difference_type diff = numeric_interface<difference_type>::one();
+                while(diff > 1E-10) {
+                    start_index += gen_params_def.a();
+                    stack.Set(gen_params_def.index_name(), ParametersDefinition<T>(), PExpression<T>(new ValExpression<T>(T(start_index))));
+                    evaluation = gen_expr_def->accept(evaluator);
+                    diff = numeric_interface<T>::abs(evaluation-start_evaluation);
+                    start_evaluation = evaluation;
+                }
+                memoized_index_[start_index] = evaluation;
+                succeed = true;
             }
-            gen_params_def.SetCallParameters(ai_parameters, evaluator);
-            stack.Set(gen_params_def.index_name(), ParametersDefinition<T>(), PExpression<T>(new ValExpression<T>(T(index))));
-            evaluation = gen_expr_def->accept(evaluator);
-            succeed = true;
         }
         return succeed;
     }
@@ -129,6 +212,7 @@ private:
     }
 
     typedef std::map<size_t, ExpressionDefinition<T>> Indexed_expr;
+    typedef std::map<size_t, T> Indexed_values;
 
     std::string reference_name_;
 	
@@ -137,6 +221,7 @@ private:
 	
 	/* Associated expressions for indexed expression */
     Indexed_expr                indexed_expr_;
+    Indexed_values              memoized_index_;
     ExpressionDefinition<T> 	general_expr_;
 	
 };

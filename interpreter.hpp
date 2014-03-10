@@ -481,10 +481,6 @@ U Interpreter<T,U>::Eval(const std::string& s)
         /* the following functions might throw some evaluation errors */
         Lexer(s);
         m_E = ParseAll();
-
-        //ret = m_E->Eval(); // The old evaluation chain
-
-        // New evaluation chain
         EvaluationVisitor<U> evaluator(stack_);
         ret = m_E->accept(evaluator);
     }

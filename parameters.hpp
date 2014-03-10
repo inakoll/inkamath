@@ -15,7 +15,7 @@ template <typename T>
 class ParametersDefinition
 {
 public:
-    ParametersDefinition() : a_(0), b_(0) {}
+    ParametersDefinition() : a_(0), b_(0), indexed_(false) {}
 
     ParametersDefinition(PExpression<T> params, PExpression<T> subexpr) {
         ParametersVisitor<T> params_visitor;
@@ -29,14 +29,18 @@ public:
                 return;
             }
         }
-
         if(subexpr) {
+            indexed_ = false;
             try {
                 subexpr->accept(subexpr_visitor);
+                indexed_ = true;
             }
             catch(const std::exception& ) {
                 return;
             }
+        }
+        else {
+            indexed_ = false;
         }
         parameters_names_ = params_visitor.get_parameters_names();
         parameters_dict_ = params_visitor.get_parameters_dict();
@@ -68,6 +72,7 @@ public:
     const std::string& index_name() const {return index_name_;}
     const std::vector<std::string>& parameters_names() const {return parameters_names_;}
     const ExprDict<T>& parameters_dict() const {return parameters_dict_;}
+    bool indexed() const {return indexed_;}
 
 
 protected:
@@ -76,6 +81,7 @@ protected:
     std::string index_name_;
     int a_;
     int b_;
+    bool indexed_;
 };
 
 template <typename T>
@@ -85,6 +91,7 @@ public:
 
     friend class ParametersDefinition<T>;
     ParametersCall() : a_(0), b_(0), indexed_(false) {}
+    ParametersCall(int a, int b, bool indexed) : a_(a), b_(b), indexed_(indexed) {}
 
     ParametersCall(PExpression<T> params, PExpression<T> subexpr) {
         ParametersVisitor<T> params_visitor;
@@ -113,6 +120,7 @@ public:
         else {
             indexed_ = false;
         }
+        parameters_names_ = params_visitor.get_parameters_names();
         parameters_exprs_ = params_visitor.get_parameters_expr();
         parameters_dict_ = params_visitor.get_parameters_dict();
         index_name_ = subexpr_visitor.get_index_name();
@@ -141,12 +149,15 @@ public:
     int a() const {return a_;}
     int b() const {return b_;}
     const std::string& index_name() const {return index_name_;}
+    const std::vector<std::string>& parameters_names() const {return parameters_names_;}
     PExpression<T> subexpr() const {return subexpr_;}
     const std::vector<PExpression<T>>& parameters_expression() const {return parameters_exprs_;}
     const ExprDict<T>& parameters_dict() const {return parameters_dict_;}
+    bool indexed() const {return indexed_;}
 
 
 protected:
+    std::vector<std::string> parameters_names_;
     std::vector<PExpression<T>> parameters_exprs_;
     ExprDict<T> parameters_dict_;
     std::string index_name_;
