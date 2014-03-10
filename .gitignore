@@ -139,6 +139,10 @@ csx
 # Windows Store app package directory
 AppPackages/
 
+# Qt
+*.pro.user
+*.autosave
+
 # Others
 sql/
 *.Cache

@@ -13,7 +13,7 @@ Comments and contributions are welcomed.
 >> [pi, e]
 3.14159265 2.71828183
 
->> A=[a a; a a]
+>> A(x)=[a x;x a]
 0 0
 0 0
 
@@ -21,11 +21,11 @@ Comments and contributions are welcomed.
 1 2
 3 4
 
->> A
-1 2 1 2
-3 4 3 4
-1 2 1 2
-3 4 3 4
+>> A(5)
+1 2 5 5
+3 4 5 5
+5 5 1 2
+5 5 3 4
 
 >> exp(x)_n=exp(x)_(n-1)+x^n/!n
 0

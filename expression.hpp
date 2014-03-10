@@ -8,36 +8,58 @@
 #include <list>
 #include <utility> // pair
 #include <iterator> // back_inserter
+#include <unordered_map>
 
 #include <memory>
 
 #include "pmath.hpp"
 #include "matrix.hpp"
-#include "workspace_manager.hpp"
 #include "numeric_interface.hpp"
+#include "expression_dict.hpp"
+#include "dynarraylike.hpp"
 
-#define PExpression std::shared_ptr<Expression<T> >
+
 #define _EXPRESION_EPSILON 1E-10
 
-template <typename T>
-class EmptyExpression;
 
 template <typename T>
-class Expression
+class Expression;
+
+template <typename T>
+using PExpression = std::shared_ptr<Expression<T>>;
+
+template <typename T>
+class FoldingVisitor;
+
+template <typename T>
+class TransformationVisitor;
+
+
+
+
+
+
+
+template <typename T>
+class Expression : public std::enable_shared_from_this<Expression<T>>
 {
 public:
     Expression() {}
+
+    explicit Expression(std::initializer_list<PExpression<T>> expressions) : children(std::move(expressions)) {}
+    explicit Expression(dynarray<PExpression<T>>&& exprs) : children(std::move(exprs)) {}
+    explicit Expression(const dynarray<PExpression<T>>& exprs) : children(exprs) {}
+
     virtual ~Expression() {}
-    virtual T Eval(void) const = 0;
-    virtual PExpression Clone() const = 0;
-    virtual bool isEmpty(void) const
-    {
-        return false;
+    virtual PExpression<T> Clone() const = 0;
+	
+    PExpression<T> self() {
+        return this->shared_from_this();
     }
-    virtual T EvalParameters(void) const
-    {
-        return T();
-    }
+	
+    virtual T accept(FoldingVisitor<T> &v) = 0;
+    virtual PExpression<T> accept(TransformationVisitor<T> &v) = 0;
+
     virtual std::string Name()
     {
         return std::string();
@@ -46,146 +68,66 @@ public:
     {
         return std::make_pair(1,1);
     }
-    virtual size_t VirtualSize() const
-    {
-        return (this->Size().first)*(this->Size().second);
-    }
-    virtual PExpression GetExpr(size_t)
-    {
-        return PExpression(this);
-    }
-    virtual bool isRef()
-    {
-        return false;
-    }
-    virtual std::list<std::string> Parameters(void) const
-    {
-        return m_params;
-    }
-    virtual PExpression SubExpr() const
-    {
-        return PExpression(new EmptyExpression<T>());
-    }
-    virtual void SetParameters(std::list<std::string> params)
-    {
-        m_params=params;
-    }
 
-    std::list<std::string> m_params;
+    dynarray<PExpression<T>> children;
 protected:
 private:
     // interdiction de la copie
-    Expression(const Expression<T>& e);
-    Expression& operator=(const Expression<T>& e);
-};
-
-template <typename T>
-class EmptyExpression : public Expression<T>
-{
-public:
-    EmptyExpression() : Expression<T>() {}
-    virtual std::pair<size_t,size_t> Size() const
-    {
-        return std::make_pair(0,0);
-    }
-    virtual PExpression Clone() const
-    {
-        return PExpression(new EmptyExpression());
-    }
-    virtual T Eval(void) const
-    {
-        return T();
-    }
-    virtual bool isEmpty(void) const
-    {
-        return true;
-    }
+    Expression(const Expression<T>& e) = delete;
+    Expression& operator=(const Expression<T>& e) = delete;
+	
 };
 
 template <typename T>
 class UnaryExpression : public Expression<T>
 {
 public:
-    UnaryExpression(PExpression e) : m_e(e)
-    {
-        if (e) Expression<T>::m_params = e->Expression<T>::m_params;
-    }
-    virtual ~UnaryExpression()
-    {
-        m_e.reset();
-    }
-protected:
-    PExpression m_e;
+    explicit UnaryExpression(PExpression<T> e) : Expression<T>{e}
+    {}
+
+    inline PExpression<T> m_e() const {return this->children[0];}
+    inline PExpression<T>& m_e() {return this->children[0];}
+
 };
 
 template <typename T>
 class BinaryExpression : public Expression<T>
 {
 public:
-    BinaryExpression(PExpression e1, PExpression e2) : m_e1(e1), m_e2(e2)
-    {
-        if (e1 && e2)
-        {
-            Expression<T>::m_params = e1->Expression<T>::m_params;
-            Expression<T>::m_params.insert(Expression<T>::m_params.end(),
-                                e2->Expression<T>::m_params.begin(),
-                                e2->Expression<T>::m_params.end());
-        }
-    }
-    virtual ~BinaryExpression()
-    {
-        m_e1.reset();
-        m_e2.reset();
-    }
-protected:
-    PExpression m_e1;
-    PExpression m_e2;
+    explicit BinaryExpression(PExpression<T> e1, PExpression<T> e2) : Expression<T>({e1, e2})
+    {}
+
+    inline PExpression<T> m_e1() const {return this->children[0];}
+    inline PExpression<T> m_e2() const {return this->children[1];}
+    inline PExpression<T>& m_e1() {return this->children[0];}
+    inline PExpression<T>& m_e2() {return this->children[1];}
 };
 
 template <typename T>
 class EqualExpression : public BinaryExpression<T>
 {
 public:
-    EqualExpression(PExpression e1, PExpression e2)
+    explicit EqualExpression(PExpression<T> e1, PExpression<T> e2)
     : BinaryExpression<T>(e1,e2)
     {}
 
-    virtual std::pair<size_t,size_t> Size() const
+    virtual PExpression<T> Clone() const
     {
-        return std::make_pair(
-        BinaryExpression<T>::m_e2->Size().first,
-        BinaryExpression<T>::m_e2->Size().second);
+        return std::make_shared<EqualExpression<T>>(
+                                 this->m_e1()->Clone(),
+                                 this->m_e2()->Clone());
     }
 
-    virtual PExpression Clone() const
-    {
-        return PExpression(new EqualExpression(
-                                 BinaryExpression<T>::m_e1->Clone(),
-                                 BinaryExpression<T>::m_e2->Clone()));
+    virtual std::string Name() const {
+        return BinaryExpression<T>::m_e1()->Name();
     }
 
-    virtual T Eval(void) const
-    {
-        T ret;
-        std::string name = BinaryExpression<T>::m_e1->Name();
-        PExpression SubExpr = BinaryExpression<T>::m_e1->SubExpr();
-        if (!SubExpr->isEmpty() && SubExpr->Name() == "")
-        {
-            T subval = SubExpr->Eval();
-            WorkSpManager<T>::Get()->
-                    SetSub(name,numeric_interface<T>::toInt(subval),BinaryExpression<T>::m_e2);
+    virtual PExpression<T> accept(TransformationVisitor<T> &v) {
+        return v.visit(this);
+    }
 
-            ret = WorkSpManager<T>::Get()->
-                    GetExpr(name,numeric_interface<T>::toInt(subval))->Eval();
-        }
-        else
-        {
-            WorkSpManager<T>::Get()->
-                    SetFunc(name,BinaryExpression<T>::m_e1, BinaryExpression<T>::m_e2);
-
-            ret = BinaryExpression<T>::m_e1->Eval();
-        }
-        return ret;
+    virtual T accept(FoldingVisitor<T> &v) {
+        return v.visit(this);
     }
 protected:
 };
@@ -195,28 +137,21 @@ template <typename T>
 class AddExpression : public BinaryExpression<T>
 {
 public:
-    AddExpression(PExpression e1, PExpression e2)
+    explicit AddExpression(PExpression<T> e1, PExpression<T> e2)
     : BinaryExpression<T>(e1,e2)
     {}
 
-    virtual std::pair<size_t,size_t> Size() const
+    virtual PExpression<T> Clone() const
     {
-        return std::make_pair(
-            BinaryExpression<T>::m_e1->Size().first,
-            BinaryExpression<T>::m_e1->Size().second);
+        return std::make_shared<AddExpression<T>>(this->m_e1()->Clone(), this->m_e2()->Clone());
     }
 
-    virtual PExpression Clone() const
-    {
-        return PExpression(new AddExpression(
-                BinaryExpression<T>::m_e1->Clone(),
-                BinaryExpression<T>::m_e2->Clone()));
+    virtual PExpression<T> accept(TransformationVisitor<T> &v) {
+        return v.visit(this);
     }
 
-    virtual T Eval(void) const
-    {
-        return (BinaryExpression<T>::m_e1)->Eval() +
-               (BinaryExpression<T>::m_e2)->Eval();
+    virtual T accept(FoldingVisitor<T> &v) {
+        return v.visit(this);
     }
 protected:
 };
@@ -225,20 +160,19 @@ template <typename T>
 class NegExpression : public UnaryExpression<T>
 {
 public:
-    NegExpression(PExpression e) : UnaryExpression<T>(e) {}
-    virtual std::pair<size_t,size_t> Size() const
+    explicit NegExpression(PExpression<T> e) : UnaryExpression<T>(e) {}
+
+    virtual PExpression<T> Clone() const
     {
-        return std::make_pair(
-            UnaryExpression<T>::m_e->Size().first,
-            UnaryExpression<T>::m_e->Size().second);
+        return std::make_shared<NegExpression<T>>(this->m_e()->Clone());
     }
-    virtual PExpression Clone() const
-    {
-        return PExpression(new NegExpression(UnaryExpression<T>::m_e->Clone()));
+
+    virtual PExpression<T> accept(TransformationVisitor<T> &v) {
+        return v.visit(this);
     }
-    virtual T Eval(void) const
-    {
-        return -((UnaryExpression<T>::m_e)->Eval());
+
+    virtual T accept(FoldingVisitor<T> &v) {
+        return v.visit(this);
     }
 protected:
 };
@@ -247,25 +181,21 @@ template <typename T>
 class MultExpression : public BinaryExpression<T>
 {
 public:
-    MultExpression(PExpression e1, PExpression e2)
+    explicit MultExpression(PExpression<T> e1, PExpression<T> e2)
     : BinaryExpression<T>(e1,e2)
     {}
-    virtual std::pair<size_t,size_t> Size() const
+
+    virtual PExpression<T> Clone() const
     {
-        return std::make_pair(
-                BinaryExpression<T>::m_e1->Size().first,
-                BinaryExpression<T>::m_e2->Size().second);
+        return std::make_shared<MultExpression<T>>(this->m_e1()->Clone(), this->m_e2()->Clone());
     }
-    virtual PExpression Clone() const
-    {
-        return PExpression(new MultExpression(
-            BinaryExpression<T>::m_e1->Clone(),
-            BinaryExpression<T>::m_e2->Clone()));
+
+    virtual PExpression<T> accept(TransformationVisitor<T> &v) {
+        return v.visit(this);
     }
-    virtual T Eval(void) const
-    {
-        return (BinaryExpression<T>::m_e1)->Eval() *
-               (BinaryExpression<T>::m_e2)->Eval();
+
+    virtual T accept(FoldingVisitor<T> &v) {
+        return v.visit(this);
     }
 protected:
 };
@@ -274,23 +204,21 @@ template <typename T>
 class DivExpression : public BinaryExpression<T>
 {
 public:
-    DivExpression(PExpression e1, PExpression e2) : BinaryExpression<T>(e1,e2) {}
-    virtual std::pair<size_t,size_t> Size() const
+    explicit DivExpression(PExpression<T> e1, PExpression<T> e2)
+        : BinaryExpression<T>(e1,e2)
+    {}
+
+    virtual PExpression<T> Clone() const
     {
-        return std::make_pair(
-            BinaryExpression<T>::m_e1->Size().first,
-            BinaryExpression<T>::m_e1->Size().second);
+        return std::make_shared<DivExpression<T>>(this->m_e1()->Clone(), this->m_e2()->Clone());
     }
-    virtual PExpression Clone() const
-    {
-        return PExpression(new DivExpression(
-            BinaryExpression<T>::m_e1->Clone(),
-            BinaryExpression<T>::m_e2->Clone()));
+
+    virtual PExpression<T> accept(TransformationVisitor<T> &v) {
+        return v.visit(this);
     }
-    virtual T Eval(void) const
-    {
-        return ((BinaryExpression<T>::m_e1)->Eval())/
-                ((BinaryExpression<T>::m_e2)->Eval());
+
+    virtual T accept(FoldingVisitor<T> &v) {
+        return v.visit(this);
     }
 protected:
 };
@@ -299,25 +227,21 @@ template <typename T>
 class PowExpression : public BinaryExpression<T>
 {
 public:
-    PowExpression(PExpression e1, PExpression e2)
+    explicit PowExpression(PExpression<T> e1, PExpression<T> e2)
     : BinaryExpression<T>(e1,e2)
     {}
-    virtual std::pair<size_t,size_t> Size() const
+
+    virtual PExpression<T> Clone() const
     {
-        return std::make_pair(
-            BinaryExpression<T>::m_e1->Size().first,
-            BinaryExpression<T>::m_e1->Size().second);
+        return std::make_shared<PowExpression<T>>(this->m_e1()->Clone(), this->m_e2()->Clone());
     }
-    virtual PExpression Clone() const
-    {
-        return PExpression(new PowExpression(
-            BinaryExpression<T>::m_e1->Clone(),
-            BinaryExpression<T>::m_e2->Clone()));
+
+    virtual PExpression<T> accept(TransformationVisitor<T> &v) {
+        return v.visit(this);
     }
-    virtual T Eval(void) const
-    {
-        return numeric_interface<T>::pow(BinaryExpression<T>::m_e1->Eval(),
-                                         BinaryExpression<T>::m_e2->Eval() );
+
+    virtual T accept(FoldingVisitor<T> &v) {
+        return v.visit(this);
     }
 protected:
 };
@@ -326,18 +250,21 @@ template <typename T>
 class FactExpression : public UnaryExpression<T>
 {
 public:
-    FactExpression(PExpression e) : UnaryExpression<T>(e) {}
-    virtual std::pair<size_t,size_t> Size() const
+    explicit FactExpression(PExpression<T> e)
+        : UnaryExpression<T>(e)
+    {}
+
+    virtual PExpression<T> Clone() const
     {
-        return std::make_pair(1,1);
+        return std::make_shared<FactExpression<T>>(this->m_e()->Clone());
     }
-    virtual PExpression Clone() const
-    {
-        return PExpression(new FactExpression(UnaryExpression<T>::m_e->Clone()));
+
+    virtual PExpression<T> accept(TransformationVisitor<T> &v) {
+        return v.visit(this);
     }
-    virtual T Eval(void) const
-    {
-        return T(numeric_interface<T>::fact((UnaryExpression<T>::m_e)->Eval()));
+
+    virtual T accept(FoldingVisitor<T> &v) {
+        return v.visit(this);
     }
 protected:
 };
@@ -346,171 +273,153 @@ template <typename T>
 class ValExpression : public Expression<T>
 {
 public:
-    ValExpression(const T& v) : Expression<T>(), m_value(v) {}
-    virtual std::pair<size_t,size_t> Size() const
+    explicit ValExpression(const T& v) : Expression<T>(), value(v) {}
+
+    virtual PExpression<T> Clone() const
     {
-        return std::make_pair(
-                m_value.Size().first,
-                m_value.Size().second);
+        return std::make_shared<ValExpression<T>>(value);
     }
-    virtual PExpression Clone() const
+
+    virtual PExpression<T> accept(TransformationVisitor<T> &v) {
+        return v.visit(this);
+    }
+
+    virtual T accept(FoldingVisitor<T> &v) {
+        return v.visit(this);
+    }
+
+    const T value;
+};
+
+template <typename T>
+class ParametersCall;
+
+template <typename T>
+class RecursivePlaceholderExpression : public Expression<T>
+{
+public:
+    explicit RecursivePlaceholderExpression(const std::string& name, const ParametersCall<T>& params)
+        : Expression<T>(), value_(), name_(name), params_(params)
+    {}
+
+    virtual PExpression<T> Clone() const
     {
-        return PExpression(new ValExpression(m_value));
+        return std::make_shared<RecursivePlaceholderExpression<T>>(name_, params_);
     }
-    virtual T Eval(void) const
+
+    virtual std::string Name()
     {
-        return m_value;
+        return name_;
     }
+
+    const ParametersCall<T>& params() {return params_;}
+
+    void Set(const T& value)
+    {
+        value_ = value;
+    }
+
+    T get() const {
+        return value_;
+    }
+
+    virtual T accept(FoldingVisitor<T>& v) {return v.visit(this);}
+    virtual PExpression<T> accept(TransformationVisitor<T>& v)  {return v.visit(this);}
+
 protected:
-    T m_value;
+    T value_;
+    std::string name_;
+    ParametersCall<T> params_;
+};
+
+template <typename T>
+class RecursiveExpression : public Expression<T>
+{
+public:
+    explicit RecursiveExpression(PExpression<T> expr, dynarray<PExpression<T>> recursive_placeholders)
+        : Expression<T>(std::move(recursive_placeholders)), expr_(expr)
+    {}
+
+    virtual PExpression<T> Clone() const
+    {
+        return std::make_shared<RecursiveExpression<T>>(expr_, this->children);
+    }
+
+    PExpression<T> recursive_expr() const {return expr_;}
+
+    virtual T accept(FoldingVisitor<T>& v) {return v.visit(this);}
+    virtual PExpression<T> accept(TransformationVisitor<T>& v)  {return v.visit(this);}
+
+
+protected:
+    PExpression<T> expr_;
 };
 
 template <typename T>
 class MatExpression : public Expression<T>
 {
 public:
-    MatExpression(size_t i, size_t j)
-    : m_matrix(i,j,PExpression(new EmptyExpression<T>))
+
+    explicit MatExpression(PExpression<T> e)
+        :  Expression<T>({e}), n_(1), m_(1)
     {}
-    MatExpression(PExpression e) : m_matrix(1,1)
-    {
-        m_matrix(1,1)=e;
-    }
-    MatExpression(std::vector<std::vector<PExpression > >& mat) : m_matrix(mat)
-    {
-        for (size_t i = 1; i<=m_matrix.Size().first; ++i)
-        {
-            for (size_t j = 1; j<=m_matrix.Size().second; ++j)
-            {
-                if (m_matrix(i,j)==0)
-                {
-                    m_matrix(i,j).reset(new EmptyExpression<T>);
-                }
-                Expression<T>::m_params.insert(
-                    Expression<T>::m_params.end(),
-                    m_matrix(i,j)->Expression<T>::m_params.begin(),
-                    m_matrix(i,j)->Expression<T>::m_params.end());
-            }
-        }
-    }
+
+    MatExpression(size_t n, size_t m, dynarray<PExpression<T>> expr)
+        : Expression<T>(expr), n_(n), m_(m)
+    {}
 
     virtual std::pair<size_t,size_t> Size() const
     {
-        size_t m=0, m1=0;
-        size_t n=0, n1=0;
-        for (size_t i = 1; i<=m_matrix.Size().first; ++i)
-        {
-            for (size_t j = 1; j<=m_matrix.Size().second; ++j)
-            {
-                n1+=m_matrix(i,j)->Size().second;
-                m1=std::max(m_matrix(i,j)->Size().first,m1);
-            }
-            m+=m1;
-            n=std::max(n,n1);
-            n1=0;
-            m1=0;
+        return std::make_pair(n_,m_);
+    }
+
+    virtual PExpression<T> Clone() const
+    {
+        dynarray<PExpression<T>> expr(this->children.size());
+        for(size_t i =0; i < expr.size(); ++i) {
+            expr[i] = this->children[i]->Clone();
         }
-        return std::make_pair(m,n);
+
+        return std::make_shared<MatExpression<T>>(n_, m_, std::move(expr));
     }
 
-
-    virtual PExpression Clone() const
-    {
-        MatExpression* mat = new MatExpression<T>(
-            m_matrix.Size().first,
-            m_matrix.Size().second);
-
-        for (size_t i = 1; i<=m_matrix.Size().first; ++i)
-        {
-            for (size_t j = 1; j<=m_matrix.Size().second; ++j)
-                mat->m_matrix(i,j)=m_matrix(i,j)->Clone();
-        }
-        mat->SetParameters(Expression<T>::m_params);
-        PExpression ret(mat);
-        return ret;
-    }
-    virtual T Eval(void) const
-    {
-        T val(Size().first,Size().second);
-        size_t m=0, m1=0;
-        size_t n=0, n1=0;
-        for (size_t i = 1; i<=m_matrix.Size().first; ++i)
-        {
-            for (size_t j = 1; j<=m_matrix.Size().second; ++j)
-            {
-                for (size_t k = 1; k<=m_matrix(i,j)->Size().first; ++k)
-                {
-                    for (size_t l = 1; l<=m_matrix(i,j)->Size().second; ++l)
-                    {
-                        val(m+k,n1+l)=m_matrix(i,j)->Eval()(k,l);
-                    }
-                }
-                n1+=m_matrix(i,j)->Size().second;
-                m1=std::max(m_matrix(i,j)->Size().first,m1);
-            }
-            m+=m1;
-            n=std::max(n,n1);
-            n1=0;
-            m1=0;
-        }
-        return val;
+    virtual PExpression<T> accept(TransformationVisitor<T> &v) {
+        return v.visit(this);
     }
 
-    virtual ~MatExpression()
-    {
-        for (size_t i = 1; i<=m_matrix.Size().first; ++i)
-        {
-            for (size_t j = 1; j<=m_matrix.Size().second; ++j)
-            {
-                m_matrix(i,j).reset();
-            }
-        }
+    virtual T accept(FoldingVisitor<T> &v) {
+        return v.visit(this);
     }
 
-    virtual size_t VirtualSize(void)
-    {
-        return m_matrix.Size().first*m_matrix.Size().second;
-    }
-    virtual PExpression GetExpr(size_t i)
-    {
-        if (i<m_matrix.Size().first*m_matrix.Size().second)
-            return m_matrix.get(i);
-        else
-            throw(std::logic_error("Out of matrix range."));
-    }
 protected:
-    Matrix<PExpression > m_matrix;
+    size_t n_;
+    size_t m_;
 };
 
 template <typename T>
 class RefExpression : public Expression<T>
 {
 public:
-    RefExpression(const std::string& name) : m_name(name)
-    {
-        Expression<T>::m_params=std::list<std::string>(1,m_name);
-    }
-    ~RefExpression() {}
+    explicit RefExpression(const std::string& name)
+        : Expression<T>(), m_name(name)
+    { }
 
-    virtual std::pair<size_t,size_t> Size() const
+    virtual PExpression<T> Clone() const
     {
-        return WorkSpManager<T>::Get()->GetExpr(m_name)->Size();
+        return std::make_shared<RefExpression<T>>(m_name);
     }
-    virtual PExpression Clone() const
-    {
-        return PExpression(new RefExpression(m_name));
-    }
+
     virtual std::string Name()
     {
         return m_name;
     }
-    virtual T Eval(void) const
-    {
-        return WorkSpManager<T>::Get()->GetExpr(m_name)->Eval();
+
+    virtual PExpression<T> accept(TransformationVisitor<T> &v) {
+        return v.visit(this);
     }
-    virtual bool isRef()
-    {
-        return true;
+
+    virtual T accept(FoldingVisitor<T> &v) {
+        return v.visit(this);
     }
 protected:
     std::string m_name;
@@ -520,122 +429,33 @@ template <typename T>
 class FuncExpression : public BinaryExpression<T>
 {
 public:
-    FuncExpression(const std::string& name, PExpression e1 = PExpression(new  EmptyExpression<T>), PExpression e2 = PExpression(new  EmptyExpression<T>))
-    : BinaryExpression<T>(e1,e2), m_name(name)
+    explicit FuncExpression(PExpression<T> ref_expression, PExpression<T> e1, PExpression<T> e2)
+        : BinaryExpression<T>(e1,e2), m_name(ref_expression->Name()), ref_expression_(ref_expression)
+    { }
+
+    virtual PExpression<T> Clone() const
     {
-        Expression<T>::m_params=std::list<std::string>(1,m_name);
+        return std::make_shared<FuncExpression<T>>(
+                ref_expression_->Clone(),
+                this->m_e1() ? this->m_e1()->Clone() : nullptr,
+                this->m_e2() ? this->m_e2()->Clone() : nullptr);
     }
-    virtual std::pair<size_t,size_t> Size() const
-    {
-        return WorkSpManager<T>::Get()->GetExpr(m_name)->Size();
-    }
-    virtual std::list<std::string> Parameters(void) const
-    {
-        return BinaryExpression<T>::m_e1->Parameters();
-    }
-    virtual PExpression SubExpr() const
-    {
-        return BinaryExpression<T>::m_e2;
-    }
-    virtual PExpression Clone() const
-    {
-        return PExpression(new FuncExpression(
-                m_name,
-                BinaryExpression<T>::m_e1->Clone(),
-                BinaryExpression<T>::m_e2->Clone()));
-    }
+
     virtual std::string Name()
     {
         return m_name;
     }
-    virtual T EvalParameters(void) const
-    {
-        return BinaryExpression<T>::m_e1->Eval();
+
+    virtual PExpression<T> accept(TransformationVisitor<T> &v) {
+        return v.visit(this);
     }
-    virtual T Eval(void) const
-    {
-        T ret;//= 0;
-        WorkSpManager<T>::Push();
 
-        WorkSpManager<T>::Get()->GetFunc(m_name)->EvalParameters();
-        WorkSpManager<T>::Get()->reset();
-        BinaryExpression<T>::m_e1->Eval();
-        if (!WorkSpManager<T>::Get()->modified())
-        {
-            std::list<std::string> params=WorkSpManager<T>::Get()->
-                                                  GetFunc(m_name)->Parameters();
-            size_t i = 0;
-            std::list<std::string>::iterator it = params.begin();
-            for(;
-                (it!=params.end() && i<BinaryExpression<T>::m_e1->VirtualSize());
-                ++it, ++i)
-            {
-                WorkSpManager<T>::Get()->SetFunc(*it,PExpression(
-                    new ValExpression<T>(
-                        BinaryExpression<T>::m_e1->GetExpr(i)->Eval())));
-            }
-        }
-        std::string subname = WorkSpManager<T>::Get()->
-            GetFunc(m_name)->SubExpr()->Name();
-
-
-
-        if (subname != "")
-        {	
-			if (!BinaryExpression<T>::m_e2->isEmpty())
-			{
-				int subval =  numeric_interface<T>::toInt(BinaryExpression<T>::m_e2->Eval());
-				
-				WorkSpManager<T>::Get()->
-                SetFunc(subname,PExpression(new FuncExpression<T>(subname)), PExpression(new ValExpression<T>(T(subval))) );
-				if (subval >= 0)
-				{
-					ret = WorkSpManager<T>::Get()->
-						GetExpr(m_name, subval)->Eval();
-				}
-				else
-				{
-					ret = T();
-				}
-			}
-			else
-			{
-				int subval = 0;
-				WorkSpManager<T>::Get()->
-					SetFunc(subname,PExpression(new FuncExpression<T>(subname)), PExpression(new ValExpression<T>(T(subval))) );
-				T first =  WorkSpManager<T>::Get()->
-					GetExpr(m_name, subval)->Eval();
-				typedef typename numeric_interface_imp_types<T>::abs difference_type;
-				difference_type difference = numeric_interface<difference_type>::zero();
-				do
-				{
-					++subval;
-					WorkSpManager<T>::Get()->
-						SetFunc(subname,PExpression(new FuncExpression<T>(subname)), PExpression(new ValExpression<T>(T(subval))) );
-					ret =  WorkSpManager<T>::Get()->
-					GetExpr(m_name,subval)->Eval();
-					difference = numeric_interface<T>::abs(first - ret);
-					first = ret;
-				}while(difference > _EXPRESION_EPSILON);
-			}
-        }
-		else
-		{
-			if (!BinaryExpression<T>::m_e2->isEmpty())
-			{
-				 throw(std::logic_error("This expression has no defined subvalue."));
-			}
-			ret =  WorkSpManager<T>::Get()->
-				GetExpr(m_name)->Eval();
-		}
-		
-        WorkSpManager<T>::Pop();
-        return ret;
+    virtual T accept(FoldingVisitor<T> &v) {
+        return v.visit(this);
     }
 protected:
     std::string m_name;
+    PExpression<T> ref_expression_;
 };
-
-#undef PExpression
 
 #endif
