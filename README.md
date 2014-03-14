@@ -2,7 +2,7 @@ Inkamath
 ========
 
 Inkamath is an mathematical interpreter written in standard C++.
-© 2013 iNaKoll. Please see accompanied license file.
+Please see accompanied license file.
 
 Inkamath supports the definition of functions, matrices and sequences of complex numbers.
 The syntax is meant to be simple, powerful and as close as possible to the common math syntax.
@@ -12,6 +12,9 @@ Comments and contributions are welcomed.
 ```
 >> [pi, e]
 3.14159265 2.71828183
+
+>> 1+2*3^3*2+1
+110
 
 >> A(x)=[a x;x a]
 0 0
@@ -27,6 +30,12 @@ Comments and contributions are welcomed.
 5 5 1 2
 5 5 3 4
 
+>> A([5 6;7 8])
+1 2 5 6
+3 4 7 8
+5 6 1 2
+7 8 3 4
+
 >> exp(x)_n=exp(x)_(n-1)+x^n/!n
 0
 
@@ -35,6 +44,9 @@ Comments and contributions are welcomed.
 
 >> cos(x)=(exp(i*x)+exp(-i*x))/2
 0
+
+>> cos(pi/3)
+0.5
 ```
   
 ### Introduction ###
@@ -70,6 +82,7 @@ comme les plus avancés en toute simplicité.
 
 Les principales fonctionnalités d'Inkamath sont :
 
+- Évaluation paresseuse (en: lazy-evaluation)
 - défintion de fonctions par l'utilisateur
 - calcul matriciel
 - support des nombres complexes
@@ -92,12 +105,12 @@ en une seule ligne.
 	
 Les paragraphes suivants constituent une référence rapide de la syntaxe utilisée par l'interpréteur Inkamath.
 
-#### Quick reference ####
+#### Référence rapide ####
 *Notation* :
 
 - 'expr' 		Expression quelconque (voir définition).
 - 'n' 			identifiant (voir définition).
-- 'f', 'x', 'y'	référence quelconque (void définition).
+- 'f', 'x', 'y'		référence quelconque (void définition).
 - 'a' 			référence associée à une expression s'évaluant à la matrice 2x2 suivante
 
 ```
@@ -112,12 +125,12 @@ Les paragraphes suivants constituent une référence rapide de la syntaxe utilis
 		
 #####2. Expressions binaires#####
 
-- expr+expr : addition
-- expr-expr : soutraction
-- expr*expr : multiplication
-- expr/expr : division
-- expr^expr : puissance réelle (=exponnentielle(expr*ln(expr))
-- f=expr		: assignation d'une expression à une référence (voir § 4.)
+- expr+expr 	: addition
+- expr-expr 	: soutraction
+- expr*expr 	: multiplication
+- expr/expr 	: division
+- expr^expr 	: puissance réelle (=exponnentielle(expr*ln(expr))
+- f=expr	: assignation d'une expression à une référence (voir § 4.)
 		
 #####3. Matrices#####
 
@@ -126,7 +139,6 @@ Si 'expr' est de dimension 1x1 alors :
 [expr] 				: matrice 1x1
 [expr, expr; expr, expr] 	: matrice 2x2
 [expr; expr, expr] 		: matrice 2x2
-[expr, expr; expr, expr] 	: matrice 2x2
 ```
 	
 Inkamath permet l'utilisation de matrices d'expressions. 
@@ -136,26 +148,25 @@ Si 'expr' est de dimension 2x1 alors :
 [expr] 				: matrice 2x1
 [expr, expr; expr, expr] 	: matrice 4x2
 [expr; expr, expr] 		: matrice 4x2
-[expr, expr; expr, expr] 	: matrice 4x2
 ```
 	
-Ainsi 'a' s'évalue à :
+Ainsi si 'a' s'évalue à :
 
 ```
 1 2
 3 4
 ```
 	
-et [a, a; a, a] s'évalue à :
+alors [a, a; a, a] s'évalue à :
 ```
 1 2 1 2
-3 4 1 2
+3 4 3 4
 1 2 1 2
-3 4 1 2
+3 4 3 4
 ```
 			
 #####4. Réferences#####
-Inkamath est un langage que l'on pourrait qualifier de "fonctionnel". Les identifiants définis par l'utilsateur et que l'on pourrait au premier regard associer à des variables ou des fonctions sont en fait exclusivement des *fonctions lambda*. Les "Références" définies par l'utilsateur sont donc des identifiants associés à des expressions et non pas à des valeurs.
+Inkamath est un langage que l'on pourrait qualifier de "fonctionnel". Les identifiants définis par l'utilsateur et que l'on pourrait au premier regard associer à des variables ou des fonctions sont en fait exclusivement des références à des expressions. Les "Références" définies par l'utilsateur sont des identifiants associés à des expressions et non pas à des valeurs.
 
 *Exemple :*
 ```
@@ -168,6 +179,8 @@ Inkamath est un langage que l'on pourrait qualifier de "fonctionnel". Les identi
 >> b
 4
 ```
+
+Ici, l'interpréteur réévalue 'b' qui est toujours défini par l'expression 'a+a'. Comme 'a' vaut 2, 'b' vaut 4.
 
 *Exemples de défintion de références utilisateur :*
 ```
@@ -185,7 +198,7 @@ On peut distinguer trois types définitions différents d'assignations dont le s
 
 C'est l'assignation usuelle qui associe l'identifiant de la référence à une expression. L'assignation simple permet de définir ce qui se rapprocherait le plus des notions variables et de fonctions dans d'autres langages de programmation.
 
-Si l'expression 'expr' assignée à une référence 'f' ne contient que des constantes litérales (ex: expr=1+2), alors la référence est une fonction lambda ne prenant pas de paramètre. Si toutefois la référence est appelée avec des paramètres, ces derniers sont ignorés.
+Si une référence 'f' associée à une expression 'expr' ne prend pas de paramètre, si la référence est appelée avec des paramètres, ces derniers sont ignorés.
 
 *Exemple :*
 ```
@@ -199,11 +212,11 @@ Si l'expression 'expr' assignée à une référence 'f' ne contient que des cons
 3
 ```
 
-Si l'expression 'expr' assignée à une référence 'f' contient (directement ou indirectement) des références utilisateurs, alors la référence 'f' définie par 'expr' est une fonction lambda prenant en paramètre des expressions à associer à chacune des références contenues dans 'expr'.
+Si la référence 'f' est défini comme acceptant des paramètres alors il est possible de l'appeler avec des paramètre positionnés ou des paramètres nommés.
 
 *Exemple :*
 ```
->> f=x^2+y
+>> f(x, y)=x^2+y
 0
 
 >> f(2, 1)
@@ -212,6 +225,12 @@ Si l'expression 'expr' assignée à une référence 'f' contient (directement ou
 >> f(x=3, y=2)
 11
 ```
+
+Si des paramètres sont omis, l'interpréteur tente de trouver une définition dans l'environnement d'appel de la fonction (quitte à remonter la pile d'appel). Si aucune définition n'est trouvée, le paramètre est évalué à la valeur 0 et aucune erreur n'est remontée.
+
+Si au contraire, la référence est appelée avec un nombre de paramètres supérieur au nombre de paramètres définis. Aucun message d'erreur n'est remonté à l'utilisateur et les paramètres supplémentaires sont ignorés.
+
+Voir le paragraphe 6. pour plus d'information sur la portée des références dans l'interpréteur.
 
 ######4.2. Assignation d'une référence indexée######
 
@@ -238,7 +257,7 @@ Il est important de noter que l'assignation à un indice ne peut se faire qu'à 
 
 *Exemple :*
 ```
->> f_(0.5)=1
+>> f_(0.5)=1  : équivalent à f_0=1
 ```
 
 L'exemple ci-dessus est mal-formé car 0.5 n'est pas une valeur entière.
@@ -265,7 +284,7 @@ Le terme général d'une référence indexée est analogue au terme général d'
 
 L'exemple ci-dessous assigne une expression '2*n' au terme général d'une référence 'f' indexée par l'identifiant 'n'.
 	
-Si l'identifiant (ici 'n') utilisé pour la définition du terme général d'une référence a été préalablement associé à une autre référence, cet identifiant perd la sémantique de la référence dans le contexte de la définition de la référence.
+Si l'identifiant (ici 'n') utilisé pour la définition du terme général d'une référence a été préalablement associé à une autre référence, cet identifiant perd la sémantique de la référence dans le contexte de la définition de la référence (voir seconde évaluation dans l'exemple ci-dessous).
 
 *Exemple :*
 ```
@@ -313,7 +332,7 @@ Dans l'exemple ci-dessus, des expressions singulières sont définies pour 'f_0'
 Une définition singulière est toujours préférée au terme général d'une référence indexée lors de l'évaluation et ce peu importe l'ordre de définition.
 
 #####5. Constantes et fonctions built-in #####
-Les constantes 'e' (2.71828182846) et 'i' (unité imaginaire) sont actuellement les seules définitions de constantes disponibles par défaut. La constante imaginaire pur 'i' permet le support des nombres complexes dans inkamath.
+Les constantes 'e' (2.71828182846),'i' (unité imaginaire) et 'pi' (3.1415926535898) sont actuellement les seules définitions de constantes disponibles par défaut. La constante imaginaire pur 'i' permet le support des nombres complexes dans inkamath.
 
 Aucune fonction built-in n'est disponbile actuellement.
 
@@ -333,7 +352,7 @@ Lorsqu'une référence est définie au plus au niveau, celle-ci est accessible d
 0			: 0 car 'x' n'est pas associé à une référence
 
 >> f(2)
-4			: 4 car l'expression '2' est associée à 'x' le temps de l'éluation de 'f'
+4			: 4 car l'expression '2' est associée à 'x' le temps de l'évaluation de 'f'
 
 >> x
 0			: 0 car 'x' n'est pas associé à une référence
@@ -342,19 +361,19 @@ Lorsqu'une référence est définie au plus au niveau, celle-ci est accessible d
 0			: 0 car 'x' n'est pas associé à une référence
 
 >> f(x=4)
-16			: 16 car l'expression '4' est associée à 'x' le temps de l'éluation de 'f'
+16			: 16 car l'expression '4' est associée à 'x' le temps de l'évaluation de 'f'
 
 >> x
 0			: 0 car 'x' n'est pas associé à une référence
 
 >> x=5
-5			: 5 car l'expression '5' est associée à 'x' au plus au niveau
+5			: 5 car l'expression '5' est associée à 'x' au plus au niveau de la pile
 
 >> f			: 25 car l'expression '5' associée à 'x' est visible depuis 'f'
 25
 ```
 
-Lorsque des paramètres sont passés à une référence, l'utilisateur a la possibilité de nommer explicitement les paramètres ou non. Lorsque les paramètres ne sont pas nommé, l'ordre des paramètres de la définition de la référence est utilisé pour assigner les expressions des paramètres.
+Lorsque des paramètres sont passés à une référence, l'utilisateur a la possibilité de nommer explicitement les paramètres ou non. Lorsque les paramètres ne sont pas nommés, l'ordre des paramètres de la définition de la référence est utilisé pour assigner les expressions des paramètres.
 
 Lorsqu'une référence définie explicitement avec des paramètres est appelée sans paramètre ou lorsque le nombre de paramètre d'appel est inférieur au nombre des paramètres explicites, les paramètres d'appels non initialisé prennent leur valeur par défaut par ordre de priorité comme suit :
 
