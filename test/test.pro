@@ -15,3 +15,12 @@ SOURCES += \
     dynarray_test.cpp \
     inkamath_test.cpp
 
+OTHER_FILES += \
+    data/input1.txt \
+    data/output1.txt \
+    data/input2.txt \
+    data/output2.txt
+
+HEADERS += \
+    inkamath_test.hpp
+

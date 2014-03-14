@@ -30,7 +30,8 @@ HEADERS += \
     token.hpp \
     reference_stack.hpp \
     parameters.hpp \
-    dynarraylike.hpp
+    dynarraylike.hpp \
+    getlines.hpp
 
 OTHER_FILES += \
     .gitignore
