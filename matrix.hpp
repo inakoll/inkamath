@@ -297,6 +297,11 @@ std::string Matrix<T>::toString(const Matrix<T>& a)
 }
 
 template <typename T>
+std::string toString(const Matrix<T>& a) {
+    return Matrix<T>::toString(a);
+}
+
+template <typename T>
 int Matrix<T>::toInt(const Matrix<T>& a)
 {
     if (a.m_rows == 1 && a.m_cols == 1)

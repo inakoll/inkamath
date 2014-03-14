@@ -1,0 +1,9 @@
+[pi, e]
+A=[a a; a a]
+a=[1 2;3 4]
+A
+exp(x)_n=exp(x)_(n-1)+x^n/!n
+exp(1)
+cos(x)=(exp(i*x)+exp(-i*x))/2
+sin(x)=(exp(i*x)-exp(-i*x))/(2*i)
+sin(pi/6)

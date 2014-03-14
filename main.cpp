@@ -5,11 +5,18 @@
 #include "interpreter.hpp"
 #include "numeric_interface.hpp"
 
+/**
+ ***************************************
+ * For inkamath interpreter usage examples see inkamath_test
+ * function a the end of this file.
+ ***************************************
+ */
+
 using namespace std;
 
 int main(void)
 {
-    cout << "\nInkaMath 0.7\n" << endl;
+    cout << "inkamath 0.8\n" << endl;
 	Interpreter<complex<double> > p;
 	
 	for(;;)
@@ -19,7 +26,7 @@ int main(void)
 		cout << ">> ";
 		getline(cin,s);
 
-        if(s=="q") break;
+        if(s=="q") break; // quit interpreter
 
         cout << p.Eval(s) << endl << endl;
     }
@@ -44,7 +51,7 @@ void inkamath_test()
     {
 		cout << ">> " << s.front() << endl;
 
-        if(s.front()=="q") break;
+        if(s.front()=="q") break; // quit interpreter
 
         cout << p.Eval(s.front()) << endl << endl;
 		s.pop();

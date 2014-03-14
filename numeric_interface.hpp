@@ -10,6 +10,7 @@
 #include <cstdlib> // std::strtod, std::strtol, std::strtoul
 #include <string> // std::string
 #include <sstream> // std::ostringstream
+#include <iomanip> // std::setprecision
 
 #define _NUMERIC_INTERFACE_PRECISION 9
 
