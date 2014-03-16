@@ -1,19 +1,6 @@
 #define BOOST_TEST_MODULE inkamath_test
 
 #include <boost/test/unit_test.hpp>
-#include <boost/test/detail/unit_test_parameters.hpp>
-#include <boost/test/output_test_stream.hpp>
-
-#include "getlines.hpp"
-#include "numeric_interface.hpp"
-#include "interpreter.hpp"
-
-#include <iostream>
-#include <fstream>
-#include <string>
-#include <iterator>
-#include <stdexcept>
-#include <complex>
 
 #include "inkamath_test.hpp"
 
@@ -24,11 +11,6 @@
  *
  ***************************************
  */
-
-
-struct InkamathFixture {
-    Interpreter<std::complex<double>> interpreter;
-};
 
 
 BOOST_FIXTURE_TEST_SUITE(inkamath_tests, InkamathFixture)

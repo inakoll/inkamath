@@ -137,6 +137,8 @@ void Interpreter<T,U>::Lexer(const std::string& s)
 		case 'i':
             this->Number_Lexer(s,i);
             break;
+        case '#': // inkamath comments
+            return;
 		default:
             if(std::isalpha(s[i]))
                     Reference_Lexer(s,i);
@@ -211,7 +213,10 @@ PExpression<U> Interpreter<T,U>::ParseAll()
     }
     if (e == 0)
     {
-        throw(std::logic_error("Unexpected error."));
+        if(!m_toklist.empty())
+            throw(std::logic_error("Unexpected error. Nullptr expression."));
+        else
+            e = std::make_shared<ValExpression<U>>(U{});
     }
     return e;
 }
@@ -422,7 +427,7 @@ PExpression<U>  Interpreter<T,U>::ParseSimpleExpr()
             break;
         }
     }
-    else
+    else if(m_i != m_toklist.begin())
     {
         oss << "Unexpected end of input before '" << (--m_i)->Print() << "'" << std::endl;
         throw(std::runtime_error(oss.str()));

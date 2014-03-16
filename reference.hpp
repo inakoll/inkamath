@@ -3,16 +3,18 @@
 
 #include "expression.hpp"
 #include "parameters.hpp"
+#include "mapstack.hpp"
+#include "expression_visitor.hpp"
 
 template <typename T>
 using PExpression = std::shared_ptr<Expression<T>>;
 
 
 #include <map>
+#include <stack>
 #include <tuple>
 #include <stdexcept>
 
-#include "expression_visitor.hpp"
 
 template <typename T>
 using ExpressionDefinition =
@@ -31,6 +33,7 @@ class EvaluationVisitor;
 template <typename T>
 class Reference {
 public:
+
     void add_expression(const std::string& ai_reference_name, const ParametersDefinition<T>& ai_parameters, PExpression<T>  ai_expression) {
         if(reference_name_.empty()) {
             reference_name_ = ai_reference_name;
@@ -58,23 +61,26 @@ public:
             memoized_index_.clear();
         }
     }
-	
+
     T Eval( const ParametersCall<T>& ai_parameters, ReferenceStack<T>& stack) {
-        EvaluationVisitor<T> evaluator(stack);
-        T result;
+//        if(ai_parameters.parameters_dict().empty()
+//          && std::get<0>(this->general_expr_).parameters_names().empty()) {
+//            // Evaluation of an expression might mutate the internal stack_ object
+//            // The following line ensure that the stack will be restored at the end of the function
+//            // or in case of an exception thanks to RAII.
+//            // The context guard might have a huge impact on performance.
+//            // Consider to move it closer to the reference parameters assignation as a future optimisation.
+//            typename ReferenceStack<T>::Guard guard(stack);
+//            return this->EvalImp(ai_parameters, stack);
+//        }
+//        else {
+//            return this->EvalImp(ai_parameters, stack);
+//        }
+        return this->EvalImp(ai_parameters, stack);
 
-        if(TryEvaluateIndexedExpression(ai_parameters, evaluator, result)) {
-            return result;
-        }
-        else if(TryEvaluateGeneralExpression(ai_parameters, evaluator, result)) {
-            return result;
-        }
-        else if(TryEvaluateSimpleExpression(ai_parameters, evaluator, result)) {
-            return result;
-        }
-
-        return result;
     }
+	
+
 
     T SafeRecursiveEval( const ParametersCall<T>& ai_parameters, ReferenceStack<T>& stack) {
         // if functionnal parameters are identical to the general expr
@@ -100,6 +106,7 @@ public:
                     }
                     else if(index_value < 0) {
                         evaluation = {};
+                        memoized_index_[index_value] = evaluation;
                     }
                     else if(!TryEvaluateIndexedExpression(ai_parameters, evaluator, evaluation)) {
                         ParametersCall<T> fwd_parameter(0,index_value,true);
@@ -112,6 +119,23 @@ public:
     }
 	
 private:
+    T EvalImp( const ParametersCall<T>& ai_parameters, ReferenceStack<T>& stack) {
+        EvaluationVisitor<T> evaluator(stack);
+        T result;
+
+        if(TryEvaluateIndexedExpression(ai_parameters, evaluator, result)) {
+            return result;
+        }
+        else if(TryEvaluateGeneralExpression(ai_parameters, evaluator, result)) {
+            return result;
+        }
+        else if(TryEvaluateSimpleExpression(ai_parameters, evaluator, result)) {
+            return result;
+        }
+
+        return result;
+    }
+
     bool TryEvaluateIndexedExpression(const ParametersCall<T>& ai_parameters, EvaluationVisitor<T>& evaluator, T& evaluation) {
         bool succeed = false;
         ReferenceStack<T>& stack = evaluator.stack();
@@ -153,6 +177,7 @@ private:
                 typename ReferenceStack<T>::Guard guard(stack);
                 stack.Set(gen_params_def.index_name(), ParametersDefinition<T>(), PExpression<T>(new ValExpression<T>(T(index))));
                 evaluation = gen_expr_def->accept(evaluator);
+                memoized_index_[index] = evaluation;
                 succeed = true;
             }
             else {
@@ -179,16 +204,19 @@ private:
                     }
                 }
                 gen_params_def.SetCallParameters(ai_parameters, evaluator);
-                stack.Set(gen_params_def.index_name(), ParametersDefinition<T>(), PExpression<T>(new ValExpression<T>(T(start_index))));
+
                 evaluation = start_evaluation;
                 using difference_type = decltype(numeric_interface<T>::abs(std::declval<T>()));
                 difference_type diff = numeric_interface<difference_type>::one();
-                while(diff > 1E-10) {
+                size_t iter_count = 0;
+                typename ReferenceStack<T>::Guard guard(stack);
+                while(diff > 1E-10 && iter_count < 30) {
                     start_index += gen_params_def.a();
                     stack.Set(gen_params_def.index_name(), ParametersDefinition<T>(), PExpression<T>(new ValExpression<T>(T(start_index))));
                     evaluation = gen_expr_def->accept(evaluator);
                     diff = numeric_interface<T>::abs(evaluation-start_evaluation);
                     start_evaluation = evaluation;
+                    ++iter_count;
                 }
                 memoized_index_[start_index] = evaluation;
                 succeed = true;
@@ -211,6 +239,33 @@ private:
         return succeed;
     }
 
+    friend struct GuardIndex;
+    struct GuardIndex {
+        GuardIndex(Reference<T>& reference, size_t index) :
+            reference_(reference)
+        {
+            reference_.index_stack_.push(index);
+        }
+
+        ~GuardIndex()
+        {
+            reference_.index_stack_.pop();
+        }
+
+    private:
+        Reference<T>& reference_;
+    };
+
+    bool TryEvalStackedIndex(size_t& index_val) {
+        if(!index_stack_.empty()) {
+            index_val = index_stack_.top();
+            return true;
+        }
+        else {
+            return false;
+        }
+    }
+
     typedef std::map<size_t, ExpressionDefinition<T>> Indexed_expr;
     typedef std::map<size_t, T> Indexed_values;
 
@@ -223,6 +278,8 @@ private:
     Indexed_expr                indexed_expr_;
     Indexed_values              memoized_index_;
     ExpressionDefinition<T> 	general_expr_;
+
+    std::stack<size_t> index_stack_;
 	
 };
 

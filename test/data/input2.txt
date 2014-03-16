@@ -1,2 +1,17 @@
 1+1
 2+3
+atan(z)_n=atan(z)_(n-1)+2^(2*n)*(!n)^2*z^(2*n+1)/(!(2*n+1)*(1+z^2)^(n+1))
+atan(1)*4
+exp(x)_n=exp(x)_(n-1)+x^n/!n
+ln(x)_n=ln(x)_(n-1)+2*(x-exp(x))/(x+exp(x))
+# ln(e) # Crash ??
+##moyenne arithmético-géométrique
+am(x,y)_0=(x+y)/2
+gm(x,y)_0=(x*y)^0.5
+am(x,y)_n=(am(x,y)_(n-1)+gm(x,y)_(n-1))/2
+gm(x,y)_n=(am(x,y)_(n-1)*gm(x,y)_(n-1))^0.5
+# gm(1,2)_10
+# gm(1,2) # Crash ??
+# am(1,2) # Crash ??
+
+

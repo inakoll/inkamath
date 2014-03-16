@@ -17,7 +17,7 @@ using namespace std;
 int main(void)
 {
     cout << "inkamath 0.8\n" << endl;
-	Interpreter<complex<double> > p;
+    Interpreter<complex<double>> p;
 	
 	for(;;)
     {
@@ -35,7 +35,7 @@ int main(void)
 
 void inkamath_test()
 {
-	Interpreter<complex<double> > p;
+    Interpreter<complex<double>> p;
     queue<string> s;
 	s.push("[pi, e]");
 	s.push("A=[a a; a a]");
