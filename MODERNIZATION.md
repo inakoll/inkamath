@@ -240,6 +240,17 @@ The redesign proper. Replaces C10 and C11 rather than deciding them.
 
 ---
 
+## Deferred
+
+Recorded so they are not re-litigated later, or drifted into by accident.
+
+- **Substitution and partial expansion.** `?b` showing `2+2` rather than
+  `a+a`: evaluating some references while leaving others symbolic. This is a
+  different feature from printing a definition back, not an option on it. It
+  needs its own syntax, a rule for how far expansion goes, and an answer for
+  what a partially evaluated sequence or matrix of expressions even means.
+  `?name` (phase 4, item 5) prints what was written and nothing more.
+
 ## Sequencing
 
 Phase 2 gates everything: no implementation work starts before the transcripts
