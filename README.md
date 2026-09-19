@@ -49,6 +49,36 @@ Comments and contributions are welcomed.
 0.5
 ```
   
+### Building ###
+
+Requires a C++20 compiler and CMake 3.20 or newer. No external dependencies:
+doctest is vendored under `third_party/` and is used by the tests only.
+
+```sh
+cmake -S . -B build -G Ninja
+cmake --build build
+./build/inkamath            # the REPL; 'q' quits
+ctest --test-dir build --output-on-failure
+```
+
+Useful options: `-DINKAMATH_WERROR=ON` (warnings are errors, as in CI) and
+`-DINKAMATH_SANITIZE=address,undefined`.
+
+Interpreter behaviour is pinned by golden transcripts in `test/data/*.ink`,
+which are literal sessions:
+
+```
+>> 1+1
+2
+```
+
+Regenerate them with `cmake --build build --target record_goldens` and read the
+diff — it is the record of what your change did.
+
+`MODERNIZATION.md` tracks the work in progress and the known defects; some of
+the recorded transcript outputs are wrong on purpose, so the bugs stay visible.
+`CLAUDE.md` has the working rules.
+
 ### Introduction ###
 
 Inkamath est un interpreteur d'expressions mathématiques simple et ludique.
