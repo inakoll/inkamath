@@ -1,6 +1,6 @@
 #include <doctest/doctest.h>
 
-#include "dynarraylike.hpp"
+#include "inkamath/dynarraylike.hpp"
 #include <iostream>
 #include <limits>
 #include <set>

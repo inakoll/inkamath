@@ -1,6 +1,6 @@
 #include <doctest/doctest.h>
 
-#include "mapstack.hpp"
+#include "inkamath/mapstack.hpp"
 #include <iostream>
 #include <limits>
 #include <set>

@@ -1,7 +1,7 @@
 #ifndef H_NTRAITS
 #define H_NTRAITS
 
-#include "best_promotion.hpp"
+#include "inkamath/best_promotion.hpp"
 
 #include <type_traits> // std::is_arithmetic, std::is_same
 #include <limits> // std::numeric_limits

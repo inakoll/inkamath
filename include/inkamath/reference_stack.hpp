@@ -2,9 +2,9 @@
 #define EXPRESSION_STACK_HPP
 
 #include <string>
-#include "mapstack.hpp"
-#include "reference.hpp"
-#include "pexpression.hpp"
+#include "inkamath/mapstack.hpp"
+#include "inkamath/reference.hpp"
+#include "inkamath/pexpression.hpp"
 
 
 template <typename T>

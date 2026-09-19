@@ -11,12 +11,12 @@
 #include <unordered_map>
 
 #include <memory>
-#include "pexpression.hpp"
+#include "inkamath/pexpression.hpp"
 
-#include "matrix.hpp"
-#include "numeric_interface.hpp"
-#include "expression_dict.hpp"
-#include "dynarraylike.hpp"
+#include "inkamath/matrix.hpp"
+#include "inkamath/numeric_interface.hpp"
+#include "inkamath/expression_dict.hpp"
+#include "inkamath/dynarraylike.hpp"
 
 template <typename T>
 class Expression;

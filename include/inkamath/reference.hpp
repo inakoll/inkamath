@@ -1,11 +1,11 @@
 #ifndef HPP_INKREFERENCE
 #define HPP_INKREFERENCE
 
-#include "expression.hpp"
-#include "pexpression.hpp"
-#include "parameters.hpp"
-#include "mapstack.hpp"
-#include "expression_visitor.hpp"
+#include "inkamath/expression.hpp"
+#include "inkamath/pexpression.hpp"
+#include "inkamath/parameters.hpp"
+#include "inkamath/mapstack.hpp"
+#include "inkamath/expression_visitor.hpp"
 
 #include <map>
 #include <stack>

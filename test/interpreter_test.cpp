@@ -2,7 +2,7 @@
 
 #include "transcript.hpp"
 
-#include "interpreter.hpp"
+#include "inkamath/interpreter.hpp"
 
 #include <complex>
 #include <cstdlib>

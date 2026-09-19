@@ -2,8 +2,8 @@
 #define PARAMETERS_HPP
 
 
-#include "expression_visitor.hpp"
-#include "expression.hpp"
+#include "inkamath/expression_visitor.hpp"
+#include "inkamath/expression.hpp"
 
 template <typename T>
 class ReferenceStack;

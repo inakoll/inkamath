@@ -2,7 +2,7 @@
 #define H_EXPR_VISITOR
 
 #include <memory>
-#include "pexpression.hpp"
+#include "inkamath/pexpression.hpp"
 #include <vector>
 #include <map>
 #include <tuple>
@@ -10,9 +10,9 @@
 #include <stdexcept>
 #include <algorithm>
 #include <functional>
-#include "dynarraylike.hpp"
-#include "expression_dict.hpp"
-#include "numeric_interface.hpp"
+#include "inkamath/dynarraylike.hpp"
+#include "inkamath/expression_dict.hpp"
+#include "inkamath/numeric_interface.hpp"
 
 template <typename T>
 class EqualExpression;

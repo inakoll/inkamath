@@ -37,10 +37,10 @@ endif()
 
 # --- the interpreter ---------------------------------------------------------
 add_library(inkamath INTERFACE)
-target_include_directories(inkamath INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
+target_include_directories(inkamath INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
 # --- the REPL ----------------------------------------------------------------
-add_executable(inkamath_cli main.cpp)
+add_executable(inkamath_cli src/main.cpp)
 target_link_libraries(inkamath_cli PRIVATE inkamath inkamath_warnings)
 set_target_properties(inkamath_cli PROPERTIES OUTPUT_NAME inkamath)
 

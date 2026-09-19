@@ -12,14 +12,14 @@
 #include <map>
 #include <stdexcept>
 
-#include "expression.hpp"
-#include "expression_visitor.hpp"
-#include "pexpression.hpp"
-#include "matrix.hpp"
-#include "token.hpp"
-#include "numeric_interface.hpp"
-#include "reference_stack.hpp"
-#include "dynarraylike.hpp"
+#include "inkamath/expression.hpp"
+#include "inkamath/expression_visitor.hpp"
+#include "inkamath/pexpression.hpp"
+#include "inkamath/matrix.hpp"
+#include "inkamath/token.hpp"
+#include "inkamath/numeric_interface.hpp"
+#include "inkamath/reference_stack.hpp"
+#include "inkamath/dynarraylike.hpp"
 
 template <typename T, typename U=Matrix<T> >
 class Interpreter

@@ -1,8 +1,8 @@
 #include <iostream>
 #include <iomanip>
 #include <complex>
-#include "interpreter.hpp"
-#include "numeric_interface.hpp"
+#include "inkamath/interpreter.hpp"
+#include "inkamath/numeric_interface.hpp"
 
 // Usage examples live in test/data/*.ink -- they are literal sessions.
 

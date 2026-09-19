@@ -12,7 +12,7 @@
 #include <cstring> // memcpy
 
 
-#include "numeric_interface.hpp"
+#include "inkamath/numeric_interface.hpp"
 
 template <typename T>
 class Matrix
