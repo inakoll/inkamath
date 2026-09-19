@@ -59,16 +59,16 @@ phase 0; the rest are open and are scheduled into the phases that follow.
 
 | # | Defect |
 |---|--------|
-| D1 | `template <typename T> using PExpression = std::shared_ptr<Expression<T>>` is written out identically in six headers. |
-| D2 | `sequence.hpp` is included by nothing. `pmath.hpp`/`pmath.cpp` define a `fact()` that nothing calls — superseded by `numeric_interface<T>::fact`, which is a verbatim copy of it. `main.cpp` carries a dead `inkamath_test()` function that duplicates the test data. |
-| D3 | `interpreter.hpp` includes `expression_visitor.hpp` *in the middle of the file*, after the class definition, to break a circular dependency. `make_matrix_array_from_vector` is called four lines before it is declared and resolves only through ADL at instantiation. |
+| D1 `[fixed]` | `template <typename T> using PExpression = std::shared_ptr<Expression<T>>` is written out identically in six headers. |
+| D2 `[fixed]` | `sequence.hpp` is included by nothing. `pmath.hpp`/`pmath.cpp` define a `fact()` that nothing calls — superseded by `numeric_interface<T>::fact`, which is a verbatim copy of it. `main.cpp` carries a dead `inkamath_test()` function that duplicates the test data. |
+| D3 `[fixed]` | `interpreter.hpp` includes `expression_visitor.hpp` *in the middle of the file*, after the class definition, to break a circular dependency. `make_matrix_array_from_vector` is called four lines before it is declared and resolves only through ADL at instantiation. |
 | D4 | `Matrix<T>` owns a raw `T*` with `new[]`/`delete[]`, copies it with `memcpy` (undefined for any `T` that is not trivially copyable), has no move constructor or move assignment, and exposes `Matrix(const T&)` as an implicit converting constructor. Its `std::vector` constructor can leak on exception and carries the author's own note: `// todo : reimplement this matrix class...`. |
 | D5 | `dynarray` is a hand-rolled container written while waiting for a `std::dynarray` that C++14 never shipped. `std::vector` covers every use here. |
 | D6 | `Expression` exposes `dynarray<PExpression<T>> children` as a public mutable member while subclasses also offer `m_e1()`/`m_e()` accessors over the same storage; the two views are not kept consistent by anything but convention. `Clone()` deep-copies subtrees that `shared_ptr` already lets us share. |
 | D7 | `ExpressionVisitor` has eleven pure virtual `visit` overloads plus two that default to returning `{}`. Adding a node type is a change to every visitor; forgetting one is silent. |
-| D8 | Reserved identifiers: `_EXPRESION_EPSILON` (misspelled, and unused) and `_NUMERIC_INTERFACE_PRECISION`. A leading underscore followed by a capital is reserved to the implementation. |
+| D8 `[fixed]` | Reserved identifiers: `_EXPRESION_EPSILON` (misspelled, and unused) and `_NUMERIC_INTERFACE_PRECISION`. A leading underscore followed by a capital is reserved to the implementation. |
 | D9 | `Interpreter<T, U = Matrix<T>>` templates on the token scalar `T`, but every AST node is instantiated on `U`. Consequently every literal in every expression is a heap-allocated 1×1 `Matrix<complex<double>>` — one `new T[1]` per number. Scalars and matrices are not separable. |
-| D10 | `getlines.hpp` reimplements line iteration on top of `std::iterator`, deprecated since C++17. Its only user was the Boost test file. |
+| D10 `[fixed]` | `getlines.hpp` reimplements line iteration on top of `std::iterator`, deprecated since C++17. Its only user was the Boost test file. |
 | D11 | Comments and commit history are in French, the README is half French and half English, and the public documentation describes behaviour (C5) that the code does not have. |
 
 ---
@@ -103,10 +103,10 @@ visible in `sequences.ink` and `errors.ink`. That is deliberate: a bug that is
 pinned by a test cannot regress unnoticed, and the diff when it is fixed is the
 proof that it was fixed.
 
-## Phase 1 — Clear the ground
+## Phase 1 — Clear the ground `[done]`
 
-No behaviour change. Every `.ink` file must come out byte-identical; that is
-the acceptance criterion for the whole phase.
+No behaviour change. Every `.ink` file came out byte-identical, which was the
+acceptance criterion for the whole phase.
 
 1. Delete `sequence.hpp`, `pmath.hpp`, `pmath.cpp`, and `inkamath_test()` from
    `main.cpp` (D2). `inkamath` becomes a header-only `INTERFACE` target.
