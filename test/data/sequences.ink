@@ -62,3 +62,17 @@ nan*nan
 >> sin(pi/6)
 0.5
 
+# A recurrence written the textbook way -- an initial value plus a general
+# term -- then asked for its limit (MODERNIZATION.md C12).
+>> s_0=1
+1
+
+>> s_n=s_(n-1)/2
+1
+
+>> s_20
+9.53674316e-07
+
+>> s
+9.31322575e-10
+

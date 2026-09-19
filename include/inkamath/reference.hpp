@@ -184,7 +184,7 @@ private:
                     if(!indexed_expr_.empty()) {
                         start_index = std::max(start_index, indexed_expr_.rbegin()->first);
                     }
-                    if(start_index == memoized_index_.rbegin()->first) {
+                    if(!memoized_index_.empty() && start_index == memoized_index_.rbegin()->first) {
                         start_evaluation = memoized_index_.rbegin()->second;
                     }
                     else {
