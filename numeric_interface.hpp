@@ -12,7 +12,7 @@
 #include <sstream> // std::ostringstream
 #include <iomanip> // std::setprecision
 
-#define _NUMERIC_INTERFACE_PRECISION 9
+inline constexpr int numeric_interface_precision = 9;
 
 template <typename T, bool>
 struct numeric_interface_imp;
@@ -41,7 +41,7 @@ struct numeric_interface_imp_types
 template <typename T, bool>
 struct numeric_interface_imp
 {
-	 static const int precision = _NUMERIC_INTERFACE_PRECISION;
+	 static const int precision = numeric_interface_precision;
      static T zero() {return T::zero();}
      static T one() {return T::one();}
      static int toInt(const T& a) {return T::toInt(a);}
@@ -63,7 +63,7 @@ struct numeric_interface_imp
 template <typename T>
 struct numeric_interface_imp<std::complex<T>,false>
 {
-	static const int precision = _NUMERIC_INTERFACE_PRECISION;
+	static const int precision = numeric_interface_precision;
     static std::complex<T> zero()
     {
         return std::complex<T>(numeric_interface<T>::zero(),
@@ -195,7 +195,7 @@ struct numeric_interface_imp_types<std::complex<T> >
 template <typename T>
 struct numeric_interface_imp<T,true>
 {
-	static const int precision = _NUMERIC_INTERFACE_PRECISION;
+	static const int precision = numeric_interface_precision;
     typedef typename best_promotion<T>::type best_type;
 
     static T zero() {return 0;}
@@ -286,7 +286,5 @@ parse(unsigned long& num, const char* begin, char* &end)
     num = (std::strtoul(begin,&end,10));
     return (end!=begin);
 }
-
-#undef _NUMERIC_INTERFACE_PRECISION
 
 #endif

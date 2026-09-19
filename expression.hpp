@@ -18,8 +18,6 @@
 #include "expression_dict.hpp"
 #include "dynarraylike.hpp"
 
-#define _EXPRESION_EPSILON 1E-10
-
 template <typename T>
 class Expression;
 
