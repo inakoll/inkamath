@@ -61,9 +61,10 @@ phase 0; the rest are open and are scheduled into the phases that follow.
 | C11 | **Lookup precedence is undocumented, and a simple definition cannot shadow a general term.** A reference holds three definitions at once — singular terms (`f_0=`), a general term (`f_n=`) and a simple value (`f=`) — and `Reference::EvalImp` tries them in that order. A bare name on a sequence therefore means *the limit of the general term*, which is exactly how `exp(1)` works. It also means that once `f_n` exists, `f=5` is unreachable: bare `f` keeps iterating the series. README §4.3 states only that a singular definition beats the general term; it says nothing about the simple case. Decide the intended precedence and write it down — C10's fix changes what `f=5` *prints*, not what `f` *means*. |
 | C12 `[fixed]` | **Asking a recurrence for its limit segfaults.** `reference.hpp:187` dereferences `memoized_index_.rbegin()` unguarded, but the enclosing condition at line 180 is `!memoized_index_.empty() \|\| !indexed_expr_.empty()` — so the body is entered with `memoized_index_` empty whenever only a singular term exists. `ReferenceStack::Eval` evaluates a *copy* of the `Reference`, so memoisation never survives and that map is in practice always empty on entry. Three lines reproduce it: `f_n=2*n`, `f_0=7`, `f`. This is the textbook way to write a recurrence — an initial value plus a general term — and asking for its limit kills the process. `exp(1)` escapes only because `exp` has no singular term. Distinct from C1: an invalid dereference, not a stack overflow. Fixed by guarding that dereference; `sequences.ink` gained the repro as a regression test. |
 | C6 | Parser errors print the raw token value through `std::complex`'s stream operator: `Missing operator ']' after '(2,0)'` where the user typed `2`. Error text leaks the interpreter's internal numeric type. |
-| C7 | **Failure is not expressible.** `Interpreter::Eval` wraps everything in `try`/`catch(...)`, writes the message to `std::cout`, and returns a default-constructed value. A caller cannot distinguish a successful `0` from a failure, cannot redirect the message, and cannot test error behaviour without capturing `std::cout` — which is exactly what the new test harness has to do. |
+| C7 `[fixed]` | **Failure is not expressible.** `Interpreter::Eval` wraps everything in `try`/`catch(...)`, writes the message to `std::cout`, and returns a default-constructed value. A caller cannot distinguish a successful `0` from a failure, cannot redirect the message, and cannot test error behaviour without capturing `std::cout` — which is exactly what the new test harness had to do. Fixed: `Eval` returns `std::variant<U, Diagnostic>`, the REPL formats at the edge, and `catch(...)` is gone. |
 | C8 | `Reference::TryEvaluateGeneralExpression` iterates a series until `diff > 1E-10 && iter_count < 30`, with both the epsilon and the cap hardcoded. It also computes `size_t index` from a subtraction of `int`s, which wraps for a negative result. |
 | C9 | `numeric_interface_imp<std::complex<T>, false>` provides no `sqrt`, yet its own `abs` calls `numeric_interface<T>::sqrt`. `Matrix<T>::sqrt` throws unconditionally. The numeric interface is only accidentally complete for the one type actually instantiated. |
+| C14 | **Four `catch` blocks discard errors inside a constructor.** `parameters.hpp:28, 38, 105, 115` catch `SubVisitor`/`ParametersVisitor` exceptions in the `ParametersDefinition` and `ParametersCall` constructors and `return`, leaving the object half-built — `parameters_names_`, `index_name_`, `a_` and `b_` never assigned. The errors never reach `Eval`, so the phase 3 error channel does not surface them; they are invisible by construction. A sibling of C13 rather than an instance of it: there the interpreter has nothing to report, here it has something and throws it away. The machinery is rewritten in phase 4, so fix it there rather than patching a constructor that is about to go. |
 | C13 | **Nothing ever fails, which is why everything else survived.** An unknown identifier evaluates to `0`. Surplus arguments are dropped. A missing parameter is looked up by name in the enclosing scope — `h(x)=x^2` with `x=5` in scope makes bare `h` evaluate to `25`, which is dynamic scoping arrived at by accident. A non-integer index is truncated. None of these reports anything. The interpreter always returns a number, so a typo and a correct series are indistinguishable from the outside; that is how a decade of defects stayed invisible. Root cause of the plausibility of C1, C2, C5, C10 and C11 alike. |
 
 ### Design and dead weight
@@ -155,10 +156,12 @@ is run on every push cannot drift.
 C13 first, because everything else is easier to see once the interpreter stops
 answering every question with a number.
 
-1. **An error channel** (C7). `Eval` returns a result *or* a diagnostic
-   instead of printing to `std::cout` and returning a default-constructed
-   value. The REPL prints at the edge, where it belongs; the test harness
-   stops hijacking `std::cout`.
+1. **An error channel** (C7) `[done]`. `Eval` returns `std::variant<U,
+   Diagnostic>` instead of printing to `std::cout` and returning a
+   default-constructed value. The REPL prints at the edge, where it belongs;
+   the test harness stopped hijacking `std::cout`. `std::expected` would be
+   the natural type and is C++23, so this becomes one mechanically if the
+   project ever moves.
 2. **Diagnostics carry a source position and the text the user typed** (C6),
    which means positions on tokens, which means the token rework: a
    `std::variant` payload, and `std::vector<Token>` with an index in place of
