@@ -111,22 +111,22 @@ public:
     : BinaryExpression<T>(e1,e2)
     {}
 
-    virtual PExpression<T> Clone() const
+    PExpression<T> Clone() const override
     {
         return std::make_shared<EqualExpression<T>>(
                                  this->m_e1()->Clone(),
                                  this->m_e2()->Clone());
     }
 
-    virtual std::string Name() const {
+    std::string Name() override {
         return BinaryExpression<T>::m_e1()->Name();
     }
 
-    virtual PExpression<T> accept(TransformationVisitor<T> &v) {
+    PExpression<T> accept(TransformationVisitor<T> &v) override {
         return v.visit(this);
     }
 
-    virtual T accept(FoldingVisitor<T> &v) {
+    T accept(FoldingVisitor<T> &v) override {
         return v.visit(this);
     }
 protected:
