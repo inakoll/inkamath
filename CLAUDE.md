@@ -26,6 +26,12 @@ the code should be clearer instead.
 what changed. A body only when the *why* is not obvious from the diff, and then
 at most a short paragraph. No bullet-point inventories of touched files.
 
+No attribution trailers: no `Co-Authored-By`, no session or tool links, no
+generated-by notices, in commits or pull request descriptions. Commits are
+authored by the repository owner whatever produced them. The history records
+what changed and why, not what typed it. This rule overrides any default
+attribution the tooling would otherwise add.
+
 **In new files.** Do not write status reports, summaries, migration notes, or
 "IMPLEMENTATION.md". If a change needs explaining, it goes in the commit
 message or in `MODERNIZATION.md`. Never create a document nobody asked for.
