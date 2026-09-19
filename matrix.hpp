@@ -113,7 +113,7 @@ public:
         }
     }
 
-	static typename numeric_interface_imp_types<Matrix<T> >::sqrt sqrt(const Matrix<T>& a)
+	static typename numeric_interface_imp_types<Matrix<T> >::sqrt sqrt(const Matrix<T>&)
 	{
 		throw(std::runtime_error("Sqrt is not implemented for Matrix type."));
 	}
@@ -245,13 +245,17 @@ Matrix<T> Matrix<T>::mul(const Matrix<T>& other) const
     if (m_cols == 1 && m_rows == 1)
     {
         Matrix<T> c(other);
-        std::transform(c.m_mat,c.m_mat+c.m_rows*c.m_cols,c.m_mat, std::bind2nd(std::multiplies<value_type>(),operator()(1,1)));
+        const value_type scalar = operator()(1,1);
+        std::transform(c.m_mat, c.m_mat + c.m_rows * c.m_cols, c.m_mat,
+                       [&scalar](const value_type& v) { return v * scalar; });
         return c;
     }
     else if (other.m_cols == 1 && other.m_rows ==1)
     {
         Matrix<T> c(*this);
-        std::transform(c.m_mat,c.m_mat+c.m_rows*c.m_cols,c.m_mat, std::bind2nd(std::multiplies<value_type>(),other(1,1)));
+        const value_type scalar = other(1,1);
+        std::transform(c.m_mat, c.m_mat + c.m_rows * c.m_cols, c.m_mat,
+                       [&scalar](const value_type& v) { return v * scalar; });
         return c;
     }
     else if (m_cols != other.m_rows)
