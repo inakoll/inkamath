@@ -435,11 +435,6 @@ PExpression<U>  Interpreter<T,U>::ParseSimpleExpr()
     return e;
 }
 
-void print(std::string s)
-{
-    std::cout << s;
-}
-
 template <typename T, typename U>
 PExpression<U> Interpreter<T,U>::ParseParameters()
 {

@@ -264,7 +264,7 @@ struct numeric_interface_imp<T,true>
 };
 
 template <>
-bool numeric_interface_imp<double,true>::
+inline bool numeric_interface_imp<double,true>::
 parse(double& num, const char* begin, char* &end)
 {
     num = (std::strtod(begin,&end));
@@ -272,7 +272,7 @@ parse(double& num, const char* begin, char* &end)
 }
 
 template <>
-bool numeric_interface_imp<long,true>::
+inline bool numeric_interface_imp<long,true>::
 parse(long& num, const char* begin, char* &end)
 {
     num = (std::strtol(begin,&end,10));
@@ -280,7 +280,7 @@ parse(long& num, const char* begin, char* &end)
 }
 
 template <>
-bool numeric_interface_imp<unsigned long,true>::
+inline bool numeric_interface_imp<unsigned long,true>::
 parse(unsigned long& num, const char* begin, char* &end)
 {
     num = (std::strtoul(begin,&end,10));
