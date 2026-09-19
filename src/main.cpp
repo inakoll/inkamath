@@ -1,6 +1,7 @@
 #include <iostream>
 #include <iomanip>
 #include <complex>
+#include <variant>
 #include "inkamath/interpreter.hpp"
 #include "inkamath/numeric_interface.hpp"
 
@@ -11,7 +12,8 @@ using namespace std;
 int main(void)
 {
     cout << "inkamath 0.8\n" << endl;
-    Interpreter<complex<double>> p;
+    using Interp = Interpreter<complex<double>>;
+    Interp p;
 	
 	for(;;)
     {
@@ -22,7 +24,16 @@ int main(void)
 
         if(s=="q") break; // quit interpreter
 
-        cout << p.Eval(s) << endl << endl;
+        Interp::Result result = p.Eval(s);
+        if (const Diagnostic* error = get_if<Diagnostic>(&result))
+        {
+            cout << "Error : " << error->message;
+        }
+        else
+        {
+            cout << get<Interp::matrix_type>(result);
+        }
+        cout << endl << endl;
     }
 	return 0;
 }

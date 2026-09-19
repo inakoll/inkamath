@@ -11,7 +11,9 @@
 #include <cctype> // isalpha
 #include <map>
 #include <stdexcept>
+#include <variant>
 
+#include "inkamath/diagnostic.hpp"
 #include "inkamath/expression.hpp"
 #include "inkamath/expression_visitor.hpp"
 #include "inkamath/pexpression.hpp"
@@ -31,7 +33,11 @@ public:
     typedef typename U::value_type value_type;
     typedef U matrix_type;
 
-    U Eval(const std::string& s);
+    // A value, or why there isn't one. std::expected is C++23; this becomes
+    // one mechanically if the project ever moves.
+    using Result = std::variant<U, Diagnostic>;
+
+    Result Eval(const std::string& s);
     void PrintTokens(void);
 
     void ResetInterpreter(void);
@@ -474,27 +480,25 @@ PExpression<U> Interpreter<T,U>::ParseSubExpr()
 
 
 template <typename T, typename U>
-U Interpreter<T,U>::Eval(const std::string& s)
+typename Interpreter<T,U>::Result Interpreter<T,U>::Eval(const std::string& s)
 {
-    U ret = U(); // relatively exception safe :o
+    Result result{U()};
     try
     {
         /* the following functions might throw some evaluation errors */
         Lexer(s);
         m_E = ParseAll();
         EvaluationVisitor<U> evaluator(stack_);
-        ret = m_E->accept(evaluator);
+        result = m_E->accept(evaluator);
     }
     catch (const std::exception& e)
     {
-        std::cout << "Error : " << e.what();
-    }
-    catch (...)
-    {
-        std::cout << "Unknown error" << std::endl;
+        // Deliberately not catch(...): an exception that is not std::exception
+        // is our bug, and laundering it into a diagnostic would hide it.
+        result = Diagnostic{e.what()};
     }
     ResetInterpreter(); // reset whatever happens and forgive the user
-    return ret;
+    return result;
 }
 
 template <typename T, typename U>

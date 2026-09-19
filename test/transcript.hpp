@@ -17,10 +17,12 @@
 // One interpreter instance runs a whole file, so definitions persist between
 // entries exactly as they do in a real session.
 
+#include "inkamath/diagnostic.hpp"
+
 #include <fstream>
-#include <iostream>
 #include <sstream>
 #include <string>
+#include <variant>
 #include <vector>
 
 namespace transcript {
@@ -100,24 +102,16 @@ inline std::string normalize(std::string s) {
     return s;
 }
 
-// Evaluates one expression, capturing both the result and anything the
-// interpreter writes to std::cout (it reports errors there rather than
-// returning them -- see MODERNIZATION.md, phase 2).
 template <typename Interpreter>
 std::string eval(Interpreter& interpreter, const std::string& expression) {
-    std::ostringstream captured;
-    std::streambuf*    saved = std::cout.rdbuf(captured.rdbuf());
-    std::string        result;
-    try {
-        std::ostringstream value;
-        value << interpreter.Eval(expression);
-        result = value.str();
-    } catch (...) {
-        std::cout.rdbuf(saved);
-        throw;
+    std::ostringstream out;
+    typename Interpreter::Result result = interpreter.Eval(expression);
+    if (const Diagnostic* error = std::get_if<Diagnostic>(&result)) {
+        out << "Error : " << error->message;
+    } else {
+        out << std::get<typename Interpreter::matrix_type>(result);
     }
-    std::cout.rdbuf(saved);
-    return normalize(rstrip(captured.str() + result));
+    return normalize(rstrip(out.str()));
 }
 
 }  // namespace transcript
