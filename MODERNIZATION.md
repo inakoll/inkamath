@@ -50,7 +50,8 @@ phase 0; the rest are open and are scheduled into the phases that follow.
 | C3 | `ReferenceStack::WrapRecursiveExpression` never increments its index `i` when filling `recursive_placeholders`, so every slot after the first stays null. `EvaluationVisitor::visit(RecursiveExpression*)` then `dynamic_cast`s each child and silently ignores the nulls — the `else` branch is an empty block with a `// TODO` in it. Recursive expressions with more than one self-reference are quietly mis-evaluated. |
 | C4 | `ParametersCall`'s constructor contains `return; subexpr_ = subexpr;` — the assignment is unreachable. `subexpr_` is therefore never set, and the `if(subexpr_)` branch in `TryEvalIndex` is dead code. |
 | C5 | **`0^0` is NaN, so `exp(0)` is NaN.** Complex `pow` is specified as `exp(b*log(a))`, and `log(0)` is `-inf`, so `std::pow(complex(0,0), complex(0,0))` is NaN — where real `std::pow(0.0, 0.0)` is `1` by IEEE 754. Every series whose first term is `x^0` is poisoned at `x == 0`. `numeric_interface_imp<std::complex<T>>` already declares a `pow(complex, int)` overload that returns `1` for this; nothing ever calls it. The sign of the NaN is unspecified, so GCC and Clang disagree — caught by the cross-compiler CI. The `nan*nan` recorded against three definitions in `sequences.ink` is this bug, not a rule about what a definition returns (that is C10). |
-| C10 | **A definition's value is undocumented and disagrees with the README.** `EvaluationVisitor::visit(EqualExpression*)` binds the name and then returns *the left-hand side evaluated after binding*, not the right-hand side: `f_0=1` followed by `f_n=5*n` prints `1`, the singular `f_0`, not the `0` the body would give. README §4.3 shows `0` for parameterised and general-term definitions, which is merely what that rule produces when the parameters happen to be undefined. It also means defining a series runs the convergence loop immediately with every parameter defaulted to zero. |
+| C10 | **A definition's value is undocumented and disagrees with the README.** `EvaluationVisitor::visit(EqualExpression*)` binds the name and then returns *the left-hand side evaluated after binding*, not the right-hand side. The two are not interchangeable: the left-hand side is a **lookup**, so it can resolve to a definition other than the one just installed. `f_n=2*n` followed by `f=5` prints `60`, not `5` — lookup order is indexed, then general, then simple, so the pre-existing general term wins and its convergence loop runs to the 30-iteration cap. README §4.3 shows `0` for parameterised and general-term definitions, which is merely what the rule produces when the parameters happen to be undefined. Defining a series also runs the convergence loop immediately, with every parameter defaulted to zero. |
+| C11 | **Lookup precedence is undocumented, and a simple definition cannot shadow a general term.** `Reference::EvalImp` tries indexed, then general, then simple. Once `f_n` exists, `f=5` is unreachable: bare `f` keeps evaluating the series. README §4.3 states only that a singular definition beats the general term; it says nothing about the simple case. Decide the intended precedence and write it down — C10's fix changes what `f=5` *prints*, not what `f` *means*. |
 | C6 | Parser errors print the raw token value through `std::complex`'s stream operator: `Missing operator ']' after '(2,0)'` where the user typed `2`. Error text leaks the interpreter's internal numeric type. |
 | C7 | **Failure is not expressible.** `Interpreter::Eval` wraps everything in `try`/`catch(...)`, writes the message to `std::cout`, and returns a default-constructed value. A caller cannot distinguish a successful `0` from a failure, cannot redirect the message, and cannot test error behaviour without capturing `std::cout` — which is exactly what the new test harness has to do. |
 | C8 | `Reference::TryEvaluateGeneralExpression` iterates a series until `diff > 1E-10 && iter_count < 30`, with both the epsilon and the cap hardcoded. It also computes `size_t index` from a subtraction of `int`s, which wraps for a negative result. |
@@ -144,14 +145,26 @@ commits say exactly how.
    every series whose first term is `x^0`, moves exactly the three recorded
    `nan*nan` lines, and leaves `exp(1)-e` unchanged. A correctness bug, not a
    cosmetic one — do this before item 5, which it partly obscures.
-5. **Decide what a definition evaluates to** (C10). Recommended: evaluate the
-   left-hand side only when it contains no binding occurrence — no parameter
-   name, no general index name. `a=1` stays `1` and `f_0=1+2` stays `3`
-   (README §4.1, §4.2); `f(x,y)=...`, `u_n=...` and `exp(x)_n=...` all become
-   `0` by rule rather than by accident (README §4.3). Code and documentation
-   then agree on every example in both. It also stops the interpreter
-   evaluating a freshly typed recursive definition with zeroed parameters,
-   which is one of the routes into C1.
+5. **Decide what a definition evaluates to** (C10). Two independent choices:
+   *when* to evaluate at all, and *what* to evaluate.
+
+   Recommended: **the value of an assignment is the value of its right-hand
+   side, evaluated only when the left-hand side binds no names.** Otherwise
+   the assignment evaluates to `0`.
+
+   - Not evaluating a binding left-hand side gives `f(x,y)=...`, `u_n=...`
+     and `exp(x)_n=...` the `0` that README §4.3 documents, by rule instead
+     of by accident, and stops the interpreter running a freshly typed
+     recursive definition with zeroed parameters — one of the routes into C1.
+   - Taking the right-hand side rather than the left-hand side lookup is one
+     sentence to specify, costs no reference resolution, and cannot be
+     hijacked by a definition of higher precedence. `f_n=2*n` then `f=5`
+     prints `5`, not `60`.
+   - Unchanged: `a=1` -> `1`, `b=a+a` -> `2`, `g=1+2` -> `3`, `x=5` -> `5`,
+     `f_0=1+2` -> `3`, `u_0=2` -> `2` (README §4.1, §4.2). In every recorded
+     transcript the installed definition is also the one lookup finds, so the
+     left/right choice moves no golden on its own; `f_n=2*n; f=5` is not
+     covered today and goes in as a new test with the change.
 
 ## Phase 3 — The front end
 
