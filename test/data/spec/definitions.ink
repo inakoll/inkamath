@@ -54,6 +54,21 @@ g = 1+2
 >> g(7)
 error: g takes no arguments
 
+# A name can be printed back later. '?' shows what a name is bound to, as
+# written, without evaluating it. This is what makes the core idea visible:
+# 'b' is the expression a+a, not the number it last evaluated to.
+>> ?f
+f(x, y) = x^2+y
+
+>> ?b
+b = a+a
+
+>> b
+4
+
+>> ?undefined
+error: undefined is not defined
+
 # A later definition replaces the earlier one outright.
 >> g = 10
 g = 10

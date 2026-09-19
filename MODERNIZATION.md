@@ -198,7 +198,13 @@ The redesign proper. Replaces C10 and C11 rather than deciding them.
    no convergence loop triggered by typing a definition.
 4. **Parameters are lexically scoped** (C13). A missing argument is a
    diagnostic, not a search of the enclosing scope for a name that matches.
-5. C3 and C4 are one-line bugs in machinery this phase rewrites; they go away
+5. **`?name` prints a definition back**, as written, without evaluating it.
+   On a sequence it prints every clause, so the whole definition is visible
+   at once — which the three parallel slots made impossible. Together with
+   item 3 this is what makes the core idea legible: after `b = a+a` and
+   `a = 2`, `?b` is `b = a+a` while `b` is `4`. `?` is currently an
+   unrecognised character, so the syntax is free.
+6. C3 and C4 are one-line bugs in machinery this phase rewrites; they go away
    with it rather than being patched first.
 
 ## Phase 5 — Value types and the core

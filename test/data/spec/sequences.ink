@@ -36,6 +36,20 @@ u_3 = 100
 >> u_4
 8
 
+# '?' shows every clause of a definition. A sequence is one definition, so
+# this is the whole of it -- the thing three parallel slots made impossible
+# to see.
+>> ?s
+s_0 = 1
+s_n = s_(n-1)/2
+
+>> ?u
+u_n = 2*n
+u_3 = 100
+
+>> ?u_3
+u_3 = 100
+
 # A bare name never means "the limit". Asking for a sequence without an index
 # is an error, because there is no single value to give.
 >> s
