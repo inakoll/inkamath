@@ -10,8 +10,19 @@ it and fixes the defects the scaffolding was hiding.
 
 Target: **C++20**, standard library only, tested and CI-verified at every step.
 
-Guiding constraint: the project's value is its size. No phase may make it
-larger without removing at least as much. `CLAUDE.md` has the working rules.
+Two constraints govern every phase:
+
+- **Size.** The project's value is that it is small. No phase may make it
+  larger without removing at least as much.
+- **Recognisability.** The author must still recognise this as his code. We
+  refactor heavily, but we do not replace the design with a different one.
+  The ideas that are *his* stay: references naming expressions rather than
+  values, lazy re-evaluation, matrices of expressions that expand to the size
+  of what their cells evaluate to, a scoped stack of definitions, and an
+  explicit visitor over an expression tree. What goes is the scaffolding
+  around them.
+
+`CLAUDE.md` has the working rules.
 
 ---
 
@@ -160,11 +171,14 @@ commits say exactly how.
 
 1. Make `Expression::children` private with a narrow accessor, and drop the
    redundant `m_e1()`/`m_e()` views or express them in terms of it (D6).
-2. Collapse the visitor interface (D7). Either a default implementation that
-   recurses over `children`, so a visitor overrides only what it cares about,
-   or `std::variant` over node types with `std::visit` — the latter removes the
-   `accept`/`visit` double dispatch and the `dynamic_cast` in
-   `visit(RecursiveExpression*)` entirely. Prototype both before committing.
+2. Collapse the visitor interface (D7) by giving `ExpressionVisitor` a default
+   implementation that recurses over `children`, so a visitor overrides only
+   the nodes it cares about. The `std::variant` + `std::visit` alternative
+   would delete the `accept`/`visit` double dispatch outright, and it is the
+   more modern design — but the double dispatch is a deliberate choice the
+   author documented in `expression_visitor.hpp`, and replacing it would make
+   the core unrecognisable. Ruled out on the recognisability constraint, not
+   on the merits.
 3. Fix C3 and C4 — both are one-line bugs, but both need a test that would have
    caught them, and the second needs the dead branch's intent recovered first.
 4. Revisit the series convergence loop (C8): epsilon and iteration cap become
