@@ -56,6 +56,9 @@ class RecursiveExpression;
 template <typename T>
 class ParametersCall;
 
+template <typename T>
+class ParametersDefinition;
+
 template <typename T, typename ReturnType>
 class ExpressionVisitor {
 public:

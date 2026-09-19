@@ -3,15 +3,9 @@
 
 #include <string>
 #include "mapstack.hpp"
+#include "reference.hpp"
 #include "pexpression.hpp"
 
-template <typename T>
-class ParametersDefinition;
-
-template <typename T>
-class ParametersCall;
-
-#include "reference.hpp"
 
 template <typename T>
 class ReferenceStack {

@@ -13,6 +13,7 @@
 #include <stdexcept>
 
 #include "expression.hpp"
+#include "expression_visitor.hpp"
 #include "pexpression.hpp"
 #include "matrix.hpp"
 #include "token.hpp"
@@ -308,6 +309,11 @@ PExpression<U> Interpreter<T,U>::ParsePowExpr()
     return e;
 }
 
+template <typename T>
+dynarray<PExpression<T>> make_matrix_array_from_vector(size_t n, size_t m,
+                                                       std::vector<PExpression<T>>& mat,
+                                                       std::vector<size_t>& size);
+
 template <typename T, typename U>
 PExpression<U> Interpreter<T,U>::ParseMatrix()
 {
@@ -466,7 +472,6 @@ PExpression<U> Interpreter<T,U>::ParseSubExpr()
     return e;
 }
 
-#include "expression_visitor.hpp"
 
 template <typename T, typename U>
 U Interpreter<T,U>::Eval(const std::string& s)
