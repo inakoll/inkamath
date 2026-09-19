@@ -49,7 +49,8 @@ phase 0; the rest are open and are scheduled into the phases that follow.
 | C2 | **Identifiers cannot start with `i`.** `Interpreter::Lexer` routes `'i'` to `Number_Lexer` alongside the digits, so `ii=3` fails with `Syntax error`. Any name beginning with `i` is unusable, and `i` itself can never be shadowed. |
 | C3 | `ReferenceStack::WrapRecursiveExpression` never increments its index `i` when filling `recursive_placeholders`, so every slot after the first stays null. `EvaluationVisitor::visit(RecursiveExpression*)` then `dynamic_cast`s each child and silently ignores the nulls — the `else` branch is an empty block with a `// TODO` in it. Recursive expressions with more than one self-reference are quietly mis-evaluated. |
 | C4 | `ParametersCall`'s constructor contains `return; subexpr_ = subexpr;` — the assignment is unreachable. `subexpr_` is therefore never set, and the `if(subexpr_)` branch in `TryEvalIndex` is dead code. |
-| C5 | **Definitions evaluate to NaN, not `0`.** `README.md` §4.3 documents `exp(x)_n=...` printing `0`; it prints `nan*nan`. The sign of that NaN is unspecified, so GCC and Clang disagree — caught immediately by the new cross-compiler CI. Simple definitions (`f(x,y)=x^2+y`) correctly yield `0`; only recursive and series definitions are affected. |
+| C5 | **`0^0` is NaN, so `exp(0)` is NaN.** Complex `pow` is specified as `exp(b*log(a))`, and `log(0)` is `-inf`, so `std::pow(complex(0,0), complex(0,0))` is NaN — where real `std::pow(0.0, 0.0)` is `1` by IEEE 754. Every series whose first term is `x^0` is poisoned at `x == 0`. `numeric_interface_imp<std::complex<T>>` already declares a `pow(complex, int)` overload that returns `1` for this; nothing ever calls it. The sign of the NaN is unspecified, so GCC and Clang disagree — caught by the cross-compiler CI. The `nan*nan` recorded against three definitions in `sequences.ink` is this bug, not a rule about what a definition returns (that is C10). |
+| C10 | **A definition's value is undocumented and disagrees with the README.** `EvaluationVisitor::visit(EqualExpression*)` binds the name and then returns *the left-hand side evaluated after binding*, not the right-hand side: `f_0=1` followed by `f_n=5*n` prints `1`, the singular `f_0`, not the `0` the body would give. README §4.3 shows `0` for parameterised and general-term definitions, which is merely what that rule produces when the parameters happen to be undefined. It also means defining a series runs the convergence loop immediately with every parameter defaulted to zero. |
 | C6 | Parser errors print the raw token value through `std::complex`'s stream operator: `Missing operator ']' after '(2,0)'` where the user typed `2`. Error text leaks the interpreter's internal numeric type. |
 | C7 | **Failure is not expressible.** `Interpreter::Eval` wraps everything in `try`/`catch(...)`, writes the message to `std::cout`, and returns a default-constructed value. A caller cannot distinguish a successful `0` from a failure, cannot redirect the message, and cannot test error behaviour without capturing `std::cout` — which is exactly what the new test harness has to do. |
 | C8 | `Reference::TryEvaluateGeneralExpression` iterates a series until `diff > 1E-10 && iter_count < 30`, with both the epsilon and the cap hardcoded. It also computes `size_t index` from a subtraction of `int`s, which wraps for a negative result. |
@@ -138,10 +139,19 @@ commits say exactly how.
    where it belongs. The test harness stops having to hijack `std::cout`.
 3. **Diagnostics carry a source position and the text the user typed**, not a
    stringified `std::complex` (C6).
-4. **Definitions return the documented value** (C5), after deciding what that
-   value should be — `README.md` says `0`, which is defensible for a statement
-   that binds a name, but so is returning the first evaluated term. Whichever
-   we choose, the README and the goldens end up agreeing.
+4. **`0^0`** (C5). Route an integral exponent to the `pow(complex, int)`
+   overload that already exists. Verified: fixes `0^0`, `exp(0)`, `cos(0)` and
+   every series whose first term is `x^0`, moves exactly the three recorded
+   `nan*nan` lines, and leaves `exp(1)-e` unchanged. A correctness bug, not a
+   cosmetic one — do this before item 5, which it partly obscures.
+5. **Decide what a definition evaluates to** (C10). Recommended: evaluate the
+   left-hand side only when it contains no binding occurrence — no parameter
+   name, no general index name. `a=1` stays `1` and `f_0=1+2` stays `3`
+   (README §4.1, §4.2); `f(x,y)=...`, `u_n=...` and `exp(x)_n=...` all become
+   `0` by rule rather than by accident (README §4.3). Code and documentation
+   then agree on every example in both. It also stops the interpreter
+   evaluating a freshly typed recursive definition with zeroed parameters,
+   which is one of the routes into C1.
 
 ## Phase 3 — The front end
 

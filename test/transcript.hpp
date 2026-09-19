@@ -88,10 +88,10 @@ inline std::string render(const std::vector<Item>& items) {
     return out.str();
 }
 
-// Definitions currently evaluate to NaN instead of the documented 0 (see
-// MODERNIZATION.md, phase 2). The sign of that NaN is unspecified and differs
+// Complex pow is NaN at 0^0, which poisons any series whose first term is x^0
+// (MODERNIZATION.md, C5). The sign of that NaN is unspecified and differs
 // between GCC and Clang, so it is normalised here to keep the goldens
-// portable. Delete this once definitions stop producing NaN.
+// portable. Delete this once C5 is fixed.
 inline std::string normalize(std::string s) {
     for (std::string::size_type i = s.find("-nan"); i != std::string::npos;
          i                        = s.find("-nan", i + 3)) {
