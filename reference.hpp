@@ -2,19 +2,15 @@
 #define HPP_INKREFERENCE
 
 #include "expression.hpp"
+#include "pexpression.hpp"
 #include "parameters.hpp"
 #include "mapstack.hpp"
 #include "expression_visitor.hpp"
-
-template <typename T>
-using PExpression = std::shared_ptr<Expression<T>>;
-
 
 #include <map>
 #include <stack>
 #include <tuple>
 #include <stdexcept>
-
 
 template <typename T>
 using ExpressionDefinition =
@@ -22,7 +18,6 @@ using ExpressionDefinition =
             ParametersDefinition<T>,
             PExpression<T>
         >;
-
 
 template <typename T>
 class ReferenceStack;
@@ -80,7 +75,6 @@ public:
 
     }
 	
-
 
     T SafeRecursiveEval( const ParametersCall<T>& ai_parameters, ReferenceStack<T>& stack) {
         // if functionnal parameters are identical to the general expr

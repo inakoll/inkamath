@@ -11,33 +11,23 @@
 #include <unordered_map>
 
 #include <memory>
+#include "pexpression.hpp"
 
 #include "matrix.hpp"
 #include "numeric_interface.hpp"
 #include "expression_dict.hpp"
 #include "dynarraylike.hpp"
 
-
 #define _EXPRESION_EPSILON 1E-10
-
 
 template <typename T>
 class Expression;
-
-template <typename T>
-using PExpression = std::shared_ptr<Expression<T>>;
 
 template <typename T>
 class FoldingVisitor;
 
 template <typename T>
 class TransformationVisitor;
-
-
-
-
-
-
 
 template <typename T>
 class Expression : public std::enable_shared_from_this<Expression<T>>
@@ -130,7 +120,6 @@ public:
     }
 protected:
 };
-
 
 template <typename T>
 class AddExpression : public BinaryExpression<T>
@@ -348,7 +337,6 @@ public:
 
     virtual T accept(FoldingVisitor<T>& v) {return v.visit(this);}
     virtual PExpression<T> accept(TransformationVisitor<T>& v)  {return v.visit(this);}
-
 
 protected:
     PExpression<T> expr_;

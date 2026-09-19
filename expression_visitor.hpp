@@ -2,6 +2,7 @@
 #define H_EXPR_VISITOR
 
 #include <memory>
+#include "pexpression.hpp"
 #include <vector>
 #include <map>
 #include <tuple>
@@ -12,12 +13,6 @@
 #include "dynarraylike.hpp"
 #include "expression_dict.hpp"
 #include "numeric_interface.hpp"
-
-template <typename T>
-class Expression;
-
-template <typename T>
-using PExpression = std::shared_ptr<Expression<T>>;
 
 template <typename T>
 class EqualExpression;
@@ -123,10 +118,6 @@ class FoldingVisitor : public ExpressionVisitor<T, T> {
 template <typename T>
 class StatefulVisitor : public TransformationVisitor<T> {
 };
-
-
-
-
 
 template <typename T>
 class ParametersVisitor : public StatefulVisitor<T> {
@@ -609,10 +600,8 @@ public:
         return expr->recursive_expr()->accept(*this);
     }
 
-
 private:
     ReferenceStack<T>& stack_;
 };
-
 
 #endif // H_EXPR_VISITOR

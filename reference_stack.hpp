@@ -3,12 +3,7 @@
 
 #include <string>
 #include "mapstack.hpp"
-
-template <typename T>
-class Expression;
-
-template <typename T>
-using PExpression = std::shared_ptr<Expression<T>>;
+#include "pexpression.hpp"
 
 template <typename T>
 class ParametersDefinition;
@@ -42,7 +37,6 @@ public:
         reference.add_expression(ai_reference_name, ai_parameters, expr);
         stack_.Set(ai_reference_name, reference);
     }
-
 
     T Eval(const std::string& ai_reference_name, const ParametersCall<T>& ai_parameters)  {
         // Evaluation of an expression might mutate the internal stack_ object

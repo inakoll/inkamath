@@ -13,14 +13,12 @@
 #include <stdexcept>
 
 #include "expression.hpp"
+#include "pexpression.hpp"
 #include "matrix.hpp"
 #include "token.hpp"
 #include "numeric_interface.hpp"
 #include "reference_stack.hpp"
 #include "dynarraylike.hpp"
-
-template <typename T>
-using PExpression = std::shared_ptr<Expression<T>>;
 
 template <typename T, typename U=Matrix<T> >
 class Interpreter
@@ -194,8 +192,6 @@ void Interpreter<T,U>::Reference_Lexer(const std::string &s, size_t& i)
     }
 
 }
-
-
 
 template <typename T, typename U>
 PExpression<U> Interpreter<T,U>::ParseAll()
@@ -507,6 +503,5 @@ void Interpreter<T,U>::PrintTokens(void)
     }
     std::cout << std::endl;
 }
-
 
 #endif
