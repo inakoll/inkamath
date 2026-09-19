@@ -14,13 +14,20 @@ Two constraints govern every phase:
 
 - **Size.** The project's value is that it is small. No phase may make it
   larger without removing at least as much.
-- **Recognisability.** The author must still recognise this as his code. We
-  refactor heavily, but we do not replace the design with a different one.
-  The ideas that are *his* stay: references naming expressions rather than
-  values, lazy re-evaluation, matrices of expressions that expand to the size
-  of what their cells evaluate to, a scoped stack of definitions, and an
-  explicit visitor over an expression tree. What goes is the scaffolding
-  around them.
+- **Recognisability.** The author must still recognise this as his project.
+  Three ideas are his and are not up for renegotiation: names bind
+  *expressions* rather than values and are re-evaluated lazily; matrices of
+  expressions expand to the size of what their cells evaluate to; sequences
+  are written as `f_0 = ...` and `f_n = f_(n-1) + ...`, the way mathematics
+  writes a recurrence.
+
+  This constraint used to cover the *semantics* as well. It no longer does.
+  The author, reviewing the defect list below, judged the surrounding
+  semantics broken — multiple bindings per identifier, implicit convergence,
+  and left-hand-side evaluation — and asked for them to be redesigned rather
+  than patched. Recognisability now attaches to the three ideas above and to
+  the syntax that expresses them, not to the rules the 2014 interpreter
+  happened to implement.
 
 `CLAUDE.md` has the working rules.
 
@@ -57,6 +64,7 @@ phase 0; the rest are open and are scheduled into the phases that follow.
 | C7 | **Failure is not expressible.** `Interpreter::Eval` wraps everything in `try`/`catch(...)`, writes the message to `std::cout`, and returns a default-constructed value. A caller cannot distinguish a successful `0` from a failure, cannot redirect the message, and cannot test error behaviour without capturing `std::cout` — which is exactly what the new test harness has to do. |
 | C8 | `Reference::TryEvaluateGeneralExpression` iterates a series until `diff > 1E-10 && iter_count < 30`, with both the epsilon and the cap hardcoded. It also computes `size_t index` from a subtraction of `int`s, which wraps for a negative result. |
 | C9 | `numeric_interface_imp<std::complex<T>, false>` provides no `sqrt`, yet its own `abs` calls `numeric_interface<T>::sqrt`. `Matrix<T>::sqrt` throws unconditionally. The numeric interface is only accidentally complete for the one type actually instantiated. |
+| C13 | **Nothing ever fails, which is why everything else survived.** An unknown identifier evaluates to `0`. Surplus arguments are dropped. A missing parameter is looked up by name in the enclosing scope — `h(x)=x^2` with `x=5` in scope makes bare `h` evaluate to `25`, which is dynamic scoping arrived at by accident. A non-integer index is truncated. None of these reports anything. The interpreter always returns a number, so a typo and a correct series are indistinguishable from the outside; that is how a decade of defects stayed invisible. Root cause of the plausibility of C1, C2, C5, C10 and C11 alike. |
 
 ### Design and dead weight
 
@@ -125,89 +133,94 @@ acceptance criterion for the whole phase.
    its own commit, containing nothing but the moves.
 7. Delete `getlines.hpp` (D10); nothing uses it any more.
 
-## Phase 2 — Make failure expressible
+## Phase 2 — Write the language down `[in progress]`
 
-The first phase that deliberately changes behaviour. Goldens move, and the
-commits say exactly how.
+The redesign is specified as transcripts before it is implemented, in
+`test/data/spec/*.ink`. They use the phase 0 harness, so the specification is
+executable: running them prints a diff between the language we have and the
+language we want. They are registered under the `spec` doctest suite and
+marked `may_fail`, so they report without gating CI, and `record_goldens`
+never rewrites them — recording a specification from current behaviour would
+defeat its purpose.
 
-1. **Evaluation budget** (C1). A per-`Eval` limit on recursion depth and total
-   steps, threaded through the evaluator, reported as a normal error. This is
-   the difference between "the interpreter rejects your input" and "the process
-   dies", and it is what lets the AGM example from the project's own test data
-   go back into the suite.
-2. **An error channel** (C7). `Eval` returns a result *or* a diagnostic —
-   `std::expected<Matrix<...>, Diagnostic>` — instead of printing and returning
-   zero. The REPL keeps printing to `std::cout`; it just does it at the edge,
-   where it belongs. The test harness stops having to hijack `std::cout`.
-3. **Diagnostics carry a source position and the text the user typed**, not a
-   stringified `std::complex` (C6).
-4. **`0^0`** (C5). Route an integral exponent to the `pow(complex, int)`
-   overload that already exists. Verified: fixes `0^0`, `exp(0)`, `cos(0)` and
-   every series whose first term is `x^0`, moves exactly the three recorded
-   `nan*nan` lines, and leaves `exp(1)-e` unchanged. A correctness bug, not a
-   cosmetic one — do this before item 5, which it partly obscures.
-5. **Decide what a definition evaluates to** (C10). Two independent choices:
-   *when* to evaluate at all, and *what* to evaluate.
+As each part of the design lands, its entries move from `test/data/spec/` into
+`test/data/` and become ordinary goldens.
 
-   Recommended: **the value of an assignment is the value of its right-hand
-   side, evaluated only when the left-hand side binds no names.** Otherwise
-   the assignment evaluates to `0`.
+This ordering is deliberate. The README and the code disagree today (C5, C10,
+C11) because the prose was written once and then drifted. A specification that
+is run on every push cannot drift.
 
-   - Not evaluating a binding left-hand side gives `f(x,y)=...`, `u_n=...`
-     and `exp(x)_n=...` the `0` that README §4.3 documents, by rule instead
-     of by accident, and stops the interpreter running a freshly typed
-     recursive definition with zeroed parameters — one of the routes into C1.
-   - Taking the right-hand side rather than the left-hand side lookup is one
-     sentence to specify, costs no reference resolution, and cannot be
-     hijacked by a definition of higher precedence. `f_n=2*n` then `f=5`
-     prints `5`, not `60`.
-   - Unchanged: `a=1` -> `1`, `b=a+a` -> `2`, `g=1+2` -> `3`, `x=5` -> `5`,
-     `f_0=1+2` -> `3`, `u_0=2` -> `2` (README §4.1, §4.2). In every recorded
-     transcript the installed definition is also the one lookup finds, so the
-     left/right choice moves no golden on its own; `f_n=2*n; f=5` is not
-     covered today and goes in as a new test with the change.
+## Phase 3 — Failure exists
 
-## Phase 3 — The front end
+C13 first, because everything else is easier to see once the interpreter stops
+answering every question with a number.
 
-1. Fix the `i` lexing rule (C2): `i` is a numeric literal only when it is not
-   part of a longer identifier.
-2. Give `Token` a `std::variant` payload and a `Print` that renders what the
-   user wrote.
-3. Positions on tokens, carried into diagnostics.
-4. Replace `std::list<Token>` + a member iterator with a `std::vector<Token>`
-   and an index — the parser's backtracking (`m_i = m_s`) becomes obvious
+1. **An error channel** (C7). `Eval` returns a result *or* a diagnostic
+   instead of printing to `std::cout` and returning a default-constructed
+   value. The REPL prints at the edge, where it belongs; the test harness
+   stops hijacking `std::cout`.
+2. **Diagnostics carry a source position and the text the user typed** (C6),
+   which means positions on tokens, which means the token rework: a
+   `std::variant` payload, and `std::vector<Token>` with an index in place of
+   `std::list` with a member iterator, so the parser's backtracking is visible
    rather than incidental.
+3. **Unknown name, arity mismatch, non-integer index become diagnostics**
+   (C13). This is the change that will move the most goldens.
+4. **Evaluation budget** (C1). A per-`Eval` limit on recursion depth and total
+   steps, reported as a diagnostic. This is the difference between "the
+   interpreter rejects your input" and "the process dies", and it lets the AGM
+   example from the project's own test data back into the suite.
+5. **Fix the `i` lexing rule** (C2): `i` is a literal only when it is not part
+   of a longer identifier.
+6. **`0^0`** (C5). Route an integral exponent to the `pow(complex, int)`
+   overload that already exists. Verified in isolation: fixes `0^0`, `exp(0)`
+   and `cos(0)`, moves exactly the three recorded `nan*nan` lines, and leaves
+   `exp(1)-e` unchanged.
 
-## Phase 4 — Value types
+## Phase 4 — The definition model
+
+The redesign proper. Replaces C10 and C11 rather than deciding them.
+
+1. **One definition per name.** `Reference`'s three parallel slots
+   (`single_expr_`, `indexed_expr_`, `general_expr_`) collapse into one
+   definition that may have several *clauses*: constant-index base cases plus
+   at most one general clause. `f_0 = 1` and `f_n = f_(n-1)/2` are two clauses
+   of one sequence, the way a recurrence is written on paper. A later `f = 5`
+   *replaces* the definition instead of hiding underneath it, and the
+   undocumented indexed/general/simple precedence disappears with the slots.
+2. **No implicit limit.** A bare name never means "iterate until it stops
+   changing". `lim` is explicit, carries a visible tolerance and budget, and
+   *reports* non-convergence instead of silently returning the 30th term.
+   `exp(1)-e` is currently `-7.7e-13` not from floating point but from a
+   series truncated at 30 terms, and nothing says so.
+3. **A definition is a statement.** It binds and echoes what it bound; it
+   evaluates nothing. No left-hand-side lookup, no right-hand-side evaluation,
+   no convergence loop triggered by typing a definition.
+4. **Parameters are lexically scoped** (C13). A missing argument is a
+   diagnostic, not a search of the enclosing scope for a name that matches.
+5. C3 and C4 are one-line bugs in machinery this phase rewrites; they go away
+   with it rather than being patched first.
+
+## Phase 5 — Value types and the core
 
 1. Rewrite `Matrix<T>` (D4): `std::vector<T>` storage, rule of zero, explicit
-   constructors, `operator()` taking 0-based indices, dimensions as a single
-   `Extent` type. The author already asked for this in a comment.
+   constructors, dimensions as one `Extent` type. The author asked for this in
+   a comment in 2014.
 2. Delete `dynarray` (D5) in favour of `std::vector`, and delete its test.
 3. Separate the scalar type from the matrix type in `Interpreter` (D9) so a
-   scalar expression does not allocate a 1×1 matrix per literal. This is the
-   largest single win available and should be measured, not assumed.
-4. Replace the `numeric_interface`/`best_promotion`/`numeric_interface_imp_types`
-   trio with C++20 concepts (C9), which turns "this type is missing `sqrt`"
-   from a link-time surprise into a compile error at the point of use.
-
-## Phase 5 — The core
-
-1. Make `Expression::children` private with a narrow accessor, and drop the
-   redundant `m_e1()`/`m_e()` views or express them in terms of it (D6).
-2. Collapse the visitor interface (D7) by giving `ExpressionVisitor` a default
+   scalar expression stops allocating a 1x1 matrix per literal. The largest
+   single win available; measure it rather than assuming it.
+4. Replace `numeric_interface`/`best_promotion`/`numeric_interface_imp_types`
+   with C++20 concepts (C9): a missing `sqrt` becomes a compile error at the
+   point of use instead of a link-time surprise.
+5. Make `Expression::children` private with a narrow accessor and drop the
+   redundant `m_e1()`/`m_e()` views (D6).
+6. Collapse the visitor interface (D7) by giving `ExpressionVisitor` a default
    implementation that recurses over `children`, so a visitor overrides only
    the nodes it cares about. The `std::variant` + `std::visit` alternative
-   would delete the `accept`/`visit` double dispatch outright, and it is the
-   more modern design — but the double dispatch is a deliberate choice the
-   author documented in `expression_visitor.hpp`, and replacing it would make
-   the core unrecognisable. Ruled out on the recognisability constraint, not
-   on the merits.
-3. Fix C3 and C4 — both are one-line bugs, but both need a test that would have
-   caught them, and the second needs the dead branch's intent recovered first.
-4. Revisit the series convergence loop (C8): epsilon and iteration cap become
-   named constants or interpreter settings, and the index arithmetic stops
-   wrapping.
+   would delete the `accept`/`visit` double dispatch outright and is the more
+   modern design, but the double dispatch is a choice the author documented in
+   `expression_visitor.hpp`. Ruled out on recognisability, not on the merits.
 
 ## Phase 6 — Documentation
 
@@ -223,10 +236,11 @@ commits say exactly how.
 
 ## Sequencing
 
-Phases 1–3 are independent of 4–5 and can be done in any order within
-themselves. Phase 2 should not wait: C1 is a crash, and until there is an error
-channel every later fix has to keep working around `std::cout`.
+Phase 2 gates everything: no implementation work starts before the transcripts
+say what it should do. Phase 3 comes next because C13 makes every later change
+observable. Phase 4 is the redesign the rest of the plan exists to serve.
+Phase 5 is independent of 3 and 4 and can be interleaved when convenient.
 
-The honest risk is phase 5. The visitor rework touches every file and cannot be
-verified by the goldens alone if it lands with a behaviour change — so it must
-land without one, in its own commits, with the transcripts unchanged.
+The honest risk is phase 4. It changes what existing sessions mean, so it
+cannot hide behind unchanged goldens — every moved line has to be justified
+against a spec transcript, in the commit that moves it.

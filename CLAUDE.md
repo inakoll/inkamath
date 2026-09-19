@@ -76,6 +76,14 @@ behaviour, bugs included. They are literal interpreter sessions:
   visible and cannot regress silently. They are listed in `MODERNIZATION.md`.
   Do not "fix" a golden to match your intuition; fix the interpreter.
 
+`test/data/spec/*.ink` are the opposite: they describe the language we are
+building, not the one we have (`MODERNIZATION.md`, phase 2). They run under
+the `spec` suite, marked `may_fail`, so they report the gap without gating CI,
+and `record_goldens` never touches them — recording a specification from
+current behaviour would defeat its purpose. When a part of the design lands,
+move its entries out of `spec/` into `test/data/` and they become ordinary
+goldens. Changing a spec transcript is changing the design: say why.
+
 ## 4. Testing
 
 - Every bug fix lands with a test that fails before it and passes after. For

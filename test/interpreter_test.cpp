@@ -26,7 +26,7 @@ bool recording() {
 // Replays a transcript file through a fresh interpreter, checking each entry.
 // With INKAMATH_RECORD=1 the file is rewritten from the observed output
 // instead -- use `cmake --build build --target record_goldens`.
-void check_transcript(const std::string& name) {
+void check_transcript(const std::string& name, bool recordable = true) {
     const std::filesystem::path path = data_dir() / name;
 
     std::ifstream in(path);
@@ -37,7 +37,7 @@ void check_transcript(const std::string& name) {
     REQUIRE_MESSAGE(!items.empty(), "transcript is empty: ", path.string());
 
     Interpreter<std::complex<double>> interpreter;
-    const bool                        record = recording();
+    const bool                        record = recordable && recording();
 
     for (transcript::Item& item : items) {
         if (!item.is_entry) continue;
@@ -75,6 +75,32 @@ TEST_CASE("sequences") {
 }
 TEST_CASE("errors") {
     check_transcript("errors.ink");
+}
+
+TEST_SUITE_END();
+
+// The language we are building, not the language we have (MODERNIZATION.md,
+// phase 2). These fail until the redesign lands, so they are marked may_fail:
+// they report the gap on every run without gating CI. They are never
+// recordable -- recording a specification from current behaviour would defeat
+// its purpose.
+TEST_SUITE_BEGIN("spec");
+
+TEST_CASE("definitions" * doctest::may_fail()) {
+    check_transcript("spec/definitions.ink", false);
+}
+TEST_CASE("sequences" * doctest::may_fail()) {
+    check_transcript("spec/sequences.ink", false);
+}
+TEST_CASE("diagnostics" * doctest::may_fail()) {
+    check_transcript("spec/diagnostics.ink", false);
+}
+
+// Skipped, not omitted: evaluating these overflows the stack and kills the
+// process (C1), and may_fail tolerates a failed assertion rather than a dead
+// one. Drop the skip in the commit that lands the evaluation budget.
+TEST_CASE("recursion" * doctest::skip() * doctest::may_fail()) {
+    check_transcript("spec/recursion.ink", false);
 }
 
 TEST_SUITE_END();
