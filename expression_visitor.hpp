@@ -463,7 +463,7 @@ template <typename T>
 class EvaluationVisitor : public FoldingVisitor<T> {
 public:
 
-    EvaluationVisitor<T>(ReferenceStack<T>& stack) : stack_(stack) {}
+    explicit EvaluationVisitor(ReferenceStack<T>& stack) : stack_(stack) {}
 
     ReferenceStack<T>& stack() {return stack_;}
 
