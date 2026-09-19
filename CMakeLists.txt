@@ -1,0 +1,54 @@
+cmake_minimum_required(VERSION 3.20)
+
+project(inkamath
+    VERSION 0.8.0
+    DESCRIPTION "A small mathematical expression interpreter"
+    LANGUAGES CXX)
+
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+
+if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
+    set(CMAKE_BUILD_TYPE RelWithDebInfo CACHE STRING "" FORCE)
+endif()
+
+option(INKAMATH_BUILD_TESTS "Build the test suite" ON)
+option(INKAMATH_WERROR     "Treat compiler warnings as errors" OFF)
+set(INKAMATH_SANITIZE "" CACHE STRING "Sanitizers to enable, e.g. address,undefined")
+
+# --- warning set -------------------------------------------------------------
+# Kept as an INTERFACE target so it is opt-in per target and never leaks to
+# vendored third-party code.
+add_library(inkamath_warnings INTERFACE)
+target_compile_options(inkamath_warnings INTERFACE
+    $<$<CXX_COMPILER_ID:GNU,Clang,AppleClang>:-Wall;-Wextra;-Wpedantic>
+    $<$<CXX_COMPILER_ID:MSVC>:/W4>)
+if(INKAMATH_WERROR)
+    target_compile_options(inkamath_warnings INTERFACE
+        $<$<CXX_COMPILER_ID:GNU,Clang,AppleClang>:-Werror>
+        $<$<CXX_COMPILER_ID:MSVC>:/WX>)
+endif()
+
+if(INKAMATH_SANITIZE)
+    add_compile_options(-fsanitize=${INKAMATH_SANITIZE} -fno-omit-frame-pointer)
+    add_link_options(-fsanitize=${INKAMATH_SANITIZE})
+endif()
+
+# --- the interpreter ---------------------------------------------------------
+# Header-only today. `pmath.cpp` is the sole translation unit and is slated for
+# removal (see MODERNIZATION.md, phase 1), after which this becomes INTERFACE.
+add_library(inkamath STATIC pmath.cpp)
+target_include_directories(inkamath PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(inkamath PRIVATE inkamath_warnings)
+
+# --- the REPL ----------------------------------------------------------------
+add_executable(inkamath_cli main.cpp)
+target_link_libraries(inkamath_cli PRIVATE inkamath inkamath_warnings)
+set_target_properties(inkamath_cli PROPERTIES OUTPUT_NAME inkamath)
+
+# --- tests -------------------------------------------------------------------
+if(INKAMATH_BUILD_TESTS)
+    enable_testing()
+    add_subdirectory(test)
+endif()
