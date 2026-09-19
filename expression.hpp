@@ -12,7 +12,6 @@
 
 #include <memory>
 
-#include "pmath.hpp"
 #include "matrix.hpp"
 #include "numeric_interface.hpp"
 #include "expression_dict.hpp"

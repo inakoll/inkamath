@@ -36,11 +36,8 @@ if(INKAMATH_SANITIZE)
 endif()
 
 # --- the interpreter ---------------------------------------------------------
-# Header-only today. `pmath.cpp` is the sole translation unit and is slated for
-# removal (see MODERNIZATION.md, phase 1), after which this becomes INTERFACE.
-add_library(inkamath STATIC pmath.cpp)
-target_include_directories(inkamath PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
-target_link_libraries(inkamath PRIVATE inkamath_warnings)
+add_library(inkamath INTERFACE)
+target_include_directories(inkamath INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
 
 # --- the REPL ----------------------------------------------------------------
 add_executable(inkamath_cli main.cpp)
