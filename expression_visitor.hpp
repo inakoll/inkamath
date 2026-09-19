@@ -126,7 +126,7 @@ template <typename T>
 class ParametersVisitor : public StatefulVisitor<T> {
 public:
 
-	virtual PExpression<T> visit(MatExpression<T>* expr) {
+	PExpression<T> visit(MatExpression<T>* expr) override {
         if(visitor_depth++ == 0) {
             for(auto e : expr->children) {
                 e->accept(*this);
@@ -139,7 +139,7 @@ public:
 		return PExpression<T>();
 	}
 	
-	virtual PExpression<T> visit(EqualExpression<T>* expr) {
+	PExpression<T> visit(EqualExpression<T>* expr) override {
 		kewword_params_begin = true;
         this->parameters_dict[expr->m_e1()->Name()] = expr->m_e2();
         this->parameters_names.push_back(expr->m_e1()->Name());
@@ -147,7 +147,7 @@ public:
 		return PExpression<T>();
 	}
 	
-	virtual PExpression<T> visit(RefExpression<T>* expr) {
+	PExpression<T> visit(RefExpression<T>* expr) override {
 		if(!kewword_params_begin) {
 			this->parameters_names.push_back(expr->Name());
             this->parameters_expr.push_back(expr->self());
@@ -170,35 +170,35 @@ public:
 		return PExpression<T>();
 	}
 	
-	virtual PExpression<T> visit(FuncExpression<T>* expr) {
+	PExpression<T> visit(FuncExpression<T>* expr) override {
 		return visit_others_expr_imp(expr);
 	}
 	
-	virtual PExpression<T> visit(AddExpression<T>* expr) {
+	PExpression<T> visit(AddExpression<T>* expr) override {
 		return visit_others_expr_imp(expr);
 	}
 	
-	virtual PExpression<T> visit(NegExpression<T>* expr) {
+	PExpression<T> visit(NegExpression<T>* expr) override {
 		return visit_others_expr_imp(expr);
 	}
 
-	virtual PExpression<T> visit(MultExpression<T>* expr) {
+	PExpression<T> visit(MultExpression<T>* expr) override {
 		return visit_others_expr_imp(expr);
 	}
 
-	virtual PExpression<T> visit(DivExpression<T>* expr) {
+	PExpression<T> visit(DivExpression<T>* expr) override {
 		return visit_others_expr_imp(expr);
 	}
 
-	virtual PExpression<T> visit(PowExpression<T>* expr) {
+	PExpression<T> visit(PowExpression<T>* expr) override {
 		return visit_others_expr_imp(expr);
 	}
 
-	virtual PExpression<T> visit(FactExpression<T>* expr) {
+	PExpression<T> visit(FactExpression<T>* expr) override {
 		return visit_others_expr_imp(expr);
 	}
 
-	virtual PExpression<T> visit(ValExpression<T>* expr) {
+	PExpression<T> visit(ValExpression<T>* expr) override {
 		return visit_others_expr_imp(expr);
 	}
 
@@ -226,18 +226,18 @@ private:
 template <typename T>
 class SubVisitor : public StatefulVisitor<T> {
 public:
-	virtual PExpression<T> visit(RefExpression<T>* expr) {
+	PExpression<T> visit(RefExpression<T>* expr) override {
 		this->index_name = expr->Name();
         this->a = 1;
 		return PExpression<T>();
 	}
 	
-	virtual PExpression<T> visit(ValExpression<T>* expr) {
+	PExpression<T> visit(ValExpression<T>* expr) override {
         b = numeric_interface<T>::toInt(expr->value);
 		return PExpression<T>();
 	}
 
-	virtual PExpression<T> visit(AddExpression<T>* expr) {
+	PExpression<T> visit(AddExpression<T>* expr) override {
 		SubVisitor l,r;
         expr->m_e1()->accept(l);
         expr->m_e2()->accept(r);
@@ -253,7 +253,7 @@ public:
 		return PExpression<T>();
 	}
 	
-	virtual PExpression<T> visit(NegExpression<T>* expr) {
+	PExpression<T> visit(NegExpression<T>* expr) override {
 		SubVisitor l;
         expr->m_e()->accept(l);
 		a = -l.a;
@@ -262,7 +262,7 @@ public:
 		return PExpression<T>();
 	}
 
-	virtual PExpression<T> visit(MultExpression<T>* expr) {
+	PExpression<T> visit(MultExpression<T>* expr) override {
 		SubVisitor l,r;
         expr->m_e1()->accept(l);
         expr->m_e2()->accept(r);
@@ -292,27 +292,27 @@ public:
 		return PExpression<T>();
 	}
 	
-    virtual PExpression<T> visit(MatExpression<T>* ) {
+    PExpression<T> visit(MatExpression<T>* ) override {
 		return visit_unexpected_expression();
 	}
 	
-    virtual PExpression<T> visit(EqualExpression<T>* ) {
+    PExpression<T> visit(EqualExpression<T>* ) override {
 		return visit_unexpected_expression();
 	}
 	
-    virtual PExpression<T> visit(FuncExpression<T>* ) {
+    PExpression<T> visit(FuncExpression<T>* ) override {
 		return visit_unexpected_expression();
 	}
 	
-    virtual PExpression<T> visit(DivExpression<T>* ) {
+    PExpression<T> visit(DivExpression<T>* ) override {
 		return visit_unexpected_expression();
 	}
 
-    virtual PExpression<T> visit(PowExpression<T>* ) {
+    PExpression<T> visit(PowExpression<T>* ) override {
 		return visit_unexpected_expression();
 	}
 
-    virtual PExpression<T> visit(FactExpression<T>* ) {
+    PExpression<T> visit(FactExpression<T>* ) override {
 		return visit_unexpected_expression();
 	}
 
@@ -357,46 +357,46 @@ public:
         return PExpression<T>();
     }
 
-    virtual PExpression<T> visit(EqualExpression<T>* expr) {
+    PExpression<T> visit(EqualExpression<T>* expr) override {
         return binary_visit(expr);
     }
 
-    virtual PExpression<T> visit(AddExpression<T>* expr) {
+    PExpression<T> visit(AddExpression<T>* expr) override {
         return binary_visit(expr);
     }
 
-    virtual PExpression<T> visit(NegExpression<T>* expr) {
+    PExpression<T> visit(NegExpression<T>* expr) override {
         return unary_visit(expr);
     }
 
-    virtual PExpression<T> visit(MultExpression<T>* expr) {
+    PExpression<T> visit(MultExpression<T>* expr) override {
         return binary_visit(expr);
     }
 
-    virtual PExpression<T> visit(DivExpression<T>* expr) {
+    PExpression<T> visit(DivExpression<T>* expr) override {
         return binary_visit(expr);
     }
 
-    virtual PExpression<T> visit(PowExpression<T>* expr) {
+    PExpression<T> visit(PowExpression<T>* expr) override {
         return binary_visit(expr);
     }
 
-    virtual PExpression<T> visit(FactExpression<T>* expr) {
+    PExpression<T> visit(FactExpression<T>* expr) override {
         return unary_visit(expr);
     }
 
-    virtual PExpression<T> visit(ValExpression<T>*) {
+    PExpression<T> visit(ValExpression<T>*) override {
         return PExpression<T>();
     }
 
-    virtual PExpression<T> visit(MatExpression<T>* expr) {
+    PExpression<T> visit(MatExpression<T>* expr) override {
         for(auto& e : expr->children) {
             transform_visitation(e);
         }
         return PExpression<T>();
     }
 
-    virtual PExpression<T> visit(RefExpression<T>* expr) {
+    PExpression<T> visit(RefExpression<T>* expr) override {
         PExpression<T> e;
         if(this->params_def_.a() == 0 && expr->Name() == name_) {
             auto it = wrapped_.find(-1ll);
@@ -411,7 +411,7 @@ public:
         return PExpression<T>();
     }
 
-    virtual PExpression<T> visit(FuncExpression<T>* expr) {
+    PExpression<T> visit(FuncExpression<T>* expr) override {
         PExpression<T> e;
         auto params_call = ParametersCall<T>(expr->m_e1(), expr->m_e2());
         if(this->params_def_.a() == params_call.a() &&
@@ -461,7 +461,7 @@ public:
 
     ReferenceStack<T>& stack() {return stack_;}
 
-    virtual T visit(EqualExpression<T>* expr) {
+    T visit(EqualExpression<T>* expr) override {
         if(expr->children[0]->children.size() > 0) {
             this->stack_.Set(expr->Name(), ParametersDefinition<T>(expr->children[0]->children[0], expr->children[0]->children[1]), expr->children[1]);
         }
@@ -471,40 +471,40 @@ public:
         return expr->m_e1()->accept(*this);
     }
 
-    virtual T visit(AddExpression<T>* expr) {
+    T visit(AddExpression<T>* expr) override {
         return expr->m_e1()->accept(*this)
              + expr->m_e2()->accept(*this);
     }
 
-    virtual T visit(NegExpression<T>* expr) {
+    T visit(NegExpression<T>* expr) override {
         return -expr->m_e()->accept(*this);
     }
 
-    virtual T visit(MultExpression<T>* expr) {
+    T visit(MultExpression<T>* expr) override {
         return expr->m_e1()->accept(*this)
              * expr->m_e2()->accept(*this);
     }
 
-    virtual T visit(DivExpression<T>* expr) {
+    T visit(DivExpression<T>* expr) override {
         return expr->m_e1()->accept(*this)
              / expr->m_e2()->accept(*this);
     }
 
-    virtual T visit(PowExpression<T>* expr) {
+    T visit(PowExpression<T>* expr) override {
         return  numeric_interface<T>::pow(
                     expr->m_e1()->accept(*this),
                     expr->m_e2()->accept(*this));
     }
 
-    virtual T visit(FactExpression<T>* expr) {
+    T visit(FactExpression<T>* expr) override {
         return  T(numeric_interface<T>::fact(expr->m_e()->accept(*this)));
     }
 
-    virtual T visit(ValExpression<T>* expr) {
+    T visit(ValExpression<T>* expr) override {
         return expr->value;
     }
 
-    virtual T visit(MatExpression<T>* expr) {
+    T visit(MatExpression<T>* expr) override {
 
         size_t n, m;
         std::tie(n, m) = expr->Size();
@@ -574,19 +574,19 @@ public:
         return retval; // finally
     }
 
-    virtual T visit(RefExpression<T>* expr) {
+    T visit(RefExpression<T>* expr) override {
         return stack_.Eval(expr->Name(), ParametersCall<T>());
     }
 
-    virtual T visit(FuncExpression<T>* expr) {
+    T visit(FuncExpression<T>* expr) override {
         return stack_.Eval(expr->Name(), ParametersCall<T>(expr->m_e1(), expr->m_e2()));
     }
 
-    virtual T visit(RecursivePlaceholderExpression<T>* expr) {
+    T visit(RecursivePlaceholderExpression<T>* expr) override {
         return expr->get();
     }
 
-    virtual T visit(RecursiveExpression<T>* expr) {
+    T visit(RecursiveExpression<T>* expr) override {
         for(auto e : expr->children) {
             // We don't want to visit children here as we expect RecursivePlaceholderExpression
             auto rec =  dynamic_cast<RecursivePlaceholderExpression<T>*>(e.get());

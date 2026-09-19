@@ -37,7 +37,7 @@ public:
     explicit Expression(dynarray<PExpression<T>>&& exprs) : children(std::move(exprs)) {}
     explicit Expression(const dynarray<PExpression<T>>& exprs) : children(exprs) {}
 
-    virtual ~Expression() {}
+    virtual ~Expression() = default;
     virtual PExpression<T> Clone() const = 0;
 	
     PExpression<T> self() {
@@ -127,16 +127,16 @@ public:
     : BinaryExpression<T>(e1,e2)
     {}
 
-    virtual PExpression<T> Clone() const
+    PExpression<T> Clone() const override
     {
         return std::make_shared<AddExpression<T>>(this->m_e1()->Clone(), this->m_e2()->Clone());
     }
 
-    virtual PExpression<T> accept(TransformationVisitor<T> &v) {
+    PExpression<T> accept(TransformationVisitor<T> &v) override {
         return v.visit(this);
     }
 
-    virtual T accept(FoldingVisitor<T> &v) {
+    T accept(FoldingVisitor<T> &v) override {
         return v.visit(this);
     }
 protected:
@@ -148,16 +148,16 @@ class NegExpression : public UnaryExpression<T>
 public:
     explicit NegExpression(PExpression<T> e) : UnaryExpression<T>(e) {}
 
-    virtual PExpression<T> Clone() const
+    PExpression<T> Clone() const override
     {
         return std::make_shared<NegExpression<T>>(this->m_e()->Clone());
     }
 
-    virtual PExpression<T> accept(TransformationVisitor<T> &v) {
+    PExpression<T> accept(TransformationVisitor<T> &v) override {
         return v.visit(this);
     }
 
-    virtual T accept(FoldingVisitor<T> &v) {
+    T accept(FoldingVisitor<T> &v) override {
         return v.visit(this);
     }
 protected:
@@ -171,16 +171,16 @@ public:
     : BinaryExpression<T>(e1,e2)
     {}
 
-    virtual PExpression<T> Clone() const
+    PExpression<T> Clone() const override
     {
         return std::make_shared<MultExpression<T>>(this->m_e1()->Clone(), this->m_e2()->Clone());
     }
 
-    virtual PExpression<T> accept(TransformationVisitor<T> &v) {
+    PExpression<T> accept(TransformationVisitor<T> &v) override {
         return v.visit(this);
     }
 
-    virtual T accept(FoldingVisitor<T> &v) {
+    T accept(FoldingVisitor<T> &v) override {
         return v.visit(this);
     }
 protected:
@@ -194,16 +194,16 @@ public:
         : BinaryExpression<T>(e1,e2)
     {}
 
-    virtual PExpression<T> Clone() const
+    PExpression<T> Clone() const override
     {
         return std::make_shared<DivExpression<T>>(this->m_e1()->Clone(), this->m_e2()->Clone());
     }
 
-    virtual PExpression<T> accept(TransformationVisitor<T> &v) {
+    PExpression<T> accept(TransformationVisitor<T> &v) override {
         return v.visit(this);
     }
 
-    virtual T accept(FoldingVisitor<T> &v) {
+    T accept(FoldingVisitor<T> &v) override {
         return v.visit(this);
     }
 protected:
@@ -217,16 +217,16 @@ public:
     : BinaryExpression<T>(e1,e2)
     {}
 
-    virtual PExpression<T> Clone() const
+    PExpression<T> Clone() const override
     {
         return std::make_shared<PowExpression<T>>(this->m_e1()->Clone(), this->m_e2()->Clone());
     }
 
-    virtual PExpression<T> accept(TransformationVisitor<T> &v) {
+    PExpression<T> accept(TransformationVisitor<T> &v) override {
         return v.visit(this);
     }
 
-    virtual T accept(FoldingVisitor<T> &v) {
+    T accept(FoldingVisitor<T> &v) override {
         return v.visit(this);
     }
 protected:
@@ -240,16 +240,16 @@ public:
         : UnaryExpression<T>(e)
     {}
 
-    virtual PExpression<T> Clone() const
+    PExpression<T> Clone() const override
     {
         return std::make_shared<FactExpression<T>>(this->m_e()->Clone());
     }
 
-    virtual PExpression<T> accept(TransformationVisitor<T> &v) {
+    PExpression<T> accept(TransformationVisitor<T> &v) override {
         return v.visit(this);
     }
 
-    virtual T accept(FoldingVisitor<T> &v) {
+    T accept(FoldingVisitor<T> &v) override {
         return v.visit(this);
     }
 protected:
@@ -261,16 +261,16 @@ class ValExpression : public Expression<T>
 public:
     explicit ValExpression(const T& v) : Expression<T>(), value(v) {}
 
-    virtual PExpression<T> Clone() const
+    PExpression<T> Clone() const override
     {
         return std::make_shared<ValExpression<T>>(value);
     }
 
-    virtual PExpression<T> accept(TransformationVisitor<T> &v) {
+    PExpression<T> accept(TransformationVisitor<T> &v) override {
         return v.visit(this);
     }
 
-    virtual T accept(FoldingVisitor<T> &v) {
+    T accept(FoldingVisitor<T> &v) override {
         return v.visit(this);
     }
 
@@ -288,12 +288,12 @@ public:
         : Expression<T>(), value_(), name_(name), params_(params)
     {}
 
-    virtual PExpression<T> Clone() const
+    PExpression<T> Clone() const override
     {
         return std::make_shared<RecursivePlaceholderExpression<T>>(name_, params_);
     }
 
-    virtual std::string Name()
+    std::string Name() override
     {
         return name_;
     }
@@ -309,8 +309,8 @@ public:
         return value_;
     }
 
-    virtual T accept(FoldingVisitor<T>& v) {return v.visit(this);}
-    virtual PExpression<T> accept(TransformationVisitor<T>& v)  {return v.visit(this);}
+    T accept(FoldingVisitor<T>& v) override {return v.visit(this);}
+    PExpression<T> accept(TransformationVisitor<T>& v) override {return v.visit(this);}
 
 protected:
     T value_;
@@ -326,15 +326,15 @@ public:
         : Expression<T>(std::move(recursive_placeholders)), expr_(expr)
     {}
 
-    virtual PExpression<T> Clone() const
+    PExpression<T> Clone() const override
     {
         return std::make_shared<RecursiveExpression<T>>(expr_, this->children);
     }
 
     PExpression<T> recursive_expr() const {return expr_;}
 
-    virtual T accept(FoldingVisitor<T>& v) {return v.visit(this);}
-    virtual PExpression<T> accept(TransformationVisitor<T>& v)  {return v.visit(this);}
+    T accept(FoldingVisitor<T>& v) override {return v.visit(this);}
+    PExpression<T> accept(TransformationVisitor<T>& v) override {return v.visit(this);}
 
 protected:
     PExpression<T> expr_;
@@ -353,12 +353,12 @@ public:
         : Expression<T>(expr), n_(n), m_(m)
     {}
 
-    virtual std::pair<size_t,size_t> Size() const
+    std::pair<size_t,size_t> Size() const override
     {
         return std::make_pair(n_,m_);
     }
 
-    virtual PExpression<T> Clone() const
+    PExpression<T> Clone() const override
     {
         dynarray<PExpression<T>> expr(this->children.size());
         for(size_t i =0; i < expr.size(); ++i) {
@@ -368,11 +368,11 @@ public:
         return std::make_shared<MatExpression<T>>(n_, m_, std::move(expr));
     }
 
-    virtual PExpression<T> accept(TransformationVisitor<T> &v) {
+    PExpression<T> accept(TransformationVisitor<T> &v) override {
         return v.visit(this);
     }
 
-    virtual T accept(FoldingVisitor<T> &v) {
+    T accept(FoldingVisitor<T> &v) override {
         return v.visit(this);
     }
 
@@ -389,21 +389,21 @@ public:
         : Expression<T>(), m_name(name)
     { }
 
-    virtual PExpression<T> Clone() const
+    PExpression<T> Clone() const override
     {
         return std::make_shared<RefExpression<T>>(m_name);
     }
 
-    virtual std::string Name()
+    std::string Name() override
     {
         return m_name;
     }
 
-    virtual PExpression<T> accept(TransformationVisitor<T> &v) {
+    PExpression<T> accept(TransformationVisitor<T> &v) override {
         return v.visit(this);
     }
 
-    virtual T accept(FoldingVisitor<T> &v) {
+    T accept(FoldingVisitor<T> &v) override {
         return v.visit(this);
     }
 protected:
@@ -418,7 +418,7 @@ public:
         : BinaryExpression<T>(e1,e2), m_name(ref_expression->Name()), ref_expression_(ref_expression)
     { }
 
-    virtual PExpression<T> Clone() const
+    PExpression<T> Clone() const override
     {
         return std::make_shared<FuncExpression<T>>(
                 ref_expression_->Clone(),
@@ -426,16 +426,16 @@ public:
                 this->m_e2() ? this->m_e2()->Clone() : nullptr);
     }
 
-    virtual std::string Name()
+    std::string Name() override
     {
         return m_name;
     }
 
-    virtual PExpression<T> accept(TransformationVisitor<T> &v) {
+    PExpression<T> accept(TransformationVisitor<T> &v) override {
         return v.visit(this);
     }
 
-    virtual T accept(FoldingVisitor<T> &v) {
+    T accept(FoldingVisitor<T> &v) override {
         return v.visit(this);
     }
 protected:
