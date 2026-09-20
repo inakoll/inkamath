@@ -10,7 +10,6 @@
 #include <stdexcept>
 #include <algorithm>
 #include <functional>
-#include "inkamath/dynarraylike.hpp"
 #include "inkamath/expression_dict.hpp"
 #include "inkamath/numeric_interface.hpp"
 
@@ -277,8 +276,8 @@ public:
 
         size_t n, m;
         std::tie(n, m) = expr->Size();
-        dynarray<T> evaluation(n*m);
-        dynarray<std::pair<size_t, size_t>> sizes(n*m);
+        std::vector<T> evaluation(n*m);
+        std::vector<std::pair<size_t, size_t>> sizes(n*m);
 
         // Evaluating the matrix expression
         for(size_t i = 0; i < n; ++i) {
@@ -289,10 +288,8 @@ public:
         }
 
         // Compute the result size of each row and col in the matrix expression
-        dynarray<size_t> i_rows(n);
-        dynarray<size_t> j_cols(m);
-        i_rows.fill(1);
-        j_cols.fill(1);
+        std::vector<size_t> i_rows(n, 1);
+        std::vector<size_t> j_cols(m, 1);
         for(size_t i = 0; i < n; ++i) {
             for(size_t j = 0; j < m; ++j) {
                 i_rows[i] = std::max(i_rows[i], sizes[i*m+j].first);
@@ -301,8 +298,8 @@ public:
         }
 
         // Compute the size of each previous (up and left) result matrix blocks
-        dynarray<size_t> ri_rows = i_rows;
-        dynarray<size_t> rj_cols = j_cols;
+        std::vector<size_t> ri_rows = i_rows;
+        std::vector<size_t> rj_cols = j_cols;
 
         for(size_t i = 1; i < n; ++i) {
             ri_rows[i] += i_rows[i-1];

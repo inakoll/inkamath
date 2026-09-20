@@ -3,7 +3,6 @@ target_include_directories(doctest SYSTEM INTERFACE ${PROJECT_SOURCE_DIR}/third_
 
 add_executable(inkamath_tests
     doctest_main.cpp
-    dynarray_test.cpp
     interpreter_test.cpp
     )
 
@@ -14,7 +13,7 @@ target_compile_definitions(inkamath_tests PRIVATE
 
 # One ctest entry per doctest suite, so that a crash in one reports as a
 # single failure rather than taking the others' results with it.
-foreach(suite IN ITEMS interpreter dynarray)
+foreach(suite IN ITEMS interpreter)
     add_test(NAME ${suite} COMMAND inkamath_tests --test-suite=${suite} --no-intro)
     set_tests_properties(${suite} PROPERTIES TIMEOUT 60)
 endforeach()

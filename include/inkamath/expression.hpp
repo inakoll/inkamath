@@ -16,7 +16,7 @@
 #include "inkamath/matrix.hpp"
 #include "inkamath/numeric_interface.hpp"
 #include "inkamath/expression_dict.hpp"
-#include "inkamath/dynarraylike.hpp"
+#include <vector>
 
 template <typename T>
 class Expression;
@@ -34,8 +34,7 @@ public:
     Expression() {}
 
     explicit Expression(std::initializer_list<PExpression<T>> expressions) : children(std::move(expressions)) {}
-    explicit Expression(dynarray<PExpression<T>>&& exprs) : children(std::move(exprs)) {}
-    explicit Expression(const dynarray<PExpression<T>>& exprs) : children(exprs) {}
+    explicit Expression(std::vector<PExpression<T>> exprs) : children(std::move(exprs)) {}
 
     virtual ~Expression() = default;
     virtual PExpression<T> Clone() const = 0;
@@ -56,7 +55,7 @@ public:
         return std::make_pair(1,1);
     }
 
-    dynarray<PExpression<T>> children;
+    std::vector<PExpression<T>> children;
 protected:
 private:
     // interdiction de la copie
@@ -289,8 +288,8 @@ public:
         :  Expression<T>({e}), n_(1), m_(1)
     {}
 
-    MatExpression(size_t n, size_t m, dynarray<PExpression<T>> expr)
-        : Expression<T>(expr), n_(n), m_(m)
+    MatExpression(size_t n, size_t m, std::vector<PExpression<T>> expr)
+        : Expression<T>(std::move(expr)), n_(n), m_(m)
     {}
 
     std::pair<size_t,size_t> Size() const override
@@ -300,7 +299,7 @@ public:
 
     PExpression<T> Clone() const override
     {
-        dynarray<PExpression<T>> expr(this->children.size());
+        std::vector<PExpression<T>> expr(this->children.size());
         for(size_t i =0; i < expr.size(); ++i) {
             expr[i] = this->children[i]->Clone();
         }

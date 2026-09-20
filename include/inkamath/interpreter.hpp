@@ -20,7 +20,6 @@
 #include "inkamath/token.hpp"
 #include "inkamath/numeric_interface.hpp"
 #include "inkamath/reference_stack.hpp"
-#include "inkamath/dynarraylike.hpp"
 
 template <typename T, typename U=Matrix<T> >
 class Interpreter
@@ -347,9 +346,9 @@ PExpression<U> Interpreter<T,U>::ParsePowExpr()
 }
 
 template <typename T>
-dynarray<PExpression<T>> make_matrix_array_from_vector(size_t n, size_t m,
-                                                       std::vector<PExpression<T>>& mat,
-                                                       std::vector<size_t>& size);
+std::vector<PExpression<T>> make_matrix_array_from_vector(size_t n, size_t m,
+                                                          std::vector<PExpression<T>>& mat,
+                                                          std::vector<size_t>& size);
 
 template <typename T, typename U>
 PExpression<U> Interpreter<T,U>::ParseMatrix()
@@ -380,11 +379,11 @@ PExpression<U> Interpreter<T,U>::ParseMatrix()
 }
 
 template <typename T>
-dynarray<PExpression<T>>
+std::vector<PExpression<T>>
  make_matrix_array_from_vector(size_t n, size_t m, std::vector<PExpression<T>>& mat,
                            std::vector<size_t>& size)
 {
-    auto exprs = dynarray<PExpression<T>>(n*m);
+    auto exprs = std::vector<PExpression<T>>(n*m);
     size_t prev = 0;
     for(size_t i = 0; i < n; ++i) {
         std::move(mat.begin()+prev, mat.begin()+prev+size[i], exprs.begin()+i*m);
