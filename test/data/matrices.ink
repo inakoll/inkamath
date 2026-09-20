@@ -101,3 +101,34 @@ a=[1 2;3 4]
 1 2
 3 4
 
+# A matrix power is repeated multiplication. It used to square the
+# accumulator, so 'a^n' computed 'a^(2^(n-1))' -- right at 1 and 2 and wrong
+# everywhere else, with a^0 returning a (MODERNIZATION.md, C23).
+>> s=[1 1;0 1]
+s=[1 1;0 1]
+
+>> s^0
+1 0
+0 1
+
+>> s^3
+1 3
+0 1
+
+>> a^3
+37 54
+81 118
+
+# There is no inverse and no root here, and only a square matrix has a power.
+>> a^0.5
+error: a matrix power must be a whole number, not 0.5
+
+>> a^(0-1)
+error: a matrix power cannot be negative
+
+>> [1 2 3]^2
+error: only a square matrix has a power
+
+>> 2^[1 2]
+error: a matrix cannot be an exponent
+

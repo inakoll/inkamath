@@ -59,13 +59,32 @@ public:
     /* Implementation de Numerical interface */
     static Matrix<T> pow(const Matrix<T>& a, const Matrix<T>& b)
     {
-        const T exponent = b.Scalar("Pow is not implemented for Matrix type.");
+        const T exponent = b.Scalar("a matrix cannot be an exponent");
         if(a.IsScalar()) {
             return Matrix<T>(numeric_interface<T>::pow(a(1,1), exponent));
         }
-        Matrix<T> r = a;
-        for(int i = 1; i < numeric_interface<T>::toInt(exponent); ++i) {
-            r = r*r;
+
+        // A matrix power is repeated multiplication. There is no inverse and
+        // no root here, so the exponent has to be a whole number that is not
+        // negative, and the matrix has to be square to multiply by itself.
+        const int whole = numeric_interface<T>::toInt(exponent);
+        if(numeric_interface<T>::abs(exponent - T(whole)) != 0) {
+            throw std::runtime_error("a matrix power must be a whole number, not "
+                                     + numeric_interface<T>::toString(exponent));
+        }
+        if(whole < 0) {
+            throw std::runtime_error("a matrix power cannot be negative");
+        }
+        if(a.extent_.rows != a.extent_.cols) {
+            throw std::runtime_error("only a square matrix has a power");
+        }
+
+        Matrix<T> r(a.extent_);
+        for(size_t i = 1; i <= a.extent_.rows; ++i) {
+            r(i,i) = T(1);
+        }
+        for(int i = 0; i < whole; ++i) {
+            r = r*a;
         }
         return r;
     }

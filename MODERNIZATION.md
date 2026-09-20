@@ -112,7 +112,7 @@ made that are not true.
 | # | Defect |
 |---|--------|
 | C22 `[fixed]` | **A matrix with three or more rows or columns cannot be built.** `[1 2 3]`, `[1;2;3]`, `[1 2 3;4 5 6]` and `[pi, e, 1]` all give `error: Out of matrix range.` In `EvaluationVisitor::visit(MatExpression*)` the block-offset prefix sum is `rj_cols[j] += j_cols[j-1]`, reading the unmodified source array, so it yields `{w0, w0+w1, w1+w2}` instead of a running total; `rm` is then too small and the result is allocated undersized. Correct for two blocks, which was every size the corpus and the README used. Fixed by writing the prefix sum plainly — it is shorter than the rotate-and-zero it replaces — and the corpus gains matrices three blocks wide and three tall, plus a cell extended to fill its block. |
-| C23 | **Matrix exponentiation computes the wrong power.** `Matrix::pow` does `r = a; for(i = 1; i < n; ++i) r = r*r;` — squaring the accumulator, so `a^n` is `a^(2^(n-1))`. With `a=[1 1;0 1]`: `a^2` is right by luck (one iteration), `a^3` gives `a^4`, `a^4` gives `a^8`. `a^0`, `a^0.5` and a negative exponent all return `a` unchanged, with no diagnostic. The loop is also unbudgeted: `a^100000000` runs for ten seconds. |
+| C23 `[fixed]` | **Matrix exponentiation computes the wrong power.** `Matrix::pow` does `r = a; for(i = 1; i < n; ++i) r = r*r;` — squaring the accumulator, so `a^n` is `a^(2^(n-1))`. With `a=[1 1;0 1]`: `a^2` is right by luck (one iteration), `a^3` gives `a^4`, `a^4` gives `a^8`. `a^0`, `a^0.5` and a negative exponent all returned `a` unchanged, with no diagnostic. Fixed: the accumulator starts at the identity and is multiplied by `a` once per power, and the three cases that have no answer — a fractional exponent, a negative one, and a matrix that is not square — say so. That also bounds the loop, since the exponent is now the iteration count rather than a doubling. |
 | C24 `[fixed]` | **The interpreter gives different answers on GCC and Clang.** `a=1` then `g=(a=a+1)+a` then `g` prints `3` under GCC and `4` under Clang. Every binary node evaluates `m_e1()->accept(*this) OP m_e2()->accept(*this)`, and C++ does not order the operands, so any expression containing a definition is compiler-dependent. Both builds passed `ctest`. Fixed at the root rather than by removing what observes it: `EvaluationVisitor`'s binary nodes now sequence their operands left to right. `aaa+bbb` is the regression test, which needs no side effect at all — it reported `bbb` under GCC and `aaa` under Clang. Left to right is also the order phase 8 needs, so this is its prerequisite rather than a workaround for C29. |
 | C25 | **A keyword argument is never checked against the parameter names.** `CheckArity` counts arguments and never compares names, so `f(x)=x+1` called as `f(y=1)` passes, leaves `x` unbound, and lets it fall through to a global: with `x=99` in scope the answer is `100`. A duplicate is accepted the same way — `g(x,y)=x*10+y` called as `g(1,x=2)` discards the positional argument and answers `27`. |
 | C26 | **An index on a plain definition is discarded in silence.** `m=5` then `m_3` prints `5`; so does `m_(-2)`, and `pi_7` prints `3.14159265`. `EvalImp` returns the plain clause before it ever looks at whether an index was supplied. `?m_3` on the same definition *does* report `m has no clause for index 3`, so the two paths disagree. The last survivor of the class C13 set out to end, and `references.ink:98` records it without saying so. |
@@ -438,11 +438,12 @@ Ordered by what a user hits first, not by where the defect lives.
    which belonged here once it was clear that sequencing the binary operands
    left to right costs five lines and is what phase 8 needs anyway. That
    removed the argument for doing C29 early; see the note under phase 8.
-2. **Matrices work**: C22 and C23. The corpus needs matrices wider and taller
-   than two before either can be called fixed, and `Matrix` has no unit test
-   at all — `CLAUDE.md` §4 reserves those for containers, and after `dynarray`
-   and `Mapstack` went there are none left. C22 and C23 are the direct cost of
-   that gap.
+2. **Matrices work** `[done]`: C22 and C23. The corpus gained matrices three
+   blocks wide and three tall, a cell extended to fill its block, and `^` on a
+   matrix at all. `Matrix` still has no unit test — `CLAUDE.md` §4 reserves
+   those for containers, and after `dynarray` and `Mapstack` went there are
+   none left — so the transcripts are the only thing standing between these
+   and the next defect of the same kind.
 3. **No answer to a question nobody asked**: C26, C25, C27, C30. This is
    C13's unfinished business; C29 is the same shape but moves up to item 1.
 4. **The rest**: C28, C31, C32, then D12 to D16.
