@@ -126,7 +126,7 @@ made that are not true.
 
 | # | Defect |
 |---|--------|
-| C32 | **Parsing a nested call is exponential.** `ParseEqualExpr` speculatively parses name, parameters and subscript for any `Parse()` beginning with an identifier, then on finding no `=` rewinds and parses the same text again; nesting multiplies. `f(f(f(…1…)))` takes 0.04s at depth 16, 0.59s at 20, 2.34s at 22 and 9.34s at 24 — a factor of four every two levels. Depth 40 is a 121-character line that does not finish in a minute. The cursor restore itself is correct on every path; the defect is cost. Parenthesis nesting alone is unaffected, and so is `f(1*f(1*…`, which never enters the speculative path. |
+| C32 `[fixed]` | **Parsing a nested call is exponential.** `ParseEqualExpr` speculatively parses name, parameters and subscript for any `Parse()` beginning with an identifier, then on finding no `=` rewinds and parses the same text again; nesting multiplies. `f(f(f(…1…)))` takes 0.04s at depth 16, 0.59s at 20, 2.34s at 22 and 9.34s at 24 — a factor of four every two levels. Depth 40 is a 121-character line that does not finish in a minute. The cursor restore itself is correct on every path; the defect is cost. Parenthesis nesting alone is unaffected, and so is `f(1*f(1*…`, which never enters the speculative path. Fixed by not rewinding: when there is no `=`, the left-hand side already parsed is a perfectly good leading operand, so it is handed to `ParseAddExpr` instead of being thrown away. Depth 200 now parses in 5ms. Thirty-one representative inputs give byte-identical output either way. |
 
 ### Design and documentation
 
@@ -448,7 +448,7 @@ Ordered by what a user hits first, not by where the defect lives.
 3. **No answer to a question nobody asked** `[done]`: C26, C25, C27, C30.
    This was C13's unfinished business; C29 is the same shape but was taken
    out of this group — see the note under phase 8.
-4. **The rest**: C28, C31, C32, then D12 to D16.
+4. **The rest** `[C28, C31, C32 done]`: D12 to D16 remain.
 
 Coverage the corpus does not have today, beyond the repros above: a matrix
 larger than 2x2 in any operation; `^` on a matrix; the step-budget message,

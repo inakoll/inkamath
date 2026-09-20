@@ -48,9 +48,12 @@ private:
     PExpression<U> ParseAll();
     PExpression<U> Parse();
     PExpression<U> ParseEqualExpr();
-    PExpression<U> ParseAddExpr();
-    PExpression<U> ParseMultExpr();
-    PExpression<U> ParsePowExpr();
+    // `lead`, where given, is a leading operand the caller has already parsed.
+    // Without it ParseEqualExpr has to rewind and parse its speculative
+    // left-hand side a second time, which nests into O(2^depth).
+    PExpression<U> ParseAddExpr(PExpression<U> lead = PExpression<U>());
+    PExpression<U> ParseMultExpr(PExpression<U> lead = PExpression<U>());
+    PExpression<U> ParsePowExpr(PExpression<U> lead = PExpression<U>());
     PExpression<U> ParseMatrix();
     PExpression<U> ParseSimpleExpr();
     PExpression<U> ParseParameters();
@@ -281,15 +284,15 @@ template <Parsable T, Numeric U>
 PExpression<U> Interpreter<T,U>::ParseEqualExpr()
 {
     PExpression<U> e,ref,params,expr,sub;
-    const size_t m_s = m_i;
     if (!AtEnd() && Peek().type == Func && !IsLimit(Peek()))
     {
         std::string name = m_tokens[m_i++].text;
         ref = PExpression<U>(new RefExpression<U>(name));
         params = ParseParameters();
         sub = ParseSubExpr();
-        if (!AtEnd() && m_tokens[m_i++].type == Equal)
+        if (!AtEnd() && Peek().type == Equal)
         {
+            ++m_i;
             expr = Parse();
             if(params || sub) {
                 e.reset(new EqualExpression<U>(PExpression<U>(new FuncExpression<U>(ref, params, sub)),expr));
@@ -299,8 +302,13 @@ PExpression<U> Interpreter<T,U>::ParseEqualExpr()
             }
         }
         else {
-            m_i = m_s;
-            e = ParseAddExpr();
+            // Not a definition after all. The left-hand side is a perfectly
+            // good leading operand, so hand it on rather than rewinding: the
+            // rewind re-parsed the parameters, and nesting squared the cost.
+            if(params || sub) {
+                ref.reset(new FuncExpression<U>(ref, params, sub));
+            }
+            e = ParseAddExpr(ref);
         }
     }
     else
@@ -311,9 +319,9 @@ PExpression<U> Interpreter<T,U>::ParseEqualExpr()
 }
 
 template <Parsable T, Numeric U>
-PExpression<U> Interpreter<T,U>::ParseAddExpr()
+PExpression<U> Interpreter<T,U>::ParseAddExpr(PExpression<U> lead)
 {
-    PExpression<U> e = ParseMultExpr();
+    PExpression<U> e = ParseMultExpr(lead);
     while (!AtEnd() && (Peek().type == Add || Peek().type == Min) )
     {
         if (m_tokens[m_i++].type == Add)
@@ -331,9 +339,9 @@ PExpression<U> Interpreter<T,U>::ParseAddExpr()
 }
 
 template <Parsable T, Numeric U>
-PExpression<U> Interpreter<T,U>::ParseMultExpr()
+PExpression<U> Interpreter<T,U>::ParseMultExpr(PExpression<U> lead)
 {
-    PExpression<U> e = ParsePowExpr();
+    PExpression<U> e = ParsePowExpr(lead);
     while (!AtEnd() && (Peek().type == Mult || Peek().type == Div) )
     {
         if (m_tokens[m_i++].type == Mult)
@@ -349,9 +357,9 @@ PExpression<U> Interpreter<T,U>::ParseMultExpr()
 }
 
 template <Parsable T, Numeric U>
-PExpression<U> Interpreter<T,U>::ParsePowExpr()
+PExpression<U> Interpreter<T,U>::ParsePowExpr(PExpression<U> lead)
 {
-    PExpression<U> e = ParseSimpleExpr();
+    PExpression<U> e = lead ? lead : ParseSimpleExpr();
     if (!AtEnd() && Peek().type == Pow)
     {
         ++m_i;

@@ -125,4 +125,17 @@ TEST_CASE("token limit") {
     CHECK(transcript::eval(interpreter, std::string(400, '(') + "1" + std::string(400, ')')) == "1");
 }
 
+// ParseEqualExpr used to rewind and re-parse its speculative left-hand side,
+// which nested into O(2^depth): this took nine seconds at depth 24 and did not
+// finish at 40 (MODERNIZATION.md, C32). Also not a transcript entry -- the
+// assertion is that it returns at all.
+TEST_CASE("nested calls parse in linear time") {
+    Interpreter<std::complex<double>> interpreter;
+    CHECK(transcript::eval(interpreter, "f(x)=x") == "f(x)=x");
+
+    std::string nested = "1";
+    for (int i = 0; i < 200; ++i) nested = "f(" + nested + ")";
+    CHECK(transcript::eval(interpreter, nested) == "1");
+}
+
 TEST_SUITE_END();
