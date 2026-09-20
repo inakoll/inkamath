@@ -107,7 +107,7 @@ std::string eval(Interpreter& interpreter, const std::string& expression) {
     std::ostringstream out;
     typename Interpreter::Result result = interpreter.Eval(expression);
     if (const Diagnostic* error = std::get_if<Diagnostic>(&result)) {
-        out << "Error : " << error->message;
+        out << "error: " << error->message;
     } else {
         out << std::get<typename Interpreter::matrix_type>(result);
     }

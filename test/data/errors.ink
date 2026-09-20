@@ -1,28 +1,28 @@
 # A failed evaluation yields a diagnostic instead of a value.
 
 >> 1+
-Error : Unexpected end of input before '+'
+error: unexpected end of input after '+'
 
 >> )
-Error : Unexpected operator ')'
+error: unexpected ')'
 
 >> [1 2
-Error : Missing operator ']' after '2'
+error: missing ']' after '2'
 
 >> (1+2
-Error : Missing operator ')' after '2'
+error: missing ')' after '2'
 
 >> 1+2)
-Error : Syntax error before ')'
+error: unexpected ')'
 
 >> @
-Error : Unexpected character : @
+error: unexpected character '@'
 
 >> 2 3
-Error : Syntax error before '3'
+error: unexpected '3'
 
 >> f(1+2
-Error : Missing ')' after function parameters.
+error: missing ')' after function parameters
 
 # Undefined identifiers evaluate to zero without an error (README.md section 6).
 >> undefined

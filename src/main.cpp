@@ -27,7 +27,7 @@ int main(void)
         Interp::Result result = p.Eval(s);
         if (const Diagnostic* error = get_if<Diagnostic>(&result))
         {
-            cout << "Error : " << error->message;
+            cout << "error: " << error->message;
         }
         else
         {

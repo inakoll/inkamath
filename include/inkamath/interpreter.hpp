@@ -60,12 +60,21 @@ private:
     bool AtEnd() const {return m_i >= m_tokens.size();}
     const Token<T>& Peek() const {return m_tokens[m_i];}
 
+    // Messages are lower case, unpunctuated and quote what the user typed;
+    // the caller adds the "error: " prefix.
+    template <typename... Parts>
+    [[noreturn]] static void Fail(const Parts&... parts)
+    {
+        std::ostringstream message;
+        (message << ... << parts);
+        throw std::runtime_error(message.str());
+    }
+
     std::vector< Token<T> > m_tokens;
     size_t m_i = 0;
 
     PExpression<U> m_E;
     ReferenceStack<U> stack_;
-    std::ostringstream oss;
 };
 
 template <typename T, typename U>
@@ -83,7 +92,6 @@ void Interpreter<T,U>::ResetInterpreter()
 {
     m_E.reset();
     m_tokens.clear();
-    oss.str("");
     m_i = 0;
 }
 
@@ -151,13 +159,12 @@ void Interpreter<T,U>::Lexer(const std::string& s)
                     Reference_Lexer(s,i);
             else
             {
-                oss <<"Unexpected character : " << s[i] << std::endl;
-                throw(std::runtime_error(oss.str()));
+                Fail("unexpected character '", s[i], "'");
             }
         }
     }
 
-    if (m_tokens.empty()) throw(std::runtime_error("Cannot evaluate an empty expression.\n"));
+    if (m_tokens.empty()) Fail("empty expression");
 }
 
 template <typename T, typename U>
@@ -173,7 +180,7 @@ void Interpreter<T,U>::Number_Lexer(const std::string& s, size_t& i)
     }
     else
     {
-        throw(std::runtime_error("Failed to parse number.\n"));
+        Fail("cannot parse a number at '", s.substr(i), "'");
     }
 }
 
@@ -196,8 +203,7 @@ void Interpreter<T,U>::Reference_Lexer(const std::string &s, size_t& i)
     }
     else
     {
-        oss << "Unexcepected character '" << s[i] << "'" << std::endl;
-        throw(std::runtime_error(oss.str()));
+        Fail("unexpected character '", s[i], "'");
     }
 
 }
@@ -209,17 +215,16 @@ PExpression<U> Interpreter<T,U>::ParseAll()
     PExpression<U> e = Parse();
     if (!AtEnd())
     {
-        oss << "Syntax error before '" << Peek().text << "'" << std::endl;
         if (Peek().type == LPar)
         {
-            oss << "The operator '*' is probably missing." << std::endl;
+            Fail("unexpected '(' -- the operator '*' is probably missing");
         }
-        throw(std::runtime_error(oss.str()));
+        Fail("unexpected '", Peek().text, "'");
     }
     if (e == 0)
     {
         if(!m_tokens.empty())
-            throw(std::logic_error("Unexpected error. Nullptr expression."));
+            throw(std::logic_error("internal error: null expression"));
         else
             e = std::make_shared<ValExpression<U>>(U{});
     }
@@ -411,8 +416,7 @@ PExpression<U>  Interpreter<T,U>::ParseSimpleExpr()
             }
             else
             {
-                oss << "Missing operator ')' after '" << m_tokens[--m_i].text << "'" << std::endl;
-                throw(std::runtime_error(oss.str()));
+                Fail("missing ')' after '", m_tokens[--m_i].text, "'");
             }
 			break;
 
@@ -425,22 +429,19 @@ PExpression<U>  Interpreter<T,U>::ParseSimpleExpr()
             }
             else
             {
-                oss << "Missing operator ']' after '" << m_tokens[--m_i].text << "'" << std::endl;
-                throw(std::runtime_error(oss.str()));
+                Fail("missing ']' after '", m_tokens[--m_i].text, "'");
             }
 			break;
 
         default:
         case RPar:
-            oss << "Unexpected operator '" << Peek().text << "'" << std::endl;
-            throw(std::runtime_error(oss.str()));
+            Fail("unexpected '", Peek().text, "'");
             break;
         }
     }
     else if(m_i != 0)
     {
-        oss << "Unexpected end of input before '" << m_tokens[--m_i].text << "'" << std::endl;
-        throw(std::runtime_error(oss.str()));
+        Fail("unexpected end of input after '", m_tokens[--m_i].text, "'");
     }
     return e;
 }
@@ -454,7 +455,7 @@ PExpression<U> Interpreter<T,U>::ParseParameters()
     {
         e = ParseMatrix();
         if (AtEnd() || Peek().type != RPar)
-            throw(std::logic_error("Missing ')' after function parameters."));
+            Fail("missing ')' after function parameters");
         ++m_i;
     }
     else
