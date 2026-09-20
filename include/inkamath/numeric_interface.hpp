@@ -4,6 +4,7 @@
 #include <concepts> // std::convertible_to
 #include <type_traits> // std::is_arithmetic
 #include <cmath> // std::pow
+#include <limits> // std::numeric_limits
 #include <complex> // std::complex
 #include <cstdlib> // std::strtod
 #include <string> // std::string
@@ -119,7 +120,11 @@ struct numeric_interface_imp<std::complex<T>,false>
     {
         // exp(b*log(a)) is NaN at a == 0, where IEEE 754 gives 0^0 == 1.
         // The integer overload below computes it by repeated multiplication.
-        if(b.imag() == 0 && b.real() == std::floor(b.real())) {
+        // The range check is not pedantry: converting a double outside int's
+        // range is undefined, and `2^2147483648` answered 0.
+        if(b.imag() == 0 && b.real() == std::floor(b.real())
+           && b.real() >= static_cast<T>(std::numeric_limits<int>::min())
+           && b.real() <= static_cast<T>(std::numeric_limits<int>::max())) {
             return std::pow(a, static_cast<int>(b.real()));
         }
         return std::pow(a,b);

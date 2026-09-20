@@ -88,3 +88,11 @@ error: an index must be a whole number, not 2+i
 >> f_(0.5)
 error: an index must be a whole number, not 0.5
 
+# An exponent outside int's range used to be converted to one anyway, which is
+# undefined: this answered 0 (MODERNIZATION.md, C28).
+>> 2^2147483648
+inf
+
+>> 0.5^3000000000
+0
+
