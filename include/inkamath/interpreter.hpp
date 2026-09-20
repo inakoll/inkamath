@@ -377,6 +377,12 @@ PExpression<U> Interpreter<T,U>::ParseMatrix()
     }
     size_t n = size.size();
     size_t m = *std::max_element(size.begin(), size.end());
+    if (m == 0)
+    {
+        // A matrix with no elements at all has no extent to give, and the
+        // evaluator reads one per column.
+        Fail("a matrix needs at least one element");
+    }
     e.reset(new MatExpression<U>(n, m, make_matrix_array_from_vector(n, m, mat, size)));
     return e;
 }
