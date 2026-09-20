@@ -556,6 +556,27 @@ Recorded so they are not re-litigated later, or drifted into by accident.
   what a partially evaluated sequence or matrix of expressions even means.
   `?name` (phase 4, item 6) prints what was written and nothing more.
 
+- **A third-party matrix library.** Raised explicitly, as `CLAUDE.md` §5
+  requires, and declined for now. Measured against what the code actually is:
+  `matrix.hpp` is 190 lines, of which roughly eighty are the arithmetic a
+  library would replace, and they are now unit-tested. Eigen, the obvious
+  candidate, is a megabyte of headers.
+
+  The semantics do not line up either, in three ways that would each need
+  adapter code: `/` here is element-wise, not scalar division; a 1x1 matrix
+  is deliberately also the scalar type, which D9 measured and chose to keep,
+  where a library makes that a type distinction; and the block expansion that
+  sizes `[a, a; a, a]` from what its cells evaluate to is this language's own
+  rule, living in the visitor rather than in `Matrix`.
+
+  What decides it is that inkamath asks for nothing a library is good at. It
+  has `+`, `-`, element-wise `/`, `*` and an integer power — no inverse, no
+  determinant, no transpose, no solve. A library earns its place at the point
+  those arrive, because pivoting and conditioning are genuinely hard and
+  worth not writing. The seam is clean when that day comes: those operate on
+  an evaluated numeric matrix, so the library sits *below* `Matrix`, on
+  values, and never meets the expressions.
+
 - **Symbolic simplification.** `x+x` to `2*x`, `x^1` to `x`, folding constant
   subtrees. The shape of the program invites it: names bind expressions, the
   AST survives evaluation, and `TransformationVisitor`'s own 2014 comment
