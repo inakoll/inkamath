@@ -126,6 +126,14 @@ y=10
 >> r(2)
 11
 
+# A memoised answer must not become a stale one: a definition the user
+# changes drops what was remembered (MODERNIZATION.md, phase 9).
+>> y=20
+y=20
+
+>> r(2)
+21
+
 # One definition per name. An indexed clause extends a sequence; a plain
 # definition replaces whatever the name held. The two used to coexist, with
 # an undocumented precedence that made a plain definition unreachable

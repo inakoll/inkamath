@@ -104,6 +104,20 @@ public:
         typename ParametersDefinition<T>::Arguments arguments =
                 parameters.EvaluateArguments(call, caller);
 
+        // Only a global gets here: a frame holds plain, unindexed bindings, so
+        // a call carrying an index or arguments names a definition the user
+        // made, and its answer is a function of the key and the globals alone
+        // (MODERNIZATION.md, phase 9). A limit is not keyed -- the terms it
+        // walks are, and it reads them through this same path.
+        const bool memoisable = !call.limit() && (indexed || !arguments.empty());
+        std::string key;
+        if(memoisable) {
+            key = MemoKey(indexed, index, arguments);
+            if(const T* memoised = stack.Memoised(key)) {
+                return *memoised;
+            }
+        }
+
         typename ReferenceStack<T>::Frame frame(stack);
         ParametersDefinition<T>::Bind(arguments, stack);
         EvaluationVisitor<T> evaluator(stack);
@@ -114,10 +128,36 @@ public:
             }
             return Converge(evaluator);
         }
-        return EvalImp(indexed, index, evaluator);
+        // Storing after the call returns, so that an evaluation which ran out
+        // of budget is retried rather than remembered.
+        const T evaluation = EvalImp(indexed, index, evaluator);
+        if(memoisable) {
+            stack.Memoise(key, evaluation);
+        }
+        return evaluation;
     }
 
 private:
+    // The bytes of the values, not their printed form, which rounds to nine
+    // digits and would make two different arguments one key.
+    std::string MemoKey(bool indexed, int index,
+                        const typename ParametersDefinition<T>::Arguments& arguments) const {
+        std::string key = reference_name_;
+        if(indexed) {
+            key += '_';
+            key += std::to_string(index);
+        }
+        for(const auto& argument : arguments) {
+            key += '\0';
+            key += argument.first;
+            key += '=';
+            const T& value = argument.second;
+            key.append(reinterpret_cast<const char*>(value.data()),
+                       value.Size().count() * sizeof(*value.data()));
+        }
+        return key;
+    }
+
     // The clauses of one name share their parameter list; any of them answers
     // for the whole definition.
     const ParametersDefinition<T>& CallParameters() const {

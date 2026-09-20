@@ -28,6 +28,12 @@ public:
     static constexpr size_t max_depth = 256;
     static constexpr size_t max_steps = 1000000;
 
+    // Memoised results, one per distinct call context. Sized so that a
+    // session sweeping a parameter cannot grow the process without bound;
+    // when it fills, the whole map goes, which costs time and never an
+    // answer.
+    static constexpr size_t max_memoised = 100000;
+
     // Call once per top-level evaluation; the stack outlives them all.
     void BeginEvaluation() {depth_ = 0; steps_ = 0;}
 
@@ -36,7 +42,13 @@ public:
         this->Set("e",  ParametersDefinition<T>(), PExpression<T>( new ValExpression<T>(T(2.7182818284590))));
     }
 
+    // A memoised result may have read a global, so redefining one drops the
+    // cache. A definition made while a frame is on the stack is a parameter
+    // or an index, which is part of the key and cannot invalidate anything.
     void Set(const std::string& ai_reference_name, const ParametersDefinition<T>& ai_parameters, PExpression<T>  ai_expression, const std::string& written = std::string()) {
+        if(frames_.empty()) {
+            memoised_.clear();
+        }
         definition_type& slot = CurrentScope()[ai_reference_name];
         // Updating and initialising are the same operation.
         std::shared_ptr<Reference<T>> updated =
@@ -60,6 +72,22 @@ public:
             throw std::runtime_error(ai_reference_name + " is not defined");
         }
         return definition->Eval(ai_parameters, *this);
+    }
+
+    // MODERNIZATION.md, phase 9. A call's answer depends on the definition,
+    // the index, the argument values and the globals; the first three are the
+    // key and the fourth is handled by clearing. What it is worth: the
+    // arithmetic-geometric mean is 2^(n+1)-1 calls for 2n+1 answers.
+    const T* Memoised(const std::string& key) const {
+        auto found = memoised_.find(key);
+        return found == memoised_.end() ? nullptr : &found->second;
+    }
+
+    void Memoise(const std::string& key, const T& evaluation) {
+        if(memoised_.size() >= max_memoised) {
+            memoised_.clear();
+        }
+        memoised_.emplace(key, evaluation);
     }
 
     // The scope of one call's parameters.
@@ -112,6 +140,7 @@ private:
 
     size_t depth_ = 0;
     size_t steps_ = 0;
+    std::unordered_map<std::string, T> memoised_;
     scope_type globals_;
     std::vector<scope_type> frames_;
 };
