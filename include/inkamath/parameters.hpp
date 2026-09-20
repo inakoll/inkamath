@@ -13,7 +13,7 @@ class ReferenceStack;
 template <typename T>
 class ParametersCall;
 
-// README.md section 4.2: an index is a whole number. Truncating would make
+// README.md section 4: an index is a whole number. Truncating would make
 // 'f_(0.5)' quietly mean 'f_0', and 'f_(2+i)' mean 'f_2'.
 template <typename T>
 int AsIndex(const T& value) {
@@ -27,7 +27,7 @@ int AsIndex(const T& value) {
 
 // The left-hand side of a definition: 'f(x, y)_n' or 'f_0'.
 //
-// README.md sections 4.2 and 4.3: an index written as an identifier names the
+// README.md section 4: an index written as an identifier names the
 // variable of the general clause; anything else must be a constant integer
 // expression and names one base clause. Nothing in between is a definition.
 template <typename T>

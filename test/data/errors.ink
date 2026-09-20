@@ -73,9 +73,8 @@ error: w is a sequence; index it (w_0) or take its limit (lim w)
 >> f(x=1, y)=x+y
 error: a positional argument cannot follow a keyword argument
 
-# An index must be a whole number (README.md section 4.2, which calls
-# 'f_(0.5)=1' ill-formed). It used to be truncated in silence, so that line
-# meant 'f_0=1' (MODERNIZATION.md, C13).
+# An index must be a whole number (README.md section 4). It used to be
+# truncated in silence, so 'f_(0.5)=1' meant 'f_0=1' (MODERNIZATION.md, C13).
 >> f_(0.5)=1
 error: an index must be a whole number, not 0.5
 

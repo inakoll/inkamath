@@ -1,4 +1,4 @@
-# Indexed references and general terms (README.md sections 4.2 and 4.3).
+# Indexed references and general terms (README.md section 4).
 
 >> f_0=1+2
 f_0=1+2
@@ -45,7 +45,7 @@ u_1=3
 # why 'exp(1)' read like a function call (MODERNIZATION.md, phase 4 item 2).
 # The first term is written out; an indexed clause no longer falls back to an
 # implicit zero, which was the additive identity and so wrong for a product
-# (MODERNIZATION.md, C4).
+# (MODERNIZATION.md, phase 4 item 4).
 >> exp(x)_0=1
 exp(x)_0=1
 
