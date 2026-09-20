@@ -50,17 +50,7 @@ public:
         else {
             base_.clear();
             general_ = ExpressionDefinition<T>();
-            memo_.clear();
             plain_ = ExpressionDefinition<T>(ai_parameters, ai_expression);
-        }
-
-        ParametersDefinition<T> gen_params_def;
-        gen_params_def = std::get<0>(general_);
-        if( gen_params_def.parameters_dict() != ai_parameters.parameters_dict()
-                || gen_params_def.parameters_names() != ai_parameters.parameters_names()) {
-            // memoized index is invalidated when adding a new expression
-            // with different parameters
-            memo_.clear();
         }
     }
 
@@ -145,7 +135,6 @@ private:
                 typename ReferenceStack<T>::Guard guard(stack);
                 stack.Set(gen_params_def.index_name(), ParametersDefinition<T>(), PExpression<T>(new ValExpression<T>(T(index))));
                 evaluation = gen_expr_def->accept(evaluator);
-                memo_[index] = evaluation;
                 succeed = true;
             }
             else {
@@ -157,19 +146,9 @@ private:
 
                 long long start_index = 0;
                 T start_evaluation;
-                if(!memo_.empty() || !base_.empty()) {
-                    if(!memo_.empty()) {
-                        start_index = memo_.rbegin()->first;
-                    }
-                    if(!base_.empty()) {
-                        start_index = std::max(start_index, base_.rbegin()->first);
-                    }
-                    if(!memo_.empty() && start_index == memo_.rbegin()->first) {
-                        start_evaluation = memo_.rbegin()->second;
-                    }
-                    else {
-                        start_evaluation = std::get<1>(base_.rbegin()->second)->accept(evaluator);
-                    }
+                if(!base_.empty()) {
+                    start_index = base_.rbegin()->first;
+                    start_evaluation = std::get<1>(base_.rbegin()->second)->accept(evaluator);
                 }
 
                 evaluation = start_evaluation;
@@ -184,7 +163,6 @@ private:
                     start_evaluation = evaluation;
                     ++iter_count;
                 }
-                memo_[start_index] = evaluation;
                 succeed = true;
             }
         }
@@ -205,10 +183,9 @@ private:
         return succeed;
     }
 
-    // Signed: an index may be negative, and these maps are read in order
+    // Signed: an index may be negative, and this map is read in order
     // (rbegin) to pick the highest known term.
     typedef std::map<long long, ExpressionDefinition<T>> BaseClauses;
-    typedef std::map<long long, T> MemoisedTerms;
 
     std::string reference_name_;
 	
@@ -218,7 +195,6 @@ private:
 
     BaseClauses                 base_;
     ExpressionDefinition<T>     general_;
-    MemoisedTerms               memo_;
 	
 };
 
