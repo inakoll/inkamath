@@ -10,6 +10,7 @@
 #include <cctype> // isalpha
 #include <map>
 #include <stdexcept>
+#include <concepts>
 #include <variant>
 
 #include "inkamath/diagnostic.hpp"
@@ -20,6 +21,38 @@
 #include "inkamath/token.hpp"
 #include "inkamath/numeric_interface.hpp"
 #include "inkamath/reference_stack.hpp"
+
+// What the interpreter needs of the type it evaluates to. Stating it is the
+// point of C9: sqrt was missing for complex and threw for Matrix, and nothing
+// said so because nothing asked. Notably absent are zero() and one(), which
+// Matrix has never had.
+template <typename T>
+concept Numeric =
+    std::default_initializable<T>
+    && requires(const T& a, const T& b, const typename T::value_type& cell) {
+    typename T::value_type;
+    { T(cell) } -> std::same_as<T>;
+    { T(Extent()) } -> std::same_as<T>;
+    { a.Size() } -> std::convertible_to<Extent>;
+    { a(size_t(1), size_t(1)) } -> std::convertible_to<typename T::value_type>;
+    { a + b } -> std::convertible_to<T>;
+    { a - b } -> std::convertible_to<T>;
+    { a * b } -> std::convertible_to<T>;
+    { a / b } -> std::convertible_to<T>;
+    { -a } -> std::convertible_to<T>;
+    { numeric_interface<T>::pow(a, b) } -> std::convertible_to<T>;
+    { T(numeric_interface<T>::fact(a)) } -> std::same_as<T>;
+    { numeric_interface<T>::abs(a) > 1.0 } -> std::convertible_to<bool>;
+    { numeric_interface<T>::toInt(a) } -> std::convertible_to<int>;
+    { numeric_interface<T>::toString(a) } -> std::convertible_to<std::string>;
+};
+
+// What the lexer needs of the type it reads numbers into.
+template <typename T>
+concept Parsable = numeric_interface_parses<T>
+    && requires(T& num, const char* begin, char*& end) {
+    { numeric_interface<T>::parse(num, begin, end) } -> std::convertible_to<bool>;
+};
 
 template <Parsable T, Numeric U = Matrix<T> >
 class Interpreter
