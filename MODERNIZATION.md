@@ -80,7 +80,7 @@ phase 0; the rest are open and are scheduled into the phases that follow.
 | D4 `[fixed]` | `Matrix<T>` owned a raw `T*` with `new[]`/`delete[]`, copied it with `memcpy` (undefined for any `T` that is not trivially copyable), had no move constructor or move assignment, and exposed `Matrix(const T&)` as an implicit converting constructor. Its `std::vector` constructor could leak on exception and carried the author's own note: `// todo : reimplement this matrix class...`. Rewritten on `std::vector<T>` with the rule of zero, explicit constructors and an `Extent` for the dimensions. 385 lines become 184, plus a 19-line header; every golden is byte-identical, and so is a sweep of twenty matrix operations and errors. |
 | D5 `[fixed]` | `dynarray` was a hand-rolled container written while waiting for a `std::dynarray` that C++14 never shipped. `std::vector` covered every use here, and value-initialises where `new T[n]` left `size_t` elements indeterminate. |
 | D6 `[fixed]` | `Expression` exposed `children` as a public mutable member while subclasses also offered `m_e1()`/`m_e()` accessors over the same storage, with mutable overloads of their own. `children_` is private now, reachable through a const `Children()` for the generic case and the named views for the rest, and none of them can write: the tree is immutable once parsed. `Clone()` deep-copied subtrees that `shared_ptr` already lets us share — its last caller was the recursion machinery phase 4 deleted, so it went too, along with `transform_visitation`. |
-| D7 | `ExpressionVisitor` has eleven pure virtual `visit` overloads plus two that default to returning `{}`. Adding a node type is a change to every visitor; forgetting one is silent. |
+| D7 `[not a defect any more]` | `ExpressionVisitor` had eleven pure virtual `visit` overloads plus two that defaulted to returning `{}` — the recursive nodes. Those two went with the machinery in phase 4, so every overload is pure virtual and forgetting one is a compile error in both visitors, not a silent mistake. What remains is that adding a node type touches two visitors, which is the check working. |
 | D8 `[fixed]` | Reserved identifiers: `_EXPRESION_EPSILON` (misspelled, and unused) and `_NUMERIC_INTERFACE_PRECISION`. A leading underscore followed by a capital is reserved to the implementation. |
 | D9 `[fixed, differently]` | `Interpreter<T, U = Matrix<T>>` templates on the token scalar `T`, but every AST node is instantiated on `U`. Every literal in every expression was therefore a heap-allocated 1×1 `Matrix<complex<double>>`. Measured: those 16-byte allocations are 44–67% of all allocations, but removing them is worth only 0–15% of the time — they are cheap and hot in cache. A 1x1 matrix now keeps its cell inline, which gets that saving for ten lines; the scalar/matrix *split* the plan prescribed is not justified by the numbers. |
 | D10 `[fixed]` | `getlines.hpp` reimplements line iteration on top of `std::iterator`, deprecated since C++17. Its only user was the Boost test file. |
@@ -263,7 +263,7 @@ The redesign proper. Replaces C10 and C11 rather than deciding them.
 7. C3, C4, C14 and C17 were small bugs in machinery this phase rewrote; they
    went away with it rather than being patched first.
 
-## Phase 5 — Value types and the core
+## Phase 5 — Value types and the core `[done]`
 
 1. Rewrite `Matrix<T>` (D4) `[done]`: `std::vector<T>` storage, rule of zero,
    explicit constructors, dimensions as one `Extent` type. The author asked
@@ -315,11 +315,27 @@ The redesign proper. Replaces C10 and C11 rather than deciding them.
    clearer of the two, while `children[0]->children[1]` in `Bind` was the
    unreadable half. What made the two views a hazard was that both were
    mutable; neither is now.
-6. Collapse the visitor interface (D7) by giving `ExpressionVisitor` a default
-   implementation that recurses over `children`, so a visitor overrides only
-   the nodes it cares about. The `std::variant` + `std::visit` alternative
-   would delete the `accept`/`visit` double dispatch outright and is the more
-   modern design, but the double dispatch is a choice the author documented in
+6. Collapse the visitor interface (D7) `[dropped]`. The item rested on two
+   `visit` overloads that defaulted to returning `{}`, and those were deleted
+   in phase 4 along with the nodes they served. Its own complaint — forgetting
+   an overload is silent — is now false: all eleven are pure virtual, so a new
+   node type is a compile error in both visitors. Adding the prescribed
+   default would *reintroduce* that silence.
+
+   The mechanism is also wrong for both visitors this project has. Recursing
+   over `children` has no meaning for a fold returning one `T` — which child's
+   value would it be? — and `ParametersVisitor`'s correct default is to record
+   the whole subtree as one argument, which is the opposite of descending into
+   it. Its eight identical one-line overrides are the price of the check, and
+   at two visitors that is cheap.
+
+   What did go is `StatefulVisitor`: an empty class over `TransformationVisitor`
+   whose ten-line comment warned that nothing stopped a visitor modifying the
+   AST in secret. After D6 nothing can.
+
+   The `std::variant` + `std::visit` alternative would delete the
+   `accept`/`visit` double dispatch outright and is the more modern design, but
+   the double dispatch is a choice the author documented in
    `expression_visitor.hpp`. Ruled out on recognisability, not on the merits.
 
 ## Phase 6 — Documentation `[done]`

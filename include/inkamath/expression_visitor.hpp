@@ -91,20 +91,8 @@ template <typename T>
 class FoldingVisitor : public ExpressionVisitor<T, T> {
 };
 
-// class StatefullVisitor
-// This base class is provided for convenience (and sanity reasons).
-// This is simply a TransformationVisitor that is not supposed to modify
-// the AST but rather gather some information about an AST in its internal state.
-// Use TransformationVisitor instead if you mean to modify the AST.
-// Visitor derived from TransformationVisitor can have an internal state too...
-// If you choose StatefullVisitor, just remember that nothing prevents you
-// from modifying the AST in secret... (don't do that).
 template <typename T>
-class StatefulVisitor : public TransformationVisitor<T> {
-};
-
-template <typename T>
-class ParametersVisitor : public StatefulVisitor<T> {
+class ParametersVisitor : public TransformationVisitor<T> {
 public:
 
 	PExpression<T> visit(MatExpression<T>* expr) override {
