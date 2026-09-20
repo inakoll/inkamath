@@ -88,6 +88,15 @@ error: an index must be a whole number, not 2+i
 >> f_(0.5)
 error: an index must be a whole number, not 0.5
 
+# A part that is NaN is present but has no sign, and answers false to every
+# comparison, so the imaginary unit used to be dropped while its magnitude was
+# still printed: these read 'inf*-nan' and '-nan*-nan' (MODERNIZATION.md, C31).
+>> 1/0
+inf+i*-nan
+
+>> 0/0
+-nan+i*-nan
+
 # An exponent outside int's range used to be converted to one anyway, which is
 # undefined: this answered 0 (MODERNIZATION.md, C28).
 >> 2^2147483648

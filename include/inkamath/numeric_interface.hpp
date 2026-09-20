@@ -70,48 +70,41 @@ struct numeric_interface_imp<std::complex<T>,false>
 
     static std::string toString(const std::complex<T>& a)
     {
+        const T real = a.real();
+        T       imag = a.imag();
+
+        // A NaN part is present but has no sign, and answers false to every
+        // comparison. Asking whether it is zero, rather than how it compares
+        // to zero, is what keeps the 'i' from being dropped while its
+        // magnitude is still printed (MODERNIZATION.md, C31).
+        const bool has_real = !(real == 0);
+        const bool has_imag = !(imag == 0);
+        if(!has_real && !has_imag)
+        {
+            return "0";
+        }
+
         std::string s;
-        T real = a.real();
-        T imag = a.imag();
-        if(a.real() != 0)
+        if(has_real)
         {
             s = numeric_interface<T>::toString(real);
-
-            if(imag > 0)
-            {
-                s += "+i";
-            }
-            else if(imag < 0)
+        }
+        if(has_imag)
+        {
+            if(imag < 0)
             {
                 s += "-i";
                 imag = -imag;
             }
-            if(imag != 1 && imag != -1 && imag != 0)
+            else
             {
-                s+= "*" + numeric_interface<T>::toString(imag);
+                s += has_real ? "+i" : "i";
+            }
+            if(!(imag == 1))
+            {
+                s += "*" + numeric_interface<T>::toString(imag);
             }
         }
-        else if(a.imag() != 0)
-        {
-            if(imag > 0)
-            {
-                s += "i";
-            }
-            else if(imag < 0)
-            {
-                s += "-i";
-                imag = -imag;
-            }
-            if(imag != 1 && imag != -1 && imag != 0)
-            {
-                s+= "*" + numeric_interface<T>::toString(imag);
-            }
-        }
-        else
-        {
-            s = "0";
-        }
-
         return s;
     }
 

@@ -141,7 +141,7 @@ o_0=2
 o_n=o_(n-1)^2
 
 >> lim o
-error: o did not converge within 100 terms (last term inf*-nan)
+error: o did not converge within 100 terms (last term inf+i*-nan)
 
 # A recurrence has no implicit value below its lowest clause. The old fallback
 # was zero -- the additive identity, right for a sum and wrong for a product
