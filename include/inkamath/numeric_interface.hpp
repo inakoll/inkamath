@@ -131,6 +131,11 @@ struct numeric_interface_imp<std::complex<T>,false>
     static std::complex<T> pow(const std::complex<T>& a,
                                const std::complex<T>& b)
     {
+        // exp(b*log(a)) is NaN at a == 0, where IEEE 754 gives 0^0 == 1.
+        // The integer overload below computes it by repeated multiplication.
+        if(b.imag() == 0 && b.real() == std::floor(b.real())) {
+            return std::pow(a, static_cast<int>(b.real()));
+        }
         return std::pow(a,b);
     }
 

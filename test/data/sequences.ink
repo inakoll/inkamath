@@ -42,7 +42,7 @@
 
 # Series: the interpreter iterates the general term until it converges.
 >> exp(x)_n=exp(x)_(n-1)+x^n/!n
-nan*nan
+1
 
 >> exp(1)
 2.71828183
@@ -51,13 +51,13 @@ nan*nan
 -7.69606601e-13
 
 >> cos(x)=(exp(i*x)+exp(-i*x))/2
-nan*nan
+1
 
 >> cos(pi/3)
 0.5
 
 >> sin(x)=(exp(i*x)-exp(-i*x))/(2*i)
-nan*nan
+0
 
 >> sin(pi/6)
 0.5
