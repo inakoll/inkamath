@@ -39,13 +39,13 @@ public:
         // One definition per name. An indexed clause extends a sequence,
         // creating one if the name held a plain definition; a plain
         // definition replaces whatever was there.
-        if(ai_parameters.a() != 0) {
+        if(ai_parameters.general()) {
             plain_ = ExpressionDefinition<T>();
             general_ = ExpressionDefinition<T>(ai_parameters, ai_expression);
         }
         else if(ai_parameters.indexed()) {
             plain_ = ExpressionDefinition<T>();
-            base_[ai_parameters.b()] = ExpressionDefinition<T>(ai_parameters, ai_expression);
+            base_[ai_parameters.index()] = ExpressionDefinition<T>(ai_parameters, ai_expression);
         }
         else {
             base_.clear();
@@ -177,7 +177,7 @@ private:
                 difference_type diff = numeric_interface<difference_type>::one();
                 size_t iter_count = 0;
                 while(diff > 1E-10 && iter_count < 30) {
-                    start_index += gen_params_def.a();
+                    ++start_index;
                     stack.Set(gen_params_def.index_name(), ParametersDefinition<T>(), PExpression<T>(new ValExpression<T>(T(start_index))));
                     evaluation = gen_expr_def->accept(evaluator);
                     diff = numeric_interface<T>::abs(evaluation-start_evaluation);

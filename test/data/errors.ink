@@ -46,3 +46,8 @@ w_n=w
 >> w_1
 error: evaluation nests more than 256 references deep
 
+# Malformed parameters used to be swallowed by a catch inside the constructor,
+# leaving the definition half-built and reporting nothing (MODERNIZATION.md,
+# C14).
+>> f(x=1, y)=x+y
+error: a positional argument cannot follow a keyword argument

@@ -11,44 +11,34 @@ class ReferenceStack;
 template <typename T>
 class ParametersCall;
 
+// The left-hand side of a definition: 'f(x, y)_n' or 'f_0'.
+//
+// README.md sections 4.2 and 4.3: an index written as an identifier names the
+// variable of the general clause; anything else must be a constant integer
+// expression and names one base clause. Nothing in between is a definition.
 template <typename T>
 class ParametersDefinition
 {
 public:
-    ParametersDefinition() : a_(0), b_(0), indexed_(false) {}
+    ParametersDefinition() = default;
 
-    ParametersDefinition(PExpression<T> params, PExpression<T> subexpr) {
-        ParametersVisitor<T> params_visitor;
-        SubVisitor<T> subexpr_visitor;
-
+    ParametersDefinition(PExpression<T> params, PExpression<T> subexpr, EvaluationVisitor<T>& evaluator) {
         if(params) {
-            try {
-                params->accept(params_visitor);
-            }
-            catch(const std::exception&) {
-                return;
-            }
+            ParametersVisitor<T> params_visitor;
+            params->accept(params_visitor);
+            parameters_names_ = params_visitor.get_parameters_names();
+            parameters_dict_ = params_visitor.get_parameters_dict();
         }
         if(subexpr) {
-            indexed_ = false;
-            try {
-                subexpr->accept(subexpr_visitor);
-                indexed_ = true;
+            indexed_ = true;
+            if(RefExpression<T>* variable = dynamic_cast<RefExpression<T>*>(subexpr.get())) {
+                index_name_ = variable->Name();
             }
-            catch(const std::exception& ) {
-                return;
+            else {
+                index_ = numeric_interface<T>::toInt(subexpr->accept(evaluator));
             }
         }
-        else {
-            indexed_ = false;
-        }
-        parameters_names_ = params_visitor.get_parameters_names();
-        parameters_dict_ = params_visitor.get_parameters_dict();
-        index_name_ = subexpr_visitor.get_index_name();
-        a_ = subexpr_visitor.get_a();
-        b_ = subexpr_visitor.get_b();
     }
-    ~ParametersDefinition() {}
 
     // Arity is checked here rather than at the call site because this is the
     // only place that knows both the definition's parameters and the call's.
@@ -87,88 +77,53 @@ public:
         }
     }
 
-    int a() const {return a_;}
-    int b() const {return b_;}
+    int index() const {return index_;}
     const std::string& index_name() const {return index_name_;}
     const std::vector<std::string>& parameters_names() const {return parameters_names_;}
     const ExprDict<T>& parameters_dict() const {return parameters_dict_;}
     bool indexed() const {return indexed_;}
+    bool general() const {return indexed_ && !index_name_.empty();}
 
 
 protected:
     std::vector<std::string> parameters_names_;
     ExprDict<T> parameters_dict_;
     std::string index_name_;
-    int a_;
-    int b_;
-    bool indexed_;
+    int index_ = 0;
+    bool indexed_ = false;
 };
 
+// The right-hand side of a call: 'f(1, 2)_(n-1)'. Unlike a definition's index,
+// a call's is an arbitrary expression, evaluated in the calling scope.
 template <typename T>
 class ParametersCall
 {
 public:
 
     friend class ParametersDefinition<T>;
-    ParametersCall() : a_(0), b_(0), indexed_(false) {}
-    ParametersCall(int a, int b, bool indexed) : a_(a), b_(b), indexed_(indexed) {}
+    ParametersCall() = default;
 
     ParametersCall(PExpression<T> params, PExpression<T> subexpr) {
-        ParametersVisitor<T> params_visitor;
-        SubVisitor<T> subexpr_visitor;
-
         if(params) {
-            try {
-                params->accept(params_visitor);
-
-            }
-            catch(const std::exception&) {
-                return;
-            }
+            ParametersVisitor<T> params_visitor;
+            params->accept(params_visitor);
+            parameters_names_ = params_visitor.get_parameters_names();
+            parameters_exprs_ = params_visitor.get_parameters_expr();
+            parameters_dict_ = params_visitor.get_parameters_dict();
         }
-
-        if(subexpr) {
-            indexed_ = true;
-            try {
-                subexpr->accept(subexpr_visitor);
-            }
-            catch(const std::exception& ) {
-                return;
-                subexpr_ = subexpr;
-            }
-        }
-        else {
-            indexed_ = false;
-        }
-        parameters_names_ = params_visitor.get_parameters_names();
-        parameters_exprs_ = params_visitor.get_parameters_expr();
-        parameters_dict_ = params_visitor.get_parameters_dict();
-        index_name_ = subexpr_visitor.get_index_name();
-        a_ = subexpr_visitor.get_a();
-        b_ = subexpr_visitor.get_b();
+        subexpr_ = subexpr;
+        indexed_ = bool(subexpr);
     }
-
-    ~ParametersCall() {}
 
     bool TryEvalIndex(ReferenceStack<T>& stack, int& index_evaluation) const {
-        EvaluationVisitor<T> evaluator(stack);
-        if(indexed_) {
-            if(subexpr_) {
-                index_evaluation = numeric_interface<T>::toInt(subexpr_->accept(evaluator));
-            }
-            else if (index_name_ != "") {
-                index_evaluation = numeric_interface<T>::toInt(T(a_)*stack.Eval(index_name_, ParametersCall<T>())+T(b_));
-            }
-            else {
-                index_evaluation = b_;
-            }
+        if(!subexpr_) {
+            return false;
         }
-        return indexed_;
+        EvaluationVisitor<T> evaluator(stack);
+        index_evaluation = numeric_interface<T>::toInt(subexpr_->accept(evaluator));
+        return true;
     }
 
-    int a() const {return a_;}
-    int b() const {return b_;}
-    const std::string& index_name() const {return index_name_;}
     const std::vector<std::string>& parameters_names() const {return parameters_names_;}
     PExpression<T> subexpr() const {return subexpr_;}
     const std::vector<PExpression<T>>& parameters_expression() const {return parameters_exprs_;}
@@ -180,11 +135,8 @@ protected:
     std::vector<std::string> parameters_names_;
     std::vector<PExpression<T>> parameters_exprs_;
     ExprDict<T> parameters_dict_;
-    std::string index_name_;
     PExpression<T> subexpr_;
-    int a_;
-    int b_;
-    bool indexed_;
+    bool indexed_ = false;
 };
 
 #endif // PARAMETERS_HPP

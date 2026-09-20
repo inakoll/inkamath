@@ -143,7 +143,7 @@ public:
             this->parameters_expr.push_back(expr->self());
 		}
 		else {
-			throw(std::runtime_error("Invalid parameters. Non-keyword argument found after a keyword argument."));
+			throw std::runtime_error("a positional argument cannot follow a keyword argument");
 		}
 		++visitor_depth;
 		return PExpression<T>();
@@ -154,7 +154,7 @@ public:
             this->parameters_expr.push_back(expr->self());
 		}
 		else {
-			throw(std::runtime_error("Invalid parameters. Non-keyword argument found after a keyword argument."));
+			throw std::runtime_error("a positional argument cannot follow a keyword argument");
 		}
 		++visitor_depth;
 		return PExpression<T>();
@@ -214,118 +214,6 @@ private:
 };
 
 template <typename T>
-class SubVisitor : public StatefulVisitor<T> {
-public:
-	PExpression<T> visit(RefExpression<T>* expr) override {
-		this->index_name = expr->Name();
-        this->a = 1;
-		return PExpression<T>();
-	}
-	
-	PExpression<T> visit(ValExpression<T>* expr) override {
-        b = numeric_interface<T>::toInt(expr->value);
-		return PExpression<T>();
-	}
-
-	PExpression<T> visit(AddExpression<T>* expr) override {
-		SubVisitor l,r;
-        expr->m_e1()->accept(l);
-        expr->m_e2()->accept(r);
-		if(l.index_name != "" && r.index_name != "" && l.index_name != r.index_name) {
-			a = 0;
-			b = 0;
-			index_name = "";
-			throw std::runtime_error("Multiple index name found inside a sub-expression.");
-		}
-		a = l.a + r.a;
-		b = l.b + r.b;
-		this->index_name = l.index_name;
-		return PExpression<T>();
-	}
-	
-	PExpression<T> visit(NegExpression<T>* expr) override {
-		SubVisitor l;
-        expr->m_e()->accept(l);
-		a = -l.a;
-		b = -l.b;
-		this->index_name = l.index_name;
-		return PExpression<T>();
-	}
-
-	PExpression<T> visit(MultExpression<T>* expr) override {
-		SubVisitor l,r;
-        expr->m_e1()->accept(l);
-        expr->m_e2()->accept(r);
-		if(l.a == 0) {
-			this->index_name = r.index_name;
-			a = l.b * r.a;
-		}
-		else if(r.a == 0) {
-			this->index_name = l.index_name;
-			a = l.a * r.b;
-		}
-		else {
-			a = 0;
-			b = 0;
-			index_name = "";
-			throw std::runtime_error("Unexpected second degree polynom inside a sub expression.");
-		}
-		b = l.b * r.b;
-		return PExpression<T>();
-	}
-	
-	PExpression<T> visit_unexpected_expression() {
-		a = 0;
-		b = 0;
-		index_name = "";
-        throw std::runtime_error("Unexpected expression inside a sub expression.");
-		return PExpression<T>();
-	}
-	
-    PExpression<T> visit(MatExpression<T>* ) override {
-		return visit_unexpected_expression();
-	}
-	
-    PExpression<T> visit(EqualExpression<T>* ) override {
-		return visit_unexpected_expression();
-	}
-	
-    PExpression<T> visit(FuncExpression<T>* ) override {
-		return visit_unexpected_expression();
-	}
-	
-    PExpression<T> visit(DivExpression<T>* ) override {
-		return visit_unexpected_expression();
-	}
-
-    PExpression<T> visit(PowExpression<T>* ) override {
-		return visit_unexpected_expression();
-	}
-
-    PExpression<T> visit(FactExpression<T>* ) override {
-		return visit_unexpected_expression();
-	}
-
-    std::string get_index_name() {
-        return index_name;
-    }
-
-    int get_a() {
-        return a;
-    }
-
-    int get_b() {
-        return b;
-    }
-
-private:
-	std::string index_name;
-    int a = 0;
-    int b = 0;
-	
-};
-
-template <typename T>
 class ReferenceStack;
 
 template <typename T>
@@ -340,7 +228,7 @@ public:
     // the top level is a statement and never gets as far as visit().
     void Bind(EqualExpression<T>* expr) {
         if(expr->children[0]->children.size() > 0) {
-            this->stack_.Set(expr->Name(), ParametersDefinition<T>(expr->children[0]->children[0], expr->children[0]->children[1]), expr->children[1]);
+            this->stack_.Set(expr->Name(), ParametersDefinition<T>(expr->children[0]->children[0], expr->children[0]->children[1], *this), expr->children[1]);
         }
         else {
             this->stack_.Set(expr->Name(), ParametersDefinition<T>(), expr->children[1]);
