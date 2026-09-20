@@ -59,11 +59,26 @@ error: s is a sequence; index it (s_0) or take its limit (lim s)
 >> lim s
 0
 
+# A recurrence carries its base case: there is no implicit value below the
+# lowest defined index. The hidden 0 this replaces is the additive identity,
+# which is wrong for any multiplicative recurrence.
+>> exp(x)_0 = 1
+exp(x)_0 = 1
+
 >> exp(x)_n = exp(x)_(n-1) + x^n/!n
 exp(x)_n = exp(x)_(n-1) + x^n/!n
 
 >> lim exp(1)
 2.71828183
+
+>> p_0 = 1
+p_0 = 1
+
+>> p_n = p_(n-1)*n
+p_n = p_(n-1)*n
+
+>> p_5
+120
 
 # A divergent sequence reports non-convergence instead of handing back the
 # term it happened to stop on.

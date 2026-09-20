@@ -67,6 +67,7 @@ phase 0; the rest are open and are scheduled into the phases that follow.
 | C14 | **Four `catch` blocks discard errors inside a constructor.** `parameters.hpp:28, 38, 105, 115` catch `SubVisitor`/`ParametersVisitor` exceptions in the `ParametersDefinition` and `ParametersCall` constructors and `return`, leaving the object half-built — `parameters_names_`, `index_name_`, `a_` and `b_` never assigned. The errors never reach `Eval`, so the phase 3 error channel does not surface them; they are invisible by construction. A sibling of C13 rather than an instance of it: there the interpreter has nothing to report, here it has something and throws it away. The machinery is rewritten in phase 4, so fix it there rather than patching a constructor that is about to go. |
 | C15 `[fixed]` | **The parser read one token past the end.** `ParseParameters` tested `Peek().type` after `ParseMatrix` had consumed the input — an `end()` dereference before the token cursor became an index, `vector::operator[](size())` after. Neither ASan nor UBSan catches it while the index lands inside the allocation, which for a vector with spare capacity is most of the time; `_GLIBCXX_ASSERTIONS` does, and sanitizer builds now define it. `f(1+2` is the repro and is a golden. A sweep of all 117 prefixes of ten representative inputs found no other instance — only C1. |
 | C16 `[fixed]` | **`f=f` crashed on an uninitialised pointer, before recursing at all.** `RecursiveExprVisitor::to_transform_` was assigned only when descending into a child, but the constructor visits the root directly — so a self-reference at the root of a definition read an indeterminate `PExpression<T>*` and then wrote through it. The stack was ten frames deep, not overflowing; ASan does not flag a read of an uninitialised pointer, which is why this looked like C1 for several rounds. Fixed by initialising the member and not wrapping a root self-reference, which has no enclosing slot to substitute into. `f=f` and `w_n=w` are goldens and now reach the budget. |
+| C17 | **Indexed clauses are keyed by `size_t`, so a negative index destroys their ordering.** `reference.hpp` declares `std::map<size_t, ExpressionDefinition<T>>` while `ParametersDefinition::b()` is `int`, so `f_(-1)=0` stores at key 18446744073709551615. Lookup round-trips through the same conversion and appears to work, but `TryEvaluateGeneralExpression` picks its starting term with `indexed_expr_.rbegin()`, which then finds the negative clause as the *largest*. With `g_(-1)=0`, `g_0=5`, `g_n=g_(n-1)+1`, `g_1` is a correct `6` while bare `g` is `34`. The same signedness confusion is half of C8: `size_t index = ai_parameters.b() - gen_params_def.b()` wraps for a negative result. Matters now because an explicit base case at a negative index is exactly how the implicit zero would be written out. |
 | C13 (partly fixed) | **Nothing ever fails, which is why everything else survived.** An unknown identifier evaluates to `0`. Surplus arguments are dropped. A missing parameter is looked up by name in the enclosing scope — `h(x)=x^2` with `x=5` in scope makes bare `h` evaluate to `25`, which is dynamic scoping arrived at by accident. A non-integer index is truncated. None of these reports anything. The interpreter always returns a number, so a typo and a correct series are indistinguishable from the outside; that is how a decade of defects stayed invisible. Root cause of the plausibility of C1, C2, C5, C10 and C11 alike. Arity is fixed; the undefined name and the truncated index wait on phase 4 (see phase 3 item 3). |
 
 ### Design and dead weight
@@ -225,15 +226,24 @@ The redesign proper. Replaces C10 and C11 rather than deciding them.
 3. **A definition is a statement.** It binds and echoes what it bound; it
    evaluates nothing. No left-hand-side lookup, no right-hand-side evaluation,
    no convergence loop triggered by typing a definition.
-4. **Parameters are lexically scoped** (C13). A missing argument is a
+4. **A recurrence needs its base case; there is no implicit value at an
+   undefined index.** Today `SafeRecursiveEval` returns `0` below the lowest
+   defined index, which is an unannounced choice of the *additive* identity.
+   It is right for a series and wrong for a product: `p_n = p_(n-1)*n` with no
+   base evaluates to `0` at every index, while `p_0 = 1` gives `1, 2, 6, 24,
+   120`. The 2014 test data makes the point by itself — `exp`, `ln` and `atan`
+   are additive and carry no base, the arithmetic-geometric mean is
+   multiplicative and carries `am(x,y)_0` and `gm(x,y)_0`. Base cases were
+   already written wherever the hidden zero would have been wrong.
+5. **Parameters are lexically scoped** (C13). A missing argument is a
    diagnostic, not a search of the enclosing scope for a name that matches.
-5. **`?name` prints a definition back**, as written, without evaluating it.
+6. **`?name` prints a definition back**, as written, without evaluating it.
    On a sequence it prints every clause, so the whole definition is visible
    at once — which the three parallel slots made impossible. Together with
    item 3 this is what makes the core idea legible: after `b = a+a` and
    `a = 2`, `?b` is `b = a+a` while `b` is `4`. `?` is currently an
    unrecognised character, so the syntax is free.
-6. C3 and C4 are one-line bugs in machinery this phase rewrites; they go away
+7. C3, C4 and C17 are small bugs in machinery this phase rewrites; they go away
    with it rather than being patched first.
 
 ## Phase 5 — Value types and the core
