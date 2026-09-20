@@ -453,7 +453,7 @@ PExpression<U> Interpreter<T,U>::ParseParameters()
     if (!AtEnd() && m_tokens[m_i++].type == LPar && !AtEnd() && Peek().type != RPar)
     {
         e = ParseMatrix();
-        if (Peek().type != RPar)
+        if (AtEnd() || Peek().type != RPar)
             throw(std::logic_error("Missing ')' after function parameters."));
         ++m_i;
     }

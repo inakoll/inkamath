@@ -33,6 +33,10 @@ endif()
 if(INKAMATH_SANITIZE)
     add_compile_options(-fsanitize=${INKAMATH_SANITIZE} -fno-omit-frame-pointer)
     add_link_options(-fsanitize=${INKAMATH_SANITIZE})
+    # Container precondition checks. The sanitizers miss an out-of-range
+    # operator[] whenever the index still lands inside the allocation, which
+    # is most of the time for a vector with spare capacity.
+    add_compile_definitions(_GLIBCXX_ASSERTIONS)
 endif()
 
 # --- the interpreter ---------------------------------------------------------

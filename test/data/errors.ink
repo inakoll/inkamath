@@ -21,6 +21,9 @@ Error : Unexpected character : @
 >> 2 3
 Error : Syntax error before '3'
 
+>> f(1+2
+Error : Missing ')' after function parameters.
+
 # Undefined identifiers evaluate to zero without an error (README.md section 6).
 >> undefined
 0
