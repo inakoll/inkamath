@@ -36,29 +36,37 @@ public:
             throw std::runtime_error(std::string("Interpreter internal error : invalid reference names ") + ai_reference_name + " and " + reference_name_);
         }
 
+        // One definition per name. An indexed clause extends a sequence,
+        // creating one if the name held a plain definition; a plain
+        // definition replaces whatever was there.
         if(ai_parameters.a() != 0) {
-            general_expr_ = ExpressionDefinition<T>(ai_parameters, ai_expression);
+            plain_ = ExpressionDefinition<T>();
+            general_ = ExpressionDefinition<T>(ai_parameters, ai_expression);
         }
         else if(ai_parameters.indexed()) {
-            indexed_expr_[ai_parameters.b()] = ExpressionDefinition<T>(ai_parameters, ai_expression);
+            plain_ = ExpressionDefinition<T>();
+            base_[ai_parameters.b()] = ExpressionDefinition<T>(ai_parameters, ai_expression);
         }
         else {
-            single_expr_ = ExpressionDefinition<T>(ai_parameters, ai_expression);
+            base_.clear();
+            general_ = ExpressionDefinition<T>();
+            memo_.clear();
+            plain_ = ExpressionDefinition<T>(ai_parameters, ai_expression);
         }
 
         ParametersDefinition<T> gen_params_def;
-        gen_params_def = std::get<0>(general_expr_);
+        gen_params_def = std::get<0>(general_);
         if( gen_params_def.parameters_dict() != ai_parameters.parameters_dict()
                 || gen_params_def.parameters_names() != ai_parameters.parameters_names()) {
             // memoized index is invalidated when adding a new expression
             // with different parameters
-            memoized_index_.clear();
+            memo_.clear();
         }
     }
 
     T Eval( const ParametersCall<T>& ai_parameters, ReferenceStack<T>& stack) {
 //        if(ai_parameters.parameters_dict().empty()
-//          && std::get<0>(this->general_expr_).parameters_names().empty()) {
+//          && std::get<0>(this->general_).parameters_names().empty()) {
 //            // Evaluation of an expression might mutate the internal stack_ object
 //            // The following line ensure that the stack will be restored at the end of the function
 //            // or in case of an exception thanks to RAII.
@@ -88,27 +96,27 @@ public:
         EvaluationVisitor<T> evaluator(stack);
 
         // Important note: Indexed expression shall not be recursive! ==> stack overflow
-        if(!TryEvaluateIndexedExpression(ai_parameters, evaluator, evaluation)) {
+        if(!TryEvaluateBaseClause(ai_parameters, evaluator, evaluation)) {
             PExpression<T> gen_expr_def;
             ParametersDefinition<T> gen_params_def;
-            std::tie(gen_params_def, gen_expr_def) = general_expr_;
+            std::tie(gen_params_def, gen_expr_def) = general_;
             if(     gen_params_def.a() == ai_parameters.a()
                     &&  gen_params_def.parameters_dict().empty()
                     &&  ai_parameters.parameters_dict().empty()
                     &&  gen_params_def.parameters_names() == ai_parameters.parameters_names()) {
                 int index_value;
                 if(ai_parameters.TryEvalIndex(stack, index_value)) {
-                    auto it = memoized_index_.find(index_value);
-                    if(it != memoized_index_.end()) {
+                    auto it = memo_.find(index_value);
+                    if(it != memo_.end()) {
                         evaluation = it->second;
                     }
                     else if(index_value < 0) {
                         evaluation = {};
-                        memoized_index_[index_value] = evaluation;
+                        memo_[index_value] = evaluation;
                     }
-                    else if(!TryEvaluateIndexedExpression(ai_parameters, evaluator, evaluation)) {
+                    else if(!TryEvaluateBaseClause(ai_parameters, evaluator, evaluation)) {
                         ParametersCall<T> fwd_parameter(0,index_value,true);
-                        TryEvaluateGeneralExpression(fwd_parameter, evaluator, evaluation);
+                        TryEvaluateGeneralClause(fwd_parameter, evaluator, evaluation);
                     }
                 }
             }
@@ -120,37 +128,43 @@ private:
     // The clauses of one name share their parameter list; any of them answers
     // for the whole definition.
     const ParametersDefinition<T>& CallParameters() const {
-        if(std::get<1>(general_expr_)) return std::get<0>(general_expr_);
-        if(std::get<1>(single_expr_)) return std::get<0>(single_expr_);
-        if(!indexed_expr_.empty()) return std::get<0>(indexed_expr_.begin()->second);
-        return std::get<0>(single_expr_);
+        if(std::get<1>(general_)) return std::get<0>(general_);
+        if(!base_.empty()) return std::get<0>(base_.begin()->second);
+        return std::get<0>(plain_);
     }
 
     T EvalImp( const ParametersCall<T>& ai_parameters, ReferenceStack<T>& stack) {
         EvaluationVisitor<T> evaluator(stack);
         T result;
 
-        if(TryEvaluateIndexedExpression(ai_parameters, evaluator, result)) {
-            return result;
+        if(std::get<1>(plain_)) {
+            TryEvaluatePlainExpression(ai_parameters, evaluator, result);
         }
-        else if(TryEvaluateGeneralExpression(ai_parameters, evaluator, result)) {
-            return result;
-        }
-        else if(TryEvaluateSimpleExpression(ai_parameters, evaluator, result)) {
-            return result;
+        else if(!TryEvaluateBaseClause(ai_parameters, evaluator, result)
+                && !TryEvaluateGeneralClause(ai_parameters, evaluator, result)) {
+            // Nothing sensible to invent: a sequence has no value under its
+            // bare name, and no value at an index no clause covers.
+            int index = 0;
+            if(ai_parameters.TryEvalIndex(stack, index)) {
+                throw std::runtime_error(reference_name_ + " has no clause for index "
+                                         + std::to_string(index));
+            }
+            throw std::runtime_error(reference_name_ + " is a sequence; index it, as in "
+                                     + reference_name_ + "_"
+                                     + std::to_string(base_.begin()->first));
         }
 
         return result;
     }
 
-    bool TryEvaluateIndexedExpression(const ParametersCall<T>& ai_parameters, EvaluationVisitor<T>& evaluator, T& evaluation) {
+    bool TryEvaluateBaseClause(const ParametersCall<T>& ai_parameters, EvaluationVisitor<T>& evaluator, T& evaluation) {
         bool succeed = false;
         ReferenceStack<T>& stack = evaluator.stack();
         int index_value;
         if(ai_parameters.TryEvalIndex(stack, index_value)) {
             // Evaluation to an index is requested
-            auto ind_definition = indexed_expr_.find(index_value);
-            if(ind_definition != indexed_expr_.end()) {
+            auto ind_definition = base_.find(index_value);
+            if(ind_definition != base_.end()) {
                 ParametersDefinition<T> ind_params_def;
                 PExpression<T> ind_expr_def;
                 std::tie(ind_params_def, ind_expr_def) = ind_definition->second;
@@ -165,12 +179,12 @@ private:
        return succeed;
     }
 
-    bool TryEvaluateGeneralExpression(const ParametersCall<T>& ai_parameters, EvaluationVisitor<T>& evaluator, T& evaluation) {
+    bool TryEvaluateGeneralClause(const ParametersCall<T>& ai_parameters, EvaluationVisitor<T>& evaluator, T& evaluation) {
         bool succeed = false;
         ReferenceStack<T>& stack = evaluator.stack();
         PExpression<T> gen_expr_def;
         ParametersDefinition<T> gen_params_def;
-        std::tie(gen_params_def, gen_expr_def) = general_expr_;
+        std::tie(gen_params_def, gen_expr_def) = general_;
         if(gen_expr_def) {
             if(ai_parameters.indexed()) {
                 long long index = ai_parameters.b() - gen_params_def.b();
@@ -184,27 +198,27 @@ private:
                 typename ReferenceStack<T>::Guard guard(stack);
                 stack.Set(gen_params_def.index_name(), ParametersDefinition<T>(), PExpression<T>(new ValExpression<T>(T(index))));
                 evaluation = gen_expr_def->accept(evaluator);
-                memoized_index_[index] = evaluation;
+                memo_[index] = evaluation;
                 succeed = true;
             }
             else {
                 long long start_index = 0;
                 T start_evaluation;
-                if(!memoized_index_.empty() || !indexed_expr_.empty()) {
-                    if(!memoized_index_.empty()) {
-                        start_index = memoized_index_.rbegin()->first;
+                if(!memo_.empty() || !base_.empty()) {
+                    if(!memo_.empty()) {
+                        start_index = memo_.rbegin()->first;
                     }
-                    if(!indexed_expr_.empty()) {
-                        start_index = std::max(start_index, indexed_expr_.rbegin()->first);
+                    if(!base_.empty()) {
+                        start_index = std::max(start_index, base_.rbegin()->first);
                     }
-                    if(!memoized_index_.empty() && start_index == memoized_index_.rbegin()->first) {
-                        start_evaluation = memoized_index_.rbegin()->second;
+                    if(!memo_.empty() && start_index == memo_.rbegin()->first) {
+                        start_evaluation = memo_.rbegin()->second;
                     }
                     else {
 
                         ParametersDefinition<T> ind_params_def;
                         PExpression<T> ind_expr_def;
-                        std::tie(ind_params_def, ind_expr_def) = indexed_expr_.rbegin()->second;
+                        std::tie(ind_params_def, ind_expr_def) = base_.rbegin()->second;
 
                         ind_params_def.SetCallParameters(ai_parameters, evaluator);
                         start_evaluation = ind_expr_def->accept(evaluator);
@@ -225,22 +239,22 @@ private:
                     start_evaluation = evaluation;
                     ++iter_count;
                 }
-                memoized_index_[start_index] = evaluation;
+                memo_[start_index] = evaluation;
                 succeed = true;
             }
         }
         return succeed;
     }
 
-    bool TryEvaluateSimpleExpression(const ParametersCall<T>& ai_parameters, EvaluationVisitor<T>& evaluator, T& evaluation) {
+    bool TryEvaluatePlainExpression(const ParametersCall<T>& ai_parameters, EvaluationVisitor<T>& evaluator, T& evaluation) {
         bool succeed = false;
         ParametersDefinition<T> single_params_def;
-        PExpression<T> single_expr_def;
-        std::tie(single_params_def, single_expr_def) = single_expr_;
-        if(single_expr_def) {
+        PExpression<T> plain_def;
+        std::tie(single_params_def, plain_def) = plain_;
+        if(plain_def) {
 
             single_params_def.SetCallParameters(ai_parameters, evaluator);
-            evaluation = single_expr_def->accept(evaluator);
+            evaluation = plain_def->accept(evaluator);
             succeed = true;
         }
         return succeed;
@@ -248,18 +262,18 @@ private:
 
     // Signed: an index may be negative, and these maps are read in order
     // (rbegin) to pick the highest known term.
-    typedef std::map<long long, ExpressionDefinition<T>> Indexed_expr;
-    typedef std::map<long long, T> Indexed_values;
+    typedef std::map<long long, ExpressionDefinition<T>> BaseClauses;
+    typedef std::map<long long, T> MemoisedTerms;
 
     std::string reference_name_;
 	
-	/* Associated expression in simple assignation */
-    ExpressionDefinition<T> 	single_expr_;
-	
-	/* Associated expressions for indexed expression */
-    Indexed_expr                indexed_expr_;
-    Indexed_values              memoized_index_;
-    ExpressionDefinition<T> 	general_expr_;
+    // Exactly one of these is populated: a plain definition, or a sequence
+    // made of base clauses and at most one general clause.
+    ExpressionDefinition<T>     plain_;
+
+    BaseClauses                 base_;
+    ExpressionDefinition<T>     general_;
+    MemoisedTerms               memo_;
 	
 };
 

@@ -55,3 +55,38 @@ error: g takes no arguments
 >> h
 error: h expects 1 argument, got 0
 
+# One definition per name. An indexed clause extends a sequence; a plain
+# definition replaces whatever the name held. The two used to coexist, with
+# an undocumented precedence that made a plain definition unreachable
+# (MODERNIZATION.md, C11).
+>> m_n=2*n
+0
+
+>> m_3
+6
+
+>> m=5
+5
+
+>> m
+5
+
+>> m_3
+5
+
+# The reverse: a clause turns a plain definition into a sequence.
+>> p=9
+9
+
+>> p_0=1
+1
+
+>> p_0
+1
+
+>> p
+error: p is a sequence; index it, as in p_0
+
+>> p_5
+error: p has no clause for index 5
+
