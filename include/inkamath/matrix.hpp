@@ -291,11 +291,14 @@ std::string Matrix<T>::toString(const Matrix<T>& a)
 	oss << std::setprecision(MyPrec);
     for (i=1 ; i<=a.m_rows ; ++i)
     {
+        // Rows are separated, not terminated: a 1x1 matrix is just its value,
+        // which is what a diagnostic quoting one needs.
+        if (i > 1) oss << "\n";
         for (j=1 ; j<a.m_cols ; ++j)
         {
             oss << numeric_interface<T>::toString(a(i,j)) << " ";
         }
-        oss << numeric_interface<T>::toString(a(i,j)) << "\n";
+        oss << numeric_interface<T>::toString(a(i,j));
     }
     return oss.str();
 }
