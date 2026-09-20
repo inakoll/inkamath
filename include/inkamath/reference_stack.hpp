@@ -3,16 +3,20 @@
 
 #include <string>
 #include <stdexcept>
-#include "inkamath/mapstack.hpp"
+#include <unordered_map>
+#include <vector>
 #include "inkamath/reference.hpp"
 #include "inkamath/pexpression.hpp"
 
-
+// Two scopes and no more: the definitions the user has made, and the
+// parameters of the call being evaluated. A call never sees its caller's
+// parameters, so 'q = y+1' means the global y whichever call is on the
+// stack (MODERNIZATION.md, phase 4 item 5).
 template <typename T>
 class ReferenceStack {
 public:
 
-    typedef Mapstack<std::string, Reference<T>> stack_type;
+    typedef std::unordered_map<std::string, Reference<T>> scope_type;
 
     // Measured against every golden transcript: the deepest legitimate
     // evaluation nests 33 references and the longest takes 6444 steps.
@@ -25,56 +29,50 @@ public:
     ReferenceStack() {
         this->Set("pi", ParametersDefinition<T>(), PExpression<T>( new ValExpression<T>(T(3.1415926535898))));
         this->Set("e",  ParametersDefinition<T>(), PExpression<T>( new ValExpression<T>(T(2.7182818284590))));
-        stack_.Push();
     }
 
     void Set(const std::string& ai_reference_name, const ParametersDefinition<T>& ai_parameters, PExpression<T>  ai_expression) {
-        // Try to get a copy of the actual reference
-        Reference<T> reference;
-        stack_.Get(ai_reference_name, reference);
-
-        // The fact that the reference was in the stack or not doesn't matter
-        // Updating or initializing is the same operation
-        reference.add_expression(ai_reference_name, ai_parameters, ai_expression);
-        stack_.Set(ai_reference_name, reference);
+        // Updating and initialising are the same operation.
+        CurrentScope()[ai_reference_name].add_expression(ai_reference_name, ai_parameters, ai_expression);
     }
 
     T Eval(const std::string& ai_reference_name, const ParametersCall<T>& ai_parameters)  {
         Budget budget(*this);
-        // Evaluation of an expression might mutate the internal stack_ object
-        // The following line ensure that the stack will be restored at the end of the function
-        // or in case of an exception thanks to RAII.
-        // The context guard might have a huge impact on performance.
-        // Consider to move it closer to the reference parameters assignation as a future optimisation.
-        typename stack_type::Context guard(stack_);
-
-        // Just evaluate the reference with the parameters if it's in the stack
-        Reference<T> reference;
-        if(stack_.Get(ai_reference_name, reference)) {
-            return reference.Eval(ai_parameters,*this);
-        }
-        else {
+        const Reference<T>* reference = Find(ai_reference_name);
+        if(!reference) {
             throw std::runtime_error(ai_reference_name + " is not defined");
         }
+        // A copy: evaluating the body may redefine the name under us.
+        Reference<T> definition = *reference;
+        return definition.Eval(ai_parameters, *this);
     }
 
-    friend struct Guard;
-    struct Guard {
+    friend struct Frame;
+    // The scope of one call's parameters.
+    struct Frame {
     public:
-        Guard(ReferenceStack<T>& stack) : guard(stack.stack_) {}
+        explicit Frame(ReferenceStack<T>& stack) : stack_(stack) {stack_.frames_.emplace_back();}
+        ~Frame() {stack_.frames_.pop_back();}
+        Frame(const Frame&) = delete;
+        Frame& operator=(const Frame&) = delete;
     private:
-        typename stack_type::Context guard;
+        ReferenceStack<T>& stack_;
     };
 
-    void Pop() {
-        stack_.Pop();
-    }
-
-    void Clear() {
-        stack_.Clear();
-    }
-
 private:
+    scope_type& CurrentScope() {
+        return frames_.empty() ? globals_ : frames_.back();
+    }
+
+    const Reference<T>* Find(const std::string& name) const {
+        if(!frames_.empty()) {
+            auto parameter = frames_.back().find(name);
+            if(parameter != frames_.back().end()) return &parameter->second;
+        }
+        auto global = globals_.find(name);
+        return global == globals_.end() ? nullptr : &global->second;
+    }
+
     // Depth alone does not bound time: the arithmetic-geometric mean nests
     // shallowly but branches twice per level. Steps do.
     struct Budget {
@@ -100,7 +98,8 @@ private:
 
     size_t depth_ = 0;
     size_t steps_ = 0;
-    mutable stack_type stack_;
+    scope_type globals_;
+    std::vector<scope_type> frames_;
 };
 
 #endif // EXPRESSION_STACK_HPP

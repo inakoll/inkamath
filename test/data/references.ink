@@ -57,6 +57,25 @@ x=5
 >> h
 error: h expects 1 argument, got 0
 
+# A definition sees the global scope and its own parameters, never the
+# caller's. 'q' means the global y here, whoever is on the stack; it used to
+# mean whatever the innermost active call happened to have bound
+# (MODERNIZATION.md, phase 4 item 5).
+>> q=y+1
+q=y+1
+
+>> r(y)=q
+r(y)=q
+
+>> r(2)
+error: y is not defined
+
+>> y=10
+y=10
+
+>> r(2)
+11
+
 # One definition per name. An indexed clause extends a sequence; a plain
 # definition replaces whatever the name held. The two used to coexist, with
 # an undocumented precedence that made a plain definition unreachable

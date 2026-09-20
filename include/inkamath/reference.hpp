@@ -54,9 +54,22 @@ public:
         }
     }
 
-    T Eval( const ParametersCall<T>& ai_parameters, ReferenceStack<T>& stack) {
-        CallParameters().CheckArity(reference_name_, ai_parameters);
-        return this->EvalImp(ai_parameters, stack);
+    T Eval(const ParametersCall<T>& call, ReferenceStack<T>& stack) {
+        const ParametersDefinition<T>& parameters = CallParameters();
+        parameters.CheckArity(reference_name_, call);
+
+        // The index and the arguments belong to the caller, so they are
+        // evaluated before the callee's scope exists.
+        EvaluationVisitor<T> caller(stack);
+        int index = 0;
+        const bool indexed = call.TryEvalIndex(stack, index);
+        typename ParametersDefinition<T>::Arguments arguments =
+                parameters.EvaluateArguments(call, caller);
+
+        typename ReferenceStack<T>::Frame frame(stack);
+        ParametersDefinition<T>::Bind(arguments, stack);
+        EvaluationVisitor<T> evaluator(stack);
+        return EvalImp(indexed, index, evaluator);
     }
 
 private:
@@ -68,119 +81,66 @@ private:
         return std::get<0>(plain_);
     }
 
-    T EvalImp( const ParametersCall<T>& ai_parameters, ReferenceStack<T>& stack) {
-        EvaluationVisitor<T> evaluator(stack);
-        T result;
-
+    T EvalImp(bool indexed, int index, EvaluationVisitor<T>& evaluator) {
         if(std::get<1>(plain_)) {
-            TryEvaluatePlainExpression(ai_parameters, evaluator, result);
+            return std::get<1>(plain_)->accept(evaluator);
         }
-        else if(!TryEvaluateBaseClause(ai_parameters, evaluator, result)
-                && !TryEvaluateGeneralClause(ai_parameters, evaluator, result)) {
-            // Nothing sensible to invent: a sequence has no value under its
-            // bare name, and no value at an index no clause covers.
-            int index = 0;
-            if(ai_parameters.TryEvalIndex(stack, index)) {
-                throw std::runtime_error(reference_name_ + " has no clause for index "
-                                         + std::to_string(index));
+        if(indexed) {
+            auto clause = base_.find(index);
+            if(clause != base_.end()) {
+                return std::get<1>(clause->second)->accept(evaluator);
             }
-            throw std::runtime_error(reference_name_ + " is a sequence; index it, as in "
-                                     + reference_name_ + "_"
-                                     + std::to_string(base_.begin()->first));
-        }
-
-        return result;
-    }
-
-    bool TryEvaluateBaseClause(const ParametersCall<T>& ai_parameters, EvaluationVisitor<T>& evaluator, T& evaluation) {
-        bool succeed = false;
-        ReferenceStack<T>& stack = evaluator.stack();
-        int index_value;
-        if(ai_parameters.TryEvalIndex(stack, index_value)) {
-            // Evaluation to an index is requested
-            auto ind_definition = base_.find(index_value);
-            if(ind_definition != base_.end()) {
-                ParametersDefinition<T> ind_params_def;
-                PExpression<T> ind_expr_def;
-                std::tie(ind_params_def, ind_expr_def) = ind_definition->second;
-
-                ind_params_def.SetCallParameters(ai_parameters, evaluator);
-                if(ind_expr_def) {
-                    evaluation = ind_expr_def->accept(evaluator);
-                    succeed = true;
-                }
-            }
-       }
-       return succeed;
-    }
-
-    bool TryEvaluateGeneralClause(const ParametersCall<T>& ai_parameters, EvaluationVisitor<T>& evaluator, T& evaluation) {
-        bool succeed = false;
-        ReferenceStack<T>& stack = evaluator.stack();
-        PExpression<T> gen_expr_def;
-        ParametersDefinition<T> gen_params_def;
-        std::tie(gen_params_def, gen_expr_def) = general_;
-        if(gen_expr_def) {
-            int requested = 0;
             // A general clause reaches down only as far as the lowest base
             // clause; below that the sequence is simply not defined. With no
             // base clause at all it applies everywhere, which is right for a
             // closed form and divergent for a recurrence -- the budget says so.
-            if(ai_parameters.TryEvalIndex(stack, requested)
-               && (base_.empty() || requested >= base_.begin()->first)) {
-                // The index the caller asked for, not the offset in its
-                // written form: 's_(n-1)' is index n-1, not index -1.
-                const long long index = requested;
-                gen_params_def.SetCallParameters(ai_parameters, evaluator);
-                typename ReferenceStack<T>::Guard guard(stack);
-                stack.Set(gen_params_def.index_name(), ParametersDefinition<T>(), PExpression<T>(new ValExpression<T>(T(index))));
-                evaluation = gen_expr_def->accept(evaluator);
-                succeed = true;
+            if(std::get<1>(general_) && (base_.empty() || index >= base_.begin()->first)) {
+                return EvaluateGeneralClause(index, evaluator);
             }
-            else {
-                // Bind the arguments once, in the caller's scope. Binding them
-                // again after the first clause has run would evaluate 'h(i*x)'
-                // against the 'x' that binding had just introduced.
-                typename ReferenceStack<T>::Guard guard(stack);
-                gen_params_def.SetCallParameters(ai_parameters, evaluator);
-
-                long long start_index = 0;
-                T start_evaluation;
-                if(!base_.empty()) {
-                    start_index = base_.rbegin()->first;
-                    start_evaluation = std::get<1>(base_.rbegin()->second)->accept(evaluator);
-                }
-
-                evaluation = start_evaluation;
-                using difference_type = decltype(numeric_interface<T>::abs(std::declval<T>()));
-                difference_type diff = numeric_interface<difference_type>::one();
-                size_t iter_count = 0;
-                while(diff > 1E-10 && iter_count < 30) {
-                    ++start_index;
-                    stack.Set(gen_params_def.index_name(), ParametersDefinition<T>(), PExpression<T>(new ValExpression<T>(T(start_index))));
-                    evaluation = gen_expr_def->accept(evaluator);
-                    diff = numeric_interface<T>::abs(evaluation-start_evaluation);
-                    start_evaluation = evaluation;
-                    ++iter_count;
-                }
-                succeed = true;
-            }
+            throw std::runtime_error(reference_name_ + " has no clause for index "
+                                     + std::to_string(index));
         }
-        return succeed;
+        // Nothing sensible to invent: a sequence has no value under its bare
+        // name.
+        if(std::get<1>(general_)) {
+            return Converge(evaluator);
+        }
+        throw std::runtime_error(reference_name_ + " is a sequence; index it, as in "
+                                 + reference_name_ + "_"
+                                 + std::to_string(base_.begin()->first));
     }
 
-    bool TryEvaluatePlainExpression(const ParametersCall<T>& ai_parameters, EvaluationVisitor<T>& evaluator, T& evaluation) {
-        bool succeed = false;
-        ParametersDefinition<T> single_params_def;
-        PExpression<T> plain_def;
-        std::tie(single_params_def, plain_def) = plain_;
-        if(plain_def) {
+    T EvaluateGeneralClause(long long index, EvaluationVisitor<T>& evaluator) {
+        SetIndex(index, evaluator.stack());
+        return std::get<1>(general_)->accept(evaluator);
+    }
 
-            single_params_def.SetCallParameters(ai_parameters, evaluator);
-            evaluation = plain_def->accept(evaluator);
-            succeed = true;
+    // The bare name of a sequence means the limit of its general clause,
+    // which phase 4 item 2 replaces with an explicit `lim`.
+    T Converge(EvaluationVisitor<T>& evaluator) {
+        long long index = 0;
+        T previous;
+        if(!base_.empty()) {
+            index = base_.rbegin()->first;
+            previous = std::get<1>(base_.rbegin()->second)->accept(evaluator);
         }
-        return succeed;
+
+        T evaluation = previous;
+        using difference_type = decltype(numeric_interface<T>::abs(std::declval<T>()));
+        difference_type diff = numeric_interface<difference_type>::one();
+        size_t iter_count = 0;
+        while(diff > 1E-10 && iter_count < 30) {
+            evaluation = EvaluateGeneralClause(++index, evaluator);
+            diff = numeric_interface<T>::abs(evaluation-previous);
+            previous = evaluation;
+            ++iter_count;
+        }
+        return evaluation;
+    }
+
+    void SetIndex(long long index, ReferenceStack<T>& stack) {
+        stack.Set(std::get<0>(general_).index_name(), ParametersDefinition<T>(),
+                  PExpression<T>(new ValExpression<T>(T(index))));
     }
 
     // Signed: an index may be negative, and this map is read in order

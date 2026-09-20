@@ -72,20 +72,33 @@ public:
         }
     }
 
-    void SetCallParameters(const ParametersCall<T>& param_call, EvaluationVisitor<T>& evaluator) {
-        ReferenceStack<T>& stack_ = evaluator.stack();
-        for(auto definition : parameters_dict_) {
-            stack_.Set(definition.first, ParametersDefinition<T>(), PExpression<T>(new ValExpression<T>(definition.second->accept(evaluator))));
+    typedef std::vector<std::pair<std::string, T>> Arguments;
+
+    // Evaluated in the caller's scope and bound in the callee's, which is why
+    // the two halves are separate: inside the callee, 'h(i*x)' would resolve
+    // x against the parameter this very call is about to bind.
+    Arguments EvaluateArguments(const ParametersCall<T>& param_call, EvaluationVisitor<T>& evaluator) const {
+        Arguments arguments;
+        for(const auto& definition : parameters_dict_) {
+            arguments.emplace_back(definition.first, definition.second->accept(evaluator));
         }
         auto pname = parameters_names_.begin();
-        for(auto expr : param_call.parameters_expression()) {
+        for(const auto& expr : param_call.parameters_expression()) {
             if(pname != parameters_names_.end()) {
-                stack_.Set(*pname, ParametersDefinition<T>(), PExpression<T>(new ValExpression<T>(expr->accept(evaluator))));
+                arguments.emplace_back(*pname, expr->accept(evaluator));
                 ++pname;
             }
         }
-        for(auto kwarg : param_call.parameters_dict_) {
-            stack_.Set(kwarg.first, ParametersDefinition<T>(), PExpression<T>(new ValExpression<T>(kwarg.second->accept(evaluator))));
+        for(const auto& kwarg : param_call.parameters_dict_) {
+            arguments.emplace_back(kwarg.first, kwarg.second->accept(evaluator));
+        }
+        return arguments;
+    }
+
+    static void Bind(const Arguments& arguments, ReferenceStack<T>& stack) {
+        for(const auto& argument : arguments) {
+            stack.Set(argument.first, ParametersDefinition<T>(),
+                      PExpression<T>(new ValExpression<T>(argument.second)));
         }
     }
 

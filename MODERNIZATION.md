@@ -241,8 +241,12 @@ The redesign proper. Replaces C10 and C11 rather than deciding them.
    covers it. `sequences.ink` gained `exp(x)_0=1`, which the hidden zero had
    been supplying, and `fact_n=fact_(n-1)*n` as the case it got wrong. C3 and
    C16 go with the machinery.
-5. **Parameters are lexically scoped** (C13). A missing argument is a
+5. **Parameters are lexically scoped** (C13) `[done]`. A missing argument is a
    diagnostic, not a search of the enclosing scope for a name that matches.
+   A name resolves in the innermost call's parameters and then in the global
+   scope, and nowhere else. `Mapstack` went with the change: it copied every
+   live name forward on `Push`, which is what made a caller's parameters
+   visible to everything it called. Two plain maps replace it.
 6. **`?name` prints a definition back**, as written, without evaluating it.
    On a sequence it prints every clause, so the whole definition is visible
    at once — which the three parallel slots made impossible. Together with
