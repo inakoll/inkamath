@@ -114,7 +114,6 @@ k_n=k_(n-1)+1
 >> k
 35
 
-
 # A recurrence has no implicit value below its lowest clause. The old fallback
 # was zero -- the additive identity, right for a sum and wrong for a product
 # (MODERNIZATION.md, phase 4 item 4).
@@ -129,3 +128,4 @@ fact_0=1
 
 >> fact_5
 120
+

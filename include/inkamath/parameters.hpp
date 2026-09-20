@@ -11,6 +11,18 @@ class ReferenceStack;
 template <typename T>
 class ParametersCall;
 
+// README.md section 4.2: an index is a whole number. Truncating would make
+// 'f_(0.5)' quietly mean 'f_0', and 'f_(2+i)' mean 'f_2'.
+template <typename T>
+int AsIndex(const T& value) {
+    const int index = numeric_interface<T>::toInt(value);
+    if(numeric_interface<T>::abs(value - T(index)) != 0) {
+        throw std::runtime_error("an index must be a whole number, not "
+                                 + numeric_interface<T>::toString(value));
+    }
+    return index;
+}
+
 // The left-hand side of a definition: 'f(x, y)_n' or 'f_0'.
 //
 // README.md sections 4.2 and 4.3: an index written as an identifier names the
@@ -35,7 +47,7 @@ public:
                 index_name_ = variable->Name();
             }
             else {
-                index_ = numeric_interface<T>::toInt(subexpr->accept(evaluator));
+                index_ = AsIndex<T>(subexpr->accept(evaluator));
             }
         }
     }
@@ -120,7 +132,7 @@ public:
             return false;
         }
         EvaluationVisitor<T> evaluator(stack);
-        index_evaluation = numeric_interface<T>::toInt(subexpr_->accept(evaluator));
+        index_evaluation = AsIndex<T>(subexpr_->accept(evaluator));
         return true;
     }
 

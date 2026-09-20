@@ -78,7 +78,7 @@ struct numeric_interface_imp<std::complex<T>,false>
 
     static int toInt(const std::complex<T>& a)
     {
-        return static_cast<size_t>(numeric_interface<T>::toInt(a.real()));
+        return numeric_interface<T>::toInt(a.real());
     }
 
     static std::string toString(const std::complex<T>& a)
