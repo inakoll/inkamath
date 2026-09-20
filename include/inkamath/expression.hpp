@@ -16,6 +16,8 @@
 #include "inkamath/matrix.hpp"
 #include "inkamath/numeric_interface.hpp"
 #include "inkamath/expression_dict.hpp"
+#include "inkamath/extent.hpp"
+
 #include <vector>
 
 template <typename T>
@@ -50,9 +52,9 @@ public:
     {
         return std::string();
     }
-    virtual std::pair<size_t,size_t> Size() const
+    virtual Extent Size() const
     {
-        return std::make_pair(1,1);
+        return Extent();
     }
 
     std::vector<PExpression<T>> children;
@@ -292,9 +294,9 @@ public:
         : Expression<T>(std::move(expr)), n_(n), m_(m)
     {}
 
-    std::pair<size_t,size_t> Size() const override
+    Extent Size() const override
     {
-        return std::make_pair(n_,m_);
+        return Extent{n_, m_};
     }
 
     PExpression<T> Clone() const override

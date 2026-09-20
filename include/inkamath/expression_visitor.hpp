@@ -274,10 +274,10 @@ public:
 
     T visit(MatExpression<T>* expr) override {
 
-        size_t n, m;
-        std::tie(n, m) = expr->Size();
+        const size_t n = expr->Size().rows;
+        const size_t m = expr->Size().cols;
         std::vector<T> evaluation(n*m);
-        std::vector<std::pair<size_t, size_t>> sizes(n*m);
+        std::vector<Extent> sizes(n*m);
 
         // Evaluating the matrix expression
         for(size_t i = 0; i < n; ++i) {
@@ -292,8 +292,8 @@ public:
         std::vector<size_t> j_cols(m, 1);
         for(size_t i = 0; i < n; ++i) {
             for(size_t j = 0; j < m; ++j) {
-                i_rows[i] = std::max(i_rows[i], sizes[i*m+j].first);
-                j_cols[j] = std::max(j_cols[j], sizes[i*m+j].second);
+                i_rows[i] = std::max(i_rows[i], sizes[i*m+j].rows);
+                j_cols[j] = std::max(j_cols[j], sizes[i*m+j].cols);
             }
         }
 
@@ -316,19 +316,19 @@ public:
         std::rotate(rj_cols.begin(), rj_cols.end()-1, rj_cols.end());
 
         // Populate the final matrix with the right size
-        T retval(rn, rm);
+        T retval(Extent{rn, rm});
         for(size_t i = 0; i < n; ++i) {
             for(size_t j = 0; j < m; ++j) {
                 for(size_t ri = 0; ri < i_rows[i]; ++ri) {
                     for(size_t rj = 0; rj < j_cols[j]; ++rj) {
-                        auto s = sizes[i*m+j];
-                        if(ri < s.first && rj < s.second) {
+                        const Extent s = sizes[i*m+j];
+                        if(ri < s.rows && rj < s.cols) {
                             // get the evaluated cell result
                             retval((ri_rows[i]+ri+1), (rj_cols[j]+rj+1)) = evaluation[i*m+j](ri+1, rj+1);
                         }
                         else {
                             // extend the previous (up and left) evaluated cell result
-                            retval((ri_rows[i]+ri+1), (rj_cols[j]+rj+1)) = evaluation[i*m+j](s.first, s.second);
+                            retval((ri_rows[i]+ri+1), (rj_cols[j]+rj+1)) = evaluation[i*m+j](s.rows, s.cols);
                         }
                     }
                 }

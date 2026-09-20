@@ -405,7 +405,9 @@ PExpression<U>  Interpreter<T,U>::ParseSimpleExpr()
         switch (Peek().type)
         {
         case Val:
-            e.reset(new ValExpression<U>(m_tokens[m_i++].value));
+            // The explicit conversion is D9 in the flesh: every literal
+            // becomes a 1x1 matrix on the heap.
+            e.reset(new ValExpression<U>(U(m_tokens[m_i++].value)));
 			break;
 
         case Func:

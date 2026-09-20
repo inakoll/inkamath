@@ -77,7 +77,7 @@ phase 0; the rest are open and are scheduled into the phases that follow.
 | D1 `[fixed]` | `template <typename T> using PExpression = std::shared_ptr<Expression<T>>` is written out identically in six headers. |
 | D2 `[fixed]` | `sequence.hpp` is included by nothing. `pmath.hpp`/`pmath.cpp` define a `fact()` that nothing calls — superseded by `numeric_interface<T>::fact`, which is a verbatim copy of it. `main.cpp` carries a dead `inkamath_test()` function that duplicates the test data. |
 | D3 `[fixed]` | `interpreter.hpp` includes `expression_visitor.hpp` *in the middle of the file*, after the class definition, to break a circular dependency. `make_matrix_array_from_vector` is called four lines before it is declared and resolves only through ADL at instantiation. |
-| D4 | `Matrix<T>` owns a raw `T*` with `new[]`/`delete[]`, copies it with `memcpy` (undefined for any `T` that is not trivially copyable), has no move constructor or move assignment, and exposes `Matrix(const T&)` as an implicit converting constructor. Its `std::vector` constructor can leak on exception and carries the author's own note: `// todo : reimplement this matrix class...`. |
+| D4 `[fixed]` | `Matrix<T>` owned a raw `T*` with `new[]`/`delete[]`, copied it with `memcpy` (undefined for any `T` that is not trivially copyable), had no move constructor or move assignment, and exposed `Matrix(const T&)` as an implicit converting constructor. Its `std::vector` constructor could leak on exception and carried the author's own note: `// todo : reimplement this matrix class...`. Rewritten on `std::vector<T>` with the rule of zero, explicit constructors and an `Extent` for the dimensions. 385 lines become 184, plus a 19-line header; every golden is byte-identical, and so is a sweep of twenty matrix operations and errors. |
 | D5 `[fixed]` | `dynarray` was a hand-rolled container written while waiting for a `std::dynarray` that C++14 never shipped. `std::vector` covered every use here, and value-initialises where `new T[n]` left `size_t` elements indeterminate. |
 | D6 | `Expression` exposes `dynarray<PExpression<T>> children` as a public mutable member while subclasses also offer `m_e1()`/`m_e()` accessors over the same storage; the two views are not kept consistent by anything but convention. `Clone()` deep-copies subtrees that `shared_ptr` already lets us share. |
 | D7 | `ExpressionVisitor` has eleven pure virtual `visit` overloads plus two that default to returning `{}`. Adding a node type is a change to every visitor; forgetting one is silent. |
@@ -265,9 +265,15 @@ The redesign proper. Replaces C10 and C11 rather than deciding them.
 
 ## Phase 5 — Value types and the core
 
-1. Rewrite `Matrix<T>` (D4): `std::vector<T>` storage, rule of zero, explicit
-   constructors, dimensions as one `Extent` type. The author asked for this in
-   a comment in 2014.
+1. Rewrite `Matrix<T>` (D4) `[done]`: `std::vector<T>` storage, rule of zero,
+   explicit constructors, dimensions as one `Extent` type. The author asked
+   for this in a comment in 2014. `Extent` also replaces the
+   `std::pair<size_t,size_t>` that `Expression::Size` returned, so rows and
+   columns can no longer be swapped by a `std::tie` in the wrong order.
+   Making the converting constructor explicit turned D9 from a claim into a
+   compile error: the one place that relied on it is the literal in
+   `ParseSimpleExpr`, which is exactly the per-literal 1x1 allocation item 3
+   is about.
 2. Delete `dynarray` (D5) in favour of `std::vector`, and delete its test
    `[done]`. 192 lines of container plus 140 of test, for six uses.
 3. Separate the scalar type from the matrix type in `Interpreter` (D9) so a
