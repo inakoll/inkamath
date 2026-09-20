@@ -79,7 +79,7 @@ phase 0; the rest are open and are scheduled into the phases that follow.
 | D3 `[fixed]` | `interpreter.hpp` includes `expression_visitor.hpp` *in the middle of the file*, after the class definition, to break a circular dependency. `make_matrix_array_from_vector` is called four lines before it is declared and resolves only through ADL at instantiation. |
 | D4 `[fixed]` | `Matrix<T>` owned a raw `T*` with `new[]`/`delete[]`, copied it with `memcpy` (undefined for any `T` that is not trivially copyable), had no move constructor or move assignment, and exposed `Matrix(const T&)` as an implicit converting constructor. Its `std::vector` constructor could leak on exception and carried the author's own note: `// todo : reimplement this matrix class...`. Rewritten on `std::vector<T>` with the rule of zero, explicit constructors and an `Extent` for the dimensions. 385 lines become 184, plus a 19-line header; every golden is byte-identical, and so is a sweep of twenty matrix operations and errors. |
 | D5 `[fixed]` | `dynarray` was a hand-rolled container written while waiting for a `std::dynarray` that C++14 never shipped. `std::vector` covered every use here, and value-initialises where `new T[n]` left `size_t` elements indeterminate. |
-| D6 | `Expression` exposes `dynarray<PExpression<T>> children` as a public mutable member while subclasses also offer `m_e1()`/`m_e()` accessors over the same storage; the two views are not kept consistent by anything but convention. `Clone()` deep-copies subtrees that `shared_ptr` already lets us share. |
+| D6 `[fixed]` | `Expression` exposed `children` as a public mutable member while subclasses also offered `m_e1()`/`m_e()` accessors over the same storage, with mutable overloads of their own. `children_` is private now, reachable through a const `Children()` for the generic case and the named views for the rest, and none of them can write: the tree is immutable once parsed. `Clone()` deep-copied subtrees that `shared_ptr` already lets us share — its last caller was the recursion machinery phase 4 deleted, so it went too, along with `transform_visitation`. |
 | D7 | `ExpressionVisitor` has eleven pure virtual `visit` overloads plus two that default to returning `{}`. Adding a node type is a change to every visitor; forgetting one is silent. |
 | D8 `[fixed]` | Reserved identifiers: `_EXPRESION_EPSILON` (misspelled, and unused) and `_NUMERIC_INTERFACE_PRECISION`. A leading underscore followed by a capital is reserved to the implementation. |
 | D9 `[fixed, differently]` | `Interpreter<T, U = Matrix<T>>` templates on the token scalar `T`, but every AST node is instantiated on `U`. Every literal in every expression was therefore a heap-allocated 1×1 `Matrix<complex<double>>`. Measured: those 16-byte allocations are 44–67% of all allocations, but removing them is worth only 0–15% of the time — they are cheap and hot in cache. A 1x1 matrix now keeps its cell inline, which gets that saving for ten lines; the scalar/matrix *split* the plan prescribed is not justified by the numbers. |
@@ -309,8 +309,12 @@ The redesign proper. Replaces C10 and C11 rather than deciding them.
    concepts do is state the requirement: `Interpreter` is declared
    `template <Parsable T, Numeric U>`, so a type missing an operation fails at
    the declaration, naming it.
-5. Make `Expression::children` private with a narrow accessor and drop the
-   redundant `m_e1()`/`m_e()` views (D6).
+5. Make `Expression::children` private with a narrow accessor (D6) `[done]`.
+   The redundant view this dropped is the raw one, not `m_e1()`/`m_e()` as
+   written here: the named views are what thirty call sites read and are the
+   clearer of the two, while `children[0]->children[1]` in `Bind` was the
+   unreadable half. What made the two views a hazard was that both were
+   mutable; neither is now.
 6. Collapse the visitor interface (D7) by giving `ExpressionVisitor` a default
    implementation that recurses over `children`, so a visitor overrides only
    the nodes it cares about. The `std::variant` + `std::visit` alternative

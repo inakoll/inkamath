@@ -35,8 +35,8 @@ class Expression : public std::enable_shared_from_this<Expression<T>>
 public:
     Expression() {}
 
-    explicit Expression(std::initializer_list<PExpression<T>> expressions) : children(std::move(expressions)) {}
-    explicit Expression(std::vector<PExpression<T>> exprs) : children(std::move(exprs)) {}
+    explicit Expression(std::initializer_list<PExpression<T>> expressions) : children_(std::move(expressions)) {}
+    explicit Expression(std::vector<PExpression<T>> exprs) : children_(std::move(exprs)) {}
 
     virtual ~Expression() = default;
     PExpression<T> self() {
@@ -55,13 +55,16 @@ public:
         return Extent();
     }
 
-    std::vector<PExpression<T>> children;
-protected:
-private:
-    // interdiction de la copie
+    // The generic view, for a visitor that does not care which node it is on.
+    // Named views (m_e1, m_e) sit over the same storage; nothing writes to
+    // either after parsing.
+    const std::vector<PExpression<T>>& Children() const {return children_;}
+
     Expression(const Expression<T>& e) = delete;
     Expression& operator=(const Expression<T>& e) = delete;
-	
+
+private:
+    std::vector<PExpression<T>> children_;
 };
 
 template <typename T>
@@ -71,8 +74,7 @@ public:
     explicit UnaryExpression(PExpression<T> e) : Expression<T>{e}
     {}
 
-    inline PExpression<T> m_e() const {return this->children[0];}
-    inline PExpression<T>& m_e() {return this->children[0];}
+    PExpression<T> m_e() const {return this->Children()[0];}
 
 };
 
@@ -83,10 +85,8 @@ public:
     explicit BinaryExpression(PExpression<T> e1, PExpression<T> e2) : Expression<T>({e1, e2})
     {}
 
-    inline PExpression<T> m_e1() const {return this->children[0];}
-    inline PExpression<T> m_e2() const {return this->children[1];}
-    inline PExpression<T>& m_e1() {return this->children[0];}
-    inline PExpression<T>& m_e2() {return this->children[1];}
+    PExpression<T> m_e1() const {return this->Children()[0];}
+    PExpression<T> m_e2() const {return this->Children()[1];}
 };
 
 template <typename T>

@@ -109,7 +109,7 @@ public:
 
 	PExpression<T> visit(MatExpression<T>* expr) override {
         if(visitor_depth++ == 0) {
-            for(auto e : expr->children) {
+            for(const auto& e : expr->Children()) {
                 e->accept(*this);
 			}
 		}
@@ -218,11 +218,16 @@ public:
     // Installing the definition, without evaluating anything. A definition at
     // the top level is a statement and never gets as far as visit().
     void Bind(EqualExpression<T>* expr, const std::string& written = std::string()) {
-        if(expr->children[0]->children.size() > 0) {
-            this->stack_.Set(expr->Name(), ParametersDefinition<T>(expr->children[0]->children[0], expr->children[0]->children[1], *this), expr->children[1], written);
+        // The left-hand side is a bare name, or a call carrying the
+        // parameter list and the index: 'f(x)_n = ...'.
+        const std::vector<PExpression<T>>& signature = expr->m_e1()->Children();
+        if(signature.empty()) {
+            this->stack_.Set(expr->Name(), ParametersDefinition<T>(), expr->m_e2(), written);
         }
         else {
-            this->stack_.Set(expr->Name(), ParametersDefinition<T>(), expr->children[1], written);
+            this->stack_.Set(expr->Name(),
+                             ParametersDefinition<T>(signature[0], signature[1], *this),
+                             expr->m_e2(), written);
         }
     }
 
@@ -274,7 +279,7 @@ public:
         // Evaluating the matrix expression
         for(size_t i = 0; i < n; ++i) {
             for(size_t j = 0; j < m; ++j) {
-                evaluation[i*m+j] = expr->children[i*m+j]->accept(*this);
+                evaluation[i*m+j] = expr->Children()[i*m+j]->accept(*this);
                 sizes[i*m+j] = evaluation[i*m+j].Size();
             }
         }
