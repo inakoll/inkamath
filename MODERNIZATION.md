@@ -113,12 +113,12 @@ made that are not true.
 |---|--------|
 | C22 | **A matrix with three or more rows or columns cannot be built.** `[1 2 3]`, `[1;2;3]`, `[1 2 3;4 5 6]` and `[pi, e, 1]` all give `error: Out of matrix range.` In `EvaluationVisitor::visit(MatExpression*)` the block-offset prefix sum is `rj_cols[j] += j_cols[j-1]`, reading the unmodified source array, so it yields `{w0, w0+w1, w1+w2}` instead of a running total; `rm` is then too small and the result is allocated undersized. Correct for two blocks, which is every size the corpus and the README use. The interpreter's headline feature is matrices of expressions and it can only build them at 1x1, 1x2, 2x1 and 2x2. |
 | C23 | **Matrix exponentiation computes the wrong power.** `Matrix::pow` does `r = a; for(i = 1; i < n; ++i) r = r*r;` — squaring the accumulator, so `a^n` is `a^(2^(n-1))`. With `a=[1 1;0 1]`: `a^2` is right by luck (one iteration), `a^3` gives `a^4`, `a^4` gives `a^8`. `a^0`, `a^0.5` and a negative exponent all return `a` unchanged, with no diagnostic. The loop is also unbudgeted: `a^100000000` runs for ten seconds. |
-| C24 | **The interpreter gives different answers on GCC and Clang.** `a=1` then `g=(a=a+1)+a` then `g` prints `3` under GCC and `4` under Clang. Every binary node evaluates `m_e1()->accept(*this) OP m_e2()->accept(*this)`, and C++ does not order the operands, so any expression containing a definition is compiler-dependent. Both builds pass `ctest`. C29 removes the construct that reaches it. |
+| C24 | **The interpreter gives different answers on GCC and Clang.** `a=1` then `g=(a=a+1)+a` then `g` prints `3` under GCC and `4` under Clang. Every binary node evaluates `m_e1()->accept(*this) OP m_e2()->accept(*this)`, and C++ does not order the operands, so any expression containing a definition is compiler-dependent. Both builds pass `ctest`. Closed by C29 at no extra cost: a definition is the only side effect in the language — every other `visit` is a pure function of the stack — so once no expression can contain one, no expression can observe the order. |
 | C25 | **A keyword argument is never checked against the parameter names.** `CheckArity` counts arguments and never compares names, so `f(x)=x+1` called as `f(y=1)` passes, leaves `x` unbound, and lets it fall through to a global: with `x=99` in scope the answer is `100`. A duplicate is accepted the same way — `g(x,y)=x*10+y` called as `g(1,x=2)` discards the positional argument and answers `27`. |
 | C26 | **An index on a plain definition is discarded in silence.** `m=5` then `m_3` prints `5`; so does `m_(-2)`, and `pi_7` prints `3.14159265`. `EvalImp` returns the plain clause before it ever looks at whether an index was supplied. `?m_3` on the same definition *does* report `m has no clause for index 3`, so the two paths disagree. The last survivor of the class C13 set out to end, and `references.ink:98` records it without saying so. |
 | C27 | **`lim` reports a limit for sequences that have none.** `Converge` seeds `previous` with a default-constructed `T`, then compares the first real term against that fabricated zero, so `u_n=n-1` — which diverges — gives `lim u` = `0`. The same seed breaks a matrix-valued sequence with an unrelated message, since the first subtraction is 2x2 minus 1x1. Separately, the stopping test `!(diff > tolerance)` is true for NaN, so `w_0=2; w_n=w_(n-1)^2; lim w` answers `inf*-nan` instead of reporting non-convergence. |
 | C28 | **An out-of-range exponent is converted to `int` unchecked.** The C5 fix routes any exponent with `imag()==0 && real()==floor(real())` through `static_cast<int>(b.real())`. `2^2147483648` gives `0` and `0.5^3000000000` gives `inf*-nan` — undefined behaviour, and silently wrong either way. GCC's `-fsanitize=undefined` does not include `float-cast-overflow`, so the sanitizer job does not see it; adding that check to `INKAMATH_SANITIZE` would. |
-| C29 | **A definition that is not at the root still evaluates its left-hand side.** `Interpreter::Eval` handles a definition as a statement only when it is the whole input; anywhere else `EvaluationVisitor::visit(EqualExpression*)` binds and then returns `m_e1()->accept(*this)`, which is the C10 mechanism. So `1+(b=3)` is `4`, `0+(h(x)=x^2)` is `error: x is not defined`, and `0+(p=p)` exhausts the depth budget. A definition's index is evaluated at bind time too: `g_(1+zzz)=5` reports `zzz is not defined` and binds nothing. C10's own entry is worded correctly — "a **top-level** definition is a statement" — but phase 4 item 3 and `README.md` §3 drop the qualifier and so claim more than is true. **Decision: a definition nested in an expression becomes a syntax error.** A definition is a statement, which is what the documents already say, and it removes the construct C24 needs. |
+| C29 | **A definition that is not at the root still evaluates its left-hand side.** `Interpreter::Eval` handles a definition as a statement only when it is the whole input; anywhere else `EvaluationVisitor::visit(EqualExpression*)` binds and then returns `m_e1()->accept(*this)`, which is the C10 mechanism. So `1+(b=3)` is `4`, `0+(h(x)=x^2)` is `error: x is not defined`, and `0+(p=p)` exhausts the depth budget. A definition's index is evaluated at bind time too: `g_(1+zzz)=5` reports `zzz is not defined` and binds nothing. C10's own entry is worded correctly — "a **top-level** definition is a statement" — but phase 4 item 3 and `README.md` §3 drop the qualifier and so claim more than is true. **Decision: a definition nested in an expression becomes a syntax error**, as a step towards phase 8 rather than as a verdict on the idea. The construct was meant to bind a local reusable later in the same expression — the 2014 README says so: "L'assignation étant une expression comme une autre, on peut trouver une assignation aussi bien dans la liste des paramètres d'une référence ou dans la partie droite d'une autre assignation." Measured, it never delivered that: `(t=3)+t` is `6` under Clang and `t is not defined` under GCC, because operand order decides whether the binding happens first; `z=(t=y+y)+t` tracks later changes to `y`, because a name binds an *expression*, so the local is a macro re-evaluated on each use rather than a value; and since phase 4 item 5 a local cannot see the parameters it exists to capture — `f(x)=(t=2*x)+t` then `f(5)` reports `x is not defined`, because `t` holds `2*x` and is evaluated in a frame that sees only globals. At the top level the binding is not local either: `(t=3)+t` leaves `t` defined as `3`. The error costs one function body — `EvaluationVisitor::visit(EqualExpression*)` becomes a throw — and removes nothing phase 8 would reuse, since that body gets the scope, the timing and the value semantics all wrong. `EqualExpression` itself stays: the parser, the statement path in `Eval`, and `ParametersVisitor`'s keyword arguments are its other three users. `(a=2)` alone keeps working, because parentheses build no node and the root is still a definition. |
 | C30 | **Default arguments are evaluated when they are not used, and in the wrong scope.** `f(x,y=zzz)=x` then `f(1,2)` reports `zzz is not defined`, although `y` was supplied and `zzz` is never needed: `SetCallParameters` evaluates every entry of `parameters_dict_` before the positional ones. They also resolve in the *caller's* scope, so `x=100` then `f(x,y=2*x)=y` then `f(5)` gives `200` rather than `10` — against `README.md` §3, which says a name inside a definition resolves to that definition's own parameters first. |
 | C31 | **A NaN imaginary part prints as malformed output.** `numeric_interface_imp<std::complex<T>>::toString` tests `imag > 0` and `imag < 0`, both false for NaN, so no `i` is emitted — but the following `imag != 1 && imag != -1 && imag != 0` is true, so it appends `"*" + toString(imag)`. `1/0` prints `inf*-nan` and `0/0` prints `-nan*-nan`, neither of which the lexer can read back. Everything else in that function is correct, including negative zero and infinities. |
 
@@ -437,15 +437,16 @@ Ordered by what a user hits first, not by where the defect lives.
 1. **Nothing kills the process**: C18, C19, C21, then C20. C20 is the only one
    needing a design choice — a depth counter in the parser and in the fold,
    or an explicit stack, against the `README.md` claim that already promises
-   it.
+   it. C29 belongs here rather than in item 3: it is one function body, and
+   it closes C24, which is the only defect in the register that makes the
+   answer depend on the compiler.
 2. **Matrices work**: C22 and C23. The corpus needs matrices wider and taller
    than two before either can be called fixed, and `Matrix` has no unit test
    at all — `CLAUDE.md` §4 reserves those for containers, and after `dynarray`
    and `Mapstack` went there are none left. C22 and C23 are the direct cost of
    that gap.
-3. **No answer to a question nobody asked**: C26, C25, C27, C29, C30. This is
-   C13's unfinished business, and C29 carries the decision recorded above.
-   C24 goes with C29.
+3. **No answer to a question nobody asked**: C26, C25, C27, C30. This is
+   C13's unfinished business; C29 is the same shape but moves up to item 1.
 4. **The rest**: C28, C31, C32, then D12 to D16.
 
 Coverage the corpus does not have today, beyond the repros above: a matrix
@@ -455,6 +456,46 @@ and on a term; default parameter values, which work and are undocumented; a
 two-base-case recurrence such as Fibonacci, which is the exact shape C3 was
 about; `2i`, `1e3`, `0x10` and `.5` in the lexer; and shadowing a built-in
 with `pi=3`.
+
+
+## Phase 8 — The local binding
+
+The feature C29 turns off, built properly. It is *not* deferred: the author
+wants it, and the 2014 README documents the intent. What was removed is an
+implementation that never delivered it, not the idea.
+
+Specified as a transcript before it is implemented, the way phase 2 did it.
+Three properties the current form gets wrong, and any design has to get right:
+
+1. **Order is defined.** The binding happens before the rest of the expression
+   reads it. Today the two operands of a binary node are evaluated in whatever
+   order the compiler picks, which is C24.
+2. **It binds a value, not an expression.** A name binding an expression is the
+   idea the project exists for and is right everywhere else; here it makes the
+   local a macro, re-evaluated on each use and tracking later changes to the
+   names inside it. A local is the one place the language wants the other rule.
+3. **It sees the scope it was written in.** Lexical scoping (phase 4 item 5)
+   means a name looked up later is evaluated in a frame that sees only the
+   globals, so a local can never capture a parameter — which is the case worth
+   having.
+
+Open questions, in the order they need answering:
+
+- **Syntax.** `(t = 2*x) + t` reads as an assignment and is what the 2014
+  design used; something like `[t = 2*x] t+1` or an explicit `let` separates
+  the local from a definition and makes the ordering visible. Whatever is
+  chosen, it should not be the form C29 makes an error, or the error is
+  meaningless.
+- **Extent.** Does a local live to the end of the expression, or to the end of
+  the line? The first is a `let`; the second is what the 2014 behaviour
+  accidentally was at the top level.
+- **`?`.** What does `?t` print for a local — nothing, since it is a value, or
+  the expression it came from? This is where the value-versus-expression choice
+  becomes visible to the user.
+- **Whether it earns its place.** The only thing a local can express that two
+  lines cannot is capturing a parameter inside a definition body. If the
+  transcripts cannot show a case that reads better than the two-line form, the
+  honest outcome is to leave C29's error in place and record that here.
 
 ---
 
@@ -482,6 +523,10 @@ existed, so C13 came first. Here the interpreter reports failure well and
 crashes anyway, so the crashes go first. C22 and C23 come next not because
 they are subtle but because they are not — the headline feature is broken at
 three columns, and a corpus that never exceeded 2x2 is why nobody noticed.
+
+Phase 8 waits for phase 7. It is the only phase that adds a language feature
+rather than repairing one, and it is worth nothing while four inputs still
+kill the process.
 
 The honest risk was phase 4. It changed what existing sessions mean, so it
 could not hide behind unchanged goldens — every moved line was justified
