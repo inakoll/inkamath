@@ -11,19 +11,15 @@ target_link_libraries(inkamath_tests PRIVATE inkamath doctest inkamath_warnings)
 target_compile_definitions(inkamath_tests PRIVATE
     INKAMATH_TEST_DATA_DIR="${CMAKE_CURRENT_SOURCE_DIR}/data")
 
-# One ctest entry per doctest suite. The interpreter can still overflow the
-# stack on some inputs (see MODERNIZATION.md, phase 2), so keeping the suites
-# in separate ctest entries means a crash reports as one failure rather than
-# taking the other suites' results with it.
-foreach(suite IN ITEMS interpreter spec dynarray)
+# One ctest entry per doctest suite, so that a crash in one reports as a
+# single failure rather than taking the others' results with it.
+foreach(suite IN ITEMS interpreter dynarray)
     add_test(NAME ${suite} COMMAND inkamath_tests --test-suite=${suite} --no-intro)
     set_tests_properties(${suite} PROPERTIES TIMEOUT 60)
 endforeach()
 
 # Regenerate the golden transcripts from current behaviour. Always review the
 # resulting diff: it is the record of what the change you just made did.
-# Scoped to the interpreter suite: the spec transcripts in data/spec describe
-# behaviour we do not have yet and must never be recorded.
 add_custom_target(record_goldens
     COMMAND ${CMAKE_COMMAND} -E env INKAMATH_RECORD=1
             $<TARGET_FILE:inkamath_tests> --test-suite=interpreter

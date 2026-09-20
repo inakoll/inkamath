@@ -66,3 +66,6 @@ f_0=1
 >> f_(2+i)
 error: an index must be a whole number, not 2+i
 
+>> f_(0.5)
+error: an index must be a whole number, not 0.5
+

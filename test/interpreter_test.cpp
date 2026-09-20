@@ -26,7 +26,7 @@ bool recording() {
 // Replays a transcript file through a fresh interpreter, checking each entry.
 // With INKAMATH_RECORD=1 the file is rewritten from the observed output
 // instead -- use `cmake --build build --target record_goldens`.
-void check_transcript(const std::string& name, bool recordable = true) {
+void check_transcript(const std::string& name) {
     const std::filesystem::path path = data_dir() / name;
 
     std::ifstream in(path);
@@ -37,7 +37,7 @@ void check_transcript(const std::string& name, bool recordable = true) {
     REQUIRE_MESSAGE(!items.empty(), "transcript is empty: ", path.string());
 
     Interpreter<std::complex<double>> interpreter;
-    const bool                        record = recordable && recording();
+    const bool                        record = recording();
 
     for (transcript::Item& item : items) {
         if (!item.is_entry) continue;
@@ -79,28 +79,8 @@ TEST_CASE("errors") {
 TEST_CASE("queries") {
     check_transcript("queries.ink");
 }
-
-TEST_SUITE_END();
-
-// The language we are building, not the language we have (MODERNIZATION.md,
-// phase 2). These fail until the redesign lands, so they are marked may_fail:
-// they report the gap on every run without gating CI. They are never
-// recordable -- recording a specification from current behaviour would defeat
-// its purpose.
-TEST_SUITE_BEGIN("spec");
-
-TEST_CASE("definitions" * doctest::may_fail()) {
-    check_transcript("spec/definitions.ink", false);
-}
-TEST_CASE("sequences" * doctest::may_fail()) {
-    check_transcript("spec/sequences.ink", false);
-}
-TEST_CASE("diagnostics" * doctest::may_fail()) {
-    check_transcript("spec/diagnostics.ink", false);
-}
-
-TEST_CASE("recursion" * doctest::may_fail()) {
-    check_transcript("spec/recursion.ink", false);
+TEST_CASE("recursion") {
+    check_transcript("recursion.ink");
 }
 
 TEST_SUITE_END();

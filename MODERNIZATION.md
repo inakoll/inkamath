@@ -137,24 +137,26 @@ acceptance criterion for the whole phase.
    its own commit, containing nothing but the moves.
 7. Delete `getlines.hpp` (D10); nothing uses it any more.
 
-## Phase 2 — Write the language down `[in progress]`
+## Phase 2 — Write the language down `[done]`
 
-The redesign is specified as transcripts before it is implemented, in
-`test/data/spec/*.ink`. They use the phase 0 harness, so the specification is
-executable: running them prints a diff between the language we have and the
-language we want. They are registered under the `spec` doctest suite and
-marked `may_fail`, so they report without gating CI, and `record_goldens`
-never rewrites them — recording a specification from current behaviour would
-defeat its purpose.
+The redesign was specified as transcripts before it was implemented, in
+`test/data/spec/*.ink`. They used the phase 0 harness, so the specification
+was executable: running them printed a diff between the language we had and
+the language we wanted. They were registered under a `spec` doctest suite and
+marked `may_fail`, so they reported without gating CI, and `record_goldens`
+never rewrote them — recording a specification from current behaviour would
+have defeated its purpose. The gap closed from 36 failing assertions to none
+over phases 3 and 4.
 
-As each part of the design lands, its entries move from `test/data/spec/` into
-`test/data/` and become ordinary goldens.
+As each part of the design landed, its entries moved into `test/data/` and
+became ordinary goldens. With phase 4 complete the directory and the suite
+are gone; reinstate both if a later phase designs rather than repairs.
 
 This ordering is deliberate. The README and the code disagree today (C5, C10,
 C11) because the prose was written once and then drifted. A specification that
 is run on every push cannot drift.
 
-## Phase 3 — Failure exists `[done except where phase 4 blocks it]`
+## Phase 3 — Failure exists `[done]`
 
 C13 first, because everything else is easier to see once the interpreter stops
 answering every question with a number.
@@ -174,7 +176,7 @@ answering every question with a number.
    `std::variant` payload is unnecessary: once a token carries its lexeme,
    `name` *is* the lexeme, `Print()` is `return text;`, and the whole switch
    goes — smaller than a variant and it fixes C6 outright. Source *positions*
-   are not needed either: nothing renders one. The spec transcripts quote the
+   are not needed either: nothing renders one. The diagnostics quote the
    offending token rather than pointing at a column, which reads better for
    single-line input, and inkamath has no other kind. Adding `offset` to
    `Token` is three lines whenever something wants a caret.
@@ -199,19 +201,19 @@ answering every question with a number.
      index — so they cannot simply be deleted; the clause model in phase 4
      replaces them.
 4. **Evaluation budget** (C1) `[done]`. A per-`Eval` limit on recursion depth
-   and total steps, reported as a diagnostic. `spec/recursion.ink` is no
-   longer skipped, and a sweep of all 117 prefixes of ten representative
+   and total steps, reported as a diagnostic. The arithmetic-geometric mean
+   runs instead of dying, and a sweep of all 117 prefixes of ten representative
    inputs now runs clean under ASan, UBSan and `_GLIBCXX_ASSERTIONS` — it
    previously overflowed the stack.
 5. **Fix the `i` lexing rule** (C2) `[done]`.
 6. **`0^0`** (C5) `[done]`. Moved exactly the three predicted lines and left
    `exp(1)-e` unchanged, as forecast when the fix was first measured.
 
-## Phase 4 — The definition model
+## Phase 4 — The definition model `[done]`
 
 The redesign proper. Replaces C10 and C11 rather than deciding them.
 
-1. **One definition per name.** `Reference`'s three parallel slots
+1. **One definition per name** `[done]`. `Reference`'s three parallel slots
    (`single_expr_`, `indexed_expr_`, `general_expr_`) collapse into one
    definition that may have several *clauses*: constant-index base cases plus
    at most one general clause. `f_0 = 1` and `f_n = f_(n-1)/2` are two clauses
@@ -227,8 +229,8 @@ The redesign proper. Replaces C10 and C11 rather than deciding them.
    `-7.7e-13` not from floating point but from a series stopped as soon as
    two terms agree to 1e-10 — measured, not the 30-term cap this item
    originally blamed: raising the cap to 200 leaves the figure unchanged.
-3. **A definition is a statement.** It binds and echoes what it bound; it
-   evaluates nothing. No left-hand-side lookup, no right-hand-side evaluation,
+3. **A definition is a statement** `[done]`. It binds and echoes what it
+   bound; it evaluates nothing. No left-hand-side lookup, no right-hand-side evaluation,
    no convergence loop triggered by typing a definition.
 4. **A recurrence needs its base case; there is no implicit value at an
    undefined index** `[done]`. `SafeRecursiveEval` returned `0` below the
@@ -252,14 +254,13 @@ The redesign proper. Replaces C10 and C11 rather than deciding them.
    live name forward on `Push`, which is what made a caller's parameters
    visible to everything it called. Two plain maps replace it.
 6. **`?name` prints a definition back** `[done]`, as written, without
-   evaluating it.
-   On a sequence it prints every clause, so the whole definition is visible
+   evaluating it. On a sequence it prints every clause, so the whole definition is visible
    at once — which the three parallel slots made impossible. Together with
    item 3 this is what makes the core idea legible: after `b = a+a` and
    `a = 2`, `?b` is `b = a+a` while `b` is `4`. Each clause stores the line
    that bound it, so `?` quotes what was typed rather than rendering the
    parsed expression; there is no pretty-printer to disagree with the parser.
-7. C3, C4, C14 and C17 were small bugs in machinery this phase rewrites; they
+7. C3, C4, C14 and C17 were small bugs in machinery this phase rewrote; they
    went away with it rather than being patched first.
 
 ## Phase 5 — Value types and the core
@@ -308,11 +309,11 @@ Recorded so they are not re-litigated later, or drifted into by accident.
 
 ## Sequencing
 
-Phase 2 gates everything: no implementation work starts before the transcripts
-say what it should do. Phase 3 comes next because C13 makes every later change
-observable. Phase 4 is the redesign the rest of the plan exists to serve.
-Phase 5 is independent of 3 and 4 and can be interleaved when convenient.
+Phase 2 gated everything: no implementation work started before the
+transcripts said what it should do. Phase 3 came next because C13 made every
+later change observable, then phase 4, the redesign the rest of the plan
+exists to serve. Phase 5 is independent of both and comes next.
 
-The honest risk is phase 4. It changes what existing sessions mean, so it
-cannot hide behind unchanged goldens — every moved line has to be justified
-against a spec transcript, in the commit that moves it.
+The honest risk was phase 4. It changed what existing sessions mean, so it
+could not hide behind unchanged goldens — every moved line was justified
+against a spec transcript, in the commit that moved it.

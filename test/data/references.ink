@@ -22,6 +22,9 @@ f(x, y)=x^2+y
 >> f(x=3, y=2)
 11
 
+>> f(1)
+error: f expects 2 arguments, got 1
+
 # Surplus arguments and missing ones are both errors. Missing ones used to
 # fall back to the calling scope and then to zero, reporting nothing.
 >> g=1+2
