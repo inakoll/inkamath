@@ -220,7 +220,7 @@ over phases 3 and 4.
 
 As each part of the design landed, its entries moved into `test/data/` and
 became ordinary goldens. With phase 4 complete the directory and the suite
-are gone; reinstate both if a later phase designs rather than repairs.
+went away; phase 8 designs rather than repairs, so both are back.
 
 This ordering is deliberate. The README and the code disagree today (C5, C10,
 C11) because the prose was written once and then drifted. A specification that
@@ -473,7 +473,10 @@ is the opposite. `f(x)=1` called as `f(undefined)` reports `undefined is not
 defined` for an argument it never reads. So this phase is not adding an idea
 but finishing one.
 
-Specified as transcripts before it is implemented, the way phase 2 did it.
+Specified as transcripts before it is implemented, the way phase 2 did it:
+`test/data/spec/locals.ink` and `test/data/spec/laziness.ink`, under the
+`spec` suite, `may_fail`, never recorded. They report **10 of 37** assertions
+failing today, which is the whole of the gap.
 
 ### One rule
 
@@ -533,20 +536,33 @@ no binding it reads can change within that call, but that needs proving rather
 than assuming. The step budget should be revisited with it — it becomes the
 limit users meet.
 
-### The smaller ones
+### What the transcripts settle
 
-- **Syntax.** `(t = 2*x) + t` is what the 2014 design used and what the
-  prototype accepts. If C29 lands first, the form it rejects and the form this
-  phase accepts must differ, or the error is meaningless — which is an argument
-  for making the nested definition a *local* rather than an error.
-- **Extent.** Does a local live to the end of the expression or the end of the
-  line? At the top level the prototype still binds a global, because there is
-  no frame there; closing that means the nested form opens its own scope.
-- **`?`.** With expression semantics the answer is uniform: `?t` prints the
-  expression, like any other name.
+- **C29 resolves as the local, not the error.** The form the error would have
+  rejected is the form this phase accepts, so rejecting it first would only
+  have to be undone. C29's entry stands as the record of why it was ever
+  considered.
+- **Extent is the line.** A local is invisible on the next one. The prototype
+  still leaks at the top level, where there is no frame to hold it; closing
+  that means a line being *evaluated* opens a scope, while a line that is only
+  a definition still writes to the globals — `(b = 7)` alone stays a
+  definition, parentheses or not.
+- **A local shadows**, both a global and a parameter, for the rest of the line
+  and no further. A call's frame is one scope and the local is bound in it.
+- **Left to right**, so a local is not visible before its own binding:
+  `t + (t = 3)` is an error, not `6`.
+- **`?` does not see locals.** It prints a definition, and by the next line
+  there is none.
+- **Call-by-name and call-by-need are indistinguishable here**, which was not
+  obvious and is worth not re-deriving. Observing the difference needs an
+  argument's value to change between two reads of it; the argument resolves in
+  the caller's scope, and nothing the body does can reach that scope, because
+  a definition inside the body binds a local in the body's own frame. So the
+  choice is purely about cost, and `laziness.ink` deliberately says nothing
+  about it.
 - **Whether it earns its place.** The parameter-capture case genuinely cannot
-  be written as two lines: the second line would be a global that cannot see
-  `x`. That is the argument the transcripts have to make.
+  be written as two lines: the second would be a global that cannot see `x`.
+  `locals.ink` makes that argument at `f(x) = (t = 2*x) + t`.
 
 ---
 
