@@ -96,10 +96,7 @@ TEST_CASE("diagnostics" * doctest::may_fail()) {
     check_transcript("spec/diagnostics.ink", false);
 }
 
-// Skipped, not omitted: evaluating these overflows the stack and kills the
-// process (C1), and may_fail tolerates a failed assertion rather than a dead
-// one. Drop the skip in the commit that lands the evaluation budget.
-TEST_CASE("recursion" * doctest::skip() * doctest::may_fail()) {
+TEST_CASE("recursion" * doctest::may_fail()) {
     check_transcript("spec/recursion.ink", false);
 }
 

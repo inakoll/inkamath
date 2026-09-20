@@ -76,3 +76,17 @@ nan*nan
 >> s
 9.31322575e-10
 
+# Recursion is bounded: past the budget the interpreter says so rather than
+# dying (MODERNIZATION.md, C1).
+>> g_0=1
+1
+
+>> g_n=g_(n-1)+1
+1
+
+>> g_10
+11
+
+>> g_500
+error: evaluation nests more than 256 references deep
+

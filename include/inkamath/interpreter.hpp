@@ -489,6 +489,7 @@ typename Interpreter<T,U>::Result Interpreter<T,U>::Eval(const std::string& s)
     try
     {
         /* the following functions might throw some evaluation errors */
+        stack_.BeginEvaluation();
         Lexer(s);
         m_E = ParseAll();
         EvaluationVisitor<U> evaluator(stack_);
