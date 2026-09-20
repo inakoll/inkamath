@@ -54,7 +54,7 @@ phase 0; the rest are open and are scheduled into the phases that follow.
 |---|--------|
 | C1 `[fixed]` | **Unbounded recursion crashes the process.** The mutually recursive arithmetic-geometric mean from the project's own test data (`am`/`gm`) overflows the stack. Confirmed under ASan. There is no evaluation depth or step budget anywhere; `Reference::SafeRecursiveEval` guards one shape of recursion and nothing guards the rest. The original test suite worked around this by running each evaluation in a thread with a 1-second timeout and calling `std::terminate()` on expiry. Fixed by a depth and step budget on `ReferenceStack` — 256 and 1000000, against a measured worst case of 33 and 6444 across every golden input. Steps as well as depth because the AGM nests shallowly but branches twice per level, so depth alone does not bound time. `f=f` was **not** an instance of this: see C16. |
 | C2 `[fixed]` | **Identifiers cannot start with `i`.** `Interpreter::Lexer` routes `'i'` to `Number_Lexer` alongside the digits, so `ii=3` fails with `Syntax error`. Any name beginning with `i` is unusable, and `i` itself can never be shadowed. Fixed: `i` is the imaginary unit only when the next character cannot continue a name. No golden moved — every `i` in them is followed by an operator or a bracket. |
-| C3 | `ReferenceStack::WrapRecursiveExpression` never increments its index `i` when filling `recursive_placeholders`, so every slot after the first stays null. `EvaluationVisitor::visit(RecursiveExpression*)` then `dynamic_cast`s each child and silently ignores the nulls — the `else` branch is an empty block with a `// TODO` in it. Recursive expressions with more than one self-reference are quietly mis-evaluated. |
+| C3 `[fixed]` | `ReferenceStack::WrapRecursiveExpression` never incremented its index `i` when filling `recursive_placeholders`, so every slot after the first stayed null. `EvaluationVisitor::visit(RecursiveExpression*)` then `dynamic_cast`ed each child and silently ignored the nulls — the `else` branch was an empty block with a `// TODO` in it. Recursive expressions with more than one self-reference were quietly mis-evaluated. Fixed by deleting the substitution machinery outright (phase 4 item 4). |
 | C4 | `ParametersCall`'s constructor contains `return; subexpr_ = subexpr;` — the assignment is unreachable. `subexpr_` is therefore never set, and the `if(subexpr_)` branch in `TryEvalIndex` is dead code. |
 | C5 `[fixed]` | **`0^0` is NaN, so `exp(0)` is NaN.** Complex `pow` is specified as `exp(b*log(a))`, and `log(0)` is `-inf`, so `std::pow(complex(0,0), complex(0,0))` is NaN — where real `std::pow(0.0, 0.0)` is `1` by IEEE 754. Every series whose first term is `x^0` is poisoned at `x == 0`. `numeric_interface_imp<std::complex<T>>` already declares a `pow(complex, int)` overload that returns `1` for this; nothing ever calls it. The sign of the NaN is unspecified, so GCC and Clang disagree — caught by the cross-compiler CI. The `nan*nan` recorded against three definitions in `sequences.ink` was this bug, not a rule about what a definition returns (that is C10). Fixed by routing an integral exponent to that unused overload; the goldens lose their last three NaNs, and the harness lost the workaround that normalised the NaN sign across compilers. |
 | C10 `[fixed]` | **A definition's value is undocumented and disagrees with the README.** `EvaluationVisitor::visit(EqualExpression*)` binds the name and then returns *the left-hand side evaluated after binding*, not the right-hand side. The two are not interchangeable: the left-hand side is a **lookup**, so it can resolve to a definition other than the one just installed. `f_n=2*n` followed by `f=5` prints `60`, not `5` — lookup order is indexed, then general, then simple, so the pre-existing general term wins and its convergence loop runs to the 30-iteration cap. README §4.3 shows `0` for parameterised and general-term definitions, which is merely what the rule produces when the parameters happen to be undefined. Defining a series also runs the convergence loop immediately, with every parameter defaulted to zero. Fixed: a top-level definition is a statement handled before evaluation. It binds and echoes what was written, evaluating nothing. |
@@ -227,14 +227,20 @@ The redesign proper. Replaces C10 and C11 rather than deciding them.
    evaluates nothing. No left-hand-side lookup, no right-hand-side evaluation,
    no convergence loop triggered by typing a definition.
 4. **A recurrence needs its base case; there is no implicit value at an
-   undefined index.** Today `SafeRecursiveEval` returns `0` below the lowest
-   defined index, which is an unannounced choice of the *additive* identity.
+   undefined index** `[done]`. `SafeRecursiveEval` returned `0` below the
+   lowest defined index, an unannounced choice of the *additive* identity.
    It is right for a series and wrong for a product: `p_n = p_(n-1)*n` with no
    base evaluates to `0` at every index, while `p_0 = 1` gives `1, 2, 6, 24,
    120`. The 2014 test data makes the point by itself — `exp`, `ln` and `atan`
    are additive and carry no base, the arithmetic-geometric mean is
    multiplicative and carries `am(x,y)_0` and `gm(x,y)_0`. Base cases were
-   already written wherever the hidden zero would have been wrong.
+   already written wherever the hidden zero would have been wrong. Done by
+   deleting `WrapRecursiveExpression`, `SafeRecursiveEval`,
+   `RecursiveExprVisitor` and the two recursive expression nodes: an indexed
+   call is now evaluated at the index it asks for, against the clause that
+   covers it. `sequences.ink` gained `exp(x)_0=1`, which the hidden zero had
+   been supplying, and `fact_n=fact_(n-1)*n` as the case it got wrong. C3 and
+   C16 go with the machinery.
 5. **Parameters are lexically scoped** (C13). A missing argument is a
    diagnostic, not a search of the enclosing scope for a name that matches.
 6. **`?name` prints a definition back**, as written, without evaluating it.
@@ -243,8 +249,8 @@ The redesign proper. Replaces C10 and C11 rather than deciding them.
    item 3 this is what makes the core idea legible: after `b = a+a` and
    `a = 2`, `?b` is `b = a+a` while `b` is `4`. `?` is currently an
    unrecognised character, so the syntax is free.
-7. C3, C4 and C17 are small bugs in machinery this phase rewrites; they go away
-   with it rather than being patched first.
+7. C4 is a small bug in machinery this phase rewrites; it goes away with it
+   rather than being patched first. C3 and C17 already have.
 
 ## Phase 5 — Value types and the core
 

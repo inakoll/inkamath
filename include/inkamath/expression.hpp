@@ -281,66 +281,6 @@ template <typename T>
 class ParametersCall;
 
 template <typename T>
-class RecursivePlaceholderExpression : public Expression<T>
-{
-public:
-    explicit RecursivePlaceholderExpression(const std::string& name, const ParametersCall<T>& params)
-        : Expression<T>(), value_(), name_(name), params_(params)
-    {}
-
-    PExpression<T> Clone() const override
-    {
-        return std::make_shared<RecursivePlaceholderExpression<T>>(name_, params_);
-    }
-
-    std::string Name() override
-    {
-        return name_;
-    }
-
-    const ParametersCall<T>& params() {return params_;}
-
-    void Set(const T& value)
-    {
-        value_ = value;
-    }
-
-    T get() const {
-        return value_;
-    }
-
-    T accept(FoldingVisitor<T>& v) override {return v.visit(this);}
-    PExpression<T> accept(TransformationVisitor<T>& v) override {return v.visit(this);}
-
-protected:
-    T value_;
-    std::string name_;
-    ParametersCall<T> params_;
-};
-
-template <typename T>
-class RecursiveExpression : public Expression<T>
-{
-public:
-    explicit RecursiveExpression(PExpression<T> expr, dynarray<PExpression<T>> recursive_placeholders)
-        : Expression<T>(std::move(recursive_placeholders)), expr_(expr)
-    {}
-
-    PExpression<T> Clone() const override
-    {
-        return std::make_shared<RecursiveExpression<T>>(expr_, this->children);
-    }
-
-    PExpression<T> recursive_expr() const {return expr_;}
-
-    T accept(FoldingVisitor<T>& v) override {return v.visit(this);}
-    PExpression<T> accept(TransformationVisitor<T>& v) override {return v.visit(this);}
-
-protected:
-    PExpression<T> expr_;
-};
-
-template <typename T>
 class MatExpression : public Expression<T>
 {
 public:

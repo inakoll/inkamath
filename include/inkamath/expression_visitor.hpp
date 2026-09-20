@@ -48,12 +48,6 @@ template <typename T>
 class FuncExpression;
 
 template <typename T>
-class RecursivePlaceholderExpression;
-
-template <typename T>
-class RecursiveExpression;
-
-template <typename T>
 class ParametersCall;
 
 template <typename T>
@@ -73,10 +67,6 @@ public:
     virtual ReturnType visit(MatExpression<T>* expr) = 0;
     virtual ReturnType visit(RefExpression<T>* expr) = 0;
     virtual ReturnType visit(FuncExpression<T>* expr) = 0;
-
-    // Optionnal visitation
-    virtual ReturnType visit(RecursivePlaceholderExpression<T>*) {return {};}
-    virtual ReturnType visit(RecursiveExpression<T>*) {return {};}
 };
 
 // Design choice: limit the number of visitors base class.
@@ -336,127 +326,6 @@ private:
 };
 
 template <typename T>
-class RecursiveExprVisitor : public TransformationVisitor<T> {
-public:
-    RecursiveExprVisitor(const std::string& name,const ParametersDefinition<T>& ai_parameters, PExpression<T> recexp)
-        : name_(name), params_def_(ai_parameters)
-    {
-        recexp->accept(*this);
-    }
-
-    template <typename U>
-    PExpression<T> binary_visit(U* expr) {
-        transform_visitation(expr->m_e1());
-        transform_visitation(expr->m_e2());
-        return PExpression<T>();
-    }
-
-    template <typename U>
-    PExpression<T> unary_visit(U* expr) {
-        transform_visitation(expr->m_e());
-        return PExpression<T>();
-    }
-
-    PExpression<T> visit(EqualExpression<T>* expr) override {
-        return binary_visit(expr);
-    }
-
-    PExpression<T> visit(AddExpression<T>* expr) override {
-        return binary_visit(expr);
-    }
-
-    PExpression<T> visit(NegExpression<T>* expr) override {
-        return unary_visit(expr);
-    }
-
-    PExpression<T> visit(MultExpression<T>* expr) override {
-        return binary_visit(expr);
-    }
-
-    PExpression<T> visit(DivExpression<T>* expr) override {
-        return binary_visit(expr);
-    }
-
-    PExpression<T> visit(PowExpression<T>* expr) override {
-        return binary_visit(expr);
-    }
-
-    PExpression<T> visit(FactExpression<T>* expr) override {
-        return unary_visit(expr);
-    }
-
-    PExpression<T> visit(ValExpression<T>*) override {
-        return PExpression<T>();
-    }
-
-    PExpression<T> visit(MatExpression<T>* expr) override {
-        for(auto& e : expr->children) {
-            transform_visitation(e);
-        }
-        return PExpression<T>();
-    }
-
-    PExpression<T> visit(RefExpression<T>* expr) override {
-        PExpression<T> e;
-        // The root expression has no enclosing slot to substitute a
-        // placeholder into, so a self-reference there is not wrapped.
-        if(!to_transform_) return PExpression<T>();
-        if(this->params_def_.a() == 0 && expr->Name() == name_) {
-            auto it = wrapped_.find(-1ll);
-            if(it == wrapped_.end()) {
-                e = std::make_shared<RecursivePlaceholderExpression<T>>(name_, ParametersCall<T>());
-                wrapped_.insert(std::make_pair(-1ll, std::forward_as_tuple(to_transform_, e)));
-            }
-            else {
-                wrapped_.insert(std::make_pair(-1ll, std::forward_as_tuple(to_transform_, std::get<1>(it->second))));
-            }
-        }
-        return PExpression<T>();
-    }
-
-    PExpression<T> visit(FuncExpression<T>* expr) override {
-        PExpression<T> e;
-        // The root expression has no enclosing slot to substitute a
-        // placeholder into, so a self-reference there is not wrapped.
-        if(!to_transform_) return PExpression<T>();
-        auto params_call = ParametersCall<T>(expr->m_e1(), expr->m_e2());
-        if(this->params_def_.a() == params_call.a() &&
-                (params_call.a() != 0)) {
-            auto diffb = params_call.b()-params_def_.b();
-            long long  mod = diffb % params_call.a();
-            long long diff = diffb / params_call.a();
-            if(mod == 0 && expr->Name() == name_) {
-                auto it = wrapped_.find(diff);
-                if(it == wrapped_.end()) {
-                    e = std::make_shared<RecursivePlaceholderExpression<T>>(name_, params_call);
-                    wrapped_.insert(std::make_pair(diff, std::forward_as_tuple(to_transform_, e)));
-                }
-                else {
-                    wrapped_.insert(std::make_pair(diff, std::forward_as_tuple(to_transform_, std::get<1>(it->second))));
-                }
-            }
-        }
-
-        return PExpression<T>();
-    }
-
-    inline void transform_visitation(PExpression<T>& to_transform) {
-        to_transform_ = &to_transform;
-        (*to_transform_)->accept(*this);
-    }
-
-    std::multimap<long long int, std::tuple<PExpression<T>*, PExpression<T>>> wrapped() {
-        return wrapped_;
-    }
-
-private:
-    std::string name_;
-    ParametersDefinition<T> params_def_;
-    std::multimap<long long int, std::tuple<PExpression<T>*, PExpression<T>>> wrapped_;
-    PExpression<T>* to_transform_ = nullptr;
-};
-
-template <typename T>
 class ReferenceStack;
 
 template <typename T>
@@ -592,27 +461,6 @@ public:
 
     T visit(FuncExpression<T>* expr) override {
         return stack_.Eval(expr->Name(), ParametersCall<T>(expr->m_e1(), expr->m_e2()));
-    }
-
-    T visit(RecursivePlaceholderExpression<T>* expr) override {
-        return expr->get();
-    }
-
-    T visit(RecursiveExpression<T>* expr) override {
-        for(auto e : expr->children) {
-            // We don't want to visit children here as we expect RecursivePlaceholderExpression
-            auto rec =  dynamic_cast<RecursivePlaceholderExpression<T>*>(e.get());
-            if(rec) {
-                rec->Set(stack_.SafeRecursiveEval(rec->Name(), rec->params()));
-            }
-            else {
-                // TODO:
-                // throw something as interpreter internal error ?
-                // assert ?
-                // refactor RecursiveExpression to hold RecursivePlaceholderExpression directly ?
-            }
-        }
-        return expr->recursive_expr()->accept(*this);
     }
 
 private:

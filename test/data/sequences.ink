@@ -40,7 +40,13 @@ u_1=3
 >> u_3
 6
 
-# Series: the interpreter iterates the general term until it converges.
+# Series: the interpreter iterates the general term until it converges. The
+# first term is written out; an indexed clause no longer falls back to an
+# implicit zero, which was the additive identity and so wrong for a product
+# (MODERNIZATION.md, C4).
+>> exp(x)_0=1
+exp(x)_0=1
+
 >> exp(x)_n=exp(x)_(n-1)+x^n/!n
 exp(x)_n=exp(x)_(n-1)+x^n/!n
 
@@ -108,3 +114,18 @@ k_n=k_(n-1)+1
 >> k
 35
 
+
+# A recurrence has no implicit value below its lowest clause. The old fallback
+# was zero -- the additive identity, right for a sum and wrong for a product
+# (MODERNIZATION.md, phase 4 item 4).
+>> fact_n=fact_(n-1)*n
+fact_n=fact_(n-1)*n
+
+>> fact_5
+error: evaluation nests more than 256 references deep
+
+>> fact_0=1
+fact_0=1
+
+>> fact_5
+120

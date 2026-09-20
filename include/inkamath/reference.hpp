@@ -65,65 +65,10 @@ public:
     }
 
     T Eval( const ParametersCall<T>& ai_parameters, ReferenceStack<T>& stack) {
-//        if(ai_parameters.parameters_dict().empty()
-//          && std::get<0>(this->general_).parameters_names().empty()) {
-//            // Evaluation of an expression might mutate the internal stack_ object
-//            // The following line ensure that the stack will be restored at the end of the function
-//            // or in case of an exception thanks to RAII.
-//            // The context guard might have a huge impact on performance.
-//            // Consider to move it closer to the reference parameters assignation as a future optimisation.
-//            typename ReferenceStack<T>::Guard guard(stack);
-//            return this->EvalImp(ai_parameters, stack);
-//        }
-//        else {
-//            return this->EvalImp(ai_parameters, stack);
-//        }
-        // Only the user's own call is checked. The recursion machinery builds
-        // synthetic ParametersCalls that deliberately carry no arguments --
-        // they are already bound in the enclosing scope -- and those reach
-        // SafeRecursiveEval, not here.
         CallParameters().CheckArity(reference_name_, ai_parameters);
         return this->EvalImp(ai_parameters, stack);
-
     }
-	
 
-    T SafeRecursiveEval( const ParametersCall<T>& ai_parameters, ReferenceStack<T>& stack) {
-        // if functionnal parameters are identical to the general expr
-        // return the memoized value at the evaluated index of this potentially recursive function
-        // or return {}
-        T evaluation = {};
-        EvaluationVisitor<T> evaluator(stack);
-
-        // Important note: Indexed expression shall not be recursive! ==> stack overflow
-        if(!TryEvaluateBaseClause(ai_parameters, evaluator, evaluation)) {
-            PExpression<T> gen_expr_def;
-            ParametersDefinition<T> gen_params_def;
-            std::tie(gen_params_def, gen_expr_def) = general_;
-            if(     gen_params_def.a() == ai_parameters.a()
-                    &&  gen_params_def.parameters_dict().empty()
-                    &&  ai_parameters.parameters_dict().empty()
-                    &&  gen_params_def.parameters_names() == ai_parameters.parameters_names()) {
-                int index_value;
-                if(ai_parameters.TryEvalIndex(stack, index_value)) {
-                    auto it = memo_.find(index_value);
-                    if(it != memo_.end()) {
-                        evaluation = it->second;
-                    }
-                    else if(index_value < 0) {
-                        evaluation = {};
-                        memo_[index_value] = evaluation;
-                    }
-                    else if(!TryEvaluateBaseClause(ai_parameters, evaluator, evaluation)) {
-                        ParametersCall<T> fwd_parameter(0,index_value,true);
-                        TryEvaluateGeneralClause(fwd_parameter, evaluator, evaluation);
-                    }
-                }
-            }
-        }
-        return evaluation;
-    }
-	
 private:
     // The clauses of one name share their parameter list; any of them answers
     // for the whole definition.
@@ -186,14 +131,16 @@ private:
         ParametersDefinition<T> gen_params_def;
         std::tie(gen_params_def, gen_expr_def) = general_;
         if(gen_expr_def) {
-            if(ai_parameters.indexed()) {
-                long long index = ai_parameters.b() - gen_params_def.b();
-                if(ai_parameters.a() != 0) {
-                    index *= ai_parameters.a();
-                }
-                if(gen_params_def.a() != 0) {
-                    index /= gen_params_def.a();
-                }
+            int requested = 0;
+            // A general clause reaches down only as far as the lowest base
+            // clause; below that the sequence is simply not defined. With no
+            // base clause at all it applies everywhere, which is right for a
+            // closed form and divergent for a recurrence -- the budget says so.
+            if(ai_parameters.TryEvalIndex(stack, requested)
+               && (base_.empty() || requested >= base_.begin()->first)) {
+                // The index the caller asked for, not the offset in its
+                // written form: 's_(n-1)' is index n-1, not index -1.
+                const long long index = requested;
                 gen_params_def.SetCallParameters(ai_parameters, evaluator);
                 typename ReferenceStack<T>::Guard guard(stack);
                 stack.Set(gen_params_def.index_name(), ParametersDefinition<T>(), PExpression<T>(new ValExpression<T>(T(index))));
@@ -202,6 +149,12 @@ private:
                 succeed = true;
             }
             else {
+                // Bind the arguments once, in the caller's scope. Binding them
+                // again after the first clause has run would evaluate 'h(i*x)'
+                // against the 'x' that binding had just introduced.
+                typename ReferenceStack<T>::Guard guard(stack);
+                gen_params_def.SetCallParameters(ai_parameters, evaluator);
+
                 long long start_index = 0;
                 T start_evaluation;
                 if(!memo_.empty() || !base_.empty()) {
@@ -215,22 +168,14 @@ private:
                         start_evaluation = memo_.rbegin()->second;
                     }
                     else {
-
-                        ParametersDefinition<T> ind_params_def;
-                        PExpression<T> ind_expr_def;
-                        std::tie(ind_params_def, ind_expr_def) = base_.rbegin()->second;
-
-                        ind_params_def.SetCallParameters(ai_parameters, evaluator);
-                        start_evaluation = ind_expr_def->accept(evaluator);
+                        start_evaluation = std::get<1>(base_.rbegin()->second)->accept(evaluator);
                     }
                 }
-                gen_params_def.SetCallParameters(ai_parameters, evaluator);
 
                 evaluation = start_evaluation;
                 using difference_type = decltype(numeric_interface<T>::abs(std::declval<T>()));
                 difference_type diff = numeric_interface<difference_type>::one();
                 size_t iter_count = 0;
-                typename ReferenceStack<T>::Guard guard(stack);
                 while(diff > 1E-10 && iter_count < 30) {
                     start_index += gen_params_def.a();
                     stack.Set(gen_params_def.index_name(), ParametersDefinition<T>(), PExpression<T>(new ValExpression<T>(T(start_index))));
