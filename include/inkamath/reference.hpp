@@ -8,7 +8,6 @@
 #include "inkamath/expression_visitor.hpp"
 
 #include <map>
-#include <stack>
 #include <tuple>
 #include <stdexcept>
 
@@ -247,33 +246,6 @@ private:
         return succeed;
     }
 
-    friend struct GuardIndex;
-    struct GuardIndex {
-        GuardIndex(Reference<T>& reference, long long index) :
-            reference_(reference)
-        {
-            reference_.index_stack_.push(index);
-        }
-
-        ~GuardIndex()
-        {
-            reference_.index_stack_.pop();
-        }
-
-    private:
-        Reference<T>& reference_;
-    };
-
-    bool TryEvalStackedIndex(long long& index_val) {
-        if(!index_stack_.empty()) {
-            index_val = index_stack_.top();
-            return true;
-        }
-        else {
-            return false;
-        }
-    }
-
     // Signed: an index may be negative, and these maps are read in order
     // (rbegin) to pick the highest known term.
     typedef std::map<long long, ExpressionDefinition<T>> Indexed_expr;
@@ -288,8 +260,6 @@ private:
     Indexed_expr                indexed_expr_;
     Indexed_values              memoized_index_;
     ExpressionDefinition<T> 	general_expr_;
-
-    std::stack<long long> index_stack_;
 	
 };
 
