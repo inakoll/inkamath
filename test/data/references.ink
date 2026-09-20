@@ -1,20 +1,20 @@
 # References: identifiers name expressions, not values (README.md section 4.1).
 
 >> a = 1
-1
+a = 1
 
 >> b = a+a
-2
+b = a+a
 
 >> a = 2
-2
+a = 2
 
 >> b
 4
 
 # Parameters, positional and named (README.md section 4.1).
 >> f(x, y)=x^2+y
-0
+f(x, y)=x^2+y
 
 >> f(2, 1)
 5
@@ -25,7 +25,7 @@
 # Surplus arguments and missing ones are both errors. Missing ones used to
 # fall back to the calling scope and then to zero, reporting nothing.
 >> g=1+2
-3
+g=1+2
 
 >> g
 3
@@ -35,7 +35,7 @@ error: g takes no arguments
 
 # Scoping (README.md section 6).
 >> h(x)=x^2
-0
+h(x)=x^2
 
 >> x
 0
@@ -50,7 +50,7 @@ error: g takes no arguments
 0
 
 >> x=5
-5
+x=5
 
 >> h
 error: h expects 1 argument, got 0
@@ -60,13 +60,13 @@ error: h expects 1 argument, got 0
 # an undocumented precedence that made a plain definition unreachable
 # (MODERNIZATION.md, C11).
 >> m_n=2*n
-0
+m_n=2*n
 
 >> m_3
 6
 
 >> m=5
-5
+m=5
 
 >> m
 5
@@ -76,10 +76,10 @@ error: h expects 1 argument, got 0
 
 # The reverse: a clause turns a plain definition into a sequence.
 >> p=9
-9
+p=9
 
 >> p_0=1
-1
+p_0=1
 
 >> p_0
 1

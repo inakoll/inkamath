@@ -10,4 +10,11 @@ struct Diagnostic {
     std::string message;
 };
 
+// The reply when an input binds a name rather than producing a value. A
+// definition is a statement: it evaluates nothing and reports what it bound,
+// as the user wrote it.
+struct Echo {
+    std::string text;
+};
+
 #endif // H_DIAGNOSTIC

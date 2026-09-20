@@ -31,11 +31,18 @@ error: missing ')' after function parameters
 >> undefined(2)_3
 0
 
-# A self-referential definition is bounded, not fatal. These used to crash on
-# an uninitialised pointer before they ever recursed (MODERNIZATION.md, C16).
+# Defining a self-reference is just a binding; evaluating one is bounded
+# rather than fatal. These used to crash on an uninitialised pointer before
+# they ever recursed (MODERNIZATION.md, C16).
 >> r=r
+r=r
+
+>> r
 error: evaluation nests more than 256 references deep
 
 >> w_n=w
+w_n=w
+
+>> w_1
 error: evaluation nests more than 256 references deep
 

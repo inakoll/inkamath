@@ -96,6 +96,8 @@ std::string eval(Interpreter& interpreter, const std::string& expression) {
     typename Interpreter::Result result = interpreter.Eval(expression);
     if (const Diagnostic* error = std::get_if<Diagnostic>(&result)) {
         out << "error: " << error->message;
+    } else if (const Echo* echo = std::get_if<Echo>(&result)) {
+        out << echo->text;
     } else {
         out << std::get<typename Interpreter::matrix_type>(result);
     }

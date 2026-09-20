@@ -29,6 +29,10 @@ int main(void)
         {
             cout << "error: " << error->message;
         }
+        else if (const Echo* echo = get_if<Echo>(&result))
+        {
+            cout << echo->text << endl;
+        }
         else
         {
             cout << get<Interp::matrix_type>(result);

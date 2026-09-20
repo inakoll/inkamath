@@ -34,7 +34,7 @@ public:
 
     // A value, or why there isn't one. std::expected is C++23; this becomes
     // one mechanically if the project ever moves.
-    using Result = std::variant<U, Diagnostic>;
+    using Result = std::variant<U, Echo, Diagnostic>;
 
     Result Eval(const std::string& s);
     void PrintTokens(void);
@@ -59,6 +59,14 @@ private:
 
     bool AtEnd() const {return m_i >= m_tokens.size();}
     const Token<T>& Peek() const {return m_tokens[m_i];}
+
+    // What the user typed, without the trailing comment the lexer stops at.
+    static std::string AsWritten(const std::string& source)
+    {
+        std::string text = source.substr(0, source.find('#'));
+        while(!text.empty() && std::isspace(static_cast<unsigned char>(text.back()))) text.pop_back();
+        return text;
+    }
 
     // Messages are lower case, unpunctuated and quote what the user typed;
     // the caller adds the "error: " prefix.
@@ -500,7 +508,15 @@ typename Interpreter<T,U>::Result Interpreter<T,U>::Eval(const std::string& s)
         Lexer(s);
         m_E = ParseAll();
         EvaluationVisitor<U> evaluator(stack_);
-        result = m_E->accept(evaluator);
+        if(EqualExpression<U>* definition = dynamic_cast<EqualExpression<U>*>(m_E.get()))
+        {
+            evaluator.Bind(definition);
+            result = Echo{AsWritten(s)};
+        }
+        else
+        {
+            result = m_E->accept(evaluator);
+        }
     }
     catch (const std::exception& e)
     {

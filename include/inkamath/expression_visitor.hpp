@@ -467,13 +467,19 @@ public:
 
     ReferenceStack<T>& stack() {return stack_;}
 
-    T visit(EqualExpression<T>* expr) override {
+    // Installing the definition, without evaluating anything. A definition at
+    // the top level is a statement and never gets as far as visit().
+    void Bind(EqualExpression<T>* expr) {
         if(expr->children[0]->children.size() > 0) {
             this->stack_.Set(expr->Name(), ParametersDefinition<T>(expr->children[0]->children[0], expr->children[0]->children[1]), expr->children[1]);
         }
         else {
             this->stack_.Set(expr->Name(), ParametersDefinition<T>(), expr->children[1]);
         }
+    }
+
+    T visit(EqualExpression<T>* expr) override {
+        Bind(expr);
         return expr->m_e1()->accept(*this);
     }
 
