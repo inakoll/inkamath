@@ -398,6 +398,9 @@ public:
 
     PExpression<T> visit(RefExpression<T>* expr) override {
         PExpression<T> e;
+        // The root expression has no enclosing slot to substitute a
+        // placeholder into, so a self-reference there is not wrapped.
+        if(!to_transform_) return PExpression<T>();
         if(this->params_def_.a() == 0 && expr->Name() == name_) {
             auto it = wrapped_.find(-1ll);
             if(it == wrapped_.end()) {
@@ -413,6 +416,9 @@ public:
 
     PExpression<T> visit(FuncExpression<T>* expr) override {
         PExpression<T> e;
+        // The root expression has no enclosing slot to substitute a
+        // placeholder into, so a self-reference there is not wrapped.
+        if(!to_transform_) return PExpression<T>();
         auto params_call = ParametersCall<T>(expr->m_e1(), expr->m_e2());
         if(this->params_def_.a() == params_call.a() &&
                 (params_call.a() != 0)) {
@@ -447,7 +453,7 @@ private:
     std::string name_;
     ParametersDefinition<T> params_def_;
     std::multimap<long long int, std::tuple<PExpression<T>*, PExpression<T>>> wrapped_;
-    PExpression<T>* to_transform_;
+    PExpression<T>* to_transform_ = nullptr;
 };
 
 template <typename T>
