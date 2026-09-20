@@ -82,7 +82,7 @@ phase 0; the rest are open and are scheduled into the phases that follow.
 | D6 | `Expression` exposes `dynarray<PExpression<T>> children` as a public mutable member while subclasses also offer `m_e1()`/`m_e()` accessors over the same storage; the two views are not kept consistent by anything but convention. `Clone()` deep-copies subtrees that `shared_ptr` already lets us share. |
 | D7 | `ExpressionVisitor` has eleven pure virtual `visit` overloads plus two that default to returning `{}`. Adding a node type is a change to every visitor; forgetting one is silent. |
 | D8 `[fixed]` | Reserved identifiers: `_EXPRESION_EPSILON` (misspelled, and unused) and `_NUMERIC_INTERFACE_PRECISION`. A leading underscore followed by a capital is reserved to the implementation. |
-| D9 | `Interpreter<T, U = Matrix<T>>` templates on the token scalar `T`, but every AST node is instantiated on `U`. Consequently every literal in every expression is a heap-allocated 1×1 `Matrix<complex<double>>` — one `new T[1]` per number. Scalars and matrices are not separable. |
+| D9 `[fixed, differently]` | `Interpreter<T, U = Matrix<T>>` templates on the token scalar `T`, but every AST node is instantiated on `U`. Every literal in every expression was therefore a heap-allocated 1×1 `Matrix<complex<double>>`. Measured: those 16-byte allocations are 44–67% of all allocations, but removing them is worth only 0–15% of the time — they are cheap and hot in cache. A 1x1 matrix now keeps its cell inline, which gets that saving for ten lines; the scalar/matrix *split* the plan prescribed is not justified by the numbers. |
 | D10 `[fixed]` | `getlines.hpp` reimplements line iteration on top of `std::iterator`, deprecated since C++17. Its only user was the Boost test file. |
 | D11 (partly fixed) | Comments and commit history are in French, the README was half French and half English, and the public documentation described behaviour the code does not have — not only C5 but the implicit limit, the dynamic scoping and the three kinds of definition, all of which phase 4 removed. The README is rewritten in English and is now executable, so that half cannot recur. The 2014 comments in the sources are still French. |
 
@@ -276,9 +276,25 @@ The redesign proper. Replaces C10 and C11 rather than deciding them.
    is about.
 2. Delete `dynarray` (D5) in favour of `std::vector`, and delete its test
    `[done]`. 192 lines of container plus 140 of test, for six uses.
-3. Separate the scalar type from the matrix type in `Interpreter` (D9) so a
-   scalar expression stops allocating a 1x1 matrix per literal. The largest
-   single win available; measure it rather than assuming it.
+3. Stop allocating a 1x1 matrix per literal (D9) `[done, not as written]`.
+   Measured first, as the item asked. The allocation is real — 44–67% of all
+   allocations across five workloads — but it is *not* the largest single win:
+   removing it is worth 0–15% of the time, and nothing at all on the series
+   case. `Matrix` now holds a 1x1 cell inline, which buys that for ten lines
+   and no change to any caller.
+
+   Separating the types, as this item prescribed, would need a `variant`
+   value, four-way dispatch on every operator and two `numeric_interface`
+   instantiations, for the same 0–15%. It is ruled out on the size constraint.
+
+   The measurement found the larger win elsewhere: `ReferenceStack::Eval`
+   copied the whole `Reference` on every lookup — maps, strings and parameter
+   lists — to protect against the name being redefined while its own body
+   ran. Definitions are now shared and copied on write, which is both cheaper
+   and stronger: the hazard is structurally impossible rather than defended
+   against. Worth 24–30% on every recursion-heavy workload. Together the two
+   changes are 17% to 33% across the five, and the agm goes from 708ms to
+   507ms for 200 evaluations of `gm(1,2)_10`.
 4. Replace `numeric_interface`/`best_promotion`/`numeric_interface_imp_types`
    with C++20 concepts (C9): a missing `sqrt` becomes a compile error at the
    point of use instead of a link-time surprise.

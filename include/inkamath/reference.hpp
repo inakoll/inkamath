@@ -89,7 +89,7 @@ public:
         return description;
     }
 
-    T Eval(const ParametersCall<T>& call, ReferenceStack<T>& stack) {
+    T Eval(const ParametersCall<T>& call, ReferenceStack<T>& stack) const {
         const ParametersDefinition<T>& parameters = CallParameters();
         parameters.CheckArity(reference_name_, call);
 
@@ -127,7 +127,7 @@ private:
         return clause.written.empty() ? reference_name_ : clause.written;
     }
 
-    T EvalImp(bool indexed, int index, EvaluationVisitor<T>& evaluator) {
+    T EvalImp(bool indexed, int index, EvaluationVisitor<T>& evaluator) const {
         if(plain_) {
             return plain_.expression->accept(evaluator);
         }
@@ -157,7 +157,7 @@ private:
                                     : ""));
     }
 
-    T EvaluateGeneralClause(long long index, EvaluationVisitor<T>& evaluator) {
+    T EvaluateGeneralClause(long long index, EvaluationVisitor<T>& evaluator) const {
         SetIndex(index, evaluator.stack());
         return general_.expression->accept(evaluator);
     }
@@ -168,7 +168,7 @@ private:
     static constexpr size_t max_terms = 100;
     static constexpr double tolerance = 1E-10;
 
-    T Converge(EvaluationVisitor<T>& evaluator) {
+    T Converge(EvaluationVisitor<T>& evaluator) const {
         long long index = 0;
         T previous;
         if(!base_.empty()) {
@@ -192,7 +192,7 @@ private:
                                  + numeric_interface<T>::toString(evaluation) + ")");
     }
 
-    void SetIndex(long long index, ReferenceStack<T>& stack) {
+    void SetIndex(long long index, ReferenceStack<T>& stack) const {
         stack.Set(general_.parameters.index_name(), ParametersDefinition<T>(),
                   PExpression<T>(new ValExpression<T>(T(index))));
     }
