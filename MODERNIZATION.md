@@ -527,14 +527,19 @@ stopping early. Compare answers before comparing times.
 
 ### The open question
 
-**Call-by-name or call-by-need.** Memoising each argument would recover the
-agm, and is what makes laziness practical in every language that has it. It
-means reintroducing a cache in a language where names rebind, which is the
-hard part: `a=1`, `b=a+a`, `a=2`, `b` is `4` precisely because nothing is
-cached. A thunk memoised for the duration of one call is probably sound, since
-no binding it reads can change within that call, but that needs proving rather
-than assuming. The step budget should be revisited with it — it becomes the
-limit users meet.
+**Call-by-name or call-by-need**, which phase 9 turns from a question about
+thunks into a question about keys. Phase 9's cache is keyed on argument
+*values*, and laziness is the decision not to have them. Measured on a
+prototype of both: force each argument only to build the key, and treat a
+force that throws as "not cacheable", and the agm reaches `gm(1,2)_127` where
+laziness alone gives up at `_16` — the spec assertions are unchanged, so the
+cache costs no laziness the call-site check had not already cost. Half of
+phase 9's reach, because a lazy level nests two references where an eager one
+nests a single one, and the limit is depth. That is a resolution, not the
+resolution: it forces arguments a lazy language should not force, and the
+alternative — keying on the thunk rather than its value — needs a thunk with
+an identity, which is call-by-need with closures and a larger change than
+this phase.
 
 ### What the transcripts settle
 
@@ -563,6 +568,114 @@ limit users meet.
 - **Whether it earns its place.** The parameter-capture case genuinely cannot
   be written as two lines: the second would be a global that cannot see `x`.
   `locals.ink` makes that argument at `f(x) = (t = 2*x) + t`.
+
+## Phase 9 — Memoisation
+
+The oldest idea in the project, and the one that would make it more than a
+calculator: an evaluation result belongs to a *context* — the definition, its
+index, and the values bound to its parameters — and the same context twice is
+the same answer twice. The 2014 code reached for it and missed: `memo_` was
+keyed on the index alone, ignored arguments entirely, and was copied away
+with every `Reference` that held it. It was deleted as dead in `259e643`.
+Deleting it was right; leaving the idea deleted is not.
+
+### Why it is the largest single win
+
+A general clause that names itself twice is evaluated as a *tree*, not a
+chain. The arithmetic-geometric mean is the canonical case — two sequences,
+each reading both at the level below:
+
+```
+am(x,y)_0=x
+gm(x,y)_0=y
+am(x,y)_n=(am(x,y)_(n-1)+gm(x,y)_(n-1))/2
+gm(x,y)_n=(am(x,y)_(n-1)*gm(x,y)_(n-1))^0.5
+```
+
+Counted, not estimated — calls made against answers that differ:
+
+| | calls | distinct contexts | wasted |
+|---|---|---|---|
+| `gm(1,2)_6` | 127 | 13 | 10x |
+| `gm(1,2)_10` | 2,047 | 21 | 97x |
+| `gm(1,2)_14` | 32,767 | 29 | 1,130x |
+| `gm(1,2)_16` | 131,071 | 33 | 3,972x |
+
+Which is 2^(n+1)-1 calls for 2n+1 answers, exactly. The step budget is what
+the user meets: `gm(1,2)_17` gives up after a million steps. It is not a
+large computation — it is thirty-three answers computed four thousand
+times each.
+
+### Measured
+
+A prototype: one `std::unordered_map` on `ReferenceStack`, keyed on the
+callee's name, its index and the raw bytes of its argument values, consulted
+in `Reference::Eval` once the index and the arguments are evaluated and
+before the frame is pushed. Sixty lines.
+
+| | eager | memoised |
+|---|---|---|
+| `gm(1,2)_14` | 33.6 ms | 1.7 ms |
+| `gm(1,2)_16` | 135.1 ms | 1.9 ms |
+| `gm(1,2)_17` | gives up after 1,000,000 steps | 1.8 ms |
+| `gm(1,2)_254` | gives up after 1,000,000 steps | 3.3 ms |
+| `gm(1,2)_255` | nests more than 256 references | nests more than 256 references |
+
+Whole-process times, of which 1.5 ms is starting up: the memoised column is
+measuring the loader, not the agm.
+
+Exponential becomes linear, and the step budget stops being the limit: what
+stops the agm now is `max_depth`, at the term where the recursion itself is
+256 deep. Every golden transcript is byte-identical and all four suites pass.
+
+The cost, on work with nothing to reuse — two hundred evaluations of a linear
+recurrence, each with different arguments — is **23.0 ms against 28.8 ms**, a
+quarter more, and every microsecond of it is in building a string key rather
+than in the cache itself. Expressions that
+name nothing are unaffected: twenty thousand lines of arithmetic measure the
+same either way.
+
+**Lifetime matters more than the cache.** Two were measured. A cache cleared
+at each top-level evaluation is the obviously-safe one; a cache cleared when
+a *definition changes* is both simpler and worth far more, because a session
+is a conversation — `gm(1,2)_240` asked two hundred times is 210 ms under the
+first and 4.0 ms under the second. Take the second.
+
+### Why it is sound
+
+Not because nothing changes, but because of a rule phase 4 already paid for:
+
+> A call sees its own parameters and the globals. It never sees its caller's.
+
+So the value of a call is a function of exactly three things — which
+definition, which index, which argument values — and the globals. The first
+three are the key. The globals change only when the user redefines one, which
+happens between lines, or in a top-level assignment inside a line; either way
+`Set` is reached with no frame on the stack, and clearing there is enough.
+`a=1`, `b=a+a`, `a=2`, `b` is still `4`, measured rather than argued.
+
+Two smaller rules the prototype needed:
+
+- **Only calls that carry an index or arguments are cached.** A frame-bound
+  parameter is read by bare name with neither, and two frames' `x` must never
+  meet in one map. Nothing is lost: a parameter read is a map lookup already.
+- **Nothing that threw is stored.** An evaluation that ran out of budget is
+  not an answer about the language, and must not be remembered as one.
+
+### What it is not
+
+- Not a cache across *definitions*: `?` still prints what was written, and
+  nothing here evaluates ahead of being asked.
+- Not symbolic. Two calls that are obviously equal but differently written
+  are two contexts. Recognising them is the deferred item at the end of this
+  file, and it is a larger program.
+- Not free of memory: one entry per distinct context, for as long as the
+  definitions stand. The agm to term 254 is about five hundred entries, but a
+  session that sweeps a parameter accumulates one per value, so this lands
+  with a cap and an eviction rule, not without.
+- Not a reason to raise `max_depth`. Depth is a recursion the user wrote;
+  steps were an accident of how it was evaluated. Removing the accident is
+  this phase; the other is a separate argument, with a stack to size first.
 
 ---
 
@@ -638,6 +751,12 @@ three columns, and a corpus that never exceeded 2x2 is why nobody noticed.
 Phase 8 waits for phase 7. It is the only phase that changes the language
 rather than repairing it, and it was worth nothing while four inputs still
 killed the process.
+
+Phase 9 is numbered after phase 8 and should land before it. It does not
+depend on it — the cache is keyed on values, which is what the interpreter
+has today — and phase 8 does depend on it, in the sense that laziness costs
+re-evaluation and phase 9 is what makes re-evaluation cheap. Landing 9 first
+also measures the two separately, which landing them together would not.
 
 The honest risk was phase 4. It changed what existing sessions mean, so it
 could not hide behind unchanged goldens — every moved line was justified
