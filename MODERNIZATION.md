@@ -440,10 +440,11 @@ Ordered by what a user hits first, not by where the defect lives.
    removed the argument for doing C29 early; see the note under phase 8.
 2. **Matrices work** `[done]`: C22 and C23. The corpus gained matrices three
    blocks wide and three tall, a cell extended to fill its block, and `^` on a
-   matrix at all. `Matrix` still has no unit test — `CLAUDE.md` §4 reserves
-   those for containers, and after `dynarray` and `Mapstack` went there are
-   none left — so the transcripts are the only thing standing between these
-   and the next defect of the same kind.
+   matrix at all. `Matrix` also gains the unit test it never had: `CLAUDE.md`
+   §4 reserves those for containers, and after `dynarray` and `Mapstack` went
+   there were none left, which is how both of these survived eleven years.
+   Verified against the defect rather than assumed — restoring the squaring
+   loop fails six of its assertions.
 3. **No answer to a question nobody asked** `[done]`: C26, C25, C27, C30.
    This was C13's unfinished business; C29 is the same shape but was taken
    out of this group — see the note under phase 8.
