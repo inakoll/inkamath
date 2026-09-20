@@ -30,16 +30,18 @@ class Matrix
 public:
     typedef T value_type;
 
-    Matrix() : cells_(1) {}
-    explicit Matrix(const T& value) : cells_(1, value) {}
-    explicit Matrix(Extent extent, const T& value = T())
-        : extent_(extent), cells_(extent.count(), value) {}
+    Matrix() = default;
+    explicit Matrix(const T& value) : scalar_(value) {}
+    explicit Matrix(Extent extent, const T& value = T()) : extent_(extent), scalar_(value)
+    {
+        if(!IsScalar()) cells_.assign(extent.count(), value);
+    }
 
     Extent Size() const {return extent_;}
 
     // Subscripts are 1-based, as they are written.
-    T& operator()(size_t i, size_t j) {return cells_[Offset(i, j)];}
-    const T& operator()(size_t i, size_t j) const {return cells_[Offset(i, j)];}
+    T& operator()(size_t i, size_t j) {return data()[Offset(i, j)];}
+    const T& operator()(size_t i, size_t j) const {return data()[Offset(i, j)];}
 
     static std::string toString(const Matrix<T>& a)
     {
@@ -59,11 +61,17 @@ public:
 
     static int toInt(const Matrix<T>& a) {return numeric_interface<T>::toInt(a.Scalar());}
 
+    // A 1x1 matrix -- which every literal and every intermediate scalar is --
+    // keeps its cell inline rather than on the heap.
+    bool IsScalar() const {return extent_.count() == 1;}
+    T* data() {return IsScalar() ? &scalar_ : cells_.data();}
+    const T* data() const {return IsScalar() ? &scalar_ : cells_.data();}
+
     /* Implementation de Numerical interface */
     static Matrix<T> pow(const Matrix<T>& a, const Matrix<T>& b)
     {
         const T exponent = b.Scalar("Pow is not implemented for Matrix type.");
-        if(a.extent_ == Extent{1,1}) {
+        if(a.IsScalar()) {
             return Matrix<T>(numeric_interface<T>::pow(a(1,1), exponent));
         }
         Matrix<T> r = a;
@@ -109,7 +117,7 @@ public:
     Matrix<T> operator-() const
     {
         Matrix<T> c(*this);
-        std::transform(c.cells_.begin(), c.cells_.end(), c.cells_.begin(), std::negate<T>());
+        std::transform(c.data(), c.data() + c.extent_.count(), c.data(), std::negate<T>());
         return c;
     }
 
@@ -127,10 +135,10 @@ private:
     const T& Scalar(const char* message =
                     "Incompatible dimension in matrix assigmentation. Conversion\n") const
     {
-        if(extent_ != Extent{1,1}) {
+        if(!IsScalar()) {
             throw std::runtime_error(message);
         }
-        return cells_.front();
+        return scalar_;
     }
 
     template <typename Func>
@@ -140,17 +148,17 @@ private:
             throw std::runtime_error("Incompatible dimensions in matrix operation.\n");
         }
         Matrix<T> c(extent_);
-        std::transform(cells_.begin(), cells_.end(), other.cells_.begin(), c.cells_.begin(), f);
+        std::transform(data(), data() + extent_.count(), other.data(), c.data(), f);
         return c;
     }
 
     Matrix<T> mul(const Matrix<T>& other) const
     {
-        if(extent_ == Extent{1,1} || other.extent_ == Extent{1,1}) {
-            const bool     this_is_scalar = extent_ == Extent{1,1};
-            const T        scalar = this_is_scalar ? cells_.front() : other.cells_.front();
+        if(IsScalar() || other.IsScalar()) {
+            const bool     this_is_scalar = IsScalar();
+            const T        scalar = this_is_scalar ? scalar_ : other.scalar_;
             Matrix<T>      c(this_is_scalar ? other : *this);
-            std::transform(c.cells_.begin(), c.cells_.end(), c.cells_.begin(),
+            std::transform(c.data(), c.data() + c.extent_.count(), c.data(),
                            [&scalar](const T& v) {return v * scalar;});
             return c;
         }
@@ -169,7 +177,8 @@ private:
     }
 
     Extent         extent_;
-    std::vector<T> cells_;
+    T              scalar_ = T();   // the cell of a 1x1 matrix
+    std::vector<T> cells_;          // the cells of any other
 };
 
 template <typename T>
