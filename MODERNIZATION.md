@@ -84,7 +84,7 @@ phase 0; the rest are open and are scheduled into the phases that follow.
 | D8 `[fixed]` | Reserved identifiers: `_EXPRESION_EPSILON` (misspelled, and unused) and `_NUMERIC_INTERFACE_PRECISION`. A leading underscore followed by a capital is reserved to the implementation. |
 | D9 | `Interpreter<T, U = Matrix<T>>` templates on the token scalar `T`, but every AST node is instantiated on `U`. Consequently every literal in every expression is a heap-allocated 1×1 `Matrix<complex<double>>` — one `new T[1]` per number. Scalars and matrices are not separable. |
 | D10 `[fixed]` | `getlines.hpp` reimplements line iteration on top of `std::iterator`, deprecated since C++17. Its only user was the Boost test file. |
-| D11 | Comments and commit history are in French, the README is half French and half English, and the public documentation describes behaviour (C5) that the code does not have. |
+| D11 (partly fixed) | Comments and commit history are in French, the README was half French and half English, and the public documentation described behaviour the code does not have — not only C5 but the implicit limit, the dynamic scoping and the three kinds of definition, all of which phase 4 removed. The README is rewritten in English and is now executable, so that half cannot recur. The 2014 comments in the sources are still French. |
 
 ---
 
@@ -284,15 +284,20 @@ The redesign proper. Replaces C10 and C11 rather than deciding them.
    modern design, but the double dispatch is a choice the author documented in
    `expression_visitor.hpp`. Ruled out on recognisability, not on the merits.
 
-## Phase 6 — Documentation
+## Phase 6 — Documentation `[done]`
 
-1. `README.md` in English, matching actual behaviour, with its examples drawn
-   from the `.ink` transcripts so the two cannot drift.
+1. `README.md` in English, matching actual behaviour `[done]`. Its examples
+   are not merely drawn from the transcripts: every fenced block in the file
+   is replayed as one session by the `readme` test, so the documentation
+   cannot drift without failing CI. Writing it that way found three
+   statements that were wrong — sections that quietly assumed a fresh
+   interpreter.
 2. Keep the French history — it is the project's provenance — but write new
-   comments in English (D11).
-3. A short note on the interpreter's model: references name expressions, not
-   values. It is the idea the whole program is built around and the README
-   currently explains it halfway down section 4.
+   comments in English (D11) `[done]` for the README; the 2014 comments in
+   the sources are still French and are rewritten as their code is.
+3. A short note on the interpreter's model `[done]`: references name
+   expressions, not values. It was explained halfway down section 4; it is now
+   the first thing the README says, with the example that makes it concrete.
 
 ---
 

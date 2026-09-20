@@ -9,7 +9,8 @@ add_executable(inkamath_tests
 
 target_link_libraries(inkamath_tests PRIVATE inkamath doctest inkamath_warnings)
 target_compile_definitions(inkamath_tests PRIVATE
-    INKAMATH_TEST_DATA_DIR="${CMAKE_CURRENT_SOURCE_DIR}/data")
+    INKAMATH_TEST_DATA_DIR="${CMAKE_CURRENT_SOURCE_DIR}/data"
+    INKAMATH_SOURCE_DIR="${PROJECT_SOURCE_DIR}")
 
 # One ctest entry per doctest suite, so that a crash in one reports as a
 # single failure rather than taking the others' results with it.

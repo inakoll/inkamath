@@ -8,6 +8,7 @@
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
+#include <sstream>
 #include <string>
 
 TEST_SUITE_BEGIN("interpreter");
@@ -23,9 +24,26 @@ bool recording() {
     return value != nullptr && *value != '\0' && std::string(value) != "0";
 }
 
-// Replays a transcript file through a fresh interpreter, checking each entry.
-// With INKAMATH_RECORD=1 the file is rewritten from the observed output
-// instead -- use `cmake --build build --target record_goldens`.
+// Replays the entries through a fresh interpreter. When recording, the
+// observed output replaces the expectation instead of being checked.
+void replay(std::vector<transcript::Item>& items, const std::string& label, bool record) {
+    Interpreter<std::complex<double>> interpreter;
+
+    for (transcript::Item& item : items) {
+        if (!item.is_entry) continue;
+
+        const std::string actual = transcript::eval(interpreter, item.text);
+        if (record) {
+            item.expected = actual;
+        } else {
+            INFO(label, ":", item.line, ": >> ", item.text);
+            CHECK(actual == item.expected);
+        }
+    }
+}
+
+// With INKAMATH_RECORD=1 the file is rewritten from the observed output --
+// use `cmake --build build --target record_goldens`.
 void check_transcript(const std::string& name) {
     const std::filesystem::path path = data_dir() / name;
 
@@ -36,20 +54,8 @@ void check_transcript(const std::string& name) {
 
     REQUIRE_MESSAGE(!items.empty(), "transcript is empty: ", path.string());
 
-    Interpreter<std::complex<double>> interpreter;
-    const bool                        record = recording();
-
-    for (transcript::Item& item : items) {
-        if (!item.is_entry) continue;
-
-        const std::string actual = transcript::eval(interpreter, item.text);
-        if (record) {
-            item.expected = actual;
-        } else {
-            INFO(path.filename().string(), ":", item.line, ": >> ", item.text);
-            CHECK(actual == item.expected);
-        }
-    }
+    const bool record = recording();
+    replay(items, path.filename().string(), record);
 
     if (record) {
         std::ofstream out(path, std::ios::binary | std::ios::trunc);
@@ -57,6 +63,21 @@ void check_transcript(const std::string& name) {
         out << transcript::render(items);
         MESSAGE("recorded ", path.string());
     }
+}
+
+// Every fenced block in README.md is a session, and they run as one. The
+// documentation cannot drift from the interpreter without failing here. It is
+// never recorded: prose is not ours to rewrite.
+void check_readme() {
+    const std::filesystem::path path = std::filesystem::path(INKAMATH_SOURCE_DIR) / "README.md";
+
+    std::ifstream in(path);
+    REQUIRE_MESSAGE(in.good(), "cannot open ", path.string());
+    std::istringstream fenced(transcript::fenced_lines(in));
+    std::vector<transcript::Item> items = transcript::parse(fenced);
+
+    REQUIRE_MESSAGE(!items.empty(), "no fenced blocks in ", path.string());
+    replay(items, path.filename().string(), false);
 }
 
 }  // namespace
@@ -81,6 +102,9 @@ TEST_CASE("queries") {
 }
 TEST_CASE("recursion") {
     check_transcript("recursion.ink");
+}
+TEST_CASE("readme") {
+    check_readme();
 }
 
 TEST_SUITE_END();

@@ -42,6 +42,25 @@ inline std::string rstrip(std::string s) {
     return s;
 }
 
+// Keeps only the contents of ``` fenced blocks, so a Markdown file can be
+// read as a transcript. A '#' between blocks ends the preceding entry, which
+// otherwise swallows the prose that follows it.
+inline std::string fenced_lines(std::istream& in) {
+    std::ostringstream out;
+    std::string        line;
+    bool               inside = false;
+
+    while (std::getline(in, line)) {
+        if (line.rfind("```", 0) == 0) {
+            if (inside) out << "#\n";
+            inside = !inside;
+            continue;
+        }
+        if (inside) out << line << '\n';
+    }
+    return out.str();
+}
+
 inline std::vector<Item> parse(std::istream& in) {
     std::vector<Item> items;
     std::string       line;
