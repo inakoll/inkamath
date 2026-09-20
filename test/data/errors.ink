@@ -43,6 +43,13 @@ error: aaa is not defined
 >> undefined(2)_3
 error: undefined is not defined
 
+# A line cannot exhaust the C++ stack. The token count bounds the parser's
+# recursion, the evaluator's and the destructor's alike, since the tree has at
+# most one node per token. Nested parentheses used to segfault at about 8000
+# deep, and a flat sum at about 30000 terms (MODERNIZATION.md, C20).
+>> ((((((((((((((((((((((((((((((((1))))))))))))))))))))))))))))))))
+1
+
 # Defining a self-reference is just a binding; evaluating one is bounded
 # rather than fatal. These used to crash on an uninitialised pointer before
 # they ever recursed (MODERNIZATION.md, C16).

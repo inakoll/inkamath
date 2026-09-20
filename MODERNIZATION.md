@@ -104,7 +104,7 @@ made that are not true.
 |---|--------|
 | C18 `[fixed]` | **A comment-only line kills the process.** `# hello` segfaults. `Lexer`'s `case '#': return;` leaves before its own `if (m_tokens.empty()) Fail("empty expression")` guard, and `Eval` then reads `m_tokens[0].type == Query`. A **regression**, introduced with `?` in `e53a564`; the same input printed `0` at its parent. `basics.ink` tests a trailing comment and never a line that is only one. Fixed by making `#` skip to the end of the line rather than leave the function, so a comment-only line reaches the same `empty expression` diagnostic as a blank one. |
 | C19 `[fixed]` | **An empty matrix kills the process.** `[]`, `[ ]`, `[;]` and `[]+1` segfault. `ParseMatrix` accepted zero elements and built an n×0 `MatExpression`; `EvaluationVisitor::visit(MatExpression*)` then called `rj_cols.back()` on an empty vector. Fixed in the parser: a matrix with no elements has no extent to give. `[1;]` still pads to `1 0`, which is a row that is merely short. |
-| C20 | **The evaluation budget covers reference lookups and nothing else.** Both the recursive-descent parser and the AST fold are unbounded C++ recursion: `(` ×8000 segfaults while parsing (4000 is fine), and a flat `1+1+…` of 50000 terms segfaults while folding. `README.md` §6 claims "a runaway recursion is reported rather than crashing the process" and C1 reads as though the whole class was closed; both are true only of recursion through a name. |
+| C20 `[fixed]` | **The evaluation budget covers reference lookups and nothing else.** Both the recursive-descent parser and the AST fold are unbounded C++ recursion: `(` ×8000 segfaults while parsing (4000 is fine), and a flat `1+1+…` of 50000 terms segfaults while folding. `README.md` §6 claimed "a runaway recursion is reported rather than crashing the process" and C1 read as though the whole class was closed; both were true only of recursion through a name. Fixed with a limit on the token count of one line, which bounds every recursion a line can provoke — the parser's, the evaluator's and the destructor's — since the tree has at most one node per token. 1000, against a measured overflow at about 2000 nested parentheses under the sanitizer and about 8000 without it. A crude bound, but one check covers the class, where a parser depth limit would leave the flat case building a tree too deep to destroy. |
 | C21 `[fixed]` | **The REPL never exits on end of input.** `printf '1+1\n' | ./build/inkamath` loops forever: `getline` fails, `s` stays empty, and `error: empty expression` is printed until the process is killed. `src/main.cpp` checked `s=="q"` and never `cin`'s state. Fixed by breaking on a failed `getline`. A regression here hangs rather than fails, so the test is a `ctest` entry with a timeout — the first coverage the REPL loop has ever had. |
 
 ### Wrong answers
@@ -434,12 +434,10 @@ The redesign proper. Replaces C10 and C11 rather than deciding them.
 
 Ordered by what a user hits first, not by where the defect lives.
 
-1. **Nothing kills the process**: C18, C19, C21, then C20. C20 is the only one
-   needing a design choice — a depth counter in the parser and in the fold,
-   or an explicit stack, against the `README.md` claim that already promises
-   it. C24 belongs here too and is done: sequencing the binary operands left
-   to right costs five lines and is what phase 8 needs anyway. That removes
-   the argument for doing C29 early — see the note under phase 8.
+1. **Nothing kills the process** `[done]`: C18, C19, C21, C20 — and C24,
+   which belonged here once it was clear that sequencing the binary operands
+   left to right costs five lines and is what phase 8 needs anyway. That
+   removed the argument for doing C29 early; see the note under phase 8.
 2. **Matrices work**: C22 and C23. The corpus needs matrices wider and taller
    than two before either can be called fixed, and `Matrix` has no unit test
    at all — `CLAUDE.md` §4 reserves those for containers, and after `dynarray`
@@ -525,8 +523,8 @@ they are subtle but because they are not — the headline feature is broken at
 three columns, and a corpus that never exceeded 2x2 is why nobody noticed.
 
 Phase 8 waits for phase 7. It is the only phase that adds a language feature
-rather than repairing one, and it is worth nothing while four inputs still
-kill the process.
+rather than repairing one, and it was worth nothing while four inputs still
+killed the process.
 
 The honest risk was phase 4. It changed what existing sessions mean, so it
 could not hide behind unchanged goldens — every moved line was justified

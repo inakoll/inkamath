@@ -62,6 +62,14 @@ private:
     // takes a name rather than an expression.
     static bool IsLimit(const Token<T>& token) {return token.type == Func && token.text == "lim";}
 
+    // One line cannot be allowed to exhaust the C++ stack. Token count bounds
+    // every recursion that a line can provoke -- the parser's, the evaluator's
+    // and the destructor's -- because the tree has at most one node per token.
+    // Measured: the sanitizer build overflows at about 2000 nested
+    // parentheses and the release build at about 8000, so 1000 tokens cannot
+    // reach either.
+    static constexpr size_t max_tokens = 1000;
+
     bool AtEnd() const {return m_i >= m_tokens.size();}
     const Token<T>& Peek() const {return m_tokens[m_i];}
 
@@ -191,6 +199,10 @@ void Interpreter<T,U>::Lexer(const std::string& s)
     }
 
     if (m_tokens.empty()) Fail("empty expression");
+    if (m_tokens.size() > max_tokens)
+    {
+        Fail("expression is longer than ", max_tokens, " tokens");
+    }
 }
 
 template <Parsable T, Numeric U>

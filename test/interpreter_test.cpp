@@ -107,4 +107,22 @@ TEST_CASE("readme") {
     check_readme();
 }
 
+// Not a transcript entry: the inputs are thousands of characters wide. Both
+// of these used to exhaust the C++ stack and kill the process, so before the
+// token limit this case took the whole suite with it (MODERNIZATION.md, C20).
+TEST_CASE("token limit") {
+    Interpreter<std::complex<double>> interpreter;
+    const std::string expected = "error: expression is longer than 1000 tokens";
+
+    const std::string nested = std::string(8000, '(') + "1" + std::string(8000, ')');
+    CHECK(transcript::eval(interpreter, nested) == expected);
+
+    std::string flat = "1";
+    for (int i = 0; i < 40000; ++i) flat += "+1";
+    CHECK(transcript::eval(interpreter, flat) == expected);
+
+    // A line the limit must not reject.
+    CHECK(transcript::eval(interpreter, std::string(400, '(') + "1" + std::string(400, ')')) == "1");
+}
+
 TEST_SUITE_END();
