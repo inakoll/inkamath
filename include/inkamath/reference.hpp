@@ -179,21 +179,25 @@ private:
     T Converge(EvaluationVisitor<T>& evaluator) const {
         long long index = 0;
         T previous;
-        if(!base_.empty()) {
+        // With no base clause there is no term to compare the first one
+        // against. Comparing it to a default-constructed T said that any
+        // sequence starting near zero had converged to it.
+        bool comparable = !base_.empty();
+        if(comparable) {
             index = base_.rbegin()->first;
             previous = base_.rbegin()->second.expression->accept(evaluator);
         }
 
         T evaluation = previous;
-        using difference_type = decltype(numeric_interface<T>::abs(std::declval<T>()));
-        difference_type diff = numeric_interface<difference_type>::one();
         for(size_t term = 0; term < max_terms; ++term) {
             evaluation = EvaluateGeneralClause(++index, evaluator);
-            diff = numeric_interface<T>::abs(evaluation-previous);
-            previous = evaluation;
-            if(!(diff > tolerance)) {
+            // '<=' and not '!(> tolerance)': a difference that is NaN answers
+            // false to both, and must count as not having converged.
+            if(comparable && numeric_interface<T>::abs(evaluation-previous) <= tolerance) {
                 return evaluation;
             }
+            previous = evaluation;
+            comparable = true;
         }
         throw std::runtime_error(reference_name_ + " did not converge within "
                                  + std::to_string(max_terms) + " terms (last term "

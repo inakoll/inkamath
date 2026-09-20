@@ -122,6 +122,27 @@ k_n=k_(n-1)+1
 >> lim k
 error: k did not converge within 100 terms (last term 105)
 
+# With no base clause there is no term to compare the first one against. It
+# used to be compared with a default-constructed zero, so a sequence whose
+# first term was zero was reported as having converged to it -- this answered
+# 0 (MODERNIZATION.md, C27).
+>> d_n=n-1
+d_n=n-1
+
+>> lim d
+error: d did not converge within 100 terms (last term 99)
+
+# A difference that is NaN answers false to every comparison, so it has to be
+# tested for convergence rather than against it. This answered inf*-nan.
+>> o_0=2
+o_0=2
+
+>> o_n=o_(n-1)^2
+o_n=o_(n-1)^2
+
+>> lim o
+error: o did not converge within 100 terms (last term inf*-nan)
+
 # A recurrence has no implicit value below its lowest clause. The old fallback
 # was zero -- the additive identity, right for a sum and wrong for a product
 # (MODERNIZATION.md, phase 4 item 4).
