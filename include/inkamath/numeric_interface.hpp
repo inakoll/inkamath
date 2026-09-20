@@ -1,6 +1,7 @@
 #ifndef H_NTRAITS
 #define H_NTRAITS
 
+#include <concepts> // std::convertible_to
 #include <type_traits> // std::is_arithmetic
 #include <cmath> // std::pow
 #include <complex> // std::complex
@@ -217,5 +218,29 @@ parse(double& num, const char* begin, char* &end)
     num = (std::strtod(begin,&end));
     return (end!=begin);
 }
+
+// What the interpreter needs of the type it evaluates to. Stating it is the
+// point of C9: sqrt was missing for complex and threw for Matrix, and nothing
+// said so because nothing asked. Notably absent are zero() and one(), which
+// Matrix has never had.
+template <typename T>
+concept Numeric = requires(const T& a, const T& b) {
+    { a + b } -> std::convertible_to<T>;
+    { a - b } -> std::convertible_to<T>;
+    { a * b } -> std::convertible_to<T>;
+    { a / b } -> std::convertible_to<T>;
+    { -a } -> std::convertible_to<T>;
+    { numeric_interface<T>::pow(a, b) } -> std::convertible_to<T>;
+    { T(numeric_interface<T>::fact(a)) } -> std::same_as<T>;
+    { numeric_interface<T>::abs(a) > 1.0 } -> std::convertible_to<bool>;
+    { numeric_interface<T>::toInt(a) } -> std::convertible_to<int>;
+    { numeric_interface<T>::toString(a) } -> std::convertible_to<std::string>;
+};
+
+// What the lexer needs of the type it reads numbers into.
+template <typename T>
+concept Parsable = requires(T& num, const char* begin, char*& end) {
+    { numeric_interface<T>::parse(num, begin, end) } -> std::convertible_to<bool>;
+};
 
 #endif

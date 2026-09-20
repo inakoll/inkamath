@@ -63,7 +63,7 @@ phase 0; the rest are open and are scheduled into the phases that follow.
 | C6 `[fixed]` | Parser errors printed the raw token value through `std::complex`'s stream operator: `Missing operator ']' after '(2,0)'` where the user typed `2`. Fixed by giving each token its lexeme, which also deleted `Token::Print` and its switch. |
 | C7 `[fixed]` | **Failure is not expressible.** `Interpreter::Eval` wraps everything in `try`/`catch(...)`, writes the message to `std::cout`, and returns a default-constructed value. A caller cannot distinguish a successful `0` from a failure, cannot redirect the message, and cannot test error behaviour without capturing `std::cout` — which is exactly what the new test harness had to do. Fixed: `Eval` returns `std::variant<U, Diagnostic>`, the REPL formats at the edge, and `catch(...)` is gone. |
 | C8 `[fixed]` | `Reference::TryEvaluateGeneralExpression` iterated a series until `diff > 1E-10 && iter_count < 30`, with both the epsilon and the cap hardcoded and neither reachable by the user, who saw only a number. They are now named constants that the non-convergence diagnostic quotes. The cap is 100 rather than 30 so that a geometric sequence reaches the tolerance, and it cannot go much higher: each term of a recurrence nests one more reference, so the term budget is bounded by `ReferenceStack::max_depth`. Making either settable is deferred — no requirement asks for it. Its other half — a `size_t index` computed from a subtraction of `int`s, which wrapped for a negative result — went with C17. |
-| C9 | `numeric_interface_imp<std::complex<T>, false>` provides no `sqrt`, yet its own `abs` calls `numeric_interface<T>::sqrt`. `Matrix<T>::sqrt` throws unconditionally. The numeric interface is only accidentally complete for the one type actually instantiated. |
+| C9 `[fixed]` | `numeric_interface_imp<std::complex<T>, false>` provided no `sqrt`, yet its own `abs` called `numeric_interface<T>::sqrt` — which resolved only because `T` happened to be `double`. `Matrix<T>::sqrt` threw unconditionally. The interface was only accidentally complete for the one type actually instantiated, and `zero()`/`one()` were never defined for `Matrix` at all. Fixed by deleting `sqrt` (nothing asks the value type for one; `^0.5` goes through `pow`) and by stating the rest as a `Numeric` concept, which `zero()` and `one()` are deliberately not part of. |
 | C14 `[fixed]` | **Four `catch` blocks discarded errors inside a constructor.** `parameters.hpp:28, 38, 105, 115` caught `SubVisitor`/`ParametersVisitor` exceptions in the `ParametersDefinition` and `ParametersCall` constructors and returned, leaving the object half-built — `parameters_names_`, `index_name_`, `a_` and `b_` never assigned. The errors never reached `Eval`, so the phase 3 error channel did not surface them; they were invisible by construction. A sibling of C13 rather than an instance of it: there the interpreter has nothing to report, here it had something and threw it away. Fixed with C4: two of the four catches guarded `SubVisitor` and went with it, the other two are gone and `f(x=1, y)=x+y` is a golden. |
 | C15 `[fixed]` | **The parser read one token past the end.** `ParseParameters` tested `Peek().type` after `ParseMatrix` had consumed the input — an `end()` dereference before the token cursor became an index, `vector::operator[](size())` after. Neither ASan nor UBSan catches it while the index lands inside the allocation, which for a vector with spare capacity is most of the time; `_GLIBCXX_ASSERTIONS` does, and sanitizer builds now define it. `f(1+2` is the repro and is a golden. A sweep of all 117 prefixes of ten representative inputs found no other instance — only C1. |
 | C16 `[fixed]` | **`f=f` crashed on an uninitialised pointer, before recursing at all.** `RecursiveExprVisitor::to_transform_` was assigned only when descending into a child, but the constructor visits the root directly — so a self-reference at the root of a definition read an indeterminate `PExpression<T>*` and then wrote through it. The stack was ten frames deep, not overflowing; ASan does not flag a read of an uninitialised pointer, which is why this looked like C1 for several rounds. Fixed by initialising the member and not wrapping a root self-reference, which has no enclosing slot to substitute into. `f=f` and `w_n=w` are goldens and now reach the budget. |
@@ -296,8 +296,19 @@ The redesign proper. Replaces C10 and C11 rather than deciding them.
    changes are 17% to 33% across the five, and the agm goes from 708ms to
    507ms for 200 evaluations of `gm(1,2)_10`.
 4. Replace `numeric_interface`/`best_promotion`/`numeric_interface_imp_types`
-   with C++20 concepts (C9): a missing `sqrt` becomes a compile error at the
-   point of use instead of a link-time surprise.
+   with C++20 concepts (C9) `[done, partly]`. `best_promotion` and
+   `numeric_interface_imp_types` are deleted outright: the first served a
+   generic `parse` that nothing ever reached, the second declared return
+   types that `auto` deduces. `sqrt` is deleted with them.
+
+   `numeric_interface` itself stays. It is not an abstraction to replace but
+   the dispatch between "the type has static members" and "the type is a
+   builtin", and a concept does not do that job — replacing it would mean
+   writing `pow`, `fact`, `abs` and `toString` as free functions for `double`,
+   `complex` and `Matrix`, which is more code for the same behaviour. What the
+   concepts do is state the requirement: `Interpreter` is declared
+   `template <Parsable T, Numeric U>`, so a type missing an operation fails at
+   the declaration, naming it.
 5. Make `Expression::children` private with a narrow accessor and drop the
    redundant `m_e1()`/`m_e()` views (D6).
 6. Collapse the visitor interface (D7) by giving `ExpressionVisitor` a default

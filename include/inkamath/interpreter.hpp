@@ -21,7 +21,7 @@
 #include "inkamath/numeric_interface.hpp"
 #include "inkamath/reference_stack.hpp"
 
-template <typename T, typename U=Matrix<T> >
+template <Parsable T, Numeric U = Matrix<T> >
 class Interpreter
 {
 public:
@@ -90,17 +90,17 @@ private:
     ReferenceStack<U> stack_;
 };
 
-template <typename T, typename U>
+template <Parsable T, Numeric U>
 Interpreter<T,U>::Interpreter()
 {}
 
-template <typename T, typename U>
+template <Parsable T, Numeric U>
 Interpreter<T,U>::~Interpreter()
 {
 
 }
 
-template <typename T, typename U>
+template <Parsable T, Numeric U>
 void Interpreter<T,U>::ResetInterpreter()
 {
     m_E.reset();
@@ -108,7 +108,7 @@ void Interpreter<T,U>::ResetInterpreter()
     m_i = 0;
 }
 
-template <typename T, typename U>
+template <Parsable T, Numeric U>
 void Interpreter<T,U>::Lexer(const std::string& s)
 {
     size_t i = 0;
@@ -190,7 +190,7 @@ void Interpreter<T,U>::Lexer(const std::string& s)
     if (m_tokens.empty()) Fail("empty expression");
 }
 
-template <typename T, typename U>
+template <Parsable T, Numeric U>
 void Interpreter<T,U>::Number_Lexer(const std::string& s, size_t& i)
 {
     T num;
@@ -207,7 +207,7 @@ void Interpreter<T,U>::Number_Lexer(const std::string& s, size_t& i)
     }
 }
 
-template <typename T, typename U>
+template <Parsable T, Numeric U>
 void Interpreter<T,U>::Reference_Lexer(const std::string &s, size_t& i)
 {
     size_t s_i = i;
@@ -231,7 +231,7 @@ void Interpreter<T,U>::Reference_Lexer(const std::string &s, size_t& i)
 
 }
 
-template <typename T, typename U>
+template <Parsable T, Numeric U>
 PExpression<U> Interpreter<T,U>::ParseAll()
 {
     m_i = 0;
@@ -254,7 +254,7 @@ PExpression<U> Interpreter<T,U>::ParseAll()
     return e;
 }
 
-template <typename T, typename U>
+template <Parsable T, Numeric U>
 PExpression<U> Interpreter<T,U>::Parse()
 {
     if(!AtEnd() && Peek().type == Comma)
@@ -262,7 +262,7 @@ PExpression<U> Interpreter<T,U>::Parse()
     return ParseEqualExpr();
 }
 
-template <typename T, typename U>
+template <Parsable T, Numeric U>
 PExpression<U> Interpreter<T,U>::ParseEqualExpr()
 {
     PExpression<U> e,ref,params,expr,sub;
@@ -295,7 +295,7 @@ PExpression<U> Interpreter<T,U>::ParseEqualExpr()
     return e;
 }
 
-template <typename T, typename U>
+template <Parsable T, Numeric U>
 PExpression<U> Interpreter<T,U>::ParseAddExpr()
 {
     PExpression<U> e = ParseMultExpr();
@@ -315,7 +315,7 @@ PExpression<U> Interpreter<T,U>::ParseAddExpr()
     return e;
 }
 
-template <typename T, typename U>
+template <Parsable T, Numeric U>
 PExpression<U> Interpreter<T,U>::ParseMultExpr()
 {
     PExpression<U> e = ParsePowExpr();
@@ -333,7 +333,7 @@ PExpression<U> Interpreter<T,U>::ParseMultExpr()
     return e;
 }
 
-template <typename T, typename U>
+template <Parsable T, Numeric U>
 PExpression<U> Interpreter<T,U>::ParsePowExpr()
 {
     PExpression<U> e = ParseSimpleExpr();
@@ -350,7 +350,7 @@ std::vector<PExpression<T>> make_matrix_array_from_vector(size_t n, size_t m,
                                                           std::vector<PExpression<T>>& mat,
                                                           std::vector<size_t>& size);
 
-template <typename T, typename U>
+template <Parsable T, Numeric U>
 PExpression<U> Interpreter<T,U>::ParseMatrix()
 {
     std::vector<PExpression<U>> mat;
@@ -395,7 +395,7 @@ std::vector<PExpression<T>>
     return exprs;
 }
 
-template <typename T, typename U>
+template <Parsable T, Numeric U>
 PExpression<U>  Interpreter<T,U>::ParseSimpleExpr()
 {
     PExpression<U> e,ref,param,sub;
@@ -477,7 +477,7 @@ PExpression<U>  Interpreter<T,U>::ParseSimpleExpr()
     return e;
 }
 
-template <typename T, typename U>
+template <Parsable T, Numeric U>
 PExpression<U> Interpreter<T,U>::ParseParameters()
 {
     PExpression<U> e;
@@ -498,7 +498,7 @@ PExpression<U> Interpreter<T,U>::ParseParameters()
 
 // '?name' prints a definition back as it was written. It is a statement, not
 // an expression: there is nothing to do with the answer but read it.
-template <typename T, typename U>
+template <Parsable T, Numeric U>
 std::string Interpreter<T,U>::ParseQuery()
 {
     m_i = 1;
@@ -523,7 +523,7 @@ std::string Interpreter<T,U>::ParseQuery()
     return stack_.Describe(name, ParametersCall<U>(PExpression<U>(), sub));
 }
 
-template <typename T, typename U>
+template <Parsable T, Numeric U>
 PExpression<U> Interpreter<T,U>::ParseLimit()
 {
     if (AtEnd())
@@ -543,7 +543,7 @@ PExpression<U> Interpreter<T,U>::ParseLimit()
     return PExpression<U>(new FuncExpression<U>(ref, param, PExpression<U>(), true));
 }
 
-template <typename T, typename U>
+template <Parsable T, Numeric U>
 PExpression<U> Interpreter<T,U>::ParseSubExpr()
 {
     PExpression<U> e;
@@ -560,7 +560,7 @@ PExpression<U> Interpreter<T,U>::ParseSubExpr()
 }
 
 
-template <typename T, typename U>
+template <Parsable T, Numeric U>
 typename Interpreter<T,U>::Result Interpreter<T,U>::Eval(const std::string& s)
 {
     Result result{U()};
@@ -598,7 +598,7 @@ typename Interpreter<T,U>::Result Interpreter<T,U>::Eval(const std::string& s)
     return result;
 }
 
-template <typename T, typename U>
+template <Parsable T, Numeric U>
 void Interpreter<T,U>::PrintTokens(void)
 {
     for (const Token<T>& token : m_tokens)
