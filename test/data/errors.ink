@@ -24,12 +24,12 @@ error: unexpected '3'
 >> f(1+2
 error: missing ')' after function parameters
 
-# Undefined identifiers evaluate to zero without an error (README.md section 6).
+# An undefined name is reported rather than quietly treated as zero.
 >> undefined
-0
+error: undefined is not defined
 
 >> undefined(2)_3
-0
+error: undefined is not defined
 
 # Defining a self-reference is just a binding; evaluating one is bounded
 # rather than fatal. These used to crash on an uninitialised pointer before

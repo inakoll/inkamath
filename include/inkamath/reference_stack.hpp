@@ -56,7 +56,7 @@ public:
             return reference.Eval(ai_parameters,*this);
         }
         else {
-            return {};
+            throw std::runtime_error(ai_reference_name + " is not defined");
         }
     }
 

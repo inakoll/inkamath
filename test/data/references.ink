@@ -33,12 +33,14 @@ g=1+2
 >> g(1)
 error: g takes no arguments
 
-# Scoping (README.md section 6).
+# Parameters are bound by the definition and are not visible outside it. An
+# undefined name is a diagnostic; it used to evaluate to zero in silence
+# (MODERNIZATION.md, C13).
 >> h(x)=x^2
 h(x)=x^2
 
 >> x
-0
+error: x is not defined
 
 >> h(2)
 4
@@ -47,7 +49,7 @@ h(x)=x^2
 16
 
 >> x
-0
+error: x is not defined
 
 >> x=5
 x=5
