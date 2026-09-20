@@ -430,7 +430,7 @@ The redesign proper. Replaces C10 and C11 rather than deciding them.
    expressions, not values. It was explained halfway down section 4; it is now
    the first thing the README says, with the example that makes it concrete.
 
-## Phase 7 — What the review found
+## Phase 7 — What the review found `[done except C29]`
 
 Ordered by what a user hits first, not by where the defect lives.
 
@@ -448,7 +448,11 @@ Ordered by what a user hits first, not by where the defect lives.
 3. **No answer to a question nobody asked** `[done]`: C26, C25, C27, C30.
    This was C13's unfinished business; C29 is the same shape but was taken
    out of this group — see the note under phase 8.
-4. **The rest** `[C28, C31, C32 done]`: D12 to D16 remain.
+4. **The rest** `[done]`: C28, C31, C32, then D12 to D16.
+
+C29 is all that is left of this phase, and it is held: C24 removed the
+argument for doing it early, and phase 8's prototype fixes what it was for
+without an error. It is the first thing phase 8 decides.
 
 Coverage the corpus does not have today, beyond the repros above: a matrix
 larger than 2x2 in any operation; `^` on a matrix; the step-budget message,
