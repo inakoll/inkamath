@@ -149,8 +149,15 @@ void Interpreter<T,U>::Lexer(const std::string& s)
             break;
 		case '0': case '1': case '2': case '3': case '4':
 		case '5': case '6': case '7': case '8': case '9':
-		case 'i':
             this->Number_Lexer(s,i);
+            break;
+        case 'i':
+            // The imaginary unit only when it is not the start of a longer
+            // name: 'i*2' is imaginary, 'ii' and 'index' are identifiers.
+            if(i + 1 < s.length() && std::isalnum(static_cast<unsigned char>(s[i+1])))
+                Reference_Lexer(s,i);
+            else
+                this->Number_Lexer(s,i);
             break;
         case '#': // inkamath comments
             return;

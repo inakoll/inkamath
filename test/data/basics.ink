@@ -41,6 +41,23 @@ i
 >> (1+i)*(1-i)
 2
 
+# 'i' is the imaginary unit only when it is not the start of a longer name.
+# Every identifier beginning with 'i' used to be a syntax error.
+>> ii=3
+3
+
+>> ii
+3
+
+>> index=7
+7
+
+>> index+1
+8
+
+>> i*2
+i*2
+
 # '#' starts an inkamath comment.
 >> 1 + 2 # this computes 1 + 2
 3
