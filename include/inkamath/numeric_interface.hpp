@@ -25,16 +25,6 @@ struct numeric_interface
 template <typename T>
 char numeric_interface<T>::complex_char_ = 'i';
 
-template <typename T>
-struct numeric_interface_imp_types
-{
-	typedef T fact;
-	typedef T abs;
-	typedef T sqrt;
-};
-
-
-
 template <typename T, bool>
 struct numeric_interface_imp
 {
@@ -45,11 +35,9 @@ struct numeric_interface_imp
      static std::string toString(const T& a) {return T::toString(a);}
      static T pow(const T& a, const T& b) {return T::pow(a,b);}
 
-     static typename numeric_interface_imp_types<T>::fact fact(const T& a) {return T::fact(a);}
-	 
-	 static typename numeric_interface_imp_types<T>::abs abs(const T& a) {return T::abs(a);}
-	 
-	 static typename numeric_interface_imp_types<T>::sqrt sqrt(const T& a) {return T::sqrt(a);}
+     // Deduced: for a complex or a matrix these narrow to the scalar type.
+     static auto fact(const T& a) {return T::fact(a);}
+     static auto abs(const T& a) {return T::abs(a);}
 
      static bool parse(T& num, const char* begin, char* &end)
      {
@@ -151,15 +139,15 @@ struct numeric_interface_imp<std::complex<T>,false>
         return std::pow(a,b);
     }
 
-    static typename numeric_interface_imp_types<T>::fact fact(const std::complex<T>& a)
+    static auto fact(const std::complex<T>& a)
     {
         return numeric_interface<T>::fact(a.real());
     }
 
-	static typename numeric_interface_imp_types<T>::abs abs(const std::complex<T>& a)
-	{
-		return numeric_interface<T>::sqrt(a.real()*a.real()+a.imag()*a.imag());
-	}
+    static auto abs(const std::complex<T>& a)
+    {
+        return std::sqrt(a.real()*a.real()+a.imag()*a.imag());
+    }
 
     static bool parse(std::complex<T>& num, const char* begin, char* &end)
     {
@@ -184,15 +172,6 @@ struct numeric_interface_imp<std::complex<T>,false>
         return ret;
     }
 };
-
-template <typename T>
-struct numeric_interface_imp_types<std::complex<T> >
-{
-	typedef typename numeric_interface_imp_types<T>::fact fact;
-	typedef typename numeric_interface_imp_types<T>::abs abs;
-	typedef typename numeric_interface_imp_types<T>::sqrt sqrt;
-};
-
 
 template <typename T>
 struct numeric_interface_imp<T,true>
@@ -224,7 +203,6 @@ struct numeric_interface_imp<T,true>
     }
 
 	static T abs(const T& a) {return std::abs(a);}
-	static T sqrt(const T& a) {return std::sqrt(a);}
 
     // Declared, not defined: only the types the interpreter actually parses
     // have an implementation, and a missing one is a link error naming the

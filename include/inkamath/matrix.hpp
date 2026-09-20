@@ -14,17 +14,6 @@
 #include <vector>
 
 template <typename T>
-class Matrix;
-
-template <typename T>
-struct numeric_interface_imp_types<Matrix<T>>
-{
-    typedef typename numeric_interface_imp_types<T>::fact fact;
-    typedef typename numeric_interface_imp_types<T>::abs abs;
-    typedef typename numeric_interface_imp_types<T>::sqrt sqrt;
-};
-
-template <typename T>
 class Matrix
 {
 public:
@@ -81,19 +70,14 @@ public:
         return r;
     }
 
-    static typename numeric_interface_imp_types<Matrix<T>>::fact fact(const Matrix<T>& a)
+    static auto fact(const Matrix<T>& a)
     {
         return numeric_interface<T>::fact(a.Scalar("Fact is not implemented for Matrix type."));
     }
 
-    static typename numeric_interface_imp_types<Matrix<T>>::abs abs(const Matrix<T>& a)
+    static auto abs(const Matrix<T>& a)
     {
         return numeric_interface<T>::abs(a.Scalar("Abs is not implemented for Matrix type."));
-    }
-
-    static typename numeric_interface_imp_types<Matrix<T>>::sqrt sqrt(const Matrix<T>&)
-    {
-        throw std::runtime_error("Sqrt is not implemented for Matrix type.");
     }
 
     /* Symetric operators */
