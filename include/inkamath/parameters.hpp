@@ -50,6 +50,26 @@ public:
     }
     ~ParametersDefinition() {}
 
+    // Arity is checked here rather than at the call site because this is the
+    // only place that knows both the definition's parameters and the call's.
+    void CheckArity(const std::string& reference_name, const ParametersCall<T>& param_call) const {
+        const size_t provided = param_call.parameters_expression().size()
+                              + param_call.parameters_dict().size();
+        if(parameters_names_.empty()) {
+            if(provided != 0) {
+                throw std::runtime_error(reference_name + " takes no arguments");
+            }
+            return;
+        }
+        const size_t required = parameters_names_.size() - parameters_dict_.size();
+        if(provided < required || provided > parameters_names_.size()) {
+            const size_t expected = parameters_names_.size();
+            throw std::runtime_error(reference_name + " expects " + std::to_string(expected)
+                                     + (expected == 1 ? " argument, got " : " arguments, got ")
+                                     + std::to_string(provided));
+        }
+    }
+
     void SetCallParameters(const ParametersCall<T>& param_call, EvaluationVisitor<T>& evaluator) {
         ReferenceStack<T>& stack_ = evaluator.stack();
         for(auto definition : parameters_dict_) {

@@ -71,6 +71,11 @@ public:
 //        else {
 //            return this->EvalImp(ai_parameters, stack);
 //        }
+        // Only the user's own call is checked. The recursion machinery builds
+        // synthetic ParametersCalls that deliberately carry no arguments --
+        // they are already bound in the enclosing scope -- and those reach
+        // SafeRecursiveEval, not here.
+        CallParameters().CheckArity(reference_name_, ai_parameters);
         return this->EvalImp(ai_parameters, stack);
 
     }
@@ -113,6 +118,15 @@ public:
     }
 	
 private:
+    // The clauses of one name share their parameter list; any of them answers
+    // for the whole definition.
+    const ParametersDefinition<T>& CallParameters() const {
+        if(std::get<1>(general_expr_)) return std::get<0>(general_expr_);
+        if(std::get<1>(single_expr_)) return std::get<0>(single_expr_);
+        if(!indexed_expr_.empty()) return std::get<0>(indexed_expr_.begin()->second);
+        return std::get<0>(single_expr_);
+    }
+
     T EvalImp( const ParametersCall<T>& ai_parameters, ReferenceStack<T>& stack) {
         EvaluationVisitor<T> evaluator(stack);
         T result;

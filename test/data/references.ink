@@ -22,8 +22,8 @@
 >> f(x=3, y=2)
 11
 
-# Extra arguments are ignored, missing ones fall back to the calling scope
-# and then to zero -- no error is reported either way.
+# Surplus arguments and missing ones are both errors. Missing ones used to
+# fall back to the calling scope and then to zero, reporting nothing.
 >> g=1+2
 3
 
@@ -31,7 +31,7 @@
 3
 
 >> g(1)
-3
+error: g takes no arguments
 
 # Scoping (README.md section 6).
 >> h(x)=x^2
@@ -53,5 +53,5 @@
 5
 
 >> h
-25
+error: h expects 1 argument, got 0
 
