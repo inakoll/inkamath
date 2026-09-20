@@ -72,9 +72,10 @@ behaviour, bugs included. They are literal interpreter sessions:
   and the commit message says which outputs moved and why.
 - Regenerate with `cmake --build build --target record_goldens`, then read the
   diff before committing. Recording without reading the diff defeats the point.
-- Some recorded outputs are **wrong** — they record bugs so the bugs stay
-  visible and cannot regress silently. They are listed in `MODERNIZATION.md`.
-  Do not "fix" a golden to match your intuition; fix the interpreter.
+- A recorded output may be **wrong on purpose** — a bug recorded so that it
+  stays visible and cannot regress silently. Say so in the entry's own
+  comment, and register the defect in `MODERNIZATION.md`. Do not "fix" a
+  golden to match your intuition; fix the interpreter.
 
 A change to the language itself is specified as a transcript before it is
 implemented, and that transcript is never recorded from current behaviour —
