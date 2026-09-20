@@ -132,3 +132,21 @@ error: only a square matrix has a power
 >> 2^[1 2]
 error: a matrix cannot be an exponent
 
+# The rest of the matrix diagnostics, which used to be in the 2014 voice --
+# capitalised, punctuated, newline-terminated, and one of them misspelled
+# 'assigmentation' (MODERNIZATION.md, D13).
+>> [1 2]+[1 2 3]
+error: these matrices have different sizes
+
+>> [1 2;3 4]*[1 2 3]
+error: a matrix product needs as many columns on the left as rows on the right
+
+>> !a
+error: a matrix has no factorial
+
+>> mm_n=[1 2;3 4]*(0.5)^n
+mm_n=[1 2;3 4]*(0.5)^n
+
+>> lim mm
+error: a matrix has no absolute value
+

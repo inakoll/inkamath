@@ -91,12 +91,12 @@ public:
 
     static auto fact(const Matrix<T>& a)
     {
-        return numeric_interface<T>::fact(a.Scalar("Fact is not implemented for Matrix type."));
+        return numeric_interface<T>::fact(a.Scalar("a matrix has no factorial"));
     }
 
     static auto abs(const Matrix<T>& a)
     {
-        return numeric_interface<T>::abs(a.Scalar("Abs is not implemented for Matrix type."));
+        return numeric_interface<T>::abs(a.Scalar("a matrix has no absolute value"));
     }
 
     /* Symetric operators */
@@ -128,7 +128,9 @@ private:
     size_t Offset(size_t i, size_t j) const
     {
         if(i == 0 || i > extent_.rows || j == 0 || j > extent_.cols) {
-            throw std::runtime_error("Out of matrix range.\n");
+            throw std::runtime_error("row " + std::to_string(i) + ", column " + std::to_string(j)
+                                     + " is outside a " + std::to_string(extent_.rows) + "x"
+                                     + std::to_string(extent_.cols) + " matrix");
         }
         return (i-1)*extent_.cols + (j-1);
     }
@@ -136,7 +138,7 @@ private:
     // The single cell of a 1x1 matrix. Most of the numeric interface is only
     // defined there.
     const T& Scalar(const char* message =
-                    "Incompatible dimension in matrix assigmentation. Conversion\n") const
+                    "a matrix is not a single value") const
     {
         if(!IsScalar()) {
             throw std::runtime_error(message);
@@ -148,7 +150,7 @@ private:
     Matrix<T> BinaryOp(const Matrix<T>& other, Func f) const
     {
         if(extent_ != other.extent_) {
-            throw std::runtime_error("Incompatible dimensions in matrix operation.\n");
+            throw std::runtime_error("these matrices have different sizes");
         }
         Matrix<T> c(extent_);
         std::transform(data(), data() + extent_.count(), other.data(), c.data(), f);
@@ -166,7 +168,7 @@ private:
             return c;
         }
         if(extent_.cols != other.extent_.rows) {
-            throw std::runtime_error("Incompatible dimensions in matrix product.\n");
+            throw std::runtime_error("a matrix product needs as many columns on the left as rows on the right");
         }
         Matrix<T> c(Extent{extent_.rows, other.extent_.cols});
         for(size_t i = 1; i <= c.extent_.rows; ++i) {
