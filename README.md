@@ -68,7 +68,7 @@ doctest is vendored under `third_party/` and is used by the tests only.
 ```sh
 cmake -S . -B build -G Ninja
 cmake --build build
-./build/inkamath            # the REPL; 'q' quits
+./build/inkamath            # the REPL; 'q' or end of input quits
 ctest --test-dir build --output-on-failure
 ```
 

@@ -20,8 +20,7 @@ int main(void)
 		string s;
 		
 		cout << ">> ";
-		getline(cin,s);
-
+        if(!getline(cin,s)) break; // end of input
         if(s=="q") break; // quit interpreter
 
         Interp::Result result = p.Eval(s);

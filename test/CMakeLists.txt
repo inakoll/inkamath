@@ -18,6 +18,12 @@ foreach(suite IN ITEMS interpreter)
     set_tests_properties(${suite} PROPERTIES TIMEOUT 60)
 endforeach()
 
+add_test(NAME repl_eof
+         COMMAND ${CMAKE_COMMAND} -DEXE=$<TARGET_FILE:inkamath_cli>
+                 -DOUT=${CMAKE_CURRENT_BINARY_DIR}
+                 -P ${CMAKE_CURRENT_LIST_DIR}/repl_eof.cmake)
+set_tests_properties(repl_eof PROPERTIES TIMEOUT 60)
+
 # Regenerate the golden transcripts from current behaviour. Always review the
 # resulting diff: it is the record of what the change you just made did.
 add_custom_target(record_goldens
