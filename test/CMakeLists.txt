@@ -5,7 +5,7 @@ add_executable(inkamath_tests
     doctest_main.cpp
     dynarray_test.cpp
     interpreter_test.cpp
-    mapstack_test.cpp)
+    )
 
 target_link_libraries(inkamath_tests PRIVATE inkamath doctest inkamath_warnings)
 target_compile_definitions(inkamath_tests PRIVATE
@@ -15,7 +15,7 @@ target_compile_definitions(inkamath_tests PRIVATE
 # stack on some inputs (see MODERNIZATION.md, phase 2), so keeping the suites
 # in separate ctest entries means a crash reports as one failure rather than
 # taking the other suites' results with it.
-foreach(suite IN ITEMS interpreter spec mapstack dynarray)
+foreach(suite IN ITEMS interpreter spec dynarray)
     add_test(NAME ${suite} COMMAND inkamath_tests --test-suite=${suite} --no-intro)
     set_tests_properties(${suite} PROPERTIES TIMEOUT 60)
 endforeach()

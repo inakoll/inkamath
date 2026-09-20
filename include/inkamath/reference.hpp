@@ -4,7 +4,6 @@
 #include "inkamath/expression.hpp"
 #include "inkamath/pexpression.hpp"
 #include "inkamath/parameters.hpp"
-#include "inkamath/mapstack.hpp"
 #include "inkamath/expression_visitor.hpp"
 
 #include <map>
