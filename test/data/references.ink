@@ -95,8 +95,14 @@ m=5
 >> m
 5
 
+# Indexing what is not a sequence is an error. This used to answer 5 -- the
+# plain definition was returned without the index ever being looked at
+# (MODERNIZATION.md, C26).
 >> m_3
-5
+error: m is not a sequence
+
+>> ?m_3
+error: m is not a sequence
 
 # The reverse: a clause turns a plain definition into a sequence.
 >> p=9

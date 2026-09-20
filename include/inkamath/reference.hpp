@@ -66,6 +66,9 @@ public:
     std::string Describe(const ParametersCall<T>& call, ReferenceStack<T>& stack) const {
         int index = 0;
         if(call.TryEvalIndex(stack, index)) {
+            if(plain_) {
+                throw std::runtime_error(reference_name_ + " is not a sequence");
+            }
             auto clause = base_.find(index);
             if(clause == base_.end()) {
                 throw std::runtime_error(reference_name_ + " has no clause for index "
@@ -129,6 +132,11 @@ private:
 
     T EvalImp(bool indexed, int index, EvaluationVisitor<T>& evaluator) const {
         if(plain_) {
+            // An index on something that is not a sequence used to be dropped
+            // without a word, which is the last of C13's silent answers.
+            if(indexed) {
+                throw std::runtime_error(reference_name_ + " is not a sequence");
+            }
             return plain_.expression->accept(evaluator);
         }
         if(indexed) {
