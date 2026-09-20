@@ -57,6 +57,7 @@ private:
     PExpression<U> ParseParameters();
     PExpression<U> ParseSubExpr();
     PExpression<U> ParseLimit();
+    std::string ParseQuery();
 
     // The one reserved word. A limit is a property of a definition, so 'lim'
     // takes a name rather than an expression.
@@ -157,6 +158,9 @@ void Interpreter<T,U>::Lexer(const std::string& s)
             break;
         case '_':
             m_tokens.push_back(Token<T>(Sub, std::string(1, s[i])));
+            break;
+        case '?':
+            m_tokens.push_back(Token<T>(Query, std::string(1, s[i])));
             break;
         case ' ':
             break;
@@ -491,6 +495,33 @@ PExpression<U> Interpreter<T,U>::ParseParameters()
     return e;
 }
 
+// '?name' prints a definition back as it was written. It is a statement, not
+// an expression: there is nothing to do with the answer but read it.
+template <typename T, typename U>
+std::string Interpreter<T,U>::ParseQuery()
+{
+    m_i = 1;
+    if (AtEnd())
+    {
+        Fail("expected a name after '?'");
+    }
+    if (Peek().type != Func)
+    {
+        Fail("expected a name after '?', not '", Peek().text, "'");
+    }
+    const std::string name = m_tokens[m_i++].text;
+    if (!AtEnd() && Peek().type == LPar)
+    {
+        Fail("'?' takes a name, not a call");
+    }
+    PExpression<U> sub = ParseSubExpr();
+    if (!AtEnd())
+    {
+        Fail("unexpected '", Peek().text, "'");
+    }
+    return stack_.Describe(name, ParametersCall<U>(PExpression<U>(), sub));
+}
+
 template <typename T, typename U>
 PExpression<U> Interpreter<T,U>::ParseLimit()
 {
@@ -537,16 +568,23 @@ typename Interpreter<T,U>::Result Interpreter<T,U>::Eval(const std::string& s)
         /* the following functions might throw some evaluation errors */
         stack_.BeginEvaluation();
         Lexer(s);
-        m_E = ParseAll();
-        EvaluationVisitor<U> evaluator(stack_);
-        if(EqualExpression<U>* definition = dynamic_cast<EqualExpression<U>*>(m_E.get()))
+        if(m_tokens[0].type == Query)
         {
-            evaluator.Bind(definition);
-            result = Echo{AsWritten(s)};
+            result = Echo{ParseQuery()};
         }
         else
         {
-            result = m_E->accept(evaluator);
+            m_E = ParseAll();
+            EvaluationVisitor<U> evaluator(stack_);
+            if(EqualExpression<U>* definition = dynamic_cast<EqualExpression<U>*>(m_E.get()))
+            {
+                evaluator.Bind(definition, AsWritten(s));
+                result = Echo{AsWritten(s)};
+            }
+            else
+            {
+                result = m_E->accept(evaluator);
+            }
         }
     }
     catch (const std::exception& e)

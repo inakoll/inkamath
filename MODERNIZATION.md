@@ -251,12 +251,14 @@ The redesign proper. Replaces C10 and C11 rather than deciding them.
    scope, and nowhere else. `Mapstack` went with the change: it copied every
    live name forward on `Push`, which is what made a caller's parameters
    visible to everything it called. Two plain maps replace it.
-6. **`?name` prints a definition back**, as written, without evaluating it.
+6. **`?name` prints a definition back** `[done]`, as written, without
+   evaluating it.
    On a sequence it prints every clause, so the whole definition is visible
    at once — which the three parallel slots made impossible. Together with
    item 3 this is what makes the core idea legible: after `b = a+a` and
-   `a = 2`, `?b` is `b = a+a` while `b` is `4`. `?` is currently an
-   unrecognised character, so the syntax is free.
+   `a = 2`, `?b` is `b = a+a` while `b` is `4`. Each clause stores the line
+   that bound it, so `?` quotes what was typed rather than rendering the
+   parsed expression; there is no pretty-printer to disagree with the parser.
 7. C3, C4, C14 and C17 were small bugs in machinery this phase rewrites; they
    went away with it rather than being patched first.
 
@@ -302,7 +304,7 @@ Recorded so they are not re-litigated later, or drifted into by accident.
   different feature from printing a definition back, not an option on it. It
   needs its own syntax, a rule for how far expansion goes, and an answer for
   what a partially evaluated sequence or matrix of expressions even means.
-  `?name` (phase 4, item 5) prints what was written and nothing more.
+  `?name` (phase 4, item 6) prints what was written and nothing more.
 
 ## Sequencing
 

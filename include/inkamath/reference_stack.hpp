@@ -31,9 +31,17 @@ public:
         this->Set("e",  ParametersDefinition<T>(), PExpression<T>( new ValExpression<T>(T(2.7182818284590))));
     }
 
-    void Set(const std::string& ai_reference_name, const ParametersDefinition<T>& ai_parameters, PExpression<T>  ai_expression) {
+    void Set(const std::string& ai_reference_name, const ParametersDefinition<T>& ai_parameters, PExpression<T>  ai_expression, const std::string& written = std::string()) {
         // Updating and initialising are the same operation.
-        CurrentScope()[ai_reference_name].add_expression(ai_reference_name, ai_parameters, ai_expression);
+        CurrentScope()[ai_reference_name].add_expression(ai_reference_name, ai_parameters, ai_expression, written);
+    }
+
+    std::string Describe(const std::string& ai_reference_name, const ParametersCall<T>& ai_parameters) {
+        const Reference<T>* reference = Find(ai_reference_name);
+        if(!reference) {
+            throw std::runtime_error(ai_reference_name + " is not defined");
+        }
+        return reference->Describe(ai_parameters, *this);
     }
 
     T Eval(const std::string& ai_reference_name, const ParametersCall<T>& ai_parameters)  {

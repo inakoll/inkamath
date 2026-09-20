@@ -76,6 +76,9 @@ TEST_CASE("sequences") {
 TEST_CASE("errors") {
     check_transcript("errors.ink");
 }
+TEST_CASE("queries") {
+    check_transcript("queries.ink");
+}
 
 TEST_SUITE_END();
 

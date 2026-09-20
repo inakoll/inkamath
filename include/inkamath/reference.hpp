@@ -6,16 +6,24 @@
 #include "inkamath/parameters.hpp"
 #include "inkamath/expression_visitor.hpp"
 
+#include <algorithm>
 #include <map>
-#include <tuple>
 #include <stdexcept>
+#include <vector>
 
+// One clause of a definition: 'f_0 = 1' or 'f(x)_n = ...'.
 template <typename T>
-using ExpressionDefinition =
-        std::tuple<
-            ParametersDefinition<T>,
-            PExpression<T>
-        >;
+struct Clause {
+    ParametersDefinition<T> parameters;
+    PExpression<T>          expression;
+    // What the user typed. '?' prints it back rather than rendering the
+    // expression, so the answer is the definition, not a normalisation of it.
+    std::string             written;
+    // Clauses print in the order they were written.
+    size_t                  order = 0;
+
+    explicit operator bool() const {return bool(expression);}
+};
 
 template <typename T>
 class ReferenceStack;
@@ -27,7 +35,7 @@ template <typename T>
 class Reference {
 public:
 
-    void add_expression(const std::string& ai_reference_name, const ParametersDefinition<T>& ai_parameters, PExpression<T>  ai_expression) {
+    void add_expression(const std::string& ai_reference_name, const ParametersDefinition<T>& ai_parameters, PExpression<T>  ai_expression, const std::string& written = std::string()) {
         if(reference_name_.empty()) {
             reference_name_ = ai_reference_name;
         }
@@ -38,19 +46,47 @@ public:
         // One definition per name. An indexed clause extends a sequence,
         // creating one if the name held a plain definition; a plain
         // definition replaces whatever was there.
+        const Clause<T> clause{ai_parameters, ai_expression, written, next_order_++};
         if(ai_parameters.general()) {
-            plain_ = ExpressionDefinition<T>();
-            general_ = ExpressionDefinition<T>(ai_parameters, ai_expression);
+            plain_ = Clause<T>();
+            general_ = clause;
         }
         else if(ai_parameters.indexed()) {
-            plain_ = ExpressionDefinition<T>();
-            base_[ai_parameters.index()] = ExpressionDefinition<T>(ai_parameters, ai_expression);
+            plain_ = Clause<T>();
+            base_[ai_parameters.index()] = clause;
         }
         else {
             base_.clear();
-            general_ = ExpressionDefinition<T>();
-            plain_ = ExpressionDefinition<T>(ai_parameters, ai_expression);
+            general_ = Clause<T>();
+            plain_ = clause;
         }
+    }
+
+    // '?name', or '?name_0' for one clause of a sequence.
+    std::string Describe(const ParametersCall<T>& call, ReferenceStack<T>& stack) const {
+        int index = 0;
+        if(call.TryEvalIndex(stack, index)) {
+            auto clause = base_.find(index);
+            if(clause == base_.end()) {
+                throw std::runtime_error(reference_name_ + " has no clause for index "
+                                         + std::to_string(index));
+            }
+            return Written(clause->second);
+        }
+
+        std::vector<const Clause<T>*> clauses;
+        if(plain_) clauses.push_back(&plain_);
+        for(const auto& clause : base_) clauses.push_back(&clause.second);
+        if(general_) clauses.push_back(&general_);
+        std::sort(clauses.begin(), clauses.end(),
+                  [](const Clause<T>* a, const Clause<T>* b) {return a->order < b->order;});
+
+        std::string description;
+        for(const Clause<T>* clause : clauses) {
+            if(!description.empty()) description += '\n';
+            description += Written(*clause);
+        }
+        return description;
     }
 
     T Eval(const ParametersCall<T>& call, ReferenceStack<T>& stack) {
@@ -69,7 +105,7 @@ public:
         ParametersDefinition<T>::Bind(arguments, stack);
         EvaluationVisitor<T> evaluator(stack);
         if(call.limit()) {
-            if(!std::get<1>(general_)) {
+            if(!general_) {
                 throw std::runtime_error(reference_name_ + " has no general clause, so it has no limit");
             }
             return Converge(evaluator);
@@ -81,25 +117,30 @@ private:
     // The clauses of one name share their parameter list; any of them answers
     // for the whole definition.
     const ParametersDefinition<T>& CallParameters() const {
-        if(std::get<1>(general_)) return std::get<0>(general_);
-        if(!base_.empty()) return std::get<0>(base_.begin()->second);
-        return std::get<0>(plain_);
+        if(general_) return general_.parameters;
+        if(!base_.empty()) return base_.begin()->second.parameters;
+        return plain_.parameters;
+    }
+
+    // A clause bound from inside an expression has no written form to quote.
+    std::string Written(const Clause<T>& clause) const {
+        return clause.written.empty() ? reference_name_ : clause.written;
     }
 
     T EvalImp(bool indexed, int index, EvaluationVisitor<T>& evaluator) {
-        if(std::get<1>(plain_)) {
-            return std::get<1>(plain_)->accept(evaluator);
+        if(plain_) {
+            return plain_.expression->accept(evaluator);
         }
         if(indexed) {
             auto clause = base_.find(index);
             if(clause != base_.end()) {
-                return std::get<1>(clause->second)->accept(evaluator);
+                return clause->second.expression->accept(evaluator);
             }
             // A general clause reaches down only as far as the lowest base
             // clause; below that the sequence is simply not defined. With no
             // base clause at all it applies everywhere, which is right for a
             // closed form and divergent for a recurrence -- the budget says so.
-            if(std::get<1>(general_) && (base_.empty() || index >= base_.begin()->first)) {
+            if(general_ && (base_.empty() || index >= base_.begin()->first)) {
                 return EvaluateGeneralClause(index, evaluator);
             }
             throw std::runtime_error(reference_name_ + " has no clause for index "
@@ -111,14 +152,14 @@ private:
         const std::string example = base_.empty() ? "0" : std::to_string(base_.begin()->first);
         throw std::runtime_error(reference_name_ + " is a sequence; index it (" + reference_name_
                                  + "_" + example + ")"
-                                 + (std::get<1>(general_)
+                                 + (general_
                                     ? " or take its limit (lim " + reference_name_ + ")"
                                     : ""));
     }
 
     T EvaluateGeneralClause(long long index, EvaluationVisitor<T>& evaluator) {
         SetIndex(index, evaluator.stack());
-        return std::get<1>(general_)->accept(evaluator);
+        return general_.expression->accept(evaluator);
     }
 
     // Terms until two in a row agree to within the tolerance. The budget
@@ -132,7 +173,7 @@ private:
         T previous;
         if(!base_.empty()) {
             index = base_.rbegin()->first;
-            previous = std::get<1>(base_.rbegin()->second)->accept(evaluator);
+            previous = base_.rbegin()->second.expression->accept(evaluator);
         }
 
         T evaluation = previous;
@@ -152,23 +193,23 @@ private:
     }
 
     void SetIndex(long long index, ReferenceStack<T>& stack) {
-        stack.Set(std::get<0>(general_).index_name(), ParametersDefinition<T>(),
+        stack.Set(general_.parameters.index_name(), ParametersDefinition<T>(),
                   PExpression<T>(new ValExpression<T>(T(index))));
     }
 
     // Signed: an index may be negative, and this map is read in order
     // (rbegin) to pick the highest known term.
-    typedef std::map<long long, ExpressionDefinition<T>> BaseClauses;
+    typedef std::map<long long, Clause<T>> BaseClauses;
 
     std::string reference_name_;
-	
+    size_t      next_order_ = 0;
+
     // Exactly one of these is populated: a plain definition, or a sequence
     // made of base clauses and at most one general clause.
-    ExpressionDefinition<T>     plain_;
+    Clause<T>                   plain_;
 
     BaseClauses                 base_;
-    ExpressionDefinition<T>     general_;
-	
+    Clause<T>                   general_;
 };
 
 #endif // HPP_INKREFERENCE
