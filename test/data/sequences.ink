@@ -90,3 +90,21 @@
 >> g_500
 error: evaluation nests more than 256 references deep
 
+# A base case at a negative index keeps its place in the ordering. These
+# clauses used to be keyed by size_t, so k_(-1) sorted above k_0 and the
+# iteration started from a wrapped index (MODERNIZATION.md, C17).
+>> k_(-1)=0
+0
+
+>> k_0=5
+5
+
+>> k_n=k_(n-1)+1
+5
+
+>> k_1
+6
+
+>> k
+35
+

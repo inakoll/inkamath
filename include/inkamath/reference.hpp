@@ -174,7 +174,7 @@ private:
         std::tie(gen_params_def, gen_expr_def) = general_expr_;
         if(gen_expr_def) {
             if(ai_parameters.indexed()) {
-                size_t index = ai_parameters.b() - gen_params_def.b();
+                long long index = ai_parameters.b() - gen_params_def.b();
                 if(ai_parameters.a() != 0) {
                     index *= ai_parameters.a();
                 }
@@ -189,7 +189,7 @@ private:
                 succeed = true;
             }
             else {
-                size_t start_index = 0;
+                long long start_index = 0;
                 T start_evaluation;
                 if(!memoized_index_.empty() || !indexed_expr_.empty()) {
                     if(!memoized_index_.empty()) {
@@ -249,7 +249,7 @@ private:
 
     friend struct GuardIndex;
     struct GuardIndex {
-        GuardIndex(Reference<T>& reference, size_t index) :
+        GuardIndex(Reference<T>& reference, long long index) :
             reference_(reference)
         {
             reference_.index_stack_.push(index);
@@ -264,7 +264,7 @@ private:
         Reference<T>& reference_;
     };
 
-    bool TryEvalStackedIndex(size_t& index_val) {
+    bool TryEvalStackedIndex(long long& index_val) {
         if(!index_stack_.empty()) {
             index_val = index_stack_.top();
             return true;
@@ -274,8 +274,10 @@ private:
         }
     }
 
-    typedef std::map<size_t, ExpressionDefinition<T>> Indexed_expr;
-    typedef std::map<size_t, T> Indexed_values;
+    // Signed: an index may be negative, and these maps are read in order
+    // (rbegin) to pick the highest known term.
+    typedef std::map<long long, ExpressionDefinition<T>> Indexed_expr;
+    typedef std::map<long long, T> Indexed_values;
 
     std::string reference_name_;
 	
@@ -287,7 +289,7 @@ private:
     Indexed_values              memoized_index_;
     ExpressionDefinition<T> 	general_expr_;
 
-    std::stack<size_t> index_stack_;
+    std::stack<long long> index_stack_;
 	
 };
 
