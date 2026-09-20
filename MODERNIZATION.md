@@ -52,7 +52,7 @@ phase 0; the rest are open and are scheduled into the phases that follow.
 
 | # | Defect |
 |---|--------|
-| C1 | **Unbounded recursion crashes the process.** The mutually recursive arithmetic-geometric mean from the project's own test data (`am`/`gm`) overflows the stack. Confirmed under ASan. There is no evaluation depth or step budget anywhere; `Reference::SafeRecursiveEval` guards one shape of recursion and nothing guards the rest. The original test suite worked around this by running each evaluation in a thread with a 1-second timeout and calling `std::terminate()` on expiry. Smallest known repro is three characters: `f=f`. |
+| C1 `[fixed]` | **Unbounded recursion crashes the process.** The mutually recursive arithmetic-geometric mean from the project's own test data (`am`/`gm`) overflows the stack. Confirmed under ASan. There is no evaluation depth or step budget anywhere; `Reference::SafeRecursiveEval` guards one shape of recursion and nothing guards the rest. The original test suite worked around this by running each evaluation in a thread with a 1-second timeout and calling `std::terminate()` on expiry. Fixed by a depth and step budget on `ReferenceStack` — 256 and 1000000, against a measured worst case of 33 and 6444 across every golden input. Steps as well as depth because the AGM nests shallowly but branches twice per level, so depth alone does not bound time. `f=f` was **not** an instance of this: see C16. |
 | C2 | **Identifiers cannot start with `i`.** `Interpreter::Lexer` routes `'i'` to `Number_Lexer` alongside the digits, so `ii=3` fails with `Syntax error`. Any name beginning with `i` is unusable, and `i` itself can never be shadowed. |
 | C3 | `ReferenceStack::WrapRecursiveExpression` never increments its index `i` when filling `recursive_placeholders`, so every slot after the first stays null. `EvaluationVisitor::visit(RecursiveExpression*)` then `dynamic_cast`s each child and silently ignores the nulls — the `else` branch is an empty block with a `// TODO` in it. Recursive expressions with more than one self-reference are quietly mis-evaluated. |
 | C4 | `ParametersCall`'s constructor contains `return; subexpr_ = subexpr;` — the assignment is unreachable. `subexpr_` is therefore never set, and the `if(subexpr_)` branch in `TryEvalIndex` is dead code. |
@@ -66,6 +66,7 @@ phase 0; the rest are open and are scheduled into the phases that follow.
 | C9 | `numeric_interface_imp<std::complex<T>, false>` provides no `sqrt`, yet its own `abs` calls `numeric_interface<T>::sqrt`. `Matrix<T>::sqrt` throws unconditionally. The numeric interface is only accidentally complete for the one type actually instantiated. |
 | C14 | **Four `catch` blocks discard errors inside a constructor.** `parameters.hpp:28, 38, 105, 115` catch `SubVisitor`/`ParametersVisitor` exceptions in the `ParametersDefinition` and `ParametersCall` constructors and `return`, leaving the object half-built — `parameters_names_`, `index_name_`, `a_` and `b_` never assigned. The errors never reach `Eval`, so the phase 3 error channel does not surface them; they are invisible by construction. A sibling of C13 rather than an instance of it: there the interpreter has nothing to report, here it has something and throws it away. The machinery is rewritten in phase 4, so fix it there rather than patching a constructor that is about to go. |
 | C15 `[fixed]` | **The parser read one token past the end.** `ParseParameters` tested `Peek().type` after `ParseMatrix` had consumed the input — an `end()` dereference before the token cursor became an index, `vector::operator[](size())` after. Neither ASan nor UBSan catches it while the index lands inside the allocation, which for a vector with spare capacity is most of the time; `_GLIBCXX_ASSERTIONS` does, and sanitizer builds now define it. `f(1+2` is the repro and is a golden. A sweep of all 117 prefixes of ten representative inputs found no other instance — only C1. |
+| C16 `[fixed]` | **`f=f` crashed on an uninitialised pointer, before recursing at all.** `RecursiveExprVisitor::to_transform_` was assigned only when descending into a child, but the constructor visits the root directly — so a self-reference at the root of a definition read an indeterminate `PExpression<T>*` and then wrote through it. The stack was ten frames deep, not overflowing; ASan does not flag a read of an uninitialised pointer, which is why this looked like C1 for several rounds. Fixed by initialising the member and not wrapping a root self-reference, which has no enclosing slot to substitute into. `f=f` and `w_n=w` are goldens and now reach the budget. |
 | C13 (partly fixed) | **Nothing ever fails, which is why everything else survived.** An unknown identifier evaluates to `0`. Surplus arguments are dropped. A missing parameter is looked up by name in the enclosing scope — `h(x)=x^2` with `x=5` in scope makes bare `h` evaluate to `25`, which is dynamic scoping arrived at by accident. A non-integer index is truncated. None of these reports anything. The interpreter always returns a number, so a typo and a correct series are indistinguishable from the outside; that is how a decade of defects stayed invisible. Root cause of the plausibility of C1, C2, C5, C10 and C11 alike. Arity is fixed; the undefined name and the truncated index wait on phase 4 (see phase 3 item 3). |
 
 ### Design and dead weight
@@ -196,10 +197,11 @@ answering every question with a number.
      load-bearing — they are how the code decides an expression is not an
      index — so they cannot simply be deleted; the clause model in phase 4
      replaces them.
-4. **Evaluation budget** (C1). A per-`Eval` limit on recursion depth and total
-   steps, reported as a diagnostic. This is the difference between "the
-   interpreter rejects your input" and "the process dies", and it lets the AGM
-   example from the project's own test data back into the suite.
+4. **Evaluation budget** (C1) `[done]`. A per-`Eval` limit on recursion depth
+   and total steps, reported as a diagnostic. `spec/recursion.ink` is no
+   longer skipped, and a sweep of all 117 prefixes of ten representative
+   inputs now runs clean under ASan, UBSan and `_GLIBCXX_ASSERTIONS` — it
+   previously overflowed the stack.
 5. **Fix the `i` lexing rule** (C2): `i` is a literal only when it is not part
    of a longer identifier.
 6. **`0^0`** (C5). Route an integral exponent to the `pow(complex, int)`
