@@ -94,46 +94,46 @@ void Interpreter<T,U>::Lexer(const std::string& s)
         switch (s[i])
         {
         case '(':
-            m_toklist.push_back(Token<T>(LPar));
+            m_toklist.push_back(Token<T>(LPar, std::string(1, s[i])));
             break;
         case ')':
-            m_toklist.push_back(Token<T>(RPar));
+            m_toklist.push_back(Token<T>(RPar, std::string(1, s[i])));
             break;
         case '[':
-            m_toklist.push_back(Token<T>(LBra));
+            m_toklist.push_back(Token<T>(LBra, std::string(1, s[i])));
             break;
         case ']':
-            m_toklist.push_back(Token<T>(RBra));
+            m_toklist.push_back(Token<T>(RBra, std::string(1, s[i])));
             break;
         case ',':
-            m_toklist.push_back(Token<T>(Comma));
+            m_toklist.push_back(Token<T>(Comma, std::string(1, s[i])));
             break;
         case ';':
-            m_toklist.push_back(Token<T>(Semico));
+            m_toklist.push_back(Token<T>(Semico, std::string(1, s[i])));
             break;
         case '+':
-            m_toklist.push_back(Token<T>(Add));
+            m_toklist.push_back(Token<T>(Add, std::string(1, s[i])));
             break;
         case '-':
-            m_toklist.push_back(Token<T>(Min));
+            m_toklist.push_back(Token<T>(Min, std::string(1, s[i])));
             break;
         case '*':
-            m_toklist.push_back(Token<T>(Mult));
+            m_toklist.push_back(Token<T>(Mult, std::string(1, s[i])));
             break;
         case '=':
-            m_toklist.push_back(Token<T>(Equal));
+            m_toklist.push_back(Token<T>(Equal, std::string(1, s[i])));
             break;
         case '/':
-            m_toklist.push_back(Token<T>(Div));
+            m_toklist.push_back(Token<T>(Div, std::string(1, s[i])));
             break;
         case '^':
-            m_toklist.push_back(Token<T>(Pow));
+            m_toklist.push_back(Token<T>(Pow, std::string(1, s[i])));
             break;
         case '!':
-            m_toklist.push_back(Token<T>(Fact));
+            m_toklist.push_back(Token<T>(Fact, std::string(1, s[i])));
             break;
         case '_':
-            m_toklist.push_back(Token<T>(Sub));
+            m_toklist.push_back(Token<T>(Sub, std::string(1, s[i])));
             break;
         case ' ':
             break;
@@ -163,10 +163,11 @@ void Interpreter<T,U>::Number_Lexer(const std::string& s, size_t& i)
 {
     T num;
     char* end = NULL;
+    const size_t start = i;
     if(numeric_interface<T>::parse(num,&s[i],end))
     {
         i = end - &s[0] - 1;
-        m_toklist.push_back(Token<T>(Val,num));
+        m_toklist.push_back(Token<T>(Val, s.substr(start, i + 1 - start), num));
     }
     else
     {
@@ -188,8 +189,7 @@ void Interpreter<T,U>::Reference_Lexer(const std::string &s, size_t& i)
         {
             ++i;
         }
-        std::string name(s.substr(s_i,i-s_i));
-        m_toklist.push_back(Token<T>(Func,0,name));
+        m_toklist.push_back(Token<T>(Func, s.substr(s_i, i - s_i)));
         --i;
     }
     else
@@ -207,7 +207,7 @@ PExpression<U> Interpreter<T,U>::ParseAll()
     PExpression<U> e = Parse();
     if (m_i != m_toklist.end())
     {
-        oss << "Syntax error before '" << m_i->Print() << "'" << std::endl;
+        oss << "Syntax error before '" << m_i->text << "'" << std::endl;
         if (m_i->type == LPar)
         {
             oss << "The operator '*' is probably missing." << std::endl;
@@ -239,7 +239,7 @@ PExpression<U> Interpreter<T,U>::ParseEqualExpr()
     typename std::list< Token<T> >::iterator m_s = m_i;
     if (m_i != m_toklist.end() && m_i->type == Func)
     {
-        std::string name = m_i++->name;
+        std::string name = m_i++->text;
         ref = PExpression<U>(new RefExpression<U>(name));
         params = ParseParameters();
         sub = ParseSubExpr();
@@ -379,7 +379,7 @@ PExpression<U>  Interpreter<T,U>::ParseSimpleExpr()
 			break;
 
         case Func:
-            ref.reset(new RefExpression<U>(m_i++->name));
+            ref.reset(new RefExpression<U>(m_i++->text));
             param = ParseParameters();
             sub = ParseSubExpr();
             if(param || sub) {
@@ -409,7 +409,7 @@ PExpression<U>  Interpreter<T,U>::ParseSimpleExpr()
             }
             else
             {
-                oss << "Missing operator ')' after '" << (--m_i)->Print() << "'" << std::endl;
+                oss << "Missing operator ')' after '" << (--m_i)->text << "'" << std::endl;
                 throw(std::runtime_error(oss.str()));
             }
 			break;
@@ -423,21 +423,21 @@ PExpression<U>  Interpreter<T,U>::ParseSimpleExpr()
             }
             else
             {
-                oss << "Missing operator ']' after '" << (--m_i)->Print() << "'" << std::endl;
+                oss << "Missing operator ']' after '" << (--m_i)->text << "'" << std::endl;
                 throw(std::runtime_error(oss.str()));
             }
 			break;
 
         default:
         case RPar:
-            oss << "Unexpected operator '" << m_i->Print() << "'" << std::endl;
+            oss << "Unexpected operator '" << m_i->text << "'" << std::endl;
             throw(std::runtime_error(oss.str()));
             break;
         }
     }
     else if(m_i != m_toklist.begin())
     {
-        oss << "Unexpected end of input before '" << (--m_i)->Print() << "'" << std::endl;
+        oss << "Unexpected end of input before '" << (--m_i)->text << "'" << std::endl;
         throw(std::runtime_error(oss.str()));
     }
     return e;
@@ -507,7 +507,7 @@ void Interpreter<T,U>::PrintTokens(void)
     typename std::list<Token<T> >::iterator i = m_toklist.begin();
     while (i != m_toklist.end())
     {
-        std::cout << i->Print();
+        std::cout << i->text;
         ++i;
     }
     std::cout << std::endl;

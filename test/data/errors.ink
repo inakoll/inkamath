@@ -7,10 +7,10 @@ Error : Unexpected end of input before '+'
 Error : Unexpected operator ')'
 
 >> [1 2
-Error : Missing operator ']' after '(2,0)'
+Error : Missing operator ']' after '2'
 
 >> (1+2
-Error : Missing operator ')' after '(2,0)'
+Error : Missing operator ')' after '2'
 
 >> 1+2)
 Error : Syntax error before ')'
@@ -19,7 +19,7 @@ Error : Syntax error before ')'
 Error : Unexpected character : @
 
 >> 2 3
-Error : Syntax error before '(3,0)'
+Error : Syntax error before '3'
 
 # Undefined identifiers evaluate to zero without an error (README.md section 6).
 >> undefined
