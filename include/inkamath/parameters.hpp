@@ -5,6 +5,8 @@
 #include "inkamath/expression_visitor.hpp"
 #include "inkamath/expression.hpp"
 
+#include <algorithm>
+
 template <typename T>
 class ReferenceStack;
 
@@ -69,6 +71,30 @@ public:
             throw std::runtime_error(reference_name + " expects " + std::to_string(expected)
                                      + (expected == 1 ? " argument, got " : " arguments, got ")
                                      + std::to_string(provided));
+        }
+
+        // Counting the arguments is not enough: an unknown keyword satisfies
+        // the count, leaves a real parameter unbound and lets it fall through
+        // to a global.
+        const size_t positional = param_call.parameters_expression().size();
+        for(const auto& kwarg : param_call.parameters_dict()) {
+            auto named = std::find(parameters_names_.begin(), parameters_names_.end(), kwarg.first);
+            if(named == parameters_names_.end()) {
+                throw std::runtime_error(reference_name + " has no parameter " + kwarg.first);
+            }
+            if(static_cast<size_t>(named - parameters_names_.begin()) < positional) {
+                throw std::runtime_error(reference_name + " got two values for " + kwarg.first);
+            }
+        }
+
+        // Nor is the count enough the other way: a keyword can fill an
+        // optional parameter and leave a required one with nothing.
+        for(size_t i = positional; i < parameters_names_.size(); ++i) {
+            const std::string& name = parameters_names_[i];
+            if(param_call.parameters_dict().count(name) == 0
+               && parameters_dict_.count(name) == 0) {
+                throw std::runtime_error(reference_name + " has no value for " + name);
+            }
         }
     }
 

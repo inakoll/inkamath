@@ -25,6 +25,29 @@ f(x, y)=x^2+y
 >> f(1)
 error: f expects 2 arguments, got 1
 
+# A keyword argument is checked against the parameter names, not just counted.
+# An unknown one used to satisfy the count, leave the real parameter unbound,
+# and let it fall through to a global (MODERNIZATION.md, C25).
+>> f(z=1, y=2)
+error: f has no parameter z
+
+>> f(1, x=2)
+error: f got two values for x
+
+>> k(a, b=5)=a*100+b
+k(a, b=5)=a*100+b
+
+>> k(1)
+105
+
+>> k(1, 2)
+102
+
+# A keyword can fill the optional parameter and leave the required one with
+# nothing, which the count alone does not catch.
+>> k(b=2)
+error: k has no value for a
+
 # Surplus arguments and missing ones are both errors. Missing ones used to
 # fall back to the calling scope and then to zero, reporting nothing.
 >> g=1+2
