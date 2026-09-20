@@ -46,6 +46,48 @@ a=[1 2;3 4]
 -1 -2
 -3 -4
 
+# Three or more rows or columns. The block offsets were a prefix sum that
+# added only the previous element instead of the running total, so the result
+# was allocated too small and every one of these reported 'Out of matrix
+# range.' Correct for two blocks, which is every size the tests used to have
+# (MODERNIZATION.md, C22).
+>> [1 2 3]
+1 2 3
+
+>> [1;2;3]
+1
+2
+3
+
+>> [1 2 3;4 5 6]
+1 2 3
+4 5 6
+
+>> [a, a, a]
+1 2 1 2 1 2
+3 4 3 4 3 4
+
+>> [a; a; a]
+1 2
+3 4
+1 2
+3 4
+1 2
+3 4
+
+>> [a, a; a, a; a, a]
+1 2 1 2
+3 4 3 4
+1 2 1 2
+3 4 3 4
+1 2 1 2
+3 4 3 4
+
+# A cell smaller than its block is extended to fill it.
+>> [a, 1, a]
+1 2 1 1 2
+3 4 1 3 4
+
 # A matrix of expressions expands to the size of what its cells evaluate to.
 >> [a, a; a, a]
 1 2 1 2

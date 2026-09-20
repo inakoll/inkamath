@@ -284,23 +284,20 @@ public:
             }
         }
 
-        // Compute the size of each previous (up and left) result matrix blocks
-        std::vector<size_t> ri_rows = i_rows;
-        std::vector<size_t> rj_cols = j_cols;
-
-        for(size_t i = 1; i < n; ++i) {
-            ri_rows[i] += i_rows[i-1];
+        // Where each block row and column starts in the result: an exclusive
+        // prefix sum over the block sizes, whose totals are the result extent.
+        std::vector<size_t> ri_rows(n);
+        std::vector<size_t> rj_cols(m);
+        size_t rn = 0;
+        for(size_t i = 0; i < n; ++i) {
+            ri_rows[i] = rn;
+            rn += i_rows[i];
         }
-        size_t rn = ri_rows.back();
-        ri_rows.back() = 0;
-        std::rotate(ri_rows.begin(), ri_rows.end()-1, ri_rows.end());
-
-        for(size_t j = 1; j < m; ++j) {
-            rj_cols[j] += j_cols[j-1];
+        size_t rm = 0;
+        for(size_t j = 0; j < m; ++j) {
+            rj_cols[j] = rm;
+            rm += j_cols[j];
         }
-        size_t rm = rj_cols.back();
-        rj_cols.back() = 0;
-        std::rotate(rj_cols.begin(), rj_cols.end()-1, rj_cols.end());
 
         // Populate the final matrix with the right size
         T retval(Extent{rn, rm});
