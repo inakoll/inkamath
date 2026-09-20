@@ -62,7 +62,7 @@ phase 0; the rest are open and are scheduled into the phases that follow.
 | C12 `[fixed]` | **Asking a recurrence for its limit segfaults.** `reference.hpp:187` dereferences `memoized_index_.rbegin()` unguarded, but the enclosing condition at line 180 is `!memoized_index_.empty() \|\| !indexed_expr_.empty()` — so the body is entered with `memoized_index_` empty whenever only a singular term exists. `ReferenceStack::Eval` evaluates a *copy* of the `Reference`, so memoisation never survives and that map is in practice always empty on entry. Three lines reproduce it: `f_n=2*n`, `f_0=7`, `f`. This is the textbook way to write a recurrence — an initial value plus a general term — and asking for its limit kills the process. `exp(1)` escapes only because `exp` has no singular term. Distinct from C1: an invalid dereference, not a stack overflow. Fixed by guarding that dereference; `sequences.ink` gained the repro as a regression test. |
 | C6 `[fixed]` | Parser errors printed the raw token value through `std::complex`'s stream operator: `Missing operator ']' after '(2,0)'` where the user typed `2`. Fixed by giving each token its lexeme, which also deleted `Token::Print` and its switch. |
 | C7 `[fixed]` | **Failure is not expressible.** `Interpreter::Eval` wraps everything in `try`/`catch(...)`, writes the message to `std::cout`, and returns a default-constructed value. A caller cannot distinguish a successful `0` from a failure, cannot redirect the message, and cannot test error behaviour without capturing `std::cout` — which is exactly what the new test harness had to do. Fixed: `Eval` returns `std::variant<U, Diagnostic>`, the REPL formats at the edge, and `catch(...)` is gone. |
-| C8 | `Reference::TryEvaluateGeneralExpression` iterates a series until `diff > 1E-10 && iter_count < 30`, with both the epsilon and the cap hardcoded. Phase 4 item 2 replaces the loop with `lim`. Its other half — a `size_t index` computed from a subtraction of `int`s, which wrapped for a negative result — went with C17. |
+| C8 `[fixed]` | `Reference::TryEvaluateGeneralExpression` iterated a series until `diff > 1E-10 && iter_count < 30`, with both the epsilon and the cap hardcoded and neither reachable by the user, who saw only a number. They are now named constants that the non-convergence diagnostic quotes. The cap is 100 rather than 30 so that a geometric sequence reaches the tolerance, and it cannot go much higher: each term of a recurrence nests one more reference, so the term budget is bounded by `ReferenceStack::max_depth`. Making either settable is deferred — no requirement asks for it. Its other half — a `size_t index` computed from a subtraction of `int`s, which wrapped for a negative result — went with C17. |
 | C9 | `numeric_interface_imp<std::complex<T>, false>` provides no `sqrt`, yet its own `abs` calls `numeric_interface<T>::sqrt`. `Matrix<T>::sqrt` throws unconditionally. The numeric interface is only accidentally complete for the one type actually instantiated. |
 | C14 `[fixed]` | **Four `catch` blocks discarded errors inside a constructor.** `parameters.hpp:28, 38, 105, 115` caught `SubVisitor`/`ParametersVisitor` exceptions in the `ParametersDefinition` and `ParametersCall` constructors and returned, leaving the object half-built — `parameters_names_`, `index_name_`, `a_` and `b_` never assigned. The errors never reached `Eval`, so the phase 3 error channel did not surface them; they were invisible by construction. A sibling of C13 rather than an instance of it: there the interpreter has nothing to report, here it had something and threw it away. Fixed with C4: two of the four catches guarded `SubVisitor` and went with it, the other two are gone and `f(x=1, y)=x+y` is a golden. |
 | C15 `[fixed]` | **The parser read one token past the end.** `ParseParameters` tested `Peek().type` after `ParseMatrix` had consumed the input — an `end()` dereference before the token cursor became an index, `vector::operator[](size())` after. Neither ASan nor UBSan catches it while the index lands inside the allocation, which for a vector with spare capacity is most of the time; `_GLIBCXX_ASSERTIONS` does, and sanitizer builds now define it. `f(1+2` is the repro and is a golden. A sweep of all 117 prefixes of ten representative inputs found no other instance — only C1. |
@@ -218,11 +218,15 @@ The redesign proper. Replaces C10 and C11 rather than deciding them.
    of one sequence, the way a recurrence is written on paper. A later `f = 5`
    *replaces* the definition instead of hiding underneath it, and the
    undocumented indexed/general/simple precedence disappears with the slots.
-2. **No implicit limit.** A bare name never means "iterate until it stops
-   changing". `lim` is explicit, carries a visible tolerance and budget, and
-   *reports* non-convergence instead of silently returning the 30th term.
-   `exp(1)-e` is currently `-7.7e-13` not from floating point but from a
-   series truncated at 30 terms, and nothing says so.
+2. **No implicit limit** `[done]`. A bare name never means "iterate until it
+   stops changing"; `lim` is a reserved word taking a sequence name, and a
+   bare sequence name is a diagnostic that names both ways out. Non-
+   convergence is reported with the budget and the last term rather than
+   silently returning the term the loop stopped on, so `lim k` on a divergent
+   recurrence says so where bare `k` used to answer `35`. `exp(1)-e` is
+   `-7.7e-13` not from floating point but from a series stopped as soon as
+   two terms agree to 1e-10 — measured, not the 30-term cap this item
+   originally blamed: raising the cap to 200 leaves the figure unchanged.
 3. **A definition is a statement.** It binds and echoes what it bound; it
    evaluates nothing. No left-hand-side lookup, no right-hand-side evaluation,
    no convergence loop triggered by typing a definition.

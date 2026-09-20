@@ -55,9 +55,11 @@ u_3 = 100
 >> s
 error: s is a sequence; index it (s_0) or take its limit (lim s)
 
-# The limit is explicit, and says what it did.
+# The limit is explicit, and says what it did. 1/2^n has the limit 0, but
+# what 'lim' reports is the first term within the tolerance of its
+# predecessor -- a numerical limit, not an analytic one.
 >> lim s
-0
+5.82076609e-11
 
 # A recurrence carries its base case: there is no implicit value below the
 # lowest defined index. The hidden 0 this replaces is the additive identity,
@@ -83,7 +85,7 @@ p_n = p_(n-1)*n
 # A divergent sequence reports non-convergence instead of handing back the
 # term it happened to stop on.
 >> lim u
-error: u did not converge within 30 terms (last term 60)
+error: u did not converge within 100 terms (last term 206)
 
 # A later plain definition replaces the whole sequence rather than hiding
 # beneath it.

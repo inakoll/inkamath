@@ -348,7 +348,7 @@ public:
     }
 
     T visit(FuncExpression<T>* expr) override {
-        return stack_.Eval(expr->Name(), ParametersCall<T>(expr->m_e1(), expr->m_e2()));
+        return stack_.Eval(expr->Name(), ParametersCall<T>(expr->m_e1(), expr->m_e2(), expr->limit()));
     }
 
 private:

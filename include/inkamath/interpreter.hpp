@@ -56,6 +56,11 @@ private:
     PExpression<U> ParseSimpleExpr();
     PExpression<U> ParseParameters();
     PExpression<U> ParseSubExpr();
+    PExpression<U> ParseLimit();
+
+    // The one reserved word. A limit is a property of a definition, so 'lim'
+    // takes a name rather than an expression.
+    static bool IsLimit(const Token<T>& token) {return token.type == Func && token.text == "lim";}
 
     bool AtEnd() const {return m_i >= m_tokens.size();}
     const Token<T>& Peek() const {return m_tokens[m_i];}
@@ -259,7 +264,7 @@ PExpression<U> Interpreter<T,U>::ParseEqualExpr()
 {
     PExpression<U> e,ref,params,expr,sub;
     const size_t m_s = m_i;
-    if (!AtEnd() && Peek().type == Func)
+    if (!AtEnd() && Peek().type == Func && !IsLimit(Peek()))
     {
         std::string name = m_tokens[m_i++].text;
         ref = PExpression<U>(new RefExpression<U>(name));
@@ -401,6 +406,12 @@ PExpression<U>  Interpreter<T,U>::ParseSimpleExpr()
 			break;
 
         case Func:
+            if (IsLimit(Peek()))
+            {
+                ++m_i;
+                e = ParseLimit();
+                break;
+            }
             ref.reset(new RefExpression<U>(m_tokens[m_i++].text));
             param = ParseParameters();
             sub = ParseSubExpr();
@@ -478,6 +489,26 @@ PExpression<U> Interpreter<T,U>::ParseParameters()
         m_i=m_s;
     }
     return e;
+}
+
+template <typename T, typename U>
+PExpression<U> Interpreter<T,U>::ParseLimit()
+{
+    if (AtEnd())
+    {
+        Fail("expected a sequence name after 'lim'");
+    }
+    if (Peek().type != Func)
+    {
+        Fail("expected a sequence name after 'lim', not '", Peek().text, "'");
+    }
+    PExpression<U> ref(new RefExpression<U>(m_tokens[m_i++].text));
+    PExpression<U> param = ParseParameters();
+    if (ParseSubExpr())
+    {
+        Fail("'lim' takes a sequence, not one of its terms");
+    }
+    return PExpression<U>(new FuncExpression<U>(ref, param, PExpression<U>(), true));
 }
 
 template <typename T, typename U>

@@ -68,6 +68,12 @@ public:
         typename ReferenceStack<T>::Frame frame(stack);
         ParametersDefinition<T>::Bind(arguments, stack);
         EvaluationVisitor<T> evaluator(stack);
+        if(call.limit()) {
+            if(!std::get<1>(general_)) {
+                throw std::runtime_error(reference_name_ + " has no general clause, so it has no limit");
+            }
+            return Converge(evaluator);
+        }
         return EvalImp(indexed, index, evaluator);
     }
 
@@ -100,13 +106,14 @@ private:
                                      + std::to_string(index));
         }
         // Nothing sensible to invent: a sequence has no value under its bare
-        // name.
-        if(std::get<1>(general_)) {
-            return Converge(evaluator);
-        }
-        throw std::runtime_error(reference_name_ + " is a sequence; index it, as in "
-                                 + reference_name_ + "_"
-                                 + std::to_string(base_.begin()->first));
+        // name. A limit is something the user asks for, not something a
+        // lookup does on its way past.
+        const std::string example = base_.empty() ? "0" : std::to_string(base_.begin()->first);
+        throw std::runtime_error(reference_name_ + " is a sequence; index it (" + reference_name_
+                                 + "_" + example + ")"
+                                 + (std::get<1>(general_)
+                                    ? " or take its limit (lim " + reference_name_ + ")"
+                                    : ""));
     }
 
     T EvaluateGeneralClause(long long index, EvaluationVisitor<T>& evaluator) {
@@ -114,8 +121,12 @@ private:
         return std::get<1>(general_)->accept(evaluator);
     }
 
-    // The bare name of a sequence means the limit of its general clause,
-    // which phase 4 item 2 replaces with an explicit `lim`.
+    // Terms until two in a row agree to within the tolerance. The budget
+    // cannot go much higher: each term of a recurrence nests one more
+    // reference, and ReferenceStack::max_depth is 256.
+    static constexpr size_t max_terms = 100;
+    static constexpr double tolerance = 1E-10;
+
     T Converge(EvaluationVisitor<T>& evaluator) {
         long long index = 0;
         T previous;
@@ -127,14 +138,17 @@ private:
         T evaluation = previous;
         using difference_type = decltype(numeric_interface<T>::abs(std::declval<T>()));
         difference_type diff = numeric_interface<difference_type>::one();
-        size_t iter_count = 0;
-        while(diff > 1E-10 && iter_count < 30) {
+        for(size_t term = 0; term < max_terms; ++term) {
             evaluation = EvaluateGeneralClause(++index, evaluator);
             diff = numeric_interface<T>::abs(evaluation-previous);
             previous = evaluation;
-            ++iter_count;
+            if(!(diff > tolerance)) {
+                return evaluation;
+            }
         }
-        return evaluation;
+        throw std::runtime_error(reference_name_ + " did not converge within "
+                                 + std::to_string(max_terms) + " terms (last term "
+                                 + numeric_interface<T>::toString(evaluation) + ")");
     }
 
     void SetIndex(long long index, ReferenceStack<T>& stack) {

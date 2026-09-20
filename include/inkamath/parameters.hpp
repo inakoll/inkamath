@@ -128,7 +128,7 @@ public:
     friend class ParametersDefinition<T>;
     ParametersCall() = default;
 
-    ParametersCall(PExpression<T> params, PExpression<T> subexpr) {
+    ParametersCall(PExpression<T> params, PExpression<T> subexpr, bool limit = false) : limit_(limit) {
         if(params) {
             ParametersVisitor<T> params_visitor;
             params->accept(params_visitor);
@@ -154,6 +154,7 @@ public:
     const std::vector<PExpression<T>>& parameters_expression() const {return parameters_exprs_;}
     const ExprDict<T>& parameters_dict() const {return parameters_dict_;}
     bool indexed() const {return indexed_;}
+    bool limit() const {return limit_;}
 
 
 protected:
@@ -162,6 +163,7 @@ protected:
     ExprDict<T> parameters_dict_;
     PExpression<T> subexpr_;
     bool indexed_ = false;
+    bool limit_ = false;
 };
 
 #endif // PARAMETERS_HPP

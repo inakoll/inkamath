@@ -43,8 +43,10 @@ error: evaluation nests more than 256 references deep
 >> w_n=w
 w_n=w
 
+# The bare 'w' in the body names the sequence itself, which no longer means
+# "iterate until it stops changing", so this is caught before it recurses.
 >> w_1
-error: evaluation nests more than 256 references deep
+error: w is a sequence; index it (w_0) or take its limit (lim w)
 
 # Malformed parameters used to be swallowed by a catch inside the constructor,
 # leaving the definition half-built and reporting nothing (MODERNIZATION.md,

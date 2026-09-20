@@ -354,8 +354,8 @@ template <typename T>
 class FuncExpression : public BinaryExpression<T>
 {
 public:
-    explicit FuncExpression(PExpression<T> ref_expression, PExpression<T> e1, PExpression<T> e2)
-        : BinaryExpression<T>(e1,e2), m_name(ref_expression->Name()), ref_expression_(ref_expression)
+    explicit FuncExpression(PExpression<T> ref_expression, PExpression<T> e1, PExpression<T> e2, bool limit = false)
+        : BinaryExpression<T>(e1,e2), m_name(ref_expression->Name()), ref_expression_(ref_expression), limit_(limit)
     { }
 
     PExpression<T> Clone() const override
@@ -363,8 +363,13 @@ public:
         return std::make_shared<FuncExpression<T>>(
                 ref_expression_->Clone(),
                 this->m_e1() ? this->m_e1()->Clone() : nullptr,
-                this->m_e2() ? this->m_e2()->Clone() : nullptr);
+                this->m_e2() ? this->m_e2()->Clone() : nullptr,
+                limit_);
     }
+
+    // 'lim f' asks the reference for the limit of its general clause rather
+    // than for one term.
+    bool limit() const {return limit_;}
 
     std::string Name() override
     {
@@ -381,6 +386,7 @@ public:
 protected:
     std::string m_name;
     PExpression<T> ref_expression_;
+    bool limit_;
 };
 
 #endif

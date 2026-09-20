@@ -40,8 +40,10 @@ u_1=3
 >> u_3
 6
 
-# Series: the interpreter iterates the general term until it converges. The
-# first term is written out; an indexed clause no longer falls back to an
+# Series: 'lim' iterates the general clause until two terms agree. It used to
+# happen on its own whenever a sequence was named without an index, which is
+# why 'exp(1)' read like a function call (MODERNIZATION.md, phase 4 item 2).
+# The first term is written out; an indexed clause no longer falls back to an
 # implicit zero, which was the additive identity and so wrong for a product
 # (MODERNIZATION.md, C4).
 >> exp(x)_0=1
@@ -50,20 +52,21 @@ exp(x)_0=1
 >> exp(x)_n=exp(x)_(n-1)+x^n/!n
 exp(x)_n=exp(x)_(n-1)+x^n/!n
 
->> exp(1)
+>> lim exp(1)
 2.71828183
 
->> exp(1)-e
+# Not floating point: the series stops when two terms agree to 1e-10.
+>> lim exp(1)-e
 -7.69606601e-13
 
->> cos(x)=(exp(i*x)+exp(-i*x))/2
-cos(x)=(exp(i*x)+exp(-i*x))/2
+>> cos(x)=(lim exp(i*x)+lim exp(-i*x))/2
+cos(x)=(lim exp(i*x)+lim exp(-i*x))/2
 
 >> cos(pi/3)
 0.5
 
->> sin(x)=(exp(i*x)-exp(-i*x))/(2*i)
-sin(x)=(exp(i*x)-exp(-i*x))/(2*i)
+>> sin(x)=(lim exp(i*x)-lim exp(-i*x))/(2*i)
+sin(x)=(lim exp(i*x)-lim exp(-i*x))/(2*i)
 
 >> sin(pi/6)
 0.5
@@ -80,7 +83,10 @@ s_n=s_(n-1)/2
 9.53674316e-07
 
 >> s
-9.31322575e-10
+error: s is a sequence; index it (s_0) or take its limit (lim s)
+
+>> lim s
+5.82076609e-11
 
 # Recursion is bounded: past the budget the interpreter says so rather than
 # dying (MODERNIZATION.md, C1).
@@ -111,8 +117,10 @@ k_n=k_(n-1)+1
 >> k_1
 6
 
->> k
-35
+# A divergent sequence says so rather than handing back the term the loop
+# happened to stop on -- this used to be 35, the 30th term.
+>> lim k
+error: k did not converge within 100 terms (last term 105)
 
 # A recurrence has no implicit value below its lowest clause. The old fallback
 # was zero -- the additive identity, right for a sum and wrong for a product

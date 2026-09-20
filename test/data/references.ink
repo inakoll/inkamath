@@ -106,7 +106,7 @@ p_0=1
 1
 
 >> p
-error: p is a sequence; index it, as in p_0
+error: p is a sequence; index it (p_0)
 
 >> p_5
 error: p has no clause for index 5
