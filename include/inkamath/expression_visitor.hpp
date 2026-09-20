@@ -83,14 +83,6 @@ template <typename T>
 class TransformationVisitor : public ExpressionVisitor<T, PExpression<T>> {
 };
 
-template <typename T>
-inline void transform_visitation(TransformationVisitor<T>& v, PExpression<T>& to_transform) {
-    PExpression<T> e = to_transform->accept(v);
-    if(e) {
-        to_transform = e;
-    }
-}
-
 // class FoldingVisitor
 // This is the base class of visitors that "folds" the tree to :
 // - evaluate the expression (interpreter)

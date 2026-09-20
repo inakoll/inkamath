@@ -39,8 +39,6 @@ public:
     explicit Expression(std::vector<PExpression<T>> exprs) : children(std::move(exprs)) {}
 
     virtual ~Expression() = default;
-    virtual PExpression<T> Clone() const = 0;
-	
     PExpression<T> self() {
         return this->shared_from_this();
     }
@@ -99,13 +97,6 @@ public:
     : BinaryExpression<T>(e1,e2)
     {}
 
-    PExpression<T> Clone() const override
-    {
-        return std::make_shared<EqualExpression<T>>(
-                                 this->m_e1()->Clone(),
-                                 this->m_e2()->Clone());
-    }
-
     std::string Name() override {
         return BinaryExpression<T>::m_e1()->Name();
     }
@@ -128,11 +119,6 @@ public:
     : BinaryExpression<T>(e1,e2)
     {}
 
-    PExpression<T> Clone() const override
-    {
-        return std::make_shared<AddExpression<T>>(this->m_e1()->Clone(), this->m_e2()->Clone());
-    }
-
     PExpression<T> accept(TransformationVisitor<T> &v) override {
         return v.visit(this);
     }
@@ -148,11 +134,6 @@ class NegExpression : public UnaryExpression<T>
 {
 public:
     explicit NegExpression(PExpression<T> e) : UnaryExpression<T>(e) {}
-
-    PExpression<T> Clone() const override
-    {
-        return std::make_shared<NegExpression<T>>(this->m_e()->Clone());
-    }
 
     PExpression<T> accept(TransformationVisitor<T> &v) override {
         return v.visit(this);
@@ -172,11 +153,6 @@ public:
     : BinaryExpression<T>(e1,e2)
     {}
 
-    PExpression<T> Clone() const override
-    {
-        return std::make_shared<MultExpression<T>>(this->m_e1()->Clone(), this->m_e2()->Clone());
-    }
-
     PExpression<T> accept(TransformationVisitor<T> &v) override {
         return v.visit(this);
     }
@@ -194,11 +170,6 @@ public:
     explicit DivExpression(PExpression<T> e1, PExpression<T> e2)
         : BinaryExpression<T>(e1,e2)
     {}
-
-    PExpression<T> Clone() const override
-    {
-        return std::make_shared<DivExpression<T>>(this->m_e1()->Clone(), this->m_e2()->Clone());
-    }
 
     PExpression<T> accept(TransformationVisitor<T> &v) override {
         return v.visit(this);
@@ -218,11 +189,6 @@ public:
     : BinaryExpression<T>(e1,e2)
     {}
 
-    PExpression<T> Clone() const override
-    {
-        return std::make_shared<PowExpression<T>>(this->m_e1()->Clone(), this->m_e2()->Clone());
-    }
-
     PExpression<T> accept(TransformationVisitor<T> &v) override {
         return v.visit(this);
     }
@@ -241,11 +207,6 @@ public:
         : UnaryExpression<T>(e)
     {}
 
-    PExpression<T> Clone() const override
-    {
-        return std::make_shared<FactExpression<T>>(this->m_e()->Clone());
-    }
-
     PExpression<T> accept(TransformationVisitor<T> &v) override {
         return v.visit(this);
     }
@@ -261,11 +222,6 @@ class ValExpression : public Expression<T>
 {
 public:
     explicit ValExpression(const T& v) : Expression<T>(), value(v) {}
-
-    PExpression<T> Clone() const override
-    {
-        return std::make_shared<ValExpression<T>>(value);
-    }
 
     PExpression<T> accept(TransformationVisitor<T> &v) override {
         return v.visit(this);
@@ -299,16 +255,6 @@ public:
         return Extent{n_, m_};
     }
 
-    PExpression<T> Clone() const override
-    {
-        std::vector<PExpression<T>> expr(this->children.size());
-        for(size_t i =0; i < expr.size(); ++i) {
-            expr[i] = this->children[i]->Clone();
-        }
-
-        return std::make_shared<MatExpression<T>>(n_, m_, std::move(expr));
-    }
-
     PExpression<T> accept(TransformationVisitor<T> &v) override {
         return v.visit(this);
     }
@@ -329,11 +275,6 @@ public:
     explicit RefExpression(const std::string& name)
         : Expression<T>(), m_name(name)
     { }
-
-    PExpression<T> Clone() const override
-    {
-        return std::make_shared<RefExpression<T>>(m_name);
-    }
 
     std::string Name() override
     {
@@ -358,15 +299,6 @@ public:
     explicit FuncExpression(PExpression<T> ref_expression, PExpression<T> e1, PExpression<T> e2, bool limit = false)
         : BinaryExpression<T>(e1,e2), m_name(ref_expression->Name()), ref_expression_(ref_expression), limit_(limit)
     { }
-
-    PExpression<T> Clone() const override
-    {
-        return std::make_shared<FuncExpression<T>>(
-                ref_expression_->Clone(),
-                this->m_e1() ? this->m_e1()->Clone() : nullptr,
-                this->m_e2() ? this->m_e2()->Clone() : nullptr,
-                limit_);
-    }
 
     // 'lim f' asks the reference for the limit of its general clause rather
     // than for one term.
