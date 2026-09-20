@@ -1,13 +1,10 @@
 #ifndef H_NTRAITS
 #define H_NTRAITS
 
-#include "inkamath/best_promotion.hpp"
-
-#include <type_traits> // std::is_arithmetic, std::is_same
-#include <limits> // std::numeric_limits
+#include <type_traits> // std::is_arithmetic
 #include <cmath> // std::pow
 #include <complex> // std::complex
-#include <cstdlib> // std::strtod, std::strtol, std::strtoul
+#include <cstdlib> // std::strtod
 #include <string> // std::string
 #include <sstream> // std::ostringstream
 #include <iomanip> // std::setprecision
@@ -201,7 +198,6 @@ template <typename T>
 struct numeric_interface_imp<T,true>
 {
 	static const int precision = numeric_interface_precision;
-    typedef typename best_promotion<T>::type best_type;
 
     static T zero() {return 0;}
     static T one() {return 1;}
@@ -230,42 +226,10 @@ struct numeric_interface_imp<T,true>
 	static T abs(const T& a) {return std::abs(a);}
 	static T sqrt(const T& a) {return std::sqrt(a);}
 
-    /* dummy template parameter */
-    /*
-    * gcc conforms to standard;
-    * standard (14.7.3.2) would not allow to
-    * explicitly specialize parse_imp here
-    */
-    template <bool,typename U>
-    struct parse_imp
-    {
-        static bool parse(T&, const char*, char*)
-        {
-            return false;
-        }
-    };
-
-    template <typename U>
-    struct parse_imp<true,U>
-    {
-        static bool parse(T& num, const char* begin, char* &end)
-        {
-            best_type tmp;
-            bool ret = numeric_interface<best_type>::parse(tmp,begin,end);
-
-            num = static_cast<T>(tmp);
-            ret = ret &&
-                    (tmp >= std::numeric_limits<T>::min()) &&
-                    (tmp <= std::numeric_limits<T>::max());
-            return ret;
-        }
-    };
-
-    static bool parse(T& num, const char* begin, char* &end)
-    {
-        return parse_imp<!std::is_same<T, best_type>::value,int>::
-                    parse(num,begin,end);
-    }
+    // Declared, not defined: only the types the interpreter actually parses
+    // have an implementation, and a missing one is a link error naming the
+    // type rather than a silent 'false'.
+    static bool parse(T& num, const char* begin, char* &end);
 };
 
 template <>
@@ -273,22 +237,6 @@ inline bool numeric_interface_imp<double,true>::
 parse(double& num, const char* begin, char* &end)
 {
     num = (std::strtod(begin,&end));
-    return (end!=begin);
-}
-
-template <>
-inline bool numeric_interface_imp<long,true>::
-parse(long& num, const char* begin, char* &end)
-{
-    num = (std::strtol(begin,&end,10));
-    return (end!=begin);
-}
-
-template <>
-inline bool numeric_interface_imp<unsigned long,true>::
-parse(unsigned long& num, const char* begin, char* &end)
-{
-    num = (std::strtoul(begin,&end,10));
     return (end!=begin);
 }
 
