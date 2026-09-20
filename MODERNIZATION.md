@@ -84,7 +84,7 @@ found more; it has its own section below.
 | D8 `[fixed]` | Reserved identifiers: `_EXPRESION_EPSILON` (misspelled, and unused) and `_NUMERIC_INTERFACE_PRECISION`. A leading underscore followed by a capital is reserved to the implementation. |
 | D9 `[fixed, differently]` | `Interpreter<T, U = Matrix<T>>` templates on the token scalar `T`, but every AST node is instantiated on `U`. Every literal in every expression was therefore a heap-allocated 1×1 `Matrix<complex<double>>`. Measured: those 16-byte allocations are 44–67% of all allocations, but removing them is worth only 0–15% of the time — they are cheap and hot in cache. A 1x1 matrix now keeps its cell inline, which gets that saving for ten lines; the scalar/matrix *split* the plan prescribed is not justified by the numbers. |
 | D10 `[fixed]` | `getlines.hpp` reimplements line iteration on top of `std::iterator`, deprecated since C++17. Its only user was the Boost test file. |
-| D11 (partly fixed) | Comments and commit history are in French, the README was half French and half English, and the public documentation described behaviour the code does not have — not only C5 but the implicit limit, the dynamic scoping and the three kinds of definition, all of which phase 4 removed. The README is rewritten in English and is now executable, so that half cannot recur. The 2014 comments in the sources are still French. |
+| D11 `[fixed]` | Comments and commit history were in French, the README was half French and half English, and the public documentation described behaviour the code does not have — not only C5 but the implicit limit, the dynamic scoping and the three kinds of definition, all of which phase 4 removed. The README is rewritten in English and is now executable, so that half cannot recur. The sources followed as their code was rewritten; what was left at the end was two French words, two misspellings and the French habit of a space before a colon. The commit history stays French, and so do the two quotations of the 2014 README in this file: a citation translated is a citation weakened. |
 
 ---
 
@@ -424,8 +424,9 @@ The redesign proper. Replaces C10 and C11 rather than deciding them.
    statements that were wrong — sections that quietly assumed a fresh
    interpreter.
 2. Keep the French history — it is the project's provenance — but write new
-   comments in English (D11) `[done]` for the README; the 2014 comments in
-   the sources are still French and are rewritten as their code is.
+   comments in English (D11) `[done]`. The sources were rewritten as their
+   code was, and the sweep at the end found only `Implementation de`,
+   `Symetric`, `kewword_params_begin` and three French-typographic colons.
 3. A short note on the interpreter's model `[done]`: references name
    expressions, not values. It was explained halfway down section 4; it is now
    the first thing the README says, with the example that makes it concrete.

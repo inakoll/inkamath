@@ -56,7 +56,7 @@ public:
     T* data() {return IsScalar() ? &scalar_ : cells_.data();}
     const T* data() const {return IsScalar() ? &scalar_ : cells_.data();}
 
-    /* Implementation de Numerical interface */
+    /* Implementation of the numeric interface */
     static Matrix<T> pow(const Matrix<T>& a, const Matrix<T>& b)
     {
         const T exponent = b.Scalar("a matrix cannot be an exponent");
@@ -99,7 +99,7 @@ public:
         return numeric_interface<T>::abs(a.Scalar("a matrix has no absolute value"));
     }
 
-    /* Symetric operators */
+    /* Symmetric operators */
     friend Matrix<T> operator*(const Matrix<T>& a, const Matrix<T>& b) {return a.mul(b);}
 
     friend Matrix<T> operator+(const Matrix<T>& a, const Matrix<T>& b)

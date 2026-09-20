@@ -125,8 +125,10 @@ Existing code does not follow these; new and rewritten code does.
   macros, and prefer `constexpr` to `#define`.
 - Report failure through the function's return type or an exception — never by
   printing to `std::cout` and returning a default-constructed value.
-- Comments and identifiers in English. The history is in French; new text is
-  not.
+- Comments and identifiers in English. The sources are now entirely English;
+  the commit history before this work is French and stays that way, as do
+  quotations of the 2014 README in `MODERNIZATION.md` — a citation translated
+  is a citation weakened.
 
 ## 7. When the plan and the code disagree
 

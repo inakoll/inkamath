@@ -68,13 +68,13 @@ public:
     virtual ReturnType visit(FuncExpression<T>* expr) = 0;
 };
 
-// Design choice: limit the number of visitors base class.
-// => Only two visitors base class that any AST node should accept explicitly:
+// Design choice: limit the number of visitor base classes.
+// => Only two base classes that any AST node has to accept explicitly:
 // - TransformationVisitor returning a PExpression<T>
 // - FoldingVisitor returning a T
 
 // class TransformationVisitor
-// This is the base class of visitors that modify the parser-AST to :
+// This is the base class of visitors that modify the parser AST to:
 // - add semantic nodes
 // - simplify the tree
 // - change the representation of the expression (example: pretty printing
@@ -84,7 +84,7 @@ class TransformationVisitor : public ExpressionVisitor<T, PExpression<T>> {
 };
 
 // class FoldingVisitor
-// This is the base class of visitors that "folds" the tree to :
+// This is the base class of visitors that "fold" the tree to:
 // - evaluate the expression (interpreter)
 // - generate code (compiler)
 template <typename T>
@@ -109,7 +109,7 @@ public:
 	}
 	
 	PExpression<T> visit(EqualExpression<T>* expr) override {
-		kewword_params_begin = true;
+		keyword_params_begin = true;
         this->parameters_dict[expr->m_e1()->Name()] = expr->m_e2();
         this->parameters_names.push_back(expr->m_e1()->Name());
 		++visitor_depth;
@@ -117,7 +117,7 @@ public:
 	}
 	
 	PExpression<T> visit(RefExpression<T>* expr) override {
-		if(!kewword_params_begin) {
+		if(!keyword_params_begin) {
 			this->parameters_names.push_back(expr->Name());
             this->parameters_expr.push_back(expr->self());
 		}
@@ -129,7 +129,7 @@ public:
 	}
 	
 	PExpression<T> visit_others_expr_imp(Expression<T>* expr) {
-		if(!kewword_params_begin) {
+		if(!keyword_params_begin) {
             this->parameters_expr.push_back(expr->self());
 		}
 		else {
@@ -185,7 +185,7 @@ public:
 
 private:
 	size_t visitor_depth = 0;
-	bool kewword_params_begin = false;
+	bool keyword_params_begin = false;
 	std::vector<std::string> parameters_names;
 	std::vector<PExpression<T>> parameters_expr;
     ExprDict<T> parameters_dict;
@@ -319,9 +319,7 @@ public:
             }
         }
 
-        // Surprisingly it just works (at least for now).
-        // Note to self : refactor later
-        return retval; // finally
+        return retval;
     }
 
     T visit(RefExpression<T>* expr) override {
