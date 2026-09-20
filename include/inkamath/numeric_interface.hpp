@@ -64,7 +64,7 @@ struct numeric_interface_imp<std::complex<T>,false>
     static std::complex<T> one()
     {
         return std::complex<T>(numeric_interface<T>::one(),
-                               numeric_interface<T>::one());
+                               numeric_interface<T>::zero());
     }
 
     static int toInt(const std::complex<T>& a)

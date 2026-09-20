@@ -62,7 +62,6 @@ public:
         return definition->Eval(ai_parameters, *this);
     }
 
-    friend struct Frame;
     // The scope of one call's parameters.
     struct Frame {
     public:
