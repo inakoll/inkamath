@@ -66,7 +66,7 @@ phase 0; the rest are open and are scheduled into the phases that follow.
 | C9 | `numeric_interface_imp<std::complex<T>, false>` provides no `sqrt`, yet its own `abs` calls `numeric_interface<T>::sqrt`. `Matrix<T>::sqrt` throws unconditionally. The numeric interface is only accidentally complete for the one type actually instantiated. |
 | C14 | **Four `catch` blocks discard errors inside a constructor.** `parameters.hpp:28, 38, 105, 115` catch `SubVisitor`/`ParametersVisitor` exceptions in the `ParametersDefinition` and `ParametersCall` constructors and `return`, leaving the object half-built — `parameters_names_`, `index_name_`, `a_` and `b_` never assigned. The errors never reach `Eval`, so the phase 3 error channel does not surface them; they are invisible by construction. A sibling of C13 rather than an instance of it: there the interpreter has nothing to report, here it has something and throws it away. The machinery is rewritten in phase 4, so fix it there rather than patching a constructor that is about to go. |
 | C15 `[fixed]` | **The parser read one token past the end.** `ParseParameters` tested `Peek().type` after `ParseMatrix` had consumed the input — an `end()` dereference before the token cursor became an index, `vector::operator[](size())` after. Neither ASan nor UBSan catches it while the index lands inside the allocation, which for a vector with spare capacity is most of the time; `_GLIBCXX_ASSERTIONS` does, and sanitizer builds now define it. `f(1+2` is the repro and is a golden. A sweep of all 117 prefixes of ten representative inputs found no other instance — only C1. |
-| C13 | **Nothing ever fails, which is why everything else survived.** An unknown identifier evaluates to `0`. Surplus arguments are dropped. A missing parameter is looked up by name in the enclosing scope — `h(x)=x^2` with `x=5` in scope makes bare `h` evaluate to `25`, which is dynamic scoping arrived at by accident. A non-integer index is truncated. None of these reports anything. The interpreter always returns a number, so a typo and a correct series are indistinguishable from the outside; that is how a decade of defects stayed invisible. Root cause of the plausibility of C1, C2, C5, C10 and C11 alike. |
+| C13 (partly fixed) | **Nothing ever fails, which is why everything else survived.** An unknown identifier evaluates to `0`. Surplus arguments are dropped. A missing parameter is looked up by name in the enclosing scope — `h(x)=x^2` with `x=5` in scope makes bare `h` evaluate to `25`, which is dynamic scoping arrived at by accident. A non-integer index is truncated. None of these reports anything. The interpreter always returns a number, so a typo and a correct series are indistinguishable from the outside; that is how a decade of defects stayed invisible. Root cause of the plausibility of C1, C2, C5, C10 and C11 alike. Arity is fixed; the undefined name and the truncated index wait on phase 4 (see phase 3 item 3). |
 
 ### Design and dead weight
 
@@ -176,8 +176,26 @@ answering every question with a number.
    offending token rather than pointing at a column, which reads better for
    single-line input, and inkamath has no other kind. Adding `offset` to
    `Token` is three lines whenever something wants a caret.
-3. **Unknown name, arity mismatch, non-integer index become diagnostics**
-   (C13). This is the change that will move the most goldens.
+3. **Arity mismatch becomes a diagnostic** (C13) `[done]`. The check sits at
+   the user's call, not at every parameter binding: the recursion machinery
+   builds synthetic `ParametersCall`s carrying no arguments on purpose, and
+   checking those breaks `exp(1)`.
+
+   The other two thirds of this item are **blocked on phase 4**, which is not
+   what the plan assumed. Both were tried and reverted:
+
+   - **Unknown name.** Making `ReferenceStack::Eval` report an undefined name
+     breaks *defining* a function: `f(x,y)=x^2+y` reports `error: x is not
+     defined`, because a definition still evaluates its own left-hand side
+     with its parameters unbound. Blocked on C10 — definitions must become
+     statements first.
+   - **Non-integer index.** A throw from `SubVisitor` never reaches the user:
+     the `ParametersDefinition` and `ParametersCall` constructors catch it and
+     `return` (C14). Verified with a probe that threw unconditionally and
+     changed nothing an interpreter session could see. Those catches are
+     load-bearing — they are how the code decides an expression is not an
+     index — so they cannot simply be deleted; the clause model in phase 4
+     replaces them.
 4. **Evaluation budget** (C1). A per-`Eval` limit on recursion depth and total
    steps, reported as a diagnostic. This is the difference between "the
    interpreter rejects your input" and "the process dies", and it lets the AGM
