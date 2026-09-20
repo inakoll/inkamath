@@ -176,7 +176,10 @@ void Interpreter<T,U>::Lexer(const std::string& s)
                 this->Number_Lexer(s,i);
             break;
         case '#': // inkamath comments
-            return;
+            // Not a return: a line that is only a comment must still reach
+            // the empty check below, or the parser starts on no tokens.
+            i = s.length();
+            break;
 		default:
             if(std::isalpha(s[i]))
                     Reference_Lexer(s,i);

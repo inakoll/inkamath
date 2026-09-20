@@ -18,6 +18,12 @@ error: unexpected ')'
 >> @
 error: unexpected character '@'
 
+# A line that is only a comment reaches the empty-expression check like any
+# other empty input. The lexer used to return early and leave the parser with
+# no tokens at all (MODERNIZATION.md, C18).
+>> # nothing to evaluate
+error: empty expression
+
 >> 2 3
 error: unexpected '3'
 
