@@ -248,6 +248,12 @@ error: u did not converge within 100 terms (last term 200)
 
 An index must be a whole number, and `lim` is a reserved word.
 
+A term is evaluated once per *context* — which definition, which index, which
+argument values — and the answer is remembered until a definition changes. It
+makes no difference to what an expression means; it makes the difference
+between a chain of terms and a tree of them for a recurrence whose general
+clause names itself twice, as a pair of mutually recursive sequences does.
+
 ### 5. Printing a definition back
 
 `?name` shows what a name is bound to, as it was written, without evaluating
