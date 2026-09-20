@@ -105,9 +105,6 @@ public:
     // x against the parameter this very call is about to bind.
     Arguments EvaluateArguments(const ParametersCall<T>& param_call, EvaluationVisitor<T>& evaluator) const {
         Arguments arguments;
-        for(const auto& definition : parameters_dict_) {
-            arguments.emplace_back(definition.first, definition.second->accept(evaluator));
-        }
         auto pname = parameters_names_.begin();
         for(const auto& expr : param_call.parameters_expression()) {
             if(pname != parameters_names_.end()) {
@@ -125,6 +122,22 @@ public:
         for(const auto& argument : arguments) {
             stack.Set(argument.first, ParametersDefinition<T>(),
                       PExpression<T>(new ValExpression<T>(argument.second)));
+        }
+    }
+
+    // A default belongs to the definition, not to the call: it is evaluated
+    // only when the call leaves its parameter empty, and in the callee's
+    // scope, so that it can refer to the definition's other parameters.
+    void BindDefaults(const ParametersCall<T>& param_call, EvaluationVisitor<T>& evaluator) const {
+        const size_t positional = param_call.parameters_expression().size();
+        for(size_t i = positional; i < parameters_names_.size(); ++i) {
+            const std::string& name = parameters_names_[i];
+            if(param_call.parameters_dict().count(name) != 0) continue;
+            auto fallback = parameters_dict_.find(name);
+            if(fallback == parameters_dict_.end()) continue;
+            evaluator.stack().Set(name, ParametersDefinition<T>(),
+                                  PExpression<T>(new ValExpression<T>(
+                                      fallback->second->accept(evaluator))));
         }
     }
 

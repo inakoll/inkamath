@@ -107,6 +107,7 @@ public:
         typename ReferenceStack<T>::Frame frame(stack);
         ParametersDefinition<T>::Bind(arguments, stack);
         EvaluationVisitor<T> evaluator(stack);
+        parameters.BindDefaults(call, evaluator);
         if(call.limit()) {
             if(!general_) {
                 throw std::runtime_error(reference_name_ + " has no general clause, so it has no limit");

@@ -48,6 +48,30 @@ k(a, b=5)=a*100+b
 >> k(b=2)
 error: k has no value for a
 
+# A default is evaluated only when the call leaves its parameter empty. Every
+# default used to be evaluated on every call, so this reported 'zzz is not
+# defined' for a value it never needed (MODERNIZATION.md, C30).
+>> n(a, b=zzz)=a
+n(a, b=zzz)=a
+
+>> n(1, 2)
+1
+
+>> n(1)
+error: zzz is not defined
+
+# And it is evaluated in the definition's scope, so it can refer to the
+# definition's other parameters. It used to be evaluated in the caller's, so
+# this answered 100 -- the global x, not the argument.
+>> outer=50
+outer=50
+
+>> o(outer, y=2*outer)=y
+o(outer, y=2*outer)=y
+
+>> o(5)
+10
+
 # Surplus arguments and missing ones are both errors. Missing ones used to
 # fall back to the calling scope and then to zero, reporting nothing.
 >> g=1+2
