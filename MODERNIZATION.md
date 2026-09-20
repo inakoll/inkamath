@@ -569,7 +569,7 @@ this phase.
   be written as two lines: the second would be a global that cannot see `x`.
   `locals.ink` makes that argument at `f(x) = (t = 2*x) + t`.
 
-## Phase 9 — Memoisation
+## Phase 9 — Memoisation `[done]`
 
 The oldest idea in the project, and the one that would make it more than a
 calculator: an evaluation result belongs to a *context* — the definition, its
@@ -608,38 +608,40 @@ times each.
 
 ### Measured
 
-A prototype: one `std::unordered_map` on `ReferenceStack`, keyed on the
-callee's name, its index and the raw bytes of its argument values, consulted
-in `Reference::Eval` once the index and the arguments are evaluated and
-before the frame is pushed. Sixty lines.
+One `std::unordered_map` on `ReferenceStack`, keyed on the callee's name, its
+index and the raw bytes of its argument values, consulted in `Reference::Eval`
+once the index and the arguments are evaluated and before the frame is
+pushed. Fifty lines.
 
 | | eager | memoised |
 |---|---|---|
-| `gm(1,2)_14` | 33.6 ms | 1.7 ms |
-| `gm(1,2)_16` | 135.1 ms | 1.9 ms |
-| `gm(1,2)_17` | gives up after 1,000,000 steps | 1.8 ms |
-| `gm(1,2)_254` | gives up after 1,000,000 steps | 3.3 ms |
+| `gm(1,2)_14` | 33.6 ms | 1.9 ms |
+| `gm(1,2)_16` | 135.1 ms | 1.8 ms |
+| `gm(1,2)_17` | gives up after 1,000,000 steps | 1.6 ms |
+| `gm(1,2)_254` | gives up after 1,000,000 steps | 2.8 ms |
 | `gm(1,2)_255` | nests more than 256 references | nests more than 256 references |
 
-Whole-process times, of which 1.5 ms is starting up: the memoised column is
+Whole-process times, of which 1.7 ms is starting up: the memoised column is
 measuring the loader, not the agm.
 
 Exponential becomes linear, and the step budget stops being the limit: what
 stops the agm now is `max_depth`, at the term where the recursion itself is
-256 deep. Every golden transcript is byte-identical and all four suites pass.
+256 deep. No recorded output moved, and the two entries that record the change
+are both new: `gm(1,2)_20`, which the step budget used to refuse, and an
+`r(2)` whose global changes under it.
 
 The cost, on work with nothing to reuse — two hundred evaluations of a linear
-recurrence, each with different arguments — is **23.0 ms against 28.8 ms**, a
-quarter more, and every microsecond of it is in building a string key rather
-than in the cache itself. Expressions that
-name nothing are unaffected: twenty thousand lines of arithmetic measure the
-same either way.
+recurrence, each with different arguments — is **23.0 ms against 24.2 ms**,
+and all of it is in building the key rather than in the cache: a first version
+that built the same key out of `+` temporaries cost five times that.
+Expressions that name nothing are unaffected — twenty thousand lines of
+arithmetic measure the same either way.
 
-**Lifetime matters more than the cache.** Two were measured. A cache cleared
-at each top-level evaluation is the obviously-safe one; a cache cleared when
-a *definition changes* is both simpler and worth far more, because a session
-is a conversation — `gm(1,2)_240` asked two hundred times is 210 ms under the
-first and 4.0 ms under the second. Take the second.
+**Lifetime mattered more than the cache.** Two were measured. Clearing at each
+top-level evaluation is the obviously-safe rule; clearing when a *definition
+changes* is both simpler and worth far more, because a session is a
+conversation — `gm(1,2)_240` asked two hundred times is 210 ms under the first
+and 3.1 ms under the second. The second is what landed.
 
 ### Why it is sound
 
@@ -671,8 +673,10 @@ Two smaller rules the prototype needed:
   file, and it is a larger program.
 - Not free of memory: one entry per distinct context, for as long as the
   definitions stand. The agm to term 254 is about five hundred entries, but a
-  session that sweeps a parameter accumulates one per value, so this lands
-  with a cap and an eviction rule, not without.
+  session that sweeps a parameter accumulates one per value, so there is a cap
+  — `max_memoised`, a hundred thousand — and reaching it drops the whole map.
+  Eviction by age would keep more of the cache and needs an ordering to
+  maintain; dropping everything costs time and can never cost an answer.
 - Not a reason to raise `max_depth`. Depth is a recursion the user wrote;
   steps were an accident of how it was evaluated. Removing the accident is
   this phase; the other is a separate argument, with a stack to size first.
@@ -752,11 +756,11 @@ Phase 8 waits for phase 7. It is the only phase that changes the language
 rather than repairing it, and it was worth nothing while four inputs still
 killed the process.
 
-Phase 9 is numbered after phase 8 and should land before it. It does not
-depend on it — the cache is keyed on values, which is what the interpreter
-has today — and phase 8 does depend on it, in the sense that laziness costs
+Phase 9 is numbered after phase 8 and landed before it. It does not depend on
+it — the cache is keyed on values, which is what the interpreter has today —
+and phase 8 does depend on it, in the sense that laziness costs
 re-evaluation and phase 9 is what makes re-evaluation cheap. Landing 9 first
-also measures the two separately, which landing them together would not.
+also measured the two separately, which landing them together would not.
 
 The honest risk was phase 4. It changed what existing sessions mean, so it
 could not hide behind unchanged goldens — every moved line was justified
