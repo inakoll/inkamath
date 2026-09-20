@@ -34,6 +34,12 @@ error: missing ')' after function parameters
 >> undefined
 error: undefined is not defined
 
+# Operands are evaluated left to right, so the first diagnostic is the
+# leftmost one. C++ does not order the two sides of `f(a) + f(b)`, and this
+# reported 'bbb' under GCC and 'aaa' under Clang (MODERNIZATION.md, C24).
+>> aaa+bbb
+error: aaa is not defined
+
 >> undefined(2)_3
 error: undefined is not defined
 

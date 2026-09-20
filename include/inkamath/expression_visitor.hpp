@@ -224,9 +224,12 @@ public:
         return expr->m_e1()->accept(*this);
     }
 
+    // The two operands are sequenced: C++ leaves the order of `f(a) + f(b)`
+    // unspecified, and an operand can bind a name or raise a diagnostic, so
+    // without this the answer depends on the compiler.
     T visit(AddExpression<T>* expr) override {
-        return expr->m_e1()->accept(*this)
-             + expr->m_e2()->accept(*this);
+        const T left = expr->m_e1()->accept(*this);
+        return left + expr->m_e2()->accept(*this);
     }
 
     T visit(NegExpression<T>* expr) override {
@@ -234,19 +237,18 @@ public:
     }
 
     T visit(MultExpression<T>* expr) override {
-        return expr->m_e1()->accept(*this)
-             * expr->m_e2()->accept(*this);
+        const T left = expr->m_e1()->accept(*this);
+        return left * expr->m_e2()->accept(*this);
     }
 
     T visit(DivExpression<T>* expr) override {
-        return expr->m_e1()->accept(*this)
-             / expr->m_e2()->accept(*this);
+        const T left = expr->m_e1()->accept(*this);
+        return left / expr->m_e2()->accept(*this);
     }
 
     T visit(PowExpression<T>* expr) override {
-        return  numeric_interface<T>::pow(
-                    expr->m_e1()->accept(*this),
-                    expr->m_e2()->accept(*this));
+        const T base = expr->m_e1()->accept(*this);
+        return numeric_interface<T>::pow(base, expr->m_e2()->accept(*this));
     }
 
     T visit(FactExpression<T>* expr) override {
