@@ -181,6 +181,31 @@ works, and two of the three defects below came out of the quadratic.
 | C34 `[fixed]` | **`pi` and `e` stop at fourteen digits.** They were written as `3.1415926535898` and `2.7182818284590`, which is a 7e-15 error in pi and a 4.5e-16 one in e, both far above what a double rounds to. `e^(i*pi)` reported an imaginary part of `4.58636533e-14`, two hundred times the true rounding error, and every series a student checks against a constant inherits it. Writing the digits out costs nothing. It moved one recorded output: `lim exp(1)-e`, from `-7.69606601e-13` to `-8.149037e-13`, because the constant it subtracts is now the right one. |
 | C33 `[fixed]` | **Unary minus flips the branch of every fractional power.** `(-4)^0.5` answered `i*-2` where `(0-4)^0.5` answered `i*2` — the same number, two roots, decided by how the minus was written. `std::negate` on a `std::complex` negates the zero imaginary part too, and a `-0` there puts the value just below the branch cut, where the principal root is the conjugate. Negating by subtracting from zero keeps the `+0`. Found writing `(-b + (b^2-4*a*c)^0.5)/(2*a)`, where the discriminant comes out of a subtraction and is right, while the same root typed with a literal negative is wrong. |
 
+### What the fuzzing confirmed
+
+C40 to C43 came from typing at the prompt, so the next pass was mechanical,
+and aimed at *answers* rather than crashes -- the crash surface was swept in
+the second pass. Four kinds of oracle, about forty thousand checks:
+
+| | |
+|---|---|
+| **Against Python** | 10,300 fully parenthesised scalar expressions, then 9,000 with no parentheses at all, which tests the precedence table itself rather than the arithmetic under it; 1,500 powers with fractional, negative and complex exponents over negative and complex bases, which is where C33 lived. |
+| **Against a model** | 1,650 random two-term recurrences, six queries each, including indices below the lowest base clause and negative ones; 2,800 expressions containing locals, against a model of left-to-right evaluation and line-scoped binding, with a probe that nothing survives its line. |
+| **Against itself** | 540 random matrices through eleven algebraic laws -- distributivity, `A^3` against `A*A*A`, `(A*B)[1,1]` against the definition of the product -- and 500 more across rectangular shapes and block round-trips. |
+| **Against a fresh process** | 1,500 programs asking a query twice, then redefining what it depends on and asking again, against a process that started from the redefined value. This is the only oracle that can see a stale memoised answer, and it is the reason to keep it. |
+
+Nothing moved. The three bugs the campaign found were all in the oracles: a
+prompt off by one, a banner counted as an answer, and a Python evaluator that
+computed `3^3^3^3` exactly and never came back where the interpreter, working
+in doubles, answered `inf` in microseconds. An oracle has to be at least as
+robust as the thing it judges.
+
+What no oracle covers, and where the risk therefore still sits: whether `lim`
+converges to the right value rather than merely converging, the wording of
+diagnostics, `?` round-tripping through its own output, and C41's block
+continuation, which was excluded on purpose because there is nothing to
+compare it against until it is decided.
+
 ---
 
 ## Phase 0 — Make it buildable and verifiable `[done]`
