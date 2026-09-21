@@ -117,10 +117,15 @@ public:
         return a.BinaryOp(b, std::divides<T>());
     }
 
+    // Subtracting from zero rather than negating: std::negate on a complex
+    // flips the sign of a zero imaginary part, and a -0 there puts the value
+    // on the far side of the branch cut, so '(-4)^0.5' answered '-i*2'.
     Matrix<T> operator-() const
     {
         Matrix<T> c(*this);
-        std::transform(c.data(), c.data() + c.extent_.count(), c.data(), std::negate<T>());
+        const T zero = numeric_interface<T>::zero();
+        std::transform(c.data(), c.data() + c.extent_.count(), c.data(),
+                       [zero](const T& value) {return zero - value;});
         return c;
     }
 

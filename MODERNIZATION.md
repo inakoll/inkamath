@@ -158,6 +158,19 @@ sanitizer build.
 
 ---
 
+## Verified defects — third pass
+
+Found by sitting at the prompt and writing what a student would write:
+factorials, Fibonacci, Newton's method for a square root, a sum of a series,
+compound interest, binomial coefficients, the roots of a quadratic. Most of it
+works, and two of the three defects below came out of the quadratic.
+
+| | |
+|---|---|
+| C33 `[fixed]` | **Unary minus flips the branch of every fractional power.** `(-4)^0.5` answered `i*-2` where `(0-4)^0.5` answered `i*2` — the same number, two roots, decided by how the minus was written. `std::negate` on a `std::complex` negates the zero imaginary part too, and a `-0` there puts the value just below the branch cut, where the principal root is the conjugate. Negating by subtracting from zero keeps the `+0`. Found writing `(-b + (b^2-4*a*c)^0.5)/(2*a)`, where the discriminant comes out of a subtraction and is right, while the same root typed with a literal negative is wrong. |
+
+---
+
 ## Phase 0 — Make it buildable and verifiable `[done]`
 
 Nothing else can be trusted until a change can be checked. This phase changed
