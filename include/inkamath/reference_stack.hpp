@@ -38,8 +38,11 @@ public:
     void BeginEvaluation() {depth_ = 0; steps_ = 0;}
 
     ReferenceStack() {
-        this->Set("pi", ParametersDefinition<T>(), PExpression<T>( new ValExpression<T>(T(3.1415926535898))));
-        this->Set("e",  ParametersDefinition<T>(), PExpression<T>( new ValExpression<T>(T(2.7182818284590))));
+        // Every digit a double holds: the 2014 literals stopped at fourteen,
+        // which is a 7e-15 error in pi, and that is what 'e^(i*pi)' reported
+        // as the imaginary part of -1.
+        this->Set("pi", ParametersDefinition<T>(), PExpression<T>( new ValExpression<T>(T(3.14159265358979323846))));
+        this->Set("e",  ParametersDefinition<T>(), PExpression<T>( new ValExpression<T>(T(2.71828182845904523536))));
     }
 
     // A memoised result may have read a global, so redefining one drops the

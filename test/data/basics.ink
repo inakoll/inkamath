@@ -29,6 +29,12 @@
 >> [pi, e]
 3.14159265 2.71828183
 
+# They carry every digit a double holds. The 2014 literals stopped at
+# fourteen, and the imaginary part here was 4.58636533e-14 -- the error in pi,
+# not the error of the arithmetic (MODERNIZATION.md, C34).
+>> e^(i*pi)
+-1+i*1.2246468e-16
+
 >> i
 i
 

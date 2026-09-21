@@ -57,7 +57,7 @@ exp(x)_n=exp(x)_(n-1)+x^n/!n
 
 # Not floating point: the series stops when two terms agree to 1e-10.
 >> lim exp(1)-e
--7.69606601e-13
+-8.149037e-13
 
 >> cos(x)=(lim exp(i*x)+lim exp(-i*x))/2
 cos(x)=(lim exp(i*x)+lim exp(-i*x))/2
