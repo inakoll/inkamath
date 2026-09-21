@@ -169,6 +169,7 @@ works, and two of the three defects below came out of the quadratic.
 
 | | |
 |---|---|
+| C44 | **The concepts do not ask for what the product needs.** `Matrix::mul` accumulates with `c(i,j) += ...`, and neither `Numeric` nor `Parsable` mentions `+=` on the cell type. It goes unnoticed because the concept checks `a*b` as an expression and a template body is not instantiated by overload resolution, so the requirement only bites when someone supplies a number type and gets a template error inside `matrix.hpp` rather than a concept failure at the interface. Found by instantiating `Interpreter<Rational>`: a type that satisfied everything the concepts state still failed to compile. **Proposed:** state it -- `Numeric`'s requires-clause already names a cell, so it takes one line -- or drop the requirement by writing the accumulation as `c(i,j) = c(i,j) + ...`, which asks less of the type at the cost of a copy per term. Not fixed here because the only test that proves it is an out-of-tree instantiation, and a negative concept test costs more than it protects. |
 | C43 `[fixed]` | **A number could not start with the point.** `.5` reported `unexpected character '.'`, while `1e3`, `0x10` and `2i` all lexed -- the exotic spellings worked and the common one did not, because the lexer's case list holds the ten digits and nothing else. `strtod` reads `.5` without being asked; only the dispatch was missing. A point that does not begin a number still reports the same message, so `a.b` is unchanged. |
 | C42 `[fixed]` | **The factorial answered for every argument it had no business accepting.** `!5.5` was `120`, `!(0-3)` was `1`, `!(2+i*3)` was `2` and `!i` was `1`. The loop multiplies `i` while `i <= n`, so a fraction truncates, a negative gives the empty product, and the complex layer passed `a.real()` down without looking at the rest, dropping the imaginary part before the loop ever saw it. Four plausible numbers where there should be four diagnostics, which is C13 in an operator nobody had pointed at -- the corpus tested `!5` and `!0` and stopped. Found by typing `!5.5` while checking what the lexer accepts. |
 | C41 `[kept]` | **A block that does not fill its band continues with its own last cell.** `[a, [3 4]]`, with `a` 2x2, gives `1 2 3 4 / 3 4 4 4`; `[[1 2 3], a]` fills a whole row with `3 3 3`. The code says so in as many words -- *"extend the previous (up and left) evaluated cell result"* -- so it is deliberate, and read charitably the rule is **a block continues with its last value**, which is an ellipsis: `[a, 0]` pads the band with zeros and `[a, 1]` with ones, and that is a notation a matrix wants. The author does not remember the use case and suspects exactly this: an attempt at the `...` of matrix notation. Where it stops being statable is the multi-cell block, where continuing `[3 4]` with `4 4` is a corner repeated rather than a continuation anybody wrote. It is the third answer to one question -- a literal's short row pads with zeros (README.md section 2), a single value stretches, a short block repeats a corner -- and only the first two can be said out loud. **Decision: kept, and recorded as it is** in `matrices.ink` with the entry saying so. Not turned into a diagnostic while it may still be the residue of an idea; when the idea is found or ruled out, this goes and an explicit notation for the continuation replaces it, rather than a fourth fill rule. |
@@ -863,6 +864,60 @@ Recorded so they are not re-litigated later, or drifted into by accident.
   interpreter, and the size constraint at the top of this file is the reason
   to say so out loud rather than drift towards one. Recorded, not scheduled:
   if it is ever wanted, it starts with extents, not with rewrite rules.
+
+## Openings
+
+Not scheduled, and not Deferred either -- Deferred is for what has been argued
+and declined. These are the directions worth taking, with what is known about
+each measured rather than assumed.
+
+**Other number systems.** The seam D9 and C9 argued about is real, and this is
+not a guess: `Interpreter<double>` compiles and runs with no complex numbers at
+all and no change to the project, and `Interpreter<Rational>` -- eighty lines
+of exact fraction over two `long long`s, written to find out -- runs sequences,
+matrices, cells and the memoisation on top of them, needing one thing the
+concepts never stated (C44). Then `1/3+1/3+1/3` is `1` rather than nearly one,
+`s_n=s_(n-1)/3` gives `1/243`, and `a/3` is a matrix of fractions.
+
+Three things it opens, at three prices. *Exact division* is the eighty lines
+above. *Exact magnitude* is a bignum -- `fib_100` prints `3.54224848e+20` for a
+number with twenty-one digits, and `!21` and `2^64` lose the same way -- which
+is several hundred lines to write or a dependency to raise, and §5 makes that a
+decision rather than something to slip in. *Both* is a rational over a bignum,
+which is the real prize and the real cost. The question worth answering first
+is not whether it works but what the prompt should be: one interpreter per
+number type, chosen when it is built, or a language where the kind of a number
+is part of the number.
+
+**A standard library.** There are no functions: `sqrt` is `^0.5`, `exp` is
+`e^x`, and `ln`, `sin` and `cos` are nothing at all. Two shapes, and they are
+not the same project. A **prelude written in inkamath** is in character and is
+the better demonstration -- `sequences.ink` already defines `cos` and `sin` from
+the exponential series, and they work -- but it needs a way to load a file, and
+its accuracy is bounded by `lim`'s tolerance, so *Numbers the user cannot tune*
+comes first. **Built-in elementary functions** are accurate and fast and
+contradict `README.md`, which says there are none as a statement of design
+rather than an apology. Deciding which of those two sentences is true is the
+whole of the work.
+
+**A conditional.** Argued twice above, and the argument only strengthened: the
+language's one lazy construct is clause dispatch, and a conditional is the only
+thing that would create more work worth skipping. It would also close what the
+third pass found by accident -- a base clause cannot depend on a parameter, so
+Pascal's rule for the binomial cannot be written, and `binom(k)_n` has to go
+through factorials. The idiom to argue about is whether it arrives as `if` or
+as a guard on a clause, which is the form the sequences already suggest.
+
+**Slices.** `a[1]` as a whole row, which would make a reduction natural rather
+than a recurrence over cells, and would give chained indexing a reason to exist
+-- today `a[1,2][1,1]` is a no-op precisely because every index yields a 1x1.
+
+If they were mine to order: the conditional, because it is the one missing
+primitive rather than a convenience; then the number systems, because the seam
+is already open and the experiment above took an afternoon; then the tolerance,
+and a prelude behind it.
+
+---
 
 ## Sequencing
 
