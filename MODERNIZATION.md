@@ -118,7 +118,7 @@ made that are not true.
 | C26 `[fixed]` | **An index on a plain definition is discarded in silence.** `m=5` then `m_3` prints `5`; so does `m_(-2)`, and `pi_7` prints `3.14159265`. `EvalImp` returns the plain clause before it ever looks at whether an index was supplied. `?m_3` on the same definition *does* report `m has no clause for index 3`, so the two paths disagree. The last survivor of the class C13 set out to end, and `references.ink:98` recorded it without saying so. Fixed in both paths, which now give the same message; the golden moved and says what it is testing. |
 | C27 `[fixed]` | **`lim` reports a limit for sequences that have none.** `Converge` seeds `previous` with a default-constructed `T`, then compares the first real term against that fabricated zero, so `u_n=n-1` — which diverges — gives `lim u` = `0`. The same seed breaks a matrix-valued sequence with an unrelated message, since the first subtraction is 2x2 minus 1x1. Separately, the stopping test `!(diff > tolerance)` is true for NaN, so `w_0=2; w_n=w_(n-1)^2; lim w` answers `inf*-nan` instead of reporting non-convergence. Fixed: with no base clause the first term is not compared to anything, and the test is `<= tolerance` so that NaN counts as not converged. What remains is inherent to an absolute tolerance rather than a defect — `v_n=n/100000000000` still reports `2e-11`, because consecutive terms really do agree to 1e-10; `lim` reports the first term within tolerance of its predecessor, which is what the README says it does. |
 | C28 `[fixed]` | **An out-of-range exponent is converted to `int` unchecked.** The C5 fix routes any exponent with `imag()==0 && real()==floor(real())` through `static_cast<int>(b.real())`. `2^2147483648` gives `0` and `0.5^3000000000` gives `inf*-nan` — undefined behaviour, and silently wrong either way. GCC's `-fsanitize=undefined` does not include `float-cast-overflow`, so the sanitizer job does not see it; adding that check to `INKAMATH_SANITIZE` would. Fixed by taking the integer path only for an exponent that fits: `2^2147483648` now overflows to `inf`, which is the answer. |
-| C29 | **A definition that is not at the root still evaluates its left-hand side.** `Interpreter::Eval` handles a definition as a statement only when it is the whole input; anywhere else `EvaluationVisitor::visit(EqualExpression*)` binds and then returns `m_e1()->accept(*this)`, which is the C10 mechanism. So `1+(b=3)` is `4`, `0+(h(x)=x^2)` is `error: x is not defined`, and `0+(p=p)` exhausts the depth budget. A definition's index is evaluated at bind time too: `g_(1+zzz)=5` reports `zzz is not defined` and binds nothing. C10's own entry is worded correctly — "a **top-level** definition is a statement" — but phase 4 item 3 and `README.md` §3 drop the qualifier and so claim more than is true. **Decision: a definition nested in an expression becomes a syntax error**, as a step towards phase 8 rather than as a verdict on the idea. The construct was meant to bind a local reusable later in the same expression — the 2014 README says so: "L'assignation étant une expression comme une autre, on peut trouver une assignation aussi bien dans la liste des paramètres d'une référence ou dans la partie droite d'une autre assignation." Measured, it never delivered that. It was compiler-dependent — `(t=3)+t` was `6` under Clang and `t is not defined` under GCC — until C24 fixed the order, and it is now `6` on both; that removed the strongest argument for the error, since C24 no longer depends on it. What remains: since phase 4 item 5 a local cannot see the parameters it exists to capture — `f(x)=(t=2*x)+t` then `f(5)` reports `x is not defined`, because `t` holds `2*x` and is evaluated in a frame that sees only globals. At the top level the binding is not local either: `(t=3)+t` leaves `t` defined as `3`. Phase 8's prototype fixes both without an error, so the decision stands only as a stepping stone and should be revisited against that phase rather than taken as settled. The error costs one function body — `EvaluationVisitor::visit(EqualExpression*)` becomes a throw — and removes nothing phase 8 would reuse, since that body gets the scope, the timing and the value semantics all wrong. `EqualExpression` itself stays: the parser, the statement path in `Eval`, and `ParametersVisitor`'s keyword arguments are its other three users. `(a=2)` alone keeps working, because parentheses build no node and the root is still a definition. |
+| C29 `[fixed]` | **A definition that is not at the root still evaluates its left-hand side.** `Interpreter::Eval` handles a definition as a statement only when it is the whole input; anywhere else `EvaluationVisitor::visit(EqualExpression*)` binds and then returns `m_e1()->accept(*this)`, which is the C10 mechanism. So `1+(b=3)` is `4`, `0+(h(x)=x^2)` is `error: x is not defined`, and `0+(p=p)` exhausts the depth budget. A definition's index is evaluated at bind time too: `g_(1+zzz)=5` reports `zzz is not defined` and binds nothing. C10's own entry is worded correctly — "a **top-level** definition is a statement" — but phase 4 item 3 and `README.md` §3 drop the qualifier and so claim more than is true. **Decision: a definition nested in an expression becomes a syntax error**, as a step towards phase 8 rather than as a verdict on the idea. The construct was meant to bind a local reusable later in the same expression — the 2014 README says so: "L'assignation étant une expression comme une autre, on peut trouver une assignation aussi bien dans la liste des paramètres d'une référence ou dans la partie droite d'une autre assignation." Measured, it never delivered that. It was compiler-dependent — `(t=3)+t` was `6` under Clang and `t is not defined` under GCC — until C24 fixed the order, and it is now `6` on both; that removed the strongest argument for the error, since C24 no longer depends on it. What remains: since phase 4 item 5 a local cannot see the parameters it exists to capture — `f(x)=(t=2*x)+t` then `f(5)` reports `x is not defined`, because `t` holds `2*x` and is evaluated in a frame that sees only globals. At the top level the binding is not local either: `(t=3)+t` leaves `t` defined as `3`. Phase 8's prototype fixes both without an error, so the decision stands only as a stepping stone and should be revisited against that phase rather than taken as settled. The error costs one function body — `EvaluationVisitor::visit(EqualExpression*)` becomes a throw — and removes nothing phase 8 would reuse, since that body gets the scope, the timing and the value semantics all wrong. `EqualExpression` itself stays: the parser, the statement path in `Eval`, and `ParametersVisitor`'s keyword arguments are its other three users. `(a=2)` alone keeps working, because parentheses build no node and the root is still a definition. **Resolved as the local, not the error** (phase 8): the throw was never written. An evaluated line opens a scope and a bare name bound inside one takes its value there, which gives the construct the meaning the 2014 README described and leaves `(b = 7)` alone a definition. |
 | C30 `[fixed]` | **Default arguments are evaluated when they are not used, and in the wrong scope.** `f(x,y=zzz)=x` then `f(1,2)` reports `zzz is not defined`, although `y` was supplied and `zzz` is never needed: `SetCallParameters` evaluates every entry of `parameters_dict_` before the positional ones. They also resolve in the *caller's* scope, so `x=100` then `f(x,y=2*x)=y` then `f(5)` gives `200` rather than `10` — against `README.md` §3, which says a name inside a definition resolves to that definition's own parameters first. Fixed by binding defaults after the supplied arguments rather than before: only a parameter the call left empty gets one, and it is evaluated in the callee's frame, where the definition's other parameters are visible. |
 | C31 `[fixed]` | **A NaN imaginary part prints as malformed output.** `numeric_interface_imp<std::complex<T>>::toString` tests `imag > 0` and `imag < 0`, both false for NaN, so no `i` is emitted — but the following `imag != 1 && imag != -1 && imag != 0` is true, so it appends `"*" + toString(imag)`. `1/0` prints `inf*-nan` and `0/0` prints `-nan*-nan`, neither of which the lexer can read back. Everything else in that function was correct, including negative zero and infinities. Fixed by asking whether each part *is* zero rather than how it compares to zero, so a NaN counts as present and keeps its `i`: `1/0` reads `inf+i*-nan`. GCC and Clang agree on the sign, so the goldens can pin it. |
 
@@ -431,7 +431,7 @@ The redesign proper. Replaces C10 and C11 rather than deciding them.
    expressions, not values. It was explained halfway down section 4; it is now
    the first thing the README says, with the example that makes it concrete.
 
-## Phase 7 — What the review found `[done except C29]`
+## Phase 7 — What the review found `[done]`
 
 Ordered by what a user hits first, not by where the defect lives.
 
@@ -451,9 +451,8 @@ Ordered by what a user hits first, not by where the defect lives.
    out of this group — see the note under phase 8.
 4. **The rest** `[done]`: C28, C31, C32, then D12 to D16.
 
-C29 is all that is left of this phase, and it is held: C24 removed the
-argument for doing it early, and phase 8's prototype fixes what it was for
-without an error. It is the first thing phase 8 decides.
+C29 was all that was left of this phase, and it went to phase 8, which
+resolved it as the local rather than as the error.
 
 Coverage the corpus does not have today, beyond the repros above: a matrix
 larger than 2x2 in any operation; `^` on a matrix; the step-budget message,
@@ -464,93 +463,74 @@ about; `2i`, `1e3`, `0x10` and `.5` in the lexer; and shadowing a built-in
 with `pi=3`.
 
 
-## Phase 8 — Names bind expressions, everywhere
+## Phase 8 — Locals `[done]`
 
-Locals and parameters, which turned out to be one change. The 2014 README
-lists "Évaluation paresseuse (en: lazy-evaluation)" first among the project's
-features; parameters bind values, evaluated once in the caller's scope, which
-is the opposite. `f(x)=1` called as `f(undefined)` reports `undefined is not
-defined` for an argument it never reads. So this phase is not adding an idea
-but finishing one.
+A definition written inside an expression binds a **local**: a name that lives
+to the end of the line and is invisible outside it. The 2014 README says the
+construct was meant for exactly that — *"L'assignation étant une expression
+comme une autre, on peut trouver une assignation aussi bien dans la liste des
+paramètres d'une référence ou dans la partie droite d'une autre assignation"* —
+and C29 found it had never delivered it.
 
-Specified as transcripts before it is implemented, the way phase 2 did it:
-`test/data/spec/locals.ink` and `test/data/spec/laziness.ink`, under the
-`spec` suite, `may_fail`, never recorded. They report **10 of 37** assertions
-failing today, which is the whole of the gap.
+Specified as transcripts before it was implemented, the way phase 2 did it:
+`test/data/spec/locals.ink` and `test/data/spec/laziness.ink`, `may_fail`,
+never recorded. `locals.ink` is now `test/data/locals.ink`, every entry and
+every expected output unchanged; `laziness.ink` is retired and what it
+specified is Deferred.
 
 ### One rule
 
-Prototyped and measured, not sketched:
+> An evaluated line opens a scope, and a name bound inside one takes its
+> value there — where the parameters are still visible.
 
-> A definition is evaluated at the depth where it was written. A frame exists
-> only to hold bindings.
+Two changes, fifteen lines. `EvaluationVisitor::visit(EqualExpression*)`
+evaluates the right-hand side and binds the value; binding the *expression*,
+as it did, means reading it back through a lookup, and a lookup pushes the
+callee frame in which the captured parameter is no longer visible, which is
+exactly what C29 measured. `Interpreter::Eval` wraps an evaluated line in a
+`Frame`, which is what makes the extent the line. C24 is the prerequisite and
+was already done: without a defined operand order there is no "before" for a
+local to be bound in.
 
-`ReferenceStack` gains a lookup depth; a definition records the depth it was
-written at, and evaluating it restores that depth. A frame is pushed only when
-there is something to bind. `Bind` installs the argument *expression* with the
-caller's depth rather than a value.
+### Measured against the specification
 
-That one rule gives all three things the old form got wrong. Measured on the
-prototype, with **every golden byte-identical**:
+Each prototype replayed against both specification files, 20 assertions and
+17:
 
-| | |
-|---|--------|
-| `f2(x)=1` then `f2(undefined)` | `1` — the unused argument is never evaluated |
-| `f(x)=(t=2*x)+t` then `f(5)` | `20` — a local captures the parameter |
-| `g(x)=(u=x*x)+(v=u+1)+v` then `g(3)` | `29` — locals chain |
-| `t` afterwards | `t is not defined` — no leak |
-| `q=y+1`, `r(y)=q`, `r(2)` | `y is not defined` — lexical scoping intact |
-
-It replaces the frames-plus-globals special case rather than layering on it,
-so it is a simplification, not an addition. C24 is its prerequisite and is
-already done: without a defined operand order there is no "before" for a local
-to be bound in.
-
-### The cost, measured
-
-Call-by-name re-evaluates an argument on every read, and each read walks the
-chain of argument expressions down the call stack, so passing `x` through *n*
-levels makes reading it O(n) instead of O(1). On the arithmetic-geometric
-mean, which passes two arguments down a doubling recursion:
-
-| | eager | lazy |
+| | `locals.ink` | `laziness.ink` |
 |---|---|---|
-| `gm(1,2)_10` … `_14` | correct | correct, about 37% more time |
-| `gm(1,2)_15` | `1.45679103` | `error: evaluation gave up after 1000000 steps` |
+| before | 13 | 14 |
+| call-by-name parameters | 16 | 14 |
+| **locals, bound to values** | **20** | 14 |
 
-Allocations *fall* by 21%, so this is re-evaluation and nothing else. Four of
-the five benchmark workloads are unchanged; the agm is the whole cost.
+Two things that decided the phase:
 
-A caution for whoever measures this next: a lazy build appears *faster* than
-an eager one at `gm(1,2)_16`, because it is hitting the step budget and
-stopping early. Compare answers before comparing times.
+- **The four locals assertions call-by-name misses are all extent**, not
+  capture: `t` surviving its line, `t + (t = 3)`, `a` reverting after
+  `(a = 2) + a`, and `?t`. Nothing about how parameters bind addresses them;
+  the line's own scope addresses all four.
+- **Call-by-name scores nothing in the file written to specify it.** Its three
+  failures there are the same three either way, and all three read `undefined
+  is not defined` — an argument evaluated at the call site and never read.
 
-### The open question
+### Values, not expressions
 
-**Call-by-name or call-by-need**, which phase 9 turns from a question about
-thunks into a question about keys. Phase 9's cache is keyed on argument
-*values*, and laziness is the decision not to have them. Measured on a
-prototype of both: force each argument only to build the key, and treat a
-force that throws as "not cacheable", and the agm reaches `gm(1,2)_127` where
-laziness alone gives up at `_16` — the spec assertions are unchanged, so the
-cache costs no laziness the call-site check had not already cost. Half of
-phase 9's reach, because a lazy level nests two references where an eager one
-nests a single one, and the limit is depth. That is a resolution, not the
-resolution: it forces arguments a lazy language should not force, and the
-alternative — keying on the thunk rather than its value — needs a thunk with
-an identity, which is call-by-need with closures and a larger change than
-this phase.
+The phase as first written had a local bind an expression, like every other
+name, on the argument that this is what the language is. Measured, the value
+is indistinguishable across all twenty entries, costs one evaluation per
+binding rather than one per read, and needs none of the lookup-depth machinery
+the expression form does. The two differ only where a bound expression fails
+or diverges and is never read — which is the laziness question, and is
+deferred with it.
 
-### What the transcripts settle
+### What the transcripts settled
 
 - **C29 resolves as the local, not the error.** The form the error would have
   rejected is the form this phase accepts, so rejecting it first would only
-  have to be undone. C29's entry stands as the record of why it was ever
+  have had to be undone. C29's entry stands as the record of why it was ever
   considered.
-- **Extent is the line.** A local is invisible on the next one. The prototype
-  still leaks at the top level, where there is no frame to hold it; closing
-  that means a line being *evaluated* opens a scope, while a line that is only
-  a definition still writes to the globals — `(b = 7)` alone stays a
+- **Extent is the line.** A line being *evaluated* opens a scope; a line that
+  is only a definition still writes to the globals — `(b = 7)` alone stays a
   definition, parentheses or not.
 - **A local shadows**, both a global and a parameter, for the rest of the line
   and no further. A call's frame is one scope and the local is bound in it.
@@ -558,16 +538,10 @@ this phase.
   `t + (t = 3)` is an error, not `6`.
 - **`?` does not see locals.** It prints a definition, and by the next line
   there is none.
-- **Call-by-name and call-by-need are indistinguishable here**, which was not
-  obvious and is worth not re-deriving. Observing the difference needs an
-  argument's value to change between two reads of it; the argument resolves in
-  the caller's scope, and nothing the body does can reach that scope, because
-  a definition inside the body binds a local in the body's own frame. So the
-  choice is purely about cost, and `laziness.ink` deliberately says nothing
-  about it.
-- **Whether it earns its place.** The parameter-capture case genuinely cannot
-  be written as two lines: the second would be a global that cannot see `x`.
-  `locals.ink` makes that argument at `f(x) = (t = 2*x) + t`.
+- **It earns its place.** `f(x) = (t = 2*x) + t` genuinely cannot be written
+  as two lines: the second would be a global that cannot see `x`.
+
+---
 
 ## Phase 9 — Memoisation `[done]`
 
@@ -687,6 +661,39 @@ Two smaller rules the prototype needed:
 
 Recorded so they are not re-litigated later, or drifted into by accident.
 
+- **Lazy parameters (call-by-name).** A parameter binding the argument
+  *expression* rather than its value, so that an argument the body never reads
+  is never evaluated. The 2014 README lists *"Évaluation paresseuse"* first
+  among the project's features, which is what put it in the plan; read again,
+  what that README demonstrates is a name re-evaluating its expression on
+  every use — `b = a+a`, `a = 2`, `b` is `4` — which the interpreter has
+  always done. That is late binding, not lazy arguments.
+
+  Prototyped and measured, three times over, and each measurement argued
+  against it:
+
+  - It passes **no assertion** of `laziness.ink`, the transcript written to
+    specify it, that eager arguments do not already pass. The three it fails
+    are three `undefined is not defined` reports for arguments nothing reads,
+    and they fail identically with laziness, because an unknown name is worth
+    reporting at the call site whether or not the body wants the value.
+  - It **costs half the depth budget**: a lazy level nests two references
+    where an eager one nests a single one, so the agm reaches `gm(1,2)_127`
+    against `_254`. Since phase 9 the depth budget is the limit users meet,
+    so this is the whole of the cost, and it is paid on every call.
+  - It **fights the cache**: phase 9 keys a memoised answer on argument
+    values, and laziness is the decision not to have them. Forcing each
+    argument only to build the key, and treating a force that throws as "not
+    cacheable", does work — but it is laziness kept only for the calls where
+    it does not pay.
+
+  What would make it worth the depth is a **conditional**. Laziness earns its
+  keep where a branch decides not to need an argument, and this language has
+  no `if`, no guard and no short-circuit; without one, the programs where
+  call-by-name changes an answer are exactly those with an argument that errors
+  or diverges and is never read. A conditional is a language addition, not a
+  repair, and it is the thing to argue about first if this is ever revisited.
+
 - **Substitution and partial expansion.** `?b` showing `2+2` rather than
   `a+a`: evaluating some references while leaving others symbolic. This is a
   different feature from printing a definition back, not an option on it. It
@@ -756,11 +763,11 @@ Phase 8 waits for phase 7. It is the only phase that changes the language
 rather than repairing it, and it was worth nothing while four inputs still
 killed the process.
 
-Phase 9 is numbered after phase 8 and landed before it. It does not depend on
-it — the cache is keyed on values, which is what the interpreter has today —
-and phase 8 does depend on it, in the sense that laziness costs
-re-evaluation and phase 9 is what makes re-evaluation cheap. Landing 9 first
-also measured the two separately, which landing them together would not.
+Phase 9 is numbered after phase 8 and landed before it, on the argument that
+the cache does not depend on the language change and the language change
+depends on the cache for its cost. That turned out to matter more than
+expected: with the step budget gone, depth became the limit users meet, which
+is what measured the cost of lazy parameters and sent them to Deferred.
 
 The honest risk was phase 4. It changed what existing sessions mean, so it
 could not hide behind unchanged goldens — every moved line was justified
