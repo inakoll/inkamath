@@ -41,6 +41,9 @@ template <typename T>
 class MatExpression;
 
 template <typename T>
+class CellExpression;
+
+template <typename T>
 class RefExpression;
 
 template <typename T>
@@ -64,6 +67,7 @@ public:
     virtual ReturnType visit(FactExpression<T>* expr) = 0;
     virtual ReturnType visit(ValExpression<T>* expr) = 0;
     virtual ReturnType visit(MatExpression<T>* expr) = 0;
+    virtual ReturnType visit(CellExpression<T>* expr) = 0;
     virtual ReturnType visit(RefExpression<T>* expr) = 0;
     virtual ReturnType visit(FuncExpression<T>* expr) = 0;
 };
@@ -140,6 +144,10 @@ public:
 	}
 	
 	PExpression<T> visit(FuncExpression<T>* expr) override {
+		return visit_others_expr_imp(expr);
+	}
+
+	PExpression<T> visit(CellExpression<T>* expr) override {
 		return visit_others_expr_imp(expr);
 	}
 	
@@ -241,6 +249,13 @@ public:
     T visit(AddExpression<T>* expr) override {
         const T left = expr->m_e1()->accept(*this);
         return left + expr->m_e2()->accept(*this);
+    }
+
+    T visit(CellExpression<T>* expr) override {
+        const T matrix = expr->Matrix()->accept(*this);
+        const int row = AsIndex<T>(expr->Row()->accept(*this));
+        const int col = AsIndex<T>(expr->Col()->accept(*this));
+        return numeric_interface<T>::cell(matrix, row, col);
     }
 
     T visit(NegExpression<T>* expr) override {

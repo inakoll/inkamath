@@ -40,6 +40,7 @@ struct numeric_interface_imp
      static int toInt(const T& a) {return T::toInt(a);}
      static std::string toString(const T& a) {return T::toString(a);}
      static T pow(const T& a, const T& b) {return T::pow(a,b);}
+     static T cell(const T& a, int i, int j) {return T::cell(a,i,j);}
 
      // Deduced: for a complex or a matrix these narrow to the scalar type.
      static auto fact(const T& a) {return T::fact(a);}

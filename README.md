@@ -147,6 +147,18 @@ evaluate to. If `a` is the 2x2 matrix above, then `[a, a; a, a]` is 4x4:
 3 4 3 4
 ```
 
+`m[i,j]` is the cell in row `i`, column `j`, counted from one as the rows and
+columns are written. The brackets bind to a name, because a space between two
+blocks already means something — write a row of blocks with a comma:
+
+```
+>> a[2,1]
+3
+
+>> a[3,1]
+error: row 3, column 1 is outside a 2x2 matrix
+```
+
 `*` is matrix multiplication; `+`, `-` and `/` work cell by cell. A single
 value stretches to the other side's size, and the order is kept:
 

@@ -89,6 +89,7 @@ private:
     PExpression<U> ParsePowExpr(PExpression<U> lead = PExpression<U>());
     PExpression<U> ParseMatrix();
     PExpression<U> ParseSimpleExpr();
+    PExpression<U> ParseCell(PExpression<U> matrix);
     PExpression<U> ParseParameters();
     PExpression<U> ParseSubExpr();
     PExpression<U> ParseLimit();
@@ -346,7 +347,9 @@ PExpression<U> Interpreter<T,U>::ParseEqualExpr()
             if(params || sub) {
                 ref.reset(new FuncExpression<U>(ref, params, sub));
             }
-            e = ParseAddExpr(ref);
+            // A name at the head of a line is parsed here, not in
+            // ParseSimpleExpr, so the cell brackets are read here too.
+            e = ParseAddExpr(ParseCell(ref));
         }
     }
     else
@@ -493,6 +496,7 @@ PExpression<U>  Interpreter<T,U>::ParseSimpleExpr()
             else {
                 e = ref;
             }
+            e = ParseCell(e);
 			break;
 
         case Add:
@@ -548,6 +552,31 @@ PExpression<U>  Interpreter<T,U>::ParseSimpleExpr()
         Fail("unexpected end of input after '", m_tokens[--m_i].text, "'");
     }
     return e;
+}
+
+// 'm[i,j]', which binds to a name and to nothing else: a space between two
+// blocks already means something, so '[a [3 4]]' stays one row of two blocks.
+template <Parsable T, Numeric U>
+PExpression<U> Interpreter<T,U>::ParseCell(PExpression<U> matrix)
+{
+    if (AtEnd() || Peek().type != LBra)
+    {
+        return matrix;
+    }
+    ++m_i;
+    PExpression<U> row = Parse();
+    if (AtEnd() || Peek().type != Comma)
+    {
+        Fail("a cell needs a row and a column, as 'm[1,2]'");
+    }
+    ++m_i;
+    PExpression<U> col = Parse();
+    if (AtEnd() || Peek().type != RBra)
+    {
+        Fail("missing ']' after '", m_tokens[--m_i].text, "'");
+    }
+    ++m_i;
+    return PExpression<U>(new CellExpression<U>(matrix, row, col));
 }
 
 template <Parsable T, Numeric U>

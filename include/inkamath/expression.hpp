@@ -237,6 +237,28 @@ public:
 template <typename T>
 class ParametersCall;
 
+// One cell of a matrix: 'm[i,j]'.
+template <typename T>
+class CellExpression : public Expression<T>
+{
+public:
+    CellExpression(PExpression<T> matrix, PExpression<T> row, PExpression<T> col)
+        : Expression<T>({matrix, row, col})
+    {}
+
+    PExpression<T> Matrix() const {return this->Children()[0];}
+    PExpression<T> Row() const {return this->Children()[1];}
+    PExpression<T> Col() const {return this->Children()[2];}
+
+    PExpression<T> accept(TransformationVisitor<T> &v) override {
+        return v.visit(this);
+    }
+
+    T accept(FoldingVisitor<T> &v) override {
+        return v.visit(this);
+    }
+};
+
 template <typename T>
 class MatExpression : public Expression<T>
 {

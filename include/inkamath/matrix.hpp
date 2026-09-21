@@ -29,8 +29,8 @@ public:
     Extent Size() const {return extent_;}
 
     // Subscripts are 1-based, as they are written.
-    T& operator()(size_t i, size_t j) {return data()[Offset(i, j)];}
-    const T& operator()(size_t i, size_t j) const {return data()[Offset(i, j)];}
+    T& operator()(long long i, long long j) {return data()[Offset(i, j)];}
+    const T& operator()(long long i, long long j) const {return data()[Offset(i, j)];}
 
     static std::string toString(const Matrix<T>& a)
     {
@@ -49,6 +49,9 @@ public:
     }
 
     static int toInt(const Matrix<T>& a) {return numeric_interface<T>::toInt(a.Scalar());}
+
+    // One cell, as a 1x1: everything in this language is a matrix.
+    static Matrix<T> cell(const Matrix<T>& a, int i, int j) {return Matrix<T>(a(i, j));}
 
     // A 1x1 matrix -- which every literal and every intermediate scalar is --
     // keeps its cell inline rather than on the heap.
@@ -130,14 +133,17 @@ public:
     }
 
 private:
-    size_t Offset(size_t i, size_t j) const
+    // Signed, so that 'm[0-1,1]' names the row it asked for rather than a
+    // number that wrapped.
+    size_t Offset(long long i, long long j) const
     {
-        if(i == 0 || i > extent_.rows || j == 0 || j > extent_.cols) {
+        if(i < 1 || static_cast<unsigned long long>(i) > extent_.rows
+           || j < 1 || static_cast<unsigned long long>(j) > extent_.cols) {
             throw std::runtime_error("row " + std::to_string(i) + ", column " + std::to_string(j)
                                      + " is outside a " + std::to_string(extent_.rows) + "x"
                                      + std::to_string(extent_.cols) + " matrix");
         }
-        return (i-1)*extent_.cols + (j-1);
+        return static_cast<size_t>(i-1)*extent_.cols + static_cast<size_t>(j-1);
     }
 
     // The single cell of a 1x1 matrix. Most of the numeric interface is only

@@ -54,6 +54,49 @@ a=[1 2;3 4]
 0.5 1
 1.5 2
 
+# A cell, written the way an array is indexed and numbered the way the rows
+# and columns are: from one. The language had no way at all to read a value
+# back out of a matrix (MODERNIZATION.md, C40).
+>> a[1,2]
+2
+
+>> a[2,1]
+3
+
+>> a[1,2]+a[2,1]
+5
+
+# The brackets bind to a name and nothing else, because a space between two
+# blocks already means something: '[a [3 4]]' is one row of two blocks.
+>> a[3,1]
+error: row 3, column 1 is outside a 2x2 matrix
+
+>> a[0,1]
+error: row 0, column 1 is outside a 2x2 matrix
+
+>> a[1]
+error: a cell needs a row and a column, as 'm[1,2]'
+
+>> a[1,1.5]
+error: an index must be a whole number, not 1.5
+
+# They follow whatever a name can be followed by, so the result of a call has
+# cells too.
+>> f(x)=[x, x^2]
+f(x)=[x, x^2]
+
+>> f(3)[1,2]
+9
+
+# The cost of binding to a name: a row of blocks written with a space is now
+# read as an index, and has to be written with the comma README.md uses.
+>> [a [3 4]]
+error: a cell needs a row and a column, as 'm[1,2]'
+
+>> [a, [3 4;5 6]]
+1 2 3 4
+3 4 5 6
+
 >> a-1
 0 1
 2 3
