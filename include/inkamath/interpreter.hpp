@@ -89,7 +89,20 @@ private:
     PExpression<U> ParsePowExpr(PExpression<U> lead = PExpression<U>());
     PExpression<U> ParseMatrix();
     PExpression<U> ParseSimpleExpr();
-    PExpression<U> ParseCell(PExpression<U> matrix);
+    PExpression<U> ParseCell(PExpression<U> matrix, bool named);
+
+    // Inside a matrix literal, and inside an argument list, a space between
+    // two expressions separates them. Everywhere else it means nothing, which
+    // is what lets '[1 2;3 4][2,1]' be an index rather than two blocks.
+    size_t juxtaposed_ = 0;
+    struct Juxtaposed {
+        explicit Juxtaposed(size_t& depth) : depth_(depth) {++depth_;}
+        ~Juxtaposed() {--depth_;}
+        Juxtaposed(const Juxtaposed&) = delete;
+        Juxtaposed& operator=(const Juxtaposed&) = delete;
+    private:
+        size_t& depth_;
+    };
     PExpression<U> ParseParameters();
     PExpression<U> ParseSubExpr();
     PExpression<U> ParseLimit();
@@ -349,7 +362,7 @@ PExpression<U> Interpreter<T,U>::ParseEqualExpr()
             }
             // A name at the head of a line is parsed here, not in
             // ParseSimpleExpr, so the cell brackets are read here too.
-            e = ParseAddExpr(ParseCell(ref));
+            e = ParseAddExpr(ParseCell(ref, true));
         }
     }
     else
@@ -417,6 +430,7 @@ std::vector<PExpression<T>> make_matrix_array_from_vector(size_t n, size_t m,
 template <Parsable T, Numeric U>
 PExpression<U> Interpreter<T,U>::ParseMatrix()
 {
+    const Juxtaposed juxtaposed(juxtaposed_);
     std::vector<PExpression<U>> mat;
     std::vector<size_t> size(1, 0);
     PExpression<U> e;
@@ -496,7 +510,7 @@ PExpression<U>  Interpreter<T,U>::ParseSimpleExpr()
             else {
                 e = ref;
             }
-            e = ParseCell(e);
+            e = ParseCell(e, true);
 			break;
 
         case Add:
@@ -526,6 +540,7 @@ PExpression<U>  Interpreter<T,U>::ParseSimpleExpr()
             {
                 Fail("missing ')' after '", m_tokens[--m_i].text, "'");
             }
+            e = ParseCell(e, false);
 			break;
 
         case LBra:
@@ -539,6 +554,7 @@ PExpression<U>  Interpreter<T,U>::ParseSimpleExpr()
             {
                 Fail("missing ']' after '", m_tokens[--m_i].text, "'");
             }
+            e = ParseCell(e, false);
 			break;
 
         default:
@@ -554,12 +570,19 @@ PExpression<U>  Interpreter<T,U>::ParseSimpleExpr()
     return e;
 }
 
-// 'm[i,j]', which binds to a name and to nothing else: a space between two
-// blocks already means something, so '[a [3 4]]' stays one row of two blocks.
+// 'm[i,j]'. Inside a matrix literal only a name takes an index, because there
+// a space between two blocks already means something: '[[1 2] [3 4]]' is one
+// row of two blocks, while '[a [3 4]]' reads as an index of 'a'.
 template <Parsable T, Numeric U>
-PExpression<U> Interpreter<T,U>::ParseCell(PExpression<U> matrix)
+PExpression<U> Interpreter<T,U>::ParseCell(PExpression<U> matrix, bool named)
 {
     if (AtEnd() || Peek().type != LBra)
+    {
+        return matrix;
+    }
+    // A name carries its brackets everywhere; anything else does so only
+    // where juxtaposition is not already separating expressions.
+    if (!named && juxtaposed_ != 0)
     {
         return matrix;
     }

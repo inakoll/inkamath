@@ -88,8 +88,24 @@ f(x)=[x, x^2]
 >> f(3)[1,2]
 9
 
-# The cost of binding to a name: a row of blocks written with a space is now
-# read as an index, and has to be written with the comma README.md uses.
+# Outside a matrix literal nothing is separated by juxtaposition, so the
+# brackets index whatever is in front of them.
+>> [1 2;3 4][2,1]
+3
+
+>> (a*a)[1,1]
+7
+
+# Inside one they index a name and nothing else, because there a space
+# between two blocks already means something.
+>> [[1 2] [3 4]]
+1 2 3 4
+
+>> [a[1,1], a[2,2]]
+1 4
+
+# Which leaves one form that changed: a row of blocks whose second block
+# follows a name with a space. Write it with the comma README.md uses.
 >> [a [3 4]]
 error: a cell needs a row and a column, as 'm[1,2]'
 
