@@ -230,7 +230,7 @@ public:
         }
         else {
             this->stack_.Set(expr->Name(),
-                             ParametersDefinition<T>(signature[0], signature[1], *this),
+                             ParametersDefinition<T>(signature[0], signature[1], *this, signature[2]),
                              expr->m_e2(), written);
         }
     }

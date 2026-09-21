@@ -47,7 +47,13 @@ public:
         // creating one if the name held a plain definition; a plain
         // definition replaces whatever was there.
         const Clause<T> clause{ai_parameters, ai_expression, written, next_order_++};
-        if(ai_parameters.general()) {
+        // A guarded clause is appended, never replaced: re-typing a guard
+        // leaves the old clause in front of the new one, and the way back is
+        // the plain definition below, which still clears everything (C11).
+        if(ai_parameters.guarded()) {
+            guarded_.push_back(clause);
+        }
+        else if(ai_parameters.general()) {
             plain_ = Clause<T>();
             general_ = clause;
         }
@@ -58,6 +64,7 @@ public:
         else {
             base_.clear();
             general_ = Clause<T>();
+            guarded_.clear();
             plain_ = clause;
         }
     }
@@ -78,6 +85,7 @@ public:
         }
 
         std::vector<const Clause<T>*> clauses;
+        for(const Clause<T>& clause : guarded_) clauses.push_back(&clause);
         if(plain_) clauses.push_back(&plain_);
         for(const auto& clause : base_) clauses.push_back(&clause.second);
         if(general_) clauses.push_back(&general_);
@@ -161,6 +169,7 @@ private:
     // The clauses of one name share their parameter list; any of them answers
     // for the whole definition.
     const ParametersDefinition<T>& CallParameters() const {
+        if(!guarded_.empty()) return guarded_.front().parameters;
         if(general_) return general_.parameters;
         if(!base_.empty()) return base_.begin()->second.parameters;
         return plain_.parameters;
@@ -172,6 +181,28 @@ private:
     }
 
     T EvalImp(bool indexed, int index, EvaluationVisitor<T>& evaluator) const {
+        // Clauses are tried in the order they were written, the base clause
+        // for this index among them. Order is the writer's to choose because
+        // neither precedence serves both cases: a guard reading the previous
+        // term must not be reached at the base index, while a guard ruling an
+        // index out must be (MODERNIZATION.md, phase 10). The clause not
+        // chosen is not evaluated, which is what index dispatch always did.
+        auto base = indexed ? base_.find(index) : base_.end();
+        for(const Clause<T>& clause : guarded_) {
+            if(base != base_.end() && base->second.order < clause.order) {
+                return base->second.expression->accept(evaluator);
+            }
+            if(clause.parameters.indexed() != indexed) continue;
+            if(clause.parameters.general()) {
+                SetIndex(clause.parameters.index_name(), index, evaluator.stack());
+            }
+            else if(indexed && clause.parameters.index() != index) {
+                continue;
+            }
+            if(numeric_interface<T>::truth(clause.parameters.guard()->accept(evaluator))) {
+                return clause.expression->accept(evaluator);
+            }
+        }
         if(plain_) {
             // An index on something that is not a sequence used to be dropped
             // without a word, which is the last of C13's silent answers.
@@ -192,8 +223,14 @@ private:
             if(general_ && (base_.empty() || index >= base_.begin()->first)) {
                 return EvaluateGeneralClause(index, evaluator);
             }
+            if(!guarded_.empty()) {
+                throw std::runtime_error("no clause of " + reference_name_ + " applies");
+            }
             throw std::runtime_error(reference_name_ + " has no clause for index "
                                      + std::to_string(index));
+        }
+        if(!guarded_.empty()) {
+            throw std::runtime_error("no clause of " + reference_name_ + " applies");
         }
         // Nothing sensible to invent: a sequence has no value under its bare
         // name. A limit is something the user asks for, not something a
@@ -207,7 +244,7 @@ private:
     }
 
     T EvaluateGeneralClause(long long index, EvaluationVisitor<T>& evaluator) const {
-        SetIndex(index, evaluator.stack());
+        SetIndex(general_.parameters.index_name(), index, evaluator.stack());
         return general_.expression->accept(evaluator);
     }
 
@@ -278,8 +315,8 @@ private:
         return step * ratio / (1 - ratio) <= tolerance;
     }
 
-    void SetIndex(long long index, ReferenceStack<T>& stack) const {
-        stack.Set(general_.parameters.index_name(), ParametersDefinition<T>(),
+    void SetIndex(const std::string& name, long long index, ReferenceStack<T>& stack) const {
+        stack.Set(name, ParametersDefinition<T>(),
                   PExpression<T>(new ValExpression<T>(T(index))));
     }
 
@@ -293,6 +330,9 @@ private:
     // Exactly one of these is populated: a plain definition, or a sequence
     // made of base clauses and at most one general clause.
     Clause<T>                   plain_;
+
+    // Clauses carrying a guard, in the order they were written.
+    std::vector<Clause<T>>      guarded_;
 
     BaseClauses                 base_;
     Clause<T>                   general_;

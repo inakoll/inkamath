@@ -36,7 +36,9 @@ class ParametersDefinition
 public:
     ParametersDefinition() = default;
 
-    ParametersDefinition(PExpression<T> params, PExpression<T> subexpr, EvaluationVisitor<T>& evaluator) {
+    ParametersDefinition(PExpression<T> params, PExpression<T> subexpr, EvaluationVisitor<T>& evaluator,
+                         PExpression<T> guard = PExpression<T>())
+        : guard_(guard) {
         if(params) {
             ParametersVisitor<T> params_visitor;
             params->accept(params_visitor);
@@ -141,6 +143,8 @@ public:
         }
     }
 
+    PExpression<T> guard() const {return guard_;}
+    bool guarded() const {return bool(guard_);}
     int index() const {return index_;}
     const std::string& index_name() const {return index_name_;}
     const std::vector<std::string>& parameters_names() const {return parameters_names_;}
@@ -150,6 +154,7 @@ public:
 
 
 protected:
+    PExpression<T> guard_;
     std::vector<std::string> parameters_names_;
     ExprDict<T> parameters_dict_;
     std::string index_name_;
@@ -197,6 +202,7 @@ public:
 
 
 protected:
+    PExpression<T> guard_;
     std::vector<std::string> parameters_names_;
     std::vector<PExpression<T>> parameters_exprs_;
     ExprDict<T> parameters_dict_;

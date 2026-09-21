@@ -339,12 +339,20 @@ protected:
 };
 
 template <typename T>
-class FuncExpression : public BinaryExpression<T>
+class FuncExpression : public Expression<T>
 {
 public:
-    explicit FuncExpression(PExpression<T> ref_expression, PExpression<T> e1, PExpression<T> e2, bool limit = false)
-        : BinaryExpression<T>(e1,e2), m_name(ref_expression->Name()), ref_expression_(ref_expression), limit_(limit)
+    // The third child is the guard of a definition's left-hand side, and is
+    // null everywhere else; keeping it here is what lets ParametersDefinition
+    // read the whole left-hand side from one place.
+    explicit FuncExpression(PExpression<T> ref_expression, PExpression<T> e1, PExpression<T> e2,
+                            bool limit = false, PExpression<T> guard = PExpression<T>())
+        : Expression<T>({e1, e2, guard}), m_name(ref_expression->Name()),
+          ref_expression_(ref_expression), limit_(limit)
     { }
+
+    PExpression<T> m_e1() const {return this->Children()[0];}
+    PExpression<T> m_e2() const {return this->Children()[1];}
 
     // 'lim f' asks the reference for the limit of its general clause rather
     // than for one term.

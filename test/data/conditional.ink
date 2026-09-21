@@ -1,5 +1,4 @@
-# SPECIFICATION -- the language a conditional would give, not the language we
-# have. Every entry here fails today. Do not record them from behaviour.
+# Definitions in cases (MODERNIZATION.md, phase 10).
 #
 # A clause may carry a GUARD, written between the left-hand side and the '=',
 # the way set-builder notation writes "such that":
@@ -12,7 +11,7 @@
 # instead of an index, so it needs no new evaluation rule and no laziness
 # anywhere else (MODERNIZATION.md, Openings).
 #
-# Four decisions this file takes, each because the alternative was worse:
+# Four decisions, each because the alternative was worse:
 #
 #   '==' for equality, not '='. 'f_n | n = 0 = 1' puts two '=' on one line
 #   doing two different jobs -- one asks, one tells -- and a reader stumbles.
@@ -211,7 +210,9 @@ c(k)_n = c(k-1)_(n-1) + c(k)_(n-1)
 # having because lim's tolerance cannot be reached from the prompt
 # (MODERNIZATION.md, Deferred). The tolerance here is deliberately coarse, so
 # that the answer is one the unguarded recurrence would never give: Newton
-# reaches 1.41421356 and this stops at the second iterate.
+# reaches 1.41421356 and this stops at the second iterate. The base clause is
+# written first on purpose -- the guard reads the previous term, so at index
+# zero it must not be reached.
 >> root_0 = 1
 root_0 = 1
 
@@ -255,11 +256,11 @@ g_n = g_(n-1) + g_(n-2)
 # --- a matrix in cases ------------------------------------------------------
 
 # The Kronecker delta, and the identity matrix it defines.
->> d(i,j) | i == j = 1
-d(i,j) | i == j = 1
+>> d(row,col) | row == col = 1
+d(row,col) | row == col = 1
 
->> d(i,j) | i <> j = 0
-d(i,j) | i <> j = 0
+>> d(row,col) | row <> col = 0
+d(row,col) | row <> col = 0
 
 >> [d(1,1), d(1,2); d(2,1), d(2,2)]
 1 0
@@ -268,16 +269,17 @@ d(i,j) | i <> j = 0
 # The second-difference matrix, the way a numerical analysis course writes it:
 # two on the diagonal, minus one beside it, zero further out. Three clauses
 # and nine calls, and the matrix says what it means.
->> t(i,j) | i == j = 2
-t(i,j) | i == j = 2
+>> t(row,col) | row == col = 2
+t(row,col) | row == col = 2
 
->> t(i,j) | abs(i-j) == 1 = 0-1
-t(i,j) | abs(i-j) == 1 = 0-1
+>> t(row,col) | abs(row-col) == 1 = 0-1
+t(row,col) | abs(row-col) == 1 = 0-1
 
->> t(i,j) | abs(i-j) > 1 = 0
-t(i,j) | abs(i-j) > 1 = 0
+>> t(row,col) | abs(row-col) > 1 = 0
+t(row,col) | abs(row-col) > 1 = 0
 
 >> [t(1,1), t(1,2), t(1,3); t(2,1), t(2,2), t(2,3); t(3,1), t(3,2), t(3,3)]
 2 -1 0
 -1 2 -1
 0 -1 2
+

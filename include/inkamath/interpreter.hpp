@@ -390,18 +390,28 @@ PExpression<U> Interpreter<T,U>::ParseEqualExpr()
         ref = PExpression<U>(new RefExpression<U>(name));
         params = ParseParameters();
         sub = ParseSubExpr();
+        PExpression<U> guard;
+        if (!AtEnd() && Peek().type == Guard)
+        {
+            ++m_i;
+            guard = ParseCompareExpr();
+        }
         if (!AtEnd() && Peek().type == Equal)
         {
             ++m_i;
             expr = Parse();
-            if(params || sub) {
-                e.reset(new EqualExpression<U>(PExpression<U>(new FuncExpression<U>(ref, params, sub)),expr));
+            if(params || sub || guard) {
+                e.reset(new EqualExpression<U>(
+                    PExpression<U>(new FuncExpression<U>(ref, params, sub, false, guard)), expr));
             }
             else {
                 e.reset(new EqualExpression<U>(ref, expr));
             }
         }
         else {
+            if(guard) {
+                Fail("a guard belongs to a definition, as 'name | condition = value'");
+            }
             // Not a definition after all. The left-hand side is a perfectly
             // good leading operand, so hand it on rather than rewinding: the
             // rewind re-parsed the parameters, and nesting squared the cost.
