@@ -99,7 +99,11 @@ other built-ins, and there are no built-in functions.
 | `expr+expr` `expr-expr` | addition, subtraction |
 | `expr*expr` `expr/expr` | multiplication, division |
 | `expr^expr` | power |
+| `expr<expr` `expr>expr` | comparison, answering 1 or 0 |
+| `expr<=expr` `expr>=expr` | the same, or equal |
+| `expr==expr` `expr<>expr` | equal, not equal |
 | `name = expr` | definition (section 3) |
+| `name \| cond = expr` | a definition in cases (section 3) |
 | `lim name` | the limit of a sequence (section 4) |
 | `?name` | print a definition back (section 5) |
 
@@ -236,7 +240,34 @@ sq(x) = (s = x+1) * s
 25
 ```
 
-A name has one definition. Defining it again replaces what was there.
+A definition may be written **in cases**, one line each, by guarding a clause
+with the condition it applies under — the `|` of set-builder notation, read
+"such that". Clauses are tried in the order they were written and the first
+whose guard holds is the one evaluated; the others are not:
+
+```
+>> abs(x) | x < 0 = 0-x
+abs(x) | x < 0 = 0-x
+
+>> abs(x) | x >= 0 = x
+abs(x) | x >= 0 = x
+
+>> abs(0-3)
+3
+```
+
+A comparison is a number — `1` or `0` — so a guard is simply an expression
+that is not zero, and `sgn(x) = (x>0) - (x<0)` needs no guard at all. Ordering
+needs real numbers; equality does not. If no clause applies, the interpreter
+says so rather than inventing a value:
+
+```
+>> abs(i)
+error: a comparison needs real numbers, not i
+```
+
+A name has one definition. Defining it again replaces what was there — a
+plain definition clears the guarded clauses with it.
 
 ### 4. Sequences
 
