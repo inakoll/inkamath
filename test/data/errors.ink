@@ -87,6 +87,22 @@ error: an index must be a whole number, not 2+i
 >> f_(0.5)
 error: an index must be a whole number, not 0.5
 
+# A factorial needs a whole number that is not negative. The loop multiplied
+# 'i' while 'i <= n', so a fraction was truncated to '120', a negative gave
+# the empty product '1', and the imaginary part was dropped before the loop
+# ever saw it: these answered 120, 1, 2 and 1 (MODERNIZATION.md, C42).
+>> !5.5
+error: a factorial needs a whole number, not 5.5
+
+>> !(0-3)
+error: a factorial cannot be negative
+
+>> !(2+i*3)
+error: a factorial needs a real number, not 2+i*3
+
+>> !i
+error: a factorial needs a real number, not i
+
 # A part that is NaN is present but has no sign, and answers false to every
 # comparison, so the imaginary unit used to be dropped while its magnitude was
 # still printed: these read 'inf*-nan' and '-nan*-nan' (MODERNIZATION.md, C31).

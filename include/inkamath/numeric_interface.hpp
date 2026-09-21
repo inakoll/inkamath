@@ -6,6 +6,7 @@
 #include <limits> // std::numeric_limits
 #include <complex> // std::complex
 #include <cstdlib> // std::strtod
+#include <stdexcept> // std::runtime_error
 #include <string> // std::string
 #include <sstream> // std::ostringstream
 #include <iomanip> // std::setprecision
@@ -145,7 +146,23 @@ struct numeric_interface_imp<std::complex<T>,false>
 
     static auto fact(const std::complex<T>& a)
     {
-        return numeric_interface<T>::fact(a.real());
+        // The loop below multiplies while 'i <= n', which answers something
+        // plausible for every argument it has no business accepting: 5.5
+        // truncated to 120, -3 gave the empty product, and the imaginary part
+        // never reached it at all.
+        if(!(a.imag() == 0)) {
+            throw std::runtime_error("a factorial needs a real number, not "
+                                     + toString(a));
+        }
+        const T value = a.real();
+        if(value < 0) {
+            throw std::runtime_error("a factorial cannot be negative");
+        }
+        if(value != std::floor(value)) {
+            throw std::runtime_error("a factorial needs a whole number, not "
+                                     + numeric_interface<T>::toString(value));
+        }
+        return numeric_interface<T>::fact(value);
     }
 
     static auto abs(const std::complex<T>& a)
