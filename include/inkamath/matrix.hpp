@@ -155,6 +155,23 @@ private:
     Matrix<T> BinaryOp(const Matrix<T>& other, Func f) const
     {
         if(extent_ != other.extent_) {
+            // A single value stretches to the other side's size, as it does
+            // for '*' and inside a literal. The operand order is kept: '1-a'
+            // subtracts each cell from one.
+            if(IsScalar()) {
+                const T value = *data();
+                Matrix<T> c(other.extent_);
+                std::transform(other.data(), other.data() + other.extent_.count(), c.data(),
+                               [&value, &f](const T& cell) {return f(value, cell);});
+                return c;
+            }
+            if(other.IsScalar()) {
+                const T value = *other.data();
+                Matrix<T> c(extent_);
+                std::transform(data(), data() + extent_.count(), c.data(),
+                               [&value, &f](const T& cell) {return f(cell, value);});
+                return c;
+            }
             throw std::runtime_error("these matrices have different sizes");
         }
         Matrix<T> c(extent_);

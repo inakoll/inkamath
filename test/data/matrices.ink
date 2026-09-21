@@ -46,6 +46,27 @@ a=[1 2;3 4]
 -1 -2
 -3 -4
 
+# A single value stretches to the other side's size. It already did for '*'
+# and inside a literal, where '[a; 1]' spreads the 1 across the block above
+# it; '+', '-' and '/' reported 'these matrices have different sizes', so
+# 'a*0.5' worked and 'a/2' did not (MODERNIZATION.md, C38).
+>> a/2
+0.5 1
+1.5 2
+
+>> a-1
+0 1
+2 3
+
+# The order is kept, which is what makes this more than a convenience.
+>> 1-a
+0 -1
+-2 -3
+
+>> 2/a
+2 1
+0.666666667 0.5
+
 # Three or more rows or columns. The block offsets were a prefix sum that
 # added only the previous element instead of the running total, so the result
 # was allocated too small and every one of these reported 'Out of matrix

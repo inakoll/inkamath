@@ -147,6 +147,19 @@ evaluate to. If `a` is the 2x2 matrix above, then `[a, a; a, a]` is 4x4:
 3 4 3 4
 ```
 
+`*` is matrix multiplication; `+`, `-` and `/` work cell by cell. A single
+value stretches to the other side's size, and the order is kept:
+
+```
+>> a/2
+0.5 1
+1.5 2
+
+>> 1-a
+0 -1
+-2 -3
+```
+
 ### 3. Definitions
 
 A definition binds a name and echoes what was written. It evaluates nothing —
