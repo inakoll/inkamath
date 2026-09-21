@@ -731,6 +731,26 @@ Recorded so they are not re-litigated later, or drifted into by accident.
     cacheable", does work — but it is laziness kept only for the calls where
     it does not pay.
 
+- **Built-in series acceleration.** `lim` applying Aitken's delta-squared, or
+  offering it behind a keyword, so that a slowly converging series gets an
+  answer instead of C36's refusal. Declined, and the reason is not cost.
+
+  **There is no universal accelerator.** Matching the method to the shape of
+  the error is the mathematics, not a detail below it: Aitken for a
+  geometric-looking error, Richardson for a power law, the Euler transform for
+  an alternating series. Measured on `1/n^2`: one Richardson step leaves
+  `9.9e-05` at a hundred terms, while the Euler-Maclaurin tail leaves `1.9e-11`
+  at twenty. A built-in would have to pick one of them for every series a user
+  will ever write.
+
+  **And the language already expresses all of them.** Both the tail correction
+  and Aitken are ordinary clauses — `test/data/sequences.ink` records them, and
+  the README shows the first — because a clause may index another sequence at
+  any expression, including one that reaches forward. Adding a keyword would
+  spend syntax on a convenience for one method while taking the choice away
+  from the only party who can make it. It would also make `lim` answer where it
+  now refuses, which is the direction C36 measured as harmful.
+
 - **Substitution and partial expansion.** `?b` showing `2+2` rather than
   `a+a`: evaluating some references while leaving others symbolic. This is a
   different feature from printing a definition back, not an option on it. It
