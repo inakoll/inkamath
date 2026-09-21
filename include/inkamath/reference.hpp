@@ -237,7 +237,18 @@ private:
         for(size_t term = 0; term < max_terms; ++term) {
             evaluation = EvaluateGeneralClause(++index, evaluator);
             if(comparable) {
-                const auto step = numeric_interface<T>::abs(evaluation-previous);
+                // Naming the sequence, because the reason a term cannot be
+                // compared -- a matrix has no absolute value, two terms have
+                // different sizes -- reads as an internal error on its own.
+                const auto step = [&]() {
+                    try {
+                        return numeric_interface<T>::abs(evaluation-previous);
+                    }
+                    catch(const std::exception& reason) {
+                        throw std::runtime_error(reference_name_ + " has no limit: "
+                                                 + reason.what());
+                    }
+                }();
                 // '<=' and not '!(> tolerance)': a difference that is NaN
                 // answers false to both, and must count as not converged.
                 if(step <= tolerance && stepped && TailUnder(step, previous_step)) {

@@ -169,6 +169,7 @@ works, and two of the three defects below came out of the quadratic.
 
 | | |
 |---|---|
+| C39 `[fixed]` | **A limit that cannot be taken reports an internal-sounding reason.** `lim k` on a sequence of matrices said `a matrix has no absolute value`, which names neither the sequence nor what the interpreter was doing when it needed one. Every other refusal from `lim` names the sequence -- `k has no general clause, so it has no limit`. It now reads `k has no limit: a matrix has no absolute value`, keeping the reason and adding the context, which also covers the case where the terms change size between iterations. |
 | C38 `[fixed]` | **A scalar stretches over a matrix for `*` and for nothing else.** `a*2` and `2*a` worked, `a/2`, `a-1` and `1+a` all reported `these matrices have different sizes`. The scalar case lived in `mul`, which needs one because matrix multiplication does; `BinaryOp`, behind `+`, `-` and `/`, compared extents and gave up. Nothing chose that: `/` is documented as working cell by cell, and a literal already stretches a scalar -- `[a; 1]` spreads the 1 across the block above it. `a*0.5` working while `a/2` did not is the sharp form. Now a single value stretches on either side of all four, with the operand order kept, so `1-a` subtracts each cell from one. |
 | C37 `[fixed]` | **`README.md` documents an operator the parser does not have.** Section 1's table lists `+expr` as unary plus; `+5` reported `unexpected '+'`. The table is not a fenced block, so the README replay -- which does catch prose drifting from the interpreter -- never reached it. Found by typing `+5`. Fixed on the parser's side rather than the documentation's: the notation is ordinary, and the surprise costs more than the two lines. |
 | C36 `[fixed]` | **`lim` measures the step, not the remainder.** It stopped when two successive terms agreed to 1e-10, which is a statement about how fast the series is moving and not about how far it still has to go. A series whose every step is `1e-11` and whose sum diverges was reported as converging to `1e-11`. Raising `max_terms` — the obvious reading of `lim s` giving up on `1/n^2` — makes it worse rather than better: since phase 9 the cap is no longer technical (a hundred thousand terms cost 250ms, no depth, no step budget), and at a hundred thousand terms the series *does* stop, answering `1.64492407` where `pi^2/6` is `1.64493407`. The cap was the only thing preventing a confidently wrong answer, which is C13's failure mode dressed as a limit. The fix is in the test, not the cap: with the steps shrinking by a factor `r` the remainder is about `step*r/(1-r)`, and convergence now requires that to be under the tolerance as well as the step itself, with at least two steps to form a ratio. It is a conjunction, so it can only refuse where the old test accepted: every recorded output is byte-identical, and `lim` on `1/n^2`, on `1/n^3` and on a divergent series of tiny steps now says so at any cap. |
@@ -732,6 +733,20 @@ Recorded so they are not re-litigated later, or drifted into by accident.
     argument only to build the key, and treating a force that throws as "not
     cacheable", does work — but it is laziness kept only for the calls where
     it does not pay.
+
+- **A distance between matrices, so that `lim` works on a matrix sequence.**
+  The obvious student example converges visibly -- a Markov chain,
+  `k_n = k_(n-1)*t`, whose `k_30` is the steady state to nine digits -- and
+  `lim k` cannot say so, because the convergence test needs `abs` and a matrix
+  has none. A max-norm over the cells is three lines and would make it work.
+
+  Not taken yet, because it is a language change rather than a repair, and it
+  asks a question this file should answer first: is the limit of a matrix
+  sequence the cellwise limit? For a Markov chain yes; for a sequence whose
+  terms change size the question is meaningless, and the tolerance would then
+  be comparing a number against the largest cell of a difference rather than
+  against a value the user chose. C39 made the refusal say what it is refusing;
+  this entry is the feature behind it.
 
 - **Built-in series acceleration.** `lim` applying Aitken's delta-squared, or
   offering it behind a keyword, so that a slowly converging series gets an

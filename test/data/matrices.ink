@@ -168,6 +168,10 @@ error: a matrix has no factorial
 >> mm_n=[1 2;3 4]*(0.5)^n
 mm_n=[1 2;3 4]*(0.5)^n
 
+# 'lim' compares successive terms, and matrices have no size to compare. The
+# message used to be the bare 'a matrix has no absolute value', which reads
+# like an internal error and does not say what the interpreter was doing
+# (MODERNIZATION.md, C39).
 >> lim mm
-error: a matrix has no absolute value
+error: mm has no limit: a matrix has no absolute value
 
