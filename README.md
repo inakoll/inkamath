@@ -186,6 +186,24 @@ error: f expects 2 arguments, got 1
 error: x is not defined
 ```
 
+A definition written *inside* an expression binds a **local**: it is visible
+for the rest of the line — where it can see the parameters around it — and
+gone on the next one. Its value is the value of the binding.
+
+```
+>> (t = 3) + t
+6
+
+>> t
+error: t is not defined
+
+>> sq(x) = (s = x+1) * s
+sq(x) = (s = x+1) * s
+
+>> sq(4)
+25
+```
+
 A name has one definition. Defining it again replaces what was there.
 
 ### 4. Sequences
