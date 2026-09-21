@@ -736,6 +736,22 @@ Recorded so they are not re-litigated later, or drifted into by accident.
     cacheable", does work — but it is laziness kept only for the calls where
     it does not pay.
 
+- **Numbers the user cannot tune.** Two constants decide every answer's
+  accuracy and neither can be reached from the prompt: `lim` stops at a
+  tolerance of `1e-10`, and results print to nine significant digits
+  (`numeric_interface_precision`). Where it shows: `cos` and `sin` defined as
+  series -- the way `sequences.ink` defines them -- give `rot(pi/2)` a
+  `5.26e-13` where zero belongs, which is the tolerance and not the
+  arithmetic. At nine printed digits it is invisible except next to a zero,
+  which is exactly where a student looks.
+
+  Recorded rather than fixed because every way of exposing them costs
+  something. A second argument to `lim` changes a keyword into a call. A
+  magic global -- reading a user's `tolerance` if they define one -- is the
+  cheapest and is hidden coupling: a name that means something only because
+  the interpreter looks for it. A flag is a command-line option for a language
+  that has none. The observation stands; the syntax does not, yet.
+
 - **A distance between matrices, so that `lim` works on a matrix sequence.**
   The obvious student example converges visibly -- a Markov chain,
   `k_n = k_(n-1)*t`, whose `k_30` is the steady state to nine digits -- and
