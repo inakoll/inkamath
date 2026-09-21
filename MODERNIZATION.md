@@ -900,13 +900,42 @@ contradict `README.md`, which says there are none as a statement of design
 rather than an apology. Deciding which of those two sentences is true is the
 whole of the work.
 
-**A conditional.** Argued twice above, and the argument only strengthened: the
-language's one lazy construct is clause dispatch, and a conditional is the only
-thing that would create more work worth skipping. It would also close what the
-third pass found by accident -- a base clause cannot depend on a parameter, so
-Pascal's rule for the binomial cannot be written, and `binom(k)_n` has to go
-through factorials. The idiom to argue about is whether it arrives as `if` or
-as a guard on a clause, which is the form the sequences already suggest.
+**A conditional**, which is the one specified rather than merely argued:
+`test/data/spec/conditional.ink`, `may_fail`, never recorded, 57 of its 69
+assertions failing today.
+
+The form is a **guard on a clause** -- `abs(x) | x < 0 = 0-x` -- and the reason
+it is small is that the language has had half of it since 2014. `f_0 = 1` is
+already a clause matching a literal index, tried before the general one; a
+guard is the same dispatch with a condition instead of an index. So the clause
+not chosen is not evaluated for the reason it always was, and nothing new
+needs to be lazy. The alternative, a ternary, computes the same thing but only
+with lazy arms, which drags thunks into the expression evaluator -- the whole
+argument this file already had about call-by-name.
+
+Three decisions the spec takes, each because writing it down showed the
+alternative was worse. `==` for equality, because `f_n | n = 0 = 1` puts two
+`=` on one line doing two different jobs and a reader stumbles on it -- which
+is not a theory, it is what happened the first time someone other than the
+author read the line. `<>` for inequality, because `!` is the prefix factorial.
+And a guard is more specific than an index, an index more specific than
+neither, which keeps `README.md` section 4's rule that a base case beats the
+general clause whatever the order of definition.
+
+What it buys, beyond piecewise definitions: Pascal's rule, whose base case
+sits at an index a parameter decides and which therefore cannot be written
+today; a recurrence that stops itself, which is `lim` with a tolerance the
+user chooses; and a matrix whose cells are a definition in cases -- the
+Kronecker delta gives the identity, three clauses give the second-difference
+matrix. The price is exhaustiveness: no language can check it over arbitrary
+numeric conditions, so `no clause of h applies` is a runtime diagnostic, as it
+is in Haskell.
+
+The prize for the implementation is a deletion. `Reference` keeps a plain
+definition, a map of base clauses and one general clause, plus the rule that a
+general clause reaches down only as far as the lowest base clause. Guards make
+all of those one ordered list of clauses. Whether the feature shrinks the file
+or grows it is the first thing to measure.
 
 **Slices.** `a[1]` as a whole row, which would make a reduction natural rather
 than a recurrence over cells, and would give chained indexing a reason to exist
