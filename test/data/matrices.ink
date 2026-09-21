@@ -246,6 +246,37 @@ error: these matrices have different sizes
 >> [1 2;3 4]*[1 2 3]
 error: a matrix product needs as many columns on the left as rows on the right
 
+# Fibonacci in closed form, which needs the power and the cell together, and
+# no base clause because a closed form has nothing to recur on.
+>> fib_n=([1 1;1 0]^n)[1,2]
+fib_n=([1 1;1 0]^n)[1,2]
+
+>> fib_10
+55
+
+>> fib_0
+0
+
+# A matrix as an argument: two of the three ideas meeting, which the corpus
+# had never exercised. With cells the 2x2 formulas are writable.
+>> det(m)=m[1,1]*m[2,2]-m[1,2]*m[2,1]
+det(m)=m[1,1]*m[2,2]-m[1,2]*m[2,1]
+
+>> det(a)
+-2
+
+>> solve(m,b)=[(b[1,1]*m[2,2]-b[2,1]*m[1,2])/det(m); (m[1,1]*b[2,1]-m[2,1]*b[1,1])/det(m)]
+solve(m,b)=[(b[1,1]*m[2,2]-b[2,1]*m[1,2])/det(m); (m[1,1]*b[2,1]-m[2,1]*b[1,1])/det(m)]
+
+>> solve(a,[5;11])
+1
+2
+
+# The answer checks itself: multiplying it back gives the right-hand side.
+>> a*solve(a,[5;11])
+5
+11
+
 >> !a
 error: a matrix has no factorial
 
