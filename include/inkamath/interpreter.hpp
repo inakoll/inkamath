@@ -495,6 +495,12 @@ PExpression<U>  Interpreter<T,U>::ParseSimpleExpr()
             }
 			break;
 
+        case Add:
+            // Unary plus is the identity, and binds as unary minus does.
+            ++m_i;
+            e = ParseMultExpr();
+            break;
+
         case Min:
             ++m_i;
             e.reset(new NegExpression<U>(ParseMultExpr()));

@@ -25,6 +25,18 @@
 >> !0
 1
 
+# Unary plus, which README.md section 1 has always listed and the parser has
+# never had: '+5' was 'unexpected' (MODERNIZATION.md, C37). It binds exactly
+# as unary minus does.
+>> +5
+5
+
+>> +2^2
+4
+
+>> -2^2
+-4
+
 # 'e', 'pi' and the imaginary unit 'i' are the only built-ins.
 >> [pi, e]
 3.14159265 2.71828183
