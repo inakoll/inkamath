@@ -511,7 +511,10 @@ Two things that decided the phase:
   the line's own scope addresses all four.
 - **Call-by-name scores nothing in the file written to specify it.** Its three
   failures there are the same three either way, and all three read `undefined
-  is not defined` — an argument evaluated at the call site and never read.
+  is not defined` — an argument evaluated at the call site and never read. Why
+  that is the right answer rather than an accepted loss is under Deferred:
+  the language's one lazy construct is clause dispatch, and everything else is
+  total.
 
 ### Values, not expressions
 
@@ -664,13 +667,36 @@ Recorded so they are not re-litigated later, or drifted into by accident.
 - **Lazy parameters (call-by-name).** A parameter binding the argument
   *expression* rather than its value, so that an argument the body never reads
   is never evaluated. The 2014 README lists *"Évaluation paresseuse"* first
-  among the project's features, which is what put it in the plan; read again,
-  what that README demonstrates is a name re-evaluating its expression on
-  every use — `b = a+a`, `a = 2`, `b` is `4` — which the interpreter has
-  always done. That is late binding, not lazy arguments.
+  among the project's features, which is what put it in the plan. That claim
+  is fair as far as it goes: a definition evaluates nothing, so `later=zzz+1`
+  is accepted and only `later` reports the unknown name. What has never
+  existed is laziness *inside* an expression, and the re-reading that matters
+  is why that turns out to be the right shape rather than an omission.
 
-  Prototyped and measured, three times over, and each measurement argued
-  against it:
+  **The language already has exactly one lazy construct, and it is the one
+  worth having: clause dispatch.** With `f_0=zzz` and `f_n=n`, `f_5` answers
+  `5` and never looks at the base clause. Choosing a clause is choosing not to
+  evaluate the others, which is what laziness is *for*.
+
+  Everywhere else an expression is **total**: every operand contributes to the
+  answer, and `0*zzz` is an error rather than `0`. There is nothing to skip,
+  because nothing is discarded. Call-by-name can only skip an argument the
+  body never mentions — a parameter that is not used, which is a mistake
+  rather than an idiom. So it is not that laziness does not belong here; it is
+  that it is already where the choices are made.
+
+  Which turns the open question into a different one: **should the language be
+  able to choose anywhere other than at a clause index?** A conditional is
+  what creates skippable work, and it would have to be lazy in itself — an
+  `if` that evaluates both arms cannot guard a recurrence — without making
+  every parameter lazy. That is the argument to have if this is ever
+  revisited. It also names the family the language belongs to, which is the
+  spreadsheet rather than the lazy functional language: cells holding
+  formulas, answers remembered until an input changes (phase 9), locals over a
+  formula (phase 8), and one lazy construct for choosing.
+
+  The measurements against call-by-name stand, and are the reason not to take
+  it as a consolation prize in the meantime:
 
   - It passes **no assertion** of `laziness.ink`, the transcript written to
     specify it, that eager arguments do not already pass. The three it fails
@@ -686,13 +712,6 @@ Recorded so they are not re-litigated later, or drifted into by accident.
     argument only to build the key, and treating a force that throws as "not
     cacheable", does work — but it is laziness kept only for the calls where
     it does not pay.
-
-  What would make it worth the depth is a **conditional**. Laziness earns its
-  keep where a branch decides not to need an argument, and this language has
-  no `if`, no guard and no short-circuit; without one, the programs where
-  call-by-name changes an answer are exactly those with an argument that errors
-  or diverges and is never read. A conditional is a language addition, not a
-  repair, and it is the thing to argue about first if this is ever revisited.
 
 - **Substitution and partial expansion.** `?b` showing `2+2` rather than
   `a+a`: evaluating some references while leaving others symbolic. This is a
