@@ -264,6 +264,41 @@ u_n=2*n
 error: u did not converge within 100 terms (last term 200)
 ```
 
+`lim` stops when the last step is under the tolerance *and* the remainder the
+steps imply is too. A series can converge too slowly to be summed this way —
+after `n` terms of `1/n^2` the sum has moved by `1e-10` while it still has
+`1e-5` to go — and then `lim` says so rather than answering:
+
+```
+>> w_1=1
+w_1=1
+
+>> w_n=w_(n-1)+1/n^2
+w_n=w_(n-1)+1/n^2
+
+>> lim w
+error: w did not converge within 100 terms (last term 1.63508193)
+```
+
+That is a mathematical problem, not a limitation of `lim`, and the language is
+enough to solve it. What remains after `n` terms is `1/n - 1/(2n^2) +
+1/(6n^3) - ...`, and a clause may add it:
+
+```
+>> y_n=w_n+1/n-1/(2*n^2)+1/(6*n^3)-1/(30*n^5)
+y_n=w_n+1/n-1/(2*n^2)+1/(6*n^3)-1/(30*n^5)
+
+>> y_20
+1.64493407
+
+>> pi^2/6
+1.64493407
+```
+
+Twenty corrected terms give every digit that is printed. An acceleration is a
+sequence like any other, so which one to use stays the user's decision — it
+is the mathematics, and no built-in choice would be right for every series.
+
 An index must be a whole number, and `lim` is a reserved word.
 
 A term is evaluated once per *context* — which definition, which index, which

@@ -114,6 +114,38 @@ z_n=z_(n-1)+1/n^2
 >> lim z
 error: z did not converge within 100 terms (last term 1.63508193)
 
+# Which is a mathematical problem and not a limitation of 'lim'. What is left
+# of the series after n terms is 1/n - 1/(2n^2) + 1/(6n^3) - ..., and a clause
+# may add it: twenty corrected terms give every digit that is printed, where
+# a hundred thousand raw ones do not.
+>> y_n=z_n+1/n-1/(2*n^2)+1/(6*n^3)-1/(30*n^5)
+y_n=z_n+1/n-1/(2*n^2)+1/(6*n^3)-1/(30*n^5)
+
+>> y_20
+1.64493407
+
+>> pi^2/6
+1.64493407
+
+# The same move without knowing the tail: Aitken's delta-squared, written as
+# an ordinary clause because a clause may index another sequence at any
+# expression, including one that reaches forward. Twenty accelerated terms of
+# the alternating series beat a hundred raw ones.
+>> q_1=1
+q_1=1
+
+>> q_n=q_(n-1)+(0-1)^(n-1)/n
+q_n=q_(n-1)+(0-1)^(n-1)/n
+
+>> q_100
+0.688172179
+
+>> r_n=q_n-(q_(n+1)-q_n)^2/(q_(n+2)-2*q_(n+1)+q_n)
+r_n=q_n-(q_(n+1)-q_n)^2/(q_(n+2)-2*q_(n+1)+q_n)
+
+>> r_20
+0.693134637
+
 # Recursion is bounded: past the budget the interpreter says so rather than
 # dying (MODERNIZATION.md, C1).
 >> g_0=1
