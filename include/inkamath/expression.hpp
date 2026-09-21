@@ -237,6 +237,30 @@ public:
 template <typename T>
 class ParametersCall;
 
+// A comparison, answering one or zero. One class with an operator rather than
+// six classes: six would be eighteen visit methods for one idea.
+template <typename T>
+class CompareExpression : public BinaryExpression<T>
+{
+public:
+    CompareExpression(Comparison op, PExpression<T> e1, PExpression<T> e2)
+        : BinaryExpression<T>(e1, e2), op_(op)
+    {}
+
+    Comparison Op() const {return op_;}
+
+    PExpression<T> accept(TransformationVisitor<T> &v) override {
+        return v.visit(this);
+    }
+
+    T accept(FoldingVisitor<T> &v) override {
+        return v.visit(this);
+    }
+
+private:
+    Comparison op_;
+};
+
 // One cell of a matrix: 'm[i,j]'.
 template <typename T>
 class CellExpression : public Expression<T>

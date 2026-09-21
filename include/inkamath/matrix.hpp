@@ -53,6 +53,31 @@ public:
     // One cell, as a 1x1: everything in this language is a matrix.
     static Matrix<T> cell(const Matrix<T>& a, int i, int j) {return Matrix<T>(a(i, j));}
 
+    // A comparison answers one or zero -- there is no truth type, because
+    // every value here is a number. Cell by cell was considered and left out:
+    // nothing in the language reduces a matrix of ones and zeros to a single
+    // truth, so it would invite an idiom it cannot finish.
+    static Matrix<T> compare(const Matrix<T>& a, const Matrix<T>& b, Comparison op)
+    {
+        const T& x = a.Comparable();
+        const T& y = b.Comparable();
+        const bool answer = (op == Comparison::Equal)    ? x == y
+                          : (op == Comparison::NotEqual) ? !(x == y)
+                          : Ordered(x, op, y);
+        return Matrix<T>(answer ? numeric_interface<T>::one() : numeric_interface<T>::zero());
+    }
+
+    // A guard holds when it is not zero. NaN is not zero and so holds, while
+    // every comparison with it is false -- the one place the convention bites.
+    static bool truth(const Matrix<T>& a)
+    {
+        if(!a.IsScalar()) {
+            throw std::runtime_error("a guard needs a single value, not a "
+                                     + a.extent_.toString() + " matrix");
+        }
+        return !(a.scalar_ == numeric_interface<T>::zero());
+    }
+
     // A 1x1 matrix -- which every literal and every intermediate scalar is --
     // keeps its cell inline rather than on the heap.
     bool IsScalar() const {return extent_.count() == 1;}
@@ -140,10 +165,41 @@ private:
         if(i < 1 || static_cast<unsigned long long>(i) > extent_.rows
            || j < 1 || static_cast<unsigned long long>(j) > extent_.cols) {
             throw std::runtime_error("row " + std::to_string(i) + ", column " + std::to_string(j)
-                                     + " is outside a " + std::to_string(extent_.rows) + "x"
-                                     + std::to_string(extent_.cols) + " matrix");
+                                     + " is outside a " + extent_.toString() + " matrix");
         }
         return static_cast<size_t>(i-1)*extent_.cols + static_cast<size_t>(j-1);
+    }
+
+    // Ordering needs real numbers, as the factorial does.
+    static bool Ordered(const T& x, Comparison op, const T& y)
+    {
+        const auto left  = Real(x);
+        const auto right = Real(y);
+        switch(op) {
+        case Comparison::Less:         return left <  right;
+        case Comparison::Greater:      return left >  right;
+        case Comparison::LessEqual:    return left <= right;
+        case Comparison::GreaterEqual: return left >= right;
+        default:                       return false;
+        }
+    }
+
+    static auto Real(const T& value)
+    {
+        if(!(numeric_interface<T>::imaginary(value) == 0)) {
+            throw std::runtime_error("a comparison needs real numbers, not "
+                                     + numeric_interface<T>::toString(value));
+        }
+        return numeric_interface<T>::real(value);
+    }
+
+    const T& Comparable() const
+    {
+        if(!IsScalar()) {
+            throw std::runtime_error("a comparison needs single values, not a "
+                                     + extent_.toString() + " matrix");
+        }
+        return scalar_;
     }
 
     // The single cell of a 1x1 matrix. Most of the numeric interface is only

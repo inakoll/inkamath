@@ -44,6 +44,9 @@ template <typename T>
 class CellExpression;
 
 template <typename T>
+class CompareExpression;
+
+template <typename T>
 class RefExpression;
 
 template <typename T>
@@ -68,6 +71,7 @@ public:
     virtual ReturnType visit(ValExpression<T>* expr) = 0;
     virtual ReturnType visit(MatExpression<T>* expr) = 0;
     virtual ReturnType visit(CellExpression<T>* expr) = 0;
+    virtual ReturnType visit(CompareExpression<T>* expr) = 0;
     virtual ReturnType visit(RefExpression<T>* expr) = 0;
     virtual ReturnType visit(FuncExpression<T>* expr) = 0;
 };
@@ -148,6 +152,10 @@ public:
 	}
 
 	PExpression<T> visit(CellExpression<T>* expr) override {
+		return visit_others_expr_imp(expr);
+	}
+
+	PExpression<T> visit(CompareExpression<T>* expr) override {
 		return visit_others_expr_imp(expr);
 	}
 	
@@ -249,6 +257,11 @@ public:
     T visit(AddExpression<T>* expr) override {
         const T left = expr->m_e1()->accept(*this);
         return left + expr->m_e2()->accept(*this);
+    }
+
+    T visit(CompareExpression<T>* expr) override {
+        const T left = expr->m_e1()->accept(*this);
+        return numeric_interface<T>::compare(left, expr->m_e2()->accept(*this), expr->Op());
     }
 
     T visit(CellExpression<T>* expr) override {

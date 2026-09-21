@@ -7,6 +7,7 @@
 enum Type
 {
     Add,Mult,Min,Div,Pow,Fact,Equal, Sub,
+    Compare, Guard,
     Val,Func, Ref,
     LPar,RPar,LBra,RBra,
     Space, Comma, Semico, Query

@@ -84,6 +84,7 @@ private:
     // `lead`, where given, is a leading operand the caller has already parsed.
     // Without it ParseEqualExpr has to rewind and parse its speculative
     // left-hand side a second time, which nests into O(2^depth).
+    PExpression<U> ParseCompareExpr(PExpression<U> lead = PExpression<U>());
     PExpression<U> ParseAddExpr(PExpression<U> lead = PExpression<U>());
     PExpression<U> ParseMultExpr(PExpression<U> lead = PExpression<U>());
     PExpression<U> ParsePowExpr(PExpression<U> lead = PExpression<U>());
@@ -202,7 +203,43 @@ void Interpreter<T,U>::Lexer(const std::string& s)
             m_tokens.push_back(Token<T>(Mult, std::string(1, s[i])));
             break;
         case '=':
-            m_tokens.push_back(Token<T>(Equal, std::string(1, s[i])));
+            // '==' asks, '=' tells. One symbol for both is what made
+            // 'f_n | n = 0 = 1' unreadable (MODERNIZATION.md, phase 10).
+            if(i + 1 < s.length() && s[i+1] == '=')
+            {
+                m_tokens.push_back(Token<T>(Compare, "=="));
+                ++i;
+            }
+            else
+            {
+                m_tokens.push_back(Token<T>(Equal, std::string(1, s[i])));
+            }
+            break;
+        case '<':
+            // '<>' and not '!=': '!' is the prefix factorial.
+            if(i + 1 < s.length() && (s[i+1] == '=' || s[i+1] == '>'))
+            {
+                m_tokens.push_back(Token<T>(Compare, std::string(1, s[i]) + s[i+1]));
+                ++i;
+            }
+            else
+            {
+                m_tokens.push_back(Token<T>(Compare, std::string(1, s[i])));
+            }
+            break;
+        case '>':
+            if(i + 1 < s.length() && s[i+1] == '=')
+            {
+                m_tokens.push_back(Token<T>(Compare, ">="));
+                ++i;
+            }
+            else
+            {
+                m_tokens.push_back(Token<T>(Compare, std::string(1, s[i])));
+            }
+            break;
+        case '|':
+            m_tokens.push_back(Token<T>(Guard, std::string(1, s[i])));
             break;
         case '/':
             m_tokens.push_back(Token<T>(Div, std::string(1, s[i])));
@@ -373,12 +410,36 @@ PExpression<U> Interpreter<T,U>::ParseEqualExpr()
             }
             // A name at the head of a line is parsed here, not in
             // ParseSimpleExpr, so the cell brackets are read here too.
-            e = ParseAddExpr(ParseCell(ref, true));
+            e = ParseCompareExpr(ParseCell(ref, true));
         }
     }
     else
     {
-        e = ParseAddExpr();
+        e = ParseCompareExpr();
+    }
+    return e;
+}
+
+// Looser than addition, tighter than a definition: 'a < b+c' compares a with
+// the sum, and 'f(x) | x < 0 = ...' guards on the comparison.
+inline Comparison AsComparison(const std::string& op)
+{
+    if(op == "<")  return Comparison::Less;
+    if(op == ">")  return Comparison::Greater;
+    if(op == "<=") return Comparison::LessEqual;
+    if(op == ">=") return Comparison::GreaterEqual;
+    if(op == "==") return Comparison::Equal;
+    return Comparison::NotEqual;
+}
+
+template <Parsable T, Numeric U>
+PExpression<U> Interpreter<T,U>::ParseCompareExpr(PExpression<U> lead)
+{
+    PExpression<U> e = ParseAddExpr(lead);
+    while (!AtEnd() && Peek().type == Compare)
+    {
+        const std::string& op = m_tokens[m_i++].text;
+        e.reset(new CompareExpression<U>(AsComparison(op), e, ParseAddExpr()));
     }
     return e;
 }
