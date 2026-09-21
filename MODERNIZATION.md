@@ -900,42 +900,8 @@ contradict `README.md`, which says there are none as a statement of design
 rather than an apology. Deciding which of those two sentences is true is the
 whole of the work.
 
-**A conditional**, which is the one specified rather than merely argued:
-`test/data/spec/conditional.ink`, `may_fail`, never recorded, 57 of its 69
-assertions failing today.
-
-The form is a **guard on a clause** -- `abs(x) | x < 0 = 0-x` -- and the reason
-it is small is that the language has had half of it since 2014. `f_0 = 1` is
-already a clause matching a literal index, tried before the general one; a
-guard is the same dispatch with a condition instead of an index. So the clause
-not chosen is not evaluated for the reason it always was, and nothing new
-needs to be lazy. The alternative, a ternary, computes the same thing but only
-with lazy arms, which drags thunks into the expression evaluator -- the whole
-argument this file already had about call-by-name.
-
-Three decisions the spec takes, each because writing it down showed the
-alternative was worse. `==` for equality, because `f_n | n = 0 = 1` puts two
-`=` on one line doing two different jobs and a reader stumbles on it -- which
-is not a theory, it is what happened the first time someone other than the
-author read the line. `<>` for inequality, because `!` is the prefix factorial.
-And a guard is more specific than an index, an index more specific than
-neither, which keeps `README.md` section 4's rule that a base case beats the
-general clause whatever the order of definition.
-
-What it buys, beyond piecewise definitions: Pascal's rule, whose base case
-sits at an index a parameter decides and which therefore cannot be written
-today; a recurrence that stops itself, which is `lim` with a tolerance the
-user chooses; and a matrix whose cells are a definition in cases -- the
-Kronecker delta gives the identity, three clauses give the second-difference
-matrix. The price is exhaustiveness: no language can check it over arbitrary
-numeric conditions, so `no clause of h applies` is a runtime diagnostic, as it
-is in Haskell.
-
-The prize for the implementation is a deletion. `Reference` keeps a plain
-definition, a map of base clauses and one general clause, plus the rule that a
-general clause reaches down only as far as the lowest base clause. Guards make
-all of those one ordered list of clauses. Whether the feature shrinks the file
-or grows it is the first thing to measure.
+**A conditional.** Done -- phase 10. It was the one opening specified before
+it was built, and the specification is what found both of its mistakes.
 
 **Slices.** `a[1]` as a whole row, which would make a reduction natural rather
 than a recurrence over cells, and would give chained indexing a reason to exist
@@ -945,6 +911,88 @@ If they were mine to order: the conditional, because it is the one missing
 primitive rather than a convenience; then the number systems, because the seam
 is already open and the experiment above took an afternoon; then the tolerance,
 and a prelude behind it.
+
+---
+
+## Phase 10 — Definitions in cases `[done]`
+
+A clause may carry a **guard**: the condition it applies under, written
+between the left-hand side and the `=`, as set-builder notation writes "such
+that".
+
+```
+abs(x) | x < 0 = 0-x
+abs(x) | x >= 0 = x
+```
+
+Specified first, in `test/data/spec/conditional.ink`, 57 of its 69 assertions
+failing when it was written; it is now `test/data/conditional.ink` with every
+expected output unchanged.
+
+### Why it is small
+
+The language has had half of this since 2014. `f_0 = 1` is already a clause
+matching a literal index, tried before the general one, and the clause not
+chosen is never evaluated. A guard is that same dispatch with a condition
+instead of an index, so nothing new had to become lazy. A ternary would have
+computed the same things and required lazy arms to do it, which is the
+call-by-name argument this file already had and declined.
+
+Comparisons answer `1` and `0`, because every value here is a number and a
+truth type would be a fifth thing to carry through `numeric_interface`. A
+guard holds when it is not zero, so `sgn(x) = (x>0) - (x<0)` needs no guard at
+all, and `(n > 0) * (abs(x) < 1)` is a conjunction.
+
+### What writing the specification found
+
+Both of the design's mistakes, before either cost a day:
+
+- **`==`, not `=`, for equality.** `f_n | n = 0 = 1` puts two `=` on one line
+  doing two different jobs, one asking and one telling. The author read that
+  line and stopped, which is the only evidence that counts. `<>` for
+  inequality follows from `!` being the prefix factorial.
+- **Clauses are tried in written order**, and not "a guard is more specific
+  than an index", which is what the first draft said. Implementing that draft
+  made `root` -- a recurrence whose guard reads the previous term -- recurse
+  for ever at the base index, because the guard was reached before `root_0`.
+  Written order serves both cases: `c` puts its guards first so that they rule
+  an index out, `root` puts its base first so that its guard is never asked
+  there. The unguarded general clause is still tried last wherever it stands,
+  so `README.md` section 4's rule is untouched.
+
+The specification also asked for something the language cannot say: the
+Kronecker delta was written `d(i,j)`, and `i` is the imaginary unit. It is
+`d(row,col)` now, which reads better anyway.
+
+### What it buys
+
+Pascal's rule, whose base case sits at an index a parameter decides and which
+therefore could not be written at all -- the third pass found that by hand,
+through `binom` having to go via factorials. A removable singularity, where
+the guard is what keeps `0/0` from being evaluated. A recurrence that stops
+itself, which is `lim` with a tolerance the user chooses. And a matrix whose
+cells are a definition in cases: `d(row,col)` gives the identity, three
+clauses give the second-difference matrix.
+
+### What it costs, and the deletion still owed
+
+Two tokens and six comparison operators; a `CompareExpression` carrying an
+operator rather than six near-identical classes, which would have been
+eighteen visit methods for one idea; a vector of guarded clauses on
+`Reference`, and the guard riding on `ParametersDefinition`, where the rest of
+the left-hand side already lives. Every recorded output is byte-identical.
+
+A guarded clause is appended and never replaced, so re-typing a guard leaves
+the old clause in front of the new one; the way back is the plain definition,
+which still clears everything (C11). That is the one rough edge, and it is
+recorded rather than guessed at.
+
+The deletion this phase promised has not happened: `Reference` still keeps a
+plain clause, a map of base clauses, one general clause *and* a vector of
+guarded ones, where a single ordered list would do -- `f_0 = 1` is a clause
+whose guard is "the index is 0". Doing it would remove the map, the
+reach-down rule and the merge in `EvalImp`. It is the obvious next commit and
+it is a refactor, so the goldens decide it.
 
 ---
 
