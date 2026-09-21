@@ -165,6 +165,26 @@ error: a cell needs a row and a column, as 'm[1,2]'
 1 2
 3 4
 
+# A single value stretches to fill the band it sits in, which is what makes
+# '[a, 1]' mean what it looks like.
+>> [a, 1]
+1 2 1
+3 4 1
+
+# RECORDED AS IT IS, NOT AS IT SHOULD BE (MODERNIZATION.md, C41). A block that
+# is smaller than its band but is not a single value is filled with its own
+# last cell, so the second row under '[3 4]' is '4 4' and the second row under
+# '[1 2 3]' is '3 3 3'. Nothing chose that rule: a literal's short row pads
+# with zeros, a single value stretches, and this third case replicates a
+# corner. Recorded so that it cannot change in silence.
+>> [a, [3 4]]
+1 2 3 4
+3 4 4 4
+
+>> [[1 2 3], a]
+1 2 3 1 2
+3 3 3 3 4
+
 # A matrix power is repeated multiplication. It used to square the
 # accumulator, so 'a^n' computed 'a^(2^(n-1))' -- right at 1 and 2 and wrong
 # everywhere else, with a^0 returning a (MODERNIZATION.md, C23).
