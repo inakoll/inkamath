@@ -987,12 +987,32 @@ the old clause in front of the new one; the way back is the plain definition,
 which still clears everything (C11). That is the one rough edge, and it is
 recorded rather than guessed at.
 
-The deletion this phase promised has not happened: `Reference` still keeps a
-plain clause, a map of base clauses, one general clause *and* a vector of
-guarded ones, where a single ordered list would do -- `f_0 = 1` is a clause
-whose guard is "the index is 0". Doing it would remove the map, the
-reach-down rule and the merge in `EvalImp`. It is the obvious next commit and
-it is a refactor, so the goldens decide it.
+The deletion this phase promised was done, and **it was not a deletion**.
+`Reference` now keeps one vector of clauses in written order instead of a plain
+clause, a map of base clauses, a general clause and a vector of guarded ones;
+`Clause::order` and the merge in `EvalImp` are gone, and `Describe` no longer
+collects and sorts. The file went from 341 lines to **356**.
+
+Fifteen lines the wrong way, and the reason is worth keeping: a `std::map`
+keyed by index *is* an index, and replacing it with one heterogeneous list
+means writing by hand what the map gave for free -- find the clause at this
+index, the lowest, the highest. The prediction that guards would pay for
+themselves in deletions was wrong, and measuring it is the only way that was
+ever going to show.
+
+Kept anyway, on the argument that the model is now the one sentence the
+language actually follows -- clauses in written order, the general one last --
+where the old shape needed that rule spread across `EvalImp`, `Describe` and
+`Converge`, and needed a merge-by-order once guards arrived. Every recorded
+output is byte-identical. If the fifteen lines matter more than the sentence,
+the revert is one commit.
+
+One behaviour moved, in a corner no golden covered: a guarded clause written
+*after* an unguarded one is now unreachable, where the old dispatch tried all
+guards first and let it fire. Written order says the unguarded clause answers,
+and `conditional.ink` records it. Silence is the wrong answer to that input
+though -- `a clause after an unguarded one can never apply` is a diagnostic
+this project would normally write, and it is the next small thing here.
 
 ---
 

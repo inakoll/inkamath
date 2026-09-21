@@ -7,7 +7,6 @@
 #include "inkamath/expression_visitor.hpp"
 
 #include <algorithm>
-#include <map>
 #include <stdexcept>
 #include <vector>
 
@@ -19,8 +18,6 @@ struct Clause {
     // What the user typed. '?' prints it back rather than rendering the
     // expression, so the answer is the definition, not a normalisation of it.
     std::string             written;
-    // Clauses print in the order they were written.
-    size_t                  order = 0;
 
     explicit operator bool() const {return bool(expression);}
 };
@@ -43,59 +40,47 @@ public:
             throw std::runtime_error(std::string("Interpreter internal error : invalid reference names ") + ai_reference_name + " and " + reference_name_);
         }
 
-        // One definition per name. An indexed clause extends a sequence,
-        // creating one if the name held a plain definition; a plain
-        // definition replaces whatever was there.
-        const Clause<T> clause{ai_parameters, ai_expression, written, next_order_++};
-        // A guarded clause is appended, never replaced: re-typing a guard
-        // leaves the old clause in front of the new one, and the way back is
-        // the plain definition below, which still clears everything (C11).
-        if(ai_parameters.guarded()) {
-            guarded_.push_back(clause);
+        // One definition per name, kept as the clauses that make it up in the
+        // order they were written. A plain definition replaces all of them; an
+        // indexed or general clause replaces the one of its own shape and
+        // drops a plain one, which is how an index turns a value into a
+        // sequence. A guarded clause is appended and never replaced, so
+        // re-typing a guard leaves the old clause in front of the new one and
+        // the way back is the plain definition (C11).
+        const Clause<T> clause{ai_parameters, ai_expression, written};
+        if(!ai_parameters.guarded() && !ai_parameters.indexed()) {
+            clauses_.clear();
         }
-        else if(ai_parameters.general()) {
-            plain_ = Clause<T>();
-            general_ = clause;
+        else if(!ai_parameters.guarded()) {
+            std::erase_if(clauses_, [&](const Clause<T>& existing) {
+                return IsPlain(existing)
+                    || (IsGeneral(existing) && IsGeneral(clause))
+                    || (IsBase(existing) && IsBase(clause)
+                        && existing.parameters.index() == clause.parameters.index());
+            });
         }
-        else if(ai_parameters.indexed()) {
-            plain_ = Clause<T>();
-            base_[ai_parameters.index()] = clause;
-        }
-        else {
-            base_.clear();
-            general_ = Clause<T>();
-            guarded_.clear();
-            plain_ = clause;
-        }
+        clauses_.push_back(clause);
     }
 
     // '?name', or '?name_0' for one clause of a sequence.
     std::string Describe(const ParametersCall<T>& call, ReferenceStack<T>& stack) const {
         int index = 0;
         if(call.TryEvalIndex(stack, index)) {
-            if(plain_) {
+            if(Plain()) {
                 throw std::runtime_error(reference_name_ + " is not a sequence");
             }
-            auto clause = base_.find(index);
-            if(clause == base_.end()) {
+            const Clause<T>* clause = Base(index);
+            if(!clause) {
                 throw std::runtime_error(reference_name_ + " has no clause for index "
                                          + std::to_string(index));
             }
-            return Written(clause->second);
+            return Written(*clause);
         }
 
-        std::vector<const Clause<T>*> clauses;
-        for(const Clause<T>& clause : guarded_) clauses.push_back(&clause);
-        if(plain_) clauses.push_back(&plain_);
-        for(const auto& clause : base_) clauses.push_back(&clause.second);
-        if(general_) clauses.push_back(&general_);
-        std::sort(clauses.begin(), clauses.end(),
-                  [](const Clause<T>* a, const Clause<T>* b) {return a->order < b->order;});
-
         std::string description;
-        for(const Clause<T>* clause : clauses) {
+        for(const Clause<T>& clause : clauses_) {
             if(!description.empty()) description += '\n';
-            description += Written(*clause);
+            description += Written(clause);
         }
         return description;
     }
@@ -131,10 +116,11 @@ public:
         EvaluationVisitor<T> evaluator(stack);
         parameters.BindDefaults(call, evaluator);
         if(call.limit()) {
-            if(!general_) {
+            const Clause<T>* general = General();
+            if(!general) {
                 throw std::runtime_error(reference_name_ + " has no general clause, so it has no limit");
             }
-            return Converge(evaluator);
+            return Converge(*general, evaluator);
         }
         // Storing after the call returns, so that an evaluation which ran out
         // of budget is retried rather than remembered.
@@ -169,10 +155,45 @@ private:
     // The clauses of one name share their parameter list; any of them answers
     // for the whole definition.
     const ParametersDefinition<T>& CallParameters() const {
-        if(!guarded_.empty()) return guarded_.front().parameters;
-        if(general_) return general_.parameters;
-        if(!base_.empty()) return base_.begin()->second.parameters;
-        return plain_.parameters;
+        static const ParametersDefinition<T> none;
+        return clauses_.empty() ? none : clauses_.front().parameters;
+    }
+
+    // The three unguarded shapes. A guarded clause has no shape: it is never
+    // replaced and never stands in for the definition.
+    static bool IsPlain(const Clause<T>& c)
+        {return !c.parameters.guarded() && !c.parameters.indexed();}
+    static bool IsBase(const Clause<T>& c)
+        {return !c.parameters.guarded() && c.parameters.indexed() && !c.parameters.general();}
+    static bool IsGeneral(const Clause<T>& c)
+        {return !c.parameters.guarded() && c.parameters.general();}
+
+    template <typename Predicate>
+    const Clause<T>* FirstThat(Predicate fits) const {
+        auto found = std::find_if(clauses_.begin(), clauses_.end(), fits);
+        return found == clauses_.end() ? nullptr : &*found;
+    }
+
+    const Clause<T>* Plain() const {return FirstThat(IsPlain);}
+    const Clause<T>* General() const {return FirstThat(IsGeneral);}
+    const Clause<T>* Base(int index) const {
+        return FirstThat([&](const Clause<T>& c) {return IsBase(c) && c.parameters.index() == index;});
+    }
+    bool Guarded() const {
+        return FirstThat([](const Clause<T>& c) {return c.parameters.guarded();}) != nullptr;
+    }
+
+    // How far down the general clause reaches, and which term a limit starts
+    // from: the lowest and the highest index a base clause stands at.
+    const Clause<T>* EndBase(bool lowest) const {
+        const Clause<T>* found = nullptr;
+        for(const Clause<T>& clause : clauses_) {
+            if(IsBase(clause)
+               && (!found || (clause.parameters.index() < found->parameters.index()) == lowest)) {
+                found = &clause;
+            }
+        }
+        return found;
     }
 
     // A clause bound from inside an expression has no written form to quote.
@@ -180,72 +201,77 @@ private:
         return clause.written.empty() ? reference_name_ : clause.written;
     }
 
+    // Does this clause answer this call? The shape is checked first and the
+    // guard last, because a guard may read the index it is being asked about.
+    bool Selects(const Clause<T>& clause, bool indexed, int index,
+                 EvaluationVisitor<T>& evaluator) const {
+        const ParametersDefinition<T>& p = clause.parameters;
+        if(p.indexed() != indexed) return false;
+        if(p.general()) {
+            SetIndex(p.index_name(), index, evaluator.stack());
+        }
+        else if(indexed && p.index() != index) {
+            return false;
+        }
+        return !p.guarded() || numeric_interface<T>::truth(p.guard()->accept(evaluator));
+    }
+
     T EvalImp(bool indexed, int index, EvaluationVisitor<T>& evaluator) const {
-        // Clauses are tried in the order they were written, the base clause
-        // for this index among them. Order is the writer's to choose because
-        // neither precedence serves both cases: a guard reading the previous
-        // term must not be reached at the base index, while a guard ruling an
-        // index out must be (MODERNIZATION.md, phase 10). The clause not
-        // chosen is not evaluated, which is what index dispatch always did.
-        auto base = indexed ? base_.find(index) : base_.end();
-        for(const Clause<T>& clause : guarded_) {
-            if(base != base_.end() && base->second.order < clause.order) {
-                return base->second.expression->accept(evaluator);
-            }
-            if(clause.parameters.indexed() != indexed) continue;
-            if(clause.parameters.general()) {
-                SetIndex(clause.parameters.index_name(), index, evaluator.stack());
-            }
-            else if(indexed && clause.parameters.index() != index) {
-                continue;
-            }
-            if(numeric_interface<T>::truth(clause.parameters.guard()->accept(evaluator))) {
+        // Clauses are tried in the order they were written, and the clause not
+        // chosen is not evaluated -- which is what index dispatch has always
+        // done. Order is the writer's to choose because neither precedence
+        // serves both cases: a guard reading the previous term must not be
+        // reached at the base index, while a guard ruling an index out must be
+        // (MODERNIZATION.md, phase 10). The unguarded general clause is the
+        // exception, tried last wherever it stands, so that a base case beats
+        // it however the two were written (README.md section 4).
+        for(const Clause<T>& clause : clauses_) {
+            if(IsGeneral(clause)) continue;
+            if(Selects(clause, indexed, index, evaluator)) {
                 return clause.expression->accept(evaluator);
             }
         }
-        if(plain_) {
+        if(indexed) {
             // An index on something that is not a sequence used to be dropped
             // without a word, which is the last of C13's silent answers.
-            if(indexed) {
+            if(Plain()) {
                 throw std::runtime_error(reference_name_ + " is not a sequence");
-            }
-            return plain_.expression->accept(evaluator);
-        }
-        if(indexed) {
-            auto clause = base_.find(index);
-            if(clause != base_.end()) {
-                return clause->second.expression->accept(evaluator);
             }
             // A general clause reaches down only as far as the lowest base
             // clause; below that the sequence is simply not defined. With no
             // base clause at all it applies everywhere, which is right for a
             // closed form and divergent for a recurrence -- the budget says so.
-            if(general_ && (base_.empty() || index >= base_.begin()->first)) {
-                return EvaluateGeneralClause(index, evaluator);
+            const Clause<T>* lowest = EndBase(true);
+            if(const Clause<T>* general = General()) {
+                if(!lowest || index >= lowest->parameters.index()) {
+                    return EvaluateGeneralClause(*general, index, evaluator);
+                }
             }
-            if(!guarded_.empty()) {
+            if(Guarded()) {
                 throw std::runtime_error("no clause of " + reference_name_ + " applies");
             }
             throw std::runtime_error(reference_name_ + " has no clause for index "
                                      + std::to_string(index));
         }
-        if(!guarded_.empty()) {
+        if(Guarded()) {
             throw std::runtime_error("no clause of " + reference_name_ + " applies");
         }
         // Nothing sensible to invent: a sequence has no value under its bare
         // name. A limit is something the user asks for, not something a
         // lookup does on its way past.
-        const std::string example = base_.empty() ? "0" : std::to_string(base_.begin()->first);
+        const Clause<T>* lowest = EndBase(true);
+        const std::string example = lowest ? std::to_string(lowest->parameters.index()) : "0";
         throw std::runtime_error(reference_name_ + " is a sequence; index it (" + reference_name_
                                  + "_" + example + ")"
-                                 + (general_
+                                 + (General()
                                     ? " or take its limit (lim " + reference_name_ + ")"
                                     : ""));
     }
 
-    T EvaluateGeneralClause(long long index, EvaluationVisitor<T>& evaluator) const {
-        SetIndex(general_.parameters.index_name(), index, evaluator.stack());
-        return general_.expression->accept(evaluator);
+    T EvaluateGeneralClause(const Clause<T>& general, long long index,
+                            EvaluationVisitor<T>& evaluator) const {
+        SetIndex(general.parameters.index_name(), index, evaluator.stack());
+        return general.expression->accept(evaluator);
     }
 
     // Terms until the series is within the tolerance of its limit. Since
@@ -256,23 +282,24 @@ private:
     static constexpr size_t max_terms = 100;
     static constexpr double tolerance = 1E-10;
 
-    T Converge(EvaluationVisitor<T>& evaluator) const {
+    T Converge(const Clause<T>& general, EvaluationVisitor<T>& evaluator) const {
         long long index = 0;
         T previous;
         // With no base clause there is no term to compare the first one
         // against. Comparing it to a default-constructed T said that any
         // sequence starting near zero had converged to it.
-        bool comparable = !base_.empty();
+        const Clause<T>* highest = EndBase(false);
+        bool comparable = highest != nullptr;
         if(comparable) {
-            index = base_.rbegin()->first;
-            previous = base_.rbegin()->second.expression->accept(evaluator);
+            index = highest->parameters.index();
+            previous = highest->expression->accept(evaluator);
         }
 
         T evaluation = previous;
         decltype(numeric_interface<T>::abs(evaluation)) previous_step{};
         bool stepped = false;
         for(size_t term = 0; term < max_terms; ++term) {
-            evaluation = EvaluateGeneralClause(++index, evaluator);
+            evaluation = EvaluateGeneralClause(general, ++index, evaluator);
             if(comparable) {
                 // Naming the sequence, because the reason a term cannot be
                 // compared -- a matrix has no absolute value, two terms have
@@ -320,22 +347,10 @@ private:
                   PExpression<T>(new ValExpression<T>(T(index))));
     }
 
-    // Signed: an index may be negative, and this map is read in order
-    // (rbegin) to pick the highest known term.
-    typedef std::map<long long, Clause<T>> BaseClauses;
-
     std::string reference_name_;
-    size_t      next_order_ = 0;
 
-    // Exactly one of these is populated: a plain definition, or a sequence
-    // made of base clauses and at most one general clause.
-    Clause<T>                   plain_;
-
-    // Clauses carrying a guard, in the order they were written.
-    std::vector<Clause<T>>      guarded_;
-
-    BaseClauses                 base_;
-    Clause<T>                   general_;
+    // The whole definition: its clauses, in the order they were written.
+    std::vector<Clause<T>> clauses_;
 };
 
 #endif // HPP_INKREFERENCE

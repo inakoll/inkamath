@@ -149,6 +149,19 @@ h(x) | x > 0 = 1
 >> h(0-1)
 error: no clause of h applies
 
+# Order is the writer's, and it cuts both ways: a clause written after an
+# unguarded one can never apply, because the unguarded one answers first.
+# Saying so would be a better diagnostic than silence (MODERNIZATION.md,
+# phase 10).
+>> u(x) = 0
+u(x) = 0
+
+>> u(x) | x > 0 = 1
+u(x) | x > 0 = 1
+
+>> u(5)
+0
+
 # A guard is any expression, true when it is not zero: a comparison is only
 # the usual way to write one.
 >> nonzero(x) | x = 1
