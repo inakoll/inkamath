@@ -225,6 +225,17 @@ void Interpreter<T,U>::Lexer(const std::string& s)
 		case '5': case '6': case '7': case '8': case '9':
             this->Number_Lexer(s,i);
             break;
+        case '.':
+            // '.5' is a number; a point anywhere else is not.
+            if(i + 1 < s.length() && std::isdigit(static_cast<unsigned char>(s[i+1])))
+            {
+                this->Number_Lexer(s,i);
+            }
+            else
+            {
+                Fail("unexpected character '", s[i], "'");
+            }
+            break;
         case 'i':
             // The imaginary unit only when it is not the start of a longer
             // name: 'i*2' is imaginary, 'ii' and 'index' are identifiers.

@@ -19,6 +19,22 @@
 >> 10/4
 2.5
 
+# A number may start with the point. The lexer's cases listed the digits and
+# not '.', so '.5' was 'unexpected character' while the exotic '1e3' and
+# '0x10' both worked (MODERNIZATION.md, C43).
+>> .5
+0.5
+
+>> 1.5+.5
+2
+
+>> .5e2
+50
+
+# A point that does not start a number is still a character nothing wants.
+>> a.b
+error: unexpected character '.'
+
 >> !5
 120
 
