@@ -187,12 +187,17 @@ error: a cell needs a row and a column, as 'm[1,2]'
 1 2 1
 3 4 1
 
-# RECORDED AS IT IS, NOT AS IT SHOULD BE (MODERNIZATION.md, C41). A block that
-# is smaller than its band but is not a single value is filled with its own
-# last cell, so the second row under '[3 4]' is '4 4' and the second row under
-# '[1 2 3]' is '3 3 3'. Nothing chose that rule: a literal's short row pads
-# with zeros, a single value stretches, and this third case replicates a
-# corner. Recorded so that it cannot change in silence.
+>> [a, 0]
+1 2 0
+3 4 0
+
+# RECORDED AS IT IS, NOT AS IT SHOULD BE (MODERNIZATION.md, C41). A block
+# continues with its last value, which for a single value is the stretch above
+# and reads as an ellipsis -- '[a, 0]' pads the band with zeros. For a larger
+# block it repeats a corner instead: the second row under '[3 4]' is '4 4' and
+# the second row under '[1 2 3]' is '3 3 3', which nobody wrote. Kept while it
+# may still be the residue of an idea, and recorded so it cannot change in
+# silence.
 >> [a, [3 4]]
 1 2 3 4
 3 4 4 4
