@@ -55,7 +55,8 @@ exp(x)_n=exp(x)_(n-1)+x^n/!n
 >> lim exp(1)
 2.71828183
 
-# Not floating point: the series stops when two terms agree to 1e-10.
+# Not floating point: the series stops once the step is under 1e-10 and the
+# remainder the steps imply is too.
 >> lim exp(1)-e
 -8.149037e-13
 
@@ -87,6 +88,31 @@ error: s is a sequence; index it (s_0) or take its limit (lim s)
 
 >> lim s
 5.82076609e-11
+
+# A small step is not a small remainder. Every step here is 1e-11 and the
+# series diverges; comparing successive terms alone called that convergence
+# and answered 1e-11 (MODERNIZATION.md, C36).
+>> w_0=0
+w_0=0
+
+>> w_n=w_(n-1)+1e-11
+w_n=w_(n-1)+1e-11
+
+>> lim w
+error: w did not converge within 100 terms (last term 1e-09)
+
+# And a series that converges too slowly to be summed term by term: after n
+# terms of 1/n^2 the remainder is about 1/n, so raising the cap does not help
+# -- at a hundred thousand terms it answers 1.64492407 where pi^2/6 is
+# 1.64493407. Saying so is the honest answer (MODERNIZATION.md, C36).
+>> z_1=1
+z_1=1
+
+>> z_n=z_(n-1)+1/n^2
+z_n=z_(n-1)+1/n^2
+
+>> lim z
+error: z did not converge within 100 terms (last term 1.63508193)
 
 # Recursion is bounded: past the budget the interpreter says so rather than
 # dying (MODERNIZATION.md, C1).

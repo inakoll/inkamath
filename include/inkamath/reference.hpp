@@ -211,9 +211,11 @@ private:
         return general_.expression->accept(evaluator);
     }
 
-    // Terms until two in a row agree to within the tolerance. The budget
-    // cannot go much higher: each term of a recurrence nests one more
-    // reference, and ReferenceStack::max_depth is 256.
+    // Terms until the series is within the tolerance of its limit. Since
+    // phase 9 this cap is a judgement about how long to keep trying and not a
+    // technical limit: 'lim' walks the terms upward, so each one finds its
+    // predecessor memoised, and a hundred thousand of them cost 250ms and no
+    // depth. Raising it was measured and rejected -- MODERNIZATION.md, C36.
     static constexpr size_t max_terms = 100;
     static constexpr double tolerance = 1E-10;
 
@@ -230,12 +232,19 @@ private:
         }
 
         T evaluation = previous;
+        decltype(numeric_interface<T>::abs(evaluation)) previous_step{};
+        bool stepped = false;
         for(size_t term = 0; term < max_terms; ++term) {
             evaluation = EvaluateGeneralClause(++index, evaluator);
-            // '<=' and not '!(> tolerance)': a difference that is NaN answers
-            // false to both, and must count as not having converged.
-            if(comparable && numeric_interface<T>::abs(evaluation-previous) <= tolerance) {
-                return evaluation;
+            if(comparable) {
+                const auto step = numeric_interface<T>::abs(evaluation-previous);
+                // '<=' and not '!(> tolerance)': a difference that is NaN
+                // answers false to both, and must count as not converged.
+                if(step <= tolerance && stepped && TailUnder(step, previous_step)) {
+                    return evaluation;
+                }
+                previous_step = step;
+                stepped = true;
             }
             previous = evaluation;
             comparable = true;
@@ -243,6 +252,19 @@ private:
         throw std::runtime_error(reference_name_ + " did not converge within "
                                  + std::to_string(max_terms) + " terms (last term "
                                  + numeric_interface<T>::toString(evaluation) + ")");
+    }
+
+    // A small step is not a small remainder. If the steps shrink by a factor
+    // r each term, what is left of the series is about step*r/(1-r); for
+    // 1/n^2, where r approaches 1, that is 1/n -- five orders of magnitude
+    // above the step that would otherwise have been called convergence.
+    // One step is no evidence at all, which is why 'stepped' is required.
+    template <typename S>
+    static bool TailUnder(S step, S previous_step) {
+        if(!(previous_step > 0)) return true;
+        const S ratio = step / previous_step;
+        if(!(ratio < 1)) return false;
+        return step * ratio / (1 - ratio) <= tolerance;
     }
 
     void SetIndex(long long index, ReferenceStack<T>& stack) const {
