@@ -60,6 +60,15 @@ n(a, b=zzz)=a
 >> n(1)
 error: zzz is not defined
 
+# An argument is evaluated at the call site too, whether or not the body reads
+# it. Lazy parameters would leave this one alone; they were specified,
+# measured and deferred (MODERNIZATION.md, Deferred).
+>> u(x)=1
+u(x)=1
+
+>> u(zzz)
+error: zzz is not defined
+
 # And it is evaluated in the definition's scope, so it can refer to the
 # definition's other parameters. It used to be evaluated in the caller's, so
 # this answered 100 -- the global x, not the argument.
