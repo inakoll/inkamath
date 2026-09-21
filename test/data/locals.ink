@@ -1,10 +1,7 @@
-# SPECIFICATION -- the language phase 8 is designing, not the language we
-# have. These fail until it lands. Do not record them from current behaviour.
-#
 # A definition written inside an expression binds a LOCAL: a name that lives
 # to the end of the line and is invisible outside it. This is what the 2014
 # design meant by "l'assignation etant une expression comme une autre", and
-# what C29 found had never worked.
+# what C29 found had never worked (MODERNIZATION.md, phase 8).
 
 # The binding happens before the rest of the expression reads it, and the
 # bound expression is also the value of the binding.
@@ -15,9 +12,9 @@
 >> t
 error: t is not defined
 
-# A local binds an EXPRESSION, like every other name, evaluated where it was
-# written. That is what lets it capture a parameter -- the case two lines
-# cannot express, because the second line would be a global that cannot see x.
+# A local is bound where it is written, which is what lets it capture a
+# parameter -- the case two lines cannot express, because the second line
+# would be a global that cannot see x.
 >> f(x) = (t = 2*x) + t
 f(x) = (t = 2*x) + t
 
@@ -75,3 +72,4 @@ s(x)_n = (step = x^n) + s(x)_(n-1) + step
 # time the next line is read.
 >> ?t
 error: t is not defined
+

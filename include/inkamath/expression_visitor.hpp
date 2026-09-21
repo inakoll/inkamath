@@ -219,9 +219,20 @@ public:
         }
     }
 
+    // A local: bound in the scope that can still see the parameters, to the
+    // value rather than to the expression, and its value is the value of the
+    // binding. Binding the expression instead would have it read back through
+    // a lookup, in the callee frame that lookup pushes, where the parameter it
+    // captured is no longer visible -- which is what C29 found.
     T visit(EqualExpression<T>* expr) override {
-        Bind(expr);
-        return expr->m_e1()->accept(*this);
+        if(!expr->m_e1()->Children().empty()) {
+            Bind(expr);
+            return expr->m_e1()->accept(*this);
+        }
+        const T value = expr->m_e2()->accept(*this);
+        this->stack_.Set(expr->Name(), ParametersDefinition<T>(),
+                         PExpression<T>(new ValExpression<T>(value)));
+        return value;
     }
 
     // The two operands are sequenced: C++ leaves the order of `f(a) + f(b)`

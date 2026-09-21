@@ -104,6 +104,9 @@ TEST_CASE("matrices") {
 TEST_CASE("references") {
     check_transcript("references.ink");
 }
+TEST_CASE("locals") {
+    check_transcript("locals.ink");
+}
 TEST_CASE("sequences") {
     check_transcript("sequences.ink");
 }
@@ -158,9 +161,6 @@ TEST_SUITE_END();
 // recorded: a specification taken from the code it judges is worth nothing.
 TEST_SUITE_BEGIN("spec");
 
-TEST_CASE("locals" * doctest::may_fail()) {
-    check_spec("spec/locals.ink");
-}
 TEST_CASE("laziness" * doctest::may_fail()) {
     check_spec("spec/laziness.ink");
 }

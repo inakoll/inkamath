@@ -646,6 +646,11 @@ typename Interpreter<T,U>::Result Interpreter<T,U>::Eval(const std::string& s)
             }
             else
             {
+                // A line being evaluated opens a scope, so a local lives
+                // exactly as long as the line that wrote it. A line that is
+                // only a definition is a definition, parentheses or not, and
+                // takes the branch above.
+                typename ReferenceStack<U>::Frame line(stack_);
                 result = m_E->accept(evaluator);
             }
         }
