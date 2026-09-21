@@ -25,7 +25,7 @@ error: unexpected character '@'
 error: empty expression
 
 >> 2 3
-error: unexpected '3'
+error: unexpected '3' -- the operator '*' is probably missing
 
 >> f(1+2
 error: missing ')' after function parameters
@@ -103,4 +103,13 @@ inf
 
 >> 0.5^3000000000
 0
+
+# Mathematics writes a multiplication by writing nothing; this language does
+# not. The hint used to be given only for '(' -- '2 3' above is the same
+# mistake and got only 'unexpected' (MODERNIZATION.md, C35).
+>> 2pi
+error: unexpected 'pi' -- the operator '*' is probably missing
+
+>> 3(4)
+error: unexpected '(' -- the operator '*' is probably missing
 

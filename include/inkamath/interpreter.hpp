@@ -289,9 +289,14 @@ PExpression<U> Interpreter<T,U>::ParseAll()
     PExpression<U> e = Parse();
     if (!AtEnd())
     {
-        if (Peek().type == LPar)
+        // Two operands with nothing between them: '3(4)', '2pi', '1 2'.
+        // Mathematics writes the multiplication by juxtaposition and this
+        // language does not, so say which operator is missing rather than
+        // only where the parse stopped.
+        const Type next = Peek().type;
+        if (next == LPar || next == Val || next == Ref || next == Func)
         {
-            Fail("unexpected '(' -- the operator '*' is probably missing");
+            Fail("unexpected '", Peek().text, "' -- the operator '*' is probably missing");
         }
         Fail("unexpected '", Peek().text, "'");
     }
