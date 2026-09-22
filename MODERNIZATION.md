@@ -197,7 +197,22 @@ the second pass. Four kinds of oracle, about forty thousand checks:
 | **Against itself** | 540 random matrices through eleven algebraic laws -- distributivity, `A^3` against `A*A*A`, `(A*B)[1,1]` against the definition of the product -- and 500 more across rectangular shapes and block round-trips. |
 | **Against a fresh process** | 1,500 programs asking a query twice, then redefining what it depends on and asking again, against a process that started from the redefined value. This is the only oracle that can see a stale memoised answer, and it is the reason to keep it. |
 
-Nothing moved. The three bugs the campaign found were all in the oracles: a
+Phase 10 added a fifth, and the one worth keeping: **2,400 editing sessions**
+against a model of the clause rules written from `README.md` -- random
+definitions of one name in every shape, plain and indexed and general, guarded
+and not, interleaved with the queries that read them back and with `?f`, whose
+whole listing the model predicts. It watches the list itself and not only what
+the list answers, which is where C45 lived.
+
+A clean run means nothing until the oracle is shown to fail on purpose, so it
+was run against three deliberately wrong models: the plain clause answering
+first, a replaced clause appended rather than replaced in place (C45 exactly),
+and a dead guard accepted rather than refused (C46's neighbour). All three were
+caught, in 4, 11 and 43 sessions respectively. Then the real rules: 2,400
+sessions, no disagreement.
+
+Nothing moved. The three bugs the earlier campaign found were all in the
+oracles: a
 prompt off by one, a banner counted as an answer, and a Python evaluator that
 computed `3^3^3^3` exactly and never came back where the interpreter, working
 in doubles, answered `inf` in microseconds. An oracle has to be at least as
