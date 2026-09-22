@@ -19,6 +19,13 @@ template <typename T>
 int AsIndex(const T& value) {
     const int index = numeric_interface<T>::toInt(value);
     if(numeric_interface<T>::abs(value - T(index)) != 0) {
+        // Two different complaints: a value an index cannot hold, and a value
+        // that is not whole. Saying the second about the first sent the user
+        // looking for a fraction that was not there (C56).
+        if(numeric_interface<T>::abs(value) > 2147483647.0) {
+            throw std::runtime_error("an index must be between -2147483648 and 2147483647, not "
+                                     + numeric_interface<T>::toString(value));
+        }
         throw std::runtime_error("an index must be a whole number, not "
                                  + numeric_interface<T>::toString(value));
     }

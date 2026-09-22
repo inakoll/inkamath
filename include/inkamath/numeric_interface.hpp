@@ -212,7 +212,15 @@ struct numeric_interface_imp<T,true>
     static T one() {return 1;}
     static T real(const T& a) {return a;}
     static T imaginary(const T&) {return 0;}
-    static int toInt(const T& a) {return static_cast<int>(a);}
+    // Converting a double outside int's range is undefined, and NaN is
+    // undefined too; both clamp here, and the caller compares the answer with
+    // what it was given to see that it did (MODERNIZATION.md, C56).
+    static int toInt(const T& a)
+    {
+        if(!(a >= static_cast<T>(std::numeric_limits<int>::min()))) return std::numeric_limits<int>::min();
+        if(!(a <= static_cast<T>(std::numeric_limits<int>::max()))) return std::numeric_limits<int>::max();
+        return static_cast<int>(a);
+    }
     static std::string toString(const T& a) 
 	{
 		std::ostringstream oss;

@@ -87,6 +87,22 @@ error: an index must be a whole number, not 2+i
 >> f_(0.5)
 error: an index must be a whole number, not 0.5
 
+# An index that no index can hold is out of range, not "not a whole number".
+# The value was cast to an int regardless -- undefined behaviour, which GCC's
+# sanitizer does not report without float-cast-overflow -- and the whole-number
+# check then fired on the wreckage (MODERNIZATION.md, C56).
+>> ix=[1 2;3 4]
+ix=[1 2;3 4]
+
+>> ix[2147483648,1]
+error: an index must be between -2147483648 and 2147483647, not 2.14748365e+09
+
+>> ix[0-1e20,1]
+error: an index must be between -2147483648 and 2147483647, not -1e+20
+
+>> ix[1.5,1]
+error: an index must be a whole number, not 1.5
+
 # A factorial needs a whole number that is not negative. The loop multiplied
 # 'i' while 'i <= n', so a fraction was truncated to '120', a negative gave
 # the empty product '1', and the imaginary part was dropped before the loop
