@@ -4,16 +4,16 @@
 1
 
 >> [1 2;3 4]
-1 2
-3 4
+[1, 2;
+ 3, 4]
 
 >> [1, 2; 3, 4]
-1 2
-3 4
+[1, 2;
+ 3, 4]
 
 >> [1; 2, 3]
-1 0
-2 3
+[1, 0;
+ 2, 3]
 
 # A matrix needs at least one element. These used to build a degenerate n x 0
 # matrix and kill the process in the evaluator (MODERNIZATION.md, C19).
@@ -27,32 +27,32 @@ error: a matrix needs at least one element
 a=[1 2;3 4]
 
 >> a+a
-2 4
-6 8
+[2, 4;
+ 6, 8]
 
 >> a*a
-7 10
-15 22
+[ 7, 10;
+ 15, 22]
 
 >> a-a
-0 0
-0 0
+[0, 0;
+ 0, 0]
 
 >> 2*a
-2 4
-6 8
+[2, 4;
+ 6, 8]
 
 >> -a
--1 -2
--3 -4
+[-1, -2;
+ -3, -4]
 
 # A single value stretches to the other side's size. It already did for '*'
 # and inside a literal, where '[a; 1]' spreads the 1 across the block above
 # it; '+', '-' and '/' reported 'these matrices have different sizes', so
 # 'a*0.5' worked and 'a/2' did not (MODERNIZATION.md, C38).
 >> a/2
-0.5 1
-1.5 2
+[0.5, 1;
+ 1.5, 2]
 
 # A cell, written the way an array is indexed and numbered the way the rows
 # and columns are: from one. The language had no way at all to read a value
@@ -99,10 +99,10 @@ f(x)=[x, x^2]
 # Inside one they index a name and nothing else, because there a space
 # between two blocks already means something.
 >> [[1 2] [3 4]]
-1 2 3 4
+[1, 2, 3, 4]
 
 >> [a[1,1], a[2,2]]
-1 4
+[1, 4]
 
 # Which leaves one form that changed: a row of blocks whose second block
 # follows a name with a space. Write it with the comma README.md uses.
@@ -110,21 +110,21 @@ f(x)=[x, x^2]
 error: a cell needs a row and a column, as 'm[1,2]'
 
 >> [a, [3 4;5 6]]
-1 2 3 4
-3 4 5 6
+[1, 2, 3, 4;
+ 3, 4, 5, 6]
 
 >> a-1
-0 1
-2 3
+[0, 1;
+ 2, 3]
 
 # The order is kept, which is what makes this more than a convenience.
 >> 1-a
-0 -1
--2 -3
+[ 0, -1;
+ -2, -3]
 
 >> 2/a
-2 1
-0.666666667 0.5
+[          2,   1;
+ 0.666666667, 0.5]
 
 # Three or more rows or columns. The block offsets were a prefix sum that
 # added only the previous element instead of the running total, so the result
@@ -132,64 +132,64 @@ error: a cell needs a row and a column, as 'm[1,2]'
 # range.' Correct for two blocks, which is every size the tests used to have
 # (MODERNIZATION.md, C22).
 >> [1 2 3]
-1 2 3
+[1, 2, 3]
 
 >> [1;2;3]
-1
-2
-3
+[1;
+ 2;
+ 3]
 
 >> [1 2 3;4 5 6]
-1 2 3
-4 5 6
+[1, 2, 3;
+ 4, 5, 6]
 
 >> [a, a, a]
-1 2 1 2 1 2
-3 4 3 4 3 4
+[1, 2, 1, 2, 1, 2;
+ 3, 4, 3, 4, 3, 4]
 
 >> [a; a; a]
-1 2
-3 4
-1 2
-3 4
-1 2
-3 4
+[1, 2;
+ 3, 4;
+ 1, 2;
+ 3, 4;
+ 1, 2;
+ 3, 4]
 
 >> [a, a; a, a; a, a]
-1 2 1 2
-3 4 3 4
-1 2 1 2
-3 4 3 4
-1 2 1 2
-3 4 3 4
+[1, 2, 1, 2;
+ 3, 4, 3, 4;
+ 1, 2, 1, 2;
+ 3, 4, 3, 4;
+ 1, 2, 1, 2;
+ 3, 4, 3, 4]
 
 # A cell smaller than its block is extended to fill it.
 >> [a, 1, a]
-1 2 1 1 2
-3 4 1 3 4
+[1, 2, 1, 1, 2;
+ 3, 4, 1, 3, 4]
 
 # A matrix of expressions expands to the size of what its cells evaluate to.
 >> [a, a; a, a]
-1 2 1 2
-3 4 3 4
-1 2 1 2
-3 4 3 4
+[1, 2, 1, 2;
+ 3, 4, 3, 4;
+ 1, 2, 1, 2;
+ 3, 4, 3, 4]
 
 >> [a; a]
-1 2
-3 4
-1 2
-3 4
+[1, 2;
+ 3, 4;
+ 1, 2;
+ 3, 4]
 
 # A single value stretches to fill the band it sits in, which is what makes
 # '[a, 1]' mean what it looks like.
 >> [a, 1]
-1 2 1
-3 4 1
+[1, 2, 1;
+ 3, 4, 1]
 
 >> [a, 0]
-1 2 0
-3 4 0
+[1, 2, 0;
+ 3, 4, 0]
 
 # RECORDED AS IT IS, NOT AS IT SHOULD BE (MODERNIZATION.md, C41). A block
 # continues with its last value, which for a single value is the stretch above
@@ -199,12 +199,12 @@ error: a cell needs a row and a column, as 'm[1,2]'
 # may still be the residue of an idea, and recorded so it cannot change in
 # silence.
 >> [a, [3 4]]
-1 2 3 4
-3 4 4 4
+[1, 2, 3, 4;
+ 3, 4, 4, 4]
 
 >> [[1 2 3], a]
-1 2 3 1 2
-3 3 3 3 4
+[1, 2, 3, 1, 2;
+ 3, 3, 3, 3, 4]
 
 # A matrix power is repeated multiplication. It used to square the
 # accumulator, so 'a^n' computed 'a^(2^(n-1))' -- right at 1 and 2 and wrong
@@ -213,16 +213,16 @@ error: a cell needs a row and a column, as 'm[1,2]'
 s=[1 1;0 1]
 
 >> s^0
-1 0
-0 1
+[1, 0;
+ 0, 1]
 
 >> s^3
-1 3
-0 1
+[1, 3;
+ 0, 1]
 
 >> a^3
-37 54
-81 118
+[37,  54;
+ 81, 118]
 
 # There is no inverse and no root here, and only a square matrix has a power.
 >> a^0.5
@@ -269,13 +269,13 @@ det(m)=m[1,1]*m[2,2]-m[1,2]*m[2,1]
 solve(m,b)=[(b[1,1]*m[2,2]-b[2,1]*m[1,2])/det(m); (m[1,1]*b[2,1]-m[2,1]*b[1,1])/det(m)]
 
 >> solve(a,[5;11])
-1
-2
+[1;
+ 2]
 
 # The answer checks itself: multiplying it back gives the right-hand side.
 >> a*solve(a,[5;11])
-5
-11
+[ 5;
+ 11]
 
 >> !a
 error: a matrix has no factorial

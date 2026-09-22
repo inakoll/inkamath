@@ -32,20 +32,38 @@ public:
     T& operator()(long long i, long long j) {return data()[Offset(i, j)];}
     const T& operator()(long long i, long long j) const {return data()[Offset(i, j)];}
 
+    // A matrix prints as the literal that would produce it, with its columns
+    // aligned: what is printed can be typed back. A 1x1 is just its value --
+    // it is what every scalar answer and every diagnostic quoting one is.
     static std::string toString(const Matrix<T>& a)
     {
-        std::ostringstream oss;
-        oss << std::fixed << std::setprecision(10);
+        if(a.IsScalar()) {
+            return numeric_interface<T>::toString(a(1,1));
+        }
+
+        std::vector<std::string> cells(a.extent_.count());
+        std::vector<size_t> width(a.extent_.cols, 0);
         for(size_t i = 1; i <= a.extent_.rows; ++i) {
-            // Rows are separated, not terminated: a 1x1 matrix is just its
-            // value, which is what a diagnostic quoting one needs.
-            if(i > 1) oss << "\n";
             for(size_t j = 1; j <= a.extent_.cols; ++j) {
-                if(j > 1) oss << " ";
-                oss << numeric_interface<T>::toString(a(i,j));
+                std::string& cell = cells[(i-1)*a.extent_.cols + (j-1)];
+                cell = numeric_interface<T>::toString(a(i,j));
+                width[j-1] = std::max(width[j-1], cell.size());
             }
         }
-        return oss.str();
+
+        std::string text = "[";
+        for(size_t i = 1; i <= a.extent_.rows; ++i) {
+            // One space, so that a continued row starts under the bracket.
+            if(i > 1) text += "\n ";
+            for(size_t j = 1; j <= a.extent_.cols; ++j) {
+                if(j > 1) text += ", ";
+                const std::string& cell = cells[(i-1)*a.extent_.cols + (j-1)];
+                text.append(width[j-1] - cell.size(), ' ');
+                text += cell;
+            }
+            if(i < a.extent_.rows) text += ";";
+        }
+        return text + "]";
     }
 
     static int toInt(const Matrix<T>& a) {return numeric_interface<T>::toInt(a.Scalar());}

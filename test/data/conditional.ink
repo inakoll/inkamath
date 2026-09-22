@@ -302,7 +302,7 @@ c(k)_n = c(k-1)_(n-1) + c(k)_(n-1)
 252
 
 >> [c(0)_4, c(1)_4, c(2)_4, c(3)_4, c(4)_4]
-1 4 6 4 1
+[1, 4, 6, 4, 1]
 
 # The guard is tried before the base clause, which is what makes the first of
 # these zero and the second one.
@@ -369,8 +369,8 @@ d(row,col) | row == col = 1
 d(row,col) | row <> col = 0
 
 >> [d(1,1), d(1,2); d(2,1), d(2,2)]
-1 0
-0 1
+[1, 0;
+ 0, 1]
 
 # The second-difference matrix, the way a numerical analysis course writes it:
 # two on the diagonal, minus one beside it, zero further out. Three clauses
@@ -385,7 +385,7 @@ t(row,col) | abs(row-col) == 1 = 0-1
 t(row,col) | abs(row-col) > 1 = 0
 
 >> [t(1,1), t(1,2), t(1,3); t(2,1), t(2,2), t(2,3); t(3,1), t(3,2), t(3,3)]
-2 -1 0
--1 2 -1
-0 -1 2
+[ 2, -1,  0;
+ -1,  2, -1;
+  0, -1,  2]
 

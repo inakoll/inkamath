@@ -29,7 +29,7 @@ a = 2
 *Quick overview:*
 ```
 >> [pi, e]
-3.14159265 2.71828183
+[3.14159265, 2.71828183]
 
 >> 1+2*3^3*2+1
 110
@@ -38,10 +38,10 @@ a = 2
 a=[1 2;3 4]
 
 >> [a, a; a, a]
-1 2 1 2
-3 4 3 4
-1 2 1 2
-3 4 3 4
+[1, 2, 1, 2;
+ 3, 4, 3, 4;
+ 1, 2, 1, 2;
+ 3, 4, 3, 4]
 
 >> exp(x)_0=1
 exp(x)_0=1
@@ -128,16 +128,16 @@ separates rows. A short row is padded with zeros.
 
 ```
 >> [1 2;3 4]
-1 2
-3 4
+[1, 2;
+ 3, 4]
 
 >> [1 2 3;4 5 6]
-1 2 3
-4 5 6
+[1, 2, 3;
+ 4, 5, 6]
 
 >> [1; 2, 3]
-1 0
-2 3
+[1, 0;
+ 2, 3]
 ```
 
 The cells are expressions, and the literal expands to the size of what they
@@ -145,11 +145,16 @@ evaluate to. If `a` is the 2x2 matrix above, then `[a, a; a, a]` is 4x4:
 
 ```
 >> [a, a; a, a]
-1 2 1 2
-3 4 3 4
-1 2 1 2
-3 4 3 4
+[1, 2, 1, 2;
+ 3, 4, 3, 4;
+ 1, 2, 1, 2;
+ 3, 4, 3, 4]
 ```
+
+A matrix prints as the literal that would produce it, with its columns
+aligned, so what is printed can be typed back. At the prompt a line with an
+unclosed bracket is continued — `..` asks for the rest — which is what lets a
+matrix be pasted back over the lines it printed on.
 
 `m[i,j]` is the cell in row `i`, column `j`, counted from one as the rows and
 columns are written:
@@ -175,12 +180,12 @@ value stretches to the other side's size, and the order is kept:
 
 ```
 >> a/2
-0.5 1
-1.5 2
+[0.5, 1;
+ 1.5, 2]
 
 >> 1-a
-0 -1
--2 -3
+[ 0, -1;
+ -2, -3]
 ```
 
 ### 3. Definitions
@@ -415,8 +420,8 @@ to the number it once produced:
 
 ```
 >> b
-2 4
-6 8
+[2, 4;
+ 6, 8]
 ```
 
 On a sequence `?` shows every clause, in the order they were written, and
@@ -443,7 +448,7 @@ error: undefined is not defined
 >> 1+
 error: unexpected end of input after '+'
 
->> [1 2
+>> [1 2)
 error: missing ']' after '2'
 ```
 

@@ -37,8 +37,8 @@ TEST_CASE("extent and construction") {
 
     // A default-constructed cell is zero, which mul relies on for its
     // accumulator.
-    CHECK(shown(Mat(Extent{2, 2})) == "0 0\n0 0");
-    CHECK(shown(Mat(Extent{2, 2}, Scalar(4))) == "4 4\n4 4");
+    CHECK(shown(Mat(Extent{2, 2})) == "[0, 0;\n 0, 0]");
+    CHECK(shown(Mat(Extent{2, 2}, Scalar(4))) == "[4, 4;\n 4, 4]");
 }
 
 TEST_CASE("a 1x1 matrix keeps its cell inline") {
@@ -52,14 +52,14 @@ TEST_CASE("a 1x1 matrix keeps its cell inline") {
 
     copy = block;
     CHECK(copy.Size() == Extent{2, 2});
-    CHECK(shown(copy) == "1 2\n3 4");
+    CHECK(shown(copy) == "[1, 2;\n 3, 4]");
 
     copy = scalar;
     CHECK(copy.Size() == Extent{1, 1});
     CHECK(shown(copy) == "3");
 
     Mat moved = std::move(block);
-    CHECK(shown(moved) == "1 2\n3 4");
+    CHECK(shown(moved) == "[1, 2;\n 3, 4]");
 }
 
 TEST_CASE("subscripts are 1-based and checked") {
@@ -75,19 +75,19 @@ TEST_CASE("subscripts are 1-based and checked") {
 
 TEST_CASE("rows are separated, not terminated") {
     CHECK(shown(Mat(Scalar(3))) == "3");
-    CHECK(shown(make(1, 3, {1, 2, 3})) == "1 2 3");
-    CHECK(shown(make(3, 1, {1, 2, 3})) == "1\n2\n3");
-    CHECK(shown(make(2, 2, {1, 2, 3, 4})) == "1 2\n3 4");
+    CHECK(shown(make(1, 3, {1, 2, 3})) == "[1, 2, 3]");
+    CHECK(shown(make(3, 1, {1, 2, 3})) == "[1;\n 2;\n 3]");
+    CHECK(shown(make(2, 2, {1, 2, 3, 4})) == "[1, 2;\n 3, 4]");
 }
 
 TEST_CASE("element-wise operators need matching extents") {
     Mat a = make(2, 2, {1, 2, 3, 4});
     Mat b = make(2, 2, {10, 20, 30, 40});
 
-    CHECK(shown(a + b) == "11 22\n33 44");
-    CHECK(shown(b - a) == "9 18\n27 36");
-    CHECK(shown(b / a) == "10 10\n10 10");
-    CHECK(shown(-a) == "-1 -2\n-3 -4");
+    CHECK(shown(a + b) == "[11, 22;\n 33, 44]");
+    CHECK(shown(b - a) == "[ 9, 18;\n 27, 36]");
+    CHECK(shown(b / a) == "[10, 10;\n 10, 10]");
+    CHECK(shown(-a) == "[-1, -2;\n -3, -4]");
 
     Mat wide = make(2, 3, {1, 2, 3, 4, 5, 6});
     CHECK_THROWS_AS(a + wide, std::runtime_error);
@@ -99,12 +99,12 @@ TEST_CASE("multiplication") {
     Mat a = make(2, 2, {1, 2, 3, 4});
 
     // A 1x1 operand multiplies every cell, from either side.
-    CHECK(shown(Mat(Scalar(2)) * a) == "2 4\n6 8");
-    CHECK(shown(a * Mat(Scalar(2))) == "2 4\n6 8");
+    CHECK(shown(Mat(Scalar(2)) * a) == "[2, 4;\n 6, 8]");
+    CHECK(shown(a * Mat(Scalar(2))) == "[2, 4;\n 6, 8]");
 
-    CHECK(shown(a * a) == "7 10\n15 22");
+    CHECK(shown(a * a) == "[ 7, 10;\n 15, 22]");
     CHECK(shown(make(1, 2, {1, 2}) * make(2, 1, {3, 4})) == "11");
-    CHECK(shown(make(2, 1, {1, 2}) * make(1, 2, {3, 4})) == "3 4\n6 8");
+    CHECK(shown(make(2, 1, {1, 2}) * make(1, 2, {3, 4})) == "[3, 4;\n 6, 8]");
 
     // Inner dimensions must agree.
     CHECK_THROWS_AS(make(1, 2, {1, 2}) * make(1, 2, {3, 4}), std::runtime_error);
@@ -114,11 +114,11 @@ TEST_CASE("powers are repeated multiplication") {
     // [1 1; 0 1] to the n is [1 n; 0 1], which names the exponent in the
     // answer: squaring the accumulator instead gave a^(2^(n-1)).
     Mat shift = make(2, 2, {1, 1, 0, 1});
-    CHECK(shown(Mat::pow(shift, Mat(Scalar(0)))) == "1 0\n0 1");
-    CHECK(shown(Mat::pow(shift, Mat(Scalar(1)))) == "1 1\n0 1");
-    CHECK(shown(Mat::pow(shift, Mat(Scalar(2)))) == "1 2\n0 1");
-    CHECK(shown(Mat::pow(shift, Mat(Scalar(3)))) == "1 3\n0 1");
-    CHECK(shown(Mat::pow(shift, Mat(Scalar(7)))) == "1 7\n0 1");
+    CHECK(shown(Mat::pow(shift, Mat(Scalar(0)))) == "[1, 0;\n 0, 1]");
+    CHECK(shown(Mat::pow(shift, Mat(Scalar(1)))) == "[1, 1;\n 0, 1]");
+    CHECK(shown(Mat::pow(shift, Mat(Scalar(2)))) == "[1, 2;\n 0, 1]");
+    CHECK(shown(Mat::pow(shift, Mat(Scalar(3)))) == "[1, 3;\n 0, 1]");
+    CHECK(shown(Mat::pow(shift, Mat(Scalar(7)))) == "[1, 7;\n 0, 1]");
 
     Mat a = make(2, 2, {1, 2, 3, 4});
     CHECK(shown(Mat::pow(a, Mat(Scalar(3)))) == shown(a * a * a));

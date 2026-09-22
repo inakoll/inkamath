@@ -191,11 +191,11 @@ ff(n) = ee(n)
 gg(m) = m+m
 
 >> gg([1 2;3 4])
-2 4
-6 8
+[2, 4;
+ 6, 8]
 
 >> gg([1 2 3 4])
-2 4 6 8
+[2, 4, 6, 8]
 
 # One definition per name. An indexed clause extends a sequence; a plain
 # definition replaces whatever the name held. The two used to coexist, with

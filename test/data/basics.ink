@@ -74,7 +74,7 @@ error: unexpected character '.'
 
 # 'e', 'pi' and the imaginary unit 'i' are the only built-ins.
 >> [pi, e]
-3.14159265 2.71828183
+[3.14159265, 2.71828183]
 
 # They carry every digit a double holds. The 2014 literals stopped at
 # fourteen, and the imaginary part here was 4.58636533e-14 -- the error in pi,
