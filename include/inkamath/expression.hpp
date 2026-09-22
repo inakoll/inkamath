@@ -77,7 +77,7 @@ public:
     explicit UnaryExpression(PExpression<T> e) : Expression<T>{e}
     {}
 
-    PExpression<T> m_e() const {return this->Children()[0];}
+    const PExpression<T>& m_e() const {return this->Children()[0];}
 
 };
 
@@ -88,8 +88,8 @@ public:
     explicit BinaryExpression(PExpression<T> e1, PExpression<T> e2) : Expression<T>({e1, e2})
     {}
 
-    PExpression<T> m_e1() const {return this->Children()[0];}
-    PExpression<T> m_e2() const {return this->Children()[1];}
+    const PExpression<T>& m_e1() const {return this->Children()[0];}
+    const PExpression<T>& m_e2() const {return this->Children()[1];}
 };
 
 template <typename T>
@@ -273,9 +273,9 @@ public:
         : Expression<T>({matrix, row, col})
     {}
 
-    PExpression<T> Matrix() const {return this->Children()[0];}
-    PExpression<T> Row() const {return this->Children()[1];}
-    PExpression<T> Col() const {return this->Children()[2];}
+    const PExpression<T>& Matrix() const {return this->Children()[0];}
+    const PExpression<T>& Row() const {return this->Children()[1];}
+    const PExpression<T>& Col() const {return this->Children()[2];}
 
     PExpression<T> accept(TransformationVisitor<T> &v) override {
         return v.visit(this);
@@ -358,8 +358,8 @@ public:
     // The left-hand side of a definition, as the tokens spell it.
     const std::string& Signature() const override {return signature_;}
 
-    PExpression<T> m_e1() const {return this->Children()[0];}
-    PExpression<T> m_e2() const {return this->Children()[1];}
+    const PExpression<T>& m_e1() const {return this->Children()[0];}
+    const PExpression<T>& m_e2() const {return this->Children()[1];}
 
     // 'lim f' asks the reference for the limit of its general clause rather
     // than for one term.
