@@ -952,10 +952,66 @@ it was built, and the specification is what found both of its mistakes.
 than a recurrence over cells, and would give chained indexing a reason to exist
 -- today `a[1,2][1,1]` is a no-op precisely because every index yields a 1x1.
 
+**Performance.** No session has ever been too slow -- a prompt evaluates one
+line -- so this is about where the time goes if the interpreter is ever asked
+to do real work, and it was measured before anything was written. Two
+workloads under callgrind, and they disagree completely. On a 20x20 matrix
+product, 74% is `matrix.hpp` and 11% is complex arithmetic: compiled C++
+already, nothing to win. On a small tree folded through `lim` thousands of
+times with the memo cache dropped each line, the arithmetic is **0.9%** --
+the interpreter spends a hundred times more effort administering a value than
+computing with it, and that effort is strings hashed and compared (20%), an
+allocation per intermediate (19%), clause dispatch (17%) and an atomic
+refcount per node (10%).
+
+A prototype took that workload down 43%, in four steps, each measured on top
+of the last and each leaving every golden byte-identical:
+
+| | sequence | matrix |
+|---|---|---|
+| `Name()` by reference, a frame as a flat vector | -6% | +1% |
+| a parameter, a default and an index bound as a **value** | -33% | +3% |
+| every name interned to an integer | -34% | +3% |
+| the memo key a struct rather than a rebuilt string | -43% | +3% |
+
+Two of those four lines carry it. Binding one parameter cost a
+`make_shared<Reference>`, a `Clause`, a `ParametersDefinition` holding two
+vectors and two strings, and a heap `ValExpression` -- per argument, per call,
+and again per term of a sequence for the index variable; a frame that holds
+values instead is three quarters of the saving. And **interning bought
+nothing**: the 20% the profile blamed on hashing names was the memo key and
+the allocations under it. Slot resolution by index -- the obvious reading of
+that profile, and the reason the experiment was run -- is the one change here
+not worth making. The matrix column is the warning attached to all of it: a
+frame carrying two vectors costs 3% where there are no references to resolve.
+
+What the goldens caught, and no reasoning would have: `h(x) = (x = 10) + x`
+answers 20. A local shadows a *parameter* of the same name, so a frame is one
+slot per name, not a value list beside a definition list.
+
+It also answers the question that started it, which was an LLVM JIT. The tree
+walk such a backend would replace is 7% of the baseline and the arithmetic it
+would compile is 1%, and a `Matrix` whose shape is dynamic leaves it either
+specialising on shape -- a project of its own -- or calling this same runtime
+and keeping every cost above. 43% came with no dependency, no codegen, and
+mostly by deleting what stood behind a bound parameter. If the codegen is the
+point rather than the speed, `Interpreter<double>` already compiles and is the
+honest target, out of tree.
+
+What remains, and where a further push goes: clause dispatch 18%, the AST fold
+12%, `matrix.hpp` 11%, refcounting 10%, the allocator 9%, names 9%, and the
+arithmetic still 1.8% -- 216M instructions down to 113M. The next slice is the
+boxed value, every intermediate being a heap `vector<complex<double>>` of one
+element, which D9 measured from the other side. The prototype is not the
+change to land: its first three steps were +131/-27 lines and all four +202/-69,
+and a version with one binding type in a frame and no symbol table should come
+closer to paying for itself, which is the only version worth having.
+
 If they were mine to order: the conditional, because it is the one missing
 primitive rather than a convenience; then the number systems, because the seam
 is already open and the experiment above took an afternoon; then the tolerance,
-and a prelude behind it.
+and a prelude behind it. Performance sits outside that order: it is the one
+direction that can end with fewer lines than it started with.
 
 ---
 
