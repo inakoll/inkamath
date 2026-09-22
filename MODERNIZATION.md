@@ -12,8 +12,21 @@ Target: **C++20**, standard library only, tested and CI-verified at every step.
 
 Two constraints govern every phase:
 
-- **Size.** The project's value is that it is small. No phase may make it
-  larger without removing at least as much.
+- **Size.** The project's value is that it is small. A phase that repairs may
+  not make it larger without removing at least as much.
+
+  Phases 9 and 10 did not repair, and they broke that rule as it was first
+  written: the headers went from **2,406 lines to 2,964** across memoisation,
+  locals, cell indexing, comparisons and guards -- a fifth larger for five
+  capabilities. The rule is restated rather than quietly missed, because the
+  first version made an honest feature phase impossible to pass. What it asks
+  now: a phase that adds a capability says in its own section what it cost,
+  and looks for what it can remove. Looking, at the end of phase 10, found
+  nineteen lines -- `PrintTokens`, the `Space` token, a virtual `Size`, a
+  stored reference nothing read, and nine forwarding methods in
+  `ParametersVisitor`. Nineteen against five hundred and fifty-eight is the
+  measurement, not an argument that the five hundred and fifty-eight were
+  wrong.
 - **Recognisability.** The author must still recognise this as his project.
   Three ideas are his and are not up for renegotiation: names bind
   *expressions* rather than values and are re-evaluated lazily; matrices of
