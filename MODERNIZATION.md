@@ -175,10 +175,12 @@ sanitizer build.
 
 ## Verified defects — third pass
 
-Found by sitting at the prompt and writing what a student would write:
-factorials, Fibonacci, Newton's method for a square root, a sum of a series,
-compound interest, binomial coefficients, the roots of a quadratic. Most of it
-works, and two of the three defects below came out of the quadratic.
+Found two ways: by sitting at the prompt and writing what a student would
+write -- factorials, Fibonacci, Newton's method for a square root, a sum of a
+series, compound interest, binomial coefficients, the roots of a quadratic,
+then matrices -- and by reading the code adversarially for what a session
+would not show. Neither way finds the other's: no session would have shown
+C59, and no amount of reading would have shown C48.
 
 | | |
 |---|---|
