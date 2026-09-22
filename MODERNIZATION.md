@@ -998,14 +998,23 @@ mostly by deleting what stood behind a bound parameter. If the codegen is the
 point rather than the speed, `Interpreter<double>` already compiles and is the
 honest target, out of tree.
 
-What remains, and where a further push goes: clause dispatch 18%, the AST fold
-12%, `matrix.hpp` 11%, refcounting 10%, the allocator 9%, names 9%, and the
-arithmetic still 1.8% -- 216M instructions down to 113M. The next slice is the
-boxed value, every intermediate being a heap `vector<complex<double>>` of one
-element, which D9 measured from the other side. The prototype is not the
-change to land: its first three steps were +131/-27 lines and all four +202/-69,
-and a version with one binding type in a frame and no symbol table should come
-closer to paying for itself, which is the only version worth having.
+The second line of the table is what landed, rewritten rather than applied: one
+slot per name in a frame, carrying a value or a definition, no symbol table.
+**-32%**, and *nothing* on the matrix workload where the prototype cost 3%,
+because a frame is one vector and not two. +89/-32 lines, which does not pay
+for itself; what it buys besides the time is that the `from_frame` flag
+threaded through three functions is gone, the frame shadowing a global being
+now a branch one can read. Checked three ways, because a faster wrong answer
+measures nothing: every golden byte-identical, 4000 random lines and 35 edge
+cases byte-identical against the previous build.
+
+What remains: clause dispatch 18%, the AST fold 12%, `matrix.hpp` 11%,
+refcounting 10%, the allocator 9%, names 9%, and the arithmetic still 1.8% --
+216M instructions down to 113M. The memo key is the next cheap one, worth 7%,
+but only with something to key on that is not a string, and the symbol table
+earned its place nowhere else. After that the boxed value: every intermediate
+is a heap `vector<complex<double>>` of one element, which D9 measured from the
+other side.
 
 If they were mine to order: the conditional, because it is the one missing
 primitive rather than a convenience; then the number systems, because the seam
