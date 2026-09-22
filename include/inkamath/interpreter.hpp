@@ -295,7 +295,7 @@ void Interpreter<T,U>::Lexer(const std::string& s)
             i = s.length();
             break;
 		default:
-            if(std::isalpha(s[i]))
+            if(std::isalpha(static_cast<unsigned char>(s[i])))
                     Reference_Lexer(s,i);
             else
             {
@@ -335,13 +335,13 @@ template <Parsable T, Numeric U>
 void Interpreter<T,U>::Reference_Lexer(const std::string &s, size_t& i)
 {
     size_t s_i = i;
-    while ((i < s.length()) && isalpha(s[i]))
+    while ((i < s.length()) && std::isalpha(static_cast<unsigned char>(s[i])))
     {
         ++i;
     }
     if (i!=s_i)
     {
-        while (i < s.length() && isdigit(s[i]))
+        while (i < s.length() && std::isdigit(static_cast<unsigned char>(s[i])))
         {
             ++i;
         }
