@@ -225,6 +225,27 @@ y(x) | x > 0 = 2
 >> y(5)
 2
 
+# Every clause of a definition shares its parameters, because a call binds
+# them once, for whichever clause ends up answering. A clause that names them
+# differently could never be called correctly -- the argument would be bound
+# under the other clause's name and the body would read a global instead -- so
+# it is refused rather than accepted and left unreachable
+# (MODERNIZATION.md, C51).
+>> pick(x) | x < 0 = 0-x
+pick(x) | x < 0 = 0-x
+
+>> pick(z) | 1 = z
+error: pick takes (x), so a clause cannot take (z)
+
+>> pick(x, z) | 1 = x+z
+error: pick takes (x), so a clause cannot take (x, z)
+
+>> pick(x) | 1 = x
+pick(x) | 1 = x
+
+>> pick(0-3)
+3
+
 # A base clause answers for one index rather than for every call, so it is
 # not a default and keeps its place in written order. A guard added after it
 # could never apply, and saying so beats doing nothing.

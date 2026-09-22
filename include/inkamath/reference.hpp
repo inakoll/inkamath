@@ -46,6 +46,17 @@ public:
         // replaces the clause that names the same thing and is appended when
         // there is none.
         const Clause<T> clause{ai_parameters, ai_expression, written};
+        // One call binds the parameters once, for whichever clause answers, so
+        // the clauses have to agree on their names. One that disagrees could
+        // only ever read a global under its own name (MODERNIZATION.md, C51).
+        const bool starts_over = !ai_parameters.guarded() && !ai_parameters.indexed();
+        if(!clauses_.empty() && !starts_over
+           && ai_parameters.parameters_names() != CallParameters().parameters_names()) {
+            throw std::runtime_error(reference_name_ + " takes ("
+                                     + Joined(CallParameters().parameters_names())
+                                     + "), so a clause cannot take ("
+                                     + Joined(ai_parameters.parameters_names()) + ")");
+        }
         // A base clause answers for one index rather than for every call, so
         // it is not a default and keeps its place: a guard added after one
         // could never apply, and saying so beats doing nothing.
@@ -217,6 +228,15 @@ private:
             }
         }
         return found;
+    }
+
+    static std::string Joined(const std::vector<std::string>& names) {
+        std::string joined;
+        for(const std::string& name : names) {
+            if(!joined.empty()) joined += ", ";
+            joined += name;
+        }
+        return joined;
     }
 
     // A clause bound from inside an expression has no written form to quote.
