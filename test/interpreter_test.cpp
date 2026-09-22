@@ -129,6 +129,10 @@ TEST_CASE("token limit") {
 
     // A line the limit must not reject.
     CHECK(transcript::eval(interpreter, std::string(400, '(') + "1" + std::string(400, ')')) == "1");
+
+    // Twenty million of them, refused for the same reason at the same price:
+    // the answer was always this, the cost was 1.8 GB (MODERNIZATION.md, C57).
+    CHECK(transcript::eval(interpreter, std::string(20000000, '(')) == expected);
 }
 
 // ParseEqualExpr used to rewind and re-parse its speculative left-hand side,

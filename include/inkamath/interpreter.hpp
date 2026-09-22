@@ -298,13 +298,16 @@ void Interpreter<T,U>::Lexer(const std::string& s)
                 Fail("unexpected character '", s[i], "'");
             }
         }
+
+        // Checked here and not after the loop: a line of twenty million
+        // brackets cost 1.8 GB before the limit got a word in.
+        if (m_tokens.size() > max_tokens)
+        {
+            Fail("expression is longer than ", max_tokens, " tokens");
+        }
     }
 
     if (m_tokens.empty()) Fail("empty expression");
-    if (m_tokens.size() > max_tokens)
-    {
-        Fail("expression is longer than ", max_tokens, " tokens");
-    }
 }
 
 template <Parsable T, Numeric U>
