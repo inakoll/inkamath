@@ -149,10 +149,10 @@ h(x) | x > 0 = 1
 >> h(0-1)
 error: no clause of h applies
 
-# Order is the writer's, and it cuts both ways: a clause written after an
-# unguarded one can never apply, because the unguarded one answers first.
-# Saying so would be a better diagnostic than silence (MODERNIZATION.md,
-# phase 10).
+# An unguarded clause that would answer every call -- a plain definition, or
+# the general clause -- is the definition's default, and is tried after the
+# guarded ones wherever it was written. That is what lets a definition be
+# patched up: the cases can be added as an afterthought.
 >> u(x) = 0
 u(x) = 0
 
@@ -160,7 +160,36 @@ u(x) = 0
 u(x) | x > 0 = 1
 
 >> u(5)
+1
+
+>> u(0-5)
 0
+
+# A sequence is patched the same way, because its general clause is a default
+# too.
+>> p_0 = 1
+p_0 = 1
+
+>> p_n = p_(n-1)+1
+p_n = p_(n-1)+1
+
+>> p_n | n > 3 = 99
+p_n | n > 3 = 99
+
+>> p_5
+99
+
+>> p_2
+3
+
+# A base clause answers for one index rather than for every call, so it is
+# not a default and keeps its place in written order. A guard added after it
+# could never apply, and saying so beats doing nothing.
+>> v_0 = 1
+v_0 = 1
+
+>> v_0 | 1 = 7
+error: v_0 is already defined without a guard, so this clause can never apply
 
 # A guard is any expression, true when it is not zero: a comparison is only
 # the usual way to write one.

@@ -48,6 +48,15 @@ public:
         // re-typing a guard leaves the old clause in front of the new one and
         // the way back is the plain definition (C11).
         const Clause<T> clause{ai_parameters, ai_expression, written};
+        // A base clause answers for one index rather than for every call, so
+        // it is not a default and keeps its place: a guard added after one
+        // could never apply, and saying so beats doing nothing.
+        if(ai_parameters.guarded() && ai_parameters.indexed() && !ai_parameters.general()
+           && Base(ai_parameters.index())) {
+            throw std::runtime_error(reference_name_ + "_" + std::to_string(ai_parameters.index())
+                                     + " is already defined without a guard,"
+                                       " so this clause can never apply");
+        }
         if(!ai_parameters.guarded() && !ai_parameters.indexed()) {
             clauses_.clear();
         }
@@ -222,11 +231,14 @@ private:
         // done. Order is the writer's to choose because neither precedence
         // serves both cases: a guard reading the previous term must not be
         // reached at the base index, while a guard ruling an index out must be
-        // (MODERNIZATION.md, phase 10). The unguarded general clause is the
-        // exception, tried last wherever it stands, so that a base case beats
-        // it however the two were written (README.md section 4).
+        // (MODERNIZATION.md, phase 10). An unguarded clause that would answer
+        // every call -- a plain definition, or the general clause -- is the
+        // definition's default and is tried last wherever it stands, so that
+        // a base case beats the general one however the two were written
+        // (README.md section 4) and so that a definition can be patched up
+        // afterwards with the cases it turned out to need.
         for(const Clause<T>& clause : clauses_) {
-            if(IsGeneral(clause)) continue;
+            if(IsGeneral(clause) || IsPlain(clause)) continue;
             if(Selects(clause, indexed, index, evaluator)) {
                 return clause.expression->accept(evaluator);
             }
@@ -252,6 +264,9 @@ private:
             }
             throw std::runtime_error(reference_name_ + " has no clause for index "
                                      + std::to_string(index));
+        }
+        if(const Clause<T>* plain = Plain()) {
+            return plain->expression->accept(evaluator);
         }
         if(Guarded()) {
             throw std::runtime_error("no clause of " + reference_name_ + " applies");

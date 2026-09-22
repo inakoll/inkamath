@@ -1007,12 +1007,31 @@ where the old shape needed that rule spread across `EvalImp`, `Describe` and
 output is byte-identical. If the fifteen lines matter more than the sentence,
 the revert is one commit.
 
-One behaviour moved, in a corner no golden covered: a guarded clause written
-*after* an unguarded one is now unreachable, where the old dispatch tried all
-guards first and let it fire. Written order says the unguarded clause answers,
-and `conditional.ink` records it. Silence is the wrong answer to that input
-though -- `a clause after an unguarded one can never apply` is a diagnostic
-this project would normally write, and it is the next small thing here.
+### Patching a definition afterwards
+
+The refactor exposed a hole, found by the question *can a guarded clause be
+added as an afterthought?* -- and the answer was three different answers.
+After a general clause it worked, because the general clause is tried last.
+After a base clause or a plain definition the new clause was silently dead,
+because both were tried in written order and both answered first.
+
+So the rule gained its one exception, and the exception is the sentence that
+makes it coherent: **an unguarded clause that would answer every call -- a
+plain definition, or the general clause -- is the definition's default, and is
+tried after the guarded ones wherever it was written.** A base clause answers
+for one index rather than for every call, so it is not a default and keeps its
+place; a guard written after one is refused, since it could never apply.
+
+That is what lets a definition be written the way one is actually built:
+
+```
+ramp(x) = x
+ramp(x) | x < 0 = 0
+```
+
+which also gives the "otherwise" case a spelling without a second reserved
+word -- it is the clause with no guard. Re-typing that clause still clears the
+definition (C11), which is the way to start over.
 
 ---
 

@@ -256,6 +256,35 @@ abs(x) | x >= 0 = x
 3
 ```
 
+A clause with no guard would answer every call, so it is the **default**: it
+is tried after the guarded ones wherever it was written. That is what lets a
+definition be patched up with the cases it turns out to need —
+
+```
+>> ramp(x) = x
+ramp(x) = x
+
+>> ramp(x) | x < 0 = 0
+ramp(x) | x < 0 = 0
+
+>> ramp(0-2)
+0
+
+>> ramp(2)
+2
+```
+
+— and a clause for one index is not a default, so a guard added after one
+could never apply and is refused rather than ignored:
+
+```
+>> step_0 = 1
+step_0 = 1
+
+>> step_0 | 1 = 7
+error: step_0 is already defined without a guard, so this clause can never apply
+```
+
 A comparison is a number — `1` or `0` — so a guard is simply an expression
 that is not zero, and `sgn(x) = (x>0) - (x<0)` needs no guard at all. Ordering
 needs real numbers; equality does not. If no clause applies, the interpreter
