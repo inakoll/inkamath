@@ -89,6 +89,25 @@ public:
 //    that would use the special string node to accumulate the representation)
 template <typename T>
 class TransformationVisitor : public ExpressionVisitor<T, PExpression<T>> {
+public:
+    // The overloads named below would otherwise hide the ones they do not.
+    using ExpressionVisitor<T, PExpression<T>>::visit;
+    // A transformation usually treats most nodes alike, so it says what to do
+    // with the ones it cares about and answers the rest here. A folding
+    // visitor gets no such default: evaluating a node it forgot would be a
+    // wrong answer, where transforming one it forgot is the identity.
+    virtual PExpression<T> visit_other(Expression<T>* expr) = 0;
+
+    PExpression<T> visit(AddExpression<T>* expr) override {return visit_other(expr);}
+    PExpression<T> visit(NegExpression<T>* expr) override {return visit_other(expr);}
+    PExpression<T> visit(MultExpression<T>* expr) override {return visit_other(expr);}
+    PExpression<T> visit(DivExpression<T>* expr) override {return visit_other(expr);}
+    PExpression<T> visit(PowExpression<T>* expr) override {return visit_other(expr);}
+    PExpression<T> visit(FactExpression<T>* expr) override {return visit_other(expr);}
+    PExpression<T> visit(ValExpression<T>* expr) override {return visit_other(expr);}
+    PExpression<T> visit(CellExpression<T>* expr) override {return visit_other(expr);}
+    PExpression<T> visit(CompareExpression<T>* expr) override {return visit_other(expr);}
+    PExpression<T> visit(FuncExpression<T>* expr) override {return visit_other(expr);}
 };
 
 // class FoldingVisitor
@@ -102,6 +121,9 @@ class FoldingVisitor : public ExpressionVisitor<T, T> {
 template <typename T>
 class ParametersVisitor : public TransformationVisitor<T> {
 public:
+    // The overloads this class does not name are the base's, which answer
+    // through visit_other below.
+    using TransformationVisitor<T>::visit;
 
 	PExpression<T> visit(MatExpression<T>* expr) override {
         if(visitor_depth++ == 0) {
@@ -110,7 +132,7 @@ public:
 			}
 		}
         else {
-            visit_others_expr_imp(expr);
+            visit_other(expr);
         }
 
 		return PExpression<T>();
@@ -136,7 +158,7 @@ public:
 		return PExpression<T>();
 	}
 	
-	PExpression<T> visit_others_expr_imp(Expression<T>* expr) {
+	PExpression<T> visit_other(Expression<T>* expr) override {
 		if(!keyword_params_begin) {
             this->parameters_expr.push_back(expr->self());
 		}
@@ -147,45 +169,15 @@ public:
 		return PExpression<T>();
 	}
 	
-	PExpression<T> visit(FuncExpression<T>* expr) override {
-		return visit_others_expr_imp(expr);
-	}
 
-	PExpression<T> visit(CellExpression<T>* expr) override {
-		return visit_others_expr_imp(expr);
-	}
 
-	PExpression<T> visit(CompareExpression<T>* expr) override {
-		return visit_others_expr_imp(expr);
-	}
 	
-	PExpression<T> visit(AddExpression<T>* expr) override {
-		return visit_others_expr_imp(expr);
-	}
 	
-	PExpression<T> visit(NegExpression<T>* expr) override {
-		return visit_others_expr_imp(expr);
-	}
 
-	PExpression<T> visit(MultExpression<T>* expr) override {
-		return visit_others_expr_imp(expr);
-	}
 
-	PExpression<T> visit(DivExpression<T>* expr) override {
-		return visit_others_expr_imp(expr);
-	}
 
-	PExpression<T> visit(PowExpression<T>* expr) override {
-		return visit_others_expr_imp(expr);
-	}
 
-	PExpression<T> visit(FactExpression<T>* expr) override {
-		return visit_others_expr_imp(expr);
-	}
 
-	PExpression<T> visit(ValExpression<T>* expr) override {
-		return visit_others_expr_imp(expr);
-	}
 
     std::vector<std::string> get_parameters_names() {
         return parameters_names;
