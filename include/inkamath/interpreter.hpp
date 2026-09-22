@@ -261,6 +261,10 @@ void Interpreter<T,U>::Lexer(const std::string& s)
             m_tokens.push_back(Token<T>(Query, std::string(1, s[i])));
             break;
         case ' ':
+        // A tab is what a pasted line is indented with, and a '\r' is what a
+        // line written on Windows ends with. Neither was typed to be read.
+        case '\t':
+        case '\r':
             break;
 		case '0': case '1': case '2': case '3': case '4':
 		case '5': case '6': case '7': case '8': case '9':

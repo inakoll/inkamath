@@ -113,6 +113,16 @@ TEST_CASE("readme") {
     check_readme();
 }
 
+// Not a transcript entry: the transcript format strips a trailing '\r', so
+// the one case that matters -- a file written on Windows, piped to the REPL,
+// whose every line ends with one -- cannot be written as one
+// (MODERNIZATION.md, C58).
+TEST_CASE("a carriage return is whitespace") {
+    Interpreter<std::complex<double>> interpreter;
+    CHECK(transcript::eval(interpreter, "1+1\r") == "2");
+    CHECK(transcript::eval(interpreter, "f(x)=x+1\r") == "f(x)=x+1");
+}
+
 // Not a transcript entry: the inputs are thousands of characters wide. Both
 // of these used to exhaust the C++ stack and kill the process, so before the
 // token limit this case took the whole suite with it (MODERNIZATION.md, C20).

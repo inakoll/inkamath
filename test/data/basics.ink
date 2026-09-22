@@ -121,6 +121,12 @@ index=7
 >> i*2
 i*2
 
+# A tab separates as a space does. The lexer's whitespace case was ' ' and
+# nothing else, so a pasted or indented line was 'unexpected character'
+# (MODERNIZATION.md, C58). The separator below is a tab.
+>> 1	+	2
+3
+
 # '#' starts an inkamath comment.
 >> 1 + 2 # this computes 1 + 2
 3
