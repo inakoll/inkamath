@@ -29,8 +29,13 @@
 template <typename T>
 concept Numeric =
     std::default_initializable<T>
-    && requires(const T& a, const T& b, const typename T::value_type& cell) {
+    && requires(const T& a, const T& b, const typename T::value_type& cell,
+                typename T::value_type& accumulator) {
     typename T::value_type;
+    // The product accumulates into a cell, which no other requirement implies:
+    // a number type that satisfied all of them still failed to compile, deep
+    // inside Matrix rather than here (MODERNIZATION.md, C44).
+    { accumulator += cell } -> std::same_as<typename T::value_type&>;
     { T(cell) } -> std::same_as<T>;
     { T(Extent()) } -> std::same_as<T>;
     { a.Size() } -> std::convertible_to<Extent>;
