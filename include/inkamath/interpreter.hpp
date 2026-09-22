@@ -386,6 +386,7 @@ PExpression<U> Interpreter<T,U>::ParseEqualExpr()
     PExpression<U> e,ref,params,expr,sub;
     if (!AtEnd() && Peek().type == Func && !IsLimit(Peek()))
     {
+        const size_t signature_begin = m_i;
         std::string name = m_tokens[m_i++].text;
         ref = PExpression<U>(new RefExpression<U>(name));
         params = ParseParameters();
@@ -398,11 +399,19 @@ PExpression<U> Interpreter<T,U>::ParseEqualExpr()
         }
         if (!AtEnd() && Peek().type == Equal)
         {
+            // What names the clause, so that writing it again replaces that
+            // clause rather than adding one: the left-hand side, as the
+            // tokens spell it, which is the same however it was spaced.
+            std::string signature;
+            for(size_t token = signature_begin; token < m_i; ++token) {
+                signature += m_tokens[token].text;
+            }
             ++m_i;
             expr = Parse();
             if(params || sub || guard) {
                 e.reset(new EqualExpression<U>(
-                    PExpression<U>(new FuncExpression<U>(ref, params, sub, false, guard)), expr));
+                    PExpression<U>(new FuncExpression<U>(ref, params, sub, false, guard, signature)),
+                    expr));
             }
             else {
                 e.reset(new EqualExpression<U>(ref, expr));

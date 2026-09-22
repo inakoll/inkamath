@@ -50,6 +50,13 @@ public:
     {
         return std::string();
     }
+
+    // The left-hand side of a definition; empty for everything else.
+    virtual const std::string& Signature() const
+    {
+        static const std::string none;
+        return none;
+    }
     virtual Extent Size() const
     {
         return Extent();
@@ -346,10 +353,14 @@ public:
     // null everywhere else; keeping it here is what lets ParametersDefinition
     // read the whole left-hand side from one place.
     explicit FuncExpression(PExpression<T> ref_expression, PExpression<T> e1, PExpression<T> e2,
-                            bool limit = false, PExpression<T> guard = PExpression<T>())
+                            bool limit = false, PExpression<T> guard = PExpression<T>(),
+                            std::string signature = std::string())
         : Expression<T>({e1, e2, guard}), m_name(ref_expression->Name()),
-          ref_expression_(ref_expression), limit_(limit)
+          ref_expression_(ref_expression), limit_(limit), signature_(std::move(signature))
     { }
+
+    // The left-hand side of a definition, as the tokens spell it.
+    const std::string& Signature() const override {return signature_;}
 
     PExpression<T> m_e1() const {return this->Children()[0];}
     PExpression<T> m_e2() const {return this->Children()[1];}
@@ -374,6 +385,7 @@ protected:
     std::string m_name;
     PExpression<T> ref_expression_;
     bool limit_;
+    std::string signature_;
 };
 
 #endif

@@ -169,6 +169,8 @@ works, and two of the three defects below came out of the quadratic.
 
 | | |
 |---|---|
+| C46 `[fixed]` | **A guarded clause could not be corrected.** It was appended and never replaced, so writing `abs(x) \| x < 0 = 0-x` again with a different body left the old clause in front of the new one and the correction did nothing -- in a language whose definitions are built at a prompt, by trial. The unguarded shapes name themselves (a plain definition, an index, the general term); a guard needed a name, and it is its left-hand side as the tokens spell it, which is the same however it was spaced. Found by the question *how do you overwrite a clause?*, which had three answers and should have had one. |
+| C45 `[fixed]` | **Replacing a clause moved it to the end, and order is what dispatch follows.** Re-typing `root_0 = 1` -- the same text, the same value -- put the base clause behind the guard that reads the term before it, so the guard was reached at index zero, asked for `root_(0-1)`, and ran to the depth budget. A definition broke because it was re-entered unchanged. The cause was an erase followed by a push back, from the phase 10 refactor that made clause order meaningful in the first place; clauses are replaced in place now. |
 | C44 | **The concepts do not ask for what the product needs.** `Matrix::mul` accumulates with `c(i,j) += ...`, and neither `Numeric` nor `Parsable` mentions `+=` on the cell type. It goes unnoticed because the concept checks `a*b` as an expression and a template body is not instantiated by overload resolution, so the requirement only bites when someone supplies a number type and gets a template error inside `matrix.hpp` rather than a concept failure at the interface. Found by instantiating `Interpreter<Rational>`: a type that satisfied everything the concepts state still failed to compile. **Proposed:** state it -- `Numeric`'s requires-clause already names a cell, so it takes one line -- or drop the requirement by writing the accumulation as `c(i,j) = c(i,j) + ...`, which asks less of the type at the cost of a copy per term. Not fixed here because the only test that proves it is an out-of-tree instantiation, and a negative concept test costs more than it protects. |
 | C43 `[fixed]` | **A number could not start with the point.** `.5` reported `unexpected character '.'`, while `1e3`, `0x10` and `2i` all lexed -- the exotic spellings worked and the common one did not, because the lexer's case list holds the ten digits and nothing else. `strtod` reads `.5` without being asked; only the dispatch was missing. A point that does not begin a number still reports the same message, so `a.b` is unchanged. |
 | C42 `[fixed]` | **The factorial answered for every argument it had no business accepting.** `!5.5` was `120`, `!(0-3)` was `1`, `!(2+i*3)` was `2` and `!i` was `1`. The loop multiplies `i` while `i <= n`, so a fraction truncates, a negative gives the empty product, and the complex layer passed `a.real()` down without looking at the rest, dropping the imaginary part before the loop ever saw it. Four plausible numbers where there should be four diagnostics, which is C13 in an operator nobody had pointed at -- the corpus tested `!5` and `!0` and stopped. Found by typing `!5.5` while checking what the lexer accepts. |
@@ -982,10 +984,12 @@ eighteen visit methods for one idea; a vector of guarded clauses on
 `Reference`, and the guard riding on `ParametersDefinition`, where the rest of
 the left-hand side already lives. Every recorded output is byte-identical.
 
-A guarded clause is appended and never replaced, so re-typing a guard leaves
-the old clause in front of the new one; the way back is the plain definition,
-which still clears everything (C11). That is the one rough edge, and it is
-recorded rather than guessed at.
+Writing a clause again replaces that clause, where it stands: the unguarded
+ones are named by their shape, a guarded one by its left-hand side as the
+tokens spell it. A plain definition still clears the whole definition (C11),
+which is how one is started over. What is still missing is a way to drop a
+single clause -- the language has no notion of deletion at all, and inventing
+one for clauses alone would be a syntax nobody asked for.
 
 The deletion this phase promised was done, and **it was not a deletion**.
 `Reference` now keeps one vector of clauses in written order instead of a plain

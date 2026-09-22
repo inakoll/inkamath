@@ -182,6 +182,49 @@ p_n | n > 3 = 99
 >> p_2
 3
 
+# Re-typing a clause replaces that clause and leaves it where it stands.
+# Order is what dispatch follows, so a clause that moved would answer
+# differently: this one used to be appended, and re-entering 'root_0 = 1'
+# unchanged put the base clause behind the guard that reads the term before
+# it, which then recursed to the depth budget (MODERNIZATION.md, C45).
+>> w_0 = 1
+w_0 = 1
+
+>> w_n | n > 2 = 0
+w_n | n > 2 = 0
+
+>> w_n = w_(n-1)+1
+w_n = w_(n-1)+1
+
+>> w_2
+3
+
+>> w_0 = 10
+w_0 = 10
+
+>> ?w
+w_0 = 10
+w_n | n > 2 = 0
+w_n = w_(n-1)+1
+
+>> w_2
+12
+
+# A guarded clause is replaced by writing its left-hand side again. It used
+# to be appended, so the old clause stayed in front of the new one and the
+# correction never took effect (MODERNIZATION.md, C46).
+>> y(x) | x > 0 = 1
+y(x) | x > 0 = 1
+
+>> y(x) | x > 0 = 2
+y(x) | x > 0 = 2
+
+>> ?y
+y(x) | x > 0 = 2
+
+>> y(5)
+2
+
 # A base clause answers for one index rather than for every call, so it is
 # not a default and keeps its place in written order. A guard added after it
 # could never apply, and saying so beats doing nothing.

@@ -41,12 +41,10 @@ public:
         }
 
         // One definition per name, kept as the clauses that make it up in the
-        // order they were written. A plain definition replaces all of them; an
-        // indexed or general clause replaces the one of its own shape and
-        // drops a plain one, which is how an index turns a value into a
-        // sequence. A guarded clause is appended and never replaced, so
-        // re-typing a guard leaves the old clause in front of the new one and
-        // the way back is the plain definition (C11).
+        // order they were written. A plain definition replaces all of them
+        // (C11), which is how a definition is started over; anything else
+        // replaces the clause that names the same thing and is appended when
+        // there is none.
         const Clause<T> clause{ai_parameters, ai_expression, written};
         // A base clause answers for one index rather than for every call, so
         // it is not a default and keeps its place: a guard added after one
@@ -61,12 +59,24 @@ public:
             clauses_.clear();
         }
         else if(!ai_parameters.guarded()) {
-            std::erase_if(clauses_, [&](const Clause<T>& existing) {
-                return IsPlain(existing)
-                    || (IsGeneral(existing) && IsGeneral(clause))
-                    || (IsBase(existing) && IsBase(clause)
-                        && existing.parameters.index() == clause.parameters.index());
-            });
+            // An index turns a value into a sequence, so the plain clause goes.
+            std::erase_if(clauses_, IsPlain);
+        }
+        // Writing a clause again replaces it where it stands. Position is what
+        // dispatch follows, so a clause that moved would answer differently
+        // (MODERNIZATION.md, C45); a guarded clause is named by its left-hand
+        // side, which is how it can be corrected at all (C46).
+        for(Clause<T>& existing : clauses_) {
+            const bool same = ai_parameters.guarded()
+                ? existing.parameters.guarded()
+                      && existing.parameters.signature() == ai_parameters.signature()
+                : (IsGeneral(existing) && IsGeneral(clause))
+                      || (IsBase(existing) && IsBase(clause)
+                          && existing.parameters.index() == clause.parameters.index());
+            if(same) {
+                existing = clause;
+                return;
+            }
         }
         clauses_.push_back(clause);
     }
