@@ -103,6 +103,19 @@ error: a factorial needs a real number, not 2+i*3
 >> !i
 error: a factorial needs a real number, not i
 
+# 171! overflows a double, so counting past it can only reach infinity -- and
+# the counter is itself a double, which stops advancing at 2^53. '!(10^20)'
+# and '!1e16' ran for ever and took the session with them, since a hung
+# process loses every definition in it (MODERNIZATION.md, C47).
+>> !171
+inf
+
+>> !(10^20)
+inf
+
+>> !1e400
+inf
+
 # A part that is NaN is present but has no sign, and answers false to every
 # comparison, so the imaginary unit used to be dropped while its magnitude was
 # still printed: these read 'inf*-nan' and '-nan*-nan' (MODERNIZATION.md, C31).

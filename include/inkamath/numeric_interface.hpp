@@ -224,14 +224,19 @@ struct numeric_interface_imp<T,true>
     
 	static T fact(const T& n)
     {
+        // Stopping at the first infinite product, because past it every
+        // further term is infinite too -- and because the counter is a T,
+        // which at 2^53 stops advancing under '++i' and leaves the loop
+        // running for ever (MODERNIZATION.md, C47).
+        const T infinite = std::numeric_limits<T>::infinity();
         T i = 1;
         T n1 = 1;
-        while (n >= i)
+        while (n >= i && n1 < infinite)
         {
             n1 *= i;
             ++i;
         }
-        return n1;
+        return n >= i ? infinite : n1;
     }
 
 	static T abs(const T& a) {return std::abs(a);}
