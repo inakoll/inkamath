@@ -53,6 +53,25 @@ error: unexpected character '.'
 >> -2^2
 -4
 
+# A sign binds to what follows it, not to the whole product: '6/-2/3' is
+# '(6/-2)/3'. Unary minus swallowed the multiplicative chain instead, so this
+# answered -9, and adding unary plus copied the mistake into a second operator
+# (MODERNIZATION.md, C48).
+>> 6/-2/3
+-1
+
+>> 8/-2*2
+-8
+
+>> 2^-3*4
+0.5
+
+>> 6/+2/3
+1
+
+>> -2*3
+-6
+
 # 'e', 'pi' and the imaginary unit 'i' are the only built-ins.
 >> [pi, e]
 3.14159265 2.71828183

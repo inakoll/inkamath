@@ -611,12 +611,15 @@ PExpression<U>  Interpreter<T,U>::ParseSimpleExpr()
         case Add:
             // Unary plus is the identity, and binds as unary minus does.
             ++m_i;
-            e = ParseMultExpr();
+            e = ParsePowExpr();
             break;
 
         case Min:
+            // A power, not a product: the sign belongs to what follows it, so
+            // '6/-2/3' is '(6/-2)/3' and '-2^2' is still -4. Binding the whole
+            // multiplicative chain made the first of those -9 (C48).
             ++m_i;
-            e.reset(new NegExpression<U>(ParseMultExpr()));
+            e.reset(new NegExpression<U>(ParsePowExpr()));
 			break;
 
         case Fact:
