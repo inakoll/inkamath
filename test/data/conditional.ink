@@ -225,6 +225,23 @@ y(x) | x > 0 = 2
 >> y(5)
 2
 
+# A clause is named by its left-hand side as the tokens spell it, and the
+# tokens have to stay apart: joined without a separator, '[1 2][1,1]' and
+# '[12][1,1]' are one name, so writing the second clause replaced the first
+# (MODERNIZATION.md, C55).
+>> sg(x) | x < [1 2][1,1] = 10
+sg(x) | x < [1 2][1,1] = 10
+
+>> sg(x) | x < [12][1,1] = 20
+sg(x) | x < [12][1,1] = 20
+
+>> ?sg
+sg(x) | x < [1 2][1,1] = 10
+sg(x) | x < [12][1,1] = 20
+
+>> sg(0)
+10
+
 # A guard that does not hold must leave nothing behind. The index was bound
 # before the guard was tested and never removed, so a rejected clause shadowed
 # a global, clobbered an argument, and poisoned the guards written after it

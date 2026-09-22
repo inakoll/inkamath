@@ -408,6 +408,9 @@ PExpression<U> Interpreter<T,U>::ParseEqualExpr()
             // tokens spell it, which is the same however it was spaced.
             std::string signature;
             for(size_t token = signature_begin; token < m_i; ++token) {
+                // Kept apart: joined, '[1 2]' and '[12]' are the same string,
+                // and the two clauses become one (MODERNIZATION.md, C55).
+                signature += '\x1f';
                 signature += m_tokens[token].text;
             }
             ++m_i;
