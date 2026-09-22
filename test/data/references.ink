@@ -143,6 +143,60 @@ y=20
 >> r(2)
 21
 
+# A definition written inside an expression is a local, and a local is not a
+# global: the answer it gives must not be remembered as the global's. The
+# memoised answer used to be keyed on the name alone, so 'cc_0' kept the
+# local's 99 after the line that bound it had ended, and a local even reached
+# a callee that lexical scoping keeps it out of (MODERNIZATION.md, C49).
+>> cc_0 = 1
+cc_0 = 1
+
+>> (cc_0 = 99)+0
+99
+
+>> cc_0
+1
+
+>> cc_0
+1
+
+>> (cc_0 = 99)+0
+99
+
+# The other way round: a remembered global must not answer for a local that
+# has just been bound.
+>> dd_0 = 1
+dd_0 = 1
+
+>> dd_0
+1
+
+>> (dd_0 = 99)+0
+99
+
+# And a callee sees the global, whatever the caller bound on its own line.
+>> ee(x) = x+1
+ee(x) = x+1
+
+>> ff(n) = ee(n)
+ff(n) = ee(n)
+
+>> (ee(x) = x+100)*0 + ff(2)
+3
+
+# Two arguments with the same cells and different shapes are two questions.
+# The key held the cells and not the extent, so whichever shape was asked
+# first answered for both (MODERNIZATION.md, C50).
+>> gg(m) = m+m
+gg(m) = m+m
+
+>> gg([1 2;3 4])
+2 4
+6 8
+
+>> gg([1 2 3 4])
+2 4 6 8
+
 # One definition per name. An indexed clause extends a sequence; a plain
 # definition replaces whatever the name held. The two used to coexist, with
 # an undocumented precedence that made a plain definition unreachable

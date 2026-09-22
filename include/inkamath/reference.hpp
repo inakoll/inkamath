@@ -104,7 +104,7 @@ public:
         return description;
     }
 
-    T Eval(const ParametersCall<T>& call, ReferenceStack<T>& stack) const {
+    T Eval(const ParametersCall<T>& call, ReferenceStack<T>& stack, bool global = true) const {
         const ParametersDefinition<T>& parameters = CallParameters();
         parameters.CheckArity(reference_name_, call);
 
@@ -116,12 +116,11 @@ public:
         typename ParametersDefinition<T>::Arguments arguments =
                 parameters.EvaluateArguments(call, caller);
 
-        // Only a global gets here: a frame holds plain, unindexed bindings, so
-        // a call carrying an index or arguments names a definition the user
-        // made, and its answer is a function of the key and the globals alone
-        // (MODERNIZATION.md, phase 9). A limit is not keyed -- the terms it
-        // walks are, and it reads them through this same path.
-        const bool memoisable = !call.limit() && (indexed || !arguments.empty());
+        // Only a global's answer is a function of the key and the globals
+        // alone (MODERNIZATION.md, phase 9); a local shares its name with the
+        // global it shadows, so the stack says which this is. A limit is not
+        // keyed -- the terms it walks are, through this same path.
+        const bool memoisable = global && !call.limit() && (indexed || !arguments.empty());
         std::string key;
         if(memoisable) {
             key = MemoKey(indexed, index, arguments);
@@ -161,10 +160,15 @@ private:
             key += std::to_string(index);
         }
         for(const auto& argument : arguments) {
+            // The extent, not only the cells: two arguments with the same
+            // values in different shapes are two arguments, and the extent is
+            // also what says how many bytes of value follow (C50).
+            const T& value = argument.second;
             key += '\0';
             key += argument.first;
             key += '=';
-            const T& value = argument.second;
+            key += value.Size().toString();
+            key += ':';
             key.append(reinterpret_cast<const char*>(value.data()),
                        value.Size().count() * sizeof(*value.data()));
         }

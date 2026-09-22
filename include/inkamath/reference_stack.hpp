@@ -70,11 +70,16 @@ public:
 
     T Eval(const std::string& ai_reference_name, const ParametersCall<T>& ai_parameters)  {
         Budget budget(*this);
-        definition_type definition = Find(ai_reference_name);
+        bool from_frame = false;
+        definition_type definition = Find(ai_reference_name, &from_frame);
         if(!definition) {
             throw std::runtime_error(ai_reference_name + " is not defined");
         }
-        return definition->Eval(ai_parameters, *this);
+        // Only a global's answer may be memoised. A definition written inside
+        // an expression binds a local, in a frame, under the same name as the
+        // global it shadows for that line -- and the cache is keyed on the
+        // name (MODERNIZATION.md, C49).
+        return definition->Eval(ai_parameters, *this, !from_frame);
     }
 
     // MODERNIZATION.md, phase 9. A call's answer depends on the definition,
@@ -109,10 +114,13 @@ private:
         return frames_.empty() ? globals_ : frames_.back();
     }
 
-    definition_type Find(const std::string& name) const {
+    definition_type Find(const std::string& name, bool* from_frame = nullptr) const {
         if(!frames_.empty()) {
             auto parameter = frames_.back().find(name);
-            if(parameter != frames_.back().end()) return parameter->second;
+            if(parameter != frames_.back().end()) {
+                if(from_frame) *from_frame = true;
+                return parameter->second;
+            }
         }
         auto global = globals_.find(name);
         return global == globals_.end() ? definition_type() : global->second;
