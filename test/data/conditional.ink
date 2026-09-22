@@ -225,6 +225,43 @@ y(x) | x > 0 = 2
 >> y(5)
 2
 
+# A guard that does not hold must leave nothing behind. The index was bound
+# before the guard was tested and never removed, so a rejected clause shadowed
+# a global, clobbered an argument, and poisoned the guards written after it
+# (MODERNIZATION.md, C53).
+>> nn = 7
+nn = 7
+
+>> rg_nn | nn > 5 = 100
+rg_nn | nn > 5 = 100
+
+>> rg_0 = nn
+rg_0 = nn
+
+>> rg_0
+7
+
+>> ar(x)_x | x > 5 = 1
+ar(x)_x | x > 5 = 1
+
+>> ar(x)_0 = x
+ar(x)_0 = x
+
+>> ar(7)_0
+7
+
+>> cg = 10
+cg = 10
+
+>> pg_cg | cg > 100 = 1
+pg_cg | cg > 100 = 1
+
+>> pg_0 | cg > 5 = 2
+pg_0 | cg > 5 = 2
+
+>> pg_0
+2
+
 # Every clause of a definition shares its parameters, because a call binds
 # them once, for whichever clause ends up answering. A clause that names them
 # differently could never be called correctly -- the argument would be bound

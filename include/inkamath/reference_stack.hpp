@@ -98,6 +98,35 @@ public:
         memoised_.emplace(key, evaluation);
     }
 
+    // A binding made to try something out. A guard needs its index bound to be
+    // asked at all, and a guard that does not hold must leave nothing behind
+    // (MODERNIZATION.md, C53).
+    struct Trial {
+        Trial(ReferenceStack<T>& stack, const std::string& name)
+            : stack_(stack), name_(name)
+        {
+            auto existing = stack_.CurrentScope().find(name_);
+            if(existing != stack_.CurrentScope().end()) {
+                previous_ = existing->second;
+                had_ = true;
+            }
+        }
+        ~Trial() {
+            if(kept_) return;
+            if(had_) stack_.CurrentScope()[name_] = previous_;
+            else     stack_.CurrentScope().erase(name_);
+        }
+        void keep() {kept_ = true;}
+        Trial(const Trial&) = delete;
+        Trial& operator=(const Trial&) = delete;
+    private:
+        ReferenceStack<T>& stack_;
+        std::string     name_;
+        definition_type previous_;
+        bool            had_ = false;
+        bool            kept_ = false;
+    };
+
     // The scope of one call's parameters.
     struct Frame {
     public:
@@ -110,6 +139,8 @@ public:
     };
 
 private:
+    friend struct Trial;
+
     scope_type& CurrentScope() {
         return frames_.empty() ? globals_ : frames_.back();
     }

@@ -89,6 +89,52 @@ error: s is a sequence; index it (s_0) or take its limit (lim s)
 >> lim s
 5.82076609e-11
 
+# 'lim' walks the terms the sequence has, which means walking them through the
+# same dispatch an index walks. It used to evaluate the general clause
+# directly, so a guarded clause was invisible to it and the limit contradicted
+# every term the user could ask for (MODERNIZATION.md, C54).
+>> lg_0 = 1
+lg_0 = 1
+
+>> lg_n | n > 0 = lg_(n-1)/2
+lg_n | n > 0 = lg_(n-1)/2
+
+>> lg_n = lg_(n-1)*10
+lg_n = lg_(n-1)*10
+
+>> lg_10
+0.0009765625
+
+>> lim lg
+5.82076609e-11
+
+# The same the other way: terms that settle were reported as divergence,
+# quoting a last term the sequence does not have.
+>> lt_0 = 0
+lt_0 = 0
+
+>> lt_n | n > 2 = 5
+lt_n | n > 2 = 5
+
+>> lt_n = n
+lt_n = n
+
+>> lim lt
+5
+
+# And a general clause that is guarded is still a general clause.
+>> lc_0 = 1
+lc_0 = 1
+
+>> lc_n | 1 = lc_(n-1)/2
+lc_n | 1 = lc_(n-1)/2
+
+>> lc_10
+0.0009765625
+
+>> lim lc
+5.82076609e-11
+
 # A small step is not a small remainder. Every step here is 1e-11 and the
 # series diverges; comparing successive terms alone called that convergence
 # and answered 1e-11 (MODERNIZATION.md, C36).

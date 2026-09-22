@@ -145,11 +145,12 @@ public:
         EvaluationVisitor<T> evaluator(stack);
         parameters.BindDefaults(call, evaluator);
         if(call.limit()) {
-            const Clause<T>* general = General();
-            if(!general) {
+            // A guarded general clause is a general clause: it is the index
+            // that makes it one (MODERNIZATION.md, C54).
+            if(!FirstThat([](const Clause<T>& c) {return c.parameters.general();})) {
                 throw std::runtime_error(reference_name_ + " has no general clause, so it has no limit");
             }
-            return Converge(*general, evaluator);
+            return Converge(evaluator);
         }
         // Storing after the call returns, so that an evaluation which ran out
         // of budget is retried rather than remembered.
@@ -245,18 +246,26 @@ private:
     }
 
     // Does this clause answer this call? The shape is checked first and the
-    // guard last, because a guard may read the index it is being asked about.
+    // guard last, because a guard may read the index it is being asked about
+    // -- and the index is bound on trial, so that a clause which does not
+    // answer leaves the scope as it found it.
     bool Selects(const Clause<T>& clause, bool indexed, int index,
                  EvaluationVisitor<T>& evaluator) const {
         const ParametersDefinition<T>& p = clause.parameters;
         if(p.indexed() != indexed) return false;
-        if(p.general()) {
-            SetIndex(p.index_name(), index, evaluator.stack());
-        }
-        else if(indexed && p.index() != index) {
+        if(!p.general() && indexed && p.index() != index) {
             return false;
         }
-        return !p.guarded() || numeric_interface<T>::truth(p.guard()->accept(evaluator));
+        if(!p.general()) {
+            return !p.guarded() || numeric_interface<T>::truth(p.guard()->accept(evaluator));
+        }
+        typename ReferenceStack<T>::Trial trial(evaluator.stack(), p.index_name());
+        SetIndex(p.index_name(), index, evaluator.stack());
+        if(p.guarded() && !numeric_interface<T>::truth(p.guard()->accept(evaluator))) {
+            return false;
+        }
+        trial.keep();
+        return true;
     }
 
     T EvalImp(bool indexed, int index, EvaluationVisitor<T>& evaluator) const {
@@ -331,7 +340,10 @@ private:
     static constexpr size_t max_terms = 100;
     static constexpr double tolerance = 1E-10;
 
-    T Converge(const Clause<T>& general, EvaluationVisitor<T>& evaluator) const {
+    // Every term goes through EvalImp, so the terms a limit walks are the
+    // terms an index gives. Evaluating the general clause directly made them
+    // two different sequences as soon as a guard existed (C54).
+    T Converge(EvaluationVisitor<T>& evaluator) const {
         long long index = 0;
         T previous;
         // With no base clause there is no term to compare the first one
@@ -341,14 +353,14 @@ private:
         bool comparable = highest != nullptr;
         if(comparable) {
             index = highest->parameters.index();
-            previous = highest->expression->accept(evaluator);
+            previous = EvalImp(true, static_cast<int>(index), evaluator);
         }
 
         T evaluation = previous;
         decltype(numeric_interface<T>::abs(evaluation)) previous_step{};
         bool stepped = false;
         for(size_t term = 0; term < max_terms; ++term) {
-            evaluation = EvaluateGeneralClause(general, ++index, evaluator);
+            evaluation = EvalImp(true, static_cast<int>(++index), evaluator);
             if(comparable) {
                 // Naming the sequence, because the reason a term cannot be
                 // compared -- a matrix has no absolute value, two terms have
