@@ -10,7 +10,7 @@ enum Type
     Compare, Guard,
     Val,Func, Ref,
     LPar,RPar,LBra,RBra,
-    Space, Comma, Semico, Query
+    Comma, Semico, Query
 };
 
 template <typename T>

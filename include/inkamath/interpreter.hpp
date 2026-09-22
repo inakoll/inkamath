@@ -74,7 +74,6 @@ public:
     using Result = std::variant<U, Echo, Diagnostic>;
 
     Result Eval(const std::string& s);
-    void PrintTokens(void);
 
     void ResetInterpreter(void);
 
@@ -824,14 +823,5 @@ typename Interpreter<T,U>::Result Interpreter<T,U>::Eval(const std::string& s)
     return result;
 }
 
-template <Parsable T, Numeric U>
-void Interpreter<T,U>::PrintTokens(void)
-{
-    for (const Token<T>& token : m_tokens)
-    {
-        std::cout << token.text;
-    }
-    std::cout << std::endl;
-}
 
 #endif

@@ -57,11 +57,6 @@ public:
         static const std::string none;
         return none;
     }
-    virtual Extent Size() const
-    {
-        return Extent();
-    }
-
     // The generic view, for a visitor that does not care which node it is on.
     // Named views (m_e1, m_e) sit over the same storage; nothing writes to
     // either after parsing.
@@ -303,7 +298,7 @@ public:
         : Expression<T>(std::move(expr)), n_(n), m_(m)
     {}
 
-    Extent Size() const override
+    Extent Size() const
     {
         return Extent{n_, m_};
     }
@@ -356,7 +351,7 @@ public:
                             bool limit = false, PExpression<T> guard = PExpression<T>(),
                             std::string signature = std::string())
         : Expression<T>({e1, e2, guard}), m_name(ref_expression->Name()),
-          ref_expression_(ref_expression), limit_(limit), signature_(std::move(signature))
+          limit_(limit), signature_(std::move(signature))
     { }
 
     // The left-hand side of a definition, as the tokens spell it.
@@ -383,7 +378,6 @@ public:
     }
 protected:
     std::string m_name;
-    PExpression<T> ref_expression_;
     bool limit_;
     std::string signature_;
 };
