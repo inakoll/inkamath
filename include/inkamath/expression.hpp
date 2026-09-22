@@ -46,9 +46,10 @@ public:
     virtual T accept(FoldingVisitor<T> &v) = 0;
     virtual PExpression<T> accept(TransformationVisitor<T> &v) = 0;
 
-    virtual std::string Name()
+    virtual const std::string& Name() const
     {
-        return std::string();
+        static const std::string none;
+        return none;
     }
 
     // The left-hand side of a definition; empty for everything else.
@@ -99,7 +100,7 @@ public:
     : BinaryExpression<T>(e1,e2)
     {}
 
-    std::string Name() override {
+    const std::string& Name() const override {
         return BinaryExpression<T>::m_e1()->Name();
     }
 
@@ -324,7 +325,7 @@ public:
         : Expression<T>(), m_name(name)
     { }
 
-    std::string Name() override
+    const std::string& Name() const override
     {
         return m_name;
     }
@@ -364,7 +365,7 @@ public:
     // than for one term.
     bool limit() const {return limit_;}
 
-    std::string Name() override
+    const std::string& Name() const override
     {
         return m_name;
     }
