@@ -226,3 +226,12 @@ pip-log.txt
 
 # Windows EXE
 *.exe
+
+#################
+## inkamath
+#################
+build/
+build-*/
+cmake-build-*/
+compile_commands.json
+.cache/

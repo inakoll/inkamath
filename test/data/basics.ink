@@ -1,0 +1,133 @@
+# Arithmetic, precedence and built-in constants.
+# Examples are taken from README.md so the tests double as documentation checks.
+
+>> 1+1
+2
+
+>> 3*(4+5)
+27
+
+>> 1+2*3^3*2+1
+110
+
+>> -3+1
+-2
+
+>> 2^3^2
+512
+
+>> 10/4
+2.5
+
+# A number may start with the point. The lexer's cases listed the digits and
+# not '.', so '.5' was 'unexpected character' while the exotic '1e3' and
+# '0x10' both worked (MODERNIZATION.md, C43).
+>> .5
+0.5
+
+>> 1.5+.5
+2
+
+>> .5e2
+50
+
+# A point that does not start a number is still a character nothing wants.
+>> a.b
+error: unexpected character '.'
+
+>> !5
+120
+
+>> !0
+1
+
+# Unary plus, which README.md section 1 has always listed and the parser has
+# never had: '+5' was 'unexpected' (MODERNIZATION.md, C37). It binds exactly
+# as unary minus does.
+>> +5
+5
+
+>> +2^2
+4
+
+>> -2^2
+-4
+
+# A sign binds to what follows it, not to the whole product: '6/-2/3' is
+# '(6/-2)/3'. Unary minus swallowed the multiplicative chain instead, so this
+# answered -9, and adding unary plus copied the mistake into a second operator
+# (MODERNIZATION.md, C48).
+>> 6/-2/3
+-1
+
+>> 8/-2*2
+-8
+
+>> 2^-3*4
+0.5
+
+>> 6/+2/3
+1
+
+>> -2*3
+-6
+
+# 'e', 'pi' and the imaginary unit 'i' are the only built-ins.
+>> [pi, e]
+[3.14159265, 2.71828183]
+
+# They carry every digit a double holds. The 2014 literals stopped at
+# fourteen, and the imaginary part here was 4.58636533e-14 -- the error in pi,
+# not the error of the arithmetic (MODERNIZATION.md, C34).
+>> e^(i*pi)
+-1+i*1.2246468e-16
+
+>> i
+i
+
+>> i*i
+-1
+
+>> 2+3*i
+2+i*3
+
+>> (1+i)*(1-i)
+2
+
+# The principal square root of a negative number, which used to depend on how
+# the minus was written: unary minus left a -0 imaginary part, putting the
+# value on the far side of the branch cut, so this answered 'i*-2' where
+# '(0-4)^0.5' answered 'i*2'.
+>> (-4)^0.5
+1.2246468e-16+i*2
+
+>> (0-4)^0.5
+1.2246468e-16+i*2
+
+# 'i' is the imaginary unit only when it is not the start of a longer name.
+# Every identifier beginning with 'i' used to be a syntax error.
+>> ii=3
+ii=3
+
+>> ii
+3
+
+>> index=7
+index=7
+
+>> index+1
+8
+
+>> i*2
+i*2
+
+# A tab separates as a space does. The lexer's whitespace case was ' ' and
+# nothing else, so a pasted or indented line was 'unexpected character'
+# (MODERNIZATION.md, C58). The separator below is a tab.
+>> 1	+	2
+3
+
+# '#' starts an inkamath comment.
+>> 1 + 2 # this computes 1 + 2
+3
+
