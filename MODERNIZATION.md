@@ -1008,13 +1008,25 @@ now a branch one can read. Checked three ways, because a faster wrong answer
 measures nothing: every golden byte-identical, 4000 random lines and 35 edge
 cases byte-identical against the previous build.
 
-What remains: clause dispatch 18%, the AST fold 12%, `matrix.hpp` 11%,
-refcounting 10%, the allocator 9%, names 9%, and the arithmetic still 1.8% --
-216M instructions down to 113M. The memo key is the next cheap one, worth 7%,
-but only with something to key on that is not a string, and the symbol table
-earned its place nowhere else. After that the boxed value: every intermediate
-is a heap `vector<complex<double>>` of one element, which D9 measured from the
-other side.
+A second step, eight lines: every child accessor handed its `shared_ptr` out by
+value, so reading a child cost an atomic pair -- on every child of every node
+of every fold. By reference it is another 6%, and half the refcounting.
+
+**-36%** together, and what remains, measured on what is in the tree: clause
+dispatch 18%, names 17%, the allocator 12%, `matrix.hpp` 11%, the AST fold 9%,
+refcounting 4%, the arithmetic 1.7%; 216M instructions down to 122M. Most of
+that 17% is the memo key, still a string built per call, and the prototype's 7%
+for making it a struct needed a symbol table that earned its place nowhere
+else -- so that step wants a different idea, not that one.
+
+One correction to what this entry first claimed: the boxed value is *not* what
+is left, because D9 already unboxed it -- `Matrix(Extent, value)` skips
+`cells_` when the extent is one cell, and a 1x1 keeps its number in `scalar_`,
+so no scalar intermediate allocates. What the profile shows is smaller and
+worse placed: a `Matrix` carries a `std::vector` member even when it is one
+number, so every intermediate constructs and copies an empty vector for
+nothing, about 5% between the two. Closing that is the scalar/matrix split D9
+declined on its own measurement, and 5% does not reopen it.
 
 If they were mine to order: the conditional, because it is the one missing
 primitive rather than a convenience; then the number systems, because the seam
