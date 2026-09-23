@@ -78,7 +78,7 @@ x=2
 >> sum_(k=0)^3 x^k
 15
 
->> sum_(i=1)^3 sum_(j=1)^i i*j
+>> sum_(m=1)^3 sum_(j=1)^m m*j
 25
 
 >> h(k) = sum_(j=1)^3 k
