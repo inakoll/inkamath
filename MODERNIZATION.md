@@ -1177,7 +1177,7 @@ definition (C11), which is the way to start over.
 
 ---
 
-## Phase 11 — Series `[specified]`
+## Phase 11 — Series `[done]`
 
 A sum or a product over an index, written as on paper with the language's own
 `_` and `^`, so that a series is no longer a recurrence that names its own
@@ -1189,9 +1189,13 @@ prod_(k=1)^5 k
 sum_(k=0) 1/!k                    # no upper bound: the series itself
 ```
 
-Specified first, in `test/data/spec/series.ink`: 38 of its 42 entries fail,
-and the four that pass are three ordinary definitions and the check that the
-index does not leak, which means something only once a sum runs.
+Specified first, in `test/data/spec/series.ink`, 42 of its 48 assertions
+failing when it was complete; the six that passed were three ordinary
+definitions, the check that the index does not leak -- which means something
+only once a sum runs -- and the two the harness makes of its own. It is now
+`test/data/series.ink` with every expected output unchanged, and the suite
+passed on the first build. `lim`'s stopping rule moved into a class of its own
+first, so that the two share one rule rather than two copies of it.
 
 What the specification decides, each point from a probe of the parser rather
 than a guess:

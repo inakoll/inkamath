@@ -111,11 +111,15 @@ private:
     PExpression<U> ParseParameters();
     PExpression<U> ParseSubExpr();
     PExpression<U> ParseLimit();
+    PExpression<U> ParseSeries();
     std::string ParseQuery();
 
-    // The one reserved word. A limit is a property of a definition, so 'lim'
-    // takes a name rather than an expression.
+    // The reserved words. A limit is a property of a definition, so 'lim'
+    // takes a name rather than an expression; 'sum' and 'prod' begin a series.
     static bool IsLimit(const Token<T>& token) {return token.type == Func && token.text == "lim";}
+    static bool IsSeries(const Token<T>& token) {
+        return token.type == Func && (token.text == "sum" || token.text == "prod");
+    }
 
     // One line cannot be allowed to exhaust the C++ stack. Token count bounds
     // every recursion that a line can provoke -- the parser's, the evaluator's
@@ -395,8 +399,7 @@ template <Parsable T, Numeric U>
 PExpression<U> Interpreter<T,U>::ParseEqualExpr()
 {
     PExpression<U> e,ref,params,expr,sub;
-    if (!AtEnd() && Peek().type == Func && !IsLimit(Peek()))
-    {
+    if (!AtEnd() && Peek().type == Func && !IsLimit(Peek()) && !IsSeries(Peek())) {
         const size_t signature_begin = m_i;
         std::string name = m_tokens[m_i++].text;
         ref = PExpression<U>(new RefExpression<U>(name));
@@ -445,9 +448,7 @@ PExpression<U> Interpreter<T,U>::ParseEqualExpr()
             // ParseSimpleExpr, so the cell brackets are read here too.
             e = ParseCompareExpr(ParseCell(ref, true));
         }
-    }
-    else
-    {
+    } else {
         e = ParseCompareExpr();
     }
     return e;
@@ -604,6 +605,10 @@ PExpression<U>  Interpreter<T,U>::ParseSimpleExpr()
             {
                 ++m_i;
                 e = ParseLimit();
+                break;
+            }
+            if (IsSeries(Peek())) {
+                e = ParseSeries();
                 break;
             }
             ref.reset(new RefExpression<U>(m_tokens[m_i++].text));
@@ -763,8 +768,7 @@ PExpression<U> Interpreter<T,U>::ParseLimit()
     {
         Fail("expected a sequence name after 'lim'");
     }
-    if (Peek().type != Func)
-    {
+    if (Peek().type != Func || IsSeries(Peek())) {
         Fail("expected a sequence name after 'lim', not '", Peek().text, "'");
     }
     PExpression<U> ref(new RefExpression<U>(m_tokens[m_i++].text));
@@ -774,6 +778,51 @@ PExpression<U> Interpreter<T,U>::ParseLimit()
         Fail("'lim' takes a sequence, not one of its terms");
     }
     return PExpression<U>(new FuncExpression<U>(ref, param, PExpression<U>(), true));
+}
+
+// 'sum_(k=1)^n body', as it is written on paper. The body is a term: it runs to
+// the next '+' or '-', and a leading sign is part of it.
+template <Parsable T, Numeric U>
+PExpression<U> Interpreter<T, U>::ParseSeries() {
+    const std::string word    = m_tokens[m_i++].text;
+    const auto        example = word + "_(k=1)^n";
+    const auto        expect  = [&](Type type) -> const std::string& {
+        if (AtEnd()) Fail("expected an index after '", word, "', as in ", example);
+        if (Peek().type != type || IsLimit(Peek()) || IsSeries(Peek()))
+            Fail("expected an index after '", word, "', as in ", example, ", not '", Peek().text,
+                 "'");
+        return m_tokens[m_i++].text;
+    };
+    expect(Sub);
+    expect(LPar);
+    const std::string index = expect(Func);
+    expect(Equal);
+    const PExpression<U> lower = ParseCompareExpr();
+    if (AtEnd() || Peek().type != RPar) Fail("missing ')' after '", m_tokens[m_i - 1].text, "'");
+    ++m_i;
+
+    // A number, a name or parentheses, and a name here is never a call:
+    // 'n (k+1)' is the bound n and the body (k+1).
+    PExpression<U> upper;
+    if (!AtEnd() && Peek().type == Pow) {
+        ++m_i;
+        if (AtEnd()) Fail("expected the last index after '^', as in ", example);
+        if (Peek().type == Val) {
+            upper = std::make_shared<ValExpression<U>>(U(m_tokens[m_i++].value));
+        } else if (Peek().type == Func && !IsLimit(Peek()) && !IsSeries(Peek())) {
+            upper = std::make_shared<RefExpression<U>>(m_tokens[m_i++].text);
+        } else if (Peek().type == LPar) {
+            ++m_i;
+            upper = ParseCompareExpr();
+            if (AtEnd() || Peek().type != RPar)
+                Fail("missing ')' after '", m_tokens[m_i - 1].text, "'");
+            ++m_i;
+        } else {
+            Fail("expected the last index after '^', as in ", example, ", not '", Peek().text, "'");
+        }
+    }
+    return std::make_shared<SeriesExpression<U>>(word == "prod", index, lower, upper,
+                                                 ParseMultExpr());
 }
 
 template <Parsable T, Numeric U>

@@ -65,19 +65,6 @@ void check_transcript(const std::string& name) {
     }
 }
 
-// A specification, replayed but never recorded (CLAUDE.md, section 3).
-void check_spec(const std::string& name) {
-    const std::filesystem::path path = data_dir() / name;
-
-    std::ifstream in(path);
-    REQUIRE_MESSAGE(in.good(), "cannot open transcript ", path.string());
-    std::vector<transcript::Item> items = transcript::parse(in);
-    in.close();
-
-    REQUIRE_MESSAGE(!items.empty(), "transcript is empty: ", path.string());
-    replay(items, path.filename().string(), false);
-}
-
 // Every fenced block in README.md is a session, and they run as one. The
 // documentation cannot drift from the interpreter without failing here. It is
 // never recorded: prose is not ours to rewrite.
@@ -112,6 +99,9 @@ TEST_CASE("conditional") {
 }
 TEST_CASE("sequences") {
     check_transcript("sequences.ink");
+}
+TEST_CASE("series") {
+    check_transcript("series.ink");
 }
 TEST_CASE("errors") {
     check_transcript("errors.ink");
@@ -169,17 +159,6 @@ TEST_CASE("nested calls parse in linear time") {
     std::string nested = "1";
     for (int i = 0; i < 200; ++i) nested = "f(" + nested + ")";
     CHECK(transcript::eval(interpreter, nested) == "1");
-}
-
-TEST_SUITE_END();
-
-// The language 'sum' and 'prod' would give, not the language we have. Marked
-// may_fail so the gap is reported on every run without gating CI, and never
-// recorded: a specification taken from the code it judges is worth nothing.
-TEST_SUITE_BEGIN("spec");
-
-TEST_CASE("series" * doctest::may_fail()) {
-    check_spec("spec/series.ink");
 }
 
 TEST_SUITE_END();

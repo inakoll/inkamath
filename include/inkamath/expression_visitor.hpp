@@ -13,6 +13,11 @@
 #include "inkamath/expression_dict.hpp"
 #include "inkamath/numeric_interface.hpp"
 
+#include "inkamath/convergence.hpp"
+
+#include <limits>
+#include <optional>
+
 template <typename T>
 class EqualExpression;
 
@@ -53,6 +58,9 @@ template <typename T>
 class FuncExpression;
 
 template <typename T>
+class SeriesExpression;
+
+template <typename T>
 class ParametersCall;
 
 template <typename T>
@@ -74,6 +82,7 @@ public:
     virtual ReturnType visit(CompareExpression<T>* expr) = 0;
     virtual ReturnType visit(RefExpression<T>* expr) = 0;
     virtual ReturnType visit(FuncExpression<T>* expr) = 0;
+    virtual ReturnType visit(SeriesExpression<T>* expr)  = 0;
 };
 
 // Design choice: limit the number of visitor base classes.
@@ -108,6 +117,7 @@ public:
     PExpression<T> visit(CellExpression<T>* expr) override {return visit_other(expr);}
     PExpression<T> visit(CompareExpression<T>* expr) override {return visit_other(expr);}
     PExpression<T> visit(FuncExpression<T>* expr) override {return visit_other(expr);}
+    PExpression<T> visit(SeriesExpression<T>* expr) override { return visit_other(expr); }
 };
 
 // class FoldingVisitor
@@ -360,6 +370,54 @@ public:
 
     T visit(FuncExpression<T>* expr) override {
         return stack_.Eval(expr->Name(), ParametersCall<T>(expr->m_e1(), expr->m_e2(), expr->limit()));
+    }
+
+    // The bounds belong to the scope the series is written in, so they are
+    // evaluated before its index is bound: in 'sum_(n=1)^n n' the upper n is
+    // the n outside. The index is then bound in that same frame, as a guard's
+    // is (C53), and put back after; a frame of its own would hide the
+    // parameters of the call the series is written in.
+    T visit(SeriesExpression<T>* expr) override {
+        const int  first    = AsIndex<T>(expr->Lower()->accept(*this));
+        const bool infinite = !expr->Upper();
+        const int  last     = infinite ? first : AsIndex<T>(expr->Upper()->accept(*this));
+
+        // Where no call is running -- a definition's left-hand side is
+        // evaluated as it is made -- there is no frame, and nothing a new one
+        // could hide.
+        std::optional<typename ReferenceStack<T>::Frame> frame;
+        if (!stack_.Framed()) frame.emplace(stack_);
+        typename ReferenceStack<T>::Trial index(stack_, expr->Index());
+
+        const auto term = [&](int k) {
+            stack_.Step();
+            stack_.BindValue(expr->Index(), T(k));
+            return expr->Body()->accept(*this);
+        };
+        const auto combine = [&](const T& total, const T& next) {
+            return expr->Product() ? total * next : total + next;
+        };
+
+        if (!infinite) {
+            if (last < first) return expr->Product() ? T(1) : T(0);
+            T total = term(first);
+            for (int k = first; k != last;) total = combine(total, term(++k));
+            return total;
+        }
+
+        const std::string what = expr->Product() ? "product" : "sum";
+        Convergence<T>    convergence("the " + what);
+        T                 total;
+        for (int n = 0; n < static_cast<int>(Convergence<T>::max_terms); ++n) {
+            if (first > std::numeric_limits<int>::max() - n)
+                throw std::runtime_error("an index must be at most 2147483647");
+            total = n == 0 ? term(first) : combine(total, term(first + n));
+            if (convergence.Next(total)) return total;
+        }
+        throw std::runtime_error("the " + what + " did not converge within " +
+                                 std::to_string(Convergence<T>::max_terms) +
+                                 " terms (last partial " + what + " " +
+                                 numeric_interface<T>::toString(total) + ")");
     }
 
 private:

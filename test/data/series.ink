@@ -1,6 +1,6 @@
-# A specification, not a recording: what 'sum' and 'prod' should answer, written
-# before they exist (CLAUDE.md, section 3). The notation is the one on paper,
-# spelled with the language's own '_' and '^'.
+# Sums and products over an index, written as on paper with the language's own
+# '_' and '^'. This was the specification, written before either existed
+# (CLAUDE.md, section 3); every expected output is as it was specified.
 
 # The index runs from the lower bound to the upper, both included.
 >> sum_(k=1)^10 k
@@ -167,3 +167,4 @@ error: expected an index after 'sum', as in sum_(k=1)^n, not 'k'
 
 >> sum_(k=1)^-3 k
 error: expected the last index after '^', as in sum_(k=1)^n, not '-'
+

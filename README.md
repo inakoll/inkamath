@@ -399,7 +399,40 @@ Twenty corrected terms give every digit that is printed. An acceleration is a
 sequence like any other, so which one to use stays the user's decision — it
 is the mathematics, and no built-in choice would be right for every series.
 
-An index must be a whole number, and `lim` is a reserved word.
+A sum or a product over an index is written as on paper, with `_` for the
+index and its first value and `^` for its last. The body is a term — it runs
+to the next `+` or `-` — and sees every name around it; the index is bound for
+the body alone.
+
+```
+>> sum_(k=1)^10 k
+55
+
+>> prod_(k=1)^5 k
+120
+
+>> harm_n=sum_(k=1)^n 1/k
+harm_n=sum_(k=1)^n 1/k
+
+>> harm_10
+2.92896825
+```
+
+Without an upper bound the series is summed to its limit, by the rule `lim`
+follows and with its report, so a series needs no sequence at all. The second
+of these is the series above, converging too slowly for a hundred terms to show
+it:
+
+```
+>> sum_(k=0) 1/!k
+2.71828183
+
+>> sum_(k=1) 1/k^2
+error: the sum did not converge within 100 terms (last partial sum 1.6349839)
+```
+
+An index must be a whole number, and `lim`, `sum` and `prod` are reserved
+words.
 
 A term is evaluated once per *context* — which definition, which index, which
 argument values — and the answer is remembered until a definition changes. It
