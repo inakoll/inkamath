@@ -3,7 +3,7 @@ Inkamath
 
 Inkamath is a small mathematical interpreter written in standard C++. It
 evaluates complex arithmetic, matrices of expressions, user-defined functions,
-and sequences defined by recurrence. It was written around 2014; see the
+sequences defined by recurrence, and series. It was written around 2014; see the
 accompanying licence file.
 
 The idea it is built around is that **an identifier names an expression, not a
@@ -42,7 +42,13 @@ a=[1 2;3 4]
  3, 4, 3, 4;
  1, 2, 1, 2;
  3, 4, 3, 4]
+```
 
+A sequence is written as a recurrence, the way it is on paper, and `lim`
+follows it to its limit. Here is the exponential series, each term built on the
+one before:
+
+```
 >> exp(x)_0=1
 exp(x)_0=1
 
@@ -51,9 +57,28 @@ exp(x)_n=exp(x)_(n-1)+x^n/!n
 
 >> lim exp(1)
 2.71828183
+```
 
->> cos(x)=(lim exp(i*x)+lim exp(-i*x))/2
-cos(x)=(lim exp(i*x)+lim exp(-i*x))/2
+A series also has the notation it has on paper, so the term is written once
+and the previous one is never named:
+
+```
+>> exp(x)_n=sum_(k=0)^n x^k/!k
+exp(x)_n=sum_(k=0)^n x^k/!k
+
+>> exp(1)_10
+2.7182818
+```
+
+Without an upper bound the sum is the series itself, summed to its limit, and
+`exp` needs neither a sequence nor `lim`: it is an ordinary function.
+
+```
+>> exp(x)=sum_(k=0) x^k/!k
+exp(x)=sum_(k=0) x^k/!k
+
+>> cos(x)=(exp(i*x)+exp(-i*x))/2
+cos(x)=(exp(i*x)+exp(-i*x))/2
 
 >> cos(pi/3)
 0.5
