@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.20)
 
 project(inkamath
-    VERSION 0.8.0
+    VERSION 1.0.0
     DESCRIPTION "A small mathematical expression interpreter"
     LANGUAGES CXX)
 
@@ -59,6 +59,8 @@ target_include_directories(inkamath INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/includ
 add_executable(inkamath_cli src/main.cpp)
 target_link_libraries(inkamath_cli PRIVATE inkamath inkamath_warnings)
 set_target_properties(inkamath_cli PROPERTIES OUTPUT_NAME inkamath)
+# The version is written here and nowhere else.
+target_compile_definitions(inkamath_cli PRIVATE INKAMATH_VERSION="${PROJECT_VERSION}")
 
 # --- tests -------------------------------------------------------------------
 if(INKAMATH_BUILD_TESTS)

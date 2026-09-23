@@ -1222,7 +1222,7 @@ than a guess:
 
 ---
 
-## Phase 12 — The command line `[specified]`
+## Phase 12 — The command line `[done]`
 
 `argv` was never read: a file could only be fed through standard input, which
 printed a banner and a prompt before every answer, and a transcript could not
@@ -1240,8 +1240,14 @@ places and never tagged.
 
 Specified first, in `test/cli.cmake`, which runs the binary: a transcript
 drives the interpreter and never reaches `main()`, so it cannot say what the
-program prints or how it exits. Sixteen cases, all failing. No parsing
-library: five flags are a loop over `argv`.
+program prints or how it exits. Sixteen cases, all failing when written and all
+passing on the first build; `repl_eof` became one of them. A seventeenth came
+from replaying every golden through `--echo`, which the spec had not thought to
+do: a transcript's entry is the whole of an input, as the recorder evaluated
+it, so an unclosed bracket there is its error rather than a line to continue,
+and an entry that is only a comment is evaluated rather than skipped. All ten
+goldens now come back exactly. No parsing library: five flags are a loop over
+`argv`.
 
 ---
 

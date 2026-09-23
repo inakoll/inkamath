@@ -64,6 +64,8 @@ set(input "1\nq\n2\n")
 set(stdout "1\n")
 check(quit)
 
+# And it ends at the end of its input, not only at 'q'. A regression here hangs
+# rather than fails, so the timeout is the assertion (MODERNIZATION.md, C21).
 set(input "")
 set(stdout "")
 check(nothing)
@@ -121,6 +123,15 @@ file(WRITE "${OUT}/written.ink" "# written by hand\n\n>> 1+1\n999\n\n>> 2*3\n")
 set(args written.ink)
 set(stdout "2\n6\n")
 check(transcript)
+
+# An entry is the whole of an input, as the recorder evaluated it: an unclosed
+# bracket in a transcript is the error it was, not a line to continue, and an
+# entry that is only a comment is evaluated, not skipped.
+file(WRITE "${OUT}/unclosed.ink" ">> [1 2\n\n>> # a comment\n\n>> 1+1\n")
+set(args unclosed.ink)
+set(stdout "error: missing ']' after '2'\nerror: empty expression\n2\n")
+set(exit 1)
+check(transcript_entry)
 
 # Otherwise every line that is not blank or a comment is an input, whatever
 # the file is called.

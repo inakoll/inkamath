@@ -21,19 +21,11 @@ foreach(suite IN ITEMS interpreter line_editor matrix)
     set_tests_properties(${suite} PROPERTIES TIMEOUT 60)
 endforeach()
 
-add_test(NAME repl_eof
-         COMMAND ${CMAKE_COMMAND} -DEXE=$<TARGET_FILE:inkamath_cli>
-                 -DOUT=${CMAKE_CURRENT_BINARY_DIR}
-                 -P ${CMAKE_CURRENT_LIST_DIR}/repl_eof.cmake)
-set_tests_properties(repl_eof PROPERTIES TIMEOUT 60)
-
 add_test(NAME cli
          COMMAND ${CMAKE_COMMAND} -DEXE=$<TARGET_FILE:inkamath_cli>
                  -DOUT=${CMAKE_CURRENT_BINARY_DIR}/cli
                  -P ${CMAKE_CURRENT_LIST_DIR}/cli.cmake)
-# A specification of a command line that does not exist yet (CLAUDE.md,
-# section 3): it has to fail until the implementation lands.
-set_tests_properties(cli PROPERTIES TIMEOUT 120 WILL_FAIL TRUE)
+set_tests_properties(cli PROPERTIES TIMEOUT 120)
 
 # Regenerate the golden transcripts from current behaviour. Always review the
 # resulting diff: it is the record of what the change you just made did.

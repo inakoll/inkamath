@@ -94,6 +94,7 @@ doctest is vendored under `third_party/` and is used by the tests only.
 cmake -S . -B build -G Ninja
 cmake --build build
 ./build/inkamath            # the REPL; 'q' or end of input quits
+./build/inkamath --help     # files, transcripts, and the rest
 ctest --test-dir build --output-on-failure
 ```
 
@@ -102,6 +103,10 @@ Useful options: `-DINKAMATH_WERROR=ON` (warnings are errors, as in CI) and
 
 At a terminal the line can be edited: the arrows, Home and End move, Up and
 Down walk back through what was typed, Ctrl-C drops the line and Ctrl-D quits.
+
+Given files, it runs them in order and exits; read from a pipe it prints bare
+answers, as `bc` does, and `--echo` prints a transcript instead, in the format
+of `test/data/*.ink`.
 
 Interpreter behaviour is pinned by golden transcripts in `test/data/*.ink`,
 which are literal sessions — every example in this file is one of them, so the
