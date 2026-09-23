@@ -138,6 +138,19 @@ error: the sum did not converge within 100 terms (last partial sum 5050)
 >> sum_(k=1) 1/k^2
 error: the sum did not converge within 100 terms (last partial sum 1.6349839)
 
+# A term is a step, whatever its body: a sum that reads no name still has to
+# end, and ends where any other evaluation does.
+>> sum_(k=1)^(10^7) 1
+error: evaluation gave up after 1000000 steps
+
+# A sum where no call is running -- the index of a definition's left-hand side
+# is evaluated as the definition is made -- still has somewhere to bind k.
+>> f_(sum_(k=1)^2 k) = 5
+f_(sum_(k=1)^2 k) = 5
+
+>> f_3
+5
+
 # An index must be a whole number, as anywhere else.
 >> sum_(k=1)^2.5 k
 error: an index must be a whole number, not 2.5
@@ -151,3 +164,6 @@ error: expected an index after 'prod', as in prod_(k=1)^n, not '('
 
 >> sum_k^3 k
 error: expected an index after 'sum', as in sum_(k=1)^n, not 'k'
+
+>> sum_(k=1)^-3 k
+error: expected the last index after '^', as in sum_(k=1)^n, not '-'
