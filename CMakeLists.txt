@@ -24,6 +24,10 @@ add_library(inkamath_warnings INTERFACE)
 target_compile_options(inkamath_warnings INTERFACE
     $<$<CXX_COMPILER_ID:GNU,Clang,AppleClang>:-Wall;-Wextra;-Wpedantic>
     $<$<CXX_COMPILER_ID:MSVC>:/W4>)
+# MSVC deprecates standard functions such as getenv in favour of its own _s
+# variants, which are not standard C++.
+target_compile_definitions(inkamath_warnings INTERFACE
+    $<$<CXX_COMPILER_ID:MSVC>:_CRT_SECURE_NO_WARNINGS>)
 if(INKAMATH_WERROR)
     target_compile_options(inkamath_warnings INTERFACE
         $<$<CXX_COMPILER_ID:GNU,Clang,AppleClang>:-Werror>
