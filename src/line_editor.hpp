@@ -14,6 +14,7 @@
 #endif
 #include <windows.h>
 #else
+#include <sys/ioctl.h>
 #include <termios.h>
 #include <unistd.h>
 #endif
@@ -158,6 +159,12 @@ public:
         return ReadFile(in_, &c, 1, &read, nullptr) && read == 1;
     }
 
+    size_t Width() const {
+        CONSOLE_SCREEN_BUFFER_INFO info;
+        if (!GetConsoleScreenBufferInfo(out_, &info)) return 80;
+        return static_cast<size_t>(info.srWindow.Right - info.srWindow.Left + 1);
+    }
+
 private:
     HANDLE in_, out_;
     DWORD  saved_in_ = 0, saved_out_ = 0;
@@ -185,10 +192,42 @@ public:
 
     bool Read(char& c) { return read(STDIN_FILENO, &c, 1) == 1; }
 
+    // Asked on every key, so that a window resized between two keys is drawn
+    // at its new width.
+    size_t Width() const {
+        winsize size{};
+        if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &size) == 0 && size.ws_col > 0) return size.ws_col;
+        return 80;
+    }
+
 private:
     termios saved_;
 };
 #endif
+
+// What to write for the terminal to show 'prompt' and 'line' with the cursor
+// before 'cursor'. A line wider than the terminal wraps onto the rows below it,
+// and '\r' goes back only to the start of the row the cursor is on, so every
+// render first climbs 'row' rows to its first one, and leaves in 'row' the row
+// it put the cursor on.
+inline std::string Render(const std::string& prompt, const std::string& line, size_t cursor,
+                          size_t width, size_t& row) {
+    std::string screen;
+    if (row > 0) screen += "\x1b[" + std::to_string(row) + "A";
+    screen += "\r\x1b[J" + prompt + line;
+    // A row written to its last column leaves the cursor on that column until
+    // the next character, and terminals disagree about where it goes then.
+    // Moving to the next row explicitly takes the question away.
+    const size_t end = prompt.size() + line.size();
+    if (end > 0 && end % width == 0) screen += "\r\n";
+    const size_t at = prompt.size() + cursor;
+    row             = at / width;
+    if (at == end) return screen;
+    if (const size_t up = end / width - row; up > 0) screen += "\x1b[" + std::to_string(up) + "A";
+    screen += "\r";
+    if (at % width > 0) screen += "\x1b[" + std::to_string(at % width) + "C";
+    return screen;
+}
 
 // One line from a terminal, edited in place: done with the line in 'line', or
 // end_of_input, or cancelled.
@@ -196,12 +235,12 @@ inline LineEditor::Outcome ReadLine(const std::string&              prompt,
                                     const std::vector<std::string>& history, std::string& line) {
     LineEditor  editor(history);
     RawTerminal terminal;
+    size_t      row = 0;
     for (;;) {
         // Redrawn whole on every key: a line is short, and it is the simplest
         // thing that is always right.
-        std::string screen = "\r" + prompt + editor.Line() + "\x1b[K";
-        if (const size_t back = editor.Line().size() - editor.Cursor(); back > 0)
-            screen += "\x1b[" + std::to_string(back) + "D";
+        const size_t width  = terminal.Width();
+        std::string  screen = Render(prompt, editor.Line(), editor.Cursor(), width, row);
         std::fwrite(screen.data(), 1, screen.size(), stdout);
         std::fflush(stdout);
 
@@ -209,7 +248,14 @@ inline LineEditor::Outcome ReadLine(const std::string&              prompt,
         if (!terminal.Read(c)) return LineEditor::Outcome::end_of_input;
         const LineEditor::Outcome outcome = editor.Feed(c);
         if (outcome == LineEditor::Outcome::editing) continue;
-        std::fputs(outcome == LineEditor::Outcome::cancelled ? "^C\r\n" : "\r\n", stdout);
+        // Past the end of the line before anything else is written, or what
+        // comes next lands on the rows the line wrapped onto.
+        screen = Render(prompt, editor.Line(), editor.Line().size(), width, row);
+        if (outcome == LineEditor::Outcome::cancelled)
+            screen += "^C\r\n";
+        else if ((prompt.size() + editor.Line().size()) % width != 0)
+            screen += "\r\n";
+        std::fwrite(screen.data(), 1, screen.size(), stdout);
         line = editor.Line();
         return outcome;
     }

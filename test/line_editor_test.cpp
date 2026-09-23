@@ -99,4 +99,33 @@ TEST_CASE("Enter, Ctrl-C and Ctrl-D end a line differently") {
     CHECK(deleted.line == "2");
 }
 
+// A ten-column terminal and a three-column prompt, so that seven characters
+// fill the first row.
+TEST_CASE("a line that fits is drawn on its row") {
+    size_t row = 0;
+    CHECK(Render(">> ", "abc", 3, 10, row) == "\r\x1b[J>> abc");
+    CHECK(row == 0);
+    CHECK(Render(">> ", "abc", 1, 10, row) == "\r\x1b[J>> abc\r\x1b[4C");
+    CHECK(row == 0);
+}
+
+TEST_CASE("a line that wraps is redrawn from its first row") {
+    size_t row = 0;
+    CHECK(Render(">> ", "abcdefghij", 10, 10, row) == "\r\x1b[J>> abcdefghij");
+    CHECK(row == 1);
+    CHECK(Render(">> ", "abcdefghijk", 5, 10, row) ==
+          "\x1b[1A\r\x1b[J>> abcdefghijk\x1b[1A\r\x1b[8C");
+    CHECK(row == 0);
+    CHECK(Render(">> ", "abcdefghijk", 11, 10, row) == "\r\x1b[J>> abcdefghijk");
+    CHECK(row == 1);
+}
+
+TEST_CASE("a row filled to its last column moves on to the next") {
+    size_t row = 0;
+    CHECK(Render(">> ", "abcdefg", 7, 10, row) == "\r\x1b[J>> abcdefg\r\n");
+    CHECK(row == 1);
+    CHECK(Render(">> ", "abcdefg", 0, 10, row) == "\x1b[1A\r\x1b[J>> abcdefg\r\n\x1b[1A\r\x1b[3C");
+    CHECK(row == 0);
+}
+
 TEST_SUITE_END();
