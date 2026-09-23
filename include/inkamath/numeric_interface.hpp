@@ -233,13 +233,12 @@ struct numeric_interface_imp<T,true>
         if(!(a <= static_cast<T>(std::numeric_limits<int>::max()))) return std::numeric_limits<int>::max();
         return static_cast<int>(a);
     }
-    static std::string toString(const T& a) 
-	{
-		std::ostringstream oss;
-		oss << std::setprecision(precision);
-		oss << a;
-		return oss.str();
-	}
+    static std::string toString(const T& a) {
+        std::ostringstream oss;
+        oss << std::setprecision(precision);
+        oss << a;
+        return oss.str();
+    }
     static T pow(const T& a,const T& b) {return std::pow(a,b);}
     
 	static T fact(const T& n)
