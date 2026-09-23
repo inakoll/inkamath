@@ -234,6 +234,9 @@ struct numeric_interface_imp<T,true>
         return static_cast<int>(a);
     }
     static std::string toString(const T& a) {
+        // Spelled out because the library decides it: MSVC prints the NaN
+        // that 0/0 gives as '-nan(ind)' (MODERNIZATION.md, C62).
+        if (std::isnan(a)) return std::signbit(a) ? "-nan" : "nan";
         std::ostringstream oss;
         oss << std::setprecision(precision);
         oss << a;
