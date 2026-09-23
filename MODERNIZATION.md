@@ -1177,6 +1177,45 @@ definition (C11), which is the way to start over.
 
 ---
 
+## Phase 11 — Series `[specified]`
+
+A sum or a product over an index, written as on paper with the language's own
+`_` and `^`, so that a series is no longer a recurrence that names its own
+previous term:
+
+```
+exp(x)_n = sum_(k=0)^n x^k/!k      # was exp(x)_n = exp(x)_(n-1) + x^n/!n
+prod_(k=1)^5 k
+sum_(k=0) 1/!k                    # no upper bound: the series itself
+```
+
+Specified first, in `test/data/spec/series.ink`: 36 of its 40 entries fail,
+and the four that pass are three ordinary definitions and the check that the
+index does not leak, which means something only once a sum runs.
+
+What the specification decides, each point from a probe of the parser rather
+than a guess:
+
+- **The body is a term.** It runs to the next `+` or `-`, as on paper.
+  Juxtaposition after the bound is a syntax error today ("the operator `*` is
+  probably missing"), so the notation takes nothing away.
+- **The upper bound is a number, a name, or parenthesised**, and a name there
+  is never a call: `n (2)` is a call today, spaces or not, so `^n (k+1)` has to
+  be read as the bound `n` and the body `(k+1)` by rule.
+- **`sum_(` is recognised before the index is parsed**, because `(k=5)+k`
+  already means a local binding and answers 10.
+- **The index is bound for the body and restored after it**, the way a guard's
+  index is tried (C53). A frame would hide the parameters of the call the sum
+  is written in; the body sees everything around it.
+- **No upper bound is the limit**, by `lim`'s rule and with its report. It adds
+  a term per step, where `lim` over a sequence defined by a sum recomputes every
+  partial sum. The cost of one rule for "converged" is written into the
+  specification: `sum_(k=1) 1/k^2` does not converge within a hundred terms,
+  any more than `lim` of it does (C36).
+- **`sum` and `prod` are reserved**, as `lim` is.
+
+---
+
 ## Sequencing
 
 Phase 2 gated everything: no implementation work started before the
