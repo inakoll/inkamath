@@ -6,6 +6,8 @@
 #include "inkamath/parameters.hpp"
 #include "inkamath/expression_visitor.hpp"
 
+#include "inkamath/convergence.hpp"
+
 #include <algorithm>
 #include <stdexcept>
 #include <vector>
@@ -332,75 +334,30 @@ private:
         return general.expression->accept(evaluator);
     }
 
-    // Terms until the series is within the tolerance of its limit. Since
-    // phase 9 this cap is a judgement about how long to keep trying and not a
-    // technical limit: 'lim' walks the terms upward, so each one finds its
-    // predecessor memoised, and a hundred thousand of them cost 250ms and no
-    // depth. Raising it was measured and rejected -- MODERNIZATION.md, C36.
-    static constexpr size_t max_terms = 100;
-    static constexpr double tolerance = 1E-10;
-
     // Every term goes through EvalImp, so the terms a limit walks are the
     // terms an index gives. Evaluating the general clause directly made them
     // two different sequences as soon as a guard existed (C54).
     T Converge(EvaluationVisitor<T>& evaluator) const {
         long long index = 0;
-        T previous;
+        Convergence<T> convergence(reference_name_);
         // With no base clause there is no term to compare the first one
         // against. Comparing it to a default-constructed T said that any
         // sequence starting near zero had converged to it.
-        const Clause<T>* highest = EndBase(false);
-        bool comparable = highest != nullptr;
-        if(comparable) {
+        if (const Clause<T>* highest = EndBase(false)) {
             index = highest->parameters.index();
-            previous = EvalImp(true, static_cast<int>(index), evaluator);
+            (void)convergence.Next(EvalImp(true, static_cast<int>(index), evaluator));
         }
 
-        T evaluation = previous;
-        decltype(numeric_interface<T>::abs(evaluation)) previous_step{};
-        bool stepped = false;
-        for(size_t term = 0; term < max_terms; ++term) {
+        T evaluation;
+        for (size_t term = 0; term < Convergence<T>::max_terms; ++term) {
             evaluation = EvalImp(true, static_cast<int>(++index), evaluator);
-            if(comparable) {
-                // Naming the sequence, because the reason a term cannot be
-                // compared -- a matrix has no absolute value, two terms have
-                // different sizes -- reads as an internal error on its own.
-                const auto step = [&]() {
-                    try {
-                        return numeric_interface<T>::abs(evaluation-previous);
-                    }
-                    catch(const std::exception& reason) {
-                        throw std::runtime_error(reference_name_ + " has no limit: "
-                                                 + reason.what());
-                    }
-                }();
-                // '<=' and not '!(> tolerance)': a difference that is NaN
-                // answers false to both, and must count as not converged.
-                if(step <= tolerance && stepped && TailUnder(step, previous_step)) {
-                    return evaluation;
-                }
-                previous_step = step;
-                stepped = true;
+            if (convergence.Next(evaluation)) {
+                return evaluation;
             }
-            previous = evaluation;
-            comparable = true;
         }
-        throw std::runtime_error(reference_name_ + " did not converge within "
-                                 + std::to_string(max_terms) + " terms (last term "
-                                 + numeric_interface<T>::toString(evaluation) + ")");
-    }
-
-    // A small step is not a small remainder. If the steps shrink by a factor
-    // r each term, what is left of the series is about step*r/(1-r); for
-    // 1/n^2, where r approaches 1, that is 1/n -- five orders of magnitude
-    // above the step that would otherwise have been called convergence.
-    // One step is no evidence at all, which is why 'stepped' is required.
-    template <typename S>
-    static bool TailUnder(S step, S previous_step) {
-        if(!(previous_step > 0)) return true;
-        const S ratio = step / previous_step;
-        if(!(ratio < 1)) return false;
-        return step * ratio / (1 - ratio) <= tolerance;
+        throw std::runtime_error(reference_name_ + " did not converge within " +
+                                 std::to_string(Convergence<T>::max_terms) + " terms (last term " +
+                                 numeric_interface<T>::toString(evaluation) + ")");
     }
 
     void SetIndex(const std::string& name, int index, ReferenceStack<T>& stack) const {
