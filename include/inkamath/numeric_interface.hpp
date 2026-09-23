@@ -133,7 +133,7 @@ struct numeric_interface_imp<std::complex<T>,false>
         if(b.imag() == 0 && b.real() == std::floor(b.real())
            && b.real() >= static_cast<T>(std::numeric_limits<int>::min())
            && b.real() <= static_cast<T>(std::numeric_limits<int>::max())) {
-            return std::pow(a, static_cast<int>(b.real()));
+            return pow(a, static_cast<int>(b.real()));
         }
         return std::pow(a,b);
     }
@@ -148,9 +148,21 @@ struct numeric_interface_imp<std::complex<T>,false>
         return std::pow(a,b);
     }
 
+    // Spelled out because std::pow(complex, int) is not standard: libstdc++
+    // keeps it as an extension, and elsewhere the int becomes a double and
+    // the power goes through exp and log, which gave (0-1)^2 an imaginary
+    // part of 1e-16 (MODERNIZATION.md, C61). The multiplications are the ones
+    // libstdc++ does, in its order, so no answer on Linux moves.
     static std::complex<T> pow(const std::complex<T>& a, int b)
     {
-        return std::pow(a,b);
+        unsigned        n = b < 0 ? 0u - static_cast<unsigned>(b) : static_cast<unsigned>(b);
+        std::complex<T> x = a;
+        std::complex<T> y = n % 2 ? x : std::complex<T>(1);
+        while (n >>= 1) {
+            x = x * x;
+            if (n % 2) y = y * x;
+        }
+        return b < 0 ? std::complex<T>(1) / y : y;
     }
 
     static auto fact(const std::complex<T>& a)
@@ -221,13 +233,15 @@ struct numeric_interface_imp<T,true>
         if(!(a <= static_cast<T>(std::numeric_limits<int>::max()))) return std::numeric_limits<int>::max();
         return static_cast<int>(a);
     }
-    static std::string toString(const T& a) 
-	{
-		std::ostringstream oss;
-		oss << std::setprecision(precision);
-		oss << a;
-		return oss.str();
-	}
+    static std::string toString(const T& a) {
+        // Spelled out because the library decides it: MSVC prints the NaN
+        // that 0/0 gives as '-nan(ind)' (MODERNIZATION.md, C62).
+        if (std::isnan(a)) return std::signbit(a) ? "-nan" : "nan";
+        std::ostringstream oss;
+        oss << std::setprecision(precision);
+        oss << a;
+        return oss.str();
+    }
     static T pow(const T& a,const T& b) {return std::pow(a,b);}
     
 	static T fact(const T& n)

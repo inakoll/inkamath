@@ -255,6 +255,23 @@ compare it against until it is decided.
 
 ---
 
+## Verified defects — found by building on Windows
+
+Nothing had been built anywhere but Linux since the modernisation began. The
+first MSVC job in CI compiled once two warnings were dealt with -- a `long long`
+index narrowed to `double`, and `getenv`, which MSVC deprecates in favour of
+functions that are not standard -- and then failed where the code had relied
+on the Linux toolchain without saying so.
+
+| | |
+|---|---|
+| C61 `[fixed]` | **A whole power relied on a libstdc++ extension.** `pow` sends an integer exponent to `std::pow(complex, int)`, with a comment saying that overload multiplies, which is why `0^0` is `1`. The standard removed that overload; libstdc++ keeps it, and elsewhere the `int` becomes a `double` and the power goes through `exp` and `log`. On MSVC `q_100` in `sequences.ink` answered `0.688172179-i*7.83297859e-16`, and `lim o` reported a last term of `inf` where it is `inf+i*-nan`. The multiplication is written out now, in the order libstdc++ does it, and checked against it bit for bit on 173,290 bases and exponents -- infinities, NaNs, zero and `INT_MIN` among them -- so no answer on Linux moved. |
+| C62 `[fixed]` | **How a NaN printed was the library's choice.** A number printed through `ostream`, and a NaN spells itself however the library likes: libstdc++ writes `-nan`, MSVC writes the NaN that `0/0` gives as `-nan(ind)`. So `1/0` and `0/0` in `errors.ink` failed on MSVC with the right values. A NaN now prints as `nan` or `-nan` by its sign, which is what Linux printed already, so no recorded output moved. Whether a NaN should show a sign at all is a separate question, and one for a golden that says so. |
+| C63 `[fixed]` | **The token limit was measured on one platform's stack.** C20 bounds a line at 1000 tokens so that no recursion it provokes can reach the end of the stack, and the margin was measured on Linux, whose main thread has 8 MB. Windows gives 1 MB, and an MSVC Debug build -- no inlining, large frames -- overflowed on the line `token limit` checks the limit *accepts*: four hundred nested parentheses. So on Windows a legal line could kill the process, which is the one thing the limit exists to prevent. The executables link with an 8 MB stack there too, which puts the measurement back under the limit instead of lowering the limit everywhere. |
+| C64 `[kept]` | **Arithmetic on an infinite complex number is the platform's.** GCC multiplies complex numbers under C's Annex G, which recovers an infinity when the plain formula gives NaN in both parts; MSVC's `std::complex` uses the plain formula. Squaring `inf+i*nan` therefore gives `inf+i*nan` on Linux and `nan+i*nan` on Windows, and `lim o` -- `o_n=o_(n-1)^2` from 2 -- reported a different last term on each. Confirmed on Linux with `-fcx-limited-range`, which gives GCC the plain formula and reproduces MSVC's answer exactly. Kept: making infinity identical everywhere means writing complex multiplication and division into the value layer, fifty-odd lines, for the one corner of the language where both answers are NaN anyway. The entry was about something else -- that a NaN difference between terms is not convergence -- so it now reaches its NaN by addition, which works part by part and is the same everywhere; its input changed, not its expectation to fit. A mutation that reads NaN as converged fails it as it failed the old one. |
+
+---
+
 ## Phase 0 — Make it buildable and verifiable `[done]`
 
 Nothing else can be trusted until a change can be checked. This phase changed

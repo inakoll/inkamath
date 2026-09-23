@@ -122,7 +122,7 @@ private:
     // and the destructor's -- because the tree has at most one node per token.
     // Measured: the sanitizer build overflows at about 2000 nested
     // parentheses and the release build at about 8000, so 1000 tokens cannot
-    // reach either.
+    // reach either -- on an 8 MB stack, which CMakeLists.txt gives Windows too.
     static constexpr size_t max_tokens = 1000;
 
     bool AtEnd() const {return m_i >= m_tokens.size();}

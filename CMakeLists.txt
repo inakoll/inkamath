@@ -24,6 +24,10 @@ add_library(inkamath_warnings INTERFACE)
 target_compile_options(inkamath_warnings INTERFACE
     $<$<CXX_COMPILER_ID:GNU,Clang,AppleClang>:-Wall;-Wextra;-Wpedantic>
     $<$<CXX_COMPILER_ID:MSVC>:/W4>)
+# MSVC deprecates standard functions such as getenv in favour of its own _s
+# variants, which are not standard C++.
+target_compile_definitions(inkamath_warnings INTERFACE
+    $<$<CXX_COMPILER_ID:MSVC>:_CRT_SECURE_NO_WARNINGS>)
 if(INKAMATH_WERROR)
     target_compile_options(inkamath_warnings INTERFACE
         $<$<CXX_COMPILER_ID:GNU,Clang,AppleClang>:-Werror>
@@ -37,6 +41,14 @@ if(INKAMATH_SANITIZE)
     # operator[] whenever the index still lands inside the allocation, which
     # is most of the time for a vector with spare capacity.
     add_compile_definitions(_GLIBCXX_ASSERTIONS)
+endif()
+
+# The token limit keeps a line's recursion off the end of the stack, and it
+# was measured against the 8 MB Linux gives the main thread (interpreter.hpp,
+# max_tokens). Windows gives 1 MB, and there a Debug build overflowed on a line
+# the limit accepts (MODERNIZATION.md, C63).
+if(MSVC)
+    add_link_options(/STACK:8388608)
 endif()
 
 # --- the interpreter ---------------------------------------------------------
