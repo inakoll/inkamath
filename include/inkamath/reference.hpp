@@ -404,8 +404,7 @@ private:
     }
 
     void SetIndex(const std::string& name, long long index, ReferenceStack<T>& stack) const {
-        stack.Set(name, ParametersDefinition<T>(),
-                  PExpression<T>(new ValExpression<T>(T(index))));
+        stack.BindValue(name, T(index));
     }
 
     std::string reference_name_;

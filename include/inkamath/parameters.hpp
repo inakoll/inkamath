@@ -129,8 +129,7 @@ public:
 
     static void Bind(const Arguments& arguments, ReferenceStack<T>& stack) {
         for(const auto& argument : arguments) {
-            stack.Set(argument.first, ParametersDefinition<T>(),
-                      PExpression<T>(new ValExpression<T>(argument.second)));
+            stack.BindValue(argument.first, argument.second);
         }
     }
 
@@ -144,9 +143,7 @@ public:
             if(param_call.parameters_dict().count(name) != 0) continue;
             auto fallback = parameters_dict_.find(name);
             if(fallback == parameters_dict_.end()) continue;
-            evaluator.stack().Set(name, ParametersDefinition<T>(),
-                                  PExpression<T>(new ValExpression<T>(
-                                      fallback->second->accept(evaluator))));
+            evaluator.stack().BindValue(name, fallback->second->accept(evaluator));
         }
     }
 

@@ -46,9 +46,10 @@ public:
     virtual T accept(FoldingVisitor<T> &v) = 0;
     virtual PExpression<T> accept(TransformationVisitor<T> &v) = 0;
 
-    virtual std::string Name()
+    virtual const std::string& Name() const
     {
-        return std::string();
+        static const std::string none;
+        return none;
     }
 
     // The left-hand side of a definition; empty for everything else.
@@ -76,7 +77,7 @@ public:
     explicit UnaryExpression(PExpression<T> e) : Expression<T>{e}
     {}
 
-    PExpression<T> m_e() const {return this->Children()[0];}
+    const PExpression<T>& m_e() const {return this->Children()[0];}
 
 };
 
@@ -87,8 +88,8 @@ public:
     explicit BinaryExpression(PExpression<T> e1, PExpression<T> e2) : Expression<T>({e1, e2})
     {}
 
-    PExpression<T> m_e1() const {return this->Children()[0];}
-    PExpression<T> m_e2() const {return this->Children()[1];}
+    const PExpression<T>& m_e1() const {return this->Children()[0];}
+    const PExpression<T>& m_e2() const {return this->Children()[1];}
 };
 
 template <typename T>
@@ -99,7 +100,7 @@ public:
     : BinaryExpression<T>(e1,e2)
     {}
 
-    std::string Name() override {
+    const std::string& Name() const override {
         return BinaryExpression<T>::m_e1()->Name();
     }
 
@@ -272,9 +273,9 @@ public:
         : Expression<T>({matrix, row, col})
     {}
 
-    PExpression<T> Matrix() const {return this->Children()[0];}
-    PExpression<T> Row() const {return this->Children()[1];}
-    PExpression<T> Col() const {return this->Children()[2];}
+    const PExpression<T>& Matrix() const {return this->Children()[0];}
+    const PExpression<T>& Row() const {return this->Children()[1];}
+    const PExpression<T>& Col() const {return this->Children()[2];}
 
     PExpression<T> accept(TransformationVisitor<T> &v) override {
         return v.visit(this);
@@ -324,7 +325,7 @@ public:
         : Expression<T>(), m_name(name)
     { }
 
-    std::string Name() override
+    const std::string& Name() const override
     {
         return m_name;
     }
@@ -357,14 +358,14 @@ public:
     // The left-hand side of a definition, as the tokens spell it.
     const std::string& Signature() const override {return signature_;}
 
-    PExpression<T> m_e1() const {return this->Children()[0];}
-    PExpression<T> m_e2() const {return this->Children()[1];}
+    const PExpression<T>& m_e1() const {return this->Children()[0];}
+    const PExpression<T>& m_e2() const {return this->Children()[1];}
 
     // 'lim f' asks the reference for the limit of its general clause rather
     // than for one term.
     bool limit() const {return limit_;}
 
-    std::string Name() override
+    const std::string& Name() const override
     {
         return m_name;
     }

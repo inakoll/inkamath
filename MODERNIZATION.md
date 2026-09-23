@@ -952,10 +952,87 @@ it was built, and the specification is what found both of its mistakes.
 than a recurrence over cells, and would give chained indexing a reason to exist
 -- today `a[1,2][1,1]` is a no-op precisely because every index yields a 1x1.
 
+**Performance.** No session has ever been too slow -- a prompt evaluates one
+line -- so this is about where the time goes if the interpreter is ever asked
+to do real work, and it was measured before anything was written. Two
+workloads under callgrind, and they disagree completely. On a 20x20 matrix
+product, 74% is `matrix.hpp` and 11% is complex arithmetic: compiled C++
+already, nothing to win. On a small tree folded through `lim` thousands of
+times with the memo cache dropped each line, the arithmetic is **0.9%** --
+the interpreter spends a hundred times more effort administering a value than
+computing with it, and that effort is strings hashed and compared (20%), an
+allocation per intermediate (19%), clause dispatch (17%) and an atomic
+refcount per node (10%).
+
+A prototype took that workload down 43%, in four steps, each measured on top
+of the last and each leaving every golden byte-identical:
+
+| | sequence | matrix |
+|---|---|---|
+| `Name()` by reference, a frame as a flat vector | -6% | +1% |
+| a parameter, a default and an index bound as a **value** | -33% | +3% |
+| every name interned to an integer | -34% | +3% |
+| the memo key a struct rather than a rebuilt string | -43% | +3% |
+
+Two of those four lines carry it. Binding one parameter cost a
+`make_shared<Reference>`, a `Clause`, a `ParametersDefinition` holding two
+vectors and two strings, and a heap `ValExpression` -- per argument, per call,
+and again per term of a sequence for the index variable; a frame that holds
+values instead is three quarters of the saving. And **interning bought
+nothing**: the 20% the profile blamed on hashing names was the memo key and
+the allocations under it. Slot resolution by index -- the obvious reading of
+that profile, and the reason the experiment was run -- is the one change here
+not worth making. The matrix column is the warning attached to all of it: a
+frame carrying two vectors costs 3% where there are no references to resolve.
+
+What the goldens caught, and no reasoning would have: `h(x) = (x = 10) + x`
+answers 20. A local shadows a *parameter* of the same name, so a frame is one
+slot per name, not a value list beside a definition list.
+
+It also answers the question that started it, which was an LLVM JIT. The tree
+walk such a backend would replace is 7% of the baseline and the arithmetic it
+would compile is 1%, and a `Matrix` whose shape is dynamic leaves it either
+specialising on shape -- a project of its own -- or calling this same runtime
+and keeping every cost above. 43% came with no dependency, no codegen, and
+mostly by deleting what stood behind a bound parameter. If the codegen is the
+point rather than the speed, `Interpreter<double>` already compiles and is the
+honest target, out of tree.
+
+The second line of the table is what landed, rewritten rather than applied: one
+slot per name in a frame, carrying a value or a definition, no symbol table.
+**-32%**, and *nothing* on the matrix workload where the prototype cost 3%,
+because a frame is one vector and not two. +89/-32 lines, which does not pay
+for itself; what it buys besides the time is that the `from_frame` flag
+threaded through three functions is gone, the frame shadowing a global being
+now a branch one can read. Checked three ways, because a faster wrong answer
+measures nothing: every golden byte-identical, 4000 random lines and 35 edge
+cases byte-identical against the previous build.
+
+A second step, eight lines: every child accessor handed its `shared_ptr` out by
+value, so reading a child cost an atomic pair -- on every child of every node
+of every fold. By reference it is another 6%, and half the refcounting.
+
+**-36%** together, and what remains, measured on what is in the tree: clause
+dispatch 18%, names 17%, the allocator 12%, `matrix.hpp` 11%, the AST fold 9%,
+refcounting 4%, the arithmetic 1.7%; 216M instructions down to 122M. Most of
+that 17% is the memo key, still a string built per call, and the prototype's 7%
+for making it a struct needed a symbol table that earned its place nowhere
+else -- so that step wants a different idea, not that one.
+
+One correction to what this entry first claimed: the boxed value is *not* what
+is left, because D9 already unboxed it -- `Matrix(Extent, value)` skips
+`cells_` when the extent is one cell, and a 1x1 keeps its number in `scalar_`,
+so no scalar intermediate allocates. What the profile shows is smaller and
+worse placed: a `Matrix` carries a `std::vector` member even when it is one
+number, so every intermediate constructs and copies an empty vector for
+nothing, about 5% between the two. Closing that is the scalar/matrix split D9
+declined on its own measurement, and 5% does not reopen it.
+
 If they were mine to order: the conditional, because it is the one missing
 primitive rather than a convenience; then the number systems, because the seam
 is already open and the experiment above took an afternoon; then the tolerance,
-and a prelude behind it.
+and a prelude behind it. Performance sits outside that order: it is the one
+direction that can end with fewer lines than it started with.
 
 ---
 
