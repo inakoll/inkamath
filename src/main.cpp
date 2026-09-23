@@ -24,42 +24,34 @@ static bool unclosed(const string& text)
     return depth > 0;
 }
 
-int main(void)
-{
+int main(void) {
     cout << "inkamath 0.8\n" << endl;
     using Interp = Interpreter<complex<double>>;
     Interp p;
-	
-	for(;;)
-    {
-		string s;
-		
-		cout << ">> ";
-        if(!getline(cin,s)) break; // end of input
-        if(s=="q") break; // quit interpreter
 
-        while(unclosed(s))
-        {
+    for (;;) {
+        string s;
+
+        cout << ">> ";
+        if (!getline(cin, s)) break;  // end of input
+        if (s == "q") break;          // quit interpreter
+
+        while (unclosed(s)) {
             string more;
             cout << ".. ";
-            if(!getline(cin, more)) break; // end of input: let it fail as written
+            if (!getline(cin, more)) break;  // end of input: let it fail as written
             s += " " + more;
         }
 
         Interp::Result result = p.Eval(s);
-        if (const Diagnostic* error = get_if<Diagnostic>(&result))
-        {
+        if (const Diagnostic* error = get_if<Diagnostic>(&result)) {
             cout << "error: " << error->message;
-        }
-        else if (const Echo* echo = get_if<Echo>(&result))
-        {
+        } else if (const Echo* echo = get_if<Echo>(&result)) {
             cout << echo->text << endl;
-        }
-        else
-        {
+        } else {
             cout << get<Interp::matrix_type>(result);
         }
         cout << endl << endl;
     }
-	return 0;
+    return 0;
 }
