@@ -254,6 +254,20 @@ compare it against until it is decided.
 
 ---
 
+## Verified defects — found by building on Windows
+
+Nothing had been built anywhere but Linux since the modernisation began. The
+first MSVC job in CI compiled once two warnings were dealt with -- a `long long`
+index narrowed to `double`, and `getenv`, which MSVC deprecates in favour of
+functions that are not standard -- and then failed where the code had relied
+on the Linux toolchain without saying so.
+
+| | |
+|---|---|
+| C61 `[fixed]` | **A whole power relied on a libstdc++ extension.** `pow` sends an integer exponent to `std::pow(complex, int)`, with a comment saying that overload multiplies, which is why `0^0` is `1`. The standard removed that overload; libstdc++ keeps it, and elsewhere the `int` becomes a `double` and the power goes through `exp` and `log`. On MSVC `q_100` in `sequences.ink` answered `0.688172179-i*7.83297859e-16`, and `lim o` reported a last term of `inf` where it is `inf+i*-nan`. The multiplication is written out now, in the order libstdc++ does it, and checked against it bit for bit on 173,290 bases and exponents -- infinities, NaNs, zero and `INT_MIN` among them -- so no answer on Linux moved. |
+
+---
+
 ## Phase 0 — Make it buildable and verifiable `[done]`
 
 Nothing else can be trusted until a change can be checked. This phase changed
