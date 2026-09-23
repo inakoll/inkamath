@@ -75,6 +75,9 @@ ctest --test-dir build --output-on-failure
 Useful options: `-DINKAMATH_WERROR=ON` (warnings are errors, as in CI) and
 `-DINKAMATH_SANITIZE=address,undefined`.
 
+At a terminal the line can be edited: the arrows, Home and End move, Up and
+Down walk back through what was typed, Ctrl-C drops the line and Ctrl-D quits.
+
 Interpreter behaviour is pinned by golden transcripts in `test/data/*.ink`,
 which are literal sessions — every example in this file is one of them, so the
 documentation and the tests check each other. Regenerate with
