@@ -286,6 +286,30 @@ public:
     }
 };
 
+// 'sum_(k=a)^b body' and 'prod_(k=a)^b body'. Without an upper bound, the
+// series itself: its partial sums or products taken to their limit.
+template <typename T>
+class SeriesExpression : public Expression<T> {
+public:
+    SeriesExpression(bool product, std::string index, PExpression<T> lower, PExpression<T> upper,
+                     PExpression<T> body)
+        : Expression<T>({lower, upper, body}), product_(product), index_(std::move(index)) {}
+
+    [[nodiscard]] bool                  Product() const { return product_; }
+    [[nodiscard]] const std::string&    Index() const { return index_; }
+    [[nodiscard]] const PExpression<T>& Lower() const { return this->Children()[0]; }
+    // Null for a series without an upper bound.
+    [[nodiscard]] const PExpression<T>& Upper() const { return this->Children()[1]; }
+    [[nodiscard]] const PExpression<T>& Body() const { return this->Children()[2]; }
+
+    PExpression<T> accept(TransformationVisitor<T>& v) override { return v.visit(this); }
+    T              accept(FoldingVisitor<T>& v) override { return v.visit(this); }
+
+private:
+    bool        product_;
+    std::string index_;
+};
+
 template <typename T>
 class MatExpression : public Expression<T>
 {

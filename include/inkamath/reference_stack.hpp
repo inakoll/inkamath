@@ -109,6 +109,13 @@ public:
         return definition->Eval(ai_parameters, *this, true);
     }
 
+    // Whether a call's frame is open to bind in.
+    [[nodiscard]] bool Framed() const { return !frames_.empty(); }
+
+    // One step of an evaluation that reads no name, and so never passes
+    // through Eval: a sum of a constant still has to end.
+    void Step() { Budget step(*this); }
+
     // MODERNIZATION.md, phase 9. A call's answer depends on the definition,
     // the index, the argument values and the globals; the first three are the
     // key and the fourth is handled by clearing. What it is worth: the

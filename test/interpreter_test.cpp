@@ -100,6 +100,9 @@ TEST_CASE("conditional") {
 TEST_CASE("sequences") {
     check_transcript("sequences.ink");
 }
+TEST_CASE("series") {
+    check_transcript("series.ink");
+}
 TEST_CASE("errors") {
     check_transcript("errors.ink");
 }

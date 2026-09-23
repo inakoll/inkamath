@@ -3,7 +3,7 @@ Inkamath
 
 Inkamath is a small mathematical interpreter written in standard C++. It
 evaluates complex arithmetic, matrices of expressions, user-defined functions,
-and sequences defined by recurrence. It was written around 2014; see the
+sequences defined by recurrence, and series. It was written around 2014; see the
 accompanying licence file.
 
 The idea it is built around is that **an identifier names an expression, not a
@@ -42,7 +42,13 @@ a=[1 2;3 4]
  3, 4, 3, 4;
  1, 2, 1, 2;
  3, 4, 3, 4]
+```
 
+A sequence is written as a recurrence, the way it is on paper, and `lim`
+follows it to its limit. Here is the exponential series, each term built on the
+one before:
+
+```
 >> exp(x)_0=1
 exp(x)_0=1
 
@@ -51,9 +57,28 @@ exp(x)_n=exp(x)_(n-1)+x^n/!n
 
 >> lim exp(1)
 2.71828183
+```
 
->> cos(x)=(lim exp(i*x)+lim exp(-i*x))/2
-cos(x)=(lim exp(i*x)+lim exp(-i*x))/2
+A series also has the notation it has on paper, so the term is written once
+and the previous one is never named:
+
+```
+>> exp(x)_n=sum_(k=0)^n x^k/!k
+exp(x)_n=sum_(k=0)^n x^k/!k
+
+>> exp(1)_10
+2.7182818
+```
+
+Without an upper bound the sum is the series itself, summed to its limit, and
+`exp` needs neither a sequence nor `lim`: it is an ordinary function.
+
+```
+>> exp(x)=sum_(k=0) x^k/!k
+exp(x)=sum_(k=0) x^k/!k
+
+>> cos(x)=(exp(i*x)+exp(-i*x))/2
+cos(x)=(exp(i*x)+exp(-i*x))/2
 
 >> cos(pi/3)
 0.5
@@ -399,7 +424,40 @@ Twenty corrected terms give every digit that is printed. An acceleration is a
 sequence like any other, so which one to use stays the user's decision — it
 is the mathematics, and no built-in choice would be right for every series.
 
-An index must be a whole number, and `lim` is a reserved word.
+A sum or a product over an index is written as on paper, with `_` for the
+index and its first value and `^` for its last. The body is a term — it runs
+to the next `+` or `-` — and sees every name around it; the index is bound for
+the body alone.
+
+```
+>> sum_(k=1)^10 k
+55
+
+>> prod_(k=1)^5 k
+120
+
+>> harm_n=sum_(k=1)^n 1/k
+harm_n=sum_(k=1)^n 1/k
+
+>> harm_10
+2.92896825
+```
+
+Without an upper bound the series is summed to its limit, by the rule `lim`
+follows and with its report, so a series needs no sequence at all. The second
+of these is the series above, converging too slowly for a hundred terms to show
+it:
+
+```
+>> sum_(k=0) 1/!k
+2.71828183
+
+>> sum_(k=1) 1/k^2
+error: the sum did not converge within 100 terms (last partial sum 1.6349839)
+```
+
+An index must be a whole number, and `lim`, `sum` and `prod` are reserved
+words.
 
 A term is evaluated once per *context* — which definition, which index, which
 argument values — and the answer is remembered until a definition changes. It
