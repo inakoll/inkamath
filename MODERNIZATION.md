@@ -1189,7 +1189,7 @@ prod_(k=1)^5 k
 sum_(k=0) 1/!k                    # no upper bound: the series itself
 ```
 
-Specified first, in `test/data/spec/series.ink`: 36 of its 40 entries fail,
+Specified first, in `test/data/spec/series.ink`: 38 of its 42 entries fail,
 and the four that pass are three ordinary definitions and the check that the
 index does not leak, which means something only once a sum runs.
 
@@ -1211,7 +1211,9 @@ than a guess:
   a term per step, where `lim` over a sequence defined by a sum recomputes every
   partial sum. The cost of one rule for "converged" is written into the
   specification: `sum_(k=1) 1/k^2` does not converge within a hundred terms,
-  any more than `lim` of it does (C36).
+  any more than `lim` of it does (C36). Whether that rule is right is a question
+  for the tolerance and the cap -- *Numbers the user cannot tune*, in Deferred
+  -- and not for this phase.
 - **`sum` and `prod` are reserved**, as `lim` is.
 
 ---
