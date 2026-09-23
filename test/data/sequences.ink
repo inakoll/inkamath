@@ -237,15 +237,17 @@ d_n=n-1
 error: d did not converge within 100 terms (last term 99)
 
 # A difference that is NaN answers false to every comparison, so it has to be
-# tested for convergence rather than against it. This answered inf*-nan.
->> o_0=2
-o_0=2
+# tested for convergence rather than against it. The NaN is inf-inf, reached
+# by addition because addition works part by part and answers the same on
+# every platform; squaring an infinite complex number does not (C64).
+>> o_0=1e308
+o_0=1e308
 
->> o_n=o_(n-1)^2
-o_n=o_(n-1)^2
+>> o_n=o_(n-1)+o_(n-1)
+o_n=o_(n-1)+o_(n-1)
 
 >> lim o
-error: o did not converge within 100 terms (last term inf+i*-nan)
+error: o did not converge within 100 terms (last term inf)
 
 # A recurrence has no implicit value below its lowest clause. The old fallback
 # was zero -- the additive identity, right for a sum and wrong for a product

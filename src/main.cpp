@@ -5,6 +5,8 @@
 #include "inkamath/interpreter.hpp"
 #include "inkamath/numeric_interface.hpp"
 
+#include "line_editor.hpp"
+
 // Usage examples live in test/data/*.ink -- they are literal sessions.
 
 using namespace std;
@@ -24,42 +26,51 @@ static bool unclosed(const string& text)
     return depth > 0;
 }
 
-int main(void)
-{
+static LineEditor::Outcome read_line(bool interactive, const string& prompt,
+                                     const vector<string>& history, string& line) {
+    if (interactive) return ReadLine(prompt, history, line);
+    cout << prompt;
+    return getline(cin, line) ? LineEditor::Outcome::done : LineEditor::Outcome::end_of_input;
+}
+
+int main(void) {
     cout << "inkamath 0.8\n" << endl;
     using Interp = Interpreter<complex<double>>;
     Interp p;
-	
-	for(;;)
-    {
-		string s;
-		
-		cout << ">> ";
-        if(!getline(cin,s)) break; // end of input
-        if(s=="q") break; // quit interpreter
 
-        while(unclosed(s))
-        {
+    const bool     interactive = RawTerminal::Interactive();
+    vector<string> history;
+
+    for (;;) {
+        string s;
+
+        LineEditor::Outcome read = read_line(interactive, ">> ", history, s);
+        if (read == LineEditor::Outcome::end_of_input) break;
+        if (read == LineEditor::Outcome::cancelled) continue;
+        if (s == "q") break;  // quit interpreter
+
+        while (unclosed(s)) {
             string more;
-            cout << ".. ";
-            if(!getline(cin, more)) break; // end of input: let it fail as written
+            read = read_line(interactive, ".. ", history, more);
+            if (read != LineEditor::Outcome::done) break;  // end of input: let it fail as written
             s += " " + more;
         }
+        // Ctrl-C at a continuation drops the whole line, as it does at the first.
+        if (read == LineEditor::Outcome::cancelled) continue;
+        // The whole of a line that continued, so that recalling it gives back
+        // something that reads.
+        if (interactive && !s.empty() && (history.empty() || history.back() != s))
+            history.push_back(s);
 
         Interp::Result result = p.Eval(s);
-        if (const Diagnostic* error = get_if<Diagnostic>(&result))
-        {
+        if (const Diagnostic* error = get_if<Diagnostic>(&result)) {
             cout << "error: " << error->message;
-        }
-        else if (const Echo* echo = get_if<Echo>(&result))
-        {
+        } else if (const Echo* echo = get_if<Echo>(&result)) {
             cout << echo->text << endl;
-        }
-        else
-        {
+        } else {
             cout << get<Interp::matrix_type>(result);
         }
         cout << endl << endl;
     }
-	return 0;
+    return 0;
 }

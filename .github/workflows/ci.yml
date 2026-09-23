@@ -38,6 +38,27 @@ jobs:
       - name: Test
         run: ctest --test-dir build --output-on-failure
 
+  windows:
+    name: msvc / ${{ matrix.build_type }}
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # Debug for MSVC's checked iterators, the counterpart of the
+        # _GLIBCXX_ASSERTIONS the sanitizer job builds with.
+        build_type: [Debug, RelWithDebInfo]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure
+        run: cmake -S . -B build -DINKAMATH_WERROR=ON
+
+      - name: Build
+        run: cmake --build build --config ${{ matrix.build_type }}
+
+      - name: Test
+        run: ctest --test-dir build -C ${{ matrix.build_type }} --output-on-failure
+
   sanitizers:
     name: asan+ubsan
     runs-on: ubuntu-latest

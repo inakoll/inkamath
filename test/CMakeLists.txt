@@ -4,17 +4,19 @@ target_include_directories(doctest SYSTEM INTERFACE ${PROJECT_SOURCE_DIR}/third_
 add_executable(inkamath_tests
     doctest_main.cpp
     interpreter_test.cpp
+    line_editor_test.cpp
     matrix_test.cpp
     )
 
 target_link_libraries(inkamath_tests PRIVATE inkamath doctest inkamath_warnings)
+target_include_directories(inkamath_tests PRIVATE ${PROJECT_SOURCE_DIR}/src)
 target_compile_definitions(inkamath_tests PRIVATE
     INKAMATH_TEST_DATA_DIR="${CMAKE_CURRENT_SOURCE_DIR}/data"
     INKAMATH_SOURCE_DIR="${PROJECT_SOURCE_DIR}")
 
 # One ctest entry per doctest suite, so that a crash in one reports as a
 # single failure rather than taking the others' results with it.
-foreach(suite IN ITEMS interpreter matrix)
+foreach(suite IN ITEMS interpreter line_editor matrix)
     add_test(NAME ${suite} COMMAND inkamath_tests --test-suite=${suite} --no-intro)
     set_tests_properties(${suite} PROPERTIES TIMEOUT 60)
 endforeach()

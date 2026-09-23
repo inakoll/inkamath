@@ -326,7 +326,7 @@ private:
                                     : ""));
     }
 
-    T EvaluateGeneralClause(const Clause<T>& general, long long index,
+    T EvaluateGeneralClause(const Clause<T>& general, int index,
                             EvaluationVisitor<T>& evaluator) const {
         SetIndex(general.parameters.index_name(), index, evaluator.stack());
         return general.expression->accept(evaluator);
@@ -403,7 +403,7 @@ private:
         return step * ratio / (1 - ratio) <= tolerance;
     }
 
-    void SetIndex(const std::string& name, long long index, ReferenceStack<T>& stack) const {
+    void SetIndex(const std::string& name, int index, ReferenceStack<T>& stack) const {
         stack.BindValue(name, T(index));
     }
 
