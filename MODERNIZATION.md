@@ -950,7 +950,7 @@ decision rather than something to slip in. *Both* is a rational over a bignum,
 which is the real prize and the real cost. The question worth answering first
 is not whether it works but what the prompt should be: one interpreter per
 number type, chosen when it is built, or a language where the kind of a number
-is part of the number.
+is part of the number. Taken up as phase 13, for the second.
 
 **A standard library.** There are no functions: `sqrt` is `^0.5`, `exp` is
 `e^x`, and `ln`, `sin` and `cos` are nothing at all. Two shapes, and they are
@@ -1248,6 +1248,75 @@ it, so an unclosed bracket there is its error rather than a line to continue,
 and an entry that is only a comment is evaluated rather than skipped. All ten
 goldens now come back exactly. No parsing library: five flags are a loop over
 `argv`.
+
+---
+
+## Phase 13 — Exact numbers `[specified]`
+
+The kind of a number becomes part of the number: `1/3+1/3+1/3` is `1`, not
+nearly one, and `1/10*3 == 3/10` holds. This answers the question *Other
+number systems* left open, and answers it against one interpreter per number
+type, on a measurement: `Interpreter<Rational>` over two `long long`s truncated
+`pi` to `3` and `e` to `2`, refused `2^(1/2)`, wrapped `!21` and the harmonic
+number `h_50` to negative numbers, and failed the exponential series with
+*division by zero* when a denominator wrapped to 0. The constants, the roots and
+most limits -- the language's signature -- can only be approached, so an exact
+interpreter must refuse them or lie; and a mode chosen on the command line would
+make the meaning of a file depend on how the interpreter was started. This is
+Scheme's numeric tower instead: exact where it can be, inexact where it must be,
+and visibly which.
+
+In two steps, each worth shipping alone:
+
+1. **Exact fractions over 64 bits.** A result whose reduced numerator or
+   denominator does not fit becomes inexact -- never wrong, never refused.
+2. **A bignum, written here** rather than depended on (section 5 of CLAUDE.md),
+   which moves the end of exactness from 2^63 to never.
+
+Specified first, in `test/data/spec/exact.ink`: 29 of its 57 entries fail. The
+28 that pass are 13 definitions echoing themselves, 11 inexact values the rules
+leave alone, and four exact answers a double happens to get right --
+`1/3+1/3+1/3`, `6/3`, `dbl(1/2)` and an inverse multiplied back to the
+identity -- which still test something, because an inexact 1 prints `1.`.
+
+What the specification decides:
+
+- **A literal written as a whole number is exact.** A point or an exponent makes
+  it inexact, as do `pi`, `e`, `i`, a power that is not whole, `lim` and a sum
+  without an upper bound; and an inexact number makes inexact whatever it
+  touches. A literal too large for 64 bits is inexact, as an overflow is.
+- **An exact number prints as the literal that makes it** (C52): a whole number
+  in full, anything else as a reduced fraction with its sign on the numerator.
+  `10/4` answers `5/2`, which moves `README.md` with it.
+- **An inexact number prints as today, with a trailing point wherever the
+  printed form would read as whole**: `1e3` is `1000.`, `i*i` is `-1.`, and a
+  sum that approaches 2 is `2.`. The rule is on the printed form, not the value.
+- **`lim` is inexact even when it lands on a whole number** -- it approaches, it
+  does not reach -- which moves `lim lt` in `sequences.ink` from `5` to `5.`.
+- **Division by an exact zero is an error.** `1/0` and `0/0` stop answering
+  C31's complex infinity and NaN.
+- **The boundary is on the reduced result, not on an intermediate**, and the
+  specification stays well clear of it -- `h_30`'s denominator fits by six
+  orders of magnitude, `h_50`'s misses by two -- so the implementation may
+  reduce before it multiplies or widen, as long as it is portable: MSVC has
+  neither `__int128` nor `__builtin_mul_overflow`.
+- **A memo key carries the kind** (as C50's had to carry the shape): `dbl(1/2)`
+  is `1`, `dbl(0.5)` is `1.`, whichever is asked first.
+- Out of scope: exact complex numbers.
+
+The first thing the implementation meets is already broken: since phase 10 a
+class-type number does not compile. The comparisons ask `numeric_interface` for
+real and imaginary parts, and the generic path -- the one a class goes
+through -- has neither, so *Other number systems*' "`Interpreter<Rational>`
+runs" has not been true since. Two forwarding lines.
+
+**Open for step 2: how does one see an exact number's digits?** Step 1 answers
+by accident. `README.md` compares `y_20` with `pi^2/6` digit for digit, and
+`y_20` survives only because its exact value needs a 21-digit numerator and
+overflows; with a bignum it prints
+`445714427153104648117/270961879956768000000`, and a diagnostic quoting the
+last partial sum of `1/k^2` quotes an 81-digit denominator. A fraction is the
+right answer and the wrong display wherever the point is to compare digits.
 
 ---
 

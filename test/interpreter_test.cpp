@@ -80,6 +80,19 @@ void check_readme() {
     replay(items, path.filename().string(), false);
 }
 
+// A specification, replayed but never recorded (CLAUDE.md, section 3).
+void check_spec(const std::string& name) {
+    const std::filesystem::path path = data_dir() / name;
+
+    std::ifstream in(path);
+    REQUIRE_MESSAGE(in.good(), "cannot open transcript ", path.string());
+    std::vector<transcript::Item> items = transcript::parse(in);
+    in.close();
+
+    REQUIRE_MESSAGE(!items.empty(), "transcript is empty: ", path.string());
+    replay(items, path.filename().string(), false);
+}
+
 }  // namespace
 
 TEST_CASE("basics") {
@@ -159,6 +172,17 @@ TEST_CASE("nested calls parse in linear time") {
     std::string nested = "1";
     for (int i = 0; i < 200; ++i) nested = "f(" + nested + ")";
     CHECK(transcript::eval(interpreter, nested) == "1");
+}
+
+TEST_SUITE_END();
+
+// The language exact numbers would give, not the language we have. Marked
+// may_fail so the gap is reported on every run without gating CI, and never
+// recorded: a specification taken from the code it judges is worth nothing.
+TEST_SUITE_BEGIN("spec");
+
+TEST_CASE("exact" * doctest::may_fail()) {
+    check_spec("spec/exact.ink");
 }
 
 TEST_SUITE_END();
