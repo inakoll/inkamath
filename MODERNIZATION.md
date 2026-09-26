@@ -204,7 +204,7 @@ C59, and no amount of reading would have shown C48.
 | C44 `[fixed]` | **The concepts do not ask for what the product needs.** `Matrix::mul` accumulates with `c(i,j) += ...`, and neither `Numeric` nor `Parsable` mentions `+=` on the cell type. It goes unnoticed because the concept checks `a*b` as an expression and a template body is not instantiated by overload resolution, so the requirement only bites when someone supplies a number type and gets a template error inside `matrix.hpp` rather than a concept failure at the interface. Found by instantiating `Interpreter<Rational>`: a type that satisfied everything the concepts state still failed to compile. Stated, in the one line `Numeric`'s requires-clause had room for. Writing the accumulation as `c(i,j) = c(i,j) + ...` instead would have asked less of the type at the cost of a copy per term, which is the wrong trade for a bignum. No test: the only one that proves it is an out-of-tree instantiation, and a negative concept test -- a type built to satisfy everything but this -- costs more than it protects. |
 | C43 `[fixed]` | **A number could not start with the point.** `.5` reported `unexpected character '.'`, while `1e3`, `0x10` and `2i` all lexed -- the exotic spellings worked and the common one did not, because the lexer's case list holds the ten digits and nothing else. `strtod` reads `.5` without being asked; only the dispatch was missing. A point that does not begin a number still reports the same message, so `a.b` is unchanged. |
 | C42 `[fixed]` | **The factorial answered for every argument it had no business accepting.** `!5.5` was `120`, `!(0-3)` was `1`, `!(2+i*3)` was `2` and `!i` was `1`. The loop multiplies `i` while `i <= n`, so a fraction truncates, a negative gives the empty product, and the complex layer passed `a.real()` down without looking at the rest, dropping the imaginary part before the loop ever saw it. Four plausible numbers where there should be four diagnostics, which is C13 in an operator nobody had pointed at -- the corpus tested `!5` and `!0` and stopped. Found by typing `!5.5` while checking what the lexer accepts. |
-| C41 `[kept]` | **A block that does not fill its band continues with its own last cell.** `[a, [3 4]]`, with `a` 2x2, gives `1 2 3 4 / 3 4 4 4`; `[[1 2 3], a]` fills a whole row with `3 3 3`. The code says so in as many words -- *"extend the previous (up and left) evaluated cell result"* -- so it is deliberate, and read charitably the rule is **a block continues with its last value**, which is an ellipsis: `[a, 0]` pads the band with zeros and `[a, 1]` with ones, and that is a notation a matrix wants. The author does not remember the use case and suspects exactly this: an attempt at the `...` of matrix notation. Where it stops being statable is the multi-cell block, where continuing `[3 4]` with `4 4` is a corner repeated rather than a continuation anybody wrote. It is the third answer to one question -- a literal's short row pads with zeros (README.md section 2), a single value stretches, a short block repeats a corner -- and only the first two can be said out loud. **Decision: kept, and recorded as it is** in `matrices.ink` with the entry saying so. Not turned into a diagnostic while it may still be the residue of an idea; when the idea is found or ruled out, this goes and an explicit notation for the continuation replaces it, rather than a fourth fill rule. |
+| C41 `[kept]` | **A block that does not fill its band continues with its own last cell.** `[a, [3 4]]`, with `a` 2x2, gives `1 2 3 4 / 3 4 4 4`; `[[1 2 3], a]` fills a whole row with `3 3 3`. The code says so in as many words -- *"extend the previous (up and left) evaluated cell result"* -- so it is deliberate, and read charitably the rule is **a block continues with its last value**, which is an ellipsis: `[a, 0]` pads the band with zeros and `[a, 1]` with ones, and that is a notation a matrix wants. The author does not remember the use case and suspects exactly this: an attempt at the `...` of matrix notation. Where it stops being statable is the multi-cell block, where continuing `[3 4]` with `4 4` is a corner repeated rather than a continuation anybody wrote. It is the third answer to one question -- a literal's short row pads with zeros (README.md section 2), a single value stretches, a short block repeats a corner -- and only the first two can be said out loud. **Decision: kept, and recorded as it is** in `matrices.ink` with the entry saying so. Not turned into a diagnostic while it may still be the residue of an idea; when the idea is found or ruled out, this goes and an explicit notation for the continuation replaces it, rather than a fourth fill rule. Phase 13 leaves the free-standing `...` unclaimed for it: `1...` is an approximate one, `[1 2 ...]` still an error. |
 | C40 `[fixed]` | **A matrix could be built and never read.** `a(1,2)` was `a takes no arguments` and `a_1` was `a is not a sequence`: the language had no way at all to get a value back out of a matrix, which is half of what the second of the three ideas is for. `Matrix::operator()` was there, with a good out-of-range message, and nothing in the language reached it. `m[i,j]` now does, one-based as the rows and columns are written, and composing with everything a name can carry -- `f(3)[1,2]` and `s_3[1,2]` both work. The brackets were chosen over parentheses to match array indexing elsewhere, and they collide with the matrix literal in exactly one place: inside a literal, and inside an argument list, a space between two expressions separates them, so `[[1 2] [3 4]]` is a row of two blocks. Outside one, juxtaposition means nothing, and the brackets index whatever is in front of them -- `[1 2;3 4][2,1]` and `(a*a)[1,1]` both work. Inside one, only a name takes an index, which leaves a single form changed: `[a [3 4]]`, a row of blocks whose second follows a name with a space, now reads as an index of `a` and reports that it needs a row and a column. That form was legal, unused in the corpus and in `README.md`, and is written `[a, [3 4]]` instead; the change turns it into a diagnostic rather than a wrong answer. `Matrix::Offset` takes a signed index so that `m[0-1,1]` names the row it asked for instead of one that wrapped. |
 | C39 `[fixed]` | **A limit that cannot be taken reports an internal-sounding reason.** `lim k` on a sequence of matrices said `a matrix has no absolute value`, which names neither the sequence nor what the interpreter was doing when it needed one. Every other refusal from `lim` names the sequence -- `k has no general clause, so it has no limit`. It now reads `k has no limit: a matrix has no absolute value`, keeping the reason and adding the context, which also covers the case where the terms change size between iterations. |
 | C38 `[fixed]` | **A scalar stretches over a matrix for `*` and for nothing else.** `a*2` and `2*a` worked, `a/2`, `a-1` and `1+a` all reported `these matrices have different sizes`. The scalar case lived in `mul`, which needs one because matrix multiplication does; `BinaryOp`, behind `+`, `-` and `/`, compared extents and gave up. Nothing chose that: `/` is documented as working cell by cell, and a literal already stretches a scalar -- `[a; 1]` spreads the 1 across the block above it. `a*0.5` working while `a/2` did not is the sharp form. Now a single value stretches on either side of all four, with the operand order kept, so `1-a` subtracts each cell from one. |
@@ -1344,16 +1344,68 @@ an exact zero now cannot be divided by. One moved for a reason no rule states:
 exact now, so the only error left is `e` itself as a double -- 1.4e-16 against
 the true remainder, where the accumulated sum was 5.8e-16 off.
 
-**Open for step 2: how does one see an exact number's digits?** Step 1 answers
-by accident, and not always. `sequences.ink` says twenty terms of Aitken's
-acceleration beat a hundred raw ones, and now shows it as `q_100` =
-`0.688172179` beside `r_20` = `6938333221/10010080080` -- the claim still true,
-no longer visible. `README.md` compares `y_20` with `pi^2/6` digit for digit,
-and `y_20` survives only because its exact value needs a 21-digit numerator
-and overflows; with a bignum it prints
-`445714427153104648117/270961879956768000000`, and a diagnostic quoting the
-last partial sum of `1/k^2` quotes an 81-digit denominator. A fraction is the
-right answer and the wrong display wherever the point is to compare digits.
+### Shown as decimals `[specified]`
+
+Revised before step 1 reached master. A fraction is exact, and alien to a
+reader who does not care whether an answer is; and a decimal need not go
+through a double -- long division of an exact fraction gives as many correct
+digits as are asked for, all fifty of `ex(1)_40`'s matching `e`. Repeating
+notation cannot keep a decimal exact: `1/97` repeats every 96 digits and `h_30`
+every 11,088, so a decimal is mostly cut short, and has to say so.
+
+Specified in `test/data/spec/decimals.ink`, 58 of its 85 entries failing. The
+27 that pass are 18 definitions echoing themselves, five exact whole numbers
+that already print in full, `1/3+1/3+1/3`, `2+3*i`, two inexact answers that
+happen to print today as their exact successors will (`0.1+0.2`, `1.5e-3`),
+and `[1 2 ...]`, an error meant to stay one. Every expected output was computed
+from the exact value by a reference printer written apart from the
+interpreter, which caught one guess: `!52/(!5*!47)` through double factorials
+is exactly `2598960`, so it prints unmarked.
+
+What it decides, revising step 1's display:
+
+- **Every number prints in decimal**, rounded to 9 significant digits: an exact
+  whole number in full, a number that is not whole never as whole, a very
+  small one with an exponent, a very large exact one keeping its whole part.
+- **`...` means the digits shown are not the whole value**, whatever the kind.
+  Rounded, not truncated: what is written left of an ellipsis is an
+  approximation, and truncating a double exposes its binary noise -- `0.3...`
+  would print back as `0.299999999...`. So `i*i` is `-1` and `lim lt` is `5`
+  again, and step 1's trailing point goes.
+- **A literal is exact as written**, point and exponent included, and **digits
+  ending in `...` are inexact**. `0.1*3 == 0.3` holds, and every answer reads
+  back honestly: a complete one as the same exact number, a cut one as the
+  approximation it shows. This reverses step 1's rule that a point makes a
+  literal inexact.
+- **`frac` begins a line and shows its answer as the exact fraction**, and
+  refuses an approximation, which is how the kind stays visible. Not `exact`,
+  which in Scheme turns `0.5` into `1/2`.
+- **`digits = n` sets how many significant digits are shown**, in the session
+  and so in the file that needs it. An inexact number shows 17 at most, which
+  is where an exact partial sum of `e` overtakes the built-in one.
+- **Going inexact is spelled `1...`, not a keyword**: `root_0 = 1...` seeds an
+  approximate iteration. With a bignum that is no nicety -- exact Newton's
+  method doubles its digits every step, 392 at the tenth and 401,370 at the
+  twentieth -- and step 2 should keep a bound past which a result goes
+  inexact, as 64 bits does now, so that a forgotten seed costs speed and not
+  the session.
+- **A free-standing ellipsis stays unclaimed**, for the matrix `...` C41
+  suspects: `[1 2...]` is a row whose second cell is approximate, `[1 2 ...]`
+  is an error. One space apart -- the trap C52's `0 -1` was -- and written into
+  the specification so that it is a decision rather than a discovery.
+
+Left open: whether `frac` and `digits` may still be used as names, and what
+`digits` set inside an expression means.
+
+**What asked for it.** Step 1 showed the digits only by accident.
+`sequences.ink` says twenty terms of Aitken's acceleration beat a hundred raw
+ones, and showed it as `q_100` = `0.688172179` beside `r_20` =
+`6938333221/10010080080` -- the claim still true, no longer visible. `README.md`
+compares `y_20` with `pi^2/6` digit for digit, and `y_20` survived only because
+its exact value overflows; with a bignum it would print
+`445714427153104648117/270961879956768000000`. A fraction is the right answer
+and the wrong display wherever the point is to compare digits, which is most of
+the places a number is read.
 
 ---
 

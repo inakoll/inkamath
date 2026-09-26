@@ -16,7 +16,7 @@ target_compile_definitions(inkamath_tests PRIVATE
 
 # One ctest entry per doctest suite, so that a crash in one reports as a
 # single failure rather than taking the others' results with it.
-foreach(suite IN ITEMS interpreter line_editor matrix)
+foreach(suite IN ITEMS interpreter line_editor matrix spec)
     add_test(NAME ${suite} COMMAND inkamath_tests --test-suite=${suite} --no-intro)
     set_tests_properties(${suite} PROPERTIES TIMEOUT 60)
 endforeach()
