@@ -48,6 +48,10 @@ struct numeric_interface_imp
      static T cell(const T& a, int i, int j) {return T::cell(a,i,j);}
      static T compare(const T& a, const T& b, Comparison op) {return T::compare(a,b,op);}
      static bool truth(const T& a) {return T::truth(a);}
+     // A comparison asks for these (phase 10), and a class-type number goes
+     // through this path, so without them none compiled (MODERNIZATION.md, C65).
+     static T real(const T& a) { return T::real(a); }
+     static T imaginary(const T& a) { return T::imaginary(a); }
 
      // Deduced: for a complex or a matrix these narrow to the scalar type.
      static auto fact(const T& a) {return T::fact(a);}
