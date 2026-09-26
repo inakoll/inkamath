@@ -95,7 +95,7 @@ error: an index must be a whole number, not 0.5
 ix=[1 2;3 4]
 
 >> ix[2147483648,1]
-error: an index must be between -2147483648 and 2147483647, not 2.14748365e+09
+error: an index must be between -2147483648 and 2147483647, not 2147483648
 
 >> ix[0-1e20,1]
 error: an index must be between -2147483648 and 2147483647, not -1e+20
@@ -135,10 +135,11 @@ inf
 # A part that is NaN is present but has no sign, and answers false to every
 # comparison, so the imaginary unit used to be dropped while its magnitude was
 # still printed: these read 'inf*-nan' and '-nan*-nan' (MODERNIZATION.md, C31).
->> 1/0
+# The zero is inexact because an exact one cannot be divided by (phase 13).
+>> 1/0.
 inf+i*-nan
 
->> 0/0
+>> 0/0.
 -nan+i*-nan
 
 # An exponent outside int's range used to be converted to one anyway, which is
@@ -147,7 +148,7 @@ inf+i*-nan
 inf
 
 >> 0.5^3000000000
-0
+0.
 
 # Mathematics writes a multiplication by writing nothing; this language does
 # not. The hint used to be given only for '(' -- '2 3' above is the same

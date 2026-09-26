@@ -324,8 +324,9 @@ nonzero(x) | x == 0 = 0
 0
 
 # NaN is not zero, so it passes a bare guard, while every comparison with it
-# is false. Recorded because it is the one place the convention bites.
->> nonzero(0/0)
+# is false. Recorded because it is the one place the convention bites. The
+# zero is inexact because an exact one cannot be divided by (phase 13).
+>> nonzero(0/0.)
 1
 
 # A guard needs a single value, for the same reason an index does.
@@ -383,10 +384,10 @@ root_n | abs(root_(n-1)^2 - 2) < 0.01 = root_(n-1)
 root_n = (root_(n-1) + 2/root_(n-1))/2
 
 >> root_6
-1.41666667
+17/12
 
 >> root_50
-1.41666667
+17/12
 
 # Index clauses and guards are one mechanism, written two ways.
 >> fib_0 = 0

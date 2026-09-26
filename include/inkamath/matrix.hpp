@@ -68,6 +68,13 @@ public:
 
     static int toInt(const Matrix<T>& a) {return numeric_interface<T>::toInt(a.Scalar());}
 
+    static Matrix<T> inexact(const Matrix<T>& a) {
+        Matrix<T> c(a);
+        std::transform(c.data(), c.data() + c.extent_.count(), c.data(),
+                       [](const T& value) { return numeric_interface<T>::inexact(value); });
+        return c;
+    }
+
     // One cell, as a 1x1: everything in this language is a matrix.
     static Matrix<T> cell(const Matrix<T>& a, int i, int j) {return Matrix<T>(a(i, j));}
 

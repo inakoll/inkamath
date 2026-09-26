@@ -52,6 +52,7 @@ struct numeric_interface_imp
      // through this path, so without them none compiled (MODERNIZATION.md, C65).
      static T real(const T& a) { return T::real(a); }
      static T imaginary(const T& a) { return T::imaginary(a); }
+     static T inexact(const T& a) { return T::inexact(a); }
 
      // Deduced: for a complex or a matrix these narrow to the scalar type.
      static auto fact(const T& a) {return T::fact(a);}
@@ -86,6 +87,7 @@ struct numeric_interface_imp<std::complex<T>,false>
 
     static T real(const std::complex<T>& a) {return a.real();}
     static T imaginary(const std::complex<T>& a) {return a.imag();}
+    static std::complex<T> inexact(const std::complex<T>& a) { return a; }
 
     static std::string toString(const std::complex<T>& a)
     {
@@ -228,6 +230,7 @@ struct numeric_interface_imp<T,true>
     static T one() {return 1;}
     static T real(const T& a) {return a;}
     static T imaginary(const T&) {return 0;}
+    static T inexact(const T& a) { return a; }
     // Converting a double outside int's range is undefined, and NaN is
     // undefined too; both clamp here, and the caller compares the answer with
     // what it was given to see that it did (MODERNIZATION.md, C56).

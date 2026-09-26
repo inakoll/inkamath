@@ -3,8 +3,8 @@
 #include "transcript.hpp"
 
 #include "inkamath/interpreter.hpp"
+#include "inkamath/number.hpp"
 
-#include <complex>
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
@@ -27,7 +27,7 @@ bool recording() {
 // Replays the entries through a fresh interpreter. When recording, the
 // observed output replaces the expectation instead of being checked.
 void replay(std::vector<transcript::Item>& items, const std::string& label, bool record) {
-    Interpreter<std::complex<double>> interpreter;
+    Interpreter<Number> interpreter;
 
     for (transcript::Item& item : items) {
         if (!item.is_entry) continue;
@@ -80,19 +80,6 @@ void check_readme() {
     replay(items, path.filename().string(), false);
 }
 
-// A specification, replayed but never recorded (CLAUDE.md, section 3).
-void check_spec(const std::string& name) {
-    const std::filesystem::path path = data_dir() / name;
-
-    std::ifstream in(path);
-    REQUIRE_MESSAGE(in.good(), "cannot open transcript ", path.string());
-    std::vector<transcript::Item> items = transcript::parse(in);
-    in.close();
-
-    REQUIRE_MESSAGE(!items.empty(), "transcript is empty: ", path.string());
-    replay(items, path.filename().string(), false);
-}
-
 }  // namespace
 
 TEST_CASE("basics") {
@@ -116,6 +103,9 @@ TEST_CASE("sequences") {
 TEST_CASE("series") {
     check_transcript("series.ink");
 }
+TEST_CASE("exact") {
+    check_transcript("exact.ink");
+}
 TEST_CASE("errors") {
     check_transcript("errors.ink");
 }
@@ -134,7 +124,7 @@ TEST_CASE("readme") {
 // whose every line ends with one -- cannot be written as one
 // (MODERNIZATION.md, C58).
 TEST_CASE("a carriage return is whitespace") {
-    Interpreter<std::complex<double>> interpreter;
+    Interpreter<Number> interpreter;
     CHECK(transcript::eval(interpreter, "1+1\r") == "2");
     CHECK(transcript::eval(interpreter, "f(x)=x+1\r") == "f(x)=x+1");
 }
@@ -143,7 +133,7 @@ TEST_CASE("a carriage return is whitespace") {
 // of these used to exhaust the C++ stack and kill the process, so before the
 // token limit this case took the whole suite with it (MODERNIZATION.md, C20).
 TEST_CASE("token limit") {
-    Interpreter<std::complex<double>> interpreter;
+    Interpreter<Number> interpreter;
     const std::string expected = "error: expression is longer than 1000 tokens";
 
     const std::string nested = std::string(8000, '(') + "1" + std::string(8000, ')');
@@ -166,23 +156,12 @@ TEST_CASE("token limit") {
 // finish at 40 (MODERNIZATION.md, C32). Also not a transcript entry -- the
 // assertion is that it returns at all.
 TEST_CASE("nested calls parse in linear time") {
-    Interpreter<std::complex<double>> interpreter;
+    Interpreter<Number> interpreter;
     CHECK(transcript::eval(interpreter, "f(x)=x") == "f(x)=x");
 
     std::string nested = "1";
     for (int i = 0; i < 200; ++i) nested = "f(" + nested + ")";
     CHECK(transcript::eval(interpreter, nested) == "1");
-}
-
-TEST_SUITE_END();
-
-// The language exact numbers would give, not the language we have. Marked
-// may_fail so the gap is reported on every run without gating CI, and never
-// recorded: a specification taken from the code it judges is worth nothing.
-TEST_SUITE_BEGIN("spec");
-
-TEST_CASE("exact" * doctest::may_fail()) {
-    check_spec("spec/exact.ink");
 }
 
 TEST_SUITE_END();

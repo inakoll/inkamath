@@ -58,7 +58,7 @@ exp(x)_n=exp(x)_(n-1)+x^n/!n
 # Not floating point: the series stops once the step is under 1e-10 and the
 # remainder the steps imply is too.
 >> lim exp(1)-e
--8.149037e-13
+-8.15347789e-13
 
 >> cos(x)=(lim exp(i*x)+lim exp(-i*x))/2
 cos(x)=(lim exp(i*x)+lim exp(-i*x))/2
@@ -81,7 +81,7 @@ s_0=1
 s_n=s_(n-1)/2
 
 >> s_20
-9.53674316e-07
+1/1048576
 
 >> s
 error: s is a sequence; index it (s_0) or take its limit (lim s)
@@ -103,7 +103,7 @@ lg_n | n > 0 = lg_(n-1)/2
 lg_n = lg_(n-1)*10
 
 >> lg_10
-0.0009765625
+1/1024
 
 >> lim lg
 5.82076609e-11
@@ -120,7 +120,7 @@ lt_n | n > 2 = 5
 lt_n = n
 
 >> lim lt
-5
+5.
 
 # And a general clause that is guarded is still a general clause.
 >> lc_0 = 1
@@ -130,7 +130,7 @@ lc_0 = 1
 lc_n | 1 = lc_(n-1)/2
 
 >> lc_10
-0.0009765625
+1/1024
 
 >> lim lc
 5.82076609e-11
@@ -190,7 +190,7 @@ q_n=q_(n-1)+(0-1)^(n-1)/n
 r_n=q_n-(q_(n+1)-q_n)^2/(q_(n+2)-2*q_(n+1)+q_n)
 
 >> r_20
-0.693134637
+6938333221/10010080080
 
 # Recursion is bounded: past the budget the interpreter says so rather than
 # dying (MODERNIZATION.md, C1).

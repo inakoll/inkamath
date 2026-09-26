@@ -50,6 +50,7 @@ concept Numeric =
     { numeric_interface<T>::abs(a) > 1.0 } -> std::convertible_to<bool>;
     { numeric_interface<T>::toInt(a) } -> std::convertible_to<int>;
     { numeric_interface<T>::toString(a) } -> std::convertible_to<std::string>;
+    { numeric_interface<T>::inexact(a) } -> std::convertible_to<T>;
 };
 
 // What the lexer needs of the type it reads numbers into.

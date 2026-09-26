@@ -1,6 +1,7 @@
-# Exact numbers: the language they would give, not the language we have
-# (MODERNIZATION.md, phase 13). Specified by hand, never recorded (CLAUDE.md,
-# section 3); every exact answer below was checked against Python's Fraction.
+# Exact numbers (MODERNIZATION.md, phase 13). This was the specification,
+# written before they existed (CLAUDE.md, section 3); every expected output is
+# as it was specified, and every exact one was checked against Python's
+# Fraction.
 #
 # A number written as a whole number is exact, and stays exact through + - * /
 # and whole powers. What can only be approached -- pi, e, i, a root, a limit,
@@ -211,3 +212,4 @@ dbl(x) = x*2
 
 >> dbl(0.5)
 1.
+

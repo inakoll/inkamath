@@ -67,7 +67,7 @@ and the previous one is never named:
 exp(x)_n=sum_(k=0)^n x^k/!k
 
 >> exp(1)_10
-2.7182818
+9864101/3628800
 ```
 
 Without an upper bound the sum is the series itself, summed to its limit, and
@@ -122,6 +122,14 @@ Language
 
 ### 1. Numbers and operators
 
+A number written as a whole number is exact, and stays exact through `+`,
+`-`, `*`, `/` and whole powers: `1/3+1/3+1/3` is `1`, and a quotient prints as
+the fraction it is. What can only be approached — `pi`, `e`, a root, a limit —
+is inexact, as is a number written with a point or an exponent, and an inexact
+number makes inexact whatever it touches; one that would read as whole prints
+with a trailing point. An exact number that outgrows 64 bits becomes inexact
+rather than wrong, and dividing by an exact zero is an error.
+
 Numbers are complex; `i` is the imaginary unit. `e` and `pi` are the only
 other built-ins, and there are no built-in functions.
 
@@ -144,6 +152,15 @@ other built-ins, and there are no built-in functions.
 runs to the end of the line.
 
 ```
+>> 1/3+1/3+1/3
+1
+
+>> 10/4
+5/2
+
+>> 2^(1/2)
+1.41421356
+
 >> !5
 120
 
@@ -151,7 +168,7 @@ runs to the end of the line.
 2+i*3
 
 >> (1+i)*(1-i)
-2
+2.
 ```
 
 ### 2. Matrices
@@ -213,8 +230,8 @@ value stretches to the other side's size, and the order is kept:
 
 ```
 >> a/2
-[0.5, 1;
- 1.5, 2]
+[1/2, 1;
+ 3/2, 2]
 
 >> 1-a
 [ 0, -1;
@@ -351,7 +368,7 @@ s_0=1
 s_n=s_(n-1)/2
 
 >> s_20
-9.53674316e-07
+1/1048576
 ```
 
 A base case wins over the general clause, whatever the order of definition.
@@ -445,7 +462,7 @@ the body alone.
 harm_n=sum_(k=1)^n 1/k
 
 >> harm_10
-2.92896825
+7381/2520
 ```
 
 Without an upper bound the series is summed to its limit, by the rule `lim`

@@ -17,7 +17,7 @@
 512
 
 >> 10/4
-2.5
+5/2
 
 # A number may start with the point. The lexer's cases listed the digits and
 # not '.', so '.5' was 'unexpected character' while the exotic '1e3' and
@@ -26,10 +26,10 @@
 0.5
 
 >> 1.5+.5
-2
+2.
 
 >> .5e2
-50
+50.
 
 # A point that does not start a number is still a character nothing wants.
 >> a.b
@@ -64,7 +64,7 @@ error: unexpected character '.'
 -8
 
 >> 2^-3*4
-0.5
+1/2
 
 >> 6/+2/3
 1
@@ -86,13 +86,13 @@ error: unexpected character '.'
 i
 
 >> i*i
--1
+-1.
 
 >> 2+3*i
 2+i*3
 
 >> (1+i)*(1-i)
-2
+2.
 
 # The principal square root of a negative number, which used to depend on how
 # the minus was written: unary minus left a -0 imaginary part, putting the

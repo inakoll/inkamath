@@ -51,8 +51,8 @@ a=[1 2;3 4]
 # it; '+', '-' and '/' reported 'these matrices have different sizes', so
 # 'a*0.5' worked and 'a/2' did not (MODERNIZATION.md, C38).
 >> a/2
-[0.5, 1;
- 1.5, 2]
+[1/2, 1;
+ 3/2, 2]
 
 # A cell, written the way an array is indexed and numbered the way the rows
 # and columns are: from one. The language had no way at all to read a value
@@ -123,8 +123,8 @@ error: a cell needs a row and a column, as 'm[1,2]'
  -2, -3]
 
 >> 2/a
-[          2,   1;
- 0.666666667, 0.5]
+[  2,   1;
+ 2/3, 1/2]
 
 # Three or more rows or columns. The block offsets were a prefix sum that
 # added only the previous element instead of the running total, so the result

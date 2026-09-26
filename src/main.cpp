@@ -1,5 +1,4 @@
 #include <algorithm>
-#include <complex>
 #include <fstream>
 #include <iostream>
 #include <sstream>
@@ -8,6 +7,7 @@
 #include <vector>
 
 #include "inkamath/interpreter.hpp"
+#include "inkamath/number.hpp"
 #include "inkamath/numeric_interface.hpp"
 
 #include "line_editor.hpp"
@@ -31,7 +31,7 @@ static bool unclosed(const string& text)
     return depth > 0;
 }
 
-using Interp  = Interpreter<complex<double>>;
+using Interp  = Interpreter<Number>;
 using Outcome = LineEditor::Outcome;
 
 static const char help[] = R"(Usage: inkamath [options] [file...]
