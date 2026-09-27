@@ -35,3 +35,22 @@ add_custom_target(record_goldens
             $<TARGET_FILE:inkamath_tests> --test-suite=interpreter
     DEPENDS inkamath_tests
     VERBATIM)
+
+# The compiler's C target (MODERNIZATION.md, phase 14, step 2). What it emits
+# for the PID is the header written for it by hand, and the header it emits,
+# built as C, holds the controller to the exact values of the loop it closes.
+enable_language(C)
+set(pid_header ${CMAKE_CURRENT_BINARY_DIR}/compile/pid.h)
+add_custom_command(OUTPUT ${pid_header}
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/compile
+    COMMAND inkamath_cli --compile ${CMAKE_CURRENT_SOURCE_DIR}/compile/pid.ink -o ${pid_header}
+    DEPENDS inkamath_cli compile/pid.ink
+    VERBATIM)
+add_executable(compile_pid compile/pid_test.c ${pid_header})
+target_include_directories(compile_pid PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/compile)
+target_link_libraries(compile_pid PRIVATE inkamath_warnings $<$<NOT:$<C_COMPILER_ID:MSVC>>:m>)
+set_target_properties(compile_pid PROPERTIES C_STANDARD 11 C_STANDARD_REQUIRED ON C_EXTENSIONS OFF)
+add_test(NAME compile COMMAND compile_pid)
+add_test(NAME compile_header
+         COMMAND ${CMAKE_COMMAND} -E compare_files --ignore-eol
+                 ${CMAKE_CURRENT_SOURCE_DIR}/compile/pid.h ${pid_header})

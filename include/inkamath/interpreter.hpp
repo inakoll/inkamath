@@ -84,6 +84,9 @@ public:
 
     void ResetInterpreter(void);
 
+    // What the session has defined, for the compiler to read.
+    [[nodiscard]] const ReferenceStack<U>& Definitions() const { return stack_; }
+
 private:
     void Lexer(const std::string& s);
     void Number_Lexer(const std::string& s, size_t& i);

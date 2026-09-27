@@ -27,6 +27,7 @@ jobs:
       - name: Configure
         env:
           CXX: ${{ matrix.compiler }}
+          CC: ${{ matrix.compiler == 'clang++' && 'clang' || 'gcc' }}
         run: >
           cmake -S . -B build -G Ninja
           -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}

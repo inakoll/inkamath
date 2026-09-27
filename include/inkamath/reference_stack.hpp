@@ -131,6 +131,8 @@ public:
         ReferenceStack<T>& stack_;
     };
 
+    [[nodiscard]] const scope_type& Globals() const { return globals_; }
+
     // Whether a call's frame is open to bind in.
     [[nodiscard]] bool Framed() const { return open_ != 0; }
 

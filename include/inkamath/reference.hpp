@@ -122,6 +122,8 @@ public:
         clauses_.push_back(clause);
     }
 
+    [[nodiscard]] const std::vector<Clause<T>>& Clauses() const { return clauses_; }
+
     // '?name', or '?name_0' for one clause of a sequence.
     std::string Describe(const ParametersCall<T>& call, ReferenceStack<T>& stack) const {
         int index = 0;

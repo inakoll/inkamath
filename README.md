@@ -108,6 +108,13 @@ Given files, it runs them in order and exits; read from a pipe it prints bare
 answers, as `bc` does, and `--echo` prints a transcript instead, in the format
 of `test/data/*.ink`.
 
+`--compile model.ink -o model.h` writes the sequences a file defines as a C
+header over doubles: a struct holding the parameters and each sequence's latest
+terms, an `init` and a `step`, for a filter to run where the interpreter cannot.
+`test/compile/pid.ink` is a PID controller, and `test/compile/pid.h` is what it
+compiles to. It is the first increment of a compiler, and refuses by name what
+it cannot yet express: matrices, functions, guards, limits and series.
+
 Interpreter behaviour is pinned by golden transcripts in `test/data/*.ink`,
 which are literal sessions — every example in this file is one of them, so the
 documentation and the tests check each other. Regenerate with

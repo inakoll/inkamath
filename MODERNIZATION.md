@@ -1637,14 +1637,24 @@ refuses everything else by name. A file's definitions are run by the
 interpreter, as they would be at a prompt; each sequence becomes a window of
 its recent terms in a struct, as deep as the definitions reach back; a step
 advances the index and computes that index's terms in dependency order. A
-plain definition is a parameter, initialised to its exact value rounded once,
-with a setter; a name used and never defined is an input, a stream `y_n`
-passed to each step or a plain value set once. A setter changes the terms
-still to come, as a controller's gain is changed while it runs -- where the
-interpreter, clearing its memo, answers as if the parameter had always had
-its new value. Where the interpreter reports an error at run time -- a
+plain definition that reads no name is a parameter, a field initialised to its
+exact value rounded once, which the host may assign; one that reads others is
+recomputed where it is read, so that it follows them. A name used and never
+defined is an input, a stream `y_n` passed to each step or a plain value the
+host assigns. Assigning a parameter changes the terms still to come, as a
+controller's gain is changed while it runs -- where the interpreter, clearing
+its memo, answers as if the parameter had always had its new value. Where the interpreter reports an error at run time -- a
 division by zero, a power it would take in the complex plane -- the compiled
 code answers an infinity or a NaN.
+
+It is `compile.hpp` and `inkamath --compile pid.ink -o pid.h`. The header for
+the PID was written by hand first, as the specification, and the compiler
+emits it byte for byte (`test/compile/pid.h`); built as C11 it holds the
+controller, closing the loop in a harness, within 1e-14 of the loop's exact
+values computed with Python's fractions. What it refuses -- matrices,
+functions, guards, limits, series, factorials, locals, complex numbers, an
+index other than `n` less a constant, sequences that start at different
+indices, a term read before its sequence starts -- it names.
 
 **What step 2 is for, decided by building it.** Waiting for a use case that
 nothing yet can serve would wait for ever, so a proof of concept manufactures
@@ -1668,9 +1678,11 @@ against the exact transcript. Writing the two found four things they need:
   asks for the odd terms, which it never defined, and so reports the depth
   rather than an error about a term nobody asked for. Filling with the
   recurrence's own stride would fix it.
-- **Inputs from the host**, as above.
-- **A window on the memo.** A filter running a million steps must not keep a
-  million terms.
+- `[done]` **Inputs from the host**, in the C target: a stream passed to
+  each step, or a value the host assigns.
+- `[done]` **A window on the memo**, in the C target, where each sequence
+  keeps its terms only as far back as they are read. The interpreter's memo
+  is still bounded only by its size.
 - **Transpose and identity**, which the Kalman filter spelled out by hand as
   `Ft`, `Ht` and `I2`.
 
