@@ -101,15 +101,18 @@ public:
     // every value here is a number. Cell by cell was considered and left out:
     // nothing in the language reduces a matrix of ones and zeros to a single
     // truth, so it would invite an idiom it cannot finish.
+    friend bool operator==(const Matrix<T>& a, const Matrix<T>& b) {
+        return a.extent_ == b.extent_ &&
+               std::equal(a.data(), a.data() + a.extent_.count(), b.data());
+    }
+
     static Matrix<T> compare(const Matrix<T>& a, const Matrix<T>& b, Comparison op)
     {
         // Two whole matrices are equal or not, which is one truth; an order
         // cell by cell would be a matrix of them.
         if (op == Comparison::Equal || op == Comparison::NotEqual) {
-            const bool equal = a.extent_ == b.extent_ &&
-                               std::equal(a.data(), a.data() + a.extent_.count(), b.data());
-            return Matrix<T>((op == Comparison::Equal) == equal ? numeric_interface<T>::one()
-                                                                : numeric_interface<T>::zero());
+            return Matrix<T>((op == Comparison::Equal) == (a == b) ? numeric_interface<T>::one()
+                                                                   : numeric_interface<T>::zero());
         }
         return Matrix<T>(Ordered(a.Comparable(), op, b.Comparable())
                              ? numeric_interface<T>::one()
