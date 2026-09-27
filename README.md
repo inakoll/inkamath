@@ -494,8 +494,8 @@ it:
 error: the sum did not converge within 100 terms (last partial sum ~1.6349839)
 ```
 
-An index must be an exact whole number, and `lim`, `sum` and `prod` are reserved
-words.
+An index must be an exact whole number, and `lim`, `sum`, `prod`, `frac` and
+`digits` are reserved words.
 
 A term is evaluated once per *context* — which definition, which index, which
 argument values — and the answer is remembered until a definition changes. It

@@ -134,6 +134,7 @@ private:
     static bool BeginsLine(const Token<T>& token) {
         return IsWord(token, "frac") || IsWord(token, "digits");
     }
+    bool   DefinesReserved() const;
     Result Digits(const std::string& s);
 
     // One line cannot be allowed to exhaust the C++ stack. Token count bounds
@@ -871,6 +872,23 @@ PExpression<U> Interpreter<T,U>::ParseSubExpr()
     return e;
 }
 
+// 'frac(x) = x' and the like: a definition of a word that was a name before it
+// was reserved. An '=' outside brackets is what makes a line a definition.
+template <Parsable T, Numeric U>
+bool Interpreter<T, U>::DefinesReserved() const {
+    const Type next = m_tokens.size() > 1 ? m_tokens[1].type : Val;
+    if (next != LPar && next != Sub && next != Guard &&
+        !(next == Equal && IsWord(m_tokens[0], "frac")))
+        return false;
+    int depth = 0;
+    for (size_t token = 1; token < m_tokens.size(); ++token) {
+        const Type type = m_tokens[token].type;
+        depth += (type == LPar || type == LBra) - (type == RPar || type == RBra);
+        if (type == Equal && depth == 0) return true;
+    }
+    return false;
+}
+
 // 'digits' reads how many significant digits an answer shows, and
 // 'digits = n' sets it.
 template <Parsable T, Numeric U>
@@ -904,6 +922,9 @@ typename Interpreter<T, U>::Result Interpreter<T, U>::Eval(const std::string& s)
         stack_.BeginEvaluation();
         Lexer(s);
         const bool fraction = IsWord(m_tokens[0], "frac");
+        if (BeginsLine(m_tokens[0]) && DefinesReserved()) {
+            Fail(m_tokens[0].text, " is reserved, so it cannot be defined");
+        }
         if (m_tokens[0].type == Query) {
             result = Echo{ParseQuery()};
         } else if (IsWord(m_tokens[0], "digits")) {

@@ -173,3 +173,22 @@ error: digits must be a whole number of at least 1, not [1, 2]
 >> digits = x = 3
 error: digits takes a number, not a definition
 
+# They were names before, and a definition of one says why it is refused.
+>> frac(x) = x
+error: frac is reserved, so it cannot be defined
+
+>> frac_n = n
+error: frac is reserved, so it cannot be defined
+
+>> frac = 3
+error: frac is reserved, so it cannot be defined
+
+>> digits(x) = 1
+error: digits is reserved, so it cannot be defined
+
+>> digits_n | n > 1 = n
+error: digits is reserved, so it cannot be defined
+
+>> frac (1/3)
+1/3
+
