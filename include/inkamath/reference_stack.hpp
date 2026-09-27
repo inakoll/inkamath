@@ -278,7 +278,7 @@ private:
 
     size_t depth_ = 0;
     size_t steps_ = 0;
-    bool                                     filling_ = false;
+    bool                                     filling_     = false;
     bool                                     fill_failed_ = false;
     std::unordered_map<MemoKey, T, MemoHash> memoised_;
     scope_type globals_;
