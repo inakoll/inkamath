@@ -1454,6 +1454,41 @@ the places a number is read.
 
 ---
 
+### Step 2: a bignum `[specified]`
+
+Specified in `test/data/spec/bignum.ink`, 16 of its entries failing -- each one
+an exact answer past 64 bits. The 24 that pass are definitions and settings,
+inexact answers, and what lies at or past the bound, which today approximates
+the same way. Writing it found two defects in the real powers step 2 relies on,
+fixed first: `2^1024` answered `inf+i*-nan`, and `2^0.5` a double off the
+nearest one, both from taking a real power as a complex one.
+
+What it decides:
+
+- **Exact up to a thousand digits** in the reduced numerator and in the
+  denominator, as many as `digits` can show, and approximated past that as 64
+  bits are today, so a forgotten `~` costs speed and not the session. Exact
+  Newton's method for the square root of 2 crosses it at the twelfth step, the
+  harmonic numbers at `h_2309`; `!449` fits and `!450` does not.
+- **A whole number too large for a double is infinite** once approximated:
+  `2^3322` and `!450` are `inf`. That is the double's limit, not the bound's,
+  and a bound below 10^308 would only move numbers from exact to inexact
+  without saving any of these.
+- **Written here** (CLAUDE.md, section 5): a magnitude in 32-bit limbs, because
+  a 32-bit product fits in 64 bits on every compiler CI has, with schoolbook
+  multiplication, Knuth's division and Euclid's gcd. At a thousand digits
+  nothing cleverer should pay for its lines; that is to be measured, not
+  assumed.
+
+What it costs before a line of it: **the memo key.** A key is a value's bytes,
+and a value on the heap has a pointer for bytes -- two equal values would be
+two keys, and a freed address reused could make two different values one. The
+key becomes an encoding each number type writes, a refactor that leaves every
+output byte-identical and goes first. It also frees the layout: nothing needs
+a `Number` without padding any more, so it can hold a 64-bit fraction, a big
+one or a double in 24 bytes rather than 32, which is where the 1.7x on integer
+matrices most likely lives.
+
 ## Sequencing
 
 Phase 2 gated everything: no implementation work started before the
