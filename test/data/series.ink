@@ -93,10 +93,10 @@ h(k) = sum_(j=1)^3 k
 ex(x)_n = sum_(k=0)^n x^k/!k
 
 >> ex(1)_10
-2.7182818
+~2.7182818
 
 >> lim ex(1)
-2.71828183
+~2.71828183
 
 # Matrices sum cell by cell, and multiply in order: the first factor is on the
 # left. [k 1;0 1] for k=1 then k=2 is [2 2;0 1]; the other way it is [2 3;0 1].
@@ -122,13 +122,13 @@ ex(x)_n = sum_(k=0)^n x^k/!k
 # Without an upper bound the series is summed to its limit, by the rule 'lim'
 # follows, and reported the same way when it does not get there.
 >> sum_(k=0) 1/!k
-2.71828183
+~2.71828183
 
 >> sum_(k=0) 1/2^k
-2
+~2
 
 >> prod_(k=1) (1+1/2^k)
-2.38423103
+~2.38423103
 
 >> sum_(k=1) k
 error: the sum did not converge within 100 terms (last partial sum 5050)
@@ -136,7 +136,7 @@ error: the sum did not converge within 100 terms (last partial sum 5050)
 # Converging and being summed are not the same thing: 1/k^2 converges, too
 # slowly for a hundred terms to show it -- README.md section 4, and C36.
 >> sum_(k=1) 1/k^2
-error: the sum did not converge within 100 terms (last partial sum 1.6349839)
+error: the sum did not converge within 100 terms (last partial sum ~1.6349839)
 
 # A term is a step, whatever its body: a sum that reads no name still has to
 # end, and ends where any other evaluation does.

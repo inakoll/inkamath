@@ -74,13 +74,13 @@ error: unexpected character '.'
 
 # 'e', 'pi' and the imaginary unit 'i' are the only built-ins.
 >> [pi, e]
-[3.14159265, 2.71828183]
+[~3.14159265, ~2.71828183]
 
 # They carry every digit a double holds. The 2014 literals stopped at
 # fourteen, and the imaginary part here was 4.58636533e-14 -- the error in pi,
 # not the error of the arithmetic (MODERNIZATION.md, C34).
 >> e^(i*pi)
--1+i*1.2246468e-16
+-1+i*~1.2246468e-16
 
 >> i
 i
@@ -99,10 +99,10 @@ i
 # value on the far side of the branch cut, so this answered 'i*-2' where
 # '(0-4)^0.5' answered 'i*2'.
 >> (-4)^0.5
-1.2246468e-16+i*2
+~1.2246468e-16+i*2
 
 >> (0-4)^0.5
-1.2246468e-16+i*2
+~1.2246468e-16+i*2
 
 # 'i' is the imaginary unit only when it is not the start of a longer name.
 # Every identifier beginning with 'i' used to be a syntax error.

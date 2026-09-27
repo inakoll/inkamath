@@ -148,6 +148,17 @@ public:
 protected:
 };
 
+// '~', which makes its operand inexact.
+template <typename T>
+class InexactExpression : public UnaryExpression<T> {
+public:
+    explicit InexactExpression(PExpression<T> e) : UnaryExpression<T>(e) {}
+
+    PExpression<T> accept(TransformationVisitor<T>& v) override { return v.visit(this); }
+
+    T accept(FoldingVisitor<T>& v) override { return v.visit(this); }
+};
+
 template <typename T>
 class MultExpression : public BinaryExpression<T>
 {

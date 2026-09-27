@@ -29,6 +29,11 @@ int AsIndex(const T& value) {
         throw std::runtime_error("an index must be a whole number, not "
                                  + numeric_interface<T>::toString(value));
     }
+    // Taken as a whole number, an approximated index would lose its '~'.
+    if (!numeric_interface<T>::exact(value)) {
+        throw std::runtime_error("an index must be exact, and " +
+                                 numeric_interface<T>::toString(value) + " was approximated");
+    }
     return index;
 }
 

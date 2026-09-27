@@ -184,6 +184,7 @@ C59, and no amount of reading would have shown C48.
 
 | | |
 |---|---|
+| C65 `[fixed]` | **A class-type number stopped compiling at phase 10, and nothing said so.** The comparisons ask `numeric_interface` for a value's real and imaginary parts, and the specialisations for `double` and `complex` answer; the generic path -- the one every class goes through -- forwarded neither, so `Interpreter<Rational>`, which *Other number systems* cites as running, failed inside `matrix.hpp` from phase 10 on. The same shape as C44: a type satisfying everything the concepts state, rejected deep in the template. Found by rerunning that experiment while specifying phase 13, whose number type is a class and is the test: two forwarding lines, without which it does not build. |
 | C60 `[fixed]` | **An arrow key trapped the prompt.** The REPL read lines with `getline`, so an arrow arrived as its escape sequence, `\x1b[D`, and the `[` in it counted as an open bracket: `1+2`, Left, Enter asked `..` for the rest of a line that had never been open, and kept asking until a `]` was typed. C52 made that possible by continuing a line whose brackets are open; before it, an arrow was only an `unexpected character`. At a terminal the prompt now edits the line -- the arrows, Home and End, history on Up and Down, Ctrl-C to drop a line -- in a header of its own rather than a library, which §5 rules out and which for GNU readline would have made the binary GPL. What keeps it small is that the language is ASCII: the hard part of a line editor is how wide a character is, and nothing wider than one column can be part of a line here. One trap on the way: switching the terminal's mode with `TCSAFLUSH` discards what is waiting to be read, and a pasted matrix is several lines that arrive at once -- the prototype kept the first and hung at `..`. A pipe, a file and the transcripts are read exactly as before. The Windows console half is checked by CI for building and nothing more: no runner has a console to press an arrow key in. |
 | C59 `[fixed]` | **`isalpha` and `isdigit` were called with a plain `char`.** Passing a negative value to a `<cctype>` function is undefined, and every byte of an accented letter typed at the prompt is negative on the platforms where `char` is signed; `Reference_Lexer` and the lexer's default case did it on each one. glibc happens to answer for the whole signed range and no sanitizer says a word, so nothing here observably misbehaves -- which is why three of the six call sites had the cast and three did not. All six have it now. No test: a test can only assert what the platform already does, and the next platform is the one that would break. |
 | C58 `[fixed]` | **A tab was an error, and so was every line of a file written on Windows.** The lexer's whitespace case was `' '` and nothing else, so `1<tab>+2` answered *unexpected character* -- and since `getline` leaves the `\r` of a CRLF line in place, piping such a file to the REPL made every line of it an error, naming a character that prints as nothing. Anything pasted from an editor that indents with tabs failed the same way. A tab and a carriage return separate as a space does now. |
@@ -203,7 +204,7 @@ C59, and no amount of reading would have shown C48.
 | C44 `[fixed]` | **The concepts do not ask for what the product needs.** `Matrix::mul` accumulates with `c(i,j) += ...`, and neither `Numeric` nor `Parsable` mentions `+=` on the cell type. It goes unnoticed because the concept checks `a*b` as an expression and a template body is not instantiated by overload resolution, so the requirement only bites when someone supplies a number type and gets a template error inside `matrix.hpp` rather than a concept failure at the interface. Found by instantiating `Interpreter<Rational>`: a type that satisfied everything the concepts state still failed to compile. Stated, in the one line `Numeric`'s requires-clause had room for. Writing the accumulation as `c(i,j) = c(i,j) + ...` instead would have asked less of the type at the cost of a copy per term, which is the wrong trade for a bignum. No test: the only one that proves it is an out-of-tree instantiation, and a negative concept test -- a type built to satisfy everything but this -- costs more than it protects. |
 | C43 `[fixed]` | **A number could not start with the point.** `.5` reported `unexpected character '.'`, while `1e3`, `0x10` and `2i` all lexed -- the exotic spellings worked and the common one did not, because the lexer's case list holds the ten digits and nothing else. `strtod` reads `.5` without being asked; only the dispatch was missing. A point that does not begin a number still reports the same message, so `a.b` is unchanged. |
 | C42 `[fixed]` | **The factorial answered for every argument it had no business accepting.** `!5.5` was `120`, `!(0-3)` was `1`, `!(2+i*3)` was `2` and `!i` was `1`. The loop multiplies `i` while `i <= n`, so a fraction truncates, a negative gives the empty product, and the complex layer passed `a.real()` down without looking at the rest, dropping the imaginary part before the loop ever saw it. Four plausible numbers where there should be four diagnostics, which is C13 in an operator nobody had pointed at -- the corpus tested `!5` and `!0` and stopped. Found by typing `!5.5` while checking what the lexer accepts. |
-| C41 `[kept]` | **A block that does not fill its band continues with its own last cell.** `[a, [3 4]]`, with `a` 2x2, gives `1 2 3 4 / 3 4 4 4`; `[[1 2 3], a]` fills a whole row with `3 3 3`. The code says so in as many words -- *"extend the previous (up and left) evaluated cell result"* -- so it is deliberate, and read charitably the rule is **a block continues with its last value**, which is an ellipsis: `[a, 0]` pads the band with zeros and `[a, 1]` with ones, and that is a notation a matrix wants. The author does not remember the use case and suspects exactly this: an attempt at the `...` of matrix notation. Where it stops being statable is the multi-cell block, where continuing `[3 4]` with `4 4` is a corner repeated rather than a continuation anybody wrote. It is the third answer to one question -- a literal's short row pads with zeros (README.md section 2), a single value stretches, a short block repeats a corner -- and only the first two can be said out loud. **Decision: kept, and recorded as it is** in `matrices.ink` with the entry saying so. Not turned into a diagnostic while it may still be the residue of an idea; when the idea is found or ruled out, this goes and an explicit notation for the continuation replaces it, rather than a fourth fill rule. |
+| C41 `[kept]` | **A block that does not fill its band continues with its own last cell.** `[a, [3 4]]`, with `a` 2x2, gives `1 2 3 4 / 3 4 4 4`; `[[1 2 3], a]` fills a whole row with `3 3 3`. The code says so in as many words -- *"extend the previous (up and left) evaluated cell result"* -- so it is deliberate, and read charitably the rule is **a block continues with its last value**, which is an ellipsis: `[a, 0]` pads the band with zeros and `[a, 1]` with ones, and that is a notation a matrix wants. The author does not remember the use case and suspects exactly this: an attempt at the `...` of matrix notation. Where it stops being statable is the multi-cell block, where continuing `[3 4]` with `4 4` is a corner repeated rather than a continuation anybody wrote. It is the third answer to one question -- a literal's short row pads with zeros (README.md section 2), a single value stretches, a short block repeats a corner -- and only the first two can be said out loud. **Decision: kept, and recorded as it is** in `matrices.ink` with the entry saying so. Not turned into a diagnostic while it may still be the residue of an idea; when the idea is found or ruled out, this goes and an explicit notation for the continuation replaces it, rather than a fourth fill rule. Phase 13 leaves `...` unclaimed for it. |
 | C40 `[fixed]` | **A matrix could be built and never read.** `a(1,2)` was `a takes no arguments` and `a_1` was `a is not a sequence`: the language had no way at all to get a value back out of a matrix, which is half of what the second of the three ideas is for. `Matrix::operator()` was there, with a good out-of-range message, and nothing in the language reached it. `m[i,j]` now does, one-based as the rows and columns are written, and composing with everything a name can carry -- `f(3)[1,2]` and `s_3[1,2]` both work. The brackets were chosen over parentheses to match array indexing elsewhere, and they collide with the matrix literal in exactly one place: inside a literal, and inside an argument list, a space between two expressions separates them, so `[[1 2] [3 4]]` is a row of two blocks. Outside one, juxtaposition means nothing, and the brackets index whatever is in front of them -- `[1 2;3 4][2,1]` and `(a*a)[1,1]` both work. Inside one, only a name takes an index, which leaves a single form changed: `[a [3 4]]`, a row of blocks whose second follows a name with a space, now reads as an index of `a` and reports that it needs a row and a column. That form was legal, unused in the corpus and in `README.md`, and is written `[a, [3 4]]` instead; the change turns it into a diagnostic rather than a wrong answer. `Matrix::Offset` takes a signed index so that `m[0-1,1]` names the row it asked for instead of one that wrapped. |
 | C39 `[fixed]` | **A limit that cannot be taken reports an internal-sounding reason.** `lim k` on a sequence of matrices said `a matrix has no absolute value`, which names neither the sequence nor what the interpreter was doing when it needed one. Every other refusal from `lim` names the sequence -- `k has no general clause, so it has no limit`. It now reads `k has no limit: a matrix has no absolute value`, keeping the reason and adding the context, which also covers the case where the terms change size between iterations. |
 | C38 `[fixed]` | **A scalar stretches over a matrix for `*` and for nothing else.** `a*2` and `2*a` worked, `a/2`, `a-1` and `1+a` all reported `these matrices have different sizes`. The scalar case lived in `mul`, which needs one because matrix multiplication does; `BinaryOp`, behind `+`, `-` and `/`, compared extents and gave up. Nothing chose that: `/` is documented as working cell by cell, and a literal already stretches a scalar -- `[a; 1]` spreads the 1 across the block above it. `a*0.5` working while `a/2` did not is the sharp form. Now a single value stretches on either side of all four, with the operand order kept, so `1-a` subtracts each cell from one. |
@@ -950,7 +951,7 @@ decision rather than something to slip in. *Both* is a rational over a bignum,
 which is the real prize and the real cost. The question worth answering first
 is not whether it works but what the prompt should be: one interpreter per
 number type, chosen when it is built, or a language where the kind of a number
-is part of the number.
+is part of the number. Taken up as phase 13, for the second.
 
 **A standard library.** There are no functions: `sqrt` is `^0.5`, `exp` is
 `e^x`, and `ln`, `sin` and `cos` are nothing at all. Two shapes, and they are
@@ -1248,6 +1249,208 @@ it, so an unclosed bracket there is its error rather than a line to continue,
 and an entry that is only a comment is evaluated rather than skipped. All ten
 goldens now come back exactly. No parsing library: five flags are a loop over
 `argv`.
+
+---
+
+## Phase 13 — Exact numbers `[step 1 done, shown as decimals]`
+
+The kind of a number becomes part of the number: `1/3+1/3+1/3` is `1`, not
+nearly one, and `1/10*3 == 3/10` holds. This answers the question *Other
+number systems* left open, and answers it against one interpreter per number
+type, on a measurement: `Interpreter<Rational>` over two `long long`s truncated
+`pi` to `3` and `e` to `2`, refused `2^(1/2)`, wrapped `!21` and the harmonic
+number `h_50` to negative numbers, and failed the exponential series with
+*division by zero* when a denominator wrapped to 0. The constants, the roots and
+most limits -- the language's signature -- can only be approached, so an exact
+interpreter must refuse them or lie; and a mode chosen on the command line would
+make the meaning of a file depend on how the interpreter was started. This is
+Scheme's numeric tower instead: exact where it can be, inexact where it must be,
+and visibly which.
+
+In two steps, each worth shipping alone:
+
+1. **Exact fractions over 64 bits.** A result whose reduced numerator or
+   denominator does not fit becomes inexact -- never wrong, never refused.
+2. **A bignum, written here** rather than depended on (section 5 of CLAUDE.md),
+   which moves the end of exactness from 2^63 to never.
+
+Specified first, in `test/data/spec/exact.ink`, 29 of its 57 entries failing.
+The 28 that passed were 13 definitions echoing themselves, 11 inexact values the
+rules leave alone, and four exact answers a double happens to get right --
+`1/3+1/3+1/3`, `6/3`, `dbl(1/2)` and an inverse multiplied back to the
+identity -- which still tested something, because an inexact 1 prints `1.`.
+Step 1 passed it as written on the first build; it is now `test/data/exact.ink`
+with every expected output unchanged, and the spec suite retires again.
+
+What the specification decides:
+
+- **A literal written as a whole number is exact.** A point or an exponent
+  makes it inexact -- so does `0x10`, which reads only because `strtod` does --
+  as do `pi`, `e`, `i`, a power that is not whole, `lim` and a sum without an
+  upper bound; and an inexact number makes inexact whatever it touches. A
+  literal too large for 64 bits is inexact, as an overflow is.
+- **An exact number prints as the literal that makes it** (C52): a whole number
+  in full, anything else as a reduced fraction with its sign on the numerator:
+  `10/4` answers `5/2`.
+- **An inexact number prints as today, with a trailing point wherever the
+  printed form would read as whole**: `1e3` is `1000.`, `i*i` is `-1.`, and a
+  sum that approaches 2 is `2.`. The rule is on the printed form, not the value.
+- **`lim` is inexact even when it lands on a whole number** -- it approaches, it
+  does not reach -- which moves `lim lt` in `sequences.ink` from `5` to `5.`.
+- **Division by an exact zero is an error.** `1/0` and `0/0` stop answering
+  C31's complex infinity and NaN.
+- **The boundary is the reduced result's, nearly.** The specification stays
+  well clear of it -- `h_30`'s denominator fits by six orders of magnitude,
+  `h_50`'s misses by two -- and the implementation reduces before it multiplies
+  (Knuth's method), so a product or quotient is exact exactly when its reduced
+  result fits. A sum is not quite: its two cross products can overflow when
+  their difference would not, and their sum can exceed the result by a common
+  factor still to come out. A fuzz at the edge found it -- 3 of 4000 sums of
+  fractions near 2^63 went inexact though their results fit, none of 15000
+  ordinary expressions did, and none was wrong. Closing it needs 128-bit
+  division, which is step 2's bignum by another name; MSVC has neither
+  `__int128` nor `__builtin_mul_overflow`, so the checks are written out.
+- **A memo key carries the kind** (as C50's had to carry the shape): `dbl(1/2)`
+  is `1`, `dbl(0.5)` is `1.`, whichever is asked first.
+- Out of scope: exact complex numbers.
+
+The first thing the implementation met was already broken: since phase 10 a
+class-type number did not compile, because the comparisons ask
+`numeric_interface` for real and imaginary parts and the generic path -- the
+one a class goes through -- had neither (C65, fixed first).
+
+`Number` is that class: an exact fraction of two `long long`s, or a
+`complex<double>` once inexact, marked by a zero denominator. Every field is
+always set and nothing pads them, because a memo key is a value's bytes -- so
+`dbl(1/2)` and `dbl(0.5)` are different keys without anyone asking. An inexact
+number goes through the `complex<double>` code it always went through, which is
+why no inexact answer moved; one rule in `Convergence` makes a limit inexact for
+`lim` and an unbounded sum alike. Checked, besides the goldens, against Python's
+`Fraction` on 15000 random expressions -- every exact answer identical, every
+division by zero an error on both sides -- and on 4000 sums, differences,
+products and quotients of fractions near 2^63 under the sanitizers, with no
+report and no wrong answer. It costs 303 lines of header, 282 of them
+`number.hpp`: a feature, and the largest single addition since phase 10.
+
+What moved, all in the one commit and each by a rule above: quotients to
+fractions in `basics.ink`, `matrices.ink`, `sequences.ink` and `README.md`;
+inexact whole numbers gaining their point (`1.5+.5`, `.5e2`, `i*i`,
+`(1+i)*(1-i)`, `0.5^3000000000`); `lim lt` and `sum_(k=0) 1/2^k`; and the
+diagnostic for an index too large, which now quotes `2147483648` as typed
+rather than `2.14748365e+09`. Three entries needed an inexact input to keep
+their purpose -- C31's `1/0` and `0/0`, and the NaN that passes a guard -- since
+an exact zero now cannot be divided by. One moved for a reason no rule states:
+`lim exp(1)-e`, from `-8.149037e-13` to `-8.15347789e-13`. The partial sums are
+exact now, so the only error left is `e` itself as a double -- 1.4e-16 against
+the true remainder, where the accumulated sum was 5.8e-16 off.
+
+### Shown as decimals `[done]`
+
+Revised before step 1 reached master. A fraction is exact, and alien to a
+reader who does not care whether an answer is; and a decimal need not go
+through a double -- long division of an exact fraction gives as many correct
+digits as are asked for, all fifty of `ex(1)_40`'s matching `e`. A decimal
+cannot hold most exact numbers whole: `1/97` repeats every 96 digits and
+`h_30` every 11,088.
+
+Specified in `test/data/spec/decimals.ink`, 62 of its 91 entries failing. The
+29 that pass are 18 definitions echoing themselves, four whole numbers already
+printed in full, `1/3+1/3+1/3`, `2+3*i`, three inexact answers that happen to
+print today as their exact successors will, and the two ellipses, errors meant
+to stay errors. Every expected output was computed from the exact value by a
+reference printer written apart from the interpreter, which caught one guess:
+`!52/(!5*!47)` through double factorials is exactly `2598960`, so it prints
+unmarked.
+
+What it decides, revising step 1's display:
+
+- **Every number prints in decimal**: an exact whole number in full, anything
+  else rounded to 9 significant digits, with an exponent below 1e-4 and from
+  10^9 up.
+- **`~` in front says the digits are not the whole value**, whatever the kind:
+  `2/3` is `~0.666666667`, `pi` is `~3.14159265`. Rounding and `~` belong
+  together -- "about" is true of a rounded decimal, where an ellipsis claims
+  the digits continue, and `0.666666667...` claims a 7 that 2/3 does not have.
+  An inexact number that is exactly what is printed needs no mark (`i*i` is
+  `-1`), a complex number is marked part by part where it is inexact, and step
+  1's trailing point goes.
+- **`~` is also an operator**: in front of anything, it makes it inexact, so
+  every answer reads back as what it says it is, and `root_0 = ~1` starts an
+  approximate iteration. With a bignum that is no nicety -- exact Newton's
+  method doubles its digits every step, 392 at the tenth and 401,370 at the
+  twentieth -- and step 2 should keep a bound past which a result goes
+  inexact, as 64 bits does now, so that a forgotten `~` costs speed and not the
+  session.
+- **A literal is exact as written**, point and exponent included, so
+  `0.1*3 == 0.3` holds. This reverses step 1's rule that a point makes a
+  literal inexact.
+- **`frac` begins a line and shows its answer as the exact fraction**, and
+  refuses an approximation. The default display may hide the kind; `frac`
+  shows it.
+- **`digits = n` sets how many significant digits are shown**, in the session
+  and so in the file that needs it. An inexact number shows 17 at most, which
+  is where an exact partial sum of `e` overtakes the built-in one.
+- **`...` stays unclaimed**, for the matrix notation C41 suspects. An ellipsis
+  marking approximations was specified first and dropped: it had to mean "the
+  digits continue" for an exact number and "about" for an inexact one, and
+  could not honestly mean both.
+
+It passed as written on the first build; it is now `test/data/decimals.ink`
+with every expected output unchanged, and the spec suite retires again. The
+printer is exact, not a `printf` of a double: long division for a fraction,
+and for a double every one of its digits from `to_chars` -- at most 767 --
+rounded half to even as a string. Fuzzed against the reference printer on
+36000 fractions and doubles at digits from 1 to 40, where it found step 1's
+conversion to a double rounding twice: numerator and denominator became
+doubles before they were divided, so `~9.233944204712703` was a double off
+once the fraction had more than 53 bits, which exact decimal literals made
+common. It is a binary long division now, checked on 4000 halfway cases.
+`frac` and `digits` are reserved and begin a line; anywhere else they are an
+error. `digits` stops at 1000: printing is linear in the digits, some
+25 ns and 20 bytes of peak memory a digit in every cell (measured), and
+without a ceiling `digits = 10^7` made a 2x3 matrix cost 1.6 s and 200 MB.
+An index -- of a sequence, a cell or a series -- must be exact, as in Scheme:
+taken as a whole number, `s_(~2)` dropped its `~` and answered an exact term,
+and shared `s_2`'s memo key. `frac`'s refusal says a number *was approximated*
+rather than *is approximate*: after `4^0.5` prints a plain `2`, "2 is
+approximate" contradicted the line above it.
+
+Measured against master on the earlier workloads, exact numbers first cost
+integer matrices 7.6x and sequences 1.5-1.8x: every whole-number product paid
+for gcds of 1, found by 64-bit divisions, and every mixed operation converted
+its exact operand by long division. Whole numbers now skip the gcds, and a
+fraction whose parts fit in 53 bits converts by one division, already
+correctly rounded. Both return what the general code did -- 184,000 lines of
+output identical before and after -- and leave matrices at 1.7x, exact
+sequences at 1.3x and inexact ones at 1.05-1.2x; printing and one-line
+expressions are 8% faster than master. A diagnostic that quotes a number
+quotes it at 9 digits whatever the setting, because it is written before the
+session's display is known.
+
+What moved: every quotient and approximation in the goldens and `README.md`,
+from fractions and bare doubles to decimals and `~`; step 1's trailing points,
+gone. `exact.ink` kept its entries and its purpose, but six showed the kind
+through the display, which now hides it when the digits are all of the value:
+they show it through `frac` instead, with `~0.5` where step 1 wrote `0.5`, and
+`[1/2 0.5]*2` became `[1/10 ~0.1]*3`. C31's `1/0.` and `0/0.` and the guarded
+NaN are `1/~0`, `0/~0` and `0/~0` for the same reason, and answer as they did
+before step 1.
+
+Deferred, to come back to: **`exact`**, showing an exact number losslessly in
+decimal, its repeating block in parentheses -- `2/3` as `0.(6)`, `22/7` as
+`3.(142857)` -- which reads back exactly. At 9 digits the block fits for 64 of
+the 99 denominators from 2 to 100; where it does not, `exact` should give the
+fraction instead, so that it is always exact and never an error.
+
+**What asked for it.** Step 1 showed the digits only by accident.
+`sequences.ink` says twenty terms of Aitken's acceleration beat a hundred raw
+ones, and showed it as `q_100` = `0.688172179` beside `r_20` =
+`6938333221/10010080080` -- the claim still true, no longer visible. `README.md`
+compares `y_20` with `pi^2/6` digit for digit, and `y_20` survived only because
+its exact value overflows; with a bignum it would print
+`445714427153104648117/270961879956768000000`. A fraction is the right answer
+and the wrong display wherever the point is to compare digits, which is most of
+the places a number is read.
 
 ---
 

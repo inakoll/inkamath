@@ -50,6 +50,7 @@ concept Numeric =
     { numeric_interface<T>::abs(a) > 1.0 } -> std::convertible_to<bool>;
     { numeric_interface<T>::toInt(a) } -> std::convertible_to<int>;
     { numeric_interface<T>::toString(a) } -> std::convertible_to<std::string>;
+    { numeric_interface<T>::inexact(a) } -> std::convertible_to<T>;
 };
 
 // What the lexer needs of the type it reads numbers into.
@@ -75,6 +76,12 @@ public:
 
     Result Eval(const std::string& s);
 
+    // An answer as this session shows it.
+    [[nodiscard]] std::string Show(const U& value) const {
+        return U::toString(
+            value, [this](const T& x) { return numeric_interface<T>::toString(x, digits_); });
+    }
+
     void ResetInterpreter(void);
 
 private:
@@ -82,7 +89,7 @@ private:
     void Number_Lexer(const std::string& s, size_t& i);
     void Reference_Lexer(const std::string& s, size_t& i);
 
-    PExpression<U> ParseAll();
+    PExpression<U> ParseAll(size_t first = 0);
     PExpression<U> Parse();
     PExpression<U> ParseEqualExpr();
     // `lead`, where given, is a leading operand the caller has already parsed.
@@ -120,6 +127,15 @@ private:
     static bool IsSeries(const Token<T>& token) {
         return token.type == Func && (token.text == "sum" || token.text == "prod");
     }
+    static bool IsWord(const Token<T>& token, const char* word) {
+        return token.type == Func && token.text == word;
+    }
+    // 'frac' and 'digits' are about the whole answer, so they begin a line.
+    static bool BeginsLine(const Token<T>& token) {
+        return IsWord(token, "frac") || IsWord(token, "digits");
+    }
+    bool   DefinesReserved() const;
+    Result Digits(const std::string& s);
 
     // One line cannot be allowed to exhaust the C++ stack. Token count bounds
     // every recursion that a line can provoke -- the parser's, the evaluator's
@@ -128,6 +144,10 @@ private:
     // parentheses and the release build at about 8000, so 1000 tokens cannot
     // reach either -- on an 8 MB stack, which CMakeLists.txt gives Windows too.
     static constexpr size_t max_tokens = 1000;
+
+    // Printing costs some 25 ns and 20 bytes a digit in every cell, measured:
+    // a thousand keeps an answer to a page and a 100x100 matrix to a second.
+    static constexpr int max_digits = 1000;
 
     bool AtEnd() const {return m_i >= m_tokens.size();}
     const Token<T>& Peek() const {return m_tokens[m_i];}
@@ -155,6 +175,7 @@ private:
 
     PExpression<U> m_E;
     ReferenceStack<U> stack_;
+    int               digits_ = numeric_interface_precision;
 };
 
 template <Parsable T, Numeric U>
@@ -264,6 +285,9 @@ void Interpreter<T,U>::Lexer(const std::string& s)
         case '?':
             m_tokens.push_back(Token<T>(Query, std::string(1, s[i])));
             break;
+        case '~':
+            m_tokens.push_back(Token<T>(Approx, std::string(1, s[i])));
+            break;
         case ' ':
         // A tab is what a pasted line is indented with, and a '\r' is what a
         // line written on Windows ends with. Neither was typed to be read.
@@ -316,6 +340,9 @@ void Interpreter<T,U>::Lexer(const std::string& s)
     }
 
     if (m_tokens.empty()) Fail("empty expression");
+    for (size_t token = 1; token < m_tokens.size(); ++token) {
+        if (BeginsLine(m_tokens[token])) Fail(m_tokens[token].text, " can only begin a line");
+    }
 }
 
 template <Parsable T, Numeric U>
@@ -360,9 +387,8 @@ void Interpreter<T,U>::Reference_Lexer(const std::string &s, size_t& i)
 }
 
 template <Parsable T, Numeric U>
-PExpression<U> Interpreter<T,U>::ParseAll()
-{
-    m_i = 0;
+PExpression<U> Interpreter<T, U>::ParseAll(size_t first) {
+    m_i              = first;
     PExpression<U> e = Parse();
     if (!AtEnd())
     {
@@ -642,6 +668,11 @@ PExpression<U>  Interpreter<T,U>::ParseSimpleExpr()
             e.reset(new FactExpression<U>(ParsePowExpr()));
 			break;
 
+        case Approx:
+            ++m_i;
+            e = std::make_shared<InexactExpression<U>>(ParsePowExpr());
+            break;
+
         case LPar:
             ++m_i;
             e = Parse();
@@ -841,49 +872,93 @@ PExpression<U> Interpreter<T,U>::ParseSubExpr()
     return e;
 }
 
+// 'frac(x) = x' and the like: a definition of a word that was a name before it
+// was reserved. An '=' outside brackets is what makes a line a definition.
+template <Parsable T, Numeric U>
+bool Interpreter<T, U>::DefinesReserved() const {
+    const Type next = m_tokens.size() > 1 ? m_tokens[1].type : Val;
+    if (next != LPar && next != Sub && next != Guard &&
+        !(next == Equal && IsWord(m_tokens[0], "frac")))
+        return false;
+    int depth = 0;
+    for (size_t token = 1; token < m_tokens.size(); ++token) {
+        const Type type = m_tokens[token].type;
+        depth += (type == LPar || type == LBra) - (type == RPar || type == RBra);
+        if (type == Equal && depth == 0) return true;
+    }
+    return false;
+}
+
+// 'digits' reads how many significant digits an answer shows, and
+// 'digits = n' sets it.
+template <Parsable T, Numeric U>
+typename Interpreter<T, U>::Result Interpreter<T, U>::Digits(const std::string& s) {
+    if (m_tokens.size() == 1) return U(T(digits_));
+    if (m_tokens[1].type != Equal) Fail("unexpected '", m_tokens[1].text, "'");
+    const PExpression<U> e = ParseAll(2);
+    if (dynamic_cast<EqualExpression<U>*>(e.get())) {
+        Fail("digits takes a number, not a definition");
+    }
+    EvaluationVisitor<U>              evaluator(stack_);
+    typename ReferenceStack<U>::Frame line(stack_);
+    const U                           value = e->accept(evaluator);
+    const bool                        scalar = value.Size() == Extent{1, 1};
+    if (scalar && value(1, 1) > T(max_digits)) {
+        Fail("digits can be ", max_digits, " at most, not ", Show(value));
+    }
+    const int digits = scalar ? numeric_interface<U>::toInt(value) : 0;
+    if (digits < 1 || !(value(1, 1) == T(digits))) {
+        Fail("digits must be a whole number of at least 1, not ", Show(value));
+    }
+    digits_ = digits;
+    return Echo{AsWritten(s)};
+}
 
 template <Parsable T, Numeric U>
-typename Interpreter<T,U>::Result Interpreter<T,U>::Eval(const std::string& s)
-{
+typename Interpreter<T, U>::Result Interpreter<T, U>::Eval(const std::string& s) {
     Result result{U()};
-    try
-    {
+    try {
         /* the following functions might throw some evaluation errors */
         stack_.BeginEvaluation();
         Lexer(s);
-        if(m_tokens[0].type == Query)
-        {
-            result = Echo{ParseQuery()};
+        const bool fraction = IsWord(m_tokens[0], "frac");
+        if (BeginsLine(m_tokens[0]) && DefinesReserved()) {
+            Fail(m_tokens[0].text, " is reserved, so it cannot be defined");
         }
-        else
-        {
-            m_E = ParseAll();
+        if (m_tokens[0].type == Query) {
+            result = Echo{ParseQuery()};
+        } else if (IsWord(m_tokens[0], "digits")) {
+            result = Digits(s);
+        } else {
+            m_E = ParseAll(fraction ? 1 : 0);
             EvaluationVisitor<U> evaluator(stack_);
-            if(EqualExpression<U>* definition = dynamic_cast<EqualExpression<U>*>(m_E.get()))
-            {
+            if (EqualExpression<U>* definition = dynamic_cast<EqualExpression<U>*>(m_E.get())) {
+                if (fraction) Fail("frac shows an answer, not a definition");
                 evaluator.Bind(definition, AsWritten(s));
                 result = Echo{AsWritten(s)};
-            }
-            else
-            {
+            } else {
                 // A line being evaluated opens a scope, so a local lives
                 // exactly as long as the line that wrote it. A line that is
                 // only a definition is a definition, parentheses or not, and
                 // takes the branch above.
                 typename ReferenceStack<U>::Frame line(stack_);
-                result = m_E->accept(evaluator);
+                const U                           value = m_E->accept(evaluator);
+                if (fraction) {
+                    result = Echo{U::toString(value, [this](const T& x) {
+                        return numeric_interface<T>::fraction(x, digits_);
+                    })};
+                } else {
+                    result = value;
+                }
             }
         }
-    }
-    catch (const std::exception& e)
-    {
+    } catch (const std::exception& e) {
         // Deliberately not catch(...): an exception that is not std::exception
         // is our bug, and laundering it into a diagnostic would hide it.
         result = Diagnostic{e.what()};
     }
-    ResetInterpreter(); // reset whatever happens and forgive the user
+    ResetInterpreter();  // reset whatever happens and forgive the user
     return result;
 }
-
 
 #endif

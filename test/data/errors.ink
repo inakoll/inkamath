@@ -95,7 +95,7 @@ error: an index must be a whole number, not 0.5
 ix=[1 2;3 4]
 
 >> ix[2147483648,1]
-error: an index must be between -2147483648 and 2147483647, not 2.14748365e+09
+error: an index must be between -2147483648 and 2147483647, not 2147483648
 
 >> ix[0-1e20,1]
 error: an index must be between -2147483648 and 2147483647, not -1e+20
@@ -135,10 +135,11 @@ inf
 # A part that is NaN is present but has no sign, and answers false to every
 # comparison, so the imaginary unit used to be dropped while its magnitude was
 # still printed: these read 'inf*-nan' and '-nan*-nan' (MODERNIZATION.md, C31).
->> 1/0
+# The zero is inexact because an exact one cannot be divided by (phase 13).
+>> 1/~0
 inf+i*-nan
 
->> 0/0
+>> 0/~0
 -nan+i*-nan
 
 # An exponent outside int's range used to be converted to one anyway, which is
@@ -149,6 +150,14 @@ inf
 >> 0.5^3000000000
 0
 
+# A negative power was one over the positive power, which overflows first:
+# both answered 0, next to the smallest double.
+>> 2^-1074
+~4.94065646e-324
+
+>> (2*i)^-1074
+~-4.94065646e-324
+
 # Mathematics writes a multiplication by writing nothing; this language does
 # not. The hint used to be given only for '(' -- '2 3' above is the same
 # mistake and got only 'unexpected' (MODERNIZATION.md, C35).
@@ -157,4 +166,37 @@ error: unexpected 'pi' -- the operator '*' is probably missing
 
 >> 3(4)
 error: unexpected '(' -- the operator '*' is probably missing
+
+# 'frac' and 'digits' are about a whole line, and say so anywhere else
+# (MODERNIZATION.md, phase 13).
+>> frac x = 1
+error: frac shows an answer, not a definition
+
+>> 2*digits
+error: digits can only begin a line
+
+>> digits = [1 2]
+error: digits must be a whole number of at least 1, not [1, 2]
+
+>> digits = x = 3
+error: digits takes a number, not a definition
+
+# They were names before, and a definition of one says why it is refused.
+>> frac(x) = x
+error: frac is reserved, so it cannot be defined
+
+>> frac_n = n
+error: frac is reserved, so it cannot be defined
+
+>> frac = 3
+error: frac is reserved, so it cannot be defined
+
+>> digits(x) = 1
+error: digits is reserved, so it cannot be defined
+
+>> digits_n | n > 1 = n
+error: digits is reserved, so it cannot be defined
+
+>> frac (1/3)
+1/3
 

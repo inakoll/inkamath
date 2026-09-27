@@ -123,8 +123,8 @@ error: a cell needs a row and a column, as 'm[1,2]'
  -2, -3]
 
 >> 2/a
-[          2,   1;
- 0.666666667, 0.5]
+[           2,   1;
+ ~0.666666667, 0.5]
 
 # Three or more rows or columns. The block offsets were a prefix sum that
 # added only the previous element instead of the running total, so the result

@@ -1,5 +1,4 @@
 #include <algorithm>
-#include <complex>
 #include <fstream>
 #include <iostream>
 #include <sstream>
@@ -8,6 +7,7 @@
 #include <vector>
 
 #include "inkamath/interpreter.hpp"
+#include "inkamath/number.hpp"
 #include "inkamath/numeric_interface.hpp"
 
 #include "line_editor.hpp"
@@ -31,7 +31,7 @@ static bool unclosed(const string& text)
     return depth > 0;
 }
 
-using Interp  = Interpreter<complex<double>>;
+using Interp  = Interpreter<Number>;
 using Outcome = LineEditor::Outcome;
 
 static const char help[] = R"(Usage: inkamath [options] [file...]
@@ -85,14 +85,14 @@ static vector<Queued> inputs(istream& in) {
     return queued;
 }
 
-static string render(const Interp::Result& result) {
+static string render(const Interp& interpreter, const Interp::Result& result) {
     ostringstream out;
     if (const Diagnostic* error = get_if<Diagnostic>(&result)) {
         out << "error: " << error->message;
     } else if (const Echo* echo = get_if<Echo>(&result)) {
         out << echo->text;
     } else {
-        out << get<Interp::matrix_type>(result);
+        out << interpreter.Show(get<Interp::matrix_type>(result));
     }
     return rstrip(out.str());
 }
@@ -183,7 +183,7 @@ int main(int argc, char* argv[]) {
         if (read == Outcome::cancelled) continue;
 
         const Interp::Result result = p.Eval(s);
-        const string         answer = render(result);
+        const string         answer = render(p, result);
         if (typed) {
             // The whole of a line that continued, so that recalling it gives
             // back something that reads.

@@ -26,6 +26,11 @@ public:
     // otherwise read as an internal error.
     explicit Convergence(std::string what) : what_(std::move(what)) {}
 
+    // A limit is approached and not reached, so it is inexact even when every
+    // value was exact and it lands on a whole number (MODERNIZATION.md,
+    // phase 13).
+    static T Limit(const T& value) { return numeric_interface<T>::inexact(value); }
+
     // The next value; true when it is the limit. The first is never: one value
     // has nothing to be compared with.
     [[nodiscard]] bool Next(const T& value) {

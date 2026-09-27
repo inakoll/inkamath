@@ -4,13 +4,28 @@
 #include <string>
 #include <utility>
 
-enum Type
-{
-    Add,Mult,Min,Div,Pow,Fact,Equal, Sub,
-    Compare, Guard,
-    Val,Func, Ref,
-    LPar,RPar,LBra,RBra,
-    Comma, Semico, Query
+enum Type {
+    Add,
+    Mult,
+    Min,
+    Div,
+    Pow,
+    Fact,
+    Equal,
+    Sub,
+    Compare,
+    Guard,
+    Val,
+    Func,
+    Ref,
+    LPar,
+    RPar,
+    LBra,
+    RBra,
+    Comma,
+    Semico,
+    Query,
+    Approx
 };
 
 template <typename T>

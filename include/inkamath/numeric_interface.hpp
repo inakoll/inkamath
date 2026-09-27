@@ -44,10 +44,18 @@ struct numeric_interface_imp
      static T one() {return T::one();}
      static int toInt(const T& a) {return T::toInt(a);}
      static std::string toString(const T& a) {return T::toString(a);}
+     static std::string   toString(const T& a, int digits) { return T::toString(a, digits); }
+     static std::string   fraction(const T& a, int digits) { return T::fraction(a, digits); }
      static T pow(const T& a, const T& b) {return T::pow(a,b);}
      static T cell(const T& a, int i, int j) {return T::cell(a,i,j);}
      static T compare(const T& a, const T& b, Comparison op) {return T::compare(a,b,op);}
      static bool truth(const T& a) {return T::truth(a);}
+     // A comparison asks for these (phase 10), and a class-type number goes
+     // through this path, so without them none compiled (MODERNIZATION.md, C65).
+     static T real(const T& a) { return T::real(a); }
+     static T imaginary(const T& a) { return T::imaginary(a); }
+     static T inexact(const T& a) { return T::inexact(a); }
+     static bool exact(const T& a) { return T::exact(a); }
 
      // Deduced: for a complex or a matrix these narrow to the scalar type.
      static auto fact(const T& a) {return T::fact(a);}
@@ -82,9 +90,15 @@ struct numeric_interface_imp<std::complex<T>,false>
 
     static T real(const std::complex<T>& a) {return a.real();}
     static T imaginary(const std::complex<T>& a) {return a.imag();}
+    static std::complex<T> inexact(const std::complex<T>& a) { return a; }
 
-    static std::string toString(const std::complex<T>& a)
-    {
+    static std::string toString(const std::complex<T>& a) {
+        return toString(a, [](const T& part) { return numeric_interface<T>::toString(part); });
+    }
+
+    // `part` prints a real number; the layout around it is the same whichever.
+    template <typename Part>
+    static std::string toString(const std::complex<T>& a, Part part) {
         const T real = a.real();
         T       imag = a.imag();
 
@@ -102,7 +116,7 @@ struct numeric_interface_imp<std::complex<T>,false>
         std::string s;
         if(has_real)
         {
-            s = numeric_interface<T>::toString(real);
+            s = part(real);
         }
         if(has_imag)
         {
@@ -117,7 +131,7 @@ struct numeric_interface_imp<std::complex<T>,false>
             }
             if(!(imag == 1))
             {
-                s += "*" + numeric_interface<T>::toString(imag);
+                s += "*" + part(imag);
             }
         }
         return s;
@@ -155,14 +169,22 @@ struct numeric_interface_imp<std::complex<T>,false>
     // libstdc++ does, in its order, so no answer on Linux moves.
     static std::complex<T> pow(const std::complex<T>& a, int b)
     {
-        unsigned        n = b < 0 ? 0u - static_cast<unsigned>(b) : static_cast<unsigned>(b);
-        std::complex<T> x = a;
+        const unsigned  n = b < 0 ? 0u - static_cast<unsigned>(b) : static_cast<unsigned>(b);
+        std::complex<T> y = Power(a, n);
+        if (b >= 0) return y;
+        // One over a power that overflowed is 0, where the answer may still be
+        // a double: 2^-1074 is the smallest one.
+        if (std::isfinite(y.real()) && std::isfinite(y.imag())) return std::complex<T>(1) / y;
+        return Power(std::complex<T>(1) / a, n);
+    }
+
+    static std::complex<T> Power(std::complex<T> x, unsigned n) {
         std::complex<T> y = n % 2 ? x : std::complex<T>(1);
         while (n >>= 1) {
             x = x * x;
             if (n % 2) y = y * x;
         }
-        return b < 0 ? std::complex<T>(1) / y : y;
+        return y;
     }
 
     static auto fact(const std::complex<T>& a)
@@ -224,6 +246,7 @@ struct numeric_interface_imp<T,true>
     static T one() {return 1;}
     static T real(const T& a) {return a;}
     static T imaginary(const T&) {return 0;}
+    static T inexact(const T& a) { return a; }
     // Converting a double outside int's range is undefined, and NaN is
     // undefined too; both clamp here, and the caller compares the answer with
     // what it was given to see that it did (MODERNIZATION.md, C56).
