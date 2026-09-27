@@ -1478,7 +1478,11 @@ What it decides:
   a 32-bit product fits in 64 bits on every compiler CI has, with schoolbook
   multiplication, Knuth's division and Euclid's gcd. At a thousand digits
   nothing cleverer should pay for its lines; that is to be measured, not
-  assumed.
+  assumed. Python is the yardstick, measured at a thousand digits: 10 us a
+  product, schoolbook below about 630 digits as ours will be; 160 us a gcd,
+  by Lehmer's method, which is where Euclid would lose; 82 us a `Fraction`
+  sum, the gcd and interpreted code on top. Lehmer's gcd, about a hundred
+  lines, goes in only if a sum at a thousand digits measures slower than that.
 
 What it costs before a line of it: **the memo key.** A key is a value's bytes,
 and a value on the heap has a pointer for bytes -- two equal values would be
@@ -1488,6 +1492,32 @@ output byte-identical and goes first. It also frees the layout: nothing needs
 a `Number` without padding any more, so it can hold a 64-bit fraction, a big
 one or a double in 24 bytes rather than 32, which is where the 1.7x on integer
 matrices most likely lives.
+
+## Phase 14 — The evaluator `[planned]`
+
+Measured against the same computation written in Python, inkamath's arithmetic
+is ahead and its evaluation is far behind: exact harmonic sums 169 ms against
+`Fraction`'s 302, a 20x20 integer matrix product 638 ms against lists' 1336,
+and a limit of doubles recomputed 6000 times 355 ms against a plain loop's 14.
+Python's side was a loop written by hand and inkamath's parses and runs its
+language, so the third is not a fair race -- but it says where the time goes,
+and it is not the numbers.
+
+A step of evaluation walks the tree through virtual calls, wraps every scalar in
+a 1x1 matrix, builds a string for every memo key and opens a scope frame. In
+order of cost to change: key by a hash rather than a string built per call,
+keep a scalar unwrapped where the tree says it is one, and at the far end
+compile the tree once to a flat form -- closures or a bytecode, 3-10x in
+interpreters of this shape. Profile first, as phase 9 did; every recorded
+output byte-identical throughout, which is what makes it safe to try.
+
+Beyond Python on very large numbers is not on this path. What is fast at a
+hundred thousand digits -- PARI/GP, Julia, Mathematica -- is GMP, with FFT
+multiplication and subquadratic division; writing that here is not a phase but
+a career, and depending on it is a decision CLAUDE.md, section 5 reserves.
+Nothing asks for it while exactness stops at a thousand digits. Relevance is
+the notation -- recurrences, `lim`, series as on paper, exact by default --
+which Python spells as code; speed is a guardrail, not the race.
 
 ## Sequencing
 
@@ -1537,4 +1567,5 @@ the interpreter, each one commit once specified.
 Then phase 13 step 2, the bignum, specified first, and with it the cost exact
 numbers still carry: integer matrices at 1.7x master, most likely because a
 `Number` is twice the size of a `complex<double>`. The bignum changes that
-layout anyway, so that is when to measure it.
+layout anyway, so that is when to measure it. Then phase 14, the evaluator,
+where the larger gap is.
