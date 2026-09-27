@@ -224,4 +224,10 @@ protected:
     bool limit_ = false;
 };
 
+template <typename T>
+const ParametersCall<T>& FuncExpression<T>::Call() const {
+    if (!call_) call_ = std::make_unique<const ParametersCall<T>>(m_e1(), m_e2(), limit_);
+    return *call_;
+}
+
 #endif // PARAMETERS_HPP

@@ -377,6 +377,9 @@ protected:
 };
 
 template <typename T>
+class ParametersCall;
+
+template <typename T>
 class FuncExpression : public Expression<T>
 {
 public:
@@ -400,6 +403,10 @@ public:
     // than for one term.
     bool limit() const {return limit_;}
 
+    // Read from the call's syntax, which never changes: once per call site
+    // rather than once per call. Defined with ParametersCall.
+    const ParametersCall<T>& Call() const;
+
     const std::string& Name() const override
     {
         return m_name;
@@ -416,6 +423,7 @@ protected:
     std::string m_name;
     bool limit_;
     std::string signature_;
+    mutable std::unique_ptr<const ParametersCall<T>> call_;
 };
 
 #endif

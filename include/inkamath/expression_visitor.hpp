@@ -374,12 +374,11 @@ public:
     }
 
     T visit(RefExpression<T>* expr) override {
-        return stack_.Eval(expr->Name(), ParametersCall<T>());
+        static const ParametersCall<T> plain;
+        return stack_.Eval(expr->Name(), plain);
     }
 
-    T visit(FuncExpression<T>* expr) override {
-        return stack_.Eval(expr->Name(), ParametersCall<T>(expr->m_e1(), expr->m_e2(), expr->limit()));
-    }
+    T visit(FuncExpression<T>* expr) override { return stack_.Eval(expr->Name(), expr->Call()); }
 
     // The bounds belong to the scope the series is written in, so they are
     // evaluated before its index is bound: in 'sum_(n=1)^n n' the upper n is
