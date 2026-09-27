@@ -55,7 +55,7 @@
 1000
 
 >> frac 5/2 + ~0.5
-error: 3 is approximate, so it has no exact fraction
+error: 3 was approximated, so it has no exact fraction
 
 # What can only be approached.
 >> pi
@@ -72,7 +72,7 @@ error: 3 is approximate, so it has no exact fraction
 
 # A complex number is inexact, even when it happens to be real and whole.
 >> frac i*i
-error: -1 is approximate, so it has no exact fraction
+error: -1 was approximated, so it has no exact fraction
 
 # A trailing zero is not a digit the literal needs, however many there are:
 # these went inexact once the digits passed 64 bits.
@@ -208,7 +208,7 @@ lt_n | n > 2 = 5
 lt_n = n
 
 >> frac lim lt
-error: 5 is approximate, so it has no exact fraction
+error: 5 was approximated, so it has no exact fraction
 
 # Every cell has its own kind.
 >> a = [1 2;3 4]
@@ -240,5 +240,5 @@ dbl(x) = x*2
 1
 
 >> frac dbl(~0.5)
-error: 1 is approximate, so it has no exact fraction
+error: 1 was approximated, so it has no exact fraction
 

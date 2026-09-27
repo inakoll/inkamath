@@ -1411,7 +1411,9 @@ error. `digits` stops at 1000: printing is linear in the digits, some
 without a ceiling `digits = 10^7` made a 2x3 matrix cost 1.6 s and 200 MB.
 An index -- of a sequence, a cell or a series -- must be exact, as in Scheme:
 taken as a whole number, `s_(~2)` dropped its `~` and answered an exact term,
-and shared `s_2`'s memo key. A diagnostic that quotes a number
+and shared `s_2`'s memo key. `frac`'s refusal says a number *was approximated*
+rather than *is approximate*: after `4^0.5` prints a plain `2`, "2 is
+approximate" contradicted the line above it. A diagnostic that quotes a number
 quotes it at 9 digits whatever the setting, because it is written before the
 session's display is known.
 

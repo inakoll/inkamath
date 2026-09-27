@@ -1,7 +1,8 @@
 # Numbers shown as decimals (MODERNIZATION.md, phase 13). This was the
 # specification, written before they existed (CLAUDE.md, section 3); every
 # expected output is as it was specified, computed from the exact value by a
-# reference printer written apart from the interpreter.
+# reference printer written apart from the interpreter, but for the wording of
+# 'frac''s refusal: "2 is approximate" read oddly after a plain 2.
 #
 # Every number prints in decimal. An exact whole number prints in full;
 # anything else is rounded to 'digits' significant digits -- 9 unless set, and
@@ -211,13 +212,13 @@ h_n = h_(n-1) + 1/n
 1/243
 
 >> frac pi
-error: ~3.14159265 is approximate, so it has no exact fraction
+error: ~3.14159265 was approximated, so it has no exact fraction
 
 >> frac ~(1/3)
-error: ~0.333333333 is approximate, so it has no exact fraction
+error: ~0.333333333 was approximated, so it has no exact fraction
 
 >> frac !52/(!5*!47)
-error: 2598960 is approximate, so it has no exact fraction
+error: 2598960 was approximated, so it has no exact fraction
 
 >> 1 + frac 2
 error: frac can only begin a line
@@ -237,7 +238,7 @@ half(x) = x/2
 1/2
 
 >> frac half(~1)
-error: 0.5 is approximate, so it has no exact fraction
+error: 0.5 was approximated, so it has no exact fraction
 
 # Newton's method doubles an exact fraction's digits at every step, so an
 # iteration meant to be approximate starts from an approximation.

@@ -134,7 +134,7 @@ public:
     static std::string fraction(const Number& a, int digits) {
         if (!a.exact()) {
             throw std::runtime_error(toString(a, digits) +
-                                     " is approximate, so it has no exact fraction");
+                                     " was approximated, so it has no exact fraction");
         }
         return a.den_ == 1 ? std::to_string(a.num_)
                            : std::to_string(a.num_) + "/" + std::to_string(a.den_);
