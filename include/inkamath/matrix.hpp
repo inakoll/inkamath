@@ -73,6 +73,15 @@ public:
 
     static int toInt(const Matrix<T>& a) {return numeric_interface<T>::toInt(a.Scalar());}
 
+    // The extent, not only the cells: two values with the same cells in
+    // different shapes are two values (C50).
+    static void key(const Matrix<T>& a, std::string& out) {
+        out += a.extent_.toString();
+        out += ':';
+        std::for_each(a.data(), a.data() + a.extent_.count(),
+                      [&out](const T& value) { numeric_interface<T>::key(value, out); });
+    }
+
     static bool exact(const Matrix<T>& a) {
         return std::all_of(a.data(), a.data() + a.extent_.count(),
                            [](const T& value) { return numeric_interface<T>::exact(value); });

@@ -240,8 +240,8 @@ error: d did not converge within 100 terms (last term 99)
 # tested for convergence rather than against it. The NaN is inf-inf, reached
 # by addition because addition works part by part and answers the same on
 # every platform; squaring an infinite complex number does not (C64).
->> o_0=1e308
-o_0=1e308
+>> o_0=~1e308
+o_0=~1e308
 
 >> o_n=o_(n-1)+o_(n-1)
 o_n=o_(n-1)+o_(n-1)

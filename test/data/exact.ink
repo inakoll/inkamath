@@ -108,23 +108,22 @@ error: division by zero
 >> 0^-1
 error: division by zero
 
-# Exact until it no longer fits in 64 bits, then inexact rather than wrong: a
-# 64-bit fraction wrapped to a negative number here. A bignum moves the point
-# where exactness ends from 2^63 to never (phase 13, step 2).
+# Exact past 64 bits, where a 64-bit fraction wrapped to a negative number
+# and step 1 approximated; exactness ends at a thousand digits now (phase 13,
+# step 2).
 >> 2^62
 4611686018427387904
 
 >> 2^63
-~9.22337204e+18
+9223372036854775808
 
 >> !21
-~5.10909422e+19
+51090942171709440000
 
 >> 9223372036854775808
-~9.22337204e+18
+9223372036854775808
 
-# A binomial coefficient through a factorial that does not fit: the right
-# number, and inexact.
+# A binomial coefficient through factorials past 64 bits.
 >> !52/(!5*!47)
 2598960
 
@@ -165,7 +164,7 @@ fib_n = fib_(n-1) + fib_(n-2)
 7540113804746346429
 
 >> fib_93
-~1.22001604e+19
+12200160415121876738
 
 >> h_1 = 1
 h_1 = 1

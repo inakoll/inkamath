@@ -1,8 +1,9 @@
 # Numbers shown as decimals (MODERNIZATION.md, phase 13). This was the
 # specification, written before they existed (CLAUDE.md, section 3); every
 # expected output is as it was specified, computed from the exact value by a
-# reference printer written apart from the interpreter, but for the wording of
-# 'frac''s refusal: "2 is approximate" read oddly after a plain 2.
+# reference printer written apart from the interpreter -- but for the wording
+# of 'frac''s refusal, "2 is approximate" having read oddly after a plain 2,
+# and for the answers past 64 bits, which step 2 made exact (bignum.ink).
 #
 # Every number prints in decimal. An exact whole number prints in full;
 # anything else is rounded to 'digits' significant digits -- 9 unless set, and
@@ -113,17 +114,16 @@
 >> ~1
 1
 
-# Exact until 64 bits run out, then approximated -- visibly, unless the
-# approximation lands exactly, as this binomial coefficient through factorials
-# too large for 64 bits does.
+# Exact past 64 bits, to a thousand digits (bignum.ink). These were specified
+# as approximated where 64 bits ran out: 2^63 as ~9.22337204e+18.
 >> 2^62
 4611686018427387904
 
 >> 2^63
-~9.22337204e+18
+9223372036854775808
 
 >> !21
-~5.10909422e+19
+51090942171709440000
 
 >> !52/(!5*!47)
 2598960
@@ -180,7 +180,7 @@ fib_n = fib_(n-1) + fib_(n-2)
 7540113804746346429
 
 >> fib_93
-~1.22001604e+19
+12200160415121876738
 
 >> h_1 = 1
 h_1 = 1
@@ -218,7 +218,7 @@ error: ~3.14159265 was approximated, so it has no exact fraction
 error: ~0.333333333 was approximated, so it has no exact fraction
 
 >> frac !52/(!5*!47)
-error: 2598960 was approximated, so it has no exact fraction
+2598960
 
 >> 1 + frac 2
 error: frac can only begin a line

@@ -109,6 +109,9 @@ TEST_CASE("exact") {
 TEST_CASE("decimals") {
     check_transcript("decimals.ink");
 }
+TEST_CASE("bignum") {
+    check_transcript("bignum.ink");
+}
 TEST_CASE("errors") {
     check_transcript("errors.ink");
 }

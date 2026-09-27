@@ -1252,7 +1252,7 @@ goldens now come back exactly. No parsing library: five flags are a loop over
 
 ---
 
-## Phase 13 — Exact numbers `[step 1 done, shown as decimals]`
+## Phase 13 — Exact numbers `[done]`
 
 The kind of a number becomes part of the number: `1/3+1/3+1/3` is `1`, not
 nearly one, and `1/10*3 == 3/10` holds. This answers the question *Other
@@ -1454,6 +1454,95 @@ the places a number is read.
 
 ---
 
+### Step 2: a bignum `[done]`
+
+Specified in `test/data/spec/bignum.ink`, 16 of its entries failing -- each one
+an exact answer past 64 bits. The 24 that pass are definitions and settings,
+inexact answers, and what lies at or past the bound, which today approximates
+the same way. Writing it found two defects in the real powers step 2 relies on,
+fixed first: `2^1024` answered `inf+i*-nan`, and `2^0.5` a double off the
+nearest one, both from taking a real power as a complex one.
+
+What it decides:
+
+- **Exact up to a thousand digits** in the reduced numerator and in the
+  denominator, as many as `digits` can show, and approximated past that as 64
+  bits are today, so a forgotten `~` costs speed and not the session. Exact
+  Newton's method for the square root of 2 crosses it at the twelfth step, the
+  harmonic numbers at `h_2309`; `!449` fits and `!450` does not.
+- **A whole number too large for a double is infinite** once approximated:
+  `2^3322` and `!450` are `inf`. That is the double's limit, not the bound's,
+  and a bound below 10^308 would only move numbers from exact to inexact
+  without saving any of these.
+- **Written here** (CLAUDE.md, section 5): a magnitude in 32-bit limbs, because
+  a 32-bit product fits in 64 bits on every compiler CI has, with schoolbook
+  multiplication, Knuth's division and Euclid's gcd. At a thousand digits
+  nothing cleverer should pay for its lines; that is to be measured, not
+  assumed. Python is the yardstick, measured at a thousand digits: 10 us a
+  product, schoolbook below about 630 digits as ours will be; 160 us a gcd,
+  by Lehmer's method, which is where Euclid would lose; 82 us a `Fraction`
+  sum, the gcd and interpreted code on top. Lehmer's gcd, about a hundred
+  lines, goes in only if a sum at a thousand digits measures slower than that.
+
+What it costs before a line of it: **the memo key.** A key is a value's bytes,
+and a value on the heap has a pointer for bytes -- two equal values would be
+two keys, and a freed address reused could make two different values one. The
+key becomes an encoding each number type writes, a refactor that leaves every
+output byte-identical and goes first. It also frees the layout: nothing needs
+a `Number` without padding any more, so it can hold a 64-bit fraction, a big
+one or a double in 24 bytes rather than 32, which is where the 1.7x on integer
+matrices most likely lives.
+
+It passed as written on the first build -- in 7 ms, `rt_11`'s 784-digit parts
+included -- and is now `test/data/bignum.ink`; the spec suite retires again.
+`Natural` is 256 lines in `bignum.hpp`, checked against Python's integers on
+60000 operand pairs shaped to reach division's add-back step, which ran 24828
+times; `Number` over it against Python's `Fraction` on 9000 expressions and
+27000 conversions and printouts, the overflow to `inf` and the subnormals
+among them. What moved in the goldens is what 64 bits used to approximate --
+`2^63`, `!21`, `fib_93`, the binomial through `!52` -- and three entries meant
+to test doubles now say so with `~`: `!~171`, `(~2)^1024`, `o_0=~1e308`.
+
+**The layout was the wrong guess.** A variant of the three kinds is 24 bytes and
+cost *more* -- 700M instructions on the matrix workload against 644M for 48
+bytes and 456M before the bignum -- because every copy has to ask which kind it
+holds. The cost was elsewhere, and a profile found it: the fallbacks to
+naturals had made `+`, `-`, `*` and `/` too large to inline into a matrix
+product, and returning an `optional<Number>` moved a value that is no longer
+trivial to copy. With the fallbacks kept out of line and the fast paths
+returning parts, integer matrices went from 784 ms to 596 ms against 548
+before the bignum, and a short whole literal skipping the naturals made
+parsing faster than it was. What is left, about a tenth, is the shared
+pointer's copies: a build that leaked big numbers through a raw pointer was
+that much faster on sequences, and no faster on matrices. The 1.7x against
+master was never the size of a `Number` either; phase 14 has it.
+
+## Phase 14 — The evaluator `[planned]`
+
+Measured against the same computation written in Python, inkamath's arithmetic
+is ahead and its evaluation is far behind: exact harmonic sums 169 ms against
+`Fraction`'s 302, a 20x20 integer matrix product 638 ms against lists' 1336,
+and a limit of doubles recomputed 6000 times 355 ms against a plain loop's 14.
+Python's side was a loop written by hand and inkamath's parses and runs its
+language, so the third is not a fair race -- but it says where the time goes,
+and it is not the numbers.
+
+A step of evaluation walks the tree through virtual calls, wraps every scalar in
+a 1x1 matrix, builds a string for every memo key and opens a scope frame. In
+order of cost to change: key by a hash rather than a string built per call,
+keep a scalar unwrapped where the tree says it is one, and at the far end
+compile the tree once to a flat form -- closures or a bytecode, 3-10x in
+interpreters of this shape. Profile first, as phase 9 did; every recorded
+output byte-identical throughout, which is what makes it safe to try.
+
+Beyond Python on very large numbers is not on this path. What is fast at a
+hundred thousand digits -- PARI/GP, Julia, Mathematica -- is GMP, with FFT
+multiplication and subquadratic division; writing that here is not a phase but
+a career, and depending on it is a decision CLAUDE.md, section 5 reserves.
+Nothing asks for it while exactness stops at a thousand digits. Relevance is
+the notation -- recurrences, `lim`, series as on paper, exact by default --
+which Python spells as code; speed is a guardrail, not the race.
+
 ## Sequencing
 
 Phase 2 gated everything: no implementation work started before the
@@ -1499,7 +1588,6 @@ the interpreter, each one commit once specified.
 - `[done]` **`1 ~2` says "unexpected '~'"**, where every other juxtaposition
   is told that `*` is probably missing. So did `2 !3` and `2 [1 2]`.
 
-Then phase 13 step 2, the bignum, specified first, and with it the cost exact
-numbers still carry: integer matrices at 1.7x master, most likely because a
-`Number` is twice the size of a `complex<double>`. The bignum changes that
-layout anyway, so that is when to measure it.
+Then phase 13 step 2, the bignum -- done, and the cost exact numbers carry
+turned out not to be a `Number`'s size (see step 2). Then phase 14, the
+evaluator, where the larger gap is.

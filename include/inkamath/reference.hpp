@@ -164,8 +164,8 @@ public:
     }
 
 private:
-    // The bytes of the values, not their printed form, which rounds to nine
-    // digits and would make two different arguments one key.
+    // The values as each type encodes them, not their printed form, which
+    // rounds and would make two different arguments one key.
     std::string MemoKey(bool indexed, int index,
                         const typename ParametersDefinition<T>::Arguments& arguments) const {
         std::string key = reference_name_;
@@ -173,18 +173,11 @@ private:
             key += '_';
             key += std::to_string(index);
         }
-        for(const auto& argument : arguments) {
-            // The extent, not only the cells: two arguments with the same
-            // values in different shapes are two arguments, and the extent is
-            // also what says how many bytes of value follow (C50).
-            const T& value = argument.second;
+        for (const auto& argument : arguments) {
             key += '\0';
             key += argument.first;
             key += '=';
-            key += value.Size().toString();
-            key += ':';
-            key.append(reinterpret_cast<const char*>(value.data()),
-                       value.Size().count() * sizeof(*value.data()));
+            numeric_interface<T>::key(argument.second, key);
         }
         return key;
     }
