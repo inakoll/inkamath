@@ -162,7 +162,8 @@ public:
             if (n & 1) r = r * base;
             if (n > 1) base = base * base;
         }
-        return r;
+        // Whole as it is, an inexact exponent is still one.
+        return numeric_interface<T>::exact(exponent) ? r : inexact(r);
     }
 
     static Matrix<T> Identity(Extent extent) {

@@ -242,6 +242,10 @@ s=[1 1;0 1]
 [1, -3;
  0,  1]
 
+# An inexact exponent makes the power inexact, as it does a number's.
+>> frac s^~2
+error: 1 was approximated, so it has no exact fraction
+
 # A large power ends: it multiplied once per unit of the exponent, which is
 # two billion products here.
 >> s^2147483647
