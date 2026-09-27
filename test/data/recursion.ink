@@ -32,6 +32,10 @@ gm(x,y)_n = (am(x,y)_(n-1) * gm(x,y)_(n-1))^0.5
 >> lim gm(1,2)
 ~1.45679103
 
+# Far terms fill from the base up, arguments and all.
+>> gm(1,2)_300
+~1.45679103
+
 >> ?gm
 gm(x,y)_0 = (x*y)^0.5
 gm(x,y)_n = (am(x,y)_(n-1) * gm(x,y)_(n-1))^0.5

@@ -1586,10 +1586,18 @@ in the notation of the paper, exact reference outputs from the interpreter, a
 C++ header from the compiler, and the compiled floating-point filter tested
 against the exact transcript. Writing the two found four things they need:
 
-- **Deep recurrences.** `y_5000` fails -- evaluation nests more than 256
-  references deep -- because each term reaches back through every earlier
-  one. A recurrence has to fill from its lowest missing term up, as `lim`
-  already walks, in the interpreter as much as in compiled code.
+- `[done]` **Deep recurrences.** `y_5000` failed -- evaluation nests more
+  than 256 references deep -- because each term reaches back through every
+  earlier one. A call that runs out of depth now fills its sequence from the
+  lowest base up and tries again, each term finding the one before it
+  remembered: `y_5000` of the PID and `x_2000` of the Kalman filter answer.
+  Only what failed takes that path, so nothing that answered before moved but
+  `sequences.ink`'s `g_500`, which was the depth error and is now `501`; the
+  bound it stood for (C1) is shown by a recurrence reaching up instead. A
+  recurrence that steps by two from a single base still fails: filling it
+  asks for the odd terms, which it never defined, and so reports the depth
+  rather than an error about a term nobody asked for. Filling with the
+  recurrence's own stride would fix it.
 - **Inputs from the host**, as above.
 - **A window on the memo.** A filter running a million steps must not keep a
   million terms.

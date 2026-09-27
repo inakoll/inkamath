@@ -109,6 +109,20 @@ public:
         return definition->Eval(ai_parameters, *this, true);
     }
 
+    // Filling a recurrence needs room to nest a few references per term, and
+    // a fill never starts another: it would redo the same terms.
+    [[nodiscard]] bool CanFill() const { return !filling_ && depth_ <= max_depth / 2; }
+
+    struct Filling {
+        explicit Filling(ReferenceStack<T>& stack) : stack_(stack) { stack_.filling_ = true; }
+        ~Filling() { stack_.filling_ = false; }
+        Filling(const Filling&)            = delete;
+        Filling& operator=(const Filling&) = delete;
+
+    private:
+        ReferenceStack<T>& stack_;
+    };
+
     // Whether a call's frame is open to bind in.
     [[nodiscard]] bool Framed() const { return open_ != 0; }
 
@@ -236,8 +250,8 @@ private:
     struct Budget {
         explicit Budget(ReferenceStack& stack) : stack_(stack) {
             if(stack_.depth_ >= max_depth) {
-                throw std::runtime_error("evaluation nests more than "
-                                         + std::to_string(max_depth) + " references deep");
+                throw DepthExceeded("evaluation nests more than " + std::to_string(max_depth) +
+                                    " references deep");
             }
             if(stack_.steps_ >= max_steps) {
                 throw std::runtime_error("evaluation gave up after "
@@ -256,6 +270,7 @@ private:
 
     size_t depth_ = 0;
     size_t steps_ = 0;
+    bool                                     filling_ = false;
     std::unordered_map<MemoKey, T, MemoHash> memoised_;
     scope_type globals_;
     std::vector<frame_type>                  frames_;  // the open ones first, then spares

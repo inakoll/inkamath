@@ -9,8 +9,15 @@
 #include "inkamath/convergence.hpp"
 
 #include <algorithm>
+#include <exception>
 #include <stdexcept>
 #include <vector>
+
+// Nesting too deep, told apart from other failures because a recurrence can
+// recover from it by filling its terms from the base up.
+struct DepthExceeded : std::runtime_error {
+    using std::runtime_error::runtime_error;
+};
 
 // Which call a memoised answer is for. The definition is named by its address,
 // which holds for as long as the memo does: redefining a global replaces its
@@ -177,7 +184,13 @@ public:
         }
         // Storing after the call returns, so that an evaluation which ran out
         // of budget is retried rather than remembered.
-        const T evaluation = EvalImp(indexed, index, evaluator);
+        T evaluation;
+        try {
+            evaluation = EvalImp(indexed, index, evaluator);
+        } catch (const DepthExceeded&) {
+            if (!memoisable || !indexed || !stack.CanFill()) throw;
+            evaluation = Filled(index, arguments, call, stack, evaluator);
+        }
         if(memoisable) {
             stack.Memoise(key, evaluation);
         }
@@ -185,6 +198,34 @@ public:
     }
 
 private:
+    // A recurrence nests one reference per term it reaches back, so a term far
+    // from its base runs out of depth. Filled from the base up instead, each
+    // term finds the one before it remembered. Only what failed comes here, so
+    // what answered before answers as it did; and a fill that fails -- a term
+    // no evaluation of this one would have asked for -- reports the depth.
+    T Filled(int index, const typename ParametersDefinition<T>::Arguments& arguments,
+             const ParametersCall<T>& call, ReferenceStack<T>& stack,
+             EvaluationVisitor<T>& evaluator) const {
+        const std::exception_ptr depth  = std::current_exception();
+        const Clause<T>*         lowest = EndBase(true);
+        if (!lowest) std::rethrow_exception(depth);
+        const typename ReferenceStack<T>::Filling filling(stack);
+        try {
+            for (int k = lowest->parameters.index() + 1; k < index; ++k) {
+                const MemoKey key = Key(true, k, arguments);
+                if (stack.Memoised(key)) continue;
+                typename ReferenceStack<T>::Frame frame(stack);
+                ParametersDefinition<T>::Bind(arguments, stack);
+                EvaluationVisitor<T> term(stack);
+                CallParameters().BindDefaults(call, term);
+                stack.Memoise(key, EvalImp(true, k, term));
+            }
+        } catch (const std::runtime_error&) {
+            std::rethrow_exception(depth);
+        }
+        return EvalImp(true, index, evaluator);
+    }
+
     // The values as each type encodes them, not their printed form, which
     // rounds and would make two different arguments one key.
     MemoKey Key(bool indexed, int index,
