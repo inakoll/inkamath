@@ -1406,7 +1406,9 @@ doubles before they were divided, so `~9.233944204712703` was a double off
 once the fraction had more than 53 bits, which exact decimal literals made
 common. It is a binary long division now, checked on 4000 halfway cases.
 `frac` and `digits` are reserved and begin a line; anywhere else they are an
-error. A diagnostic that quotes a number
+error. `digits` stops at 1000: printing is linear in the digits, some
+25 ns and 20 bytes of peak memory a digit in every cell (measured), and
+without a ceiling `digits = 10^7` made a 2x3 matrix cost 1.6 s and 200 MB. A diagnostic that quotes a number
 quotes it at 9 digits whatever the setting, because it is written before the
 session's display is known.
 

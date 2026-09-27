@@ -153,7 +153,7 @@ other built-ins, and there are no built-in functions.
 | `lim name` | the limit of a sequence (section 4) |
 | `?name` | print a definition back (section 5) |
 | `frac expr` | the answer as an exact fraction |
-| `digits` `digits = n` | the significant digits shown, 9 unless set |
+| `digits` `digits = n` | the significant digits shown, 1 to 1000, 9 unless set |
 
 `^` associates to the right, so `2^3^2` is `512`. `#` starts a comment and
 runs to the end of the line.

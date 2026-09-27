@@ -295,6 +295,23 @@ error: digits must be a whole number of at least 1, not 0
 >> digits = 1/2
 error: digits must be a whole number of at least 1, not 0.5
 
+# Every digit costs time and memory in every cell -- some 25 ns and 20 bytes
+# each -- so there is a ceiling: a thousand digits is a page.
+>> digits = 1000
+digits = 1000
+
+>> digits = 1001
+error: digits can be 1000 at most, not 1001
+
+>> digits = 2^40
+error: digits can be 1000 at most, not 1099511627776
+
+>> digits
+1000
+
+>> digits = 9
+digits = 9
+
 # Every cell by its own rule.
 >> a = [1 2;3 4]
 a = [1 2;3 4]

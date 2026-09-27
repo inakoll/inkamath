@@ -144,6 +144,10 @@ private:
     // reach either -- on an 8 MB stack, which CMakeLists.txt gives Windows too.
     static constexpr size_t max_tokens = 1000;
 
+    // Printing costs some 25 ns and 20 bytes a digit in every cell, measured:
+    // a thousand keeps an answer to a page and a 100x100 matrix to a second.
+    static constexpr int max_digits = 1000;
+
     bool AtEnd() const {return m_i >= m_tokens.size();}
     const Token<T>& Peek() const {return m_tokens[m_i];}
 
@@ -880,7 +884,11 @@ typename Interpreter<T, U>::Result Interpreter<T, U>::Digits(const std::string& 
     EvaluationVisitor<U>              evaluator(stack_);
     typename ReferenceStack<U>::Frame line(stack_);
     const U                           value = e->accept(evaluator);
-    const int digits = value.Size() == Extent{1, 1} ? numeric_interface<U>::toInt(value) : 0;
+    const bool                        scalar = value.Size() == Extent{1, 1};
+    if (scalar && value(1, 1) > T(max_digits)) {
+        Fail("digits can be ", max_digits, " at most, not ", Show(value));
+    }
+    const int digits = scalar ? numeric_interface<U>::toInt(value) : 0;
     if (digits < 1 || !(value(1, 1) == T(digits))) {
         Fail("digits must be a whole number of at least 1, not ", Show(value));
     }
