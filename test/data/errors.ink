@@ -170,3 +170,6 @@ error: digits can only begin a line
 >> digits = [1 2]
 error: digits must be a whole number of at least 1, not [1, 2]
 
+>> digits = x = 3
+error: digits takes a number, not a definition
+

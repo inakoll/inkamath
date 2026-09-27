@@ -875,12 +875,12 @@ PExpression<U> Interpreter<T,U>::ParseSubExpr()
 // 'digits = n' sets it.
 template <Parsable T, Numeric U>
 typename Interpreter<T, U>::Result Interpreter<T, U>::Digits(const std::string& s) {
-    m_i = 1;
-    if (AtEnd()) return U(T(digits_));
-    if (Peek().type != Equal) Fail("unexpected '", Peek().text, "'");
-    ++m_i;
-    const PExpression<U> e = Parse();
-    if (!AtEnd()) Fail("unexpected '", Peek().text, "'");
+    if (m_tokens.size() == 1) return U(T(digits_));
+    if (m_tokens[1].type != Equal) Fail("unexpected '", m_tokens[1].text, "'");
+    const PExpression<U> e = ParseAll(2);
+    if (dynamic_cast<EqualExpression<U>*>(e.get())) {
+        Fail("digits takes a number, not a definition");
+    }
     EvaluationVisitor<U>              evaluator(stack_);
     typename ReferenceStack<U>::Frame line(stack_);
     const U                           value = e->accept(evaluator);
