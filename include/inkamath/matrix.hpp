@@ -314,6 +314,8 @@ private:
     template <typename Func>
     Matrix<T> BinaryOp(const Matrix<T>& other, Func f) const
     {
+        // Nearly every value is a single number: say so before anything general.
+        if (IsScalar() && other.IsScalar()) return Matrix<T>(f(scalar_, other.scalar_));
         if(extent_ != other.extent_) {
             // A single value stretches to the other side's size, as it does
             // for '*' and inside a literal. The operand order is kept: '1-a'
@@ -341,6 +343,7 @@ private:
 
     Matrix<T> mul(const Matrix<T>& other) const
     {
+        if (IsScalar() && other.IsScalar()) return Matrix<T>(scalar_ * other.scalar_);
         if(IsScalar() || other.IsScalar()) {
             const bool     this_is_scalar = IsScalar();
             const T        scalar = this_is_scalar ? scalar_ : other.scalar_;
