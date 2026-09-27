@@ -235,7 +235,7 @@ public:
         Natural big(static_cast<Natural::wide>(product));
         for (; k <= a.num_; ++k) {
             big = big * Natural(static_cast<Natural::wide>(k));
-            if (Natural::Compare(big, Limit()) >= 0) return Number(inexact);
+            if (Past(big)) return Number(inexact);
         }
         return Number(Big{false, big, Natural(1)});
     }
@@ -316,6 +316,9 @@ private:
         return limit;
     }
 
+    static bool Past(const Natural& n) { return Natural::Compare(n, Limit()) >= 0; }
+    static bool Past(const Big& b) { return Past(b.num) || Past(b.den); }
+
     static Natural Pow10(std::size_t n) {
         Natural power(1), base(10);
         for (; n != 0; n >>= 1) {
@@ -333,7 +336,7 @@ private:
             const long long num = static_cast<long long>(b.num.low());
             return Number(b.negative ? -num : num, static_cast<long long>(b.den.low()), nullptr);
         }
-        if (Natural::Compare(b.num, Limit()) >= 0 || Natural::Compare(b.den, Limit()) >= 0) {
+        if (Past(b)) {
             const double magnitude = Nearest(b.num, b.den);
             return Number(b.negative ? -magnitude : magnitude);
         }
@@ -375,19 +378,16 @@ private:
         }
         const bool negative = base.negative && (exponent % 2 != 0);
         Big        power{negative, Natural(1), Natural(1)};
-        const auto past = [](const Big& b) {
-            return Natural::Compare(b.num, Limit()) >= 0 || Natural::Compare(b.den, Limit()) >= 0;
-        };
         for (unsigned long long bits = Magnitude(exponent); bits != 0; bits >>= 1) {
             if (bits & 1) {
                 power.num = power.num * base.num;
                 power.den = power.den * base.den;
-                if (past(power)) return std::nullopt;
+                if (Past(power)) return std::nullopt;
             }
             if (bits > 1) {
                 base.num = base.num * base.num;
                 base.den = base.den * base.den;
-                if (past(base)) return std::nullopt;
+                if (Past(base)) return std::nullopt;
             }
         }
         return Normalized(std::move(power));
