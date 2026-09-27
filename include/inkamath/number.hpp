@@ -195,13 +195,29 @@ public:
 
     // A whole power of an exact number is exact; anything else is approached.
     static Number pow(const Number& a, const Number& b) {
-        if (a.exact() && b.small() && b.den_ == 1) {
-            if (a.small()) {
-                if (const auto power = Power(a, b.num_)) return *power;
+        const bool whole = b.small() ? b.den_ == 1 : b.big_ && b.big_->den == Natural(1);
+        const bool odd =
+            b.small() ? (b.num_ & 1) != 0 : b.big_ && (b.big_->num.limbs()[0] & 1) != 0;
+        if (a.exact() && whole) {
+            if (b.small()) {
+                if (a.small()) {
+                    if (const auto power = Power(a, b.num_)) return *power;
+                }
+                if (const auto power = BigPower(a.Ratio(), b.num_)) return *power;
+            } else if (a.small() && (a.num_ == 0 || a.num_ == 1 || a.num_ == -1) && a.den_ == 1) {
+                // Past 64 bits only these stay within the thousand digits.
+                if (a.num_ == 0 && b.big_->negative) throw std::runtime_error("division by zero");
+                return a.num_ == -1 && !odd ? Number(1) : a;
             }
-            if (const auto power = BigPower(a.Ratio(), b.num_)) return *power;
         }
-        return Number(numeric_interface<inexact_type>::pow(a.Inexact(), b.Inexact()));
+        // A whole exponent past 2^53 has no odd double, so a negative base
+        // takes its sign from the exact exponent.
+        const inexact_type base = a.Inexact();
+        if (whole && base.imag() == 0 && base.real() < 0) {
+            const double magnitude = std::pow(-base.real(), b.Inexact().real());
+            return Number(odd ? -magnitude : magnitude);
+        }
+        return Number(numeric_interface<inexact_type>::pow(base, b.Inexact()));
     }
 
     static Number fact(const Number& a) {
@@ -219,7 +235,7 @@ public:
         Natural big(static_cast<Natural::wide>(product));
         for (; k <= a.num_; ++k) {
             big = big * Natural(static_cast<Natural::wide>(k));
-            if (Natural::Compare(big, Limit()) >= 0) return Number(inexact);
+            if (Past(big)) return Number(inexact);
         }
         return Number(Big{false, big, Natural(1)});
     }
@@ -300,6 +316,9 @@ private:
         return limit;
     }
 
+    static bool Past(const Natural& n) { return Natural::Compare(n, Limit()) >= 0; }
+    static bool Past(const Big& b) { return Past(b.num) || Past(b.den); }
+
     static Natural Pow10(std::size_t n) {
         Natural power(1), base(10);
         for (; n != 0; n >>= 1) {
@@ -317,7 +336,7 @@ private:
             const long long num = static_cast<long long>(b.num.low());
             return Number(b.negative ? -num : num, static_cast<long long>(b.den.low()), nullptr);
         }
-        if (Natural::Compare(b.num, Limit()) >= 0 || Natural::Compare(b.den, Limit()) >= 0) {
+        if (Past(b)) {
             const double magnitude = Nearest(b.num, b.den);
             return Number(b.negative ? -magnitude : magnitude);
         }
@@ -359,19 +378,16 @@ private:
         }
         const bool negative = base.negative && (exponent % 2 != 0);
         Big        power{negative, Natural(1), Natural(1)};
-        const auto past = [](const Big& b) {
-            return Natural::Compare(b.num, Limit()) >= 0 || Natural::Compare(b.den, Limit()) >= 0;
-        };
         for (unsigned long long bits = Magnitude(exponent); bits != 0; bits >>= 1) {
             if (bits & 1) {
                 power.num = power.num * base.num;
                 power.den = power.den * base.den;
-                if (past(power)) return std::nullopt;
+                if (Past(power)) return std::nullopt;
             }
             if (bits > 1) {
                 base.num = base.num * base.num;
                 base.den = base.den * base.den;
-                if (past(base)) return std::nullopt;
+                if (Past(base)) return std::nullopt;
             }
         }
         return Normalized(std::move(power));

@@ -92,6 +92,7 @@ struct numeric_interface_imp<std::complex<T>,false>
     static T real(const std::complex<T>& a) {return a.real();}
     static T imaginary(const std::complex<T>& a) {return a.imag();}
     static std::complex<T> inexact(const std::complex<T>& a) { return a; }
+    static bool            exact(const std::complex<T>&) { return false; }
 
     static std::string toString(const std::complex<T>& a) {
         return toString(a, [](const T& part) { return numeric_interface<T>::toString(part); });
@@ -254,6 +255,7 @@ struct numeric_interface_imp<T,true>
     static T real(const T& a) {return a;}
     static T imaginary(const T&) {return 0;}
     static T inexact(const T& a) { return a; }
+    static bool exact(const T&) { return false; }
     // Converting a double outside int's range is undefined, and NaN is
     // undefined too; both clamp here, and the caller compares the answer with
     // what it was given to see that it did (MODERNIZATION.md, C56).

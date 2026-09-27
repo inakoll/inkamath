@@ -18,7 +18,9 @@ class ParametersCall;
 template <typename T>
 int AsIndex(const T& value) {
     const int index = numeric_interface<T>::toInt(value);
-    if(numeric_interface<T>::abs(value - T(index)) != 0) {
+    // Compared exactly: a difference below a double's smallest is not zero.
+    if (numeric_interface<T>::truth(
+            numeric_interface<T>::compare(value, T(index), Comparison::NotEqual))) {
         // Two different complaints: a value an index cannot hold, and a value
         // that is not whole. Saying the second about the first sent the user
         // looking for a fraction that was not there (C56).

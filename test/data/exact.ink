@@ -36,6 +36,23 @@
 >> (2/3)^-2
 2.25
 
+# The sign of a power comes from the exact exponent: past 2^53 a double holds
+# no odd number, and these answered 1, inf and 1.
+>> (0-1)^(2^70+1)
+-1
+
+>> (0-2)^(2^70+1)
+-inf
+
+>> (~(0-1))^(2^63+1)
+-1
+
+>> 0^(2^70)
+0
+
+>> 0^(0-2^70)
+error: division by zero
+
 # A tenth is exact however it is written. Before this, both answered 0.
 >> 1/10*3 == 3/10
 1
@@ -142,6 +159,10 @@ s_n = s_(n-1)/3
 
 >> s_(3/2)
 error: an index must be a whole number, not 1.5
+
+# Whole means exactly whole: a double has no room for the difference here.
+>> s_(2+1/10^999)
+error: an index must be a whole number, not ~2
 
 # An index is exact. Taken as a whole number it would drop the '~', and the
 # answer would claim an exactness nothing gave it.
