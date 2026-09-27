@@ -5,25 +5,28 @@
 #
 # Every number prints in decimal. An exact whole number prints in full;
 # anything else is rounded to 'digits' significant digits -- 9 unless set, and
-# 17 at most for an inexact number, which holds no more -- is never shown as
-# whole when it is not, and ends in '...' unless what is printed is exactly the
-# value. The '...' belongs to the digits, so it comes before any exponent.
+# 17 at most for an inexact number, which holds no more -- with an exponent
+# below 1e-4 and from 10^digits up, and with '~' in front unless what is
+# printed is exactly the value.
 #
-# A literal is exact as written, point and exponent included: 0.1 is 1/10. A
-# literal whose digits end in '...' is inexact: written as an approximation,
-# read as one. 'frac' at the start of a line shows the answer as its exact
-# fraction, and 'digits = n' sets how many significant digits are shown.
+# A literal is exact as written, point and exponent included: 0.1 is 1/10.
+# '~' in front of anything makes it inexact, so every answer reads back as
+# what it says it is. 'frac' at the start of a line shows the answer as its
+# exact fraction, and 'digits = n' sets how many significant digits are shown.
 
-# A quotient is a decimal, and says so when the decimal is not all of it.
-# Rounded, because '...' says what is written is an approximation.
+# A quotient is a decimal. '~' says when the decimal is not all of it: rounded,
+# because '~' says what follows is an approximation.
 >> 10/4
 2.5
 
 >> 1/3
-0.333333333...
+~0.333333333
 
 >> 2/3
-0.666666667...
+~0.666666667
+
+>> -2/3
+~-0.666666667
 
 >> 1/3+1/3+1/3
 1
@@ -44,16 +47,15 @@
 >> !20
 2432902008176640000
 
-# Very small numbers take an exponent, and the '...' stays with the digits.
-# A very large exact one keeps its whole part, and at least one decimal.
+# Very small and very large numbers take an exponent.
 >> 1/1048576
-9.53674316...e-07
+~9.53674316e-07
 
 >> 1/10^18
 1e-18
 
 >> 10^12/7
-142857142857.1...
+~1.42857143e+11
 
 # A literal is exact as written: the classic surprise is gone.
 >> 0.1+0.2
@@ -71,28 +73,32 @@
 >> frac 0.1
 1/10
 
-# Digits that end in '...' are an approximation, and read back as one. A
-# literal too long for 64 bits is approximated too, as an overflow is.
->> 3.14159265...
-3.14159265...
+# '~' makes a number inexact, so what the printer writes reads back as the
+# approximation it is. A literal too long for 64 bits is approximated too, as
+# an overflow is.
+>> ~3.14159265
+~3.14159265
 
->> 0.1...
-0.1...
+>> ~0.1
+~0.1
+
+>> ~(1/3)
+~0.333333333
 
 >> 3.14159265358979323846
-3.14159265...
+~3.14159265
 
 # What can only be approached, and i: a complex number is inexact. An inexact
 # number that is exactly what is printed needs no mark -- the mark is about the
-# digits, not the kind.
+# digits, not the kind -- and a complex number is marked where it is inexact.
 >> pi
-3.14159265...
+~3.14159265
 
 >> 2^(1/2)
-1.41421356...
+~1.41421356
 
 >> 2^(1/2)*2^(1/2)
-2.0...
+~2
 
 >> i*i
 -1
@@ -100,7 +106,10 @@
 >> 2+3*i
 2+i*3
 
->> 1...
+>> e^(i*pi)
+-1+i*~1.2246468e-16
+
+>> ~1
 1
 
 # Exact until 64 bits run out, then approximated -- visibly, unless the
@@ -110,27 +119,27 @@
 4611686018427387904
 
 >> 2^63
-9.22337204...e+18
+~9.22337204e+18
 
 >> !21
-5.10909422...e+19
+~5.10909422e+19
 
 >> !52/(!5*!47)
 2598960
 
 # A limit approaches; a partial sum is exact. A limit that lands on a whole
-# number prints as one -- and a limit that does not is never shown as whole.
+# number prints as one.
 >> ex(x)_n = sum_(k=0)^n x^k/!k
 ex(x)_n = sum_(k=0)^n x^k/!k
 
 >> ex(1)_10
-2.7182818...
+~2.7182818
 
 >> lim ex(1)
-2.71828183...
+~2.71828183
 
 >> sum_(k=0) 1/2^k
-2.0...
+~2
 
 >> lt_0 = 0
 lt_0 = 0
@@ -152,7 +161,7 @@ s_0 = 1
 s_n = s_(n-1)/3
 
 >> s_5
-0.00411522634...
+~0.00411522634
 
 >> s_(3/2)
 error: an index must be a whole number, not 1.5
@@ -170,7 +179,7 @@ fib_n = fib_(n-1) + fib_(n-2)
 7540113804746346429
 
 >> fib_93
-1.22001604...e+19
+~1.22001604e+19
 
 >> h_1 = 1
 h_1 = 1
@@ -179,15 +188,18 @@ h_1 = 1
 h_n = h_(n-1) + 1/n
 
 >> h_30
-3.99498713...
+~3.99498713
 
 >> h_50
-4.49920534...
+~4.49920534
 
 # 'frac' shows the exact fraction behind a decimal. It is about the whole
 # answer, so it begins a line, and it refuses what was only approximated.
 >> frac 10/4
 5/2
+
+>> frac 2/3
+2/3
 
 >> frac 6/3
 2
@@ -199,7 +211,10 @@ h_n = h_(n-1) + 1/n
 1/243
 
 >> frac pi
-error: 3.14159265... is approximate, so it has no exact fraction
+error: ~3.14159265 is approximate, so it has no exact fraction
+
+>> frac ~(1/3)
+error: ~0.333333333 is approximate, so it has no exact fraction
 
 >> frac !52/(!5*!47)
 error: 2598960 is approximate, so it has no exact fraction
@@ -215,13 +230,13 @@ half(x) = x/2
 >> half(1)
 0.5
 
->> half(1...)
+>> half(~1)
 0.5
 
 >> frac half(1)
 1/2
 
->> frac half(1...)
+>> frac half(~1)
 error: 0.5 is approximate, so it has no exact fraction
 
 # Newton's method doubles an exact fraction's digits at every step, so an
@@ -233,19 +248,19 @@ rt_0 = 1
 rt_n = (rt_(n-1) + 2/rt_(n-1))/2
 
 >> rt_4
-1.41421356...
+~1.41421356
 
 >> frac rt_4
 665857/470832
 
->> root_0 = 1...
-root_0 = 1...
+>> root_0 = ~1
+root_0 = ~1
 
 >> root_n = (root_(n-1) + 2/root_(n-1))/2
 root_n = (root_(n-1) + 2/root_(n-1))/2
 
 >> root_30
-1.41421356...
+~1.41421356
 
 # How many digits is a setting, written into the session that uses it. An
 # exact number has as many as are asked for; a double has 17 and no more,
@@ -257,16 +272,19 @@ root_n = (root_(n-1) + 2/root_(n-1))/2
 digits = 20
 
 >> 1/7
-0.14285714285714285714...
+~0.14285714285714285714
 
 >> ex(1)_20
-2.7182818284590452353...
+~2.7182818284590452353
 
 >> e
-2.7182818284590451...
+~2.7182818284590451
 
->> 0.1...
-0.10000000000000001...
+>> ~0.1
+~0.10000000000000001
+
+>> 0.1
+0.1
 
 >> digits = 9
 digits = 9
@@ -282,21 +300,20 @@ error: digits must be a whole number of at least 1, not 0.5
 a = [1 2;3 4]
 
 >> a/3
-[0.333333333..., 0.666666667...;
-              1,  1.33333333...]
+[~0.333333333, ~0.666666667;
+            1,  ~1.33333333]
 
 >> frac a/3
 [1/3, 2/3;
    1, 4/3]
 
->> [1/3 0.1...]*3
-[1, 0.3...]
+>> [1/3 ~0.1]*3
+[1, ~0.3]
 
-# An ellipsis that touches a digit is part of the number. One standing on its
-# own is not claimed: it stays free for the '...' of matrix notation, which C41
-# suspects the padding rule was an attempt at. The difference is one space.
+# The ellipsis is not claimed: it stays free for the '...' of matrix notation,
+# which C41 suspects the padding rule was an attempt at.
 >> [1 2...]
-[1, 2]
+error: unexpected character '.'
 
 >> [1 2 ...]
 error: unexpected character '.'

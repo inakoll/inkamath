@@ -204,7 +204,7 @@ C59, and no amount of reading would have shown C48.
 | C44 `[fixed]` | **The concepts do not ask for what the product needs.** `Matrix::mul` accumulates with `c(i,j) += ...`, and neither `Numeric` nor `Parsable` mentions `+=` on the cell type. It goes unnoticed because the concept checks `a*b` as an expression and a template body is not instantiated by overload resolution, so the requirement only bites when someone supplies a number type and gets a template error inside `matrix.hpp` rather than a concept failure at the interface. Found by instantiating `Interpreter<Rational>`: a type that satisfied everything the concepts state still failed to compile. Stated, in the one line `Numeric`'s requires-clause had room for. Writing the accumulation as `c(i,j) = c(i,j) + ...` instead would have asked less of the type at the cost of a copy per term, which is the wrong trade for a bignum. No test: the only one that proves it is an out-of-tree instantiation, and a negative concept test -- a type built to satisfy everything but this -- costs more than it protects. |
 | C43 `[fixed]` | **A number could not start with the point.** `.5` reported `unexpected character '.'`, while `1e3`, `0x10` and `2i` all lexed -- the exotic spellings worked and the common one did not, because the lexer's case list holds the ten digits and nothing else. `strtod` reads `.5` without being asked; only the dispatch was missing. A point that does not begin a number still reports the same message, so `a.b` is unchanged. |
 | C42 `[fixed]` | **The factorial answered for every argument it had no business accepting.** `!5.5` was `120`, `!(0-3)` was `1`, `!(2+i*3)` was `2` and `!i` was `1`. The loop multiplies `i` while `i <= n`, so a fraction truncates, a negative gives the empty product, and the complex layer passed `a.real()` down without looking at the rest, dropping the imaginary part before the loop ever saw it. Four plausible numbers where there should be four diagnostics, which is C13 in an operator nobody had pointed at -- the corpus tested `!5` and `!0` and stopped. Found by typing `!5.5` while checking what the lexer accepts. |
-| C41 `[kept]` | **A block that does not fill its band continues with its own last cell.** `[a, [3 4]]`, with `a` 2x2, gives `1 2 3 4 / 3 4 4 4`; `[[1 2 3], a]` fills a whole row with `3 3 3`. The code says so in as many words -- *"extend the previous (up and left) evaluated cell result"* -- so it is deliberate, and read charitably the rule is **a block continues with its last value**, which is an ellipsis: `[a, 0]` pads the band with zeros and `[a, 1]` with ones, and that is a notation a matrix wants. The author does not remember the use case and suspects exactly this: an attempt at the `...` of matrix notation. Where it stops being statable is the multi-cell block, where continuing `[3 4]` with `4 4` is a corner repeated rather than a continuation anybody wrote. It is the third answer to one question -- a literal's short row pads with zeros (README.md section 2), a single value stretches, a short block repeats a corner -- and only the first two can be said out loud. **Decision: kept, and recorded as it is** in `matrices.ink` with the entry saying so. Not turned into a diagnostic while it may still be the residue of an idea; when the idea is found or ruled out, this goes and an explicit notation for the continuation replaces it, rather than a fourth fill rule. Phase 13 leaves the free-standing `...` unclaimed for it: `1...` is an approximate one, `[1 2 ...]` still an error. |
+| C41 `[kept]` | **A block that does not fill its band continues with its own last cell.** `[a, [3 4]]`, with `a` 2x2, gives `1 2 3 4 / 3 4 4 4`; `[[1 2 3], a]` fills a whole row with `3 3 3`. The code says so in as many words -- *"extend the previous (up and left) evaluated cell result"* -- so it is deliberate, and read charitably the rule is **a block continues with its last value**, which is an ellipsis: `[a, 0]` pads the band with zeros and `[a, 1]` with ones, and that is a notation a matrix wants. The author does not remember the use case and suspects exactly this: an attempt at the `...` of matrix notation. Where it stops being statable is the multi-cell block, where continuing `[3 4]` with `4 4` is a corner repeated rather than a continuation anybody wrote. It is the third answer to one question -- a literal's short row pads with zeros (README.md section 2), a single value stretches, a short block repeats a corner -- and only the first two can be said out loud. **Decision: kept, and recorded as it is** in `matrices.ink` with the entry saying so. Not turned into a diagnostic while it may still be the residue of an idea; when the idea is found or ruled out, this goes and an explicit notation for the continuation replaces it, rather than a fourth fill rule. Phase 13 leaves `...` unclaimed for it. |
 | C40 `[fixed]` | **A matrix could be built and never read.** `a(1,2)` was `a takes no arguments` and `a_1` was `a is not a sequence`: the language had no way at all to get a value back out of a matrix, which is half of what the second of the three ideas is for. `Matrix::operator()` was there, with a good out-of-range message, and nothing in the language reached it. `m[i,j]` now does, one-based as the rows and columns are written, and composing with everything a name can carry -- `f(3)[1,2]` and `s_3[1,2]` both work. The brackets were chosen over parentheses to match array indexing elsewhere, and they collide with the matrix literal in exactly one place: inside a literal, and inside an argument list, a space between two expressions separates them, so `[[1 2] [3 4]]` is a row of two blocks. Outside one, juxtaposition means nothing, and the brackets index whatever is in front of them -- `[1 2;3 4][2,1]` and `(a*a)[1,1]` both work. Inside one, only a name takes an index, which leaves a single form changed: `[a [3 4]]`, a row of blocks whose second follows a name with a space, now reads as an index of `a` and reports that it needs a row and a column. That form was legal, unused in the corpus and in `README.md`, and is written `[a, [3 4]]` instead; the change turns it into a diagnostic rather than a wrong answer. `Matrix::Offset` takes a signed index so that `m[0-1,1]` names the row it asked for instead of one that wrapped. |
 | C39 `[fixed]` | **A limit that cannot be taken reports an internal-sounding reason.** `lim k` on a sequence of matrices said `a matrix has no absolute value`, which names neither the sequence nor what the interpreter was doing when it needed one. Every other refusal from `lim` names the sequence -- `k has no general clause, so it has no limit`. It now reads `k has no limit: a matrix has no absolute value`, keeping the reason and adding the context, which also covers the case where the terms change size between iterations. |
 | C38 `[fixed]` | **A scalar stretches over a matrix for `*` and for nothing else.** `a*2` and `2*a` worked, `a/2`, `a-1` and `1+a` all reported `these matrices have different sizes`. The scalar case lived in `mul`, which needs one because matrix multiplication does; `BinaryOp`, behind `+`, `-` and `/`, compared extents and gave up. Nothing chose that: `/` is documented as working cell by cell, and a literal already stretches a scalar -- `[a; 1]` spreads the 1 across the block above it. `a*0.5` working while `a/2` did not is the sharp form. Now a single value stretches on either side of all four, with the operand order kept, so `1-a` subtracts each cell from one. |
@@ -1349,53 +1349,59 @@ the true remainder, where the accumulated sum was 5.8e-16 off.
 Revised before step 1 reached master. A fraction is exact, and alien to a
 reader who does not care whether an answer is; and a decimal need not go
 through a double -- long division of an exact fraction gives as many correct
-digits as are asked for, all fifty of `ex(1)_40`'s matching `e`. Repeating
-notation cannot keep a decimal exact: `1/97` repeats every 96 digits and `h_30`
-every 11,088, so a decimal is mostly cut short, and has to say so.
+digits as are asked for, all fifty of `ex(1)_40`'s matching `e`. A decimal
+cannot hold most exact numbers whole: `1/97` repeats every 96 digits and
+`h_30` every 11,088.
 
-Specified in `test/data/spec/decimals.ink`, 58 of its 85 entries failing. The
-27 that pass are 18 definitions echoing themselves, five exact whole numbers
-that already print in full, `1/3+1/3+1/3`, `2+3*i`, two inexact answers that
-happen to print today as their exact successors will (`0.1+0.2`, `1.5e-3`),
-and `[1 2 ...]`, an error meant to stay one. Every expected output was computed
-from the exact value by a reference printer written apart from the
-interpreter, which caught one guess: `!52/(!5*!47)` through double factorials
-is exactly `2598960`, so it prints unmarked.
+Specified in `test/data/spec/decimals.ink`, 62 of its 91 entries failing. The
+29 that pass are 18 definitions echoing themselves, four whole numbers already
+printed in full, `1/3+1/3+1/3`, `2+3*i`, three inexact answers that happen to
+print today as their exact successors will, and the two ellipses, errors meant
+to stay errors. Every expected output was computed from the exact value by a
+reference printer written apart from the interpreter, which caught one guess:
+`!52/(!5*!47)` through double factorials is exactly `2598960`, so it prints
+unmarked.
 
 What it decides, revising step 1's display:
 
-- **Every number prints in decimal**, rounded to 9 significant digits: an exact
-  whole number in full, a number that is not whole never as whole, a very
-  small one with an exponent, a very large exact one keeping its whole part.
-- **`...` means the digits shown are not the whole value**, whatever the kind.
-  Rounded, not truncated: what is written left of an ellipsis is an
-  approximation, and truncating a double exposes its binary noise -- `0.3...`
-  would print back as `0.299999999...`. So `i*i` is `-1` and `lim lt` is `5`
-  again, and step 1's trailing point goes.
-- **A literal is exact as written**, point and exponent included, and **digits
-  ending in `...` are inexact**. `0.1*3 == 0.3` holds, and every answer reads
-  back honestly: a complete one as the same exact number, a cut one as the
-  approximation it shows. This reverses step 1's rule that a point makes a
-  literal inexact.
-- **`frac` begins a line and shows its answer as the exact fraction**, and
-  refuses an approximation, which is how the kind stays visible. Not `exact`,
-  which in Scheme turns `0.5` into `1/2`.
-- **`digits = n` sets how many significant digits are shown**, in the session
-  and so in the file that needs it. An inexact number shows 17 at most, which
-  is where an exact partial sum of `e` overtakes the built-in one.
-- **Going inexact is spelled `1...`, not a keyword**: `root_0 = 1...` seeds an
+- **Every number prints in decimal**: an exact whole number in full, anything
+  else rounded to 9 significant digits, with an exponent below 1e-4 and from
+  10^9 up.
+- **`~` in front says the digits are not the whole value**, whatever the kind:
+  `2/3` is `~0.666666667`, `pi` is `~3.14159265`. Rounding and `~` belong
+  together -- "about" is true of a rounded decimal, where an ellipsis claims
+  the digits continue, and `0.666666667...` claims a 7 that 2/3 does not have.
+  An inexact number that is exactly what is printed needs no mark (`i*i` is
+  `-1`), a complex number is marked part by part where it is inexact, and step
+  1's trailing point goes.
+- **`~` is also an operator**: in front of anything, it makes it inexact, so
+  every answer reads back as what it says it is, and `root_0 = ~1` starts an
   approximate iteration. With a bignum that is no nicety -- exact Newton's
   method doubles its digits every step, 392 at the tenth and 401,370 at the
   twentieth -- and step 2 should keep a bound past which a result goes
-  inexact, as 64 bits does now, so that a forgotten seed costs speed and not
-  the session.
-- **A free-standing ellipsis stays unclaimed**, for the matrix `...` C41
-  suspects: `[1 2...]` is a row whose second cell is approximate, `[1 2 ...]`
-  is an error. One space apart -- the trap C52's `0 -1` was -- and written into
-  the specification so that it is a decision rather than a discovery.
+  inexact, as 64 bits does now, so that a forgotten `~` costs speed and not the
+  session.
+- **A literal is exact as written**, point and exponent included, so
+  `0.1*3 == 0.3` holds. This reverses step 1's rule that a point makes a
+  literal inexact.
+- **`frac` begins a line and shows its answer as the exact fraction**, and
+  refuses an approximation. The default display may hide the kind; `frac`
+  shows it.
+- **`digits = n` sets how many significant digits are shown**, in the session
+  and so in the file that needs it. An inexact number shows 17 at most, which
+  is where an exact partial sum of `e` overtakes the built-in one.
+- **`...` stays unclaimed**, for the matrix notation C41 suspects. An ellipsis
+  marking approximations was specified first and dropped: it had to mean "the
+  digits continue" for an exact number and "about" for an inexact one, and
+  could not honestly mean both.
 
-Left open: whether `frac` and `digits` may still be used as names, and what
-`digits` set inside an expression means.
+Deferred, to come back to: **`exact`**, showing an exact number losslessly in
+decimal, its repeating block in parentheses -- `2/3` as `0.(6)`, `22/7` as
+`3.(142857)` -- which reads back exactly. At 9 digits the block fits for 64 of
+the 99 denominators from 2 to 100; where it does not, `exact` should give the
+fraction instead, so that it is always exact and never an error. Also open:
+whether `frac` and `digits` may still be used as names, and what `digits` set
+inside an expression means.
 
 **What asked for it.** Step 1 showed the digits only by accident.
 `sequences.ink` says twenty terms of Aitken's acceleration beat a hundred raw
