@@ -169,14 +169,22 @@ struct numeric_interface_imp<std::complex<T>,false>
     // libstdc++ does, in its order, so no answer on Linux moves.
     static std::complex<T> pow(const std::complex<T>& a, int b)
     {
-        unsigned        n = b < 0 ? 0u - static_cast<unsigned>(b) : static_cast<unsigned>(b);
-        std::complex<T> x = a;
+        const unsigned  n = b < 0 ? 0u - static_cast<unsigned>(b) : static_cast<unsigned>(b);
+        std::complex<T> y = Power(a, n);
+        if (b >= 0) return y;
+        // One over a power that overflowed is 0, where the answer may still be
+        // a double: 2^-1074 is the smallest one.
+        if (std::isfinite(y.real()) && std::isfinite(y.imag())) return std::complex<T>(1) / y;
+        return Power(std::complex<T>(1) / a, n);
+    }
+
+    static std::complex<T> Power(std::complex<T> x, unsigned n) {
         std::complex<T> y = n % 2 ? x : std::complex<T>(1);
         while (n >>= 1) {
             x = x * x;
             if (n % 2) y = y * x;
         }
-        return b < 0 ? std::complex<T>(1) / y : y;
+        return y;
     }
 
     static auto fact(const std::complex<T>& a)

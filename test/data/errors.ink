@@ -150,6 +150,14 @@ inf
 >> 0.5^3000000000
 0
 
+# A negative power was one over the positive power, which overflows first:
+# both answered 0, next to the smallest double.
+>> 2^-1074
+~4.94065646e-324
+
+>> (2*i)^-1074
+~-4.94065646e-324
+
 # Mathematics writes a multiplication by writing nothing; this language does
 # not. The hint used to be given only for '(' -- '2 3' above is the same
 # mistake and got only 'unexpected' (MODERNIZATION.md, C35).
