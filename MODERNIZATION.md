@@ -1483,6 +1483,9 @@ What it decides:
   by Lehmer's method, which is where Euclid would lose; 82 us a `Fraction`
   sum, the gcd and interpreted code on top. Lehmer's gcd, about a hundred
   lines, goes in only if a sum at a thousand digits measures slower than that.
+  It went in with phase 14's PID: the exact `y_5000` spent 97% of its 1.2 s
+  in Euclid's gcd, and with Lehmer's, seventy lines, takes 0.2 s -- ten times
+  fewer instructions, and 8 us rather than 30 for a gcd at a thousand digits.
 
 What it costs before a line of it: **the memo key.** A key is a value's bytes,
 and a value on the heap has a pointer for bytes -- two equal values would be

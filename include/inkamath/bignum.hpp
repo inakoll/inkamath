@@ -11,7 +11,7 @@
 
 // A natural number of any size (MODERNIZATION.md, phase 13, step 2), in 32-bit
 // limbs because the product of two fits in 64 bits on every compiler CI has.
-// Schoolbook multiplication, Knuth's division and Euclid's gcd: at the
+// Schoolbook multiplication, Knuth's division and Lehmer's gcd: at the
 // thousand digits exact numbers stop at, nothing cleverer has paid for itself.
 class Natural {
 public:
@@ -119,11 +119,42 @@ public:
     friend Natural operator/(const Natural& a, const Natural& b) { return DivMod(a, b).first; }
     friend Natural operator%(const Natural& a, const Natural& b) { return DivMod(a, b).second; }
 
+    // Lehmer's: Euclid's steps are taken on the leading 64 bits while they
+    // must agree with the full numbers' (Jebelean's condition), then applied to
+    // the full numbers at once. Any such matrix has determinant +-1, so the gcd
+    // survives even a wrong step; a round that makes no progress divides.
     friend Natural Gcd(Natural a, Natural b) {
+        if (Compare(a, b) < 0) std::swap(a, b);
         while (!b.zero()) {
-            Natural r = a % b;
-            a         = std::move(b);
-            b         = std::move(r);
+            if (a.fits()) {
+                wide x = a.low(), y = b.low();
+                while (y != 0) x = std::exchange(y, x % y);
+                return Natural(x);
+            }
+            const std::size_t shift = a.bits() - 64;
+            wide              x = a.Window(shift), y = b.Window(shift);
+            // x and y stand for |ua*a - ub*b| and |va*a - vb*b|.
+            constexpr wide most = 0xffffffffu;
+            wide           ua = 1, ub = 0, va = 0, vb = 1;
+            while (y != 0) {
+                const wide q = x / y, r = x % y;
+                if (q > (most - ub) / vb || (va != 0 && q > (most - ua) / va)) break;
+                const wide wa = ua + q * va, wb = ub + q * vb;
+                if (r < wb || y - r < wb + vb) break;
+                ua = std::exchange(va, wa);
+                ub = std::exchange(vb, wb);
+                x  = std::exchange(y, r);
+            }
+            Natural na = Combination(ua, a, ub, b), nb = Combination(va, a, vb, b);
+            if (Compare(na, nb) < 0) std::swap(na, nb);
+            if (Compare(na, a) < 0) {
+                a = std::move(na);
+                b = std::move(nb);
+            } else {
+                Natural r = a % b;
+                a         = std::move(b);
+                b         = std::move(r);
+            }
         }
         return a;
     }
@@ -162,6 +193,42 @@ public:
 private:
     void Trim() {
         while (!limbs_.empty() && limbs_.back() == 0) limbs_.pop_back();
+    }
+
+    // The 64 bits from bit `shift` up.
+    wide Window(std::size_t shift) const {
+        const auto        at = [this](std::size_t i) -> wide { return i < size() ? limbs_[i] : 0; };
+        const std::size_t i  = shift / 32;
+        const unsigned    rest = static_cast<unsigned>(shift % 32);
+        const wide        low  = at(i) | at(i + 1) << 32;
+        return rest == 0 ? low : low >> rest | at(i + 2) << (64 - rest);
+    }
+
+    // |p*u - q*v|, for factors of at most 32 bits.
+    static Natural Combination(wide p, const Natural& u, wide q, const Natural& v) {
+        const std::size_t n = std::max(u.size(), v.size());
+        Natural           d;
+        d.limbs_.resize(n + 1);
+        wide pu = 0, qv = 0, borrow = 0;
+        for (std::size_t i = 0; i <= n; ++i) {
+            pu += p * (i < u.size() ? u.limbs_[i] : 0);
+            qv += q * (i < v.size() ? v.limbs_[i] : 0);
+            const wide subtrahend = (qv & 0xffffffffu) + borrow;
+            borrow                = (pu & 0xffffffffu) < subtrahend ? 1 : 0;
+            d.limbs_[i]           = static_cast<limb>(pu - subtrahend);
+            pu >>= 32;
+            qv >>= 32;
+        }
+        if (borrow != 0) {  // negative, in two's complement: negate it
+            wide carry = 1;
+            for (limb& l : d.limbs_) {
+                carry += static_cast<limb>(~l);
+                l = static_cast<limb>(carry);
+                carry >>= 32;
+            }
+        }
+        d.Trim();
+        return d;
     }
 
     void MultiplyAdd(limb factor, limb addend) {
