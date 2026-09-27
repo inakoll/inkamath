@@ -195,13 +195,29 @@ public:
 
     // A whole power of an exact number is exact; anything else is approached.
     static Number pow(const Number& a, const Number& b) {
-        if (a.exact() && b.small() && b.den_ == 1) {
-            if (a.small()) {
-                if (const auto power = Power(a, b.num_)) return *power;
+        const bool whole = b.small() ? b.den_ == 1 : b.big_ && b.big_->den == Natural(1);
+        const bool odd =
+            b.small() ? (b.num_ & 1) != 0 : b.big_ && (b.big_->num.limbs()[0] & 1) != 0;
+        if (a.exact() && whole) {
+            if (b.small()) {
+                if (a.small()) {
+                    if (const auto power = Power(a, b.num_)) return *power;
+                }
+                if (const auto power = BigPower(a.Ratio(), b.num_)) return *power;
+            } else if (a.small() && (a.num_ == 0 || a.num_ == 1 || a.num_ == -1) && a.den_ == 1) {
+                // Past 64 bits only these stay within the thousand digits.
+                if (a.num_ == 0 && b.big_->negative) throw std::runtime_error("division by zero");
+                return a.num_ == -1 && !odd ? Number(1) : a;
             }
-            if (const auto power = BigPower(a.Ratio(), b.num_)) return *power;
         }
-        return Number(numeric_interface<inexact_type>::pow(a.Inexact(), b.Inexact()));
+        // A whole exponent past 2^53 has no odd double, so a negative base
+        // takes its sign from the exact exponent.
+        const inexact_type base = a.Inexact();
+        if (whole && base.imag() == 0 && base.real() < 0) {
+            const double magnitude = std::pow(-base.real(), b.Inexact().real());
+            return Number(odd ? -magnitude : magnitude);
+        }
+        return Number(numeric_interface<inexact_type>::pow(base, b.Inexact()));
     }
 
     static Number fact(const Number& a) {

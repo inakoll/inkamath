@@ -36,6 +36,23 @@
 >> (2/3)^-2
 2.25
 
+# The sign of a power comes from the exact exponent: past 2^53 a double holds
+# no odd number, and these answered 1, inf and 1.
+>> (0-1)^(2^70+1)
+-1
+
+>> (0-2)^(2^70+1)
+-inf
+
+>> (~(0-1))^(2^63+1)
+-1
+
+>> 0^(2^70)
+0
+
+>> 0^(0-2^70)
+error: division by zero
+
 # A tenth is exact however it is written. Before this, both answered 0.
 >> 1/10*3 == 3/10
 1
