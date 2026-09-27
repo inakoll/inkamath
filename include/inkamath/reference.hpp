@@ -184,13 +184,22 @@ public:
         }
         // Storing after the call returns, so that an evaluation which ran out
         // of budget is retried rather than remembered.
-        T evaluation;
+        // Caught only where a fill can follow, and filled only after the
+        // handler: MSVC runs a handler on top of the stack that threw, which
+        // is 256 references deep here.
+        if (!memoisable || !indexed || !stack.CanFill()) {
+            const T evaluation = EvalImp(indexed, index, evaluator);
+            if (memoisable) stack.Memoise(key, evaluation);
+            return evaluation;
+        }
+        std::exception_ptr depth;
+        T                  evaluation;
         try {
             evaluation = EvalImp(indexed, index, evaluator);
         } catch (const DepthExceeded&) {
-            if (!memoisable || !indexed || !stack.CanFill()) throw;
-            evaluation = Filled(index, arguments, call, stack, evaluator);
+            depth = std::current_exception();
         }
+        if (depth) evaluation = Filled(index, arguments, call, stack, evaluator, depth);
         if(memoisable) {
             stack.Memoise(key, evaluation);
         }
@@ -205,10 +214,12 @@ private:
     // no evaluation of this one would have asked for -- reports the depth.
     T Filled(int index, const typename ParametersDefinition<T>::Arguments& arguments,
              const ParametersCall<T>& call, ReferenceStack<T>& stack,
-             EvaluationVisitor<T>& evaluator) const {
-        const std::exception_ptr depth  = std::current_exception();
-        const Clause<T>*         lowest = EndBase(true);
-        if (!lowest) std::rethrow_exception(depth);
+             EvaluationVisitor<T>& evaluator, const std::exception_ptr& depth) const {
+        const Clause<T>* lowest = EndBase(true);
+        if (!lowest) {
+            stack.FillFailed();
+            std::rethrow_exception(depth);
+        }
         const typename ReferenceStack<T>::Filling filling(stack);
         try {
             for (int k = lowest->parameters.index() + 1; k < index; ++k) {
@@ -221,6 +232,7 @@ private:
                 stack.Memoise(key, EvalImp(true, k, term));
             }
         } catch (const std::runtime_error&) {
+            stack.FillFailed();
             std::rethrow_exception(depth);
         }
         return EvalImp(true, index, evaluator);

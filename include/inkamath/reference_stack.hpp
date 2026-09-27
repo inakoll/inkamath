@@ -46,7 +46,11 @@ public:
     static constexpr size_t max_memoised = 100000;
 
     // Call once per top-level evaluation; the stack outlives them all.
-    void BeginEvaluation() {depth_ = 0; steps_ = 0;}
+    void BeginEvaluation() {
+        depth_       = 0;
+        steps_       = 0;
+        fill_failed_ = false;
+    }
 
     ReferenceStack() {
         // Every digit a double holds: the 2014 literals stopped at fourteen,
@@ -110,8 +114,12 @@ public:
     }
 
     // Filling a recurrence needs room to nest a few references per term, and
-    // a fill never starts another: it would redo the same terms.
-    [[nodiscard]] bool CanFill() const { return !filling_ && depth_ <= max_depth / 2; }
+    // a fill never starts another: it would redo the same terms. One that
+    // failed would fail again at every level the error passes on its way out.
+    [[nodiscard]] bool CanFill() const {
+        return !filling_ && !fill_failed_ && depth_ <= max_depth / 2;
+    }
+    void FillFailed() { fill_failed_ = true; }
 
     struct Filling {
         explicit Filling(ReferenceStack<T>& stack) : stack_(stack) { stack_.filling_ = true; }
@@ -271,6 +279,7 @@ private:
     size_t depth_ = 0;
     size_t steps_ = 0;
     bool                                     filling_ = false;
+    bool                                     fill_failed_ = false;
     std::unordered_map<MemoKey, T, MemoHash> memoised_;
     scope_type globals_;
     std::vector<frame_type>                  frames_;  // the open ones first, then spares
