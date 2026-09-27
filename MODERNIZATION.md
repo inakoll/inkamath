@@ -1252,7 +1252,7 @@ goldens now come back exactly. No parsing library: five flags are a loop over
 
 ---
 
-## Phase 13 — Exact numbers `[step 1 done, shown as decimals]`
+## Phase 13 — Exact numbers `[done]`
 
 The kind of a number becomes part of the number: `1/3+1/3+1/3` is `1`, not
 nearly one, and `1/10*3 == 3/10` holds. This answers the question *Other
@@ -1454,7 +1454,7 @@ the places a number is read.
 
 ---
 
-### Step 2: a bignum `[specified]`
+### Step 2: a bignum `[done]`
 
 Specified in `test/data/spec/bignum.ink`, 16 of its entries failing -- each one
 an exact answer past 64 bits. The 24 that pass are definitions and settings,
@@ -1492,6 +1492,30 @@ output byte-identical and goes first. It also frees the layout: nothing needs
 a `Number` without padding any more, so it can hold a 64-bit fraction, a big
 one or a double in 24 bytes rather than 32, which is where the 1.7x on integer
 matrices most likely lives.
+
+It passed as written on the first build -- in 7 ms, `rt_11`'s 784-digit parts
+included -- and is now `test/data/bignum.ink`; the spec suite retires again.
+`Natural` is 256 lines in `bignum.hpp`, checked against Python's integers on
+60000 operand pairs shaped to reach division's add-back step, which ran 24828
+times; `Number` over it against Python's `Fraction` on 9000 expressions and
+27000 conversions and printouts, the overflow to `inf` and the subnormals
+among them. What moved in the goldens is what 64 bits used to approximate --
+`2^63`, `!21`, `fib_93`, the binomial through `!52` -- and three entries meant
+to test doubles now say so with `~`: `!~171`, `(~2)^1024`, `o_0=~1e308`.
+
+**The layout was the wrong guess.** A variant of the three kinds is 24 bytes and
+cost *more* -- 700M instructions on the matrix workload against 644M for 48
+bytes and 456M before the bignum -- because every copy has to ask which kind it
+holds. The cost was elsewhere, and a profile found it: the fallbacks to
+naturals had made `+`, `-`, `*` and `/` too large to inline into a matrix
+product, and returning an `optional<Number>` moved a value that is no longer
+trivial to copy. With the fallbacks kept out of line and the fast paths
+returning parts, integer matrices went from 784 ms to 596 ms against 548
+before the bignum, and a short whole literal skipping the naturals made
+parsing faster than it was. What is left, about a tenth, is the shared
+pointer's copies: a build that leaked big numbers through a raw pointer was
+that much faster on sequences, and no faster on matrices. The 1.7x against
+master was never the size of a `Number` either; phase 14 has it.
 
 ## Phase 14 — The evaluator `[planned]`
 
@@ -1564,8 +1588,6 @@ the interpreter, each one commit once specified.
 - `[done]` **`1 ~2` says "unexpected '~'"**, where every other juxtaposition
   is told that `*` is probably missing. So did `2 !3` and `2 [1 2]`.
 
-Then phase 13 step 2, the bignum, specified first, and with it the cost exact
-numbers still carry: integer matrices at 1.7x master, most likely because a
-`Number` is twice the size of a `complex<double>`. The bignum changes that
-layout anyway, so that is when to measure it. Then phase 14, the evaluator,
-where the larger gap is.
+Then phase 13 step 2, the bignum -- done, and the cost exact numbers carry
+turned out not to be a `Number`'s size (see step 2). Then phase 14, the
+evaluator, where the larger gap is.
