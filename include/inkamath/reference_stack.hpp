@@ -60,7 +60,7 @@ public:
     // cache. A definition made while a frame is on the stack is a parameter
     // or an index, which is part of the key and cannot invalidate anything.
     void Set(const std::string& ai_reference_name, const ParametersDefinition<T>& ai_parameters, PExpression<T>  ai_expression, const std::string& written = std::string()) {
-        if(frames_.empty()) {
+        if (open_ == 0) {
             memoised_.clear();
         }
         definition_type& slot = DefinitionSlot(ai_reference_name);
@@ -110,7 +110,7 @@ public:
     }
 
     // Whether a call's frame is open to bind in.
-    [[nodiscard]] bool Framed() const { return !frames_.empty(); }
+    [[nodiscard]] bool Framed() const { return open_ != 0; }
 
     // One step of an evaluation that reads no name, and so never passes
     // through Eval: a sum of a constant still has to end.
@@ -163,8 +163,13 @@ public:
     // The scope of one call's parameters.
     struct Frame {
     public:
-        explicit Frame(ReferenceStack<T>& stack) : stack_(stack) {stack_.frames_.emplace_back();}
-        ~Frame() {stack_.frames_.pop_back();}
+        // A closed frame keeps its storage for the next call: allocating it
+        // per call was most of what a call allocated.
+        explicit Frame(ReferenceStack<T>& stack) : stack_(stack) {
+            if (stack_.open_ == stack_.frames_.size()) stack_.frames_.emplace_back();
+            ++stack_.open_;
+        }
+        ~Frame() { stack_.frames_[--stack_.open_].clear(); }
         Frame(const Frame&) = delete;
         Frame& operator=(const Frame&) = delete;
     private:
@@ -191,8 +196,8 @@ private:
     }
 
     const Binding* FindBinding(const std::string& name) const {
-        if(frames_.empty()) return nullptr;
-        for(const Binding& binding : frames_.back()) {
+        if (open_ == 0) return nullptr;
+        for (const Binding& binding : frames_[open_ - 1]) {
             if(binding.name == name) return &binding;
         }
         return nullptr;
@@ -202,22 +207,23 @@ private:
     // binds anything. _GLIBCXX_ASSERTIONS in the sanitizer build is what says
     // so if that ever stops being true (MODERNIZATION.md, C15).
     Binding& FrameSlot(const std::string& name) {
-        for(Binding& binding : frames_.back()) {
+        frame_type& frame = frames_[open_ - 1];
+        for (Binding& binding : frame) {
             if(binding.name == name) return binding;
         }
-        frames_.back().push_back(Binding{name, T(), definition_type()});
-        return frames_.back().back();
+        frame.push_back(Binding{name, T(), definition_type()});
+        return frame.back();
     }
 
     void DropBinding(const std::string& name) {
-        frame_type& frame = frames_.back();
+        frame_type& frame = frames_[open_ - 1];
         for(size_t i = 0; i < frame.size(); ++i) {
             if(frame[i].name == name) {frame.erase(frame.begin() + i); return;}
         }
     }
 
     definition_type& DefinitionSlot(const std::string& name) {
-        return frames_.empty() ? globals_[name] : FrameSlot(name).definition;
+        return open_ == 0 ? globals_[name] : FrameSlot(name).definition;
     }
 
     definition_type FindGlobal(const std::string& name) const {
@@ -252,7 +258,8 @@ private:
     size_t steps_ = 0;
     std::unordered_map<std::string, T> memoised_;
     scope_type globals_;
-    std::vector<frame_type> frames_;
+    std::vector<frame_type>            frames_;  // the open ones first, then spares
+    size_t                             open_ = 0;
 };
 
 #endif // EXPRESSION_STACK_HPP
