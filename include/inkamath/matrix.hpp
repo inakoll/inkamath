@@ -94,12 +94,17 @@ public:
     // truth, so it would invite an idiom it cannot finish.
     static Matrix<T> compare(const Matrix<T>& a, const Matrix<T>& b, Comparison op)
     {
-        const T& x = a.Comparable();
-        const T& y = b.Comparable();
-        const bool answer = (op == Comparison::Equal)    ? x == y
-                          : (op == Comparison::NotEqual) ? !(x == y)
-                          : Ordered(x, op, y);
-        return Matrix<T>(answer ? numeric_interface<T>::one() : numeric_interface<T>::zero());
+        // Two whole matrices are equal or not, which is one truth; an order
+        // cell by cell would be a matrix of them.
+        if (op == Comparison::Equal || op == Comparison::NotEqual) {
+            const bool equal = a.extent_ == b.extent_ &&
+                               std::equal(a.data(), a.data() + a.extent_.count(), b.data());
+            return Matrix<T>((op == Comparison::Equal) == equal ? numeric_interface<T>::one()
+                                                                : numeric_interface<T>::zero());
+        }
+        return Matrix<T>(Ordered(a.Comparable(), op, b.Comparable())
+                             ? numeric_interface<T>::one()
+                             : numeric_interface<T>::zero());
     }
 
     // A guard holds when it is not zero. NaN is not zero and so holds, while
@@ -127,27 +132,66 @@ public:
             return Matrix<T>(numeric_interface<T>::pow(a(1,1), exponent));
         }
 
-        // A matrix power is repeated multiplication. There is no inverse and
-        // no root here, so the exponent has to be a whole number that is not
-        // negative, and the matrix has to be square to multiply by itself.
+        // A matrix power is repeated multiplication, of the inverse when it is
+        // negative. There is no root, so the exponent has to be a whole
+        // number, and the matrix has to be square to multiply by itself.
         const int whole = numeric_interface<T>::toInt(exponent);
         if(numeric_interface<T>::abs(exponent - T(whole)) != 0) {
             throw std::runtime_error("a matrix power must be a whole number, not "
                                      + numeric_interface<T>::toString(exponent));
         }
-        if(whole < 0) {
-            throw std::runtime_error("a matrix power cannot be negative");
-        }
         if(a.extent_.rows != a.extent_.cols) {
             throw std::runtime_error("only a square matrix has a power");
         }
 
-        Matrix<T> r(a.extent_);
-        for(size_t i = 1; i <= a.extent_.rows; ++i) {
-            r(i,i) = T(1);
+        // By squaring the base -- C23 squared the accumulator -- so that a
+        // power costs products by the bit, not by the unit.
+        Matrix<T> base = whole < 0 ? Inverse(a) : a;
+        unsigned  n = whole < 0 ? 0u - static_cast<unsigned>(whole) : static_cast<unsigned>(whole);
+        Matrix<T> r = Identity(a.extent_);
+        for (; n != 0; n >>= 1) {
+            if (n & 1) r = r * base;
+            if (n > 1) base = base * base;
         }
-        for(int i = 0; i < whole; ++i) {
-            r = r*a;
+        return r;
+    }
+
+    static Matrix<T> Identity(Extent extent) {
+        Matrix<T> r(extent);
+        for (size_t i = 1; i <= extent.rows; ++i) r(i, i) = T(1);
+        return r;
+    }
+
+    // Gauss-Jordan. The largest pivot keeps an inexact inverse accurate, and
+    // an exact one is exact whichever pivot it takes.
+    static Matrix<T> Inverse(Matrix<T> a) {
+        const size_t n = a.extent_.rows;
+        Matrix<T>    r = Identity(a.extent_);
+        for (size_t col = 1; col <= n; ++col) {
+            size_t pivot = col;
+            for (size_t row = col + 1; row <= n; ++row) {
+                if (numeric_interface<T>::abs(a(row, col)) >
+                    numeric_interface<T>::abs(a(pivot, col)))
+                    pivot = row;
+            }
+            if (a(pivot, col) == T(0)) throw std::runtime_error("a singular matrix has no inverse");
+            for (size_t j = 1; j <= n; ++j) {
+                std::swap(a(pivot, j), a(col, j));
+                std::swap(r(pivot, j), r(col, j));
+            }
+            const T scale = a(col, col);
+            for (size_t j = 1; j <= n; ++j) {
+                a(col, j) = a(col, j) / scale;
+                r(col, j) = r(col, j) / scale;
+            }
+            for (size_t row = 1; row <= n; ++row) {
+                const T factor = a(row, col);
+                if (row == col || factor == T(0)) continue;
+                for (size_t j = 1; j <= n; ++j) {
+                    a(row, j) = a(row, j) - factor * a(col, j);
+                    r(row, j) = r(row, j) - factor * r(col, j);
+                }
+            }
         }
         return r;
     }

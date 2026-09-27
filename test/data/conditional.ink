@@ -67,6 +67,24 @@ error: a comparison needs real numbers, not i
 >> [1 2] < 3
 error: a comparison needs single values, not a 1x2 matrix
 
+# Equality is not cell by cell: two whole matrices are equal or not, which is
+# one truth. So a matrix read back can be checked against what printed it, and
+# two of different shapes are simply unequal, as a matrix and a number are.
+>> [1 2;3 4]/3 == [1/3, 2/3; 1, 4/3]
+1
+
+>> [1 2;3 4]/3 == [~0.333333333, ~0.666666667; 1, ~1.33333333]
+0
+
+>> [1 2] <> [2 1]
+1
+
+>> [1 2] == [1 2 3]
+0
+
+>> [1 1] == 1
+0
+
 # --- a definition in cases --------------------------------------------------
 
 # Absolute value, written the way a textbook writes it.

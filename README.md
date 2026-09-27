@@ -144,10 +144,10 @@ other built-ins, and there are no built-in functions.
 | `~expr` | the same value, inexact |
 | `expr+expr` `expr-expr` | addition, subtraction |
 | `expr*expr` `expr/expr` | multiplication, division |
-| `expr^expr` | power |
+| `expr^expr` | power; of a square matrix, a whole one, negative for the inverse |
 | `expr<expr` `expr>expr` | comparison, answering 1 or 0 |
 | `expr<=expr` `expr>=expr` | the same, or equal |
-| `expr==expr` `expr<>expr` | equal, not equal |
+| `expr==expr` `expr<>expr` | equal, not equal, of numbers or whole matrices |
 | `name = expr` | definition (section 3) |
 | `name \| cond = expr` | a definition in cases (section 3) |
 | `lim name` | the limit of a sequence (section 4) |

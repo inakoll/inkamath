@@ -123,9 +123,11 @@ TEST_CASE("powers are repeated multiplication") {
     Mat a = make(2, 2, {1, 2, 3, 4});
     CHECK(shown(Mat::pow(a, Mat(Scalar(3)))) == shown(a * a * a));
 
-    // No inverse, no root, and nothing but a square matrix has a power.
+    // A negative power is a power of the inverse, which a singular matrix
+    // lacks. No root, and nothing but a square matrix has a power.
+    CHECK(shown(Mat::pow(shift, Mat(Scalar(-3)))) == "[1, -3;\n 0,  1]");
+    CHECK_THROWS_AS(Mat::pow(make(2, 2, {1, 2, 2, 4}), Mat(Scalar(-1))), std::runtime_error);
     CHECK_THROWS_AS(Mat::pow(a, Mat(Scalar(0.5))), std::runtime_error);
-    CHECK_THROWS_AS(Mat::pow(a, Mat(Scalar(-1))), std::runtime_error);
     CHECK_THROWS_AS(Mat::pow(make(2, 3, {1, 2, 3, 4, 5, 6}), Mat(Scalar(2))),
                     std::runtime_error);
     CHECK_THROWS_AS(Mat::pow(a, make(1, 2, {1, 2})), std::runtime_error);

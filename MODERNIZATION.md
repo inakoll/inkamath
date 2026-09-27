@@ -1487,17 +1487,17 @@ against a spec transcript, in the commit that moved it.
 After phase 13's decimals and before its step 2: three gaps found by using
 the interpreter, each one commit once specified.
 
-- **`==` and `<>` on whole matrices.** A printed matrix reads back but cannot
+- `[done]` **`==` and `<>` on whole matrices.** A printed matrix reads back but cannot
   be checked against what printed it. The objection `conditional.ink` records
   is to comparing cell by cell, which answers a matrix nothing can reduce to a
   truth; two whole matrices are equal or not, which is one truth. `<` stays
   refused.
-- **A negative matrix power as the inverse.** `[1 2;3 4]^-1` is refused because
+- `[done]` **A negative matrix power as the inverse.** `[1 2;3 4]^-1` is refused because
   there was no inverse to give. With exact numbers there is one, exactly --
   `[-2 1; 3/2 -1/2]` -- and a singular matrix is an error, as dividing by an
   exact zero is.
-- **`1 ~2` says "unexpected '~'"**, where every other juxtaposition is told
-  that `*` is probably missing.
+- `[done]` **`1 ~2` says "unexpected '~'"**, where every other juxtaposition
+  is told that `*` is probably missing. So did `2 !3` and `2 [1 2]`.
 
 Then phase 13 step 2, the bignum, specified first, and with it the cost exact
 numbers still carry: integer matrices at 1.7x master, most likely because a
