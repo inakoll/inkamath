@@ -258,8 +258,8 @@ private:
     size_t steps_ = 0;
     std::unordered_map<MemoKey, T, MemoHash> memoised_;
     scope_type globals_;
-    std::vector<frame_type>            frames_;  // the open ones first, then spares
-    size_t                             open_ = 0;
+    std::vector<frame_type>                  frames_;  // the open ones first, then spares
+    size_t                                   open_ = 0;
 };
 
 #endif // EXPRESSION_STACK_HPP
