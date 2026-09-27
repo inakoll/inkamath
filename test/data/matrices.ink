@@ -242,6 +242,16 @@ s=[1 1;0 1]
 [1, -3;
  0,  1]
 
+# A large power ends: it multiplied once per unit of the exponent, which is
+# two billion products here.
+>> s^2147483647
+[1, 2147483647;
+ 0,          1]
+
+>> s^-2147483648
+[1, -2147483648;
+ 0,           1]
+
 >> [1 2;2 4]^-1
 error: a singular matrix has no inverse
 

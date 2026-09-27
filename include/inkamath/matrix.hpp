@@ -144,12 +144,14 @@ public:
             throw std::runtime_error("only a square matrix has a power");
         }
 
-        const Matrix<T> base = whole < 0 ? Inverse(a) : a;
-        const unsigned  n =
-            whole < 0 ? 0u - static_cast<unsigned>(whole) : static_cast<unsigned>(whole);
+        // By squaring the base -- C23 squared the accumulator -- so that a
+        // power costs products by the bit, not by the unit.
+        Matrix<T> base = whole < 0 ? Inverse(a) : a;
+        unsigned  n = whole < 0 ? 0u - static_cast<unsigned>(whole) : static_cast<unsigned>(whole);
         Matrix<T> r = Identity(a.extent_);
-        for (unsigned i = 0; i < n; ++i) {
-            r = r * base;
+        for (; n != 0; n >>= 1) {
+            if (n & 1) r = r * base;
+            if (n > 1) base = base * base;
         }
         return r;
     }
