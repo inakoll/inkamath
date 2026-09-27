@@ -262,6 +262,9 @@ error: a singular matrix has no inverse
 >> a^0.5
 error: a matrix power must be a whole number, not 0.5
 
+>> s^(2^40)
+error: a matrix power must be between -2147483648 and 2147483647, not 1099511627776
+
 >> [1 2 3]^2
 error: only a square matrix has a power
 

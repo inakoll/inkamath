@@ -146,6 +146,12 @@ public:
         // number, and the matrix has to be square to multiply by itself.
         const int whole = numeric_interface<T>::toInt(exponent);
         if(numeric_interface<T>::abs(exponent - T(whole)) != 0) {
+            // A value int cannot hold is not therefore a fraction (as C56 was).
+            if (numeric_interface<T>::abs(exponent) > 2147483647.0) {
+                throw std::runtime_error(
+                    "a matrix power must be between -2147483648 and 2147483647, not " +
+                    numeric_interface<T>::toString(exponent));
+            }
             throw std::runtime_error("a matrix power must be a whole number, not "
                                      + numeric_interface<T>::toString(exponent));
         }
