@@ -504,6 +504,15 @@ PExpression<U> Interpreter<T,U>::ParseCompareExpr(PExpression<U> lead)
     return e;
 }
 
+// A sign or a tilde on a literal is applied here, once, rather than at every
+// evaluation: the 1 of `n-1` in a recurrence would be negated at each term.
+template <typename Node, typename U, typename Apply>
+PExpression<U> Unary(PExpression<U> operand, Apply apply) {
+    if (const auto* literal = dynamic_cast<const ValExpression<U>*>(operand.get()))
+        return std::make_shared<ValExpression<U>>(apply(literal->value));
+    return std::make_shared<Node>(std::move(operand));
+}
+
 template <Parsable T, Numeric U>
 PExpression<U> Interpreter<T,U>::ParseAddExpr(PExpression<U> lead)
 {
@@ -516,8 +525,8 @@ PExpression<U> Interpreter<T,U>::ParseAddExpr(PExpression<U> lead)
         }
         else
         {
-            PExpression<U> tmp;
-            tmp.reset(new NegExpression<U>(ParseMultExpr()));
+            PExpression<U> tmp =
+                Unary<NegExpression<U>>(ParseMultExpr(), [](const U& value) { return -value; });
             e.reset(new AddExpression<U>(e,tmp));
         }
     }
@@ -660,8 +669,8 @@ PExpression<U>  Interpreter<T,U>::ParseSimpleExpr()
             // '6/-2/3' is '(6/-2)/3' and '-2^2' is still -4. Binding the whole
             // multiplicative chain made the first of those -9 (C48).
             ++m_i;
-            e.reset(new NegExpression<U>(ParsePowExpr()));
-			break;
+            e = Unary<NegExpression<U>>(ParsePowExpr(), [](const U& value) { return -value; });
+            break;
 
         case Fact:
             ++m_i;
@@ -670,7 +679,9 @@ PExpression<U>  Interpreter<T,U>::ParseSimpleExpr()
 
         case Approx:
             ++m_i;
-            e = std::make_shared<InexactExpression<U>>(ParsePowExpr());
+            e = Unary<InexactExpression<U>>(ParsePowExpr(), [](const U& value) {
+                return numeric_interface<U>::inexact(value);
+            });
             break;
 
         case LPar:
