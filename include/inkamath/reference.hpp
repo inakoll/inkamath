@@ -180,7 +180,7 @@ public:
             if(!FirstThat([](const Clause<T>& c) {return c.parameters.general();})) {
                 throw std::runtime_error(reference_name_ + " has no general clause, so it has no limit");
             }
-            return Converge(evaluator);
+            return Converge(arguments, call, stack, global);
         }
         // Storing after the call returns, so that an evaluation which ran out
         // of budget is retried rather than remembered.
@@ -222,20 +222,29 @@ private:
         }
         const typename ReferenceStack<T>::Filling filling(stack);
         try {
-            for (int k = lowest->parameters.index() + 1; k < index; ++k) {
-                const MemoKey key = Key(true, k, arguments);
-                if (stack.Memoised(key)) continue;
-                typename ReferenceStack<T>::Frame frame(stack);
-                ParametersDefinition<T>::Bind(arguments, stack);
-                EvaluationVisitor<T> term(stack);
-                CallParameters().BindDefaults(call, term);
-                stack.Memoise(key, EvalImp(true, k, term));
-            }
+            for (int k = lowest->parameters.index() + 1; k < index; ++k)
+                (void)Term(k, arguments, call, stack, true);
         } catch (const std::runtime_error&) {
             stack.FillFailed();
             std::rethrow_exception(depth);
         }
         return EvalImp(true, index, evaluator);
+    }
+
+    // One term, evaluated as indexing would evaluate it: in a frame of its own,
+    // and remembered where the definition's answers can be.
+    T Term(int k, const typename ParametersDefinition<T>::Arguments& arguments,
+           const ParametersCall<T>& call, ReferenceStack<T>& stack, bool memoisable) const {
+        const MemoKey key = memoisable ? Key(true, k, arguments) : MemoKey();
+        if (memoisable)
+            if (const T* memoised = stack.Memoised(key)) return *memoised;
+        typename ReferenceStack<T>::Frame frame(stack);
+        ParametersDefinition<T>::Bind(arguments, stack);
+        EvaluationVisitor<T> evaluator(stack);
+        CallParameters().BindDefaults(call, evaluator);
+        const T evaluation = EvalImp(true, k, evaluator);
+        if (memoisable) stack.Memoise(key, evaluation);
+        return evaluation;
     }
 
     // The values as each type encodes them, not their printed form, which
@@ -399,8 +408,13 @@ private:
 
     // Every term goes through EvalImp, so the terms a limit walks are the
     // terms an index gives. Evaluating the general clause directly made them
-    // two different sequences as soon as a guard existed (C54).
-    T Converge(EvaluationVisitor<T>& evaluator) const {
+    // two different sequences as soon as a guard existed (C54), and so did
+    // one frame for every term, where a local outlived its term (C66).
+    T Converge(const typename ParametersDefinition<T>::Arguments& arguments,
+               const ParametersCall<T>& call, ReferenceStack<T>& stack, bool global) const {
+        const auto evaluate = [&](long long k) {
+            return Term(static_cast<int>(k), arguments, call, stack, global);
+        };
         long long index = 0;
         Convergence<T> convergence(reference_name_);
         // With no base clause there is no term to compare the first one
@@ -408,12 +422,12 @@ private:
         // sequence starting near zero had converged to it.
         if (const Clause<T>* highest = EndBase(false)) {
             index = highest->parameters.index();
-            (void)convergence.Next(EvalImp(true, static_cast<int>(index), evaluator));
+            (void)convergence.Next(evaluate(index));
         }
 
         T evaluation;
         for (size_t term = 0; term < Convergence<T>::max_terms; ++term) {
-            evaluation = EvalImp(true, static_cast<int>(++index), evaluator);
+            evaluation = evaluate(++index);
             if (convergence.Next(evaluation)) {
                 return Convergence<T>::Limit(evaluation);
             }

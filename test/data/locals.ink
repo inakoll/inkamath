@@ -60,6 +60,23 @@ s(x)_n = (step = x^n) + s(x)_(n-1) + step
 >> s(2)_2
 13
 
+# So it does in each term a limit walks, or the limit would not be the limit
+# of the terms an index gives: this one read the previous term's c (C66).
+>> c = 100
+c = 100
+
+>> w_0 = 0
+w_0 = 0
+
+>> w_n = w_(n-1)/2 + c + 0*(c = 1)
+w_n = w_(n-1)/2 + c + 0*(c = 1)
+
+>> lim w
+~200
+
+>> w_60
+~200
+
 # Parentheses alone do not make a local: a line that is only a definition is
 # a definition, however it is written.
 >> (b = 7)

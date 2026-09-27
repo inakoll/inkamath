@@ -1567,10 +1567,21 @@ above, was measured before it was built and is dropped. A 1x1 whose copy and
 destruction skip its cell vector saves 1.1 per cent, and what a 1x1 still costs
 over a bare `Number` is a call's prologue, about five per cent -- not worth a
 second value type through the whole interpreter. The quarter the first profile
-put on matrices was mostly the numbers inside them. What is left is the call:
-per term, a memo insert that allocates (6 per cent), names found by string in
-the clauses and the frame (8), an index checked (5), a budget and a frame.
-That is what slots and closures remove.
+put on matrices was mostly the numbers inside them.
+
+The call tree then showed a limit computing every term twice. It walked its
+terms without remembering them, so each term's call for the one before missed
+the memo and computed it again. Each term is now evaluated as its index would
+be -- in a frame of its own, and remembered -- which takes the recomputed limit
+to 32.5M and fixed C66 on the way. Names resolved to slots are measured and
+wait: finding a name by string is at most six per cent, since libstdc++ scans a
+map this small rather than hashing it and a frame holds two or three names.
+Winning part of that would thread a symbol table through every binding;
+closures need one anyway, and can bring it.
+
+| | |
+|---|---|
+| C66 `[fixed]` | **A limit could disagree with its own terms.** `Converge` evaluated every term in the one frame of the limit's call, so a local bound by one term was still there for the next: with `c = 100`, the terms of `w_n = w_(n-1)/2 + c + 0*(c = 1)` tend to 200 and `lim w` answered 101. Each term is now evaluated as indexing evaluates it, in a frame of its own and through the memo, which also stops each term's call for the one before from computing it a second time. |
 
 **Measure instructions, not the clock.** One of those changes made the matrix
 workload 20 per cent slower by the clock and not by a single instruction: with
