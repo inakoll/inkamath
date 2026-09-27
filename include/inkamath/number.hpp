@@ -17,9 +17,7 @@
 
 // A number that knows whether it is exact (MODERNIZATION.md, phase 13): a
 // fraction over 64 bits for as long as its reduced parts fit, and a complex
-// double once anything inexact has touched it. Every field is always set and
-// nothing pads them, because a memo key is a value's bytes and has to carry
-// its kind: dbl(1/2) and dbl(~0.5) are different calls.
+// double once anything inexact has touched it.
 class Number {
 public:
     using inexact_type = std::complex<double>;
@@ -102,6 +100,19 @@ public:
     static Number inexact(const Number& a) { return Number(a.Inexact()); }
     static bool   exact(const Number& a) { return a.exact(); }
 
+    // A memo key carries the kind: dbl(1/2) and dbl(~0.5) are different calls.
+    // The kind also says how many bytes follow, so keys never run together.
+    static void key(const Number& a, std::string& out) {
+        out += a.exact() ? 'e' : 'i';
+        if (a.exact()) {
+            Append(a.num_, out);
+            Append(a.den_, out);
+        } else {
+            Append(a.inexact_.real(), out);
+            Append(a.inexact_.imag(), out);
+        }
+    }
+
     static int toInt(const Number& a) {
         if (!a.exact()) return numeric_interface<inexact_type>::toInt(a.inexact_);
         const long long whole = a.num_ / a.den_;
@@ -180,6 +191,11 @@ public:
 
 private:
     static constexpr long long top = std::numeric_limits<long long>::max();
+
+    template <typename Part>
+    static void Append(Part part, std::string& out) {
+        out.append(reinterpret_cast<const char*>(&part), sizeof part);
+    }
 
     // Already reduced, with the sign on the numerator.
     Number(long long num, long long den, std::nullptr_t) : num_(num), den_(den) {}
@@ -461,9 +477,6 @@ private:
     long long    den_     = 1;  // 0 marks an inexact number
     inexact_type inexact_ = 0;  // the value when inexact, and zero otherwise
 };
-
-static_assert(sizeof(Number) == 2 * sizeof(long long) + sizeof(Number::inexact_type),
-              "a memo key is a value's bytes, so a Number may have no padding");
 
 template <>
 inline constexpr bool numeric_interface_parses<Number> = true;

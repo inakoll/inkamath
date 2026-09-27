@@ -56,6 +56,7 @@ struct numeric_interface_imp
      static T imaginary(const T& a) { return T::imaginary(a); }
      static T inexact(const T& a) { return T::inexact(a); }
      static bool exact(const T& a) { return T::exact(a); }
+     static void key(const T& a, std::string& out) { T::key(a, out); }
 
      // Deduced: for a complex or a matrix these narrow to the scalar type.
      static auto fact(const T& a) {return T::fact(a);}
