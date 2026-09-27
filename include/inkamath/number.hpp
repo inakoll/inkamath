@@ -208,6 +208,9 @@ private:
     // are kept, the last two to round half to even with.
     static double Nearest(unsigned long long p, unsigned long long q) {
         if (p == 0) return 0;
+        // Both exact as doubles, so their quotient is rounded once already.
+        if (p <= 1ULL << 53 && q <= 1ULL << 53)
+            return static_cast<double>(p) / static_cast<double>(q);
         const unsigned long long top55 = 1ULL << 55;
         unsigned long long       m = p / q, r = p % q;
         int                      exponent = 0;
@@ -235,7 +238,14 @@ private:
     // the common factors come out before anything is multiplied, so the
     // product checked for overflow is the reduced result itself, and the
     // sum's numerator is larger than the result's by the last gcd at most.
+    // Whole numbers first: their gcds are all 1, and the 64-bit divisions
+    // that find so cost integer matrices seven times the double code.
     static std::optional<Number> Sum(long long a, long long b, long long c, long long d) {
+        long long whole = 0;
+        if (b == 1 && d == 1) {
+            if (!Add(a, c, whole)) return std::nullopt;
+            return Number(whole, 1, nullptr);
+        }
         const long long g    = std::gcd(b, d);
         long long       left = 0, right = 0, t = 0, den = 0;
         if (!Multiply(a, d / g, left) || !Multiply(c, b / g, right) || !Add(left, right, t)) {
@@ -249,6 +259,11 @@ private:
 
     static std::optional<Number> Product(long long a, long long b, long long c, long long d) {
         if (a == 0 || c == 0) return Number(0);
+        long long whole = 0;
+        if (b == 1 && d == 1) {
+            if (!Multiply(a, c, whole)) return std::nullopt;
+            return Number(whole, 1, nullptr);
+        }
         const long long g   = std::gcd(a, d);
         const long long h   = std::gcd(c, b);
         long long       num = 0, den = 0;

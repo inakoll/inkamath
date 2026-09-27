@@ -1413,7 +1413,17 @@ An index -- of a sequence, a cell or a series -- must be exact, as in Scheme:
 taken as a whole number, `s_(~2)` dropped its `~` and answered an exact term,
 and shared `s_2`'s memo key. `frac`'s refusal says a number *was approximated*
 rather than *is approximate*: after `4^0.5` prints a plain `2`, "2 is
-approximate" contradicted the line above it. A diagnostic that quotes a number
+approximate" contradicted the line above it.
+
+Measured against master on the earlier workloads, exact numbers first cost
+integer matrices 7.6x and sequences 1.5-1.8x: every whole-number product paid
+for gcds of 1, found by 64-bit divisions, and every mixed operation converted
+its exact operand by long division. Whole numbers now skip the gcds, and a
+fraction whose parts fit in 53 bits converts by one division, already
+correctly rounded. Both return what the general code did -- 184,000 lines of
+output identical before and after -- and leave matrices at 1.7x, exact
+sequences at 1.3x and inexact ones at 1.05-1.2x; printing and one-line
+expressions are 8% faster than master. A diagnostic that quotes a number
 quotes it at 9 digits whatever the setting, because it is written before the
 session's display is known.
 
