@@ -1535,6 +1535,49 @@ compile the tree once to a flat form -- closures or a bytecode, 3-10x in
 interpreters of this shape. Profile first, as phase 9 did; every recorded
 output byte-identical throughout, which is what makes it safe to try.
 
+**Step 1: compile in process.** A profile of that limit is flat: one term of
+`s_n = s_(n-1)*~0.5+1.25` costs about 8,500 instructions, where Python's loop
+spends a hundred, and no function holds more than five per cent of them --
+1x1 matrices built and destroyed for every value, a name looked up by string
+and hashed for every reference, a memo key built as a string for every call,
+a budget and a frame for every call. A flat profile is not fixed by point
+fixes but by doing once what is done every time: names resolved to slots when
+a line is defined, invalidated by what already invalidates the memo, then the
+tree turned into closures that call each other directly. No code is
+generated, and every recorded output stays byte-identical.
+
+**Step 2: compile ahead of time.** `inkamath --compile model.ink -o model.hpp`
+prints what step 1 builds as C++ against the headers already here -- `Number`,
+`Matrix`, `Natural` -- so the semantics are the interpreter's by construction
+and any C++ compiler builds the result: no LLVM, no new dependency. A module is
+the definitions as they stand at the end of the file, each a function: `fib_n`
+becomes `Value fib(long long n)`, memoised inside, and `area(r)` becomes
+`Value area(const Value& r)`, with `double` wrappers on request for a C ABI,
+and through it Python and WebAssembly. A name the file uses without defining
+is an input the host supplies -- a measurement stream, `z_n` -- and a plain
+definition such as `kp = 2` is a parameter with a setter that clears the memo
+tables, the same invalidation the interpreter does.
+
+**What step 2 is for, decided by building it.** Waiting for a use case that
+nothing yet can serve would wait for ever, so a proof of concept manufactures
+one: a PID controller, then a Kalman filter. Both already run in the
+interpreter -- a closed-loop PID is eight definitions, `frac y_3` is exactly
+`2697/6250`, and a constant-velocity Kalman tracker gives its gain exactly,
+`[752651/857701; 1203101/1715402]`. That is the product: a filter written once
+in the notation of the paper, exact reference outputs from the interpreter, a
+C++ header from the compiler, and the compiled floating-point filter tested
+against the exact transcript. Writing the two found four things they need:
+
+- **Deep recurrences.** `y_5000` fails -- evaluation nests more than 256
+  references deep -- because each term reaches back through every earlier
+  one. A recurrence has to fill from its lowest missing term up, as `lim`
+  already walks, in the interpreter as much as in compiled code.
+- **Inputs from the host**, as above.
+- **A window on the memo.** A filter running a million steps must not keep a
+  million terms.
+- **Transpose and identity**, which the Kalman filter spelled out by hand as
+  `Ft`, `Ht` and `I2`.
+
 Beyond Python on very large numbers is not on this path. What is fast at a
 hundred thousand digits -- PARI/GP, Julia, Mathematica -- is GMP, with FFT
 multiplication and subquadratic division; writing that here is not a phase but
