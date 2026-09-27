@@ -147,7 +147,7 @@ other built-ins, and there are no built-in functions.
 | `expr^expr` | power |
 | `expr<expr` `expr>expr` | comparison, answering 1 or 0 |
 | `expr<=expr` `expr>=expr` | the same, or equal |
-| `expr==expr` `expr<>expr` | equal, not equal |
+| `expr==expr` `expr<>expr` | equal, not equal, of numbers or whole matrices |
 | `name = expr` | definition (section 3) |
 | `name \| cond = expr` | a definition in cases (section 3) |
 | `lim name` | the limit of a sequence (section 4) |

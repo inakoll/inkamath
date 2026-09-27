@@ -94,12 +94,17 @@ public:
     // truth, so it would invite an idiom it cannot finish.
     static Matrix<T> compare(const Matrix<T>& a, const Matrix<T>& b, Comparison op)
     {
-        const T& x = a.Comparable();
-        const T& y = b.Comparable();
-        const bool answer = (op == Comparison::Equal)    ? x == y
-                          : (op == Comparison::NotEqual) ? !(x == y)
-                          : Ordered(x, op, y);
-        return Matrix<T>(answer ? numeric_interface<T>::one() : numeric_interface<T>::zero());
+        // Two whole matrices are equal or not, which is one truth; an order
+        // cell by cell would be a matrix of them.
+        if (op == Comparison::Equal || op == Comparison::NotEqual) {
+            const bool equal = a.extent_ == b.extent_ &&
+                               std::equal(a.data(), a.data() + a.extent_.count(), b.data());
+            return Matrix<T>((op == Comparison::Equal) == equal ? numeric_interface<T>::one()
+                                                                : numeric_interface<T>::zero());
+        }
+        return Matrix<T>(Ordered(a.Comparable(), op, b.Comparable())
+                             ? numeric_interface<T>::one()
+                             : numeric_interface<T>::zero());
     }
 
     // A guard holds when it is not zero. NaN is not zero and so holds, while
