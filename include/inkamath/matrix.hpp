@@ -73,6 +73,11 @@ public:
 
     static int toInt(const Matrix<T>& a) {return numeric_interface<T>::toInt(a.Scalar());}
 
+    static bool exact(const Matrix<T>& a) {
+        return std::all_of(a.data(), a.data() + a.extent_.count(),
+                           [](const T& value) { return numeric_interface<T>::exact(value); });
+    }
+
     static Matrix<T> inexact(const Matrix<T>& a) {
         Matrix<T> c(a);
         std::transform(c.data(), c.data() + c.extent_.count(), c.data(),

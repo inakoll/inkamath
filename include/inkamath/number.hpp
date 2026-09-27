@@ -100,6 +100,7 @@ public:
         return a.exact() ? Number(0) : Number(a.inexact_.imag());
     }
     static Number inexact(const Number& a) { return Number(a.Inexact()); }
+    static bool   exact(const Number& a) { return a.exact(); }
 
     static int toInt(const Number& a) {
         if (!a.exact()) return numeric_interface<inexact_type>::toInt(a.inexact_);

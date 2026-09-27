@@ -144,6 +144,14 @@ s_n = s_(n-1)/3
 >> s_(3/2)
 error: an index must be a whole number, not 1.5
 
+# An index is exact. Taken as a whole number it would drop the '~', and the
+# answer would claim an exactness nothing gave it.
+>> s_(~2)
+error: an index must be exact, and 2 was approximated
+
+>> sum_(k=1)^(~3) k
+error: an index must be exact, and 3 was approximated
+
 >> fib_0 = 0
 fib_0 = 0
 
@@ -209,6 +217,9 @@ a = [1 2;3 4]
 >> a/3
 [~0.333333333, ~0.666666667;
             1,  ~1.33333333]
+
+>> a[~1, 2]
+error: an index must be exact, and 1 was approximated
 
 >> [1/10 ~0.1]*3
 [0.3, ~0.3]

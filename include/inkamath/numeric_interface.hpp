@@ -55,6 +55,7 @@ struct numeric_interface_imp
      static T real(const T& a) { return T::real(a); }
      static T imaginary(const T& a) { return T::imaginary(a); }
      static T inexact(const T& a) { return T::inexact(a); }
+     static bool exact(const T& a) { return T::exact(a); }
 
      // Deduced: for a complex or a matrix these narrow to the scalar type.
      static auto fact(const T& a) {return T::fact(a);}
