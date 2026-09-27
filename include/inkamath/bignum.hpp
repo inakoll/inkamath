@@ -54,7 +54,7 @@ public:
 
     friend bool operator==(const Natural&, const Natural&) = default;
 
-    friend int Compare(const Natural& a, const Natural& b) {
+    static int Compare(const Natural& a, const Natural& b) {
         if (a.size() != b.size()) return a.size() < b.size() ? -1 : 1;
         for (std::size_t i = a.size(); i-- > 0;) {
             if (a.limbs_[i] != b.limbs_[i]) return a.limbs_[i] < b.limbs_[i] ? -1 : 1;

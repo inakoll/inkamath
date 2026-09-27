@@ -1,7 +1,7 @@
-# Exact numbers past 64 bits: phase 13, step 2 (MODERNIZATION.md). Specified
-# by hand, never recorded (CLAUDE.md, section 3); every expected output was
-# computed from the exact value, by Python's Fraction and the reference
-# printer, apart from the interpreter.
+# Exact numbers past 64 bits: phase 13, step 2 (MODERNIZATION.md). This was
+# the specification, written before they existed (CLAUDE.md, section 3); every
+# expected output is as it was specified, computed from the exact value by
+# Python's Fraction and the reference printer, apart from the interpreter.
 #
 # An exact number stays exact while its reduced numerator and denominator
 # have a thousand digits or fewer each -- as many as 'digits' can show -- and
@@ -131,3 +131,4 @@ inf
 
 >> !450
 inf
+

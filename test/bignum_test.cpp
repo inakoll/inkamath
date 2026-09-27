@@ -60,9 +60,9 @@ TEST_CASE("sums, differences and products") {
     CHECK((a * a).Decimal() ==
           "115792089237316195423570985008687907852589419931798687112530834793049593217025");
     CHECK((a * Natural()).zero());
-    CHECK(Compare(a, a + Natural(1)) < 0);
-    CHECK(Compare(a + Natural(1), a) > 0);
-    CHECK(Compare(a, a) == 0);
+    CHECK(Natural::Compare(a, a + Natural(1)) < 0);
+    CHECK(Natural::Compare(a + Natural(1), a) > 0);
+    CHECK(Natural::Compare(a, a) == 0);
     CHECK(a.bits() == 128);
     CHECK((a + Natural(1)).bits() == 129);
 }
@@ -74,7 +74,7 @@ TEST_CASE("division is multiplication undone") {
         Natural       b = random.natural(1 + random.next() % 6);
         if (b.zero()) b = Natural(1);
         const auto [q, r] = DivMod(a, b);
-        REQUIRE(Compare(r, b) < 0);
+        REQUIRE(Natural::Compare(r, b) < 0);
         REQUIRE(q * b + r == a);
     }
 }

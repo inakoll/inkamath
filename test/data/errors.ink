@@ -98,7 +98,7 @@ ix=[1 2;3 4]
 error: an index must be between -2147483648 and 2147483647, not 2147483648
 
 >> ix[0-1e20,1]
-error: an index must be between -2147483648 and 2147483647, not -1e+20
+error: an index must be between -2147483648 and 2147483647, not -100000000000000000000
 
 >> ix[1.5,1]
 error: an index must be a whole number, not 1.5
@@ -123,7 +123,7 @@ error: a factorial needs a real number, not i
 # the counter is itself a double, which stops advancing at 2^53. '!(10^20)'
 # and '!1e16' ran for ever and took the session with them, since a hung
 # process loses every definition in it (MODERNIZATION.md, C47).
->> !171
+>> !~171
 inf
 
 >> !(10^20)
@@ -153,7 +153,7 @@ inf
 # A real power of a real number is the real power. Taken as a complex one it
 # squared an infinity into a NaN imaginary part, and put a square root a bit
 # away from the double nearest it.
->> 2^1024
+>> (~2)^1024
 inf
 
 >> digits = 17
