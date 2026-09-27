@@ -1602,6 +1602,50 @@ is an input the host supplies -- a measurement stream, `z_n` -- and a plain
 definition such as `kp = 2` is a parameter with a setter that clears the memo
 tables, the same invalidation the interpreter does.
 
+**Which backend, and who optimises what.** An LLVM backend was closed as a
+JIT (phase 9) on the grounds that the tree walk it would replace was 7 per cent
+of the time. That argument does not reach a compiler, which replaces the whole
+interpreter, so it was weighed again, and C still wins on other grounds. The
+work of step 2 is analysis -- that `y_n` is a real scalar, that `P` is 2x2,
+that a recurrence is a loop -- and once it is done, emitting `fadd` or `+` over
+`double` ends in the same machine code, because the C compiler has LLVM's
+optimiser or one like it. LLVM would add a dependency whose API breaks every
+release, and emit what the toolchains of the embedded targets, GCC and vendor
+compilers, do not take, and what a user cannot read or step through. What it
+alone gives -- an object file with no compiler on the host -- serves no one who
+embeds a header. So the line between the two halves runs where the semantics
+stop being visible:
+
+- **Ours**: folding exact constants exactly, then rounding once -- `0.1 + 0.2`
+  is `3/10` here, and a C compiler folding the doubles would answer
+  `0.30000000000000004`; types and shapes; recurrences turned into loops over a
+  window of past terms, which no C compiler can do to a memoised function; and
+  quantities derived from parameters, recomputed where a parameter is set.
+- **The C compiler's**: everything over typed doubles in fixed shapes --
+  folding, common subexpressions, inlining, unrolling, vectorisation.
+- **Neither's**: reassociation. Without `-ffast-math` a C compiler keeps the
+  order it is given, and the order emitted is the interpreter's, so that the
+  compiled filter can be held to the interpreter's answers.
+
+That makes two targets rather than one: C over `double` with no runtime, what
+an embedded filter wants, and C++ over `Number` and `Matrix`, the exact model.
+The analysis produces one typed form and each target prints it; the C target
+comes first, because the proof of concept below is a filter.
+
+**The first increment** compiles sequences of real numbers to a C header, and
+refuses everything else by name. A file's definitions are run by the
+interpreter, as they would be at a prompt; each sequence becomes a window of
+its recent terms in a struct, as deep as the definitions reach back; a step
+advances the index and computes that index's terms in dependency order. A
+plain definition is a parameter, initialised to its exact value rounded once,
+with a setter; a name used and never defined is an input, a stream `y_n`
+passed to each step or a plain value set once. A setter changes the terms
+still to come, as a controller's gain is changed while it runs -- where the
+interpreter, clearing its memo, answers as if the parameter had always had
+its new value. Where the interpreter reports an error at run time -- a
+division by zero, a power it would take in the complex plane -- the compiled
+code answers an infinity or a NaN.
+
 **What step 2 is for, decided by building it.** Waiting for a use case that
 nothing yet can serve would wait for ever, so a proof of concept manufactures
 one: a PID controller, then a Kalman filter. Both already run in the
