@@ -150,6 +150,21 @@ inf
 >> 0.5^3000000000
 0
 
+# A real power of a real number is the real power. Taken as a complex one it
+# squared an infinity into a NaN imaginary part, and put a square root a bit
+# away from the double nearest it.
+>> 2^1024
+inf
+
+>> digits = 17
+digits = 17
+
+>> 2^0.5
+~1.4142135623730951
+
+>> digits = 9
+digits = 9
+
 # A negative power was one over the positive power, which overflows first:
 # both answered 0, next to the smallest double.
 >> 2^-1074

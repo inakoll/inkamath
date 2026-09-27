@@ -140,8 +140,14 @@ struct numeric_interface_imp<std::complex<T>,false>
     static std::complex<T> pow(const std::complex<T>& a,
                                const std::complex<T>& b)
     {
-        // exp(b*log(a)) is NaN at a == 0, where IEEE 754 gives 0^0 == 1.
-        // The integer overload below computes it by repeated multiplication.
+        // A real power of a real number is the real one: as a complex power,
+        // 2^0.5 came out a bit off, and 2^1024 squared an infinity into a NaN
+        // imaginary part.
+        if (a.imag() == 0 && b.imag() == 0 && (a.real() >= 0 || b.real() == std::floor(b.real()))) {
+            return std::pow(a.real(), b.real());
+        }
+        // A whole power of a complex number is repeated multiplication:
+        // exp(b*log(a)) leaves i^2 a rounding error away from -1.
         // The range check is not pedantry: converting a double outside int's
         // range is undefined, and `2^2147483648` answered 0.
         if(b.imag() == 0 && b.real() == std::floor(b.real())
