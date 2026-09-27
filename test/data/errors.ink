@@ -167,6 +167,16 @@ error: unexpected 'pi' -- the operator '*' is probably missing
 >> 3(4)
 error: unexpected '(' -- the operator '*' is probably missing
 
+# An operand that begins with a prefix or a bracket is the same mistake.
+>> 1 ~2
+error: unexpected '~' -- the operator '*' is probably missing
+
+>> 2 !3
+error: unexpected '!' -- the operator '*' is probably missing
+
+>> 2 [1 2]
+error: unexpected '[' -- the operator '*' is probably missing
+
 # 'frac' and 'digits' are about a whole line, and say so anywhere else
 # (MODERNIZATION.md, phase 13).
 >> frac x = 1

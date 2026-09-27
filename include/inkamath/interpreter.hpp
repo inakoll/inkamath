@@ -397,8 +397,8 @@ PExpression<U> Interpreter<T, U>::ParseAll(size_t first) {
         // language does not, so say which operator is missing rather than
         // only where the parse stopped.
         const Type next = Peek().type;
-        if (next == LPar || next == Val || next == Ref || next == Func)
-        {
+        if (next == LPar || next == LBra || next == Val || next == Ref || next == Func ||
+            next == Approx || next == Fact) {
             Fail("unexpected '", Peek().text, "' -- the operator '*' is probably missing");
         }
         Fail("unexpected '", Peek().text, "'");
