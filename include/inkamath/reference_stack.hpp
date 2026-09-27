@@ -120,12 +120,12 @@ public:
     // the index, the argument values and the globals; the first three are the
     // key and the fourth is handled by clearing. What it is worth: the
     // arithmetic-geometric mean is 2^(n+1)-1 calls for 2n+1 answers.
-    const T* Memoised(const std::string& key) const {
+    const T* Memoised(const MemoKey& key) const {
         auto found = memoised_.find(key);
         return found == memoised_.end() ? nullptr : &found->second;
     }
 
-    void Memoise(const std::string& key, const T& evaluation) {
+    void Memoise(const MemoKey& key, const T& evaluation) {
         if(memoised_.size() >= max_memoised) {
             memoised_.clear();
         }
@@ -256,7 +256,7 @@ private:
 
     size_t depth_ = 0;
     size_t steps_ = 0;
-    std::unordered_map<std::string, T> memoised_;
+    std::unordered_map<MemoKey, T, MemoHash> memoised_;
     scope_type globals_;
     std::vector<frame_type>            frames_;  // the open ones first, then spares
     size_t                             open_ = 0;

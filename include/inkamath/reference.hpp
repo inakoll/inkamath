@@ -12,6 +12,27 @@
 #include <stdexcept>
 #include <vector>
 
+// Which call a memoised answer is for. The definition is named by its address,
+// which holds for as long as the memo does: redefining a global replaces its
+// object and clears the memo in the same breath. An index needs no string; the
+// arguments are encoded as each value encodes itself.
+struct MemoKey {
+    const void* definition = nullptr;
+    bool        indexed    = false;
+    int         index      = 0;
+    std::string arguments;
+
+    bool operator==(const MemoKey&) const = default;
+};
+
+struct MemoHash {
+    std::size_t operator()(const MemoKey& key) const {
+        std::size_t hash = std::hash<const void*>()(key.definition);
+        hash             = hash * 31 + std::hash<int>()(key.index) * 2 + (key.indexed ? 1 : 0);
+        return key.arguments.empty() ? hash : hash * 31 + std::hash<std::string>()(key.arguments);
+    }
+};
+
 // One clause of a definition: 'f_0 = 1' or 'f(x)_n = ...'.
 template <typename T>
 struct Clause {
@@ -134,9 +155,9 @@ public:
         // global it shadows, so the stack says which this is. A limit is not
         // keyed -- the terms it walks are, through this same path.
         const bool memoisable = global && !call.limit() && (indexed || !arguments.empty());
-        std::string key;
+        MemoKey    key;
         if(memoisable) {
-            key = MemoKey(indexed, index, arguments);
+            key = Key(indexed, index, arguments);
             if(const T* memoised = stack.Memoised(key)) {
                 return *memoised;
             }
@@ -166,18 +187,14 @@ public:
 private:
     // The values as each type encodes them, not their printed form, which
     // rounds and would make two different arguments one key.
-    std::string MemoKey(bool indexed, int index,
-                        const typename ParametersDefinition<T>::Arguments& arguments) const {
-        std::string key = reference_name_;
-        if(indexed) {
-            key += '_';
-            key += std::to_string(index);
-        }
+    MemoKey Key(bool indexed, int index,
+                const typename ParametersDefinition<T>::Arguments& arguments) const {
+        MemoKey key{this, indexed, indexed ? index : 0, std::string()};
         for (const auto& argument : arguments) {
-            key += '\0';
-            key += argument.first;
-            key += '=';
-            numeric_interface<T>::key(argument.second, key);
+            key.arguments += '\0';
+            key.arguments += argument.first;
+            key.arguments += '=';
+            numeric_interface<T>::key(argument.second, key.arguments);
         }
         return key;
     }
