@@ -1546,6 +1546,24 @@ a line is defined, invalidated by what already invalidates the memo, then the
 tree turned into closures that call each other directly. No code is
 generated, and every recorded output stays byte-identical.
 
+The profile, taken before anything was changed, ordered the work differently
+than the plan did: hashing names cost about one per cent, while values cost the
+most -- 1x1 matrices built and copied (about a quarter), allocation (about
+fifteen per cent), memo keys and index checks (seven each). The cheap end came
+first: two single values added without the matrix loop, a closed frame's
+storage kept for the next call, a memo keyed by the definition's address and
+the index rather than a string -- the address holds while the memo does,
+since redefining a global clears it first -- and an index tested with one
+equality. Together they take a recomputed limit from 68.2M instructions to
+55.3M, and the sequence workloads 12-17 per cent faster by the clock.
+
+**Measure instructions, not the clock.** One of those changes made the matrix
+workload 20 per cent slower by the clock and not by a single instruction: with
+loops and functions aligned explicitly, the builds before and after it ran
+alike, at the slower time. The faster build had been a fortunate layout. A
+wall-clock difference between two builds is evidence only when callgrind
+agrees with it, or when the two are timed interleaved and aligned.
+
 **Step 2: compile ahead of time.** `inkamath --compile model.ink -o model.hpp`
 prints what step 1 builds as C++ against the headers already here -- `Number`,
 `Matrix`, `Natural` -- so the semantics are the interpreter's by construction
