@@ -1560,6 +1560,18 @@ since redefining a global clears it first -- and an index tested with one
 equality. Together they take a recomputed limit from 68.2M instructions to
 55.3M, and the sequence workloads 12-17 per cent faster by the clock.
 
+A call site then kept its parameters (52.4M), and a sign or a tilde on a
+literal came to be applied when parsing (47.3M): the 1 of `n-1` had been
+negated at every term. Keeping a scalar unwrapped, the middle of the order
+above, was measured before it was built and is dropped. A 1x1 whose copy and
+destruction skip its cell vector saves 1.1 per cent, and what a 1x1 still costs
+over a bare `Number` is a call's prologue, about five per cent -- not worth a
+second value type through the whole interpreter. The quarter the first profile
+put on matrices was mostly the numbers inside them. What is left is the call:
+per term, a memo insert that allocates (6 per cent), names found by string in
+the clauses and the frame (8), an index checked (5), a budget and a frame.
+That is what slots and closures remove.
+
 **Measure instructions, not the clock.** One of those changes made the matrix
 workload 20 per cent slower by the clock and not by a single instruction: with
 loops and functions aligned explicitly, the builds before and after it ran
