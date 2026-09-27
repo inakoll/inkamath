@@ -29,7 +29,7 @@ a = 2
 *Quick overview:*
 ```
 >> [pi, e]
-[3.14159265, 2.71828183]
+[~3.14159265, ~2.71828183]
 
 >> 1+2*3^3*2+1
 110
@@ -56,7 +56,7 @@ exp(x)_0=1
 exp(x)_n=exp(x)_(n-1)+x^n/!n
 
 >> lim exp(1)
-2.71828183
+~2.71828183
 ```
 
 A series also has the notation it has on paper, so the term is written once
@@ -67,7 +67,7 @@ and the previous one is never named:
 exp(x)_n=sum_(k=0)^n x^k/!k
 
 >> exp(1)_10
-9864101/3628800
+~2.7182818
 ```
 
 Without an upper bound the sum is the series itself, summed to its limit, and
@@ -81,7 +81,7 @@ exp(x)=sum_(k=0) x^k/!k
 cos(x)=(exp(i*x)+exp(-i*x))/2
 
 >> cos(pi/3)
-0.5
+~0.5
 ```
 
 Building
@@ -122,13 +122,17 @@ Language
 
 ### 1. Numbers and operators
 
-A number written as a whole number is exact, and stays exact through `+`,
-`-`, `*`, `/` and whole powers: `1/3+1/3+1/3` is `1`, and a quotient prints as
-the fraction it is. What can only be approached — `pi`, `e`, a root, a limit —
-is inexact, as is a number written with a point or an exponent, and an inexact
-number makes inexact whatever it touches; one that would read as whole prints
-with a trailing point. An exact number that outgrows 64 bits becomes inexact
-rather than wrong, and dividing by an exact zero is an error.
+A literal is exact as written, and stays exact through `+`, `-`, `*`, `/` and
+whole powers: `1/3+1/3+1/3` is `1`, and `0.1+0.2` is `0.3`. What can only be
+approached — `pi`, `e`, a root, a limit — is inexact, as is anything written
+after `~`, and an inexact number makes inexact whatever it touches. An exact
+number that outgrows 64 bits becomes inexact rather than wrong, and dividing
+by an exact zero is an error.
+
+Every number prints in decimal: an exact whole number in full, anything else
+to nine significant digits, with `~` in front unless what is printed is all of
+the value. `frac` at the start of a line shows the answer as its exact
+fraction, and `digits = n` sets how many digits are shown.
 
 Numbers are complex; `i` is the imaginary unit. `e` and `pi` are the only
 other built-ins, and there are no built-in functions.
@@ -137,6 +141,7 @@ other built-ins, and there are no built-in functions.
 |---|---|
 | `+expr` `-expr` | unary plus and minus |
 | `!expr` | factorial, written as a prefix |
+| `~expr` | the same value, inexact |
 | `expr+expr` `expr-expr` | addition, subtraction |
 | `expr*expr` `expr/expr` | multiplication, division |
 | `expr^expr` | power |
@@ -147,6 +152,8 @@ other built-ins, and there are no built-in functions.
 | `name \| cond = expr` | a definition in cases (section 3) |
 | `lim name` | the limit of a sequence (section 4) |
 | `?name` | print a definition back (section 5) |
+| `frac expr` | the answer as an exact fraction |
+| `digits` `digits = n` | the significant digits shown, 9 unless set |
 
 `^` associates to the right, so `2^3^2` is `512`. `#` starts a comment and
 runs to the end of the line.
@@ -156,10 +163,16 @@ runs to the end of the line.
 1
 
 >> 10/4
-5/2
+2.5
+
+>> 1/3
+~0.333333333
+
+>> frac 1/3
+1/3
 
 >> 2^(1/2)
-1.41421356
+~1.41421356
 
 >> !5
 120
@@ -168,7 +181,7 @@ runs to the end of the line.
 2+i*3
 
 >> (1+i)*(1-i)
-2.
+2
 ```
 
 ### 2. Matrices
@@ -230,8 +243,8 @@ value stretches to the other side's size, and the order is kept:
 
 ```
 >> a/2
-[1/2, 1;
- 3/2, 2]
+[0.5, 1;
+ 1.5, 2]
 
 >> 1-a
 [ 0, -1;
@@ -368,7 +381,7 @@ s_0=1
 s_n=s_(n-1)/2
 
 >> s_20
-1/1048576
+~9.53674316e-07
 ```
 
 A base case wins over the general clause, whatever the order of definition.
@@ -402,7 +415,7 @@ stopped on:
 
 ```
 >> lim s
-5.82076609e-11
+~5.82076609e-11
 
 >> u_n=2*n
 u_n=2*n
@@ -424,7 +437,7 @@ w_1=1
 w_n=w_(n-1)+1/n^2
 
 >> lim w
-error: w did not converge within 100 terms (last term 1.63508193)
+error: w did not converge within 100 terms (last term ~1.63508193)
 ```
 
 That is a mathematical problem, not a limitation of `lim`, and the language is
@@ -436,10 +449,10 @@ enough to solve it. What remains after `n` terms is `1/n - 1/(2n^2) +
 y_n=w_n+1/n-1/(2*n^2)+1/(6*n^3)-1/(30*n^5)
 
 >> y_20
-1.64493407
+~1.64493407
 
 >> pi^2/6
-1.64493407
+~1.64493407
 ```
 
 Twenty corrected terms give every digit that is printed. An acceleration is a
@@ -462,6 +475,9 @@ the body alone.
 harm_n=sum_(k=1)^n 1/k
 
 >> harm_10
+~2.92896825
+
+>> frac harm_10
 7381/2520
 ```
 
@@ -472,10 +488,10 @@ it:
 
 ```
 >> sum_(k=0) 1/!k
-2.71828183
+~2.71828183
 
 >> sum_(k=1) 1/k^2
-error: the sum did not converge within 100 terms (last partial sum 1.6349839)
+error: the sum did not converge within 100 terms (last partial sum ~1.6349839)
 ```
 
 An index must be a whole number, and `lim`, `sum` and `prod` are reserved

@@ -10,9 +10,8 @@ struct Diagnostic {
     std::string message;
 };
 
-// The reply when an input binds a name rather than producing a value. A
-// definition is a statement: it evaluates nothing and reports what it bound,
-// as the user wrote it.
+// The reply when an input is a statement rather than a value: a definition
+// reports what it bound, as the user wrote it, and 'frac' the fraction.
 struct Echo {
     std::string text;
 };

@@ -3,6 +3,9 @@
 
 #include "inkamath/numeric_interface.hpp"
 
+#include <algorithm>
+#include <charconv>
+#include <cmath>
 #include <complex>
 #include <cstddef>
 #include <functional>
@@ -16,7 +19,7 @@
 // fraction over 64 bits for as long as its reduced parts fit, and a complex
 // double once anything inexact has touched it. Every field is always set and
 // nothing pads them, because a memo key is a value's bytes and has to carry
-// its kind: dbl(1/2) and dbl(0.5) are different calls.
+// its kind: dbl(1/2) and dbl(~0.5) are different calls.
 class Number {
 public:
     using inexact_type = std::complex<double>;
@@ -110,19 +113,29 @@ public:
         return std::abs(static_cast<double>(a.num_)) / static_cast<double>(a.den_);
     }
 
-    // An exact number prints as the literal that makes it (C52). An inexact
-    // one prints as it always has, except that one which would read as whole
-    // says it is not exact with a trailing point.
-    static std::string toString(const Number& a) {
-        if (a.exact()) {
-            return a.den_ == 1 ? std::to_string(a.num_)
-                               : std::to_string(a.num_) + "/" + std::to_string(a.den_);
+    // Every number prints in decimal: an exact whole number in full, anything
+    // else to `digits` significant digits -- 17 at most for a double, which
+    // holds no more -- and with '~' in front unless what is printed is all of
+    // the value. A complex number is marked part by part.
+    static std::string toString(const Number& a, int digits = numeric_interface_precision) {
+        if (!a.exact()) {
+            const int shown = std::min(digits, 17);
+            return numeric_interface<inexact_type>::toString(
+                a.inexact_, [shown](double part) { return Decimal(part, shown); });
         }
-        std::string text = numeric_interface<inexact_type>::toString(a.inexact_);
-        if (text.find_first_not_of("0123456789", text[0] == '-' ? 1 : 0) == std::string::npos) {
-            text += '.';
+        if (a.den_ == 1) return std::to_string(a.num_);
+        return Shown(
+            Leading(Magnitude(a.num_), static_cast<unsigned long long>(a.den_), digits + 1),
+            a.num_ < 0, digits);
+    }
+
+    static std::string fraction(const Number& a, int digits) {
+        if (!a.exact()) {
+            throw std::runtime_error(toString(a, digits) +
+                                     " is approximate, so it has no exact fraction");
         }
-        return text;
+        return a.den_ == 1 ? std::to_string(a.num_)
+                           : std::to_string(a.num_) + "/" + std::to_string(a.den_);
     }
 
     // A whole power of an exact number is exact; anything else is approached.
@@ -147,10 +160,9 @@ public:
         return Number(product);
     }
 
-    // strtod says where the literal ends and the text it took says its kind:
-    // written as a whole number it is exact, and a point or an exponent is a
-    // statement that it is not. So is '0x10', which reads only because strtod
-    // does.
+    // strtod says where the literal ends, and the literal is exact as written,
+    // point and exponent included: 0.1 is 1/10. One too long for 64 bits is
+    // approximated, as is '0x10', which reads only because strtod does.
     static bool parse(Number& num, const char* begin, char*& end) {
         double     value = 0;
         const bool read  = numeric_interface<double>::parse(value, begin, end);
@@ -160,7 +172,7 @@ public:
             return true;
         }
         if (!read) return false;
-        num = Whole(begin, end).value_or(Number(value));
+        num = Literal(begin, end).value_or(Number(value));
         return true;
     }
 
@@ -237,13 +249,127 @@ private:
         return Number(rn, rd, nullptr);
     }
 
-    static std::optional<Number> Whole(const char* begin, const char* end) {
-        long long n = 0;
-        for (const char* c = begin; c != end; ++c) {
+    static std::optional<Number> Literal(const char* begin, const char* end) {
+        long long   digits = 0, exponent = 0;
+        bool        point = false;
+        const char* c     = begin;
+        for (; c != end && *c != 'e' && *c != 'E'; ++c) {
+            if (*c == '.') {
+                point = true;
+                continue;
+            }
             if (*c < '0' || *c > '9') return std::nullopt;
-            if (!Multiply(n, 10, n) || !Add(n, *c - '0', n)) return std::nullopt;
+            if (!Multiply(digits, 10, digits) || !Add(digits, *c - '0', digits))
+                return std::nullopt;
+            if (point) --exponent;
         }
-        return Number(n);
+        if (c != end) {
+            const bool negative = *++c == '-';
+            if (*c == '-' || *c == '+') ++c;
+            long long written = 0;
+            for (; c != end; ++c) {
+                if (!Multiply(written, 10, written) || !Add(written, *c - '0', written))
+                    return std::nullopt;
+            }
+            if (!Add(exponent, negative ? -written : written, exponent)) return std::nullopt;
+        }
+        if (digits == 0) return Number(0);
+        const auto scale = Power(Number(10), exponent);
+        if (!scale) return std::nullopt;
+        return Product(digits, 1, scale->num_, scale->den_);
+    }
+
+    // The leading significant digits of a positive number, the power of ten
+    // of the first, and whether anything but zeros follows them.
+    struct Digits {
+        std::string digits;
+        int         exponent = 0;
+        bool        rest     = false;
+    };
+
+    // At least `count` of them for p/q, by long division.
+    static Digits Leading(unsigned long long p, unsigned long long q, int count) {
+        Digits lead;
+        lead.exponent = -1;
+        if (p / q != 0) {
+            lead.digits   = std::to_string(p / q);
+            lead.exponent = static_cast<int>(lead.digits.size()) - 1;
+        }
+        unsigned long long r = p % q;
+        while (r != 0 && lead.digits.size() < static_cast<std::size_t>(count)) {
+            // 10r, a digit at a time: r and q are below 2^63, so no sum overflows.
+            unsigned long long next  = 0;
+            char               digit = '0';
+            for (int k = 0; k < 10; ++k) {
+                next += r;
+                if (next >= q) {
+                    next -= q;
+                    ++digit;
+                }
+            }
+            r = next;
+            if (lead.digits.empty() && digit == '0') {
+                --lead.exponent;
+            } else {
+                lead.digits += digit;
+            }
+        }
+        lead.rest = r != 0;
+        return lead;
+    }
+
+    // All of them for a double, which is a fraction over a power of two and
+    // has 767 significant digits at most.
+    static std::string Decimal(double x, int count) {
+        if (!std::isfinite(x)) return numeric_interface<double>::toString(x);
+        if (x == 0) return "0";
+        char       text[800];
+        const auto end =
+            std::to_chars(text, text + sizeof text, std::abs(x), std::chars_format::scientific, 766)
+                .ptr;
+        const std::string written(text, end);
+        const std::size_t e = written.find('e');
+        Digits            lead;
+        lead.digits   = written.substr(0, 1) + written.substr(2, e - 2);
+        lead.exponent = std::stoi(written.substr(e + 1));
+        return Shown(lead, x < 0, count);
+    }
+
+    // Rounded half to even, with an exponent below 1e-4 and from 10^count up.
+    static std::string Shown(Digits lead, bool negative, int count) {
+        std::string&      d    = lead.digits;
+        const std::size_t kept = static_cast<std::size_t>(count);
+        d.resize(std::max(d.size(), kept + 1), '0');
+        const char next = d[kept];
+        const bool rest = lead.rest || d.find_first_not_of('0', kept + 1) != std::string::npos;
+        d.resize(kept);
+        int e = lead.exponent;
+        if (next > '5' || (next == '5' && (rest || (d.back() - '0') % 2 == 1))) {
+            std::size_t k = kept;
+            while (k > 0 && d[k - 1] == '9') d[--k] = '0';
+            if (k == 0) {
+                d.insert(0, "1");
+                d.pop_back();
+                ++e;
+            } else {
+                ++d[k - 1];
+            }
+        }
+        d.erase(d.find_last_not_of('0') + 1);
+        std::string text;
+        if (e < -4 || e >= count) {
+            const int power = e < 0 ? -e : e;
+            text            = d.substr(0, 1) + (d.size() > 1 ? "." + d.substr(1) : "") +
+                   (e < 0 ? "e-" : "e+") + (power < 10 ? "0" : "") + std::to_string(power);
+        } else if (e < 0) {
+            text = "0." + std::string(static_cast<std::size_t>(-e - 1), '0') + d;
+        } else {
+            const std::size_t whole = static_cast<std::size_t>(e) + 1;
+            d.resize(std::max(d.size(), whole), '0');
+            text = d.substr(0, whole) + (d.size() > whole ? "." + d.substr(whole) : "");
+        }
+        const bool exact = next == '0' && !rest;
+        return (exact ? "" : "~") + std::string(negative ? "-" : "") + text;
     }
 
     template <typename Op>

@@ -118,7 +118,7 @@ std::string eval(Interpreter& interpreter, const std::string& expression) {
     } else if (const Echo* echo = std::get_if<Echo>(&result)) {
         out << echo->text;
     } else {
-        out << std::get<typename Interpreter::matrix_type>(result);
+        out << interpreter.Show(std::get<typename Interpreter::matrix_type>(result));
     }
     return rstrip(out.str());
 }

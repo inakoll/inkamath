@@ -1252,7 +1252,7 @@ goldens now come back exactly. No parsing library: five flags are a loop over
 
 ---
 
-## Phase 13 — Exact numbers `[step 1 done]`
+## Phase 13 — Exact numbers `[step 1 done, shown as decimals]`
 
 The kind of a number becomes part of the number: `1/3+1/3+1/3` is `1`, not
 nearly one, and `1/10*3 == 3/10` holds. This answers the question *Other
@@ -1344,7 +1344,7 @@ an exact zero now cannot be divided by. One moved for a reason no rule states:
 exact now, so the only error left is `e` itself as a double -- 1.4e-16 against
 the true remainder, where the accumulated sum was 5.8e-16 off.
 
-### Shown as decimals `[specified]`
+### Shown as decimals `[done]`
 
 Revised before step 1 reached master. A fraction is exact, and alien to a
 reader who does not care whether an answer is; and a decimal need not go
@@ -1395,13 +1395,29 @@ What it decides, revising step 1's display:
   digits continue" for an exact number and "about" for an inexact one, and
   could not honestly mean both.
 
+It passed as written on the first build; it is now `test/data/decimals.ink`
+with every expected output unchanged, and the spec suite retires again. The
+printer is exact, not a `printf` of a double: long division for a fraction,
+and for a double every one of its digits from `to_chars` -- at most 767 --
+rounded half to even as a string. `frac` and `digits` are reserved and begin a
+line; anywhere else they are an error. A diagnostic that quotes a number
+quotes it at 9 digits whatever the setting, because it is written before the
+session's display is known.
+
+What moved: every quotient and approximation in the goldens and `README.md`,
+from fractions and bare doubles to decimals and `~`; step 1's trailing points,
+gone. `exact.ink` kept its entries and its purpose, but six showed the kind
+through the display, which now hides it when the digits are all of the value:
+they show it through `frac` instead, with `~0.5` where step 1 wrote `0.5`, and
+`[1/2 0.5]*2` became `[1/10 ~0.1]*3`. C31's `1/0.` and `0/0.` and the guarded
+NaN are `1/~0`, `0/~0` and `0/~0` for the same reason, and answer as they did
+before step 1.
+
 Deferred, to come back to: **`exact`**, showing an exact number losslessly in
 decimal, its repeating block in parentheses -- `2/3` as `0.(6)`, `22/7` as
 `3.(142857)` -- which reads back exactly. At 9 digits the block fits for 64 of
 the 99 denominators from 2 to 100; where it does not, `exact` should give the
-fraction instead, so that it is always exact and never an error. Also open:
-whether `frac` and `digits` may still be used as names, and what `digits` set
-inside an expression means.
+fraction instead, so that it is always exact and never an error.
 
 **What asked for it.** Step 1 showed the digits only by accident.
 `sequences.ink` says twenty terms of Aitken's acceleration beat a hundred raw

@@ -35,10 +35,15 @@ public:
     // A matrix prints as the literal that would produce it, with its columns
     // aligned: what is printed can be typed back. A 1x1 is just its value --
     // it is what every scalar answer and every diagnostic quoting one is.
-    static std::string toString(const Matrix<T>& a)
-    {
+    static std::string toString(const Matrix<T>& a) {
+        return toString(a, [](const T& value) { return numeric_interface<T>::toString(value); });
+    }
+
+    // `show` prints a cell, so a matrix is laid out alike however it is shown.
+    template <typename Show>
+    static std::string toString(const Matrix<T>& a, Show show) {
         if(a.IsScalar()) {
-            return numeric_interface<T>::toString(a(1,1));
+            return show(a(1, 1));
         }
 
         std::vector<std::string> cells(a.extent_.count());
@@ -46,7 +51,7 @@ public:
         for(size_t i = 1; i <= a.extent_.rows; ++i) {
             for(size_t j = 1; j <= a.extent_.cols; ++j) {
                 std::string& cell = cells[(i-1)*a.extent_.cols + (j-1)];
-                cell = numeric_interface<T>::toString(a(i,j));
+                cell              = show(a(i, j));
                 width[j-1] = std::max(width[j-1], cell.size());
             }
         }

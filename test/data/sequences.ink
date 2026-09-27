@@ -53,24 +53,24 @@ exp(x)_0=1
 exp(x)_n=exp(x)_(n-1)+x^n/!n
 
 >> lim exp(1)
-2.71828183
+~2.71828183
 
 # Not floating point: the series stops once the step is under 1e-10 and the
 # remainder the steps imply is too.
 >> lim exp(1)-e
--8.15347789e-13
+~-8.15347789e-13
 
 >> cos(x)=(lim exp(i*x)+lim exp(-i*x))/2
 cos(x)=(lim exp(i*x)+lim exp(-i*x))/2
 
 >> cos(pi/3)
-0.5
+~0.5
 
 >> sin(x)=(lim exp(i*x)-lim exp(-i*x))/(2*i)
 sin(x)=(lim exp(i*x)-lim exp(-i*x))/(2*i)
 
 >> sin(pi/6)
-0.5
+~0.5
 
 # A recurrence written the textbook way -- an initial value plus a general
 # term -- then asked for its limit (MODERNIZATION.md C12).
@@ -81,13 +81,13 @@ s_0=1
 s_n=s_(n-1)/2
 
 >> s_20
-1/1048576
+~9.53674316e-07
 
 >> s
 error: s is a sequence; index it (s_0) or take its limit (lim s)
 
 >> lim s
-5.82076609e-11
+~5.82076609e-11
 
 # 'lim' walks the terms the sequence has, which means walking them through the
 # same dispatch an index walks. It used to evaluate the general clause
@@ -103,10 +103,10 @@ lg_n | n > 0 = lg_(n-1)/2
 lg_n = lg_(n-1)*10
 
 >> lg_10
-1/1024
+0.0009765625
 
 >> lim lg
-5.82076609e-11
+~5.82076609e-11
 
 # The same the other way: terms that settle were reported as divergence,
 # quoting a last term the sequence does not have.
@@ -120,7 +120,7 @@ lt_n | n > 2 = 5
 lt_n = n
 
 >> lim lt
-5.
+5
 
 # And a general clause that is guarded is still a general clause.
 >> lc_0 = 1
@@ -130,10 +130,10 @@ lc_0 = 1
 lc_n | 1 = lc_(n-1)/2
 
 >> lc_10
-1/1024
+0.0009765625
 
 >> lim lc
-5.82076609e-11
+~5.82076609e-11
 
 # A small step is not a small remainder. Every step here is 1e-11 and the
 # series diverges; comparing successive terms alone called that convergence
@@ -158,7 +158,7 @@ z_1=1
 z_n=z_(n-1)+1/n^2
 
 >> lim z
-error: z did not converge within 100 terms (last term 1.63508193)
+error: z did not converge within 100 terms (last term ~1.63508193)
 
 # Which is a mathematical problem and not a limitation of 'lim'. What is left
 # of the series after n terms is 1/n - 1/(2n^2) + 1/(6n^3) - ..., and a clause
@@ -168,10 +168,10 @@ error: z did not converge within 100 terms (last term 1.63508193)
 y_n=z_n+1/n-1/(2*n^2)+1/(6*n^3)-1/(30*n^5)
 
 >> y_20
-1.64493407
+~1.64493407
 
 >> pi^2/6
-1.64493407
+~1.64493407
 
 # The same move without knowing the tail: Aitken's delta-squared, written as
 # an ordinary clause because a clause may index another sequence at any
@@ -184,13 +184,13 @@ q_1=1
 q_n=q_(n-1)+(0-1)^(n-1)/n
 
 >> q_100
-0.688172179
+~0.688172179
 
 >> r_n=q_n-(q_(n+1)-q_n)^2/(q_(n+2)-2*q_(n+1)+q_n)
 r_n=q_n-(q_(n+1)-q_n)^2/(q_(n+2)-2*q_(n+1)+q_n)
 
 >> r_20
-6938333221/10010080080
+~0.693134637
 
 # Recursion is bounded: past the budget the interpreter says so rather than
 # dying (MODERNIZATION.md, C1).

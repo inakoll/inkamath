@@ -136,10 +136,10 @@ inf
 # comparison, so the imaginary unit used to be dropped while its magnitude was
 # still printed: these read 'inf*-nan' and '-nan*-nan' (MODERNIZATION.md, C31).
 # The zero is inexact because an exact one cannot be divided by (phase 13).
->> 1/0.
+>> 1/~0
 inf+i*-nan
 
->> 0/0.
+>> 0/~0
 -nan+i*-nan
 
 # An exponent outside int's range used to be converted to one anyway, which is
@@ -148,7 +148,7 @@ inf+i*-nan
 inf
 
 >> 0.5^3000000000
-0.
+0
 
 # Mathematics writes a multiplication by writing nothing; this language does
 # not. The hint used to be given only for '(' -- '2 3' above is the same
@@ -158,4 +158,15 @@ error: unexpected 'pi' -- the operator '*' is probably missing
 
 >> 3(4)
 error: unexpected '(' -- the operator '*' is probably missing
+
+# 'frac' and 'digits' are about a whole line, and say so anywhere else
+# (MODERNIZATION.md, phase 13).
+>> frac x = 1
+error: frac shows an answer, not a definition
+
+>> 2*digits
+error: digits can only begin a line
+
+>> digits = [1 2]
+error: digits must be a whole number of at least 1, not [1, 2]
 

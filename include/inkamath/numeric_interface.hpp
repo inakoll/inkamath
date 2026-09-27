@@ -44,6 +44,8 @@ struct numeric_interface_imp
      static T one() {return T::one();}
      static int toInt(const T& a) {return T::toInt(a);}
      static std::string toString(const T& a) {return T::toString(a);}
+     static std::string   toString(const T& a, int digits) { return T::toString(a, digits); }
+     static std::string   fraction(const T& a, int digits) { return T::fraction(a, digits); }
      static T pow(const T& a, const T& b) {return T::pow(a,b);}
      static T cell(const T& a, int i, int j) {return T::cell(a,i,j);}
      static T compare(const T& a, const T& b, Comparison op) {return T::compare(a,b,op);}
@@ -89,8 +91,13 @@ struct numeric_interface_imp<std::complex<T>,false>
     static T imaginary(const std::complex<T>& a) {return a.imag();}
     static std::complex<T> inexact(const std::complex<T>& a) { return a; }
 
-    static std::string toString(const std::complex<T>& a)
-    {
+    static std::string toString(const std::complex<T>& a) {
+        return toString(a, [](const T& part) { return numeric_interface<T>::toString(part); });
+    }
+
+    // `part` prints a real number; the layout around it is the same whichever.
+    template <typename Part>
+    static std::string toString(const std::complex<T>& a, Part part) {
         const T real = a.real();
         T       imag = a.imag();
 
@@ -108,7 +115,7 @@ struct numeric_interface_imp<std::complex<T>,false>
         std::string s;
         if(has_real)
         {
-            s = numeric_interface<T>::toString(real);
+            s = part(real);
         }
         if(has_imag)
         {
@@ -123,7 +130,7 @@ struct numeric_interface_imp<std::complex<T>,false>
             }
             if(!(imag == 1))
             {
-                s += "*" + numeric_interface<T>::toString(imag);
+                s += "*" + part(imag);
             }
         }
         return s;

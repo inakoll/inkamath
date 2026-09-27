@@ -1,7 +1,7 @@
-# Numbers shown as decimals: the display the language would give, not the one
-# it has (MODERNIZATION.md, phase 13). Specified by hand, never recorded
-# (CLAUDE.md, section 3); every expected output was computed from the exact
-# value by a reference printer written apart from the interpreter.
+# Numbers shown as decimals (MODERNIZATION.md, phase 13). This was the
+# specification, written before they existed (CLAUDE.md, section 3); every
+# expected output is as it was specified, computed from the exact value by a
+# reference printer written apart from the interpreter.
 #
 # Every number prints in decimal. An exact whole number prints in full;
 # anything else is rounded to 'digits' significant digits -- 9 unless set, and

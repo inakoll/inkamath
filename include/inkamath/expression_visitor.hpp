@@ -28,6 +28,9 @@ template <typename T>
 class NegExpression;
 
 template <typename T>
+class InexactExpression;
+
+template <typename T>
 class MultExpression;
 
 template <typename T>
@@ -72,6 +75,7 @@ public:
     virtual ReturnType visit(EqualExpression<T>* expr) = 0;
     virtual ReturnType visit(AddExpression<T>* expr) = 0;
     virtual ReturnType visit(NegExpression<T>* expr) = 0;
+    virtual ReturnType visit(InexactExpression<T>* expr) = 0;
     virtual ReturnType visit(MultExpression<T>* expr) = 0;
     virtual ReturnType visit(DivExpression<T>* expr) = 0;
     virtual ReturnType visit(PowExpression<T>* expr) = 0;
@@ -109,6 +113,7 @@ public:
 
     PExpression<T> visit(AddExpression<T>* expr) override {return visit_other(expr);}
     PExpression<T> visit(NegExpression<T>* expr) override {return visit_other(expr);}
+    PExpression<T> visit(InexactExpression<T>* expr) override { return visit_other(expr); }
     PExpression<T> visit(MultExpression<T>* expr) override {return visit_other(expr);}
     PExpression<T> visit(DivExpression<T>* expr) override {return visit_other(expr);}
     PExpression<T> visit(PowExpression<T>* expr) override {return visit_other(expr);}
@@ -276,6 +281,10 @@ public:
 
     T visit(NegExpression<T>* expr) override {
         return -expr->m_e()->accept(*this);
+    }
+
+    T visit(InexactExpression<T>* expr) override {
+        return numeric_interface<T>::inexact(expr->m_e()->accept(*this));
     }
 
     T visit(MultExpression<T>* expr) override {
