@@ -74,6 +74,17 @@ error: 3 is approximate, so it has no exact fraction
 >> frac i*i
 error: -1 is approximate, so it has no exact fraction
 
+# A trailing zero is not a digit the literal needs, however many there are:
+# these went inexact once the digits passed 64 bits.
+>> frac 1.00000000000000000000
+1
+
+>> frac 12345678901234567890e-10
+1234567890123456789/1000000000
+
+>> frac 0e99999999999999999999
+0
+
 # '~' gives the double nearest the exact value. Dividing the numerator by the
 # denominator as doubles rounds twice once either has more than 53 bits, and
 # this printed ~9.2339442047127047.

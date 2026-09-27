@@ -279,7 +279,7 @@ private:
     }
 
     static std::optional<Number> Literal(const char* begin, const char* end) {
-        long long   digits = 0, exponent = 0;
+        long long   digits = 0, exponent = 0, zeros = 0;
         bool        point = false;
         const char* c     = begin;
         for (; c != end && *c != 'e' && *c != 'E'; ++c) {
@@ -288,10 +288,20 @@ private:
                 continue;
             }
             if (*c < '0' || *c > '9') return std::nullopt;
+            if (point) --exponent;
+            // A zero waits for a digit after it, so trailing ones cost no bits.
+            if (*c == '0') {
+                ++zeros;
+                continue;
+            }
+            for (; zeros > 0; --zeros) {
+                if (!Multiply(digits, 10, digits)) return std::nullopt;
+            }
             if (!Multiply(digits, 10, digits) || !Add(digits, *c - '0', digits))
                 return std::nullopt;
-            if (point) --exponent;
         }
+        if (digits == 0) return Number(0);
+        exponent += zeros;
         if (c != end) {
             const bool negative = *++c == '-';
             if (*c == '-' || *c == '+') ++c;
@@ -302,7 +312,6 @@ private:
             }
             if (!Add(exponent, negative ? -written : written, exponent)) return std::nullopt;
         }
-        if (digits == 0) return Number(0);
         const auto scale = Power(Number(10), exponent);
         if (!scale) return std::nullopt;
         return Product(digits, 1, scale->num_, scale->den_);
@@ -377,8 +386,7 @@ private:
             std::size_t k = kept;
             while (k > 0 && d[k - 1] == '9') d[--k] = '0';
             if (k == 0) {
-                d.insert(0, "1");
-                d.pop_back();
+                d = "1";
                 ++e;
             } else {
                 ++d[k - 1];
