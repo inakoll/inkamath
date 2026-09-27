@@ -132,27 +132,64 @@ public:
             return Matrix<T>(numeric_interface<T>::pow(a(1,1), exponent));
         }
 
-        // A matrix power is repeated multiplication. There is no inverse and
-        // no root here, so the exponent has to be a whole number that is not
-        // negative, and the matrix has to be square to multiply by itself.
+        // A matrix power is repeated multiplication, of the inverse when it is
+        // negative. There is no root, so the exponent has to be a whole
+        // number, and the matrix has to be square to multiply by itself.
         const int whole = numeric_interface<T>::toInt(exponent);
         if(numeric_interface<T>::abs(exponent - T(whole)) != 0) {
             throw std::runtime_error("a matrix power must be a whole number, not "
                                      + numeric_interface<T>::toString(exponent));
         }
-        if(whole < 0) {
-            throw std::runtime_error("a matrix power cannot be negative");
-        }
         if(a.extent_.rows != a.extent_.cols) {
             throw std::runtime_error("only a square matrix has a power");
         }
 
-        Matrix<T> r(a.extent_);
-        for(size_t i = 1; i <= a.extent_.rows; ++i) {
-            r(i,i) = T(1);
+        const Matrix<T> base = whole < 0 ? Inverse(a) : a;
+        const unsigned  n =
+            whole < 0 ? 0u - static_cast<unsigned>(whole) : static_cast<unsigned>(whole);
+        Matrix<T> r = Identity(a.extent_);
+        for (unsigned i = 0; i < n; ++i) {
+            r = r * base;
         }
-        for(int i = 0; i < whole; ++i) {
-            r = r*a;
+        return r;
+    }
+
+    static Matrix<T> Identity(Extent extent) {
+        Matrix<T> r(extent);
+        for (size_t i = 1; i <= extent.rows; ++i) r(i, i) = T(1);
+        return r;
+    }
+
+    // Gauss-Jordan. The largest pivot keeps an inexact inverse accurate, and
+    // an exact one is exact whichever pivot it takes.
+    static Matrix<T> Inverse(Matrix<T> a) {
+        const size_t n = a.extent_.rows;
+        Matrix<T>    r = Identity(a.extent_);
+        for (size_t col = 1; col <= n; ++col) {
+            size_t pivot = col;
+            for (size_t row = col + 1; row <= n; ++row) {
+                if (numeric_interface<T>::abs(a(row, col)) >
+                    numeric_interface<T>::abs(a(pivot, col)))
+                    pivot = row;
+            }
+            if (a(pivot, col) == T(0)) throw std::runtime_error("a singular matrix has no inverse");
+            for (size_t j = 1; j <= n; ++j) {
+                std::swap(a(pivot, j), a(col, j));
+                std::swap(r(pivot, j), r(col, j));
+            }
+            const T scale = a(col, col);
+            for (size_t j = 1; j <= n; ++j) {
+                a(col, j) = a(col, j) / scale;
+                r(col, j) = r(col, j) / scale;
+            }
+            for (size_t row = 1; row <= n; ++row) {
+                const T factor = a(row, col);
+                if (row == col || factor == T(0)) continue;
+                for (size_t j = 1; j <= n; ++j) {
+                    a(row, j) = a(row, j) - factor * a(col, j);
+                    r(row, j) = r(row, j) - factor * r(col, j);
+                }
+            }
         }
         return r;
     }

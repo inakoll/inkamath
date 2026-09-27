@@ -1492,7 +1492,7 @@ the interpreter, each one commit once specified.
   is to comparing cell by cell, which answers a matrix nothing can reduce to a
   truth; two whole matrices are equal or not, which is one truth. `<` stays
   refused.
-- **A negative matrix power as the inverse.** `[1 2;3 4]^-1` is refused because
+- `[done]` **A negative matrix power as the inverse.** `[1 2;3 4]^-1` is refused because
   there was no inverse to give. With exact numbers there is one, exactly --
   `[-2 1; 3/2 -1/2]` -- and a singular matrix is an error, as dividing by an
   exact zero is.

@@ -224,12 +224,29 @@ s=[1 1;0 1]
 [37,  54;
  81, 118]
 
-# There is no inverse and no root here, and only a square matrix has a power.
+# A negative power is a power of the inverse, which a matrix of exact numbers
+# has exactly; a singular one has none, as an exact zero has no reciprocal.
+# There is no root, and only a square matrix has a power.
+>> a^-1
+[ -2,    1;
+ 1.5, -0.5]
+
+>> a^-1*a == [1 0;0 1]
+1
+
+>> frac a^-2
+[ 11/2, -5/2;
+ -15/4,  7/4]
+
+>> s^-3
+[1, -3;
+ 0,  1]
+
+>> [1 2;2 4]^-1
+error: a singular matrix has no inverse
+
 >> a^0.5
 error: a matrix power must be a whole number, not 0.5
-
->> a^(0-1)
-error: a matrix power cannot be negative
 
 >> [1 2 3]^2
 error: only a square matrix has a power
