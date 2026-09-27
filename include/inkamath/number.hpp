@@ -17,6 +17,14 @@
 #include <stdexcept>
 #include <string>
 
+// Keeps a rare path out of a common one, so the common one stays small enough
+// to be inlined itself. Spelled per compiler, as each warns at the other's.
+#if defined(_MSC_VER) && !defined(__clang__)
+#define INKAMATH_NOINLINE __declspec(noinline)
+#else
+#define INKAMATH_NOINLINE [[gnu::noinline]]
+#endif
+
 // A number that knows whether it is exact (MODERNIZATION.md, phase 13): a
 // fraction, over 64 bits while its reduced parts fit and over naturals of any
 // size until they pass a thousand digits, and a complex double once anything
@@ -44,48 +52,37 @@ public:
         return Negative() ? -magnitude : magnitude;
     }
 
-    // 64 bits first, and the naturals only when those overflow.
+    // 64 bits first, and everything else out of line, so that the first stays
+    // small enough to inline into a matrix product.
     friend Number operator+(const Number& a, const Number& b) {
-        if (a.small() && b.small()) {
-            if (const auto sum = Sum(a.num_, a.den_, b.num_, b.den_)) return *sum;
-        }
-        if (a.exact() && b.exact()) return BigSum(a.Ratio(), b.Ratio());
-        return Number(a.Inexact() + b.Inexact());
+        long long num = 0, den = 1;
+        if (a.small() && b.small() && Sum(a.num_, a.den_, b.num_, b.den_, num, den))
+            return Number(num, den, nullptr);
+        return Plus(a, b);
     }
 
     friend Number operator-(const Number& a, const Number& b) {
-        if (a.small() && b.small()) {
-            if (const auto sum = Sum(a.num_, a.den_, -b.num_, b.den_)) return *sum;
-        }
-        if (a.exact() && b.exact()) {
-            Big negated      = b.Ratio();
-            negated.negative = !negated.negative;
-            return BigSum(a.Ratio(), negated);
-        }
-        return Number(a.Inexact() - b.Inexact());
+        long long num = 0, den = 1;
+        if (a.small() && b.small() && Sum(a.num_, a.den_, -b.num_, b.den_, num, den))
+            return Number(num, den, nullptr);
+        return Minus(a, b);
     }
 
     friend Number operator*(const Number& a, const Number& b) {
-        if (a.small() && b.small()) {
-            if (const auto product = Product(a.num_, a.den_, b.num_, b.den_)) return *product;
-        }
-        if (a.exact() && b.exact()) return BigProduct(a.Ratio(), b.Ratio());
-        return Number(a.Inexact() * b.Inexact());
+        long long num = 0, den = 1;
+        if (a.small() && b.small() && Product(a.num_, a.den_, b.num_, b.den_, num, den))
+            return Number(num, den, nullptr);
+        return Times(a, b);
     }
 
     friend Number operator/(const Number& a, const Number& b) {
-        if (a.exact() && b.exact()) {
-            if (b.small() && b.num_ == 0) throw std::runtime_error("division by zero");
-            if (a.small() && b.small()) {
-                const long long num = b.num_ < 0 ? -b.den_ : b.den_;
-                const long long den = b.num_ < 0 ? -b.num_ : b.num_;
-                if (const auto product = Product(a.num_, a.den_, num, den)) return *product;
-            }
-            Big reciprocal = b.Ratio();
-            std::swap(reciprocal.num, reciprocal.den);
-            return BigProduct(a.Ratio(), reciprocal);
+        long long num = 0, den = 1;
+        if (a.small() && b.small() && b.num_ != 0) {
+            const long long flip = b.num_ < 0 ? -1 : 1;
+            if (Product(a.num_, a.den_, flip * b.den_, flip * b.num_, num, den))
+                return Number(num, den, nullptr);
         }
-        return Number(a.Inexact() / b.Inexact());
+        return Over(a, b);
     }
 
     Number& operator+=(const Number& b) { return *this = *this + b; }
@@ -266,6 +263,35 @@ private:
         if (big_) return *big_;
         return Big{num_ < 0, Natural(Magnitude(num_)),
                    Natural(static_cast<unsigned long long>(den_))};
+    }
+
+    INKAMATH_NOINLINE static Number Plus(const Number& a, const Number& b) {
+        if (a.exact() && b.exact()) return BigSum(a.Ratio(), b.Ratio());
+        return Number(a.Inexact() + b.Inexact());
+    }
+
+    INKAMATH_NOINLINE static Number Minus(const Number& a, const Number& b) {
+        if (a.exact() && b.exact()) {
+            Big negated      = b.Ratio();
+            negated.negative = !negated.negative;
+            return BigSum(a.Ratio(), negated);
+        }
+        return Number(a.Inexact() - b.Inexact());
+    }
+
+    INKAMATH_NOINLINE static Number Times(const Number& a, const Number& b) {
+        if (a.exact() && b.exact()) return BigProduct(a.Ratio(), b.Ratio());
+        return Number(a.Inexact() * b.Inexact());
+    }
+
+    INKAMATH_NOINLINE static Number Over(const Number& a, const Number& b) {
+        if (a.exact() && b.exact()) {
+            if (b.small() && b.num_ == 0) throw std::runtime_error("division by zero");
+            Big reciprocal = b.Ratio();
+            std::swap(reciprocal.num, reciprocal.den);
+            return BigProduct(a.Ratio(), reciprocal);
+        }
+        return Number(a.Inexact() / b.Inexact());
     }
 
     // Exactness ends at a thousand digits in either part.
@@ -452,35 +478,33 @@ private:
     // sum's numerator is larger than the result's by the last gcd at most.
     // Whole numbers first: their gcds are all 1, and the 64-bit divisions
     // that find so cost integer matrices seven times the double code.
-    static std::optional<Number> Sum(long long a, long long b, long long c, long long d) {
-        long long whole = 0;
-        if (b == 1 && d == 1) {
-            if (!Add(a, c, whole)) return std::nullopt;
-            return Number(whole, 1, nullptr);
-        }
+    // The result's parts, or false when they do not fit: parts rather than a
+    // Number, whose copy is not free since it may hold a big one.
+    static bool Sum(long long a, long long b, long long c, long long d, long long& num,
+                    long long& den) {
+        den = 1;
+        if (b == 1 && d == 1) return Add(a, c, num);
         const long long g    = std::gcd(b, d);
-        long long       left = 0, right = 0, t = 0, den = 0;
+        long long       left = 0, right = 0, t = 0;
         if (!Multiply(a, d / g, left) || !Multiply(c, b / g, right) || !Add(left, right, t)) {
-            return std::nullopt;
+            return false;
         }
-        if (t == 0) return Number(0);
+        num = 0;
+        if (t == 0) return true;
         const long long h = std::gcd(t, g);
-        if (!Multiply(b / g, d / h, den)) return std::nullopt;
-        return Number(t / h, den, nullptr);
+        num               = t / h;
+        return Multiply(b / g, d / h, den);
     }
 
-    static std::optional<Number> Product(long long a, long long b, long long c, long long d) {
-        if (a == 0 || c == 0) return Number(0);
-        long long whole = 0;
-        if (b == 1 && d == 1) {
-            if (!Multiply(a, c, whole)) return std::nullopt;
-            return Number(whole, 1, nullptr);
-        }
-        const long long g   = std::gcd(a, d);
-        const long long h   = std::gcd(c, b);
-        long long       num = 0, den = 0;
-        if (!Multiply(a / g, c / h, num) || !Multiply(b / h, d / g, den)) return std::nullopt;
-        return Number(num, den, nullptr);
+    static bool Product(long long a, long long b, long long c, long long d, long long& num,
+                        long long& den) {
+        num = 0;
+        den = 1;
+        if (a == 0 || c == 0) return true;
+        if (b == 1 && d == 1) return Multiply(a, c, num);
+        const long long g = std::gcd(a, d);
+        const long long h = std::gcd(c, b);
+        return Multiply(a / g, c / h, num) && Multiply(b / h, d / g, den);
     }
 
     // By squaring. A numerator and a denominator with no common factor keep
@@ -508,6 +532,13 @@ private:
 
     // Past the thousand digits whatever the digits are, so not computed.
     static std::optional<Number> Literal(const char* begin, const char* end) {
+        // Most literals are short whole numbers, and 18 digits always fit.
+        if (end - begin <= 18 &&
+            std::all_of(begin, end, [](char c) { return c >= '0' && c <= '9'; })) {
+            long long n = 0;
+            for (const char* c = begin; c != end; ++c) n = n * 10 + (*c - '0');
+            return Number(n);
+        }
         std::string digits;
         long long   exponent = 0;
         const char* c        = begin;
