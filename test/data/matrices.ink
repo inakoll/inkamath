@@ -259,6 +259,14 @@ error: 1 was approximated, so it has no exact fraction
 >> [1 2;2 4]^-1
 error: a singular matrix has no inverse
 
+# A pivot is chosen by its size as a double, and a nonzero one too small for
+# a double is still not zero: this was called singular.
+>> [0,1;1/10^400,0]^-1 == [0,10^400;1,0]
+1
+
+>> s^(2+1/10^999)
+error: a matrix power must be a whole number, not ~2
+
 >> a^0.5
 error: a matrix power must be a whole number, not 0.5
 

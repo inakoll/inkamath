@@ -160,6 +160,10 @@ s_n = s_(n-1)/3
 >> s_(3/2)
 error: an index must be a whole number, not 1.5
 
+# Whole means exactly whole: a double has no room for the difference here.
+>> s_(2+1/10^999)
+error: an index must be a whole number, not ~2
+
 # An index is exact. Taken as a whole number it would drop the '~', and the
 # answer would claim an exactness nothing gave it.
 >> s_(~2)

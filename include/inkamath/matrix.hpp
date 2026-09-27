@@ -145,7 +145,7 @@ public:
         // negative. There is no root, so the exponent has to be a whole
         // number, and the matrix has to be square to multiply by itself.
         const int whole = numeric_interface<T>::toInt(exponent);
-        if(numeric_interface<T>::abs(exponent - T(whole)) != 0) {
+        if (!(exponent == T(whole))) {
             // A value int cannot hold is not therefore a fraction (as C56 was).
             if (numeric_interface<T>::abs(exponent) > 2147483647.0) {
                 throw std::runtime_error(
@@ -186,8 +186,11 @@ public:
         for (size_t col = 1; col <= n; ++col) {
             size_t pivot = col;
             for (size_t row = col + 1; row <= n; ++row) {
+                // The largest, for accuracy; any, rather than an exact zero,
+                // though its size as a double may be zero too.
                 if (numeric_interface<T>::abs(a(row, col)) >
-                    numeric_interface<T>::abs(a(pivot, col)))
+                        numeric_interface<T>::abs(a(pivot, col)) ||
+                    (a(pivot, col) == T(0) && !(a(row, col) == T(0))))
                     pivot = row;
             }
             if (a(pivot, col) == T(0)) throw std::runtime_error("a singular matrix has no inverse");
