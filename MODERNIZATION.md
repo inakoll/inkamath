@@ -1399,8 +1399,14 @@ It passed as written on the first build; it is now `test/data/decimals.ink`
 with every expected output unchanged, and the spec suite retires again. The
 printer is exact, not a `printf` of a double: long division for a fraction,
 and for a double every one of its digits from `to_chars` -- at most 767 --
-rounded half to even as a string. `frac` and `digits` are reserved and begin a
-line; anywhere else they are an error. A diagnostic that quotes a number
+rounded half to even as a string. Fuzzed against the reference printer on
+36000 fractions and doubles at digits from 1 to 40, where it found step 1's
+conversion to a double rounding twice: numerator and denominator became
+doubles before they were divided, so `~9.233944204712703` was a double off
+once the fraction had more than 53 bits, which exact decimal literals made
+common. It is a binary long division now, checked on 4000 halfway cases.
+`frac` and `digits` are reserved and begin a line; anywhere else they are an
+error. A diagnostic that quotes a number
 quotes it at 9 digits whatever the setting, because it is written before the
 session's display is known.
 

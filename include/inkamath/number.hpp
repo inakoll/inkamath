@@ -36,8 +36,9 @@ public:
     bool exact() const { return den_ != 0; }
 
     inexact_type Inexact() const {
-        return exact() ? inexact_type(static_cast<double>(num_) / static_cast<double>(den_))
-                       : inexact_;
+        if (!exact()) return inexact_;
+        const double magnitude = Nearest(Magnitude(num_), static_cast<unsigned long long>(den_));
+        return num_ < 0 ? -magnitude : magnitude;
     }
 
     friend Number operator+(const Number& a, const Number& b) {
@@ -110,7 +111,7 @@ public:
 
     static double abs(const Number& a) {
         if (!a.exact()) return numeric_interface<inexact_type>::abs(a.inexact_);
-        return std::abs(static_cast<double>(a.num_)) / static_cast<double>(a.den_);
+        return Nearest(Magnitude(a.num_), static_cast<unsigned long long>(a.den_));
     }
 
     // Every number prints in decimal: an exact whole number in full, anything
@@ -199,6 +200,34 @@ private:
             return false;
         product = a * b;
         return true;
+    }
+
+    // The double nearest p/q, by long division in binary: dividing the two as
+    // doubles rounds twice once either has more than 53 bits. Fifty-five bits
+    // are kept, the last two to round half to even with.
+    static double Nearest(unsigned long long p, unsigned long long q) {
+        if (p == 0) return 0;
+        const unsigned long long top55 = 1ULL << 55;
+        unsigned long long       m = p / q, r = p % q;
+        int                      exponent = 0;
+        bool                     sticky   = false;
+        for (; m >= top55; ++exponent) {
+            sticky = sticky || (m & 1) != 0;
+            m >>= 1;
+        }
+        for (; m < top55 / 2; --exponent) {
+            r <<= 1;  // r < q < 2^63
+            m <<= 1;
+            if (r >= q) {
+                r -= q;
+                m |= 1;
+            }
+        }
+        sticky          = sticky || r != 0 || (m & 1) != 0;
+        const bool half = (m & 2) != 0;
+        m >>= 2;
+        if (half && (sticky || (m & 1) != 0)) ++m;
+        return std::ldexp(static_cast<double>(m), exponent + 2);
     }
 
     // Knuth's addition and multiplication of reduced fractions (TAOCP 4.5.1):

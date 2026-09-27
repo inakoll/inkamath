@@ -74,6 +74,18 @@ error: 3 is approximate, so it has no exact fraction
 >> frac i*i
 error: -1 is approximate, so it has no exact fraction
 
+# '~' gives the double nearest the exact value. Dividing the numerator by the
+# denominator as doubles rounds twice once either has more than 53 bits, and
+# this printed ~9.2339442047127047.
+>> digits = 17
+digits = 17
+
+>> ~9.233944204712703
+~9.2339442047127029
+
+>> digits = 9
+digits = 9
+
 # An exact zero cannot be divided by. Today these answer a complex infinity
 # and a NaN (C31).
 >> 1/0
