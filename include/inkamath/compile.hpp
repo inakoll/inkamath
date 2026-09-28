@@ -344,6 +344,17 @@ private:
         return operand.constant ? Fold(expression) : Answer(operand);
     }
 
+    PExpression<Value> visit(TransposeExpression<Value>* expression) override {
+        const Code operand = Emit(expression->m_e());
+        if (operand.constant) return Fold(expression);
+        Code code;
+        code.rows = operand.cols;
+        code.cols = operand.rows;
+        for (std::size_t i = 0; i < code.rows; ++i)
+            for (std::size_t j = 0; j < code.cols; ++j) code.cells.push_back(operand.At(j, i));
+        return Answer(code);
+    }
+
     PExpression<Value> visit(PowExpression<Value>* expression) override {
         const Code base = Emit(expression->m_e1()), exponent = Emit(expression->m_e2());
         if (base.constant && exponent.constant) return Fold(expression);
