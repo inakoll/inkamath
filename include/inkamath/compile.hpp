@@ -59,7 +59,14 @@ private:
         int         level = primary;
         std::string magnitude;  // what it is the negation of, if it is one
         int         magnitude_level = primary;
+        bool        atom            = false;  // a name or a number, as cheap to repeat as to store
     };
+
+    static Cell Atom(std::string text) {
+        Cell cell(std::move(text), primary);
+        cell.atom = true;
+        return cell;
+    }
 
     struct Code {
         std::size_t          rows = 1, cols = 1;
@@ -83,6 +90,7 @@ private:
         std::map<std::string, std::set<int>>    reads;  // lags, by the sequence read
         int                                     depth = 1;
         int                                     start = 0;
+        std::vector<std::string>                temporaries;  // declarations, in order
     };
 
     struct Parameter {
@@ -134,13 +142,44 @@ private:
     void Within(const std::string& name, Sequence* reading, const std::string& index, Body body) {
         Sequence* const   outer_reading = std::exchange(reading_, reading);
         const std::string outer_index   = std::exchange(index_, index);
+        auto* const       outer_temporaries =
+            std::exchange(temporaries_, &sequences_.at(name).temporaries);
         try {
             body();
         } catch (const Reason& reason) {
             throw Refusal("cannot compile " + name + ": " + reason.what());
         }
-        reading_ = outer_reading;
-        index_   = outer_index;
+        reading_     = outer_reading;
+        index_       = outer_index;
+        temporaries_ = outer_temporaries;
+    }
+
+    // A cell the compiler would write out more than once -- an operand of a
+    // matrix product, a single value stretched over a matrix -- is computed once
+    // per step instead, into a temporary: the same value, in fewer lines.
+    Cell Shared(const Cell& cell) {
+        if (cell.atom || !temporaries_) return cell;
+        // The same text is the same value within one sequence's step.
+        const std::string assigned = " = " + cell.text + ";";
+        for (const std::string& declared : *temporaries_) {
+            if (declared.size() > assigned.size() &&
+                declared.compare(declared.size() - assigned.size(), assigned.size(), assigned) == 0)
+                return Atom(declared.substr(13, declared.size() - assigned.size() - 13));
+        }
+        const std::string name = "t" + std::to_string(temporary_count_++) + "_";
+        temporaries_->push_back("const double " + name + " = " + cell.text + ";");
+        return Atom(name);
+    }
+    Code Shared(Code code) {
+        for (Cell& cell : code.cells) cell = Shared(cell);
+        return code;
+    }
+
+    template <typename Combine>
+    Code Broadcast(Code left, Code right, Combine combine) {
+        if (left.Scalar() && !right.Scalar()) left = Shared(left);
+        if (right.Scalar() && !left.Scalar()) right = Shared(right);
+        return Cellwise(left, right, combine);
     }
 
     void Shape(Sequence& sequence, const Code& code) {
@@ -267,7 +306,7 @@ private:
         code.cols     = value.Size().cols;
         code.constant = value;
         for (const double x : Doubles(value)) {
-            Cell cell(Double(std::abs(x)), primary);
+            Cell cell = Atom(Double(std::abs(x)));
             if (std::signbit(x)) {
                 cell.magnitude = cell.text;
                 cell.text      = "-" + cell.text;
@@ -325,13 +364,13 @@ private:
     PExpression<Value> visit(AddExpression<Value>* expression) override {
         const Code left = Emit(expression->m_e1()), right = Emit(expression->m_e2());
         if (left.constant && right.constant) return Fold(expression);
-        return Answer(Cellwise(left, right, Added));
+        return Answer(Broadcast(left, right, Added));
     }
 
     PExpression<Value> visit(DivExpression<Value>* expression) override {
         const Code left = Emit(expression->m_e1()), right = Emit(expression->m_e2());
         if (left.constant && right.constant) return Fold(expression);
-        return Answer(Cellwise(left, right, Divided));
+        return Answer(Broadcast(left, right, Divided));
     }
 
     // A matrix product is a sum over the inner dimension, in the interpreter's
@@ -342,8 +381,12 @@ private:
         return Answer(Product(left, right));
     }
 
-    static Code Product(const Code& left, const Code& right) {
-        if (left.Scalar() || right.Scalar()) return Cellwise(left, right, Multiplied);
+    // Each left cell is read once for each right column, each right cell once
+    // for each left row.
+    Code Product(Code left, Code right) {
+        if (left.Scalar() || right.Scalar()) return Broadcast(left, right, Multiplied);
+        if (right.cols > 1) left = Shared(left);
+        if (left.rows > 1) right = Shared(right);
         if (left.cols != right.rows)
             throw Reason("a matrix product needs as many columns on the left as rows on the right");
         Code code;
@@ -368,6 +411,7 @@ private:
                 "-" + (cell.magnitude.empty() ? Wrap(cell, unary) : "(" + cell.text + ")"), unary);
             negation.magnitude       = cell.text;
             negation.magnitude_level = cell.level;
+            negation.atom            = cell.atom;
             cell                     = negation;
         }
         return Answer(code);
@@ -447,7 +491,7 @@ private:
         const std::string& name = expression->Name();
         if (const auto place = places_.find(name); place != places_.end())
             return Answer(Literal(place->second));
-        if (!index_.empty() && name == index_) return Answer(Cell("(double)m_->index_", unary));
+        if (!index_.empty() && name == index_) return Answer(Atom("(double)m_->index_"));
         const Reference<Value>* definition = Global(name);
         if (!definition) return Answer(Field(name, Value(Number(NAN))));
         if (IsSequence(*definition)) throw Reason(name + " is a sequence; index it");
@@ -596,7 +640,7 @@ private:
         code.cols = read.cols;
         for (std::size_t i = 0; i < code.rows; ++i)
             for (std::size_t j = 0; j < code.cols; ++j)
-                code.cells.emplace_back(scalar ? at : at + Subscript(i, j), primary);
+                code.cells.push_back(Atom(scalar ? at : at + Subscript(i, j)));
         return Answer(code);
     }
 
@@ -686,7 +730,7 @@ private:
             constant        = constant && term.constant;
             total           = k == first              ? term
                               : expression->Product() ? Product(total, term)
-                                                      : Cellwise(total, term, Added);
+                                                      : Broadcast(total, term, Added);
         }
         if (outer)
             places_[name] = *outer;
@@ -706,7 +750,7 @@ private:
         code.cols = parameter.cols;
         for (std::size_t i = 0; i < code.rows; ++i)
             for (std::size_t j = 0; j < code.cols; ++j)
-                code.cells.emplace_back("m_->" + name + (scalar ? "" : Subscript(i, j)), primary);
+                code.cells.push_back(Atom("m_->" + name + (scalar ? "" : Subscript(i, j))));
         return code;
     }
 
@@ -799,6 +843,21 @@ private:
         return rows * cols == 1 ? "" : Subscript(rows, cols);
     }
 
+    // Those something reads: a cell read out of a product, or a clause that was
+    // compiled only to be refused, leaves some that nothing does, and C would
+    // say so.
+    static std::string Temporaries(const std::vector<std::string>& declared,
+                                   const std::string& assignments, const std::string& indent) {
+        std::string read = assignments, kept;
+        for (auto declaration = declared.rbegin(); declaration != declared.rend(); ++declaration) {
+            const std::string name = declaration->substr(13, declaration->find(' ', 13) - 13);
+            if (read.find(name) == std::string::npos) continue;
+            read += *declaration;
+            kept = indent + *declaration + "\n" + kept;
+        }
+        return kept;
+    }
+
     std::string Print(const std::string& module, const std::string& source) {
         for (const auto& [name, sequence] : sequences_)
             if (!sequence.definition && parameters_.count(name))
@@ -872,15 +931,19 @@ private:
             const bool        guarded  = sequence.start > earliest;
             const std::string indent   = guarded ? "        " : "    ";
             if (guarded) out += "    if (m_->index_ >= " + std::to_string(sequence.start) + ") {\n";
+            std::string assignments;
             for (std::size_t c = 0; c < sequence.general.size(); ++c) {
-                out += indent + "m_->" + name + "[0]" +
-                       (scalar ? "" : Subscript(c / sequence.cols, c % sequence.cols)) + " = ";
+                assignments += indent + "m_->" + name + "[0]" +
+                               (scalar ? "" : Subscript(c / sequence.cols, c % sequence.cols)) +
+                               " = ";
                 for (const auto& [index, base] : sequence.bases)
-                    out += "m_->index_ == " + std::to_string(index) + " ? " + base[c] + " : ";
+                    assignments +=
+                        "m_->index_ == " + std::to_string(index) + " ? " + base[c] + " : ";
                 for (const auto& [condition, cells] : sequence.guarded)
-                    out += condition + " ? " + cells[c] + " : ";
-                out += sequence.general[c] + ";\n";
+                    assignments += condition + " ? " + cells[c] + " : ";
+                assignments += sequence.general[c] + ";\n";
             }
+            out += Temporaries(sequence.temporaries, assignments, indent) + assignments;
             if (guarded) out += "    }\n";
         }
         out += "}\n\n#endif\n";
@@ -893,6 +956,8 @@ private:
     std::set<std::string>            reading_plain_;
     Sequence*   reading_ = nullptr;  // the sequence whose general clause this is
     std::string index_;              // and the name of its index
+    std::vector<std::string>*        temporaries_ = nullptr;  // where this sequence's are declared
+    int                              temporary_count_ = 0;
     std::map<std::string, Value>     places_;             // a cell's row and column, by their names
     Code        code_;
 };

@@ -1681,6 +1681,18 @@ read a parameter, and more than a thousand terms, each of which is a line of C.
 A product of matrices shows what inlining costs -- each cell repeats the
 cells before it -- which is what temporaries are next for.
 
+**Temporaries** are made where the compiler itself would repeat a cell: an
+operand of a matrix product, whose cells each feed a row or a column of the
+result, and a single value stretched over a matrix. Such a cell, unless it is
+already a name or a number, is computed once per step into a `const double`
+before the sequence that reads it, and text that is the same within one step
+is one temporary; one that nothing reads, as when a single cell is read out of
+a product, is dropped. The values are the same, computed once, so the
+harnesses hold as they did: the PID, clamped PID and FIR headers do not move,
+and the Kalman filter's reads its gain's denominator and its innovation once
+each. The product that repeated every cell before it is now as long as its
+products.
+
 **The second increment** is the Kalman filter, which is matrices of fixed
 shape: a value is its cells, each one C expression, and a matrix product is the
 sum over the inner dimension in the interpreter's order. A sequence's shape
