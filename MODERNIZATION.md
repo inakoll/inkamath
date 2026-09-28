@@ -1633,6 +1633,15 @@ an embedded filter wants, and C++ over `Number` and `Matrix`, the exact model.
 The analysis produces one typed form and each target prints it; the C target
 comes first, because the proof of concept below is a filter.
 
+**The exact C++ target is deferred** until a model needs it. Seven domains
+were explored for one (below): exactness paid everywhere as the reference a
+compiled model is held to, which is the interpreter's part, and nowhere in
+what is deployed, where it would bring a heap and a bignum to a
+microcontroller. Where an exact result is the product -- a probability, a
+geometric sign -- the interpreter gives it. The work that follows is the
+small fixes that make the interpreter more useful as it is; a sparse matrix
+in the interpreter is the next large piece, if it is taken on at all.
+
 **The first increment** compiles sequences of real numbers to a C header, and
 refuses everything else by name. A file's definitions are run by the
 interpreter, as they would be at a prompt; each sequence becomes a window of
@@ -1828,8 +1837,8 @@ doubles. Wanted: `floor` or `mod` (the loan wrote its own, by binary descent),
 `and` and `or` for guards (written as products), and compiled functions (the
 orientation test is one). Two documented behaviours were traps on the way: a
 plain definition erases the guarded clauses written before it, and `[1 -1]` is
-`[0]` (C52), which an element matrix writes on every line. Whether the exact
-C++ target stays is open until this exploration is done.
+`[0]` (C52), which an element matrix writes on every line. The exact C++
+target is deferred on what this found (above).
 
 Compiling the heat equation found two defects:
 
