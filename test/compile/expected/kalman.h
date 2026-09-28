@@ -7,8 +7,9 @@
 #include <math.h>
 #include <string.h>
 
-/* The parameters, which the host may assign, then the index of the latest
- * step and each sequence's terms from that index back. */
+/* The parameters, which the host may assign, then what derives from them,
+ * then the index of the latest step and each sequence's terms from that
+ * index back. */
 typedef struct kalman {
     double H[1][2];
     double I[2][2];
@@ -25,6 +26,11 @@ typedef struct kalman {
     double p[1];
 } kalman;
 
+/* Computes what derives from the parameters: call it after assigning one. */
+static inline void kalman_update(kalman* m_) {
+    (void)m_;
+}
+
 static inline void kalman_init(kalman* m_) {
     memset(m_, 0, sizeof *m_);
     m_->H[0][0] = 1.0;
@@ -40,6 +46,7 @@ static inline void kalman_init(kalman* m_) {
     m_->R = 1.0;
     m_->dt = 1.0;
     m_->index_ = -1;
+    kalman_update(m_);
 }
 
 /* Advances to the next index, the first at 0, and computes its terms. */
@@ -49,25 +56,35 @@ static inline void kalman_step(kalman* m_, double z) {
     memcpy(m_->x[1], m_->x[0], sizeof m_->x[1]);
     m_->z[0] = z;
     if (m_->index_ >= 1) {
-        m_->Pp[0][0][0] = (1.0 * m_->P[1][0][0] + m_->dt * m_->P[1][1][0]) * 1.0 + (1.0 * m_->P[1][0][1] + m_->dt * m_->P[1][1][1]) * m_->dt + m_->Q[0][0];
-        m_->Pp[0][0][1] = (1.0 * m_->P[1][0][0] + m_->dt * m_->P[1][1][0]) * 0.0 + (1.0 * m_->P[1][0][1] + m_->dt * m_->P[1][1][1]) * 1.0 + m_->Q[0][1];
-        m_->Pp[0][1][0] = (0.0 * m_->P[1][0][0] + 1.0 * m_->P[1][1][0]) * 1.0 + (0.0 * m_->P[1][0][1] + 1.0 * m_->P[1][1][1]) * m_->dt + m_->Q[1][0];
-        m_->Pp[0][1][1] = (0.0 * m_->P[1][0][0] + 1.0 * m_->P[1][1][0]) * 0.0 + (0.0 * m_->P[1][0][1] + 1.0 * m_->P[1][1][1]) * 1.0 + m_->Q[1][1];
+        const double t0_ = 1.0 * m_->P[1][0][0] + m_->dt * m_->P[1][1][0];
+        const double t1_ = 1.0 * m_->P[1][0][1] + m_->dt * m_->P[1][1][1];
+        const double t2_ = 0.0 * m_->P[1][0][0] + 1.0 * m_->P[1][1][0];
+        const double t3_ = 0.0 * m_->P[1][0][1] + 1.0 * m_->P[1][1][1];
+        m_->Pp[0][0][0] = t0_ * 1.0 + t1_ * m_->dt + m_->Q[0][0];
+        m_->Pp[0][0][1] = t0_ * 0.0 + t1_ * 1.0 + m_->Q[0][1];
+        m_->Pp[0][1][0] = t2_ * 1.0 + t3_ * m_->dt + m_->Q[1][0];
+        m_->Pp[0][1][1] = t2_ * 0.0 + t3_ * 1.0 + m_->Q[1][1];
     }
     if (m_->index_ >= 1) {
-        m_->K[0][0][0] = (m_->Pp[0][0][0] * m_->H[0][0] + m_->Pp[0][0][1] * m_->H[0][1]) * pow((m_->H[0][0] * m_->Pp[0][0][0] + m_->H[0][1] * m_->Pp[0][1][0]) * m_->H[0][0] + (m_->H[0][0] * m_->Pp[0][0][1] + m_->H[0][1] * m_->Pp[0][1][1]) * m_->H[0][1] + m_->R, -1.0);
-        m_->K[0][1][0] = (m_->Pp[0][1][0] * m_->H[0][0] + m_->Pp[0][1][1] * m_->H[0][1]) * pow((m_->H[0][0] * m_->Pp[0][0][0] + m_->H[0][1] * m_->Pp[0][1][0]) * m_->H[0][0] + (m_->H[0][0] * m_->Pp[0][0][1] + m_->H[0][1] * m_->Pp[0][1][1]) * m_->H[0][1] + m_->R, -1.0);
+        const double t4_ = pow((m_->H[0][0] * m_->Pp[0][0][0] + m_->H[0][1] * m_->Pp[0][1][0]) * m_->H[0][0] + (m_->H[0][0] * m_->Pp[0][0][1] + m_->H[0][1] * m_->Pp[0][1][1]) * m_->H[0][1] + m_->R, -1.0);
+        m_->K[0][0][0] = (m_->Pp[0][0][0] * m_->H[0][0] + m_->Pp[0][0][1] * m_->H[0][1]) * t4_;
+        m_->K[0][1][0] = (m_->Pp[0][1][0] * m_->H[0][0] + m_->Pp[0][1][1] * m_->H[0][1]) * t4_;
     }
-    m_->P[0][0][0] = m_->index_ == 0 ? 10.0 : (m_->I[0][0] - m_->K[0][0][0] * m_->H[0][0]) * m_->Pp[0][0][0] + (m_->I[0][1] - m_->K[0][0][0] * m_->H[0][1]) * m_->Pp[0][1][0];
-    m_->P[0][0][1] = m_->index_ == 0 ? 0.0 : (m_->I[0][0] - m_->K[0][0][0] * m_->H[0][0]) * m_->Pp[0][0][1] + (m_->I[0][1] - m_->K[0][0][0] * m_->H[0][1]) * m_->Pp[0][1][1];
-    m_->P[0][1][0] = m_->index_ == 0 ? 0.0 : (m_->I[1][0] - m_->K[0][1][0] * m_->H[0][0]) * m_->Pp[0][0][0] + (m_->I[1][1] - m_->K[0][1][0] * m_->H[0][1]) * m_->Pp[0][1][0];
-    m_->P[0][1][1] = m_->index_ == 0 ? 10.0 : (m_->I[1][0] - m_->K[0][1][0] * m_->H[0][0]) * m_->Pp[0][0][1] + (m_->I[1][1] - m_->K[0][1][0] * m_->H[0][1]) * m_->Pp[0][1][1];
+    const double t5_ = m_->I[0][0] - m_->K[0][0][0] * m_->H[0][0];
+    const double t6_ = m_->I[0][1] - m_->K[0][0][0] * m_->H[0][1];
+    const double t7_ = m_->I[1][0] - m_->K[0][1][0] * m_->H[0][0];
+    const double t8_ = m_->I[1][1] - m_->K[0][1][0] * m_->H[0][1];
+    m_->P[0][0][0] = m_->index_ == 0 ? 10.0 : t5_ * m_->Pp[0][0][0] + t6_ * m_->Pp[0][1][0];
+    m_->P[0][0][1] = m_->index_ == 0 ? 0.0 : t5_ * m_->Pp[0][0][1] + t6_ * m_->Pp[0][1][1];
+    m_->P[0][1][0] = m_->index_ == 0 ? 0.0 : t7_ * m_->Pp[0][0][0] + t8_ * m_->Pp[0][1][0];
+    m_->P[0][1][1] = m_->index_ == 0 ? 10.0 : t7_ * m_->Pp[0][0][1] + t8_ * m_->Pp[0][1][1];
     if (m_->index_ >= 1) {
         m_->xp[0][0][0] = 1.0 * m_->x[1][0][0] + m_->dt * m_->x[1][1][0];
         m_->xp[0][1][0] = 0.0 * m_->x[1][0][0] + 1.0 * m_->x[1][1][0];
     }
-    m_->x[0][0][0] = m_->index_ == 0 ? 0.0 : m_->xp[0][0][0] + m_->K[0][0][0] * (m_->z[0] - (m_->H[0][0] * m_->xp[0][0][0] + m_->H[0][1] * m_->xp[0][1][0]));
-    m_->x[0][1][0] = m_->index_ == 0 ? 0.0 : m_->xp[0][1][0] + m_->K[0][1][0] * (m_->z[0] - (m_->H[0][0] * m_->xp[0][0][0] + m_->H[0][1] * m_->xp[0][1][0]));
+    const double t9_ = m_->z[0] - (m_->H[0][0] * m_->xp[0][0][0] + m_->H[0][1] * m_->xp[0][1][0]);
+    m_->x[0][0][0] = m_->index_ == 0 ? 0.0 : m_->xp[0][0][0] + m_->K[0][0][0] * t9_;
+    m_->x[0][1][0] = m_->index_ == 0 ? 0.0 : m_->xp[0][1][0] + m_->K[0][1][0] * t9_;
     m_->p[0] = m_->x[0][0][0];
 }
 

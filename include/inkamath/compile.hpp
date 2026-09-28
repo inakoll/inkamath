@@ -10,6 +10,7 @@
 #include <charconv>
 #include <cmath>
 #include <cstddef>
+#include <limits>
 #include <map>
 #include <optional>
 #include <set>
@@ -34,14 +35,32 @@ public:
 
     static std::string Header(const ReferenceStack<Value>& definitions, const std::string& module,
                               const std::string& source) {
-        CompileC compiler(definitions);
-        for (const auto& [name, definition] : Sorted(definitions.Globals()))
-            compiler.Define(name, *definition);
-        for (const auto& [name, sequence] : Sorted(compiler.sequences_)) compiler.Compile(name);
-        return compiler.Print(module, source);
+        std::set<std::string> fixed;
+        for (;;) {
+            CompileC compiler(definitions);
+            compiler.module_ = module;
+            compiler.fixed_  = fixed;
+            try {
+                for (const auto& [name, definition] : Sorted(definitions.Globals()))
+                    compiler.Define(name, *definition);
+                for (const auto& [name, sequence] : Sorted(compiler.sequences_))
+                    compiler.Compile(name);
+                return compiler.Print(module, source);
+            } catch (const Fix& fix) {
+                fixed.insert(fix.names.begin(), fix.names.end());
+            }
+        }
     }
 
 private:
+    // Parameters read where the compiled code needs a constant -- a size, a
+    // bound, a lag -- which the struct cannot let the host change. The file is
+    // compiled again with them fixed, and so a constant everywhere they are
+    // read. A parameter is never read once fixed, so this ends.
+    struct Fix {
+        std::set<std::string> names;
+    };
+
     // Why a definition cannot be compiled; Compile names the definition.
     struct Reason : std::runtime_error {
         using std::runtime_error::runtime_error;
@@ -59,7 +78,14 @@ private:
         int         level = primary;
         std::string magnitude;  // what it is the negation of, if it is one
         int         magnitude_level = primary;
+        bool        atom            = false;  // a name or a number, as cheap to repeat as to store
     };
+
+    static Cell Atom(std::string text) {
+        Cell cell(std::move(text), primary);
+        cell.atom = true;
+        return cell;
+    }
 
     struct Code {
         std::size_t          rows = 1, cols = 1;
@@ -73,15 +99,47 @@ private:
         }
     };
 
+    // A value a step computes once, before the sequence that reads it: its
+    // name, what it computes, and the lines that declare it.
+    struct Temporary {
+        std::string              name, value;
+        std::vector<std::string> lines;
+    };
+
+    // A value that reads parameters, computed where they are set rather than
+    // at every step.
+    struct Derived {
+        std::string            name;
+        Code                   code;
+        std::vector<Temporary> temporaries;
+        bool                   read = false;  // from its field, by some cell
+        std::set<std::string>  parameters;    // that it reads
+    };
+
+    using Reads = std::map<std::string, std::set<int>>;  // lags, by the sequence read
+
+    // A guarded clause, and what its guard and its value each read: its guard
+    // is evaluated wherever the chain reaches it, its value only where it holds,
+    // so each has its own index from which it can be.
+    struct Guarded {
+        std::string              condition;
+        std::vector<std::string> cells;
+        Reads                    guard, value;
+        int                      guard_from = 0, value_from = 0;
+    };
+
     struct Sequence {
         const Reference<Value>*                 definition = nullptr;  // none for an input
         std::map<int, std::vector<std::string>> bases;                 // cells, by index
+        std::vector<Guarded>                    guarded;               // in the order tried
+        Reads                                   general_reads;
         std::vector<std::string>                general;
         std::size_t                             rows = 0, cols = 0;  // 0 until known
         bool                                    based = false, compiling = false, compiled = false;
         std::map<std::string, std::set<int>>    reads;  // lags, by the sequence read
         int                                     depth = 1;
         int                                     start = 0;
+        std::vector<Temporary>                  temporaries;  // in the order declared
     };
 
     struct Parameter {
@@ -111,8 +169,18 @@ private:
         for (const Clause<Value>& clause : definition.Clauses()) {
             if (!clause.parameters.parameters_names().empty())
                 throw Refusal("cannot compile " + name + ": a function");
-            if (clause.parameters.guarded() && !clause.parameters.cells())
-                throw Refusal("cannot compile " + name + ": a guarded clause");
+            const ParametersDefinition<Value>& p = clause.parameters;
+            if (p.guarded() && !p.cells() && !p.general())
+                throw Refusal("cannot compile " + name + ": a guarded " +
+                              (p.indexed() ? "base clause" : "value"));
+        }
+        // A base clause written after a guarded one is reached only if the guard
+        // fails, which the chain a step computes would not say.
+        bool guarded = false;
+        for (const Clause<Value>& clause : definition.Clauses()) {
+            guarded = guarded || (clause.parameters.guarded() && clause.parameters.general());
+            if (guarded && clause.parameters.indexed() && !clause.parameters.general())
+                throw Refusal("cannot compile " + name + ": a base clause after a guarded one");
         }
         if (IsSequence(definition)) sequences_[name].definition = &definition;
     }
@@ -123,13 +191,48 @@ private:
     void Within(const std::string& name, Sequence* reading, const std::string& index, Body body) {
         Sequence* const   outer_reading = std::exchange(reading_, reading);
         const std::string outer_index   = std::exchange(index_, index);
+        auto* const       outer_temporaries =
+            std::exchange(temporaries_, &sequences_.at(name).temporaries);
         try {
             body();
         } catch (const Reason& reason) {
             throw Refusal("cannot compile " + name + ": " + reason.what());
         }
-        reading_ = outer_reading;
-        index_   = outer_index;
+        reading_     = outer_reading;
+        index_       = outer_index;
+        temporaries_ = outer_temporaries;
+    }
+
+    // A cell the compiler would write out more than once -- an operand of a
+    // matrix product, a single value stretched over a matrix -- is computed once
+    // per step instead, into a temporary: the same value, in fewer lines.
+    Cell Shared(const Cell& cell) {
+        if (cell.atom || !temporaries_) return cell;
+        return Atom(Declare(cell.text, [&](const std::string& name) {
+            return std::vector<std::string>{"const double " + name + " = " + cell.text + ";"};
+        }));
+    }
+
+    // The same value is the same temporary within one sequence's step.
+    template <typename Lines>
+    std::string Declare(const std::string& value, Lines lines) {
+        if (!temporaries_) throw Reason("a matrix inverse outside a sequence");
+        for (const Temporary& temporary : *temporaries_)
+            if (temporary.value == value) return temporary.name;
+        const std::string name = "t" + std::to_string(temporary_count_++) + "_";
+        temporaries_->push_back({name, value, lines(name)});
+        return name;
+    }
+    Code Shared(Code code) {
+        for (Cell& cell : code.cells) cell = Shared(cell);
+        return code;
+    }
+
+    template <typename Combine>
+    Code Broadcast(Code left, Code right, Combine combine) {
+        if (left.Scalar() && !right.Scalar()) left = Shared(left);
+        if (right.Scalar() && !left.Scalar()) right = Shared(right);
+        return Cellwise(left, right, combine);
     }
 
     void Shape(Sequence& sequence, const Code& code) {
@@ -170,22 +273,63 @@ private:
             throw Refusal("cannot compile " + name + ": its shape depends on itself");
         sequence.compiling = true;
         Bases(name);
-        for (const Clause<Value>& clause : sequence.definition->Clauses()) {
-            if (!clause.parameters.general()) continue;
-            Within(name, &sequence, clause.parameters.index_name(), [&] {
-                const Code code = Emit(clause.expression);
-                Shape(sequence, code);
-                sequence.general = Texts(code);
-            });
+        Reads* const outer_reads = clause_reads_;
+        // The guarded clauses in the order written, then the unguarded one, as
+        // the interpreter tries them; a guard that always holds ends the chain.
+        bool settled = false;
+        for (const bool guarded : {true, false}) {
+            for (const Clause<Value>& clause : sequence.definition->Clauses()) {
+                const ParametersDefinition<Value>& p = clause.parameters;
+                if (settled || !p.general() || p.guarded() != guarded) continue;
+                Within(name, &sequence, p.index_name(), [&] {
+                    Reads guard_reads, value_reads;
+                    clause_reads_ = &guard_reads;
+                    const std::optional<std::string> condition =
+                        guarded ? Condition(p.guard()) : std::optional<std::string>("");
+                    if (!condition) return;
+                    clause_reads_   = &value_reads;
+                    const Code code = Emit(clause.expression);
+                    clause_reads_   = nullptr;
+                    Shape(sequence, code);
+                    if (condition->empty()) {
+                        sequence.general       = Texts(code);
+                        sequence.general_reads = value_reads;
+                        settled                = true;
+                    } else {
+                        sequence.guarded.push_back(
+                            {*condition, Texts(code), guard_reads, value_reads, 0, 0});
+                    }
+                });
+            }
         }
-        if (sequence.general.empty())
+        if (!settled && sequence.guarded.empty())
             throw Refusal("cannot compile " + name + ": a sequence with no general clause");
+        // Where no guard holds the interpreter says so; a step can only say NaN.
+        if (!settled) sequence.general.assign(sequence.rows * sequence.cols, "NAN");
+        clause_reads_     = outer_reads;
         sequence.compiled = true;
     }
 
     Code Emit(const PExpression<Value>& expression) {
         expression->accept(*this);
         return code_;
+    }
+
+    // A value, and the parameters it reads.
+    std::pair<Code, std::set<std::string>> Reading(const PExpression<Value>& expression) {
+        auto       outer = std::exchange(read_parameters_, {});
+        const Code code  = Emit(expression);
+        auto       reads = std::exchange(read_parameters_, std::move(outer));
+        read_parameters_.insert(reads.begin(), reads.end());
+        return {code, reads};
+    }
+
+    // A value the compiled code needs as a constant; see Fix.
+    Code Known(const PExpression<Value>& expression, const std::string& refusal) {
+        auto [code, reads] = Reading(expression);
+        if (code.constant) return code;
+        if (!reads.empty()) throw Fix{std::move(reads)};
+        throw Reason(refusal);
     }
 
     static std::string Wrap(const std::string& text, int level, int needed) {
@@ -209,6 +353,9 @@ private:
     // here, which a C compiler folding the doubles would not find.
     PExpression<Value> Fold(Expression<Value>* expression) {
         ReferenceStack<Value> scratch;
+        for (const auto& [name, value] : known_)
+            scratch.Set(name, ParametersDefinition<Value>(),
+                        std::make_shared<ValExpression<Value>>(value));
         for (const auto& [name, value] : places_)
             scratch.Set(name, ParametersDefinition<Value>(),
                         std::make_shared<ValExpression<Value>>(value));
@@ -240,7 +387,7 @@ private:
         code.cols     = value.Size().cols;
         code.constant = value;
         for (const double x : Doubles(value)) {
-            Cell cell(Double(std::abs(x)), primary);
+            Cell cell = Atom(Double(std::abs(x)));
             if (std::signbit(x)) {
                 cell.magnitude = cell.text;
                 cell.text      = "-" + cell.text;
@@ -298,13 +445,13 @@ private:
     PExpression<Value> visit(AddExpression<Value>* expression) override {
         const Code left = Emit(expression->m_e1()), right = Emit(expression->m_e2());
         if (left.constant && right.constant) return Fold(expression);
-        return Answer(Cellwise(left, right, Added));
+        return Answer(Broadcast(left, right, Added));
     }
 
     PExpression<Value> visit(DivExpression<Value>* expression) override {
         const Code left = Emit(expression->m_e1()), right = Emit(expression->m_e2());
         if (left.constant && right.constant) return Fold(expression);
-        return Answer(Cellwise(left, right, Divided));
+        return Answer(Broadcast(left, right, Divided));
     }
 
     // A matrix product is a sum over the inner dimension, in the interpreter's
@@ -312,7 +459,15 @@ private:
     PExpression<Value> visit(MultExpression<Value>* expression) override {
         const Code left = Emit(expression->m_e1()), right = Emit(expression->m_e2());
         if (left.constant && right.constant) return Fold(expression);
-        if (left.Scalar() || right.Scalar()) return Answer(Cellwise(left, right, Multiplied));
+        return Answer(Product(left, right));
+    }
+
+    // Each left cell is read once for each right column, each right cell once
+    // for each left row.
+    Code Product(Code left, Code right) {
+        if (left.Scalar() || right.Scalar()) return Broadcast(left, right, Multiplied);
+        if (right.cols > 1) left = Shared(left);
+        if (left.rows > 1) right = Shared(right);
         if (left.cols != right.rows)
             throw Reason("a matrix product needs as many columns on the left as rows on the right");
         Code code;
@@ -326,7 +481,7 @@ private:
                 code.cells.push_back(cell);
             }
         }
-        return Answer(code);
+        return code;
     }
 
     PExpression<Value> visit(NegExpression<Value>* expression) override {
@@ -337,6 +492,7 @@ private:
                 "-" + (cell.magnitude.empty() ? Wrap(cell, unary) : "(" + cell.text + ")"), unary);
             negation.magnitude       = cell.text;
             negation.magnitude_level = cell.level;
+            negation.atom            = cell.atom;
             cell                     = negation;
         }
         return Answer(code);
@@ -359,23 +515,102 @@ private:
     }
 
     PExpression<Value> visit(PowExpression<Value>* expression) override {
-        const Code base = Emit(expression->m_e1()), exponent = Emit(expression->m_e2());
+        const Code base = Emit(expression->m_e1());
+        const Code exponent =
+            base.Scalar()
+                ? Emit(expression->m_e2())
+                : Known(expression->m_e2(), "a matrix power whose exponent is not a constant");
         if (base.constant && exponent.constant) return Fold(expression);
         if (!exponent.Scalar()) throw Reason("a matrix cannot be an exponent");
-        if (!base.Scalar()) throw Reason("a matrix power");
+        if (!base.Scalar()) return Answer(Power(base, exponent));
         return Answer(
             Cell("pow(" + base.cells[0].text + ", " + exponent.cells[0].text + ")", primary));
     }
 
-    PExpression<Value> visit(CompareExpression<Value>* expression) override {
+    // By squaring, as the interpreter does it, of the inverse for a negative
+    // exponent. The interpreter starts from the identity and multiplies it in;
+    // starting from the first factor instead changes only a cell that is
+    // infinite, where the identity's zeros would make it NaN.
+    Code Power(Code base, const Code& exponent) {
+        if (!exponent.constant) throw Reason("a matrix power whose exponent is not a constant");
+        const auto power = (*exponent.constant)(1, 1).Inexact();
+        if (power.imag() != 0 || power.real() != std::floor(power.real()) ||
+            std::abs(power.real()) > 2147483647.0)
+            throw Reason("a matrix power must be a whole number");
+        if (base.rows != base.cols) throw Reason("only a square matrix has a power");
+        const long long whole = static_cast<long long>(power.real());
+        if (whole == 0) {
+            // The identity whatever the base, but not a constant: a constant is
+            // what reads no name, and an enclosing fold would read this one's.
+            Code identity = Literal(Value::Identity(Extent{base.rows, base.cols}));
+            identity.constant.reset();
+            return identity;
+        }
+        if (whole < 0) base = Inverse(base);
+        std::optional<Code> result;
+        for (unsigned long long n = static_cast<unsigned long long>(whole < 0 ? -whole : whole);
+             n != 0; n >>= 1) {
+            if (n & 1) result = result ? Product(*result, base) : base;
+            if (n > 1) base = Product(base, base);
+        }
+        return *result;
+    }
+
+    // In place, by the helper the header defines for its size, which pivots as
+    // the interpreter does: that depends on the values, so it is done as the
+    // step runs.
+    Code Inverse(const Code& matrix) {
+        const std::size_t n     = matrix.rows;
+        std::string       value = "inverse";
+        std::string       rows;
+        for (std::size_t i = 0; i < n; ++i) {
+            std::string row;
+            for (std::size_t j = 0; j < n; ++j) row += (j ? ", " : "") + matrix.At(i, j).text;
+            rows += (i ? ", {" : "{") + row + "}";
+            value += "\x1f" + row;
+        }
+        inverses_.insert(n);
+        const std::string name = Declare(value, [&](const std::string& t) {
+            return std::vector<std::string>{
+                "double " + t + Subscript(n, n) + " = {" + rows + "};",
+                module_ + "_inverse" + std::to_string(n) + "_(" + t + ");"};
+        });
+        Code              code;
+        code.rows = code.cols = n;
+        for (std::size_t i = 0; i < n; ++i)
+            for (std::size_t j = 0; j < n; ++j) code.cells.push_back(Atom(name + Subscript(i, j)));
+        return code;
+    }
+
+    static const char* Operator(Comparison op) {
         static const char* const ops[] = {" < ", " > ", " <= ", " >= ", " == ", " != "};
-        const Code               left = Emit(expression->m_e1()), right = Emit(expression->m_e2());
+        return ops[static_cast<int>(op)];
+    }
+
+    PExpression<Value> visit(CompareExpression<Value>* expression) override {
+        const Code left = Emit(expression->m_e1()), right = Emit(expression->m_e2());
         if (left.constant && right.constant) return Fold(expression);
         if (!left.Scalar() || !right.Scalar()) throw Reason("a comparison of matrices");
-        return Answer(Cell("(" + Wrap(left.cells[0], sum) +
-                               ops[static_cast<int>(expression->Op())] + Wrap(right.cells[0], sum) +
-                               " ? 1.0 : 0.0)",
+        return Answer(Cell("(" + Wrap(left.cells[0], sum) + Operator(expression->Op()) +
+                               Wrap(right.cells[0], sum) + " ? 1.0 : 0.0)",
                            primary));
+    }
+
+    // A guard as C tests it: a comparison as itself, anything else against
+    // zero, which is the interpreter's truth, NaN holding. Empty where it
+    // always holds, and nothing where it never does.
+    std::optional<std::string> Condition(const PExpression<Value>& guard) {
+        const Code code = Emit(guard);
+        if (!code.Scalar()) throw Reason("a guard that is a matrix");
+        if (code.constant) {
+            if (!Value::truth(*code.constant)) return std::nullopt;
+            return std::string();
+        }
+        if (const auto* compare = dynamic_cast<CompareExpression<Value>*>(guard.get())) {
+            const Code left = Emit(compare->m_e1()), right = Emit(compare->m_e2());
+            return Wrap(left.cells[0], sum) + Operator(compare->Op()) + Wrap(right.cells[0], sum);
+        }
+        return Wrap(code.cells[0], sum) + " != 0.0";
     }
 
     PExpression<Value> visit(MatExpression<Value>* expression) override {
@@ -396,16 +631,31 @@ private:
         const std::string& name = expression->Name();
         if (const auto place = places_.find(name); place != places_.end())
             return Answer(Literal(place->second));
-        if (!index_.empty() && name == index_) return Answer(Cell("(double)m_->index_", unary));
+        if (!index_.empty() && name == index_) return Answer(Atom(index_text_));
         const Reference<Value>* definition = Global(name);
-        if (!definition) return Answer(Field(name, Value(Number(NAN))));
+        if (!definition) {
+            if (fixed_.count(name)) throw Reason(name + " is not defined");
+            return Answer(Field(name, Value(Number(NAN))));
+        }
         if (IsSequence(*definition)) throw Reason(name + " is a sequence; index it");
+        read_global_ = true;
+        if (const auto known = known_.find(name); known != known_.end())
+            return Answer(Literal(known->second));
+        for (Derived& derived : derived_) {
+            if (derived.name != name) continue;
+            read_parameters_.insert(derived.parameters.begin(), derived.parameters.end());
+            return Answer(Read(derived));
+        }
         if (!reading_plain_.insert(name).second) throw Reason(name + " is defined by itself");
         // A global is evaluated in a scope of its own, where no index or place
         // is seen.
         Sequence* const   reading = std::exchange(reading_, nullptr);
         const std::string index   = std::exchange(index_, std::string());
         const auto        places  = std::exchange(places_, {});
+        std::vector<Temporary> temporaries;
+        auto* const            outer_temporaries = std::exchange(temporaries_, &temporaries);
+        auto                   outer_parameters  = std::exchange(read_parameters_, {});
+        read_global_                             = false;
         const auto        cells   = [](const Clause<Value>& c) { return c.parameters.cells(); };
         Code code = std::any_of(definition->Clauses().begin(), definition->Clauses().end(), cells)
                         ? Cells(name, *definition)
@@ -413,10 +663,21 @@ private:
         reading_                  = reading;
         index_                    = index;
         places_                   = places;
+        temporaries_              = outer_temporaries;
+        const bool reads          = std::exchange(read_global_, true);
+        const auto parameters     = std::exchange(read_parameters_, std::move(outer_parameters));
+        read_parameters_.insert(parameters.begin(), parameters.end());
         reading_plain_.erase(name);
         // A value that reads no other is a parameter the host may change; one
-        // that does is recomputed where it is read, so that it follows them.
-        return Answer(code.constant ? Field(name, *code.constant) : code);
+        // that reads only what is fixed is a constant; one that reads a
+        // parameter derives from it, and is computed where it is set.
+        if (code.constant && (reads || fixed_.count(name))) {
+            known_.emplace(name, *code.constant);
+            return Answer(Literal(*code.constant));
+        }
+        if (code.constant) return Answer(Field(name, *code.constant));
+        derived_.push_back({name, code, std::move(temporaries), false, parameters});
+        return Answer(Read(derived_.back()));
     }
 
     // A matrix defined by its cells, one cell at a time with its names bound to
@@ -434,7 +695,7 @@ private:
         for (const Clause<Value>& clause : definition.Clauses()) {
             const ParametersDefinition<Value>& p = clause.parameters;
             if (p.row_name().empty()) continue;
-            const Extent size{Size(Emit(p.rows())), Size(Emit(p.cols()))};
+            const Extent size{Size(p.rows()), Size(p.cols())};
             if (extent && *extent != size)
                 throw Reason("the clauses of " + name + " give it different sizes");
             extent = size;
@@ -503,14 +764,12 @@ private:
     }
 
     bool Holds(const PExpression<Value>& guard) {
-        const Code code = Emit(guard);
-        if (!code.constant) throw Reason("a guard on cells that is not a constant");
-        return Value::truth(*code.constant);
+        return Value::truth(*Known(guard, "a guard on cells that is not a constant").constant);
     }
 
-    static std::size_t Size(const Code& code) {
-        if (!code.constant) throw Reason("a matrix whose size is not a constant");
-        int size = 0;
+    std::size_t Size(const PExpression<Value>& expression) {
+        const Code code = Known(expression, "a matrix whose size is not a constant");
+        int        size = 0;
         try {
             size = AsIndex<Value>(*code.constant);
         } catch (const std::runtime_error& error) {
@@ -537,7 +796,9 @@ private:
         const int lag = Lag(call.subexpr(), name);
         Bases(name);
         if (!read.rows) Compile(name);
+        if (lag > 0 && ClosedForm(read)) return Answer(At(read, lag));
         reading_->reads[name].insert(lag);
+        if (clause_reads_) (*clause_reads_)[name].insert(lag);
         const std::string at     = "m_->" + name + "[" + std::to_string(lag) + "]";
         const bool        scalar = read.rows * read.cols == 1;
         Code              code;
@@ -545,8 +806,64 @@ private:
         code.cols = read.cols;
         for (std::size_t i = 0; i < code.rows; ++i)
             for (std::size_t j = 0; j < code.cols; ++j)
-                code.cells.emplace_back(scalar ? at : at + Subscript(i, j), primary);
+                code.cells.push_back(Atom(scalar ? at : at + Subscript(i, j)));
         return Answer(code);
+    }
+
+    // A sequence with no base clause that reads no term is a closed form, and
+    // the interpreter answers it at every index, before the model starts too:
+    // 'c_n = a_(n-1)' with 'a_n = n/8' reads a_(-1) at 0. So a closed form read
+    // back in time is compiled again at that index, rather than read from a
+    // window that holds nothing from before the start.
+    bool ClosedForm(const Sequence& sequence) const {
+        return sequence.definition && sequence.compiled && sequence.bases.empty() &&
+               sequence.reads.empty();
+    }
+
+    Code At(const Sequence& sequence, int lag) {
+        Code                                      chain;
+        std::optional<Code>                       otherwise;
+        std::vector<std::pair<std::string, Code>> guarded;
+        Sequence* const                           reading = std::exchange(reading_, nullptr);
+        const std::string                         index   = std::exchange(index_, std::string());
+        const std::string                         text =
+            std::exchange(index_text_, "(double)(m_->index_ - " + std::to_string(lag) + ")");
+        const auto   places = std::exchange(places_, {});
+        Reads* const reads  = std::exchange(clause_reads_, nullptr);
+        for (const bool guard : {true, false}) {
+            for (const Clause<Value>& clause : sequence.definition->Clauses()) {
+                const ParametersDefinition<Value>& p = clause.parameters;
+                if (otherwise || !p.general() || p.guarded() != guard) continue;
+                index_ = p.index_name();
+                const std::optional<std::string> condition =
+                    guard ? Condition(p.guard()) : std::optional<std::string>("");
+                if (!condition) continue;
+                if (condition->empty())
+                    otherwise = Emit(clause.expression);
+                else
+                    guarded.emplace_back(*condition, Emit(clause.expression));
+            }
+        }
+        reading_      = reading;
+        index_        = index;
+        index_text_   = text;
+        places_       = places;
+        clause_reads_ = reads;
+        chain.rows    = sequence.rows;
+        chain.cols    = sequence.cols;
+        for (std::size_t c = 0; c < sequence.rows * sequence.cols; ++c) {
+            std::string cell;
+            for (const auto& [condition, value] : guarded)
+                cell +=
+                    condition + " ? " + value.At(c / sequence.cols, c % sequence.cols).text + " : ";
+            if (guarded.empty() && otherwise) {
+                chain.cells.push_back(otherwise->At(c / sequence.cols, c % sequence.cols));
+                continue;
+            }
+            cell += otherwise ? otherwise->At(c / sequence.cols, c % sequence.cols).text : "NAN";
+            chain.cells.emplace_back(cell, 0);  // a conditional, below every operator
+        }
+        return chain;
     }
 
     static std::string Subscript(std::size_t i, std::size_t j) {
@@ -556,23 +873,36 @@ private:
     // How far back a term reads: its own index, or that less a constant.
     int Lag(const PExpression<Value>& index, const std::string& name) {
         const std::string written = name + "_(...)";
+        const int         offset  = Offset(index, written);
+        if (offset > 0) throw Reason(written + ": a term after the one being computed");
+        return -offset;
+    }
+
+    // How far an index is from the clause's own: 'n', or that plus constants
+    // however they are spelled -- 'n-1', 'n-k-1' in a sum over k.
+    int Offset(const PExpression<Value>& index, const std::string& written) {
+        const std::string only = written + ": an index other than " + index_ + " less a constant";
         if (const auto* ref = dynamic_cast<RefExpression<Value>*>(index.get());
-            ref && ref->Name() == index_)
+            ref && ref->Name() == index_ && !places_.count(index_))
             return 0;
         const auto* sum = dynamic_cast<AddExpression<Value>*>(index.get());
-        const auto* ref = sum ? dynamic_cast<RefExpression<Value>*>(sum->m_e1().get()) : nullptr;
-        const std::string only = written + ": an index other than " + index_ + " less a constant";
-        if (!ref || ref->Name() != index_) throw Reason(only);
-        const Code offset = Emit(sum->m_e2());
-        if (!offset.constant) throw Reason(only);
-        int step = 0;
+        if (!sum) throw Reason(only);
+        const auto [left, left_reads]   = Reading(sum->m_e1());
+        const auto [right, right_reads] = Reading(sum->m_e2());
+        if (right.constant && !left.constant) return Offset(sum->m_e1(), written) + Whole(right);
+        if (left.constant && !right.constant) return Whole(left) + Offset(sum->m_e2(), written);
+        // A lag is the depth of a window, so a parameter that gives one is fixed.
+        for (const auto* reads : {&right_reads, &left_reads})
+            if (!reads->empty()) throw Fix{*reads};
+        throw Reason(only);
+    }
+
+    static int Whole(const Code& code) {
         try {
-            step = AsIndex<Value>(*offset.constant);
+            return AsIndex<Value>(*code.constant);
         } catch (const std::runtime_error& error) {
             throw Reason(error.what());
         }
-        if (step > 0) throw Reason(written + ": a term after the one being computed");
-        return -step;
     }
 
     PExpression<Value> visit(EqualExpression<Value>*) override {
@@ -580,9 +910,9 @@ private:
     }
     PExpression<Value> visit(CellExpression<Value>* expression) override {
         const Code matrix = Emit(expression->Matrix());
-        const Code row = Emit(expression->Row()), col = Emit(expression->Col());
-        if (matrix.constant && row.constant && col.constant) return Fold(expression);
-        if (!row.constant || !col.constant) throw Reason("a cell whose place is not a constant");
+        const Code row    = Known(expression->Row(), "a cell whose place is not a constant");
+        const Code col    = Known(expression->Col(), "a cell whose place is not a constant");
+        if (matrix.constant) return Fold(expression);
         int i = 0, j = 0;
         try {
             i = AsIndex<Value>(*row.constant);
@@ -598,22 +928,75 @@ private:
         return Answer(matrix.At(static_cast<std::size_t>(i - 1), static_cast<std::size_t>(j - 1)));
     }
     PExpression<Value> visit(FactExpression<Value>*) override { throw Reason("a factorial"); }
-    PExpression<Value> visit(SeriesExpression<Value>*) override {
-        throw Reason("a sum or a product");
+    // Unrolled, since each term is a line of C: a thousand is a filter no one
+    // would write out as one.
+    static constexpr int max_terms = 1000;
+
+    // A sum or a product with constant bounds, unrolled with its index bound
+    // as a constant, as a cell's names are: the terms that read it fold, and
+    // the lags it gives are constants.
+    PExpression<Value> visit(SeriesExpression<Value>* expression) override {
+        if (!expression->Upper()) throw Reason("a sum or a product with no upper bound");
+        const Code lower =
+            Known(expression->Lower(), "a sum or a product whose bounds are not constants");
+        const Code upper =
+            Known(expression->Upper(), "a sum or a product whose bounds are not constants");
+        const int first = Whole(lower), last = Whole(upper);
+        if (last < first) return Answer(Literal(Value(Number(expression->Product() ? 1 : 0))));
+        if (last - first >= max_terms)
+            throw Reason("a sum or a product of more than " + std::to_string(max_terms) + " terms");
+        const std::string&         name  = expression->Index();
+        const auto                 found = places_.find(name);
+        const std::optional<Value> outer =
+            found == places_.end() ? std::nullopt : std::optional<Value>(found->second);
+        Code total;
+        bool constant = true;
+        for (int k = first; k <= last; ++k) {
+            places_[name]   = Value(Number(k));
+            const Code term = Emit(expression->Body());
+            constant        = constant && term.constant;
+            total           = k == first              ? term
+                              : expression->Product() ? Product(total, term)
+                                                      : Broadcast(total, term, Added);
+        }
+        if (outer)
+            places_[name] = *outer;
+        else
+            places_.erase(name);
+        return constant ? Fold(expression) : Answer(total);
     }
     PExpression<Value> visit_other(Expression<Value>*) override { throw Reason("this expression"); }
 
     Code Field(const std::string& name, const Value& value) {
         Unreserved(name);
         const Parameter parameter{value.Size().rows, value.Size().cols, Doubles(value)};
-        const bool      scalar = parameter.rows * parameter.cols == 1;
         parameters_.emplace(name, parameter);
+        read_parameters_.insert(name);
+        return Fields(name, Literal(value));
+    }
+
+    // The struct's field for a value of this shape, cell by cell.
+    static Code Fields(const std::string& name, const Code& shape) {
+        Unreserved(name);
         Code code;
-        code.rows = parameter.rows;
-        code.cols = parameter.cols;
+        code.rows = shape.rows;
+        code.cols = shape.cols;
         for (std::size_t i = 0; i < code.rows; ++i)
             for (std::size_t j = 0; j < code.cols; ++j)
-                code.cells.emplace_back("m_->" + name + (scalar ? "" : Subscript(i, j)), primary);
+                code.cells.push_back(Atom("m_->" + name + (shape.Scalar() ? "" : Subscript(i, j))));
+        return code;
+    }
+
+    // A cell that is a name or a number is read as itself, which the C
+    // compiler can see through, rather than from the field.
+    static Code Read(Derived& derived) {
+        Code code = Fields(derived.name, derived.code);
+        for (std::size_t c = 0; c < code.cells.size(); ++c) {
+            if (derived.code.cells[c].atom)
+                code.cells[c] = derived.code.cells[c];
+            else
+                derived.read = true;
+        }
         return code;
     }
 
@@ -641,16 +1024,32 @@ private:
         }
         for (auto& [name, sequence] : sequences_)
             if (sequence.bases.empty()) sequence.start = earliest.value_or(0);
+        // The interpreter's guarded clauses answer below the lowest base
+        // clause too, where its unguarded one does not: '_(-1)' of a sequence
+        // based at 0 is a term wherever a guard holds. A step has no such
+        // terms, so a read that could reach one is refused.
+        for (const auto& [name, sequence] : sequences_) {
+            int first = sequence.start;
+            while (sequence.bases.count(first)) ++first;  // where the general clauses begin
+            for (const auto& [read, lags] : sequence.reads) {
+                const Sequence& other = sequences_.at(read);
+                if (other.bases.empty() || other.guarded.empty()) continue;
+                const int reached = first - *lags.rbegin();
+                if (reached < other.start)
+                    throw Refusal("cannot compile " + name + ": " + name + "_" +
+                                  std::to_string(first) + " reads " + read + "_" +
+                                  std::to_string(reached) + ", below " + read +
+                                  "'s base clauses, where only its guards could give a term");
+            }
+        }
         for (std::size_t round = 0;; ++round) {
             bool moved = false;
             for (auto& [name, sequence] : sequences_) {
                 if (!sequence.bases.empty() || !sequence.definition) continue;
-                for (const auto& [read, lags] : sequence.reads) {
-                    const int needed = sequences_.at(read).start + *lags.rbegin();
-                    if (needed <= sequence.start) continue;
-                    sequence.start = needed;
-                    moved          = true;
-                }
+                const int needed = std::max(sequence.start, Answers(sequence));
+                if (needed <= sequence.start) continue;
+                sequence.start = needed;
+                moved          = true;
             }
             if (!moved) break;
             if (round > sequences_.size())
@@ -658,8 +1057,19 @@ private:
                     "cannot compile: a sequence with no base clause reads back into "
                     "itself, so it never starts");
         }
-        // One with base clauses answers from them until what it reads exists.
+        // Where a clause's reads begin is where it can be evaluated: before it,
+        // the interpreter reports the term it could not read, and a step says
+        // NaN. Only a sequence with guards has more than one path to choose.
+        for (auto& [name, sequence] : sequences_) {
+            for (Guarded& guarded : sequence.guarded) {
+                guarded.guard_from = From(guarded.guard);
+                guarded.value_from = From(guarded.value);
+            }
+        }
+        // Without guards, the one clause is always evaluated, so a term it
+        // reads before that term exists is an error in the model, said now.
         for (const auto& [name, sequence] : sequences_) {
+            if (!sequence.guarded.empty()) continue;
             for (const auto& [read, lags] : sequence.reads) {
                 const Sequence& other = sequences_.at(read);
                 for (const int lag : lags) {
@@ -674,6 +1084,29 @@ private:
             }
         }
         return earliest.value_or(0);
+    }
+
+    // The first index where every term these reads name exists.
+    int From(const Reads& reads) const {
+        int from = std::numeric_limits<int>::min();
+        for (const auto& [read, lags] : reads)
+            from = std::max(from, sequences_.at(read).start + *lags.rbegin());
+        return from;
+    }
+
+    // The first index where some path through a sequence's clauses answers:
+    // the guards tried before a clause must be evaluable, and the clause.
+    int Answers(const Sequence& sequence) const {
+        if (sequence.guarded.empty()) return From(sequence.reads);
+        int guards = std::numeric_limits<int>::min();
+        int first  = std::numeric_limits<int>::max();
+        for (const Guarded& guarded : sequence.guarded) {
+            guards = std::max(guards, From(guarded.guard));
+            first  = std::min(first, std::max(guards, From(guarded.value)));
+        }
+        if (sequence.general.front() != "NAN")
+            first = std::min(first, std::max(guards, From(sequence.general_reads)));
+        return first;
     }
 
     std::vector<std::string> Order() const {
@@ -706,6 +1139,88 @@ private:
         return rows * cols == 1 ? "" : Subscript(rows, cols);
     }
 
+    // Those something reads: a cell read out of a product, or a clause that was
+    // compiled only to be refused, leaves some that nothing does, and C would
+    // say so.
+    static std::string Temporaries(const std::vector<Temporary>& declared,
+                                   const std::string& assignments, const std::string& indent) {
+        std::string read = assignments, kept;
+        for (auto temporary = declared.rbegin(); temporary != declared.rend(); ++temporary) {
+            if (read.find(temporary->name) == std::string::npos) continue;
+            std::string lines;
+            for (const std::string& line : temporary->lines) lines += indent + line + "\n";
+            read += lines;
+            kept = lines + kept;
+        }
+        return kept;
+    }
+
+    // The interpreter's Gauss-Jordan (Matrix::Inverse), step for step: the
+    // largest pivot, any rather than an exact zero, and NaN for every cell
+    // where the matrix is singular, which the interpreter reports.
+    std::string InverseHelper(std::size_t n) const {
+        const std::string size = std::to_string(n);
+        return "/* The inverse of a " + size + "x" + size +
+               " matrix, in place, as the interpreter takes it: Gauss-Jordan\n"
+               " * on the largest pivot, and NaN in every cell where there is none. */\n"
+               "static inline void " +
+               module_ + "_inverse" + size + "_(double a[" + size + "][" + size +
+               "]) {\n"
+               "    double r[" +
+               size + "][" + size +
+               "];\n"
+               "    for (int i = 0; i < " +
+               size + "; ++i)\n        for (int j = 0; j < " + size +
+               "; ++j) r[i][j] = i == j;\n"
+               "    for (int col = 0; col < " +
+               size +
+               "; ++col) {\n"
+               "        int pivot = col;\n"
+               "        for (int row = col + 1; row < " +
+               size +
+               "; ++row)\n"
+               "            if (fabs(a[row][col]) > fabs(a[pivot][col]) ||\n"
+               "                (a[pivot][col] == 0.0 && a[row][col] != 0.0))\n"
+               "                pivot = row;\n"
+               "        if (a[pivot][col] == 0.0) {\n"
+               "            for (int i = 0; i < " +
+               size + "; ++i)\n                for (int j = 0; j < " + size +
+               "; ++j) a[i][j] = NAN;\n"
+               "            return;\n"
+               "        }\n"
+               "        for (int j = 0; j < " +
+               size +
+               "; ++j) {\n"
+               "            const double s = a[pivot][j], t = r[pivot][j];\n"
+               "            a[pivot][j] = a[col][j];\n"
+               "            r[pivot][j] = r[col][j];\n"
+               "            a[col][j]   = s;\n"
+               "            r[col][j]   = t;\n"
+               "        }\n"
+               "        const double scale = a[col][col];\n"
+               "        for (int j = 0; j < " +
+               size +
+               "; ++j) {\n"
+               "            a[col][j] = a[col][j] / scale;\n"
+               "            r[col][j] = r[col][j] / scale;\n"
+               "        }\n"
+               "        for (int row = 0; row < " +
+               size +
+               "; ++row) {\n"
+               "            const double factor = a[row][col];\n"
+               "            if (row == col || factor == 0.0) continue;\n"
+               "            for (int j = 0; j < " +
+               size +
+               "; ++j) {\n"
+               "                a[row][j] = a[row][j] - factor * a[col][j];\n"
+               "                r[row][j] = r[row][j] - factor * r[col][j];\n"
+               "            }\n"
+               "        }\n"
+               "    }\n"
+               "    memcpy(a, r, sizeof r);\n"
+               "}\n\n";
+    }
+
     std::string Print(const std::string& module, const std::string& source) {
         for (const auto& [name, sequence] : sequences_)
             if (!sequence.definition && parameters_.count(name))
@@ -733,11 +1248,22 @@ private:
         out += " * with -ffast-math, which reorders. */\n";
         out += "#ifndef " + guard + "\n#define " + guard + "\n\n";
         out += "#include <math.h>\n#include <string.h>\n\n";
-        out += "/* The parameters, which the host may assign, then the index of the latest\n";
-        out += " * step and each sequence's terms from that index back. */\n";
+        if (!fixed_.empty()) {
+            std::string names;
+            for (const std::string& name : fixed_) names += (names.empty() ? "" : ", ") + name;
+            out +=
+                "/* Compiled in, as a size, a bound or a lag cannot change: " + names + ". */\n\n";
+        }
+        out += "/* The parameters, which the host may assign, then what derives from them,\n";
+        out += " * then the index of the latest step and each sequence's terms from that\n";
+        out += " * index back. */\n";
         out += "typedef struct " + module + " {\n";
         for (const auto& [name, parameter] : parameters_)
             out += "    double " + name + Dimensions(parameter.rows, parameter.cols) + ";\n";
+        for (const Derived& derived : derived_)
+            if (derived.read)
+                out += "    double " + derived.name +
+                       Dimensions(derived.code.rows, derived.code.cols) + ";\n";
         out += "    long long index_;\n";
         for (const std::string& name : fields) {
             const Sequence& sequence = sequences_.at(name);
@@ -745,6 +1271,25 @@ private:
                    Dimensions(sequence.rows, sequence.cols) + ";\n";
         }
         out += "} " + module + ";\n\n";
+
+        for (const std::size_t n : inverses_) out += InverseHelper(n);
+
+        out += "/* Computes what derives from the parameters: call it after assigning one. */\n";
+        out += "static inline void " + module + "_update(" + module + "* m_) {\n";
+        const auto read = [](const Derived& derived) { return derived.read; };
+        if (std::none_of(derived_.begin(), derived_.end(), read)) out += "    (void)m_;\n";
+        for (const Derived& derived : derived_) {
+            if (!derived.read) continue;
+            std::string assignments;
+            for (std::size_t c = 0; c < derived.code.cells.size(); ++c)
+                assignments += "    m_->" + derived.name +
+                               (derived.code.Scalar()
+                                    ? ""
+                                    : Subscript(c / derived.code.cols, c % derived.code.cols)) +
+                               " = " + derived.code.cells[c].text + ";\n";
+            out += Temporaries(derived.temporaries, assignments, "    ") + assignments;
+        }
+        out += "}\n\n";
 
         out += "static inline void " + module + "_init(" + module + "* m_) {\n";
         out += "    memset(m_, 0, sizeof *m_);\n";
@@ -755,7 +1300,8 @@ private:
                        (scalar ? "" : Subscript(c / parameter.cols, c % parameter.cols)) + " = " +
                        Double(parameter.initial[c]) + ";\n";
         }
-        out += "    m_->index_ = " + std::to_string(earliest - 1) + ";\n}\n\n";
+        out += "    m_->index_ = " + std::to_string(earliest - 1) + ";\n";
+        out += "    " + module + "_update(m_);\n}\n\n";
 
         out += "/* Advances to the next index, the first at " + std::to_string(earliest) +
                ", and computes its terms. */\n";
@@ -776,17 +1322,36 @@ private:
         for (const std::string& name : order) {
             const Sequence&   sequence = sequences_.at(name);
             const bool        scalar   = sequence.general.size() == 1;
-            const bool        guarded  = sequence.start > earliest;
-            const std::string indent   = guarded ? "        " : "    ";
-            if (guarded) out += "    if (m_->index_ >= " + std::to_string(sequence.start) + ") {\n";
+            const bool        late     = sequence.start > earliest;
+            const std::string indent   = late ? "        " : "    ";
+            if (late) out += "    if (m_->index_ >= " + std::to_string(sequence.start) + ") {\n";
+            std::string assignments;
             for (std::size_t c = 0; c < sequence.general.size(); ++c) {
-                out += indent + "m_->" + name + "[0]" +
-                       (scalar ? "" : Subscript(c / sequence.cols, c % sequence.cols)) + " = ";
+                assignments += indent + "m_->" + name + "[0]" +
+                               (scalar ? "" : Subscript(c / sequence.cols, c % sequence.cols)) +
+                               " = ";
                 for (const auto& [index, base] : sequence.bases)
-                    out += "m_->index_ == " + std::to_string(index) + " ? " + base[c] + " : ";
-                out += sequence.general[c] + ";\n";
+                    assignments +=
+                        "m_->index_ == " + std::to_string(index) + " ? " + base[c] + " : ";
+                // Checked only where an index no base clause gives needs it.
+                const auto before = [&](int from) {
+                    for (int n = sequence.start; n < from; ++n)
+                        if (!sequence.bases.count(n))
+                            return "m_->index_ < " + std::to_string(from) + " ? NAN : ";
+                    return std::string();
+                };
+                for (const Guarded& guarded : sequence.guarded) {
+                    const std::string value = before(guarded.value_from);
+                    assignments +=
+                        before(guarded.guard_from) + guarded.condition + " ? " +
+                        (value.empty() ? guarded.cells[c] : "(" + value + guarded.cells[c] + ")") +
+                        " : ";
+                }
+                if (!sequence.guarded.empty()) assignments += before(From(sequence.general_reads));
+                assignments += sequence.general[c] + ";\n";
             }
-            if (guarded) out += "    }\n";
+            out += Temporaries(sequence.temporaries, assignments, indent) + assignments;
+            if (late) out += "    }\n";
         }
         out += "}\n\n#endif\n";
         return out;
@@ -795,9 +1360,20 @@ private:
     const ReferenceStack<Value>&     definitions_;
     std::map<std::string, Sequence>  sequences_;
     std::map<std::string, Parameter> parameters_;
+    std::vector<Derived>             derived_;  // each after those it reads
+    std::set<std::string>            fixed_;    // parameters compiled as constants; see Fix
+    std::map<std::string, Value>     known_;    // globals that read only those
+    std::set<std::string>            read_parameters_;      // by the value being compiled
+    bool                             read_global_ = false;  // by the value being compiled
     std::set<std::string>            reading_plain_;
     Sequence*   reading_ = nullptr;  // the sequence whose general clause this is
     std::string index_;              // and the name of its index
+    std::vector<Temporary>*          temporaries_ = nullptr;  // where this sequence's are declared
+    Reads*      clause_reads_ = nullptr;               // what the clause being compiled reads
+    std::string index_text_   = "(double)m_->index_";  // the index, as the step has it
+    std::string                      module_;
+    std::set<std::size_t>            inverses_;  // the sizes a helper is needed for
+    int                              temporary_count_ = 0;
     std::map<std::string, Value>     places_;             // a cell's row and column, by their names
     Code        code_;
 };

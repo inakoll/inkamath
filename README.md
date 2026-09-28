@@ -111,11 +111,17 @@ of `test/data/*.ink`.
 `--compile model.ink -o model.h` writes the sequences a file defines as a C
 header over doubles: a struct holding the parameters and each sequence's latest
 terms, an `init` and a `step`, for a filter to run where the interpreter cannot.
+What derives from the parameters alone is computed by `update`, which `init`
+calls and the host calls again after assigning a parameter. A parameter that
+gives a size, a bound or a lag is compiled in instead, as the header says.
 `test/compile/pid.ink` is a PID controller, and `test/compile/expected/pid.h`
 is what it compiles to; `test/compile/kalman.ink` is a Kalman filter over
 matrices.
-The compiler refuses by name what it cannot yet express, such as functions,
-guards, limits, series and matrix powers.
+`test/compile/pid_clamped.ink` limits its output with guards, and
+`test/compile/fir.ink` is a filter written as a sum; `test/compile/kalman2.ink`
+inverts a matrix at every step, and `test/compile/heat.ink` once, in `update`.
+The compiler refuses by name what it cannot yet
+express, such as functions, limits and infinite series.
 
 Interpreter behaviour is pinned by golden transcripts in `test/data/*.ink`,
 which are literal sessions — every example in this file is one of them, so the

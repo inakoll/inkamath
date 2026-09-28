@@ -41,7 +41,7 @@ add_custom_target(record_goldens
 # built as C, holds the model to exact values its harness knows. The expected
 # headers are kept apart, where a harness's #include cannot find one instead.
 enable_language(C)
-foreach(model IN ITEMS pid kalman)
+foreach(model IN ITEMS pid pid_clamped kalman kalman2 fir heat)
     set(header ${CMAKE_CURRENT_BINARY_DIR}/compile/${model}.h)
     add_custom_command(OUTPUT ${header}
         COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/compile
@@ -59,3 +59,18 @@ foreach(model IN ITEMS pid kalman)
              COMMAND ${CMAKE_COMMAND} -E compare_files --ignore-eol
                      ${CMAKE_CURRENT_SOURCE_DIR}/compile/expected/${model}.h ${header})
 endforeach()
+
+# Random models, compiled and held to the interpreter's answers: the generator
+# runs both at build time and writes one C file, built and run like the others.
+add_executable(compile_fuzz_generator compile/fuzz.cpp)
+target_link_libraries(compile_fuzz_generator PRIVATE inkamath inkamath_warnings)
+set(fuzz_source ${CMAKE_CURRENT_BINARY_DIR}/compile/fuzz.c)
+add_custom_command(OUTPUT ${fuzz_source}
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/compile
+    COMMAND compile_fuzz_generator ${fuzz_source}
+    DEPENDS compile_fuzz_generator
+    VERBATIM)
+add_executable(compile_fuzz ${fuzz_source})
+target_link_libraries(compile_fuzz PRIVATE inkamath_warnings $<$<NOT:$<C_COMPILER_ID:MSVC>>:m>)
+set_target_properties(compile_fuzz PROPERTIES C_STANDARD 11 C_STANDARD_REQUIRED ON C_EXTENSIONS OFF)
+add_test(NAME compile_fuzz COMMAND compile_fuzz)

@@ -1657,6 +1657,85 @@ values computed with Python's fractions. What it refuses -- functions, guards,
 limits, series, factorials, locals, complex numbers, an index other than `n`
 less a constant, a term read before its sequence starts -- it names.
 
+**The third increment** is guards, because a PID that does not limit its
+output is not one anybody runs: `pid_clamped.ink` holds the output to what the
+actuator can give and the integral while the output is at a limit. A
+sequence's guarded clauses become a chain of C conditionals -- base clauses,
+then guarded ones in the order written, then the unguarded one, as the
+interpreter tries them -- and a comparison used as a guard is emitted as itself.
+The header was written by hand first and is emitted byte for byte; the loop is
+at its limit for two steps and within 1e-14 of the exact one after. Where no
+guard holds the interpreter reports it and a step answers NaN. Still refused: a
+guard on a base clause or a plain value, and a base clause written after a
+guarded one, which the chain would reach before the guard.
+
+**The fourth increment** is sums and products with constant bounds, for the
+filters that are one: `fir.ink` weighs its last four inputs,
+`y_n = sum_(k=0)^3 b[1,k+1]*x_(n-k)`. The sum is unrolled with its index bound
+as a constant, as a cell's names are, so `b[1,k+1]` is a cell at a constant
+place and `x_(n-k)` a constant lag; a lag is now read from `n` plus constants
+however they are spelled, `n-k-1` included. With nothing before it, `y` starts
+at 3, where its four reads first exist. The header was written by hand first
+and is emitted byte for byte. Refused: a sum with no upper bound, bounds that
+read a parameter, and more than a thousand terms, each of which is a line of C.
+A product of matrices shows what inlining costs -- each cell repeats the
+cells before it -- which is what temporaries are next for.
+
+**Temporaries** are made where the compiler itself would repeat a cell: an
+operand of a matrix product, whose cells each feed a row or a column of the
+result, and a single value stretched over a matrix. Such a cell, unless it is
+already a name or a number, is computed once per step into a `const double`
+before the sequence that reads it, and text that is the same within one step
+is one temporary; one that nothing reads, as when a single cell is read out of
+a product, is dropped. The values are the same, computed once, so the
+harnesses hold as they did: the PID, clamped PID and FIR headers do not move,
+and the Kalman filter's reads its gain's denominator and its innovation once
+each. The product that repeated every cell before it is now as long as its
+products.
+
+**A matrix power** is unrolled by squaring as the interpreter computes it, of
+the inverse for a negative exponent, and the inverse is the interpreter's own
+Gauss-Jordan: the largest pivot, any rather than an exact zero. The pivot
+depends on the values, so it is chosen as the step runs, by a helper the
+header defines once for each size it needs, into a temporary array; where the
+matrix is singular, which the interpreter reports, every cell is NaN.
+`kalman2.ink` measures position and the sum of position and velocity, so its
+gain inverts a 2x2, and its estimates and first gain are within 1e-14 of the
+exact ones; its header was recorded and read, the helper's form being new but
+the rest the Kalman filter's. The interpreter starts a power from the identity
+and multiplies it in, which the compiled code skips: that differs only where a
+cell is infinite. An exponent must be a whole constant; `A^0` is the identity,
+kept apart from the folding of constants, since it reads `A`.
+
+**Random models** test the claim the hand-written ones cannot: that a compiled
+model answers as the interpreter does. A generator, run at build time, makes
+three hundred -- sequences with bases, guards, lags, sums, inputs, parameters
+and a derived value, and half of them a 2x2 block with a product, a transpose,
+an inverse and cells read out -- runs each through the interpreter, compiles
+it, feeds both the same inputs, and writes one C file that steps every compiled
+model and holds each term to the interpreter's within 1e-9. Constants and
+inputs are quarters, which a double holds exactly, so a difference is rounding,
+not noise. A model the compiler refuses is skipped, and the build fails if
+fewer than half compile, so that the test cannot drift into testing nothing;
+280 do. Nearly fifteen thousand more, under sixteen other seeds, agree.
+
+It found two things the compiler had wrong, both about where a sequence
+starts, and one of its own. A sequence's start was the index where every
+clause's reads exist, but a guarded clause's reads matter only where its guard
+holds: the interpreter answers from the unguarded clause below that index, and
+the compiled step did not answer at all. Each clause now carries its own index
+from which its guard, and its value, can be evaluated -- NaN before it, where
+the interpreter reports the term it could not read -- and a sequence with
+guards starts where some path through them can answer. And a sequence with no
+base clause that reads no term is a closed form the interpreter answers at
+every index, before the model starts too, so `c_n = a_(n-1)` with `a_n = n/8`
+reads `a_(-1)` at 0; a closed form read back in time is now compiled again at
+that index, rather than read from a window that holds nothing from before the
+start. The interpreter's guarded clauses also answer below the lowest base
+clause, where its unguarded one does not, which a step has no terms for; a read
+that could reach there is refused. The test's own: it wrote the inputs into C
+as `(7/4)`, which C divides as integers.
+
 **The second increment** is the Kalman filter, which is matrices of fixed
 shape: a value is its cells, each one C expression, and a matrix product is the
 sum over the inner dimension in the interpreter's order. A sequence's shape
@@ -1729,6 +1808,119 @@ against the exact transcript. Writing the two found four things they need:
   guards and the clause that gives each cell fold exactly; one whose size or
   guard reads a parameter it refuses. The Kalman filter's identity is now
   `I[j<=2, k<=2] = j == k`.
+
+**Beyond filters.** Five sessions, run in the interpreter, asked what other
+models need: a loan schedule, gambler's ruin and dice, an SIR epidemic, a
+triangle-orientation test, and heat on a line by finite elements. Three of the
+five ran out of exactness before they ran out of language. 1.003^360 is past a
+thousand digits, so a 30-year loan's payment is inexact before the schedule
+starts; the epidemic's digits double every step, so from step 8 the interpreter
+computes in doubles; the heat equation's grow by twelve a step and cross near
+step 80. None of it shows: `~` marks a value not printed in full, so an exact
+third and an exactness that ran out look alike. The reference a compiled model
+is held to therefore has a horizon, and a short one for anything nonlinear.
+Where the exact answer is the product it is well within reach: gambler's ruin
+is `5832/12691`, from its linear system and from its closed form alike. Where
+it is not, doubles did as well: rounded to the cent each month, they match the
+exact schedule for all 360 months. The orientation test is where they do not,
+a point 7 units in the last place off a line being -1 exactly and 0 in
+doubles. Wanted: `floor` or `mod` (the loan wrote its own, by binary descent),
+`and` and `or` for guards (written as products), and compiled functions (the
+orientation test is one). Two documented behaviours were traps on the way: a
+plain definition erases the guarded clauses written before it, and `[1 -1]` is
+`[0]` (C52), which an element matrix writes on every line. Whether the exact
+C++ target stays is open until this exploration is done.
+
+Compiling the heat equation found two defects:
+
+- `[done]` **A size given by a name is refused.** A plain definition is a
+  parameter the host may set, so `N` is not a constant; only `7` is. A
+  parameter read where the compiled code needs a constant -- a size, a sum's
+  bound, a cell's place, a matrix power, a lag, which is a window's depth --
+  is now fixed: the file is compiled again with it as a constant, and what
+  reads only fixed names folds exactly, so the heat equation's `h`, `K`, `I`
+  and `B` are numbers in its header and `dt` is its only parameter. The
+  header names what was compiled in. Letting the host set `N` would need
+  arrays sized at run time, which is layer 3's loops, not this.
+- `[done]` **What derives from parameters alone is recomputed at every
+  step**, where this plan says it is recomputed where a parameter is set: the
+  heat equation's `A` inverts its matrix each step. At n = 100 that is 0.5 ms
+  a step against 7 us for the product alone. Such a value is now a field that
+  `update` computes, which `init` calls and the host calls after assigning a
+  parameter; a C struct has no setter to do it for them. A cell that is a name
+  or a number is still read as itself, so the Kalman filter's step, whose `F`
+  is `[1 dt; 0 1]`, did not move, and a field no cell is read from is left
+  out. `test/compile/heat.ink` doubles its step halfway and calls `update`.
+
+**Finite elements in two and three dimensions.** Assembly already reads as on
+paper, `K = sum_(e=1)^E P(e)'*Ke*P(e)`, where `P(e)[a<=2, p<=N] = p == e-2+a`
+gathers element `e`'s nodes; it reproduces the 1D stiffness matrix exactly, and
+a mesh is two matrix literals, coordinates and connectivity, read through
+`X[C[e,a], 1]`. What is missing, by layer:
+
+1. **Language**: `mod`, to number a structured grid's nodes.
+2. **Interpreter**: sparse storage, which a matrix chooses for itself, with
+   products and transposes that keep it, and `A^-1*b` done as a solve, since
+   the inverse of a sparse matrix is dense. Dense, 10^4 nodes are 10^8 cells,
+   and assembly through `P(e)` costs E n^2. Exactness has a ceiling of its
+   own: the solution's denominators divide det K, which grows by about half a
+   digit per unknown in 2D and 0.7 in 3D, so an exact solve stops near a
+   thousand or two unknowns.
+3. **Compiler**: loops over arrays that hold the sparsity as data, and a
+   solver -- a Cholesky factor computed once, or conjugate gradients. That is a
+   different compiler from one that writes every cell out.
+4. **Out of scope**: meshing, 10^5 unknowns and up, preconditioners,
+   parallelism, visualisation.
+
+**Without layer 3 the compiled model is dense, and still runs.** Where the
+interpreter with layer 2 would overtake it was measured by the clock, one run
+each, GCC -O2 and RelWithDebInfo, so as orders of magnitude:
+
+- Compiled, a multiply-add costs 0.66 ns: `A*u` at n = 200 is 26 us a step.
+- Interpreted, over inexact numbers, it costs 11 ns in a product with a vector
+  and 50 in a product of matrices, plus 1.7 us a step. A sparse matrix would
+  pay the same per nonzero.
+- The unrolled header is the wall: GCC takes 0.7 s at n = 25, 20 s at 100 and
+  96 s at 200, where the header is 3 MB.
+
+For a constant matrix, a compiled step costs 0.66 n^2 ns once the second defect
+is fixed; an interpreted one, two triangular solves over a sparse factor, costs
+22 ns per nonzero of the factor, which holds about 2n of them in 1D, n^1.5 in
+2D and n^(5/3) in 3D, banded. The interpreter overtakes at about n = 100 in 1D,
+1100 in 2D and 37000 in 3D. With the inverse at every step, as today, it
+overtakes from about n = 20. The dense path stops before either: at n = 200 for
+GCC's patience, and near 180 for one matrix of doubles in a microcontroller's
+256 KB. So without layer 3, compiling is for models of up to a couple of
+hundred unknowns, and in 2D and 3D the crossover lies beyond what the dense
+path can build. Emitting a constant matrix as an array read in a loop, rather
+than cell by cell, lifts the GCC wall cheaply and leaves n^2 in time and
+memory. The interpreter is not a deployment target, and its memo still breaks
+past 100000 terms, so overtaking means runs at design time.
+
+**Small neural networks and point clouds**, tried the same way. Running a
+trained network is fixed-shape linear algebra, which is what the compiler
+does: a convolution is cells and two sums, and answers exactly (the Laplacian
+of `j^2*k` is `2k`); a linear recurrent layer, `s_n = A*s_(n-1) + B*u_n`, the
+shape of S4 and Mamba, compiles as the Kalman filter does. A dense layer with
+ReLU compiles only as one sequence per unit, since a sequence's terms cannot
+be defined cell by cell. Also wanted: `exp`, for sigmoid and tanh; `max`, for
+pooling; and loops over arrays, since each weight is a multiply-add written
+out. On a microcontroller a network runs in int8, which is integer arithmetic
+with rounding and saturation, and so exact: the interpreter could hold an int8
+kernel to the bit, as TensorFlow Lite Micro's reference kernels do, given
+rounding in the language and an integer target. Training is out of reach: it
+needs gradients, loops over data, and randomness. Point clouds fit only in
+their arithmetic: a streaming centroid and covariance compiles, as would a
+rigid transform, a plane fitted from running sums, or an exact orientation
+test once functions compile. The algorithms around it -- neighbour search,
+voxel grids, sorting, RANSAC, ICP -- are arrays of data-dependent length,
+indices computed from data, and loops, which is another language.
+
+What every domain explored so far asks for, by how many ask: compiled
+functions (orientation tests, point kernels, a layer called per input); loops
+over arrays instead of cells written out (finite elements, networks); `floor`
+or `round` (the loan, grids, int8); a sequence's terms cell by cell
+(networks); `exp` (networks, signal processing).
 
 Beyond Python on very large numbers is not on this path. What is fast at a
 hundred thousand digits -- PARI/GP, Julia, Mathematica -- is GMP, with FFT
