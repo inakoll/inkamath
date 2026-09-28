@@ -1194,9 +1194,9 @@ private:
         for (const std::string& name : order) {
             const Sequence&   sequence = sequences_.at(name);
             const bool        scalar   = sequence.general.size() == 1;
-            const bool        guarded  = sequence.start > earliest;
-            const std::string indent   = guarded ? "        " : "    ";
-            if (guarded) out += "    if (m_->index_ >= " + std::to_string(sequence.start) + ") {\n";
+            const bool        late     = sequence.start > earliest;
+            const std::string indent   = late ? "        " : "    ";
+            if (late) out += "    if (m_->index_ >= " + std::to_string(sequence.start) + ") {\n";
             std::string assignments;
             for (std::size_t c = 0; c < sequence.general.size(); ++c) {
                 assignments += indent + "m_->" + name + "[0]" +
@@ -1223,7 +1223,7 @@ private:
                 assignments += sequence.general[c] + ";\n";
             }
             out += Temporaries(sequence.temporaries, assignments, indent) + assignments;
-            if (guarded) out += "    }\n";
+            if (late) out += "    }\n";
         }
         out += "}\n\n#endif\n";
         return out;
