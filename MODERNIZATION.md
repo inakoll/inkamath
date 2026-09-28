@@ -1809,6 +1809,82 @@ against the exact transcript. Writing the two found four things they need:
   guard reads a parameter it refuses. The Kalman filter's identity is now
   `I[j<=2, k<=2] = j == k`.
 
+**Beyond filters.** Five sessions, run in the interpreter, asked what other
+models need: a loan schedule, gambler's ruin and dice, an SIR epidemic, a
+triangle-orientation test, and heat on a line by finite elements. Three of the
+five ran out of exactness before they ran out of language. 1.003^360 is past a
+thousand digits, so a 30-year loan's payment is inexact before the schedule
+starts; the epidemic's digits double every step, so from step 8 the interpreter
+computes in doubles; the heat equation's grow by twelve a step and cross near
+step 80. None of it shows: `~` marks a value not printed in full, so an exact
+third and an exactness that ran out look alike. The reference a compiled model
+is held to therefore has a horizon, and a short one for anything nonlinear.
+Where the exact answer is the product it is well within reach: gambler's ruin
+is `5832/12691`, from its linear system and from its closed form alike. Where
+it is not, doubles did as well: rounded to the cent each month, they match the
+exact schedule for all 360 months. The orientation test is where they do not,
+a point 7 units in the last place off a line being -1 exactly and 0 in
+doubles. Wanted: `floor` or `mod` (the loan wrote its own, by binary descent),
+`and` and `or` for guards (written as products), and compiled functions (the
+orientation test is one). Two documented behaviours were traps on the way: a
+plain definition erases the guarded clauses written before it, and `[1 -1]` is
+`[0]` (C52), which an element matrix writes on every line. Whether the exact
+C++ target stays is open until this exploration is done.
+
+Compiling the heat equation found two defects:
+
+- **A size given by a name is refused.** A plain definition is a parameter the
+  host may set, so `N` is not a constant; only `7` is.
+- **What derives from parameters alone is recomputed at every step**, where
+  this plan says it is recomputed where a parameter is set: the heat
+  equation's `A` inverts its matrix each step. At n = 100 that is 0.5 ms a
+  step against 7 us for the product alone.
+
+**Finite elements in two and three dimensions.** Assembly already reads as on
+paper, `K = sum_(e=1)^E P(e)'*Ke*P(e)`, where `P(e)[a<=2, p<=N] = p == e-2+a`
+gathers element `e`'s nodes; it reproduces the 1D stiffness matrix exactly, and
+a mesh is two matrix literals, coordinates and connectivity, read through
+`X[C[e,a], 1]`. What is missing, by layer:
+
+1. **Language**: `mod`, to number a structured grid's nodes.
+2. **Interpreter**: sparse storage, which a matrix chooses for itself, with
+   products and transposes that keep it, and `A^-1*b` done as a solve, since
+   the inverse of a sparse matrix is dense. Dense, 10^4 nodes are 10^8 cells,
+   and assembly through `P(e)` costs E n^2. Exactness has a ceiling of its
+   own: the solution's denominators divide det K, which grows by about half a
+   digit per unknown in 2D and 0.7 in 3D, so an exact solve stops near a
+   thousand or two unknowns.
+3. **Compiler**: loops over arrays that hold the sparsity as data, and a
+   solver -- a Cholesky factor computed once, or conjugate gradients. That is a
+   different compiler from one that writes every cell out.
+4. **Out of scope**: meshing, 10^5 unknowns and up, preconditioners,
+   parallelism, visualisation.
+
+**Without layer 3 the compiled model is dense, and still runs.** Where the
+interpreter with layer 2 would overtake it was measured by the clock, one run
+each, GCC -O2 and RelWithDebInfo, so as orders of magnitude:
+
+- Compiled, a multiply-add costs 0.66 ns: `A*u` at n = 200 is 26 us a step.
+- Interpreted, over inexact numbers, it costs 11 ns in a product with a vector
+  and 50 in a product of matrices, plus 1.7 us a step. A sparse matrix would
+  pay the same per nonzero.
+- The unrolled header is the wall: GCC takes 0.7 s at n = 25, 20 s at 100 and
+  96 s at 200, where the header is 3 MB.
+
+For a constant matrix, a compiled step costs 0.66 n^2 ns once the second defect
+is fixed; an interpreted one, two triangular solves over a sparse factor, costs
+22 ns per nonzero of the factor, which holds about 2n of them in 1D, n^1.5 in
+2D and n^(5/3) in 3D, banded. The interpreter overtakes at about n = 100 in 1D,
+1100 in 2D and 37000 in 3D. With the inverse at every step, as today, it
+overtakes from about n = 20. The dense path stops before either: at n = 200 for
+GCC's patience, and near 180 for one matrix of doubles in a microcontroller's
+256 KB. So without layer 3, compiling is for models of up to a couple of
+hundred unknowns, and in 2D and 3D the crossover lies beyond what the dense
+path can build. Emitting a constant matrix as an array read in a loop, rather
+than cell by cell, lifts the GCC wall cheaply and leaves n^2 in time and
+memory. The interpreter is not a deployment target, and its memo still breaks
+past 100000 terms, so overtaking means runs at design time.
+
 Beyond Python on very large numbers is not on this path. What is fast at a
 hundred thousand digits -- PARI/GP, Julia, Mathematica -- is GMP, with FFT
 multiplication and subquadratic division; writing that here is not a phase but
