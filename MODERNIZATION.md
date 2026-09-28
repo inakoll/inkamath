@@ -1718,13 +1718,17 @@ against the exact transcript. Writing the two found four things they need:
   a clause for one cell beats the others, as a base clause beats a sequence's
   general one. Specified in `matrices.ink` first, after three spellings were
   drafted side by side -- `M[i^3, j^3]` read as cubes, and bounds in the guard
-  mixed sizes with conditions. A cell clause replaces a plain definition, as an
-  index does, so `a[1,1] = 9` after `a = [1 2; 3 4]` leaves `a` with no size
-  rather than patching it. A sequence's terms cannot yet be defined cell by
-  cell. The compiler takes such a matrix one cell at a time, its names bound to
-  the cell's place as constants, so that the size, the guards and the clause
-  that gives each cell fold exactly; one whose size or guard reads a parameter
-  it refuses. The Kalman filter's identity is now `I[j<=2, k<=2] = j == k`.
+  mixed sizes with conditions. A matrix written whole keeps its place beside
+  cell clauses: it is the size and every cell no clause gives, so `a[1,1] = 9`
+  after `a = [1 2; 3 4]` changes that cell and nothing else, as a base clause
+  overrides a sequence's general one. The first spelling had the cell clause
+  replace the matrix, as an index replaces a value, and leave `a` with no size;
+  nothing needed that, and it surprised. A sequence's terms cannot yet be
+  defined cell by cell. The compiler takes such a matrix one cell at a time,
+  its names bound to the cell's place as constants, so that the size, the
+  guards and the clause that gives each cell fold exactly; one whose size or
+  guard reads a parameter it refuses. The Kalman filter's identity is now
+  `I[j<=2, k<=2] = j == k`.
 
 Beyond Python on very large numbers is not on this path. What is fast at a
 hundred thousand digits -- PARI/GP, Julia, Mathematica -- is GMP, with FFT

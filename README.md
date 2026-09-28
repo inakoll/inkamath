@@ -260,9 +260,10 @@ conjugate a complex cell, as MATLAB's and Julia's quote does.
 A matrix can be defined by its cells, as a sequence is by its terms. On the
 left the brackets name the row and the column and bound them, which is the
 size; the right-hand side is any cell, and a guard says which cells a clause
-gives. A cell no clause gives is 0, and a clause for one cell, `M[1,2] = 5`,
-beats the others. The names are anything but `i`, which is the imaginary
-unit:
+gives. A clause for one cell, `M[1,2] = 5`, beats the others. A cell no clause
+gives is 0, or, where the matrix was also written whole, that matrix's: after
+`T = [1 2; 3 4]`, `T[1,1] = 9` changes that cell and nothing else. The names
+are anything but `i`, which is the imaginary unit:
 
 ```
 >> I[j<=2, k<=2] = j == k

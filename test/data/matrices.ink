@@ -234,6 +234,47 @@ W[j<=2, k<=2] = [j k]
 >> W
 error: a cell of W must be a single value, not a 1x2 matrix
 
+# A clause for one cell overrides that cell of a matrix written whole and leaves
+# the rest, as a base clause overrides a sequence's general one at one index.
+# The whole matrix is the size, and every cell no other clause gives.
+>> T = [1 2; 3 4]
+T = [1 2; 3 4]
+
+>> T[1,1] = 9
+T[1,1] = 9
+
+>> T
+[9, 2;
+ 3, 4]
+
+# So does a clause for all cells, where its guard holds.
+>> T[j<=2, k<=2] | j < k = 0
+T[j<=2, k<=2] | j < k = 0
+
+>> T
+[9, 0;
+ 3, 4]
+
+>> T[j<=3, k<=3] | j == k = 7
+T[j<=3, k<=3] | j == k = 7
+
+>> T
+error: the clauses of T give it different sizes
+
+# Writing the whole matrix again starts it over, as it does a sequence.
+>> T = [1 2; 3 4]
+T = [1 2; 3 4]
+
+>> T
+[1, 2;
+ 3, 4]
+
+>> T[3,1] = 5
+T[3,1] = 5
+
+>> T
+error: row 3, column 1 is outside a 2x2 matrix
+
 # Inside one they index a name and nothing else, because there a space
 # between two blocks already means something.
 >> [[1 2] [3 4]]

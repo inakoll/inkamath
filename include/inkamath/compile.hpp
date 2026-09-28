@@ -406,9 +406,10 @@ private:
         Sequence* const   reading = std::exchange(reading_, nullptr);
         const std::string index   = std::exchange(index_, std::string());
         const auto        places  = std::exchange(places_, {});
-        Code              code    = definition->Clauses().front().parameters.cells()
-                                        ? Cells(name, *definition)
-                                        : Emit(definition->Clauses().front().expression);
+        const auto        cells   = [](const Clause<Value>& c) { return c.parameters.cells(); };
+        Code code = std::any_of(definition->Clauses().begin(), definition->Clauses().end(), cells)
+                        ? Cells(name, *definition)
+                        : Emit(definition->Clauses().front().expression);
         reading_                  = reading;
         index_                    = index;
         places_                   = places;
@@ -424,6 +425,12 @@ private:
     // them; one that cannot be is refused.
     Code Cells(const std::string& name, const Reference<Value>& definition) {
         std::optional<Extent> extent;
+        std::optional<Code>   whole;  // the matrix written whole, if it is
+        for (const Clause<Value>& clause : definition.Clauses()) {
+            if (clause.parameters.cells()) continue;
+            whole  = Emit(clause.expression);
+            extent = Extent{whole->rows, whole->cols};
+        }
         for (const Clause<Value>& clause : definition.Clauses()) {
             const ParametersDefinition<Value>& p = clause.parameters;
             if (p.row_name().empty()) continue;
@@ -433,6 +440,16 @@ private:
             extent = size;
         }
         if (!extent) throw Reason(name + " has no size");
+        for (const Clause<Value>& clause : definition.Clauses()) {
+            const ParametersDefinition<Value>& p = clause.parameters;
+            if (!p.cells() || !p.row_name().empty()) continue;
+            if (p.row() < 1 || static_cast<std::size_t>(p.row()) > extent->rows || p.col() < 1 ||
+                static_cast<std::size_t>(p.col()) > extent->cols)
+                throw Reason("row " + std::to_string(p.row()) + ", column " +
+                             std::to_string(p.col()) + " is outside a " +
+                             std::to_string(extent->rows) + "x" + std::to_string(extent->cols) +
+                             " matrix");
+        }
         Code  code;
         Value exact(*extent);
         bool  constant = true;
@@ -442,7 +459,12 @@ private:
             for (std::size_t col = 1; col <= code.cols; ++col) {
                 const std::optional<Code> cell =
                     CellOf(definition, static_cast<int>(row), static_cast<int>(col));
-                const Code given = cell ? *cell : Literal(Value(Number(0)));
+                Code given = cell ? *cell : Literal(Value(Number(0)));
+                if (!cell && whole) {
+                    given       = Code();
+                    given.cells = {whole->At(row - 1, col - 1)};
+                    if (whole->constant) given.constant = Value((*whole->constant)(row, col));
+                }
                 if (!given.Scalar())
                     throw Reason("a cell of " + name + " must be a single value, not a " +
                                  std::to_string(given.rows) + "x" + std::to_string(given.cols) +
@@ -459,7 +481,7 @@ private:
     std::optional<Code> CellOf(const Reference<Value>& definition, int row, int col) {
         for (const Clause<Value>& clause : definition.Clauses()) {
             const ParametersDefinition<Value>& p = clause.parameters;
-            if (!p.row_name().empty() || p.row() != row || p.col() != col) continue;
+            if (!p.cells() || !p.row_name().empty() || p.row() != row || p.col() != col) continue;
             if (p.guarded() && !Holds(p.guard())) continue;
             return Emit(clause.expression);
         }

@@ -112,9 +112,10 @@ public:
         }
         if (starts_over) {
             clauses_.clear();
-        } else if (!ai_parameters.guarded() || ai_parameters.cells()) {
-            // An index turns a value into a sequence, and a cell into a matrix
-            // defined by its cells, so the plain clause goes.
+        } else if (!ai_parameters.guarded() && !ai_parameters.cells()) {
+            // An index turns a value into a sequence, so the plain clause goes.
+            // A cell clause keeps it: a matrix written whole has cells, and the
+            // clause overrides one, as a base clause does a general one.
             std::erase_if(clauses_, IsPlain);
         }
         // Writing a clause again replaces it where it stands. Position is what
@@ -441,9 +442,15 @@ private:
     }
 
     // A matrix defined by its cells (README.md section 2). Its size is what its
-    // clauses for all cells bound it to, and they agree on it.
+    // clauses for all cells bound it to, or the matrix written whole, and they
+    // agree on it; the matrix written whole gives every cell no clause does.
     T EvaluateCells(EvaluationVisitor<T>& evaluator) const {
         std::optional<Extent> extent;
+        std::optional<T>      whole;
+        if (const Clause<T>* plain = Plain()) {
+            whole  = plain->expression->accept(evaluator);
+            extent = whole->Size();
+        }
         for (const Clause<T>& clause : clauses_) {
             const ParametersDefinition<T>& p = clause.parameters;
             if (!p.cells() || p.row_name().empty()) continue;
@@ -458,7 +465,12 @@ private:
             throw std::runtime_error(reference_name_ + " has no size; write it as " +
                                      reference_name_ + "[j<=rows, k<=cols]");
         }
-        T matrix(*extent);
+        T matrix = whole ? *whole : T(*extent);
+        // A clause for one cell can name a cell outside the size, which says so
+        // as reading it would.
+        for (const Clause<T>& clause : clauses_) {
+            if (IsOneCell(clause)) (void)matrix(clause.parameters.row(), clause.parameters.col());
+        }
         for (size_t row = 1; row <= extent->rows; ++row) {
             for (size_t col = 1; col <= extent->cols; ++col) {
                 const std::optional<T> cell =
@@ -486,7 +498,8 @@ private:
     // A cell's own clause if it has one, as a base clause beats a sequence's
     // general clause; else the first clause for all cells that holds, guarded
     // ones in the order written and the unguarded one last; else none, and the
-    // cell is 0, as a short row of a literal is padded. The names are bound on
+    // cell is the matrix written whole's, or 0 without one, as a short row of a
+    // literal is padded. The names are bound on
     // trial, so that one clause's names cannot shadow a global in the next.
     std::optional<T> Cell(int row, int col, EvaluationVisitor<T>& evaluator) const {
         ReferenceStack<T>& stack = evaluator.stack();
