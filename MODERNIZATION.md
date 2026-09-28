@@ -1897,6 +1897,31 @@ than cell by cell, lifts the GCC wall cheaply and leaves n^2 in time and
 memory. The interpreter is not a deployment target, and its memo still breaks
 past 100000 terms, so overtaking means runs at design time.
 
+**Small neural networks and point clouds**, tried the same way. Running a
+trained network is fixed-shape linear algebra, which is what the compiler
+does: a convolution is cells and two sums, and answers exactly (the Laplacian
+of `j^2*k` is `2k`); a linear recurrent layer, `s_n = A*s_(n-1) + B*u_n`, the
+shape of S4 and Mamba, compiles as the Kalman filter does. A dense layer with
+ReLU compiles only as one sequence per unit, since a sequence's terms cannot
+be defined cell by cell. Also wanted: `exp`, for sigmoid and tanh; `max`, for
+pooling; and loops over arrays, since each weight is a multiply-add written
+out. On a microcontroller a network runs in int8, which is integer arithmetic
+with rounding and saturation, and so exact: the interpreter could hold an int8
+kernel to the bit, as TensorFlow Lite Micro's reference kernels do, given
+rounding in the language and an integer target. Training is out of reach: it
+needs gradients, loops over data, and randomness. Point clouds fit only in
+their arithmetic: a streaming centroid and covariance compiles, as would a
+rigid transform, a plane fitted from running sums, or an exact orientation
+test once functions compile. The algorithms around it -- neighbour search,
+voxel grids, sorting, RANSAC, ICP -- are arrays of data-dependent length,
+indices computed from data, and loops, which is another language.
+
+What every domain explored so far asks for, by how many ask: compiled
+functions (orientation tests, point kernels, a layer called per input); loops
+over arrays instead of cells written out (finite elements, networks); `floor`
+or `round` (the loan, grids, int8); a sequence's terms cell by cell
+(networks); `exp` (networks, signal processing).
+
 Beyond Python on very large numbers is not on this path. What is fast at a
 hundred thousand digits -- PARI/GP, Julia, Mathematica -- is GMP, with FFT
 multiplication and subquadratic division; writing that here is not a phase but
