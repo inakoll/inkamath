@@ -7,8 +7,9 @@
 #include <math.h>
 #include <string.h>
 
-/* The parameters, which the host may assign, then the index of the latest
- * step and each sequence's terms from that index back. */
+/* The parameters, which the host may assign, then what derives from them,
+ * then the index of the latest step and each sequence's terms from that
+ * index back. */
 typedef struct pid {
     double dt;
     double kd;
@@ -23,6 +24,11 @@ typedef struct pid {
     double u[1];
 } pid;
 
+/* Computes what derives from the parameters: call it after assigning one. */
+static inline void pid_update(pid* m_) {
+    (void)m_;
+}
+
 static inline void pid_init(pid* m_) {
     memset(m_, 0, sizeof *m_);
     m_->dt = 0.1;
@@ -31,6 +37,7 @@ static inline void pid_init(pid* m_) {
     m_->kp = 2.0;
     m_->r = 1.0;
     m_->index_ = -1;
+    pid_update(m_);
 }
 
 /* Advances to the next index, the first at 0, and computes its terms. */

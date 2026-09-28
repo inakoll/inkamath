@@ -7,8 +7,9 @@
 #include <math.h>
 #include <string.h>
 
-/* The parameters, which the host may assign, then the index of the latest
- * step and each sequence's terms from that index back. */
+/* The parameters, which the host may assign, then what derives from them,
+ * then the index of the latest step and each sequence's terms from that
+ * index back. */
 typedef struct kalman {
     double H[1][2];
     double I[2][2];
@@ -25,6 +26,11 @@ typedef struct kalman {
     double p[1];
 } kalman;
 
+/* Computes what derives from the parameters: call it after assigning one. */
+static inline void kalman_update(kalman* m_) {
+    (void)m_;
+}
+
 static inline void kalman_init(kalman* m_) {
     memset(m_, 0, sizeof *m_);
     m_->H[0][0] = 1.0;
@@ -40,6 +46,7 @@ static inline void kalman_init(kalman* m_) {
     m_->R = 1.0;
     m_->dt = 1.0;
     m_->index_ = -1;
+    kalman_update(m_);
 }
 
 /* Advances to the next index, the first at 0, and computes its terms. */

@@ -1835,10 +1835,15 @@ Compiling the heat equation found two defects:
 
 - **A size given by a name is refused.** A plain definition is a parameter the
   host may set, so `N` is not a constant; only `7` is.
-- **What derives from parameters alone is recomputed at every step**, where
-  this plan says it is recomputed where a parameter is set: the heat
-  equation's `A` inverts its matrix each step. At n = 100 that is 0.5 ms a
-  step against 7 us for the product alone.
+- `[done]` **What derives from parameters alone is recomputed at every
+  step**, where this plan says it is recomputed where a parameter is set: the
+  heat equation's `A` inverts its matrix each step. At n = 100 that is 0.5 ms
+  a step against 7 us for the product alone. Such a value is now a field that
+  `update` computes, which `init` calls and the host calls after assigning a
+  parameter; a C struct has no setter to do it for them. A cell that is a name
+  or a number is still read as itself, so the Kalman filter's step, whose `F`
+  is `[1 dt; 0 1]`, did not move, and a field no cell is read from is left
+  out. `test/compile/heat.ink` doubles its step halfway and calls `update`.
 
 **Finite elements in two and three dimensions.** Assembly already reads as on
 paper, `K = sum_(e=1)^E P(e)'*Ke*P(e)`, where `P(e)[a<=2, p<=N] = p == e-2+a`

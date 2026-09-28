@@ -7,8 +7,9 @@
 #include <math.h>
 #include <string.h>
 
-/* The parameters, which the host may assign, then the index of the latest
- * step and each sequence's terms from that index back. */
+/* The parameters, which the host may assign, then what derives from them,
+ * then the index of the latest step and each sequence's terms from that
+ * index back. */
 typedef struct pid_clamped {
     double dt;
     double kd;
@@ -25,6 +26,11 @@ typedef struct pid_clamped {
     double u[2];
 } pid_clamped;
 
+/* Computes what derives from the parameters: call it after assigning one. */
+static inline void pid_clamped_update(pid_clamped* m_) {
+    (void)m_;
+}
+
 static inline void pid_clamped_init(pid_clamped* m_) {
     memset(m_, 0, sizeof *m_);
     m_->dt = 0.1;
@@ -34,6 +40,7 @@ static inline void pid_clamped_init(pid_clamped* m_) {
     m_->r = 1.0;
     m_->umax = 1.5;
     m_->index_ = -1;
+    pid_clamped_update(m_);
 }
 
 /* Advances to the next index, the first at 0, and computes its terms. */

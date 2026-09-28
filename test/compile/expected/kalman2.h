@@ -7,8 +7,9 @@
 #include <math.h>
 #include <string.h>
 
-/* The parameters, which the host may assign, then the index of the latest
- * step and each sequence's terms from that index back. */
+/* The parameters, which the host may assign, then what derives from them,
+ * then the index of the latest step and each sequence's terms from that
+ * index back. */
 typedef struct kalman2 {
     double H[2][2];
     double I[2][2];
@@ -25,28 +26,6 @@ typedef struct kalman2 {
     double z[1][2][1];
     double x[2][2][1];
 } kalman2;
-
-static inline void kalman2_init(kalman2* m_) {
-    memset(m_, 0, sizeof *m_);
-    m_->H[0][0] = 1.0;
-    m_->H[0][1] = 0.0;
-    m_->H[1][0] = 1.0;
-    m_->H[1][1] = 1.0;
-    m_->I[0][0] = 1.0;
-    m_->I[0][1] = 0.0;
-    m_->I[1][0] = 0.0;
-    m_->I[1][1] = 1.0;
-    m_->Q[0][0] = 0.01;
-    m_->Q[0][1] = 0.0;
-    m_->Q[1][0] = 0.0;
-    m_->Q[1][1] = 0.01;
-    m_->R[0][0] = 1.0;
-    m_->R[0][1] = 0.0;
-    m_->R[1][0] = 0.0;
-    m_->R[1][1] = 0.25;
-    m_->dt = 1.0;
-    m_->index_ = -1;
-}
 
 /* The inverse of a 2x2 matrix, in place, as the interpreter takes it: Gauss-Jordan
  * on the largest pivot, and NaN in every cell where there is none. */
@@ -87,6 +66,34 @@ static inline void kalman2_inverse2_(double a[2][2]) {
         }
     }
     memcpy(a, r, sizeof r);
+}
+
+/* Computes what derives from the parameters: call it after assigning one. */
+static inline void kalman2_update(kalman2* m_) {
+    (void)m_;
+}
+
+static inline void kalman2_init(kalman2* m_) {
+    memset(m_, 0, sizeof *m_);
+    m_->H[0][0] = 1.0;
+    m_->H[0][1] = 0.0;
+    m_->H[1][0] = 1.0;
+    m_->H[1][1] = 1.0;
+    m_->I[0][0] = 1.0;
+    m_->I[0][1] = 0.0;
+    m_->I[1][0] = 0.0;
+    m_->I[1][1] = 1.0;
+    m_->Q[0][0] = 0.01;
+    m_->Q[0][1] = 0.0;
+    m_->Q[1][0] = 0.0;
+    m_->Q[1][1] = 0.01;
+    m_->R[0][0] = 1.0;
+    m_->R[0][1] = 0.0;
+    m_->R[1][0] = 0.0;
+    m_->R[1][1] = 0.25;
+    m_->dt = 1.0;
+    m_->index_ = -1;
+    kalman2_update(m_);
 }
 
 /* Advances to the next index, the first at 0, and computes its terms. */

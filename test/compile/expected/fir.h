@@ -7,14 +7,20 @@
 #include <math.h>
 #include <string.h>
 
-/* The parameters, which the host may assign, then the index of the latest
- * step and each sequence's terms from that index back. */
+/* The parameters, which the host may assign, then what derives from them,
+ * then the index of the latest step and each sequence's terms from that
+ * index back. */
 typedef struct fir {
     double b[1][4];
     long long index_;
     double x[4];
     double y[1];
 } fir;
+
+/* Computes what derives from the parameters: call it after assigning one. */
+static inline void fir_update(fir* m_) {
+    (void)m_;
+}
 
 static inline void fir_init(fir* m_) {
     memset(m_, 0, sizeof *m_);
@@ -23,6 +29,7 @@ static inline void fir_init(fir* m_) {
     m_->b[0][2] = 0.3;
     m_->b[0][3] = 0.4;
     m_->index_ = -1;
+    fir_update(m_);
 }
 
 /* Advances to the next index, the first at 0, and computes its terms. */

@@ -89,6 +89,15 @@ private:
         std::vector<std::string> lines;
     };
 
+    // A value that reads parameters, computed where they are set rather than
+    // at every step.
+    struct Derived {
+        std::string            name;
+        Code                   code;
+        std::vector<Temporary> temporaries;
+        bool                   read = false;  // from its field, by some cell
+    };
+
     using Reads = std::map<std::string, std::set<int>>;  // lags, by the sequence read
 
     // A guarded clause, and what its guard and its value each read: its guard
@@ -584,12 +593,16 @@ private:
         const Reference<Value>* definition = Global(name);
         if (!definition) return Answer(Field(name, Value(Number(NAN))));
         if (IsSequence(*definition)) throw Reason(name + " is a sequence; index it");
+        for (Derived& derived : derived_)
+            if (derived.name == name) return Answer(Read(derived));
         if (!reading_plain_.insert(name).second) throw Reason(name + " is defined by itself");
         // A global is evaluated in a scope of its own, where no index or place
         // is seen.
         Sequence* const   reading = std::exchange(reading_, nullptr);
         const std::string index   = std::exchange(index_, std::string());
         const auto        places  = std::exchange(places_, {});
+        std::vector<Temporary> temporaries;
+        auto* const            outer_temporaries = std::exchange(temporaries_, &temporaries);
         const auto        cells   = [](const Clause<Value>& c) { return c.parameters.cells(); };
         Code code = std::any_of(definition->Clauses().begin(), definition->Clauses().end(), cells)
                         ? Cells(name, *definition)
@@ -597,10 +610,13 @@ private:
         reading_                  = reading;
         index_                    = index;
         places_                   = places;
+        temporaries_              = outer_temporaries;
         reading_plain_.erase(name);
         // A value that reads no other is a parameter the host may change; one
-        // that does is recomputed where it is read, so that it follows them.
-        return Answer(code.constant ? Field(name, *code.constant) : code);
+        // that does derives from them, and is computed where they are set.
+        if (code.constant) return Answer(Field(name, *code.constant));
+        derived_.push_back({name, code, std::move(temporaries)});
+        return Answer(Read(derived_.back()));
     }
 
     // A matrix defined by its cells, one cell at a time with its names bound to
@@ -890,14 +906,32 @@ private:
     Code Field(const std::string& name, const Value& value) {
         Unreserved(name);
         const Parameter parameter{value.Size().rows, value.Size().cols, Doubles(value)};
-        const bool      scalar = parameter.rows * parameter.cols == 1;
         parameters_.emplace(name, parameter);
+        return Fields(name, Literal(value));
+    }
+
+    // The struct's field for a value of this shape, cell by cell.
+    static Code Fields(const std::string& name, const Code& shape) {
+        Unreserved(name);
         Code code;
-        code.rows = parameter.rows;
-        code.cols = parameter.cols;
+        code.rows = shape.rows;
+        code.cols = shape.cols;
         for (std::size_t i = 0; i < code.rows; ++i)
             for (std::size_t j = 0; j < code.cols; ++j)
-                code.cells.push_back(Atom("m_->" + name + (scalar ? "" : Subscript(i, j))));
+                code.cells.push_back(Atom("m_->" + name + (shape.Scalar() ? "" : Subscript(i, j))));
+        return code;
+    }
+
+    // A cell that is a name or a number is read as itself, which the C
+    // compiler can see through, rather than from the field.
+    static Code Read(Derived& derived) {
+        Code code = Fields(derived.name, derived.code);
+        for (std::size_t c = 0; c < code.cells.size(); ++c) {
+            if (derived.code.cells[c].atom)
+                code.cells[c] = derived.code.cells[c];
+            else
+                derived.read = true;
+        }
         return code;
     }
 
@@ -1149,11 +1183,16 @@ private:
         out += " * with -ffast-math, which reorders. */\n";
         out += "#ifndef " + guard + "\n#define " + guard + "\n\n";
         out += "#include <math.h>\n#include <string.h>\n\n";
-        out += "/* The parameters, which the host may assign, then the index of the latest\n";
-        out += " * step and each sequence's terms from that index back. */\n";
+        out += "/* The parameters, which the host may assign, then what derives from them,\n";
+        out += " * then the index of the latest step and each sequence's terms from that\n";
+        out += " * index back. */\n";
         out += "typedef struct " + module + " {\n";
         for (const auto& [name, parameter] : parameters_)
             out += "    double " + name + Dimensions(parameter.rows, parameter.cols) + ";\n";
+        for (const Derived& derived : derived_)
+            if (derived.read)
+                out += "    double " + derived.name +
+                       Dimensions(derived.code.rows, derived.code.cols) + ";\n";
         out += "    long long index_;\n";
         for (const std::string& name : fields) {
             const Sequence& sequence = sequences_.at(name);
@@ -1161,6 +1200,25 @@ private:
                    Dimensions(sequence.rows, sequence.cols) + ";\n";
         }
         out += "} " + module + ";\n\n";
+
+        for (const std::size_t n : inverses_) out += InverseHelper(n);
+
+        out += "/* Computes what derives from the parameters: call it after assigning one. */\n";
+        out += "static inline void " + module + "_update(" + module + "* m_) {\n";
+        const auto read = [](const Derived& derived) { return derived.read; };
+        if (std::none_of(derived_.begin(), derived_.end(), read)) out += "    (void)m_;\n";
+        for (const Derived& derived : derived_) {
+            if (!derived.read) continue;
+            std::string assignments;
+            for (std::size_t c = 0; c < derived.code.cells.size(); ++c)
+                assignments += "    m_->" + derived.name +
+                               (derived.code.Scalar()
+                                    ? ""
+                                    : Subscript(c / derived.code.cols, c % derived.code.cols)) +
+                               " = " + derived.code.cells[c].text + ";\n";
+            out += Temporaries(derived.temporaries, assignments, "    ") + assignments;
+        }
+        out += "}\n\n";
 
         out += "static inline void " + module + "_init(" + module + "* m_) {\n";
         out += "    memset(m_, 0, sizeof *m_);\n";
@@ -1171,9 +1229,8 @@ private:
                        (scalar ? "" : Subscript(c / parameter.cols, c % parameter.cols)) + " = " +
                        Double(parameter.initial[c]) + ";\n";
         }
-        out += "    m_->index_ = " + std::to_string(earliest - 1) + ";\n}\n\n";
-
-        for (const std::size_t n : inverses_) out += InverseHelper(n);
+        out += "    m_->index_ = " + std::to_string(earliest - 1) + ";\n";
+        out += "    " + module + "_update(m_);\n}\n\n";
 
         out += "/* Advances to the next index, the first at " + std::to_string(earliest) +
                ", and computes its terms. */\n";
@@ -1232,6 +1289,7 @@ private:
     const ReferenceStack<Value>&     definitions_;
     std::map<std::string, Sequence>  sequences_;
     std::map<std::string, Parameter> parameters_;
+    std::vector<Derived>             derived_;  // each after those it reads
     std::set<std::string>            reading_plain_;
     Sequence*   reading_ = nullptr;  // the sequence whose general clause this is
     std::string index_;              // and the name of its index
