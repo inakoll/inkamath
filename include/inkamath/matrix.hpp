@@ -94,6 +94,15 @@ public:
         return c;
     }
 
+    // The rows as columns, and no cell conjugated: MATLAB's and Julia's quote
+    // is the conjugate transpose, which is the same only for real matrices.
+    static Matrix<T> transpose(const Matrix<T>& a) {
+        Matrix<T> t(Extent{a.extent_.cols, a.extent_.rows});
+        for (size_t i = 1; i <= a.extent_.rows; ++i)
+            for (size_t j = 1; j <= a.extent_.cols; ++j) t(j, i) = a(i, j);
+        return t;
+    }
+
     // One cell, as a 1x1: everything in this language is a matrix.
     static Matrix<T> cell(const Matrix<T>& a, int i, int j) {return Matrix<T>(a(i, j));}
 
@@ -101,15 +110,18 @@ public:
     // every value here is a number. Cell by cell was considered and left out:
     // nothing in the language reduces a matrix of ones and zeros to a single
     // truth, so it would invite an idiom it cannot finish.
+    friend bool operator==(const Matrix<T>& a, const Matrix<T>& b) {
+        return a.extent_ == b.extent_ &&
+               std::equal(a.data(), a.data() + a.extent_.count(), b.data());
+    }
+
     static Matrix<T> compare(const Matrix<T>& a, const Matrix<T>& b, Comparison op)
     {
         // Two whole matrices are equal or not, which is one truth; an order
         // cell by cell would be a matrix of them.
         if (op == Comparison::Equal || op == Comparison::NotEqual) {
-            const bool equal = a.extent_ == b.extent_ &&
-                               std::equal(a.data(), a.data() + a.extent_.count(), b.data());
-            return Matrix<T>((op == Comparison::Equal) == equal ? numeric_interface<T>::one()
-                                                                : numeric_interface<T>::zero());
+            return Matrix<T>((op == Comparison::Equal) == (a == b) ? numeric_interface<T>::one()
+                                                                   : numeric_interface<T>::zero());
         }
         return Matrix<T>(Ordered(a.Comparable(), op, b.Comparable())
                              ? numeric_interface<T>::one()
@@ -314,6 +326,8 @@ private:
     template <typename Func>
     Matrix<T> BinaryOp(const Matrix<T>& other, Func f) const
     {
+        // Nearly every value is a single number: say so before anything general.
+        if (IsScalar() && other.IsScalar()) return Matrix<T>(f(scalar_, other.scalar_));
         if(extent_ != other.extent_) {
             // A single value stretches to the other side's size, as it does
             // for '*' and inside a literal. The operand order is kept: '1-a'
@@ -341,6 +355,7 @@ private:
 
     Matrix<T> mul(const Matrix<T>& other) const
     {
+        if (IsScalar() && other.IsScalar()) return Matrix<T>(scalar_ * other.scalar_);
         if(IsScalar() || other.IsScalar()) {
             const bool     this_is_scalar = IsScalar();
             const T        scalar = this_is_scalar ? scalar_ : other.scalar_;

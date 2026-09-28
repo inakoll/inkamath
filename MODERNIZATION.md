@@ -1483,6 +1483,9 @@ What it decides:
   by Lehmer's method, which is where Euclid would lose; 82 us a `Fraction`
   sum, the gcd and interpreted code on top. Lehmer's gcd, about a hundred
   lines, goes in only if a sum at a thousand digits measures slower than that.
+  It went in with phase 14's PID: the exact `y_5000` spent 97% of its 1.2 s
+  in Euclid's gcd, and with Lehmer's, seventy lines, takes 0.2 s -- ten times
+  fewer instructions, and 8 us rather than 30 for a gcd at a thousand digits.
 
 What it costs before a line of it: **the memo key.** A key is a value's bytes,
 and a value on the heap has a pointer for bytes -- two equal values would be
@@ -1534,6 +1537,198 @@ keep a scalar unwrapped where the tree says it is one, and at the far end
 compile the tree once to a flat form -- closures or a bytecode, 3-10x in
 interpreters of this shape. Profile first, as phase 9 did; every recorded
 output byte-identical throughout, which is what makes it safe to try.
+
+**Step 1: compile in process.** A profile of that limit is flat: one term of
+`s_n = s_(n-1)*~0.5+1.25` costs about 8,500 instructions, where Python's loop
+spends a hundred, and no function holds more than five per cent of them --
+1x1 matrices built and destroyed for every value, a name looked up by string
+and hashed for every reference, a memo key built as a string for every call,
+a budget and a frame for every call. A flat profile is not fixed by point
+fixes but by doing once what is done every time: names resolved to slots when
+a line is defined, invalidated by what already invalidates the memo, then the
+tree turned into closures that call each other directly. No code is
+generated, and every recorded output stays byte-identical.
+
+The profile, taken before anything was changed, ordered the work differently
+than the plan did: hashing names cost about one per cent, while values cost the
+most -- 1x1 matrices built and copied (about a quarter), allocation (about
+fifteen per cent), memo keys and index checks (seven each). The cheap end came
+first: two single values added without the matrix loop, a closed frame's
+storage kept for the next call, a memo keyed by the definition's address and
+the index rather than a string -- the address holds while the memo does,
+since redefining a global clears it first -- and an index tested with one
+equality. Together they take a recomputed limit from 68.2M instructions to
+55.3M, and the sequence workloads 12-17 per cent faster by the clock.
+
+A call site then kept its parameters (52.4M), and a sign or a tilde on a
+literal came to be applied when parsing (47.3M): the 1 of `n-1` had been
+negated at every term. Keeping a scalar unwrapped, the middle of the order
+above, was measured before it was built and is dropped. A 1x1 whose copy and
+destruction skip its cell vector saves 1.1 per cent, and what a 1x1 still costs
+over a bare `Number` is a call's prologue, about five per cent -- not worth a
+second value type through the whole interpreter. The quarter the first profile
+put on matrices was mostly the numbers inside them.
+
+The call tree then showed a limit computing every term twice. It walked its
+terms without remembering them, so each term's call for the one before missed
+the memo and computed it again. Each term is now evaluated as its index would
+be -- in a frame of its own, and remembered -- which takes the recomputed limit
+to 32.5M and fixed C66 on the way. Names resolved to slots are measured and
+wait: finding a name by string is at most six per cent, since libstdc++ scans a
+map this small rather than hashing it and a frame holds two or three names.
+Winning part of that would thread a symbol table through every binding;
+closures need one anyway, and can bring it.
+
+| | |
+|---|---|
+| C66 `[fixed]` | **A limit could disagree with its own terms.** `Converge` evaluated every term in the one frame of the limit's call, so a local bound by one term was still there for the next: with `c = 100`, the terms of `w_n = w_(n-1)/2 + c + 0*(c = 1)` tend to 200 and `lim w` answered 101. Each term is now evaluated as indexing evaluates it, in a frame of its own and through the memo, which also stops each term's call for the one before from computing it a second time. |
+| C67 `[fixed]` | **Cell brackets after a named index went to the index.** A subscript's index was parsed as any simple expression, and a name there takes cell brackets, so `r_n[1,1]` was `r_(n[1,1])` -- the whole term, since the first cell of a single value is itself -- while `r_1[1,1]` was the cell. Found by the compiler, whose Kalman filter read `x_n[1,1]`; the quote had just been through the same fault, `x_(n-1)'` transposing the index. An index no longer takes brackets or a quote after it; those are the term's. |
+
+**Measure instructions, not the clock.** One of those changes made the matrix
+workload 20 per cent slower by the clock and not by a single instruction: with
+loops and functions aligned explicitly, the builds before and after it ran
+alike, at the slower time. The faster build had been a fortunate layout. A
+wall-clock difference between two builds is evidence only when callgrind
+agrees with it, or when the two are timed interleaved and aligned.
+
+**Step 2: compile ahead of time.** `inkamath --compile model.ink -o model.hpp`
+prints what step 1 builds as C++ against the headers already here -- `Number`,
+`Matrix`, `Natural` -- so the semantics are the interpreter's by construction
+and any C++ compiler builds the result: no LLVM, no new dependency. A module is
+the definitions as they stand at the end of the file, each a function: `fib_n`
+becomes `Value fib(long long n)`, memoised inside, and `area(r)` becomes
+`Value area(const Value& r)`, with `double` wrappers on request for a C ABI,
+and through it Python and WebAssembly. A name the file uses without defining
+is an input the host supplies -- a measurement stream, `z_n` -- and a plain
+definition such as `kp = 2` is a parameter with a setter that clears the memo
+tables, the same invalidation the interpreter does.
+
+**Which backend, and who optimises what.** An LLVM backend was closed as a
+JIT (phase 9) on the grounds that the tree walk it would replace was 7 per cent
+of the time. That argument does not reach a compiler, which replaces the whole
+interpreter, so it was weighed again, and C still wins on other grounds. The
+work of step 2 is analysis -- that `y_n` is a real scalar, that `P` is 2x2,
+that a recurrence is a loop -- and once it is done, emitting `fadd` or `+` over
+`double` ends in the same machine code, because the C compiler has LLVM's
+optimiser or one like it. LLVM would add a dependency whose API breaks every
+release, and emit what the toolchains of the embedded targets, GCC and vendor
+compilers, do not take, and what a user cannot read or step through. What it
+alone gives -- an object file with no compiler on the host -- serves no one who
+embeds a header. So the line between the two halves runs where the semantics
+stop being visible:
+
+- **Ours**: folding exact constants exactly, then rounding once -- `0.1 + 0.2`
+  is `3/10` here, and a C compiler folding the doubles would answer
+  `0.30000000000000004`; types and shapes; recurrences turned into loops over a
+  window of past terms, which no C compiler can do to a memoised function; and
+  quantities derived from parameters, recomputed where a parameter is set.
+- **The C compiler's**: everything over typed doubles in fixed shapes --
+  folding, common subexpressions, inlining, unrolling, vectorisation.
+- **Neither's**: reassociation. Without `-ffast-math` a C compiler keeps the
+  order it is given, and the order emitted is the interpreter's, so that the
+  compiled filter can be held to the interpreter's answers.
+
+That makes two targets rather than one: C over `double` with no runtime, what
+an embedded filter wants, and C++ over `Number` and `Matrix`, the exact model.
+The analysis produces one typed form and each target prints it; the C target
+comes first, because the proof of concept below is a filter.
+
+**The first increment** compiles sequences of real numbers to a C header, and
+refuses everything else by name. A file's definitions are run by the
+interpreter, as they would be at a prompt; each sequence becomes a window of
+its recent terms in a struct, as deep as the definitions reach back; a step
+advances the index and computes that index's terms in dependency order. A plain
+definition that reads no name is a parameter, a field initialised to its exact
+value rounded once, which the host may assign; one that reads others is
+recomputed where it is read, so that it follows them. A name used and never
+defined is an input, a stream `y_n` passed to each step or a plain value the
+host assigns. Assigning a parameter changes the terms still to come, as a
+controller's gain is changed while it runs -- where the interpreter, clearing
+its memo, answers as if the parameter had always had its new value. Where the
+interpreter reports an error at run time -- a division by zero, a power it
+would take in the complex plane -- the compiled code answers an infinity or a
+NaN.
+
+It is `compile.hpp` and `inkamath --compile pid.ink -o pid.h`. The header for
+the PID was written by hand first, as the specification, and the compiler emits
+it byte for byte (`test/compile/expected/pid.h`); built as C11 it holds the
+controller, closing the loop in a harness, within 1e-14 of the loop's exact
+values computed with Python's fractions. What it refuses -- functions, guards,
+limits, series, factorials, locals, complex numbers, an index other than `n`
+less a constant, a term read before its sequence starts -- it names.
+
+**The second increment** is the Kalman filter, which is matrices of fixed
+shape: a value is its cells, each one C expression, and a matrix product is the
+sum over the inner dimension in the interpreter's order. A sequence's shape
+comes from its base clauses, or else from its general clause, compiled on first
+reading -- so `K`, whose general clause is the first to need `P`, finds `P`'s
+shape in `P_0` without the cycle through `P`'s own general clause. A sequence
+with no base clause starts at the first index where every term it reads exists,
+which is where the interpreter would first answer it: the filter's `xp`, `Pp`
+and `K` start at 1, a step after `x` and `P`. The header is
+`test/compile/expected/kalman.h`, recorded from the compiler and read rather
+than written first, since the PID's had already fixed the form; fed the
+measurements of a target moving at 2 per step, the compiled filter is within
+1e-14 of the exact estimates. Still refused: a matrix power, a matrix built
+from matrices, a cell whose place is not a constant, comparing matrices. Each
+derived matrix is inlined into its readers, so a cell's expression can repeat a
+shared subexpression -- the C compiler's common subexpressions take it out, but
+a larger filter would want temporaries.
+
+**What step 2 is for, decided by building it.** Waiting for a use case that
+nothing yet can serve would wait for ever, so a proof of concept manufactures
+one: a PID controller, then a Kalman filter. Both already run in the
+interpreter -- a closed-loop PID is eight definitions, `frac y_3` is exactly
+`2697/6250`, and a constant-velocity Kalman tracker gives its gain exactly,
+`[752651/857701; 1203101/1715402]`. That is the product: a filter written once
+in the notation of the paper, exact reference outputs from the interpreter, a
+C++ header from the compiler, and the compiled floating-point filter tested
+against the exact transcript. Writing the two found four things they need:
+
+- `[done]` **Deep recurrences.** `y_5000` failed -- evaluation nests more
+  than 256 references deep -- because each term reaches back through every
+  earlier one. A call that runs out of depth now fills its sequence from the
+  lowest base up and tries again, each term finding the one before it
+  remembered: `y_5000` of the PID and `x_2000` of the Kalman filter answer.
+  Only what failed takes that path, so nothing that answered before moved but
+  `sequences.ink`'s `g_500`, which was the depth error and is now `501`; the
+  bound it stood for (C1) is shown by a recurrence reaching up instead. A
+  recurrence that steps by two from a single base still fails: filling it
+  asks for the odd terms, which it never defined, and so reports the depth
+  rather than an error about a term nobody asked for. Filling with the
+  recurrence's own stride would fix it.
+- `[done]` **Inputs from the host**, in the C target: a stream passed to
+  each step, or a value the host assigns.
+- `[done]` **A window on the memo**, in the C target, where each sequence
+  keeps its terms only as far back as they are read. The interpreter's memo
+  is still bounded only by its size.
+- `[done]` **Transpose**, which the Kalman filter spelled out by hand as `Ft`
+  and `Ht`: `F'`, as MATLAB and Julia write it, specified in `matrices.ink`
+  before it was built. The quote belongs to what it follows, subscript and
+  cell brackets included, before any operator -- `2*a'` is `2*(a')` and
+  `a^2'` is `a^(2')`, as in Julia -- and it does not conjugate, where theirs
+  does. The first spelling bound the quote so tightly that `x_(n-1)'`
+  transposed the index; a transcript entry now says it is the term's. The
+  identity stays written out, `I2 = [1 0; 0 1]`: the language has no built-in
+  function, and the one filter that needs it does not yet justify the first.
+- `[done]` **Cells**, in the interpreter: a matrix defined by its cells,
+  `I[j<=2, k<=2] = j == k`, which also writes the identity. The size is in the
+  brackets, as bounds on the names, and a guard says only which cells, since a
+  guard such as `j + k <= 4` is no rectangle; a cell no clause gives is 0, and
+  a clause for one cell beats the others, as a base clause beats a sequence's
+  general one. Specified in `matrices.ink` first, after three spellings were
+  drafted side by side -- `M[i^3, j^3]` read as cubes, and bounds in the guard
+  mixed sizes with conditions. A matrix written whole keeps its place beside
+  cell clauses: it is the size and every cell no clause gives, so `a[1,1] = 9`
+  after `a = [1 2; 3 4]` changes that cell and nothing else, as a base clause
+  overrides a sequence's general one. The first spelling had the cell clause
+  replace the matrix, as an index replaces a value, and leave `a` with no size;
+  nothing needed that, and it surprised. A sequence's terms cannot yet be
+  defined cell by cell. The compiler takes such a matrix one cell at a time,
+  its names bound to the cell's place as constants, so that the size, the
+  guards and the clause that gives each cell fold exactly; one whose size or
+  guard reads a parameter it refuses. The Kalman filter's identity is now
+  `I[j<=2, k<=2] = j == k`.
 
 Beyond Python on very large numbers is not on this path. What is fast at a
 hundred thousand digits -- PARI/GP, Julia, Mathematica -- is GMP, with FFT

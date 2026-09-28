@@ -108,6 +108,15 @@ Given files, it runs them in order and exits; read from a pipe it prints bare
 answers, as `bc` does, and `--echo` prints a transcript instead, in the format
 of `test/data/*.ink`.
 
+`--compile model.ink -o model.h` writes the sequences a file defines as a C
+header over doubles: a struct holding the parameters and each sequence's latest
+terms, an `init` and a `step`, for a filter to run where the interpreter cannot.
+`test/compile/pid.ink` is a PID controller, and `test/compile/expected/pid.h`
+is what it compiles to; `test/compile/kalman.ink` is a Kalman filter over
+matrices.
+The compiler refuses by name what it cannot yet express, such as functions,
+guards, limits, series and matrix powers.
+
 Interpreter behaviour is pinned by golden transcripts in `test/data/*.ink`,
 which are literal sessions — every example in this file is one of them, so the
 documentation and the tests check each other. Regenerate with
@@ -232,6 +241,49 @@ columns are written:
 >> a[3,1]
 error: row 3, column 1 is outside a 2x2 matrix
 ```
+
+`m'` is the transpose of `m`, its rows made columns. The quote belongs to what
+it follows, subscript and cell brackets included, before any operator: `2*a'`
+is `2*(a')`, and `x_(n-1)'` transposes the term `x_(n-1)`. It does not
+conjugate a complex cell, as MATLAB's and Julia's quote does.
+
+```
+>> a'
+[1, 3;
+ 2, 4]
+
+>> a'*[1; 1]
+[4;
+ 6]
+```
+
+A matrix can be defined by its cells, as a sequence is by its terms. On the
+left the brackets name the row and the column and bound them, which is the
+size; the right-hand side is any cell, and a guard says which cells a clause
+gives. A clause for one cell, `M[1,2] = 5`, beats the others. A cell no clause
+gives is 0, or, where the matrix was also written whole, that matrix's: after
+`T = [1 2; 3 4]`, `T[1,1] = 9` changes that cell and nothing else. The names
+are anything but `i`, which is the imaginary unit:
+
+```
+>> I[j<=2, k<=2] = j == k
+I[j<=2, k<=2] = j == k
+
+>> I
+[1, 0;
+ 0, 1]
+
+>> U[j<=3, k<=3] | j <= k = 1
+U[j<=3, k<=3] | j <= k = 1
+
+>> U
+[1, 1, 1;
+ 0, 1, 1;
+ 0, 0, 1]
+```
+
+A size can come from a parameter: `H(n)[j<=n, k<=n] = 1/(j+k-1)` is the
+Hilbert matrix of any size.
 
 Inside a matrix literal the brackets index a name and nothing else, because
 there a space between two blocks already separates them: `[[1 2] [3 4]]` is

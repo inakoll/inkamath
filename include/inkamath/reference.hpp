@@ -9,8 +9,37 @@
 #include "inkamath/convergence.hpp"
 
 #include <algorithm>
+#include <exception>
+#include <optional>
 #include <stdexcept>
 #include <vector>
+
+// Nesting too deep, told apart from other failures because a recurrence can
+// recover from it by filling its terms from the base up.
+struct DepthExceeded : std::runtime_error {
+    using std::runtime_error::runtime_error;
+};
+
+// Which call a memoised answer is for. The definition is named by its address,
+// which holds for as long as the memo does: redefining a global replaces its
+// object and clears the memo in the same breath. An index needs no string; the
+// arguments are encoded as each value encodes itself.
+struct MemoKey {
+    const void* definition = nullptr;
+    bool        indexed    = false;
+    int         index      = 0;
+    std::string arguments;
+
+    bool operator==(const MemoKey&) const = default;
+};
+
+struct MemoHash {
+    std::size_t operator()(const MemoKey& key) const {
+        std::size_t hash = std::hash<const void*>()(key.definition);
+        hash             = hash * 31 + std::hash<int>()(key.index) * 2 + (key.indexed ? 1 : 0);
+        return key.arguments.empty() ? hash : hash * 31 + std::hash<std::string>()(key.arguments);
+    }
+};
 
 // One clause of a definition: 'f_0 = 1' or 'f(x)_n = ...'.
 template <typename T>
@@ -51,7 +80,7 @@ public:
         // One call binds the parameters once, for whichever clause answers, so
         // the clauses have to agree on their names. One that disagrees could
         // only ever read a global under its own name (MODERNIZATION.md, C51).
-        const bool starts_over = !ai_parameters.guarded() && !ai_parameters.indexed();
+        const bool starts_over = IsPlain(clause);
         if(!clauses_.empty() && !starts_over
            && ai_parameters.parameters_names() != CallParameters().parameters_names()) {
             throw std::runtime_error(reference_name_ + " takes ("
@@ -68,11 +97,25 @@ public:
                                      + " is already defined without a guard,"
                                        " so this clause can never apply");
         }
-        if(!ai_parameters.guarded() && !ai_parameters.indexed()) {
-            clauses_.clear();
+        // A size is written, not guessed from the cells a clause happens to give.
+        if (ai_parameters.cells() && !ai_parameters.row_name().empty() &&
+            (!ai_parameters.rows() || !ai_parameters.cols())) {
+            throw std::runtime_error(reference_name_ + " has no size; write it as " +
+                                     reference_name_ + "[" + ai_parameters.row_name() + "<=rows, " +
+                                     ai_parameters.col_name() + "<=cols]");
         }
-        else if(!ai_parameters.guarded()) {
+        if (!starts_over &&
+            ((ai_parameters.cells() && Sequence()) || (ai_parameters.indexed() && Cells()))) {
+            throw std::runtime_error(reference_name_ +
+                                     (Cells() ? " is defined by its cells, so it has no index"
+                                              : " is a sequence, so it has no cells of its own"));
+        }
+        if (starts_over) {
+            clauses_.clear();
+        } else if (!ai_parameters.guarded() && !ai_parameters.cells()) {
             // An index turns a value into a sequence, so the plain clause goes.
+            // A cell clause keeps it: a matrix written whole has cells, and the
+            // clause overrides one, as a base clause does a general one.
             std::erase_if(clauses_, IsPlain);
         }
         // Writing a clause again replaces it where it stands. Position is what
@@ -80,12 +123,17 @@ public:
         // (MODERNIZATION.md, C45); a guarded clause is named by its left-hand
         // side, which is how it can be corrected at all (C46).
         for(Clause<T>& existing : clauses_) {
-            const bool same = ai_parameters.guarded()
-                ? existing.parameters.guarded()
-                      && existing.parameters.signature() == ai_parameters.signature()
-                : (IsGeneral(existing) && IsGeneral(clause))
-                      || (IsBase(existing) && IsBase(clause)
-                          && existing.parameters.index() == clause.parameters.index());
+            const bool same =
+                ai_parameters.guarded()
+                    ? existing.parameters.guarded() &&
+                          existing.parameters.signature() == ai_parameters.signature()
+                    : (IsGeneral(existing) && IsGeneral(clause)) ||
+                          (IsBase(existing) && IsBase(clause) &&
+                           existing.parameters.index() == clause.parameters.index()) ||
+                          (IsAllCells(existing) && IsAllCells(clause)) ||
+                          (IsOneCell(existing) && IsOneCell(clause) &&
+                           existing.parameters.row() == clause.parameters.row() &&
+                           existing.parameters.col() == clause.parameters.col());
             if(same) {
                 existing = clause;
                 return;
@@ -93,6 +141,8 @@ public:
         }
         clauses_.push_back(clause);
     }
+
+    [[nodiscard]] const std::vector<Clause<T>>& Clauses() const { return clauses_; }
 
     // '?name', or '?name_0' for one clause of a sequence.
     std::string Describe(const ParametersCall<T>& call, ReferenceStack<T>& stack) const {
@@ -134,9 +184,9 @@ public:
         // global it shadows, so the stack says which this is. A limit is not
         // keyed -- the terms it walks are, through this same path.
         const bool memoisable = global && !call.limit() && (indexed || !arguments.empty());
-        std::string key;
+        MemoKey    key;
         if(memoisable) {
-            key = MemoKey(indexed, index, arguments);
+            key = Key(indexed, index, arguments);
             if(const T* memoised = stack.Memoised(key)) {
                 return *memoised;
             }
@@ -152,11 +202,26 @@ public:
             if(!FirstThat([](const Clause<T>& c) {return c.parameters.general();})) {
                 throw std::runtime_error(reference_name_ + " has no general clause, so it has no limit");
             }
-            return Converge(evaluator);
+            return Converge(arguments, call, stack, global);
         }
         // Storing after the call returns, so that an evaluation which ran out
         // of budget is retried rather than remembered.
-        const T evaluation = EvalImp(indexed, index, evaluator);
+        // Caught only where a fill can follow, and filled only after the
+        // handler: MSVC runs a handler on top of the stack that threw, which
+        // is 256 references deep here.
+        if (!memoisable || !indexed || !stack.CanFill()) {
+            const T evaluation = EvalImp(indexed, index, evaluator);
+            if (memoisable) stack.Memoise(key, evaluation);
+            return evaluation;
+        }
+        std::exception_ptr depth;
+        T                  evaluation;
+        try {
+            evaluation = EvalImp(indexed, index, evaluator);
+        } catch (const DepthExceeded&) {
+            depth = std::current_exception();
+        }
+        if (depth) evaluation = Filled(index, arguments, call, stack, evaluator, depth);
         if(memoisable) {
             stack.Memoise(key, evaluation);
         }
@@ -164,20 +229,56 @@ public:
     }
 
 private:
+    // A recurrence nests one reference per term it reaches back, so a term far
+    // from its base runs out of depth. Filled from the base up instead, each
+    // term finds the one before it remembered. Only what failed comes here, so
+    // what answered before answers as it did; and a fill that fails -- a term
+    // no evaluation of this one would have asked for -- reports the depth.
+    T Filled(int index, const typename ParametersDefinition<T>::Arguments& arguments,
+             const ParametersCall<T>& call, ReferenceStack<T>& stack,
+             EvaluationVisitor<T>& evaluator, const std::exception_ptr& depth) const {
+        const Clause<T>* lowest = EndBase(true);
+        if (!lowest) {
+            stack.FillFailed();
+            std::rethrow_exception(depth);
+        }
+        const typename ReferenceStack<T>::Filling filling(stack);
+        try {
+            for (int k = lowest->parameters.index() + 1; k < index; ++k)
+                (void)Term(k, arguments, call, stack, true);
+        } catch (const std::runtime_error&) {
+            stack.FillFailed();
+            std::rethrow_exception(depth);
+        }
+        return EvalImp(true, index, evaluator);
+    }
+
+    // One term, evaluated as indexing would evaluate it: in a frame of its own,
+    // and remembered where the definition's answers can be.
+    T Term(int k, const typename ParametersDefinition<T>::Arguments& arguments,
+           const ParametersCall<T>& call, ReferenceStack<T>& stack, bool memoisable) const {
+        const MemoKey key = memoisable ? Key(true, k, arguments) : MemoKey();
+        if (memoisable)
+            if (const T* memoised = stack.Memoised(key)) return *memoised;
+        typename ReferenceStack<T>::Frame frame(stack);
+        ParametersDefinition<T>::Bind(arguments, stack);
+        EvaluationVisitor<T> evaluator(stack);
+        CallParameters().BindDefaults(call, evaluator);
+        const T evaluation = EvalImp(true, k, evaluator);
+        if (memoisable) stack.Memoise(key, evaluation);
+        return evaluation;
+    }
+
     // The values as each type encodes them, not their printed form, which
     // rounds and would make two different arguments one key.
-    std::string MemoKey(bool indexed, int index,
-                        const typename ParametersDefinition<T>::Arguments& arguments) const {
-        std::string key = reference_name_;
-        if(indexed) {
-            key += '_';
-            key += std::to_string(index);
-        }
+    MemoKey Key(bool indexed, int index,
+                const typename ParametersDefinition<T>::Arguments& arguments) const {
+        MemoKey key{this, indexed, indexed ? index : 0, std::string()};
         for (const auto& argument : arguments) {
-            key += '\0';
-            key += argument.first;
-            key += '=';
-            numeric_interface<T>::key(argument.second, key);
+            key.arguments += '\0';
+            key.arguments += argument.first;
+            key.arguments += '=';
+            numeric_interface<T>::key(argument.second, key.arguments);
         }
         return key;
     }
@@ -191,12 +292,19 @@ private:
 
     // The three unguarded shapes. A guarded clause has no shape: it is never
     // replaced and never stands in for the definition.
-    static bool IsPlain(const Clause<T>& c)
-        {return !c.parameters.guarded() && !c.parameters.indexed();}
+    static bool IsPlain(const Clause<T>& c) {
+        return !c.parameters.guarded() && !c.parameters.indexed() && !c.parameters.cells();
+    }
     static bool IsBase(const Clause<T>& c)
         {return !c.parameters.guarded() && c.parameters.indexed() && !c.parameters.general();}
     static bool IsGeneral(const Clause<T>& c)
         {return !c.parameters.guarded() && c.parameters.general();}
+    static bool IsAllCells(const Clause<T>& c) {
+        return !c.parameters.guarded() && c.parameters.cells() && !c.parameters.row_name().empty();
+    }
+    static bool IsOneCell(const Clause<T>& c) {
+        return c.parameters.cells() && c.parameters.row_name().empty();
+    }
 
     template <typename Predicate>
     const Clause<T>* FirstThat(Predicate fits) const {
@@ -211,6 +319,12 @@ private:
     }
     bool Guarded() const {
         return FirstThat([](const Clause<T>& c) {return c.parameters.guarded();}) != nullptr;
+    }
+    bool Sequence() const {
+        return FirstThat([](const Clause<T>& c) { return c.parameters.indexed(); }) != nullptr;
+    }
+    bool Cells() const {
+        return FirstThat([](const Clause<T>& c) { return c.parameters.cells(); }) != nullptr;
     }
 
     // How far down the general clause reaches, and which term a limit starts
@@ -264,6 +378,12 @@ private:
     }
 
     T EvalImp(bool indexed, int index, EvaluationVisitor<T>& evaluator) const {
+        if (Cells()) {
+            if (indexed) {
+                throw std::runtime_error(reference_name_ + " is not a sequence");
+            }
+            return EvaluateCells(evaluator);
+        }
         // Clauses are tried in the order they were written, and the clause not
         // chosen is not evaluated -- which is what index dispatch has always
         // done. Order is the writer's to choose because neither precedence
@@ -321,6 +441,90 @@ private:
                                     : ""));
     }
 
+    // A matrix defined by its cells (README.md section 2). Its size is what its
+    // clauses for all cells bound it to, or the matrix written whole, and they
+    // agree on it; the matrix written whole gives every cell no clause does.
+    T EvaluateCells(EvaluationVisitor<T>& evaluator) const {
+        std::optional<Extent> extent;
+        std::optional<T>      whole;
+        if (const Clause<T>* plain = Plain()) {
+            whole  = plain->expression->accept(evaluator);
+            extent = whole->Size();
+        }
+        for (const Clause<T>& clause : clauses_) {
+            const ParametersDefinition<T>& p = clause.parameters;
+            if (!p.cells() || p.row_name().empty()) continue;
+            const Extent size{Size(p.rows()->accept(evaluator)), Size(p.cols()->accept(evaluator))};
+            if (extent && *extent != size) {
+                throw std::runtime_error("the clauses of " + reference_name_ +
+                                         " give it different sizes");
+            }
+            extent = size;
+        }
+        if (!extent) {
+            throw std::runtime_error(reference_name_ + " has no size; write it as " +
+                                     reference_name_ + "[j<=rows, k<=cols]");
+        }
+        T matrix = whole ? *whole : T(*extent);
+        // A clause for one cell can name a cell outside the size, which says so
+        // as reading it would.
+        for (const Clause<T>& clause : clauses_) {
+            if (IsOneCell(clause)) (void)matrix(clause.parameters.row(), clause.parameters.col());
+        }
+        for (size_t row = 1; row <= extent->rows; ++row) {
+            for (size_t col = 1; col <= extent->cols; ++col) {
+                const std::optional<T> cell =
+                    Cell(static_cast<int>(row), static_cast<int>(col), evaluator);
+                if (!cell) continue;
+                if (cell->Size() != Extent{1, 1}) {
+                    throw std::runtime_error("a cell of " + reference_name_ +
+                                             " must be a single value, not a " +
+                                             cell->Size().toString() + " matrix");
+                }
+                matrix(row, col) = (*cell)(1, 1);
+            }
+        }
+        return matrix;
+    }
+
+    static size_t Size(const T& value) {
+        const int size = AsIndex<T>(value);
+        if (size < 1) {
+            throw std::runtime_error("a size must be at least 1, not " + std::to_string(size));
+        }
+        return static_cast<size_t>(size);
+    }
+
+    // A cell's own clause if it has one, as a base clause beats a sequence's
+    // general clause; else the first clause for all cells that holds, guarded
+    // ones in the order written and the unguarded one last; else none, and the
+    // cell is the matrix written whole's, or 0 without one, as a short row of a
+    // literal is padded. The names are bound on
+    // trial, so that one clause's names cannot shadow a global in the next.
+    std::optional<T> Cell(int row, int col, EvaluationVisitor<T>& evaluator) const {
+        ReferenceStack<T>& stack = evaluator.stack();
+        for (const Clause<T>& clause : clauses_) {
+            const ParametersDefinition<T>& p = clause.parameters;
+            if (!IsOneCell(clause) || p.row() != row || p.col() != col) continue;
+            if (p.guarded() && !numeric_interface<T>::truth(p.guard()->accept(evaluator))) continue;
+            return clause.expression->accept(evaluator);
+        }
+        for (const bool guarded : {true, false}) {
+            for (const Clause<T>& clause : clauses_) {
+                const ParametersDefinition<T>& p = clause.parameters;
+                if (!p.cells() || p.row_name().empty() || p.guarded() != guarded) continue;
+                typename ReferenceStack<T>::Trial row_name(stack, p.row_name());
+                typename ReferenceStack<T>::Trial col_name(stack, p.col_name());
+                SetIndex(p.row_name(), row, stack);
+                SetIndex(p.col_name(), col, stack);
+                if (p.guarded() && !numeric_interface<T>::truth(p.guard()->accept(evaluator)))
+                    continue;
+                return clause.expression->accept(evaluator);
+            }
+        }
+        return std::nullopt;
+    }
+
     T EvaluateGeneralClause(const Clause<T>& general, int index,
                             EvaluationVisitor<T>& evaluator) const {
         SetIndex(general.parameters.index_name(), index, evaluator.stack());
@@ -329,8 +533,13 @@ private:
 
     // Every term goes through EvalImp, so the terms a limit walks are the
     // terms an index gives. Evaluating the general clause directly made them
-    // two different sequences as soon as a guard existed (C54).
-    T Converge(EvaluationVisitor<T>& evaluator) const {
+    // two different sequences as soon as a guard existed (C54), and so did
+    // one frame for every term, where a local outlived its term (C66).
+    T Converge(const typename ParametersDefinition<T>::Arguments& arguments,
+               const ParametersCall<T>& call, ReferenceStack<T>& stack, bool global) const {
+        const auto evaluate = [&](long long k) {
+            return Term(static_cast<int>(k), arguments, call, stack, global);
+        };
         long long index = 0;
         Convergence<T> convergence(reference_name_);
         // With no base clause there is no term to compare the first one
@@ -338,12 +547,12 @@ private:
         // sequence starting near zero had converged to it.
         if (const Clause<T>* highest = EndBase(false)) {
             index = highest->parameters.index();
-            (void)convergence.Next(EvalImp(true, static_cast<int>(index), evaluator));
+            (void)convergence.Next(evaluate(index));
         }
 
         T evaluation;
         for (size_t term = 0; term < Convergence<T>::max_terms; ++term) {
-            evaluation = EvalImp(true, static_cast<int>(++index), evaluator);
+            evaluation = evaluate(++index);
             if (convergence.Next(evaluation)) {
                 return Convergence<T>::Limit(evaluation);
             }

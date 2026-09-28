@@ -96,6 +96,185 @@ f(x)=[x, x^2]
 >> (a*a)[1,1]
 7
 
+# A quote transposes: the rows become the columns. It binds to what it follows
+# before any operator does, as Julia's does, so 2*a' is 2*(a') and a^2' is
+# a^(2'), which is a^2 (MODERNIZATION.md, phase 14).
+>> a'
+[1, 3;
+ 2, 4]
+
+>> [1 2 3]'
+[1;
+ 2;
+ 3]
+
+>> 2*a'
+[2, 6;
+ 4, 8]
+
+>> a'*[1; 1]
+[4;
+ 6]
+
+>> (a*a)'
+[ 7, 15;
+ 10, 22]
+
+>> a^2'
+[ 7, 10;
+ 15, 22]
+
+>> a''
+[1, 2;
+ 3, 4]
+
+>> a[1,2]'
+2
+
+>> [a' a']
+[1, 3, 1, 3;
+ 2, 4, 2, 4]
+
+# A subscript belongs to the name, as cell brackets do, so a quote after a
+# term transposes the term, not its index.
+>> r_0 = [1 2]
+r_0 = [1 2]
+
+>> r_n = r_(n-1)'
+r_n = r_(n-1)'
+
+>> r_1
+[1;
+ 2]
+
+>> r_2
+[1, 2]
+
+# So do cell brackets, whatever the index is written with.
+>> q_n = r_n[1,1]
+q_n = r_n[1,1]
+
+>> q_1
+1
+
+# A single value is its own transpose.
+>> 5'
+5
+
+# It does not conjugate: MATLAB's and Julia's quote is the conjugate
+# transpose, which is the same only for real matrices.
+>> [1 i]'
+[1;
+ i]
+
+# A matrix defined by its cells: the brackets name the row and the column and
+# bound them, which is the size, and the right-hand side is any cell. The names
+# here are j and k because i is the imaginary unit (MODERNIZATION.md, phase 14).
+>> I[j<=2, k<=2] = j == k
+I[j<=2, k<=2] = j == k
+
+>> I
+[1, 0;
+ 0, 1]
+
+>> I[3,1]
+error: row 3, column 1 is outside a 2x2 matrix
+
+# The guard says which cells, the brackets how many. A cell no clause gives is
+# 0, as a short row of a literal is padded.
+>> U[j<=3, k<=3] | j <= k = 1
+U[j<=3, k<=3] | j <= k = 1
+
+>> U
+[1, 1, 1;
+ 0, 1, 1;
+ 0, 0, 1]
+
+# A size can come from a parameter.
+>> H(n)[j<=n, k<=n] = 1/(j+k-1)
+H(n)[j<=n, k<=n] = 1/(j+k-1)
+
+>> frac H(3)
+[  1, 1/2, 1/3;
+ 1/2, 1/3, 1/4;
+ 1/3, 1/4, 1/5]
+
+# Numbers where the names were: one cell, which beats the general clause, as a
+# base clause beats a sequence's, whichever was written first.
+>> J[1,2] = 5
+J[1,2] = 5
+
+>> J
+error: J has no size; write it as J[j<=rows, k<=cols]
+
+>> J[j<=2, k<=2] = j == k
+J[j<=2, k<=2] = j == k
+
+>> J
+[1, 5;
+ 0, 1]
+
+# A size is written, the clauses of one matrix agree on it, and a cell is a
+# single value.
+>> M[r,c] = r + c
+error: M has no size; write it as M[r<=rows, c<=cols]
+
+>> V[j<=2, k<=2] | j == k = 1
+V[j<=2, k<=2] | j == k = 1
+
+>> V[j<=3, k<=3] = 2
+V[j<=3, k<=3] = 2
+
+>> V
+error: the clauses of V give it different sizes
+
+>> W[j<=2, k<=2] = [j k]
+W[j<=2, k<=2] = [j k]
+
+>> W
+error: a cell of W must be a single value, not a 1x2 matrix
+
+# A clause for one cell overrides that cell of a matrix written whole and leaves
+# the rest, as a base clause overrides a sequence's general one at one index.
+# The whole matrix is the size, and every cell no other clause gives.
+>> T = [1 2; 3 4]
+T = [1 2; 3 4]
+
+>> T[1,1] = 9
+T[1,1] = 9
+
+>> T
+[9, 2;
+ 3, 4]
+
+# So does a clause for all cells, where its guard holds.
+>> T[j<=2, k<=2] | j < k = 0
+T[j<=2, k<=2] | j < k = 0
+
+>> T
+[9, 0;
+ 3, 4]
+
+>> T[j<=3, k<=3] | j == k = 7
+T[j<=3, k<=3] | j == k = 7
+
+>> T
+error: the clauses of T give it different sizes
+
+# Writing the whole matrix again starts it over, as it does a sequence.
+>> T = [1 2; 3 4]
+T = [1 2; 3 4]
+
+>> T
+[1, 2;
+ 3, 4]
+
+>> T[3,1] = 5
+T[3,1] = 5
+
+>> T
+error: row 3, column 1 is outside a 2x2 matrix
+
 # Inside one they index a name and nothing else, because there a space
 # between two blocks already means something.
 >> [[1 2] [3 4]]

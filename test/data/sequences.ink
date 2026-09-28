@@ -192,8 +192,9 @@ r_n=q_n-(q_(n+1)-q_n)^2/(q_(n+2)-2*q_(n+1)+q_n)
 >> r_20
 ~0.693134637
 
-# Recursion is bounded: past the budget the interpreter says so rather than
-# dying (MODERNIZATION.md, C1).
+# A term far from the base is filled from the base up, each finding the one
+# before it remembered, so a recurrence is not limited by how deep references
+# nest. This one failed at 256 deep (MODERNIZATION.md, phase 14).
 >> g_0=1
 g_0=1
 
@@ -204,6 +205,37 @@ g_n=g_(n-1)+1
 11
 
 >> g_500
+501
+
+>> g_5000
+5001
+
+# Sequences that reach back to each other fill alike.
+>> ma_0=0
+ma_0=0
+
+>> mb_0=0
+mb_0=0
+
+>> ma_n=mb_(n-1)+1
+ma_n=mb_(n-1)+1
+
+>> mb_n=ma_(n-1)+1
+mb_n=ma_(n-1)+1
+
+>> ma_5000
+5000
+
+# Recursion is still bounded: one that reaches up, away from its base, never
+# arrives, and past the budget the interpreter says so rather than dying
+# (MODERNIZATION.md, C1).
+>> up_0=0
+up_0=0
+
+>> up_n=up_(n+1)
+up_n=up_(n+1)
+
+>> up_3
 error: evaluation nests more than 256 references deep
 
 # A base case at a negative index keeps its place in the ordering. These

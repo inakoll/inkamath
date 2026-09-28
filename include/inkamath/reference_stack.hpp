@@ -46,7 +46,11 @@ public:
     static constexpr size_t max_memoised = 100000;
 
     // Call once per top-level evaluation; the stack outlives them all.
-    void BeginEvaluation() {depth_ = 0; steps_ = 0;}
+    void BeginEvaluation() {
+        depth_       = 0;
+        steps_       = 0;
+        fill_failed_ = false;
+    }
 
     ReferenceStack() {
         // Every digit a double holds: the 2014 literals stopped at fourteen,
@@ -60,7 +64,7 @@ public:
     // cache. A definition made while a frame is on the stack is a parameter
     // or an index, which is part of the key and cannot invalidate anything.
     void Set(const std::string& ai_reference_name, const ParametersDefinition<T>& ai_parameters, PExpression<T>  ai_expression, const std::string& written = std::string()) {
-        if(frames_.empty()) {
+        if (open_ == 0) {
             memoised_.clear();
         }
         definition_type& slot = DefinitionSlot(ai_reference_name);
@@ -109,8 +113,28 @@ public:
         return definition->Eval(ai_parameters, *this, true);
     }
 
+    // Filling a recurrence needs room to nest a few references per term, and
+    // a fill never starts another: it would redo the same terms. One that
+    // failed would fail again at every level the error passes on its way out.
+    [[nodiscard]] bool CanFill() const {
+        return !filling_ && !fill_failed_ && depth_ <= max_depth / 2;
+    }
+    void FillFailed() { fill_failed_ = true; }
+
+    struct Filling {
+        explicit Filling(ReferenceStack<T>& stack) : stack_(stack) { stack_.filling_ = true; }
+        ~Filling() { stack_.filling_ = false; }
+        Filling(const Filling&)            = delete;
+        Filling& operator=(const Filling&) = delete;
+
+    private:
+        ReferenceStack<T>& stack_;
+    };
+
+    [[nodiscard]] const scope_type& Globals() const { return globals_; }
+
     // Whether a call's frame is open to bind in.
-    [[nodiscard]] bool Framed() const { return !frames_.empty(); }
+    [[nodiscard]] bool Framed() const { return open_ != 0; }
 
     // One step of an evaluation that reads no name, and so never passes
     // through Eval: a sum of a constant still has to end.
@@ -120,12 +144,12 @@ public:
     // the index, the argument values and the globals; the first three are the
     // key and the fourth is handled by clearing. What it is worth: the
     // arithmetic-geometric mean is 2^(n+1)-1 calls for 2n+1 answers.
-    const T* Memoised(const std::string& key) const {
+    const T* Memoised(const MemoKey& key) const {
         auto found = memoised_.find(key);
         return found == memoised_.end() ? nullptr : &found->second;
     }
 
-    void Memoise(const std::string& key, const T& evaluation) {
+    void Memoise(const MemoKey& key, const T& evaluation) {
         if(memoised_.size() >= max_memoised) {
             memoised_.clear();
         }
@@ -163,8 +187,13 @@ public:
     // The scope of one call's parameters.
     struct Frame {
     public:
-        explicit Frame(ReferenceStack<T>& stack) : stack_(stack) {stack_.frames_.emplace_back();}
-        ~Frame() {stack_.frames_.pop_back();}
+        // A closed frame keeps its storage for the next call: allocating it
+        // per call was most of what a call allocated.
+        explicit Frame(ReferenceStack<T>& stack) : stack_(stack) {
+            if (stack_.open_ == stack_.frames_.size()) stack_.frames_.emplace_back();
+            ++stack_.open_;
+        }
+        ~Frame() { stack_.frames_[--stack_.open_].clear(); }
         Frame(const Frame&) = delete;
         Frame& operator=(const Frame&) = delete;
     private:
@@ -191,8 +220,8 @@ private:
     }
 
     const Binding* FindBinding(const std::string& name) const {
-        if(frames_.empty()) return nullptr;
-        for(const Binding& binding : frames_.back()) {
+        if (open_ == 0) return nullptr;
+        for (const Binding& binding : frames_[open_ - 1]) {
             if(binding.name == name) return &binding;
         }
         return nullptr;
@@ -202,22 +231,23 @@ private:
     // binds anything. _GLIBCXX_ASSERTIONS in the sanitizer build is what says
     // so if that ever stops being true (MODERNIZATION.md, C15).
     Binding& FrameSlot(const std::string& name) {
-        for(Binding& binding : frames_.back()) {
+        frame_type& frame = frames_[open_ - 1];
+        for (Binding& binding : frame) {
             if(binding.name == name) return binding;
         }
-        frames_.back().push_back(Binding{name, T(), definition_type()});
-        return frames_.back().back();
+        frame.push_back(Binding{name, T(), definition_type()});
+        return frame.back();
     }
 
     void DropBinding(const std::string& name) {
-        frame_type& frame = frames_.back();
+        frame_type& frame = frames_[open_ - 1];
         for(size_t i = 0; i < frame.size(); ++i) {
             if(frame[i].name == name) {frame.erase(frame.begin() + i); return;}
         }
     }
 
     definition_type& DefinitionSlot(const std::string& name) {
-        return frames_.empty() ? globals_[name] : FrameSlot(name).definition;
+        return open_ == 0 ? globals_[name] : FrameSlot(name).definition;
     }
 
     definition_type FindGlobal(const std::string& name) const {
@@ -230,8 +260,8 @@ private:
     struct Budget {
         explicit Budget(ReferenceStack& stack) : stack_(stack) {
             if(stack_.depth_ >= max_depth) {
-                throw std::runtime_error("evaluation nests more than "
-                                         + std::to_string(max_depth) + " references deep");
+                throw DepthExceeded("evaluation nests more than " + std::to_string(max_depth) +
+                                    " references deep");
             }
             if(stack_.steps_ >= max_steps) {
                 throw std::runtime_error("evaluation gave up after "
@@ -250,9 +280,12 @@ private:
 
     size_t depth_ = 0;
     size_t steps_ = 0;
-    std::unordered_map<std::string, T> memoised_;
+    bool                                     filling_     = false;
+    bool                                     fill_failed_ = false;
+    std::unordered_map<MemoKey, T, MemoHash> memoised_;
     scope_type globals_;
-    std::vector<frame_type> frames_;
+    std::vector<frame_type>                  frames_;  // the open ones first, then spares
+    size_t                                   open_ = 0;
 };
 
 #endif // EXPRESSION_STACK_HPP

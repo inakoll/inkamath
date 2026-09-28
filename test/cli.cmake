@@ -161,6 +161,7 @@ check(version)
 set(args --help)
 set(stdout [=[
 Usage: inkamath [options] [file...]
+       inkamath --compile file -o header.h
 
 Runs the files in order and exits; with no file, reads standard input.
 At a terminal the prompt edits the line and keeps its history.
@@ -168,6 +169,8 @@ At a terminal the prompt edits the line and keeps its history.
   -i          read standard input after the files
   --echo      print each input before its answer, as a transcript
   --version   print the version and exit
+  --compile   write the sequences the file defines as a C header over
+              doubles, named after the header: a struct, an init and a step
   --help      print this and exit
 
 A file whose first line that is not blank or a comment starts with '>>'
@@ -188,3 +191,20 @@ set(stdout "")
 set(stderr "inkamath: cannot open 'missing.txt'\n")
 set(exit 2)
 check(missing_file)
+
+# What the compiler cannot express it refuses by name, and writes nothing
+# (MODERNIZATION.md, phase 14, step 2).
+file(WRITE "${OUT}/model.ink" "a_0 = 1\na_n = a_(n-1) + !n\n")
+file(REMOVE "${OUT}/model.h")
+set(args --compile model.ink -o model.h)
+set(stderr "inkamath: cannot compile a: a factorial\n")
+set(exit 1)
+check(compile_refused)
+if(EXISTS "${OUT}/model.h")
+    message(SEND_ERROR "compile_refused: model.h was written")
+endif()
+
+set(args --compile model.ink)
+set(stderr "inkamath: --compile takes one file and -o header.h\nTry 'inkamath --help'.\n")
+set(exit 2)
+check(compile_usage)

@@ -4,6 +4,7 @@
 
 #include <cstdint>
 #include <string>
+#include <utility>
 
 // Division is the part worth distrusting: Knuth's algorithm D has a branch
 // that runs about once in 2^32 quotient digits, so the operands below are
@@ -86,6 +87,33 @@ TEST_CASE("gcds") {
     const Natural q = N("618970019642690137449562111");              // 2^89 - 1, prime
     CHECK(Gcd(p * q, q * q) == q);
     CHECK(Gcd(p, q).Decimal() == "1");
+}
+
+// Lehmer's gcd takes its steps from the leading bits; Euclid's own steps are
+// the reference it must agree with.
+TEST_CASE("gcds agree with Euclid's") {
+    const auto euclid = [](Natural a, Natural b) {
+        while (!b.zero()) a = std::exchange(b, a % b);
+        return a;
+    };
+    Random random;
+    for (int trial = 0; trial < 5000; ++trial) {
+        const Natural common = random.natural(1 + random.next() % 4);
+        const Natural a      = random.natural(random.next() % 40) * common;
+        const Natural b      = random.natural(random.next() % 40) * common;
+        REQUIRE(Gcd(a, b) == euclid(a, b));
+    }
+    // Consecutive Fibonacci numbers make every quotient 1, the longest run.
+    Natural f = Natural(1), g = Natural(1);
+    for (int n = 0; n < 3000; ++n) f = std::exchange(g, f + g);
+    CHECK(Gcd(f, g) == Natural(1));
+    CHECK(Gcd(g, f * g) == g);
+    // Powers of ten are the denominators of an exact decimal recurrence.
+    Natural ten = Natural(1);
+    for (int n = 0; n < 1000; ++n) ten = ten * Natural(10);
+    const Natural odd = ten / Natural(4) + Natural(1);
+    CHECK(Gcd(ten, odd) == euclid(ten, odd));
+    CHECK(Gcd(ten * Natural(3), ten / Natural(8)) == ten / Natural(8));
 }
 
 TEST_SUITE_END();

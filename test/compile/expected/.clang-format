@@ -1,0 +1,2 @@
+# The expected output of the compiler, byte for byte: never reformatted.
+DisableFormat: true

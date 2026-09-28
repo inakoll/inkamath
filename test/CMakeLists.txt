@@ -35,3 +35,27 @@ add_custom_target(record_goldens
             $<TARGET_FILE:inkamath_tests> --test-suite=interpreter
     DEPENDS inkamath_tests
     VERBATIM)
+
+# The compiler's C target (MODERNIZATION.md, phase 14, step 2). What it emits
+# for each model is the header in compile/expected, and the header it emits,
+# built as C, holds the model to exact values its harness knows. The expected
+# headers are kept apart, where a harness's #include cannot find one instead.
+enable_language(C)
+foreach(model IN ITEMS pid kalman)
+    set(header ${CMAKE_CURRENT_BINARY_DIR}/compile/${model}.h)
+    add_custom_command(OUTPUT ${header}
+        COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/compile
+        COMMAND inkamath_cli --compile ${CMAKE_CURRENT_SOURCE_DIR}/compile/${model}.ink -o ${header}
+        DEPENDS inkamath_cli compile/${model}.ink
+        VERBATIM)
+    add_executable(compile_${model} compile/${model}_test.c ${header})
+    target_include_directories(compile_${model} PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/compile)
+    target_link_libraries(compile_${model} PRIVATE inkamath_warnings
+                          $<$<NOT:$<C_COMPILER_ID:MSVC>>:m>)
+    set_target_properties(compile_${model} PROPERTIES
+                          C_STANDARD 11 C_STANDARD_REQUIRED ON C_EXTENSIONS OFF)
+    add_test(NAME compile_${model} COMMAND compile_${model})
+    add_test(NAME compile_${model}_header
+             COMMAND ${CMAKE_COMMAND} -E compare_files --ignore-eol
+                     ${CMAKE_CURRENT_SOURCE_DIR}/compile/expected/${model}.h ${header})
+endforeach()

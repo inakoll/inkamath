@@ -84,6 +84,9 @@ public:
 
     void ResetInterpreter(void);
 
+    // What the session has defined, for the compiler to read.
+    [[nodiscard]] const ReferenceStack<U>& Definitions() const { return stack_; }
+
 private:
     void Lexer(const std::string& s);
     void Number_Lexer(const std::string& s, size_t& i);
@@ -100,8 +103,9 @@ private:
     PExpression<U> ParseMultExpr(PExpression<U> lead = PExpression<U>());
     PExpression<U> ParsePowExpr(PExpression<U> lead = PExpression<U>());
     PExpression<U> ParseMatrix();
-    PExpression<U> ParseSimpleExpr();
+    PExpression<U> ParseSimpleExpr(bool postfix = true);
     PExpression<U> ParseCell(PExpression<U> matrix, bool named);
+    PExpression<U> ParseQuotes(PExpression<U> e);
 
     // Inside a matrix literal, and inside an argument list, a space between
     // two expressions separates them. Everywhere else it means nothing, which
@@ -288,6 +292,9 @@ void Interpreter<T,U>::Lexer(const std::string& s)
         case '~':
             m_tokens.push_back(Token<T>(Approx, std::string(1, s[i])));
             break;
+        case '\'':
+            m_tokens.push_back(Token<T>(Quote, std::string(1, s[i])));
+            break;
         case ' ':
         // A tab is what a pasted line is indented with, and a '\r' is what a
         // line written on Windows ends with. Neither was typed to be read.
@@ -431,6 +438,10 @@ PExpression<U> Interpreter<T,U>::ParseEqualExpr()
         ref = PExpression<U>(new RefExpression<U>(name));
         params = ParseParameters();
         sub = ParseSubExpr();
+        // On the left of a definition the brackets define cells, 'M[j<=2,
+        // k<=2]' or 'M[1,2]'; anywhere else they read one.
+        const PExpression<U> cell  = ParseCell(ref, true);
+        const auto*          place = dynamic_cast<CellExpression<U>*>(cell.get());
         PExpression<U> guard;
         if (!AtEnd() && Peek().type == Guard)
         {
@@ -451,12 +462,13 @@ PExpression<U> Interpreter<T,U>::ParseEqualExpr()
             }
             ++m_i;
             expr = Parse();
-            if(params || sub || guard) {
+            if (params || sub || guard || place) {
                 e.reset(new EqualExpression<U>(
-                    PExpression<U>(new FuncExpression<U>(ref, params, sub, false, guard, signature)),
+                    PExpression<U>(new FuncExpression<U>(ref, params, sub, false, guard, signature,
+                                                         place ? place->Row() : PExpression<U>(),
+                                                         place ? place->Col() : PExpression<U>())),
                     expr));
-            }
-            else {
+            } else {
                 e.reset(new EqualExpression<U>(ref, expr));
             }
         }
@@ -471,8 +483,11 @@ PExpression<U> Interpreter<T,U>::ParseEqualExpr()
                 ref.reset(new FuncExpression<U>(ref, params, sub));
             }
             // A name at the head of a line is parsed here, not in
-            // ParseSimpleExpr, so the cell brackets are read here too.
-            e = ParseCompareExpr(ParseCell(ref, true));
+            // ParseSimpleExpr, so the cell brackets and quotes are read here too.
+            if (place) {
+                ref = std::make_shared<CellExpression<U>>(ref, place->Row(), place->Col());
+            }
+            e = ParseCompareExpr(ParseQuotes(ref));
         }
     } else {
         e = ParseCompareExpr();
@@ -504,6 +519,15 @@ PExpression<U> Interpreter<T,U>::ParseCompareExpr(PExpression<U> lead)
     return e;
 }
 
+// A sign or a tilde on a literal is applied here, once, rather than at every
+// evaluation: the 1 of `n-1` in a recurrence would be negated at each term.
+template <typename Node, typename U, typename Apply>
+PExpression<U> Unary(PExpression<U> operand, Apply apply) {
+    if (const auto* literal = dynamic_cast<const ValExpression<U>*>(operand.get()))
+        return std::make_shared<ValExpression<U>>(apply(literal->value));
+    return std::make_shared<Node>(std::move(operand));
+}
+
 template <Parsable T, Numeric U>
 PExpression<U> Interpreter<T,U>::ParseAddExpr(PExpression<U> lead)
 {
@@ -516,8 +540,8 @@ PExpression<U> Interpreter<T,U>::ParseAddExpr(PExpression<U> lead)
         }
         else
         {
-            PExpression<U> tmp;
-            tmp.reset(new NegExpression<U>(ParseMultExpr()));
+            PExpression<U> tmp =
+                Unary<NegExpression<U>>(ParseMultExpr(), [](const U& value) { return -value; });
             e.reset(new AddExpression<U>(e,tmp));
         }
     }
@@ -612,8 +636,7 @@ std::vector<PExpression<T>>
 }
 
 template <Parsable T, Numeric U>
-PExpression<U>  Interpreter<T,U>::ParseSimpleExpr()
-{
+PExpression<U> Interpreter<T, U>::ParseSimpleExpr(bool postfix) {
     PExpression<U> e,ref,param,sub;
     std::string name;
     if (!AtEnd())
@@ -646,8 +669,8 @@ PExpression<U>  Interpreter<T,U>::ParseSimpleExpr()
             else {
                 e = ref;
             }
-            e = ParseCell(e, true);
-			break;
+            if (postfix) e = ParseCell(e, true);
+            break;
 
         case Add:
             // Unary plus is the identity, and binds as unary minus does.
@@ -660,8 +683,8 @@ PExpression<U>  Interpreter<T,U>::ParseSimpleExpr()
             // '6/-2/3' is '(6/-2)/3' and '-2^2' is still -4. Binding the whole
             // multiplicative chain made the first of those -9 (C48).
             ++m_i;
-            e.reset(new NegExpression<U>(ParsePowExpr()));
-			break;
+            e = Unary<NegExpression<U>>(ParsePowExpr(), [](const U& value) { return -value; });
+            break;
 
         case Fact:
             ++m_i;
@@ -670,7 +693,9 @@ PExpression<U>  Interpreter<T,U>::ParseSimpleExpr()
 
         case Approx:
             ++m_i;
-            e = std::make_shared<InexactExpression<U>>(ParsePowExpr());
+            e = Unary<InexactExpression<U>>(ParsePowExpr(), [](const U& value) {
+                return numeric_interface<U>::inexact(value);
+            });
             break;
 
         case LPar:
@@ -684,8 +709,8 @@ PExpression<U>  Interpreter<T,U>::ParseSimpleExpr()
             {
                 Fail("missing ')' after '", m_tokens[--m_i].text, "'");
             }
-            e = ParseCell(e, false);
-			break;
+            if (postfix) e = ParseCell(e, false);
+            break;
 
         case LBra:
             ++m_i;
@@ -698,18 +723,30 @@ PExpression<U>  Interpreter<T,U>::ParseSimpleExpr()
             {
                 Fail("missing ']' after '", m_tokens[--m_i].text, "'");
             }
-            e = ParseCell(e, false);
-			break;
+            if (postfix) e = ParseCell(e, false);
+            break;
 
         default:
         case RPar:
             Fail("unexpected '", Peek().text, "'");
             break;
         }
+        if (postfix) e = ParseQuotes(e);
     }
     else if(m_i != 0)
     {
         Fail("unexpected end of input after '", m_tokens[--m_i].text, "'");
+    }
+    return e;
+}
+
+// A quote binds to what it follows before any operator does, as Julia's does:
+// 'a^2'' is 'a^(2')'.
+template <Parsable T, Numeric U>
+PExpression<U> Interpreter<T, U>::ParseQuotes(PExpression<U> e) {
+    while (!AtEnd() && Peek().type == Quote) {
+        ++m_i;
+        e = std::make_shared<TransposeExpression<U>>(e);
     }
     return e;
 }
@@ -863,7 +900,9 @@ PExpression<U> Interpreter<T,U>::ParseSubExpr()
     const size_t m_s = m_i;
     if (!AtEnd() && m_tokens[m_i++].type == Sub)
     {
-        e = ParseSimpleExpr();
+        // A quote or cell brackets after the index are the term's: 'x_(n-1)''
+        // transposes x_(n-1), and 'x_n[1,1]' is its first cell.
+        e = ParseSimpleExpr(false);
     }
     else
     {

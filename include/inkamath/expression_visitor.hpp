@@ -31,6 +31,9 @@ template <typename T>
 class InexactExpression;
 
 template <typename T>
+class TransposeExpression;
+
+template <typename T>
 class MultExpression;
 
 template <typename T>
@@ -76,6 +79,7 @@ public:
     virtual ReturnType visit(AddExpression<T>* expr) = 0;
     virtual ReturnType visit(NegExpression<T>* expr) = 0;
     virtual ReturnType visit(InexactExpression<T>* expr) = 0;
+    virtual ReturnType visit(TransposeExpression<T>* expr) = 0;
     virtual ReturnType visit(MultExpression<T>* expr) = 0;
     virtual ReturnType visit(DivExpression<T>* expr) = 0;
     virtual ReturnType visit(PowExpression<T>* expr) = 0;
@@ -114,6 +118,7 @@ public:
     PExpression<T> visit(AddExpression<T>* expr) override {return visit_other(expr);}
     PExpression<T> visit(NegExpression<T>* expr) override {return visit_other(expr);}
     PExpression<T> visit(InexactExpression<T>* expr) override { return visit_other(expr); }
+    PExpression<T> visit(TransposeExpression<T>* expr) override { return visit_other(expr); }
     PExpression<T> visit(MultExpression<T>* expr) override {return visit_other(expr);}
     PExpression<T> visit(DivExpression<T>* expr) override {return visit_other(expr);}
     PExpression<T> visit(PowExpression<T>* expr) override {return visit_other(expr);}
@@ -230,16 +235,17 @@ public:
     // the top level is a statement and never gets as far as visit().
     void Bind(EqualExpression<T>* expr, const std::string& written = std::string()) {
         // The left-hand side is a bare name, or a call carrying the
-        // parameter list and the index: 'f(x)_n = ...'.
+        // parameter list, the index and the cells: 'f(x)_n = ...'.
         const std::vector<PExpression<T>>& signature = expr->m_e1()->Children();
         if(signature.empty()) {
             this->stack_.Set(expr->Name(), ParametersDefinition<T>(), expr->m_e2(), written);
         }
         else {
-            this->stack_.Set(expr->Name(),
-                             ParametersDefinition<T>(signature[0], signature[1], *this, signature[2],
-                                                     expr->m_e1()->Signature()),
-                             expr->m_e2(), written);
+            this->stack_.Set(
+                expr->Name(),
+                ParametersDefinition<T>(signature[0], signature[1], *this, signature[2],
+                                        expr->m_e1()->Signature(), signature[3], signature[4]),
+                expr->m_e2(), written);
         }
     }
 
@@ -285,6 +291,10 @@ public:
 
     T visit(InexactExpression<T>* expr) override {
         return numeric_interface<T>::inexact(expr->m_e()->accept(*this));
+    }
+
+    T visit(TransposeExpression<T>* expr) override {
+        return numeric_interface<T>::transpose(expr->m_e()->accept(*this));
     }
 
     T visit(MultExpression<T>* expr) override {
@@ -374,12 +384,11 @@ public:
     }
 
     T visit(RefExpression<T>* expr) override {
-        return stack_.Eval(expr->Name(), ParametersCall<T>());
+        static const ParametersCall<T> plain;
+        return stack_.Eval(expr->Name(), plain);
     }
 
-    T visit(FuncExpression<T>* expr) override {
-        return stack_.Eval(expr->Name(), ParametersCall<T>(expr->m_e1(), expr->m_e2(), expr->limit()));
-    }
+    T visit(FuncExpression<T>* expr) override { return stack_.Eval(expr->Name(), expr->Call()); }
 
     // The bounds belong to the scope the series is written in, so they are
     // evaluated before its index is bound: in 'sum_(n=1)^n n' the upper n is

@@ -159,6 +159,17 @@ public:
     T accept(FoldingVisitor<T>& v) override { return v.visit(this); }
 };
 
+// 'm'': the rows as columns.
+template <typename T>
+class TransposeExpression : public UnaryExpression<T> {
+public:
+    explicit TransposeExpression(PExpression<T> e) : UnaryExpression<T>(e) {}
+
+    PExpression<T> accept(TransformationVisitor<T>& v) override { return v.visit(this); }
+
+    T accept(FoldingVisitor<T>& v) override { return v.visit(this); }
+};
+
 template <typename T>
 class MultExpression : public BinaryExpression<T>
 {
@@ -377,18 +388,25 @@ protected:
 };
 
 template <typename T>
+class ParametersCall;
+
+template <typename T>
 class FuncExpression : public Expression<T>
 {
 public:
-    // The third child is the guard of a definition's left-hand side, and is
-    // null everywhere else; keeping it here is what lets ParametersDefinition
-    // read the whole left-hand side from one place.
+    // The third child is the guard of a definition's left-hand side, and the
+    // fourth and fifth the row and column of a clause for cells, 'M[j<=2,
+    // k<=2]'; all three are null everywhere else. Keeping them here is what
+    // lets ParametersDefinition read the whole left-hand side from one place.
     explicit FuncExpression(PExpression<T> ref_expression, PExpression<T> e1, PExpression<T> e2,
                             bool limit = false, PExpression<T> guard = PExpression<T>(),
-                            std::string signature = std::string())
-        : Expression<T>({e1, e2, guard}), m_name(ref_expression->Name()),
-          limit_(limit), signature_(std::move(signature))
-    { }
+                            std::string    signature = std::string(),
+                            PExpression<T> row       = PExpression<T>(),
+                            PExpression<T> col       = PExpression<T>())
+        : Expression<T>({e1, e2, guard, row, col}),
+          m_name(ref_expression->Name()),
+          limit_(limit),
+          signature_(std::move(signature)) {}
 
     // The left-hand side of a definition, as the tokens spell it.
     const std::string& Signature() const override {return signature_;}
@@ -399,6 +417,10 @@ public:
     // 'lim f' asks the reference for the limit of its general clause rather
     // than for one term.
     bool limit() const {return limit_;}
+
+    // Read from the call's syntax, which never changes: once per call site
+    // rather than once per call. Defined with ParametersCall.
+    const ParametersCall<T>& Call() const;
 
     const std::string& Name() const override
     {
@@ -416,6 +438,7 @@ protected:
     std::string m_name;
     bool limit_;
     std::string signature_;
+    mutable std::unique_ptr<const ParametersCall<T>> call_;
 };
 
 #endif

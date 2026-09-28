@@ -1,4 +1,6 @@
 #include <algorithm>
+#include <cctype>
+#include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <sstream>
@@ -6,6 +8,7 @@
 #include <variant>
 #include <vector>
 
+#include "inkamath/compile.hpp"
 #include "inkamath/interpreter.hpp"
 #include "inkamath/number.hpp"
 #include "inkamath/numeric_interface.hpp"
@@ -35,6 +38,7 @@ using Interp  = Interpreter<Number>;
 using Outcome = LineEditor::Outcome;
 
 static const char help[] = R"(Usage: inkamath [options] [file...]
+       inkamath --compile file -o header.h
 
 Runs the files in order and exits; with no file, reads standard input.
 At a terminal the prompt edits the line and keeps its history.
@@ -42,6 +46,8 @@ At a terminal the prompt edits the line and keeps its history.
   -i          read standard input after the files
   --echo      print each input before its answer, as a transcript
   --version   print the version and exit
+  --compile   write the sequences the file defines as a C header over
+              doubles, named after the header: a struct, an init and a step
   --help      print this and exit
 
 A file whose first line that is not blank or a comment starts with '>>'
@@ -97,8 +103,55 @@ static string render(const Interp& interpreter, const Interp::Result& result) {
     return rstrip(out.str());
 }
 
+// MODERNIZATION.md, phase 14, step 2. The file is run as it would be at a
+// prompt, so the definitions compiled are the ones it leaves behind.
+static int compile(const string& source, const string& target) {
+    ifstream in(source);
+    if (!in) {
+        cerr << "inkamath: cannot open '" << source << "'\n";
+        return 2;
+    }
+    const string module = filesystem::path(target).stem().string();
+    if (module.empty() || !isalpha(static_cast<unsigned char>(module[0])) ||
+        !all_of(module.begin(), module.end(),
+                [](char c) { return isalnum(static_cast<unsigned char>(c)) || c == '_'; })) {
+        cerr << "inkamath: '" << module << "' is not a C name, and the header is named after it\n";
+        return 2;
+    }
+    Interp p;
+    string line;
+    for (const Queued& queued : inputs(in)) {
+        if (line.empty() && blank(queued.line)) continue;
+        line += (line.empty() ? "" : " ") + queued.line;
+        if (!queued.whole && unclosed(line)) continue;
+        const Interp::Result result = p.Eval(line);
+        if (const Diagnostic* error = get_if<Diagnostic>(&result)) {
+            cerr << "inkamath: " << source << ": " << line << ": " << error->message << '\n';
+            return 1;
+        }
+        line.clear();
+    }
+    string header;
+    try {
+        header =
+            CompileC::Header(p.Definitions(), module, filesystem::path(source).filename().string());
+    } catch (const Refusal& refusal) {
+        cerr << "inkamath: " << refusal.what() << '\n';
+        return 1;
+    }
+    // Binary, so that the header reads alike from every platform it is made on.
+    ofstream out(target, ios::binary);
+    out << header;
+    if (!out) {
+        cerr << "inkamath: cannot write '" << target << "'\n";
+        return 2;
+    }
+    return 0;
+}
+
 int main(int argc, char* argv[]) {
-    bool           echo = false, then_input = false;
+    bool           echo = false, then_input = false, compiling = false;
+    string         target;
     vector<string> files;
     for (int i = 1; i < argc; ++i) {
         const string arg = argv[i];
@@ -110,7 +163,11 @@ int main(int argc, char* argv[]) {
             cout << "inkamath " INKAMATH_VERSION "\n";
             return 0;
         }
-        if (arg == "--echo") {
+        if (arg == "--compile") {
+            compiling = true;
+        } else if (arg == "-o" && i + 1 < argc) {
+            target = argv[++i];
+        } else if (arg == "--echo") {
             echo = true;
         } else if (arg == "-i") {
             then_input = true;
@@ -120,6 +177,14 @@ int main(int argc, char* argv[]) {
         } else {
             files.push_back(arg);
         }
+    }
+
+    if (compiling) {
+        if (files.size() != 1 || target.empty()) {
+            cerr << "inkamath: --compile takes one file and -o header.h\nTry 'inkamath --help'.\n";
+            return 2;
+        }
+        return compile(files[0], target);
     }
 
     // Every file is read before anything runs, so that a command line which
