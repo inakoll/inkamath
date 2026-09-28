@@ -167,16 +167,16 @@ private:
     // per step instead, into a temporary: the same value, in fewer lines.
     Cell Shared(const Cell& cell) {
         if (cell.atom || !temporaries_) return cell;
-        return Atom(Temporary(cell.text, [&](const std::string& name) {
+        return Atom(Declare(cell.text, [&](const std::string& name) {
             return std::vector<std::string>{"const double " + name + " = " + cell.text + ";"};
         }));
     }
 
     // The same value is the same temporary within one sequence's step.
     template <typename Lines>
-    std::string Temporary(const std::string& value, Lines lines) {
+    std::string Declare(const std::string& value, Lines lines) {
         if (!temporaries_) throw Reason("a matrix inverse outside a sequence");
-        for (const struct Temporary& temporary : *temporaries_)
+        for (const Temporary& temporary : *temporaries_)
             if (temporary.value == value) return temporary.name;
         const std::string name = "t" + std::to_string(temporary_count_++) + "_";
         temporaries_->push_back({name, value, lines(name)});
@@ -497,7 +497,7 @@ private:
             value += "\x1f" + row;
         }
         inverses_.insert(n);
-        const std::string name = Temporary(value, [&](const std::string& t) {
+        const std::string name = Declare(value, [&](const std::string& t) {
             return std::vector<std::string>{
                 "double " + t + Subscript(n, n) + " = {" + rows + "};",
                 module_ + "_inverse" + std::to_string(n) + "_(" + t + ");"};
@@ -913,7 +913,7 @@ private:
     // Those something reads: a cell read out of a product, or a clause that was
     // compiled only to be refused, leaves some that nothing does, and C would
     // say so.
-    static std::string Temporaries(const std::vector<struct Temporary>& declared,
+    static std::string Temporaries(const std::vector<Temporary>& declared,
                                    const std::string& assignments, const std::string& indent) {
         std::string read = assignments, kept;
         for (auto temporary = declared.rbegin(); temporary != declared.rend(); ++temporary) {
@@ -1092,7 +1092,7 @@ private:
     std::set<std::string>            reading_plain_;
     Sequence*   reading_ = nullptr;  // the sequence whose general clause this is
     std::string index_;              // and the name of its index
-    std::vector<struct Temporary>*   temporaries_ = nullptr;  // where this sequence's are declared
+    std::vector<Temporary>*          temporaries_ = nullptr;  // where this sequence's are declared
     std::string                      module_;
     std::set<std::size_t>            inverses_;  // the sizes a helper is needed for
     int                              temporary_count_ = 0;
