@@ -769,6 +769,8 @@ Two smaller rules the prototype needed:
   — `max_memoised`, a hundred thousand — and reaching it drops the whole map.
   Eviction by age would keep more of the cache and needs an ordering to
   maintain; dropping everything costs time and can never cost an answer.
+  That held until phase 14's fills relied on the memo (C69): the older half
+  goes now, which is eviction by age without an ordering.
 - Not a reason to raise `max_depth`. Depth is a recursion the user wrote;
   steps were an accident of how it was evaluated. Removing the accident is
   this phase; the other is a separate argument, with a stack to size first.
@@ -1584,6 +1586,7 @@ closures need one anyway, and can bring it.
 | C66 `[fixed]` | **A limit could disagree with its own terms.** `Converge` evaluated every term in the one frame of the limit's call, so a local bound by one term was still there for the next: with `c = 100`, the terms of `w_n = w_(n-1)/2 + c + 0*(c = 1)` tend to 200 and `lim w` answered 101. Each term is now evaluated as indexing evaluates it, in a frame of its own and through the memo, which also stops each term's call for the one before from computing it a second time. |
 | C67 `[fixed]` | **Cell brackets after a named index went to the index.** A subscript's index was parsed as any simple expression, and a name there takes cell brackets, so `r_n[1,1]` was `r_(n[1,1])` -- the whole term, since the first cell of a single value is itself -- while `r_1[1,1]` was the cell. Found by the compiler, whose Kalman filter read `x_n[1,1]`; the quote had just been through the same fault, `x_(n-1)'` transposing the index. An index no longer takes brackets or a quote after it; those are the term's. |
 | C68 `[fixed]` | **Exactness ran out without a word.** Past a thousand digits a number is approximated, by design, and phase 13 made `~` say only that the digits shown are not the whole value, whatever the kind, leaving `frac` to tell the kinds apart. That leaves nothing to tell a user who does not ask that an answer from exact inputs is now a double: an epidemic model is computed in doubles from its eighth step, and an exact third looks the same as a value whose exactness ran out. An inexact number now carries whether it was approximated past the bound, in the half of its layout an inexact number did not use, so a `Number` is no larger; what is computed from it carries it on, and an answer that has it ends in `# approximated past a thousand digits`, a comment, so that it still reads back as what it says. What was inexact by nature, or made so by `~`, is not marked: it never was exact. A comparison is not either: it is a truth, exactly. `frac` says why it refuses. Specified in `bignum.ink` first; five goldens that crossed the bound moved with it, `!(10^20)`, `!1e400`, `2^2147483648`, `0.5^3000000000` and `(0-2)^(2^70+1)`, each exact until it passed the thousand digits. |
+| C69 `[fixed]` | **A long recurrence failed at 256 deep, which was neither the cause nor true.** Phase 14 fills a sequence from its base up so that each term finds the one before it remembered, and two things undid that past a few hundred thousand terms. The step budget counted the whole fill as one evaluation, so `g_600000` gave up at the millionth step; and a full memo was dropped whole, which phase 9 could call harmless because nothing then relied on it, so `ma_60000`, which reads `mb` as `mb` reads `ma`, lost the other sequence's latest term at the hundred-thousandth entry and nested down again. Either way the fill failed and reported the depth. The memo now keeps two generations of half the size, dropping the older when the newer fills, so the latest terms of every sequence survive at no cost per entry; each filled term has the step budget a line of its own would have, since a fill stands for asking them in order; and a fill goes ten million terms from its base at most, about three seconds, so that a slip such as `g_2000000000` says how far it is rather than hanging the session. A term that reads back further than fifty thousand entries of the memo can still be lost. |
 
 **Measure instructions, not the clock.** One of those changes made the matrix
 workload 20 per cent slower by the clock and not by a single instruction: with
@@ -1790,7 +1793,7 @@ against the exact transcript. Writing the two found four things they need:
   each step, or a value the host assigns.
 - `[done]` **A window on the memo**, in the C target, where each sequence
   keeps its terms only as far back as they are read. The interpreter's memo
-  is still bounded only by its size.
+  is bounded only by its size, and keeps the latest terms (C69).
 - `[done]` **Transpose**, which the Kalman filter spelled out by hand as `Ft`
   and `Ht`: `F'`, as MATLAB and Julia write it, specified in `matrices.ink`
   before it was built. The quote belongs to what it follows, subscript and
@@ -1904,8 +1907,8 @@ GCC's patience, and near 180 for one matrix of doubles in a microcontroller's
 hundred unknowns, and in 2D and 3D the crossover lies beyond what the dense
 path can build. Emitting a constant matrix as an array read in a loop, rather
 than cell by cell, lifts the GCC wall cheaply and leaves n^2 in time and
-memory. The interpreter is not a deployment target, and its memo still breaks
-past 100000 terms, so overtaking means runs at design time.
+memory. The interpreter is not a deployment target, and a fill stops at ten
+million terms (C69), so overtaking means runs at design time.
 
 **Small neural networks and point clouds**, tried the same way. Running a
 trained network is fixed-shape linear algebra, which is what the compiler

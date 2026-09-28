@@ -242,14 +242,28 @@ private:
             stack.FillFailed();
             std::rethrow_exception(depth);
         }
-        const typename ReferenceStack<T>::Filling filling(stack);
+        const int       base     = lowest->parameters.index();
+        const long long distance = static_cast<long long>(index) - base;
+        // Thrown as the depth it stands for, so that each call out to the one
+        // asked for says it again with its own index.
+        if (distance > ReferenceStack<T>::max_filled) {
+            stack.FillFailed();
+            throw DepthExceeded(reference_name_ + "_" + std::to_string(index) + " is " +
+                                std::to_string(distance) +
+                                " terms from its base, and a fill stops at " +
+                                std::to_string(ReferenceStack<T>::max_filled));
+        }
+        typename ReferenceStack<T>::Filling filling(stack);
         try {
-            for (int k = lowest->parameters.index() + 1; k < index; ++k)
+            for (int k = base + 1; k < index; ++k) {
+                filling.Next();
                 (void)Term(k, arguments, call, stack, true);
+            }
         } catch (const std::runtime_error&) {
             stack.FillFailed();
             std::rethrow_exception(depth);
         }
+        filling.Next();
         return EvalImp(true, index, evaluator);
     }
 

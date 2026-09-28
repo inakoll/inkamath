@@ -40,10 +40,14 @@ public:
     static constexpr size_t max_steps = 1000000;
 
     // Memoised results, one per distinct call context. Sized so that a
-    // session sweeping a parameter cannot grow the process without bound;
-    // when it fills, the whole map goes, which costs time and never an
-    // answer.
+    // session sweeping a parameter cannot grow the process without bound; the
+    // older half goes when the newer fills, because a fill needs the latest
+    // terms of every sequence it passes through (MODERNIZATION.md, C69).
     static constexpr size_t max_memoised = 100000;
+
+    // How far a fill goes from its base: each term has the budget of a line,
+    // so this is what bounds its time, at a few seconds.
+    static constexpr int max_filled = 10000000;
 
     // Call once per top-level evaluation; the stack outlives them all.
     void BeginEvaluation() {
@@ -66,6 +70,7 @@ public:
     void Set(const std::string& ai_reference_name, const ParametersDefinition<T>& ai_parameters, PExpression<T>  ai_expression, const std::string& written = std::string()) {
         if (open_ == 0) {
             memoised_.clear();
+            older_.clear();
         }
         definition_type& slot = DefinitionSlot(ai_reference_name);
         // Updating and initialising are the same operation.
@@ -122,13 +127,20 @@ public:
     void FillFailed() { fill_failed_ = true; }
 
     struct Filling {
-        explicit Filling(ReferenceStack<T>& stack) : stack_(stack) { stack_.filling_ = true; }
+        explicit Filling(ReferenceStack<T>& stack) : stack_(stack), steps_(stack.steps_) {
+            stack_.filling_ = true;
+        }
         ~Filling() { stack_.filling_ = false; }
         Filling(const Filling&)            = delete;
         Filling& operator=(const Filling&) = delete;
 
+        // A fill stands for asking each term on a line of its own, so each
+        // has the budget that line would have had.
+        void Next() { stack_.steps_ = steps_; }
+
     private:
         ReferenceStack<T>& stack_;
+        size_t             steps_;
     };
 
     [[nodiscard]] const scope_type& Globals() const { return globals_; }
@@ -145,12 +157,16 @@ public:
     // key and the fourth is handled by clearing. What it is worth: the
     // arithmetic-geometric mean is 2^(n+1)-1 calls for 2n+1 answers.
     const T* Memoised(const MemoKey& key) const {
-        auto found = memoised_.find(key);
-        return found == memoised_.end() ? nullptr : &found->second;
+        for (const auto* generation : {&memoised_, &older_}) {
+            const auto found = generation->find(key);
+            if (found != generation->end()) return &found->second;
+        }
+        return nullptr;
     }
 
     void Memoise(const MemoKey& key, const T& evaluation) {
-        if(memoised_.size() >= max_memoised) {
+        if (memoised_.size() >= max_memoised / 2) {
+            older_ = std::move(memoised_);
             memoised_.clear();
         }
         memoised_.emplace(key, evaluation);
@@ -282,7 +298,7 @@ private:
     size_t steps_ = 0;
     bool                                     filling_     = false;
     bool                                     fill_failed_ = false;
-    std::unordered_map<MemoKey, T, MemoHash> memoised_;
+    std::unordered_map<MemoKey, T, MemoHash> memoised_, older_;
     scope_type globals_;
     std::vector<frame_type>                  frames_;  // the open ones first, then spares
     size_t                                   open_ = 0;
