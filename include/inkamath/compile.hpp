@@ -10,6 +10,7 @@
 #include <charconv>
 #include <cmath>
 #include <cstddef>
+#include <limits>
 #include <map>
 #include <optional>
 #include <set>
@@ -88,10 +89,23 @@ private:
         std::vector<std::string> lines;
     };
 
+    using Reads = std::map<std::string, std::set<int>>;  // lags, by the sequence read
+
+    // A guarded clause, and what its guard and its value each read: its guard
+    // is evaluated wherever the chain reaches it, its value only where it holds,
+    // so each has its own index from which it can be.
+    struct Guarded {
+        std::string              condition;
+        std::vector<std::string> cells;
+        Reads                    guard, value;
+        int                      guard_from = 0, value_from = 0;
+    };
+
     struct Sequence {
         const Reference<Value>*                 definition = nullptr;  // none for an input
         std::map<int, std::vector<std::string>> bases;                 // cells, by index
-        std::vector<std::pair<std::string, std::vector<std::string>>> guarded;  // in order
+        std::vector<Guarded>                    guarded;               // in the order tried
+        Reads                                   general_reads;
         std::vector<std::string>                general;
         std::size_t                             rows = 0, cols = 0;  // 0 until known
         bool                                    based = false, compiling = false, compiled = false;
@@ -232,6 +246,7 @@ private:
             throw Refusal("cannot compile " + name + ": its shape depends on itself");
         sequence.compiling = true;
         Bases(name);
+        Reads* const outer_reads = clause_reads_;
         // The guarded clauses in the order written, then the unguarded one, as
         // the interpreter tries them; a guard that always holds ends the chain.
         bool settled = false;
@@ -240,16 +255,22 @@ private:
                 const ParametersDefinition<Value>& p = clause.parameters;
                 if (settled || !p.general() || p.guarded() != guarded) continue;
                 Within(name, &sequence, p.index_name(), [&] {
+                    Reads guard_reads, value_reads;
+                    clause_reads_ = &guard_reads;
                     const std::optional<std::string> condition =
                         guarded ? Condition(p.guard()) : std::optional<std::string>("");
                     if (!condition) return;
+                    clause_reads_   = &value_reads;
                     const Code code = Emit(clause.expression);
+                    clause_reads_   = nullptr;
                     Shape(sequence, code);
                     if (condition->empty()) {
-                        sequence.general = Texts(code);
-                        settled          = true;
+                        sequence.general       = Texts(code);
+                        sequence.general_reads = value_reads;
+                        settled                = true;
                     } else {
-                        sequence.guarded.emplace_back(*condition, Texts(code));
+                        sequence.guarded.push_back(
+                            {*condition, Texts(code), guard_reads, value_reads, 0, 0});
                     }
                 });
             }
@@ -258,6 +279,7 @@ private:
             throw Refusal("cannot compile " + name + ": a sequence with no general clause");
         // Where no guard holds the interpreter says so; a step can only say NaN.
         if (!settled) sequence.general.assign(sequence.rows * sequence.cols, "NAN");
+        clause_reads_     = outer_reads;
         sequence.compiled = true;
     }
 
@@ -558,7 +580,7 @@ private:
         const std::string& name = expression->Name();
         if (const auto place = places_.find(name); place != places_.end())
             return Answer(Literal(place->second));
-        if (!index_.empty() && name == index_) return Answer(Atom("(double)m_->index_"));
+        if (!index_.empty() && name == index_) return Answer(Atom(index_text_));
         const Reference<Value>* definition = Global(name);
         if (!definition) return Answer(Field(name, Value(Number(NAN))));
         if (IsSequence(*definition)) throw Reason(name + " is a sequence; index it");
@@ -699,7 +721,9 @@ private:
         const int lag = Lag(call.subexpr(), name);
         Bases(name);
         if (!read.rows) Compile(name);
+        if (lag > 0 && ClosedForm(read)) return Answer(At(read, lag));
         reading_->reads[name].insert(lag);
+        if (clause_reads_) (*clause_reads_)[name].insert(lag);
         const std::string at     = "m_->" + name + "[" + std::to_string(lag) + "]";
         const bool        scalar = read.rows * read.cols == 1;
         Code              code;
@@ -709,6 +733,62 @@ private:
             for (std::size_t j = 0; j < code.cols; ++j)
                 code.cells.push_back(Atom(scalar ? at : at + Subscript(i, j)));
         return Answer(code);
+    }
+
+    // A sequence with no base clause that reads no term is a closed form, and
+    // the interpreter answers it at every index, before the model starts too:
+    // 'c_n = a_(n-1)' with 'a_n = n/8' reads a_(-1) at 0. So a closed form read
+    // back in time is compiled again at that index, rather than read from a
+    // window that holds nothing from before the start.
+    bool ClosedForm(const Sequence& sequence) const {
+        return sequence.definition && sequence.compiled && sequence.bases.empty() &&
+               sequence.reads.empty();
+    }
+
+    Code At(const Sequence& sequence, int lag) {
+        Code                                      chain;
+        std::optional<Code>                       otherwise;
+        std::vector<std::pair<std::string, Code>> guarded;
+        Sequence* const                           reading = std::exchange(reading_, nullptr);
+        const std::string                         index   = std::exchange(index_, std::string());
+        const std::string                         text =
+            std::exchange(index_text_, "(double)(m_->index_ - " + std::to_string(lag) + ")");
+        const auto   places = std::exchange(places_, {});
+        Reads* const reads  = std::exchange(clause_reads_, nullptr);
+        for (const bool guard : {true, false}) {
+            for (const Clause<Value>& clause : sequence.definition->Clauses()) {
+                const ParametersDefinition<Value>& p = clause.parameters;
+                if (otherwise || !p.general() || p.guarded() != guard) continue;
+                index_ = p.index_name();
+                const std::optional<std::string> condition =
+                    guard ? Condition(p.guard()) : std::optional<std::string>("");
+                if (!condition) continue;
+                if (condition->empty())
+                    otherwise = Emit(clause.expression);
+                else
+                    guarded.emplace_back(*condition, Emit(clause.expression));
+            }
+        }
+        reading_      = reading;
+        index_        = index;
+        index_text_   = text;
+        places_       = places;
+        clause_reads_ = reads;
+        chain.rows    = sequence.rows;
+        chain.cols    = sequence.cols;
+        for (std::size_t c = 0; c < sequence.rows * sequence.cols; ++c) {
+            std::string cell;
+            for (const auto& [condition, value] : guarded)
+                cell +=
+                    condition + " ? " + value.At(c / sequence.cols, c % sequence.cols).text + " : ";
+            if (guarded.empty() && otherwise) {
+                chain.cells.push_back(otherwise->At(c / sequence.cols, c % sequence.cols));
+                continue;
+            }
+            cell += otherwise ? otherwise->At(c / sequence.cols, c % sequence.cols).text : "NAN";
+            chain.cells.emplace_back(cell, 0);  // a conditional, below every operator
+        }
+        return chain;
     }
 
     static std::string Subscript(std::size_t i, std::size_t j) {
@@ -845,16 +925,32 @@ private:
         }
         for (auto& [name, sequence] : sequences_)
             if (sequence.bases.empty()) sequence.start = earliest.value_or(0);
+        // The interpreter's guarded clauses answer below the lowest base
+        // clause too, where its unguarded one does not: '_(-1)' of a sequence
+        // based at 0 is a term wherever a guard holds. A step has no such
+        // terms, so a read that could reach one is refused.
+        for (const auto& [name, sequence] : sequences_) {
+            int first = sequence.start;
+            while (sequence.bases.count(first)) ++first;  // where the general clauses begin
+            for (const auto& [read, lags] : sequence.reads) {
+                const Sequence& other = sequences_.at(read);
+                if (other.bases.empty() || other.guarded.empty()) continue;
+                const int reached = first - *lags.rbegin();
+                if (reached < other.start)
+                    throw Refusal("cannot compile " + name + ": " + name + "_" +
+                                  std::to_string(first) + " reads " + read + "_" +
+                                  std::to_string(reached) + ", below " + read +
+                                  "'s base clauses, where only its guards could give a term");
+            }
+        }
         for (std::size_t round = 0;; ++round) {
             bool moved = false;
             for (auto& [name, sequence] : sequences_) {
                 if (!sequence.bases.empty() || !sequence.definition) continue;
-                for (const auto& [read, lags] : sequence.reads) {
-                    const int needed = sequences_.at(read).start + *lags.rbegin();
-                    if (needed <= sequence.start) continue;
-                    sequence.start = needed;
-                    moved          = true;
-                }
+                const int needed = std::max(sequence.start, Answers(sequence));
+                if (needed <= sequence.start) continue;
+                sequence.start = needed;
+                moved          = true;
             }
             if (!moved) break;
             if (round > sequences_.size())
@@ -862,8 +958,19 @@ private:
                     "cannot compile: a sequence with no base clause reads back into "
                     "itself, so it never starts");
         }
-        // One with base clauses answers from them until what it reads exists.
+        // Where a clause's reads begin is where it can be evaluated: before it,
+        // the interpreter reports the term it could not read, and a step says
+        // NaN. Only a sequence with guards has more than one path to choose.
+        for (auto& [name, sequence] : sequences_) {
+            for (Guarded& guarded : sequence.guarded) {
+                guarded.guard_from = From(guarded.guard);
+                guarded.value_from = From(guarded.value);
+            }
+        }
+        // Without guards, the one clause is always evaluated, so a term it
+        // reads before that term exists is an error in the model, said now.
         for (const auto& [name, sequence] : sequences_) {
+            if (!sequence.guarded.empty()) continue;
             for (const auto& [read, lags] : sequence.reads) {
                 const Sequence& other = sequences_.at(read);
                 for (const int lag : lags) {
@@ -878,6 +985,29 @@ private:
             }
         }
         return earliest.value_or(0);
+    }
+
+    // The first index where every term these reads name exists.
+    int From(const Reads& reads) const {
+        int from = std::numeric_limits<int>::min();
+        for (const auto& [read, lags] : reads)
+            from = std::max(from, sequences_.at(read).start + *lags.rbegin());
+        return from;
+    }
+
+    // The first index where some path through a sequence's clauses answers:
+    // the guards tried before a clause must be evaluable, and the clause.
+    int Answers(const Sequence& sequence) const {
+        if (sequence.guarded.empty()) return From(sequence.reads);
+        int guards = std::numeric_limits<int>::min();
+        int first  = std::numeric_limits<int>::max();
+        for (const Guarded& guarded : sequence.guarded) {
+            guards = std::max(guards, From(guarded.guard));
+            first  = std::min(first, std::max(guards, From(guarded.value)));
+        }
+        if (sequence.general.front() != "NAN")
+            first = std::min(first, std::max(guards, From(sequence.general_reads)));
+        return first;
     }
 
     std::vector<std::string> Order() const {
@@ -1075,8 +1205,21 @@ private:
                 for (const auto& [index, base] : sequence.bases)
                     assignments +=
                         "m_->index_ == " + std::to_string(index) + " ? " + base[c] + " : ";
-                for (const auto& [condition, cells] : sequence.guarded)
-                    assignments += condition + " ? " + cells[c] + " : ";
+                // Checked only where an index no base clause gives needs it.
+                const auto before = [&](int from) {
+                    for (int n = sequence.start; n < from; ++n)
+                        if (!sequence.bases.count(n))
+                            return "m_->index_ < " + std::to_string(from) + " ? NAN : ";
+                    return std::string();
+                };
+                for (const Guarded& guarded : sequence.guarded) {
+                    const std::string value = before(guarded.value_from);
+                    assignments +=
+                        before(guarded.guard_from) + guarded.condition + " ? " +
+                        (value.empty() ? guarded.cells[c] : "(" + value + guarded.cells[c] + ")") +
+                        " : ";
+                }
+                if (!sequence.guarded.empty()) assignments += before(From(sequence.general_reads));
                 assignments += sequence.general[c] + ";\n";
             }
             out += Temporaries(sequence.temporaries, assignments, indent) + assignments;
@@ -1093,6 +1236,8 @@ private:
     Sequence*   reading_ = nullptr;  // the sequence whose general clause this is
     std::string index_;              // and the name of its index
     std::vector<Temporary>*          temporaries_ = nullptr;  // where this sequence's are declared
+    Reads*      clause_reads_ = nullptr;               // what the clause being compiled reads
+    std::string index_text_   = "(double)m_->index_";  // the index, as the step has it
     std::string                      module_;
     std::set<std::size_t>            inverses_;  // the sizes a helper is needed for
     int                              temporary_count_ = 0;

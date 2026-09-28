@@ -1707,6 +1707,35 @@ and multiplies it in, which the compiled code skips: that differs only where a
 cell is infinite. An exponent must be a whole constant; `A^0` is the identity,
 kept apart from the folding of constants, since it reads `A`.
 
+**Random models** test the claim the hand-written ones cannot: that a compiled
+model answers as the interpreter does. A generator, run at build time, makes
+three hundred -- sequences with bases, guards, lags, sums, inputs, parameters
+and a derived value, and half of them a 2x2 block with a product, a transpose,
+an inverse and cells read out -- runs each through the interpreter, compiles
+it, feeds both the same inputs, and writes one C file that steps every compiled
+model and holds each term to the interpreter's within 1e-9. Constants and
+inputs are quarters, which a double holds exactly, so a difference is rounding,
+not noise. A model the compiler refuses is skipped, and the build fails if
+fewer than half compile, so that the test cannot drift into testing nothing;
+280 do. Nearly fifteen thousand more, under sixteen other seeds, agree.
+
+It found two things the compiler had wrong, both about where a sequence
+starts, and one of its own. A sequence's start was the index where every
+clause's reads exist, but a guarded clause's reads matter only where its guard
+holds: the interpreter answers from the unguarded clause below that index, and
+the compiled step did not answer at all. Each clause now carries its own index
+from which its guard, and its value, can be evaluated -- NaN before it, where
+the interpreter reports the term it could not read -- and a sequence with
+guards starts where some path through them can answer. And a sequence with no
+base clause that reads no term is a closed form the interpreter answers at
+every index, before the model starts too, so `c_n = a_(n-1)` with `a_n = n/8`
+reads `a_(-1)` at 0; a closed form read back in time is now compiled again at
+that index, rather than read from a window that holds nothing from before the
+start. The interpreter's guarded clauses also answer below the lowest base
+clause, where its unguarded one does not, which a step has no terms for; a read
+that could reach there is refused. The test's own: it wrote the inputs into C
+as `(7/4)`, which C divides as integers.
+
 **The second increment** is the Kalman filter, which is matrices of fixed
 shape: a value is its cells, each one C expression, and a matrix product is the
 sum over the inner dimension in the interpreter's order. A sequence's shape
