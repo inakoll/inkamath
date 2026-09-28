@@ -466,8 +466,24 @@ private:
     PExpression<Value> visit(EqualExpression<Value>*) override {
         throw Reason("a local definition");
     }
-    PExpression<Value> visit(CellExpression<Value>*) override {
-        throw Reason("a cell of a matrix");
+    PExpression<Value> visit(CellExpression<Value>* expression) override {
+        const Code matrix = Emit(expression->Matrix());
+        const Code row = Emit(expression->Row()), col = Emit(expression->Col());
+        if (matrix.constant && row.constant && col.constant) return Fold(expression);
+        if (!row.constant || !col.constant) throw Reason("a cell whose place is not a constant");
+        int i = 0, j = 0;
+        try {
+            i = AsIndex<Value>(*row.constant);
+            j = AsIndex<Value>(*col.constant);
+        } catch (const std::runtime_error& error) {
+            throw Reason(error.what());
+        }
+        if (i < 1 || static_cast<std::size_t>(i) > matrix.rows || j < 1 ||
+            static_cast<std::size_t>(j) > matrix.cols)
+            throw Reason("row " + std::to_string(i) + ", column " + std::to_string(j) +
+                         " is outside a " + std::to_string(matrix.rows) + "x" +
+                         std::to_string(matrix.cols) + " matrix");
+        return Answer(matrix.At(static_cast<std::size_t>(i - 1), static_cast<std::size_t>(j - 1)));
     }
     PExpression<Value> visit(FactExpression<Value>*) override { throw Reason("a factorial"); }
     PExpression<Value> visit(SeriesExpression<Value>*) override {

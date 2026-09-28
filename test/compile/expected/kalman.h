@@ -22,6 +22,7 @@ typedef struct kalman {
     double P[2][2][2];
     double xp[1][2][1];
     double x[2][2][1];
+    double p[1];
 } kalman;
 
 static inline void kalman_init(kalman* m_) {
@@ -67,6 +68,7 @@ static inline void kalman_step(kalman* m_, double z) {
     }
     m_->x[0][0][0] = m_->index_ == 0 ? 0.0 : m_->xp[0][0][0] + m_->K[0][0][0] * (m_->z[0] - (m_->H[0][0] * m_->xp[0][0][0] + m_->H[0][1] * m_->xp[0][1][0]));
     m_->x[0][1][0] = m_->index_ == 0 ? 0.0 : m_->xp[0][1][0] + m_->K[0][1][0] * (m_->z[0] - (m_->H[0][0] * m_->xp[0][0][0] + m_->H[0][1] * m_->xp[0][1][0]));
+    m_->p[0] = m_->x[0][0][0];
 }
 
 #endif

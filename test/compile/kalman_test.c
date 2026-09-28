@@ -33,6 +33,7 @@ int main(void) {
         }
         if (n != exact[next].n) continue;
         ok &= near("the position", n, m.x[0][0][0], exact[next].position);
+        ok &= near("p", n, m.p[0], exact[next].position);
         ok &= near("the velocity", n, m.x[0][1][0], exact[next].velocity);
         ++next;
     }

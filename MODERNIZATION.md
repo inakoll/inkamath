@@ -1669,7 +1669,7 @@ and `K` start at 1, a step after `x` and `P`. The header is
 than written first, since the PID's had already fixed the form; fed the
 measurements of a target moving at 2 per step, the compiled filter is within
 1e-14 of the exact estimates. Still refused: a matrix power, a matrix built
-from matrices, a cell read out of one, comparing matrices. Each derived matrix
+from matrices, a cell whose place is not a constant, comparing matrices. Each derived matrix
 is inlined into its readers, so a cell's expression can repeat a shared
 subexpression -- the C compiler's common subexpressions take it out, but a
 larger filter would want temporaries.

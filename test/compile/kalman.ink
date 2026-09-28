@@ -13,3 +13,4 @@ Pp_n = F*P_(n-1)*F' + Q
 K_n = Pp_n*H'*(H*Pp_n*H' + R)^-1
 x_n = xp_n + K_n*(z_n - H*xp_n)
 P_n = (I2 - K_n*H)*Pp_n
+p_n = x_n[1,1]
