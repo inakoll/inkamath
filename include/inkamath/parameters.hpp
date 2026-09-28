@@ -49,8 +49,11 @@ class ParametersDefinition
 public:
     ParametersDefinition() = default;
 
-    ParametersDefinition(PExpression<T> params, PExpression<T> subexpr, EvaluationVisitor<T>& evaluator,
-                         PExpression<T> guard = PExpression<T>(), std::string signature = std::string())
+    ParametersDefinition(PExpression<T> params, PExpression<T> subexpr,
+                         EvaluationVisitor<T>& evaluator, PExpression<T> guard = PExpression<T>(),
+                         std::string    signature = std::string(),
+                         PExpression<T> row       = PExpression<T>(),
+                         PExpression<T> col       = PExpression<T>())
         : guard_(guard), signature_(std::move(signature)) {
         if(params) {
             ParametersVisitor<T> params_visitor;
@@ -65,6 +68,22 @@ public:
             }
             else {
                 index_ = AsIndex<T>(subexpr->accept(evaluator));
+            }
+        }
+        if (row) {
+            if (indexed_) {
+                throw std::runtime_error("a sequence's terms cannot yet be defined cell by cell");
+            }
+            cells_ = true;
+            Place(row, row_name_, rows_, row_, evaluator);
+            Place(col, col_name_, cols_, col_, evaluator);
+            if (row_name_.empty() != col_name_.empty()) {
+                throw std::runtime_error(
+                    "a clause for cells names both its row and its column, as"
+                    " 'M[j<=2, k<=2]', or neither, as 'M[1,2]'");
+            }
+            if (!row_name_.empty() && row_name_ == col_name_) {
+                throw std::runtime_error("a cell's row and column need two names");
             }
         }
     }
@@ -153,6 +172,35 @@ public:
         }
     }
 
+    // 'j<=2' names a row and bounds it; a name alone is left unbounded, for the
+    // definition to say it has no size; anything else is one row.
+    static void Place(const PExpression<T>& place, std::string& name, PExpression<T>& bound,
+                      int& index, EvaluationVisitor<T>& evaluator) {
+        if (auto* compare = dynamic_cast<CompareExpression<T>*>(place.get());
+            compare && compare->Op() == Comparison::LessEqual) {
+            if (auto* ref = dynamic_cast<RefExpression<T>*>(compare->m_e1().get())) {
+                name  = ref->Name();
+                bound = compare->m_e2();
+                return;
+            }
+        }
+        if (auto* ref = dynamic_cast<RefExpression<T>*>(place.get())) {
+            name = ref->Name();
+            return;
+        }
+        index = AsIndex<T>(place->accept(evaluator));
+    }
+
+    // A clause for the cells of a matrix: all of them, named and bounded, or
+    // one, numbered.
+    bool                  cells() const { return cells_; }
+    const std::string&    row_name() const { return row_name_; }
+    const std::string&    col_name() const { return col_name_; }
+    const PExpression<T>& rows() const { return rows_; }
+    const PExpression<T>& cols() const { return cols_; }
+    int                   row() const { return row_; }
+    int                   col() const { return col_; }
+
     PExpression<T> guard() const {return guard_;}
     const std::string& signature() const {return signature_;}
     bool guarded() const {return bool(guard_);}
@@ -172,6 +220,10 @@ protected:
     std::string index_name_;
     int index_ = 0;
     bool indexed_ = false;
+    bool                     cells_   = false;
+    std::string              row_name_, col_name_;
+    PExpression<T>           rows_, cols_;
+    int                      row_ = 0, col_ = 0;
 };
 
 // The right-hand side of a call: 'f(1, 2)_(n-1)'. Unlike a definition's index,

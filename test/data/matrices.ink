@@ -167,6 +167,73 @@ q_n = r_n[1,1]
 [1;
  i]
 
+# A matrix defined by its cells: the brackets name the row and the column and
+# bound them, which is the size, and the right-hand side is any cell. The names
+# here are j and k because i is the imaginary unit (MODERNIZATION.md, phase 14).
+>> I[j<=2, k<=2] = j == k
+I[j<=2, k<=2] = j == k
+
+>> I
+[1, 0;
+ 0, 1]
+
+>> I[3,1]
+error: row 3, column 1 is outside a 2x2 matrix
+
+# The guard says which cells, the brackets how many. A cell no clause gives is
+# 0, as a short row of a literal is padded.
+>> U[j<=3, k<=3] | j <= k = 1
+U[j<=3, k<=3] | j <= k = 1
+
+>> U
+[1, 1, 1;
+ 0, 1, 1;
+ 0, 0, 1]
+
+# A size can come from a parameter.
+>> H(n)[j<=n, k<=n] = 1/(j+k-1)
+H(n)[j<=n, k<=n] = 1/(j+k-1)
+
+>> frac H(3)
+[  1, 1/2, 1/3;
+ 1/2, 1/3, 1/4;
+ 1/3, 1/4, 1/5]
+
+# Numbers where the names were: one cell, which beats the general clause, as a
+# base clause beats a sequence's, whichever was written first.
+>> J[1,2] = 5
+J[1,2] = 5
+
+>> J
+error: J has no size; write it as J[j<=rows, k<=cols]
+
+>> J[j<=2, k<=2] = j == k
+J[j<=2, k<=2] = j == k
+
+>> J
+[1, 5;
+ 0, 1]
+
+# A size is written, the clauses of one matrix agree on it, and a cell is a
+# single value.
+>> M[r,c] = r + c
+error: M has no size; write it as M[r<=rows, c<=cols]
+
+>> V[j<=2, k<=2] | j == k = 1
+V[j<=2, k<=2] | j == k = 1
+
+>> V[j<=3, k<=3] = 2
+V[j<=3, k<=3] = 2
+
+>> V
+error: the clauses of V give it different sizes
+
+>> W[j<=2, k<=2] = [j k]
+W[j<=2, k<=2] = [j k]
+
+>> W
+error: a cell of W must be a single value, not a 1x2 matrix
+
 # Inside one they index a name and nothing else, because there a space
 # between two blocks already means something.
 >> [[1 2] [3 4]]

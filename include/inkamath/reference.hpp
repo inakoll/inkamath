@@ -10,6 +10,7 @@
 
 #include <algorithm>
 #include <exception>
+#include <optional>
 #include <stdexcept>
 #include <vector>
 
@@ -79,7 +80,7 @@ public:
         // One call binds the parameters once, for whichever clause answers, so
         // the clauses have to agree on their names. One that disagrees could
         // only ever read a global under its own name (MODERNIZATION.md, C51).
-        const bool starts_over = !ai_parameters.guarded() && !ai_parameters.indexed();
+        const bool starts_over = IsPlain(clause);
         if(!clauses_.empty() && !starts_over
            && ai_parameters.parameters_names() != CallParameters().parameters_names()) {
             throw std::runtime_error(reference_name_ + " takes ("
@@ -96,11 +97,24 @@ public:
                                      + " is already defined without a guard,"
                                        " so this clause can never apply");
         }
-        if(!ai_parameters.guarded() && !ai_parameters.indexed()) {
-            clauses_.clear();
+        // A size is written, not guessed from the cells a clause happens to give.
+        if (ai_parameters.cells() && !ai_parameters.row_name().empty() &&
+            (!ai_parameters.rows() || !ai_parameters.cols())) {
+            throw std::runtime_error(reference_name_ + " has no size; write it as " +
+                                     reference_name_ + "[" + ai_parameters.row_name() + "<=rows, " +
+                                     ai_parameters.col_name() + "<=cols]");
         }
-        else if(!ai_parameters.guarded()) {
-            // An index turns a value into a sequence, so the plain clause goes.
+        if (!starts_over &&
+            ((ai_parameters.cells() && Sequence()) || (ai_parameters.indexed() && Cells()))) {
+            throw std::runtime_error(reference_name_ +
+                                     (Cells() ? " is defined by its cells, so it has no index"
+                                              : " is a sequence, so it has no cells of its own"));
+        }
+        if (starts_over) {
+            clauses_.clear();
+        } else if (!ai_parameters.guarded() || ai_parameters.cells()) {
+            // An index turns a value into a sequence, and a cell into a matrix
+            // defined by its cells, so the plain clause goes.
             std::erase_if(clauses_, IsPlain);
         }
         // Writing a clause again replaces it where it stands. Position is what
@@ -108,12 +122,17 @@ public:
         // (MODERNIZATION.md, C45); a guarded clause is named by its left-hand
         // side, which is how it can be corrected at all (C46).
         for(Clause<T>& existing : clauses_) {
-            const bool same = ai_parameters.guarded()
-                ? existing.parameters.guarded()
-                      && existing.parameters.signature() == ai_parameters.signature()
-                : (IsGeneral(existing) && IsGeneral(clause))
-                      || (IsBase(existing) && IsBase(clause)
-                          && existing.parameters.index() == clause.parameters.index());
+            const bool same =
+                ai_parameters.guarded()
+                    ? existing.parameters.guarded() &&
+                          existing.parameters.signature() == ai_parameters.signature()
+                    : (IsGeneral(existing) && IsGeneral(clause)) ||
+                          (IsBase(existing) && IsBase(clause) &&
+                           existing.parameters.index() == clause.parameters.index()) ||
+                          (IsAllCells(existing) && IsAllCells(clause)) ||
+                          (IsOneCell(existing) && IsOneCell(clause) &&
+                           existing.parameters.row() == clause.parameters.row() &&
+                           existing.parameters.col() == clause.parameters.col());
             if(same) {
                 existing = clause;
                 return;
@@ -272,12 +291,19 @@ private:
 
     // The three unguarded shapes. A guarded clause has no shape: it is never
     // replaced and never stands in for the definition.
-    static bool IsPlain(const Clause<T>& c)
-        {return !c.parameters.guarded() && !c.parameters.indexed();}
+    static bool IsPlain(const Clause<T>& c) {
+        return !c.parameters.guarded() && !c.parameters.indexed() && !c.parameters.cells();
+    }
     static bool IsBase(const Clause<T>& c)
         {return !c.parameters.guarded() && c.parameters.indexed() && !c.parameters.general();}
     static bool IsGeneral(const Clause<T>& c)
         {return !c.parameters.guarded() && c.parameters.general();}
+    static bool IsAllCells(const Clause<T>& c) {
+        return !c.parameters.guarded() && c.parameters.cells() && !c.parameters.row_name().empty();
+    }
+    static bool IsOneCell(const Clause<T>& c) {
+        return c.parameters.cells() && c.parameters.row_name().empty();
+    }
 
     template <typename Predicate>
     const Clause<T>* FirstThat(Predicate fits) const {
@@ -292,6 +318,12 @@ private:
     }
     bool Guarded() const {
         return FirstThat([](const Clause<T>& c) {return c.parameters.guarded();}) != nullptr;
+    }
+    bool Sequence() const {
+        return FirstThat([](const Clause<T>& c) { return c.parameters.indexed(); }) != nullptr;
+    }
+    bool Cells() const {
+        return FirstThat([](const Clause<T>& c) { return c.parameters.cells(); }) != nullptr;
     }
 
     // How far down the general clause reaches, and which term a limit starts
@@ -345,6 +377,12 @@ private:
     }
 
     T EvalImp(bool indexed, int index, EvaluationVisitor<T>& evaluator) const {
+        if (Cells()) {
+            if (indexed) {
+                throw std::runtime_error(reference_name_ + " is not a sequence");
+            }
+            return EvaluateCells(evaluator);
+        }
         // Clauses are tried in the order they were written, and the clause not
         // chosen is not evaluated -- which is what index dispatch has always
         // done. Order is the writer's to choose because neither precedence
@@ -400,6 +438,78 @@ private:
                                  + (General()
                                     ? " or take its limit (lim " + reference_name_ + ")"
                                     : ""));
+    }
+
+    // A matrix defined by its cells (README.md section 2). Its size is what its
+    // clauses for all cells bound it to, and they agree on it.
+    T EvaluateCells(EvaluationVisitor<T>& evaluator) const {
+        std::optional<Extent> extent;
+        for (const Clause<T>& clause : clauses_) {
+            const ParametersDefinition<T>& p = clause.parameters;
+            if (!p.cells() || p.row_name().empty()) continue;
+            const Extent size{Size(p.rows()->accept(evaluator)), Size(p.cols()->accept(evaluator))};
+            if (extent && *extent != size) {
+                throw std::runtime_error("the clauses of " + reference_name_ +
+                                         " give it different sizes");
+            }
+            extent = size;
+        }
+        if (!extent) {
+            throw std::runtime_error(reference_name_ + " has no size; write it as " +
+                                     reference_name_ + "[j<=rows, k<=cols]");
+        }
+        T matrix(*extent);
+        for (size_t row = 1; row <= extent->rows; ++row) {
+            for (size_t col = 1; col <= extent->cols; ++col) {
+                const std::optional<T> cell =
+                    Cell(static_cast<int>(row), static_cast<int>(col), evaluator);
+                if (!cell) continue;
+                if (cell->Size() != Extent{1, 1}) {
+                    throw std::runtime_error("a cell of " + reference_name_ +
+                                             " must be a single value, not a " +
+                                             cell->Size().toString() + " matrix");
+                }
+                matrix(row, col) = (*cell)(1, 1);
+            }
+        }
+        return matrix;
+    }
+
+    static size_t Size(const T& value) {
+        const int size = AsIndex<T>(value);
+        if (size < 1) {
+            throw std::runtime_error("a size must be at least 1, not " + std::to_string(size));
+        }
+        return static_cast<size_t>(size);
+    }
+
+    // A cell's own clause if it has one, as a base clause beats a sequence's
+    // general clause; else the first clause for all cells that holds, guarded
+    // ones in the order written and the unguarded one last; else none, and the
+    // cell is 0, as a short row of a literal is padded. The names are bound on
+    // trial, so that one clause's names cannot shadow a global in the next.
+    std::optional<T> Cell(int row, int col, EvaluationVisitor<T>& evaluator) const {
+        ReferenceStack<T>& stack = evaluator.stack();
+        for (const Clause<T>& clause : clauses_) {
+            const ParametersDefinition<T>& p = clause.parameters;
+            if (!IsOneCell(clause) || p.row() != row || p.col() != col) continue;
+            if (p.guarded() && !numeric_interface<T>::truth(p.guard()->accept(evaluator))) continue;
+            return clause.expression->accept(evaluator);
+        }
+        for (const bool guarded : {true, false}) {
+            for (const Clause<T>& clause : clauses_) {
+                const ParametersDefinition<T>& p = clause.parameters;
+                if (!p.cells() || p.row_name().empty() || p.guarded() != guarded) continue;
+                typename ReferenceStack<T>::Trial row_name(stack, p.row_name());
+                typename ReferenceStack<T>::Trial col_name(stack, p.col_name());
+                SetIndex(p.row_name(), row, stack);
+                SetIndex(p.col_name(), col, stack);
+                if (p.guarded() && !numeric_interface<T>::truth(p.guard()->accept(evaluator)))
+                    continue;
+                return clause.expression->accept(evaluator);
+            }
+        }
+        return std::nullopt;
     }
 
     T EvaluateGeneralClause(const Clause<T>& general, int index,

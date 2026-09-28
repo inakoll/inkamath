@@ -394,15 +394,19 @@ template <typename T>
 class FuncExpression : public Expression<T>
 {
 public:
-    // The third child is the guard of a definition's left-hand side, and is
-    // null everywhere else; keeping it here is what lets ParametersDefinition
-    // read the whole left-hand side from one place.
+    // The third child is the guard of a definition's left-hand side, and the
+    // fourth and fifth the row and column of a clause for cells, 'M[j<=2,
+    // k<=2]'; all three are null everywhere else. Keeping them here is what
+    // lets ParametersDefinition read the whole left-hand side from one place.
     explicit FuncExpression(PExpression<T> ref_expression, PExpression<T> e1, PExpression<T> e2,
                             bool limit = false, PExpression<T> guard = PExpression<T>(),
-                            std::string signature = std::string())
-        : Expression<T>({e1, e2, guard}), m_name(ref_expression->Name()),
-          limit_(limit), signature_(std::move(signature))
-    { }
+                            std::string    signature = std::string(),
+                            PExpression<T> row       = PExpression<T>(),
+                            PExpression<T> col       = PExpression<T>())
+        : Expression<T>({e1, e2, guard, row, col}),
+          m_name(ref_expression->Name()),
+          limit_(limit),
+          signature_(std::move(signature)) {}
 
     // The left-hand side of a definition, as the tokens spell it.
     const std::string& Signature() const override {return signature_;}

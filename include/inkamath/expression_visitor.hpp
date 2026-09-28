@@ -235,16 +235,17 @@ public:
     // the top level is a statement and never gets as far as visit().
     void Bind(EqualExpression<T>* expr, const std::string& written = std::string()) {
         // The left-hand side is a bare name, or a call carrying the
-        // parameter list and the index: 'f(x)_n = ...'.
+        // parameter list, the index and the cells: 'f(x)_n = ...'.
         const std::vector<PExpression<T>>& signature = expr->m_e1()->Children();
         if(signature.empty()) {
             this->stack_.Set(expr->Name(), ParametersDefinition<T>(), expr->m_e2(), written);
         }
         else {
-            this->stack_.Set(expr->Name(),
-                             ParametersDefinition<T>(signature[0], signature[1], *this, signature[2],
-                                                     expr->m_e1()->Signature()),
-                             expr->m_e2(), written);
+            this->stack_.Set(
+                expr->Name(),
+                ParametersDefinition<T>(signature[0], signature[1], *this, signature[2],
+                                        expr->m_e1()->Signature(), signature[3], signature[4]),
+                expr->m_e2(), written);
         }
     }
 

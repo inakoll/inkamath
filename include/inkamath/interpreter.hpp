@@ -438,6 +438,10 @@ PExpression<U> Interpreter<T,U>::ParseEqualExpr()
         ref = PExpression<U>(new RefExpression<U>(name));
         params = ParseParameters();
         sub = ParseSubExpr();
+        // On the left of a definition the brackets define cells, 'M[j<=2,
+        // k<=2]' or 'M[1,2]'; anywhere else they read one.
+        const PExpression<U> cell  = ParseCell(ref, true);
+        const auto*          place = dynamic_cast<CellExpression<U>*>(cell.get());
         PExpression<U> guard;
         if (!AtEnd() && Peek().type == Guard)
         {
@@ -458,12 +462,13 @@ PExpression<U> Interpreter<T,U>::ParseEqualExpr()
             }
             ++m_i;
             expr = Parse();
-            if(params || sub || guard) {
+            if (params || sub || guard || place) {
                 e.reset(new EqualExpression<U>(
-                    PExpression<U>(new FuncExpression<U>(ref, params, sub, false, guard, signature)),
+                    PExpression<U>(new FuncExpression<U>(ref, params, sub, false, guard, signature,
+                                                         place ? place->Row() : PExpression<U>(),
+                                                         place ? place->Col() : PExpression<U>())),
                     expr));
-            }
-            else {
+            } else {
                 e.reset(new EqualExpression<U>(ref, expr));
             }
         }
@@ -479,7 +484,10 @@ PExpression<U> Interpreter<T,U>::ParseEqualExpr()
             }
             // A name at the head of a line is parsed here, not in
             // ParseSimpleExpr, so the cell brackets and quotes are read here too.
-            e = ParseCompareExpr(ParseQuotes(ParseCell(ref, true)));
+            if (place) {
+                ref = std::make_shared<CellExpression<U>>(ref, place->Row(), place->Col());
+            }
+            e = ParseCompareExpr(ParseQuotes(ref));
         }
     } else {
         e = ParseCompareExpr();

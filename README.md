@@ -257,6 +257,33 @@ conjugate a complex cell, as MATLAB's and Julia's quote does.
  6]
 ```
 
+A matrix can be defined by its cells, as a sequence is by its terms. On the
+left the brackets name the row and the column and bound them, which is the
+size; the right-hand side is any cell, and a guard says which cells a clause
+gives. A cell no clause gives is 0, and a clause for one cell, `M[1,2] = 5`,
+beats the others. The names are anything but `i`, which is the imaginary
+unit:
+
+```
+>> I[j<=2, k<=2] = j == k
+I[j<=2, k<=2] = j == k
+
+>> I
+[1, 0;
+ 0, 1]
+
+>> U[j<=3, k<=3] | j <= k = 1
+U[j<=3, k<=3] | j <= k = 1
+
+>> U
+[1, 1, 1;
+ 0, 1, 1;
+ 0, 0, 1]
+```
+
+A size can come from a parameter: `H(n)[j<=n, k<=n] = 1/(j+k-1)` is the
+Hilbert matrix of any size.
+
 Inside a matrix literal the brackets index a name and nothing else, because
 there a space between two blocks already separates them: `[[1 2] [3 4]]` is
 one row of two blocks, while `[a [3 4]]` reads as an index of `a`. Write a row

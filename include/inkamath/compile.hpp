@@ -395,6 +395,8 @@ private:
         const Reference<Value>* definition = Global(name);
         if (!definition) return Answer(Field(name, Value(Number(NAN))));
         if (IsSequence(*definition)) throw Reason(name + " is a sequence; index it");
+        if (definition->Clauses().front().parameters.cells())
+            throw Reason(name + ", a matrix defined by its cells");
         if (!reading_plain_.insert(name).second) throw Reason(name + " is defined by itself");
         // A global is evaluated in a scope of its own, where no index is seen.
         Sequence* const   reading = std::exchange(reading_, nullptr);

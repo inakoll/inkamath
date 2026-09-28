@@ -1710,6 +1710,18 @@ against the exact transcript. Writing the two found four things they need:
   transposed the index; a transcript entry now says it is the term's. The
   identity stays written out, `I2 = [1 0; 0 1]`: the language has no built-in
   function, and the one filter that needs it does not yet justify the first.
+- `[done]` **Cells**, in the interpreter: a matrix defined by its cells,
+  `I[j<=2, k<=2] = j == k`, which also writes the identity. The size is in the
+  brackets, as bounds on the names, and a guard says only which cells, since a
+  guard such as `j + k <= 4` is no rectangle; a cell no clause gives is 0, and
+  a clause for one cell beats the others, as a base clause beats a sequence's
+  general one. Specified in `matrices.ink` first, after three spellings were
+  drafted side by side -- `M[i^3, j^3]` read as cubes, and bounds in the guard
+  mixed sizes with conditions. A cell clause replaces a plain definition, as an
+  index does, so `a[1,1] = 9` after `a = [1 2; 3 4]` leaves `a` with no size
+  rather than patching it. A sequence's terms cannot yet be defined cell by
+  cell, and the compiler refuses a matrix defined by its cells until it learns
+  them.
 
 Beyond Python on very large numbers is not on this path. What is fast at a
 hundred thousand digits -- PARI/GP, Julia, Mathematica -- is GMP, with FFT
