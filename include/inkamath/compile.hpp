@@ -35,6 +35,7 @@ public:
     static std::string Header(const ReferenceStack<Value>& definitions, const std::string& module,
                               const std::string& source) {
         CompileC compiler(definitions);
+        compiler.module_ = module;
         for (const auto& [name, definition] : Sorted(definitions.Globals()))
             compiler.Define(name, *definition);
         for (const auto& [name, sequence] : Sorted(compiler.sequences_)) compiler.Compile(name);
@@ -80,6 +81,13 @@ private:
         }
     };
 
+    // A value a step computes once, before the sequence that reads it: its
+    // name, what it computes, and the lines that declare it.
+    struct Temporary {
+        std::string              name, value;
+        std::vector<std::string> lines;
+    };
+
     struct Sequence {
         const Reference<Value>*                 definition = nullptr;  // none for an input
         std::map<int, std::vector<std::string>> bases;                 // cells, by index
@@ -90,7 +98,7 @@ private:
         std::map<std::string, std::set<int>>    reads;  // lags, by the sequence read
         int                                     depth = 1;
         int                                     start = 0;
-        std::vector<std::string>                temporaries;  // declarations, in order
+        std::vector<Temporary>                  temporaries;  // in the order declared
     };
 
     struct Parameter {
@@ -159,16 +167,20 @@ private:
     // per step instead, into a temporary: the same value, in fewer lines.
     Cell Shared(const Cell& cell) {
         if (cell.atom || !temporaries_) return cell;
-        // The same text is the same value within one sequence's step.
-        const std::string assigned = " = " + cell.text + ";";
-        for (const std::string& declared : *temporaries_) {
-            if (declared.size() > assigned.size() &&
-                declared.compare(declared.size() - assigned.size(), assigned.size(), assigned) == 0)
-                return Atom(declared.substr(13, declared.size() - assigned.size() - 13));
-        }
+        return Atom(Temporary(cell.text, [&](const std::string& name) {
+            return std::vector<std::string>{"const double " + name + " = " + cell.text + ";"};
+        }));
+    }
+
+    // The same value is the same temporary within one sequence's step.
+    template <typename Lines>
+    std::string Temporary(const std::string& value, Lines lines) {
+        if (!temporaries_) throw Reason("a matrix inverse outside a sequence");
+        for (const struct Temporary& temporary : *temporaries_)
+            if (temporary.value == value) return temporary.name;
         const std::string name = "t" + std::to_string(temporary_count_++) + "_";
-        temporaries_->push_back("const double " + name + " = " + cell.text + ";");
-        return Atom(name);
+        temporaries_->push_back({name, value, lines(name)});
+        return name;
     }
     Code Shared(Code code) {
         for (Cell& cell : code.cells) cell = Shared(cell);
@@ -437,9 +449,64 @@ private:
         const Code base = Emit(expression->m_e1()), exponent = Emit(expression->m_e2());
         if (base.constant && exponent.constant) return Fold(expression);
         if (!exponent.Scalar()) throw Reason("a matrix cannot be an exponent");
-        if (!base.Scalar()) throw Reason("a matrix power");
+        if (!base.Scalar()) return Answer(Power(base, exponent));
         return Answer(
             Cell("pow(" + base.cells[0].text + ", " + exponent.cells[0].text + ")", primary));
+    }
+
+    // By squaring, as the interpreter does it, of the inverse for a negative
+    // exponent. The interpreter starts from the identity and multiplies it in;
+    // starting from the first factor instead changes only a cell that is
+    // infinite, where the identity's zeros would make it NaN.
+    Code Power(Code base, const Code& exponent) {
+        if (!exponent.constant) throw Reason("a matrix power whose exponent is not a constant");
+        const auto power = (*exponent.constant)(1, 1).Inexact();
+        if (power.imag() != 0 || power.real() != std::floor(power.real()) ||
+            std::abs(power.real()) > 2147483647.0)
+            throw Reason("a matrix power must be a whole number");
+        if (base.rows != base.cols) throw Reason("only a square matrix has a power");
+        const long long whole = static_cast<long long>(power.real());
+        if (whole == 0) {
+            // The identity whatever the base, but not a constant: a constant is
+            // what reads no name, and an enclosing fold would read this one's.
+            Code identity = Literal(Value::Identity(Extent{base.rows, base.cols}));
+            identity.constant.reset();
+            return identity;
+        }
+        if (whole < 0) base = Inverse(base);
+        std::optional<Code> result;
+        for (unsigned long long n = static_cast<unsigned long long>(whole < 0 ? -whole : whole);
+             n != 0; n >>= 1) {
+            if (n & 1) result = result ? Product(*result, base) : base;
+            if (n > 1) base = Product(base, base);
+        }
+        return *result;
+    }
+
+    // In place, by the helper the header defines for its size, which pivots as
+    // the interpreter does: that depends on the values, so it is done as the
+    // step runs.
+    Code Inverse(const Code& matrix) {
+        const std::size_t n     = matrix.rows;
+        std::string       value = "inverse";
+        std::string       rows;
+        for (std::size_t i = 0; i < n; ++i) {
+            std::string row;
+            for (std::size_t j = 0; j < n; ++j) row += (j ? ", " : "") + matrix.At(i, j).text;
+            rows += (i ? ", {" : "{") + row + "}";
+            value += "\x1f" + row;
+        }
+        inverses_.insert(n);
+        const std::string name = Temporary(value, [&](const std::string& t) {
+            return std::vector<std::string>{
+                "double " + t + Subscript(n, n) + " = {" + rows + "};",
+                module_ + "_inverse" + std::to_string(n) + "_(" + t + ");"};
+        });
+        Code              code;
+        code.rows = code.cols = n;
+        for (std::size_t i = 0; i < n; ++i)
+            for (std::size_t j = 0; j < n; ++j) code.cells.push_back(Atom(name + Subscript(i, j)));
+        return code;
     }
 
     static const char* Operator(Comparison op) {
@@ -846,16 +913,83 @@ private:
     // Those something reads: a cell read out of a product, or a clause that was
     // compiled only to be refused, leaves some that nothing does, and C would
     // say so.
-    static std::string Temporaries(const std::vector<std::string>& declared,
+    static std::string Temporaries(const std::vector<struct Temporary>& declared,
                                    const std::string& assignments, const std::string& indent) {
         std::string read = assignments, kept;
-        for (auto declaration = declared.rbegin(); declaration != declared.rend(); ++declaration) {
-            const std::string name = declaration->substr(13, declaration->find(' ', 13) - 13);
-            if (read.find(name) == std::string::npos) continue;
-            read += *declaration;
-            kept = indent + *declaration + "\n" + kept;
+        for (auto temporary = declared.rbegin(); temporary != declared.rend(); ++temporary) {
+            if (read.find(temporary->name) == std::string::npos) continue;
+            std::string lines;
+            for (const std::string& line : temporary->lines) lines += indent + line + "\n";
+            read += lines;
+            kept = lines + kept;
         }
         return kept;
+    }
+
+    // The interpreter's Gauss-Jordan (Matrix::Inverse), step for step: the
+    // largest pivot, any rather than an exact zero, and NaN for every cell
+    // where the matrix is singular, which the interpreter reports.
+    std::string InverseHelper(std::size_t n) const {
+        const std::string size = std::to_string(n);
+        return "/* The inverse of a " + size + "x" + size +
+               " matrix, in place, as the interpreter takes it: Gauss-Jordan\n"
+               " * on the largest pivot, and NaN in every cell where there is none. */\n"
+               "static inline void " +
+               module_ + "_inverse" + size + "_(double a[" + size + "][" + size +
+               "]) {\n"
+               "    double r[" +
+               size + "][" + size +
+               "];\n"
+               "    for (int i = 0; i < " +
+               size + "; ++i)\n        for (int j = 0; j < " + size +
+               "; ++j) r[i][j] = i == j;\n"
+               "    for (int col = 0; col < " +
+               size +
+               "; ++col) {\n"
+               "        int pivot = col;\n"
+               "        for (int row = col + 1; row < " +
+               size +
+               "; ++row)\n"
+               "            if (fabs(a[row][col]) > fabs(a[pivot][col]) ||\n"
+               "                (a[pivot][col] == 0.0 && a[row][col] != 0.0))\n"
+               "                pivot = row;\n"
+               "        if (a[pivot][col] == 0.0) {\n"
+               "            for (int i = 0; i < " +
+               size + "; ++i)\n                for (int j = 0; j < " + size +
+               "; ++j) a[i][j] = NAN;\n"
+               "            return;\n"
+               "        }\n"
+               "        for (int j = 0; j < " +
+               size +
+               "; ++j) {\n"
+               "            const double s = a[pivot][j], t = r[pivot][j];\n"
+               "            a[pivot][j] = a[col][j];\n"
+               "            r[pivot][j] = r[col][j];\n"
+               "            a[col][j]   = s;\n"
+               "            r[col][j]   = t;\n"
+               "        }\n"
+               "        const double scale = a[col][col];\n"
+               "        for (int j = 0; j < " +
+               size +
+               "; ++j) {\n"
+               "            a[col][j] = a[col][j] / scale;\n"
+               "            r[col][j] = r[col][j] / scale;\n"
+               "        }\n"
+               "        for (int row = 0; row < " +
+               size +
+               "; ++row) {\n"
+               "            const double factor = a[row][col];\n"
+               "            if (row == col || factor == 0.0) continue;\n"
+               "            for (int j = 0; j < " +
+               size +
+               "; ++j) {\n"
+               "                a[row][j] = a[row][j] - factor * a[col][j];\n"
+               "                r[row][j] = r[row][j] - factor * r[col][j];\n"
+               "            }\n"
+               "        }\n"
+               "    }\n"
+               "    memcpy(a, r, sizeof r);\n"
+               "}\n\n";
     }
 
     std::string Print(const std::string& module, const std::string& source) {
@@ -909,6 +1043,8 @@ private:
         }
         out += "    m_->index_ = " + std::to_string(earliest - 1) + ";\n}\n\n";
 
+        for (const std::size_t n : inverses_) out += InverseHelper(n);
+
         out += "/* Advances to the next index, the first at " + std::to_string(earliest) +
                ", and computes its terms. */\n";
         out += "static inline void " + module + "_step(" + module + "* m_";
@@ -956,7 +1092,9 @@ private:
     std::set<std::string>            reading_plain_;
     Sequence*   reading_ = nullptr;  // the sequence whose general clause this is
     std::string index_;              // and the name of its index
-    std::vector<std::string>*        temporaries_ = nullptr;  // where this sequence's are declared
+    std::vector<struct Temporary>*   temporaries_ = nullptr;  // where this sequence's are declared
+    std::string                      module_;
+    std::set<std::size_t>            inverses_;  // the sizes a helper is needed for
     int                              temporary_count_ = 0;
     std::map<std::string, Value>     places_;             // a cell's row and column, by their names
     Code        code_;

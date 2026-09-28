@@ -115,9 +115,9 @@ terms, an `init` and a `step`, for a filter to run where the interpreter cannot.
 is what it compiles to; `test/compile/kalman.ink` is a Kalman filter over
 matrices.
 `test/compile/pid_clamped.ink` limits its output with guards, and
-`test/compile/fir.ink` is a filter written as a sum. The compiler refuses by
-name what it cannot yet express, such as functions, limits, infinite series and
-matrix powers.
+`test/compile/fir.ink` is a filter written as a sum; `test/compile/kalman2.ink`
+inverts a matrix at every step. The compiler refuses by name what it cannot yet
+express, such as functions, limits and infinite series.
 
 Interpreter behaviour is pinned by golden transcripts in `test/data/*.ink`,
 which are literal sessions — every example in this file is one of them, so the

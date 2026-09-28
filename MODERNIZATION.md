@@ -1693,6 +1693,20 @@ and the Kalman filter's reads its gain's denominator and its innovation once
 each. The product that repeated every cell before it is now as long as its
 products.
 
+**A matrix power** is unrolled by squaring as the interpreter computes it, of
+the inverse for a negative exponent, and the inverse is the interpreter's own
+Gauss-Jordan: the largest pivot, any rather than an exact zero. The pivot
+depends on the values, so it is chosen as the step runs, by a helper the
+header defines once for each size it needs, into a temporary array; where the
+matrix is singular, which the interpreter reports, every cell is NaN.
+`kalman2.ink` measures position and the sum of position and velocity, so its
+gain inverts a 2x2, and its estimates and first gain are within 1e-14 of the
+exact ones; its header was recorded and read, the helper's form being new but
+the rest the Kalman filter's. The interpreter starts a power from the identity
+and multiplies it in, which the compiled code skips: that differs only where a
+cell is infinite. An exponent must be a whole constant; `A^0` is the identity,
+kept apart from the folding of constants, since it reads `A`.
+
 **The second increment** is the Kalman filter, which is matrices of fixed
 shape: a value is its cells, each one C expression, and a matrix product is the
 sum over the inner dimension in the interpreter's order. A sequence's shape
