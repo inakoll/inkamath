@@ -76,6 +76,7 @@ private:
     struct Sequence {
         const Reference<Value>*                 definition = nullptr;  // none for an input
         std::map<int, std::vector<std::string>> bases;                 // cells, by index
+        std::vector<std::pair<std::string, std::vector<std::string>>> guarded;  // in order
         std::vector<std::string>                general;
         std::size_t                             rows = 0, cols = 0;  // 0 until known
         bool                                    based = false, compiling = false, compiled = false;
@@ -111,8 +112,18 @@ private:
         for (const Clause<Value>& clause : definition.Clauses()) {
             if (!clause.parameters.parameters_names().empty())
                 throw Refusal("cannot compile " + name + ": a function");
-            if (clause.parameters.guarded() && !clause.parameters.cells())
-                throw Refusal("cannot compile " + name + ": a guarded clause");
+            const ParametersDefinition<Value>& p = clause.parameters;
+            if (p.guarded() && !p.cells() && !p.general())
+                throw Refusal("cannot compile " + name + ": a guarded " +
+                              (p.indexed() ? "base clause" : "value"));
+        }
+        // A base clause written after a guarded one is reached only if the guard
+        // fails, which the chain a step computes would not say.
+        bool guarded = false;
+        for (const Clause<Value>& clause : definition.Clauses()) {
+            guarded = guarded || (clause.parameters.guarded() && clause.parameters.general());
+            if (guarded && clause.parameters.indexed() && !clause.parameters.general())
+                throw Refusal("cannot compile " + name + ": a base clause after a guarded one");
         }
         if (IsSequence(definition)) sequences_[name].definition = &definition;
     }
@@ -170,16 +181,32 @@ private:
             throw Refusal("cannot compile " + name + ": its shape depends on itself");
         sequence.compiling = true;
         Bases(name);
-        for (const Clause<Value>& clause : sequence.definition->Clauses()) {
-            if (!clause.parameters.general()) continue;
-            Within(name, &sequence, clause.parameters.index_name(), [&] {
-                const Code code = Emit(clause.expression);
-                Shape(sequence, code);
-                sequence.general = Texts(code);
-            });
+        // The guarded clauses in the order written, then the unguarded one, as
+        // the interpreter tries them; a guard that always holds ends the chain.
+        bool settled = false;
+        for (const bool guarded : {true, false}) {
+            for (const Clause<Value>& clause : sequence.definition->Clauses()) {
+                const ParametersDefinition<Value>& p = clause.parameters;
+                if (settled || !p.general() || p.guarded() != guarded) continue;
+                Within(name, &sequence, p.index_name(), [&] {
+                    const std::optional<std::string> condition =
+                        guarded ? Condition(p.guard()) : std::optional<std::string>("");
+                    if (!condition) return;
+                    const Code code = Emit(clause.expression);
+                    Shape(sequence, code);
+                    if (condition->empty()) {
+                        sequence.general = Texts(code);
+                        settled          = true;
+                    } else {
+                        sequence.guarded.emplace_back(*condition, Texts(code));
+                    }
+                });
+            }
         }
-        if (sequence.general.empty())
+        if (!settled && sequence.guarded.empty())
             throw Refusal("cannot compile " + name + ": a sequence with no general clause");
+        // Where no guard holds the interpreter says so; a step can only say NaN.
+        if (!settled) sequence.general.assign(sequence.rows * sequence.cols, "NAN");
         sequence.compiled = true;
     }
 
@@ -367,15 +394,35 @@ private:
             Cell("pow(" + base.cells[0].text + ", " + exponent.cells[0].text + ")", primary));
     }
 
-    PExpression<Value> visit(CompareExpression<Value>* expression) override {
+    static const char* Operator(Comparison op) {
         static const char* const ops[] = {" < ", " > ", " <= ", " >= ", " == ", " != "};
-        const Code               left = Emit(expression->m_e1()), right = Emit(expression->m_e2());
+        return ops[static_cast<int>(op)];
+    }
+
+    PExpression<Value> visit(CompareExpression<Value>* expression) override {
+        const Code left = Emit(expression->m_e1()), right = Emit(expression->m_e2());
         if (left.constant && right.constant) return Fold(expression);
         if (!left.Scalar() || !right.Scalar()) throw Reason("a comparison of matrices");
-        return Answer(Cell("(" + Wrap(left.cells[0], sum) +
-                               ops[static_cast<int>(expression->Op())] + Wrap(right.cells[0], sum) +
-                               " ? 1.0 : 0.0)",
+        return Answer(Cell("(" + Wrap(left.cells[0], sum) + Operator(expression->Op()) +
+                               Wrap(right.cells[0], sum) + " ? 1.0 : 0.0)",
                            primary));
+    }
+
+    // A guard as C tests it: a comparison as itself, anything else against
+    // zero, which is the interpreter's truth, NaN holding. Empty where it
+    // always holds, and nothing where it never does.
+    std::optional<std::string> Condition(const PExpression<Value>& guard) {
+        const Code code = Emit(guard);
+        if (!code.Scalar()) throw Reason("a guard that is a matrix");
+        if (code.constant) {
+            if (!Value::truth(*code.constant)) return std::nullopt;
+            return std::string();
+        }
+        if (const auto* compare = dynamic_cast<CompareExpression<Value>*>(guard.get())) {
+            const Code left = Emit(compare->m_e1()), right = Emit(compare->m_e2());
+            return Wrap(left.cells[0], sum) + Operator(compare->Op()) + Wrap(right.cells[0], sum);
+        }
+        return Wrap(code.cells[0], sum) + " != 0.0";
     }
 
     PExpression<Value> visit(MatExpression<Value>* expression) override {
@@ -784,6 +831,8 @@ private:
                        (scalar ? "" : Subscript(c / sequence.cols, c % sequence.cols)) + " = ";
                 for (const auto& [index, base] : sequence.bases)
                     out += "m_->index_ == " + std::to_string(index) + " ? " + base[c] + " : ";
+                for (const auto& [condition, cells] : sequence.guarded)
+                    out += condition + " ? " + cells[c] + " : ";
                 out += sequence.general[c] + ";\n";
             }
             if (guarded) out += "    }\n";

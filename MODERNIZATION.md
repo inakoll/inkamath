@@ -1657,6 +1657,18 @@ values computed with Python's fractions. What it refuses -- functions, guards,
 limits, series, factorials, locals, complex numbers, an index other than `n`
 less a constant, a term read before its sequence starts -- it names.
 
+**The third increment** is guards, because a PID that does not limit its
+output is not one anybody runs: `pid_clamped.ink` holds the output to what the
+actuator can give and the integral while the output is at a limit. A
+sequence's guarded clauses become a chain of C conditionals -- base clauses,
+then guarded ones in the order written, then the unguarded one, as the
+interpreter tries them -- and a comparison used as a guard is emitted as itself.
+The header was written by hand first and is emitted byte for byte; the loop is
+at its limit for two steps and within 1e-14 of the exact one after. Where no
+guard holds the interpreter reports it and a step answers NaN. Still refused: a
+guard on a base clause or a plain value, and a base clause written after a
+guarded one, which the chain would reach before the guard.
+
 **The second increment** is the Kalman filter, which is matrices of fixed
 shape: a value is its cells, each one C expression, and a matrix product is the
 sum over the inner dimension in the interpreter's order. A sequence's shape
