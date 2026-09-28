@@ -37,8 +37,9 @@ add_custom_target(record_goldens
     VERBATIM)
 
 # The compiler's C target (MODERNIZATION.md, phase 14, step 2). What it emits
-# for each model is the header kept beside it, and the header it emits, built
-# as C, holds the model to exact values its harness knows.
+# for each model is the header in compile/expected, and the header it emits,
+# built as C, holds the model to exact values its harness knows. The expected
+# headers are kept apart, where a harness's #include cannot find one instead.
 enable_language(C)
 foreach(model IN ITEMS pid kalman)
     set(header ${CMAKE_CURRENT_BINARY_DIR}/compile/${model}.h)
@@ -56,5 +57,5 @@ foreach(model IN ITEMS pid kalman)
     add_test(NAME compile_${model} COMMAND compile_${model})
     add_test(NAME compile_${model}_header
              COMMAND ${CMAKE_COMMAND} -E compare_files --ignore-eol
-                     ${CMAKE_CURRENT_SOURCE_DIR}/compile/${model}.h ${header})
+                     ${CMAKE_CURRENT_SOURCE_DIR}/compile/expected/${model}.h ${header})
 endforeach()

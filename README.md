@@ -111,8 +111,9 @@ of `test/data/*.ink`.
 `--compile model.ink -o model.h` writes the sequences a file defines as a C
 header over doubles: a struct holding the parameters and each sequence's latest
 terms, an `init` and a `step`, for a filter to run where the interpreter cannot.
-`test/compile/pid.ink` is a PID controller, and `test/compile/pid.h` is what it
-compiles to, and `test/compile/kalman.ink` is a Kalman filter over matrices.
+`test/compile/pid.ink` is a PID controller, and `test/compile/expected/pid.h`
+is what it compiles to; `test/compile/kalman.ink` is a Kalman filter over
+matrices.
 The compiler refuses by name what it cannot yet express, such as functions,
 guards, limits, series and matrix powers.
 

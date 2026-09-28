@@ -1649,24 +1649,24 @@ division by zero, a power it would take in the complex plane -- the compiled
 code answers an infinity or a NaN.
 
 It is `compile.hpp` and `inkamath --compile pid.ink -o pid.h`. The header for
-the PID was written by hand first, as the specification, and the compiler
-emits it byte for byte (`test/compile/pid.h`); built as C11 it holds the
+the PID was written by hand first, as the specification, and the compiler emits
+it byte for byte (`test/compile/expected/pid.h`); built as C11 it holds the
 controller, closing the loop in a harness, within 1e-14 of the loop's exact
-values computed with Python's fractions. What it refuses -- functions,
-guards, limits, series, factorials, locals, complex numbers, an index other
-than `n` less a constant, a term read before its sequence starts -- it names.
+values computed with Python's fractions. What it refuses -- functions, guards,
+limits, series, factorials, locals, complex numbers, an index other than `n`
+less a constant, a term read before its sequence starts -- it names.
 
 **The second increment** is the Kalman filter, which is matrices of fixed
-shape: a value is its cells, each one C expression, and a matrix product is
-the sum over the inner dimension in the interpreter's order. A sequence's shape
+shape: a value is its cells, each one C expression, and a matrix product is the
+sum over the inner dimension in the interpreter's order. A sequence's shape
 comes from its base clauses, or else from its general clause, compiled on first
 reading -- so `K`, whose general clause is the first to need `P`, finds `P`'s
 shape in `P_0` without the cycle through `P`'s own general clause. A sequence
-with no base clause starts at the first index where every term it reads
-exists, which is where the interpreter would first answer it: the filter's
-`xp`, `Pp` and `K` start at 1, a step after `x` and `P`. The header is
-`test/compile/kalman.h`, recorded from the compiler and read rather than
-written first, since the PID's had already fixed the form; fed the
+with no base clause starts at the first index where every term it reads exists,
+which is where the interpreter would first answer it: the filter's `xp`, `Pp`
+and `K` start at 1, a step after `x` and `P`. The header is
+`test/compile/expected/kalman.h`, recorded from the compiler and read rather
+than written first, since the PID's had already fixed the form; fed the
 measurements of a target moving at 2 per step, the compiled filter is within
 1e-14 of the exact estimates. Still refused: a matrix power, a matrix built
 from matrices, a cell read out of one, comparing matrices. Each derived matrix
