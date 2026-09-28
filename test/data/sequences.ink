@@ -226,6 +226,20 @@ mb_n=ma_(n-1)+1
 >> ma_5000
 5000
 
+# However far: a fill keeps the latest terms of every sequence it passes
+# through, and each term has the budget a line of its own would have
+# (MODERNIZATION.md, C69).
+>> ma_60000
+60000
+
+>> g_600000
+600001
+
+# Up to ten million terms from the base, so that a slip of the keyboard costs
+# seconds and not the session.
+>> g_2000000000
+error: g_2000000000 is 2000000000 terms from its base, and a fill stops at 10000000
+
 # Recursion is still bounded: one that reaches up, away from its base, never
 # arrives, and past the budget the interpreter says so rather than dying
 # (MODERNIZATION.md, C1).
