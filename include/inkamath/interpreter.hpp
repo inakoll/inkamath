@@ -103,8 +103,9 @@ private:
     PExpression<U> ParseMultExpr(PExpression<U> lead = PExpression<U>());
     PExpression<U> ParsePowExpr(PExpression<U> lead = PExpression<U>());
     PExpression<U> ParseMatrix();
-    PExpression<U> ParseSimpleExpr();
+    PExpression<U> ParseSimpleExpr(bool quoted = true);
     PExpression<U> ParseCell(PExpression<U> matrix, bool named);
+    PExpression<U> ParseQuotes(PExpression<U> e);
 
     // Inside a matrix literal, and inside an argument list, a space between
     // two expressions separates them. Everywhere else it means nothing, which
@@ -291,6 +292,9 @@ void Interpreter<T,U>::Lexer(const std::string& s)
         case '~':
             m_tokens.push_back(Token<T>(Approx, std::string(1, s[i])));
             break;
+        case '\'':
+            m_tokens.push_back(Token<T>(Quote, std::string(1, s[i])));
+            break;
         case ' ':
         // A tab is what a pasted line is indented with, and a '\r' is what a
         // line written on Windows ends with. Neither was typed to be read.
@@ -474,8 +478,8 @@ PExpression<U> Interpreter<T,U>::ParseEqualExpr()
                 ref.reset(new FuncExpression<U>(ref, params, sub));
             }
             // A name at the head of a line is parsed here, not in
-            // ParseSimpleExpr, so the cell brackets are read here too.
-            e = ParseCompareExpr(ParseCell(ref, true));
+            // ParseSimpleExpr, so the cell brackets and quotes are read here too.
+            e = ParseCompareExpr(ParseQuotes(ParseCell(ref, true)));
         }
     } else {
         e = ParseCompareExpr();
@@ -624,8 +628,7 @@ std::vector<PExpression<T>>
 }
 
 template <Parsable T, Numeric U>
-PExpression<U>  Interpreter<T,U>::ParseSimpleExpr()
-{
+PExpression<U> Interpreter<T, U>::ParseSimpleExpr(bool quoted) {
     PExpression<U> e,ref,param,sub;
     std::string name;
     if (!AtEnd())
@@ -720,10 +723,22 @@ PExpression<U>  Interpreter<T,U>::ParseSimpleExpr()
             Fail("unexpected '", Peek().text, "'");
             break;
         }
+        if (quoted) e = ParseQuotes(e);
     }
     else if(m_i != 0)
     {
         Fail("unexpected end of input after '", m_tokens[--m_i].text, "'");
+    }
+    return e;
+}
+
+// A quote binds to what it follows before any operator does, as Julia's does:
+// 'a^2'' is 'a^(2')'.
+template <Parsable T, Numeric U>
+PExpression<U> Interpreter<T, U>::ParseQuotes(PExpression<U> e) {
+    while (!AtEnd() && Peek().type == Quote) {
+        ++m_i;
+        e = std::make_shared<TransposeExpression<U>>(e);
     }
     return e;
 }
@@ -877,7 +892,8 @@ PExpression<U> Interpreter<T,U>::ParseSubExpr()
     const size_t m_s = m_i;
     if (!AtEnd() && m_tokens[m_i++].type == Sub)
     {
-        e = ParseSimpleExpr();
+        // A quote after the index is the term's: 'x_(n-1)'' transposes x_(n-1).
+        e = ParseSimpleExpr(false);
     }
     else
     {

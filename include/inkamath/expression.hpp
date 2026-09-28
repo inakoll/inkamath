@@ -159,6 +159,17 @@ public:
     T accept(FoldingVisitor<T>& v) override { return v.visit(this); }
 };
 
+// 'm'': the rows as columns.
+template <typename T>
+class TransposeExpression : public UnaryExpression<T> {
+public:
+    explicit TransposeExpression(PExpression<T> e) : UnaryExpression<T>(e) {}
+
+    PExpression<T> accept(TransformationVisitor<T>& v) override { return v.visit(this); }
+
+    T accept(FoldingVisitor<T>& v) override { return v.visit(this); }
+};
+
 template <typename T>
 class MultExpression : public BinaryExpression<T>
 {

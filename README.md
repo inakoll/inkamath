@@ -241,6 +241,21 @@ columns are written:
 error: row 3, column 1 is outside a 2x2 matrix
 ```
 
+`m'` is the transpose of `m`, its rows made columns. The quote belongs to what
+it follows, subscript and cell brackets included, before any operator: `2*a'`
+is `2*(a')`, and `x_(n-1)'` transposes the term `x_(n-1)`. It does not
+conjugate a complex cell, as MATLAB's and Julia's quote does.
+
+```
+>> a'
+[1, 3;
+ 2, 4]
+
+>> a'*[1; 1]
+[4;
+ 6]
+```
+
 Inside a matrix literal the brackets index a name and nothing else, because
 there a space between two blocks already separates them: `[[1 2] [3 4]]` is
 one row of two blocks, while `[a [3 4]]` reads as an index of `a`. Write a row

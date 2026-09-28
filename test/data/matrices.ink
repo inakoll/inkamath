@@ -96,6 +96,70 @@ f(x)=[x, x^2]
 >> (a*a)[1,1]
 7
 
+# A quote transposes: the rows become the columns. It binds to what it follows
+# before any operator does, as Julia's does, so 2*a' is 2*(a') and a^2' is
+# a^(2'), which is a^2 (MODERNIZATION.md, phase 14).
+>> a'
+[1, 3;
+ 2, 4]
+
+>> [1 2 3]'
+[1;
+ 2;
+ 3]
+
+>> 2*a'
+[2, 6;
+ 4, 8]
+
+>> a'*[1; 1]
+[4;
+ 6]
+
+>> (a*a)'
+[ 7, 15;
+ 10, 22]
+
+>> a^2'
+[ 7, 10;
+ 15, 22]
+
+>> a''
+[1, 2;
+ 3, 4]
+
+>> a[1,2]'
+2
+
+>> [a' a']
+[1, 3, 1, 3;
+ 2, 4, 2, 4]
+
+# A subscript belongs to the name, as cell brackets do, so a quote after a
+# term transposes the term, not its index.
+>> r_0 = [1 2]
+r_0 = [1 2]
+
+>> r_n = r_(n-1)'
+r_n = r_(n-1)'
+
+>> r_1
+[1;
+ 2]
+
+>> r_2
+[1, 2]
+
+# A single value is its own transpose.
+>> 5'
+5
+
+# It does not conjugate: MATLAB's and Julia's quote is the conjugate
+# transpose, which is the same only for real matrices.
+>> [1 i]'
+[1;
+ i]
+
 # Inside one they index a name and nothing else, because there a space
 # between two blocks already means something.
 >> [[1 2] [3 4]]

@@ -1700,9 +1700,15 @@ against the exact transcript. Writing the two found four things they need:
 - `[done]` **A window on the memo**, in the C target, where each sequence
   keeps its terms only as far back as they are read. The interpreter's memo
   is still bounded only by its size.
-- **Transpose and identity**, which the Kalman filter spells out by hand as
-  `Ft`, `Ht` and `I2`. The language has no built-in function at all, so how
-  to write them is a decision of its own, specified by a transcript first.
+- `[done]` **Transpose**, which the Kalman filter spelled out by hand as `Ft`
+  and `Ht`: `F'`, as MATLAB and Julia write it, specified in `matrices.ink`
+  before it was built. The quote belongs to what it follows, subscript and
+  cell brackets included, before any operator -- `2*a'` is `2*(a')` and
+  `a^2'` is `a^(2')`, as in Julia -- and it does not conjugate, where theirs
+  does. The first spelling bound the quote so tightly that `x_(n-1)'`
+  transposed the index; a transcript entry now says it is the term's. The
+  identity stays written out, `I2 = [1 0; 0 1]`: the language has no built-in
+  function, and the one filter that needs it does not yet justify the first.
 
 Beyond Python on very large numbers is not on this path. What is fast at a
 hundred thousand digits -- PARI/GP, Julia, Mathematica -- is GMP, with FFT

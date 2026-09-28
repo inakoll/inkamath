@@ -94,6 +94,15 @@ public:
         return c;
     }
 
+    // The rows as columns, and no cell conjugated: MATLAB's and Julia's quote
+    // is the conjugate transpose, which is the same only for real matrices.
+    static Matrix<T> transpose(const Matrix<T>& a) {
+        Matrix<T> t(Extent{a.extent_.cols, a.extent_.rows});
+        for (size_t i = 1; i <= a.extent_.rows; ++i)
+            for (size_t j = 1; j <= a.extent_.cols; ++j) t(j, i) = a(i, j);
+        return t;
+    }
+
     // One cell, as a 1x1: everything in this language is a matrix.
     static Matrix<T> cell(const Matrix<T>& a, int i, int j) {return Matrix<T>(a(i, j));}
 

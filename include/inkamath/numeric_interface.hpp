@@ -55,6 +55,7 @@ struct numeric_interface_imp
      static T real(const T& a) { return T::real(a); }
      static T imaginary(const T& a) { return T::imaginary(a); }
      static T inexact(const T& a) { return T::inexact(a); }
+     static T    transpose(const T& a) { return T::transpose(a); }
      static bool exact(const T& a) { return T::exact(a); }
      static void key(const T& a, std::string& out) { T::key(a, out); }
 
