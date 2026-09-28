@@ -1669,6 +1669,18 @@ guard holds the interpreter reports it and a step answers NaN. Still refused: a
 guard on a base clause or a plain value, and a base clause written after a
 guarded one, which the chain would reach before the guard.
 
+**The fourth increment** is sums and products with constant bounds, for the
+filters that are one: `fir.ink` weighs its last four inputs,
+`y_n = sum_(k=0)^3 b[1,k+1]*x_(n-k)`. The sum is unrolled with its index bound
+as a constant, as a cell's names are, so `b[1,k+1]` is a cell at a constant
+place and `x_(n-k)` a constant lag; a lag is now read from `n` plus constants
+however they are spelled, `n-k-1` included. With nothing before it, `y` starts
+at 3, where its four reads first exist. The header was written by hand first
+and is emitted byte for byte. Refused: a sum with no upper bound, bounds that
+read a parameter, and more than a thousand terms, each of which is a line of C.
+A product of matrices shows what inlining costs -- each cell repeats the
+cells before it -- which is what temporaries are next for.
+
 **The second increment** is the Kalman filter, which is matrices of fixed
 shape: a value is its cells, each one C expression, and a matrix product is the
 sum over the inner dimension in the interpreter's order. A sequence's shape

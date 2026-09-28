@@ -114,9 +114,10 @@ terms, an `init` and a `step`, for a filter to run where the interpreter cannot.
 `test/compile/pid.ink` is a PID controller, and `test/compile/expected/pid.h`
 is what it compiles to; `test/compile/kalman.ink` is a Kalman filter over
 matrices.
-`test/compile/pid_clamped.ink` limits its output with guards. The compiler
-refuses by name what it cannot yet express, such as functions, limits, series
-and matrix powers.
+`test/compile/pid_clamped.ink` limits its output with guards, and
+`test/compile/fir.ink` is a filter written as a sum. The compiler refuses by
+name what it cannot yet express, such as functions, limits, infinite series and
+matrix powers.
 
 Interpreter behaviour is pinned by golden transcripts in `test/data/*.ink`,
 which are literal sessions — every example in this file is one of them, so the

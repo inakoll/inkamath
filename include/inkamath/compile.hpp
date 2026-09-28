@@ -339,7 +339,11 @@ private:
     PExpression<Value> visit(MultExpression<Value>* expression) override {
         const Code left = Emit(expression->m_e1()), right = Emit(expression->m_e2());
         if (left.constant && right.constant) return Fold(expression);
-        if (left.Scalar() || right.Scalar()) return Answer(Cellwise(left, right, Multiplied));
+        return Answer(Product(left, right));
+    }
+
+    static Code Product(const Code& left, const Code& right) {
+        if (left.Scalar() || right.Scalar()) return Cellwise(left, right, Multiplied);
         if (left.cols != right.rows)
             throw Reason("a matrix product needs as many columns on the left as rows on the right");
         Code code;
@@ -353,7 +357,7 @@ private:
                 code.cells.push_back(cell);
             }
         }
-        return Answer(code);
+        return code;
     }
 
     PExpression<Value> visit(NegExpression<Value>* expression) override {
@@ -603,23 +607,32 @@ private:
     // How far back a term reads: its own index, or that less a constant.
     int Lag(const PExpression<Value>& index, const std::string& name) {
         const std::string written = name + "_(...)";
+        const int         offset  = Offset(index, written);
+        if (offset > 0) throw Reason(written + ": a term after the one being computed");
+        return -offset;
+    }
+
+    // How far an index is from the clause's own: 'n', or that plus constants
+    // however they are spelled -- 'n-1', 'n-k-1' in a sum over k.
+    int Offset(const PExpression<Value>& index, const std::string& written) {
+        const std::string only = written + ": an index other than " + index_ + " less a constant";
         if (const auto* ref = dynamic_cast<RefExpression<Value>*>(index.get());
-            ref && ref->Name() == index_)
+            ref && ref->Name() == index_ && !places_.count(index_))
             return 0;
         const auto* sum = dynamic_cast<AddExpression<Value>*>(index.get());
-        const auto* ref = sum ? dynamic_cast<RefExpression<Value>*>(sum->m_e1().get()) : nullptr;
-        const std::string only = written + ": an index other than " + index_ + " less a constant";
-        if (!ref || ref->Name() != index_) throw Reason(only);
-        const Code offset = Emit(sum->m_e2());
-        if (!offset.constant) throw Reason(only);
-        int step = 0;
+        if (!sum) throw Reason(only);
+        const Code left = Emit(sum->m_e1()), right = Emit(sum->m_e2());
+        if (right.constant && !left.constant) return Offset(sum->m_e1(), written) + Whole(right);
+        if (left.constant && !right.constant) return Whole(left) + Offset(sum->m_e2(), written);
+        throw Reason(only);
+    }
+
+    static int Whole(const Code& code) {
         try {
-            step = AsIndex<Value>(*offset.constant);
+            return AsIndex<Value>(*code.constant);
         } catch (const std::runtime_error& error) {
             throw Reason(error.what());
         }
-        if (step > 0) throw Reason(written + ": a term after the one being computed");
-        return -step;
     }
 
     PExpression<Value> visit(EqualExpression<Value>*) override {
@@ -645,8 +658,41 @@ private:
         return Answer(matrix.At(static_cast<std::size_t>(i - 1), static_cast<std::size_t>(j - 1)));
     }
     PExpression<Value> visit(FactExpression<Value>*) override { throw Reason("a factorial"); }
-    PExpression<Value> visit(SeriesExpression<Value>*) override {
-        throw Reason("a sum or a product");
+    // Unrolled, since each term is a line of C: a thousand is a filter no one
+    // would write out as one.
+    static constexpr int max_terms = 1000;
+
+    // A sum or a product with constant bounds, unrolled with its index bound
+    // as a constant, as a cell's names are: the terms that read it fold, and
+    // the lags it gives are constants.
+    PExpression<Value> visit(SeriesExpression<Value>* expression) override {
+        if (!expression->Upper()) throw Reason("a sum or a product with no upper bound");
+        const Code lower = Emit(expression->Lower()), upper = Emit(expression->Upper());
+        if (!lower.constant || !upper.constant)
+            throw Reason("a sum or a product whose bounds are not constants");
+        const int first = Whole(lower), last = Whole(upper);
+        if (last < first) return Answer(Literal(Value(Number(expression->Product() ? 1 : 0))));
+        if (last - first >= max_terms)
+            throw Reason("a sum or a product of more than " + std::to_string(max_terms) + " terms");
+        const std::string&         name  = expression->Index();
+        const auto                 found = places_.find(name);
+        const std::optional<Value> outer =
+            found == places_.end() ? std::nullopt : std::optional<Value>(found->second);
+        Code total;
+        bool constant = true;
+        for (int k = first; k <= last; ++k) {
+            places_[name]   = Value(Number(k));
+            const Code term = Emit(expression->Body());
+            constant        = constant && term.constant;
+            total           = k == first              ? term
+                              : expression->Product() ? Product(total, term)
+                                                      : Cellwise(total, term, Added);
+        }
+        if (outer)
+            places_[name] = *outer;
+        else
+            places_.erase(name);
+        return constant ? Fold(expression) : Answer(total);
     }
     PExpression<Value> visit_other(Expression<Value>*) override { throw Reason("this expression"); }
 
