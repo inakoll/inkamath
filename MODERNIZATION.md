@@ -1651,10 +1651,27 @@ It is `compile.hpp` and `inkamath --compile pid.ink -o pid.h`. The header for
 the PID was written by hand first, as the specification, and the compiler
 emits it byte for byte (`test/compile/pid.h`); built as C11 it holds the
 controller, closing the loop in a harness, within 1e-14 of the loop's exact
-values computed with Python's fractions. What it refuses -- matrices,
-functions, guards, limits, series, factorials, locals, complex numbers, an
-index other than `n` less a constant, sequences that start at different
-indices, a term read before its sequence starts -- it names.
+values computed with Python's fractions. What it refuses -- functions,
+guards, limits, series, factorials, locals, complex numbers, an index other
+than `n` less a constant, a term read before its sequence starts -- it names.
+
+**The second increment** is the Kalman filter, which is matrices of fixed
+shape: a value is its cells, each one C expression, and a matrix product is
+the sum over the inner dimension in the interpreter's order. A sequence's shape
+comes from its base clauses, or else from its general clause, compiled on first
+reading -- so `K`, whose general clause is the first to need `P`, finds `P`'s
+shape in `P_0` without the cycle through `P`'s own general clause. A sequence
+with no base clause starts at the first index where every term it reads
+exists, which is where the interpreter would first answer it: the filter's
+`xp`, `Pp` and `K` start at 1, a step after `x` and `P`. The header is
+`test/compile/kalman.h`, recorded from the compiler and read rather than
+written first, since the PID's had already fixed the form; fed the
+measurements of a target moving at 2 per step, the compiled filter is within
+1e-14 of the exact estimates. Still refused: a matrix power, a matrix built
+from matrices, a cell read out of one, comparing matrices. Each derived matrix
+is inlined into its readers, so a cell's expression can repeat a shared
+subexpression -- the C compiler's common subexpressions take it out, but a
+larger filter would want temporaries.
 
 **What step 2 is for, decided by building it.** Waiting for a use case that
 nothing yet can serve would wait for ever, so a proof of concept manufactures
@@ -1683,8 +1700,9 @@ against the exact transcript. Writing the two found four things they need:
 - `[done]` **A window on the memo**, in the C target, where each sequence
   keeps its terms only as far back as they are read. The interpreter's memo
   is still bounded only by its size.
-- **Transpose and identity**, which the Kalman filter spelled out by hand as
-  `Ft`, `Ht` and `I2`.
+- **Transpose and identity**, which the Kalman filter spells out by hand as
+  `Ft`, `Ht` and `I2`. The language has no built-in function at all, so how
+  to write them is a decision of its own, specified by a transcript first.
 
 Beyond Python on very large numbers is not on this path. What is fast at a
 hundred thousand digits -- PARI/GP, Julia, Mathematica -- is GMP, with FFT

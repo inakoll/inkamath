@@ -112,8 +112,9 @@ of `test/data/*.ink`.
 header over doubles: a struct holding the parameters and each sequence's latest
 terms, an `init` and a `step`, for a filter to run where the interpreter cannot.
 `test/compile/pid.ink` is a PID controller, and `test/compile/pid.h` is what it
-compiles to. It is the first increment of a compiler, and refuses by name what
-it cannot yet express: matrices, functions, guards, limits and series.
+compiles to, and `test/compile/kalman.ink` is a Kalman filter over matrices.
+The compiler refuses by name what it cannot yet express, such as functions,
+guards, limits, series and matrix powers.
 
 Interpreter behaviour is pinned by golden transcripts in `test/data/*.ink`,
 which are literal sessions — every example in this file is one of them, so the
