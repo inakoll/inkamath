@@ -150,6 +150,13 @@ r_n = r_(n-1)'
 >> r_2
 [1, 2]
 
+# So do cell brackets, whatever the index is written with.
+>> q_n = r_n[1,1]
+q_n = r_n[1,1]
+
+>> q_1
+1
+
 # A single value is its own transpose.
 >> 5'
 5

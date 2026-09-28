@@ -103,7 +103,7 @@ private:
     PExpression<U> ParseMultExpr(PExpression<U> lead = PExpression<U>());
     PExpression<U> ParsePowExpr(PExpression<U> lead = PExpression<U>());
     PExpression<U> ParseMatrix();
-    PExpression<U> ParseSimpleExpr(bool quoted = true);
+    PExpression<U> ParseSimpleExpr(bool postfix = true);
     PExpression<U> ParseCell(PExpression<U> matrix, bool named);
     PExpression<U> ParseQuotes(PExpression<U> e);
 
@@ -628,7 +628,7 @@ std::vector<PExpression<T>>
 }
 
 template <Parsable T, Numeric U>
-PExpression<U> Interpreter<T, U>::ParseSimpleExpr(bool quoted) {
+PExpression<U> Interpreter<T, U>::ParseSimpleExpr(bool postfix) {
     PExpression<U> e,ref,param,sub;
     std::string name;
     if (!AtEnd())
@@ -661,8 +661,8 @@ PExpression<U> Interpreter<T, U>::ParseSimpleExpr(bool quoted) {
             else {
                 e = ref;
             }
-            e = ParseCell(e, true);
-			break;
+            if (postfix) e = ParseCell(e, true);
+            break;
 
         case Add:
             // Unary plus is the identity, and binds as unary minus does.
@@ -701,8 +701,8 @@ PExpression<U> Interpreter<T, U>::ParseSimpleExpr(bool quoted) {
             {
                 Fail("missing ')' after '", m_tokens[--m_i].text, "'");
             }
-            e = ParseCell(e, false);
-			break;
+            if (postfix) e = ParseCell(e, false);
+            break;
 
         case LBra:
             ++m_i;
@@ -715,15 +715,15 @@ PExpression<U> Interpreter<T, U>::ParseSimpleExpr(bool quoted) {
             {
                 Fail("missing ']' after '", m_tokens[--m_i].text, "'");
             }
-            e = ParseCell(e, false);
-			break;
+            if (postfix) e = ParseCell(e, false);
+            break;
 
         default:
         case RPar:
             Fail("unexpected '", Peek().text, "'");
             break;
         }
-        if (quoted) e = ParseQuotes(e);
+        if (postfix) e = ParseQuotes(e);
     }
     else if(m_i != 0)
     {
@@ -892,7 +892,8 @@ PExpression<U> Interpreter<T,U>::ParseSubExpr()
     const size_t m_s = m_i;
     if (!AtEnd() && m_tokens[m_i++].type == Sub)
     {
-        // A quote after the index is the term's: 'x_(n-1)'' transposes x_(n-1).
+        // A quote or cell brackets after the index are the term's: 'x_(n-1)''
+        // transposes x_(n-1), and 'x_n[1,1]' is its first cell.
         e = ParseSimpleExpr(false);
     }
     else
