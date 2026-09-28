@@ -111,7 +111,7 @@ private:
         for (const Clause<Value>& clause : definition.Clauses()) {
             if (!clause.parameters.parameters_names().empty())
                 throw Refusal("cannot compile " + name + ": a function");
-            if (clause.parameters.guarded())
+            if (clause.parameters.guarded() && !clause.parameters.cells())
                 throw Refusal("cannot compile " + name + ": a guarded clause");
         }
         if (IsSequence(definition)) sequences_[name].definition = &definition;
@@ -208,7 +208,10 @@ private:
     // Exactly, as the interpreter would, and rounded once: 0.1 + 0.2 is 3/10
     // here, which a C compiler folding the doubles would not find.
     PExpression<Value> Fold(Expression<Value>* expression) {
-        ReferenceStack<Value>    scratch;
+        ReferenceStack<Value> scratch;
+        for (const auto& [name, value] : places_)
+            scratch.Set(name, ParametersDefinition<Value>(),
+                        std::make_shared<ValExpression<Value>>(value));
         EvaluationVisitor<Value> evaluator(scratch);
         try {
             return Answer(Literal(expression->accept(evaluator)));
@@ -391,23 +394,108 @@ private:
 
     PExpression<Value> visit(RefExpression<Value>* expression) override {
         const std::string& name = expression->Name();
+        if (const auto place = places_.find(name); place != places_.end())
+            return Answer(Literal(place->second));
         if (!index_.empty() && name == index_) return Answer(Cell("(double)m_->index_", unary));
         const Reference<Value>* definition = Global(name);
         if (!definition) return Answer(Field(name, Value(Number(NAN))));
         if (IsSequence(*definition)) throw Reason(name + " is a sequence; index it");
-        if (definition->Clauses().front().parameters.cells())
-            throw Reason(name + ", a matrix defined by its cells");
         if (!reading_plain_.insert(name).second) throw Reason(name + " is defined by itself");
-        // A global is evaluated in a scope of its own, where no index is seen.
+        // A global is evaluated in a scope of its own, where no index or place
+        // is seen.
         Sequence* const   reading = std::exchange(reading_, nullptr);
         const std::string index   = std::exchange(index_, std::string());
-        Code              code    = Emit(definition->Clauses().front().expression);
+        const auto        places  = std::exchange(places_, {});
+        Code              code    = definition->Clauses().front().parameters.cells()
+                                        ? Cells(name, *definition)
+                                        : Emit(definition->Clauses().front().expression);
         reading_                  = reading;
         index_                    = index;
+        places_                   = places;
         reading_plain_.erase(name);
         // A value that reads no other is a parameter the host may change; one
         // that does is recomputed where it is read, so that it follows them.
         return Answer(code.constant ? Field(name, *code.constant) : code);
+    }
+
+    // A matrix defined by its cells, one cell at a time with its names bound to
+    // the cell's place. They are constants, so the size, every guard and which
+    // clause gives the cell are decided here, as the interpreter would decide
+    // them; one that cannot be is refused.
+    Code Cells(const std::string& name, const Reference<Value>& definition) {
+        std::optional<Extent> extent;
+        for (const Clause<Value>& clause : definition.Clauses()) {
+            const ParametersDefinition<Value>& p = clause.parameters;
+            if (p.row_name().empty()) continue;
+            const Extent size{Size(Emit(p.rows())), Size(Emit(p.cols()))};
+            if (extent && *extent != size)
+                throw Reason("the clauses of " + name + " give it different sizes");
+            extent = size;
+        }
+        if (!extent) throw Reason(name + " has no size");
+        Code  code;
+        Value exact(*extent);
+        bool  constant = true;
+        code.rows      = extent->rows;
+        code.cols      = extent->cols;
+        for (std::size_t row = 1; row <= code.rows; ++row) {
+            for (std::size_t col = 1; col <= code.cols; ++col) {
+                const std::optional<Code> cell =
+                    CellOf(definition, static_cast<int>(row), static_cast<int>(col));
+                const Code given = cell ? *cell : Literal(Value(Number(0)));
+                if (!given.Scalar())
+                    throw Reason("a cell of " + name + " must be a single value, not a " +
+                                 std::to_string(given.rows) + "x" + std::to_string(given.cols) +
+                                 " matrix");
+                code.cells.push_back(given.cells[0]);
+                if (given.constant) exact(row, col) = (*given.constant)(1, 1);
+                constant = constant && given.constant;
+            }
+        }
+        if (constant) code.constant = exact;
+        return code;
+    }
+
+    std::optional<Code> CellOf(const Reference<Value>& definition, int row, int col) {
+        for (const Clause<Value>& clause : definition.Clauses()) {
+            const ParametersDefinition<Value>& p = clause.parameters;
+            if (!p.row_name().empty() || p.row() != row || p.col() != col) continue;
+            if (p.guarded() && !Holds(p.guard())) continue;
+            return Emit(clause.expression);
+        }
+        for (const bool guarded : {true, false}) {
+            for (const Clause<Value>& clause : definition.Clauses()) {
+                const ParametersDefinition<Value>& p = clause.parameters;
+                if (p.row_name().empty() || p.guarded() != guarded) continue;
+                places_[p.row_name()]           = Value(Number(row));
+                places_[p.col_name()]           = Value(Number(col));
+                const bool                holds = !p.guarded() || Holds(p.guard());
+                const std::optional<Code> cell =
+                    holds ? std::optional<Code>(Emit(clause.expression)) : std::nullopt;
+                places_.erase(p.row_name());
+                places_.erase(p.col_name());
+                if (cell) return cell;
+            }
+        }
+        return std::nullopt;
+    }
+
+    bool Holds(const PExpression<Value>& guard) {
+        const Code code = Emit(guard);
+        if (!code.constant) throw Reason("a guard on cells that is not a constant");
+        return Value::truth(*code.constant);
+    }
+
+    static std::size_t Size(const Code& code) {
+        if (!code.constant) throw Reason("a matrix whose size is not a constant");
+        int size = 0;
+        try {
+            size = AsIndex<Value>(*code.constant);
+        } catch (const std::runtime_error& error) {
+            throw Reason(error.what());
+        }
+        if (size < 1) throw Reason("a size must be at least 1, not " + std::to_string(size));
+        return static_cast<std::size_t>(size);
     }
 
     PExpression<Value> visit(FuncExpression<Value>* expression) override {
@@ -688,6 +776,7 @@ private:
     std::set<std::string>            reading_plain_;
     Sequence*   reading_ = nullptr;  // the sequence whose general clause this is
     std::string index_;              // and the name of its index
+    std::map<std::string, Value>     places_;             // a cell's row and column, by their names
     Code        code_;
 };
 

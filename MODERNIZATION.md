@@ -1637,16 +1637,17 @@ comes first, because the proof of concept below is a filter.
 refuses everything else by name. A file's definitions are run by the
 interpreter, as they would be at a prompt; each sequence becomes a window of
 its recent terms in a struct, as deep as the definitions reach back; a step
-advances the index and computes that index's terms in dependency order. A
-plain definition that reads no name is a parameter, a field initialised to its
-exact value rounded once, which the host may assign; one that reads others is
+advances the index and computes that index's terms in dependency order. A plain
+definition that reads no name is a parameter, a field initialised to its exact
+value rounded once, which the host may assign; one that reads others is
 recomputed where it is read, so that it follows them. A name used and never
 defined is an input, a stream `y_n` passed to each step or a plain value the
 host assigns. Assigning a parameter changes the terms still to come, as a
 controller's gain is changed while it runs -- where the interpreter, clearing
-its memo, answers as if the parameter had always had its new value. Where the interpreter reports an error at run time -- a
-division by zero, a power it would take in the complex plane -- the compiled
-code answers an infinity or a NaN.
+its memo, answers as if the parameter had always had its new value. Where the
+interpreter reports an error at run time -- a division by zero, a power it
+would take in the complex plane -- the compiled code answers an infinity or a
+NaN.
 
 It is `compile.hpp` and `inkamath --compile pid.ink -o pid.h`. The header for
 the PID was written by hand first, as the specification, and the compiler emits
@@ -1669,10 +1670,10 @@ and `K` start at 1, a step after `x` and `P`. The header is
 than written first, since the PID's had already fixed the form; fed the
 measurements of a target moving at 2 per step, the compiled filter is within
 1e-14 of the exact estimates. Still refused: a matrix power, a matrix built
-from matrices, a cell whose place is not a constant, comparing matrices. Each derived matrix
-is inlined into its readers, so a cell's expression can repeat a shared
-subexpression -- the C compiler's common subexpressions take it out, but a
-larger filter would want temporaries.
+from matrices, a cell whose place is not a constant, comparing matrices. Each
+derived matrix is inlined into its readers, so a cell's expression can repeat a
+shared subexpression -- the C compiler's common subexpressions take it out, but
+a larger filter would want temporaries.
 
 **What step 2 is for, decided by building it.** Waiting for a use case that
 nothing yet can serve would wait for ever, so a proof of concept manufactures
@@ -1720,8 +1721,10 @@ against the exact transcript. Writing the two found four things they need:
   mixed sizes with conditions. A cell clause replaces a plain definition, as an
   index does, so `a[1,1] = 9` after `a = [1 2; 3 4]` leaves `a` with no size
   rather than patching it. A sequence's terms cannot yet be defined cell by
-  cell, and the compiler refuses a matrix defined by its cells until it learns
-  them.
+  cell. The compiler takes such a matrix one cell at a time, its names bound to
+  the cell's place as constants, so that the size, the guards and the clause
+  that gives each cell fold exactly; one whose size or guard reads a parameter
+  it refuses. The Kalman filter's identity is now `I[j<=2, k<=2] = j == k`.
 
 Beyond Python on very large numbers is not on this path. What is fast at a
 hundred thousand digits -- PARI/GP, Julia, Mathematica -- is GMP, with FFT
