@@ -35,15 +35,32 @@ public:
 
     static std::string Header(const ReferenceStack<Value>& definitions, const std::string& module,
                               const std::string& source) {
-        CompileC compiler(definitions);
-        compiler.module_ = module;
-        for (const auto& [name, definition] : Sorted(definitions.Globals()))
-            compiler.Define(name, *definition);
-        for (const auto& [name, sequence] : Sorted(compiler.sequences_)) compiler.Compile(name);
-        return compiler.Print(module, source);
+        std::set<std::string> fixed;
+        for (;;) {
+            CompileC compiler(definitions);
+            compiler.module_ = module;
+            compiler.fixed_  = fixed;
+            try {
+                for (const auto& [name, definition] : Sorted(definitions.Globals()))
+                    compiler.Define(name, *definition);
+                for (const auto& [name, sequence] : Sorted(compiler.sequences_))
+                    compiler.Compile(name);
+                return compiler.Print(module, source);
+            } catch (const Fix& fix) {
+                fixed.insert(fix.names.begin(), fix.names.end());
+            }
+        }
     }
 
 private:
+    // Parameters read where the compiled code needs a constant -- a size, a
+    // bound, a lag -- which the struct cannot let the host change. The file is
+    // compiled again with them fixed, and so a constant everywhere they are
+    // read. A parameter is never read once fixed, so this ends.
+    struct Fix {
+        std::set<std::string> names;
+    };
+
     // Why a definition cannot be compiled; Compile names the definition.
     struct Reason : std::runtime_error {
         using std::runtime_error::runtime_error;
@@ -96,6 +113,7 @@ private:
         Code                   code;
         std::vector<Temporary> temporaries;
         bool                   read = false;  // from its field, by some cell
+        std::set<std::string>  parameters;    // that it reads
     };
 
     using Reads = std::map<std::string, std::set<int>>;  // lags, by the sequence read
@@ -297,6 +315,23 @@ private:
         return code_;
     }
 
+    // A value, and the parameters it reads.
+    std::pair<Code, std::set<std::string>> Reading(const PExpression<Value>& expression) {
+        auto       outer = std::exchange(read_parameters_, {});
+        const Code code  = Emit(expression);
+        auto       reads = std::exchange(read_parameters_, std::move(outer));
+        read_parameters_.insert(reads.begin(), reads.end());
+        return {code, reads};
+    }
+
+    // A value the compiled code needs as a constant; see Fix.
+    Code Known(const PExpression<Value>& expression, const std::string& refusal) {
+        auto [code, reads] = Reading(expression);
+        if (code.constant) return code;
+        if (!reads.empty()) throw Fix{std::move(reads)};
+        throw Reason(refusal);
+    }
+
     static std::string Wrap(const std::string& text, int level, int needed) {
         return level < needed ? "(" + text + ")" : text;
     }
@@ -318,6 +353,9 @@ private:
     // here, which a C compiler folding the doubles would not find.
     PExpression<Value> Fold(Expression<Value>* expression) {
         ReferenceStack<Value> scratch;
+        for (const auto& [name, value] : known_)
+            scratch.Set(name, ParametersDefinition<Value>(),
+                        std::make_shared<ValExpression<Value>>(value));
         for (const auto& [name, value] : places_)
             scratch.Set(name, ParametersDefinition<Value>(),
                         std::make_shared<ValExpression<Value>>(value));
@@ -477,7 +515,11 @@ private:
     }
 
     PExpression<Value> visit(PowExpression<Value>* expression) override {
-        const Code base = Emit(expression->m_e1()), exponent = Emit(expression->m_e2());
+        const Code base = Emit(expression->m_e1());
+        const Code exponent =
+            base.Scalar()
+                ? Emit(expression->m_e2())
+                : Known(expression->m_e2(), "a matrix power whose exponent is not a constant");
         if (base.constant && exponent.constant) return Fold(expression);
         if (!exponent.Scalar()) throw Reason("a matrix cannot be an exponent");
         if (!base.Scalar()) return Answer(Power(base, exponent));
@@ -591,10 +633,19 @@ private:
             return Answer(Literal(place->second));
         if (!index_.empty() && name == index_) return Answer(Atom(index_text_));
         const Reference<Value>* definition = Global(name);
-        if (!definition) return Answer(Field(name, Value(Number(NAN))));
+        if (!definition) {
+            if (fixed_.count(name)) throw Reason(name + " is not defined");
+            return Answer(Field(name, Value(Number(NAN))));
+        }
         if (IsSequence(*definition)) throw Reason(name + " is a sequence; index it");
-        for (Derived& derived : derived_)
-            if (derived.name == name) return Answer(Read(derived));
+        read_global_ = true;
+        if (const auto known = known_.find(name); known != known_.end())
+            return Answer(Literal(known->second));
+        for (Derived& derived : derived_) {
+            if (derived.name != name) continue;
+            read_parameters_.insert(derived.parameters.begin(), derived.parameters.end());
+            return Answer(Read(derived));
+        }
         if (!reading_plain_.insert(name).second) throw Reason(name + " is defined by itself");
         // A global is evaluated in a scope of its own, where no index or place
         // is seen.
@@ -603,6 +654,8 @@ private:
         const auto        places  = std::exchange(places_, {});
         std::vector<Temporary> temporaries;
         auto* const            outer_temporaries = std::exchange(temporaries_, &temporaries);
+        auto                   outer_parameters  = std::exchange(read_parameters_, {});
+        read_global_                             = false;
         const auto        cells   = [](const Clause<Value>& c) { return c.parameters.cells(); };
         Code code = std::any_of(definition->Clauses().begin(), definition->Clauses().end(), cells)
                         ? Cells(name, *definition)
@@ -611,11 +664,19 @@ private:
         index_                    = index;
         places_                   = places;
         temporaries_              = outer_temporaries;
+        const bool reads          = std::exchange(read_global_, true);
+        const auto parameters     = std::exchange(read_parameters_, std::move(outer_parameters));
+        read_parameters_.insert(parameters.begin(), parameters.end());
         reading_plain_.erase(name);
         // A value that reads no other is a parameter the host may change; one
-        // that does derives from them, and is computed where they are set.
+        // that reads only what is fixed is a constant; one that reads a
+        // parameter derives from it, and is computed where it is set.
+        if (code.constant && (reads || fixed_.count(name))) {
+            known_.emplace(name, *code.constant);
+            return Answer(Literal(*code.constant));
+        }
         if (code.constant) return Answer(Field(name, *code.constant));
-        derived_.push_back({name, code, std::move(temporaries)});
+        derived_.push_back({name, code, std::move(temporaries), false, parameters});
         return Answer(Read(derived_.back()));
     }
 
@@ -634,7 +695,7 @@ private:
         for (const Clause<Value>& clause : definition.Clauses()) {
             const ParametersDefinition<Value>& p = clause.parameters;
             if (p.row_name().empty()) continue;
-            const Extent size{Size(Emit(p.rows())), Size(Emit(p.cols()))};
+            const Extent size{Size(p.rows()), Size(p.cols())};
             if (extent && *extent != size)
                 throw Reason("the clauses of " + name + " give it different sizes");
             extent = size;
@@ -703,14 +764,12 @@ private:
     }
 
     bool Holds(const PExpression<Value>& guard) {
-        const Code code = Emit(guard);
-        if (!code.constant) throw Reason("a guard on cells that is not a constant");
-        return Value::truth(*code.constant);
+        return Value::truth(*Known(guard, "a guard on cells that is not a constant").constant);
     }
 
-    static std::size_t Size(const Code& code) {
-        if (!code.constant) throw Reason("a matrix whose size is not a constant");
-        int size = 0;
+    std::size_t Size(const PExpression<Value>& expression) {
+        const Code code = Known(expression, "a matrix whose size is not a constant");
+        int        size = 0;
         try {
             size = AsIndex<Value>(*code.constant);
         } catch (const std::runtime_error& error) {
@@ -828,9 +887,13 @@ private:
             return 0;
         const auto* sum = dynamic_cast<AddExpression<Value>*>(index.get());
         if (!sum) throw Reason(only);
-        const Code left = Emit(sum->m_e1()), right = Emit(sum->m_e2());
+        const auto [left, left_reads]   = Reading(sum->m_e1());
+        const auto [right, right_reads] = Reading(sum->m_e2());
         if (right.constant && !left.constant) return Offset(sum->m_e1(), written) + Whole(right);
         if (left.constant && !right.constant) return Whole(left) + Offset(sum->m_e2(), written);
+        // A lag is the depth of a window, so a parameter that gives one is fixed.
+        for (const auto* reads : {&right_reads, &left_reads})
+            if (!reads->empty()) throw Fix{*reads};
         throw Reason(only);
     }
 
@@ -847,9 +910,9 @@ private:
     }
     PExpression<Value> visit(CellExpression<Value>* expression) override {
         const Code matrix = Emit(expression->Matrix());
-        const Code row = Emit(expression->Row()), col = Emit(expression->Col());
-        if (matrix.constant && row.constant && col.constant) return Fold(expression);
-        if (!row.constant || !col.constant) throw Reason("a cell whose place is not a constant");
+        const Code row    = Known(expression->Row(), "a cell whose place is not a constant");
+        const Code col    = Known(expression->Col(), "a cell whose place is not a constant");
+        if (matrix.constant) return Fold(expression);
         int i = 0, j = 0;
         try {
             i = AsIndex<Value>(*row.constant);
@@ -874,9 +937,10 @@ private:
     // the lags it gives are constants.
     PExpression<Value> visit(SeriesExpression<Value>* expression) override {
         if (!expression->Upper()) throw Reason("a sum or a product with no upper bound");
-        const Code lower = Emit(expression->Lower()), upper = Emit(expression->Upper());
-        if (!lower.constant || !upper.constant)
-            throw Reason("a sum or a product whose bounds are not constants");
+        const Code lower =
+            Known(expression->Lower(), "a sum or a product whose bounds are not constants");
+        const Code upper =
+            Known(expression->Upper(), "a sum or a product whose bounds are not constants");
         const int first = Whole(lower), last = Whole(upper);
         if (last < first) return Answer(Literal(Value(Number(expression->Product() ? 1 : 0))));
         if (last - first >= max_terms)
@@ -907,6 +971,7 @@ private:
         Unreserved(name);
         const Parameter parameter{value.Size().rows, value.Size().cols, Doubles(value)};
         parameters_.emplace(name, parameter);
+        read_parameters_.insert(name);
         return Fields(name, Literal(value));
     }
 
@@ -1183,6 +1248,12 @@ private:
         out += " * with -ffast-math, which reorders. */\n";
         out += "#ifndef " + guard + "\n#define " + guard + "\n\n";
         out += "#include <math.h>\n#include <string.h>\n\n";
+        if (!fixed_.empty()) {
+            std::string names;
+            for (const std::string& name : fixed_) names += (names.empty() ? "" : ", ") + name;
+            out +=
+                "/* Compiled in, as a size, a bound or a lag cannot change: " + names + ". */\n\n";
+        }
         out += "/* The parameters, which the host may assign, then what derives from them,\n";
         out += " * then the index of the latest step and each sequence's terms from that\n";
         out += " * index back. */\n";
@@ -1290,6 +1361,10 @@ private:
     std::map<std::string, Sequence>  sequences_;
     std::map<std::string, Parameter> parameters_;
     std::vector<Derived>             derived_;  // each after those it reads
+    std::set<std::string>            fixed_;    // parameters compiled as constants; see Fix
+    std::map<std::string, Value>     known_;    // globals that read only those
+    std::set<std::string>            read_parameters_;      // by the value being compiled
+    bool                             read_global_ = false;  // by the value being compiled
     std::set<std::string>            reading_plain_;
     Sequence*   reading_ = nullptr;  // the sequence whose general clause this is
     std::string index_;              // and the name of its index

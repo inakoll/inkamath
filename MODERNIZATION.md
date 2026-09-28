@@ -1833,8 +1833,15 @@ C++ target stays is open until this exploration is done.
 
 Compiling the heat equation found two defects:
 
-- **A size given by a name is refused.** A plain definition is a parameter the
-  host may set, so `N` is not a constant; only `7` is.
+- `[done]` **A size given by a name is refused.** A plain definition is a
+  parameter the host may set, so `N` is not a constant; only `7` is. A
+  parameter read where the compiled code needs a constant -- a size, a sum's
+  bound, a cell's place, a matrix power, a lag, which is a window's depth --
+  is now fixed: the file is compiled again with it as a constant, and what
+  reads only fixed names folds exactly, so the heat equation's `h`, `K`, `I`
+  and `B` are numbers in its header and `dt` is its only parameter. The
+  header names what was compiled in. Letting the host set `N` would need
+  arrays sized at run time, which is layer 3's loops, not this.
 - `[done]` **What derives from parameters alone is recomputed at every
   step**, where this plan says it is recomputed where a parameter is set: the
   heat equation's `A` inverts its matrix each step. At n = 100 that is 0.5 ms

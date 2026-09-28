@@ -7,15 +7,13 @@
 #include <math.h>
 #include <string.h>
 
+/* Compiled in, as a size, a bound or a lag cannot change: N. */
+
 /* The parameters, which the host may assign, then what derives from them,
  * then the index of the latest step and each sequence's terms from that
  * index back. */
 typedef struct heat {
-    double B[3][1];
-    double I[3][3];
     double dt;
-    double h;
-    double K[3][3];
     double A[3][3];
     long long index_;
     double q[1];
@@ -65,44 +63,22 @@ static inline void heat_inverse3_(double a[3][3]) {
 
 /* Computes what derives from the parameters: call it after assigning one. */
 static inline void heat_update(heat* m_) {
-    m_->K[0][0] = 2.0 / m_->h;
-    m_->K[0][1] = -1.0 / m_->h;
-    m_->K[0][2] = 0.0;
-    m_->K[1][0] = -1.0 / m_->h;
-    m_->K[1][1] = 2.0 / m_->h;
-    m_->K[1][2] = -1.0 / m_->h;
-    m_->K[2][0] = 0.0;
-    m_->K[2][1] = -1.0 / m_->h;
-    m_->K[2][2] = 2.0 / m_->h;
-    double t0_[3][3] = {{m_->h * m_->I[0][0] + m_->dt * m_->K[0][0], m_->h * m_->I[0][1] + m_->dt * m_->K[0][1], m_->h * m_->I[0][2] + m_->dt * 0.0}, {m_->h * m_->I[1][0] + m_->dt * m_->K[1][0], m_->h * m_->I[1][1] + m_->dt * m_->K[1][1], m_->h * m_->I[1][2] + m_->dt * m_->K[1][2]}, {m_->h * m_->I[2][0] + m_->dt * 0.0, m_->h * m_->I[2][1] + m_->dt * m_->K[2][1], m_->h * m_->I[2][2] + m_->dt * m_->K[2][2]}};
+    double t0_[3][3] = {{0.25 + m_->dt * 8.0, 0.0 + m_->dt * -4.0, 0.0 + m_->dt * 0.0}, {0.0 + m_->dt * -4.0, 0.25 + m_->dt * 8.0, 0.0 + m_->dt * -4.0}, {0.0 + m_->dt * 0.0, 0.0 + m_->dt * -4.0, 0.25 + m_->dt * 8.0}};
     heat_inverse3_(t0_);
-    m_->A[0][0] = t0_[0][0] * m_->h;
-    m_->A[0][1] = t0_[0][1] * m_->h;
-    m_->A[0][2] = t0_[0][2] * m_->h;
-    m_->A[1][0] = t0_[1][0] * m_->h;
-    m_->A[1][1] = t0_[1][1] * m_->h;
-    m_->A[1][2] = t0_[1][2] * m_->h;
-    m_->A[2][0] = t0_[2][0] * m_->h;
-    m_->A[2][1] = t0_[2][1] * m_->h;
-    m_->A[2][2] = t0_[2][2] * m_->h;
+    m_->A[0][0] = t0_[0][0] * 0.25;
+    m_->A[0][1] = t0_[0][1] * 0.25;
+    m_->A[0][2] = t0_[0][2] * 0.25;
+    m_->A[1][0] = t0_[1][0] * 0.25;
+    m_->A[1][1] = t0_[1][1] * 0.25;
+    m_->A[1][2] = t0_[1][2] * 0.25;
+    m_->A[2][0] = t0_[2][0] * 0.25;
+    m_->A[2][1] = t0_[2][1] * 0.25;
+    m_->A[2][2] = t0_[2][2] * 0.25;
 }
 
 static inline void heat_init(heat* m_) {
     memset(m_, 0, sizeof *m_);
-    m_->B[0][0] = 1.0;
-    m_->B[1][0] = 0.0;
-    m_->B[2][0] = 0.0;
-    m_->I[0][0] = 1.0;
-    m_->I[0][1] = 0.0;
-    m_->I[0][2] = 0.0;
-    m_->I[1][0] = 0.0;
-    m_->I[1][1] = 1.0;
-    m_->I[1][2] = 0.0;
-    m_->I[2][0] = 0.0;
-    m_->I[2][1] = 0.0;
-    m_->I[2][2] = 1.0;
     m_->dt = 0.01;
-    m_->h = 0.25;
     m_->index_ = -1;
     heat_update(m_);
 }
@@ -112,12 +88,12 @@ static inline void heat_step(heat* m_, double q) {
     ++m_->index_;
     memcpy(m_->u[1], m_->u[0], sizeof m_->u[1]);
     m_->q[0] = q;
-    const double t1_ = m_->u[1][0][0] + m_->dt * m_->B[0][0] * m_->q[0];
-    const double t2_ = m_->u[1][1][0] + m_->dt * m_->B[1][0] * m_->q[0];
-    const double t3_ = m_->u[1][2][0] + m_->dt * m_->B[2][0] * m_->q[0];
-    m_->u[0][0][0] = m_->index_ == 0 ? 0.0 * m_->B[0][0] : m_->A[0][0] * t1_ + m_->A[0][1] * t2_ + m_->A[0][2] * t3_;
-    m_->u[0][1][0] = m_->index_ == 0 ? 0.0 * m_->B[1][0] : m_->A[1][0] * t1_ + m_->A[1][1] * t2_ + m_->A[1][2] * t3_;
-    m_->u[0][2][0] = m_->index_ == 0 ? 0.0 * m_->B[2][0] : m_->A[2][0] * t1_ + m_->A[2][1] * t2_ + m_->A[2][2] * t3_;
+    const double t1_ = m_->u[1][0][0] + m_->dt * 1.0 * m_->q[0];
+    const double t2_ = m_->u[1][1][0] + m_->dt * 0.0 * m_->q[0];
+    const double t3_ = m_->u[1][2][0] + m_->dt * 0.0 * m_->q[0];
+    m_->u[0][0][0] = m_->index_ == 0 ? 0.0 : m_->A[0][0] * t1_ + m_->A[0][1] * t2_ + m_->A[0][2] * t3_;
+    m_->u[0][1][0] = m_->index_ == 0 ? 0.0 : m_->A[1][0] * t1_ + m_->A[1][1] * t2_ + m_->A[1][2] * t3_;
+    m_->u[0][2][0] = m_->index_ == 0 ? 0.0 : m_->A[2][0] * t1_ + m_->A[2][1] * t2_ + m_->A[2][2] * t3_;
 }
 
 #endif
