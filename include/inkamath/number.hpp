@@ -111,17 +111,22 @@ public:
     /* The numeric interface */
     static Number zero() { return 0; }
     static Number one() { return 1; }
-    static Number real(const Number& a) { return a.exact() ? a : Number(a.inexact_.real()); }
-    static Number imaginary(const Number& a) {
-        return a.exact() ? Number(0) : Number(a.inexact_.imag());
+    static Number real(const Number& a) {
+        return a.exact() ? a : Approximate(a.inexact_.real(), approximated(a));
     }
-    static Number inexact(const Number& a) { return Number(a.Inexact()); }
+    static Number imaginary(const Number& a) {
+        return a.exact() ? Number(0) : Approximate(a.inexact_.imag(), approximated(a));
+    }
+    static Number inexact(const Number& a) { return a.exact() ? Number(a.Inexact()) : a; }
     static bool   exact(const Number& a) { return a.exact(); }
+    // Inexact because an exact value passed the thousand digits, here or in
+    // what it was computed from, which '~' alone cannot tell from 1/3.
+    static bool approximated(const Number& a) { return !a.exact() && a.num_ != 0; }
 
     // A memo key carries the kind: dbl(1/2) and dbl(~0.5) are different calls.
     // The kind also says how many bytes follow, so keys never run together.
     static void key(const Number& a, std::string& out) {
-        out += a.big_ ? 'b' : a.exact() ? 'e' : 'i';
+        out += a.big_ ? 'b' : a.exact() ? 'e' : approximated(a) ? 'a' : 'i';
         if (a.big_) {
             Append(a.big_->negative, out);
             for (const Natural* part : {&a.big_->num, &a.big_->den}) {
@@ -180,8 +185,9 @@ public:
 
     static std::string fraction(const Number& a, int digits) {
         if (!a.exact()) {
-            throw std::runtime_error(toString(a, digits) +
-                                     " was approximated, so it has no exact fraction");
+            throw std::runtime_error(toString(a, digits) + " was approximated" +
+                                     (approximated(a) ? " past a thousand digits" : "") +
+                                     ", so it has no exact fraction");
         }
         if (a.big_) {
             const Big&        b    = *a.big_;
@@ -210,23 +216,26 @@ public:
                 return a.num_ == -1 && !odd ? Number(1) : a;
             }
         }
+        // An exact number to a whole power gets here only past the bound.
+        const bool past = (a.exact() && whole) || approximated(a) || approximated(b);
         // A whole exponent past 2^53 has no odd double, so a negative base
         // takes its sign from the exact exponent.
         const inexact_type base = a.Inexact();
         if (whole && base.imag() == 0 && base.real() < 0) {
             const double magnitude = std::pow(-base.real(), b.Inexact().real());
-            return Number(odd ? -magnitude : magnitude);
+            return Approximate(odd ? -magnitude : magnitude, past);
         }
-        return Number(numeric_interface<inexact_type>::pow(base, b.Inexact()));
+        return Approximate(numeric_interface<inexact_type>::pow(base, b.Inexact()), past);
     }
 
     static Number fact(const Number& a) {
-        if (!a.exact()) return Number(numeric_interface<inexact_type>::fact(a.inexact_));
+        if (!a.exact())
+            return Approximate(numeric_interface<inexact_type>::fact(a.inexact_), approximated(a));
         if (a.Negative()) throw std::runtime_error("a factorial cannot be negative");
         if (a.big_ ? !(a.big_->den == Natural(1)) : a.den_ != 1)
             throw std::runtime_error("a factorial needs a whole number, not " + toString(a));
         const double inexact = numeric_interface<double>::fact(a.Inexact().real());
-        if (a.big_) return Number(inexact);
+        if (a.big_) return Approximate(inexact, true);
         long long product = 1, k = 2;
         for (; k <= a.num_; ++k) {
             if (!Multiply(product, k, product)) break;
@@ -235,7 +244,7 @@ public:
         Natural big(static_cast<Natural::wide>(product));
         for (; k <= a.num_; ++k) {
             big = big * Natural(static_cast<Natural::wide>(k));
-            if (Past(big)) return Number(inexact);
+            if (Past(big)) return Approximate(inexact, true);
         }
         return Number(Big{false, big, Natural(1)});
     }
@@ -252,7 +261,7 @@ public:
             return true;
         }
         if (!read) return false;
-        num = Literal(begin, end).value_or(Number(value));
+        num = Literal(begin, end, value).value_or(Number(value));
         return true;
     }
 
@@ -283,7 +292,7 @@ private:
 
     INKAMATH_NOINLINE static Number Plus(const Number& a, const Number& b) {
         if (a.exact() && b.exact()) return BigSum(a.Ratio(), b.Ratio());
-        return Number(a.Inexact() + b.Inexact());
+        return Approximate(a.Inexact() + b.Inexact(), approximated(a) || approximated(b));
     }
 
     INKAMATH_NOINLINE static Number Minus(const Number& a, const Number& b) {
@@ -292,12 +301,12 @@ private:
             negated.negative = !negated.negative;
             return BigSum(a.Ratio(), negated);
         }
-        return Number(a.Inexact() - b.Inexact());
+        return Approximate(a.Inexact() - b.Inexact(), approximated(a) || approximated(b));
     }
 
     INKAMATH_NOINLINE static Number Times(const Number& a, const Number& b) {
         if (a.exact() && b.exact()) return BigProduct(a.Ratio(), b.Ratio());
-        return Number(a.Inexact() * b.Inexact());
+        return Approximate(a.Inexact() * b.Inexact(), approximated(a) || approximated(b));
     }
 
     INKAMATH_NOINLINE static Number Over(const Number& a, const Number& b) {
@@ -307,7 +316,7 @@ private:
             std::swap(reciprocal.num, reciprocal.den);
             return BigProduct(a.Ratio(), reciprocal);
         }
-        return Number(a.Inexact() / b.Inexact());
+        return Approximate(a.Inexact() / b.Inexact(), approximated(a) || approximated(b));
     }
 
     // Exactness ends at a thousand digits in either part.
@@ -317,6 +326,13 @@ private:
     }
 
     static bool Past(const Natural& n) { return Natural::Compare(n, Limit()) >= 0; }
+
+    // An inexact value, and whether it was approximated past the bound.
+    static Number Approximate(inexact_type z, bool past) {
+        Number n(z);
+        n.num_ = past;
+        return n;
+    }
     static bool Past(const Big& b) { return Past(b.num) || Past(b.den); }
 
     static Natural Pow10(std::size_t n) {
@@ -338,7 +354,7 @@ private:
         }
         if (Past(b)) {
             const double magnitude = Nearest(b.num, b.den);
-            return Number(b.negative ? -magnitude : magnitude);
+            return Approximate(b.negative ? -magnitude : magnitude, true);
         }
         return Number(std::move(b));
     }
@@ -547,7 +563,7 @@ private:
     }
 
     // Past the thousand digits whatever the digits are, so not computed.
-    static std::optional<Number> Literal(const char* begin, const char* end) {
+    static std::optional<Number> Literal(const char* begin, const char* end, double value) {
         // Most literals are short whole numbers, and 18 digits always fit.
         if (end - begin <= 18 &&
             std::all_of(begin, end, [](char c) { return c >= '0' && c <= '9'; })) {
@@ -575,13 +591,14 @@ private:
             long long written = 0;
             for (; c != end; ++c) {
                 if (!Multiply(written, 10, written) || !Add(written, *c - '0', written))
-                    return std::nullopt;
+                    return Approximate(value, true);
             }
-            if (!Add(exponent, negative ? -written : written, exponent)) return std::nullopt;
+            if (!Add(exponent, negative ? -written : written, exponent))
+                return Approximate(value, true);
         }
         const Natural   mantissa = Natural::Parse(digits.data(), digits.data() + digits.size());
         const long long length   = static_cast<long long>(digits.size());
-        if (exponent > 1000 || exponent < -1000 - length) return std::nullopt;
+        if (exponent > 1000 || exponent < -1000 - length) return Approximate(value, true);
         if (exponent >= 0) {
             return Normalized(
                 Big{false, mantissa * Pow10(static_cast<std::size_t>(exponent)), Natural(1)});
@@ -739,7 +756,7 @@ private:
         high                            = p11 + (p01 >> 32) + (p10 >> 32) + (middle >> 32);
     }
 
-    long long                  num_     = 0;
+    long long                  num_     = 0;  // when inexact, 1 if approximated
     long long                  den_     = 1;  // 0 marks an inexact number
     inexact_type               inexact_ = 0;  // the value when inexact, and zero otherwise
     std::shared_ptr<const Big> big_;          // the value when exact and past 64 bits

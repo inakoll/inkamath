@@ -57,6 +57,7 @@ struct numeric_interface_imp
      static T inexact(const T& a) { return T::inexact(a); }
      static T    transpose(const T& a) { return T::transpose(a); }
      static bool exact(const T& a) { return T::exact(a); }
+     static bool approximated(const T& a) { return T::approximated(a); }
      static void key(const T& a, std::string& out) { T::key(a, out); }
 
      // Deduced: for a complex or a matrix these narrow to the scalar type.
@@ -94,6 +95,7 @@ struct numeric_interface_imp<std::complex<T>,false>
     static T imaginary(const std::complex<T>& a) {return a.imag();}
     static std::complex<T> inexact(const std::complex<T>& a) { return a; }
     static bool            exact(const std::complex<T>&) { return false; }
+    static bool            approximated(const std::complex<T>&) { return false; }
 
     static std::string toString(const std::complex<T>& a) {
         return toString(a, [](const T& part) { return numeric_interface<T>::toString(part); });
@@ -257,6 +259,7 @@ struct numeric_interface_imp<T,true>
     static T imaginary(const T&) {return 0;}
     static T inexact(const T& a) { return a; }
     static bool exact(const T&) { return false; }
+    static bool approximated(const T&) { return false; }
     // Converting a double outside int's range is undefined, and NaN is
     // undefined too; both clamp here, and the caller compares the answer with
     // what it was given to see that it did (MODERNIZATION.md, C56).

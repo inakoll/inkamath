@@ -7,6 +7,8 @@
 # have a thousand digits or fewer each -- as many as 'digits' can show -- and
 # is approximated past that, as it is past 64 bits today. A whole number too
 # large for a double is then infinite: the double's limit, not the bound's.
+# An answer approximated so says it, in a comment that reading it back
+# ignores, since '~' alone cannot tell it from an exact 1/3.
 
 # Where 64 bits ran out, nothing does.
 >> 2^63
@@ -113,10 +115,32 @@ digits = 50
 digits = 9
 
 >> frac rt_12
-error: ~1.41421356 was approximated, so it has no exact fraction
+error: ~1.41421356 was approximated past a thousand digits, so it has no exact fraction
 
 >> rt_20
+~1.41421356  # approximated past a thousand digits
+
+# What is computed from it is approximated too, even where it prints whole,
+# and a comparison is not: it is a truth, exactly.
+>> rt_20*0
+0  # approximated past a thousand digits
+
+>> [1 rt_20]
+[1, ~1.41421356]  # approximated past a thousand digits
+
+>> rt_20 > 1
+1
+
+# What is inexact by nature, or made so by '~', never was exact to lose: the
+# limit is taken while its terms are still exact.
+>> lim rt
 ~1.41421356
+
+>> ~rt_11
+~1.41421356
+
+>> frac ~rt_11
+error: ~1.41421356 was approximated, so it has no exact fraction
 
 # 2^3321 has a thousand digits and 2^3322 one more; a double has no room for
 # it, so it is infinite.
@@ -124,11 +148,14 @@ error: ~1.41421356 was approximated, so it has no exact fraction
 2
 
 >> 2^3322
-inf
+inf  # approximated past a thousand digits
+
+>> 1e1000
+inf  # approximated past a thousand digits
 
 >> !449 > !448
 1
 
 >> !450
-inf
+inf  # approximated past a thousand digits
 

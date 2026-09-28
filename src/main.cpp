@@ -98,7 +98,7 @@ static string render(const Interp& interpreter, const Interp::Result& result) {
     } else if (const Echo* echo = get_if<Echo>(&result)) {
         out << echo->text;
     } else {
-        out << interpreter.Show(get<Interp::matrix_type>(result));
+        out << interpreter.Answer(get<Interp::matrix_type>(result));
     }
     return rstrip(out.str());
 }

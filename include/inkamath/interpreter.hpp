@@ -82,6 +82,14 @@ public:
             value, [this](const T& x) { return numeric_interface<T>::toString(x, digits_); });
     }
 
+    // An answer, and a comment that reading it back ignores where it was
+    // approximated past the bound (MODERNIZATION.md, phase 13).
+    [[nodiscard]] std::string Answer(const U& value) const {
+        return Show(value) + (numeric_interface<U>::approximated(value)
+                                  ? "  # approximated past a thousand digits"
+                                  : "");
+    }
+
     void ResetInterpreter(void);
 
     // What the session has defined, for the compiler to read.
