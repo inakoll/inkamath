@@ -87,6 +87,12 @@ public:
                            [](const T& value) { return numeric_interface<T>::exact(value); });
     }
 
+    static bool approximated(const Matrix<T>& a) {
+        return std::any_of(a.data(), a.data() + a.extent_.count(), [](const T& value) {
+            return numeric_interface<T>::approximated(value);
+        });
+    }
+
     static Matrix<T> inexact(const Matrix<T>& a) {
         Matrix<T> c(a);
         std::transform(c.data(), c.data() + c.extent_.count(), c.data(),

@@ -42,7 +42,7 @@
 -1
 
 >> (0-2)^(2^70+1)
--inf
+-inf  # approximated past a thousand digits
 
 >> (~(0-1))^(2^63+1)
 -1

@@ -127,10 +127,10 @@ error: a factorial needs a real number, not i
 inf
 
 >> !(10^20)
-inf
+inf  # approximated past a thousand digits
 
 >> !1e400
-inf
+inf  # approximated past a thousand digits
 
 # A part that is NaN is present but has no sign, and answers false to every
 # comparison, so the imaginary unit used to be dropped while its magnitude was
@@ -145,10 +145,10 @@ inf+i*-nan
 # An exponent outside int's range used to be converted to one anyway, which is
 # undefined: this answered 0 (MODERNIZATION.md, C28).
 >> 2^2147483648
-inf
+inf  # approximated past a thousand digits
 
 >> 0.5^3000000000
-0
+0  # approximated past a thousand digits
 
 # A real power of a real number is the real power. Taken as a complex one it
 # squared an infinity into a NaN imaginary part, and put a square root a bit

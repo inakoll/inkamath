@@ -142,7 +142,8 @@ whole powers: `1/3+1/3+1/3` is `1`, and `0.1+0.2` is `0.3`. What can only be
 approached — `pi`, `e`, a root, a limit — is inexact, as is anything written
 after `~`, and an inexact number makes inexact whatever it touches. An exact
 number that outgrows a thousand digits becomes inexact rather than wrong, and
-dividing by an exact zero is an error.
+an answer that did ends in `# approximated past a thousand digits`, a comment,
+so it still reads back. Dividing by an exact zero is an error.
 
 Every number prints in decimal: an exact whole number in full, anything else
 to nine significant digits, with `~` in front unless what is printed is all of
