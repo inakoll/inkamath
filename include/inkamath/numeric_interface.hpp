@@ -58,6 +58,10 @@ struct numeric_interface_imp
      static T inexact(const T& a) { return T::inexact(a); }
      static T    transpose(const T& a) { return T::transpose(a); }
      static T    floor(const T& a) { return T::floor(a); }
+     template <typename Right>
+     static T solve(const T& a, Right b) {
+         return T::solve(a, b);
+     }
      static bool exact(const T& a) { return T::exact(a); }
      static bool approximated(const T& a) { return T::approximated(a); }
      static void key(const T& a, std::string& out) { T::key(a, out); }
