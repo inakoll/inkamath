@@ -2097,6 +2097,13 @@ that exploring seven domains asked of the interpreter, by how many asked.
   integer is where rounding shows; `adc.ink` is the readable case. Then
   phase 15, files and their scopes, before what follows.
 - **A sequence's terms cell by cell**, which a layer of a network needs.
+  Specified in `test/data/spec/terms.ink`: `h_n[j<=3, k<=1] = ...` as a
+  matrix is defined, every cell seeing the index and a guard choosing cells;
+  a base term by its cells beating the general clauses, as any base does; a
+  size that may come from the index; a term written whole as well being the
+  size and every cell no clause gives, as for a matrix; and one cell of a
+  term refused as a clause. The compiler follows once the interpreter has
+  it.
 - **Filling with a recurrence's own stride.**
 - **`A^-1*b` as a solve**, cheaper than the inverse and smaller in exact
   arithmetic; a sparse matrix, if ever, comes after it.
