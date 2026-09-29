@@ -117,11 +117,13 @@ public:
         }
         if (starts_over) {
             clauses_.clear();
-        } else if (!ai_parameters.guarded() &&
-                   (!ai_parameters.cells() || ai_parameters.indexed())) {
-            // An index turns a value into a sequence, so the plain clause goes.
-            // A cell clause keeps it: a matrix written whole has cells, and the
-            // clause overrides one, as a base clause does a general one.
+        } else if (ai_parameters.indexed() ||
+                   (!ai_parameters.guarded() && !ai_parameters.cells())) {
+            // An index turns a value into a sequence, so the plain clause goes,
+            // guarded or not: kept, the name was both (MODERNIZATION.md, C70).
+            // A cell clause of a matrix keeps it: a matrix written whole has
+            // cells, and the clause overrides one, as a base clause does a
+            // general one.
             std::erase_if(clauses_, IsPlain);
         }
         // Writing a clause again replaces it where it stands. Position is what
