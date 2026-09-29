@@ -252,6 +252,21 @@ up_n=up_(n+1)
 >> up_3
 error: evaluation nests more than 256 references deep
 
+# An index turns a value into a sequence, whether its clause is guarded or not.
+# A guarded one used to leave the value in place, so that the name was both,
+# and the compiler took it for the value (MODERNIZATION.md, C70).
+>> rv = 5
+rv = 5
+
+>> rv_n | n > 0 = 1
+rv_n | n > 0 = 1
+
+>> ?rv
+rv_n | n > 0 = 1
+
+>> rv_1
+1
+
 # A base case at a negative index keeps its place in the ordering. These
 # clauses used to be keyed by size_t, so k_(-1) sorted above k_0 and the
 # iteration started from a wrapped index (MODERNIZATION.md, C17).
