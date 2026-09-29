@@ -2082,7 +2082,19 @@ that exploring seven domains asked of the interpreter, by how many asked.
   answers; any value but zero true, as in a guard; `and` tighter than `or`,
   both looser than a comparison; and the right side read only when the left
   has not decided, which products cannot do -- `n > 0 and c_(n-1) >= 4` never
-  asks for `c_(-1)`. No `not`, since every comparison has its opposite. Then
+  asks for `c_(-1)`. No `not`, since every comparison has its opposite.
+- `[done]` **Compiled, `floor`, `and` and `or`**: C's `floor` while the
+  built-in stands, C's `&&` and `||`. What short-circuiting means for a step
+  is where a sequence starts: a term read only on the right of `and` or `or`
+  cannot delay it, since the interpreter answers wherever the left decides,
+  so `n > 0 and c_(n-1) >= 4` answers at 0. Such a read is checked where it is
+  read instead -- the test becomes a double that is NaN where the right was
+  needed and its term did not yet exist, as the interpreter reports it -- and
+  a right side that reads only what its left already did stays plain C. The
+  random models found it at once: a guard whose left decided at index 0 was
+  answered by the interpreter and skipped by the step. `floor` is generated
+  only of values a double holds exactly, since of any other its jump at an
+  integer is where rounding shows; `adc.ink` is the readable case. Then
   phase 15, files and their scopes, before what follows.
 - **A sequence's terms cell by cell**, which a layer of a network needs.
 - **Filling with a recurrence's own stride.**
