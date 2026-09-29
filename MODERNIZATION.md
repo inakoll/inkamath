@@ -2101,9 +2101,14 @@ that exploring seven domains asked of the interpreter, by how many asked.
   matrix is defined, every cell seeing the index and a guard choosing cells;
   a base term by its cells beating the general clauses, as any base does; a
   size that may come from the index; a term written whole as well being the
-  size and every cell no clause gives, as for a matrix; and one cell of a
-  term refused as a clause. The compiler follows once the interpreter has
-  it.
+  size and every cell no clause gives, as for a matrix; and one cell, of
+  every term (`g_n[1,2]`) or of one (`g_2[2,1]`), overriding the rest as
+  `M[1,2]` does. A clause wins where it is at least as specific in both the
+  index and the cell. A base term and a cell of every term are each more
+  specific in one and less in the other, so where both give a cell the
+  answer is an error naming the clause that settles it, `g_0[1,2]`: no
+  choice between them was principled, and a guess would have been silent.
+  The compiler follows once the interpreter has it.
 - **Filling with a recurrence's own stride.**
 - **`A^-1*b` as a solve**, cheaper than the inverse and smaller in exact
   arithmetic; a sparse matrix, if ever, comes after it.

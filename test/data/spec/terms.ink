@@ -99,6 +99,40 @@ m_n[j<=2, k<=1] | j == 2 = n
 [1;
  3]
 
-# A term is given by its cells together: one cell of a term is not a clause.
->> v_n[1,1] = 5
-error: a term's cells are named, as 'v_n[j<=2, k<=2]', not given one at a time
+# One cell, of every term or of one: as 'M[1,2] = 5' is for a matrix, the rest
+# of the term comes from the other clauses. A clause wins where it is at least
+# as specific in both the index and the cell, so 'g_2[2,1]' beats everything
+# and anything beats the general clauses; and it is not a base clause, since
+# it does not give a whole term.
+>> g_n = [n, 0; 0, n]
+g_n = [n, 0; 0, n]
+
+>> g_n[1,2] = 1
+g_n[1,2] = 1
+
+>> g_3
+[3, 1;
+ 0, 3]
+
+>> g_2[2,1] = 9
+g_2[2,1] = 9
+
+>> g_2
+[2, 1;
+ 9, 2]
+
+# A base term names one index and every cell, a cell of every term every index
+# and one cell: neither is the more specific, so which is meant is asked, and
+# the clause that names both says it.
+>> g_0 = [7, 7; 7, 7]
+g_0 = [7, 7; 7, 7]
+
+>> g_0
+error: g_0 and g_n[1,2] both give row 1, column 2 of g_0; write g_0[1,2] to say which
+
+>> g_0[1,2] = 1
+g_0[1,2] = 1
+
+>> g_0
+[7, 1;
+ 7, 7]
