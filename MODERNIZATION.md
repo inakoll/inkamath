@@ -1997,14 +1997,19 @@ that exploring seven domains asked of the interpreter, by how many asked.
 
 - `[done]` **Exactness ran out without a word** (C68).
 - `[done]` **A long recurrence failed at 256 deep** (C69).
-- **`floor`**, for the loan's cents, a grid's node numbers and int8's
-  rounding. Specified in `test/data/spec/floor.ink`. It is the first built-in
+- `[done]` **`floor`**, for the loan's cents, a grid's node numbers and
+  int8's rounding. Specified in `test/data/spec/floor.ink`, now
+  `test/data/floor.ink` unchanged but for one entry added before it was built,
+  that a session may define it again, as it may `pi`. It is the first built-in
   function, and the only one: `round`, `ceil` and `mod` are a line of it
   each, because which rule a model rounds by -- halves up or to even, to the
   cent, toward zero -- is the model's to say, not the language's. Exact of an
   exact number, so `floor((0.7+0.1)*10)` is 8 where doubles say 7, and cell
   by cell of a matrix. Spelled as a call because every language a reader
-  knows spells it so, and `[x]` is a matrix here.
+  knows spells it so, and `[x]` is a matrix here. It is a definition the
+  interpreter starts with, as `pi` is, whose body is the one node the
+  language cannot write; the compiler passes over it until a model redefines
+  it, and refuses a model that calls it, as it does any function.
 - **`and` and `or` for guards**, written as products and sums today.
 - **A sequence's terms cell by cell**, which a layer of a network needs.
 - **Filling with a recurrence's own stride.**

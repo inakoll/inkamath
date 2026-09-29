@@ -76,3 +76,10 @@ cents(x) = floor(100*x + 1/2)/100
 
 >> cents(909.2907)
 909.29
+
+# A definition like pi's, so a session may replace it.
+>> floor(x) = 0
+floor(x) = 0
+
+>> floor(7/2)
+0

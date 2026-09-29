@@ -42,7 +42,7 @@ public:
             compiler.fixed_  = fixed;
             try {
                 for (const auto& [name, definition] : Sorted(definitions.Globals()))
-                    compiler.Define(name, *definition);
+                    if (!definitions.Builtin(name)) compiler.Define(name, *definition);
                 for (const auto& [name, sequence] : Sorted(compiler.sequences_))
                     compiler.Compile(name);
                 return compiler.Print(module, source);

@@ -170,6 +170,17 @@ public:
     T accept(FoldingVisitor<T>& v) override { return v.visit(this); }
 };
 
+// 'floor(x)', the one function built in; ReferenceStack defines it.
+template <typename T>
+class FloorExpression : public UnaryExpression<T> {
+public:
+    explicit FloorExpression(PExpression<T> e) : UnaryExpression<T>(e) {}
+
+    PExpression<T> accept(TransformationVisitor<T>& v) override { return v.visit(this); }
+
+    T accept(FoldingVisitor<T>& v) override { return v.visit(this); }
+};
+
 template <typename T>
 class MultExpression : public BinaryExpression<T>
 {
