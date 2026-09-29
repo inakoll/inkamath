@@ -7,6 +7,19 @@
 #include <math.h>
 #include <string.h>
 
+/* Using it:
+ *
+ *     fir m;
+ *     fir_init(&m);
+ *     fir_step(&m, x);  once for each index, the first 0
+ *     m.y[0]  is then y_n
+ *
+ * A step takes x_n, the input at its index. After a step, m.name[k] is
+ * name_(n-k) for each sequence: x (k <= 3) and y. The parameters are fields
+ * holding the file's values once fir_init has run: b (1x4). After assigning
+ * one, call fir_update.
+ */
+
 /* The parameters, which the host may assign, then what derives from them,
  * then the index of the latest step and each sequence's terms from that
  * index back. */

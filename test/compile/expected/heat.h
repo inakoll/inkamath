@@ -7,7 +7,19 @@
 #include <math.h>
 #include <string.h>
 
-/* Compiled in, as a size, a bound or a lag cannot change: N. */
+/* Using it:
+ *
+ *     heat m;
+ *     heat_init(&m);
+ *     heat_step(&m, q);  once for each index, the first 0
+ *     m.u[0][i][j]  is then u_n, row i+1 and column j+1
+ *
+ * A step takes q_n, the input at its index. After a step, m.name[k] is
+ * name_(n-k) for each sequence: q and u (k <= 1). The parameters are fields
+ * holding the file's values once heat_init has run: dt = 0.01. After assigning
+ * one, call heat_update. Compiled in, as a size, a bound or a lag cannot
+ * change: N.
+ */
 
 /* The parameters, which the host may assign, then what derives from them,
  * then the index of the latest step and each sequence's terms from that

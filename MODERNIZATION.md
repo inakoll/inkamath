@@ -1994,10 +1994,12 @@ rule for all three:
 - **An input is declared, not inferred**, so that a misspelling is an error in
   both notations and the file says what it needs. The spelling is for the
   transcript.
-- **The header opens with the interface** it compiled, in the terms of the
-  file: its inputs, as arguments of the step; its parameters, with their
-  values, as fields assigned before `update`; and each sequence, with what
-  `m.u[k]` is. A reader of the header needs nothing else to call it.
+- `[done]` **The header opens with the interface** it compiled, in the terms
+  of the file: its inputs, as arguments of the step; its parameters, with
+  their values, as fields assigned before `update`; and each sequence, with
+  what `m.u[k]` is. A reader of the header needs nothing else to call it.
+  Done ahead of the phase, since it needs no scope: a usage sketch and a
+  paragraph, which absorbed the line naming what was compiled in.
 
 To decide, in a transcript first: the spelling of `use` and of a declared
 input; whether the prelude loads unless declined; paths relative to the file

@@ -7,6 +7,20 @@
 #include <math.h>
 #include <string.h>
 
+/* Using it:
+ *
+ *     kalman m;
+ *     kalman_init(&m);
+ *     kalman_step(&m, z);  once for each index, the first 0
+ *     m.p[0]  is then p_n
+ *
+ * A step takes z_n, the input at its index. After a step, m.name[k] is
+ * name_(n-k) for each sequence: z, Pp, K, P (k <= 1), xp, x (k <= 1) and p.
+ * The parameters are fields holding the file's values once kalman_init has
+ * run: H (1x2), I (2x2), Q (2x2), R = 1.0 and dt = 1.0. After assigning one,
+ * call kalman_update.
+ */
+
 /* The parameters, which the host may assign, then what derives from them,
  * then the index of the latest step and each sequence's terms from that
  * index back. */
