@@ -1786,10 +1786,9 @@ against the exact transcript. Writing the two found four things they need:
   Only what failed takes that path, so nothing that answered before moved but
   `sequences.ink`'s `g_500`, which was the depth error and is now `501`; the
   bound it stood for (C1) is shown by a recurrence reaching up instead. A
-  recurrence that steps by two from a single base still fails: filling it
-  asks for the odd terms, which it never defined, and so reports the depth
-  rather than an error about a term nobody asked for. Filling with the
-  recurrence's own stride would fix it.
+  recurrence that steps by two from a single base failed: filling it asked
+  for the odd terms, which it never defined. It fills with its own stride now
+  (next in line).
 - `[done]` **Inputs from the host**, in the C target: a stream passed to
   each step, or a value the host assigns.
 - `[done]` **A window on the memo**, in the C target, where each sequence
@@ -2118,6 +2117,12 @@ that exploring seven domains asked of the interpreter, by how many asked.
   Compiling it found that a sequence compiled on the way to another undid
   the names of the cell being compiled, as cells use the same `j` and `k`;
   each sequence now compiles with names of its own.
-- **Filling with a recurrence's own stride.**
+- `[done]` **Filling with a recurrence's own stride.** A fill steps by the
+  greatest common divisor of how far back the general clauses read terms,
+  theirs or another's that reads them back, so `st_n = st_(n-2) + 1` fills
+  every other term and `st_5000` answers; a read that is not the index less
+  a constant falls back to every term. Every term a fill asks for is then one
+  the term asked for reaches, so a fill that fails says why -- `st_5001` has
+  no clause for index -1 -- rather than reporting the depth.
 - **`A^-1*b` as a solve**, cheaper than the inverse and smaller in exact
   arithmetic; a sparse matrix, if ever, comes after it.
