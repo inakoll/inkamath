@@ -122,7 +122,8 @@ matrices.
 `test/compile/pid_clamped.ink` limits its output with guards, and
 `test/compile/fir.ink` is a filter written as a sum; `test/compile/kalman2.ink`
 inverts a matrix at every step, and `test/compile/heat.ink` once, in `update`;
-`test/compile/adc.ink` rounds with `floor` and tests with `and` and `or`.
+`test/compile/adc.ink` rounds with `floor` and tests with `and` and `or`, and
+`test/compile/net.ink` is a small network whose terms are defined by cells.
 The compiler refuses by name what it cannot yet
 express, such as functions, limits and infinite series.
 

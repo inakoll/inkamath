@@ -174,13 +174,13 @@ private:
             if (p.guarded() && !p.cells() && !p.general())
                 throw Refusal("cannot compile " + name + ": a guarded " +
                               (p.indexed() ? "base clause" : "value"));
-            if (p.indexed() && p.cells())
-                throw Refusal("cannot compile " + name + ": a term defined by its cells");
         }
         // A base clause written after a guarded one is reached only if the guard
-        // fails, which the chain a step computes would not say.
+        // fails, which the chain a step computes would not say. A term by its
+        // cells is the exception: its base comes first, however it was written.
         bool guarded = false;
         for (const Clause<Value>& clause : definition.Clauses()) {
+            if (ByCells(definition)) break;
             guarded = guarded || (clause.parameters.guarded() && clause.parameters.general());
             if (guarded && clause.parameters.indexed() && !clause.parameters.general())
                 throw Refusal("cannot compile " + name + ": a base clause after a guarded one");
@@ -196,6 +196,9 @@ private:
         const std::string outer_index   = std::exchange(index_, index);
         auto* const       outer_temporaries =
             std::exchange(temporaries_, &sequences_.at(name).temporaries);
+        // A cell's names are its own clause's: another sequence compiled on
+        // the way, whose cells may use the same names, must not see or undo them.
+        const auto outer_places = std::exchange(places_, {});
         try {
             body();
         } catch (const Reason& reason) {
@@ -204,6 +207,7 @@ private:
         reading_     = outer_reading;
         index_       = outer_index;
         temporaries_ = outer_temporaries;
+        places_      = outer_places;
     }
 
     // A cell the compiler would write out more than once -- an operand of a
@@ -253,12 +257,20 @@ private:
 
     // The base clauses give a sequence its shape without its general clause,
     // which may read the very sequences that need the shape.
+    static bool ByCells(const Reference<Value>& definition) {
+        const auto& clauses = definition.Clauses();
+        return std::any_of(clauses.begin(), clauses.end(), [](const Clause<Value>& c) {
+            return c.parameters.indexed() && c.parameters.cells();
+        });
+    }
+
     void Bases(const std::string& name) {
         Sequence& sequence = sequences_.at(name);
         if (sequence.based || !sequence.definition) return;
         sequence.based = true;
         Within(name, nullptr, std::string(), [&] {
             Unreserved(name);
+            if (ByCells(*sequence.definition)) return BaseTerms(name, sequence);
             for (const Clause<Value>& clause : sequence.definition->Clauses()) {
                 if (clause.parameters.general()) continue;
                 const Code code = Emit(clause.expression);
@@ -276,6 +288,11 @@ private:
             throw Refusal("cannot compile " + name + ": its shape depends on itself");
         sequence.compiling = true;
         Bases(name);
+        if (ByCells(*sequence.definition)) {
+            CompileTerms(name, sequence);
+            sequence.compiled = true;
+            return;
+        }
         Reads* const outer_reads = clause_reads_;
         // The guarded clauses in the order written, then the unguarded one, as
         // the interpreter tries them; a guard that always holds ends the chain.
@@ -803,6 +820,176 @@ private:
         if (code.constant) return Answer(Field(name, *code.constant));
         derived_.push_back({name, code, std::move(temporaries), false, parameters});
         return Answer(Read(derived_.back()));
+    }
+
+    // A term's cells from the clauses that fit, as Reference::EvaluateTerm
+    // chooses them: one for this cell, then those for all cells, guarded ones
+    // in the order written and the unguarded one last, then the term written
+    // whole's, else 0. Each cell is the chain the step tests in that order,
+    // with its row and column bound as constants, so that a guard reading only
+    // them folds away and one reading a term is tested where the cell is.
+    template <typename Fits>
+    std::pair<Code, std::vector<std::string>> TermCells(const std::string&         name,
+                                                        const Reference<Value>&    definition,
+                                                        Fits                       fits,
+                                                        const std::optional<Code>& whole) {
+        std::optional<Extent> extent;
+        if (whole) extent = Extent{whole->rows, whole->cols};
+        for (const Clause<Value>& clause : definition.Clauses()) {
+            const ParametersDefinition<Value>& p = clause.parameters;
+            if (!p.cells() || p.row_name().empty() || !fits(clause)) continue;
+            const std::string outer = std::exchange(index_, p.general() ? p.index_name() : "");
+            const Extent      size{Size(p.rows()), Size(p.cols())};
+            index_ = outer;
+            if (extent && *extent != size)
+                throw Reason("the clauses of " + name + " give it different sizes");
+            extent = size;
+        }
+        if (!extent) throw Reason(name + " has no size");
+        Code shape;
+        shape.rows = extent->rows;
+        shape.cols = extent->cols;
+        std::vector<std::string> cells;
+        for (std::size_t row = 1; row <= shape.rows; ++row) {
+            for (std::size_t col = 1; col <= shape.cols; ++col) {
+                std::string                chain;
+                std::optional<std::string> last;
+                const auto                 settles = [&](const Clause<Value>& clause) {
+                    const ParametersDefinition<Value>& p = clause.parameters;
+                    const std::string                  outer =
+                        std::exchange(index_, p.general() ? p.index_name() : "");
+                    if (!p.row_name().empty()) {
+                        places_[p.row_name()] = Value(Number(static_cast<int>(row)));
+                        places_[p.col_name()] = Value(Number(static_cast<int>(col)));
+                    }
+                    const std::optional<std::string> condition =
+                        p.guarded() ? Condition(p.guard()) : std::optional<std::string>("");
+                    const std::optional<Code> value =
+                        condition ? std::optional<Code>(Emit(clause.expression)) : std::nullopt;
+                    places_.erase(p.row_name());
+                    places_.erase(p.col_name());
+                    index_ = outer;
+                    if (!value) return false;
+                    if (!value->Scalar())
+                        throw Reason("a cell of " + name + " must be a single value");
+                    if (condition->empty())
+                        last = value->cells[0].text;
+                    else
+                        chain += *condition + " ? " + value->cells[0].text + " : ";
+                    return condition->empty();
+                };
+                bool settled = false;
+                for (const Clause<Value>& clause : definition.Clauses()) {
+                    const ParametersDefinition<Value>& p = clause.parameters;
+                    if (settled || !p.cells() || !p.row_name().empty() || !fits(clause)) continue;
+                    if (p.row() < 1 || static_cast<std::size_t>(p.row()) > shape.rows ||
+                        p.col() < 1 || static_cast<std::size_t>(p.col()) > shape.cols)
+                        throw Reason("row " + std::to_string(p.row()) + ", column " +
+                                     std::to_string(p.col()) + " is outside a " +
+                                     std::to_string(shape.rows) + "x" + std::to_string(shape.cols) +
+                                     " matrix");
+                    if (static_cast<std::size_t>(p.row()) == row &&
+                        static_cast<std::size_t>(p.col()) == col)
+                        settled = settles(clause);
+                }
+                for (const bool guarded : {true, false})
+                    for (const Clause<Value>& clause : definition.Clauses()) {
+                        const ParametersDefinition<Value>& p = clause.parameters;
+                        if (settled || p.row_name().empty() || p.guarded() != guarded ||
+                            !fits(clause))
+                            continue;
+                        settled = settles(clause);
+                    }
+                if (!last) last = whole ? whole->At(row - 1, col - 1).text : "0.0";
+                cells.push_back(chain + *last);
+            }
+        }
+        return {shape, cells};
+    }
+
+    // The base terms of a sequence defined by its cells: those written whole
+    // or by their cells, each with its own cells beating them. A cell of every
+    // term that would also give one of a base term's is refused, as the
+    // interpreter asks which is meant.
+    void BaseTerms(const std::string& name, Sequence& sequence) {
+        const Reference<Value>& definition = *sequence.definition;
+        std::set<int>           indices;
+        for (const Clause<Value>& clause : definition.Clauses()) {
+            const ParametersDefinition<Value>& p = clause.parameters;
+            if (p.indexed() && !p.general() && (p.cells() ? !p.row_name().empty() : !p.guarded()))
+                indices.insert(p.index());
+        }
+        for (const int index : indices) {
+            const auto at = [index](const Clause<Value>& c) {
+                return c.parameters.indexed() && !c.parameters.general() &&
+                       c.parameters.index() == index;
+            };
+            std::optional<Code> whole;
+            for (const Clause<Value>& clause : definition.Clauses())
+                if (at(clause) && !clause.parameters.cells()) whole = Emit(clause.expression);
+            const auto [shape, cells] = TermCells(name, definition, at, whole);
+            for (const Clause<Value>& clause : definition.Clauses()) {
+                const ParametersDefinition<Value>& every = clause.parameters;
+                if (!every.general() || !every.cells() || !every.row_name().empty()) continue;
+                const bool own = std::any_of(
+                    definition.Clauses().begin(), definition.Clauses().end(),
+                    [&](const Clause<Value>& c) {
+                        return at(c) && c.parameters.cells() && c.parameters.row_name().empty() &&
+                               c.parameters.row() == every.row() &&
+                               c.parameters.col() == every.col();
+                    });
+                const std::string term = name + "_" + std::to_string(index);
+                const std::string cell =
+                    "[" + std::to_string(every.row()) + "," + std::to_string(every.col()) + "]";
+                if (!own)
+                    throw Reason(term + " and " + name + "_" + every.index_name() + cell +
+                                 " both give a cell of " + term + "; write " + term + cell +
+                                 " to say which");
+            }
+            Shape(sequence, shape);
+            sequence.bases[index] = cells;
+        }
+    }
+
+    // The general terms of a sequence defined by its cells, every term's
+    // cells and the term written whole, and in front of them the cells of one
+    // term where no base term stands.
+    void CompileTerms(const std::string& name, Sequence& sequence) {
+        const Reference<Value>& definition = *sequence.definition;
+        Within(name, &sequence, std::string(), [&] {
+            clause_reads_ = &sequence.general_reads;
+            std::optional<Code> whole;
+            for (const Clause<Value>& clause : definition.Clauses()) {
+                const ParametersDefinition<Value>& p = clause.parameters;
+                if (!p.general() || p.cells()) continue;
+                if (p.guarded()) throw Reason("a guarded term written whole beside its cells");
+                const std::string outer = std::exchange(index_, p.index_name());
+                whole                   = Emit(clause.expression);
+                index_                  = outer;
+            }
+            const auto every    = [](const Clause<Value>& c) { return c.parameters.general(); };
+            auto [shape, cells] = TermCells(name, definition, every, whole);
+            clause_reads_       = nullptr;
+            Shape(sequence, shape);
+            // One term's own cells, where no base term gives the rest: read
+            // like a base clause, from nothing but constants and parameters.
+            Sequence* const reading = std::exchange(reading_, nullptr);
+            for (const Clause<Value>& clause : definition.Clauses()) {
+                const ParametersDefinition<Value>& p = clause.parameters;
+                if (!p.indexed() || p.general() || !p.cells() || !p.row_name().empty() ||
+                    sequence.bases.count(p.index()))
+                    continue;
+                if (p.guarded()) throw Reason("a guarded cell of one term");
+                const Code value = Emit(clause.expression);
+                if (!value.Scalar()) throw Reason("a cell of " + name + " must be a single value");
+                std::string& cell = cells[static_cast<std::size_t>(p.row() - 1) * shape.cols +
+                                          static_cast<std::size_t>(p.col() - 1)];
+                cell = "m_->index_ == " + std::to_string(p.index()) + " ? " + value.cells[0].text +
+                       " : " + cell;
+            }
+            reading_         = reading;
+            sequence.general = cells;
+        });
     }
 
     // A matrix defined by its cells, one cell at a time with its names bound to

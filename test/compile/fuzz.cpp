@@ -157,6 +157,18 @@ std::vector<std::string> Model(Random& random) {
         lines.push_back("M_n = (F'*F + G*(1 + a_n^2))^-1");
         lines.push_back("m_n = (M_n*v_n)[1,1] + v_n[2,1]*" + q());
     }
+    // A term by its cells: a base with one cell of its own, a cell of every
+    // term, the term before read transposed, and a guard on the place and a
+    // value together.
+    if (random.chance(50)) {
+        const auto q = [&] { return Quarter(random); };
+        lines.push_back("t_0[j<=2, k<=2] = (j - k)/4");
+        lines.push_back("t_0[2,1] = " + q());
+        lines.push_back("t_n[j<=2, k<=2] = t_(n-1)[k, j]/2 + " + q() + "*u_n");
+        lines.push_back("t_n[j<=2, k<=2] | j == k and a_n > " + q() + " = a_n");
+        lines.push_back("t_n[2,1] = " + q() + " + w_n");
+        lines.push_back("o_n = t_n[1,2] + t_n[2,2]");
+    }
     return lines;
 }
 

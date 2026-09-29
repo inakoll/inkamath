@@ -2109,7 +2109,14 @@ that exploring seven domains asked of the interpreter, by how many asked.
   specific in one and less in the other, so where both give a cell the
   answer is an error naming the clause that settles it, `g_0[1,2]`: no
   choice between them was principled, and a guess would have been silent.
-  The compiler refuses such a term by name until it follows.
+  Compiled cell by cell into the chain the interpreter tries: a guard that
+  reads only the cell's place folds away, so a delay line is one expression
+  per cell and a ReLU one test; a base term and a cell of every term that
+  both give a cell are refused with the interpreter's question. `net.ink` is
+  a delay line, a layer and a sum; the random models gain a term by cells.
+  Compiling it found that a sequence compiled on the way to another undid
+  the names of the cell being compiled, as cells use the same `j` and `k`;
+  each sequence now compiles with names of its own.
 - **Filling with a recurrence's own stride.**
 - **`A^-1*b` as a solve**, cheaper than the inverse and smaller in exact
   arithmetic; a sparse matrix, if ever, comes after it.

@@ -41,7 +41,7 @@ add_custom_target(record_goldens
 # built as C, holds the model to exact values its harness knows. The expected
 # headers are kept apart, where a harness's #include cannot find one instead.
 enable_language(C)
-foreach(model IN ITEMS pid pid_clamped kalman kalman2 fir heat adc)
+foreach(model IN ITEMS pid pid_clamped kalman kalman2 fir heat adc net)
     set(header ${CMAKE_CURRENT_BINARY_DIR}/compile/${model}.h)
     add_custom_command(OUTPUT ${header}
         COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/compile
