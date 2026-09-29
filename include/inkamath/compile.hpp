@@ -174,6 +174,8 @@ private:
             if (p.guarded() && !p.cells() && !p.general())
                 throw Refusal("cannot compile " + name + ": a guarded " +
                               (p.indexed() ? "base clause" : "value"));
+            if (p.indexed() && p.cells())
+                throw Refusal("cannot compile " + name + ": a term defined by its cells");
         }
         // A base clause written after a guarded one is reached only if the guard
         // fails, which the chain a step computes would not say.

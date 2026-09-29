@@ -118,6 +118,9 @@ TEST_CASE("floor") {
 TEST_CASE("logic") {
     check_transcript("logic.ink");
 }
+TEST_CASE("terms") {
+    check_transcript("terms.ink");
+}
 TEST_CASE("errors") {
     check_transcript("errors.ink");
 }

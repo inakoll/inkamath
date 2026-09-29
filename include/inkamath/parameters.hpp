@@ -71,9 +71,6 @@ public:
             }
         }
         if (row) {
-            if (indexed_) {
-                throw std::runtime_error("a sequence's terms cannot yet be defined cell by cell");
-            }
             cells_ = true;
             Place(row, row_name_, rows_, row_, evaluator);
             Place(col, col_name_, cols_, col_, evaluator);

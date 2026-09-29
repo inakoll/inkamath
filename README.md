@@ -576,6 +576,33 @@ it:
 error: the sum did not converge within 100 terms (last partial sum ~1.6349839)
 ```
 
+A term can be defined by its cells, as a matrix is (section 2): the brackets
+after the index name the row and the column and bound them, every cell sees
+the index, and a guard says which cells a clause gives. A delay line keeps
+the newest sample on top and shifts the others down:
+
+```
+>> tap_0[j<=3, k<=1] = 0
+tap_0[j<=3, k<=1] = 0
+
+>> tap_n[j<=3, k<=1] = tap_(n-1)[j-1, 1]
+tap_n[j<=3, k<=1] = tap_(n-1)[j-1, 1]
+
+>> tap_n[j<=3, k<=1] | j == 1 = n^2
+tap_n[j<=3, k<=1] | j == 1 = n^2
+
+>> tap_4
+[16;
+  9;
+  4]
+```
+
+One cell, of every term (`tap_n[2,1] = 0`) or of one (`tap_2[2,1] = 0`),
+overrides the rest, as `M[1,2] = 5` does. A clause wins where it is at least
+as specific in both the index and the cell; a base term and a cell of every
+term are each more specific in one, so where both give a cell the
+interpreter asks which is meant rather than choosing.
+
 An index must be an exact whole number, and `lim`, `sum`, `prod`, `frac`,
 `digits`, `and` and `or` are reserved words.
 

@@ -12,6 +12,7 @@
 #include <exception>
 #include <optional>
 #include <stdexcept>
+#include <tuple>
 #include <vector>
 
 // Nesting too deep, told apart from other failures because a recurrence can
@@ -91,8 +92,8 @@ public:
         // A base clause answers for one index rather than for every call, so
         // it is not a default and keeps its place: a guard added after one
         // could never apply, and saying so beats doing nothing.
-        if(ai_parameters.guarded() && ai_parameters.indexed() && !ai_parameters.general()
-           && Base(ai_parameters.index())) {
+        if (ai_parameters.guarded() && ai_parameters.indexed() && !ai_parameters.general() &&
+            !ai_parameters.cells() && Base(ai_parameters.index())) {
             throw std::runtime_error(reference_name_ + "_" + std::to_string(ai_parameters.index())
                                      + " is already defined without a guard,"
                                        " so this clause can never apply");
@@ -104,15 +105,20 @@ public:
                                      reference_name_ + "[" + ai_parameters.row_name() + "<=rows, " +
                                      ai_parameters.col_name() + "<=cols]");
         }
-        if (!starts_over &&
-            ((ai_parameters.cells() && Sequence()) || (ai_parameters.indexed() && Cells()))) {
-            throw std::runtime_error(reference_name_ +
-                                     (Cells() ? " is defined by its cells, so it has no index"
-                                              : " is a sequence, so it has no cells of its own"));
+        // A matrix's cells and a sequence's terms do not mix; a term's cells are
+        // a sequence's.
+        const bool matrix_cells = FirstThat(
+            [](const Clause<T>& c) { return c.parameters.cells() && !c.parameters.indexed(); });
+        if (!starts_over && ((ai_parameters.cells() && !ai_parameters.indexed() && Sequence()) ||
+                             (ai_parameters.indexed() && matrix_cells))) {
+            throw std::runtime_error(
+                reference_name_ + (matrix_cells ? " is defined by its cells, so it has no index"
+                                                : " is a sequence, so it has no cells of its own"));
         }
         if (starts_over) {
             clauses_.clear();
-        } else if (!ai_parameters.guarded() && !ai_parameters.cells()) {
+        } else if (!ai_parameters.guarded() &&
+                   (!ai_parameters.cells() || ai_parameters.indexed())) {
             // An index turns a value into a sequence, so the plain clause goes.
             // A cell clause keeps it: a matrix written whole has cells, and the
             // clause overrides one, as a base clause does a general one.
@@ -127,13 +133,7 @@ public:
                 ai_parameters.guarded()
                     ? existing.parameters.guarded() &&
                           existing.parameters.signature() == ai_parameters.signature()
-                    : (IsGeneral(existing) && IsGeneral(clause)) ||
-                          (IsBase(existing) && IsBase(clause) &&
-                           existing.parameters.index() == clause.parameters.index()) ||
-                          (IsAllCells(existing) && IsAllCells(clause)) ||
-                          (IsOneCell(existing) && IsOneCell(clause) &&
-                           existing.parameters.row() == clause.parameters.row() &&
-                           existing.parameters.col() == clause.parameters.col());
+                    : !existing.parameters.guarded() && Shape(existing) == Shape(clause);
             if(same) {
                 existing = clause;
                 return;
@@ -319,6 +319,25 @@ private:
     static bool IsOneCell(const Clause<T>& c) {
         return c.parameters.cells() && c.parameters.row_name().empty();
     }
+    // What an unguarded clause answers for, so that writing one again
+    // replaces it: which index, if one, and which cells, if one.
+    static std::tuple<bool, bool, int, bool, bool, int, int> Shape(const Clause<T>& c) {
+        const ParametersDefinition<T>& p    = c.parameters;
+        const bool                     base = p.indexed() && !p.general();
+        return {p.indexed(),
+                p.general(),
+                base ? p.index() : 0,
+                p.cells(),
+                IsOneCell(c),
+                IsOneCell(c) ? p.row() : 0,
+                IsOneCell(c) ? p.col() : 0};
+    }
+    // A clause that gives a whole term at one index: a base clause, written
+    // whole or by its cells, which name every cell.
+    static bool IsBaseTerm(const Clause<T>& c) {
+        const ParametersDefinition<T>& p = c.parameters;
+        return p.indexed() && !p.general() && (p.cells() ? !IsOneCell(c) : !p.guarded());
+    }
 
     template <typename Predicate>
     const Clause<T>* FirstThat(Predicate fits) const {
@@ -346,8 +365,8 @@ private:
     const Clause<T>* EndBase(bool lowest) const {
         const Clause<T>* found = nullptr;
         for(const Clause<T>& clause : clauses_) {
-            if(IsBase(clause)
-               && (!found || (clause.parameters.index() < found->parameters.index()) == lowest)) {
+            if (IsBaseTerm(clause) &&
+                (!found || (clause.parameters.index() < found->parameters.index()) == lowest)) {
                 found = &clause;
             }
         }
@@ -392,12 +411,13 @@ private:
     }
 
     T EvalImp(bool indexed, int index, EvaluationVisitor<T>& evaluator) const {
-        if (Cells()) {
+        if (Cells() && !Sequence()) {
             if (indexed) {
                 throw std::runtime_error(reference_name_ + " is not a sequence");
             }
             return EvaluateCells(evaluator);
         }
+        if (Cells() && indexed) return EvaluateTerm(index, evaluator);
         // Clauses are tried in the order they were written, and the clause not
         // chosen is not evaluated -- which is what index dispatch has always
         // done. Order is the writer's to choose because neither precedence
@@ -440,7 +460,7 @@ private:
         if(const Clause<T>* plain = Plain()) {
             return plain->expression->accept(evaluator);
         }
-        if(Guarded()) {
+        if (Guarded() && !Cells()) {
             throw std::runtime_error("no clause of " + reference_name_ + " applies");
         }
         // Nothing sensible to invent: a sequence has no value under its bare
@@ -513,22 +533,44 @@ private:
     // general clause; else the first clause for all cells that holds, guarded
     // ones in the order written and the unguarded one last; else none, and the
     // cell is the matrix written whole's, or 0 without one, as a short row of a
-    // literal is padded. The names are bound on
-    // trial, so that one clause's names cannot shadow a global in the next.
+    // literal is padded.
     std::optional<T> Cell(int row, int col, EvaluationVisitor<T>& evaluator) const {
+        const auto matrix = [](const Clause<T>& c) { return !c.parameters.indexed(); };
+        if (auto one = OneCell(row, col, 0, matrix, evaluator)) return one->first;
+        return AllCells(row, col, 0, matrix, evaluator);
+    }
+
+    // The clause for this one cell among those that fit, if one holds, and
+    // what it gives. A general clause sees the index; the names are bound on
+    // trial, so that one clause's names cannot shadow a global in the next.
+    template <typename Fits>
+    std::optional<std::pair<T, const Clause<T>*>> OneCell(int row, int col, int index, Fits fits,
+                                                          EvaluationVisitor<T>& evaluator) const {
         ReferenceStack<T>& stack = evaluator.stack();
         for (const Clause<T>& clause : clauses_) {
             const ParametersDefinition<T>& p = clause.parameters;
-            if (!IsOneCell(clause) || p.row() != row || p.col() != col) continue;
+            if (!IsOneCell(clause) || !fits(clause) || p.row() != row || p.col() != col) continue;
+            typename ReferenceStack<T>::Trial term(stack, p.index_name());
+            if (p.general()) SetIndex(p.index_name(), index, stack);
             if (p.guarded() && !numeric_interface<T>::truth(p.guard()->accept(evaluator))) continue;
-            return clause.expression->accept(evaluator);
+            return std::pair<T, const Clause<T>*>(clause.expression->accept(evaluator), &clause);
         }
+        return std::nullopt;
+    }
+
+    template <typename Fits>
+    std::optional<T> AllCells(int row, int col, int index, Fits fits,
+                              EvaluationVisitor<T>& evaluator) const {
+        ReferenceStack<T>& stack = evaluator.stack();
         for (const bool guarded : {true, false}) {
             for (const Clause<T>& clause : clauses_) {
                 const ParametersDefinition<T>& p = clause.parameters;
-                if (!p.cells() || p.row_name().empty() || p.guarded() != guarded) continue;
+                if (!p.cells() || p.row_name().empty() || p.guarded() != guarded || !fits(clause))
+                    continue;
+                typename ReferenceStack<T>::Trial term(stack, p.index_name());
                 typename ReferenceStack<T>::Trial row_name(stack, p.row_name());
                 typename ReferenceStack<T>::Trial col_name(stack, p.col_name());
+                if (p.general()) SetIndex(p.index_name(), index, stack);
                 SetIndex(p.row_name(), row, stack);
                 SetIndex(p.col_name(), col, stack);
                 if (p.guarded() && !numeric_interface<T>::truth(p.guard()->accept(evaluator)))
@@ -537,6 +579,105 @@ private:
             }
         }
         return std::nullopt;
+    }
+
+    // A term of a sequence defined by its cells (README.md section 4). From
+    // the most specific clause to the least: one for this index and this
+    // cell; the base term at this index, written whole or by its cells; one
+    // for this cell of every term; the general clauses, by their cells and
+    // then whole. A base term and a cell of every term are each the more
+    // specific in one and the less in the other, so where both give a cell
+    // the definition is asked which it means (MODERNIZATION.md, next in line).
+    T EvaluateTerm(int index, EvaluationVisitor<T>& evaluator) const {
+        const auto base = [index](const Clause<T>& c) {
+            return c.parameters.indexed() && !c.parameters.general() &&
+                   c.parameters.index() == index;
+        };
+        const auto general = [](const Clause<T>& c) { return c.parameters.general(); };
+        const bool based = FirstThat([&](const Clause<T>& c) { return base(c) && IsBaseTerm(c); });
+        const Clause<T>* lowest = EndBase(true);
+        if (!based && lowest && index < lowest->parameters.index()) {
+            throw std::runtime_error(reference_name_ + " has no clause for index " +
+                                     std::to_string(index));
+        }
+        // The term written whole, which is the size and every cell no clause
+        // gives: the base's, or the general clauses' as they are dispatched.
+        std::optional<T> whole;
+        if (based) {
+            if (const Clause<T>* b =
+                    FirstThat([&](const Clause<T>& c) { return base(c) && !c.parameters.cells(); }))
+                whole = b->expression->accept(evaluator);
+        } else {
+            for (const Clause<T>& clause : clauses_) {
+                const ParametersDefinition<T>& p = clause.parameters;
+                if (!p.general() || p.cells() || !p.guarded()) continue;
+                if (Selects(clause, true, index, evaluator)) {
+                    whole = clause.expression->accept(evaluator);
+                    break;
+                }
+            }
+            if (!whole) {
+                if (const Clause<T>* g = FirstThat(
+                        [](const Clause<T>& c) { return IsGeneral(c) && !c.parameters.cells(); }))
+                    whole = EvaluateGeneralClause(*g, index, evaluator);
+            }
+        }
+        const auto level = [&](const Clause<T>& c) { return based ? base(c) : general(c); };
+        std::optional<Extent> extent;
+        if (whole) extent = whole->Size();
+        for (const Clause<T>& clause : clauses_) {
+            const ParametersDefinition<T>& p = clause.parameters;
+            if (!p.cells() || p.row_name().empty() || !level(clause)) continue;
+            typename ReferenceStack<T>::Trial term(evaluator.stack(), p.index_name());
+            if (p.general()) SetIndex(p.index_name(), index, evaluator.stack());
+            const Extent size{Size(p.rows()->accept(evaluator)), Size(p.cols()->accept(evaluator))};
+            if (extent && *extent != size) {
+                throw std::runtime_error("the clauses of " + reference_name_ +
+                                         " give it different sizes");
+            }
+            extent = size;
+        }
+        if (!extent) {
+            throw std::runtime_error(reference_name_ + " has no size; write it as " +
+                                     reference_name_ + "_n[j<=rows, k<=cols]");
+        }
+        T term = whole ? *whole : T(*extent);
+        for (const Clause<T>& clause : clauses_) {
+            if (IsOneCell(clause) && (base(clause) || general(clause)))
+                (void)term(clause.parameters.row(), clause.parameters.col());
+        }
+        const std::string name = reference_name_ + "_" + std::to_string(index);
+        for (size_t row = 1; row <= extent->rows; ++row) {
+            for (size_t col = 1; col <= extent->cols; ++col) {
+                const int        r = static_cast<int>(row), c = static_cast<int>(col);
+                std::optional<T> cell;
+                if (auto own = OneCell(r, c, index, base, evaluator)) {
+                    cell = own->first;
+                } else if (based) {
+                    if (auto every = OneCell(r, c, index, general, evaluator)) {
+                        throw std::runtime_error(
+                            name + " and " + reference_name_ + "_" +
+                            every->second->parameters.index_name() + "[" + std::to_string(r) + "," +
+                            std::to_string(c) + "] both give row " + std::to_string(r) +
+                            ", column " + std::to_string(c) + " of " + name + "; write " + name +
+                            "[" + std::to_string(r) + "," + std::to_string(c) + "] to say which");
+                    }
+                    cell = AllCells(r, c, index, base, evaluator);
+                } else if (auto every = OneCell(r, c, index, general, evaluator)) {
+                    cell = every->first;
+                } else {
+                    cell = AllCells(r, c, index, general, evaluator);
+                }
+                if (!cell) continue;
+                if (cell->Size() != Extent{1, 1}) {
+                    throw std::runtime_error("a cell of " + reference_name_ +
+                                             " must be a single value, not a " +
+                                             cell->Size().toString() + " matrix");
+                }
+                term(row, col) = (*cell)(1, 1);
+            }
+        }
+        return term;
     }
 
     T EvaluateGeneralClause(const Clause<T>& general, int index,

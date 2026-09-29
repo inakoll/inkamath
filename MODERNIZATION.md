@@ -1815,8 +1815,8 @@ against the exact transcript. Writing the two found four things they need:
   after `a = [1 2; 3 4]` changes that cell and nothing else, as a base clause
   overrides a sequence's general one. The first spelling had the cell clause
   replace the matrix, as an index replaces a value, and leave `a` with no size;
-  nothing needed that, and it surprised. A sequence's terms cannot yet be
-  defined cell by cell. The compiler takes such a matrix one cell at a time,
+  nothing needed that, and it surprised. A sequence's terms can now be
+  defined cell by cell too (next in line). The compiler takes such a matrix one cell at a time,
   its names bound to the cell's place as constants, so that the size, the
   guards and the clause that gives each cell fold exactly; one whose size or
   guard reads a parameter it refuses. The Kalman filter's identity is now
@@ -2096,7 +2096,20 @@ that exploring seven domains asked of the interpreter, by how many asked.
   only of values a double holds exactly, since of any other its jump at an
   integer is where rounding shows; `adc.ink` is the readable case. Then
   phase 15, files and their scopes, before what follows.
-- **A sequence's terms cell by cell**, which a layer of a network needs.
+- `[done]` **A sequence's terms cell by cell**, which a layer of a network
+  needs. Specified in `test/data/spec/terms.ink`, now `test/data/terms.ink`
+  unchanged: `h_n[j<=3, k<=1] = ...` as a
+  matrix is defined, every cell seeing the index and a guard choosing cells;
+  a base term by its cells beating the general clauses, as any base does; a
+  size that may come from the index; a term written whole as well being the
+  size and every cell no clause gives, as for a matrix; and one cell, of
+  every term (`g_n[1,2]`) or of one (`g_2[2,1]`), overriding the rest as
+  `M[1,2]` does. A clause wins where it is at least as specific in both the
+  index and the cell. A base term and a cell of every term are each more
+  specific in one and less in the other, so where both give a cell the
+  answer is an error naming the clause that settles it, `g_0[1,2]`: no
+  choice between them was principled, and a guess would have been silent.
+  The compiler refuses such a term by name until it follows.
 - **Filling with a recurrence's own stride.**
 - **`A^-1*b` as a solve**, cheaper than the inverse and smaller in exact
   arithmetic; a sparse matrix, if ever, comes after it.
