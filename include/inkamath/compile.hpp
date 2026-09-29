@@ -1385,7 +1385,7 @@ private:
         for (const std::string& name : inputs) inputs_n.push_back(name + "_n");
         for (const auto& [name, parameter] : parameters_)
             parameters.push_back(parameter.initial.size() == 1
-                                     ? name + " = " + Double(parameter.initial[0])
+                                     ? name + "\x01=\x01" + Double(parameter.initial[0])
                                      : name + "\x01(" + std::to_string(parameter.rows) + "x" +
                                            std::to_string(parameter.cols) + ")");
         std::string text =

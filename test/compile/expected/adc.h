@@ -16,8 +16,8 @@
  *
  * A step takes x_n, the input at its index. After a step, m.name[k] is
  * name_(n-k) for each sequence: x, v, held (k <= 1), alarm and rising. The
- * parameters are fields holding the file's values once adc_init has run: hi =
- * 1.0, lo = -1.0 and q = 0.25. After assigning one, call adc_update.
+ * parameters are fields holding the file's values once adc_init has run:
+ * hi = 1.0, lo = -1.0 and q = 0.25. After assigning one, call adc_update.
  */
 
 /* The parameters, which the host may assign, then what derives from them,
