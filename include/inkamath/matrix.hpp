@@ -143,11 +143,10 @@ public:
 
     // A guard holds when it is not zero. NaN is not zero and so holds, while
     // every comparison with it is false -- the one place the convention bites.
-    static bool truth(const Matrix<T>& a)
-    {
+    static bool truth(const Matrix<T>&   a,
+                      const std::string& needs = "a guard needs a single value") {
         if(!a.IsScalar()) {
-            throw std::runtime_error("a guard needs a single value, not a "
-                                     + a.extent_.toString() + " matrix");
+            throw std::runtime_error(needs + ", not a " + a.extent_.toString() + " matrix");
         }
         return !(a.scalar_ == numeric_interface<T>::zero());
     }

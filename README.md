@@ -168,6 +168,7 @@ like `pi`, `floor` can be defined again.
 | `expr<expr` `expr>expr` | comparison, answering 1 or 0 |
 | `expr<=expr` `expr>=expr` | the same, or equal |
 | `expr==expr` `expr<>expr` | equal, not equal, of numbers or whole matrices |
+| `expr and expr` `expr or expr` | both, either: 1 or 0, the right read only if needed |
 | `name = expr` | definition (section 3) |
 | `name \| cond = expr` | a definition in cases (section 3) |
 | `lim name` | the limit of a sequence (section 4) |
@@ -421,8 +422,20 @@ error: step_0 is already defined without a guard, so this clause can never apply
 
 A comparison is a number — `1` or `0` — so a guard is simply an expression
 that is not zero, and `sgn(x) = (x>0) - (x<0)` needs no guard at all. Ordering
-needs real numbers; equality does not. If no clause applies, the interpreter
-says so rather than inventing a value:
+needs real numbers; equality does not. Conditions combine with `and` and
+`or`, which answer `1` or `0` as a comparison does, bind looser than it, and
+read their right side only when the left has not decided — so a guard such as
+`n > 0 and s_(n-1) > 1` never asks for `s_(-1)`:
+
+```
+>> inside(x) = 0 < x and x < 1
+inside(x) = 0 < x and x < 1
+
+>> inside(1/2)
+1
+```
+
+If no clause applies, the interpreter says so rather than inventing a value:
 
 ```
 >> abs(i)
@@ -560,8 +573,8 @@ it:
 error: the sum did not converge within 100 terms (last partial sum ~1.6349839)
 ```
 
-An index must be an exact whole number, and `lim`, `sum`, `prod`, `frac` and
-`digits` are reserved words.
+An index must be an exact whole number, and `lim`, `sum`, `prod`, `frac`,
+`digits`, `and` and `or` are reserved words.
 
 A term is evaluated once per *context* — which definition, which index, which
 argument values — and the answer is remembered until a definition changes. It

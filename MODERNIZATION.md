@@ -2074,8 +2074,9 @@ that exploring seven domains asked of the interpreter, by how many asked.
   interpreter starts with, as `pi` is, whose body is the one node the
   language cannot write; the compiler passes over it until a model redefines
   it, and refuses a model that calls it, as it does any function.
-- **`and` and `or` for guards**, written as products and sums today.
-  Specified in `test/data/spec/logic.ink`: 1 or 0 exactly, as a comparison
+- `[done]` **`and` and `or` for guards**, written as products and sums
+  before. Specified in `test/data/spec/logic.ink`, now `test/data/logic.ink`
+  unchanged: 1 or 0 exactly, as a comparison
   answers; any value but zero true, as in a guard; `and` tighter than `or`,
   both looser than a comparison; and the right side read only when the left
   has not decided, which products cannot do -- `n > 0 and c_(n-1) >= 4` never

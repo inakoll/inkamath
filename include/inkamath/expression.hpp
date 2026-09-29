@@ -297,6 +297,25 @@ private:
     Comparison op_;
 };
 
+// 'a and b', 'a or b': 1 or 0, the right side read only when the left has
+// not decided.
+template <typename T>
+class LogicExpression : public BinaryExpression<T> {
+public:
+    LogicExpression(bool conjunction, PExpression<T> e1, PExpression<T> e2)
+        : BinaryExpression<T>(e1, e2), conjunction_(conjunction) {}
+
+    [[nodiscard]] bool        Conjunction() const { return conjunction_; }
+    [[nodiscard]] const char* Word() const { return conjunction_ ? "and" : "or"; }
+
+    PExpression<T> accept(TransformationVisitor<T>& v) override { return v.visit(this); }
+
+    T accept(FoldingVisitor<T>& v) override { return v.visit(this); }
+
+private:
+    bool conjunction_;
+};
+
 // One cell of a matrix: 'm[i,j]'.
 template <typename T>
 class CellExpression : public Expression<T>
