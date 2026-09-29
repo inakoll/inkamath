@@ -1943,6 +1943,36 @@ Nothing asks for it while exactness stops at a thousand digits. Relevance is
 the notation -- recurrences, `lim`, series as on paper, exact by default --
 which Python spells as code; speed is a guardrail, not the race.
 
+## Phase 15 — Files that use files `[planned]`
+
+After `and` and `or` (next in line). With `floor` the interpreter starts
+with three definitions, and the question was whether they want scoping: a
+module system for built-ins, preludes and a user's own files. Not yet. A
+built-in is a definition a session may replace, so a clash is already
+settled in the user's favour -- `e = 0.01` for an error term gets that `e`
+-- and namespaces solve clashes between libraries, of which there are none.
+Qualified names, visibility and re-exports wait for a clash that needs them.
+
+What the domains explored in phase 14 did ask for is reuse. The PID, the
+Kalman filters and the heat equation repeat the identity by cells and a
+stiffness matrix; `round`, `ceil` and `mod` are a line of `floor` each and
+are documented rather than there. One mechanism serves both: a line that
+runs another file's definitions into the session, and a prelude that is
+such a file, loaded at start. To decide, in a transcript first:
+
+- **The spelling**, `use "filters.ink"` or another, and whether the prelude
+  is loaded unless declined or only when asked for.
+- **Paths** relative to the file that names them, not to where the
+  interpreter was started.
+- **Once per session**, so that a diamond or a cycle loads nothing twice.
+- **Replacement as typed**: a file's definition replaces what came before it,
+  as a line at the prompt does, and the session's own lines the prelude's.
+- **Errors** name the file and line they are in, and `?round` prints what the
+  file wrote.
+- **The compiler** compiles what was loaded as it compiles what was typed,
+  and passes over what the prelude defined and no model redefined, as it
+  does a built-in.
+
 ## Sequencing
 
 Phase 2 gated everything: no implementation work started before the
@@ -2010,7 +2040,8 @@ that exploring seven domains asked of the interpreter, by how many asked.
   interpreter starts with, as `pi` is, whose body is the one node the
   language cannot write; the compiler passes over it until a model redefines
   it, and refuses a model that calls it, as it does any function.
-- **`and` and `or` for guards**, written as products and sums today.
+- **`and` and `or` for guards**, written as products and sums today. Then
+  phase 15, files that use files, before what follows.
 - **A sequence's terms cell by cell**, which a layer of a network needs.
 - **Filling with a recurrence's own stride.**
 - **`A^-1*b` as a solve**, cheaper than the inverse and smaller in exact
