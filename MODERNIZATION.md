@@ -2124,5 +2124,12 @@ that exploring seven domains asked of the interpreter, by how many asked.
   a constant falls back to every term. Every term a fill asks for is then one
   the term asked for reaches, so a fill that fails says why -- `st_5001` has
   no clause for index -1 -- rather than reporting the depth.
-- **`A^-1*b` as a solve**, cheaper than the inverse and smaller in exact
-  arithmetic; a sparse matrix, if ever, comes after it.
+- `[done]` **`A^-1*b` as a solve**: where both are exact and `b` is columns
+  `A` can solve for, `A` is factored with the inverse's own pivots and `b`
+  solved for, which is the product's answer exactly -- 13M instructions
+  where the inverse took 60M, for the 40 unknowns of a stiffness matrix.
+  Inexact, the two round differently -- `[1 2;3 4]^-1*[~1;1]` is `-1` by the
+  inverse and `~-1` solved -- so there, and for anything else, it is the
+  inverse times `b` as written. The order is the product's too: `A` is
+  factored, and a singular one refused, before `b` is read. A sparse matrix,
+  if ever, comes after it.

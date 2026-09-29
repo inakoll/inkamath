@@ -323,8 +323,15 @@ public:
     }
 
     T visit(MultExpression<T>* expr) override {
+        const auto right = [&] { return expr->m_e2()->accept(*this); };
+        if (const auto* power = dynamic_cast<PowExpression<T>*>(expr->m_e1().get())) {
+            const auto* exponent = dynamic_cast<ValExpression<T>*>(power->m_e2().get());
+            if (exponent && numeric_interface<T>::exact(exponent->value) &&
+                exponent->value == T(typename T::value_type(-1)))
+                return numeric_interface<T>::solve(power->m_e1()->accept(*this), right);
+        }
         const T left = expr->m_e1()->accept(*this);
-        return left * expr->m_e2()->accept(*this);
+        return left * right();
     }
 
     T visit(DivExpression<T>* expr) override {

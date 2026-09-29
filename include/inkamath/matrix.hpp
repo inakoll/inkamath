@@ -239,6 +239,77 @@ public:
         return r;
     }
 
+    // 'a^-1*b', without the inverse where both are exact and b is columns a
+    // can solve for: a is factored, as Inverse eliminates it and before b is
+    // read, as the inverse was, then b's columns are solved for -- a fraction
+    // of the work, and the same answer, exactly. Inexact, the two round
+    // differently, so anything else is the inverse times b, as written and in
+    // that order (MODERNIZATION.md, next in line).
+    template <typename Right>
+    static Matrix<T> solve(const Matrix<T>& a, Right b) {
+        const Matrix<T> minus_one(T(-1));
+        if (a.IsScalar() || a.extent_.rows != a.extent_.cols || !exact(a)) {
+            const Matrix<T> left = pow(a, minus_one);
+            return left * b();
+        }
+        const Factors   factors = Factor(a);
+        const Matrix<T> right   = b();
+        if (right.IsScalar() || right.extent_.rows != a.extent_.rows || !exact(right))
+            return pow(a, minus_one) * right;
+        return Solve(factors, right);
+    }
+
+    // The rows in the order the pivots took them, and below the diagonal the
+    // multipliers that eliminated each column, above it what remains.
+    struct Factors {
+        Matrix<T>           lu;
+        std::vector<size_t> rows;
+    };
+
+    static Factors Factor(Matrix<T> a) {
+        const size_t        n = a.extent_.rows;
+        std::vector<size_t> rows(n);
+        for (size_t i = 0; i < n; ++i) rows[i] = i + 1;
+        for (size_t col = 1; col <= n; ++col) {
+            size_t pivot = col;
+            for (size_t row = col + 1; row <= n; ++row) {
+                if (numeric_interface<T>::abs(a(row, col)) >
+                        numeric_interface<T>::abs(a(pivot, col)) ||
+                    (a(pivot, col) == T(0) && !(a(row, col) == T(0))))
+                    pivot = row;
+            }
+            if (a(pivot, col) == T(0)) throw std::runtime_error("a singular matrix has no inverse");
+            for (size_t j = 1; j <= n; ++j) std::swap(a(pivot, j), a(col, j));
+            std::swap(rows[pivot - 1], rows[col - 1]);
+            for (size_t row = col + 1; row <= n; ++row) {
+                const T factor = a(row, col) / a(col, col);
+                a(row, col)    = factor;
+                if (factor == T(0)) continue;
+                for (size_t j = col + 1; j <= n; ++j) a(row, j) = a(row, j) - factor * a(col, j);
+            }
+        }
+        return {std::move(a), std::move(rows)};
+    }
+
+    static Matrix<T> Solve(const Factors& factors, const Matrix<T>& b) {
+        const Matrix<T>& lu = factors.lu;
+        const size_t     n  = lu.extent_.rows;
+        Matrix<T>        x(b.extent_);
+        for (size_t c = 1; c <= b.extent_.cols; ++c) {
+            for (size_t i = 1; i <= n; ++i) {
+                T sum = b(factors.rows[i - 1], c);
+                for (size_t j = 1; j < i; ++j) sum = sum - lu(i, j) * x(j, c);
+                x(i, c) = sum;
+            }
+            for (size_t i = n; i >= 1; --i) {
+                T sum = x(i, c);
+                for (size_t j = i + 1; j <= n; ++j) sum = sum - lu(i, j) * x(j, c);
+                x(i, c) = sum / lu(i, i);
+            }
+        }
+        return x;
+    }
+
     static auto fact(const Matrix<T>& a)
     {
         return numeric_interface<T>::fact(a.Scalar("a matrix has no factorial"));

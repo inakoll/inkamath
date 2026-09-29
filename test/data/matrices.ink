@@ -413,6 +413,19 @@ s=[1 1;0 1]
 >> a^-1*a == [1 0;0 1]
 1
 
+# The inverse times a matrix of exact numbers is solved for rather than
+# inverted and multiplied, and answers as the product did, errors and all
+# (MODERNIZATION.md, next in line).
+>> frac [1 2;3 4]^-1*[1;1]
+[-1;
+  1]
+
+>> [1 2;2 4]^-1*[1;1]
+error: a singular matrix has no inverse
+
+>> [1 2;3 4]^-1*[1;1;1]
+error: a matrix product needs as many columns on the left as rows on the right
+
 >> frac a^-2
 [ 11/2, -5/2;
  -15/4,  7/4]
