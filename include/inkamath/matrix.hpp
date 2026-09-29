@@ -100,6 +100,13 @@ public:
         return c;
     }
 
+    static Matrix<T> floor(const Matrix<T>& a) {
+        Matrix<T> c(a);
+        std::transform(c.data(), c.data() + c.extent_.count(), c.data(),
+                       [](const T& value) { return numeric_interface<T>::floor(value); });
+        return c;
+    }
+
     // The rows as columns, and no cell conjugated: MATLAB's and Julia's quote
     // is the conjugate transpose, which is the same only for real matrices.
     static Matrix<T> transpose(const Matrix<T>& a) {

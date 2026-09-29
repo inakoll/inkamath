@@ -151,7 +151,11 @@ the value. `frac` at the start of a line shows the answer as its exact
 fraction, and `digits = n` sets how many digits are shown.
 
 Numbers are complex; `i` is the imaginary unit. `e` and `pi` are the only
-other built-ins, and there are no built-in functions.
+other built-in values, and `floor` the only built-in function: the largest
+whole number not above its argument, exact of an exact number and cell by
+cell of a matrix. Any other rounding is a line of it, by the rule the model
+needs — `round(x) = floor(x + 1/2)`, `mod(a, b) = a - b*floor(a/b)` — and,
+like `pi`, `floor` can be defined again.
 
 | | |
 |---|---|
@@ -198,6 +202,9 @@ runs to the end of the line.
 
 >> (1+i)*(1-i)
 2
+
+>> floor(-7/2)
+-4
 ```
 
 ### 2. Matrices

@@ -228,6 +228,23 @@ public:
         return Approximate(numeric_interface<inexact_type>::pow(base, b.Inexact()), past);
     }
 
+    // The largest whole number not above a: exact of an exact number, as
+    // division rounds toward zero and a negative quotient needs one less.
+    static Number floor(const Number& a) {
+        if (!a.exact()) {
+            if (!(a.inexact_.imag() == 0))
+                throw std::runtime_error("floor needs a real number, not " + toString(a));
+            return Approximate(std::floor(a.inexact_.real()), approximated(a));
+        }
+        if (a.big_) {
+            auto [whole, rest] = DivMod(a.big_->num, a.big_->den);
+            if (a.big_->negative && !rest.zero()) whole = whole + Natural(1);
+            return Normalized(Big{a.big_->negative, whole, Natural(1)});
+        }
+        const long long whole = a.num_ / a.den_;
+        return Number(a.num_ % a.den_ != 0 && a.num_ < 0 ? whole - 1 : whole);
+    }
+
     static Number fact(const Number& a) {
         if (!a.exact())
             return Approximate(numeric_interface<inexact_type>::fact(a.inexact_), approximated(a));

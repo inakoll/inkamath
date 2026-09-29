@@ -62,6 +62,13 @@ public:
         // as the imaginary part of -1.
         this->Set("pi", ParametersDefinition<T>(), PExpression<T>( new ValExpression<T>(T(3.14159265358979323846))));
         this->Set("e",  ParametersDefinition<T>(), PExpression<T>( new ValExpression<T>(T(2.71828182845904523536))));
+        // A definition like these, so a session may replace it; native,
+        // because the language can compute it only by a search.
+        EvaluationVisitor<T> evaluator(*this);
+        const auto           x = std::make_shared<RefExpression<T>>("x");
+        this->Set("floor", ParametersDefinition<T>(x, PExpression<T>(), evaluator),
+                  std::make_shared<FloorExpression<T>>(x));
+        builtins_ = globals_;
     }
 
     // A memoised result may have read a global, so redefining one drops the
@@ -144,6 +151,14 @@ public:
     };
 
     [[nodiscard]] const scope_type& Globals() const { return globals_; }
+
+    // Whether a global is still the one the interpreter starts with.
+    [[nodiscard]] bool Builtin(const std::string& name) const {
+        const auto builtin = builtins_.find(name);
+        const auto global  = globals_.find(name);
+        return builtin != builtins_.end() && global != globals_.end() &&
+               builtin->second == global->second;
+    }
 
     // Whether a call's frame is open to bind in.
     [[nodiscard]] bool Framed() const { return open_ != 0; }
@@ -300,6 +315,7 @@ private:
     bool                                     fill_failed_ = false;
     std::unordered_map<MemoKey, T, MemoHash> memoised_, older_;
     scope_type globals_;
+    scope_type                               builtins_;
     std::vector<frame_type>                  frames_;  // the open ones first, then spares
     size_t                                   open_ = 0;
 };
