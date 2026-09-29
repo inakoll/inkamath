@@ -1221,6 +1221,73 @@ private:
                "}\n\n";
     }
 
+    // The header's first comment: how to call it, in the terms of the file.
+    std::string Interface(const std::string& module, const std::vector<std::string>& inputs,
+                          const std::vector<std::string>& fields, int earliest) const {
+        const auto list = [](const std::vector<std::string>& items) {
+            std::string joined;
+            for (std::size_t i = 0; i < items.size(); ++i)
+                joined += (i == 0 ? "" : i + 1 == items.size() ? " and " : ", ") + items[i];
+            return joined;
+        };
+        std::string arguments;
+        for (const std::string& name : inputs) arguments += ", " + name;
+        std::vector<std::string> terms, inputs_n, parameters;
+        for (const std::string& name : fields) {
+            const int depth = sequences_.at(name).depth;
+            terms.push_back(depth > 1 ? name + "\x01(k\x01<=\x01" + std::to_string(depth - 1) + ")"
+                                      : name);
+        }
+        for (const std::string& name : inputs) inputs_n.push_back(name + "_n");
+        for (const auto& [name, parameter] : parameters_)
+            parameters.push_back(parameter.initial.size() == 1
+                                     ? name + " = " + Double(parameter.initial[0])
+                                     : name + "\x01(" + std::to_string(parameter.rows) + "x" +
+                                           std::to_string(parameter.cols) + ")");
+        std::string text =
+            "After a step, m.name[k] is name_(n-k) for each sequence: " + list(terms) + ".";
+        text = (inputs.empty() ? "A step takes no input. "
+                : inputs.size() == 1
+                    ? "A step takes " + list(inputs_n) + ", the input at its index. "
+                    : "A step takes " + list(inputs_n) + ", the inputs at its index. ") +
+               text;
+        if (!parameters.empty())
+            text += " The parameters are fields holding the file's values once " + module +
+                    "_init has run: " + list(parameters) + ". After assigning one, call " + module +
+                    "_update.";
+        std::vector<std::string> fixed(fixed_.begin(), fixed_.end());
+        if (!fixed.empty())
+            text += " Compiled in, as a size, a bound or a lag cannot change: " + list(fixed) + ".";
+        std::string out = "/* Using it:\n *\n";
+        out += " *     " + module + " m;\n";
+        out += " *     " + module + "_init(&m);\n";
+        out += " *     " + module + "_step(&m" + arguments + ");  once for each index, the first " +
+               std::to_string(earliest) + "\n";
+        if (!fields.empty()) {
+            const std::string& last  = fields.back();
+            const Sequence&    shown = sequences_.at(last);
+            out += " *     m." + last + (shown.rows * shown.cols == 1 ? "[0]" : "[0][i][j]") +
+                   "  is then " + last + "_n" +
+                   (shown.rows * shown.cols == 1 ? "" : ", row i+1 and column j+1") + "\n";
+        }
+        out += " *\n";
+        std::string line;
+        for (std::size_t at = 0; at < text.size();) {
+            const std::size_t space = text.find(' ', at);
+            const std::string word  = text.substr(at, space - at);
+            at                      = space == std::string::npos ? text.size() : space + 1;
+            if (!line.empty() && line.size() + 1 + word.size() > 76) {
+                out += " * " + line + "\n";
+                line.clear();
+            }
+            line += (line.empty() ? "" : " ") + word;
+        }
+        // '\x01' is a space the wrapping does not break at.
+        std::replace(out.begin(), out.end(), '\x01', ' ');
+        std::replace(line.begin(), line.end(), '\x01', ' ');
+        return out + " * " + line + "\n */\n\n";
+    }
+
     std::string Print(const std::string& module, const std::string& source) {
         for (const auto& [name, sequence] : sequences_)
             if (!sequence.definition && parameters_.count(name))
@@ -1248,12 +1315,7 @@ private:
         out += " * with -ffast-math, which reorders. */\n";
         out += "#ifndef " + guard + "\n#define " + guard + "\n\n";
         out += "#include <math.h>\n#include <string.h>\n\n";
-        if (!fixed_.empty()) {
-            std::string names;
-            for (const std::string& name : fixed_) names += (names.empty() ? "" : ", ") + name;
-            out +=
-                "/* Compiled in, as a size, a bound or a lag cannot change: " + names + ". */\n\n";
-        }
+        out += Interface(module, inputs, fields, earliest);
         out += "/* The parameters, which the host may assign, then what derives from them,\n";
         out += " * then the index of the latest step and each sequence's terms from that\n";
         out += " * index back. */\n";

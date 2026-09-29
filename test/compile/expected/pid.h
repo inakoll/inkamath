@@ -7,6 +7,20 @@
 #include <math.h>
 #include <string.h>
 
+/* Using it:
+ *
+ *     pid m;
+ *     pid_init(&m);
+ *     pid_step(&m, y);  once for each index, the first 0
+ *     m.u[0]  is then u_n
+ *
+ * A step takes y_n, the input at its index. After a step, m.name[k] is
+ * name_(n-k) for each sequence: y, e (k <= 1), d, s (k <= 1) and u. The
+ * parameters are fields holding the file's values once pid_init has run: dt =
+ * 0.1, kd = 0.1, ki = 1.0, kp = 2.0 and r = 1.0. After assigning one, call
+ * pid_update.
+ */
+
 /* The parameters, which the host may assign, then what derives from them,
  * then the index of the latest step and each sequence's terms from that
  * index back. */
