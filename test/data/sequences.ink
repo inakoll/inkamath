@@ -226,6 +226,50 @@ mb_n=ma_(n-1)+1
 >> ma_5000
 5000
 
+# A recurrence that steps by two is filled by twos, from the base its index
+# reaches, and one that reaches no base says which term it lacks. Filled term
+# by term, the odd terms it never defined failed at 256 deep instead
+# (MODERNIZATION.md, next in line).
+>> st_0 = 1
+st_0 = 1
+
+>> st_n = st_(n-2) + 1
+st_n = st_(n-2) + 1
+
+>> st_5000
+2501
+
+>> st_5001
+error: st has no clause for index -1
+
+>> tr_0 = 0
+tr_0 = 0
+
+>> tr_1 = 10
+tr_1 = 10
+
+>> tr_n = tr_(n-3) + 1
+tr_n = tr_(n-3) + 1
+
+>> tr_3001
+1010
+
+# Two that read each other two back step by two together.
+>> pa_0 = 1
+pa_0 = 1
+
+>> pb_0 = 2
+pb_0 = 2
+
+>> pa_n = pb_(n-2)
+pa_n = pb_(n-2)
+
+>> pb_n = pa_(n-2) + 1
+pb_n = pa_(n-2) + 1
+
+>> pa_4000
+1001
+
 # However far: a fill keeps the latest terms of every sequence it passes
 # through, and each term has the budget a line of its own would have
 # (MODERNIZATION.md, C69).

@@ -10,6 +10,7 @@
 
 #include <algorithm>
 #include <exception>
+#include <numeric>
 #include <optional>
 #include <stdexcept>
 #include <tuple>
@@ -233,9 +234,11 @@ public:
 private:
     // A recurrence nests one reference per term it reaches back, so a term far
     // from its base runs out of depth. Filled from the base up instead, each
-    // term finds the one before it remembered. Only what failed comes here, so
-    // what answered before answers as it did; and a fill that fails -- a term
-    // no evaluation of this one would have asked for -- reports the depth.
+    // term finds the one before it remembered, stepping as the recurrence
+    // does: one that reads two back fills every other term, those its index
+    // reaches. Only what failed comes here, so what answered before answers as
+    // it did; and a fill that fails asked for a term this one reaches, so its
+    // reason is this one's.
     T Filled(int index, const typename ParametersDefinition<T>::Arguments& arguments,
              const ParametersCall<T>& call, ReferenceStack<T>& stack,
              EvaluationVisitor<T>& evaluator, const std::exception_ptr& depth) const {
@@ -256,17 +259,71 @@ private:
                                 std::to_string(ReferenceStack<T>::max_filled));
         }
         typename ReferenceStack<T>::Filling filling(stack);
+        const int                           stride = Stride();
         try {
-            for (int k = base + 1; k < index; ++k) {
+            for (long long k = index - (distance - 1) / stride * stride; k < index; k += stride) {
                 filling.Next();
-                (void)Term(k, arguments, call, stack, true);
+                (void)Term(static_cast<int>(k), arguments, call, stack, true);
             }
-        } catch (const std::runtime_error&) {
+        } catch (const DepthExceeded&) {
             stack.FillFailed();
             std::rethrow_exception(depth);
+        } catch (const std::runtime_error&) {
+            stack.FillFailed();
+            throw;
         }
         filling.Next();
         return EvalImp(true, index, evaluator);
+    }
+
+    // How far apart the terms a fill computes: the greatest common divisor of
+    // how far back the general clauses read terms, this sequence's or another
+    // that reads it back, as a term reaches only those below it by such
+    // steps; 1 where a read is not the index less a constant, and where there
+    // is none. A read at a constant index reaches no further.
+    int Stride() const {
+        int stride = 0;
+        for (const Clause<T>& clause : clauses_) {
+            const ParametersDefinition<T>& p = clause.parameters;
+            if (!p.general()) continue;
+            if (!Lags(clause.expression, p.index_name(), stride) ||
+                !Lags(p.guard(), p.index_name(), stride))
+                return 1;
+        }
+        return stride == 0 ? 1 : stride;
+    }
+
+    bool Lags(const PExpression<T>& expression, const std::string& index, int& stride) const {
+        if (!expression) return true;
+        if (const auto* term = dynamic_cast<const FuncExpression<T>*>(expression.get());
+            term && term->m_e2() && !dynamic_cast<const ValExpression<T>*>(term->m_e2().get())) {
+            const std::optional<int> lag = Lag(term->m_e2(), index);
+            if (!lag) return false;
+            stride = std::gcd(stride, *lag < 0 ? -*lag : *lag);
+        }
+        for (const PExpression<T>& child : expression->Children())
+            if (!Lags(child, index, stride)) return false;
+        return true;
+    }
+
+    // 'n', or 'n' plus or less a whole constant, as how far back it reads.
+    static std::optional<int> Lag(const PExpression<T>& at, const std::string& index) {
+        if (const auto* ref = dynamic_cast<const RefExpression<T>*>(at.get()))
+            return ref->Name() == index ? std::optional<int>(0) : std::nullopt;
+        const auto* sum = dynamic_cast<const AddExpression<T>*>(at.get());
+        if (!sum) return std::nullopt;
+        for (const auto& [side, other] :
+             {std::pair(sum->m_e1(), sum->m_e2()), std::pair(sum->m_e2(), sum->m_e1())}) {
+            const auto*              constant = dynamic_cast<const ValExpression<T>*>(other.get());
+            const std::optional<int> lag      = constant ? Lag(side, index) : std::nullopt;
+            if (!lag) continue;
+            try {
+                return *lag - AsIndex<T>(constant->value);
+            } catch (const std::runtime_error&) {
+                return std::nullopt;
+            }
+        }
+        return std::nullopt;
     }
 
     // One term, evaluated as indexing would evaluate it: in a frame of its own,
