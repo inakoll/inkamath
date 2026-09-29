@@ -2009,6 +2009,16 @@ what the file wrote; the compiler compiling a module qualified, `heat_dt`,
 and passing over what the prelude defined and no model redefined, as it does
 a built-in.
 
+Specified for the interpreter in `test/data/spec/scopes.ink`, over a module
+`gain.ink` beside it: `use gain` names a file by its stem, beside the file
+that names it, so that no string enters the language; `use gain (y)` brings
+in the names listed; an input is `x_n = input`, a definition that reports
+itself when read and that any definition replaces, from the session as
+`gain.x_n = n`, whose right-hand side reads the session's names; a file that
+cannot be read or parsed loads nothing and says where; and the prelude is
+loaded always, with `ceil` and `mod` and not `round`, whose rule is the
+model's, as `floor` decided. The compiler's half is for its own transcript.
+
 ## Sequencing
 
 Phase 2 gated everything: no implementation work started before the
