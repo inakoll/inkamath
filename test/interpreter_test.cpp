@@ -115,6 +115,9 @@ TEST_CASE("bignum") {
 TEST_CASE("floor") {
     check_transcript("floor.ink");
 }
+TEST_CASE("logic") {
+    check_transcript("logic.ink");
+}
 TEST_CASE("errors") {
     check_transcript("errors.ink");
 }

@@ -61,6 +61,9 @@ template <typename T>
 class CompareExpression;
 
 template <typename T>
+class LogicExpression;
+
+template <typename T>
 class RefExpression;
 
 template <typename T>
@@ -92,6 +95,7 @@ public:
     virtual ReturnType visit(MatExpression<T>* expr) = 0;
     virtual ReturnType visit(CellExpression<T>* expr) = 0;
     virtual ReturnType visit(CompareExpression<T>* expr) = 0;
+    virtual ReturnType visit(LogicExpression<T>* expr)     = 0;
     virtual ReturnType visit(RefExpression<T>* expr) = 0;
     virtual ReturnType visit(FuncExpression<T>* expr) = 0;
     virtual ReturnType visit(SeriesExpression<T>* expr)  = 0;
@@ -131,6 +135,7 @@ public:
     PExpression<T> visit(ValExpression<T>* expr) override {return visit_other(expr);}
     PExpression<T> visit(CellExpression<T>* expr) override {return visit_other(expr);}
     PExpression<T> visit(CompareExpression<T>* expr) override {return visit_other(expr);}
+    PExpression<T> visit(LogicExpression<T>* expr) override { return visit_other(expr); }
     PExpression<T> visit(FuncExpression<T>* expr) override {return visit_other(expr);}
     PExpression<T> visit(SeriesExpression<T>* expr) override { return visit_other(expr); }
 };
@@ -281,6 +286,17 @@ public:
     T visit(CompareExpression<T>* expr) override {
         const T left = expr->m_e1()->accept(*this);
         return numeric_interface<T>::compare(left, expr->m_e2()->accept(*this), expr->Op());
+    }
+
+    T visit(LogicExpression<T>* expr) override {
+        const auto truth = [expr](const T& value) {
+            return numeric_interface<T>::truth(value,
+                                               std::string(expr->Word()) + " needs single values");
+        };
+        const bool left    = truth(expr->m_e1()->accept(*this));
+        const bool decided = left != expr->Conjunction();
+        const bool answer  = decided ? left : truth(expr->m_e2()->accept(*this));
+        return T(typename T::value_type(answer ? 1 : 0));
     }
 
     T visit(CellExpression<T>* expr) override {

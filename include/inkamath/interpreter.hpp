@@ -106,6 +106,8 @@ private:
     // `lead`, where given, is a leading operand the caller has already parsed.
     // Without it ParseEqualExpr has to rewind and parse its speculative
     // left-hand side a second time, which nests into O(2^depth).
+    PExpression<U> ParseOrExpr(PExpression<U> lead = PExpression<U>());
+    PExpression<U> ParseAndExpr(PExpression<U> lead = PExpression<U>());
     PExpression<U> ParseCompareExpr(PExpression<U> lead = PExpression<U>());
     PExpression<U> ParseAddExpr(PExpression<U> lead = PExpression<U>());
     PExpression<U> ParseMultExpr(PExpression<U> lead = PExpression<U>());
@@ -141,6 +143,9 @@ private:
     }
     static bool IsWord(const Token<T>& token, const char* word) {
         return token.type == Func && token.text == word;
+    }
+    static bool IsLogic(const Token<T>& token) {
+        return IsWord(token, "and") || IsWord(token, "or");
     }
     // 'frac' and 'digits' are about the whole answer, so they begin a line.
     static bool BeginsLine(const Token<T>& token) {
@@ -440,7 +445,8 @@ template <Parsable T, Numeric U>
 PExpression<U> Interpreter<T,U>::ParseEqualExpr()
 {
     PExpression<U> e,ref,params,expr,sub;
-    if (!AtEnd() && Peek().type == Func && !IsLimit(Peek()) && !IsSeries(Peek())) {
+    if (!AtEnd() && Peek().type == Func && !IsLimit(Peek()) && !IsSeries(Peek()) &&
+        !IsLogic(Peek())) {
         const size_t signature_begin = m_i;
         std::string name = m_tokens[m_i++].text;
         ref = PExpression<U>(new RefExpression<U>(name));
@@ -454,7 +460,7 @@ PExpression<U> Interpreter<T,U>::ParseEqualExpr()
         if (!AtEnd() && Peek().type == Guard)
         {
             ++m_i;
-            guard = ParseCompareExpr();
+            guard = ParseOrExpr();
         }
         if (!AtEnd() && Peek().type == Equal)
         {
@@ -495,10 +501,31 @@ PExpression<U> Interpreter<T,U>::ParseEqualExpr()
             if (place) {
                 ref = std::make_shared<CellExpression<U>>(ref, place->Row(), place->Col());
             }
-            e = ParseCompareExpr(ParseQuotes(ref));
+            e = ParseOrExpr(ParseQuotes(ref));
         }
     } else {
-        e = ParseCompareExpr();
+        e = ParseOrExpr();
+    }
+    return e;
+}
+
+// Looser than a comparison, 'or' looser than 'and', as everywhere.
+template <Parsable T, Numeric U>
+PExpression<U> Interpreter<T, U>::ParseOrExpr(PExpression<U> lead) {
+    PExpression<U> e = ParseAndExpr(lead);
+    while (!AtEnd() && IsWord(Peek(), "or")) {
+        ++m_i;
+        e = std::make_shared<LogicExpression<U>>(false, e, ParseAndExpr());
+    }
+    return e;
+}
+
+template <Parsable T, Numeric U>
+PExpression<U> Interpreter<T, U>::ParseAndExpr(PExpression<U> lead) {
+    PExpression<U> e = ParseCompareExpr(lead);
+    while (!AtEnd() && IsWord(Peek(), "and")) {
+        ++m_i;
+        e = std::make_shared<LogicExpression<U>>(true, e, ParseCompareExpr());
     }
     return e;
 }
@@ -658,6 +685,7 @@ PExpression<U> Interpreter<T, U>::ParseSimpleExpr(bool postfix) {
 			break;
 
         case Func:
+            if (IsLogic(Peek())) Fail("expected a value before '", Peek().text, "'");
             if (IsLimit(Peek()))
             {
                 ++m_i;
