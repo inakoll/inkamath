@@ -137,6 +137,7 @@ private:
         std::size_t                             rows = 0, cols = 0;  // 0 until known
         bool                                    based = false, compiling = false, compiled = false;
         std::map<std::string, std::set<int>>    reads;  // lags, by the sequence read
+        Reads deferred;  // read only where the left of an 'and' or 'or' has not decided
         int                                     depth = 1;
         int                                     start = 0;
         std::vector<Temporary>                  temporaries;  // in the order declared
@@ -596,21 +597,143 @@ private:
                            primary));
     }
 
-    // A guard as C tests it: a comparison as itself, anything else against
-    // zero, which is the interpreter's truth, NaN holding. Empty where it
-    // always holds, and nothing where it never does.
+    // A guard as C tests it. Empty where it always holds, and nothing where
+    // it never does.
     std::optional<std::string> Condition(const PExpression<Value>& guard) {
-        const Code code = Emit(guard);
+        const Code code = Quiet(guard);
         if (!code.Scalar()) throw Reason("a guard that is a matrix");
         if (code.constant) {
             if (!Value::truth(*code.constant)) return std::nullopt;
             return std::string();
         }
-        if (const auto* compare = dynamic_cast<CompareExpression<Value>*>(guard.get())) {
+        if (!Defers(guard)) return Test(guard);
+        const std::string truth = Shared(Cell(Truth(guard), primary)).text;
+        return "isnan(" + truth + ") ? NAN : " + truth + " != 0.0";
+    }
+
+    // A truth as C tests it: a comparison as itself, 'and' and 'or' as C's,
+    // which read their right side only when they must, as the interpreter's
+    // do; anything else against zero, which is the interpreter's truth, NaN
+    // holding. For what does not defer (see Right).
+    std::string Test(const PExpression<Value>& expression) {
+        if (const auto* logic = dynamic_cast<LogicExpression<Value>*>(expression.get())) {
+            const auto operand = [this](const PExpression<Value>& side) {
+                const std::string test = Test(side);
+                return dynamic_cast<LogicExpression<Value>*>(side.get()) ? "(" + test + ")" : test;
+            };
+            const std::string left = operand(logic->m_e1());
+            if (left == (logic->Conjunction() ? "0" : "1")) return left;
+            return left + (logic->Conjunction() ? " && " : " || ") + Right(*logic, operand).first;
+        }
+        const Code code = Emit(expression);
+        if (code.constant) return Value::truth(*code.constant) ? "1" : "0";
+        if (const auto* compare = dynamic_cast<CompareExpression<Value>*>(expression.get())) {
             const Code left = Emit(compare->m_e1()), right = Emit(compare->m_e2());
             return Wrap(left.cells[0], sum) + Operator(compare->Op()) + Wrap(right.cells[0], sum);
         }
         return Wrap(code.cells[0], sum) + " != 0.0";
+    }
+
+    // The right of an 'and' or 'or' is read only where its left has not
+    // decided, so the terms it reads cannot say where its clause starts.
+    // Those the clause has already read exist wherever it is evaluated; any
+    // other defers, and is checked where it is read: before it exists the
+    // interpreter reports it, and the answer is NaN. The check, when there is
+    // one, is named by a mark that Print resolves once the starts are known.
+    template <typename Text>
+    std::pair<std::string, std::optional<std::string>> Right(const LogicExpression<Value>& logic,
+                                                             Text                          text) {
+        Reads             reads;
+        Reads* const      outer   = std::exchange(clause_reads_, &reads);
+        const bool        was     = std::exchange(deferring_, true);
+        const std::string written = text(logic.m_e2());
+        deferring_                = was;
+        clause_reads_             = outer;
+        bool read                 = true;
+        for (const auto& [name, lags] : reads) {
+            const auto found = outer ? outer->find(name) : Reads::const_iterator();
+            read =
+                read && outer && found != outer->end() && *found->second.rbegin() >= *lags.rbegin();
+        }
+        if (read) {
+            for (const auto& [name, lags] : reads) {
+                if (outer) (*outer)[name].insert(lags.begin(), lags.end());
+                if (reading_) reading_->reads[name].insert(lags.begin(), lags.end());
+            }
+            return {written, std::nullopt};
+        }
+        checks_.push_back(reads);
+        return {written, "\x02" + std::to_string(checks_.size() - 1) + "\x03"};
+    }
+
+    // What the right side reads, emitted without saying where its clause
+    // starts.
+    Code Quiet(const PExpression<Value>& expression) {
+        Reads        reads;
+        Reads* const outer = std::exchange(clause_reads_, &reads);
+        const bool   was   = std::exchange(deferring_, true);
+        const Code   code  = Emit(expression);
+        deferring_         = was;
+        clause_reads_      = outer;
+        return code;
+    }
+
+    // Whether some 'and' or 'or' in it defers its right side. What is always
+    // read on the way is recorded, as it bounds what the right needs to check.
+    bool Defers(const PExpression<Value>& expression) {
+        const auto* logic = dynamic_cast<LogicExpression<Value>*>(expression.get());
+        if (!logic) {
+            Emit(expression);
+            return false;
+        }
+        if (Defers(logic->m_e1())) return true;
+        const std::size_t checks = checks_.size();
+        bool              nested = false;
+        const bool        defers = Right(*logic, [&](const PExpression<Value>& side) {
+                                nested = Defers(side);
+                                return std::string();
+                            }).second.has_value();
+        checks_.resize(checks);
+        return defers || nested;
+    }
+
+    // A truth as a double: 1, 0, or NaN where a term it needed did not exist.
+    std::string Truth(const PExpression<Value>& expression) {
+        const auto* logic = dynamic_cast<LogicExpression<Value>*>(expression.get());
+        if (!logic) return "(" + Test(expression) + " ? 1.0 : 0.0)";
+        const std::string left = Shared(Cell(Truth(logic->m_e1()), primary)).text;
+        auto [right, check] =
+            Right(*logic, [this](const PExpression<Value>& side) { return Truth(side); });
+        if (check) right = "(" + *check + right + ")";
+        return "(" + left + " == 0.0 ? " + (logic->Conjunction() ? "0.0" : right) + " : " + left +
+               " != " + left + " ? NAN : " + (logic->Conjunction() ? right : "1.0") + ")";
+    }
+
+    PExpression<Value> visit(LogicExpression<Value>* expression) override {
+        const auto truth = [expression](const Code& code) {
+            if (!code.Scalar()) throw Reason(std::string(expression->Word()) + " of a matrix");
+            return code.constant ? std::optional<bool>(Value::truth(*code.constant)) : std::nullopt;
+        };
+        // A left side that decides is the answer, and the right is not read.
+        const std::optional<bool> left = truth(Emit(expression->m_e1()));
+        if (left && *left != expression->Conjunction())
+            return Answer(Literal(Value(Number(*left ? 1 : 0))));
+        const std::optional<bool> right = truth(Quiet(expression->m_e2()));
+        if (left && right) return Answer(Literal(Value(Number(*right ? 1 : 0))));
+        const PExpression<Value> self = expression->self();
+        if (Defers(self)) return Answer(Cell(Truth(self), primary));
+        return Answer(Cell("(" + Test(self) + " ? 1.0 : 0.0)", primary));
+    }
+
+    // The built-in, as C's; exactly, where what it is given is a constant.
+    PExpression<Value> Floor(FuncExpression<Value>* expression) {
+        const ParametersCall<Value>& call = expression->Call();
+        if (call.parameters_expression().size() != 1 || !call.parameters_dict().empty())
+            throw Reason("floor expects 1 argument");
+        Code code = Emit(call.parameters_expression()[0]);
+        if (code.constant) return Fold(expression);
+        for (Cell& cell : code.cells) cell = Cell("floor(" + cell.text + ")", primary);
+        return Answer(code);
     }
 
     PExpression<Value> visit(MatExpression<Value>* expression) override {
@@ -783,6 +906,7 @@ private:
         const std::string&           name = expression->Name();
         const ParametersCall<Value>& call = expression->Call();
         if (call.limit()) throw Reason("a limit");
+        if (name == "floor" && definitions_.Builtin(name)) return Floor(expression);
         if (!call.parameters_expression().empty() || !call.parameters_dict().empty())
             throw Reason("a function");
         if (!reading_) throw Reason(name + "_...: a term read outside a general clause");
@@ -797,7 +921,7 @@ private:
         Bases(name);
         if (!read.rows) Compile(name);
         if (lag > 0 && ClosedForm(read)) return Answer(At(read, lag));
-        reading_->reads[name].insert(lag);
+        (deferring_ ? reading_->deferred : reading_->reads)[name].insert(lag);
         if (clause_reads_) (*clause_reads_)[name].insert(lag);
         const std::string at     = "m_->" + name + "[" + std::to_string(lag) + "]";
         const bool        scalar = read.rows * read.cols == 1;
@@ -817,7 +941,7 @@ private:
     // window that holds nothing from before the start.
     bool ClosedForm(const Sequence& sequence) const {
         return sequence.definition && sequence.compiled && sequence.bases.empty() &&
-               sequence.reads.empty();
+               sequence.reads.empty() && sequence.deferred.empty();
     }
 
     Code At(const Sequence& sequence, int lag) {
@@ -1114,10 +1238,13 @@ private:
         for (const auto& [name, sequence] : sequences_) {
             if (!sequence.definition) continue;
             waiting[name];
-            for (const auto& [read, lags] : sequence.reads) {
-                if (!lags.count(0) || !sequences_.at(read).definition) continue;
-                if (read == name) throw Refusal("cannot compile " + name + ": a term reads itself");
-                waiting[name].insert(read);
+            for (const Reads* reads : {&sequence.reads, &sequence.deferred}) {
+                for (const auto& [read, lags] : *reads) {
+                    if (!lags.count(0) || !sequences_.at(read).definition) continue;
+                    if (read == name)
+                        throw Refusal("cannot compile " + name + ": a term reads itself");
+                    waiting[name].insert(read);
+                }
             }
         }
         std::vector<std::string> order;
@@ -1221,6 +1348,23 @@ private:
                "}\n\n";
     }
 
+    // Each deferred right side's mark (see Right), as the check it needs
+    // where the terms it reads may not exist yet, or nothing where they do.
+    std::string Checked(std::string text, const Sequence& sequence) const {
+        for (std::size_t at = text.find('\x02'); at != std::string::npos;
+             at             = text.find('\x02', at)) {
+            const std::size_t end = text.find('\x03', at);
+            const int   from      = From(checks_.at(std::stoul(text.substr(at + 1, end - at - 1))));
+            std::string check;
+            for (int n = sequence.start; n < from && check.empty(); ++n)
+                if (!sequence.bases.count(n))
+                    check = "m_->index_ < " + std::to_string(from) + " ? NAN : ";
+            text.replace(at, end - at + 1, check);
+            at += check.size();
+        }
+        return text;
+    }
+
     // The header's first comment: how to call it, in the terms of the file.
     std::string Interface(const std::string& module, const std::vector<std::string>& inputs,
                           const std::vector<std::string>& fields, int earliest) const {
@@ -1241,7 +1385,7 @@ private:
         for (const std::string& name : inputs) inputs_n.push_back(name + "_n");
         for (const auto& [name, parameter] : parameters_)
             parameters.push_back(parameter.initial.size() == 1
-                                     ? name + " = " + Double(parameter.initial[0])
+                                     ? name + "\x01=\x01" + Double(parameter.initial[0])
                                      : name + "\x01(" + std::to_string(parameter.rows) + "x" +
                                            std::to_string(parameter.cols) + ")");
         std::string text =
@@ -1298,8 +1442,10 @@ private:
         std::vector<std::string>       fields;
         for (auto& [name, sequence] : sequences_) {
             if (!sequence.definition) fields.push_back(name);
-            for (const auto& [read, lags] : sequence.reads)
-                sequences_.at(read).depth = std::max(sequences_.at(read).depth, *lags.rbegin() + 1);
+            for (const Reads* reads : {&sequence.reads, &sequence.deferred})
+                for (const auto& [read, lags] : *reads)
+                    sequences_.at(read).depth =
+                        std::max(sequences_.at(read).depth, *lags.rbegin() + 1);
         }
         const std::vector<std::string> inputs = fields;
         fields.insert(fields.end(), order.begin(), order.end());
@@ -1412,7 +1558,8 @@ private:
                 if (!sequence.guarded.empty()) assignments += before(From(sequence.general_reads));
                 assignments += sequence.general[c] + ";\n";
             }
-            out += Temporaries(sequence.temporaries, assignments, indent) + assignments;
+            out += Checked(Temporaries(sequence.temporaries, assignments, indent) + assignments,
+                           sequence);
             if (late) out += "    }\n";
         }
         out += "}\n\n#endif\n";
@@ -1432,6 +1579,8 @@ private:
     std::string index_;              // and the name of its index
     std::vector<Temporary>*          temporaries_ = nullptr;  // where this sequence's are declared
     Reads*      clause_reads_ = nullptr;               // what the clause being compiled reads
+    bool                             deferring_ = false;  // compiling the right of an 'and' or 'or'
+    std::vector<Reads>               checks_;  // what a deferred right side reads, by its mark
     std::string index_text_   = "(double)m_->index_";  // the index, as the step has it
     std::string                      module_;
     std::set<std::size_t>            inverses_;  // the sizes a helper is needed for

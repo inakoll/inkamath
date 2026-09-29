@@ -92,10 +92,14 @@ std::string Expression(Random& random, const Scope& scope, int depth) {
     }
     const std::string a = Expression(random, scope, depth - 1);
     const std::string b = Expression(random, scope, depth - 1);
-    switch (random.below(9)) {
+    switch (random.below(10)) {
         case 0:
         case 1:
             return "(" + a + " + " + b + ")";
+        case 8:
+            // Of a value a double holds exactly: of any other, the floor of
+            // an exact integer's rounding would be a unit off, as floor is.
+            return "floor(" + Quarter(random) + "*u_n)";
         case 2:
             return "(" + a + " - " + b + ")";
         case 3:
@@ -115,7 +119,10 @@ std::string Expression(Random& random, const Scope& scope, int depth) {
 
 std::string Comparison(Random& random, const Scope& scope) {
     static const char* const ops[] = {" < ", " > ", " <= ", " >= "};
-    return Expression(random, scope, 1) + ops[random.below(4)] + Quarter(random);
+    const std::string        compared =
+        Expression(random, scope, 1) + ops[random.below(4)] + Quarter(random);
+    if (!random.chance(30)) return compared;
+    return compared + (random.chance(50) ? " and " : " or ") + Comparison(random, scope);
 }
 
 std::vector<std::string> Model(Random& random) {

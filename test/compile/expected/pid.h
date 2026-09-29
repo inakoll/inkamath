@@ -16,9 +16,9 @@
  *
  * A step takes y_n, the input at its index. After a step, m.name[k] is
  * name_(n-k) for each sequence: y, e (k <= 1), d, s (k <= 1) and u. The
- * parameters are fields holding the file's values once pid_init has run: dt =
- * 0.1, kd = 0.1, ki = 1.0, kp = 2.0 and r = 1.0. After assigning one, call
- * pid_update.
+ * parameters are fields holding the file's values once pid_init has run:
+ * dt = 0.1, kd = 0.1, ki = 1.0, kp = 2.0 and r = 1.0. After assigning one,
+ * call pid_update.
  */
 
 /* The parameters, which the host may assign, then what derives from them,
