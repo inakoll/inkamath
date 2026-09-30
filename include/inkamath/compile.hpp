@@ -35,7 +35,7 @@ public:
 
     // The session's sequences, or with a model, those of its instance with
     // every default and no input given (MODERNIZATION.md, phase 15).
-    static std::string Header(const ReferenceStack<Value>& definitions, const std::string& module,
+    static std::string Header(ReferenceStack<Value>& definitions, const std::string& module,
                               const std::string& source, const Model<Value>* model = nullptr,
                               const Scope<Value>* instance = nullptr) {
         std::set<std::string> fixed;
@@ -44,8 +44,7 @@ public:
             compiler.module_ = module;
             compiler.fixed_  = fixed;
             try {
-                for (const auto& [name, definition] : Sorted(compiler.scope_.names))
-                    if (definition->Value()) compiler.Define(name, *definition);
+                compiler.Define(compiler.root_);
                 if (model) compiler.Signature();
                 for (const auto& [name, sequence] : Sorted(compiler.sequences_))
                     compiler.Compile(name);
@@ -152,36 +151,78 @@ private:
         std::vector<double> initial;
     };
 
-    CompileC(const ReferenceStack<Value>& definitions, const Model<Value>* model,
-             const Scope<Value>& scope)
-        : definitions_(definitions), model_(model), scope_(scope) {}
+    CompileC(ReferenceStack<Value>& definitions, const Model<Value>* model,
+             const Scope<Value>& root)
+        : definitions_(definitions), model_(model), root_(root), scope_(&root) {}
 
     template <typename Map>
     static std::map<std::string, typename Map::mapped_type> Sorted(const Map& map) {
         return {map.begin(), map.end()};
     }
 
-    // A value or a sequence where the compiled scope reads it; null for an
-    // input, which the step is given. A model declares its inputs, so there
-    // any other name nothing defines is a mistake.
-    const Reference<Value>* Global(const std::string& name) const {
-        for (const Scope<Value>* scope = &scope_; scope; scope = scope->parent) {
+    // Each scope's definitions, and those of the instances it names, each
+    // under the name that says where it is, 'fast.v' (MODERNIZATION.md, phase
+    // 15), which is also how C reaches it in the struct.
+    void Define(const Scope<Value>& scope) {
+        for (const auto& [name, definition] : Sorted(scope.names)) {
+            if (!definition->Value()) continue;
+            const std::string key = scope.Qualified(name);
+            Define(key, *definition);
+            const Scope<Value>* instance = nullptr;
+            try {
+                instance = definitions_.InstanceScope(definition);
+            } catch (const std::runtime_error& error) {
+                throw Refusal("cannot compile " + key + ": " + error.what());
+            }
+            if (instance) Define(*instance);
+        }
+    }
+
+    // A definition, where it was found, and its name there.
+    struct Found {
+        const Reference<Value>* definition;  // null for an input the step is given
+        const Scope<Value>*     where;
+        std::string             key;
+    };
+
+    // A name where the scope being compiled reads it, or, just after a point,
+    // in the scope before the point alone. An input is the step's where the
+    // header's own scope declares it, or where the session reads a name
+    // nothing defines; anywhere else a name nothing gives is a mistake.
+    Found Lookup(const std::string& name) {
+        const Scope<Value>* const own = std::exchange(own_, nullptr);
+        for (const Scope<Value>* scope = own ? own : scope_; scope;
+             scope                     = own ? nullptr : scope->parent) {
             const auto found = scope->names.find(name);
             if (found == scope->names.end()) continue;
             const Reference<Value>& definition = *found->second;
-            if (definition.input) return nullptr;
-            if (definition.model) throw Reason("an instance of " + name);
-            if (definition.file) throw Reason("a name of an instance or a file");
-            return &definition;
+            const std::string       key        = scope->Qualified(name);
+            if (definition.input) {
+                if (scope == &root_) return {nullptr, scope, key};
+                throw Reason(key + " is an input nothing gives");
+            }
+            if (definition.model) throw Reason("an instance of " + key + " read as a value");
+            if (definition.file) throw Reason(key + ", a file, read as a value");
+            return {&definition, scope, key};
         }
-        if (model_) throw Reason(name + " is not defined");
-        return nullptr;
+        if (!own && scope_ == &root_ && !root_.model) return {nullptr, &root_, name};
+        throw Reason((own ? own : scope_)->Qualified(name) + " is not defined");
     }
 
-    bool Builtin(const std::string& name) const {
-        const Reference<Value>* definition = Global(name);
-        return definition && definition->home == &definitions_.Builtins();
-    }
+    // Names in a definition are sought where it was written.
+    struct Home {
+        Home(CompileC& compiler, const Reference<Value>* definition)
+            : compiler_(compiler), scope_(compiler.scope_) {
+            if (definition && definition->home) compiler_.scope_ = definition->home;
+        }
+        ~Home() { compiler_.scope_ = scope_; }
+        Home(const Home&)            = delete;
+        Home& operator=(const Home&) = delete;
+
+    private:
+        CompileC&           compiler_;
+        const Scope<Value>* scope_;
+    };
 
     // Every parameter the signature gives is in the header, read or not: a
     // value as a field, an input as an argument of the step.
@@ -201,11 +242,13 @@ private:
         }
     }
 
-    // A model's parameters are its fields, whatever their defaults read, and
-    // nothing else it reads is; in a file every value that reads none is one.
-    bool Settable(const std::string& name, bool reads) const {
-        if (!model_) return !reads;
-        return std::any_of(model_->parameters.begin(), model_->parameters.end(),
+    // An instance's parameters are its fields, whatever their defaults read,
+    // and nothing else it reads is; a file used has none; in the session every
+    // value that reads none is one, as a built-in is.
+    bool Settable(const Scope<Value>& where, const std::string& name, bool reads) const {
+        if (!root_.model && (&where == &root_ || &where == &definitions_.Builtins())) return !reads;
+        if (!where.model) return false;
+        return std::any_of(where.model->parameters.begin(), where.model->parameters.end(),
                            [&](const auto& p) { return p.name == name && p.index.empty(); });
     }
 
@@ -241,6 +284,7 @@ private:
     // names its sequence.
     template <typename Body>
     void Within(const std::string& name, Sequence* reading, const std::string& index, Body body) {
+        const Home        home(*this, sequences_.at(name).definition);
         Sequence* const   outer_reading = std::exchange(reading_, reading);
         const std::string outer_index   = std::exchange(index_, index);
         auto* const       outer_temporaries =
@@ -333,6 +377,7 @@ private:
     void Compile(const std::string& name) {
         Sequence& sequence = sequences_.at(name);
         if (sequence.compiled || !sequence.definition) return;
+        const Home home(*this, sequence.definition);
         if (sequence.compiling)
             throw Refusal("cannot compile " + name + ": its shape depends on itself");
         sequence.compiling = true;
@@ -820,24 +865,28 @@ private:
 
     PExpression<Value> visit(RefExpression<Value>* expression) override {
         const std::string& name = expression->Name();
-        if (const auto place = places_.find(name); place != places_.end())
-            return Answer(Literal(place->second));
-        if (!index_.empty() && name == index_) return Answer(Atom(index_text_));
-        const Reference<Value>* definition = Global(name);
-        if (!definition) {
-            if (fixed_.count(name)) throw Reason(name + " is not defined");
-            return Answer(Field(name, Value(Number(NAN))));
+        if (!own_) {
+            if (const auto place = places_.find(name); place != places_.end())
+                return Answer(Literal(place->second));
+            if (!index_.empty() && name == index_) return Answer(Atom(index_text_));
         }
-        if (IsSequence(*definition)) throw Reason(name + " is a sequence; index it");
+        const Found             found      = Lookup(name);
+        const std::string&      key        = found.key;
+        const Reference<Value>* definition = found.definition;
+        if (!definition) {
+            if (fixed_.count(key)) throw Reason(key + " is not defined");
+            return Answer(Field(key, Value(Number(NAN))));
+        }
+        if (IsSequence(*definition)) throw Reason(key + " is a sequence; index it");
         read_global_ = true;
-        if (const auto known = known_.find(name); known != known_.end())
+        if (const auto known = known_.find(key); known != known_.end())
             return Answer(Literal(known->second));
         for (Derived& derived : derived_) {
-            if (derived.name != name) continue;
+            if (derived.name != key) continue;
             read_parameters_.insert(derived.parameters.begin(), derived.parameters.end());
             return Answer(Read(derived));
         }
-        if (!reading_plain_.insert(name).second) throw Reason(name + " is defined by itself");
+        if (!reading_plain_.insert(key).second) throw Reason(key + " is defined by itself");
         // A global is evaluated in a scope of its own, where no index or place
         // is seen.
         Sequence* const   reading = std::exchange(reading_, nullptr);
@@ -847,10 +896,14 @@ private:
         auto* const            outer_temporaries = std::exchange(temporaries_, &temporaries);
         auto                   outer_parameters  = std::exchange(read_parameters_, {});
         read_global_                             = false;
-        const auto        cells   = [](const Clause<Value>& c) { return c.parameters.cells(); };
-        Code code = std::any_of(definition->Clauses().begin(), definition->Clauses().end(), cells)
-                        ? Cells(name, *definition)
-                        : Emit(definition->Clauses().front().expression);
+        const auto cells = [](const Clause<Value>& c) { return c.parameters.cells(); };
+        Code       code;
+        {
+            const Home home(*this, definition);
+            code = std::any_of(definition->Clauses().begin(), definition->Clauses().end(), cells)
+                       ? Cells(key, *definition)
+                       : Emit(definition->Clauses().front().expression);
+        }
         reading_                  = reading;
         index_                    = index;
         places_                   = places;
@@ -858,16 +911,16 @@ private:
         const bool reads          = std::exchange(read_global_, true);
         const auto parameters     = std::exchange(read_parameters_, std::move(outer_parameters));
         read_parameters_.insert(parameters.begin(), parameters.end());
-        reading_plain_.erase(name);
+        reading_plain_.erase(key);
         // A value that reads no other is a parameter the host may change; one
         // that reads only what is fixed is a constant; one that reads a
         // parameter derives from it, and is computed where it is set.
-        if (code.constant && (!Settable(name, reads) || fixed_.count(name))) {
-            known_.emplace(name, *code.constant);
+        if (code.constant && (!Settable(*found.where, name, reads) || fixed_.count(key))) {
+            known_.emplace(key, *code.constant);
             return Answer(Literal(*code.constant));
         }
-        if (code.constant) return Answer(Field(name, *code.constant));
-        derived_.push_back({name, code, std::move(temporaries), false, parameters});
+        if (code.constant) return Answer(Field(key, *code.constant));
+        derived_.push_back({key, code, std::move(temporaries), false, parameters});
         return Answer(Read(derived_.back()));
     }
 
@@ -1141,27 +1194,29 @@ private:
     }
 
     PExpression<Value> visit(FuncExpression<Value>* expression) override {
-        const std::string&           name = expression->Name();
-        const ParametersCall<Value>& call = expression->Call();
+        const std::string&           name  = expression->Name();
+        const ParametersCall<Value>& call  = expression->Call();
+        const Found                  found = Lookup(name);
+        const std::string&           key   = found.key;
         if (call.limit()) throw Reason("a limit");
-        if (name == "floor" && Builtin(name)) return Floor(expression);
+        if (name == "floor" && found.where == &definitions_.Builtins()) return Floor(expression);
         if (!call.parameters_expression().empty() || !call.parameters_dict().empty())
             throw Reason("a function");
-        if (!reading_) throw Reason(name + "_...: a term read outside a general clause");
-        const Reference<Value>* definition = Global(name);
-        if (definition && !IsSequence(*definition)) throw Reason(name + " is not a sequence");
-        Sequence& read = sequences_[name];
+        if (!reading_) throw Reason(key + "_...: a term read outside a general clause");
+        const Reference<Value>* definition = found.definition;
+        if (definition && !IsSequence(*definition)) throw Reason(key + " is not a sequence");
+        Sequence& read = sequences_[key];
         if (!definition) {
-            Unreserved(name);
+            Unreserved(key);
             read.rows = read.cols = 1;
         }
-        const int lag = Lag(call.subexpr(), name);
-        Bases(name);
-        if (!read.rows) Compile(name);
+        const int lag = Lag(call.subexpr(), key);
+        Bases(key);
+        if (!read.rows) Compile(key);
         if (lag > 0 && ClosedForm(read)) return Answer(At(read, lag));
-        (deferring_ ? reading_->deferred : reading_->reads)[name].insert(lag);
-        if (clause_reads_) (*clause_reads_)[name].insert(lag);
-        const std::string at     = "m_->" + name + "[" + std::to_string(lag) + "]";
+        (deferring_ ? reading_->deferred : reading_->reads)[key].insert(lag);
+        if (clause_reads_) (*clause_reads_)[key].insert(lag);
+        const std::string at     = "m_->" + key + "[" + std::to_string(lag) + "]";
         const bool        scalar = read.rows * read.cols == 1;
         Code              code;
         code.rows = read.rows;
@@ -1186,6 +1241,7 @@ private:
         Code                                      chain;
         std::optional<Code>                       otherwise;
         std::vector<std::pair<std::string, Code>> guarded;
+        const Home                                home(*this, sequence.definition);
         Sequence* const                           reading = std::exchange(reading_, nullptr);
         const std::string                         index   = std::exchange(index_, std::string());
         const std::string                         text =
@@ -1328,8 +1384,22 @@ private:
         return constant ? Fold(expression) : Answer(total);
     }
     PExpression<Value> visit_other(Expression<Value>*) override { throw Reason("this expression"); }
-    PExpression<Value> visit(MemberExpression<Value>*) override {
-        throw Reason("a name of an instance or a file");
+
+    // 'fast.v_n': the name after the point, sought in that scope alone. An
+    // unnamed instance has no name for the struct to give it.
+    PExpression<Value> visit(MemberExpression<Value>* expression) override {
+        const Scope<Value>* object = nullptr;
+        try {
+            object = &definitions_.Resolve(*expression->Object(), *scope_);
+        } catch (const Reason&) {
+            throw;
+        } catch (const std::runtime_error& error) {
+            throw Reason(error.what());
+        }
+        if (object->label.find('(') != std::string::npos)
+            throw Reason("an unnamed instance, " + object->label);
+        own_ = object;
+        return expression->Member()->accept(*this);
     }
 
     Code Field(const std::string& name, const Value& value) {
@@ -1365,15 +1435,21 @@ private:
         return code;
     }
 
-    // A name here is letters and digits, so it can only collide with C's own.
-    static void Unreserved(const std::string& name) {
+    // A name here is letters and digits, so it can only collide with C's own;
+    // one in an instance is several, 'fast.v'.
+    static void Unreserved(const std::string& key) {
         static const std::set<std::string> keywords = {
             "auto",    "break",  "case",     "char",   "const",    "continue", "default",
             "do",      "double", "else",     "enum",   "extern",   "float",    "for",
             "goto",    "if",     "inline",   "int",    "long",     "register", "restrict",
             "return",  "short",  "signed",   "sizeof", "static",   "struct",   "switch",
             "typedef", "union",  "unsigned", "void",   "volatile", "while"};
-        if (keywords.count(name)) throw Reason(name + " is a word C keeps for itself");
+        for (std::size_t start = 0; start <= key.size();) {
+            const std::size_t end  = std::min(key.find('.', start), key.size());
+            const std::string name = key.substr(start, end - start);
+            if (keywords.count(name)) throw Reason(name + " is a word C keeps for itself");
+            start = end + 1;
+        }
     }
 
     // Where each sequence starts: at its lowest base clause, or, without one,
@@ -1674,6 +1750,31 @@ private:
         return out + " * " + line + "\n */\n\n";
     }
 
+    struct Member {
+        std::string type, key, dimensions;
+    };
+    typedef std::vector<Member> Members;
+
+    // The session's members in the order given, then one struct for each
+    // instance, 'fast', holding its own in that order.
+    static std::string Nested(const Members& members, const std::string& indent) {
+        std::string                    out;
+        std::map<std::string, Members> instances;
+        for (const Member& member : members) {
+            const std::size_t point = member.key.find('.');
+            if (point == std::string::npos) {
+                out += indent + member.type + " " + member.key + member.dimensions + ";\n";
+            } else {
+                instances[member.key.substr(0, point)].push_back(
+                    {member.type, member.key.substr(point + 1), member.dimensions});
+            }
+        }
+        for (const auto& [instance, own] : instances)
+            out += indent + "struct {\n" + Nested(own, indent + "    ") + indent + "} " + instance +
+                   ";\n";
+        return out;
+    }
+
     std::string Print(const std::string& module, const std::string& source) {
         for (const auto& [name, sequence] : sequences_)
             if (!sequence.definition && parameters_.count(name))
@@ -1718,20 +1819,22 @@ private:
         out += "/* The parameters, which the host may assign, then what derives from them,\n";
         out += " * then the index of the latest step and each sequence's terms from that\n";
         out += " * index back. */\n";
-        out += "typedef struct " + module + " {\n";
+        Members members;
         for (const auto& [name, parameter] : parameters_)
-            out += "    double " + name + Dimensions(parameter.rows, parameter.cols) + ";\n";
+            members.push_back({"double", name, Dimensions(parameter.rows, parameter.cols)});
         for (const Derived& derived : derived_)
             if (derived.read)
-                out += "    double " + derived.name +
-                       Dimensions(derived.code.rows, derived.code.cols) + ";\n";
-        out += "    long long index_;\n";
+                members.push_back(
+                    {"double", derived.name, Dimensions(derived.code.rows, derived.code.cols)});
+        members.push_back({"long long", "index_", ""});
         for (const std::string& name : fields) {
             const Sequence& sequence = sequences_.at(name);
-            out += "    double " + name + "[" + std::to_string(sequence.depth) + "]" +
-                   Dimensions(sequence.rows, sequence.cols) + ";\n";
+            members.push_back({"double", name,
+                               "[" + std::to_string(sequence.depth) + "]" +
+                                   Dimensions(sequence.rows, sequence.cols)});
         }
-        out += "} " + module + ";\n\n";
+        out +=
+            "typedef struct " + module + " {\n" + Nested(members, "    ") + "} " + module + ";\n\n";
 
         for (const std::size_t n : inverses_) out += InverseHelper(n);
 
@@ -1819,9 +1922,11 @@ private:
         return out;
     }
 
-    const ReferenceStack<Value>&     definitions_;
+    ReferenceStack<Value>&           definitions_;
     const Model<Value>*              model_;  // the model compiled, if one is
-    const Scope<Value>&              scope_;  // where the names it reads are sought
+    const Scope<Value>&              root_;   // the scope compiled, the session's or the model's
+    const Scope<Value>*              scope_;  // where the names being read are sought
+    const Scope<Value>*              own_ = nullptr;  // the scope after a point, for one name
     std::map<std::string, Sequence>  sequences_;
     std::map<std::string, Parameter> parameters_;
     std::vector<Derived>             derived_;  // each after those it reads

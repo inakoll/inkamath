@@ -2100,8 +2100,20 @@ the README, compiled to one step. Instances read each other's terms at the
 same index, so their sequences must be ordered together, not instance by
 instance: the step is the one the compiler already orders, over every
 instance's sequences named by where they are, `fast.v`, and the struct nests
-one struct per instance, `m.fast.v[0]` and `m.fast.a`. The compiler keys
-everything by a bare name today, so this is the larger half.
+one struct per instance, `m.fast.v[0]` and `m.fast.a`.
+
+`[done]` Specified by `test/compile/loop.ink` and `chain.ink`, their
+harnesses and their expected headers. Every definition is keyed by where it
+is, the scope's label and its name, `plt.x` or `h.low.v`, which is how C
+reaches it in the struct, so a session's own names keep their bare keys and
+no header compiled before moved. A name is sought where its definition was
+written: an argument, which an instance holds, reads the session. The sort is
+the one the compiler had, over every instance's terms; an argument is a copy,
+`m.ctl.y[0] = m.plt.x[0]`, which the C compiler sees through. An instance's
+parameter given or defaulted to a constant is a field of its instance, one
+given what reads the session's parameter follows it and is none, and a file's
+own name is a constant. Refused: an unnamed instance, which has no name for
+the struct to give it, and an input nothing gives.
 
 The order is found once, when compiling, not at every step. The step could
 resolve it as the interpreter does instead: a getter per term, computing it

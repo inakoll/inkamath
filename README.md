@@ -128,8 +128,12 @@ inverts a matrix at every step, and `test/compile/heat.ink` once, in `update`;
 defines (section 5), read as `use` reads the file: its inputs are the step's
 arguments, in the order of its signature, and its parameters, with their
 defaults, the only fields; a name nothing defines is refused rather than
-taken for one more input. The compiler refuses by name what it cannot yet
-express, such as functions, limits, infinite series and instances.
+taken for one more input. A file's named instances are compiled with it, into
+one step that orders all their terms together, each instance a struct of its
+own: `test/compile/loop.ink` closes a loop, `m.ctl.u[0]` and `m.plt.x[0]`,
+and `test/compile/chain.ink` nests one. The compiler refuses by name what it
+cannot yet express, such as functions, limits, infinite series and unnamed
+instances.
 
 Interpreter behaviour is pinned by golden transcripts in `test/data/*.ink`,
 which are literal sessions — every example in this file is one of them, so the
