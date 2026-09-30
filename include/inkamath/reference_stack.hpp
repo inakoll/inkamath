@@ -683,13 +683,13 @@ private:
 
     // A model's parameters and body, installed in a scope of their own. An
     // argument reads where it was written; a default and the body read the
-    // instance, then where the model was written, but never the session.
+    // instance, then where the model was written: its file, or the session.
     std::shared_ptr<Scope<T>> Instantiate(const Reference<T>& model, const Bound& bound,
                                           const Scope<T>* written, std::string label,
                                           std::string defined, const Captures& captured) {
         const Model<T>& m     = *model.model;
         auto            scope = std::make_shared<Scope<T>>();
-        scope->parent         = m.scope == &session_ ? &builtins_ : m.scope;
+        scope->parent         = m.scope;
         scope->label          = std::move(label);
         scope->defined        = std::move(defined);
         scope->model          = &m;

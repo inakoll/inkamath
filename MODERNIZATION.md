@@ -1966,7 +1966,8 @@ the user's later `h` changes what its `A` computes. So a file is a scope, and
 so is a model:
 
 - Its definitions read its own names first, then those of the file around
-  it, then the prelude's and the built-ins', never the session's.
+  it, then the prelude's and the built-ins', never the session's. The prompt
+  is the file of a model written there, so that one reads the session.
 - The session reaches them qualified, `filters.a0`, `fast.v_3`: `.` after a
   name is an error today, so the spelling is free. `use filters (lowpass)`
   brings in unqualified only the names listed.
@@ -2130,6 +2131,17 @@ belongs to the interpreter, where a model is explored. So the sort, whose
 refusal is the static check of causality. The getters stay in mind for models
 compiled one header each and wired by a host that cannot be recompiled whole,
 which would be a feature of its own, and a smaller one.
+
+`[done]` **The prompt is a model's file.** A model written at the prompt read
+first the built-ins, so that it could use no other model, no function and not
+itself, which a file allows its own. Trying the models on kernels showed the
+cost: a filter bank, a convolution and a recursion each needed a file. Now a
+model reads the scope it was written in, the session at the prompt, which
+removed the one case the instances made for it. What the isolation was for
+holds where it matters, between a file and the session that uses it: at the
+prompt the model and the values are the same writer's, and a model reading
+`h` follows it as `A = 2*h` does. Two entries of `models.ink` moved, `l.y`
+reading the session's `z` and `q.y_5` the session's `mod`.
 
 `[done]` **A loop without a delay is refused where it is closed**, rather than
 found as nesting too deep when a term is read: after each top-level
