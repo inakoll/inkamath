@@ -685,6 +685,10 @@ plt = plant(u_n = ctl.u_n)
 3/4
 ```
 
+The plant reads the controller's output a step late, which is what lets the
+loop start. Without such a delay each would read the other at the same index,
+and the definition that closes the loop is refused, naming it.
+
 An instance is changed where it is defined: `fast.a = 1` is an error, and
 `fast = lowpass(a = 1, u_n = 1)` the way to say it. Redefined, a model
 changes its instances, as a function redefined changes what calls it.

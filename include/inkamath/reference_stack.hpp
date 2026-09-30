@@ -93,20 +93,27 @@ public:
             return;
         }
         Changed();
-        definition_type& slot = target_->names[ai_reference_name];
+        const definition_type previous = Defined(ai_reference_name);
+        definition_type       extended = previous;
         // A clause added to a built-in extends it, as it did when the
         // built-ins were the session's own.
-        if (!slot && target_ == &session_) {
+        if (!extended && target_ == &session_) {
             const auto builtin = builtins_.names.find(ai_reference_name);
-            if (builtin != builtins_.names.end()) slot = builtin->second;
+            if (builtin != builtins_.names.end()) extended = builtin->second;
         }
-        slot = Extended(slot, target_, ai_reference_name, ai_parameters, ai_expression, written);
+        // Made before it is stored, so that a clause refused leaves no name.
+        extended =
+            Extended(extended, target_, ai_reference_name, ai_parameters, ai_expression, written);
+        target_->names[ai_reference_name] = extended;
+        Causal(ai_reference_name, previous);
     }
 
     // A model, a file used, or a name brought in from one.
     void Put(const std::string& name, definition_type definition) {
         Changed();
-        target_->names[name] = std::move(definition);
+        const definition_type previous = Defined(name);
+        target_->names[name]           = std::move(definition);
+        Causal(name, previous);
     }
 
     [[nodiscard]] Scope<T>&       Target() const { return *target_; }
@@ -348,6 +355,129 @@ public:
 
 private:
     friend struct Trial;
+
+    definition_type Defined(const std::string& name) const {
+        const auto found = target_->names.find(name);
+        return found == target_->names.end() ? definition_type() : found->second;
+    }
+
+    // A loop without a delay has no term to start from: a definition that
+    // closes one is taken back, and says which (MODERNIZATION.md, phase 15).
+    void Causal(const std::string& name, const definition_type& previous) {
+        try {
+            Loops{*this, {}, {}}.Check();
+        } catch (const std::runtime_error&) {
+            if (previous)
+                target_->names[name] = previous;
+            else
+                target_->names.erase(name);
+            Changed();
+            throw;
+        }
+    }
+
+    // The terms each general clause reads at its own index, followed from
+    // every definition of the scope being defined in, the session's and those
+    // of the instances they name. A guarded clause may break the loop, so
+    // only one that always applies is followed: nothing that answers is
+    // refused, and a loop through a guard is still found where it is read.
+    struct Loops {
+        ReferenceStack& stack;
+
+        struct Visit {
+            const Reference<T>* definition;
+            std::string         label;
+        };
+        std::map<const Reference<T>*, bool> done;  // false while on the path
+        std::vector<Visit>                  path;
+
+        void Check() {
+            Roots(*stack.target_);
+            if (stack.target_ != &stack.session_) Roots(stack.session_);
+        }
+
+        void Roots(const Scope<T>& scope) {
+            for (const auto& [name, definition] :
+                 std::map(scope.names.begin(), scope.names.end())) {
+                Follow(*definition, scope.Qualified(name));
+                const Scope<T>* instance = nullptr;
+                try {
+                    instance = stack.InstanceScope(definition);
+                } catch (const std::runtime_error&) {
+                    continue;  // said where it is read
+                }
+                if (instance) Roots(*instance);
+            }
+        }
+
+        void Follow(const Reference<T>& definition, const std::string& label) {
+            if (const auto seen = done.find(&definition); seen != done.end()) {
+                if (seen->second) return;
+                const auto from = std::find_if(path.begin(), path.end(), [&](const Visit& v) {
+                    return v.definition == &definition;
+                });
+                const std::string index = "_" + Index(*from->definition);
+                std::string       loop  = from->label + index;
+                if (from + 1 == path.end()) loop += " reads itself";
+                for (auto at = from + 1; at != path.end(); ++at)
+                    loop += (at == from + 1 ? " reads " : ", which reads ") + at->label + index;
+                if (from + 1 != path.end()) loop += ", which reads " + from->label + index;
+                throw std::runtime_error("a loop without a delay: " + loop);
+            }
+            done[&definition] = false;
+            path.push_back({&definition, label});
+            if (definition.Value())
+                for (const Clause<T>& clause : definition.Clauses()) Reads(definition, clause);
+            path.pop_back();
+            done[&definition] = true;
+        }
+
+        static std::string Index(const Reference<T>& definition) {
+            for (const Clause<T>& clause : definition.Clauses())
+                if (clause.parameters.general()) return clause.parameters.index_name();
+            return "n";
+        }
+
+        void Reads(const Reference<T>& definition, const Clause<T>& clause) {
+            const ParametersDefinition<T>& p = clause.parameters;
+            if (!p.general() || p.guarded() || !p.parameters_names().empty() || !definition.home)
+                return;
+            Walk(definition, clause.expression, p.index_name());
+        }
+
+        void Walk(const Reference<T>& definition, const PExpression<T>& expression,
+                  const std::string& index) {
+            if (!expression) return;
+            if (const auto* series = dynamic_cast<const SeriesExpression<T>*>(expression.get());
+                series && series->Index() == index)
+                return;  // its own index hides the clause's
+            const Scope<T>*      where = definition.home;
+            const Expression<T>* read  = expression.get();
+            if (const auto* member = dynamic_cast<const MemberExpression<T>*>(read)) {
+                try {
+                    where = &stack.Resolve(*member->Object(), *definition.home);
+                } catch (const std::runtime_error&) {
+                    return;  // said where it is read
+                }
+                read = member->Member().get();
+            }
+            const auto* term = dynamic_cast<const FuncExpression<T>*>(read);
+            const auto* at =
+                term ? dynamic_cast<const RefExpression<T>*>(term->m_e2().get()) : nullptr;
+            if (at && at->Name() == index && !term->m_e1() && !term->limit()) {
+                const bool own = where != definition.home;
+                for (const Scope<T>* scope = where; scope; scope = own ? nullptr : scope->parent) {
+                    const auto found = scope->names.find(term->Name());
+                    if (found == scope->names.end()) continue;
+                    Follow(*found->second, scope->Qualified(term->Name()));
+                    break;
+                }
+            }
+            if (read != expression.get()) return;
+            for (const PExpression<T>& child : expression->Children())
+                Walk(definition, child, index);
+        }
+    };
 
     // A top-level definition may change what any memoised answer or instance
     // read, so both go. Nothing is evaluating when one is made.

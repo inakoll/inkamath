@@ -210,6 +210,18 @@ p = plant(u_n = c.u_n)
 >> c.u_3
 0.5
 
+# Without a delay a loop has no term to start from, each reading the other
+# at the same index. The definition that closes one is refused, naming the
+# loop, rather than accepted and found only when a term is read.
+>> left = gain(x_n = right.y_n)
+left = gain(x_n = right.y_n)
+
+>> right = gain(x_n = left.y_n)
+error: a loop without a delay: left.y_n reads left.x_n, which reads right.y_n, which reads right.x_n, which reads left.y_n
+
+>> right
+error: right is not defined
+
 # An instance reads its model when it is read, as a definition reads the
 # functions it calls: redefined, the model changes its instances.
 >> gain(k = 2, b = 1, x_n) = { y_n = k*x_n - b }
