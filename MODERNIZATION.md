@@ -1944,7 +1944,7 @@ Nothing asks for it while exactness stops at a thousand digits. Relevance is
 the notation -- recurrences, `lim`, series as on paper, exact by default --
 which Python spells as code; speed is a guardrail, not the race.
 
-## Phase 15 — Models, files and their scopes `[in progress]`
+## Phase 15 — Models, files and their scopes `[done]`
 
 After `and` and `or`. Three things asked for it. The domains explored in
 phase 14 want reuse: the PID, the Kalman filters and the heat equation repeat
@@ -2079,8 +2079,7 @@ argument is evaluated, and so is one instance per value. Two outputs moved:
 What it leaves. A message raised inside an instance names the definition as
 the model wrote it, `y is a sequence`, not `g.y`; only the messages the
 scopes themselves raise are qualified. A file is named by its stem, beside
-the file that names it, and so never from a directory below. A loop without
-a delay, `q = gain(x_n = q.y_n)`, is reported as nesting too deep.
+the file that names it, and so never from a directory below.
 
 `[done]` **A model compiled by name**, `inkamath --compile mix.ink mix -o
 mix.h`, specified by `test/compile/mix.ink`, its harness and its expected
@@ -2132,9 +2131,17 @@ refusal is the static check of causality. The getters stay in mind for models
 compiled one header each and wired by a host that cannot be recompiled whole,
 which would be a feature of its own, and a smaller one.
 
-Later, and separately: a static check of causality, so that a loop without a
-delay is reported where the instances are defined rather than when a term is
-read. And an idea, not a plan: what a body requires of its inputs and
+`[done]` **A loop without a delay is refused where it is closed**, rather than
+found as nesting too deep when a term is read: after each top-level
+definition, the terms every general clause reads at its own index are
+followed from the scope defined in, the session's and those of the instances
+they name, and a definition that closes a loop is taken back with the loop
+named, `left.y_n reads left.x_n, which reads right.y_n, ...`. A guarded
+clause is not followed, since its guard may break the loop: nothing that
+answers is refused, and a loop through a guard is still found where it is
+read. The compiler's sort refuses the same loops in a header.
+
+And an idea, not a plan: what a body requires of its inputs and
 parameters -- a sequence rather than a value, a shape -- stated by the
 signature or inferred from the body, and checked where an instance is made,
 as C++ checks a `requires` clause. An error inside an instance would then be
@@ -2265,7 +2272,9 @@ that exploring seven domains asked of the interpreter, by how many asked.
   inverse times `b` as written. The order is the product's too: `A` is
   factored, and a singular one refused, before `b` is read. A sparse matrix,
   if ever, comes after it.
-- `[done]` **Models, files and their scopes**, in the interpreter (phase 15):
-  a model written in braces, an instance a definition read after a point,
-  `use` for a file and the prelude beneath the session. The compiler's half
-  is next, from its own transcript.
+- `[done]` **Models, files and their scopes** (phase 15): in the
+  interpreter, a model written in braces, an instance a definition read after
+  a point, `use` for a file and the prelude beneath the session; compiled, a
+  model by its name and a file's instances into one step; and a loop without
+  a delay refused where it is closed. What it leaves, and an idea for errors
+  inside an instance, close the phase.

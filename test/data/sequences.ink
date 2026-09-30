@@ -369,3 +369,22 @@ fact_0=1
 >> fact_5
 120
 
+
+# Two terms reading each other at the same index have no first to start
+# from, nor one reading itself: the definition that closes such a loop is
+# refused (MODERNIZATION.md, phase 15).
+>> ping_n = pong_n + 1
+ping_n = pong_n + 1
+
+>> pong_n = ping_n
+error: a loop without a delay: ping_n reads pong_n, which reads ping_n
+
+>> pong_n = ping_(n-1)
+pong_n = ping_(n-1)
+
+>> echo_n = echo_n/2
+error: a loop without a delay: echo_n reads itself
+
+# A guard may break the loop, so a guarded clause is not held to it.
+>> pang_n | n > 0 = pang_n
+pang_n | n > 0 = pang_n
