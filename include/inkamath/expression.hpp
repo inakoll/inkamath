@@ -417,6 +417,21 @@ protected:
     std::string m_name;
 };
 
+// 'g.y_3': a name read in an instance or a file, which is the object on the
+// left (MODERNIZATION.md, phase 15).
+template <typename T>
+class MemberExpression : public Expression<T> {
+public:
+    MemberExpression(PExpression<T> object, PExpression<T> member)
+        : Expression<T>({std::move(object), std::move(member)}) {}
+
+    [[nodiscard]] const PExpression<T>& Object() const { return this->Children()[0]; }
+    [[nodiscard]] const PExpression<T>& Member() const { return this->Children()[1]; }
+
+    PExpression<T> accept(TransformationVisitor<T>& v) override { return v.visit(this); }
+    T              accept(FoldingVisitor<T>& v) override { return v.visit(this); }
+};
+
 template <typename T>
 class ParametersCall;
 

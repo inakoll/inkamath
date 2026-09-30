@@ -233,7 +233,8 @@ public:
     friend class ParametersDefinition<T>;
     ParametersCall() = default;
 
-    ParametersCall(PExpression<T> params, PExpression<T> subexpr, bool limit = false) : limit_(limit) {
+    ParametersCall(PExpression<T> params, PExpression<T> subexpr, bool limit = false)
+        : arguments_(params), limit_(limit) {
         if(params) {
             ParametersVisitor<T> params_visitor;
             params->accept(params_visitor);
@@ -256,6 +257,9 @@ public:
 
     const std::vector<std::string>& parameters_names() const {return parameters_names_;}
     PExpression<T> subexpr() const {return subexpr_;}
+    // The arguments as written, which a model reads for the index an input's
+    // is written with: 'x_n = n'.
+    const PExpression<T>&              arguments() const { return arguments_; }
     const std::vector<PExpression<T>>& parameters_expression() const {return parameters_exprs_;}
     const ExprDict<T>& parameters_dict() const {return parameters_dict_;}
     bool indexed() const {return indexed_;}
@@ -268,6 +272,7 @@ protected:
     std::vector<std::string> parameters_names_;
     std::vector<PExpression<T>> parameters_exprs_;
     ExprDict<T> parameters_dict_;
+    PExpression<T>              arguments_;
     PExpression<T> subexpr_;
     bool indexed_ = false;
     bool limit_ = false;

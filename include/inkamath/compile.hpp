@@ -42,7 +42,7 @@ public:
             compiler.fixed_  = fixed;
             try {
                 for (const auto& [name, definition] : Sorted(definitions.Globals()))
-                    if (!definitions.Builtin(name)) compiler.Define(name, *definition);
+                    if (definition->Value()) compiler.Define(name, *definition);
                 for (const auto& [name, sequence] : Sorted(compiler.sequences_))
                     compiler.Compile(name);
                 return compiler.Print(module, source);
@@ -156,8 +156,7 @@ private:
     }
 
     const Reference<Value>* Global(const std::string& name) const {
-        const auto found = definitions_.Globals().find(name);
-        return found == definitions_.Globals().end() ? nullptr : found->second.get();
+        return definitions_.Find(name).get();
     }
 
     static bool IsSequence(const Reference<Value>& definition) {
@@ -1279,6 +1278,9 @@ private:
         return constant ? Fold(expression) : Answer(total);
     }
     PExpression<Value> visit_other(Expression<Value>*) override { throw Reason("this expression"); }
+    PExpression<Value> visit(MemberExpression<Value>*) override {
+        throw Reason("a name of an instance or a file");
+    }
 
     Code Field(const std::string& name, const Value& value) {
         Unreserved(name);

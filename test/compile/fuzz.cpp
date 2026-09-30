@@ -125,7 +125,7 @@ std::string Comparison(Random& random, const Scope& scope) {
     return compared + (random.chance(50) ? " and " : " or ") + Comparison(random, scope);
 }
 
-std::vector<std::string> Model(Random& random) {
+std::vector<std::string> RandomModel(Random& random) {
     std::vector<std::string>       lines = {"p = " + Quarter(random), "q = " + Quarter(random),
                                             "r = p*q + " + Quarter(random)};
     const std::vector<std::string> names = {"a", "b", "c", "d"};
@@ -233,7 +233,7 @@ int main(int argc, char* argv[]) {
     std::string checks, calls;
     int         compiled = 0;
     for (int id = 0; id < models; ++id) {
-        const std::vector<std::string> lines  = Model(random);
+        const std::vector<std::string> lines  = RandomModel(random);
         const std::string              module = "f" + std::to_string(id);
         Interpreter<Number>            session;
         bool                           accepted = true;

@@ -70,6 +70,9 @@ template <typename T>
 class FuncExpression;
 
 template <typename T>
+class MemberExpression;
+
+template <typename T>
 class SeriesExpression;
 
 template <typename T>
@@ -99,6 +102,7 @@ public:
     virtual ReturnType visit(RefExpression<T>* expr) = 0;
     virtual ReturnType visit(FuncExpression<T>* expr) = 0;
     virtual ReturnType visit(SeriesExpression<T>* expr)  = 0;
+    virtual ReturnType visit(MemberExpression<T>* expr)    = 0;
 };
 
 // Design choice: limit the number of visitor base classes.
@@ -138,6 +142,7 @@ public:
     PExpression<T> visit(LogicExpression<T>* expr) override { return visit_other(expr); }
     PExpression<T> visit(FuncExpression<T>* expr) override {return visit_other(expr);}
     PExpression<T> visit(SeriesExpression<T>* expr) override { return visit_other(expr); }
+    PExpression<T> visit(MemberExpression<T>* expr) override { return visit_other(expr); }
 };
 
 // class FoldingVisitor
@@ -244,19 +249,16 @@ public:
     // Installing the definition, without evaluating anything. A definition at
     // the top level is a statement and never gets as far as visit().
     void Bind(EqualExpression<T>* expr, const std::string& written = std::string()) {
-        // The left-hand side is a bare name, or a call carrying the
-        // parameter list, the index and the cells: 'f(x)_n = ...'.
+        this->stack_.Set(expr->Name(), Parameters(expr), expr->m_e2(), written);
+    }
+
+    // The left-hand side is a bare name, or a call carrying the parameter
+    // list, the index and the cells: 'f(x)_n = ...'.
+    ParametersDefinition<T> Parameters(EqualExpression<T>* expr) {
         const std::vector<PExpression<T>>& signature = expr->m_e1()->Children();
-        if(signature.empty()) {
-            this->stack_.Set(expr->Name(), ParametersDefinition<T>(), expr->m_e2(), written);
-        }
-        else {
-            this->stack_.Set(
-                expr->Name(),
-                ParametersDefinition<T>(signature[0], signature[1], *this, signature[2],
-                                        expr->m_e1()->Signature(), signature[3], signature[4]),
-                expr->m_e2(), written);
-        }
+        if (signature.empty()) return ParametersDefinition<T>();
+        return ParametersDefinition<T>(signature[0], signature[1], *this, signature[2],
+                                       expr->m_e1()->Signature(), signature[3], signature[4]);
     }
 
     // A local: bound in the scope that can still see the parameters, to the
@@ -421,6 +423,8 @@ public:
     }
 
     T visit(FuncExpression<T>* expr) override { return stack_.Eval(expr->Name(), expr->Call()); }
+
+    T visit(MemberExpression<T>* expr) override { return stack_.Member(*expr); }
 
     // The bounds belong to the scope the series is written in, so they are
     // evaluated before its index is bound: in 'sum_(n=1)^n n' the upper n is

@@ -1,18 +1,24 @@
 #ifndef EXPRESSION_STACK_HPP
 #define EXPRESSION_STACK_HPP
 
-#include <string>
-#include <stdexcept>
+#include <map>
 #include <memory>
+#include <optional>
+#include <set>
+#include <stdexcept>
+#include <string>
+#include <tuple>
 #include <unordered_map>
+#include <utility>
 #include <vector>
-#include "inkamath/reference.hpp"
 #include "inkamath/pexpression.hpp"
+#include "inkamath/reference.hpp"
 
-// Two scopes and no more: the definitions the user has made, and the
-// parameters of the call being evaluated. A call never sees its caller's
-// parameters, so 'q = y+1' means the global y whichever call is on the
-// stack (MODERNIZATION.md, phase 4 item 5).
+// Two kinds of scope: the definitions of the session, a file or an instance,
+// each over the built-ins, and the parameters of the call being evaluated. A
+// call never sees its caller's parameters, so 'q = y+1' means the global y
+// whichever call is on the stack (MODERNIZATION.md, phase 4 item 5), and a
+// definition reads the names of the scope it was written in (phase 15).
 template <typename T>
 class ReferenceStack {
 public:
@@ -57,6 +63,8 @@ public:
     }
 
     ReferenceStack() {
+        session_.parent = &builtins_;
+        const Into builtins(*this, builtins_);
         // Every digit a double holds: the 2014 literals stopped at fourteen,
         // which is a 7e-15 error in pi, and that is what 'e^(i*pi)' reported
         // as the imaginary part of -1.
@@ -68,24 +76,77 @@ public:
         const auto           x = std::make_shared<RefExpression<T>>("x");
         this->Set("floor", ParametersDefinition<T>(x, PExpression<T>(), evaluator),
                   std::make_shared<FloorExpression<T>>(x));
-        builtins_ = globals_;
     }
+
+    // Scopes point at one another.
+    ReferenceStack(const ReferenceStack&)            = delete;
+    ReferenceStack& operator=(const ReferenceStack&) = delete;
 
     // A memoised result may have read a global, so redefining one drops the
     // cache. A definition made while a frame is on the stack is a parameter
     // or an index, which is part of the key and cannot invalidate anything.
     void Set(const std::string& ai_reference_name, const ParametersDefinition<T>& ai_parameters, PExpression<T>  ai_expression, const std::string& written = std::string()) {
-        if (open_ == 0) {
-            memoised_.clear();
-            older_.clear();
+        if (open_ != 0) {
+            definition_type& slot = FrameSlot(ai_reference_name).definition;
+            slot =
+                Extended(slot, nullptr, ai_reference_name, ai_parameters, ai_expression, written);
+            return;
         }
-        definition_type& slot = DefinitionSlot(ai_reference_name);
-        // Updating and initialising are the same operation.
-        std::shared_ptr<Reference<T>> updated =
-                slot ? std::make_shared<Reference<T>>(*slot) : std::make_shared<Reference<T>>();
-        updated->add_expression(ai_reference_name, ai_parameters, ai_expression, written);
-        slot = std::move(updated);
+        Changed();
+        definition_type& slot = target_->names[ai_reference_name];
+        // A clause added to a built-in extends it, as it did when the
+        // built-ins were the session's own.
+        if (!slot && target_ == &session_) {
+            const auto builtin = builtins_.names.find(ai_reference_name);
+            if (builtin != builtins_.names.end()) slot = builtin->second;
+        }
+        slot = Extended(slot, target_, ai_reference_name, ai_parameters, ai_expression, written);
     }
+
+    // A model, a file used, or a name brought in from one.
+    void Put(const std::string& name, definition_type definition) {
+        Changed();
+        target_->names[name] = std::move(definition);
+    }
+
+    [[nodiscard]] Scope<T>& Target() const { return *target_; }
+    [[nodiscard]] Scope<T>& Builtins() { return builtins_; }
+
+    // Names are sought from a scope while one of these lives.
+    struct Within {
+        Within(ReferenceStack& stack, const Scope<T>* scope)
+            : stack_(stack), previous_(stack.scope_) {
+            if (scope) stack_.scope_ = scope;
+        }
+        ~Within() { stack_.scope_ = previous_; }
+        Within(const Within&)            = delete;
+        Within& operator=(const Within&) = delete;
+
+    private:
+        ReferenceStack& stack_;
+        const Scope<T>* previous_;
+    };
+
+    // Definitions go into a scope, and names are sought there, while one of
+    // these lives: a file's as it is read, the built-ins' as they are made.
+    struct Into {
+        Into(ReferenceStack& stack, Scope<T>& scope)
+            : stack_(stack), target_(stack.target_), scope_(stack.scope_) {
+            stack_.target_ = &scope;
+            stack_.scope_  = &scope;
+        }
+        ~Into() {
+            stack_.target_ = target_;
+            stack_.scope_  = scope_;
+        }
+        Into(const Into&)            = delete;
+        Into& operator=(const Into&) = delete;
+
+    private:
+        ReferenceStack& stack_;
+        Scope<T>*       target_;
+        const Scope<T>* scope_;
+    };
 
     // A parameter, a default or a sequence index, bound in the frame the call
     // has already opened. It was a whole Reference wrapping a heap
@@ -103,8 +164,10 @@ public:
         }
         definition_type definition = FindGlobal(ai_reference_name);
         if(!definition) {
-            throw std::runtime_error(ai_reference_name + " is not defined");
+            throw std::runtime_error(scope_->Qualified(ai_reference_name) + " is not defined");
         }
+        if (definition->model) return definition->model->Describe();
+        if (definition->file) return "use " + definition->Name();
         return definition->Describe(ai_parameters, *this);
     }
 
@@ -120,9 +183,31 @@ public:
         }
         definition_type definition = FindGlobal(ai_reference_name);
         if(!definition) {
-            throw std::runtime_error(ai_reference_name + " is not defined");
+            throw std::runtime_error(scope_->Qualified(ai_reference_name) + " is not defined");
         }
-        return definition->Eval(ai_parameters, *this, true);
+        return Evaluate(*definition, ai_parameters);
+    }
+
+    // 'g.y_3': the index and the arguments are the caller's, and the name is
+    // sought in the object's scope alone.
+    T Member(const MemberExpression<T>& member) {
+        Budget          budget(*this);
+        const Scope<T>& scope = Object(*member.Object());
+        return Evaluate(*Own(scope, member.Member()->Name()), Call(*member.Member()));
+    }
+
+    // 'g.k = 3', which the session may not do: an instance is changed where
+    // it is defined, and a file where it is written.
+    [[noreturn]] void Outside(const MemberExpression<T>& member) {
+        const Scope<T>&   scope = Object(*member.Object());
+        const std::string name  = scope.Qualified(member.Member()->Name());
+        if (!scope.file.empty())
+            throw std::runtime_error(name + " is defined in " + scope.file + ", and only there");
+        if (!scope.defined.empty()) {
+            throw std::runtime_error(scope.label + " is defined by " + scope.defined + "; define " +
+                                     scope.label + " again to change it");
+        }
+        throw std::runtime_error(name + " is defined by its model");
     }
 
     // Filling a recurrence needs room to nest a few references per term, and
@@ -150,14 +235,20 @@ public:
         size_t             steps_;
     };
 
-    [[nodiscard]] const scope_type& Globals() const { return globals_; }
+    [[nodiscard]] const scope_type& Globals() const { return session_.names; }
 
-    // Whether a global is still the one the interpreter starts with.
+    // A name as the session reads it, its own or a built-in.
+    [[nodiscard]] definition_type Find(const std::string& name) const {
+        for (const Scope<T>* scope = &session_; scope; scope = scope->parent) {
+            const auto found = scope->names.find(name);
+            if (found != scope->names.end()) return found->second;
+        }
+        return definition_type();
+    }
+
+    // Whether a name is still the one the interpreter starts with.
     [[nodiscard]] bool Builtin(const std::string& name) const {
-        const auto builtin = builtins_.find(name);
-        const auto global  = globals_.find(name);
-        return builtin != builtins_.end() && global != globals_.end() &&
-               builtin->second == global->second;
+        return session_.names.count(name) == 0 && builtins_.names.count(name) != 0;
     }
 
     // Whether a call's frame is open to bind in.
@@ -234,6 +325,264 @@ public:
 private:
     friend struct Trial;
 
+    // A top-level definition may change what any memoised answer or instance
+    // read, so both go. Nothing is evaluating when one is made.
+    void Changed() {
+        memoised_.clear();
+        older_.clear();
+        named_.clear();
+        unnamed_.clear();
+    }
+
+    // Updating and initialising are the same operation.
+    static definition_type Extended(const definition_type& existing, const Scope<T>* home,
+                                    const std::string&             name,
+                                    const ParametersDefinition<T>& parameters,
+                                    PExpression<T> expression, const std::string& written) {
+        std::shared_ptr<Reference<T>> updated = existing && existing->Value()
+                                                    ? std::make_shared<Reference<T>>(*existing)
+                                                    : std::make_shared<Reference<T>>();
+        updated->add_expression(name, parameters, std::move(expression), written);
+        updated->home = home;
+        return updated;
+    }
+
+    static std::string Label(const Reference<T>& definition) {
+        return definition.home ? definition.home->Qualified(definition.Name()) : definition.Name();
+    }
+
+    // What an instance was defined as, 'gain(x_n = n)', from how it was written.
+    static std::string Defined(const Reference<T>& definition) {
+        const std::string& written = definition.Clauses().front().written;
+        const size_t       equal   = written.find('=');
+        const size_t       start =
+            equal == std::string::npos ? equal : written.find_first_not_of(' ', equal + 1);
+        return start == std::string::npos ? std::string() : written.substr(start);
+    }
+
+    static const ParametersCall<T>& Call(const Expression<T>& expression) {
+        static const ParametersCall<T> plain;
+        const auto*                    call = dynamic_cast<const FuncExpression<T>*>(&expression);
+        return call ? call->Call() : plain;
+    }
+
+    const definition_type& Own(const Scope<T>& scope, const std::string& name) const {
+        const auto found = scope.names.find(name);
+        if (found == scope.names.end())
+            throw std::runtime_error(scope.Qualified(name) + " is not defined");
+        return found->second;
+    }
+
+    // A name's value, where it has one; most are plain values.
+    T Evaluate(const Reference<T>& definition, const ParametersCall<T>& call) {
+        if (definition.Value() && !definition.Applied()) return definition.Eval(call, *this, true);
+        return Applied(definition, call);
+    }
+
+    // A value written as a name applied to arguments, which has none if it
+    // is an instance; or a model, a file or an input, none of which has one.
+    T Applied(const Reference<T>& definition, const ParametersCall<T>& call) {
+        if (definition.Value()) {
+            const auto instance = InstanceOf(definition);
+            if (!instance) return definition.Eval(call, *this, true);
+            const std::string label = Label(definition);
+            throw std::runtime_error(label + " is an instance of " + instance->model->Name() +
+                                     "; read one of its names (" + label + "." +
+                                     instance->model->model->Example() + ")");
+        }
+        const std::string label = Label(definition);
+        if (definition.model) {
+            (void)definition.model->Bind(label, call);
+            if (call.arguments()) {
+                throw std::runtime_error("an instance of " + label +
+                                         " has no value of its own; read one of its names, as " +
+                                         label + "(...)." + definition.model->Example());
+            }
+            throw std::runtime_error(label + " is a model; define an instance of it (" +
+                                     definition.Name().substr(0, 1) + " = " + label + "(...))");
+        }
+        if (definition.file)
+            throw std::runtime_error(label + " is a file, and has no value of its own");
+        int        index   = 0;
+        const bool indexed = call.TryEvalIndex(*this, index);
+        throw std::runtime_error(label + (indexed ? "_" + std::to_string(index) : "") +
+                                 " is an input, and nothing defines it");
+    }
+
+    struct Instance {
+        definition_type          model;
+        const ParametersCall<T>* call;
+    };
+
+    // Whether a definition is an instance: a model applied to arguments, and
+    // nothing else, 'g = gain(x_n = n)'. Asked where it was written, and in a
+    // frame of its own as its evaluation would be, so that the model is the
+    // one it names there.
+    std::optional<Instance> InstanceOf(const Reference<T>& definition) {
+        if (!definition.home || !definition.Value() || !definition.Applied()) return std::nullopt;
+        Expression<T>* callee = definition.Clauses().front().expression.get();
+        Expression<T>* object = nullptr;
+        if (const auto* member = dynamic_cast<const MemberExpression<T>*>(callee)) {
+            object = member->Object().get();
+            callee = member->Member().get();
+        }
+        const Within    within(*this, definition.home);
+        const Frame     frame(*this);
+        definition_type model;
+        if (object) {
+            const Scope<T>& where = Object(*object);
+            const auto      found = where.names.find(callee->Name());
+            if (found != where.names.end()) model = found->second;
+        } else {
+            model = FindGlobal(callee->Name());
+        }
+        if (!model || !model->model) return std::nullopt;
+        return Instance{model, &Call(*callee)};
+    }
+
+    // The scope of an instance or a file, from what names it: 'g', 'filters',
+    // 'gain(k = 3)' or 'filters.lowpass(a = 1/2)'.
+    const Scope<T>& Object(Expression<T>& object) {
+        if (auto* member = dynamic_cast<MemberExpression<T>*>(&object)) {
+            const Scope<T>& outer = Object(*member->Object());
+            return Holder(Own(outer, member->Member()->Name()), *member->Member(), outer);
+        }
+        const definition_type definition = FindGlobal(object.Name());
+        if (!definition)
+            throw std::runtime_error(scope_->Qualified(object.Name()) + " is not defined");
+        return Holder(definition, object, *scope_);
+    }
+
+    const Scope<T>& Holder(const definition_type& definition, Expression<T>& node,
+                           const Scope<T>& through) {
+        if (definition->file) return *definition->file;
+        if (definition->model) {
+            // Unnamed, and so one per place it is written, per scope it is
+            // evaluated in, and per value it reads of the frame.
+            const std::string name  = through.Qualified(definition->Name());
+            const auto        bound = definition->model->Bind(name, Call(node));
+            const auto        read  = Captured(bound);
+            std::string       key;
+            for (const auto& [captured, value] : read) {
+                key += '\0';
+                key += captured;
+                key += '=';
+                numeric_interface<T>::key(value, key);
+            }
+            auto& slot = unnamed_[std::make_tuple(static_cast<const void*>(&node),
+                                                  static_cast<const void*>(scope_), key)];
+            if (!slot.second) {
+                slot = {node.self(), Instantiate(*definition, bound, scope_, name + "(...)",
+                                                 std::string(), read)};
+            }
+            return *slot.second;
+        }
+        if (const auto instance = InstanceOf(*definition)) {
+            std::shared_ptr<Scope<T>>& slot = named_[definition.get()];
+            if (!slot) {
+                const Reference<T>& model = *instance->model;
+                slot = Instantiate(model, model.model->Bind(model.Name(), *instance->call),
+                                   definition->home, Label(*definition), Defined(*definition), {});
+            }
+            return *slot;
+        }
+        throw std::runtime_error(Label(*definition) + " is neither an instance nor a file");
+    }
+
+    typedef std::vector<std::optional<typename Model<T>::Argument>> Bound;
+    typedef std::vector<std::pair<std::string, T>>                  Captures;
+
+    // The values an unnamed instance's arguments read of the frame they were
+    // written in, other than the index an input's own clause binds.
+    Captures Captured(const Bound& bound) const {
+        Captures captured;
+        if (open_ == 0) return captured;
+        std::set<std::string> read;
+        for (const auto& argument : bound) {
+            if (!argument) continue;
+            std::set<std::string> names;
+            Reads(argument->expression, names);
+            names.erase(argument->index);
+            read.insert(names.begin(), names.end());
+        }
+        for (const Binding& binding : frames_[open_ - 1]) {
+            if (read.count(binding.name) == 0) continue;
+            if (binding.definition) {
+                throw std::runtime_error("an instance cannot read " + binding.name +
+                                         ", which is defined only on its line");
+            }
+            captured.emplace_back(binding.name, binding.value);
+        }
+        return captured;
+    }
+
+    static void Reads(const PExpression<T>& expression, std::set<std::string>& names) {
+        if (!expression) return;
+        if (const auto* member = dynamic_cast<const MemberExpression<T>*>(expression.get())) {
+            Reads(member->Object(), names);
+            for (const PExpression<T>& child : member->Member()->Children()) Reads(child, names);
+            return;
+        }
+        if (!expression->Name().empty()) names.insert(expression->Name());
+        for (const PExpression<T>& child : expression->Children()) Reads(child, names);
+    }
+
+    // A model's parameters and body, installed in a scope of their own. An
+    // argument reads where it was written; a default and the body read the
+    // instance, then where the model was written, but never the session.
+    std::shared_ptr<Scope<T>> Instantiate(const Reference<T>& model, const Bound& bound,
+                                          const Scope<T>* written, std::string label,
+                                          std::string defined, const Captures& captured) {
+        const Model<T>& m     = *model.model;
+        auto            scope = std::make_shared<Scope<T>>();
+        scope->parent         = m.scope == &session_ ? &builtins_ : m.scope;
+        scope->label          = std::move(label);
+        scope->defined        = std::move(defined);
+        // A constant index in the body is evaluated as it is installed, and
+        // reads nothing of the frame that happens to be open.
+        const Into           into(*this, *scope);
+        const Frame          frame(*this);
+        EvaluationVisitor<T> evaluator(*this);
+        for (size_t i = 0; i < m.parameters.size(); ++i) {
+            const typename Model<T>::Parameter& parameter = m.parameters[i];
+            const auto&                         given     = bound[i];
+            const PExpression<T>& expression = given ? given->expression : parameter.fallback;
+            auto                  definition = std::make_shared<Reference<T>>(parameter.name);
+            if (!expression) {
+                definition->input = true;
+                definition->home  = scope.get();
+            } else {
+                const std::string& index = given ? given->index : parameter.index;
+                definition->add_expression(
+                    parameter.name,
+                    index.empty() ? ParametersDefinition<T>()
+                                  : ParametersDefinition<T>(
+                                        PExpression<T>(), std::make_shared<RefExpression<T>>(index),
+                                        evaluator),
+                    expression);
+                definition->home = given ? written : scope.get();
+                if (given) definition->captured = captured;
+            }
+            scope->names[parameter.name] = std::move(definition);
+        }
+        for (const typename Model<T>::Statement& statement : m.body) {
+            definition_type& slot = scope->names[statement.name];
+            if (statement.model) {
+                auto nested       = std::make_shared<Model<T>>(*statement.model);
+                nested->scope     = scope.get();
+                auto definition   = std::make_shared<Reference<T>>(statement.name);
+                definition->model = std::move(nested);
+                definition->home  = scope.get();
+                slot              = std::move(definition);
+                continue;
+            }
+            auto* equal = static_cast<EqualExpression<T>*>(statement.definition.get());
+            slot        = Extended(slot, scope.get(), statement.name, evaluator.Parameters(equal),
+                                   equal->m_e2(), statement.written);
+        }
+        return scope;
+    }
+
     static bool Plain(const ParametersCall<T>& call) {
         return !call.indexed() && !call.limit()
             && call.parameters_expression().empty() && call.parameters_dict().empty();
@@ -277,13 +626,12 @@ private:
         }
     }
 
-    definition_type& DefinitionSlot(const std::string& name) {
-        return open_ == 0 ? globals_[name] : FrameSlot(name).definition;
-    }
-
     definition_type FindGlobal(const std::string& name) const {
-        auto global = globals_.find(name);
-        return global == globals_.end() ? definition_type() : global->second;
+        for (const Scope<T>* scope = scope_; scope; scope = scope->parent) {
+            const auto found = scope->names.find(name);
+            if (found != scope->names.end()) return found->second;
+        }
+        return definition_type();
     }
 
     // Depth alone does not bound time: the arithmetic-geometric mean nests
@@ -314,8 +662,17 @@ private:
     bool                                     filling_     = false;
     bool                                     fill_failed_ = false;
     std::unordered_map<MemoKey, T, MemoHash> memoised_, older_;
-    scope_type globals_;
-    scope_type                               builtins_;
+    Scope<T>                                 builtins_, session_;
+    const Scope<T>*                          scope_  = &session_;  // where names are sought
+    Scope<T>*                                target_ = &session_;  // where definitions go
+    // Instances, made when first read and kept until a definition changes
+    // what they read: the named by their definition, the unnamed by where
+    // they are written, holding that expression so that its address is not
+    // reused while it names one.
+    std::unordered_map<const Reference<T>*, std::shared_ptr<Scope<T>>> named_;
+    std::map<std::tuple<const void*, const void*, std::string>,
+             std::pair<PExpression<T>, std::shared_ptr<Scope<T>>>>
+                                             unnamed_;
     std::vector<frame_type>                  frames_;  // the open ones first, then spares
     size_t                                   open_ = 0;
 };

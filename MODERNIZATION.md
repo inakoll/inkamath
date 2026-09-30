@@ -1943,7 +1943,7 @@ Nothing asks for it while exactness stops at a thousand digits. Relevance is
 the notation -- recurrences, `lim`, series as on paper, exact by default --
 which Python spells as code; speed is a guardrail, not the race.
 
-## Phase 15 — Models, files and their scopes `[planned]`
+## Phase 15 — Models, files and their scopes `[in progress]`
 
 After `and` and `or`. Three things asked for it. The domains explored in
 phase 14 want reuse: the PID, the Kalman filters and the heat equation repeat
@@ -2043,9 +2043,9 @@ from outside, after the fact, which is where A reads worst. What B decides:
   the step's arguments, the interface the header already states. A file of
   instances compiles to nested structs, one step for them all.
 
-Specified for the interpreter in `test/data/spec/models.ink`, over
-`filters.ink` and `bad.ink` beside it; it replaces a specification of form A
-written first. `use filters` names a file by its stem, beside the file that
+`[done]` In the interpreter, specified in `test/data/spec/models.ink`, over
+`filters.ink` and `bad.ink` beside it, and now `test/data/models.ink`
+unchanged; it replaced a specification of form A written first. `use filters` names a file by its stem, beside the file that
 names it, so that no string enters the language; a file is loaded once, so a
 diamond or a cycle loads nothing twice; a file that cannot be read or parsed
 loads nothing and names the file and line; `?gain` prints the model as
@@ -2063,10 +2063,29 @@ would be invisible from a model and broken by that replacement. Later, when
 a library needs it: an `include` of a user's file, beneath the session as
 the prelude is, of the definitions its header marks `export`.
 
+What the interpreter does, beyond the transcript. The globals are a chain of
+scopes, the built-ins at its root, and a definition carries the scope it was
+written in, where what it reads is sought. An instance is made when it is
+first read and kept until a top-level definition clears the memo, which is
+when anything it read could have changed: a named one by its definition, an
+unnamed one by where it is written and the scope reading it. An unnamed
+instance inside a function, `f(a) = lowpass(a, 1).v_2`, takes the values its
+arguments read of the call's frame, since that frame is gone by the time an
+argument is evaluated, and so is one instance per value. Two outputs moved:
+`a.b` in `basics.ink` reads `b` of `a` rather than refusing the point, and
+`f()` is `f`, so that `gain()` is the instance with every default.
+
+What it leaves. A message raised inside an instance names the definition as
+the model wrote it, `y is a sequence`, not `g.y`; only the messages the
+scopes themselves raise are qualified. A file is named by its stem, beside
+the file that names it, and so never from a directory below. A loop without
+a delay, `q = gain(x_n = q.y_n)`, is reported as nesting too deep.
+
 Still to decide, in a transcript first: the compiler's half, for its own
-transcript. Later, and separately: a static check of causality, so that a
-loop without a delay is reported where the instances are defined rather than
-when a term is read.
+transcript; it refuses a name read in an instance or a file for now. Later,
+and separately: a static check of causality, so that a loop without a delay
+is reported where the instances are defined rather than when a term is
+read.
 
 ## Sequencing
 
@@ -2192,3 +2211,7 @@ that exploring seven domains asked of the interpreter, by how many asked.
   inverse times `b` as written. The order is the product's too: `A` is
   factored, and a singular one refused, before `b` is read. A sparse matrix,
   if ever, comes after it.
+- `[done]` **Models, files and their scopes**, in the interpreter (phase 15):
+  a model written in braces, an instance a definition read after a point,
+  `use` for a file and the prelude beneath the session. The compiler's half
+  is next, from its own transcript.

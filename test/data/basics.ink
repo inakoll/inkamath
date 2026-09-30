@@ -31,9 +31,9 @@
 >> .5e2
 50
 
-# A point that does not start a number is still a character nothing wants.
+# A point before a name reads it in an instance or a file, and a is neither.
 >> a.b
-error: unexpected character '.'
+error: a is not defined
 
 >> !5
 120
