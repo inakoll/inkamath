@@ -146,6 +146,16 @@ private:
         std::vector<Temporary>                  temporaries;  // in the order declared
     };
 
+    // A term read back, by its mark: what it is, who reads it, what computing
+    // it again reads, and the one it is computed again inside, if any.
+    struct Early {
+        std::string name;
+        int         lag;
+        Sequence*   reader;
+        Reads       reads;
+        int         outer;
+    };
+
     struct Parameter {
         std::size_t         rows, cols;
         std::vector<double> initial;
@@ -292,6 +302,7 @@ private:
         // A cell's names are its own clause's: another sequence compiled on
         // the way, whose cells may use the same names, must not see or undo them.
         const auto outer_places = std::exchange(places_, {});
+        const int  outer_shift  = std::exchange(shift_, 0);
         try {
             body();
         } catch (const Reason& reason) {
@@ -301,6 +312,7 @@ private:
         index_       = outer_index;
         temporaries_ = outer_temporaries;
         places_      = outer_places;
+        shift_       = outer_shift;
     }
 
     // A cell the compiler would write out more than once -- an operand of a
@@ -771,7 +783,10 @@ private:
         if (read) {
             for (const auto& [name, lags] : reads) {
                 if (outer) (*outer)[name].insert(lags.begin(), lags.end());
-                if (reading_) reading_->reads[name].insert(lags.begin(), lags.end());
+                if (reading_)
+                    (shift_ && early_ >= 0 ? earlies_[static_cast<std::size_t>(early_)].reads
+                                           : reading_->reads)[name]
+                        .insert(lags.begin(), lags.end());
             }
             return {written, std::nullopt};
         }
@@ -1210,11 +1225,14 @@ private:
             Unreserved(key);
             read.rows = read.cols = 1;
         }
-        const int lag = Lag(call.subexpr(), key);
+        const int lag = Lag(call.subexpr(), key) + shift_;
         Bases(key);
         if (!read.rows) Compile(key);
         if (lag > 0 && ClosedForm(read)) return Answer(At(read, lag));
-        (deferring_ ? reading_->deferred : reading_->reads)[key].insert(lag);
+        (shift_ && early_ >= 0 ? earlies_[static_cast<std::size_t>(early_)].reads
+         : deferring_          ? reading_->deferred
+                               : reading_->reads)[key]
+            .insert(lag);
         if (clause_reads_) (*clause_reads_)[key].insert(lag);
         const std::string at     = "m_->" + key + "[" + std::to_string(lag) + "]";
         const bool        scalar = read.rows * read.cols == 1;
@@ -1224,6 +1242,20 @@ private:
         for (std::size_t i = 0; i < code.rows; ++i)
             for (std::size_t j = 0; j < code.cols; ++j)
                 code.cells.push_back(Atom(scalar ? at : at + Subscript(i, j)));
+        // Before its window holds the term, one with no base clause is
+        // computed again at that index, as the interpreter answers it there
+        // (MODERNIZATION.md, C71); Checked keeps whichever the reader needs.
+        if (lag > 0 && Recomputed(read) && read.compiled) {
+            earlies_.push_back({key, lag, reading_, {}, early_});
+            const int  id          = static_cast<int>(earlies_.size() - 1);
+            const int  outer       = std::exchange(early_, id);
+            const Code back        = At(read, lag);
+            early_                 = outer;
+            const std::string mark = "\x04" + std::to_string(id) + "\x05";
+            for (std::size_t c = 0; c < code.cells.size(); ++c)
+                code.cells[c].text = mark + back.At(c / code.cols, c % code.cols).text + "\x06" +
+                                     code.cells[c].text + "\x07";
+        }
         return Answer(code);
     }
 
@@ -1237,48 +1269,72 @@ private:
                sequence.reads.empty() && sequence.deferred.empty();
     }
 
+    // One with no base clause, which the interpreter answers wherever its
+    // clauses can be evaluated, below where the step starts it too.
+    static bool Recomputed(const Sequence& sequence) {
+        return sequence.definition && sequence.bases.empty() && !ByCells(*sequence.definition);
+    }
+
+    // A term computed again 'lag' before the reader's index, its clauses
+    // tried as the interpreter tries them. What each guard and value reads is
+    // read that much further back, and checked where it is read: before it
+    // exists the interpreter reports it, and the term is NaN.
     Code At(const Sequence& sequence, int lag) {
-        Code                                      chain;
-        std::optional<Code>                       otherwise;
-        std::vector<std::pair<std::string, Code>> guarded;
-        const Home                                home(*this, sequence.definition);
-        Sequence* const                           reading = std::exchange(reading_, nullptr);
-        const std::string                         index   = std::exchange(index_, std::string());
-        const std::string                         text =
+        struct Tried {
+            std::string condition, mark;
+            Code        value;
+        };
+        Code                 chain;
+        std::optional<Tried> otherwise;
+        std::vector<Tried>   guarded;
+        const Home           home(*this, sequence.definition);
+        const std::string    index = std::exchange(index_, std::string());
+        const std::string    text =
             std::exchange(index_text_, "(double)(m_->index_ - " + std::to_string(lag) + ")");
         const auto   places = std::exchange(places_, {});
         Reads* const reads  = std::exchange(clause_reads_, nullptr);
+        const int    shift  = std::exchange(shift_, lag);
+        const auto   mark   = [&](Reads& read) {
+            if (read.empty()) return std::string();
+            checks_.push_back(read);
+            return "\x02" + std::to_string(checks_.size() - 1) + "\x03";
+        };
         for (const bool guard : {true, false}) {
             for (const Clause<Value>& clause : sequence.definition->Clauses()) {
                 const ParametersDefinition<Value>& p = clause.parameters;
                 if (otherwise || !p.general() || p.guarded() != guard) continue;
                 index_ = p.index_name();
+                Reads guard_reads, value_reads;
+                clause_reads_ = &guard_reads;
                 const std::optional<std::string> condition =
                     guard ? Condition(p.guard()) : std::optional<std::string>("");
                 if (!condition) continue;
+                clause_reads_ = &value_reads;
+                Tried tried{mark(guard_reads) + *condition, std::string(), Emit(clause.expression)};
+                tried.mark = mark(value_reads);
                 if (condition->empty())
-                    otherwise = Emit(clause.expression);
+                    otherwise = std::move(tried);
                 else
-                    guarded.emplace_back(*condition, Emit(clause.expression));
+                    guarded.push_back(std::move(tried));
             }
         }
-        reading_      = reading;
         index_        = index;
         index_text_   = text;
         places_       = places;
         clause_reads_ = reads;
+        shift_        = shift;
         chain.rows    = sequence.rows;
         chain.cols    = sequence.cols;
         for (std::size_t c = 0; c < sequence.rows * sequence.cols; ++c) {
+            const auto  i = c / sequence.cols, j = c % sequence.cols;
             std::string cell;
-            for (const auto& [condition, value] : guarded)
-                cell +=
-                    condition + " ? " + value.At(c / sequence.cols, c % sequence.cols).text + " : ";
-            if (guarded.empty() && otherwise) {
-                chain.cells.push_back(otherwise->At(c / sequence.cols, c % sequence.cols));
+            for (const Tried& tried : guarded)
+                cell += tried.condition + " ? " + tried.mark + tried.value.At(i, j).text + " : ";
+            if (guarded.empty() && otherwise && otherwise->mark.empty()) {
+                chain.cells.push_back(otherwise->value.At(i, j));
                 continue;
             }
-            cell += otherwise ? otherwise->At(c / sequence.cols, c % sequence.cols).text : "NAN";
+            cell += otherwise ? otherwise->mark + otherwise->value.At(i, j).text : "NAN";
             chain.cells.emplace_back(cell, 0);  // a conditional, below every operator
         }
         return chain;
@@ -1483,11 +1539,22 @@ private:
                                   "'s base clauses, where only its guards could give a term");
             }
         }
+        // One with no base clause starts where some path through its clauses
+        // answers, and the interpreter answers it below the step's first index
+        // too, wherever one does: a reader finds it there (C71).
+        for (const auto& [name, sequence] : sequences_)
+            if (Recomputed(sequence)) exists_[name] = std::numeric_limits<int>::min() / 2;
         for (std::size_t round = 0;; ++round) {
             bool moved = false;
             for (auto& [name, sequence] : sequences_) {
                 if (!sequence.bases.empty() || !sequence.definition) continue;
-                const int needed = std::max(sequence.start, Answers(sequence));
+                const int answers = Answers(sequence);
+                if (const auto found = exists_.find(name);
+                    found != exists_.end() && answers > found->second) {
+                    found->second = answers;
+                    moved         = true;
+                }
+                const int needed = std::max(sequence.start, answers);
                 if (needed <= sequence.start) continue;
                 sequence.start = needed;
                 moved          = true;
@@ -1512,14 +1579,14 @@ private:
         for (const auto& [name, sequence] : sequences_) {
             if (!sequence.guarded.empty()) continue;
             for (const auto& [read, lags] : sequence.reads) {
-                const Sequence& other = sequences_.at(read);
+                const int begins = Exists(read);
                 for (const int lag : lags) {
-                    for (int n = sequence.start; n < other.start + lag; ++n) {
+                    for (int n = sequence.start; n < begins + lag; ++n) {
                         if (sequence.bases.count(n)) continue;
                         throw Refusal("cannot compile " + name + ": " + name + "_" +
                                       std::to_string(n) + " reads " + read + "_" +
                                       std::to_string(n - lag) + ", before it starts at " +
-                                      std::to_string(other.start));
+                                      std::to_string(begins));
                     }
                 }
             }
@@ -1530,9 +1597,15 @@ private:
     // The first index where every term these reads name exists.
     int From(const Reads& reads) const {
         int from = std::numeric_limits<int>::min();
-        for (const auto& [read, lags] : reads)
-            from = std::max(from, sequences_.at(read).start + *lags.rbegin());
+        for (const auto& [read, lags] : reads) from = std::max(from, Exists(read) + *lags.rbegin());
         return from;
+    }
+
+    // Where a sequence's terms begin: its start, or, for one computed again,
+    // wherever its clauses answer.
+    int Exists(const std::string& name) const {
+        const auto found = exists_.find(name);
+        return found == exists_.end() ? sequences_.at(name).start : found->second;
     }
 
     // The first index where some path through a sequence's clauses answers:
@@ -1667,7 +1740,35 @@ private:
 
     // Each deferred right side's mark (see Right), as the check it needs
     // where the terms it reads may not exist yet, or nothing where they do.
+    // Whether a term read back is computed again: where its reader can be
+    // evaluated before the window holds it, and, inside another term computed
+    // again, where that one is.
+    bool Needed(const Early& early) const {
+        const int from   = sequences_.at(early.name).start + early.lag;
+        bool      before = false;
+        for (int n = early.reader->start; n < from && !before; ++n)
+            before = !early.reader->bases.count(n);
+        return before &&
+               (early.outer < 0 || Needed(earlies_[static_cast<std::size_t>(early.outer)]));
+    }
+
     std::string Checked(std::string text, const Sequence& sequence) const {
+        // A term read back, computed again where the reader can need it before
+        // its window holds it; the innermost first, as the last marked.
+        for (std::size_t at = text.rfind('\x04'); at != std::string::npos;
+             at             = text.rfind('\x04')) {
+            const std::size_t mid    = text.find('\x05', at);
+            const std::size_t sep    = text.find('\x06', mid);
+            const std::size_t end    = text.find('\x07', sep);
+            const Early&      early  = earlies_.at(std::stoul(text.substr(at + 1, mid - at - 1)));
+            const int         from   = sequences_.at(early.name).start + early.lag;
+            const std::string window = text.substr(sep + 1, end - sep - 1);
+            text.replace(at, end - at + 1,
+                         Needed(early)
+                             ? "(m_->index_ < " + std::to_string(from) + " ? " +
+                                   text.substr(mid + 1, sep - mid - 1) + " : " + window + ")"
+                             : window);
+        }
         for (std::size_t at = text.find('\x02'); at != std::string::npos;
              at             = text.find('\x02', at)) {
             const std::size_t end = text.find('\x03', at);
@@ -1783,6 +1884,10 @@ private:
         const int                      earliest = Starts();
         const std::vector<std::string> order    = Order();
         std::vector<std::string>       fields;
+        for (const Early& early : earlies_)
+            if (Needed(early))
+                for (const auto& [read, lags] : early.reads)
+                    early.reader->deferred[read].insert(lags.begin(), lags.end());
         for (auto& [name, sequence] : sequences_) {
             if (!sequence.definition) fields.push_back(name);
             for (const Reads* reads : {&sequence.reads, &sequence.deferred})
@@ -1914,8 +2019,13 @@ private:
                 if (!sequence.guarded.empty()) assignments += before(From(sequence.general_reads));
                 assignments += sequence.general[c] + ";\n";
             }
-            out += Checked(Temporaries(sequence.temporaries, assignments, indent) + assignments,
-                           sequence);
+            // Resolved before what is used is known: a term read back that is
+            // not computed again leaves its temporaries unread.
+            std::vector<Temporary> temporaries = sequence.temporaries;
+            for (Temporary& temporary : temporaries)
+                for (std::string& line : temporary.lines) line = Checked(line, sequence);
+            const std::string checked = Checked(assignments, sequence);
+            out += Temporaries(temporaries, checked, indent) + checked;
             if (late) out += "    }\n";
         }
         out += "}\n\n#endif\n";
@@ -1940,6 +2050,10 @@ private:
     std::vector<Temporary>*          temporaries_ = nullptr;  // where this sequence's are declared
     Reads*      clause_reads_ = nullptr;               // what the clause being compiled reads
     bool                             deferring_ = false;  // compiling the right of an 'and' or 'or'
+    int                        shift_ = 0;  // how far back the term being computed again is; see At
+    std::vector<Early>         earlies_;
+    int                        early_ = -1;    // the one being computed again
+    std::map<std::string, int> exists_;        // where one with no base first answers
     std::vector<Reads>               checks_;  // what a deferred right side reads, by its mark
     std::string index_text_   = "(double)m_->index_";  // the index, as the step has it
     std::string                      module_;
