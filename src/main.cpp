@@ -23,15 +23,14 @@ using namespace std;
 // printed matrix typeable back: it prints over several lines and reads as one.
 // Nothing here can hide a bracket -- there are no strings, and '#' comments to
 // the end of the line.
-static bool unclosed(const string& text)
-{
-    int depth = 0;
-    for(char c : text.substr(0, text.find('#')))
-    {
-        if(c == '[' || c == '(') ++depth;
-        if(c == ']' || c == ')') --depth;
-    }
-    return depth > 0;
+static bool unclosed(const string& text) {
+    return Unclosed(text) > 0;
+}
+
+// A line continued inside a model's braces keeps its break, since the body
+// is one definition a line; inside a bracket, a break is a space.
+static const char* joint(const string& text) {
+    return Unclosed(text, "{", "}") > 0 ? "\n" : " ";
 }
 
 using Interp  = Interpreter<Number>;
@@ -65,28 +64,40 @@ static bool blank(const string& line) {
     return first == string::npos || line[first] == '#';
 }
 
-// A line of a file, and whether it is the whole of an input.
+// A line of a file, whether it is the whole of an input, and where the file
+// is, for 'use' to look beside it.
 struct Queued {
-    string line;
-    bool   whole;
+    string           line;
+    bool             whole;
+    filesystem::path directory;
 };
 
-// A file's inputs. In a transcript they are its '>>' lines, each the whole of an
-// input as the recorder evaluated it, and the answers it records are left for
-// 'diff' to compare.
-static vector<Queued> inputs(istream& in) {
+// A file's inputs. In a transcript they are its '>>' lines, with the '..' lines
+// that continue them, each the whole of an input as the recorder evaluated it,
+// and the answers it records are left for 'diff' to compare.
+static vector<Queued> inputs(istream& in, const filesystem::path& directory) {
     vector<string> lines;
     for (string line; getline(in, line);) lines.push_back(line);
     vector<Queued> queued;
     const auto     first = find_if_not(lines.begin(), lines.end(), blank);
     if (first == lines.end() || first->rfind(">>", 0) != 0) {
-        for (const string& line : lines) queued.push_back({line, false});
+        for (const string& line : lines) queued.push_back({line, false, directory});
         return queued;
     }
-    for (const string& line : lines) {
-        if (line.rfind(">>", 0) != 0) continue;
+    const auto spoken = [](const string& line) {
         const string entry = line.substr(2);
-        queued.push_back({rstrip(entry.rfind(' ', 0) == 0 ? entry.substr(1) : entry), true});
+        return rstrip(entry.rfind(' ', 0) == 0 ? entry.substr(1) : entry);
+    };
+    bool entry = false;
+    for (const string& line : lines) {
+        if (line.rfind(">>", 0) == 0) {
+            queued.push_back({spoken(line), true, directory});
+            entry = true;
+        } else if (entry && line.rfind("..", 0) == 0) {
+            queued.back().line += '\n' + spoken(line);
+        } else {
+            entry = false;
+        }
     }
     return queued;
 }
@@ -119,10 +130,11 @@ static int compile(const string& source, const string& target) {
         return 2;
     }
     Interp p;
+    p.Directory(filesystem::path(source).parent_path());
     string line;
-    for (const Queued& queued : inputs(in)) {
+    for (const Queued& queued : inputs(in, filesystem::path(source).parent_path())) {
         if (line.empty() && blank(queued.line)) continue;
-        line += (line.empty() ? "" : " ") + queued.line;
+        line += (line.empty() ? "" : joint(line)) + queued.line;
         if (!queued.whole && unclosed(line)) continue;
         const Interp::Result result = p.Eval(line);
         if (const Diagnostic* error = get_if<Diagnostic>(&result)) {
@@ -196,7 +208,7 @@ int main(int argc, char* argv[]) {
             cerr << "inkamath: cannot open '" << name << "'\n";
             return 2;
         }
-        const vector<Queued> lines = inputs(in);
+        const vector<Queued> lines = inputs(in, filesystem::path(name).parent_path());
         queued.insert(queued.end(), lines.begin(), lines.end());
     }
 
@@ -207,12 +219,14 @@ int main(int argc, char* argv[]) {
     bool           whole      = false;  // whether the line is a transcript's entry
     bool           greeted    = false;
     vector<string> history;
+    Interp         p;
 
     // The files, then standard input: from a person, edited at the prompt, or
     // from a pipe, where spacing and comments are skipped as they are in files.
     const auto read_line = [&](const string& prompt, string& line) {
         for (;;) {
             typed = whole = false;
+            p.Directory(next < queued.size() ? queued[next].directory : filesystem::path("."));
             if (next < queued.size()) {
                 line  = queued[next].line;
                 whole = queued[next++].whole;
@@ -229,7 +243,6 @@ int main(int argc, char* argv[]) {
         }
     };
 
-    Interp p;
     bool   failed = false;
     for (;;) {
         string  s;
@@ -242,7 +255,7 @@ int main(int argc, char* argv[]) {
             string more;
             read = read_line(".. ", more);
             if (read != Outcome::done) break;  // end of input: let it fail as written
-            s += " " + more;
+            s += joint(s) + more;
         }
         // Ctrl-C at a continuation drops the whole line, as it does at the first.
         if (read == Outcome::cancelled) continue;
@@ -252,12 +265,19 @@ int main(int argc, char* argv[]) {
         if (typed) {
             // The whole of a line that continued, so that recalling it gives
             // back something that reads.
-            if (!s.empty() && (history.empty() || history.back() != s)) history.push_back(s);
+            // A model's lines are not one to edit.
+            if (!s.empty() && s.find('\n') == string::npos &&
+                (history.empty() || history.back() != s))
+                history.push_back(s);
             cout << answer << "\n\n";
             continue;
         }
         failed = failed || holds_alternative<Diagnostic>(result);
-        if (echo) cout << ">> " << s << '\n';
+        if (echo) {
+            cout << ">> ";
+            for (const char c : s) cout << (c == '\n' ? "\n.. " : string(1, c));
+            cout << '\n';
+        }
         cout << answer << (echo ? "\n\n" : "\n");
     }
     return failed ? 1 : 0;
