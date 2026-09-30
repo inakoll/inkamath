@@ -220,3 +220,56 @@ gain(k = 2, b = 1, x_n) = { ... }
 
 >> g.s_3
 error: g.s is not defined
+
+# The prelude, built into the interpreter, is included bare beneath the
+# session, as the built-ins are: no scope and no qualified name, its names
+# unqualified from every scope, its text read where it was written.
+#   ceil(x) = -floor(-x)
+#   mod(a, b) = a - b*floor(a/b)
+>> ?ceil
+ceil(x) = -floor(-x)
+
+>> ceil(7/2)
+4
+
+>> ceil(-7/2)
+-3
+
+>> mod(7, 3)
+1
+
+>> mod(-7, 3)
+2
+
+>> mod(7, -3)
+-2
+
+>> prelude.ceil
+error: prelude is not defined
+
+>> wrap(m = 4, x_n) = { y_n = mod(x_n, m) }
+wrap(m = 4, x_n) = { ... }
+
+>> q = wrap(x_n = n)
+q = wrap(x_n = n)
+
+>> q.y_5
+1
+
+# Replaced in the session, a name of the prelude or a built-in is replaced for
+# the session only: the prelude's own floor is the built-in, and a model reads
+# the prelude, never the session.
+>> floor = 3
+floor = 3
+
+>> ceil(7/2)
+4
+
+>> mod(a, b) = 0
+mod(a, b) = 0
+
+>> mod(7, 3)
+0
+
+>> q.y_5
+1

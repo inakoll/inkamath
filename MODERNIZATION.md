@@ -2050,10 +2050,20 @@ names it, so that no string enters the language; a file is loaded once, so a
 diamond or a cycle loads nothing twice; a file that cannot be read or parsed
 loads nothing and names the file and line; `?gain` prints the model as
 written; and at the prompt an open brace continues the line as a bracket
-does, keeping the breaks, since the body is one definition a line. Still to
-decide, in a transcript first: whether the prelude loads unless declined --
-the leaning is always, with `ceil` and `mod` and not `round`, whose rule is
-the model's, as `floor` decided -- and the compiler's half, for its own
+does, keeping the breaks, since the body is one definition a line.
+
+The prelude is not a file the session uses but text built into the
+interpreter and included bare beneath the session, as C includes a header:
+no scope and no qualified name, and its names seen unqualified from every
+scope, a model's body included. It holds `ceil` and `mod`, not `round`, whose
+rule is the model's, as `floor` decided. A name it defines, as a built-in,
+is replaced for the session only, so that `floor = 3` leaves the prelude's
+`ceil` reading the built-in. Pasted into the session instead, the prelude
+would be invisible from a model and broken by that replacement. Later, when
+a library needs it: an `include` of a user's file, beneath the session as
+the prelude is, of the definitions its header marks `export`.
+
+Still to decide, in a transcript first: the compiler's half, for its own
 transcript. Later, and separately: a static check of causality, so that a
 loop without a delay is reported where the instances are defined rather than
 when a term is read.
