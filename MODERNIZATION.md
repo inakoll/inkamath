@@ -2298,6 +2298,21 @@ that exploring seven domains asked of the interpreter, by how many asked.
   that reads a definition set aside says so. The interpreter itself refuses
   nothing for not compiling: exploring is its part, and what compiles means
   the same in both, which the random models hold it to.
+- `[done]` **Calls and unnamed instances compiled**, specified by
+  `test/compile/kernel.ink` and `bank.ink`. A function, and an instance of a
+  model without memory, are compiled where they are called: the parameters
+  bound to the code of the arguments, read where the call is, the clauses a
+  chain the guards fold, and the body's names computed when first read. So a
+  constant folds through -- `power(2, 5).v` is 32 in the header -- and a
+  recursion unrolls where its guards fold, sixty-four deep at most. Folding a
+  constant is now the interpreter's, where the expression is read, with what
+  a call gives and a cell's names as locals: the scratch interpreter it used
+  knew neither, nor any function. An instance with memory is kept between
+  steps, so it is one of its own, made once for each place it is written and
+  each value it reads of the cell there, and named after them, `bank_smooth_1`;
+  its arguments keep those values. One whose argument reads the step's index
+  would be made anew at each step and run from its base at every one, and is
+  refused, as is one inside a call. No header compiled before moved.
 - **`--check`, reserved** for two checks yet to be written: that a compiled
   header answers what the interpreter answers, to within how far doubles
   drift from the exact values; and that a transcript's recorded answers are
