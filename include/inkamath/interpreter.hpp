@@ -1,17 +1,21 @@
 #ifndef H_PARSER
 #define H_PARSER
 
-#include <iostream>
-#include <string>
-#include <sstream>
 #include <algorithm>
-#include <vector>
-#include <utility>
-#include <cctype> // isalpha
-#include <map>
-#include <stdexcept>
+#include <cctype>  // isalpha
 #include <concepts>
+#include <filesystem>
+#include <fstream>
+#include <iostream>
+#include <map>
+#include <memory>
+#include <sstream>
+#include <stdexcept>
+#include <string>
+#include <string_view>
+#include <utility>
 #include <variant>
+#include <vector>
 
 #include "inkamath/diagnostic.hpp"
 #include "inkamath/expression.hpp"
@@ -60,6 +64,22 @@ concept Parsable = numeric_interface_parses<T>
     { numeric_interface<T>::parse(num, begin, end) } -> std::convertible_to<bool>;
 };
 
+// How many brackets, parentheses and braces a text leaves open: a line that
+// leaves one open is not finished. A comment runs to the end of its line.
+inline int Unclosed(const std::string& text, std::string_view open = "([{",
+                    std::string_view close = ")]}") {
+    int  depth   = 0;
+    bool comment = false;
+    for (const char c : text) {
+        if (c == '\n') comment = false;
+        if (c == '#') comment = true;
+        if (comment) continue;
+        if (open.find(c) != std::string_view::npos) ++depth;
+        if (close.find(c) != std::string_view::npos) --depth;
+    }
+    return depth;
+}
+
 template <Parsable T, Numeric U = Matrix<T> >
 class Interpreter
 {
@@ -95,7 +115,18 @@ public:
     // What the session has defined, for the compiler to read.
     [[nodiscard]] const ReferenceStack<U>& Definitions() const { return stack_; }
 
+    // Where 'use' looks for a file named at the prompt: beside the file being
+    // run, or the working directory.
+    void Directory(std::filesystem::path directory) { directory_ = std::move(directory); }
+
 private:
+    Result                                            Run(const std::string& s);
+    std::string                                       Use(const std::string& s);
+    std::shared_ptr<Scope<U>>                         Load(const std::string& name);
+    std::string                                       DefineModel(const std::string& text);
+    std::pair<std::string, std::shared_ptr<Model<U>>> ParseModel(const std::string& text);
+    PExpression<U>                                    ParseMembers(PExpression<U> object);
+
     void Lexer(const std::string& s);
     void Number_Lexer(const std::string& s, size_t& i);
     void Reference_Lexer(const std::string& s, size_t& i);
@@ -193,11 +224,26 @@ private:
     PExpression<U> m_E;
     ReferenceStack<U> stack_;
     int               digits_ = numeric_interface_precision;
+
+    std::filesystem::path directory_ = ".";
+    // The files used, each read once; null while one is being read.
+    std::map<std::string, std::shared_ptr<Scope<U>>> files_;
+};
+
+// Included bare beneath the session, as the built-ins are: seen from every
+// scope, and replaced by a session for itself alone (MODERNIZATION.md, phase
+// 15). Not 'round', whose rule is the model's to choose.
+inline constexpr const char* prelude[] = {
+    "ceil(x) = -floor(-x)",
+    "mod(a, b) = a - b*floor(a/b)",
 };
 
 template <Parsable T, Numeric U>
-Interpreter<T,U>::Interpreter()
-{}
+Interpreter<T, U>::Interpreter() {
+    const typename ReferenceStack<U>::Into builtins(stack_, stack_.Builtins());
+    for (const char* line : prelude) (void)Run(line);
+    ResetInterpreter();
+}
 
 template <Parsable T, Numeric U>
 Interpreter<T,U>::~Interpreter()
@@ -310,22 +356,25 @@ void Interpreter<T,U>::Lexer(const std::string& s)
             break;
         case ' ':
         // A tab is what a pasted line is indented with, and a '\r' is what a
-        // line written on Windows ends with. Neither was typed to be read.
+        // line written on Windows ends with. Neither was typed to be read. A
+        // line continued inside a model's braces keeps its break.
         case '\t':
         case '\r':
+        case '\n':
             break;
 		case '0': case '1': case '2': case '3': case '4':
 		case '5': case '6': case '7': case '8': case '9':
             this->Number_Lexer(s,i);
             break;
         case '.':
-            // '.5' is a number; a point anywhere else is not.
+            // '.5' is a number, and 'g.y' reads y of g; a point anywhere else
+            // is neither.
             if(i + 1 < s.length() && std::isdigit(static_cast<unsigned char>(s[i+1])))
             {
                 this->Number_Lexer(s,i);
-            }
-            else
-            {
+            } else if (i + 1 < s.length() && std::isalpha(static_cast<unsigned char>(s[i + 1]))) {
+                m_tokens.push_back(Token<T>(Dot, "."));
+            } else {
                 Fail("unexpected character '", s[i], "'");
             }
             break;
@@ -340,7 +389,7 @@ void Interpreter<T,U>::Lexer(const std::string& s)
         case '#': // inkamath comments
             // Not a return: a line that is only a comment must still reach
             // the empty check below, or the parser starts on no tokens.
-            i = s.length();
+            i = std::min(s.find('\n', i), s.length());
             break;
 		default:
             if(std::isalpha(static_cast<unsigned char>(s[i])))
@@ -452,6 +501,13 @@ PExpression<U> Interpreter<T,U>::ParseEqualExpr()
         ref = PExpression<U>(new RefExpression<U>(name));
         params = ParseParameters();
         sub = ParseSubExpr();
+        if (!AtEnd() && Peek().type == Dot) {
+            PExpression<U> member = ParseMembers(
+                params || sub ? std::make_shared<FuncExpression<U>>(ref, params, sub) : ref);
+            if (!AtEnd() && (Peek().type == Equal || Peek().type == Guard))
+                stack_.Outside(dynamic_cast<const MemberExpression<U>&>(*member));
+            return ParseOrExpr(ParseQuotes(ParseCell(member, true)));
+        }
         // On the left of a definition the brackets define cells, 'M[j<=2,
         // k<=2]' or 'M[1,2]'; anywhere else they read one.
         const PExpression<U> cell  = ParseCell(ref, true);
@@ -705,7 +761,7 @@ PExpression<U> Interpreter<T, U>::ParseSimpleExpr(bool postfix) {
             else {
                 e = ref;
             }
-            if (postfix) e = ParseCell(e, true);
+            if (postfix) e = ParseCell(ParseMembers(e), true);
             break;
 
         case Add:
@@ -776,6 +832,28 @@ PExpression<U> Interpreter<T, U>::ParseSimpleExpr(bool postfix) {
     return e;
 }
 
+// 'g.y_3', 'filters.lowpass(a = 1/2).v_3': names read in an instance or a file.
+// Only a name or a call names one; a term is a value, and has no names.
+template <Parsable T, Numeric U>
+PExpression<U> Interpreter<T, U>::ParseMembers(PExpression<U> object) {
+    while (!AtEnd() && Peek().type == Dot) {
+        const Expression<U>* last = object.get();
+        if (const auto* member = dynamic_cast<const MemberExpression<U>*>(last))
+            last = member->Member().get();
+        if (const auto* term = dynamic_cast<const FuncExpression<U>*>(last); term && term->m_e2())
+            Fail("a term has no names; an instance or a file has, as 'g.y_3'");
+        ++m_i;
+        if (AtEnd() || Peek().type != Func) Fail("expected a name after '.'");
+        const auto     name   = std::make_shared<RefExpression<U>>(m_tokens[m_i++].text);
+        PExpression<U> params = ParseParameters();
+        PExpression<U> sub    = ParseSubExpr();
+        PExpression<U> member = name;
+        if (params || sub) member = std::make_shared<FuncExpression<U>>(name, params, sub);
+        object = std::make_shared<MemberExpression<U>>(object, member);
+    }
+    return object;
+}
+
 // A quote binds to what it follows before any operator does, as Julia's does:
 // 'a^2'' is 'a^(2')'.
 template <Parsable T, Numeric U>
@@ -824,6 +902,11 @@ PExpression<U> Interpreter<T,U>::ParseParameters()
 {
     PExpression<U> e;
     const size_t m_s = m_i;
+    // 'gain()' is 'gain', an instance with every default.
+    if (m_i + 1 < m_tokens.size() && Peek().type == LPar && m_tokens[m_i + 1].type == RPar) {
+        m_i += 2;
+        return e;
+    }
     if (!AtEnd() && m_tokens[m_i++].type == LPar && !AtEnd() && Peek().type != RPar)
     {
         e = ParseMatrix();
@@ -995,38 +1078,7 @@ typename Interpreter<T, U>::Result Interpreter<T, U>::Eval(const std::string& s)
     try {
         /* the following functions might throw some evaluation errors */
         stack_.BeginEvaluation();
-        Lexer(s);
-        const bool fraction = IsWord(m_tokens[0], "frac");
-        if (BeginsLine(m_tokens[0]) && DefinesReserved()) {
-            Fail(m_tokens[0].text, " is reserved, so it cannot be defined");
-        }
-        if (m_tokens[0].type == Query) {
-            result = Echo{ParseQuery()};
-        } else if (IsWord(m_tokens[0], "digits")) {
-            result = Digits(s);
-        } else {
-            m_E = ParseAll(fraction ? 1 : 0);
-            EvaluationVisitor<U> evaluator(stack_);
-            if (EqualExpression<U>* definition = dynamic_cast<EqualExpression<U>*>(m_E.get())) {
-                if (fraction) Fail("frac shows an answer, not a definition");
-                evaluator.Bind(definition, AsWritten(s));
-                result = Echo{AsWritten(s)};
-            } else {
-                // A line being evaluated opens a scope, so a local lives
-                // exactly as long as the line that wrote it. A line that is
-                // only a definition is a definition, parentheses or not, and
-                // takes the branch above.
-                typename ReferenceStack<U>::Frame line(stack_);
-                const U                           value = m_E->accept(evaluator);
-                if (fraction) {
-                    result = Echo{U::toString(value, [this](const T& x) {
-                        return numeric_interface<T>::fraction(x, digits_);
-                    })};
-                } else {
-                    result = value;
-                }
-            }
-        }
+        result = Run(s);
     } catch (const std::exception& e) {
         // Deliberately not catch(...): an exception that is not std::exception
         // is our bug, and laundering it into a diagnostic would hide it.
@@ -1034,6 +1086,241 @@ typename Interpreter<T, U>::Result Interpreter<T, U>::Eval(const std::string& s)
     }
     ResetInterpreter();  // reset whatever happens and forgive the user
     return result;
+}
+
+// Without comments, which may hide a brace.
+inline std::string Uncommented(const std::string& text) {
+    std::string kept;
+    for (size_t start = 0; start <= text.size();) {
+        const size_t end  = std::min(text.find('\n', start), text.size());
+        std::string  line = text.substr(start, end - start);
+        line              = line.substr(0, line.find('#'));
+        line.erase(line.find_last_not_of(" \t\r") + 1);
+        if (start != 0) kept += '\n';
+        kept += line;
+        start = end + 1;
+    }
+    return kept;
+}
+
+inline std::string Trimmed(const std::string& text) {
+    const size_t first = text.find_first_not_of(" \t\r\n");
+    if (first == std::string::npos) return std::string();
+    return text.substr(first, text.find_last_not_of(" \t\r\n") + 1 - first);
+}
+
+// A text of several definitions, a model's body or a file, one a line and
+// continued while a bracket or a brace is open, each with the line it
+// starts on.
+inline std::vector<std::pair<int, std::string>> Statements(std::istream& in) {
+    std::vector<std::pair<int, std::string>> statements;
+    std::string                              line, statement;
+    int                                      first = 0;
+    for (int number = 1; std::getline(in, line); ++number) {
+        if (statement.empty()) {
+            if (Trimmed(Uncommented(line)).empty()) continue;
+            first     = number;
+            statement = line;
+        } else {
+            statement += '\n' + line;
+        }
+        if (Unclosed(statement) > 0) continue;
+        statements.emplace_back(first, statement);
+        statement.clear();
+    }
+    if (!statement.empty()) statements.emplace_back(first, statement);
+    return statements;
+}
+
+template <Parsable T, Numeric U>
+typename Interpreter<T, U>::Result Interpreter<T, U>::Run(const std::string& s) {
+    ResetInterpreter();
+    if (const std::string text = Uncommented(s); text.find('{') != std::string::npos)
+        return Echo{DefineModel(text)};
+    Lexer(s);
+    if (IsWord(m_tokens[0], "use") && m_tokens.size() > 1 && m_tokens[1].type == Func)
+        return Echo{Use(s)};
+    const bool fraction = IsWord(m_tokens[0], "frac");
+    if (BeginsLine(m_tokens[0]) && DefinesReserved()) {
+        Fail(m_tokens[0].text, " is reserved, so it cannot be defined");
+    }
+    if (m_tokens[0].type == Query) return Echo{ParseQuery()};
+    if (IsWord(m_tokens[0], "digits")) return Digits(s);
+    m_E = ParseAll(fraction ? 1 : 0);
+    EvaluationVisitor<U> evaluator(stack_);
+    if (EqualExpression<U>* definition = dynamic_cast<EqualExpression<U>*>(m_E.get())) {
+        if (fraction) Fail("frac shows an answer, not a definition");
+        evaluator.Bind(definition, AsWritten(s));
+        return Echo{AsWritten(s)};
+    }
+    // A line being evaluated opens a scope, so a local lives exactly as long
+    // as the line that wrote it. A line that is only a definition is a
+    // definition, parentheses or not, and takes the branch above.
+    typename ReferenceStack<U>::Frame line(stack_);
+    const U                           value = m_E->accept(evaluator);
+    if (!fraction) return value;
+    return Echo{U::toString(
+        value, [this](const T& x) { return numeric_interface<T>::fraction(x, digits_); })};
+}
+
+// 'use filters' and 'use filters (lowpass)': the file's names reached
+// qualified, and those listed unqualified too.
+template <Parsable T, Numeric U>
+std::string Interpreter<T, U>::Use(const std::string& s) {
+    const std::string        name = m_tokens[1].text;
+    std::vector<std::string> listed;
+    size_t                   i = 2;
+    if (i < m_tokens.size()) {
+        if (m_tokens[i].type != LPar) Fail("unexpected '", m_tokens[i].text, "'");
+        do {
+            if (++i >= m_tokens.size() || m_tokens[i].type != Func)
+                Fail("expected a name to bring in, as 'use ", name, " (a, b)'");
+            listed.push_back(m_tokens[i++].text);
+        } while (i < m_tokens.size() && m_tokens[i].type == Comma);
+        if (i >= m_tokens.size() || m_tokens[i].type != RPar)
+            Fail("missing ')' after '", m_tokens[i - 1].text, "'");
+        if (++i < m_tokens.size()) Fail("unexpected '", m_tokens[i].text, "'");
+    }
+    const std::shared_ptr<Scope<U>> file = Load(name);
+    for (const std::string& brought : listed)
+        if (file->names.count(brought) == 0) Fail(file->file, " defines no ", brought);
+    auto used  = std::make_shared<Reference<U>>(name);
+    used->file = file;
+    used->home = &stack_.Target();
+    stack_.Put(name, used);
+    for (const std::string& brought : listed) stack_.Put(brought, file->names.at(brought));
+    return AsWritten(s);
+}
+
+// A file's definitions, run into a scope of their own, beside the file that
+// names it. One that fails loads nothing.
+template <Parsable T, Numeric U>
+std::shared_ptr<Scope<U>> Interpreter<T, U>::Load(const std::string& name) {
+    const std::string           file = name + ".ink";
+    const std::filesystem::path path = directory_ / file;
+    const std::string           key  = std::filesystem::weakly_canonical(path).string();
+    if (const auto loaded = files_.find(key); loaded != files_.end()) {
+        if (!loaded->second) Fail(file, " uses itself");
+        return loaded->second;
+    }
+    std::ifstream in(path);
+    if (!in) Fail("cannot read ", file);
+    const auto statements = Statements(in);
+
+    auto scope                            = std::make_shared<Scope<U>>();
+    scope->parent                         = &stack_.Builtins();
+    scope->label                          = name;
+    scope->file                           = file;
+    files_[key]                           = nullptr;
+    const std::filesystem::path directory = directory_;
+    directory_                            = path.parent_path();
+    try {
+        const typename ReferenceStack<U>::Into into(stack_, *scope);
+        for (const auto& [line, statement] : statements) {
+            try {
+                if (std::holds_alternative<U>(Run(statement)))
+                    Fail("a file used holds definitions, not answers");
+            } catch (const std::exception& e) {
+                throw std::runtime_error(file + ", line " + std::to_string(line) + ": " + e.what());
+            }
+        }
+    } catch (...) {
+        files_.erase(key);
+        directory_ = directory;
+        throw;
+    }
+    directory_  = directory;
+    files_[key] = scope;
+    return scope;
+}
+
+template <Parsable T, Numeric U>
+std::string Interpreter<T, U>::DefineModel(const std::string& text) {
+    auto [name, model] = ParseModel(text);
+    model->scope       = &stack_.Target();
+    auto definition    = std::make_shared<Reference<U>>(name);
+    definition->model  = model;
+    definition->home   = &stack_.Target();
+    stack_.Put(name, definition);
+    return model->header + " = { ... }";
+}
+
+// 'gain(k = 2, b = 1, x_n) = { ... }', its text without comments.
+template <Parsable T, Numeric U>
+std::pair<std::string, std::shared_ptr<Model<U>>> Interpreter<T, U>::ParseModel(
+    const std::string& text) {
+    const char*  form  = "a model is written name(parameters) = { definitions }";
+    const size_t open  = text.find('{');
+    const size_t close = text.rfind('}');
+    if (close == std::string::npos || close < open) Fail("missing '}' after the body of a model");
+    if (const std::string rest = Trimmed(text.substr(close + 1)); !rest.empty())
+        Fail("unexpected '", rest, "' after '}'");
+    std::string header = Trimmed(text.substr(0, open));
+    if (header.empty() || header.back() != '=') Fail(form);
+    header = Trimmed(header.substr(0, header.size() - 1));
+
+    ResetInterpreter();
+    if (header.empty()) Fail(form);
+    Lexer(header);
+    const Token<T>& head = m_tokens[0];
+    if (head.type != Func) Fail(form);
+    if (IsLimit(head) || IsSeries(head) || IsLogic(head) || BeginsLine(head) || IsWord(head, "use"))
+        Fail(head.text, " is reserved, so it cannot be defined");
+    const std::string name      = head.text;
+    m_i                         = 1;
+    const PExpression<U> params = ParseParameters();
+    if (!AtEnd()) Fail(form);
+
+    auto model    = std::make_shared<Model<U>>();
+    model->header = header;
+    std::vector<PExpression<U>> given;
+    if (params) given = params->Children();
+    for (const PExpression<U>& written : given) {
+        typename Model<U>::Parameter parameter;
+        PExpression<U>               left = written;
+        if (const auto* equal = dynamic_cast<const EqualExpression<U>*>(written.get())) {
+            left               = equal->m_e1();
+            parameter.fallback = equal->m_e2();
+        }
+        const auto* term = dynamic_cast<const FuncExpression<U>*>(left.get());
+        const auto* index =
+            term ? dynamic_cast<const RefExpression<U>*>(term->m_e2().get()) : nullptr;
+        if (dynamic_cast<const RefExpression<U>*>(left.get())) {
+            parameter.name = left->Name();
+        } else if (index && !term->m_e1() && !term->Children()[2] && !term->Children()[3]) {
+            parameter.name  = term->Name();
+            parameter.index = index->Name();
+        } else {
+            Fail("a model's parameter is a name, as 'k = 2', or an input, as 'x_n'");
+        }
+        for (const auto& other : model->parameters)
+            if (other.name == parameter.name)
+                Fail(name, " has two parameters named ", parameter.name);
+        model->parameters.push_back(std::move(parameter));
+    }
+
+    std::istringstream body(text.substr(open + 1, close - open - 1));
+    for (const auto& [line, written] : Statements(body)) {
+        typename Model<U>::Statement statement;
+        statement.written = Trimmed(written);
+        if (statement.written.find('{') != std::string::npos) {
+            std::tie(statement.name, statement.model) = ParseModel(statement.written);
+            statement.written.clear();
+        } else {
+            ResetInterpreter();
+            Lexer(statement.written);
+            statement.definition = ParseAll();
+            if (!dynamic_cast<const EqualExpression<U>*>(statement.definition.get()))
+                Fail("a model's body holds definitions, not '", statement.written, "'");
+            statement.name = statement.definition->Name();
+        }
+        for (const auto& parameter : model->parameters) {
+            if (parameter.name == statement.name)
+                Fail(statement.name, " is a parameter of ", name, ", so its body cannot define it");
+        }
+        model->body.push_back(std::move(statement));
+    }
+    return {name, model};
 }
 
 #endif

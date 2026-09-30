@@ -10,10 +10,12 @@
 
 #include <algorithm>
 #include <exception>
+#include <memory>
 #include <numeric>
 #include <optional>
 #include <stdexcept>
 #include <tuple>
+#include <unordered_map>
 #include <vector>
 
 // Nesting too deep, told apart from other failures because a recurrence can
@@ -62,10 +64,56 @@ template <typename T>
 class EvaluationVisitor;
 
 template <typename T>
+struct Scope;
+
+template <typename T>
+struct Model;
+
+template <typename T>
 class Reference {
 public:
+    Reference() = default;
+    explicit Reference(std::string name) : reference_name_(std::move(name)) {}
+
+    [[nodiscard]] const std::string& Name() const { return reference_name_; }
+
+    // Where the definition was written, and so where the names it reads are
+    // sought; null for a local, which reads them where it is evaluated.
+    const Scope<T>* home = nullptr;
+
+    // What makes a name something other than a value: a model, a file used,
+    // or an input nothing supplies (MODERNIZATION.md, phase 15).
+    std::shared_ptr<const Model<T>> model;
+    std::shared_ptr<const Scope<T>> file;
+    bool                            input = false;
+
+    // What an unnamed instance's argument read of the frame it was written in,
+    // which is gone by the time the argument is evaluated.
+    std::vector<std::pair<std::string, T>> captured;
+
+    [[nodiscard]] bool Value() const { return !model && !file && !input; }
+
+    // Whether it is written as a name applied to arguments and nothing else,
+    // 'gain(x_n = n)', which is an instance where the name is a model's. Asked
+    // at every evaluation, so answered once.
+    [[nodiscard]] bool Applied() const {
+        if (!applied_) {
+            const Clause<T>*     only = clauses_.size() == 1 ? &clauses_.front() : nullptr;
+            const Expression<T>* callee =
+                only && IsPlain(*only) && only->parameters.parameters_names().empty()
+                    ? only->expression.get()
+                    : nullptr;
+            if (const auto* member = dynamic_cast<const MemberExpression<T>*>(callee))
+                callee = member->Member().get();
+            const auto* call = dynamic_cast<const FuncExpression<T>*>(callee);
+            applied_         = dynamic_cast<const RefExpression<T>*>(callee) ||
+                       (call && !call->m_e2() && !call->limit());
+        }
+        return *applied_;
+    }
 
     void add_expression(const std::string& ai_reference_name, const ParametersDefinition<T>& ai_parameters, PExpression<T>  ai_expression, const std::string& written = std::string()) {
+        applied_.reset();
         if(reference_name_.empty()) {
             reference_name_ = ai_reference_name;
         }
@@ -195,7 +243,9 @@ public:
             }
         }
 
-        typename ReferenceStack<T>::Frame frame(stack);
+        typename ReferenceStack<T>::Within within(stack, home);
+        typename ReferenceStack<T>::Frame  frame(stack);
+        ParametersDefinition<T>::Bind(captured, stack);
         ParametersDefinition<T>::Bind(arguments, stack);
         EvaluationVisitor<T> evaluator(stack);
         parameters.BindDefaults(call, evaluator);
@@ -333,7 +383,9 @@ private:
         const MemoKey key = memoisable ? Key(true, k, arguments) : MemoKey();
         if (memoisable)
             if (const T* memoised = stack.Memoised(key)) return *memoised;
-        typename ReferenceStack<T>::Frame frame(stack);
+        typename ReferenceStack<T>::Within within(stack, home);
+        typename ReferenceStack<T>::Frame  frame(stack);
+        ParametersDefinition<T>::Bind(captured, stack);
         ParametersDefinition<T>::Bind(arguments, stack);
         EvaluationVisitor<T> evaluator(stack);
         CallParameters().BindDefaults(call, evaluator);
@@ -784,6 +836,127 @@ private:
 
     // The whole definition: its clauses, in the order they were written.
     std::vector<Clause<T>> clauses_;
+
+    mutable std::optional<bool> applied_;
+};
+
+// The names one file, one instance or the session defines, and where a name
+// none of them defines is sought next.
+template <typename T>
+struct Scope {
+    std::unordered_map<std::string, std::shared_ptr<const Reference<T>>> names;
+    const Scope*                                                         parent = nullptr;
+    // How the session names it, 'g' or 'filters'; empty for the session's own.
+    std::string label;
+    // The file it was read from, for a file's.
+    std::string file;
+    // What defines a named instance, 'gain(x_n = n)'.
+    std::string defined;
+
+    [[nodiscard]] std::string Qualified(const std::string& name) const {
+        return label.empty() ? name : label + "." + name;
+    }
+};
+
+// A function whose value is a group of definitions (MODERNIZATION.md, phase
+// 15). Its signature is its interface -- a parameter has a default, an input
+// has none -- and its body is installed afresh in each instance.
+template <typename T>
+struct Model {
+    struct Parameter {
+        std::string    name;
+        std::string    index;     // 'n', for an input written 'x_n'
+        PExpression<T> fallback;  // null for an input
+    };
+    struct Statement {
+        std::string                     name;
+        PExpression<T>                  definition;  // an EqualExpression, or null
+        std::shared_ptr<const Model<T>> model;       // or a model defined inside
+        std::string                     written;
+    };
+    struct Argument {
+        PExpression<T> expression;
+        std::string    index;
+    };
+
+    std::string            header;  // 'gain(k = 2, b = 1, x_n)'
+    std::vector<Parameter> parameters;
+    std::vector<Statement> body;
+    const Scope<T>*        scope = nullptr;  // where it was written
+
+    [[nodiscard]] std::string Describe() const {
+        std::string text = header + " = {\n";
+        for (const Statement& statement : body) {
+            const std::string written =
+                statement.model ? statement.model->Describe() : statement.written;
+            for (size_t start = 0; start < written.size();) {
+                const size_t end = std::min(written.find('\n', start), written.size());
+                text += "    " + written.substr(start, end - start) + "\n";
+                start = end + 1;
+            }
+        }
+        return text + "}";
+    }
+
+    // One name an instance has, to read in a message: the first the body
+    // defines, at its lowest index if it is a sequence.
+    [[nodiscard]] std::string Example() const {
+        const auto head = std::find_if(body.begin(), body.end(),
+                                       [](const Statement& s) { return bool(s.definition); });
+        if (head == body.end()) return parameters.empty() ? "" : parameters.front().name;
+        std::optional<int> lowest;
+        bool               indexed = false;
+        for (const Statement& statement : body) {
+            if (statement.name != head->name || !statement.definition) continue;
+            const std::vector<PExpression<T>>& left =
+                statement.definition->Children()[0]->Children();
+            if (left.empty() || !left[1]) continue;
+            indexed = true;
+            if (const auto* at = dynamic_cast<const ValExpression<T>*>(left[1].get()))
+                lowest = std::min(lowest.value_or(AsIndex<T>(at->value)), AsIndex<T>(at->value));
+        }
+        return indexed ? head->name + "_" + std::to_string(lowest.value_or(0)) : head->name;
+    }
+
+    // One argument per parameter, empty where the call gives none.
+    std::vector<std::optional<Argument>> Bind(const std::string&       name,
+                                              const ParametersCall<T>& call) const {
+        std::vector<PExpression<T>> given;
+        if (const auto* list = dynamic_cast<const MatExpression<T>*>(call.arguments().get()))
+            given = list->Children();
+        if (given.size() > parameters.size()) {
+            throw std::runtime_error(
+                name + " expects " + std::to_string(parameters.size()) +
+                (parameters.size() == 1 ? " argument, got " : " arguments, got ") +
+                std::to_string(given.size()));
+        }
+        std::vector<std::optional<Argument>> bound(parameters.size());
+        size_t                               positional = 0;
+        for (const PExpression<T>& argument : given) {
+            const auto* named = dynamic_cast<const EqualExpression<T>*>(argument.get());
+            if (!named) {
+                bound[positional] = Argument{argument, parameters[positional].index};
+                ++positional;
+                continue;
+            }
+            std::string index;
+            if (const auto* term = dynamic_cast<const FuncExpression<T>*>(named->m_e1().get())) {
+                const auto* variable = dynamic_cast<const RefExpression<T>*>(term->m_e2().get());
+                if (!variable || term->m_e1())
+                    throw std::runtime_error("an argument is named as 'k = 2', or 'x_n = n'");
+                index = variable->Name();
+            }
+            const std::string& key   = named->m_e1()->Name();
+            const auto         found = std::find_if(parameters.begin(), parameters.end(),
+                                                    [&](const Parameter& p) { return p.name == key; });
+            if (found == parameters.end())
+                throw std::runtime_error(name + " has no parameter " + key);
+            std::optional<Argument>& slot = bound[static_cast<size_t>(found - parameters.begin())];
+            if (slot) throw std::runtime_error(name + " got two values for " + key);
+            slot = Argument{named->m_e2(), index};
+        }
+        return bound;
+    }
 };
 
 #endif // HPP_INKREFERENCE

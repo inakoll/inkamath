@@ -1943,57 +1943,51 @@ Nothing asks for it while exactness stops at a thousand digits. Relevance is
 the notation -- recurrences, `lim`, series as on paper, exact by default --
 which Python spells as code; speed is a guardrail, not the race.
 
-## Phase 15 — Files and their scopes `[planned]`
+## Phase 15 — Models, files and their scopes `[in progress]`
 
-After `and` and `or` (next in line). Two things asked for it. The domains
-explored in phase 14 want reuse: the PID, the Kalman filters and the heat
-equation repeat the identity by cells and a stiffness matrix, and `round`,
-`ceil` and `mod` are a line of `floor` each, documented rather than there. And
-a compiled model's interface is not one a reader can find: `pid.ink` and its
-header do not say how the one is meant to be used from the other.
+After `and` and `or`. Three things asked for it. The domains explored in
+phase 14 want reuse: the PID, the Kalman filters and the heat equation repeat
+the identity by cells and a stiffness matrix, and `round`, `ceil` and `mod`
+are a line of `floor` each, documented rather than there. A compiled model's
+interface is not one a reader can find: `pid.ink` and its header do not say
+how the one is meant to be used from the other. And a comparison with SCADE
+and Simulink found composition the weakest point: a model cannot be used
+twice, under two sets of parameters, or wired to another. That comparison is
+a check, not a template; the forms below were argued from inkamath's own
+notation.
 
 **Loading needs scoping, from the first file.** Names in mathematics are short
 -- the heat equation alone defines `N`, `h`, `K`, `I`, `B` and `A` -- and a
 global is read when it is used, not when it is defined: after `A = 2*h`,
 redefining `h` changes `A`. Running a file's definitions into the session
 would break both ways at once, silently: its `h` replaces the user's step, and
-the user's later `h` changes what its `A` computes. So a file is a scope:
+the user's later `h` changes what its `A` computes. So a file is a scope, and
+so is a model:
 
-- Its definitions read its own names first, then the prelude's and the
-  built-ins', never the session's.
-- The session reaches them qualified, `heat.A`, `heat.u_10`: `.` after a name
-  is an error today, so the spelling is free. `use "heat.ink" (u, A)` brings
-  in unqualified only the names listed.
+- Its definitions read its own names first, then those of the file around
+  it, then the prelude's and the built-ins', never the session's.
+- The session reaches them qualified, `filters.a0`, `fast.v_3`: `.` after a
+  name is an error today, so the spelling is free. `use filters (lowpass)`
+  brings in unqualified only the names listed.
 - The prelude is the outermost scope, its names unqualified and replaceable,
-  as the built-ins are. From the inside out a name is sought in the line's
-  locals, the session, then the prelude and the built-ins; another file is
-  reached only by its qualified names.
+  as the built-ins are. From the session a name is sought in the line's
+  locals, the session, then the prelude and the built-ins; a file or an
+  instance is reached only by its qualified names.
 - Each definition knows the scope it was written in and resolves there; the
   globals become one table per scope. The memo is keyed on the definition,
   so it needs nothing.
 
-Qualified names are the whole of the machinery: visibility, re-exports and
-nested modules wait for a need.
+Visibility, re-exports and declared outputs wait for a need.
 
-**A module's interface is the same in both notations.** What exists today,
-read from `pid.ink` and `pid.h`, is three conventions no file states. An input
-is a name nothing defines, so `y` is one only by its absence: the interpreter
-cannot run `pid.ink` alone -- `u_5` is *y is not defined* -- and a misspelled
-name compiles into a second argument of the step. A parameter is any plain
-definition, a gain and an internal constant alike, each a field the host
-assigns before calling `update`. An output is any sequence, read from its
-window, where `m.u[0]` is `u_n` and `m.x[3]` is `x_(n-3)`. Scopes give one
-rule for all three:
+**What the interface is today**, read from `pid.ink` and `pid.h`, is three
+conventions no file states. An input is a name nothing defines, so `y` is one
+only by its absence: the interpreter cannot run `pid.ink` alone -- `u_5` is
+*y is not defined* -- and a misspelled name compiles into a second argument
+of the step. A parameter is any plain definition, a gain and an internal
+constant alike, each a field the host assigns before calling `update`. An
+output is any sequence, read from its window, where `m.u[0]` is `u_n` and
+`m.x[3]` is `x_(n-3)`.
 
-- **A parameter is a definition the module has; an input is one it lacks.**
-  From the session both are supplied the same way, by a qualified definition:
-  `pid.kp = 3` replaces a gain, `pid.y_n = plant_n` supplies the measurement,
-  and a closed loop is two modules that read each other's qualified terms.
-  Compiled, the same two are a field assigned before `update` and an argument
-  of the step.
-- **An input is declared, not inferred**, so that a misspelling is an error in
-  both notations and the file says what it needs. The spelling is for the
-  transcript.
 - `[done]` **The header opens with the interface** it compiled, in the terms
   of the file: its inputs, as arguments of the step; its parameters, with
   their values, as fields assigned before `update`; and each sequence, with
@@ -2001,13 +1995,97 @@ rule for all three:
   Done ahead of the phase, since it needs no scope: a usage sketch and a
   paragraph, which absorbed the line naming what was compiled in.
 
-To decide, in a transcript first: the spelling of `use` and of a declared
-input; whether the prelude loads unless declined; paths relative to the file
-that names them; a file loaded once per session, so a diamond or a cycle
-loads nothing twice; errors that name the file and line; `?heat.A` printing
-what the file wrote; the compiler compiling a module qualified, `heat_dt`,
-and passing over what the prelude defined and no model redefined, as it does
-a built-in.
+**Two forms of reuse were compared**, in a draft transcript, on the same three
+examples: a gain fed an input, two low-pass filters in series, and a
+controller closing a loop around a plant.
+
+- **A. A file is a model.** `use lowpass as fast` loads `lowpass.ink` into a
+  scope named `fast`, and a second name is a second instance. An input is
+  declared, `u_n = input`, and it and any parameter are replaced from the
+  session by a qualified definition, `fast.a = 1/2`.
+- **B. A model is a function whose value is a group of definitions.**
+  `lowpass(a = 1/10, u_n) = { ... }`, in braces, one definition a line. An
+  instance is a definition, `fast = lowpass(a = 1/2, u_n = 1)`, and `use
+  filters` only imports a file.
+
+|                         | A: a file is a model                      | B: models in braces                           |
+|-------------------------|-------------------------------------------|-----------------------------------------------|
+| new syntax              | `use F as name`, `x_n = input`            | `= { ... }`, a call's result read qualified   |
+| an instance             | a load under a name                       | a definition, as any other                    |
+| its inputs              | declared in the file, then replaced       | in the signature, supplied as arguments       |
+| a library of small ones | one file per model                        | one file, which `use` imports                 |
+| at the prompt           | no: a model is a file                     | yes: a brace continues the line               |
+| a model used once       | not without a name                        | `lowpass(...).v_3`, unnamed                   |
+| a closed loop           | two files, wired afterwards               | two definitions, in either order              |
+| builds on               | scopes; a file loaded under two names     | scopes; named arguments with defaults         |
+
+**B was chosen**: it reads better, and every row but the first goes its way.
+A's one advantage, a model without new syntax, is paid for by wiring done
+from outside, after the fact, which is where A reads worst. What B decides:
+
+- **The signature is the interface.** A parameter has a default, an input
+  has none, and an input indexed is a sequence. A misspelled argument is an
+  error where it is written, *gain has no parameter z*, which is what A's
+  declared input was for.
+- **An instance's names are all readable**, qualified: its terms, its
+  parameters, its inputs and the instances it holds, `h.low.v_3`. Outputs are
+  not declared.
+- **An argument is a clause written in the session**: it reads the session's
+  names, and follows them as any definition does. The session never defines
+  an instance's names, nor a file's, from outside; an instance is changed
+  where it is defined.
+- **An instance evaluates nothing when defined**, so the two halves of a
+  closed loop may be written in either order, and reads its model when it is
+  read, so that a model redefined changes its instances, as a function
+  redefined changes what calls it.
+- **Compiled, a model is compiled by name**, `inkamath --compile filters.ink
+  lowpass`: its parameters are fields, with their defaults, and its inputs
+  the step's arguments, the interface the header already states. A file of
+  instances compiles to nested structs, one step for them all.
+
+`[done]` In the interpreter, specified in `test/data/spec/models.ink`, over
+`filters.ink` and `bad.ink` beside it, and now `test/data/models.ink`
+unchanged; it replaced a specification of form A written first. `use filters` names a file by its stem, beside the file that
+names it, so that no string enters the language; a file is loaded once, so a
+diamond or a cycle loads nothing twice; a file that cannot be read or parsed
+loads nothing and names the file and line; `?gain` prints the model as
+written; and at the prompt an open brace continues the line as a bracket
+does, keeping the breaks, since the body is one definition a line.
+
+The prelude is not a file the session uses but text built into the
+interpreter and included bare beneath the session, as C includes a header:
+no scope and no qualified name, and its names seen unqualified from every
+scope, a model's body included. It holds `ceil` and `mod`, not `round`, whose
+rule is the model's, as `floor` decided. A name it defines, as a built-in,
+is replaced for the session only, so that `floor = 3` leaves the prelude's
+`ceil` reading the built-in. Pasted into the session instead, the prelude
+would be invisible from a model and broken by that replacement. Later, when
+a library needs it: an `include` of a user's file, beneath the session as
+the prelude is, of the definitions its header marks `export`.
+
+What the interpreter does, beyond the transcript. The globals are a chain of
+scopes, the built-ins at its root, and a definition carries the scope it was
+written in, where what it reads is sought. An instance is made when it is
+first read and kept until a top-level definition clears the memo, which is
+when anything it read could have changed: a named one by its definition, an
+unnamed one by where it is written and the scope reading it. An unnamed
+instance inside a function, `f(a) = lowpass(a, 1).v_2`, takes the values its
+arguments read of the call's frame, since that frame is gone by the time an
+argument is evaluated, and so is one instance per value. Two outputs moved:
+`a.b` in `basics.ink` reads `b` of `a` rather than refusing the point, and
+`f()` is `f`, so that `gain()` is the instance with every default.
+
+What it leaves. A message raised inside an instance names the definition as
+the model wrote it, `y is a sequence`, not `g.y`; only the messages the
+scopes themselves raise are qualified. A file is named by its stem, beside
+the file that names it, and so never from a directory below. A loop without
+a delay, `q = gain(x_n = q.y_n)`, is reported as nesting too deep.
+
+Still to decide, in a transcript first: the compiler's half, for its own
+transcript; it refuses a name read in an instance or a file for now. Later,
+and separately: a static check of causality, so that a loop without a delay
+is reported where the instances are defined rather than when a term is
+read.
 
 ## Sequencing
 
@@ -2095,7 +2173,7 @@ that exploring seven domains asked of the interpreter, by how many asked.
   answered by the interpreter and skipped by the step. `floor` is generated
   only of values a double holds exactly, since of any other its jump at an
   integer is where rounding shows; `adc.ink` is the readable case. Then
-  phase 15, files and their scopes, before what follows.
+  phase 15, models, files and their scopes, before what follows.
 - `[done]` **A sequence's terms cell by cell**, which a layer of a network
   needs. Specified in `test/data/spec/terms.ink`, now `test/data/terms.ink`
   unchanged: `h_n[j<=3, k<=1] = ...` as a
@@ -2133,3 +2211,7 @@ that exploring seven domains asked of the interpreter, by how many asked.
   inverse times `b` as written. The order is the product's too: `A` is
   factored, and a singular one refused, before `b` is read. A sparse matrix,
   if ever, comes after it.
+- `[done]` **Models, files and their scopes**, in the interpreter (phase 15):
+  a model written in braces, an instance a definition read after a point,
+  `use` for a file and the prelude beneath the session. The compiler's half
+  is next, from its own transcript.

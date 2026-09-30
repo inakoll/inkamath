@@ -26,7 +26,8 @@ enum Type {
     Semico,
     Query,
     Approx,
-    Quote
+    Quote,
+    Dot
 };
 
 template <typename T>

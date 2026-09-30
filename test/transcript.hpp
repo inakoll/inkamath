@@ -10,9 +10,10 @@
 //     >> [pi, e]
 //     3.14159265 2.71828183
 //
-// Lines starting with ">> " are fed to the interpreter; everything up to the
-// next ">> " (or EOF) is the expected output. Lines starting with '#' at
-// column 0 are comments and are preserved when re-recording.
+// Lines starting with ">> " are fed to the interpreter, with the ".. " lines
+// that follow as their continuation; everything up to the next ">> " (or EOF)
+// is the expected output. Lines starting with '#' at column 0 are comments
+// and are preserved when re-recording.
 //
 // One interpreter instance runs a whole file, so definitions persist between
 // entries exactly as they do in a real session.
@@ -78,6 +79,11 @@ inline std::vector<Item> parse(std::istream& in) {
             // leading space after ">>" is cosmetic
             if (!item.text.empty() && item.text.front() == ' ') item.text.erase(0, 1);
             items.push_back(std::move(item));
+        } else if (line.rfind("..", 0) == 0 && !items.empty() && items.back().is_entry &&
+                   items.back().expected.empty()) {
+            std::string more = rstrip(line.substr(2));
+            if (!more.empty() && more.front() == ' ') more.erase(0, 1);
+            items.back().text += '\n' + more;
         } else if (!items.empty() && items.back().is_entry && (line.empty() || line[0] != '#')) {
             items.back().expected += line;
             items.back().expected += '\n';
@@ -102,7 +108,15 @@ inline std::string render(const std::vector<Item>& items) {
             out << item.text << '\n';
             continue;
         }
-        out << ">> " << item.text << '\n';
+        out << ">> ";
+        for (const char c : item.text) {
+            if (c == '\n') {
+                out << "\n.. ";
+            } else {
+                out << c;
+            }
+        }
+        out << '\n';
         if (!item.expected.empty()) out << item.expected << '\n';
         out << '\n';
     }

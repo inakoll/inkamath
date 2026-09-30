@@ -28,6 +28,7 @@ bool recording() {
 // observed output replaces the expectation instead of being checked.
 void replay(std::vector<transcript::Item>& items, const std::string& label, bool record) {
     Interpreter<Number> interpreter;
+    interpreter.Directory(data_dir());
 
     for (transcript::Item& item : items) {
         if (!item.is_entry) continue;
@@ -120,6 +121,9 @@ TEST_CASE("logic") {
 }
 TEST_CASE("terms") {
     check_transcript("terms.ink");
+}
+TEST_CASE("models") {
+    check_transcript("models.ink");
 }
 TEST_CASE("errors") {
     check_transcript("errors.ink");

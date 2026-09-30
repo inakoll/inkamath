@@ -125,7 +125,7 @@ inverts a matrix at every step, and `test/compile/heat.ink` once, in `update`;
 `test/compile/adc.ink` rounds with `floor` and tests with `and` and `or`, and
 `test/compile/net.ink` is a small network whose terms are defined by cells.
 The compiler refuses by name what it cannot yet
-express, such as functions, limits and infinite series.
+express, such as functions, limits, infinite series and models (section 5).
 
 Interpreter behaviour is pinned by golden transcripts in `test/data/*.ink`,
 which are literal sessions — every example in this file is one of them, so the
@@ -157,9 +157,10 @@ fraction, and `digits = n` sets how many digits are shown.
 Numbers are complex; `i` is the imaginary unit. `e` and `pi` are the only
 other built-in values, and `floor` the only built-in function: the largest
 whole number not above its argument, exact of an exact number and cell by
-cell of a matrix. Any other rounding is a line of it, by the rule the model
-needs — `round(x) = floor(x + 1/2)`, `mod(a, b) = a - b*floor(a/b)` — and,
-like `pi`, `floor` can be defined again.
+cell of a matrix. `ceil(x) = -floor(-x)` and `mod(a, b) = a - b*floor(a/b)`
+come with it, from a prelude (section 5). Any other rounding is a line of it,
+by the rule the model needs — `round(x) = floor(x + 1/2)` — and, like `pi`,
+each of them can be defined again.
 
 | | |
 |---|---|
@@ -176,7 +177,9 @@ like `pi`, `floor` can be defined again.
 | `name = expr` | definition (section 3) |
 | `name \| cond = expr` | a definition in cases (section 3) |
 | `lim name` | the limit of a sequence (section 4) |
-| `?name` | print a definition back (section 5) |
+| `name.name` | a name of an instance or a file (section 5) |
+| `use file` | read a file's definitions (section 5) |
+| `?name` | print a definition back (section 6) |
 | `frac expr` | the answer as an exact fraction |
 | `digits` `digits = n` | the significant digits shown, 1 to 1000, 9 unless set |
 
@@ -613,7 +616,81 @@ makes no difference to what an expression means; it makes the difference
 between a chain of terms and a tree of them for a recurrence whose general
 clause names itself twice, as a pair of mutually recursive sequences does.
 
-### 5. Printing a definition back
+### 5. Models and files
+
+A model is defined as a function is, its value a group of definitions in
+braces, one a line; at the prompt an open brace continues the line, as an open
+bracket does. Its signature is its interface: a parameter has a default, and
+an input has none. An instance is a definition, the model applied to
+arguments, and its names are read after a point:
+
+```
+>> lowpass(a = 1/10, u_n) = {
+..     v_0 = 0
+..     v_n = a*u_n + (1-a)*v_(n-1)
+.. }
+lowpass(a = 1/10, u_n) = { ... }
+
+>> fast = lowpass(a = 1/2, u_n = 1)
+fast = lowpass(a = 1/2, u_n = 1)
+
+>> slow = lowpass(a = 1/4, u_n = fast.v_n)
+slow = lowpass(a = 1/4, u_n = fast.v_n)
+
+>> frac slow.v_3
+55/128
+```
+
+A model's body reads its parameters, its inputs and its own names, then those
+of the file it is written in, never the session's. An argument reads the
+session's, where it is written, and follows them as any definition does. A
+model used once needs no name, and an input left out says so when it is read:
+
+```
+>> frac lowpass(u_n = 1).v_1
+1/10
+
+>> lowpass().v_1
+error: lowpass(...).u_1 is an input, and nothing defines it
+```
+
+Defining an instance evaluates nothing, so two that read each other's terms,
+a controller and the plant it drives, are written in either order:
+
+```
+>> controller(kp = 2, r = 1, y_n) = { u_n = kp*(r - y_n) }
+controller(kp = 2, r = 1, y_n) = { ... }
+
+>> plant(dt = 1/2, u_n) = {
+..     x_0 = 0
+..     x_n = x_(n-1) + dt*(u_(n-1) - x_(n-1))
+.. }
+plant(dt = 1/2, u_n) = { ... }
+
+>> ctl = controller(y_n = plt.x_n)
+ctl = controller(y_n = plt.x_n)
+
+>> plt = plant(u_n = ctl.u_n)
+plt = plant(u_n = ctl.u_n)
+
+>> frac plt.x_3
+3/4
+```
+
+An instance is changed where it is defined: `fast.a = 1` is an error, and
+`fast = lowpass(a = 1, u_n = 1)` the way to say it. Redefined, a model
+changes its instances, as a function redefined changes what calls it.
+
+`use filters` reads `filters.ink`, beside the file that names it, into a scope
+of its own: the session reaches its names qualified, `filters.lowpass`, and
+`use filters (lowpass)` brings in unqualified those listed. A file is read
+once, holds definitions only, and one that cannot be read or parsed loads
+nothing and says where. The prelude that defines `ceil` and `mod` is included
+bare beneath the session, as the built-ins are: every scope sees it, and a
+session that defines one of its names again does so for itself alone.
+`test/data/models.ink` is the whole of it.
+
+### 6. Printing a definition back
 
 `?name` shows what a name is bound to, as it was written, without evaluating
 it.
@@ -645,7 +722,7 @@ s_n=s_(n-1)/2
 s_0=1
 ```
 
-### 6. Diagnostics
+### 7. Diagnostics
 
 An expression either produces a value or says why it cannot. Nothing evaluates
 to zero by default.
