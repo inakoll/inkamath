@@ -194,13 +194,13 @@ TEST_CASE("nested calls parse in linear time") {
 
 TEST_SUITE_END();
 
-// Files and their scopes, which the interpreter does not have yet. Marked
-// may_fail so the gap is reported on every run without gating CI, and never
-// recorded: a specification taken from the code it judges is worth nothing.
+// Models, files and their scopes, which the interpreter does not have yet.
+// Marked may_fail so the gap is reported on every run without gating CI, and
+// never recorded: a specification taken from the code it judges is worth nothing.
 TEST_SUITE_BEGIN("spec");
 
-TEST_CASE("scopes" * doctest::may_fail()) {
-    check_spec("spec/scopes.ink");
+TEST_CASE("models" * doctest::may_fail()) {
+    check_spec("spec/models.ink");
 }
 
 TEST_SUITE_END();
