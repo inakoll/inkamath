@@ -1944,7 +1944,7 @@ Nothing asks for it while exactness stops at a thousand digits. Relevance is
 the notation -- recurrences, `lim`, series as on paper, exact by default --
 which Python spells as code; speed is a guardrail, not the race.
 
-## Phase 15 — Models, files and their scopes `[in progress]`
+## Phase 15 — Models, files and their scopes `[done]`
 
 After `and` and `or`. Three things asked for it. The domains explored in
 phase 14 want reuse: the PID, the Kalman filters and the heat equation repeat
@@ -2272,7 +2272,9 @@ that exploring seven domains asked of the interpreter, by how many asked.
   inverse times `b` as written. The order is the product's too: `A` is
   factored, and a singular one refused, before `b` is read. A sparse matrix,
   if ever, comes after it.
-- `[done]` **Models, files and their scopes**, in the interpreter (phase 15):
-  a model written in braces, an instance a definition read after a point,
-  `use` for a file and the prelude beneath the session. The compiler's half
-  is next, from its own transcript.
+- `[done]` **Models, files and their scopes** (phase 15): in the
+  interpreter, a model written in braces, an instance a definition read after
+  a point, `use` for a file and the prelude beneath the session; compiled, a
+  model by its name and a file's instances into one step; and a loop without
+  a delay refused where it is closed. What it leaves, and an idea for errors
+  inside an instance, close the phase.
