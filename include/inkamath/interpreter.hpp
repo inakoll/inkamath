@@ -115,6 +115,13 @@ public:
     // What the session has defined, for the compiler to read.
     [[nodiscard]] const ReferenceStack<U>& Definitions() const { return stack_; }
 
+    // A model's instance with every default, which the compiler compiles.
+    std::shared_ptr<const Scope<U>> Defaults(const Reference<U>& model) {
+        return stack_.Defaults(model);
+    }
+    // A file's names, read as 'use' reads them, from beside the directory set.
+    std::shared_ptr<const Scope<U>> Read(const std::string& stem) { return Load(stem); }
+
     // Where 'use' looks for a file named at the prompt: beside the file being
     // run, or the working directory.
     void Directory(std::filesystem::path directory) { directory_ = std::move(directory); }

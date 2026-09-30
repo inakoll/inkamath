@@ -161,7 +161,7 @@ check(version)
 set(args --help)
 set(stdout [=[
 Usage: inkamath [options] [file...]
-       inkamath --compile file -o header.h
+       inkamath --compile file [model] -o header.h
 
 Runs the files in order and exits; with no file, reads standard input.
 At a terminal the prompt edits the line and keeps its history.
@@ -170,7 +170,8 @@ At a terminal the prompt edits the line and keeps its history.
   --echo      print each input before its answer, as a transcript
   --version   print the version and exit
   --compile   write the sequences the file defines as a C header over
-              doubles, named after the header: a struct, an init and a step
+              doubles, named after the header: a struct, an init and a step;
+              given a model the file defines, those of the model instead
   --help      print this and exit
 
 A file whose first line that is not blank or a comment starts with '>>'
@@ -205,6 +206,19 @@ if(EXISTS "${OUT}/model.h")
 endif()
 
 set(args --compile model.ink)
-set(stderr "inkamath: --compile takes one file and -o header.h\nTry 'inkamath --help'.\n")
+set(stderr "inkamath: --compile takes a file, optionally a model it defines, and -o header.h\nTry 'inkamath --help'.\n")
 set(exit 2)
 check(compile_usage)
+
+# A model compiled by name declares its inputs, so a name nothing defines is a
+# mistake rather than one more input (MODERNIZATION.md, phase 15).
+file(WRITE "${OUT}/models.ink" "gain(k = 2, x_n) = { y_n = k*x_n + z_n }\n")
+set(args --compile models.ink gain -o gain.h)
+set(stderr "inkamath: cannot compile y: z is not defined\n")
+set(exit 1)
+check(compile_undeclared)
+
+set(args --compile models.ink loss -o gain.h)
+set(stderr "inkamath: models.ink defines no model loss\n")
+set(exit 1)
+check(compile_no_model)

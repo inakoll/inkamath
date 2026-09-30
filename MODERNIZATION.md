@@ -2081,11 +2081,35 @@ scopes themselves raise are qualified. A file is named by its stem, beside
 the file that names it, and so never from a directory below. A loop without
 a delay, `q = gain(x_n = q.y_n)`, is reported as nesting too deep.
 
-Still to decide, in a transcript first: the compiler's half, for its own
-transcript; it refuses a name read in an instance or a file for now. Later,
-and separately: a static check of causality, so that a loop without a delay
-is reported where the instances are defined rather than when a term is
-read.
+`[done]` **A model compiled by name**, `inkamath --compile mix.ink mix -o
+mix.h`, specified by `test/compile/mix.ink`, its harness and its expected
+header. The file is read as `use` reads it, so that the model sees the
+file's names, and what is compiled is its instance with every default and no
+input given: the compiler's own rules, run over that instance's scope rather
+than the session's. The signature is the interface the header states. Its
+inputs are the step's arguments in the signature's order, and each is one
+whether the body reads it or not; its parameters are the fields, holding
+their defaults, and nothing else is -- `tau` in `mix.ink` is compiled in
+through `a`'s default. A name nothing defines is refused, where a file
+compiled whole takes it for one more input. An instance inside a model is
+refused for now.
+
+Next, **a file of instances**, `fast` and `slow` wired as in section 5 of
+the README, compiled to one step. Instances read each other's terms at the
+same index, so their sequences must be ordered together, not instance by
+instance: the step is the one the compiler already orders, over every
+instance's sequences named by where they are, `fast.v`, and the struct nests
+one struct per instance, `m.fast.v[0]` and `m.fast.a`. The compiler keys
+everything by a bare name today, so this is the larger half.
+
+Later, and separately: a static check of causality, so that a loop without a
+delay is reported where the instances are defined rather than when a term is
+read. And an idea, not a plan: what a body requires of its inputs and
+parameters -- a sequence rather than a value, a shape -- stated by the
+signature or inferred from the body, and checked where an instance is made,
+as C++ checks a `requires` clause. An error inside an instance would then be
+reported at the instance, in the terms of its interface, which is what the
+unqualified messages above lack.
 
 ## Sequencing
 
