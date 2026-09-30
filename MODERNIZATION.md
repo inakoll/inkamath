@@ -2102,6 +2102,23 @@ instance's sequences named by where they are, `fast.v`, and the struct nests
 one struct per instance, `m.fast.v[0]` and `m.fast.a`. The compiler keys
 everything by a bare name today, so this is the larger half.
 
+The order is found once, when compiling, not at every step. The step could
+resolve it as the interpreter does instead: a getter per term, computing it
+the first time an index asks and marking it done, so that asking for the
+outputs computes the rest in whatever order they need. That needs no sort and
+no qualified names, lets each model be compiled once and wired by the host,
+and accepts a guarded term whose branches read different terms at the same
+index, which a sort taking both branches refuses. But it finds a loop without
+a delay in the field rather than at build time, pays a branch and a store per
+read, recurses, and hides behind pointers what a C compiler would inline --
+to recompute, at every step, an order the definitions fix once. A step that
+goes into a device wants the fixed sequence of assignments a reviewer reads
+top to bottom, with its stack bounded and its time measurable; the laziness
+belongs to the interpreter, where a model is explored. So the sort, whose
+refusal is the static check of causality. The getters stay in mind for models
+compiled one header each and wired by a host that cannot be recompiled whole,
+which would be a feature of its own, and a smaller one.
+
 Later, and separately: a static check of causality, so that a loop without a
 delay is reported where the instances are defined rather than when a term is
 read. And an idea, not a plan: what a body requires of its inputs and
