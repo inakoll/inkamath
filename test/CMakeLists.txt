@@ -41,11 +41,17 @@ add_custom_target(record_goldens
 # built as C, holds the model to exact values its harness knows. The expected
 # headers are kept apart, where a harness's #include cannot find one instead.
 enable_language(C)
-foreach(model IN ITEMS pid pid_clamped kalman kalman2 fir heat adc net)
+# A model a file defines is compiled by its name, which is the file's.
+set(named_models mix)
+foreach(model IN ITEMS pid pid_clamped kalman kalman2 fir heat adc net mix)
     set(header ${CMAKE_CURRENT_BINARY_DIR}/compile/${model}.h)
+    set(name "")
+    if(model IN_LIST named_models)
+        set(name ${model})
+    endif()
     add_custom_command(OUTPUT ${header}
         COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/compile
-        COMMAND inkamath_cli --compile ${CMAKE_CURRENT_SOURCE_DIR}/compile/${model}.ink -o ${header}
+        COMMAND inkamath_cli --compile ${CMAKE_CURRENT_SOURCE_DIR}/compile/${model}.ink ${name} -o ${header}
         DEPENDS inkamath_cli compile/${model}.ink
         VERBATIM)
     add_executable(compile_${model} compile/${model}_test.c ${header})

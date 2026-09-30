@@ -33,16 +33,20 @@ public:
     using Value = Matrix<Number>;
     using TransformationVisitor<Value>::visit;
 
+    // The session's sequences, or with a model, those of its instance with
+    // every default and no input given (MODERNIZATION.md, phase 15).
     static std::string Header(const ReferenceStack<Value>& definitions, const std::string& module,
-                              const std::string& source) {
+                              const std::string& source, const Model<Value>* model = nullptr,
+                              const Scope<Value>* instance = nullptr) {
         std::set<std::string> fixed;
         for (;;) {
-            CompileC compiler(definitions);
+            CompileC compiler(definitions, model, instance ? *instance : definitions.Session());
             compiler.module_ = module;
             compiler.fixed_  = fixed;
             try {
-                for (const auto& [name, definition] : Sorted(definitions.Globals()))
+                for (const auto& [name, definition] : Sorted(compiler.scope_.names))
                     if (definition->Value()) compiler.Define(name, *definition);
+                if (model) compiler.Signature();
                 for (const auto& [name, sequence] : Sorted(compiler.sequences_))
                     compiler.Compile(name);
                 return compiler.Print(module, source);
@@ -148,15 +152,61 @@ private:
         std::vector<double> initial;
     };
 
-    explicit CompileC(const ReferenceStack<Value>& definitions) : definitions_(definitions) {}
+    CompileC(const ReferenceStack<Value>& definitions, const Model<Value>* model,
+             const Scope<Value>& scope)
+        : definitions_(definitions), model_(model), scope_(scope) {}
 
     template <typename Map>
     static std::map<std::string, typename Map::mapped_type> Sorted(const Map& map) {
         return {map.begin(), map.end()};
     }
 
+    // A value or a sequence where the compiled scope reads it; null for an
+    // input, which the step is given. A model declares its inputs, so there
+    // any other name nothing defines is a mistake.
     const Reference<Value>* Global(const std::string& name) const {
-        return definitions_.Find(name).get();
+        for (const Scope<Value>* scope = &scope_; scope; scope = scope->parent) {
+            const auto found = scope->names.find(name);
+            if (found == scope->names.end()) continue;
+            const Reference<Value>& definition = *found->second;
+            if (definition.input) return nullptr;
+            if (definition.model) throw Reason("an instance of " + name);
+            if (definition.file) throw Reason("a name of an instance or a file");
+            return &definition;
+        }
+        if (model_) throw Reason(name + " is not defined");
+        return nullptr;
+    }
+
+    bool Builtin(const std::string& name) const {
+        const Reference<Value>* definition = Global(name);
+        return definition && definition->home == &definitions_.Builtins();
+    }
+
+    // Every parameter the signature gives is in the header, read or not: a
+    // value as a field, an input as an argument of the step.
+    void Signature() {
+        for (const typename Model<Value>::Parameter& parameter : model_->parameters) {
+            if (!parameter.index.empty() && !parameter.fallback) {
+                Unreserved(parameter.name);
+                Sequence& input = sequences_[parameter.name];
+                input.rows = input.cols = 1;
+            } else if (parameter.index.empty()) {
+                try {
+                    (void)Emit(std::make_shared<RefExpression<Value>>(parameter.name));
+                } catch (const Reason& reason) {
+                    throw Refusal("cannot compile " + parameter.name + ": " + reason.what());
+                }
+            }
+        }
+    }
+
+    // A model's parameters are its fields, whatever their defaults read, and
+    // nothing else it reads is; in a file every value that reads none is one.
+    bool Settable(const std::string& name, bool reads) const {
+        if (!model_) return !reads;
+        return std::any_of(model_->parameters.begin(), model_->parameters.end(),
+                           [&](const auto& p) { return p.name == name && p.index.empty(); });
     }
 
     static bool IsSequence(const Reference<Value>& definition) {
@@ -812,7 +862,7 @@ private:
         // A value that reads no other is a parameter the host may change; one
         // that reads only what is fixed is a constant; one that reads a
         // parameter derives from it, and is computed where it is set.
-        if (code.constant && (reads || fixed_.count(name))) {
+        if (code.constant && (!Settable(name, reads) || fixed_.count(name))) {
             known_.emplace(name, *code.constant);
             return Answer(Literal(*code.constant));
         }
@@ -1094,7 +1144,7 @@ private:
         const std::string&           name = expression->Name();
         const ParametersCall<Value>& call = expression->Call();
         if (call.limit()) throw Reason("a limit");
-        if (name == "floor" && definitions_.Builtin(name)) return Floor(expression);
+        if (name == "floor" && Builtin(name)) return Floor(expression);
         if (!call.parameters_expression().empty() || !call.parameters_dict().empty())
             throw Reason("a function");
         if (!reading_) throw Reason(name + "_...: a term read outside a general clause");
@@ -1587,7 +1637,8 @@ private:
                     : "A step takes " + list(inputs_n) + ", the inputs at its index. ") +
                text;
         if (!parameters.empty())
-            text += " The parameters are fields holding the file's values once " + module +
+            text += std::string(" The parameters are fields holding the ") +
+                    (model_ ? "model's defaults" : "file's values") + " once " + module +
                     "_init has run: " + list(parameters) + ". After assigning one, call " + module +
                     "_update.";
         std::vector<std::string> fixed(fixed_.begin(), fixed_.end());
@@ -1637,6 +1688,17 @@ private:
                 for (const auto& [read, lags] : *reads)
                     sequences_.at(read).depth =
                         std::max(sequences_.at(read).depth, *lags.rbegin() + 1);
+        }
+        // A model's in the order its signature gives them.
+        if (model_) {
+            const auto at = [&](const std::string& name) {
+                const auto& p = model_->parameters;
+                return std::find_if(p.begin(), p.end(),
+                                    [&](const auto& q) { return q.name == name; });
+            };
+            std::stable_sort(
+                fields.begin(), fields.end(),
+                [&](const std::string& a, const std::string& b) { return at(a) < at(b); });
         }
         const std::vector<std::string> inputs = fields;
         fields.insert(fields.end(), order.begin(), order.end());
@@ -1758,6 +1820,8 @@ private:
     }
 
     const ReferenceStack<Value>&     definitions_;
+    const Model<Value>*              model_;  // the model compiled, if one is
+    const Scope<Value>&              scope_;  // where the names it reads are sought
     std::map<std::string, Sequence>  sequences_;
     std::map<std::string, Parameter> parameters_;
     std::vector<Derived>             derived_;  // each after those it reads

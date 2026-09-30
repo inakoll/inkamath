@@ -109,8 +109,17 @@ public:
         target_->names[name] = std::move(definition);
     }
 
-    [[nodiscard]] Scope<T>& Target() const { return *target_; }
-    [[nodiscard]] Scope<T>& Builtins() { return builtins_; }
+    [[nodiscard]] Scope<T>&       Target() const { return *target_; }
+    [[nodiscard]] Scope<T>&       Builtins() { return builtins_; }
+    [[nodiscard]] const Scope<T>& Builtins() const { return builtins_; }
+    [[nodiscard]] const Scope<T>& Session() const { return session_; }
+
+    // A model's instance with every default and no input given, which is what
+    // compiling it by name compiles.
+    std::shared_ptr<const Scope<T>> Defaults(const Reference<T>& model) {
+        return Instantiate(model, Bound(model.model->parameters.size()), &session_, model.Name(),
+                           std::string(), {});
+    }
 
     // Names are sought from a scope while one of these lives.
     struct Within {

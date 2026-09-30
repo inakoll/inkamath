@@ -37,7 +37,7 @@ using Interp  = Interpreter<Number>;
 using Outcome = LineEditor::Outcome;
 
 static const char help[] = R"(Usage: inkamath [options] [file...]
-       inkamath --compile file -o header.h
+       inkamath --compile file [model] -o header.h
 
 Runs the files in order and exits; with no file, reads standard input.
 At a terminal the prompt edits the line and keeps its history.
@@ -46,7 +46,8 @@ At a terminal the prompt edits the line and keeps its history.
   --echo      print each input before its answer, as a transcript
   --version   print the version and exit
   --compile   write the sequences the file defines as a C header over
-              doubles, named after the header: a struct, an init and a step
+              doubles, named after the header: a struct, an init and a step;
+              given a model the file defines, those of the model instead
   --help      print this and exit
 
 A file whose first line that is not blank or a comment starts with '>>'
@@ -116,7 +117,7 @@ static string render(const Interp& interpreter, const Interp::Result& result) {
 
 // MODERNIZATION.md, phase 14, step 2. The file is run as it would be at a
 // prompt, so the definitions compiled are the ones it leaves behind.
-static int compile(const string& source, const string& target) {
+static int compile(const string& source, const string& name, const string& target) {
     ifstream in(source);
     if (!in) {
         cerr << "inkamath: cannot open '" << source << "'\n";
@@ -129,26 +130,43 @@ static int compile(const string& source, const string& target) {
         cerr << "inkamath: '" << module << "' is not a C name, and the header is named after it\n";
         return 2;
     }
-    Interp p;
+    const string file = filesystem::path(source).filename().string();
+    Interp       p;
     p.Directory(filesystem::path(source).parent_path());
-    string line;
-    for (const Queued& queued : inputs(in, filesystem::path(source).parent_path())) {
-        if (line.empty() && blank(queued.line)) continue;
-        line += (line.empty() ? "" : joint(line)) + queued.line;
-        if (!queued.whole && unclosed(line)) continue;
-        const Interp::Result result = p.Eval(line);
-        if (const Diagnostic* error = get_if<Diagnostic>(&result)) {
-            cerr << "inkamath: " << source << ": " << line << ": " << error->message << '\n';
-            return 1;
-        }
-        line.clear();
-    }
     string header;
     try {
-        header =
-            CompileC::Header(p.Definitions(), module, filesystem::path(source).filename().string());
+        if (name.empty()) {
+            string line;
+            for (const Queued& queued : inputs(in, filesystem::path(source).parent_path())) {
+                if (line.empty() && blank(queued.line)) continue;
+                line += (line.empty() ? "" : joint(line)) + queued.line;
+                if (!queued.whole && unclosed(line)) continue;
+                const Interp::Result result = p.Eval(line);
+                if (const Diagnostic* error = get_if<Diagnostic>(&result)) {
+                    cerr << "inkamath: " << source << ": " << line << ": " << error->message
+                         << '\n';
+                    return 1;
+                }
+                line.clear();
+            }
+            header = CompileC::Header(p.Definitions(), module, file);
+        } else {
+            // Read as 'use' reads it, so that the model sees the file's names.
+            const auto used  = p.Read(filesystem::path(source).stem().string());
+            const auto found = used->names.find(name);
+            if (found == used->names.end() || !found->second->model) {
+                cerr << "inkamath: " << file << " defines no model " << name << '\n';
+                return 1;
+            }
+            const Reference<Interp::matrix_type>& model = *found->second;
+            header = CompileC::Header(p.Definitions(), module, name + " in " + file,
+                                      model.model.get(), p.Defaults(model).get());
+        }
     } catch (const Refusal& refusal) {
         cerr << "inkamath: " << refusal.what() << '\n';
+        return 1;
+    } catch (const runtime_error& error) {
+        cerr << "inkamath: " << error.what() << '\n';
         return 1;
     }
     // Binary, so that the header reads alike from every platform it is made on.
@@ -192,11 +210,12 @@ int main(int argc, char* argv[]) {
     }
 
     if (compiling) {
-        if (files.size() != 1 || target.empty()) {
-            cerr << "inkamath: --compile takes one file and -o header.h\nTry 'inkamath --help'.\n";
+        if (files.empty() || files.size() > 2 || target.empty()) {
+            cerr << "inkamath: --compile takes a file, optionally a model it defines, and -o "
+                    "header.h\nTry 'inkamath --help'.\n";
             return 2;
         }
-        return compile(files[0], target);
+        return compile(files[0], files.size() == 2 ? files[1] : string(), target);
     }
 
     // Every file is read before anything runs, so that a command line which

@@ -124,8 +124,12 @@ matrices.
 inverts a matrix at every step, and `test/compile/heat.ink` once, in `update`;
 `test/compile/adc.ink` rounds with `floor` and tests with `and` and `or`, and
 `test/compile/net.ink` is a small network whose terms are defined by cells.
-The compiler refuses by name what it cannot yet
-express, such as functions, limits, infinite series and models (section 5).
+`--compile mix.ink mix -o mix.h` compiles the model `mix` that `mix.ink`
+defines (section 5), read as `use` reads the file: its inputs are the step's
+arguments, in the order of its signature, and its parameters, with their
+defaults, the only fields; a name nothing defines is refused rather than
+taken for one more input. The compiler refuses by name what it cannot yet
+express, such as functions, limits, infinite series and instances.
 
 Interpreter behaviour is pinned by golden transcripts in `test/data/*.ink`,
 which are literal sessions — every example in this file is one of them, so the
