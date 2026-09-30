@@ -37,7 +37,7 @@ using Interp  = Interpreter<Number>;
 using Outcome = LineEditor::Outcome;
 
 static const char help[] = R"(Usage: inkamath [options] [file...]
-       inkamath --compile file [model] -o header.h
+       inkamath --compile file [model] [-o header.h]
 
 Runs the files in order and exits; with no file, reads standard input.
 At a terminal the prompt edits the line and keeps its history.
@@ -47,7 +47,8 @@ At a terminal the prompt edits the line and keeps its history.
   --version   print the version and exit
   --compile   write the sequences the file defines as a C header over
               doubles, named after the header: a struct, an init and a step;
-              given a model the file defines, those of the model instead
+              given a model the file defines, those of the model instead;
+              without -o, list what would not compile, and write nothing
   --help      print this and exit
 
 A file whose first line that is not blank or a comment starts with '>>'
@@ -116,7 +117,8 @@ static string render(const Interp& interpreter, const Interp::Result& result) {
 }
 
 // MODERNIZATION.md, phase 14, step 2. The file is run as it would be at a
-// prompt, so the definitions compiled are the ones it leaves behind.
+// prompt, so the definitions compiled are the ones it leaves behind. Without a
+// target, what would not compile is listed and nothing is written.
 static int compile(const string& source, const string& name, const string& target) {
     ifstream in(source);
     if (!in) {
@@ -124,16 +126,18 @@ static int compile(const string& source, const string& name, const string& targe
         return 2;
     }
     const string module = filesystem::path(target).stem().string();
-    if (module.empty() || !isalpha(static_cast<unsigned char>(module[0])) ||
-        !all_of(module.begin(), module.end(),
-                [](char c) { return isalnum(static_cast<unsigned char>(c)) || c == '_'; })) {
+    if (!target.empty() && (module.empty() || !isalpha(static_cast<unsigned char>(module[0])) ||
+                            !all_of(module.begin(), module.end(), [](char c) {
+                                return isalnum(static_cast<unsigned char>(c)) || c == '_';
+                            }))) {
         cerr << "inkamath: '" << module << "' is not a C name, and the header is named after it\n";
         return 2;
     }
     const string file = filesystem::path(source).filename().string();
     Interp       p;
     p.Directory(filesystem::path(source).parent_path());
-    string header;
+    string         header;
+    vector<string> refused;
     try {
         if (name.empty()) {
             string line;
@@ -149,7 +153,10 @@ static int compile(const string& source, const string& name, const string& targe
                 }
                 line.clear();
             }
-            header = CompileC::Header(p.Definitions(), module, file);
+            if (target.empty())
+                refused = CompileC::Refusals(p.Definitions(), file);
+            else
+                header = CompileC::Header(p.Definitions(), module, file);
         } else {
             // Read as 'use' reads it, so that the model sees the file's names.
             const auto used  = p.Read(filesystem::path(source).stem().string());
@@ -158,9 +165,14 @@ static int compile(const string& source, const string& name, const string& targe
                 cerr << "inkamath: " << file << " defines no model " << name << '\n';
                 return 1;
             }
-            const Reference<Interp::matrix_type>& model = *found->second;
-            header = CompileC::Header(p.Definitions(), module, name + " in " + file,
-                                      model.model.get(), p.Defaults(model).get());
+            const Reference<Interp::matrix_type>& model    = *found->second;
+            const auto                            defaults = p.Defaults(model);
+            if (target.empty())
+                refused = CompileC::Refusals(p.Definitions(), name + " in " + file,
+                                             model.model.get(), defaults.get());
+            else
+                header = CompileC::Header(p.Definitions(), module, name + " in " + file,
+                                          model.model.get(), defaults.get());
         }
     } catch (const Refusal& refusal) {
         cerr << "inkamath: " << refusal.what() << '\n';
@@ -168,6 +180,10 @@ static int compile(const string& source, const string& name, const string& targe
     } catch (const runtime_error& error) {
         cerr << "inkamath: " << error.what() << '\n';
         return 1;
+    }
+    if (target.empty()) {
+        for (const string& refusal : refused) cout << refusal << '\n';
+        return refused.empty() ? 0 : 1;
     }
     // Binary, so that the header reads alike from every platform it is made on.
     ofstream out(target, ios::binary);
@@ -210,7 +226,7 @@ int main(int argc, char* argv[]) {
     }
 
     if (compiling) {
-        if (files.empty() || files.size() > 2 || target.empty()) {
+        if (files.empty() || files.size() > 2) {
             cerr << "inkamath: --compile takes a file, optionally a model it defines, and -o "
                     "header.h\nTry 'inkamath --help'.\n";
             return 2;

@@ -133,7 +133,8 @@ one step that orders all their terms together, each instance a struct of its
 own: `test/compile/loop.ink` closes a loop, `m.ctl.u[0]` and `m.plt.x[0]`,
 and `test/compile/chain.ink` nests one. The compiler refuses by name what it
 cannot yet express, such as functions, limits, infinite series and unnamed
-instances.
+instances; without `-o` it writes nothing and lists every definition it
+would refuse, and why.
 
 Interpreter behaviour is pinned by golden transcripts in `test/data/*.ink`,
 which are literal sessions — every example in this file is one of them, so the

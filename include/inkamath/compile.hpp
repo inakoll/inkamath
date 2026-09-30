@@ -38,11 +38,45 @@ public:
     static std::string Header(ReferenceStack<Value>& definitions, const std::string& module,
                               const std::string& source, const Model<Value>* model = nullptr,
                               const Scope<Value>* instance = nullptr) {
+        return Run(definitions, module, source, model, instance, {});
+    }
+
+    // Every reason the header cannot be made, not the first: a definition
+    // refused is set aside and the rest compiled again, and one that reads it
+    // is refused in turn, saying so.
+    static std::vector<std::string> Refusals(ReferenceStack<Value>& definitions,
+                                             const std::string&     source,
+                                             const Model<Value>*    model    = nullptr,
+                                             const Scope<Value>*    instance = nullptr) {
+        std::vector<std::string> refusals;
+        std::set<std::string>    aside;
+        for (;;) {
+            try {
+                (void)Run(definitions, "check", source, model, instance, aside);
+                return refusals;
+            } catch (const Refusal& refusal) {
+                refusals.emplace_back(refusal.what());
+                // 'cannot compile NAME: why', or no name where no one
+                // definition is to blame, which ends it.
+                const std::string text = refusal.what(), head = "cannot compile ";
+                const std::size_t colon = text.find(": ", head.size());
+                if (text.rfind(head, 0) != 0 || colon == std::string::npos ||
+                    !aside.insert(text.substr(head.size(), colon - head.size())).second)
+                    return refusals;
+            }
+        }
+    }
+
+private:
+    static std::string Run(ReferenceStack<Value>& definitions, const std::string& module,
+                           const std::string& source, const Model<Value>* model,
+                           const Scope<Value>* instance, const std::set<std::string>& aside) {
         std::set<std::string> fixed;
         for (;;) {
             CompileC compiler(definitions, model, instance ? *instance : definitions.Session());
             compiler.module_ = module;
             compiler.fixed_  = fixed;
+            compiler.aside_  = aside;
             try {
                 compiler.Define(compiler.root_);
                 if (model) compiler.Signature();
@@ -55,7 +89,6 @@ public:
         }
     }
 
-private:
     // Parameters read where the compiled code needs a constant -- a size, a
     // bound, a lag -- which the struct cannot let the host change. The file is
     // compiled again with them fixed, and so a constant everywhere they are
@@ -175,8 +208,8 @@ private:
     // 15), which is also how C reaches it in the struct.
     void Define(const Scope<Value>& scope) {
         for (const auto& [name, definition] : Sorted(scope.names)) {
-            if (!definition->Value()) continue;
             const std::string key = scope.Qualified(name);
+            if (!definition->Value() || aside_.count(key)) continue;
             Define(key, *definition);
             const Scope<Value>* instance = nullptr;
             try {
@@ -213,6 +246,7 @@ private:
             }
             if (definition.model) throw Reason("an instance of " + key + " read as a value");
             if (definition.file) throw Reason(key + ", a file, read as a value");
+            if (aside_.count(key)) throw Reason(key + ", which cannot be compiled");
             return {&definition, scope, key};
         }
         if (!own && scope_ == &root_ && !root_.model) return {nullptr, &root_, name};
@@ -238,6 +272,7 @@ private:
     // value as a field, an input as an argument of the step.
     void Signature() {
         for (const typename Model<Value>::Parameter& parameter : model_->parameters) {
+            if (aside_.count(parameter.name)) continue;
             if (!parameter.index.empty() && !parameter.fallback) {
                 Unreserved(parameter.name);
                 Sequence& input = sequences_[parameter.name];
@@ -2041,6 +2076,7 @@ private:
     std::map<std::string, Parameter> parameters_;
     std::vector<Derived>             derived_;  // each after those it reads
     std::set<std::string>            fixed_;    // parameters compiled as constants; see Fix
+    std::set<std::string>            aside_;    // definitions refused; see Refusals
     std::map<std::string, Value>     known_;    // globals that read only those
     std::set<std::string>            read_parameters_;      // by the value being compiled
     bool                             read_global_ = false;  // by the value being compiled
