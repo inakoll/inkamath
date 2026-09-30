@@ -2290,3 +2290,7 @@ that exploring seven domains asked of the interpreter, by how many asked.
   model by its name and a file's instances into one step; and a loop without
   a delay refused where it is closed. What it leaves, and an idea for errors
   inside an instance, close the phase.
+- **`--check`, reserved** for two checks yet to be written: that a compiled
+  header answers what the interpreter answers, to within how far doubles
+  drift from the exact values; and that a transcript's recorded answers are
+  what the interpreter gives now.
