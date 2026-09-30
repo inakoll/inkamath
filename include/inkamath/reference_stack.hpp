@@ -116,9 +116,24 @@ public:
 
     // A model's instance with every default and no input given, which is what
     // compiling it by name compiles.
+    // Unlabelled, so that its names are the compiled header's own.
     std::shared_ptr<const Scope<T>> Defaults(const Reference<T>& model) {
-        return Instantiate(model, Bound(model.model->parameters.size()), &session_, model.Name(),
+        return Instantiate(model, Bound(model.model->parameters.size()), &session_, std::string(),
                            std::string(), {});
+    }
+
+    // The scope of a named instance, made if it has not been; null for any
+    // other definition.
+    const Scope<T>* InstanceScope(const definition_type& definition) {
+        if (!InstanceOf(*definition)) return nullptr;
+        return &Holder(definition, *definition->Clauses().front().expression, *definition->home);
+    }
+
+    // The scope an instance or a file names, read from a scope.
+    const Scope<T>& Resolve(Expression<T>& object, const Scope<T>& from) {
+        const Within within(*this, &from);
+        const Frame  frame(*this);
+        return Object(object);
     }
 
     // Names are sought from a scope while one of these lives.
@@ -547,6 +562,7 @@ private:
         scope->parent         = m.scope == &session_ ? &builtins_ : m.scope;
         scope->label          = std::move(label);
         scope->defined        = std::move(defined);
+        scope->model          = &m;
         // A constant index in the body is evaluated as it is installed, and
         // reads nothing of the frame that happens to be open.
         const Into           into(*this, *scope);

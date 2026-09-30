@@ -1588,6 +1588,7 @@ closures need one anyway, and can bring it.
 | C68 `[fixed]` | **Exactness ran out without a word.** Past a thousand digits a number is approximated, by design, and phase 13 made `~` say only that the digits shown are not the whole value, whatever the kind, leaving `frac` to tell the kinds apart. That leaves nothing to tell a user who does not ask that an answer from exact inputs is now a double: an epidemic model is computed in doubles from its eighth step, and an exact third looks the same as a value whose exactness ran out. An inexact number now carries whether it was approximated past the bound, in the half of its layout an inexact number did not use, so a `Number` is no larger; what is computed from it carries it on, and an answer that has it ends in `# approximated past a thousand digits`, a comment, so that it still reads back as what it says. What was inexact by nature, or made so by `~`, is not marked: it never was exact. A comparison is not either: it is a truth, exactly. `frac` says why it refuses. Specified in `bignum.ink` first; five goldens that crossed the bound moved with it, `!(10^20)`, `!1e400`, `2^2147483648`, `0.5^3000000000` and `(0-2)^(2^70+1)`, each exact until it passed the thousand digits. |
 | C69 `[fixed]` | **A long recurrence failed at 256 deep, which was neither the cause nor true.** Phase 14 fills a sequence from its base up so that each term finds the one before it remembered, and two things undid that past a few hundred thousand terms. The step budget counted the whole fill as one evaluation, so `g_600000` gave up at the millionth step; and a full memo was dropped whole, which phase 9 could call harmless because nothing then relied on it, so `ma_60000`, which reads `mb` as `mb` reads `ma`, lost the other sequence's latest term at the hundred-thousandth entry and nested down again. Either way the fill failed and reported the depth. The memo now keeps two generations of half the size, dropping the older when the newer fills, so the latest terms of every sequence survive at no cost per entry; each filled term has the step budget a line of its own would have, since a fill stands for asking them in order; and a fill goes ten million terms from its base at most, about three seconds, so that a slip such as `g_2000000000` says how far it is rather than hanging the session. A term that reads back further than fifty thousand entries of the memo can still be lost. |
 | C70 `[fixed]` | **A guarded clause with an index left the value it followed.** An index turns a value into a sequence, so an unguarded one drops the plain clause; a guarded one did not, and after `r = 5` and `r_n \| n > 0 = 1` the name was both, `r` answering 5 and `r_1` answering 1. The interpreter coped, and the compiler, which asks a definition's first clause whether it is a sequence, took it for the value and compiled nothing. Found through the built-in `e`: `e_n[j<=2, k<=2] \| j == k = n` is only guarded clauses, and left Euler's number beside them. Any clause with an index drops the value now. `sequences.ink` says so; nothing else moved. |
+| C71 `[open]` | **A compiled step starts a term later than the interpreter where a guard decides what the term it reads back reads.** With `a_n \| n/8 - 3/4 > 2 = u_(n-1) + ...`, `a_n = 1/8` and `b_n = a_(n-1)/2` without a base, the interpreter answers `b_0` from `a_(-1)`, where the guard fails and the constant clause reads nothing. The compiler starts `b` where every term `a` might read exists, so at 1, and leaves `b_0` at 0. A closed form read back is compiled again at its index only where no clause of it reads a term; here the guarded one does. Found by the random models under another seed, and older than phase 15. |
 
 **Measure instructions, not the clock.** One of those changes made the matrix
 workload 20 per cent slower by the clock and not by a single instruction: with
@@ -2099,8 +2100,37 @@ the README, compiled to one step. Instances read each other's terms at the
 same index, so their sequences must be ordered together, not instance by
 instance: the step is the one the compiler already orders, over every
 instance's sequences named by where they are, `fast.v`, and the struct nests
-one struct per instance, `m.fast.v[0]` and `m.fast.a`. The compiler keys
-everything by a bare name today, so this is the larger half.
+one struct per instance, `m.fast.v[0]` and `m.fast.a`.
+
+`[done]` Specified by `test/compile/loop.ink` and `chain.ink`, their
+harnesses and their expected headers. Every definition is keyed by where it
+is, the scope's label and its name, `plt.x` or `h.low.v`, which is how C
+reaches it in the struct, so a session's own names keep their bare keys and
+no header compiled before moved. A name is sought where its definition was
+written: an argument, which an instance holds, reads the session. The sort is
+the one the compiler had, over every instance's terms; an argument is a copy,
+`m.ctl.y[0] = m.plt.x[0]`, which the C compiler sees through. An instance's
+parameter given or defaulted to a constant is a field of its instance, one
+given what reads the session's parameter follows it and is none, and a file's
+own name is a constant. Refused: an unnamed instance, which has no name for
+the struct to give it, and an input nothing gives.
+
+The order is found once, when compiling, not at every step. The step could
+resolve it as the interpreter does instead: a getter per term, computing it
+the first time an index asks and marking it done, so that asking for the
+outputs computes the rest in whatever order they need. That needs no sort and
+no qualified names, lets each model be compiled once and wired by the host,
+and accepts a guarded term whose branches read different terms at the same
+index, which a sort taking both branches refuses. But it finds a loop without
+a delay in the field rather than at build time, pays a branch and a store per
+read, recurses, and hides behind pointers what a C compiler would inline --
+to recompute, at every step, an order the definitions fix once. A step that
+goes into a device wants the fixed sequence of assignments a reviewer reads
+top to bottom, with its stack bounded and its time measurable; the laziness
+belongs to the interpreter, where a model is explored. So the sort, whose
+refusal is the static check of causality. The getters stay in mind for models
+compiled one header each and wired by a host that cannot be recompiled whole,
+which would be a feature of its own, and a smaller one.
 
 Later, and separately: a static check of causality, so that a loop without a
 delay is reported where the instances are defined rather than when a term is

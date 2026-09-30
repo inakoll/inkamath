@@ -114,6 +114,7 @@ public:
 
     // What the session has defined, for the compiler to read.
     [[nodiscard]] const ReferenceStack<U>& Definitions() const { return stack_; }
+    ReferenceStack<U>&                     Definitions() { return stack_; }
 
     // A model's instance with every default, which the compiler compiles.
     std::shared_ptr<const Scope<U>> Defaults(const Reference<U>& model) {

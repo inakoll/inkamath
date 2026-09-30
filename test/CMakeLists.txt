@@ -43,7 +43,7 @@ add_custom_target(record_goldens
 enable_language(C)
 # A model a file defines is compiled by its name, which is the file's.
 set(named_models mix)
-foreach(model IN ITEMS pid pid_clamped kalman kalman2 fir heat adc net mix)
+foreach(model IN ITEMS pid pid_clamped kalman kalman2 fir heat adc net mix loop chain)
     set(header ${CMAKE_CURRENT_BINARY_DIR}/compile/${model}.h)
     set(name "")
     if(model IN_LIST named_models)

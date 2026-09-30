@@ -852,6 +852,8 @@ struct Scope {
     std::string file;
     // What defines a named instance, 'gain(x_n = n)'.
     std::string defined;
+    // An instance's model.
+    const Model<T>* model = nullptr;
 
     [[nodiscard]] std::string Qualified(const std::string& name) const {
         return label.empty() ? name : label + "." + name;
