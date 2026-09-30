@@ -77,9 +77,10 @@ e = gain()
 >> e.y_1
 error: e.x_1 is an input, and nothing defines it
 
-# A model's body reads its parameters, its inputs and its own names, then its
-# file's, never the session's: the session's k is not the model's, and the
-# z below is sought inside l, where nothing defines it.
+# A model's body reads its parameters, its inputs and its own names, then
+# those of the scope it is written in: its file's, or, at the prompt, the
+# session's. A parameter hides the session's name: the session's k is not
+# the model's, while the z below is the session's.
 >> k = 10
 k = 10
 
@@ -96,7 +97,7 @@ z = 1
 l = leak(1)
 
 >> l.y
-error: l.z is not defined
+2
 
 # An argument is a clause of the instance written in the session: it reads
 # the session's names, and follows them, as any definition does.
@@ -233,6 +234,42 @@ gain(k = 2, b = 1, x_n) = { ... }
 >> g.s_3
 error: g.s is not defined
 
+# The prompt is to a model written there what a file is to its own: it reads
+# the session's models and functions, itself included.
+>> twice(t) = 2*t
+twice(t) = 2*t
+
+>> smooth(a = 1/2, u_n) = {
+..     v_0 = 0
+..     v_n = a*u_n + (1-a)*v_(n-1)
+.. }
+smooth(a = 1/2, u_n) = { ... }
+
+>> sharp(a = 1/2, u_n) = { v_n = twice(u_n) - smooth(a, u_n).v_n }
+sharp(a = 1/2, u_n) = { ... }
+
+>> frac sharp(u_n = 1).v_2
+5/4
+
+>> tree(d) = {
+..     v = 2*tree(d - 1).v + 1
+..     v | d == 0 = 1
+.. }
+tree(d) = { ... }
+
+>> tree(5).v
+63
+
+# An instance in a term's cells is one per cell, each with its memory: a
+# bank of filters, one to a row.
+>> bank_n[j<=3, k<=1] = smooth(a = j/4, u_n = 1).v_n
+bank_n[j<=3, k<=1] = smooth(a = j/4, u_n = 1).v_n
+
+>> frac bank_2
+[ 7/16;
+   3/4;
+ 15/16]
+
 # The prelude, built into the interpreter, is included bare beneath the
 # session, as the built-ins are: no scope and no qualified name, its names
 # unqualified from every scope, its text read where it was written.
@@ -269,8 +306,8 @@ q = wrap(x_n = n)
 1
 
 # Replaced in the session, a name of the prelude or a built-in is replaced for
-# the session only: the prelude's own floor is the built-in, and a model reads
-# the prelude, never the session.
+# the session only: the prelude's own floor is the built-in. A model written
+# at the prompt reads the session, and so its mod.
 >> floor = 3
 floor = 3
 
@@ -284,4 +321,4 @@ mod(a, b) = 0
 0
 
 >> q.y_5
-1
+0

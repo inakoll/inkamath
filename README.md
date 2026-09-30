@@ -650,7 +650,8 @@ slow = lowpass(a = 1/4, u_n = fast.v_n)
 ```
 
 A model's body reads its parameters, its inputs and its own names, then those
-of the file it is written in, never the session's. An argument reads the
+of the scope it is written in: a file's, or, at the prompt, the session's, so
+that a model there may use another, a function, or itself. An argument reads the
 session's, where it is written, and follows them as any definition does. A
 model used once needs no name, and an input left out says so when it is read:
 
