@@ -17,10 +17,12 @@
  * A step takes x_n, the input at its index. After a step, m.name[k] is
  * name_(n-k) for each sequence: x, bank_smooth_1.u, bank_smooth_1.v (k <= 1),
  * bank_smooth_2.u, bank_smooth_2.v (k <= 1), bank_smooth_3.u,
- * bank_smooth_3.v (k <= 1), bank, y_smooth.u, y_smooth.v (k <= 1) and y. The
- * parameters are fields holding the file's values once bank_init has run:
- * bank_smooth_1.a = 0.25, bank_smooth_2.a = 0.5, bank_smooth_3.a = 0.75 and
- * y_smooth.a = 0.5. After assigning one, call bank_update.
+ * bank_smooth_3.v (k <= 1), bank, s_sharp.u, s_sharp.v_smooth.u,
+ * s_sharp.v_smooth.v (k <= 1), s_sharp.v, s, y_smooth.u, y_smooth.v (k <= 1)
+ * and y. The parameters are fields holding the file's values once bank_init
+ * has run: bank_smooth_1.a = 0.25, bank_smooth_2.a = 0.5,
+ * bank_smooth_3.a = 0.75, s_sharp.a = 0.5 and y_smooth.a = 0.5. After
+ * assigning one, call bank_update.
  */
 
 /* The parameters, which the host may assign, then what derives from them,
@@ -30,6 +32,7 @@ typedef struct bank {
     long long index_;
     double x[1];
     double bank[1][3][1];
+    double s[1];
     double y[1];
     struct {
         double a;
@@ -49,6 +52,15 @@ typedef struct bank {
     struct {
         double a;
         double u[1];
+        double v[1];
+        struct {
+            double u[1];
+            double v[2];
+        } v_smooth;
+    } s_sharp;
+    struct {
+        double a;
+        double u[1];
         double v[2];
     } y_smooth;
 } bank;
@@ -63,6 +75,7 @@ static inline void bank_init(bank* m_) {
     m_->bank_smooth_1.a = 0.25;
     m_->bank_smooth_2.a = 0.5;
     m_->bank_smooth_3.a = 0.75;
+    m_->s_sharp.a = 0.5;
     m_->y_smooth.a = 0.5;
     m_->index_ = -1;
     bank_update(m_);
@@ -74,6 +87,7 @@ static inline void bank_step(bank* m_, double x) {
     m_->bank_smooth_1.v[1] = m_->bank_smooth_1.v[0];
     m_->bank_smooth_2.v[1] = m_->bank_smooth_2.v[0];
     m_->bank_smooth_3.v[1] = m_->bank_smooth_3.v[0];
+    m_->s_sharp.v_smooth.v[1] = m_->s_sharp.v_smooth.v[0];
     m_->y_smooth.v[1] = m_->y_smooth.v[0];
     m_->x[0] = x;
     m_->bank_smooth_1.u[0] = m_->x[0];
@@ -85,6 +99,11 @@ static inline void bank_step(bank* m_, double x) {
     m_->bank[0][0][0] = m_->bank_smooth_1.v[0];
     m_->bank[0][1][0] = m_->bank_smooth_2.v[0];
     m_->bank[0][2][0] = m_->bank_smooth_3.v[0];
+    m_->s_sharp.u[0] = m_->x[0];
+    m_->s_sharp.v_smooth.u[0] = m_->s_sharp.u[0];
+    m_->s_sharp.v_smooth.v[0] = m_->index_ == 0 ? 0.0 : m_->s_sharp.a * m_->s_sharp.v_smooth.u[0] + (1.0 - m_->s_sharp.a) * m_->s_sharp.v_smooth.v[1];
+    m_->s_sharp.v[0] = 2.0 * m_->s_sharp.u[0] - m_->s_sharp.v_smooth.v[0];
+    m_->s[0] = m_->s_sharp.v[0];
     m_->y_smooth.u[0] = m_->bank[0][2][0];
     m_->y_smooth.v[0] = m_->index_ == 0 ? 0.0 : m_->y_smooth.a * m_->y_smooth.u[0] + (1.0 - m_->y_smooth.a) * m_->y_smooth.v[1];
     m_->y[0] = m_->y_smooth.v[0];

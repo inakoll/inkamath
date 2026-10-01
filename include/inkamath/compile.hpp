@@ -288,23 +288,21 @@ private:
               const PExpression<Value>& member) {
         if (expansion_)
             throw Reason("an instance of " + model.Name() + ", which keeps a history, in a call");
+        // What each argument reads, but its own index, which a positional
+        // one takes from the signature.
+        std::vector<std::optional<typename Model<Value>::Argument>> bound;
+        try {
+            bound = model.model->Bind(model.Name(), call);
+        } catch (const std::runtime_error& error) {
+            throw Reason(error.what());
+        }
         std::set<std::string> read;
-        if (const auto* list = dynamic_cast<const MatExpression<Value>*>(call.arguments().get())) {
-            for (const PExpression<Value>& argument : list->Children()) {
-                std::set<std::string> names;
-                std::string           own;
-                if (const auto* named =
-                        dynamic_cast<const EqualExpression<Value>*>(argument.get())) {
-                    if (const auto* term =
-                            dynamic_cast<const FuncExpression<Value>*>(named->m_e1().get()))
-                        own = term->m_e2() ? term->m_e2()->Name() : std::string();
-                    Named(named->m_e2(), names);
-                } else {
-                    Named(argument, names);
-                }
-                names.erase(own);
-                read.insert(names.begin(), names.end());
-            }
+        for (const auto& argument : bound) {
+            if (!argument) continue;
+            std::set<std::string> names;
+            Named(argument->expression, names);
+            names.erase(argument->index);
+            read.insert(names.begin(), names.end());
         }
         std::vector<std::pair<std::string, Value>> captured;
         std::string                                values;
