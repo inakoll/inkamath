@@ -2336,8 +2336,23 @@ that exploring seven domains asked of the interpreter, by how many asked.
   terms stop being exact the program says from which index. `wild` in
   `test/compile/drift.ink` is the case that motivates it: a tenth recomputed
   at every step, exact in the interpreter and off by ten times more at each
-  step compiled, parting at 9. Left for later: the first guard that takes
-  another clause compiled, and its margin, which needs the step to report
-  the clause it took; and the transcript check. It cost 254 lines of
-  sources. What it can remove is the fuzzer's harness, which reads the
-  header's text for what `CompileC::Build` now reports.
+  step compiled, parting at 9. It cost 254 lines of sources.
+- **Guards that flip.** The first step at which a compiled guard takes
+  another clause than the interpreter's is its own event, reported before the
+  values it makes part, with the guard's exact margin there: rounding at a
+  margin near zero, a bug at a large one. It needs the step to say which
+  clause it took, in a header built for checking, so that the one a host
+  builds is unchanged.
+- **The transcript check**, `--check transcript.ink`: replayed, and each
+  recorded answer the interpreter no longer gives reported. The tests do this
+  for `test/data`; the command line would do it for anyone's transcript.
+- **The fuzzer through the check.** Its harness reads the header's text for
+  what `CompileC::Build` now reports. Its random models written as instances
+  could go through `CheckC`, and the lines that write and compare with them.
+- **Steps and tolerance as options**, when a model asks: a hundred steps is
+  short of what a slow filter settles in, and a billionth is loose for a
+  well-conditioned step.
+
+Then, in the order proposed: one index on a vector, and slices, specified
+before they are built, since what `a[1]` means decides both; `?name` as
+LaTeX; and `lim` compiled as a bounded loop with a status.
