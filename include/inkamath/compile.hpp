@@ -33,11 +33,29 @@ public:
     using Value = Matrix<Number>;
     using TransformationVisitor<Value>::visit;
 
+    // A header, and what stepping it takes and keeps.
+    struct Compiled {
+        struct Sequence {
+            std::string name;  // as the struct reaches it, 'h.low.v'
+            std::size_t rows, cols;
+        };
+        std::string              header;
+        int                      first;      // the index of the first step
+        std::vector<std::string> inputs;     // the step's arguments, in order
+        std::vector<Sequence>    sequences;  // those it computes, in the order it does
+    };
+
     // The session's sequences, or with a model, those of its instance with
     // every default and no input given (DESIGN.md, phase 15).
     static std::string Header(ReferenceStack<Value>& definitions, const std::string& module,
                               const std::string& source, const Model<Value>* model = nullptr,
                               const Scope<Value>* instance = nullptr) {
+        return Build(definitions, module, source, model, instance).header;
+    }
+
+    static Compiled Build(ReferenceStack<Value>& definitions, const std::string& module,
+                          const std::string& source, const Model<Value>* model = nullptr,
+                          const Scope<Value>* instance = nullptr) {
         return Run(definitions, module, source, model, instance, {});
     }
 
@@ -68,9 +86,9 @@ public:
     }
 
 private:
-    static std::string Run(ReferenceStack<Value>& definitions, const std::string& module,
-                           const std::string& source, const Model<Value>* model,
-                           const Scope<Value>* instance, const std::set<std::string>& aside) {
+    static Compiled Run(ReferenceStack<Value>& definitions, const std::string& module,
+                        const std::string& source, const Model<Value>* model,
+                        const Scope<Value>* instance, const std::set<std::string>& aside) {
         std::set<std::string> fixed;
         for (;;) {
             CompileC compiler(definitions, model, instance ? *instance : definitions.Session());
@@ -2198,7 +2216,7 @@ private:
         return out;
     }
 
-    std::string Print(const std::string& module, const std::string& source) {
+    Compiled Print(const std::string& module, const std::string& source) {
         for (const auto& [name, sequence] : sequences_)
             if (!sequence.definition && parameters_.count(name))
                 throw Refusal("cannot compile: " + name +
@@ -2351,7 +2369,11 @@ private:
             if (late) out += "    }\n";
         }
         out += "}\n\n#endif\n";
-        return out;
+        Compiled compiled{out, earliest, inputs, {}};
+        for (const std::string& name : order)
+            compiled.sequences.push_back(
+                {name, sequences_.at(name).rows, sequences_.at(name).cols});
+        return compiled;
     }
 
     ReferenceStack<Value>&           definitions_;

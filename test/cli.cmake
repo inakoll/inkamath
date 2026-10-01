@@ -162,6 +162,7 @@ set(args --help)
 set(stdout [=[
 Usage: inkamath [options] [file...]
        inkamath --compile file [model] [-o header.h]
+       inkamath --check file instance -o check.c
 
 Runs the files in order and exits; with no file, reads standard input.
 At a terminal the prompt edits the line and keeps its history.
@@ -173,6 +174,9 @@ At a terminal the prompt edits the line and keeps its history.
               doubles, named after the header: a struct, an init and a step;
               given a model the file defines, those of the model instead;
               without -o, list what would not compile, and write nothing
+  --check     write a C program that steps an instance the file defines,
+              compiled, on the inputs the interpreter gives it, holds each
+              term to the interpreter's exact one and says where one drifts
   --help      print this and exit
 
 A file whose first line that is not blank or a comment starts with '>>'
@@ -238,3 +242,15 @@ set(args --compile models.ink loss -o gain.h)
 set(stderr "inkamath: models.ink defines no model loss\n")
 set(exit 1)
 check(compile_no_model)
+
+# An instance checked: the C program its check writes is built and run by the
+# tests, beside the compiled models.
+set(args --check models.ink loss -o loss.c)
+set(stderr "inkamath: models.ink defines no instance loss\n")
+set(exit 1)
+check(check_no_instance)
+
+set(args --check models.ink gain)
+set(stderr "inkamath: --check takes a file, an instance it defines, and -o check.c\nTry 'inkamath --help'.\n")
+set(exit 2)
+check(check_usage)

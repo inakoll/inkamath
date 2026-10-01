@@ -2319,7 +2319,25 @@ that exploring seven domains asked of the interpreter, by how many asked.
   its arguments keep those values. One whose argument reads the step's index
   would be made anew at each step and run from its base at every one, and is
   refused, as is one inside a call. No header compiled before moved.
-- **`--check`, reserved** for two checks yet to be written: that a compiled
-  header answers what the interpreter answers, to within how far doubles
-  drift from the exact values; and that a transcript's recorded answers are
-  what the interpreter gives now.
+- **`--check`, reserved** for two checks: that a compiled header answers
+  what the interpreter answers, to within how far doubles drift from the
+  exact values; and that a transcript's recorded answers are what the
+  interpreter gives now.
+- `[done]` **The first check, `--check file instance -o check.c`**, the oracle
+  of `MANIFESTO.md`. What is checked is an instance, not a file: the instance
+  is the drive, written in the language, its parameters the ones compiled and
+  its arguments the inputs, so a closed loop needs nothing new. The inputs are
+  the interpreter's terms replayed, not the compiled plant's, so a difference
+  is the step's own rather than the loop's. inkamath writes the program and
+  does not build it, as it writes a header: no C compiler is found or run. A
+  hundred steps, and a term parts beyond a billionth of one plus the exact
+  term, the fuzzer's tolerance; both are constants until a model asks for
+  more. A term the interpreter cannot give is not compared, and where its
+  terms stop being exact the program says from which index. `wild` in
+  `test/compile/drift.ink` is the case that motivates it: a tenth recomputed
+  at every step, exact in the interpreter and off by ten times more at each
+  step compiled, parting at 9. Left for later: the first guard that takes
+  another clause compiled, and its margin, which needs the step to report
+  the clause it took; and the transcript check. It cost 254 lines of
+  sources. What it can remove is the fuzzer's harness, which reads the
+  header's text for what `CompileC::Build` now reports.
