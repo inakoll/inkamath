@@ -52,7 +52,7 @@ struct numeric_interface_imp
      static bool truth(const T& a) {return T::truth(a);}
      static bool          truth(const T& a, const std::string& needs) { return T::truth(a, needs); }
      // A comparison asks for these (phase 10), and a class-type number goes
-     // through this path, so without them none compiled (MODERNIZATION.md, C65).
+     // through this path, so without them none compiled (DESIGN.md, C65).
      static T real(const T& a) { return T::real(a); }
      static T imaginary(const T& a) { return T::imaginary(a); }
      static T inexact(const T& a) { return T::inexact(a); }
@@ -116,7 +116,7 @@ struct numeric_interface_imp<std::complex<T>,false>
         // A NaN part is present but has no sign, and answers false to every
         // comparison. Asking whether it is zero, rather than how it compares
         // to zero, is what keeps the 'i' from being dropped while its
-        // magnitude is still printed (MODERNIZATION.md, C31).
+        // magnitude is still printed (DESIGN.md, C31).
         const bool has_real = !(real == 0);
         const bool has_imag = !(imag == 0);
         if(!has_real && !has_imag)
@@ -182,7 +182,7 @@ struct numeric_interface_imp<std::complex<T>,false>
     // Spelled out because std::pow(complex, int) is not standard: libstdc++
     // keeps it as an extension, and elsewhere the int becomes a double and
     // the power goes through exp and log, which gave (0-1)^2 an imaginary
-    // part of 1e-16 (MODERNIZATION.md, C61). The multiplications are the ones
+    // part of 1e-16 (DESIGN.md, C61). The multiplications are the ones
     // libstdc++ does, in its order, so no answer on Linux moves.
     static std::complex<T> pow(const std::complex<T>& a, int b)
     {
@@ -268,7 +268,7 @@ struct numeric_interface_imp<T,true>
     static bool approximated(const T&) { return false; }
     // Converting a double outside int's range is undefined, and NaN is
     // undefined too; both clamp here, and the caller compares the answer with
-    // what it was given to see that it did (MODERNIZATION.md, C56).
+    // what it was given to see that it did (DESIGN.md, C56).
     static int toInt(const T& a)
     {
         if(!(a >= static_cast<T>(std::numeric_limits<int>::min()))) return std::numeric_limits<int>::min();
@@ -277,7 +277,7 @@ struct numeric_interface_imp<T,true>
     }
     static std::string toString(const T& a) {
         // Spelled out because the library decides it: MSVC prints the NaN
-        // that 0/0 gives as '-nan(ind)' (MODERNIZATION.md, C62).
+        // that 0/0 gives as '-nan(ind)' (DESIGN.md, C62).
         if (std::isnan(a)) return std::signbit(a) ? "-nan" : "nan";
         std::ostringstream oss;
         oss << std::setprecision(precision);
@@ -291,7 +291,7 @@ struct numeric_interface_imp<T,true>
         // Stopping at the first infinite product, because past it every
         // further term is infinite too -- and because the counter is a T,
         // which at 2^53 stops advancing under '++i' and leaves the loop
-        // running for ever (MODERNIZATION.md, C47).
+        // running for ever (DESIGN.md, C47).
         const T infinite = std::numeric_limits<T>::infinity();
         T i = 1;
         T n1 = 1;

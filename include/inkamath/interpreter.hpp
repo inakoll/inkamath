@@ -38,7 +38,7 @@ concept Numeric =
     typename T::value_type;
     // The product accumulates into a cell, which no other requirement implies:
     // a number type that satisfied all of them still failed to compile, deep
-    // inside Matrix rather than here (MODERNIZATION.md, C44).
+    // inside Matrix rather than here (DESIGN.md, C44).
     { accumulator += cell } -> std::same_as<typename T::value_type&>;
     { T(cell) } -> std::same_as<T>;
     { T(Extent()) } -> std::same_as<T>;
@@ -103,7 +103,7 @@ public:
     }
 
     // An answer, and a comment that reading it back ignores where it was
-    // approximated past the bound (MODERNIZATION.md, phase 13).
+    // approximated past the bound (DESIGN.md, phase 13).
     [[nodiscard]] std::string Answer(const U& value) const {
         return Show(value) + (numeric_interface<U>::approximated(value)
                                   ? "  # approximated past a thousand digits"
@@ -239,7 +239,7 @@ private:
 };
 
 // Included bare beneath the session, as the built-ins are: seen from every
-// scope, and replaced by a session for itself alone (MODERNIZATION.md, phase
+// scope, and replaced by a session for itself alone (DESIGN.md, phase
 // 15). Not 'round', whose rule is the model's to choose.
 inline constexpr const char* prelude[] = {
     "ceil(x) = -floor(-x)",
@@ -304,7 +304,7 @@ void Interpreter<T,U>::Lexer(const std::string& s)
             break;
         case '=':
             // '==' asks, '=' tells. One symbol for both is what made
-            // 'f_n | n = 0 = 1' unreadable (MODERNIZATION.md, phase 10).
+            // 'f_n | n = 0 = 1' unreadable (DESIGN.md, phase 10).
             if(i + 1 < s.length() && s[i+1] == '=')
             {
                 m_tokens.push_back(Token<T>(Compare, "=="));
@@ -534,7 +534,7 @@ PExpression<U> Interpreter<T,U>::ParseEqualExpr()
             std::string signature;
             for(size_t token = signature_begin; token < m_i; ++token) {
                 // Kept apart: joined, '[1 2]' and '[12]' are the same string,
-                // and the two clauses become one (MODERNIZATION.md, C55).
+                // and the two clauses become one (DESIGN.md, C55).
                 signature += '\x1f';
                 signature += m_tokens[token].text;
             }

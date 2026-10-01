@@ -24,7 +24,7 @@ struct Refusal : std::runtime_error {
     using std::runtime_error::runtime_error;
 };
 
-// MODERNIZATION.md, phase 14, step 2: the sequences a session defines, as a C
+// DESIGN.md, phase 14, step 2: the sequences a session defines, as a C
 // header over doubles. Each sequence keeps a window of its latest terms, and a
 // step computes the next index's terms in the order they need each other. A
 // value of any shape is its cells, each one C expression.
@@ -34,7 +34,7 @@ public:
     using TransformationVisitor<Value>::visit;
 
     // The session's sequences, or with a model, those of its instance with
-    // every default and no input given (MODERNIZATION.md, phase 15).
+    // every default and no input given (DESIGN.md, phase 15).
     static std::string Header(ReferenceStack<Value>& definitions, const std::string& module,
                               const std::string& source, const Model<Value>* model = nullptr,
                               const Scope<Value>* instance = nullptr) {
@@ -211,7 +211,7 @@ private:
     }
 
     // Each scope's definitions, and those of the instances it names, each
-    // under the name that says where it is, 'fast.v' (MODERNIZATION.md, phase
+    // under the name that says where it is, 'fast.v' (DESIGN.md, phase
     // 15), which is also how C reaches it in the struct.
     void Define(const Scope<Value>& scope) {
         for (const auto& [name, definition] : Sorted(scope.names)) {
@@ -228,7 +228,7 @@ private:
         }
     }
 
-    // A call compiled where it is made (MODERNIZATION.md, phase 15): the names
+    // A call compiled where it is made (DESIGN.md, phase 15): the names
     // of a function, or of an instance of a model without memory, bound to
     // what the caller gives them, and its own computed when first read. A
     // constant folds through, and a recursion unrolls where its guards fold.
@@ -1564,7 +1564,7 @@ private:
                 code.cells.push_back(Atom(scalar ? at : at + Subscript(i, j)));
         // Before its window holds the term, one with no base clause is
         // computed again at that index, as the interpreter answers it there
-        // (MODERNIZATION.md, C71); Checked keeps whichever the reader needs.
+        // (DESIGN.md, C71); Checked keeps whichever the reader needs.
         if (lag > 0 && Recomputed(read) && read.compiled) {
             earlies_.push_back({key, lag, reading_, {}, early_});
             const int  id          = static_cast<int>(earlies_.size() - 1);

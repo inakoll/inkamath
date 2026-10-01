@@ -1,5 +1,5 @@
 /* The compiled tracker fed z_n = 2n + (-1)^n/2, against the exact estimates
- * computed with Python's fractions (MODERNIZATION.md, phase 14, step 2). */
+ * computed with Python's fractions (DESIGN.md, phase 14, step 2). */
 #include "kalman.h"
 
 #include <math.h>

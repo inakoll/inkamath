@@ -244,7 +244,7 @@ public:
     // read, as the inverse was, then b's columns are solved for -- a fraction
     // of the work, and the same answer, exactly. Inexact, the two round
     // differently, so anything else is the inverse times b, as written and in
-    // that order (MODERNIZATION.md, next in line).
+    // that order (DESIGN.md, next in line).
     template <typename Right>
     static Matrix<T> solve(const Matrix<T>& a, Right b) {
         const Matrix<T> minus_one(T(-1));

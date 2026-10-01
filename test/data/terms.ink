@@ -1,5 +1,5 @@
 # A sequence's terms defined by their cells, as a matrix is (README.md,
-# section 2; MODERNIZATION.md, next in line). The brackets after the index
+# section 2; DESIGN.md, next in line). The brackets after the index
 # name the row and the column and bound them; every cell sees the index, and
 # a guard says which cells a clause gives, as it does for a matrix. A cell no
 # clause gives is 0.

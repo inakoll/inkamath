@@ -82,7 +82,7 @@ public:
     const Scope<T>* home = nullptr;
 
     // What makes a name something other than a value: a model, a file used,
-    // or an input nothing supplies (MODERNIZATION.md, phase 15).
+    // or an input nothing supplies (DESIGN.md, phase 15).
     std::shared_ptr<const Model<T>> model;
     std::shared_ptr<const Scope<T>> file;
     bool                            input = false;
@@ -129,7 +129,7 @@ public:
         const Clause<T> clause{ai_parameters, ai_expression, written};
         // One call binds the parameters once, for whichever clause answers, so
         // the clauses have to agree on their names. One that disagrees could
-        // only ever read a global under its own name (MODERNIZATION.md, C51).
+        // only ever read a global under its own name (DESIGN.md, C51).
         const bool starts_over = IsPlain(clause);
         if(!clauses_.empty() && !starts_over
            && ai_parameters.parameters_names() != CallParameters().parameters_names()) {
@@ -169,7 +169,7 @@ public:
         } else if (ai_parameters.indexed() ||
                    (!ai_parameters.guarded() && !ai_parameters.cells())) {
             // An index turns a value into a sequence, so the plain clause goes,
-            // guarded or not: kept, the name was both (MODERNIZATION.md, C70).
+            // guarded or not: kept, the name was both (DESIGN.md, C70).
             // A cell clause of a matrix keeps it: a matrix written whole has
             // cells, and the clause overrides one, as a base clause does a
             // general one.
@@ -177,7 +177,7 @@ public:
         }
         // Writing a clause again replaces it where it stands. Position is what
         // dispatch follows, so a clause that moved would answer differently
-        // (MODERNIZATION.md, C45); a guarded clause is named by its left-hand
+        // (DESIGN.md, C45); a guarded clause is named by its left-hand
         // side, which is how it can be corrected at all (C46).
         for(Clause<T>& existing : clauses_) {
             const bool same =
@@ -231,7 +231,7 @@ public:
                 parameters.EvaluateArguments(call, caller);
 
         // Only a global's answer is a function of the key and the globals
-        // alone (MODERNIZATION.md, phase 9); a local shares its name with the
+        // alone (DESIGN.md, phase 9); a local shares its name with the
         // global it shadows, so the stack says which this is. A limit is not
         // keyed -- the terms it walks are, through this same path.
         const bool memoisable = global && !call.limit() && (indexed || !arguments.empty());
@@ -251,7 +251,7 @@ public:
         parameters.BindDefaults(call, evaluator);
         if(call.limit()) {
             // A guarded general clause is a general clause: it is the index
-            // that makes it one (MODERNIZATION.md, C54).
+            // that makes it one (DESIGN.md, C54).
             if(!FirstThat([](const Clause<T>& c) {return c.parameters.general();})) {
                 throw std::runtime_error(reference_name_ + " has no general clause, so it has no limit");
             }
@@ -534,7 +534,7 @@ private:
         // done. Order is the writer's to choose because neither precedence
         // serves both cases: a guard reading the previous term must not be
         // reached at the base index, while a guard ruling an index out must be
-        // (MODERNIZATION.md, phase 10). An unguarded clause that would answer
+        // (DESIGN.md, phase 10). An unguarded clause that would answer
         // every call -- a plain definition, or the general clause -- is the
         // definition's default and is tried last wherever it stands, so that
         // a base case beats the general one however the two were written
@@ -698,7 +698,7 @@ private:
     // for this cell of every term; the general clauses, by their cells and
     // then whole. A base term and a cell of every term are each the more
     // specific in one and the less in the other, so where both give a cell
-    // the definition is asked which it means (MODERNIZATION.md, next in line).
+    // the definition is asked which it means (DESIGN.md, next in line).
     T EvaluateTerm(int index, EvaluationVisitor<T>& evaluator) const {
         const auto base = [index](const Clause<T>& c) {
             return c.parameters.indexed() && !c.parameters.general() &&
@@ -860,7 +860,7 @@ struct Scope {
     }
 };
 
-// A function whose value is a group of definitions (MODERNIZATION.md, phase
+// A function whose value is a group of definitions (DESIGN.md, phase
 // 15). Its signature is its interface -- a parameter has a default, an input
 // has none -- and its body is installed afresh in each instance.
 template <typename T>

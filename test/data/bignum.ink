@@ -1,4 +1,4 @@
-# Exact numbers past 64 bits: phase 13, step 2 (MODERNIZATION.md). This was
+# Exact numbers past 64 bits: phase 13, step 2 (DESIGN.md). This was
 # the specification, written before they existed (CLAUDE.md, section 3); every
 # expected output is as it was specified, computed from the exact value by
 # Python's Fraction and the reference printer, apart from the interpreter.

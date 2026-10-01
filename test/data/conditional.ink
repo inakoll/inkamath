@@ -1,4 +1,4 @@
-# Definitions in cases (MODERNIZATION.md, phase 10).
+# Definitions in cases (DESIGN.md, phase 10).
 #
 # A clause may carry a GUARD, written between the left-hand side and the '=',
 # the way set-builder notation writes "such that":
@@ -9,7 +9,7 @@
 # guard holds is evaluated. The clause not chosen is not evaluated, which is
 # what index dispatch has always done: a guard is dispatch with a condition
 # instead of an index, so it needs no new evaluation rule and no laziness
-# anywhere else (MODERNIZATION.md, Openings).
+# anywhere else (DESIGN.md, Openings).
 #
 # Four decisions, each because the alternative was worse:
 #
@@ -53,7 +53,7 @@
 >> 2 >= 3
 0
 
-# Ordering needs real numbers, as the factorial does (MODERNIZATION.md, C42).
+# Ordering needs real numbers, as the factorial does (DESIGN.md, C42).
 >> i < 1
 error: a comparison needs real numbers, not i
 
@@ -204,7 +204,7 @@ p_n | n > 3 = 99
 # Order is what dispatch follows, so a clause that moved would answer
 # differently: this one used to be appended, and re-entering 'root_0 = 1'
 # unchanged put the base clause behind the guard that reads the term before
-# it, which then recursed to the depth budget (MODERNIZATION.md, C45).
+# it, which then recursed to the depth budget (DESIGN.md, C45).
 >> w_0 = 1
 w_0 = 1
 
@@ -230,7 +230,7 @@ w_n = w_(n-1)+1
 
 # A guarded clause is replaced by writing its left-hand side again. It used
 # to be appended, so the old clause stayed in front of the new one and the
-# correction never took effect (MODERNIZATION.md, C46).
+# correction never took effect (DESIGN.md, C46).
 >> y(x) | x > 0 = 1
 y(x) | x > 0 = 1
 
@@ -246,7 +246,7 @@ y(x) | x > 0 = 2
 # A clause is named by its left-hand side as the tokens spell it, and the
 # tokens have to stay apart: joined without a separator, '[1 2][1,1]' and
 # '[12][1,1]' are one name, so writing the second clause replaced the first
-# (MODERNIZATION.md, C55).
+# (DESIGN.md, C55).
 >> sg(x) | x < [1 2][1,1] = 10
 sg(x) | x < [1 2][1,1] = 10
 
@@ -263,7 +263,7 @@ sg(x) | x < [12][1,1] = 20
 # A guard that does not hold must leave nothing behind. The index was bound
 # before the guard was tested and never removed, so a rejected clause shadowed
 # a global, clobbered an argument, and poisoned the guards written after it
-# (MODERNIZATION.md, C53).
+# (DESIGN.md, C53).
 >> nn = 7
 nn = 7
 
@@ -302,7 +302,7 @@ pg_0 | cg > 5 = 2
 # differently could never be called correctly -- the argument would be bound
 # under the other clause's name and the body would read a global instead -- so
 # it is refused rather than accepted and left unreachable
-# (MODERNIZATION.md, C51).
+# (DESIGN.md, C51).
 >> pick(x) | x < 0 = 0-x
 pick(x) | x < 0 = 0-x
 
@@ -355,7 +355,7 @@ error: a guard needs a single value, not a 1x2 matrix
 
 # Pascal's rule. Its base case sits at an index the parameter decides, which
 # is exactly what cannot be written today -- 'binom' has to go through
-# factorials instead (MODERNIZATION.md, Openings).
+# factorials instead (DESIGN.md, Openings).
 >> c(k)_n | k < 0 = 0
 c(k)_n | k < 0 = 0
 
@@ -387,7 +387,7 @@ c(k)_n = c(k-1)_(n-1) + c(k)_(n-1)
 
 # A recurrence that stops itself: 'lim' written out by hand, which is worth
 # having because lim's tolerance cannot be reached from the prompt
-# (MODERNIZATION.md, Deferred). The tolerance here is deliberately coarse, so
+# (DESIGN.md, Deferred). The tolerance here is deliberately coarse, so
 # that the answer is one the unguarded recurrence would never give: Newton
 # reaches 1.41421356 and this stops at the second iterate. The base clause is
 # written first on purpose -- the guard reads the previous term, so at index

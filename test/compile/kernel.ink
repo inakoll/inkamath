@@ -1,4 +1,4 @@
-# Calls compiled where they are made (MODERNIZATION.md, phase 15): functions,
+# Calls compiled where they are made (DESIGN.md, phase 15): functions,
 # guarded or from the prelude, a model without memory used once per step as a
 # kernel, and a recursion unrolled because its argument is a constant.
 relu(t) = t

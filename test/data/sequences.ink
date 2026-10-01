@@ -42,10 +42,10 @@ u_1=3
 
 # Series: 'lim' iterates the general clause until two terms agree. It used to
 # happen on its own whenever a sequence was named without an index, which is
-# why 'exp(1)' read like a function call (MODERNIZATION.md, phase 4 item 2).
+# why 'exp(1)' read like a function call (DESIGN.md, phase 4 item 2).
 # The first term is written out; an indexed clause no longer falls back to an
 # implicit zero, which was the additive identity and so wrong for a product
-# (MODERNIZATION.md, phase 4 item 4).
+# (DESIGN.md, phase 4 item 4).
 >> exp(x)_0=1
 exp(x)_0=1
 
@@ -73,7 +73,7 @@ sin(x)=(lim exp(i*x)-lim exp(-i*x))/(2*i)
 ~0.5
 
 # A recurrence written the textbook way -- an initial value plus a general
-# term -- then asked for its limit (MODERNIZATION.md C12).
+# term -- then asked for its limit (DESIGN.md C12).
 >> s_0=1
 s_0=1
 
@@ -92,7 +92,7 @@ error: s is a sequence; index it (s_0) or take its limit (lim s)
 # 'lim' walks the terms the sequence has, which means walking them through the
 # same dispatch an index walks. It used to evaluate the general clause
 # directly, so a guarded clause was invisible to it and the limit contradicted
-# every term the user could ask for (MODERNIZATION.md, C54).
+# every term the user could ask for (DESIGN.md, C54).
 >> lg_0 = 1
 lg_0 = 1
 
@@ -137,7 +137,7 @@ lc_n | 1 = lc_(n-1)/2
 
 # A small step is not a small remainder. Every step here is 1e-11 and the
 # series diverges; comparing successive terms alone called that convergence
-# and answered 1e-11 (MODERNIZATION.md, C36).
+# and answered 1e-11 (DESIGN.md, C36).
 >> w_0=0
 w_0=0
 
@@ -150,7 +150,7 @@ error: w did not converge within 100 terms (last term 1e-09)
 # And a series that converges too slowly to be summed term by term: after n
 # terms of 1/n^2 the remainder is about 1/n, so raising the cap does not help
 # -- at a hundred thousand terms it answers 1.64492407 where pi^2/6 is
-# 1.64493407. Saying so is the honest answer (MODERNIZATION.md, C36).
+# 1.64493407. Saying so is the honest answer (DESIGN.md, C36).
 >> z_1=1
 z_1=1
 
@@ -194,7 +194,7 @@ r_n=q_n-(q_(n+1)-q_n)^2/(q_(n+2)-2*q_(n+1)+q_n)
 
 # A term far from the base is filled from the base up, each finding the one
 # before it remembered, so a recurrence is not limited by how deep references
-# nest. This one failed at 256 deep (MODERNIZATION.md, phase 14).
+# nest. This one failed at 256 deep (DESIGN.md, phase 14).
 >> g_0=1
 g_0=1
 
@@ -229,7 +229,7 @@ mb_n=ma_(n-1)+1
 # A recurrence that steps by two is filled by twos, from the base its index
 # reaches, and one that reaches no base says which term it lacks. Filled term
 # by term, the odd terms it never defined failed at 256 deep instead
-# (MODERNIZATION.md, next in line).
+# (DESIGN.md, next in line).
 >> st_0 = 1
 st_0 = 1
 
@@ -272,7 +272,7 @@ pb_n = pa_(n-2) + 1
 
 # However far: a fill keeps the latest terms of every sequence it passes
 # through, and each term has the budget a line of its own would have
-# (MODERNIZATION.md, C69).
+# (DESIGN.md, C69).
 >> ma_60000
 60000
 
@@ -286,7 +286,7 @@ error: g_2000000000 is 2000000000 terms from its base, and a fill stops at 10000
 
 # Recursion is still bounded: one that reaches up, away from its base, never
 # arrives, and past the budget the interpreter says so rather than dying
-# (MODERNIZATION.md, C1).
+# (DESIGN.md, C1).
 >> up_0=0
 up_0=0
 
@@ -298,7 +298,7 @@ error: evaluation nests more than 256 references deep
 
 # An index turns a value into a sequence, whether its clause is guarded or not.
 # A guarded one used to leave the value in place, so that the name was both,
-# and the compiler took it for the value (MODERNIZATION.md, C70).
+# and the compiler took it for the value (DESIGN.md, C70).
 >> rv = 5
 rv = 5
 
@@ -313,7 +313,7 @@ rv_n | n > 0 = 1
 
 # A base case at a negative index keeps its place in the ordering. These
 # clauses used to be keyed by size_t, so k_(-1) sorted above k_0 and the
-# iteration started from a wrapped index (MODERNIZATION.md, C17).
+# iteration started from a wrapped index (DESIGN.md, C17).
 >> k_(-1)=0
 k_(-1)=0
 
@@ -334,7 +334,7 @@ error: k did not converge within 100 terms (last term 105)
 # With no base clause there is no term to compare the first one against. It
 # used to be compared with a default-constructed zero, so a sequence whose
 # first term was zero was reported as having converged to it -- this answered
-# 0 (MODERNIZATION.md, C27).
+# 0 (DESIGN.md, C27).
 >> d_n=n-1
 d_n=n-1
 
@@ -356,7 +356,7 @@ error: o did not converge within 100 terms (last term inf)
 
 # A recurrence has no implicit value below its lowest clause. The old fallback
 # was zero -- the additive identity, right for a sum and wrong for a product
-# (MODERNIZATION.md, phase 4 item 4).
+# (DESIGN.md, phase 4 item 4).
 >> fact_n=fact_(n-1)*n
 fact_n=fact_(n-1)*n
 
@@ -372,7 +372,7 @@ fact_0=1
 
 # Two terms reading each other at the same index have no first to start
 # from, nor one reading itself: the definition that closes such a loop is
-# refused (MODERNIZATION.md, phase 15).
+# refused (DESIGN.md, phase 15).
 >> ping_n = pong_n + 1
 ping_n = pong_n + 1
 

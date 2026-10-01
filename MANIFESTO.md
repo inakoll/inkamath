@@ -3,7 +3,7 @@
 This file is not a roadmap. Nothing in it is scheduled, and nothing in it is
 promised. It records where inkamath could go and why, with the technical
 solutions that look worth exploring, so that a later decision starts from an
-argument instead of from nothing. `MODERNIZATION.md` remains the record of what
+argument instead of from nothing. `DESIGN.md` remains the record of what
 was done and measured; when a direction here is taken up, it becomes a phase
 there, specified as transcripts first, and the hint written here is what it is
 measured against, not what it is bound to.
@@ -49,7 +49,7 @@ modelling. A model that needs one is discretised by hand, as `plant` in
 `README.md` section 5 is, and what the language offers is to say that
 discretisation exactly.
 
-**Not a computer algebra system.** The reasons are in `MODERNIZATION.md`,
+**Not a computer algebra system.** The reasons are in `DESIGN.md`,
 *Deferred*, under symbolic simplification, and nothing here weakens them.
 
 **Not a framework.** No model zoo, no data pipeline, no training
@@ -59,7 +59,7 @@ infrastructure. A model is a file of definitions.
 put a model inside a program that is not inkamath's. They are not the end, and
 they freeze an interface; they wait until the language has stopped moving.
 
-The size constraint at the top of `MODERNIZATION.md` governs everything below.
+The size constraint at the top of `DESIGN.md` governs everything below.
 Several of these directions could each double the program. Where one does, the
 version worth having is the one that adds a capability without adding a second
 way to say something already sayable.
@@ -291,7 +291,7 @@ series in the interpreter, as `README.md` writes `exp`, they make the reference
 inexact; in the compiler they are refused while `lim` is (*A solver within a
 step*). Embedded deployments approximate them anyway, by polynomial or by
 pieces, which the language can express. Whether they belong in a prelude
-written in inkamath or as built-ins is the question `MODERNIZATION.md` already
+written in inkamath or as built-ins is the question `DESIGN.md` already
 defers, with the tolerance question in front of it.
 
 ### One compiler, several printers
@@ -361,7 +361,7 @@ Two features that would do more for a student than any target:
 
 ## A paper conformance suite
 
-The method `MODERNIZATION.md` uses for the language itself carries over:
+The method `DESIGN.md` uses for the language itself carries over:
 specify by transcripts before implementing. The specification should be a set
 of canonical equations, transcribed as closely to the page as the notation
 allows, drawn from more than one field because no field is the centre.

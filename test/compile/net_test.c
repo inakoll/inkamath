@@ -1,5 +1,5 @@
 /* The compiled network fed eight samples, against the exact outputs
- * computed with Python's fractions (MODERNIZATION.md, phase 14, step 2).
+ * computed with Python's fractions (DESIGN.md, phase 14, step 2).
  * Every value is a sum of quarters and eighths, so the comparison is exact. */
 #include "net.h"
 

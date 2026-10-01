@@ -27,7 +27,7 @@ error: f expects 2 arguments, got 1
 
 # A keyword argument is checked against the parameter names, not just counted.
 # An unknown one used to satisfy the count, leave the real parameter unbound,
-# and let it fall through to a global (MODERNIZATION.md, C25).
+# and let it fall through to a global (DESIGN.md, C25).
 >> f(z=1, y=2)
 error: f has no parameter z
 
@@ -50,7 +50,7 @@ error: k has no value for a
 
 # A default is evaluated only when the call leaves its parameter empty. Every
 # default used to be evaluated on every call, so this reported 'zzz is not
-# defined' for a value it never needed (MODERNIZATION.md, C30).
+# defined' for a value it never needed (DESIGN.md, C30).
 >> n(a, b=zzz)=a
 n(a, b=zzz)=a
 
@@ -62,7 +62,7 @@ error: zzz is not defined
 
 # An argument is evaluated at the call site too, whether or not the body reads
 # it. Lazy parameters would leave this one alone; they were specified,
-# measured and deferred (MODERNIZATION.md, Deferred).
+# measured and deferred (DESIGN.md, Deferred).
 >> u(x)=1
 u(x)=1
 
@@ -94,7 +94,7 @@ error: g takes no arguments
 
 # Parameters are bound by the definition and are not visible outside it. An
 # undefined name is a diagnostic; it used to evaluate to zero in silence
-# (MODERNIZATION.md, C13).
+# (DESIGN.md, C13).
 >> h(x)=x^2
 h(x)=x^2
 
@@ -119,7 +119,7 @@ error: h expects 1 argument, got 0
 # A definition sees the global scope and its own parameters, never the
 # caller's. 'q' means the global y here, whoever is on the stack; it used to
 # mean whatever the innermost active call happened to have bound
-# (MODERNIZATION.md, phase 4 item 5).
+# (DESIGN.md, phase 4 item 5).
 >> q=y+1
 q=y+1
 
@@ -136,7 +136,7 @@ y=10
 11
 
 # A memoised answer must not become a stale one: a definition the user
-# changes drops what was remembered (MODERNIZATION.md, phase 9).
+# changes drops what was remembered (DESIGN.md, phase 9).
 >> y=20
 y=20
 
@@ -147,7 +147,7 @@ y=20
 # global: the answer it gives must not be remembered as the global's. The
 # memoised answer used to be keyed on the name alone, so 'cc_0' kept the
 # local's 99 after the line that bound it had ended, and a local even reached
-# a callee that lexical scoping keeps it out of (MODERNIZATION.md, C49).
+# a callee that lexical scoping keeps it out of (DESIGN.md, C49).
 >> cc_0 = 1
 cc_0 = 1
 
@@ -186,7 +186,7 @@ ff(n) = ee(n)
 
 # Two arguments with the same cells and different shapes are two questions.
 # The key held the cells and not the extent, so whichever shape was asked
-# first answered for both (MODERNIZATION.md, C50).
+# first answered for both (DESIGN.md, C50).
 >> gg(m) = m+m
 gg(m) = m+m
 
@@ -200,7 +200,7 @@ gg(m) = m+m
 # One definition per name. An indexed clause extends a sequence; a plain
 # definition replaces whatever the name held. The two used to coexist, with
 # an undocumented precedence that made a plain definition unreachable
-# (MODERNIZATION.md, C11).
+# (DESIGN.md, C11).
 >> m_n=2*n
 m_n=2*n
 
@@ -215,7 +215,7 @@ m=5
 
 # Indexing what is not a sequence is an error. This used to answer 5 -- the
 # plain definition was returned without the index ever being looked at
-# (MODERNIZATION.md, C26).
+# (DESIGN.md, C26).
 >> m_3
 error: m is not a sequence
 

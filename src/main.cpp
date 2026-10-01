@@ -116,7 +116,7 @@ static string render(const Interp& interpreter, const Interp::Result& result) {
     return rstrip(out.str());
 }
 
-// MODERNIZATION.md, phase 14, step 2. The file is run as it would be at a
+// DESIGN.md, phase 14, step 2. The file is run as it would be at a
 // prompt, so the definitions compiled are the ones it leaves behind. Without a
 // target, what would not compile is listed and nothing is written.
 static int compile(const string& source, const string& name, const string& target) {

@@ -36,7 +36,7 @@ add_custom_target(record_goldens
     DEPENDS inkamath_tests
     VERBATIM)
 
-# The compiler's C target (MODERNIZATION.md, phase 14, step 2). What it emits
+# The compiler's C target (DESIGN.md, phase 14, step 2). What it emits
 # for each model is the header in compile/expected, and the header it emits,
 # built as C, holds the model to exact values its harness knows. The expected
 # headers are kept apart, where a harness's #include cannot find one instead.

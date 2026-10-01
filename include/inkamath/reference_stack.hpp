@@ -17,7 +17,7 @@
 // Two kinds of scope: the definitions of the session, a file or an instance,
 // each over the built-ins, and the parameters of the call being evaluated. A
 // call never sees its caller's parameters, so 'q = y+1' means the global y
-// whichever call is on the stack (MODERNIZATION.md, phase 4 item 5), and a
+// whichever call is on the stack (DESIGN.md, phase 4 item 5), and a
 // definition reads the names of the scope it was written in (phase 15).
 template <typename T>
 class ReferenceStack {
@@ -48,7 +48,7 @@ public:
     // Memoised results, one per distinct call context. Sized so that a
     // session sweeping a parameter cannot grow the process without bound; the
     // older half goes when the newer fills, because a fill needs the latest
-    // terms of every sequence it passes through (MODERNIZATION.md, C69).
+    // terms of every sequence it passes through (DESIGN.md, C69).
     static constexpr size_t max_memoised = 100000;
 
     // How far a fill goes from its base: each term has the budget of a line,
@@ -298,7 +298,7 @@ public:
     // through Eval: a sum of a constant still has to end.
     void Step() { Budget step(*this); }
 
-    // MODERNIZATION.md, phase 9. A call's answer depends on the definition,
+    // DESIGN.md, phase 9. A call's answer depends on the definition,
     // the index, the argument values and the globals; the first three are the
     // key and the fourth is handled by clearing. What it is worth: the
     // arithmetic-geometric mean is 2^(n+1)-1 calls for 2n+1 answers.
@@ -320,7 +320,7 @@ public:
 
     // A binding made to try something out. A guard needs its index bound to be
     // asked at all, and a guard that does not hold must leave nothing behind
-    // (MODERNIZATION.md, C53).
+    // (DESIGN.md, C53).
     struct Trial {
         Trial(ReferenceStack<T>& stack, const std::string& name)
             : stack_(stack), name_(name)
@@ -371,7 +371,7 @@ private:
     }
 
     // A loop without a delay has no term to start from: a definition that
-    // closes one is taken back, and says which (MODERNIZATION.md, phase 15).
+    // closes one is taken back, and says which (DESIGN.md, phase 15).
     void Causal(const std::string& name, const definition_type& previous) {
         try {
             Loops{*this, {}, {}}.Check();
@@ -773,7 +773,7 @@ private:
 
     // A frame is open whenever a binding is made: the call opens it before it
     // binds anything. _GLIBCXX_ASSERTIONS in the sanitizer build is what says
-    // so if that ever stops being true (MODERNIZATION.md, C15).
+    // so if that ever stops being true (DESIGN.md, C15).
     Binding& FrameSlot(const std::string& name) {
         frame_type& frame = frames_[open_ - 1];
         for (Binding& binding : frame) {

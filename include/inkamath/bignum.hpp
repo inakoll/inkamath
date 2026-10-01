@@ -9,7 +9,7 @@
 #include <utility>
 #include <vector>
 
-// A natural number of any size (MODERNIZATION.md, phase 13, step 2), in 32-bit
+// A natural number of any size (DESIGN.md, phase 13, step 2), in 32-bit
 // limbs because the product of two fits in 64 bits on every compiler CI has.
 // Schoolbook multiplication, Knuth's division and Lehmer's gcd: at the
 // thousand digits exact numbers stop at, nothing cleverer has paid for itself.

@@ -46,7 +46,7 @@ endif()
 # The token limit keeps a line's recursion off the end of the stack, and it
 # was measured against the 8 MB Linux gives the main thread (interpreter.hpp,
 # max_tokens). Windows gives 1 MB, and there a Debug build overflowed on a line
-# the limit accepts (MODERNIZATION.md, C63).
+# the limit accepts (DESIGN.md, C63).
 if(MSVC)
     add_link_options(/STACK:8388608)
 endif()

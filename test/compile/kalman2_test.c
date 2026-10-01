@@ -1,6 +1,6 @@
 /* The two-measurement tracker fed zp_n = 2n + (-1)^n/2 and zs_n = zp_n + 2 +
  * (-1)^n/4, against its exact estimates and first gain computed with
- * Python's fractions (MODERNIZATION.md, phase 14, step 2). */
+ * Python's fractions (DESIGN.md, phase 14, step 2). */
 #include "kalman2.h"
 
 #include <math.h>

@@ -1,4 +1,4 @@
-# Exact numbers (MODERNIZATION.md, phase 13). This was the specification,
+# Exact numbers (DESIGN.md, phase 13). This was the specification,
 # written before they existed (CLAUDE.md, section 3), and every exact value was
 # checked against Python's Fraction. It was written for a display of
 # fractions; the outputs moved with the decimals that replaced it

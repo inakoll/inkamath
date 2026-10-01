@@ -1,8 +1,8 @@
 # Working rules for inkamath
 
 These rules apply to anyone working in this repository, agents included.
-`MODERNIZATION.md` says *what* we are changing and in what order. This file
-says *how*.
+`DESIGN.md` records *what* was decided and why, and `MANIFESTO.md` where
+the language could go. This file says *how*.
 
 The project's one enduring quality is that it is small. Every rule below
 exists to keep it that way.
@@ -34,7 +34,7 @@ attribution the tooling would otherwise add.
 
 **In new files.** Do not write status reports, summaries, migration notes, or
 "IMPLEMENTATION.md". If a change needs explaining, it goes in the commit
-message or in `MODERNIZATION.md`. Never create a document nobody asked for.
+message or in `DESIGN.md`. Never create a document nobody asked for.
 
 ## 2. Change one thing
 
@@ -74,7 +74,7 @@ behaviour, bugs included. They are literal interpreter sessions:
   diff before committing. Recording without reading the diff defeats the point.
 - A recorded output may be **wrong on purpose** — a bug recorded so that it
   stays visible and cannot regress silently. Say so in the entry's own
-  comment, and register the defect in `MODERNIZATION.md`. Do not "fix" a
+  comment, and register the defect in `DESIGN.md`. Do not "fix" a
   golden to match your intuition; fix the interpreter.
 
 A change to the language itself is specified as a transcript before it is
@@ -127,12 +127,12 @@ Existing code does not follow these; new and rewritten code does.
   printing to `std::cout` and returning a default-constructed value.
 - Comments and identifiers in English. The sources are now entirely English;
   the commit history before this work is French and stays that way, as do
-  quotations of the 2014 README in `MODERNIZATION.md` — a citation translated
+  quotations of the 2014 README in `DESIGN.md` — a citation translated
   is a citation weakened.
 
 ## 7. When the plan and the code disagree
 
-`MODERNIZATION.md` was written from a reading of the code at a point in time.
+`DESIGN.md` was written from a reading of the code at a point in time.
 If you find that a plan item is wrong, already done, or a worse idea than it
 looked — say so and propose the correction. Do not silently implement something
 other than what the plan says, and do not implement something you believe is
