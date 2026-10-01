@@ -129,6 +129,18 @@ public:
                            std::string(), {});
     }
 
+    // A named instance with its parameters as given and no input, which is
+    // what checking it compiles; null for any other definition.
+    std::shared_ptr<const Scope<T>> Unfed(const definition_type& definition) {
+        const auto instance = InstanceOf(*definition);
+        if (!instance) return nullptr;
+        const Reference<T>& model = *instance->model;
+        Bound               bound = model.model->Bind(model.Name(), *instance->call);
+        for (size_t i = 0; i < bound.size(); ++i)
+            if (!model.model->parameters[i].index.empty()) bound[i].reset();
+        return Instantiate(model, bound, definition->home, std::string(), std::string(), {});
+    }
+
     // An instance the compiler names, of one written where it is read, with
     // the values it reads there: kept by the compiler, not here.
     std::shared_ptr<const Scope<T>> Detached(

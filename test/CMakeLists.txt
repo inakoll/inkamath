@@ -66,6 +66,36 @@ foreach(model IN ITEMS pid pid_clamped kalman kalman2 fir heat adc net mix loop 
                      ${CMAKE_CURRENT_SOURCE_DIR}/compile/expected/${model}.h ${header})
 endforeach()
 
+# The oracle: an instance compiled, and each of its terms held to the
+# interpreter's exact one by the program 'inkamath --check' writes. 'wild'
+# drifts from it, and its program says where and exits with a failure.
+foreach(instance IN ITEMS calm wild spin rough)
+    set(program ${CMAKE_CURRENT_BINARY_DIR}/compile/${instance}.c)
+    add_custom_command(OUTPUT ${program}
+        COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/compile
+        COMMAND inkamath_cli --check ${CMAKE_CURRENT_SOURCE_DIR}/compile/drift.ink ${instance}
+                -o ${program}
+        DEPENDS inkamath_cli compile/drift.ink
+        VERBATIM)
+    add_executable(check_${instance} ${program})
+    target_link_libraries(check_${instance} PRIVATE inkamath_warnings
+                          $<$<NOT:$<C_COMPILER_ID:MSVC>>:m>)
+    set_target_properties(check_${instance} PROPERTIES
+                          C_STANDARD 11 C_STANDARD_REQUIRED ON C_EXTENSIONS OFF)
+    add_test(NAME check_${instance}_report COMMAND check_${instance})
+endforeach()
+set_tests_properties(check_calm_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^calm: 100 steps from 0, against exact values\ncalm\\.v: within [0-9.e+-]+\n$")
+set_tests_properties(check_wild_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "wild\\.d: [0-9.e+-]+ at 9, where the interpreter gives 0\\.10000000000000001\n$")
+set_tests_properties(check_spin_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^spin: 100 steps from 0, against exact values\nspin\\.p: within [0-9.e+-]+\n$")
+set_tests_properties(check_rough_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^rough: 100 steps from 0, against exact values until 1 and inexact ones from there\nrough\\.v: within [0-9.e+-]+\n$")
+add_test(NAME check_calm COMMAND check_calm)
+add_test(NAME check_wild COMMAND check_wild)
+set_tests_properties(check_wild PROPERTIES WILL_FAIL ON)
+
 # Random models, compiled and held to the interpreter's answers: the generator
 # runs both at build time and writes one C file, built and run like the others.
 add_executable(compile_fuzz_generator compile/fuzz.cpp)

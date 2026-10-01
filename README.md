@@ -142,6 +142,18 @@ cannot yet express, such as limits, infinite series and an instance with
 memory made anew at each step; without `-o` it writes nothing and lists every
 definition it would refuse, and why.
 
+`--check drift.ink calm -o calm.c` holds the compiled code to the
+interpreter. It compiles `calm`, an instance the file defines, with the
+parameters the instance gives, and writes a C program that steps it a hundred
+times on the inputs the interpreter gives `calm`, replayed so that a difference
+is the step's own, and compares each term with the interpreter's. Where every
+term is within a billionth of one plus the interpreter's, it prints the largest
+difference; otherwise the first term that parts and what the interpreter gives
+there, and it exits with a failure. It also says whether the interpreter's
+terms were exact throughout. `test/compile/drift.ink` has an instance that
+holds and one that does not: a tenth computed again at every step, whose
+rounding each step multiplies by ten.
+
 Interpreter behaviour is pinned by golden transcripts in `test/data/*.ink`,
 which are literal sessions — every example in this file is one of them, so the
 documentation and the tests check each other. Regenerate with

@@ -8,6 +8,7 @@
 #include <variant>
 #include <vector>
 
+#include "inkamath/check.hpp"
 #include "inkamath/compile.hpp"
 #include "inkamath/interpreter.hpp"
 #include "inkamath/number.hpp"
@@ -38,6 +39,7 @@ using Outcome = LineEditor::Outcome;
 
 static const char help[] = R"(Usage: inkamath [options] [file...]
        inkamath --compile file [model] [-o header.h]
+       inkamath --check file instance -o check.c
 
 Runs the files in order and exits; with no file, reads standard input.
 At a terminal the prompt edits the line and keeps its history.
@@ -49,6 +51,9 @@ At a terminal the prompt edits the line and keeps its history.
               doubles, named after the header: a struct, an init and a step;
               given a model the file defines, those of the model instead;
               without -o, list what would not compile, and write nothing
+  --check     write a C program that steps an instance the file defines,
+              compiled, on the inputs the interpreter gives it, holds each
+              term to the interpreter's exact one and says where one drifts
   --help      print this and exit
 
 A file whose first line that is not blank or a comment starts with '>>'
@@ -116,6 +121,42 @@ static string render(const Interp& interpreter, const Interp::Result& result) {
     return rstrip(out.str());
 }
 
+// A header or a program is named after its file, which must be a C name.
+static bool c_name(const string& module, const string& what) {
+    if (!module.empty() && isalpha(static_cast<unsigned char>(module[0])) &&
+        all_of(module.begin(), module.end(),
+               [](char c) { return isalnum(static_cast<unsigned char>(c)) || c == '_'; }))
+        return true;
+    cerr << "inkamath: '" << module << "' is not a C name, and the " << what
+         << " is named after it\n";
+    return false;
+}
+
+// The file run as it would be at a prompt, stopping at the first error.
+static bool run(const string& source, ifstream& in, Interp& p) {
+    string line;
+    for (const Queued& queued : inputs(in, filesystem::path(source).parent_path())) {
+        if (line.empty() && blank(queued.line)) continue;
+        line += (line.empty() ? "" : joint(line)) + queued.line;
+        if (!queued.whole && unclosed(line)) continue;
+        const Interp::Result result = p.Eval(line);
+        if (const Diagnostic* error = get_if<Diagnostic>(&result)) {
+            cerr << "inkamath: " << source << ": " << line << ": " << error->message << '\n';
+            return false;
+        }
+        line.clear();
+    }
+    return true;
+}
+
+static bool write(const string& target, const string& text) {
+    // Binary, so that the file reads alike from every platform it is made on.
+    ofstream out(target, ios::binary);
+    out << text;
+    if (!out) cerr << "inkamath: cannot write '" << target << "'\n";
+    return static_cast<bool>(out);
+}
+
 // DESIGN.md, phase 14, step 2. The file is run as it would be at a
 // prompt, so the definitions compiled are the ones it leaves behind. Without a
 // target, what would not compile is listed and nothing is written.
@@ -126,13 +167,7 @@ static int compile(const string& source, const string& name, const string& targe
         return 2;
     }
     const string module = filesystem::path(target).stem().string();
-    if (!target.empty() && (module.empty() || !isalpha(static_cast<unsigned char>(module[0])) ||
-                            !all_of(module.begin(), module.end(), [](char c) {
-                                return isalnum(static_cast<unsigned char>(c)) || c == '_';
-                            }))) {
-        cerr << "inkamath: '" << module << "' is not a C name, and the header is named after it\n";
-        return 2;
-    }
+    if (!target.empty() && !c_name(module, "header")) return 2;
     const string file = filesystem::path(source).filename().string();
     Interp       p;
     p.Directory(filesystem::path(source).parent_path());
@@ -140,19 +175,7 @@ static int compile(const string& source, const string& name, const string& targe
     vector<string> refused;
     try {
         if (name.empty()) {
-            string line;
-            for (const Queued& queued : inputs(in, filesystem::path(source).parent_path())) {
-                if (line.empty() && blank(queued.line)) continue;
-                line += (line.empty() ? "" : joint(line)) + queued.line;
-                if (!queued.whole && unclosed(line)) continue;
-                const Interp::Result result = p.Eval(line);
-                if (const Diagnostic* error = get_if<Diagnostic>(&result)) {
-                    cerr << "inkamath: " << source << ": " << line << ": " << error->message
-                         << '\n';
-                    return 1;
-                }
-                line.clear();
-            }
+            if (!run(source, in, p)) return 1;
             if (target.empty())
                 refused = CompileC::Refusals(p.Definitions(), file);
             else
@@ -185,18 +208,42 @@ static int compile(const string& source, const string& name, const string& targe
         for (const string& refusal : refused) cout << refusal << '\n';
         return refused.empty() ? 0 : 1;
     }
-    // Binary, so that the header reads alike from every platform it is made on.
-    ofstream out(target, ios::binary);
-    out << header;
-    if (!out) {
-        cerr << "inkamath: cannot write '" << target << "'\n";
+    return write(target, header) ? 0 : 2;
+}
+
+// The oracle (DESIGN.md, next in line): an instance the file defines,
+// compiled, and the program that holds it to the interpreter.
+static int check(const string& source, const string& name, const string& target) {
+    ifstream in(source);
+    if (!in) {
+        cerr << "inkamath: cannot open '" << source << "'\n";
         return 2;
     }
-    return 0;
+    const string module = filesystem::path(target).stem().string();
+    if (!c_name(module, "program")) return 2;
+    const string file = filesystem::path(source).filename().string();
+    Interp       p;
+    p.Directory(filesystem::path(source).parent_path());
+    string program;
+    try {
+        if (!run(source, in, p)) return 1;
+        const auto& names = p.Definitions().Session().names;
+        const auto  found = names.find(name);
+        const auto  unfed = found == names.end() ? nullptr : p.Definitions().Unfed(found->second);
+        if (!unfed) {
+            cerr << "inkamath: " << file << " defines no instance " << name << '\n';
+            return 1;
+        }
+        program = CheckC::Program(p, name, module, name + " in " + file, *unfed);
+    } catch (const runtime_error& error) {
+        cerr << "inkamath: " << error.what() << '\n';
+        return 1;
+    }
+    return write(target, program) ? 0 : 2;
 }
 
 int main(int argc, char* argv[]) {
-    bool           echo = false, then_input = false, compiling = false;
+    bool           echo = false, then_input = false, compiling = false, checking = false;
     string         target;
     vector<string> files;
     for (int i = 1; i < argc; ++i) {
@@ -211,6 +258,8 @@ int main(int argc, char* argv[]) {
         }
         if (arg == "--compile") {
             compiling = true;
+        } else if (arg == "--check") {
+            checking = true;
         } else if (arg == "-o" && i + 1 < argc) {
             target = argv[++i];
         } else if (arg == "--echo") {
@@ -232,6 +281,15 @@ int main(int argc, char* argv[]) {
             return 2;
         }
         return compile(files[0], files.size() == 2 ? files[1] : string(), target);
+    }
+
+    if (checking) {
+        if (files.size() != 2 || target.empty()) {
+            cerr << "inkamath: --check takes a file, an instance it defines, and -o check.c\n"
+                    "Try 'inkamath --help'.\n";
+            return 2;
+        }
+        return check(files[0], files[1], target);
     }
 
     // Every file is read before anything runs, so that a command line which
