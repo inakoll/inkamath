@@ -2290,3 +2290,15 @@ that exploring seven domains asked of the interpreter, by how many asked.
   model by its name and a file's instances into one step; and a loop without
   a delay refused where it is closed. What it leaves, and an idea for errors
   inside an instance, close the phase.
+- `[done]` **What would not compile, known before compiling**:
+  `--compile file [model]` without `-o` writes nothing and lists every
+  definition it would refuse, and why. The compiler stops at the first, so a
+  refused definition is set aside and the rest compiled again, until none is
+  refused or one is refused that no single definition is to blame for; one
+  that reads a definition set aside says so. The interpreter itself refuses
+  nothing for not compiling: exploring is its part, and what compiles means
+  the same in both, which the random models hold it to.
+- **`--check`, reserved** for two checks yet to be written: that a compiled
+  header answers what the interpreter answers, to within how far doubles
+  drift from the exact values; and that a transcript's recorded answers are
+  what the interpreter gives now.

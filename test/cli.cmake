@@ -161,7 +161,7 @@ check(version)
 set(args --help)
 set(stdout [=[
 Usage: inkamath [options] [file...]
-       inkamath --compile file [model] -o header.h
+       inkamath --compile file [model] [-o header.h]
 
 Runs the files in order and exits; with no file, reads standard input.
 At a terminal the prompt edits the line and keeps its history.
@@ -171,7 +171,8 @@ At a terminal the prompt edits the line and keeps its history.
   --version   print the version and exit
   --compile   write the sequences the file defines as a C header over
               doubles, named after the header: a struct, an init and a step;
-              given a model the file defines, those of the model instead
+              given a model the file defines, those of the model instead;
+              without -o, list what would not compile, and write nothing
   --help      print this and exit
 
 A file whose first line that is not blank or a comment starts with '>>'
@@ -205,10 +206,25 @@ if(EXISTS "${OUT}/model.h")
     message(SEND_ERROR "compile_refused: model.h was written")
 endif()
 
-set(args --compile model.ink)
+set(args --compile model.ink a b)
 set(stderr "inkamath: --compile takes a file, optionally a model it defines, and -o header.h\nTry 'inkamath --help'.\n")
 set(exit 2)
 check(compile_usage)
+
+# Without -o, every definition that would not compile, and why, and nothing
+# written: one that reads a refused definition is refused in turn.
+file(WRITE "${OUT}/refused.ink" "sq(x) = x^2\na_0 = 1\na_n = a_(n-1) + !n\nb_n = a_n + 1\nc_n = 2*u_n\n")
+set(args --compile refused.ink)
+set(stdout "cannot compile sq: a function\ncannot compile a: a factorial\ncannot compile b: a, which cannot be compiled\n")
+set(stderr "")
+set(exit 1)
+check(compile_refusals)
+
+set(args --compile model.ink)
+file(WRITE "${OUT}/model.ink" "a_0 = 1\na_n = a_(n-1) + n\n")
+set(stdout "")
+set(exit 0)
+check(compile_nothing_refused)
 
 # A model compiled by name declares its inputs, so a name nothing defines is a
 # mistake rather than one more input (MODERNIZATION.md, phase 15).
