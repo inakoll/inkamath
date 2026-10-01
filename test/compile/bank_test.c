@@ -11,6 +11,7 @@ int main(void) {
                                       {7.0 / 16, 0.75, 15.0 / 16},
                                       {37.0 / 64, 7.0 / 8, 63.0 / 64}};
     static const double y[4]       = {0.0, 3.0 / 8, 21.0 / 32, 105.0 / 128};
+    static const double s[4]       = {2.0, 1.5, 1.25, 1.125};
     int                 failed     = 0;
     bank                m;
     bank_init(&m);
@@ -22,8 +23,8 @@ int main(void) {
                        rows[n][j]);
                 failed = 1;
             }
-        if (m.y[0] != y[n]) {
-            printf("y_%d is %.17g, not %.17g\n", n, m.y[0], y[n]);
+        if (m.y[0] != y[n] || m.s[0] != s[n]) {
+            printf("y_%d is %.17g and s_%d %.17g\n", n, m.y[0], n, m.s[0]);
             failed = 1;
         }
     }
