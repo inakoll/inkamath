@@ -56,8 +56,9 @@ discretisation exactly.
 infrastructure. A model is a file of definitions.
 
 **Not yet a library.** A C API, and Python bindings over it, will be needed to
-put a model inside a program that is not inkamath's. They are not the end, and
-they freeze an interface; they wait until the language has stopped moving.
+put a model inside a program that is not inkamath's, and would let the
+oracle's harness run interactively. They are not the end, and they freeze an
+interface; they wait until the language has stopped moving.
 
 The size constraint at the top of `DESIGN.md` governs everything below.
 Several of these directions could each double the program. Where one does, the
@@ -381,7 +382,7 @@ From control and signal processing, where several are already in
 `test/compile`:
 
 - a PID with anti-windup (`pid_clamped.ink`);
-- a Kalman filter (`kalman.ink`);
+- a Kalman filter (`kalman.ink`), the bridge between the two lists;
 - a quantiser (`adc.ink`) and a filter bank (`bank.ink`);
 - an LQR gain by its Riccati recurrence;
 - a decimator and an interpolator, the first test of several rates;
@@ -436,8 +437,9 @@ What came before, what each was for, and what this file takes or avoids:
   cell bounds is the attempt to have the first without the second.
 
 None of them made an exact semantics the reference its generated code is
-tested against, and none of them took the paper's notation as the default to
-depart from. That combination, together with time as a first-class index
+tested against, none of them took the paper's notation as the default to
+depart from, and none of them was written for someone learning the
+mathematics. That combination, together with time as a first-class index
 rather than one more axis of an array, is what this language would add.
 
 ## Open questions
