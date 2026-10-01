@@ -1524,7 +1524,11 @@ pointer's copies: a build that leaked big numbers through a raw pointer was
 that much faster on sequences, and no faster on matrices. The 1.7x against
 master was never the size of a `Number` either; phase 14 has it.
 
-## Phase 14 — The evaluator `[planned]`
+## Phase 14 — The evaluator `[partly done]`
+
+Step 1 landed its cheap end, a recomputed limit from 68.2M instructions to
+32.5M; the closures it ends with wait. Step 2 landed as the C target, and its
+exact C++ target is deferred.
 
 Measured against the same computation written in Python, inkamath's arithmetic
 is ahead and its evaluation is far behind: exact harmonic sums 169 ms against
