@@ -1,6 +1,6 @@
 /* The compiled model against the interpreter's answers for the instance
  * mix(u_n = 1, b_n = 0), then mix(g = 1, ...) from the fourth term on, all of
- * them exact in a double (MODERNIZATION.md, phase 15). */
+ * them exact in a double (DESIGN.md, phase 15). */
 #include "mix.h"
 
 #include <stdio.h>

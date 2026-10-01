@@ -65,7 +65,7 @@ set(stdout "1\n")
 check(quit)
 
 # And it ends at the end of its input, not only at 'q'. A regression here hangs
-# rather than fails, so the timeout is the assertion (MODERNIZATION.md, C21).
+# rather than fails, so the timeout is the assertion (DESIGN.md, C21).
 set(input "")
 set(stdout "")
 check(nothing)
@@ -195,7 +195,7 @@ set(exit 2)
 check(missing_file)
 
 # What the compiler cannot express it refuses by name, and writes nothing
-# (MODERNIZATION.md, phase 14, step 2).
+# (DESIGN.md, phase 14, step 2).
 file(WRITE "${OUT}/model.ink" "a_0 = 1\na_n = a_(n-1) + !n\n")
 file(REMOVE "${OUT}/model.h")
 set(args --compile model.ink -o model.h)
@@ -227,7 +227,7 @@ set(exit 0)
 check(compile_nothing_refused)
 
 # A model compiled by name declares its inputs, so a name nothing defines is a
-# mistake rather than one more input (MODERNIZATION.md, phase 15).
+# mistake rather than one more input (DESIGN.md, phase 15).
 file(WRITE "${OUT}/models.ink" "gain(k = 2, x_n) = { y_n = k*x_n + z_n }\n")
 set(args --compile models.ink gain -o gain.h)
 set(stderr "inkamath: cannot compile y: z is not defined\n")

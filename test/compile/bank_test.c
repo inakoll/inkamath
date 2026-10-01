@@ -1,6 +1,6 @@
 /* The bank fed 1 against the interpreter's answers: each row's filter with
  * its own a and memory, and y smoothing the last; then the first row's
- * filter retuned, which the others do not see (MODERNIZATION.md, phase 15). */
+ * filter retuned, which the others do not see (DESIGN.md, phase 15). */
 #include "bank.h"
 
 #include <stdio.h>

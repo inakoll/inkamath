@@ -1,4 +1,4 @@
-# Numbers shown as decimals (MODERNIZATION.md, phase 13). This was the
+# Numbers shown as decimals (DESIGN.md, phase 13). This was the
 # specification, written before they existed (CLAUDE.md, section 3); every
 # expected output is as it was specified, computed from the exact value by a
 # reference printer written apart from the interpreter -- but for the wording

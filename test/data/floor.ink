@@ -3,7 +3,7 @@
 # everything else that rounds is a line of it: which rule a model rounds by
 # -- halves up, to the cent, toward zero -- is the model's to say, as an
 # acceleration is (README.md, section 4), and no built-in rule would be right
-# for every model (MODERNIZATION.md, next in line).
+# for every model (DESIGN.md, next in line).
 
 # Exactly, of an exact number, however large.
 >> floor(7/2)

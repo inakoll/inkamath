@@ -1,5 +1,5 @@
 # '?name' prints a definition back as it was written, without evaluating it
-# (MODERNIZATION.md, phase 4 item 6). This is what makes the core idea
+# (DESIGN.md, phase 4 item 6). This is what makes the core idea
 # visible: a name is bound to an expression, not to the number that
 # expression last produced.
 
@@ -27,7 +27,7 @@ f(x,y)   =   x^2+y
 f(x,y)   =   x^2+y
 
 # A sequence is one definition, so '?' shows all of its clauses at once --
-# the thing three parallel slots used to make impossible (MODERNIZATION.md,
+# the thing three parallel slots used to make impossible (DESIGN.md,
 # C11). They print in the order they were written.
 >> s_0 = 1
 s_0 = 1

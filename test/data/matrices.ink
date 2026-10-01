@@ -16,7 +16,7 @@
  2, 3]
 
 # A matrix needs at least one element. These used to build a degenerate n x 0
-# matrix and kill the process in the evaluator (MODERNIZATION.md, C19).
+# matrix and kill the process in the evaluator (DESIGN.md, C19).
 >> []
 error: a matrix needs at least one element
 
@@ -49,14 +49,14 @@ a=[1 2;3 4]
 # A single value stretches to the other side's size. It already did for '*'
 # and inside a literal, where '[a; 1]' spreads the 1 across the block above
 # it; '+', '-' and '/' reported 'these matrices have different sizes', so
-# 'a*0.5' worked and 'a/2' did not (MODERNIZATION.md, C38).
+# 'a*0.5' worked and 'a/2' did not (DESIGN.md, C38).
 >> a/2
 [0.5, 1;
  1.5, 2]
 
 # A cell, written the way an array is indexed and numbered the way the rows
 # and columns are: from one. The language had no way at all to read a value
-# back out of a matrix (MODERNIZATION.md, C40).
+# back out of a matrix (DESIGN.md, C40).
 >> a[1,2]
 2
 
@@ -98,7 +98,7 @@ f(x)=[x, x^2]
 
 # A quote transposes: the rows become the columns. It binds to what it follows
 # before any operator does, as Julia's does, so 2*a' is 2*(a') and a^2' is
-# a^(2'), which is a^2 (MODERNIZATION.md, phase 14).
+# a^(2'), which is a^2 (DESIGN.md, phase 14).
 >> a'
 [1, 3;
  2, 4]
@@ -169,7 +169,7 @@ q_n = r_n[1,1]
 
 # A matrix defined by its cells: the brackets name the row and the column and
 # bound them, which is the size, and the right-hand side is any cell. The names
-# here are j and k because i is the imaginary unit (MODERNIZATION.md, phase 14).
+# here are j and k because i is the imaginary unit (DESIGN.md, phase 14).
 >> I[j<=2, k<=2] = j == k
 I[j<=2, k<=2] = j == k
 
@@ -309,7 +309,7 @@ error: a cell needs a row and a column, as 'm[1,2]'
 # added only the previous element instead of the running total, so the result
 # was allocated too small and every one of these reported 'Out of matrix
 # range.' Correct for two blocks, which is every size the tests used to have
-# (MODERNIZATION.md, C22).
+# (DESIGN.md, C22).
 >> [1 2 3]
 [1, 2, 3]
 
@@ -370,7 +370,7 @@ error: a cell needs a row and a column, as 'm[1,2]'
 [1, 2, 0;
  3, 4, 0]
 
-# RECORDED AS IT IS, NOT AS IT SHOULD BE (MODERNIZATION.md, C41). A block
+# RECORDED AS IT IS, NOT AS IT SHOULD BE (DESIGN.md, C41). A block
 # continues with its last value, which for a single value is the stretch above
 # and reads as an ellipsis -- '[a, 0]' pads the band with zeros. For a larger
 # block it repeats a corner instead: the second row under '[3 4]' is '4 4' and
@@ -387,7 +387,7 @@ error: a cell needs a row and a column, as 'm[1,2]'
 
 # A matrix power is repeated multiplication. It used to square the
 # accumulator, so 'a^n' computed 'a^(2^(n-1))' -- right at 1 and 2 and wrong
-# everywhere else, with a^0 returning a (MODERNIZATION.md, C23).
+# everywhere else, with a^0 returning a (DESIGN.md, C23).
 >> s=[1 1;0 1]
 s=[1 1;0 1]
 
@@ -415,7 +415,7 @@ s=[1 1;0 1]
 
 # The inverse times a matrix of exact numbers is solved for rather than
 # inverted and multiplied, and answers as the product did, errors and all
-# (MODERNIZATION.md, next in line).
+# (DESIGN.md, next in line).
 >> frac [1 2;3 4]^-1*[1;1]
 [-1;
   1]
@@ -473,7 +473,7 @@ error: a matrix cannot be an exponent
 
 # The rest of the matrix diagnostics, which used to be in the 2014 voice --
 # capitalised, punctuated, newline-terminated, and one of them misspelled
-# 'assigmentation' (MODERNIZATION.md, D13).
+# 'assigmentation' (DESIGN.md, D13).
 >> [1 2]+[1 2 3]
 error: these matrices have different sizes
 
@@ -520,7 +520,7 @@ mm_n=[1 2;3 4]*(0.5)^n
 # 'lim' compares successive terms, and matrices have no size to compare. The
 # message used to be the bare 'a matrix has no absolute value', which reads
 # like an internal error and does not say what the interpreter was doing
-# (MODERNIZATION.md, C39).
+# (DESIGN.md, C39).
 >> lim mm
 error: mm has no limit: a matrix has no absolute value
 

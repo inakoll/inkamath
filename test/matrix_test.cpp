@@ -7,7 +7,7 @@
 
 // Matrix is the one container left, and the two defects that lived longest in
 // it -- a literal wider than two blocks, and a^n -- survived because the
-// transcripts never went past 2x2 (MODERNIZATION.md, C22 and C23).
+// transcripts never went past 2x2 (DESIGN.md, C22 and C23).
 
 TEST_SUITE_BEGIN("matrix");
 

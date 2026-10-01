@@ -1,6 +1,6 @@
 /* The compiled controller closing the loop its model was written for,
  * y_n = y_(n-1) + (u_(n-1) - y_(n-1))*dt, against that loop's exact values
- * computed with Python's fractions (MODERNIZATION.md, phase 14, step 2). */
+ * computed with Python's fractions (DESIGN.md, phase 14, step 2). */
 #include "pid.h"
 
 #include <math.h>

@@ -141,7 +141,7 @@ TEST_CASE("readme") {
 // Not a transcript entry: the transcript format strips a trailing '\r', so
 // the one case that matters -- a file written on Windows, piped to the REPL,
 // whose every line ends with one -- cannot be written as one
-// (MODERNIZATION.md, C58).
+// (DESIGN.md, C58).
 TEST_CASE("a carriage return is whitespace") {
     Interpreter<Number> interpreter;
     CHECK(transcript::eval(interpreter, "1+1\r") == "2");
@@ -150,7 +150,7 @@ TEST_CASE("a carriage return is whitespace") {
 
 // Not a transcript entry: the inputs are thousands of characters wide. Both
 // of these used to exhaust the C++ stack and kill the process, so before the
-// token limit this case took the whole suite with it (MODERNIZATION.md, C20).
+// token limit this case took the whole suite with it (DESIGN.md, C20).
 TEST_CASE("token limit") {
     Interpreter<Number> interpreter;
     const std::string expected = "error: expression is longer than 1000 tokens";
@@ -166,13 +166,13 @@ TEST_CASE("token limit") {
     CHECK(transcript::eval(interpreter, std::string(400, '(') + "1" + std::string(400, ')')) == "1");
 
     // Twenty million of them, refused for the same reason at the same price:
-    // the answer was always this, the cost was 1.8 GB (MODERNIZATION.md, C57).
+    // the answer was always this, the cost was 1.8 GB (DESIGN.md, C57).
     CHECK(transcript::eval(interpreter, std::string(20000000, '(')) == expected);
 }
 
 // ParseEqualExpr used to rewind and re-parse its speculative left-hand side,
 // which nested into O(2^depth): this took nine seconds at depth 24 and did not
-// finish at 40 (MODERNIZATION.md, C32). Also not a transcript entry -- the
+// finish at 40 (DESIGN.md, C32). Also not a transcript entry -- the
 // assertion is that it returns at all.
 TEST_CASE("nested calls parse in linear time") {
     Interpreter<Number> interpreter;

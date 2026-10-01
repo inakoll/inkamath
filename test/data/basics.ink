@@ -21,7 +21,7 @@
 
 # A number may start with the point. The lexer's cases listed the digits and
 # not '.', so '.5' was 'unexpected character' while the exotic '1e3' and
-# '0x10' both worked (MODERNIZATION.md, C43).
+# '0x10' both worked (DESIGN.md, C43).
 >> .5
 0.5
 
@@ -42,7 +42,7 @@ error: a is not defined
 1
 
 # Unary plus, which README.md section 1 has always listed and the parser has
-# never had: '+5' was 'unexpected' (MODERNIZATION.md, C37). It binds exactly
+# never had: '+5' was 'unexpected' (DESIGN.md, C37). It binds exactly
 # as unary minus does.
 >> +5
 5
@@ -56,7 +56,7 @@ error: a is not defined
 # A sign binds to what follows it, not to the whole product: '6/-2/3' is
 # '(6/-2)/3'. Unary minus swallowed the multiplicative chain instead, so this
 # answered -9, and adding unary plus copied the mistake into a second operator
-# (MODERNIZATION.md, C48).
+# (DESIGN.md, C48).
 >> 6/-2/3
 -1
 
@@ -78,7 +78,7 @@ error: a is not defined
 
 # They carry every digit a double holds. The 2014 literals stopped at
 # fourteen, and the imaginary part here was 4.58636533e-14 -- the error in pi,
-# not the error of the arithmetic (MODERNIZATION.md, C34).
+# not the error of the arithmetic (DESIGN.md, C34).
 >> e^(i*pi)
 -1+i*~1.2246468e-16
 
@@ -123,7 +123,7 @@ i*2
 
 # A tab separates as a space does. The lexer's whitespace case was ' ' and
 # nothing else, so a pasted or indented line was 'unexpected character'
-# (MODERNIZATION.md, C58). The separator below is a tab.
+# (DESIGN.md, C58). The separator below is a tab.
 >> 1	+	2
 3
 

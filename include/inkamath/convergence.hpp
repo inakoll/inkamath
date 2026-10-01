@@ -17,7 +17,7 @@ public:
     // Since phase 9 this cap is a judgement about how long to keep trying and
     // not a technical limit: 'lim' walks the terms upward, so each one finds
     // its predecessor memoised, and a hundred thousand of them cost 250ms and
-    // no depth. Raising it was measured and rejected -- MODERNIZATION.md, C36.
+    // no depth. Raising it was measured and rejected -- DESIGN.md, C36.
     static constexpr size_t max_terms = 100;
     static constexpr double tolerance = 1E-10;
 
@@ -27,7 +27,7 @@ public:
     explicit Convergence(std::string what) : what_(std::move(what)) {}
 
     // A limit is approached and not reached, so it is inexact even when every
-    // value was exact and it lands on a whole number (MODERNIZATION.md,
+    // value was exact and it lands on a whole number (DESIGN.md,
     // phase 13).
     static T Limit(const T& value) { return numeric_interface<T>::inexact(value); }
 

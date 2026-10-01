@@ -1,4 +1,9 @@
-# Modernization plan
+# Design record
+
+This began as the plan to modernise the 2014 sources, which was done by
+phase 7; phase 8 was the first to change the language. It is now the record
+of what was decided, measured and fixed, in the order it happened. Where the
+language could go next is in `MANIFESTO.md`.
 
 Inkamath was written around 2014 in the idiom of the preceding decade. It is a
 small, genuinely interesting program: a lazy mathematical expression
@@ -148,7 +153,7 @@ made that are not true.
 | D12 `[fixed]` | **The `Numeric` and `Parsable` concepts do not state what they claim to.** `Numeric` omits five things `Interpreter` requires of `U` — `value_type`, construction from the token scalar, `Size()`, construction from `Extent`, and `operator()(size_t,size_t)` — so a type can satisfy it in full and still fail to compile. `Parsable` rejects nothing at all: a *declaration* satisfies a `requires` expression, so `Parsable<int>` is true and the failure is still only the link error that existed before the concept. Both were added in `3b12778`, whose message claimed more than they delivered. `Numeric` now names all five, and the concepts move to `interpreter.hpp`, which is where they are used and the only header that sees both `Extent` and `numeric_interface`. `Parsable` gains a `numeric_interface_parses` trait specialised beside each definition, since a `requires` clause cannot tell a declaration from a definition. Checked by static assertion: a type with the arithmetic and none of the matrix surface is rejected, and `Parsable<int>` and `Parsable<float>` are both false. |
 | D13 `[fixed]` | **`Matrix`'s diagnostics are in a second voice.** `Out of matrix range.`, `Incompatible dimensions in matrix operation.`, `Fact is not implemented for Matrix type.` and `Incompatible dimension in matrix assigmentation. Conversion` are capitalized, punctuated, newline-terminated and in one case misspelled, against `interpreter.hpp`'s own rule that messages are lower case, unpunctuated and quote what the user typed. All are reachable from a one-line input. Part of D11's remainder, and larger than that entry admits. Rewritten in the one voice, and made to say something while they were being touched: the subscript error now names the subscript and the extent it was outside, rather than only that something was. All six are goldens now. |
 | D14 `[fixed]` | **Comments cite README sections that phase 6 deleted.** `references.ink:1` and `:15`, `sequences.ink:1`, `errors.ink:57`, `matrices.ink:1`, and `parameters.hpp:14` and `:28` all cite the old French numbering (§3 Matrices, §4.1/4.2/4.3 references). `errors.ink:57` goes further and attributes to the README a statement it no longer contains. `sequences.ink:46` cites C4 for the implicit zero, which is phase 4 item 4. The `readme` test replays fenced blocks and so catches none of this. All seven citations renumbered to the current sections, `errors.ink` no longer attributes a sentence to the README that is not there, and `sequences.ink` cites phase 4 item 4 rather than C4. |
-| D15 `[fixed]` | **`CLAUDE.md` promises a list that does not exist.** §3 says some recorded outputs are deliberately wrong and "are listed in `MODERNIZATION.md`". The only list there was phase 0's, naming C5 and C6; both are fixed and both goldens have moved. `references.ink:98` (C26) was the first entry a restored list would have needed, and C26 is fixed, so the list would be empty. §3 now asks for the comment on the entry itself plus a register entry, which is what the goldens already do and what does not rot. |
+| D15 `[fixed]` | **`CLAUDE.md` promises a list that does not exist.** §3 says some recorded outputs are deliberately wrong and "are listed in `DESIGN.md`". The only list there was phase 0's, naming C5 and C6; both are fixed and both goldens have moved. `references.ink:98` (C26) was the first entry a restored list would have needed, and C26 is fixed, so the list would be empty. §3 now asks for the comment on the entry itself plus a register entry, which is what the goldens already do and what does not rot. |
 | D16 `[fixed]` | **Two smaller ones.** `numeric_interface_imp<std::complex<T>>::one()` returns `(1,1)` rather than `(1,0)`; latent, since nothing instantiates it. `reference_stack.hpp`'s `friend struct Frame;` declares a namespace-scope `::Frame` as a friend, not the nested `Frame` on the next line, which needs no friendship at all. |
 
 ### What the review confirmed
@@ -935,7 +940,8 @@ Recorded so they are not re-litigated later, or drifted into by accident.
 
 Not scheduled, and not Deferred either -- Deferred is for what has been argued
 and declined. These are the directions worth taking, with what is known about
-each measured rather than assumed.
+each measured rather than assumed. New directions go in `MANIFESTO.md`; what is
+here stays for what it measured.
 
 **Other number systems.** The seam D9 and C9 argued about is real, and this is
 not a guess: `Interpreter<double>` compiles and runs with no complex numbers at
@@ -968,10 +974,6 @@ whole of the work.
 
 **A conditional.** Done -- phase 10. It was the one opening specified before
 it was built, and the specification is what found both of its mistakes.
-
-**Slices.** `a[1]` as a whole row, which would make a reduction natural rather
-than a recurrence over cells, and would give chained indexing a reason to exist
--- today `a[1,2][1,1]` is a no-op precisely because every index yields a 1x1.
 
 **Performance.** No session has ever been too slow -- a prompt evaluates one
 line -- so this is about where the time goes if the interpreter is ever asked

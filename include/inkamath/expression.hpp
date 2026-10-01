@@ -418,7 +418,7 @@ protected:
 };
 
 // 'g.y_3': a name read in an instance or a file, which is the object on the
-// left (MODERNIZATION.md, phase 15).
+// left (DESIGN.md, phase 15).
 template <typename T>
 class MemberExpression : public Expression<T> {
 public:

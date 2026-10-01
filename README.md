@@ -148,7 +148,7 @@ documentation and the tests check each other. Regenerate with
 `cmake --build build --target record_goldens` and read the diff: it is the
 record of what your change did.
 
-`MODERNIZATION.md` tracks the work in progress and the known defects.
+`DESIGN.md` tracks the work in progress and the known defects.
 `CLAUDE.md` has the working rules.
 
 Language

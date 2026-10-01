@@ -1,6 +1,6 @@
 // Random models, each run by the interpreter and compiled by CompileC, written
 // out as one C file that steps every compiled model and holds each term to the
-// interpreter's (MODERNIZATION.md, phase 14, step 2). The hand-written models
+// interpreter's (DESIGN.md, phase 14, step 2). The hand-written models
 // test what they were written for; this tests the claim that a compiled model
 // answers as the interpreter does.
 //

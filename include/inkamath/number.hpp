@@ -25,7 +25,7 @@
 #define INKAMATH_NOINLINE [[gnu::noinline]]
 #endif
 
-// A number that knows whether it is exact (MODERNIZATION.md, phase 13): a
+// A number that knows whether it is exact (DESIGN.md, phase 13): a
 // fraction, over 64 bits while its reduced parts fit and over naturals of any
 // size until they pass a thousand digits, and a complex double once anything
 // inexact has touched it.

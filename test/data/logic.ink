@@ -1,4 +1,4 @@
-# 'and' and 'or', for guards and conditions (MODERNIZATION.md, next in line).
+# 'and' and 'or', for guards and conditions (DESIGN.md, next in line).
 # A truth is a number here, and so is their answer: 1 or 0, exactly, as a
 # comparison's is. Each reads its left side first and its right only when
 # the left has not decided, so a guard can ask whether a term exists before

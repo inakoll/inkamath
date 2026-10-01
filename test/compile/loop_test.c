@@ -1,6 +1,6 @@
 /* The loop against its exact values, x: 0, 1, 1/2, 3/4 and u: 2, 0, 1, 1/2 as
  * the interpreter gives them, then with the controller's gain set to 1 from
- * the fifth step: x_4 = 5/8 and u_4 = 3/8 (MODERNIZATION.md, phase 15). */
+ * the fifth step: x_4 = 5/8 and u_4 = 3/8 (DESIGN.md, phase 15). */
 #include "loop.h"
 
 #include <stdio.h>

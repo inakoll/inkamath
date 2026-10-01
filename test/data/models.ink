@@ -1,4 +1,4 @@
-# Models, files and their scopes (MODERNIZATION.md, phase 15). A model is
+# Models, files and their scopes (DESIGN.md, phase 15). A model is
 # defined as a function is, its value a group of definitions in braces, one a
 # line; its signature is its interface: parameters with their defaults, and
 # inputs, which have none. At the prompt an open brace continues the line, as

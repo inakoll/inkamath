@@ -1,5 +1,5 @@
 /* The chain fed 0, 1, 2, 0, 1, 2 against the interpreter's answers,
- * frac y_n and frac h.low.v_n for the same input (MODERNIZATION.md, phase 15). */
+ * frac y_n and frac h.low.v_n for the same input (DESIGN.md, phase 15). */
 #include "chain.h"
 
 #include <math.h>

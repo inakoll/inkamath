@@ -1,5 +1,5 @@
 /* The compiled reading fed a noisy ramp up and back down, against the exact
- * readings computed with Python's fractions (MODERNIZATION.md, phase 14,
+ * readings computed with Python's fractions (DESIGN.md, phase 14,
  * step 2). Every value is a quarter, so the comparison is exact. */
 #include "adc.h"
 

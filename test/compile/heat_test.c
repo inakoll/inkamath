@@ -1,6 +1,6 @@
 /* The compiled rod heated at a constant rate, its step doubled after ten
  * steps, against the exact temperatures computed with Python's fractions
- * (MODERNIZATION.md, phase 14, step 2). */
+ * (DESIGN.md, phase 14, step 2). */
 #include "heat.h"
 
 #include <math.h>

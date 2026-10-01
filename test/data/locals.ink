@@ -1,7 +1,7 @@
 # A definition written inside an expression binds a LOCAL: a name that lives
 # to the end of the line and is invisible outside it. This is what the 2014
 # design meant by "l'assignation etant une expression comme une autre", and
-# what C29 found had never worked (MODERNIZATION.md, phase 8).
+# what C29 found had never worked (DESIGN.md, phase 8).
 
 # The binding happens before the rest of the expression reads it, and the
 # bound expression is also the value of the binding.
