@@ -80,8 +80,15 @@ private:
             try {
                 compiler.Define(compiler.root_);
                 if (model) compiler.Signature();
-                for (const auto& [name, sequence] : Sorted(compiler.sequences_))
-                    compiler.Compile(name);
+                // An unnamed instance compiled on the way defines more.
+                for (bool more = true; more;) {
+                    more = false;
+                    for (const auto& [name, sequence] : Sorted(compiler.sequences_)) {
+                        if (!sequence.definition || sequence.compiled) continue;
+                        compiler.Compile(name);
+                        more = true;
+                    }
+                }
                 return compiler.Print(module, source);
             } catch (const Fix& fix) {
                 fixed.insert(fix.names.begin(), fix.names.end());
@@ -221,6 +228,264 @@ private:
         }
     }
 
+    // A call compiled where it is made (MODERNIZATION.md, phase 15): the names
+    // of a function, or of an instance of a model without memory, bound to
+    // what the caller gives them, and its own computed when first read. A
+    // constant folds through, and a recursion unrolls where its guards fold.
+    struct Expansion {
+        std::map<std::string, Code>                    values;  // given, or computed
+        std::map<std::string, const Reference<Value>*> own;     // defined here
+        const Scope<Value>*                            scope;   // where the rest are sought
+        Expansion*                                     outer;   // the model a function is in
+        std::set<std::string>                          computing;
+    };
+
+    // What an expansion gives a name, if one does.
+    std::optional<Code> Expanded(const std::string& name) {
+        for (Expansion* expansion = expansion_; expansion; expansion = expansion->outer) {
+            if (const auto value = expansion->values.find(name); value != expansion->values.end())
+                return value->second;
+            const auto own = expansion->own.find(name);
+            if (own == expansion->own.end()) continue;
+            const Reference<Value>& definition = *own->second;
+            if (definition.input) throw Reason(name + " is an input nothing gives");
+            if (!definition.Value()) return std::nullopt;
+            if (!definition.Clauses().front().parameters.parameters_names().empty())
+                throw Reason(name + ", a function, read as a value");
+            if (!expansion->computing.insert(name).second)
+                throw Reason(name + " is defined by itself");
+            const Code code = Inside(*expansion, [&] { return Chained(name, definition); });
+            expansion->computing.erase(name);
+            return expansion->values.emplace(name, code).first->second;
+        }
+        return std::nullopt;
+    }
+
+    // Where a function a call names is defined inside the expansion, if it is.
+    std::pair<const Reference<Value>*, Expansion*> Local(const std::string& name) const {
+        for (Expansion* expansion = expansion_; expansion; expansion = expansion->outer) {
+            const auto own = expansion->own.find(name);
+            if (own != expansion->own.end()) return {own->second, expansion};
+            if (expansion->values.count(name)) break;
+        }
+        return {nullptr, nullptr};
+    }
+
+    // The places an unnamed instance's argument was given, as constants.
+    static std::map<std::string, Value> Captured(const Reference<Value>* definition) {
+        std::map<std::string, Value> places;
+        if (definition)
+            for (const auto& [name, value] : definition->captured) places.emplace(name, value);
+        return places;
+    }
+
+    // One with memory is kept between steps, so it is an instance of its own,
+    // made once for each place it is written and for each value it reads of
+    // the cell there, and named after them: 'bank_smooth_1' is the one the
+    // first row of bank makes. One made anew at each step would run from its
+    // base at every one.
+    Code Kept(const Reference<Value>& model, const ParametersCall<Value>& call,
+              const PExpression<Value>& member) {
+        if (expansion_)
+            throw Reason("an instance of " + model.Name() + ", which keeps a history, in a call");
+        std::set<std::string> read;
+        if (const auto* list = dynamic_cast<const MatExpression<Value>*>(call.arguments().get())) {
+            for (const PExpression<Value>& argument : list->Children()) {
+                std::set<std::string> names;
+                std::string           own;
+                if (const auto* named =
+                        dynamic_cast<const EqualExpression<Value>*>(argument.get())) {
+                    if (const auto* term =
+                            dynamic_cast<const FuncExpression<Value>*>(named->m_e1().get()))
+                        own = term->m_e2() ? term->m_e2()->Name() : std::string();
+                    Named(named->m_e2(), names);
+                } else {
+                    Named(argument, names);
+                }
+                names.erase(own);
+                read.insert(names.begin(), names.end());
+            }
+        }
+        std::vector<std::pair<std::string, Value>> captured;
+        std::string                                values;
+        for (const std::string& name : read) {
+            if (!index_.empty() && name == index_)
+                throw Reason("an instance of " + model.Name() +
+                             ", which keeps a history, made anew at each step");
+            const auto place = places_.find(name);
+            if (place == places_.end()) continue;
+            captured.emplace_back(name, place->second);
+            values += "_" + std::to_string(numeric_interface<Value>::toInt(place->second));
+        }
+        const Scope<Value>*& kept = kept_[{member.get(), values}];
+        if (!kept) {
+            // Two written in one sequence are told apart by a number.
+            std::string label = within_ + "_" + model.Name() + values;
+            for (int other = 2; !labels_.insert(label).second; ++other)
+                label = within_ + "_" + model.Name() + std::to_string(other) + values;
+            held_.push_back(definitions_.Detached(model, call, *scope_, label, captured));
+            kept = held_.back().get();
+            Define(*kept);
+        }
+        own_ = kept;
+        return Emit(member);
+    }
+
+    // The names an expression reads, but not those after a point.
+    static void Named(const PExpression<Value>& expression, std::set<std::string>& names) {
+        if (!expression) return;
+        if (!expression->Name().empty()) names.insert(expression->Name());
+        const auto* member = dynamic_cast<const MemberExpression<Value>*>(expression.get());
+        for (const PExpression<Value>& child : expression->Children())
+            if (!member || child != member->Member()) Named(child, names);
+    }
+
+    // The model an object names, 'conv(lap, x)' or 'gain', if it names one.
+    const Reference<Value>* ModelOf(const Expression<Value>& object) const {
+        const auto* ref  = dynamic_cast<const RefExpression<Value>*>(&object);
+        const auto* call = dynamic_cast<const FuncExpression<Value>*>(&object);
+        if ((!ref && !call) || (call && (call->m_e2() || call->limit()))) return nullptr;
+        if (const auto [local, in] = Local(object.Name()); local)
+            return local->model ? local : nullptr;
+        for (const Scope<Value>* scope = scope_; scope; scope = scope->parent) {
+            const auto found = scope->names.find(object.Name());
+            if (found != scope->names.end())
+                return found->second->model ? found->second.get() : nullptr;
+        }
+        return nullptr;
+    }
+
+    static const ParametersCall<Value>& Call(const Expression<Value>& expression) {
+        static const ParametersCall<Value> plain;
+        const auto* call = dynamic_cast<const FuncExpression<Value>*>(&expression);
+        return call ? call->Call() : plain;
+    }
+
+    // An expansion's names are its own: the caller's index, cells and names
+    // are not seen inside it.
+    template <typename Body>
+    Code Inside(Expansion& expansion, Body body) {
+        struct Restore {
+            CompileC&                    compiler;
+            Expansion*                   expansion;
+            const Scope<Value>*          scope;
+            std::string                  index;
+            std::map<std::string, Value> places;
+            ~Restore() {
+                compiler.expansion_ = expansion;
+                compiler.scope_     = scope;
+                compiler.index_     = index;
+                compiler.places_    = places;
+                --compiler.expanded_;
+            }
+        } restore{*this, std::exchange(expansion_, &expansion),
+                  std::exchange(scope_, expansion.scope), std::exchange(index_, std::string()),
+                  std::exchange(places_, {})};
+        if (++expanded_ > max_expanded)
+            throw Reason("calls nested " + std::to_string(max_expanded) +
+                         " deep, which a recursion its guards do not end would pass");
+        return body();
+    }
+    static constexpr int max_expanded = 64;
+
+    // A value that is not a sequence, its clauses tried as the interpreter
+    // tries them: the guarded in the order written, then the one that always
+    // applies.
+    Code Chained(const std::string& name, const Reference<Value>& definition) {
+        if (IsSequence(definition)) throw Reason(name + " is a sequence; index it");
+        const auto cells = [](const Clause<Value>& c) { return c.parameters.cells(); };
+        if (std::any_of(definition.Clauses().begin(), definition.Clauses().end(), cells))
+            return Cells(name, definition);
+        std::vector<std::pair<std::string, Code>> guarded;
+        std::optional<Code>                       otherwise;
+        for (const bool guard : {true, false}) {
+            for (const Clause<Value>& clause : definition.Clauses()) {
+                const ParametersDefinition<Value>& p = clause.parameters;
+                if (otherwise || p.guarded() != guard) continue;
+                const std::optional<std::string> condition =
+                    guard ? Condition(p.guard()) : std::optional<std::string>("");
+                if (!condition) continue;
+                if (condition->empty())
+                    otherwise = Emit(clause.expression);
+                else
+                    guarded.emplace_back(*condition, Emit(clause.expression));
+            }
+        }
+        if (guarded.empty()) {
+            if (!otherwise) throw Reason("no clause of " + name + " applies");
+            return *otherwise;
+        }
+        Code chain;
+        for (const auto& [condition, value] : guarded) {
+            chain.rows = std::max(chain.rows, value.rows);
+            chain.cols = std::max(chain.cols, value.cols);
+        }
+        for (std::size_t i = 0; i < chain.rows; ++i) {
+            for (std::size_t j = 0; j < chain.cols; ++j) {
+                std::string cell;
+                for (const auto& [condition, value] : guarded)
+                    cell += condition + " ? " + value.At(i, j).text + " : ";
+                cell += otherwise ? otherwise->At(i, j).text : "NAN";
+                chain.cells.emplace_back(cell, 0);  // a conditional, below every operator
+            }
+        }
+        return chain;
+    }
+
+    // A function called: its parameters bound to the arguments, read where the
+    // call is, and its defaults to what they read inside it.
+    Code Call(const std::string& name, const Reference<Value>& function,
+              const ParametersCall<Value>& call, Expansion* outer) {
+        const ParametersDefinition<Value>& p = function.Clauses().front().parameters;
+        try {
+            p.CheckArity(name, call);
+        } catch (const std::runtime_error& error) {
+            throw Reason(error.what());
+        }
+        Expansion expansion{{}, {}, outer ? outer->scope : function.home, outer, {}};
+        const std::vector<std::string>& names = p.parameters_names();
+        for (std::size_t i = 0; i < call.parameters_expression().size(); ++i)
+            expansion.values.emplace(names[i], Emit(call.parameters_expression()[i]));
+        for (const auto& [given, argument] : call.parameters_dict())
+            expansion.values.emplace(given, Emit(argument));
+        return Inside(expansion, [&] {
+            for (const std::string& parameter : names) {
+                if (expansion.values.count(parameter)) continue;
+                expansion.values.emplace(parameter, Emit(p.parameters_dict().at(parameter)));
+            }
+            return Chained(name, function);
+        });
+    }
+
+    // A name of an instance written where it is read, 'conv(lap, u_(n-1)).out':
+    // one of a model without memory is a call.
+    Code Instance(const Reference<Value>& model, const ParametersCall<Value>& call,
+                  const PExpression<Value>& member) {
+        const Model<Value>& m         = *model.model;
+        const auto          remembers = [](const typename Model<Value>::Statement& s) {
+            return s.definition && !s.definition->Children()[0]->Children().empty() &&
+                   s.definition->Children()[0]->Children()[1];
+        };
+        if (std::any_of(m.parameters.begin(), m.parameters.end(),
+                        [](const auto& q) { return !q.index.empty(); }) ||
+            std::any_of(m.body.begin(), m.body.end(), remembers))
+            return Kept(model, call, member);
+        std::vector<std::optional<typename Model<Value>::Argument>> bound;
+        try {
+            bound = m.Bind(model.Name(), call);
+        } catch (const std::runtime_error& error) {
+            throw Reason(error.what());
+        }
+        held_.push_back(definitions_.Defaults(model));
+        Expansion expansion{{}, {}, m.scope, nullptr, {}};
+        for (std::size_t i = 0; i < m.parameters.size(); ++i)
+            if (bound[i])
+                expansion.values.emplace(m.parameters[i].name, Emit(bound[i]->expression));
+        for (const auto& [name, definition] : held_.back()->names)
+            if (!expansion.values.count(name)) expansion.own.emplace(name, definition.get());
+        return Inside(expansion, [&] { return Emit(member); });
+    }
+
     // A definition, where it was found, and its name there.
     struct Found {
         const Reference<Value>* definition;  // null for an input the step is given
@@ -305,8 +570,12 @@ private:
     // refused rather than left out; a plain one is compiled where it is read.
     void Define(const std::string& name, const Reference<Value>& definition) {
         for (const Clause<Value>& clause : definition.Clauses()) {
-            if (!clause.parameters.parameters_names().empty())
-                throw Refusal("cannot compile " + name + ": a function");
+            // A function is compiled where it is called.
+            if (!clause.parameters.parameters_names().empty()) {
+                if (clause.parameters.indexed())
+                    throw Refusal("cannot compile " + name + ": a sequence with parameters");
+                return;
+            }
             const ParametersDefinition<Value>& p = clause.parameters;
             if (p.guarded() && !p.cells() && !p.general())
                 throw Refusal("cannot compile " + name + ": a guarded " +
@@ -332,11 +601,12 @@ private:
         const Home        home(*this, sequences_.at(name).definition);
         Sequence* const   outer_reading = std::exchange(reading_, reading);
         const std::string outer_index   = std::exchange(index_, index);
+        const std::string outer_within  = std::exchange(within_, name);
         auto* const       outer_temporaries =
             std::exchange(temporaries_, &sequences_.at(name).temporaries);
         // A cell's names are its own clause's: another sequence compiled on
         // the way, whose cells may use the same names, must not see or undo them.
-        const auto outer_places = std::exchange(places_, {});
+        const auto outer_places = std::exchange(places_, Captured(sequences_.at(name).definition));
         const int  outer_shift  = std::exchange(shift_, 0);
         try {
             body();
@@ -345,6 +615,7 @@ private:
         }
         reading_     = outer_reading;
         index_       = outer_index;
+        within_      = outer_within;
         temporaries_ = outer_temporaries;
         places_      = outer_places;
         shift_       = outer_shift;
@@ -512,15 +783,19 @@ private:
 
     // Exactly, as the interpreter would, and rounded once: 0.1 + 0.2 is 3/10
     // here, which a C compiler folding the doubles would not find.
+    // By the interpreter, where the expression is read: a cell's names and
+    // what a call gives are locals there, and a function it calls is its own.
     PExpression<Value> Fold(Expression<Value>* expression) {
-        ReferenceStack<Value> scratch;
-        for (const auto& [name, value] : known_)
-            scratch.Set(name, ParametersDefinition<Value>(),
-                        std::make_shared<ValExpression<Value>>(value));
-        for (const auto& [name, value] : places_)
-            scratch.Set(name, ParametersDefinition<Value>(),
-                        std::make_shared<ValExpression<Value>>(value));
-        EvaluationVisitor<Value> evaluator(scratch);
+        definitions_.BeginEvaluation();
+        const typename ReferenceStack<Value>::Within within(definitions_, scope_);
+        const typename ReferenceStack<Value>::Frame  frame(definitions_);
+        std::vector<const Expansion*>                calls;
+        for (const Expansion* call = expansion_; call; call = call->outer) calls.push_back(call);
+        for (auto call = calls.rbegin(); call != calls.rend(); ++call)
+            for (const auto& [name, code] : (*call)->values)
+                if (code.constant) definitions_.BindValue(name, *code.constant);
+        for (const auto& [name, value] : places_) definitions_.BindValue(name, value);
+        EvaluationVisitor<Value> evaluator(definitions_);
         try {
             return Answer(Literal(expression->accept(evaluator)));
         } catch (const Reason&) {
@@ -919,6 +1194,7 @@ private:
             if (const auto place = places_.find(name); place != places_.end())
                 return Answer(Literal(place->second));
             if (!index_.empty() && name == index_) return Answer(Atom(index_text_));
+            if (const auto expanded = Expanded(name)) return Answer(*expanded);
         }
         const Found             found      = Lookup(name);
         const std::string&      key        = found.key;
@@ -941,7 +1217,7 @@ private:
         // is seen.
         Sequence* const   reading = std::exchange(reading_, nullptr);
         const std::string index   = std::exchange(index_, std::string());
-        const auto        places  = std::exchange(places_, {});
+        const auto             places  = std::exchange(places_, Captured(definition));
         std::vector<Temporary> temporaries;
         auto* const            outer_temporaries = std::exchange(temporaries_, &temporaries);
         auto                   outer_parameters  = std::exchange(read_parameters_, {});
@@ -1246,12 +1522,23 @@ private:
     PExpression<Value> visit(FuncExpression<Value>* expression) override {
         const std::string&           name  = expression->Name();
         const ParametersCall<Value>& call  = expression->Call();
-        const Found                  found = Lookup(name);
-        const std::string&           key   = found.key;
+        const bool calls = !call.parameters_expression().empty() || !call.parameters_dict().empty();
+        if (calls && !own_) {
+            const auto [local, in] = Local(name);
+            if (local) {
+                if (call.subexpr() || call.limit()) throw Reason("a sequence with parameters");
+                return Answer(Call(name, *local, call, in));
+            }
+        }
+        const Found        found = Lookup(name);
+        const std::string& key   = found.key;
         if (call.limit()) throw Reason("a limit");
         if (name == "floor" && found.where == &definitions_.Builtins()) return Floor(expression);
-        if (!call.parameters_expression().empty() || !call.parameters_dict().empty())
-            throw Reason("a function");
+        if (calls) {
+            if (!found.definition) throw Reason(key + " is not defined");
+            if (call.subexpr()) throw Reason("a sequence with parameters");
+            return Answer(Call(key, *found.definition, call, nullptr));
+        }
         if (!reading_) throw Reason(key + "_...: a term read outside a general clause");
         const Reference<Value>* definition = found.definition;
         if (definition && !IsSequence(*definition)) throw Reason(key + " is not a sequence");
@@ -1479,6 +1766,8 @@ private:
     // 'fast.v_n': the name after the point, sought in that scope alone. An
     // unnamed instance has no name for the struct to give it.
     PExpression<Value> visit(MemberExpression<Value>* expression) override {
+        if (const Reference<Value>* model = ModelOf(*expression->Object()))
+            return Answer(Instance(*model, Call(*expression->Object()), expression->Member()));
         const Scope<Value>* object = nullptr;
         try {
             object = &definitions_.Resolve(*expression->Object(), *scope_);
@@ -2072,6 +2361,13 @@ private:
     const Scope<Value>&              root_;   // the scope compiled, the session's or the model's
     const Scope<Value>*              scope_;  // where the names being read are sought
     const Scope<Value>*              own_ = nullptr;  // the scope after a point, for one name
+    Expansion*                       expansion_ = nullptr;  // the call being compiled, if one is
+    int                              expanded_  = 0;        // how deep calls are
+    std::vector<std::shared_ptr<const Scope<Value>>> held_;    // what expansions name
+    std::string                                      within_;  // the sequence being compiled
+    // Unnamed instances, by where they are written and what they read there.
+    std::map<std::pair<const void*, std::string>, const Scope<Value>*> kept_;
+    std::set<std::string>                                              labels_;
     std::map<std::string, Sequence>  sequences_;
     std::map<std::string, Parameter> parameters_;
     std::vector<Derived>             derived_;  // each after those it reads

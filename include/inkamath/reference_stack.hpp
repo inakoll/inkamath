@@ -129,6 +129,15 @@ public:
                            std::string(), {});
     }
 
+    // An instance the compiler names, of one written where it is read, with
+    // the values it reads there: kept by the compiler, not here.
+    std::shared_ptr<const Scope<T>> Detached(
+        const Reference<T>& model, const ParametersCall<T>& call, const Scope<T>& written,
+        std::string label, const std::vector<std::pair<std::string, T>>& captured) {
+        return Instantiate(model, model.model->Bind(model.Name(), call), &written, std::move(label),
+                           std::string(), captured);
+    }
+
     // The scope of a named instance, made if it has not been; null for any
     // other definition.
     const Scope<T>* InstanceScope(const definition_type& definition) {
