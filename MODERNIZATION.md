@@ -935,7 +935,8 @@ Recorded so they are not re-litigated later, or drifted into by accident.
 
 Not scheduled, and not Deferred either -- Deferred is for what has been argued
 and declined. These are the directions worth taking, with what is known about
-each measured rather than assumed.
+each measured rather than assumed. New directions go in `MANIFESTO.md`; what is
+here stays for what it measured.
 
 **Other number systems.** The seam D9 and C9 argued about is real, and this is
 not a guess: `Interpreter<double>` compiles and runs with no complex numbers at
@@ -968,10 +969,6 @@ whole of the work.
 
 **A conditional.** Done -- phase 10. It was the one opening specified before
 it was built, and the specification is what found both of its mistakes.
-
-**Slices.** `a[1]` as a whole row, which would make a reduction natural rather
-than a recurrence over cells, and would give chained indexing a reason to exist
--- today `a[1,2][1,1]` is a no-op precisely because every index yields a 1x1.
 
 **Performance.** No session has ever been too slow -- a prompt evaluates one
 line -- so this is about where the time goes if the interpreter is ever asked
