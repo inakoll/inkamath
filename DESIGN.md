@@ -2353,9 +2353,12 @@ that exploring seven domains asked of the interpreter, by how many asked.
   `test/compile/drift.ink` were specified before it was built, at 1 exactly on
   the threshold and at 6 a trillionth from it, and answered so. It cost 206
   lines of sources.
-- **The transcript check**, `--check transcript.ink`: replayed, and each
-  recorded answer the interpreter no longer gives reported. The tests do this
-  for `test/data`; the command line would do it for anyone's transcript.
+- `[done]` **The transcript check**, `--check transcript.ink`: replayed, and
+  each recorded answer the interpreter no longer gives shown, as recorded and
+  as given, under its line. The parser the tests used moved beside the
+  interpreter, and the command line's own reading of a transcript and its
+  rendering of an answer went with it: 22 lines fewer for that, 57 more for
+  the check.
 - **The fuzzer through the check.** Its harness reads the header's text for
   what `CompileC::Build` now reports. Its random models written as instances
   could go through `CheckC`, and the lines that write and compare with them.

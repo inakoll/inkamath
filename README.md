@@ -158,6 +158,11 @@ far that guard is from its threshold in exact arithmetic: rounding explains a
 flip at a margin near zero, and not one at a large margin. `brink` in the same
 file sits exactly on its threshold, and `ledge` a trillionth from it.
 
+`--check session.ink`, given a transcript alone, replays it and shows each
+answer that is not the one recorded, as recorded (`-`) and as given now (`+`),
+under the line it answers. It is the check the tests make of
+`test/data/*.ink`, for any transcript.
+
 Interpreter behaviour is pinned by golden transcripts in `test/data/*.ink`,
 which are literal sessions — every example in this file is one of them, so the
 documentation and the tests check each other. Regenerate with

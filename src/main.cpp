@@ -41,6 +41,7 @@ using Outcome = LineEditor::Outcome;
 static const char help[] = R"(Usage: inkamath [options] [file...]
        inkamath --compile file [model] [-o header.h]
        inkamath --check file instance -o check.c
+       inkamath --check transcript.ink
 
 Runs the files in order and exits; with no file, reads standard input.
 At a terminal the prompt edits the line and keeps its history.
@@ -54,7 +55,9 @@ At a terminal the prompt edits the line and keeps its history.
               without -o, list what would not compile, and write nothing
   --check     write a C program that steps an instance the file defines,
               compiled, on the inputs the interpreter gives it, holds each
-              term to the interpreter's exact one and says where one drifts
+              term to the interpreter's exact one and says where one drifts;
+              given a transcript alone, replay it and report each answer
+              that is not the one recorded
   --help      print this and exit
 
 A file whose first line that is not blank or a comment starts with '>>'
@@ -75,6 +78,12 @@ struct Queued {
     filesystem::path directory;
 };
 
+// Whether a file is a transcript: its first input is a '>>' line.
+static bool spoken(const vector<string>& lines) {
+    const auto first = find_if_not(lines.begin(), lines.end(), blank);
+    return first != lines.end() && first->rfind(">>", 0) == 0;
+}
+
 // A file's inputs. In a transcript they are its '>>' lines, with the '..' lines
 // that continue them, each the whole of an input as the recorder evaluated it,
 // and the answers it records are left for 'diff' to compare.
@@ -82,8 +91,7 @@ static vector<Queued> inputs(istream& in, const filesystem::path& directory) {
     vector<string> lines;
     for (string line; getline(in, line);) lines.push_back(line);
     vector<Queued> queued;
-    const auto     first = find_if_not(lines.begin(), lines.end(), blank);
-    if (first == lines.end() || first->rfind(">>", 0) != 0) {
+    if (!spoken(lines)) {
         for (const string& line : lines) queued.push_back({line, false, directory});
         return queued;
     }
@@ -216,6 +224,55 @@ static int check(const string& source, const string& name, const string& target)
     return write(target, program) ? 0 : 2;
 }
 
+// A transcript replayed, each answer held to the one it records: one that is
+// not is shown as recorded, '-', and as given now, '+'.
+static int replay(const string& source) {
+    ifstream in(source);
+    if (!in) {
+        cerr << "inkamath: cannot open '" << source << "'\n";
+        return 2;
+    }
+    vector<string> lines;
+    string         joined;
+    for (string line; getline(in, line);) {
+        lines.push_back(line);
+        joined += line + '\n';
+    }
+    if (!spoken(lines)) {
+        cerr << "inkamath: " << source << " is not a transcript\n";
+        return 1;
+    }
+    istringstream text(joined);
+    Interp        p;
+    p.Directory(filesystem::path(source).parent_path());
+    const auto marked = [](const string& mark, const string& answer) {
+        string        out;
+        istringstream answer_lines(answer);
+        for (string line; getline(answer_lines, line);) out += mark + line + '\n';
+        return out;
+    };
+    int answers = 0, differ = 0;
+    for (const transcript::Item& item : transcript::parse(text)) {
+        if (!item.is_entry) continue;
+        ++answers;
+        const string answer = transcript::eval(p, item.text);
+        if (answer == item.expected) continue;
+        ++differ;
+        cout << source << ':' << item.line << ": >> ";
+        for (const char c : item.text) cout << (c == '\n' ? string("\n.. ") : string(1, c));
+        cout << '\n' << marked("- ", item.expected) << marked("+ ", answer);
+    }
+    const string counted = to_string(answers) + (answers == 1 ? " answer" : " answers");
+    if (differ == 0) {
+        cout << source << ": " << counted
+             << (answers == 1 ? ", as recorded\n" : ", each as recorded\n");
+        return 0;
+    }
+    cout << source << ": " << differ << " of " << counted
+         << (differ == 1 ? " is not the one recorded\n" : " are not those recorded\n");
+    return 1;
+}
+
 int main(int argc, char* argv[]) {
     bool           echo = false, then_input = false, compiling = false, checking = false;
     string         target;
@@ -258,9 +315,10 @@ int main(int argc, char* argv[]) {
     }
 
     if (checking) {
+        if (files.size() == 1 && target.empty()) return replay(files[0]);
         if (files.size() != 2 || target.empty()) {
-            cerr << "inkamath: --check takes a file, an instance it defines, and -o check.c\n"
-                    "Try 'inkamath --help'.\n";
+            cerr << "inkamath: --check takes a transcript, or a file, an instance it defines and "
+                    "-o check.c\nTry 'inkamath --help'.\n";
             return 2;
         }
         return check(files[0], files[1], target);
