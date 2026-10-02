@@ -2369,6 +2369,20 @@ that exploring seven domains asked of the interpreter, by how many asked.
   short of what a slow filter settles in, and a billionth is loose for a
   well-conditioned step.
 
-Then, in the order proposed: one index on a vector, and slices, specified
-before they are built, since what `a[1]` means decides both; `?name` as
-LaTeX; and `lim` compiled as a bounded loop with a status.
+- **One index is a row.** `a[1]` is the first row of `a`, a 1xn matrix that
+  keeps its orientation, so a column vector's element is `v[2]`, a row
+  vector's is `r'[2]`, as a paper writes the transpose, and a definition by
+  one index, `w[j<=3] = j^2`, is a column. Specified in
+  `test/data/spec/vectors.ink`, 30 of its 37 entries failing. Two other
+  readings were weighed and declined. One index as an element of whatever
+  has one row or one column would leave a slice needing a notation of its
+  own, and give one shape two rules. A row without orientation, as NumPy's,
+  makes `a[1][2]` the cell, but accepts `x*A*x` for `x'*A*x` and `x*y` for
+  `x'*y`, the transposes a paper writes and a size check would have missed:
+  a missing transpose, among the commonest slips in a transcription, would
+  answer rather than be refused. It also adds a kind of value beside numbers
+  and matrices. The two differ only from rank 2 to rank 1, so a tensor's
+  slice, a matrix of a rank-3 tensor, is the same under either. What this
+  costs is that `a[1][2]` is not the cell `a[1,2]`, and the spec says so.
+
+Then `?name` as LaTeX, and `lim` compiled as a bounded loop with a status.
