@@ -48,6 +48,7 @@ struct numeric_interface_imp
      static std::string   fraction(const T& a, int digits) { return T::fraction(a, digits); }
      static T pow(const T& a, const T& b) {return T::pow(a,b);}
      static T cell(const T& a, int i, int j) {return T::cell(a,i,j);}
+     static T             row(const T& a, int i) { return T::row(a, i); }
      static T compare(const T& a, const T& b, Comparison op) {return T::compare(a,b,op);}
      static bool truth(const T& a) {return T::truth(a);}
      static bool          truth(const T& a, const std::string& needs) { return T::truth(a, needs); }

@@ -69,13 +69,18 @@ endforeach()
 # The oracle: an instance compiled, and each of its terms held to the
 # interpreter's exact one by the program 'inkamath --check' writes. 'wild'
 # drifts from it, and its program says where and exits with a failure.
-foreach(instance IN ITEMS calm wild spin rough brink ledge)
+# Each as file:instance.
+foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brink drift:ledge
+                         delay:fir)
+    string(REPLACE ":" ";" checked ${checked})
+    list(GET checked 0 file)
+    list(GET checked 1 instance)
     set(program ${CMAKE_CURRENT_BINARY_DIR}/compile/${instance}.c)
     add_custom_command(OUTPUT ${program}
         COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/compile
-        COMMAND inkamath_cli --check ${CMAKE_CURRENT_SOURCE_DIR}/compile/drift.ink ${instance}
+        COMMAND inkamath_cli --check ${CMAKE_CURRENT_SOURCE_DIR}/compile/${file}.ink ${instance}
                 -o ${program}
-        DEPENDS inkamath_cli compile/drift.ink
+        DEPENDS inkamath_cli compile/${file}.ink
         VERBATIM)
     add_executable(check_${instance} ${program})
     target_link_libraries(check_${instance} PRIVATE inkamath_warnings
@@ -84,6 +89,8 @@ foreach(instance IN ITEMS calm wild spin rough brink ledge)
                           C_STANDARD 11 C_STANDARD_REQUIRED ON C_EXTENSIONS OFF)
     add_test(NAME check_${instance}_report COMMAND check_${instance})
 endforeach()
+set_tests_properties(check_fir_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^fir: 100 steps from 0, against exact values\n(fir\\.[a-z]+: within 0\n)+$")
 set_tests_properties(check_calm_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^calm: 100 steps from 0, against exact values\ncalm\\.v: within [0-9.e+-]+\n$")
 set_tests_properties(check_wild_report PROPERTIES PASS_REGULAR_EXPRESSION

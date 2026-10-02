@@ -304,6 +304,7 @@ public:
     T visit(CellExpression<T>* expr) override {
         const T matrix = expr->Matrix()->accept(*this);
         const int row = AsIndex<T>(expr->Row()->accept(*this));
+        if (!expr->Col()) return numeric_interface<T>::row(matrix, row);
         const int col = AsIndex<T>(expr->Col()->accept(*this));
         return numeric_interface<T>::cell(matrix, row, col);
     }

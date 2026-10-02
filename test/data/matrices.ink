@@ -66,16 +66,17 @@ a=[1 2;3 4]
 >> a[1,2]+a[2,1]
 5
 
-# The brackets bind to a name and nothing else, because a space between two
-# blocks already means something: '[a [3 4]]' is one row of two blocks.
+# Brackets index only what they touch, because a space between two blocks
+# already means something: '[a [3 4]]' is one row of two blocks.
 >> a[3,1]
 error: row 3, column 1 is outside a 2x2 matrix
 
 >> a[0,1]
 error: row 0, column 1 is outside a 2x2 matrix
 
+# One index is a row, a 1x2 matrix (vectors.ink).
 >> a[1]
-error: a cell needs a row and a column, as 'm[1,2]'
+[1, 2]
 
 >> a[1,1.5]
 error: an index must be a whole number, not 1.5
@@ -283,10 +284,12 @@ error: row 3, column 1 is outside a 2x2 matrix
 >> [a[1,1], a[2,2]]
 [1, 4]
 
-# Which leaves one form that changed: a row of blocks whose second block
-# follows a name with a space. Write it with the comma README.md uses.
+# A space before the brackets separates blocks here too, so this is a row of
+# two blocks, as '[a, [3 4]]' is. It was refused while a space could still
+# begin an index (vectors.ink).
 >> [a [3 4]]
-error: a cell needs a row and a column, as 'm[1,2]'
+[1, 2, 3, 4;
+ 3, 4, 4, 4]
 
 >> [a, [3 4;5 6]]
 [1, 2, 3, 4;

@@ -300,6 +300,22 @@ columns are written:
 error: row 3, column 1 is outside a 2x2 matrix
 ```
 
+`m[i]` is row `i`, a matrix of one row, so a vector, which is a column as on
+paper, gives its element, and a row vector is read through its transpose, as
+a paper writes one. Brackets index only what they touch; a space before them
+separates blocks in a literal, as everywhere in one.
+
+```
+>> a[2]
+[3, 4]
+
+>> [1; 4; 9][2]
+4
+
+>> [1 2 3]'[2]
+2
+```
+
 `m'` is the transpose of `m`, its rows made columns. The quote belongs to what
 it follows, subscript and cell brackets included, before any operator: `2*a'`
 is `2*(a')`, and `x_(n-1)'` transposes the term `x_(n-1)`. It does not
@@ -320,8 +336,9 @@ left the brackets name the row and the column and bound them, which is the
 size; the right-hand side is any cell, and a guard says which cells a clause
 gives. A clause for one cell, `M[1,2] = 5`, beats the others. A cell no clause
 gives is 0, or, where the matrix was also written whole, that matrix's: after
-`T = [1 2; 3 4]`, `T[1,1] = 9` changes that cell and nothing else. The names
-are anything but `i`, which is the imaginary unit:
+`T = [1 2; 3 4]`, `T[1,1] = 9` changes that cell and nothing else. One index
+on the left defines a column, `w[j<=3] = j^2`, whose clauses then name one
+index each. The names are anything but `i`, which is the imaginary unit:
 
 ```
 >> I[j<=2, k<=2] = j == k
@@ -343,10 +360,20 @@ U[j<=3, k<=3] | j <= k = 1
 A size can come from a parameter: `H(n)[j<=n, k<=n] = 1/(j+k-1)` is the
 Hilbert matrix of any size.
 
-Inside a matrix literal the brackets index a name and nothing else, because
-there a space between two blocks already separates them: `[[1 2] [3 4]]` is
-one row of two blocks, while `[a [3 4]]` reads as an index of `a`. Write a row
-of blocks with a comma.
+Blocks are written as a paper writes them, by name, `[A, B; C, D]`, with a
+comma between them. Brackets index whatever they touch, inside a literal as
+anywhere, so a block must not touch the one before it: with a space or a
+comma, `[a [5; 6]]` is `a` beside a column, while `[[1 2][1]]` is row 1 of
+`[1 2]`, not two blocks.
+
+```
+>> [a, [5; 6]]
+[1, 2, 5;
+ 3, 4, 6]
+
+>> [[1 2][1]]
+[1, 2]
+```
 
 `*` is matrix multiplication; `+`, `-` and `/` work cell by cell. A single
 value stretches to the other side's size, and the order is kept:
@@ -617,19 +644,20 @@ error: the sum did not converge within 100 terms (last partial sum ~1.6349839)
 ```
 
 A term can be defined by its cells, as a matrix is (section 2): the brackets
-after the index name the row and the column and bound them, every cell sees
-the index, and a guard says which cells a clause gives. A delay line keeps
-the newest sample on top and shifts the others down:
+after the index name the row and the column and bound them, or one index a
+column's, every cell sees the index, and a guard says which cells a clause
+gives. A delay line keeps the newest sample on top and shifts the others
+down:
 
 ```
->> tap_0[j<=3, k<=1] = 0
-tap_0[j<=3, k<=1] = 0
+>> tap_0[j<=3] = 0
+tap_0[j<=3] = 0
 
->> tap_n[j<=3, k<=1] = tap_(n-1)[j-1, 1]
-tap_n[j<=3, k<=1] = tap_(n-1)[j-1, 1]
+>> tap_n[j<=3] = tap_(n-1)[j-1]
+tap_n[j<=3] = tap_(n-1)[j-1]
 
->> tap_n[j<=3, k<=1] | j == 1 = n^2
-tap_n[j<=3, k<=1] | j == 1 = n^2
+>> tap_n[j<=3] | j == 1 = n^2
+tap_n[j<=3] | j == 1 = n^2
 
 >> tap_4
 [16;
@@ -637,7 +665,7 @@ tap_n[j<=3, k<=1] | j == 1 = n^2
   4]
 ```
 
-One cell, of every term (`tap_n[2,1] = 0`) or of one (`tap_2[2,1] = 0`),
+One cell, of every term (`tap_n[2] = 0`) or of one (`tap_2[2] = 0`),
 overrides the rest, as `M[1,2] = 5` does. A clause wins where it is at least
 as specific in both the index and the cell; a base term and a cell of every
 term are each more specific in one, so where both give a cell the

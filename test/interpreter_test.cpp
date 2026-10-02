@@ -121,6 +121,9 @@ TEST_CASE("logic") {
 TEST_CASE("terms") {
     check_transcript("terms.ink");
 }
+TEST_CASE("vectors") {
+    check_transcript("vectors.ink");
+}
 TEST_CASE("models") {
     check_transcript("models.ink");
 }

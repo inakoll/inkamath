@@ -316,7 +316,7 @@ private:
     bool conjunction_;
 };
 
-// One cell of a matrix: 'm[i,j]'.
+// One cell of a matrix, 'm[i,j]', or with no column one row, 'm[i]'.
 template <typename T>
 class CellExpression : public Expression<T>
 {
