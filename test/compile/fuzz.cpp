@@ -11,7 +11,6 @@
 #include "inkamath/interpreter.hpp"
 #include "inkamath/number.hpp"
 
-#include <algorithm>
 #include <cmath>
 #include <cstdint>
 #include <cstdio>
@@ -194,34 +193,6 @@ std::string Double(double x) {
     return text;
 }
 
-// A sequence's field as the header declares it: 'double v[2][2][1];'.
-struct Field {
-    std::string name;
-    std::size_t rows = 1, cols = 1;
-    bool        matrix = false;
-};
-
-std::vector<Field> Fields(const std::string& header, const std::vector<std::string>& inputs) {
-    std::vector<Field> fields;
-    std::size_t        at  = header.find("long long index_;");
-    const std::size_t  end = header.find("} ", at);
-    while ((at = header.find("double ", at)) != std::string::npos && at < end) {
-        at += 7;
-        const std::size_t open = header.find('[', at), close = header.find(';', at);
-        Field             field{header.substr(at, open - at)};
-        const std::size_t past = header.find(']', open) + 1;  // past the window
-        if (past < close && header[past] == '[') {
-            const std::size_t rows = header.find(']', past), cols = header.find(']', rows + 1);
-            field.matrix = true;
-            field.rows   = std::stoul(header.substr(past + 1, rows - past - 1));
-            field.cols   = std::stoul(header.substr(rows + 2, cols - rows - 2));
-        }
-        if (std::find(inputs.begin(), inputs.end(), field.name) == inputs.end())
-            fields.push_back(field);
-    }
-    return fields;
-}
-
 }  // namespace
 
 int main(int argc, char* argv[]) {
@@ -240,20 +211,15 @@ int main(int argc, char* argv[]) {
         for (const std::string& line : lines)
             accepted = accepted && !std::holds_alternative<Diagnostic>(session.Eval(line));
         if (!accepted) continue;
-        std::string header;
+        CompileC::Compiled step;
         try {
-            header = CompileC::Header(session.Definitions(), module, "fuzz");
+            step = CompileC::Build(session.Definitions(), module, "fuzz");
         } catch (const Refusal&) {
             continue;
         }
         ++compiled;
-
-        // The inputs the step takes, in the order it takes them.
-        const std::size_t signature = header.find(module + "_step(" + module + "* m_");
-        const std::string rest = header.substr(signature, header.find(')', signature) - signature);
-        std::vector<std::string> inputs;
-        for (std::size_t at = 0; (at = rest.find("double ", at)) != std::string::npos; at += 7)
-            inputs.push_back(rest.substr(at + 7, rest.find_first_of(",)", at + 7) - at - 7));
+        const std::string&              header = step.header;
+        const std::vector<std::string>& inputs = step.inputs;
         // Written for C as doubles: '(7/4)' there is a division of integers.
         std::vector<std::vector<std::string>> samples(inputs.size());
         for (std::size_t k = 0; k < inputs.size(); ++k) {
@@ -275,8 +241,9 @@ int main(int argc, char* argv[]) {
             check += "};\n";
         }
         std::string compare;
-        for (const Field& field : Fields(header, inputs)) {
-            const std::size_t cells = field.rows * field.cols;
+        for (const auto& field : step.sequences) {
+            const std::size_t cells  = field.rows * field.cols;
+            const bool        matrix = cells > 1;
             std::string       want, known;
             for (int n = 0; n < steps; ++n) {
                 const auto answer = Answer(session, field.name + "_" + std::to_string(n));
@@ -292,11 +259,10 @@ int main(int argc, char* argv[]) {
                      known + "};\n";
             for (std::size_t c = 0; c < cells; ++c) {
                 const std::string at = "n * " + std::to_string(cells) + " + " + std::to_string(c);
-                const std::string got =
-                    "m." + field.name + "[0]" +
-                    (field.matrix ? "[" + std::to_string(c / field.cols) + "][" +
-                                        std::to_string(c % field.cols) + "]"
-                                  : "");
+                const std::string got = "m." + field.name + "[0]" +
+                                        (matrix ? "[" + std::to_string(c / field.cols) + "][" +
+                                                      std::to_string(c % field.cols) + "]"
+                                                : "");
                 compare += "        ok &= near_(\"" + module + "\", \"" + field.name + "\", n, " +
                            got + ", want_" + field.name + "[" + at + "], known_" + field.name +
                            "[" + at + "]);\n";

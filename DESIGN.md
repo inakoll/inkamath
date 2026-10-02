@@ -2359,9 +2359,12 @@ that exploring seven domains asked of the interpreter, by how many asked.
   interpreter, and the command line's own reading of a transcript and its
   rendering of an answer went with it: 22 lines fewer for that, 57 more for
   the check.
-- **The fuzzer through the check.** Its harness reads the header's text for
-  what `CompileC::Build` now reports. Its random models written as instances
-  could go through `CheckC`, and the lines that write and compare with them.
+- `[done]` **The fuzzer, reading `CompileC::Build`** rather than the header's
+  text for the step's inputs and its sequences: 33 lines fewer, and the
+  program it writes byte-identical. Not through `CheckC`, as first proposed:
+  its random models are files, compiled as a session is, and as instances
+  they would be compiled as a model is, so the path that found C71 would no
+  longer be fuzzed by anything.
 - **Steps and tolerance as options**, when a model asks: a hundred steps is
   short of what a slow filter settles in, and a billionth is loose for a
   well-conditioned step.
