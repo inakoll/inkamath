@@ -1,9 +1,8 @@
 #include <doctest/doctest.h>
 
-#include "transcript.hpp"
-
 #include "inkamath/interpreter.hpp"
 #include "inkamath/number.hpp"
+#include "inkamath/transcript.hpp"
 
 #include <cstdlib>
 #include <filesystem>

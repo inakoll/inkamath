@@ -13,6 +13,7 @@
 #include "inkamath/interpreter.hpp"
 #include "inkamath/number.hpp"
 #include "inkamath/numeric_interface.hpp"
+#include "inkamath/transcript.hpp"
 
 #include "line_editor.hpp"
 
@@ -60,11 +61,6 @@ A file whose first line that is not blank or a comment starts with '>>'
 is a transcript, and only its '>>' lines are read.
 )";
 
-static string rstrip(string text) {
-    text.erase(text.find_last_not_of(" \t\r\n") + 1);
-    return text;
-}
-
 // Only spacing, or only a comment: not an input, in a file or from a pipe.
 static bool blank(const string& line) {
     const size_t first = line.find_first_not_of(" \t\r");
@@ -91,34 +87,12 @@ static vector<Queued> inputs(istream& in, const filesystem::path& directory) {
         for (const string& line : lines) queued.push_back({line, false, directory});
         return queued;
     }
-    const auto spoken = [](const string& line) {
-        const string entry = line.substr(2);
-        return rstrip(entry.rfind(' ', 0) == 0 ? entry.substr(1) : entry);
-    };
-    bool entry = false;
-    for (const string& line : lines) {
-        if (line.rfind(">>", 0) == 0) {
-            queued.push_back({spoken(line), true, directory});
-            entry = true;
-        } else if (entry && line.rfind("..", 0) == 0) {
-            queued.back().line += '\n' + spoken(line);
-        } else {
-            entry = false;
-        }
-    }
+    string joined;
+    for (const string& line : lines) joined += line + '\n';
+    istringstream text(joined);
+    for (const transcript::Item& item : transcript::parse(text))
+        if (item.is_entry) queued.push_back({item.text, true, directory});
     return queued;
-}
-
-static string render(const Interp& interpreter, const Interp::Result& result) {
-    ostringstream out;
-    if (const Diagnostic* error = get_if<Diagnostic>(&result)) {
-        out << "error: " << error->message;
-    } else if (const Echo* echo = get_if<Echo>(&result)) {
-        out << echo->text;
-    } else {
-        out << interpreter.Answer(get<Interp::matrix_type>(result));
-    }
-    return rstrip(out.str());
 }
 
 // A header or a program is named after its file, which must be a C name.
@@ -354,7 +328,7 @@ int main(int argc, char* argv[]) {
         if (read == Outcome::cancelled) continue;
 
         const Interp::Result result = p.Eval(s);
-        const string         answer = render(p, result);
+        const string         answer = transcript::answer(p, result);
         if (typed) {
             // The whole of a line that continued, so that recalling it gives
             // back something that reads.
