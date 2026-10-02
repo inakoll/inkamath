@@ -124,6 +124,9 @@ TEST_CASE("terms") {
 TEST_CASE("vectors") {
     check_transcript("vectors.ink");
 }
+TEST_CASE("latex") {
+    check_transcript("latex.ink");
+}
 TEST_CASE("models") {
     check_transcript("models.ink");
 }

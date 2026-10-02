@@ -2368,6 +2368,22 @@ that exploring seven domains asked of the interpreter, by how many asked.
 - **Steps and tolerance as options**, when a model asks: a hundred steps is
   short of what a slow filter settles in, and a billionth is loose for a
   well-conditioned step.
+- `[done]` **A definition as LaTeX**, `tex ?name`, a word at the start of a line as
+  `frac` is, and reserved as it is. It renders what was parsed, not what was
+  typed: the clauses for one index a line each, then those for every index,
+  guarded or not, as one definition in cases, the clause that always applies
+  last, `otherwise`. A name of one letter is itself, a Greek one its letter,
+  any other one italic word; a function of more than one letter an
+  operator's name; a product a thin space, or a dot before a digit. What has
+  no form on paper, `~`, it refuses rather than drop, and a model it refuses
+  for now. Specified in `test/data/spec/latex.ink`, 20 of its 44 entries
+  failing, every one of them a `tex` line.
+  Built as specified, every entry passing as written, now
+  `test/data/latex.ink`. Its own header, `latex.hpp`, walks the parsed tree;
+  an index is set tight, `s_{n-1}`, as a subscript is, and an operand is
+  parenthesised by how loosely it binds. A definition by cells it refuses as
+  well, for want of a paper's form for its bounds. 237 lines of sources,
+  most of them the one function that knows each node.
 
 - `[done]` **One index is a row.** `a[1]` is the first row of `a`, a 1xn matrix that
   keeps its orientation, so a column vector's element is `v[2]`, a row
@@ -2404,4 +2420,4 @@ that exploring seven domains asked of the interpreter, by how many asked.
   compiler reads a row out of a matrix, and `test/compile/delay.ink` holds a
   delay line defined by one index to the interpreter. 57 lines of sources.
 
-Then `?name` as LaTeX, and `lim` compiled as a bounded loop with a status.
+Then `lim` compiled as a bounded loop with a status.

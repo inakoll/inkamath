@@ -20,11 +20,12 @@
 #include "inkamath/diagnostic.hpp"
 #include "inkamath/expression.hpp"
 #include "inkamath/expression_visitor.hpp"
-#include "inkamath/pexpression.hpp"
+#include "inkamath/latex.hpp"
 #include "inkamath/matrix.hpp"
-#include "inkamath/token.hpp"
 #include "inkamath/numeric_interface.hpp"
+#include "inkamath/pexpression.hpp"
 #include "inkamath/reference_stack.hpp"
+#include "inkamath/token.hpp"
 
 // What the interpreter needs of the type it evaluates to. Stating it is the
 // point of C9: sqrt was missing for complex and threw for Matrix, and nothing
@@ -165,6 +166,7 @@ private:
     PExpression<U> ParseLimit();
     PExpression<U> ParseSeries();
     std::string ParseQuery();
+    std::string    Tex();
 
     // The reserved words. A limit is a property of a definition, so 'lim'
     // takes a name rather than an expression; 'sum' and 'prod' begin a series.
@@ -178,9 +180,9 @@ private:
     static bool IsLogic(const Token<T>& token) {
         return IsWord(token, "and") || IsWord(token, "or");
     }
-    // 'frac' and 'digits' are about the whole answer, so they begin a line.
+    // 'frac', 'digits' and 'tex' are about the whole line, so they begin it.
     static bool BeginsLine(const Token<T>& token) {
-        return IsWord(token, "frac") || IsWord(token, "digits");
+        return IsWord(token, "frac") || IsWord(token, "digits") || IsWord(token, "tex");
     }
     bool   DefinesReserved() const;
     Result Digits(const std::string& s);
@@ -951,6 +953,18 @@ std::string Interpreter<T,U>::ParseQuery()
     return stack_.Describe(name, ParametersCall<U>(PExpression<U>(), sub));
 }
 
+// 'tex ?name': a definition as LaTeX (DESIGN.md, next in line).
+template <Parsable T, Numeric U>
+std::string Interpreter<T, U>::Tex() {
+    if (m_tokens.size() < 2 || m_tokens[1].type != Query)
+        Fail("tex shows a definition, as 'tex ?name'");
+    if (m_tokens.size() < 3 || m_tokens[2].type != Func) Fail("expected a name after '?'");
+    if (m_tokens.size() > 3) Fail("tex shows a whole definition, as 'tex ?name'");
+    const auto definition = stack_.Find(m_tokens[2].text);
+    if (!definition) Fail(m_tokens[2].text, " is not defined");
+    return Latex<U>::Definition(*definition);
+}
+
 template <Parsable T, Numeric U>
 PExpression<U> Interpreter<T,U>::ParseLimit()
 {
@@ -1039,7 +1053,7 @@ template <Parsable T, Numeric U>
 bool Interpreter<T, U>::DefinesReserved() const {
     const Type next = m_tokens.size() > 1 ? m_tokens[1].type : Val;
     if (next != LPar && next != Sub && next != Guard &&
-        !(next == Equal && IsWord(m_tokens[0], "frac")))
+        !(next == Equal && (IsWord(m_tokens[0], "frac") || IsWord(m_tokens[0], "tex"))))
         return false;
     int depth = 0;
     for (size_t token = 1; token < m_tokens.size(); ++token) {
@@ -1148,6 +1162,7 @@ typename Interpreter<T, U>::Result Interpreter<T, U>::Run(const std::string& s) 
         Fail(m_tokens[0].text, " is reserved, so it cannot be defined");
     }
     if (m_tokens[0].type == Query) return Echo{ParseQuery()};
+    if (IsWord(m_tokens[0], "tex")) return Echo{Tex()};
     if (IsWord(m_tokens[0], "digits")) return Digits(s);
     m_E = ParseAll(fraction ? 1 : 0);
     EvaluationVisitor<U> evaluator(stack_);

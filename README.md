@@ -216,6 +216,7 @@ each of them can be defined again.
 | `name.name` | a name of an instance or a file (section 5) |
 | `use file` | read a file's definitions (section 5) |
 | `?name` | print a definition back (section 6) |
+| `tex ?name` | the same definition as LaTeX (section 6) |
 | `frac expr` | the answer as an exact fraction |
 | `digits` `digits = n` | the significant digits shown, 1 to 1000, 9 unless set |
 
@@ -672,7 +673,7 @@ term are each more specific in one, so where both give a cell the
 interpreter asks which is meant rather than choosing.
 
 An index must be an exact whole number, and `lim`, `sum`, `prod`, `frac`,
-`digits`, `and` and `or` are reserved words.
+`digits`, `tex`, `and` and `or` are reserved words.
 
 A term is evaluated once per *context* — which definition, which index, which
 argument values — and the answer is remembered until a definition changes. It
@@ -789,6 +790,16 @@ s_n=s_(n-1)/2
 
 >> ?s_0
 s_0=1
+```
+
+`tex ?name` sets the definition as a paper would, in LaTeX, so that a
+transcription can be read against the page it came from: the clauses for one
+index a line each, and the others, guarded or not, as one definition in cases.
+
+```
+>> tex ?s
+s_0 = 1
+s_n = \frac{s_{n-1}}{2}
 ```
 
 ### 7. Diagnostics
