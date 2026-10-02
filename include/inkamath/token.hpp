@@ -39,6 +39,7 @@ struct Token
     Type type;
     T value;           // meaningful for Val
     std::string text;  // exactly what the user typed; the name, for Func
+    bool spaced = false;  // whether a space came before it; brackets index only what they touch
 };
 
 #endif

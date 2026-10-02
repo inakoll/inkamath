@@ -2369,7 +2369,7 @@ that exploring seven domains asked of the interpreter, by how many asked.
   short of what a slow filter settles in, and a billionth is loose for a
   well-conditioned step.
 
-- **One index is a row.** `a[1]` is the first row of `a`, a 1xn matrix that
+- `[done]` **One index is a row.** `a[1]` is the first row of `a`, a 1xn matrix that
   keeps its orientation, so a column vector's element is `v[2]`, a row
   vector's is `r'[2]`, as a paper writes the transpose, and a definition by
   one index, `w[j<=3] = j^2`, is a column. Specified in
@@ -2388,5 +2388,16 @@ that exploring seven domains asked of the interpreter, by how many asked.
   `[b [2]]` would otherwise answer row 2 of `b` where two blocks were
   written. A space before them separates blocks, as it does everywhere in a
   literal, which gives back the form C40 had to turn into a diagnostic.
+  Built as specified, every entry passing as written, now
+  `test/data/vectors.ink`; two goldens of `matrices.ink` moved, `a[1]` from
+  an error to `[1, 2]` and `[a [3 4]]` to its two blocks. One rule took the
+  place of two: a bracket that touches what it follows indexes it, named or
+  not, in a literal or not, and indices and quotes chain in any order, so
+  `r'[2]` reads. The distinction between a name and anything else inside a
+  literal, and the depth it was counted with, are gone. A definition by one
+  index is a column whose one column has a name nothing can be written to
+  read, so the clauses for cells, and the compiler, needed nothing new; the
+  compiler reads a row out of a matrix, and `test/compile/delay.ink` holds a
+  delay line defined by one index to the interpreter. 57 lines of sources.
 
 Then `?name` as LaTeX, and `lim` compiled as a bounded loop with a status.

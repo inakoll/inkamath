@@ -1,8 +1,9 @@
-# One index is a row (DESIGN.md, next in line). A vector is a column, as on
-# paper, so one index reads its element; on a matrix it reads a row, which is
-# a 1xn matrix and keeps its orientation, so that a[1]*v is a row times a
-# column. A row vector is read through its transpose, r'[2], as a paper
-# writes it x transposed. Two indices still name a cell of anything.
+# One index is a row (DESIGN.md, next in line). This was the specification,
+# and every entry passes as it was written. A vector is a column, as on paper,
+# so one index reads its element; on a matrix it reads a row, which is a 1xn
+# matrix and keeps its orientation, so that a[1]*v is a row times a column. A
+# row vector is read through its transpose, r'[2], as a paper writes it x
+# transposed. Two indices still name a cell of anything.
 >> a = [1 2; 3 4]
 a = [1 2; 3 4]
 

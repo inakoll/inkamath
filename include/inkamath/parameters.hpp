@@ -73,7 +73,18 @@ public:
         if (row) {
             cells_ = true;
             Place(row, row_name_, rows_, row_, evaluator);
-            Place(col, col_name_, cols_, col_, evaluator);
+            if (col) {
+                Place(col, col_name_, cols_, col_, evaluator);
+            } else {
+                // One index is a row, and a vector a column: its one column
+                // under a name nothing can be written to read.
+                column_ = true;
+                col_    = 1;
+                if (!row_name_.empty()) {
+                    col_name_ = " column";
+                    cols_     = std::make_shared<ValExpression<T>>(T(1));
+                }
+            }
             if (row_name_.empty() != col_name_.empty()) {
                 throw std::runtime_error(
                     "a clause for cells names both its row and its column, as"
@@ -197,6 +208,7 @@ public:
     const PExpression<T>& cols() const { return cols_; }
     int                   row() const { return row_; }
     int                   col() const { return col_; }
+    bool                  column() const { return column_; }  // defined by one index
 
     PExpression<T> guard() const {return guard_;}
     const std::string& signature() const {return signature_;}
@@ -221,6 +233,7 @@ protected:
     std::string              row_name_, col_name_;
     PExpression<T>           rows_, cols_;
     int                      row_ = 0, col_ = 0;
+    bool                     column_ = false;
 };
 
 // The right-hand side of a call: 'f(1, 2)_(n-1)'. Unlike a definition's index,

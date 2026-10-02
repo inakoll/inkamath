@@ -119,6 +119,16 @@ public:
     // One cell, as a 1x1: everything in this language is a matrix.
     static Matrix<T> cell(const Matrix<T>& a, int i, int j) {return Matrix<T>(a(i, j));}
 
+    // One index is a row, a 1xn matrix that keeps its orientation.
+    static Matrix<T> row(const Matrix<T>& a, int i) {
+        if (i < 1 || static_cast<size_t>(i) > a.extent_.rows)
+            throw std::runtime_error("row " + std::to_string(i) + " is outside a " +
+                                     a.extent_.toString() + " matrix");
+        Matrix<T> row(Extent{1, a.extent_.cols});
+        for (size_t j = 1; j <= a.extent_.cols; ++j) row(1, j) = a(i, j);
+        return row;
+    }
+
     // A comparison answers one or zero -- there is no truth type, because
     // every value here is a number. Cell by cell was considered and left out:
     // nothing in the language reduces a matrix of ones and zeros to a single
