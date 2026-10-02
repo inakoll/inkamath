@@ -1,5 +1,5 @@
-#ifndef INKAMATH_TEST_TRANSCRIPT_HPP
-#define INKAMATH_TEST_TRANSCRIPT_HPP
+#ifndef INKAMATH_TRANSCRIPT_HPP
+#define INKAMATH_TRANSCRIPT_HPP
 
 // A golden-file format that is literally an interpreter session:
 //
@@ -123,10 +123,10 @@ inline std::string render(const std::vector<Item>& items) {
     return out.str();
 }
 
+// An answer as a session prints it.
 template <typename Interpreter>
-std::string eval(Interpreter& interpreter, const std::string& expression) {
+std::string answer(const Interpreter& interpreter, const typename Interpreter::Result& result) {
     std::ostringstream out;
-    typename Interpreter::Result result = interpreter.Eval(expression);
     if (const Diagnostic* error = std::get_if<Diagnostic>(&result)) {
         out << "error: " << error->message;
     } else if (const Echo* echo = std::get_if<Echo>(&result)) {
@@ -137,6 +137,11 @@ std::string eval(Interpreter& interpreter, const std::string& expression) {
     return rstrip(out.str());
 }
 
+template <typename Interpreter>
+std::string eval(Interpreter& interpreter, const std::string& expression) {
+    return answer(interpreter, interpreter.Eval(expression));
+}
+
 }  // namespace transcript
 
-#endif  // INKAMATH_TEST_TRANSCRIPT_HPP
+#endif  // INKAMATH_TRANSCRIPT_HPP

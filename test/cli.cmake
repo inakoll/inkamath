@@ -163,6 +163,7 @@ set(stdout [=[
 Usage: inkamath [options] [file...]
        inkamath --compile file [model] [-o header.h]
        inkamath --check file instance -o check.c
+       inkamath --check transcript.ink
 
 Runs the files in order and exits; with no file, reads standard input.
 At a terminal the prompt edits the line and keeps its history.
@@ -176,7 +177,9 @@ At a terminal the prompt edits the line and keeps its history.
               without -o, list what would not compile, and write nothing
   --check     write a C program that steps an instance the file defines,
               compiled, on the inputs the interpreter gives it, holds each
-              term to the interpreter's exact one and says where one drifts
+              term to the interpreter's exact one and says where one drifts;
+              given a transcript alone, replay it and report each answer
+              that is not the one recorded
   --help      print this and exit
 
 A file whose first line that is not blank or a comment starts with '>>'
@@ -251,6 +254,25 @@ set(exit 1)
 check(check_no_instance)
 
 set(args --check models.ink gain)
-set(stderr "inkamath: --check takes a file, an instance it defines, and -o check.c\nTry 'inkamath --help'.\n")
+set(stderr "inkamath: --check takes a transcript, or a file, an instance it defines and -o check.c\nTry 'inkamath --help'.\n")
 set(exit 2)
 check(check_usage)
+
+# A transcript checked: replayed, and each answer that is not the one recorded
+# shown as recorded, '-', and as given now, '+', under the line it answers.
+file(WRITE "${OUT}/good.ink" ">> 1+1\n2\n\n# a comment\n>> a = 3\na = 3\n\n>> a*2\n6\n")
+set(args --check good.ink)
+set(stdout "good.ink: 3 answers, each as recorded\n")
+check(check_transcript)
+
+file(WRITE "${OUT}/stale.ink" ">> 1+1\n3\n\n>> [1, 2;\n.. 3, 4]\n[1, 2;\n 3, 5]\n\n>> 2*2\n4\n")
+set(args --check stale.ink)
+set(stdout "stale.ink:1: >> 1+1\n- 3\n+ 2\nstale.ink:4: >> [1, 2;\n.. 3, 4]\n- [1, 2;\n-  3, 5]\n+ [1, 2;\n+  3, 4]\nstale.ink: 2 of 3 answers are not those recorded\n")
+set(exit 1)
+check(check_transcript_stale)
+
+set(args --check models.ink)
+set(stderr "inkamath: models.ink is not a transcript\n")
+set(exit 1)
+check(check_not_transcript)
+
