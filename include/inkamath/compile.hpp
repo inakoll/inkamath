@@ -43,6 +43,7 @@ public:
         int                      first;      // the index of the first step
         std::vector<std::string> inputs;     // the step's arguments, in order
         std::vector<Sequence>    sequences;  // those it computes, in the order it does
+        std::vector<std::string> guarded;    // those whose clause is kept, 'v_clause_'
     };
 
     // The session's sequences, or with a model, those of its instance with
@@ -53,10 +54,13 @@ public:
         return Build(definitions, module, source, model, instance).header;
     }
 
+    // With 'clauses', each guarded sequence also keeps in 'name_clause_' the
+    // clause its latest term took: one more than its place among the
+    // definition's, or 0 where no guard decided.
     static Compiled Build(ReferenceStack<Value>& definitions, const std::string& module,
                           const std::string& source, const Model<Value>* model = nullptr,
-                          const Scope<Value>* instance = nullptr) {
-        return Run(definitions, module, source, model, instance, {});
+                          const Scope<Value>* instance = nullptr, bool clauses = false) {
+        return Run(definitions, module, source, model, instance, {}, clauses);
     }
 
     // Every reason the header cannot be made, not the first: a definition
@@ -88,13 +92,15 @@ public:
 private:
     static Compiled Run(ReferenceStack<Value>& definitions, const std::string& module,
                         const std::string& source, const Model<Value>* model,
-                        const Scope<Value>* instance, const std::set<std::string>& aside) {
+                        const Scope<Value>* instance, const std::set<std::string>& aside,
+                        bool clauses = false) {
         std::set<std::string> fixed;
         for (;;) {
             CompileC compiler(definitions, model, instance ? *instance : definitions.Session());
             compiler.module_ = module;
             compiler.fixed_  = fixed;
             compiler.aside_  = aside;
+            compiler.clauses_ = clauses;
             try {
                 compiler.Define(compiler.root_);
                 if (model) compiler.Signature();
@@ -187,12 +193,14 @@ private:
         std::vector<std::string> cells;
         Reads                    guard, value;
         int                      guard_from = 0, value_from = 0;
+        int                      clause = 0;  // its place among the definition's
     };
 
     struct Sequence {
         const Reference<Value>*                 definition = nullptr;  // none for an input
         std::map<int, std::vector<std::string>> bases;                 // cells, by index
         std::vector<Guarded>                    guarded;               // in the order tried
+        int general_clause = -1;  // the place of the clause that always applies, if one does
         Reads                                   general_reads;
         std::vector<std::string>                general;
         std::size_t                             rows = 0, cols = 0;  // 0 until known
@@ -739,13 +747,16 @@ private:
                     const Code code = Emit(clause.expression);
                     clause_reads_   = nullptr;
                     Shape(sequence, code);
+                    const int place =
+                        static_cast<int>(&clause - sequence.definition->Clauses().data());
                     if (condition->empty()) {
-                        sequence.general       = Texts(code);
-                        sequence.general_reads = value_reads;
-                        settled                = true;
+                        sequence.general        = Texts(code);
+                        sequence.general_reads  = value_reads;
+                        sequence.general_clause = place;
+                        settled                 = true;
                     } else {
                         sequence.guarded.push_back(
-                            {*condition, Texts(code), guard_reads, value_reads, 0, 0});
+                            {*condition, Texts(code), guard_reads, value_reads, 0, 0, place});
                     }
                 });
             }
@@ -2277,6 +2288,8 @@ private:
             members.push_back({"double", name,
                                "[" + std::to_string(sequence.depth) + "]" +
                                    Dimensions(sequence.rows, sequence.cols)});
+            if (clauses_ && !sequence.guarded.empty())
+                members.push_back({"int", name + "_clause_", ""});
         }
         out +=
             "typedef struct " + module + " {\n" + Nested(members, "    ") + "} " + module + ";\n\n";
@@ -2343,12 +2356,24 @@ private:
                     assignments +=
                         "m_->index_ == " + std::to_string(index) + " ? " + base[c] + " : ";
                 // Checked only where an index no base clause gives needs it.
-                const auto before = [&](int from) {
+                const auto before = [&](int from, const std::string& otherwise = "NAN") {
                     for (int n = sequence.start; n < from; ++n)
                         if (!sequence.bases.count(n))
-                            return "m_->index_ < " + std::to_string(from) + " ? NAN : ";
+                            return "m_->index_ < " + std::to_string(from) + " ? " + otherwise +
+                                   " : ";
                     return std::string();
                 };
+                // Ahead of the cells, which the guards cannot read.
+                if (clauses_ && c == 0 && !sequence.guarded.empty()) {
+                    std::string kept = indent + "m_->" + name + "_clause_ = ";
+                    for (const auto& [index, base] : sequence.bases)
+                        kept += "m_->index_ == " + std::to_string(index) + " ? 0 : ";
+                    for (const Guarded& guarded : sequence.guarded)
+                        kept += before(guarded.guard_from, "0") + guarded.condition + " ? " +
+                                std::to_string(guarded.clause + 1) + " : ";
+                    assignments.insert(0,
+                                       kept + std::to_string(sequence.general_clause + 1) + ";\n");
+                }
                 for (const Guarded& guarded : sequence.guarded) {
                     const std::string value = before(guarded.value_from);
                     assignments +=
@@ -2369,10 +2394,12 @@ private:
             if (late) out += "    }\n";
         }
         out += "}\n\n#endif\n";
-        Compiled compiled{out, earliest, inputs, {}};
-        for (const std::string& name : order)
-            compiled.sequences.push_back(
-                {name, sequences_.at(name).rows, sequences_.at(name).cols});
+        Compiled compiled{out, earliest, inputs, {}, {}};
+        for (const std::string& name : order) {
+            const Sequence& sequence = sequences_.at(name);
+            compiled.sequences.push_back({name, sequence.rows, sequence.cols});
+            if (clauses_ && !sequence.guarded.empty()) compiled.guarded.push_back(name);
+        }
         return compiled;
     }
 
@@ -2393,6 +2420,7 @@ private:
     std::vector<Derived>             derived_;  // each after those it reads
     std::set<std::string>            fixed_;    // parameters compiled as constants; see Fix
     std::set<std::string>            aside_;    // definitions refused; see Refusals
+    bool                             clauses_ = false;  // whether the step keeps them; see Build
     std::map<std::string, Value>     known_;    // globals that read only those
     std::set<std::string>            read_parameters_;      // by the value being compiled
     bool                             read_global_ = false;  // by the value being compiled
