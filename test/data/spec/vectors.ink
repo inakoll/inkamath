@@ -59,6 +59,17 @@ error: an index must be a whole number, not 1.5
 >> a[1][2]
 error: row 2 is outside a 1x2 matrix
 
+# Brackets index only what they touch. A space before them means what it
+# means anywhere else: in a literal it separates blocks, so this is a row of
+# two blocks, as '[a, [3 4]]' is, not the row a[3 4] of a; outside one it is
+# a product without its operator.
+>> [a [3 4]]
+[1, 2, 3, 4;
+ 3, 4, 4, 4]
+
+>> a [1]
+error: unexpected '[' -- the operator '*' is probably missing
+
 # After whatever brackets can follow, as two indices can.
 >> f(x) = [x; x^2]
 f(x) = [x; x^2]

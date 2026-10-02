@@ -2373,7 +2373,7 @@ that exploring seven domains asked of the interpreter, by how many asked.
   keeps its orientation, so a column vector's element is `v[2]`, a row
   vector's is `r'[2]`, as a paper writes the transpose, and a definition by
   one index, `w[j<=3] = j^2`, is a column. Specified in
-  `test/data/spec/vectors.ink`, 30 of its 37 entries failing. Two other
+  `test/data/spec/vectors.ink`, 32 of its 39 entries failing. Two other
   readings were weighed and declined. One index as an element of whatever
   has one row or one column would leave a slice needing a notation of its
   own, and give one shape two rules. A row without orientation, as NumPy's,
@@ -2384,5 +2384,9 @@ that exploring seven domains asked of the interpreter, by how many asked.
   and matrices. The two differ only from rank 2 to rank 1, so a tensor's
   slice, a matrix of a rank-3 tensor, is the same under either. What this
   costs is that `a[1][2]` is not the cell `a[1,2]`, and the spec says so.
+  Brackets now index only what they touch: with one index allowed,
+  `[b [2]]` would otherwise answer row 2 of `b` where two blocks were
+  written. A space before them separates blocks, as it does everywhere in a
+  literal, which gives back the form C40 had to turn into a diagnostic.
 
 Then `?name` as LaTeX, and `lim` compiled as a bounded loop with a status.
