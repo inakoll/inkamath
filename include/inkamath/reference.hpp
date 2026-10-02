@@ -154,6 +154,19 @@ public:
                                      reference_name_ + "[" + ai_parameters.row_name() + "<=rows, " +
                                      ai_parameters.col_name() + "<=cols]");
         }
+        // One index names a row, so a definition by rows and columns has no
+        // clause for one, and a column's clauses name no column.
+        if (ai_parameters.cells()) {
+            if (const Clause<T>* other = FirstThat([&](const Clause<T>& c) {
+                    return c.parameters.cells() && c.parameters.column() != ai_parameters.column();
+                })) {
+                throw std::runtime_error(
+                    reference_name_ +
+                    (other->parameters.column()
+                         ? " is defined by one index, so a clause names one"
+                         : " is defined by a row and a column, so a clause names both"));
+            }
+        }
         // A matrix's cells and a sequence's terms do not mix; a term's cells are
         // a sequence's.
         const bool matrix_cells = FirstThat(

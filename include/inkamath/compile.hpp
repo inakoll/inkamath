@@ -1734,7 +1734,25 @@ private:
     PExpression<Value> visit(CellExpression<Value>* expression) override {
         const Code matrix = Emit(expression->Matrix());
         const Code row    = Known(expression->Row(), "a cell whose place is not a constant");
-        const Code col    = Known(expression->Col(), "a cell whose place is not a constant");
+        if (!expression->Col()) {
+            if (matrix.constant) return Fold(expression);
+            int i = 0;
+            try {
+                i = AsIndex<Value>(*row.constant);
+            } catch (const std::runtime_error& error) {
+                throw Reason(error.what());
+            }
+            if (i < 1 || static_cast<std::size_t>(i) > matrix.rows)
+                throw Reason("row " + std::to_string(i) + " is outside a " +
+                             std::to_string(matrix.rows) + "x" + std::to_string(matrix.cols) +
+                             " matrix");
+            Code line;
+            line.cols = matrix.cols;
+            for (std::size_t j = 0; j < matrix.cols; ++j)
+                line.cells.push_back(matrix.At(static_cast<std::size_t>(i - 1), j));
+            return Answer(std::move(line));
+        }
+        const Code col = Known(expression->Col(), "a cell whose place is not a constant");
         if (matrix.constant) return Fold(expression);
         int i = 0, j = 0;
         try {

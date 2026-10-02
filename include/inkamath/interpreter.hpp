@@ -154,21 +154,13 @@ private:
     PExpression<U> ParsePowExpr(PExpression<U> lead = PExpression<U>());
     PExpression<U> ParseMatrix();
     PExpression<U> ParseSimpleExpr(bool postfix = true);
-    PExpression<U> ParseCell(PExpression<U> matrix, bool named);
+    PExpression<U> ParseCell(PExpression<U> matrix);
     PExpression<U> ParseQuotes(PExpression<U> e);
+    PExpression<U> ParsePostfix(PExpression<U> e);
 
     // Inside a matrix literal, and inside an argument list, a space between
     // two expressions separates them. Everywhere else it means nothing, which
     // is what lets '[1 2;3 4][2,1]' be an index rather than two blocks.
-    size_t juxtaposed_ = 0;
-    struct Juxtaposed {
-        explicit Juxtaposed(size_t& depth) : depth_(depth) {++depth_;}
-        ~Juxtaposed() {--depth_;}
-        Juxtaposed(const Juxtaposed&) = delete;
-        Juxtaposed& operator=(const Juxtaposed&) = delete;
-    private:
-        size_t& depth_;
-    };
     PExpression<U> ParseParameters();
     PExpression<U> ParseSubExpr();
     PExpression<U> ParseLimit();
@@ -285,6 +277,7 @@ void Interpreter<T,U>::Lexer(const std::string& s)
             break;
         case '[':
             m_tokens.push_back(Token<T>(LBra, std::string(1, s[i])));
+            m_tokens.back().spaced = i > 0 && std::isspace(static_cast<unsigned char>(s[i - 1]));
             break;
         case ']':
             m_tokens.push_back(Token<T>(RBra, std::string(1, s[i])));
@@ -516,11 +509,11 @@ PExpression<U> Interpreter<T,U>::ParseEqualExpr()
                 params || sub ? std::make_shared<FuncExpression<U>>(ref, params, sub) : ref);
             if (!AtEnd() && (Peek().type == Equal || Peek().type == Guard))
                 stack_.Outside(dynamic_cast<const MemberExpression<U>&>(*member));
-            return ParseOrExpr(ParseQuotes(ParseCell(member, true)));
+            return ParseOrExpr(ParsePostfix(member));
         }
         // On the left of a definition the brackets define cells, 'M[j<=2,
         // k<=2]' or 'M[1,2]'; anywhere else they read one.
-        const PExpression<U> cell  = ParseCell(ref, true);
+        const PExpression<U> cell  = ParseCell(ref);
         const auto*          place = dynamic_cast<CellExpression<U>*>(cell.get());
         PExpression<U> guard;
         if (!AtEnd() && Peek().type == Guard)
@@ -567,7 +560,7 @@ PExpression<U> Interpreter<T,U>::ParseEqualExpr()
             if (place) {
                 ref = std::make_shared<CellExpression<U>>(ref, place->Row(), place->Col());
             }
-            e = ParseOrExpr(ParseQuotes(ref));
+            e = ParseOrExpr(ParsePostfix(ref));
         }
     } else {
         e = ParseOrExpr();
@@ -685,9 +678,7 @@ std::vector<PExpression<T>> make_matrix_array_from_vector(size_t n, size_t m,
                                                           std::vector<size_t>& size);
 
 template <Parsable T, Numeric U>
-PExpression<U> Interpreter<T,U>::ParseMatrix()
-{
-    const Juxtaposed juxtaposed(juxtaposed_);
+PExpression<U> Interpreter<T, U>::ParseMatrix() {
     std::vector<PExpression<U>> mat;
     std::vector<size_t> size(1, 0);
     PExpression<U> e;
@@ -739,6 +730,7 @@ std::vector<PExpression<T>>
 template <Parsable T, Numeric U>
 PExpression<U> Interpreter<T, U>::ParseSimpleExpr(bool postfix) {
     PExpression<U> e,ref,param,sub;
+    bool           indexable = false;  // a name, a call or a bracketed value, not a number
     std::string name;
     if (!AtEnd())
     {
@@ -771,7 +763,8 @@ PExpression<U> Interpreter<T, U>::ParseSimpleExpr(bool postfix) {
             else {
                 e = ref;
             }
-            if (postfix) e = ParseCell(ParseMembers(e), true);
+            if (postfix) e = ParseMembers(e);
+            indexable = true;
             break;
 
         case Add:
@@ -811,7 +804,7 @@ PExpression<U> Interpreter<T, U>::ParseSimpleExpr(bool postfix) {
             {
                 Fail("missing ')' after '", m_tokens[--m_i].text, "'");
             }
-            if (postfix) e = ParseCell(e, false);
+            indexable = true;
             break;
 
         case LBra:
@@ -825,7 +818,7 @@ PExpression<U> Interpreter<T, U>::ParseSimpleExpr(bool postfix) {
             {
                 Fail("missing ']' after '", m_tokens[--m_i].text, "'");
             }
-            if (postfix) e = ParseCell(e, false);
+            indexable = true;
             break;
 
         default:
@@ -833,7 +826,7 @@ PExpression<U> Interpreter<T, U>::ParseSimpleExpr(bool postfix) {
             Fail("unexpected '", Peek().text, "'");
             break;
         }
-        if (postfix) e = ParseQuotes(e);
+        if (postfix) e = indexable ? ParsePostfix(e) : ParseQuotes(e);
     }
     else if(m_i != 0)
     {
@@ -864,6 +857,17 @@ PExpression<U> Interpreter<T, U>::ParseMembers(PExpression<U> object) {
     return object;
 }
 
+// Brackets that touch a value and quotes, in any order, 'r'[2]' or 'a[1]'',
+// all before any operator.
+template <Parsable T, Numeric U>
+PExpression<U> Interpreter<T, U>::ParsePostfix(PExpression<U> e) {
+    for (PExpression<U> before; before != e;) {
+        before = e;
+        e      = ParseQuotes(ParseCell(e));
+    }
+    return e;
+}
+
 // A quote binds to what it follows before any operator does, as Julia's does:
 // 'a^2'' is 'a^(2')'.
 template <Parsable T, Numeric U>
@@ -875,30 +879,21 @@ PExpression<U> Interpreter<T, U>::ParseQuotes(PExpression<U> e) {
     return e;
 }
 
-// 'm[i,j]'. Inside a matrix literal only a name takes an index, because there
-// a space between two blocks already means something: '[[1 2] [3 4]]' is one
-// row of two blocks, while '[a [3 4]]' reads as an index of 'a'.
+// 'm[i,j]', or 'm[i]', a row. Brackets index only what they touch: a space
+// before them separates blocks in a literal, as in '[a [3 4]]', and is a
+// missing operator anywhere else.
 template <Parsable T, Numeric U>
-PExpression<U> Interpreter<T,U>::ParseCell(PExpression<U> matrix, bool named)
-{
-    if (AtEnd() || Peek().type != LBra)
-    {
-        return matrix;
-    }
-    // A name carries its brackets everywhere; anything else does so only
-    // where juxtaposition is not already separating expressions.
-    if (!named && juxtaposed_ != 0)
-    {
+PExpression<U> Interpreter<T, U>::ParseCell(PExpression<U> matrix) {
+    if (AtEnd() || Peek().type != LBra || Peek().spaced) {
         return matrix;
     }
     ++m_i;
     PExpression<U> row = Parse();
-    if (AtEnd() || Peek().type != Comma)
-    {
-        Fail("a cell needs a row and a column, as 'm[1,2]'");
+    PExpression<U> col;
+    if (!AtEnd() && Peek().type == Comma) {
+        ++m_i;
+        col = Parse();
     }
-    ++m_i;
-    PExpression<U> col = Parse();
     if (AtEnd() || Peek().type != RBra)
     {
         Fail("missing ']' after '", m_tokens[--m_i].text, "'");

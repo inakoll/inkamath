@@ -2385,6 +2385,39 @@ that exploring seven domains asked of the interpreter, by how many asked.
   well, for want of a paper's form for its bounds. 237 lines of sources,
   most of them the one function that knows each node.
 
-Then, in the order proposed: one index on a vector, and slices, specified
-before they are built, since what `a[1]` means decides both; `?name` as
-LaTeX; and `lim` compiled as a bounded loop with a status.
+- `[done]` **One index is a row.** `a[1]` is the first row of `a`, a 1xn matrix that
+  keeps its orientation, so a column vector's element is `v[2]`, a row
+  vector's is `r'[2]`, as a paper writes the transpose, and a definition by
+  one index, `w[j<=3] = j^2`, is a column. Specified in
+  `test/data/spec/vectors.ink`, 32 of its 39 entries failing. Two other
+  readings were weighed and declined. One index as an element of whatever
+  has one row or one column would leave a slice needing a notation of its
+  own, and give one shape two rules. A row without orientation, as NumPy's,
+  makes `a[1][2]` the cell, but accepts `x*A*x` for `x'*A*x` and `x*y` for
+  `x'*y`, the transposes a paper writes and a size check would have missed:
+  a missing transpose, among the commonest slips in a transcription, would
+  answer rather than be refused. It also adds a kind of value beside numbers
+  and matrices. The two differ only from rank 2 to rank 1, so a tensor's
+  slice, a matrix of a rank-3 tensor, is the same under either. What this
+  costs is that `a[1][2]` is not the cell `a[1,2]`, and the spec says so.
+  Brackets now index only what they touch: with one index allowed,
+  `[b [2]]` would otherwise answer row 2 of `b` where two blocks were
+  written. A space before them separates blocks, as it does everywhere in a
+  literal, which gives back the form C40 had to turn into a diagnostic.
+  Built as specified, every entry passing as written, now
+  `test/data/vectors.ink`; two goldens of `matrices.ink` moved, `a[1]` from
+  an error to `[1, 2]` and `[a [3 4]]` to its two blocks. One rule took the
+  place of two: a bracket that touches what it follows indexes it, named or
+  not, in a literal or not, and indices and quotes chain in any order, so
+  `r'[2]` reads. The distinction between a name and anything else inside a
+  literal, and the depth it was counted with, are gone. With them goes one
+  form: two literal blocks touching, `[[1 2][3 4]]`, were two blocks and are
+  now an index of the first. It was only ever a way to try the block syntax
+  quickly, a block being a name on paper, so `README.md` now shows blocks
+  named, with a comma, and what a touching bracket does. A definition by one
+  index is a column whose one column has a name nothing can be written to
+  read, so the clauses for cells, and the compiler, needed nothing new; the
+  compiler reads a row out of a matrix, and `test/compile/delay.ink` holds a
+  delay line defined by one index to the interpreter. 57 lines of sources.
+
+Then `lim` compiled as a bounded loop with a status.
