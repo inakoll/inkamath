@@ -2368,6 +2368,16 @@ that exploring seven domains asked of the interpreter, by how many asked.
 - **Steps and tolerance as options**, when a model asks: a hundred steps is
   short of what a slow filter settles in, and a billionth is loose for a
   well-conditioned step.
+- **A definition as LaTeX**, `tex ?name`, a word at the start of a line as
+  `frac` is, and reserved as it is. It renders what was parsed, not what was
+  typed: the clauses for one index a line each, then those for every index,
+  guarded or not, as one definition in cases, the clause that always applies
+  last, `otherwise`. A name of one letter is itself, a Greek one its letter,
+  any other one italic word; a function of more than one letter an
+  operator's name; a product a thin space, or a dot before a digit. What has
+  no form on paper, `~`, it refuses rather than drop, and a model it refuses
+  for now. Specified in `test/data/spec/latex.ink`, 20 of its 44 entries
+  failing, every one of them a `tex` line.
 
 Then, in the order proposed: one index on a vector, and slices, specified
 before they are built, since what `a[1]` means decides both; `?name` as
