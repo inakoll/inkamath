@@ -2431,4 +2431,22 @@ that exploring seven domains asked of the interpreter, by how many asked.
   compiler reads a row out of a matrix, and `test/compile/delay.ink` holds a
   delay line defined by one index to the interpreter. 57 lines of sources.
 
-Then `lim` compiled as a bounded loop with a status.
+- `[done]` **`lim` compiled.** A limit whose arguments are constants and
+  whose terms read no parameter is folded, by the interpreter, as any
+  constant is. Any other is a function of its arguments emitted beside the
+  step, which walks the terms from the highest base clause, or from 1 with
+  none, and stops by `Convergence`'s rule, its constants included; where the
+  interpreter would say the terms do not converge, it answers NaN, the
+  step's word for what the interpreter reports, rather than the status field
+  `MANIFESTO.md` sketched: a NaN reaches every term that reads it, a field
+  only the host that looks. A sequence with parameters is compiled where a
+  limit walks it, and only there. Its terms may read their own earlier terms,
+  as far back as its base clauses reach, its parameters, its index and the
+  model's; another sequence's term is refused, as in the interpreter it is
+  not defined there. A guarded base clause and a matrix of terms are refused.
+  `test/compile/newton.ink` solves each step of a stiff equation by Newton's
+  method and holds every term to the interpreter by `--check`: within 0. A
+  parameter named `m` first became `m_`, the struct's pointer, so a
+  function's arguments are `arg_x`. Infinite series are still refused, and a
+  fixed number of iterations, for a step whose time must be bounded, waits
+  for a model that needs it. 167 lines of sources.

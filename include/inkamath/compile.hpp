@@ -1,6 +1,7 @@
 #ifndef INKAMATH_COMPILE_HPP
 #define INKAMATH_COMPILE_HPP
 
+#include "inkamath/convergence.hpp"
 #include "inkamath/matrix.hpp"
 #include "inkamath/number.hpp"
 #include "inkamath/reference_stack.hpp"
@@ -594,12 +595,9 @@ private:
     // refused rather than left out; a plain one is compiled where it is read.
     void Define(const std::string& name, const Reference<Value>& definition) {
         for (const Clause<Value>& clause : definition.Clauses()) {
-            // A function is compiled where it is called.
-            if (!clause.parameters.parameters_names().empty()) {
-                if (clause.parameters.indexed())
-                    throw Refusal("cannot compile " + name + ": a sequence with parameters");
-                return;
-            }
+            // A function is compiled where it is called, and a sequence with
+            // parameters where a limit walks it.
+            if (!clause.parameters.parameters_names().empty()) return;
             const ParametersDefinition<Value>& p = clause.parameters;
             if (p.guarded() && !p.cells() && !p.general())
                 throw Refusal("cannot compile " + name + ": a guarded " +
@@ -1546,10 +1544,176 @@ private:
         return static_cast<std::size_t>(size);
     }
 
+    // 'lim s', 'lim nw(x_(n-1), u_n)': folded where it reads only constants,
+    // and otherwise a function of its arguments that walks the terms as the
+    // interpreter does, stopping by its rule (Convergence), and NaN where the
+    // interpreter would say it did not converge, since a step cannot.
+    PExpression<Value> Limit(FuncExpression<Value>* expression, const std::string& name,
+                             const ParametersCall<Value>& call) {
+        const Found found = Lookup(name);
+        if (!found.definition || !IsSequence(*found.definition))
+            throw Reason(found.key + " is not a sequence, so it has no limit");
+        const Reference<Value>&            sequence = *found.definition;
+        const ParametersDefinition<Value>& p        = sequence.Clauses().front().parameters;
+        try {
+            p.CheckArity(name, call);
+        } catch (const std::runtime_error& error) {
+            throw Reason(error.what());
+        }
+        // The arguments, where the limit is read; a default, where it is not
+        // given, reads the others.
+        Expansion                       given{{}, {}, scope_, expansion_, {}};
+        const std::vector<std::string>& names = p.parameters_names();
+        for (std::size_t i = 0; i < call.parameters_expression().size(); ++i)
+            given.values.emplace(names[i], Emit(call.parameters_expression()[i]));
+        for (const auto& [parameter, argument] : call.parameters_dict())
+            given.values.emplace(parameter, Emit(argument));
+        for (const std::string& parameter : names)
+            if (!given.values.count(parameter))
+                given.values.emplace(parameter, Inside(given, [&] {
+                                         return Emit(p.parameters_dict().at(parameter));
+                                     }));
+        bool constant = true;
+        for (const auto& [parameter, code] : given.values) {
+            if (!code.Scalar())
+                throw Reason("a limit whose argument " + parameter + " is a matrix");
+            constant = constant && code.constant;
+        }
+        // Its terms, as locals of a function of their own.
+        Walked    walked{name, names, 0};
+        Expansion inside{{}, {}, sequence.home ? sequence.home : scope_, nullptr, {}};
+        // 'arg_x': no name of the language has a '_', and no name of the
+        // function's own begins so.
+        for (const std::string& parameter : names)
+            inside.values.emplace(parameter, Code{1, 1, {Atom("arg_" + parameter)}, {}});
+        Walked* const              outer_limit       = std::exchange(limit_, &walked);
+        auto* const                outer_temporaries = std::exchange(temporaries_, nullptr);
+        auto                       outer_reads       = std::exchange(read_parameters_, {});
+        std::map<int, std::string> bases;
+        std::string                general;
+        try {
+            Inside(inside, [&] {
+                for (const Clause<Value>& clause : sequence.Clauses()) {
+                    const ParametersDefinition<Value>& c = clause.parameters;
+                    if (!c.indexed() || c.general()) continue;
+                    if (c.guarded()) throw Reason("a guarded base clause in a limit's terms");
+                    bases[c.index()] = Scalar(Emit(clause.expression), name);
+                }
+                for (const Clause<Value>& clause : sequence.Clauses())
+                    if (clause.parameters.general()) index_ = clause.parameters.index_name();
+                if (index_.empty())
+                    throw Reason(name + " has no general clause, so it has no limit");
+                const std::string outer_text = std::exchange(index_text_, "(double)k_");
+                std::string       otherwise  = "NAN";
+                for (const bool guarded : {true, false})
+                    for (const Clause<Value>& clause : sequence.Clauses()) {
+                        const ParametersDefinition<Value>& c = clause.parameters;
+                        if (!c.general() || c.guarded() != guarded || otherwise != "NAN") continue;
+                        const std::optional<std::string> condition =
+                            guarded ? Condition(c.guard()) : std::optional<std::string>("");
+                        if (!condition) continue;
+                        const std::string value = Scalar(Emit(clause.expression), name);
+                        if (condition->empty())
+                            otherwise = value;
+                        else
+                            general += *condition + " ? " + value + " : ";
+                    }
+                general += otherwise;
+                index_text_ = outer_text;
+                return Code{};
+            });
+        } catch (...) {
+            limit_       = outer_limit;
+            temporaries_ = outer_temporaries;
+            read_parameters_.insert(outer_reads.begin(), outer_reads.end());
+            throw;
+        }
+        limit_           = outer_limit;
+        temporaries_     = outer_temporaries;
+        const auto reads = std::exchange(read_parameters_, std::move(outer_reads));
+        read_parameters_.insert(reads.begin(), reads.end());
+        if (constant && reads.empty()) return Fold(expression);
+        const int highest = bases.empty() ? 0 : bases.rbegin()->first;
+        for (int lag = 1; lag <= walked.depth; ++lag)
+            if (!bases.count(highest - lag + 1))
+                throw Reason("a limit whose terms read back past its base clauses");
+
+        const std::string function = module_ + "_lim" + std::to_string(limits_.size());
+        const std::string first    = std::to_string(highest + 1);
+        std::string       text;
+        text += "/* lim " + name + ", as the interpreter takes it: its terms from index " + first +
+                " on, until\n * two agree within " + Double(Convergence<Value>::tolerance) +
+                " and so does what is left of the series, as the steps\n * shrink; NaN where that "
+                "takes more than " +
+                std::to_string(Convergence<Value>::max_terms) + " terms. */\n";
+        text += "static inline double " + function + "(const " + module_ + "* m_";
+        for (const std::string& parameter : names) text += ", double arg_" + parameter;
+        text += ") {\n    (void)m_;\n";
+        for (const std::string& parameter : names) text += "    (void)arg_" + parameter + ";\n";
+        const int depth = std::max(walked.depth, 1);
+        for (int lag = 1; lag <= depth; ++lag)
+            text += "    double t" + std::to_string(lag) + "_ = " +
+                    (bases.count(highest - lag + 1) ? bases.at(highest - lag + 1) : "0.0") + ";\n";
+        text += "    double step_ = 0.0, before_ = 0.0;\n";
+        text +=
+            "    int    started_ = " + std::string(bases.empty() ? "0" : "1") + ", stepped_ = 0;\n";
+        text += "    for (long long k_ = " + first + "; k_ <= " +
+                std::to_string(highest + static_cast<int>(Convergence<Value>::max_terms)) +
+                "; ++k_) {\n";
+        text += "        const double t_ = " + general + ";\n";
+        text += "        if (started_) {\n";
+        text += "            step_ = fabs(t_ - t1_);\n";
+        text += "            if (step_ <= " + Double(Convergence<Value>::tolerance) +
+                " && stepped_ &&\n                (!(before_ > 0) || (step_ / before_ < 1 &&\n"
+                "                                    step_ * (step_ / before_) / (1 - step_ / "
+                "before_) <= " +
+                Double(Convergence<Value>::tolerance) + ")))\n";
+        text +=
+            "                return t_;\n            before_  = step_;\n            stepped_ = "
+            "1;\n        }\n";
+        text += "        started_ = 1;\n";
+        for (int lag = depth; lag > 1; --lag)
+            text += "        t" + std::to_string(lag) + "_ = t" + std::to_string(lag - 1) + "_;\n";
+        text += "        t1_ = t_;\n    }\n    return NAN;\n}\n\n";
+        limits_.push_back(text);
+
+        std::string called = function + "(m_";
+        for (const std::string& parameter : names)
+            called += ", " + given.values.at(parameter).cells[0].text;
+        return Answer(Cell(called + ")", primary));
+    }
+
+    // A term of the sequence a limit walks, read back from one of its own:
+    // a local of its function, 't1_' the one before.
+    Code Earlier(const ParametersCall<Value>& call) {
+        const auto same = [](const PExpression<Value>& argument, const std::string& parameter) {
+            const auto* ref = dynamic_cast<const RefExpression<Value>*>(argument.get());
+            return ref && ref->Name() == parameter;
+        };
+        const auto& arguments = call.parameters_expression();
+        bool own = arguments.size() + call.parameters_dict().size() == limit_->parameters.size();
+        for (std::size_t i = 0; own && i < arguments.size(); ++i)
+            own = same(arguments[i], limit_->parameters[i]);
+        for (const auto& [parameter, argument] : call.parameters_dict())
+            own = own && same(argument, parameter);
+        if (!own) throw Reason(limit_->name + "'s term read with other arguments than its own");
+        const int lag = Lag(call.subexpr(), limit_->name);
+        if (lag == 0) throw Reason(limit_->name + " is defined by itself");
+        limit_->depth = std::max(limit_->depth, lag);
+        return Code{1, 1, {Atom("t" + std::to_string(lag) + "_")}, {}};
+    }
+
+    std::string Scalar(const Code& code, const std::string& name) {
+        if (!code.Scalar()) throw Reason("a limit of " + name + ", whose terms are matrices");
+        return code.cells[0].text;
+    }
+
     PExpression<Value> visit(FuncExpression<Value>* expression) override {
         const std::string&           name  = expression->Name();
         const ParametersCall<Value>& call  = expression->Call();
         const bool calls = !call.parameters_expression().empty() || !call.parameters_dict().empty();
+        if (call.limit()) return Limit(expression, name, call);
+        if (limit_ && name == limit_->name && call.subexpr()) return Answer(Earlier(call));
         if (calls && !own_) {
             const auto [local, in] = Local(name);
             if (local) {
@@ -1566,6 +1730,7 @@ private:
             if (call.subexpr()) throw Reason("a sequence with parameters");
             return Answer(Call(key, *found.definition, call, nullptr));
         }
+        if (limit_) throw Reason(key + "_...: another sequence's term in a limit's terms");
         if (!reading_) throw Reason(key + "_...: a term read outside a general clause");
         const Reference<Value>* definition = found.definition;
         if (definition && !IsSequence(*definition)) throw Reason(key + " is not a sequence");
@@ -2316,6 +2481,7 @@ private:
             "typedef struct " + module + " {\n" + Nested(members, "    ") + "} " + module + ";\n\n";
 
         for (const std::size_t n : inverses_) out += InverseHelper(n);
+        for (const std::string& limit : limits_) out += limit;
 
         out += "/* Computes what derives from the parameters: call it after assigning one. */\n";
         out += "static inline void " + module + "_update(" + module + "* m_) {\n";
@@ -2459,6 +2625,14 @@ private:
     std::string index_text_   = "(double)m_->index_";  // the index, as the step has it
     std::string                      module_;
     std::set<std::size_t>            inverses_;  // the sizes a helper is needed for
+    std::vector<std::string>         limits_;    // a function for each limit walked
+    // The sequence a limit's function is walking, while its clauses compile.
+    struct Walked {
+        std::string              name;
+        std::vector<std::string> parameters;
+        int                      depth = 0;  // how far back a term reads its own
+    };
+    Walked*                          limit_           = nullptr;
     int                              temporary_count_ = 0;
     std::map<std::string, Value>     places_;             // a cell's row and column, by their names
     Code        code_;
