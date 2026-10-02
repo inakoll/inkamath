@@ -360,10 +360,20 @@ U[j<=3, k<=3] | j <= k = 1
 A size can come from a parameter: `H(n)[j<=n, k<=n] = 1/(j+k-1)` is the
 Hilbert matrix of any size.
 
-Inside a matrix literal the brackets index a name and nothing else, because
-there a space between two blocks already separates them: `[[1 2] [3 4]]` is
-one row of two blocks, while `[a [3 4]]` reads as an index of `a`. Write a row
-of blocks with a comma.
+Blocks are written as a paper writes them, by name, `[A, B; C, D]`, with a
+comma between them. Brackets index whatever they touch, inside a literal as
+anywhere, so a block must not touch the one before it: with a space or a
+comma, `[a [5; 6]]` is `a` beside a column, while `[[1 2][1]]` is row 1 of
+`[1 2]`, not two blocks.
+
+```
+>> [a, [5; 6]]
+[1, 2, 5;
+ 3, 4, 6]
+
+>> [[1 2][1]]
+[1, 2]
+```
 
 `*` is matrix multiplication; `+`, `-` and `/` work cell by cell. A single
 value stretches to the other side's size, and the order is kept:

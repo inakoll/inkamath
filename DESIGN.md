@@ -2394,7 +2394,11 @@ that exploring seven domains asked of the interpreter, by how many asked.
   place of two: a bracket that touches what it follows indexes it, named or
   not, in a literal or not, and indices and quotes chain in any order, so
   `r'[2]` reads. The distinction between a name and anything else inside a
-  literal, and the depth it was counted with, are gone. A definition by one
+  literal, and the depth it was counted with, are gone. With them goes one
+  form: two literal blocks touching, `[[1 2][3 4]]`, were two blocks and are
+  now an index of the first. It was only ever a way to try the block syntax
+  quickly, a block being a name on paper, so `README.md` now shows blocks
+  named, with a comma, and what a touching bracket does. A definition by one
   index is a column whose one column has a name nothing can be written to
   read, so the clauses for cells, and the compiler, needed nothing new; the
   compiler reads a row out of a matrix, and `test/compile/delay.ink` holds a
