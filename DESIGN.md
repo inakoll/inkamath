@@ -2368,7 +2368,7 @@ that exploring seven domains asked of the interpreter, by how many asked.
 - **Steps and tolerance as options**, when a model asks: a hundred steps is
   short of what a slow filter settles in, and a billionth is loose for a
   well-conditioned step.
-- **A definition as LaTeX**, `tex ?name`, a word at the start of a line as
+- `[done]` **A definition as LaTeX**, `tex ?name`, a word at the start of a line as
   `frac` is, and reserved as it is. It renders what was parsed, not what was
   typed: the clauses for one index a line each, then those for every index,
   guarded or not, as one definition in cases, the clause that always applies
@@ -2378,6 +2378,12 @@ that exploring seven domains asked of the interpreter, by how many asked.
   no form on paper, `~`, it refuses rather than drop, and a model it refuses
   for now. Specified in `test/data/spec/latex.ink`, 20 of its 44 entries
   failing, every one of them a `tex` line.
+  Built as specified, every entry passing as written, now
+  `test/data/latex.ink`. Its own header, `latex.hpp`, walks the parsed tree;
+  an index is set tight, `s_{n-1}`, as a subscript is, and an operand is
+  parenthesised by how loosely it binds. A definition by cells it refuses as
+  well, for want of a paper's form for its bounds. 237 lines of sources,
+  most of them the one function that knows each node.
 
 Then, in the order proposed: one index on a vector, and slices, specified
 before they are built, since what `a[1]` means decides both; `?name` as

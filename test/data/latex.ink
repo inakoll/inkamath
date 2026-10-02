@@ -1,5 +1,6 @@
 # A definition as typeset mathematics (DESIGN.md, next in line; MANIFESTO.md,
-# Reading). 'tex ?name' gives what '?name' gives, as LaTeX, so that a
+# Reading). This was the specification, and every entry passes as it was
+# written. 'tex ?name' gives what '?name' gives, as LaTeX, so that a
 # transcription can be read against the page it came from. It renders what was
 # parsed rather than what was typed: the clauses for one index each on a line,
 # and those for every index, guarded or not, as one definition in cases.
