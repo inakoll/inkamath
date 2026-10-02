@@ -2365,6 +2365,17 @@ that exploring seven domains asked of the interpreter, by how many asked.
   its random models are files, compiled as a session is, and as instances
   they would be compiled as a model is, so the path that found C71 would no
   longer be fuzzed by anything.
+- `[done]` **Fused multiply-adds, said in the header.** A compiler may fuse
+  `a*b + c` into one rounding where the definitions give two: GCC does in its
+  default GNU modes on hardware that has the instruction, and the tests, built
+  as strict C11, never see it. It was first taken for drift to forbid; it is
+  most often closer to exact, and the manifesto asks a bound against the exact
+  terms, not agreement between builds. What it does break is that agreement:
+  a check built one way vouches for nothing built the other, a guard near its
+  threshold included. So the header says to build the check as the step is
+  built, and forbids nothing; `#pragma STDC FP_CONTRACT OFF` was weighed and
+  dropped, since GCC rejects it under `-Werror` and honours none of it. Every
+  expected header moved by those four lines of its first comment.
 - **Steps and tolerance as options**, when a model asks: a hundred steps is
   short of what a slow filter settles in, and a billionth is loose for a
   well-conditioned step.
