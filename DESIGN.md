@@ -2337,12 +2337,22 @@ that exploring seven domains asked of the interpreter, by how many asked.
   `test/compile/drift.ink` is the case that motivates it: a tenth recomputed
   at every step, exact in the interpreter and off by ten times more at each
   step compiled, parting at 9. It cost 254 lines of sources.
-- **Guards that flip.** The first step at which a compiled guard takes
-  another clause than the interpreter's is its own event, reported before the
-  values it makes part, with the guard's exact margin there: rounding at a
-  margin near zero, a bug at a large one. It needs the step to say which
-  clause it took, in a header built for checking, so that the one a host
-  builds is unchanged.
+- `[done]` **Guards that flip.** The first step at which a compiled guard
+  takes another clause than the interpreter's is its own event, reported
+  before the values it makes part, with the guard's exact margin there:
+  rounding at a margin near zero, a bug at a large one. A header built for
+  checking keeps, beside each guarded sequence, the clause its latest term
+  took, so the one a host builds is unchanged; the interpreter tells a
+  listener of each guard it asks while the index is still bound, and the
+  margin is measured there. Of the two clauses, the one tried first decided,
+  so its guard's margin is the one given. A comparison's margin is the
+  distance between its sides; that of `and` and `or` is the operand's that
+  decided, or the nearer where both agree. Only a sequence's guarded general
+  clauses are followed: a guarded cell, and a guarded value compiled where it
+  is called, part only by their values. `brink` and `ledge` in
+  `test/compile/drift.ink` were specified before it was built, at 1 exactly on
+  the threshold and at 6 a trillionth from it, and answered so. It cost 206
+  lines of sources.
 - **The transcript check**, `--check transcript.ink`: replayed, and each
   recorded answer the interpreter no longer gives reported. The tests do this
   for `test/data`; the command line would do it for anyone's transcript.

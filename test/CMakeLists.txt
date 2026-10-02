@@ -69,7 +69,7 @@ endforeach()
 # The oracle: an instance compiled, and each of its terms held to the
 # interpreter's exact one by the program 'inkamath --check' writes. 'wild'
 # drifts from it, and its program says where and exits with a failure.
-foreach(instance IN ITEMS calm wild spin rough)
+foreach(instance IN ITEMS calm wild spin rough brink ledge)
     set(program ${CMAKE_CURRENT_BINARY_DIR}/compile/${instance}.c)
     add_custom_command(OUTPUT ${program}
         COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/compile
@@ -92,9 +92,14 @@ set_tests_properties(check_spin_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^spin: 100 steps from 0, against exact values\nspin\\.p: within [0-9.e+-]+\n$")
 set_tests_properties(check_rough_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^rough: 100 steps from 0, against exact values until 1 and inexact ones from there\nrough\\.v: within [0-9.e+-]+\n$")
+set_tests_properties(check_brink_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^brink: 100 steps from 0, against exact values\nbrink\\.g: at 1 the compiled step takes 'g_n \\| d_n < c - w = 1' and the interpreter 'g_n = 0'; the guard of the first is exactly on its threshold\nbrink\\.d: [0-9.e+-]+ at 9, where the interpreter gives 0\\.10000000000000001\nbrink\\.g: 1 at 1, where the interpreter gives 0\n$")
+set_tests_properties(check_ledge_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^ledge: 100 steps from 0, against exact values\nledge\\.g: at 6 the compiled step takes 'g_n \\| d_n < c - w = 1' and the interpreter 'g_n = 0'; the guard of the first is 1e-12 from its threshold\n")
 add_test(NAME check_calm COMMAND check_calm)
 add_test(NAME check_wild COMMAND check_wild)
-set_tests_properties(check_wild PROPERTIES WILL_FAIL ON)
+add_test(NAME check_brink COMMAND check_brink)
+set_tests_properties(check_wild check_brink PROPERTIES WILL_FAIL ON)
 
 # Random models, compiled and held to the interpreter's answers: the generator
 # runs both at build time and writes one C file, built and run like the others.

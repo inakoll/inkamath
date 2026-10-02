@@ -514,8 +514,11 @@ private:
         }
         typename ReferenceStack<T>::Trial trial(evaluator.stack(), p.index_name());
         SetIndex(p.index_name(), index, evaluator.stack());
-        if(p.guarded() && !numeric_interface<T>::truth(p.guard()->accept(evaluator))) {
-            return false;
+        if (p.guarded()) {
+            const bool held = numeric_interface<T>::truth(p.guard()->accept(evaluator));
+            if (evaluator.stack().guards)
+                evaluator.stack().guards(*this, clause, index, held, evaluator);
+            if (!held) return false;
         }
         trial.keep();
         return true;

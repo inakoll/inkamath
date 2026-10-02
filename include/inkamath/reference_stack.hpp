@@ -1,6 +1,7 @@
 #ifndef EXPRESSION_STACK_HPP
 #define EXPRESSION_STACK_HPP
 
+#include <functional>
 #include <map>
 #include <memory>
 #include <optional>
@@ -115,6 +116,11 @@ public:
         target_->names[name]           = std::move(definition);
         Causal(name, previous);
     }
+
+    // Told of each guard of a general clause a term's selection asks, and
+    // whether it held, while its index is bound: what --check listens with.
+    std::function<void(const Reference<T>&, const Clause<T>&, int, bool, EvaluationVisitor<T>&)>
+        guards;
 
     [[nodiscard]] Scope<T>&       Target() const { return *target_; }
     [[nodiscard]] Scope<T>&       Builtins() { return builtins_; }

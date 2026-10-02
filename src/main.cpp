@@ -234,7 +234,7 @@ static int check(const string& source, const string& name, const string& target)
             cerr << "inkamath: " << file << " defines no instance " << name << '\n';
             return 1;
         }
-        program = CheckC::Program(p, name, module, name + " in " + file, *unfed);
+        program = CheckC::Program(p, name, found->second, module, name + " in " + file, *unfed);
     } catch (const runtime_error& error) {
         cerr << "inkamath: " << error.what() << '\n';
         return 1;

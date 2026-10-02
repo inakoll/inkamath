@@ -152,7 +152,11 @@ difference; otherwise the first term that parts and what the interpreter gives
 there, and it exits with a failure. It also says whether the interpreter's
 terms were exact throughout. `test/compile/drift.ink` has an instance that
 holds and one that does not: a tenth computed again at every step, whose
-rounding each step multiplies by ten.
+rounding each step multiplies by ten. Before the values, it reports the first step
+at which a compiled guard takes another clause than the interpreter's, and how
+far that guard is from its threshold in exact arithmetic: rounding explains a
+flip at a margin near zero, and not one at a large margin. `brink` in the same
+file sits exactly on its threshold, and `ledge` a trillionth from it.
 
 Interpreter behaviour is pinned by golden transcripts in `test/data/*.ink`,
 which are literal sessions — every example in this file is one of them, so the

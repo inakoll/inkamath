@@ -26,3 +26,17 @@ spin = turn()
 # A parameter made inexact: the interpreter's terms are doubles from the
 # first that reads it, and the program says so.
 rough = smooth(a = ~(1/4), u_n = n/10)
+
+# A guard exactly on its threshold: the interpreter's tenth is never below a
+# tenth, and the compiled one is from the first step, by a rounding. The
+# program reports the clause each takes before the values that follow it.
+# A trillionth below it, the guard holds out to the sixth step, and its
+# margin says by how little.
+edge(c = 1, w = 0) = {
+    d_0 = c
+    d_n = 10*d_(n-1) - 9*c
+    g_n | d_n < c - w = 1
+    g_n = 0
+}
+brink = edge(c = 1/10)
+ledge = edge(c = 1/10, w = 1/10^12)

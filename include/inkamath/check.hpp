@@ -7,6 +7,8 @@
 
 #include <cmath>
 #include <cstdio>
+#include <map>
+#include <memory>
 #include <optional>
 #include <stdexcept>
 #include <string>
@@ -16,20 +18,38 @@
 // The oracle (DESIGN.md, next in line): a C program that steps an instance,
 // compiled, on the inputs the interpreter gives it, and holds each term to the
 // interpreter's, which is exact where the mathematics allows. Inputs are
-// replayed rather than computed, so a difference is the step's own.
+// replayed rather than computed, so a difference is the step's own. A guard
+// that takes another clause compiled is reported first, with its margin.
 class CheckC {
 public:
     using Value = Matrix<Number>;
 
     static constexpr int steps = 100;
 
-    // 'unfed' is the instance with its parameters and no input, as
-    // ReferenceStack::Unfed makes it.
+    using Definition = std::shared_ptr<const Reference<Value>>;
+
+    // 'definition' names the instance, and 'unfed' is it with its parameters
+    // and no input, as ReferenceStack::Unfed makes it.
     static std::string Program(Interpreter<Number>& session, const std::string& instance,
-                               const std::string& module, const std::string& source,
-                               const Scope<Value>& unfed) {
+                               const Definition& definition, const std::string& module,
+                               const std::string& source, const Scope<Value>& unfed) {
+        ReferenceStack<Value>&   stack = session.Definitions();
         const CompileC::Compiled compiled =
-            CompileC::Build(session.Definitions(), module, source, unfed.model, &unfed);
+            CompileC::Build(stack, module, source, unfed.model, &unfed, true);
+        // Every guard asked on the way, from the first term on: a term asked
+        // for again is remembered, and its guards are not asked twice.
+        std::map<std::pair<const Reference<Value>*, int>, Asked> asked;
+        stack.guards = [&](const Reference<Value>& reference, const Clause<Value>& clause, int n,
+                           bool held, EvaluationVisitor<Value>& evaluator) {
+            const int place     = static_cast<int>(&clause - reference.Clauses().data());
+            Asked&    seen      = asked[{&reference, n}];
+            seen.margins[place] = Margin(*clause.parameters.guard(), evaluator);
+            if (held) seen.chosen = place;
+        };
+        struct Unhook {
+            ReferenceStack<Value>& stack;
+            ~Unhook() { stack.guards = nullptr; }
+        } unhook{stack};
         const int         first = compiled.first;
         const std::string index = first == 0 ? "" : std::to_string(first) + " + ";
         std::string       data, stepped, held;
@@ -69,6 +89,44 @@ public:
         std::string arguments;
         for (std::size_t k = 0; k < compiled.inputs.size(); ++k)
             arguments += ", in_" + std::to_string(k) + "[n]";
+        std::string table;
+        for (std::size_t k = 0; k < compiled.guarded.size(); ++k) {
+            const std::string&       name      = compiled.guarded[k];
+            const Reference<Value>&  reference = Resolve(stack, definition, name);
+            const auto&              clauses   = reference.Clauses();
+            const std::string        id = std::to_string(k), count = std::to_string(clauses.size());
+            int                      general = -1;
+            std::vector<std::string> written{"\"\""}, rank{"0"}, want, margin;
+            for (std::size_t c = 0, tried = 0; c < clauses.size(); ++c) {
+                const ParametersDefinition<Value>& p = clauses[c].parameters;
+                if (p.general() && !p.guarded() && !p.cells() && general < 0)
+                    general = static_cast<int>(c);
+                written.push_back(Quoted(clauses[c].written));
+                rank.push_back(
+                    std::to_string(p.general() && p.guarded() ? tried++ : clauses.size()));
+            }
+            for (int n = first; n < first + steps; ++n) {
+                const auto found = asked.find({&reference, n});
+                want.push_back(found == asked.end()   ? "0"
+                               : found->second.chosen ? std::to_string(*found->second.chosen + 1)
+                                                      : std::to_string(general + 1));
+                for (std::size_t c = 0; c < clauses.size(); ++c) {
+                    std::optional<Number> distance;
+                    if (found != asked.end() && found->second.margins.count(static_cast<int>(c)))
+                        distance = found->second.margins.at(static_cast<int>(c));
+                    margin.push_back(distance ? Double(distance->Inexact().real()) : "-1.0");
+                }
+            }
+            data += Array("const char* const", "written_" + id, clauses.size() + 1, written);
+            data += Array("const int", "rank_" + id, clauses.size() + 1, rank);
+            data += Array("const int", "clause_" + id, steps, want);
+            data += Array("const double", "margin_" + id, steps * clauses.size(), margin);
+            data += "static int taken_" + id + "[" + std::to_string(steps) + "];\n";
+            stepped += "        taken_" + id + "[n] = m." + name + "_clause_;\n";
+            table += "        {\"" + instance + "." + name + "\", " + count + ", written_" + id +
+                     ", rank_" + id + ", clause_" + id + ", taken_" + id + ", margin_" + id +
+                     "},\n";
+        }
         const std::string against = !inexact ? "exact values"
                                              : "exact values until " + std::to_string(*inexact) +
                                                    " and inexact ones from there";
@@ -101,17 +159,130 @@ public:
         out += "            return 0;\n        }\n";
         out += "        if (difference > worst) worst = difference;\n    }\n";
         out += "    printf(\"%s: within %.2g\\n\", name, worst);\n    return 1;\n}\n\n";
+        if (!table.empty()) out += Flips(first);
         out += data + "\nint main(void) {\n";
         out += "    " + module + " m;\n    int held = 1;\n    " + module + "_init(&m);\n";
         out += "    for (int n = 0; n < " + std::to_string(steps) + "; ++n) {\n";
         out += "        " + module + "_step(&m" + arguments + ");\n" + stepped + "    }\n";
         out += "    printf(\"" + instance + ": " + std::to_string(steps) + " steps from " +
                std::to_string(first) + ", against " + against + "\\n\");\n";
+        if (!table.empty())
+            out += "    static const guarded_ guarded[] = {\n" + table + "    };\n" +
+                   "    held &= flips_(guarded, (int)(sizeof guarded / sizeof guarded[0]));\n";
         out += held + "    return !held;\n}\n";
         return out;
     }
 
 private:
+    // The guards asked for one term: the clause chosen, if a guard held, and
+    // each guard's margin, by the clause's place.
+    struct Asked {
+        std::optional<int>                   chosen;
+        std::map<int, std::optional<Number>> margins;
+    };
+
+    // How far a guard is from going the other way, exactly: for a comparison,
+    // the distance between its sides; for 'and' and 'or', that of the operands
+    // that decide. Nothing for a guard of another form.
+    static std::optional<Number> Margin(Expression<Value>&        guard,
+                                        EvaluationVisitor<Value>& evaluator) {
+        try {
+            if (auto* compare = dynamic_cast<CompareExpression<Value>*>(&guard)) {
+                const Value a = compare->m_e1()->accept(evaluator);
+                const Value b = compare->m_e2()->accept(evaluator);
+                if (a.Size().rows * a.Size().cols != 1 || b.Size().rows * b.Size().cols != 1)
+                    return std::nullopt;
+                const Number difference = a(1, 1) - b(1, 1);
+                return difference < Number(0) ? Number(0) - difference : difference;
+            }
+            if (auto* logic = dynamic_cast<LogicExpression<Value>*>(&guard)) {
+                const bool both = logic->Conjunction();
+                const auto near = Margin(*logic->m_e1(), evaluator);
+                if (numeric_interface<Value>::truth(logic->m_e1()->accept(evaluator)) != both)
+                    return near;  // the left decided
+                const auto far = Margin(*logic->m_e2(), evaluator);
+                if (numeric_interface<Value>::truth(logic->m_e2()->accept(evaluator)) != both)
+                    return far;
+                if (!near || !far) return std::nullopt;
+                return *far < *near ? far : near;  // either changing changes it
+            }
+        } catch (const std::runtime_error&) {
+        }
+        return std::nullopt;
+    }
+
+    // A sequence of the instance, from its name in the struct, 'h.low.v'.
+    static const Reference<Value>& Resolve(ReferenceStack<Value>& stack,
+                                           const Definition& definition, const std::string& name) {
+        const Scope<Value>* scope = stack.InstanceScope(definition);
+        std::size_t         at    = 0;
+        for (std::size_t point; scope && (point = name.find('.', at)) != std::string::npos;
+             at = point + 1) {
+            const auto found = scope->names.find(name.substr(at, point - at));
+            scope = found == scope->names.end() ? nullptr : stack.InstanceScope(found->second);
+        }
+        if (scope) {
+            const auto found = scope->names.find(name.substr(at));
+            if (found != scope->names.end()) return *found->second;
+        }
+        throw std::runtime_error("the instance has no sequence " + name);
+    }
+
+    static std::string Flips(int first) {
+        const std::string index = first == 0 ? "" : std::to_string(first) + " + ";
+        std::string       out;
+        out += "/* A guarded sequence: each clause as written and the order it is tried in,\n";
+        out += " * by its place plus one, the interpreter's clause and the compiled one at\n";
+        out += " * each step, 0 where no guard decided, and the interpreter's margin of each\n";
+        out += " * guard it asked, by step and place, negative where none was measured. */\n";
+        out += "typedef struct {\n    const char*        name;\n    int                clauses;\n";
+        out += "    const char* const* written;\n    const int*         rank;\n";
+        out += "    const int*         want;\n    const int*         got;\n";
+        out += "    const double*      margin;\n} guarded_;\n\n";
+        out += "/* The first step at which a compiled guard takes another clause, reported\n";
+        out += " * before the values it makes part. Of the two clauses, the one tried first\n";
+        out += " * is the one whose guard decided. */\n";
+        out += "static int flips_(const guarded_* guarded, int count) {\n";
+        out += "    for (int n = 0; n < " + std::to_string(steps) + "; ++n) {\n";
+        out += "        for (int k = 0; k < count; ++k) {\n";
+        out += "            const guarded_* g = &guarded[k];\n";
+        out += "            const int got = g->got[n], want = g->want[n];\n";
+        out += "            if (!got || !want || got == want) continue;\n";
+        out += "            const int    compiled = g->rank[got] < g->rank[want];\n";
+        out += "            const double margin =\n";
+        out += "                g->margin[n * g->clauses + (compiled ? got : want) - 1];\n";
+        out +=
+            "            printf(\"%s: at %d the compiled step takes '%s' and the interpreter "
+            "'%s'\", g->name,\n";
+        out += "                   " + index + "n, g->written[got], g->written[want]);\n";
+        out += "            if (margin == 0.0)\n";
+        out +=
+            "                printf(\"; the guard of the %s is exactly on its threshold\", "
+            "compiled ? \"first\" : \"second\");\n";
+        out += "            else if (margin > 0.0)\n";
+        out +=
+            "                printf(\"; the guard of the %s is %.2g from its threshold\", "
+            "compiled ? \"first\" : \"second\", margin);\n";
+        out += "            printf(\"\\n\");\n            return 0;\n        }\n    }\n";
+        out += "    return 1;\n}\n\n";
+        return out;
+    }
+
+    static std::string Double(double x) {
+        char text[40];
+        std::snprintf(text, sizeof text, "%.17g", x);
+        return text;
+    }
+
+    static std::string Quoted(const std::string& text) {
+        std::string out = "\"";
+        for (const char c : text) {
+            if (c == '"' || c == '\\') out += '\\';
+            out += c == '\n' ? ' ' : c;
+        }
+        return out + "\"";
+    }
+
     // The interpreter's term, each cell as C writes it, or why there is none.
     struct Term {
         std::vector<std::string> cells;
@@ -141,9 +312,7 @@ private:
                     return answer;
                 }
                 answer.exact = answer.exact && cell.exact();
-                char text[40];
-                std::snprintf(text, sizeof text, "%.17g", z.real());
-                answer.cells.emplace_back(text);
+                answer.cells.push_back(Double(z.real()));
             }
         }
         return answer;
