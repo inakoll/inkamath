@@ -2838,7 +2838,10 @@ that exploring seven domains asked of the interpreter, by how many asked.
   byte for byte, and every test, under the sanitizers too. The budget takes
   a step at every reference and every term a series or `grad` walks, as
   now, so a line gives up at the same step and nests as deep before it
-  fails; a cache that skips steps is a language change. The memo remembers
+  fails; a cache that skips steps is a language change. The deepest line the
+  limits accept still fits the stack, in MSVC's Debug build and under the
+  sanitizers (C20, C63): a visitor or a closure changes what a level costs,
+  so a walk a step rewrites is tested at the limit. The memo remembers
   the same calls and only those, evicts in the same two generations, is
   cleared where it is now, and stores nothing that threw. An error is the
   same message, and the first one raised: operands are evaluated in the
