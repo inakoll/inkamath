@@ -91,6 +91,11 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brin
                           C_STANDARD 11 C_STANDARD_REQUIRED ON C_EXTENSIONS OFF)
     add_test(NAME check_${instance}_report COMMAND check_${instance})
 endforeach()
+# The logistic model's four sigmoids are one limit, compiled once.
+add_test(NAME check_gate_one_limit
+         COMMAND ${CMAKE_COMMAND} -E cat ${CMAKE_CURRENT_BINARY_DIR}/compile/gate.c)
+set_tests_properties(check_gate_one_limit PROPERTIES
+                     PASS_REGULAR_EXPRESSION "gate_lim0\\(" FAIL_REGULAR_EXPRESSION "gate_lim1\\(")
 set_tests_properties(check_gate_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^gate: 100 steps from 0, against exact values until 0 and inexact ones from there\n(gate\\.[a-z]+: within [0-9.e+-]+\n)+$")
 set_tests_properties(check_cls_report PROPERTIES PASS_REGULAR_EXPRESSION

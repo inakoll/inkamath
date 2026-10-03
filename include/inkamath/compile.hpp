@@ -1676,8 +1676,10 @@ private:
                 throw Reason("a limit whose terms read back past its base clauses");
 
         const bool        scalar    = walked.rows * walked.cols == 1;
-        const std::string function = module_ + "_lim" + std::to_string(limits_.size());
-        const std::string first    = std::to_string(highest + 1);
+        // Named once its text is known: a limit written again, as a function
+        // applied cell by cell writes it, is the same function.
+        const std::string function  = "\x1f";
+        const std::string first     = std::to_string(highest + 1);
         const std::string shape     = scalar ? "" : Subscript(walked.rows, walked.cols);
         const std::string tolerance = Double(Convergence<Value>::tolerance);
         // A term's cells, one assignment each, or the term itself.
@@ -1772,12 +1774,15 @@ private:
                        : "        memcpy(t1_, t_, sizeof t_);\n    }\n" +
                              each("    ", "out_", [](std::size_t) { return std::string("NAN"); }) +
                              "}\n\n";
-        limits_.push_back(text);
+        auto [named, fresh] =
+            limit_names_.emplace(text, module_ + "_lim" + std::to_string(limits_.size()));
+        if (fresh)
+            limits_.push_back(text.replace(text.find(function), function.size(), named->second));
 
         // Where it is read: a matrix argument, or a matrix answer, is an
         // array of the step's.
         if (!scalar && !temporaries_) throw Reason("a limit of matrices inside a limit's terms");
-        std::string called = function + "(m_";
+        std::string called = named->second + "(m_";
         for (const std::string& parameter : names) {
             const Code& argument = given.values.at(parameter);
             if (argument.Scalar()) {
@@ -2774,6 +2779,7 @@ private:
     std::string                      module_;
     std::set<std::size_t>            inverses_;  // the sizes a helper is needed for
     std::vector<std::string>         limits_;    // a function for each limit walked
+    std::map<std::string, std::string> limit_names_;  // each one's name, by its text
     // The sequence a limit's function is walking, while its clauses compile.
     struct Walked {
         std::string              name;
