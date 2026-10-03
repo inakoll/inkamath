@@ -151,6 +151,35 @@ P[1,2,3] = 7
 >> P[1] = 0
 error: P is defined by a slice, a row and a column, so a clause names all three
 
+# A clause for one cell of a value written whole names it as reading it
+# would: a tensor's cell by three indices, a matrix's by no more than two.
+>> R = [1 2; 3 4;; 5 6; 7 8]
+R = [1 2; 3 4;; 5 6; 7 8]
+
+>> R[1,2] = 9
+R[1,2] = 9
+
+>> R
+error: a clause for one cell of R, a 2x2x2 tensor, names its slice, row and column
+
+>> N = [1 2; 3 4]
+N = [1 2; 3 4]
+
+>> N[1,1,2] = 9
+N[1,1,2] = 9
+
+>> N
+error: a clause for one cell of N, a 2x2 matrix, names no slice
+
+>> w_n = [1 2;; 3 4]
+w_n = [1 2;; 3 4]
+
+>> w_2[2] = 9
+w_2[2] = 9
+
+>> w_2
+error: a clause for one cell of w_2, a 2x1x2 tensor, names its slice, row and column
+
 >> Z(n)[b<=n, j<=1, k<=n] = b*k
 Z(n)[b<=n, j<=1, k<=n] = b*k
 

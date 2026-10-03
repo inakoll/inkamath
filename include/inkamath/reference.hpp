@@ -634,8 +634,7 @@ private:
         // A clause for one cell can name a cell outside the size, which says so
         // as reading it would.
         for (const Clause<T>& clause : clauses_) {
-            const ParametersDefinition<T>& p = clause.parameters;
-            if (IsOneCell(clause)) (void)matrix(p.slice(), p.row(), p.col());
+            if (IsOneCell(clause)) Named(clause.parameters, matrix, reference_name_);
         }
         for (int slice = 1; slice <= Slices(*extent); ++slice) {
             for (int row = 1; row <= static_cast<int>(extent->rows); ++row) {
@@ -646,6 +645,17 @@ private:
             }
         }
         return matrix;
+    }
+
+    // A cell is named by as many indices as reading it takes: a value written
+    // whole, unlike clauses for all cells, says its rank only when evaluated.
+    static void Named(const ParametersDefinition<T>& p, T& value, const std::string& name) {
+        if (p.tensor() != bool(value.Size().slices)) {
+            throw std::runtime_error("a clause for one cell of " + name + ", a " +
+                                     value.Size().Described() + ", names " +
+                                     (p.tensor() ? "no slice" : "its slice, row and column"));
+        }
+        (void)value(p.slice(), p.row(), p.col());
     }
 
     typename T::value_type Single(const T& cell) const {
@@ -799,13 +809,12 @@ private:
             throw std::runtime_error(reference_name_ + " has no size; write it as " +
                                      reference_name_ + "_n[j<=rows, k<=cols]");
         }
-        T term = whole ? *whole : T(*extent);
-        for (const Clause<T>& clause : clauses_) {
-            const ParametersDefinition<T>& p = clause.parameters;
-            if (IsOneCell(clause) && (base(clause) || general(clause)))
-                (void)term(p.slice(), p.row(), p.col());
-        }
+        T                 term = whole ? *whole : T(*extent);
         const std::string name = reference_name_ + "_" + std::to_string(index);
+        for (const Clause<T>& clause : clauses_) {
+            if (IsOneCell(clause) && (base(clause) || general(clause)))
+                Named(clause.parameters, term, name);
+        }
         for (int s = 1; s <= Slices(*extent); ++s) {
             for (int r = 1; r <= static_cast<int>(extent->rows); ++r) {
                 for (int c = 1; c <= static_cast<int>(extent->cols); ++c) {
