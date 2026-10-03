@@ -1,5 +1,5 @@
 # exp, log and tanh in the prelude beneath the session, as ceil and mod are
-# (DESIGN.md, next in line): exp is the built-in power of e, accurate however
+# (DESIGN.md, the prelude): exp is the built-in power of e, accurate however
 # large its argument; log a series where it converges fast, reached by
 # halving or doubling; tanh from exp. grad differentiates all three, so an
 # activation and a log loss need no definition of their own.

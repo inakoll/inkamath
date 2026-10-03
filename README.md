@@ -205,7 +205,7 @@ define again. `e` and `pi` are the only
 other built-in values, and `floor` the only built-in function: the largest
 whole number not above its argument, exact of an exact number and cell by
 cell of a matrix. `ceil(x) = -floor(-x)` and `mod(a, b) = a - b*floor(a/b)`
-come with it, from a prelude (section 5). Any other rounding is a line of it,
+come with it, from a prelude (section 5), and so do `exp`, `log` and `tanh`. Any other rounding is a line of it,
 by the rule the model needs — `round(x) = floor(x + 1/2)` — and, like `pi`,
 each of them can be defined again.
 
@@ -803,9 +803,11 @@ changes its instances, as a function redefined changes what calls it.
 of its own: the session reaches its names qualified, `filters.lowpass`, and
 `use filters (lowpass)` brings in unqualified those listed. A file is read
 once, holds definitions only, and one that cannot be read or parsed loads
-nothing and says where. The prelude that defines `ceil` and `mod` is included
-bare beneath the session, as the built-ins are: every scope sees it, and a
-session that defines one of its names again does so for itself alone.
+nothing and says where. The prelude that defines `ceil`, `mod`, `exp`, `log`
+and `tanh` is included bare beneath the session, as the built-ins are: every
+scope sees it, and a session that defines one of its names again does so for
+itself alone. `exp(x)` is `e^x`, `log` a series reached by halving or
+doubling, and `log(0)` says so as `1/0` does.
 `test/data/models.ink` is the whole of it.
 
 ### 6. Printing a definition back
