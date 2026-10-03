@@ -995,6 +995,8 @@ PExpression<U> Interpreter<T,U>::ParseParameters()
     if (!AtEnd() && m_tokens[m_i++].type == LPar && !AtEnd() && Peek().type != RPar)
     {
         e = ParseMatrix();
+        if (dynamic_cast<TensorExpression<U>*>(e.get()))
+            Fail("arguments are separated by ',', not ';;'");
         if (AtEnd() || Peek().type != RPar)
             Fail("missing ')' after function parameters");
         ++m_i;

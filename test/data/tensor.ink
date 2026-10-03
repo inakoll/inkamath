@@ -85,6 +85,13 @@ error: a tensor has at most three indices, and ';;;' would give it a fourth
 >> [;; 1 2]
 error: a matrix needs at least one element
 
+# Arguments are not slices.
+>> h(a;; b) = a
+error: arguments are separated by ',', not ';;'
+
+>> nz(1;; 2)
+error: arguments are separated by ',', not ';;'
+
 # Only a touching ';;' stacks. With a space, the empty row is a row of zeros,
 # as it was.
 >> [1 2; ; 3 4]
