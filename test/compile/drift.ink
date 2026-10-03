@@ -40,3 +40,14 @@ edge(c = 1, w = 0) = {
 }
 brink = edge(c = 1/10)
 ledge = edge(c = 1/10, w = 1/10^12)
+
+# The same threshold cell by cell: each cell's guard is asked alone, and the
+# first cell whose compiled guard takes another clause is reported, by its
+# place, before the values that follow it.
+cut(c = 1/10) = {
+    d_0 = [c; 2*c]
+    d_n = 10*d_(n-1) - 9*[c; 2*c]
+    g_n[j<=2] | d_n[j] < c*j = 1
+    g_n[j<=2] = 0
+}
+rift = cut()
