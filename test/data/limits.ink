@@ -1,5 +1,6 @@
 # The limit of a sequence of matrices is the limit of each cell
-# (DESIGN.md, Deferred, then next in line). Its steps are measured by the
+# (DESIGN.md, Deferred, then next in line). This was the specification, and
+# every entry passes as it was written. Its steps are measured by the
 # largest of its cells', and the rule is the one a number's limit stops by:
 # the step and what is left of the series both within the tolerance. A
 # Markov chain settles on its steady state.
