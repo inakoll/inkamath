@@ -530,7 +530,7 @@ private:
         if (p.guarded()) {
             const bool held = numeric_interface<T>::truth(p.guard()->accept(evaluator));
             if (evaluator.stack().guards)
-                evaluator.stack().guards(*this, clause, index, held, evaluator);
+                evaluator.stack().guards(*this, clause, index, 0, 0, held, evaluator);
             if (!held) return false;
         }
         trial.keep();
@@ -679,10 +679,19 @@ private:
             if (!IsOneCell(clause) || !fits(clause) || p.row() != row || p.col() != col) continue;
             typename ReferenceStack<T>::Trial term(stack, p.index_name());
             if (p.general()) SetIndex(p.index_name(), index, stack);
-            if (p.guarded() && !numeric_interface<T>::truth(p.guard()->accept(evaluator))) continue;
+            if (p.guarded() && !Held(clause, index, row, col, evaluator)) continue;
             return std::pair<T, const Clause<T>*>(clause.expression->accept(evaluator), &clause);
         }
         return std::nullopt;
+    }
+
+    // A cell's guard, told to --check where the clause is every term's.
+    bool Held(const Clause<T>& clause, int index, int row, int col,
+              EvaluationVisitor<T>& evaluator) const {
+        const bool held = numeric_interface<T>::truth(clause.parameters.guard()->accept(evaluator));
+        if (clause.parameters.general() && evaluator.stack().guards)
+            evaluator.stack().guards(*this, clause, index, row, col, held, evaluator);
+        return held;
     }
 
     template <typename Fits>
@@ -700,8 +709,7 @@ private:
                 if (p.general()) SetIndex(p.index_name(), index, stack);
                 SetIndex(p.row_name(), row, stack);
                 SetIndex(p.col_name(), col, stack);
-                if (p.guarded() && !numeric_interface<T>::truth(p.guard()->accept(evaluator)))
-                    continue;
+                if (p.guarded() && !Held(clause, index, row, col, evaluator)) continue;
                 return clause.expression->accept(evaluator);
             }
         }

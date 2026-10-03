@@ -2520,12 +2520,15 @@ that exploring seven domains asked of the interpreter, by how many asked.
   `5` to `[6, -1]`. Specified in `test/data/sign.ink`, which passed as
   written. The parser knows it is in a list by the innermost bracket open,
   so parentheses, an index and a series' bounds read a sign as before.
-- **Guard flips in cells.** `--check` reported the first step whose compiled
+- `[done]` **Guard flips in cells.** `--check` reported the first step whose compiled
   guard took another clause only for terms chosen whole; a term chosen cell
   by cell, a ReLU on each cell, showed only the values that followed. Each
   cell's guards are asked alone, so each cell is reported by its place:
   `rift` in `test/compile/drift.ink` is `brink` cell by cell, and its report
-  is specified in `test/CMakeLists.txt`.
+  is specified in `test/CMakeLists.txt`. The interpreter's hook is told the
+  cell; a compiled term chosen by cells keeps `name_clause_[cells]`, each
+  cell's chain of guards beside its chain of values; and `--check` makes one
+  entry per cell, so the report of a flip is the one it was.
 - **Steps and tolerance as options**, when a model asks: a hundred steps is
   short of what a slow filter settles in, and a billionth is loose for a
   well-conditioned step.

@@ -5,6 +5,7 @@
 #include "inkamath/interpreter.hpp"
 #include "inkamath/number.hpp"
 
+#include <algorithm>
 #include <cmath>
 #include <cstdio>
 #include <map>
@@ -12,6 +13,7 @@
 #include <optional>
 #include <stdexcept>
 #include <string>
+#include <tuple>
 #include <variant>
 #include <vector>
 
@@ -36,13 +38,14 @@ public:
         ReferenceStack<Value>&   stack = session.Definitions();
         const CompileC::Compiled compiled =
             CompileC::Build(stack, module, source, unfed.model, &unfed, true);
-        // Every guard asked on the way, from the first term on: a term asked
-        // for again is remembered, and its guards are not asked twice.
-        std::map<std::pair<const Reference<Value>*, int>, Asked> asked;
+        // Every guard asked on the way, from the first term on, by term and
+        // cell: a term asked for again is remembered, and its guards are not
+        // asked twice.
+        std::map<std::tuple<const Reference<Value>*, int, int, int>, Asked> asked;
         stack.guards = [&](const Reference<Value>& reference, const Clause<Value>& clause, int n,
-                           bool held, EvaluationVisitor<Value>& evaluator) {
+                           int row, int col, bool held, EvaluationVisitor<Value>& evaluator) {
             const int place     = static_cast<int>(&clause - reference.Clauses().data());
-            Asked&    seen      = asked[{&reference, n}];
+            Asked&    seen      = asked[{&reference, n, row, col}];
             seen.margins[place] = Margin(*clause.parameters.guard(), evaluator);
             if (held) seen.chosen = place;
         };
@@ -95,37 +98,59 @@ public:
             const Reference<Value>&  reference = Resolve(stack, definition, name);
             const auto&              clauses   = reference.Clauses();
             const std::string        id = std::to_string(k), count = std::to_string(clauses.size());
+            // A term chosen cell by cell is reported cell by cell; the clause
+            // taken where no guard held is the one for every cell, or every term.
+            const bool cellwise =
+                std::any_of(clauses.begin(), clauses.end(), [](const Clause<Value>& c) {
+                    return c.parameters.general() && c.parameters.cells() && c.parameters.guarded();
+                });
             int                      general = -1;
-            std::vector<std::string> written{"\"\""}, rank{"0"}, want, margin;
+            std::vector<std::string> written{"\"\""}, rank{"0"};
             for (std::size_t c = 0, tried = 0; c < clauses.size(); ++c) {
                 const ParametersDefinition<Value>& p = clauses[c].parameters;
-                if (p.general() && !p.guarded() && !p.cells() && general < 0)
+                if (p.general() && !p.guarded() && p.cells() == cellwise &&
+                    (!cellwise || !p.row_name().empty()) && general < 0)
                     general = static_cast<int>(c);
                 written.push_back(Quoted(clauses[c].written));
                 rank.push_back(
                     std::to_string(p.general() && p.guarded() ? tried++ : clauses.size()));
             }
-            for (int n = first; n < first + steps; ++n) {
-                const auto found = asked.find({&reference, n});
-                want.push_back(found == asked.end()   ? "0"
-                               : found->second.chosen ? std::to_string(*found->second.chosen + 1)
-                                                      : std::to_string(general + 1));
-                for (std::size_t c = 0; c < clauses.size(); ++c) {
-                    std::optional<Number> distance;
-                    if (found != asked.end() && found->second.margins.count(static_cast<int>(c)))
-                        distance = found->second.margins.at(static_cast<int>(c));
-                    margin.push_back(distance ? Double(distance->Inexact().real()) : "-1.0");
-                }
-            }
             data += Array("const char* const", "written_" + id, clauses.size() + 1, written);
             data += Array("const int", "rank_" + id, clauses.size() + 1, rank);
-            data += Array("const int", "clause_" + id, steps, want);
-            data += Array("const double", "margin_" + id, steps * clauses.size(), margin);
-            data += "static int taken_" + id + "[" + std::to_string(steps) + "];\n";
-            stepped += "        taken_" + id + "[n] = m." + name + "_clause_;\n";
-            table += "        {\"" + instance + "." + name + "\", " + count + ", written_" + id +
-                     ", rank_" + id + ", clause_" + id + ", taken_" + id + ", margin_" + id +
-                     "},\n";
+            const auto found = std::find_if(compiled.sequences.begin(), compiled.sequences.end(),
+                                            [&](const auto& s) { return s.name == name; });
+            const std::size_t cols   = found->cols;
+            const std::size_t places = cellwise ? found->rows * cols : 1;
+            for (std::size_t c = 0; c < places; ++c) {
+                const int                row = cellwise ? static_cast<int>(c / cols) + 1 : 0;
+                const int                col = cellwise ? static_cast<int>(c % cols) + 1 : 0;
+                const std::string        at  = id + (cellwise ? "_" + std::to_string(c) : "");
+                std::vector<std::string> want, margin;
+                for (int n = first; n < first + steps; ++n) {
+                    const auto asking = asked.find({&reference, n, row, col});
+                    want.push_back(asking == asked.end() ? "0"
+                                   : asking->second.chosen
+                                       ? std::to_string(*asking->second.chosen + 1)
+                                       : std::to_string(general + 1));
+                    for (std::size_t p = 0; p < clauses.size(); ++p) {
+                        std::optional<Number> distance;
+                        if (asking != asked.end() &&
+                            asking->second.margins.count(static_cast<int>(p)))
+                            distance = asking->second.margins.at(static_cast<int>(p));
+                        margin.push_back(distance ? Double(distance->Inexact().real()) : "-1.0");
+                    }
+                }
+                data += Array("const int", "clause_" + at, steps, want);
+                data += Array("const double", "margin_" + at, steps * clauses.size(), margin);
+                data += "static int taken_" + at + "[" + std::to_string(steps) + "];\n";
+                stepped += "        taken_" + at + "[n] = m." + name + "_clause_" +
+                           (cellwise ? "[" + std::to_string(c) + "]" : "") + ";\n";
+                const std::string place =
+                    cellwise ? "[" + std::to_string(row) + "," + std::to_string(col) + "]" : "";
+                table += "        {\"" + instance + "." + name + place + "\", " + count +
+                         ", written_" + id + ", rank_" + id + ", clause_" + at + ", taken_" + at +
+                         ", margin_" + at + "},\n";
+            }
         }
         const std::string against = !inexact ? "exact values"
                                              : "exact values until " + std::to_string(*inexact) +
