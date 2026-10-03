@@ -53,7 +53,8 @@ public:
                          EvaluationVisitor<T>& evaluator, PExpression<T> guard = PExpression<T>(),
                          std::string    signature = std::string(),
                          PExpression<T> row       = PExpression<T>(),
-                         PExpression<T> col       = PExpression<T>())
+                         PExpression<T> col       = PExpression<T>(),
+                         PExpression<T> slice     = PExpression<T>())
         : guard_(guard), signature_(std::move(signature)) {
         if(params) {
             ParametersVisitor<T> params_visitor;
@@ -72,26 +73,36 @@ public:
         }
         if (row) {
             cells_ = true;
+            if (slice) {
+                rank_ = 3;
+                Place(slice, slice_name_, slices_, slice_, evaluator);
+            }
             Place(row, row_name_, rows_, row_, evaluator);
             if (col) {
                 Place(col, col_name_, cols_, col_, evaluator);
             } else {
                 // One index is a row, and a vector a column: its one column
                 // under a name nothing can be written to read.
-                column_ = true;
-                col_    = 1;
+                rank_ = 1;
+                col_  = 1;
                 if (!row_name_.empty()) {
                     col_name_ = " column";
                     cols_     = std::make_shared<ValExpression<T>>(T(1));
                 }
             }
-            if (row_name_.empty() != col_name_.empty()) {
+            if (row_name_.empty() != col_name_.empty() ||
+                (tensor() && slice_name_.empty() != row_name_.empty())) {
                 throw std::runtime_error(
-                    "a clause for cells names both its row and its column, as"
-                    " 'M[j<=2, k<=2]', or neither, as 'M[1,2]'");
+                    tensor() ? "a clause for cells names its slice, row and column, as"
+                               " 'T[b<=2, j<=2, k<=2]', or none, as 'T[1,1,2]'"
+                             : "a clause for cells names both its row and its column, as"
+                               " 'M[j<=2, k<=2]', or neither, as 'M[1,2]'");
             }
-            if (!row_name_.empty() && row_name_ == col_name_) {
-                throw std::runtime_error("a cell's row and column need two names");
+            if (!row_name_.empty() &&
+                (row_name_ == col_name_ || slice_name_ == row_name_ || slice_name_ == col_name_)) {
+                throw std::runtime_error(tensor()
+                                             ? "a cell's slice, row and column need three names"
+                                             : "a cell's row and column need two names");
             }
         }
     }
@@ -208,7 +219,14 @@ public:
     const PExpression<T>& cols() const { return cols_; }
     int                   row() const { return row_; }
     int                   col() const { return col_; }
-    bool                  column() const { return column_; }  // defined by one index
+    // A tensor's clause names its slice first; a matrix's has one slice.
+    const std::string&    slice_name() const { return slice_name_; }
+    const PExpression<T>& slices() const { return slices_; }
+    int                   slice() const { return slice_; }
+    // How many indices name a cell: one for a column, three for a tensor.
+    int  rank() const { return rank_; }
+    bool column() const { return rank_ == 1; }
+    bool tensor() const { return rank_ == 3; }
 
     PExpression<T> guard() const {return guard_;}
     const std::string& signature() const {return signature_;}
@@ -230,10 +248,10 @@ protected:
     int index_ = 0;
     bool indexed_ = false;
     bool                     cells_   = false;
-    std::string              row_name_, col_name_;
-    PExpression<T>           rows_, cols_;
-    int                      row_ = 0, col_ = 0;
-    bool                     column_ = false;
+    std::string              row_name_, col_name_, slice_name_;
+    PExpression<T>           rows_, cols_, slices_;
+    int                      row_ = 0, col_ = 0, slice_ = 1;
+    int                      rank_ = 2;
 };
 
 // The right-hand side of a call: 'f(1, 2)_(n-1)'. Unlike a definition's index,

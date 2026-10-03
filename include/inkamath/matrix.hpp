@@ -29,13 +29,17 @@ public:
 
     Extent Size() const {return extent_;}
 
-    // Subscripts are 1-based, as they are written.
-    T& operator()(long long i, long long j) {return data()[Offset(i, j)];}
-    const T& operator()(long long i, long long j) const {return data()[Offset(i, j)];}
+    // Subscripts are 1-based, as they are written; two read a tensor's first slice.
+    T&       operator()(long long i, long long j) { return data()[Offset(1, i, j)]; }
+    const T& operator()(long long i, long long j) const { return data()[Offset(1, i, j)]; }
+    T&       operator()(long long b, long long i, long long j) { return data()[Offset(b, i, j)]; }
 
     // A matrix prints as the literal that would produce it, with its columns
     // aligned: what is printed can be typed back. A 1x1 is just its value --
-    // it is what every scalar answer and every diagnostic quoting one is.
+    // it is what every scalar answer and every diagnostic quoting one is. A
+    // tensor's columns are aligned across its slices, and ';;' ends each
+    // slice but the last, or the only one, which would otherwise read back
+    // as a matrix.
     static std::string toString(const Matrix<T>& a) {
         return toString(a, [](const T& value) { return numeric_interface<T>::toString(value); });
     }
@@ -47,32 +51,36 @@ public:
             return show(a(1, 1));
         }
 
+        const size_t             cols = a.extent_.cols, rows = a.extent_.count() / cols;
         std::vector<std::string> cells(a.extent_.count());
-        std::vector<size_t> width(a.extent_.cols, 0);
-        for(size_t i = 1; i <= a.extent_.rows; ++i) {
-            for(size_t j = 1; j <= a.extent_.cols; ++j) {
-                std::string& cell = cells[(i-1)*a.extent_.cols + (j-1)];
-                cell              = show(a(i, j));
-                width[j-1] = std::max(width[j-1], cell.size());
-            }
+        std::vector<size_t>      width(cols, 0);
+        for (size_t k = 0; k < cells.size(); ++k) {
+            cells[k]        = show(a.data()[k]);
+            width[k % cols] = std::max(width[k % cols], cells[k].size());
         }
 
         std::string text = "[";
-        for(size_t i = 1; i <= a.extent_.rows; ++i) {
+        for (size_t i = 1; i <= rows; ++i) {
             // One space, so that a continued row starts under the bracket.
             if(i > 1) text += "\n ";
-            for(size_t j = 1; j <= a.extent_.cols; ++j) {
+            for (size_t j = 1; j <= cols; ++j) {
                 if(j > 1) text += ", ";
-                const std::string& cell = cells[(i-1)*a.extent_.cols + (j-1)];
+                const std::string& cell = cells[(i - 1) * cols + (j - 1)];
                 text.append(width[j-1] - cell.size(), ' ');
                 text += cell;
             }
-            if(i < a.extent_.rows) text += ";";
+            if (a.IsTensor() && i % a.extent_.rows == 0 && (i < rows || rows == a.extent_.rows))
+                text += ";;";
+            else if (i < rows)
+                text += ";";
         }
         return text + "]";
     }
 
-    static int toInt(const Matrix<T>& a) {return numeric_interface<T>::toInt(a.Scalar());}
+    static int toInt(const Matrix<T>& a) {
+        return numeric_interface<T>::toInt(a.Scalar(
+            a.IsTensor() ? "a tensor is not a single value" : "a matrix is not a single value"));
+    }
 
     // The extent, not only the cells: two values with the same cells in
     // different shapes are two values (C50).
@@ -111,6 +119,9 @@ public:
     // The rows as columns, and no cell conjugated: MATLAB's and Julia's quote
     // is the conjugate transpose, which is the same only for real matrices.
     static Matrix<T> transpose(const Matrix<T>& a) {
+        if (a.IsTensor())
+            return Sliced(a, Matrix<T>(),
+                          [](const Matrix<T>& s, const Matrix<T>&) { return transpose(s); });
         Matrix<T> t(Extent{a.extent_.cols, a.extent_.rows});
         for (size_t i = 1; i <= a.extent_.rows; ++i)
             for (size_t j = 1; j <= a.extent_.cols; ++j) t(j, i) = a(i, j);
@@ -118,10 +129,29 @@ public:
     }
 
     // One cell, as a 1x1: everything in this language is a matrix.
-    static Matrix<T> cell(const Matrix<T>& a, int i, int j) {return Matrix<T>(a(i, j));}
+    static Matrix<T> cell(const Matrix<T>& a, int i, int j) {
+        if (a.IsTensor())
+            throw std::runtime_error("a " + a.extent_.Described() +
+                                     " takes one index or three, not two");
+        return Matrix<T>(a(i, j));
+    }
 
-    // One index is a row, a 1xn matrix that keeps its orientation.
+    static Matrix<T> cell(const Matrix<T>& a, int b, int i, int j) {
+        if (!a.IsTensor())
+            throw std::runtime_error("a " + a.extent_.Described() +
+                                     " takes one index or two, not three");
+        return Matrix<T>(a.data()[a.Offset(b, i, j)]);
+    }
+
+    // One index is a row, a 1xn matrix that keeps its orientation; a
+    // tensor's is a slice, as a batch's is a sample.
     static Matrix<T> row(const Matrix<T>& a, int i) {
+        if (a.IsTensor()) {
+            if (i < 1 || static_cast<size_t>(i) > a.extent_.slices)
+                throw std::runtime_error("slice " + std::to_string(i) + " is outside a " +
+                                         a.extent_.Described());
+            return a.Slice(static_cast<size_t>(i));
+        }
         if (i < 1 || static_cast<size_t>(i) > a.extent_.rows)
             throw std::runtime_error("row " + std::to_string(i) + " is outside a " +
                                      a.extent_.toString() + " matrix");
@@ -157,14 +187,16 @@ public:
     static bool truth(const Matrix<T>&   a,
                       const std::string& needs = "a guard needs a single value") {
         if(!a.IsScalar()) {
-            throw std::runtime_error(needs + ", not a " + a.extent_.toString() + " matrix");
+            throw std::runtime_error(needs + ", not a " + a.extent_.Described());
         }
         return !(a.scalar_ == numeric_interface<T>::zero());
     }
 
     // A 1x1 matrix -- which every literal and every intermediate scalar is --
-    // keeps its cell inline rather than on the heap.
-    bool IsScalar() const {return extent_.count() == 1;}
+    // keeps its cell inline rather than on the heap. A tensor of one cell is
+    // not a single value.
+    bool     IsScalar() const { return extent_.count() == 1 && !IsTensor(); }
+    bool     IsTensor() const { return extent_.slices != 0; }
     T* data() {return IsScalar() ? &scalar_ : cells_.data();}
     const T* data() const {return IsScalar() ? &scalar_ : cells_.data();}
 
@@ -172,6 +204,8 @@ public:
     static Matrix<T> pow(const Matrix<T>& a, const Matrix<T>& b)
     {
         const T exponent = b.Scalar("a matrix cannot be an exponent");
+        if (a.IsTensor())
+            throw std::runtime_error("only a matrix has a power, not a " + a.extent_.Described());
         if(a.IsScalar()) {
             return Matrix<T>(numeric_interface<T>::pow(a(1,1), exponent));
         }
@@ -259,13 +293,14 @@ public:
     template <typename Right>
     static Matrix<T> solve(const Matrix<T>& a, Right b) {
         const Matrix<T> minus_one(T(-1));
-        if (a.IsScalar() || a.extent_.rows != a.extent_.cols || !exact(a)) {
+        if (a.IsScalar() || a.IsTensor() || a.extent_.rows != a.extent_.cols || !exact(a)) {
             const Matrix<T> left = pow(a, minus_one);
             return left * b();
         }
         const Factors   factors = Factor(a);
         const Matrix<T> right   = b();
-        if (right.IsScalar() || right.extent_.rows != a.extent_.rows || !exact(right))
+        if (right.IsScalar() || right.IsTensor() || right.extent_.rows != a.extent_.rows ||
+            !exact(right))
             return pow(a, minus_one) * right;
         return Solve(factors, right);
     }
@@ -327,18 +362,17 @@ public:
     }
 
     // How far apart two terms of a limit are: their largest difference, cell
-    // by cell. Of two sizes there is no distance, where a difference would
+    // by cell. Of two shapes there is no distance, where a difference would
     // stretch a single value over the other.
     static auto distance(const Matrix<T>& a, const Matrix<T>& b) {
-        if (a.extent_.rows != b.extent_.rows || a.extent_.cols != b.extent_.cols)
+        if (a.extent_ != b.extent_)
             throw std::runtime_error("its terms are " + b.extent_.toString() + ", then " +
                                      a.extent_.toString());
-        decltype(numeric_interface<T>::abs(a(1, 1))) largest = 0;
-        for (size_t i = 1; i <= a.extent_.rows; ++i)
-            for (size_t j = 1; j <= a.extent_.cols; ++j) {
-                const auto d = numeric_interface<T>::abs(a(i, j) - b(i, j));
-                if (std::isnan(d) || d > largest) largest = d;  // NaN, once, stays
-            }
+        decltype(numeric_interface<T>::abs(a.data()[0])) largest = 0;
+        for (size_t k = 0; k < a.extent_.count(); ++k) {
+            const auto d = numeric_interface<T>::abs(a.data()[k] - b.data()[k]);
+            if (std::isnan(d) || d > largest) largest = d;  // NaN, once, stays
+        }
         return largest;
     }
 
@@ -347,8 +381,32 @@ public:
         return numeric_interface<T>::abs(a.Scalar("a matrix has no absolute value"));
     }
 
+    // Matrices of one size as the slices of a tensor, '[a;; b]'.
+    static Matrix<T> Stack(const std::vector<Matrix<T>>& slices) {
+        const Extent size = slices.front().extent_;
+        Matrix<T>    t(Extent{size.rows, size.cols, slices.size()});
+        T*           cell = t.data();
+        for (const Matrix<T>& slice : slices) {
+            if (slice.extent_ != size)
+                throw std::runtime_error("the slices of a tensor have one size, not " +
+                                         size.toString() + " and " + slice.extent_.toString());
+            cell = std::copy_n(slice.data(), size.count(), cell);
+        }
+        return t;
+    }
+
+    Matrix<T> Slice(size_t b) const {
+        Matrix<T> slice(Extent{extent_.rows, extent_.cols});
+        std::copy_n(data() + (b - 1) * slice.extent_.count(), slice.extent_.count(), slice.data());
+        return slice;
+    }
+
     /* Symmetric operators */
-    friend Matrix<T> operator*(const Matrix<T>& a, const Matrix<T>& b) {return a.mul(b);}
+    friend Matrix<T> operator*(const Matrix<T>& a, const Matrix<T>& b) {
+        if (a.IsTensor() || b.IsTensor())
+            return Sliced(a, b, [](const Matrix<T>& x, const Matrix<T>& y) { return x * y; });
+        return a.mul(b);
+    }
 
     friend Matrix<T> operator+(const Matrix<T>& a, const Matrix<T>& b)
     {
@@ -380,14 +438,32 @@ public:
 private:
     // Signed, so that 'm[0-1,1]' names the row it asked for rather than a
     // number that wrapped.
-    size_t Offset(long long i, long long j) const
-    {
-        if(i < 1 || static_cast<unsigned long long>(i) > extent_.rows
-           || j < 1 || static_cast<unsigned long long>(j) > extent_.cols) {
-            throw std::runtime_error("row " + std::to_string(i) + ", column " + std::to_string(j)
-                                     + " is outside a " + extent_.toString() + " matrix");
+    size_t Offset(long long b, long long i, long long j) const {
+        const size_t slices = IsTensor() ? extent_.slices : 1;
+        if (b < 1 || static_cast<unsigned long long>(b) > slices || i < 1 ||
+            static_cast<unsigned long long>(i) > extent_.rows || j < 1 ||
+            static_cast<unsigned long long>(j) > extent_.cols) {
+            throw std::runtime_error((IsTensor() ? "slice " + std::to_string(b) + ", " : "") +
+                                     "row " + std::to_string(i) + ", column " + std::to_string(j) +
+                                     " is outside a " + extent_.Described());
         }
-        return static_cast<size_t>(i-1)*extent_.cols + static_cast<size_t>(j-1);
+        return (static_cast<size_t>(b - 1) * extent_.rows + static_cast<size_t>(i - 1)) *
+                   extent_.cols +
+               static_cast<size_t>(j - 1);
+    }
+
+    // Whatever meets a tensor meets it slice by slice, a matrix or a single
+    // value every slice, so that (T op M)[b] = T[b] op M (DESIGN.md, tensors
+    // of rank 3).
+    template <typename Func>
+    static Matrix<T> Sliced(const Matrix<T>& a, const Matrix<T>& b, Func f) {
+        if (a.IsTensor() && b.IsTensor() && a.extent_.slices != b.extent_.slices)
+            throw std::runtime_error("a " + a.extent_.Described() + " and a " +
+                                     b.extent_.Described() + " have different numbers of slices");
+        std::vector<Matrix<T>> slices;
+        for (size_t k = 1; k <= std::max(a.extent_.slices, b.extent_.slices); ++k)
+            slices.push_back(f(a.IsTensor() ? a.Slice(k) : a, b.IsTensor() ? b.Slice(k) : b));
+        return Stack(slices);
     }
 
     // Ordering needs real numbers, as the factorial does.
@@ -416,17 +492,15 @@ private:
     const T& Comparable() const
     {
         if(!IsScalar()) {
-            throw std::runtime_error("a comparison needs single values, not a "
-                                     + extent_.toString() + " matrix");
+            throw std::runtime_error("a comparison needs single values, not a " +
+                                     extent_.Described());
         }
         return scalar_;
     }
 
     // The single cell of a 1x1 matrix. Most of the numeric interface is only
     // defined there.
-    const T& Scalar(const char* message =
-                    "a matrix is not a single value") const
-    {
+    const T& Scalar(const char* message) const {
         if(!IsScalar()) {
             throw std::runtime_error(message);
         }
@@ -438,6 +512,10 @@ private:
     {
         // Nearly every value is a single number: say so before anything general.
         if (IsScalar() && other.IsScalar()) return Matrix<T>(f(scalar_, other.scalar_));
+        if (IsTensor() || other.IsTensor())
+            return Sliced(*this, other, [&f](const Matrix<T>& x, const Matrix<T>& y) {
+                return x.BinaryOp(y, f);
+            });
         if(extent_ != other.extent_) {
             // A single value stretches to the other side's size, as it does
             // for '*' and inside a literal. The operand order is kept: '1-a'

@@ -338,18 +338,20 @@ private:
     bool conjunction_;
 };
 
-// One cell of a matrix, 'm[i,j]', or with no column one row, 'm[i]'.
+// One cell of a matrix, 'm[i,j]', or with no column one row, 'm[i]'; of a
+// tensor, 't[b,i,j]', its slice written first.
 template <typename T>
 class CellExpression : public Expression<T>
 {
 public:
-    CellExpression(PExpression<T> matrix, PExpression<T> row, PExpression<T> col)
-        : Expression<T>({matrix, row, col})
-    {}
+    CellExpression(PExpression<T> matrix, PExpression<T> row, PExpression<T> col,
+                   PExpression<T> slice = PExpression<T>())
+        : Expression<T>({matrix, row, col, slice}) {}
 
     const PExpression<T>& Matrix() const {return this->Children()[0];}
     const PExpression<T>& Row() const {return this->Children()[1];}
     const PExpression<T>& Col() const {return this->Children()[2];}
+    const PExpression<T>& Slice() const { return this->Children()[3]; }
 
     PExpression<T> accept(TransformationVisitor<T> &v) override {
         return v.visit(this);
@@ -434,6 +436,17 @@ protected:
     size_t m_;
 };
 
+// '[a;; b]': matrix literals stacked as the slices of a tensor.
+template <typename T>
+class TensorExpression : public Expression<T> {
+public:
+    explicit TensorExpression(std::vector<PExpression<T>> slices)
+        : Expression<T>(std::move(slices)) {}
+
+    PExpression<T> accept(TransformationVisitor<T>& v) override { return v.visit(this); }
+    T              accept(FoldingVisitor<T>& v) override { return v.visit(this); }
+};
+
 template <typename T>
 class RefExpression : public Expression<T>
 {
@@ -481,15 +494,16 @@ class FuncExpression : public Expression<T>
 {
 public:
     // The third child is the guard of a definition's left-hand side, and the
-    // fourth and fifth the row and column of a clause for cells, 'M[j<=2,
-    // k<=2]'; all three are null everywhere else. Keeping them here is what
-    // lets ParametersDefinition read the whole left-hand side from one place.
+    // fourth to sixth the row, column and slice of a clause for cells, 'M[j<=2,
+    // k<=2]'; all are null everywhere else. Keeping them here is what lets
+    // ParametersDefinition read the whole left-hand side from one place.
     explicit FuncExpression(PExpression<T> ref_expression, PExpression<T> e1, PExpression<T> e2,
                             bool limit = false, PExpression<T> guard = PExpression<T>(),
                             std::string    signature = std::string(),
                             PExpression<T> row       = PExpression<T>(),
-                            PExpression<T> col       = PExpression<T>())
-        : Expression<T>({e1, e2, guard, row, col}),
+                            PExpression<T> col       = PExpression<T>(),
+                            PExpression<T> slice     = PExpression<T>())
+        : Expression<T>({e1, e2, guard, row, col, slice}),
           m_name(ref_expression->Name()),
           limit_(limit),
           signature_(std::move(signature)) {}
