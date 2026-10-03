@@ -2510,6 +2510,14 @@ that exploring seven domains asked of the interpreter, by how many asked.
   copy of how a call chooses its clause and how `lim` walks its terms,
   beside `Reference`'s; the two can drift, and a change to either is a
   change to both.
+- **A sign that begins an element.** Inside a matrix literal or an argument
+  list, a `+` or `-` with a space before it and none after it begins the
+  next element, as in MATLAB: `[1 -1]` is two numbers, `[1 - 1]` and `[1-1]`
+  one. C52 left the sign binary and made printing round-trip instead, which
+  kept what was printed re-enterable but not what was typed: the RNN
+  conformance model's `[1/2 -1/4; 1/4 1/2]` lost a cell unseen.
+  `series.ink`'s `[sum_(k=1)^3 k -1]` is the one golden that moves.
+  Specified in `test/data/spec/sign.ink`, 7 of its 18 entries failing.
 - **Steps and tolerance as options**, when a model asks: a hundred steps is
   short of what a slow filter settles in, and a billionth is loose for a
   well-conditioned step.
