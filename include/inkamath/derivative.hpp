@@ -479,21 +479,22 @@ private:
     }
 
     Jet Cell(CellExpression<T>& cell) {
-        const Jet matrix = Eval(cell.Matrix());
+        const T*   kept   = Lookup(cell.Matrix()->Name()) ? nullptr : stack_.Kept(*cell.Matrix());
+        const Jet  matrix = kept ? Jet() : Eval(cell.Matrix());
+        const auto read   = [&](auto f) { return kept ? Constant(f(*kept)) : Map(matrix, f); };
         if (cell.Slice()) {
             const int slice = AsIndex<T>(cell.Slice()->accept(ordinary_));
             const int row   = AsIndex<T>(cell.Row()->accept(ordinary_));
             const int col   = AsIndex<T>(cell.Col()->accept(ordinary_));
-            return Map(matrix, [slice, row, col](const T& v) {
+            return read([slice, row, col](const T& v) {
                 return numeric_interface<T>::cell(v, slice, row, col);
             });
         }
         const int row    = AsIndex<T>(cell.Row()->accept(ordinary_));
         if (!cell.Col())
-            return Map(matrix, [row](const T& v) { return numeric_interface<T>::row(v, row); });
+            return read([row](const T& v) { return numeric_interface<T>::row(v, row); });
         const int col = AsIndex<T>(cell.Col()->accept(ordinary_));
-        return Map(matrix,
-                   [row, col](const T& v) { return numeric_interface<T>::cell(v, row, col); });
+        return read([row, col](const T& v) { return numeric_interface<T>::cell(v, row, col); });
     }
 
     Jet Power(PowExpression<T>& power) {

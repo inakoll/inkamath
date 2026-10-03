@@ -222,6 +222,15 @@ public:
 
     [[nodiscard]] const std::vector<Clause<T>>& Clauses() const { return clauses_; }
 
+    // The value of a plain definition by a literal of numbers, once built.
+    [[nodiscard]] const T* Kept() const {
+        const Clause<T>* only = clauses_.size() == 1 ? &clauses_.front() : nullptr;
+        if (!Value() || !only || !IsPlain(*only) || !only->parameters.parameters_names().empty())
+            return nullptr;
+        const auto* literal = dynamic_cast<const MatExpression<T>*>(only->expression.get());
+        return literal && literal->built ? &*literal->built : nullptr;
+    }
+
     // '?name', or '?name_0' for one clause of a sequence.
     std::string Describe(const ParametersCall<T>& call, ReferenceStack<T>& stack) const {
         int index = 0;

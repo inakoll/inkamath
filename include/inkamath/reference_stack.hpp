@@ -258,6 +258,17 @@ public:
         return Evaluate(*definition, ai_parameters);
     }
 
+    // A name defined as a literal of numbers already built, which Eval would
+    // copy whole: read where it is kept, for the step Eval takes. Null for
+    // anything else, which is evaluated.
+    const T* Kept(const Expression<T>& e) {
+        if (!dynamic_cast<const RefExpression<T>*>(&e) || FindBinding(e.Name())) return nullptr;
+        const definition_type definition = FindGlobal(e.Name());
+        const T*              kept       = definition ? definition->Kept() : nullptr;
+        if (kept) Step();
+        return kept;
+    }
+
     // 'g.y_3': the index and the arguments are the caller's, and the name is
     // sought in the object's scope alone.
     T Member(const MemberExpression<T>& member) {
