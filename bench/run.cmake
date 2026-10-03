@@ -19,6 +19,7 @@ get_filename_component(callgrind_out "${INKAMATH}" DIRECTORY)
 set(callgrind_out "${callgrind_out}/callgrind")
 
 file(GLOB workloads "${CMAKE_CURRENT_LIST_DIR}/*.ink")
+set(ran 0)
 foreach(file IN LISTS workloads)
     get_filename_component(name "${file}" NAME_WE)
     # train.ink is data, read by the training workloads, not a transcript.
@@ -26,6 +27,7 @@ foreach(file IN LISTS workloads)
     if(NOT prompts OR (ONLY AND NOT name STREQUAL ONLY))
         continue()
     endif()
+    math(EXPR ran "${ran} + 1")
 
     if(VALGRIND AND NOT TIME)
         execute_process(COMMAND "${VALGRIND}" --tool=callgrind
@@ -58,3 +60,6 @@ foreach(file IN LISTS workloads)
     endif()
     message("${name}\t${measure} ${unit}")
 endforeach()
+if(ran EQUAL 0)
+    message(FATAL_ERROR "no workload named ${ONLY}")
+endif()
