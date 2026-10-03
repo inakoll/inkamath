@@ -41,10 +41,10 @@
 # And what 'inkamath --check decimate.ink boxcar' and 'stride' report:
 #
 #     boxcar: 100 steps from 0, against exact values
-#     boxcar.<name>: within 0, for each of x, f, y, z, t, w and q
+#     boxcar.<name>: within 0, for each of f, y, z, t, w and q
 #
 #     stride: 100 steps from 0, against exact values
-#     stride.<name>: within 0, for each of x and h
+#     stride.h: within 0
 down(x_n) = {
     f_n = (x_n + x_(n-1))/2
     y_m = f_(2*m + 1)
