@@ -255,6 +255,14 @@ private:
 inline constexpr const char* prelude[] = {
     "ceil(x) = -floor(-x)",
     "mod(a, b) = a - b*floor(a/b)",
+    "exp(x) = e^x",
+    // A series that converges fast only near 1, so reached by halving or
+    // doubling; written plain first, as a plain definition starts over.
+    "log(x) = 2*sum_(k=0) ((x - 1)/(x + 1))^(2*k + 1)/(2*k + 1)",
+    "log(x) | x <= 0 = 1/0",
+    "log(x) | x > 2 = log(x/2) + log(2)",
+    "log(x) | x < 1/2 = log(2*x) - log(2)",
+    "tanh(x) = 1 - 2/(exp(2*x) + 1)",
 };
 
 template <Parsable T, Numeric U>

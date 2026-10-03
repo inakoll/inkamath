@@ -2520,6 +2520,15 @@ that exploring seven domains asked of the interpreter, by how many asked.
   `5` to `[6, -1]`. Specified in `test/data/sign.ink`, which passed as
   written. The parser knows it is in a list by the innermost bracket open,
   so parentheses, an index and a series' bounds read a sign as before.
+- `[done]` **`exp`, `log` and `tanh` in the prelude**, beneath the session as `ceil`
+  and `mod` are, so that an activation and a log loss need no definition of
+  their own. `exp` is the built-in power of `e`, accurate past the 25 where
+  its series ran out of terms and differentiable by `grad`'s rule for `e`;
+  `log` a series in `(x-1)/(x+1)`, fast between 1/2 and 2 and reached by
+  halving or doubling; `tanh` from `exp`. Specified in
+  `test/data/prelude.ink`, with a logistic regression trained by `grad` on
+  its log loss, held to the gradient written by hand and to the weights
+  NumPy gives; it passed as written, and no golden moved.
 - **Steps and tolerance as options**, when a model asks: a hundred steps is
   short of what a slow filter settles in, and a billionth is loose for a
   well-conditioned step.

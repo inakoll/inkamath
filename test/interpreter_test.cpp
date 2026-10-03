@@ -142,6 +142,9 @@ TEST_CASE("tex") {
 TEST_CASE("sign") {
     check_transcript("sign.ink");
 }
+TEST_CASE("prelude") {
+    check_transcript("prelude.ink");
+}
 TEST_CASE("models") {
     check_transcript("models.ink");
 }
