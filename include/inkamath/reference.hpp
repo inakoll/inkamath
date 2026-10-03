@@ -149,22 +149,25 @@ public:
         }
         // A size is written, not guessed from the cells a clause happens to give.
         if (ai_parameters.cells() && !ai_parameters.row_name().empty() &&
-            (!ai_parameters.rows() || !ai_parameters.cols())) {
-            throw std::runtime_error(reference_name_ + " has no size; write it as " +
-                                     reference_name_ + "[" + ai_parameters.row_name() + "<=rows, " +
-                                     ai_parameters.col_name() + "<=cols]");
+            (!ai_parameters.rows() || !ai_parameters.cols() ||
+             (ai_parameters.tensor() && !ai_parameters.slices()))) {
+            throw std::runtime_error(
+                reference_name_ + " has no size; write it as " + reference_name_ + "[" +
+                (ai_parameters.tensor() ? ai_parameters.slice_name() + "<=slices, " : "") +
+                ai_parameters.row_name() + "<=rows, " + ai_parameters.col_name() + "<=cols]");
         }
         // One index names a row, so a definition by rows and columns has no
-        // clause for one, and a column's clauses name no column.
+        // clause for one, and a column's clauses name no column; a tensor's
+        // name all three.
         if (ai_parameters.cells()) {
             if (const Clause<T>* other = FirstThat([&](const Clause<T>& c) {
-                    return c.parameters.cells() && c.parameters.column() != ai_parameters.column();
+                    return c.parameters.cells() && c.parameters.rank() != ai_parameters.rank();
                 })) {
-                throw std::runtime_error(
-                    reference_name_ +
-                    (other->parameters.column()
-                         ? " is defined by one index, so a clause names one"
-                         : " is defined by a row and a column, so a clause names both"));
+                static const char* const names[] = {
+                    " is defined by one index, so a clause names one",
+                    " is defined by a row and a column, so a clause names both",
+                    " is defined by a slice, a row and a column, so a clause names all three"};
+                throw std::runtime_error(reference_name_ + names[other->parameters.rank() - 1]);
             }
         }
         // A matrix's cells and a sequence's terms do not mix; a term's cells are
@@ -445,7 +448,7 @@ private:
     }
     // What an unguarded clause answers for, so that writing one again
     // replaces it: which index, if one, and which cells, if one.
-    static std::tuple<bool, bool, int, bool, bool, int, int> Shape(const Clause<T>& c) {
+    static std::tuple<bool, bool, int, bool, bool, int, int, int> Shape(const Clause<T>& c) {
         const ParametersDefinition<T>& p    = c.parameters;
         const bool                     base = p.indexed() && !p.general();
         return {p.indexed(),
@@ -454,7 +457,8 @@ private:
                 p.cells(),
                 IsOneCell(c),
                 IsOneCell(c) ? p.row() : 0,
-                IsOneCell(c) ? p.col() : 0};
+                IsOneCell(c) ? p.col() : 0,
+                IsOneCell(c) ? p.slice() : 0};
     }
     // A clause that gives a whole term at one index: a base clause, written
     // whole or by its cells, which name every cell.
@@ -615,7 +619,7 @@ private:
         for (const Clause<T>& clause : clauses_) {
             const ParametersDefinition<T>& p = clause.parameters;
             if (!p.cells() || p.row_name().empty()) continue;
-            const Extent size{Size(p.rows()->accept(evaluator)), Size(p.cols()->accept(evaluator))};
+            const Extent size = Bounds(p, evaluator);
             if (extent && *extent != size) {
                 throw std::runtime_error("the clauses of " + reference_name_ +
                                          " give it different sizes");
@@ -624,28 +628,58 @@ private:
         }
         if (!extent) {
             throw std::runtime_error(reference_name_ + " has no size; write it as " +
-                                     reference_name_ + "[j<=rows, k<=cols]");
+                                     reference_name_ + Bounded());
         }
         T matrix = whole ? *whole : T(*extent);
         // A clause for one cell can name a cell outside the size, which says so
         // as reading it would.
         for (const Clause<T>& clause : clauses_) {
-            if (IsOneCell(clause)) (void)matrix(clause.parameters.row(), clause.parameters.col());
+            if (IsOneCell(clause)) Named(clause.parameters, matrix, reference_name_);
         }
-        for (size_t row = 1; row <= extent->rows; ++row) {
-            for (size_t col = 1; col <= extent->cols; ++col) {
-                const std::optional<T> cell =
-                    Cell(static_cast<int>(row), static_cast<int>(col), evaluator);
-                if (!cell) continue;
-                if (cell->Size() != Extent{1, 1}) {
-                    throw std::runtime_error("a cell of " + reference_name_ +
-                                             " must be a single value, not a " +
-                                             cell->Size().toString() + " matrix");
+        for (int slice = 1; slice <= Slices(*extent); ++slice) {
+            for (int row = 1; row <= static_cast<int>(extent->rows); ++row) {
+                for (int col = 1; col <= static_cast<int>(extent->cols); ++col) {
+                    const std::optional<T> cell = Cell(slice, row, col, evaluator);
+                    if (cell) matrix(slice, row, col) = Single(*cell);
                 }
-                matrix(row, col) = (*cell)(1, 1);
             }
         }
         return matrix;
+    }
+
+    // A cell is named by as many indices as reading it takes: a value written
+    // whole, unlike clauses for all cells, says its rank only when evaluated.
+    static void Named(const ParametersDefinition<T>& p, T& value, const std::string& name) {
+        if (p.tensor() != bool(value.Size().slices)) {
+            throw std::runtime_error("a clause for one cell of " + name + ", a " +
+                                     value.Size().Described() + ", names " +
+                                     (p.tensor() ? "no slice" : "its slice, row and column"));
+        }
+        (void)value(p.slice(), p.row(), p.col());
+    }
+
+    typename T::value_type Single(const T& cell) const {
+        if (!cell.IsScalar()) {
+            throw std::runtime_error("a cell of " + reference_name_ +
+                                     " must be a single value, not a " + cell.Size().Described());
+        }
+        return cell(1, 1);
+    }
+
+    // How a clause for all cells bounds them, at the rank of the clauses given.
+    std::string Bounded() const {
+        const bool tensor = FirstThat([](const Clause<T>& c) { return c.parameters.tensor(); });
+        return std::string("[") + (tensor ? "b<=slices, " : "") + "j<=rows, k<=cols]";
+    }
+
+    static int Slices(const Extent& extent) {
+        return extent.slices ? static_cast<int>(extent.slices) : 1;
+    }
+
+    // The size a clause for all cells bounds its names to.
+    static Extent Bounds(const ParametersDefinition<T>& p, EvaluationVisitor<T>& evaluator) {
+        return Extent{Size(p.rows()->accept(evaluator)), Size(p.cols()->accept(evaluator)),
+                      p.tensor() ? Size(p.slices()->accept(evaluator)) : 0};
     }
 
     static size_t Size(const T& value) {
@@ -661,22 +695,25 @@ private:
     // ones in the order written and the unguarded one last; else none, and the
     // cell is the matrix written whole's, or 0 without one, as a short row of a
     // literal is padded.
-    std::optional<T> Cell(int row, int col, EvaluationVisitor<T>& evaluator) const {
+    std::optional<T> Cell(int slice, int row, int col, EvaluationVisitor<T>& evaluator) const {
         const auto matrix = [](const Clause<T>& c) { return !c.parameters.indexed(); };
-        if (auto one = OneCell(row, col, 0, matrix, evaluator)) return one->first;
-        return AllCells(row, col, 0, matrix, evaluator);
+        if (auto one = OneCell(slice, row, col, 0, matrix, evaluator)) return one->first;
+        return AllCells(slice, row, col, 0, matrix, evaluator);
     }
 
     // The clause for this one cell among those that fit, if one holds, and
     // what it gives. A general clause sees the index; the names are bound on
     // trial, so that one clause's names cannot shadow a global in the next.
     template <typename Fits>
-    std::optional<std::pair<T, const Clause<T>*>> OneCell(int row, int col, int index, Fits fits,
+    std::optional<std::pair<T, const Clause<T>*>> OneCell(int slice, int row, int col, int index,
+                                                          Fits                  fits,
                                                           EvaluationVisitor<T>& evaluator) const {
         ReferenceStack<T>& stack = evaluator.stack();
         for (const Clause<T>& clause : clauses_) {
             const ParametersDefinition<T>& p = clause.parameters;
-            if (!IsOneCell(clause) || !fits(clause) || p.row() != row || p.col() != col) continue;
+            if (!IsOneCell(clause) || !fits(clause) || p.slice() != slice || p.row() != row ||
+                p.col() != col)
+                continue;
             typename ReferenceStack<T>::Trial term(stack, p.index_name());
             if (p.general()) SetIndex(p.index_name(), index, stack);
             if (p.guarded() && !Held(clause, index, row, col, evaluator)) continue;
@@ -695,7 +732,7 @@ private:
     }
 
     template <typename Fits>
-    std::optional<T> AllCells(int row, int col, int index, Fits fits,
+    std::optional<T> AllCells(int slice, int row, int col, int index, Fits fits,
                               EvaluationVisitor<T>& evaluator) const {
         ReferenceStack<T>& stack = evaluator.stack();
         for (const bool guarded : {true, false}) {
@@ -706,7 +743,9 @@ private:
                 typename ReferenceStack<T>::Trial term(stack, p.index_name());
                 typename ReferenceStack<T>::Trial row_name(stack, p.row_name());
                 typename ReferenceStack<T>::Trial col_name(stack, p.col_name());
+                typename ReferenceStack<T>::Trial slice_name(stack, p.slice_name());
                 if (p.general()) SetIndex(p.index_name(), index, stack);
+                if (p.tensor()) SetIndex(p.slice_name(), slice, stack);
                 SetIndex(p.row_name(), row, stack);
                 SetIndex(p.col_name(), col, stack);
                 if (p.guarded() && !Held(clause, index, row, col, evaluator)) continue;
@@ -765,7 +804,7 @@ private:
             if (!p.cells() || p.row_name().empty() || !level(clause)) continue;
             typename ReferenceStack<T>::Trial term(evaluator.stack(), p.index_name());
             if (p.general()) SetIndex(p.index_name(), index, evaluator.stack());
-            const Extent size{Size(p.rows()->accept(evaluator)), Size(p.cols()->accept(evaluator))};
+            const Extent size = Bounds(p, evaluator);
             if (extent && *extent != size) {
                 throw std::runtime_error("the clauses of " + reference_name_ +
                                          " give it different sizes");
@@ -774,42 +813,39 @@ private:
         }
         if (!extent) {
             throw std::runtime_error(reference_name_ + " has no size; write it as " +
-                                     reference_name_ + "_n[j<=rows, k<=cols]");
+                                     reference_name_ + "_n" + Bounded());
         }
-        T term = whole ? *whole : T(*extent);
+        T                 term = whole ? *whole : T(*extent);
+        const std::string name = reference_name_ + "_" + std::to_string(index);
         for (const Clause<T>& clause : clauses_) {
             if (IsOneCell(clause) && (base(clause) || general(clause)))
-                (void)term(clause.parameters.row(), clause.parameters.col());
+                Named(clause.parameters, term, name);
         }
-        const std::string name = reference_name_ + "_" + std::to_string(index);
-        for (size_t row = 1; row <= extent->rows; ++row) {
-            for (size_t col = 1; col <= extent->cols; ++col) {
-                const int        r = static_cast<int>(row), c = static_cast<int>(col);
-                std::optional<T> cell;
-                if (auto own = OneCell(r, c, index, base, evaluator)) {
-                    cell = own->first;
-                } else if (based) {
-                    if (auto every = OneCell(r, c, index, general, evaluator)) {
-                        throw std::runtime_error(
-                            name + " and " + reference_name_ + "_" +
-                            every->second->parameters.index_name() + "[" + std::to_string(r) + "," +
-                            std::to_string(c) + "] both give row " + std::to_string(r) +
-                            ", column " + std::to_string(c) + " of " + name + "; write " + name +
-                            "[" + std::to_string(r) + "," + std::to_string(c) + "] to say which");
+        for (int s = 1; s <= Slices(*extent); ++s) {
+            for (int r = 1; r <= static_cast<int>(extent->rows); ++r) {
+                for (int c = 1; c <= static_cast<int>(extent->cols); ++c) {
+                    std::optional<T> cell;
+                    if (auto own = OneCell(s, r, c, index, base, evaluator)) {
+                        cell = own->first;
+                    } else if (based) {
+                        if (auto every = OneCell(s, r, c, index, general, evaluator)) {
+                            const std::string at = (extent->slices ? std::to_string(s) + "," : "") +
+                                                   std::to_string(r) + "," + std::to_string(c);
+                            throw std::runtime_error(
+                                name + " and " + reference_name_ + "_" +
+                                every->second->parameters.index_name() + "[" + at + "] both give " +
+                                (extent->slices ? "slice " + std::to_string(s) + ", " : "") +
+                                "row " + std::to_string(r) + ", column " + std::to_string(c) +
+                                " of " + name + "; write " + name + "[" + at + "] to say which");
+                        }
+                        cell = AllCells(s, r, c, index, base, evaluator);
+                    } else if (auto every = OneCell(s, r, c, index, general, evaluator)) {
+                        cell = every->first;
+                    } else {
+                        cell = AllCells(s, r, c, index, general, evaluator);
                     }
-                    cell = AllCells(r, c, index, base, evaluator);
-                } else if (auto every = OneCell(r, c, index, general, evaluator)) {
-                    cell = every->first;
-                } else {
-                    cell = AllCells(r, c, index, general, evaluator);
+                    if (cell) term(s, r, c) = Single(*cell);
                 }
-                if (!cell) continue;
-                if (cell->Size() != Extent{1, 1}) {
-                    throw std::runtime_error("a cell of " + reference_name_ +
-                                             " must be a single value, not a " +
-                                             cell->Size().toString() + " matrix");
-                }
-                term(row, col) = (*cell)(1, 1);
             }
         }
         return term;

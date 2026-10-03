@@ -101,6 +101,7 @@ private:
 
     // Cell by cell, as '/' divides.
     static T Cellwise(const T& a, const T& b) {
+        if (a.IsTensor() || b.IsTensor()) return T::Sliced(a, b, Cellwise);
         if (a.IsScalar() || b.IsScalar()) return a * b;
         if (a.Size() != b.Size()) throw std::runtime_error("these matrices have different sizes");
         T c(a.Size());
@@ -206,7 +207,15 @@ private:
             if (Moves(u)) throw std::runtime_error("grad cannot differentiate a factorial");
             return Constant(T(numeric_interface<T>::fact(*u[0])));
         }
-        if (auto* x = dynamic_cast<MatExpression<T>*>(&e)) return Literal(*x);
+        if (auto* x = dynamic_cast<MatExpression<T>*>(&e))
+            return Literal(*x, [x](std::vector<PExpression<T>> parts) {
+                return std::make_shared<MatExpression<T>>(x->Size().rows, x->Size().cols,
+                                                          std::move(parts));
+            });
+        if (auto* x = dynamic_cast<TensorExpression<T>*>(&e))
+            return Literal(*x, [](std::vector<PExpression<T>> parts) {
+                return std::make_shared<TensorExpression<T>>(std::move(parts));
+            });
         if (auto* x = dynamic_cast<CellExpression<T>*>(&e)) return Cell(*x);
         if (auto* x = dynamic_cast<CompareExpression<T>*>(&e)) return Compare(*x);
         if (auto* x = dynamic_cast<LogicExpression<T>*>(&e)) return Logic(*x);
@@ -437,9 +446,10 @@ private:
         return Constant(value);
     }
 
-    // Each part a literal of its own, of the parts of the cells: a cell with
-    // none there is a zero of its own size.
-    Jet Literal(MatExpression<T>& literal) {
+    // Each part a literal of its own, of the parts of the cells, or of a
+    // tensor's slices: one with none there is a zero of its own size.
+    template <typename Make>
+    Jet Literal(Expression<T>& literal, Make make) {
         std::vector<Jet> cells;
         for (const PExpression<T>& cell : literal.Children()) cells.push_back(Eval(cell));
         Jet out(Size());
@@ -452,15 +462,21 @@ private:
                     std::make_shared<ValExpression<T>>(cell[s] ? *cell[s] : Zero(cell[0]->Size())));
             }
             if (!any) continue;
-            out[s] = std::make_shared<MatExpression<T>>(literal.Size().rows, literal.Size().cols,
-                                                        std::move(parts))
-                         ->accept(ordinary_);
+            out[s] = make(std::move(parts))->accept(ordinary_);
         }
         return out;
     }
 
     Jet Cell(CellExpression<T>& cell) {
         const Jet matrix = Eval(cell.Matrix());
+        if (cell.Slice()) {
+            const int slice = AsIndex<T>(cell.Slice()->accept(ordinary_));
+            const int row   = AsIndex<T>(cell.Row()->accept(ordinary_));
+            const int col   = AsIndex<T>(cell.Col()->accept(ordinary_));
+            return Map(matrix, [slice, row, col](const T& v) {
+                return numeric_interface<T>::cell(v, slice, row, col);
+            });
+        }
         const int row    = AsIndex<T>(cell.Row()->accept(ordinary_));
         if (!cell.Col())
             return Map(matrix, [row](const T& v) { return numeric_interface<T>::row(v, row); });
@@ -644,10 +660,12 @@ private:
                 x[bit] = seed;
                 const Shadow variable(*this, name, x);
                 Jet          body = Eval(grad.Body());
-                if (!at.IsScalar() && !body[0]->IsScalar())
-                    throw std::runtime_error(
-                        "grad of a matrix with respect to a matrix is a Jacobian, which it does "
-                        "not give");
+                if (!at.IsScalar() && !body[0]->IsScalar()) {
+                    const auto kind = [](const T& v) { return v.IsTensor() ? "tensor" : "matrix"; };
+                    throw std::runtime_error(std::string("grad of a ") + kind(*body[0]) +
+                                             " with respect to a " + kind(at) +
+                                             " is a Jacobian, which it does not give");
+                }
                 parts.push_back(std::move(body));
             }
         }

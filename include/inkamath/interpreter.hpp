@@ -153,6 +153,7 @@ private:
     PExpression<U> ParseMultExpr(PExpression<U> lead = PExpression<U>());
     PExpression<U> ParsePowExpr(PExpression<U> lead = PExpression<U>());
     PExpression<U> ParseMatrix();
+    PExpression<U> MatrixLiteral(std::vector<PExpression<U>>& mat, std::vector<size_t>& size);
     PExpression<U> ParseSimpleExpr(bool postfix = true);
     PExpression<U> ParseCell(PExpression<U> matrix);
     PExpression<U> ParseQuotes(PExpression<U> e);
@@ -314,7 +315,16 @@ void Interpreter<T,U>::Lexer(const std::string& s)
             m_tokens.push_back(Token<T>(Comma, std::string(1, s[i])));
             break;
         case ';':
-            m_tokens.push_back(Token<T>(Semico, std::string(1, s[i])));
+            // A touching ';;' stacks slices: one semicolon more than separates
+            // rows, as Julia counts semicolons, one more for each axis.
+            if (s.compare(i, 3, ";;;") == 0)
+                Fail("a tensor has at most three indices, and ';;;' would give it a fourth");
+            if (s.compare(i, 2, ";;") == 0) {
+                m_tokens.push_back(Token<T>(Semico, ";;"));
+                ++i;
+            } else {
+                m_tokens.push_back(Token<T>(Semico, std::string(1, s[i])));
+            }
             break;
         case '+':
             m_tokens.push_back(Token<T>(Add, std::string(1, s[i])));
@@ -559,11 +569,12 @@ PExpression<U> Interpreter<T,U>::ParseEqualExpr()
             ++m_i;
             expr = Parse();
             if (params || sub || guard || place) {
-                e.reset(new EqualExpression<U>(
-                    PExpression<U>(new FuncExpression<U>(ref, params, sub, false, guard, signature,
-                                                         place ? place->Row() : PExpression<U>(),
-                                                         place ? place->Col() : PExpression<U>())),
-                    expr));
+                e.reset(new EqualExpression<U>(PExpression<U>(new FuncExpression<U>(
+                                                   ref, params, sub, false, guard, signature,
+                                                   place ? place->Row() : PExpression<U>(),
+                                                   place ? place->Col() : PExpression<U>(),
+                                                   place ? place->Slice() : PExpression<U>())),
+                                               expr));
             } else {
                 e.reset(new EqualExpression<U>(ref, expr));
             }
@@ -581,7 +592,8 @@ PExpression<U> Interpreter<T,U>::ParseEqualExpr()
             // A name at the head of a line is parsed here, not in
             // ParseSimpleExpr, so the cell brackets and quotes are read here too.
             if (place) {
-                ref = std::make_shared<CellExpression<U>>(ref, place->Row(), place->Col());
+                ref = std::make_shared<CellExpression<U>>(ref, place->Row(), place->Col(),
+                                                          place->Slice());
             }
             e = ParseOrExpr(ParsePostfix(ref));
         }
@@ -704,7 +716,7 @@ std::vector<PExpression<T>> make_matrix_array_from_vector(size_t n, size_t m,
 
 template <Parsable T, Numeric U>
 PExpression<U> Interpreter<T, U>::ParseMatrix() {
-    std::vector<PExpression<U>> mat;
+    std::vector<PExpression<U>> mat, slices;
     std::vector<size_t> size(1, 0);
     PExpression<U> e;
 
@@ -713,7 +725,13 @@ PExpression<U> Interpreter<T, U>::ParseMatrix() {
         switch (Peek().type)
         {
         case Semico :
-            size.push_back(0);
+            if (Peek().text == ";;") {
+                slices.push_back(MatrixLiteral(mat, size));
+                mat.clear();
+                size.assign(1, 0);
+            } else {
+                size.push_back(0);
+            }
             ++m_i;
             break;
 
@@ -725,6 +743,15 @@ PExpression<U> Interpreter<T, U>::ParseMatrix() {
         }
         }
     }
+    if (slices.empty()) return MatrixLiteral(mat, size);
+    // A trailing ';;' ends the last slice rather than starting an empty one.
+    if (size.size() > 1 || size[0] > 0) slices.push_back(MatrixLiteral(mat, size));
+    return std::make_shared<TensorExpression<U>>(std::move(slices));
+}
+
+template <Parsable T, Numeric U>
+PExpression<U> Interpreter<T, U>::MatrixLiteral(std::vector<PExpression<U>>& mat,
+                                                std::vector<size_t>&         size) {
     size_t n = size.size();
     size_t m = *std::max_element(size.begin(), size.end());
     if (m == 0)
@@ -733,8 +760,7 @@ PExpression<U> Interpreter<T, U>::ParseMatrix() {
         // evaluator reads one per column.
         Fail("a matrix needs at least one element");
     }
-    e.reset(new MatExpression<U>(n, m, make_matrix_array_from_vector(n, m, mat, size)));
-    return e;
+    return std::make_shared<MatExpression<U>>(n, m, make_matrix_array_from_vector(n, m, mat, size));
 }
 
 template <typename T>
@@ -937,19 +963,23 @@ PExpression<U> Interpreter<T, U>::ParseCell(PExpression<U> matrix) {
         return matrix;
     }
     ++m_i;
-    const Listing  index(listed_, false);
-    PExpression<U> row = Parse();
-    PExpression<U> col;
-    if (!AtEnd() && Peek().type == Comma) {
+    const Listing               index(listed_, false);
+    std::vector<PExpression<U>> at{Parse()};
+    while (!AtEnd() && Peek().type == Comma) {
+        if (at.size() == 3)
+            Fail("a tensor has at most three indices, and ",
+                 matrix->Name().empty() ? "this" : matrix->Name(), " names four");
         ++m_i;
-        col = Parse();
+        at.push_back(Parse());
     }
     if (AtEnd() || Peek().type != RBra)
     {
         Fail("missing ']' after '", m_tokens[--m_i].text, "'");
     }
     ++m_i;
-    return PExpression<U>(new CellExpression<U>(matrix, row, col));
+    if (at.size() == 3) return std::make_shared<CellExpression<U>>(matrix, at[1], at[2], at[0]);
+    return std::make_shared<CellExpression<U>>(matrix, at[0],
+                                               at.size() > 1 ? at[1] : PExpression<U>());
 }
 
 template <Parsable T, Numeric U>
@@ -965,6 +995,8 @@ PExpression<U> Interpreter<T,U>::ParseParameters()
     if (!AtEnd() && m_tokens[m_i++].type == LPar && !AtEnd() && Peek().type != RPar)
     {
         e = ParseMatrix();
+        if (dynamic_cast<TensorExpression<U>*>(e.get()))
+            Fail("arguments are separated by ',', not ';;'");
         if (AtEnd() || Peek().type != RPar)
             Fail("missing ')' after function parameters");
         ++m_i;

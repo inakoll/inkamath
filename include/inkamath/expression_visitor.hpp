@@ -58,6 +58,9 @@ template <typename T>
 class CellExpression;
 
 template <typename T>
+class TensorExpression;
+
+template <typename T>
 class CompareExpression;
 
 template <typename T>
@@ -102,6 +105,7 @@ public:
     virtual ReturnType visit(FactExpression<T>* expr) = 0;
     virtual ReturnType visit(ValExpression<T>* expr) = 0;
     virtual ReturnType visit(MatExpression<T>* expr) = 0;
+    virtual ReturnType visit(TensorExpression<T>* expr)    = 0;
     virtual ReturnType visit(CellExpression<T>* expr) = 0;
     virtual ReturnType visit(CompareExpression<T>* expr) = 0;
     virtual ReturnType visit(LogicExpression<T>* expr)     = 0;
@@ -145,6 +149,7 @@ public:
     PExpression<T> visit(FactExpression<T>* expr) override {return visit_other(expr);}
     PExpression<T> visit(ValExpression<T>* expr) override {return visit_other(expr);}
     PExpression<T> visit(CellExpression<T>* expr) override {return visit_other(expr);}
+    PExpression<T> visit(TensorExpression<T>* expr) override { return visit_other(expr); }
     PExpression<T> visit(CompareExpression<T>* expr) override {return visit_other(expr);}
     PExpression<T> visit(LogicExpression<T>* expr) override { return visit_other(expr); }
     PExpression<T> visit(FuncExpression<T>* expr) override {return visit_other(expr);}
@@ -266,7 +271,8 @@ public:
         const std::vector<PExpression<T>>& signature = expr->m_e1()->Children();
         if (signature.empty()) return ParametersDefinition<T>();
         return ParametersDefinition<T>(signature[0], signature[1], *this, signature[2],
-                                       expr->m_e1()->Signature(), signature[3], signature[4]);
+                                       expr->m_e1()->Signature(), signature[3], signature[4],
+                                       signature[5]);
     }
 
     // A local: bound in the scope that can still see the parameters, to the
@@ -311,6 +317,12 @@ public:
 
     T visit(CellExpression<T>* expr) override {
         const T matrix = expr->Matrix()->accept(*this);
+        if (expr->Slice()) {
+            const int slice = AsIndex<T>(expr->Slice()->accept(*this));
+            const int row   = AsIndex<T>(expr->Row()->accept(*this));
+            return numeric_interface<T>::cell(matrix, slice, row,
+                                              AsIndex<T>(expr->Col()->accept(*this)));
+        }
         const int row = AsIndex<T>(expr->Row()->accept(*this));
         if (!expr->Col()) return numeric_interface<T>::row(matrix, row);
         const int col = AsIndex<T>(expr->Col()->accept(*this));
@@ -374,6 +386,9 @@ public:
         for(size_t i = 0; i < n; ++i) {
             for(size_t j = 0; j < m; ++j) {
                 evaluation[i*m+j] = expr->Children()[i*m+j]->accept(*this);
+                if (evaluation[i * m + j].Size().slices)
+                    throw std::runtime_error(
+                        "a tensor cannot be a block of a literal, only a matrix can");
                 sizes[i*m+j] = evaluation[i*m+j].Size();
             }
         }
@@ -424,6 +439,12 @@ public:
         }
 
         return retval;
+    }
+
+    T visit(TensorExpression<T>* expr) override {
+        std::vector<T> slices;
+        for (const PExpression<T>& slice : expr->Children()) slices.push_back(slice->accept(*this));
+        return T::Stack(slices);
     }
 
     T visit(RefExpression<T>* expr) override {
