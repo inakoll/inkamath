@@ -26,22 +26,33 @@ struct DepthExceeded : std::runtime_error {
 
 // Which call a memoised answer is for. The definition is named by its address,
 // which holds for as long as the memo does: redefining a global replaces its
-// object and clears the memo in the same breath. An index needs no string; the
-// arguments are encoded as each value encodes itself.
+// object and clears the memo in the same breath. Arguments are the same when
+// their bits are, not their values: dbl(1/2) and dbl(~0.5) are two calls.
+template <typename T>
 struct MemoKey {
-    const void* definition = nullptr;
-    bool        indexed    = false;
-    int         index      = 0;
-    std::string arguments;
+    const void*                            definition = nullptr;
+    bool                                   indexed    = false;
+    int                                    index      = 0;
+    std::vector<std::pair<std::string, T>> arguments;
 
-    bool operator==(const MemoKey&) const = default;
+    bool operator==(const MemoKey& other) const {
+        return definition == other.definition && indexed == other.indexed && index == other.index &&
+               std::equal(arguments.begin(), arguments.end(), other.arguments.begin(),
+                          other.arguments.end(), [](const auto& a, const auto& b) {
+                              return a.first == b.first &&
+                                     numeric_interface<T>::same(a.second, b.second);
+                          });
+    }
 };
 
+template <typename T>
 struct MemoHash {
-    std::size_t operator()(const MemoKey& key) const {
+    std::size_t operator()(const MemoKey<T>& key) const {
         std::size_t hash = std::hash<const void*>()(key.definition);
         hash             = hash * 31 + std::hash<int>()(key.index) * 2 + (key.indexed ? 1 : 0);
-        return key.arguments.empty() ? hash : hash * 31 + std::hash<std::string>()(key.arguments);
+        for (const auto& argument : key.arguments)
+            hash = hash * 31 + numeric_interface<T>::hash(argument.second);
+        return hash;
     }
 };
 
@@ -243,17 +254,18 @@ public:
         EvaluationVisitor<T> caller(stack);
         int index = 0;
         const bool indexed = call.TryEvalIndex(stack, index);
-        typename ParametersDefinition<T>::Arguments arguments =
-                parameters.EvaluateArguments(call, caller);
+        // The key holds the arguments, so that a call copies none of them.
+        MemoKey<T> key{this, indexed, indexed ? index : 0,
+                       parameters.EvaluateArguments(call, caller)};
+
+        const auto& arguments = key.arguments;
 
         // Only a global's answer is a function of the key and the globals
         // alone (DESIGN.md, phase 9); a local shares its name with the
         // global it shadows, so the stack says which this is. A limit is not
         // keyed -- the terms it walks are, through this same path.
         const bool memoisable = global && !call.limit() && (indexed || !arguments.empty());
-        MemoKey    key;
-        if(memoisable) {
-            key = Key(indexed, index, arguments);
+        if (memoisable) {
             if(const T* memoised = stack.Memoised(key)) {
                 return *memoised;
             }
@@ -280,7 +292,7 @@ public:
         // is 256 references deep here.
         if (!memoisable || !indexed || !stack.CanFill()) {
             const T evaluation = EvalImp(indexed, index, evaluator);
-            if (memoisable) stack.Memoise(key, evaluation);
+            if (memoisable) stack.Memoise(std::move(key), evaluation);
             return evaluation;
         }
         std::exception_ptr depth;
@@ -292,7 +304,7 @@ public:
         }
         if (depth) evaluation = Filled(index, arguments, call, stack, evaluator, depth);
         if(memoisable) {
-            stack.Memoise(key, evaluation);
+            stack.Memoise(std::move(key), evaluation);
         }
         return evaluation;
     }
@@ -396,7 +408,7 @@ private:
     // and remembered where the definition's answers can be.
     T Term(int k, const typename ParametersDefinition<T>::Arguments& arguments,
            const ParametersCall<T>& call, ReferenceStack<T>& stack, bool memoisable) const {
-        const MemoKey key = memoisable ? Key(true, k, arguments) : MemoKey();
+        MemoKey<T> key = memoisable ? MemoKey<T>{this, true, k, arguments} : MemoKey<T>();
         if (memoisable)
             if (const T* memoised = stack.Memoised(key)) return *memoised;
         typename ReferenceStack<T>::Within within(stack, home);
@@ -406,22 +418,8 @@ private:
         EvaluationVisitor<T> evaluator(stack);
         CallParameters().BindDefaults(call, evaluator);
         const T evaluation = EvalImp(true, k, evaluator);
-        if (memoisable) stack.Memoise(key, evaluation);
+        if (memoisable) stack.Memoise(std::move(key), evaluation);
         return evaluation;
-    }
-
-    // The values as each type encodes them, not their printed form, which
-    // rounds and would make two different arguments one key.
-    MemoKey Key(bool indexed, int index,
-                const typename ParametersDefinition<T>::Arguments& arguments) const {
-        MemoKey key{this, indexed, indexed ? index : 0, std::string()};
-        for (const auto& argument : arguments) {
-            key.arguments += '\0';
-            key.arguments += argument.first;
-            key.arguments += '=';
-            numeric_interface<T>::key(argument.second, key.arguments);
-        }
-        return key;
     }
 
     // The clauses of one name share their parameter list; any of them answers

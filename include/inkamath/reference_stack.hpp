@@ -337,7 +337,7 @@ public:
     // the index, the argument values and the globals; the first three are the
     // key and the fourth is handled by clearing. What it is worth: the
     // arithmetic-geometric mean is 2^(n+1)-1 calls for 2n+1 answers.
-    const T* Memoised(const MemoKey& key) const {
+    const T* Memoised(const MemoKey<T>& key) const {
         for (const auto* generation : {&memoised_, &older_}) {
             const auto found = generation->find(key);
             if (found != generation->end()) return &found->second;
@@ -345,12 +345,12 @@ public:
         return nullptr;
     }
 
-    void Memoise(const MemoKey& key, const T& evaluation) {
+    void Memoise(MemoKey<T>&& key, const T& evaluation) {
         if (memoised_.size() >= max_memoised / 2) {
             older_ = std::move(memoised_);
             memoised_.clear();
         }
-        memoised_.emplace(key, evaluation);
+        memoised_.emplace(std::move(key), evaluation);
     }
 
     // A binding made to try something out. A guard needs its index bound to be
@@ -860,7 +860,7 @@ private:
     size_t steps_ = 0;
     bool                                     filling_     = false;
     bool                                     fill_failed_ = false;
-    std::unordered_map<MemoKey, T, MemoHash> memoised_, older_;
+    std::unordered_map<MemoKey<T>, T, MemoHash<T>> memoised_, older_;
     Scope<T>                                 builtins_, session_;
     const Scope<T>*                          scope_  = &session_;  // where names are sought
     Scope<T>*                                target_ = &session_;  // where definitions go

@@ -5,10 +5,12 @@
 #include "inkamath/numeric_interface.hpp"
 
 #include <algorithm>
+#include <bit>
 #include <charconv>
 #include <cmath>
 #include <complex>
 #include <cstddef>
+#include <cstdint>
 #include <functional>
 #include <limits>
 #include <memory>
@@ -16,6 +18,7 @@
 #include <optional>
 #include <stdexcept>
 #include <string>
+#include <utility>
 
 // Keeps a rare path out of a common one, so the common one stays small enough
 // to be inlined itself. Spelled per compiler, as each warns at the other's.
@@ -140,6 +143,22 @@ public:
             Append(a.inexact_.real(), out);
             Append(a.inexact_.imag(), out);
         }
+    }
+
+    // What key() writes, compared and hashed without writing it.
+    static bool same(const Number& a, const Number& b) {
+        if (a.big_ || b.big_) return a.big_ && b.big_ && *a.big_ == *b.big_;
+        if (a.exact() || b.exact()) return a.num_ == b.num_ && a.den_ == b.den_;
+        return approximated(a) == approximated(b) && Bits(a.inexact_) == Bits(b.inexact_);
+    }
+    // Mixed, since nearby integers are the usual arguments and the hashes of a
+    // key's parts are summed.
+    static std::size_t hash(const Number& a) {
+        using Parts       = std::pair<std::uint64_t, std::uint64_t>;
+        const Parts parts = a.big_      ? Parts(a.big_->num.low(), a.big_->den.low())
+                            : a.exact() ? Parts(a.num_, a.den_)
+                                        : Bits(a.inexact_);
+        return static_cast<std::size_t>((parts.first ^ parts.second * odd) * odd);
     }
 
     static int toInt(const Number& a) {
@@ -426,6 +445,12 @@ private:
             }
         }
         return Normalized(std::move(power));
+    }
+
+    static constexpr std::uint64_t odd = 0x9E3779B97F4A7C15u;
+
+    static std::pair<std::uint64_t, std::uint64_t> Bits(const inexact_type& z) {
+        return {std::bit_cast<std::uint64_t>(z.real()), std::bit_cast<std::uint64_t>(z.imag())};
     }
 
     template <typename Part>
