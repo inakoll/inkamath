@@ -163,6 +163,9 @@ private:
         std::string subscript;
         if (p.indexed())
             subscript = (p.general() ? p.index_name() : std::to_string(p.index())) + ",";
+        if (p.tensor())
+            subscript +=
+                (p.slice_name().empty() ? std::to_string(p.slice()) : p.slice_name()) + ",";
         subscript += p.row_name().empty() ? std::to_string(p.row()) : p.row_name();
         if (!p.column())
             subscript += "," + (p.col_name().empty() ? std::to_string(p.col()) : p.col_name());
@@ -172,7 +175,10 @@ private:
     // Where the names of a clause for every cell range.
     static std::string Bounds(const ParametersDefinition<T>& p) {
         if (p.row_name().empty()) return "";
-        std::string out = ", \\quad 1 \\le " + Name(p.row_name()) + " \\le " + Of(*p.rows()).text;
+        std::string out = ", \\quad ";
+        if (p.tensor())
+            out += "1 \\le " + Name(p.slice_name()) + " \\le " + Of(*p.slices()).text + ",\\ ";
+        out += "1 \\le " + Name(p.row_name()) + " \\le " + Of(*p.rows()).text;
         if (!p.column()) out += ",\\ 1 \\le " + Name(p.col_name()) + " \\le " + Of(*p.cols()).text;
         return out;
     }
@@ -280,7 +286,8 @@ private:
                         Of(*logic->m_e2()).text,
                     relation - 1};
         if (const auto* cell = dynamic_cast<const CellExpression<T>*>(&e)) {
-            std::string place = Of(*cell->Row(), true).text;
+            std::string place = cell->Slice() ? Of(*cell->Slice(), true).text + "," : "";
+            place += Of(*cell->Row(), true).text;
             if (cell->Col()) place += "," + Of(*cell->Col(), true).text;
             // A term's cell shares its subscript, 'x_{n,j}': LaTeX takes one.
             if (const auto* term = dynamic_cast<const FuncExpression<T>*>(cell->Matrix().get());
@@ -316,6 +323,8 @@ private:
                            Of(*matrix->Children()[i * size.cols + j]).text;
             return {out + " \\end{bmatrix}"};
         }
+        if (dynamic_cast<const TensorExpression<T>*>(&e))
+            throw std::runtime_error("tex cannot show ';;', which has no form on paper");
         if (const auto* member = dynamic_cast<const MemberExpression<T>*>(&e))
             return {Of(*member->Object()).text + "." + Of(*member->Member()).text};
         if (const auto* call = dynamic_cast<const FuncExpression<T>*>(&e)) {
