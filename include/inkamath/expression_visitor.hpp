@@ -376,7 +376,7 @@ public:
     }
 
     T visit(MatExpression<T>* expr) override {
-
+        if (expr->built) return *expr->built;
         const size_t n = expr->Size().rows;
         const size_t m = expr->Size().cols;
         std::vector<T> evaluation(n*m);
@@ -437,7 +437,7 @@ public:
                 }
             }
         }
-
+        if (expr->numbers) expr->built = retval;
         return retval;
     }
 

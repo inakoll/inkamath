@@ -207,11 +207,13 @@ private:
             if (Moves(u)) throw std::runtime_error("grad cannot differentiate a factorial");
             return Constant(T(numeric_interface<T>::fact(*u[0])));
         }
-        if (auto* x = dynamic_cast<MatExpression<T>*>(&e))
+        if (auto* x = dynamic_cast<MatExpression<T>*>(&e)) {
+            if (x->numbers) return Constant(x->accept(ordinary_));
             return Literal(*x, [x](std::vector<PExpression<T>> parts) {
                 return std::make_shared<MatExpression<T>>(x->Size().rows, x->Size().cols,
                                                           std::move(parts));
             });
+        }
         if (auto* x = dynamic_cast<TensorExpression<T>*>(&e))
             return Literal(*x, [](std::vector<PExpression<T>> parts) {
                 return std::make_shared<TensorExpression<T>>(std::move(parts));

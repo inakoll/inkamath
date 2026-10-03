@@ -6,6 +6,7 @@
 #include <iostream>
 #include <iterator>  // back_inserter
 #include <list>
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <unordered_map>
@@ -417,6 +418,13 @@ public:
     MatExpression(size_t n, size_t m, std::vector<PExpression<T>> expr)
         : Expression<T>(std::move(expr)), n_(n), m_(m)
     {}
+
+    // Only numbers, a short row's padding included: it reads no name and
+    // takes no step, so it is built once, into `built`.
+    const bool numbers = std::all_of(
+        this->Children().begin(), this->Children().end(),
+        [](const PExpression<T>& cell) { return dynamic_cast<ValExpression<T>*>(cell.get()); });
+    std::optional<T> built;
 
     Extent Size() const
     {
