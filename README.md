@@ -266,7 +266,9 @@ runs to the end of the line.
 ### 2. Matrices
 
 `[a b; c d]` is a matrix literal: `,` or a space separates columns, `;`
-separates rows. A short row is padded with zeros.
+separates rows. A short row is padded with zeros. A sign with a space before
+it and none after it begins a column, so `[1 -1]` is two numbers and `[1 - 1]`
+one; an argument list reads it alike.
 
 ```
 >> [1 2;3 4]

@@ -225,6 +225,21 @@ private:
     std::vector< Token<T> > m_tokens;
     size_t m_i = 0;
 
+    // Whether the innermost bracket open is a list's, a matrix literal's or
+    // an argument list's, where a sign with a space before it and none after
+    // it begins the next element.
+    bool listed_ = false;
+    struct Listing {
+        Listing(bool& listed, bool value) : listed_(listed), previous_(listed) { listed_ = value; }
+        ~Listing() { listed_ = previous_; }
+        Listing(const Listing&)            = delete;
+        Listing& operator=(const Listing&) = delete;
+
+    private:
+        bool& listed_;
+        bool  previous_;
+    };
+
     PExpression<U> m_E;
     ReferenceStack<U> stack_;
     int               digits_ = numeric_interface_precision;
@@ -269,6 +284,7 @@ void Interpreter<T,U>::Lexer(const std::string& s)
     size_t i = 0;
     for (i=0; i < s.length(); i++)
     {
+        const size_t start = i, before = m_tokens.size();
         switch (s[i])
         {
         case '(':
@@ -279,7 +295,6 @@ void Interpreter<T,U>::Lexer(const std::string& s)
             break;
         case '[':
             m_tokens.push_back(Token<T>(LBra, std::string(1, s[i])));
-            m_tokens.back().spaced = i > 0 && std::isspace(static_cast<unsigned char>(s[i - 1]));
             break;
         case ']':
             m_tokens.push_back(Token<T>(RBra, std::string(1, s[i])));
@@ -396,6 +411,9 @@ void Interpreter<T,U>::Lexer(const std::string& s)
                 Fail("unexpected character '", s[i], "'");
             }
         }
+        if (m_tokens.size() > before)
+            m_tokens[before].spaced =
+                start > 0 && std::isspace(static_cast<unsigned char>(s[start - 1]));
 
         // Checked here and not after the loop: a line of twenty million
         // brackets cost 1.8 GB before the limit got a word in.
@@ -622,6 +640,8 @@ PExpression<U> Interpreter<T,U>::ParseAddExpr(PExpression<U> lead)
     PExpression<U> e = ParseMultExpr(lead);
     while (!AtEnd() && (Peek().type == Add || Peek().type == Min) )
     {
+        if (listed_ && Peek().spaced && m_i + 1 < m_tokens.size() && !m_tokens[m_i + 1].spaced)
+            break;
         if (m_tokens[m_i++].type == Add)
         {
             e.reset(new AddExpression<U>(e,ParseMultExpr()));
@@ -686,10 +706,12 @@ PExpression<U> Interpreter<T, U>::ParseMatrix() {
             ++m_i;
             break;
 
-        default:
+        default: {
+            const Listing listing(listed_, true);
             e = Parse();
             mat.push_back(e);
             ++size.back();
+        }
         }
     }
     size_t n = size.size();
@@ -791,8 +813,9 @@ PExpression<U> Interpreter<T, U>::ParseSimpleExpr(bool postfix) {
             });
             break;
 
-        case LPar:
+        case LPar: {
             ++m_i;
+            const Listing grouped(listed_, false);
             e = Parse();
             if (!AtEnd() && Peek().type == RPar)
             {
@@ -804,6 +827,7 @@ PExpression<U> Interpreter<T, U>::ParseSimpleExpr(bool postfix) {
             }
             indexable = true;
             break;
+        }
 
         case LBra:
             ++m_i;
@@ -886,6 +910,7 @@ PExpression<U> Interpreter<T, U>::ParseCell(PExpression<U> matrix) {
         return matrix;
     }
     ++m_i;
+    const Listing  index(listed_, false);
     PExpression<U> row = Parse();
     PExpression<U> col;
     if (!AtEnd() && Peek().type == Comma) {
@@ -1000,7 +1025,10 @@ PExpression<U> Interpreter<T, U>::ParseSeries() {
     expect(LPar);
     const std::string index = expect(Func);
     expect(Equal);
-    const PExpression<U> lower = ParseCompareExpr();
+    const PExpression<U> lower = [&] {
+        const Listing bound(listed_, false);
+        return ParseCompareExpr();
+    }();
     if (AtEnd() || Peek().type != RPar) Fail("missing ')' after '", m_tokens[m_i - 1].text, "'");
     ++m_i;
 
@@ -1016,6 +1044,7 @@ PExpression<U> Interpreter<T, U>::ParseSeries() {
             upper = std::make_shared<RefExpression<U>>(m_tokens[m_i++].text);
         } else if (Peek().type == LPar) {
             ++m_i;
+            const Listing bound(listed_, false);
             upper = ParseCompareExpr();
             if (AtEnd() || Peek().type != RPar)
                 Fail("missing ')' after '", m_tokens[m_i - 1].text, "'");
@@ -1041,7 +1070,10 @@ PExpression<U> Interpreter<T, U>::ParseGrad() {
     expect(LPar);
     const std::string variable = expect(Func);
     expect(Equal);
-    const PExpression<U> point = ParseCompareExpr();
+    const PExpression<U> point = [&] {
+        const Listing at(listed_, false);
+        return ParseCompareExpr();
+    }();
     expect(RPar);
     return std::make_shared<GradExpression<U>>(variable, point, ParseMultExpr());
 }
