@@ -101,6 +101,7 @@ private:
 
     // Cell by cell, as '/' divides.
     static T Cellwise(const T& a, const T& b) {
+        if (a.IsTensor() || b.IsTensor()) return T::Sliced(a, b, Cellwise);
         if (a.IsScalar() || b.IsScalar()) return a * b;
         if (a.Size() != b.Size()) throw std::runtime_error("these matrices have different sizes");
         T c(a.Size());

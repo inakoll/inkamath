@@ -407,6 +407,13 @@ error: q has no limit: its terms are 1x2x2, then 2x2
  30, 36;
  42, 48]
 
+# A quotient by a matrix meets each slice, its derivative too.
+>> grad_(x = 1) T/[x 1; 1 x]
+[-1,  0;
+  0, -4;;
+ -5,  0;
+  0, -8]
+
 >> grad_(W = T) 2*W
 error: grad of a tensor with respect to a tensor is a Jacobian, which it does not give
 

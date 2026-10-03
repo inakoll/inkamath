@@ -435,6 +435,20 @@ public:
         return c;
     }
 
+    // Whatever meets a tensor meets it slice by slice, a matrix or a single
+    // value every slice, so that (T op M)[b] = T[b] op M (DESIGN.md, tensors
+    // of rank 3).
+    template <typename Func>
+    static Matrix<T> Sliced(const Matrix<T>& a, const Matrix<T>& b, Func f) {
+        if (a.IsTensor() && b.IsTensor() && a.extent_.slices != b.extent_.slices)
+            throw std::runtime_error("a " + a.extent_.Described() + " and a " +
+                                     b.extent_.Described() + " have different numbers of slices");
+        std::vector<Matrix<T>> slices;
+        for (size_t k = 1; k <= std::max(a.extent_.slices, b.extent_.slices); ++k)
+            slices.push_back(f(a.IsTensor() ? a.Slice(k) : a, b.IsTensor() ? b.Slice(k) : b));
+        return Stack(slices);
+    }
+
 private:
     // Signed, so that 'm[0-1,1]' names the row it asked for rather than a
     // number that wrapped.
@@ -450,20 +464,6 @@ private:
         return (static_cast<size_t>(b - 1) * extent_.rows + static_cast<size_t>(i - 1)) *
                    extent_.cols +
                static_cast<size_t>(j - 1);
-    }
-
-    // Whatever meets a tensor meets it slice by slice, a matrix or a single
-    // value every slice, so that (T op M)[b] = T[b] op M (DESIGN.md, tensors
-    // of rank 3).
-    template <typename Func>
-    static Matrix<T> Sliced(const Matrix<T>& a, const Matrix<T>& b, Func f) {
-        if (a.IsTensor() && b.IsTensor() && a.extent_.slices != b.extent_.slices)
-            throw std::runtime_error("a " + a.extent_.Described() + " and a " +
-                                     b.extent_.Described() + " have different numbers of slices");
-        std::vector<Matrix<T>> slices;
-        for (size_t k = 1; k <= std::max(a.extent_.slices, b.extent_.slices); ++k)
-            slices.push_back(f(a.IsTensor() ? a.Slice(k) : a, b.IsTensor() ? b.Slice(k) : b));
-        return Stack(slices);
     }
 
     // Ordering needs real numbers, as the factorial does.
