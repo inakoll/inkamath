@@ -24,19 +24,24 @@
 #     cannot compile c: y_(...): read every step, and y is computed every 2
 #     cannot compile z: z_0 reads y_-1, before y's first tick, where its samples could give a term
 #
-# A ratio of rates that is not whole, and a slow sequence read by another,
-# by a sample or a hold:
+# A ratio of rates that is not whole; a slow sequence read by another, by a
+# sample or a hold, which a hold at the input's rate sampled says exactly;
+# and a hold at another period than the sequence it holds, whose term falls
+# further behind at each tick, which no hold says (C74):
 #
 #     u_0 = 0
 #     u_m = x_(2*m)
 #     t_m = x_(3*m)
+#     p_k = x_(4*k)
 #     q_n = t_(floor(2*n/3))
 #     v_k = u_(2*k)
+#     r_m = x_(2*m) - p_(floor(m/2))
 #     w_k = x_(4*k) - u_(floor(k/2))
 #
 #     cannot compile q: t_(...): an index other than a whole multiple of n plus a constant
+#     cannot compile r: p_(...): one sequence at another rate read by another; hold p at the input's rate and sample the hold
 #     cannot compile v: u_(...): one sequence at another rate read by another; hold u at the input's rate and sample the hold
-#     cannot compile w: u_(...): one sequence at another rate read by another; hold u at the input's rate and sample the hold
+#     cannot compile w: u_(...): read every 8 steps, and u is computed every 2
 #
 # And what 'inkamath --check decimate.ink boxcar' and 'stride' report:
 #
