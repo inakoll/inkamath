@@ -2817,7 +2817,11 @@ that exploring seven domains asked of the interpreter, by how many asked.
      brackets as it is read, three lines, took that to 66M in a trial.
   5. **Slots, then closures**, for the flat remainder of `deep`, `limit` and
      `matrix`'s cells, as step 1 planned: slots were measured at six per cent
-     at most and come with the symbol table closures need.
+     at most and come with the symbol table closures need. A slot belongs
+     to a scope rather than to a node, and only to a name its body never
+     binds: an instance's body is one tree read from every instance, and
+     `g(x) = (x > 0 and (c = 2)) + c` reads its own `c` or the global one
+     by the branch it took.
 
   The targets, in instructions against the table: `hand` a fifth after step
   1 and a tenth after step 4; `grad` 7,500M after step 2; `limit` 950M after
