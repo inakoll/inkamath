@@ -2460,21 +2460,39 @@ that exploring seven domains asked of the interpreter, by how many asked.
   the compiler as any definition is, not as the dual numbers `MANIFESTO.md`
   sketched: a second number type through every template is where C44 and C65
   broke, and the compiler could not have used it.
-- **Differentiation, `grad(expression, x = point)`**, the partial derivative
-  of an expression with respect to a name at a point, as a paper writes it
-  there: the name bound as a parameter is, the point explicit, a partial
-  taken by naming one variable at a time. A single value with respect to a
-  matrix is shaped as the matrix; anything with respect to a single value as
-  the expression; a matrix with respect to a matrix, a Jacobian, is refused.
-  A definition in cases is differentiated in the case its point takes, so a
-  ReLU's slope is 1 at its threshold; `floor` and a comparison are flat; a
-  power whose exponent reads the name is refused, since it would need a
-  logarithm; a limit's derivative is the limit of its terms' derivatives,
-  which holds for the converging iterations the language writes and is the
-  rule stated rather than proved. `grad` is reserved, as `lim` is. Specified
-  in `test/data/spec/grad.ink`, 23 of its 42 entries failing, among them an
-  exact gradient check: least squares, its gradient by hand equal to
-  `grad`'s, and gradient descent with each equal at the twentieth step.
+- **Differentiation, `grad_(x = point) expression`**, the partial derivative
+  of an expression with respect to a name at a point, bound as a sum binds its
+  index: the point read where `grad` is written, the name only in the
+  expression. A call's form was dropped, since its first argument would have
+  been read in a scope its second opens. A derivative of a parameter's point,
+  `df(x) = grad_(t = x) f(t)`, is the derivative as a function. A single value
+  with respect to a matrix is shaped as the matrix, a matrix with respect to a
+  single value as itself; a Jacobian is refused, and so is differentiating
+  through an instance, for now. What would be silently 0 is refused: an
+  expression that never reads the name, and a definition that reads the
+  global of the name, which `grad`'s name does not reach. A definition in
+  cases takes the slope of the clause that holds at the point, one side of a
+  threshold, so the order of guards decides a ReLU's slope at 0; a clause
+  that holds only at the point (`==`) is refused, as are `floor` and a
+  comparison where they jump, and a power whose derivative is infinite. An
+  exponent that changes with the name is refused unless the base is the
+  built-in `e`, since any other needs a logarithm. A matrix power is a
+  product of factors that do not commute, its inverse differentiated as one.
+  A limit's derivative is the limit of its terms' derivatives, taken until
+  both have converged, and refused if the derivatives diverge, as Newton's
+  square root does at 0. **The rule under `lim`** holds only where the
+  terms' derivatives converge uniformly near the point, which `grad` cannot
+  check: `h(x)_n = h(x)_(n-1)/(1 + x^2)` tends to 0 for every x, yet the rule
+  gives 1 at 0. That entry is specified wrong on purpose and goes to the
+  defect table when `grad` lands. `grad` is reserved, as `lim` is, and joins
+  README's list then. Specified in `test/data/spec/grad.ink`, 64 of its 100
+  entries failing, among them an exact gradient check: least squares, its
+  gradient by hand equal to `grad`'s, and gradient descent with each equal
+  at the twentieth step. Two reviews against the first draft found its ReLU
+  written in the order that clears the guard, two inexact answers that print
+  exact, and the scalar rule applied to matrix powers. What the compiler
+  refuses, and a logistic model trained by `grad` under `--check`, are
+  specified with the compiler's half.
 - **Steps and tolerance as options**, when a model asks: a hundred steps is
   short of what a slow filter settles in, and a billionth is loose for a
   well-conditioned step.
