@@ -2488,17 +2488,28 @@ that exploring seven domains asked of the interpreter, by how many asked.
   clears the guard, two inexact answers that print exact, and the scalar rule
   applied to matrix powers.
 
-  **Not the transformation planned.** Every rule above is chosen with values
-  in hand -- which clause a guard takes, whether `floor` sits on a whole
-  number, whether a base is zero, what a matrix power's exponent is -- so a
-  tree of derivative definitions would have needed a node per rule to decide
-  at run time, the evaluation done twice over. `derivative.hpp` evaluates the
-  expression forward instead, each value carrying one part per set of the
-  grads it is under: a grad inside a grad is a second derivative, and mixed
-  partials come out of the same products. The parts are values of the one
-  number type, so nothing goes through the templates C44 and C65 broke on.
-  What it costs is the compiler's half: `--compile` refuses `grad`, and
-  compiling it means emitting these rules as C, a separate step.
+  **Not the transformation planned.** What decides it is that a value's
+  shape is known only once it is evaluated: a power, a quotient, the Jacobian
+  refusal and a gradient with respect to a matrix each take one rule for a
+  single value and another for a matrix, so a tree of derivative definitions
+  would have needed a node choosing by shape at run time, besides an error
+  node for the refusals, a limit walking value and derivative together, and
+  the per-cell assembly of a gradient. The guards were never the obstacle: a
+  derivative definition can copy them. Nor would the definitions have
+  compiled as any definition is, as planned: the compiler inlines what it
+  compiles and refuses a sequence with parameters, which `dp(x)_k` is.
+  `derivative.hpp` evaluates the expression forward instead, each value
+  carrying one part per set of the grads it is under: a grad inside a grad is
+  a second derivative, and mixed partials come out of the same products. The
+  parts are values of the one number type, so nothing goes through the
+  templates C44 and C65 broke on. Compiling `grad` will be the same rules
+  over the compiler's cells, whose shapes are known while compiling: the
+  static refusals stay refusals, and a check that needs the values, a jump
+  or a zero base, gives NaN as a limit that does not converge does. It is
+  about 830 lines against the 300-450 estimated above, much of it a second
+  copy of how a call chooses its clause and how `lim` walks its terms,
+  beside `Reference`'s; the two can drift, and a change to either is a
+  change to both.
 - **Steps and tolerance as options**, when a model asks: a hundred steps is
   short of what a slow filter settles in, and a billionth is loose for a
   well-conditioned step.
