@@ -2395,6 +2395,10 @@ that exploring seven domains asked of the interpreter, by how many asked.
   parenthesised by how loosely it binds. A definition by cells it refuses as
   well, for want of a paper's form for its bounds. 237 lines of sources,
   most of them the one function that knows each node.
+  Transcribing a logistic regression then found two faults, now entries of
+  `latex.ink`: a cell of a term rendered `p_{n-1}_{r}`, two subscripts in a
+  row, which LaTeX rejects, and is now `p_{n-1,r}`; and a sum that ends a
+  product was bracketed, `\eta\,(\sum ...)`, where a paper is not.
 
 - `[done]` **One index is a row.** `a[1]` is the first row of `a`, a 1xn matrix that
   keeps its orientation, so a column vector's element is `v[2]`, a row
