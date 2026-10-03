@@ -138,9 +138,13 @@ through and a recursion unrolling where its guards fold:
 with memory written where it is read is one of its own, named after where it
 is written and the cell it is written for: `test/compile/bank.ink` is a bank
 of filters, `m.bank_smooth_1` to `_3`. The compiler refuses by name what it
-cannot yet express, such as limits, infinite series and an instance with
-memory made anew at each step; without `-o` it writes nothing and lists every
-definition it would refuse, and why.
+cannot yet express, such as infinite series and an instance with memory made
+anew at each step; without `-o` it writes nothing and lists every definition
+it would refuse, and why. A limit of constants is folded, and any other is a
+function that walks the terms with the interpreter's stopping rule, NaN where
+the interpreter would say it does not converge: `test/compile/newton.ink`
+solves each step of a stiff equation by Newton's method, a sequence with
+parameters under `lim`.
 
 `--check drift.ink calm -o calm.c` holds the compiled code to the
 interpreter. It compiles `calm`, an instance the file defines, with the
