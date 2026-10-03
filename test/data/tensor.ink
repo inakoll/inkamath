@@ -187,6 +187,12 @@ w_2[2] = 9
 >> w_2
 error: a clause for one cell of w_2, a 2x1x2 tensor, names its slice, row and column
 
+>> H[1,1,1] = 5
+H[1,1,1] = 5
+
+>> H
+error: H has no size; write it as H[b<=slices, j<=rows, k<=cols]
+
 >> Z(n)[b<=n, j<=1, k<=n] = b*k
 Z(n)[b<=n, j<=1, k<=n] = b*k
 

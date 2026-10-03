@@ -628,7 +628,7 @@ private:
         }
         if (!extent) {
             throw std::runtime_error(reference_name_ + " has no size; write it as " +
-                                     reference_name_ + "[j<=rows, k<=cols]");
+                                     reference_name_ + Bounded());
         }
         T matrix = whole ? *whole : T(*extent);
         // A clause for one cell can name a cell outside the size, which says so
@@ -664,6 +664,12 @@ private:
                                      " must be a single value, not a " + cell.Size().Described());
         }
         return cell(1, 1);
+    }
+
+    // How a clause for all cells bounds them, at the rank of the clauses given.
+    std::string Bounded() const {
+        const bool tensor = FirstThat([](const Clause<T>& c) { return c.parameters.tensor(); });
+        return std::string("[") + (tensor ? "b<=slices, " : "") + "j<=rows, k<=cols]";
     }
 
     static int Slices(const Extent& extent) {
@@ -807,7 +813,7 @@ private:
         }
         if (!extent) {
             throw std::runtime_error(reference_name_ + " has no size; write it as " +
-                                     reference_name_ + "_n[j<=rows, k<=cols]");
+                                     reference_name_ + "_n" + Bounded());
         }
         T                 term = whole ? *whole : T(*extent);
         const std::string name = reference_name_ + "_" + std::to_string(index);
