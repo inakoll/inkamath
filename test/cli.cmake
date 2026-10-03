@@ -236,6 +236,14 @@ set(stderr "")
 set(exit 1)
 check(compile_rates_refused)
 
+# C74: a hold whose ticks are not one period of the sequence it holds names
+# a term further behind at each tick, which no window holds.
+file(WRITE "${OUT}/c74.ink" "u_0 = 0\nu_m = x_(2*m)\ns_0 = 0\ns_k = x_(4*k) - u_(floor(k/2))\n")
+set(args --compile c74.ink)
+set(stdout "cannot compile s: u_(...): read every 8 steps, and u is computed every 2\n")
+set(exit 1)
+check(compile_c74)
+
 # A base term is computed at its own index, so it reads a term from there
 # back, and only where that term's sequence has started.
 file(WRITE "${OUT}/seeds.ink" "y_0 = x_1\ny_n = y_(n-1) + x_n\na_1 = 1\na_n = a_(n-1) + 1\nb_0 = a_0\nb_n = b_(n-1)\n")

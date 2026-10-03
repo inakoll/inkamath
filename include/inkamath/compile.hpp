@@ -2198,9 +2198,6 @@ private:
         if (read.period == 1)
             throw Reason(written + ": an index other than a whole multiple of " + index_ +
                          " plus a constant");
-        if (hold.a != read.period)
-            throw Reason(written + ": read every " + std::to_string(hold.a) + " steps, and " + key +
-                         " is computed every " + std::to_string(read.period));
         hold.read = key;
         holds_.push_back(hold);
         reading_->holds.push_back(holds_.size() - 1);
@@ -2416,6 +2413,22 @@ private:
             if (read != name && period > 1)
                 throw Refusal(head + read + "_(...): read every step, and " + read +
                               " is computed every " + std::to_string(period));
+        }
+        // A slow sequence read by another says what a hold at the input's
+        // rate sampled says, but for a hold at another period, which no hold
+        // says (C74).
+        for (const std::size_t h : sequence.holds) {
+            const Hold& hold   = holds_[h];
+            const int   every  = sequence.period * hold.a;
+            const int   period = sequences_.at(hold.read).period;
+            if (every != period)
+                throw Refusal(head + hold.read + "_(...): read every " + std::to_string(every) +
+                              " steps, and " + hold.read + " is computed every " +
+                              std::to_string(period));
+            if (sequence.period > 1)
+                throw Refusal(head + hold.read +
+                              "_(...): one sequence at another rate read by another; hold " +
+                              hold.read + " at the input's rate and sample the hold");
         }
         if (sequence.period == 1) return;
         if (!sequence.guarded.empty() || ByCells(*sequence.definition))
