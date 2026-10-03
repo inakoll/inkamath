@@ -1,6 +1,6 @@
 # Inside a matrix literal, and inside an argument list, a sign with a space
 # before it and none after it begins the next element, as it does in MATLAB:
-# '[1 -1]' is two numbers (DESIGN.md, next in line; C52). Spaced on both
+# '[1 -1]' is two numbers (DESIGN.md, C52 and its sequel). Spaced on both
 # sides, or on neither, it subtracts, as it does everywhere else.
 >> [1 -1]
 [1, -1]

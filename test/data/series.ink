@@ -108,8 +108,8 @@ ex(x)_n = sum_(k=0)^n x^k/!k
  0, 1]
 
 # In a matrix a sum is a cell like any other: the cell ends where the next
-# token starts a new expression, and a leading sign does not start one, so
-# '-1' below is subtracted from the sum, as '[0 -1]' is from 0 (C52).
+# token starts a new expression, and a sign with a space before it and none
+# after it starts one, so '-1' below is the next cell (sign.ink).
 >> [sum_(k=1)^3 k 1]
 [6, 1]
 
@@ -117,7 +117,7 @@ ex(x)_n = sum_(k=0)^n x^k/!k
 [12, 1]
 
 >> [sum_(k=1)^3 k -1]
-5
+[6, -1]
 
 # Without an upper bound the series is summed to its limit, by the rule 'lim'
 # follows, and reported the same way when it does not get there.
