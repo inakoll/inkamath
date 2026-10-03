@@ -2391,12 +2391,22 @@ that exploring seven domains asked of the interpreter, by how many asked.
   function of its own, so `logistic.ink`'s four sigmoids are four identical
   ones; and the series behind `exp` needs more than its hundred terms past
   about 25, where a model would reduce its argument first.
-- **The limit of a sequence of matrices** is the limit of each cell, as the
+- `[done]` **The limit of a sequence of matrices** is the limit of each cell, as the
   Deferred entry asked first. Its steps are measured by the largest of its
   cells', by the rule a number's stops by, and terms that change size are
   refused by name rather than stretched, as a single value would be in a
   difference. Specified in `test/data/spec/limits.ink`, its 4 limits failing;
   `lim mm` in `matrices.ink`, the refusal C39 worded, will move with it.
+  Built as specified, every entry passing as written, now
+  `test/data/limits.ink`, and `lim mm` moved as said. The distance is
+  `Matrix::distance`, and `Convergence` asks it rather than `abs` of a
+  difference. Compiled, a limit of matrices is a function that fills an
+  array, declared where it is read as an inverse's is, its terms a window of
+  arrays and its step the largest cell's; a matrix argument is passed as an
+  array too, which power iteration needs. `test/compile/steady.ink` holds a
+  chain's steady state and a matrix's dominant direction to the interpreter,
+  within 4.4e-16 and 0. A limit's function shares no temporaries, so a product
+  its clause writes twice is computed twice. 115 lines of sources.
 - **Steps and tolerance as options**, when a model asks: a hundred steps is
   short of what a slow filter settles in, and a billionth is loose for a
   well-conditioned step.
