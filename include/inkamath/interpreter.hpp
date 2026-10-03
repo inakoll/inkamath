@@ -189,13 +189,16 @@ private:
     bool   DefinesReserved() const;
     Result Digits(const std::string& s);
 
-    // One line cannot be allowed to exhaust the C++ stack. Token count bounds
-    // every recursion that a line can provoke -- the parser's, the evaluator's
-    // and the destructor's -- because the tree has at most one node per token.
-    // Measured: the sanitizer build overflows at about 2000 nested
-    // parentheses and the release build at about 8000, so 1000 tokens cannot
-    // reach either -- on an 8 MB stack, which CMakeLists.txt gives Windows too.
-    static constexpr size_t max_tokens = 1000;
+    // One line cannot be allowed to exhaust the C++ stack. What a line
+    // provokes is bounded by its depth, not its length: the parser's
+    // recursion by its nesting, below, and every walk of the tree by the
+    // tree's (Expression::max_depth). Measured: the sanitizer build overflows
+    // at about 2000 nested parentheses and the release build at about 8000,
+    // so 1000 reaches neither -- on an 8 MB stack, which CMakeLists.txt gives
+    // Windows too. The length is bounded only so that a line refused costs
+    // little memory (DESIGN.md, C57).
+    static constexpr size_t max_tokens = 100000;
+    size_t                  nesting_   = 0;
 
     // Printing costs some 25 ns and 20 bytes a digit in every cell, measured:
     // a thousand keeps an answer to a page and a 100x100 matrix to a second.
@@ -753,6 +756,22 @@ std::vector<PExpression<T>>
 
 template <Parsable T, Numeric U>
 PExpression<U> Interpreter<T, U>::ParseSimpleExpr(bool postfix) {
+    // Every recursion of the parser passes here: a bracket, a sign, a power.
+    struct Nested {
+        explicit Nested(size_t& nesting) : nesting_(nesting) {
+            // Undone here, as no destructor runs for a constructor that throws.
+            if (++nesting_ > Expression<U>::max_depth) {
+                --nesting_;
+                Fail("expression nests more than ", Expression<U>::max_depth, " deep");
+            }
+        }
+        ~Nested() { --nesting_; }
+        Nested(const Nested&)            = delete;
+        Nested& operator=(const Nested&) = delete;
+
+    private:
+        size_t& nesting_;
+    } nested(nesting_);
     PExpression<U> e,ref,param,sub;
     bool           indexable = false;  // a name, a call or a bracketed value, not a number
     std::string name;
