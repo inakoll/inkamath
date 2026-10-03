@@ -2560,7 +2560,7 @@ that exploring seven domains asked of the interpreter, by how many asked.
   `depth limit` in the tests holds both bounds and both extremes; the
   README shows a matrix written from Python. A Python binding, later, would
   read other formats; until then, writing `.ink` is the binding.
-- **Several rates**, as `MANIFESTO.md` sketches them: rates are index
+- `[done]` **Several rates**, as `MANIFESTO.md` sketches them: rates are index
   arithmetic, not a new kind of thing. A sequence reading another at
   `x_(a*m + b)` samples it, so its period is `a` steps of the input's; one
   reading at `y_(floor(n/a) - d)` holds a term. The compiled step stays
@@ -2571,9 +2571,15 @@ that exploring seven domains asked of the interpreter, by how many asked.
   read at any other index, or at another period than the sequence's, is
   refused by name. `--check` holds a slow sequence at every step to its
   latest term. Specified in `test/compile/rates.ink`, a decimator and two
-  holds, with the refusals and the report in its header; the check joins
-  the suite with the compiler's half, as a model it cannot compile would
-  break the build.
+  holds, and passed as written but for `y_0`: written `x_0`, it met an older
+  limit, that no base clause reads a term when compiled, so it is 0. The
+  refusals are in `test/cli.cmake`. The compiler keeps every index in the
+  input's steps: a slow sequence's base terms are keyed by the step that
+  computes them, a sample's lag and a hold's place in the window are set once
+  the phase is known, and a hold whose term's tick falls on alternate steps
+  reads one of two places by the step's parity. A slow sequence is refused,
+  for now, with a guard, by cells or without a base clause; a ratio of rates
+  that is not whole, `x_(3*m)` beside `y_(floor(2*n/3))`, is not taken.
 - **Steps and tolerance as options**, when a model asks: a hundred steps is
   short of what a slow filter settles in, and a billionth is loose for a
   well-conditioned step.

@@ -227,6 +227,15 @@ set(stderr "")
 set(exit 1)
 check(compile_refusals)
 
+# Several rates (DESIGN.md): a read at a period the sequence is not computed
+# at, one before its term is computed, and one at an index of neither form.
+file(WRITE "${OUT}/rates.ink" "y_0 = 0\ny_m = x_(2*m + 1)\nz_n = y_(floor(n/2))\nv_n = y_(floor(n/3))\nu_m = x_(m*m)\n")
+set(args --compile rates.ink)
+set(stdout "cannot compile u: x_(...): an index other than a whole multiple of m plus a constant\ncannot compile v: y_(...): read every 3 steps, and y is computed every 2\ncannot compile z: y_(...): read before it is computed; read the term before it\n")
+set(stderr "")
+set(exit 1)
+check(compile_rates_refused)
+
 set(args --compile model.ink)
 file(WRITE "${OUT}/model.ink" "a_0 = 1\na_n = a_(n-1) + n\n")
 set(stdout "")
