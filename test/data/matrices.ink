@@ -520,10 +520,10 @@ error: a matrix has no factorial
 >> mm_n=[1 2;3 4]*(0.5)^n
 mm_n=[1 2;3 4]*(0.5)^n
 
-# 'lim' compares successive terms, and matrices have no size to compare. The
-# message used to be the bare 'a matrix has no absolute value', which reads
-# like an internal error and does not say what the interpreter was doing
-# (DESIGN.md, C39).
+# 'lim' of matrices is the limit of each cell, its steps measured by the
+# largest cell's (limits.ink). It was refused, in the words C39 gave it,
+# 'mm has no limit: a matrix has no absolute value'.
 >> lim mm
-error: mm has no limit: a matrix has no absolute value
+[~1.45519152e-11, ~2.91038305e-11;
+ ~4.36557457e-11, ~5.82076609e-11]
 

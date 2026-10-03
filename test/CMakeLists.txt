@@ -71,7 +71,7 @@ endforeach()
 # drifts from it, and its program says where and exits with a failure.
 # Each as file:instance.
 foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brink drift:ledge
-                         delay:fir newton:stiff logistic:gate softmax:cls)
+                         delay:fir newton:stiff logistic:gate softmax:cls steady:mark)
     string(REPLACE ":" ";" checked ${checked})
     list(GET checked 0 file)
     list(GET checked 1 instance)
@@ -93,6 +93,8 @@ set_tests_properties(check_gate_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^gate: 100 steps from 0, against exact values until 0 and inexact ones from there\n(gate\\.[a-z]+: within [0-9.e+-]+\n)+$")
 set_tests_properties(check_cls_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^cls: 100 steps from 0, against exact values until 0 and inexact ones from there\n(cls\\.[a-z]+: within [0-9.e+-]+\n)+$")
+set_tests_properties(check_mark_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^mark: 100 steps from 0, against exact values until 0 and inexact ones from there\n(mark\\.[a-z]+: within [0-9.e+-]+\n)+$")
 set_tests_properties(check_stiff_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^stiff: 100 steps from 0, against exact values until 0 and inexact ones from there\n(stiff\\.[a-z]+: within [0-9.e+-]+\n)+$")
 set_tests_properties(check_fir_report PROPERTIES PASS_REGULAR_EXPRESSION

@@ -1547,7 +1547,8 @@ private:
     // 'lim s', 'lim nw(x_(n-1), u_n)': folded where it reads only constants,
     // and otherwise a function of its arguments that walks the terms as the
     // interpreter does, stopping by its rule (Convergence), and NaN where the
-    // interpreter would say it did not converge, since a step cannot.
+    // interpreter would say it did not converge, since a step cannot. A
+    // limit of matrices fills an array, its steps the largest cell's.
     PExpression<Value> Limit(FuncExpression<Value>* expression, const std::string& name,
                              const ParametersCall<Value>& call) {
         const Found found = Lookup(name);
@@ -1574,51 +1575,69 @@ private:
                                          return Emit(p.parameters_dict().at(parameter));
                                      }));
         bool constant = true;
-        for (const auto& [parameter, code] : given.values) {
-            if (!code.Scalar())
-                throw Reason("a limit whose argument " + parameter + " is a matrix");
-            constant = constant && code.constant;
-        }
-        // Its terms, as locals of a function of their own.
-        Walked    walked{name, names, 0};
+        for (const auto& [parameter, code] : given.values) constant = constant && code.constant;
+        // Its terms, as locals of a function of their own. 'arg_x': no name
+        // of the language has a '_', and no name of the function's own
+        // begins so.
+        Walked    walked{name, names, 0, 0, 0};
         Expansion inside{{}, {}, sequence.home ? sequence.home : scope_, nullptr, {}};
-        // 'arg_x': no name of the language has a '_', and no name of the
-        // function's own begins so.
-        for (const std::string& parameter : names)
-            inside.values.emplace(parameter, Code{1, 1, {Atom("arg_" + parameter)}, {}});
+        for (const std::string& parameter : names) {
+            const Code& argument = given.values.at(parameter);
+            Code        local;
+            local.rows = argument.rows;
+            local.cols = argument.cols;
+            for (std::size_t i = 0; i < argument.rows; ++i)
+                for (std::size_t j = 0; j < argument.cols; ++j)
+                    local.cells.push_back(
+                        Atom("arg_" + parameter + (argument.Scalar() ? "" : Subscript(i, j))));
+            inside.values.emplace(parameter, local);
+        }
         Walked* const              outer_limit       = std::exchange(limit_, &walked);
         auto* const                outer_temporaries = std::exchange(temporaries_, nullptr);
         auto                       outer_reads       = std::exchange(read_parameters_, {});
-        std::map<int, std::string> bases;
-        std::string                general;
+        std::map<int, Code>        bases;
+        std::vector<std::string>   general;
+        const auto                 shaped = [&](const Code& code) {
+            if (walked.rows && (code.rows != walked.rows || code.cols != walked.cols))
+                throw Reason("a limit of " + name + ", whose terms change size");
+            walked.rows = code.rows;
+            walked.cols = code.cols;
+            return code;
+        };
         try {
             Inside(inside, [&] {
                 for (const Clause<Value>& clause : sequence.Clauses()) {
                     const ParametersDefinition<Value>& c = clause.parameters;
                     if (!c.indexed() || c.general()) continue;
                     if (c.guarded()) throw Reason("a guarded base clause in a limit's terms");
-                    bases[c.index()] = Scalar(Emit(clause.expression), name);
+                    bases[c.index()] = shaped(Emit(clause.expression));
                 }
                 for (const Clause<Value>& clause : sequence.Clauses())
                     if (clause.parameters.general()) index_ = clause.parameters.index_name();
                 if (index_.empty())
                     throw Reason(name + " has no general clause, so it has no limit");
                 const std::string outer_text = std::exchange(index_text_, "(double)k_");
-                std::string       otherwise  = "NAN";
-                for (const bool guarded : {true, false})
+                std::vector<std::pair<std::string, Code>> guarded;
+                std::optional<Code>                       otherwise;
+                for (const bool guard : {true, false})
                     for (const Clause<Value>& clause : sequence.Clauses()) {
                         const ParametersDefinition<Value>& c = clause.parameters;
-                        if (!c.general() || c.guarded() != guarded || otherwise != "NAN") continue;
+                        if (!c.general() || c.guarded() != guard || otherwise) continue;
                         const std::optional<std::string> condition =
-                            guarded ? Condition(c.guard()) : std::optional<std::string>("");
+                            guard ? Condition(c.guard()) : std::optional<std::string>("");
                         if (!condition) continue;
-                        const std::string value = Scalar(Emit(clause.expression), name);
+                        const Code value = shaped(Emit(clause.expression));
                         if (condition->empty())
                             otherwise = value;
                         else
-                            general += *condition + " ? " + value + " : ";
+                            guarded.emplace_back(*condition, value);
                     }
-                general += otherwise;
+                for (std::size_t c = 0; c < walked.rows * walked.cols; ++c) {
+                    std::string cell;
+                    for (const auto& [condition, value] : guarded)
+                        cell += condition + " ? " + value.cells[c].text + " : ";
+                    general.push_back(cell + (otherwise ? otherwise->cells[c].text : "NAN"));
+                }
                 index_text_ = outer_text;
                 return Code{};
             });
@@ -1638,49 +1657,140 @@ private:
             if (!bases.count(highest - lag + 1))
                 throw Reason("a limit whose terms read back past its base clauses");
 
+        const bool        scalar    = walked.rows * walked.cols == 1;
         const std::string function = module_ + "_lim" + std::to_string(limits_.size());
         const std::string first    = std::to_string(highest + 1);
-        std::string       text;
+        const std::string shape     = scalar ? "" : Subscript(walked.rows, walked.cols);
+        const std::string tolerance = Double(Convergence<Value>::tolerance);
+        // A term's cells, one assignment each, or the term itself.
+        const auto each = [&](const std::string& indent, const std::string& to, const auto& from) {
+            std::string out;
+            for (std::size_t c = 0; c < walked.rows * walked.cols; ++c)
+                out += indent + to + (scalar ? "" : Subscript(c / walked.cols, c % walked.cols)) +
+                       " = " + from(c) + ";\n";
+            return out;
+        };
+        std::string text;
         text += "/* lim " + name + ", as the interpreter takes it: its terms from index " + first +
-                " on, until\n * two agree within " + Double(Convergence<Value>::tolerance) +
-                " and so does what is left of the series, as the steps\n * shrink; NaN where that "
-                "takes more than " +
+                " on, until\n * two agree within " + tolerance + (scalar ? "" : " in every cell") +
+                " and so does what is left of the series, as the steps\n * shrink; NaN where "
+                "that takes more than " +
                 std::to_string(Convergence<Value>::max_terms) + " terms. */\n";
-        text += "static inline double " + function + "(const " + module_ + "* m_";
-        for (const std::string& parameter : names) text += ", double arg_" + parameter;
+        text += "static inline " + std::string(scalar ? "double " : "void ") + function +
+                "(const " + module_ + "* m_";
+        for (const std::string& parameter : names) {
+            const Code& argument = given.values.at(parameter);
+            text += argument.Scalar()
+                        ? ", double arg_" + parameter
+                        : ", double arg_" + parameter + Subscript(argument.rows, argument.cols);
+        }
+        if (!scalar) text += ", double out_" + shape;
         text += ") {\n    (void)m_;\n";
         for (const std::string& parameter : names) text += "    (void)arg_" + parameter + ";\n";
         const int depth = std::max(walked.depth, 1);
-        for (int lag = 1; lag <= depth; ++lag)
-            text += "    double t" + std::to_string(lag) + "_ = " +
-                    (bases.count(highest - lag + 1) ? bases.at(highest - lag + 1) : "0.0") + ";\n";
+        for (int lag = 1; lag <= depth; ++lag) {
+            const auto  base  = bases.find(highest - lag + 1);
+            std::string value = "0.0";
+            if (base != bases.end()) {
+                if (scalar) {
+                    value = base->second.cells[0].text;
+                } else {
+                    value = "{";
+                    for (std::size_t i = 0; i < walked.rows; ++i) {
+                        value += i ? ", {" : "{";
+                        for (std::size_t j = 0; j < walked.cols; ++j)
+                            value += (j ? ", " : "") + base->second.At(i, j).text;
+                        value += "}";
+                    }
+                    value += "}";
+                }
+            } else if (!scalar) {
+                value = "{{0.0}}";
+            }
+            text += "    double t" + std::to_string(lag) + "_" + shape + " = " + value + ";\n";
+        }
+        if (!scalar) text += "    double t_" + shape + ";\n";
         text += "    double step_ = 0.0, before_ = 0.0;\n";
         text +=
             "    int    started_ = " + std::string(bases.empty() ? "0" : "1") + ", stepped_ = 0;\n";
         text += "    for (long long k_ = " + first + "; k_ <= " +
                 std::to_string(highest + static_cast<int>(Convergence<Value>::max_terms)) +
                 "; ++k_) {\n";
-        text += "        const double t_ = " + general + ";\n";
+        if (scalar) {
+            text += "        const double t_ = " + general[0] + ";\n";
+        } else {
+            text += each("        ", "t_", [&](std::size_t c) { return general[c]; });
+        }
         text += "        if (started_) {\n";
-        text += "            step_ = fabs(t_ - t1_);\n";
-        text += "            if (step_ <= " + Double(Convergence<Value>::tolerance) +
+        if (scalar) {
+            text += "            step_ = fabs(t_ - t1_);\n";
+        } else {
+            text += "            step_ = 0.0;\n";
+            text +=
+                "            for (int i_ = 0; i_ < " + std::to_string(walked.rows) + "; ++i_)\n";
+            text += "                for (int j_ = 0; j_ < " + std::to_string(walked.cols) +
+                    "; ++j_) {\n";
+            text += "                    const double d_ = fabs(t_[i_][j_] - t1_[i_][j_]);\n";
+            text += "                    if (isnan(d_) || d_ > step_) step_ = d_;\n";
+            text += "                }\n";
+        }
+        text += "            if (step_ <= " + tolerance +
                 " && stepped_ &&\n                (!(before_ > 0) || (step_ / before_ < 1 &&\n"
                 "                                    step_ * (step_ / before_) / (1 - step_ / "
                 "before_) <= " +
-                Double(Convergence<Value>::tolerance) + ")))\n";
+                tolerance + "))) {\n";
+        text += scalar ? "                return t_;\n"
+                       : "                memcpy(out_, t_, sizeof t_);\n                return;\n";
         text +=
-            "                return t_;\n            before_  = step_;\n            stepped_ = "
-            "1;\n        }\n";
+            "            }\n            before_  = step_;\n            stepped_ = 1;\n        }\n";
         text += "        started_ = 1;\n";
-        for (int lag = depth; lag > 1; --lag)
-            text += "        t" + std::to_string(lag) + "_ = t" + std::to_string(lag - 1) + "_;\n";
-        text += "        t1_ = t_;\n    }\n    return NAN;\n}\n\n";
+        for (int lag = depth; lag > 1; --lag) {
+            const std::string to   = "t" + std::to_string(lag) + "_",
+                              from = "t" + std::to_string(lag - 1) + "_";
+            text += scalar ? "        " + to + " = " + from + ";\n"
+                           : "        memcpy(" + to + ", " + from + ", sizeof " + to + ");\n";
+        }
+        text += scalar ? "        t1_ = t_;\n    }\n    return NAN;\n}\n\n"
+                       : "        memcpy(t1_, t_, sizeof t_);\n    }\n" +
+                             each("    ", "out_", [](std::size_t) { return std::string("NAN"); }) +
+                             "}\n\n";
         limits_.push_back(text);
 
+        // Where it is read: a matrix argument, or a matrix answer, is an
+        // array of the step's.
+        if (!scalar && !temporaries_) throw Reason("a limit of matrices inside a limit's terms");
         std::string called = function + "(m_";
-        for (const std::string& parameter : names)
-            called += ", " + given.values.at(parameter).cells[0].text;
-        return Answer(Cell(called + ")", primary));
+        for (const std::string& parameter : names) {
+            const Code& argument = given.values.at(parameter);
+            if (argument.Scalar()) {
+                called += ", " + argument.cells[0].text;
+                continue;
+            }
+            if (!temporaries_) throw Reason("a matrix argument of a limit inside a limit's terms");
+            std::string rows;
+            for (std::size_t i = 0; i < argument.rows; ++i) {
+                std::string row;
+                for (std::size_t j = 0; j < argument.cols; ++j)
+                    row += (j ? ", " : "") + argument.At(i, j).text;
+                rows += (i ? ", {" : "{") + row + "}";
+            }
+            called += ", " + Declare("arg\x1f" + rows, [&](const std::string& t) {
+                          return std::vector<std::string>{"double " + t +
+                                                          Subscript(argument.rows, argument.cols) +
+                                                          " = {" + rows + "};"};
+                      });
+        }
+        if (scalar) return Answer(Cell(called + ")", primary));
+        const std::string out = Declare("lim\x1f" + called, [&](const std::string& t) {
+            return std::vector<std::string>{"double " + t + shape + ";", called + ", " + t + ");"};
+        });
+        Code              code;
+        code.rows = walked.rows;
+        code.cols = walked.cols;
+        for (std::size_t i = 0; i < code.rows; ++i)
+            for (std::size_t j = 0; j < code.cols; ++j)
+                code.cells.push_back(Atom(out + Subscript(i, j)));
+        return Answer(code);
     }
 
     // A term of the sequence a limit walks, read back from one of its own:
@@ -1699,13 +1809,17 @@ private:
         if (!own) throw Reason(limit_->name + "'s term read with other arguments than its own");
         const int lag = Lag(call.subexpr(), limit_->name);
         if (lag == 0) throw Reason(limit_->name + " is defined by itself");
-        limit_->depth = std::max(limit_->depth, lag);
-        return Code{1, 1, {Atom("t" + std::to_string(lag) + "_")}, {}};
-    }
-
-    std::string Scalar(const Code& code, const std::string& name) {
-        if (!code.Scalar()) throw Reason("a limit of " + name + ", whose terms are matrices");
-        return code.cells[0].text;
+        if (!limit_->rows) throw Reason("a limit whose terms read back past its base clauses");
+        limit_->depth          = std::max(limit_->depth, lag);
+        const std::string term = "t" + std::to_string(lag) + "_";
+        Code              code;
+        code.rows = limit_->rows;
+        code.cols = limit_->cols;
+        for (std::size_t i = 0; i < code.rows; ++i)
+            for (std::size_t j = 0; j < code.cols; ++j)
+                code.cells.push_back(
+                    Atom(code.rows * code.cols == 1 ? term : term + Subscript(i, j)));
+        return code;
     }
 
     PExpression<Value> visit(FuncExpression<Value>* expression) override {
@@ -2630,7 +2744,8 @@ private:
     struct Walked {
         std::string              name;
         std::vector<std::string> parameters;
-        int                      depth = 0;  // how far back a term reads its own
+        int                      depth = 0;           // how far back a term reads its own
+        std::size_t              rows = 0, cols = 0;  // a term's, once a clause gives it
     };
     Walked*                          limit_           = nullptr;
     int                              temporary_count_ = 0;

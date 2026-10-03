@@ -127,6 +127,9 @@ TEST_CASE("vectors") {
 TEST_CASE("latex") {
     check_transcript("latex.ink");
 }
+TEST_CASE("limits") {
+    check_transcript("limits.ink");
+}
 TEST_CASE("imaginary") {
     check_transcript("imaginary.ink");
 }

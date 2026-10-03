@@ -146,7 +146,10 @@ the interpreter would say it does not converge: `test/compile/newton.ink`
 solves each step of a stiff equation by Newton's method, a sequence with
 parameters under `lim`, and `test/compile/logistic.ink` trains a logistic
 regression, its `exp` a limit written in inkamath, as `test/compile/softmax.ink`
-writes softmax and cross-entropy, `log` being Newton's method on `exp`.
+writes softmax and cross-entropy, `log` being Newton's method on `exp`. A
+limit of matrices fills an array, cell by cell: `test/compile/steady.ink`
+finds a chain's steady state and, by power iteration, a matrix's dominant
+direction at every step.
 
 `--check drift.ink calm -o calm.c` holds the compiled code to the
 interpreter. It compiles `calm`, an instance the file defines, with the
@@ -569,8 +572,8 @@ error: s is a sequence; index it (s_0) or take its limit (lim s)
 ```
 
 `lim` iterates the general clause until two successive terms agree to within
-1e-10, and reports non-convergence rather than handing back the term it
-stopped on:
+1e-10, every cell of a matrix, and reports non-convergence rather than handing
+back the term it stopped on:
 
 ```
 >> lim s

@@ -70,6 +70,7 @@ struct numeric_interface_imp
      // Deduced: for a complex or a matrix these narrow to the scalar type.
      static auto fact(const T& a) {return T::fact(a);}
      static auto abs(const T& a) {return T::abs(a);}
+     static auto distance(const T& a, const T& b) { return T::distance(a, b); }
 
      static bool parse(T& num, const char* begin, char* &end)
      {
