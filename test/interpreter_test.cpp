@@ -130,6 +130,9 @@ TEST_CASE("latex") {
 TEST_CASE("limits") {
     check_transcript("limits.ink");
 }
+TEST_CASE("imaginary") {
+    check_transcript("imaginary.ink");
+}
 TEST_CASE("models") {
     check_transcript("models.ink");
 }

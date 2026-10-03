@@ -2407,6 +2407,27 @@ that exploring seven domains asked of the interpreter, by how many asked.
   chain's steady state and a matrix's dominant direction to the interpreter,
   within 4.4e-16 and 0. A limit's function shares no temporaries, so a product
   its clause writes twice is computed twice. 115 lines of sources.
+- `[done]` **`i` a name a bound one shadows.** A paper's samples are `x_i` and its
+  sums run over `i`, which was the imaginary unit here and could be neither:
+  the lexer made it a number. It becomes a built-in name, as `pi` and `e`
+  are, so a sum's index, a cell's row or column, a parameter or a sequence's
+  index named `i` shadows it in its own scope. Unlike `pi`, it cannot be
+  defined again. A setting choosing the unit's name was weighed and declined:
+  the same text would mean what a mode said, and a printed answer would need
+  the session to be read. Shadowing ends where its scope does, and an answer
+  is printed outside every one, so its `i` is always the unit; inside a sum
+  over `i`, the unit is a name defined outside it, `j = i`, as an engineer
+  writes it. Specified in `test/data/spec/imaginary.ink`, 12 of its 16
+  entries failing.
+  Built as specified, every entry passing as written, now
+  `test/data/imaginary.ink`, and no other recorded output moved: the lexer no
+  longer makes a number of `i` alone, which costs the eight lines that did,
+  the built-ins gain it as `pi` is gained, and a global definition of it is
+  refused where every global definition is made. `2i` was a literal, the one
+  juxtaposition the parser read, and inside a sum over `i` it was twice the
+  unit where a paper means twice the index; it is now refused as `2n` is,
+  `2*i` being the product either way. Nothing recorded wrote it.
+  `test/compile/logistic.ink` now sums over `i`, as its paper does.
 - **Steps and tolerance as options**, when a model asks: a hundred steps is
   short of what a slow filter settles in, and a billionth is loose for a
   well-conditioned step.

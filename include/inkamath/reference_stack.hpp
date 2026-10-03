@@ -71,6 +71,11 @@ public:
         // as the imaginary part of -1.
         this->Set("pi", ParametersDefinition<T>(), PExpression<T>( new ValExpression<T>(T(3.14159265358979323846))));
         this->Set("e",  ParametersDefinition<T>(), PExpression<T>( new ValExpression<T>(T(2.71828182845904523536))));
+        // A name, so that a bound one can shadow it: a paper's sums run over i.
+        typename T::value_type unit;
+        char*                  end = nullptr;
+        (void)numeric_interface<typename T::value_type>::parse(unit, "i", end);
+        this->Set("i", ParametersDefinition<T>(), std::make_shared<ValExpression<T>>(T(unit)));
         // A definition like these, so a session may replace it; native,
         // because the language can compute it only by a search.
         EvaluationVisitor<T> evaluator(*this);
@@ -93,6 +98,10 @@ public:
                 Extended(slot, nullptr, ai_reference_name, ai_parameters, ai_expression, written);
             return;
         }
+        // An answer prints the unit as 'i', so no definition may make it
+        // mean anything else; a bound name only shadows it.
+        if (ai_reference_name == "i" && target_ != &builtins_)
+            throw std::runtime_error("i is the imaginary unit, so it cannot be defined");
         Changed();
         const definition_type previous = Defined(ai_reference_name);
         definition_type       extended = previous;

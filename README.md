@@ -199,7 +199,9 @@ to nine significant digits, with `~` in front unless what is printed is all of
 the value. `frac` at the start of a line shows the answer as its exact
 fraction, and `digits = n` sets how many digits are shown.
 
-Numbers are complex; `i` is the imaginary unit. `e` and `pi` are the only
+Numbers are complex; `i` is the imaginary unit, a name that a bound one (a
+sum's index, a cell's row) shadows in its own scope and that nothing may
+define again. `e` and `pi` are the only
 other built-in values, and `floor` the only built-in function: the largest
 whole number not above its argument, exact of an exact number and cell by
 cell of a matrix. `ceil(x) = -floor(-x)` and `mod(a, b) = a - b*floor(a/b)`
@@ -348,7 +350,8 @@ gives. A clause for one cell, `M[1,2] = 5`, beats the others. A cell no clause
 gives is 0, or, where the matrix was also written whole, that matrix's: after
 `T = [1 2; 3 4]`, `T[1,1] = 9` changes that cell and nothing else. One index
 on the left defines a column, `w[j<=3] = j^2`, whose clauses then name one
-index each. The names are anything but `i`, which is the imaginary unit:
+index each. The names are any, `i` among them, which shadows the imaginary
+unit within the clause:
 
 ```
 >> I[j<=2, k<=2] = j == k
