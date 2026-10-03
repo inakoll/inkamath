@@ -78,3 +78,14 @@ pair(x_n) = {
     p_m[j<=2] = x_(2*m + j)
 }
 frame = pair(x_n = n^2)
+
+# A decimator whose base clause has a negative index, -2 at step 0: the
+# latest term at step 1 is y_-2, floor((1 - 4)/2), not y_-1.
+#
+#     lead: 100 steps from 0, against exact values
+#     lead.y: within 0
+ahead(x_n) = {
+    y_(-2) = 7
+    y_m = x_(2*m + 4)
+}
+lead = ahead(x_n = s_n)

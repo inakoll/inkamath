@@ -77,7 +77,7 @@ public:
                 const bool before = sequence.period > 1 && n < sequence.start;
                 const Term term   = before ? Term{{}, true, "before its first term"}
                                            : At(session, instance + "." + sequence.name,
-                                                (n - sequence.phase) / sequence.period);
+                                                Floor(n - sequence.phase, sequence.period));
                 if (!term.exact && (!inexact || n < *inexact)) inexact = n;
                 for (std::size_t c = 0; c < cells; ++c) {
                     const bool given = term.error.empty();
@@ -126,8 +126,9 @@ public:
                                             [&](const auto& s) { return s.name == name; });
             // At another rate, the clause of the latest term computed, none before.
             const auto term = [&](int n) {
-                return found->period > 1 && n < found->start ? std::numeric_limits<int>::min()
-                                                             : (n - found->phase) / found->period;
+                return found->period > 1 && n < found->start
+                           ? std::numeric_limits<int>::min()
+                           : Floor(n - found->phase, found->period);
             };
             const std::size_t cols   = found->cols;
             const std::size_t places = cellwise ? found->rows * cols : 1;
@@ -302,6 +303,9 @@ private:
         out += "    return 1;\n}\n\n";
         return out;
     }
+
+    // n/a rounded down, a > 0: a term's index is negative below its first.
+    static int Floor(int n, int a) { return n / a - (n % a < 0 ? 1 : 0); }
 
     static std::string Double(double x) {
         char text[40];
