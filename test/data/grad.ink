@@ -1,5 +1,5 @@
 # The derivative of an expression with respect to a name at a point,
-# grad_(x = point) expression (DESIGN.md, next in line; MANIFESTO.md,
+# grad_(x = point) expression (DESIGN.md, differentiation; MANIFESTO.md,
 # Differentiation). The name is bound as a sum binds its index: the point is
 # read where grad is written, the name only in the expression, which reaches
 # as far as a sum's does. What the expression reads through other definitions
@@ -220,7 +220,7 @@ sq(x)_n = (sq(x)_(n-1) + x/sq(x)_(n-1))/2
 >> grad_(x = 0) lim sq(x)
 error: the derivative of sq did not converge within 100 terms (last term ~4.225502e+29)
 
-# Wrong on purpose (DESIGN.md, the rule under lim): h tends to 0 for every x,
+# Wrong on purpose (DESIGN.md, C72): h tends to 0 for every x,
 # so the derivative of its limit is 0, but every term's derivative at 0 is 1.
 # The terms converge too slowly near 0 for the rule to hold, and no check at
 # the point can tell.

@@ -318,6 +318,11 @@ public:
         return session_.names.count(name) == 0 && builtins_.names.count(name) != 0;
     }
 
+    // A name as it is read where evaluation stands, past the frame; and
+    // whether the frame binds it.
+    [[nodiscard]] definition_type Global(const std::string& name) const { return FindGlobal(name); }
+    [[nodiscard]] bool            Binds(const std::string& name) const { return FindBinding(name); }
+
     // Whether a call's frame is open to bind in.
     [[nodiscard]] bool Framed() const { return open_ != 0; }
 
@@ -867,5 +872,7 @@ private:
     std::vector<frame_type>                  frames_;  // the open ones first, then spares
     size_t                                   open_ = 0;
 };
+
+#include "inkamath/derivative.hpp"
 
 #endif // EXPRESSION_STACK_HPP

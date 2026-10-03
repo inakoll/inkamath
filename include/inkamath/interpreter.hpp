@@ -165,6 +165,7 @@ private:
     PExpression<U> ParseSubExpr();
     PExpression<U> ParseLimit();
     PExpression<U> ParseSeries();
+    PExpression<U> ParseGrad();
     std::string ParseQuery();
     std::string    Tex();
 
@@ -177,6 +178,7 @@ private:
     static bool IsWord(const Token<T>& token, const char* word) {
         return token.type == Func && token.text == word;
     }
+    static bool IsGrad(const Token<T>& token) { return IsWord(token, "grad"); }
     static bool IsLogic(const Token<T>& token) {
         return IsWord(token, "and") || IsWord(token, "or");
     }
@@ -490,7 +492,7 @@ PExpression<U> Interpreter<T,U>::ParseEqualExpr()
 {
     PExpression<U> e,ref,params,expr,sub;
     if (!AtEnd() && Peek().type == Func && !IsLimit(Peek()) && !IsSeries(Peek()) &&
-        !IsLogic(Peek())) {
+        !IsGrad(Peek()) && !IsLogic(Peek())) {
         const size_t signature_begin = m_i;
         std::string name = m_tokens[m_i++].text;
         ref = PExpression<U>(new RefExpression<U>(name));
@@ -744,6 +746,10 @@ PExpression<U> Interpreter<T, U>::ParseSimpleExpr(bool postfix) {
             }
             if (IsSeries(Peek())) {
                 e = ParseSeries();
+                break;
+            }
+            if (IsGrad(Peek())) {
+                e = ParseGrad();
                 break;
             }
             ref.reset(new RefExpression<U>(m_tokens[m_i++].text));
@@ -1021,6 +1027,24 @@ PExpression<U> Interpreter<T, U>::ParseSeries() {
                                                  ParseMultExpr());
 }
 
+// 'grad_(x = a) body', bound as a sum is, its body a term as a sum's is.
+template <Parsable T, Numeric U>
+PExpression<U> Interpreter<T, U>::ParseGrad() {
+    const auto expect = [&](Type type) -> const std::string& {
+        if (AtEnd() || Peek().type != type)
+            Fail("grad takes a name at a point, as 'grad_(x = 2) x^3'");
+        return m_tokens[m_i++].text;
+    };
+    ++m_i;
+    expect(Sub);
+    expect(LPar);
+    const std::string variable = expect(Func);
+    expect(Equal);
+    const PExpression<U> point = ParseCompareExpr();
+    expect(RPar);
+    return std::make_shared<GradExpression<U>>(variable, point, ParseMultExpr());
+}
+
 template <Parsable T, Numeric U>
 PExpression<U> Interpreter<T,U>::ParseSubExpr()
 {
@@ -1045,7 +1069,8 @@ template <Parsable T, Numeric U>
 bool Interpreter<T, U>::DefinesReserved() const {
     const Type next = m_tokens.size() > 1 ? m_tokens[1].type : Val;
     if (next != LPar && next != Sub && next != Guard &&
-        !(next == Equal && (IsWord(m_tokens[0], "frac") || IsWord(m_tokens[0], "tex"))))
+        !(next == Equal &&
+          (IsWord(m_tokens[0], "frac") || IsWord(m_tokens[0], "tex") || IsGrad(m_tokens[0]))))
         return false;
     int depth = 0;
     for (size_t token = 1; token < m_tokens.size(); ++token) {
@@ -1150,7 +1175,7 @@ typename Interpreter<T, U>::Result Interpreter<T, U>::Run(const std::string& s) 
     if (IsWord(m_tokens[0], "use") && m_tokens.size() > 1 && m_tokens[1].type == Func)
         return Echo{Use(s)};
     const bool fraction = IsWord(m_tokens[0], "frac");
-    if (BeginsLine(m_tokens[0]) && DefinesReserved()) {
+    if ((BeginsLine(m_tokens[0]) || IsGrad(m_tokens[0])) && DefinesReserved()) {
         Fail(m_tokens[0].text, " is reserved, so it cannot be defined");
     }
     if (m_tokens[0].type == Query) return Echo{ParseQuery()};
@@ -1274,7 +1299,8 @@ std::pair<std::string, std::shared_ptr<Model<U>>> Interpreter<T, U>::ParseModel(
     Lexer(header);
     const Token<T>& head = m_tokens[0];
     if (head.type != Func) Fail(form);
-    if (IsLimit(head) || IsSeries(head) || IsLogic(head) || BeginsLine(head) || IsWord(head, "use"))
+    if (IsLimit(head) || IsSeries(head) || IsGrad(head) || IsLogic(head) || BeginsLine(head) ||
+        IsWord(head, "use"))
         Fail(head.text, " is reserved, so it cannot be defined");
     const std::string name      = head.text;
     m_i                         = 1;

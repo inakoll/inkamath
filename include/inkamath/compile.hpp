@@ -2048,6 +2048,9 @@ private:
         return Answer(matrix.At(static_cast<std::size_t>(i - 1), static_cast<std::size_t>(j - 1)));
     }
     PExpression<Value> visit(FactExpression<Value>*) override { throw Reason("a factorial"); }
+    PExpression<Value> visit(GradExpression<Value>*) override {
+        throw Reason("a derivative, for now");
+    }
     // Unrolled, since each term is a line of C: a thousand is a filter no one
     // would write out as one.
     static constexpr int max_terms = 1000;

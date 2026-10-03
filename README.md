@@ -656,6 +656,40 @@ it:
 error: the sum did not converge within 100 terms (last partial sum ~1.6349839)
 ```
 
+The derivative of an expression with respect to a name at a point is written
+as a paper writes it there, and binds the name as a sum binds its index: the
+point is read around it, the name only in the body, which is a term as a sum's
+is. What the body reads through definitions is differentiated with it, exactly
+where its parts are exact. A derivative at a parameter is the derivative as a
+function, and a single value's gradient with respect to a matrix has the
+matrix's shape:
+
+```
+>> grad_(x = 2) x^3
+12
+
+>> cube(t) = t^3
+cube(t) = t^3
+
+>> dcube(t) = grad_(u = t) cube(u)
+dcube(t) = grad_(u = t) cube(u)
+
+>> frac dcube(1/2)
+3/4
+
+>> grad_(v = [1; 2]) v'*v
+[2;
+ 4]
+```
+
+A definition in cases takes the slope of the clause that holds at the point,
+and a limit the limit of its terms' slopes. Where a derivative does not exist
+or would mislead, `grad` says why rather than answer: at a jump of `floor` or
+of a comparison, at a clause that holds only at the point, for an exponent
+that changes with the name over any base but `e`, for a Jacobian, for a body
+that does not read the name, and through a definition that reads the global
+of that name, which the bound name does not reach.
+
 A term can be defined by its cells, as a matrix is (section 2): the brackets
 after the index name the row and the column and bound them, or one index a
 column's, every cell sees the index, and a guard says which cells a clause
@@ -684,8 +718,8 @@ as specific in both the index and the cell; a base term and a cell of every
 term are each more specific in one, so where both give a cell the
 interpreter asks which is meant rather than choosing.
 
-An index must be an exact whole number, and `lim`, `sum`, `prod`, `frac`,
-`digits`, `tex`, `and` and `or` are reserved words.
+An index must be an exact whole number, and `lim`, `sum`, `prod`, `grad`,
+`frac`, `digits`, `tex`, `and` and `or` are reserved words.
 
 A term is evaluated once per *context* — which definition, which index, which
 argument values — and the answer is remembered until a definition changes. It
