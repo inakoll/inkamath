@@ -157,6 +157,11 @@ holds its latest term at the input's rate again. The step is still one, the
 input's, and a term of `y` is computed on the first step at which every sample
 it reads exists; a hold of a term not computed yet is refused, saying to read
 the term before it. `test/compile/rates.ink` is a decimator and two holds.
+Such a sequence may be guarded, defined by its cells or without a base
+clause; one read by another is refused, naming the hold at the input's rate
+to sample instead. `test/compile/decimate.ink` adds an interpolator and a
+strided convolution, and `test/compile/cascade.ink` a servo whose clamped
+outer loop runs every fourth step.
 
 `--check drift.ink calm -o calm.c` holds the compiled code to the
 interpreter. It compiles `calm`, an instance the file defines, with the

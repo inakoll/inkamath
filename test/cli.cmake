@@ -236,6 +236,38 @@ set(stderr "")
 set(exit 1)
 check(compile_rates_refused)
 
+# What several rates left refused (DESIGN.md): a slow sequence read back at
+# the input's rate, and a hold of a term the step never computes where the
+# interpreter could give one, before a slow sequence's first tick or below a
+# guarded one's base clauses.
+file(WRITE "${OUT}/slow.ink" "k_n = n/8\ny_m = k_(2*m + 1)\nc_n = y_(n-1)\nz_n = y_(floor((n - 1)/2))\n")
+set(args --compile slow.ink)
+set(stdout "cannot compile c: y_(...): read every step, and y is computed every 2\ncannot compile z: z_0 reads y_-1, before y's first tick, where its samples could give a term\n")
+set(exit 1)
+check(compile_slow_refused)
+
+# A sample read from a window that cannot hold the term the interpreter has.
+file(WRITE "${OUT}/window.ink" "k_n = n/8\ny_m = k_(2*m - 1) + k_(2*m)\n")
+set(args --compile window.ink)
+set(stdout "cannot compile y: y_0 reads k_-1, before the step computes k, where its clauses could give a term\n")
+set(exit 1)
+check(compile_slow_window_refused)
+
+file(WRITE "${OUT}/below.ink" "u_0 = 0\nu_m | x_(2*m) > 1 = 1\nu_m = x_(2*m)\nw_n = u_(floor(n/2) - 1)\n")
+set(args --compile below.ink)
+set(stdout "cannot compile w: w_0 reads u_-1, below u's base clauses, where only its guards could give a term\n")
+set(exit 1)
+check(compile_slow_below_refused)
+
+# A ratio that is not whole; a slow sequence read by another, which a hold at
+# the input's rate sampled says; and a hold at another period, which no hold
+# says.
+file(WRITE "${OUT}/three.ink" "u_0 = 0\nu_m = x_(2*m)\nt_m = x_(3*m)\np_k = x_(4*k)\nq_n = t_(floor(2*n/3))\nv_k = u_(2*k)\nr_m = x_(2*m) - p_(floor(m/2))\nw_k = x_(4*k) - u_(floor(k/2))\n")
+set(args --compile three.ink)
+set(stdout "cannot compile q: t_(...): an index other than a whole multiple of n plus a constant\ncannot compile r: p_(...): one sequence at another rate read by another; hold p at the input's rate and sample the hold\ncannot compile v: u_(...): one sequence at another rate read by another; hold u at the input's rate and sample the hold\ncannot compile w: u_(...): read every 8 steps, and u is computed every 2\n")
+set(exit 1)
+check(compile_slow_read_refused)
+
 # C74: a hold whose ticks are not one period of the sequence it holds names
 # a term further behind at each tick, which no window holds.
 file(WRITE "${OUT}/c74.ink" "u_0 = 0\nu_m = x_(2*m)\ns_0 = 0\ns_k = x_(4*k) - u_(floor(k/2))\n")

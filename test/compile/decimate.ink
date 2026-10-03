@@ -9,7 +9,8 @@
 # host's does, so that no term is answered from before it.
 #
 # 'conv' is a strided convolution: two channels, each a ReLU of a pair of
-# samples, computed every second step cell by cell.
+# samples, computed every second step cell by cell, on an input that takes
+# each channel below 0 in turn.
 #
 # What the compiler refuses, by name, written as files of their own. A slow
 # sequence read back at the input's rate, refused by its rate rather than as
@@ -65,4 +66,15 @@ conv(W = [1, 1; 1, -1], x_n) = {
     h_m[j<=2] | W[j,1]*x_(2*m) + W[j,2]*x_(2*m + 1) < 0 = 0
     h_m[j<=2] = W[j,1]*x_(2*m) + W[j,2]*x_(2*m + 1)
 }
-stride = conv(x_n = 3 - n/2 + (-1)^n)
+stride = conv(x_n = 3 - n/2 + (-1)^n*(1 - n/8))
+
+# A frame, each term the pair of samples it covers, cell j sampling
+# x_(2*m + j): a cell's place is a constant there, so each cell's sample
+# is of the form a whole term's is, and the phase is the latest of them.
+#
+#     frame: 100 steps from 0, against exact values
+#     frame.p: within 0
+pair(x_n) = {
+    p_m[j<=2] = x_(2*m + j)
+}
+frame = pair(x_n = n^2)
