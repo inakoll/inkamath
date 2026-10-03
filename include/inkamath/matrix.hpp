@@ -5,6 +5,7 @@
 #include "inkamath/numeric_interface.hpp"
 
 #include <algorithm>
+#include <cmath>
 #include <functional>
 #include <iomanip>
 #include <ostream>
@@ -323,6 +324,22 @@ public:
     static auto fact(const Matrix<T>& a)
     {
         return numeric_interface<T>::fact(a.Scalar("a matrix has no factorial"));
+    }
+
+    // How far apart two terms of a limit are: their largest difference, cell
+    // by cell. Of two sizes there is no distance, where a difference would
+    // stretch a single value over the other.
+    static auto distance(const Matrix<T>& a, const Matrix<T>& b) {
+        if (a.extent_.rows != b.extent_.rows || a.extent_.cols != b.extent_.cols)
+            throw std::runtime_error("its terms are " + b.extent_.toString() + ", then " +
+                                     a.extent_.toString());
+        decltype(numeric_interface<T>::abs(a(1, 1))) largest = 0;
+        for (size_t i = 1; i <= a.extent_.rows; ++i)
+            for (size_t j = 1; j <= a.extent_.cols; ++j) {
+                const auto d = numeric_interface<T>::abs(a(i, j) - b(i, j));
+                if (std::isnan(d) || d > largest) largest = d;  // NaN, once, stays
+            }
+        return largest;
     }
 
     static auto abs(const Matrix<T>& a)

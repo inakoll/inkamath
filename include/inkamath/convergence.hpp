@@ -37,7 +37,7 @@ public:
         if (started_) {
             const Step step = [&]() {
                 try {
-                    return numeric_interface<T>::abs(value - previous_);
+                    return numeric_interface<T>::distance(value, previous_);
                 } catch (const std::exception& reason) {
                     throw std::runtime_error(what_ + " has no limit: " + reason.what());
                 }
@@ -54,7 +54,8 @@ public:
     }
 
 private:
-    using Step = decltype(numeric_interface<T>::abs(std::declval<const T&>()));
+    using Step = decltype(numeric_interface<T>::distance(std::declval<const T&>(),
+                                                         std::declval<const T&>()));
 
     // A small step is not a small remainder. If the steps shrink by a factor
     // r each term, what is left of the series is about step*r/(1-r); for
