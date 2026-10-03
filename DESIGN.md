@@ -2593,6 +2593,54 @@ that exploring seven domains asked of the interpreter, by how many asked.
   base clause compiled notes each term it reads and where, and the lag is
   set with the steps: after the phase of a sequence at another rate, which a
   base's reads move as its samples do, and after where each sequence starts.
+- **What several rates left refused**, decided by what the interpreter
+  answers, for the models that ask: a decimator, an interpolator, a cascade
+  whose slow outer loop is clamped. A slow sequence takes guards, its clause
+  kept on its ticks as its terms are; refused, the cascade has no clamp.
+  Today a sample in any guard is refused as one "where a term is computed
+  again", since a guard's reads are deferred as the right of an `and`'s
+  are, and a sample there is a sample. It takes cells, each cell's samples
+  at a constant offset as a whole term's are; a frame, `x_(2*m + j)`, whose
+  sample moves with the cell, stays an index of neither form until a model
+  asks. It needs no base clause, since a stateless decimator would
+  otherwise write its first term twice: a term is computed at the step of
+  its latest sample, so the phase is the largest `b`, and the first term is
+  the first whose samples exist. A sequence with no base clause is sampled
+  from its window, as a read at the input's rate is, and a closed form
+  sampled back is computed again at that index; a hold in a term computed
+  again is the same hold that much earlier, `b` plus the lag, which is what
+  the cascade's inner loop needs to differentiate an error that reads the
+  setpoint it holds. A sample is computed again only where a slow sequence
+  is read back at the input's rate, which its rate refuses. A hold of a
+  term the step never computes is NaN where the interpreter has none
+  either, and refused where it could give one: below a guarded sequence's
+  base clauses, as at the input's rate, and before the first tick of one
+  whose samples could give it. Computing that term again, as C71 computes
+  one at the input's rate, was rejected: it would compute samples again,
+  for slow sequences that sample closed forms and nothing else. Two things
+  stay refused. A ratio that is not whole, `y_(floor(2*n/3))`, is still an
+  index of neither form: two ticks in three steps are a pattern rather than
+  a period, and the rational resampler a paper draws first interpolates,
+  faster than the input whose step this is. And a slow sequence read by
+  another, by a sample or a hold, is refused naming the fix, a hold at the
+  input's rate sampled, which says the same exactly; composing periods and
+  phases is a second rule for what one already says, and waits for a model
+  of three rates that the fix makes unreadable. Such a hold is compiled
+  wrong today (C74). `--check` holds a slow sequence from the step that
+  computes its first term, and reports a flip at the step that computes the
+  term taking another clause, with that term's margin, cell by cell for one
+  by cells; reporting the term's index instead was rejected, as every other
+  line of the report counts steps and the clause quoted names its own
+  index. Specified in `test/compile/cascade.ink`, a servo whose outer loop
+  runs every fourth step with a dead band and a clamp; in
+  `test/compile/decimate.ink`, an anti-aliasing filter, a decimator, a
+  hold, a linear interpolator, a second stage through the hold, and a
+  strided convolution; and by `sill` and `seam` in `test/compile/drift.ink`,
+  `brink` and `rift` every second step. The refusals and the reports are in
+  their headers, and each joins the suite with the compiler's half. Writing
+  them found that `--check` holds `c_n = x_(n-1)` at 0 to a term read from
+  `x_(-1)` where the instance's input is a closed form, which no step has,
+  and it parts; the models feed a stream that starts at 0, as a host's does.
 - **Steps and tolerance as options**, when a model asks: a hundred steps is
   short of what a slow filter settles in, and a billionth is loose for a
   well-conditioned step.
