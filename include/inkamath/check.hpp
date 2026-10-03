@@ -72,7 +72,11 @@ public:
             const std::string        id = std::to_string(k), size = std::to_string(steps * cells);
             std::vector<std::string> want, known;
             for (int n = first; n < first + steps; ++n) {
-                const Term term = At(session, instance + "." + sequence.name, n);
+                // At another rate, the latest term computed by the step.
+                const bool before = n < sequence.phase;
+                const Term term   = before ? Term{{}, true, "before its first term"}
+                                           : At(session, instance + "." + sequence.name,
+                                                (n - sequence.phase) / sequence.period);
                 if (!term.exact && (!inexact || n < *inexact)) inexact = n;
                 for (std::size_t c = 0; c < cells; ++c) {
                     const bool given = term.error.empty();

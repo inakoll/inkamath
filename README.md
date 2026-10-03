@@ -151,6 +151,13 @@ limit of matrices fills an array, cell by cell: `test/compile/steady.ink`
 finds a chain's steady state and, by power iteration, a matrix's dominant
 direction at every step.
 
+A sequence that reads another at `x_(2*m)` samples it, and is computed every
+second step: its terms are the input's at another rate, and `y_(floor(n/2))`
+holds its latest term at the input's rate again. The step is still one, the
+input's, and a term of `y` is computed on the first step at which every sample
+it reads exists; a hold of a term not computed yet is refused, saying to read
+the term before it. `test/compile/rates.ink` is a decimator and two holds.
+
 `--check drift.ink calm -o calm.c` holds the compiled code to the
 interpreter. It compiles `calm`, an instance the file defines, with the
 parameters the instance gives, and writes a C program that steps it a hundred

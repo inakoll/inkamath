@@ -39,6 +39,7 @@ public:
         struct Sequence {
             std::string name;  // as the struct reaches it, 'h.low.v'
             std::size_t rows, cols;
+            int         period = 1, phase = 0;  // term m at step period*m + phase
         };
         std::string              header;
         int                      first;      // the index of the first step
@@ -214,6 +215,22 @@ private:
         // Of a term chosen cell by cell with a guard, the clause each cell
         // takes, as the guarded clause's 'name_clause_' is.
         std::vector<std::string> taken;
+        // At another rate (DESIGN.md, several rates): a term every 'period'
+        // steps, term m at step period*m + phase; the input-rate sequences it
+        // samples, by the b of 'x_(period*m + b)'; its own terms read back, in
+        // its own terms; and the holds it reads, by place in holds_.
+        int                                  period = 1, phase = 0, first = 0;
+        std::map<std::string, std::set<int>> samples;
+        std::set<int>                        own;
+        std::vector<std::size_t>             holds;
+    };
+
+    // A read of the latest term of a sequence at another rate, 'y_(floor((n -
+    // b)/a) + d)': from where, and how far back in its own terms it reads.
+    struct Hold {
+        std::string read;
+        int         a, b, d;
+        int         from = 0, least = 0, most = 0;
     };
 
     // A term read back, by its mark: what it is, who reads it, what computing
@@ -739,6 +756,9 @@ private:
                 const ParametersDefinition<Value>& p = clause.parameters;
                 if (settled || !p.general() || p.guarded() != guarded) continue;
                 Within(name, &sequence, p.index_name(), [&] {
+                    // The index as the step has it, known once the rate is.
+                    const std::string outer_text =
+                        std::exchange(index_text_, "(double)\x12" + name + "\x13");
                     Reads guard_reads, value_reads;
                     clause_reads_ = &guard_reads;
                     const std::optional<std::string> condition =
@@ -759,6 +779,7 @@ private:
                         sequence.guarded.push_back(
                             {*condition, Texts(code), guard_reads, value_reads, 0, 0, place});
                     }
+                    index_text_ = outer_text;
                 });
             }
         }
@@ -1876,6 +1897,9 @@ private:
             Unreserved(key);
             read.rows = read.cols = 1;
         }
+        if (const auto sample = Sampled(call.subexpr()))
+            return Answer(Sample(key, read, sample->first, sample->second));
+        if (const auto hold = Held(call.subexpr())) return Answer(Holding(key, read, *hold));
         const int lag = Lag(call.subexpr(), key) + shift_;
         Bases(key);
         if (!read.rows) Compile(key);
@@ -1995,6 +2019,136 @@ private:
         return "[" + std::to_string(i) + "][" + std::to_string(j) + "]";
     }
 
+    // A whole number that reads no parameter, or none.
+    std::optional<int> Constant(const PExpression<Value>& e) {
+        const auto [code, reads] = Reading(e);
+        if (!code.constant || !reads.empty()) return std::nullopt;
+        return Whole(code);
+    }
+
+    // 'x_(a*m + b)', read in a clause whose index is m: a sample of x every a
+    // steps, a > 1, which makes the sequence computed a step at that rate.
+    std::optional<std::pair<int, int>> Sampled(const PExpression<Value>& index) {
+        if (index_.empty() || places_.count(index_)) return std::nullopt;
+        const auto multiple = [&](const PExpression<Value>& e) -> std::optional<int> {
+            const auto* product = dynamic_cast<MultExpression<Value>*>(e.get());
+            if (!product) return std::nullopt;
+            for (const auto& [side, other] : {std::pair(product->m_e1(), product->m_e2()),
+                                              std::pair(product->m_e2(), product->m_e1())}) {
+                const auto* ref = dynamic_cast<RefExpression<Value>*>(other.get());
+                if (!ref || ref->Name() != index_) continue;
+                if (const auto a = Constant(side); a && *a > 1) return a;
+            }
+            return std::nullopt;
+        };
+        if (const auto a = multiple(index)) return std::pair(*a, 0);
+        const auto* sum = dynamic_cast<AddExpression<Value>*>(index.get());
+        if (!sum) return std::nullopt;
+        for (const auto& [side, other] :
+             {std::pair(sum->m_e1(), sum->m_e2()), std::pair(sum->m_e2(), sum->m_e1())}) {
+            if (const auto a = multiple(side))
+                if (const auto b = Constant(other)) return std::pair(*a, *b);
+        }
+        return std::nullopt;
+    }
+
+    // 'y_(floor((n - b)/a) + d)': the latest term of y, held at the input's rate.
+    std::optional<Hold> Held(const PExpression<Value>& index) {
+        if (index_.empty() || places_.count(index_)) return std::nullopt;
+        Hold                     hold{std::string(), 0, 0, 0};
+        const Expression<Value>* at = index.get();
+        if (const auto* sum = dynamic_cast<const AddExpression<Value>*>(at)) {
+            if (const auto d = Constant(sum->m_e2())) {
+                hold.d = *d;
+                at     = sum->m_e1().get();
+            } else if (const auto e = Constant(sum->m_e1())) {
+                hold.d = *e;
+                at     = sum->m_e2().get();
+            } else {
+                return std::nullopt;
+            }
+        }
+        const auto* floor = dynamic_cast<const FuncExpression<Value>*>(at);
+        if (!floor || floor->Name() != "floor" || floor->m_e2() ||
+            floor->Call().parameters_expression().size() != 1 ||
+            Lookup("floor").where != &definitions_.Builtins())
+            return std::nullopt;
+        const auto* ratio =
+            dynamic_cast<DivExpression<Value>*>(floor->Call().parameters_expression()[0].get());
+        if (!ratio) return std::nullopt;
+        const auto a = Constant(ratio->m_e2());
+        if (!a || *a < 2) return std::nullopt;
+        hold.a = *a;
+        if (const auto* ref = dynamic_cast<RefExpression<Value>*>(ratio->m_e1().get());
+            ref && ref->Name() == index_)
+            return hold;
+        const auto* sum = dynamic_cast<AddExpression<Value>*>(ratio->m_e1().get());
+        if (!sum) return std::nullopt;
+        for (const auto& [side, other] :
+             {std::pair(sum->m_e1(), sum->m_e2()), std::pair(sum->m_e2(), sum->m_e1())}) {
+            const auto* ref = dynamic_cast<RefExpression<Value>*>(side.get());
+            if (!ref || ref->Name() != index_) continue;
+            if (const auto k = Constant(other)) {
+                hold.b = -*k;
+                return hold;
+            }
+        }
+        return std::nullopt;
+    }
+
+    // A sample read: its lag is the phase less b, known once every sample
+    // of the clause is, so it is marked and set when the step is written.
+    Code Sample(const std::string& key, Sequence& read, int a, int b) {
+        const std::string written = key + "_(...)";
+        if (shift_ || early_ >= 0 || deferring_ || limit_)
+            throw Reason(written + ": a sample where a term is computed again");
+        Bases(key);
+        if (!read.rows) Compile(key);
+        if (read.period != 1 || (read.definition && Recomputed(read)))
+            throw Reason(written +
+                         ": a sample of a sequence at another rate, or with no base "
+                         "clause");
+        if (reading_->period != 1 && reading_->period != a)
+            throw Reason(written + ": read every " + std::to_string(a) + " steps, and " + within_ +
+                         " is computed every " + std::to_string(reading_->period));
+        reading_->period = a;
+        reading_->samples[key].insert(b);
+        Code code;
+        code.rows            = read.rows;
+        code.cols            = read.cols;
+        const std::string at = "m_->" + key + "[\x0e" + std::to_string(b) + "\x0f]";
+        for (std::size_t i = 0; i < code.rows; ++i)
+            for (std::size_t j = 0; j < code.cols; ++j)
+                code.cells.push_back(Atom(code.rows * code.cols == 1 ? at : at + Subscript(i, j)));
+        return code;
+    }
+
+    // A hold: where it reads in the held sequence's window depends on that
+    // sequence's phase, so it is marked and set when the step is written.
+    Code Holding(const std::string& key, Sequence& read, Hold hold) {
+        const std::string written = key + "_(...)";
+        if (shift_ || early_ >= 0 || deferring_ || limit_)
+            throw Reason(written + ": a hold where a term is computed again");
+        Bases(key);
+        Compile(key);
+        if (read.period == 1)
+            throw Reason(written + ": an index other than a whole multiple of " + index_ +
+                         " plus a constant");
+        if (hold.a != read.period)
+            throw Reason(written + ": read every " + std::to_string(hold.a) + " steps, and " + key +
+                         " is computed every " + std::to_string(read.period));
+        hold.read = key;
+        holds_.push_back(hold);
+        reading_->holds.push_back(holds_.size() - 1);
+        const std::string id = std::to_string(holds_.size() - 1);
+        Code              code;
+        code.rows = read.rows;
+        code.cols = read.cols;
+        for (std::size_t c = 0; c < read.rows * read.cols; ++c)
+            code.cells.push_back(Atom("\x10" + id + "," + std::to_string(c) + "\x11"));
+        return code;
+    }
+
     // How far back a term reads: its own index, or that less a constant.
     int Lag(const PExpression<Value>& index, const std::string& name) {
         const std::string written = name + "_(...)";
@@ -2006,7 +2160,8 @@ private:
     // How far an index is from the clause's own: 'n', or that plus constants
     // however they are spelled -- 'n-1', 'n-k-1' in a sum over k.
     int Offset(const PExpression<Value>& index, const std::string& written) {
-        const std::string only = written + ": an index other than " + index_ + " less a constant";
+        const std::string only =
+            written + ": an index other than a whole multiple of " + index_ + " plus a constant";
         if (const auto* ref = dynamic_cast<RefExpression<Value>*>(index.get());
             ref && ref->Name() == index_ && !places_.count(index_))
             return 0;
@@ -2186,6 +2341,113 @@ private:
     // at the first index where every term it reads exists -- which is where
     // the interpreter, asked for the term, would first answer. An input starts
     // with the earliest.
+    // A sequence at another rate, once every sample of its clauses is known:
+    // its phase, the first step at which every sample exists; its base terms
+    // keyed by the step that computes them; its samples as lags of the
+    // input's; its own terms read back, in its own terms.
+    void Rate(const std::string& name, Sequence& sequence) {
+        const std::string head = "cannot compile " + name + ": ";
+        for (const auto& [read, lags] : sequence.reads) {
+            const int period = sequences_.at(read).period;
+            if (read != name && period > 1)
+                throw Refusal(head + read + "_(...): read every step, and " + read +
+                              " is computed every " + std::to_string(period));
+        }
+        if (sequence.period == 1) return;
+        if (!sequence.guarded.empty() || ByCells(*sequence.definition))
+            throw Refusal(head + "a guard or a cell at another rate, for now");
+        if (sequence.bases.empty())
+            throw Refusal(head + "a sequence at another rate with no base clause");
+        for (const auto& [read, lags] : sequence.reads)
+            if (read != name)
+                throw Refusal(head + read + "_(...): read every step, and " + name +
+                              " is computed every " + std::to_string(sequence.period));
+        sequence.first = sequence.bases.begin()->first;
+        int phase      = -sequence.period * sequence.first;
+        for (const auto& [read, offsets] : sequence.samples)
+            phase = std::max(phase, *offsets.rbegin());
+        sequence.phase = phase;
+        std::map<int, std::vector<std::string>> bases;
+        for (auto& [m, cells] : sequence.bases)
+            bases[sequence.period * m + phase] = std::move(cells);
+        sequence.bases = std::move(bases);
+        if (const auto own = sequence.reads.find(name); own != sequence.reads.end()) {
+            sequence.own = own->second;
+            sequence.reads.erase(own);
+        }
+        for (const auto& [read, offsets] : sequence.samples)
+            for (const int b : offsets) sequence.reads[read].insert(phase - b);
+    }
+
+    // Where a hold reads in its sequence's window, from the first step at
+    // which the term it names exists: one lag, or one of two a step apart.
+    void Resolve(const std::string& name, Hold& hold) {
+        const Sequence& held  = sequences_.at(hold.read);
+        const int       a     = hold.a;
+        const int       start = held.bases.begin()->first;
+        hold.from             = std::max(hold.b, a * (held.first - hold.d) + hold.b);
+        for (int n = hold.from; n < std::max(hold.from, start) + 2 * a; ++n) {
+            const int lag = n < start ? -1 : (n - held.phase) / a - (n - hold.b) / a - hold.d;
+            if (lag < 0)
+                throw Refusal("cannot compile " + name + ": " + hold.read +
+                              "_(...): read before it is computed; read the term before it");
+            hold.least = n == hold.from ? lag : std::min(hold.least, lag);
+            hold.most  = n == hold.from ? lag : std::max(hold.most, lag);
+        }
+    }
+
+    static bool Ticks(const Sequence& sequence, int n) {
+        return sequence.period == 1 || (n - sequence.phase) % sequence.period == 0;
+    }
+
+    // ' - k' or ' + k', for an index less a constant.
+    static std::string Less(int k) {
+        return k < 0 ? " + " + std::to_string(-k) : k > 0 ? " - " + std::to_string(k) : "";
+    }
+
+    // A sequence's text with what its rate decides set: the index, the lag
+    // of each sample, and where each hold reads.
+    std::string Rated(std::string text, const Sequence& sequence) const {
+        const auto replace = [&](char open, char close, const auto& with) {
+            for (std::size_t at = text.find(open); at != std::string::npos;
+                 at             = text.find(open, at)) {
+                const std::size_t end = text.find(close, at);
+                const std::string set = with(text.substr(at + 1, end - at - 1));
+                text.replace(at, end - at + 1, set);
+                at += set.size();
+            }
+        };
+        replace('\x12', '\x13', [&](const std::string& name) {
+            const Sequence& own = sequences_.at(name);
+            return own.period == 1 ? std::string("m_->index_")
+                                   : "((m_->index_" + Less(own.phase) + ") / " +
+                                         std::to_string(own.period) + ")";
+        });
+        replace('\x0e', '\x0f', [&](const std::string& b) {
+            return std::to_string(sequence.phase - std::stoi(b));
+        });
+        replace('\x10', '\x11', [&](const std::string& mark) {
+            const std::size_t comma = mark.find(',');
+            const Hold&       hold  = holds_.at(std::stoul(mark.substr(0, comma)));
+            const Sequence&   held  = sequences_.at(hold.read);
+            const std::size_t c     = std::stoul(mark.substr(comma + 1));
+            const std::string a     = std::to_string(hold.a);
+            const std::string lag   = hold.least == hold.most
+                                          ? std::to_string(hold.least)
+                                          : "(m_->index_" + Less(held.phase) + ") / " + a +
+                                              " - (m_->index_" + Less(hold.b) + ") / " + a +
+                                              Less(hold.d);
+            std::string       cell =
+                "m_->" + hold.read + "[" + lag + "]" +
+                (held.rows * held.cols == 1 ? std::string()
+                                            : Subscript(c / held.cols, c % held.cols));
+            if (hold.from > sequence.start)
+                cell = "(m_->index_ < " + std::to_string(hold.from) + " ? NAN : " + cell + ")";
+            return cell;
+        });
+        return text;
+    }
+
     int Starts() {
         std::optional<int> earliest;
         for (auto& [name, sequence] : sequences_) {
@@ -2201,7 +2463,7 @@ private:
         // terms, so a read that could reach one is refused.
         for (const auto& [name, sequence] : sequences_) {
             int first = sequence.start;
-            while (sequence.bases.count(first)) ++first;  // where the general clauses begin
+            while (sequence.bases.count(first)) first += sequence.period;  // the general clauses
             for (const auto& [read, lags] : sequence.reads) {
                 const Sequence& other = sequences_.at(read);
                 if (other.bases.empty() || other.guarded.empty()) continue;
@@ -2256,7 +2518,7 @@ private:
                 const int begins = Exists(read);
                 for (const int lag : lags) {
                     for (int n = sequence.start; n < begins + lag; ++n) {
-                        if (sequence.bases.count(n)) continue;
+                        if (sequence.bases.count(n) || !Ticks(sequence, n)) continue;
                         throw Refusal("cannot compile " + name + ": " + name + "_" +
                                       std::to_string(n) + " reads " + read + "_" +
                                       std::to_string(n - lag) + ", before it starts at " +
@@ -2285,7 +2547,9 @@ private:
     // The first index where some path through a sequence's clauses answers:
     // the guards tried before a clause must be evaluable, and the clause.
     int Answers(const Sequence& sequence) const {
-        if (sequence.guarded.empty()) return From(sequence.reads);
+        int held = std::numeric_limits<int>::min();
+        for (const std::size_t h : sequence.holds) held = std::max(held, holds_[h].from);
+        if (sequence.guarded.empty()) return std::max(held, From(sequence.reads));
         int guards = std::numeric_limits<int>::min();
         int first  = std::numeric_limits<int>::max();
         for (const Guarded& guarded : sequence.guarded) {
@@ -2294,7 +2558,7 @@ private:
         }
         if (sequence.general.front() != "NAN")
             first = std::min(first, std::max(guards, From(sequence.general_reads)));
-        return first;
+        return std::max(held, first);
     }
 
     std::vector<std::string> Order() const {
@@ -2302,6 +2566,9 @@ private:
         for (const auto& [name, sequence] : sequences_) {
             if (!sequence.definition) continue;
             waiting[name];
+            // A hold's lag is counted from the window as the held term's tick
+            // leaves it, so the held sequence comes first.
+            for (const std::size_t h : sequence.holds) waiting[name].insert(holds_[h].read);
             for (const Reads* reads : {&sequence.reads, &sequence.deferred}) {
                 for (const auto& [read, lags] : *reads) {
                     if (!lags.count(0) || !sequences_.at(read).definition) continue;
@@ -2468,11 +2735,18 @@ private:
         };
         std::string arguments;
         for (const std::string& name : inputs) arguments += ", " + name;
-        std::vector<std::string> terms, inputs_n, parameters;
+        std::vector<std::string> terms, inputs_n, parameters, rated;
         for (const std::string& name : fields) {
-            const int depth = sequences_.at(name).depth;
-            terms.push_back(depth > 1 ? name + "\x01(k\x01<=\x01" + std::to_string(depth - 1) + ")"
-                                      : name);
+            const Sequence&   sequence = sequences_.at(name);
+            const int         depth    = sequence.depth;
+            const std::string term =
+                depth > 1 ? name + "\x01(k\x01<=\x01" + std::to_string(depth - 1) + ")" : name;
+            if (sequence.period == 1) {
+                terms.push_back(term);
+                continue;
+            }
+            rated.push_back(term + ", computed at the steps " + std::to_string(sequence.period) +
+                            "*m" + (sequence.phase ? Less(-sequence.phase) : std::string()));
         }
         for (const std::string& name : inputs) inputs_n.push_back(name + "_n");
         for (const auto& [name, parameter] : parameters_)
@@ -2482,6 +2756,9 @@ private:
                                            std::to_string(parameter.cols) + ")");
         std::string text =
             "After a step, m.name[k] is name_(n-k) for each sequence: " + list(terms) + ".";
+        if (!rated.empty())
+            text += " At another rate, m.name[k] is name_(m-k), m its latest term's index: " +
+                    list(rated) + ".";
         text = (inputs.empty() ? "A step takes no input. "
                 : inputs.size() == 1
                     ? "A step takes " + list(inputs_n) + ", the input at its index. "
@@ -2555,6 +2832,9 @@ private:
             if (!sequence.definition && parameters_.count(name))
                 throw Refusal("cannot compile: " + name +
                               " is read both as a value and as a sequence");
+        for (auto& [name, sequence] : sequences_) Rate(name, sequence);
+        for (auto& [name, sequence] : sequences_)
+            for (const std::size_t h : sequence.holds) Resolve(name, holds_[h]);
         const int                      earliest = Starts();
         const std::vector<std::string> order    = Order();
         std::vector<std::string>       fields;
@@ -2568,7 +2848,12 @@ private:
                 for (const auto& [read, lags] : *reads)
                     sequences_.at(read).depth =
                         std::max(sequences_.at(read).depth, *lags.rbegin() + 1);
+            if (!sequence.own.empty())
+                sequence.depth = std::max(sequence.depth, *sequence.own.rbegin() + 1);
         }
+        for (const Hold& hold : holds_)
+            sequences_.at(hold.read).depth =
+                std::max(sequences_.at(hold.read).depth, hold.most + 1);
         // A model's in the order its signature gives them.
         if (model_) {
             const auto at = [&](const std::string& name) {
@@ -2660,23 +2945,36 @@ private:
         out += "static inline void " + module + "_step(" + module + "* m_";
         for (const std::string& name : inputs) out += ", double " + name;
         out += ") {\n    ++m_->index_;\n";
-        for (const std::string& name : fields) {
+        // A sequence's window moves when it computes a term: every step, or
+        // on its ticks.
+        const auto shifted = [&](const std::string& name, const std::string& indent) {
             const Sequence& sequence = sequences_.at(name);
+            std::string     lines;
             for (int k = sequence.depth - 1; k > 0; --k) {
                 const std::string to   = "m_->" + name + "[" + std::to_string(k) + "]";
                 const std::string from = "m_->" + name + "[" + std::to_string(k - 1) + "]";
-                out += sequence.rows * sequence.cols == 1
-                           ? "    " + to + " = " + from + ";\n"
-                           : "    memcpy(" + to + ", " + from + ", sizeof " + to + ");\n";
+                lines += sequence.rows * sequence.cols == 1
+                             ? indent + to + " = " + from + ";\n"
+                             : indent + "memcpy(" + to + ", " + from + ", sizeof " + to + ");\n";
             }
-        }
+            return lines;
+        };
+        for (const std::string& name : fields)
+            if (sequences_.at(name).period == 1) out += shifted(name, "    ");
         for (const std::string& name : inputs) out += "    m_->" + name + "[0] = " + name + ";\n";
         for (const std::string& name : order) {
             const Sequence&   sequence = sequences_.at(name);
             const bool        scalar   = sequence.general.size() == 1;
-            const bool        late     = sequence.start > earliest;
+            const bool        rated    = sequence.period > 1;
+            const bool        late     = sequence.start > earliest || rated;
             const std::string indent   = late ? "        " : "    ";
-            if (late) out += "    if (m_->index_ >= " + std::to_string(sequence.start) + ") {\n";
+            if (late)
+                out += "    if (m_->index_ >= " + std::to_string(sequence.start) +
+                       (rated ? " && (m_->index_" + Less(sequence.phase) + ") % " +
+                                    std::to_string(sequence.period) + " == 0"
+                              : std::string()) +
+                       ") {\n";
+            if (rated) out += shifted(name, indent);
             std::string assignments;
             for (std::size_t c = 0; c < sequence.general.size(); ++c) {
                 assignments += indent + "m_->" + name + "[0]" +
@@ -2727,8 +3025,9 @@ private:
             // not computed again leaves its temporaries unread.
             std::vector<Temporary> temporaries = sequence.temporaries;
             for (Temporary& temporary : temporaries)
-                for (std::string& line : temporary.lines) line = Checked(line, sequence);
-            const std::string checked = Checked(assignments, sequence);
+                for (std::string& line : temporary.lines)
+                    line = Checked(Rated(line, sequence), sequence);
+            const std::string checked = Checked(Rated(assignments, sequence), sequence);
             out += Temporaries(temporaries, checked, indent) + checked;
             if (late) out += "    }\n";
         }
@@ -2736,7 +3035,8 @@ private:
         Compiled compiled{out, earliest, inputs, {}, {}};
         for (const std::string& name : order) {
             const Sequence& sequence = sequences_.at(name);
-            compiled.sequences.push_back({name, sequence.rows, sequence.cols});
+            compiled.sequences.push_back(
+                {name, sequence.rows, sequence.cols, sequence.period, sequence.phase});
             if (clauses_ && (!sequence.guarded.empty() || !sequence.taken.empty()))
                 compiled.guarded.push_back(name);
         }
@@ -2779,6 +3079,7 @@ private:
     std::string                      module_;
     std::set<std::size_t>            inverses_;  // the sizes a helper is needed for
     std::vector<std::string>         limits_;    // a function for each limit walked
+    std::vector<Hold>                  holds_;
     std::map<std::string, std::string> limit_names_;  // each one's name, by its text
     // The sequence a limit's function is walking, while its clauses compile.
     struct Walked {
