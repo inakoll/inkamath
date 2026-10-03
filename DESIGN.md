@@ -2435,6 +2435,31 @@ that exploring seven domains asked of the interpreter, by how many asked.
   anything new: one index reads a cell of the column an affine map gives,
   `tanh` and softmax are `exp` under `lim`, and `i` indexes rows as on
   paper. Per head and per batch, attention needs a tensor of rank 3.
+- **What the conformance suite asks next, by what each unlocks for what it
+  costs**, sized against what landed (one index 57 lines, matrix limits 115,
+  a compiled `lim` 167, guard flips 206, `tex` 237):
+
+  | | cost | to decide first | unlocks |
+  |---|---|---|---|
+  | momentum, Adam, LQR by Riccati | models only | -- | three entries |
+  | one function for identical `lim`s | ~15 lines | -- | smaller headers |
+  | `exp` past 25 | no interpreter code | a prelude of `exp`, `log`, `tanh` in inkamath | activations anywhere |
+  | `tex` of cells and models | ~100 | how bounds and a model's head are set | layers read against the page |
+  | guard flips in cells | ~100-150 | -- | ReLU watched at its threshold |
+  | data from files | small | a tool, or `use data.csv` | real datasets |
+  | several rates | ~250, compiler only | -- | the decimator |
+  | differentiation, forward | ~300-450 | its form, its rule under `lim` | the training half |
+  | tensors of rank 3 | the matrix core rewritten | many | attention per batch and head |
+
+  The order taken: the small ones whenever; differentiation, specified first,
+  for it unlocks most per line; then `tex` of cells and models, through which
+  gradients will be read; then flips in cells; rank 3 last, when attention
+  per batch is what is missing, since one sample or one head is writable now.
+  Differentiation is planned as a transformation of the parsed tree into
+  derivative definitions, evaluated exactly by the interpreter and compiled by
+  the compiler as any definition is, not as the dual numbers `MANIFESTO.md`
+  sketched: a second number type through every template is where C44 and C65
+  broke, and the compiler could not have used it.
 - **Steps and tolerance as options**, when a model asks: a hundred steps is
   short of what a slow filter settles in, and a billionth is loose for a
   well-conditioned step.
