@@ -2580,6 +2580,15 @@ that exploring seven domains asked of the interpreter, by how many asked.
   reads one of two places by the step's parity. A slow sequence is refused,
   for now, with a guard, by cells or without a base clause; a ratio of rates
   that is not whole, `x_(3*m)` beside `y_(floor(2*n/3))`, is not taken.
+- **A base clause that reads a term**, as `y_0 = x_0` starts a filter at
+  its first sample. The interpreter always took it; the compiler refused it,
+  "a term read outside a general clause", as it compiles base clauses first,
+  for their shapes, and reads only an index less a constant. A base term is
+  computed at its own index, so a term it reads is a constant step back from
+  there: a lag like any other, refused where it is ahead or where the
+  sequence read has not started. Found writing `rates.ink`, whose decimator
+  had to start at 0. Specified in `test/compile/seeded.ink`, the decimator
+  restored, and two refusals in `test/cli.cmake`.
 - **Steps and tolerance as options**, when a model asks: a hundred steps is
   short of what a slow filter settles in, and a billionth is loose for a
   well-conditioned step.
