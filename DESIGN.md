@@ -2763,7 +2763,7 @@ that exploring seven domains asked of the interpreter, by how many asked.
   value, a tensor literal, three indices and a definition by three indices
   alike, `cannot compile y: a tensor`. 222 lines of sources.
 
-- **The evaluator's speed, specified** before any of it is built: phase 14's
+- `[partly done]` **The evaluator's speed, specified** before any of it is built: phase 14's
   step 1 resumed, with no change to the language. Training a logistic
   regression by `grad` on 200 rows read from a file takes 1.9 s, by the
   gradient written by hand 0.28 s, and a file of thousands of rows is now
@@ -2855,3 +2855,39 @@ that exploring seven domains asked of the interpreter, by how many asked.
   million steps, would answer. That is a language change and would be
   specified as one. A scalar unwrapped stays dropped, as step 1 measured.
   Benchmarks in ctest would gate on noise, and by the clock alone on layout.
+
+  Built to step 4, and stopped before step 5. The baseline was measured
+  again on the tensors' value type, and each step judged against it; the
+  clock is the best of five:
+
+  | | baseline | final | clock |
+  |---|---|---|---|
+  | `deep` | 859M | 861M | 84 to 80 ms |
+  | `limit` | 1,181M | 878M | 138 to 104 ms |
+  | `harmonic` | 864M | 863M | 75 to 74 ms |
+  | `matrix` | 937M | 937M | 137 to 135 ms |
+  | `hand` | 2,760M | 93M | 285 to 12 ms |
+  | `grad` | 20,155M | 5,689M | 1,827 to 540 ms |
+  | `read` | 85M | 10M | 11 to 3 ms |
+
+  The file read came first: a statement's brackets are counted line by
+  line, and `read`, `train.ink` alone, is a seventh workload so that the
+  quadratic shows if it comes back; 1,600 rows went from 4,153M to 58M.
+  Step 1 kept a literal whose cells are all numbers, its padding included,
+  in its node: `hand` 357M and `grad` 11,966M. Step 2 picks `grad`'s rule
+  by the node's exact `typeid`: `grad` 7,533M, 33M short of its target,
+  since libstdc++ compares two different types by their names. Step 3 keys
+  the memo by the arguments themselves, compared bit for bit as the string
+  was; the key owns the call's arguments, since copying them cost `deep`
+  nearly five per cent: `limit` 878M. Step 4 reads a cell or a row of a name defined by
+  a literal of numbers where step 1 keeps it, for the step the name's
+  evaluation takes: `hand` 93M and `grad` 5,689M.
+
+  Step 5 is stopped. Finding a name is now 1.7% of `deep` and 1.2% of
+  `limit`, which is all a slot can save, and a slot that survives both
+  conflicts above still asks the frame first, which is most of a lookup
+  now. Closures are a rewrite of the evaluator, and of every walk tested at
+  the depth limit, for what is left of `deep` and `limit`: flat, the
+  scalar `Matrix` around each `Number` and the memo, no function over 5%.
+  `matrix` is its products, 65%, and `A` and `B` rebuilt cell by cell,
+  33%, which only the memo rejected above would remove.
