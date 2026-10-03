@@ -2762,3 +2762,85 @@ that exploring seven domains asked of the interpreter, by how many asked.
   slice to a subscript and to the bounds. The compiler refuses a tensor
   value, a tensor literal, three indices and a definition by three indices
   alike, `cannot compile y: a tensor`. 222 lines of sources.
+
+- **The evaluator's speed, specified** before any of it is built: phase 14's
+  step 1 resumed, with no change to the language. Training a logistic
+  regression by `grad` on 200 rows read from a file takes 1.9 s, by the
+  gradient written by hand 0.28 s, and a file of thousands of rows is now
+  writable. Six workloads are in `bench/`, each a transcript, so that a faster
+  wrong answer fails rather than measures: `deep`, `d_200000` filled from its
+  base; `limit`, 3000 limits of `s(a)_n = s(a)_(n-1)*~0.5 + a`, each argument a
+  new sequence; `harmonic`, 400 harmonic numbers exactly; `matrix`, 100
+  products of 20x20 matrices defined by their cells, one of them of
+  fractions; and `hand` and `grad`, 20 steps of the training above, which end
+  on the same weights. Their data is `bench/train.ink`, committed, with the
+  Python that wrote it in its comment, so nothing is generated at build time.
+  `cmake --build build --target bench` replays each under callgrind, or by
+  the clock, best of five, without valgrind; it is not a test, so nothing
+  gates on it. The baseline is master at 43e9fb5, GCC 13.3, RelWithDebInfo, a
+  shared 2.1 GHz Xeon:
+
+  | | instructions | clock | where they go |
+  |---|---|---|---|
+  | `deep` | 835M | 86 ms | flat: 4,200 a term, no function over 5% |
+  | `limit` | 1,123M | 127 ms | 20% building memo keys as strings |
+  | `harmonic` | 860M | 75 ms | the bignum: gcd and allocation |
+  | `matrix` | 862M | 136 ms | 65% the products, 33% `A` and `B` rebuilt cell by cell for each |
+  | `hand` | 2,475M | 246 ms | 86% rebuilding `X` and `y` |
+  | `grad` | 19,003M | 1,762 ms | 38% the same literals, 27% `grad`'s dispatch |
+
+  The profile ordered the work again. `X[r]` evaluates the whole literal `X`
+  to take one row of it, so a step of training is quadratic in the rows, and
+  that, not the tree walk, is most of the training's time. The order, each
+  step measured on the workloads before the next:
+
+  1. **A literal of numbers built once**, kept in its node at its first
+     evaluation that succeeds, and a constant to `grad`. A prototype of 14
+     lines took `hand` to 426M and `grad` to 11,862M, moved nothing else, and
+     left every golden as it was. It reads no name, so it never took a step,
+     and caching it moves no budget. Not folded when parsed: `tex` and the
+     compiler read the literal as written, and `[1/0]` fails where it is read,
+     every time.
+  2. **`grad` dispatched by one virtual call** rather than a chain of up to
+     twenty `dynamic_cast`s per node, which with the type names they compare
+     are 42% of what `grad` has left after step 1. No node class derives from
+     another, so the chain's order decides nothing.
+  3. **A memo key compared without building a string**: an argument's value
+     encoded, its extent written out by `to_string`, at every call. Equality
+     stays exact, so two calls share an entry where they do today.
+  4. **A row or cell of a named matrix read without copying it.** After step
+     1 a read still copies all of `X`, so training stays quadratic; this makes
+     it linear.
+  5. **Slots, then closures**, for the flat remainder of `deep`, `limit` and
+     `matrix`'s cells, as step 1 planned: slots were measured at six per cent
+     at most and come with the symbol table closures need.
+
+  The targets, in instructions against the table: `hand` a fifth after step
+  1 and a tenth after step 4; `grad` 7,500M after step 2; `limit` 950M after
+  step 3; after step 5, `deep` and `limit` a third of what they take when
+  step 4 lands, the low end of the 3-10x quoted above since a `Number` costs
+  what it costs, and `matrix` 700M, its cells a third and its products as
+  they are. No step may make any workload more than one per cent worse,
+  which is what `harmonic` is for. Each commit gives its
+  workloads' counts before and after; the clock is reported beside them and
+  is evidence only where callgrind agrees. A step that misses its target is
+  recorded here with its numbers, not forced.
+
+  What must not move: every golden, the README and every expected header,
+  byte for byte, and every test, under the sanitizers too. The budget takes
+  a step at every reference and every term a series or `grad` walks, as
+  now, so a line gives up at the same step and nests as deep before it
+  fails; a cache that skips steps is a language change. The memo remembers
+  the same calls and only those, evicts in the same two generations, is
+  cleared where it is now, and stores nothing that threw. An error is the
+  same message, and the first one raised: operands are evaluated in the
+  order they are today. `?`, `tex`, `--compile` and `--check` read the
+  parsed tree, which stays; closures are beside it and cleared with the
+  memo.
+
+  Rejected: memoising a plain definition, one line that would have done
+  most of step 1 and `matrix`'s cells besides; but a hit skips the steps
+  its body took, so `sum_(k=1)^400 A*A`, which today gives up after a
+  million steps, would answer. That is a language change and would be
+  specified as one. A scalar unwrapped stays dropped, as step 1 measured.
+  Benchmarks in ctest would gate on noise, and by the clock alone on layout.
