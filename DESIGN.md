@@ -2810,7 +2810,11 @@ that exploring seven domains asked of the interpreter, by how many asked.
      stays exact, so two calls share an entry where they do today.
   4. **A row or cell of a named matrix read without copying it.** After step
      1 a read still copies all of `X`, so training stays quadratic; this makes
-     it linear.
+     it linear. Reading the file is quadratic too, outside the evaluator:
+     `Statements` counts the brackets of the whole statement again at each
+     line of a literal, so `use train` alone is 85M, a fifth of what step 1
+     leaves of `hand`, and 4,823M for 1,600 rows. Counting each line's
+     brackets as it is read, three lines, took that to 66M in a trial.
   5. **Slots, then closures**, for the flat remainder of `deep`, `limit` and
      `matrix`'s cells, as step 1 planned: slots were measured at six per cent
      at most and come with the symbol table closures need.
