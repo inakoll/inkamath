@@ -211,6 +211,9 @@ private:
         int                                     depth = 1;
         int                                     start = 0;
         std::vector<Temporary>                  temporaries;  // in the order declared
+        // Of a term chosen cell by cell with a guard, the clause each cell
+        // takes, as the guarded clause's 'name_clause_' is.
+        std::vector<std::string> taken;
     };
 
     // A term read back, by its mark: what it is, who reads it, what computing
@@ -1281,11 +1284,13 @@ private:
     // whole's, else 0. Each cell is the chain the step tests in that order,
     // with its row and column bound as constants, so that a guard reading only
     // them folds away and one reading a term is tested where the cell is.
+    // With 'taken', each cell's clause too: one more than its place, or 0
+    // where none of the clauses for every cell gives it.
     template <typename Fits>
-    std::pair<Code, std::vector<std::string>> TermCells(const std::string&         name,
-                                                        const Reference<Value>&    definition,
-                                                        Fits                       fits,
-                                                        const std::optional<Code>& whole) {
+    std::pair<Code, std::vector<std::string>> TermCells(const std::string&      name,
+                                                        const Reference<Value>& definition,
+                                                        Fits fits, const std::optional<Code>& whole,
+                                                        std::vector<std::string>* taken = nullptr) {
         std::optional<Extent> extent;
         if (whole) extent = Extent{whole->rows, whole->cols};
         for (const Clause<Value>& clause : definition.Clauses()) {
@@ -1305,9 +1310,11 @@ private:
         std::vector<std::string> cells;
         for (std::size_t row = 1; row <= shape.rows; ++row) {
             for (std::size_t col = 1; col <= shape.cols; ++col) {
-                std::string                chain;
+                std::string                chain, pick;
                 std::optional<std::string> last;
+                int                        picked  = 0;
                 const auto                 settles = [&](const Clause<Value>& clause) {
+                    const int place = static_cast<int>(&clause - definition.Clauses().data()) + 1;
                     const ParametersDefinition<Value>& p = clause.parameters;
                     const std::string                  outer =
                         std::exchange(index_, p.general() ? p.index_name() : "");
@@ -1325,10 +1332,13 @@ private:
                     if (!value) return false;
                     if (!value->Scalar())
                         throw Reason("a cell of " + name + " must be a single value");
-                    if (condition->empty())
-                        last = value->cells[0].text;
-                    else
+                    if (condition->empty()) {
+                        last   = value->cells[0].text;
+                        picked = place;
+                    } else {
                         chain += *condition + " ? " + value->cells[0].text + " : ";
+                        pick += *condition + " ? " + std::to_string(place) + " : ";
+                    }
                     return condition->empty();
                 };
                 bool settled = false;
@@ -1355,6 +1365,7 @@ private:
                     }
                 if (!last) last = whole ? whole->At(row - 1, col - 1).text : "0.0";
                 cells.push_back(chain + *last);
+                if (taken) taken->push_back(pick + std::to_string(picked));
             }
         }
         return {shape, cells};
@@ -1420,8 +1431,15 @@ private:
                 whole                   = Emit(clause.expression);
                 index_                  = outer;
             }
-            const auto every    = [](const Clause<Value>& c) { return c.parameters.general(); };
-            auto [shape, cells] = TermCells(name, definition, every, whole);
+            const auto every = [](const Clause<Value>& c) { return c.parameters.general(); };
+            const bool guarded =
+                clauses_ && std::any_of(definition.Clauses().begin(), definition.Clauses().end(),
+                                        [](const Clause<Value>& c) {
+                                            return c.parameters.general() && c.parameters.cells() &&
+                                                   c.parameters.guarded();
+                                        });
+            auto [shape, cells] =
+                TermCells(name, definition, every, whole, guarded ? &sequence.taken : nullptr);
             clause_reads_       = nullptr;
             Shape(sequence, shape);
             // One term's own cells, where no base term gives the rest: read
@@ -2593,6 +2611,9 @@ private:
                                    Dimensions(sequence.rows, sequence.cols)});
             if (clauses_ && !sequence.guarded.empty())
                 members.push_back({"int", name + "_clause_", ""});
+            if (!sequence.taken.empty())
+                members.push_back(
+                    {"int", name + "_clause_", "[" + std::to_string(sequence.taken.size()) + "]"});
         }
         out +=
             "typedef struct " + module + " {\n" + Nested(members, "    ") + "} " + module + ";\n\n";
@@ -2688,6 +2709,15 @@ private:
                 if (!sequence.guarded.empty()) assignments += before(From(sequence.general_reads));
                 assignments += sequence.general[c] + ";\n";
             }
+            // Ahead of the cells too, a cell's clause where no base term stands.
+            std::string picks;
+            for (std::size_t c = 0; c < sequence.taken.size(); ++c) {
+                picks += indent + "m_->" + name + "_clause_[" + std::to_string(c) + "] = ";
+                for (const auto& [index, base] : sequence.bases)
+                    picks += "m_->index_ == " + std::to_string(index) + " ? 0 : ";
+                picks += sequence.taken[c] + ";\n";
+            }
+            assignments.insert(0, picks);
             // Resolved before what is used is known: a term read back that is
             // not computed again leaves its temporaries unread.
             std::vector<Temporary> temporaries = sequence.temporaries;
@@ -2702,7 +2732,8 @@ private:
         for (const std::string& name : order) {
             const Sequence& sequence = sequences_.at(name);
             compiled.sequences.push_back({name, sequence.rows, sequence.cols});
-            if (clauses_ && !sequence.guarded.empty()) compiled.guarded.push_back(name);
+            if (clauses_ && (!sequence.guarded.empty() || !sequence.taken.empty()))
+                compiled.guarded.push_back(name);
         }
         return compiled;
     }

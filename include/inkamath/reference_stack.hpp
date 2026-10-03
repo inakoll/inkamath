@@ -128,7 +128,10 @@ public:
 
     // Told of each guard of a general clause a term's selection asks, and
     // whether it held, while its index is bound: what --check listens with.
-    std::function<void(const Reference<T>&, const Clause<T>&, int, bool, EvaluationVisitor<T>&)>
+    // The row and column are a cell's, where the term is chosen cell by cell,
+    // and 0 where it is chosen whole.
+    std::function<void(const Reference<T>&, const Clause<T>&, int, int, int, bool,
+                       EvaluationVisitor<T>&)>
         guards;
 
     [[nodiscard]] Scope<T>&       Target() const { return *target_; }

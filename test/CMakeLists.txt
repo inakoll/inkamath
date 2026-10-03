@@ -71,6 +71,7 @@ endforeach()
 # drifts from it, and its program says where and exits with a failure.
 # Each as file:instance.
 foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brink drift:ledge
+                         drift:rift
                          delay:fir newton:stiff logistic:gate softmax:cls steady:mark
                          rnn:rnn attention:head)
     string(REPLACE ":" ";" checked ${checked})
@@ -116,10 +117,13 @@ set_tests_properties(check_brink_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^brink: 100 steps from 0, against exact values\nbrink\\.g: at 1 the compiled step takes 'g_n \\| d_n < c - w = 1' and the interpreter 'g_n = 0'; the guard of the first is exactly on its threshold\nbrink\\.d: [0-9.e+-]+ at 9, where the interpreter gives 0\\.10000000000000001\nbrink\\.g: 1 at 1, where the interpreter gives 0\n$")
 set_tests_properties(check_ledge_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^ledge: 100 steps from 0, against exact values\nledge\\.g: at 6 the compiled step takes 'g_n \\| d_n < c - w = 1' and the interpreter 'g_n = 0'; the guard of the first is 1e-12 from its threshold\n")
+set_tests_properties(check_rift_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^rift: 100 steps from 0, against exact values\nrift\\.g\\[1,1\\]: at 1 the compiled step takes 'g_n\\[j<=2\\] \\| d_n\\[j\\] < c\\*j = 1' and the interpreter 'g_n\\[j<=2\\] = 0'; the guard of the first is exactly on its threshold\nrift\\.d\\[1,1\\]: [0-9.e+-]+ at 9, where the interpreter gives 0\\.10000000000000001\nrift\\.g\\[1,1\\]: 1 at 1, where the interpreter gives 0\n$")
 add_test(NAME check_calm COMMAND check_calm)
 add_test(NAME check_wild COMMAND check_wild)
 add_test(NAME check_brink COMMAND check_brink)
-set_tests_properties(check_wild check_brink PROPERTIES WILL_FAIL ON)
+add_test(NAME check_rift COMMAND check_rift)
+set_tests_properties(check_wild check_brink check_rift PROPERTIES WILL_FAIL ON)
 
 # Random models, compiled and held to the interpreter's answers: the generator
 # runs both at build time and writes one C file, built and run like the others.

@@ -2529,6 +2529,15 @@ that exploring seven domains asked of the interpreter, by how many asked.
   `test/data/prelude.ink`, with a logistic regression trained by `grad` on
   its log loss, held to the gradient written by hand and to the weights
   NumPy gives; it passed as written, and no golden moved.
+- `[done]` **Guard flips in cells.** `--check` reported the first step whose compiled
+  guard took another clause only for terms chosen whole; a term chosen cell
+  by cell, a ReLU on each cell, showed only the values that followed. Each
+  cell's guards are asked alone, so each cell is reported by its place:
+  `rift` in `test/compile/drift.ink` is `brink` cell by cell, and its report
+  is specified in `test/CMakeLists.txt`. The interpreter's hook is told the
+  cell; a compiled term chosen by cells keeps `name_clause_[cells]`, each
+  cell's chain of guards beside its chain of values; and `--check` makes one
+  entry per cell, so the report of a flip is the one it was.
 - **Steps and tolerance as options**, when a model asks: a hundred steps is
   short of what a slow filter settles in, and a billionth is loose for a
   well-conditioned step.
