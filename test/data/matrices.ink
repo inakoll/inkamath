@@ -170,7 +170,7 @@ q_n = r_n[1,1]
 
 # A matrix defined by its cells: the brackets name the row and the column and
 # bound them, which is the size, and the right-hand side is any cell. The names
-# here are j and k because i is the imaginary unit (DESIGN.md, phase 14).
+# here are j and k; i would do as well, shadowing the unit (imaginary.ink).
 >> I[j<=2, k<=2] = j == k
 I[j<=2, k<=2] = j == k
 

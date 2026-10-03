@@ -381,14 +381,6 @@ void Interpreter<T,U>::Lexer(const std::string& s)
                 Fail("unexpected character '", s[i], "'");
             }
             break;
-        case 'i':
-            // The imaginary unit only when it is not the start of a longer
-            // name: 'i*2' is imaginary, 'ii' and 'index' are identifiers.
-            if(i + 1 < s.length() && std::isalnum(static_cast<unsigned char>(s[i+1])))
-                Reference_Lexer(s,i);
-            else
-                this->Number_Lexer(s,i);
-            break;
         case '#': // inkamath comments
             // Not a return: a line that is only a comment must still reach
             // the empty check below, or the parser starts on no tokens.

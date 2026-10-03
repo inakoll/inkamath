@@ -1,5 +1,6 @@
 # 'i' is the imaginary unit, and a name, as 'pi' and 'e' are (DESIGN.md, next
-# in line). A name bound in a scope of its own -- a sum's index, a cell's row
+# in line). This was the specification, and every entry passes as it was
+# written. A name bound in a scope of its own -- a sum's index, a cell's row
 # or column, a parameter, a sequence's index -- shadows it there, as any local
 # shadows a global, so a paper's sum over i reads as it is written. Unlike
 # 'pi', it cannot be defined again: an answer is printed outside every such
