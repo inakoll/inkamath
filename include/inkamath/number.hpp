@@ -272,9 +272,11 @@ public:
     static bool parse(Number& num, const char* begin, char*& end) {
         double     value = 0;
         const bool read  = numeric_interface<double>::parse(value, begin, end);
-        if (*end == numeric_interface<Number>::complex_char()) {
+        // The unit alone: '2i' would be a product without its operator, and
+        // twice the unit where a sum over i is read.
+        if (!read && *end == numeric_interface<Number>::complex_char()) {
             ++end;
-            num = Number(inexact_type(0, read ? value : 1));
+            num = Number(inexact_type(0, 1));
             return true;
         }
         if (!read) return false;

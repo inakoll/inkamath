@@ -2423,7 +2423,10 @@ that exploring seven domains asked of the interpreter, by how many asked.
   `test/data/imaginary.ink`, and no other recorded output moved: the lexer no
   longer makes a number of `i` alone, which costs the eight lines that did,
   the built-ins gain it as `pi` is gained, and a global definition of it is
-  refused where every global definition is made. `2i` is still a literal.
+  refused where every global definition is made. `2i` was a literal, the one
+  juxtaposition the parser read, and inside a sum over `i` it was twice the
+  unit where a paper means twice the index; it is now refused as `2n` is,
+  `2*i` being the product either way. Nothing recorded wrote it.
   `test/compile/logistic.ink` now sums over `i`, as its paper does.
 - **Steps and tolerance as options**, when a model asks: a hundred steps is
   short of what a slow filter settles in, and a billionth is loose for a

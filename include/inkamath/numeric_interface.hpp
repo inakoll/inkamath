@@ -238,18 +238,12 @@ struct numeric_interface_imp<std::complex<T>,false>
         T a = zero;
         bool ret = numeric_interface<T>::parse(a,begin,end);
 
-        if(*end == numeric_interface<std::complex<T> >::complex_char())
-        {
+        // The unit alone, as Number::parse reads it.
+        if (!ret && *end == numeric_interface<std::complex<T>>::complex_char()) {
             ++end;
-            if(!ret)
-            {
-                a = numeric_interface<T>::one();
-                ret = true;
-            }
-            num = std::complex<T>(zero,a);
-        }
-        else
-        {
+            num = std::complex<T>(zero, numeric_interface<T>::one());
+            return true;
+        } else {
             num = std::complex<T>(a,zero);
         }
         return ret;

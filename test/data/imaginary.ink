@@ -59,3 +59,14 @@ error: i is the imaginary unit, so it cannot be defined
 
 >> i(x) = x
 error: i is the imaginary unit, so it cannot be defined
+
+# A number written against it is not a product, here as anywhere: on paper
+# '2i' in a sum over i is twice the index, and it was twice the unit.
+>> 2i
+error: unexpected 'i' -- the operator '*' is probably missing
+
+>> sum_(i=1)^3 2i
+error: unexpected 'i' -- the operator '*' is probably missing
+
+>> sum_(i=1)^3 2*i
+12
