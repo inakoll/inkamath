@@ -74,7 +74,7 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brin
                          drift:rift
                          delay:fir newton:stiff logistic:gate softmax:cls steady:mark
                          rnn:rnn attention:head momentum:ball adam:fit lqr:gain
-                         rates:pairs rates:odd)
+                         rates:pairs rates:odd seeded:warm)
     string(REPLACE ":" ";" checked ${checked})
     list(GET checked 0 file)
     list(GET checked 1 instance)
@@ -111,6 +111,8 @@ set_tests_properties(check_pairs_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^pairs: 100 steps from 0, against exact values\n(pairs\\.[a-z]+: within 0\n)+$")
 set_tests_properties(check_odd_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^odd: 100 steps from 1, against exact values\n(odd\\.[a-z]+: within 0\n)+$")
+set_tests_properties(check_warm_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^warm: 100 steps from 0, against exact values\n(warm\\.[a-z]+: within [0-9.e+-]+\n)+$")
 set_tests_properties(check_rnn_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^rnn: 100 steps from 0, against exact values until 1 and inexact ones from there\n(rnn\\.[a-z]+: within [0-9.e+-]+\n)+$")
 set_tests_properties(check_head_report PROPERTIES PASS_REGULAR_EXPRESSION

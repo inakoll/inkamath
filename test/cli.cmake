@@ -236,6 +236,15 @@ set(stderr "")
 set(exit 1)
 check(compile_rates_refused)
 
+# A base term is computed at its own index, so it reads a term from there
+# back, and only where that term's sequence has started.
+file(WRITE "${OUT}/seeds.ink" "y_0 = x_1\ny_n = y_(n-1) + x_n\na_1 = 1\na_n = a_(n-1) + 1\nb_0 = a_0\nb_n = b_(n-1)\n")
+set(args --compile seeds.ink)
+set(stdout "cannot compile b: b_0 reads a_0, before it starts at 1\ncannot compile y: x_(...): a term after the one being computed\n")
+set(stderr "")
+set(exit 1)
+check(compile_base_reads_refused)
+
 set(args --compile model.ink)
 file(WRITE "${OUT}/model.ink" "a_0 = 1\na_n = a_(n-1) + n\n")
 set(stdout "")

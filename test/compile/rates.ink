@@ -5,10 +5,9 @@
 # The step is the input's, and a term of y is computed on every second one,
 # the first at which the samples it reads exist: m at step 2*m.
 #
-# y_0 is 0 and not x_0, as no base clause reads a term when compiled. What
-# the compiler refuses, by name, is in test/cli.cmake.
+# What the compiler refuses, by name, is in test/cli.cmake.
 halve(x_n) = {
-    y_0 = 0
+    y_0 = x_0
     y_m = (x_(2*m - 1) + x_(2*m))/2
     z_n = y_(floor(n/2))
     w_n = y_(floor(n/2) - 1)

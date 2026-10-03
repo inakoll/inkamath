@@ -190,6 +190,12 @@ private:
     // A guarded clause, and what its guard and its value each read: its guard
     // is evaluated wherever the chain reaches it, its value only where it holds,
     // so each has its own index from which it can be.
+    // A term a base clause reads: 'x_at' in the base clause of 'index'.
+    struct Seed {
+        std::string read;
+        int         index, at, lag = 0;
+    };
+
     struct Guarded {
         std::string              condition;
         std::vector<std::string> cells;
@@ -223,6 +229,10 @@ private:
         std::map<std::string, std::set<int>> samples;
         std::set<int>                        own;
         std::vector<std::size_t>             holds;
+        // The terms its base clauses read, 'x_k' in the base clause of index
+        // m, each a lag once the step computing that base is known.
+        std::vector<Seed> seeds;
+        Reads             seeded;
     };
 
     // A read of the latest term of a sequence at another rate, 'y_(floor((n -
@@ -726,7 +736,11 @@ private:
             if (ByCells(*sequence.definition)) return BaseTerms(name, sequence);
             for (const Clause<Value>& clause : sequence.definition->Clauses()) {
                 if (clause.parameters.general()) continue;
-                const Code code = Emit(clause.expression);
+                Sequence* const outer = std::exchange(basing_, &sequence);
+                const int       base  = std::exchange(base_, clause.parameters.index());
+                const Code      code  = Emit(clause.expression);
+                basing_               = outer;
+                base_                 = base;
                 Shape(sequence, code);
                 sequence.bases[clause.parameters.index()] = Texts(code);
             }
@@ -1409,10 +1423,14 @@ private:
                 return c.parameters.indexed() && !c.parameters.general() &&
                        c.parameters.index() == index;
             };
+            Sequence* const     outer = std::exchange(basing_, &sequence);
+            const int           base  = std::exchange(base_, index);
             std::optional<Code> whole;
             for (const Clause<Value>& clause : definition.Clauses())
                 if (at(clause) && !clause.parameters.cells()) whole = Emit(clause.expression);
             const auto [shape, cells] = TermCells(name, definition, at, whole);
+            basing_                   = outer;
+            base_                     = base;
             for (const Clause<Value>& clause : definition.Clauses()) {
                 const ParametersDefinition<Value>& every = clause.parameters;
                 if (!every.general() || !every.cells() || !every.row_name().empty()) continue;
@@ -1889,7 +1907,7 @@ private:
             return Answer(Call(key, *found.definition, call, nullptr));
         }
         if (limit_) throw Reason(key + "_...: another sequence's term in a limit's terms");
-        if (!reading_) throw Reason(key + "_...: a term read outside a general clause");
+        if (!reading_ && !basing_) throw Reason(key + "_...: a term read outside a general clause");
         const Reference<Value>* definition = found.definition;
         if (definition && !IsSequence(*definition)) throw Reason(key + " is not a sequence");
         Sequence& read = sequences_[key];
@@ -1897,6 +1915,7 @@ private:
             Unreserved(key);
             read.rows = read.cols = 1;
         }
+        if (!reading_) return Answer(Seeded(key, read, call.subexpr()));
         if (const auto sample = Sampled(call.subexpr()))
             return Answer(Sample(key, read, sample->first, sample->second));
         if (const auto hold = Held(call.subexpr())) return Answer(Holding(key, read, *hold));
@@ -2094,6 +2113,51 @@ private:
             }
         }
         return std::nullopt;
+    }
+
+    // A term a base clause reads, at a constant index: a lag back from the
+    // step that computes the base, set when the step is written.
+    Code Seeded(const std::string& key, Sequence& read, const PExpression<Value>& index) {
+        const auto at = Constant(index);
+        if (!at) throw Reason(key + "_(...): an index other than a constant, in a base clause");
+        Sequence* const seeding = basing_;
+        const int       base    = base_;
+        Bases(key);
+        if (!read.rows) Compile(key);
+        seeding->seeds.push_back({key, base, *at});
+        Code code;
+        code.rows = read.rows;
+        code.cols = read.cols;
+        const std::string place =
+            "m_->" + key + "[\x19" + std::to_string(seeding->seeds.size() - 1) + "\x1a]";
+        for (std::size_t i = 0; i < code.rows; ++i)
+            for (std::size_t j = 0; j < code.cols; ++j)
+                code.cells.push_back(
+                    Atom(code.rows * code.cols == 1 ? place : place + Subscript(i, j)));
+        return code;
+    }
+
+    // Each base's reads as lags, once the steps computing the bases are known
+    // and where each sequence read starts.
+    void Seeds(const std::string& name, Sequence& sequence) {
+        for (Seed& seed : sequence.seeds) {
+            const Sequence& read = sequences_.at(seed.read);
+            const int       step = sequence.period * seed.index + sequence.phase;
+            seed.lag             = step - seed.at;
+            if (seed.lag < 0)
+                throw Refusal("cannot compile " + name + ": " + seed.read +
+                              "_(...): a term after the one being computed");
+            if (read.period != 1)
+                throw Refusal("cannot compile " + name + ": " + seed.read +
+                              "_(...): read every step, and " + seed.read + " is computed every " +
+                              std::to_string(read.period));
+            if (seed.at < read.start)
+                throw Refusal("cannot compile " + name + ": " + name + "_" +
+                              std::to_string(seed.index) + " reads " + seed.read + "_" +
+                              std::to_string(seed.at) + ", before it starts at " +
+                              std::to_string(read.start));
+            sequence.seeded[seed.read].insert(seed.lag);
+        }
     }
 
     // A sample read: its lag is the phase less b, known once every sample
@@ -2366,6 +2430,8 @@ private:
         int phase      = -sequence.period * sequence.first;
         for (const auto& [read, offsets] : sequence.samples)
             phase = std::max(phase, *offsets.rbegin());
+        for (const Seed& seed : sequence.seeds)
+            phase = std::max(phase, seed.at - sequence.period * seed.index);
         sequence.phase = phase;
         std::map<int, std::vector<std::string>> bases;
         for (auto& [m, cells] : sequence.bases)
@@ -2422,6 +2488,9 @@ private:
             return own.period == 1 ? std::string("m_->index_")
                                    : "((m_->index_" + Less(own.phase) + ") / " +
                                          std::to_string(own.period) + ")";
+        });
+        replace('\x19', '\x1a', [&](const std::string& seed) {
+            return std::to_string(sequence.seeds.at(std::stoul(seed)).lag);
         });
         replace('\x0e', '\x0f', [&](const std::string& b) {
             return std::to_string(sequence.phase - std::stoi(b));
@@ -2569,7 +2638,7 @@ private:
             // A hold's lag is counted from the window as the held term's tick
             // leaves it, so the held sequence comes first.
             for (const std::size_t h : sequence.holds) waiting[name].insert(holds_[h].read);
-            for (const Reads* reads : {&sequence.reads, &sequence.deferred}) {
+            for (const Reads* reads : {&sequence.reads, &sequence.deferred, &sequence.seeded}) {
                 for (const auto& [read, lags] : *reads) {
                     if (!lags.count(0) || !sequences_.at(read).definition) continue;
                     if (read == name)
@@ -2836,6 +2905,7 @@ private:
         for (auto& [name, sequence] : sequences_)
             for (const std::size_t h : sequence.holds) Resolve(name, holds_[h]);
         const int                      earliest = Starts();
+        for (auto& [name, sequence] : sequences_) Seeds(name, sequence);
         const std::vector<std::string> order    = Order();
         std::vector<std::string>       fields;
         for (const Early& early : earlies_)
@@ -2844,7 +2914,7 @@ private:
                     early.reader->deferred[read].insert(lags.begin(), lags.end());
         for (auto& [name, sequence] : sequences_) {
             if (!sequence.definition) fields.push_back(name);
-            for (const Reads* reads : {&sequence.reads, &sequence.deferred})
+            for (const Reads* reads : {&sequence.reads, &sequence.deferred, &sequence.seeded})
                 for (const auto& [read, lags] : *reads)
                     sequences_.at(read).depth =
                         std::max(sequences_.at(read).depth, *lags.rbegin() + 1);
@@ -3080,6 +3150,8 @@ private:
     std::set<std::size_t>            inverses_;  // the sizes a helper is needed for
     std::vector<std::string>         limits_;    // a function for each limit walked
     std::vector<Hold>                  holds_;
+    Sequence*                          basing_ = nullptr;  // whose base clause is compiled, if one
+    int                                base_   = 0;        // and its index
     std::map<std::string, std::string> limit_names_;  // each one's name, by its text
     // The sequence a limit's function is walking, while its clauses compile.
     struct Walked {
