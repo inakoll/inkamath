@@ -2388,6 +2388,18 @@ that exploring seven domains asked of the interpreter, by how many asked.
   function of its own, so `logistic.ink`'s four sigmoids are four identical
   ones; and the series behind `exp` needs more than its hundred terms past
   about 25, where a model would reduce its argument first.
+- **`i` a name a bound one shadows.** A paper's samples are `x_i` and its
+  sums run over `i`, which was the imaginary unit here and could be neither:
+  the lexer made it a number. It becomes a built-in name, as `pi` and `e`
+  are, so a sum's index, a cell's row or column, a parameter or a sequence's
+  index named `i` shadows it in its own scope. Unlike `pi`, it cannot be
+  defined again. A setting choosing the unit's name was weighed and declined:
+  the same text would mean what a mode said, and a printed answer would need
+  the session to be read. Shadowing ends where its scope does, and an answer
+  is printed outside every one, so its `i` is always the unit; inside a sum
+  over `i`, the unit is a name defined outside it, `j = i`, as an engineer
+  writes it. Specified in `test/data/spec/imaginary.ink`, 12 of its 16
+  entries failing.
 - **Steps and tolerance as options**, when a model asks: a hundred steps is
   short of what a slow filter settles in, and a billionth is loose for a
   well-conditioned step.
