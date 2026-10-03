@@ -1598,6 +1598,8 @@ closures need one anyway, and can bring it.
 | C69 `[fixed]` | **A long recurrence failed at 256 deep, which was neither the cause nor true.** Phase 14 fills a sequence from its base up so that each term finds the one before it remembered, and two things undid that past a few hundred thousand terms. The step budget counted the whole fill as one evaluation, so `g_600000` gave up at the millionth step; and a full memo was dropped whole, which phase 9 could call harmless because nothing then relied on it, so `ma_60000`, which reads `mb` as `mb` reads `ma`, lost the other sequence's latest term at the hundred-thousandth entry and nested down again. Either way the fill failed and reported the depth. The memo now keeps two generations of half the size, dropping the older when the newer fills, so the latest terms of every sequence survive at no cost per entry; each filled term has the step budget a line of its own would have, since a fill stands for asking them in order; and a fill goes ten million terms from its base at most, about three seconds, so that a slip such as `g_2000000000` says how far it is rather than hanging the session. A term that reads back further than fifty thousand entries of the memo can still be lost. |
 | C70 `[fixed]` | **A guarded clause with an index left the value it followed.** An index turns a value into a sequence, so an unguarded one drops the plain clause; a guarded one did not, and after `r = 5` and `r_n \| n > 0 = 1` the name was both, `r` answering 5 and `r_1` answering 1. The interpreter coped, and the compiler, which asks a definition's first clause whether it is a sequence, took it for the value and compiled nothing. Found through the built-in `e`: `e_n[j<=2, k<=2] \| j == k = n` is only guarded clauses, and left Euler's number beside them. Any clause with an index drops the value now. `sequences.ink` says so; nothing else moved. |
 | C71 `[fixed]` | **A compiled step started a term later than the interpreter where a guard decides what the term it reads back reads.** With `a_n \| n/8 - 3/4 > 2 = u_(n-1) + ...`, `a_n = 1/8` and `b_n = a_(n-1)/2` without a base, the interpreter answers `b_0` from `a_(-1)`, where the guard fails and the constant clause reads nothing. The compiler started `b` where every term `a` might read exists, so at 1, and left `b_0` at 0; it computed a term again at an earlier index only for a closed form, which reads no term at all. Found by the random models under another seed, and older than phase 15. Now a sequence with no base clause begins, for its readers, wherever some path through its clauses answers, and a reader that needs one of its terms before the window holds it computes the term again at that index, its guards tried in order and each read checked where it is read, NaN before it exists as the interpreter reports it. Where no reader needs it the step is as it was, so no header compiled before moved; `test/compile/back.ink` holds both cases. |
+| C72 `[kept]` | **A limit's derivative where its terms' derivatives converge too slowly near the point.** `grad` takes a limit's derivative as the limit of its terms' derivatives, which holds where those converge uniformly near the point, and a single point cannot show that they do. `h(x)_n = h(x)_(n-1)/(1 + x^2)` from `h(x)_0 = x` tends to 0 for every x, so its limit's derivative is 0; at 0 every term's derivative is 1, and `grad` answers 1. Found by the review of the specification; `grad.ink` records the wrong answer so that it cannot change unseen. |
+| C73 `[fixed]` | **`grad`'s checks for a jump read slopes, so a tangent passed.** A comparison or a guard at its threshold, `floor` at a whole number and an exponent were refused only where a first derivative was not zero, so `grad_(x = 0) (x^2 > 0)` answered 0 at a jump, a clause `x^2 == 0` gave its slope at the one point it holds, `2^((x-1)^2)` answered 0 at 1 and was refused at 2, and the same comparison under a nested `grad` was refused. Found by the review of the design. Whether a derivative is there at all is what is asked now. It refuses what is flat where the argument moves and lands on a whole number, as `floor(x^2)` at 0 does, which `grad.ink` records: a refusal over a silent wrong answer. |
 
 **Measure instructions, not the clock.** One of those changes made the matrix
 workload 20 per cent slower by the clock and not by a single instruction: with
@@ -2435,6 +2437,79 @@ that exploring seven domains asked of the interpreter, by how many asked.
   anything new: one index reads a cell of the column an affine map gives,
   `tanh` and softmax are `exp` under `lim`, and `i` indexes rows as on
   paper. Per head and per batch, attention needs a tensor of rank 3.
+- **What the conformance suite asks next, by what each unlocks for what it
+  costs**, sized against what landed (one index 57 lines, matrix limits 115,
+  a compiled `lim` 167, guard flips 206, `tex` 237):
+
+  | | cost | to decide first | unlocks |
+  |---|---|---|---|
+  | momentum, Adam, LQR by Riccati | models only | -- | three entries |
+  | one function for identical `lim`s | ~15 lines | -- | smaller headers |
+  | `exp` past 25 | no interpreter code | a prelude of `exp`, `log`, `tanh` in inkamath | activations anywhere |
+  | `tex` of cells and models | ~100 | how bounds and a model's head are set | layers read against the page |
+  | guard flips in cells | ~100-150 | -- | ReLU watched at its threshold |
+  | data from files | small | a tool, or `use data.csv` | real datasets |
+  | several rates | ~250, compiler only | -- | the decimator |
+  | differentiation, forward | ~300-450 | its form, its rule under `lim` | the training half |
+  | tensors of rank 3 | the matrix core rewritten | many | attention per batch and head |
+
+  The order taken: the small ones whenever; differentiation, specified first,
+  for it unlocks most per line; then `tex` of cells and models, through which
+  gradients will be read; then flips in cells; rank 3 last, when attention
+  per batch is what is missing, since one sample or one head is writable now.
+  Differentiation is planned as a transformation of the parsed tree into
+  derivative definitions, evaluated exactly by the interpreter and compiled by
+  the compiler as any definition is, not as the dual numbers `MANIFESTO.md`
+  sketched: a second number type through every template is where C44 and C65
+  broke, and the compiler could not have used it.
+- `[done]` **Differentiation, `grad_(x = point) expression`**, the partial
+  derivative of an expression with respect to a name at a point, bound as a
+  sum binds its index: the point read where `grad` is written, the name only
+  in the expression. A call's form was dropped, since its first argument would
+  have been read in a scope its second opens. A derivative at a parameter's
+  point, `df(x) = grad_(t = x) f(t)`, is the derivative as a function. A
+  single value with respect to a matrix is shaped as the matrix, a matrix with
+  respect to a single value as itself; a Jacobian is refused, and so is
+  differentiating through an instance, for now. What would be silently 0 is
+  refused: an expression that never reads the name, and a definition that
+  reads the global of the name, which `grad`'s name does not reach. A
+  definition in cases takes the slope of the clause that holds at the point,
+  one side of a threshold, so the order of guards decides a ReLU's slope at
+  0; a clause that holds only at the point (`==`) is refused, as are `floor`
+  and a comparison where they jump, and a power whose derivative is infinite.
+  An exponent that changes with the name is refused unless the base is the
+  built-in `e`, since any other needs a logarithm. A matrix power is a product
+  of factors that do not commute, its inverse differentiated as one. A
+  limit's derivative is the limit of its terms' derivatives, taken until both
+  have converged, and refused if the derivatives diverge, as Newton's square
+  root does at 0; where they converge too slowly near the point the rule is
+  wrong, and nothing at the point can tell (C72). Two reviews against the
+  first draft of `test/data/grad.ink` found its ReLU written in the order that
+  clears the guard, two inexact answers that print exact, and the scalar rule
+  applied to matrix powers.
+
+  **Not the transformation planned.** What decides it is that a value's
+  shape is known only once it is evaluated: a power, a quotient, the Jacobian
+  refusal and a gradient with respect to a matrix each take one rule for a
+  single value and another for a matrix, so a tree of derivative definitions
+  would have needed a node choosing by shape at run time, besides an error
+  node for the refusals, a limit walking value and derivative together, and
+  the per-cell assembly of a gradient. The guards were never the obstacle: a
+  derivative definition can copy them. Nor would the definitions have
+  compiled as any definition is, as planned: the compiler inlines what it
+  compiles and refuses a sequence with parameters, which `dp(x)_k` is.
+  `derivative.hpp` evaluates the expression forward instead, each value
+  carrying one part per set of the grads it is under: a grad inside a grad is
+  a second derivative, and mixed partials come out of the same products. The
+  parts are values of the one number type, so nothing goes through the
+  templates C44 and C65 broke on. Compiling `grad` will be the same rules
+  over the compiler's cells, whose shapes are known while compiling: the
+  static refusals stay refusals, and a check that needs the values, a jump
+  or a zero base, gives NaN as a limit that does not converge does. It is
+  about 830 lines against the 300-450 estimated above, much of it a second
+  copy of how a call chooses its clause and how `lim` walks its terms,
+  beside `Reference`'s; the two can drift, and a change to either is a
+  change to both.
 - **Steps and tolerance as options**, when a model asks: a hundred steps is
   short of what a slow filter settles in, and a billionth is loose for a
   well-conditioned step.

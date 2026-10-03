@@ -362,6 +362,25 @@ private:
     std::string index_;
 };
 
+// 'grad_(x = a) body': the derivative of the body with respect to x at a. The
+// point is read where it is written, the name only in the body, as a sum's.
+template <typename T>
+class GradExpression : public Expression<T> {
+public:
+    GradExpression(std::string variable, PExpression<T> point, PExpression<T> body)
+        : Expression<T>({point, body}), variable_(std::move(variable)) {}
+
+    [[nodiscard]] const std::string&    Variable() const { return variable_; }
+    [[nodiscard]] const PExpression<T>& Point() const { return this->Children()[0]; }
+    [[nodiscard]] const PExpression<T>& Body() const { return this->Children()[1]; }
+
+    PExpression<T> accept(TransformationVisitor<T>& v) override { return v.visit(this); }
+    T              accept(FoldingVisitor<T>& v) override { return v.visit(this); }
+
+private:
+    std::string variable_;
+};
+
 template <typename T>
 class MatExpression : public Expression<T>
 {

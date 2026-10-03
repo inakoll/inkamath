@@ -198,6 +198,12 @@ private:
                         Wrapped(Of(*series->Body()), product),
                     Level::sum};
         }
+        if (const auto* grad = dynamic_cast<const GradExpression<T>*>(&e)) {
+            const std::string x = Name(grad->Variable());
+            return {"\\left.\\frac{\\partial}{\\partial " + x + "} " + Of(*grad->Body()).text +
+                        "\\right|_{" + x + "=" + Of(*grad->Point(), true).text + "}",
+                    Level::sum};
+        }
         if (const auto* matrix = dynamic_cast<const MatExpression<T>*>(&e)) {
             const Extent size = matrix->Size();
             std::string  out  = "\\begin{bmatrix} ";

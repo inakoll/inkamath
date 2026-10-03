@@ -76,6 +76,12 @@ template <typename T>
 class SeriesExpression;
 
 template <typename T>
+class GradExpression;
+
+template <typename T>
+class Derivative;
+
+template <typename T>
 class ParametersCall;
 
 template <typename T>
@@ -103,6 +109,7 @@ public:
     virtual ReturnType visit(FuncExpression<T>* expr) = 0;
     virtual ReturnType visit(SeriesExpression<T>* expr)  = 0;
     virtual ReturnType visit(MemberExpression<T>* expr)    = 0;
+    virtual ReturnType visit(GradExpression<T>* expr)      = 0;
 };
 
 // Design choice: limit the number of visitor base classes.
@@ -143,6 +150,7 @@ public:
     PExpression<T> visit(FuncExpression<T>* expr) override {return visit_other(expr);}
     PExpression<T> visit(SeriesExpression<T>* expr) override { return visit_other(expr); }
     PExpression<T> visit(MemberExpression<T>* expr) override { return visit_other(expr); }
+    PExpression<T> visit(GradExpression<T>* expr) override { return visit_other(expr); }
 };
 
 // class FoldingVisitor
@@ -474,6 +482,8 @@ public:
                                  " terms (last partial " + what + " " +
                                  numeric_interface<T>::toString(total) + ")");
     }
+
+    T visit(GradExpression<T>* expr) override { return Derivative<T>(stack_).At(*expr); }
 
 private:
     ReferenceStack<T>& stack_;

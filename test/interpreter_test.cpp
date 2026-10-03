@@ -133,6 +133,9 @@ TEST_CASE("limits") {
 TEST_CASE("imaginary") {
     check_transcript("imaginary.ink");
 }
+TEST_CASE("grad") {
+    check_transcript("grad.ink");
+}
 TEST_CASE("models") {
     check_transcript("models.ink");
 }
