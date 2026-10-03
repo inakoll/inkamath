@@ -5,6 +5,7 @@
 #include "inkamath/parameters.hpp"
 #include "inkamath/reference.hpp"
 
+#include <algorithm>
 #include <cctype>
 #include <set>
 #include <stdexcept>
@@ -19,35 +20,81 @@ class Latex {
 public:
     static std::string Definition(const Reference<T>& definition) {
         if (definition.model) throw std::runtime_error("tex cannot show a model yet");
-        std::vector<const Clause<T>*> cases;
-        std::string                   out;
+        const std::string& name = definition.Name();
+        // A clause for one index or one cell is a line of its own, the
+        // clauses for every index or every cell one definition in cases; for
+        // a definition by cells, the clauses written whole come first, as
+        // what the cells override.
+        std::vector<const Clause<T>*>              cases, cells;
+        std::vector<std::vector<const Clause<T>*>> lines;
         for (const Clause<T>& clause : definition.Clauses()) {
-            const ParametersDefinition<T>& p = clause.parameters;
-            if (p.cells()) throw std::runtime_error("tex cannot show a definition by cells yet");
-            if (p.indexed() && !p.general())
-                out += Left(definition.Name(), p) + " = " + Of(*clause.expression).text + "\n";
-            else
+            const ParametersDefinition<T>& p    = clause.parameters;
+            const bool                     base = p.indexed() && !p.general();
+            if (p.cells() && !p.row_name().empty() && !base) {
+                cells.push_back(&clause);
+            } else if (!p.cells() && !base) {
                 cases.push_back(&clause);
+            } else {
+                // A base term by its cells is one line however many clauses.
+                const auto term = std::find_if(lines.begin(), lines.end(), [&](const auto& line) {
+                    const ParametersDefinition<T>& q = line.front()->parameters;
+                    return p.cells() && !p.row_name().empty() && q.cells() &&
+                           !q.row_name().empty() && q.index() == p.index();
+                });
+                if (term == lines.end())
+                    lines.push_back({&clause});
+                else
+                    term->push_back(&clause);
+            }
         }
-        if (cases.empty()) return Trimmed(out);
-        std::string right;
-        if (cases.size() == 1 && !cases.front()->parameters.guarded()) {
-            right = Of(*cases.front()->expression).text;
-        } else {
-            // Guarded in the order written, then the one that always applies,
-            // as they are tried.
-            std::vector<std::string> lines;
-            for (const bool guarded : {true, false})
-                for (const Clause<T>* clause : cases)
-                    if (clause->parameters.guarded() == guarded)
-                        lines.push_back(Of(*clause->expression).text + " & \\text{" +
-                                        (guarded ? "if } " + Of(*clause->parameters.guard()).text
-                                                 : std::string("otherwise}")));
-            right = "\\begin{cases} ";
-            for (std::size_t k = 0; k < lines.size(); ++k) right += (k ? " \\\\ " : "") + lines[k];
-            right += " \\end{cases}";
+        const bool  bycells = std::any_of(definition.Clauses().begin(), definition.Clauses().end(),
+                                          [](const Clause<T>& c) { return c.parameters.cells(); });
+        std::string out;
+        const auto  whole = [&] {
+            if (!cases.empty())
+                out += Left(name, cases.front()->parameters) + " = " + Cases(cases) + "\n";
+        };
+        if (bycells) whole();
+        for (const auto& line : lines) {
+            const ParametersDefinition<T>& p = line.front()->parameters;
+            if (!p.cells())
+                out += Left(name, p) + " = " + Of(*line.front()->expression).text + "\n";
+            else
+                out += Entry(name, p) + " = " + Cases(line) + Bounds(p) + "\n";
         }
-        return out + Left(definition.Name(), cases.front()->parameters) + " = " + right;
+        if (!bycells) whole();
+        if (!cells.empty())
+            out += Entry(name, cells.front()->parameters) + " = " + Cases(cells) +
+                   Bounds(cells.front()->parameters);
+        return Trimmed(out);
+    }
+
+    // A model: its head, then its definitions a line each, indented as '?'
+    // shows them, each as it is set alone. 'instance' is the model with its
+    // defaults, where its definitions are made.
+    static std::string System(const Reference<T>& definition, const Scope<T>& instance) {
+        const auto& model = *definition.model;
+        std::string out   = Operator(definition.Name()) + "(";
+        for (std::size_t k = 0; k < model.parameters.size(); ++k) {
+            const auto& parameter = model.parameters[k];
+            out += (k ? ", " : "") + Name(parameter.name);
+            if (!parameter.index.empty()) out += "_" + Braced(parameter.index);
+            if (parameter.fallback) out += " = " + Of(*parameter.fallback).text;
+        }
+        out += "):";
+        std::set<std::string> done;
+        for (const auto& statement : model.body) {
+            if (statement.model)
+                throw std::runtime_error("tex cannot show a model inside a model yet");
+            if (!done.insert(statement.name).second) continue;
+            const std::string text = Definition(*instance.names.at(statement.name));
+            for (std::size_t start = 0; start < text.size();) {
+                const std::size_t end = std::min(text.find('\n', start), text.size());
+                out += "\n    " + text.substr(start, end - start);
+                start = end + 1;
+            }
+        }
+        return out;
     }
 
 private:
@@ -88,7 +135,49 @@ private:
         return text.size() == 1 ? text : "{" + text + "}";
     }
 
-    static std::string Left(const std::string& name, const ParametersDefinition<T>& p) {
+    static std::string Braced(const std::string& text) {
+        return text.size() == 1 ? text : "{" + text + "}";
+    }
+
+    // The clauses for every call, or for every cell: the one expression, or
+    // the guarded in the order written, then the one that always applies, as
+    // they are tried.
+    static std::string Cases(const std::vector<const Clause<T>*>& cases) {
+        if (cases.size() == 1 && !cases.front()->parameters.guarded())
+            return Of(*cases.front()->expression).text;
+        std::vector<std::string> lines;
+        for (const bool guarded : {true, false})
+            for (const Clause<T>* clause : cases)
+                if (clause->parameters.guarded() == guarded)
+                    lines.push_back(Of(*clause->expression).text + " & \\text{" +
+                                    (guarded ? "if } " + Of(*clause->parameters.guard()).text
+                                             : std::string("otherwise}")));
+        std::string right = "\\begin{cases} ";
+        for (std::size_t k = 0; k < lines.size(); ++k) right += (k ? " \\\\ " : "") + lines[k];
+        return right + " \\end{cases}";
+    }
+
+    // An entry of a definition by cells, 'M_{j,k}', or a term's, 'x_{n,j}':
+    // one subscript, as a term's cell is read.
+    static std::string Entry(const std::string& name, const ParametersDefinition<T>& p) {
+        std::string subscript;
+        if (p.indexed())
+            subscript = (p.general() ? p.index_name() : std::to_string(p.index())) + ",";
+        subscript += p.row_name().empty() ? std::to_string(p.row()) : p.row_name();
+        if (!p.column())
+            subscript += "," + (p.col_name().empty() ? std::to_string(p.col()) : p.col_name());
+        return Head(name, p) + "_" + Braced(subscript);
+    }
+
+    // Where the names of a clause for every cell range.
+    static std::string Bounds(const ParametersDefinition<T>& p) {
+        if (p.row_name().empty()) return "";
+        std::string out = ", \\quad 1 \\le " + Name(p.row_name()) + " \\le " + Of(*p.rows()).text;
+        if (!p.column()) out += ",\\ 1 \\le " + Name(p.col_name()) + " \\le " + Of(*p.cols()).text;
+        return out;
+    }
+
+    static std::string Head(const std::string& name, const ParametersDefinition<T>& p) {
         std::string left = p.parameters_names().empty() ? Name(name) : Operator(name);
         if (!p.parameters_names().empty()) {
             left += "(";
@@ -101,23 +190,35 @@ private:
             }
             left += ")";
         }
-        if (p.indexed()) {
-            const std::string index = p.general() ? p.index_name() : std::to_string(p.index());
-            left += "_" + (index.size() == 1 ? index : "{" + index + "}");
-        }
         return left;
+    }
+
+    static std::string Left(const std::string& name, const ParametersDefinition<T>& p) {
+        if (!p.indexed()) return Head(name, p);
+        return Head(name, p) + "_" +
+               Braced(p.general() ? p.index_name() : std::to_string(p.index()));
     }
 
     static std::string Wrapped(const Text& text, int level) {
         return text.level < level ? "(" + text.text + ")" : text.text;
     }
 
+    // As written, in their order: a keyword's name with the index an input's
+    // is written with, 'x_n = n'.
     static std::string Arguments(const ParametersCall<T>& call) {
+        std::vector<PExpression<T>> given;
+        if (const auto* list = dynamic_cast<const MatExpression<T>*>(call.arguments().get()))
+            given = list->Children();
+        else if (call.arguments())
+            given = {call.arguments()};
         std::string out;
-        for (const auto& argument : call.parameters_expression())
-            out += (out.empty() ? "" : ", ") + Of(*argument).text;
-        for (const auto& [name, argument] : call.parameters_dict())
-            out += (out.empty() ? "" : ", ") + Name(name) + " = " + Of(*argument).text;
+        for (const PExpression<T>& argument : given) {
+            out += out.empty() ? "" : ", ";
+            if (const auto* named = dynamic_cast<const EqualExpression<T>*>(argument.get()))
+                out += Of(*named->m_e1()).text + " = " + Of(*named->m_e2()).text;
+            else
+                out += Of(*argument).text;
+        }
         return out;
     }
 

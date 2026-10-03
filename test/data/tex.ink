@@ -1,4 +1,4 @@
-# 'tex' of a definition by cells and of a model (DESIGN.md, next in line),
+# 'tex' of a definition by cells and of a model (DESIGN.md, tex of cells),
 # so that a layer can be read against the page it came from. An entry is set
 # as a paper defines a matrix, by its entry at a row and a column, with their
 # range after it; a clause for one cell is a line of its own before the rest,

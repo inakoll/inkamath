@@ -848,6 +848,17 @@ s_0 = 1
 s_n = \frac{s_{n-1}}{2}
 ```
 
+A definition by cells is set by its entry, with the range of its row and
+column after it, and a model by its head, then its definitions a line each:
+
+```
+>> E[j<=2, k<=2] = j*k
+E[j<=2, k<=2] = j*k
+
+>> tex ?E
+E_{j,k} = j\,k, \quad 1 \le j \le 2,\ 1 \le k \le 2
+```
+
 ### 7. Diagnostics
 
 An expression either produces a value or says why it cannot. Nothing evaluates

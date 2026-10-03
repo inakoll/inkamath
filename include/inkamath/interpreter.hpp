@@ -960,6 +960,7 @@ std::string Interpreter<T, U>::Tex() {
     if (m_tokens.size() > 3) Fail("tex shows a whole definition, as 'tex ?name'");
     const auto definition = stack_.Find(m_tokens[2].text);
     if (!definition) Fail(m_tokens[2].text, " is not defined");
+    if (definition->model) return Latex<U>::System(*definition, *stack_.Defaults(*definition));
     return Latex<U>::Definition(*definition);
 }
 
