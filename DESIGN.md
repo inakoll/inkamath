@@ -2596,21 +2596,23 @@ that exploring seven domains asked of the interpreter, by how many asked.
 - **What several rates left refused**, decided by what the interpreter
   answers, for the models that ask: a decimator, an interpolator, a cascade
   whose slow outer loop is clamped. A slow sequence takes guards, its clause
-  kept on its ticks as its terms are; refused, the cascade has no clamp.
-  Today a sample in any guard is refused as one "where a term is computed
-  again", since a guard's reads are deferred as the right of an `and`'s
-  are, and a sample there is a sample. It takes cells, each cell's samples
-  at a constant offset as a whole term's are; a frame, `x_(2*m + j)`, whose
-  sample moves with the cell, stays an index of neither form until a model
-  asks. It needs no base clause, since a stateless decimator would
-  otherwise write its first term twice: a term is computed at the step of
-  its latest sample, so the phase is the largest `b`, and the first term is
-  the first whose samples exist. A sequence with no base clause is sampled
-  from its window, as a read at the input's rate is, and a closed form
-  sampled back is computed again at that index; a hold in a term computed
-  again is the same hold that much earlier, `b` plus the lag, which is what
-  the cascade's inner loop needs to differentiate an error that reads the
-  setpoint it holds. A sample is computed again only where a slow sequence
+  set on its ticks and kept between them as its terms are, 0 before the
+  first; refused, the cascade has no clamp. Today a sample in any guard is
+  refused as one "where a term is computed again", since a guard's reads are
+  deferred as the right of an `and`'s are, and a sample there is a sample.
+  It takes cells, each cell's samples at a constant offset as a whole term's
+  are; a frame, `x_(2*m + j)`, whose sample moves with the cell, stays an
+  index of neither form until a model asks. It needs no base clause, since a
+  stateless decimator would otherwise write its first term twice: a term is
+  computed at the step of its latest sample, so without one the phase is the
+  largest `b`, and the first term is the first whose tick is a step and
+  whose samples exist; a closed form's exist at every index. A sequence with
+  no base clause is sampled as a read at the input's rate reads it: from its
+  window, and computed again at that index before the window holds the term
+  (C71), as a closed form always is; a hold in a term computed again is the
+  same hold that much earlier, `b` plus the lag, which is what the cascade's
+  inner loop needs to differentiate an error that reads the setpoint it
+  holds. A sample is computed again only where a slow sequence
   is read back at the input's rate, which its rate refuses. A hold of a
   term the step never computes is NaN where the interpreter has none
   either, and refused where it could give one: below a guarded sequence's
