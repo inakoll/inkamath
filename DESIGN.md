@@ -2560,6 +2560,20 @@ that exploring seven domains asked of the interpreter, by how many asked.
   `depth limit` in the tests holds both bounds and both extremes; the
   README shows a matrix written from Python. A Python binding, later, would
   read other formats; until then, writing `.ink` is the binding.
+- **Several rates**, as `MANIFESTO.md` sketches them: rates are index
+  arithmetic, not a new kind of thing. A sequence reading another at
+  `x_(a*m + b)` samples it, so its period is `a` steps of the input's; one
+  reading at `y_(floor(n/a) - d)` holds a term. The compiled step stays
+  one, the input's, and computes a slow term on its ticks, the first at
+  which every sample it reads exists: `y_m` reading `x_(2*m - 1)` and
+  `x_(2*m)` at step `2*m`. A hold that reads a term before its tick is
+  refused, naming the delay that fixes it, as a loop without a delay is; a
+  read at any other index, or at another period than the sequence's, is
+  refused by name. `--check` holds a slow sequence at every step to its
+  latest term. Specified in `test/compile/rates.ink`, a decimator and two
+  holds, with the refusals and the report in its header; the check joins
+  the suite with the compiler's half, as a model it cannot compile would
+  break the build.
 - **Steps and tolerance as options**, when a model asks: a hundred steps is
   short of what a slow filter settles in, and a billionth is loose for a
   well-conditioned step.
