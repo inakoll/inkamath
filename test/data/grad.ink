@@ -125,6 +125,31 @@ error: floor jumps at x = 2
 >> grad_(x = 1) (x > 1)
 error: a comparison jumps at x = 1
 
+# Whether the sides move is what tells, not their slopes: at a tangent the
+# slopes agree and the comparison still jumps (DESIGN.md, C73).
+>> grad_(x = 0) (x^2 > 0)
+error: a comparison jumps at x = 0
+
+>> grad_(x = 0) grad_(y = x) (y^2 > 0)
+error: a comparison jumps at y = 0
+
+>> q2(x) = 1
+q2(x) = 1
+
+>> q2(x) | x^2 == 0 = 5
+q2(x) | x^2 == 0 = 5
+
+>> grad_(x = 0) q2(x)
+error: q2 takes a clause at x = 0 that holds only there
+
+>> grad_(x = 1) 2^((x - 1)^2)
+error: grad cannot differentiate a power whose exponent changes with x, unless its base is e
+
+# Wrong on purpose (DESIGN.md, C73): floor(x^2) is 0 near 0, so flat, but a
+# whole number whose argument moves is taken for a jump.
+>> grad_(x = 0) floor(x^2)
+error: floor jumps at x = 0
+
 # A power, where its derivative is finite, and with an exponent that changes
 # with the name only where its base is e: any other base needs a logarithm.
 >> grad_(x = 4) x^(1/2)

@@ -59,25 +59,12 @@ private:
         return true;
     }
 
-    // Whether a part other than the value is there, and whether one is not zero.
+    // Whether a part other than the value is there. What the checks for a jump
+    // or a moving exponent ask: a part that happens to be zero at the point,
+    // as at a tangent, is no evidence that nothing moves (DESIGN.md, C73).
     static bool Moves(const Jet& jet) {
         for (std::size_t s = 1; s < jet.size(); ++s)
             if (jet[s]) return true;
-        return false;
-    }
-    static bool Changes(const Jet& jet) {
-        for (std::size_t s = 1; s < jet.size(); ++s)
-            if (jet[s] && !IsZero(*jet[s])) return true;
-        return false;
-    }
-
-    static bool Differ(const Jet& a, const Jet& b) {
-        for (std::size_t s = 1; s < a.size(); ++s) {
-            if (a[s] && b[s] ? !IsZero(*a[s] - *b[s])
-                : a[s]       ? !IsZero(*a[s])
-                             : b[s] && !IsZero(*b[s]))
-                return true;
-        }
         return false;
     }
 
@@ -420,7 +407,7 @@ private:
         const Jet a     = Eval(compare.m_e1());
         const Jet b     = Eval(compare.m_e2());
         const T   value = numeric_interface<T>::compare(*a[0], *b[0], compare.Op());
-        if (*a[0] == *b[0] && Differ(a, b)) {
+        if (*a[0] == *b[0] && (Moves(a) || Moves(b))) {
             if (!guard_) throw std::runtime_error("a comparison jumps at " + Where());
             if (compare.Op() == Comparison::Equal || compare.Op() == Comparison::NotEqual)
                 throw std::runtime_error(*guarded_ + " takes a clause at " + Where() +
@@ -445,9 +432,7 @@ private:
         const T   value = numeric_interface<T>::floor(*u[0]);
         for (std::size_t k = 0; k < value.Size().count(); ++k) {
             if (!(u[0]->data()[k] == value.data()[k])) continue;
-            for (std::size_t s = 1; s < u.size(); ++s)
-                if (u[s] && !(u[s]->data()[k] == typename T::value_type(0)))
-                    throw std::runtime_error("floor jumps at " + Where());
+            if (Moves(u)) throw std::runtime_error("floor jumps at " + Where());
         }
         return Constant(value);
     }
@@ -486,7 +471,7 @@ private:
 
     Jet Power(PowExpression<T>& power) {
         const Jet w = Eval(power.m_e2());
-        if (Changes(w)) {
+        if (Moves(w)) {
             if (!Euler(*power.m_e1()))
                 throw std::runtime_error(
                     "grad cannot differentiate a power whose exponent changes with " +
