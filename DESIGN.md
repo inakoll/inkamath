@@ -2684,7 +2684,7 @@ that exploring seven domains asked of the interpreter, by how many asked.
   fixed number of iterations, for a step whose time must be bounded, waits
   for a model that needs it. 167 lines of sources.
 - **Tensors of rank 3**, the table's last row, for attention per batch and
-  per head. Specified in `test/data/spec/tensor.ink`, 64 of its 93 entries
+  per head. Specified in `test/data/spec/tensor.ink`, 75 of its 108 entries
   failing, multi-head attention over a batch among them, held to NumPy's
   output. A tensor is a stack of matrices of one size, its slices, along its
   first index, where a paper puts the batch: `X` is `B×T×D`. Rank 3 and no
@@ -2698,19 +2698,22 @@ that exploring seven domains asked of the interpreter, by how many asked.
   (C50): a tensor of one slice is not its slice, which a batch of one would
   otherwise stop being, so it prints `[1, 2; 3, 4;;]` and `==` tells it from
   the matrix. Dropping a leading 1, as MATLAB drops a trailing one, was
-  rejected for that.
+  rejected for that. Nor is a tensor of one cell a single value: an index
+  and a guard refuse `[7;;]`, and `T + [7;;]` wants as many slices. A slice
+  of one cell is one, so `[1;; 2]*[1 2]` scales the row by each.
 
   The literal stacks matrices with `;;`, one semicolon more than separates
   rows, as Julia's `;;;` stacks along a third axis: `[1 2; 3 4;; 5 6; 7 8]`,
   each slice a matrix literal with its blocks, and slices of two sizes
   refused rather than padded, which would be the fourth fill rule C41 warns
-  of. A tensor is not a block. NumPy's nested brackets were rejected because
-  `[[1 2; 3 4], [5 6; 7 8]]` already sets two blocks side by side, and
-  `cat(3, A, B)` because a call prints nothing that reads back. A touching
+  of. A tensor is not a block, so `[T;; T]` does not join two batches.
+  NumPy's nested brackets were rejected because `[[1 2; 3 4], [5 6; 7 8]]`
+  already sets two blocks side by side, and `cat(3, A, B)` because a call
+  prints nothing that reads back. A touching
   `;;` was an empty row padded with zeros, which nothing recorded wrote; with
   a space it still is. A tensor prints as a matrix does, its columns aligned
-  across every slice and `;;` ending each slice but the last, so it is pasted
-  back as printed. One index reads a slice, as on a matrix it reads a row,
+  across every slice and `;;` ending each slice but the last, or the only
+  one, so it is pasted back as printed. One index reads a slice, as on a matrix it reads a row,
   and three a cell; two, which on a tensor name neither, are refused, and
   `T[b][t]` is the row when that is meant. A definition by three indices is a
   tensor, its clauses naming all three.

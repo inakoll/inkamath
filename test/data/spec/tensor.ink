@@ -2,7 +2,8 @@
 # least the language needs to write attention per batch and per head. A
 # tensor is a stack of matrices of one size, its slices, along its first
 # index, the batch's place on paper. Whatever meets a tensor meets it slice by
-# slice, so that (T op M)[b] = T[b] op M for +, -, * and /, and T'[b] = T[b]'.
+# slice, so that (T op M)[b] = T[b] op M and (M op T)[b] = M op T[b] for +, -,
+# * and /, and T'[b] = T[b]'.
 #
 # The literal stacks matrices with ';;', one semicolon more than separates
 # rows, and prints so: what is printed is typed back.
@@ -14,6 +15,9 @@ T = [1 2; 3 4;; 5 6; 7 8]
  3, 4;;
  5, 6;
  7, 8]
+
+>> ?T
+T = [1 2; 3 4;; 5 6; 7 8]
 
 >> [1 2;; 3 4]
 [1, 2;;
@@ -50,6 +54,19 @@ I2 = [1 0; 0 1]
 >> [7;;] + 1
 [8;;]
 
+# Nor is a tensor of one cell a single value, where one is needed.
+>> two = [2;;]
+two = [2;;]
+
+>> T[two]
+error: a tensor is not a single value
+
+>> nz(x) | x = 1
+nz(x) | x = 1
+
+>> nz([7;;])
+error: a guard needs a single value, not a 1x1x1 tensor
+
 # Slices of two sizes are refused, not padded: a short row's zeros are one
 # fill rule, and C41 records why there is to be no fourth. A tensor is not a
 # block, and there is no fourth index to stack along.
@@ -59,8 +76,14 @@ error: the slices of a tensor have one size, not 2x2 and 1x2
 >> [T, T]
 error: a tensor cannot be a block of a literal, only a matrix can
 
+>> [T;; T]
+error: a tensor cannot be a block of a literal, only a matrix can
+
 >> [1;;;2]
 error: a tensor has at most three indices, and ';;;' would give it a fourth
+
+>> [;; 1 2]
+error: a matrix needs at least one element
 
 # Only a touching ';;' stacks. With a space, the empty row is a row of zeros,
 # as it was.
@@ -173,6 +196,22 @@ U = [1 2; 3 4;; 5 6; 7 8;; 9 10; 11 12]
 >> T + U
 error: a 2x2x2 tensor and a 3x2x2 tensor have different numbers of slices
 
+>> T + [7;;]
+error: a 2x2x2 tensor and a 1x1x1 tensor have different numbers of slices
+
+>> T == U
+0
+
+>> I2 - T
+[ 0, -2;
+ -3, -3;;
+ -4, -6;
+ -7, -7]
+
+>> -[1 2;; 3 4]
+[-1, -2;;
+ -3, -4]
+
 # So '*' is a product batched over the first index: a slice's product is the
 # product of slices, and a matrix is shared by every slice, as a projection
 # is shared by a batch.
@@ -185,6 +224,11 @@ error: a 2x2x2 tensor and a 3x2x2 tensor have different numbers of slices
 >> [1 1]*T
 [ 4,  6;;
  12, 14]
+
+# A slice of one cell is a single value, so it scales the matrix it meets.
+>> [1;; 2]*[1 2]
+[1, 2;;
+ 2, 4]
 
 >> T*T
 [ 7,  10;
@@ -224,7 +268,23 @@ error: a comparison needs single values, not a 2x2x2 tensor
 >> T^2
 error: only a matrix has a power, not a 2x2x2 tensor
 
-# Cell by cell, as on a matrix.
+# Cell by cell, as on a matrix, and printed as a matrix's cells are.
+>> T/3
+[~0.333333333, ~0.666666667;
+            1,  ~1.33333333;;
+  ~1.66666667,            2;
+  ~2.33333333,  ~2.66666667]
+
+>> frac T/3
+[1/3, 2/3;
+   1, 4/3;;
+ 5/3,   2;
+ 7/3, 8/3]
+
+>> [1 2;; 3 4]*i
+[  i, i*2;;
+ i*3, i*4]
+
 >> floor(T/3)
 [0, 0;
  1, 1;;
