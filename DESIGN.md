@@ -2545,6 +2545,11 @@ that exploring seven domains asked of the interpreter, by how many asked.
   over a hundred steps. Each instance is held to the interpreter by
   `--check`, and the hundredth term of each to NumPy's, to every digit
   printed. None needed a change to the language.
+- `[done]` **One function for identical limits.** Each `lim` the compiler
+  walked was a function of its own, so `logistic.ink`'s sigmoid, applied
+  cell by cell, was four identical ones. A limit's function is named once
+  its text is known, and one written again is the same function;
+  `check_gate_one_limit` holds the logistic model to one.
 - **Steps and tolerance as options**, when a model asks: a hundred steps is
   short of what a slow filter settles in, and a billionth is loose for a
   well-conditioned step.
