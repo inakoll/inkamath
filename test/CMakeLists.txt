@@ -75,7 +75,8 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brin
                          delay:fir newton:stiff logistic:gate softmax:cls steady:mark
                          rnn:rnn attention:head momentum:ball adam:fit lqr:gain
                          rates:pairs rates:odd seeded:warm cascade:servo decimate:boxcar
-                         decimate:stride decimate:frame decimate:lead drift:sill drift:seam)
+                         decimate:stride decimate:frame decimate:lead
+                         decimate:trail drift:sill drift:seam)
     string(REPLACE ":" ";" checked ${checked})
     list(GET checked 0 file)
     list(GET checked 1 instance)
@@ -122,6 +123,8 @@ set_tests_properties(check_frame_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^frame: 100 steps from 0, against exact values\nframe\\.p: within 0\n$")
 set_tests_properties(check_lead_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^lead: 100 steps from 0, against exact values\nlead\\.y: within 0\n$")
+set_tests_properties(check_trail_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^trail: 100 steps from 0, against exact values\n(trail\\.[a-z]+: within 0\n)+$")
 set_tests_properties(check_warm_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^warm: 100 steps from 0, against exact values\n(warm\\.[a-z]+: within [0-9.e+-]+\n)+$")
 set_tests_properties(check_rnn_report PROPERTIES PASS_REGULAR_EXPRESSION

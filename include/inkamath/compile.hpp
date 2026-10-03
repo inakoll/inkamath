@@ -2478,7 +2478,8 @@ private:
         const int       a     = hold.a;
         const int       start = held.period * held.first + held.phase;
         for (int n = hold.from; n < std::max(hold.from, start) + 2 * a; ++n) {
-            const int lag = n < start ? -1 : (n - held.phase) / a - (n - hold.b) / a - hold.d;
+            const int lag =
+                n < start ? -1 : Floor(n - held.phase, a) - Floor(n - hold.b, a) - hold.d;
             if (lag < 0)
                 throw Refusal("cannot compile " + name + ": " + hold.read +
                               "_(...): read before it is computed; read the term before it");
@@ -2526,11 +2527,15 @@ private:
             const Sequence&   held  = sequences_.at(hold.read);
             const std::size_t c     = std::stoul(mark.substr(comma + 1));
             const std::string a     = std::to_string(hold.a);
-            const std::string lag   = hold.least == hold.most
-                                          ? std::to_string(hold.least)
-                                          : "(m_->index_" + Less(held.phase) + ") / " + a +
-                                              " - (m_->index_" + Less(hold.b) + ") / " + a +
-                                              Less(hold.d);
+            // C divides toward 0: each numerator is kept whole from the
+            // hold's first step by whole periods, taken back from d.
+            const auto whole = [&](int b) { return std::max(0, -Floor(hold.from - b, hold.a)); };
+            const int  p = whole(held.phase), q = whole(hold.b);
+            const std::string lag = hold.least == hold.most
+                                        ? std::to_string(hold.least)
+                                        : "(m_->index_" + Less(held.phase - p * hold.a) + ") / " +
+                                              a + " - (m_->index_" + Less(hold.b - q * hold.a) +
+                                              ") / " + a + Less(hold.d + p - q);
             std::string       cell =
                 "m_->" + hold.read + "[" + lag + "]" +
                 (held.rows * held.cols == 1 ? std::string()
@@ -2582,7 +2587,7 @@ private:
             bool moved = false;
             for (Hold& hold : holds_) {
                 const Sequence& held = sequences_.at(hold.read);
-                hold.from            = std::max(hold.b, hold.a * (held.first - hold.d) + hold.b);
+                hold.from            = hold.a * (held.first - hold.d) + hold.b;
             }
             for (auto& [name, sequence] : sequences_) {
                 if (!sequence.bases.empty() || !sequence.definition) continue;

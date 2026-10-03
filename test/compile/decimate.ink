@@ -89,3 +89,16 @@ ahead(x_n) = {
     y_m = x_(2*m + 4)
 }
 lead = ahead(x_n = s_n)
+
+# Holds of it, each index's numerator negative at the first steps: z_1 is
+# y_-2, a step before y_-1, and w_1 and w_2 are y_-2, held from step 1.
+#
+#     trail: 100 steps from 0, against exact values
+#     trail.<name>: within 0, for each of y, z and w
+behind(x_n) = {
+    y_(-2) = 7
+    y_m = x_(2*m + 4)
+    z_n = y_(floor(n/2) - 2)
+    w_n = y_(floor((n - 3)/2) - 1)
+}
+trail = behind(x_n = s_n)
