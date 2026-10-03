@@ -2428,6 +2428,13 @@ that exploring seven domains asked of the interpreter, by how many asked.
   unit where a paper means twice the index; it is now refused as `2n` is,
   `2*i` being the product either way. Nothing recorded wrote it.
   `test/compile/logistic.ink` now sums over `i`, as its paper does.
+- `[done]` **Two more entries of the conformance suite**: a recurrent cell,
+  `test/compile/rnn.ink`, and scaled dot-product attention for one head,
+  `test/compile/attention.ink`, each held to the interpreter by `--check`,
+  the attention's output matching NumPy's to the digits shown. Neither needed
+  anything new: one index reads a cell of the column an affine map gives,
+  `tanh` and softmax are `exp` under `lim`, and `i` indexes rows as on
+  paper. Per head and per batch, attention needs a tensor of rank 3.
 - **Steps and tolerance as options**, when a model asks: a hundred steps is
   short of what a slow filter settles in, and a billionth is loose for a
   well-conditioned step.
