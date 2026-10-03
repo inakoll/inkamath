@@ -410,6 +410,34 @@ value stretches to the other side's size, and the order is kept:
  -2, -3]
 ```
 
+A tensor of rank 3 is a stack of matrices of one size, its slices, along its
+first index, where a paper puts the batch. A touching `;;` separates its
+slices, one semicolon more than separates rows, after Julia's convention of
+counting semicolons, and it prints so; a tensor of one slice keeps its `;;`,
+as `[1 2;;]`, since it is not its slice. One index reads a slice and three a
+cell, and a definition by three indices, `P[b<=2, j<=2, k<=2] = b*j*k`, is a
+tensor. Whatever meets a tensor meets it slice by slice, a matrix or a single
+value every slice, so `*` is a product batched over the first index and `'`
+transposes each slice:
+
+```
+>> B = [1 2; 3 4;; 5 6; 7 8]
+B = [1 2; 3 4;; 5 6; 7 8]
+
+>> B[2]
+[5, 6;
+ 7, 8]
+
+>> B[2,1,2]
+6
+
+>> B*[1; 1]
+[ 3;
+  7;;
+ 11;
+ 15]
+```
+
 ### 3. Definitions
 
 A definition binds a name and echoes what was written. It evaluates nothing —
