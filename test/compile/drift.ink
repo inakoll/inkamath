@@ -51,3 +51,35 @@ cut(c = 1/10) = {
     g_n[j<=2] = 0
 }
 rift = cut()
+
+# The same threshold asked every second step, by a sequence with no base
+# clause (DESIGN.md, next in line: what several rates left refused). The
+# clause a slow term takes is, as its value is, the latest computed at the
+# step, so a flip is reported at the step that computes the term taking
+# another clause, with that term's margin, before the values it makes part:
+#
+#     sill: 100 steps from 0, against exact values
+#     sill.g: at 2 the compiled step takes 'g_m | d_(2*m) < c = 1' and the interpreter 'g_m = 0'; the guard of the first is exactly on its threshold
+#     sill.d: <x> at 9, where the interpreter gives 0.10000000000000001
+#     sill.g: 1 at 2, where the interpreter gives 0
+sparse(c = 1/10) = {
+    d_0 = c
+    d_n = 10*d_(n-1) - 9*c
+    g_m | d_(2*m) < c = 1
+    g_m = 0
+}
+sill = sparse()
+
+# And cell by cell, each cell's flip by its place:
+#
+#     seam: 100 steps from 0, against exact values
+#     seam.g[1,1]: at 2 the compiled step takes 'g_m[j<=2] | d_(2*m)[j] < c*j = 1' and the interpreter 'g_m[j<=2] = 0'; the guard of the first is exactly on its threshold
+#     seam.d[1,1]: <x> at 9, where the interpreter gives 0.10000000000000001
+#     seam.g[1,1]: 1 at 2, where the interpreter gives 0
+strided(c = 1/10) = {
+    d_0 = [c; 2*c]
+    d_n = 10*d_(n-1) - 9*[c; 2*c]
+    g_m[j<=2] | d_(2*m)[j] < c*j = 1
+    g_m[j<=2] = 0
+}
+seam = strided()
