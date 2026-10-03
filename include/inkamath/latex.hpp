@@ -143,7 +143,10 @@ private:
         }
         if (const auto* times = dynamic_cast<const MultExpression<T>*>(&e)) {
             const std::string left  = Wrapped(Of(*times->m_e1(), tight), product);
-            const std::string right = Wrapped(Of(*times->m_e2(), tight), unary + 1);
+            // A sum that ends a product reaches to its end, as on paper.
+            const bool        last  = dynamic_cast<const SeriesExpression<T>*>(times->m_e2().get());
+            const std::string right = last ? Of(*times->m_e2(), tight).text
+                                           : Wrapped(Of(*times->m_e2(), tight), unary + 1);
             const bool        digit = std::isdigit(static_cast<unsigned char>(right.front()));
             return {left + (digit ? " \\cdot " : "\\,") + right, product};
         }
@@ -178,6 +181,14 @@ private:
         if (const auto* cell = dynamic_cast<const CellExpression<T>*>(&e)) {
             std::string place = Of(*cell->Row(), true).text;
             if (cell->Col()) place += "," + Of(*cell->Col(), true).text;
+            // A term's cell shares its subscript, 'x_{n,j}': LaTeX takes one.
+            if (const auto* term = dynamic_cast<const FuncExpression<T>*>(cell->Matrix().get());
+                term && term->m_e2() && !term->limit()) {
+                const std::string name =
+                    term->m_e1() ? Operator(term->Name()) + "(" + Arguments(term->Call()) + ")"
+                                 : Name(term->Name());
+                return {name + "_{" + Of(*term->m_e2(), true).text + "," + place + "}"};
+            }
             return {Wrapped(Of(*cell->Matrix(), tight), primary) + "_{" + place + "}"};
         }
         if (const auto* series = dynamic_cast<const SeriesExpression<T>*>(&e)) {

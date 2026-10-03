@@ -147,3 +147,26 @@ gain(k = 2, x_n) = { ... }
 
 >> tex ?gain
 error: tex cannot show a model yet
+
+# A cell of a term shares the term's subscript, as a paper writes x_{n,j}:
+# two subscripts in a row are not LaTeX at all. A cell of anything else that
+# already carries one is bracketed.
+>> nxt_n = s_(n-1)[2]
+nxt_n = s_(n-1)[2]
+
+>> tex ?nxt
+\mathit{nxt}_n = s_{n-1,2}
+
+>> lead = q[1,1]'[1]
+lead = q[1,1]'[1]
+
+>> tex ?lead
+\mathit{lead} = (q_{1,1}^\mathsf{T})_{1}
+
+# A sum that ends a product needs no brackets: it reaches to the end, as on
+# paper.
+>> ga = alpha*sum_(k=1)^3 k
+ga = alpha*sum_(k=1)^3 k
+
+>> tex ?ga
+\mathit{ga} = \alpha\,\sum_{k=1}^{3} k

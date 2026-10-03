@@ -144,7 +144,9 @@ it would refuse, and why. A limit of constants is folded, and any other is a
 function that walks the terms with the interpreter's stopping rule, NaN where
 the interpreter would say it does not converge: `test/compile/newton.ink`
 solves each step of a stiff equation by Newton's method, a sequence with
-parameters under `lim`.
+parameters under `lim`, and `test/compile/logistic.ink` trains a logistic
+regression, its `exp` a limit written in inkamath, as `test/compile/softmax.ink`
+writes softmax and cross-entropy, `log` being Newton's method on `exp`.
 
 `--check drift.ink calm -o calm.c` holds the compiled code to the
 interpreter. It compiles `calm`, an instance the file defines, with the

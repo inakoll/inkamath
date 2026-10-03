@@ -2376,6 +2376,18 @@ that exploring seven domains asked of the interpreter, by how many asked.
   built, and forbids nothing; `#pragma STDC FP_CONTRACT OFF` was weighed and
   dropped, since GCC rejects it under `-Werror` and honours none of it. Every
   expected header moved by those four lines of its first comment.
+- `[done]` **The first entries of the paper conformance suite**
+  (`MANIFESTO.md`): `test/compile/logistic.ink`, a logistic regression trained
+  by gradient descent, and `test/compile/softmax.ink`, softmax and
+  cross-entropy, each an instance held to the interpreter by `--check`, the
+  training bit for bit over a hundred epochs. Neither needed a built-in:
+  `exp` is its series under `lim`, and `log` Newton's method on it, which
+  answers in part the question of a prelude written in inkamath. Writing them
+  found the `tex` faults above, and that a paper's sample index, `i`, is the
+  imaginary unit here: the entries use `r`. Also found: each `lim` is a
+  function of its own, so `logistic.ink`'s four sigmoids are four identical
+  ones; and the series behind `exp` needs more than its hundred terms past
+  about 25, where a model would reduce its argument first.
 - **Steps and tolerance as options**, when a model asks: a hundred steps is
   short of what a slow filter settles in, and a billionth is loose for a
   well-conditioned step.
@@ -2395,6 +2407,10 @@ that exploring seven domains asked of the interpreter, by how many asked.
   parenthesised by how loosely it binds. A definition by cells it refuses as
   well, for want of a paper's form for its bounds. 237 lines of sources,
   most of them the one function that knows each node.
+  Transcribing a logistic regression then found two faults, now entries of
+  `latex.ink`: a cell of a term rendered `p_{n-1}_{r}`, two subscripts in a
+  row, which LaTeX rejects, and is now `p_{n-1,r}`; and a sum that ends a
+  product was bracketed, `\eta\,(\sum ...)`, where a paper is not.
 
 - `[done]` **One index is a row.** `a[1]` is the first row of `a`, a 1xn matrix that
   keeps its orientation, so a column vector's element is `v[2]`, a row
