@@ -245,6 +245,14 @@ set(stderr "")
 set(exit 1)
 check(compile_base_reads_refused)
 
+# A tensor is refused by name: the interpreter is the reference it is held to
+# first (DESIGN.md, tensors of rank 3).
+file(WRITE "${OUT}/tensor.ink" "T = [1 2;; 3 4]\ny_0 = 0\ny_n = y_(n-1) + T[2,1,2]\nP[b<=2, j<=2, k<=2] = b\n")
+set(args --compile tensor.ink)
+set(stdout "cannot compile P: a tensor\ncannot compile y: a tensor\n")
+set(exit 1)
+check(compile_tensor_refused)
+
 set(args --compile model.ink)
 file(WRITE "${OUT}/model.ink" "a_0 = 1\na_n = a_(n-1) + n\n")
 set(stdout "")

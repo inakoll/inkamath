@@ -625,6 +625,7 @@ private:
     // refused rather than left out; a plain one is compiled where it is read.
     void Define(const std::string& name, const Reference<Value>& definition) {
         for (const Clause<Value>& clause : definition.Clauses()) {
+            if (clause.parameters.tensor()) throw Refusal("cannot compile " + name + ": a tensor");
             // A function is compiled where it is called, and a sequence with
             // parameters where a limit walks it.
             if (!clause.parameters.parameters_names().empty()) return;
@@ -869,6 +870,9 @@ private:
     }
 
     static std::vector<double> Doubles(const Value& value) {
+        // The interpreter is the reference a model is held to first; compiling
+        // attention per batch is an entry of its own (DESIGN.md).
+        if (value.Size().slices) throw Reason("a tensor");
         std::vector<double> doubles;
         for (std::size_t i = 1; i <= value.Size().rows; ++i) {
             for (std::size_t j = 1; j <= value.Size().cols; ++j) {
@@ -2252,7 +2256,9 @@ private:
     PExpression<Value> visit(EqualExpression<Value>*) override {
         throw Reason("a local definition");
     }
+    PExpression<Value> visit(TensorExpression<Value>*) override { throw Reason("a tensor"); }
     PExpression<Value> visit(CellExpression<Value>* expression) override {
+        if (expression->Slice()) throw Reason("a tensor");
         const Code matrix = Emit(expression->Matrix());
         const Code row    = Known(expression->Row(), "a cell whose place is not a constant");
         if (!expression->Col()) {
