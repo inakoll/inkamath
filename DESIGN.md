@@ -1600,6 +1600,8 @@ closures need one anyway, and can bring it.
 | C71 `[fixed]` | **A compiled step started a term later than the interpreter where a guard decides what the term it reads back reads.** With `a_n \| n/8 - 3/4 > 2 = u_(n-1) + ...`, `a_n = 1/8` and `b_n = a_(n-1)/2` without a base, the interpreter answers `b_0` from `a_(-1)`, where the guard fails and the constant clause reads nothing. The compiler started `b` where every term `a` might read exists, so at 1, and left `b_0` at 0; it computed a term again at an earlier index only for a closed form, which reads no term at all. Found by the random models under another seed, and older than phase 15. Now a sequence with no base clause begins, for its readers, wherever some path through its clauses answers, and a reader that needs one of its terms before the window holds it computes the term again at that index, its guards tried in order and each read checked where it is read, NaN before it exists as the interpreter reports it. Where no reader needs it the step is as it was, so no header compiled before moved; `test/compile/back.ink` holds both cases. |
 | C72 `[kept]` | **A limit's derivative where its terms' derivatives converge too slowly near the point.** `grad` takes a limit's derivative as the limit of its terms' derivatives, which holds where those converge uniformly near the point, and a single point cannot show that they do. `h(x)_n = h(x)_(n-1)/(1 + x^2)` from `h(x)_0 = x` tends to 0 for every x, so its limit's derivative is 0; at 0 every term's derivative is 1, and `grad` answers 1. Found by the review of the specification; `grad.ink` records the wrong answer so that it cannot change unseen. |
 | C73 `[fixed]` | **`grad`'s checks for a jump read slopes, so a tangent passed.** A comparison or a guard at its threshold, `floor` at a whole number and an exponent were refused only where a first derivative was not zero, so `grad_(x = 0) (x^2 > 0)` answered 0 at a jump, a clause `x^2 == 0` gave its slope at the one point it holds, `2^((x-1)^2)` answered 0 at 1 and was refused at 2, and the same comparison under a nested `grad` was refused. Found by the review of the design. Whether a derivative is there at all is what is asked now. It refuses what is flat where the argument moves and lands on a whole number, as `floor(x^2)` at 0 does, which `grad.ink` records: a refusal over a silent wrong answer. |
+| C74 `[fixed]` | **A hold inside a sequence at another rate was compiled in the input's steps.** In `s_k = x_(4*k) - u_(floor(k/2))` from `s_0 = 0`, with `u_m = x_(2*m)` from `u_0 = 0` and `x_n = n^2`, the hold names a term of `u` by `s`'s index, and the compiler, which resolves every hold by the step, read the latest term of `u` instead: at 4 it gave `s_1` as 0, where the interpreter gives 16. Found specifying what several rates left refused (next in line). The hold reads every 8 steps a sequence computed every 2, so the term it names falls further behind at each tick and no window holds it: it is to be refused by its rate. The hold at the input's rate sampled, which the refusal of a slow sequence read by another names, would say what the compiler gives, not what the interpreter does. Now a hold's period is checked once its reader's is known, as its `a` ticks of the reader, and `s` is refused, "read every 8 steps, and u is computed every 2"; `compile_c74` in `test/cli.cmake` holds it. |
+| C75 `[open]` | **`--check` holds a term read from before the stream to the input there.** With `c_n = x_(n-1)` in a model and an instance giving `x_n = n^2`, the interpreter answers `c_0` from `x_(-1)`, 1, where the check feeds the compiled step its inputs from the first step on, as a host does, so its window holds 0, and the report has the two part at 0. Found specifying what several rates left refused (next in line), whose models feed a stream that starts at 0, `s_n \| n >= 0 = n^2`, where the interpreter has no `x_(-1)` either. Whether the check should give the window the input's earlier terms, holding the step to what no host gives it, or say that the step cannot have them, is open. |
 
 **Measure instructions, not the clock.** One of those changes made the matrix
 workload 20 per cent slower by the clock and not by a single instruction: with
@@ -2592,6 +2594,79 @@ that exploring seven domains asked of the interpreter, by how many asked.
   base clause compiled notes each term it reads and where, and the lag is
   set with the steps: after the phase of a sequence at another rate, which a
   base's reads move as its samples do, and after where each sequence starts.
+- `[done]` **What several rates left refused**, decided by what the interpreter
+  answers, for the models that ask: a decimator, an interpolator, a cascade
+  whose slow outer loop is clamped. A slow sequence takes guards, its clause
+  set on its ticks and kept between them as its terms are, 0 before the
+  first; refused, the cascade has no clamp. Until now a sample in any guard
+  was refused as one "where a term is computed again", since a guard's reads
+  are deferred as the right of an `and`'s are, and a sample there is a
+  sample. It takes cells, each cell's samples at a constant offset as a
+  whole term's are; a frame, `x_(2*m + j)`, whose sample moves with the
+  cell, is one too, since a cell's place is a constant there. It needs no
+  base clause, since a
+  stateless decimator would otherwise write its first term twice: a term is
+  computed at the step of its latest sample, so without one the phase is the
+  largest `b`, and the first term is the first whose tick is a step and
+  whose samples exist; a closed form's exist at every index. A sequence with
+  no base clause is sampled from its window, and refused where the window
+  cannot hold a term the interpreter has, closed form or not. A hold in a
+  term computed again is the same hold that much earlier, `b` plus the lag.
+  The cascade never needs one: `f_0` is a base clause, so the window holds
+  every `e_(n-1)` that `f` reads; but C71 writes `e` computed again before
+  the starts show it is not needed, and a hold there refused the cascade. A
+  sample is computed again only where a slow sequence
+  is read back at the input's rate, which its rate refuses. A hold of a
+  term the step never computes is NaN where the interpreter has none
+  either, and refused where it could give one: below a guarded sequence's
+  base clauses, as at the input's rate, and before the first tick of one
+  whose samples could give it. Computing that term again, as C71 computes
+  one at the input's rate, was rejected: it would compute samples again,
+  for slow sequences that sample closed forms and nothing else. Two things
+  stay refused. A ratio that is not whole, `y_(floor(2*n/3))`, is still an
+  index of neither form: two ticks in three steps are a pattern rather than
+  a period, and the rational resampler a paper draws first interpolates,
+  faster than the input whose step this is. And a slow sequence read by
+  another, by a sample or a hold, is refused naming the fix, a hold at the
+  input's rate sampled, which says the same exactly; composing periods and
+  phases is a second rule for what one already says, and waits for a model
+  of three rates that the fix makes unreadable. A hold says the same only
+  where its `a` ticks of its reader are one period of the sequence it
+  holds; at another period the term it names falls further behind at each
+  tick, which no hold says, and it is refused by its rate, as at the
+  input's rate. Such a hold was compiled wrong (C74). `--check`
+  holds a slow sequence from the step that computes its first term, and
+  reports a flip at the step that computes the term taking another
+  clause, with that term's margin, cell by cell for one
+  by cells; reporting the term's index instead was rejected, as every other
+  line of the report counts steps and the clause quoted names its own
+  index. Specified in `test/compile/cascade.ink`, a servo whose outer loop
+  runs every fourth step with a dead band and a clamp; in
+  `test/compile/decimate.ink`, an anti-aliasing filter, a decimator, a
+  hold, a linear interpolator, a second stage through the hold, and a
+  strided convolution; and by `sill` and `seam` in `test/compile/drift.ink`,
+  `brink` and `rift` every second step. The refusals and the reports are in
+  their headers, and each joins the suite with the compiler's half. Writing
+  them found that `--check` holds `c_n = x_(n-1)` at 0 to a term read from
+  `x_(-1)` where the instance's input is a closed form, which no step has,
+  and it parts (C75); the models feed a stream that starts at 0, as a
+  host's does. Passed as specified, but for these. A sample of a sequence
+  with no base clause is not computed again before its window holds the
+  term, as C71 computes one, even for a closed form: its lag is the phase
+  less `b`, known only once every sample is, after the term computed again
+  is written, and a closed form that reads another inherits it. It is
+  refused, `y_0 reads k_-1, before the step computes k`, which no model
+  meets. A hold before the first tick of a sequence with no base clause is
+  refused where any of its samples exists, as one path through its guards
+  may need no more. `stride`'s input, `3 - n/2 + (-1)^n`, never clamped its
+  second channel; `3 - n/2 + (-1)^n*(1 - n/8)` clamps the first from its
+  fourth term and the second from its sixth, and its report was worked out
+  by a simulation in Python of the exact terms and the doubles, not
+  recorded. `frame` in `decimate.ink` holds the frame; `x_(2*m + j - 1)` is
+  still of neither form, its constant being two terms. A hold's period is
+  checked with its reader's, after compiling, which is where the refusal of
+  `v` in `compile_rates_refused` now comes from, in the same words. The
+  refusals are in `test/cli.cmake`, with C74's.
 - **Steps and tolerance as options**, when a model asks: a hundred steps is
   short of what a slow filter settles in, and a billionth is loose for a
   well-conditioned step.
