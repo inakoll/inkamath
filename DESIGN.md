@@ -2538,6 +2538,13 @@ that exploring seven domains asked of the interpreter, by how many asked.
   cell; a compiled term chosen by cells keeps `name_clause_[cells]`, each
   cell's chain of guards beside its chain of values; and `--check` makes one
   entry per cell, so the report of a flip is the one it was.
+- `[done]` **Momentum, Adam and an LQR gain** in the conformance suite,
+  models only: `test/compile/momentum.ink` and `adam.ink`, the logistic
+  regression trained with each, the moments sequences beside the weights;
+  `lqr.ink`, a double integrator's gain by its Riccati recurrence, exact
+  over a hundred steps. Each instance is held to the interpreter by
+  `--check`, and the hundredth term of each to NumPy's, to every digit
+  printed. None needed a change to the language.
 - **Steps and tolerance as options**, when a model asks: a hundred steps is
   short of what a slow filter settles in, and a billionth is loose for a
   well-conditioned step.
