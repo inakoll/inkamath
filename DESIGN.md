@@ -2534,6 +2534,19 @@ that exploring seven domains asked of the interpreter, by how many asked.
   row, which LaTeX rejects, and is now `p_{n-1,r}`; and a sum that ends a
   product was bracketed, `\eta\,(\sum ...)`, where a paper is not.
 
+- `[done]` **`tex` of cells and of models**, so that a layer is read against the page
+  it came from. A definition by cells is set by its entry at a row and a
+  column with their range after it, `M_{j,k} = j + k, \quad 1 \le j \le
+  2,\ 1 \le k \le 2`, its guarded clauses in cases as a sequence's are; a
+  clause for one cell, and a matrix written whole, are lines of their own
+  before it, as base clauses are. A column has one subscript, and a term's
+  cell shares the term's, as reading one does. A model is its head, its
+  defaults and its inputs with their index, then a line per definition,
+  indented as `?` shows it, each set as `tex` sets it alone; a model inside a
+  model is refused for now. An instance's input keeps its index, where
+  `gain(x_n = n)` printed `gain(x = n)`. Specified in `test/data/tex.ink`,
+  which passed as written; `latex.ink`'s model refusal is now the model set. Writing it found the RNN conformance model's `W` read as `[1/4, 0;
+  1/4, 1/2]`: `[1/2 -1/4; ...]` subtracts, as C52 says a literal does.
 - `[done]` **One index is a row.** `a[1]` is the first row of `a`, a 1xn matrix that
   keeps its orientation, so a column vector's element is `v[2]`, a row
   vector's is `r'[2]`, as a paper writes the transpose, and a definition by

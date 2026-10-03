@@ -142,11 +142,13 @@ z = ~(1/3)
 >> tex ?z
 error: tex cannot show '~', which has no form on paper
 
+# A model it sets now, its head then its definitions (tex.ink).
 >> gain(k = 2, x_n) = { y_n = k*x_n }
 gain(k = 2, x_n) = { ... }
 
 >> tex ?gain
-error: tex cannot show a model yet
+\operatorname{gain}(k = 2, x_n):
+    y_n = k\,x_n
 
 # A cell of a term shares the term's subscript, as a paper writes x_{n,j}:
 # two subscripts in a row are not LaTeX at all. A cell of anything else that

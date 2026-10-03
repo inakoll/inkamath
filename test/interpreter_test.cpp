@@ -136,6 +136,9 @@ TEST_CASE("imaginary") {
 TEST_CASE("grad") {
     check_transcript("grad.ink");
 }
+TEST_CASE("tex") {
+    check_transcript("tex.ink");
+}
 TEST_CASE("models") {
     check_transcript("models.ink");
 }
