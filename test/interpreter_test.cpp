@@ -173,24 +173,34 @@ TEST_CASE("a carriage return is whitespace") {
 
 // Not a transcript entry: the inputs are thousands of characters wide. Both
 // of these used to exhaust the C++ stack and kill the process, so before the
-// token limit this case took the whole suite with it (DESIGN.md, C20).
-TEST_CASE("token limit") {
+// limit this case took the whole suite with it (DESIGN.md, C20). Depth is
+// bounded, not length: a flat literal is as deep as one of its cells.
+TEST_CASE("depth limit") {
     Interpreter<Number> interpreter;
-    const std::string expected = "error: expression is longer than 1000 tokens";
+    const std::string   deep = "error: expression nests more than 1000 deep";
 
     const std::string nested = std::string(8000, '(') + "1" + std::string(8000, ')');
-    CHECK(transcript::eval(interpreter, nested) == expected);
+    CHECK(transcript::eval(interpreter, nested) == deep);
 
     std::string flat = "1";
     for (int i = 0; i < 40000; ++i) flat += "+1";
-    CHECK(transcript::eval(interpreter, flat) == expected);
+    CHECK(transcript::eval(interpreter, flat) == deep);
 
-    // A line the limit must not reject.
-    CHECK(transcript::eval(interpreter, std::string(400, '(') + "1" + std::string(400, ')')) == "1");
+    CHECK(transcript::eval(interpreter, std::string(5000, '-') + "1") == deep);
+    CHECK(transcript::eval(interpreter, std::string(999, '(') + "1" + std::string(999, ')')) ==
+          "1");
 
-    // Twenty million of them, refused for the same reason at the same price:
-    // the answer was always this, the cost was 1.8 GB (DESIGN.md, C57).
-    CHECK(transcript::eval(interpreter, std::string(20000000, '(')) == expected);
+    // Lines the limit must not reject.
+    CHECK(transcript::eval(interpreter, std::string(400, '(') + "1" + std::string(400, ')')) ==
+          "1");
+    std::string column = "[1";
+    for (int i = 2; i <= 20000; ++i) column += "; " + std::to_string(i);
+    CHECK(transcript::eval(interpreter, column + "][20000]") == "20000");
+
+    // Twenty million of them, refused for their length before they cost
+    // memory: the answer was always this, the cost was 1.8 GB (DESIGN.md, C57).
+    CHECK(transcript::eval(interpreter, std::string(20000000, '(')) ==
+          "error: expression is longer than 100000 tokens");
 }
 
 // ParseEqualExpr used to rewind and re-parse its speculative left-hand side,

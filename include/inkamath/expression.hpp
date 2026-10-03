@@ -1,14 +1,15 @@
 #ifndef H_EXPR
 #define H_EXPR
 
-#include <iostream>
-#include <string>
-#include <algorithm> // max
+#include <algorithm>  // max
 #include <cmath>
+#include <iostream>
+#include <iterator>  // back_inserter
 #include <list>
-#include <utility> // pair
-#include <iterator> // back_inserter
+#include <stdexcept>
+#include <string>
 #include <unordered_map>
+#include <utility>  // pair
 
 #include <memory>
 #include "inkamath/pexpression.hpp"
@@ -35,8 +36,20 @@ class Expression : public std::enable_shared_from_this<Expression<T>>
 public:
     Expression() {}
 
-    explicit Expression(std::initializer_list<PExpression<T>> expressions) : children_(std::move(expressions)) {}
-    explicit Expression(std::vector<PExpression<T>> exprs) : children_(std::move(exprs)) {}
+    explicit Expression(std::initializer_list<PExpression<T>> expressions)
+        : children_(std::move(expressions)) {
+        Measure();
+    }
+    explicit Expression(std::vector<PExpression<T>> exprs) : children_(std::move(exprs)) {
+        Measure();
+    }
+
+    // Every walk of a tree recurses once per level -- the evaluator's, the
+    // destructor's, the printers' -- so a tree deeper than this is refused
+    // as it is built, while what was built can still be destroyed. Measured
+    // against the stack in DESIGN.md, C20 and C63.
+    static constexpr std::size_t max_depth = 1000;
+    [[nodiscard]] std::size_t    Depth() const { return depth_; }
 
     virtual ~Expression() = default;
     PExpression<T> self() {
@@ -67,7 +80,16 @@ public:
     Expression& operator=(const Expression<T>& e) = delete;
 
 private:
+    void Measure() {
+        for (const PExpression<T>& child : children_)
+            if (child) depth_ = std::max(depth_, child->Depth() + 1);
+        if (depth_ > max_depth)
+            throw std::runtime_error("expression nests more than " + std::to_string(max_depth) +
+                                     " deep");
+    }
+
     std::vector<PExpression<T>> children_;
+    std::size_t                 depth_ = 1;
 };
 
 template <typename T>

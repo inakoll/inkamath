@@ -810,6 +810,23 @@ itself alone. `exp(x)` is `e^x`, `log` a series reached by halving or
 doubling, and `log(0)` says so as `1/0` does.
 `test/data/models.ink` is the whole of it.
 
+Data comes in as a file of definitions like any other, written by whatever
+holds it. From Python, a matrix is one literal, its decimals read exactly as
+written:
+
+```python
+def ink(name, rows):
+    cells = ";\n    ".join(", ".join(repr(float(v)) for v in row) for row in rows)
+    return name + " = [" + cells + "]\n"
+
+with open("data.ink", "w") as f:
+    f.write(ink("X", rows))
+```
+
+and `use data` reads it, `data.X` the matrix. A line is bounded by how deep
+it nests, not how long it is, so a literal of thousands of cells is one line
+(DESIGN.md, C20).
+
 ### 6. Printing a definition back
 
 `?name` shows what a name is bound to, as it was written, without evaluating
