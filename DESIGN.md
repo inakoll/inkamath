@@ -865,6 +865,9 @@ Recorded so they are not re-litigated later, or drifted into by accident.
   against a value the user chose. C39 made the refusal say what it is refusing;
   this entry is the feature behind it.
 
+  Taken up after the conformance suite's first entries asked for it (implicit
+  layers, Newton for systems, power iteration): see next in line.
+
 - **Built-in series acceleration.** `lim` applying Aitken's delta-squared, or
   offering it behind a keyword, so that a slowly converging series gets an
   answer instead of C36's refusal. Declined, and the reason is not cost.
@@ -2388,6 +2391,12 @@ that exploring seven domains asked of the interpreter, by how many asked.
   function of its own, so `logistic.ink`'s four sigmoids are four identical
   ones; and the series behind `exp` needs more than its hundred terms past
   about 25, where a model would reduce its argument first.
+- **The limit of a sequence of matrices** is the limit of each cell, as the
+  Deferred entry asked first. Its steps are measured by the largest of its
+  cells', by the rule a number's stops by, and terms that change size are
+  refused by name rather than stretched, as a single value would be in a
+  difference. Specified in `test/data/spec/limits.ink`, its 4 limits failing;
+  `lim mm` in `matrices.ink`, the refusal C39 worded, will move with it.
 - **Steps and tolerance as options**, when a model asks: a hundred steps is
   short of what a slow filter settles in, and a billionth is loose for a
   well-conditioned step.
