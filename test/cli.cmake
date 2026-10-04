@@ -276,6 +276,20 @@ set(stdout "cannot compile s: u_(...): read every 8 steps, and u is computed eve
 set(exit 1)
 check(compile_c74)
 
+# C86: a clause the interpreter refuses wherever it is taken is what a step
+# says there, NaN, so a model whose guard never takes it compiles; log's
+# '| x <= 0 = 1/0' no longer hides the refusal its halving earns.
+file(WRITE "${OUT}/c86.ink" "gd(a = 2) = {\n    h(x) = 1\n    h(x) | x <= 0 = 1/0\n    y_n = h(a + n)\n}\n")
+set(args --compile c86.ink gd)
+set(stdout "")
+check(compile_c86)
+
+file(WRITE "${OUT}/logged.ink" "lg(a = 2) = {\n    y_n = log(a + n)\n}\n")
+set(args --compile logged.ink lg)
+set(stdout "cannot compile y: calls nested 64 deep, which a recursion its guards do not end would pass\n")
+set(exit 1)
+check(compile_log_refused)
+
 # A base term is computed at its own index, so it reads a term from there
 # back, and only where that term's sequence has started.
 file(WRITE "${OUT}/seeds.ink" "y_0 = x_1\ny_n = y_(n-1) + x_n\na_1 = 1\na_n = a_(n-1) + 1\nb_0 = a_0\nb_n = b_(n-1)\n")

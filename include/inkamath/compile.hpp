@@ -136,6 +136,10 @@ private:
     struct Reason : std::runtime_error {
         using std::runtime_error::runtime_error;
     };
+    // The interpreter's own error, folding a value that reads no name.
+    struct Undefined : Reason {
+        using Reason::Reason;
+    };
 
     // A primary, a unary, a product, a sum: an operand is parenthesised only
     // where C would otherwise read it differently.
@@ -466,6 +470,19 @@ private:
     }
     static constexpr int max_expanded = 64;
 
+    // A guarded value the interpreter refuses wherever it is taken, as log's
+    // '| x <= 0 = 1/0', is what a step says there: NaN, as where no clause
+    // applies (C86).
+    Code Taken(const PExpression<Value>& expression) {
+        try {
+            return Emit(expression);
+        } catch (const Undefined&) {
+            Code nan;
+            nan.cells.push_back(Atom("NAN"));
+            return nan;
+        }
+    }
+
     // A value that is not a sequence, its clauses tried as the interpreter
     // tries them: the guarded in the order written, then the one that always
     // applies.
@@ -486,7 +503,7 @@ private:
                 if (condition->empty())
                     otherwise = Emit(clause.expression);
                 else
-                    guarded.emplace_back(*condition, Emit(clause.expression));
+                    guarded.emplace_back(*condition, Taken(clause.expression));
             }
         }
         if (guarded.empty()) {
@@ -936,7 +953,7 @@ private:
         } catch (const Reason&) {
             throw;
         } catch (const std::runtime_error& error) {
-            throw Reason(error.what());
+            throw Undefined(error.what());
         }
     }
 
