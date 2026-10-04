@@ -3630,10 +3630,11 @@ that exploring seven domains asked of the interpreter, by how many asked.
   the refusal is where a term is read. `?` prints the signature as written;
   `tex` sets the size as a paper states it, `\operatorname{dot}(x_n \in
   \mathbb{R}^{2})`, `\mathbb{R}^{2 \times 2}` for two bounds and
-  `\mathbb{R}^{d}` for one read. Any other bracket in a signature, `x_n[j]`,
-  `x_n[2]` or a parameter's, is refused in the words that say what a
-  parameter is, which gain the form: `a model's parameter is a name, as 'k =
-  2', or an input, as 'x_n' or 'x_n[j<=2]'`. A history by cells is C89's.
+  `\mathbb{R}^{d}` for one read. ℝ follows the paper and is not checked:
+  the interpreter takes a complex input as it takes any. Any other bracket
+  in a signature, `x_n[j]`, `x_n[2]` or a parameter's, is refused in the
+  words that say what a parameter is, which gain the form: `a model's
+  parameter is a name, as 'k = 2', or an input, as 'x_n' or 'x_n[j<=2]'`. A history by cells is C89's.
 
   Compiled, the step takes an input of more than one cell as a pointer to its
   cells, row by row, `const double x[2]`, as a host holds a vector; its window

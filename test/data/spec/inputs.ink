@@ -163,6 +163,10 @@ bat(x_n[b<=2, j<=1, k<=2]) = { ... }
 >> bat(x_n = [3 n]).y_5
 error: bat(...).x_5 is a 1x2 matrix, where bat takes a 2x1x2 tensor
 
+>> tex ?bat
+\operatorname{bat}(x_n \in \mathbb{R}^{2 \times 1 \times 2}):
+    y_n = x_{n,2}\,\begin{bmatrix} 1 \\ 1 \end{bmatrix}
+
 # One cell stated is a single value, and held to it.
 >> one(x_n[j<=1]) = {
 ..     y_n = 2*x_n
@@ -186,6 +190,11 @@ rest(x_n[j<=2] = [0; 1]) = { ... }
 
 >> rest(x_n = 1).y_0
 error: rest(...).x_0 is a single value, where rest takes a 2x1 matrix
+
+# Its size is set before its default, as written.
+>> tex ?rest
+\operatorname{rest}(x_n \in \mathbb{R}^{2} = \begin{bmatrix} 0 \\ 1 \end{bmatrix}):
+    y_n = \begin{bmatrix} 1 & 2 \end{bmatrix}\,x_n
 
 >> nil(x_n[j<=2] = 0) = {
 ..     y_n = [1 2]*x_n
