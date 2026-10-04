@@ -3406,11 +3406,12 @@ that exploring seven domains asked of the interpreter, by how many asked.
   disagree; a term with no size is named at the index asked, `cs_2`; and the
   call refused in its own name is the interpreter's, `grad`'s keeping the
   operator's words. C87 was found and fixed on the way, the hint for one-cell
-  clauses now written from the clause as the others are. Under callgrind,
-  `hand`, `harmonic` and `matrix` moved under 0.1%, `deep`, `grad` and
-  `limit` 0.3 to 0.7% fewer, and `read`, which defines nothing by cells, 1.2%
-  more, all of it `Number::Literal` no longer inlining `push_back`: the unit
-  grew.
-  376 lines of sources added and 121 removed, 255 more in all, about 40 of
+  clauses now written from the clause as the others are. The review made
+  `mod`'s check `grad`'s and the compiler's as well. Under callgrind,
+  `harmonic` and `matrix` moved under 0.1%, `hand` 0.3% more, `deep`, `grad`
+  and `limit` 0.1 to 0.5% fewer, and `read`, which defines nothing by cells,
+  1.2% more, all of it `Number::Literal` no longer inlining `push_back` as the
+  unit grew, until its digits were written by index, 0.6% fewer.
+  398 lines of sources added and 130 removed, 268 more in all, about 40 of
   them the body of a call indented under the handler that names it, where
   about 120 were planned.
