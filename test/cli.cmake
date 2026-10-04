@@ -324,6 +324,14 @@ set(stderr "inkamath: --check takes a transcript, or a file, an instance it defi
 set(exit 2)
 check(check_usage)
 
+# The step takes a single value for each input, so an instance giving a
+# matrix is refused by name, where it was read past its one cell (C83).
+file(WRITE "${OUT}/wide.ink" "mm(x_n) = {\n    y_n = [1 2]*x_n\n}\nv = mm(x_n = [n; 1])\n")
+set(args --check wide.ink v -o wide.c)
+set(stderr "inkamath: v.x_(0) has 2 cells, where the compiled step takes a single value\n")
+set(exit 1)
+check(check_matrix_input)
+
 # A transcript checked: replayed, and each answer that is not the one recorded
 # shown as recorded, '-', and as given now, '+', under the line it answers.
 file(WRITE "${OUT}/good.ink" ">> 1+1\n2\n\n# a comment\n>> a = 3\na = 3\n\n>> a*2\n6\n")
