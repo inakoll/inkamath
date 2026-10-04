@@ -630,18 +630,10 @@ private:
     }
 
     // Names in a definition are sought where it was written.
-    struct Home {
+    struct Home : Setting<const Scope<Value>*> {
         Home(CompileC& compiler, const Reference<Value>* definition)
-            : compiler_(compiler), scope_(compiler.scope_) {
-            if (definition && definition->home) compiler_.scope_ = definition->home;
-        }
-        ~Home() { compiler_.scope_ = scope_; }
-        Home(const Home&)            = delete;
-        Home& operator=(const Home&) = delete;
-
-    private:
-        CompileC&           compiler_;
-        const Scope<Value>* scope_;
+            : Setting(compiler.scope_,
+                      definition && definition->home ? definition->home : compiler.scope_) {}
     };
 
     // Every parameter the signature gives is in the header, read or not: a

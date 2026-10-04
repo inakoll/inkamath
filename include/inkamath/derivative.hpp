@@ -345,7 +345,7 @@ private:
             const Local local(*this);
             for (const auto& argument : arguments) frames_.back().push_back(argument);
             Hidden(definition, arguments);
-            const Flag<bool> unguarded(guard_, false);
+            const Setting<bool> unguarded(guard_, false);
             Jet              result = Dispatch(definition, indexed, index);
             memo_.emplace(key, result);
             return result;
@@ -380,7 +380,7 @@ private:
               const Arguments& arguments) {
         const Clause<T>* lowest = definition.EndBase(true);
         if (!lowest) return;
-        const Flag<bool> filling(filling_, true);
+        const Setting<bool> filling(filling_, true);
         try {
             for (int k = lowest->parameters.index() + 1; k < index; ++k)
                 (void)Term(definition, call, true, k, arguments);
@@ -450,8 +450,8 @@ private:
     // point only, an equality where its sides move apart, takes a clause
     // whose slope is not the function's.
     bool Holds(const Guarded& what, const PExpression<T>& guard) {
-        const Flag<bool>               guarding(guard_, true);
-        const Flag<const Guarded*>     naming(guarded_, &what);
+        const Setting<bool>            guarding(guard_, true);
+        const Setting<const Guarded*>  naming(guarded_, &what);
         const Jet                      held = Eval(guard);
         return numeric_interface<T>::truth(*held[0]);
     }
@@ -910,19 +910,6 @@ private:
 
     private:
         Derivative& d_;
-    };
-
-    // Set while this lives, and put back however it ends.
-    template <typename V>
-    struct Flag {
-        Flag(V& flag, V value) : flag_(flag), previous_(flag) { flag_ = value; }
-        ~Flag() { flag_ = previous_; }
-        Flag(const Flag&)            = delete;
-        Flag& operator=(const Flag&) = delete;
-
-    private:
-        V& flag_;
-        V  previous_;
     };
 
     ReferenceStack<T>&                                    stack_;
