@@ -128,7 +128,9 @@ inverts a matrix at every step, and `test/compile/heat.ink` once, in `update`;
 defines (section 5), read as `use` reads the file: its inputs are the step's
 arguments, in the order of its signature, and its parameters, with their
 defaults, the only fields; a name nothing defines is refused rather than
-taken for one more input. A file's named instances are compiled with it, into
+taken for one more input. A read of an input before the stream is a term the
+model's history gives, which `init` folds into the input's window, or is
+refused: `down` in `test/compile/decimate.ink` states `x_n | n < 0 = 0`. A file's named instances are compiled with it, into
 one step that orders all their terms together, each instance a struct of its
 own: `test/compile/loop.ink` closes a loop, `m.ctl.u[0]` and `m.plt.x[0]`,
 and `test/compile/chain.ink` nests one. A function, and an instance of a model
@@ -167,7 +169,10 @@ outer loop runs every fourth step.
 interpreter. It compiles `calm`, an instance the file defines, with the
 parameters the instance gives, and writes a C program that steps it a hundred
 times on the inputs the interpreter gives `calm`, replayed so that a difference
-is the step's own, and compares each term with the interpreter's. Where every
+is the step's own, and compares each term with the interpreter's, from the
+step that computes a sequence's first term, which it names where that is
+after the first. Before it the interpreter must have no term either; from it,
+a term the interpreter cannot give parts, unless the step's is NaN. Where every
 term is within a billionth of one plus the interpreter's, it prints the largest
 difference; otherwise the first term that parts and what the interpreter gives
 there, and it exits with a failure. It also says whether the interpreter's
@@ -821,6 +826,25 @@ model used once needs no name, and an input left out says so when it is read:
 
 >> lowpass().v_1
 error: lowpass(...).u_1 is an input, and nothing defines it
+```
+
+A model that reads its input before the stream says what the input was there,
+by clauses of its own on it, terms and guarded clauses. The argument comes
+after them, as a definition's default comes after its other clauses, so a
+clause that always applies is refused:
+
+```
+>> delay(x_n) = {
+..     x_n | n < 0 = 0
+..     c_n = x_(n-1)
+.. }
+delay(x_n) = { ... }
+
+>> delay(x_n = n^2).c_0
+0
+
+>> delay(x_n = n^2).c_3
+4
 ```
 
 Defining an instance evaluates nothing, so two that read each other's terms,

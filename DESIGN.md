@@ -1601,7 +1601,7 @@ closures need one anyway, and can bring it.
 | C72 `[kept]` | **A limit's derivative where its terms' derivatives converge too slowly near the point.** `grad` takes a limit's derivative as the limit of its terms' derivatives, which holds where those converge uniformly near the point, and a single point cannot show that they do. `h(x)_n = h(x)_(n-1)/(1 + x^2)` from `h(x)_0 = x` tends to 0 for every x, so its limit's derivative is 0; at 0 every term's derivative is 1, and `grad` answers 1. Found by the review of the specification; `grad.ink` records the wrong answer so that it cannot change unseen. |
 | C73 `[fixed]` | **`grad`'s checks for a jump read slopes, so a tangent passed.** A comparison or a guard at its threshold, `floor` at a whole number and an exponent were refused only where a first derivative was not zero, so `grad_(x = 0) (x^2 > 0)` answered 0 at a jump, a clause `x^2 == 0` gave its slope at the one point it holds, `2^((x-1)^2)` answered 0 at 1 and was refused at 2, and the same comparison under a nested `grad` was refused. Found by the review of the design. Whether a derivative is there at all is what is asked now. It refuses what is flat where the argument moves and lands on a whole number, as `floor(x^2)` at 0 does, which `grad.ink` records: a refusal over a silent wrong answer. |
 | C74 `[fixed]` | **A hold inside a sequence at another rate was compiled in the input's steps.** In `s_k = x_(4*k) - u_(floor(k/2))` from `s_0 = 0`, with `u_m = x_(2*m)` from `u_0 = 0` and `x_n = n^2`, the hold names a term of `u` by `s`'s index, and the compiler, which resolves every hold by the step, read the latest term of `u` instead: at 4 it gave `s_1` as 0, where the interpreter gives 16. Found specifying what several rates left refused (next in line). The hold reads every 8 steps a sequence computed every 2, so the term it names falls further behind at each tick and no window holds it: it is to be refused by its rate. The hold at the input's rate sampled, which the refusal of a slow sequence read by another names, would say what the compiler gives, not what the interpreter does. Now a hold's period is checked once its reader's is known, as its `a` ticks of the reader, and `s` is refused, "read every 8 steps, and u is computed every 2"; `compile_c74` in `test/cli.cmake` holds it. |
-| C75 `[open]` | **`--check` holds a term read from before the stream to the input there.** With `c_n = x_(n-1)` in a model and an instance giving `x_n = n^2`, the interpreter answers `c_0` from `x_(-1)`, 1, where the check feeds the compiled step its inputs from the first step on, as a host does, so its window holds 0, and the report has the two part at 0. Found specifying what several rates left refused (next in line), whose models feed a stream that starts at 0, `s_n \| n >= 0 = n^2`, where the interpreter has no `x_(-1)` either. Whether the check should give the window the input's earlier terms, holding the step to what no host gives it, or say that the step cannot have them, was open; neither is taken: the model states its input's history, which the interpreter and the step both read, and a read before the stream that no history gives is refused (next in line: a model's history of its inputs). |
+| C75 `[fixed]` | **`--check` holds a term read from before the stream to the input there.** With `c_n = x_(n-1)` in a model and an instance giving `x_n = n^2`, the interpreter answers `c_0` from `x_(-1)`, 1, where the check feeds the compiled step its inputs from the first step on, as a host does, so its window holds 0, and the report has the two part at 0. Found specifying what several rates left refused (next in line), whose models feed a stream that starts at 0, `s_n \| n >= 0 = n^2`, where the interpreter has no `x_(-1)` either. Whether the check should give the window the input's earlier terms, holding the step to what no host gives it, or say that the step cannot have them, was open; neither is taken: the model states its input's history, which the interpreter and the step both read, and a read before the stream that no history gives is refused (next in line: a model's history of its inputs). Now `delay(x_n) = { x_n \| n < 0 = 0; c_n = x_(n-1) }` given `x_n = n^2` answers `c_0` 0 both ways, `init` folding the history into the window, and the check parts where the interpreter has no term and the step has one; `test/data/history.ink` and `test/compile/history.ink` hold it. |
 | C76 `[fixed]` | **A compiled hold rounded its lag toward zero.** A hold's place in the held sequence's window was `(n - phase)/a - (n - b)/a - d` in C's division, which truncates, and its first step was clamped to `b`: a hold whose numerator could be negative, `y_(floor((n - 3)/2) + 1)` on a sequence based at a negative index, read the wrong cell or left its first steps 0 where the interpreter gives a term. Found by the review of the rates gaps, with 1200 random models compared against master, one of which master compiled to NaN where the interpreter has a value. The lag is now a floor, its first step where the term exists, and the emitted division keeps each numerator non-negative; `trail` in `test/compile/decimate.ink` holds it. |
 | C77 `[fixed]` | **`grad` took a tensor's slice name for a global.** Its check that no definition reads the global of its name binds a clause's index, row and column, not its slice, so after `Gc[b<=2, j<=1, k<=1] = b`, `grad_(b = 2) b*Gc` is refused, "Gc reads the global b, which grad's b does not reach", where `Gc` is a constant and the answer `[1;; 2]`. Found specifying `grad` of definitions by cells (next in line), whose specification holds it. Now the slice is bound as the row is; `Gs` in `test/data/grad.ink` holds it. |
 | C78 `[open]` | **An index that moves with `grad`'s name answers as if it did not.** An index is a whole number, so one that moves is at a jump, as `floor` is at a whole number, which C73 refuses; but with `s_n = n^2` and `v = [5; 7; 9]`, `grad_(x = 2) s_(x)` and `grad_(x = 2) v[x]` answer 0. Found specifying `grad` of definitions by cells (next in line), which refuses a moving size by that rule; an index wants the same check where it is read, not part of that entry. |
@@ -3084,7 +3084,7 @@ that exploring seven domains asked of the interpreter, by how many asked.
   removed, the refactor's moves among them: 61 more in all, where about 120
   were planned.
 
-- **A model's history of its inputs** (C75). A model that reads its input
+- `[done]` **A model's history of its inputs** (C75). A model that reads its input
   before the stream, `c_n = x_(n-1)` in `delay(x_n)`, is answered two ways:
   given `x_n = n^2`, the interpreter reads `x_(-1)`, 1, where the step a host
   feeds from its first index holds 0, and `--check` parts at 0; given the
@@ -3211,3 +3211,31 @@ that exploring seven domains asked of the interpreter, by how many asked.
   refusal; and in `test/compile/history.ink`, whose instances, refusals
   and reports, the seven programs' among them, are wired with the
   compiler's half.
+
+  Built as specified, every entry passing as written, now
+  `test/data/history.ink`, and every check and refusal of
+  `test/compile/history.ink` wired; README shows `delay` in section 5 and
+  says what the compiler and the check do before the stream. No other golden
+  moved and every expected header is byte-identical; the seven programs report as
+  specified. In the interpreter, an input's clauses are a definition of
+  their own whose default is the argument, or the input where none is given,
+  so the argument keeps reading where it was written. The compiler folds what
+  `init` writes by asking the interpreter for the term, kept only where some
+  clause of a history gave part of it, so a closed form's term before a slow
+  sequence's first tick stays refused; the history's own clauses are checked
+  as specified, folded in the order written, a term after a guarded clause
+  folded rather than refused. Departures: a term folded so through an
+  argument or a slow sequence's samples that reads a parameter is folded at
+  its value when compiled, where the spec computes it again or refuses it; a
+  read in a term computed again (C71) has nothing to keep it, so is refused
+  where its history does not give it even if a guard would have kept it; a
+  slow sequence's first tick still waits for its samples from the stream,
+  as `frame.p` from 2 asks; and a term the interpreter gives that is not a
+  finite real number now parts, "where the interpreter's term is not a
+  finite real number", where it was skipped. `fuzz.cpp`'s alignment with the
+  reversed check rule, and refusing a top-level `x_n | n < 0 = 0` in a file,
+  whose input has no body to state a history in, are left out of this work.
+  C84 stays open and is the check's one exception, and C85 is untouched.
+  331 lines of sources added and 62 removed, 269 more in all, where about
+  210 were planned: 38 in the interpreter, 202 in the compiler and 29 in the
+  check.
