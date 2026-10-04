@@ -78,7 +78,8 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brin
                          decimate:stride decimate:frame decimate:lead
                          decimate:trail drift:sill drift:seam history:past history:twin
                          history:lit history:rise history:ajar history:sown history:nest
-                         history:twice history:relayed history:pole)
+                         history:twice history:relayed history:pole
+                         history:huge)
     string(REPLACE ":" ";" checked ${checked})
     list(GET checked 0 file)
     list(GET checked 1 instance)
@@ -147,6 +148,8 @@ set_tests_properties(check_relayed_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^relayed: 100 steps from 0, against exact values\nrelayed\\.inner\\.c: within 0\nrelayed\\.c: within 0\nrelayed\\.y: within 0\nrelayed\\.inner\\.x: within 0\n$")
 set_tests_properties(check_pole_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^pole: 100 steps from 0, against exact values\npole\\.y: inf at 3, where the interpreter gives none: division by zero\n$")
+set_tests_properties(check_huge_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^huge: 100 steps from 0, against exact values\nhuge\\.y: inf at 31, where the interpreter's term is too large for a double\n$")
 set_tests_properties(check_warm_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^warm: 100 steps from 0, against exact values\n(warm\\.[a-z]+: within [0-9.e+-]+\n)+$")
 set_tests_properties(check_rnn_report PROPERTIES PASS_REGULAR_EXPRESSION
@@ -184,8 +187,9 @@ add_test(NAME check_rift COMMAND check_rift)
 add_test(NAME check_sill COMMAND check_sill)
 add_test(NAME check_seam COMMAND check_seam)
 add_test(NAME check_pole COMMAND check_pole)
+add_test(NAME check_huge COMMAND check_huge)
 set_tests_properties(check_wild check_brink check_rift check_sill check_seam check_pole
-                     PROPERTIES WILL_FAIL ON)
+                     check_huge PROPERTIES WILL_FAIL ON)
 
 # Random models, compiled and held to the interpreter's answers: the generator
 # runs both at build time and writes one C file, built and run like the others.

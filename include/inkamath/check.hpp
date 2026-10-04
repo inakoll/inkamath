@@ -92,24 +92,27 @@ public:
                 // should have none either; at another rate it is not asked.
                 const bool before = n < sequence.start;
                 const Term term   = unnamed || (before && sequence.period > 1)
-                                        ? Term{{}, true, true, "not asked"}
+                                        ? Term{{}, true, "not asked", {}}
                                         : At(session, instance + "." + sequence.name,
                                              Floor(n - sequence.phase, sequence.period));
                 if (!term.exact && (!inexact || n < *inexact)) inexact = n;
                 const bool given = term.error.empty();
-                const char kind  = !given         ? (before || unnamed ? '0' : '2')
-                                   : !term.finite ? '4'
-                                   : before       ? '3'
-                                                  : '1';
-                why.push_back(kind == '2' ? Quoted(term.error) : "0");
+                const char kind  = !given              ? (before || unnamed ? '0' : '2')
+                                   : !term.odd.empty() ? '4'
+                                   : before            ? '3'
+                                                       : '1';
+                why.push_back(kind == '2'   ? Quoted(term.error)
+                              : kind == '4' ? Quoted(term.odd)
+                                            : "0");
                 for (std::size_t c = 0; c < cells; ++c) {
                     want.push_back(kind == '1' || kind == '3' ? term.cells[c] : "0.0");
                     known.push_back(std::string(1, kind));
                 }
             }
-            const bool none = std::any_of(known.begin(), known.end(),
-                                          [](const std::string& each) { return each == "2"; });
-            if (none) data += Array("const char* const", "why_" + id, steps, why);
+            const bool told = std::any_of(known.begin(), known.end(), [](const std::string& each) {
+                return each == "2" || each == "4";
+            });
+            if (told) data += Array("const char* const", "why_" + id, steps, why);
             data += Array("const double", "want_" + id, steps * cells, want);
             data += Array("const unsigned char", "known_" + id, steps * cells, known);
             data += "static double got_" + id + "[" + size + "];\n";
@@ -118,7 +121,7 @@ public:
             held += "    held &= hold_(\"" + instance + "." + sequence.name + "\", " +
                     std::to_string(sequence.cols) + ", " + std::to_string(cells) + ", " +
                     std::to_string(sequence.start) + ", got_" + id + ", want_" + id + ", known_" +
-                    id + ", " + (none ? "why_" + id : std::string("0")) + ");\n";
+                    id + ", " + (told ? "why_" + id : std::string("0")) + ");\n";
         }
         std::string arguments;
         for (std::size_t k = 0; k < compiled.inputs.size(); ++k)
@@ -224,8 +227,8 @@ public:
         out += "            printf(\": %.17g at %d, where the interpreter gives none: %s\\n\",\n";
         out += "                   got[k], n, why[k / cells]);\n";
         out += "        else if (known[k] == 4)\n";
-        out += "            printf(\": %.17g at %d, where the interpreter's term is not a\"\n";
-        out += "                   \" finite real number\\n\", got[k], n);\n";
+        out += "            printf(\": %.17g at %d, where the interpreter's term is %s\\n\",\n";
+        out += "                   got[k], n, why[k / cells]);\n";
         out += "        else\n";
         out += "            printf(\": %.17g at %d, where the interpreter gives %.17g\\n\",\n";
         out += "                   got[k], n, want[k]);\n";
@@ -363,8 +366,9 @@ private:
     // The interpreter's term, each cell as C writes it, or why there is none.
     struct Term {
         std::vector<std::string> cells;
-        bool                     exact = true, finite = true;
+        bool                     exact = true;
         std::string              error;
+        std::string              odd;  // why it is no finite double, where it is not
     };
 
     static Term At(Interpreter<Number>& session, const std::string& name, int n) {
@@ -384,7 +388,11 @@ private:
             for (std::size_t j = 1; j <= value->Size().cols; ++j) {
                 const Number& cell = (*value)(i, j);
                 const auto    z    = cell.Inexact();
-                answer.finite      = answer.finite && z.imag() == 0 && std::isfinite(z.real());
+                if (answer.odd.empty())
+                    answer.odd = z.imag() != 0             ? "not a real number"
+                                 : std::isfinite(z.real()) ? ""
+                                 : cell.exact()            ? "too large for a double"
+                                                           : "not a finite number";
                 answer.exact = answer.exact && cell.exact();
                 answer.cells.push_back(Double(z.real()));
             }

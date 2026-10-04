@@ -3231,9 +3231,10 @@ that exploring seven domains asked of the interpreter, by how many asked.
   read in a term computed again (C71) has nothing to keep it, so is refused
   where its history does not give it even if a guard would have kept it; a
   slow sequence's first tick still waits for its samples from the stream,
-  as `frame.p` from 2 asks; and a term the interpreter gives that is not a
-  finite real number now parts, "where the interpreter's term is not a
-  finite real number", where it was skipped. `fuzz.cpp`'s alignment with the
+  as `frame.p` from 2 asks; and a term the interpreter gives that no
+  double holds now parts, saying why, where it was skipped: `huge.y: inf at
+  31, where the interpreter's term is too large for a double`, or not a real
+  number. `fuzz.cpp`'s alignment with the
   reversed check rule, and refusing a top-level `x_n | n < 0 = 0` in a file,
   whose input has no body to state a history in, are left out of this work.
   C84 stays open and is the check's one exception, and C85 is untouched.

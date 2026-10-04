@@ -57,6 +57,13 @@
 #     pole: 100 steps from 0, against exact values
 #     pole.y: inf at 3, where the interpreter gives none: division by zero
 #
+# And one the interpreter gives that no double holds parts too, saying so:
+# 'huge' passed 'within 1.5e+284', its step inf at 31 where the term is
+# 10^310.
+#
+#     huge: 100 steps from 0, against exact values
+#     huge.y: inf at 31, where the interpreter's term is too large for a double
+#
 # What 'inkamath --compile' refuses, each model a file of its own compiled
 # by name with -o. A read before the stream that no history gives, in a
 # clause, beyond a term of the history, and on the right of an 'and' whose
@@ -206,3 +213,9 @@ inv(x_n) = {
     y_n = 1/(x_n - 3)
 }
 pole = inv(x_n = n)
+
+grow(x_n) = {
+    y_0 = 1
+    y_n = y_(n-1)*10^10 + x_n
+}
+huge = grow(x_n = n)
