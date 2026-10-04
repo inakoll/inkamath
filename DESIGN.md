@@ -3015,8 +3015,9 @@ that exploring seven domains asked of the interpreter, by how many asked.
   its index to the general clause written whole; and a base term and a cell
   of every term that both give a cell are the error evaluating them is. A
   limit of a sequence by cells is walked from its highest base term, written
-  whole or by its cells, where `lim` starts it; `Derivative::Limit` skips a
-  base by cells today, which nothing could reach.
+  whole or by its cells, where `lim` starts it, a clause for one cell being
+  no base term; `Derivative::Limit` skips a base by cells today, which
+  nothing could reach.
 
   With parameters, its arguments carry their parts, as any call's do: the
   softmax of a vector, a layer reading its weights. Without, it reads only
@@ -3051,9 +3052,10 @@ that exploring seven domains asked of the interpreter, by how many asked.
   one; reverse mode, one pass, is a second evaluator with a tape, and an
   entry of its own when a model is too slow for this.
 
-  Specified in `test/data/spec/gradcells.ink`, 34 of its 86 entries
+  Specified in `test/data/spec/gradcells.ink`, 40 of its 106 entries
   failing: a square per cell, softmax by `exp` and normalised by a sum,
-  ReLUs either side of 0, cells reading cells, a diagonal by guard, one-cell
-  clauses, sizes, terms and a limit by cells, a tensor, and attention's
-  `W^Q`, its gradient held to the one written by hand through softmax's
-  Jacobian. Writing it found C77 and C78.
+  ReLUs either side of 0, cells reading cells, a term or a limit, a diagonal
+  by guard, one-cell clauses, guarded or not, sizes, terms and a limit by
+  cells, a tensor, guarded or not, and attention's `W^Q`, its gradient held
+  to the one written by hand through softmax's Jacobian. Writing it found
+  C77 and C78.

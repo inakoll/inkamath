@@ -87,6 +87,35 @@ cs(v)[j<=3] = sq(v)[j] + rl(v)[j]
  2;
  1]
 
+# A cell may read a term at its row, or a limit: pq(a)_j is a^j, and the
+# limit of hl(a*j) is (a*j)^2.
+>> pq(a)_0 = 1
+pq(a)_0 = 1
+
+>> pq(a)_n = a*pq(a)_(n-1)
+pq(a)_n = a*pq(a)_(n-1)
+
+>> qa(a)[j<=3] = pq(a)_j
+qa(a)[j<=3] = pq(a)_j
+
+>> grad_(a = 3) qa(a)
+[ 1;
+  6;
+ 27]
+
+>> hl(a)_0 = 0
+hl(a)_0 = 0
+
+>> hl(a)_n = a^2
+hl(a)_n = a^2
+
+>> lc(a)[j<=2] = lim hl(a*j)
+lc(a)[j<=2] = lim hl(a*j)
+
+>> grad_(a = 3) lc(a)
+[ 6;
+ 24]
+
 # A clause that holds at the point only is refused, naming the cell. A
 # cell's place never moves, so a guard on it is no jump.
 >> sp(v)[j<=2] = v[j]^2
@@ -133,6 +162,22 @@ wh(x)[1,2] = x^2
 >> grad_(x = 3) wh(x)
 [1, 6;
  0, 1]
+
+# A clause for one cell may be guarded; at 1 its comparison's sides meet and
+# move, and its value, false, gives the slope.
+>> og(x)[j<=2] = x*j
+og(x)[j<=2] = x*j
+
+>> og(x)[2] | x > 1 = x^3
+og(x)[2] | x > 1 = x^3
+
+>> grad_(x = 2) og(x)
+[ 1;
+ 12]
+
+>> grad_(x = 1) og(x)
+[1;
+ 2]
 
 # A size may come from a parameter, or read the name where it does not move.
 # A size is a whole number, so one that moves is at a jump.
@@ -224,6 +269,25 @@ m(a)_n[j<=2] = a*j^2
 [1;
  4]
 
+# A clause for one cell is no base term, so the walk starts below it: ob_6
+# divides by zero at 3, and the limit, reached at ob_4, never reads it.
+>> ob(a)_2[j<=2] = j
+ob(a)_2[j<=2] = j
+
+>> ob(a)_n[j<=2] = a*j^2
+ob(a)_n[j<=2] = a*j^2
+
+>> ob(a)_6[1] = 1/(a - 3)
+ob(a)_6[1] = 1/(a - 3)
+
+>> lim ob(3)
+[ 3;
+ 12]
+
+>> grad_(a = 3) lim ob(a)
+[1;
+ 4]
+
 # Without parameters a definition by cells reads only globals, which grad's
 # name does not reach: a constant, or refused as any definition is.
 >> N[j<=2, k<=2] = j + k
@@ -254,6 +318,16 @@ G(x)[b<=2, j<=1, k<=2] = x^b*k
 >> grad_(b = 3) G(b)
 [1,  2;;
  6, 12]
+
+>> tg(x)[b<=2, j<=1, k<=2] = x*b*k
+tg(x)[b<=2, j<=1, k<=2] = x*b*k
+
+>> tg(x)[b<=2, j<=1, k<=2] | b == k = x^2
+tg(x)[b<=2, j<=1, k<=2] | b == k = x^2
+
+>> grad_(x = 3) tg(x)
+[6, 2;;
+ 2, 6]
 
 >> tq(x)[b<=2, j<=2, k<=1] = x*b*j
 tq(x)[b<=2, j<=2, k<=1] = x*b*j
