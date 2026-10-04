@@ -3480,9 +3480,9 @@ that exploring seven domains asked of the interpreter, by how many asked.
 
   What stays refused, by name: a history of another size than its input,
   stated or a single value, `cannot compile x: a history of another shape`,
-  the words an inner input's already has, so `swap` in `test/cli.cmake`,
-  its size not stated, moves to them from `a history that is not a single
-  value`; a tensor, `cannot compile x: a tensor`, as any; an instance within
+  the words an inner input's already has, so `swap` in `test/cli.cmake` and
+  `test/compile/history.ink`, its size not stated, moves to them from `a
+  history that is not a single value`; a tensor, `cannot compile x: a tensor`, as any; an instance within
   the model given an argument of another size than its model states,
   `cannot compile inner.x: a single value, where dot takes a 2x1 matrix`,
   and a default of another size, `cannot compile x: a single value, where
