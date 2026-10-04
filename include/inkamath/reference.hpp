@@ -242,6 +242,19 @@ public:
         return EvaluateCells(walk);
     }
 
+    // How far down the general clause reaches, and which term a limit starts
+    // from: the lowest and the highest index a base clause stands at.
+    const Clause<T>* EndBase(bool lowest) const {
+        const Clause<T>* found = nullptr;
+        for (const Clause<T>& clause : clauses_) {
+            if (IsBaseTerm(clause) &&
+                (!found || (clause.parameters.index() < found->parameters.index()) == lowest)) {
+                found = &clause;
+            }
+        }
+        return found;
+    }
+
     // '?name', or '?name_0' for one clause of a sequence.
     std::string Describe(const ParametersCall<T>& call, ReferenceStack<T>& stack) const {
         int index = 0;
@@ -504,19 +517,6 @@ private:
     }
     bool Cells() const {
         return FirstThat([](const Clause<T>& c) { return c.parameters.cells(); }) != nullptr;
-    }
-
-    // How far down the general clause reaches, and which term a limit starts
-    // from: the lowest and the highest index a base clause stands at.
-    const Clause<T>* EndBase(bool lowest) const {
-        const Clause<T>* found = nullptr;
-        for(const Clause<T>& clause : clauses_) {
-            if (IsBaseTerm(clause) &&
-                (!found || (clause.parameters.index() < found->parameters.index()) == lowest)) {
-                found = &clause;
-            }
-        }
-        return found;
     }
 
     static std::string Joined(const std::vector<std::string>& names) {

@@ -345,24 +345,23 @@ private:
     // cannot reach, the term says itself.
     void Fill(const Reference<T>& definition, const ParametersCall<T>& call, int index,
               const Arguments& arguments) {
-        std::optional<int> lowest;
-        for (const Clause<T>& clause : definition.Clauses()) {
-            const ParametersDefinition<T>& p = clause.parameters;
-            if (p.indexed() && !p.general() && !p.guarded())
-                lowest = std::min(lowest.value_or(p.index()), p.index());
-        }
+        const Clause<T>* lowest = definition.EndBase(true);
         if (!lowest) return;
         const Flag filling(filling_, true);
         try {
-            for (int k = *lowest + 1; k < index; ++k)
+            for (int k = lowest->parameters.index() + 1; k < index; ++k)
                 (void)Term(definition, call, true, k, arguments);
         } catch (const std::runtime_error&) {
         }
     }
 
-    // As Reference::EvalImp chooses: guarded clauses and base clauses in the
-    // order written, then the general clause or the plain one.
+    // As Reference::EvalImp chooses: by cells as it walks them, else guarded
+    // clauses and base clauses in the order written, then the general clause
+    // or the plain one.
     Jet Dispatch(const Reference<T>& definition, bool indexed, int index) {
+        Parts parts{*this, definition};
+        if (std::optional<Jet> cells = definition.ByCells(indexed, index, parts))
+            return std::move(*cells);
         const std::string& name    = definition.Name();
         const Clause<T>*   plain   = nullptr;
         const Clause<T>*   general = nullptr;
@@ -370,8 +369,6 @@ private:
         std::optional<int> lowest;
         for (const Clause<T>& clause : definition.Clauses()) {
             const ParametersDefinition<T>& p = clause.parameters;
-            if (p.cells())
-                throw std::runtime_error("grad cannot differentiate a definition by cells yet");
             if (p.guarded())
                 guarded = true;
             else if (!p.indexed())
@@ -405,23 +402,22 @@ private:
         const ParametersDefinition<T>& p = clause.parameters;
         if (p.indexed() != indexed) return false;
         if (!p.general() && indexed && p.index() != index) return false;
-        if (!p.general()) return !p.guarded() || Holds(definition, p.guard());
+        if (!p.general()) return !p.guarded() || Holds(definition.Name(), p.guard());
         typename ReferenceStack<T>::Trial trial(stack_, p.index_name());
         stack_.BindValue(p.index_name(), T(index));
-        if (p.guarded() && !Holds(definition, p.guard())) return false;
+        if (p.guarded() && !Holds(definition.Name(), p.guard())) return false;
         trial.keep();
         return true;
     }
 
     // A guard is asked for its value; a comparison in it that holds at the
     // point only, an equality where its sides move apart, takes a clause
-    // whose slope is not the function's.
-    bool Holds(const Reference<T>& definition, const PExpression<T>& guard) {
-        const Flag               guarding(guard_, true);
-        const std::string* const previous = guarded_;
-        guarded_                          = &definition.Name();
-        const Jet held                    = Eval(guard);
-        guarded_                          = previous;
+    // whose slope is not the function's: what, a definition or its cell.
+    bool Holds(const std::string& what, const PExpression<T>& guard) {
+        const Flag        guarding(guard_, true);
+        const std::string previous = std::exchange(guarded_, what);
+        const Jet         held     = Eval(guard);
+        guarded_                   = previous;
         return numeric_interface<T>::truth(*held[0]);
     }
 
@@ -432,7 +428,7 @@ private:
         if (*a[0] == *b[0] && (Moves(a) || Moves(b))) {
             if (!guard_) throw std::runtime_error("a comparison jumps at " + Where());
             if (compare.Op() == Comparison::Equal || compare.Op() == Comparison::NotEqual)
-                throw std::runtime_error(*guarded_ + " takes a clause at " + Where() +
+                throw std::runtime_error(guarded_ + " takes a clause at " + Where() +
                                          " that holds only there");
         }
         return Constant(value);
@@ -590,18 +586,14 @@ private:
     // have not converged.
     Jet Limit(const Reference<T>& definition, const ParametersCall<T>& call,
               const Arguments& arguments) {
-        const std::string&       name = definition.Name();
-        std::optional<long long> highest;
-        bool                     general = false;
-        for (const Clause<T>& clause : definition.Clauses()) {
-            const ParametersDefinition<T>& p = clause.parameters;
-            general                          = general || p.general();
-            if (p.indexed() && !p.general() && !p.guarded() && !p.cells())
-                highest = std::max(highest.value_or(p.index()), static_cast<long long>(p.index()));
-        }
+        const std::string& name    = definition.Name();
+        bool               general = false;
+        for (const Clause<T>& clause : definition.Clauses())
+            general = general || clause.parameters.general();
         if (!general) throw std::runtime_error(name + " has no general clause, so it has no limit");
-        Walk      walk(name, Size());
-        long long index = highest.value_or(0);
+        Walk                   walk(name, Size());
+        const Clause<T>* const highest = definition.EndBase(false);
+        long long              index   = highest ? highest->parameters.index() : 0;
         if (highest)
             (void)walk.Next(Term(definition, call, true, static_cast<int>(index), arguments));
         Jet term;
@@ -768,6 +760,49 @@ private:
         }
     }
 
+    // The walk over a definition's cells for the parts: each cell's clause
+    // differentiated where Reference chooses it, its parts stored where its
+    // value is, and 0 where a cell has none.
+    struct Parts {
+        using Result = Jet;
+        Derivative&         d;
+        const Reference<T>& definition;
+
+        Jet Eval(const PExpression<T>& e) { return d.Eval(e); }
+        // A size is a whole number, so one that moves is at a jump.
+        T Bound(const PExpression<T>& e) {
+            const Jet size = d.Eval(e);
+            if (Moves(size))
+                throw std::runtime_error("the size of " + definition.Name() + " jumps at " +
+                                         d.Where());
+            return *size[0];
+        }
+        // Named as --check names the cell: g_2[1,1], T[1,2,1].
+        bool Holds(const Reference<T>&, const Clause<T>& clause, int index, int slice, int row,
+                   int col) {
+            const ParametersDefinition<T>& p    = clause.parameters;
+            std::string                    what = definition.Name();
+            if (row != 0)
+                what += (p.indexed() ? "_" + std::to_string(index) : "") + "[" +
+                        (p.tensor() ? std::to_string(slice) + "," : "") + std::to_string(row) +
+                        "," + std::to_string(col) + "]";
+            return d.Holds(what, p.guard());
+        }
+        static T&   Value(Jet& jet) { return *jet[0]; }
+        Jet         Blank(Extent extent) const { return d.Constant(T(extent)); }
+        static void Store(Jet& into, int slice, int row, int col, typename T::value_type single,
+                          const Jet& cell) {
+            (*into[0])(slice, row, col) = single;
+            for (std::size_t s = 1; s < into.size(); ++s) {
+                if (!cell[s] && !into[s]) continue;
+                if (!into[s]) into[s] = Zero(into[0]->Size());
+                (*into[s])(slice, row, col) =
+                    cell[s] ? (*cell[s])(1, 1) : typename T::value_type(0);
+            }
+        }
+        ReferenceStack<T>& stack() { return d.stack_; }
+    };
+
     struct Local {
         explicit Local(Derivative& d) : d_(d) { d_.frames_.emplace_back(); }
         ~Local() { d_.frames_.pop_back(); }
@@ -859,7 +894,7 @@ private:
     std::size_t                                           depth_   = 0;
     bool                                                  guard_   = false;
     bool                                                  filling_ = false;
-    const std::string*                                    guarded_ = nullptr;
+    std::string                                           guarded_;
 };
 
 #endif  // INKAMATH_DERIVATIVE_HPP
