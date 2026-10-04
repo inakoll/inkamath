@@ -3427,7 +3427,7 @@ that exploring seven domains asked of the interpreter, by how many asked.
   them the body of a call indented under the handler that names it, where
   about 120 were planned.
 
-- **A NaN reaches every term that reads it.** NaN is the step's word for what
+- `[done]` **A NaN reaches every term that reads it.** NaN is the step's word for what
   the interpreter refuses: a limit that does not converge, a function, a
   sequence or a cell no clause of which applies, a clause refused wherever it
   is taken (C86), a term before it exists, a singular solve, a parameter
@@ -3551,3 +3551,21 @@ that exploring seven domains asked of the interpreter, by how many asked.
   their steps, their reports and `adc.h`'s step, wired with the
   implementation. The interpreter's refusals are written in the
   goldens named above.
+
+  Built as specified, every instance of `nan.ink` reporting as written,
+  checked by `test/CMakeLists.txt` and its steps held line by line by
+  `holds` in `test/cli.cmake`; `adc.h`, `back.h`, `heat.h` and `kalman2.h`
+  move as specified, and the seven programs named, their reports as they
+  were. C90 is fixed on the way, the clause kept taking the guard's own
+  test to 0. Departures: an operand is tested unless it is a constant or
+  the index itself, told by its text, rather than unless it reads no name
+  but the index, so `n - 1 > 0` is tested and a function's parameter given
+  the index is not, which moves no header; a guard that folds to NaN, which
+  the interpreter now refuses wherever it is tried, is refused in its
+  definition's name, `cannot compile h: a guard needs a number, not -nan`,
+  where the fold threw past it; and `--check` needed no change, every cell
+  of a refused matrix term being NaN. Under callgrind `grad` takes 0.5% more
+  instructions and `harmonic` 0.6% fewer, the rest as they were. 101 lines
+  of sources added and 21 removed, 80 more in all, where about 30 were
+  planned before the review added the matrix test, the power and the
+  interpreter's refusals: 13,358 lines in all.
