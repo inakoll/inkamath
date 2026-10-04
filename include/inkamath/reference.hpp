@@ -472,22 +472,23 @@ public:
         } catch (const NotSingle& error) {
             refused = error;
         }
-        Refuse(*refused, arguments, stack);
+        Refuse(*refused, arguments, [](const T& value) { return value; }, stack);
     }
 
-private:
-    // Out of line, so that a call stays as small as it was.
-    [[noreturn]] void Refuse(const NotSingle&                                   refused,
-                             const typename ParametersDefinition<T>::Arguments& arguments,
-                             const ReferenceStack<T>&                           stack) const {
+    // Out of line, so that a call stays as small as it was; grad's too, whose
+    // arguments carry their value with their parts.
+    template <typename Arguments, typename Value>
+    [[noreturn]] void Refuse(const NotSingle& refused, const Arguments& arguments, Value value,
+                             const ReferenceStack<T>& stack) const {
         const bool shaped = std::any_of(arguments.begin(), arguments.end(), [&](const auto& a) {
-            return a.second.Size() == refused.shape;
+            return value(a.second).Size() == refused.shape;
         });
         if (!shaped || stack.scope_ == &stack.builtins_) throw refused;
         throw std::runtime_error(reference_name_ + " needs single values, not a " +
                                  refused.shape.Described() + "; write it by its cells");
     }
 
+private:
     // A recurrence nests one reference per term it reaches back, so a term far
     // from its base runs out of depth. Filled from the base up instead, each
     // term finds the one before it remembered, stepping as the recurrence

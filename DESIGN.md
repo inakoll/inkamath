@@ -3403,11 +3403,11 @@ that exploring seven domains asked of the interpreter, by how many asked.
   Departures: the matrix written whole counts as a size written, never
   checked against a read; `grad`'s name is bound in its body as a sum's
   index is; a read of anything but a name is quoted `(...)` where two
-  disagree; a term with no size is named at the index asked, `cs_2`; and the
-  call refused in its own name is the interpreter's, `grad`'s keeping the
-  operator's words. C87 was found and fixed on the way, the hint for one-cell
-  clauses now written from the clause as the others are. The review made
-  `mod`'s check `grad`'s and the compiler's as well. Under callgrind,
+  disagree; and a term with no size is named at the index asked, `cs_2`.
+  C87 was found and fixed on the way, the hint for one-cell clauses now
+  written from the clause as the others are. The review made `mod`'s check
+  `grad`'s and the compiler's as well, and the call refused in its own name
+  `grad`'s too, where a network is trained. Under callgrind,
   `harmonic` and `matrix` moved under 0.1%, `hand` 0.3% more, `deep`, `grad`
   and `limit` 0.1 to 0.5% fewer, and `read`, which defines nothing by cells,
   1.2% more, all of it `Number::Literal` no longer inlining `push_back` as the

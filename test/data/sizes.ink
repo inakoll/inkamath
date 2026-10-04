@@ -647,6 +647,16 @@ bad(W, x) = v*rs(W*x + b)
 >> bad(A, X[1]')
 error: rs needs single values, not a 2x1 matrix; write it by its cells
 
+# And so under grad, where it is trained.
+>> grad_(W = A) bad(W, X[1]')
+error: rs needs single values, not a 2x1 matrix; write it by its cells
+
+>> ac(z) = tanh(z)
+ac(z) = tanh(z)
+
+>> grad_(W = A) [1 1]*ac(W*X[1]')
+error: tanh needs single values, not a 2x1 matrix; write it by its cells
+
 # --- softmax and cross-entropy trained one step ------------------------------
 
 # Softmax as the paper writes it: j from z, and the sum bounded by the
