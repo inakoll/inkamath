@@ -136,3 +136,11 @@ g_0[1,2] = 1
 >> g_0
 [7, 1;
  7, 7]
+
+# A guarded clause for a whole term beside clauses for a term's cells was
+# never asked (C82), so it is refused where it is written.
+>> qw_n[j<=2] = n + j
+qw_n[j<=2] = n + j
+
+>> qw_n | n > 1 = [0; 0]
+error: qw is defined by its cells, so a clause for all of it cannot be guarded; guard its cells

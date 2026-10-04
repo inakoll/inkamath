@@ -191,6 +191,22 @@ public:
                 reference_name_ + (matrix_cells ? " is defined by its cells, so it has no index"
                                                 : " is a sequence, so it has no cells of its own"));
         }
+        // The walk over the cells never asks a guarded clause written whole
+        // (C82), and a guard on each cell says the same.
+        const auto whole_guarded = [](const Clause<T>& c) {
+            return c.parameters.guarded() && !c.parameters.cells();
+        };
+        if (!starts_over && ai_parameters.guarded() && !ai_parameters.cells() &&
+            FirstThat([](const Clause<T>& c) { return c.parameters.cells(); })) {
+            throw std::runtime_error(reference_name_ +
+                                     " is defined by its cells, so a clause for all of it cannot "
+                                     "be guarded; guard its cells");
+        }
+        if (ai_parameters.cells() && FirstThat(whole_guarded)) {
+            throw std::runtime_error(reference_name_ +
+                                     " has a guarded clause for all of it, so it cannot be "
+                                     "defined by its cells; guard its cells");
+        }
         if (starts_over) {
             clauses_.clear();
         } else if (ai_parameters.indexed() ||
