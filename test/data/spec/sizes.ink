@@ -210,6 +210,14 @@ sh(z)[i] = z[i+1]
 >> sh([1; 2; 3])
 error: sh has no size, as nothing reads a matrix at i alone; write it as sh(z)[i<=rows]
 
+# Nor does a matrix that reads a name bound in the clause, a sum's index: it
+# is another matrix at each k.
+>> ex3(A)[i,j] = sum_(k=0)^3 (A^k)[i,j]
+ex3(A)[i,j] = sum_(k=0)^3 (A^k)[i,j]
+
+>> ex3([1 1; 0 1])
+error: ex3 has no size, as nothing reads a matrix at i alone; write it as ex3(A)[i<=rows, j<=cols]
+
 # The bounds written are kept.
 >> tl(z)[i<=2, j] = i
 tl(z)[i<=2, j] = i
@@ -334,6 +342,19 @@ cn_n[i,j] = cn_(n-1)[i,j] + j
 >> cn_3
 [3, 6]
 
+# A term read at a sum's index gives nothing, as any read of a sum's index.
+>> w_0 = [1; 2]
+w_0 = [1; 2]
+
+>> w_n = 2*w_(n-1)
+w_n = 2*w_(n-1)
+
+>> cs_n[i] = sum_(m=0)^n w_m[i]
+cs_n[i] = sum_(m=0)^n w_m[i]
+
+>> cs_2
+error: cs_2 has no size, as nothing reads a matrix at i alone; write it as cs_n[i<=rows]
+
 # --- tensors -----------------------------------------------------------------
 
 >> rl3(z)[s,i,j] = z[s,i,j]*(z[s,i,j] > 0)
@@ -379,6 +400,13 @@ fs(P)[i,j] = P[1][i,j]
 >> fs(T)
 [1, 2;
  3, 4]
+
+# A slice at a sum's index is another at each k, so it gives nothing.
+>> ps(P)[i,j] = sum_(k=1)^2 P[k][i,j]
+ps(P)[i,j] = sum_(k=1)^2 P[k][i,j]
+
+>> ps(T)
+error: ps has no size, as nothing reads a matrix at i alone; write it as ps(P)[i<=rows, j<=cols]
 
 # --- a call given a matrix where single values are needed --------------------
 
