@@ -740,9 +740,11 @@ private:
         return dynamic_cast<const RefExpression<T>*>(&e) ? e.Name() : "(...)";
     }
 
-    // The clause as written, with a bound for each index it leaves without.
+    // The clause as written, with a bound for each index it leaves without;
+    // one for one cell named as one for all would be.
     std::string Hint(const Clause<T>& clause) const {
         static const char* const sizes[] = {"slices", "rows", "cols"};
+        static const char* const names[] = {"b", "j", "k"};
         const std::string&       w       = clause.written;
         std::vector<std::string> places(1);
         size_t                   open  = std::string::npos;
@@ -764,10 +766,11 @@ private:
         std::string hint = w.substr(0, open) + "[";
         for (size_t k = 0; k < places.size(); ++k) {
             std::string& place = places[k];
+            const size_t d     = k + (clause.parameters.tensor() ? 0 : 1);
             place.erase(0, place.find_first_not_of(' '));
             place.erase(place.find_last_not_of(' ') + 1);
-            if (place.find("<=") == std::string::npos)
-                place += std::string("<=") + sizes[k + (clause.parameters.tensor() ? 0 : 1)];
+            if (IsOneCell(clause)) place = names[d];
+            if (place.find("<=") == std::string::npos) place += std::string("<=") + sizes[d];
             hint += (k ? ", " : "") + place;
         }
         return hint + "]";
@@ -903,7 +906,7 @@ private:
             Sized(whole, [](const Clause<T>&) { return true; }, 0, reference_name_, walk);
         if (!extent) {
             throw std::runtime_error(reference_name_ + " has no size; write it as " +
-                                     reference_name_ + Bounded());
+                                     Hint(*FirstThat(IsOneCell)));
         }
         typename Walk::Result matrix = whole ? std::move(*whole) : walk.Blank(*extent);
         // A clause for one cell can name a cell outside the size, which says so
@@ -1092,7 +1095,7 @@ private:
         const std::optional<Extent> extent = Sized(whole, level, index, name, walk);
         if (!extent) {
             throw std::runtime_error(reference_name_ + " has no size; write it as " +
-                                     reference_name_ + "_n" + Bounded());
+                                     Hint(*FirstThat(IsOneCell)));
         }
         typename Walk::Result term = whole ? std::move(*whole) : walk.Blank(*extent);
         for (const Clause<T>& clause : clauses_) {

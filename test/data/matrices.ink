@@ -215,6 +215,20 @@ J[j<=2, k<=2] = j == k
 [1, 5;
  0, 1]
 
+# The size it asks for is written as its clause is: one index, and the
+# parameters (C87).
+>> w[2] = 5
+w[2] = 5
+
+>> w
+error: w has no size; write it as w[j<=rows]
+
+>> cf(x)[1,1] = 5
+cf(x)[1,1] = 5
+
+>> cf(1)
+error: cf has no size; write it as cf(x)[j<=rows, k<=cols]
+
 # A size is written, the clauses of one matrix agree on it, and a cell is a
 # single value.
 >> M[r,c] = r + c
