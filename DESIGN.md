@@ -3582,4 +3582,5 @@ that exploring seven domains asked of the interpreter, by how many asked.
   term's window is whole already and is not tested; of the programs checked
   only `rnn`'s moves, its tanh taking each cell of a product. That every
   `and` and `or` defers in an aware header is said once, in `Defers`, not
-  by its two callers. 14 lines: 13,372 in all.
+  by its two callers. A constant matrix, which folds, is left out of the
+  gate. 15 lines: 13,373 in all.

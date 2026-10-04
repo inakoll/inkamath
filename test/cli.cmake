@@ -440,6 +440,15 @@ set(stdout "cannot compile h: a guard needs a number, not -nan\ncannot compile k
 set(exit 1)
 check(compile_nan_guard_refused)
 
+# A cell of a constant matrix with a NaN cell folds, which leaves the header
+# one that writes no NaN.
+file(WRITE "${OUT}/folded.ink" "k(x_n) = {\n    y_n = ([0/~0; 1])[2] + x_n\n}\n")
+set(args --compile folded.ink k -o folded.h)
+check(compile_nan_folded)
+holds(compile_nan_folded folded.h [[ * name_(n-k) for each sequence: x and y.
+ */
+]])
+
 # The clause --check keeps is 0 where the guard reads NaN.
 foreach(instance IN ITEMS pair any)
     set(args --check ${nan} ${instance} -o ${instance}.c)
