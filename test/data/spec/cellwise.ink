@@ -93,6 +93,10 @@ sq(x) = x^2
 [1,  4;
  9, 16]
 
+# A map of a map is a map of each cell's call.
+>> sq.(sq.([1 2]))
+[1, 16]
+
 >> sig(z) = 1/(1 + exp(-z))
 sig(z) = 1/(1 + exp(-z))
 
@@ -108,6 +112,10 @@ error: exp needs single values, not a 1x3 matrix; exp.(x) maps it over the cells
 sg(z) = 1/(1 + exp.(-z))
 
 >> sg([0 1 -1])
+[0.5, ~0.731058579, ~0.268941421]
+
+# Mapped, each cell's call maps a single value, which is the call.
+>> sg.([0 1 -1])
 [0.5, ~0.731058579, ~0.268941421]
 
 # A definition in cases chooses its clause cell by cell.
@@ -152,12 +160,30 @@ af(x) = aff(x, [2; 1])
 >> af.([1 2])
 [3, 5]
 
+# A default is not an argument given, so each cell's call reads it whole;
+# given, it maps.
+>> pd(x, w = [2; 1]) = [x 1]*w
+pd(x, w = [2; 1]) = [x 1]*w
+
+>> pd.([1 2])
+[3, 5]
+
+>> pd.([1 2], w = [1; 1])
+error: these matrices have different sizes
+
 # Each cell must be a single value.
 >> col(x) = [x; 2*x]
 col(x) = [x; 2*x]
 
 >> col.([1 2])
 error: a cell of col must be a single value, not a 2x1 matrix
+
+# The first cell to fail, row by row, says why.
+>> ix(x) = [7 8][1,x]
+ix(x) = [7 8][1,x]
+
+>> ix.([1 3; 4 1])
+error: row 1, column 3 is outside a 1x2 matrix
 
 # Only a function maps; a value is refused as its call is.
 >> s(x)_n = x*n
@@ -185,6 +211,30 @@ h_n = relu.(R*h_(n-1) + [1; -1])
 >> h_4
 [1.375;
      1]
+
+# Inside a definition by cells, a map reads that cell's names.
+>> Q[j<=2] = sq.([j 2*j])*[1; 1]
+Q[j<=2] = sq.([j 2*j])*[1; 1]
+
+>> Q
+[ 5;
+ 20]
+
+# A model's function maps as any function; an instance is a value.
+>> pm(k = 2) = {
+..     f(x) = x^k
+.. }
+pm(k = 2) = { ... }
+
+>> gp = pm()
+gp = pm()
+
+>> gp.f.([1 2; 3 4])
+[1,  4;
+ 9, 16]
+
+>> gp.([1 2])
+error: gp is an instance of pm; read one of its names (gp.f)
 
 # --- tensors -----------------------------------------------------------------
 
@@ -239,6 +289,11 @@ error: grad of a matrix with respect to a matrix is a Jacobian, which it does no
 
 >> grad_(z = [0; 1]) [1 1]*sig(z)
 error: exp needs single values, not a 2x1 matrix; exp.(x) maps it over the cells
+
+# A limit in each cell's call is differentiated as a limit is.
+>> grad_(z = [2; 4]) [1 1]*log.(z)
+[ ~0.5;
+ ~0.25]
 
 # A ReLU's slope at 0 is its guard's: x < 0 does not hold there, so the
 # clause x gives 1.

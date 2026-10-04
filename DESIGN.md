@@ -3343,7 +3343,7 @@ that exploring seven domains asked of the interpreter, by how many asked.
   lines: the dot and its node 25, the map 45, the message 20, `grad` 30, the
   compiler 25, `tex` 5.
 
-  Specified in `test/data/spec/cellwise.ink`, 63 of its 103 entries
+  Specified in `test/data/spec/cellwise.ink`, 73 of its 117 entries
   failing, those passing being definitions echoing themselves and five
   answers the dot leaves as they are; a ReLU network and a softmax
   classifier are each trained one step by `grad` through maps, held to the
