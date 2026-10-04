@@ -202,6 +202,16 @@ g(a)_0[2] = 1
 [6;
  2]
 
+# A term's cell is named with its index, as evaluating it names the term.
+>> qe(a)_n[j<=2] = a*j*n
+qe(a)_n[j<=2] = a*j*n
+
+>> qe(a)_n[j<=2] | a*j*n == 2 = 0
+qe(a)_n[j<=2] | a*j*n == 2 = 0
+
+>> grad_(a = 1) qe(a)_2
+error: qe_2[1,1] takes a clause at a = 1 that holds only there
+
 # A limit is walked from the highest base term, here written by its cells:
 # below it the sequence has no term.
 >> m(a)_2[j<=2] = j
@@ -244,6 +254,15 @@ G(x)[b<=2, j<=1, k<=2] = x^b*k
 >> grad_(b = 3) G(b)
 [1,  2;;
  6, 12]
+
+>> tq(x)[b<=2, j<=2, k<=1] = x*b*j
+tq(x)[b<=2, j<=2, k<=1] = x*b*j
+
+>> tq(x)[b<=2, j<=2, k<=1] | x*j == 2 = 0
+tq(x)[b<=2, j<=2, k<=1] | x*j == 2 = 0
+
+>> grad_(x = 1) tq(x)
+error: tq[1,2,1] takes a clause at x = 1 that holds only there
 
 >> Gc[b<=2, j<=1, k<=1] = b
 Gc[b<=2, j<=1, k<=1] = b

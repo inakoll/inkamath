@@ -3002,12 +3002,13 @@ that exploring seven domains asked of the interpreter, by how many asked.
   move taking the side its value gives, so the guard's comparison decides a
   ReLU's slope at 0, cell by cell, `<` giving 1 and `<=` 0. An equality that
   holds at the point only is refused, naming the cell as `--check` does,
-  `sp[2,1] takes a clause at t = 1 that holds only there`. What is asked is
-  whether a side moves, not its slope (C73), and a cell's place never moves,
-  so `j == k` chooses a diagonal and is no jump. Refusing guarded cells, the
-  smaller change, was rejected: the ReLU is the case. The `--check` hook is
-  not told of a guard asked under `grad`, as for a whole definition, since
-  `grad` is not compiled.
+  `sp[2,1] takes a clause at t = 1 that holds only there`, a term's with its
+  index, `g_2[1,1]`, and a tensor's with its slice first, `T[1,2,1]`. What is
+  asked is whether a side moves, not its slope (C73), and a cell's place never
+  moves, so `j == k` chooses a diagonal and is no jump. Refusing guarded
+  cells, the smaller change, was rejected: the ReLU is the case. The `--check`
+  hook is not told of a guard asked under `grad`, as for a whole definition,
+  since `grad` is not compiled.
 
   The order is the evaluator's: a clause for one cell beats those for all
   cells, guarded ones before the unguarded; a term's, from its own cell at
@@ -3050,7 +3051,7 @@ that exploring seven domains asked of the interpreter, by how many asked.
   one; reverse mode, one pass, is a second evaluator with a tape, and an
   entry of its own when a model is too slow for this.
 
-  Specified in `test/data/spec/gradcells.ink`, 32 of its 80 entries
+  Specified in `test/data/spec/gradcells.ink`, 34 of its 86 entries
   failing: a square per cell, softmax by `exp` and normalised by a sum,
   ReLUs either side of 0, cells reading cells, a diagonal by guard, one-cell
   clauses, sizes, terms and a limit by cells, a tensor, and attention's
