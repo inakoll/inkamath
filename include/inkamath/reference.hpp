@@ -425,7 +425,9 @@ public:
 
         // A value refused where a single value is needed is refused in the name
         // of the innermost call given a value of its shape, where the call is
-        // written in the session or a file and not in the prelude.
+        // written in the session or a file and not in the prelude. Decided
+        // after the handler, as a fill is.
+        std::optional<NotSingle> refused;
         try {
             typename ReferenceStack<T>::Within within(stack, home);
             typename ReferenceStack<T>::Frame  frame(stack);
@@ -464,9 +466,10 @@ public:
                 stack.Memoise(std::move(key), evaluation);
             }
             return evaluation;
-        } catch (const NotSingle& refused) {
-            Refuse(refused, arguments, stack);
+        } catch (const NotSingle& error) {
+            refused = error;
         }
+        Refuse(*refused, arguments, stack);
     }
 
 private:
@@ -477,7 +480,7 @@ private:
         const bool shaped = std::any_of(arguments.begin(), arguments.end(), [&](const auto& a) {
             return a.second.Size() == refused.shape;
         });
-        if (!shaped || stack.scope_ == &stack.builtins_) throw;
+        if (!shaped || stack.scope_ == &stack.builtins_) throw refused;
         throw std::runtime_error(reference_name_ + " needs single values, not a " +
                                  refused.shape.Described() + "; write it by its cells");
     }
