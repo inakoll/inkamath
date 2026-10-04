@@ -3257,3 +3257,95 @@ that exploring seven domains asked of the interpreter, by how many asked.
   331 lines of sources added and 62 removed, 269 more in all, where about
   210 were planned: 38 in the interpreter, 202 in the compiler and 29 in the
   check.
+
+- **A function applied to each cell, `f.(x)`.** A network applies every
+  activation cell by cell, and the prelude's functions take single values:
+  `exp([1 2])` says a matrix cannot be an exponent, `log([1 2])` speaks of a
+  comparison the session never wrote, and each activation is a definition by
+  cells with its size spelled out, `act(z)[j<=n] = tanh(z[j])`, where the
+  paper writes `tanh(z)`. A call with a dot, after Julia's, applies its
+  function to each cell: `relu.(W*x + b)`, `mod.(M, 3)`. Without the dot a
+  call is the function of the whole value, as now, so `sq(x) = x^2` squares
+  a matrix and `sq.(M)` each cell, and no value given today moves.
+
+  Every argument that is a matrix or a tensor is mapped, and a single value
+  meets every cell: matrices of one size, a matrix every slice of a tensor,
+  tensors slice by slice, each pair otherwise refused in the operators'
+  words, since NumPy's broadcasting is rejected for the reason *One index is
+  a row* gave. A matrix meant whole is read by a function of fewer arguments,
+  `af(x) = aff(x, w)`. The answer has the shape mapped, a tensor its rank,
+  and of a single value is the call. Each cell is the call on that cell's
+  values, so whatever a call does a cell does: its clause chosen by its
+  guards, a series inside walked and stopped by that cell's terms alone,
+  unlike a limit of matrices; remembered by the memo as that call; its error
+  the call's, the first cell's in storage order. A cell that is not a single
+  value is refused, `a cell of col must be a single value, not a 2x1 matrix`.
+  Only a function maps: `s is a sequence, and only a function maps over
+  cells`, for its term and its limit too, which a function wraps; a value as
+  its call is, `a takes no arguments`. `floor` is already a function of
+  cells, so `floor.(M)` is `floor(M)`, and `ceil`, and `mod` with a single
+  value, answer as they did; `mod(M, K)` of two matrices multiplies them, as
+  `b*floor(a/b)` says, and `mod.(M, K)` is what a model means.
+
+  `e^M` stays refused in its words: on paper `e^A` is the matrix exponential,
+  which a plant discretised by hand asks for, and `exp(A)` is it by the
+  prelude's definition; refusing keeps both spellings for it, an entry of its
+  own when a model asks. A call given a matrix or a tensor that its own
+  evaluation refuses where a single value is needed -- a comparison, a guard,
+  `and`, `or`, an exponent, an index, a factorial -- is refused naming the
+  function and its map, `log needs single values, not a 1x2 matrix; log.(x)
+  maps it over the cells`, with the first such argument's shape and the
+  definition's parameters. The innermost such call is named, so `tanh(M)`
+  names `exp`, and a layer that forgot its dot names its activation, not its
+  loss. Outside such a call a comparison and a power keep their words, and
+  so does a sequence's term, having no map to name. Two refusals recorded
+  move: `nonzero([1 2])` in `conditional.ink` and `nz([7;;])` in
+  `tensor.ink`.
+
+  `grad` differentiates a map cell by cell, each cell's call with that
+  cell's value and parts, assembled as a definition by cells' parts are, so a
+  gradient, a Jacobian's refusal and a ReLU's slope at 0 are as there, and a
+  clause holding only at the point is refused in the call's words, `q2 takes
+  a clause at t = 1 that holds only there`. `tex` sets `f.(x)` as `f(x)`, as
+  a paper sets `\sigma(z)` meaning each cell; matrix analysis's `f^{\circ}`
+  is on no page of the papers transcribed. Compiled, each cell is the call
+  compiled where it is called, its parameters bound to that cell's code, as
+  `floor` compiles each cell: `exp` compiles today as `pow(e, x)`, so
+  `sig.(X*w_n + b_n)` needs nothing more. A tensor stays refused, and so does
+  `log`, for its infinite series; its refusal says `division by zero`, the
+  `1/0` of its guard folded, a fault found writing this and left to its own
+  entry.
+
+  Rejected: the prelude's functions made functions of cells, as `floor` is,
+  since `exp(A)` would then mean the cells here and the exponential on a
+  control paper, a session's `ex(x) = e^x` would differ from `exp`, and a
+  ReLU, guarded, would still be refused. A function whose body needs single
+  values mapping unmarked, `MANIFESTO.md`'s open question: it decides by the
+  body, not the call, and both ways of telling fail. By the text, a
+  parameter read in a guard or an exponent, it is unsound without shapes:
+  `clip(v) | norm2(v) > 1 = ...` reads a vector whole and compares one value.
+  By what evaluating refuses, it ties a call's meaning to today's refusals,
+  so the day `e^A` is the exponential, `exp(A)` changes; and `dsig(z) =
+  sig(z)*(1 - sig(z))` would map `sig` and multiply the matrices, half the
+  paper's meaning and silent. The cell form alone: a definition and a size
+  per activation for one symbol on the page. Bounds inferred in a definition
+  by cells, `A[j,k] = sigma(Z[j,k])`: still a definition per use, and a rule
+  for every index, a direction of its own. Horn and Johnson's `f[A]`:
+  brackets index here. `map(f, M)`: a function as a value, which the
+  language has not.
+
+  It is a second way to say what a definition by cells says, which
+  `MANIFESTO.md` asks a direction to avoid; it is taken because the cell
+  form states a size the page does not, and the dot says no more than the
+  page's `\sigma(z)`. It answers the manifesto's open question on a function
+  of cells, by marking the map rather than the matrix operation. About 150
+  lines: the dot and its node 25, the map 45, the message 20, `grad` 30, the
+  compiler 25, `tex` 5.
+
+  Specified in `test/data/spec/cellwise.ink`, 63 of its 103 entries
+  failing, those passing being definitions echoing themselves and five
+  answers the dot leaves as they are; a ReLU network and a softmax
+  classifier are each trained one step by `grad` through maps, held to the
+  gradient written by hand, the first exactly. The compiled half is
+  `test/compile/mapped.ink`, `logistic.ink`'s regression mapped, wired with
+  it.
