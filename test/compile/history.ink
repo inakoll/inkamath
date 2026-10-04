@@ -136,7 +136,7 @@
 #     inkamath: cannot compile x: a history whose guard is not its index below a constant
 #     inkamath: cannot compile x: a history whose guard is not its index below a constant
 #     inkamath: cannot compile x: a history that reads a
-#     inkamath: cannot compile x: a history that is not a single value
+#     inkamath: cannot compile x: a history of another shape
 #
 # And what the seven programs that skip a term today report, once 'down' in
 # decimate.ink states x_n | n < 0 = 0: each sequence from the step that

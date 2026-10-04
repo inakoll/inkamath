@@ -63,15 +63,16 @@ public:
                 if (!input.error.empty())
                     throw std::runtime_error(instance + "." + compiled.inputs[k] + "_(" +
                                              std::to_string(n) + "): " + input.error);
-                if (input.cells.size() != 1)
+                if (input.cells.size() != compiled.cells[k])
                     throw std::runtime_error(instance + "." + compiled.inputs[k] + "_(" +
                                              std::to_string(n) + ") has " +
                                              std::to_string(input.cells.size()) +
                                              " cells, where the compiled step takes a single "
                                              "value");
-                values.push_back(input.cells.front());
+                values.insert(values.end(), input.cells.begin(), input.cells.end());
             }
-            data += Array("const double", "in_" + std::to_string(k), steps, values);
+            data +=
+                Array("const double", "in_" + std::to_string(k), steps * compiled.cells[k], values);
         }
         std::optional<int> inexact;  // where the interpreter's terms stop being exact
         for (std::size_t k = 0; k < compiled.sequences.size(); ++k) {
@@ -124,7 +125,9 @@ public:
         }
         std::string arguments;
         for (std::size_t k = 0; k < compiled.inputs.size(); ++k)
-            arguments += ", in_" + std::to_string(k) + "[n]";
+            arguments += compiled.cells[k] == 1 ? ", in_" + std::to_string(k) + "[n]"
+                                                : ", &in_" + std::to_string(k) + "[n * " +
+                                                      std::to_string(compiled.cells[k]) + "]";
         std::string table;
         for (std::size_t k = 0; k < compiled.guarded.size(); ++k) {
             const std::string&       name      = compiled.guarded[k];
