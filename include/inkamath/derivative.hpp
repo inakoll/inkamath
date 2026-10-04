@@ -426,20 +426,35 @@ private:
         const ParametersDefinition<T>& p = clause.parameters;
         if (p.indexed() != indexed) return false;
         if (!p.general() && indexed && p.index() != index) return false;
-        if (!p.general()) return !p.guarded() || Holds(definition.Name(), p.guard());
+        if (!p.general()) return !p.guarded() || Holds({definition.Name()}, p.guard());
         typename ReferenceStack<T>::Trial trial(stack_, p.index_name());
         stack_.BindValue(p.index_name(), T(index));
-        if (p.guarded() && !Holds(definition.Name(), p.guard())) return false;
+        if (p.guarded() && !Holds({definition.Name()}, p.guard())) return false;
         trial.keep();
         return true;
     }
 
+    // What a guard chooses a clause for, a definition or one of its cells,
+    // named only when it is refused, as --check names it: g_2[1,1], T[1,2,1].
+    struct Guarded {
+        const std::string&             name;
+        const ParametersDefinition<T>* cell = nullptr;
+        int                            index = 0, slice = 0, row = 0, col = 0;
+
+        std::string Named() const {
+            if (!cell) return name;
+            return name + (cell->indexed() ? "_" + std::to_string(index) : "") + "[" +
+                   (cell->tensor() ? std::to_string(slice) + "," : "") + std::to_string(row) +
+                   "," + std::to_string(col) + "]";
+        }
+    };
+
     // A guard is asked for its value; a comparison in it that holds at the
     // point only, an equality where its sides move apart, takes a clause
-    // whose slope is not the function's: what, a definition or its cell.
-    bool Holds(const std::string& what, const PExpression<T>& guard) {
-        const Flag<bool>               guarding(guard_, true);
-        const Flag<const std::string*> naming(guarded_, &what);
+    // whose slope is not the function's.
+    bool Holds(const Guarded& what, const PExpression<T>& guard) {
+        const Flag<bool>           guarding(guard_, true);
+        const Flag<const Guarded*> naming(guarded_, &what);
         const Jet                      held = Eval(guard);
         return numeric_interface<T>::truth(*held[0]);
     }
@@ -451,7 +466,7 @@ private:
         if (*a[0] == *b[0] && (Moves(a) || Moves(b))) {
             if (!guard_) throw std::runtime_error("a comparison jumps at " + Where());
             if (compare.Op() == Comparison::Equal || compare.Op() == Comparison::NotEqual)
-                throw std::runtime_error(*guarded_ + " takes a clause at " + Where() +
+                throw std::runtime_error(guarded_->Named() + " takes a clause at " + Where() +
                                          " that holds only there");
         }
         return Constant(value);
@@ -801,16 +816,11 @@ private:
                                          d.Where());
             return *size[0];
         }
-        // Named as --check names the cell: g_2[1,1], T[1,2,1].
         bool Holds(const Reference<T>&, const Clause<T>& clause, int index, int slice, int row,
                    int col) {
-            const ParametersDefinition<T>& p    = clause.parameters;
-            std::string                    what = definition.Name();
-            if (row != 0)
-                what += (p.indexed() ? "_" + std::to_string(index) : "") + "[" +
-                        (p.tensor() ? std::to_string(slice) + "," : "") + std::to_string(row) +
-                        "," + std::to_string(col) + "]";
-            return d.Holds(what, p.guard());
+            const ParametersDefinition<T>& p = clause.parameters;
+            return d.Holds({definition.Name(), row != 0 ? &p : nullptr, index, slice, row, col},
+                           p.guard());
         }
         static T&   Value(Jet& jet) { return *jet[0]; }
         Jet         Blank(Extent extent) const { return d.Constant(T(extent)); }
@@ -920,7 +930,7 @@ private:
     std::size_t                                           depth_   = 0;
     bool                                                  guard_   = false;
     bool                                                  filling_ = false;
-    const std::string*                                    guarded_ = nullptr;
+    const Guarded*                                        guarded_ = nullptr;
 };
 
 #endif  // INKAMATH_DERIVATIVE_HPP
