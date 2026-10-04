@@ -3498,7 +3498,7 @@ that exploring seven domains asked of the interpreter, by how many asked.
   the clause kept and the sentence; 5 in the check. Each decision on a value
   grows by `isnan(a) ? NAN : `, in an aware header only.
 
-  Specified in `test/compile/nan.ink`: four instances, each a guard reading
+  Specified in `test/compile/nan.ink`: five instances, each a guard reading
   a failure, with their steps, their reports and `adc.h`'s step, wired with
   the implementation. The interpreter does not change, so there is no spec
   transcript.
