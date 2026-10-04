@@ -344,7 +344,12 @@ private:
 
     INKAMATH_NOINLINE static Number Times(const Number& a, const Number& b) {
         if (a.exact() && b.exact()) return BigProduct(a.Ratio(), b.Ratio());
-        return Approximate(a.Inexact() * b.Inexact(), approximated(a) || approximated(b));
+        const inexact_type x = a.Inexact(), y = b.Inexact();
+        // Of two real numbers the real product, whose infinity the complex
+        // formula turns into a NaN imaginary part (C88).
+        return Approximate(
+            x.imag() == 0 && y.imag() == 0 ? inexact_type(x.real() * y.real()) : x * y,
+            approximated(a) || approximated(b));
     }
 
     INKAMATH_NOINLINE static Number Over(const Number& a, const Number& b) {
@@ -354,7 +359,10 @@ private:
             std::swap(reciprocal.num, reciprocal.den);
             return BigProduct(a.Ratio(), reciprocal);
         }
-        return Approximate(a.Inexact() / b.Inexact(), approximated(a) || approximated(b));
+        const inexact_type x = a.Inexact(), y = b.Inexact();
+        return Approximate(
+            x.imag() == 0 && y.imag() == 0 ? inexact_type(x.real() / y.real()) : x / y,
+            approximated(a) || approximated(b));
     }
 
     // Exactness ends at a thousand digits in either part.
