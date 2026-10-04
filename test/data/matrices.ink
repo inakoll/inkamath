@@ -215,10 +215,35 @@ J[j<=2, k<=2] = j == k
 [1, 5;
  0, 1]
 
+# The size it asks for is written as its clause is: one index, and the
+# parameters (C87).
+>> w[2] = 5
+w[2] = 5
+
+>> w
+error: w has no size; write it as w[j<=rows]
+
+>> cf(x)[1,1] = 5
+cf(x)[1,1] = 5
+
+>> cf(1)
+error: cf has no size; write it as cf(x)[j<=rows, k<=cols]
+
+# A clause defined inside an expression keeps no text, and the hint has as
+# many indices as it names.
+>> lc(y) = (pc[i] = i)*y
+lc(y) = (pc[i] = i)*y
+
+>> lc(1)
+error: pc has no size, as nothing reads a matrix at i alone; write it as pc[i<=rows]
+
 # A size is written, the clauses of one matrix agree on it, and a cell is a
 # single value.
 >> M[r,c] = r + c
-error: M has no size; write it as M[r<=rows, c<=cols]
+M[r,c] = r + c
+
+>> M
+error: M has no size, as nothing reads a matrix at r alone; write it as M[r<=rows, c<=cols]
 
 >> V[j<=2, k<=2] | j == k = 1
 V[j<=2, k<=2] | j == k = 1

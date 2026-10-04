@@ -65,7 +65,7 @@ error: a tensor is not a single value
 nz(x) | x = 1
 
 >> nz([7;;])
-error: a guard needs a single value, not a 1x1x1 tensor
+error: nz needs single values, not a 1x1x1 tensor; write it by its cells
 
 # Slices of two sizes are refused, not padded: a short row's zeros are one
 # fill rule, and C41 records why there is to be no fourth. A tensor is not a

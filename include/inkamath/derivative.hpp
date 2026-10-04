@@ -301,6 +301,7 @@ private:
                 arguments.emplace_back(*name++, Eval(argument));
         for (const auto& [keyword, argument] : p.parameters_dict())
             arguments.emplace_back(keyword, Eval(argument));
+        for (const auto& [given, jet] : arguments) definition->Divides(given, *jet[0], stack_);
         if (p.limit()) return Limit(*definition, p, arguments);
         int        index   = 0;
         const bool indexed = p.TryEvalIndex(stack_, index);
@@ -332,19 +333,26 @@ private:
         if (indexed && !filling_ && depth_ >= ReferenceStack<T>::max_depth / 2)
             Fill(definition, call, index, arguments);
         stack_.Step();
-        const Deeper                       deeper(*this);
-        typename ReferenceStack<T>::Within within(stack_, definition.home);
-        typename ReferenceStack<T>::Frame  frame(stack_);
-        ParametersDefinition<T>::Bind(definition.captured, stack_);
-        for (const auto& [name, jet] : arguments) stack_.BindValue(name, *jet[0]);
-        definition.Clauses().front().parameters.BindDefaults(call, ordinary_);
-        const Local local(*this);
-        for (const auto& argument : arguments) frames_.back().push_back(argument);
-        Hidden(definition, arguments);
-        const Flag<bool> unguarded(guard_, false);
-        Jet              result = Dispatch(definition, indexed, index);
-        memo_.emplace(key, result);
-        return result;
+        // Refused in the name of the call, as Reference::Eval refuses it.
+        std::optional<NotSingle> refused;
+        try {
+            const Deeper                       deeper(*this);
+            typename ReferenceStack<T>::Within within(stack_, definition.home);
+            typename ReferenceStack<T>::Frame  frame(stack_);
+            ParametersDefinition<T>::Bind(definition.captured, stack_);
+            for (const auto& [name, jet] : arguments) stack_.BindValue(name, *jet[0]);
+            definition.Clauses().front().parameters.BindDefaults(call, ordinary_);
+            const Local local(*this);
+            for (const auto& argument : arguments) frames_.back().push_back(argument);
+            Hidden(definition, arguments);
+            const Flag<bool> unguarded(guard_, false);
+            Jet              result = Dispatch(definition, indexed, index);
+            memo_.emplace(key, result);
+            return result;
+        } catch (const NotSingle& error) {
+            refused = error;
+        }
+        definition.Refuse(*refused, arguments, [](const Jet& jet) { return *jet[0]; }, stack_);
     }
 
     // A clause's own names hide a parameter evaluated, but the walk binds them

@@ -72,7 +72,7 @@ endforeach()
 # Each as file:instance.
 foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brink drift:ledge
                          drift:rift
-                         delay:fir newton:stiff logistic:gate softmax:cls steady:mark
+                         delay:fir newton:stiff logistic:gate sized:sized softmax:cls steady:mark
                          rnn:rnn attention:head momentum:ball adam:fit lqr:gain
                          rates:pairs rates:odd seeded:warm cascade:servo decimate:boxcar
                          decimate:stride decimate:frame decimate:lead
@@ -104,6 +104,34 @@ set_tests_properties(check_gate_one_limit PROPERTIES
                      PASS_REGULAR_EXPRESSION "gate_lim0\\(" FAIL_REGULAR_EXPRESSION "gate_lim1\\(")
 set_tests_properties(check_gate_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^gate: 100 steps from 0, against exact values until 0 and inexact ones from there\n(gate\\.[a-z]+: within [0-9.e+-]+\n)+$")
+set_tests_properties(check_sized_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^sized: 100 steps from 0, against exact values until 0 and inexact ones from there\n(sized\\.[a-z]+: within [0-9.e+-]+\n)+$")
+# Its sigmoid's size inferred, compiled where it is called, gives the header
+# its bounds written give, byte for byte (DESIGN.md, sizes inferred).
+file(READ compile/sized.ink sized_inferred)
+string(REPLACE "sig(z)[i,j]" "sig(z)[i<=4, j<=1]" sized_bounded "${sized_inferred}")
+if(sized_bounded STREQUAL sized_inferred)
+    message(FATAL_ERROR "compile/sized.ink no longer defines sig(z)[i,j]")
+endif()
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS compile/sized.ink)
+file(CONFIGURE OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/compile/bounded/sized.ink
+     CONTENT "${sized_bounded}" @ONLY)
+foreach(variant IN ITEMS inferred bounded)
+    set(source ${CMAKE_CURRENT_SOURCE_DIR}/compile/sized.ink)
+    if(variant STREQUAL bounded)
+        set(source ${CMAKE_CURRENT_BINARY_DIR}/compile/bounded/sized.ink)
+    endif()
+    add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/compile/${variant}/sized.h
+        COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/compile/${variant}
+        COMMAND inkamath_cli --compile ${source} -o ${CMAKE_CURRENT_BINARY_DIR}/compile/${variant}/sized.h
+        DEPENDS inkamath_cli ${source}
+        VERBATIM)
+endforeach()
+add_custom_target(sized_headers ALL DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/compile/inferred/sized.h
+                                            ${CMAKE_CURRENT_BINARY_DIR}/compile/bounded/sized.h)
+add_test(NAME compile_sized_header
+         COMMAND ${CMAKE_COMMAND} -E compare_files ${CMAKE_CURRENT_BINARY_DIR}/compile/inferred/sized.h
+                 ${CMAKE_CURRENT_BINARY_DIR}/compile/bounded/sized.h)
 set_tests_properties(check_cls_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^cls: 100 steps from 0, against exact values until 0 and inexact ones from there\n(cls\\.[a-z]+: within [0-9.e+-]+\n)+$")
 set_tests_properties(check_ball_report PROPERTIES PASS_REGULAR_EXPRESSION

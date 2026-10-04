@@ -49,6 +49,9 @@ endif()
 # the limit accepts (DESIGN.md, C63).
 if(MSVC)
     add_link_options(/STACK:8388608)
+    # The interpreter is one translation unit of templates, and a Debug build
+    # of it passed the sections an object file holds without /bigobj.
+    add_compile_options(/bigobj)
 endif()
 
 # --- the interpreter ---------------------------------------------------------
