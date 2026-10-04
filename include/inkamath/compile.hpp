@@ -20,9 +20,13 @@
 #include <utility>
 #include <vector>
 
-// What the compiler will not compile, and in which definition.
+// What the compiler will not compile, and in which definition, where one
+// is to blame.
 struct Refusal : std::runtime_error {
     using std::runtime_error::runtime_error;
+    Refusal(const std::string& definition, const std::string& why)
+        : std::runtime_error("cannot compile " + definition + ": " + why), name(definition) {}
+    std::string name;
 };
 
 // DESIGN.md, phase 14, step 2: the sequences a session defines, as a C
@@ -82,13 +86,7 @@ public:
                 return refusals;
             } catch (const Refusal& refusal) {
                 refusals.emplace_back(refusal.what());
-                // 'cannot compile NAME: why', or no name where no one
-                // definition is to blame, which ends it.
-                const std::string text = refusal.what(), head = "cannot compile ";
-                const std::size_t colon = text.find(": ", head.size());
-                if (text.rfind(head, 0) != 0 || colon == std::string::npos ||
-                    !aside.insert(text.substr(head.size(), colon - head.size())).second)
-                    return refusals;
+                if (refusal.name.empty() || !aside.insert(refusal.name).second) return refusals;
             }
         }
     }
@@ -140,6 +138,17 @@ private:
     struct Undefined : Reason {
         using Reason::Reason;
     };
+    // The interpreter's own refusal, as a reason the compiler gives.
+    template <typename F>
+    static auto Reasoned(F f) {
+        try {
+            return f();
+        } catch (const Reason&) {
+            throw;
+        } catch (const std::runtime_error& error) {
+            throw Reason(error.what());
+        }
+    }
 
     // A primary, a unary, a product, a sum: an operand is parenthesised only
     // where C would otherwise read it differently.
@@ -193,15 +202,15 @@ private:
 
     using Reads = std::map<std::string, std::set<int>>;  // lags, by the sequence read
 
-    // A guarded clause, and what its guard and its value each read: its guard
-    // is evaluated wherever the chain reaches it, its value only where it holds,
-    // so each has its own index from which it can be.
     // A term a base clause reads: 'x_at' in the base clause of 'index'.
     struct Seed {
         std::string read;
         int         index, at, lag = 0;
     };
 
+    // A guarded clause, and what its guard and its value each read: its guard
+    // is evaluated wherever the chain reaches it, its value only where it holds,
+    // so each has its own index from which it can be.
     struct Guarded {
         std::string              condition;
         std::vector<std::string> cells;
@@ -306,7 +315,7 @@ private:
             try {
                 instance = definitions_.InstanceScope(definition);
             } catch (const std::runtime_error& error) {
-                throw Refusal("cannot compile " + key + ": " + error.what());
+                throw Refusal(key, error.what());
             }
             if (instance) Define(*instance);
         }
@@ -374,12 +383,7 @@ private:
             throw Reason("an instance of " + model.Name() + ", which keeps a history, in a call");
         // What each argument reads, but its own index, which a positional
         // one takes from the signature.
-        std::vector<std::optional<typename Model<Value>::Argument>> bound;
-        try {
-            bound = model.model->Bind(model.Name(), call);
-        } catch (const std::runtime_error& error) {
-            throw Reason(error.what());
-        }
+        const auto bound = Reasoned([&] { return model.model->Bind(model.Name(), call); });
         std::set<std::string> read;
         for (const auto& argument : bound) {
             if (!argument) continue;
@@ -510,13 +514,27 @@ private:
             if (!otherwise) throw Reason("no clause of " + name + " applies");
             return *otherwise;
         }
-        Code chain;
+        std::size_t rows = 1, cols = 1;
         for (const auto& [condition, value] : guarded) {
-            chain.rows = std::max(chain.rows, value.rows);
-            chain.cols = std::max(chain.cols, value.cols);
+            rows = std::max(rows, value.rows);
+            cols = std::max(cols, value.cols);
         }
-        for (std::size_t i = 0; i < chain.rows; ++i) {
-            for (std::size_t j = 0; j < chain.cols; ++j) {
+        return Chain(guarded, otherwise, rows, cols);
+    }
+
+    // Each cell as the step tests it: the guarded values in order, then the
+    // one that always applies, else NaN, as where no clause applies (C86).
+    static Code Chain(const std::vector<std::pair<std::string, Code>>& guarded,
+                      const std::optional<Code>& otherwise, std::size_t rows, std::size_t cols) {
+        Code chain;
+        chain.rows = rows;
+        chain.cols = cols;
+        for (std::size_t i = 0; i < rows; ++i) {
+            for (std::size_t j = 0; j < cols; ++j) {
+                if (guarded.empty() && otherwise) {
+                    chain.cells.push_back(otherwise->At(i, j));
+                    continue;
+                }
                 std::string cell;
                 for (const auto& [condition, value] : guarded)
                     cell += condition + " ? " + value.At(i, j).text + " : ";
@@ -532,23 +550,17 @@ private:
     Code Call(const std::string& name, const Reference<Value>& function,
               const ParametersCall<Value>& call, Expansion* outer) {
         const ParametersDefinition<Value>& p = function.Clauses().front().parameters;
-        try {
-            p.CheckArity(name, call);
-        } catch (const std::runtime_error& error) {
-            throw Reason(error.what());
-        }
+        Reasoned([&] { p.CheckArity(name, call); });
         Expansion expansion{{}, {}, outer ? outer->scope : function.home, outer, {}};
         const std::vector<std::string>& names = p.parameters_names();
         for (std::size_t i = 0; i < call.parameters_expression().size(); ++i)
             expansion.values.emplace(names[i], Emit(call.parameters_expression()[i]));
         for (const auto& [given, argument] : call.parameters_dict())
             expansion.values.emplace(given, Emit(argument));
-        try {
+        Reasoned([&] {
             for (const auto& [given, value] : expansion.values)
                 function.Divides(given, Value(Extent{value.rows, value.cols}), definitions_);
-        } catch (const std::runtime_error& error) {
-            throw Reason(error.what());
-        }
+        });
         return Inside(expansion, [&] {
             for (const std::string& parameter : names) {
                 if (expansion.values.count(parameter)) continue;
@@ -571,12 +583,7 @@ private:
                         [](const auto& q) { return !q.index.empty(); }) ||
             std::any_of(m.body.begin(), m.body.end(), remembers))
             return Kept(model, call, member);
-        std::vector<std::optional<typename Model<Value>::Argument>> bound;
-        try {
-            bound = m.Bind(model.Name(), call);
-        } catch (const std::runtime_error& error) {
-            throw Reason(error.what());
-        }
+        const auto bound = Reasoned([&] { return m.Bind(model.Name(), call); });
         held_.push_back(definitions_.Defaults(model));
         Expansion expansion{{}, {}, m.scope, nullptr, {}};
         for (std::size_t i = 0; i < m.parameters.size(); ++i)
@@ -621,18 +628,10 @@ private:
     }
 
     // Names in a definition are sought where it was written.
-    struct Home {
+    struct Home : Setting<const Scope<Value>*> {
         Home(CompileC& compiler, const Reference<Value>* definition)
-            : compiler_(compiler), scope_(compiler.scope_) {
-            if (definition && definition->home) compiler_.scope_ = definition->home;
-        }
-        ~Home() { compiler_.scope_ = scope_; }
-        Home(const Home&)            = delete;
-        Home& operator=(const Home&) = delete;
-
-    private:
-        CompileC&           compiler_;
-        const Scope<Value>* scope_;
+            : Setting(compiler.scope_,
+                      definition && definition->home ? definition->home : compiler.scope_) {}
     };
 
     // Every parameter the signature gives is in the header, read or not: a
@@ -648,7 +647,7 @@ private:
                 try {
                     (void)Emit(std::make_shared<RefExpression<Value>>(parameter.name));
                 } catch (const Reason& reason) {
-                    throw Refusal("cannot compile " + parameter.name + ": " + reason.what());
+                    throw Refusal(parameter.name, reason.what());
                 }
             }
         }
@@ -672,14 +671,14 @@ private:
     // refused rather than left out; a plain one is compiled where it is read.
     void Define(const std::string& name, const Reference<Value>& definition) {
         for (const Clause<Value>& clause : definition.Clauses()) {
-            if (clause.parameters.tensor()) throw Refusal("cannot compile " + name + ": a tensor");
+            if (clause.parameters.tensor()) throw Refusal(name, "a tensor");
             // A function is compiled where it is called, and a sequence with
             // parameters where a limit walks it.
             if (!clause.parameters.parameters_names().empty()) return;
             const ParametersDefinition<Value>& p = clause.parameters;
             if (p.guarded() && !p.cells() && !p.general())
-                throw Refusal("cannot compile " + name + ": a guarded " +
-                              (p.indexed() ? "base clause" : "value"));
+                throw Refusal(name,
+                              std::string("a guarded ") + (p.indexed() ? "base clause" : "value"));
         }
         // A base clause written after a guarded one is reached only if the guard
         // fails, which the chain a step computes would not say. A term by its
@@ -689,7 +688,7 @@ private:
             if (ByCells(definition)) break;
             guarded = guarded || (clause.parameters.guarded() && clause.parameters.general());
             if (guarded && clause.parameters.indexed() && !clause.parameters.general())
-                throw Refusal("cannot compile " + name + ": a base clause after a guarded one");
+                throw Refusal(name, "a base clause after a guarded one");
         }
         if (IsSequence(definition)) sequences_[name].definition = &definition;
     }
@@ -727,7 +726,7 @@ private:
                 reach      = std::max(reach, top);
             }
         } catch (const Reason& reason) {
-            throw Refusal("cannot compile " + key + ": " + reason.what());
+            throw Refusal(key, reason.what());
         }
         index_ = outer;
     }
@@ -746,11 +745,13 @@ private:
         // the way, whose cells may use the same names, must not see or undo them.
         const auto outer_places = std::exchange(places_, Captured(sequences_.at(name).definition));
         const int  outer_shift  = std::exchange(shift_, 0);
+        // Nor the reader's guard, which defers what it reads (C92).
+        const bool outer_deferring  = std::exchange(deferring_, false);
         auto       outer_parameters = std::exchange(read_parameters_, {});
         try {
             body();
         } catch (const Reason& reason) {
-            throw Refusal("cannot compile " + name + ": " + reason.what());
+            throw Refusal(name, reason.what());
         }
         sequences_.at(name).parameters.insert(read_parameters_.begin(), read_parameters_.end());
         read_parameters_.insert(outer_parameters.begin(), outer_parameters.end());
@@ -760,6 +761,7 @@ private:
         temporaries_ = outer_temporaries;
         places_      = outer_places;
         shift_       = outer_shift;
+        deferring_   = outer_deferring;
     }
 
     // A cell the compiler would write out more than once -- an operand of a
@@ -841,8 +843,7 @@ private:
         Sequence& sequence = sequences_.at(name);
         if (sequence.compiled || !sequence.definition) return;
         const Home home(*this, sequence.definition);
-        if (sequence.compiling)
-            throw Refusal("cannot compile " + name + ": its shape depends on itself");
+        if (sequence.compiling) throw Refusal(name, "its shape depends on itself");
         sequence.compiling = true;
         Bases(name);
         if (ByCells(*sequence.definition)) {
@@ -887,7 +888,7 @@ private:
             }
         }
         if (!settled && sequence.guarded.empty())
-            throw Refusal("cannot compile " + name + ": a sequence with no general clause");
+            throw Refusal(name, "a sequence with no general clause");
         // Where no guard holds the interpreter says so; a step can only say NaN.
         if (!settled) sequence.general.assign(sequence.rows * sequence.cols, "NAN");
         clause_reads_     = outer_reads;
@@ -1151,26 +1152,15 @@ private:
     // the interpreter does: that depends on the values, so it is done as the
     // step runs.
     Code Inverse(const Code& matrix) {
-        const std::size_t n     = matrix.rows;
-        std::string       value = "inverse";
-        std::string       rows;
-        for (std::size_t i = 0; i < n; ++i) {
-            std::string row;
-            for (std::size_t j = 0; j < n; ++j) row += (j ? ", " : "") + matrix.At(i, j).text;
-            rows += (i ? ", {" : "{") + row + "}";
-            value += "\x1f" + row;
-        }
+        const std::size_t n    = matrix.rows;
+        const std::string rows = Rows(matrix);
         inverses_.insert(n);
-        const std::string name = Declare(value, [&](const std::string& t) {
+        const std::string name = Declare("inverse\x1f" + rows, [&](const std::string& t) {
             return std::vector<std::string>{
                 "double " + t + Subscript(n, n) + " = {" + rows + "};",
                 module_ + "_inverse" + std::to_string(n) + "_(" + t + ");"};
         });
-        Code              code;
-        code.rows = code.cols = n;
-        for (std::size_t i = 0; i < n; ++i)
-            for (std::size_t j = 0; j < n; ++j) code.cells.push_back(Atom(name + Subscript(i, j)));
-        return code;
+        return Array(name, n, n);
     }
 
     static const char* Operator(Comparison op) {
@@ -1642,7 +1632,7 @@ private:
     template <typename Fits>
     std::optional<Extent> Measured(const std::string& name, const Reference<Value>& definition,
                                    const std::optional<Code>& whole, Fits fits) {
-        try {
+        return Reasoned([&] {
             return definition.Measured(
                 whole ? std::optional<Extent>(Extent{whole->rows, whole->cols}) : std::nullopt,
                 fits, name,
@@ -1658,11 +1648,7 @@ private:
                     const Code read = Emit(e);
                     return Extent{read.rows, read.cols};
                 });
-        } catch (const Reason&) {
-            throw;
-        } catch (const std::runtime_error& error) {
-            throw Reason(error.what());
-        }
+        });
     }
 
     std::optional<Code> CellOf(const Reference<Value>& definition, int row, int col) {
@@ -1694,13 +1680,7 @@ private:
     }
 
     std::size_t Size(const PExpression<Value>& expression) {
-        const Code code = Known(expression, "a matrix whose size is not a constant");
-        int        size = 0;
-        try {
-            size = AsIndex<Value>(*code.constant);
-        } catch (const std::runtime_error& error) {
-            throw Reason(error.what());
-        }
+        const int size = Whole(Known(expression, "a matrix whose size is not a constant"));
         if (size < 1) throw Reason("a size must be at least 1, not " + std::to_string(size));
         return static_cast<std::size_t>(size);
     }
@@ -1717,11 +1697,7 @@ private:
             throw Reason(found.key + " is not a sequence, so it has no limit");
         const Reference<Value>&            sequence = *found.definition;
         const ParametersDefinition<Value>& p        = sequence.Clauses().front().parameters;
-        try {
-            p.CheckArity(name, call);
-        } catch (const std::runtime_error& error) {
-            throw Reason(error.what());
-        }
+        Reasoned([&] { p.CheckArity(name, call); });
         // The arguments, where the limit is read; a default, where it is not
         // given, reads the others.
         Expansion                       given{{}, {}, scope_, expansion_, {}};
@@ -1744,14 +1720,8 @@ private:
         Expansion inside{{}, {}, sequence.home ? sequence.home : scope_, nullptr, {}};
         for (const std::string& parameter : names) {
             const Code& argument = given.values.at(parameter);
-            Code        local;
-            local.rows = argument.rows;
-            local.cols = argument.cols;
-            for (std::size_t i = 0; i < argument.rows; ++i)
-                for (std::size_t j = 0; j < argument.cols; ++j)
-                    local.cells.push_back(
-                        Atom("arg_" + parameter + (argument.Scalar() ? "" : Subscript(i, j))));
-            inside.values.emplace(parameter, local);
+            inside.values.emplace(parameter,
+                                  Array("arg_" + parameter, argument.rows, argument.cols));
         }
         Walked* const              outer_limit       = std::exchange(limit_, &walked);
         auto* const                outer_temporaries = std::exchange(temporaries_, nullptr);
@@ -1793,12 +1763,7 @@ private:
                         else
                             guarded.emplace_back(*condition, value);
                     }
-                for (std::size_t c = 0; c < walked.rows * walked.cols; ++c) {
-                    std::string cell;
-                    for (const auto& [condition, value] : guarded)
-                        cell += condition + " ? " + value.cells[c].text + " : ";
-                    general.push_back(cell + (otherwise ? otherwise->cells[c].text : "NAN"));
-                }
+                general     = Texts(Chain(guarded, otherwise, walked.rows, walked.cols));
                 index_text_ = outer_text;
                 return Code{};
             });
@@ -1853,23 +1818,9 @@ private:
         const int depth = std::max(walked.depth, 1);
         for (int lag = 1; lag <= depth; ++lag) {
             const auto  base  = bases.find(highest - lag + 1);
-            std::string value = "0.0";
-            if (base != bases.end()) {
-                if (scalar) {
-                    value = base->second.cells[0].text;
-                } else {
-                    value = "{";
-                    for (std::size_t i = 0; i < walked.rows; ++i) {
-                        value += i ? ", {" : "{";
-                        for (std::size_t j = 0; j < walked.cols; ++j)
-                            value += (j ? ", " : "") + base->second.At(i, j).text;
-                        value += "}";
-                    }
-                    value += "}";
-                }
-            } else if (!scalar) {
-                value = "{{0.0}}";
-            }
+            std::string value = scalar ? "0.0" : "{{0.0}}";
+            if (base != bases.end())
+                value = scalar ? base->second.cells[0].text : "{" + Rows(base->second) + "}";
             text += "    double t" + std::to_string(lag) + "_" + shape + " = " + value + ";\n";
         }
         if (!scalar) text += "    double t_" + shape + ";\n";
@@ -1933,13 +1884,7 @@ private:
                 continue;
             }
             if (!temporaries_) throw Reason("a matrix argument of a limit inside a limit's terms");
-            std::string rows;
-            for (std::size_t i = 0; i < argument.rows; ++i) {
-                std::string row;
-                for (std::size_t j = 0; j < argument.cols; ++j)
-                    row += (j ? ", " : "") + argument.At(i, j).text;
-                rows += (i ? ", {" : "{") + row + "}";
-            }
+            const std::string rows = Rows(argument);
             called += ", " + Declare("arg\x1f" + rows, [&](const std::string& t) {
                           return std::vector<std::string>{"double " + t +
                                                           Subscript(argument.rows, argument.cols) +
@@ -1950,13 +1895,7 @@ private:
         const std::string out = Declare("lim\x1f" + called, [&](const std::string& t) {
             return std::vector<std::string>{"double " + t + shape + ";", called + ", " + t + ");"};
         });
-        Code              code;
-        code.rows = walked.rows;
-        code.cols = walked.cols;
-        for (std::size_t i = 0; i < code.rows; ++i)
-            for (std::size_t j = 0; j < code.cols; ++j)
-                code.cells.push_back(Atom(out + Subscript(i, j)));
-        return Answer(code);
+        return Answer(Array(out, walked.rows, walked.cols));
     }
 
     // A term of the sequence a limit walks, read back from one of its own:
@@ -1976,16 +1915,8 @@ private:
         const int lag = Lag(call.subexpr(), limit_->name);
         if (lag == 0) throw Reason(limit_->name + " is defined by itself");
         if (!limit_->rows) throw Reason("a limit whose terms read back past its base clauses");
-        limit_->depth          = std::max(limit_->depth, lag);
-        const std::string term = "t" + std::to_string(lag) + "_";
-        Code              code;
-        code.rows = limit_->rows;
-        code.cols = limit_->cols;
-        for (std::size_t i = 0; i < code.rows; ++i)
-            for (std::size_t j = 0; j < code.cols; ++j)
-                code.cells.push_back(
-                    Atom(code.rows * code.cols == 1 ? term : term + Subscript(i, j)));
-        return code;
+        limit_->depth = std::max(limit_->depth, lag);
+        return Array("t" + std::to_string(lag) + "_", limit_->rows, limit_->cols);
     }
 
     PExpression<Value> visit(FuncExpression<Value>* expression) override {
@@ -2036,14 +1967,7 @@ private:
                                : reading_->reads)[key]
             .insert(lag);
         if (clause_reads_) (*clause_reads_)[key].insert(lag);
-        const std::string at     = "m_->" + key + "[" + std::to_string(lag) + "]";
-        const bool        scalar = read.rows * read.cols == 1;
-        Code              code;
-        code.rows = read.rows;
-        code.cols = read.cols;
-        for (std::size_t i = 0; i < code.rows; ++i)
-            for (std::size_t j = 0; j < code.cols; ++j)
-                code.cells.push_back(Atom(scalar ? at : at + Subscript(i, j)));
+        Code code = Array("m_->" + key + "[" + std::to_string(lag) + "]", read.rows, read.cols);
         // Before its window holds the term, one with no base clause is
         // computed again at that index, as the interpreter answers it there
         // (DESIGN.md, C71); Checked keeps whichever the reader needs.
@@ -2082,14 +2006,9 @@ private:
     // read that much further back, and checked where it is read: before it
     // exists the interpreter reports it, and the term is NaN.
     Code At(const Sequence& sequence, int lag) {
-        struct Tried {
-            std::string condition, mark;
-            Code        value;
-        };
-        Code                 chain;
-        std::optional<Tried> otherwise;
-        std::vector<Tried>   guarded;
-        const Home           home(*this, sequence.definition);
+        std::vector<std::pair<std::string, Code>> guarded;
+        std::optional<Code>                       otherwise;
+        const Home                                home(*this, sequence.definition);
         const std::string    index = std::exchange(index_, std::string());
         const std::string    text =
             std::exchange(index_text_, "(double)(m_->index_ - " + std::to_string(lag) + ")");
@@ -2111,13 +2030,15 @@ private:
                 const std::optional<std::string> condition =
                     guard ? Condition(p.guard()) : std::optional<std::string>("");
                 if (!condition) continue;
-                clause_reads_ = &value_reads;
-                Tried tried{mark(guard_reads) + *condition, std::string(), Emit(clause.expression)};
-                tried.mark = mark(value_reads);
+                clause_reads_           = &value_reads;
+                const std::string test  = mark(guard_reads) + *condition;
+                Code              value = Emit(clause.expression);
+                if (const std::string check = mark(value_reads); !check.empty())
+                    for (Cell& cell : value.cells) cell = Cell(check + cell.text, 0);
                 if (condition->empty())
-                    otherwise = std::move(tried);
+                    otherwise = value;
                 else
-                    guarded.push_back(std::move(tried));
+                    guarded.emplace_back(test, value);
             }
         }
         index_        = index;
@@ -2125,25 +2046,34 @@ private:
         places_       = places;
         clause_reads_ = reads;
         shift_        = shift;
-        chain.rows    = sequence.rows;
-        chain.cols    = sequence.cols;
-        for (std::size_t c = 0; c < sequence.rows * sequence.cols; ++c) {
-            const auto  i = c / sequence.cols, j = c % sequence.cols;
-            std::string cell;
-            for (const Tried& tried : guarded)
-                cell += tried.condition + " ? " + tried.mark + tried.value.At(i, j).text + " : ";
-            if (guarded.empty() && otherwise && otherwise->mark.empty()) {
-                chain.cells.push_back(otherwise->value.At(i, j));
-                continue;
-            }
-            cell += otherwise ? otherwise->mark + otherwise->value.At(i, j).text : "NAN";
-            chain.cells.emplace_back(cell, 0);  // a conditional, below every operator
-        }
-        return chain;
+        return Chain(guarded, otherwise, sequence.rows, sequence.cols);
     }
 
     static std::string Subscript(std::size_t i, std::size_t j) {
         return "[" + std::to_string(i) + "][" + std::to_string(j) + "]";
+    }
+
+    // A matrix as C initialises an array, '{a, b}, {c, d}'.
+    static std::string Rows(const Code& code) {
+        std::string rows;
+        for (std::size_t i = 0; i < code.rows; ++i) {
+            rows += i ? ", {" : "{";
+            for (std::size_t j = 0; j < code.cols; ++j)
+                rows += (j ? ", " : "") + code.At(i, j).text;
+            rows += "}";
+        }
+        return rows;
+    }
+
+    // The cells of a C array, 'name[i][j]', or 'name' alone for a single value.
+    static Code Array(const std::string& name, std::size_t rows, std::size_t cols) {
+        Code code;
+        code.rows = rows;
+        code.cols = cols;
+        for (std::size_t i = 0; i < rows; ++i)
+            for (std::size_t j = 0; j < cols; ++j)
+                code.cells.push_back(Atom(rows * cols == 1 ? name : name + Subscript(i, j)));
+        return code;
     }
 
     // A whole number that reads no parameter, or none.
@@ -2233,16 +2163,8 @@ private:
         Bases(key);
         if (!read.rows) Compile(key);
         seeding->seeds.push_back({key, base, *at});
-        Code code;
-        code.rows = read.rows;
-        code.cols = read.cols;
-        const std::string place =
-            "m_->" + key + "[\x19" + std::to_string(seeding->seeds.size() - 1) + "\x1a]";
-        for (std::size_t i = 0; i < code.rows; ++i)
-            for (std::size_t j = 0; j < code.cols; ++j)
-                code.cells.push_back(
-                    Atom(code.rows * code.cols == 1 ? place : place + Subscript(i, j)));
-        return code;
+        return Array("m_->" + key + "[\x19" + std::to_string(seeding->seeds.size() - 1) + "\x1a]",
+                     read.rows, read.cols);
     }
 
     // Each base's reads as lags, once the steps computing the bases are known
@@ -2253,17 +2175,14 @@ private:
             const int       step = sequence.period * seed.index + sequence.phase;
             seed.lag             = step - seed.at;
             if (seed.lag < 0)
-                throw Refusal("cannot compile " + name + ": " + seed.read +
-                              "_(...): a term after the one being computed");
+                throw Refusal(name, seed.read + "_(...): a term after the one being computed");
             if (read.period != 1)
-                throw Refusal("cannot compile " + name + ": " + seed.read +
-                              "_(...): read every step, and " + seed.read + " is computed every " +
-                              std::to_string(read.period));
+                throw Refusal(name, seed.read + "_(...): read every step, and " + seed.read +
+                                        " is computed every " + std::to_string(read.period));
             if (seed.at < read.start && !Historied(seed.read))
-                throw Refusal("cannot compile " + name + ": " + name + "_" +
-                              std::to_string(seed.index) + " reads " + seed.read + "_" +
-                              std::to_string(seed.at) + ", before it starts at " +
-                              std::to_string(read.start));
+                throw Refusal(name, name + "_" + std::to_string(seed.index) + " reads " +
+                                        seed.read + "_" + std::to_string(seed.at) +
+                                        ", before it starts at " + std::to_string(read.start));
             sequence.seeded[seed.read].insert(seed.lag);
         }
     }
@@ -2281,14 +2200,7 @@ private:
                          " is computed every " + std::to_string(reading_->period));
         reading_->period = a;
         reading_->samples[key].insert(b);
-        Code code;
-        code.rows            = read.rows;
-        code.cols            = read.cols;
-        const std::string at = "m_->" + key + "[\x0e" + std::to_string(b) + "\x0f]";
-        for (std::size_t i = 0; i < code.rows; ++i)
-            for (std::size_t j = 0; j < code.cols; ++j)
-                code.cells.push_back(Atom(code.rows * code.cols == 1 ? at : at + Subscript(i, j)));
-        return code;
+        return Array("m_->" + key + "[\x0e" + std::to_string(b) + "\x0f]", read.rows, read.cols);
     }
 
     // A hold: where it reads in the held sequence's window depends on that
@@ -2345,11 +2257,7 @@ private:
     }
 
     static int Whole(const Code& code) {
-        try {
-            return AsIndex<Value>(*code.constant);
-        } catch (const std::runtime_error& error) {
-            throw Reason(error.what());
-        }
+        return Reasoned([&] { return AsIndex<Value>(*code.constant); });
     }
 
     PExpression<Value> visit(EqualExpression<Value>*) override {
@@ -2362,12 +2270,7 @@ private:
         const Code row    = Known(expression->Row(), "a cell whose place is not a constant");
         if (!expression->Col()) {
             if (matrix.constant) return Fold(expression);
-            int i = 0;
-            try {
-                i = AsIndex<Value>(*row.constant);
-            } catch (const std::runtime_error& error) {
-                throw Reason(error.what());
-            }
+            const int i = Whole(row);
             if (i < 1 || static_cast<std::size_t>(i) > matrix.rows)
                 throw Reason("row " + std::to_string(i) + " is outside a " +
                              std::to_string(matrix.rows) + "x" + std::to_string(matrix.cols) +
@@ -2380,13 +2283,7 @@ private:
         }
         const Code col = Known(expression->Col(), "a cell whose place is not a constant");
         if (matrix.constant) return Fold(expression);
-        int i = 0, j = 0;
-        try {
-            i = AsIndex<Value>(*row.constant);
-            j = AsIndex<Value>(*col.constant);
-        } catch (const std::runtime_error& error) {
-            throw Reason(error.what());
-        }
+        const int i = Whole(row), j = Whole(col);
         if (i < 1 || static_cast<std::size_t>(i) > matrix.rows || j < 1 ||
             static_cast<std::size_t>(j) > matrix.cols)
             throw Reason("row " + std::to_string(i) + ", column " + std::to_string(j) +
@@ -2442,14 +2339,8 @@ private:
     PExpression<Value> visit(MemberExpression<Value>* expression) override {
         if (const Reference<Value>* model = ModelOf(*expression->Object()))
             return Answer(Instance(*model, Call(*expression->Object()), expression->Member()));
-        const Scope<Value>* object = nullptr;
-        try {
-            object = &definitions_.Resolve(*expression->Object(), *scope_);
-        } catch (const Reason&) {
-            throw;
-        } catch (const std::runtime_error& error) {
-            throw Reason(error.what());
-        }
+        const Scope<Value>* object =
+            Reasoned([&] { return &definitions_.Resolve(*expression->Object(), *scope_); });
         if (object->label.find('(') != std::string::npos)
             throw Reason("an unnamed instance, " + object->label);
         own_ = object;
@@ -2467,13 +2358,7 @@ private:
     // The struct's field for a value of this shape, cell by cell.
     static Code Fields(const std::string& name, const Code& shape) {
         Unreserved(name);
-        Code code;
-        code.rows = shape.rows;
-        code.cols = shape.cols;
-        for (std::size_t i = 0; i < code.rows; ++i)
-            for (std::size_t j = 0; j < code.cols; ++j)
-                code.cells.push_back(Atom("m_->" + name + (shape.Scalar() ? "" : Subscript(i, j))));
-        return code;
+        return Array("m_->" + name, shape.rows, shape.cols);
     }
 
     // A cell that is a name or a number is read as itself, which the C
@@ -2506,38 +2391,33 @@ private:
         }
     }
 
-    // Where each sequence starts: at its lowest base clause, or, without one,
-    // at the first index where every term it reads exists -- which is where
-    // the interpreter, asked for the term, would first answer. An input starts
-    // with the earliest.
     // A sequence at another rate, once every sample of its clauses is known:
     // its phase, the first step at which every sample exists; its base terms
     // keyed by the step that computes them; its samples as lags of the
     // input's; its own terms read back, in its own terms.
     void Rate(const std::string& name, Sequence& sequence) {
-        const std::string head = "cannot compile " + name + ": ";
         for (const auto& [read, lags] : sequence.reads) {
             const int period = sequences_.at(read).period;
             if (read != name && period > 1)
-                throw Refusal(head + read + "_(...): read every step, and " + read +
-                              " is computed every " + std::to_string(period));
+                throw Refusal(name, read + "_(...): read every step, and " + read +
+                                        " is computed every " + std::to_string(period));
         }
         // A slow sequence read by another says what a hold at the input's
         // rate sampled says, but for a hold at another period, which no hold
         // says (C74).
         const auto another = [&](const std::string& read) {
-            return Refusal(head + read +
-                           "_(...): one sequence at another rate read by another; hold " + read +
-                           " at the input's rate and sample the hold");
+            return Refusal(name, read +
+                                     "_(...): one sequence at another rate read by another; hold " +
+                                     read + " at the input's rate and sample the hold");
         };
         for (const std::size_t h : sequence.holds) {
             const Hold& hold   = holds_[h];
             const int   every  = sequence.period * hold.a;
             const int   period = sequences_.at(hold.read).period;
             if (every != period)
-                throw Refusal(head + hold.read + "_(...): read every " + std::to_string(every) +
-                              " steps, and " + hold.read + " is computed every " +
-                              std::to_string(period));
+                throw Refusal(name, hold.read + "_(...): read every " + std::to_string(every) +
+                                        " steps, and " + hold.read + " is computed every " +
+                                        std::to_string(period));
             if (sequence.period > 1) throw another(hold.read);
         }
         if (sequence.period == 1) return;
@@ -2545,8 +2425,8 @@ private:
             if (sequences_.at(read).period > 1) throw another(read);
         for (const auto& [read, lags] : sequence.reads)
             if (read != name)
-                throw Refusal(head + read + "_(...): read every step, and " + name +
-                              " is computed every " + std::to_string(sequence.period));
+                throw Refusal(name, read + "_(...): read every step, and " + name +
+                                        " is computed every " + std::to_string(sequence.period));
         // Without a base clause, a term is computed at the step of its
         // latest sample, and the first is settled with the starts.
         int phase = std::numeric_limits<int>::min();
@@ -2581,8 +2461,9 @@ private:
             const int lag =
                 n < start ? -1 : Floor(n - held.phase, a) - Floor(n - hold.b, a) - hold.d;
             if (lag < 0)
-                throw Refusal("cannot compile " + name + ": " + hold.read +
-                              "_(...): read before it is computed; read the term before it");
+                throw Refusal(
+                    name,
+                    hold.read + "_(...): read before it is computed; read the term before it");
             hold.least = n == hold.from ? lag : std::min(hold.least, lag);
             hold.most  = n == hold.from ? lag : std::max(hold.most, lag);
         }
@@ -2647,6 +2528,10 @@ private:
         return text;
     }
 
+    // Where each sequence starts: at its lowest base clause, or, without one,
+    // at the first index where every term it reads exists -- which is where
+    // the interpreter, asked for the term, would first answer. An input starts
+    // with the earliest.
     int Starts() {
         std::optional<int> earliest;
         for (auto& [name, sequence] : sequences_) {
@@ -2671,10 +2556,10 @@ private:
                 if (other.bases.empty() || other.guarded.empty()) continue;
                 const int reached = first - *lags.rbegin();
                 if (reached < other.start)
-                    throw Refusal("cannot compile " + name + ": " + name + "_" +
-                                  std::to_string(first) + " reads " + read + "_" +
-                                  std::to_string(reached) + ", below " + read +
-                                  "'s base clauses, where only its guards could give a term");
+                    throw Refusal(name,
+                                  name + "_" + std::to_string(first) + " reads " + read + "_" +
+                                      std::to_string(reached) + ", below " + read +
+                                      "'s base clauses, where only its guards could give a term");
             }
         }
         // One with no base clause starts where some path through its clauses
@@ -2743,10 +2628,9 @@ private:
                 for (const int lag : lags) {
                     for (int n = sequence.start; n < begins + lag; ++n) {
                         if (sequence.bases.count(n) || !Ticks(sequence, n)) continue;
-                        throw Refusal("cannot compile " + name + ": " + name + "_" +
-                                      std::to_string(n) + " reads " + read + "_" +
-                                      std::to_string(n - lag) + ", before it starts at " +
-                                      std::to_string(begins));
+                        throw Refusal(name, name + "_" + std::to_string(n) + " reads " + read +
+                                                "_" + std::to_string(n - lag) +
+                                                ", before it starts at " + std::to_string(begins));
                     }
                 }
             }
@@ -2760,7 +2644,7 @@ private:
     // hold it, is refused where its clauses could give it.
     void Unreached(int earliest) const {
         for (const auto& [name, sequence] : sequences_) {
-            const std::string head = "cannot compile " + name + ": " + name + "_";
+            const std::string head = name + "_";
             // Holds are read at the input's rate, where one with no base
             // clause could start with the step.
             int first = sequence.bases.empty() ? earliest : sequence.start;
@@ -2776,14 +2660,16 @@ private:
                     const std::string at = std::to_string(n) + " reads " + hold.read + "_" +
                                            std::to_string(term) + ", ";
                     if (!held.bases.empty() && !held.guarded.empty())
-                        throw Refusal(head + at + "below " + hold.read +
+                        throw Refusal(
+                            name, head + at + "below " + hold.read +
                                       "'s base clauses, where only its guards could give a term");
                     if (held.bases.empty() &&
                         std::any_of(held.samples.begin(), held.samples.end(), [&](const auto& x) {
                             return held.period * term + *x.second.rbegin() >= Exists(x.first);
                         }))
-                        throw Refusal(head + at + "before " + hold.read +
-                                      "'s first tick, where its samples could give a term");
+                        throw Refusal(name,
+                                      head + at + "before " + hold.read +
+                                          "'s first tick, where its samples could give a term");
                 }
             }
             int tick = sequence.start;
@@ -2794,10 +2680,10 @@ private:
                 for (const int b : offsets)
                     for (int k = tick - sequence.phase + b; k < sampled.start; k += sequence.period)
                         if (k >= Exists(read))
-                            throw Refusal(head + std::to_string((k - b) / sequence.period) +
-                                          " reads " + read + "_" + std::to_string(k) +
-                                          ", before the step computes " + read +
-                                          ", where its clauses could give a term");
+                            throw Refusal(name, head + std::to_string((k - b) / sequence.period) +
+                                                    " reads " + read + "_" + std::to_string(k) +
+                                                    ", before the step computes " + read +
+                                                    ", where its clauses could give a term");
             }
         }
     }
@@ -2942,8 +2828,8 @@ private:
                     if (!Ticks(reader, n) || reader.bases.count(n) || Folded(read, n - lag) ||
                         (kept && Decides(*kept, n)))
                         continue;
-                    throw Refusal("cannot compile " + name + ": " + name + "_" +
-                                  std::to_string(Floor(n - reader.phase, reader.period)) +
+                    throw Refusal(
+                        name, name + "_" + std::to_string(Floor(n - reader.phase, reader.period)) +
                                   " reads " + read + "_" + std::to_string(n - lag) +
                                   ", before the stream, where " + Unfolded(read, n - lag));
                 }
@@ -2956,8 +2842,8 @@ private:
     void Histories(int earliest) {
         for (const auto& [name, last] : reach_)
             if (last >= earliest)
-                throw Refusal("cannot compile " + name + ": its history reaches " + name + "_" +
-                              std::to_string(earliest) + ", in the stream");
+                throw Refusal(name, "its history reaches " + name + "_" + std::to_string(earliest) +
+                                        ", in the stream");
         for (const auto& [name, sequence] : sequences_) {
             if (!sequence.definition) continue;
             // A guarded clause's value is read only where its guard holds.
@@ -2978,10 +2864,10 @@ private:
             // A base clause's reads, which Cover passes over.
             for (const Seed& seed : sequence.seeds)
                 if (seed.at < earliest_ && Historied(seed.read) && !Folded(seed.read, seed.at))
-                    throw Refusal("cannot compile " + name + ": " + name + "_" +
-                                  std::to_string(seed.index) + " reads " + seed.read + "_" +
-                                  std::to_string(seed.at) + ", before the stream, where " +
-                                  Unfolded(seed.read, seed.at));
+                    throw Refusal(name, name + "_" + std::to_string(seed.index) + " reads " +
+                                            seed.read + "_" + std::to_string(seed.at) +
+                                            ", before the stream, where " +
+                                            Unfolded(seed.read, seed.at));
         }
         for (const Early& early : earlies_)
             for (const auto& [name, sequence] : sequences_)
@@ -3002,7 +2888,7 @@ private:
                 if (term == folded_.end() || !term->second) continue;
                 const std::vector<double> cells = Doubles(*term->second);
                 if (cells.size() != sequence.rows * sequence.cols)
-                    throw Refusal("cannot compile " + name + ": a history of another shape");
+                    throw Refusal(name, "a history of another shape");
                 for (std::size_t c = 0; c < cells.size(); ++c)
                     if (cells[c] != 0.0)
                         lines +=
@@ -3026,8 +2912,7 @@ private:
             for (const Reads* reads : {&sequence.reads, &sequence.deferred, &sequence.seeded}) {
                 for (const auto& [read, lags] : *reads) {
                     if (!lags.count(0) || !sequences_.at(read).definition) continue;
-                    if (read == name)
-                        throw Refusal("cannot compile " + name + ": a term reads itself");
+                    if (read == name) throw Refusal(name, "a term reads itself");
                     waiting[name].insert(read);
                 }
             }
@@ -3037,8 +2922,7 @@ private:
             const auto ready = std::find_if(waiting.begin(), waiting.end(),
                                             [](const auto& entry) { return entry.second.empty(); });
             if (ready == waiting.end())
-                throw Refusal("cannot compile " + waiting.begin()->first +
-                              ": it and the terms it reads need each other");
+                throw Refusal(waiting.begin()->first, "it and the terms it reads need each other");
             const std::string name = ready->first;
             order.push_back(name);
             waiting.erase(ready);
@@ -3133,8 +3017,6 @@ private:
                "}\n\n";
     }
 
-    // Each deferred right side's mark (see Right), as the check it needs
-    // where the terms it reads may not exist yet, or nothing where they do.
     // Whether a term read back is computed again: where its reader can be
     // evaluated before the window holds it, and, inside another term computed
     // again, where that one is.
@@ -3147,6 +3029,8 @@ private:
                (early.outer < 0 || Needed(earlies_[static_cast<std::size_t>(early.outer)]));
     }
 
+    // Each deferred right side's mark (see Right), as the check it needs
+    // where the terms it reads may not exist yet, or nothing where they do.
     std::string Checked(std::string text, const std::string& name, const Sequence& sequence) {
         // A term read back, computed again where the reader can need it before
         // its window holds it; the innermost first, as the last marked.
