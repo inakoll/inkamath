@@ -2880,9 +2880,23 @@ private:
             if (last >= earliest)
                 throw Refusal("cannot compile " + name + ": its history reaches " + name + "_" +
                               std::to_string(earliest) + ", in the stream");
-        for (auto& [name, sequence] : sequences_) {
+        for (const auto& [name, sequence] : sequences_) {
             if (!sequence.definition) continue;
-            Cover(name, sequence, sequence.reads, std::numeric_limits<int>::max());
+            // A guarded clause's value is read only where its guard holds.
+            Reads always = sequence.reads;
+            for (const Guarded& guarded : sequence.guarded) {
+                const auto& p = sequence.definition->Clauses()[guarded.clause].parameters;
+                const Check kept{guarded.value,  p.guard(), true, sequence.definition->home,
+                                 p.index_name(), {},        0};
+                Cover(name, sequence, guarded.value, std::numeric_limits<int>::max(), &kept);
+                for (const auto& [read, lags] : guarded.value)
+                    for (const int lag : lags) always[read].erase(lag);
+            }
+            for (const Guarded& guarded : sequence.guarded)
+                for (const Reads* reads : {&guarded.guard, &sequence.general_reads})
+                    for (const auto& [read, lags] : *reads)
+                        always[read].insert(lags.begin(), lags.end());
+            Cover(name, sequence, always, std::numeric_limits<int>::max());
             for (const Seed& seed : sequence.seeds)
                 Cover(name, sequence, {{seed.read, {seed.lag}}},
                       sequence.period * seed.index + sequence.phase + 1);

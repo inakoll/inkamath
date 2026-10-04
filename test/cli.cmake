@@ -349,6 +349,8 @@ refused(level "x_n) = {\n    c_n = n >= 0 and x_n > x_(n-1)"
         "c: c_0 reads x_-1, before the stream, where x has no history")
 refused(half "u_n, v_n) = {\n    u_n | n < 0 = 0\n    c_n = u_(n-1) + v_(n-1)"
         "c: c_0 reads v_-1, before the stream, where v has no history")
+refused(kept "x_n) = {\n    c_n | x_n > 0 = x_(n-1)\n    c_n = 0"
+        "c: c_0 reads x_-1, before the stream, where x has no history")
 refused(held "x_n) = {\n    y_m = x_(2*m)\n    z_n = y_(floor(n/2) - 1)"
         "z: z_0 reads y_-1, before y's first tick, where its samples could give a term")
 refused(early "x_n) = {\n    x_n | n < 2 = 0\n    c_n = x_(n-1)"
@@ -361,6 +363,11 @@ refused(biased "a = 1, x_n) = {\n    x_n | n < 0 = a\n    c_n = x_(n-1)"
         "x: a history that reads a")
 refused(swap "x_n) = {\n    x_n | n < 0 = [0; 0]\n    c_n = [0 1; 1 0]*x_(n-1)"
         "x: a history that is not a single value")
+
+# A guarded clause's value is read only where its guard, folded, holds.
+file(WRITE "${OUT}/guarded.ink" "guarded(x_n) = {\n    c_n | n > 0 = x_(n-1)\n    c_n = 0\n}\n")
+set(args --compile guarded.ink guarded -o guarded.h)
+check(history_guarded_value)
 
 # A transcript checked: replayed, and each answer that is not the one recorded
 # shown as recorded, '-', and as given now, '+', under the line it answers.
