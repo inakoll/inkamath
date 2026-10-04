@@ -3485,7 +3485,9 @@ that exploring seven domains asked of the interpreter, by how many asked.
   value`; a tensor, `cannot compile x: a tensor`, as any; an instance within
   the model given an argument of another size than its model states,
   `cannot compile inner.x: a single value, where dot takes a 2x1 matrix`,
-  which the compiler can tell, its shapes being static. A
+  and a default of another size, `cannot compile x: a single value, where
+  nil takes a 2x1 matrix`, which the compiler can tell, its shapes being
+  static. A
   file's input, a name nothing defines, has no signature to state a size in
   and stays a single value. It is a requirement that every header in
   `test/compile/expected` stays byte-identical, and every program `--check`

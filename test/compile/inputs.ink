@@ -5,9 +5,11 @@
 # reads cells of a column, applies a function of cells to it and defines a
 # term by cells whose size is inferred from it; 'twirl' has a history of the
 # input's size; 'duo' is decimate.ink's 'lit' on two channels, and samples
-# and holds the input itself; 'mean3' reads a size from a parameter; 'track'
-# takes a single value and a column; 'nestv' gives an instance within a model
-# a column built from a single value. Each reports so, every term exact:
+# and holds the input itself; 'mean3' reads a size from a parameter, and
+# 'mean2' from the instance's, which the check compiles in; 'track' takes a
+# single value and a column, and 'pair' two columns of different sizes;
+# 'nestv' gives an instance within a model a column built from a single
+# value. Each reports so, every term exact:
 #
 #     fan: 100 steps from 0, against exact values
 #     fan.y: within 0
@@ -28,8 +30,14 @@
 #     mean3: 100 steps from 0, against exact values
 #     mean3.y: within 0, its thirds rounded but their sums exact to n = 99
 #
+#     mean2: 100 steps from 0, against exact values
+#     mean2.y: within 0
+#
 #     track: 100 steps from 0, against exact values
 #     track.u: within 0
+#
+#     pair: 100 steps from 0, against exact values
+#     pair.y: within 0
 #
 #     nestv: 100 steps from 0, against exact values
 #     nestv.<name>: within 0, for each of y, inner.y and inner.x
@@ -100,7 +108,7 @@
 # What 'inkamath --compile' refuses, each model a file of its own compiled
 # by name with -o. A history of another size than the input, stated or not
 # (test/cli.cmake's 'swap', which said "a history that is not a single
-# value"); a tensor; and an instance within a model given an argument of
+# value"); a tensor; a default and an instance within a model each giving
 # another size than its model states. A size that reads the index is the
 # interpreter's refusal, where the file is read:
 #
@@ -114,6 +122,9 @@
 #     }
 #     batch(x_n[b<=2, j<=1, k<=2]) = {
 #         y_n = x_n[2]*[1; 1]
+#     }
+#     nil(x_n[j<=2] = 0) = {
+#         y_n = [1 2]*x_n
 #     }
 #     dot(x_n[j<=2]) = {
 #         y_n = [1 2]*x_n
@@ -129,6 +140,7 @@
 #     inkamath: cannot compile x: a history of another shape
 #     inkamath: cannot compile x: a history of another shape
 #     inkamath: cannot compile x: a tensor
+#     inkamath: cannot compile x: a single value, where nil takes a 2x1 matrix
 #     inkamath: cannot compile inner.x: a single value, where dot takes a 2x1 matrix
 #     inkamath: grow.ink, line 1: x is an input of grow, so its size cannot read the index n
 #
@@ -176,12 +188,18 @@ avg(d = 3, x_n[j<=d]) = {
     y_n = sum_(j=1)^d x_n[j]/d
 }
 mean3 = avg(x_n = [n; 2*n; 3*n])
+mean2 = avg(d = 2, x_n = [n; 3*n])
 
 ctl(r_n, s_n[j<=2]) = {
     K = [3/2 1/2]
     u_n = r_n - K*s_n
 }
 track = ctl(r_n = 1, s_n = [n; 1])
+
+two(a_n[j<=2], b_n[j<=3]) = {
+    y_n = [1 1]*a_n + [1 1 1]*b_n
+}
+pair = two(a_n = [n; 1], b_n = [1; n; n^2])
 
 outer(u_n) = {
     inner = dot(x_n = [u_n; 1])
