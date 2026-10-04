@@ -76,7 +76,8 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brin
                          rnn:rnn attention:head momentum:ball adam:fit lqr:gain
                          rates:pairs rates:odd seeded:warm cascade:servo decimate:boxcar
                          decimate:stride decimate:frame decimate:lead
-                         decimate:trail drift:sill drift:seam)
+                         decimate:trail drift:sill drift:seam history:past history:twin
+                         history:lit history:rise history:nest history:twice)
     string(REPLACE ":" ";" checked ${checked})
     list(GET checked 0 file)
     list(GET checked 1 instance)
@@ -125,6 +126,18 @@ set_tests_properties(check_lead_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^lead: 100 steps from 0, against exact values\nlead\\.y: within 0\n$")
 set_tests_properties(check_trail_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^trail: 100 steps from 0, against exact values\n(trail\\.[a-z]+: within 0\n)+$")
+set_tests_properties(check_past_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^past: 100 steps from 0, against exact values\npast\\.c: within 0\n$")
+set_tests_properties(check_twin_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^twin: 100 steps from 0, against exact values\ntwin\\.c: within 0\n$")
+set_tests_properties(check_lit_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^lit: 100 steps from 0, against exact values\nlit\\.f: within 0\nlit\\.y: within 0\nlit\\.z: within 0\n$")
+set_tests_properties(check_rise_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^rise: 100 steps from 0, against exact values\nrise\\.c: within 0\n$")
+set_tests_properties(check_nest_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^nest: 100 steps from 0, against exact values\nnest\\.inner\\.c: within 0\nnest\\.c: within 0\nnest\\.inner\\.u: within 0\n$")
+set_tests_properties(check_twice_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^twice: 100 steps from 0, against exact values\ntwice\\.inner\\.c: within 0\ntwice\\.c: within 0\ntwice\\.inner\\.x: within 0\n$")
 set_tests_properties(check_warm_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^warm: 100 steps from 0, against exact values\n(warm\\.[a-z]+: within [0-9.e+-]+\n)+$")
 set_tests_properties(check_rnn_report PROPERTIES PASS_REGULAR_EXPRESSION

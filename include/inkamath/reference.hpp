@@ -600,6 +600,7 @@ private:
         for(const Clause<T>& clause : clauses_) {
             if(IsGeneral(clause) || IsPlain(clause)) continue;
             if (Selects(clause, indexed, index, values)) {
+                if (argument) ++evaluator.stack().histories;
                 return clause.expression->accept(evaluator);
             }
         }

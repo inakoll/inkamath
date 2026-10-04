@@ -56,6 +56,15 @@ public:
     // so this is what bounds its time, at a few seconds.
     static constexpr int max_filled = 10000000;
 
+    // The terms a model's history has given, counted with nothing memoised,
+    // so that the compiler can tell a term only a history gives.
+    std::size_t histories = 0;
+    void        Forget() {
+        memoised_.clear();
+        older_.clear();
+        histories = 0;
+    }
+
     // Call once per top-level evaluation; the stack outlives them all.
     void BeginEvaluation() {
         depth_       = 0;
