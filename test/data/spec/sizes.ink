@@ -173,6 +173,18 @@ ab(z)[i,j] = rl(z)[i,j] + rl(-z)[i,j]
 [1, 2;
  0, 3]
 
+# But not the definition itself, whose size reading it would need first: its
+# other reads give it.
+>> g(z)[i,j] | z[i,j] > 1 = g(z/2)[i,j]
+g(z)[i,j] | z[i,j] > 1 = g(z/2)[i,j]
+
+>> g(z)[i,j] = z[i,j]^2
+g(z)[i,j] = z[i,j]^2
+
+>> g([2 4; 3 0])
+[     1, 1;
+ 0.5625, 0]
+
 # Every read of an index agrees, or it is refused naming two that do not:
 # taking the first would cut b short or read past it, by the order written.
 >> add(a, b)[i,j] = a[i,j] + b[i,j]
@@ -341,6 +353,17 @@ cn_n[i,j] = cn_(n-1)[i,j] + j
 
 >> cn_3
 [3, 6]
+
+# An earlier term is not the definition itself, with arguments too.
+>> pw(x)_0 = [1; 2]
+pw(x)_0 = [1; 2]
+
+>> pw(x)_n[i] = x*pw(x)_(n-1)[i]
+pw(x)_n[i] = x*pw(x)_(n-1)[i]
+
+>> pw(3)_2
+[ 9;
+ 18]
 
 # A term read at a sum's index gives nothing, as any read of a sum's index.
 >> w_0 = [1; 2]

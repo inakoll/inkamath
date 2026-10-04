@@ -3279,8 +3279,11 @@ that exploring seven domains asked of the interpreter, by how many asked.
   gives nothing, nor does a matrix that reads a name bound in the clause, a
   sum's or a product's index, bounded or taken to its limit: under a sum over
   `k`, `P[k][i,j]` and `(A^k)[i,j]` read another matrix at each `k`, and
-  `cs_n[i] = sum_(m=0)^n w_m[i]` another term at each `m`. A single value
-  is read as a 1x1 matrix is, so `rl(5)` is 5.
+  `cs_n[i] = sum_(m=0)^n w_m[i]` another term at each `m`. Nor does a call
+  of the definition itself, `g(z/2)[i,j]` in a clause of `g`, whose size
+  would need its own first; a term reading an earlier term, `cn_(n-1)[i,j]`,
+  reads another and gives its size. A single value is read as a 1x1 matrix
+  is, so `rl(5)` is 5.
   Every read of an index agrees, or it is refused naming two that do not,
   `a[i,j] and b[i,j] give j different sizes, 2 and 3`, or one, `z[i,i] gives
   i different sizes, 1 and 3`. The first read winning was rejected: of
@@ -3374,7 +3377,7 @@ that exploring seven domains asked of the interpreter, by how many asked.
   `tex` 3, the compiler 20, the message of a call given a matrix 20, and
   `mod` 8; the check that a size is written, where a clause is, goes.
 
-  Specified in `test/data/spec/sizes.ink`, 127 of its 172 entries failing,
+  Specified in `test/data/spec/sizes.ink`, 132 of its 178 entries failing,
   those passing being definitions echoing themselves and four answers that
   stay: `e^A`, `[1 2] < 3`, a comparison of a shape no call was given, and
   `mod` by a single value. A ReLU network and a softmax classifier are each
