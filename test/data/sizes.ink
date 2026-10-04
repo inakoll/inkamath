@@ -525,6 +525,21 @@ nz(x) | x = 1
 >> nz([7;;])
 error: nz needs single values, not a 1x1x1 tensor; write it by its cells
 
+# A definition by its cells is not told to be written by them: here its
+# bound is given a matrix.
+>> hil(n)[j<=n, k<=n] = 1/(j + k - 1)
+hil(n)[j<=n, k<=n] = 1/(j + k - 1)
+
+>> hil([1 2])
+error: hil needs single values, not a 1x2 matrix
+
+# A sum's bound given one is told, as its sum can be written by cells.
+>> tri(a) = sum_(k=1)^a k
+tri(a) = sum_(k=1)^a k
+
+>> tri([1 2])
+error: tri needs single values, not a 1x2 matrix; write it by its cells
+
 >> th3(z)[s,i,j] = tanh(z[s,i,j])
 th3(z)[s,i,j] = tanh(z[s,i,j])
 

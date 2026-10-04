@@ -485,7 +485,8 @@ public:
         });
         if (!shaped || stack.scope_ == &stack.builtins_) throw refused;
         throw std::runtime_error(reference_name_ + " needs single values, not a " +
-                                 refused.shape.Described() + "; write it by its cells");
+                                 refused.shape.Described() +
+                                 (Cells() ? "" : "; write it by its cells"));
     }
 
 private:
