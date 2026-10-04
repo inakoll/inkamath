@@ -3556,7 +3556,7 @@ that exploring seven domains asked of the interpreter, by how many asked.
   move as specified, and the seven programs named, their reports as they
   were. C90 is fixed on the way, the clause kept taking the guard's own
   test to 0. Departures: an operand is tested unless it is a constant or
-  the index itself, told by its text, rather than unless it reads no name
+  the index itself, told by a flag on its cell, rather than unless it reads no name
   but the index, so `n - 1 > 0` is tested and a function's parameter given
   the index is not, which moves no header; a guard that folds to NaN, which
   the interpreter now refuses wherever it is tried, is refused in its
@@ -3571,4 +3571,5 @@ that exploring seven domains asked of the interpreter, by how many asked.
   On review, the interpreter's power of NaN is NaN, `1^(0/~0)` and
   `(0/~0)^~0` as an aware step answers them, where C's `pow` gave 1: the
   one parting the implementation left as a known limit; `errors.ink` holds
-  it. 2 lines: 13,360 in all.
+  it. The index is told by a flag on its cell, not by comparing its text
+  with the index's, which moves nothing. 4 lines: 13,362 in all.

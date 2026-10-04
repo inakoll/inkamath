@@ -168,11 +168,13 @@ private:
         std::string magnitude;  // what it is the negation of, if it is one
         int         magnitude_level = primary;
         bool        atom            = false;  // a name or a number, as cheap to repeat as to store
+        bool        number          = false;  // the index, which is never NaN
     };
 
-    static Cell Atom(std::string text) {
+    static Cell Atom(std::string text, bool number = false) {
         Cell cell(std::move(text), primary);
-        cell.atom = true;
+        cell.atom   = true;
+        cell.number = number;
         return cell;
     }
 
@@ -1138,7 +1140,7 @@ private:
     std::string Nan(const Code& x, const Code* y = nullptr) const {
         std::string test;
         for (const Code* code : {&x, y})
-            if (aware_ && code && !code->constant && code->cells[0].text != index_text_)
+            if (aware_ && code && !code->constant && !code->cells[0].number)
                 test += (test.empty() ? "isnan(" : " || isnan(") + code->cells[0].text + ")";
         return test.empty() ? test : test + " ? NAN : ";
     }
@@ -1389,7 +1391,7 @@ private:
         if (!own_) {
             if (const auto place = places_.find(name); place != places_.end())
                 return Answer(Literal(place->second));
-            if (!index_.empty() && name == index_) return Answer(Atom(index_text_));
+            if (!index_.empty() && name == index_) return Answer(Atom(index_text_, true));
             if (const auto expanded = Expanded(name)) return Answer(*expanded);
         }
         const Found             found      = Lookup(name);
