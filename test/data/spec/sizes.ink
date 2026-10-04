@@ -281,6 +281,18 @@ pd(a, b)[i,j] | i == j = b[i,j]
 >> pd([1 2; 3 4], [1 2 3])
 error: the clauses of pd give it different sizes
 
+# A read is evaluated for its size before any cell, so in a clause no cell
+# takes as well, and its steps count against the budget: with i<=2 written,
+# lg(1) is [0; 0].
+>> lg(n)[i] = 0
+lg(n)[i] = 0
+
+>> lg(n)[i] | n < 0 = ([1; 1]*sum_(k=1)^(10^7) 1)[i]
+lg(n)[i] | n < 0 = ([1; 1]*sum_(k=1)^(10^7) 1)[i]
+
+>> lg(1)
+error: evaluation gave up after 1000000 steps
+
 # --- terms -------------------------------------------------------------------
 
 # A recurrent layer: the function of cells takes each term's shape.

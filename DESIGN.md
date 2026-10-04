@@ -3370,7 +3370,7 @@ that exploring seven domains asked of the interpreter, by how many asked.
   `tex` 3, the compiler 20, the message of a call given a matrix 20, and
   `mod` 8; the check that a size is written, where a clause is, goes.
 
-  Specified in `test/data/spec/sizes.ink`, 116 of its 159 entries failing,
+  Specified in `test/data/spec/sizes.ink`, 119 of its 162 entries failing,
   those passing being definitions echoing themselves and four answers that
   stay: `e^A`, `[1 2] < 3`, a comparison of a shape no call was given, and
   `mod` by a single value. A ReLU network and a softmax classifier are each
