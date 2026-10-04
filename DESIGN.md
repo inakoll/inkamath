@@ -3407,11 +3407,12 @@ that exploring seven domains asked of the interpreter, by how many asked.
   C87 was found and fixed on the way, the hint for one-cell clauses now
   written from the clause as the others are. The review made `mod`'s check
   `grad`'s and the compiler's as well, and the call refused in its own name
-  `grad`'s too, where a network is trained. Under callgrind,
+  `grad`'s too, where a network is trained; a definition by cells so refused
+  is not told to be written by its cells. Under callgrind,
   `harmonic` and `matrix` moved under 0.1%, `hand` 0.3% more, `deep`, `grad`
   and `limit` 0.1 to 0.5% fewer, and `read`, which defines nothing by cells,
   1.2% more, all of it `Number::Literal` no longer inlining `push_back` as the
   unit grew, until its digits were written by index, 0.6% fewer.
-  398 lines of sources added and 130 removed, 268 more in all, about 40 of
+  420 lines of sources added and 143 removed, 277 more in all, about 40 of
   them the body of a call indented under the handler that names it, where
   about 120 were planned.
