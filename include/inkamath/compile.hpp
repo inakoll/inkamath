@@ -1166,11 +1166,7 @@ private:
                 "double " + t + Subscript(n, n) + " = {" + rows + "};",
                 module_ + "_inverse" + std::to_string(n) + "_(" + t + ");"};
         });
-        Code              code;
-        code.rows = code.cols = n;
-        for (std::size_t i = 0; i < n; ++i)
-            for (std::size_t j = 0; j < n; ++j) code.cells.push_back(Atom(name + Subscript(i, j)));
-        return code;
+        return Array(name, n, n);
     }
 
     static const char* Operator(Comparison op) {
@@ -1744,14 +1740,8 @@ private:
         Expansion inside{{}, {}, sequence.home ? sequence.home : scope_, nullptr, {}};
         for (const std::string& parameter : names) {
             const Code& argument = given.values.at(parameter);
-            Code        local;
-            local.rows = argument.rows;
-            local.cols = argument.cols;
-            for (std::size_t i = 0; i < argument.rows; ++i)
-                for (std::size_t j = 0; j < argument.cols; ++j)
-                    local.cells.push_back(
-                        Atom("arg_" + parameter + (argument.Scalar() ? "" : Subscript(i, j))));
-            inside.values.emplace(parameter, local);
+            inside.values.emplace(parameter,
+                                  Array("arg_" + parameter, argument.rows, argument.cols));
         }
         Walked* const              outer_limit       = std::exchange(limit_, &walked);
         auto* const                outer_temporaries = std::exchange(temporaries_, nullptr);
@@ -1950,13 +1940,7 @@ private:
         const std::string out = Declare("lim\x1f" + called, [&](const std::string& t) {
             return std::vector<std::string>{"double " + t + shape + ";", called + ", " + t + ");"};
         });
-        Code              code;
-        code.rows = walked.rows;
-        code.cols = walked.cols;
-        for (std::size_t i = 0; i < code.rows; ++i)
-            for (std::size_t j = 0; j < code.cols; ++j)
-                code.cells.push_back(Atom(out + Subscript(i, j)));
-        return Answer(code);
+        return Answer(Array(out, walked.rows, walked.cols));
     }
 
     // A term of the sequence a limit walks, read back from one of its own:
@@ -1976,16 +1960,8 @@ private:
         const int lag = Lag(call.subexpr(), limit_->name);
         if (lag == 0) throw Reason(limit_->name + " is defined by itself");
         if (!limit_->rows) throw Reason("a limit whose terms read back past its base clauses");
-        limit_->depth          = std::max(limit_->depth, lag);
-        const std::string term = "t" + std::to_string(lag) + "_";
-        Code              code;
-        code.rows = limit_->rows;
-        code.cols = limit_->cols;
-        for (std::size_t i = 0; i < code.rows; ++i)
-            for (std::size_t j = 0; j < code.cols; ++j)
-                code.cells.push_back(
-                    Atom(code.rows * code.cols == 1 ? term : term + Subscript(i, j)));
-        return code;
+        limit_->depth = std::max(limit_->depth, lag);
+        return Array("t" + std::to_string(lag) + "_", limit_->rows, limit_->cols);
     }
 
     PExpression<Value> visit(FuncExpression<Value>* expression) override {
@@ -2036,14 +2012,7 @@ private:
                                : reading_->reads)[key]
             .insert(lag);
         if (clause_reads_) (*clause_reads_)[key].insert(lag);
-        const std::string at     = "m_->" + key + "[" + std::to_string(lag) + "]";
-        const bool        scalar = read.rows * read.cols == 1;
-        Code              code;
-        code.rows = read.rows;
-        code.cols = read.cols;
-        for (std::size_t i = 0; i < code.rows; ++i)
-            for (std::size_t j = 0; j < code.cols; ++j)
-                code.cells.push_back(Atom(scalar ? at : at + Subscript(i, j)));
+        Code code = Array("m_->" + key + "[" + std::to_string(lag) + "]", read.rows, read.cols);
         // Before its window holds the term, one with no base clause is
         // computed again at that index, as the interpreter answers it there
         // (DESIGN.md, C71); Checked keeps whichever the reader needs.
@@ -2146,6 +2115,17 @@ private:
         return "[" + std::to_string(i) + "][" + std::to_string(j) + "]";
     }
 
+    // The cells of a C array, 'name[i][j]', or 'name' alone for a single value.
+    static Code Array(const std::string& name, std::size_t rows, std::size_t cols) {
+        Code code;
+        code.rows = rows;
+        code.cols = cols;
+        for (std::size_t i = 0; i < rows; ++i)
+            for (std::size_t j = 0; j < cols; ++j)
+                code.cells.push_back(Atom(rows * cols == 1 ? name : name + Subscript(i, j)));
+        return code;
+    }
+
     // A whole number that reads no parameter, or none.
     std::optional<int> Constant(const PExpression<Value>& e) {
         const auto [code, reads] = Reading(e);
@@ -2233,16 +2213,8 @@ private:
         Bases(key);
         if (!read.rows) Compile(key);
         seeding->seeds.push_back({key, base, *at});
-        Code code;
-        code.rows = read.rows;
-        code.cols = read.cols;
-        const std::string place =
-            "m_->" + key + "[\x19" + std::to_string(seeding->seeds.size() - 1) + "\x1a]";
-        for (std::size_t i = 0; i < code.rows; ++i)
-            for (std::size_t j = 0; j < code.cols; ++j)
-                code.cells.push_back(
-                    Atom(code.rows * code.cols == 1 ? place : place + Subscript(i, j)));
-        return code;
+        return Array("m_->" + key + "[\x19" + std::to_string(seeding->seeds.size() - 1) + "\x1a]",
+                     read.rows, read.cols);
     }
 
     // Each base's reads as lags, once the steps computing the bases are known
@@ -2281,14 +2253,7 @@ private:
                          " is computed every " + std::to_string(reading_->period));
         reading_->period = a;
         reading_->samples[key].insert(b);
-        Code code;
-        code.rows            = read.rows;
-        code.cols            = read.cols;
-        const std::string at = "m_->" + key + "[\x0e" + std::to_string(b) + "\x0f]";
-        for (std::size_t i = 0; i < code.rows; ++i)
-            for (std::size_t j = 0; j < code.cols; ++j)
-                code.cells.push_back(Atom(code.rows * code.cols == 1 ? at : at + Subscript(i, j)));
-        return code;
+        return Array("m_->" + key + "[\x0e" + std::to_string(b) + "\x0f]", read.rows, read.cols);
     }
 
     // A hold: where it reads in the held sequence's window depends on that
@@ -2467,13 +2432,7 @@ private:
     // The struct's field for a value of this shape, cell by cell.
     static Code Fields(const std::string& name, const Code& shape) {
         Unreserved(name);
-        Code code;
-        code.rows = shape.rows;
-        code.cols = shape.cols;
-        for (std::size_t i = 0; i < code.rows; ++i)
-            for (std::size_t j = 0; j < code.cols; ++j)
-                code.cells.push_back(Atom("m_->" + name + (shape.Scalar() ? "" : Subscript(i, j))));
-        return code;
+        return Array("m_->" + name, shape.rows, shape.cols);
     }
 
     // A cell that is a name or a number is read as itself, which the C
