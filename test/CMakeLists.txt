@@ -79,8 +79,8 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brin
                          decimate:trail drift:sill drift:seam history:past history:twin
                          history:lit history:rise history:ajar history:sown history:nest history:kin
                          history:twice history:relayed history:pole
-                         history:huge history:veiled nan:run nan:sign nan:shy nan:pair nan:lap
-                         nan:trim nan:any)
+                         history:huge history:veiled nan:run nan:sign nan:shy nan:slope nan:pair
+                         nan:lap nan:trim nan:any)
     string(REPLACE ":" ";" checked ${checked})
     list(GET checked 0 file)
     list(GET checked 1 instance)
@@ -155,6 +155,8 @@ set_tests_properties(check_sign_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^sign: 100 steps from 0, against exact values\nsign\.y: within 0\nsign\.on: within 0\nsign\.p: within 0\n$")
 set_tests_properties(check_shy_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^shy: 100 steps from 0, against exact values\nshy\.y: within 0\nshy\.z: within 0\n$")
+set_tests_properties(check_slope_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^slope: 100 steps from 0, against exact values\nslope\.y: within 0\nslope\.g: within 0\nslope\.h: within 0\n$")
 set_tests_properties(check_pair_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^pair: 100 steps from 0, against exact values\npair\.w: within 0\npair\.y: within 0\npair\.z: within 0\n$")
 set_tests_properties(check_lap_report PROPERTIES PASS_REGULAR_EXPRESSION

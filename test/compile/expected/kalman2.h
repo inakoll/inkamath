@@ -132,6 +132,9 @@ static inline void kalman2_step(kalman2* m_, double zp, double zs) {
         m_->Pp[0][0][1] = t0_ * 0.0 + t1_ * 1.0 + m_->Q[0][1];
         m_->Pp[0][1][0] = t2_ * 1.0 + t3_ * m_->dt + m_->Q[1][0];
         m_->Pp[0][1][1] = t2_ * 0.0 + t3_ * 1.0 + m_->Q[1][1];
+        if (isnan(m_->Pp[0][0][0]) || isnan(m_->Pp[0][0][1]) || isnan(m_->Pp[0][1][0]) || isnan(m_->Pp[0][1][1]))
+            for (int i_ = 0; i_ < 2; ++i_)
+                for (int j_ = 0; j_ < 2; ++j_) m_->Pp[0][i_][j_] = NAN;
     }
     if (m_->index_ >= 1) {
         const double t4_ = m_->H[0][0] * m_->Pp[0][0][0] + m_->H[0][1] * m_->Pp[0][1][0];
@@ -148,6 +151,9 @@ static inline void kalman2_step(kalman2* m_, double zp, double zs) {
         m_->K[0][0][1] = t9_ * t8_[0][1] + t10_ * t8_[1][1];
         m_->K[0][1][0] = t11_ * t8_[0][0] + t12_ * t8_[1][0];
         m_->K[0][1][1] = t11_ * t8_[0][1] + t12_ * t8_[1][1];
+        if (isnan(m_->K[0][0][0]) || isnan(m_->K[0][0][1]) || isnan(m_->K[0][1][0]) || isnan(m_->K[0][1][1]))
+            for (int i_ = 0; i_ < 2; ++i_)
+                for (int j_ = 0; j_ < 2; ++j_) m_->K[0][i_][j_] = NAN;
     }
     const double t13_ = m_->I[0][0] - (m_->K[0][0][0] * m_->H[0][0] + m_->K[0][0][1] * m_->H[1][0]);
     const double t14_ = m_->I[0][1] - (m_->K[0][0][0] * m_->H[0][1] + m_->K[0][0][1] * m_->H[1][1]);
@@ -157,16 +163,28 @@ static inline void kalman2_step(kalman2* m_, double zp, double zs) {
     m_->P[0][0][1] = m_->index_ == 0 ? 0.0 : t13_ * m_->Pp[0][0][1] + t14_ * m_->Pp[0][1][1];
     m_->P[0][1][0] = m_->index_ == 0 ? 0.0 : t15_ * m_->Pp[0][0][0] + t16_ * m_->Pp[0][1][0];
     m_->P[0][1][1] = m_->index_ == 0 ? 10.0 : t15_ * m_->Pp[0][0][1] + t16_ * m_->Pp[0][1][1];
+    if (isnan(m_->P[0][0][0]) || isnan(m_->P[0][0][1]) || isnan(m_->P[0][1][0]) || isnan(m_->P[0][1][1]))
+        for (int i_ = 0; i_ < 2; ++i_)
+            for (int j_ = 0; j_ < 2; ++j_) m_->P[0][i_][j_] = NAN;
     if (m_->index_ >= 1) {
         m_->xp[0][0][0] = 1.0 * m_->x[1][0][0] + m_->dt * m_->x[1][1][0];
         m_->xp[0][1][0] = 0.0 * m_->x[1][0][0] + 1.0 * m_->x[1][1][0];
+        if (isnan(m_->xp[0][0][0]) || isnan(m_->xp[0][1][0]))
+            for (int i_ = 0; i_ < 2; ++i_)
+                for (int j_ = 0; j_ < 1; ++j_) m_->xp[0][i_][j_] = NAN;
     }
     m_->z[0][0][0] = m_->zp[0];
     m_->z[0][1][0] = m_->zs[0];
+    if (isnan(m_->z[0][0][0]) || isnan(m_->z[0][1][0]))
+        for (int i_ = 0; i_ < 2; ++i_)
+            for (int j_ = 0; j_ < 1; ++j_) m_->z[0][i_][j_] = NAN;
     const double t17_ = m_->z[0][0][0] - (m_->H[0][0] * m_->xp[0][0][0] + m_->H[0][1] * m_->xp[0][1][0]);
     const double t18_ = m_->z[0][1][0] - (m_->H[1][0] * m_->xp[0][0][0] + m_->H[1][1] * m_->xp[0][1][0]);
     m_->x[0][0][0] = m_->index_ == 0 ? 0.0 : m_->xp[0][0][0] + (m_->K[0][0][0] * t17_ + m_->K[0][0][1] * t18_);
     m_->x[0][1][0] = m_->index_ == 0 ? 0.0 : m_->xp[0][1][0] + (m_->K[0][1][0] * t17_ + m_->K[0][1][1] * t18_);
+    if (isnan(m_->x[0][0][0]) || isnan(m_->x[0][1][0]))
+        for (int i_ = 0; i_ < 2; ++i_)
+            for (int j_ = 0; j_ < 1; ++j_) m_->x[0][i_][j_] = NAN;
 }
 
 #endif

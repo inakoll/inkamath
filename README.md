@@ -154,7 +154,8 @@ limit of matrices fills an array, cell by cell: `test/compile/steady.ink`
 finds a chain's steady state and, by power iteration, a matrix's dominant
 direction at every step. A header that writes NaN anywhere carries it to every
 term that reads it, as the interpreter refuses them: a guard, a comparison and
-a power reading NaN answer NaN, which its first comment says; such a header is
+a power reading NaN answer NaN, and a matrix term with a NaN cell is NaN in
+every cell, which its first comment says; such a header is
 not to be built with `-ffinite-math-only`, which `-ffast-math` implies.
 `test/compile/nan.ink` has an instance of each.
 

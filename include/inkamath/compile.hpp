@@ -3428,6 +3428,17 @@ private:
                     line = Checked(Rated(line, sequence), name, sequence);
             const std::string checked = Checked(Rated(assignments, sequence), name, sequence);
             out += Temporaries(temporaries, checked, indent) + checked;
+            // The interpreter refuses a matrix term whole where it refuses a cell.
+            if (aware_ && !scalar) {
+                std::string any;
+                for (std::size_t c = 0; c < sequence.general.size(); ++c)
+                    any += std::string(c ? " || " : "") + "isnan(m_->" + name + "[0]" +
+                           Subscript(c / sequence.cols, c % sequence.cols) + ")";
+                out += indent + "if (" + any + ")\n" + indent + "    for (int i_ = 0; i_ < " +
+                       std::to_string(sequence.rows) + "; ++i_)\n" + indent +
+                       "        for (int j_ = 0; j_ < " + std::to_string(sequence.cols) +
+                       "; ++j_) m_->" + name + "[0][i_][j_] = NAN;\n";
+            }
             if (late) out += "    }\n";
         }
         out += "}\n\n#endif\n";

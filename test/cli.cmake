@@ -376,7 +376,7 @@ holds(check_c90 c90.c [[m_->z_clause_ = isnan(t1_) ? 0 : t1_ != 0.0 ? 1 : 2;]])
 # A NaN reaches every term that reads it (DESIGN.md): the steps that
 # test/compile/nan.ink specifies, each compiled with nothing to say.
 set(nan "${CMAKE_CURRENT_LIST_DIR}/compile/nan.ink")
-foreach(model IN ITEMS level pick refuse both walked tuned either)
+foreach(model IN ITEMS level pick refuse ramp both walked tuned either)
     set(args --compile ${nan} ${model} -o ${model}.h)
     check(compile_nan_${model})
 endforeach()
@@ -397,6 +397,18 @@ holds(compile_nan_pick pick.h
 holds(compile_nan_refuse refuse.h
       [[    m_->y[0] = isnan(m_->x[0]) ? NAN : m_->x[0] <= 0.0 ? NAN : m_->x[0];
     m_->z[0] = isnan(m_->y[0]) ? NAN : m_->y[0] > 1.0 ? 1.0 : 0.0;
+]])
+holds(compile_nan_ramp ramp.h
+      [[    m_->y[0][1][0] = isnan(m_->x[0] - 2.0) ? NAN : m_->x[0] - 2.0 > 0.0 ? m_->x[0] - 2.0 : NAN;
+    if (isnan(m_->y[0][0][0]) || isnan(m_->y[0][1][0]))
+        for (int i_ = 0; i_ < 2; ++i_)
+            for (int j_ = 0; j_ < 1; ++j_) m_->y[0][i_][j_] = NAN;
+    m_->g[0][0][0] = isnan(m_->y[0][0][0]) ? NAN : m_->y[0][0][0] > 1.0 ? 1.0 : 0.0;
+    m_->g[0][1][0] = isnan(m_->y[0][1][0]) ? NAN : m_->y[0][1][0] > 1.0 ? 1.0 : 0.0;
+    if (isnan(m_->g[0][0][0]) || isnan(m_->g[0][1][0]))
+        for (int i_ = 0; i_ < 2; ++i_)
+            for (int j_ = 0; j_ < 1; ++j_) m_->g[0][i_][j_] = NAN;
+    m_->h[0] = isnan(m_->y[0][0][0]) ? NAN : m_->y[0][0][0] > 0.5 ? 1.0 : 0.0;
 ]])
 holds(compile_nan_both both.h
       [[    const double t0_ = (isnan(m_->x[0]) ? NAN : m_->x[0] < 3.0 ? 1.0 : 0.0);
