@@ -1603,6 +1603,8 @@ closures need one anyway, and can bring it.
 | C74 `[fixed]` | **A hold inside a sequence at another rate was compiled in the input's steps.** In `s_k = x_(4*k) - u_(floor(k/2))` from `s_0 = 0`, with `u_m = x_(2*m)` from `u_0 = 0` and `x_n = n^2`, the hold names a term of `u` by `s`'s index, and the compiler, which resolves every hold by the step, read the latest term of `u` instead: at 4 it gave `s_1` as 0, where the interpreter gives 16. Found specifying what several rates left refused (next in line). The hold reads every 8 steps a sequence computed every 2, so the term it names falls further behind at each tick and no window holds it: it is to be refused by its rate. The hold at the input's rate sampled, which the refusal of a slow sequence read by another names, would say what the compiler gives, not what the interpreter does. Now a hold's period is checked once its reader's is known, as its `a` ticks of the reader, and `s` is refused, "read every 8 steps, and u is computed every 2"; `compile_c74` in `test/cli.cmake` holds it. |
 | C75 `[open]` | **`--check` holds a term read from before the stream to the input there.** With `c_n = x_(n-1)` in a model and an instance giving `x_n = n^2`, the interpreter answers `c_0` from `x_(-1)`, 1, where the check feeds the compiled step its inputs from the first step on, as a host does, so its window holds 0, and the report has the two part at 0. Found specifying what several rates left refused (next in line), whose models feed a stream that starts at 0, `s_n \| n >= 0 = n^2`, where the interpreter has no `x_(-1)` either. Whether the check should give the window the input's earlier terms, holding the step to what no host gives it, or say that the step cannot have them, is open. |
 | C76 `[fixed]` | **A compiled hold rounded its lag toward zero.** A hold's place in the held sequence's window was `(n - phase)/a - (n - b)/a - d` in C's division, which truncates, and its first step was clamped to `b`: a hold whose numerator could be negative, `y_(floor((n - 3)/2) + 1)` on a sequence based at a negative index, read the wrong cell or left its first steps 0 where the interpreter gives a term. Found by the review of the rates gaps, with 1200 random models compared against master, one of which master compiled to NaN where the interpreter has a value. The lag is now a floor, its first step where the term exists, and the emitted division keeps each numerator non-negative; `trail` in `test/compile/decimate.ink` holds it. |
+| C77 `[open]` | **`grad` took a tensor's slice name for a global.** Its check that no definition reads the global of its name binds a clause's index, row and column, not its slice, so after `Gc[b<=2, j<=1, k<=1] = b`, `grad_(b = 2) b*Gc` is refused, "Gc reads the global b, which grad's b does not reach", where `Gc` is a constant and the answer `[1;; 2]`. Found specifying `grad` of definitions by cells (next in line), whose specification holds it. |
+| C78 `[open]` | **An index that moves with `grad`'s name answers as if it did not.** An index is a whole number, so one that moves is at a jump, as `floor` is at a whole number, which C73 refuses; but with `s_n = n^2` and `v = [5; 7; 9]`, `grad_(x = 2) s_(x)` and `grad_(x = 2) v[x]` answer 0. Found specifying `grad` of definitions by cells (next in line), which refuses a moving size by that rule; an index wants the same check where it is read, not part of that entry. |
 
 **Measure instructions, not the clock.** One of those changes made the matrix
 workload 20 per cent slower by the clock and not by a single instruction: with
@@ -2968,3 +2970,87 @@ that exploring seven domains asked of the interpreter, by how many asked.
   scalar `Matrix` around each `Number` and the memo, no function over 5%.
   `matrix` is its products, 65%, and `A` and `B` rebuilt cell by cell,
   33%, which only the memo rejected above would remove.
+
+- **`grad` of a definition by cells**, so that attention trains more than
+  `W^O`. Softmax, a ReLU on each cell and a layer norm are written by their
+  cells, and `grad` refuses every one, "grad cannot differentiate a
+  definition by cells yet", so of the conformance model's weights only
+  `W^O`, applied after the softmax, has a gradient; `W^Q`, `W^K` and `W^V`
+  reach the loss through it. Specified, not built.
+
+  A definition by cells is differentiated as it is evaluated, cell by cell:
+  each cell's clause chosen as `Reference` chooses it, its row, column and
+  slice bound as values nothing differentiates, and evaluated with its
+  parts. Each part of the definition is then a matrix, or a tensor slice by
+  slice, of the definition's size: a cell a clause gives takes that clause's
+  parts, 0 where it has none, and a cell no clause gives takes the matrix
+  written whole's, or 0, as its value does. Whether that is a gradient or a
+  Jacobian is decided after, as for any value: a softmax with respect to its
+  vector is a Jacobian and stays refused, a loss read from it has a gradient
+  shaped as the vector, and a product with the Jacobian, which is what
+  training asks, is written `grad_(v = p) u'*f(v)`. Giving the Jacobian was
+  rejected: a vector's is a matrix whose orientation would be a convention to
+  pick, and a matrix's has rank 4. Rewriting a definition by cells into a
+  literal of its cells, for `Literal` to differentiate, was rejected too: a
+  guard is asked per cell at the point, the size is read from the bounds, and
+  the literal would be built again at every call, for an assembly of a dozen
+  lines.
+
+  Each cell's guards are asked as a whole definition's are: the clause that
+  holds at the point gives the slope, a comparison whose sides meet there and
+  move taking the side its value gives, so the order of the clauses decides a
+  ReLU's slope at 0, cell by cell, `<` giving 1 and `<=` 0. An equality that
+  holds at the point only is refused, naming the cell as `--check` does,
+  `sp[2,1] takes a clause at t = 1 that holds only there`. What is asked is
+  whether a side moves, not its slope (C73), and a cell's place never moves,
+  so `j == k` chooses a diagonal and is no jump. Refusing guarded cells, the
+  smaller change, was rejected: the ReLU is the case. The `--check` hook is
+  not told of a guard asked under `grad`, as for a whole definition, since
+  `grad` is not compiled.
+
+  The order is the evaluator's: a clause for one cell beats those for all
+  cells, guarded ones before the unguarded; a term's, from its own cell at
+  its index to the general clause written whole; and a base term and a cell
+  of every term that both give a cell are the error evaluating them is. A
+  limit of a sequence by cells is walked from its highest base term, written
+  whole or by its cells, where `lim` starts it; `Derivative::Limit` skips a
+  base by cells today, which nothing could reach.
+
+  With parameters, its arguments carry their parts, as any call's do: the
+  softmax of a vector, a layer reading its weights. Without, it reads only
+  globals, which `grad`'s name does not reach, so it is a constant, as `N`
+  read by `layer(w)[j<=2] = N[j]*w`, or reads the global of the name and is
+  refused as any definition is; both are answered today, and nothing is
+  added for them. A size is read with its parts: one that reads the name and
+  does not move, `floor(x)` at 5/2, is the size; one that moves is refused,
+  `the size of gr jumps at x = 2`, since a size is a whole number and one
+  that moves is at a jump, as `floor` is at a whole number. Taking the size
+  at the point was rejected as silent: what changes shape with the name has
+  no derivative there.
+
+  What stays refused, by name: a Jacobian, "grad of a matrix with respect to
+  a matrix is a Jacobian, which it does not give"; a moving size; an
+  equality holding at the point only, by its cell; a cell that is not a
+  single value and a base term against a cell of every term, each in the
+  words evaluating it uses; a definition by cells in an instance, "grad
+  cannot differentiate through an instance yet", as anything there; a local
+  definition, as now.
+
+  The choice of a cell's clause is the third copy if copied, beside
+  `Reference`'s and the compiler's chain per cell, and differentiation's
+  entry already names its second copy as one that can drift. So
+  `EvaluateCells` and `EvaluateTerm` become one walk over what evaluates a
+  clause, asks a guard and stores a cell, instantiated for the value and for
+  the parts, landed first as a refactor: every golden byte-identical, and
+  `matrix` within one per cent, the evaluator's rule. If that cannot be had,
+  the copy, recorded here. About 120 lines of sources with the walk shared,
+  about 180 with a copy. Forward mode costs a pass over the loss per cell of
+  the matrix differentiated against, four for this `W^Q` and d² for a d×d
+  one; reverse mode, one pass, is a second evaluator with a tape, and an
+  entry of its own when a model is too slow for this.
+
+  Specified in `test/data/spec/gradcells.ink`: a square per cell, softmax
+  by `exp` and normalised by a sum, ReLUs either side of 0, a diagonal by
+  guard, one-cell clauses, sizes, terms and a limit by cells, a tensor, and
+  attention's `W^Q`, its gradient held to the one written by hand through
+  softmax's Jacobian. Writing it found C77 and C78.
