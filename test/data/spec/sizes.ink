@@ -115,8 +115,8 @@ error: a cell of dbl must be a single value, not a 1x3 matrix
  4;
  6]
 
-# An index read alone at one place and in arithmetic elsewhere: the read
-# alone gives it.
+# A read gives the indices written alone in it: z[i,1] gives i the rows,
+# and its number nothing.
 >> col1(z)[i] = z[i,1]
 col1(z)[i] = z[i,1]
 
