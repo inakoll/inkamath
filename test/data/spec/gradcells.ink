@@ -77,6 +77,16 @@ rl0(v)[j<=3] | v[j] <= 0 = 0
  0;
  0]
 
+# Cells that read cells of other definitions, each call in a frame of its
+# own, so their rows' names do not meet: the square's slope plus the ReLU's.
+>> cs(v)[j<=3] = sq(v)[j] + rl(v)[j]
+cs(v)[j<=3] = sq(v)[j] + rl(v)[j]
+
+>> grad_(t = 1) cs([t; 0-t; t - 1])
+[3;
+ 2;
+ 1]
+
 # A clause that holds at the point only is refused, naming the cell. A
 # cell's place never moves, so a guard on it is no jump.
 >> sp(v)[j<=2] = v[j]^2

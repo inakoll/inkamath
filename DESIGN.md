@@ -3049,9 +3049,9 @@ that exploring seven domains asked of the interpreter, by how many asked.
   one; reverse mode, one pass, is a second evaluator with a tape, and an
   entry of its own when a model is too slow for this.
 
-  Specified in `test/data/spec/gradcells.ink`, 31 of its 78 entries
+  Specified in `test/data/spec/gradcells.ink`, 32 of its 80 entries
   failing: a square per cell, softmax by `exp` and normalised by a sum,
-  ReLUs either side of 0, a diagonal by guard, one-cell clauses, sizes, terms
-  and a limit by cells, a tensor, and attention's `W^Q`, its gradient held to
-  the one written by hand through softmax's Jacobian. Writing it found C77
-  and C78.
+  ReLUs either side of 0, cells reading cells, a diagonal by guard, one-cell
+  clauses, sizes, terms and a limit by cells, a tensor, and attention's
+  `W^Q`, its gradient held to the one written by hand through softmax's
+  Jacobian. Writing it found C77 and C78.
