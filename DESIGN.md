@@ -3511,7 +3511,7 @@ that exploring seven domains asked of the interpreter, by how many asked.
   held where a term is read 20 and `tex` 10; 25 in the compiler and 10 in
   the check.
 
-  Specified in `test/data/spec/inputs.ink`, 46 of its 55 entries failing,
+  Specified in `test/data/spec/inputs.ink`, 54 of its 63 entries failing,
   those passing being instances and models without a size echoing themselves
   and an input whose size is not stated; and in `test/compile/inputs.ink`,
   whose instances, reports, header excerpts and refusals are wired with the

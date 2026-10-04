@@ -38,6 +38,33 @@ dif(x_n[j<=2]) = { ... }
 >> dif(x_n = [n^2; n]).y_3
 6
 
+# A size inferred from the input's cells is the stated size, read where the
+# argument is held to it.
+>> pos(x_n[j<=3]) = {
+..     g_n[j] = x_n[j]*(x_n[j] > 0)
+.. }
+pos(x_n[j<=3]) = { ... }
+
+>> pos(x_n = [n - 2; 3 - n; -1]).g_1
+[0;
+ 2;
+ 0]
+
+>> pos(x_n = [n; n]).g_1
+error: pos(...).x_1 is a 2x1 matrix, where pos takes a 3x1 matrix
+
+# Each input is held to its own size.
+>> two(a_n[j<=2], b_n[j<=3]) = {
+..     y_n = [1 1]*a_n + [1 1 1]*b_n
+.. }
+two(a_n[j<=2], b_n[j<=3]) = { ... }
+
+>> two(a_n = [n; 1], b_n = [1; n; n^2]).y_2
+10
+
+>> two(a_n = [n; 1], b_n = [n; 1]).y_2
+error: two(...).b_2 is a 2x1 matrix, where two takes a 3x1 matrix
+
 # Defining an instance evaluates nothing, so an argument of another size is
 # refused where a term is read, naming the term and both sizes: a single
 # value, a longer column, and a row, as a missing transpose is anywhere.
@@ -159,6 +186,14 @@ rest(x_n[j<=2] = [0; 1]) = { ... }
 
 >> rest(x_n = 1).y_0
 error: rest(...).x_0 is a single value, where rest takes a 2x1 matrix
+
+>> nil(x_n[j<=2] = 0) = {
+..     y_n = [1 2]*x_n
+.. }
+nil(x_n[j<=2] = 0) = { ... }
+
+>> nil().y_0
+error: nil(...).x_0 is a single value, where nil takes a 2x1 matrix
 
 # A history gives terms of the input, so of its size: a single value is not
 # stretched to a column.
