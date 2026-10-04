@@ -3247,6 +3247,11 @@ that exploring seven domains asked of the interpreter, by how many asked.
   folded terms. `fuzz.cpp`'s alignment with the
   reversed check rule, and refusing a top-level `x_n | n < 0 = 0` in a file,
   whose input has no body to state a history in, are left out of this work.
+  Its review fixed four defects of its own: a fold reading a parameter, now
+  refused; a term read only on the right of an `and` or `or`, refused as
+  unfolded; a slow sequence's base clause reading before the stream, never
+  held to the history; and a reader of an inner input given by a hold,
+  started a step late.
   C84 stays open and is the check's one exception, its lines saying `not
   asked`, and C85 is untouched.
   331 lines of sources added and 62 removed, 269 more in all, where about
