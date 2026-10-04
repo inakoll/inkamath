@@ -20,9 +20,13 @@
 #include <utility>
 #include <vector>
 
-// What the compiler will not compile, and in which definition.
+// What the compiler will not compile, and in which definition, where one
+// is to blame.
 struct Refusal : std::runtime_error {
     using std::runtime_error::runtime_error;
+    Refusal(const std::string& definition, const std::string& why)
+        : std::runtime_error("cannot compile " + definition + ": " + why), name(definition) {}
+    std::string name;
 };
 
 // DESIGN.md, phase 14, step 2: the sequences a session defines, as a C
@@ -82,13 +86,7 @@ public:
                 return refusals;
             } catch (const Refusal& refusal) {
                 refusals.emplace_back(refusal.what());
-                // 'cannot compile NAME: why', or no name where no one
-                // definition is to blame, which ends it.
-                const std::string text = refusal.what(), head = "cannot compile ";
-                const std::size_t colon = text.find(": ", head.size());
-                if (text.rfind(head, 0) != 0 || colon == std::string::npos ||
-                    !aside.insert(text.substr(head.size(), colon - head.size())).second)
-                    return refusals;
+                if (refusal.name.empty() || !aside.insert(refusal.name).second) return refusals;
             }
         }
     }
@@ -317,7 +315,7 @@ private:
             try {
                 instance = definitions_.InstanceScope(definition);
             } catch (const std::runtime_error& error) {
-                throw Refusal("cannot compile " + key + ": " + error.what());
+                throw Refusal(key, error.what());
             }
             if (instance) Define(*instance);
         }
@@ -649,7 +647,7 @@ private:
                 try {
                     (void)Emit(std::make_shared<RefExpression<Value>>(parameter.name));
                 } catch (const Reason& reason) {
-                    throw Refusal("cannot compile " + parameter.name + ": " + reason.what());
+                    throw Refusal(parameter.name, reason.what());
                 }
             }
         }
@@ -673,14 +671,14 @@ private:
     // refused rather than left out; a plain one is compiled where it is read.
     void Define(const std::string& name, const Reference<Value>& definition) {
         for (const Clause<Value>& clause : definition.Clauses()) {
-            if (clause.parameters.tensor()) throw Refusal("cannot compile " + name + ": a tensor");
+            if (clause.parameters.tensor()) throw Refusal(name, "a tensor");
             // A function is compiled where it is called, and a sequence with
             // parameters where a limit walks it.
             if (!clause.parameters.parameters_names().empty()) return;
             const ParametersDefinition<Value>& p = clause.parameters;
             if (p.guarded() && !p.cells() && !p.general())
-                throw Refusal("cannot compile " + name + ": a guarded " +
-                              (p.indexed() ? "base clause" : "value"));
+                throw Refusal(name,
+                              std::string("a guarded ") + (p.indexed() ? "base clause" : "value"));
         }
         // A base clause written after a guarded one is reached only if the guard
         // fails, which the chain a step computes would not say. A term by its
@@ -690,7 +688,7 @@ private:
             if (ByCells(definition)) break;
             guarded = guarded || (clause.parameters.guarded() && clause.parameters.general());
             if (guarded && clause.parameters.indexed() && !clause.parameters.general())
-                throw Refusal("cannot compile " + name + ": a base clause after a guarded one");
+                throw Refusal(name, "a base clause after a guarded one");
         }
         if (IsSequence(definition)) sequences_[name].definition = &definition;
     }
@@ -728,7 +726,7 @@ private:
                 reach      = std::max(reach, top);
             }
         } catch (const Reason& reason) {
-            throw Refusal("cannot compile " + key + ": " + reason.what());
+            throw Refusal(key, reason.what());
         }
         index_ = outer;
     }
@@ -751,7 +749,7 @@ private:
         try {
             body();
         } catch (const Reason& reason) {
-            throw Refusal("cannot compile " + name + ": " + reason.what());
+            throw Refusal(name, reason.what());
         }
         sequences_.at(name).parameters.insert(read_parameters_.begin(), read_parameters_.end());
         read_parameters_.insert(outer_parameters.begin(), outer_parameters.end());
@@ -842,8 +840,7 @@ private:
         Sequence& sequence = sequences_.at(name);
         if (sequence.compiled || !sequence.definition) return;
         const Home home(*this, sequence.definition);
-        if (sequence.compiling)
-            throw Refusal("cannot compile " + name + ": its shape depends on itself");
+        if (sequence.compiling) throw Refusal(name, "its shape depends on itself");
         sequence.compiling = true;
         Bases(name);
         if (ByCells(*sequence.definition)) {
@@ -888,7 +885,7 @@ private:
             }
         }
         if (!settled && sequence.guarded.empty())
-            throw Refusal("cannot compile " + name + ": a sequence with no general clause");
+            throw Refusal(name, "a sequence with no general clause");
         // Where no guard holds the interpreter says so; a step can only say NaN.
         if (!settled) sequence.general.assign(sequence.rows * sequence.cols, "NAN");
         clause_reads_     = outer_reads;
@@ -2175,17 +2172,14 @@ private:
             const int       step = sequence.period * seed.index + sequence.phase;
             seed.lag             = step - seed.at;
             if (seed.lag < 0)
-                throw Refusal("cannot compile " + name + ": " + seed.read +
-                              "_(...): a term after the one being computed");
+                throw Refusal(name, seed.read + "_(...): a term after the one being computed");
             if (read.period != 1)
-                throw Refusal("cannot compile " + name + ": " + seed.read +
-                              "_(...): read every step, and " + seed.read + " is computed every " +
-                              std::to_string(read.period));
+                throw Refusal(name, seed.read + "_(...): read every step, and " + seed.read +
+                                        " is computed every " + std::to_string(read.period));
             if (seed.at < read.start && !Historied(seed.read))
-                throw Refusal("cannot compile " + name + ": " + name + "_" +
-                              std::to_string(seed.index) + " reads " + seed.read + "_" +
-                              std::to_string(seed.at) + ", before it starts at " +
-                              std::to_string(read.start));
+                throw Refusal(name, name + "_" + std::to_string(seed.index) + " reads " +
+                                        seed.read + "_" + std::to_string(seed.at) +
+                                        ", before it starts at " + std::to_string(read.start));
             sequence.seeded[seed.read].insert(seed.lag);
         }
     }
@@ -2403,29 +2397,28 @@ private:
     // keyed by the step that computes them; its samples as lags of the
     // input's; its own terms read back, in its own terms.
     void Rate(const std::string& name, Sequence& sequence) {
-        const std::string head = "cannot compile " + name + ": ";
         for (const auto& [read, lags] : sequence.reads) {
             const int period = sequences_.at(read).period;
             if (read != name && period > 1)
-                throw Refusal(head + read + "_(...): read every step, and " + read +
-                              " is computed every " + std::to_string(period));
+                throw Refusal(name, read + "_(...): read every step, and " + read +
+                                        " is computed every " + std::to_string(period));
         }
         // A slow sequence read by another says what a hold at the input's
         // rate sampled says, but for a hold at another period, which no hold
         // says (C74).
         const auto another = [&](const std::string& read) {
-            return Refusal(head + read +
-                           "_(...): one sequence at another rate read by another; hold " + read +
-                           " at the input's rate and sample the hold");
+            return Refusal(name, read +
+                                     "_(...): one sequence at another rate read by another; hold " +
+                                     read + " at the input's rate and sample the hold");
         };
         for (const std::size_t h : sequence.holds) {
             const Hold& hold   = holds_[h];
             const int   every  = sequence.period * hold.a;
             const int   period = sequences_.at(hold.read).period;
             if (every != period)
-                throw Refusal(head + hold.read + "_(...): read every " + std::to_string(every) +
-                              " steps, and " + hold.read + " is computed every " +
-                              std::to_string(period));
+                throw Refusal(name, hold.read + "_(...): read every " + std::to_string(every) +
+                                        " steps, and " + hold.read + " is computed every " +
+                                        std::to_string(period));
             if (sequence.period > 1) throw another(hold.read);
         }
         if (sequence.period == 1) return;
@@ -2433,8 +2426,8 @@ private:
             if (sequences_.at(read).period > 1) throw another(read);
         for (const auto& [read, lags] : sequence.reads)
             if (read != name)
-                throw Refusal(head + read + "_(...): read every step, and " + name +
-                              " is computed every " + std::to_string(sequence.period));
+                throw Refusal(name, read + "_(...): read every step, and " + name +
+                                        " is computed every " + std::to_string(sequence.period));
         // Without a base clause, a term is computed at the step of its
         // latest sample, and the first is settled with the starts.
         int phase = std::numeric_limits<int>::min();
@@ -2469,8 +2462,9 @@ private:
             const int lag =
                 n < start ? -1 : Floor(n - held.phase, a) - Floor(n - hold.b, a) - hold.d;
             if (lag < 0)
-                throw Refusal("cannot compile " + name + ": " + hold.read +
-                              "_(...): read before it is computed; read the term before it");
+                throw Refusal(
+                    name,
+                    hold.read + "_(...): read before it is computed; read the term before it");
             hold.least = n == hold.from ? lag : std::min(hold.least, lag);
             hold.most  = n == hold.from ? lag : std::max(hold.most, lag);
         }
@@ -2559,10 +2553,10 @@ private:
                 if (other.bases.empty() || other.guarded.empty()) continue;
                 const int reached = first - *lags.rbegin();
                 if (reached < other.start)
-                    throw Refusal("cannot compile " + name + ": " + name + "_" +
-                                  std::to_string(first) + " reads " + read + "_" +
-                                  std::to_string(reached) + ", below " + read +
-                                  "'s base clauses, where only its guards could give a term");
+                    throw Refusal(name,
+                                  name + "_" + std::to_string(first) + " reads " + read + "_" +
+                                      std::to_string(reached) + ", below " + read +
+                                      "'s base clauses, where only its guards could give a term");
             }
         }
         // One with no base clause starts where some path through its clauses
@@ -2631,10 +2625,9 @@ private:
                 for (const int lag : lags) {
                     for (int n = sequence.start; n < begins + lag; ++n) {
                         if (sequence.bases.count(n) || !Ticks(sequence, n)) continue;
-                        throw Refusal("cannot compile " + name + ": " + name + "_" +
-                                      std::to_string(n) + " reads " + read + "_" +
-                                      std::to_string(n - lag) + ", before it starts at " +
-                                      std::to_string(begins));
+                        throw Refusal(name, name + "_" + std::to_string(n) + " reads " + read +
+                                                "_" + std::to_string(n - lag) +
+                                                ", before it starts at " + std::to_string(begins));
                     }
                 }
             }
@@ -2648,7 +2641,7 @@ private:
     // hold it, is refused where its clauses could give it.
     void Unreached(int earliest) const {
         for (const auto& [name, sequence] : sequences_) {
-            const std::string head = "cannot compile " + name + ": " + name + "_";
+            const std::string head = name + "_";
             // Holds are read at the input's rate, where one with no base
             // clause could start with the step.
             int first = sequence.bases.empty() ? earliest : sequence.start;
@@ -2664,14 +2657,16 @@ private:
                     const std::string at = std::to_string(n) + " reads " + hold.read + "_" +
                                            std::to_string(term) + ", ";
                     if (!held.bases.empty() && !held.guarded.empty())
-                        throw Refusal(head + at + "below " + hold.read +
+                        throw Refusal(
+                            name, head + at + "below " + hold.read +
                                       "'s base clauses, where only its guards could give a term");
                     if (held.bases.empty() &&
                         std::any_of(held.samples.begin(), held.samples.end(), [&](const auto& x) {
                             return held.period * term + *x.second.rbegin() >= Exists(x.first);
                         }))
-                        throw Refusal(head + at + "before " + hold.read +
-                                      "'s first tick, where its samples could give a term");
+                        throw Refusal(name,
+                                      head + at + "before " + hold.read +
+                                          "'s first tick, where its samples could give a term");
                 }
             }
             int tick = sequence.start;
@@ -2682,10 +2677,10 @@ private:
                 for (const int b : offsets)
                     for (int k = tick - sequence.phase + b; k < sampled.start; k += sequence.period)
                         if (k >= Exists(read))
-                            throw Refusal(head + std::to_string((k - b) / sequence.period) +
-                                          " reads " + read + "_" + std::to_string(k) +
-                                          ", before the step computes " + read +
-                                          ", where its clauses could give a term");
+                            throw Refusal(name, head + std::to_string((k - b) / sequence.period) +
+                                                    " reads " + read + "_" + std::to_string(k) +
+                                                    ", before the step computes " + read +
+                                                    ", where its clauses could give a term");
             }
         }
     }
@@ -2830,8 +2825,8 @@ private:
                     if (!Ticks(reader, n) || reader.bases.count(n) || Folded(read, n - lag) ||
                         (kept && Decides(*kept, n)))
                         continue;
-                    throw Refusal("cannot compile " + name + ": " + name + "_" +
-                                  std::to_string(Floor(n - reader.phase, reader.period)) +
+                    throw Refusal(
+                        name, name + "_" + std::to_string(Floor(n - reader.phase, reader.period)) +
                                   " reads " + read + "_" + std::to_string(n - lag) +
                                   ", before the stream, where " + Unfolded(read, n - lag));
                 }
@@ -2844,8 +2839,8 @@ private:
     void Histories(int earliest) {
         for (const auto& [name, last] : reach_)
             if (last >= earliest)
-                throw Refusal("cannot compile " + name + ": its history reaches " + name + "_" +
-                              std::to_string(earliest) + ", in the stream");
+                throw Refusal(name, "its history reaches " + name + "_" + std::to_string(earliest) +
+                                        ", in the stream");
         for (const auto& [name, sequence] : sequences_) {
             if (!sequence.definition) continue;
             // A guarded clause's value is read only where its guard holds.
@@ -2866,10 +2861,10 @@ private:
             // A base clause's reads, which Cover passes over.
             for (const Seed& seed : sequence.seeds)
                 if (seed.at < earliest_ && Historied(seed.read) && !Folded(seed.read, seed.at))
-                    throw Refusal("cannot compile " + name + ": " + name + "_" +
-                                  std::to_string(seed.index) + " reads " + seed.read + "_" +
-                                  std::to_string(seed.at) + ", before the stream, where " +
-                                  Unfolded(seed.read, seed.at));
+                    throw Refusal(name, name + "_" + std::to_string(seed.index) + " reads " +
+                                            seed.read + "_" + std::to_string(seed.at) +
+                                            ", before the stream, where " +
+                                            Unfolded(seed.read, seed.at));
         }
         for (const Early& early : earlies_)
             for (const auto& [name, sequence] : sequences_)
@@ -2890,7 +2885,7 @@ private:
                 if (term == folded_.end() || !term->second) continue;
                 const std::vector<double> cells = Doubles(*term->second);
                 if (cells.size() != sequence.rows * sequence.cols)
-                    throw Refusal("cannot compile " + name + ": a history of another shape");
+                    throw Refusal(name, "a history of another shape");
                 for (std::size_t c = 0; c < cells.size(); ++c)
                     if (cells[c] != 0.0)
                         lines +=
@@ -2914,8 +2909,7 @@ private:
             for (const Reads* reads : {&sequence.reads, &sequence.deferred, &sequence.seeded}) {
                 for (const auto& [read, lags] : *reads) {
                     if (!lags.count(0) || !sequences_.at(read).definition) continue;
-                    if (read == name)
-                        throw Refusal("cannot compile " + name + ": a term reads itself");
+                    if (read == name) throw Refusal(name, "a term reads itself");
                     waiting[name].insert(read);
                 }
             }
@@ -2925,8 +2919,7 @@ private:
             const auto ready = std::find_if(waiting.begin(), waiting.end(),
                                             [](const auto& entry) { return entry.second.empty(); });
             if (ready == waiting.end())
-                throw Refusal("cannot compile " + waiting.begin()->first +
-                              ": it and the terms it reads need each other");
+                throw Refusal(waiting.begin()->first, "it and the terms it reads need each other");
             const std::string name = ready->first;
             order.push_back(name);
             waiting.erase(ready);
