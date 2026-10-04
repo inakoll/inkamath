@@ -2839,22 +2839,22 @@ that exploring seven domains asked of the interpreter, by how many asked.
   value, a tensor literal, three indices and a definition by three indices
   alike, `cannot compile y: a tensor`. 222 lines of sources.
 
-- `[partly done]` **The evaluator's speed, specified** before any of it is built: phase 14's
-  step 1 resumed, with no change to the language. Training a logistic
-  regression by `grad` on 200 rows read from a file takes 1.9 s, by the
-  gradient written by hand 0.28 s, and a file of thousands of rows is now
+- `[partly done]` **The evaluator's speed, specified** before any of it is
+  built: phase 14's step 1 resumed, with no change to the language. Training a
+  logistic regression by `grad` on 200 rows read from a file takes 1.9 s, by
+  the gradient written by hand 0.28 s, and a file of thousands of rows is now
   writable. Six workloads are in `bench/`, each a transcript, so that a faster
   wrong answer fails rather than measures: `deep`, `d_200000` filled from its
-  base; `limit`, 3000 limits of `s(a)_n = s(a)_(n-1)*~0.5 + a`, each argument a
-  new sequence; `harmonic`, 400 harmonic numbers exactly; `matrix`, 100
-  products of 20x20 matrices defined by their cells, one of them of
-  fractions; and `hand` and `grad`, 20 steps of the training above, which end
-  on the same weights. Their data is `bench/train.ink`, committed, with the
-  Python that wrote it in its comment, so nothing is generated at build time.
-  `cmake --build build --target bench` replays each under callgrind, or by
-  the clock, best of five, without valgrind; it is not a test, so nothing
-  gates on it. The baseline is master at 43e9fb5, GCC 13.3, RelWithDebInfo, a
-  shared 2.1 GHz Xeon:
+  base; `limit`, 3000 limits of `s(a)_n = s(a)_(n-1)*~0.5 + a`, each argument
+  a new sequence; `harmonic`, 400 harmonic numbers exactly; `matrix`, 100
+  products of 20x20 matrices defined by their cells, one of them of fractions;
+  and `hand` and `grad`, 20 steps of the training above, which end on the same
+  weights. Their data is `bench/train.ink`, committed, with the Python that
+  wrote it in its comment, so nothing is generated at build time. `cmake
+  --build build --target bench` replays each under callgrind, or by the clock,
+  best of five, without valgrind; it is not a test, so nothing gates on it.
+  The baseline is master at 43e9fb5, GCC 13.3, RelWithDebInfo, a shared 2.1
+  GHz Xeon:
 
   | | instructions | clock | where they go |
   |---|---|---|---|
@@ -2951,13 +2951,14 @@ that exploring seven domains asked of the interpreter, by how many asked.
   quadratic shows if it comes back; 1,600 rows went from 4,153M to 58M.
   Step 1 kept a literal whose cells are all numbers, its padding included,
   in its node: `hand` 357M and `grad` 11,966M. Step 2 picks `grad`'s rule
-  by the node's exact `typeid`: `grad` 7,533M, 33M short of its target,
-  since libstdc++ compares two different types by their names. Step 3 keys
-  the memo by the arguments themselves, compared bit for bit as the string
-  was; the key owns the call's arguments, since copying them cost `deep`
-  nearly five per cent: `limit` 878M. Step 4 reads a cell or a row of a name defined by
-  a literal of numbers where step 1 keeps it, for the step the name's
-  evaluation takes: `hand` 93M and `grad` 5,689M.
+  by the node's exact `typeid`, each node class `final` so that none is
+  missed: `grad` 7,533M, 33M short of its target, since libstdc++ compares
+  two different types by their names. Step 3 keys the memo by the arguments
+  themselves, compared bit for bit as the string was; the key owns the
+  call's arguments, since copying them cost `deep` nearly five per cent:
+  `limit` 878M. Step 4 reads a cell or a row of a name defined by a literal
+  of numbers where step 1 keeps it, for the step the name's evaluation
+  takes: `hand` 93M and `grad` 5,689M.
 
   Step 5 is stopped. Finding a name is now 1.7% of `deep` and 1.2% of
   `limit`, which is all a slot can save, and a slot that survives both
