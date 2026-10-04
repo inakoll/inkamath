@@ -140,6 +140,17 @@ private:
     struct Undefined : Reason {
         using Reason::Reason;
     };
+    // The interpreter's own refusal, as a reason the compiler gives.
+    template <typename F>
+    static auto Reasoned(F f) {
+        try {
+            return f();
+        } catch (const Reason&) {
+            throw;
+        } catch (const std::runtime_error& error) {
+            throw Reason(error.what());
+        }
+    }
 
     // A primary, a unary, a product, a sum: an operand is parenthesised only
     // where C would otherwise read it differently.
@@ -374,12 +385,7 @@ private:
             throw Reason("an instance of " + model.Name() + ", which keeps a history, in a call");
         // What each argument reads, but its own index, which a positional
         // one takes from the signature.
-        std::vector<std::optional<typename Model<Value>::Argument>> bound;
-        try {
-            bound = model.model->Bind(model.Name(), call);
-        } catch (const std::runtime_error& error) {
-            throw Reason(error.what());
-        }
+        const auto bound = Reasoned([&] { return model.model->Bind(model.Name(), call); });
         std::set<std::string> read;
         for (const auto& argument : bound) {
             if (!argument) continue;
@@ -532,23 +538,17 @@ private:
     Code Call(const std::string& name, const Reference<Value>& function,
               const ParametersCall<Value>& call, Expansion* outer) {
         const ParametersDefinition<Value>& p = function.Clauses().front().parameters;
-        try {
-            p.CheckArity(name, call);
-        } catch (const std::runtime_error& error) {
-            throw Reason(error.what());
-        }
+        Reasoned([&] { p.CheckArity(name, call); });
         Expansion expansion{{}, {}, outer ? outer->scope : function.home, outer, {}};
         const std::vector<std::string>& names = p.parameters_names();
         for (std::size_t i = 0; i < call.parameters_expression().size(); ++i)
             expansion.values.emplace(names[i], Emit(call.parameters_expression()[i]));
         for (const auto& [given, argument] : call.parameters_dict())
             expansion.values.emplace(given, Emit(argument));
-        try {
+        Reasoned([&] {
             for (const auto& [given, value] : expansion.values)
                 function.Divides(given, Value(Extent{value.rows, value.cols}), definitions_);
-        } catch (const std::runtime_error& error) {
-            throw Reason(error.what());
-        }
+        });
         return Inside(expansion, [&] {
             for (const std::string& parameter : names) {
                 if (expansion.values.count(parameter)) continue;
@@ -571,12 +571,7 @@ private:
                         [](const auto& q) { return !q.index.empty(); }) ||
             std::any_of(m.body.begin(), m.body.end(), remembers))
             return Kept(model, call, member);
-        std::vector<std::optional<typename Model<Value>::Argument>> bound;
-        try {
-            bound = m.Bind(model.Name(), call);
-        } catch (const std::runtime_error& error) {
-            throw Reason(error.what());
-        }
+        const auto bound = Reasoned([&] { return m.Bind(model.Name(), call); });
         held_.push_back(definitions_.Defaults(model));
         Expansion expansion{{}, {}, m.scope, nullptr, {}};
         for (std::size_t i = 0; i < m.parameters.size(); ++i)
@@ -1638,7 +1633,7 @@ private:
     template <typename Fits>
     std::optional<Extent> Measured(const std::string& name, const Reference<Value>& definition,
                                    const std::optional<Code>& whole, Fits fits) {
-        try {
+        return Reasoned([&] {
             return definition.Measured(
                 whole ? std::optional<Extent>(Extent{whole->rows, whole->cols}) : std::nullopt,
                 fits, name,
@@ -1654,11 +1649,7 @@ private:
                     const Code read = Emit(e);
                     return Extent{read.rows, read.cols};
                 });
-        } catch (const Reason&) {
-            throw;
-        } catch (const std::runtime_error& error) {
-            throw Reason(error.what());
-        }
+        });
     }
 
     std::optional<Code> CellOf(const Reference<Value>& definition, int row, int col) {
@@ -1690,13 +1681,7 @@ private:
     }
 
     std::size_t Size(const PExpression<Value>& expression) {
-        const Code code = Known(expression, "a matrix whose size is not a constant");
-        int        size = 0;
-        try {
-            size = AsIndex<Value>(*code.constant);
-        } catch (const std::runtime_error& error) {
-            throw Reason(error.what());
-        }
+        const int size = Whole(Known(expression, "a matrix whose size is not a constant"));
         if (size < 1) throw Reason("a size must be at least 1, not " + std::to_string(size));
         return static_cast<std::size_t>(size);
     }
@@ -1713,11 +1698,7 @@ private:
             throw Reason(found.key + " is not a sequence, so it has no limit");
         const Reference<Value>&            sequence = *found.definition;
         const ParametersDefinition<Value>& p        = sequence.Clauses().front().parameters;
-        try {
-            p.CheckArity(name, call);
-        } catch (const std::runtime_error& error) {
-            throw Reason(error.what());
-        }
+        Reasoned([&] { p.CheckArity(name, call); });
         // The arguments, where the limit is read; a default, where it is not
         // given, reads the others.
         Expansion                       given{{}, {}, scope_, expansion_, {}};
@@ -2310,11 +2291,7 @@ private:
     }
 
     static int Whole(const Code& code) {
-        try {
-            return AsIndex<Value>(*code.constant);
-        } catch (const std::runtime_error& error) {
-            throw Reason(error.what());
-        }
+        return Reasoned([&] { return AsIndex<Value>(*code.constant); });
     }
 
     PExpression<Value> visit(EqualExpression<Value>*) override {
@@ -2327,12 +2304,7 @@ private:
         const Code row    = Known(expression->Row(), "a cell whose place is not a constant");
         if (!expression->Col()) {
             if (matrix.constant) return Fold(expression);
-            int i = 0;
-            try {
-                i = AsIndex<Value>(*row.constant);
-            } catch (const std::runtime_error& error) {
-                throw Reason(error.what());
-            }
+            const int i = Whole(row);
             if (i < 1 || static_cast<std::size_t>(i) > matrix.rows)
                 throw Reason("row " + std::to_string(i) + " is outside a " +
                              std::to_string(matrix.rows) + "x" + std::to_string(matrix.cols) +
@@ -2345,13 +2317,7 @@ private:
         }
         const Code col = Known(expression->Col(), "a cell whose place is not a constant");
         if (matrix.constant) return Fold(expression);
-        int i = 0, j = 0;
-        try {
-            i = AsIndex<Value>(*row.constant);
-            j = AsIndex<Value>(*col.constant);
-        } catch (const std::runtime_error& error) {
-            throw Reason(error.what());
-        }
+        const int i = Whole(row), j = Whole(col);
         if (i < 1 || static_cast<std::size_t>(i) > matrix.rows || j < 1 ||
             static_cast<std::size_t>(j) > matrix.cols)
             throw Reason("row " + std::to_string(i) + ", column " + std::to_string(j) +
@@ -2407,14 +2373,8 @@ private:
     PExpression<Value> visit(MemberExpression<Value>* expression) override {
         if (const Reference<Value>* model = ModelOf(*expression->Object()))
             return Answer(Instance(*model, Call(*expression->Object()), expression->Member()));
-        const Scope<Value>* object = nullptr;
-        try {
-            object = &definitions_.Resolve(*expression->Object(), *scope_);
-        } catch (const Reason&) {
-            throw;
-        } catch (const std::runtime_error& error) {
-            throw Reason(error.what());
-        }
+        const Scope<Value>* object =
+            Reasoned([&] { return &definitions_.Resolve(*expression->Object(), *scope_); });
         if (object->label.find('(') != std::string::npos)
             throw Reason("an unnamed instance, " + object->label);
         own_ = object;
