@@ -14,6 +14,15 @@
 #include <string>
 #include <vector>
 
+// A value refused where a single value is needed, and its shape, which a
+// call given a value of that shape says in its own name (DESIGN.md, sizes
+// inferred in a definition by cells).
+struct NotSingle : std::runtime_error {
+    NotSingle(const std::string& message, Extent extent)
+        : std::runtime_error(message), shape(extent) {}
+    Extent shape;
+};
+
 template <typename T>
 class Matrix
 {
@@ -200,7 +209,7 @@ public:
     static bool truth(const Matrix<T>&   a,
                       const std::string& needs = "a guard needs a single value") {
         if(!a.IsScalar()) {
-            throw std::runtime_error(needs + ", not a " + a.extent_.Described());
+            throw NotSingle(needs + ", not a " + a.extent_.Described(), a.extent_);
         }
         return !(a.scalar_ == numeric_interface<T>::zero());
     }
@@ -505,8 +514,8 @@ private:
     const T& Comparable() const
     {
         if(!IsScalar()) {
-            throw std::runtime_error("a comparison needs single values, not a " +
-                                     extent_.Described());
+            throw NotSingle("a comparison needs single values, not a " + extent_.Described(),
+                            extent_);
         }
         return scalar_;
     }
@@ -515,7 +524,7 @@ private:
     // defined there.
     const T& Scalar(const char* message) const {
         if(!IsScalar()) {
-            throw std::runtime_error(message);
+            throw NotSingle(message, extent_);
         }
         return scalar_;
     }

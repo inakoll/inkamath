@@ -409,42 +409,55 @@ public:
             }
         }
 
-        typename ReferenceStack<T>::Within within(stack, home);
-        typename ReferenceStack<T>::Frame  frame(stack);
-        ParametersDefinition<T>::Bind(captured, stack);
-        ParametersDefinition<T>::Bind(arguments, stack);
-        EvaluationVisitor<T> evaluator(stack);
-        parameters.BindDefaults(call, evaluator);
-        if(call.limit()) {
-            // A guarded general clause is a general clause: it is the index
-            // that makes it one (DESIGN.md, C54).
-            if(!FirstThat([](const Clause<T>& c) {return c.parameters.general();})) {
-                throw std::runtime_error(reference_name_ + " has no general clause, so it has no limit");
-            }
-            return Converge(arguments, call, stack, global);
-        }
-        // Storing after the call returns, so that an evaluation which ran out
-        // of budget is retried rather than remembered.
-        // Caught only where a fill can follow, and filled only after the
-        // handler: MSVC runs a handler on top of the stack that threw, which
-        // is 256 references deep here.
-        if (!memoisable || !indexed || !stack.CanFill()) {
-            const T evaluation = EvalImp(indexed, index, evaluator);
-            if (memoisable) stack.Memoise(std::move(key), evaluation);
-            return evaluation;
-        }
-        std::exception_ptr depth;
-        T                  evaluation;
+        // A value refused where a single value is needed is refused in the name
+        // of the innermost call given a value of its shape, where the call is
+        // written in the session or a file and not in the prelude.
         try {
-            evaluation = EvalImp(indexed, index, evaluator);
-        } catch (const DepthExceeded&) {
-            depth = std::current_exception();
+            typename ReferenceStack<T>::Within within(stack, home);
+            typename ReferenceStack<T>::Frame  frame(stack);
+            ParametersDefinition<T>::Bind(captured, stack);
+            ParametersDefinition<T>::Bind(arguments, stack);
+            EvaluationVisitor<T> evaluator(stack);
+            parameters.BindDefaults(call, evaluator);
+            if (call.limit()) {
+                // A guarded general clause is a general clause: it is the index
+                // that makes it one (DESIGN.md, C54).
+                if (!FirstThat([](const Clause<T>& c) { return c.parameters.general(); })) {
+                    throw std::runtime_error(reference_name_ +
+                                             " has no general clause, so it has no limit");
+                }
+                return Converge(arguments, call, stack, global);
+            }
+            // Storing after the call returns, so that an evaluation which ran out
+            // of budget is retried rather than remembered.
+            // Caught only where a fill can follow, and filled only after the
+            // handler: MSVC runs a handler on top of the stack that threw, which
+            // is 256 references deep here.
+            if (!memoisable || !indexed || !stack.CanFill()) {
+                const T evaluation = EvalImp(indexed, index, evaluator);
+                if (memoisable) stack.Memoise(std::move(key), evaluation);
+                return evaluation;
+            }
+            std::exception_ptr depth;
+            T                  evaluation;
+            try {
+                evaluation = EvalImp(indexed, index, evaluator);
+            } catch (const DepthExceeded&) {
+                depth = std::current_exception();
+            }
+            if (depth) evaluation = Filled(index, arguments, call, stack, evaluator, depth);
+            if (memoisable) {
+                stack.Memoise(std::move(key), evaluation);
+            }
+            return evaluation;
+        } catch (const NotSingle& refused) {
+            const bool shaped = std::any_of(arguments.begin(), arguments.end(), [&](const auto& a) {
+                return a.second.Size() == refused.shape;
+            });
+            if (!shaped || stack.scope_ == &stack.builtins_) throw;
+            throw std::runtime_error(reference_name_ + " needs single values, not a " +
+                                     refused.shape.Described() + "; write it by its cells");
         }
-        if (depth) evaluation = Filled(index, arguments, call, stack, evaluator, depth);
-        if(memoisable) {
-            stack.Memoise(std::move(key), evaluation);
-        }
-        return evaluation;
     }
 
 private:
