@@ -52,7 +52,7 @@ struct numeric_interface_imp
      static T             row(const T& a, int i) { return T::row(a, i); }
      static T compare(const T& a, const T& b, Comparison op) {return T::compare(a,b,op);}
      static bool truth(const T& a) {return T::truth(a);}
-     static bool          truth(const T& a, const std::string& needs) { return T::truth(a, needs); }
+     static bool truth(const T& a, const std::string& subject) { return T::truth(a, subject); }
      // A comparison asks for these (phase 10), and a class-type number goes
      // through this path, so without them none compiled (DESIGN.md, C65).
      static T real(const T& a) { return T::real(a); }
@@ -156,6 +156,8 @@ struct numeric_interface_imp<std::complex<T>,false>
     static std::complex<T> pow(const std::complex<T>& a,
                                const std::complex<T>& b)
     {
+        // NaN has no power and is none, where C's pow(1, NaN) and pow(NaN, 0) are 1.
+        if (a != a || b != b) return a + b;
         // A real power of a real number is the real one: as a complex power,
         // 2^0.5 came out a bit off, and 2^1024 squared an infinity into a NaN
         // imaginary part.

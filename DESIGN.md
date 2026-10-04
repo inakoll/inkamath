@@ -1621,6 +1621,8 @@ closures need one anyway, and can bring it.
 | C86 `[fixed]` | **A clause whose value is a constant that fails refuses the whole model when compiled.** The compiler folds a constant value exactly, and a failure there is taken as the model's: in a model `gd(a = 2)` defining `h(x) = 1`, `h(x) \| x <= 0 = 1/0` and `y_n = h(a + n)`, `--compile` says "cannot compile y: division by zero" where the interpreter answers 1 for every term and never takes the clause, and `[1 2]*[1 2]` there says a product's sizes. `log`'s `log(x) \| x <= 0 = 1/0` is one, so a model calling `log` is refused in those words instead of "a sum or a product with no upper bound", which its series earns. Found specifying a function applied to each cell, `f.(x)`, which sizes inferred replaced (next in line). A clause written to refuse wants compiling as what a step does where the interpreter refuses, NaN as for a limit that does not converge, or a refusal naming the function and its clause. Now a guarded value whose fold fails is NaN where its guard holds, as where no clause applies, so `gd` compiles and `log` is refused for its halving, `log(x/2)` while `x > 2`, which recurses, "calls nested 64 deep"; `compile_c86` and `compile_log_refused` in `test/cli.cmake` hold it. A value that always applies and fails still refuses. |
 | C87 `[fixed]` | **The hint for a definition of one-cell clauses alone is written for another.** With `w[2] = 5`, reading `w` says "w has no size; write it as w[j<=rows, k<=cols]", two indices where its clause writes one; with `f(x)[1,1] = 5`, `f(1)` says "write it as f[j<=rows, k<=cols]", without its parameters, a clause `f` refuses, as it takes `(x)`. Found reviewing the specification of sizes inferred in a definition by cells (next in line), whose hints are written as the clause is, `sh(z)[i<=rows]`. The hint wants the clause's parameters and as many indices as it writes. It now has them, `w[j<=rows]` and `f(x)[j<=rows, k<=cols]`, written from the clause as a hint for a clause for all cells is, and one defined inside an expression, which keeps no text, from its names, `pc[i<=rows]`; the C87 entries of `test/data/matrices.ink` hold it. |
 | C88 `[fixed]` | **A product or quotient of two real numbers grew a NaN imaginary part where it overflowed.** An inexact number is complex, and `*` and `/` took two real ones by the complex formula, whose cross terms multiply an infinity by the other's zero imaginary part: `10^400*~1` answered `inf+i*-nan`, `1/~0` `inf+i*-nan` and `0/~0` `-nan+i*-nan`, and an unrolled training run whose learning rate overshot printed its loss so. A power was fixed the same way before. Found training a learning rate by `grad` through an unrolled descent. Two real numbers now multiply and divide as reals, so these are `inf`, `inf` and `-nan`, which moves the two recorded in `test/data/errors.ink`; `i/~0` keeps C31's NaN part in view. Complex arithmetic on infinities stays the platform's (C64). |
+| C90 `[fixed]` | **`--check` kept a NaN in an int where a guard of `and` or `or` defers.** A guard whose right side reads a term its left does not is a truth of 1, 0 or NaN, and the clause the check keeps tests it as the step does, `m_->z_clause_ = isnan(t1_) ? NAN : t1_ != 0.0 ? 1 : 2;`, so where the truth is NaN a NaN becomes an int, which C leaves undefined. With `y_0 = 1`, `y_n = y_(n-1) + x_n`, `z_n \| x_n > 0 and y_(n-2) > 0 = 1` and `z_n = 0` in `gate(x_n)`, the program checking `g = gate(x_n = 1)`, built with `-fsanitize=float-cast-overflow`, stops at step 0, "nan is outside the range of representable values of type 'int'"; without it the report is right, as no clause is compared where the interpreter gives none. No checked instance has one. Found reviewing the specification of a NaN that reaches every term that reads it (next in line), which keeps 0 there. Now the clause kept is 0 where its guard is NaN, as no clause is taken, `isnan(t1_) ? 0 : t1_ != 0.0 ? 1 : 2`; `check_c90` in `test/cli.cmake` holds it. |
+| C91 `[open]` | **`--check` writes a value that is no finite double as no C.** An input and a guard's margin are written by `%.17g`, so where the interpreter's is infinite or NaN the program reads `inf` or `-nan` and does not compile: with `y_n = x_n - x_n`, `h_n \| y_n > 0 = 1` and `h_n = 0` in `ov(x_n)`, checking `w = ov(x_n = ~(10^400))` writes `inf` for each input and `-nan` for each margin of `h`. A term the interpreter gives so is reported instead, "where the interpreter's term is not a finite number". Found reviewing the specification of a NaN that reaches every term that reads it (next in line). |
 | C92 `[fixed]` | **A guarded sequence named before a late term its guard reads computed both from the stream's start.** With `y_0 = 1`, `y_n = 2*y_(n-1)`, `d_n = y_n - y_(n-1)`, `a_n \| d_n > 0 = 1` and `a_n = 0` in a model, `d` starts at 1, but the step computed `d` and `a` from 0, reading `y_(-1)` as the 0 `init` leaves, where the interpreter refuses: C13's class. A guard is compiled with what it reads deferred, and `d`, compiled on the way while `a` sorted first, filed its own reads as deferred too, so it read nothing and started at once; named `e`, the reader came after. A sequence compiled on the way now starts with nothing deferred, as it starts with no shift. Found reviewing the specification of a NaN that reaches every term that reads it; `kin` in `test/compile/history.ink` holds it. |
 
 **Measure instructions, not the clock.** One of those changes made the matrix
@@ -3424,3 +3426,175 @@ that exploring seven domains asked of the interpreter, by how many asked.
   420 lines of sources added and 143 removed, 277 more in all, about 40 of
   them the body of a call indented under the handler that names it, where
   about 120 were planned.
+
+- `[done]` **A NaN reaches every term that reads it.** NaN is the step's word for what
+  the interpreter refuses: a limit that does not converge, a function, a
+  sequence or a cell no clause of which applies, a clause refused wherever it
+  is taken (C86), a term before it exists, a singular solve, a parameter
+  nothing defines. `lim` compiled chose it over the status field
+  `MANIFESTO.md` sketched because a NaN reaches every term that reads it, a
+  field only the host that looks. It does not: a comparison with NaN is
+  false, so `high_n | y_n > 1/2 = 1` beside `high_n = 0` answers 0 where `y_n`
+  failed, and a bare truth, `z_n | y_n = 1`, holds. The failure leaves as a
+  plausible value, C13's class in generated code. `--check` parts there,
+  `run.high: 0 at 8, where the interpreter gives none`, but a deployed header
+  has no oracle. Found by an outside review.
+
+  Decided: make the premise true rather than reverse the ruling. In a header
+  that writes NaN, a decision on a value answers NaN where an operand is NaN,
+  as the interpreter refuses a guard whose operand fails. An operand that
+  reads a name other than the step's index is tested: the guard is
+  `isnan(m_->y[0]) ? NAN : m_->y[0] > 0.5`, which C's right-associative
+  conditional makes take no clause, `isnan(a) || isnan(b)` where both
+  operands are tested; a comparison as a value is `(isnan(a) ? NAN : a > b ?
+  1.0 : 0.0)`; a bare truth tests itself. A power decides too, where C's
+  absorbs a NaN, `pow(1, NaN)` and `pow(NaN, 0)` being 1: its base is
+  tested unless its exponent is a constant other than 0, and its exponent
+  unless its base is a constant other than 1, so `1^y_n` is `(isnan(m_->y[0])
+  ? NAN : pow(1.0, m_->y[0]))` and `stiff`'s `pow(t1_, 3.0)` is as it was.
+  `and` and `or` take the path a
+  guard that defers already takes, a truth as a double of 1, 0 or NaN,
+  whose right side is read only where the left has not decided, as in the
+  interpreter. Each guard of a chain tests its own operands, since one tried
+  after a clause that holds is never read. That is every guard compiled: a
+  sequence's, a function's, a limit's walk, a cell's, and `update`'s. The
+  clause `--check` keeps, `name_clause_`, is 0 where a guard reads NaN, no
+  clause being taken; today a guard of `and` or `or` writes the NaN into that
+  int. The Interface comment of such a header adds "A term the interpreter
+  would refuse is NaN, and so is every term that reads one, through a guard
+  or a comparison as through arithmetic; -ffinite-math-only, which
+  -ffast-math implies, removes the tests that make it so", so the host's one
+  test is `isnan` on what it reads, and knows that a compiler told no value
+  is NaN may take every `isnan` as false.
+
+  The interpreter refuses the same decisions on its own NaN, which inexact
+  arithmetic makes, `0/~0`: a comparison of one answered 0 and a truth of
+  one held, so a guard reading it took a clause, where a step reading NaN
+  now takes none, and the two parted. A comparison with NaN has no answer,
+  and `MANIFESTO.md`'s interpreter refuses rather than guesses. In the words
+  given for a value that is not single: `0/~0 > 0` and `0/~0 == 0/~0` are
+  "a comparison needs a number, not -nan", as is a whole matrix compared
+  with a NaN cell; a guard reading it, "a guard needs a number, not -nan";
+  `0/~0 or 0` and `1 and 0/~0`, "or needs a number, not -nan" and "and
+  needs a number, not -nan", the right side still read only where the left
+  has not decided, so `0 and 0/~0` is 0. `errors.ink` holds the
+  comparisons, `logic.ink` `and` and `or`, and `conditional.ink` the guard:
+  `nonzero(0/~0)`, recorded as answering 1 because it was "the one place the
+  convention bites", moves to the refusal. No other golden moves.
+
+  A header that writes no NaN is byte for byte as now. The gate is the
+  header: one that writes NaN anywhere is compiled again, aware. Of the
+  fourteen expected headers ten stay; `back.h` gains the sentence alone, its
+  guards reading the index; `heat.h` and `kalman2.h` gain it and a test
+  after each matrix term, heat's one and kalman2's six, as their inverses
+  write NaN; `adc.h` moves, its hysteresis, alarm and rising edge tested,
+  because `rising` writes NaN before its first term, though no step reaches
+  it. Of the programs `--check` writes for the instances checked, seven
+  write NaN and move, their reports as they are: `ajar` and `rise` test a
+  guard's operands, `cls`, `gate`, `mark` and `rnn` their matrix terms, and
+  `stiff` gains the sentence alone.
+
+  The interpreter refuses a matrix term whole where one cell fails, so in an
+  aware header a matrix term with a NaN cell is NaN in every cell: after the
+  cells of each matrix sequence's term, one test per step,
+
+      if (isnan(m_->y[0][0][0]) || isnan(m_->y[0][1][0]))
+          for (int i_ = 0; i_ < 2; ++i_)
+              for (int j_ = 0; j_ < 1; ++j_) m_->y[0][i_][j_] = NAN;
+
+  inside the block that computes the term where one does. Leaving a cell's
+  NaN in its cell, the first choice, was overruled on review: a guard
+  reading a healthy cell of a refused term, `h_n | y_n[1] > 1/2 = 1`, took
+  its clause, 1 where the interpreter gives none. `--check` agrees cell by
+  cell as today, each cell now NaN where the interpreter gives no term; a
+  term by cells with one failing cell parted, `slope.y[1,1]: 1 at 2, where
+  the interpreter gives none`. A matrix that is no sequence's term, a value
+  computed on the way or from the parameters, keeps a NaN in its cell. A
+  cell no clause gives is 0 in the interpreter, not a refusal, and stays 0,
+  as C89 has it.
+
+  Rejected: (a) a status field, the first failure's definition and step or a
+  count. The ruling under `lim` compiled stands: a field is read by the host
+  that looks, while the plausible value reaches every output. It costs a
+  member, `init`, a write at each of eleven sources, and the limits' functions
+  take the model `const`; naming the origin, its one gain, is the
+  interpreter's, asked for the term. (c) both: two channels for one fact. (d)
+  `--check` naming the first NaN's origin: it reaches no deployed header,
+  which is where the failure goes unseen. Testing every comparison of every
+  header: `kernel.h`, `net.h` and `pid_clamped.h` would move, each clamp and
+  ReLU tested for what its model cannot produce. A may-be-NaN analysis per
+  sequence over the reads, sparing `adc.h`: a fixed point, as recurrences read
+  themselves, for about 25 more lines. `isunordered`: a second primitive where
+  `isnan` is the compiler's. The complement, `a > b ? 1.0 : a <= b ? 0.0 :
+  NAN`: `==` and `<>` have none.
+
+  Known limits, each as today. A header that writes no NaN is not aware, yet
+  it divides: 0/0 there is NaN and a division by zero an infinity, and its
+  guards and comparisons decide on either as on a number. In an aware header
+  0/0 propagates, while an infinity still compares as a number; testing
+  every divisor would move every header that divides, and `--check` says
+  it, `pole.y: inf at 3, where the interpreter gives none`. A host's NaN, an
+  input it feeds or a parameter it assigns, propagates only in an aware
+  header; in another, its guards decide on it. A guard reading a limit
+  directly computes it twice, as its value already does. A NaN the
+  interpreter's own arithmetic makes is a value, not a refusal, but the
+  step cannot tell them apart: with `m_n = [(0/~0)*x_n; 1]` and
+  `h_n = m_n[2]` the interpreter answers 1 and the step NaN, its matrix
+  term NaN in every cell, as is a cell taken from such a matrix inline.
+
+  About 30 lines and none removed: 25 in the compiler, the gate and its
+  second run, the operand's test, the guard, the comparison, `and` and `or`,
+  the clause kept and the sentence; 5 in the check. Each decision on a value
+  grows by `isnan(a) ? NAN : `, in an aware header only.
+
+  Specified in `test/compile/nan.ink`: eight instances, each a guard reading
+  a failure, among them one inside a limit's walk, `lap`, one computed in
+  `update`, `trim`, and an `or` reaching NaN as the step runs, `any`, with
+  their steps, their reports and `adc.h`'s step, wired with the
+  implementation. The interpreter's refusals are written in the
+  goldens named above.
+
+  Built as specified, every instance of `nan.ink` reporting as written,
+  checked by `test/CMakeLists.txt` and its steps held line by line by
+  `holds` in `test/cli.cmake`; `adc.h`, `back.h`, `heat.h` and `kalman2.h`
+  move as specified, and the seven programs named, their reports as they
+  were. C90 is fixed on the way, the clause kept taking the guard's own
+  test to 0. Departures: an operand is tested unless it is a constant or
+  the index itself, told by a flag on its cell, rather than unless it reads no name
+  but the index, so `n - 1 > 0` is tested and a function's parameter given
+  the index is not, which moves no header; a guard that folds to NaN, which
+  the interpreter now refuses wherever it is tried, is refused in its
+  definition's name, `cannot compile h: a guard needs a number, not -nan`,
+  where the fold threw past it; and `--check` needed no change, every cell
+  of a refused matrix term being NaN. Under callgrind `grad` takes 0.5% more
+  instructions and `harmonic` 0.6% fewer, the rest as they were. 101 lines
+  of sources added and 21 removed, 80 more in all, where about 30 were
+  planned before the review added the matrix test, the power and the
+  interpreter's refusals: 13,358 lines in all.
+
+  On review, the interpreter's power of NaN is NaN, `1^(0/~0)` and
+  `(0/~0)^~0` as an aware step answers them, where C's `pow` gave 1: the
+  one parting the implementation left as a known limit; `errors.ink` holds
+  it. The index is told by a flag on its cell, not by comparing its text
+  with the index's, which moves nothing. A cell taken from a matrix that
+  is no sequence's term, one written inline, given to a function, computed
+  again or a value from the parameters, kept a healthy cell where the
+  interpreter refuses the matrix whole: `cell` and `held` in `nan.ink`
+  answered 1. Now, in an aware header, it is NaN where any cell of the
+  matrix is, the cells shared first, and a matrix that writes NaN in a cell
+  not taken makes the header aware, as it would otherwise write none. A
+  term's window is whole already and is not tested; of the programs checked
+  only `rnn`'s moves, its tanh taking each cell of a product. That every
+  `and` and `or` defers in an aware header is said once, in `Defers`, not
+  by its two callers. A constant matrix, which folds, is left out of the
+  gate. The gate reads NAN as a word past the line naming the source, so
+  a module, a file or a parameter named with it, `NAN_clamped`, no longer
+  makes a header aware. A truth is given its subject, `and`, rather than a
+  message to cut it from, and a guard that is a matrix says "a guard needs
+  single values", as `and` and a comparison do, where it said "a single
+  value", recorded nowhere until `conditional.ink`. The Interface sentence
+  ends "Built with -ffinite-math-only, which -ffast-math implies, GCC
+  removes the tests that make it so, and Clang warns of each NaN": Clang 18
+  warns of every NAN there, `-Wnan-infinity-disabled`, which `-Werror`
+  makes a refusal to build, and GCC is silent; `adc.h`, `back.h`, `heat.h`
+  and `kalman2.h` move by it alone. 23 lines: 13,381 in all.
