@@ -86,7 +86,6 @@ class Interpreter
 {
 public:
     Interpreter();
-    ~Interpreter();
 
     typedef typename U::value_type value_type;
     typedef U matrix_type;
@@ -260,12 +259,6 @@ Interpreter<T, U>::Interpreter() {
     const typename ReferenceStack<U>::Into builtins(stack_, stack_.Builtins());
     for (const char* line : prelude) (void)Run(line);
     ResetInterpreter();
-}
-
-template <Parsable T, Numeric U>
-Interpreter<T,U>::~Interpreter()
-{
-
 }
 
 template <Parsable T, Numeric U>
