@@ -132,12 +132,6 @@ private:
         return name.size() == 1 ? name : "\\operatorname{" + name + "}";
     }
 
-    // An index set tight, as a subscript is: 's_{n-1}'.
-    static std::string Index(const Expression<T>& index) {
-        std::string text = Of(index, true).text;
-        return text.size() == 1 ? text : "{" + text + "}";
-    }
-
     static std::string Braced(const std::string& text) {
         return text.size() == 1 ? text : "{" + text + "}";
     }
@@ -275,10 +269,9 @@ private:
         if (const auto* ratio = dynamic_cast<const DivExpression<T>*>(&e))
             return {"\\frac{" + Of(*ratio->m_e1()).text + "}{" + Of(*ratio->m_e2()).text + "}"};
         if (const auto* power = dynamic_cast<const PowExpression<T>*>(&e)) {
-            const std::string exponent = Of(*power->m_e2()).text;
-            return {Wrapped(Of(*power->m_e1(), tight), primary) + "^" +
-                        (exponent.size() == 1 ? exponent : "{" + exponent + "}"),
-                    Level::power};
+            return {
+                Wrapped(Of(*power->m_e1(), tight), primary) + "^" + Braced(Of(*power->m_e2()).text),
+                Level::power};
         }
         if (const auto* negative = dynamic_cast<const NegExpression<T>*>(&e))
             return {"-" + Wrapped(Of(*negative->m_e(), tight), product), unary};
@@ -351,7 +344,8 @@ private:
                         " \\rfloor"};
             std::string out =
                 call->m_e1() ? Operator(name) + "(" + Arguments(arguments) + ")" : Name(name);
-            if (call->m_e2()) out += "_" + Index(*call->m_e2());
+            // An index is set tight, as a subscript is: 's_{n-1}'.
+            if (call->m_e2()) out += "_" + Braced(Of(*call->m_e2(), true).text);
             return {out};
         }
         if (dynamic_cast<const EqualExpression<T>*>(&e))
