@@ -471,8 +471,7 @@ private:
 
     Jet Logic(LogicExpression<T>& logic) {
         const auto truth = [&](const Jet& jet) {
-            return numeric_interface<T>::truth(*jet[0],
-                                               std::string(logic.Word()) + " needs single values");
+            return numeric_interface<T>::truth(*jet[0], logic.Word());
         };
         const bool left    = truth(Eval(logic.m_e1()));
         const bool decided = left != logic.Conjunction();

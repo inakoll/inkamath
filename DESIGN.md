@@ -3585,4 +3585,8 @@ that exploring seven domains asked of the interpreter, by how many asked.
   by its two callers. A constant matrix, which folds, is left out of the
   gate. The gate reads NAN as a word past the line naming the source, so
   a module, a file or a parameter named with it, `NAN_clamped`, no longer
-  makes a header aware. 27 lines: 13,385 in all.
+  makes a header aware. A truth is given its subject, `and`, rather than a
+  message to cut it from, and a guard that is a matrix says "a guard needs
+  single values", as `and` and a comparison do, where it said "a single
+  value", recorded nowhere until `conditional.ink`. 22 lines: 13,380 in
+  all.

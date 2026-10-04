@@ -52,7 +52,7 @@ struct numeric_interface_imp
      static T             row(const T& a, int i) { return T::row(a, i); }
      static T compare(const T& a, const T& b, Comparison op) {return T::compare(a,b,op);}
      static bool truth(const T& a) {return T::truth(a);}
-     static bool          truth(const T& a, const std::string& needs) { return T::truth(a, needs); }
+     static bool truth(const T& a, const std::string& subject) { return T::truth(a, subject); }
      // A comparison asks for these (phase 10), and a class-type number goes
      // through this path, so without them none compiled (DESIGN.md, C65).
      static T real(const T& a) { return T::real(a); }

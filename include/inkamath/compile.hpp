@@ -1359,10 +1359,8 @@ private:
     PExpression<Value> visit(LogicExpression<Value>* expression) override {
         const auto truth = [expression](const Code& code) {
             if (!code.Scalar()) throw Reason(std::string(expression->Word()) + " of a matrix");
-            return code.constant
-                       ? std::optional<bool>(Holds(*code.constant, std::string(expression->Word()) +
-                                                                       " needs single values"))
-                       : std::nullopt;
+            return code.constant ? std::optional<bool>(Holds(*code.constant, expression->Word()))
+                                 : std::nullopt;
         };
         // A left side that decides is the answer, and the right is not read.
         const std::optional<bool> left = truth(Emit(expression->m_e1()));

@@ -12,7 +12,6 @@
 #include <sstream>
 #include <stdexcept>
 #include <string>
-#include <string_view>
 #include <vector>
 
 // A value refused where a single value is needed, and its shape, which a
@@ -211,12 +210,12 @@ public:
     }
 
     // A guard holds when it is not zero.
-    static bool truth(const Matrix<T>&   a,
-                      const std::string& needs = "a guard needs a single value") {
+    static bool truth(const Matrix<T>& a, const std::string& subject = "a guard") {
         if(!a.IsScalar()) {
-            throw NotSingle(needs + ", not a " + a.extent_.Described(), a.extent_);
+            throw NotSingle(subject + " needs single values, not a " + a.extent_.Described(),
+                            a.extent_);
         }
-        return !(Numeric(a.scalar_, needs) == numeric_interface<T>::zero());
+        return !(Numeric(a.scalar_, subject) == numeric_interface<T>::zero());
     }
 
     // A 1x1 matrix -- which every literal and every intermediate scalar is --
@@ -496,10 +495,10 @@ private:
     // NaN is not a number, so a comparison or a truth of it has no answer and
     // is refused, where C would guess (DESIGN.md, a NaN reaches every term
     // that reads it).
-    static const T& Numeric(const T& x, std::string_view needs = "a comparison needs") {
+    static const T& Numeric(const T& x, const std::string& subject = "a comparison") {
         if (!(x == x))
-            throw std::runtime_error(std::string(needs.substr(0, needs.find(" needs"))) +
-                                     " needs a number, not " + numeric_interface<T>::toString(x));
+            throw std::runtime_error(subject + " needs a number, not " +
+                                     numeric_interface<T>::toString(x));
         return x;
     }
 

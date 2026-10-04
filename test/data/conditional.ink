@@ -353,6 +353,17 @@ error: a guard needs a number, not -nan
 >> nonzero([1 2])
 error: nonzero needs single values, not a 1x2 matrix; write it by its cells
 
+# A sequence's guard says it in a guard's words, as an 'and' says it in its
+# own: this read "a guard needs a single value".
+>> gm_n | [1 n] = 1
+gm_n | [1 n] = 1
+
+>> gm_n = 0
+gm_n = 0
+
+>> gm_2
+error: a guard needs single values, not a 1x2 matrix
+
 # --- a recurrence in cases --------------------------------------------------
 
 # Pascal's rule. Its base case sits at an index the parameter decides, which
