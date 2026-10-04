@@ -516,13 +516,27 @@ private:
             if (!otherwise) throw Reason("no clause of " + name + " applies");
             return *otherwise;
         }
-        Code chain;
+        std::size_t rows = 1, cols = 1;
         for (const auto& [condition, value] : guarded) {
-            chain.rows = std::max(chain.rows, value.rows);
-            chain.cols = std::max(chain.cols, value.cols);
+            rows = std::max(rows, value.rows);
+            cols = std::max(cols, value.cols);
         }
-        for (std::size_t i = 0; i < chain.rows; ++i) {
-            for (std::size_t j = 0; j < chain.cols; ++j) {
+        return Chain(guarded, otherwise, rows, cols);
+    }
+
+    // Each cell as the step tests it: the guarded values in order, then the
+    // one that always applies, else NaN, as where no clause applies (C86).
+    static Code Chain(const std::vector<std::pair<std::string, Code>>& guarded,
+                      const std::optional<Code>& otherwise, std::size_t rows, std::size_t cols) {
+        Code chain;
+        chain.rows = rows;
+        chain.cols = cols;
+        for (std::size_t i = 0; i < rows; ++i) {
+            for (std::size_t j = 0; j < cols; ++j) {
+                if (guarded.empty() && otherwise) {
+                    chain.cells.push_back(otherwise->At(i, j));
+                    continue;
+                }
                 std::string cell;
                 for (const auto& [condition, value] : guarded)
                     cell += condition + " ? " + value.At(i, j).text + " : ";
@@ -1764,12 +1778,7 @@ private:
                         else
                             guarded.emplace_back(*condition, value);
                     }
-                for (std::size_t c = 0; c < walked.rows * walked.cols; ++c) {
-                    std::string cell;
-                    for (const auto& [condition, value] : guarded)
-                        cell += condition + " ? " + value.cells[c].text + " : ";
-                    general.push_back(cell + (otherwise ? otherwise->cells[c].text : "NAN"));
-                }
+                general     = Texts(Chain(guarded, otherwise, walked.rows, walked.cols));
                 index_text_ = outer_text;
                 return Code{};
             });
@@ -2032,14 +2041,9 @@ private:
     // read that much further back, and checked where it is read: before it
     // exists the interpreter reports it, and the term is NaN.
     Code At(const Sequence& sequence, int lag) {
-        struct Tried {
-            std::string condition, mark;
-            Code        value;
-        };
-        Code                 chain;
-        std::optional<Tried> otherwise;
-        std::vector<Tried>   guarded;
-        const Home           home(*this, sequence.definition);
+        std::vector<std::pair<std::string, Code>> guarded;
+        std::optional<Code>                       otherwise;
+        const Home                                home(*this, sequence.definition);
         const std::string    index = std::exchange(index_, std::string());
         const std::string    text =
             std::exchange(index_text_, "(double)(m_->index_ - " + std::to_string(lag) + ")");
@@ -2061,13 +2065,15 @@ private:
                 const std::optional<std::string> condition =
                     guard ? Condition(p.guard()) : std::optional<std::string>("");
                 if (!condition) continue;
-                clause_reads_ = &value_reads;
-                Tried tried{mark(guard_reads) + *condition, std::string(), Emit(clause.expression)};
-                tried.mark = mark(value_reads);
+                clause_reads_           = &value_reads;
+                const std::string test  = mark(guard_reads) + *condition;
+                Code              value = Emit(clause.expression);
+                if (const std::string check = mark(value_reads); !check.empty())
+                    for (Cell& cell : value.cells) cell = Cell(check + cell.text, 0);
                 if (condition->empty())
-                    otherwise = std::move(tried);
+                    otherwise = value;
                 else
-                    guarded.push_back(std::move(tried));
+                    guarded.emplace_back(test, value);
             }
         }
         index_        = index;
@@ -2075,21 +2081,7 @@ private:
         places_       = places;
         clause_reads_ = reads;
         shift_        = shift;
-        chain.rows    = sequence.rows;
-        chain.cols    = sequence.cols;
-        for (std::size_t c = 0; c < sequence.rows * sequence.cols; ++c) {
-            const auto  i = c / sequence.cols, j = c % sequence.cols;
-            std::string cell;
-            for (const Tried& tried : guarded)
-                cell += tried.condition + " ? " + tried.mark + tried.value.At(i, j).text + " : ";
-            if (guarded.empty() && otherwise && otherwise->mark.empty()) {
-                chain.cells.push_back(otherwise->value.At(i, j));
-                continue;
-            }
-            cell += otherwise ? otherwise->mark + otherwise->value.At(i, j).text : "NAN";
-            chain.cells.emplace_back(cell, 0);  // a conditional, below every operator
-        }
-        return chain;
+        return Chain(guarded, otherwise, sequence.rows, sequence.cols);
     }
 
     static std::string Subscript(std::size_t i, std::size_t j) {
