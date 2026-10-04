@@ -12,6 +12,7 @@
 #include <sstream>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 #include <vector>
 
 // A value refused where a single value is needed, and its shape, which a
@@ -198,22 +199,24 @@ public:
         // Two whole matrices are equal or not, which is one truth; an order
         // cell by cell would be a matrix of them.
         if (op == Comparison::Equal || op == Comparison::NotEqual) {
+            for (const Matrix<T>* m : {&a, &b})
+                std::for_each(m->data(), m->data() + m->extent_.count(),
+                              [](const T& x) { Numeric(x); });
             return Matrix<T>((op == Comparison::Equal) == (a == b) ? numeric_interface<T>::one()
                                                                    : numeric_interface<T>::zero());
         }
-        return Matrix<T>(Ordered(a.Comparable(), op, b.Comparable())
+        return Matrix<T>(Ordered(Numeric(a.Comparable()), op, Numeric(b.Comparable()))
                              ? numeric_interface<T>::one()
                              : numeric_interface<T>::zero());
     }
 
-    // A guard holds when it is not zero. NaN is not zero and so holds, while
-    // every comparison with it is false -- the one place the convention bites.
+    // A guard holds when it is not zero.
     static bool truth(const Matrix<T>&   a,
                       const std::string& needs = "a guard needs a single value") {
         if(!a.IsScalar()) {
             throw NotSingle(needs + ", not a " + a.extent_.Described(), a.extent_);
         }
-        return !(a.scalar_ == numeric_interface<T>::zero());
+        return !(Numeric(a.scalar_, needs) == numeric_interface<T>::zero());
     }
 
     // A 1x1 matrix -- which every literal and every intermediate scalar is --
@@ -488,6 +491,16 @@ private:
         return (static_cast<size_t>(b - 1) * extent_.rows + static_cast<size_t>(i - 1)) *
                    extent_.cols +
                static_cast<size_t>(j - 1);
+    }
+
+    // NaN is not a number, so a comparison or a truth of it has no answer and
+    // is refused, where C would guess (DESIGN.md, a NaN reaches every term
+    // that reads it).
+    static const T& Numeric(const T& x, std::string_view needs = "a comparison needs") {
+        if (!(x == x))
+            throw std::runtime_error(std::string(needs.substr(0, needs.find(" needs"))) +
+                                     " needs a number, not " + numeric_interface<T>::toString(x));
+        return x;
     }
 
     // Ordering needs real numbers, as the factorial does.

@@ -565,10 +565,12 @@ error: step_0 is already defined without a guard, so this clause can never apply
 
 A comparison is a number — `1` or `0` — so a guard is simply an expression
 that is not zero, and `sgn(x) = (x>0) - (x<0)` needs no guard at all. Ordering
-needs real numbers; equality does not. Conditions combine with `and` and
-`or`, which answer `1` or `0` as a comparison does, bind looser than it, and
-read their right side only when the left has not decided — so a guard such as
-`n > 0 and s_(n-1) > 1` never asks for `s_(-1)`:
+needs real numbers; equality does not. Neither takes NaN, which `0/~0` is, nor
+does a guard: a comparison or a truth of NaN has no answer, and is refused.
+Conditions combine with `and` and `or`, which answer `1` or `0` as a
+comparison does, bind looser than it, and read their right side only when the
+left has not decided — so a guard such as `n > 0 and s_(n-1) > 1` never asks
+for `s_(-1)`:
 
 ```
 >> inside(x) = 0 < x and x < 1
