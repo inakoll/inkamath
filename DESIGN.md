@@ -2973,7 +2973,7 @@ that exploring seven domains asked of the interpreter, by how many asked.
   `matrix` is its products, 65%, and `A` and `B` rebuilt cell by cell,
   33%, which only the memo rejected above would remove.
 
-- **`grad` of a definition by cells**, so that attention trains more than
+- `[done]` **`grad` of a definition by cells**, so that attention trains more than
   `W^V` and `W^O`. Softmax, a ReLU on each cell and a layer norm are written
   by their cells, and `grad` refuses every one, "grad cannot differentiate a
   definition by cells yet", so of the conformance model's weights only `W^V`
@@ -3061,3 +3061,19 @@ that exploring seven domains asked of the interpreter, by how many asked.
   cells, a tensor, guarded or not, and attention's `W^Q`, its gradient held
   to the one written by hand through softmax's Jacobian. Writing it found
   C77 and C78.
+
+  Built as specified, every entry passing as written, now
+  `test/data/gradcells.ink`; README shows a ReLU's gradient, and no other
+  golden moved. The walk is shared: `EvaluateCells` and `EvaluateTerm`, and
+  the choice of a clause under them, take what evaluates a clause, reads a
+  size, asks a guard and stores a cell, as the value or as the parts. Landed
+  first as a refactor, every golden byte-identical, `matrix` ran 934.2M
+  instructions under callgrind against 934.7M before, and the other
+  workloads within 0.35%. A cell's parts are stored where its value is, and a
+  part a cell lacks is 0 there even where the matrix written whole had one.
+  `Derivative::Fill` now starts where the evaluator's fill does, as the limit
+  starts where `lim` does, so a clause for one cell is a base term for
+  neither; a guard choosing a whole term is named by its definition, as any
+  definition's is. Building it found C79, fixed, and C80, open. 191 lines of
+  sources added and 131 removed, the refactor's moves among them: 60 more in
+  all, where about 120 were planned.

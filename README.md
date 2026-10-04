@@ -725,12 +725,27 @@ dcube(t) = grad_(u = t) cube(u)
 ```
 
 A definition in cases takes the slope of the clause that holds at the point,
-and a limit the limit of its terms' slopes. Where a derivative does not exist
-or would mislead, `grad` says why rather than answer: at a jump of `floor` or
-of a comparison, at a clause that holds only at the point, for an exponent
-that changes with the name over any base but `e`, for a Jacobian, for a body
-that does not read the name, and through a definition that reads the global
-of that name, which the bound name does not reach.
+a definition by cells each cell's, and a limit the limit of its terms'
+slopes:
+
+```
+>> relu(v)[j<=2] = v[j]
+relu(v)[j<=2] = v[j]
+
+>> relu(v)[j<=2] | v[j] < 0 = 0
+relu(v)[j<=2] | v[j] < 0 = 0
+
+>> grad_(v = [3; -1]) [1 1]*relu(v)
+[1;
+ 0]
+```
+
+Where a derivative does not exist or would mislead, `grad` says why rather
+than answer: at a jump of `floor` or of a comparison, at a clause that holds
+only at the point, for an exponent that changes with the name over any base
+but `e`, for a Jacobian, for a body that does not read the name, and through a
+definition that reads the global of that name, which the bound name does not
+reach.
 
 A term can be defined by its cells, as a matrix is (section 2): the brackets
 after the index name the row and the column and bound them, or one index a
