@@ -97,11 +97,11 @@ public:
                           [](const T& x, const T& y) { return numeric_interface<T>::same(x, y); });
     }
     static std::size_t hash(const Matrix<T>& a) {
-        std::size_t hash = a.extent_.count();
-        std::for_each(a.data(), a.data() + a.extent_.count(), [&hash](const T& value) {
-            hash = hash * 31 + numeric_interface<T>::hash(value);
+        std::size_t mixed = a.extent_.count();
+        std::for_each(a.data(), a.data() + a.extent_.count(), [&mixed](const T& value) {
+            mixed = mixed * 31 + numeric_interface<T>::hash(value);
         });
-        return hash;
+        return mixed;
     }
 
     static bool exact(const Matrix<T>& a) {
