@@ -2975,13 +2975,13 @@ that exploring seven domains asked of the interpreter, by how many asked.
   `matrix` is its products, 65%, and `A` and `B` rebuilt cell by cell,
   33%, which only the memo rejected above would remove.
 
-- `[done]` **`grad` of a definition by cells**, so that attention trains more than
-  `W^V` and `W^O`. Softmax, a ReLU on each cell and a layer norm are written
-  by their cells, and `grad` refuses every one, "grad cannot differentiate a
-  definition by cells yet", so of the conformance model's weights only `W^V`
-  and `W^O`, applied after the softmax, have a gradient, and only from a
-  loss whose softmax reads none of its parameters; `W^Q` and `W^K` reach the
-  loss through it. Specified, not built.
+- `[done]` **`grad` of a definition by cells**, so that attention trains more
+  than `W^V` and `W^O`. Softmax, a ReLU on each cell and a layer norm are
+  written by their cells, and `grad` refused every one, "grad cannot
+  differentiate a definition by cells yet", so of the conformance model's
+  weights only `W^V` and `W^O`, applied after the softmax, had a gradient, and
+  only from a loss whose softmax reads none of its parameters; `W^Q` and `W^K`
+  reach the loss through it.
 
   A definition by cells is differentiated as it is evaluated, cell by cell:
   each cell's clause chosen as `Reference` chooses it, its row, column and
@@ -3020,8 +3020,8 @@ that exploring seven domains asked of the interpreter, by how many asked.
   of every term that both give a cell are the error evaluating them is. A
   limit of a sequence by cells is walked from its highest base term, written
   whole or by its cells, where `lim` starts it, a clause for one cell being
-  no base term; `Derivative::Limit` skips a base by cells today, which
-  nothing could reach.
+  no base term; `Derivative::Limit` skipped a base by cells, which nothing
+  could reach before.
 
   With parameters, its arguments carry their parts, as any call's do: the
   softmax of a vector, a layer reading its weights. Without, it reads only
@@ -3070,12 +3070,13 @@ that exploring seven domains asked of the interpreter, by how many asked.
   the choice of a clause under them, take what evaluates a clause, reads a
   size, asks a guard and stores a cell, as the value or as the parts. Landed
   first as a refactor, every golden byte-identical, `matrix` ran 934.2M
-  instructions under callgrind against 934.7M before, and the other
-  workloads within 0.35%. A cell's parts are stored where its value is, and a
-  part a cell lacks is 0 there even where the matrix written whole had one.
+  instructions under callgrind against 934.7M before, and the other workloads
+  within 0.35%. A cell's parts are stored where its value is, and a part a
+  cell lacks is 0 there even where the matrix written whole had one.
   `Derivative::Fill` now starts where the evaluator's fill does, as the limit
   starts where `lim` does, so a clause for one cell is a base term for
   neither; a guard choosing a whole term is named by its definition, as any
-  definition's is. Building it found C79, fixed, and C80, open. 197 lines of
-  sources added and 136 removed, the refactor's moves among them: 61 more in
-  all, where about 120 were planned.
+  definition's is. Building it found C79, fixed, and C80, refused since; its
+  review found C81, fixed, and C82, open. 197 lines of sources added and 136
+  removed, the refactor's moves among them: 61 more in all, where about 120
+  were planned.
