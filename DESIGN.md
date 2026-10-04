@@ -3447,7 +3447,12 @@ that exploring seven domains asked of the interpreter, by how many asked.
   `isnan(m_->y[0]) ? NAN : m_->y[0] > 0.5`, which C's right-associative
   conditional makes take no clause, `isnan(a) || isnan(b)` where both
   operands are tested; a comparison as a value is `(isnan(a) ? NAN : a > b ?
-  1.0 : 0.0)`; a bare truth tests itself. `and` and `or` take the path a
+  1.0 : 0.0)`; a bare truth tests itself. A power decides too, where C's
+  absorbs a NaN, `pow(1, NaN)` and `pow(NaN, 0)` being 1: its base is
+  tested unless its exponent is a constant other than 0, and its exponent
+  unless its base is a constant other than 1, so `1^y_n` is `(isnan(m_->y[0])
+  ? NAN : pow(1.0, m_->y[0]))` and `stiff`'s `pow(t1_, 3.0)` is as it was.
+  `and` and `or` take the path a
   guard that defers already takes, a truth as a double of 1, 0 or NaN,
   whose right side is read only where the left has not decided, as in the
   interpreter. Each guard of a chain tests its own operands, since one tried
@@ -3524,7 +3529,8 @@ that exploring seven domains asked of the interpreter, by how many asked.
   gives none`; 0/0 is NaN and, in an aware header, propagates. A guard
   reading a limit directly computes it twice, as its value already does. An
   input the host feeds as NaN propagates in an aware header and not in
-  another: the host's NaN is the host's.
+  another: the host's NaN is the host's. The interpreter takes a power of its
+  own NaN as C does, `1^(0/~0)` being 1, where an aware step answers NaN.
 
   About 30 lines and none removed: 25 in the compiler, the gate and its
   second run, the operand's test, the guard, the comparison, `and` and `or`,

@@ -5,7 +5,8 @@
 # a comparison whose operand is NaN is to answer NaN.
 #
 # 'run' reads a limit that does not converge from step 8, where r is -1;
-# 'sign' a function no clause of which applies from step 4; 'shy' a clause
+# 'sign' a function no clause of which applies from step 4, through a
+# comparison and through a power, pow(1, NaN) being 1 in C; 'shy' a clause
 # the interpreter refuses wherever it is taken (C86), from step 3; 'slope'
 # the same as 'sign', cell by cell, and through a healthy cell of a term the
 # interpreter refuses whole; 'pair' the same as 'sign' through a bare
@@ -15,6 +16,7 @@
 #
 #     run.high: 0 at 8, where the interpreter gives none: p did not converge within 100 terms (last term 1)
 #     sign.on: 0 at 4, where the interpreter gives none: no clause of r applies
+#     sign.p: 1 at 4, where the interpreter gives none: no clause of r applies
 #     shy.z: 0 at 3, where the interpreter gives none: division by zero
 #     slope.y[1,1]: 1 at 2, where the interpreter gives none: no clause of r applies
 #     slope.g[1,1]: 0 at 0, where the interpreter gives none: no clause of r applies
@@ -33,6 +35,7 @@
 #     sign: 100 steps from 0, against exact values
 #     sign.y: within 0
 #     sign.on: within 0
+#     sign.p: within 0
 #
 #     shy: 100 steps from 0, against exact values
 #     shy.y: within 0
@@ -61,6 +64,7 @@
 #
 #     m_->y[0] = isnan(m_->x[0]) ? NAN : m_->x[0] > 0.0 ? m_->x[0] : NAN;
 #     m_->on[0] = isnan(m_->y[0]) ? NAN : m_->y[0] > 2.0 ? 1.0 : 0.0;
+#     m_->p[0] = (isnan(m_->y[0]) ? NAN : pow(1.0, m_->y[0]));
 #
 #     m_->y[0] = isnan(m_->x[0]) ? NAN : m_->x[0] <= 0.0 ? NAN : m_->x[0];
 #     m_->z[0] = isnan(m_->y[0]) ? NAN : m_->y[0] > 1.0 ? 1.0 : 0.0;
@@ -140,6 +144,7 @@ pick(x_n) = {
     y_n = r(x_n)
     on_n | y_n > 2 = 1
     on_n = 0
+    p_n = 1^y_n
 }
 sign = pick(x_n = 4 - n)
 
