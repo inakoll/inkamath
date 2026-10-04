@@ -3525,14 +3525,17 @@ that exploring seven domains asked of the interpreter, by how many asked.
   `isnan` is the compiler's. The complement, `a > b ? 1.0 : a <= b ? 0.0 :
   NAN`: `==` and `<>` have none.
 
-  Known limits, each as today. A division by zero is an infinity, which
-  compares as a number; testing every divisor would move every header that
-  divides, and `--check` says it, `pole.y: inf at 3, where the interpreter
-  gives none`; 0/0 is NaN and, in an aware header, propagates. A guard
-  reading a limit directly computes it twice, as its value already does. An
-  input the host feeds as NaN propagates in an aware header and not in
-  another: the host's NaN is the host's. The interpreter takes a power of its
-  own NaN as C does, `1^(0/~0)` being 1, where an aware step answers NaN.
+  Known limits, each as today. A header that writes no NaN is not aware, yet
+  it divides: 0/0 there is NaN and a division by zero an infinity, and its
+  guards and comparisons decide on either as on a number. In an aware header
+  0/0 propagates, while an infinity still compares as a number; testing
+  every divisor would move every header that divides, and `--check` says
+  it, `pole.y: inf at 3, where the interpreter gives none`. A host's NaN, an
+  input it feeds or a parameter it assigns, propagates only in an aware
+  header; in another, its guards decide on it. A guard reading a limit
+  directly computes it twice, as its value already does. The interpreter
+  takes a power of its own NaN as C does, `1^(0/~0)` being 1, where an aware
+  step answers NaN.
 
   About 30 lines and none removed: 25 in the compiler, the gate and its
   second run, the operand's test, the guard, the comparison, `and` and `or`,
