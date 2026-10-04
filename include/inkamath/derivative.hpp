@@ -334,8 +334,8 @@ private:
         definition.Clauses().front().parameters.BindDefaults(call, ordinary_);
         const Local local(*this);
         for (const auto& argument : arguments) frames_.back().push_back(argument);
-        const Flag unguarded(guard_, false);
-        Jet        result = Dispatch(definition, indexed, index);
+        const Flag<bool> unguarded(guard_, false);
+        Jet              result = Dispatch(definition, indexed, index);
         memo_.emplace(key, result);
         return result;
     }
@@ -347,7 +347,7 @@ private:
               const Arguments& arguments) {
         const Clause<T>* lowest = definition.EndBase(true);
         if (!lowest) return;
-        const Flag filling(filling_, true);
+        const Flag<bool> filling(filling_, true);
         try {
             for (int k = lowest->parameters.index() + 1; k < index; ++k)
                 (void)Term(definition, call, true, k, arguments);
@@ -414,10 +414,9 @@ private:
     // point only, an equality where its sides move apart, takes a clause
     // whose slope is not the function's: what, a definition or its cell.
     bool Holds(const std::string& what, const PExpression<T>& guard) {
-        const Flag        guarding(guard_, true);
-        const std::string previous = std::exchange(guarded_, what);
-        const Jet         held     = Eval(guard);
-        guarded_                   = previous;
+        const Flag<bool>               guarding(guard_, true);
+        const Flag<const std::string*> naming(guarded_, &what);
+        const Jet                      held = Eval(guard);
         return numeric_interface<T>::truth(*held[0]);
     }
 
@@ -428,7 +427,7 @@ private:
         if (*a[0] == *b[0] && (Moves(a) || Moves(b))) {
             if (!guard_) throw std::runtime_error("a comparison jumps at " + Where());
             if (compare.Op() == Comparison::Equal || compare.Op() == Comparison::NotEqual)
-                throw std::runtime_error(guarded_ + " takes a clause at " + Where() +
+                throw std::runtime_error(*guarded_ + " takes a clause at " + Where() +
                                          " that holds only there");
         }
         return Constant(value);
@@ -875,15 +874,17 @@ private:
         Derivative& d_;
     };
 
+    // Set while this lives, and put back however it ends.
+    template <typename V>
     struct Flag {
-        Flag(bool& flag, bool value) : flag_(flag), previous_(flag) { flag_ = value; }
+        Flag(V& flag, V value) : flag_(flag), previous_(flag) { flag_ = value; }
         ~Flag() { flag_ = previous_; }
         Flag(const Flag&)            = delete;
         Flag& operator=(const Flag&) = delete;
 
     private:
-        bool& flag_;
-        bool  previous_;
+        V& flag_;
+        V  previous_;
     };
 
     ReferenceStack<T>&                                    stack_;
@@ -895,7 +896,7 @@ private:
     std::size_t                                           depth_   = 0;
     bool                                                  guard_   = false;
     bool                                                  filling_ = false;
-    std::string                                           guarded_;
+    const std::string*                                    guarded_ = nullptr;
 };
 
 #endif  // INKAMATH_DERIVATIVE_HPP
