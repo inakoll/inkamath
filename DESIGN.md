@@ -3462,8 +3462,10 @@ that exploring seven domains asked of the interpreter, by how many asked.
   clause being taken; today a guard of `and` or `or` writes the NaN into that
   int. The Interface comment of such a header adds "A term the interpreter
   would refuse is NaN, and so is every term that reads one, through a guard
-  or a comparison as through arithmetic", so the host's one test is `isnan`
-  on what it reads.
+  or a comparison as through arithmetic; -ffinite-math-only, which
+  -ffast-math implies, removes the tests that make it so", so the host's one
+  test is `isnan` on what it reads, and knows that a compiler told no value
+  is NaN may take every `isnan` as false.
 
   The interpreter refuses the same decisions on its own NaN, which inexact
   arithmetic makes, `0/~0`: a comparison of one answered 0 and a truth of
