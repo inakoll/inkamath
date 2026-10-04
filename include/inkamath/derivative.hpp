@@ -11,6 +11,7 @@
 #include <set>
 #include <stdexcept>
 #include <string>
+#include <type_traits>
 #include <typeinfo>
 #include <utility>
 #include <vector>
@@ -179,10 +180,11 @@ private:
     Jet Eval(const PExpression<T>& e) { return Eval(*e); }
 
     // A dynamic_cast without its search of the bases, which is most of what
-    // the dispatch below cost: no node class derives from another, so a node
-    // has no type but its own to match.
+    // the dispatch below cost: a node class is final, so a node has no type
+    // but its own to match.
     template <typename Node>
     static Node* Exactly(Expression<T>& e) {
+        static_assert(std::is_final_v<Node>);
         return typeid(e) == typeid(Node) ? static_cast<Node*>(&e) : nullptr;
     }
 
