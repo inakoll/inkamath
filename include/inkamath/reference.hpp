@@ -489,6 +489,23 @@ public:
                                  (Cells() ? "" : "; write it by its cells"));
     }
 
+    // Does this clause answer this call? Asked by grad too. The shape is
+    // checked first and the guard last, because a guard may read the index it
+    // is being asked about -- and the index is bound on trial, so that a
+    // clause which does not answer leaves the scope as it found it.
+    template <typename Walk>
+    bool Selects(const Clause<T>& clause, bool indexed, int index, Walk& walk) const {
+        const ParametersDefinition<T>& p = clause.parameters;
+        if (p.indexed() != indexed) return false;
+        if (!p.general() && indexed && p.index() != index) return false;
+        if (!p.general()) return !p.guarded() || walk.Holds(*this, clause, index, 0, 0, 0);
+        typename ReferenceStack<T>::Trial trial(walk.stack(), p.index_name());
+        SetIndex(p.index_name(), index, walk.stack());
+        if (p.guarded() && !walk.Holds(*this, clause, index, 0, 0, 0)) return false;
+        trial.keep();
+        return true;
+    }
+
 private:
     // A recurrence nests one reference per term it reaches back, so a term far
     // from its base runs out of depth. Filled from the base up instead, each
@@ -802,27 +819,6 @@ private:
     // A clause bound from inside an expression has no written form to quote.
     std::string Written(const Clause<T>& clause) const {
         return clause.written.empty() ? reference_name_ : clause.written;
-    }
-
-    // Does this clause answer this call? The shape is checked first and the
-    // guard last, because a guard may read the index it is being asked about
-    // -- and the index is bound on trial, so that a clause which does not
-    // answer leaves the scope as it found it.
-    template <typename Walk>
-    bool Selects(const Clause<T>& clause, bool indexed, int index, Walk& walk) const {
-        const ParametersDefinition<T>& p = clause.parameters;
-        if(p.indexed() != indexed) return false;
-        if(!p.general() && indexed && p.index() != index) {
-            return false;
-        }
-        if(!p.general()) {
-            return !p.guarded() || walk.Holds(*this, clause, index, 0, 0, 0);
-        }
-        typename ReferenceStack<T>::Trial trial(walk.stack(), p.index_name());
-        SetIndex(p.index_name(), index, walk.stack());
-        if (p.guarded() && !walk.Holds(*this, clause, index, 0, 0, 0)) return false;
-        trial.keep();
-        return true;
     }
 
     // The walk over the cells for the value.

@@ -414,7 +414,7 @@ private:
         for (const Clause<T>& clause : definition.Clauses()) {
             const ParametersDefinition<T>& p = clause.parameters;
             if (!p.guarded() && (!p.indexed() || p.general())) continue;
-            if (Selects(definition, clause, indexed, index)) return Eval(clause.expression);
+            if (definition.Selects(clause, indexed, index, parts)) return Eval(clause.expression);
         }
         if (indexed) {
             if (plain) throw std::runtime_error(name + " is not a sequence");
@@ -429,18 +429,6 @@ private:
         if (guarded) throw std::runtime_error("no clause of " + name + " applies");
         throw std::runtime_error(name + " is a sequence; index it (" + name + "_" +
                                  std::to_string(lowest.value_or(0)) + ")");
-    }
-
-    bool Selects(const Reference<T>& definition, const Clause<T>& clause, bool indexed, int index) {
-        const ParametersDefinition<T>& p = clause.parameters;
-        if (p.indexed() != indexed) return false;
-        if (!p.general() && indexed && p.index() != index) return false;
-        if (!p.general()) return !p.guarded() || Holds({definition.Name()}, p.guard());
-        typename ReferenceStack<T>::Trial trial(stack_, p.index_name());
-        stack_.BindValue(p.index_name(), T(index));
-        if (p.guarded() && !Holds({definition.Name()}, p.guard())) return false;
-        trial.keep();
-        return true;
     }
 
     // What a guard chooses a clause for, a definition or one of its cells,
