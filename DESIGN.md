@@ -32,6 +32,12 @@ Two constraints govern every phase:
   `ParametersVisitor`. Nineteen against five hundred and fifty-eight is the
   measurement, not an argument that the five hundred and fifty-eight were
   wrong.
+
+  Each entry since stated its own cost and none the sum: `include/` went
+  from 8,896 lines to 12,790 in three days. A removal pass at ba91fcf,
+  sharing what had been written twice, took `include/` and `src/` together
+  from **13,463 lines to 13,275**; the rest of the growth is capability.
+  From here an entry states the total after it as well as its own delta.
 - **Recognisability.** The author must still recognise this as his project.
   Three ideas are his and are not up for renegotiation: names bind
   *expressions* rather than values and are re-evaluated lazily; matrices of
