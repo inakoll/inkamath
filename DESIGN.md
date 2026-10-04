@@ -2972,11 +2972,12 @@ that exploring seven domains asked of the interpreter, by how many asked.
   33%, which only the memo rejected above would remove.
 
 - **`grad` of a definition by cells**, so that attention trains more than
-  `W^O`. Softmax, a ReLU on each cell and a layer norm are written by their
-  cells, and `grad` refuses every one, "grad cannot differentiate a
-  definition by cells yet", so of the conformance model's weights only
-  `W^O`, applied after the softmax, has a gradient; `W^Q`, `W^K` and `W^V`
-  reach the loss through it. Specified, not built.
+  `W^V` and `W^O`. Softmax, a ReLU on each cell and a layer norm are written
+  by their cells, and `grad` refuses every one, "grad cannot differentiate a
+  definition by cells yet", so of the conformance model's weights only `W^V`
+  and `W^O`, applied after the softmax, have a gradient, and only from a
+  loss whose softmax reads none of its parameters; `W^Q` and `W^K` reach the
+  loss through it. Specified, not built.
 
   A definition by cells is differentiated as it is evaluated, cell by cell:
   each cell's clause chosen as `Reference` chooses it, its row, column and
