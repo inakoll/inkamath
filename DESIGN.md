@@ -3335,19 +3335,20 @@ that exploring seven domains asked of the interpreter, by how many asked.
   that its own evaluation refuses where a single value is needed -- a
   comparison, a guard, `and`, `or`, an exponent, an index, a factorial -- is
   refused naming the innermost call written in the session or a file, not in
-  the prelude, given an argument of the refused value's shape, quoted as
-  written, with the definition by cells that applies it to each cell, every
-  argument that is not a single value indexed: `tanh needs single values,
-  and [0; 1/2] is a 2x1 matrix; by its cells, h[i,j] = tanh([0; 1/2][i,j])`,
-  a tensor's by `[s,i,j]`. So `tanh(M)` names `tanh`, not the `exp` inside
-  it; `sig(z) = 1/(1 + exp(-z))` names its own `exp(-z)`; a layer that
-  applies a function of single values to the whole names it, not its loss.
+  the prelude, given an argument of the refused value's shape, and that
+  shape: `tanh needs single values, not a 2x1 matrix; write it by its
+  cells`. The argument is not quoted as written, which the parser keeps no
+  text for and about 30 lines would add, nor is a definition by cells
+  written out, whose name would be invented. So `tanh(M)` names `tanh`, not
+  the `exp` inside it; `sig(z) = 1/(1 + exp(-z))` names its own `exp(-z)`;
+  a layer that applies a function of single values to the whole names it,
+  not its loss.
   Where no call was given a value of that shape, as `x*x' > 0` of a 2x1, and
   outside any call, an operator keeps its words, and `e^A`, on paper the
   matrix exponential, stays refused. And `mod` refuses a divisor that is a
-  matrix, `mod needs a single value to divide by, and [3 3; 3 3] is a 2x2
-  matrix; by its cells, ...`: `b*floor(a/b)` is then a product of matrices,
-  so `mod([7 8; 9 10], [3 3; 3 3])` answered `[-8, -7; -6, -5]`. The ruling
+  matrix, `mod needs a single value to divide by, not a 2x2 matrix; write it
+  by its cells`: `b*floor(a/b)` is then a product of matrices, so
+  `mod([7 8; 9 10], [3 3; 3 3])` answered `[-8, -7; -6, -5]`. The ruling
   named two matrices; `mod(7, [3 4; 5 6])` multiplies as well, so the
   refusal is the divisor's. The prelude has no test for a matrix to say it
   with, so the call of its `mod` is checked before the body. Two refusals
@@ -3365,10 +3366,9 @@ that exploring seven domains asked of the interpreter, by how many asked.
   answers `MANIFESTO.md`'s open question on a function of cells by its own
   default, the cell form, made light rather than replaced.
 
-  About 150 lines: the reads found 25, the size read and its two refusals 40,
-  `tex` 3, the compiler 20, the message of a call given a matrix 50, quoting
-  an argument as written among them, and `mod` 8; the check that a size is
-  written, where a clause is, goes.
+  About 120 lines: the reads found 25, the size read and its two refusals 40,
+  `tex` 3, the compiler 20, the message of a call given a matrix 20, and
+  `mod` 8; the check that a size is written, where a clause is, goes.
 
   Specified in `test/data/spec/sizes.ink`, 104 of its 147 entries failing,
   those passing being definitions echoing themselves and four answers that

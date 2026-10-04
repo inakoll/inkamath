@@ -318,13 +318,12 @@ fs(P)[i,j] = P[1][i,j]
 # --- a call given a matrix where single values are needed --------------------
 
 # The innermost call written in the session that was given a value of the
-# refused shape is named, its argument quoted, with the definition by cells
-# that applies it to each cell.
+# refused shape is named, with that shape.
 >> tanh([0; 1/2])
-error: tanh needs single values, and [0; 1/2] is a 2x1 matrix; by its cells, h[i,j] = tanh([0; 1/2][i,j])
+error: tanh needs single values, not a 2x1 matrix; write it by its cells
 
 >> exp([0 1; 2 3])
-error: exp needs single values, and [0 1; 2 3] is a 2x2 matrix; by its cells, h[i,j] = exp([0 1; 2 3][i,j])
+error: exp needs single values, not a 2x2 matrix; write it by its cells
 
 >> ex(z)[i,j] = exp(z[i,j])
 ex(z)[i,j] = exp(z[i,j])
@@ -343,14 +342,14 @@ error: a comparison needs single values, not a 1x2 matrix
 
 # No longer a comparison the session never wrote.
 >> log([2 10])
-error: log needs single values, and [2 10] is a 1x2 matrix; by its cells, h[i,j] = log([2 10][i,j])
+error: log needs single values, not a 1x2 matrix; write it by its cells
 
 # exp is written in sig, so it is the innermost call the session wrote.
 >> sig(z) = 1/(1 + exp(-z))
 sig(z) = 1/(1 + exp(-z))
 
 >> sig([0 1 -1])
-error: exp needs single values, and -z is a 1x3 matrix; by its cells, h[i,j] = exp((-z)[i,j])
+error: exp needs single values, not a 1x3 matrix; write it by its cells
 
 >> sg(z)[i,j] = sig(z[i,j])
 sg(z)[i,j] = sig(z[i,j])
@@ -366,7 +365,7 @@ nonzero(x) | x = 1
 nonzero(x) | x == 0 = 0
 
 >> nonzero([1 2])
-error: nonzero needs single values, and [1 2] is a 1x2 matrix; by its cells, h[i,j] = nonzero([1 2][i,j])
+error: nonzero needs single values, not a 1x2 matrix; write it by its cells
 
 >> nz(x) = 0
 nz(x) = 0
@@ -375,7 +374,7 @@ nz(x) = 0
 nz(x) | x = 1
 
 >> nz([7;;])
-error: nz needs single values, and [7;;] is a 1x1x1 tensor; by its cells, h[s,i,j] = nz([7;;][s,i,j])
+error: nz needs single values, not a 1x1x1 tensor; write it by its cells
 
 >> th3(z)[s,i,j] = tanh(z[s,i,j])
 th3(z)[s,i,j] = tanh(z[s,i,j])
@@ -397,10 +396,10 @@ error: a comparison needs single values, not a 2x2 matrix
 [1, 2, 0]
 
 >> mod([7 8; 9 10], [3 3; 3 3])
-error: mod needs a single value to divide by, and [3 3; 3 3] is a 2x2 matrix; by its cells, h[i,j] = mod([7 8; 9 10][i,j], [3 3; 3 3][i,j])
+error: mod needs a single value to divide by, not a 2x2 matrix; write it by its cells
 
 >> mod(7, [3 4 5])
-error: mod needs a single value to divide by, and [3 4 5] is a 1x3 matrix; by its cells, h[i,j] = mod(7, [3 4 5][i,j])
+error: mod needs a single value to divide by, not a 1x3 matrix; write it by its cells
 
 >> md(a, b)[i,j] = mod(a[i,j], b[i,j])
 md(a, b)[i,j] = mod(a[i,j], b[i,j])
@@ -492,7 +491,7 @@ rs(x) | x < 0 = 0
 bad(W, x) = v*rs(W*x + b)
 
 >> bad(A, X[1]')
-error: rs needs single values, and W*x + b is a 2x1 matrix; by its cells, h[i,j] = rs((W*x + b)[i,j])
+error: rs needs single values, not a 2x1 matrix; write it by its cells
 
 # --- softmax and cross-entropy trained one step ------------------------------
 
