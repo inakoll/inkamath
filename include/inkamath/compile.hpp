@@ -228,6 +228,7 @@ private:
         // its own terms; and the holds it reads, by place in holds_.
         int                                  period = 1, phase = 0, first = 0;
         int filled = 0;  // its terms before the first that init folds from a history
+        std::set<std::string> parameters;  // that its clauses read
         std::map<std::string, std::set<int>> samples;
         std::set<int>                        own;
         std::vector<std::size_t>             holds;
@@ -721,11 +722,14 @@ private:
         // the way, whose cells may use the same names, must not see or undo them.
         const auto outer_places = std::exchange(places_, Captured(sequences_.at(name).definition));
         const int  outer_shift  = std::exchange(shift_, 0);
+        auto       outer_parameters = std::exchange(read_parameters_, {});
         try {
             body();
         } catch (const Reason& reason) {
             throw Refusal("cannot compile " + name + ": " + reason.what());
         }
+        sequences_.at(name).parameters.insert(read_parameters_.begin(), read_parameters_.end());
+        read_parameters_.insert(outer_parameters.begin(), outer_parameters.end());
         reading_     = outer_reading;
         index_       = outer_index;
         within_      = outer_within;
@@ -2820,7 +2824,7 @@ private:
         const auto              history = histories_.find(name);
         const Reference<Value>* definition =
             history != histories_.end() ? history->second : sequences_.at(name).definition;
-        if (fresh && definition) {
+        if (fresh && definition && !Parametric(name)) {
             definitions_.Forget();
             definitions_.BeginEvaluation();
             try {
@@ -2832,6 +2836,26 @@ private:
             }
         }
         return slot->second.has_value();
+    }
+
+    // Whether a term can read a parameter, which the host may assign after
+    // init has folded it.
+    bool Parametric(const std::string& name) const {
+        std::set<std::string>    seen{name};
+        std::vector<std::string> left{name};
+        while (!left.empty()) {
+            const Sequence& sequence = sequences_.at(left.back());
+            left.pop_back();
+            if (!sequence.parameters.empty()) return true;
+            std::vector<std::string> reads;
+            for (const Reads* each :
+                 {&sequence.reads, &sequence.deferred, &sequence.samples, &sequence.seeded})
+                for (const auto& [read, lags] : *each) reads.push_back(read);
+            for (const std::size_t h : sequence.holds) reads.push_back(holds_[h].read);
+            for (const std::string& read : reads)
+                if (seen.insert(read).second) left.push_back(read);
+        }
+        return false;
     }
 
     // Whether the left of an 'and' or 'or' decides at step n, folded there.

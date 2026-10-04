@@ -364,6 +364,19 @@ refused(biased "a = 1, x_n) = {\n    x_n | n < 0 = a\n    c_n = x_(n-1)"
 refused(swap "x_n) = {\n    x_n | n < 0 = [0; 0]\n    c_n = [0 1; 1 0]*x_(n-1)"
         "x: a history that is not a single value")
 
+# A term init would fold from a history but that reads a parameter, which the
+# host may assign after init: through a slow sequence's samples, and through
+# an argument.
+refused(scaled "a = 2, x_n) = {\n    x_n | n < 0 = 1\n    y_m = a*x_(2*m)\n    z_n = y_(floor(n/2) - 1)"
+        "z: z_0 reads y_-1, before y's first tick, where its samples could give a term")
+file(WRITE "${OUT}/gained.ink" "two(x_n) = {\n    x_(-2) = 0\n    c_n = x_(n-1) + x_(n-2)\n}\n"
+     "gained(a = 2, x_n) = {\n    x_n | n < 0 = 3\n    inner = two(x_n = a*x_n)\n"
+     "    c_n = inner.c_n\n}\n")
+set(args --compile gained.ink gained -o gained.h)
+set(stderr "inkamath: cannot compile inner.c: inner.c_0 reads inner.x_-1, before the stream, where inner.x has no history\n")
+set(exit 1)
+check(history_gained)
+
 # A guarded clause's value is read only where its guard, folded, holds.
 file(WRITE "${OUT}/guarded.ink" "guarded(x_n) = {\n    c_n | n > 0 = x_(n-1)\n    c_n = 0\n}\n")
 set(args --compile guarded.ink guarded -o guarded.h)

@@ -3225,8 +3225,9 @@ that exploring seven domains asked of the interpreter, by how many asked.
   sequence's first tick stays refused; the history's own clauses are checked
   as specified, folded in the order written, a term after a guarded clause
   folded rather than refused. Departures: a term folded so through an
-  argument or a slow sequence's samples that reads a parameter is folded at
-  its value when compiled, where the spec computes it again or refuses it; a
+  argument or a slow sequence's samples that can read a parameter is
+  refused, as the host may assign the parameter after init, where the spec
+  computes it again at the input's rate; a
   read in a term computed again (C71) has nothing to keep it, so is refused
   where its history does not give it even if a guard would have kept it; a
   slow sequence's first tick still waits for its samples from the stream,
