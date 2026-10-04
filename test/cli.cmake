@@ -386,8 +386,9 @@ holds(compile_nan_level level.h
 ]]
       [[ * name_(n-k) for each sequence: x, y and high. A term the interpreter would
  * refuse is NaN, and so is every term that reads one, through a guard or a
- * comparison as through arithmetic; -ffinite-math-only, which -ffast-math
- * implies, removes the tests that make it so.
+ * comparison as through arithmetic. Built with -ffinite-math-only, which
+ * -ffast-math implies, GCC removes the tests that make it so, and Clang warns
+ * of each NaN.
 ]])
 holds(compile_nan_pick pick.h
       [[    m_->y[0] = isnan(m_->x[0]) ? NAN : m_->x[0] > 0.0 ? m_->x[0] : NAN;

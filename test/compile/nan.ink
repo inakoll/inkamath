@@ -144,8 +144,9 @@
 #
 #     * name_(n-k) for each sequence: x, y and high. A term the interpreter would
 #     * refuse is NaN, and so is every term that reads one, through a guard or a
-#     * comparison as through arithmetic; -ffinite-math-only, which -ffast-math
-#     * implies, removes the tests that make it so.
+#     * comparison as through arithmetic. Built with -ffinite-math-only, which
+#     * -ffast-math implies, GCC removes the tests that make it so, and Clang warns
+#     * of each NaN.
 #
 # A header that writes no NaN is byte for byte as now: kernel.h, net.h and
 # pid_clamped.h keep their clamps and ReLUs untested, and bank, chain, fir,
@@ -164,9 +165,9 @@
 #
 #     * hi = 1.0, lo = -1.0 and q = 0.25. After assigning one, call adc_update. A
 #     * term the interpreter would refuse is NaN, and so is every term that reads
-#     * one, through a guard or a comparison as through arithmetic;
-#     * -ffinite-math-only, which -ffast-math implies, removes the tests that make
-#     * it so.
+#     * one, through a guard or a comparison as through arithmetic. Built with
+#     * -ffinite-math-only, which -ffast-math implies, GCC removes the tests that
+#     * make it so, and Clang warns of each NaN.
 #
 # and steps, from v on, its 'and' and 'or' as truths of 1, 0 or NaN, its
 # temporaries numbered in the order the sequences are compiled, by name, so

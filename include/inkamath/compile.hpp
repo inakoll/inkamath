@@ -3188,8 +3188,9 @@ private:
         if (aware_)
             text +=
                 " A term the interpreter would refuse is NaN, and so is every term that reads "
-                "one, through a guard or a comparison as through arithmetic; -ffinite-math-only, "
-                "which -ffast-math implies, removes the tests that make it so.";
+                "one, through a guard or a comparison as through arithmetic. Built with "
+                "-ffinite-math-only, which -ffast-math implies, GCC removes the tests that make "
+                "it so, and Clang warns of each NaN.";
         std::string out = "/* Using it:\n *\n";
         out += " *     " + module + " m;\n";
         out += " *     " + module + "_init(&m);\n";

@@ -3592,5 +3592,9 @@ that exploring seven domains asked of the interpreter, by how many asked.
   makes a header aware. A truth is given its subject, `and`, rather than a
   message to cut it from, and a guard that is a matrix says "a guard needs
   single values", as `and` and a comparison do, where it said "a single
-  value", recorded nowhere until `conditional.ink`. 22 lines: 13,380 in
-  all.
+  value", recorded nowhere until `conditional.ink`. The Interface sentence
+  ends "Built with -ffinite-math-only, which -ffast-math implies, GCC
+  removes the tests that make it so, and Clang warns of each NaN": Clang 18
+  warns of every NAN there, `-Wnan-infinity-disabled`, which `-Werror`
+  makes a refusal to build, and GCC is silent; `adc.h`, `back.h`, `heat.h`
+  and `kalman2.h` move by it alone. 23 lines: 13,381 in all.

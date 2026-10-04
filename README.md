@@ -155,8 +155,9 @@ finds a chain's steady state and, by power iteration, a matrix's dominant
 direction at every step. A header that writes NaN anywhere carries it to every
 term that reads it, as the interpreter refuses them: a guard, a comparison and
 a power reading NaN answer NaN, and a matrix term with a NaN cell is NaN in
-every cell, which its first comment says; such a header is
-not to be built with `-ffinite-math-only`, which `-ffast-math` implies.
+every cell, which its first comment says. Such a header is not to be built
+with `-ffinite-math-only`, which `-ffast-math` implies: GCC removes the tests
+that carry NaN, and Clang warns of each NaN the header writes.
 `test/compile/nan.ink` has an instance of each.
 
 A sequence that reads another at `x_(2*m)` samples it, and is computed every
