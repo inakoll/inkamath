@@ -143,3 +143,26 @@ If you find that a plan item is wrong, already done, or a worse idea than it
 looked — say so and propose the correction. Do not silently implement something
 other than what the plan says, and do not implement something you believe is
 wrong because the plan says it.
+
+## 8. How a change to the language runs
+
+A change larger than a fix runs on its own branch from `integration`, in a
+worktree of its own, as four agents, one after the other:
+
+1. **Spec.** A `DESIGN.md` entry in "Next in line" — decisions, alternatives
+   rejected and why, cost in lines — and hand-written entries in
+   `test/data/spec/<name>.ink`, replayed by the `spec` suite and failing by
+   design.
+2. **Spec review.** Adversarial: every expected value checked by an
+   independent route, errors in the spec fixed in commits of their own,
+   design objections reported rather than acted on.
+3. **Implementation**, until the spec passes. The spec then becomes a golden
+   and the entry `[done]`, with its departures and lines of sources.
+4. **Implementation review.** Adversarial: run against `integration` on the
+   same inputs, a failing test before each fix, objections reported.
+
+Whoever runs the agents rules on each review's objections, applies the
+rulings, and merges into `integration` once CI is green; `master` follows by
+fast-forward (§5). Decisions are shown to the owner after the fact, except
+one that departs from `MANIFESTO.md` or that the owner asked to make. A
+fix skips the pipeline: a failing test, the fix, a row in the defect table.

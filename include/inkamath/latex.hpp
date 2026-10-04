@@ -24,15 +24,18 @@ public:
         // A clause for one index or one cell is a line of its own, the
         // clauses for every index or every cell one definition in cases; for
         // a definition by cells, the clauses written whole come first, as
-        // what the cells override.
+        // what the cells override. A term written after a guard is tried
+        // after it (C45), so it is a case in its place (C85).
         std::vector<const Clause<T>*>              cases, cells;
         std::vector<std::vector<const Clause<T>*>> lines;
+        bool                                       guarded = false;
         for (const Clause<T>& clause : definition.Clauses()) {
             const ParametersDefinition<T>& p    = clause.parameters;
             const bool                     base = p.indexed() && !p.general();
             if (p.cells() && !p.row_name().empty() && !base) {
                 cells.push_back(&clause);
-            } else if (!p.cells() && !base) {
+            } else if (!p.cells() && (!base || guarded)) {
+                guarded = guarded || p.guarded();
                 cases.push_back(&clause);
             } else {
                 // A base term by its cells is one line however many clauses.
@@ -145,13 +148,23 @@ private:
     static std::string Cases(const std::vector<const Clause<T>*>& cases) {
         if (cases.size() == 1 && !cases.front()->parameters.guarded())
             return Of(*cases.front()->expression).text;
+        // A term among the cases is named by the index the others take.
+        std::string index;
+        for (const Clause<T>* clause : cases)
+            if (clause->parameters.general()) index = clause->parameters.index_name();
+        const auto term = [](const ParametersDefinition<T>& p) {
+            return p.indexed() && !p.general() && !p.cells();
+        };
         std::vector<std::string> lines;
         for (const bool guarded : {true, false})
-            for (const Clause<T>* clause : cases)
-                if (clause->parameters.guarded() == guarded)
-                    lines.push_back(Of(*clause->expression).text + " & \\text{" +
-                                    (guarded ? "if } " + Of(*clause->parameters.guard()).text
-                                             : std::string("otherwise}")));
+            for (const Clause<T>* clause : cases) {
+                const ParametersDefinition<T>& p = clause->parameters;
+                if ((p.guarded() || term(p)) != guarded) continue;
+                const std::string condition =
+                    p.guarded() ? Of(*p.guard()).text : index + " = " + std::to_string(p.index());
+                lines.push_back(Of(*clause->expression).text + " & \\text{" +
+                                (guarded ? "if } " + condition : std::string("otherwise}")));
+            }
         std::string right = "\\begin{cases} ";
         for (std::size_t k = 0; k < lines.size(); ++k) right += (k ? " \\\\ " : "") + lines[k];
         return right + " \\end{cases}";
@@ -172,14 +185,16 @@ private:
         return Head(name, p) + "_" + Braced(subscript);
     }
 
-    // Where the names of a clause for every cell range.
+    // Where the names of a clause for every cell range, those bounded as
+    // written: a size inferred is a call's, not the definition's.
     static std::string Bounds(const ParametersDefinition<T>& p) {
-        if (p.row_name().empty()) return "";
-        std::string out = ", \\quad ";
-        if (p.tensor())
-            out += "1 \\le " + Name(p.slice_name()) + " \\le " + Of(*p.slices()).text + ",\\ ";
-        out += "1 \\le " + Name(p.row_name()) + " \\le " + Of(*p.rows()).text;
-        if (!p.column()) out += ",\\ 1 \\le " + Name(p.col_name()) + " \\le " + Of(*p.cols()).text;
+        std::string out;
+        for (const auto& [name, bound] : {std::pair(&p.slice_name(), &p.slices()),
+                                          {&p.row_name(), &p.rows()},
+                                          {&p.col_name(), p.column() ? nullptr : &p.cols()}})
+            if (bound && *bound)
+                out += (out.empty() ? ", \\quad " : ",\\ ") + std::string("1 \\le ") + Name(*name) +
+                       " \\le " + Of(**bound).text;
         return out;
     }
 

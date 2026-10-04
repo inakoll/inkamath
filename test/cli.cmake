@@ -293,6 +293,14 @@ set(stdout "cannot compile P: a tensor\ncannot compile y: a tensor\n")
 set(exit 1)
 check(compile_tensor_refused)
 
+# The prelude's mod refuses a matrix to divide by, as the interpreter does,
+# rather than compile the product of matrices it would be.
+file(WRITE "${OUT}/mod.ink" "y_n = [1 1]*mod(n, [2 3; 5 11])*[1; 1]\n")
+set(args --compile mod.ink)
+set(stdout "cannot compile y: mod needs a single value to divide by, not a 2x2 matrix; write it by its cells\n")
+set(exit 1)
+check(compile_mod_refused)
+
 set(args --compile model.ink)
 file(WRITE "${OUT}/model.ink" "a_0 = 1\na_n = a_(n-1) + n\n")
 set(stdout "")

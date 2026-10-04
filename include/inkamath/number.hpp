@@ -615,7 +615,9 @@ private:
             for (const char* c = begin; c != end; ++c) n = n * 10 + (*c - '0');
             return Number(n);
         }
-        std::string digits;
+        // Written by index, not appended, which is a call where it is not inlined.
+        std::string digits(static_cast<std::size_t>(end - begin), '0');
+        std::size_t kept     = 0;
         long long   exponent = 0;
         const char* c        = begin;
         for (; c != end && *c != 'e' && *c != 'E'; ++c) {
@@ -624,9 +626,10 @@ private:
                 continue;
             }
             if (*c < '0' || *c > '9') return std::nullopt;
-            digits += *c;
+            digits[kept++] = *c;
             if (exponent < 0) --exponent;
         }
+        digits.resize(kept);
         if (exponent < 0) ++exponent;
         if (digits.find_first_not_of('0') == std::string::npos) return Number(0);
         if (c != end) {

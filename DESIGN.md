@@ -1604,14 +1604,16 @@ closures need one anyway, and can bring it.
 | C75 `[fixed]` | **`--check` holds a term read from before the stream to the input there.** With `c_n = x_(n-1)` in a model and an instance giving `x_n = n^2`, the interpreter answers `c_0` from `x_(-1)`, 1, where the check feeds the compiled step its inputs from the first step on, as a host does, so its window holds 0, and the report has the two part at 0. Found specifying what several rates left refused (next in line), whose models feed a stream that starts at 0, `s_n \| n >= 0 = n^2`, where the interpreter has no `x_(-1)` either. Whether the check should give the window the input's earlier terms, holding the step to what no host gives it, or say that the step cannot have them, was open; neither is taken: the model states its input's history, which the interpreter and the step both read, and a read before the stream that no history gives is refused (next in line: a model's history of its inputs). Now `delay(x_n) = { x_n \| n < 0 = 0; c_n = x_(n-1) }` given `x_n = n^2` answers `c_0` 0 both ways, `init` folding the history into the window, and the check parts where the interpreter has no term and the step has one; `test/data/history.ink` and `test/compile/history.ink` hold it. |
 | C76 `[fixed]` | **A compiled hold rounded its lag toward zero.** A hold's place in the held sequence's window was `(n - phase)/a - (n - b)/a - d` in C's division, which truncates, and its first step was clamped to `b`: a hold whose numerator could be negative, `y_(floor((n - 3)/2) + 1)` on a sequence based at a negative index, read the wrong cell or left its first steps 0 where the interpreter gives a term. Found by the review of the rates gaps, with 1200 random models compared against master, one of which master compiled to NaN where the interpreter has a value. The lag is now a floor, its first step where the term exists, and the emitted division keeps each numerator non-negative; `trail` in `test/compile/decimate.ink` holds it. |
 | C77 `[fixed]` | **`grad` took a tensor's slice name for a global.** Its check that no definition reads the global of its name binds a clause's index, row and column, not its slice, so after `Gc[b<=2, j<=1, k<=1] = b`, `grad_(b = 2) b*Gc` is refused, "Gc reads the global b, which grad's b does not reach", where `Gc` is a constant and the answer `[1;; 2]`. Found specifying `grad` of definitions by cells (next in line), whose specification holds it. Now the slice is bound as the row is; `Gs` in `test/data/grad.ink` holds it. |
-| C78 `[open]` | **An index that moves with `grad`'s name answers as if it did not.** An index is a whole number, so one that moves is at a jump, as `floor` is at a whole number, which C73 refuses; but with `s_n = n^2` and `v = [5; 7; 9]`, `grad_(x = 2) s_(x)` and `grad_(x = 2) v[x]` answer 0. Found specifying `grad` of definitions by cells (next in line), which refuses a moving size by that rule; an index wants the same check where it is read, not part of that entry. |
+| C78 `[fixed]` | **An index that moves with `grad`'s name answers as if it did not.** An index is a whole number, so one that moves is at a jump, as `floor` is at a whole number, which C73 refuses; but with `s_n = n^2` and `v = [5; 7; 9]`, `grad_(x = 2) s_(x)` and `grad_(x = 2) v[x]` answer 0. Found specifying `grad` of definitions by cells (next in line), which refuses a moving size by that rule; an index wants the same check where it is read, not part of that entry. Now a cell's index and a term's are read with their parts where they read the name, and one that moves is refused, "an index jumps at x = 2", by the structure C73 asks of `floor`, so `vk[x - x + 3]` is refused as `floor(x - x)` is; the C78 entries in `test/data/grad.ink` hold it. |
 | C79 `[fixed]` | **`grad` did not read a size for the global of its name.** Its check that no definition reads that global scans a clause and its guard, not the bounds of its cells, so after `gz[j<=x] = j` with `x = 100`, `grad_(x = 2) x*gz` answered `gz`, a hundred cells long, as a constant. Found building `grad` of definitions by cells (next in line), which reads a size with its parts. Now the bounds are scanned as the clause is, and the call is refused, "gz reads the global x, which grad's x does not reach"; `gz` in `test/data/grad.ink` holds it. |
 | C80 `[fixed]` | **`grad` reads a parameter that an index or a row hides.** A clause's index, row, column and slice are bound where its parameters are, and hide one of the same name, but `grad` seeks a name among the arguments it differentiates before the values bound: with `g(n)_n = n`, `g(x)_2` is 2 for every `x`, and `grad_(x = 1) g(x)_2` answers 1; with `f(j)[j<=2] = j`, `grad_(x = 1) [1 1]*f(x)` answers 2, not 0. Found building `grad` of definitions by cells (next in line), whose walk binds a row as the evaluator does. Hiding the clause's names from the arguments where they are bound, as a sum's index is hidden, would fix both; the walk binds them in `Reference`, where `grad` cannot hide them, so for now a clause whose index, slice, row or column names a parameter is refused under `grad`, "grad cannot differentiate sm yet: its row t hides its parameter t": a temperature `t` beside attention's rows `t` answered `[10; 10]` for `[1; 2]`. The C80 entries at the end of `test/data/grad.ink` hold it. |
 | C81 `[fixed]` | **`grad` kept the slope of a single value added to a matrix single.** A sum adds a single value to every cell, and a matrix to every slice of a tensor, but a part that only one side had kept that side's shape, so `grad_(x = 1) [1 1]*(x + [1; 2])` answered `[1, 1]` where the slope is 2, `([1 2; 3 4] + x)^2` the slope it would have were x added to the diagonal only, and `f(x)[j<=1] = (x + [1 2])*[1; 1]`, whose cell stores its part's first, a slope of 1 for 2. Found reviewing `grad` of definitions by cells (next in line), whose walk stores a cell's part as its value is stored. Now a sum's part is widened to its value's shape; `grad.ink` holds it. |
 | C82 `[fixed]` | **A guarded clause written whole beside clauses for cells is never asked.** With `Q2(x)[j<=2] = x` and `Q2(x) \| x > 1 = [0 0]`, `Q2(2)` is `[2; 2]`, and with `R \| 1 > 0 = [5 5]` before `R[j<=2] = j`, `R` is `[1; 2]`: the walk over the cells takes a clause written whole only as the value of the cells no clause gives, and a guarded one not even then. Found by the review of `grad` of definitions by cells (next in line), with which `grad` agrees. Taking the whole definition where it holds, before its cells, would add nothing a guard on each cell does not say, `R(x)[i<=2] \| x > 1 = 0`, so such a clause is refused where it is written, in either order, "Pw is defined by its cells, so a clause for all of it cannot be guarded; guard its cells"; a clause written whole and unguarded stays the matrix the cells override. The entries at the end of `test/data/matrices.ink` and `test/data/terms.ink` hold it. |
 | C83 `[open]` | **A model's input is compiled as a single value, whatever it is.** The step takes one double for each input and the compiler reads the input as 1x1, so with `mm(x_n) = { y_n = [1 2]*x_n }` the header computes a 1x2 term where the interpreter, given `x_n = [n; 1]`, answers a single value. `--check` of that instance crashed, reading a second cell of each term the interpreter gave one of; it now refuses the instance by name, "v.x_(0) has 2 cells, where the compiled step takes a single value", and `check_matrix_input` in `test/cli.cmake` holds it. Found specifying a model's history of its inputs (next in line). What stays open is the header: an input wants a shape, taken as an array as a matrix parameter is, or a refusal by name. |
 | C84 `[open]` | **`--check` compares nothing of an instance a model writes unnamed.** With `bare(u_n) = { c_n = u_(n-1) }` and `wrap(x_n) = { c_n = bare(u_n = x_n).c_n }` checked as `nest = wrap(x_n = n)`, the step keeps the instance as `c_bare`, and the check asks the interpreter for `nest.c_bare.c_0`, which it cannot name, "a term has no names", so every term of `c_bare.c` and `c_bare.u` is skipped and each line reads `within 0`. No checked instance writes one. Found reviewing the specification of a model's history of its inputs (next in line), whose check reports a term the interpreter cannot give instead of skipping it, which would turn each such line red. The check wants to ask for such a term through the definition that writes the instance, or to say by name that it cannot. It now says so, `veiled.c_bare.c: not asked, as the interpreter cannot name it`, where each line read `within 0`; asking stays open. |
-| C85 `[open]` | **`tex` sets a base term apart from the guarded clauses written before it.** Clauses are tried in the order written (C45): after `y_n \| n < 0 = 0`, `y_(-1) = 3` and `y_n = n`, `y_(-1)` is 0, but `tex ?y` sets `y_{-1} = 3` on a line of its own above the cases, as if it held. Found reviewing the specification of a model's history of its inputs (next in line), whose clauses on an input may come in either order. `tex` wants the clauses in the order they are tried, or the base term left out where an earlier clause covers it. |
+| C85 `[fixed]` | **`tex` sets a base term apart from the guarded clauses written before it.** Clauses are tried in the order written (C45): after `y_n \| n < 0 = 0`, `y_(-1) = 3` and `y_n = n`, `y_(-1)` is 0, but `tex ?y` sets `y_{-1} = 3` on a line of its own above the cases, as if it held. Found reviewing the specification of a model's history of its inputs (next in line), whose clauses on an input may come in either order. `tex` wants the clauses in the order they are tried, or the base term left out where an earlier clause covers it. Now a term written after a guard is a case in its place, `3 & \text{if } n = -1`, and one written before every guard keeps its line, which holds; the C85 entries at the end of `test/data/tex.ink` hold it. |
+| C86 `[open]` | **A clause whose value is a constant that fails refuses the whole model when compiled.** The compiler folds a constant value exactly, and a failure there is taken as the model's: in a model `gd(a = 2)` defining `h(x) = 1`, `h(x) \| x <= 0 = 1/0` and `y_n = h(a + n)`, `--compile` says "cannot compile y: division by zero" where the interpreter answers 1 for every term and never takes the clause, and `[1 2]*[1 2]` there says a product's sizes. `log`'s `log(x) \| x <= 0 = 1/0` is one, so a model calling `log` is refused in those words instead of "a sum or a product with no upper bound", which its series earns. Found specifying a function applied to each cell, `f.(x)`, which sizes inferred replaced (next in line). A clause written to refuse wants compiling as what a step does where the interpreter refuses, NaN as for a limit that does not converge, or a refusal naming the function and its clause. |
+| C87 `[fixed]` | **The hint for a definition of one-cell clauses alone is written for another.** With `w[2] = 5`, reading `w` says "w has no size; write it as w[j<=rows, k<=cols]", two indices where its clause writes one; with `f(x)[1,1] = 5`, `f(1)` says "write it as f[j<=rows, k<=cols]", without its parameters, a clause `f` refuses, as it takes `(x)`. Found reviewing the specification of sizes inferred in a definition by cells (next in line), whose hints are written as the clause is, `sh(z)[i<=rows]`. The hint wants the clause's parameters and as many indices as it writes. It now has them, `w[j<=rows]` and `f(x)[j<=rows, k<=cols]`, written from the clause as a hint for a clause for all cells is, and one defined inside an expression, which keeps no text, from its names, `pc[i<=rows]`; the C87 entries of `test/data/matrices.ink` hold it. |
 
 **Measure instructions, not the clock.** One of those changes made the matrix
 workload 20 per cent slower by the clock and not by a single instruction: with
@@ -3257,3 +3259,160 @@ that exploring seven domains asked of the interpreter, by how many asked.
   331 lines of sources added and 62 removed, 269 more in all, where about
   210 were planned: 38 in the interpreter, 202 in the compiler and 29 in the
   check.
+
+- `[done]` **Sizes inferred in a definition by cells.** A network applies every
+  activation cell by cell, and the prelude's functions take single values:
+  `exp([1 2])` says a matrix cannot be an exponent, `log([1 2])` speaks of a
+  comparison the session never wrote, and each activation is a definition by
+  cells with a size the page never writes, `act(z)[j<=n] = tanh(z[j])` where
+  the paper has `tanh(z)`. A bound left out is read from the matrix the index
+  reads: `rl(z)[i,j] = z[i,j]*(z[i,j] > 0)` is a ReLU of a matrix of any
+  size, and `h[i,j] = Z[i,j]*(Z[i,j] > 0)` a layer written where it is used.
+  Every bound written means what it does now.
+
+  An index written without its bound takes it from each read, in the
+  clause's value or guard, of a matrix at that index alone: `z[i,j]` gives
+  `i` the rows of `z` and `j` its columns, `z[j,i]` the other way, `z[i]`
+  the rows, as one index reads a row, `z[i,1]` `i` alone, and of a tensor
+  `P[s]` the slices and `P[s,i,j]` all three. What is read is any expression
+  that reads no index of the cell, `(W*x + b)[i]` or `P[1][i,j]`; a sum's
+  index is the sum's, so `A[i,k]` under `sum_(k=1)^2` gives `i` only. `z[i+1]`
+  gives nothing, nor does a matrix that reads a name bound in the clause, a
+  sum's or a product's index, bounded or taken to its limit: under a sum over
+  `k`, `P[k][i,j]` and `(A^k)[i,j]` read another matrix at each `k`, and
+  `cs_n[i] = sum_(m=0)^n w_m[i]` another term at each `m`. Nor does a call
+  of the definition itself, `g(z/2)[i,j]` in a clause of `g`, whose size
+  would need its own first; a term reading an earlier term, `cn_(n-1)[i,j]`,
+  reads another and gives its size. A single value is read as a 1x1 matrix
+  is, so `rl(5)` is 5.
+  Every read of an index agrees, or it is refused naming two that do not,
+  `a[i,j] and b[i,j] give j different sizes, 2 and 3`, or one, `z[i,i] gives
+  i different sizes, 1 and 3`. The first read winning was rejected: of
+  `a[i,j] + b[i,j]` it would cut a longer `b` short in silence, read past a
+  shorter one, and answer by the order the operands were written; the
+  smallest winning, as a zip does, is the same silence. A bound written is
+  the bound and is never checked against a read, of its clause or another's,
+  so `top(z)[i<=2, j] = z[i,j]` takes two rows of any `z`. That
+  `matrices.ink` says a size is written, not guessed from the cells a clause
+  happens to give, stands: a read is not a guess, the size being the
+  matrix's that every cell reads.
+
+  The size is the definition's, as now: the matrix written whole and the
+  bounds written agree, else "the clauses of V give it different sizes"; an
+  index none of them bounds takes the size its reads give, and clauses that
+  read it and disagree are refused in the same words. A clause that gives an
+  index none takes the others', so a causal mask, `cm(s)[i,j] | j > i =
+  0`, needs `cm(s)[i,j] = s[i,j]` beside it and nothing more. Where
+  nothing gives one, it is refused when read, as a definition of one-cell
+  clauses is today: `M has no size, as nothing reads a matrix at r alone;
+  write it as M[r<=rows, c<=cols]`, the bounds written kept. So `M[r,c] = r
+  + c`, refused where written in `matrices.ink`, is refused where read: a
+  size may come from a clause written after, and refusing where written
+  would depend on the order the clauses come in. A clause for one cell gives
+  no size, as now, and one outside the size inferred says so as reading it
+  would. A term's size is read at its index from the clauses at that
+  index, as now, so a base term by cells, `q_0[i] = 1`, has none unless it
+  reads one, and a term may read the one before, `cn_n[i,j] = cn_(n-1)[i,j]
+  + j`.
+
+  Each read's matrix is evaluated for its size each time the definition is,
+  before any cell, in the frame its cells see: a parameter's, a term's at its
+  index, a global's as it is then, so `h` follows `Z` redefined, as a bound
+  written with a global does. Its steps count against the budget as any
+  evaluation's, and an error there is the read's: `a 2x1x2 tensor takes one
+  index or three, not two`. A definition whose bounds are written evaluates
+  as today, so `bench/` does not move. The memo is unchanged, a call keyed by
+  its arguments and their shapes (C50). `grad` reads a size with its parts as
+  it reads a bound, and a shape never moves. `z*(z > 0)` has no slope at 0
+  and `grad` says so, `a comparison jumps at t = 0`, where the guarded ReLU
+  takes its guard's side. `?name` prints as written; `tex` sets a range only
+  for a bound written, `\operatorname{rl}(z)_{i,j} = z_{i,j}\,(z_{i,j} >
+  0)`, as a paper sets a function of cells, since it sees the definition and
+  not a call. Compiled, a function by cells is compiled where it is called,
+  and its size is the extent of the read compiled there, which is always
+  known, the compiler's shapes being static: nothing new is refused, and a
+  model's input is a single value, as C83 has it.
+
+  Softmax's sum keeps its bound, `sm(z, K)[j] = exp(z[j])/sum_(c=1)^K
+  exp(z[c])`, `K` written as the page that writes the sum writes it: nothing
+  is added to name a size. A sum with no upper bound bounded by its reads was
+  rejected, since `sum_(c=1)` is a series to its limit and its meaning would
+  be decided by its body; so was a bound naming a size nothing defines,
+  `[j<=n]`, Dex's index set, whose meaning would change the day a global `n`
+  is defined, and which `t_n[j<=n]` already reads as the index; and
+  `rows(z)`, a function no paper writes, for a size an argument carries.
+
+  Two rulings from the review of `f.(x)` carry over. A call given a matrix
+  that its own evaluation refuses where a single value is needed -- a
+  comparison, a guard, `and`, `or`, an exponent, an index, a factorial -- is
+  refused naming the innermost call written in the session or a file, not in
+  the prelude, given an argument of the refused value's shape, and that
+  shape: `tanh needs single values, not a 2x1 matrix; write it by its
+  cells`. The argument is not quoted as written, which the parser keeps no
+  text for and about 30 lines would add, nor is a definition by cells
+  written out, whose name would be invented. So `tanh(M)` names `tanh`, not
+  the `exp` inside it; `sig(z) = 1/(1 + exp(-z))` names its own `exp(-z)`;
+  a layer that applies a function of single values to the whole names it,
+  not its loss.
+  Where no call was given a value of that shape, as `x*x' > 0` of a 2x1, and
+  outside any call, an operator keeps its words, and `e^A`, on paper the
+  matrix exponential, stays refused. And `mod` refuses a divisor that is a
+  matrix, `mod needs a single value to divide by, not a 2x2 matrix; write it
+  by its cells`: `b*floor(a/b)` is then a product of matrices, so
+  `mod([7 8; 9 10], [3 3; 3 3])` answered `[-8, -7; -6, -5]`. The ruling
+  named two matrices; `mod(7, [3 4; 5 6])` multiplies as well, so the
+  refusal is the divisor's. The prelude has no test for a matrix to say it
+  with, so the call of its `mod` is checked before the body. Two refusals
+  recorded move: `nonzero([1 2])` in `conditional.ink` and `nz([7;;])` in
+  `tensor.ink`.
+
+  Rejected: the dot, `f.(x)`, specified on branch `cellwise`: a second way
+  to say what a definition by cells says, which `MANIFESTO.md` asks a
+  direction to avoid; `tex` sets it as `f(x)`, so a forgotten dot would not
+  show on the page it is read against; and the one reason given for it, that
+  the cell form states a size the page never writes, is what this removes.
+  The prelude's functions mapped implicitly, as `floor` is: `exp(A)` would
+  mean the cells here and the exponential on a control paper, `ex(x) = e^x`
+  would differ from `exp`, and a guarded ReLU would still be refused. This
+  answers `MANIFESTO.md`'s open question on a function of cells by its own
+  default, the cell form, made light rather than replaced.
+
+  About 120 lines: the reads found 25, the size read and its two refusals 40,
+  `tex` 3, the compiler 20, the message of a call given a matrix 20, and
+  `mod` 8; the check that a size is written, where a clause is, goes.
+
+  Specified in `test/data/spec/sizes.ink`, 134 of its 181 entries failing,
+  those passing being definitions echoing themselves and four answers that
+  stay: `e^A`, `[1 2] < 3`, a comparison of a shape no call was given, and
+  `mod` by a single value. A ReLU network and a softmax classifier are each
+  trained one step by `grad` through functions of cells with no size written,
+  held to the gradient written by hand, the first exactly, with the values
+  the dot's specification had. The compiled half is `test/compile/sized.ink`,
+  `logistic.ink`'s regression with a sigmoid by cells and no bound, whose
+  header is to be the one its bounds written give, byte for byte; wired with
+  the implementation.
+
+  Built as specified, every entry passing as written, now
+  `test/data/sizes.ink`; `compile_sized_header` holds `sized.ink`'s header to
+  the one its bounds written give, and `--check` holds it to the
+  interpreter. Three goldens moved, as specified: `M` in `matrices.ink`, now
+  read as well, `nonzero` in `conditional.ink` and `nz` in `tensor.ink`.
+  README shows the one-line ReLU. The size is measured once for interpreter,
+  `grad` and compiler alike, `Reference::Measured`, given how each reads a
+  bound and a read's extent; the reads are found as a clause is defined.
+  Departures: the matrix written whole counts as a size written, never
+  checked against a read; `grad`'s name is bound in its body as a sum's
+  index is; a read of anything but a name is quoted `(...)` where two
+  disagree; and a term with no size is named at the index asked, `cs_2`.
+  C87 was found and fixed on the way, the hint for one-cell clauses now
+  written from the clause as the others are. The review made `mod`'s check
+  `grad`'s and the compiler's as well, and the call refused in its own name
+  `grad`'s too, where a network is trained; a definition by cells so refused
+  is not told to be written by its cells. Under callgrind,
+  `harmonic` and `matrix` moved under 0.1%, `hand` 0.3% more, `deep`, `grad`
+  and `limit` 0.1 to 0.5% fewer, and `read`, which defines nothing by cells,
+  1.2% more, all of it `Number::Literal` no longer inlining `push_back` as the
+  unit grew, until its digits were written by index, 0.6% fewer.
+  420 lines of sources added and 143 removed, 277 more in all, about 40 of
+  them the body of a call indented under the handler that names it, where
+  about 120 were planned.

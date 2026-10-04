@@ -349,7 +349,7 @@ nonzero(x) | x == 0 = 0
 
 # A guard needs a single value, for the same reason an index does.
 >> nonzero([1 2])
-error: a guard needs a single value, not a 1x2 matrix
+error: nonzero needs single values, not a 1x2 matrix; write it by its cells
 
 # --- a recurrence in cases --------------------------------------------------
 
