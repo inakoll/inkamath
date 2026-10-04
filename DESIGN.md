@@ -3572,4 +3572,13 @@ that exploring seven domains asked of the interpreter, by how many asked.
   `(0/~0)^~0` as an aware step answers them, where C's `pow` gave 1: the
   one parting the implementation left as a known limit; `errors.ink` holds
   it. The index is told by a flag on its cell, not by comparing its text
-  with the index's, which moves nothing. 4 lines: 13,362 in all.
+  with the index's, which moves nothing. A cell taken from a matrix that
+  is no sequence's term, one written inline, given to a function, computed
+  again or a value from the parameters, kept a healthy cell where the
+  interpreter refuses the matrix whole: `cell` and `held` in `nan.ink`
+  answered 1. Now, in an aware header, it is NaN where any cell of the
+  matrix is, the cells shared first, and a matrix that writes NaN in a cell
+  not taken makes the header aware, as it would otherwise write none. A
+  term's window is whole already and is not tested; of the programs checked
+  only `rnn`'s moves, its tanh taking each cell of a product. 16 lines:
+  13,374 in all.

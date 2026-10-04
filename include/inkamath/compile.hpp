@@ -168,7 +168,7 @@ private:
         std::string magnitude;  // what it is the negation of, if it is one
         int         magnitude_level = primary;
         bool        atom            = false;  // a name or a number, as cheap to repeat as to store
-        bool        number          = false;  // the index, which is never NaN
+        bool        number          = false;  // never NaN: a number, or the index
     };
 
     static Cell Atom(std::string text, bool number = false) {
@@ -182,6 +182,7 @@ private:
         std::size_t          rows = 1, cols = 1;
         std::vector<Cell>    cells;     // row by row
         std::optional<Value> constant;  // its exact value, where it reads no name
+        bool                 whole = false;  // NaN in every cell where in one, as a term
 
         bool Scalar() const { return cells.size() == 1; }
         // A single value stretches to any shape, as it does in arithmetic.
@@ -986,7 +987,7 @@ private:
         code.cols     = value.Size().cols;
         code.constant = value;
         for (const double x : Doubles(value)) {
-            Cell cell = Atom(Double(std::abs(x)));
+            Cell cell = Atom(Double(std::abs(x)), !std::isnan(x));
             if (std::signbit(x)) {
                 cell.magnitude = cell.text;
                 cell.text      = "-" + cell.text;
@@ -1128,20 +1129,22 @@ private:
             return c.constant && Doubles(*c.constant)[0] != v;
         };
         const std::string test =
-            other(exponent, 0.0) || other(base, 1.0) ? "" : Nan(base, &exponent);
+            other(exponent, 0.0) || other(base, 1.0) ? "" : Nan(base, exponent);
         const std::string power = "pow(" + base.cells[0].text + ", " + exponent.cells[0].text + ")";
         return Answer(Cell(test.empty() ? power : "(" + test + power + ")", primary));
     }
 
     // In a header that writes NaN, a decision on a value is NaN where an
     // operand is, as the interpreter refuses it (DESIGN.md, a NaN reaches
-    // every term that reads it): the test of each operand given that is
-    // neither a constant nor the index, written before the decision.
-    std::string Nan(const Code& x, const Code* y = nullptr) const {
+    // every term that reads it): the test of each cell of the operands given
+    // that is neither a number nor the index, written before the decision.
+    template <typename... Codes>
+    std::string Nan(const Codes&... codes) const {
         std::string test;
-        for (const Code* code : {&x, y})
-            if (aware_ && code && !code->constant && !code->cells[0].number)
-                test += (test.empty() ? "isnan(" : " || isnan(") + code->cells[0].text + ")";
+        for (const Code* code : {&codes...})
+            for (const Cell& cell : code->cells)
+                if (aware_ && !code->constant && !cell.number)
+                    test += (test.empty() ? "isnan(" : " || isnan(") + cell.text + ")";
         return test.empty() ? test : test + " ? NAN : ";
     }
 
@@ -1198,7 +1201,7 @@ private:
         const Code left = Emit(expression->m_e1()), right = Emit(expression->m_e2());
         if (left.constant && right.constant) return Fold(expression);
         if (!left.Scalar() || !right.Scalar()) throw Reason("a comparison of matrices");
-        return Answer(Cell("(" + Nan(left, &right) + Wrap(left.cells[0], sum) +
+        return Answer(Cell("(" + Nan(left, right) + Wrap(left.cells[0], sum) +
                                Operator(expression->Op()) + Wrap(right.cells[0], sum) +
                                " ? 1.0 : 0.0)",
                            primary));
@@ -1257,7 +1260,7 @@ private:
         if (code.constant) return Holds(*code.constant) ? "1" : "0";
         if (const auto* compare = dynamic_cast<CompareExpression<Value>*>(expression.get())) {
             const Code left = Emit(compare->m_e1()), right = Emit(compare->m_e2());
-            return Nan(left, &right) + Wrap(left.cells[0], sum) + Operator(compare->Op()) +
+            return Nan(left, right) + Wrap(left.cells[0], sum) + Operator(compare->Op()) +
                    Wrap(right.cells[0], sum);
         }
         return Nan(code) + Wrap(code.cells[0], sum) + " != 0.0";
@@ -2020,6 +2023,7 @@ private:
             .insert(lag);
         if (clause_reads_) (*clause_reads_)[key].insert(lag);
         Code code = Array("m_->" + key + "[" + std::to_string(lag) + "]", read.rows, read.cols);
+        code.whole = true;
         // Before its window holds the term, one with no base clause is
         // computed again at that index, as the interpreter answers it there
         // (DESIGN.md, C71); Checked keeps whichever the reader needs.
@@ -2030,6 +2034,7 @@ private:
             const Code back        = At(read, lag);
             early_                 = outer;
             const std::string mark = "\x04" + std::to_string(id) + "\x05";
+            code.whole             = false;
             for (std::size_t c = 0; c < code.cells.size(); ++c)
                 code.cells[c].text = mark + back.At(c / code.cols, c % code.cols).text + "\x06" +
                                      code.cells[c].text + "\x07";
@@ -2318,8 +2323,15 @@ private:
     PExpression<Value> visit(TensorExpression<Value>*) override { throw Reason("a tensor"); }
     PExpression<Value> visit(CellExpression<Value>* expression) override {
         if (expression->Slice()) throw Reason("a tensor");
-        const Code matrix = Emit(expression->Matrix());
+        Code       matrix = Emit(expression->Matrix());
         const Code row    = Known(expression->Row(), "a cell whose place is not a constant");
+        // The interpreter refuses a matrix whole where it refuses a cell. One
+        // that writes NaN in a cell not taken makes the header write it.
+        for (const Cell& c : matrix.cells) aware_ |= c.text.find("NAN") != std::string::npos;
+        if (aware_ && !matrix.whole && !matrix.constant) matrix = Shared(matrix);
+        const std::string nan = matrix.whole ? "" : Nan(matrix);
+        if (!nan.empty())
+            for (Cell& c : matrix.cells) c = Cell("(" + nan + c.text + ")", primary);
         if (!expression->Col()) {
             if (matrix.constant) return Fold(expression);
             const int i = Whole(row);

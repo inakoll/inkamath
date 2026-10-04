@@ -80,7 +80,7 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brin
                          history:lit history:rise history:ajar history:sown history:nest history:kin
                          history:twice history:relayed history:pole
                          history:huge history:veiled nan:run nan:sign nan:shy nan:slope nan:pair
-                         nan:lap nan:trim nan:any)
+                         nan:lap nan:trim nan:any nan:cell nan:held)
     string(REPLACE ":" ";" checked ${checked})
     list(GET checked 0 file)
     list(GET checked 1 instance)
@@ -165,6 +165,10 @@ set_tests_properties(check_trim_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^trim: 100 steps from 0, against exact values\ntrim\.y: within 0\n$")
 set_tests_properties(check_any_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^any: 100 steps from 0, against exact values\nany\.y: within 0\nany\.o: within 0\n$")
+set_tests_properties(check_cell_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^cell: 100 steps from 0, against exact values\ncell\\.b: within 0\ncell\\.c: within 0\ncell\\.m: within 0\ncell\\.p: within 0\n$")
+set_tests_properties(check_held_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^held: 100 steps from 0, against exact values\nheld\\.d: within 0\n$")
 set_tests_properties(check_boxcar_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^boxcar: 100 steps from 0, against exact values\nboxcar\\.f: within 0\nboxcar\\.t: within 0\nboxcar\\.y: within 0, from 1\nboxcar\\.w: within 0\nboxcar\\.z: within 0\nboxcar\\.q: within 0, from 3\n$")
 set_tests_properties(check_stride_report PROPERTIES PASS_REGULAR_EXPRESSION

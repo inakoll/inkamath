@@ -69,7 +69,20 @@
 #
 # 'slope' because a matrix term with a NaN cell is NaN in every cell: at 2,
 # y_2[2] has no clause, so y_2[1], which is 1, is NaN with it, and so is h_2,
-# which reads it and would otherwise be 1.
+# which reads it and would otherwise be 1. So is a cell of a matrix that is
+# no sequence's term: 'cell' reads one of a matrix written inline, c from 2,
+# of one given to a function, p from 2, and of a term computed again, b from
+# 3; 'held' of a value from the parameters, at every step. Each answered 1
+# where the interpreter gives none, and is to report within 0:
+#
+#     cell: 100 steps from 0, against exact values
+#     cell.b: within 0
+#     cell.c: within 0
+#     cell.m: within 0
+#     cell.p: within 0
+#
+#     held: 100 steps from 0, against exact values
+#     held.d: within 0
 #
 # Each model compiles as now, nothing on stderr, and its step decides so,
 # 'inkamath --compile nan.ink <model> -o <model>.h' writing, for level,
@@ -250,3 +263,23 @@ either(x_n) = {
     o_n = 0
 }
 any = either(x_n = 4 - n)
+
+cut(x_n) = {
+    r(v) | v > 0 = v
+    f(m) = m[2]
+    m_n = [r(2 - n); 1]
+    c_n = ([r(x_n); 1])[2]
+    p_n | f([r(x_n); 1]) > 1/2 = 1
+    p_n = 0
+    b_n | m_(n-1)[2] > 1/2 = 1
+    b_n = 0
+}
+cell = cut(x_n = 2 - n)
+
+kept(x_n, a = -1) = {
+    r(v) | v > 0 = v
+    M = [r(a); 1]
+    d_n | M[2] > x_n = 1
+    d_n = 0
+}
+held = kept(x_n = n)
