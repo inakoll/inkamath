@@ -77,7 +77,7 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brin
                          rates:pairs rates:odd seeded:warm cascade:servo decimate:boxcar
                          decimate:stride decimate:frame decimate:lead
                          decimate:trail drift:sill drift:seam history:past history:twin
-                         history:lit history:rise history:nest history:twice)
+                         history:lit history:rise history:nest history:twice history:pole)
     string(REPLACE ":" ";" checked ${checked})
     list(GET checked 0 file)
     list(GET checked 1 instance)
@@ -109,35 +109,37 @@ set_tests_properties(check_ball_report PROPERTIES PASS_REGULAR_EXPRESSION
 set_tests_properties(check_fit_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^fit: 100 steps from 0, against exact values until 0 and inexact ones from there\n(fit\\.[a-z]+: within [0-9.e+-]+\n)+$")
 set_tests_properties(check_gain_report PROPERTIES PASS_REGULAR_EXPRESSION
-    "^gain: 100 steps from 0, against exact values\n(gain\\.[A-Za-z]+: within [0-9.e+-]+\n)+$")
+    "^gain: 100 steps from 0, against exact values\ngain\\.K: within [0-9.e+-]+, from 1\ngain\\.P: within [0-9.e+-]+\n$")
 set_tests_properties(check_pairs_report PROPERTIES PASS_REGULAR_EXPRESSION
-    "^pairs: 100 steps from 0, against exact values\n(pairs\\.[a-z]+: within 0\n)+$")
+    "^pairs: 100 steps from 0, against exact values\npairs\\.y: within 0\npairs\\.w: within 0, from 2\npairs\\.z: within 0\n$")
 set_tests_properties(check_odd_report PROPERTIES PASS_REGULAR_EXPRESSION
-    "^odd: 100 steps from 1, against exact values\n(odd\\.[a-z]+: within 0\n)+$")
+    "^odd: 100 steps from 1, against exact values\nodd\\.y: within 0\nodd\\.z: within 0, from 2\n$")
 set_tests_properties(check_servo_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^servo: 100 steps from 0, against exact values\n(servo\\.[a-z]+: within [0-9.e+-]+\n)+$")
 set_tests_properties(check_boxcar_report PROPERTIES PASS_REGULAR_EXPRESSION
-    "^boxcar: 100 steps from 0, against exact values\n(boxcar\\.[a-z]+: within 0\n)+$")
+    "^boxcar: 100 steps from 0, against exact values\nboxcar\\.f: within 0\nboxcar\\.t: within 0\nboxcar\\.y: within 0, from 1\nboxcar\\.w: within 0\nboxcar\\.z: within 0\nboxcar\\.q: within 0, from 3\n$")
 set_tests_properties(check_stride_report PROPERTIES PASS_REGULAR_EXPRESSION
-    "^stride: 100 steps from 0, against exact values\nstride\\.h: within 0\n$")
+    "^stride: 100 steps from 0, against exact values\nstride\\.h: within 0, from 1\n$")
 set_tests_properties(check_frame_report PROPERTIES PASS_REGULAR_EXPRESSION
-    "^frame: 100 steps from 0, against exact values\nframe\\.p: within 0\n$")
+    "^frame: 100 steps from 0, against exact values\nframe\\.p: within 0, from 2\n$")
 set_tests_properties(check_lead_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^lead: 100 steps from 0, against exact values\nlead\\.y: within 0\n$")
 set_tests_properties(check_trail_report PROPERTIES PASS_REGULAR_EXPRESSION
-    "^trail: 100 steps from 0, against exact values\n(trail\\.[a-z]+: within 0\n)+$")
+    "^trail: 100 steps from 0, against exact values\ntrail\\.y: within 0\ntrail\\.w: within 0, from 1\ntrail\\.z: within 0\n$")
 set_tests_properties(check_past_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^past: 100 steps from 0, against exact values\npast\\.c: within 0\n$")
 set_tests_properties(check_twin_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^twin: 100 steps from 0, against exact values\ntwin\\.c: within 0\n$")
 set_tests_properties(check_lit_report PROPERTIES PASS_REGULAR_EXPRESSION
-    "^lit: 100 steps from 0, against exact values\nlit\\.f: within 0\nlit\\.y: within 0\nlit\\.z: within 0\n$")
+    "^lit: 100 steps from 0, against exact values\nlit\\.f: within 0\nlit\\.y: within 0, from 1\nlit\\.z: within 0\n$")
 set_tests_properties(check_rise_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^rise: 100 steps from 0, against exact values\nrise\\.c: within 0\n$")
 set_tests_properties(check_nest_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^nest: 100 steps from 0, against exact values\nnest\\.inner\\.c: within 0\nnest\\.c: within 0\nnest\\.inner\\.u: within 0\n$")
 set_tests_properties(check_twice_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^twice: 100 steps from 0, against exact values\ntwice\\.inner\\.c: within 0\ntwice\\.c: within 0\ntwice\\.inner\\.x: within 0\n$")
+set_tests_properties(check_pole_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^pole: 100 steps from 0, against exact values\npole\\.y: inf at 3, where the interpreter gives none: division by zero\n$")
 set_tests_properties(check_warm_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^warm: 100 steps from 0, against exact values\n(warm\\.[a-z]+: within [0-9.e+-]+\n)+$")
 set_tests_properties(check_rnn_report PROPERTIES PASS_REGULAR_EXPRESSION
@@ -174,7 +176,9 @@ add_test(NAME check_brink COMMAND check_brink)
 add_test(NAME check_rift COMMAND check_rift)
 add_test(NAME check_sill COMMAND check_sill)
 add_test(NAME check_seam COMMAND check_seam)
-set_tests_properties(check_wild check_brink check_rift check_sill check_seam PROPERTIES WILL_FAIL ON)
+add_test(NAME check_pole COMMAND check_pole)
+set_tests_properties(check_wild check_brink check_rift check_sill check_seam check_pole
+                     PROPERTIES WILL_FAIL ON)
 
 # Random models, compiled and held to the interpreter's answers: the generator
 # runs both at build time and writes one C file, built and run like the others.
