@@ -54,6 +54,15 @@ shift(t) = t + x
 >> grad_(x = 3) shift(x)
 error: shift reads the global x, which grad's x does not reach
 
+# A clause's own names are not globals, its slice's no more than its row's
+# (DESIGN.md, C77).
+>> Gs[b<=2, j<=1, k<=1] = b
+Gs[b<=2, j<=1, k<=1] = b
+
+>> grad_(b = 2) b*Gs
+[1;;
+ 2]
+
 # A sum term by term, and a sequence through its recurrence. A term already
 # remembered is not an answer for its derivative.
 >> grad_(x = 1) sum_(k=1)^3 k*x^k

@@ -760,7 +760,8 @@ private:
         for (const Clause<T>& clause : definition.Clauses()) {
             const ParametersDefinition<T>& p = clause.parameters;
             std::set<std::string> bound(p.parameters_names().begin(), p.parameters_names().end());
-            for (const std::string* other : {&p.index_name(), &p.row_name(), &p.col_name()})
+            for (const std::string* other :
+                 {&p.index_name(), &p.slice_name(), &p.row_name(), &p.col_name()})
                 if (!other->empty()) bound.insert(*other);
             Scan(clause.expression, name, bound, &definition, seen);
             Scan(p.guard(), name, bound, &definition, seen);
