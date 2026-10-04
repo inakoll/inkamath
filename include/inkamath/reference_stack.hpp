@@ -56,6 +56,15 @@ public:
     // so this is what bounds its time, at a few seconds.
     static constexpr int max_filled = 10000000;
 
+    // The terms a model's history has given, counted with nothing memoised,
+    // so that the compiler can tell a term only a history gives.
+    std::size_t histories = 0;
+    void        Forget() {
+        memoised_.clear();
+        older_.clear();
+        histories = 0;
+    }
+
     // Call once per top-level evaluation; the stack outlives them all.
     void BeginEvaluation() {
         depth_       = 0;
@@ -410,6 +419,7 @@ public:
 
 private:
     friend struct Trial;
+    friend class Reference<T>;
 
     definition_type Defined(const std::string& name) const {
         const auto found = target_->names.find(name);
@@ -483,6 +493,7 @@ private:
             path.push_back({&definition, label});
             if (definition.Value())
                 for (const Clause<T>& clause : definition.Clauses()) Reads(definition, clause);
+            if (definition.argument) Follow(*definition.argument, label);
             path.pop_back();
             done[&definition] = true;
         }
@@ -785,6 +796,14 @@ private:
                 definition->home  = scope.get();
                 slot              = std::move(definition);
                 continue;
+            }
+            // A clause of an input is its history, tried before the argument.
+            if (std::any_of(m.parameters.begin(), m.parameters.end(),
+                            [&](const auto& p) { return p.name == statement.name; }) &&
+                !slot->argument) {
+                auto history      = std::make_shared<Reference<T>>(statement.name);
+                history->argument = std::move(slot);
+                slot              = std::move(history);
             }
             auto* equal = static_cast<EqualExpression<T>*>(statement.definition.get());
             slot        = Extended(slot, scope.get(), statement.name, evaluator.Parameters(equal),

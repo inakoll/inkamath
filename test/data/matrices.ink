@@ -527,3 +527,33 @@ mm_n=[1 2;3 4]*(0.5)^n
 [~1.45519152e-11, ~2.91038305e-11;
  ~4.36557457e-11, ~5.82076609e-11]
 
+
+# A guarded clause for the whole of a matrix beside clauses for its cells was
+# never asked (C82), so it is refused where it is written, in either order;
+# its cells take the guard instead. Written whole and unguarded, a clause is
+# the matrix the cells override.
+>> Pw[i<=2, j<=2] = i
+Pw[i<=2, j<=2] = i
+
+>> Pw | 1 > 0 = [5 5; 5 5]
+error: Pw is defined by its cells, so a clause for all of it cannot be guarded; guard its cells
+
+>> Rw(x) | x > 1 = [0; 0]
+Rw(x) | x > 1 = [0; 0]
+
+>> Rw(x)[i<=2] = x
+error: Rw has a guarded clause for all of it, so it cannot be defined by its cells; guard its cells
+
+>> Dw(x)[i<=2] | x > 1 = 0
+Dw(x)[i<=2] | x > 1 = 0
+
+>> Dw(x)[i<=2] = x
+Dw(x)[i<=2] = x
+
+>> Dw(2)
+[0;
+ 0]
+
+>> Dw(1)
+[1;
+ 1]

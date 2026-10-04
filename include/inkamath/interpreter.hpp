@@ -1447,8 +1447,16 @@ std::pair<std::string, std::shared_ptr<Model<U>>> Interpreter<T, U>::ParseModel(
             statement.name = statement.definition->Name();
         }
         for (const auto& parameter : model->parameters) {
-            if (parameter.name == statement.name)
+            if (parameter.name != statement.name) continue;
+            if (parameter.index.empty())
                 Fail(statement.name, " is a parameter of ", name, ", so its body cannot define it");
+            const auto& left = statement.definition
+                                   ? statement.definition->Children()[0]->Children()
+                                   : std::vector<PExpression<U>>();
+            if (left.empty() || !left[1] ||
+                (!left[2] && dynamic_cast<const RefExpression<U>*>(left[1].get())))
+                Fail(statement.name, " is an input of ", name,
+                     ", so its body can give it only a history: a term or a guarded clause");
         }
         model->body.push_back(std::move(statement));
     }
