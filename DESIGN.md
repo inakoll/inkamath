@@ -3290,26 +3290,29 @@ that exploring seven domains asked of the interpreter, by how many asked.
   `a[i,j] + b[i,j]` it would cut a longer `b` short in silence, read past a
   shorter one, and answer by the order the operands were written; the
   smallest winning, as a zip does, is the same silence. A bound written is
-  the bound and is not checked against the reads, so `top(z)[i<=2, j] =
-  z[i,j]` takes two rows of any `z`. That `matrices.ink` says a size is
-  written, not guessed from the cells a clause happens to give, stands: a
-  read is not a guess, the size being the matrix's that every cell reads.
+  the bound and is never checked against a read, of its clause or another's,
+  so `top(z)[i<=2, j] = z[i,j]` takes two rows of any `z`. That
+  `matrices.ink` says a size is written, not guessed from the cells a clause
+  happens to give, stands: a read is not a guess, the size being the
+  matrix's that every cell reads.
 
-  The size is the definition's, as now: the matrix written whole and each
-  clause for all cells, by its bounds or its reads, agree, else "the clauses
-  of V give it different sizes"; a clause that gives an index none takes the
-  others', so a causal mask, `cm(s)[i,j] | j > i = 0`, needs `cm(s)[i,j] =
-  s[i,j]` beside it and nothing more. Where nothing gives one, it is refused
-  when read, as a definition of one-cell clauses is today: `M has no size,
-  as nothing reads a matrix at r alone; write it as M[r<=rows, c<=cols]`,
-  the bounds written kept. So `M[r,c] = r + c`, refused where written in
-  `matrices.ink`, is refused where read: a size may come from a clause
-  written after, and refusing where written would depend on the order the
-  clauses come in. A clause for one cell gives no size, as now, and one
-  outside the size inferred says so as reading it would. A term's size is
-  read at its index from the clauses at that index, as now, so a base term
-  by cells, `q_0[i] = 1`, has none unless it reads one, and a term may read
-  the one before, `cn_n[i,j] = cn_(n-1)[i,j] + j`.
+  The size is the definition's, as now: the matrix written whole and the
+  bounds written agree, else "the clauses of V give it different sizes"; an
+  index none of them bounds takes the size its reads give, and clauses that
+  read it and disagree are refused in the same words. A clause that gives an
+  index none takes the others', so a causal mask, `cm(s)[i,j] | j > i =
+  0`, needs `cm(s)[i,j] = s[i,j]` beside it and nothing more. Where
+  nothing gives one, it is refused when read, as a definition of one-cell
+  clauses is today: `M has no size, as nothing reads a matrix at r alone;
+  write it as M[r<=rows, c<=cols]`, the bounds written kept. So `M[r,c] = r
+  + c`, refused where written in `matrices.ink`, is refused where read: a
+  size may come from a clause written after, and refusing where written
+  would depend on the order the clauses come in. A clause for one cell gives
+  no size, as now, and one outside the size inferred says so as reading it
+  would. A term's size is read at its index from the clauses at that
+  index, as now, so a base term by cells, `q_0[i] = 1`, has none unless it
+  reads one, and a term may read the one before, `cn_n[i,j] = cn_(n-1)[i,j]
+  + j`.
 
   Each read's matrix is evaluated for its size each time the definition is,
   before any cell, in the frame its cells see: a parameter's, a term's at its
@@ -3377,7 +3380,7 @@ that exploring seven domains asked of the interpreter, by how many asked.
   `tex` 3, the compiler 20, the message of a call given a matrix 20, and
   `mod` 8; the check that a size is written, where a clause is, goes.
 
-  Specified in `test/data/spec/sizes.ink`, 132 of its 178 entries failing,
+  Specified in `test/data/spec/sizes.ink`, 134 of its 181 entries failing,
   those passing being definitions echoing themselves and four answers that
   stay: `e^A`, `[1 2] < 3`, a comparison of a shape no call was given, and
   `mod` by a single value. A ReLU network and a softmax classifier are each

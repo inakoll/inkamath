@@ -124,8 +124,8 @@ col1(z)[i] = z[i,1]
 [1;
  3]
 
-# A bound written is the bound, beside one inferred, and is not checked
-# against the reads: it may take fewer rows than z has.
+# A bound written is the bound, beside one inferred, and is never checked
+# against a read: it may take fewer rows than z has, or more.
 >> top(z)[i<=2, j] = z[i,j]
 top(z)[i<=2, j] = z[i,j]
 
@@ -281,7 +281,7 @@ ms(s)[i,j] | j > i = 0
 error: ms has no size, as nothing reads a matrix at i alone; write it as ms(s)[i<=rows, j<=cols]
 
 # Each index takes its size from the clauses that give it one, and the
-# clauses agree.
+# clauses that read it agree.
 >> pk(a, b)[i,j] = a[i,1]
 pk(a, b)[i,j] = a[i,1]
 
@@ -300,6 +300,18 @@ pd(a, b)[i,j] | i == j = b[i,j]
 
 >> pd([1 2; 3 4], [1 2 3])
 error: the clauses of pd give it different sizes
+
+# A bound written in one clause is not checked against another's reads
+# either: b's third row is never read.
+>> pb(a, b)[i<=2, j<=2] = a[i,j]
+pb(a, b)[i<=2, j<=2] = a[i,j]
+
+>> pb(a, b)[i,j] | i == j = b[i,j]
+pb(a, b)[i,j] | i == j = b[i,j]
+
+>> pb([1 2; 3 4], [5 6; 7 8; 9 10])
+[5, 2;
+ 3, 8]
 
 # A read is evaluated for its size before any cell, so in a clause no cell
 # takes as well, and its steps count against the budget: with i<=2 written,
