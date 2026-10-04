@@ -526,6 +526,12 @@ private:
             expansion.values.emplace(names[i], Emit(call.parameters_expression()[i]));
         for (const auto& [given, argument] : call.parameters_dict())
             expansion.values.emplace(given, Emit(argument));
+        try {
+            for (const auto& [given, value] : expansion.values)
+                function.Divides(given, Value(Extent{value.rows, value.cols}), definitions_);
+        } catch (const std::runtime_error& error) {
+            throw Reason(error.what());
+        }
         return Inside(expansion, [&] {
             for (const std::string& parameter : names) {
                 if (expansion.values.count(parameter)) continue;
