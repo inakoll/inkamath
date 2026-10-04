@@ -155,14 +155,16 @@
 #     * -ffinite-math-only, which -ffast-math implies, removes the tests that make
 #     * it so.
 #
-# and steps, from v on, its 'and' and 'or' as truths of 1, 0 or NaN:
+# and steps, from v on, its 'and' and 'or' as truths of 1, 0 or NaN, its
+# temporaries numbered in the order the sequences are compiled, by name, so
+# alarm's first:
 #
 #     m_->v[0] = m_->q * floor(m_->x[0] / m_->q);
-#     const double t0_ = (isnan(m_->held[1] - m_->v[0]) || isnan(m_->q) ? NAN : m_->held[1] - m_->v[0] < m_->q ? 1.0 : 0.0);
-#     const double t1_ = (t0_ == 0.0 ? 0.0 : t0_ != t0_ ? NAN : (isnan(m_->v[0] - m_->held[1]) || isnan(m_->q) ? NAN : m_->v[0] - m_->held[1] < m_->q ? 1.0 : 0.0));
-#     m_->held[0] = m_->index_ == 0 ? 0.0 : isnan(t1_) ? NAN : t1_ != 0.0 ? m_->held[1] : m_->v[0];
-#     const double t2_ = (isnan(m_->held[0]) || isnan(m_->lo) ? NAN : m_->held[0] < m_->lo ? 1.0 : 0.0);
-#     m_->alarm[0] = (t2_ == 0.0 ? (isnan(m_->held[0]) || isnan(m_->hi) ? NAN : m_->held[0] > m_->hi ? 1.0 : 0.0) : t2_ != t2_ ? NAN : 1.0);
+#     const double t1_ = (isnan(m_->held[1] - m_->v[0]) || isnan(m_->q) ? NAN : m_->held[1] - m_->v[0] < m_->q ? 1.0 : 0.0);
+#     const double t2_ = (t1_ == 0.0 ? 0.0 : t1_ != t1_ ? NAN : (isnan(m_->v[0] - m_->held[1]) || isnan(m_->q) ? NAN : m_->v[0] - m_->held[1] < m_->q ? 1.0 : 0.0));
+#     m_->held[0] = m_->index_ == 0 ? 0.0 : isnan(t2_) ? NAN : t2_ != 0.0 ? m_->held[1] : m_->v[0];
+#     const double t0_ = (isnan(m_->held[0]) || isnan(m_->lo) ? NAN : m_->held[0] < m_->lo ? 1.0 : 0.0);
+#     m_->alarm[0] = (t0_ == 0.0 ? (isnan(m_->held[0]) || isnan(m_->hi) ? NAN : m_->held[0] > m_->hi ? 1.0 : 0.0) : t0_ != t0_ ? NAN : 1.0);
 #     const double t3_ = ((double)m_->index_ > 0.0 ? 1.0 : 0.0);
 #     m_->rising[0] = (t3_ == 0.0 ? 0.0 : t3_ != t3_ ? NAN : (m_->index_ < 1 ? NAN : (isnan(m_->held[0]) || isnan(m_->held[1]) ? NAN : m_->held[0] > m_->held[1] ? 1.0 : 0.0)));
 #
