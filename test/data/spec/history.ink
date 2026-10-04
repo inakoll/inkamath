@@ -170,6 +170,19 @@ b = both(u_n = n, v_n = 2*n)
 >> b.c_2
 -1
 
+# A guard may read another input.
+>> mute(u_n, x_n) = {
+..     x_n | n < 0 and u_n > 0 = 0
+..     c_n = x_(n-1)
+.. }
+mute(u_n, x_n) = { ... }
+
+>> mute(u_n = 1, x_n = 5).c_0
+0
+
+>> mute(u_n = -1, x_n = 5).c_0
+5
+
 # Within another model, an input's history is its own; where it has none,
 # its argument answers, and there the outer input's history.
 >> bare(u_n) = {

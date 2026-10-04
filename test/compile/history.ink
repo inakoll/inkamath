@@ -1,12 +1,16 @@
 # A model's history of its inputs (DESIGN.md, next in line). The step's
 # window holds, before the stream, what the model's history says, where it
 # held an implicit 0, and the interpreter reads the same history before the
-# instance's argument. 'past' is a delay by one step. 'lit' is a decimator
+# instance's argument. 'past' is a delay by one step, and 'twin' reads two
+# inputs, each with a history of its own. 'lit' is a decimator
 # whose filter reaches before the stream, and whose hold reads y_-1, before
 # y's first tick, which init folds from the history into y's window.
 #
 #     past: 100 steps from 0, against exact values
 #     past.c: within 0
+#
+#     twin: 100 steps from 0, against exact values
+#     twin.c: within 0
 #
 #     lit: 100 steps from 0, against exact values
 #     lit.f: within 0
@@ -50,10 +54,15 @@
 #     level(x_n) = {
 #         c_n = n >= 0 and x_n > x_(n-1)
 #     }
+#     half(u_n, v_n) = {
+#         u_n | n < 0 = 0
+#         c_n = u_(n-1) + v_(n-1)
+#     }
 #
 #     inkamath: cannot compile c: c_0 reads x_-1, before the stream, where x has no history
 #     inkamath: cannot compile c: c_0 reads x_-2, before the stream, where x has no history
 #     inkamath: cannot compile c: c_0 reads x_-1, before the stream, where x has no history
+#     inkamath: cannot compile c: c_0 reads v_-1, before the stream, where v has no history
 #
 # A history that reaches into the stream, whose guard is not its index below
 # a constant, that reads a parameter, or that is not a single value (C83):
@@ -66,6 +75,10 @@
 #         x_n | n^2 > 4 = 0
 #         c_n = x_(n-3)
 #     }
+#     mute(u_n, x_n) = {
+#         x_n | n < 0 and u_n > 0 = 0
+#         c_n = x_(n-1)
+#     }
 #     biased(a = 1, x_n) = {
 #         x_n | n < 0 = a
 #         c_n = x_(n-1)
@@ -76,6 +89,7 @@
 #     }
 #
 #     inkamath: cannot compile x: its history reaches x_0, in the stream
+#     inkamath: cannot compile x: a history whose guard is not its index below a constant
 #     inkamath: cannot compile x: a history whose guard is not its index below a constant
 #     inkamath: cannot compile x: a history that reads a
 #     inkamath: cannot compile x: a history that is not a single value
@@ -100,6 +114,13 @@ delay(x_n) = {
     c_n = x_(n-1)
 }
 past = delay(x_n = n^2)
+
+both(u_n, v_n) = {
+    u_n | n < 0 = 1
+    v_n | n < 0 = 0
+    c_n = u_(n-1) - v_(n-1)
+}
+twin = both(u_n = n, v_n = 2*n)
 
 warmed(x_n) = {
     x_n | n < 0 = 1

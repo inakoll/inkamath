@@ -3198,7 +3198,7 @@ that exploring seven domains asked of the interpreter, by how many asked.
   About 210 lines: 40 in the interpreter, 130 in the compiler, most of them
   the fill and the refusals, and 40 in the check.
 
-  Specified in `test/data/spec/history.ink`, 39 of its 48 entries failing,
+  Specified in `test/data/spec/history.ink`, 42 of its 51 entries failing,
   those passing being definitions echoing themselves and a parameter's
   refusal; and in `test/compile/history.ink`, whose instances, refusals
   and reports, the seven programs' among them, are wired with the
