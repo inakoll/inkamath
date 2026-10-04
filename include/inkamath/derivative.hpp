@@ -438,14 +438,14 @@ private:
     // named only when it is refused, as --check names it: g_2[1,1], T[1,2,1].
     struct Guarded {
         const std::string&             name;
-        const ParametersDefinition<T>* cell = nullptr;
+        const ParametersDefinition<T>* cell  = nullptr;
         int                            index = 0, slice = 0, row = 0, col = 0;
 
         std::string Named() const {
             if (!cell) return name;
             return name + (cell->indexed() ? "_" + std::to_string(index) : "") + "[" +
-                   (cell->tensor() ? std::to_string(slice) + "," : "") + std::to_string(row) +
-                   "," + std::to_string(col) + "]";
+                   (cell->tensor() ? std::to_string(slice) + "," : "") + std::to_string(row) + "," +
+                   std::to_string(col) + "]";
         }
     };
 
@@ -453,8 +453,8 @@ private:
     // point only, an equality where its sides move apart, takes a clause
     // whose slope is not the function's.
     bool Holds(const Guarded& what, const PExpression<T>& guard) {
-        const Flag<bool>           guarding(guard_, true);
-        const Flag<const Guarded*> naming(guarded_, &what);
+        const Flag<bool>               guarding(guard_, true);
+        const Flag<const Guarded*>     naming(guarded_, &what);
         const Jet                      held = Eval(guard);
         return numeric_interface<T>::truth(*held[0]);
     }
