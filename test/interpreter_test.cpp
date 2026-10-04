@@ -160,6 +160,9 @@ TEST_CASE("recursion") {
 TEST_CASE("tensor") {
     check_transcript("tensor.ink");
 }
+TEST_CASE("gradcells") {
+    check_transcript("gradcells.ink");
+}
 TEST_CASE("readme") {
     check_readme();
 }

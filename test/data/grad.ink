@@ -54,6 +54,23 @@ shift(t) = t + x
 >> grad_(x = 3) shift(x)
 error: shift reads the global x, which grad's x does not reach
 
+# A clause's own names are not globals, its slice's no more than its row's
+# (DESIGN.md, C77).
+>> Gs[b<=2, j<=1, k<=1] = b
+Gs[b<=2, j<=1, k<=1] = b
+
+>> grad_(b = 2) b*Gs
+[1;;
+ 2]
+
+# A size is read as a clause is, so one that reads the global is refused too
+# (C79).
+>> gz[j<=x] = j
+gz[j<=x] = j
+
+>> grad_(x = 2) x*gz
+error: gz reads the global x, which grad's x does not reach
+
 # A sum term by term, and a sequence through its recurrence. A term already
 # remembered is not an answer for its derivative.
 >> grad_(x = 1) sum_(k=1)^3 k*x^k
@@ -199,6 +216,15 @@ error: grad cannot differentiate a power whose exponent changes with x, unless i
 >> grad_(x = 3) [x; x^2]
 [1;
  6]
+
+# A single value added to a matrix is added to each cell, and its slope with
+# it; to a tensor, to each slice (DESIGN.md, C81).
+>> grad_(x = 1) [1 1]*(x + [1; 2])
+2
+
+>> grad_(x = 1) (x + [1;; 2])
+[1;;
+ 1]
 
 # A matrix power is a product, whose factors do not commute, and its inverse
 # is differentiated as one.
@@ -376,3 +402,27 @@ e = 3
 
 >> grad_(x = 0) e^x
 error: grad cannot differentiate a power whose exponent changes with x, unless its base is e
+
+# C80: an index, a row or a slice that hides a parameter of the same name is
+# refused under grad, which would read the parameter where the clause reads
+# its own name. Evaluated, the clause's name wins.
+>> gn(n)_n = n
+gn(n)_n = n
+
+>> gn(5)_2
+2
+
+>> grad_(x = 1) gn(x)_2
+error: grad cannot differentiate gn yet: its index n hides its parameter n
+
+>> sm(z, t)[t<=2] = z[t]*t
+sm(z, t)[t<=2] = z[t]*t
+
+>> grad_(v = [1; 1]) [1 1]*sm(v, 10)
+error: grad cannot differentiate sm yet: its row t hides its parameter t
+
+>> tc(b)[b<=2, j<=1, k<=1] = b
+tc(b)[b<=2, j<=1, k<=1] = b
+
+>> grad_(x = 1) tc(x)[2,1,1]
+error: grad cannot differentiate tc yet: its slice b hides its parameter b
