@@ -1601,7 +1601,7 @@ closures need one anyway, and can bring it.
 | C72 `[kept]` | **A limit's derivative where its terms' derivatives converge too slowly near the point.** `grad` takes a limit's derivative as the limit of its terms' derivatives, which holds where those converge uniformly near the point, and a single point cannot show that they do. `h(x)_n = h(x)_(n-1)/(1 + x^2)` from `h(x)_0 = x` tends to 0 for every x, so its limit's derivative is 0; at 0 every term's derivative is 1, and `grad` answers 1. Found by the review of the specification; `grad.ink` records the wrong answer so that it cannot change unseen. |
 | C73 `[fixed]` | **`grad`'s checks for a jump read slopes, so a tangent passed.** A comparison or a guard at its threshold, `floor` at a whole number and an exponent were refused only where a first derivative was not zero, so `grad_(x = 0) (x^2 > 0)` answered 0 at a jump, a clause `x^2 == 0` gave its slope at the one point it holds, `2^((x-1)^2)` answered 0 at 1 and was refused at 2, and the same comparison under a nested `grad` was refused. Found by the review of the design. Whether a derivative is there at all is what is asked now. It refuses what is flat where the argument moves and lands on a whole number, as `floor(x^2)` at 0 does, which `grad.ink` records: a refusal over a silent wrong answer. |
 | C74 `[fixed]` | **A hold inside a sequence at another rate was compiled in the input's steps.** In `s_k = x_(4*k) - u_(floor(k/2))` from `s_0 = 0`, with `u_m = x_(2*m)` from `u_0 = 0` and `x_n = n^2`, the hold names a term of `u` by `s`'s index, and the compiler, which resolves every hold by the step, read the latest term of `u` instead: at 4 it gave `s_1` as 0, where the interpreter gives 16. Found specifying what several rates left refused (next in line). The hold reads every 8 steps a sequence computed every 2, so the term it names falls further behind at each tick and no window holds it: it is to be refused by its rate. The hold at the input's rate sampled, which the refusal of a slow sequence read by another names, would say what the compiler gives, not what the interpreter does. Now a hold's period is checked once its reader's is known, as its `a` ticks of the reader, and `s` is refused, "read every 8 steps, and u is computed every 2"; `compile_c74` in `test/cli.cmake` holds it. |
-| C75 `[open]` | **`--check` holds a term read from before the stream to the input there.** With `c_n = x_(n-1)` in a model and an instance giving `x_n = n^2`, the interpreter answers `c_0` from `x_(-1)`, 1, where the check feeds the compiled step its inputs from the first step on, as a host does, so its window holds 0, and the report has the two part at 0. Found specifying what several rates left refused (next in line), whose models feed a stream that starts at 0, `s_n \| n >= 0 = n^2`, where the interpreter has no `x_(-1)` either. Whether the check should give the window the input's earlier terms, holding the step to what no host gives it, or say that the step cannot have them, is open. |
+| C75 `[open]` | **`--check` holds a term read from before the stream to the input there.** With `c_n = x_(n-1)` in a model and an instance giving `x_n = n^2`, the interpreter answers `c_0` from `x_(-1)`, 1, where the check feeds the compiled step its inputs from the first step on, as a host does, so its window holds 0, and the report has the two part at 0. Found specifying what several rates left refused (next in line), whose models feed a stream that starts at 0, `s_n \| n >= 0 = n^2`, where the interpreter has no `x_(-1)` either. Whether the check should give the window the input's earlier terms, holding the step to what no host gives it, or say that the step cannot have them, was open; neither is taken: the model states its input's history, which the interpreter and the step both read, and a read before the stream that no history gives is refused (next in line: a model's history of its inputs). |
 | C76 `[fixed]` | **A compiled hold rounded its lag toward zero.** A hold's place in the held sequence's window was `(n - phase)/a - (n - b)/a - d` in C's division, which truncates, and its first step was clamped to `b`: a hold whose numerator could be negative, `y_(floor((n - 3)/2) + 1)` on a sequence based at a negative index, read the wrong cell or left its first steps 0 where the interpreter gives a term. Found by the review of the rates gaps, with 1200 random models compared against master, one of which master compiled to NaN where the interpreter has a value. The lag is now a floor, its first step where the term exists, and the emitted division keeps each numerator non-negative; `trail` in `test/compile/decimate.ink` holds it. |
 | C77 `[fixed]` | **`grad` took a tensor's slice name for a global.** Its check that no definition reads the global of its name binds a clause's index, row and column, not its slice, so after `Gc[b<=2, j<=1, k<=1] = b`, `grad_(b = 2) b*Gc` is refused, "Gc reads the global b, which grad's b does not reach", where `Gc` is a constant and the answer `[1;; 2]`. Found specifying `grad` of definitions by cells (next in line), whose specification holds it. Now the slice is bound as the row is; `Gs` in `test/data/grad.ink` holds it. |
 | C78 `[open]` | **An index that moves with `grad`'s name answers as if it did not.** An index is a whole number, so one that moves is at a jump, as `floor` is at a whole number, which C73 refuses; but with `s_n = n^2` and `v = [5; 7; 9]`, `grad_(x = 2) s_(x)` and `grad_(x = 2) v[x]` answer 0. Found specifying `grad` of definitions by cells (next in line), which refuses a moving size by that rule; an index wants the same check where it is read, not part of that entry. |
@@ -3081,3 +3081,114 @@ that exploring seven domains asked of the interpreter, by how many asked.
   review found C81, fixed, and C82, open. 197 lines of sources added and 136
   removed, the refactor's moves among them: 61 more in all, where about 120
   were planned.
+
+- **A model's history of its inputs** (C75). A model that reads its input
+  before the stream, `c_n = x_(n-1)` in `delay(x_n)`, is answered two ways:
+  given `x_n = n^2`, the interpreter reads `x_(-1)`, 1, where the step a host
+  feeds from its first index holds 0, and `--check` parts at 0; given the
+  workaround `s_n | n >= 0 = n^2`, the interpreter has no `c_0` where the step
+  has 0, and `--check` skips the term, as it skips any the interpreter cannot
+  give. Seven checked programs skip terms today, for three reasons. `boxcar`'s
+  `f_0`, `z_0` and `w_0` to `w_2` reach `x` before the stream, `z` and `w`
+  through `y_(-1)` and `y_(-2)`: C75 itself. `gain.K_0`, `pairs.w_0` and
+  `w_1`, `odd.z_1` and `trail.w_0` are below the model's own base clauses,
+  where neither has a term. `boxcar.y_0`, `boxcar.q_0` to `q_2`, `stride.h_0`
+  and `frame.p_0` and `p_1` are a slow sequence before its first tick. Only
+  the first is a discrepancy; the others are skipped in silence.
+
+  The decision, the user's, and one that may be revisited: no discrepancy. The
+  model says what its input was before the stream, by a clause of its own on
+  the input, which both read:
+
+      delay(x_n) = {
+          x_n | n < 0 = 0
+          c_n = x_(n-1)
+      }
+
+  In the interpreter, a history is clauses of the input in the model's body,
+  terms, `x_(-1) = 5`, and guarded clauses, of any value, shape and guard,
+  each input its own. The instance's argument is the input's default clause,
+  so the order is the one every definition has: a term beats a guarded clause,
+  which beats the default. Where both apply, the history wins; where neither
+  does, it is the argument's own error, `no clause of s applies`, or, with
+  none, `delay(...).x_0 is an input, and nothing defines it`. An unguarded
+  clause would leave the argument nothing, and is refused, `x is an input of
+  bad, so its body can give it only a history: a term or a guarded clause`; a
+  parameter's stays refused as it is. The argument giving the input from 0 and
+  the history below was rejected: the interpreter would need where the stream
+  starts, which is the compiler's, 1 for `odd`, so an instance would mean what
+  compiling it decides, and a guard would be read against a boundary it does
+  not name. Without a history the argument answers where it did, so no golden
+  moves.
+
+  Compiled, the stream starts at the step's first index, as the header names
+  it. Every read of a model's input before it is a term the history gives, or
+  refused: `cannot compile c: c_0 reads x_-1, before the stream, where x has
+  no history`. That holds in a clause, a base clause, a sample and a guard; a
+  read on the right of `and` or `or`, or in a guarded clause's value, is one
+  only where what keeps it, folded at that step, does not decide, so `n > 0
+  and x_n > x_(n-1)` compiles as now and `n >= 0 and ...` is refused, where
+  the interpreter reads `x_(-1)` and the step says NaN. Starting `c` at 1, as
+  the step does today, was rejected: the interpreter answers `c_0` from the
+  argument wherever it can, and the step cannot know the argument. A history
+  is compiled as constants: `init` fills the input's window before the stream
+  with each term a read reaches, folded, so it may read its index and
+  constants; one that reads anything else is refused, `a history that reads
+  a`, since the host may assign a parameter after `init` filled the window,
+  and one that is not a single value too, as the step's input is one (C83). It
+  must give nothing from the first index on, where the interpreter would read
+  it and the step what the host feeds: a term there, or a guard holding there,
+  is refused, `its history reaches x_0, in the stream`. So a guard is taken
+  only as its index below a constant, `n < k` or `n <= k`, either way round,
+  and any other is refused, `a history whose guard is not its index below a
+  constant`, since no other can be shown to fail at every step. Compiling the
+  history into the step, as a chain before the value fed, was rejected: any
+  guard would compile, but every step would test it, a guard holding in the
+  stream would replace what the host feeds without a word, and no header would
+  stay as it was.
+
+  Another sequence's term before the stream that a read reaches through the
+  history is folded into that sequence's window by `init` too, at the input's
+  rate or before a slow one's first tick: `boxcar`'s `z_0` reads `y_(-1)`,
+  `(x_(-1) + x_(-2))/2`. Where it does not fold, reading a parameter, the step
+  computes it again where it is read at the input's rate, as C71 does, and
+  elsewhere refuses it as now, `before y's first tick, where its samples could
+  give a term` or `before the step computes k`. Those refusals stand for a
+  closed form's terms too, which the same fill would answer: one concern, and
+  a model that asks first. A history of 0 emits nothing, `memset` giving it,
+  so a history line leaves the header of a model that reads no input before
+  the stream byte-identical; one that does changes only where a reader now
+  starts at the first step, the start having been the step's way of having no
+  term. It is a requirement that every header in `test/compile/expected` stays
+  byte-identical: none of their models reads its input before the stream. A
+  file's input, a name nothing defines, has no argument for the interpreter to
+  answer from and no body to state a history in, so its readers start where
+  its terms exist, as now: `fir.ink` waits for four samples, `back.ink` keeps
+  its NaN. An instance compiled within its file reads its argument's terms, as
+  now, and its history where it holds.
+
+  `--check` holds a sequence from the step that computes its first term, its
+  start or a slow one's first tick, and says so where that is after the first
+  step: `pairs.w: within 0, from 2`. Before it the step has no term; at the
+  input's rate the interpreter is asked, and must have none either, else the
+  line is `none at` the step, `where the interpreter gives` its term; a slow
+  sequence's terms before its first tick are not asked, since the step keeps
+  none and the interpreter's latest term there is one no read needs,
+  `stride`'s `h_(-1)` from its closed form. From its start, a term the
+  interpreter cannot give parts, `pole.y: inf at 3, where the interpreter
+  gives none: division by zero`, which passes today at `within 0`: the first
+  check's rule that such a term is not compared is reversed, as it hid C75's
+  second form. NaN where the interpreter has none agrees, NaN being the step's
+  word for it. A line of its own for the steps before a start was rejected, as
+  one line per sequence is what the report is read by. So no term goes
+  unreported: `gain.K` from 1, `pairs.w` from 2, `odd.z` from 2, `trail.w`
+  from 1, `stride.h` from 1, `frame.p` from 2, and `boxcar.y` from 1 and `q`
+  from 3, with `f`, `z` and `w` held from 0 once `down` states its history.
+
+  Only `down` in `test/compile/decimate.ink` reads its input before the
+  stream, and it gains `x_n | n < 0 = 0` in the commit that builds this; `s`,
+  the workaround, goes, and `boxcar`, `lead` and `trail` read `x_n = n^2`,
+  since `lead` and `trail` never read before the stream. No README example
+  reads one; section 5 and the compiler's paragraph gain the history there.
+  About 210 lines: 40 in the interpreter, 130 in the compiler, most of them
+  the fill and the refusals, and 40 in the check.
