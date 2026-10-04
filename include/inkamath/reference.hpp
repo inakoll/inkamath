@@ -397,6 +397,16 @@ public:
                        parameters.EvaluateArguments(call, caller)};
 
         const auto& arguments = key.arguments;
+        // The prelude has no test for a matrix to refuse one with: by one, its
+        // b*floor(a/b) is a product of matrices.
+        if (home == &stack.builtins_ && reference_name_ == "mod") {
+            for (const auto& [name, value] : arguments) {
+                if (name == "b" && !value.IsScalar()) {
+                    throw std::runtime_error("mod needs a single value to divide by, not a " +
+                                             value.Size().Described() + "; write it by its cells");
+                }
+            }
+        }
 
         // Only a global's answer is a function of the key and the globals
         // alone (DESIGN.md, phase 9); a local shares its name with the
