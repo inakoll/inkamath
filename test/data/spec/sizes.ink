@@ -14,10 +14,11 @@ rl(z)[i,j] = z[i,j]*(z[i,j] > 0)
 [1, 0;
  0, 3]
 
->> rl([1 -1 2])
-[1, 0, 2]
+>> rl([1 -1])
+[1, 0]
 
-# Remembered by its arguments, their shapes included.
+# Remembered by its arguments, their shapes included: the same cells as a
+# column.
 >> rl([1; -1])
 [1;
  0]
