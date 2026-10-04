@@ -4,7 +4,7 @@
 # double. 'fan' is C83's own case; 'grid' reads a matrix at each step; 'chan'
 # reads cells of a column, applies a function of cells to it and defines a
 # term by cells whose size is inferred from it; 'twirl' has a history of the
-# input's size; 'duo' is decimate.ink's 'lit' on two channels, and samples
+# input's size; 'duo' is history.ink's 'lit' on two channels, and samples
 # and holds the input itself; 'mean3' reads a size from a parameter, and
 # 'mean2' from the instance's, which the check compiles in; 'track' takes a
 # single value and a column, and 'pair' two columns of different sizes;
@@ -105,12 +105,12 @@
 # every program --check writes for an instance whose inputs are single
 # values.
 #
-# What 'inkamath --compile' refuses, each model a file of its own compiled
-# by name with -o. A history of another size than the input, stated or not
-# (test/cli.cmake's 'swap', which said "a history that is not a single
-# value"); a tensor; a default and an instance within a model each giving
-# another size than its model states. A size that reads the index is the
-# interpreter's refusal, where the file is read:
+# What 'inkamath --compile' refuses, each model a file of its own, 'lone'
+# with 'dot', compiled by name with -o. A history of another size than the
+# input, stated or not (test/cli.cmake's 'swap', which said "a history that
+# is not a single value"); a tensor; a default and an instance within a
+# model each giving another size than its model states. A size that reads
+# the index is the interpreter's refusal, where the file is read:
 #
 #     broad(x_n[j<=2]) = {
 #         x_n | n < 0 = 0
