@@ -399,7 +399,7 @@ public:
         const auto& arguments = key.arguments;
         // The prelude has no test for a matrix to refuse one with: by one, its
         // b*floor(a/b) is a product of matrices.
-        if (home == &stack.builtins_ && reference_name_ == "mod") {
+        if (home == &stack.builtins_ && arguments.size() == 2 && reference_name_ == "mod") {
             for (const auto& [name, value] : arguments) {
                 if (name == "b" && !value.IsScalar()) {
                     throw std::runtime_error("mod needs a single value to divide by, not a " +
@@ -461,16 +461,23 @@ public:
             }
             return evaluation;
         } catch (const NotSingle& refused) {
-            const bool shaped = std::any_of(arguments.begin(), arguments.end(), [&](const auto& a) {
-                return a.second.Size() == refused.shape;
-            });
-            if (!shaped || stack.scope_ == &stack.builtins_) throw;
-            throw std::runtime_error(reference_name_ + " needs single values, not a " +
-                                     refused.shape.Described() + "; write it by its cells");
+            Refuse(refused, arguments, stack);
         }
     }
 
 private:
+    // Out of line, so that a call stays as small as it was.
+    [[noreturn]] void Refuse(const NotSingle&                                   refused,
+                             const typename ParametersDefinition<T>::Arguments& arguments,
+                             const ReferenceStack<T>&                           stack) const {
+        const bool shaped = std::any_of(arguments.begin(), arguments.end(), [&](const auto& a) {
+            return a.second.Size() == refused.shape;
+        });
+        if (!shaped || stack.scope_ == &stack.builtins_) throw;
+        throw std::runtime_error(reference_name_ + " needs single values, not a " +
+                                 refused.shape.Described() + "; write it by its cells");
+    }
+
     // A recurrence nests one reference per term it reaches back, so a term far
     // from its base runs out of depth. Filled from the base up instead, each
     // term finds the one before it remembered, stepping as the recurrence

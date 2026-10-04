@@ -18,8 +18,10 @@
 // call given a value of that shape says in its own name (DESIGN.md, sizes
 // inferred in a definition by cells).
 struct NotSingle : std::runtime_error {
-    NotSingle(const std::string& message, Extent extent)
-        : std::runtime_error(message), shape(extent) {}
+    // A message as runtime_error takes it, so that a literal is not made a
+    // string where the check is inlined.
+    template <typename Message>
+    NotSingle(const Message& message, Extent extent) : std::runtime_error(message), shape(extent) {}
     Extent shape;
 };
 
