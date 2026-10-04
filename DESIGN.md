@@ -3489,7 +3489,10 @@ that exploring seven domains asked of the interpreter, by how many asked.
   after each matrix term, heat's one and kalman2's six, as their inverses
   write NaN; `adc.h` moves, its hysteresis, alarm and rising edge tested,
   because `rising` writes NaN before its first term, though no step reaches
-  it.
+  it. Of the programs `--check` writes for the instances checked, seven
+  write NaN and move, their reports as they are: `ajar` and `rise` test a
+  guard's operands, `cls`, `gate`, `mark` and `rnn` their matrix terms, and
+  `stiff` gains the sentence alone.
 
   The interpreter refuses a matrix term whole where one cell fails, so in an
   aware header a matrix term with a NaN cell is NaN in every cell: after the

@@ -170,6 +170,12 @@
 #
 # adc_test.c passes against it unchanged. compile_c86 and compile_log_refused
 # in test/cli.cmake do not move.
+#
+# Of the instances checked in test/CMakeLists.txt, the programs of those
+# whose step writes NaN move and their reports do not: ajar and rise test
+# their 'and's right side, x_(n-3) and x_n against x_(n-1); cls, gate, mark
+# and rnn each matrix term; stiff, whose powers have constant exponents,
+# gains the sentence alone. Every other program is byte for byte as now.
 level(x_n) = {
     p(r)_0 = 1
     p(r)_k = r*p(r)_(k-1)
