@@ -7,7 +7,7 @@
 # input's size; 'duo' is history.ink's 'lit' on two channels, and samples
 # and holds the input itself; 'mean3' reads a size from a parameter, and
 # 'mean2' from the instance's, which the check compiles in; 'track' takes a
-# single value and a column, and 'pair' two columns of different sizes;
+# single value and a column, and 'twain' two columns of different sizes;
 # 'nestv' gives an instance within a model a column built from a single
 # value. Each reports so, every term exact:
 #
@@ -36,8 +36,8 @@
 #     track: 100 steps from 0, against exact values
 #     track.u: within 0
 #
-#     pair: 100 steps from 0, against exact values
-#     pair.y: within 0
+#     twain: 100 steps from 0, against exact values
+#     twain.y: within 0
 #
 #     nestv: 100 steps from 0, against exact values
 #     nestv.<name>: within 0, for each of y, inner.y and inner.x
@@ -199,7 +199,7 @@ track = ctl(r_n = 1, s_n = [n; 1])
 two(a_n[j<=2], b_n[j<=3]) = {
     y_n = [1 1]*a_n + [1 1 1]*b_n
 }
-pair = two(a_n = [n; 1], b_n = [1; n; n^2])
+twain = two(a_n = [n; 1], b_n = [1; n; n^2])
 
 outer(u_n) = {
     inner = dot(x_n = [u_n; 1])
