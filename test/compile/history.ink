@@ -29,6 +29,12 @@
 #     ajar: 100 steps from 0, against exact values
 #     ajar.c: within 0
 #
+# A slow sequence's base clause that reads the input before the stream reads
+# the history too: 'sown' seeds y_0 with x_-1.
+#
+#     sown: 100 steps from 0, against exact values
+#     sown.<name>: within 0, for each of y and z
+#
 # An instance within a model: 'nest' reads an input with no history of its
 # own, whose argument is the outer input, so init folds the outer history
 # into the inner window; in 'twice' the inner history beats the outer one.
@@ -157,6 +163,14 @@ gate(x_n) = {
     c_n = n < 4 and x_(n-3) > 0
 }
 ajar = gate(x_n = n)
+
+seed(x_n) = {
+    x_n | n < 0 = 1
+    y_0 = x_(-1)
+    y_m = y_(m-1) + x_(2*m)
+    z_n = y_(floor(n/2))
+}
+sown = seed(x_n = n)
 
 bare(u_n) = {
     c_n = u_(n-1)

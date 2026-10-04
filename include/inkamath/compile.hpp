@@ -2922,9 +2922,13 @@ private:
                     for (const auto& [read, lags] : *reads)
                         always[read].insert(lags.begin(), lags.end());
             Cover(name, sequence, always, std::numeric_limits<int>::max());
+            // A base clause's reads, which Cover passes over.
             for (const Seed& seed : sequence.seeds)
-                Cover(name, sequence, {{seed.read, {seed.lag}}},
-                      sequence.period * seed.index + sequence.phase + 1);
+                if (seed.at < earliest_ && Historied(seed.read) && !Folded(seed.read, seed.at))
+                    throw Refusal("cannot compile " + name + ": " + name + "_" +
+                                  std::to_string(seed.index) + " reads " + seed.read + "_" +
+                                  std::to_string(seed.at) + ", before the stream, where " +
+                                  seed.read + " has no history");
         }
         for (const Early& early : earlies_)
             for (const auto& [name, sequence] : sequences_)
