@@ -388,6 +388,15 @@ set(stderr "inkamath: cannot compile inner.c: inner.c_0 reads inner.x_-1, before
 set(exit 1)
 check(history_gained)
 
+# A history of a single value for an inner input given a matrix.
+file(WRITE "${OUT}/stacked.ink" "lag(x_n) = {\n    x_n | n < 0 = 0\n    c_n = x_(n-1)\n}\n"
+     "stacked(x_n) = {\n    x_n | n < 0 = 0\n    inner = lag(x_n = [x_n; x_n])\n"
+     "    c_n = inner.c_n\n}\n")
+set(args --compile stacked.ink stacked -o stacked.h)
+set(stderr "inkamath: cannot compile inner.x: a history of another shape\n")
+set(exit 1)
+check(history_shape)
+
 # A guarded clause's value is read only where its guard, folded, holds.
 file(WRITE "${OUT}/guarded.ink" "guarded(x_n) = {\n    c_n | n > 0 = x_(n-1)\n    c_n = 0\n}\n")
 set(args --compile guarded.ink guarded -o guarded.h)
