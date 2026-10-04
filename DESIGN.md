@@ -3477,19 +3477,31 @@ that exploring seven domains asked of the interpreter, by how many asked.
 
   A header that writes no NaN is byte for byte as now. The gate is the
   header: one that writes NaN anywhere is compiled again, aware. Of the
-  fourteen expected headers ten stay; `back.h`, `heat.h` and `kalman2.h`
-  gain the sentence alone, their guards reading the index or nothing;
-  `adc.h` moves, its hysteresis, alarm and rising edge tested, because
-  `rising` writes NaN before its first term, though no step reaches it.
+  fourteen expected headers ten stay; `back.h` gains the sentence alone, its
+  guards reading the index; `heat.h` and `kalman2.h` gain it and a test
+  after each matrix term, heat's one and kalman2's six, as their inverses
+  write NaN; `adc.h` moves, its hysteresis, alarm and rising edge tested,
+  because `rising` writes NaN before its first term, though no step reaches
+  it.
 
-  A cell's NaN stays in its cell and reaches every cell that reads it, where
-  the interpreter refuses the whole term. Making every cell NaN after each
-  matrix term was rejected: a test per matrix sequence per step, to make a
-  healthy cell repeat its neighbour's failure. `--check` agrees where the
-  interpreter gives no term and any cell of the step's is NaN; it agrees
-  cell by cell today, so a term by cells with one failing cell parts,
-  `slope.y[1,1]: 1 at 2, where the interpreter gives none`. A cell no clause
-  gives is 0 in the interpreter, not a refusal, and stays 0, as C89 has it.
+  The interpreter refuses a matrix term whole where one cell fails, so in an
+  aware header a matrix term with a NaN cell is NaN in every cell: after the
+  cells of each matrix sequence's term, one test per step,
+
+      if (isnan(m_->y[0][0][0]) || isnan(m_->y[0][1][0]))
+          for (int i_ = 0; i_ < 2; ++i_)
+              for (int j_ = 0; j_ < 1; ++j_) m_->y[0][i_][j_] = NAN;
+
+  inside the block that computes the term where one does. Leaving a cell's
+  NaN in its cell, the first choice, was overruled on review: a guard
+  reading a healthy cell of a refused term, `h_n | y_n[1] > 1/2 = 1`, took
+  its clause, 1 where the interpreter gives none. `--check` agrees cell by
+  cell as today, each cell now NaN where the interpreter gives no term; a
+  term by cells with one failing cell parted, `slope.y[1,1]: 1 at 2, where
+  the interpreter gives none`. A matrix that is no sequence's term, a value
+  computed on the way or from the parameters, keeps a NaN in its cell. A
+  cell no clause gives is 0 in the interpreter, not a refusal, and stays 0,
+  as C89 has it.
 
   Rejected: (a) a status field, the first failure's definition and step or a
   count. The ruling under `lim` compiled stands: a field is read by the host

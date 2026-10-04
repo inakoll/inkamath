@@ -7,7 +7,8 @@
 # 'run' reads a limit that does not converge from step 8, where r is -1;
 # 'sign' a function no clause of which applies from step 4; 'shy' a clause
 # the interpreter refuses wherever it is taken (C86), from step 3; 'slope'
-# the same as 'sign', cell by cell; 'pair' the same as 'sign' through a bare
+# the same as 'sign', cell by cell, and through a healthy cell of a term the
+# interpreter refuses whole; 'pair' the same as 'sign' through a bare
 # truth from step 2, and an 'and' whose right side reads it from 3 and, at 0,
 # a term before its start. Today each parts where the failure was made a
 # value:
@@ -17,6 +18,7 @@
 #     shy.z: 0 at 3, where the interpreter gives none: division by zero
 #     slope.y[1,1]: 1 at 2, where the interpreter gives none: no clause of r applies
 #     slope.g[1,1]: 0 at 0, where the interpreter gives none: no clause of r applies
+#     slope.h: 0 at 0, where the interpreter gives none: no clause of r applies
 #     pair.w: 0 at 3, where the interpreter gives none: no clause of r applies
 #     pair.z: 1 at 2, where the interpreter gives none: no clause of r applies
 #
@@ -39,14 +41,16 @@
 #     slope: 100 steps from 0, against exact values
 #     slope.y: within 0
 #     slope.g: within 0
+#     slope.h: within 0
 #
 #     pair: 100 steps from 0, against exact values
 #     pair.w: within 0
 #     pair.y: within 0
 #     pair.z: within 0
 #
-# 'slope.y' because the check agrees where the interpreter gives no term and
-# any cell of the step's is NaN: at 2, y_2[2] has no clause, y_2[1] is 1.
+# 'slope' because a matrix term with a NaN cell is NaN in every cell: at 2,
+# y_2[2] has no clause, so y_2[1], which is 1, is NaN with it, and so is h_2,
+# which reads it and would otherwise be 1.
 #
 # Each model compiles as now, nothing on stderr, and its step decides so,
 # 'inkamath --compile nan.ink <model> -o <model>.h' writing, for level,
@@ -63,8 +67,15 @@
 #
 #     m_->y[0][0][0] = isnan(m_->x[0] - 1.0) ? NAN : m_->x[0] - 1.0 > 0.0 ? m_->x[0] - 1.0 : NAN;
 #     m_->y[0][1][0] = isnan(m_->x[0] - 2.0) ? NAN : m_->x[0] - 2.0 > 0.0 ? m_->x[0] - 2.0 : NAN;
+#     if (isnan(m_->y[0][0][0]) || isnan(m_->y[0][1][0]))
+#         for (int i_ = 0; i_ < 2; ++i_)
+#             for (int j_ = 0; j_ < 1; ++j_) m_->y[0][i_][j_] = NAN;
 #     m_->g[0][0][0] = isnan(m_->y[0][0][0]) ? NAN : m_->y[0][0][0] > 1.0 ? 1.0 : 0.0;
 #     m_->g[0][1][0] = isnan(m_->y[0][1][0]) ? NAN : m_->y[0][1][0] > 1.0 ? 1.0 : 0.0;
+#     if (isnan(m_->g[0][0][0]) || isnan(m_->g[0][1][0]))
+#         for (int i_ = 0; i_ < 2; ++i_)
+#             for (int j_ = 0; j_ < 1; ++j_) m_->g[0][i_][j_] = NAN;
+#     m_->h[0] = isnan(m_->y[0][0][0]) ? NAN : m_->y[0][0][0] > 0.5 ? 1.0 : 0.0;
 #
 #     const double t0_ = (isnan(m_->x[0]) ? NAN : m_->x[0] < 3.0 ? 1.0 : 0.0);
 #     const double t1_ = (t0_ == 0.0 ? 0.0 : t0_ != t0_ ? NAN : (m_->index_ < 1 ? NAN : (isnan(m_->y[1]) ? NAN : m_->y[1] > 0.5 ? 1.0 : 0.0)));
@@ -85,8 +96,17 @@
 #
 # A header that writes no NaN is byte for byte as now: kernel.h, net.h and
 # pid_clamped.h keep their clamps and ReLUs untested, and bank, chain, fir,
-# kalman, loop, mix and pid stay as they are. back.h, heat.h and kalman2.h
-# gain the sentence alone, wrapped with their paragraph. adc.h, whose rising
+# kalman, loop, mix and pid stay as they are. back.h gains the sentence
+# alone, wrapped with its paragraph. heat.h and kalman2.h, whose inverses
+# write NaN, gain it and a test after each matrix term, heat.h's step ending
+#
+#     m_->u[0][2][0] = m_->index_ == 0 ? 0.0 : m_->A[2][0] * t1_ + m_->A[2][1] * t2_ + m_->A[2][2] * t3_;
+#     if (isnan(m_->u[0][0][0]) || isnan(m_->u[0][1][0]) || isnan(m_->u[0][2][0]))
+#         for (int i_ = 0; i_ < 3; ++i_)
+#             for (int j_ = 0; j_ < 1; ++j_) m_->u[0][i_][j_] = NAN;
+#
+# and kalman2.h testing Pp, K and xp inside the blocks that compute them, at
+# eight spaces, and P, z and x after their cells. adc.h, whose rising
 # edge writes NaN before its first term, ends its paragraph
 #
 #     * hi = 1.0, lo = -1.0 and q = 0.25. After assigning one, call adc_update. A
@@ -137,6 +157,8 @@ ramp(x_n) = {
     y_n[j<=2] = r(x_n - j)
     g_n[j<=2] | y_n[j] > 1 = 1
     g_n[j<=2] = 0
+    h_n | y_n[1] > 1/2 = 1
+    h_n = 0
 }
 slope = ramp(x_n = n)
 
