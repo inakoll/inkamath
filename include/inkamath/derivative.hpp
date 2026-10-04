@@ -345,7 +345,7 @@ private:
             const Local local(*this);
             for (const auto& argument : arguments) frames_.back().push_back(argument);
             Hidden(definition, arguments);
-            const Flag<bool> unguarded(guard_, false);
+            const Setting<bool> unguarded(guard_, false);
             Jet              result = Dispatch(definition, indexed, index);
             memo_.emplace(key, result);
             return result;
@@ -380,7 +380,7 @@ private:
               const Arguments& arguments) {
         const Clause<T>* lowest = definition.EndBase(true);
         if (!lowest) return;
-        const Flag<bool> filling(filling_, true);
+        const Setting<bool> filling(filling_, true);
         try {
             for (int k = lowest->parameters.index() + 1; k < index; ++k)
                 (void)Term(definition, call, true, k, arguments);
@@ -414,7 +414,7 @@ private:
         for (const Clause<T>& clause : definition.Clauses()) {
             const ParametersDefinition<T>& p = clause.parameters;
             if (!p.guarded() && (!p.indexed() || p.general())) continue;
-            if (Selects(definition, clause, indexed, index)) return Eval(clause.expression);
+            if (definition.Selects(clause, indexed, index, parts)) return Eval(clause.expression);
         }
         if (indexed) {
             if (plain) throw std::runtime_error(name + " is not a sequence");
@@ -429,18 +429,6 @@ private:
         if (guarded) throw std::runtime_error("no clause of " + name + " applies");
         throw std::runtime_error(name + " is a sequence; index it (" + name + "_" +
                                  std::to_string(lowest.value_or(0)) + ")");
-    }
-
-    bool Selects(const Reference<T>& definition, const Clause<T>& clause, bool indexed, int index) {
-        const ParametersDefinition<T>& p = clause.parameters;
-        if (p.indexed() != indexed) return false;
-        if (!p.general() && indexed && p.index() != index) return false;
-        if (!p.general()) return !p.guarded() || Holds({definition.Name()}, p.guard());
-        typename ReferenceStack<T>::Trial trial(stack_, p.index_name());
-        stack_.BindValue(p.index_name(), T(index));
-        if (p.guarded() && !Holds({definition.Name()}, p.guard())) return false;
-        trial.keep();
-        return true;
     }
 
     // What a guard chooses a clause for, a definition or one of its cells,
@@ -462,8 +450,8 @@ private:
     // point only, an equality where its sides move apart, takes a clause
     // whose slope is not the function's.
     bool Holds(const Guarded& what, const PExpression<T>& guard) {
-        const Flag<bool>               guarding(guard_, true);
-        const Flag<const Guarded*>     naming(guarded_, &what);
+        const Setting<bool>            guarding(guard_, true);
+        const Setting<const Guarded*>  naming(guarded_, &what);
         const Jet                      held = Eval(guard);
         return numeric_interface<T>::truth(*held[0]);
     }
@@ -483,8 +471,7 @@ private:
 
     Jet Logic(LogicExpression<T>& logic) {
         const auto truth = [&](const Jet& jet) {
-            return numeric_interface<T>::truth(*jet[0],
-                                               std::string(logic.Word()) + " needs single values");
+            return numeric_interface<T>::truth(*jet[0], logic.Word());
         };
         const bool left    = truth(Eval(logic.m_e1()));
         const bool decided = left != logic.Conjunction();
@@ -922,19 +909,6 @@ private:
 
     private:
         Derivative& d_;
-    };
-
-    // Set while this lives, and put back however it ends.
-    template <typename V>
-    struct Flag {
-        Flag(V& flag, V value) : flag_(flag), previous_(flag) { flag_ = value; }
-        ~Flag() { flag_ = previous_; }
-        Flag(const Flag&)            = delete;
-        Flag& operator=(const Flag&) = delete;
-
-    private:
-        V& flag_;
-        V  previous_;
     };
 
     ReferenceStack<T>&                                    stack_;

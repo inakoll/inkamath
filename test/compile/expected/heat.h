@@ -21,7 +21,10 @@
  * name_(n-k) for each sequence: q and u (k <= 1). The parameters are fields
  * holding the file's values once heat_init has run: dt = 0.01. After assigning
  * one, call heat_update. Compiled in, as a size, a bound or a lag cannot
- * change: N.
+ * change: N. A term the interpreter would refuse is NaN, and so is every term
+ * that reads one, through a guard or a comparison as through arithmetic. Built
+ * with -ffinite-math-only, which -ffast-math implies, GCC removes the tests
+ * that make it so, and Clang warns of each NaN.
  */
 
 /* The parameters, which the host may assign, then what derives from them,
@@ -109,6 +112,9 @@ static inline void heat_step(heat* m_, double q) {
     m_->u[0][0][0] = m_->index_ == 0 ? 0.0 : m_->A[0][0] * t1_ + m_->A[0][1] * t2_ + m_->A[0][2] * t3_;
     m_->u[0][1][0] = m_->index_ == 0 ? 0.0 : m_->A[1][0] * t1_ + m_->A[1][1] * t2_ + m_->A[1][2] * t3_;
     m_->u[0][2][0] = m_->index_ == 0 ? 0.0 : m_->A[2][0] * t1_ + m_->A[2][1] * t2_ + m_->A[2][2] * t3_;
+    if (isnan(m_->u[0][0][0]) || isnan(m_->u[0][1][0]) || isnan(m_->u[0][2][0]))
+        for (int i_ = 0; i_ < 3; ++i_)
+            for (int j_ = 0; j_ < 1; ++j_) m_->u[0][i_][j_] = NAN;
 }
 
 #endif

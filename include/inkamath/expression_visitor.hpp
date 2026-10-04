@@ -306,8 +306,7 @@ public:
 
     T visit(LogicExpression<T>* expr) override {
         const auto truth = [expr](const T& value) {
-            return numeric_interface<T>::truth(value,
-                                               std::string(expr->Word()) + " needs single values");
+            return numeric_interface<T>::truth(value, expr->Word());
         };
         const bool left    = truth(expr->m_e1()->accept(*this));
         const bool decided = left != expr->Conjunction();

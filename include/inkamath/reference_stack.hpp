@@ -15,6 +15,19 @@
 #include "inkamath/pexpression.hpp"
 #include "inkamath/reference.hpp"
 
+// A variable set while this lives, and put back however it ends.
+template <typename V>
+struct Setting {
+    Setting(V& variable, V value) : variable_(variable), previous_(variable) { variable_ = value; }
+    ~Setting() { variable_ = previous_; }
+    Setting(const Setting&)            = delete;
+    Setting& operator=(const Setting&) = delete;
+
+private:
+    V& variable_;
+    V  previous_;
+};
+
 // Two kinds of scope: the definitions of the session, a file or an instance,
 // each over the built-ins, and the parameters of the call being evaluated. A
 // call never sees its caller's parameters, so 'q = y+1' means the global y
@@ -192,39 +205,20 @@ public:
     }
 
     // Names are sought from a scope while one of these lives.
-    struct Within {
+    struct Within : Setting<const Scope<T>*> {
         Within(ReferenceStack& stack, const Scope<T>* scope)
-            : stack_(stack), previous_(stack.scope_) {
-            if (scope) stack_.scope_ = scope;
-        }
-        ~Within() { stack_.scope_ = previous_; }
-        Within(const Within&)            = delete;
-        Within& operator=(const Within&) = delete;
-
-    private:
-        ReferenceStack& stack_;
-        const Scope<T>* previous_;
+            : Setting<const Scope<T>*>(stack.scope_, scope ? scope : stack.scope_) {}
     };
 
     // Definitions go into a scope, and names are sought there, while one of
     // these lives: a file's as it is read, the built-ins' as they are made.
     struct Into {
         Into(ReferenceStack& stack, Scope<T>& scope)
-            : stack_(stack), target_(stack.target_), scope_(stack.scope_) {
-            stack_.target_ = &scope;
-            stack_.scope_  = &scope;
-        }
-        ~Into() {
-            stack_.target_ = target_;
-            stack_.scope_  = scope_;
-        }
-        Into(const Into&)            = delete;
-        Into& operator=(const Into&) = delete;
+            : target_(stack.target_, &scope), scope_(stack.scope_, &scope) {}
 
     private:
-        ReferenceStack& stack_;
-        Scope<T>*       target_;
-        const Scope<T>* scope_;
+        Setting<Scope<T>*>       target_;
+        Setting<const Scope<T>*> scope_;
     };
 
     // A parameter, a default or a sequence index, bound in the frame the call
@@ -334,11 +328,6 @@ public:
             if (found != scope->names.end()) return found->second;
         }
         return definition_type();
-    }
-
-    // Whether a name is still the one the interpreter starts with.
-    [[nodiscard]] bool Builtin(const std::string& name) const {
-        return session_.names.count(name) == 0 && builtins_.names.count(name) != 0;
     }
 
     // A name as it is read where evaluation stands, past the frame; and

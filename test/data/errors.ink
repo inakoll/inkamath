@@ -151,6 +151,26 @@ inf
 >> 10^400*~1
 inf
 
+# NaN is not a number, so a comparison of it has no answer, and is refused
+# rather than guessed false, as C has it (DESIGN.md, a NaN reaches every term
+# that reads it). Nor are two NaNs equal, or a matrix with one equal to any.
+>> 0/~0 > 0
+error: a comparison needs a number, not -nan
+
+>> 0/~0 == 0/~0
+error: a comparison needs a number, not -nan
+
+>> [1 0/~0] == [1 2]
+error: a comparison needs a number, not -nan
+
+# A power of NaN is NaN, as every other operation on it is, where C's pow
+# absorbs it: both answered 1, where an aware step does not.
+>> 1^(0/~0)
+-nan
+
+>> (0/~0)^~0
+-nan
+
 # An exponent outside int's range used to be converted to one anyway, which is
 # undefined: this answered 0 (DESIGN.md, C28).
 >> 2^2147483648

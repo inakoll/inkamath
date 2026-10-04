@@ -86,7 +86,6 @@ class Interpreter
 {
 public:
     Interpreter();
-    ~Interpreter();
 
     typedef typename U::value_type value_type;
     typedef U matrix_type;
@@ -117,10 +116,6 @@ public:
     [[nodiscard]] const ReferenceStack<U>& Definitions() const { return stack_; }
     ReferenceStack<U>&                     Definitions() { return stack_; }
 
-    // A model's instance with every default, which the compiler compiles.
-    std::shared_ptr<const Scope<U>> Defaults(const Reference<U>& model) {
-        return stack_.Defaults(model);
-    }
     // A file's names, read as 'use' reads them, from beside the directory set.
     std::shared_ptr<const Scope<U>> Read(const std::string& stem) { return Load(stem); }
 
@@ -233,16 +228,6 @@ private:
     // an argument list's, where a sign with a space before it and none after
     // it begins the next element.
     bool listed_ = false;
-    struct Listing {
-        Listing(bool& listed, bool value) : listed_(listed), previous_(listed) { listed_ = value; }
-        ~Listing() { listed_ = previous_; }
-        Listing(const Listing&)            = delete;
-        Listing& operator=(const Listing&) = delete;
-
-    private:
-        bool& listed_;
-        bool  previous_;
-    };
 
     PExpression<U> m_E;
     ReferenceStack<U> stack_;
@@ -274,12 +259,6 @@ Interpreter<T, U>::Interpreter() {
     const typename ReferenceStack<U>::Into builtins(stack_, stack_.Builtins());
     for (const char* line : prelude) (void)Run(line);
     ResetInterpreter();
-}
-
-template <Parsable T, Numeric U>
-Interpreter<T,U>::~Interpreter()
-{
-
 }
 
 template <Parsable T, Numeric U>
@@ -736,7 +715,7 @@ PExpression<U> Interpreter<T, U>::ParseMatrix() {
             break;
 
         default: {
-            const Listing listing(listed_, true);
+            const Setting<bool> listing(listed_, true);
             e = Parse();
             mat.push_back(e);
             ++size.back();
@@ -868,7 +847,7 @@ PExpression<U> Interpreter<T, U>::ParseSimpleExpr(bool postfix) {
 
         case LPar: {
             ++m_i;
-            const Listing grouped(listed_, false);
+            const Setting<bool> grouped(listed_, false);
             e = Parse();
             if (!AtEnd() && Peek().type == RPar)
             {
@@ -963,7 +942,7 @@ PExpression<U> Interpreter<T, U>::ParseCell(PExpression<U> matrix) {
         return matrix;
     }
     ++m_i;
-    const Listing               index(listed_, false);
+    const Setting<bool>         index(listed_, false);
     std::vector<PExpression<U>> at{Parse()};
     while (!AtEnd() && Peek().type == Comma) {
         if (at.size() == 3)
@@ -1085,7 +1064,7 @@ PExpression<U> Interpreter<T, U>::ParseSeries() {
     const std::string index = expect(Func);
     expect(Equal);
     const PExpression<U> lower = [&] {
-        const Listing bound(listed_, false);
+        const Setting<bool> bound(listed_, false);
         return ParseCompareExpr();
     }();
     if (AtEnd() || Peek().type != RPar) Fail("missing ')' after '", m_tokens[m_i - 1].text, "'");
@@ -1103,7 +1082,7 @@ PExpression<U> Interpreter<T, U>::ParseSeries() {
             upper = std::make_shared<RefExpression<U>>(m_tokens[m_i++].text);
         } else if (Peek().type == LPar) {
             ++m_i;
-            const Listing bound(listed_, false);
+            const Setting<bool> bound(listed_, false);
             upper = ParseCompareExpr();
             if (AtEnd() || Peek().type != RPar)
                 Fail("missing ')' after '", m_tokens[m_i - 1].text, "'");
@@ -1130,7 +1109,7 @@ PExpression<U> Interpreter<T, U>::ParseGrad() {
     const std::string variable = expect(Func);
     expect(Equal);
     const PExpression<U> point = [&] {
-        const Listing at(listed_, false);
+        const Setting<bool> at(listed_, false);
         return ParseCompareExpr();
     }();
     expect(RPar);
