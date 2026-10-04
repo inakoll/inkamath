@@ -1,0 +1,171 @@
+# A model's history of its inputs (DESIGN.md, next in line). A model that
+# reads its input before the stream says what the input was there, by
+# clauses of its own on the input: terms, and guarded clauses. The
+# instance's argument is the input's default clause, so a term beats a
+# guarded clause, which beats the argument, as in any definition.
+
+>> delay(x_n) = {
+..     x_n | n < 0 = 0
+..     c_n = x_(n-1)
+.. }
+delay(x_n) = { ... }
+
+>> ?delay
+delay(x_n) = {
+    x_n | n < 0 = 0
+    c_n = x_(n-1)
+}
+
+# Where both apply, the history wins: x_(-1) is 0 where n^2 gives 1.
+>> d = delay(x_n = n^2)
+d = delay(x_n = n^2)
+
+>> d.c_0
+0
+
+>> d.c_3
+4
+
+>> d.x_(-1)
+0
+
+>> d.x_2
+4
+
+# The workaround of an argument that starts at 0 is no longer needed, and
+# still answers.
+>> s_n | n >= 0 = n^2
+s_n | n >= 0 = n^2
+
+>> e = delay(x_n = s_n)
+e = delay(x_n = s_n)
+
+>> e.c_0
+0
+
+>> e.c_5
+16
+
+# With no argument, the history alone, and where it does not hold, nothing.
+>> delay().c_0
+0
+
+>> delay().c_1
+error: delay(...).x_0 is an input, and nothing defines it
+
+# Where the history does not hold, the argument answers, before 0 too, or
+# says why it cannot.
+>> late(x_n) = {
+..     x_n | n < -1 = 0
+..     c_n = x_(n-1)
+.. }
+late(x_n) = { ... }
+
+>> late(x_n = n^2).c_0
+1
+
+>> late(x_n = s_n).c_0
+error: no clause of s applies
+
+>> late(x_n = s_n).c_(-1)
+0
+
+# A term of the history beats its guarded clause.
+>> hold(x_n) = {
+..     x_(-1) = 5
+..     x_n | n < 0 = 0
+..     c_n = x_(n-1) + x_(n-2)
+.. }
+hold(x_n) = { ... }
+
+>> h = hold(x_n = n)
+h = hold(x_n = n)
+
+>> h.c_0
+5
+
+>> h.c_1
+5
+
+>> h.c_2
+1
+
+# A history may be any expression in its index.
+>> ramp(x_n) = {
+..     x_n | n < 0 = n/2
+..     c_n = x_(n-2)
+.. }
+ramp(x_n) = { ... }
+
+>> r = ramp(x_n = 7)
+r = ramp(x_n = 7)
+
+>> r.c_0
+-1
+
+>> r.c_1
+-0.5
+
+>> r.c_2
+7
+
+# And any guard: one that holds at 0 and 1 is a clause like any other, and
+# beats the argument there. The compiler refuses it.
+>> early(x_n) = {
+..     x_n | n < 2 = 0
+..     c_n = x_(n-1)
+.. }
+early(x_n) = { ... }
+
+>> early(x_n = n^2).c_2
+0
+
+>> early(x_n = n^2).c_3
+4
+
+# A matrix input's history is a matrix.
+>> swap(x_n) = {
+..     x_n | n < 0 = [0; 0]
+..     c_n = [0 1; 1 0]*x_(n-1)
+.. }
+swap(x_n) = { ... }
+
+>> w = swap(x_n = [n; 1])
+w = swap(x_n = [n; 1])
+
+>> w.c_0
+[0;
+ 0]
+
+>> w.c_3
+[1;
+ 2]
+
+# Each input has its own.
+>> both(u_n, v_n) = {
+..     u_n | n < 0 = 1
+..     v_n | n < 0 = 0
+..     c_n = u_(n-1) - v_(n-1)
+.. }
+both(u_n, v_n) = { ... }
+
+>> b = both(u_n = n, v_n = 2*n)
+b = both(u_n = n, v_n = 2*n)
+
+>> b.c_0
+1
+
+>> b.c_2
+-1
+
+# A clause that always applies would leave the argument nothing; a
+# parameter is still not the body's to define.
+>> bad(x_n) = {
+..     x_n = 0
+.. }
+error: x is an input of bad, so its body can give it only a history: a term or a guarded clause
+
+>> bad(k = 1) = {
+..     k = 2
+.. }
+error: k is a parameter of bad, so its body cannot define it
