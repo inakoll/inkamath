@@ -1,8 +1,9 @@
 # A model's history of its inputs (DESIGN.md, next in line). A model that
 # reads its input before the stream says what the input was there, by
 # clauses of its own on the input: terms, and guarded clauses. The
-# instance's argument is the input's default clause, so a term beats a
-# guarded clause, which beats the argument, as in any definition.
+# instance's argument is the input's default clause, so the clauses are
+# tried in the order written and the argument after them, as in any
+# definition.
 
 >> delay(x_n) = {
 ..     x_n | n < 0 = 0
@@ -70,7 +71,7 @@ error: no clause of s applies
 >> late(x_n = s_n).c_(-1)
 0
 
-# A term of the history beats its guarded clause.
+# A term of the history written before its guarded clause beats it.
 >> hold(x_n) = {
 ..     x_(-1) = 5
 ..     x_n | n < 0 = 0
@@ -89,6 +90,17 @@ h = hold(x_n = n)
 
 >> h.c_2
 1
+
+# Written after it, the term is never reached, as at the top level.
+>> after(x_n) = {
+..     x_n | n < 0 = 0
+..     x_(-1) = 5
+..     c_n = x_(n-1)
+.. }
+after(x_n) = { ... }
+
+>> after(x_n = n).c_0
+0
 
 # A history may be any expression in its index.
 >> ramp(x_n) = {

@@ -3108,8 +3108,10 @@ that exploring seven domains asked of the interpreter, by how many asked.
   In the interpreter, a history is clauses of the input in the model's body,
   terms, `x_(-1) = 5`, and guarded clauses, of any value, shape and guard,
   each input its own. The instance's argument is the input's default clause,
-  so the order is the one every definition has: a term beats a guarded clause,
-  which beats the default. Where both apply, the history wins; where neither
+  so the order is the one every definition has: its clauses in the order
+  written, then the default, so a term beats a guarded clause only written
+  before it, as `y_(-1) = 3` after `y_n | n < 0 = 0` is never reached at
+  the top level either (C45). Where both apply, the history wins; where neither
   does, it is the argument's own error, `no clause of s applies`, or, with
   none, `delay(...).x_0 is an input, and nothing defines it`. An unguarded
   clause would leave the argument nothing, and is refused, `x is an input of
@@ -3193,7 +3195,7 @@ that exploring seven domains asked of the interpreter, by how many asked.
   About 210 lines: 40 in the interpreter, 130 in the compiler, most of them
   the fill and the refusals, and 40 in the check.
 
-  Specified in `test/data/spec/history.ink`, 32 of its 40 entries failing,
+  Specified in `test/data/spec/history.ink`, 34 of its 42 entries failing,
   those passing being definitions echoing themselves and a parameter's
   refusal; and in `test/compile/history.ink`, whose instances, refusals
   and reports, the seven programs' among them, are wired with the
