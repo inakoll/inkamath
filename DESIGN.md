@@ -3074,6 +3074,6 @@ that exploring seven domains asked of the interpreter, by how many asked.
   `Derivative::Fill` now starts where the evaluator's fill does, as the limit
   starts where `lim` does, so a clause for one cell is a base term for
   neither; a guard choosing a whole term is named by its definition, as any
-  definition's is. Building it found C79, fixed, and C80, open. 191 lines of
-  sources added and 131 removed, the refactor's moves among them: 60 more in
+  definition's is. Building it found C79, fixed, and C80, open. 197 lines of
+  sources added and 136 removed, the refactor's moves among them: 61 more in
   all, where about 120 were planned.
