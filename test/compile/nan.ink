@@ -1,0 +1,123 @@
+# A NaN reaches every term that reads it (DESIGN.md, next in line). NaN is
+# the step's word for what the interpreter refuses, but a comparison with NaN
+# is false, so the guard reading one took the clause after it and the
+# failure left as a plausible value. In a header that writes NaN, a guard or
+# a comparison whose operand is NaN is to answer NaN.
+#
+# 'run' reads a limit that does not converge from step 8, where r is -1;
+# 'sign' a function no clause of which applies from step 4; 'shy' a clause
+# the interpreter refuses wherever it is taken (C86), from step 3; 'slope'
+# the same as 'sign', cell by cell. Today each parts where the failure was
+# made a value:
+#
+#     run.high: 0 at 8, where the interpreter gives none: p did not converge within 100 terms (last term 1)
+#     sign.on: 0 at 4, where the interpreter gives none: no clause of r applies
+#     shy.z: 0 at 3, where the interpreter gives none: division by zero
+#     slope.y[1,1]: 1 at 2, where the interpreter gives none: no clause of r applies
+#     slope.g[1,1]: 0 at 0, where the interpreter gives none: no clause of r applies
+#
+# and is to report:
+#
+#     run: 100 steps from 0, against exact values until 0 and inexact ones from there
+#     run.y: within <x>
+#     run.high: within 0
+#
+#     sign: 100 steps from 0, against exact values
+#     sign.y: within 0
+#     sign.on: within 0
+#
+#     shy: 100 steps from 0, against exact values
+#     shy.y: within 0
+#     shy.z: within 0
+#
+#     slope: 100 steps from 0, against exact values
+#     slope.y: within 0
+#     slope.g: within 0
+#
+# 'slope.y' because the check agrees where the interpreter gives no term and
+# any cell of the step's is NaN: at 2, y_2[2] has no clause, y_2[1] is 1.
+#
+# Each model compiles as now, nothing on stderr, and its step decides so,
+# 'inkamath --compile nan.ink <model> -o <model>.h' writing, for level,
+# pick, refuse and ramp:
+#
+#     m_->y[0] = level_lim0(m_, m_->x[0]);
+#     m_->high[0] = isnan(m_->y[0]) ? NAN : m_->y[0] > 0.5 ? 1.0 : 0.0;
+#
+#     m_->y[0] = isnan(m_->x[0]) ? NAN : m_->x[0] > 0.0 ? m_->x[0] : NAN;
+#     m_->on[0] = isnan(m_->y[0]) ? NAN : m_->y[0] > 2.0 ? 1.0 : 0.0;
+#
+#     m_->y[0] = isnan(m_->x[0]) ? NAN : m_->x[0] <= 0.0 ? NAN : m_->x[0];
+#     m_->z[0] = isnan(m_->y[0]) ? NAN : m_->y[0] > 1.0 ? 1.0 : 0.0;
+#
+#     m_->y[0][0][0] = isnan(m_->x[0] - 1.0) ? NAN : m_->x[0] - 1.0 > 0.0 ? m_->x[0] - 1.0 : NAN;
+#     m_->y[0][1][0] = isnan(m_->x[0] - 2.0) ? NAN : m_->x[0] - 2.0 > 0.0 ? m_->x[0] - 2.0 : NAN;
+#     m_->g[0][0][0] = isnan(m_->y[0][0][0]) ? NAN : m_->y[0][0][0] > 1.0 ? 1.0 : 0.0;
+#     m_->g[0][1][0] = isnan(m_->y[0][1][0]) ? NAN : m_->y[0][1][0] > 1.0 ? 1.0 : 0.0;
+#
+# with the clause kept for --check 0 where the guard reads NaN:
+#
+#     m_->high_clause_ = isnan(m_->y[0]) ? 0 : m_->y[0] > 0.5 ? 1 : 2;
+#
+# and the Interface comment saying so, level's paragraph ending:
+#
+#     * name_(n-k) for each sequence: x, y and high. A term the interpreter would
+#     * refuse is NaN, and so is every term that reads one, through a guard or a
+#     * comparison as through arithmetic.
+#
+# A header that writes no NaN is byte for byte as now: kernel.h, net.h and
+# pid_clamped.h keep their clamps and ReLUs untested, and bank, chain, fir,
+# kalman, loop, mix and pid stay as they are. back.h, heat.h and kalman2.h
+# gain the sentence alone, wrapped with their paragraph. adc.h, whose rising
+# edge writes NaN before its first term, ends its paragraph
+#
+#     * hi = 1.0, lo = -1.0 and q = 0.25. After assigning one, call adc_update. A
+#     * term the interpreter would refuse is NaN, and so is every term that reads
+#     * one, through a guard or a comparison as through arithmetic.
+#
+# and steps, from v on, its 'and' and 'or' as truths of 1, 0 or NaN:
+#
+#     m_->v[0] = m_->q * floor(m_->x[0] / m_->q);
+#     const double t0_ = (isnan(m_->held[1] - m_->v[0]) || isnan(m_->q) ? NAN : m_->held[1] - m_->v[0] < m_->q ? 1.0 : 0.0);
+#     const double t1_ = (t0_ == 0.0 ? 0.0 : t0_ != t0_ ? NAN : (isnan(m_->v[0] - m_->held[1]) || isnan(m_->q) ? NAN : m_->v[0] - m_->held[1] < m_->q ? 1.0 : 0.0));
+#     m_->held[0] = m_->index_ == 0 ? 0.0 : isnan(t1_) ? NAN : t1_ != 0.0 ? m_->held[1] : m_->v[0];
+#     const double t2_ = (isnan(m_->held[0]) || isnan(m_->lo) ? NAN : m_->held[0] < m_->lo ? 1.0 : 0.0);
+#     m_->alarm[0] = (t2_ == 0.0 ? (isnan(m_->held[0]) || isnan(m_->hi) ? NAN : m_->held[0] > m_->hi ? 1.0 : 0.0) : t2_ != t2_ ? NAN : 1.0);
+#     const double t3_ = ((double)m_->index_ > 0.0 ? 1.0 : 0.0);
+#     m_->rising[0] = (t3_ == 0.0 ? 0.0 : t3_ != t3_ ? NAN : (m_->index_ < 1 ? NAN : (isnan(m_->held[0]) || isnan(m_->held[1]) ? NAN : m_->held[0] > m_->held[1] ? 1.0 : 0.0)));
+#
+# adc_test.c passes against it unchanged. compile_c86 and compile_log_refused
+# in test/cli.cmake do not move.
+level(x_n) = {
+    p(r)_0 = 1
+    p(r)_k = r*p(r)_(k-1)
+    y_n = lim p(x_n)
+    high_n | y_n > 1/2 = 1
+    high_n = 0
+}
+run = level(x_n = 1 - n/4)
+
+pick(x_n) = {
+    r(v) | v > 0 = v
+    y_n = r(x_n)
+    on_n | y_n > 2 = 1
+    on_n = 0
+}
+sign = pick(x_n = 4 - n)
+
+refuse(x_n) = {
+    h(v) = v
+    h(v) | v <= 0 = 1/0
+    y_n = h(x_n)
+    z_n | y_n > 1 = 1
+    z_n = 0
+}
+shy = refuse(x_n = 3 - n)
+
+ramp(x_n) = {
+    r(v) | v > 0 = v
+    y_n[j<=2] = r(x_n - j)
+    g_n[j<=2] | y_n[j] > 1 = 1
+    g_n[j<=2] = 0
+}
+slope = ramp(x_n = n)

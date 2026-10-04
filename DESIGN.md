@@ -3417,3 +3417,85 @@ that exploring seven domains asked of the interpreter, by how many asked.
   420 lines of sources added and 143 removed, 277 more in all, about 40 of
   them the body of a call indented under the handler that names it, where
   about 120 were planned.
+
+- **A NaN reaches every term that reads it.** NaN is the step's word for what
+  the interpreter refuses: a limit that does not converge, a function, a
+  sequence or a cell no clause of which applies, a clause refused wherever it
+  is taken (C86), a term before it exists, a singular solve, a parameter
+  nothing defines. `lim` compiled chose it over the status field
+  `MANIFESTO.md` sketched because a NaN reaches every term that reads it, a
+  field only the host that looks. It does not: a comparison with NaN is
+  false, so `high_n | y_n > 1/2 = 1` beside `high_n = 0` answers 0 where `y_n`
+  failed, and a bare truth, `z_n | y_n = 1`, holds. The failure leaves as a
+  plausible value, C13's class in generated code. `--check` parts there,
+  `run.high: 0 at 8, where the interpreter gives none`, but a deployed header
+  has no oracle. Found by an outside review.
+
+  Decided: make the premise true rather than reverse the ruling. In a header
+  that writes NaN, a decision on a value answers NaN where an operand is NaN,
+  as the interpreter refuses a guard whose operand fails. An operand that
+  reads a name other than the step's index is tested: the guard is
+  `isnan(m_->y[0]) ? NAN : m_->y[0] > 0.5`, which C's right-associative
+  conditional makes take no clause, `isnan(a) || isnan(b)` where both
+  operands are tested; a comparison as a value is `(isnan(a) ? NAN : a > b ?
+  1.0 : 0.0)`; a bare truth tests itself. `and` and `or` take the path a
+  guard that defers already takes, a truth as a double of 1, 0 or NaN,
+  whose right side is read only where the left has not decided, as in the
+  interpreter. Each guard of a chain tests its own operands, since one tried
+  after a clause that holds is never read. That is every guard compiled: a
+  sequence's, a function's, a limit's walk, a cell's, and `update`'s. The
+  clause `--check` keeps, `name_clause_`, is 0 where a guard reads NaN, no
+  clause being taken; today a guard of `and` or `or` writes the NaN into that
+  int. The Interface comment of such a header adds "A term the interpreter
+  would refuse is NaN, and so is every term that reads one, through a guard
+  or a comparison as through arithmetic", so the host's one test is `isnan`
+  on what it reads.
+
+  A header that writes no NaN is byte for byte as now. The gate is the
+  header: one that writes NaN anywhere is compiled again, aware. Of the
+  fourteen expected headers ten stay; `back.h`, `heat.h` and `kalman2.h`
+  gain the sentence alone, their guards reading the index or nothing;
+  `adc.h` moves, its hysteresis, alarm and rising edge tested, because
+  `rising` writes NaN before its first term, though no step reaches it.
+
+  A cell's NaN stays in its cell and reaches every cell that reads it, where
+  the interpreter refuses the whole term. Making every cell NaN after each
+  matrix term was rejected: a test per matrix sequence per step, to make a
+  healthy cell repeat its neighbour's failure. `--check` agrees where the
+  interpreter gives no term and any cell of the step's is NaN; it agrees
+  cell by cell today, so a term by cells with one failing cell parts,
+  `slope.y[1,1]: 1 at 2, where the interpreter gives none`. A cell no clause
+  gives is 0 in the interpreter, not a refusal, and stays 0, as C89 has it.
+
+  Rejected: (a) a status field, the first failure's definition and step or a
+  count. The ruling under `lim` compiled stands: a field is read by the host
+  that looks, while the plausible value reaches every output. It costs a
+  member, `init`, a write at each of eleven sources, and the limits' functions
+  take the model `const`; naming the origin, its one gain, is the
+  interpreter's, asked for the term. (c) both: two channels for one fact. (d)
+  `--check` naming the first NaN's origin: it reaches no deployed header,
+  which is where the failure goes unseen. Testing every comparison of every
+  header: `kernel.h`, `net.h` and `pid_clamped.h` would move, each clamp and
+  ReLU tested for what its model cannot produce. A may-be-NaN analysis per
+  sequence over the reads, sparing `adc.h`: a fixed point, as recurrences read
+  themselves, for about 25 more lines. `isunordered`: a second primitive where
+  `isnan` is the compiler's. The complement, `a > b ? 1.0 : a <= b ? 0.0 :
+  NAN`: `==` and `<>` have none.
+
+  Known limits, each as today. A division by zero is an infinity, which
+  compares as a number; testing every divisor would move every header that
+  divides, and `--check` says it, `pole.y: inf at 3, where the interpreter
+  gives none`; 0/0 is NaN and, in an aware header, propagates. A guard
+  reading a limit directly computes it twice, as its value already does. An
+  input the host feeds as NaN propagates in an aware header and not in
+  another: the host's NaN is the host's.
+
+  About 30 lines and none removed: 25 in the compiler, the gate and its
+  second run, the operand's test, the guard, the comparison, `and` and `or`,
+  the clause kept and the sentence; 5 in the check. Each decision on a value
+  grows by `isnan(a) ? NAN : `, in an aware header only.
+
+  Specified in `test/compile/nan.ink`: four instances, each a guard reading
+  a failure, with their steps, their reports and `adc.h`'s step, wired with
+  the implementation. The interpreter does not change, so there is no spec
+  transcript.
