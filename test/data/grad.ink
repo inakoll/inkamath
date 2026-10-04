@@ -217,6 +217,15 @@ error: grad cannot differentiate a power whose exponent changes with x, unless i
 [1;
  6]
 
+# A single value added to a matrix is added to each cell, and its slope with
+# it; to a tensor, to each slice (DESIGN.md, C81).
+>> grad_(x = 1) [1 1]*(x + [1; 2])
+2
+
+>> grad_(x = 1) (x + [1;; 2])
+[1;;
+ 1]
+
 # A matrix power is a product, whose factors do not commute, and its inverse
 # is differentiated as one.
 >> grad_(x = 1) [1 x; 2 3]^2
