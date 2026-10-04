@@ -1216,9 +1216,7 @@ private:
             if (!Holds(*code.constant)) return std::nullopt;
             return std::string();
         }
-        // Aware, 'and' and 'or' are truths of 1, 0 or NaN, as where they defer.
-        if (!(aware_ && dynamic_cast<LogicExpression<Value>*>(guard.get())) && !Defers(guard))
-            return Test(guard);
+        if (!Defers(guard)) return Test(guard);
         const std::string truth = Shared(Cell(Truth(guard), primary)).text;
         return "isnan(" + truth + ") ? NAN : " + truth + " != 0.0";
     }
@@ -1314,15 +1312,15 @@ private:
         return code;
     }
 
-    // Whether some 'and' or 'or' in it defers its right side. What is always
-    // read on the way is recorded, as it bounds what the right needs to check.
+    // Whether an 'and' or 'or' in it defers its right side, as all do aware.
+    // What is always read on the way is recorded, as it bounds the right's check.
     bool Defers(const PExpression<Value>& expression) {
         const auto* logic = dynamic_cast<LogicExpression<Value>*>(expression.get());
         if (!logic) {
             Emit(expression);
             return false;
         }
-        if (Defers(logic->m_e1())) return true;
+        if (aware_ || Defers(logic->m_e1())) return true;
         const std::size_t checks = checks_.size();
         bool              nested = false;
         const bool        defers = Right(*logic, [&](const PExpression<Value>& side) {
@@ -1360,7 +1358,7 @@ private:
         const std::optional<bool> right = truth(Quiet(expression->m_e2()));
         if (left && right) return Answer(Literal(Value(Number(*right ? 1 : 0))));
         const PExpression<Value> self = expression->self();
-        if (aware_ || Defers(self)) return Answer(Cell(Truth(self), primary));
+        if (Defers(self)) return Answer(Cell(Truth(self), primary));
         return Answer(Cell("(" + Test(self) + " ? 1.0 : 0.0)", primary));
     }
 
