@@ -41,6 +41,7 @@ public:
             std::size_t rows, cols;
             int         period = 1, phase = 0;  // term m at step period*m + phase
             int         start = 0;              // the step of its first term, at another rate
+            bool        unnamed = false;          // of an instance a model writes unnamed
         };
         std::string              header;
         int                      first;      // the index of the first step
@@ -3464,9 +3465,12 @@ private:
         Compiled compiled{out, earliest, inputs, {}, {}};
         for (const std::string& name : order) {
             const Sequence& sequence = sequences_.at(name);
-            compiled.sequences.push_back({name, sequence.rows, sequence.cols, sequence.period,
-                                          sequence.phase,
-                                          sequence.period * sequence.first + sequence.phase});
+            const bool      unnamed  = std::any_of(
+                labels_.begin(), labels_.end(),
+                [&](const std::string& label) { return name.rfind(label + ".", 0) == 0; });
+            compiled.sequences.push_back(
+                {name, sequence.rows, sequence.cols, sequence.period, sequence.phase,
+                 sequence.period * sequence.first + sequence.phase, unnamed});
             if (clauses_ && (!sequence.guarded.empty() || !sequence.taken.empty()))
                 compiled.guarded.push_back(name);
         }

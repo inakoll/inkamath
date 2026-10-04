@@ -51,6 +51,14 @@
 #     relayed: 100 steps from 0, against exact values
 #     relayed.<name>: within 0, for each of c, y, inner.c and inner.x
 #
+# An instance written unnamed, whose terms the interpreter cannot name
+# (C84), is said not to be asked, where its lines read 'within 0':
+#
+#     veiled: 100 steps from 0, against exact values
+#     veiled.c_bare.<name>: not asked, as the interpreter cannot name it, for
+#     each of c and u
+#     veiled.c: within 0
+#
 # A term the step computes and the interpreter cannot give parts, where it
 # was skipped: 'pole' reported 'within 0', its step inf at 3.
 #
@@ -208,6 +216,12 @@ relay(x_n) = {
     c_n = inner.c_n
 }
 relayed = relay(x_n = n + 1)
+
+veil(x_n) = {
+    x_n | n < 0 = 3
+    c_n = bare(u_n = x_n).c_n
+}
+veiled = veil(x_n = n)
 
 inv(x_n) = {
     y_n = 1/(x_n - 3)

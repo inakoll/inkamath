@@ -79,7 +79,7 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brin
                          decimate:trail drift:sill drift:seam history:past history:twin
                          history:lit history:rise history:ajar history:sown history:nest
                          history:twice history:relayed history:pole
-                         history:huge)
+                         history:huge history:veiled)
     string(REPLACE ":" ";" checked ${checked})
     list(GET checked 0 file)
     list(GET checked 1 instance)
@@ -146,6 +146,8 @@ set_tests_properties(check_twice_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^twice: 100 steps from 0, against exact values\ntwice\\.inner\\.c: within 0\ntwice\\.c: within 0\ntwice\\.inner\\.x: within 0\n$")
 set_tests_properties(check_relayed_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^relayed: 100 steps from 0, against exact values\nrelayed\\.inner\\.c: within 0\nrelayed\\.c: within 0\nrelayed\\.y: within 0\nrelayed\\.inner\\.x: within 0\n$")
+set_tests_properties(check_veiled_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^veiled: 100 steps from 0, against exact values\nveiled\\.c_bare\\.c: not asked, as the interpreter cannot name it\nveiled\\.c: within 0\nveiled\\.c_bare\\.u: not asked, as the interpreter cannot name it\n$")
 set_tests_properties(check_pole_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^pole: 100 steps from 0, against exact values\npole\\.y: inf at 3, where the interpreter gives none: division by zero\n$")
 set_tests_properties(check_huge_report PROPERTIES PASS_REGULAR_EXPRESSION

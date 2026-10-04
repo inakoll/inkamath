@@ -80,24 +80,23 @@ public:
             const std::string        id = std::to_string(k), size = std::to_string(steps * cells);
             // A term a model writes unnamed is not asked: the interpreter
             // cannot name it (C84).
-            bool unnamed = false;
-            try {
-                (void)Resolve(stack, definition, sequence.name);
-            } catch (const std::runtime_error&) {
-                unnamed = true;
+            if (sequence.unnamed) {
+                held += "    printf(\"" + instance + "." + sequence.name +
+                        ": not asked, as the interpreter cannot name it\\n\");\n";
+                continue;
             }
             std::vector<std::string> want, known, why;
             for (int n = first; n < first + steps; ++n) {
                 // Before its start the step has no term, and the interpreter
                 // should have none either; at another rate it is not asked.
                 const bool before = n < sequence.start;
-                const Term term   = unnamed || (before && sequence.period > 1)
+                const Term term   = before && sequence.period > 1
                                         ? Term{{}, true, "not asked", {}}
                                         : At(session, instance + "." + sequence.name,
                                              Floor(n - sequence.phase, sequence.period));
                 if (!term.exact && (!inexact || n < *inexact)) inexact = n;
                 const bool given = term.error.empty();
-                const char kind  = !given              ? (before || unnamed ? '0' : '2')
+                const char kind  = !given              ? (before ? '0' : '2')
                                    : !term.odd.empty() ? '4'
                                    : before            ? '3'
                                                        : '1';
