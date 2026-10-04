@@ -63,6 +63,14 @@ Gs[b<=2, j<=1, k<=1] = b
 [1;;
  2]
 
+# A size is read as a clause is, so one that reads the global is refused too
+# (C79).
+>> gz[j<=x] = j
+gz[j<=x] = j
+
+>> grad_(x = 2) x*gz
+error: gz reads the global x, which grad's x does not reach
+
 # A sum term by term, and a sequence through its recurrence. A term already
 # remembered is not an answer for its derivative.
 >> grad_(x = 1) sum_(k=1)^3 k*x^k

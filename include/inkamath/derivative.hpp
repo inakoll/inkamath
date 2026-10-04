@@ -755,8 +755,9 @@ private:
             for (const std::string* other :
                  {&p.index_name(), &p.slice_name(), &p.row_name(), &p.col_name()})
                 if (!other->empty()) bound.insert(*other);
-            Scan(clause.expression, name, bound, &definition, seen);
-            Scan(p.guard(), name, bound, &definition, seen);
+            for (const PExpression<T>& read :
+                 {clause.expression, p.guard(), p.slices(), p.rows(), p.cols()})
+                Scan(read, name, bound, &definition, seen);
         }
     }
 
