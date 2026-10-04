@@ -26,7 +26,7 @@
 #     duo.<name>: within 0, for each of f, z, p and q
 #
 #     mean3: 100 steps from 0, against exact values
-#     mean3.y: within at most 1e-13, three thirds rounded and added
+#     mean3.y: within 0, its thirds rounded but their sums exact to n = 99
 #
 #     track: 100 steps from 0, against exact values
 #     track.u: within 0
