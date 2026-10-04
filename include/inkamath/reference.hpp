@@ -633,10 +633,8 @@ private:
     }
     static bool IsBase(const Clause<T>& c)
         {return !c.parameters.guarded() && c.parameters.indexed() && !c.parameters.general();}
-    static bool IsGeneral(const Clause<T>& c)
-        {return !c.parameters.guarded() && c.parameters.general();}
-    static bool IsAllCells(const Clause<T>& c) {
-        return !c.parameters.guarded() && c.parameters.cells() && !c.parameters.row_name().empty();
+    static bool IsGeneral(const Clause<T>& c) {
+        return !c.parameters.guarded() && c.parameters.general();
     }
     static bool IsOneCell(const Clause<T>& c) {
         return c.parameters.cells() && c.parameters.row_name().empty();

@@ -336,11 +336,6 @@ public:
         return definition_type();
     }
 
-    // Whether a name is still the one the interpreter starts with.
-    [[nodiscard]] bool Builtin(const std::string& name) const {
-        return session_.names.count(name) == 0 && builtins_.names.count(name) != 0;
-    }
-
     // A name as it is read where evaluation stands, past the frame; and
     // whether the frame binds it.
     [[nodiscard]] definition_type Global(const std::string& name) const { return FindGlobal(name); }
