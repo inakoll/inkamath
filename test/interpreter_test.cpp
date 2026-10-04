@@ -163,6 +163,9 @@ TEST_CASE("tensor") {
 TEST_CASE("gradcells") {
     check_transcript("gradcells.ink");
 }
+TEST_CASE("history") {
+    check_transcript("history.ink");
+}
 TEST_CASE("readme") {
     check_readme();
 }

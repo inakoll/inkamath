@@ -6,7 +6,7 @@
 # input's rate, a hold, and a linear interpolator between the two latest
 # terms; and a second stage, every second term of y, sampled through the
 # hold, as a slow sequence cannot read another. The stream starts at 0, as a
-# host's does, so that no term is answered from before it.
+# host's does, and 'down' states what its input was before it.
 #
 # 'conv' is a strided convolution: two channels, each a ReLU of a pair of
 # samples, computed every second step cell by cell, on an input that takes
@@ -47,11 +47,14 @@
 # And what 'inkamath --check decimate.ink boxcar' and 'stride' report:
 #
 #     boxcar: 100 steps from 0, against exact values
-#     boxcar.<name>: within 0, for each of f, y, z, t, w and q
+#     boxcar.y: within 0, from 1
+#     boxcar.q: within 0, from 3
+#     boxcar.<name>: within 0, for each of f, z, t and w
 #
 #     stride: 100 steps from 0, against exact values
-#     stride.h: within 0
+#     stride.h: within 0, from 1
 down(x_n) = {
+    x_n | n < 0 = 0
     f_n = (x_n + x_(n-1))/2
     y_m = f_(2*m + 1)
     z_n = y_(floor((n - 1)/2))
@@ -59,8 +62,7 @@ down(x_n) = {
     w_n = y_(floor((n - 1)/2) - 1) + t_n*(y_(floor((n - 1)/2)) - y_(floor((n - 1)/2) - 1))
     q_k = z_(4*k + 3)
 }
-s_n | n >= 0 = n^2
-boxcar = down(x_n = s_n)
+boxcar = down(x_n = n^2)
 
 conv(W = [1, 1; 1, -1], x_n) = {
     h_m[j<=2] | W[j,1]*x_(2*m) + W[j,2]*x_(2*m + 1) < 0 = 0
@@ -73,7 +75,7 @@ stride = conv(x_n = 3 - n/2 + (-1)^n*(1 - n/8))
 # is of the form a whole term's is, and the phase is the latest of them.
 #
 #     frame: 100 steps from 0, against exact values
-#     frame.p: within 0
+#     frame.p: within 0, from 2
 pair(x_n) = {
     p_m[j<=2] = x_(2*m + j)
 }
@@ -88,17 +90,18 @@ ahead(x_n) = {
     y_(-2) = 7
     y_m = x_(2*m + 4)
 }
-lead = ahead(x_n = s_n)
+lead = ahead(x_n = n^2)
 
 # Holds of it, each index's numerator negative at the first steps: z_1 is
 # y_-2, a step before y_-1, and w_1 and w_2 are y_-2, held from step 1.
 #
 #     trail: 100 steps from 0, against exact values
-#     trail.<name>: within 0, for each of y, z and w
+#     trail.w: within 0, from 1
+#     trail.<name>: within 0, for each of y and z
 behind(x_n) = {
     y_(-2) = 7
     y_m = x_(2*m + 4)
     z_n = y_(floor(n/2) - 2)
     w_n = y_(floor((n - 3)/2) - 1)
 }
-trail = behind(x_n = s_n)
+trail = behind(x_n = n^2)
