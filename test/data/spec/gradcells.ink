@@ -323,5 +323,5 @@ W0 = [1 0; 1 1]
 >> dW = grad_(w = W0) loss(w) - hand(W0)
 dW = grad_(w = W0) loss(w) - hand(W0)
 
->> sum_(j=1)^2 sum_(k=1)^2 dW[j,k]^2 < 1/10^16
+>> sum_(j=1)^2 sum_(k=1)^2 dW[j,k]^2 < 1/10^24
 1
