@@ -157,6 +157,11 @@ holds its latest term at the input's rate again. The step is still one, the
 input's, and a term of `y` is computed on the first step at which every sample
 it reads exists; a hold of a term not computed yet is refused, saying to read
 the term before it. `test/compile/rates.ink` is a decimator and two holds.
+Such a sequence may be guarded, defined by its cells or without a base
+clause; one read by another is refused, naming the hold at the input's rate
+to sample instead. `test/compile/decimate.ink` adds an interpolator and a
+strided convolution, and `test/compile/cascade.ink` a servo whose clamped
+outer loop runs every fourth step.
 
 `--check drift.ink calm -o calm.c` holds the compiled code to the
 interpreter. It compiles `calm`, an instance the file defines, with the
@@ -408,6 +413,34 @@ value stretches to the other side's size, and the order is kept:
 >> 1-a
 [ 0, -1;
  -2, -3]
+```
+
+A tensor of rank 3 is a stack of matrices of one size, its slices, along its
+first index, where a paper puts the batch. A touching `;;` separates its
+slices, one semicolon more than separates rows, after Julia's convention of
+counting semicolons, and it prints so; a tensor of one slice keeps its `;;`,
+as `[1 2;;]`, since it is not its slice. One index reads a slice and three a
+cell, and a definition by three indices, `P[b<=2, j<=2, k<=2] = b*j*k`, is a
+tensor. Whatever meets a tensor meets it slice by slice, a matrix or a single
+value every slice, so `*` is a product batched over the first index and `'`
+transposes each slice:
+
+```
+>> B = [1 2; 3 4;; 5 6; 7 8]
+B = [1 2; 3 4;; 5 6; 7 8]
+
+>> B[2]
+[5, 6;
+ 7, 8]
+
+>> B[2,1,2]
+6
+
+>> B*[1; 1]
+[ 3;
+  7;;
+ 11;
+ 15]
 ```
 
 ### 3. Definitions

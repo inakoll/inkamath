@@ -8,6 +8,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
+#include <limits>
 #include <map>
 #include <memory>
 #include <optional>
@@ -73,10 +74,10 @@ public:
             std::vector<std::string> want, known;
             for (int n = first; n < first + steps; ++n) {
                 // At another rate, the latest term computed by the step.
-                const bool before = n < sequence.phase;
+                const bool before = sequence.period > 1 && n < sequence.start;
                 const Term term   = before ? Term{{}, true, "before its first term"}
                                            : At(session, instance + "." + sequence.name,
-                                                (n - sequence.phase) / sequence.period);
+                                                Floor(n - sequence.phase, sequence.period));
                 if (!term.exact && (!inexact || n < *inexact)) inexact = n;
                 for (std::size_t c = 0; c < cells; ++c) {
                     const bool given = term.error.empty();
@@ -123,6 +124,12 @@ public:
             data += Array("const int", "rank_" + id, clauses.size() + 1, rank);
             const auto found = std::find_if(compiled.sequences.begin(), compiled.sequences.end(),
                                             [&](const auto& s) { return s.name == name; });
+            // At another rate, the clause of the latest term computed, none before.
+            const auto term = [&](int n) {
+                return found->period > 1 && n < found->start
+                           ? std::numeric_limits<int>::min()
+                           : Floor(n - found->phase, found->period);
+            };
             const std::size_t cols   = found->cols;
             const std::size_t places = cellwise ? found->rows * cols : 1;
             for (std::size_t c = 0; c < places; ++c) {
@@ -131,7 +138,7 @@ public:
                 const std::string        at  = id + (cellwise ? "_" + std::to_string(c) : "");
                 std::vector<std::string> want, margin;
                 for (int n = first; n < first + steps; ++n) {
-                    const auto asking = asked.find({&reference, n, row, col});
+                    const auto asking = asked.find({&reference, term(n), row, col});
                     want.push_back(asking == asked.end() ? "0"
                                    : asking->second.chosen
                                        ? std::to_string(*asking->second.chosen + 1)
@@ -296,6 +303,9 @@ private:
         out += "    return 1;\n}\n\n";
         return out;
     }
+
+    // n/a rounded down, a > 0: a term's index is negative below its first.
+    static int Floor(int n, int a) { return n / a - (n % a < 0 ? 1 : 0); }
 
     static std::string Double(double x) {
         char text[40];

@@ -40,6 +40,7 @@ public:
             std::string name;  // as the struct reaches it, 'h.low.v'
             std::size_t rows, cols;
             int         period = 1, phase = 0;  // term m at step period*m + phase
+            int         start = 0;              // the step of its first term, at another rate
         };
         std::string              header;
         int                      first;      // the index of the first step
@@ -236,11 +237,13 @@ private:
     };
 
     // A read of the latest term of a sequence at another rate, 'y_(floor((n -
-    // b)/a) + d)': from where, and how far back in its own terms it reads.
+    // b)/a) + d)': from where, how far back in its own terms it reads, and
+    // the term computed again it is in, if any.
     struct Hold {
         std::string read;
         int         a, b, d;
         int         from = 0, least = 0, most = 0;
+        int         early = -1;
     };
 
     // A term read back, by its mark: what it is, who reads it, what computing
@@ -625,6 +628,7 @@ private:
     // refused rather than left out; a plain one is compiled where it is read.
     void Define(const std::string& name, const Reference<Value>& definition) {
         for (const Clause<Value>& clause : definition.Clauses()) {
+            if (clause.parameters.tensor()) throw Refusal("cannot compile " + name + ": a tensor");
             // A function is compiled where it is called, and a sequence with
             // parameters where a limit walks it.
             if (!clause.parameters.parameters_names().empty()) return;
@@ -869,6 +873,9 @@ private:
     }
 
     static std::vector<double> Doubles(const Value& value) {
+        // The interpreter is the reference a model is held to first; compiling
+        // attention per batch is an entry of its own (DESIGN.md).
+        if (value.Size().slices) throw Reason("a tensor");
         std::vector<double> doubles;
         for (std::size_t i = 1; i <= value.Size().rows; ++i) {
             for (std::size_t j = 1; j <= value.Size().cols; ++j) {
@@ -1460,6 +1467,8 @@ private:
     void CompileTerms(const std::string& name, Sequence& sequence) {
         const Reference<Value>& definition = *sequence.definition;
         Within(name, &sequence, std::string(), [&] {
+            const std::string outer_text =
+                std::exchange(index_text_, "(double)\x12" + name + "\x13");
             clause_reads_ = &sequence.general_reads;
             std::optional<Code> whole;
             for (const Clause<Value>& clause : definition.Clauses()) {
@@ -1494,10 +1503,11 @@ private:
                 if (!value.Scalar()) throw Reason("a cell of " + name + " must be a single value");
                 std::string& cell = cells[static_cast<std::size_t>(p.row() - 1) * shape.cols +
                                           static_cast<std::size_t>(p.col() - 1)];
-                cell = "m_->index_ == " + std::to_string(p.index()) + " ? " + value.cells[0].text +
-                       " : " + cell;
+                cell              = "\x12" + name + "\x13 == " + std::to_string(p.index()) + " ? " +
+                       value.cells[0].text + " : " + cell;
             }
             reading_         = reading;
+            index_text_      = outer_text;
             sequence.general = cells;
         });
     }
@@ -1922,6 +1932,10 @@ private:
         const int lag = Lag(call.subexpr(), key) + shift_;
         Bases(key);
         if (!read.rows) Compile(key);
+        // By its rate, before one with no base clause is computed again.
+        if (&read != reading_ && read.period > 1)
+            throw Reason(key + "_(...): read every step, and " + key + " is computed every " +
+                         std::to_string(read.period));
         if (lag > 0 && ClosedForm(read)) return Answer(At(read, lag));
         (shift_ && early_ >= 0 ? earlies_[static_cast<std::size_t>(early_)].reads
          : deferring_          ? reading_->deferred
@@ -2164,14 +2178,10 @@ private:
     // of the clause is, so it is marked and set when the step is written.
     Code Sample(const std::string& key, Sequence& read, int a, int b) {
         const std::string written = key + "_(...)";
-        if (shift_ || early_ >= 0 || deferring_ || limit_)
+        if (shift_ || early_ >= 0 || limit_)
             throw Reason(written + ": a sample where a term is computed again");
         Bases(key);
         if (!read.rows) Compile(key);
-        if (read.period != 1 || (read.definition && Recomputed(read)))
-            throw Reason(written +
-                         ": a sample of a sequence at another rate, or with no base "
-                         "clause");
         if (reading_->period != 1 && reading_->period != a)
             throw Reason(written + ": read every " + std::to_string(a) + " steps, and " + within_ +
                          " is computed every " + std::to_string(reading_->period));
@@ -2189,19 +2199,18 @@ private:
 
     // A hold: where it reads in the held sequence's window depends on that
     // sequence's phase, so it is marked and set when the step is written.
+    // In a term computed again, it is the same hold that much earlier.
     Code Holding(const std::string& key, Sequence& read, Hold hold) {
         const std::string written = key + "_(...)";
-        if (shift_ || early_ >= 0 || deferring_ || limit_)
-            throw Reason(written + ": a hold where a term is computed again");
+        if (deferring_ || limit_) throw Reason(written + ": a hold where a term is computed again");
         Bases(key);
         Compile(key);
         if (read.period == 1)
             throw Reason(written + ": an index other than a whole multiple of " + index_ +
                          " plus a constant");
-        if (hold.a != read.period)
-            throw Reason(written + ": read every " + std::to_string(hold.a) + " steps, and " + key +
-                         " is computed every " + std::to_string(read.period));
         hold.read = key;
+        hold.b += shift_;
+        hold.early = early_;
         holds_.push_back(hold);
         reading_->holds.push_back(holds_.size() - 1);
         const std::string id = std::to_string(holds_.size() - 1);
@@ -2252,7 +2261,9 @@ private:
     PExpression<Value> visit(EqualExpression<Value>*) override {
         throw Reason("a local definition");
     }
+    PExpression<Value> visit(TensorExpression<Value>*) override { throw Reason("a tensor"); }
     PExpression<Value> visit(CellExpression<Value>* expression) override {
+        if (expression->Slice()) throw Reason("a tensor");
         const Code matrix = Emit(expression->Matrix());
         const Code row    = Known(expression->Row(), "a cell whose place is not a constant");
         if (!expression->Col()) {
@@ -2417,17 +2428,38 @@ private:
                 throw Refusal(head + read + "_(...): read every step, and " + read +
                               " is computed every " + std::to_string(period));
         }
+        // A slow sequence read by another says what a hold at the input's
+        // rate sampled says, but for a hold at another period, which no hold
+        // says (C74).
+        const auto another = [&](const std::string& read) {
+            return Refusal(head + read +
+                           "_(...): one sequence at another rate read by another; hold " + read +
+                           " at the input's rate and sample the hold");
+        };
+        for (const std::size_t h : sequence.holds) {
+            const Hold& hold   = holds_[h];
+            const int   every  = sequence.period * hold.a;
+            const int   period = sequences_.at(hold.read).period;
+            if (every != period)
+                throw Refusal(head + hold.read + "_(...): read every " + std::to_string(every) +
+                              " steps, and " + hold.read + " is computed every " +
+                              std::to_string(period));
+            if (sequence.period > 1) throw another(hold.read);
+        }
         if (sequence.period == 1) return;
-        if (!sequence.guarded.empty() || ByCells(*sequence.definition))
-            throw Refusal(head + "a guard or a cell at another rate, for now");
-        if (sequence.bases.empty())
-            throw Refusal(head + "a sequence at another rate with no base clause");
+        for (const auto& [read, offsets] : sequence.samples)
+            if (sequences_.at(read).period > 1) throw another(read);
         for (const auto& [read, lags] : sequence.reads)
             if (read != name)
                 throw Refusal(head + read + "_(...): read every step, and " + name +
                               " is computed every " + std::to_string(sequence.period));
-        sequence.first = sequence.bases.begin()->first;
-        int phase      = -sequence.period * sequence.first;
+        // Without a base clause, a term is computed at the step of its
+        // latest sample, and the first is settled with the starts.
+        int phase = std::numeric_limits<int>::min();
+        if (!sequence.bases.empty()) {
+            sequence.first = sequence.bases.begin()->first;
+            phase          = -sequence.period * sequence.first;
+        }
         for (const auto& [read, offsets] : sequence.samples)
             phase = std::max(phase, *offsets.rbegin());
         for (const Seed& seed : sequence.seeds)
@@ -2450,10 +2482,10 @@ private:
     void Resolve(const std::string& name, Hold& hold) {
         const Sequence& held  = sequences_.at(hold.read);
         const int       a     = hold.a;
-        const int       start = held.bases.begin()->first;
-        hold.from             = std::max(hold.b, a * (held.first - hold.d) + hold.b);
+        const int       start = held.period * held.first + held.phase;
         for (int n = hold.from; n < std::max(hold.from, start) + 2 * a; ++n) {
-            const int lag = n < start ? -1 : (n - held.phase) / a - (n - hold.b) / a - hold.d;
+            const int lag =
+                n < start ? -1 : Floor(n - held.phase, a) - Floor(n - hold.b, a) - hold.d;
             if (lag < 0)
                 throw Refusal("cannot compile " + name + ": " + hold.read +
                               "_(...): read before it is computed; read the term before it");
@@ -2501,11 +2533,15 @@ private:
             const Sequence&   held  = sequences_.at(hold.read);
             const std::size_t c     = std::stoul(mark.substr(comma + 1));
             const std::string a     = std::to_string(hold.a);
-            const std::string lag   = hold.least == hold.most
-                                          ? std::to_string(hold.least)
-                                          : "(m_->index_" + Less(held.phase) + ") / " + a +
-                                              " - (m_->index_" + Less(hold.b) + ") / " + a +
-                                              Less(hold.d);
+            // C divides toward 0: each numerator is kept whole from the
+            // hold's first step by whole periods, taken back from d.
+            const auto whole = [&](int b) { return std::max(0, -Floor(hold.from - b, hold.a)); };
+            const int  p = whole(held.phase), q = whole(hold.b);
+            const std::string lag = hold.least == hold.most
+                                        ? std::to_string(hold.least)
+                                        : "(m_->index_" + Less(held.phase - p * hold.a) + ") / " +
+                                              a + " - (m_->index_" + Less(hold.b - q * hold.a) +
+                                              ") / " + a + Less(hold.d + p - q);
             std::string       cell =
                 "m_->" + hold.read + "[" + lag + "]" +
                 (held.rows * held.cols == 1 ? std::string()
@@ -2524,8 +2560,11 @@ private:
             sequence.start = sequence.bases.begin()->first;
             earliest       = std::min(earliest.value_or(sequence.start), sequence.start);
         }
-        for (auto& [name, sequence] : sequences_)
-            if (sequence.bases.empty()) sequence.start = earliest.value_or(0);
+        for (auto& [name, sequence] : sequences_) {
+            if (!sequence.bases.empty()) continue;
+            sequence.start = Tick(sequence, earliest.value_or(0));
+            sequence.first = (sequence.start - sequence.phase) / sequence.period;
+        }
         // The interpreter's guarded clauses answer below the lowest base
         // clause too, where its unguarded one does not: '_(-1)' of a sequence
         // based at 0 is a term wherever a guard holds. A step has no such
@@ -2549,8 +2588,13 @@ private:
         // too, wherever one does: a reader finds it there (C71).
         for (const auto& [name, sequence] : sequences_)
             if (Recomputed(sequence)) exists_[name] = std::numeric_limits<int>::min() / 2;
+        // A slow one, at the first tick whose samples exist.
         for (std::size_t round = 0;; ++round) {
             bool moved = false;
+            for (Hold& hold : holds_) {
+                const Sequence& held = sequences_.at(hold.read);
+                hold.from            = hold.a * (held.first - hold.d) + hold.b;
+            }
             for (auto& [name, sequence] : sequences_) {
                 if (!sequence.bases.empty() || !sequence.definition) continue;
                 const int answers = Answers(sequence);
@@ -2559,9 +2603,11 @@ private:
                     found->second = answers;
                     moved         = true;
                 }
-                const int needed = std::max(sequence.start, answers);
+                const int samples = sequence.period > 1 ? From(sequence.reads) : answers;
+                const int needed  = Tick(sequence, std::max({sequence.start, answers, samples}));
                 if (needed <= sequence.start) continue;
                 sequence.start = needed;
+                sequence.first = (needed - sequence.phase) / sequence.period;
                 moved          = true;
             }
             if (!moved) break;
@@ -2570,6 +2616,7 @@ private:
                     "cannot compile: a sequence with no base clause reads back into "
                     "itself, so it never starts");
         }
+        Unreached(earliest.value_or(0));
         // Where a clause's reads begin is where it can be evaluated: before it,
         // the interpreter reports the term it could not read, and a step says
         // NaN. Only a sequence with guards has more than one path to choose.
@@ -2597,6 +2644,63 @@ private:
             }
         }
         return earliest.value_or(0);
+    }
+
+    // A term the step never computes. A hold of one is NaN where the
+    // interpreter has none either, and refused where it could give one; a
+    // sample of one with no base clause, read from a window that cannot
+    // hold it, is refused where its clauses could give it.
+    void Unreached(int earliest) const {
+        for (const auto& [name, sequence] : sequences_) {
+            const std::string head = "cannot compile " + name + ": " + name + "_";
+            // Holds are read at the input's rate, where one with no base
+            // clause could start with the step.
+            int first = sequence.bases.empty() ? earliest : sequence.start;
+            while (sequence.bases.count(first)) ++first;
+            for (const std::size_t h : sequence.holds) {
+                const Hold&     hold = holds_[h];
+                const Sequence& held = sequences_.at(hold.read);
+                if (hold.early >= 0 && !Needed(earlies_[static_cast<std::size_t>(hold.early)]))
+                    continue;
+                for (int n = first;; ++n) {
+                    const int term = Floor(n - hold.b, hold.a) + hold.d;
+                    if (term >= held.first) break;
+                    const std::string at = std::to_string(n) + " reads " + hold.read + "_" +
+                                           std::to_string(term) + ", ";
+                    if (!held.bases.empty() && !held.guarded.empty())
+                        throw Refusal(head + at + "below " + hold.read +
+                                      "'s base clauses, where only its guards could give a term");
+                    if (held.bases.empty() &&
+                        std::any_of(held.samples.begin(), held.samples.end(), [&](const auto& x) {
+                            return held.period * term + *x.second.rbegin() >= Exists(x.first);
+                        }))
+                        throw Refusal(head + at + "before " + hold.read +
+                                      "'s first tick, where its samples could give a term");
+                }
+            }
+            int tick = sequence.start;
+            while (sequence.bases.count(tick)) tick += sequence.period;
+            for (const auto& [read, offsets] : sequence.samples) {
+                const Sequence& sampled = sequences_.at(read);
+                if (!Recomputed(sampled)) continue;
+                for (const int b : offsets)
+                    for (int k = tick - sequence.phase + b; k < sampled.start; k += sequence.period)
+                        if (k >= Exists(read))
+                            throw Refusal(head + std::to_string((k - b) / sequence.period) +
+                                          " reads " + read + "_" + std::to_string(k) +
+                                          ", before the step computes " + read +
+                                          ", where its clauses could give a term");
+            }
+        }
+    }
+
+    // The whole part of n/a, a > 0, as floor gives it.
+    static int Floor(int n, int a) { return n / a - (n % a < 0 ? 1 : 0); }
+
+    // The first tick of a sequence from step n on.
+    static int Tick(const Sequence& sequence, int n) {
+        while (!Ticks(sequence, n)) ++n;
+        return n;
     }
 
     // The first index where every term these reads name exists.
@@ -2902,9 +3006,9 @@ private:
                 throw Refusal("cannot compile: " + name +
                               " is read both as a value and as a sequence");
         for (auto& [name, sequence] : sequences_) Rate(name, sequence);
+        const int earliest = Starts();
         for (auto& [name, sequence] : sequences_)
             for (const std::size_t h : sequence.holds) Resolve(name, holds_[h]);
-        const int                      earliest = Starts();
         for (auto& [name, sequence] : sequences_) Seeds(name, sequence);
         const std::vector<std::string> order    = Order();
         std::vector<std::string>       fields;
@@ -2922,8 +3026,9 @@ private:
                 sequence.depth = std::max(sequence.depth, *sequence.own.rbegin() + 1);
         }
         for (const Hold& hold : holds_)
-            sequences_.at(hold.read).depth =
-                std::max(sequences_.at(hold.read).depth, hold.most + 1);
+            if (hold.early < 0 || Needed(earlies_[static_cast<std::size_t>(hold.early)]))
+                sequences_.at(hold.read).depth =
+                    std::max(sequences_.at(hold.read).depth, hold.most + 1);
         // A model's in the order its signature gives them.
         if (model_) {
             const auto at = [&](const std::string& name) {
@@ -3105,8 +3210,9 @@ private:
         Compiled compiled{out, earliest, inputs, {}, {}};
         for (const std::string& name : order) {
             const Sequence& sequence = sequences_.at(name);
-            compiled.sequences.push_back(
-                {name, sequence.rows, sequence.cols, sequence.period, sequence.phase});
+            compiled.sequences.push_back({name, sequence.rows, sequence.cols, sequence.period,
+                                          sequence.phase,
+                                          sequence.period * sequence.first + sequence.phase});
             if (clauses_ && (!sequence.guarded.empty() || !sequence.taken.empty()))
                 compiled.guarded.push_back(name);
         }

@@ -62,6 +62,13 @@ set_target_properties(inkamath_cli PROPERTIES OUTPUT_NAME inkamath)
 # The version is written here and nowhere else.
 target_compile_definitions(inkamath_cli PRIVATE INKAMATH_VERSION="${PROJECT_VERSION}")
 
+# Not a test: a benchmark informs a change and never gates one.
+add_custom_target(bench
+    COMMAND ${CMAKE_COMMAND} -DINKAMATH=$<TARGET_FILE:inkamath_cli>
+            -P ${CMAKE_CURRENT_SOURCE_DIR}/bench/run.cmake
+    DEPENDS inkamath_cli
+    USES_TERMINAL VERBATIM)
+
 # --- tests -------------------------------------------------------------------
 if(INKAMATH_BUILD_TESTS)
     enable_testing()

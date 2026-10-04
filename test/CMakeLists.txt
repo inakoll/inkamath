@@ -74,7 +74,9 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brin
                          drift:rift
                          delay:fir newton:stiff logistic:gate softmax:cls steady:mark
                          rnn:rnn attention:head momentum:ball adam:fit lqr:gain
-                         rates:pairs rates:odd seeded:warm)
+                         rates:pairs rates:odd seeded:warm cascade:servo decimate:boxcar
+                         decimate:stride decimate:frame decimate:lead
+                         decimate:trail drift:sill drift:seam)
     string(REPLACE ":" ";" checked ${checked})
     list(GET checked 0 file)
     list(GET checked 1 instance)
@@ -111,6 +113,18 @@ set_tests_properties(check_pairs_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^pairs: 100 steps from 0, against exact values\n(pairs\\.[a-z]+: within 0\n)+$")
 set_tests_properties(check_odd_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^odd: 100 steps from 1, against exact values\n(odd\\.[a-z]+: within 0\n)+$")
+set_tests_properties(check_servo_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^servo: 100 steps from 0, against exact values\n(servo\\.[a-z]+: within [0-9.e+-]+\n)+$")
+set_tests_properties(check_boxcar_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^boxcar: 100 steps from 0, against exact values\n(boxcar\\.[a-z]+: within 0\n)+$")
+set_tests_properties(check_stride_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^stride: 100 steps from 0, against exact values\nstride\\.h: within 0\n$")
+set_tests_properties(check_frame_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^frame: 100 steps from 0, against exact values\nframe\\.p: within 0\n$")
+set_tests_properties(check_lead_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^lead: 100 steps from 0, against exact values\nlead\\.y: within 0\n$")
+set_tests_properties(check_trail_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^trail: 100 steps from 0, against exact values\n(trail\\.[a-z]+: within 0\n)+$")
 set_tests_properties(check_warm_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^warm: 100 steps from 0, against exact values\n(warm\\.[a-z]+: within [0-9.e+-]+\n)+$")
 set_tests_properties(check_rnn_report PROPERTIES PASS_REGULAR_EXPRESSION
@@ -137,11 +151,17 @@ set_tests_properties(check_ledge_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^ledge: 100 steps from 0, against exact values\nledge\\.g: at 6 the compiled step takes 'g_n \\| d_n < c - w = 1' and the interpreter 'g_n = 0'; the guard of the first is 1e-12 from its threshold\n")
 set_tests_properties(check_rift_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^rift: 100 steps from 0, against exact values\nrift\\.g\\[1,1\\]: at 1 the compiled step takes 'g_n\\[j<=2\\] \\| d_n\\[j\\] < c\\*j = 1' and the interpreter 'g_n\\[j<=2\\] = 0'; the guard of the first is exactly on its threshold\nrift\\.d\\[1,1\\]: [0-9.e+-]+ at 9, where the interpreter gives 0\\.10000000000000001\nrift\\.g\\[1,1\\]: 1 at 1, where the interpreter gives 0\n$")
+set_tests_properties(check_sill_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^sill: 100 steps from 0, against exact values\nsill\\.g: at 2 the compiled step takes 'g_m \\| d_\\(2\\*m\\) < c = 1' and the interpreter 'g_m = 0'; the guard of the first is exactly on its threshold\nsill\\.d: [0-9.e+-]+ at 9, where the interpreter gives 0\\.10000000000000001\nsill\\.g: 1 at 2, where the interpreter gives 0\n$")
+set_tests_properties(check_seam_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^seam: 100 steps from 0, against exact values\nseam\\.g\\[1,1\\]: at 2 the compiled step takes 'g_m\\[j<=2\\] \\| d_\\(2\\*m\\)\\[j\\] < c\\*j = 1' and the interpreter 'g_m\\[j<=2\\] = 0'; the guard of the first is exactly on its threshold\nseam\\.d\\[1,1\\]: [0-9.e+-]+ at 9, where the interpreter gives 0\\.10000000000000001\nseam\\.g\\[1,1\\]: 1 at 2, where the interpreter gives 0\n$")
 add_test(NAME check_calm COMMAND check_calm)
 add_test(NAME check_wild COMMAND check_wild)
 add_test(NAME check_brink COMMAND check_brink)
 add_test(NAME check_rift COMMAND check_rift)
-set_tests_properties(check_wild check_brink check_rift PROPERTIES WILL_FAIL ON)
+add_test(NAME check_sill COMMAND check_sill)
+add_test(NAME check_seam COMMAND check_seam)
+set_tests_properties(check_wild check_brink check_rift check_sill check_seam PROPERTIES WILL_FAIL ON)
 
 # Random models, compiled and held to the interpreter's answers: the generator
 # runs both at build time and writes one C file, built and run like the others.
