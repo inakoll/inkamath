@@ -122,3 +122,34 @@ outer(a = 1) = { ... }
 
 >> tex ?outer
 error: tex cannot show a model inside a model yet
+
+# A base term written after a guarded clause is tried after it (C45), so it
+# is a case in its place, not a line above the cases that would say it holds
+# (C85); one written before every guard is a line of its own, as it holds.
+>> yb_n | n < 0 = 0
+yb_n | n < 0 = 0
+
+>> yb_(-1) = 3
+yb_(-1) = 3
+
+>> yb_n = n
+yb_n = n
+
+>> yb_(-1)
+0
+
+>> tex ?yb
+\mathit{yb}_n = \begin{cases} 0 & \text{if } n < 0 \\ 3 & \text{if } n = -1 \\ n & \text{otherwise} \end{cases}
+
+>> ya_0 = 5
+ya_0 = 5
+
+>> ya_n | n < 0 = 0
+ya_n | n < 0 = 0
+
+>> ya_n = n
+ya_n = n
+
+>> tex ?ya
+\mathit{ya}_0 = 5
+\mathit{ya}_n = \begin{cases} 0 & \text{if } n < 0 \\ n & \text{otherwise} \end{cases}
