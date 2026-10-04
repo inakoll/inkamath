@@ -118,13 +118,26 @@ private:
                     }
                 }
                 Compiled compiled = compiler.Print(module, source);
-                // One that writes NaN anywhere is compiled again, aware.
-                if (aware || compiled.header.find("NAN") == std::string::npos) return compiled;
+                // One that writes NaN anywhere past the line naming its source
+                // is compiled again, aware.
+                if (aware || !WritesNan(compiled.header, compiled.header.find('\n')))
+                    return compiled;
                 aware = true;
             } catch (const Fix& fix) {
                 fixed.insert(fix.names.begin(), fix.names.end());
             }
         }
+    }
+
+    // Whether C reads NAN in it from 'from' on: as a word, which no name can be.
+    static bool WritesNan(const std::string& code, std::size_t from = 0) {
+        const auto name = [&](std::size_t at) {
+            return std::isalnum(static_cast<unsigned char>(code[at])) || code[at] == '_';
+        };
+        for (std::size_t at = code.find("NAN", from); at != std::string::npos;
+             at             = code.find("NAN", at + 1))
+            if ((at == 0 || !name(at - 1)) && !name(at + 3)) return true;
+        return false;
     }
 
     // Parameters read where the compiled code needs a constant -- a size, a
@@ -2325,8 +2338,7 @@ private:
         const Code row    = Known(expression->Row(), "a cell whose place is not a constant");
         // The interpreter refuses a matrix whole where it refuses a cell. One
         // that writes NaN in a cell not taken makes the header write it.
-        for (const Cell& c : matrix.cells)
-            aware_ |= !matrix.constant && c.text.find("NAN") != std::string::npos;
+        for (const Cell& c : matrix.cells) aware_ |= !matrix.constant && WritesNan(c.text);
         if (aware_ && !matrix.whole && !matrix.constant) matrix = Shared(matrix);
         const std::string nan = matrix.whole ? "" : Nan(matrix);
         if (!nan.empty())

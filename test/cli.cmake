@@ -449,6 +449,18 @@ holds(compile_nan_folded folded.h [[ * name_(n-k) for each sequence: x and y.
  */
 ]])
 
+# NAN in a name is no NaN written: pid_clamped as NAN_clamped is its header,
+# renamed.
+set(args --compile "${CMAKE_CURRENT_LIST_DIR}/compile/pid_clamped.ink" -o NAN_clamped.h)
+check(compile_nan_named)
+file(READ "${OUT}/NAN_clamped.h" named)
+file(READ "${CMAKE_CURRENT_LIST_DIR}/compile/expected/pid_clamped.h" expected)
+string(REPLACE "NAN_CLAMPED_H" "PID_CLAMPED_H" named "${named}")
+string(REPLACE "NAN_clamped" "pid_clamped" named "${named}")
+if(NOT named STREQUAL expected)
+    message(SEND_ERROR "compile_nan_named: NAN_clamped.h is not pid_clamped.h renamed")
+endif()
+
 # The clause --check keeps is 0 where the guard reads NaN.
 foreach(instance IN ITEMS pair any)
     set(args --check ${nan} ${instance} -o ${instance}.c)

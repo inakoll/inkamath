@@ -3583,4 +3583,6 @@ that exploring seven domains asked of the interpreter, by how many asked.
   only `rnn`'s moves, its tanh taking each cell of a product. That every
   `and` and `or` defers in an aware header is said once, in `Defers`, not
   by its two callers. A constant matrix, which folds, is left out of the
-  gate. 15 lines: 13,373 in all.
+  gate. The gate reads NAN as a word past the line naming the source, so
+  a module, a file or a parameter named with it, `NAN_clamped`, no longer
+  makes a header aware. 27 lines: 13,385 in all.
