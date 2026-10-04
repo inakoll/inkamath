@@ -1609,7 +1609,7 @@ closures need one anyway, and can bring it.
 | C80 `[fixed]` | **`grad` reads a parameter that an index or a row hides.** A clause's index, row, column and slice are bound where its parameters are, and hide one of the same name, but `grad` seeks a name among the arguments it differentiates before the values bound: with `g(n)_n = n`, `g(x)_2` is 2 for every `x`, and `grad_(x = 1) g(x)_2` answers 1; with `f(j)[j<=2] = j`, `grad_(x = 1) [1 1]*f(x)` answers 2, not 0. Found building `grad` of definitions by cells (next in line), whose walk binds a row as the evaluator does. Hiding the clause's names from the arguments where they are bound, as a sum's index is hidden, would fix both; the walk binds them in `Reference`, where `grad` cannot hide them, so for now a clause whose index, slice, row or column names a parameter is refused under `grad`, "grad cannot differentiate sm yet: its row t hides its parameter t": a temperature `t` beside attention's rows `t` answered `[10; 10]` for `[1; 2]`. The C80 entries at the end of `test/data/grad.ink` hold it. |
 | C81 `[fixed]` | **`grad` kept the slope of a single value added to a matrix single.** A sum adds a single value to every cell, and a matrix to every slice of a tensor, but a part that only one side had kept that side's shape, so `grad_(x = 1) [1 1]*(x + [1; 2])` answered `[1, 1]` where the slope is 2, `([1 2; 3 4] + x)^2` the slope it would have were x added to the diagonal only, and `f(x)[j<=1] = (x + [1 2])*[1; 1]`, whose cell stores its part's first, a slope of 1 for 2. Found reviewing `grad` of definitions by cells (next in line), whose walk stores a cell's part as its value is stored. Now a sum's part is widened to its value's shape; `grad.ink` holds it. |
 | C82 `[fixed]` | **A guarded clause written whole beside clauses for cells is never asked.** With `Q2(x)[j<=2] = x` and `Q2(x) \| x > 1 = [0 0]`, `Q2(2)` is `[2; 2]`, and with `R \| 1 > 0 = [5 5]` before `R[j<=2] = j`, `R` is `[1; 2]`: the walk over the cells takes a clause written whole only as the value of the cells no clause gives, and a guarded one not even then. Found by the review of `grad` of definitions by cells (next in line), with which `grad` agrees. Taking the whole definition where it holds, before its cells, would add nothing a guard on each cell does not say, `R(x)[i<=2] \| x > 1 = 0`, so such a clause is refused where it is written, in either order, "Pw is defined by its cells, so a clause for all of it cannot be guarded; guard its cells"; a clause written whole and unguarded stays the matrix the cells override. The entries at the end of `test/data/matrices.ink` and `test/data/terms.ink` hold it. |
-| C83 `[open]` | **A model's input is compiled as a single value, whatever it is.** The step takes one double for each input and the compiler reads the input as 1x1, so with `mm(x_n) = { y_n = [1 2]*x_n }` the header computes a 1x2 term where the interpreter, given `x_n = [n; 1]`, answers a single value. `--check` of that instance crashed, reading a second cell of each term the interpreter gave one of; it now refuses the instance by name, "v.x_(0) has 2 cells, where the compiled step takes a single value", and `check_matrix_input` in `test/cli.cmake` holds it. Found specifying a model's history of its inputs (next in line). What stays open is the header: an input wants a shape, taken as an array as a matrix parameter is, or a refusal by name. |
+| C83 `[open]` | **A model's input is compiled as a single value, whatever it is.** The step takes one double for each input and the compiler reads the input as 1x1, so with `mm(x_n) = { y_n = [1 2]*x_n }` the header computes a 1x2 term where the interpreter, given `x_n = [n; 1]`, answers a single value. `--check` of that instance crashed, reading a second cell of each term the interpreter gave one of; it now refuses the instance by name, "v.x_(0) has 2 cells, where the compiled step takes a single value", and `check_matrix_input` in `test/cli.cmake` holds it. Found specifying a model's history of its inputs (next in line). What stays open is the header: an input wants a shape, taken as an array as a matrix parameter is, or a refusal by name. Specified in next in line, *an input of more than one cell*: the model states the size in its signature, `x_n[j<=2]`, and the step takes the input's cells. |
 | C84 `[open]` | **`--check` compares nothing of an instance a model writes unnamed.** With `bare(u_n) = { c_n = u_(n-1) }` and `wrap(x_n) = { c_n = bare(u_n = x_n).c_n }` checked as `nest = wrap(x_n = n)`, the step keeps the instance as `c_bare`, and the check asks the interpreter for `nest.c_bare.c_0`, which it cannot name, "a term has no names", so every term of `c_bare.c` and `c_bare.u` is skipped and each line reads `within 0`. No checked instance writes one. Found reviewing the specification of a model's history of its inputs (next in line), whose check reports a term the interpreter cannot give instead of skipping it, which would turn each such line red. The check wants to ask for such a term through the definition that writes the instance, or to say by name that it cannot. It now says so, `veiled.c_bare.c: not asked, as the interpreter cannot name it`, where each line read `within 0`; asking stays open. |
 | C85 `[fixed]` | **`tex` sets a base term apart from the guarded clauses written before it.** Clauses are tried in the order written (C45): after `y_n \| n < 0 = 0`, `y_(-1) = 3` and `y_n = n`, `y_(-1)` is 0, but `tex ?y` sets `y_{-1} = 3` on a line of its own above the cases, as if it held. Found reviewing the specification of a model's history of its inputs (next in line), whose clauses on an input may come in either order. `tex` wants the clauses in the order they are tried, or the base term left out where an earlier clause covers it. Now a term written after a guard is a case in its place, `3 & \text{if } n = -1`, and one written before every guard keeps its line, which holds; the C85 entries at the end of `test/data/tex.ink` hold it. |
 | C86 `[open]` | **A clause whose value is a constant that fails refuses the whole model when compiled.** The compiler folds a constant value exactly, and a failure there is taken as the model's: in a model `gd(a = 2)` defining `h(x) = 1`, `h(x) \| x <= 0 = 1/0` and `y_n = h(a + n)`, `--compile` says "cannot compile y: division by zero" where the interpreter answers 1 for every term and never takes the clause, and `[1 2]*[1 2]` there says a product's sizes. `log`'s `log(x) \| x <= 0 = 1/0` is one, so a model calling `log` is refused in those words instead of "a sum or a product with no upper bound", which its series earns. Found specifying a function applied to each cell, `f.(x)`, which sizes inferred replaced (next in line). A clause written to refuse wants compiling as what a step does where the interpreter refuses, NaN as for a limit that does not converge, or a refusal naming the function and its clause. |
@@ -3418,3 +3418,99 @@ that exploring seven domains asked of the interpreter, by how many asked.
   420 lines of sources added and 143 removed, 277 more in all, about 40 of
   them the body of a call indented under the handler that names it, where
   about 120 were planned.
+
+- **An input of more than one cell** (C83). A model reading a vector or a
+  matrix at each step -- `y_n = [1 2]*x_n` with `x_n` a column, a filter on
+  several channels, a controller reading a sensor vector -- compiles to the
+  wrong shape: the compiler compiles a model, not an instance, so it reads
+  every input as a single value, and the step takes one double for each.
+  `--check` refuses such an instance by name, and no header can be had.
+
+  The model states the size in its signature, by bounds, as a definition by
+  cells states its own: `dot(x_n[j<=2])`, a column as `w[j<=3]` is;
+  `trace(x_n[j<=2, k<=2])`, a matrix; three bounds a tensor, slices first. A
+  bound reads what a cell's bound reads: the model's parameters,
+  `avg(d = 3, x_n[j<=d])`, and the index. An input whose size is not stated
+  takes any in the interpreter and compiles as a single value, both as now,
+  so `history.ink`'s `swap`, a column given to `swap(x_n)`, still answers
+  and no golden moves; making it a single value in the interpreter too would
+  refuse that session for a size it never had to write.
+
+  In the interpreter, every term of a stated input, whether the argument, a
+  default or a history gives it, has that size, or is refused where it is
+  read, naming the term and both sizes: `w.x_1 is a single value, where dot
+  takes a 2x1 matrix`. A row given for a column is refused as well, as a
+  missing transpose is everywhere (*One index is a row*), and a single value
+  is not stretched, so a history of a column is a column, `x_n | n < 0 =
+  [0; 0]`. An instance is defined without evaluating anything, as now, so
+  the refusal is where a term is read. `?` prints the signature as written;
+  `tex` sets the size as a paper states it, `\operatorname{dot}(x_n \in
+  \mathbb{R}^{2})`, `\mathbb{R}^{2 \times 2}` for two bounds and
+  `\mathbb{R}^{d}` for one read. Any other bracket in a signature, `x_n[j]`,
+  `x_n[2]` or a parameter's, is refused in the words that say what a
+  parameter is, which gain the form: `a model's parameter is a name, as 'k =
+  2', or an input, as 'x_n' or 'x_n[j<=2]'`. A history by cells is C89's.
+
+  Compiled, the step takes an input of more than one cell as a pointer to its
+  cells, row by row, `const double x[2]`, as a host holds a vector; its window
+  is a sequence's of that size, `double x[1][2][1]`, and the step copies it
+  in, `memcpy(m_->x[0], x, sizeof m_->x[0])`. The first comment says so: `A
+  step takes x_n (2x1), the input at its index. An input of more than one
+  cell is a pointer to its cells, row by row.` Taking `const double
+  x[2][1]`, the window's shape and a limit's matrix argument's, was
+  rejected: in C11 a `double (*)[1]` passed where a `const double (*)[1]` is
+  taken is a pedantic warning, so a host would cast to call it, and a column
+  is not held as rows of one. What a sequence of that size does, the input
+  does: a cell is read, `x_n[2]` a single value; a size inferred from it is
+  its size, so `g_n[j] = x_n[j]*(x_n[j] > 0)` is 3x1 for a 3x1 input; it is
+  sampled and held at another rate; and it has a history, C83's refusal of
+  one that is not a single value going, `init` writing each cell a history
+  gives that is not 0, as it writes a parameter's. A bound that reads a
+  parameter compiles it in, as any size does, and the header says so.
+
+  `--check` feeds such an input by its cells, `in_k` holding each step's row
+  by row, and the step reads them from the step's first, `&in_1[n * 2]`. An
+  instance whose argument has another size than its model states is refused
+  in the interpreter's words, where the check reads the input: `v.x_(0):
+  v.x_0 is a single value, where dot takes a 2x1 matrix`. Where the model
+  states none, `check_matrix_input` stands as it is.
+
+  What stays refused, by name: a history of another size than its input,
+  stated or a single value, `cannot compile x: a history of another shape`,
+  the words an inner input's already has, so `swap` in `test/cli.cmake`,
+  its size not stated, moves to them from `a history that is not a single
+  value`; a size that is not a constant, `a matrix whose size is not a
+  constant`, as for a cell; a tensor, `cannot compile x: a tensor`, as any;
+  an instance within the model given an argument of another size than its
+  model states, `cannot compile inner.x: a single value, where dot takes a
+  2x1 matrix`, which the compiler can tell, its shapes being static. A
+  file's input, a name nothing defines, has no signature to state a size in
+  and stays a single value. It is a requirement that every header in
+  `test/compile/expected` stays byte-identical, and every program `--check`
+  writes for an instance whose inputs are single values.
+
+  Rejected. A default giving the size, `m(x_n = [0; 0])`: a default already
+  means the stream where no argument is given, and the model compiled with
+  it takes no input at all, `m_step(&m)`, so the same text would mean a
+  stream in one place and the size of another in the next. A history giving
+  it, `x_n | n < 0 = [0; 0]`, which costs no syntax: a model that never reads
+  before the stream would state a history it does not need, for its size;
+  the clause speaks of `n < 0`, so the interpreter could not hold the stream
+  to it without giving one clause two meanings; and two clauses could
+  disagree. Inference from use: `[1 2]*x_n` admits a 2xk input, `2*x_n`
+  any, the header's interface would move when an unrelated line does, the
+  compiler's shapes run from the leaves forward and would need solving
+  backwards through products, and the interpreter, which reads the argument,
+  would never see it. A shape written as a type, `x_n : R^2`: a second way
+  to write a size beside bounds. The instance's argument giving it: the
+  compiler compiles a model, which two instances may give different sizes.
+
+  About 75 lines: 40 in the interpreter, parsing the signature 10, the size
+  held where a term is read 20 and `tex` 10; 25 in the compiler and 10 in
+  the check.
+
+  Specified in `test/data/spec/inputs.ink`, 48 of its 58 entries failing,
+  those passing being instances and models without a size echoing
+  themselves, an input whose size is not stated, and a definition outside
+  any model; and in `test/compile/inputs.ink`, whose instances, reports,
+  header excerpts and refusals are wired with the compiler's half.
