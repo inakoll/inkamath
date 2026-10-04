@@ -2670,9 +2670,13 @@ private:
             for (auto& [name, sequence] : sequences_) {
                 if (!sequence.bases.empty() || !sequence.definition) continue;
                 const int answers = Answers(sequence);
+                // Before the stream, a history gives its terms, or Cover refuses.
+                const int exists = Historied(name) && answers <= earliest.value_or(0)
+                                       ? std::numeric_limits<int>::min() / 2
+                                       : answers;
                 if (const auto found = exists_.find(name);
-                    found != exists_.end() && answers > found->second) {
-                    found->second = answers;
+                    found != exists_.end() && exists > found->second) {
+                    found->second = exists;
                     moved         = true;
                 }
                 const int samples = sequence.period > 1 ? From(sequence.reads, true) : answers;

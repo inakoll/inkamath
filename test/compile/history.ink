@@ -45,6 +45,12 @@
 #     twice: 100 steps from 0, against exact values
 #     twice.<name>: within 0, for each of c, inner.c and inner.x
 #
+# The inner history holds where the argument, a hold, starts at the stream:
+# 'relayed' reads inner.x_-1 at 0.
+#
+#     relayed: 100 steps from 0, against exact values
+#     relayed.<name>: within 0, for each of c, y, inner.c and inner.x
+#
 # A term the step computes and the interpreter cannot give parts, where it
 # was skipped: 'pole' reported 'within 0', its step inf at 3.
 #
@@ -188,6 +194,13 @@ shift(x_n) = {
     c_n = inner.c_n + x_(n-1)
 }
 twice = shift(x_n = n)
+
+relay(x_n) = {
+    y_m = x_(2*m)
+    inner = delay(x_n = y_(floor(n/2)))
+    c_n = inner.c_n
+}
+relayed = relay(x_n = n + 1)
 
 inv(x_n) = {
     y_n = 1/(x_n - 3)
