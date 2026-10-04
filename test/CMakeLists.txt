@@ -77,7 +77,8 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brin
                          rates:pairs rates:odd seeded:warm cascade:servo decimate:boxcar
                          decimate:stride decimate:frame decimate:lead
                          decimate:trail drift:sill drift:seam history:past history:twin
-                         history:lit history:rise history:nest history:twice history:pole)
+                         history:lit history:rise history:ajar history:nest history:twice
+                         history:pole)
     string(REPLACE ":" ";" checked ${checked})
     list(GET checked 0 file)
     list(GET checked 1 instance)
@@ -134,6 +135,8 @@ set_tests_properties(check_lit_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^lit: 100 steps from 0, against exact values\nlit\\.f: within 0\nlit\\.y: within 0, from 1\nlit\\.z: within 0\n$")
 set_tests_properties(check_rise_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^rise: 100 steps from 0, against exact values\nrise\\.c: within 0\n$")
+set_tests_properties(check_ajar_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^ajar: 100 steps from 0, against exact values\najar\\.c: within 0\n$")
 set_tests_properties(check_nest_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^nest: 100 steps from 0, against exact values\nnest\\.inner\\.c: within 0\nnest\\.c: within 0\nnest\\.inner\\.u: within 0\n$")
 set_tests_properties(check_twice_report PROPERTIES PASS_REGULAR_EXPRESSION

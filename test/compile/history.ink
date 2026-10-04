@@ -23,6 +23,12 @@
 #     rise: 100 steps from 0, against exact values
 #     rise.c: within 0
 #
+# Where it does not decide, the read on its right before the stream is a term
+# the history gives: 'ajar' reads x_-3 to x_-1 at 0 to 2.
+#
+#     ajar: 100 steps from 0, against exact values
+#     ajar.c: within 0
+#
 # An instance within a model: 'nest' reads an input with no history of its
 # own, whose argument is the outer input, so init folds the outer history
 # into the inner window; in 'twice' the inner history beats the outer one.
@@ -145,6 +151,12 @@ edge(x_n) = {
     c_n = n > 0 and x_n > x_(n-1)
 }
 rise = edge(x_n = (n - 3)^2)
+
+gate(x_n) = {
+    x_n | n < 0 = 5
+    c_n = n < 4 and x_(n-3) > 0
+}
+ajar = gate(x_n = n)
 
 bare(u_n) = {
     c_n = u_(n-1)

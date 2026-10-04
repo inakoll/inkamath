@@ -382,6 +382,12 @@ file(WRITE "${OUT}/guarded.ink" "guarded(x_n) = {\n    c_n | n > 0 = x_(n-1)\n  
 set(args --compile guarded.ink guarded -o guarded.h)
 check(history_guarded_value)
 
+# A read on the right of an 'and' whose left does not decide is a term the
+# history gives, as one read on its left is.
+file(WRITE "${OUT}/gate.ink" "gate(x_n) = {\n    x_n | n < 0 = 5\n    c_n = n < 4 and x_(n-3) > 0\n}\n")
+set(args --compile gate.ink gate -o gate.h)
+check(history_right_side)
+
 # A transcript checked: replayed, and each answer that is not the one recorded
 # shown as recorded, '-', and as given now, '+', under the line it answers.
 file(WRITE "${OUT}/good.ink" ">> 1+1\n2\n\n# a comment\n>> a = 3\na = 3\n\n>> a*2\n6\n")

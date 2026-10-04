@@ -2898,8 +2898,9 @@ private:
         }
     }
 
-    // The reads before the stream, and init's lines for what histories give.
-    std::string Histories(int earliest) {
+    // The reads before the stream; the step's deferred ones are checked as it
+    // is written.
+    void Histories(int earliest) {
         for (const auto& [name, last] : reach_)
             if (last >= earliest)
                 throw Refusal("cannot compile " + name + ": its history reaches " + name + "_" +
@@ -2929,6 +2930,10 @@ private:
             for (const auto& [name, sequence] : sequences_)
                 if (&sequence == early.reader && Needed(early))
                     Cover(name, sequence, early.reads, sequences_.at(early.name).start + early.lag);
+    }
+
+    // init's lines for what histories give, once every read has asked.
+    std::string Folds(int earliest) const {
         std::string lines;
         for (const auto& [name, sequence] : sequences_) {
             const bool slow  = sequence.period > 1;
@@ -2936,9 +2941,9 @@ private:
                                : Historied(name) ? sequence.depth - 1
                                                  : 0;
             for (int k = 0; k < terms; ++k) {
-                const auto& term = folded_[{name, (slow ? sequence.first : earliest) - 1 - k}];
-                if (!term) continue;
-                const std::vector<double> cells = Doubles(*term);
+                const auto term = folded_.find({name, (slow ? sequence.first : earliest) - 1 - k});
+                if (term == folded_.end() || !term->second) continue;
+                const std::vector<double> cells = Doubles(*term->second);
                 if (cells.size() != sequence.rows * sequence.cols)
                     throw Refusal("cannot compile " + name + ": a history of another shape");
                 for (std::size_t c = 0; c < cells.size(); ++c)
@@ -3250,7 +3255,7 @@ private:
             if (hold.early < 0 || Needed(earlies_[static_cast<std::size_t>(hold.early)]))
                 sequences_.at(hold.read).depth =
                     std::max(sequences_.at(hold.read).depth, hold.most + 1);
-        const std::string folds = Histories(earliest);
+        Histories(earliest);
         // A model's in the order its signature gives them.
         if (model_) {
             const auto at = [&](const std::string& name) {
@@ -3334,7 +3339,8 @@ private:
                        (scalar ? "" : Subscript(c / parameter.cols, c % parameter.cols)) + " = " +
                        Double(parameter.initial[c]) + ";\n";
         }
-        out += folds + "    m_->index_ = " + std::to_string(earliest - 1) + ";\n";
+        const std::size_t folds = out.size();
+        out += "    m_->index_ = " + std::to_string(earliest - 1) + ";\n";
         out += "    " + module + "_update(m_);\n}\n\n";
 
         out += "/* Advances to the next index, the first at " + std::to_string(earliest) +
@@ -3429,6 +3435,7 @@ private:
             if (late) out += "    }\n";
         }
         out += "}\n\n#endif\n";
+        out.insert(folds, Folds(earliest));
         Compiled compiled{out, earliest, inputs, {}, {}};
         for (const std::string& name : order) {
             const Sequence& sequence = sequences_.at(name);
