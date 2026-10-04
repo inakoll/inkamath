@@ -11,7 +11,10 @@
 # the same as 'sign', cell by cell, and through a healthy cell of a term the
 # interpreter refuses whole; 'pair' the same as 'sign' through a bare
 # truth from step 2, and an 'and' whose right side reads it from 3 and, at 0,
-# a term before its start. Today each parts where the failure was made a
+# a term before its start; 'lap' a guard inside a limit's walk reading the
+# same as 'sign' from step 2; 'trim' a guard computed in update reading it at
+# the default of its parameter, so at every step; 'any' an 'or' whose right
+# side reads it from step 4. Today each parts where the failure was made a
 # value:
 #
 #     run.high: 0 at 8, where the interpreter gives none: p did not converge within 100 terms (last term 1)
@@ -23,6 +26,9 @@
 #     slope.h: 0 at 0, where the interpreter gives none: no clause of r applies
 #     pair.w: 0 at 3, where the interpreter gives none: no clause of r applies
 #     pair.z: 1 at 2, where the interpreter gives none: no clause of r applies
+#     lap.y: 5.8207660913467407e-11 at 2, where the interpreter gives none: no clause of r applies
+#     trim.y: 0 at 0, where the interpreter gives none: no clause of r applies
+#     any.o: 0 at 4, where the interpreter gives none: no clause of r applies
 #
 # 'pair's program, built with -fsanitize=float-cast-overflow, stops at 0,
 # where its 'and' is NaN and the clause kept is an int (C90). Each is to
@@ -50,6 +56,16 @@
 #     pair.w: within 0
 #     pair.y: within 0
 #     pair.z: within 0
+#
+#     lap: 100 steps from 0, against exact values until 0 and inexact ones from there
+#     lap.y: within <x>
+#
+#     trim: 100 steps from 0, against exact values
+#     trim.y: within 0
+#
+#     any: 100 steps from 0, against exact values
+#     any.y: within 0
+#     any.o: within 0
 #
 # 'slope' because a matrix term with a NaN cell is NaN in every cell: at 2,
 # y_2[2] has no clause, so y_2[1], which is 1, is NaN with it, and so is h_2,
@@ -87,10 +103,29 @@
 #     m_->y[0] = m_->index_ == 0 ? 2.0 : isnan(m_->x[0]) ? NAN : m_->x[0] > 0.0 ? m_->x[0] : NAN;
 #     m_->z[0] = isnan(m_->y[0]) ? NAN : m_->y[0] != 0.0 ? 1.0 : 0.0;
 #
+# for walked, its limit's term and its step,
+#
+#         const double t_ = isnan(arg_a) ? NAN : arg_a > 1.0 ? 0.0 : t1_ / 2.0;
+#
+#     m_->y[0] = walked_lim0(m_, isnan(m_->x[0]) ? NAN : m_->x[0] > 0.0 ? m_->x[0] : NAN);
+#
+# for tuned, its update,
+#
+#     m_->a = isnan(m_->g) ? NAN : m_->g > 0.0 ? m_->g : NAN;
+#     m_->k = isnan(m_->a) ? NAN : m_->a > 1.0 ? 1.0 : 0.0;
+#
+# and for either,
+#
+#     m_->y[0] = isnan(m_->x[0]) ? NAN : m_->x[0] > 0.0 ? m_->x[0] : NAN;
+#     const double t0_ = (isnan(m_->x[0]) ? NAN : m_->x[0] > 3.0 ? 1.0 : 0.0);
+#     const double t1_ = (t0_ == 0.0 ? ((isnan(m_->y[0]) ? NAN : m_->y[0] > 0.5 ? 1.0 : 0.0)) : t0_ != t0_ ? NAN : 1.0);
+#     m_->o[0] = isnan(t1_) ? NAN : t1_ != 0.0 ? 1.0 : 0.0;
+#
 # with the clause kept for --check 0 where the guard reads NaN:
 #
 #     m_->high_clause_ = isnan(m_->y[0]) ? 0 : m_->y[0] > 0.5 ? 1 : 2;
 #     m_->w_clause_ = isnan(t1_) ? 0 : t1_ != 0.0 ? 1 : 2;
+#     m_->o_clause_ = isnan(t1_) ? 0 : t1_ != 0.0 ? 1 : 2;
 #
 # and the Interface comment saying so, level's paragraph ending:
 #
@@ -180,3 +215,30 @@ both(x_n) = {
     w_n = 0
 }
 pair = both(x_n = 2 - n)
+
+walked(x_n) = {
+    r(v) | v > 0 = v
+    p(a)_0 = 1
+    p(a)_k = p(a)_(k-1)/2
+    p(a)_k | a > 1 = 0
+    y_n = lim p(r(x_n))
+}
+lap = walked(x_n = 2 - n)
+
+tuned(x_n, g = 0) = {
+    r(v) | v > 0 = v
+    s(v) = 0
+    s(v) | v > 1 = 1
+    a = r(g)
+    k = s(a)
+    y_n = k + x_n
+}
+trim = tuned(x_n = n)
+
+either(x_n) = {
+    r(v) | v > 0 = v
+    y_n = r(x_n)
+    o_n | x_n > 3 or y_n > 1/2 = 1
+    o_n = 0
+}
+any = either(x_n = 4 - n)
