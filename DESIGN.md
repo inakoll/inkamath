@@ -1600,6 +1600,18 @@ closures need one anyway, and can bring it.
 | C71 `[fixed]` | **A compiled step started a term later than the interpreter where a guard decides what the term it reads back reads.** With `a_n \| n/8 - 3/4 > 2 = u_(n-1) + ...`, `a_n = 1/8` and `b_n = a_(n-1)/2` without a base, the interpreter answers `b_0` from `a_(-1)`, where the guard fails and the constant clause reads nothing. The compiler started `b` where every term `a` might read exists, so at 1, and left `b_0` at 0; it computed a term again at an earlier index only for a closed form, which reads no term at all. Found by the random models under another seed, and older than phase 15. Now a sequence with no base clause begins, for its readers, wherever some path through its clauses answers, and a reader that needs one of its terms before the window holds it computes the term again at that index, its guards tried in order and each read checked where it is read, NaN before it exists as the interpreter reports it. Where no reader needs it the step is as it was, so no header compiled before moved; `test/compile/back.ink` holds both cases. |
 | C72 `[kept]` | **A limit's derivative where its terms' derivatives converge too slowly near the point.** `grad` takes a limit's derivative as the limit of its terms' derivatives, which holds where those converge uniformly near the point, and a single point cannot show that they do. `h(x)_n = h(x)_(n-1)/(1 + x^2)` from `h(x)_0 = x` tends to 0 for every x, so its limit's derivative is 0; at 0 every term's derivative is 1, and `grad` answers 1. Found by the review of the specification; `grad.ink` records the wrong answer so that it cannot change unseen. |
 | C73 `[fixed]` | **`grad`'s checks for a jump read slopes, so a tangent passed.** A comparison or a guard at its threshold, `floor` at a whole number and an exponent were refused only where a first derivative was not zero, so `grad_(x = 0) (x^2 > 0)` answered 0 at a jump, a clause `x^2 == 0` gave its slope at the one point it holds, `2^((x-1)^2)` answered 0 at 1 and was refused at 2, and the same comparison under a nested `grad` was refused. Found by the review of the design. Whether a derivative is there at all is what is asked now. It refuses what is flat where the argument moves and lands on a whole number, as `floor(x^2)` at 0 does, which `grad.ink` records: a refusal over a silent wrong answer. |
+| C74 `[fixed]` | **A hold inside a sequence at another rate was compiled in the input's steps.** In `s_k = x_(4*k) - u_(floor(k/2))` from `s_0 = 0`, with `u_m = x_(2*m)` from `u_0 = 0` and `x_n = n^2`, the hold names a term of `u` by `s`'s index, and the compiler, which resolves every hold by the step, read the latest term of `u` instead: at 4 it gave `s_1` as 0, where the interpreter gives 16. Found specifying what several rates left refused (next in line). The hold reads every 8 steps a sequence computed every 2, so the term it names falls further behind at each tick and no window holds it: it is to be refused by its rate. The hold at the input's rate sampled, which the refusal of a slow sequence read by another names, would say what the compiler gives, not what the interpreter does. Now a hold's period is checked once its reader's is known, as its `a` ticks of the reader, and `s` is refused, "read every 8 steps, and u is computed every 2"; `compile_c74` in `test/cli.cmake` holds it. |
+| C75 `[fixed]` | **`--check` holds a term read from before the stream to the input there.** With `c_n = x_(n-1)` in a model and an instance giving `x_n = n^2`, the interpreter answers `c_0` from `x_(-1)`, 1, where the check feeds the compiled step its inputs from the first step on, as a host does, so its window holds 0, and the report has the two part at 0. Found specifying what several rates left refused (next in line), whose models feed a stream that starts at 0, `s_n \| n >= 0 = n^2`, where the interpreter has no `x_(-1)` either. Whether the check should give the window the input's earlier terms, holding the step to what no host gives it, or say that the step cannot have them, was open; neither is taken: the model states its input's history, which the interpreter and the step both read, and a read before the stream that no history gives is refused (next in line: a model's history of its inputs). Now `delay(x_n) = { x_n \| n < 0 = 0; c_n = x_(n-1) }` given `x_n = n^2` answers `c_0` 0 both ways, `init` folding the history into the window, and the check parts where the interpreter has no term and the step has one; `test/data/history.ink` and `test/compile/history.ink` hold it. |
+| C76 `[fixed]` | **A compiled hold rounded its lag toward zero.** A hold's place in the held sequence's window was `(n - phase)/a - (n - b)/a - d` in C's division, which truncates, and its first step was clamped to `b`: a hold whose numerator could be negative, `y_(floor((n - 3)/2) + 1)` on a sequence based at a negative index, read the wrong cell or left its first steps 0 where the interpreter gives a term. Found by the review of the rates gaps, with 1200 random models compared against master, one of which master compiled to NaN where the interpreter has a value. The lag is now a floor, its first step where the term exists, and the emitted division keeps each numerator non-negative; `trail` in `test/compile/decimate.ink` holds it. |
+| C77 `[fixed]` | **`grad` took a tensor's slice name for a global.** Its check that no definition reads the global of its name binds a clause's index, row and column, not its slice, so after `Gc[b<=2, j<=1, k<=1] = b`, `grad_(b = 2) b*Gc` is refused, "Gc reads the global b, which grad's b does not reach", where `Gc` is a constant and the answer `[1;; 2]`. Found specifying `grad` of definitions by cells (next in line), whose specification holds it. Now the slice is bound as the row is; `Gs` in `test/data/grad.ink` holds it. |
+| C78 `[open]` | **An index that moves with `grad`'s name answers as if it did not.** An index is a whole number, so one that moves is at a jump, as `floor` is at a whole number, which C73 refuses; but with `s_n = n^2` and `v = [5; 7; 9]`, `grad_(x = 2) s_(x)` and `grad_(x = 2) v[x]` answer 0. Found specifying `grad` of definitions by cells (next in line), which refuses a moving size by that rule; an index wants the same check where it is read, not part of that entry. |
+| C79 `[fixed]` | **`grad` did not read a size for the global of its name.** Its check that no definition reads that global scans a clause and its guard, not the bounds of its cells, so after `gz[j<=x] = j` with `x = 100`, `grad_(x = 2) x*gz` answered `gz`, a hundred cells long, as a constant. Found building `grad` of definitions by cells (next in line), which reads a size with its parts. Now the bounds are scanned as the clause is, and the call is refused, "gz reads the global x, which grad's x does not reach"; `gz` in `test/data/grad.ink` holds it. |
+| C80 `[fixed]` | **`grad` reads a parameter that an index or a row hides.** A clause's index, row, column and slice are bound where its parameters are, and hide one of the same name, but `grad` seeks a name among the arguments it differentiates before the values bound: with `g(n)_n = n`, `g(x)_2` is 2 for every `x`, and `grad_(x = 1) g(x)_2` answers 1; with `f(j)[j<=2] = j`, `grad_(x = 1) [1 1]*f(x)` answers 2, not 0. Found building `grad` of definitions by cells (next in line), whose walk binds a row as the evaluator does. Hiding the clause's names from the arguments where they are bound, as a sum's index is hidden, would fix both; the walk binds them in `Reference`, where `grad` cannot hide them, so for now a clause whose index, slice, row or column names a parameter is refused under `grad`, "grad cannot differentiate sm yet: its row t hides its parameter t": a temperature `t` beside attention's rows `t` answered `[10; 10]` for `[1; 2]`. The C80 entries at the end of `test/data/grad.ink` hold it. |
+| C81 `[fixed]` | **`grad` kept the slope of a single value added to a matrix single.** A sum adds a single value to every cell, and a matrix to every slice of a tensor, but a part that only one side had kept that side's shape, so `grad_(x = 1) [1 1]*(x + [1; 2])` answered `[1, 1]` where the slope is 2, `([1 2; 3 4] + x)^2` the slope it would have were x added to the diagonal only, and `f(x)[j<=1] = (x + [1 2])*[1; 1]`, whose cell stores its part's first, a slope of 1 for 2. Found reviewing `grad` of definitions by cells (next in line), whose walk stores a cell's part as its value is stored. Now a sum's part is widened to its value's shape; `grad.ink` holds it. |
+| C82 `[fixed]` | **A guarded clause written whole beside clauses for cells is never asked.** With `Q2(x)[j<=2] = x` and `Q2(x) \| x > 1 = [0 0]`, `Q2(2)` is `[2; 2]`, and with `R \| 1 > 0 = [5 5]` before `R[j<=2] = j`, `R` is `[1; 2]`: the walk over the cells takes a clause written whole only as the value of the cells no clause gives, and a guarded one not even then. Found by the review of `grad` of definitions by cells (next in line), with which `grad` agrees. Taking the whole definition where it holds, before its cells, would add nothing a guard on each cell does not say, `R(x)[i<=2] \| x > 1 = 0`, so such a clause is refused where it is written, in either order, "Pw is defined by its cells, so a clause for all of it cannot be guarded; guard its cells"; a clause written whole and unguarded stays the matrix the cells override. The entries at the end of `test/data/matrices.ink` and `test/data/terms.ink` hold it. |
+| C83 `[open]` | **A model's input is compiled as a single value, whatever it is.** The step takes one double for each input and the compiler reads the input as 1x1, so with `mm(x_n) = { y_n = [1 2]*x_n }` the header computes a 1x2 term where the interpreter, given `x_n = [n; 1]`, answers a single value. `--check` of that instance crashed, reading a second cell of each term the interpreter gave one of; it now refuses the instance by name, "v.x_(0) has 2 cells, where the compiled step takes a single value", and `check_matrix_input` in `test/cli.cmake` holds it. Found specifying a model's history of its inputs (next in line). What stays open is the header: an input wants a shape, taken as an array as a matrix parameter is, or a refusal by name. |
+| C84 `[open]` | **`--check` compares nothing of an instance a model writes unnamed.** With `bare(u_n) = { c_n = u_(n-1) }` and `wrap(x_n) = { c_n = bare(u_n = x_n).c_n }` checked as `nest = wrap(x_n = n)`, the step keeps the instance as `c_bare`, and the check asks the interpreter for `nest.c_bare.c_0`, which it cannot name, "a term has no names", so every term of `c_bare.c` and `c_bare.u` is skipped and each line reads `within 0`. No checked instance writes one. Found reviewing the specification of a model's history of its inputs (next in line), whose check reports a term the interpreter cannot give instead of skipping it, which would turn each such line red. The check wants to ask for such a term through the definition that writes the instance, or to say by name that it cannot. It now says so, `veiled.c_bare.c: not asked, as the interpreter cannot name it`, where each line read `within 0`; asking stays open. |
+| C85 `[open]` | **`tex` sets a base term apart from the guarded clauses written before it.** Clauses are tried in the order written (C45): after `y_n \| n < 0 = 0`, `y_(-1) = 3` and `y_n = n`, `y_(-1)` is 0, but `tex ?y` sets `y_{-1} = 3` on a line of its own above the cases, as if it held. Found reviewing the specification of a model's history of its inputs (next in line), whose clauses on an input may come in either order. `tex` wants the clauses in the order they are tried, or the base term left out where an earlier clause covers it. |
 
 **Measure instructions, not the clock.** One of those changes made the matrix
 workload 20 per cent slower by the clock and not by a single instruction: with
@@ -2592,6 +2604,79 @@ that exploring seven domains asked of the interpreter, by how many asked.
   base clause compiled notes each term it reads and where, and the lag is
   set with the steps: after the phase of a sequence at another rate, which a
   base's reads move as its samples do, and after where each sequence starts.
+- `[done]` **What several rates left refused**, decided by what the interpreter
+  answers, for the models that ask: a decimator, an interpolator, a cascade
+  whose slow outer loop is clamped. A slow sequence takes guards, its clause
+  set on its ticks and kept between them as its terms are, 0 before the
+  first; refused, the cascade has no clamp. Until now a sample in any guard
+  was refused as one "where a term is computed again", since a guard's reads
+  are deferred as the right of an `and`'s are, and a sample there is a
+  sample. It takes cells, each cell's samples at a constant offset as a
+  whole term's are; a frame, `x_(2*m + j)`, whose sample moves with the
+  cell, is one too, since a cell's place is a constant there. It needs no
+  base clause, since a
+  stateless decimator would otherwise write its first term twice: a term is
+  computed at the step of its latest sample, so without one the phase is the
+  largest `b`, and the first term is the first whose tick is a step and
+  whose samples exist; a closed form's exist at every index. A sequence with
+  no base clause is sampled from its window, and refused where the window
+  cannot hold a term the interpreter has, closed form or not. A hold in a
+  term computed again is the same hold that much earlier, `b` plus the lag.
+  The cascade never needs one: `f_0` is a base clause, so the window holds
+  every `e_(n-1)` that `f` reads; but C71 writes `e` computed again before
+  the starts show it is not needed, and a hold there refused the cascade. A
+  sample is computed again only where a slow sequence
+  is read back at the input's rate, which its rate refuses. A hold of a
+  term the step never computes is NaN where the interpreter has none
+  either, and refused where it could give one: below a guarded sequence's
+  base clauses, as at the input's rate, and before the first tick of one
+  whose samples could give it. Computing that term again, as C71 computes
+  one at the input's rate, was rejected: it would compute samples again,
+  for slow sequences that sample closed forms and nothing else. Two things
+  stay refused. A ratio that is not whole, `y_(floor(2*n/3))`, is still an
+  index of neither form: two ticks in three steps are a pattern rather than
+  a period, and the rational resampler a paper draws first interpolates,
+  faster than the input whose step this is. And a slow sequence read by
+  another, by a sample or a hold, is refused naming the fix, a hold at the
+  input's rate sampled, which says the same exactly; composing periods and
+  phases is a second rule for what one already says, and waits for a model
+  of three rates that the fix makes unreadable. A hold says the same only
+  where its `a` ticks of its reader are one period of the sequence it
+  holds; at another period the term it names falls further behind at each
+  tick, which no hold says, and it is refused by its rate, as at the
+  input's rate. Such a hold was compiled wrong (C74). `--check`
+  holds a slow sequence from the step that computes its first term, and
+  reports a flip at the step that computes the term taking another
+  clause, with that term's margin, cell by cell for one
+  by cells; reporting the term's index instead was rejected, as every other
+  line of the report counts steps and the clause quoted names its own
+  index. Specified in `test/compile/cascade.ink`, a servo whose outer loop
+  runs every fourth step with a dead band and a clamp; in
+  `test/compile/decimate.ink`, an anti-aliasing filter, a decimator, a
+  hold, a linear interpolator, a second stage through the hold, and a
+  strided convolution; and by `sill` and `seam` in `test/compile/drift.ink`,
+  `brink` and `rift` every second step. The refusals and the reports are in
+  their headers, and each joins the suite with the compiler's half. Writing
+  them found that `--check` holds `c_n = x_(n-1)` at 0 to a term read from
+  `x_(-1)` where the instance's input is a closed form, which no step has,
+  and it parts (C75); the models feed a stream that starts at 0, as a
+  host's does. Passed as specified, but for these. A sample of a sequence
+  with no base clause is not computed again before its window holds the
+  term, as C71 computes one, even for a closed form: its lag is the phase
+  less `b`, known only once every sample is, after the term computed again
+  is written, and a closed form that reads another inherits it. It is
+  refused, `y_0 reads k_-1, before the step computes k`, which no model
+  meets. A hold before the first tick of a sequence with no base clause is
+  refused where any of its samples exists, as one path through its guards
+  may need no more. `stride`'s input, `3 - n/2 + (-1)^n`, never clamped its
+  second channel; `3 - n/2 + (-1)^n*(1 - n/8)` clamps the first from its
+  fourth term and the second from its sixth, and its report was worked out
+  by a simulation in Python of the exact terms and the doubles, not
+  recorded. `frame` in `decimate.ink` holds the frame; `x_(2*m + j - 1)` is
+  still of neither form, its constant being two terms. A hold's period is
+  checked with its reader's, after compiling, which is where the refusal of
+  `v` in `compile_rates_refused` now comes from, in the same words. The
+  refusals are in `test/cli.cmake`, with C74's.
 - **Steps and tolerance as options**, when a model asks: a hundred steps is
   short of what a slow filter settles in, and a billionth is loose for a
   well-conditioned step.
@@ -2683,3 +2768,492 @@ that exploring seven domains asked of the interpreter, by how many asked.
   function's arguments are `arg_x`. Infinite series are still refused, and a
   fixed number of iterations, for a step whose time must be bounded, waits
   for a model that needs it. 167 lines of sources.
+- `[done]` **Tensors of rank 3**, the table's last row, for attention per batch and
+  per head. Specified in `test/data/spec/tensor.ink`, 75 of its 108 entries
+  failing, multi-head attention over a batch among them, held to NumPy's
+  output. A tensor is a stack of matrices of one size, its slices, along its
+  first index, where a paper puts the batch: `X` is `B×T×D`. Rank 3 and no
+  more: the extent gains a count of slices, and a fourth index, in a literal
+  or a definition, is refused by name. A shape of any rank, `MANIFESTO.md`'s
+  direction, costs little more to store, but its literal, its printing and
+  its indices are a rule per rank, and the model does not ask for one: a
+  paper writes a head `head_i`, a parameter, so heads need no index. A
+  convolution's four is the case for it when its entry comes, and nothing
+  specified here would move. The rank is part of the value, as the shape is
+  (C50): a tensor of one slice is not its slice, which a batch of one would
+  otherwise stop being, so it prints `[1, 2; 3, 4;;]` and `==` tells it from
+  the matrix. Dropping a leading 1, as MATLAB drops a trailing one, was
+  rejected for that. Nor is a tensor of one cell a single value: an index
+  and a guard refuse `[7;;]`, and `T + [7;;]` wants as many slices. A slice
+  of one cell is one, so `[1;; 2]*[1 2]` scales the row by each.
+
+  The literal stacks matrices with `;;`, one semicolon more than separates
+  rows, after Julia's convention of counting semicolons, one more for each
+  axis -- not Julia's meaning, where `;;` joins horizontally and `;;;` stacks
+  along the third axis: `[1 2; 3 4;; 5 6; 7 8]`, each slice a matrix literal
+  with its blocks, and slices of two sizes refused rather than padded, which
+  would be the fourth fill rule C41 warns of. A tensor is not a block, so
+  `[T;; T]` does not join two batches. NumPy's nested brackets were rejected
+  because `[[1 2; 3 4], [5 6; 7 8]]` already sets two blocks side by side,
+  and `cat(3, A, B)` because a call prints nothing that reads back. A
+  touching `;;` was an empty row padded with zeros, which nothing recorded
+  wrote; with a space it still is. A tensor prints as a matrix does, its
+  columns aligned across every slice and `;;` ending each slice but the
+  last, or the only one, so it is pasted back as printed. One index reads a
+  slice, as on a matrix it reads a row, and three a cell; two, which on a
+  tensor name neither, are refused, and `T[b][t]` is the row when that is
+  meant. A definition by three indices is a tensor, its clauses naming all
+  three.
+
+  Whatever meets a tensor meets it slice by slice: a single value or a matrix
+  meets every slice, another tensor its slices in turn, so
+  `(T op M)[b] = T[b] op M` for `+`, `-`, `/` and `*` alike, and
+  `T'[b] = T[b]'`. That makes `*` a product batched over the first index, the
+  paper's `XW^Q` shared across a batch and `QK^T` per sample, and lets a
+  positional encoding be added to each sample. NumPy's broadcasting, which
+  stretches any axis of size 1, was rejected for the reason *One index is a
+  row* gave: `[1 2] + [1; 2]` would answer where a transpose is missing.
+  Refusing `*`, every product then a sum over cells, would make each `QK^T` a
+  line of indices; contracting the last index of one with the first of the
+  other, `tensordot`'s product, breaks the identity; reversing every index for
+  `'` would move the batch last. A power and an order are refused by name;
+  `==` compares whole tensors, a function of cells maps over them as over a
+  matrix's.
+
+  A contraction is a sum over an index, as on paper. A limit's distance is
+  its largest cell's, and terms whose shape changes, rank included, have
+  none. `grad` of a single value with respect to a tensor is shaped as the
+  tensor, of a tensor with respect to a single value as itself, and anything
+  else is a Jacobian. `tex` sets three indices as it sets two, and refuses
+  `;;`, which has no form on paper. The compiler refuses a tensor by name
+  for now: its cells are arrays of known rows and columns, and the
+  interpreter is the reference a model is held to first; compiling attention
+  per batch is an entry of its own. The model departs from the paper twice:
+  `Concat(head_1, head_2) W^O` is the sum of each head times its block of
+  rows of `W^O`, the same product, since a tensor is not a block; and softmax
+  is defined by its cells, as `MANIFESTO.md` asks of a function of cells.
+
+  Built as specified, every entry passing as written, now
+  `test/data/tensor.ink`; no other golden moved. The matrix core was not
+  rewritten, as the table feared: the extent gained a count of slices, the
+  cells are stored slice after slice, and every operator meets a tensor
+  through one function that takes it apart into slices, applies itself to
+  each and stacks the results. The literal is a node of its own whose
+  children are its slices' literals; a cell, and a clause for cells, take a
+  third index, the slice, named first. `lim`, `grad` and `tex` needed almost
+  nothing more, being generic over the value: a limit's distance compares
+  whole extents, `grad` seeds a tensor's cells as it seeds a matrix's and
+  differentiates a tensor literal as it does a matrix's, and `tex` adds the
+  slice to a subscript and to the bounds. The compiler refuses a tensor
+  value, a tensor literal, three indices and a definition by three indices
+  alike, `cannot compile y: a tensor`. 222 lines of sources.
+
+- `[partly done]` **The evaluator's speed, specified** before any of it is
+  built: phase 14's step 1 resumed, with no change to the language. Training a
+  logistic regression by `grad` on 200 rows read from a file takes 1.9 s, by
+  the gradient written by hand 0.28 s, and a file of thousands of rows is now
+  writable. Six workloads are in `bench/`, each a transcript, so that a faster
+  wrong answer fails rather than measures: `deep`, `d_200000` filled from its
+  base; `limit`, 3000 limits of `s(a)_n = s(a)_(n-1)*~0.5 + a`, each argument
+  a new sequence; `harmonic`, 400 harmonic numbers exactly; `matrix`, 100
+  products of 20x20 matrices defined by their cells, one of them of fractions;
+  and `hand` and `grad`, 20 steps of the training above, which end on the same
+  weights. Their data is `bench/train.ink`, committed, with the Python that
+  wrote it in its comment, so nothing is generated at build time. `cmake
+  --build build --target bench` replays each under callgrind, or by the clock,
+  best of five, without valgrind; it is not a test, so nothing gates on it.
+  The baseline is master at 43e9fb5, GCC 13.3, RelWithDebInfo, a shared 2.1
+  GHz Xeon:
+
+  | | instructions | clock | where they go |
+  |---|---|---|---|
+  | `deep` | 835M | 86 ms | flat: 4,200 a term, no function over 5% |
+  | `limit` | 1,123M | 127 ms | 20% building memo keys as strings |
+  | `harmonic` | 860M | 75 ms | the bignum: gcd and allocation |
+  | `matrix` | 862M | 136 ms | 65% the products, 33% `A` and `B` rebuilt cell by cell for each |
+  | `hand` | 2,475M | 246 ms | 86% rebuilding `X` and `y` |
+  | `grad` | 19,003M | 1,762 ms | 38% the same literals, 27% `grad`'s dispatch |
+
+  The profile ordered the work again. `X[r]` evaluates the whole literal `X`
+  to take one row of it, so a step of training is quadratic in the rows, and
+  that, not the tree walk, is most of the training's time. The order, each
+  step measured on the workloads before the next:
+
+  1. **A literal of numbers built once**, kept in its node at its first
+     evaluation that succeeds, and a constant to `grad`. A prototype of 14
+     lines took `hand` to 426M and `grad` to 11,862M, moved nothing else, and
+     left every golden as it was. It reads no name, so it never took a step,
+     and caching it moves no budget. Not folded when parsed: `tex` and the
+     compiler read the literal as written, and `[1/0]` fails where it is read,
+     every time.
+  2. **`grad` dispatched by one virtual call** rather than a chain of up to
+     twenty `dynamic_cast`s per node, which with the type names they compare
+     are 42% of what `grad` has left after step 1. No node class derives from
+     another, so the chain's order decides nothing.
+  3. **A memo key compared without building a string**: an argument's value
+     encoded, its extent written out by `to_string`, at every call. Equality
+     stays exact, so two calls share an entry where they do today.
+  4. **A row or cell of a named matrix read without copying it.** After step
+     1 a read still copies all of `X`, so training stays quadratic; this makes
+     it linear. Reading the file is quadratic too, outside the evaluator:
+     `Statements` counts the brackets of the whole statement again at each
+     line of a literal, so `use train` alone is 85M, a fifth of what step 1
+     leaves of `hand`, and 4,823M for 1,600 rows. Counting each line's
+     brackets as it is read, three lines, took that to 66M in a trial.
+  5. **Slots, then closures**, for the flat remainder of `deep`, `limit` and
+     `matrix`'s cells, as step 1 planned: slots were measured at six per cent
+     at most and come with the symbol table closures need. A slot belongs
+     to a scope rather than to a node, and only to a name its body never
+     binds: an instance's body is one tree read from every instance, and
+     `g(x) = (x > 0 and (c = 2)) + c` reads its own `c` or the global one
+     by the branch it took.
+
+  The targets, in instructions against the table: `hand` a fifth after step
+  1 and a tenth after step 4; `grad` 7,500M after step 2; `limit` 950M after
+  step 3; after step 5, `deep` and `limit` a third of what they take when
+  step 4 lands, the low end of the 3-10x quoted above since a `Number` costs
+  what it costs, and `matrix` 700M, its cells a third and its products as
+  they are. No step may make any workload more than one per cent worse,
+  which is what `harmonic` is for. Each commit gives its
+  workloads' counts before and after; the clock is reported beside them and
+  is evidence only where callgrind agrees. A step that misses its target is
+  recorded here with its numbers, not forced.
+
+  What must not move: every golden, the README and every expected header,
+  byte for byte, and every test, under the sanitizers too. The budget takes
+  a step at every reference and every term a series or `grad` walks, as
+  now, so a line gives up at the same step and nests as deep before it
+  fails; a cache that skips steps is a language change. The deepest line the
+  limits accept still fits the stack, in MSVC's Debug build and under the
+  sanitizers (C20, C63): a visitor or a closure changes what a level costs,
+  so a walk a step rewrites is tested at the limit. The memo remembers
+  the same calls and only those, evicts in the same two generations, is
+  cleared where it is now, and stores nothing that threw. An error is the
+  same message, and the first one raised: operands are evaluated in the
+  order they are today. `?`, `tex`, `--compile` and `--check` read the
+  parsed tree, which stays; closures are beside it and cleared with the
+  memo.
+
+  Rejected: memoising a plain definition, one line that would have done
+  most of step 1 and `matrix`'s cells besides; but a hit skips the steps
+  its body took, so `sum_(k=1)^400 A*A`, which today gives up after a
+  million steps, would answer. That is a language change and would be
+  specified as one. A scalar unwrapped stays dropped, as step 1 measured.
+  Benchmarks in ctest would gate on noise, and by the clock alone on layout.
+
+  Built to step 4, and stopped before step 5. The baseline was measured
+  again on the tensors' value type, and each step judged against it; the
+  clock is the best of five:
+
+  | | baseline | final | clock |
+  |---|---|---|---|
+  | `deep` | 859M | 861M | 84 to 80 ms |
+  | `limit` | 1,181M | 878M | 138 to 104 ms |
+  | `harmonic` | 864M | 863M | 75 to 74 ms |
+  | `matrix` | 937M | 937M | 137 to 135 ms |
+  | `hand` | 2,760M | 93M | 285 to 12 ms |
+  | `grad` | 20,155M | 5,689M | 1,827 to 540 ms |
+  | `read` | 85M | 10M | 11 to 3 ms |
+
+  The file read came first: a statement's brackets are counted line by
+  line, and `read`, `train.ink` alone, is a seventh workload so that the
+  quadratic shows if it comes back; 1,600 rows went from 4,153M to 58M.
+  Step 1 kept a literal whose cells are all numbers, its padding included,
+  in its node: `hand` 357M and `grad` 11,966M. Step 2 picks `grad`'s rule
+  by the node's exact `typeid`, each node class `final` so that none is
+  missed: `grad` 7,533M, 33M short of its target, since libstdc++ compares
+  two different types by their names. Step 3 keys the memo by the arguments
+  themselves, compared bit for bit as the string was; the key owns the
+  call's arguments, since copying them cost `deep` nearly five per cent:
+  `limit` 878M. Step 4 reads a cell or a row of a name defined by a literal
+  of numbers where step 1 keeps it, for the step the name's evaluation
+  takes: `hand` 93M and `grad` 5,689M.
+
+  Step 5 is stopped. Finding a name is now 1.7% of `deep` and 1.2% of
+  `limit`, which is all a slot can save, and a slot that survives both
+  conflicts above still asks the frame first, which is most of a lookup
+  now. Closures are a rewrite of the evaluator, and of every walk tested at
+  the depth limit, for what is left of `deep` and `limit`: flat, the
+  scalar `Matrix` around each `Number` and the memo, no function over 5%.
+  `matrix` is its products, 65%, and `A` and `B` rebuilt cell by cell,
+  33%, which only the memo rejected above would remove.
+
+- `[done]` **`grad` of a definition by cells**, so that attention trains more
+  than `W^V` and `W^O`. Softmax, a ReLU on each cell and a layer norm are
+  written by their cells, and `grad` refused every one, "grad cannot
+  differentiate a definition by cells yet", so of the conformance model's
+  weights only `W^V` and `W^O`, applied after the softmax, had a gradient, and
+  only from a loss whose softmax reads none of its parameters; `W^Q` and `W^K`
+  reach the loss through it.
+
+  A definition by cells is differentiated as it is evaluated, cell by cell:
+  each cell's clause chosen as `Reference` chooses it, its row, column and
+  slice bound as values nothing differentiates, and evaluated with its
+  parts. Each part of the definition is then a matrix, or a tensor slice by
+  slice, of the definition's size: a cell a clause gives takes that clause's
+  parts, 0 where it has none, and a cell no clause gives takes the matrix
+  written whole's, or 0, as its value does. Whether that is a gradient or a
+  Jacobian is decided after, as for any value: a softmax with respect to its
+  vector is a Jacobian and stays refused, a loss read from it has a gradient
+  shaped as the vector, and a product with the Jacobian, which is what
+  training asks, is written `grad_(v = p) u'*f(v)`. Giving the Jacobian was
+  rejected: a vector's is a matrix whose orientation would be a convention to
+  pick, and a matrix's has rank 4. Rewriting a definition by cells into a
+  literal of its cells, for `Literal` to differentiate, was rejected too: a
+  guard is asked per cell at the point, the size is read from the bounds, and
+  the literal would be built again at every call, for an assembly of a dozen
+  lines.
+
+  Each cell's guards are asked as a whole definition's are: the clause that
+  holds at the point gives the slope, a comparison whose sides meet there and
+  move taking the side its value gives, so the guard's comparison decides a
+  ReLU's slope at 0, cell by cell, `<` giving 1 and `<=` 0. An equality that
+  holds at the point only is refused, naming the cell as `--check` does,
+  `sp[2,1] takes a clause at t = 1 that holds only there`, a term's with its
+  index, `g_2[1,1]`, and a tensor's with its slice first, `T[1,2,1]`. What is
+  asked is whether a side moves, not its slope (C73), and a cell's place never
+  moves, so `j == k` chooses a diagonal and is no jump. Refusing guarded
+  cells, the smaller change, was rejected: the ReLU is the case. The `--check`
+  hook is not told of a guard asked under `grad`, as for a whole definition,
+  since `grad` is not compiled.
+
+  The order is the evaluator's: a clause for one cell beats those for all
+  cells, guarded ones before the unguarded; a term's, from its own cell at
+  its index to the general clause written whole; and a base term and a cell
+  of every term that both give a cell are the error evaluating them is. A
+  limit of a sequence by cells is walked from its highest base term, written
+  whole or by its cells, where `lim` starts it, a clause for one cell being
+  no base term; `Derivative::Limit` skipped a base by cells, which nothing
+  could reach before.
+
+  With parameters, its arguments carry their parts, as any call's do: the
+  softmax of a vector, a layer reading its weights. Without, it reads only
+  globals, which `grad`'s name does not reach, so it is a constant, as `N`
+  read by `layer(w)[j<=2] = N[j]*w`, or reads the global of the name and is
+  refused as any definition is; both are answered today, and nothing is
+  added for them. A size is read with its parts: one that reads the name and
+  does not move, `floor(x)` at 5/2, is the size; one that moves is refused,
+  `the size of gr jumps at x = 2`, since a size is a whole number and one
+  that moves is at a jump, as `floor` is at a whole number. Taking the size
+  at the point was rejected as silent: what changes shape with the name has
+  no derivative there.
+
+  What stays refused, by name: a Jacobian, "grad of a matrix with respect to
+  a matrix is a Jacobian, which it does not give"; a moving size; an
+  equality holding at the point only, by its cell; a cell that is not a
+  single value and a base term against a cell of every term, each in the
+  words evaluating it uses; a definition by cells in an instance, "grad
+  cannot differentiate through an instance yet", as anything there; a local
+  definition, as now.
+
+  The choice of a cell's clause is the third copy if copied, beside
+  `Reference`'s and the compiler's chain per cell, and differentiation's
+  entry already names its second copy as one that can drift. So
+  `EvaluateCells` and `EvaluateTerm` become one walk over what evaluates a
+  clause, asks a guard and stores a cell, instantiated for the value and for
+  the parts, landed first as a refactor: every golden byte-identical, and
+  `matrix` within one per cent, the evaluator's rule. If that cannot be had,
+  the copy, recorded here. About 120 lines of sources with the walk shared,
+  about 180 with a copy. Forward mode costs a pass over the loss per cell of
+  the matrix differentiated against, four for this `W^Q` and d² for a d×d
+  one; reverse mode, one pass, is a second evaluator with a tape, and an
+  entry of its own when a model is too slow for this.
+
+  Specified in `test/data/spec/gradcells.ink`, 40 of its 106 entries
+  failing: a square per cell, softmax by `exp` and normalised by a sum,
+  ReLUs either side of 0, cells reading cells, a term or a limit, a diagonal
+  by guard, one-cell clauses, guarded or not, sizes, terms and a limit by
+  cells, a tensor, guarded or not, and attention's `W^Q`, its gradient held
+  to the one written by hand through softmax's Jacobian. Writing it found
+  C77 and C78.
+
+  Built as specified, every entry passing as written, now
+  `test/data/gradcells.ink`; README shows a ReLU's gradient, and no other
+  golden moved. The walk is shared: `EvaluateCells` and `EvaluateTerm`, and
+  the choice of a clause under them, take what evaluates a clause, reads a
+  size, asks a guard and stores a cell, as the value or as the parts. Landed
+  first as a refactor, every golden byte-identical, `matrix` ran 934.2M
+  instructions under callgrind against 934.7M before, and the other workloads
+  within 0.35%. A cell's parts are stored where its value is, and a part a
+  cell lacks is 0 there even where the matrix written whole had one.
+  `Derivative::Fill` now starts where the evaluator's fill does, as the limit
+  starts where `lim` does, so a clause for one cell is a base term for
+  neither; a guard choosing a whole term is named by its definition, as any
+  definition's is. Building it found C79, fixed, and C80, refused since; its
+  review found C81, fixed, and C82, open. 197 lines of sources added and 136
+  removed, the refactor's moves among them: 61 more in all, where about 120
+  were planned.
+
+- `[done]` **A model's history of its inputs** (C75). A model that reads its input
+  before the stream, `c_n = x_(n-1)` in `delay(x_n)`, is answered two ways:
+  given `x_n = n^2`, the interpreter reads `x_(-1)`, 1, where the step a host
+  feeds from its first index holds 0, and `--check` parts at 0; given the
+  workaround `s_n | n >= 0 = n^2`, the interpreter has no `c_0` where the step
+  has 0, and `--check` skips the term, as it skips any the interpreter cannot
+  give. Seven checked programs skip terms today, for three reasons. `boxcar`'s
+  `f_0`, `z_0` and `w_0` to `w_2` reach `x` before the stream, `z` and `w`
+  through `y_(-1)` and `y_(-2)`: C75 itself. `gain.K_0`, `pairs.w_0` and
+  `w_1`, `odd.z_1` and `trail.w_0` are below the model's own base clauses,
+  where neither has a term. `boxcar.y_0`, `boxcar.q_0` to `q_2`, `stride.h_0`
+  and `frame.p_0` and `p_1` are a slow sequence before its first tick. Only
+  the first is a discrepancy; the others are skipped in silence.
+
+  The decision, the user's, and one that may be revisited: no discrepancy. The
+  model says what its input was before the stream, by a clause of its own on
+  the input, which both read:
+
+      delay(x_n) = {
+          x_n | n < 0 = 0
+          c_n = x_(n-1)
+      }
+
+  In the interpreter, a history is clauses of the input in the model's body,
+  terms, `x_(-1) = 5`, and guarded clauses, of any value, shape and guard,
+  each input its own. The instance's argument is the input's default clause,
+  so the order is the one every definition has: its clauses in the order
+  written, then the default, so a term beats a guarded clause only written
+  before it, as `y_(-1) = 3` after `y_n | n < 0 = 0` is never reached at
+  the top level either (C45). Where both apply, the history wins; where neither
+  does, it is the argument's own error, `no clause of s applies`, or, with
+  none, `delay(...).x_0 is an input, and nothing defines it`. An unguarded
+  clause would leave the argument nothing, and is refused, `x is an input of
+  bad, so its body can give it only a history: a term or a guarded clause`; a
+  parameter's stays refused as it is. The argument giving the input from 0 and
+  the history below was rejected: the interpreter would need where the stream
+  starts, which is the compiler's, 1 for `odd`, so an instance would mean what
+  compiling it decides, and a guard would be read against a boundary it does
+  not name. Without a history the argument answers where it did, so no golden
+  moves.
+
+  Compiled, the stream starts at the step's first index, as the header names
+  it. Every read of a model's input before it is a term the history gives, or
+  refused: `cannot compile c: c_0 reads x_-1, before the stream, where x has
+  no history`. That holds in a clause, a base clause, a sample and a guard; a
+  read on the right of `and` or `or`, or in a guarded clause's value, is one
+  only where what keeps it, folded at that step, does not decide, so `n > 0
+  and x_n > x_(n-1)` compiles as now and `n >= 0 and ...` is refused, where
+  the interpreter reads `x_(-1)` and the step says NaN. Starting `c` at 1, as
+  the step does today, was rejected: the interpreter answers `c_0` from the
+  argument wherever it can, and the step cannot know the argument. A history
+  is compiled as constants: `init` fills the input's window before the stream
+  with each term a read reaches, folded, so it may read its index and
+  constants; one that reads anything else is refused, `a history that reads
+  a`, since the host may assign a parameter after `init` filled the window,
+  and one that is not a single value too, as the step's input is one (C83). It
+  must give nothing from the first index on, where the interpreter would read
+  it and the step what the host feeds: a term there, or a guard holding there,
+  is refused, `its history reaches x_0, in the stream`. So a guard is taken
+  only as its index below a constant, `n < k` or `n <= k`, either way round,
+  and any other is refused, `a history whose guard is not its index below a
+  constant`, since no other can be shown to fail at every step. Compiling the
+  history into the step, as a chain before the value fed, was rejected: any
+  guard would compile, but every step would test it, a guard holding in the
+  stream would replace what the host feeds without a word, and no header would
+  stay as it was.
+
+  Another sequence's term before the stream that a read reaches through the
+  history is folded into that sequence's window by `init` too, at the input's
+  rate or before a slow one's first tick: `boxcar`'s `z_0` reads `y_(-1)`,
+  `(x_(-1) + x_(-2))/2`. Where it does not fold, reading a parameter, the step
+  computes it again where it is read at the input's rate, as C71 does, and
+  elsewhere refuses it as now, `before y's first tick, where its samples could
+  give a term` or `before the step computes k`. Those refusals stand for a
+  closed form's terms too, which the same fill would answer: one concern, and
+  a model that asks first. The first is also what a hold before a slow
+  sequence's first tick meets where its samples read the input before the
+  stream and no history gives the term: `z_n = y_(floor(n/2) - 1)` on
+  `y_m = x_(2*m)` compiles today, and `--check` parts at 0, C75 again. A
+  history of 0 emits nothing, `memset` giving it,
+  so a history line leaves the header of a model that reads no input before
+  the stream byte-identical; one that does changes only where a reader now
+  starts at the first step, the start having been the step's way of having no
+  term. It is a requirement that every header in `test/compile/expected` stays
+  byte-identical: none of their models reads its input before the stream. A
+  file's input, a name nothing defines, has no argument for the interpreter to
+  answer from and no body to state a history in, so its readers start where
+  its terms exist, as now: `fir.ink` waits for four samples, `back.ink` keeps
+  its NaN. An instance compiled within its file reads its argument's terms, as
+  now, and its history where it holds. Within a model, its argument's terms
+  before the stream are the outer input's history, which `init` folds into
+  the inner input's window as any other, and the inner history beats it
+  where both hold, as in the interpreter.
+
+  `--check` holds a sequence from the step that computes its first term, its
+  start or a slow one's first tick, and says so where that is after the first
+  step: `pairs.w: within 0, from 2`. Before it the step has no term; at the
+  input's rate the interpreter is asked, and must have none either, else the
+  line is `none at` the step, `where the interpreter gives` its term; a slow
+  sequence's terms before its first tick are not asked, since the step keeps
+  none and the interpreter's latest term there is one no read needs,
+  `stride`'s `h_(-1)` from its closed form. From its start, a term the
+  interpreter cannot give parts, `pole.y: inf at 3, where the interpreter
+  gives none: division by zero`, which passes today at `within 0`: the first
+  check's rule that such a term is not compared is reversed, as it hid C75's
+  second form. NaN where the interpreter has none agrees, NaN being the step's
+  word for it. A line of its own for the steps before a start was rejected, as
+  one line per sequence is what the report is read by. So no term goes
+  unreported: `gain.K` from 1, `pairs.w` from 2, `odd.z` from 2, `trail.w`
+  from 1, `stride.h` from 1, `frame.p` from 2, and `boxcar.y` from 1 and `q`
+  from 3, with `f`, `z` and `w` held from 0 once `down` states its history.
+  An instance a model writes unnamed is the exception: the interpreter
+  cannot name its terms, so each of its lines would part (C84).
+
+  Only `down` in `test/compile/decimate.ink` reads its input before the
+  stream, and it gains `x_n | n < 0 = 0` in the commit that builds this; `s`,
+  the workaround, goes, and `boxcar`, `lead` and `trail` read `x_n = n^2`,
+  since `lead` and `trail` never read before the stream. No README example
+  reads one; section 5 and the compiler's paragraph gain the history there.
+  About 210 lines: 40 in the interpreter, 130 in the compiler, most of them
+  the fill and the refusals, and 40 in the check.
+
+  Specified in `test/data/spec/history.ink`, 47 of its 56 entries failing,
+  those passing being definitions echoing themselves and a parameter's
+  refusal; and in `test/compile/history.ink`, whose instances, refusals
+  and reports, the seven programs' among them, are wired with the
+  compiler's half.
+
+  Built as specified, every entry passing as written, now
+  `test/data/history.ink`, and every check and refusal of
+  `test/compile/history.ink` wired; README shows `delay` in section 5 and
+  says what the compiler and the check do before the stream. No other golden
+  moved and every expected header is byte-identical; the seven programs report as
+  specified. In the interpreter, an input's clauses are a definition of
+  their own whose default is the argument, or the input where none is given,
+  so the argument keeps reading where it was written. The compiler folds what
+  `init` writes by asking the interpreter for the term, kept only where some
+  clause of a history gave part of it, so a closed form's term before a slow
+  sequence's first tick stays refused; the history's own clauses are checked
+  as specified, folded in the order written, a term after a guarded clause
+  folded rather than refused. Departures: a term folded so through an
+  argument or a slow sequence's samples that can read a parameter is
+  refused, as the host may assign the parameter after init, where the spec
+  computes it again at the input's rate; a
+  read in a term computed again (C71) has nothing to keep it, so is refused
+  where its history does not give it even if a guard would have kept it; a
+  slow sequence's first tick still waits for its samples from the stream,
+  as `frame.p` from 2 asks; and a term the interpreter gives that no
+  double holds now parts, saying why, where it was skipped: `huge.y: inf at
+  31, where the interpreter's term is too large for a double`, or not a real
+  number; and a closed-form argument to an instance whose model states part
+  of a history is refused where it was computed again (C71): with `two(x_n)
+  = { x_(-2) = 0; c_n = x_(n-1) + x_(n-2) }`, `p2 = two(x_n = n^2)` reads
+  `p2.x_-1`, which no history gives. Known limits, each a refusal where the
+  interpreter answers, never a discrepancy: the left of an `and` or `or`, or
+  a guard, decides only where it folds to a constant, never through a
+  history's terms, so `x_(n-1) > 0 and u_(n-1) > 0` is refused where `u` has
+  none; a read in a term computed again is refused as above; and a slow
+  sequence's first tick waits for samples from the stream, so `y_m | x_(2*m
+  - 1) > 0 = x_(2*m)` read at `y_0` is refused, as is a hold below its
+  folded terms. `fuzz.cpp`'s alignment with the
+  reversed check rule, and refusing a top-level `x_n | n < 0 = 0` in a file,
+  whose input has no body to state a history in, are left out of this work.
+  Its review fixed four defects of its own: a fold reading a parameter, now
+  refused; a term read only on the right of an `and` or `or`, refused as
+  unfolded; a slow sequence's base clause reading before the stream, never
+  held to the history; and a reader of an inner input given by a hold,
+  started a step late.
+  C84 stays open and is the check's one exception, its lines saying `not
+  asked`, and C85 is untouched.
+  331 lines of sources added and 62 removed, 269 more in all, where about
+  210 were planned: 38 in the interpreter, 202 in the compiler and 29 in the
+  check.

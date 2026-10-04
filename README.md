@@ -128,7 +128,10 @@ inverts a matrix at every step, and `test/compile/heat.ink` once, in `update`;
 defines (section 5), read as `use` reads the file: its inputs are the step's
 arguments, in the order of its signature, and its parameters, with their
 defaults, the only fields; a name nothing defines is refused rather than
-taken for one more input. A file's named instances are compiled with it, into
+taken for one more input. A read of an input before the stream is a term the
+model's history gives, which `init` folds into the input's window, or is
+refused: `down` in `test/compile/decimate.ink` states `x_n | n < 0 = 0`.
+A file's named instances are compiled with it, into
 one step that orders all their terms together, each instance a struct of its
 own: `test/compile/loop.ink` closes a loop, `m.ctl.u[0]` and `m.plt.x[0]`,
 and `test/compile/chain.ink` nests one. A function, and an instance of a model
@@ -157,12 +160,20 @@ holds its latest term at the input's rate again. The step is still one, the
 input's, and a term of `y` is computed on the first step at which every sample
 it reads exists; a hold of a term not computed yet is refused, saying to read
 the term before it. `test/compile/rates.ink` is a decimator and two holds.
+Such a sequence may be guarded, defined by its cells or without a base
+clause; one read by another is refused, naming the hold at the input's rate
+to sample instead. `test/compile/decimate.ink` adds an interpolator and a
+strided convolution, and `test/compile/cascade.ink` a servo whose clamped
+outer loop runs every fourth step.
 
 `--check drift.ink calm -o calm.c` holds the compiled code to the
 interpreter. It compiles `calm`, an instance the file defines, with the
 parameters the instance gives, and writes a C program that steps it a hundred
 times on the inputs the interpreter gives `calm`, replayed so that a difference
-is the step's own, and compares each term with the interpreter's. Where every
+is the step's own, and compares each term with the interpreter's, from the
+step that computes a sequence's first term, which it names where that is
+after the first. Before it the interpreter must have no term either; from it,
+a term the interpreter cannot give parts, unless the step's is NaN. Where every
 term is within a billionth of one plus the interpreter's, it prints the largest
 difference; otherwise the first term that parts and what the interpreter gives
 there, and it exits with a failure. It also says whether the interpreter's
@@ -408,6 +419,34 @@ value stretches to the other side's size, and the order is kept:
 >> 1-a
 [ 0, -1;
  -2, -3]
+```
+
+A tensor of rank 3 is a stack of matrices of one size, its slices, along its
+first index, where a paper puts the batch. A touching `;;` separates its
+slices, one semicolon more than separates rows, after Julia's convention of
+counting semicolons, and it prints so; a tensor of one slice keeps its `;;`,
+as `[1 2;;]`, since it is not its slice. One index reads a slice and three a
+cell, and a definition by three indices, `P[b<=2, j<=2, k<=2] = b*j*k`, is a
+tensor. Whatever meets a tensor meets it slice by slice, a matrix or a single
+value every slice, so `*` is a product batched over the first index and `'`
+transposes each slice:
+
+```
+>> B = [1 2; 3 4;; 5 6; 7 8]
+B = [1 2; 3 4;; 5 6; 7 8]
+
+>> B[2]
+[5, 6;
+ 7, 8]
+
+>> B[2,1,2]
+6
+
+>> B*[1; 1]
+[ 3;
+  7;;
+ 11;
+ 15]
 ```
 
 ### 3. Definitions
@@ -692,12 +731,27 @@ dcube(t) = grad_(u = t) cube(u)
 ```
 
 A definition in cases takes the slope of the clause that holds at the point,
-and a limit the limit of its terms' slopes. Where a derivative does not exist
-or would mislead, `grad` says why rather than answer: at a jump of `floor` or
-of a comparison, at a clause that holds only at the point, for an exponent
-that changes with the name over any base but `e`, for a Jacobian, for a body
-that does not read the name, and through a definition that reads the global
-of that name, which the bound name does not reach.
+a definition by cells each cell's, and a limit the limit of its terms'
+slopes:
+
+```
+>> relu(v)[j<=2] = v[j]
+relu(v)[j<=2] = v[j]
+
+>> relu(v)[j<=2] | v[j] < 0 = 0
+relu(v)[j<=2] | v[j] < 0 = 0
+
+>> grad_(v = [3; -1]) [1 1]*relu(v)
+[1;
+ 0]
+```
+
+Where a derivative does not exist or would mislead, `grad` says why rather
+than answer: at a jump of `floor` or of a comparison, at a clause that holds
+only at the point, for an exponent that changes with the name over any base
+but `e`, for a Jacobian, for a body that does not read the name, and through a
+definition that reads the global of that name, which the bound name does not
+reach.
 
 A term can be defined by its cells, as a matrix is (section 2): the brackets
 after the index name the row and the column and bound them, or one index a
@@ -773,6 +827,25 @@ model used once needs no name, and an input left out says so when it is read:
 
 >> lowpass().v_1
 error: lowpass(...).u_1 is an input, and nothing defines it
+```
+
+A model that reads its input before the stream says what the input was there,
+by clauses of its own on it, terms and guarded clauses. The argument comes
+after them, as a definition's default comes after its other clauses, so a
+clause that always applies is refused:
+
+```
+>> delay(x_n) = {
+..     x_n | n < 0 = 0
+..     c_n = x_(n-1)
+.. }
+delay(x_n) = { ... }
+
+>> delay(x_n = n^2).c_0
+0
+
+>> delay(x_n = n^2).c_3
+4
 ```
 
 Defining an instance evaluates nothing, so two that read each other's terms,

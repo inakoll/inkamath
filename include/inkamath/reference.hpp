@@ -26,22 +26,33 @@ struct DepthExceeded : std::runtime_error {
 
 // Which call a memoised answer is for. The definition is named by its address,
 // which holds for as long as the memo does: redefining a global replaces its
-// object and clears the memo in the same breath. An index needs no string; the
-// arguments are encoded as each value encodes itself.
+// object and clears the memo in the same breath. Arguments are the same when
+// their bits are, not their values: dbl(1/2) and dbl(~0.5) are two calls.
+template <typename T>
 struct MemoKey {
-    const void* definition = nullptr;
-    bool        indexed    = false;
-    int         index      = 0;
-    std::string arguments;
+    const void*                            definition = nullptr;
+    bool                                   indexed    = false;
+    int                                    index      = 0;
+    std::vector<std::pair<std::string, T>> arguments;
 
-    bool operator==(const MemoKey&) const = default;
+    bool operator==(const MemoKey& other) const {
+        return definition == other.definition && indexed == other.indexed && index == other.index &&
+               std::equal(arguments.begin(), arguments.end(), other.arguments.begin(),
+                          other.arguments.end(), [](const auto& a, const auto& b) {
+                              return a.first == b.first &&
+                                     numeric_interface<T>::same(a.second, b.second);
+                          });
+    }
 };
 
+template <typename T>
 struct MemoHash {
-    std::size_t operator()(const MemoKey& key) const {
+    std::size_t operator()(const MemoKey<T>& key) const {
         std::size_t hash = std::hash<const void*>()(key.definition);
         hash             = hash * 31 + std::hash<int>()(key.index) * 2 + (key.indexed ? 1 : 0);
-        return key.arguments.empty() ? hash : hash * 31 + std::hash<std::string>()(key.arguments);
+        for (const auto& argument : key.arguments)
+            hash = hash * 31 + numeric_interface<T>::hash(argument.second);
+        return hash;
     }
 };
 
@@ -90,6 +101,10 @@ public:
     // What an unnamed instance's argument read of the frame it was written in,
     // which is gone by the time the argument is evaluated.
     std::vector<std::pair<std::string, T>> captured;
+
+    // An input's argument, or the input where none is given, which answers
+    // where the model's history of it does not.
+    std::shared_ptr<const Reference<T>> argument;
 
     [[nodiscard]] bool Value() const { return !model && !file && !input; }
 
@@ -149,22 +164,25 @@ public:
         }
         // A size is written, not guessed from the cells a clause happens to give.
         if (ai_parameters.cells() && !ai_parameters.row_name().empty() &&
-            (!ai_parameters.rows() || !ai_parameters.cols())) {
-            throw std::runtime_error(reference_name_ + " has no size; write it as " +
-                                     reference_name_ + "[" + ai_parameters.row_name() + "<=rows, " +
-                                     ai_parameters.col_name() + "<=cols]");
+            (!ai_parameters.rows() || !ai_parameters.cols() ||
+             (ai_parameters.tensor() && !ai_parameters.slices()))) {
+            throw std::runtime_error(
+                reference_name_ + " has no size; write it as " + reference_name_ + "[" +
+                (ai_parameters.tensor() ? ai_parameters.slice_name() + "<=slices, " : "") +
+                ai_parameters.row_name() + "<=rows, " + ai_parameters.col_name() + "<=cols]");
         }
         // One index names a row, so a definition by rows and columns has no
-        // clause for one, and a column's clauses name no column.
+        // clause for one, and a column's clauses name no column; a tensor's
+        // name all three.
         if (ai_parameters.cells()) {
             if (const Clause<T>* other = FirstThat([&](const Clause<T>& c) {
-                    return c.parameters.cells() && c.parameters.column() != ai_parameters.column();
+                    return c.parameters.cells() && c.parameters.rank() != ai_parameters.rank();
                 })) {
-                throw std::runtime_error(
-                    reference_name_ +
-                    (other->parameters.column()
-                         ? " is defined by one index, so a clause names one"
-                         : " is defined by a row and a column, so a clause names both"));
+                static const char* const names[] = {
+                    " is defined by one index, so a clause names one",
+                    " is defined by a row and a column, so a clause names both",
+                    " is defined by a slice, a row and a column, so a clause names all three"};
+                throw std::runtime_error(reference_name_ + names[other->parameters.rank() - 1]);
             }
         }
         // A matrix's cells and a sequence's terms do not mix; a term's cells are
@@ -176,6 +194,22 @@ public:
             throw std::runtime_error(
                 reference_name_ + (matrix_cells ? " is defined by its cells, so it has no index"
                                                 : " is a sequence, so it has no cells of its own"));
+        }
+        // The walk over the cells never asks a guarded clause written whole
+        // (C82), and a guard on each cell says the same.
+        const auto whole_guarded = [](const Clause<T>& c) {
+            return c.parameters.guarded() && !c.parameters.cells();
+        };
+        if (!starts_over && ai_parameters.guarded() && !ai_parameters.cells() &&
+            FirstThat([](const Clause<T>& c) { return c.parameters.cells(); })) {
+            throw std::runtime_error(reference_name_ +
+                                     " is defined by its cells, so a clause for all of it cannot "
+                                     "be guarded; guard its cells");
+        }
+        if (ai_parameters.cells() && FirstThat(whole_guarded)) {
+            throw std::runtime_error(reference_name_ +
+                                     " has a guarded clause for all of it, so it cannot be "
+                                     "defined by its cells; guard its cells");
         }
         if (starts_over) {
             clauses_.clear();
@@ -207,6 +241,39 @@ public:
     }
 
     [[nodiscard]] const std::vector<Clause<T>>& Clauses() const { return clauses_; }
+
+    // The value of a plain definition by a literal of numbers, once built.
+    [[nodiscard]] const T* Kept() const {
+        const Clause<T>* only = clauses_.size() == 1 ? &clauses_.front() : nullptr;
+        if (!Value() || !only || !IsPlain(*only) || !only->parameters.parameters_names().empty())
+            return nullptr;
+        const auto* literal = dynamic_cast<const MatExpression<T>*>(only->expression.get());
+        return literal && literal->built ? &*literal->built : nullptr;
+    }
+
+    // A definition by cells at a call, or nothing for one that is not: walked
+    // for the value and for grad's parts alike, as Walk evaluates a clause,
+    // asks a guard and stores a cell (DESIGN.md, grad of a definition by cells).
+    template <typename Walk>
+    std::optional<typename Walk::Result> ByCells(bool indexed, int index, Walk& walk) const {
+        if (!Cells() || (Sequence() && !indexed)) return std::nullopt;
+        if (Sequence()) return EvaluateTerm(index, walk);
+        if (indexed) throw std::runtime_error(reference_name_ + " is not a sequence");
+        return EvaluateCells(walk);
+    }
+
+    // How far down the general clause reaches, and which term a limit starts
+    // from: the lowest and the highest index a base clause stands at.
+    const Clause<T>* EndBase(bool lowest) const {
+        const Clause<T>* found = nullptr;
+        for (const Clause<T>& clause : clauses_) {
+            if (IsBaseTerm(clause) &&
+                (!found || (clause.parameters.index() < found->parameters.index()) == lowest)) {
+                found = &clause;
+            }
+        }
+        return found;
+    }
 
     // '?name', or '?name_0' for one clause of a sequence.
     std::string Describe(const ParametersCall<T>& call, ReferenceStack<T>& stack) const {
@@ -240,17 +307,18 @@ public:
         EvaluationVisitor<T> caller(stack);
         int index = 0;
         const bool indexed = call.TryEvalIndex(stack, index);
-        typename ParametersDefinition<T>::Arguments arguments =
-                parameters.EvaluateArguments(call, caller);
+        // The key holds the arguments, so that a call copies none of them.
+        MemoKey<T> key{this, indexed, indexed ? index : 0,
+                       parameters.EvaluateArguments(call, caller)};
+
+        const auto& arguments = key.arguments;
 
         // Only a global's answer is a function of the key and the globals
         // alone (DESIGN.md, phase 9); a local shares its name with the
         // global it shadows, so the stack says which this is. A limit is not
         // keyed -- the terms it walks are, through this same path.
         const bool memoisable = global && !call.limit() && (indexed || !arguments.empty());
-        MemoKey    key;
-        if(memoisable) {
-            key = Key(indexed, index, arguments);
+        if (memoisable) {
             if(const T* memoised = stack.Memoised(key)) {
                 return *memoised;
             }
@@ -277,7 +345,7 @@ public:
         // is 256 references deep here.
         if (!memoisable || !indexed || !stack.CanFill()) {
             const T evaluation = EvalImp(indexed, index, evaluator);
-            if (memoisable) stack.Memoise(key, evaluation);
+            if (memoisable) stack.Memoise(std::move(key), evaluation);
             return evaluation;
         }
         std::exception_ptr depth;
@@ -289,7 +357,7 @@ public:
         }
         if (depth) evaluation = Filled(index, arguments, call, stack, evaluator, depth);
         if(memoisable) {
-            stack.Memoise(key, evaluation);
+            stack.Memoise(std::move(key), evaluation);
         }
         return evaluation;
     }
@@ -393,7 +461,7 @@ private:
     // and remembered where the definition's answers can be.
     T Term(int k, const typename ParametersDefinition<T>::Arguments& arguments,
            const ParametersCall<T>& call, ReferenceStack<T>& stack, bool memoisable) const {
-        const MemoKey key = memoisable ? Key(true, k, arguments) : MemoKey();
+        MemoKey<T> key = memoisable ? MemoKey<T>{this, true, k, arguments} : MemoKey<T>();
         if (memoisable)
             if (const T* memoised = stack.Memoised(key)) return *memoised;
         typename ReferenceStack<T>::Within within(stack, home);
@@ -403,22 +471,8 @@ private:
         EvaluationVisitor<T> evaluator(stack);
         CallParameters().BindDefaults(call, evaluator);
         const T evaluation = EvalImp(true, k, evaluator);
-        if (memoisable) stack.Memoise(key, evaluation);
+        if (memoisable) stack.Memoise(std::move(key), evaluation);
         return evaluation;
-    }
-
-    // The values as each type encodes them, not their printed form, which
-    // rounds and would make two different arguments one key.
-    MemoKey Key(bool indexed, int index,
-                const typename ParametersDefinition<T>::Arguments& arguments) const {
-        MemoKey key{this, indexed, indexed ? index : 0, std::string()};
-        for (const auto& argument : arguments) {
-            key.arguments += '\0';
-            key.arguments += argument.first;
-            key.arguments += '=';
-            numeric_interface<T>::key(argument.second, key.arguments);
-        }
-        return key;
     }
 
     // The clauses of one name share their parameter list; any of them answers
@@ -445,7 +499,7 @@ private:
     }
     // What an unguarded clause answers for, so that writing one again
     // replaces it: which index, if one, and which cells, if one.
-    static std::tuple<bool, bool, int, bool, bool, int, int> Shape(const Clause<T>& c) {
+    static std::tuple<bool, bool, int, bool, bool, int, int, int> Shape(const Clause<T>& c) {
         const ParametersDefinition<T>& p    = c.parameters;
         const bool                     base = p.indexed() && !p.general();
         return {p.indexed(),
@@ -454,7 +508,8 @@ private:
                 p.cells(),
                 IsOneCell(c),
                 IsOneCell(c) ? p.row() : 0,
-                IsOneCell(c) ? p.col() : 0};
+                IsOneCell(c) ? p.col() : 0,
+                IsOneCell(c) ? p.slice() : 0};
     }
     // A clause that gives a whole term at one index: a base clause, written
     // whole or by its cells, which name every cell.
@@ -484,19 +539,6 @@ private:
         return FirstThat([](const Clause<T>& c) { return c.parameters.cells(); }) != nullptr;
     }
 
-    // How far down the general clause reaches, and which term a limit starts
-    // from: the lowest and the highest index a base clause stands at.
-    const Clause<T>* EndBase(bool lowest) const {
-        const Clause<T>* found = nullptr;
-        for(const Clause<T>& clause : clauses_) {
-            if (IsBaseTerm(clause) &&
-                (!found || (clause.parameters.index() < found->parameters.index()) == lowest)) {
-                found = &clause;
-            }
-        }
-        return found;
-    }
-
     static std::string Joined(const std::vector<std::string>& names) {
         std::string joined;
         for(const std::string& name : names) {
@@ -515,36 +557,51 @@ private:
     // guard last, because a guard may read the index it is being asked about
     // -- and the index is bound on trial, so that a clause which does not
     // answer leaves the scope as it found it.
-    bool Selects(const Clause<T>& clause, bool indexed, int index,
-                 EvaluationVisitor<T>& evaluator) const {
+    template <typename Walk>
+    bool Selects(const Clause<T>& clause, bool indexed, int index, Walk& walk) const {
         const ParametersDefinition<T>& p = clause.parameters;
         if(p.indexed() != indexed) return false;
         if(!p.general() && indexed && p.index() != index) {
             return false;
         }
         if(!p.general()) {
-            return !p.guarded() || numeric_interface<T>::truth(p.guard()->accept(evaluator));
+            return !p.guarded() || walk.Holds(*this, clause, index, 0, 0, 0);
         }
-        typename ReferenceStack<T>::Trial trial(evaluator.stack(), p.index_name());
-        SetIndex(p.index_name(), index, evaluator.stack());
-        if (p.guarded()) {
-            const bool held = numeric_interface<T>::truth(p.guard()->accept(evaluator));
-            if (evaluator.stack().guards)
-                evaluator.stack().guards(*this, clause, index, 0, 0, held, evaluator);
-            if (!held) return false;
-        }
+        typename ReferenceStack<T>::Trial trial(walk.stack(), p.index_name());
+        SetIndex(p.index_name(), index, walk.stack());
+        if (p.guarded() && !walk.Holds(*this, clause, index, 0, 0, 0)) return false;
         trial.keep();
         return true;
     }
 
-    T EvalImp(bool indexed, int index, EvaluationVisitor<T>& evaluator) const {
-        if (Cells() && !Sequence()) {
-            if (indexed) {
-                throw std::runtime_error(reference_name_ + " is not a sequence");
-            }
-            return EvaluateCells(evaluator);
+    // The walk over the cells for the value.
+    struct Values {
+        using Result = T;
+        EvaluationVisitor<T>& evaluator;
+
+        T Eval(const PExpression<T>& e) { return e->accept(evaluator); }
+        T Bound(const PExpression<T>& e) { return e->accept(evaluator); }
+        // A guard, told to --check where the clause is every term's.
+        bool Holds(const Reference& definition, const Clause<T>& clause, int index, int, int row,
+                   int col) {
+            const bool held =
+                numeric_interface<T>::truth(clause.parameters.guard()->accept(evaluator));
+            if (clause.parameters.general() && evaluator.stack().guards)
+                evaluator.stack().guards(definition, clause, index, row, col, held, evaluator);
+            return held;
         }
-        if (Cells() && indexed) return EvaluateTerm(index, evaluator);
+        static T&   Value(T& value) { return value; }
+        static T    Blank(Extent extent) { return T(extent); }
+        static void Store(T& into, int slice, int row, int col, typename T::value_type single,
+                          const T&) {
+            into(slice, row, col) = single;
+        }
+        ReferenceStack<T>& stack() { return evaluator.stack(); }
+    };
+
+    T EvalImp(bool indexed, int index, EvaluationVisitor<T>& evaluator) const {
+        Values values{evaluator};
+        if (std::optional<T> cells = ByCells(indexed, index, values)) return std::move(*cells);
         // Clauses are tried in the order they were written, and the clause not
         // chosen is not evaluated -- which is what index dispatch has always
         // done. Order is the writer's to choose because neither precedence
@@ -558,9 +615,16 @@ private:
         // afterwards with the cases it turned out to need.
         for(const Clause<T>& clause : clauses_) {
             if(IsGeneral(clause) || IsPlain(clause)) continue;
-            if(Selects(clause, indexed, index, evaluator)) {
+            if (Selects(clause, indexed, index, values)) {
+                if (argument) ++evaluator.stack().histories;
                 return clause.expression->accept(evaluator);
             }
+        }
+        if (argument) {
+            return evaluator.stack().Evaluate(
+                *argument, ParametersCall<T>(PExpression<T>(),
+                                             indexed ? std::make_shared<ValExpression<T>>(T(index))
+                                                     : PExpression<T>()));
         }
         if(indexed) {
             // An index on something that is not a sequence used to be dropped
@@ -575,7 +639,7 @@ private:
             const Clause<T>* lowest = EndBase(true);
             if(const Clause<T>* general = General()) {
                 if(!lowest || index >= lowest->parameters.index()) {
-                    return EvaluateGeneralClause(*general, index, evaluator);
+                    return EvaluateGeneralClause(*general, index, values);
                 }
             }
             if(Guarded()) {
@@ -605,17 +669,18 @@ private:
     // A matrix defined by its cells (README.md section 2). Its size is what its
     // clauses for all cells bound it to, or the matrix written whole, and they
     // agree on it; the matrix written whole gives every cell no clause does.
-    T EvaluateCells(EvaluationVisitor<T>& evaluator) const {
-        std::optional<Extent> extent;
-        std::optional<T>      whole;
+    template <typename Walk>
+    typename Walk::Result EvaluateCells(Walk& walk) const {
+        std::optional<Extent>                extent;
+        std::optional<typename Walk::Result> whole;
         if (const Clause<T>* plain = Plain()) {
-            whole  = plain->expression->accept(evaluator);
-            extent = whole->Size();
+            whole  = walk.Eval(plain->expression);
+            extent = walk.Value(*whole).Size();
         }
         for (const Clause<T>& clause : clauses_) {
             const ParametersDefinition<T>& p = clause.parameters;
             if (!p.cells() || p.row_name().empty()) continue;
-            const Extent size{Size(p.rows()->accept(evaluator)), Size(p.cols()->accept(evaluator))};
+            const Extent size = Bounds(p, walk);
             if (extent && *extent != size) {
                 throw std::runtime_error("the clauses of " + reference_name_ +
                                          " give it different sizes");
@@ -624,28 +689,61 @@ private:
         }
         if (!extent) {
             throw std::runtime_error(reference_name_ + " has no size; write it as " +
-                                     reference_name_ + "[j<=rows, k<=cols]");
+                                     reference_name_ + Bounded());
         }
-        T matrix = whole ? *whole : T(*extent);
+        typename Walk::Result matrix = whole ? std::move(*whole) : walk.Blank(*extent);
         // A clause for one cell can name a cell outside the size, which says so
         // as reading it would.
         for (const Clause<T>& clause : clauses_) {
-            if (IsOneCell(clause)) (void)matrix(clause.parameters.row(), clause.parameters.col());
+            if (IsOneCell(clause)) Named(clause.parameters, walk.Value(matrix), reference_name_);
         }
-        for (size_t row = 1; row <= extent->rows; ++row) {
-            for (size_t col = 1; col <= extent->cols; ++col) {
-                const std::optional<T> cell =
-                    Cell(static_cast<int>(row), static_cast<int>(col), evaluator);
-                if (!cell) continue;
-                if (cell->Size() != Extent{1, 1}) {
-                    throw std::runtime_error("a cell of " + reference_name_ +
-                                             " must be a single value, not a " +
-                                             cell->Size().toString() + " matrix");
+        for (int slice = 1; slice <= Slices(*extent); ++slice) {
+            for (int row = 1; row <= static_cast<int>(extent->rows); ++row) {
+                for (int col = 1; col <= static_cast<int>(extent->cols); ++col) {
+                    auto cell = Cell(slice, row, col, walk);
+                    if (cell) walk.Store(matrix, slice, row, col, Single(*cell, walk), *cell);
                 }
-                matrix(row, col) = (*cell)(1, 1);
             }
         }
         return matrix;
+    }
+
+    // A cell is named by as many indices as reading it takes: a value written
+    // whole, unlike clauses for all cells, says its rank only when evaluated.
+    static void Named(const ParametersDefinition<T>& p, T& value, const std::string& name) {
+        if (p.tensor() != bool(value.Size().slices)) {
+            throw std::runtime_error("a clause for one cell of " + name + ", a " +
+                                     value.Size().Described() + ", names " +
+                                     (p.tensor() ? "no slice" : "its slice, row and column"));
+        }
+        (void)value(p.slice(), p.row(), p.col());
+    }
+
+    template <typename Walk>
+    typename T::value_type Single(typename Walk::Result& result, Walk& walk) const {
+        const T& cell = walk.Value(result);
+        if (!cell.IsScalar()) {
+            throw std::runtime_error("a cell of " + reference_name_ +
+                                     " must be a single value, not a " + cell.Size().Described());
+        }
+        return cell(1, 1);
+    }
+
+    // How a clause for all cells bounds them, at the rank of the clauses given.
+    std::string Bounded() const {
+        const bool tensor = FirstThat([](const Clause<T>& c) { return c.parameters.tensor(); });
+        return std::string("[") + (tensor ? "b<=slices, " : "") + "j<=rows, k<=cols]";
+    }
+
+    static int Slices(const Extent& extent) {
+        return extent.slices ? static_cast<int>(extent.slices) : 1;
+    }
+
+    // The size a clause for all cells bounds its names to.
+    template <typename Walk>
+    static Extent Bounds(const ParametersDefinition<T>& p, Walk& walk) {
+        return Extent{Size(walk.Bound(p.rows())), Size(walk.Bound(p.cols())),
+                      p.tensor() ? Size(walk.Bound(p.slices())) : 0};
     }
 
     static size_t Size(const T& value) {
@@ -661,43 +759,39 @@ private:
     // ones in the order written and the unguarded one last; else none, and the
     // cell is the matrix written whole's, or 0 without one, as a short row of a
     // literal is padded.
-    std::optional<T> Cell(int row, int col, EvaluationVisitor<T>& evaluator) const {
+    template <typename Walk>
+    std::optional<typename Walk::Result> Cell(int slice, int row, int col, Walk& walk) const {
         const auto matrix = [](const Clause<T>& c) { return !c.parameters.indexed(); };
-        if (auto one = OneCell(row, col, 0, matrix, evaluator)) return one->first;
-        return AllCells(row, col, 0, matrix, evaluator);
+        if (auto one = OneCell(slice, row, col, 0, matrix, walk)) return std::move(one->first);
+        return AllCells(slice, row, col, 0, matrix, walk);
     }
 
     // The clause for this one cell among those that fit, if one holds, and
     // what it gives. A general clause sees the index; the names are bound on
     // trial, so that one clause's names cannot shadow a global in the next.
-    template <typename Fits>
-    std::optional<std::pair<T, const Clause<T>*>> OneCell(int row, int col, int index, Fits fits,
-                                                          EvaluationVisitor<T>& evaluator) const {
-        ReferenceStack<T>& stack = evaluator.stack();
+    template <typename Fits, typename Walk>
+    std::optional<std::pair<typename Walk::Result, const Clause<T>*>> OneCell(int slice, int row,
+                                                                              int col, int index,
+                                                                              Fits  fits,
+                                                                              Walk& walk) const {
+        ReferenceStack<T>& stack = walk.stack();
         for (const Clause<T>& clause : clauses_) {
             const ParametersDefinition<T>& p = clause.parameters;
-            if (!IsOneCell(clause) || !fits(clause) || p.row() != row || p.col() != col) continue;
+            if (!IsOneCell(clause) || !fits(clause) || p.slice() != slice || p.row() != row ||
+                p.col() != col)
+                continue;
             typename ReferenceStack<T>::Trial term(stack, p.index_name());
             if (p.general()) SetIndex(p.index_name(), index, stack);
-            if (p.guarded() && !Held(clause, index, row, col, evaluator)) continue;
-            return std::pair<T, const Clause<T>*>(clause.expression->accept(evaluator), &clause);
+            if (p.guarded() && !walk.Holds(*this, clause, index, slice, row, col)) continue;
+            return std::pair(walk.Eval(clause.expression), &clause);
         }
         return std::nullopt;
     }
 
-    // A cell's guard, told to --check where the clause is every term's.
-    bool Held(const Clause<T>& clause, int index, int row, int col,
-              EvaluationVisitor<T>& evaluator) const {
-        const bool held = numeric_interface<T>::truth(clause.parameters.guard()->accept(evaluator));
-        if (clause.parameters.general() && evaluator.stack().guards)
-            evaluator.stack().guards(*this, clause, index, row, col, held, evaluator);
-        return held;
-    }
-
-    template <typename Fits>
-    std::optional<T> AllCells(int row, int col, int index, Fits fits,
-                              EvaluationVisitor<T>& evaluator) const {
-        ReferenceStack<T>& stack = evaluator.stack();
+    template <typename Fits, typename Walk>
+    std::optional<typename Walk::Result> AllCells(int slice, int row, int col, int index, Fits fits,
+                                                  Walk& walk) const {
+        ReferenceStack<T>& stack = walk.stack();
         for (const bool guarded : {true, false}) {
             for (const Clause<T>& clause : clauses_) {
                 const ParametersDefinition<T>& p = clause.parameters;
@@ -706,11 +800,13 @@ private:
                 typename ReferenceStack<T>::Trial term(stack, p.index_name());
                 typename ReferenceStack<T>::Trial row_name(stack, p.row_name());
                 typename ReferenceStack<T>::Trial col_name(stack, p.col_name());
+                typename ReferenceStack<T>::Trial slice_name(stack, p.slice_name());
                 if (p.general()) SetIndex(p.index_name(), index, stack);
+                if (p.tensor()) SetIndex(p.slice_name(), slice, stack);
                 SetIndex(p.row_name(), row, stack);
                 SetIndex(p.col_name(), col, stack);
-                if (p.guarded() && !Held(clause, index, row, col, evaluator)) continue;
-                return clause.expression->accept(evaluator);
+                if (p.guarded() && !walk.Holds(*this, clause, index, slice, row, col)) continue;
+                return walk.Eval(clause.expression);
             }
         }
         return std::nullopt;
@@ -723,7 +819,8 @@ private:
     // then whole. A base term and a cell of every term are each the more
     // specific in one and the less in the other, so where both give a cell
     // the definition is asked which it means (DESIGN.md, next in line).
-    T EvaluateTerm(int index, EvaluationVisitor<T>& evaluator) const {
+    template <typename Walk>
+    typename Walk::Result EvaluateTerm(int index, Walk& walk) const {
         const auto base = [index](const Clause<T>& c) {
             return c.parameters.indexed() && !c.parameters.general() &&
                    c.parameters.index() == index;
@@ -737,35 +834,35 @@ private:
         }
         // The term written whole, which is the size and every cell no clause
         // gives: the base's, or the general clauses' as they are dispatched.
-        std::optional<T> whole;
+        std::optional<typename Walk::Result> whole;
         if (based) {
             if (const Clause<T>* b =
                     FirstThat([&](const Clause<T>& c) { return base(c) && !c.parameters.cells(); }))
-                whole = b->expression->accept(evaluator);
+                whole = walk.Eval(b->expression);
         } else {
             for (const Clause<T>& clause : clauses_) {
                 const ParametersDefinition<T>& p = clause.parameters;
                 if (!p.general() || p.cells() || !p.guarded()) continue;
-                if (Selects(clause, true, index, evaluator)) {
-                    whole = clause.expression->accept(evaluator);
+                if (Selects(clause, true, index, walk)) {
+                    whole = walk.Eval(clause.expression);
                     break;
                 }
             }
             if (!whole) {
                 if (const Clause<T>* g = FirstThat(
                         [](const Clause<T>& c) { return IsGeneral(c) && !c.parameters.cells(); }))
-                    whole = EvaluateGeneralClause(*g, index, evaluator);
+                    whole = EvaluateGeneralClause(*g, index, walk);
             }
         }
         const auto level = [&](const Clause<T>& c) { return based ? base(c) : general(c); };
         std::optional<Extent> extent;
-        if (whole) extent = whole->Size();
+        if (whole) extent = walk.Value(*whole).Size();
         for (const Clause<T>& clause : clauses_) {
             const ParametersDefinition<T>& p = clause.parameters;
             if (!p.cells() || p.row_name().empty() || !level(clause)) continue;
-            typename ReferenceStack<T>::Trial term(evaluator.stack(), p.index_name());
-            if (p.general()) SetIndex(p.index_name(), index, evaluator.stack());
-            const Extent size{Size(p.rows()->accept(evaluator)), Size(p.cols()->accept(evaluator))};
+            typename ReferenceStack<T>::Trial term(walk.stack(), p.index_name());
+            if (p.general()) SetIndex(p.index_name(), index, walk.stack());
+            const Extent size = Bounds(p, walk);
             if (extent && *extent != size) {
                 throw std::runtime_error("the clauses of " + reference_name_ +
                                          " give it different sizes");
@@ -774,51 +871,49 @@ private:
         }
         if (!extent) {
             throw std::runtime_error(reference_name_ + " has no size; write it as " +
-                                     reference_name_ + "_n[j<=rows, k<=cols]");
+                                     reference_name_ + "_n" + Bounded());
         }
-        T term = whole ? *whole : T(*extent);
+        typename Walk::Result term = whole ? std::move(*whole) : walk.Blank(*extent);
+        const std::string     name = reference_name_ + "_" + std::to_string(index);
         for (const Clause<T>& clause : clauses_) {
             if (IsOneCell(clause) && (base(clause) || general(clause)))
-                (void)term(clause.parameters.row(), clause.parameters.col());
+                Named(clause.parameters, walk.Value(term), name);
         }
-        const std::string name = reference_name_ + "_" + std::to_string(index);
-        for (size_t row = 1; row <= extent->rows; ++row) {
-            for (size_t col = 1; col <= extent->cols; ++col) {
-                const int        r = static_cast<int>(row), c = static_cast<int>(col);
-                std::optional<T> cell;
-                if (auto own = OneCell(r, c, index, base, evaluator)) {
-                    cell = own->first;
-                } else if (based) {
-                    if (auto every = OneCell(r, c, index, general, evaluator)) {
-                        throw std::runtime_error(
-                            name + " and " + reference_name_ + "_" +
-                            every->second->parameters.index_name() + "[" + std::to_string(r) + "," +
-                            std::to_string(c) + "] both give row " + std::to_string(r) +
-                            ", column " + std::to_string(c) + " of " + name + "; write " + name +
-                            "[" + std::to_string(r) + "," + std::to_string(c) + "] to say which");
+        for (int s = 1; s <= Slices(*extent); ++s) {
+            for (int r = 1; r <= static_cast<int>(extent->rows); ++r) {
+                for (int c = 1; c <= static_cast<int>(extent->cols); ++c) {
+                    std::optional<typename Walk::Result> cell;
+                    if (auto own = OneCell(s, r, c, index, base, walk)) {
+                        cell = std::move(own->first);
+                    } else if (based) {
+                        if (auto every = OneCell(s, r, c, index, general, walk)) {
+                            const std::string at = (extent->slices ? std::to_string(s) + "," : "") +
+                                                   std::to_string(r) + "," + std::to_string(c);
+                            throw std::runtime_error(
+                                name + " and " + reference_name_ + "_" +
+                                every->second->parameters.index_name() + "[" + at + "] both give " +
+                                (extent->slices ? "slice " + std::to_string(s) + ", " : "") +
+                                "row " + std::to_string(r) + ", column " + std::to_string(c) +
+                                " of " + name + "; write " + name + "[" + at + "] to say which");
+                        }
+                        cell = AllCells(s, r, c, index, base, walk);
+                    } else if (auto every = OneCell(s, r, c, index, general, walk)) {
+                        cell = std::move(every->first);
+                    } else {
+                        cell = AllCells(s, r, c, index, general, walk);
                     }
-                    cell = AllCells(r, c, index, base, evaluator);
-                } else if (auto every = OneCell(r, c, index, general, evaluator)) {
-                    cell = every->first;
-                } else {
-                    cell = AllCells(r, c, index, general, evaluator);
+                    if (cell) walk.Store(term, s, r, c, Single(*cell, walk), *cell);
                 }
-                if (!cell) continue;
-                if (cell->Size() != Extent{1, 1}) {
-                    throw std::runtime_error("a cell of " + reference_name_ +
-                                             " must be a single value, not a " +
-                                             cell->Size().toString() + " matrix");
-                }
-                term(row, col) = (*cell)(1, 1);
             }
         }
         return term;
     }
 
-    T EvaluateGeneralClause(const Clause<T>& general, int index,
-                            EvaluationVisitor<T>& evaluator) const {
-        SetIndex(general.parameters.index_name(), index, evaluator.stack());
-        return general.expression->accept(evaluator);
+    template <typename Walk>
+    typename Walk::Result EvaluateGeneralClause(const Clause<T>& general, int index,
+                                                Walk& walk) const {
+        SetIndex(general.parameters.index_name(), index, walk.stack());
+        return walk.Eval(general.expression);
     }
 
     // Every term goes through EvalImp, so the terms a limit walks are the

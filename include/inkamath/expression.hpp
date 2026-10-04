@@ -6,6 +6,7 @@
 #include <iostream>
 #include <iterator>  // back_inserter
 #include <list>
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <unordered_map>
@@ -115,8 +116,7 @@ public:
 };
 
 template <typename T>
-class EqualExpression : public BinaryExpression<T>
-{
+class EqualExpression final : public BinaryExpression<T> {
 public:
     explicit EqualExpression(PExpression<T> e1, PExpression<T> e2)
     : BinaryExpression<T>(e1,e2)
@@ -137,8 +137,7 @@ protected:
 };
 
 template <typename T>
-class AddExpression : public BinaryExpression<T>
-{
+class AddExpression final : public BinaryExpression<T> {
 public:
     explicit AddExpression(PExpression<T> e1, PExpression<T> e2)
     : BinaryExpression<T>(e1,e2)
@@ -155,8 +154,7 @@ protected:
 };
 
 template <typename T>
-class NegExpression : public UnaryExpression<T>
-{
+class NegExpression final : public UnaryExpression<T> {
 public:
     explicit NegExpression(PExpression<T> e) : UnaryExpression<T>(e) {}
 
@@ -172,7 +170,7 @@ protected:
 
 // '~', which makes its operand inexact.
 template <typename T>
-class InexactExpression : public UnaryExpression<T> {
+class InexactExpression final : public UnaryExpression<T> {
 public:
     explicit InexactExpression(PExpression<T> e) : UnaryExpression<T>(e) {}
 
@@ -183,7 +181,7 @@ public:
 
 // 'm'': the rows as columns.
 template <typename T>
-class TransposeExpression : public UnaryExpression<T> {
+class TransposeExpression final : public UnaryExpression<T> {
 public:
     explicit TransposeExpression(PExpression<T> e) : UnaryExpression<T>(e) {}
 
@@ -194,7 +192,7 @@ public:
 
 // 'floor(x)', the one function built in; ReferenceStack defines it.
 template <typename T>
-class FloorExpression : public UnaryExpression<T> {
+class FloorExpression final : public UnaryExpression<T> {
 public:
     explicit FloorExpression(PExpression<T> e) : UnaryExpression<T>(e) {}
 
@@ -204,8 +202,7 @@ public:
 };
 
 template <typename T>
-class MultExpression : public BinaryExpression<T>
-{
+class MultExpression final : public BinaryExpression<T> {
 public:
     explicit MultExpression(PExpression<T> e1, PExpression<T> e2)
     : BinaryExpression<T>(e1,e2)
@@ -222,8 +219,7 @@ protected:
 };
 
 template <typename T>
-class DivExpression : public BinaryExpression<T>
-{
+class DivExpression final : public BinaryExpression<T> {
 public:
     explicit DivExpression(PExpression<T> e1, PExpression<T> e2)
         : BinaryExpression<T>(e1,e2)
@@ -240,8 +236,7 @@ protected:
 };
 
 template <typename T>
-class PowExpression : public BinaryExpression<T>
-{
+class PowExpression final : public BinaryExpression<T> {
 public:
     explicit PowExpression(PExpression<T> e1, PExpression<T> e2)
     : BinaryExpression<T>(e1,e2)
@@ -258,8 +253,7 @@ protected:
 };
 
 template <typename T>
-class FactExpression : public UnaryExpression<T>
-{
+class FactExpression final : public UnaryExpression<T> {
 public:
     explicit FactExpression(PExpression<T> e)
         : UnaryExpression<T>(e)
@@ -276,8 +270,7 @@ protected:
 };
 
 template <typename T>
-class ValExpression : public Expression<T>
-{
+class ValExpression final : public Expression<T> {
 public:
     explicit ValExpression(const T& v) : Expression<T>(), value(v) {}
 
@@ -298,8 +291,7 @@ class ParametersCall;
 // A comparison, answering one or zero. One class with an operator rather than
 // six classes: six would be eighteen visit methods for one idea.
 template <typename T>
-class CompareExpression : public BinaryExpression<T>
-{
+class CompareExpression final : public BinaryExpression<T> {
 public:
     CompareExpression(Comparison op, PExpression<T> e1, PExpression<T> e2)
         : BinaryExpression<T>(e1, e2), op_(op)
@@ -322,7 +314,7 @@ private:
 // 'a and b', 'a or b': 1 or 0, the right side read only when the left has
 // not decided.
 template <typename T>
-class LogicExpression : public BinaryExpression<T> {
+class LogicExpression final : public BinaryExpression<T> {
 public:
     LogicExpression(bool conjunction, PExpression<T> e1, PExpression<T> e2)
         : BinaryExpression<T>(e1, e2), conjunction_(conjunction) {}
@@ -338,18 +330,19 @@ private:
     bool conjunction_;
 };
 
-// One cell of a matrix, 'm[i,j]', or with no column one row, 'm[i]'.
+// One cell of a matrix, 'm[i,j]', or with no column one row, 'm[i]'; of a
+// tensor, 't[b,i,j]', its slice written first.
 template <typename T>
-class CellExpression : public Expression<T>
-{
+class CellExpression final : public Expression<T> {
 public:
-    CellExpression(PExpression<T> matrix, PExpression<T> row, PExpression<T> col)
-        : Expression<T>({matrix, row, col})
-    {}
+    CellExpression(PExpression<T> matrix, PExpression<T> row, PExpression<T> col,
+                   PExpression<T> slice = PExpression<T>())
+        : Expression<T>({matrix, row, col, slice}) {}
 
     const PExpression<T>& Matrix() const {return this->Children()[0];}
     const PExpression<T>& Row() const {return this->Children()[1];}
     const PExpression<T>& Col() const {return this->Children()[2];}
+    const PExpression<T>& Slice() const { return this->Children()[3]; }
 
     PExpression<T> accept(TransformationVisitor<T> &v) override {
         return v.visit(this);
@@ -363,7 +356,7 @@ public:
 // 'sum_(k=a)^b body' and 'prod_(k=a)^b body'. Without an upper bound, the
 // series itself: its partial sums or products taken to their limit.
 template <typename T>
-class SeriesExpression : public Expression<T> {
+class SeriesExpression final : public Expression<T> {
 public:
     SeriesExpression(bool product, std::string index, PExpression<T> lower, PExpression<T> upper,
                      PExpression<T> body)
@@ -387,7 +380,7 @@ private:
 // 'grad_(x = a) body': the derivative of the body with respect to x at a. The
 // point is read where it is written, the name only in the body, as a sum's.
 template <typename T>
-class GradExpression : public Expression<T> {
+class GradExpression final : public Expression<T> {
 public:
     GradExpression(std::string variable, PExpression<T> point, PExpression<T> body)
         : Expression<T>({point, body}), variable_(std::move(variable)) {}
@@ -404,8 +397,7 @@ private:
 };
 
 template <typename T>
-class MatExpression : public Expression<T>
-{
+class MatExpression final : public Expression<T> {
 public:
 
     explicit MatExpression(PExpression<T> e)
@@ -415,6 +407,13 @@ public:
     MatExpression(size_t n, size_t m, std::vector<PExpression<T>> expr)
         : Expression<T>(std::move(expr)), n_(n), m_(m)
     {}
+
+    // Only numbers, a short row's padding included: it reads no name and
+    // takes no step, so it is built once, into `built`.
+    const bool numbers = std::all_of(
+        this->Children().begin(), this->Children().end(),
+        [](const PExpression<T>& cell) { return dynamic_cast<ValExpression<T>*>(cell.get()); });
+    std::optional<T> built;
 
     Extent Size() const
     {
@@ -434,9 +433,19 @@ protected:
     size_t m_;
 };
 
+// '[a;; b]': matrix literals stacked as the slices of a tensor.
 template <typename T>
-class RefExpression : public Expression<T>
-{
+class TensorExpression final : public Expression<T> {
+public:
+    explicit TensorExpression(std::vector<PExpression<T>> slices)
+        : Expression<T>(std::move(slices)) {}
+
+    PExpression<T> accept(TransformationVisitor<T>& v) override { return v.visit(this); }
+    T              accept(FoldingVisitor<T>& v) override { return v.visit(this); }
+};
+
+template <typename T>
+class RefExpression final : public Expression<T> {
 public:
     explicit RefExpression(const std::string& name)
         : Expression<T>(), m_name(name)
@@ -461,7 +470,7 @@ protected:
 // 'g.y_3': a name read in an instance or a file, which is the object on the
 // left (DESIGN.md, phase 15).
 template <typename T>
-class MemberExpression : public Expression<T> {
+class MemberExpression final : public Expression<T> {
 public:
     MemberExpression(PExpression<T> object, PExpression<T> member)
         : Expression<T>({std::move(object), std::move(member)}) {}
@@ -477,19 +486,19 @@ template <typename T>
 class ParametersCall;
 
 template <typename T>
-class FuncExpression : public Expression<T>
-{
+class FuncExpression final : public Expression<T> {
 public:
     // The third child is the guard of a definition's left-hand side, and the
-    // fourth and fifth the row and column of a clause for cells, 'M[j<=2,
-    // k<=2]'; all three are null everywhere else. Keeping them here is what
-    // lets ParametersDefinition read the whole left-hand side from one place.
+    // fourth to sixth the row, column and slice of a clause for cells, 'M[j<=2,
+    // k<=2]'; all are null everywhere else. Keeping them here is what lets
+    // ParametersDefinition read the whole left-hand side from one place.
     explicit FuncExpression(PExpression<T> ref_expression, PExpression<T> e1, PExpression<T> e2,
                             bool limit = false, PExpression<T> guard = PExpression<T>(),
                             std::string    signature = std::string(),
                             PExpression<T> row       = PExpression<T>(),
-                            PExpression<T> col       = PExpression<T>())
-        : Expression<T>({e1, e2, guard, row, col}),
+                            PExpression<T> col       = PExpression<T>(),
+                            PExpression<T> slice     = PExpression<T>())
+        : Expression<T>({e1, e2, guard, row, col, slice}),
           m_name(ref_expression->Name()),
           limit_(limit),
           signature_(std::move(signature)) {}

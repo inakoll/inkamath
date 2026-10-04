@@ -157,6 +157,15 @@ TEST_CASE("queries") {
 TEST_CASE("recursion") {
     check_transcript("recursion.ink");
 }
+TEST_CASE("tensor") {
+    check_transcript("tensor.ink");
+}
+TEST_CASE("gradcells") {
+    check_transcript("gradcells.ink");
+}
+TEST_CASE("history") {
+    check_transcript("history.ink");
+}
 TEST_CASE("readme") {
     check_readme();
 }

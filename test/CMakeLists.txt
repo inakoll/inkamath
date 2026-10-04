@@ -74,7 +74,12 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brin
                          drift:rift
                          delay:fir newton:stiff logistic:gate softmax:cls steady:mark
                          rnn:rnn attention:head momentum:ball adam:fit lqr:gain
-                         rates:pairs rates:odd seeded:warm)
+                         rates:pairs rates:odd seeded:warm cascade:servo decimate:boxcar
+                         decimate:stride decimate:frame decimate:lead
+                         decimate:trail drift:sill drift:seam history:past history:twin
+                         history:lit history:rise history:ajar history:sown history:nest
+                         history:twice history:relayed history:pole
+                         history:huge history:veiled)
     string(REPLACE ":" ";" checked ${checked})
     list(GET checked 0 file)
     list(GET checked 1 instance)
@@ -106,11 +111,47 @@ set_tests_properties(check_ball_report PROPERTIES PASS_REGULAR_EXPRESSION
 set_tests_properties(check_fit_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^fit: 100 steps from 0, against exact values until 0 and inexact ones from there\n(fit\\.[a-z]+: within [0-9.e+-]+\n)+$")
 set_tests_properties(check_gain_report PROPERTIES PASS_REGULAR_EXPRESSION
-    "^gain: 100 steps from 0, against exact values\n(gain\\.[A-Za-z]+: within [0-9.e+-]+\n)+$")
+    "^gain: 100 steps from 0, against exact values\ngain\\.K: within [0-9.e+-]+, from 1\ngain\\.P: within [0-9.e+-]+\n$")
 set_tests_properties(check_pairs_report PROPERTIES PASS_REGULAR_EXPRESSION
-    "^pairs: 100 steps from 0, against exact values\n(pairs\\.[a-z]+: within 0\n)+$")
+    "^pairs: 100 steps from 0, against exact values\npairs\\.y: within 0\npairs\\.w: within 0, from 2\npairs\\.z: within 0\n$")
 set_tests_properties(check_odd_report PROPERTIES PASS_REGULAR_EXPRESSION
-    "^odd: 100 steps from 1, against exact values\n(odd\\.[a-z]+: within 0\n)+$")
+    "^odd: 100 steps from 1, against exact values\nodd\\.y: within 0\nodd\\.z: within 0, from 2\n$")
+set_tests_properties(check_servo_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^servo: 100 steps from 0, against exact values\n(servo\\.[a-z]+: within [0-9.e+-]+\n)+$")
+set_tests_properties(check_boxcar_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^boxcar: 100 steps from 0, against exact values\nboxcar\\.f: within 0\nboxcar\\.t: within 0\nboxcar\\.y: within 0, from 1\nboxcar\\.w: within 0\nboxcar\\.z: within 0\nboxcar\\.q: within 0, from 3\n$")
+set_tests_properties(check_stride_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^stride: 100 steps from 0, against exact values\nstride\\.h: within 0, from 1\n$")
+set_tests_properties(check_frame_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^frame: 100 steps from 0, against exact values\nframe\\.p: within 0, from 2\n$")
+set_tests_properties(check_lead_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^lead: 100 steps from 0, against exact values\nlead\\.y: within 0\n$")
+set_tests_properties(check_trail_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^trail: 100 steps from 0, against exact values\ntrail\\.y: within 0\ntrail\\.w: within 0, from 1\ntrail\\.z: within 0\n$")
+set_tests_properties(check_past_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^past: 100 steps from 0, against exact values\npast\\.c: within 0\n$")
+set_tests_properties(check_twin_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^twin: 100 steps from 0, against exact values\ntwin\\.c: within 0\n$")
+set_tests_properties(check_lit_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^lit: 100 steps from 0, against exact values\nlit\\.f: within 0\nlit\\.y: within 0, from 1\nlit\\.z: within 0\n$")
+set_tests_properties(check_rise_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^rise: 100 steps from 0, against exact values\nrise\\.c: within 0\n$")
+set_tests_properties(check_ajar_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^ajar: 100 steps from 0, against exact values\najar\\.c: within 0\n$")
+set_tests_properties(check_sown_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^sown: 100 steps from 0, against exact values\nsown\\.y: within 0\nsown\\.z: within 0\n$")
+set_tests_properties(check_nest_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^nest: 100 steps from 0, against exact values\nnest\\.inner\\.c: within 0\nnest\\.c: within 0\nnest\\.inner\\.u: within 0\n$")
+set_tests_properties(check_twice_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^twice: 100 steps from 0, against exact values\ntwice\\.inner\\.c: within 0\ntwice\\.c: within 0\ntwice\\.inner\\.x: within 0\n$")
+set_tests_properties(check_relayed_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^relayed: 100 steps from 0, against exact values\nrelayed\\.inner\\.c: within 0\nrelayed\\.c: within 0\nrelayed\\.y: within 0\nrelayed\\.inner\\.x: within 0\n$")
+set_tests_properties(check_veiled_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^veiled: 100 steps from 0, against exact values\nveiled\\.c_bare\\.c: not asked, as the interpreter cannot name it\nveiled\\.c: within 0\nveiled\\.c_bare\\.u: not asked, as the interpreter cannot name it\n$")
+set_tests_properties(check_pole_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^pole: 100 steps from 0, against exact values\npole\\.y: inf at 3, where the interpreter gives none: division by zero\n$")
+set_tests_properties(check_huge_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^huge: 100 steps from 0, against exact values\nhuge\\.y: inf at 31, where the interpreter's term is too large for a double\n$")
 set_tests_properties(check_warm_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^warm: 100 steps from 0, against exact values\n(warm\\.[a-z]+: within [0-9.e+-]+\n)+$")
 set_tests_properties(check_rnn_report PROPERTIES PASS_REGULAR_EXPRESSION
@@ -137,11 +178,20 @@ set_tests_properties(check_ledge_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^ledge: 100 steps from 0, against exact values\nledge\\.g: at 6 the compiled step takes 'g_n \\| d_n < c - w = 1' and the interpreter 'g_n = 0'; the guard of the first is 1e-12 from its threshold\n")
 set_tests_properties(check_rift_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^rift: 100 steps from 0, against exact values\nrift\\.g\\[1,1\\]: at 1 the compiled step takes 'g_n\\[j<=2\\] \\| d_n\\[j\\] < c\\*j = 1' and the interpreter 'g_n\\[j<=2\\] = 0'; the guard of the first is exactly on its threshold\nrift\\.d\\[1,1\\]: [0-9.e+-]+ at 9, where the interpreter gives 0\\.10000000000000001\nrift\\.g\\[1,1\\]: 1 at 1, where the interpreter gives 0\n$")
+set_tests_properties(check_sill_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^sill: 100 steps from 0, against exact values\nsill\\.g: at 2 the compiled step takes 'g_m \\| d_\\(2\\*m\\) < c = 1' and the interpreter 'g_m = 0'; the guard of the first is exactly on its threshold\nsill\\.d: [0-9.e+-]+ at 9, where the interpreter gives 0\\.10000000000000001\nsill\\.g: 1 at 2, where the interpreter gives 0\n$")
+set_tests_properties(check_seam_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^seam: 100 steps from 0, against exact values\nseam\\.g\\[1,1\\]: at 2 the compiled step takes 'g_m\\[j<=2\\] \\| d_\\(2\\*m\\)\\[j\\] < c\\*j = 1' and the interpreter 'g_m\\[j<=2\\] = 0'; the guard of the first is exactly on its threshold\nseam\\.d\\[1,1\\]: [0-9.e+-]+ at 9, where the interpreter gives 0\\.10000000000000001\nseam\\.g\\[1,1\\]: 1 at 2, where the interpreter gives 0\n$")
 add_test(NAME check_calm COMMAND check_calm)
 add_test(NAME check_wild COMMAND check_wild)
 add_test(NAME check_brink COMMAND check_brink)
 add_test(NAME check_rift COMMAND check_rift)
-set_tests_properties(check_wild check_brink check_rift PROPERTIES WILL_FAIL ON)
+add_test(NAME check_sill COMMAND check_sill)
+add_test(NAME check_seam COMMAND check_seam)
+add_test(NAME check_pole COMMAND check_pole)
+add_test(NAME check_huge COMMAND check_huge)
+set_tests_properties(check_wild check_brink check_rift check_sill check_seam check_pole
+                     check_huge PROPERTIES WILL_FAIL ON)
 
 # Random models, compiled and held to the interpreter's answers: the generator
 # runs both at build time and writes one C file, built and run like the others.

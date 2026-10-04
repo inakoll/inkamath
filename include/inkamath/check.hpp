@@ -8,6 +8,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
+#include <limits>
 #include <map>
 #include <memory>
 #include <optional>
@@ -54,14 +55,21 @@ public:
             ~Unhook() { stack.guards = nullptr; }
         } unhook{stack};
         const int         first = compiled.first;
-        const std::string index = first == 0 ? "" : std::to_string(first) + " + ";
         std::string       data, stepped, held;
         for (std::size_t k = 0; k < compiled.inputs.size(); ++k) {
             std::vector<std::string> values;
             for (int n = first; n < first + steps; ++n) {
                 const Term input = At(session, instance + "." + compiled.inputs[k], n);
-                if (!input.error.empty()) throw std::runtime_error(input.error);
-                values.push_back(input.cells.at(0));
+                if (!input.error.empty())
+                    throw std::runtime_error(instance + "." + compiled.inputs[k] + "_(" +
+                                             std::to_string(n) + "): " + input.error);
+                if (input.cells.size() != 1)
+                    throw std::runtime_error(instance + "." + compiled.inputs[k] + "_(" +
+                                             std::to_string(n) + ") has " +
+                                             std::to_string(input.cells.size()) +
+                                             " cells, where the compiled step takes a single "
+                                             "value");
+                values.push_back(input.cells.front());
             }
             data += Array("const double", "in_" + std::to_string(k), steps, values);
         }
@@ -70,28 +78,49 @@ public:
             const auto&              sequence = compiled.sequences[k];
             const std::size_t        cells    = sequence.rows * sequence.cols;
             const std::string        id = std::to_string(k), size = std::to_string(steps * cells);
-            std::vector<std::string> want, known;
+            // A term a model writes unnamed is not asked: the interpreter
+            // cannot name it (C84).
+            if (sequence.unnamed) {
+                held += "    printf(\"" + instance + "." + sequence.name +
+                        ": not asked, as the interpreter cannot name it\\n\");\n";
+                continue;
+            }
+            std::vector<std::string> want, known, why;
             for (int n = first; n < first + steps; ++n) {
-                // At another rate, the latest term computed by the step.
-                const bool before = n < sequence.phase;
-                const Term term   = before ? Term{{}, true, "before its first term"}
-                                           : At(session, instance + "." + sequence.name,
-                                                (n - sequence.phase) / sequence.period);
+                // Before its start the step has no term, and the interpreter
+                // should have none either; at another rate it is not asked.
+                const bool before = n < sequence.start;
+                const Term term   = before && sequence.period > 1
+                                        ? Term{{}, true, "not asked", {}}
+                                        : At(session, instance + "." + sequence.name,
+                                             Floor(n - sequence.phase, sequence.period));
                 if (!term.exact && (!inexact || n < *inexact)) inexact = n;
+                const bool given = term.error.empty();
+                const char kind  = !given              ? (before ? '0' : '2')
+                                   : !term.odd.empty() ? '4'
+                                   : before            ? '3'
+                                                       : '1';
+                why.push_back(kind == '2'   ? Quoted(term.error)
+                              : kind == '4' ? Quoted(term.odd)
+                                            : "0");
                 for (std::size_t c = 0; c < cells; ++c) {
-                    const bool given = term.error.empty();
-                    want.push_back(given ? term.cells[c] : "0.0");
-                    known.push_back(given ? "1" : "0");
+                    want.push_back(kind == '1' || kind == '3' ? term.cells[c] : "0.0");
+                    known.push_back(std::string(1, kind));
                 }
             }
+            const bool told = std::any_of(known.begin(), known.end(), [](const std::string& each) {
+                return each == "2" || each == "4";
+            });
+            if (told) data += Array("const char* const", "why_" + id, steps, why);
             data += Array("const double", "want_" + id, steps * cells, want);
             data += Array("const unsigned char", "known_" + id, steps * cells, known);
             data += "static double got_" + id + "[" + size + "];\n";
             stepped += "        memcpy(&got_" + id + "[n * " + std::to_string(cells) + "], &m." +
                        sequence.name + "[0], sizeof(double) * " + std::to_string(cells) + ");\n";
             held += "    held &= hold_(\"" + instance + "." + sequence.name + "\", " +
-                    std::to_string(sequence.cols) + ", " + std::to_string(cells) + ", got_" + id +
-                    ", want_" + id + ", known_" + id + ");\n";
+                    std::to_string(sequence.cols) + ", " + std::to_string(cells) + ", " +
+                    std::to_string(sequence.start) + ", got_" + id + ", want_" + id + ", known_" +
+                    id + ", " + (told ? "why_" + id : std::string("0")) + ");\n";
         }
         std::string arguments;
         for (std::size_t k = 0; k < compiled.inputs.size(); ++k)
@@ -123,6 +152,12 @@ public:
             data += Array("const int", "rank_" + id, clauses.size() + 1, rank);
             const auto found = std::find_if(compiled.sequences.begin(), compiled.sequences.end(),
                                             [&](const auto& s) { return s.name == name; });
+            // At another rate, the clause of the latest term computed, none before.
+            const auto term = [&](int n) {
+                return found->period > 1 && n < found->start
+                           ? std::numeric_limits<int>::min()
+                           : Floor(n - found->phase, found->period);
+            };
             const std::size_t cols   = found->cols;
             const std::size_t places = cellwise ? found->rows * cols : 1;
             for (std::size_t c = 0; c < places; ++c) {
@@ -131,7 +166,7 @@ public:
                 const std::string        at  = id + (cellwise ? "_" + std::to_string(c) : "");
                 std::vector<std::string> want, margin;
                 for (int n = first; n < first + steps; ++n) {
-                    const auto asking = asked.find({&reference, n, row, col});
+                    const auto asking = asked.find({&reference, term(n), row, col});
                     want.push_back(asking == asked.end() ? "0"
                                    : asking->second.chosen
                                        ? std::to_string(*asking->second.chosen + 1)
@@ -166,28 +201,40 @@ public:
         out += " * held to the interpreter's. Build it as the header would be built. */\n";
         out += compiled.header + "\n#include <stdio.h>\n\n";
         out += "/* A term parts from the interpreter's where they differ by more than a\n";
-        out += " * billionth of one plus the interpreter's term. */\n";
-        out += "static int hold_(const char* name, int cols, int cells, const double* got,\n";
-        out += "                 const double* want, const unsigned char* known) {\n";
+        out += " * billionth of one plus the interpreter's term; where the interpreter\n";
+        out += " * gives none, from the sequence's start, unless it is NaN, and before it,\n";
+        out += " * where the interpreter gives one. 'known' says which: 0 not asked, 1 a\n";
+        out += " * term, 2 none, 3 one before the start, 4 one that is no finite double. */\n";
+        out += "static int hold_(const char* name, int cols, int cells, int from,\n";
+        out += "                 const double* got, const double* want,\n";
+        out += "                 const unsigned char* known, const char* const* why) {\n";
         out += "    double worst = 0.0;\n";
         out += "    for (int k = 0; k < " + std::to_string(steps) + " * cells; ++k) {\n";
         out += "        const double difference = fabs(got[k] - want[k]);\n";
-        out += "        if (!known[k]) continue;\n";
-        out += "        if (!(difference <= 1e-9 * (1.0 + fabs(want[k])))) {\n";
-        out += "            if (cells == 1)\n";
-        out +=
-            "                printf(\"%s: %.17g at %d, where the interpreter gives %.17g\\n\", "
-            "name,\n";
-        out += "                       got[k], " + index + "k, want[k]);\n";
-        out += "            else\n";
-        out +=
-            "                printf(\"%s[%d,%d]: %.17g at %d, where the interpreter gives "
-            "%.17g\\n\",\n";
-        out += "                       name, k % cells / cols + 1, k % cells % cols + 1, got[k],\n";
-        out += "                       " + index + "k / cells, want[k]);\n";
-        out += "            return 0;\n        }\n";
-        out += "        if (difference > worst) worst = difference;\n    }\n";
-        out += "    printf(\"%s: within %.2g\\n\", name, worst);\n    return 1;\n}\n\n";
+        out += "        const int    n = " + std::to_string(first) + " + k / cells;\n";
+        out += "        if (known[k] == 0 || (known[k] == 2 && isnan(got[k]))) continue;\n";
+        out += "        if (known[k] == 1 && difference <= 1e-9 * (1.0 + fabs(want[k]))) {\n";
+        out += "            if (difference > worst) worst = difference;\n";
+        out += "            continue;\n        }\n";
+        out += "        printf(\"%s\", name);\n";
+        out += "        if (cells > 1)\n";
+        out += "            printf(\"[%d,%d]\", k % cells / cols + 1, k % cells % cols + 1);\n";
+        out += "        if (known[k] == 3)\n";
+        out += "            printf(\": none at %d, where the interpreter gives %.17g\\n\", n,\n";
+        out += "                   want[k]);\n";
+        out += "        else if (known[k] == 2)\n";
+        out += "            printf(\": %.17g at %d, where the interpreter gives none: %s\\n\",\n";
+        out += "                   got[k], n, why[k / cells]);\n";
+        out += "        else if (known[k] == 4)\n";
+        out += "            printf(\": %.17g at %d, where the interpreter's term is %s\\n\",\n";
+        out += "                   got[k], n, why[k / cells]);\n";
+        out += "        else\n";
+        out += "            printf(\": %.17g at %d, where the interpreter gives %.17g\\n\",\n";
+        out += "                   got[k], n, want[k]);\n";
+        out += "        return 0;\n    }\n";
+        out += "    printf(\"%s: within %.2g\", name, worst);\n";
+        out += "    if (from > " + std::to_string(first) + ") printf(\", from %d\", from);\n";
+        out += "    printf(\"\\n\");\n    return 1;\n}\n\n";
         if (!table.empty()) out += Flips(first);
         out += data + "\nint main(void) {\n";
         out += "    " + module + " m;\n    int held = 1;\n    " + module + "_init(&m);\n";
@@ -297,6 +344,9 @@ private:
         return out;
     }
 
+    // n/a rounded down, a > 0: a term's index is negative below its first.
+    static int Floor(int n, int a) { return n / a - (n % a < 0 ? 1 : 0); }
+
     static std::string Double(double x) {
         char text[40];
         std::snprintf(text, sizeof text, "%.17g", x);
@@ -317,6 +367,7 @@ private:
         std::vector<std::string> cells;
         bool                     exact = true;
         std::string              error;
+        std::string              odd;  // why it is no finite double, where it is not
     };
 
     static Term At(Interpreter<Number>& session, const std::string& name, int n) {
@@ -324,22 +375,23 @@ private:
         const auto        result = session.Eval(term);
         Term              answer;
         if (const auto* diagnostic = std::get_if<Diagnostic>(&result)) {
-            answer.error = term + ": " + diagnostic->message;
+            answer.error = diagnostic->message;
             return answer;
         }
         const auto* value = std::get_if<Interpreter<Number>::matrix_type>(&result);
         if (!value) {
-            answer.error = term + " has no value";
+            answer.error = "it has no value";
             return answer;
         }
         for (std::size_t i = 1; i <= value->Size().rows; ++i) {
             for (std::size_t j = 1; j <= value->Size().cols; ++j) {
                 const Number& cell = (*value)(i, j);
                 const auto    z    = cell.Inexact();
-                if (z.imag() != 0 || !std::isfinite(z.real())) {
-                    answer.error = term + " is not a finite real number";
-                    return answer;
-                }
+                if (answer.odd.empty())
+                    answer.odd = z.imag() != 0             ? "not a real number"
+                                 : std::isfinite(z.real()) ? ""
+                                 : cell.exact()            ? "too large for a double"
+                                                           : "not a finite number";
                 answer.exact = answer.exact && cell.exact();
                 answer.cells.push_back(Double(z.real()));
             }

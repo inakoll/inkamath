@@ -40,6 +40,8 @@ public:
             std::string name;  // as the struct reaches it, 'h.low.v'
             std::size_t rows, cols;
             int         period = 1, phase = 0;  // term m at step period*m + phase
+            int         start = 0;              // the step of its first term, at another rate
+            bool        unnamed = false;          // of an instance a model writes unnamed
         };
         std::string              header;
         int                      first;      // the index of the first step
@@ -226,6 +228,8 @@ private:
         // samples, by the b of 'x_(period*m + b)'; its own terms read back, in
         // its own terms; and the holds it reads, by place in holds_.
         int                                  period = 1, phase = 0, first = 0;
+        int filled = 0;  // its terms before the first that init folds from a history
+        std::set<std::string> parameters;  // that its clauses read
         std::map<std::string, std::set<int>> samples;
         std::set<int>                        own;
         std::vector<std::size_t>             holds;
@@ -236,11 +240,13 @@ private:
     };
 
     // A read of the latest term of a sequence at another rate, 'y_(floor((n -
-    // b)/a) + d)': from where, and how far back in its own terms it reads.
+    // b)/a) + d)': from where, how far back in its own terms it reads, and
+    // the term computed again it is in, if any.
     struct Hold {
         std::string read;
         int         a, b, d;
         int         from = 0, least = 0, most = 0;
+        int         early = -1;
     };
 
     // A term read back, by its mark: what it is, who reads it, what computing
@@ -251,6 +257,18 @@ private:
         Sequence*   reader;
         Reads       reads;
         int         outer;
+    };
+
+    // What a deferred right side reads, and the left that keeps it, read
+    // with the scope, index, places and shift given.
+    struct Check {
+        Reads                        reads;
+        PExpression<Value>           left;
+        bool                         conjunction;
+        const Scope<Value>*          scope;
+        std::string                  index;
+        std::map<std::string, Value> places;
+        int                          shift;
     };
 
     struct Parameter {
@@ -274,6 +292,11 @@ private:
         for (const auto& [name, definition] : Sorted(scope.names)) {
             const std::string key = scope.Qualified(name);
             if (!definition->Value() || aside_.count(key)) continue;
+            if (definition->argument) {
+                History(key, *definition);
+                if (!definition->argument->input) Define(key, *definition->argument);
+                continue;
+            }
             Define(key, *definition);
             const Scope<Value>* instance = nullptr;
             try {
@@ -558,8 +581,9 @@ private:
              scope                     = own ? nullptr : scope->parent) {
             const auto found = scope->names.find(name);
             if (found == scope->names.end()) continue;
-            const Reference<Value>& definition = *found->second;
-            const std::string       key        = scope->Qualified(name);
+            const Reference<Value>& definition =
+                found->second->argument ? *found->second->argument : *found->second;
+            const std::string key = scope->Qualified(name);
             if (definition.input) {
                 if (scope == &root_) return {nullptr, scope, key};
                 throw Reason(key + " is an input nothing gives");
@@ -625,6 +649,7 @@ private:
     // refused rather than left out; a plain one is compiled where it is read.
     void Define(const std::string& name, const Reference<Value>& definition) {
         for (const Clause<Value>& clause : definition.Clauses()) {
+            if (clause.parameters.tensor()) throw Refusal("cannot compile " + name + ": a tensor");
             // A function is compiled where it is called, and a sequence with
             // parameters where a limit walks it.
             if (!clause.parameters.parameters_names().empty()) return;
@@ -646,6 +671,44 @@ private:
         if (IsSequence(definition)) sequences_[name].definition = &definition;
     }
 
+    // A history is folded by init, so it may read only its index and constants,
+    // and must give nothing in the stream: a guard is its index below a
+    // constant, which shows where it stops.
+    void History(const std::string& key, const Reference<Value>& history) {
+        histories_[key] = &history;
+        const Home        home(*this, &history);
+        const std::string outer = index_;
+        try {
+            for (const Clause<Value>& clause : history.Clauses()) {
+                const ParametersDefinition<Value>& p = clause.parameters;
+                index_                               = p.general() ? p.index_name() : std::string();
+                int top = p.general() ? std::numeric_limits<int>::min() : p.index();
+                if (p.guarded()) {
+                    const auto* compare = dynamic_cast<CompareExpression<Value>*>(p.guard().get());
+                    const Comparison op = compare ? compare->Op() : Comparison::Equal;
+                    const bool  flip = op == Comparison::Greater || op == Comparison::GreaterEqual;
+                    const auto* at   = compare ? dynamic_cast<const RefExpression<Value>*>(
+                                                   (flip ? compare->m_e2() : compare->m_e1()).get())
+                                               : nullptr;
+                    const auto  k =
+                        op < Comparison::Equal && at && p.general() && at->Name() == index_
+                             ? Constant(flip ? compare->m_e1() : compare->m_e2())
+                             : std::nullopt;
+                    if (!k) throw Reason("a history whose guard is not its index below a constant");
+                    top = *k - (op == Comparison::Less || op == Comparison::Greater);
+                }
+                const auto [code, reads] = Reading(clause.expression);
+                if (!reads.empty()) throw Reason("a history that reads " + *reads.begin());
+                if (!code.Scalar()) throw Reason("a history that is not a single value");
+                int& reach = reach_.try_emplace(key, top).first->second;
+                reach      = std::max(reach, top);
+            }
+        } catch (const Reason& reason) {
+            throw Refusal("cannot compile " + key + ": " + reason.what());
+        }
+        index_ = outer;
+    }
+
     // A clause is compiled in a scope of its own, and a refusal inside it
     // names its sequence.
     template <typename Body>
@@ -660,11 +723,14 @@ private:
         // the way, whose cells may use the same names, must not see or undo them.
         const auto outer_places = std::exchange(places_, Captured(sequences_.at(name).definition));
         const int  outer_shift  = std::exchange(shift_, 0);
+        auto       outer_parameters = std::exchange(read_parameters_, {});
         try {
             body();
         } catch (const Reason& reason) {
             throw Refusal("cannot compile " + name + ": " + reason.what());
         }
+        sequences_.at(name).parameters.insert(read_parameters_.begin(), read_parameters_.end());
+        read_parameters_.insert(outer_parameters.begin(), outer_parameters.end());
         reading_     = outer_reading;
         index_       = outer_index;
         within_      = outer_within;
@@ -869,6 +935,9 @@ private:
     }
 
     static std::vector<double> Doubles(const Value& value) {
+        // The interpreter is the reference a model is held to first; compiling
+        // attention per batch is an entry of its own (DESIGN.md).
+        if (value.Size().slices) throw Reason("a tensor");
         std::vector<double> doubles;
         for (std::size_t i = 1; i <= value.Size().rows; ++i) {
             for (std::size_t j = 1; j <= value.Size().cols; ++j) {
@@ -1163,7 +1232,8 @@ private:
             }
             return {written, std::nullopt};
         }
-        checks_.push_back(reads);
+        checks_.push_back(
+            {reads, logic.m_e1(), logic.Conjunction(), scope_, index_, places_, shift_});
         return {written, "\x02" + std::to_string(checks_.size() - 1) + "\x03"};
     }
 
@@ -1460,6 +1530,8 @@ private:
     void CompileTerms(const std::string& name, Sequence& sequence) {
         const Reference<Value>& definition = *sequence.definition;
         Within(name, &sequence, std::string(), [&] {
+            const std::string outer_text =
+                std::exchange(index_text_, "(double)\x12" + name + "\x13");
             clause_reads_ = &sequence.general_reads;
             std::optional<Code> whole;
             for (const Clause<Value>& clause : definition.Clauses()) {
@@ -1494,10 +1566,11 @@ private:
                 if (!value.Scalar()) throw Reason("a cell of " + name + " must be a single value");
                 std::string& cell = cells[static_cast<std::size_t>(p.row() - 1) * shape.cols +
                                           static_cast<std::size_t>(p.col() - 1)];
-                cell = "m_->index_ == " + std::to_string(p.index()) + " ? " + value.cells[0].text +
-                       " : " + cell;
+                cell              = "\x12" + name + "\x13 == " + std::to_string(p.index()) + " ? " +
+                       value.cells[0].text + " : " + cell;
             }
             reading_         = reading;
+            index_text_      = outer_text;
             sequence.general = cells;
         });
     }
@@ -1922,7 +1995,11 @@ private:
         const int lag = Lag(call.subexpr(), key) + shift_;
         Bases(key);
         if (!read.rows) Compile(key);
-        if (lag > 0 && ClosedForm(read)) return Answer(At(read, lag));
+        // By its rate, before one with no base clause is computed again.
+        if (&read != reading_ && read.period > 1)
+            throw Reason(key + "_(...): read every step, and " + key + " is computed every " +
+                         std::to_string(read.period));
+        if (lag > 0 && ClosedForm(read) && !histories_.count(key)) return Answer(At(read, lag));
         (shift_ && early_ >= 0 ? earlies_[static_cast<std::size_t>(early_)].reads
          : deferring_          ? reading_->deferred
                                : reading_->reads)[key]
@@ -1939,7 +2016,7 @@ private:
         // Before its window holds the term, one with no base clause is
         // computed again at that index, as the interpreter answers it there
         // (DESIGN.md, C71); Checked keeps whichever the reader needs.
-        if (lag > 0 && Recomputed(read) && read.compiled) {
+        if (lag > 0 && Recomputed(read) && read.compiled && !histories_.count(key)) {
             earlies_.push_back({key, lag, reading_, {}, early_});
             const int  id          = static_cast<int>(earlies_.size() - 1);
             const int  outer       = std::exchange(early_, id);
@@ -1990,7 +2067,7 @@ private:
         const int    shift  = std::exchange(shift_, lag);
         const auto   mark   = [&](Reads& read) {
             if (read.empty()) return std::string();
-            checks_.push_back(read);
+            checks_.push_back({read, nullptr, false, nullptr, std::string(), {}, 0});
             return "\x02" + std::to_string(checks_.size() - 1) + "\x03";
         };
         for (const bool guard : {true, false}) {
@@ -2151,7 +2228,7 @@ private:
                 throw Refusal("cannot compile " + name + ": " + seed.read +
                               "_(...): read every step, and " + seed.read + " is computed every " +
                               std::to_string(read.period));
-            if (seed.at < read.start)
+            if (seed.at < read.start && !Historied(seed.read))
                 throw Refusal("cannot compile " + name + ": " + name + "_" +
                               std::to_string(seed.index) + " reads " + seed.read + "_" +
                               std::to_string(seed.at) + ", before it starts at " +
@@ -2164,14 +2241,10 @@ private:
     // of the clause is, so it is marked and set when the step is written.
     Code Sample(const std::string& key, Sequence& read, int a, int b) {
         const std::string written = key + "_(...)";
-        if (shift_ || early_ >= 0 || deferring_ || limit_)
+        if (shift_ || early_ >= 0 || limit_)
             throw Reason(written + ": a sample where a term is computed again");
         Bases(key);
         if (!read.rows) Compile(key);
-        if (read.period != 1 || (read.definition && Recomputed(read)))
-            throw Reason(written +
-                         ": a sample of a sequence at another rate, or with no base "
-                         "clause");
         if (reading_->period != 1 && reading_->period != a)
             throw Reason(written + ": read every " + std::to_string(a) + " steps, and " + within_ +
                          " is computed every " + std::to_string(reading_->period));
@@ -2189,19 +2262,18 @@ private:
 
     // A hold: where it reads in the held sequence's window depends on that
     // sequence's phase, so it is marked and set when the step is written.
+    // In a term computed again, it is the same hold that much earlier.
     Code Holding(const std::string& key, Sequence& read, Hold hold) {
         const std::string written = key + "_(...)";
-        if (shift_ || early_ >= 0 || deferring_ || limit_)
-            throw Reason(written + ": a hold where a term is computed again");
+        if (deferring_ || limit_) throw Reason(written + ": a hold where a term is computed again");
         Bases(key);
         Compile(key);
         if (read.period == 1)
             throw Reason(written + ": an index other than a whole multiple of " + index_ +
                          " plus a constant");
-        if (hold.a != read.period)
-            throw Reason(written + ": read every " + std::to_string(hold.a) + " steps, and " + key +
-                         " is computed every " + std::to_string(read.period));
         hold.read = key;
+        hold.b += shift_;
+        hold.early = early_;
         holds_.push_back(hold);
         reading_->holds.push_back(holds_.size() - 1);
         const std::string id = std::to_string(holds_.size() - 1);
@@ -2252,7 +2324,9 @@ private:
     PExpression<Value> visit(EqualExpression<Value>*) override {
         throw Reason("a local definition");
     }
+    PExpression<Value> visit(TensorExpression<Value>*) override { throw Reason("a tensor"); }
     PExpression<Value> visit(CellExpression<Value>* expression) override {
+        if (expression->Slice()) throw Reason("a tensor");
         const Code matrix = Emit(expression->Matrix());
         const Code row    = Known(expression->Row(), "a cell whose place is not a constant");
         if (!expression->Col()) {
@@ -2417,17 +2491,38 @@ private:
                 throw Refusal(head + read + "_(...): read every step, and " + read +
                               " is computed every " + std::to_string(period));
         }
+        // A slow sequence read by another says what a hold at the input's
+        // rate sampled says, but for a hold at another period, which no hold
+        // says (C74).
+        const auto another = [&](const std::string& read) {
+            return Refusal(head + read +
+                           "_(...): one sequence at another rate read by another; hold " + read +
+                           " at the input's rate and sample the hold");
+        };
+        for (const std::size_t h : sequence.holds) {
+            const Hold& hold   = holds_[h];
+            const int   every  = sequence.period * hold.a;
+            const int   period = sequences_.at(hold.read).period;
+            if (every != period)
+                throw Refusal(head + hold.read + "_(...): read every " + std::to_string(every) +
+                              " steps, and " + hold.read + " is computed every " +
+                              std::to_string(period));
+            if (sequence.period > 1) throw another(hold.read);
+        }
         if (sequence.period == 1) return;
-        if (!sequence.guarded.empty() || ByCells(*sequence.definition))
-            throw Refusal(head + "a guard or a cell at another rate, for now");
-        if (sequence.bases.empty())
-            throw Refusal(head + "a sequence at another rate with no base clause");
+        for (const auto& [read, offsets] : sequence.samples)
+            if (sequences_.at(read).period > 1) throw another(read);
         for (const auto& [read, lags] : sequence.reads)
             if (read != name)
                 throw Refusal(head + read + "_(...): read every step, and " + name +
                               " is computed every " + std::to_string(sequence.period));
-        sequence.first = sequence.bases.begin()->first;
-        int phase      = -sequence.period * sequence.first;
+        // Without a base clause, a term is computed at the step of its
+        // latest sample, and the first is settled with the starts.
+        int phase = std::numeric_limits<int>::min();
+        if (!sequence.bases.empty()) {
+            sequence.first = sequence.bases.begin()->first;
+            phase          = -sequence.period * sequence.first;
+        }
         for (const auto& [read, offsets] : sequence.samples)
             phase = std::max(phase, *offsets.rbegin());
         for (const Seed& seed : sequence.seeds)
@@ -2450,10 +2545,10 @@ private:
     void Resolve(const std::string& name, Hold& hold) {
         const Sequence& held  = sequences_.at(hold.read);
         const int       a     = hold.a;
-        const int       start = held.bases.begin()->first;
-        hold.from             = std::max(hold.b, a * (held.first - hold.d) + hold.b);
+        const int       start = held.period * (held.first - held.filled) + held.phase;
         for (int n = hold.from; n < std::max(hold.from, start) + 2 * a; ++n) {
-            const int lag = n < start ? -1 : (n - held.phase) / a - (n - hold.b) / a - hold.d;
+            const int lag =
+                n < start ? -1 : Floor(n - held.phase, a) - Floor(n - hold.b, a) - hold.d;
             if (lag < 0)
                 throw Refusal("cannot compile " + name + ": " + hold.read +
                               "_(...): read before it is computed; read the term before it");
@@ -2501,11 +2596,15 @@ private:
             const Sequence&   held  = sequences_.at(hold.read);
             const std::size_t c     = std::stoul(mark.substr(comma + 1));
             const std::string a     = std::to_string(hold.a);
-            const std::string lag   = hold.least == hold.most
-                                          ? std::to_string(hold.least)
-                                          : "(m_->index_" + Less(held.phase) + ") / " + a +
-                                              " - (m_->index_" + Less(hold.b) + ") / " + a +
-                                              Less(hold.d);
+            // C divides toward 0: each numerator is kept whole from the
+            // hold's first step by whole periods, taken back from d.
+            const auto whole = [&](int b) { return std::max(0, -Floor(hold.from - b, hold.a)); };
+            const int  p = whole(held.phase), q = whole(hold.b);
+            const std::string lag = hold.least == hold.most
+                                        ? std::to_string(hold.least)
+                                        : "(m_->index_" + Less(held.phase - p * hold.a) + ") / " +
+                                              a + " - (m_->index_" + Less(hold.b - q * hold.a) +
+                                              ") / " + a + Less(hold.d + p - q);
             std::string       cell =
                 "m_->" + hold.read + "[" + lag + "]" +
                 (held.rows * held.cols == 1 ? std::string()
@@ -2524,8 +2623,11 @@ private:
             sequence.start = sequence.bases.begin()->first;
             earliest       = std::min(earliest.value_or(sequence.start), sequence.start);
         }
-        for (auto& [name, sequence] : sequences_)
-            if (sequence.bases.empty()) sequence.start = earliest.value_or(0);
+        for (auto& [name, sequence] : sequences_) {
+            if (!sequence.bases.empty()) continue;
+            sequence.start = Tick(sequence, earliest.value_or(0));
+            sequence.first = (sequence.start - sequence.phase) / sequence.period;
+        }
         // The interpreter's guarded clauses answer below the lowest base
         // clause too, where its unguarded one does not: '_(-1)' of a sequence
         // based at 0 is a term wherever a guard holds. A step has no such
@@ -2548,20 +2650,41 @@ private:
         // answers, and the interpreter answers it below the step's first index
         // too, wherever one does: a reader finds it there (C71).
         for (const auto& [name, sequence] : sequences_)
-            if (Recomputed(sequence)) exists_[name] = std::numeric_limits<int>::min() / 2;
+            if (Recomputed(sequence) || Historied(name))
+                exists_[name] = std::numeric_limits<int>::min() / 2;
+        // A slow one, at the first tick whose samples exist.
         for (std::size_t round = 0;; ++round) {
             bool moved = false;
+            for (Hold& hold : holds_) {
+                Sequence& held = sequences_.at(hold.read);
+                // Before its first tick, the terms init folds from a history.
+                int lowest = held.first;
+                for (const Hold& other : holds_)
+                    if (other.read == hold.read)
+                        lowest = std::min(lowest,
+                                          Floor(earliest.value_or(0) - other.b, other.a) + other.d);
+                for (held.filled = 0; held.first - held.filled > lowest &&
+                                      Folded(hold.read, held.first - held.filled - 1);)
+                    ++held.filled;
+                hold.from = hold.a * (held.first - held.filled - hold.d) + hold.b;
+            }
             for (auto& [name, sequence] : sequences_) {
                 if (!sequence.bases.empty() || !sequence.definition) continue;
                 const int answers = Answers(sequence);
+                // Before the stream, a history gives its terms, or Cover refuses.
+                const int exists = Historied(name) && answers <= earliest.value_or(0)
+                                       ? std::numeric_limits<int>::min() / 2
+                                       : answers;
                 if (const auto found = exists_.find(name);
-                    found != exists_.end() && answers > found->second) {
-                    found->second = answers;
+                    found != exists_.end() && exists > found->second) {
+                    found->second = exists;
                     moved         = true;
                 }
-                const int needed = std::max(sequence.start, answers);
+                const int samples = sequence.period > 1 ? From(sequence.reads, true) : answers;
+                const int needed  = Tick(sequence, std::max({sequence.start, answers, samples}));
                 if (needed <= sequence.start) continue;
                 sequence.start = needed;
+                sequence.first = (needed - sequence.phase) / sequence.period;
                 moved          = true;
             }
             if (!moved) break;
@@ -2570,6 +2693,7 @@ private:
                     "cannot compile: a sequence with no base clause reads back into "
                     "itself, so it never starts");
         }
+        Unreached(earliest.value_or(0));
         // Where a clause's reads begin is where it can be evaluated: before it,
         // the interpreter reports the term it could not read, and a step says
         // NaN. Only a sequence with guards has more than one path to choose.
@@ -2599,10 +2723,72 @@ private:
         return earliest.value_or(0);
     }
 
+    // A term the step never computes. A hold of one is NaN where the
+    // interpreter has none either, and refused where it could give one; a
+    // sample of one with no base clause, read from a window that cannot
+    // hold it, is refused where its clauses could give it.
+    void Unreached(int earliest) const {
+        for (const auto& [name, sequence] : sequences_) {
+            const std::string head = "cannot compile " + name + ": " + name + "_";
+            // Holds are read at the input's rate, where one with no base
+            // clause could start with the step.
+            int first = sequence.bases.empty() ? earliest : sequence.start;
+            while (sequence.bases.count(first)) ++first;
+            for (const std::size_t h : sequence.holds) {
+                const Hold&     hold = holds_[h];
+                const Sequence& held = sequences_.at(hold.read);
+                if (hold.early >= 0 && !Needed(earlies_[static_cast<std::size_t>(hold.early)]))
+                    continue;
+                for (int n = first;; ++n) {
+                    const int term = Floor(n - hold.b, hold.a) + hold.d;
+                    if (term >= held.first - held.filled) break;
+                    const std::string at = std::to_string(n) + " reads " + hold.read + "_" +
+                                           std::to_string(term) + ", ";
+                    if (!held.bases.empty() && !held.guarded.empty())
+                        throw Refusal(head + at + "below " + hold.read +
+                                      "'s base clauses, where only its guards could give a term");
+                    if (held.bases.empty() &&
+                        std::any_of(held.samples.begin(), held.samples.end(), [&](const auto& x) {
+                            return held.period * term + *x.second.rbegin() >= Exists(x.first);
+                        }))
+                        throw Refusal(head + at + "before " + hold.read +
+                                      "'s first tick, where its samples could give a term");
+                }
+            }
+            int tick = sequence.start;
+            while (sequence.bases.count(tick)) tick += sequence.period;
+            for (const auto& [read, offsets] : sequence.samples) {
+                const Sequence& sampled = sequences_.at(read);
+                if (!Recomputed(sampled)) continue;
+                for (const int b : offsets)
+                    for (int k = tick - sequence.phase + b; k < sampled.start; k += sequence.period)
+                        if (k >= Exists(read))
+                            throw Refusal(head + std::to_string((k - b) / sequence.period) +
+                                          " reads " + read + "_" + std::to_string(k) +
+                                          ", before the step computes " + read +
+                                          ", where its clauses could give a term");
+            }
+        }
+    }
+
+    // The whole part of n/a, a > 0, as floor gives it.
+    static int Floor(int n, int a) { return n / a - (n % a < 0 ? 1 : 0); }
+
+    // The first tick of a sequence from step n on.
+    static int Tick(const Sequence& sequence, int n) {
+        while (!Ticks(sequence, n)) ++n;
+        return n;
+    }
+
     // The first index where every term these reads name exists.
-    int From(const Reads& reads) const {
+    // A sample's term exists from the stream's start, where a history is not
+    // asked for one.
+    int From(const Reads& reads, bool sampled = false) const {
         int from = std::numeric_limits<int>::min();
-        for (const auto& [read, lags] : reads) from = std::max(from, Exists(read) + *lags.rbegin());
+        for (const auto& [read, lags] : reads)
+            from = std::max(
+                from, (sampled && Historied(read) ? sequences_.at(read).start : Exists(read)) +
+                          *lags.rbegin());
         return from;
     }
 
@@ -2628,6 +2814,174 @@ private:
         if (sequence.general.front() != "NAN")
             first = std::min(first, std::max(guards, From(sequence.general_reads)));
         return std::max(held, first);
+    }
+
+    // An input of the model compiled, or one with a history: what is read of
+    // it before the stream is what init folds from that history, or refused.
+    bool Historied(const std::string& name) const {
+        return histories_.count(name) || (root_.model && !sequences_.at(name).definition);
+    }
+
+    // A term before the stream as the interpreter gives it, where only a
+    // history does.
+    bool Folded(const std::string& name, int n) {
+        const auto [slot, fresh]        = folded_.try_emplace({name, n});
+        const auto              history = histories_.find(name);
+        const Reference<Value>* definition =
+            history != histories_.end() ? history->second : sequences_.at(name).definition;
+        if (fresh && definition && !Parametric(name)) {
+            definitions_.Forget();
+            definitions_.BeginEvaluation();
+            try {
+                const ParametersCall<Value> at(
+                    PExpression<Value>(), std::make_shared<ValExpression<Value>>(Value(Number(n))));
+                const Value term = definition->Eval(at, definitions_, true);
+                if (definitions_.histories) {
+                    const std::vector<double> cells = Doubles(term);
+                    if (std::all_of(cells.begin(), cells.end(),
+                                    [](double cell) { return std::isfinite(cell); }))
+                        slot->second = term;
+                    else
+                        unfolded_[{name, n}] = "a term no double holds";
+                }
+            } catch (const std::runtime_error& error) {
+                if (definitions_.histories)
+                    unfolded_[{name, n}] = std::string("none: ") + error.what();
+            }
+        }
+        return slot->second.has_value();
+    }
+
+    // Why a read before the stream is refused: what its history gave there,
+    // or that it has none.
+    std::string Unfolded(const std::string& read, int at) const {
+        const auto why = unfolded_.find({read, at});
+        return why != unfolded_.end() ? read + "'s history gives " + why->second
+                                      : read + " has no history";
+    }
+
+    // Whether a term can read a parameter, which the host may assign after
+    // init has folded it.
+    bool Parametric(const std::string& name) const {
+        std::set<std::string>    seen{name};
+        std::vector<std::string> left{name};
+        while (!left.empty()) {
+            const Sequence& sequence = sequences_.at(left.back());
+            left.pop_back();
+            if (!sequence.parameters.empty()) return true;
+            std::vector<std::string> reads;
+            for (const Reads* each :
+                 {&sequence.reads, &sequence.deferred, &sequence.samples, &sequence.seeded})
+                for (const auto& [read, lags] : *each) reads.push_back(read);
+            for (const std::size_t h : sequence.holds) reads.push_back(holds_[h].read);
+            for (const std::string& read : reads)
+                if (seen.insert(read).second) left.push_back(read);
+        }
+        return false;
+    }
+
+    // Whether the left of an 'and' or 'or' decides at step n, folded there.
+    bool Decides(const Check& check, int n) {
+        if (!check.left) return false;
+        auto places         = check.places;
+        places[check.index] = Value(Number(n - check.shift));
+        const auto scope    = std::exchange(scope_, check.scope);
+        const auto index    = std::exchange(index_, std::string());
+        const auto outer    = std::exchange(places_, places);
+        bool       decides  = false;
+        try {
+            const Code code = Quiet(check.left);
+            decides         = code.constant && Value::truth(*code.constant) != check.conjunction;
+        } catch (const Reason&) {
+        }
+        scope_  = scope;
+        index_  = index;
+        places_ = outer;
+        return decides;
+    }
+
+    // Each read before the stream, from a reader's start until 'until', that
+    // no history gives and nothing keeps.
+    void Cover(const std::string& name, const Sequence& reader, const Reads& reads, int until,
+               const Check* kept = nullptr) {
+        for (const auto& [read, lags] : reads) {
+            if (!Historied(read)) continue;
+            for (const int lag : lags) {
+                for (int n = reader.start; n < std::min(until, earliest_ + lag); ++n) {
+                    if (!Ticks(reader, n) || reader.bases.count(n) || Folded(read, n - lag) ||
+                        (kept && Decides(*kept, n)))
+                        continue;
+                    throw Refusal("cannot compile " + name + ": " + name + "_" +
+                                  std::to_string(Floor(n - reader.phase, reader.period)) +
+                                  " reads " + read + "_" + std::to_string(n - lag) +
+                                  ", before the stream, where " + Unfolded(read, n - lag));
+                }
+            }
+        }
+    }
+
+    // The reads before the stream; the step's deferred ones are checked as it
+    // is written.
+    void Histories(int earliest) {
+        for (const auto& [name, last] : reach_)
+            if (last >= earliest)
+                throw Refusal("cannot compile " + name + ": its history reaches " + name + "_" +
+                              std::to_string(earliest) + ", in the stream");
+        for (const auto& [name, sequence] : sequences_) {
+            if (!sequence.definition) continue;
+            // A guarded clause's value is read only where its guard holds.
+            Reads always = sequence.reads;
+            for (const Guarded& guarded : sequence.guarded) {
+                const auto& p = sequence.definition->Clauses()[guarded.clause].parameters;
+                const Check kept{guarded.value,  p.guard(), true, sequence.definition->home,
+                                 p.index_name(), {},        0};
+                Cover(name, sequence, guarded.value, std::numeric_limits<int>::max(), &kept);
+                for (const auto& [read, lags] : guarded.value)
+                    for (const int lag : lags) always[read].erase(lag);
+            }
+            for (const Guarded& guarded : sequence.guarded)
+                for (const Reads* reads : {&guarded.guard, &sequence.general_reads})
+                    for (const auto& [read, lags] : *reads)
+                        always[read].insert(lags.begin(), lags.end());
+            Cover(name, sequence, always, std::numeric_limits<int>::max());
+            // A base clause's reads, which Cover passes over.
+            for (const Seed& seed : sequence.seeds)
+                if (seed.at < earliest_ && Historied(seed.read) && !Folded(seed.read, seed.at))
+                    throw Refusal("cannot compile " + name + ": " + name + "_" +
+                                  std::to_string(seed.index) + " reads " + seed.read + "_" +
+                                  std::to_string(seed.at) + ", before the stream, where " +
+                                  Unfolded(seed.read, seed.at));
+        }
+        for (const Early& early : earlies_)
+            for (const auto& [name, sequence] : sequences_)
+                if (&sequence == early.reader && Needed(early))
+                    Cover(name, sequence, early.reads, sequences_.at(early.name).start + early.lag);
+    }
+
+    // init's lines for what histories give, once every read has asked.
+    std::string Folds(int earliest) const {
+        std::string lines;
+        for (const auto& [name, sequence] : sequences_) {
+            const bool slow  = sequence.period > 1;
+            const int  terms = slow              ? std::min(sequence.filled, sequence.depth)
+                               : Historied(name) ? sequence.depth - 1
+                                                 : 0;
+            for (int k = 0; k < terms; ++k) {
+                const auto term = folded_.find({name, (slow ? sequence.first : earliest) - 1 - k});
+                if (term == folded_.end() || !term->second) continue;
+                const std::vector<double> cells = Doubles(*term->second);
+                if (cells.size() != sequence.rows * sequence.cols)
+                    throw Refusal("cannot compile " + name + ": a history of another shape");
+                for (std::size_t c = 0; c < cells.size(); ++c)
+                    if (cells[c] != 0.0)
+                        lines +=
+                            "    m_->" + name + "[" + std::to_string(k) + "]" +
+                            (cells.size() == 1 ? ""
+                                               : Subscript(c / sequence.cols, c % sequence.cols)) +
+                            " = " + Double(cells[c]) + ";\n";
+            }
+        }
+        return lines;
     }
 
     std::vector<std::string> Order() const {
@@ -2762,7 +3116,7 @@ private:
                (early.outer < 0 || Needed(earlies_[static_cast<std::size_t>(early.outer)]));
     }
 
-    std::string Checked(std::string text, const Sequence& sequence) const {
+    std::string Checked(std::string text, const std::string& name, const Sequence& sequence) {
         // A term read back, computed again where the reader can need it before
         // its window holds it; the innermost first, as the last marked.
         for (std::size_t at = text.rfind('\x04'); at != std::string::npos;
@@ -2782,7 +3136,9 @@ private:
         for (std::size_t at = text.find('\x02'); at != std::string::npos;
              at             = text.find('\x02', at)) {
             const std::size_t end = text.find('\x03', at);
-            const int   from      = From(checks_.at(std::stoul(text.substr(at + 1, end - at - 1))));
+            const Check&      kept = checks_.at(std::stoul(text.substr(at + 1, end - at - 1)));
+            Cover(name, sequence, kept.reads, std::numeric_limits<int>::max(), &kept);
+            const int   from = From(kept.reads);
             std::string check;
             for (int n = sequence.start; n < from && check.empty(); ++n)
                 if (!sequence.bases.count(n))
@@ -2902,9 +3258,9 @@ private:
                 throw Refusal("cannot compile: " + name +
                               " is read both as a value and as a sequence");
         for (auto& [name, sequence] : sequences_) Rate(name, sequence);
+        const int earliest = earliest_ = Starts();
         for (auto& [name, sequence] : sequences_)
             for (const std::size_t h : sequence.holds) Resolve(name, holds_[h]);
-        const int                      earliest = Starts();
         for (auto& [name, sequence] : sequences_) Seeds(name, sequence);
         const std::vector<std::string> order    = Order();
         std::vector<std::string>       fields;
@@ -2922,8 +3278,10 @@ private:
                 sequence.depth = std::max(sequence.depth, *sequence.own.rbegin() + 1);
         }
         for (const Hold& hold : holds_)
-            sequences_.at(hold.read).depth =
-                std::max(sequences_.at(hold.read).depth, hold.most + 1);
+            if (hold.early < 0 || Needed(earlies_[static_cast<std::size_t>(hold.early)]))
+                sequences_.at(hold.read).depth =
+                    std::max(sequences_.at(hold.read).depth, hold.most + 1);
+        Histories(earliest);
         // A model's in the order its signature gives them.
         if (model_) {
             const auto at = [&](const std::string& name) {
@@ -3007,6 +3365,7 @@ private:
                        (scalar ? "" : Subscript(c / parameter.cols, c % parameter.cols)) + " = " +
                        Double(parameter.initial[c]) + ";\n";
         }
+        const std::size_t folds = out.size();
         out += "    m_->index_ = " + std::to_string(earliest - 1) + ";\n";
         out += "    " + module + "_update(m_);\n}\n\n";
 
@@ -3096,17 +3455,22 @@ private:
             std::vector<Temporary> temporaries = sequence.temporaries;
             for (Temporary& temporary : temporaries)
                 for (std::string& line : temporary.lines)
-                    line = Checked(Rated(line, sequence), sequence);
-            const std::string checked = Checked(Rated(assignments, sequence), sequence);
+                    line = Checked(Rated(line, sequence), name, sequence);
+            const std::string checked = Checked(Rated(assignments, sequence), name, sequence);
             out += Temporaries(temporaries, checked, indent) + checked;
             if (late) out += "    }\n";
         }
         out += "}\n\n#endif\n";
+        out.insert(folds, Folds(earliest));
         Compiled compiled{out, earliest, inputs, {}, {}};
         for (const std::string& name : order) {
             const Sequence& sequence = sequences_.at(name);
+            const bool      unnamed  = std::any_of(
+                labels_.begin(), labels_.end(),
+                [&](const std::string& label) { return name.rfind(label + ".", 0) == 0; });
             compiled.sequences.push_back(
-                {name, sequence.rows, sequence.cols, sequence.period, sequence.phase});
+                {name, sequence.rows, sequence.cols, sequence.period, sequence.phase,
+                 sequence.period * sequence.first + sequence.phase, unnamed});
             if (clauses_ && (!sequence.guarded.empty() || !sequence.taken.empty()))
                 compiled.guarded.push_back(name);
         }
@@ -3144,7 +3508,12 @@ private:
     std::vector<Early>         earlies_;
     int                        early_ = -1;    // the one being computed again
     std::map<std::string, int> exists_;        // where one with no base first answers
-    std::vector<Reads>               checks_;  // what a deferred right side reads, by its mark
+    std::vector<Check>         checks_;        // what a deferred right side reads, by its mark
+    std::map<std::string, const Reference<Value>*> histories_;  // by the input they give
+    std::map<std::string, int>                     reach_;      // the last index each gives
+    std::map<std::pair<std::string, int>, std::optional<Value>> folded_;
+    std::map<std::pair<std::string, int>, std::string> unfolded_;  // why a history gave none
+    int                                                         earliest_ = 0;
     std::string index_text_   = "(double)m_->index_";  // the index, as the step has it
     std::string                      module_;
     std::set<std::size_t>            inverses_;  // the sizes a helper is needed for

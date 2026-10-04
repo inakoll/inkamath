@@ -236,6 +236,46 @@ set(stderr "")
 set(exit 1)
 check(compile_rates_refused)
 
+# What several rates left refused (DESIGN.md): a slow sequence read back at
+# the input's rate, and a hold of a term the step never computes where the
+# interpreter could give one, before a slow sequence's first tick or below a
+# guarded one's base clauses.
+file(WRITE "${OUT}/slow.ink" "k_n = n/8\ny_m = k_(2*m + 1)\nc_n = y_(n-1)\nz_n = y_(floor((n - 1)/2))\n")
+set(args --compile slow.ink)
+set(stdout "cannot compile c: y_(...): read every step, and y is computed every 2\ncannot compile z: z_0 reads y_-1, before y's first tick, where its samples could give a term\n")
+set(exit 1)
+check(compile_slow_refused)
+
+# A sample read from a window that cannot hold the term the interpreter has.
+file(WRITE "${OUT}/window.ink" "k_n = n/8\ny_m = k_(2*m - 1) + k_(2*m)\n")
+set(args --compile window.ink)
+set(stdout "cannot compile y: y_0 reads k_-1, before the step computes k, where its clauses could give a term\n")
+set(exit 1)
+check(compile_slow_window_refused)
+
+file(WRITE "${OUT}/below.ink" "u_0 = 0\nu_m | x_(2*m) > 1 = 1\nu_m = x_(2*m)\nw_n = u_(floor(n/2) - 1)\n")
+set(args --compile below.ink)
+set(stdout "cannot compile w: w_0 reads u_-1, below u's base clauses, where only its guards could give a term\n")
+set(exit 1)
+check(compile_slow_below_refused)
+
+# A ratio that is not whole; a slow sequence read by another, which a hold at
+# the input's rate sampled says; and a hold at another period, which no hold
+# says.
+file(WRITE "${OUT}/three.ink" "u_0 = 0\nu_m = x_(2*m)\nt_m = x_(3*m)\np_k = x_(4*k)\nq_n = t_(floor(2*n/3))\nv_k = u_(2*k)\nr_m = x_(2*m) - p_(floor(m/2))\nw_k = x_(4*k) - u_(floor(k/2))\n")
+set(args --compile three.ink)
+set(stdout "cannot compile q: t_(...): an index other than a whole multiple of n plus a constant\ncannot compile r: p_(...): one sequence at another rate read by another; hold p at the input's rate and sample the hold\ncannot compile v: u_(...): one sequence at another rate read by another; hold u at the input's rate and sample the hold\ncannot compile w: u_(...): read every 8 steps, and u is computed every 2\n")
+set(exit 1)
+check(compile_slow_read_refused)
+
+# C74: a hold whose ticks are not one period of the sequence it holds names
+# a term further behind at each tick, which no window holds.
+file(WRITE "${OUT}/c74.ink" "u_0 = 0\nu_m = x_(2*m)\ns_0 = 0\ns_k = x_(4*k) - u_(floor(k/2))\n")
+set(args --compile c74.ink)
+set(stdout "cannot compile s: u_(...): read every 8 steps, and u is computed every 2\n")
+set(exit 1)
+check(compile_c74)
+
 # A base term is computed at its own index, so it reads a term from there
 # back, and only where that term's sequence has started.
 file(WRITE "${OUT}/seeds.ink" "y_0 = x_1\ny_n = y_(n-1) + x_n\na_1 = 1\na_n = a_(n-1) + 1\nb_0 = a_0\nb_n = b_(n-1)\n")
@@ -244,6 +284,14 @@ set(stdout "cannot compile b: b_0 reads a_0, before it starts at 1\ncannot compi
 set(stderr "")
 set(exit 1)
 check(compile_base_reads_refused)
+
+# A tensor is refused by name: the interpreter is the reference it is held to
+# first (DESIGN.md, tensors of rank 3).
+file(WRITE "${OUT}/tensor.ink" "T = [1 2;; 3 4]\ny_0 = 0\ny_n = y_(n-1) + T[2,1,2]\nP[b<=2, j<=2, k<=2] = b\n")
+set(args --compile tensor.ink)
+set(stdout "cannot compile P: a tensor\ncannot compile y: a tensor\n")
+set(exit 1)
+check(compile_tensor_refused)
 
 set(args --compile model.ink)
 file(WRITE "${OUT}/model.ink" "a_0 = 1\na_n = a_(n-1) + n\n")
@@ -275,6 +323,90 @@ set(args --check models.ink gain)
 set(stderr "inkamath: --check takes a transcript, or a file, an instance it defines and -o check.c\nTry 'inkamath --help'.\n")
 set(exit 2)
 check(check_usage)
+
+# The step takes a single value for each input, so an instance giving a
+# matrix is refused by name, where it was read past its one cell (C83).
+file(WRITE "${OUT}/wide.ink" "mm(x_n) = {\n    y_n = [1 2]*x_n\n}\nv = mm(x_n = [n; 1])\n")
+set(args --check wide.ink v -o wide.c)
+set(stderr "inkamath: v.x_(0) has 2 cells, where the compiled step takes a single value\n")
+set(exit 1)
+check(check_matrix_input)
+
+# A model's history of its inputs (DESIGN.md): a read before the stream that
+# no history gives, and a history that init cannot fold, each refused by name.
+function(refused model body why)
+    file(WRITE "${OUT}/${model}.ink" "${model}(${body}\n}\n")
+    set(args --compile ${model}.ink ${model} -o ${model}.h)
+    set(stderr "inkamath: cannot compile ${why}\n")
+    set(exit 1)
+    check(history_${model})
+endfunction()
+refused(open "x_n) = {\n    c_n = x_(n-1)"
+        "c: c_0 reads x_-1, before the stream, where x has no history")
+refused(short "x_n) = {\n    x_(-1) = 0\n    c_n = x_(n-2)"
+        "c: c_0 reads x_-2, before the stream, where x has no history")
+refused(level "x_n) = {\n    c_n = n >= 0 and x_n > x_(n-1)"
+        "c: c_0 reads x_-1, before the stream, where x has no history")
+refused(half "u_n, v_n) = {\n    u_n | n < 0 = 0\n    c_n = u_(n-1) + v_(n-1)"
+        "c: c_0 reads v_-1, before the stream, where v has no history")
+refused(kept "x_n) = {\n    c_n | x_n > 0 = x_(n-1)\n    c_n = 0"
+        "c: c_0 reads x_-1, before the stream, where x has no history")
+refused(held "x_n) = {\n    y_m = x_(2*m)\n    z_n = y_(floor(n/2) - 1)"
+        "z: z_0 reads y_-1, before y's first tick, where its samples could give a term")
+refused(early "x_n) = {\n    x_n | n < 2 = 0\n    c_n = x_(n-1)"
+        "x: its history reaches x_0, in the stream")
+refused(even "x_n) = {\n    x_n | n^2 > 4 = 0\n    c_n = x_(n-3)"
+        "x: a history whose guard is not its index below a constant")
+refused(mute "u_n, x_n) = {\n    x_n | n < 0 and u_n > 0 = 0\n    c_n = x_(n-1)"
+        "x: a history whose guard is not its index below a constant")
+refused(biased "a = 1, x_n) = {\n    x_n | n < 0 = a\n    c_n = x_(n-1)"
+        "x: a history that reads a")
+refused(swap "x_n) = {\n    x_n | n < 0 = [0; 0]\n    c_n = [0 1; 1 0]*x_(n-1)"
+        "x: a history that is not a single value")
+
+# A slow sequence's base clause, which the stream starts after, reading the
+# input before it.
+refused(planted "x_n) = {\n    y_2 = x_1\n    y_m = x_(2*m)\n    z_n = y_(floor(n/2))"
+        "y: y_2 reads x_1, before the stream, where x has no history")
+
+# A history that gives no term, or none a double holds, where it is read.
+refused(singular "x_n) = {\n    x_n | n < 0 = 1/(n+1)\n    c_n = x_(n-1)"
+        "c: c_0 reads x_-1, before the stream, where x's history gives none: division by zero")
+refused(vast "x_n) = {\n    x_n | n < 0 = 10^400\n    c_n = x_(n-1)"
+        "c: c_0 reads x_-1, before the stream, where x's history gives a term no double holds")
+
+# A term init would fold from a history but that reads a parameter, which the
+# host may assign after init: through a slow sequence's samples, and through
+# an argument.
+refused(scaled "a = 2, x_n) = {\n    x_n | n < 0 = 1\n    y_m = a*x_(2*m)\n    z_n = y_(floor(n/2) - 1)"
+        "z: z_0 reads y_-1, before y's first tick, where its samples could give a term")
+file(WRITE "${OUT}/gained.ink" "two(x_n) = {\n    x_(-2) = 0\n    c_n = x_(n-1) + x_(n-2)\n}\n"
+     "gained(a = 2, x_n) = {\n    x_n | n < 0 = 3\n    inner = two(x_n = a*x_n)\n"
+     "    c_n = inner.c_n\n}\n")
+set(args --compile gained.ink gained -o gained.h)
+set(stderr "inkamath: cannot compile inner.c: inner.c_0 reads inner.x_-1, before the stream, where inner.x has no history\n")
+set(exit 1)
+check(history_gained)
+
+# A history of a single value for an inner input given a matrix.
+file(WRITE "${OUT}/stacked.ink" "lag(x_n) = {\n    x_n | n < 0 = 0\n    c_n = x_(n-1)\n}\n"
+     "stacked(x_n) = {\n    x_n | n < 0 = 0\n    inner = lag(x_n = [x_n; x_n])\n"
+     "    c_n = inner.c_n\n}\n")
+set(args --compile stacked.ink stacked -o stacked.h)
+set(stderr "inkamath: cannot compile inner.x: a history of another shape\n")
+set(exit 1)
+check(history_shape)
+
+# A guarded clause's value is read only where its guard, folded, holds.
+file(WRITE "${OUT}/guarded.ink" "guarded(x_n) = {\n    c_n | n > 0 = x_(n-1)\n    c_n = 0\n}\n")
+set(args --compile guarded.ink guarded -o guarded.h)
+check(history_guarded_value)
+
+# A read on the right of an 'and' whose left does not decide is a term the
+# history gives, as one read on its left is.
+file(WRITE "${OUT}/gate.ink" "gate(x_n) = {\n    x_n | n < 0 = 5\n    c_n = n < 4 and x_(n-3) > 0\n}\n")
+set(args --compile gate.ink gate -o gate.h)
+check(history_right_side)
 
 # A transcript checked: replayed, and each answer that is not the one recorded
 # shown as recorded, '-', and as given now, '+', under the line it answers.
