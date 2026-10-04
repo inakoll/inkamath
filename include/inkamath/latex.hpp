@@ -82,6 +82,9 @@ public:
             const auto& parameter = model.parameters[k];
             out += (k ? ", " : "") + Name(parameter.name);
             if (!parameter.index.empty()) out += "_" + Braced(parameter.index);
+            for (std::size_t b = 0; b < parameter.bounds.size(); ++b)
+                out += (b ? " \\times " : " \\in \\mathbb{R}^{") + Of(*parameter.bounds[b]).text;
+            if (!parameter.bounds.empty()) out += "}";
             if (parameter.fallback) out += " = " + Of(*parameter.fallback).text;
         }
         out += "):";

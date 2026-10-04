@@ -1393,17 +1393,40 @@ std::pair<std::string, std::shared_ptr<Model<U>>> Interpreter<T, U>::ParseModel(
             left               = equal->m_e1();
             parameter.fallback = equal->m_e2();
         }
+        // Its places are a cell's, or with a default the left side's.
+        std::vector<PExpression<U>> places;
+        if (const auto* cell = dynamic_cast<const CellExpression<U>*>(left.get())) {
+            places = {cell->Slice(), cell->Row(), cell->Col()};
+            left   = cell->Matrix();
+        }
         const auto* term = dynamic_cast<const FuncExpression<U>*>(left.get());
+        if (term && places.empty())
+            places = {term->Children()[5], term->Children()[3], term->Children()[4]};
+        bool bounded = true;  // each place, as 'j<=2'
+        for (const PExpression<U>& place : places) {
+            const auto* compare = dynamic_cast<const CompareExpression<U>*>(place.get());
+            if (compare && compare->Op() == Comparison::LessEqual &&
+                dynamic_cast<const RefExpression<U>*>(compare->m_e1().get()))
+                parameter.bounds.push_back(compare->m_e2());
+            else
+                bounded = bounded && !place;
+        }
         const auto* index =
             term ? dynamic_cast<const RefExpression<U>*>(term->m_e2().get()) : nullptr;
-        if (dynamic_cast<const RefExpression<U>*>(left.get())) {
+        if (dynamic_cast<const RefExpression<U>*>(left.get()) && bounded &&
+            parameter.bounds.empty()) {
             parameter.name = left->Name();
-        } else if (index && !term->m_e1() && !term->Children()[2] && !term->Children()[3]) {
+        } else if (index && bounded && !term->m_e1() && !term->Children()[2]) {
             parameter.name  = term->Name();
             parameter.index = index->Name();
         } else {
-            Fail("a model's parameter is a name, as 'k = 2', or an input, as 'x_n'");
+            Fail("a model's parameter is a name, as 'k = 2', or an input, as 'x_n' or 'x_n[j<=2]'");
         }
+        // A size that moved from term to term could not be compiled.
+        for (const PExpression<U>& bound : parameter.bounds)
+            if (Mentions(*bound, parameter.index))
+                Fail(parameter.name, " is an input of ", name,
+                     ", so its size cannot read the index ", parameter.index);
         for (const auto& other : model->parameters)
             if (other.name == parameter.name)
                 Fail(name, " has two parameters named ", parameter.name);
@@ -1432,7 +1455,8 @@ std::pair<std::string, std::shared_ptr<Model<U>>> Interpreter<T, U>::ParseModel(
             const auto& left = statement.definition
                                    ? statement.definition->Children()[0]->Children()
                                    : std::vector<PExpression<U>>();
-            if (left.empty() || !left[1] ||
+            // A history by cells chooses cells, not terms, so gives every term (C89).
+            if (left.empty() || !left[1] || left[3] ||
                 (!left[2] && dynamic_cast<const RefExpression<U>*>(left[1].get())))
                 Fail(statement.name, " is an input of ", name,
                      ", so its body can give it only a history: a term or a guarded clause");

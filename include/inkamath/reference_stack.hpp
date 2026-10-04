@@ -773,6 +773,13 @@ private:
                 definition->home = given ? written : scope.get();
                 if (given) definition->captured = captured;
             }
+            if (!parameter.bounds.empty()) {
+                auto held      = std::make_shared<Reference<T>>(parameter.name);
+                held->argument = std::move(definition);
+                held->home     = scope.get();
+                held->declared = parameter.bounds;
+                definition     = std::move(held);
+            }
             scope->names[parameter.name] = std::move(definition);
         }
         for (const typename Model<T>::Statement& statement : m.body) {
