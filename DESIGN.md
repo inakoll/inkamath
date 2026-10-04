@@ -3157,7 +3157,11 @@ that exploring seven domains asked of the interpreter, by how many asked.
   elsewhere refuses it as now, `before y's first tick, where its samples could
   give a term` or `before the step computes k`. Those refusals stand for a
   closed form's terms too, which the same fill would answer: one concern, and
-  a model that asks first. A history of 0 emits nothing, `memset` giving it,
+  a model that asks first. The first is also what a hold before a slow
+  sequence's first tick meets where its samples read the input before the
+  stream and no history gives the term: `z_n = y_(floor(n/2) - 1)` on
+  `y_m = x_(2*m)` compiles today, and `--check` parts at 0, C75 again. A
+  history of 0 emits nothing, `memset` giving it,
   so a history line leaves the header of a model that reads no input before
   the stream byte-identical; one that does changes only where a reader now
   starts at the first step, the start having been the step's way of having no
@@ -3198,7 +3202,7 @@ that exploring seven domains asked of the interpreter, by how many asked.
   About 210 lines: 40 in the interpreter, 130 in the compiler, most of them
   the fill and the refusals, and 40 in the check.
 
-  Specified in `test/data/spec/history.ink`, 42 of its 51 entries failing,
+  Specified in `test/data/spec/history.ink`, 46 of its 55 entries failing,
   those passing being definitions echoing themselves and a parameter's
   refusal; and in `test/compile/history.ink`, whose instances, refusals
   and reports, the seven programs' among them, are wired with the

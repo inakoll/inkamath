@@ -64,6 +64,17 @@
 #     inkamath: cannot compile c: c_0 reads x_-1, before the stream, where x has no history
 #     inkamath: cannot compile c: c_0 reads v_-1, before the stream, where v has no history
 #
+# A hold before a slow sequence's first tick, whose samples read the input
+# before the stream where no history gives it, is refused as a hold whose
+# samples could give a term; today it compiles, and --check parts at 0:
+#
+#     held(x_n) = {
+#         y_m = x_(2*m)
+#         z_n = y_(floor(n/2) - 1)
+#     }
+#
+#     inkamath: cannot compile z: z_0 reads y_-1, before y's first tick, where its samples could give a term
+#
 # A history that reaches into the stream, whose guard is not its index below
 # a constant, that reads a parameter, or that is not a single value (C83):
 #

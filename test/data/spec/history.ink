@@ -153,6 +153,28 @@ w = swap(x_n = [n; 1])
 [1;
  2]
 
+# At another rate, a slow sequence's term before its first tick reads the
+# history through its samples: z_0 is y_(-1), f_(-1), (x_(-1) + x_(-2))/2.
+>> warmed(x_n) = {
+..     x_n | n < 0 = 1
+..     f_n = (x_n + x_(n-1))/2
+..     y_m = f_(2*m + 1)
+..     z_n = y_(floor((n - 1)/2))
+.. }
+warmed(x_n) = { ... }
+
+>> lit = warmed(x_n = n^2)
+lit = warmed(x_n = n^2)
+
+>> lit.f_0
+0.5
+
+>> lit.z_0
+1
+
+>> lit.z_3
+6.5
+
 # Each input has its own.
 >> both(u_n, v_n) = {
 ..     u_n | n < 0 = 1
