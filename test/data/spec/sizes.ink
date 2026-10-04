@@ -357,11 +357,19 @@ bias(z)[s,i,j] = z[s,i,j] + s
 >> T = [1 2; 3 4;; 5 6; 7 8]
 T = [1 2; 3 4;; 5 6; 7 8]
 
-# One index on a tensor reads a slice.
+# Three indices on a tensor, the sum's among them, give s the slices.
 >> trc(P)[s] = sum_(j=1)^2 P[s,j,j]
 trc(P)[s] = sum_(j=1)^2 P[s,j,j]
 
 >> trc(T)
+[ 5;
+ 13]
+
+# One index on a tensor reads a slice, which gives s the slices as well.
+>> tr2(P)[s] = sum_(j=1)^2 P[s][j,j]
+tr2(P)[s] = sum_(j=1)^2 P[s][j,j]
+
+>> tr2(T)
 [ 5;
  13]
 
