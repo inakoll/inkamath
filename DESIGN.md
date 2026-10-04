@@ -3628,15 +3628,18 @@ that exploring seven domains asked of the interpreter, by how many asked.
   missing transpose is everywhere (*One index is a row*), and a single value
   is not stretched, so a history of a column is a column, `x_n | n < 0 =
   [0; 0]`. An instance is defined without evaluating anything, as now, so
-  the refusal is where a term is read. `?` prints the signature as written;
+  the refusal is where a term is read, and before any of its cells is:
+  `trace(x_n = [n 1]).t_0` is refused for its size, not for a cell outside
+  a 1x2 matrix. `?` prints the signature as written;
   `tex` sets the size as a paper states it, `\operatorname{dot}(x_n \in
   \mathbb{R}^{2})`, `\mathbb{R}^{2 \times 2}` for two bounds and
   `\mathbb{R}^{d}` for one read. ℝ follows the paper and is not checked:
   the interpreter takes a complex input as it takes any. Any other bracket
   in a signature, `x_n[j]`, `x_n[2]` or a parameter's, is refused in the
   words that say what a parameter is, which gain the form: `a model's
-  parameter is a name, as 'k = 2', or an input, as 'x_n' or 'x_n[j<=2]'`.
-  A history by cells, stated or not, is refused as a clause that always
+  parameter is a name, as 'k = 2', or an input, as 'x_n' or 'x_n[j<=2]'`;
+  `x_n[j]` states no size, and the compiler, which compiles the model, could
+  not infer one. A history by cells, stated or not, is refused as a clause that always
   applies is, `x is an input of sw, so its body can give it only a history:
   a term or a guarded clause`, as its guard chooses cells, not terms
   (C89).
@@ -3649,7 +3652,8 @@ that exploring seven domains asked of the interpreter, by how many asked.
   cell is a pointer to its cells, row by row.` Taking `const double
   x[2][1]`, the window's shape and a limit's matrix argument's, was
   rejected: in C11 a `double (*)[1]` passed where a `const double (*)[1]` is
-  taken is a pedantic warning, so a host would cast to call it, and a column
+  taken is a warning under GCC's `-Wpedantic`, though not Clang's, so a host
+  would cast to call it, and a column
   is not held as rows of one. What a sequence of that size does, the input
   does: a cell is read, `x_n[2]` a single value; a size inferred from it is
   its size, so `g_n[j] = x_n[j]*(x_n[j] > 0)` is 3x1 for a 3x1 input; it is
@@ -3696,8 +3700,8 @@ that exploring seven domains asked of the interpreter, by how many asked.
   to write a size beside bounds. The instance's argument giving it: the
   compiler compiles a model, which two instances may give different sizes.
 
-  About 75 lines: 40 in the interpreter, parsing the signature 10, the size
-  held where a term is read 20 and `tex` 10; 25 in the compiler and 10 in
+  About 85 lines: 35 in the interpreter, parsing the signature 10, the size
+  held where a term is read 15 and `tex` 10; 40 in the compiler and 10 in
   the check.
 
   Specified in `test/data/spec/inputs.ink`, 54 of its 63 entries failing,
