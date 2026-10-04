@@ -3460,6 +3460,21 @@ that exploring seven domains asked of the interpreter, by how many asked.
   or a comparison as through arithmetic", so the host's one test is `isnan`
   on what it reads.
 
+  The interpreter refuses the same decisions on its own NaN, which inexact
+  arithmetic makes, `0/~0`: a comparison of one answered 0 and a truth of
+  one held, so a guard reading it took a clause, where a step reading NaN
+  now takes none, and the two parted. A comparison with NaN has no answer,
+  and `MANIFESTO.md`'s interpreter refuses rather than guesses. In the words
+  given for a value that is not single: `0/~0 > 0` and `0/~0 == 0/~0` are
+  "a comparison needs a number, not -nan", as is a whole matrix compared
+  with a NaN cell; a guard reading it, "a guard needs a number, not -nan";
+  `0/~0 or 0` and `1 and 0/~0`, "or needs a number, not -nan" and "and
+  needs a number, not -nan", the right side still read only where the left
+  has not decided, so `0 and 0/~0` is 0. `errors.ink` holds the
+  comparisons, `logic.ink` `and` and `or`, and `conditional.ink` the guard:
+  `nonzero(0/~0)`, recorded as answering 1 because it was "the one place the
+  convention bites", moves to the refusal. No other golden moves.
+
   A header that writes no NaN is byte for byte as now. The gate is the
   header: one that writes NaN anywhere is compiled again, aware. Of the
   fourteen expected headers ten stay; `back.h`, `heat.h` and `kalman2.h`
@@ -3506,5 +3521,5 @@ that exploring seven domains asked of the interpreter, by how many asked.
 
   Specified in `test/compile/nan.ink`: five instances, each a guard reading
   a failure, with their steps, their reports and `adc.h`'s step, wired with
-  the implementation. The interpreter does not change, so there is no spec
-  transcript.
+  the implementation. The interpreter's refusals are written in the
+  goldens named above.

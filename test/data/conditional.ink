@@ -341,11 +341,13 @@ nonzero(x) | x == 0 = 0
 >> nonzero(0)
 0
 
-# NaN is not zero, so it passes a bare guard, while every comparison with it
-# is false. Recorded because it is the one place the convention bites. The
-# zero is inexact because an exact one cannot be divided by (phase 13).
+# NaN is not a number, so it is no truth, and a guard reading it is refused.
+# It passed, as not zero, while every comparison with it was false: this
+# answered 1, recorded as the one place the convention bit (DESIGN.md, a NaN
+# reaches every term that reads it). The zero is inexact because an exact one
+# cannot be divided by (phase 13).
 >> nonzero(0/~0)
-1
+error: a guard needs a number, not -nan
 
 # A guard needs a single value, for the same reason an index does.
 >> nonzero([1 2])

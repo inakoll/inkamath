@@ -98,6 +98,18 @@ error: and needs single values, not a 1x2 matrix
 >> 0 or [0 0]
 error: or needs single values, not a 1x2 matrix
 
+# Nor is a NaN a truth: it is refused, where it held as any value that is
+# not zero does (DESIGN.md, a NaN reaches every term that reads it). The
+# right side is still read only where the left has not decided.
+>> 0/~0 or 0
+error: or needs a number, not -nan
+
+>> 1 and 0/~0
+error: and needs a number, not -nan
+
+>> 0 and 0/~0
+0
+
 # They are words of the language, so not names.
 >> and = 3
 error: expected a value before 'and'
