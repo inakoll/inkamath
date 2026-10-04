@@ -229,6 +229,14 @@ cf(x)[1,1] = 5
 >> cf(1)
 error: cf has no size; write it as cf(x)[j<=rows, k<=cols]
 
+# A clause defined inside an expression keeps no text, and the hint has as
+# many indices as it names.
+>> lc(y) = (pc[i] = i)*y
+lc(y) = (pc[i] = i)*y
+
+>> lc(1)
+error: pc has no size, as nothing reads a matrix at i alone; write it as pc[i<=rows]
+
 # A size is written, the clauses of one matrix agree on it, and a cell is a
 # single value.
 >> M[r,c] = r + c

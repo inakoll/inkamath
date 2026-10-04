@@ -756,7 +756,12 @@ private:
     std::string Hint(const Clause<T>& clause) const {
         static const char* const sizes[] = {"slices", "rows", "cols"};
         static const char* const names[] = {"b", "j", "k"};
-        const std::string&       w       = clause.written;
+        const ParametersDefinition<T>& p       = clause.parameters;
+        // Defined inside an expression, it keeps no text: its names stand in.
+        std::string w = clause.written;
+        if (w.empty())
+            w = reference_name_ + "[" + (p.tensor() ? p.slice_name() + "," : "") + p.row_name() +
+                (p.column() ? "" : "," + p.col_name()) + "]";
         std::vector<std::string> places(1);
         size_t                   open  = std::string::npos;
         int                      depth = 0;
@@ -773,11 +778,10 @@ private:
                 places.back() += c;
             }
         }
-        if (open == std::string::npos) return reference_name_ + Bounded();
         std::string hint = w.substr(0, open) + "[";
         for (size_t k = 0; k < places.size(); ++k) {
             std::string& place = places[k];
-            const size_t d     = k + (clause.parameters.tensor() ? 0 : 1);
+            const size_t d     = k + (p.tensor() ? 0 : 1);
             place.erase(0, place.find_first_not_of(' '));
             place.erase(place.find_last_not_of(' ') + 1);
             if (IsOneCell(clause)) place = names[d];
@@ -955,12 +959,6 @@ private:
                                      " must be a single value, not a " + cell.Size().Described());
         }
         return cell(1, 1);
-    }
-
-    // How a clause for all cells bounds them, at the rank of the clauses given.
-    std::string Bounded() const {
-        const bool tensor = FirstThat([](const Clause<T>& c) { return c.parameters.tensor(); });
-        return std::string("[") + (tensor ? "b<=slices, " : "") + "j<=rows, k<=cols]";
     }
 
     static int Slices(const Extent& extent) {
