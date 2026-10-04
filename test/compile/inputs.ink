@@ -100,8 +100,9 @@
 # What 'inkamath --compile' refuses, each model a file of its own compiled
 # by name with -o. A history of another size than the input, stated or not
 # (test/cli.cmake's 'swap', which said "a history that is not a single
-# value"); a size that is not a constant; a tensor; and an instance within a
-# model given an argument of another size than its model states:
+# value"); a tensor; and an instance within a model given an argument of
+# another size than its model states. A size that reads the index is the
+# interpreter's refusal, where the file is read:
 #
 #     broad(x_n[j<=2]) = {
 #         x_n | n < 0 = 0
@@ -110,9 +111,6 @@
 #     swap(x_n) = {
 #         x_n | n < 0 = [0; 0]
 #         c_n = [0 1; 1 0]*x_(n-1)
-#     }
-#     grow(x_n[j<=n+1]) = {
-#         y_n = x_n[1]
 #     }
 #     batch(x_n[b<=2, j<=1, k<=2]) = {
 #         y_n = x_n[2]*[1; 1]
@@ -124,12 +122,15 @@
 #         inner = dot(x_n = u_n)
 #         y_n = inner.y_n
 #     }
+#     grow(x_n[j<=n+1]) = {
+#         y_n = x_n[1]
+#     }
 #
 #     inkamath: cannot compile x: a history of another shape
 #     inkamath: cannot compile x: a history of another shape
-#     inkamath: cannot compile x: a matrix whose size is not a constant
 #     inkamath: cannot compile x: a tensor
 #     inkamath: cannot compile inner.x: a single value, where dot takes a 2x1 matrix
+#     inkamath: grow.ink, line 1: x is an input of grow, so its size cannot read the index n
 #
 # And what 'inkamath --check' refuses, of 'v = dot(x_n = n)' beside 'dot'
 # above, in the interpreter's words, where it reads the input; where the

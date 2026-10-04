@@ -3429,12 +3429,15 @@ that exploring seven domains asked of the interpreter, by how many asked.
   The model states the size in its signature, by bounds, as a definition by
   cells states its own: `dot(x_n[j<=2])`, a column as `w[j<=3]` is;
   `trace(x_n[j<=2, k<=2])`, a matrix; three bounds a tensor, slices first. A
-  bound reads what a cell's bound reads: the model's parameters,
-  `avg(d = 3, x_n[j<=d])`, and the index. An input whose size is not stated
-  takes any in the interpreter and compiles as a single value, both as now,
-  so `history.ink`'s `swap`, a column given to `swap(x_n)`, still answers
-  and no golden moves; making it a single value in the interpreter too would
-  refuse that session for a size it never had to write.
+  bound reads the model's parameters, `avg(d = 3, x_n[j<=d])`, but not the
+  index, which a cell's bound may: a size that moved from term to term could
+  not be compiled, and would exist only to be refused there, so it is refused
+  where it is written, `x is an input of grow, so its size cannot read the
+  index n`. An input whose size is not stated takes any in the interpreter and
+  compiles as a single value, both as now, so `history.ink`'s `swap`, a column
+  given to `swap(x_n)`, still answers and no golden moves; making it a single
+  value in the interpreter too would refuse that session for a size it never
+  had to write.
 
   In the interpreter, every term of a stated input, whether the argument, a
   default or a history gives it, has that size, or is refused where it is
@@ -3479,11 +3482,10 @@ that exploring seven domains asked of the interpreter, by how many asked.
   stated or a single value, `cannot compile x: a history of another shape`,
   the words an inner input's already has, so `swap` in `test/cli.cmake`,
   its size not stated, moves to them from `a history that is not a single
-  value`; a size that is not a constant, `a matrix whose size is not a
-  constant`, as for a cell; a tensor, `cannot compile x: a tensor`, as any;
-  an instance within the model given an argument of another size than its
-  model states, `cannot compile inner.x: a single value, where dot takes a
-  2x1 matrix`, which the compiler can tell, its shapes being static. A
+  value`; a tensor, `cannot compile x: a tensor`, as any; an instance within
+  the model given an argument of another size than its model states,
+  `cannot compile inner.x: a single value, where dot takes a 2x1 matrix`,
+  which the compiler can tell, its shapes being static. A
   file's input, a name nothing defines, has no signature to state a size in
   and stays a single value. It is a requirement that every header in
   `test/compile/expected` stays byte-identical, and every program `--check`
@@ -3509,8 +3511,8 @@ that exploring seven domains asked of the interpreter, by how many asked.
   held where a term is read 20 and `tex` 10; 25 in the compiler and 10 in
   the check.
 
-  Specified in `test/data/spec/inputs.ink`, 48 of its 58 entries failing,
-  those passing being instances and models without a size echoing
-  themselves, an input whose size is not stated, and a definition outside
-  any model; and in `test/compile/inputs.ink`, whose instances, reports,
-  header excerpts and refusals are wired with the compiler's half.
+  Specified in `test/data/spec/inputs.ink`, 46 of its 55 entries failing,
+  those passing being instances and models without a size echoing themselves
+  and an input whose size is not stated; and in `test/compile/inputs.ink`,
+  whose instances, reports, header excerpts and refusals are wired with the
+  compiler's half.

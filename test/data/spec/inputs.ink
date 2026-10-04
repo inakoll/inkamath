@@ -117,21 +117,12 @@ error: avg(...).x_4 is a 2x1 matrix, where avg takes a 3x1 matrix
 \operatorname{avg}(d = 3, x_n \in \mathbb{R}^{d}):
     y_n = \sum_{j=1}^{d} \frac{x_{n,j}}{d}
 
-# And its index, as a term's by cells may, so each term has its own size.
-# Compiled, such a size is refused.
+# But not its index: a size that moved from term to term could not be
+# compiled, so the interpreter refuses it too, where it is written.
 >> grow(x_n[j<=n+1]) = {
 ..     y_n = sum_(j=1)^(n+1) x_n[j]
 .. }
-grow(x_n[j<=n+1]) = { ... }
-
->> c_n[j<=n+1] = j
-c_n[j<=n+1] = j
-
->> grow(x_n = c_n).y_3
-10
-
->> grow(x_n = [n; n]).y_3
-error: grow(...).x_3 is a 2x1 matrix, where grow takes a 4x1 matrix
+error: x is an input of grow, so its size cannot read the index n
 
 # Three bounds are a tensor, slices first. Compiled, it is refused.
 >> bat(x_n[b<=2, j<=1, k<=2]) = {
