@@ -1101,8 +1101,11 @@ private:
         const std::string name  = reference_name_ + "_" + std::to_string(index);
         const std::optional<Extent> extent = Sized(whole, level, index, name, walk);
         if (!extent) {
-            throw std::runtime_error(reference_name_ + " has no size; write it as " +
-                                     Hint(*FirstThat(IsOneCell)));
+            const Clause<T>* one = FirstThat(
+                [&](const Clause<T>& c) { return IsOneCell(c) && (base(c) || general(c)); });
+            throw std::runtime_error(reference_name_ +
+                                     (one ? " has no size; write it as " + Hint(*one)
+                                          : " has no clause for index " + std::to_string(index)));
         }
         typename Walk::Result term = whole ? std::move(*whole) : walk.Blank(*extent);
         for (const Clause<T>& clause : clauses_) {

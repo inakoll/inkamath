@@ -390,6 +390,20 @@ cs_n[i] = sum_(m=0)^n w_m[i]
 >> cs_2
 error: cs_2 has no size, as nothing reads a matrix at i alone; write it as cs_n[i<=rows]
 
+# A term no clause gives has no clause, not no size: there is no clause to
+# write a size in (it crashed).
+>> nb_0[i<=2] = 1
+nb_0[i<=2] = 1
+
+>> nb_1
+error: nb has no clause for index 1
+
+>> nb_0[1] = 5
+nb_0[1] = 5
+
+>> nb_1
+error: nb has no clause for index 1
+
 # --- tensors -----------------------------------------------------------------
 
 >> rl3(z)[s,i,j] = z[s,i,j]*(z[s,i,j] > 0)
