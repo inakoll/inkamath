@@ -20,7 +20,11 @@
  * A step takes x_n, the input at its index. After a step, m.name[k] is
  * name_(n-k) for each sequence: x, v, held (k <= 1), alarm and rising. The
  * parameters are fields holding the file's values once adc_init has run:
- * hi = 1.0, lo = -1.0 and q = 0.25. After assigning one, call adc_update.
+ * hi = 1.0, lo = -1.0 and q = 0.25. After assigning one, call adc_update. A
+ * term the interpreter would refuse is NaN, and so is every term that reads
+ * one, through a guard or a comparison as through arithmetic;
+ * -ffinite-math-only, which -ffast-math implies, removes the tests that make
+ * it so.
  */
 
 /* The parameters, which the host may assign, then what derives from them,
@@ -58,10 +62,13 @@ static inline void adc_step(adc* m_, double x) {
     m_->held[1] = m_->held[0];
     m_->x[0] = x;
     m_->v[0] = m_->q * floor(m_->x[0] / m_->q);
-    m_->held[0] = m_->index_ == 0 ? 0.0 : m_->held[1] - m_->v[0] < m_->q && m_->v[0] - m_->held[1] < m_->q ? m_->held[1] : m_->v[0];
-    m_->alarm[0] = (m_->held[0] < m_->lo || m_->held[0] > m_->hi ? 1.0 : 0.0);
-    const double t0_ = ((double)m_->index_ > 0.0 ? 1.0 : 0.0);
-    m_->rising[0] = (t0_ == 0.0 ? 0.0 : t0_ != t0_ ? NAN : (m_->index_ < 1 ? NAN : (m_->held[0] > m_->held[1] ? 1.0 : 0.0)));
+    const double t1_ = (isnan(m_->held[1] - m_->v[0]) || isnan(m_->q) ? NAN : m_->held[1] - m_->v[0] < m_->q ? 1.0 : 0.0);
+    const double t2_ = (t1_ == 0.0 ? 0.0 : t1_ != t1_ ? NAN : (isnan(m_->v[0] - m_->held[1]) || isnan(m_->q) ? NAN : m_->v[0] - m_->held[1] < m_->q ? 1.0 : 0.0));
+    m_->held[0] = m_->index_ == 0 ? 0.0 : isnan(t2_) ? NAN : t2_ != 0.0 ? m_->held[1] : m_->v[0];
+    const double t0_ = (isnan(m_->held[0]) || isnan(m_->lo) ? NAN : m_->held[0] < m_->lo ? 1.0 : 0.0);
+    m_->alarm[0] = (t0_ == 0.0 ? (isnan(m_->held[0]) || isnan(m_->hi) ? NAN : m_->held[0] > m_->hi ? 1.0 : 0.0) : t0_ != t0_ ? NAN : 1.0);
+    const double t3_ = ((double)m_->index_ > 0.0 ? 1.0 : 0.0);
+    m_->rising[0] = (t3_ == 0.0 ? 0.0 : t3_ != t3_ ? NAN : (m_->index_ < 1 ? NAN : (isnan(m_->held[0]) || isnan(m_->held[1]) ? NAN : m_->held[0] > m_->held[1] ? 1.0 : 0.0)));
 }
 
 #endif

@@ -21,7 +21,10 @@
  * name_(n-k) for each sequence: q and u (k <= 1). The parameters are fields
  * holding the file's values once heat_init has run: dt = 0.01. After assigning
  * one, call heat_update. Compiled in, as a size, a bound or a lag cannot
- * change: N.
+ * change: N. A term the interpreter would refuse is NaN, and so is every term
+ * that reads one, through a guard or a comparison as through arithmetic;
+ * -ffinite-math-only, which -ffast-math implies, removes the tests that make
+ * it so.
  */
 
 /* The parameters, which the host may assign, then what derives from them,

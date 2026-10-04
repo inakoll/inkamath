@@ -97,12 +97,14 @@ private:
                         const Scope<Value>* instance, const std::set<std::string>& aside,
                         bool clauses = false) {
         std::set<std::string> fixed;
+        bool                  aware = false;
         for (;;) {
             CompileC compiler(definitions, model, instance ? *instance : definitions.Session());
             compiler.module_ = module;
             compiler.fixed_  = fixed;
             compiler.aside_  = aside;
             compiler.clauses_ = clauses;
+            compiler.aware_   = aware;
             try {
                 compiler.Define(compiler.root_);
                 if (model) compiler.Signature();
@@ -115,7 +117,10 @@ private:
                         more = true;
                     }
                 }
-                return compiler.Print(module, source);
+                Compiled compiled = compiler.Print(module, source);
+                // One that writes NaN anywhere is compiled again, aware.
+                if (aware || compiled.header.find("NAN") == std::string::npos) return compiled;
+                aware = true;
             } catch (const Fix& fix) {
                 fixed.insert(fix.names.begin(), fix.names.end());
             }
@@ -1115,8 +1120,27 @@ private:
         if (base.constant && exponent.constant) return Fold(expression);
         if (!exponent.Scalar()) throw Reason("a matrix cannot be an exponent");
         if (!base.Scalar()) return Answer(Power(base, exponent));
-        return Answer(
-            Cell("pow(" + base.cells[0].text + ", " + exponent.cells[0].text + ")", primary));
+        // C's absorbs a NaN where the other operand is 1 or 0: pow(1, NaN) and
+        // pow(NaN, 0) are 1.
+        const auto other = [](const Code& c, double v) {
+            return c.constant && Doubles(*c.constant)[0] != v;
+        };
+        const std::string test =
+            other(exponent, 0.0) || other(base, 1.0) ? "" : Nan(base, &exponent);
+        const std::string power = "pow(" + base.cells[0].text + ", " + exponent.cells[0].text + ")";
+        return Answer(Cell(test.empty() ? power : "(" + test + power + ")", primary));
+    }
+
+    // In a header that writes NaN, a decision on a value is NaN where an
+    // operand is, as the interpreter refuses it (DESIGN.md, a NaN reaches
+    // every term that reads it): the test of each operand given that is
+    // neither a constant nor the index, written before the decision.
+    std::string Nan(const Code& x, const Code* y = nullptr) const {
+        std::string test;
+        for (const Code* code : {&x, y})
+            if (aware_ && code && !code->constant && code->cells[0].text != index_text_)
+                test += (test.empty() ? "isnan(" : " || isnan(") + code->cells[0].text + ")";
+        return test.empty() ? test : test + " ? NAN : ";
     }
 
     // By squaring, as the interpreter does it, of the inverse for a negative
@@ -1172,8 +1196,9 @@ private:
         const Code left = Emit(expression->m_e1()), right = Emit(expression->m_e2());
         if (left.constant && right.constant) return Fold(expression);
         if (!left.Scalar() || !right.Scalar()) throw Reason("a comparison of matrices");
-        return Answer(Cell("(" + Wrap(left.cells[0], sum) + Operator(expression->Op()) +
-                               Wrap(right.cells[0], sum) + " ? 1.0 : 0.0)",
+        return Answer(Cell("(" + Nan(left, &right) + Wrap(left.cells[0], sum) +
+                               Operator(expression->Op()) + Wrap(right.cells[0], sum) +
+                               " ? 1.0 : 0.0)",
                            primary));
     }
 
@@ -1186,7 +1211,9 @@ private:
             if (!Value::truth(*code.constant)) return std::nullopt;
             return std::string();
         }
-        if (!Defers(guard)) return Test(guard);
+        // Aware, 'and' and 'or' are truths of 1, 0 or NaN, as where they defer.
+        if (!(aware_ && dynamic_cast<LogicExpression<Value>*>(guard.get())) && !Defers(guard))
+            return Test(guard);
         const std::string truth = Shared(Cell(Truth(guard), primary)).text;
         return "isnan(" + truth + ") ? NAN : " + truth + " != 0.0";
     }
@@ -1222,9 +1249,10 @@ private:
         if (code.constant) return Value::truth(*code.constant) ? "1" : "0";
         if (const auto* compare = dynamic_cast<CompareExpression<Value>*>(expression.get())) {
             const Code left = Emit(compare->m_e1()), right = Emit(compare->m_e2());
-            return Wrap(left.cells[0], sum) + Operator(compare->Op()) + Wrap(right.cells[0], sum);
+            return Nan(left, &right) + Wrap(left.cells[0], sum) + Operator(compare->Op()) +
+                   Wrap(right.cells[0], sum);
         }
-        return Wrap(code.cells[0], sum) + " != 0.0";
+        return Nan(code) + Wrap(code.cells[0], sum) + " != 0.0";
     }
 
     // The right of an 'and' or 'or' is read only where its left has not
@@ -1318,7 +1346,7 @@ private:
         const std::optional<bool> right = truth(Quiet(expression->m_e2()));
         if (left && right) return Answer(Literal(Value(Number(*right ? 1 : 0))));
         const PExpression<Value> self = expression->self();
-        if (Defers(self)) return Answer(Cell(Truth(self), primary));
+        if (aware_ || Defers(self)) return Answer(Cell(Truth(self), primary));
         return Answer(Cell("(" + Test(self) + " ? 1.0 : 0.0)", primary));
     }
 
@@ -3125,6 +3153,11 @@ private:
         std::vector<std::string> fixed(fixed_.begin(), fixed_.end());
         if (!fixed.empty())
             text += " Compiled in, as a size, a bound or a lag cannot change: " + list(fixed) + ".";
+        if (aware_)
+            text +=
+                " A term the interpreter would refuse is NaN, and so is every term that reads "
+                "one, through a guard or a comparison as through arithmetic; -ffinite-math-only, "
+                "which -ffast-math implies, removes the tests that make it so.";
         std::string out = "/* Using it:\n *\n";
         out += " *     " + module + " m;\n";
         out += " *     " + module + "_init(&m);\n";
@@ -3423,6 +3456,7 @@ private:
     std::set<std::string>            fixed_;    // parameters compiled as constants; see Fix
     std::set<std::string>            aside_;    // definitions refused; see Refusals
     bool                             clauses_ = false;  // whether the step keeps them; see Build
+    bool                             aware_ = false;  // whether it writes NaN, and so tests for it
     std::map<std::string, Value>     known_;    // globals that read only those
     std::set<std::string>            read_parameters_;      // by the value being compiled
     bool                             read_global_ = false;  // by the value being compiled

@@ -373,6 +373,61 @@ set(args --check c90.ink g -o c90.c)
 check(check_c90)
 holds(check_c90 c90.c [[m_->z_clause_ = isnan(t1_) ? 0 : t1_ != 0.0 ? 1 : 2;]])
 
+# A NaN reaches every term that reads it (DESIGN.md): the steps that
+# test/compile/nan.ink specifies, each compiled with nothing to say.
+set(nan "${CMAKE_CURRENT_LIST_DIR}/compile/nan.ink")
+foreach(model IN ITEMS level pick refuse both walked tuned either)
+    set(args --compile ${nan} ${model} -o ${model}.h)
+    check(compile_nan_${model})
+endforeach()
+holds(compile_nan_level level.h
+      [[    m_->y[0] = level_lim0(m_, m_->x[0]);
+    m_->high[0] = isnan(m_->y[0]) ? NAN : m_->y[0] > 0.5 ? 1.0 : 0.0;
+]]
+      [[ * name_(n-k) for each sequence: x, y and high. A term the interpreter would
+ * refuse is NaN, and so is every term that reads one, through a guard or a
+ * comparison as through arithmetic; -ffinite-math-only, which -ffast-math
+ * implies, removes the tests that make it so.
+]])
+holds(compile_nan_pick pick.h
+      [[    m_->y[0] = isnan(m_->x[0]) ? NAN : m_->x[0] > 0.0 ? m_->x[0] : NAN;
+    m_->on[0] = isnan(m_->y[0]) ? NAN : m_->y[0] > 2.0 ? 1.0 : 0.0;
+    m_->p[0] = (isnan(m_->y[0]) ? NAN : pow(1.0, m_->y[0]));
+]])
+holds(compile_nan_refuse refuse.h
+      [[    m_->y[0] = isnan(m_->x[0]) ? NAN : m_->x[0] <= 0.0 ? NAN : m_->x[0];
+    m_->z[0] = isnan(m_->y[0]) ? NAN : m_->y[0] > 1.0 ? 1.0 : 0.0;
+]])
+holds(compile_nan_both both.h
+      [[    const double t0_ = (isnan(m_->x[0]) ? NAN : m_->x[0] < 3.0 ? 1.0 : 0.0);
+    const double t1_ = (t0_ == 0.0 ? 0.0 : t0_ != t0_ ? NAN : (m_->index_ < 1 ? NAN : (isnan(m_->y[1]) ? NAN : m_->y[1] > 0.5 ? 1.0 : 0.0)));
+    m_->w[0] = isnan(t1_) ? NAN : t1_ != 0.0 ? 1.0 : 0.0;
+    m_->y[0] = m_->index_ == 0 ? 2.0 : isnan(m_->x[0]) ? NAN : m_->x[0] > 0.0 ? m_->x[0] : NAN;
+    m_->z[0] = isnan(m_->y[0]) ? NAN : m_->y[0] != 0.0 ? 1.0 : 0.0;
+]])
+holds(compile_nan_walked walked.h
+      [[        const double t_ = isnan(arg_a) ? NAN : arg_a > 1.0 ? 0.0 : t1_ / 2.0;
+]]
+      [[    m_->y[0] = walked_lim0(m_, isnan(m_->x[0]) ? NAN : m_->x[0] > 0.0 ? m_->x[0] : NAN);
+]])
+holds(compile_nan_tuned tuned.h
+      [[    m_->a = isnan(m_->g) ? NAN : m_->g > 0.0 ? m_->g : NAN;
+    m_->k = isnan(m_->a) ? NAN : m_->a > 1.0 ? 1.0 : 0.0;
+]])
+holds(compile_nan_either either.h
+      [[    m_->y[0] = isnan(m_->x[0]) ? NAN : m_->x[0] > 0.0 ? m_->x[0] : NAN;
+    const double t0_ = (isnan(m_->x[0]) ? NAN : m_->x[0] > 3.0 ? 1.0 : 0.0);
+    const double t1_ = (t0_ == 0.0 ? ((isnan(m_->y[0]) ? NAN : m_->y[0] > 0.5 ? 1.0 : 0.0)) : t0_ != t0_ ? NAN : 1.0);
+    m_->o[0] = isnan(t1_) ? NAN : t1_ != 0.0 ? 1.0 : 0.0;
+]])
+# The clause --check keeps is 0 where the guard reads NaN.
+foreach(instance IN ITEMS pair any)
+    set(args --check ${nan} ${instance} -o ${instance}.c)
+    check(check_nan_${instance})
+endforeach()
+holds(check_nan_pair pair.c [[m_->w_clause_ = isnan(t1_) ? 0 : t1_ != 0.0 ? 1 : 2;]])
+holds(check_nan_any any.c [[m_->o_clause_ = isnan(t1_) ? 0 : t1_ != 0.0 ? 1 : 2;]])
+
 # A model's history of its inputs (DESIGN.md): a read before the stream that
 # no history gives, and a history that init cannot fold, each refused by name.
 function(refused model body why)

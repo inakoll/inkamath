@@ -21,7 +21,10 @@
  * is name_(n-k) for each sequence: zp, zs, Pp, K, P (k <= 1), xp, z and
  * x (k <= 1). The parameters are fields holding the file's values once
  * kalman2_init has run: H (2x2), I (2x2), Q (2x2), R (2x2) and dt = 1.0. After
- * assigning one, call kalman2_update.
+ * assigning one, call kalman2_update. A term the interpreter would refuse is
+ * NaN, and so is every term that reads one, through a guard or a comparison as
+ * through arithmetic; -ffinite-math-only, which -ffast-math implies, removes
+ * the tests that make it so.
  */
 
 /* The parameters, which the host may assign, then what derives from them,

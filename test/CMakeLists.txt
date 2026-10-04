@@ -79,7 +79,8 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brin
                          decimate:trail drift:sill drift:seam history:past history:twin
                          history:lit history:rise history:ajar history:sown history:nest history:kin
                          history:twice history:relayed history:pole
-                         history:huge history:veiled)
+                         history:huge history:veiled nan:run nan:sign nan:shy nan:pair nan:lap
+                         nan:trim nan:any)
     string(REPLACE ":" ";" checked ${checked})
     list(GET checked 0 file)
     list(GET checked 1 instance)
@@ -146,6 +147,22 @@ set_tests_properties(check_odd_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^odd: 100 steps from 1, against exact values\nodd\\.y: within 0\nodd\\.z: within 0, from 2\n$")
 set_tests_properties(check_servo_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^servo: 100 steps from 0, against exact values\n(servo\\.[a-z]+: within [0-9.e+-]+\n)+$")
+# A NaN reaches every term that reads it (DESIGN.md): each guard, comparison
+# and power reading a failure answers NaN, where the interpreter gives none.
+set_tests_properties(check_run_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^run: 100 steps from 0, against exact values until 0 and inexact ones from there\nrun\.y: within [0-9.e+-]+\nrun\.high: within 0\n$")
+set_tests_properties(check_sign_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^sign: 100 steps from 0, against exact values\nsign\.y: within 0\nsign\.on: within 0\nsign\.p: within 0\n$")
+set_tests_properties(check_shy_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^shy: 100 steps from 0, against exact values\nshy\.y: within 0\nshy\.z: within 0\n$")
+set_tests_properties(check_pair_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^pair: 100 steps from 0, against exact values\npair\.w: within 0\npair\.y: within 0\npair\.z: within 0\n$")
+set_tests_properties(check_lap_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^lap: 100 steps from 0, against exact values until 0 and inexact ones from there\nlap\.y: within [0-9.e+-]+\n$")
+set_tests_properties(check_trim_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^trim: 100 steps from 0, against exact values\ntrim\.y: within 0\n$")
+set_tests_properties(check_any_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^any: 100 steps from 0, against exact values\nany\.y: within 0\nany\.o: within 0\n$")
 set_tests_properties(check_boxcar_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^boxcar: 100 steps from 0, against exact values\nboxcar\\.f: within 0\nboxcar\\.t: within 0\nboxcar\\.y: within 0, from 1\nboxcar\\.w: within 0\nboxcar\\.z: within 0\nboxcar\\.q: within 0, from 3\n$")
 set_tests_properties(check_stride_report PROPERTIES PASS_REGULAR_EXPRESSION
