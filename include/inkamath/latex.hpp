@@ -185,14 +185,16 @@ private:
         return Head(name, p) + "_" + Braced(subscript);
     }
 
-    // Where the names of a clause for every cell range.
+    // Where the names of a clause for every cell range, those bounded as
+    // written: a size inferred is a call's, not the definition's.
     static std::string Bounds(const ParametersDefinition<T>& p) {
-        if (p.row_name().empty()) return "";
-        std::string out = ", \\quad ";
-        if (p.tensor())
-            out += "1 \\le " + Name(p.slice_name()) + " \\le " + Of(*p.slices()).text + ",\\ ";
-        out += "1 \\le " + Name(p.row_name()) + " \\le " + Of(*p.rows()).text;
-        if (!p.column()) out += ",\\ 1 \\le " + Name(p.col_name()) + " \\le " + Of(*p.cols()).text;
+        std::string out;
+        for (const auto& [name, bound] : {std::pair(&p.slice_name(), &p.slices()),
+                                          {&p.row_name(), &p.rows()},
+                                          {&p.col_name(), p.column() ? nullptr : &p.cols()}})
+            if (bound && *bound)
+                out += (out.empty() ? ", \\quad " : ",\\ ") + std::string("1 \\le ") + Name(*name) +
+                       " \\le " + Of(**bound).text;
         return out;
     }
 

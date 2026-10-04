@@ -218,7 +218,10 @@ J[j<=2, k<=2] = j == k
 # A size is written, the clauses of one matrix agree on it, and a cell is a
 # single value.
 >> M[r,c] = r + c
-error: M has no size; write it as M[r<=rows, c<=cols]
+M[r,c] = r + c
+
+>> M
+error: M has no size, as nothing reads a matrix at r alone; write it as M[r<=rows, c<=cols]
 
 >> V[j<=2, k<=2] | j == k = 1
 V[j<=2, k<=2] | j == k = 1

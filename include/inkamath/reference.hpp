@@ -9,6 +9,7 @@
 #include "inkamath/convergence.hpp"
 
 #include <algorithm>
+#include <array>
 #include <exception>
 #include <memory>
 #include <numeric>
@@ -64,6 +65,14 @@ struct Clause {
     // What the user typed. '?' prints it back rather than rendering the
     // expression, so the answer is the definition, not a normalisation of it.
     std::string             written;
+    // Where a clause for all cells reads a matrix at an index whose bound is
+    // not written, 'z[i,j]', and which index of the cell, slice, row or
+    // column, each place reads, or -1 (DESIGN.md, sizes inferred).
+    struct Read {
+        const CellExpression<T>* cell;
+        std::array<int, 3>       dims;
+    };
+    std::vector<Read> reads;
 
     explicit operator bool() const {return bool(expression);}
 };
@@ -141,7 +150,10 @@ public:
         // (C11), which is how a definition is started over; anything else
         // replaces the clause that names the same thing and is appended when
         // there is none.
-        const Clause<T> clause{ai_parameters, ai_expression, written};
+        Clause<T> clause{ai_parameters, ai_expression, written, {}};
+        if (ai_parameters.cells() && !ai_parameters.row_name().empty())
+            for (const PExpression<T>& e : {ai_parameters.guard(), ai_expression})
+                Reads(e, ai_parameters, reference_name_, {}, clause.reads);
         // One call binds the parameters once, for whichever clause answers, so
         // the clauses have to agree on their names. One that disagrees could
         // only ever read a global under its own name (DESIGN.md, C51).
@@ -161,15 +173,6 @@ public:
             throw std::runtime_error(reference_name_ + "_" + std::to_string(ai_parameters.index())
                                      + " is already defined without a guard,"
                                        " so this clause can never apply");
-        }
-        // A size is written, not guessed from the cells a clause happens to give.
-        if (ai_parameters.cells() && !ai_parameters.row_name().empty() &&
-            (!ai_parameters.rows() || !ai_parameters.cols() ||
-             (ai_parameters.tensor() && !ai_parameters.slices()))) {
-            throw std::runtime_error(
-                reference_name_ + " has no size; write it as " + reference_name_ + "[" +
-                (ai_parameters.tensor() ? ai_parameters.slice_name() + "<=slices, " : "") +
-                ai_parameters.row_name() + "<=rows, " + ai_parameters.col_name() + "<=cols]");
         }
         // One index names a row, so a definition by rows and columns has no
         // clause for one, and a column's clauses name no column; a tensor's
@@ -260,6 +263,88 @@ public:
         if (Sequence()) return EvaluateTerm(index, walk);
         if (indexed) throw std::runtime_error(reference_name_ + " is not a sequence");
         return EvaluateCells(walk);
+    }
+
+    // The size of the matrix by cells, or of a term at its index, from the
+    // clauses that fit (DESIGN.md, sizes inferred): the matrix written whole
+    // and the bounds written agree and are the size, and an index none of them
+    // bounds takes what the clauses' reads give it, which agree too. `bound`
+    // reads a bound written and `read` the extent of a matrix read, each in the
+    // clause's frame. None where nothing is written whole and no clause fits.
+    template <typename Fits, typename Bound, typename Read>
+    std::optional<Extent> Measured(const std::optional<Extent>& whole, Fits fits,
+                                   const std::string& subject, Bound bound, Read read) const {
+        std::array<std::optional<size_t>, 3> written, inferred;  // slices, rows, columns
+        if (whole) written = {whole->slices, whole->rows, whole->cols};
+        const auto agree = [this](std::optional<size_t>& into, size_t size) {
+            if (into && *into != size) {
+                throw std::runtime_error("the clauses of " + reference_name_ +
+                                         " give it different sizes");
+            }
+            into = size;
+        };
+        const Clause<T>* first = nullptr;
+        for (const Clause<T>& clause : clauses_) {
+            const ParametersDefinition<T>& p = clause.parameters;
+            if (!p.cells() || p.row_name().empty() || !fits(clause)) continue;
+            if (!first) first = &clause;
+            const PExpression<T>* bounds[] = {&p.slices(), &p.rows(), &p.cols()};
+            for (const int d : {1, 2, 0}) {
+                if (*bounds[d] || (d == 0 && !p.tensor()))
+                    agree(written[d], *bounds[d] ? bound(clause, *bounds[d]) : 0);
+            }
+            const auto given =
+                Inferred(clause, [&](const PExpression<T>& m) { return read(clause, m); });
+            for (int d = 0; d < 3; ++d)
+                if (given[d]) agree(inferred[d], given[d]);
+        }
+        if (!whole && !first) return std::nullopt;
+        std::array<size_t, 3> size{};
+        for (int d = 0; d < 3; ++d) {
+            if (!written[d] && !inferred[d]) {
+                throw std::runtime_error(subject + " has no size, as nothing reads a matrix at " +
+                                         Named(first->parameters, d) + " alone; write it as " +
+                                         Hint(*first));
+            }
+            size[d] = written[d] ? *written[d] : *inferred[d];
+        }
+        return Extent{size[1], size[2], size[0]};
+    }
+
+    // The sizes a clause's reads give the indices it leaves unbounded, by the
+    // extent of each matrix read, 0 where none does; the reads of an index
+    // agree.
+    template <typename Extents>
+    static std::array<size_t, 3> Inferred(const Clause<T>& clause, Extents extent) {
+        std::array<size_t, 3>                          size{};
+        std::array<const typename Clause<T>::Read*, 3> by{};
+        for (const typename Clause<T>::Read& read : clause.reads) {
+            const CellExpression<T>& cell = *read.cell;
+            const Extent             e    = extent(cell.Matrix());
+            // Read as reading it would: a tensor by one index or three.
+            if (cell.Slice() && !e.slices) (void)numeric_interface<T>::cell(T(e), 1, 1, 1);
+            if (!cell.Slice() && cell.Col() && e.slices)
+                (void)numeric_interface<T>::cell(T(e), 1, 1);
+            const std::array<size_t, 3> places =
+                cell.Slice() ? std::array<size_t, 3>{e.slices, e.rows, e.cols}
+                : cell.Col() ? std::array<size_t, 3>{e.rows, e.cols, 0}
+                             : std::array<size_t, 3>{e.slices ? e.slices : e.rows, 0, 0};
+            for (size_t k = 0; k < 3; ++k) {
+                const int d = read.dims[k];
+                if (d < 0) continue;
+                const size_t at = static_cast<size_t>(d);
+                if (by[at] && size[at] != places[k]) {
+                    throw std::runtime_error(
+                        Quoted(*by[at]) +
+                        (by[at] == &read ? " gives " : " and " + Quoted(read) + " give ") +
+                        Named(clause.parameters, d) + " different sizes, " +
+                        std::to_string(size[at]) + " and " + std::to_string(places[k]));
+                }
+                size[at] = places[k];
+                by[at]   = &read;
+            }
+        }
+        return size;
     }
 
     // How far down the general clause reaches, and which term a limit starts
@@ -548,6 +633,123 @@ private:
         return joined;
     }
 
+    // The matrices a clause reads at an index of the cell it leaves unbounded,
+    // each read the same at every cell: it reads no index of the cell, no name
+    // the clause binds, a sum's, and no call of the definition itself, whose
+    // size it would need first; a term before is another.
+    static void Reads(const PExpression<T>& e, const ParametersDefinition<T>& p,
+                      const std::string& self, const std::vector<std::string>& bound,
+                      std::vector<typename Clause<T>::Read>& reads) {
+        if (!e) return;
+        if (const auto* cell = dynamic_cast<const CellExpression<T>*>(e.get())) {
+            std::vector<std::string> hidden = bound;
+            hidden.insert(hidden.end(), {p.slice_name(), p.row_name(), p.col_name()});
+            typename Clause<T>::Read read{cell, {-1, -1, -1}};
+            size_t                   k = 0;
+            for (const PExpression<T>* place : {&cell->Slice(), &cell->Row(), &cell->Col()})
+                if (*place) read.dims[k++] = Unbounded(p, **place, bound);
+            if (Fixed(*cell->Matrix(), hidden, self) &&
+                std::any_of(read.dims.begin(), read.dims.end(), [](int d) { return d >= 0; }))
+                reads.push_back(read);
+        }
+        for (const PExpression<T>& child : e->Children()) {
+            std::vector<std::string> inner = bound;
+            if (const std::string* own = Binding(*e, child)) inner.push_back(*own);
+            Reads(child, p, self, inner, reads);
+        }
+    }
+
+    // Which index of the cell, unbounded, a place reads alone, or -1.
+    static int Unbounded(const ParametersDefinition<T>& p, const Expression<T>& place,
+                         const std::vector<std::string>& bound) {
+        const std::string& name = place.Name();
+        if (!dynamic_cast<const RefExpression<T>*>(&place) ||
+            std::find(bound.begin(), bound.end(), name) != bound.end())
+            return -1;
+        if (p.tensor() && !p.slices() && name == p.slice_name()) return 0;
+        if (!p.rows() && name == p.row_name()) return 1;
+        if (!p.cols() && name == p.col_name()) return 2;
+        return -1;
+    }
+
+    static bool Fixed(const Expression<T>& e, const std::vector<std::string>& names,
+                      const std::string& self) {
+        const auto* call = dynamic_cast<const FuncExpression<T>*>(&e);
+        if ((call || dynamic_cast<const RefExpression<T>*>(&e)) &&
+            (std::find(names.begin(), names.end(), e.Name()) != names.end() ||
+             (e.Name() == self && !(call && call->m_e2()))))
+            return false;
+        for (const PExpression<T>& child : e.Children()) {
+            if (!child) continue;
+            std::vector<std::string> inner = names;
+            if (const std::string* own = Binding(e, child)) std::erase(inner, *own);
+            if (!Fixed(*child, inner, self)) return false;
+        }
+        return true;
+    }
+
+    // The name a sum or a grad binds in its body, or none.
+    static const std::string* Binding(const Expression<T>& e, const PExpression<T>& child) {
+        if (const auto* series = dynamic_cast<const SeriesExpression<T>*>(&e);
+            series && child == series->Body())
+            return &series->Index();
+        if (const auto* grad = dynamic_cast<const GradExpression<T>*>(&e);
+            grad && child == grad->Body())
+            return &grad->Variable();
+        return nullptr;
+    }
+
+    static std::string Named(const ParametersDefinition<T>& p, int d) {
+        return d == 0 ? p.slice_name() : d == 1 ? p.row_name() : p.col_name();
+    }
+
+    // A read as a message quotes it: a name, a number, or what it reads at.
+    static std::string Quoted(const typename Clause<T>::Read& read) {
+        std::string text;
+        for (const PExpression<T>* place :
+             {&read.cell->Slice(), &read.cell->Row(), &read.cell->Col()})
+            if (*place) text += (text.empty() ? "" : ",") + Quoted(**place);
+        return Quoted(*read.cell->Matrix()) + "[" + text + "]";
+    }
+    static std::string Quoted(const Expression<T>& e) {
+        if (const auto* value = dynamic_cast<const ValExpression<T>*>(&e))
+            return numeric_interface<T>::toString(value->value);
+        return dynamic_cast<const RefExpression<T>*>(&e) ? e.Name() : "(...)";
+    }
+
+    // The clause as written, with a bound for each index it leaves without.
+    std::string Hint(const Clause<T>& clause) const {
+        static const char* const sizes[] = {"slices", "rows", "cols"};
+        const std::string&       w       = clause.written;
+        std::vector<std::string> places(1);
+        size_t                   open  = std::string::npos;
+        int                      depth = 0;
+        for (size_t k = 0; k < w.size(); ++k) {
+            const char c = w[k];
+            depth += (c == '(' || c == '[') - (c == ')' || c == ']');
+            if (open == std::string::npos) {
+                if (c == '[' && depth == 1) open = k;
+            } else if (depth == 0) {
+                break;
+            } else if (depth == 1 && c == ',') {
+                places.emplace_back();
+            } else {
+                places.back() += c;
+            }
+        }
+        if (open == std::string::npos) return reference_name_ + Bounded();
+        std::string hint = w.substr(0, open) + "[";
+        for (size_t k = 0; k < places.size(); ++k) {
+            std::string& place = places[k];
+            place.erase(0, place.find_first_not_of(' '));
+            place.erase(place.find_last_not_of(' ') + 1);
+            if (place.find("<=") == std::string::npos)
+                place += std::string("<=") + sizes[k + (clause.parameters.tensor() ? 0 : 1)];
+            hint += (k ? ", " : "") + place;
+        }
+        return hint + "]";
+    }
+
     // A clause bound from inside an expression has no written form to quote.
     std::string Written(const Clause<T>& clause) const {
         return clause.written.empty() ? reference_name_ : clause.written;
@@ -666,27 +868,16 @@ private:
                                     : ""));
     }
 
-    // A matrix defined by its cells (README.md section 2). Its size is what its
-    // clauses for all cells bound it to, or the matrix written whole, and they
-    // agree on it; the matrix written whole gives every cell no clause does.
+    // A matrix defined by its cells (README.md section 2). Its size is the
+    // matrix written whole's or its clauses' for all cells, by their bounds or
+    // their reads (Measured); the matrix written whole gives every cell no
+    // clause does.
     template <typename Walk>
     typename Walk::Result EvaluateCells(Walk& walk) const {
-        std::optional<Extent>                extent;
         std::optional<typename Walk::Result> whole;
-        if (const Clause<T>* plain = Plain()) {
-            whole  = walk.Eval(plain->expression);
-            extent = walk.Value(*whole).Size();
-        }
-        for (const Clause<T>& clause : clauses_) {
-            const ParametersDefinition<T>& p = clause.parameters;
-            if (!p.cells() || p.row_name().empty()) continue;
-            const Extent size = Bounds(p, walk);
-            if (extent && *extent != size) {
-                throw std::runtime_error("the clauses of " + reference_name_ +
-                                         " give it different sizes");
-            }
-            extent = size;
-        }
+        if (const Clause<T>* plain = Plain()) whole = walk.Eval(plain->expression);
+        const std::optional<Extent> extent =
+            Sized(whole, [](const Clause<T>&) { return true; }, 0, reference_name_, walk);
         if (!extent) {
             throw std::runtime_error(reference_name_ + " has no size; write it as " +
                                      reference_name_ + Bounded());
@@ -739,11 +930,30 @@ private:
         return extent.slices ? static_cast<int>(extent.slices) : 1;
     }
 
-    // The size a clause for all cells bounds its names to.
-    template <typename Walk>
-    static Extent Bounds(const ParametersDefinition<T>& p, Walk& walk) {
-        return Extent{Size(walk.Bound(p.rows())), Size(walk.Bound(p.cols())),
-                      p.tensor() ? Size(walk.Bound(p.slices())) : 0};
+    // Measured by the walk, each bound and each read in the frame the clause's
+    // cells see: a general clause's at the term's index.
+    template <typename Fits, typename Walk>
+    std::optional<Extent> Sized(std::optional<typename Walk::Result>& whole, Fits fits, int index,
+                                const std::string& subject, Walk& walk) const {
+        const auto in = [&](const Clause<T>& clause, auto measure) {
+            std::optional<typename ReferenceStack<T>::Trial> term;
+            if (clause.parameters.general()) {
+                term.emplace(walk.stack(), clause.parameters.index_name());
+                SetIndex(clause.parameters.index_name(), index, walk.stack());
+            }
+            return measure();
+        };
+        return Measured(
+            whole ? std::optional<Extent>(walk.Value(*whole).Size()) : std::nullopt, fits, subject,
+            [&](const Clause<T>& clause, const PExpression<T>& e) {
+                return in(clause, [&] { return Size(walk.Bound(e)); });
+            },
+            [&](const Clause<T>& clause, const PExpression<T>& e) {
+                return in(clause, [&] {
+                    auto value = walk.Eval(e);
+                    return walk.Value(value).Size();
+                });
+            });
     }
 
     static size_t Size(const T& value) {
@@ -855,26 +1065,13 @@ private:
             }
         }
         const auto level = [&](const Clause<T>& c) { return based ? base(c) : general(c); };
-        std::optional<Extent> extent;
-        if (whole) extent = walk.Value(*whole).Size();
-        for (const Clause<T>& clause : clauses_) {
-            const ParametersDefinition<T>& p = clause.parameters;
-            if (!p.cells() || p.row_name().empty() || !level(clause)) continue;
-            typename ReferenceStack<T>::Trial term(walk.stack(), p.index_name());
-            if (p.general()) SetIndex(p.index_name(), index, walk.stack());
-            const Extent size = Bounds(p, walk);
-            if (extent && *extent != size) {
-                throw std::runtime_error("the clauses of " + reference_name_ +
-                                         " give it different sizes");
-            }
-            extent = size;
-        }
+        const std::string name  = reference_name_ + "_" + std::to_string(index);
+        const std::optional<Extent> extent = Sized(whole, level, index, name, walk);
         if (!extent) {
             throw std::runtime_error(reference_name_ + " has no size; write it as " +
                                      reference_name_ + "_n" + Bounded());
         }
         typename Walk::Result term = whole ? std::move(*whole) : walk.Blank(*extent);
-        const std::string     name = reference_name_ + "_" + std::to_string(index);
         for (const Clause<T>& clause : clauses_) {
             if (IsOneCell(clause) && (base(clause) || general(clause)))
                 Named(clause.parameters, walk.Value(term), name);

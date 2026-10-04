@@ -1396,18 +1396,7 @@ private:
                                                         const Reference<Value>& definition,
                                                         Fits fits, const std::optional<Code>& whole,
                                                         std::vector<std::string>* taken = nullptr) {
-        std::optional<Extent> extent;
-        if (whole) extent = Extent{whole->rows, whole->cols};
-        for (const Clause<Value>& clause : definition.Clauses()) {
-            const ParametersDefinition<Value>& p = clause.parameters;
-            if (!p.cells() || p.row_name().empty() || !fits(clause)) continue;
-            const std::string outer = std::exchange(index_, p.general() ? p.index_name() : "");
-            const Extent      size{Size(p.rows()), Size(p.cols())};
-            index_ = outer;
-            if (extent && *extent != size)
-                throw Reason("the clauses of " + name + " give it different sizes");
-            extent = size;
-        }
+        const std::optional<Extent> extent = Measured(name, definition, whole, fits);
         if (!extent) throw Reason(name + " has no size");
         Code shape;
         shape.rows = extent->rows;
@@ -1580,21 +1569,11 @@ private:
     // clause gives the cell are decided here, as the interpreter would decide
     // them; one that cannot be is refused.
     Code Cells(const std::string& name, const Reference<Value>& definition) {
-        std::optional<Extent> extent;
-        std::optional<Code>   whole;  // the matrix written whole, if it is
-        for (const Clause<Value>& clause : definition.Clauses()) {
-            if (clause.parameters.cells()) continue;
-            whole  = Emit(clause.expression);
-            extent = Extent{whole->rows, whole->cols};
-        }
-        for (const Clause<Value>& clause : definition.Clauses()) {
-            const ParametersDefinition<Value>& p = clause.parameters;
-            if (p.row_name().empty()) continue;
-            const Extent size{Size(p.rows()), Size(p.cols())};
-            if (extent && *extent != size)
-                throw Reason("the clauses of " + name + " give it different sizes");
-            extent = size;
-        }
+        std::optional<Code> whole;  // the matrix written whole, if it is
+        for (const Clause<Value>& clause : definition.Clauses())
+            if (!clause.parameters.cells()) whole = Emit(clause.expression);
+        const std::optional<Extent> extent =
+            Measured(name, definition, whole, [](const Clause<Value>&) { return true; });
         if (!extent) throw Reason(name + " has no size");
         for (const Clause<Value>& clause : definition.Clauses()) {
             const ParametersDefinition<Value>& p = clause.parameters;
@@ -1632,6 +1611,39 @@ private:
         }
         if (constant) code.constant = exact;
         return code;
+    }
+
+    // The size the interpreter measures (Reference::Measured), its bounds and
+    // its reads compiled where the definition is: a function's where it is
+    // called, whose shapes are known.
+    template <typename Fits>
+    std::optional<Extent> Measured(const std::string& name, const Reference<Value>& definition,
+                                   const std::optional<Code>& whole, Fits fits) {
+        const auto in = [&](const Clause<Value>& clause, auto measure) {
+            const ParametersDefinition<Value>& p = clause.parameters;
+            const std::string outer  = std::exchange(index_, p.general() ? p.index_name() : "");
+            const auto        result = measure();
+            index_                   = outer;
+            return result;
+        };
+        try {
+            return definition.Measured(
+                whole ? std::optional<Extent>(Extent{whole->rows, whole->cols}) : std::nullopt,
+                fits, name,
+                [&](const Clause<Value>& clause, const PExpression<Value>& e) {
+                    return in(clause, [&] { return Size(e); });
+                },
+                [&](const Clause<Value>& clause, const PExpression<Value>& e) {
+                    return in(clause, [&] {
+                        const Code read = Emit(e);
+                        return Extent{read.rows, read.cols};
+                    });
+                });
+        } catch (const Reason&) {
+            throw;
+        } catch (const std::runtime_error& error) {
+            throw Reason(error.what());
+        }
     }
 
     std::optional<Code> CellOf(const Reference<Value>& definition, int row, int col) {
