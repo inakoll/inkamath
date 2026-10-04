@@ -426,3 +426,25 @@ tc(b)[b<=2, j<=1, k<=1] = b
 
 >> grad_(x = 1) tc(x)[2,1,1]
 error: grad cannot differentiate tc yet: its slice b hides its parameter b
+
+# C78: an index is a whole number, so one that moves with grad's name is at
+# a jump, as floor is at a whole number, and is refused, by the structure of
+# its expression as floor is (C73); one that reads the name through floor
+# away from a jump is only an index.
+>> sk_n = n^2
+sk_n = n^2
+
+>> vk = [5; 7; 9]
+vk = [5; 7; 9]
+
+>> grad_(x = 2) sk_(x)
+error: an index jumps at x = 2
+
+>> grad_(x = 2) vk[x]
+error: an index jumps at x = 2
+
+>> grad_(x = 2) x*vk[x - x + 3]
+error: an index jumps at x = 2
+
+>> grad_(x = 5/2) x*sk_(floor(x))
+4

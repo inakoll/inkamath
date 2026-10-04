@@ -286,6 +286,7 @@ private:
 
     Jet Call(FuncExpression<T>& call) {
         if (Lookup(call.Name()) || !Reads(call)) return Constant(call.accept(ordinary_));
+        if (call.Call().subexpr()) (void)Index(call.Call().subexpr());
         const auto definition = stack_.Global(call.Name());
         if (stack_.Binds(call.Name()))
             throw std::runtime_error("grad cannot differentiate a local definition yet");
@@ -514,22 +515,29 @@ private:
         return out;
     }
 
+    // An index is a whole number, so one that moves is at a jump, as floor
+    // is at a whole number (C78).
+    int Index(const PExpression<T>& e) {
+        if (Reads(*e) && Moves(Eval(e))) throw std::runtime_error("an index jumps at " + Where());
+        return AsIndex<T>(e->accept(ordinary_));
+    }
+
     Jet Cell(CellExpression<T>& cell) {
         const T*   kept   = Lookup(cell.Matrix()->Name()) ? nullptr : stack_.Kept(*cell.Matrix());
         const Jet  matrix = kept ? Jet() : Eval(cell.Matrix());
         const auto read   = [&](auto f) { return kept ? Constant(f(*kept)) : Map(matrix, f); };
         if (cell.Slice()) {
-            const int slice = AsIndex<T>(cell.Slice()->accept(ordinary_));
-            const int row   = AsIndex<T>(cell.Row()->accept(ordinary_));
-            const int col   = AsIndex<T>(cell.Col()->accept(ordinary_));
+            const int slice = Index(cell.Slice());
+            const int row   = Index(cell.Row());
+            const int col   = Index(cell.Col());
             return read([slice, row, col](const T& v) {
                 return numeric_interface<T>::cell(v, slice, row, col);
             });
         }
-        const int row    = AsIndex<T>(cell.Row()->accept(ordinary_));
+        const int row = Index(cell.Row());
         if (!cell.Col())
             return read([row](const T& v) { return numeric_interface<T>::row(v, row); });
-        const int col = AsIndex<T>(cell.Col()->accept(ordinary_));
+        const int col = Index(cell.Col());
         return read([row, col](const T& v) { return numeric_interface<T>::cell(v, row, col); });
     }
 
