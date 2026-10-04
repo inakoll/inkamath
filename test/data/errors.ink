@@ -134,13 +134,22 @@ inf  # approximated past a thousand digits
 
 # A part that is NaN is present but has no sign, and answers false to every
 # comparison, so the imaginary unit used to be dropped while its magnitude was
-# still printed: these read 'inf*-nan' and '-nan*-nan' (DESIGN.md, C31).
-# The zero is inexact because an exact one cannot be divided by (phase 13).
+# still printed: this read '-nan*inf' (DESIGN.md, C31). The zero is inexact
+# because an exact one cannot be divided by (phase 13).
+>> i/~0
+-nan+i*inf
+
+# A real product or quotient of real numbers is the real one. Taken as a
+# complex one, an infinity times the zero imaginary part made a NaN there:
+# these read 'inf+i*-nan' and '-nan+i*-nan' (DESIGN.md, C88).
 >> 1/~0
-inf+i*-nan
+inf
 
 >> 0/~0
--nan+i*-nan
+-nan
+
+>> 10^400*~1
+inf
 
 # An exponent outside int's range used to be converted to one anyway, which is
 # undefined: this answered 0 (DESIGN.md, C28).
