@@ -3260,7 +3260,7 @@ that exploring seven domains asked of the interpreter, by how many asked.
   210 were planned: 38 in the interpreter, 202 in the compiler and 29 in the
   check.
 
-- **Sizes inferred in a definition by cells.** A network applies every
+- `[done]` **Sizes inferred in a definition by cells.** A network applies every
   activation cell by cell, and the prelude's functions take single values:
   `exp([1 2])` says a matrix cannot be an exponent, `log([1 2])` speaks of a
   comparison the session never wrote, and each activation is a definition by
@@ -3391,3 +3391,26 @@ that exploring seven domains asked of the interpreter, by how many asked.
   `logistic.ink`'s regression with a sigmoid by cells and no bound, whose
   header is to be the one its bounds written give, byte for byte; wired with
   the implementation.
+
+  Built as specified, every entry passing as written, now
+  `test/data/sizes.ink`; `compile_sized_header` holds `sized.ink`'s header to
+  the one its bounds written give, and `--check` holds it to the
+  interpreter. Three goldens moved, as specified: `M` in `matrices.ink`, now
+  read as well, `nonzero` in `conditional.ink` and `nz` in `tensor.ink`.
+  README shows the one-line ReLU. The size is measured once for interpreter,
+  `grad` and compiler alike, `Reference::Measured`, given how each reads a
+  bound and a read's extent; the reads are found as a clause is defined.
+  Departures: the matrix written whole counts as a size written, never
+  checked against a read; `grad`'s name is bound in its body as a sum's
+  index is; a read of anything but a name is quoted `(...)` where two
+  disagree; a term with no size is named at the index asked, `cs_2`; and the
+  call refused in its own name is the interpreter's, `grad`'s keeping the
+  operator's words. C87 was found and fixed on the way, the hint for one-cell
+  clauses now written from the clause as the others are. Under callgrind,
+  `hand`, `harmonic` and `matrix` moved under 0.1%, `deep`, `grad` and
+  `limit` 0.3 to 0.7% fewer, and `read`, which defines nothing by cells, 1.2%
+  more, all of it `Number::Literal` no longer inlining `push_back`: the unit
+  grew.
+  376 lines of sources added and 121 removed, 255 more in all, about 40 of
+  them the body of a call indented under the handler that names it, where
+  about 120 were planned.

@@ -393,6 +393,18 @@ U[j<=3, k<=3] | j <= k = 1
 A size can come from a parameter: `H(n)[j<=n, k<=n] = 1/(j+k-1)` is the
 Hilbert matrix of any size.
 
+A bound left out is the size of the matrix the index reads, so a ReLU is one
+line, of a matrix of any size:
+
+```
+>> rl(z)[i,j] = z[i,j]*(z[i,j] > 0)
+rl(z)[i,j] = z[i,j]*(z[i,j] > 0)
+
+>> rl([1 -2; 0 3])
+[1, 0;
+ 0, 3]
+```
+
 Blocks are written as a paper writes them, by name, `[A, B; C, D]`, with a
 comma between them. Brackets index whatever they touch, inside a literal as
 anywhere, so a block must not touch the one before it: with a space or a
