@@ -150,21 +150,21 @@ set_tests_properties(check_servo_report PROPERTIES PASS_REGULAR_EXPRESSION
 # A NaN reaches every term that reads it (DESIGN.md): each guard, comparison
 # and power reading a failure answers NaN, where the interpreter gives none.
 set_tests_properties(check_run_report PROPERTIES PASS_REGULAR_EXPRESSION
-    "^run: 100 steps from 0, against exact values until 0 and inexact ones from there\nrun\.y: within [0-9.e+-]+\nrun\.high: within 0\n$")
+    "^run: 100 steps from 0, against exact values until 0 and inexact ones from there\nrun\\.y: within [0-9.e+-]+\nrun\\.high: within 0\n$")
 set_tests_properties(check_sign_report PROPERTIES PASS_REGULAR_EXPRESSION
-    "^sign: 100 steps from 0, against exact values\nsign\.y: within 0\nsign\.on: within 0\nsign\.p: within 0\n$")
+    "^sign: 100 steps from 0, against exact values\nsign\\.y: within 0\nsign\\.on: within 0\nsign\\.p: within 0\n$")
 set_tests_properties(check_shy_report PROPERTIES PASS_REGULAR_EXPRESSION
-    "^shy: 100 steps from 0, against exact values\nshy\.y: within 0\nshy\.z: within 0\n$")
+    "^shy: 100 steps from 0, against exact values\nshy\\.y: within 0\nshy\\.z: within 0\n$")
 set_tests_properties(check_slope_report PROPERTIES PASS_REGULAR_EXPRESSION
-    "^slope: 100 steps from 0, against exact values\nslope\.y: within 0\nslope\.g: within 0\nslope\.h: within 0\n$")
+    "^slope: 100 steps from 0, against exact values\nslope\\.y: within 0\nslope\\.g: within 0\nslope\\.h: within 0\n$")
 set_tests_properties(check_pair_report PROPERTIES PASS_REGULAR_EXPRESSION
-    "^pair: 100 steps from 0, against exact values\npair\.w: within 0\npair\.y: within 0\npair\.z: within 0\n$")
+    "^pair: 100 steps from 0, against exact values\npair\\.w: within 0\npair\\.y: within 0\npair\\.z: within 0\n$")
 set_tests_properties(check_lap_report PROPERTIES PASS_REGULAR_EXPRESSION
-    "^lap: 100 steps from 0, against exact values until 0 and inexact ones from there\nlap\.y: within [0-9.e+-]+\n$")
+    "^lap: 100 steps from 0, against exact values until 0 and inexact ones from there\nlap\\.y: within [0-9.e+-]+\n$")
 set_tests_properties(check_trim_report PROPERTIES PASS_REGULAR_EXPRESSION
-    "^trim: 100 steps from 0, against exact values\ntrim\.y: within 0\n$")
+    "^trim: 100 steps from 0, against exact values\ntrim\\.y: within 0\n$")
 set_tests_properties(check_any_report PROPERTIES PASS_REGULAR_EXPRESSION
-    "^any: 100 steps from 0, against exact values\nany\.y: within 0\nany\.o: within 0\n$")
+    "^any: 100 steps from 0, against exact values\nany\\.y: within 0\nany\\.o: within 0\n$")
 set_tests_properties(check_cell_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^cell: 100 steps from 0, against exact values\ncell\\.b: within 0\ncell\\.c: within 0\ncell\\.m: within 0\ncell\\.p: within 0\n$")
 set_tests_properties(check_held_report PROPERTIES PASS_REGULAR_EXPRESSION
