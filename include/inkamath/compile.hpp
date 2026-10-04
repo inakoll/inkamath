@@ -1708,7 +1708,7 @@ private:
         for (const Clause<Value>& clause : definition.Clauses()) {
             const ParametersDefinition<Value>& p = clause.parameters;
             if (!p.cells() || !p.row_name().empty() || p.row() != row || p.col() != col) continue;
-            if (p.guarded() && !Holds(p.guard())) continue;
+            if (p.guarded() && !GuardHolds(p.guard())) continue;
             return Emit(clause.expression);
         }
         for (const bool guarded : {true, false}) {
@@ -1717,7 +1717,7 @@ private:
                 if (p.row_name().empty() || p.guarded() != guarded) continue;
                 places_[p.row_name()]           = Value(Number(row));
                 places_[p.col_name()]           = Value(Number(col));
-                const bool                holds = !p.guarded() || Holds(p.guard());
+                const bool                holds = !p.guarded() || GuardHolds(p.guard());
                 const std::optional<Code> cell =
                     holds ? std::optional<Code>(Emit(clause.expression)) : std::nullopt;
                 places_.erase(p.row_name());
@@ -1728,7 +1728,7 @@ private:
         return std::nullopt;
     }
 
-    bool Holds(const PExpression<Value>& guard) {
+    bool GuardHolds(const PExpression<Value>& guard) {
         return Holds(*Known(guard, "a guard on cells that is not a constant").constant);
     }
 
