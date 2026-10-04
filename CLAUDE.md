@@ -110,6 +110,12 @@ purpose.
   ```
 
   Run it. Do not report work as done on the strength of "it should compile".
+- `master` moves only by fast-forward, never by force. In cloud sessions a
+  checkout, merge and push of `master` in the main checkout is refused, so
+  merge in a detached worktree of `origin/master`
+  (`git merge --no-ff integration`), check its tree is the green
+  `integration`'s, and `git push origin HEAD:master`. Those sessions cannot
+  delete a remote branch either; ask the owner to.
 
 ## 6. C++ conventions
 
