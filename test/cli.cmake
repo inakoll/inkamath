@@ -420,6 +420,14 @@ holds(compile_nan_either either.h
     const double t1_ = (t0_ == 0.0 ? ((isnan(m_->y[0]) ? NAN : m_->y[0] > 0.5 ? 1.0 : 0.0)) : t0_ != t0_ ? NAN : 1.0);
     m_->o[0] = isnan(t1_) ? NAN : t1_ != 0.0 ? 1.0 : 0.0;
 ]])
+# A guard that folds to NaN is refused, as the interpreter refuses it, in the
+# name of its definition and in the words of the operator that reads it.
+file(WRITE "${OUT}/nanguard.ink" "h_n = x_n\nh_n | 0/~0 = 1\nk_n = x_n and 0/~0\n")
+set(args --compile nanguard.ink)
+set(stdout "cannot compile h: a guard needs a number, not -nan\ncannot compile k: and needs a number, not -nan\n")
+set(exit 1)
+check(compile_nan_guard_refused)
+
 # The clause --check keeps is 0 where the guard reads NaN.
 foreach(instance IN ITEMS pair any)
     set(args --check ${nan} ${instance} -o ${instance}.c)

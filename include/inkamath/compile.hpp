@@ -1208,7 +1208,7 @@ private:
         const Code code = Quiet(guard);
         if (!code.Scalar()) throw Reason("a guard that is a matrix");
         if (code.constant) {
-            if (!Value::truth(*code.constant)) return std::nullopt;
+            if (!Holds(*code.constant)) return std::nullopt;
             return std::string();
         }
         // Aware, 'and' and 'or' are truths of 1, 0 or NaN, as where they defer.
@@ -1216,6 +1216,12 @@ private:
             return Test(guard);
         const std::string truth = Shared(Cell(Truth(guard), primary)).text;
         return "isnan(" + truth + ") ? NAN : " + truth + " != 0.0";
+    }
+
+    // A constant's truth, or the interpreter's refusal of it as a reason.
+    template <typename... Needs>
+    static bool Holds(const Value& value, const Needs&... needs) {
+        return Reasoned([&] { return Value::truth(value, needs...); });
     }
 
     // A guard as the clause kept for --check tests it: 0 where it reads NaN,
@@ -1246,7 +1252,7 @@ private:
             return left + (logic->Conjunction() ? " && " : " || ") + Right(*logic, operand).first;
         }
         const Code code = Emit(expression);
-        if (code.constant) return Value::truth(*code.constant) ? "1" : "0";
+        if (code.constant) return Holds(*code.constant) ? "1" : "0";
         if (const auto* compare = dynamic_cast<CompareExpression<Value>*>(expression.get())) {
             const Code left = Emit(compare->m_e1()), right = Emit(compare->m_e2());
             return Nan(left, &right) + Wrap(left.cells[0], sum) + Operator(compare->Op()) +
@@ -1337,7 +1343,10 @@ private:
     PExpression<Value> visit(LogicExpression<Value>* expression) override {
         const auto truth = [expression](const Code& code) {
             if (!code.Scalar()) throw Reason(std::string(expression->Word()) + " of a matrix");
-            return code.constant ? std::optional<bool>(Value::truth(*code.constant)) : std::nullopt;
+            return code.constant
+                       ? std::optional<bool>(Holds(*code.constant, std::string(expression->Word()) +
+                                                                       " needs single values"))
+                       : std::nullopt;
         };
         // A left side that decides is the answer, and the right is not read.
         const std::optional<bool> left = truth(Emit(expression->m_e1()));
@@ -1717,7 +1726,7 @@ private:
     }
 
     bool Holds(const PExpression<Value>& guard) {
-        return Value::truth(*Known(guard, "a guard on cells that is not a constant").constant);
+        return Holds(*Known(guard, "a guard on cells that is not a constant").constant);
     }
 
     std::size_t Size(const PExpression<Value>& expression) {
@@ -2849,7 +2858,7 @@ private:
         bool       decides  = false;
         try {
             const Code code = Quiet(check.left);
-            decides         = code.constant && Value::truth(*code.constant) != check.conjunction;
+            decides         = code.constant && Holds(*code.constant) != check.conjunction;
         } catch (const Reason&) {
         }
         scope_  = scope;
