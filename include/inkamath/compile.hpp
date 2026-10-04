@@ -745,6 +745,8 @@ private:
         // the way, whose cells may use the same names, must not see or undo them.
         const auto outer_places = std::exchange(places_, Captured(sequences_.at(name).definition));
         const int  outer_shift  = std::exchange(shift_, 0);
+        // Nor the reader's guard, which defers what it reads (C92).
+        const bool outer_deferring  = std::exchange(deferring_, false);
         auto       outer_parameters = std::exchange(read_parameters_, {});
         try {
             body();
@@ -759,6 +761,7 @@ private:
         temporaries_ = outer_temporaries;
         places_      = outer_places;
         shift_       = outer_shift;
+        deferring_   = outer_deferring;
     }
 
     // A cell the compiler would write out more than once -- an operand of a
