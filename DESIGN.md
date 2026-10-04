@@ -3234,7 +3234,17 @@ that exploring seven domains asked of the interpreter, by how many asked.
   as `frame.p` from 2 asks; and a term the interpreter gives that no
   double holds now parts, saying why, where it was skipped: `huge.y: inf at
   31, where the interpreter's term is too large for a double`, or not a real
-  number. `fuzz.cpp`'s alignment with the
+  number; and a closed-form argument to an instance whose model states part
+  of a history is refused where it was computed again (C71): with `two(x_n)
+  = { x_(-2) = 0; c_n = x_(n-1) + x_(n-2) }`, `p2 = two(x_n = n^2)` reads
+  `p2.x_-1`, which no history gives. Known limits, each a refusal where the
+  interpreter answers, never a discrepancy: the left of an `and` or `or`, or
+  a guard, decides only where it folds to a constant, never through a
+  history's terms, so `x_(n-1) > 0 and u_(n-1) > 0` is refused where `u` has
+  none; a read in a term computed again is refused as above; and a slow
+  sequence's first tick waits for samples from the stream, so `y_m | x_(2*m
+  - 1) > 0 = x_(2*m)` read at `y_0` is refused, as is a hold below its
+  folded terms. `fuzz.cpp`'s alignment with the
   reversed check rule, and refusing a top-level `x_n | n < 0 = 0` in a file,
   whose input has no body to state a history in, are left out of this work.
   C84 stays open and is the check's one exception, its lines saying `not
