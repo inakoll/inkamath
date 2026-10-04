@@ -3600,7 +3600,7 @@ that exploring seven domains asked of the interpreter, by how many asked.
   makes a refusal to build, and GCC is silent; `adc.h`, `back.h`, `heat.h`
   and `kalman2.h` move by it alone. 23 lines: 13,381 in all.
 
-- **An input of more than one cell** (C83). A model reading a vector or a
+- `[done]` **An input of more than one cell** (C83). A model reading a vector or a
   matrix at each step -- `y_n = [1 2]*x_n` with `x_n` a column, a filter on
   several channels, a controller reading a sensor vector -- compiles to the
   wrong shape: the compiler compiles a model, not an instance, so it reads
@@ -3709,3 +3709,24 @@ that exploring seven domains asked of the interpreter, by how many asked.
   and an input whose size is not stated; and in `test/compile/inputs.ink`,
   whose instances, reports, header excerpts and refusals are wired with the
   compiler's half.
+
+  Built as specified, every entry passing as written, now
+  `test/data/inputs.ink`; `test/compile/inputs.ink`'s ten instances are
+  checked, every term exact, and its header excerpts and refusals are held in
+  `test/cli.cmake`. A stated input is a definition of its own in the
+  instance, as a history makes one, whose terms, the argument's, the
+  default's or the history's, are held to the size where they are read, the
+  bounds read in the instance; the compiler reads the same bounds as
+  constants, `Reference::Stated` serving both as `Reference::Measured` serves
+  sizes. No golden moved, nor any expected header or program `--check`
+  writes for an instance of single values; `swap` moved as specified, and
+  the NaN work changed nothing the header excerpts assumed. Departures: the
+  instance `pair` of `test/compile/inputs.ink` is `twain`, as `nan.ink`'s
+  check is named `pair`; and a history by cells is refused on any input,
+  stated or not, C89's own being one whose size is not stated. Under
+  callgrind every workload is as it was to the million instructions but
+  `grad`, 0.03% fewer. 154 lines of sources added and 35 removed, 119 more in
+  all, where about 85 were planned: 71 in the interpreter, of which the size
+  held where a term is read and its words, which the compiler shares, 36, the
+  signature 24, the definition holding the size 7 and `tex` 3; 45 in the
+  compiler and 3 in the check. 13,500 lines in all.
