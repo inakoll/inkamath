@@ -271,12 +271,14 @@ public:
     // The size of the matrix by cells, or of a term at its index, from the
     // clauses that fit (DESIGN.md, sizes inferred): the matrix written whole
     // and the bounds written agree and are the size, and an index none of them
-    // bounds takes what the clauses' reads give it, which agree too. `bound`
-    // reads a bound written and `read` the extent of a matrix read, each in the
-    // clause's frame. None where nothing is written whole and no clause fits.
-    template <typename Fits, typename Bound, typename Read>
+    // bounds takes what the clauses' reads give it, which agree too. `in`
+    // runs what it is given in a clause's frame, where `bound` reads a bound
+    // written and `read` the extent of a matrix read. None where nothing is
+    // written whole and no clause fits.
+    template <typename Fits, typename In, typename Bound, typename Read>
     std::optional<Extent> Measured(const std::optional<Extent>& whole, Fits fits,
-                                   const std::string& subject, Bound bound, Read read) const {
+                                   const std::string& subject, In in, Bound bound,
+                                   Read read) const {
         std::array<std::optional<size_t>, 3> written, inferred;  // slices, rows, columns
         if (whole) written = {whole->slices, whole->rows, whole->cols};
         const auto agree = [this](std::optional<size_t>& into, size_t size) {
@@ -291,15 +293,16 @@ public:
             const ParametersDefinition<T>& p = clause.parameters;
             if (!p.cells() || p.row_name().empty() || !fits(clause)) continue;
             if (!first) first = &clause;
-            const PExpression<T>* bounds[] = {&p.slices(), &p.rows(), &p.cols()};
-            for (const int d : {1, 2, 0}) {
-                if (*bounds[d] || (d == 0 && !p.tensor()))
-                    agree(written[d], *bounds[d] ? bound(clause, *bounds[d]) : 0);
-            }
-            const auto given =
-                Inferred(clause, [&](const PExpression<T>& m) { return read(clause, m); });
-            for (int d = 0; d < 3; ++d)
-                if (given[d]) agree(inferred[d], given[d]);
+            in(clause, [&] {
+                const PExpression<T>* bounds[] = {&p.slices(), &p.rows(), &p.cols()};
+                for (const int d : {1, 2, 0}) {
+                    if (*bounds[d] || (d == 0 && !p.tensor()))
+                        agree(written[d], *bounds[d] ? bound(*bounds[d]) : 0);
+                }
+                const auto given = Inferred(clause, read);
+                for (int d = 0; d < 3; ++d)
+                    if (given[d]) agree(inferred[d], given[d]);
+            });
         }
         if (!whole && !first) return std::nullopt;
         std::array<size_t, 3> size{};
@@ -973,24 +976,20 @@ private:
     template <typename Fits, typename Walk>
     std::optional<Extent> Sized(std::optional<typename Walk::Result>& whole, Fits fits, int index,
                                 const std::string& subject, Walk& walk) const {
-        const auto in = [&](const Clause<T>& clause, auto measure) {
-            std::optional<typename ReferenceStack<T>::Trial> term;
-            if (clause.parameters.general()) {
-                term.emplace(walk.stack(), clause.parameters.index_name());
-                SetIndex(clause.parameters.index_name(), index, walk.stack());
-            }
-            return measure();
-        };
         return Measured(
             whole ? std::optional<Extent>(walk.Value(*whole).Size()) : std::nullopt, fits, subject,
-            [&](const Clause<T>& clause, const PExpression<T>& e) {
-                return in(clause, [&] { return Size(walk.Bound(e)); });
+            [&](const Clause<T>& clause, auto measure) {
+                std::optional<typename ReferenceStack<T>::Trial> term;
+                if (clause.parameters.general()) {
+                    term.emplace(walk.stack(), clause.parameters.index_name());
+                    SetIndex(clause.parameters.index_name(), index, walk.stack());
+                }
+                measure();
             },
-            [&](const Clause<T>& clause, const PExpression<T>& e) {
-                return in(clause, [&] {
-                    auto value = walk.Eval(e);
-                    return walk.Value(value).Size();
-                });
+            [&](const PExpression<T>& e) { return Size(walk.Bound(e)); },
+            [&](const PExpression<T>& e) {
+                auto value = walk.Eval(e);
+                return walk.Value(value).Size();
             });
     }
 

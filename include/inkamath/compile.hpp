@@ -1625,25 +1625,21 @@ private:
     template <typename Fits>
     std::optional<Extent> Measured(const std::string& name, const Reference<Value>& definition,
                                    const std::optional<Code>& whole, Fits fits) {
-        const auto in = [&](const Clause<Value>& clause, auto measure) {
-            const ParametersDefinition<Value>& p = clause.parameters;
-            const std::string outer  = std::exchange(index_, p.general() ? p.index_name() : "");
-            const auto        result = measure();
-            index_                   = outer;
-            return result;
-        };
         try {
             return definition.Measured(
                 whole ? std::optional<Extent>(Extent{whole->rows, whole->cols}) : std::nullopt,
                 fits, name,
-                [&](const Clause<Value>& clause, const PExpression<Value>& e) {
-                    return in(clause, [&] { return Size(e); });
+                [&](const Clause<Value>& clause, auto measure) {
+                    const ParametersDefinition<Value>& p = clause.parameters;
+                    const std::string                  outer =
+                        std::exchange(index_, p.general() ? p.index_name() : "");
+                    measure();
+                    index_ = outer;
                 },
-                [&](const Clause<Value>& clause, const PExpression<Value>& e) {
-                    return in(clause, [&] {
-                        const Code read = Emit(e);
-                        return Extent{read.rows, read.cols};
-                    });
+                [&](const PExpression<Value>& e) { return Size(e); },
+                [&](const PExpression<Value>& e) {
+                    const Code read = Emit(e);
+                    return Extent{read.rows, read.cols};
                 });
         } catch (const Reason&) {
             throw;
