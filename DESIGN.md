@@ -3258,3 +3258,125 @@ that exploring seven domains asked of the interpreter, by how many asked.
   331 lines of sources added and 62 removed, 269 more in all, where about
   210 were planned: 38 in the interpreter, 202 in the compiler and 29 in the
   check.
+
+- **Sizes inferred in a definition by cells.** A network applies every
+  activation cell by cell, and the prelude's functions take single values:
+  `exp([1 2])` says a matrix cannot be an exponent, `log([1 2])` speaks of a
+  comparison the session never wrote, and each activation is a definition by
+  cells with a size the page never writes, `act(z)[j<=n] = tanh(z[j])` where
+  the paper has `tanh(z)`. A bound left out is read from the matrix the index
+  reads: `rl(z)[i,j] = z[i,j]*(z[i,j] > 0)` is a ReLU of a matrix of any
+  size, and `h[i,j] = Z[i,j]*(Z[i,j] > 0)` a layer written where it is used.
+  Every bound written means what it does now.
+
+  An index written without its bound takes it from each read, in the
+  clause's value or guard, of a matrix at that index alone: `z[i,j]` gives
+  `i` the rows of `z` and `j` its columns, `z[j,i]` the other way, `z[i]`
+  the rows, as one index reads a row, `z[i,1]` `i` alone, and of a tensor
+  `P[s]` the slices and `P[s,i,j]` all three. What is read is any expression
+  that reads no index of the cell, `(W*x + b)[i]` or `P[1][i,j]`; a sum's
+  index is the sum's, so `A[i,k]` under `sum_(k=1)^2` gives `i` only. `z[i+1]`
+  gives nothing. A single value is read as a 1x1 matrix is, so `rl(5)` is 5.
+  Every read of an index agrees, or it is refused naming two that do not,
+  `a[i,j] and b[i,j] give j different sizes, 2 and 3`, or one, `z[i,i] gives
+  i different sizes, 1 and 3`. The first read winning was rejected: of
+  `a[i,j] + b[i,j]` it would cut a longer `b` short in silence, read past a
+  shorter one, and answer by the order the operands were written; the
+  smallest winning, as a zip does, is the same silence. A bound written is
+  the bound and is not checked against the reads, so `top(z)[i<=2, j] =
+  z[i,j]` takes two rows of any `z`. That `matrices.ink` says a size is
+  written, not guessed from the cells a clause happens to give, stands: a
+  read is not a guess, the size being the matrix's that every cell reads.
+
+  The size is the definition's, as now: the matrix written whole and each
+  clause for all cells, by its bounds or its reads, agree, else "the clauses
+  of V give it different sizes"; a clause that gives an index none takes the
+  others', so a causal mask, `cm(s)[i,j] | j > i = 0`, needs `cm(s)[i,j] =
+  s[i,j]` beside it and nothing more. Where nothing gives one, it is refused
+  when read, as a definition of one-cell clauses is today: `M has no size,
+  as nothing reads a matrix at r alone; write it as M[r<=rows, c<=cols]`,
+  the bounds written kept. So `M[r,c] = r + c`, refused where written in
+  `matrices.ink`, is refused where read: a size may come from a clause
+  written after, and refusing where written would depend on the order the
+  clauses come in. A clause for one cell gives no size, as now, and one
+  outside the size inferred says so as reading it would. A term's size is
+  read at its index from the clauses at that index, as now, so a base term
+  by cells, `q_0[i] = 1`, has none unless it reads one, and a term may read
+  the one before, `cn_n[i,j] = cn_(n-1)[i,j] + j`.
+
+  Each read's matrix is evaluated for its size each time the definition is,
+  before any cell, in the frame its cells see: a parameter's, a term's at its
+  index, a global's as it is then, so `h` follows `Z` redefined, as a bound
+  written with a global does. Its steps count against the budget as any
+  evaluation's, and an error there is the read's: `a 2x1x2 tensor takes one
+  index or three, not two`. A definition whose bounds are written evaluates
+  as today, so `bench/` does not move. The memo is unchanged, a call keyed by
+  its arguments and their shapes (C50). `grad` reads a size with its parts as
+  it reads a bound, and a shape never moves. `z*(z > 0)` has no slope at 0
+  and `grad` says so, `a comparison jumps at t = 0`, where the guarded ReLU
+  takes its guard's side. `?name` prints as written; `tex` sets a range only
+  for a bound written, `\operatorname{rl}(z)_{i,j} = z_{i,j}\,(z_{i,j} >
+  0)`, as a paper sets a function of cells, since it sees the definition and
+  not a call. Compiled, a function by cells is compiled where it is called,
+  and its size is the extent of the read compiled there, which is always
+  known, the compiler's shapes being static: nothing new is refused, and a
+  model's input is a single value, as C83 has it.
+
+  Softmax's sum keeps its bound, `sm(z, K)[j] = exp(z[j])/sum_(c=1)^K
+  exp(z[c])`, `K` written as the page that writes the sum writes it: nothing
+  is added to name a size. A sum with no upper bound bounded by its reads was
+  rejected, since `sum_(c=1)` is a series to its limit and its meaning would
+  be decided by its body; so was a bound naming a size nothing defines,
+  `[j<=n]`, Dex's index set, whose meaning would change the day a global `n`
+  is defined, and which `t_n[j<=n]` already reads as the index; and
+  `rows(z)`, a function no paper writes, for a size an argument carries.
+
+  Two rulings from the review of `f.(x)` carry over. A call given a matrix
+  that its own evaluation refuses where a single value is needed -- a
+  comparison, a guard, `and`, `or`, an exponent, an index, a factorial -- is
+  refused naming the innermost call written in the session or a file, not in
+  the prelude, given an argument of the refused value's shape, quoted as
+  written, with the definition by cells that applies it to each cell, every
+  argument that is not a single value indexed: `tanh needs single values,
+  and [0; 1/2] is a 2x1 matrix; by its cells, h[i,j] = tanh([0; 1/2][i,j])`,
+  a tensor's by `[s,i,j]`. So `tanh(M)` names `tanh`, not the `exp` inside
+  it; `sig(z) = 1/(1 + exp(-z))` names its own `exp(-z)`; a layer that
+  applies a function of single values to the whole names it, not its loss.
+  Where no call was given a value of that shape, as `x*x' > 0` of a 2x1, and
+  outside any call, an operator keeps its words, and `e^A`, on paper the
+  matrix exponential, stays refused. And `mod` refuses a divisor that is a
+  matrix, `mod needs a single value to divide by, and [3 3; 3 3] is a 2x2
+  matrix; by its cells, ...`: `b*floor(a/b)` is then a product of matrices,
+  so `mod([7 8; 9 10], [3 3; 3 3])` answered `[-8, -7; -6, -5]`. The ruling
+  named two matrices; `mod(7, [3 4; 5 6])` multiplies as well, so the
+  refusal is the divisor's. The prelude has no test for a matrix to say it
+  with, so the call of its `mod` is checked before the body. Two refusals
+  recorded move: `nonzero([1 2])` in `conditional.ink` and `nz([7;;])` in
+  `tensor.ink`.
+
+  Rejected: the dot, `f.(x)`, specified on branch `cellwise`: a second way
+  to say what a definition by cells says, which `MANIFESTO.md` asks a
+  direction to avoid; `tex` sets it as `f(x)`, so a forgotten dot would not
+  show on the page it is read against; and the one reason given for it, that
+  the cell form states a size the page never writes, is what this removes.
+  The prelude's functions mapped implicitly, as `floor` is: `exp(A)` would
+  mean the cells here and the exponential on a control paper, `ex(x) = e^x`
+  would differ from `exp`, and a guarded ReLU would still be refused. This
+  answers `MANIFESTO.md`'s open question on a function of cells by its own
+  default, the cell form, made light rather than replaced.
+
+  About 150 lines: the reads found 25, the size read and its two refusals 40,
+  `tex` 3, the compiler 20, the message of a call given a matrix 50, quoting
+  an argument as written among them, and `mod` 8; the check that a size is
+  written, where a clause is, goes.
+
+  Specified in `test/data/spec/sizes.ink`, 104 of its 147 entries failing,
+  those passing being definitions echoing themselves and four answers that
+  stay: `e^A`, `[1 2] < 3`, a comparison of a shape no call was given, and
+  `mod` by a single value. A ReLU network and a softmax classifier are each
+  trained one step by `grad` through functions of cells with no size written,
+  held to the gradient written by hand, the first exactly, with the values
+  the dot's specification had. The compiled half is `test/compile/sized.ink`,
+  `logistic.ink`'s regression with a sigmoid by cells and no bound, whose
+  header is to be the one its bounds written give, byte for byte; wired with
+  the implementation.
