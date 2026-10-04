@@ -102,6 +102,10 @@ public:
     // which is gone by the time the argument is evaluated.
     std::vector<std::pair<std::string, T>> captured;
 
+    // An input's argument, or the input where none is given, which answers
+    // where the model's history of it does not.
+    std::shared_ptr<const Reference<T>> argument;
+
     [[nodiscard]] bool Value() const { return !model && !file && !input; }
 
     // Whether it is written as a name applied to arguments and nothing else,
@@ -598,6 +602,12 @@ private:
             if (Selects(clause, indexed, index, values)) {
                 return clause.expression->accept(evaluator);
             }
+        }
+        if (argument) {
+            return evaluator.stack().Evaluate(
+                *argument, ParametersCall<T>(PExpression<T>(),
+                                             indexed ? std::make_shared<ValExpression<T>>(T(index))
+                                                     : PExpression<T>()));
         }
         if(indexed) {
             // An index on something that is not a sequence used to be dropped
