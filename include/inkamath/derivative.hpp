@@ -89,6 +89,7 @@ private:
         }
         // A part keeps its value's shape, which adding a single value or a
         // matrix to more cells widens (DESIGN.md, C81).
+        if (a[0]->Size() == b[0]->Size()) return c;
         for (std::size_t s = 1; s < c.size(); ++s)
             if (c[s] && c[s]->Size() != c[0]->Size()) c[s] = *c[s] + Zero(c[0]->Size());
         return c;
