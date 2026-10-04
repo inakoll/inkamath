@@ -575,6 +575,11 @@ error: a comparison jumps at t = 0
 >> grad_(t = 0) [1 1]*relu([t; 1])
 1
 
+# mod refuses a matrix to divide by under grad as well, which would
+# otherwise differentiate a product of matrices that has no value.
+>> grad_(t = 7) [1 1]*mod(t, [2 3; 5 11])*[1; 1]
+error: mod needs a single value to divide by, not a 2x2 matrix; write it by its cells
+
 # --- a ReLU network trained one step -----------------------------------------
 
 # Two layers, the first the one-line ReLU, trained by grad on a squared loss

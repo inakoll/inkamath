@@ -386,6 +386,16 @@ public:
         return description;
     }
 
+    // The prelude has no test for a matrix to refuse one with: by one, its
+    // b*floor(a/b) is a product of matrices. Asked by grad as well.
+    void Divides(const std::string& name, const T& value, const ReferenceStack<T>& stack) const {
+        if (home == &stack.builtins_ && reference_name_ == "mod" && name == "b" &&
+            !value.IsScalar()) {
+            throw std::runtime_error("mod needs a single value to divide by, not a " +
+                                     value.Size().Described() + "; write it by its cells");
+        }
+    }
+
     T Eval(const ParametersCall<T>& call, ReferenceStack<T>& stack, bool global = true) const {
         const ParametersDefinition<T>& parameters = CallParameters();
         parameters.CheckArity(reference_name_, call);
@@ -400,16 +410,7 @@ public:
                        parameters.EvaluateArguments(call, caller)};
 
         const auto& arguments = key.arguments;
-        // The prelude has no test for a matrix to refuse one with: by one, its
-        // b*floor(a/b) is a product of matrices.
-        if (home == &stack.builtins_ && arguments.size() == 2 && reference_name_ == "mod") {
-            for (const auto& [name, value] : arguments) {
-                if (name == "b" && !value.IsScalar()) {
-                    throw std::runtime_error("mod needs a single value to divide by, not a " +
-                                             value.Size().Described() + "; write it by its cells");
-                }
-            }
-        }
+        for (const auto& [name, value] : arguments) Divides(name, value, stack);
 
         // Only a global's answer is a function of the key and the globals
         // alone (DESIGN.md, phase 9); a local shares its name with the
