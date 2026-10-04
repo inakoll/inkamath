@@ -1152,17 +1152,10 @@ private:
     // the interpreter does: that depends on the values, so it is done as the
     // step runs.
     Code Inverse(const Code& matrix) {
-        const std::size_t n     = matrix.rows;
-        std::string       value = "inverse";
-        std::string       rows;
-        for (std::size_t i = 0; i < n; ++i) {
-            std::string row;
-            for (std::size_t j = 0; j < n; ++j) row += (j ? ", " : "") + matrix.At(i, j).text;
-            rows += (i ? ", {" : "{") + row + "}";
-            value += "\x1f" + row;
-        }
+        const std::size_t n    = matrix.rows;
+        const std::string rows = Rows(matrix);
         inverses_.insert(n);
-        const std::string name = Declare(value, [&](const std::string& t) {
+        const std::string name = Declare("inverse\x1f" + rows, [&](const std::string& t) {
             return std::vector<std::string>{
                 "double " + t + Subscript(n, n) + " = {" + rows + "};",
                 module_ + "_inverse" + std::to_string(n) + "_(" + t + ");"};
@@ -1825,23 +1818,9 @@ private:
         const int depth = std::max(walked.depth, 1);
         for (int lag = 1; lag <= depth; ++lag) {
             const auto  base  = bases.find(highest - lag + 1);
-            std::string value = "0.0";
-            if (base != bases.end()) {
-                if (scalar) {
-                    value = base->second.cells[0].text;
-                } else {
-                    value = "{";
-                    for (std::size_t i = 0; i < walked.rows; ++i) {
-                        value += i ? ", {" : "{";
-                        for (std::size_t j = 0; j < walked.cols; ++j)
-                            value += (j ? ", " : "") + base->second.At(i, j).text;
-                        value += "}";
-                    }
-                    value += "}";
-                }
-            } else if (!scalar) {
-                value = "{{0.0}}";
-            }
+            std::string value = scalar ? "0.0" : "{{0.0}}";
+            if (base != bases.end())
+                value = scalar ? base->second.cells[0].text : "{" + Rows(base->second) + "}";
             text += "    double t" + std::to_string(lag) + "_" + shape + " = " + value + ";\n";
         }
         if (!scalar) text += "    double t_" + shape + ";\n";
@@ -1905,13 +1884,7 @@ private:
                 continue;
             }
             if (!temporaries_) throw Reason("a matrix argument of a limit inside a limit's terms");
-            std::string rows;
-            for (std::size_t i = 0; i < argument.rows; ++i) {
-                std::string row;
-                for (std::size_t j = 0; j < argument.cols; ++j)
-                    row += (j ? ", " : "") + argument.At(i, j).text;
-                rows += (i ? ", {" : "{") + row + "}";
-            }
+            const std::string rows = Rows(argument);
             called += ", " + Declare("arg\x1f" + rows, [&](const std::string& t) {
                           return std::vector<std::string>{"double " + t +
                                                           Subscript(argument.rows, argument.cols) +
@@ -2078,6 +2051,18 @@ private:
 
     static std::string Subscript(std::size_t i, std::size_t j) {
         return "[" + std::to_string(i) + "][" + std::to_string(j) + "]";
+    }
+
+    // A matrix as C initialises an array, '{a, b}, {c, d}'.
+    static std::string Rows(const Code& code) {
+        std::string rows;
+        for (std::size_t i = 0; i < code.rows; ++i) {
+            rows += i ? ", {" : "{";
+            for (std::size_t j = 0; j < code.cols; ++j)
+                rows += (j ? ", " : "") + code.At(i, j).text;
+            rows += "}";
+        }
+        return rows;
     }
 
     // The cells of a C array, 'name[i][j]', or 'name' alone for a single value.
