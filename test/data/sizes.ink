@@ -185,6 +185,13 @@ g(z)[i,j] = z[i,j]^2
 [     1, 1;
  0.5625, 0]
 
+# A parameter named as the definition is the parameter, and gives its size.
+>> zz(zz)[i,j] = 2*zz[i,j]
+zz(zz)[i,j] = 2*zz[i,j]
+
+>> zz([1 2])
+[2, 4]
+
 # Every read of an index agrees, or it is refused naming two that do not:
 # taking the first would cut b short or read past it, by the order written.
 >> add(a, b)[i,j] = a[i,j] + b[i,j]

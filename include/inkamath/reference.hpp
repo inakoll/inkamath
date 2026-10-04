@@ -151,9 +151,12 @@ public:
         // replaces the clause that names the same thing and is appended when
         // there is none.
         Clause<T> clause{ai_parameters, ai_expression, written, {}};
+        // A parameter of the definition's name hides the definition.
+        const std::vector<std::string>& own = ai_parameters.parameters_names();
+        const bool hidden = std::find(own.begin(), own.end(), reference_name_) != own.end();
         if (ai_parameters.cells() && !ai_parameters.row_name().empty())
             for (const PExpression<T>& e : {ai_parameters.guard(), ai_expression})
-                Reads(e, ai_parameters, reference_name_, {}, clause.reads);
+                Reads(e, ai_parameters, hidden ? "" : reference_name_, {}, clause.reads);
         // One call binds the parameters once, for whichever clause answers, so
         // the clauses have to agree on their names. One that disagrees could
         // only ever read a global under its own name (DESIGN.md, C51).
