@@ -144,6 +144,19 @@ error: avg(...).x_4 is a 2x1 matrix, where avg takes a 3x1 matrix
 \operatorname{avg}(d = 3, x_n \in \mathbb{R}^{d}):
     y_n = \sum_{j=1}^{d} \frac{x_{n,j}}{d}
 
+# Or a name the model defines.
+>> wide(x_n[j<=N]) = {
+..     N = 2
+..     y_n = [1 1]*x_n
+.. }
+wide(x_n[j<=N]) = { ... }
+
+>> wide(x_n = [n; 1]).y_3
+4
+
+>> wide(x_n = n).y_3
+error: wide(...).x_3 is a single value, where wide takes a 2x1 matrix
+
 # But not its index: a size that moved from term to term could not be
 # compiled, so the interpreter refuses it too, where it is written.
 >> grow(x_n[j<=n+1]) = {

@@ -3610,8 +3610,9 @@ that exploring seven domains asked of the interpreter, by how many asked.
   The model states the size in its signature, by bounds, as a definition by
   cells states its own: `dot(x_n[j<=2])`, a column as `w[j<=3]` is;
   `trace(x_n[j<=2, k<=2])`, a matrix; three bounds a tensor, slices first. A
-  bound reads the model's parameters, `avg(d = 3, x_n[j<=d])`, but not the
-  index, which a cell's bound may: a size that moved from term to term could
+  bound reads the model's parameters, `avg(d = 3, x_n[j<=d])`, the names its
+  body defines and the session's constants, all compiled as constants, but
+  not the index, which a cell's bound may: a size that moved from term to term could
   not be compiled, and would exist only to be refused there, so it is refused
   where it is written, `x is an input of grow, so its size cannot read the
   index n`. An input whose size is not stated takes any in the interpreter and
