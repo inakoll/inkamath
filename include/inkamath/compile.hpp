@@ -202,15 +202,15 @@ private:
 
     using Reads = std::map<std::string, std::set<int>>;  // lags, by the sequence read
 
-    // A guarded clause, and what its guard and its value each read: its guard
-    // is evaluated wherever the chain reaches it, its value only where it holds,
-    // so each has its own index from which it can be.
     // A term a base clause reads: 'x_at' in the base clause of 'index'.
     struct Seed {
         std::string read;
         int         index, at, lag = 0;
     };
 
+    // A guarded clause, and what its guard and its value each read: its guard
+    // is evaluated wherever the chain reaches it, its value only where it holds,
+    // so each has its own index from which it can be.
     struct Guarded {
         std::string              condition;
         std::vector<std::string> cells;
@@ -2388,10 +2388,6 @@ private:
         }
     }
 
-    // Where each sequence starts: at its lowest base clause, or, without one,
-    // at the first index where every term it reads exists -- which is where
-    // the interpreter, asked for the term, would first answer. An input starts
-    // with the earliest.
     // A sequence at another rate, once every sample of its clauses is known:
     // its phase, the first step at which every sample exists; its base terms
     // keyed by the step that computes them; its samples as lags of the
@@ -2529,6 +2525,10 @@ private:
         return text;
     }
 
+    // Where each sequence starts: at its lowest base clause, or, without one,
+    // at the first index where every term it reads exists -- which is where
+    // the interpreter, asked for the term, would first answer. An input starts
+    // with the earliest.
     int Starts() {
         std::optional<int> earliest;
         for (auto& [name, sequence] : sequences_) {
@@ -3014,8 +3014,6 @@ private:
                "}\n\n";
     }
 
-    // Each deferred right side's mark (see Right), as the check it needs
-    // where the terms it reads may not exist yet, or nothing where they do.
     // Whether a term read back is computed again: where its reader can be
     // evaluated before the window holds it, and, inside another term computed
     // again, where that one is.
@@ -3028,6 +3026,8 @@ private:
                (early.outer < 0 || Needed(earlies_[static_cast<std::size_t>(early.outer)]));
     }
 
+    // Each deferred right side's mark (see Right), as the check it needs
+    // where the terms it reads may not exist yet, or nothing where they do.
     std::string Checked(std::string text, const std::string& name, const Sequence& sequence) {
         // A term read back, computed again where the reader can need it before
         // its window holds it; the innermost first, as the last marked.
