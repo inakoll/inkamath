@@ -1241,16 +1241,20 @@ inline std::string Trimmed(const std::string& text) {
 inline std::vector<std::pair<int, std::string>> Statements(std::istream& in) {
     std::vector<std::pair<int, std::string>> statements;
     std::string                              line, statement;
-    int                                      first = 0;
+    int                                      first = 0, depth = 0;
     for (int number = 1; std::getline(in, line); ++number) {
         if (statement.empty()) {
             if (Trimmed(Uncommented(line)).empty()) continue;
             first     = number;
             statement = line;
+            depth     = 0;
         } else {
             statement += '\n' + line;
         }
-        if (Unclosed(statement) > 0) continue;
+        // Counted line by line, as a comment ends with its line: recounting
+        // the whole statement made reading a literal quadratic in its rows.
+        depth += Unclosed(line);
+        if (depth > 0) continue;
         statements.emplace_back(first, statement);
         statement.clear();
     }

@@ -91,6 +91,19 @@ public:
                       [&out](const T& value) { numeric_interface<T>::key(value, out); });
     }
 
+    static bool same(const Matrix<T>& a, const Matrix<T>& b) {
+        return a.extent_ == b.extent_ &&
+               std::equal(a.data(), a.data() + a.extent_.count(), b.data(),
+                          [](const T& x, const T& y) { return numeric_interface<T>::same(x, y); });
+    }
+    static std::size_t hash(const Matrix<T>& a) {
+        std::size_t hash = a.extent_.count();
+        std::for_each(a.data(), a.data() + a.extent_.count(), [&hash](const T& value) {
+            hash = hash * 31 + numeric_interface<T>::hash(value);
+        });
+        return hash;
+    }
+
     static bool exact(const Matrix<T>& a) {
         return std::all_of(a.data(), a.data() + a.extent_.count(),
                            [](const T& value) { return numeric_interface<T>::exact(value); });

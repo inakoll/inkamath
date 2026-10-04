@@ -67,6 +67,8 @@ struct numeric_interface_imp
      static bool exact(const T& a) { return T::exact(a); }
      static bool approximated(const T& a) { return T::approximated(a); }
      static void key(const T& a, std::string& out) { T::key(a, out); }
+     static bool        same(const T& a, const T& b) { return T::same(a, b); }
+     static std::size_t hash(const T& a) { return T::hash(a); }
 
      // Deduced: for a complex or a matrix these narrow to the scalar type.
      static auto fact(const T& a) {return T::fact(a);}

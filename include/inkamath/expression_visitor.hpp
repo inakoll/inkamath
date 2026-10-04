@@ -316,7 +316,9 @@ public:
     }
 
     T visit(CellExpression<T>* expr) override {
-        const T matrix = expr->Matrix()->accept(*this);
+        const T* kept      = stack_.Kept(*expr->Matrix());
+        const T  evaluated = kept ? T() : expr->Matrix()->accept(*this);
+        const T& matrix    = kept ? *kept : evaluated;
         if (expr->Slice()) {
             const int slice = AsIndex<T>(expr->Slice()->accept(*this));
             const int row   = AsIndex<T>(expr->Row()->accept(*this));
@@ -376,7 +378,7 @@ public:
     }
 
     T visit(MatExpression<T>* expr) override {
-
+        if (expr->built) return *expr->built;
         const size_t n = expr->Size().rows;
         const size_t m = expr->Size().cols;
         std::vector<T> evaluation(n*m);
@@ -437,7 +439,7 @@ public:
                 }
             }
         }
-
+        if (expr->numbers) expr->built = retval;
         return retval;
     }
 

@@ -2838,3 +2838,133 @@ that exploring seven domains asked of the interpreter, by how many asked.
   slice to a subscript and to the bounds. The compiler refuses a tensor
   value, a tensor literal, three indices and a definition by three indices
   alike, `cannot compile y: a tensor`. 222 lines of sources.
+
+- `[partly done]` **The evaluator's speed, specified** before any of it is
+  built: phase 14's step 1 resumed, with no change to the language. Training a
+  logistic regression by `grad` on 200 rows read from a file takes 1.9 s, by
+  the gradient written by hand 0.28 s, and a file of thousands of rows is now
+  writable. Six workloads are in `bench/`, each a transcript, so that a faster
+  wrong answer fails rather than measures: `deep`, `d_200000` filled from its
+  base; `limit`, 3000 limits of `s(a)_n = s(a)_(n-1)*~0.5 + a`, each argument
+  a new sequence; `harmonic`, 400 harmonic numbers exactly; `matrix`, 100
+  products of 20x20 matrices defined by their cells, one of them of fractions;
+  and `hand` and `grad`, 20 steps of the training above, which end on the same
+  weights. Their data is `bench/train.ink`, committed, with the Python that
+  wrote it in its comment, so nothing is generated at build time. `cmake
+  --build build --target bench` replays each under callgrind, or by the clock,
+  best of five, without valgrind; it is not a test, so nothing gates on it.
+  The baseline is master at 43e9fb5, GCC 13.3, RelWithDebInfo, a shared 2.1
+  GHz Xeon:
+
+  | | instructions | clock | where they go |
+  |---|---|---|---|
+  | `deep` | 835M | 86 ms | flat: 4,200 a term, no function over 5% |
+  | `limit` | 1,123M | 127 ms | 20% building memo keys as strings |
+  | `harmonic` | 860M | 75 ms | the bignum: gcd and allocation |
+  | `matrix` | 862M | 136 ms | 65% the products, 33% `A` and `B` rebuilt cell by cell for each |
+  | `hand` | 2,475M | 246 ms | 86% rebuilding `X` and `y` |
+  | `grad` | 19,003M | 1,762 ms | 38% the same literals, 27% `grad`'s dispatch |
+
+  The profile ordered the work again. `X[r]` evaluates the whole literal `X`
+  to take one row of it, so a step of training is quadratic in the rows, and
+  that, not the tree walk, is most of the training's time. The order, each
+  step measured on the workloads before the next:
+
+  1. **A literal of numbers built once**, kept in its node at its first
+     evaluation that succeeds, and a constant to `grad`. A prototype of 14
+     lines took `hand` to 426M and `grad` to 11,862M, moved nothing else, and
+     left every golden as it was. It reads no name, so it never took a step,
+     and caching it moves no budget. Not folded when parsed: `tex` and the
+     compiler read the literal as written, and `[1/0]` fails where it is read,
+     every time.
+  2. **`grad` dispatched by one virtual call** rather than a chain of up to
+     twenty `dynamic_cast`s per node, which with the type names they compare
+     are 42% of what `grad` has left after step 1. No node class derives from
+     another, so the chain's order decides nothing.
+  3. **A memo key compared without building a string**: an argument's value
+     encoded, its extent written out by `to_string`, at every call. Equality
+     stays exact, so two calls share an entry where they do today.
+  4. **A row or cell of a named matrix read without copying it.** After step
+     1 a read still copies all of `X`, so training stays quadratic; this makes
+     it linear. Reading the file is quadratic too, outside the evaluator:
+     `Statements` counts the brackets of the whole statement again at each
+     line of a literal, so `use train` alone is 85M, a fifth of what step 1
+     leaves of `hand`, and 4,823M for 1,600 rows. Counting each line's
+     brackets as it is read, three lines, took that to 66M in a trial.
+  5. **Slots, then closures**, for the flat remainder of `deep`, `limit` and
+     `matrix`'s cells, as step 1 planned: slots were measured at six per cent
+     at most and come with the symbol table closures need. A slot belongs
+     to a scope rather than to a node, and only to a name its body never
+     binds: an instance's body is one tree read from every instance, and
+     `g(x) = (x > 0 and (c = 2)) + c` reads its own `c` or the global one
+     by the branch it took.
+
+  The targets, in instructions against the table: `hand` a fifth after step
+  1 and a tenth after step 4; `grad` 7,500M after step 2; `limit` 950M after
+  step 3; after step 5, `deep` and `limit` a third of what they take when
+  step 4 lands, the low end of the 3-10x quoted above since a `Number` costs
+  what it costs, and `matrix` 700M, its cells a third and its products as
+  they are. No step may make any workload more than one per cent worse,
+  which is what `harmonic` is for. Each commit gives its
+  workloads' counts before and after; the clock is reported beside them and
+  is evidence only where callgrind agrees. A step that misses its target is
+  recorded here with its numbers, not forced.
+
+  What must not move: every golden, the README and every expected header,
+  byte for byte, and every test, under the sanitizers too. The budget takes
+  a step at every reference and every term a series or `grad` walks, as
+  now, so a line gives up at the same step and nests as deep before it
+  fails; a cache that skips steps is a language change. The deepest line the
+  limits accept still fits the stack, in MSVC's Debug build and under the
+  sanitizers (C20, C63): a visitor or a closure changes what a level costs,
+  so a walk a step rewrites is tested at the limit. The memo remembers
+  the same calls and only those, evicts in the same two generations, is
+  cleared where it is now, and stores nothing that threw. An error is the
+  same message, and the first one raised: operands are evaluated in the
+  order they are today. `?`, `tex`, `--compile` and `--check` read the
+  parsed tree, which stays; closures are beside it and cleared with the
+  memo.
+
+  Rejected: memoising a plain definition, one line that would have done
+  most of step 1 and `matrix`'s cells besides; but a hit skips the steps
+  its body took, so `sum_(k=1)^400 A*A`, which today gives up after a
+  million steps, would answer. That is a language change and would be
+  specified as one. A scalar unwrapped stays dropped, as step 1 measured.
+  Benchmarks in ctest would gate on noise, and by the clock alone on layout.
+
+  Built to step 4, and stopped before step 5. The baseline was measured
+  again on the tensors' value type, and each step judged against it; the
+  clock is the best of five:
+
+  | | baseline | final | clock |
+  |---|---|---|---|
+  | `deep` | 859M | 861M | 84 to 80 ms |
+  | `limit` | 1,181M | 878M | 138 to 104 ms |
+  | `harmonic` | 864M | 863M | 75 to 74 ms |
+  | `matrix` | 937M | 937M | 137 to 135 ms |
+  | `hand` | 2,760M | 93M | 285 to 12 ms |
+  | `grad` | 20,155M | 5,689M | 1,827 to 540 ms |
+  | `read` | 85M | 10M | 11 to 3 ms |
+
+  The file read came first: a statement's brackets are counted line by
+  line, and `read`, `train.ink` alone, is a seventh workload so that the
+  quadratic shows if it comes back; 1,600 rows went from 4,153M to 58M.
+  Step 1 kept a literal whose cells are all numbers, its padding included,
+  in its node: `hand` 357M and `grad` 11,966M. Step 2 picks `grad`'s rule
+  by the node's exact `typeid`, each node class `final` so that none is
+  missed: `grad` 7,533M, 33M short of its target, since libstdc++ compares
+  two different types by their names. Step 3 keys the memo by the arguments
+  themselves, compared bit for bit as the string was; the key owns the
+  call's arguments, since copying them cost `deep` nearly five per cent:
+  `limit` 878M. Step 4 reads a cell or a row of a name defined by a literal
+  of numbers where step 1 keeps it, for the step the name's evaluation
+  takes: `hand` 93M and `grad` 5,689M.
+
+  Step 5 is stopped. Finding a name is now 1.7% of `deep` and 1.2% of
+  `limit`, which is all a slot can save, and a slot that survives both
+  conflicts above still asks the frame first, which is most of a lookup
+  now. Closures are a rewrite of the evaluator, and of every walk tested at
+  the depth limit, for what is left of `deep` and `limit`: flat, the
+  scalar `Matrix` around each `Number` and the memo, no function over 5%.
+  `matrix` is its products, 65%, and `A` and `B` rebuilt cell by cell,
+  33%, which only the memo rejected above would remove.

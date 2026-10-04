@@ -11,6 +11,8 @@
 #include <set>
 #include <stdexcept>
 #include <string>
+#include <type_traits>
+#include <typeinfo>
 #include <utility>
 #include <vector>
 
@@ -177,51 +179,62 @@ private:
 
     Jet Eval(const PExpression<T>& e) { return Eval(*e); }
 
+    // A dynamic_cast without its search of the bases, which is most of what
+    // the dispatch below cost: a node class is final, so a node has no type
+    // but its own to match.
+    template <typename Node>
+    static Node* Exactly(Expression<T>& e) {
+        static_assert(std::is_final_v<Node>);
+        return typeid(e) == typeid(Node) ? static_cast<Node*>(&e) : nullptr;
+    }
+
     Jet Eval(Expression<T>& e) {
-        if (auto* x = dynamic_cast<ValExpression<T>*>(&e)) return Constant(x->value);
-        if (auto* x = dynamic_cast<RefExpression<T>*>(&e)) return Name(*x);
-        if (auto* x = dynamic_cast<FuncExpression<T>*>(&e)) return Call(*x);
-        if (auto* x = dynamic_cast<AddExpression<T>*>(&e)) {
+        if (auto* x = Exactly<ValExpression<T>>(e)) return Constant(x->value);
+        if (auto* x = Exactly<RefExpression<T>>(e)) return Name(*x);
+        if (auto* x = Exactly<FuncExpression<T>>(e)) return Call(*x);
+        if (auto* x = Exactly<AddExpression<T>>(e)) {
             const Jet a = Eval(x->m_e1());
             return Sum(a, Eval(x->m_e2()));
         }
-        if (auto* x = dynamic_cast<NegExpression<T>*>(&e))
+        if (auto* x = Exactly<NegExpression<T>>(e))
             return Map(Eval(x->m_e()), [](const T& v) { return -v; });
-        if (auto* x = dynamic_cast<MultExpression<T>*>(&e)) {
+        if (auto* x = Exactly<MultExpression<T>>(e)) {
             const Jet a = Eval(x->m_e1());
             return Product(a, Eval(x->m_e2()));
         }
-        if (auto* x = dynamic_cast<DivExpression<T>*>(&e)) {
+        if (auto* x = Exactly<DivExpression<T>>(e)) {
             const Jet a = Eval(x->m_e1());
             return Quotient(a, Eval(x->m_e2()));
         }
-        if (auto* x = dynamic_cast<PowExpression<T>*>(&e)) return Power(*x);
-        if (auto* x = dynamic_cast<InexactExpression<T>*>(&e))
+        if (auto* x = Exactly<PowExpression<T>>(e)) return Power(*x);
+        if (auto* x = Exactly<InexactExpression<T>>(e))
             return Map(Eval(x->m_e()), [](const T& v) { return numeric_interface<T>::inexact(v); });
-        if (auto* x = dynamic_cast<TransposeExpression<T>*>(&e))
+        if (auto* x = Exactly<TransposeExpression<T>>(e))
             return Map(Eval(x->m_e()),
                        [](const T& v) { return numeric_interface<T>::transpose(v); });
-        if (auto* x = dynamic_cast<FloorExpression<T>*>(&e)) return Floor(*x);
-        if (auto* x = dynamic_cast<FactExpression<T>*>(&e)) {
+        if (auto* x = Exactly<FloorExpression<T>>(e)) return Floor(*x);
+        if (auto* x = Exactly<FactExpression<T>>(e)) {
             const Jet u = Eval(x->m_e());
             if (Moves(u)) throw std::runtime_error("grad cannot differentiate a factorial");
             return Constant(T(numeric_interface<T>::fact(*u[0])));
         }
-        if (auto* x = dynamic_cast<MatExpression<T>*>(&e))
+        if (auto* x = Exactly<MatExpression<T>>(e)) {
+            if (x->numbers) return Constant(x->accept(ordinary_));
             return Literal(*x, [x](std::vector<PExpression<T>> parts) {
                 return std::make_shared<MatExpression<T>>(x->Size().rows, x->Size().cols,
                                                           std::move(parts));
             });
-        if (auto* x = dynamic_cast<TensorExpression<T>*>(&e))
+        }
+        if (auto* x = Exactly<TensorExpression<T>>(e))
             return Literal(*x, [](std::vector<PExpression<T>> parts) {
                 return std::make_shared<TensorExpression<T>>(std::move(parts));
             });
-        if (auto* x = dynamic_cast<CellExpression<T>*>(&e)) return Cell(*x);
-        if (auto* x = dynamic_cast<CompareExpression<T>*>(&e)) return Compare(*x);
-        if (auto* x = dynamic_cast<LogicExpression<T>*>(&e)) return Logic(*x);
-        if (auto* x = dynamic_cast<SeriesExpression<T>*>(&e)) return Series(*x);
-        if (auto* x = dynamic_cast<GradExpression<T>*>(&e)) return Grad(*x);
-        if (auto* x = dynamic_cast<MemberExpression<T>*>(&e)) {
+        if (auto* x = Exactly<CellExpression<T>>(e)) return Cell(*x);
+        if (auto* x = Exactly<CompareExpression<T>>(e)) return Compare(*x);
+        if (auto* x = Exactly<LogicExpression<T>>(e)) return Logic(*x);
+        if (auto* x = Exactly<SeriesExpression<T>>(e)) return Series(*x);
+        if (auto* x = Exactly<GradExpression<T>>(e)) return Grad(*x);
+        if (auto* x = Exactly<MemberExpression<T>>(e)) {
             if (Reads(*x))
                 throw std::runtime_error("grad cannot differentiate through an instance yet");
             return Constant(x->accept(ordinary_));
@@ -468,21 +481,22 @@ private:
     }
 
     Jet Cell(CellExpression<T>& cell) {
-        const Jet matrix = Eval(cell.Matrix());
+        const T*   kept   = Lookup(cell.Matrix()->Name()) ? nullptr : stack_.Kept(*cell.Matrix());
+        const Jet  matrix = kept ? Jet() : Eval(cell.Matrix());
+        const auto read   = [&](auto f) { return kept ? Constant(f(*kept)) : Map(matrix, f); };
         if (cell.Slice()) {
             const int slice = AsIndex<T>(cell.Slice()->accept(ordinary_));
             const int row   = AsIndex<T>(cell.Row()->accept(ordinary_));
             const int col   = AsIndex<T>(cell.Col()->accept(ordinary_));
-            return Map(matrix, [slice, row, col](const T& v) {
+            return read([slice, row, col](const T& v) {
                 return numeric_interface<T>::cell(v, slice, row, col);
             });
         }
         const int row    = AsIndex<T>(cell.Row()->accept(ordinary_));
         if (!cell.Col())
-            return Map(matrix, [row](const T& v) { return numeric_interface<T>::row(v, row); });
+            return read([row](const T& v) { return numeric_interface<T>::row(v, row); });
         const int col = AsIndex<T>(cell.Col()->accept(ordinary_));
-        return Map(matrix,
-                   [row, col](const T& v) { return numeric_interface<T>::cell(v, row, col); });
+        return read([row, col](const T& v) { return numeric_interface<T>::cell(v, row, col); });
     }
 
     Jet Power(PowExpression<T>& power) {
