@@ -3536,7 +3536,11 @@ that exploring seven domains asked of the interpreter, by how many asked.
   it, `pole.y: inf at 3, where the interpreter gives none`. A host's NaN, an
   input it feeds or a parameter it assigns, propagates only in an aware
   header; in another, its guards decide on it. A guard reading a limit
-  directly computes it twice, as its value already does.
+  directly computes it twice, as its value already does. A NaN the
+  interpreter's own arithmetic makes is a value, not a refusal, but the
+  step cannot tell them apart: with `m_n = [(0/~0)*x_n; 1]` and
+  `h_n = m_n[2]` the interpreter answers 1 and the step NaN, its matrix
+  term NaN in every cell, as is a cell taken from such a matrix inline.
 
   About 30 lines and none removed: 25 in the compiler, the gate and its
   second run, the operand's test, the guard, the comparison, `and` and `or`,
