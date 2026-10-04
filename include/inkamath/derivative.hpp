@@ -267,16 +267,6 @@ private:
         return false;
     }
 
-    static bool Mentions(const Expression<T>& e, const std::string& name) {
-        if ((dynamic_cast<const RefExpression<T>*>(&e) ||
-             dynamic_cast<const FuncExpression<T>*>(&e)) &&
-            e.Name() == name)
-            return true;
-        for (const PExpression<T>& child : e.Children())
-            if (child && Mentions(*child, name)) return true;
-        return false;
-    }
-
     Jet Name(RefExpression<T>& ref) {
         if (const Jet* bound = Lookup(ref.Name())) return Padded(*bound);
         return Constant(ref.accept(ordinary_));

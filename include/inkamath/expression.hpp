@@ -536,4 +536,15 @@ protected:
     mutable std::unique_ptr<const ParametersCall<T>> call_;
 };
 
+// Whether an expression reads a name, or calls it.
+template <typename T>
+bool Mentions(const Expression<T>& e, const std::string& name) {
+    if ((dynamic_cast<const RefExpression<T>*>(&e) || dynamic_cast<const FuncExpression<T>*>(&e)) &&
+        e.Name() == name)
+        return true;
+    for (const PExpression<T>& child : e.Children())
+        if (child && Mentions(*child, name)) return true;
+    return false;
+}
+
 #endif
