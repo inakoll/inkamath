@@ -165,6 +165,14 @@ sf(x)[i] = (2*x + 1)[i]
 [3;
  5]
 
+# A read may call a definition whose size is inferred in turn.
+>> ab(z)[i,j] = rl(z)[i,j] + rl(-z)[i,j]
+ab(z)[i,j] = rl(z)[i,j] + rl(-z)[i,j]
+
+>> ab([1 -2; 0 3])
+[1, 2;
+ 0, 3]
+
 # Every read of an index agrees, or it is refused naming two that do not:
 # taking the first would cut b short or read past it, by the order written.
 >> add(a, b)[i,j] = a[i,j] + b[i,j]
@@ -202,6 +210,13 @@ sh(z)[i] = z[i+1]
 >> sh([1; 2; 3])
 error: sh has no size, as nothing reads a matrix at i alone; write it as sh(z)[i<=rows]
 
+# The bounds written are kept.
+>> tl(z)[i<=2, j] = i
+tl(z)[i<=2, j] = i
+
+>> tl([1 2])
+error: tl has no size, as nothing reads a matrix at j alone; write it as tl(z)[i<=2, j<=cols]
+
 # --- guards ------------------------------------------------------------------
 
 # A guard's reads give a size as the value's do, so the ReLU of README.md
@@ -218,6 +233,14 @@ relu(z)[i,j] | z[i,j] < 0 = 0
 
 >> tex ?relu
 \operatorname{relu}(z)_{i,j} = \begin{cases} 0 & \text{if } z_{i,j} < 0 \\ z_{i,j} & \text{otherwise} \end{cases}
+
+# A guard alone gives it, and a cell no clause gives is 0, as now.
+>> sgn(z)[i,j] | z[i,j] > 0 = 1
+sgn(z)[i,j] | z[i,j] > 0 = 1
+
+>> sgn([1 -2; 0 3])
+[1, 0;
+ 0, 1]
 
 # A clause that reads nothing takes the size of the clauses that do: a
 # causal mask.
@@ -236,6 +259,27 @@ ms(s)[i,j] | j > i = 0
 
 >> ms([1 2; 3 4])
 error: ms has no size, as nothing reads a matrix at i alone; write it as ms(s)[i<=rows, j<=cols]
+
+# Each index takes its size from the clauses that give it one, and the
+# clauses agree.
+>> pk(a, b)[i,j] = a[i,1]
+pk(a, b)[i,j] = a[i,1]
+
+>> pk(a, b)[i,j] | i == j = b[1,j]
+pk(a, b)[i,j] | i == j = b[1,j]
+
+>> pk([1; 2], [5 6])
+[5, 1;
+ 2, 6]
+
+>> pd(a, b)[i,j] = a[i,j]
+pd(a, b)[i,j] = a[i,j]
+
+>> pd(a, b)[i,j] | i == j = b[i,j]
+pd(a, b)[i,j] | i == j = b[i,j]
+
+>> pd([1 2; 3 4], [1 2 3])
+error: the clauses of pd give it different sizes
 
 # --- terms -------------------------------------------------------------------
 
