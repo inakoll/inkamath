@@ -192,8 +192,10 @@ g(a)_0[2] = 1
 [6;
  2]
 
->> m(a)_0[j<=2] = j
-m(a)_0[j<=2] = j
+# A limit is walked from the highest base term, here written by its cells:
+# below it the sequence has no term.
+>> m(a)_2[j<=2] = j
+m(a)_2[j<=2] = j
 
 >> m(a)_n[j<=2] = a*j^2
 m(a)_n[j<=2] = a*j^2
