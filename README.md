@@ -130,7 +130,8 @@ arguments, in the order of its signature, and its parameters, with their
 defaults, the only fields; a name nothing defines is refused rather than
 taken for one more input. A read of an input before the stream is a term the
 model's history gives, which `init` folds into the input's window, or is
-refused: `down` in `test/compile/decimate.ink` states `x_n | n < 0 = 0`. A file's named instances are compiled with it, into
+refused: `down` in `test/compile/decimate.ink` states `x_n | n < 0 = 0`.
+A file's named instances are compiled with it, into
 one step that orders all their terms together, each instance a struct of its
 own: `test/compile/loop.ink` closes a loop, `m.ctl.u[0]` and `m.plt.x[0]`,
 and `test/compile/chain.ink` nests one. A function, and an instance of a model
