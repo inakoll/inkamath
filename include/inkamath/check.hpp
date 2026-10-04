@@ -62,7 +62,13 @@ public:
             for (int n = first; n < first + steps; ++n) {
                 const Term input = At(session, instance + "." + compiled.inputs[k], n);
                 if (!input.error.empty()) throw std::runtime_error(input.error);
-                values.push_back(input.cells.at(0));
+                if (input.cells.size() != 1)
+                    throw std::runtime_error(instance + "." + compiled.inputs[k] + "_(" +
+                                             std::to_string(n) + ") has " +
+                                             std::to_string(input.cells.size()) +
+                                             " cells, where the compiled step takes a single "
+                                             "value");
+                values.push_back(input.cells.front());
             }
             data += Array("const double", "in_" + std::to_string(k), steps, values);
         }
