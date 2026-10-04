@@ -3536,9 +3536,7 @@ that exploring seven domains asked of the interpreter, by how many asked.
   it, `pole.y: inf at 3, where the interpreter gives none`. A host's NaN, an
   input it feeds or a parameter it assigns, propagates only in an aware
   header; in another, its guards decide on it. A guard reading a limit
-  directly computes it twice, as its value already does. The interpreter
-  takes a power of its own NaN as C does, `1^(0/~0)` being 1, where an aware
-  step answers NaN.
+  directly computes it twice, as its value already does.
 
   About 30 lines and none removed: 25 in the compiler, the gate and its
   second run, the operand's test, the guard, the comparison, `and` and `or`,
@@ -3569,3 +3567,8 @@ that exploring seven domains asked of the interpreter, by how many asked.
   of sources added and 21 removed, 80 more in all, where about 30 were
   planned before the review added the matrix test, the power and the
   interpreter's refusals: 13,358 lines in all.
+
+  On review, the interpreter's power of NaN is NaN, `1^(0/~0)` and
+  `(0/~0)^~0` as an aware step answers them, where C's `pow` gave 1: the
+  one parting the implementation left as a known limit; `errors.ink` holds
+  it. 2 lines: 13,360 in all.

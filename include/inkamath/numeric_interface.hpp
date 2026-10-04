@@ -156,6 +156,8 @@ struct numeric_interface_imp<std::complex<T>,false>
     static std::complex<T> pow(const std::complex<T>& a,
                                const std::complex<T>& b)
     {
+        // NaN has no power and is none, where C's pow(1, NaN) and pow(NaN, 0) are 1.
+        if (a != a || b != b) return a + b;
         // A real power of a real number is the real one: as a complex power,
         // 2^0.5 came out a bit off, and 2^1024 squared an infinity into a NaN
         // imaginary part.

@@ -163,6 +163,14 @@ error: a comparison needs a number, not -nan
 >> [1 0/~0] == [1 2]
 error: a comparison needs a number, not -nan
 
+# A power of NaN is NaN, as every other operation on it is, where C's pow
+# absorbs it: both answered 1, where an aware step does not.
+>> 1^(0/~0)
+-nan
+
+>> (0/~0)^~0
+-nan
+
 # An exponent outside int's range used to be converted to one anyway, which is
 # undefined: this answered 0 (DESIGN.md, C28).
 >> 2^2147483648
