@@ -19,6 +19,16 @@
 #     rise: 100 steps from 0, against exact values
 #     rise.c: within 0
 #
+# An instance within a model: 'nest' reads an input with no history of its
+# own, whose argument is the outer input, so init folds the outer history
+# into the inner window; in 'twice' the inner history beats the outer one.
+#
+#     nest: 100 steps from 0, against exact values
+#     nest.<name>: within 0, for each of c, inner.c and inner.u
+#
+#     twice: 100 steps from 0, against exact values
+#     twice.<name>: within 0, for each of c, inner.c and inner.x
+#
 # A term the step computes and the interpreter cannot give parts, where it
 # was skipped: 'pole' reported 'within 0', its step inf at 3.
 #
@@ -103,6 +113,23 @@ edge(x_n) = {
     c_n = n > 0 and x_n > x_(n-1)
 }
 rise = edge(x_n = (n - 3)^2)
+
+bare(u_n) = {
+    c_n = u_(n-1)
+}
+wrap(x_n) = {
+    x_n | n < 0 = 3
+    inner = bare(u_n = x_n)
+    c_n = inner.c_n
+}
+nest = wrap(x_n = n)
+
+shift(x_n) = {
+    x_n | n < 0 = 5
+    inner = delay(x_n = x_n)
+    c_n = inner.c_n + x_(n-1)
+}
+twice = shift(x_n = n)
 
 inv(x_n) = {
     y_n = 1/(x_n - 3)

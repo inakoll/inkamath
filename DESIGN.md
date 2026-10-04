@@ -3167,7 +3167,10 @@ that exploring seven domains asked of the interpreter, by how many asked.
   answer from and no body to state a history in, so its readers start where
   its terms exist, as now: `fir.ink` waits for four samples, `back.ink` keeps
   its NaN. An instance compiled within its file reads its argument's terms, as
-  now, and its history where it holds.
+  now, and its history where it holds. Within a model, its argument's terms
+  before the stream are the outer input's history, which `init` folds into
+  the inner input's window as any other, and the inner history beats it
+  where both hold, as in the interpreter.
 
   `--check` holds a sequence from the step that computes its first term, its
   start or a slow one's first tick, and says so where that is after the first
@@ -3195,7 +3198,7 @@ that exploring seven domains asked of the interpreter, by how many asked.
   About 210 lines: 40 in the interpreter, 130 in the compiler, most of them
   the fill and the refusals, and 40 in the check.
 
-  Specified in `test/data/spec/history.ink`, 34 of its 42 entries failing,
+  Specified in `test/data/spec/history.ink`, 39 of its 48 entries failing,
   those passing being definitions echoing themselves and a parameter's
   refusal; and in `test/compile/history.ink`, whose instances, refusals
   and reports, the seven programs' among them, are wired with the

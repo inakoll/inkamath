@@ -170,6 +170,36 @@ b = both(u_n = n, v_n = 2*n)
 >> b.c_2
 -1
 
+# Within another model, an input's history is its own; where it has none,
+# its argument answers, and there the outer input's history.
+>> bare(u_n) = {
+..     c_n = u_(n-1)
+.. }
+bare(u_n) = { ... }
+
+>> wrap(x_n) = {
+..     x_n | n < 0 = 3
+..     inner = bare(u_n = x_n)
+..     c_n = inner.c_n
+.. }
+wrap(x_n) = { ... }
+
+>> wrap(x_n = n).c_0
+3
+
+>> shift(x_n) = {
+..     x_n | n < 0 = 5
+..     inner = delay(x_n = x_n)
+..     c_n = inner.c_n + x_(n-1)
+.. }
+shift(x_n) = { ... }
+
+>> shift(x_n = n).c_0
+5
+
+>> shift(x_n = n).c_2
+2
+
 # A clause that always applies would leave the argument nothing; a
 # parameter is still not the body's to define.
 >> bad(x_n) = {
