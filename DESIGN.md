@@ -2999,7 +2999,7 @@ that exploring seven domains asked of the interpreter, by how many asked.
 
   Each cell's guards are asked as a whole definition's are: the clause that
   holds at the point gives the slope, a comparison whose sides meet there and
-  move taking the side its value gives, so the order of the clauses decides a
+  move taking the side its value gives, so the guard's comparison decides a
   ReLU's slope at 0, cell by cell, `<` giving 1 and `<=` 0. An equality that
   holds at the point only is refused, naming the cell as `--check` does,
   `sp[2,1] takes a clause at t = 1 that holds only there`. What is asked is
