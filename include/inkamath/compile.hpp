@@ -1191,6 +1191,19 @@ private:
         return "isnan(" + truth + ") ? NAN : " + truth + " != 0.0";
     }
 
+    // A guard as the clause kept for --check tests it: 0 where it reads NaN,
+    // as no clause is taken, rather than NaN in an int (C90). Its own test
+    // is the first conditional outside every parenthesis.
+    static std::string Picked(std::string condition) {
+        int depth = 0;
+        for (std::size_t at = 0; at < condition.size(); ++at) {
+            depth += (condition[at] == '(') - (condition[at] == ')');
+            if (depth == 0 && condition.compare(at, 9, " ? NAN : ") == 0)
+                return condition.replace(at, 9, " ? 0 : ");
+        }
+        return condition;
+    }
+
     // A truth as C tests it: a comparison as itself, 'and' and 'or' as C's,
     // which read their right side only when they must, as the interpreter's
     // do; anything else against zero, which is the interpreter's truth, NaN
@@ -1444,7 +1457,7 @@ private:
                         picked = place;
                     } else {
                         chain += *condition + " ? " + value->cells[0].text + " : ";
-                        pick += *condition + " ? " + std::to_string(place) + " : ";
+                        pick += Picked(*condition) + " ? " + std::to_string(place) + " : ";
                     }
                     return condition->empty();
                 };
@@ -3341,8 +3354,8 @@ private:
                     for (const auto& [index, base] : sequence.bases)
                         kept += "m_->index_ == " + std::to_string(index) + " ? 0 : ";
                     for (const Guarded& guarded : sequence.guarded)
-                        kept += before(guarded.guard_from, "0") + guarded.condition + " ? " +
-                                std::to_string(guarded.clause + 1) + " : ";
+                        kept += before(guarded.guard_from, "0") + Picked(guarded.condition) +
+                                " ? " + std::to_string(guarded.clause + 1) + " : ";
                     assignments.insert(0,
                                        kept + std::to_string(sequence.general_clause + 1) + ";\n");
                 }

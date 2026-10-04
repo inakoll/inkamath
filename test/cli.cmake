@@ -354,6 +354,25 @@ set(stderr "inkamath: v.x_(0) has 2 cells, where the compiled step takes a singl
 set(exit 1)
 check(check_matrix_input)
 
+# The lines a file written is to hold, each found as given.
+function(holds name file)
+    file(READ "${OUT}/${file}" text)
+    math(EXPR last "${ARGC} - 1")
+    foreach(i RANGE 2 ${last})
+        string(FIND "${text}" "${ARGV${i}}" at)
+        if(at EQUAL -1)
+            message(SEND_ERROR "${name}: ${file} does not hold\n${ARGV${i}}")
+        endif()
+    endforeach()
+endfunction()
+
+# C90: the clause --check keeps is 0 where a guard of 'and' reads NaN, as no
+# clause is taken, where the NaN was converted to an int.
+file(WRITE "${OUT}/c90.ink" "gate(x_n) = {\n    y_0 = 1\n    y_n = y_(n-1) + x_n\n    z_n | x_n > 0 and y_(n-2) > 0 = 1\n    z_n = 0\n}\ng = gate(x_n = 1)\n")
+set(args --check c90.ink g -o c90.c)
+check(check_c90)
+holds(check_c90 c90.c [[m_->z_clause_ = isnan(t1_) ? 0 : t1_ != 0.0 ? 1 : 2;]])
+
 # A model's history of its inputs (DESIGN.md): a read before the stream that
 # no history gives, and a history that init cannot fold, each refused by name.
 function(refused model body why)
