@@ -17,6 +17,12 @@ delay(x_n) = {
     c_n = x_(n-1)
 }
 
+# Typeset, a history is a clause of the input like any other.
+>> tex ?delay
+\operatorname{delay}(x_n):
+    x_n = \begin{cases} 0 & \text{if } n < 0 \end{cases}
+    c_n = x_{n-1}
+
 # Where both apply, the history wins: x_(-1) is 0 where n^2 gives 1.
 >> d = delay(x_n = n^2)
 d = delay(x_n = n^2)
