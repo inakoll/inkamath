@@ -2835,11 +2835,28 @@ private:
                 const ParametersCall<Value> at(
                     PExpression<Value>(), std::make_shared<ValExpression<Value>>(Value(Number(n))));
                 const Value term = definition->Eval(at, definitions_, true);
-                if (definitions_.histories) slot->second = term;
-            } catch (const std::runtime_error&) {
+                if (definitions_.histories) {
+                    const std::vector<double> cells = Doubles(term);
+                    if (std::all_of(cells.begin(), cells.end(),
+                                    [](double cell) { return std::isfinite(cell); }))
+                        slot->second = term;
+                    else
+                        unfolded_[{name, n}] = "a term no double holds";
+                }
+            } catch (const std::runtime_error& error) {
+                if (definitions_.histories)
+                    unfolded_[{name, n}] = std::string("none: ") + error.what();
             }
         }
         return slot->second.has_value();
+    }
+
+    // Why a read before the stream is refused: what its history gave there,
+    // or that it has none.
+    std::string Unfolded(const std::string& read, int at) const {
+        const auto why = unfolded_.find({read, at});
+        return why != unfolded_.end() ? read + "'s history gives " + why->second
+                                      : read + " has no history";
     }
 
     // Whether a term can read a parameter, which the host may assign after
@@ -2896,7 +2913,7 @@ private:
                     throw Refusal("cannot compile " + name + ": " + name + "_" +
                                   std::to_string(Floor(n - reader.phase, reader.period)) +
                                   " reads " + read + "_" + std::to_string(n - lag) +
-                                  ", before the stream, where " + read + " has no history");
+                                  ", before the stream, where " + Unfolded(read, n - lag));
                 }
             }
         }
@@ -2932,7 +2949,7 @@ private:
                     throw Refusal("cannot compile " + name + ": " + name + "_" +
                                   std::to_string(seed.index) + " reads " + seed.read + "_" +
                                   std::to_string(seed.at) + ", before the stream, where " +
-                                  seed.read + " has no history");
+                                  Unfolded(seed.read, seed.at));
         }
         for (const Early& early : earlies_)
             for (const auto& [name, sequence] : sequences_)
@@ -3491,6 +3508,7 @@ private:
     std::map<std::string, const Reference<Value>*> histories_;  // by the input they give
     std::map<std::string, int>                     reach_;      // the last index each gives
     std::map<std::pair<std::string, int>, std::optional<Value>> folded_;
+    std::map<std::pair<std::string, int>, std::string> unfolded_;  // why a history gave none
     int                                                         earliest_ = 0;
     std::string index_text_   = "(double)m_->index_";  // the index, as the step has it
     std::string                      module_;

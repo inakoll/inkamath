@@ -369,6 +369,12 @@ refused(swap "x_n) = {\n    x_n | n < 0 = [0; 0]\n    c_n = [0 1; 1 0]*x_(n-1)"
 refused(planted "x_n) = {\n    y_2 = x_1\n    y_m = x_(2*m)\n    z_n = y_(floor(n/2))"
         "y: y_2 reads x_1, before the stream, where x has no history")
 
+# A history that gives no term, or none a double holds, where it is read.
+refused(singular "x_n) = {\n    x_n | n < 0 = 1/(n+1)\n    c_n = x_(n-1)"
+        "c: c_0 reads x_-1, before the stream, where x's history gives none: division by zero")
+refused(vast "x_n) = {\n    x_n | n < 0 = 10^400\n    c_n = x_(n-1)"
+        "c: c_0 reads x_-1, before the stream, where x's history gives a term no double holds")
+
 # A term init would fold from a history but that reads a parameter, which the
 # host may assign after init: through a slow sequence's samples, and through
 # an argument.
