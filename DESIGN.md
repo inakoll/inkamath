@@ -3634,7 +3634,11 @@ that exploring seven domains asked of the interpreter, by how many asked.
   the interpreter takes a complex input as it takes any. Any other bracket
   in a signature, `x_n[j]`, `x_n[2]` or a parameter's, is refused in the
   words that say what a parameter is, which gain the form: `a model's
-  parameter is a name, as 'k = 2', or an input, as 'x_n' or 'x_n[j<=2]'`. A history by cells is C89's.
+  parameter is a name, as 'k = 2', or an input, as 'x_n' or 'x_n[j<=2]'`.
+  A history by cells, stated or not, is refused as a clause that always
+  applies is, `x is an input of sw, so its body can give it only a history:
+  a term or a guarded clause`, as its guard chooses cells, not terms
+  (C89).
 
   Compiled, the step takes an input of more than one cell as a pointer to its
   cells, row by row, `const double x[2]`, as a host holds a vector; its window

@@ -236,6 +236,20 @@ error: flat(...).x_-1 is a single value, where flat takes a 2x1 matrix
 [0;
  0]
 
+# A history by cells gives every term, its guard choosing cells, so it is
+# refused as a clause that always applies is, the size stated or not (C89).
+>> sw(x_n) = {
+..     x_n[j<=2] | n < 0 = 0
+..     c_n = [0 1; 1 0]*x_(n-1)
+.. }
+error: x is an input of sw, so its body can give it only a history: a term or a guarded clause
+
+>> sw(x_n[j<=2]) = {
+..     x_n[j<=2] | n < 0 = 0
+..     c_n = [0 1; 1 0]*x_(n-1)
+.. }
+error: x is an input of sw, so its body can give it only a history: a term or a guarded clause
+
 # An instance within a model is held to its own model's size.
 >> outer(u_n) = {
 ..     inner = dot(x_n = [u_n; 1])
