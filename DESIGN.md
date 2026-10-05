@@ -3763,9 +3763,10 @@ that exploring seven domains asked of the interpreter, by how many asked.
   product and a quotient's remainder; a result whose rounding is not known --
   a complex operation, a power but one to an exact 0, a factorial, an exact
   number made inexact unless it is a fraction over a power of two whose
-  numerator fits 53 bits -- is left or moved a unit in the last place either
-  way, at random, unless it is 0, which is exact however it was reached: a
-  square moved below it would be negative and its root complex. Each limit,
+  numerator fits 53 bits -- is moved a unit in the last place, up or down
+  with probability one half each and never left, unless it is 0, which is
+  exact however it was reached: a square moved below it would be negative
+  and its root complex. Each limit,
   and each series without an upper bound, is moved by the remainder C36
   estimated where it stopped, `step*r/(1-r)`, or by its last step where the
   one before was 0 and C36 had no ratio, so that a constant series, `gate`'s
