@@ -3929,4 +3929,8 @@ that exploring seven domains asked of the interpreter, by how many asked.
   double holds it, so `y_n = x_n*~1` over `x_n = x_(n-1)/2` was "about
   2.4e-35 from the exact ones" for terms that are exact; such a number is now
   moved as a small one is, unless its numerator fits 53 bits, and `halved`
-  in `test/compile/estimate.ink` holds it.
+  in `test/compile/estimate.ink` holds it. A run is set apart by `Setting`,
+  now moving what it sets aside, so it is given back however the run ends; a
+  limit is moved by `inexact`'s remainder, not by a function of its own; and
+  the check walks a term's cells once: 18 lines fewer and the fix 2 more, 154
+  more in all, 13,656 lines in all.
