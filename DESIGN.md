@@ -3910,9 +3910,7 @@ that exploring seven domains asked of the interpreter, by how many asked.
   after, each apart, the memo, the unnamed instances and the guard hook set
   aside and given back, so the terms compared see what they saw before; a
   complex sum is two real ones, so Two-Sum part by part, not a rounding
-  unknown; an exact number past 64 bits made inexact is always moved, over a
-  power of two too; a matrix limit in the third run draws its way cell by
-  cell; a term before a sequence's start has an estimate as a compared one
+  unknown; a matrix limit in the third run draws its way cell by cell; a term before a sequence's start has an estimate as a compared one
   does; and a sequence whose estimates are all 0 passes none to `hold_`, as
   for `why`. Under callgrind every workload is as it was or fewer by half a
   per cent at most, the conversion of an exact number now out of line:
@@ -3925,3 +3923,10 @@ that exploring seven domains asked of the interpreter, by how many asked.
   error-free tests, the moves and the draws; 18 in `convergence.hpp`,
   `matrix.hpp` and the callers; 71 in the check, and 17 in the stack setting
   a run apart. 13,672 lines in all.
+
+  Its review found one defect of its own: an exact number past 64 bits was
+  moved whenever it was made inexact, over a power of two too, though the
+  double holds it, so `y_n = x_n*~1` over `x_n = x_(n-1)/2` was "about
+  2.4e-35 from the exact ones" for terms that are exact; such a number is now
+  moved as a small one is, unless its numerator fits 53 bits, and `halved`
+  in `test/compile/estimate.ink` holds it.

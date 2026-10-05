@@ -346,8 +346,10 @@ private:
         double magnitude = big_ ? Nearest(big_->num, big_->den)
                                 : Nearest(Magnitude(num_), static_cast<unsigned long long>(den_));
         // Rounded unless over a power of two within 53 bits.
-        if (disturbed && (big_ || !std::has_single_bit(static_cast<unsigned long long>(den_)) ||
-                          Magnitude(num_) > 1ULL << 53))
+        if (disturbed && (big_ ? big_->num.bits() > 53 ||
+                                     !(big_->den == Natural(1).Shifted(big_->den.bits() - 1))
+                               : !std::has_single_bit(static_cast<unsigned long long>(den_)) ||
+                                     Magnitude(num_) > 1ULL << 53))
             magnitude = Unit(magnitude);
         return Negative() ? -magnitude : magnitude;
     }

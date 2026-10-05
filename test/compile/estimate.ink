@@ -60,3 +60,17 @@ rooted(s = 0) = {
     g_n = 0
 }
 flat = rooted(s = ~0)
+
+# A fraction over a power of two whose numerator fits 53 bits is a double
+# exactly, past 64 bits too: 'halved' passes 2^64 at 64, and its conversion
+# is never moved. Its lines stay as they are:
+#
+#     halved: 100 steps from 0, against exact values until 0 and inexact ones from there
+#     halved.x: within 0
+#     halved.y: within 0
+halving() = {
+    x_0 = 1
+    x_n = x_(n-1)/2
+    y_n = x_n*~1
+}
+halved = halving()
