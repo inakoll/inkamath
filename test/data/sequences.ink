@@ -369,7 +369,6 @@ fact_0=1
 >> fact_5
 120
 
-
 # Two terms reading each other at the same index have no first to start
 # from, nor one reading itself: the definition that closes such a loop is
 # refused (DESIGN.md, phase 15).

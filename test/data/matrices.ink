@@ -552,7 +552,6 @@ mm_n=[1 2;3 4]*(0.5)^n
 [~1.45519152e-11, ~2.91038305e-11;
  ~4.36557457e-11, ~5.82076609e-11]
 
-
 # A guarded clause for the whole of a matrix beside clauses for its cells was
 # never asked (C82), so it is refused where it is written, in either order;
 # its cells take the guard instead. Written whole and unguarded, a clause is

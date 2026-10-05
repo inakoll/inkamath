@@ -167,4 +167,3 @@ error: expected an index after 'sum', as in sum_(k=1)^n, not 'k'
 
 >> sum_(k=1)^-3 k
 error: expected the last index after '^', as in sum_(k=1)^n, not '-'
-

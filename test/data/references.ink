@@ -237,4 +237,3 @@ error: p is a sequence; index it (p_0)
 
 >> p_5
 error: p has no clause for index 5
-
