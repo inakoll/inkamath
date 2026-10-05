@@ -126,7 +126,8 @@ inverts a matrix at every step, and `test/compile/heat.ink` once, in `update`;
 `test/compile/net.ink` is a small network whose terms are defined by cells.
 `--compile mix.ink mix -o mix.h` compiles the model `mix` that `mix.ink`
 defines (section 5), read as `use` reads the file: its inputs are the step's
-arguments, in the order of its signature, and its parameters, with their
+arguments, in the order of its signature, one whose size the signature states
+a pointer to its cells, row by row, and its parameters, with their
 defaults, the only fields; a name nothing defines is refused rather than
 taken for one more input. A read of an input before the stream is a term the
 model's history gives, which `init` folds into the input's window, or is
@@ -866,6 +867,23 @@ delay(x_n) = { ... }
 
 >> delay(x_n = n^2).c_3
 4
+```
+
+An input of more than one cell states its size in the signature, by bounds,
+as a definition by cells does, and each of its terms is held to it where it is
+read:
+
+```
+>> dot(x_n[j<=2]) = {
+..     y_n = [1 2]*x_n
+.. }
+dot(x_n[j<=2]) = { ... }
+
+>> dot(x_n = [n; 1]).y_3
+5
+
+>> dot(x_n = n).y_3
+error: dot(...).x_3 is a single value, where dot takes a 2x1 matrix
 ```
 
 Defining an instance evaluates nothing, so two that read each other's terms,

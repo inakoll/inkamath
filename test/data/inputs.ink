@@ -29,6 +29,13 @@ v = dot(x_n = [n; 1])
 [3;
  1]
 
+# README.md, section 5: an argument held to the size, where a term is read.
+>> dot(x_n = [n; 1]).y_3
+5
+
+>> dot(x_n = n).y_3
+error: dot(...).x_3 is a single value, where dot takes a 2x1 matrix
+
 # A cell of the input is read as any matrix's is, one index a row.
 >> dif(x_n[j<=2]) = {
 ..     y_n = x_n[1] - x_n[2]
