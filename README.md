@@ -201,8 +201,8 @@ the header writes doubles, every constant the nearest float, for a target that
 computes in float. Its check holds each term within a thousandth of one plus
 the interpreter's and says the most any term came in units of a float, the
 spacing of floats at the interpreter's term: `test/compile/float.ink`. A limit
-compiled in float also stops where a step is within `FLT_EPSILON` of its term,
-so it may answer where the interpreter says it does not converge.
+compiled in float also stops where a step is within twice `FLT_EPSILON` of its
+term, so it may answer where the interpreter says it does not converge.
 
 `--check session.ink`, given a transcript alone, replays it and shows each
 answer that is not the one recorded, as recorded (`-`) and as given now (`+`),

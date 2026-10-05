@@ -44,8 +44,8 @@
 # 'stiff' of newton.ink, Newton's method inside every step. Its iterates
 # close on a pair of floats a unit apart, a step a float cannot make smaller,
 # and the interpreter's 1e-10 is below a float's spacing past 8.4e-4: held to
-# it alone, the limit is NaN from step 25 on. A step within FLT_EPSILON
-# times its term ends the walk too, after 2 or 3 terms:
+# it alone, the limit is NaN from step 25 on. A step within twice
+# FLT_EPSILON times its term ends the walk too, after 2 or 3 terms:
 #
 #     stiff: 100 steps from 0 in float, against exact values until 0 and inexact ones from there
 #     stiff.h: within 6e-08, 0.5 units of a float
@@ -54,8 +54,24 @@
 #
 # with x 1.6e-07 and 1.4 units and y 8.1e-08 and 0.68, by glibc's powf.
 #
+# Twice, as some iterates alternate two units apart: 'mark' of steady.ink,
+# power iteration, at step 33, and 'cls' of softmax.ink, Newton's method on
+# a series, at step 2, each NaN with FLT_EPSILON alone. mark's digits are
+# its powf's:
+#
+#     mark: 100 steps from 0 in float, against exact values until 0 and inexact ones from there
+#     mark.<s>: within <d>, <u> units of a float; the interpreter's terms about <e> from the exact ones
+#
+# with d 1.1e-07 and 0.9 units and s 1.4e-07 and 1.1, by glibc's, and
+#
+#     cls: 100 steps from 0 in float, against exact values until 0 and inexact ones from there
+#     cls.z: within 2.4e-08, 0.2 units of a float
+#     cls.q: within 1.9e-06, 1.5 units of a float; the interpreter's terms about <e> from the exact ones
+#     cls.s: within 6.3e-08, 0.53 units of a float; the interpreter's terms about <e> from the exact ones
+#     cls.loss: within 4.1e-07, 3.4 units of a float; the interpreter's terms about <e> from the exact ones
+#
 # The disjunct answers where the interpreter refuses a walk that creeps by a
-# unit of a float at each term. 'crawl', a hundred million moved by 8, a
+# unit or two of a float at each term. 'crawl', a hundred million moved by 8, a
 # float's spacing there, stops at its second term:
 #
 #     crawl: 100 steps from 0 in float, against exact values
@@ -132,7 +148,7 @@
 #             const float t_ = t1_ + (t1_ - t2_) * arg_z / (float)k_;
 #             if (started_) {
 #                 step_ = fabsf(t_ - t1_);
-#                 if (step_ <= FLT_EPSILON * fabsf(t_) && isfinite(t_) && stepped_) return t_;
+#                 if (step_ <= 2 * FLT_EPSILON * fabsf(t_) && isfinite(t_) && stepped_) return t_;
 #                 if (step_ <= 1e-10f && stepped_ &&
 #     ...
 #         m_->p[0][0][0] = 1.0f / (1.0f + gate_lim0(m_, 0.0f - (0.0f * m_->w[0][0][0] + 0.0f * m_->w[0][1][0] + m_->b[0])));

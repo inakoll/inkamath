@@ -1980,14 +1980,14 @@ private:
             text += "                    if (isnan(d_) || d_ > step_) step_ = d_;\n";
             if (floats)
                 text +=
-                    "                    near_ &= d_ <= FLT_EPSILON * fabsf(t_[i_][j_]) && "
+                    "                    near_ &= d_ <= 2 * FLT_EPSILON * fabsf(t_[i_][j_]) && "
                     "isfinite(t_[i_][j_]);\n";
             text += "                }\n";
         }
-        // A float closes on two finite floats a unit apart (DESIGN.md, a float target).
+        // A float closes on finite floats a unit or two apart (DESIGN.md, a float target).
         if (floats)
-            text += scalar ? "            if (step_ <= FLT_EPSILON * fabsf(t_) && isfinite(t_) && "
-                             "stepped_) return t_;\n"
+            text += scalar ? "            if (step_ <= 2 * FLT_EPSILON * fabsf(t_) && "
+                             "isfinite(t_) && stepped_) return t_;\n"
                            : "            if (near_ && stepped_) {\n"
                              "                memcpy(out_, t_, sizeof t_);\n"
                              "                return;\n            }\n";

@@ -4241,17 +4241,18 @@ that exploring seven domains asked of the interpreter, by how many asked.
   are, in floats.
 
   A limit compiled in float walks the interpreter's rule, and one disjunct
-  more: a step no larger than `FLT_EPSILON` times its term, a finite one,
-  ends the walk, `if (step_ <= FLT_EPSILON * fabsf(t_) && isfinite(t_) &&
-  stepped_) return t_;` before the rule's test, or for a limit of matrices
-  every cell's step within `FLT_EPSILON` times that cell, a finite one, and `<float.h>` included where a limit is. The rule's 1e-10
-  is below a float's spacing at any term past 8.4e-4, and Newton's iterates
+  more: a step no larger than twice `FLT_EPSILON` times its term, a finite
+  one, ends the walk, `if (step_ <= 2 * FLT_EPSILON * fabsf(t_) &&
+  isfinite(t_) && stepped_) return t_;` before the rule's test, or for a
+  limit of matrices every cell's step within twice `FLT_EPSILON` times that
+  cell, a finite one, and `<float.h>` included where a limit is. The rule's
+  1e-10 is below a float's spacing at any term past 8.4e-4, and Newton's iterates
   close on two floats a unit apart rather than on one: `stiff` in
   `test/compile/newton.ink`, held to the rule alone, is NaN from step 25 on,
   and with the disjunct within 1.4 units of a float at every step, stopping
   after 2 or 3 terms. A series stops where its sum stops moving, as it did,
   `gate`'s at 24 terms at most. The disjunct answers where the interpreter
-  refuses a walk that creeps by a unit of a float at each term: `crawl` in
+  refuses a walk that creeps by a unit or two of a float at each term: `crawl` in
   `float.ink`, 10^8 moved by 8, is 100000016 where the interpreter says it
   does not converge, as a double header answers one that creeps by less
   than half a unit, whose step is 0, by the rule alone (C102). "A term the
@@ -4356,4 +4357,7 @@ that exploring seven domains asked of the interpreter, by how many asked.
   that closes, a step of inf being no larger than `FLT_EPSILON` times an
   infinite term: `run` in `test/compile/nan.ink` was -inf at 14, where the
   interpreter does not converge and a double header is NaN. The term must
-  now be finite, `blast` in `float.ink`; a line more, 13,807 in all.
+  now be finite, `blast` in `float.ink`; a line more, 13,807 in all. By
+  its ruling the disjunct takes twice `FLT_EPSILON`: `mark`, and `cls` in
+  `softmax.ink`, Newton's method on a series, alternate two units apart and
+  were NaN at 33 and at 2; no other report of the 80 instances moves.
