@@ -3942,3 +3942,181 @@ that exploring seven domains asked of the interpreter, by how many asked.
   said its terms were about 1.1e-13 from the exact ones where they are
   1.2e-10 from them at 2, and now says 1.2e-10, `Convergence::Limit` going
   with no line more.
+- **`exp`, `log` and `tanh` accurate, bounded and compiled.** The prelude's
+  three are each wrong in a way of their own, measured against mpmath.
+  `exp(x) = e^x` raises the double nearest e, whose error x multiplies: 340
+  units in the last place at 709. `log` is an open series stopped by a
+  limit's tolerance, 1.7e-11 from the exact value, reached by halving or
+  doubling a reference deep per factor of two, so `log(2^-1074)` and
+  `log(10^300)` run out of depth; the compiler refuses it, the halving 64
+  calls deep. `tanh(x) = 1 - 2/(exp(2*x) + 1)` cancels near 0: 5.6e-5 from
+  the exact value at 1.9e-12, seven digits at 1e-9.
+
+  Decided, the owner's: no built-in elementary function and no libm. That
+  answers *A standard library* (Openings) for the prelude: written in
+  inkamath, bounded, compilable, and in the interpreter and the compiled step
+  the same operations on the same doubles, `+`, `-`, `*`, `/`, `floor` and
+  whole powers of two. The design, measured before it was written down:
+
+      exp(x) = expk(x, floor(x*1.4426950408889634 + 1/2))
+      exp(x) | x > 1000 = exp(1000)
+      exp(x) | x < -1000 = exp(-1000)
+      expk(x, k) = (1 + expp(~(x - k*355/512 + k*2.1219444005469057e-4)))*2^(k - floor(k/2))*2^floor(k/2)
+      expp(r) = r*(1 + r*(1/2 + r*(1/6 + r*(1/24 + r*(1/120 + r*(1/720 + r*(1/5040 + r*(1/40320 + r*(1/362880 + r*(1/3628800 + r*(1/39916800 + r*(1/479001600 + r*(1/6227020800 + r/87178291200)))))))))))))
+      ilogb(x) = ilogbs(x, ilogbs(x, ilogbs(x, ilogbs(x, ilogbs(x, ilogbs(x, ilogbs(x, ilogbs(x, ilogbs(x, ilogbs(x, ilogbs(x, ilogbs(x, ilogbs(x, -4096, 4096), 2048), 1024), 512), 256), 128), 64), 32), 16), 8), 4), 2), 1)
+      ilogbs(x, k, s) = k
+      ilogbs(x, k, s) | x >= 2^(k + s) = k + s
+      log(x) = logk(x, ilogb(x))
+      log(x) | x <= 0 = 1/0
+      logk(x, k) = logm(x/2^k, k)
+      logm(m, k) = logs(~((m - 1)/(m + 1)), k)
+      logm(m, k) | m*m > 2 = logs(~((m/2 - 1)/(m/2 + 1)), k + 1)
+      logs(s, k) = k*355/512 + (2*s*logp(s*s) - k*~2.1219444005469057e-4)
+      logp(z) = 1 + z*(1/3 + z*(1/5 + z*(1/7 + z*(1/9 + z*(1/11 + z*(1/13 + z*(1/15 + z*(1/17 + z*(1/19 + z/21)))))))))
+      tanh(x) = tanhp(x)
+      tanh(x) | x < 0 = -tanhp(-x)
+      tanhp(x) = tanhk(-2*x, floor(-2*x*1.4426950408889634 + 1/2))
+      tanhp(x) | x > 20 = ~1
+      tanhk(y, k) = tanhe(2^k - 1 + 2^k*expp(~(y - k*355/512 + k*2.1219444005469057e-4)))
+      tanhe(m) = -m/(m + 2)
+
+  `exp` takes k, the whole number nearest x/ln 2, and e^x = 2^k e^r with
+  r = x - k ln 2, ln 2 being 355/512 less 2.1219444005469057e-4 (Cody and
+  Waite): k*355/512 is exact for every k below 2^44, and so is x less it, so
+  r is rounded only by the correction's product. e^r - 1 is its Taylor series
+  to r^14 in Horner's form, its remainder below 2^-62 of e^r on |r| <= ln(2)/2,
+  where to r^13 it is 2^-57; its coefficients are reciprocals of whole
+  numbers, as the compiler refuses `!`. 2^k is taken in two halves, since 2^k
+  is infinite from 709.44 to 709.78, where e^x is not, and 0 from -745.13 to
+  -744.44, where it is the least double. Past a thousand either way, its value
+  there, inf or 0 as C's exp gives, which also keeps an infinite x from
+  becoming NaN.
+
+  `log` reduces by ilogb, C's name for what it is on a double: the power of
+  two at or below x, by thirteen guarded steps from 2^-4096, so exact, and
+  right for every positive double and every exact number below 2^3072:
+  `log(10^400)` is 921.034037. From 2^3072 a threshold it tries has more
+  than a thousand digits, is approximated to inf, and the number, a double
+  only as inf, passes it, so `ilogb` answers 4095 and `log` refuses, as it
+  does inf. Eleven steps from 2^-1075, as first sketched, reach 2^972 and no
+  further. Guards rather than comparisons taken as values, so that `grad` at
+  a power of two takes the guard's side instead of refusing a jump; a
+  threshold past a thousand digits is approximated, which a comparison does
+  not mark. Like every name of the prelude it is seen
+  everywhere, `?ilogb` shows it, and it means something only of a positive
+  number. m = x/2^k, in [1, 2), is folded to [√2/2, √2), so that log just
+  below 1 does not subtract log m from ln 2; then s = (m - 1)/(m + 1), |s| <=
+  0.1716, and log m = 2s(1 + s^2/3 + ... + s^20/21), whose remainder is below
+  2^-60. k ln 2 is split as in `exp`, its correction a double so that an
+  exact k times it is C's product: the exact product rounds otherwise for 87
+  of the 2,099 k of the doubles.
+
+  `tanh` is -m/(m + 2), m = e^(-2x) - 1 taken for x >= 0 as `exp` takes it,
+  (2^k - 1) + 2^k(e^r - 1), so that near 0, where k is 0, m is the series
+  itself and nothing cancels. Odd by its guard, exactly; past 20, 1, which it
+  is to the double from 19.06 on.
+
+  An exact argument is reduced exactly and rounded once, where its reduction
+  ends: the `~` on r and on s. A double's operations are C's. The sketch's
+  `~x` first, at the entry, rounds the argument and multiplies its error by
+  the function's condition: on 2,800 exact arguments, 472 units for `exp`, at
+  613363/1000, and 2.2e10 for `log` near 1, 4.8e-6 of the value, where
+  reduced exactly it is 0.83, 1.69 and 2.43 units for the three.
+  `log(1 + 1/10^12)` would be 1.0000889e-12, the logarithm of the double
+  nearest its argument. Nothing the three give is exact, every path through
+  them passing a `~`: `exp(0)`, `log(1)` and `tanh(0)` are a double's 1, 0
+  and 0, as `exp(0)` is now. `ilogb`'s answer is exact. A guard making
+  `exp(0)` exactly 1 was rejected: `grad` refuses a clause that holds at a
+  point alone.
+
+  Accuracy over doubles, against expl, logl and tanhl at 64 bits on 2e7
+  points each, and against mpmath at 160 bits on 2e4, which agree to the
+  third decimal of a unit:
+
+  | | worst | correctly rounded |
+  |---|---|---|
+  | `exp` on [-708.39, 709.78] | 1.29 units | 88.6% |
+  | `exp` below, to -745.13 | 0.89 units of 2^-1074 | 99.1% |
+  | `log`, every positive double | 2.55 units | 99.8% |
+  | `log` on [1/2, 2] | 2.87 units | 65.6% |
+  | `tanh` on [-20, 20] | 2.77 units | 40.2% |
+  | `tanh`, \|x\| < 1 to 2^-40 | 2.83 units | 76.5% |
+
+  So `exp(1)` is a unit above e, which is the double nearest it, and
+  `exp(1) == e` is 0 where it was 1. Rejected: correct rounding, by tables or
+  double-double, several hundred lines; the shape of fdlibm's log,
+  log(1 + f) = f - (f^2/2 - s(f^2/2 + R)), within 1.24 units for 2.87, at a
+  helper and two operations more; a high part of ln 2 of 32 bits, 1.18 units
+  for 1.29; tanh as m/(m + 2) with m = e^(2x) - 1, 3.14 units; an odd
+  polynomial near 0, nineteen terms to reach 0.55.
+
+  Identical, measured: the design emulated in C, built by GCC 13 and Clang 18
+  at -O0 and -O2, and in Python with exact fractions wherever the interpreter
+  is exact, against an interpreter given this prelude: 9,348 doubles alike to
+  the bit in C and the interpreter, the 87 k among them, and 3,500 arguments
+  in Python and the interpreter, exact ones among them. They part only where
+  a C compiler fuses a multiply and an add, built with -mfma: 5.1 per cent of
+  results under GCC's GNU modes and 1.2 under Clang's default, which the
+  header already says (*Fused multiply-adds*). `2^k` is `pow(2.0, k)`, as any
+  power compiles: exact under glibc 2.39 for every whole k from -1100 to 1100,
+  checked, and assumed elsewhere; where a platform's is not, interpreter and
+  step call the same one and still agree, which `ldexp` would not.
+
+  `grad` differentiates the definitions: floor's derivative is 0 and every
+  guard takes its side at its threshold, so 0, 1, 2, every power of two and
+  the fold at √2 answer; `grad_(x = 2) log(x)` is 0.5. floor's argument is a
+  whole number at a few doubles near (j + 1/2) ln 2, where `grad` says floor
+  jumps: at no p/q with q <= 1000 and |x| <= 50, searched. Past a thousand
+  `exp`'s derivative is 0, a constant's, and past 20 `tanh`'s; `log`'s at
+  2^-1074 is NaN, its derivative overflowing. NaN is refused by `exp` and
+  `tanh` at their first guard, `a comparison needs a number`, as by `log`
+  now; they answered NaN. An infinite x reaches `log`'s fold as NaN and is
+  refused so too, where the step answers NaN and libm inf. `tex ?expk`,
+  `?logm`, `?logs` and `?tanhk` refuse their `~`, and `tex ?exp` shows its
+  constant as `~1.44269504` (C96).
+
+  Compiled where called, as every function is, a definition writes its
+  argument again at each reading: a header stepping `exp(a*y_(n-1) - 1)` is
+  4.9 KB of C, with `tanh` 15.7 KB, and with `log` it exhausts 4 GB, each of
+  ilogb's steps tripling the last. So a call to a function of the prelude
+  compiles to a C function of the header's own, `<header>_<name>(double
+  arg_x, ...)`, its parameters named as a limit's are, emitted once before
+  the step and the limits' functions, the prelude's calls inside it so too,
+  and one whose arguments are all constant folded as now: `exp(1000)` is
+  `INFINITY`. The step then reads as the
+  prelude does, `ball_exp(-(...))`. Rejected: temporaries for an argument
+  read twice, as `Shared` gives a matrix's operand, which hoisted before the
+  step's expression compute both sides of a guard, and which a limit's
+  function does not have; inlining where every argument is a name or a
+  number, which moves no expected header but compiles `exp(x_n)` and
+  `exp(-x_n)` two ways; a C function for every function, which moves every
+  header that calls one.
+
+  What moves, found by running this prelude, each in the implementation's
+  commit: no golden in `test/data` and no session of `README.md`, nine digits
+  hiding the rest, but README's paragraph on the prelude (section 5);
+  `test/compile/expected/kernel.h`, whose `ceil(x_n)` becomes
+  `kernel_ceil(m_->x[0])` and its function, and the comment of
+  `test/compile/kernel.ink`; `compile_log_refused` in `test/cli.cmake`,
+  whose `lg` now compiles, printing nothing; the programs `--check` writes
+  for `ball`, `fit`, `head` and `sized`, `exp` a function there, and their
+  reports' estimates, `ball.v` 1.1e-15 to 8.3e-16 and the like, and `fit`'s
+  `within`s, as its first arguments are exact and now reduced exactly:
+  `fit.a` 5.6e-17 to 8.3e-17. No test holds those digits. `gate`, `cls` and
+  `rnn` write their own series and do not move. The interpreter is slower:
+  `exp` 10 to 18 µs a call for 5, `log` about 50 for 24, a dozen calls of
+  the prelude each and log's thirteen exact powers; `bench/grad.ink` 0.81 s to
+  3.0 s and `bench/hand.ink` 0.022 s to 0.064 s.
+
+  Rejected besides: built-ins over libm, the owner's refusal, two arithmetics
+  where one is wanted and no identity between interpreter and step; an
+  `ilogb` built-in, which thirteen guarded steps make unneeded; keeping the
+  series, bounded by `lim`'s tolerance, unbounded in its terms and refused by
+  the compiler.
+
+  About 70 lines of sources: the prelude from 6 lines to 21 and a comment of
+  ten, and some 45 in the compiler for the functions. Specified in
+  `test/data/spec/elementary.ink`, 31 of its 72 entries failing, those
+  passing being values today's prelude already gives to nine digits and its
+  refusals; and in `test/compile/elementary.ink`, whose report, every term
+  `within 0`, and whose functions are wired with the compiler's half.
