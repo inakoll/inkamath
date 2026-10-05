@@ -4241,10 +4241,10 @@ that exploring seven domains asked of the interpreter, by how many asked.
   are, in floats.
 
   A limit compiled in float walks the interpreter's rule, and one disjunct
-  more: a step no larger than `FLT_EPSILON` times its term ends the walk, `if
-  (step_ <= FLT_EPSILON * fabsf(t_) && stepped_) return t_;` before the rule's
-  test, or for a limit of matrices every cell's step within `FLT_EPSILON`
-  times that cell, and `<float.h>` included where a limit is. The rule's 1e-10
+  more: a step no larger than `FLT_EPSILON` times its term, a finite one,
+  ends the walk, `if (step_ <= FLT_EPSILON * fabsf(t_) && isfinite(t_) &&
+  stepped_) return t_;` before the rule's test, or for a limit of matrices
+  every cell's step within `FLT_EPSILON` times that cell, a finite one, and `<float.h>` included where a limit is. The rule's 1e-10
   is below a float's spacing at any term past 8.4e-4, and Newton's iterates
   close on two floats a unit apart rather than on one: `stiff` in
   `test/compile/newton.ink`, held to the rule alone, is NaN from step 25 on,
@@ -4351,3 +4351,9 @@ that exploring seven domains asked of the interpreter, by how many asked.
   cannot settle. 66 lines of sources more, where about 50 were planned: 35
   in the compiler, 22 in the check and 9 on the command line. 13,806 lines
   in all.
+
+  The review found the disjunct taking a walk past a float's range for one
+  that closes, a step of inf being no larger than `FLT_EPSILON` times an
+  infinite term: `run` in `test/compile/nan.ink` was -inf at 14, where the
+  interpreter does not converge and a double header is NaN. The term must
+  now be finite, `blast` in `float.ink`; a line more, 13,807 in all.

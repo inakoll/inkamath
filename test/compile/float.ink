@@ -106,6 +106,14 @@
 #     steep: 100 steps from 0 in float, against exact values until 0 and inexact ones from there
 #     steep.e: inf at 67, where the interpreter gives <x>; the interpreter's term about <e> from the exact one
 #
+# A walk past a float's range has not closed on anything: 'blast', powers
+# of -5/2 that leave it at their 97th term, a value and a vector, is NaN at
+# every step, as the interpreter does not converge and a double header says:
+#
+#     blast: 100 steps from 0 in float, against exact values
+#     blast.y: within 0, 0 units of a float
+#     blast.z: within 0, 0 units of a float
+#
 # The header changes only its words for numbers. 'dot' of inputs.ink, by
 # name:
 #
@@ -124,7 +132,7 @@
 #             const float t_ = t1_ + (t1_ - t2_) * arg_z / (float)k_;
 #             if (started_) {
 #                 step_ = fabsf(t_ - t1_);
-#                 if (step_ <= FLT_EPSILON * fabsf(t_) && stepped_) return t_;
+#                 if (step_ <= FLT_EPSILON * fabsf(t_) && isfinite(t_) && stepped_) return t_;
 #                 if (step_ <= 1e-10f && stepped_ &&
 #     ...
 #         m_->p[0][0][0] = 1.0f / (1.0f + gate_lim0(m_, 0.0f - (0.0f * m_->w[0][0][0] + 0.0f * m_->w[0][1][0] + m_->b[0])));
@@ -183,3 +191,13 @@ rise(a = 3, b = 110) = {
     e_n = exp(a*n - b)
 }
 steep = rise()
+
+burst(x_n) = {
+    p(r)_0 = 1
+    p(r)_k = r*p(r)_(k-1)
+    v(r)_0 = [1; 1]
+    v(r)_k = r*v(r)_(k-1)
+    y_n = lim p(x_n)
+    z_n = lim v(x_n)
+}
+blast = burst(x_n = 0 - 5/2)
