@@ -462,8 +462,9 @@ public:
             parameters.BindDefaults(call, evaluator);
             if (call.limit()) {
                 // A guarded general clause is a general clause: it is the index
-                // that makes it one (DESIGN.md, C54).
-                if (!FirstThat([](const Clause<T>& c) { return c.parameters.general(); })) {
+                // that makes it one (DESIGN.md, C54); an input's argument has one.
+                if (!argument &&
+                    !FirstThat([](const Clause<T>& c) { return c.parameters.general(); })) {
                     throw std::runtime_error(reference_name_ +
                                              " has no general clause, so it has no limit");
                 }

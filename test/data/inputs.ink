@@ -301,6 +301,19 @@ gx(x_n[j<=2]) = { ... }
 >> gx(x_n = [n; 1]).g_2
 error: x takes no arguments
 
+# And its limit is its terms'.
+>> lx(x_n[j<=2]) = {
+..     l = lim x
+.. }
+lx(x_n[j<=2]) = { ... }
+
+>> lx(x_n = [1; 2]).l
+[1;
+ 2]
+
+>> lx(x_n = 1).l
+error: lx(...).x_1 is a single value, where lx takes a 2x1 matrix
+
 # An input whose size is not stated takes any, as before.
 >> dbl(x_n) = {
 ..     y_n = 2*x_n
