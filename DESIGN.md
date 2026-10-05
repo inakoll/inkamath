@@ -4185,7 +4185,7 @@ that exploring seven domains asked of the interpreter, by how many asked.
   report to its five lines; and joins a prelude call's arguments as they are
   emitted, every header alike: 5 lines fewer, 82 more for the item, and
   C99's 2; 13,740 lines in all.
-- **A float target, `--float`.** Ranked first of what had not moved by an
+- `[done]` **A float target, `--float`.** Ranked first of what had not moved by an
   outside review: the oracle is worth what separates the target from the
   reference, and with doubles held to a billionth `--check` checks that the
   code generator agrees with the interpreter, not how far a deployment is
@@ -4328,3 +4328,25 @@ that exploring seven domains asked of the interpreter, by how many asked.
   each instance checked by a program in `compile/float`, built with
   `-Wdouble-promotion` under GCC and Clang, `wild`, `ledge`, `far`,
   `crawl` and `steep` expected to fail.
+
+  Built as specified: every report as `float.ink` gives it, the two headers
+  byte for byte, and every double header and check program byte for byte as
+  before. The header's own words for a double -- `double`, `fabs(`,
+  `floor(`, `pow(`, `0.0` and `1.0` -- are rewritten by one pass over its
+  text past the line naming its source, where the fifty-odd places that
+  write them would each have changed; each constant is the float `Double`
+  writes. Departures: a limit's comment still says it is taken "as the
+  interpreter takes it", "within 1e-10f"; an input whose sign bit is set is
+  written `-` before its magnitude, so a negative NaN is `-NAN`; `pid.h` and
+  `adc.h` in float are built alone, as C, under GCC and Clang only; and
+  `--help` names `--float`. The prelude in float, sampled at 2e6 points
+  against the double libm: `exp` 1.15 units on [-87, 88], `log` 2.83 on
+  [1/2, 2] and 2.46 over e^±80, `tanh` 2.49 on [-10, 10], each within the
+  figures above. Under callgrind every benchmark within 0.1 per cent. Found
+  on the way and left to a ruling: `mark` in `test/compile/steady.ink`,
+  power iteration, closes in float on a cell near 0.52 that alternates
+  between floats two units apart, more than `FLT_EPSILON` times the cell,
+  and is NaN at 33, so the disjunct does not end every iteration a float
+  cannot settle. 66 lines of sources more, where about 50 were planned: 35
+  in the compiler, 22 in the check and 9 on the command line. 13,806 lines
+  in all.
