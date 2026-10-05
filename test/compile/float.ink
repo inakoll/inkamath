@@ -116,6 +116,12 @@
 #             calm_step(&m, in_0[n]);
 #             memcpy(&got_0[n * 1], &m.v[0], sizeof(float) * 1);
 #
+# A history no float holds is refused as one no double holds is: with
+# 'x_n | n < 0 = 10^39' and 'c_n = x_(n-1)' in a model of 'x_n', which a
+# double holds, 'inkamath --compile --float' says
+#
+#     c: c_0 reads x_-1, before the stream, where x's history gives a term no float holds
+#
 # Whole headers, for pid.ink and adc.ink, are in compile/expected/float.
 resonator(r = 99/100, c = 3/5, x_n) = {
     a1 = -2*r*c

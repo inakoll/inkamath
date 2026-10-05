@@ -3987,7 +3987,8 @@ that exploring seven domains asked of the interpreter, by how many asked.
   aware the same way. The interface comment adds "Every value is a float,
   and every operation rounds to one", the first line names `--compile
   --float`, and a history term no float holds is refused as one no double
-  holds is, in those words. Built with GCC's and Clang's `-Wdouble-promotion`
+  holds is, in a float's words: "where x's history gives a term no float
+  holds", 10^39 among them. Built with GCC's and Clang's `-Wdouble-promotion`
   and `-Wfloat-conversion`, both hand-written headers are silent, and a
   `0.5` in an operation of either is not: the tests build every float header
   so, which holds that no operation is done in double. A double constant
