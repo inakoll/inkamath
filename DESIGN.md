@@ -4463,9 +4463,11 @@ that exploring seven domains asked of the interpreter, by how many asked.
   the instruction (`-mfma`, `-march=native`, AArch64), and each function
   here is one expression. Measured with `-mfma` and without the flag, 1,215
   of 160,000 answers of a sweep part from the walk; with it, none. The C
-  tests' flag is C97's. MSVC is left as it is: x64's default SSE2 has no
-  fused instruction. `pow(2.0, k)` is the interpreter's own `pow` of a
-  double k, held exact by `compile_powers`.
+  tests' flag is C97's. MSVC is left as it is: since Visual Studio 2022 its
+  default, `/fp:precise`, does not contract whatever `/arch` says, where
+  2019's could at `/arch:AVX2`; `/fp:fast` or `/fp:contract` would.
+  `pow(2.0, k)` is the interpreter's own `pow` of a double k, held exact by
+  `compile_powers`.
 
   Measured on a prototype that can walk instead: 63,000 doubles over every
   range under GCC 13 and 20,000 more under Clang 18, at -O2, each given to the
