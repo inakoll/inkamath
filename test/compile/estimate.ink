@@ -36,6 +36,16 @@ lmap(r = 4, s = 1/5) = {
 }
 chaos = lmap(s = ~(1/5))
 
+# The same map from 3/16, which a double holds: no exact number is made
+# inexact, so only the roundings of its products can show that its terms are
+# past the tolerance from the exact ones at 27, and 0.98 from them at worst.
+# Simulated, the estimate passes the tolerance at 27 to 29 and its largest is
+# 0.98 to 1:
+#
+#     dyad: 100 steps from 0, against exact values until 0 and inexact ones from there
+#     dyad.x: within 0; the interpreter's terms about <x> from the exact ones, past the tolerance from <s>
+dyad = lmap(s = ~(3/16))
+
 # A power that is 0 is exact, whatever its rounding is said to be. Moved a
 # unit below, the square of 'flat' would be negative, its root complex and
 # its guard no comparison, so a run would give no term and the estimate be

@@ -3884,7 +3884,8 @@ that exploring seven domains asked of the interpreter, by how many asked.
   cent on `limit`, whose terms are inexact.
 
   Specified in `test/compile/estimate.ink`: `tie`, a limit that hides which
-  side of its threshold a guard is, `chaos`, the logistic map, and `flat`, a
+  side of its threshold a guard is, `chaos`, the logistic map, `dyad`, the
+  same from a value a double holds, so seen by roundings alone, and `flat`, a
   power that is 0, with their reports, wired with the implementation, as are
   the twelve reports above. Nothing in the interpreter is specified, as
   nothing it prints moves.
