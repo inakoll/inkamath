@@ -1970,14 +1970,25 @@ private:
             text += "            step_ = fabs(t_ - t1_);\n";
         } else {
             text += "            step_ = 0.0;\n";
+            if (floats) text += "            int near_ = 1;\n";
             text +=
                 "            for (int i_ = 0; i_ < " + std::to_string(walked.rows) + "; ++i_)\n";
             text += "                for (int j_ = 0; j_ < " + std::to_string(walked.cols) +
                     "; ++j_) {\n";
             text += "                    const double d_ = fabs(t_[i_][j_] - t1_[i_][j_]);\n";
             text += "                    if (isnan(d_) || d_ > step_) step_ = d_;\n";
+            if (floats)
+                text += "                    near_ &= d_ <= FLT_EPSILON * fabsf(t_[i_][j_]);\n";
             text += "                }\n";
         }
+        // A float closes on two floats a unit apart (DESIGN.md, a float target).
+        if (floats)
+            text +=
+                scalar
+                    ? "            if (step_ <= FLT_EPSILON * fabsf(t_) && stepped_) return t_;\n"
+                    : "            if (near_ && stepped_) {\n"
+                      "                memcpy(out_, t_, sizeof t_);\n"
+                      "                return;\n            }\n";
         text += "            if (step_ <= " + tolerance +
                 " && stepped_ &&\n                (!(before_ > 0) || (step_ / before_ < 1 &&\n"
                 "                                    step_ * (step_ / before_) / (1 - step_ / "
@@ -3383,6 +3394,7 @@ private:
         out += " * closer to exact, but the step then depends on how it is built, so build\n";
         out += " * what 'inkamath --check' writes the way the step itself is built. */\n";
         out += "#ifndef " + guard + "\n#define " + guard + "\n\n";
+        if (floats && !limits_.empty()) out += "#include <float.h>\n";
         out += "#include <math.h>\n#include <string.h>\n\n";
         out += Interface(module, inputs, fields, earliest);
         out += "/* The parameters, which the host may assign, then what derives from them,\n";

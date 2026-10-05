@@ -668,3 +668,16 @@ set(args --compile vast.ink vast --float)
 set(stdout "cannot compile c: c_0 reads x_-1, before the stream, where x's history gives a term no float holds\n")
 set(exit 1)
 check(float_history)
+
+# A float's limit stops where it closes on two floats a unit apart, too.
+set(args --compile ${CMAKE_CURRENT_LIST_DIR}/compile/logistic.ink logit --float -o float/gate.h)
+check(float_gate)
+holds(float_gate float/gate.h "#include <float.h>\n#include <math.h>\n"
+      [[static inline float gate_lim0(const gate* m_, float arg_z) {]]
+      [[        const float t_ = t1_ + (t1_ - t2_) * arg_z / (float)k_;
+        if (started_) {
+            step_ = fabsf(t_ - t1_);
+            if (step_ <= FLT_EPSILON * fabsf(t_) && stepped_) return t_;
+            if (step_ <= 1e-10f && stepped_ &&
+]] [[    m_->p[0][0][0] = 1.0f / (1.0f + gate_lim0(m_, 0.0f - (0.0f * m_->w[0][0][0] + 0.0f * m_->w[0][1][0] + m_->b[0])));
+]])
