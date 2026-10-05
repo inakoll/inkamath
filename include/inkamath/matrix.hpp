@@ -133,6 +133,14 @@ public:
         return c;
     }
 
+    static Matrix<T> limit(const Matrix<T>& a, double remainder) {
+        Matrix<T> c(a);
+        std::transform(c.data(), c.data() + c.extent_.count(), c.data(), [&](const T& value) {
+            return numeric_interface<T>::limit(value, remainder);
+        });
+        return c;
+    }
+
     static Matrix<T> floor(const Matrix<T>& a) {
         Matrix<T> c(a);
         std::transform(c.data(), c.data() + c.extent_.count(), c.data(),

@@ -2,6 +2,7 @@
 #define INKAMATH_CONVERGENCE_HPP
 
 #include <cstddef>
+#include <limits>
 #include <stdexcept>
 #include <string>
 #include <utility>
@@ -31,6 +32,10 @@ public:
     // phase 13).
     static T Limit(const T& value) { return numeric_interface<T>::inexact(value); }
 
+    // The same, which a run of --check moves by the remainder estimated
+    // where the walk stopped (Number::limit).
+    T Reached(const T& value) const { return numeric_interface<T>::limit(value, remainder_); }
+
     // The next value; true when it is the limit. The first is never: one value
     // has nothing to be compared with.
     [[nodiscard]] bool Next(const T& value) {
@@ -44,7 +49,9 @@ public:
             }();
             // '<=' and not '!(> tolerance)': a difference that is NaN
             // answers false to both, and must count as not converged.
-            if (step <= tolerance && stepped_ && TailUnder(step, previous_step_)) return true;
+            if (step <= tolerance && stepped_ &&
+                (remainder_ = Remainder(step, previous_step_)) <= tolerance)
+                return true;
             previous_step_ = step;
             stepped_       = true;
         }
@@ -62,16 +69,18 @@ private:
     // 1/n^2, where r approaches 1, that is 1/n -- five orders of magnitude
     // above the step that would otherwise have been called convergence.
     // One step is no evidence at all, which is why 'stepped_' is required.
-    static bool TailUnder(Step step, Step previous_step) {
-        if (!(previous_step > 0)) return true;
+    // After a step of 0 there is no ratio, and the last step is what is left.
+    static Step Remainder(Step step, Step previous_step) {
+        if (!(previous_step > 0)) return step;
         const Step ratio = step / previous_step;
-        if (!(ratio < 1)) return false;
-        return step * ratio / (1 - ratio) <= tolerance;
+        if (!(ratio < 1)) return std::numeric_limits<Step>::infinity();
+        return step * ratio / (1 - ratio);
     }
 
     std::string what_;
     T           previous_{};
     Step        previous_step_{};
+    Step        remainder_{};
     bool        started_ = false;
     bool        stepped_ = false;
 };

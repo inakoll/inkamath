@@ -45,15 +45,19 @@ public:
     Number(double x) : den_(0), inexact_(x) {}
     Number(inexact_type z) : den_(0), inexact_(z) {}
 
+    // A run of --check that estimates the interpreter's own error (DESIGN.md):
+    // each rounding taken the other way with probability one half, drawn by
+    // splitmix64 from 'state', and each limit moved by its remainder, up (1),
+    // down (-1) or either way (0). Null everywhere else.
+    struct Disturbance {
+        std::uint64_t state;
+        int           limits;
+    };
+    static inline thread_local Disturbance* disturbed = nullptr;
+
     bool exact() const { return den_ != 0; }
 
-    inexact_type Inexact() const {
-        if (!exact()) return inexact_;
-        const double magnitude =
-            big_ ? Nearest(big_->num, big_->den)
-                 : Nearest(Magnitude(num_), static_cast<unsigned long long>(den_));
-        return Negative() ? -magnitude : magnitude;
-    }
+    inexact_type Inexact() const { return exact() ? Converted() : inexact_; }
 
     // 64 bits first, and everything else out of line, so that the first stays
     // small enough to inline into a matrix product.
@@ -121,6 +125,13 @@ public:
         return a.exact() ? Number(0) : Approximate(a.inexact_.imag(), approximated(a));
     }
     static Number inexact(const Number& a) { return a.exact() ? Number(a.Inexact()) : a; }
+    // A limit, which a disturbed run moves by the remainder its walk estimated.
+    static Number limit(const Number& a, double remainder) {
+        const Number value = inexact(a);
+        if (!disturbed || !(remainder > 0)) return value;
+        const int way = disturbed->limits != 0 ? disturbed->limits : Coin() ? 1 : -1;
+        return Approximate(value.inexact_ + way * remainder, approximated(value));
+    }
     static bool   exact(const Number& a) { return a.exact(); }
     // Inexact because an exact value passed the thousand digits, here or in
     // what it was computed from, which '~' alone cannot tell from 1/3.
@@ -220,6 +231,8 @@ public:
 
     // A whole power of an exact number is exact; anything else is approached.
     static Number pow(const Number& a, const Number& b) {
+        // Rounded, but to an exact 0, which gives 1.
+        const auto rounded = [&](inexact_type z) { return b.small() && b.num_ == 0 ? z : Unit(z); };
         const bool whole = b.small() ? b.den_ == 1 : b.big_ && b.big_->den == Natural(1);
         const bool odd =
             b.small() ? (b.num_ & 1) != 0 : b.big_ && (b.big_->num.limbs()[0] & 1) != 0;
@@ -242,9 +255,9 @@ public:
         const inexact_type base = a.Inexact();
         if (whole && base.imag() == 0 && base.real() < 0) {
             const double magnitude = std::pow(-base.real(), b.Inexact().real());
-            return Approximate(odd ? -magnitude : magnitude, past);
+            return Approximate(rounded(odd ? -magnitude : magnitude), past);
         }
-        return Approximate(numeric_interface<inexact_type>::pow(base, b.Inexact()), past);
+        return Approximate(rounded(numeric_interface<inexact_type>::pow(base, b.Inexact())), past);
     }
 
     // The largest whole number not above a: exact of an exact number, as
@@ -266,12 +279,13 @@ public:
 
     static Number fact(const Number& a) {
         if (!a.exact())
-            return Approximate(numeric_interface<inexact_type>::fact(a.inexact_), approximated(a));
+            return Approximate(Unit(numeric_interface<inexact_type>::fact(a.inexact_)),
+                               approximated(a));
         if (a.Negative()) throw std::runtime_error("a factorial cannot be negative");
         if (a.big_ ? !(a.big_->den == Natural(1)) : a.den_ != 1)
             throw std::runtime_error("a factorial needs a whole number, not " + toString(a));
         const double inexact = numeric_interface<double>::fact(a.Inexact().real());
-        if (a.big_) return Approximate(inexact, true);
+        if (a.big_) return Approximate(Unit(inexact), true);
         long long product = 1, k = 2;
         for (; k <= a.num_; ++k) {
             if (!Multiply(product, k, product)) break;
@@ -280,7 +294,7 @@ public:
         Natural big(static_cast<Natural::wide>(product));
         for (; k <= a.num_; ++k) {
             big = big * Natural(static_cast<Natural::wide>(k));
-            if (Past(big)) return Approximate(inexact, true);
+            if (Past(big)) return Approximate(Unit(inexact), true);
         }
         return Number(Big{false, big, Natural(1)});
     }
@@ -328,9 +342,21 @@ private:
                    Natural(static_cast<unsigned long long>(den_))};
     }
 
+    // Out of line, as the fast path is an inexact number's.
+    INKAMATH_NOINLINE inexact_type Converted() const {
+        double magnitude = big_ ? Nearest(big_->num, big_->den)
+                                : Nearest(Magnitude(num_), static_cast<unsigned long long>(den_));
+        // Rounded unless over a power of two within 53 bits.
+        if (disturbed && (big_ || !std::has_single_bit(static_cast<unsigned long long>(den_)) ||
+                          Magnitude(num_) > 1ULL << 53))
+            magnitude = Unit(magnitude);
+        return Negative() ? -magnitude : magnitude;
+    }
+
     INKAMATH_NOINLINE static Number Plus(const Number& a, const Number& b) {
         if (a.exact() && b.exact()) return BigSum(a.Ratio(), b.Ratio());
-        return Approximate(a.Inexact() + b.Inexact(), approximated(a) || approximated(b));
+        const inexact_type x = a.Inexact(), y = b.Inexact();
+        return Approximate(Added(x, y, x + y), approximated(a) || approximated(b));
     }
 
     INKAMATH_NOINLINE static Number Minus(const Number& a, const Number& b) {
@@ -339,17 +365,19 @@ private:
             negated.negative = !negated.negative;
             return BigSum(a.Ratio(), negated);
         }
-        return Approximate(a.Inexact() - b.Inexact(), approximated(a) || approximated(b));
+        const inexact_type x = a.Inexact(), y = b.Inexact();
+        return Approximate(Added(x, -y, x - y), approximated(a) || approximated(b));
     }
 
     INKAMATH_NOINLINE static Number Times(const Number& a, const Number& b) {
         if (a.exact() && b.exact()) return BigProduct(a.Ratio(), b.Ratio());
         const inexact_type x = a.Inexact(), y = b.Inexact();
+        const bool         past = approximated(a) || approximated(b);
+        if (!(x.imag() == 0 && y.imag() == 0)) return Approximate(Unit(x * y), past);
         // Of two real numbers the real product, whose infinity the complex
         // formula turns into a NaN imaginary part (C88).
-        return Approximate(
-            x.imag() == 0 && y.imag() == 0 ? inexact_type(x.real() * y.real()) : x * y,
-            approximated(a) || approximated(b));
+        const double p = x.real() * y.real(), e = disturbed ? std::fma(x.real(), y.real(), -p) : 0;
+        return Approximate(Other(p, e), past);
     }
 
     INKAMATH_NOINLINE static Number Over(const Number& a, const Number& b) {
@@ -360,9 +388,45 @@ private:
             return BigProduct(a.Ratio(), reciprocal);
         }
         const inexact_type x = a.Inexact(), y = b.Inexact();
-        return Approximate(
-            x.imag() == 0 && y.imag() == 0 ? inexact_type(x.real() / y.real()) : x / y,
-            approximated(a) || approximated(b));
+        const bool         past = approximated(a) || approximated(b);
+        if (!(x.imag() == 0 && y.imag() == 0)) return Approximate(Unit(x / y), past);
+        // The exact quotient is q + r/y.
+        const double q = x.real() / y.real(), r = disturbed ? std::fma(-q, y.real(), x.real()) : 0;
+        return Approximate(Other(q, y.real() > 0 ? r : -r), past);
+    }
+
+    // splitmix64 (Steele, Lea and Flood), a bit a draw.
+    static bool Coin() {
+        std::uint64_t z = disturbed->state += mixer;
+        z               = (z ^ (z >> 30)) * 0xBF58476D1CE4E5B9u;
+        z               = (z ^ (z >> 27)) * 0x94D049BB133111EBu;
+        return (z ^ (z >> 31)) >> 63 != 0;
+    }
+
+    // In a disturbed run, a result whose rounding is not known, moved a unit
+    // either way: 0 is exact however it was reached, and a square moved below
+    // it would have a complex root.
+    static double Unit(double x) {
+        if (!disturbed || x == 0 || !std::isfinite(x)) return x;
+        return std::nextafter(x, Coin() ? HUGE_VAL : -HUGE_VAL);
+    }
+    static inexact_type Unit(inexact_type z) { return {Unit(z.real()), Unit(z.imag())}; }
+
+    // x, a rounding 'error' short of the exact result, taken the other way
+    // with probability one half; never where it was exact.
+    static double Other(double x, double error) {
+        if (!(error > 0 || error < 0) || !Coin()) return x;
+        return std::nextafter(x, error > 0 ? HUGE_VAL : -HUGE_VAL);
+    }
+
+    // s = x + y, part by part, with each part's error by Two-Sum (Knuth).
+    static inexact_type Added(inexact_type x, inexact_type y, inexact_type s) {
+        if (!disturbed) return s;
+        const auto other = [](double a, double b, double sum) {
+            const double back = sum - a;
+            return Other(sum, (a - (sum - back)) + (b - back));
+        };
+        return {other(x.real(), y.real(), s.real()), other(x.imag(), y.imag(), s.imag())};
     }
 
     // Exactness ends at a thousand digits in either part.
@@ -400,7 +464,7 @@ private:
         }
         if (Past(b)) {
             const double magnitude = Nearest(b.num, b.den);
-            return Approximate(b.negative ? -magnitude : magnitude, true);
+            return Approximate(Unit(b.negative ? -magnitude : magnitude), true);
         }
         return Number(std::move(b));
     }
