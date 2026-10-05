@@ -926,10 +926,15 @@ of its own: the session reaches its names qualified, `filters.lowpass`, and
 `use filters (lowpass)` brings in unqualified those listed. A file is read
 once, holds definitions only, and one that cannot be read or parsed loads
 nothing and says where. The prelude that defines `ceil`, `mod`, `exp`, `log`
-and `tanh` is included bare beneath the session, as the built-ins are: every
-scope sees it, and a session that defines one of its names again does so for
-itself alone. `exp(x)` is `e^x`, `log` a series reached by halving or
-doubling, and `log(0)` says so as `1/0` does.
+and `tanh`, and what they call, is included bare beneath the session, as the
+built-ins are: every scope sees it, and a session that defines one of its
+names again does so for itself alone. `exp`, `log` and `tanh` are written in
+it, accurate to a few units in the last place of a double, by the operations
+a compiled step performs: `exp(x)` is 2^k e^r, r = x - k ln 2 and e^r a
+polynomial, and `log` reduces by `ilogb`, the power of two at or below its
+argument. An exact argument is reduced exactly, nothing they give is exact,
+and `log(0)` is refused as `1/0` is. Compiled, each is a C function of the
+header's own.
 `test/data/models.ink` is the whole of it.
 
 Data comes in as a file of definitions like any other, written by whatever

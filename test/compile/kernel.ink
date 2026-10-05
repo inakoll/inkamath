@@ -1,6 +1,7 @@
 # Calls compiled where they are made (DESIGN.md, phase 15): functions,
-# guarded or from the prelude, a model without memory used once per step as a
-# kernel, and a recursion unrolled because its argument is a constant.
+# guarded or not, a model without memory used once per step as a kernel, and
+# a recursion unrolled because its argument is a constant; and one of the
+# prelude, ceil, a function of the header's own.
 relu(t) = t
 relu(t) | t < 0 = 0
 conv(K, I, N = 3) = {

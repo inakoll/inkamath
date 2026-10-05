@@ -84,7 +84,7 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brin
                          inputs:chan inputs:twirl inputs:duo inputs:mean3 inputs:mean2
                          inputs:track inputs:twain inputs:nestv inputs:fed estimate:tie
                          estimate:chaos estimate:dyad estimate:flat estimate:halved
-                         estimate:steep)
+                         estimate:steep elementary:els)
     string(REPLACE ":" ";" checked ${checked})
     list(GET checked 0 file)
     list(GET checked 1 instance)
@@ -125,6 +125,15 @@ set_tests_properties(check_gate_one_limit PROPERTIES
                      PASS_REGULAR_EXPRESSION "gate_lim0\\(" FAIL_REGULAR_EXPRESSION "gate_lim1\\(")
 set_tests_properties(check_gate_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^gate: 100 steps from 0, against exact values until 0 and inexact ones from there\n(gate\\.[a-z]+: within [0-9.e+-]+${about}\n)+$")
+# exp, log and tanh as the prelude writes them, each a function of the
+# header's own, compiled once (DESIGN.md): every term the interpreter's.
+set_tests_properties(check_els_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^els: 100 steps from 0, against exact values until 0 and inexact ones from there\n(els\\.[eghlt]: within 0${about}\n)+$")
+add_test(NAME check_els_functions
+         COMMAND ${CMAKE_COMMAND} -E cat ${CMAKE_CURRENT_BINARY_DIR}/compile/els.c)
+set_tests_properties(check_els_functions PROPERTIES
+    PASS_REGULAR_EXPRESSION "els_exp\\(double arg_x\\).*els_log\\(double arg_x\\).*els_tanh\\(double arg_x\\)"
+    FAIL_REGULAR_EXPRESSION "pow\\(2\\.718")
 set_tests_properties(check_sized_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^sized: 100 steps from 0, against exact values until 0 and inexact ones from there\n(sized\\.[a-z]+: within [0-9.e+-]+${about}\n)+$")
 # Its sigmoid's size inferred, compiled where it is called, gives the header

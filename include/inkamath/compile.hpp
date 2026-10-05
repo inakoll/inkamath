@@ -594,6 +594,46 @@ private:
         });
     }
 
+    // A function of the prelude called on single values is a C function of
+    // the header's, emitted once, its parameters named as a limit's are:
+    // written where it is called, each of log's thirteen steps would write
+    // its argument three times (DESIGN.md). A constant call folds, and one
+    // of another shape is written where it is called, as any other.
+    Code Prelude(const std::string& name, const Reference<Value>& function,
+                 const ParametersCall<Value>& call) {
+        const auto&       names = function.Clauses().front().parameters.parameters_names();
+        std::vector<Code> arguments;
+        for (const PExpression<Value>& argument : call.parameters_expression())
+            arguments.push_back(Emit(argument));
+        const auto constant = [](const Code& code) { return code.constant.has_value(); };
+        const auto scalar   = [](const Code& code) { return code.Scalar(); };
+        if (arguments.size() != names.size() ||
+            std::all_of(arguments.begin(), arguments.end(), constant) ||
+            !std::all_of(arguments.begin(), arguments.end(), scalar))
+            return Call(name, function, call, nullptr);
+        const std::string called = module_ + "_" + name;
+        if (!functions_.count(called)) {
+            Expansion   inside{{}, {}, function.home, nullptr, {}};
+            std::string signature;
+            for (const std::string& parameter : names) {
+                inside.values.emplace(parameter, Array("arg_" + parameter, 1, 1));
+                signature += (signature.empty() ? "double arg_" : ", double arg_") + parameter;
+            }
+            const Setting<Walked*>                 outside(limit_, nullptr);
+            const Setting<std::vector<Temporary>*> unshared(temporaries_, nullptr);
+            const Code body = Inside(inside, [&] { return Chained(name, function); });
+            functions_.insert(called);
+            prelude_.push_back("static inline double " + called + "(" + signature +
+                               ") {\n    return " + body.cells[0].text + ";\n}\n\n");
+        }
+        std::string given;
+        for (const Code& argument : arguments)
+            given += (given.empty() ? "" : ", ") + argument.cells[0].text;
+        Code code;
+        code.cells = {Cell(called + "(" + given + ")", primary)};
+        return code;
+    }
+
     // A name of an instance written where it is read, 'conv(lap, u_(n-1)).out':
     // one of a model without memory is a call.
     Code Instance(const Reference<Value>& model, const ParametersCall<Value>& call,
@@ -2028,6 +2068,8 @@ private:
         if (calls) {
             if (!found.definition) throw Reason(key + " is not defined");
             if (call.subexpr()) throw Reason("a sequence with parameters");
+            if (found.where == &definitions_.Builtins())
+                return Answer(Prelude(key, *found.definition, call));
             return Answer(Call(key, *found.definition, call, nullptr));
         }
         if (limit_) throw Reason(key + "_...: another sequence's term in a limit's terms");
@@ -3367,6 +3409,7 @@ private:
             "typedef struct " + module + " {\n" + Nested(members, "    ") + "} " + module + ";\n\n";
 
         for (const std::size_t n : inverses_) out += InverseHelper(n);
+        for (const std::string& function : prelude_) out += function;
         for (const std::string& limit : limits_) out += limit;
 
         out += "/* Computes what derives from the parameters: call it after assigning one. */\n";
@@ -3568,6 +3611,8 @@ private:
     std::string                      module_;
     std::set<std::size_t>            inverses_;  // the sizes a helper is needed for
     std::vector<std::string>         limits_;    // a function for each limit walked
+    std::vector<std::string>           prelude_;   // and for each function of the prelude called
+    std::set<std::string>              functions_;  // their names
     std::vector<Hold>                  holds_;
     Sequence*                          basing_ = nullptr;  // whose base clause is compiled, if one
     int                                base_   = 0;        // and its index
