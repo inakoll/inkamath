@@ -82,7 +82,8 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brin
                          history:huge history:veiled nan:run nan:sign nan:shy nan:slope nan:pair
                          nan:lap nan:trim nan:any nan:cell nan:held inputs:fan inputs:grid
                          inputs:chan inputs:twirl inputs:duo inputs:mean3 inputs:mean2
-                         inputs:track inputs:twain inputs:nestv inputs:fed)
+                         inputs:track inputs:twain inputs:nestv inputs:fed estimate:tie
+                         estimate:chaos estimate:dyad estimate:flat)
     string(REPLACE ":" ";" checked ${checked})
     list(GET checked 0 file)
     list(GET checked 1 instance)
@@ -100,15 +101,27 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brin
                           C_STANDARD 11 C_STANDARD_REQUIRED ON C_EXTENSIONS OFF)
     add_test(NAME check_${instance}_report COMMAND check_${instance})
 endforeach()
+# The interpreter's own error, estimated where any term is inexact (DESIGN.md):
+# its digits are the seeds', so held by its form but where a limit's
+# remainder alone gives them.
+set(about "\\; the interpreter's terms about [0-9.e+-]+ from the exact ones")
+set_tests_properties(check_tie_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^tie: 100 steps from 0, against exact values until 0 and inexact ones from there\ntie\\.y: within 0\\; the interpreter's terms about 5\\.8e-11 from the exact ones\ntie\\.g: within 0\\; the interpreter's terms about 1 from the exact ones, past the tolerance from 0\n$")
+set_tests_properties(check_chaos_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^chaos: 100 steps from 0, against exact values until 0 and inexact ones from there\nchaos\\.x: within 0${about}, past the tolerance from [0-9]+\n$")
+set_tests_properties(check_dyad_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^dyad: 100 steps from 0, against exact values until 0 and inexact ones from there\ndyad\\.x: within 0${about}, past the tolerance from [0-9]+\n$")
+set_tests_properties(check_flat_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^flat: 100 steps from 0, against exact values until 0 and inexact ones from there\nflat\\.r: within 0\nflat\\.g: within 0\n$")
 # The logistic model's four sigmoids are one limit, compiled once.
 add_test(NAME check_gate_one_limit
          COMMAND ${CMAKE_COMMAND} -E cat ${CMAKE_CURRENT_BINARY_DIR}/compile/gate.c)
 set_tests_properties(check_gate_one_limit PROPERTIES
                      PASS_REGULAR_EXPRESSION "gate_lim0\\(" FAIL_REGULAR_EXPRESSION "gate_lim1\\(")
 set_tests_properties(check_gate_report PROPERTIES PASS_REGULAR_EXPRESSION
-    "^gate: 100 steps from 0, against exact values until 0 and inexact ones from there\n(gate\\.[a-z]+: within [0-9.e+-]+\n)+$")
+    "^gate: 100 steps from 0, against exact values until 0 and inexact ones from there\n(gate\\.[a-z]+: within [0-9.e+-]+${about}\n)+$")
 set_tests_properties(check_sized_report PROPERTIES PASS_REGULAR_EXPRESSION
-    "^sized: 100 steps from 0, against exact values until 0 and inexact ones from there\n(sized\\.[a-z]+: within [0-9.e+-]+\n)+$")
+    "^sized: 100 steps from 0, against exact values until 0 and inexact ones from there\n(sized\\.[a-z]+: within [0-9.e+-]+${about}\n)+$")
 # Its sigmoid's size inferred, compiled where it is called, gives the header
 # its bounds written give, byte for byte (DESIGN.md, sizes inferred).
 file(READ compile/sized.ink sized_inferred)
@@ -136,11 +149,11 @@ add_test(NAME compile_sized_header
          COMMAND ${CMAKE_COMMAND} -E compare_files ${CMAKE_CURRENT_BINARY_DIR}/compile/inferred/sized.h
                  ${CMAKE_CURRENT_BINARY_DIR}/compile/bounded/sized.h)
 set_tests_properties(check_cls_report PROPERTIES PASS_REGULAR_EXPRESSION
-    "^cls: 100 steps from 0, against exact values until 0 and inexact ones from there\n(cls\\.[a-z]+: within [0-9.e+-]+\n)+$")
+    "^cls: 100 steps from 0, against exact values until 0 and inexact ones from there\ncls\\.z: within 0\n(cls\\.[a-z]+: within [0-9.e+-]+${about}\n)+$")
 set_tests_properties(check_ball_report PROPERTIES PASS_REGULAR_EXPRESSION
-    "^ball: 100 steps from 0, against exact values until 0 and inexact ones from there\n(ball\\.[a-z]+: within [0-9.e+-]+\n)+$")
+    "^ball: 100 steps from 0, against exact values until 0 and inexact ones from there\n(ball\\.[a-z]+: within [0-9.e+-]+${about}\n)+$")
 set_tests_properties(check_fit_report PROPERTIES PASS_REGULAR_EXPRESSION
-    "^fit: 100 steps from 0, against exact values until 0 and inexact ones from there\n(fit\\.[a-z]+: within [0-9.e+-]+\n)+$")
+    "^fit: 100 steps from 0, against exact values until 0 and inexact ones from there\n(fit\\.[a-z]+: within [0-9.e+-]+${about}\n)+$")
 set_tests_properties(check_gain_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^gain: 100 steps from 0, against exact values\ngain\\.K: within [0-9.e+-]+, from 1\ngain\\.P: within [0-9.e+-]+\n$")
 set_tests_properties(check_pairs_report PROPERTIES PASS_REGULAR_EXPRESSION
@@ -152,7 +165,7 @@ set_tests_properties(check_servo_report PROPERTIES PASS_REGULAR_EXPRESSION
 # A NaN reaches every term that reads it (DESIGN.md): each guard, comparison
 # and power reading a failure answers NaN, where the interpreter gives none.
 set_tests_properties(check_run_report PROPERTIES PASS_REGULAR_EXPRESSION
-    "^run: 100 steps from 0, against exact values until 0 and inexact ones from there\nrun\\.y: within [0-9.e+-]+\nrun\\.high: within 0\n$")
+    "^run: 100 steps from 0, against exact values until 0 and inexact ones from there\nrun\\.y: within [0-9.e+-]+\\; the interpreter's terms about 9\\.4e-11 from the exact ones\nrun\\.high: within 0\n$")
 set_tests_properties(check_sign_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^sign: 100 steps from 0, against exact values\nsign\\.y: within 0\nsign\\.on: within 0\nsign\\.p: within 0\n$")
 set_tests_properties(check_shy_report PROPERTIES PASS_REGULAR_EXPRESSION
@@ -162,7 +175,7 @@ set_tests_properties(check_slope_report PROPERTIES PASS_REGULAR_EXPRESSION
 set_tests_properties(check_pair_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^pair: 100 steps from 0, against exact values\npair\\.w: within 0\npair\\.y: within 0\npair\\.z: within 0\n$")
 set_tests_properties(check_lap_report PROPERTIES PASS_REGULAR_EXPRESSION
-    "^lap: 100 steps from 0, against exact values until 0 and inexact ones from there\nlap\\.y: within [0-9.e+-]+\n$")
+    "^lap: 100 steps from 0, against exact values until 0 and inexact ones from there\nlap\\.y: within [0-9.e+-]+\\; the interpreter's terms about 5\\.8e-11 from the exact ones\n$")
 set_tests_properties(check_trim_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^trim: 100 steps from 0, against exact values\ntrim\\.y: within 0\n$")
 set_tests_properties(check_any_report PROPERTIES PASS_REGULAR_EXPRESSION
@@ -229,13 +242,13 @@ set_tests_properties(check_huge_report PROPERTIES PASS_REGULAR_EXPRESSION
 set_tests_properties(check_warm_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^warm: 100 steps from 0, against exact values\n(warm\\.[a-z]+: within [0-9.e+-]+\n)+$")
 set_tests_properties(check_rnn_report PROPERTIES PASS_REGULAR_EXPRESSION
-    "^rnn: 100 steps from 0, against exact values until 1 and inexact ones from there\n(rnn\\.[a-z]+: within [0-9.e+-]+\n)+$")
+    "^rnn: 100 steps from 0, against exact values until 1 and inexact ones from there\n(rnn\\.[a-z]+: within [0-9.e+-]+${about}\n)+$")
 set_tests_properties(check_head_report PROPERTIES PASS_REGULAR_EXPRESSION
-    "^head: 100 steps from 0, against exact values until 0 and inexact ones from there\n(head\\.[A-Za-z]+: within [0-9.e+-]+\n)+$")
+    "^head: 100 steps from 0, against exact values until 0 and inexact ones from there\nhead\\.K: within 0\nhead\\.Q: within 0\nhead\\.S: within [0-9.e+-]+${about}\nhead\\.A: within [0-9.e+-]+${about}\nhead\\.V: within 0\nhead\\.O: within [0-9.e+-]+${about}\n$")
 set_tests_properties(check_mark_report PROPERTIES PASS_REGULAR_EXPRESSION
-    "^mark: 100 steps from 0, against exact values until 0 and inexact ones from there\n(mark\\.[a-z]+: within [0-9.e+-]+\n)+$")
+    "^mark: 100 steps from 0, against exact values until 0 and inexact ones from there\n(mark\\.[a-z]+: within [0-9.e+-]+${about}\n)+$")
 set_tests_properties(check_stiff_report PROPERTIES PASS_REGULAR_EXPRESSION
-    "^stiff: 100 steps from 0, against exact values until 0 and inexact ones from there\n(stiff\\.[a-z]+: within [0-9.e+-]+\n)+$")
+    "^stiff: 100 steps from 0, against exact values until 0 and inexact ones from there\nstiff\\.h: within 0\n(stiff\\.[a-z]+: within [0-9.e+-]+${about}\n)+$")
 set_tests_properties(check_fir_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^fir: 100 steps from 0, against exact values\n(fir\\.[a-z]+: within 0\n)+$")
 set_tests_properties(check_calm_report PROPERTIES PASS_REGULAR_EXPRESSION
@@ -245,7 +258,7 @@ set_tests_properties(check_wild_report PROPERTIES PASS_REGULAR_EXPRESSION
 set_tests_properties(check_spin_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^spin: 100 steps from 0, against exact values\nspin\\.p: within [0-9.e+-]+\n$")
 set_tests_properties(check_rough_report PROPERTIES PASS_REGULAR_EXPRESSION
-    "^rough: 100 steps from 0, against exact values until 1 and inexact ones from there\nrough\\.v: within [0-9.e+-]+\n$")
+    "^rough: 100 steps from 0, against exact values until 1 and inexact ones from there\nrough\\.v: within [0-9.e+-]+${about}\n$")
 set_tests_properties(check_brink_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^brink: 100 steps from 0, against exact values\nbrink\\.g: at 1 the compiled step takes 'g_n \\| d_n < c - w = 1' and the interpreter 'g_n = 0'; the guard of the first is exactly on its threshold\nbrink\\.d: [0-9.e+-]+ at 9, where the interpreter gives 0\\.10000000000000001\nbrink\\.g: 1 at 1, where the interpreter gives 0\n$")
 set_tests_properties(check_ledge_report PROPERTIES PASS_REGULAR_EXPRESSION

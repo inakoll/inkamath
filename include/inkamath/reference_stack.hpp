@@ -78,6 +78,23 @@ public:
         histories = 0;
     }
 
+    // A run of --check that disturbs the arithmetic (Number::disturbed) sees
+    // nothing memoised, nothing made unnamed and no listener from before it,
+    // and leaves nothing behind, as what it computes is disturbed.
+    template <typename Run>
+    void Apart(Run run) {
+        auto memoised = std::exchange(memoised_, {}), older = std::exchange(older_, {});
+        auto unnamed = std::exchange(unnamed_, {});
+        auto heard   = std::exchange(guards, nullptr);
+        auto counted = std::exchange(histories, 0);
+        run();
+        memoised_ = std::move(memoised);
+        older_    = std::move(older);
+        unnamed_  = std::move(unnamed);
+        guards    = std::move(heard);
+        histories = counted;
+    }
+
     // Call once per top-level evaluation; the stack outlives them all.
     void BeginEvaluation() {
         depth_       = 0;
