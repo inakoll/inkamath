@@ -168,3 +168,8 @@ rulings, and merges into `integration` once CI is green; `master` follows by
 fast-forward (§5). Decisions are shown to the owner after the fact, except
 one that departs from `MANIFESTO.md` or that the owner asked to make. A
 fix skips the pipeline: a failing test, the fix, a row in the defect table.
+
+CI is shared and finite, and agents use it freely; the Linux builds it runs
+are the ones run before pushing anyway. So a branch is pushed once, when it is
+ready to merge, not after each commit, and small fixes found together share a
+branch instead of taking one each. MSVC is what CI adds; wait for it.
