@@ -141,8 +141,7 @@ public:
                 return each == "2" || each == "4";
             });
             if (told) data += Array("const char* const", "why_" + id, steps, why);
-            const bool estimated =
-                std::any_of(about.begin(), about.end(), [](double e) { return e > 0; });
+            const bool estimated = *std::max_element(about.begin(), about.end()) > 0;
             if (estimated) {
                 std::vector<std::string> written;
                 for (const double e : about) written.push_back(Double(e));
@@ -465,13 +464,10 @@ private:
     // interpreter's term: infinite where the run gives none, or one of another
     // size or not finite.
     static void Farther(const Value& term, const std::optional<Value>& run, double* about) {
-        for (std::size_t i = 1, c = 0; i <= term.Size().rows; ++i) {
-            for (std::size_t j = 1; j <= term.Size().cols; ++j, ++c) {
-                const double d = run && run->Size() == term.Size()
-                                     ? Number::abs((*run)(i, j) - term(i, j))
-                                     : HUGE_VAL;
-                about[c]       = std::max(about[c], d <= HUGE_VAL ? d : HUGE_VAL);
-            }
+        const bool same = run && run->Size() == term.Size();
+        for (std::size_t c = 0; c < term.Size().rows * term.Size().cols; ++c) {
+            const double d = same ? Number::abs(run->data()[c] - term.data()[c]) : HUGE_VAL;
+            about[c]       = std::max(about[c], d <= HUGE_VAL ? d : HUGE_VAL);
         }
     }
 
