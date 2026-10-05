@@ -89,4 +89,3 @@ w_n = w_(n-1)/2 + c + 0*(c = 1)
 # time the next line is read.
 >> ?t
 error: t is not defined
-

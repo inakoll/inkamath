@@ -261,4 +261,3 @@ dbl(x) = x*2
 
 >> frac dbl(~0.5)
 error: 1 was approximated, so it has no exact fraction
-
