@@ -240,6 +240,13 @@ public:
                 if (a.small()) {
                     if (const auto power = Power(a, b.num_)) return *power;
                 }
+                // 2^k by a shift, as the prelude's exp and log scale by it;
+                // from 2^3322 it is past the thousand digits.
+                if (a.small() && a.num_ == 2 && a.den_ == 1 && Magnitude(b.num_) < 3322) {
+                    const Natural power = Natural(1).Shifted(Magnitude(b.num_));
+                    return Normalized(b.num_ < 0 ? Big{false, Natural(1), power}
+                                                 : Big{false, power, Natural(1)});
+                }
                 if (const auto power = BigPower(a.Ratio(), b.num_)) return *power;
             } else if (a.small() && (a.num_ == 0 || a.num_ == 1 || a.num_ == -1) && a.den_ == 1) {
                 // Past 64 bits only these stay within the thousand digits.
@@ -588,6 +595,13 @@ private:
     // below its normal one: 64 bits of it, then Rounded.
     static double Nearest(const Natural& p, const Natural& q) {
         if (p.zero()) return 0;
+        const auto two = [](const Natural& n) {
+            int ones = 0;
+            for (const Natural::limb limb : n.limbs()) ones += std::popcount(limb);
+            return ones == 1;
+        };
+        if (two(p) && two(q))
+            return std::ldexp(1.0, static_cast<int>(p.bits()) - static_cast<int>(q.bits()));
         const long shift  = 64 - (static_cast<long>(p.bits()) - static_cast<long>(q.bits()));
         const auto [m, r] = shift >= 0 ? DivMod(p.Shifted(static_cast<std::size_t>(shift)), q)
                                        : DivMod(p, q.Shifted(static_cast<std::size_t>(-shift)));
