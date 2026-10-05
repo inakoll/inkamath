@@ -276,6 +276,20 @@ set(stdout "cannot compile s: u_(...): read every 8 steps, and u is computed eve
 set(exit 1)
 check(compile_c74)
 
+# C86: a clause the interpreter refuses wherever it is taken is what a step
+# says there, NaN, so a model whose guard never takes it compiles; log's
+# '| x <= 0 = 1/0' no longer hides the refusal its halving earns.
+file(WRITE "${OUT}/c86.ink" "gd(a = 2) = {\n    h(x) = 1\n    h(x) | x <= 0 = 1/0\n    y_n = h(a + n)\n}\n")
+set(args --compile c86.ink gd)
+set(stdout "")
+check(compile_c86)
+
+file(WRITE "${OUT}/logged.ink" "lg(a = 2) = {\n    y_n = log(a + n)\n}\n")
+set(args --compile logged.ink lg)
+set(stdout "cannot compile y: calls nested 64 deep, which a recursion its guards do not end would pass\n")
+set(exit 1)
+check(compile_log_refused)
+
 # A base term is computed at its own index, so it reads a term from there
 # back, and only where that term's sequence has started.
 file(WRITE "${OUT}/seeds.ink" "y_0 = x_1\ny_n = y_(n-1) + x_n\na_1 = 1\na_n = a_(n-1) + 1\nb_0 = a_0\nb_n = b_(n-1)\n")
@@ -332,13 +346,209 @@ set(stderr "inkamath: --check takes a transcript, or a file, an instance it defi
 set(exit 2)
 check(check_usage)
 
-# The step takes a single value for each input, so an instance giving a
-# matrix is refused by name, where it was read past its one cell (C83).
+# The step takes a single value for an input whose model states no size, so
+# an instance giving a matrix is refused by name, where it was read past its
+# one cell (C83).
 file(WRITE "${OUT}/wide.ink" "mm(x_n) = {\n    y_n = [1 2]*x_n\n}\nv = mm(x_n = [n; 1])\n")
 set(args --check wide.ink v -o wide.c)
 set(stderr "inkamath: v.x_(0) has 2 cells, where the compiled step takes a single value\n")
 set(exit 1)
 check(check_matrix_input)
+
+# The lines a file written is to hold, each found as given.
+function(holds name file)
+    file(READ "${OUT}/${file}" text)
+    math(EXPR last "${ARGC} - 1")
+    foreach(i RANGE 2 ${last})
+        string(FIND "${text}" "${ARGV${i}}" at)
+        if(at EQUAL -1)
+            message(SEND_ERROR "${name}: ${file} does not hold\n${ARGV${i}}")
+        endif()
+    endforeach()
+endfunction()
+
+# C90: the clause --check keeps is 0 where a guard of 'and' reads NaN, as no
+# clause is taken, where the NaN was converted to an int.
+file(WRITE "${OUT}/c90.ink" "gate(x_n) = {\n    y_0 = 1\n    y_n = y_(n-1) + x_n\n    z_n | x_n > 0 and y_(n-2) > 0 = 1\n    z_n = 0\n}\ng = gate(x_n = 1)\n")
+set(args --check c90.ink g -o c90.c)
+check(check_c90)
+holds(check_c90 c90.c [[m_->z_clause_ = isnan(t1_) ? 0 : t1_ != 0.0 ? 1 : 2;]])
+
+# A NaN reaches every term that reads it (DESIGN.md): the steps that
+# test/compile/nan.ink specifies, each compiled with nothing to say.
+set(nan "${CMAKE_CURRENT_LIST_DIR}/compile/nan.ink")
+foreach(model IN ITEMS level pick refuse ramp both walked tuned either)
+    set(args --compile ${nan} ${model} -o ${model}.h)
+    check(compile_nan_${model})
+endforeach()
+holds(compile_nan_level level.h
+      [[    m_->y[0] = level_lim0(m_, m_->x[0]);
+    m_->high[0] = isnan(m_->y[0]) ? NAN : m_->y[0] > 0.5 ? 1.0 : 0.0;
+]]
+      [[ * name_(n-k) for each sequence: x, y and high. A term the interpreter would
+ * refuse is NaN, and so is every term that reads one, through a guard or a
+ * comparison as through arithmetic. Built with -ffinite-math-only, which
+ * -ffast-math implies, GCC removes the tests that make it so, and Clang warns
+ * of each NaN.
+]])
+holds(compile_nan_pick pick.h
+      [[    m_->y[0] = isnan(m_->x[0]) ? NAN : m_->x[0] > 0.0 ? m_->x[0] : NAN;
+    m_->on[0] = isnan(m_->y[0]) ? NAN : m_->y[0] > 2.0 ? 1.0 : 0.0;
+    m_->p[0] = (isnan(m_->y[0]) ? NAN : pow(1.0, m_->y[0]));
+]])
+holds(compile_nan_refuse refuse.h
+      [[    m_->y[0] = isnan(m_->x[0]) ? NAN : m_->x[0] <= 0.0 ? NAN : m_->x[0];
+    m_->z[0] = isnan(m_->y[0]) ? NAN : m_->y[0] > 1.0 ? 1.0 : 0.0;
+]])
+holds(compile_nan_ramp ramp.h
+      [[    m_->y[0][1][0] = isnan(m_->x[0] - 2.0) ? NAN : m_->x[0] - 2.0 > 0.0 ? m_->x[0] - 2.0 : NAN;
+    if (isnan(m_->y[0][0][0]) || isnan(m_->y[0][1][0]))
+        for (int i_ = 0; i_ < 2; ++i_)
+            for (int j_ = 0; j_ < 1; ++j_) m_->y[0][i_][j_] = NAN;
+    m_->g[0][0][0] = isnan(m_->y[0][0][0]) ? NAN : m_->y[0][0][0] > 1.0 ? 1.0 : 0.0;
+    m_->g[0][1][0] = isnan(m_->y[0][1][0]) ? NAN : m_->y[0][1][0] > 1.0 ? 1.0 : 0.0;
+    if (isnan(m_->g[0][0][0]) || isnan(m_->g[0][1][0]))
+        for (int i_ = 0; i_ < 2; ++i_)
+            for (int j_ = 0; j_ < 1; ++j_) m_->g[0][i_][j_] = NAN;
+    m_->h[0] = isnan(m_->y[0][0][0]) ? NAN : m_->y[0][0][0] > 0.5 ? 1.0 : 0.0;
+]])
+holds(compile_nan_both both.h
+      [[    const double t0_ = (isnan(m_->x[0]) ? NAN : m_->x[0] < 3.0 ? 1.0 : 0.0);
+    const double t1_ = (t0_ == 0.0 ? 0.0 : t0_ != t0_ ? NAN : (m_->index_ < 1 ? NAN : (isnan(m_->y[1]) ? NAN : m_->y[1] > 0.5 ? 1.0 : 0.0)));
+    m_->w[0] = isnan(t1_) ? NAN : t1_ != 0.0 ? 1.0 : 0.0;
+    m_->y[0] = m_->index_ == 0 ? 2.0 : isnan(m_->x[0]) ? NAN : m_->x[0] > 0.0 ? m_->x[0] : NAN;
+    m_->z[0] = isnan(m_->y[0]) ? NAN : m_->y[0] != 0.0 ? 1.0 : 0.0;
+]])
+holds(compile_nan_walked walked.h
+      [[        const double t_ = isnan(arg_a) ? NAN : arg_a > 1.0 ? 0.0 : t1_ / 2.0;
+]]
+      [[    m_->y[0] = walked_lim0(m_, isnan(m_->x[0]) ? NAN : m_->x[0] > 0.0 ? m_->x[0] : NAN);
+]])
+holds(compile_nan_tuned tuned.h
+      [[    m_->a = isnan(m_->g) ? NAN : m_->g > 0.0 ? m_->g : NAN;
+    m_->k = isnan(m_->a) ? NAN : m_->a > 1.0 ? 1.0 : 0.0;
+]])
+holds(compile_nan_either either.h
+      [[    m_->y[0] = isnan(m_->x[0]) ? NAN : m_->x[0] > 0.0 ? m_->x[0] : NAN;
+    const double t0_ = (isnan(m_->x[0]) ? NAN : m_->x[0] > 3.0 ? 1.0 : 0.0);
+    const double t1_ = (t0_ == 0.0 ? ((isnan(m_->y[0]) ? NAN : m_->y[0] > 0.5 ? 1.0 : 0.0)) : t0_ != t0_ ? NAN : 1.0);
+    m_->o[0] = isnan(t1_) ? NAN : t1_ != 0.0 ? 1.0 : 0.0;
+]])
+# A guard that folds to NaN is refused, as the interpreter refuses it, in the
+# name of its definition and in the words of the operator that reads it.
+file(WRITE "${OUT}/nanguard.ink" "h_n = x_n\nh_n | 0/~0 = 1\nk_n = x_n and 0/~0\n")
+set(args --compile nanguard.ink)
+set(stdout "cannot compile h: a guard needs a number, not -nan\ncannot compile k: and needs a number, not -nan\n")
+set(exit 1)
+check(compile_nan_guard_refused)
+
+# A cell of a constant matrix with a NaN cell folds, which leaves the header
+# one that writes no NaN.
+file(WRITE "${OUT}/folded.ink" "k(x_n) = {\n    y_n = ([0/~0; 1])[2] + x_n\n}\n")
+set(args --compile folded.ink k -o folded.h)
+check(compile_nan_folded)
+holds(compile_nan_folded folded.h [[ * name_(n-k) for each sequence: x and y.
+ */
+]])
+
+# NAN in a name is no NaN written: pid_clamped as NAN_clamped is its header,
+# renamed.
+set(args --compile "${CMAKE_CURRENT_LIST_DIR}/compile/pid_clamped.ink" -o NAN_clamped.h)
+check(compile_nan_named)
+file(READ "${OUT}/NAN_clamped.h" named)
+file(READ "${CMAKE_CURRENT_LIST_DIR}/compile/expected/pid_clamped.h" expected)
+string(REPLACE "NAN_CLAMPED_H" "PID_CLAMPED_H" named "${named}")
+string(REPLACE "NAN_clamped" "pid_clamped" named "${named}")
+if(NOT named STREQUAL expected)
+    message(SEND_ERROR "compile_nan_named: NAN_clamped.h is not pid_clamped.h renamed")
+endif()
+
+# The clause --check keeps is 0 where the guard reads NaN.
+foreach(instance IN ITEMS pair any)
+    set(args --check ${nan} ${instance} -o ${instance}.c)
+    check(check_nan_${instance})
+endforeach()
+holds(check_nan_pair pair.c [[m_->w_clause_ = isnan(t1_) ? 0 : t1_ != 0.0 ? 1 : 2;]])
+holds(check_nan_any any.c [[m_->o_clause_ = isnan(t1_) ? 0 : t1_ != 0.0 ? 1 : 2;]])
+
+# An input whose model states its size, x_n[j<=2], is a pointer to its cells,
+# row by row, as test/compile/inputs.ink specifies (C83).
+set(inputs "${CMAKE_CURRENT_LIST_DIR}/compile/inputs.ink")
+foreach(model IN ITEMS dot ctl turn avg)
+    set(args --compile ${inputs} ${model} -o ${model}.h)
+    check(compile_inputs_${model})
+endforeach()
+holds(compile_inputs_dot dot.h [[/* Using it:
+ *
+ *     dot m;
+ *     dot_init(&m);
+ *     dot_step(&m, x);  once for each index, the first 0
+ *     m.y[0]  is then y_n
+ *
+ * A step takes x_n (2x1), the input at its index. An input of more than one
+ * cell is a pointer to its cells, row by row. After a step, m.name[k] is
+ * name_(n-k) for each sequence: x and y.
+ */
+]] [[typedef struct dot {
+    long long index_;
+    double x[1][2][1];
+    double y[1];
+} dot;
+]] [[static inline void dot_step(dot* m_, const double x[2]) {
+    ++m_->index_;
+    memcpy(m_->x[0], x, sizeof m_->x[0]);
+]])
+holds(compile_inputs_ctl ctl.h [[
+ * A step takes r_n and s_n (2x1), the inputs at its index. An input of more
+ * than one cell is a pointer to its cells, row by row. After a step, m.name[k]
+ * is name_(n-k) for each sequence: r, s and u.
+]] [[static inline void ctl_step(ctl* m_, double r, const double s[2]) {
+    ++m_->index_;
+    m_->r[0] = r;
+    memcpy(m_->s[0], s, sizeof m_->s[0]);
+]])
+holds(compile_inputs_turn turn.h [[static inline void turn_init(turn* m_) {
+    memset(m_, 0, sizeof *m_);
+    m_->x[0][0][0] = 1.0;
+    m_->x[0][1][0] = -1.0;
+    m_->index_ = -1;
+    turn_update(m_);
+}
+]] [[static inline void turn_step(turn* m_, const double x[2]) {
+    ++m_->index_;
+    memcpy(m_->x[1], m_->x[0], sizeof m_->x[1]);
+    memcpy(m_->x[0], x, sizeof m_->x[0]);
+]])
+holds(compile_inputs_avg avg.h [[ Compiled in, as a size, a bound or a
+ * lag cannot change: d.
+]])
+
+# Refused: a history of another size than the input, a tensor, a default and
+# an instance within a model of another size than the model states, and a
+# size that reads the index, which the interpreter refuses as it reads it.
+function(unsized model text why)
+    file(WRITE "${OUT}/${model}.ink" "${text}")
+    set(args --compile ${model}.ink ${model} -o ${model}.h)
+    set(stderr "inkamath: ${why}\n")
+    set(exit 1)
+    check(inputs_${model})
+endfunction()
+set(dot "dot(x_n[j<=2]) = {\n    y_n = [1 2]*x_n\n}\n")
+unsized(broad "broad(x_n[j<=2]) = {\n    x_n | n < 0 = 0\n    c_n = x_(n-1)\n}\n"
+        "cannot compile x: a history of another shape")
+unsized(batch "batch(x_n[b<=2, j<=1, k<=2]) = {\n    y_n = x_n[2]*[1; 1]\n}\n"
+        "cannot compile x: a tensor")
+unsized(nil "nil(x_n[j<=2] = 0) = {\n    y_n = [1 2]*x_n\n}\n"
+        "cannot compile x: a single value, where nil takes a 2x1 matrix")
+unsized(lone "${dot}lone(u_n) = {\n    inner = dot(x_n = u_n)\n    y_n = inner.y_n\n}\n"
+        "cannot compile inner.x: a single value, where dot takes a 2x1 matrix")
+unsized(grow "grow(x_n[j<=n+1]) = {\n    y_n = x_n[1]\n}\n"
+        "grow.ink, line 1: x is an input of grow, so its size cannot read the index n")
+file(WRITE "${OUT}/single.ink" "${dot}v = dot(x_n = n)\n")
+set(args --check single.ink v -o single.c)
+set(stderr "inkamath: v.x_(0): v.x_0 is a single value, where dot takes a 2x1 matrix\n")
+set(exit 1)
+check(check_inputs_single)
 
 # A model's history of its inputs (DESIGN.md): a read before the stream that
 # no history gives, and a history that init cannot fold, each refused by name.
@@ -370,7 +580,7 @@ refused(mute "u_n, x_n) = {\n    x_n | n < 0 and u_n > 0 = 0\n    c_n = x_(n-1)"
 refused(biased "a = 1, x_n) = {\n    x_n | n < 0 = a\n    c_n = x_(n-1)"
         "x: a history that reads a")
 refused(swap "x_n) = {\n    x_n | n < 0 = [0; 0]\n    c_n = [0 1; 1 0]*x_(n-1)"
-        "x: a history that is not a single value")
+        "x: a history of another shape")
 
 # A slow sequence's base clause, which the stream starts after, reading the
 # input before it.

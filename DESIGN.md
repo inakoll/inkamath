@@ -32,6 +32,12 @@ Two constraints govern every phase:
   `ParametersVisitor`. Nineteen against five hundred and fifty-eight is the
   measurement, not an argument that the five hundred and fifty-eight were
   wrong.
+
+  Each entry since stated its own cost and none the sum: `include/` went
+  from 8,896 lines to 12,790 in three days. A removal pass at ba91fcf,
+  sharing what had been written twice, took `include/` and `src/` together
+  from **13,463 lines to 13,275**; the rest of the growth is capability.
+  From here an entry states the total after it as well as its own delta.
 - **Recognisability.** The author must still recognise this as his project.
   Three ideas are his and are not up for renegotiation: names bind
   *expressions* rather than values and are re-evaluated lazily; matrices of
@@ -1609,12 +1615,18 @@ closures need one anyway, and can bring it.
 | C80 `[fixed]` | **`grad` reads a parameter that an index or a row hides.** A clause's index, row, column and slice are bound where its parameters are, and hide one of the same name, but `grad` seeks a name among the arguments it differentiates before the values bound: with `g(n)_n = n`, `g(x)_2` is 2 for every `x`, and `grad_(x = 1) g(x)_2` answers 1; with `f(j)[j<=2] = j`, `grad_(x = 1) [1 1]*f(x)` answers 2, not 0. Found building `grad` of definitions by cells (next in line), whose walk binds a row as the evaluator does. Hiding the clause's names from the arguments where they are bound, as a sum's index is hidden, would fix both; the walk binds them in `Reference`, where `grad` cannot hide them, so for now a clause whose index, slice, row or column names a parameter is refused under `grad`, "grad cannot differentiate sm yet: its row t hides its parameter t": a temperature `t` beside attention's rows `t` answered `[10; 10]` for `[1; 2]`. The C80 entries at the end of `test/data/grad.ink` hold it. |
 | C81 `[fixed]` | **`grad` kept the slope of a single value added to a matrix single.** A sum adds a single value to every cell, and a matrix to every slice of a tensor, but a part that only one side had kept that side's shape, so `grad_(x = 1) [1 1]*(x + [1; 2])` answered `[1, 1]` where the slope is 2, `([1 2; 3 4] + x)^2` the slope it would have were x added to the diagonal only, and `f(x)[j<=1] = (x + [1 2])*[1; 1]`, whose cell stores its part's first, a slope of 1 for 2. Found reviewing `grad` of definitions by cells (next in line), whose walk stores a cell's part as its value is stored. Now a sum's part is widened to its value's shape; `grad.ink` holds it. |
 | C82 `[fixed]` | **A guarded clause written whole beside clauses for cells is never asked.** With `Q2(x)[j<=2] = x` and `Q2(x) \| x > 1 = [0 0]`, `Q2(2)` is `[2; 2]`, and with `R \| 1 > 0 = [5 5]` before `R[j<=2] = j`, `R` is `[1; 2]`: the walk over the cells takes a clause written whole only as the value of the cells no clause gives, and a guarded one not even then. Found by the review of `grad` of definitions by cells (next in line), with which `grad` agrees. Taking the whole definition where it holds, before its cells, would add nothing a guard on each cell does not say, `R(x)[i<=2] \| x > 1 = 0`, so such a clause is refused where it is written, in either order, "Pw is defined by its cells, so a clause for all of it cannot be guarded; guard its cells"; a clause written whole and unguarded stays the matrix the cells override. The entries at the end of `test/data/matrices.ink` and `test/data/terms.ink` hold it. |
-| C83 `[open]` | **A model's input is compiled as a single value, whatever it is.** The step takes one double for each input and the compiler reads the input as 1x1, so with `mm(x_n) = { y_n = [1 2]*x_n }` the header computes a 1x2 term where the interpreter, given `x_n = [n; 1]`, answers a single value. `--check` of that instance crashed, reading a second cell of each term the interpreter gave one of; it now refuses the instance by name, "v.x_(0) has 2 cells, where the compiled step takes a single value", and `check_matrix_input` in `test/cli.cmake` holds it. Found specifying a model's history of its inputs (next in line). What stays open is the header: an input wants a shape, taken as an array as a matrix parameter is, or a refusal by name. |
+| C83 `[open]` | **A model's input is compiled as a single value, whatever it is.** The step takes one double for each input and the compiler reads the input as 1x1, so with `mm(x_n) = { y_n = [1 2]*x_n }` the header computes a 1x2 term where the interpreter, given `x_n = [n; 1]`, answers a single value. `--check` of that instance crashed, reading a second cell of each term the interpreter gave one of; it now refuses the instance by name, "v.x_(0) has 2 cells, where the compiled step takes a single value", and `check_matrix_input` in `test/cli.cmake` holds it. Found specifying a model's history of its inputs (next in line). What stays open is the header: an input wants a shape, taken as an array as a matrix parameter is, or a refusal by name. Specified in next in line, *an input of more than one cell*: the model states the size in its signature, `x_n[j<=2]`, and the step takes the input's cells. |
 | C84 `[open]` | **`--check` compares nothing of an instance a model writes unnamed.** With `bare(u_n) = { c_n = u_(n-1) }` and `wrap(x_n) = { c_n = bare(u_n = x_n).c_n }` checked as `nest = wrap(x_n = n)`, the step keeps the instance as `c_bare`, and the check asks the interpreter for `nest.c_bare.c_0`, which it cannot name, "a term has no names", so every term of `c_bare.c` and `c_bare.u` is skipped and each line reads `within 0`. No checked instance writes one. Found reviewing the specification of a model's history of its inputs (next in line), whose check reports a term the interpreter cannot give instead of skipping it, which would turn each such line red. The check wants to ask for such a term through the definition that writes the instance, or to say by name that it cannot. It now says so, `veiled.c_bare.c: not asked, as the interpreter cannot name it`, where each line read `within 0`; asking stays open. |
 | C85 `[fixed]` | **`tex` sets a base term apart from the guarded clauses written before it.** Clauses are tried in the order written (C45): after `y_n \| n < 0 = 0`, `y_(-1) = 3` and `y_n = n`, `y_(-1)` is 0, but `tex ?y` sets `y_{-1} = 3` on a line of its own above the cases, as if it held. Found reviewing the specification of a model's history of its inputs (next in line), whose clauses on an input may come in either order. `tex` wants the clauses in the order they are tried, or the base term left out where an earlier clause covers it. Now a term written after a guard is a case in its place, `3 & \text{if } n = -1`, and one written before every guard keeps its line, which holds; the C85 entries at the end of `test/data/tex.ink` hold it. |
-| C86 `[open]` | **A clause whose value is a constant that fails refuses the whole model when compiled.** The compiler folds a constant value exactly, and a failure there is taken as the model's: in a model `gd(a = 2)` defining `h(x) = 1`, `h(x) \| x <= 0 = 1/0` and `y_n = h(a + n)`, `--compile` says "cannot compile y: division by zero" where the interpreter answers 1 for every term and never takes the clause, and `[1 2]*[1 2]` there says a product's sizes. `log`'s `log(x) \| x <= 0 = 1/0` is one, so a model calling `log` is refused in those words instead of "a sum or a product with no upper bound", which its series earns. Found specifying a function applied to each cell, `f.(x)`, which sizes inferred replaced (next in line). A clause written to refuse wants compiling as what a step does where the interpreter refuses, NaN as for a limit that does not converge, or a refusal naming the function and its clause. |
+| C86 `[fixed]` | **A clause whose value is a constant that fails refuses the whole model when compiled.** The compiler folds a constant value exactly, and a failure there is taken as the model's: in a model `gd(a = 2)` defining `h(x) = 1`, `h(x) \| x <= 0 = 1/0` and `y_n = h(a + n)`, `--compile` says "cannot compile y: division by zero" where the interpreter answers 1 for every term and never takes the clause, and `[1 2]*[1 2]` there says a product's sizes. `log`'s `log(x) \| x <= 0 = 1/0` is one, so a model calling `log` is refused in those words instead of "a sum or a product with no upper bound", which its series earns. Found specifying a function applied to each cell, `f.(x)`, which sizes inferred replaced (next in line). A clause written to refuse wants compiling as what a step does where the interpreter refuses, NaN as for a limit that does not converge, or a refusal naming the function and its clause. Now a guarded value whose fold fails is NaN where its guard holds, as where no clause applies, so `gd` compiles and `log` is refused for its halving, `log(x/2)` while `x > 2`, which recurses, "calls nested 64 deep"; `compile_c86` and `compile_log_refused` in `test/cli.cmake` hold it. A value that always applies and fails still refuses. |
 | C87 `[fixed]` | **The hint for a definition of one-cell clauses alone is written for another.** With `w[2] = 5`, reading `w` says "w has no size; write it as w[j<=rows, k<=cols]", two indices where its clause writes one; with `f(x)[1,1] = 5`, `f(1)` says "write it as f[j<=rows, k<=cols]", without its parameters, a clause `f` refuses, as it takes `(x)`. Found reviewing the specification of sizes inferred in a definition by cells (next in line), whose hints are written as the clause is, `sh(z)[i<=rows]`. The hint wants the clause's parameters and as many indices as it writes. It now has them, `w[j<=rows]` and `f(x)[j<=rows, k<=cols]`, written from the clause as a hint for a clause for all cells is, and one defined inside an expression, which keeps no text, from its names, `pc[i<=rows]`; the C87 entries of `test/data/matrices.ink` hold it. |
 | C88 `[fixed]` | **A product or quotient of two real numbers grew a NaN imaginary part where it overflowed.** An inexact number is complex, and `*` and `/` took two real ones by the complex formula, whose cross terms multiply an infinity by the other's zero imaginary part: `10^400*~1` answered `inf+i*-nan`, `1/~0` `inf+i*-nan` and `0/~0` `-nan+i*-nan`, and an unrolled training run whose learning rate overshot printed its loss so. A power was fixed the same way before. Found training a learning rate by `grad` through an unrolled descent. Two real numbers now multiply and divide as reals, so these are `inf`, `inf` and `-nan`, which moves the two recorded in `test/data/errors.ink`; `i/~0` keeps C31's NaN part in view. Complex arithmetic on infinities stays the platform's (C64). |
+| C89 `[fixed]` | **A history by cells leaves the argument nothing.** A clause of a history by cells is guarded, but its guard chooses cells, not terms, and a cell no clause gives is 0, so it gives every term: with `x_n[j<=2] \| n < 0 = 0` and `c_n = [0 1; 1 0]*x_(n-1)` in `sw(x_n)`, `sw(x_n = [n; 2*n]).c_3` is `[0; 0]`, where the argument gives `x_2 = [2; 4]`. An unguarded clause, which does the same, is refused by name, `x is an input of sw, so its body can give it only a history`; this one is not. The compiler finds no history in it, `cannot compile c: c_0 reads x_-1, before the stream, where x has no history`, so nothing compiled differs. Found specifying an input of more than one cell (next in line). A history by cells is now refused in those words, its size stated or not; the C89 entries of `inputs.ink` hold it. |
+| C90 `[fixed]` | **`--check` kept a NaN in an int where a guard of `and` or `or` defers.** A guard whose right side reads a term its left does not is a truth of 1, 0 or NaN, and the clause the check keeps tests it as the step does, `m_->z_clause_ = isnan(t1_) ? NAN : t1_ != 0.0 ? 1 : 2;`, so where the truth is NaN a NaN becomes an int, which C leaves undefined. With `y_0 = 1`, `y_n = y_(n-1) + x_n`, `z_n \| x_n > 0 and y_(n-2) > 0 = 1` and `z_n = 0` in `gate(x_n)`, the program checking `g = gate(x_n = 1)`, built with `-fsanitize=float-cast-overflow`, stops at step 0, "nan is outside the range of representable values of type 'int'"; without it the report is right, as no clause is compared where the interpreter gives none. No checked instance has one. Found reviewing the specification of a NaN that reaches every term that reads it (next in line), which keeps 0 there. Now the clause kept is 0 where its guard is NaN, as no clause is taken, `isnan(t1_) ? 0 : t1_ != 0.0 ? 1 : 2`; `check_c90` in `test/cli.cmake` holds it. |
+| C91 `[open]` | **`--check` writes a value that is no finite double as no C.** An input and a guard's margin are written by `%.17g`, so where the interpreter's is infinite or NaN the program reads `inf` or `-nan` and does not compile: with `y_n = x_n - x_n`, `h_n \| y_n > 0 = 1` and `h_n = 0` in `ov(x_n)`, checking `w = ov(x_n = ~(10^400))` writes `inf` for each input and `-nan` for each margin of `h`. A term the interpreter gives so is reported instead, "where the interpreter's term is not a finite number". Found reviewing the specification of a NaN that reaches every term that reads it (next in line). |
+| C92 `[fixed]` | **A guarded sequence named before a late term its guard reads computed both from the stream's start.** With `y_0 = 1`, `y_n = 2*y_(n-1)`, `d_n = y_n - y_(n-1)`, `a_n \| d_n > 0 = 1` and `a_n = 0` in a model, `d` starts at 1, but the step computed `d` and `a` from 0, reading `y_(-1)` as the 0 `init` leaves, where the interpreter refuses: C13's class. A guard is compiled with what it reads deferred, and `d`, compiled on the way while `a` sorted first, filed its own reads as deferred too, so it read nothing and started at once; named `e`, the reader came after. A sequence compiled on the way now starts with nothing deferred, as it starts with no shift. Found reviewing the specification of a NaN that reaches every term that reads it; `kin` in `test/compile/history.ink` holds it. |
+| C93 `[fixed]` | **An input whose history is terms alone has no limit.** `lim x` asks the input's own clauses for a general one, and a history of terms has none, so with `x_(-1) = 0` and `l = lim x` in `last(x_n)`, `last(x_n = 2).l` says "x has no general clause, so it has no limit" where the terms are 2 from 0 on; a guarded history, `x_n \| n < 0 = 0`, is general, and the limit is taken. Found reviewing the implementation of an input of more than one cell, whose stated input, holding no clause at all, was refused so for any argument. An input's terms are its argument's where its history gives none, so it now has a limit whatever its history; `last` in `test/data/history.ink` holds it. |
+| C94 `[fixed]` | **`--check` steps an input its instance gives by the model's default for it.** The check compiles the instance with its inputs unbound, to feed them, and an input with a default then falls back to it: the step computes the default and takes no input, while the interpreter reads the argument. With `y_n = 2*x_n` in `dd(x_n = n)`, checking `w = dd(x_n = 1)` reports `w.x: 0 at 0, where the interpreter gives 1` and `w.y` likewise, a drift of the compiled step that is a different stream. Found reviewing the implementation of an input of more than one cell, whose sized default does the same. Such an instance wants refusing by name, as the header of its model cannot be given that input, or its argument compiled in place of the default. Now an input the instance gives is fed as the interpreter reads it, and one it does not give compiles the model's default, as the interpreter reads that; `fed` in `test/compile/inputs.ink` holds it. |
 
 **Measure instructions, not the clock.** One of those changes made the matrix
 workload 20 per cent slower by the clock and not by a single instruction: with
@@ -3417,3 +3429,312 @@ that exploring seven domains asked of the interpreter, by how many asked.
   420 lines of sources added and 143 removed, 277 more in all, about 40 of
   them the body of a call indented under the handler that names it, where
   about 120 were planned.
+
+- `[done]` **A NaN reaches every term that reads it.** NaN is the step's word for what
+  the interpreter refuses: a limit that does not converge, a function, a
+  sequence or a cell no clause of which applies, a clause refused wherever it
+  is taken (C86), a term before it exists, a singular solve, a parameter
+  nothing defines. `lim` compiled chose it over the status field
+  `MANIFESTO.md` sketched because a NaN reaches every term that reads it, a
+  field only the host that looks. It does not: a comparison with NaN is
+  false, so `high_n | y_n > 1/2 = 1` beside `high_n = 0` answers 0 where `y_n`
+  failed, and a bare truth, `z_n | y_n = 1`, holds. The failure leaves as a
+  plausible value, C13's class in generated code. `--check` parts there,
+  `run.high: 0 at 8, where the interpreter gives none`, but a deployed header
+  has no oracle. Found by an outside review.
+
+  Decided: make the premise true rather than reverse the ruling. In a header
+  that writes NaN, a decision on a value answers NaN where an operand is NaN,
+  as the interpreter refuses a guard whose operand fails. An operand that
+  reads a name other than the step's index is tested: the guard is
+  `isnan(m_->y[0]) ? NAN : m_->y[0] > 0.5`, which C's right-associative
+  conditional makes take no clause, `isnan(a) || isnan(b)` where both
+  operands are tested; a comparison as a value is `(isnan(a) ? NAN : a > b ?
+  1.0 : 0.0)`; a bare truth tests itself. A power decides too, where C's
+  absorbs a NaN, `pow(1, NaN)` and `pow(NaN, 0)` being 1: its base is
+  tested unless its exponent is a constant other than 0, and its exponent
+  unless its base is a constant other than 1, so `1^y_n` is `(isnan(m_->y[0])
+  ? NAN : pow(1.0, m_->y[0]))` and `stiff`'s `pow(t1_, 3.0)` is as it was.
+  `and` and `or` take the path a
+  guard that defers already takes, a truth as a double of 1, 0 or NaN,
+  whose right side is read only where the left has not decided, as in the
+  interpreter. Each guard of a chain tests its own operands, since one tried
+  after a clause that holds is never read. That is every guard compiled: a
+  sequence's, a function's, a limit's walk, a cell's, and `update`'s. The
+  clause `--check` keeps, `name_clause_`, is 0 where a guard reads NaN, no
+  clause being taken; today a guard of `and` or `or` writes the NaN into that
+  int. The Interface comment of such a header adds "A term the interpreter
+  would refuse is NaN, and so is every term that reads one, through a guard
+  or a comparison as through arithmetic; -ffinite-math-only, which
+  -ffast-math implies, removes the tests that make it so", so the host's one
+  test is `isnan` on what it reads, and knows that a compiler told no value
+  is NaN may take every `isnan` as false.
+
+  The interpreter refuses the same decisions on its own NaN, which inexact
+  arithmetic makes, `0/~0`: a comparison of one answered 0 and a truth of
+  one held, so a guard reading it took a clause, where a step reading NaN
+  now takes none, and the two parted. A comparison with NaN has no answer,
+  and `MANIFESTO.md`'s interpreter refuses rather than guesses. In the words
+  given for a value that is not single: `0/~0 > 0` and `0/~0 == 0/~0` are
+  "a comparison needs a number, not -nan", as is a whole matrix compared
+  with a NaN cell; a guard reading it, "a guard needs a number, not -nan";
+  `0/~0 or 0` and `1 and 0/~0`, "or needs a number, not -nan" and "and
+  needs a number, not -nan", the right side still read only where the left
+  has not decided, so `0 and 0/~0` is 0. `errors.ink` holds the
+  comparisons, `logic.ink` `and` and `or`, and `conditional.ink` the guard:
+  `nonzero(0/~0)`, recorded as answering 1 because it was "the one place the
+  convention bites", moves to the refusal. No other golden moves.
+
+  A header that writes no NaN is byte for byte as now. The gate is the
+  header: one that writes NaN anywhere is compiled again, aware. Of the
+  fourteen expected headers ten stay; `back.h` gains the sentence alone, its
+  guards reading the index; `heat.h` and `kalman2.h` gain it and a test
+  after each matrix term, heat's one and kalman2's six, as their inverses
+  write NaN; `adc.h` moves, its hysteresis, alarm and rising edge tested,
+  because `rising` writes NaN before its first term, though no step reaches
+  it. Of the programs `--check` writes for the instances checked, seven
+  write NaN and move, their reports as they are: `ajar` and `rise` test a
+  guard's operands, `cls`, `gate`, `mark` and `rnn` their matrix terms, and
+  `stiff` gains the sentence alone.
+
+  The interpreter refuses a matrix term whole where one cell fails, so in an
+  aware header a matrix term with a NaN cell is NaN in every cell: after the
+  cells of each matrix sequence's term, one test per step,
+
+      if (isnan(m_->y[0][0][0]) || isnan(m_->y[0][1][0]))
+          for (int i_ = 0; i_ < 2; ++i_)
+              for (int j_ = 0; j_ < 1; ++j_) m_->y[0][i_][j_] = NAN;
+
+  inside the block that computes the term where one does. Leaving a cell's
+  NaN in its cell, the first choice, was overruled on review: a guard
+  reading a healthy cell of a refused term, `h_n | y_n[1] > 1/2 = 1`, took
+  its clause, 1 where the interpreter gives none. `--check` agrees cell by
+  cell as today, each cell now NaN where the interpreter gives no term; a
+  term by cells with one failing cell parted, `slope.y[1,1]: 1 at 2, where
+  the interpreter gives none`. A matrix that is no sequence's term, a value
+  computed on the way or from the parameters, keeps a NaN in its cell. A
+  cell no clause gives is 0 in the interpreter, not a refusal, and stays 0,
+  as C89 has it.
+
+  Rejected: (a) a status field, the first failure's definition and step or a
+  count. The ruling under `lim` compiled stands: a field is read by the host
+  that looks, while the plausible value reaches every output. It costs a
+  member, `init`, a write at each of eleven sources, and the limits' functions
+  take the model `const`; naming the origin, its one gain, is the
+  interpreter's, asked for the term. (c) both: two channels for one fact. (d)
+  `--check` naming the first NaN's origin: it reaches no deployed header,
+  which is where the failure goes unseen. Testing every comparison of every
+  header: `kernel.h`, `net.h` and `pid_clamped.h` would move, each clamp and
+  ReLU tested for what its model cannot produce. A may-be-NaN analysis per
+  sequence over the reads, sparing `adc.h`: a fixed point, as recurrences read
+  themselves, for about 25 more lines. `isunordered`: a second primitive where
+  `isnan` is the compiler's. The complement, `a > b ? 1.0 : a <= b ? 0.0 :
+  NAN`: `==` and `<>` have none.
+
+  Known limits, each as today. A header that writes no NaN is not aware, yet
+  it divides: 0/0 there is NaN and a division by zero an infinity, and its
+  guards and comparisons decide on either as on a number. In an aware header
+  0/0 propagates, while an infinity still compares as a number; testing
+  every divisor would move every header that divides, and `--check` says
+  it, `pole.y: inf at 3, where the interpreter gives none`. A host's NaN, an
+  input it feeds or a parameter it assigns, propagates only in an aware
+  header; in another, its guards decide on it. A guard reading a limit
+  directly computes it twice, as its value already does. A NaN the
+  interpreter's own arithmetic makes is a value, not a refusal, but the
+  step cannot tell them apart: with `m_n = [(0/~0)*x_n; 1]` and
+  `h_n = m_n[2]` the interpreter answers 1 and the step NaN, its matrix
+  term NaN in every cell, as is a cell taken from such a matrix inline.
+
+  About 30 lines and none removed: 25 in the compiler, the gate and its
+  second run, the operand's test, the guard, the comparison, `and` and `or`,
+  the clause kept and the sentence; 5 in the check. Each decision on a value
+  grows by `isnan(a) ? NAN : `, in an aware header only.
+
+  Specified in `test/compile/nan.ink`: eight instances, each a guard reading
+  a failure, among them one inside a limit's walk, `lap`, one computed in
+  `update`, `trim`, and an `or` reaching NaN as the step runs, `any`, with
+  their steps, their reports and `adc.h`'s step, wired with the
+  implementation. The interpreter's refusals are written in the
+  goldens named above.
+
+  Built as specified, every instance of `nan.ink` reporting as written,
+  checked by `test/CMakeLists.txt` and its steps held line by line by
+  `holds` in `test/cli.cmake`; `adc.h`, `back.h`, `heat.h` and `kalman2.h`
+  move as specified, and the seven programs named, their reports as they
+  were. C90 is fixed on the way, the clause kept taking the guard's own
+  test to 0. Departures: an operand is tested unless it is a constant or
+  the index itself, told by a flag on its cell, rather than unless it reads no name
+  but the index, so `n - 1 > 0` is tested and a function's parameter given
+  the index is not, which moves no header; a guard that folds to NaN, which
+  the interpreter now refuses wherever it is tried, is refused in its
+  definition's name, `cannot compile h: a guard needs a number, not -nan`,
+  where the fold threw past it; and `--check` needed no change, every cell
+  of a refused matrix term being NaN. Under callgrind `grad` takes 0.5% more
+  instructions and `harmonic` 0.6% fewer, the rest as they were. 101 lines
+  of sources added and 21 removed, 80 more in all, where about 30 were
+  planned before the review added the matrix test, the power and the
+  interpreter's refusals: 13,358 lines in all.
+
+  On review, the interpreter's power of NaN is NaN, `1^(0/~0)` and
+  `(0/~0)^~0` as an aware step answers them, where C's `pow` gave 1: the
+  one parting the implementation left as a known limit; `errors.ink` holds
+  it. The index is told by a flag on its cell, not by comparing its text
+  with the index's, which moves nothing. A cell taken from a matrix that
+  is no sequence's term, one written inline, given to a function, computed
+  again or a value from the parameters, kept a healthy cell where the
+  interpreter refuses the matrix whole: `cell` and `held` in `nan.ink`
+  answered 1. Now, in an aware header, it is NaN where any cell of the
+  matrix is, the cells shared first, and a matrix that writes NaN in a cell
+  not taken makes the header aware, as it would otherwise write none. A
+  term's window is whole already and is not tested; of the programs checked
+  only `rnn`'s moves, its tanh taking each cell of a product. That every
+  `and` and `or` defers in an aware header is said once, in `Defers`, not
+  by its two callers. A constant matrix, which folds, is left out of the
+  gate. The gate reads NAN as a word past the line naming the source, so
+  a module, a file or a parameter named with it, `NAN_clamped`, no longer
+  makes a header aware. A truth is given its subject, `and`, rather than a
+  message to cut it from, and a guard that is a matrix says "a guard needs
+  single values", as `and` and a comparison do, where it said "a single
+  value", recorded nowhere until `conditional.ink`. The Interface sentence
+  ends "Built with -ffinite-math-only, which -ffast-math implies, GCC
+  removes the tests that make it so, and Clang warns of each NaN": Clang 18
+  warns of every NAN there, `-Wnan-infinity-disabled`, which `-Werror`
+  makes a refusal to build, and GCC is silent; `adc.h`, `back.h`, `heat.h`
+  and `kalman2.h` move by it alone. 23 lines: 13,381 in all.
+
+- `[done]` **An input of more than one cell** (C83). A model reading a vector or a
+  matrix at each step -- `y_n = [1 2]*x_n` with `x_n` a column, a filter on
+  several channels, a controller reading a sensor vector -- compiles to the
+  wrong shape: the compiler compiles a model, not an instance, so it reads
+  every input as a single value, and the step takes one double for each.
+  `--check` refuses such an instance by name, and no header can be had.
+
+  The model states the size in its signature, by bounds, as a definition by
+  cells states its own: `dot(x_n[j<=2])`, a column as `w[j<=3]` is;
+  `trace(x_n[j<=2, k<=2])`, a matrix; three bounds a tensor, slices first. A
+  bound reads the model's parameters, `avg(d = 3, x_n[j<=d])`, the names its
+  body defines and the session's constants, all compiled as constants, but
+  not the index, which a cell's bound may: a size that moved from term to term could
+  not be compiled, and would exist only to be refused there, so it is refused
+  where it is written, `x is an input of grow, so its size cannot read the
+  index n`. An input whose size is not stated takes any in the interpreter and
+  compiles as a single value, both as now, so `history.ink`'s `swap`, a column
+  given to `swap(x_n)`, still answers and no golden moves; making it a single
+  value in the interpreter too would refuse that session for a size it never
+  had to write.
+
+  In the interpreter, every term of a stated input, whether the argument, a
+  default or a history gives it, has that size, or is refused where it is
+  read, naming the term and both sizes: `w.x_1 is a single value, where dot
+  takes a 2x1 matrix`. A row given for a column is refused as well, as a
+  missing transpose is everywhere (*One index is a row*), and a single value
+  is not stretched, so a history of a column is a column, `x_n | n < 0 =
+  [0; 0]`. An instance is defined without evaluating anything, as now, so
+  the refusal is where a term is read, and before any of its cells is:
+  `trace(x_n = [n 1]).t_0` is refused for its size, not for a cell outside
+  a 1x2 matrix. `?` prints the signature as written;
+  `tex` sets the size as a paper states it, `\operatorname{dot}(x_n \in
+  \mathbb{R}^{2})`, `\mathbb{R}^{2 \times 2}` for two bounds and
+  `\mathbb{R}^{d}` for one read. ℝ follows the paper and is not checked:
+  the interpreter takes a complex input as it takes any. Any other bracket
+  in a signature, `x_n[j]`, `x_n[2]` or a parameter's, is refused in the
+  words that say what a parameter is, which gain the form: `a model's
+  parameter is a name, as 'k = 2', or an input, as 'x_n' or 'x_n[j<=2]'`;
+  `x_n[j]` states no size, and the compiler, which compiles the model, could
+  not infer one. A history by cells, stated or not, is refused as a clause that always
+  applies is, `x is an input of sw, so its body can give it only a history:
+  a term or a guarded clause`, as its guard chooses cells, not terms
+  (C89).
+
+  Compiled, the step takes an input of more than one cell as a pointer to its
+  cells, row by row, `const double x[2]`, as a host holds a vector; its window
+  is a sequence's of that size, `double x[1][2][1]`, and the step copies it
+  in, `memcpy(m_->x[0], x, sizeof m_->x[0])`. The first comment says so: `A
+  step takes x_n (2x1), the input at its index. An input of more than one
+  cell is a pointer to its cells, row by row.` Taking `const double
+  x[2][1]`, the window's shape and a limit's matrix argument's, was
+  rejected: in C11 a `double (*)[1]` passed where a `const double (*)[1]` is
+  taken is a warning under GCC's `-Wpedantic`, though not Clang's, so a host
+  would cast to call it, and a column
+  is not held as rows of one. What a sequence of that size does, the input
+  does: a cell is read, `x_n[2]` a single value; a size inferred from it is
+  its size, so `g_n[j] = x_n[j]*(x_n[j] > 0)` is 3x1 for a 3x1 input; it is
+  sampled and held at another rate; and it has a history, C83's refusal of
+  one that is not a single value going, `init` writing each cell a history
+  gives that is not 0, as it writes a parameter's. A bound that reads a
+  parameter compiles it in, as any size does, and the header says so.
+
+  `--check` feeds such an input by its cells, `in_k` holding each step's row
+  by row, and the step reads them from the step's first, `&in_1[n * 2]`. An
+  instance whose argument has another size than its model states is refused
+  in the interpreter's words, where the check reads the input: `v.x_(0):
+  v.x_0 is a single value, where dot takes a 2x1 matrix`. Where the model
+  states none, `check_matrix_input` stands as it is.
+
+  What stays refused, by name: a history of another size than its input,
+  stated or a single value, `cannot compile x: a history of another shape`,
+  the words an inner input's already has, so `swap` in `test/cli.cmake` and
+  `test/compile/history.ink`, its size not stated, moves to them from `a
+  history that is not a single value`; a tensor, `cannot compile x: a tensor`, as any; an instance within
+  the model given an argument of another size than its model states,
+  `cannot compile inner.x: a single value, where dot takes a 2x1 matrix`,
+  and a default of another size, `cannot compile x: a single value, where
+  nil takes a 2x1 matrix`, which the compiler can tell, its shapes being
+  static. A
+  file's input, a name nothing defines, has no signature to state a size in
+  and stays a single value. It is a requirement that every header in
+  `test/compile/expected` stays byte-identical, and every program `--check`
+  writes for an instance whose inputs are single values.
+
+  Rejected. A default giving the size, `m(x_n = [0; 0])`: a default already
+  means the stream where no argument is given, and the model compiled with
+  it takes no input at all, `m_step(&m)`, so the same text would mean a
+  stream in one place and the size of another in the next. A history giving
+  it, `x_n | n < 0 = [0; 0]`, which costs no syntax: a model that never reads
+  before the stream would state a history it does not need, for its size;
+  the clause speaks of `n < 0`, so the interpreter could not hold the stream
+  to it without giving one clause two meanings; and two clauses could
+  disagree. Inference from use: `[1 2]*x_n` admits a 2xk input, `2*x_n`
+  any, the header's interface would move when an unrelated line does, the
+  compiler's shapes run from the leaves forward and would need solving
+  backwards through products, and the interpreter, which reads the argument,
+  would never see it. A shape written as a type, `x_n : R^2`: a second way
+  to write a size beside bounds. The instance's argument giving it: the
+  compiler compiles a model, which two instances may give different sizes.
+
+  About 85 lines: 35 in the interpreter, parsing the signature 10, the size
+  held where a term is read 15 and `tex` 10; 40 in the compiler and 10 in
+  the check.
+
+  Specified in `test/data/spec/inputs.ink`, 54 of its 63 entries failing,
+  those passing being instances and models without a size echoing themselves
+  and an input whose size is not stated; and in `test/compile/inputs.ink`,
+  whose instances, reports, header excerpts and refusals are wired with the
+  compiler's half.
+
+  Built as specified, every entry passing as written, now
+  `test/data/inputs.ink`; `test/compile/inputs.ink`'s ten instances are
+  checked, every term exact, and its header excerpts and refusals are held in
+  `test/cli.cmake`. A stated input is a definition of its own in the
+  instance, as a history makes one, whose terms, the argument's, the
+  default's or the history's, are held to the size where they are read, the
+  bounds read in the instance; the compiler reads the same bounds as
+  constants, `Reference::Stated` serving both as `Reference::Measured` serves
+  sizes. No golden moved, nor any expected header or program `--check`
+  writes for an instance of single values; `swap` moved as specified, and
+  the NaN work changed nothing the header excerpts assumed. Departures: the
+  instance `pair` of `test/compile/inputs.ink` is `twain`, as `nan.ink`'s
+  check is named `pair`; and a history by cells is refused on any input,
+  stated or not, C89's own being one whose size is not stated. Under
+  callgrind every workload is as it was to the million instructions but
+  `grad`, 0.03% fewer. 154 lines of sources added and 35 removed, 119 more in
+  all, where about 85 were planned: 71 in the interpreter, of which the size
+  held where a term is read and its words, which the compiler shares, 36, the
+  signature 24, the definition holding the size 7 and `tex` 3; 45 in the
+  compiler and 3 in the check. 13,500 lines in all.
+  Its review fixed three defects of its own: a bound below 1, taken for a
+  size of 0 or of 2^64 - 1 rows; `x(a)_n` under `grad`, which read the first
+  of no clauses and crashed; and `lim x`, refused, as an input whose history
+  is terms alone was (C93). One wrapper now holds an input's history and its
+  stated size alike, and `Expanded` no longer unwraps what no expansion
+  holds: 5 lines fewer, 13,495 in all. C94, found on the way, is open.

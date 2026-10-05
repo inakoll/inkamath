@@ -114,6 +114,28 @@ public:
     // An input's argument, or the input where none is given, which answers
     // where the model's history of it does not.
     std::shared_ptr<const Reference<T>> argument;
+    // Of an input whose model states its size, the bounds that do: every term
+    // is held to them (DESIGN.md, C83).
+    std::vector<PExpression<T>> declared;
+
+    // The size stated, each bound read by 'read': three are slices first.
+    template <typename Read>
+    [[nodiscard]] Extent Stated(Read read) const {
+        const std::size_t k = declared.size();
+        return {read(declared[k == 3]), k > 1 ? read(declared.back()) : 1,
+                k == 3 ? read(declared[0]) : 0};
+    }
+
+    // 'a single value, where dot takes a 2x1 matrix'.
+    [[nodiscard]] std::string Unlike(const Extent& given, const Extent& stated) const {
+        const auto described = [](const Extent& e) {
+            return e.count() == 1 && !e.slices ? std::string("a single value")
+                                               : "a " + e.Described();
+        };
+        const std::string& header = home->model->header;
+        return described(given) + ", where " + header.substr(0, header.find('(')) + " takes " +
+               described(stated);
+    }
 
     [[nodiscard]] bool Value() const { return !model && !file && !input; }
 
@@ -440,8 +462,9 @@ public:
             parameters.BindDefaults(call, evaluator);
             if (call.limit()) {
                 // A guarded general clause is a general clause: it is the index
-                // that makes it one (DESIGN.md, C54).
-                if (!FirstThat([](const Clause<T>& c) { return c.parameters.general(); })) {
+                // that makes it one (DESIGN.md, C54); an input's argument has one.
+                if (!argument &&
+                    !FirstThat([](const Clause<T>& c) { return c.parameters.general(); })) {
                     throw std::runtime_error(reference_name_ +
                                              " has no general clause, so it has no limit");
                 }
@@ -487,6 +510,23 @@ public:
         throw std::runtime_error(reference_name_ + " needs single values, not a " +
                                  refused.shape.Described() +
                                  (Cells() ? "" : "; write it by its cells"));
+    }
+
+    // Does this clause answer this call? Asked by grad too. The shape is
+    // checked first and the guard last, because a guard may read the index it
+    // is being asked about -- and the index is bound on trial, so that a
+    // clause which does not answer leaves the scope as it found it.
+    template <typename Walk>
+    bool Selects(const Clause<T>& clause, bool indexed, int index, Walk& walk) const {
+        const ParametersDefinition<T>& p = clause.parameters;
+        if (p.indexed() != indexed) return false;
+        if (!p.general() && indexed && p.index() != index) return false;
+        if (!p.general()) return !p.guarded() || walk.Holds(*this, clause, index, 0, 0, 0);
+        typename ReferenceStack<T>::Trial trial(walk.stack(), p.index_name());
+        SetIndex(p.index_name(), index, walk.stack());
+        if (p.guarded() && !walk.Holds(*this, clause, index, 0, 0, 0)) return false;
+        trial.keep();
+        return true;
     }
 
 private:
@@ -616,10 +656,8 @@ private:
     }
     static bool IsBase(const Clause<T>& c)
         {return !c.parameters.guarded() && c.parameters.indexed() && !c.parameters.general();}
-    static bool IsGeneral(const Clause<T>& c)
-        {return !c.parameters.guarded() && c.parameters.general();}
-    static bool IsAllCells(const Clause<T>& c) {
-        return !c.parameters.guarded() && c.parameters.cells() && !c.parameters.row_name().empty();
+    static bool IsGeneral(const Clause<T>& c) {
+        return !c.parameters.guarded() && c.parameters.general();
     }
     static bool IsOneCell(const Clause<T>& c) {
         return c.parameters.cells() && c.parameters.row_name().empty();
@@ -804,27 +842,6 @@ private:
         return clause.written.empty() ? reference_name_ : clause.written;
     }
 
-    // Does this clause answer this call? The shape is checked first and the
-    // guard last, because a guard may read the index it is being asked about
-    // -- and the index is bound on trial, so that a clause which does not
-    // answer leaves the scope as it found it.
-    template <typename Walk>
-    bool Selects(const Clause<T>& clause, bool indexed, int index, Walk& walk) const {
-        const ParametersDefinition<T>& p = clause.parameters;
-        if(p.indexed() != indexed) return false;
-        if(!p.general() && indexed && p.index() != index) {
-            return false;
-        }
-        if(!p.general()) {
-            return !p.guarded() || walk.Holds(*this, clause, index, 0, 0, 0);
-        }
-        typename ReferenceStack<T>::Trial trial(walk.stack(), p.index_name());
-        SetIndex(p.index_name(), index, walk.stack());
-        if (p.guarded() && !walk.Holds(*this, clause, index, 0, 0, 0)) return false;
-        trial.keep();
-        return true;
-    }
-
     // The walk over the cells for the value.
     struct Values {
         using Result = T;
@@ -850,6 +867,16 @@ private:
         ReferenceStack<T>& stack() { return evaluator.stack(); }
     };
 
+    T Held(T term, int index, EvaluationVisitor<T>& evaluator) const {
+        if (declared.empty()) return term;
+        const Extent stated =
+            Stated([&](const PExpression<T>& bound) { return Size(bound->accept(evaluator)); });
+        if (term.Size() != stated)
+            throw std::runtime_error(home->Qualified(reference_name_) + "_" +
+                                     std::to_string(index) + " is " + Unlike(term.Size(), stated));
+        return term;
+    }
+
     T EvalImp(bool indexed, int index, EvaluationVisitor<T>& evaluator) const {
         Values values{evaluator};
         if (std::optional<T> cells = ByCells(indexed, index, values)) return std::move(*cells);
@@ -868,14 +895,16 @@ private:
             if(IsGeneral(clause) || IsPlain(clause)) continue;
             if (Selects(clause, indexed, index, values)) {
                 if (argument) ++evaluator.stack().histories;
-                return clause.expression->accept(evaluator);
+                return Held(clause.expression->accept(evaluator), index, evaluator);
             }
         }
         if (argument) {
-            return evaluator.stack().Evaluate(
-                *argument, ParametersCall<T>(PExpression<T>(),
-                                             indexed ? std::make_shared<ValExpression<T>>(T(index))
-                                                     : PExpression<T>()));
+            return Held(evaluator.stack().Evaluate(
+                            *argument,
+                            ParametersCall<T>(PExpression<T>(),
+                                              indexed ? std::make_shared<ValExpression<T>>(T(index))
+                                                      : PExpression<T>())),
+                        index, evaluator);
         }
         if(indexed) {
             // An index on something that is not a sequence used to be dropped
@@ -1227,6 +1256,7 @@ struct Model {
         std::string    name;
         std::string    index;     // 'n', for an input written 'x_n'
         PExpression<T> fallback;  // null for an input
+        std::vector<PExpression<T>> bounds;    // the bounds of 'x_n[j<=2]', none if not stated
     };
     struct Statement {
         std::string                     name;

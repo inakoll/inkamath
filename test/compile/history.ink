@@ -136,7 +136,7 @@
 #     inkamath: cannot compile x: a history whose guard is not its index below a constant
 #     inkamath: cannot compile x: a history whose guard is not its index below a constant
 #     inkamath: cannot compile x: a history that reads a
-#     inkamath: cannot compile x: a history that is not a single value
+#     inkamath: cannot compile x: a history of another shape
 #
 # And what the seven programs that skip a term today report, once 'down' in
 # decimate.ink states x_n | n < 0 = 0: each sequence from the step that
@@ -233,3 +233,18 @@ grow(x_n) = {
     y_n = y_(n-1)*10^10 + x_n
 }
 huge = grow(x_n = n)
+
+# A guard compiled on its own reads a term that is compiled on the way, and
+# that term's reads are its own: 'd' starts at 1, where y_(n-1) exists, and
+# the guarded 'a' that reads it with it. They started at 0 while the reader's
+# name sorted before the term's, reading the 0 init leaves (DESIGN.md, C92):
+#
+#     kin.d: 1 at 0, where the interpreter gives none: y has no clause for index -1
+order(x_n) = {
+    y_0 = 1
+    y_n = 2*y_(n-1)
+    d_n = y_n - y_(n-1)
+    a_n | d_n > 0 = 1
+    a_n = 0
+}
+kin = order(x_n = 1)

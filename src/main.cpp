@@ -171,7 +171,7 @@ static int compile(const string& source, const string& name, const string& targe
                 return 1;
             }
             const Reference<Interp::matrix_type>& model    = *found->second;
-            const auto                            defaults = p.Defaults(model);
+            const auto                            defaults = p.Definitions().Defaults(model);
             if (target.empty())
                 refused = CompileC::Refusals(p.Definitions(), name + " in " + file,
                                              model.model.get(), defaults.get());

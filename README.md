@@ -126,7 +126,8 @@ inverts a matrix at every step, and `test/compile/heat.ink` once, in `update`;
 `test/compile/net.ink` is a small network whose terms are defined by cells.
 `--compile mix.ink mix -o mix.h` compiles the model `mix` that `mix.ink`
 defines (section 5), read as `use` reads the file: its inputs are the step's
-arguments, in the order of its signature, and its parameters, with their
+arguments, in the order of its signature, one whose size the signature states
+a pointer to its cells, row by row, and its parameters, with their
 defaults, the only fields; a name nothing defines is refused rather than
 taken for one more input. A read of an input before the stream is a term the
 model's history gives, which `init` folds into the input's window, or is
@@ -152,7 +153,13 @@ regression, its `exp` a limit written in inkamath, as `test/compile/softmax.ink`
 writes softmax and cross-entropy, `log` being Newton's method on `exp`. A
 limit of matrices fills an array, cell by cell: `test/compile/steady.ink`
 finds a chain's steady state and, by power iteration, a matrix's dominant
-direction at every step.
+direction at every step. A header that writes NaN anywhere carries it to every
+term that reads it, as the interpreter refuses them: a guard, a comparison and
+a power reading NaN answer NaN, and a matrix term with a NaN cell is NaN in
+every cell, which its first comment says. Such a header is not to be built
+with `-ffinite-math-only`, which `-ffast-math` implies: GCC removes the tests
+that carry NaN, and Clang warns of each NaN the header writes.
+`test/compile/nan.ink` has an instance of each.
 
 A sequence that reads another at `x_(2*m)` samples it, and is computed every
 second step: its terms are the input's at another rate, and `y_(floor(n/2))`
@@ -565,10 +572,12 @@ error: step_0 is already defined without a guard, so this clause can never apply
 
 A comparison is a number — `1` or `0` — so a guard is simply an expression
 that is not zero, and `sgn(x) = (x>0) - (x<0)` needs no guard at all. Ordering
-needs real numbers; equality does not. Conditions combine with `and` and
-`or`, which answer `1` or `0` as a comparison does, bind looser than it, and
-read their right side only when the left has not decided — so a guard such as
-`n > 0 and s_(n-1) > 1` never asks for `s_(-1)`:
+needs real numbers; equality does not. Neither takes NaN, which `0/~0` is, nor
+does a guard: a comparison or a truth of NaN has no answer, and is refused.
+Conditions combine with `and` and `or`, which answer `1` or `0` as a
+comparison does, bind looser than it, and read their right side only when the
+left has not decided — so a guard such as `n > 0 and s_(n-1) > 1` never asks
+for `s_(-1)`:
 
 ```
 >> inside(x) = 0 < x and x < 1
@@ -858,6 +867,23 @@ delay(x_n) = { ... }
 
 >> delay(x_n = n^2).c_3
 4
+```
+
+An input of more than one cell states its size in the signature, by bounds,
+as a definition by cells does, and each of its terms is held to it where it is
+read:
+
+```
+>> dot(x_n[j<=2]) = {
+..     y_n = [1 2]*x_n
+.. }
+dot(x_n[j<=2]) = { ... }
+
+>> dot(x_n = [n; 1]).y_3
+5
+
+>> dot(x_n = n).y_3
+error: dot(...).x_3 is a single value, where dot takes a 2x1 matrix
 ```
 
 Defining an instance evaluates nothing, so two that read each other's terms,
