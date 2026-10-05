@@ -3738,3 +3738,135 @@ that exploring seven domains asked of the interpreter, by how many asked.
   is terms alone was (C93). One wrapper now holds an input's history and its
   stated size alike, and `Expanded` no longer unwraps what no expansion
   holds: 5 lines fewer, 13,495 in all. C94, found on the way, is open.
+
+- **The interpreter's own error, estimated by `--check`.** Ranked first by an
+  outside review: through `exp`, `log`, `tanh` or `lim` the interpreter's
+  terms are doubles, so the oracle holds a double to a double, and its report
+  says only "inexact ones from there", not how far. `gate` in
+  `test/compile/logistic.ink` reports `within 0` at every term; its terms are
+  4e-12 from the exact ones, by mpmath, because each sigmoid's `lim` stops at
+  the tolerance, and the step is exactly as far. `within 0` is also what a
+  step says whose terms have no digit left: the logistic map at 4 from
+  `~(1/5)` agrees with the interpreter to the bit for a hundred steps, and
+  both are past the tolerance from the exact terms at 26, and 0.95 from them
+  at worst. And a limit stopped short can put a guard on the wrong side of
+  its threshold, interpreter and step both answering 0 where the exact answer
+  is 1, `within 0` again.
+
+  Decided: the check estimates the interpreter's error by running it again,
+  disturbed where it is inexact. After the terms it compares, `--check` asks
+  the interpreter for each three times more. In every run, each rounding of a
+  double is taken the other way with probability one half, as stochastic
+  arithmetic does (CESTAC, Vignes): for `+`, `-`, `*` and `/` of real numbers
+  an error-free transformation says whether the result was rounded and which
+  way, so an exact one is never moved, Two-Sum for a sum and `fma` for a
+  product and a quotient's remainder; a result whose rounding is not known --
+  a complex operation, a power but one to an exact 0, a factorial, an exact
+  number made inexact unless it is a fraction over a power of two whose
+  numerator fits 53 bits -- is left or moved a unit in the last place either
+  way, at random. Each limit, and each series without an upper bound, is
+  moved by the remainder C36 estimated where it stopped, `step*r/(1-r)`: up
+  in the first run, down in the second and either way at random in the third,
+  so a guard near a limit is found on whichever side it lies; a matrix limit
+  moves every cell by the one remainder its largest cell's steps give, as it
+  stopped by them. The estimate of a cell is the largest distance of its
+  three values from its term: infinite where a run gives none, or one that is
+  not finite, and 0 where every run gives the term itself, as for every exact
+  term no guard on an inexact value chose. Drawn by splitmix64 from seeds 1,
+  2 and 3, in the order the terms are asked, so a report is the same on every
+  platform whose `pow` and `exp` agree. Disturbing every result, exact ones
+  too (Monte Carlo arithmetic), was simulated on `fit` in
+  `test/compile/adam.ink` first: 2.9e-10 for terms 3.3e-16 from exact, as
+  `exp(0)` and the gradient's exact zeros at `w = 0` moved and Adam's `1/eps`
+  took them a hundred million fold; with the test, 3.2e-15.
+
+  It is an estimate, not a bound, and says so. C36's ratio is a heuristic: a
+  series whose remainder it underestimates passes the rule and is moved by
+  too little. Three runs are a sample, and the largest of them errs high:
+  simulated, `gate.p` 9.8e-12 for 4e-12 actual, `ball.p` in
+  `test/compile/momentum.ink` 6.7e-16 for 2.2e-16, `chaos.x` passing the
+  tolerance at 23 to 26 by the seeds for 26 actual. What is neither rounded
+  nor stopped is not seen: `pi` and `e` are their nearest doubles, unmoved
+  until an operation takes them, and `pow` is trusted to a unit.
+
+  Reported on each sequence's line, after what it says now, where any
+  estimate is not 0: `gate.p: within 0; the interpreter's terms about 1e-11
+  from the exact ones`, the largest over the terms compared, and `, past the
+  tolerance from 23` where it passes the check's own tolerance, a billionth
+  of one plus the term, the first step it does: from there `within` compares
+  nothing. A line for a term that parts adds its estimate where it is not 0,
+  `; the interpreter's term about 2e-15 from the exact one`. "about" is the
+  heuristic said once per line, and the program's first comment says how the
+  estimate is made and that it is not a bound. The verdict stays the
+  tolerance's: widening it by the estimate would let a model whose terms are
+  noise pass in silence, where now it parts and the line says why it may not
+  be the step's.
+
+  What stays: every value the interpreter prints, and so every golden and
+  every expected header, byte for byte; what a session evaluates, which is
+  never disturbed, the perturbation being a thread-local pointer in `Number`
+  that only `--check` sets, for its three runs; the tolerance, the hundred
+  steps, the first line of a report, the flips, which a disturbed run's other
+  clause does not move but shows in its term's estimate, and every line of a
+  sequence whose estimate is 0. A disturbed run is asked with the memo
+  forgotten before and after it, and the guard hook unset; the step is fed
+  the inputs as given, while the runs compute the instance's inputs again, so
+  their error is in the estimate. A limit `grad` walks is not moved, as no
+  check reaches `grad`. Each program `--check` writes moves, `hold_` taking
+  the estimates; the reports of the twelve whose terms are inexact somewhere
+  move, `ball`, `cls`, `fit`, `gate`, `head`, `lap`, `mark`, `rnn`, `rough`,
+  `run`, `sized` and `stiff`, by each line of a sequence with an inexact
+  term, while `head.K`, `head.Q`, `head.V`, `cls.z`, `stiff.h` and `run.high`
+  stay, being exact and chosen by no guard near its threshold. `lap.y` and
+  `run.y` are limits of geometric terms, whose remainder C36 estimates
+  exactly, so their lines are known to the digit: `lap.y: within 0; the
+  interpreter's terms about 5.8e-11 from the exact ones` and `run.y: within
+  1.3e-26; the interpreter's terms about 9.4e-11 from the exact ones`, the
+  largest remainder being that of `x_7`, -3/4. The rest are held by their
+  form, their digits being the seeds'; simulated, `gate.p` is about 1e-11, a
+  limit's remainder, and `ball.p`, `fit.p` and `head`'s `S`, `A` and `O`
+  1e-16 to 1e-14, roundings. None of the twelve is expected to pass the
+  tolerance. README's paragraph on the check gains the estimate.
+
+  Rejected, each measured first by a simulation in Python against mpmath. The
+  review's ball, a radius beside each inexact value propagated through every
+  operation: ball arithmetic cannot see that two operands are correlated, so
+  a recurrence that subtracts consecutive terms or a step that corrects
+  itself grows the radius where the error shrinks. Over `gate`, `lim ex`'s
+  series multiplies its argument's radius 2.3e5 fold at |z| = 4, where the
+  true factor is e^z, 55 at most, and the radius is 1.4e-6 at step 10 and NaN
+  by 20; over `ball`, whose `exp` is the prelude's and within a unit, 9.5e-8
+  for terms 2.2e-16 from exact by step 99. The check would have compared
+  against enclosures too wide to find anything, on the models it was for. An
+  exact midpoint rounded to a bounded precision, Arb's own answer to that
+  growth: a second inexact arithmetic over the bignum, with `exp`, `log` and
+  powers of its own, some 300 lines, and every operation through the
+  prelude's `exp` a bignum one, `bench/`'s `hand` and `grad` among them; and
+  on `gate` it buys nothing, the series multiplying the radius at every step
+  whatever the precision, while for a model of limits the error is the
+  tolerance's 1e-10, not the double's 1e-16. Proven enclosures where a
+  remainder is known, as `exp`'s Taylor remainder: the sources are not where
+  the radius grows. Higher precision without a radius: `long double` is a
+  double under MSVC, `__float128` GCC's with a library, MPFR a dependency
+  (`CLAUDE.md`, section 5), and double-double some 150 lines before its `exp`
+  and `log`, every inexact value twice as wide, again for models whose error
+  is the tolerance's. Showing the estimate in a session, `~x  # about 1e-11`,
+  which `sum_(k=20) 1/2^k` would want, its nine digits shown and five of them
+  wrong: four evaluations of every line, and Deferred's *Numbers the user
+  cannot tune* stands as written.
+
+  About 80 lines: 30 in `number.hpp`, the pointer, splitmix64, the error-free
+  tests and the moves; 10 in `convergence.hpp` and its three callers, the
+  remainder kept and the limit moved; 40 in the check, the runs, the
+  estimates and the report; about 13,580 in all. The last three entries
+  overran by 40 to 170 per cent, on the reviews' cases; this one's risk is in
+  what keeps a value between evaluations, the memo, a literal's cells and a
+  history's terms, which a run must neither read nor fill. `--check`
+  evaluates every term four times, `fit`'s 1.6 s about 6; the inexact
+  operations test a thread-local pointer, held under callgrind to one per
+  cent on `limit`, whose terms are inexact.
+
+  Specified in `test/compile/estimate.ink`: `tie`, a limit that hides which
+  side of its threshold a guard is, and `chaos`, the logistic map, with their
+  reports, wired with the implementation, as are the twelve reports above.
+  Nothing in the interpreter is specified, as nothing it prints moves.
