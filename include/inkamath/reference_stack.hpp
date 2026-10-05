@@ -18,8 +18,9 @@
 // A variable set while this lives, and put back however it ends.
 template <typename V>
 struct Setting {
-    Setting(V& variable, V value) : variable_(variable), previous_(variable) { variable_ = value; }
-    ~Setting() { variable_ = previous_; }
+    Setting(V& variable, V value)
+        : variable_(variable), previous_(std::exchange(variable, std::move(value))) {}
+    ~Setting() { variable_ = std::move(previous_); }
     Setting(const Setting&)            = delete;
     Setting& operator=(const Setting&) = delete;
 
@@ -76,6 +77,18 @@ public:
         memoised_.clear();
         older_.clear();
         histories = 0;
+    }
+
+    // A run of --check that disturbs the arithmetic (Number::disturbed) sees
+    // nothing memoised, nothing made unnamed and no listener from before it,
+    // and leaves nothing behind, as what it computes is disturbed.
+    template <typename Run>
+    void Apart(Run run) {
+        const Setting<decltype(memoised_)> memoised(memoised_, {}), older(older_, {});
+        const Setting<decltype(unnamed_)>  unnamed(unnamed_, {});
+        const Setting<decltype(guards)>    heard(guards, nullptr);
+        const Setting<std::size_t>         counted(histories, 0);
+        run();
     }
 
     // Call once per top-level evaluation; the stack outlives them all.

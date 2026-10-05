@@ -184,7 +184,11 @@ a term the interpreter cannot give parts, unless the step's is NaN. Where every
 term is within a billionth of one plus the interpreter's, it prints the largest
 difference; otherwise the first term that parts and what the interpreter gives
 there, and it exits with a failure. It also says whether the interpreter's
-terms were exact throughout. `test/compile/drift.ink` has an instance that
+terms were exact throughout, and, where they were not, about how far they are
+from the exact ones: each is asked three times more with every rounding taken
+the other way at random and every limit moved by the remainder it estimated,
+an estimate and not a bound, which names the first step it passes the
+tolerance (`test/compile/estimate.ink`). `test/compile/drift.ink` has an instance that
 holds and one that does not: a tenth computed again at every step, whose
 rounding each step multiplies by ten. Before the values, it reports the first step
 at which a compiled guard takes another clause than the interpreter's, and how

@@ -595,8 +595,11 @@ private:
             }
             return all;
         }
-        static Jet Limit(Jet jet) {
-            return Map(std::move(jet), [](const T& v) { return Convergence<T>::Limit(v); });
+        // Each part moved, in a run of --check, by what its own walk left.
+        Jet Limit(Jet jet) const {
+            for (std::size_t s = 0; s < jet.size(); ++s)
+                if (jet[s]) jet[s] = parts[s].Reached(*jet[s]);
+            return jet;
         }
         // Why it did not converge: the value, or the first derivative that did not.
         [[noreturn]] void Fail(const std::string& what, const std::string& last,
@@ -631,7 +634,7 @@ private:
         Jet term;
         for (std::size_t n = 0; n < Convergence<T>::max_terms; ++n) {
             term = Term(definition, call, true, static_cast<int>(++index), arguments);
-            if (walk.Next(term)) return Walk::Limit(term);
+            if (walk.Next(term)) return walk.Limit(term);
         }
         walk.Fail(name, "last term", term);
     }
@@ -663,7 +666,7 @@ private:
         Jet               total;
         for (int n = 0; n < static_cast<int>(Convergence<T>::max_terms); ++n) {
             total = n == 0 ? term(first) : combine(total, term(first + n));
-            if (walk.Next(total)) return Walk::Limit(total);
+            if (walk.Next(total)) return walk.Limit(total);
         }
         walk.Fail("the " + what, "last partial " + what, total);
     }

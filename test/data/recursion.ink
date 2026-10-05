@@ -39,4 +39,3 @@ gm(x,y)_n = (am(x,y)_(n-1) * gm(x,y)_(n-1))^0.5
 >> ?gm
 gm(x,y)_0 = (x*y)^0.5
 gm(x,y)_n = (am(x,y)_(n-1) * gm(x,y)_(n-1))^0.5
-

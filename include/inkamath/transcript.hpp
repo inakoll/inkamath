@@ -104,6 +104,8 @@ inline std::vector<Item> parse(std::istream& in) {
 inline std::string render(const std::vector<Item>& items) {
     std::ostringstream out;
     for (const Item& item : items) {
+        // A blank line ends an entry before what follows it, not the file.
+        if (&item != &items.front() && items[&item - &items.front() - 1].is_entry) out << '\n';
         if (!item.is_entry) {
             out << item.text << '\n';
             continue;
@@ -118,7 +120,6 @@ inline std::string render(const std::vector<Item>& items) {
         }
         out << '\n';
         if (!item.expected.empty()) out << item.expected << '\n';
-        out << '\n';
     }
     return out.str();
 }

@@ -126,10 +126,11 @@ public:
         });
     }
 
-    static Matrix<T> inexact(const Matrix<T>& a) {
+    static Matrix<T> inexact(const Matrix<T>& a, double remainder = 0) {
         Matrix<T> c(a);
-        std::transform(c.data(), c.data() + c.extent_.count(), c.data(),
-                       [](const T& value) { return numeric_interface<T>::inexact(value); });
+        std::transform(c.data(), c.data() + c.extent_.count(), c.data(), [&](const T& value) {
+            return numeric_interface<T>::inexact(value, remainder);
+        });
         return c;
     }
 
