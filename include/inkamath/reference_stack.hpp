@@ -773,6 +773,16 @@ private:
                 definition->home = given ? written : scope.get();
                 if (given) definition->captured = captured;
             }
+            // A history, tried before the argument, or a size stated, holds it.
+            if (!parameter.bounds.empty() ||
+                std::any_of(m.body.begin(), m.body.end(),
+                            [&](const auto& s) { return s.name == parameter.name; })) {
+                auto held      = std::make_shared<Reference<T>>(parameter.name);
+                held->argument = std::move(definition);
+                held->home     = scope.get();
+                held->declared = parameter.bounds;
+                definition     = std::move(held);
+            }
             scope->names[parameter.name] = std::move(definition);
         }
         for (const typename Model<T>::Statement& statement : m.body) {
@@ -785,14 +795,6 @@ private:
                 definition->home  = scope.get();
                 slot              = std::move(definition);
                 continue;
-            }
-            // A clause of an input is its history, tried before the argument.
-            if (std::any_of(m.parameters.begin(), m.parameters.end(),
-                            [&](const auto& p) { return p.name == statement.name; }) &&
-                !slot->argument) {
-                auto history      = std::make_shared<Reference<T>>(statement.name);
-                history->argument = std::move(slot);
-                slot              = std::move(history);
             }
             auto* equal = static_cast<EqualExpression<T>*>(statement.definition.get());
             slot        = Extended(slot, scope.get(), statement.name, evaluator.Parameters(equal),

@@ -169,6 +169,9 @@ TEST_CASE("sizes") {
 TEST_CASE("history") {
     check_transcript("history.ink");
 }
+TEST_CASE("inputs") {
+    check_transcript("inputs.ink");
+}
 TEST_CASE("readme") {
     check_readme();
 }

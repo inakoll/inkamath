@@ -108,6 +108,16 @@ after(x_n) = { ... }
 >> after(x_n = n).c_0
 0
 
+# A history of terms alone leaves the input its limit, the argument's (C93).
+>> last(x_n) = {
+..     x_(-1) = 0
+..     l = lim x
+.. }
+last(x_n) = { ... }
+
+>> last(x_n = 2).l
+2
+
 # A history may be any expression in its index.
 >> ramp(x_n) = {
 ..     x_n | n < 0 = n/2

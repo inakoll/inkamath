@@ -50,6 +50,7 @@ public:
         std::string              header;
         int                      first;      // the index of the first step
         std::vector<std::string> inputs;     // the step's arguments, in order
+        std::vector<std::size_t> cells;      // and how many cells each has
         std::vector<Sequence>    sequences;  // those it computes, in the order it does
         std::vector<std::string> guarded;    // those whose clause is kept, 'v_clause_'
     };
@@ -327,8 +328,10 @@ private:
             const std::string key = scope.Qualified(name);
             if (!definition->Value() || aside_.count(key)) continue;
             if (definition->argument) {
-                History(key, *definition);
-                if (!definition->argument->input) Define(key, *definition->argument);
+                if (!definition->Clauses().empty()) History(key, *definition);
+                if (definition->argument->input) continue;
+                Define(key, *definition->argument);
+                if (!definition->declared.empty()) stated_[key] = definition.get();
                 continue;
             }
             Define(key, *definition);
@@ -662,8 +665,12 @@ private:
             if (aside_.count(parameter.name)) continue;
             if (!parameter.index.empty() && !parameter.fallback) {
                 Unreserved(parameter.name);
-                Sequence& input = sequences_[parameter.name];
-                input.rows = input.cols = 1;
+                const Reference<Value>& input = *root_.names.at(parameter.name);
+                const Extent            size =
+                    input.declared.empty() ? Extent{} : Stated(parameter.name, input);
+                if (size.slices) throw Refusal(parameter.name, "a tensor");
+                sequences_[parameter.name].rows = size.rows;
+                sequences_[parameter.name].cols = size.cols;
             } else if (parameter.index.empty()) {
                 try {
                     (void)Emit(std::make_shared<RefExpression<Value>>(parameter.name));
@@ -671,6 +678,15 @@ private:
                     throw Refusal(parameter.name, reason.what());
                 }
             }
+        }
+    }
+
+    // An input's size as its model states it (DESIGN.md, C83), read where it is.
+    Extent Stated(const std::string& key, const Reference<Value>& input) {
+        try {
+            return input.Stated([&](const PExpression<Value>& bound) { return Size(bound); });
+        } catch (const Reason& reason) {
+            throw Refusal(key, reason.what());
         }
     }
 
@@ -742,7 +758,9 @@ private:
                 }
                 const auto [code, reads] = Reading(clause.expression);
                 if (!reads.empty()) throw Reason("a history that reads " + *reads.begin());
-                if (!code.Scalar()) throw Reason("a history that is not a single value");
+                if (!history.declared.empty() &&
+                    Extent{code.rows, code.cols} != Stated(key, history))
+                    throw Reason("a history of another shape");
                 int& reach = reach_.try_emplace(key, top).first->second;
                 reach      = std::max(reach, top);
             }
@@ -914,6 +932,13 @@ private:
         if (!settled) sequence.general.assign(sequence.rows * sequence.cols, "NAN");
         clause_reads_     = outer_reads;
         sequence.compiled = true;
+        // An input given a term of another size than its model states.
+        if (const auto input = stated_.find(name); input != stated_.end()) {
+            const Home   there(*this, input->second);
+            const Extent stated = Stated(name, *input->second);
+            if (Extent{sequence.rows, sequence.cols} != stated)
+                throw Refusal(name, input->second->Unlike({sequence.rows, sequence.cols}, stated));
+        }
     }
 
     Code Emit(const PExpression<Value>& expression) {
@@ -2012,7 +2037,7 @@ private:
         Sequence& read = sequences_[key];
         if (!definition) {
             Unreserved(key);
-            read.rows = read.cols = 1;
+            if (!read.rows) read.rows = read.cols = 1;
         }
         if (!reading_) return Answer(Seeded(key, read, call.subexpr()));
         if (const auto sample = Sampled(call.subexpr()))
@@ -2960,7 +2985,7 @@ private:
                 const auto term = folded_.find({name, (slow ? sequence.first : earliest) - 1 - k});
                 if (term == folded_.end() || !term->second) continue;
                 const std::vector<double> cells = Doubles(*term->second);
-                if (cells.size() != sequence.rows * sequence.cols)
+                if (term->second->Size() != Extent{sequence.rows, sequence.cols})
                     throw Refusal(name, "a history of another shape");
                 for (std::size_t c = 0; c < cells.size(); ++c)
                     if (cells[c] != 0.0)
@@ -3137,6 +3162,10 @@ private:
         return text;
     }
 
+    std::size_t Cells(const std::string& name) const {
+        return sequences_.at(name).rows * sequences_.at(name).cols;
+    }
+
     // The header's first comment: how to call it, in the terms of the file.
     std::string Interface(const std::string& module, const std::vector<std::string>& inputs,
                           const std::vector<std::string>& fields, int earliest) const {
@@ -3161,7 +3190,12 @@ private:
             rated.push_back(term + ", computed at the steps " + std::to_string(sequence.period) +
                             "*m" + (sequence.phase ? Less(-sequence.phase) : std::string()));
         }
-        for (const std::string& name : inputs) inputs_n.push_back(name + "_n");
+        for (const std::string& name : inputs) {
+            const Sequence& input = sequences_.at(name);
+            const Extent    size{input.rows, input.cols};
+            inputs_n.push_back(name + "_n" +
+                               (Cells(name) == 1 ? "" : "\x01(" + size.toString() + ")"));
+        }
         for (const auto& [name, parameter] : parameters_)
             parameters.push_back(parameter.initial.size() == 1
                                      ? name + "\x01=\x01" + Double(parameter.initial[0])
@@ -3172,6 +3206,8 @@ private:
         if (!rated.empty())
             text += " At another rate, m.name[k] is name_(m-k), m its latest term's index: " +
                     list(rated) + ".";
+        if (std::any_of(inputs.begin(), inputs.end(), [&](auto& name) { return Cells(name) > 1; }))
+            text = "An input of more than one cell is a pointer to its cells, row by row. " + text;
         text = (inputs.empty() ? "A step takes no input. "
                 : inputs.size() == 1
                     ? "A step takes " + list(inputs_n) + ", the input at its index. "
@@ -3366,7 +3402,10 @@ private:
         out += "/* Advances to the next index, the first at " + std::to_string(earliest) +
                ", and computes its terms. */\n";
         out += "static inline void " + module + "_step(" + module + "* m_";
-        for (const std::string& name : inputs) out += ", double " + name;
+        for (const std::string& name : inputs)
+            out += Cells(name) == 1
+                       ? ", double " + name
+                       : ", const double " + name + "[" + std::to_string(Cells(name)) + "]";
         out += ") {\n    ++m_->index_;\n";
         // A sequence's window moves when it computes a term: every step, or
         // on its ticks.
@@ -3384,7 +3423,10 @@ private:
         };
         for (const std::string& name : fields)
             if (sequences_.at(name).period == 1) out += shifted(name, "    ");
-        for (const std::string& name : inputs) out += "    m_->" + name + "[0] = " + name + ";\n";
+        for (const std::string& name : inputs)
+            out += Cells(name) == 1 ? "    m_->" + name + "[0] = " + name + ";\n"
+                                    : "    memcpy(m_->" + name + "[0], " + name + ", sizeof m_->" +
+                                          name + "[0]);\n";
         for (const std::string& name : order) {
             const Sequence&   sequence = sequences_.at(name);
             const bool        scalar   = sequence.general.size() == 1;
@@ -3467,7 +3509,8 @@ private:
         }
         out += "}\n\n#endif\n";
         out.insert(folds, Folds(earliest));
-        Compiled compiled{out, earliest, inputs, {}, {}};
+        Compiled compiled{out, earliest, inputs, {}, {}, {}};
+        for (const std::string& name : inputs) compiled.cells.push_back(Cells(name));
         for (const std::string& name : order) {
             const Sequence& sequence = sequences_.at(name);
             const bool      unnamed  = std::any_of(
@@ -3516,6 +3559,7 @@ private:
     std::map<std::string, int> exists_;        // where one with no base first answers
     std::vector<Check>         checks_;        // what a deferred right side reads, by its mark
     std::map<std::string, const Reference<Value>*> histories_;  // by the input they give
+    std::map<std::string, const Reference<Value>*> stated_;     // inputs given a term, sized
     std::map<std::string, int>                     reach_;      // the last index each gives
     std::map<std::pair<std::string, int>, std::optional<Value>> folded_;
     std::map<std::pair<std::string, int>, std::string> unfolded_;  // why a history gave none

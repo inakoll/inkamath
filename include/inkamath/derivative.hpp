@@ -267,16 +267,6 @@ private:
         return false;
     }
 
-    static bool Mentions(const Expression<T>& e, const std::string& name) {
-        if ((dynamic_cast<const RefExpression<T>*>(&e) ||
-             dynamic_cast<const FuncExpression<T>*>(&e)) &&
-            e.Name() == name)
-            return true;
-        for (const PExpression<T>& child : e.Children())
-            if (child && Mentions(*child, name)) return true;
-        return false;
-    }
-
     Jet Name(RefExpression<T>& ref) {
         if (const Jet* bound = Lookup(ref.Name())) return Padded(*bound);
         return Constant(ref.accept(ordinary_));
@@ -290,7 +280,8 @@ private:
         const auto definition = stack_.Global(call.Name());
         if (stack_.Binds(call.Name()))
             throw std::runtime_error("grad cannot differentiate a local definition yet");
-        if (!definition || !definition->Value()) return Constant(call.accept(ordinary_));
+        if (!definition || !definition->Value() || definition->Clauses().empty())
+            return Constant(call.accept(ordinary_));
         const ParametersCall<T>&       p          = call.Call();
         const ParametersDefinition<T>& parameters = definition->Clauses().front().parameters;
         parameters.CheckArity(definition->Name(), p);
