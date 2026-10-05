@@ -33,8 +33,8 @@ public:
     static T Limit(const T& value) { return numeric_interface<T>::inexact(value); }
 
     // The same, which a run of --check moves by the remainder estimated
-    // where the walk stopped (Number::limit).
-    T Reached(const T& value) const { return numeric_interface<T>::limit(value, remainder_); }
+    // where the walk stopped (Number::inexact).
+    T Reached(const T& value) const { return numeric_interface<T>::inexact(value, remainder_); }
 
     // The next value; true when it is the limit. The first is never: one value
     // has nothing to be compared with.

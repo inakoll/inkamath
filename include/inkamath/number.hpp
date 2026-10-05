@@ -124,10 +124,9 @@ public:
     static Number imaginary(const Number& a) {
         return a.exact() ? Number(0) : Approximate(a.inexact_.imag(), approximated(a));
     }
-    static Number inexact(const Number& a) { return a.exact() ? Number(a.Inexact()) : a; }
-    // A limit, which a disturbed run moves by the remainder its walk estimated.
-    static Number limit(const Number& a, double remainder) {
-        const Number value = inexact(a);
+    // A limit's 'remainder' is what a disturbed run moves it by.
+    static Number inexact(const Number& a, double remainder = 0) {
+        const Number value = a.exact() ? Number(a.Inexact()) : a;
         if (!disturbed || !(remainder > 0)) return value;
         const int way = disturbed->limits != 0 ? disturbed->limits : Coin() ? 1 : -1;
         return Approximate(value.inexact_ + way * remainder, approximated(value));

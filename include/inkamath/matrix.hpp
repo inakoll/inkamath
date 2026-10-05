@@ -126,17 +126,10 @@ public:
         });
     }
 
-    static Matrix<T> inexact(const Matrix<T>& a) {
-        Matrix<T> c(a);
-        std::transform(c.data(), c.data() + c.extent_.count(), c.data(),
-                       [](const T& value) { return numeric_interface<T>::inexact(value); });
-        return c;
-    }
-
-    static Matrix<T> limit(const Matrix<T>& a, double remainder) {
+    static Matrix<T> inexact(const Matrix<T>& a, double remainder = 0) {
         Matrix<T> c(a);
         std::transform(c.data(), c.data() + c.extent_.count(), c.data(), [&](const T& value) {
-            return numeric_interface<T>::limit(value, remainder);
+            return numeric_interface<T>::inexact(value, remainder);
         });
         return c;
     }
