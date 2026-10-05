@@ -248,3 +248,11 @@ order(x_n) = {
     a_n = 0
 }
 kin = order(x_n = 1)
+
+# An input no double holds but infinity is fed as C writes it, INFINITY;
+# '%.17g' wrote 'inf', which is no C, and the program did not build
+# (DESIGN.md, C91).
+over(x_n) = {
+    y_n = x_n > 0
+}
+vast = over(x_n = ~(10^400))
