@@ -196,6 +196,14 @@ far that guard is from its threshold in exact arithmetic: rounding explains a
 flip at a margin near zero, and not one at a large margin. `brink` in the same
 file sits exactly on its threshold, and `ledge` a trillionth from it.
 
+`--float`, beside `--compile` or an instance's `--check`, writes floats where
+the header writes doubles, every constant the nearest float, for a target that
+computes in float. Its check holds each term within a thousandth of one plus
+the interpreter's and says the most any term came in units of a float, the
+spacing of floats at the interpreter's term: `test/compile/float.ink`. A limit
+compiled in float also stops where a step is within twice `FLT_EPSILON` of its
+term, so it may answer where the interpreter says it does not converge.
+
 `--check session.ink`, given a transcript alone, replays it and shows each
 answer that is not the one recorded, as recorded (`-`) and as given now (`+`),
 under the line it answers. It is the check the tests make of

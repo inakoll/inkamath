@@ -180,6 +180,8 @@ At a terminal the prompt edits the line and keeps its history.
               term to the interpreter's exact one and says where one drifts;
               given a transcript alone, replay it and report each answer
               that is not the one recorded
+  --float     with --compile or --check, write floats where they write
+              doubles
   --help      print this and exit
 
 A file whose first line that is not blank or a comment starts with '>>'
@@ -560,7 +562,7 @@ function(refused model body why)
 endfunction()
 refused(open "x_n) = {\n    c_n = x_(n-1)"
         "c: c_0 reads x_-1, before the stream, where x has no history")
-refused(short "x_n) = {\n    x_(-1) = 0\n    c_n = x_(n-2)"
+refused(scant "x_n) = {\n    x_(-1) = 0\n    c_n = x_(n-2)"
         "c: c_0 reads x_-2, before the stream, where x has no history")
 refused(level "x_n) = {\n    c_n = n >= 0 and x_n > x_(n-1)"
         "c: c_0 reads x_-1, before the stream, where x has no history")
@@ -643,3 +645,70 @@ set(stderr "inkamath: models.ink is not a transcript\n")
 set(exit 1)
 check(check_not_transcript)
 
+
+# A float target (DESIGN.md, compile/float.ink): beside --compile or an
+# instance's --check, floats where the header writes doubles.
+set(args --float first.txt)
+set(stderr "inkamath: --float takes --compile, or --check with an instance\nTry 'inkamath --help'.\n")
+set(exit 2)
+check(float_usage)
+
+file(MAKE_DIRECTORY "${OUT}/float")
+set(args --compile ${inputs} dot --float -o float/dot.h)
+check(float_dot)
+holds(float_dot float/dot.h [[typedef struct dot {
+    long long index_;
+    float x[1][2][1];
+    float y[1];
+} dot;
+]] [[static inline void dot_step(dot* m_, const float x[2]) {
+]])
+
+file(WRITE "${OUT}/vast.ink" "vast(x_n) = {\n    x_n | n < 0 = 10^39\n    c_n = x_(n-1)\n}\n")
+set(args --compile vast.ink vast --float)
+set(stdout "cannot compile c: c_0 reads x_-1, before the stream, where x's history gives a term no float holds\n")
+set(exit 1)
+check(float_history)
+
+# A float's limit stops where it closes on floats a unit or two apart, too.
+set(args --compile ${CMAKE_CURRENT_LIST_DIR}/compile/logistic.ink logit --float -o float/gate.h)
+check(float_gate)
+holds(float_gate float/gate.h "#include <float.h>\n#include <math.h>\n"
+      [[static inline float gate_lim0(const gate* m_, float arg_z) {]]
+      [[        const float t_ = t1_ + (t1_ - t2_) * arg_z / (float)k_;
+        if (started_) {
+            step_ = fabsf(t_ - t1_);
+            if (step_ <= 2 * FLT_EPSILON * fabsf(t_) && isfinite(t_) && stepped_) return t_;
+            if (step_ <= 1e-10f && stepped_ &&
+]] [[    m_->p[0][0][0] = 1.0f / (1.0f + gate_lim0(m_, 0.0f - (0.0f * m_->w[0][0][0] + 0.0f * m_->w[0][1][0] + m_->b[0])));
+]])
+
+set(args --check ${CMAKE_CURRENT_LIST_DIR}/compile/drift.ink calm --float -o float/calm.c)
+check(float_calm)
+holds(float_calm float/calm.c [[static const float in_0[100] = {
+    0.0f, 0.1f, 0.2f, 0.3f,
+]] [[static float got_0[100];
+]] [[        calm_step(&m, in_0[n]);
+        memcpy(&got_0[n * 1], &m.v[0], sizeof(float) * 1);
+]])
+
+# C103: a parameter's default of negative infinity is -INFINITY, as is one
+# past a float's range in a float header.
+file(WRITE "${OUT}/c103.ink" "neg(p = 0 - ~(10^400), q = 0 - 10^39, x_n) = {\n    y_n = p + q + x_n\n}\n")
+set(args --compile c103.ink neg -o c103.h)
+check(compile_c103)
+holds(compile_c103 c103.h "    m_->p = -INFINITY;\n    m_->q = -1e+39;\n")
+set(args --compile c103.ink neg --float -o c103f.h)
+check(compile_c103_float)
+holds(compile_c103_float c103f.h "    m_->p = -INFINITY;\n    m_->q = -INFINITY;\n")
+
+# C104: a header or a program named after a word C keeps, or after a standard
+# header it includes, is refused.
+set(args --compile ${inputs} dot --float -o float.h)
+set(stderr "inkamath: 'float' is a name C keeps, and the header is named after it\n")
+set(exit 2)
+check(compile_c104)
+set(args --check ${CMAKE_CURRENT_LIST_DIR}/compile/drift.ink calm -o math.c)
+set(stderr "inkamath: 'math' is a name C keeps, and the program is named after it\n")
+set(exit 2)
+check(check_c104)
