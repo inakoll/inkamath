@@ -3767,7 +3767,9 @@ that exploring seven domains asked of the interpreter, by how many asked.
   way, at random, unless it is 0, which is exact however it was reached: a
   square moved below it would be negative and its root complex. Each limit,
   and each series without an upper bound, is moved by the remainder C36
-  estimated where it stopped, `step*r/(1-r)`: up in the first run, down in the
+  estimated where it stopped, `step*r/(1-r)`, or by its last step where the
+  one before was 0 and C36 had no ratio, so that a constant series, `gate`'s
+  `ex(0)` or `run.y` at 0, is not moved: up in the first run, down in the
   second and either way at random in the third, so a guard near a limit is
   found on whichever side it lies; a matrix limit moves every cell by the one
   remainder its largest cell's steps give, as it stopped by them. The estimate
