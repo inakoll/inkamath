@@ -1079,7 +1079,7 @@ private:
 
     static std::string Double(double x) {
         if (std::isnan(x)) return "NAN";
-        if (!Finite(x)) return "INFINITY";
+        if (!Finite(x)) return std::signbit(x) ? "-INFINITY" : "INFINITY";
         char        text[32];
         const auto end = floats ? std::to_chars(text, text + sizeof text, static_cast<float>(x)).ptr
                                 : std::to_chars(text, text + sizeof text, x).ptr;

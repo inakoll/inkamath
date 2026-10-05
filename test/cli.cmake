@@ -691,3 +691,13 @@ holds(float_calm float/calm.c [[static const float in_0[100] = {
 ]] [[        calm_step(&m, in_0[n]);
         memcpy(&got_0[n * 1], &m.v[0], sizeof(float) * 1);
 ]])
+
+# C103: a parameter's default of negative infinity is -INFINITY, as is one
+# past a float's range in a float header.
+file(WRITE "${OUT}/c103.ink" "neg(p = 0 - ~(10^400), q = 0 - 10^39, x_n) = {\n    y_n = p + q + x_n\n}\n")
+set(args --compile c103.ink neg -o c103.h)
+check(compile_c103)
+holds(compile_c103 c103.h "    m_->p = -INFINITY;\n    m_->q = -1e+39;\n")
+set(args --compile c103.ink neg --float -o c103f.h)
+check(compile_c103_float)
+holds(compile_c103_float c103f.h "    m_->p = -INFINITY;\n    m_->q = -INFINITY;\n")
