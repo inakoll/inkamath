@@ -4064,10 +4064,11 @@ that exploring seven domains asked of the interpreter, by how many asked.
   GNU modes fuse across, so 18 per cent of results part under either, half
   of `exp`'s over its range, worst errors within 0.05 units of the unfused
   ones; the header already says so (*Fused multiply-adds*). `2^k` is
-  `pow(2.0, k)`, as any power compiles: exact under glibc 2.39 for every
-  whole k from -1100 to 1100, checked, and assumed elsewhere; where a
-  platform's is not, interpreter and step call the same one and still agree,
-  which `ldexp` would not.
+  `pow(2.0, k)`, as any power compiles, and `exp2(k)` under Clang. The
+  interpreter calls `pow` for a double k, in `exp` and `tanh`, but shifts an
+  exact one, as `log`'s always is, so the two agree only where `pow` and
+  `exp2` are exact for every whole k from -1100 to 1100: assumed, and
+  `compile_powers` holds it on every platform CI builds.
 
   `grad` differentiates the definitions: floor's derivative is 0 and every
   guard takes its side at its threshold, so 0, 1, 2, every power of two and
@@ -4172,7 +4173,8 @@ that exploring seven domains asked of the interpreter, by how many asked.
   interpreter, its 2^k a shift, so the step agrees where `pow` and `exp2` are
   exact at whole k, as glibc's are from -4096 to 4096, not because both call
   the same one: a `pow` a unit off there, preloaded into both, parts `els.l`
-  and `els.g` alone. Compiled, `log` takes 235 to 416 ns a call where libm's
+  and `els.g` alone. By the review's ruling `compile_powers` holds both exact
+  from -1100 to 1100. Compiled, `log` takes 235 to 416 ns a call where libm's
   takes 6, ilogb's thirteen steps each calling `pow` twice in a header that
   writes NaN. The review found C99, `--check` estimating a term whose runs
   part by more than 2^512 infinitely far, `exp`'s from 390; held `els`'s

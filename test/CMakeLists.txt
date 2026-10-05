@@ -71,6 +71,13 @@ foreach(model IN ITEMS pid pid_clamped kalman kalman2 fir heat adc net mix loop 
                      ${CMAKE_CURRENT_SOURCE_DIR}/compile/expected/${model}.h ${header})
 endforeach()
 
+# 2^k as a step computes it, exact for every k the prelude scales by.
+add_executable(compile_powers compile/powers.c)
+target_link_libraries(compile_powers PRIVATE inkamath_warnings
+                      $<$<NOT:$<C_COMPILER_ID:MSVC>>:m>)
+set_target_properties(compile_powers PROPERTIES C_STANDARD 11 C_STANDARD_REQUIRED ON C_EXTENSIONS OFF)
+add_test(NAME compile_powers COMMAND compile_powers)
+
 # The oracle: an instance compiled, and each of its terms held to the
 # interpreter's exact one by the program 'inkamath --check' writes. 'wild'
 # drifts from it, and its program says where and exits with a failure.
