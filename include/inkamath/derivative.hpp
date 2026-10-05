@@ -280,7 +280,8 @@ private:
         const auto definition = stack_.Global(call.Name());
         if (stack_.Binds(call.Name()))
             throw std::runtime_error("grad cannot differentiate a local definition yet");
-        if (!definition || !definition->Value()) return Constant(call.accept(ordinary_));
+        if (!definition || !definition->Value() || definition->Clauses().empty())
+            return Constant(call.accept(ordinary_));
         const ParametersCall<T>&       p          = call.Call();
         const ParametersDefinition<T>& parameters = definition->Clauses().front().parameters;
         parameters.CheckArity(definition->Name(), p);

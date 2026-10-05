@@ -291,6 +291,16 @@ lone(u_n) = { ... }
 >> lone(u_n = n).y_2
 error: lone(...).inner.x_2 is a single value, where dot takes a 2x1 matrix
 
+# Otherwise a stated input is read as any input is: called under grad, it
+# takes no arguments.
+>> gx(x_n[j<=2]) = {
+..     g_n = grad_(a = 1) [1 1]*x(a)_n
+.. }
+gx(x_n[j<=2]) = { ... }
+
+>> gx(x_n = [n; 1]).g_2
+error: x takes no arguments
+
 # An input whose size is not stated takes any, as before.
 >> dbl(x_n) = {
 ..     y_n = 2*x_n
