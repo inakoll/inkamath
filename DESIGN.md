@@ -4178,8 +4178,9 @@ that exploring seven domains asked of the interpreter, by how many asked.
   and `els.g` alone. By the review's ruling `compile_powers` holds both exact
   from -1100 to 1100. Compiled, `log` takes 235 to 416 ns a call where libm's
   takes 6, ilogb's thirteen steps each calling `pow` twice in a header that
-  writes NaN. The review found C99, `--check` estimating a term whose runs
-  part by more than 2^512 infinitely far, `exp`'s from 390; held `els`'s
+  writes NaN: a later item, by the review's ruling. The review found C99,
+  `--check` estimating a term whose runs part by more than 2^512 infinitely
+  far, `exp`'s from 390, and registered C100 and C101 open; held `els`'s
   report to its five lines; and joins a prelude call's arguments as they are
   emitted, every header alike: 5 lines fewer, 82 more for the item, and
   C99's 2; 13,740 lines in all.
