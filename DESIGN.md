@@ -4014,10 +4014,12 @@ that exploring seven domains asked of the interpreter, by how many asked.
   language's rule and not to a target.
 
   The prelude's `exp`, `log` and `tanh`, written in inkamath (next in line),
-  need no version of their own in float, measured in numpy's float32 operation
-  by operation against mpmath on 2e4 points each: `exp` within 1.04 units of a
-  float on [-87, 88] and 0.74 of the least subnormal below, `log` within 2.67
-  on [1/2, 2] and 1.63 over e^±80, `tanh` within 2.48 on [-10, 10].
+  need no version of their own in float, measured on every float, in C with
+  floats operation by operation against the double libm: `exp` within 1.16
+  units of a float on [-87, 88] and 0.79 of the least subnormal below, `log`
+  within 2.85 on [1/2, 2] and 1.56 elsewhere over e^±80, `tanh` within 2.61
+  on [-10, 10]. Sampled at 2e4 points in numpy's float32, the farthest were
+  1.04, 2.67 and 2.48.
   `k*355/512` is exact in a float for |k| below 47,000, and `exp`'s k never
   passes 1443; its correction, rounded to a float, moves r by 2.5e-10 at most
   where e^x is a float other than 0 and inf; `ilogb`'s thresholds overflow to
