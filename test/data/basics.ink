@@ -130,4 +130,3 @@ i*2
 # '#' starts an inkamath comment.
 >> 1 + 2 # this computes 1 + 2
 3
-

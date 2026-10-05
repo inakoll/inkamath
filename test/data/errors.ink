@@ -253,4 +253,3 @@ error: digits is reserved, so it cannot be defined
 
 >> frac (1/3)
 1/3
-

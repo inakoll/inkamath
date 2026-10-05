@@ -335,4 +335,3 @@ error: unexpected character '.'
 
 >> [1 2 ...]
 error: unexpected character '.'
-
