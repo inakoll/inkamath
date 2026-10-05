@@ -3825,9 +3825,10 @@ that exploring seven domains asked of the interpreter, by how many asked.
   instances it makes, keyed by the disturbed values they read, are discarded
   after it with the memo, so a run leaves nothing behind; the step is fed
   the inputs as given, while the runs compute the instance's inputs again, so
-  their error is in the estimate. A limit `grad` walks is not moved: a check
-  reaches `grad` only through an input the runs compute, as in
-  `lowpass(x_n = grad_(w = n) f(w))`, whose estimate then leaves it out.
+  their error is in the estimate. A limit `grad` walks is moved too, its value
+  and each derivative by the remainder of its own steps: a check reaches
+  `grad` only through an input the runs compute, as in
+  `lowpass(x_n = grad_(w = n) f(w))`.
   Each program `--check` writes moves, `hold_` taking
   the estimates; the reports of the twelve whose terms are inexact somewhere
   move, `ball`, `cls`, `fit`, `gate`, `head`, `lap`, `mark`, `rnn`, `rough`,
@@ -3933,4 +3934,9 @@ that exploring seven domains asked of the interpreter, by how many asked.
   now moving what it sets aside, so it is given back however the run ends; a
   limit is moved by `inexact`'s remainder, not by a function of its own; and
   the check walks a term's cells once: 18 lines fewer and the fix 2 more, 154
-  more in all, 13,656 lines in all.
+  more in all, 13,656 lines in all. By the review's ruling, a limit `grad`
+  walks is moved as well, where it was left unmoved: `steep` in
+  `test/compile/estimate.ink`, twice the derivative of a series in an input,
+  said its terms were about 1.1e-13 from the exact ones where they are
+  1.2e-10 from them at 2, and now says 1.2e-10, `Convergence::Limit` going
+  with no line more.

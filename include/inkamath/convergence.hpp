@@ -29,11 +29,8 @@ public:
 
     // A limit is approached and not reached, so it is inexact even when every
     // value was exact and it lands on a whole number (DESIGN.md,
-    // phase 13).
-    static T Limit(const T& value) { return numeric_interface<T>::inexact(value); }
-
-    // The same, which a run of --check moves by the remainder estimated
-    // where the walk stopped (Number::inexact).
+    // phase 13). A run of --check moves it by the remainder estimated where
+    // the walk stopped (Number::inexact).
     T Reached(const T& value) const { return numeric_interface<T>::inexact(value, remainder_); }
 
     // The next value; true when it is the limit. The first is never: one value
