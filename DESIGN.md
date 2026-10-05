@@ -4159,3 +4159,23 @@ that exploring seven domains asked of the interpreter, by how many asked.
   sources added and 7 removed, 87 more in all, where about 70 were planned:
   28 in the prelude and its comment, 45 in the compiler and 14 in `Number`.
   13,743 lines in all.
+
+  Its review held the step to the interpreter through the compiler itself:
+  507 instances of a model calling `exp`, `log`, `tanh` and `ilogb` on
+  doubles fed by `--check`, some 50,000 arguments over every range, built by
+  GCC 13 and Clang 18 at -O2 without contraction, 134 of them at -O0 and
+  -O3 too, every term within 0; `exp`'s to its first infinity only, where
+  the check stops. An exact argument the step reads as
+  its double, whose rounding `exp` multiplies by x: 13 units of e^21 from
+  `a = 1/3`, 189 of e^657, which `test/compile/elementary.ink` now says.
+  Clang writes `pow(2.0, k)` as `exp2(k)`, and `log`'s k is exact in the
+  interpreter, its 2^k a shift, so the step agrees where `pow` and `exp2` are
+  exact at whole k, as glibc's are from -4096 to 4096, not because both call
+  the same one: a `pow` a unit off there, preloaded into both, parts `els.l`
+  and `els.g` alone. Compiled, `log` takes 235 to 416 ns a call where libm's
+  takes 6, ilogb's thirteen steps each calling `pow` twice in a header that
+  writes NaN. The review found C99, `--check` estimating a term whose runs
+  part by more than 2^512 infinitely far, `exp`'s from 390; held `els`'s
+  report to its five lines; and joins a prelude call's arguments as they are
+  emitted, every header alike: 5 lines fewer, 82 more for the item, and
+  C99's 2; 13,740 lines in all.
