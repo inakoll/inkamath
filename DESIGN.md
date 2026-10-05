@@ -3732,3 +3732,9 @@ that exploring seven domains asked of the interpreter, by how many asked.
   held where a term is read and its words, which the compiler shares, 36, the
   signature 24, the definition holding the size 7 and `tex` 3; 45 in the
   compiler and 3 in the check. 13,500 lines in all.
+  Its review fixed three defects of its own: a bound below 1, taken for a
+  size of 0 or of 2^64 - 1 rows; `x(a)_n` under `grad`, which read the first
+  of no clauses and crashed; and `lim x`, refused, as an input whose history
+  is terms alone was (C93). One wrapper now holds an input's history and its
+  stated size alike, and `Expanded` no longer unwraps what no expansion
+  holds: 5 lines fewer, 13,495 in all. C94, found on the way, is open.
