@@ -364,8 +364,7 @@ private:
                 return value->second;
             const auto own = expansion->own.find(name);
             if (own == expansion->own.end()) continue;
-            const Reference<Value>& definition =
-                own->second->argument ? *own->second->argument : *own->second;
+            const Reference<Value>& definition = *own->second;
             if (definition.input) throw Reason(name + " is an input nothing gives");
             if (!definition.Value()) return std::nullopt;
             if (!definition.Clauses().front().parameters.parameters_names().empty())
