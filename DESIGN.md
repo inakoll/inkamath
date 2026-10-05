@@ -3942,7 +3942,7 @@ that exploring seven domains asked of the interpreter, by how many asked.
   said its terms were about 1.1e-13 from the exact ones where they are
   1.2e-10 from them at 2, and now says 1.2e-10, `Convergence::Limit` going
   with no line more.
-- **`exp`, `log` and `tanh` accurate, bounded and compiled.** The prelude's
+- `[done]` **`exp`, `log` and `tanh` accurate, bounded and compiled.** The prelude's
   three are each wrong in a way of their own, measured against mpmath.
   `exp(x) = e^x` raises the double nearest e, whose error x multiplies: 340
   units in the last place at 709. `log` is an open series stopped by a
@@ -4124,3 +4124,35 @@ that exploring seven domains asked of the interpreter, by how many asked.
   passing being values today's prelude already gives to nine digits and its
   refusals; and in `test/compile/elementary.ink`, whose report, every term
   `within 0`, and whose functions are wired with the compiler's half.
+
+  Built as specified, every entry passing as written, now
+  `test/data/elementary.ink`, and the spec suite gone. `els` in
+  `test/compile/elementary.ink` is checked, its five terms within 0 of the
+  interpreter's, and its program defines `els_exp`, `els_log` and
+  `els_tanh` and raises no power of e. A call to a function the built-ins'
+  scope holds but `floor`, on single values not all constant, is
+  `CompileC::Prelude`: the body compiled once, over `arg_` names, outside
+  any limit and with no temporaries, and emitted before the limits'
+  functions; a constant call folds, and one on a matrix or by named
+  arguments is written where it is called, as before. Moved as specified,
+  and nothing else: `kernel.h`, the programs of `ball`, `fit`, `head` and
+  `sized` and their estimates, README's paragraph; no golden. The step is
+  the interpreter's to the bit without contraction, which the header asks
+  of its build (*Fused multiply-adds*) and CI's x86-64 gives; the test
+  targets' `-ffp-contract=off` is C97's. By the review's rulings: 2^k is
+  built by a shift up to 2^3321, and a ratio of two powers of two converted
+  by `ldexp`, the review's 300,000 doubles and 644 exact arguments still
+  alike to the bit; `log(~1/0)` and `log(2^3072)` name a NaN never written,
+  inf over 2^4095 approximated to inf, a known limit, as a guard saying
+  otherwise costs more than three lines and moves two entries; a few doubles
+  near (j + 1/2) ln 2 are refused by `grad`,
+  `grad_(x = ~0.3465735902799727) exp(x)` saying "floor jumps"; and `grad_(x = 10^400) log(x)` is 0, not NaN as the ruling
+  had it, 1/x being below the least double. Departure: `compile_log_refused`
+  is `compile_log`, as it refuses nothing. Under callgrind `grad` goes from
+  5,750 million instructions to 14,870, 2.59 times, 17,434 before the shift;
+  `hand` from 93 to 279, 3.0 times, which the shift does not help, its exact
+  arguments' conversions not being of powers of two; `read` from 10 to 11;
+  `deep`, `harmonic`, `limit` and `matrix` within 3 million. 94 lines of
+  sources added and 7 removed, 87 more in all, where about 70 were planned:
+  28 in the prelude and its comment, 45 in the compiler and 14 in `Number`.
+  13,743 lines in all.
