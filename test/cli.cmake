@@ -180,6 +180,7 @@ At a terminal the prompt edits the line and keeps its history.
               term to the interpreter's exact one and says where one drifts;
               given a transcript alone, replay it and report each answer
               that is not the one recorded
+  --float     with --compile, write floats where it writes doubles
   --help      print this and exit
 
 A file whose first line that is not blank or a comment starts with '>>'
@@ -643,3 +644,27 @@ set(stderr "inkamath: models.ink is not a transcript\n")
 set(exit 1)
 check(check_not_transcript)
 
+
+# A float target (DESIGN.md, compile/float.ink): beside --compile, floats
+# where the header writes doubles.
+set(args --float first.txt)
+set(stderr "inkamath: --float takes --compile\nTry 'inkamath --help'.\n")
+set(exit 2)
+check(float_usage)
+
+file(MAKE_DIRECTORY "${OUT}/float")
+set(args --compile ${inputs} dot --float -o float/dot.h)
+check(float_dot)
+holds(float_dot float/dot.h [[typedef struct dot {
+    long long index_;
+    float x[1][2][1];
+    float y[1];
+} dot;
+]] [[static inline void dot_step(dot* m_, const float x[2]) {
+]])
+
+file(WRITE "${OUT}/vast.ink" "vast(x_n) = {\n    x_n | n < 0 = 10^39\n    c_n = x_(n-1)\n}\n")
+set(args --compile vast.ink vast --float)
+set(stdout "cannot compile c: c_0 reads x_-1, before the stream, where x's history gives a term no float holds\n")
+set(exit 1)
+check(float_history)

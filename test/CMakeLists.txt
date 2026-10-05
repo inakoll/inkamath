@@ -308,6 +308,31 @@ add_test(NAME check_huge COMMAND check_huge)
 set_tests_properties(check_wild check_brink check_rift check_sill check_seam check_pole
                      check_huge PROPERTIES WILL_FAIL ON)
 
+# A float target (DESIGN.md): pid and adc's headers as compile/expected/float
+# has them, each built so that an operation done in double is a warning.
+set(float_flags $<$<C_COMPILER_ID:GNU,Clang,AppleClang>:-Wdouble-promotion;-Wfloat-conversion>)
+foreach(model IN ITEMS pid adc)
+    set(header ${CMAKE_CURRENT_BINARY_DIR}/compile/float/${model}.h)
+    add_custom_command(OUTPUT ${header}
+        COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/compile/float
+        COMMAND inkamath_cli --compile ${CMAKE_CURRENT_SOURCE_DIR}/compile/${model}.ink --float
+                -o ${header}
+        DEPENDS inkamath_cli compile/${model}.ink
+        VERBATIM)
+    add_custom_target(float_${model} ALL DEPENDS ${header})
+    # Built alone only where a double operation is a warning.
+    if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
+        set_source_files_properties(${header} PROPERTIES LANGUAGE C
+                                    COMPILE_OPTIONS -Wno-unused-function)
+        add_library(compile_float_${model} OBJECT ${header})
+        target_compile_options(compile_float_${model} PRIVATE ${float_flags})
+        target_link_libraries(compile_float_${model} PRIVATE inkamath_warnings)
+    endif()
+    add_test(NAME compile_float_${model}_header
+             COMMAND ${CMAKE_COMMAND} -E compare_files --ignore-eol
+                     ${CMAKE_CURRENT_SOURCE_DIR}/compile/expected/float/${model}.h ${header})
+endforeach()
+
 # Random models, compiled and held to the interpreter's answers: the generator
 # runs both at build time and writes one C file, built and run like the others.
 add_executable(compile_fuzz_generator compile/fuzz.cpp)

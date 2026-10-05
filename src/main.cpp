@@ -58,6 +58,7 @@ At a terminal the prompt edits the line and keeps its history.
               term to the interpreter's exact one and says where one drifts;
               given a transcript alone, replay it and report each answer
               that is not the one recorded
+  --float     with --compile, write floats where it writes doubles
   --help      print this and exit
 
 A file whose first line that is not blank or a comment starts with '>>'
@@ -291,6 +292,8 @@ int main(int argc, char* argv[]) {
             compiling = true;
         } else if (arg == "--check") {
             checking = true;
+        } else if (arg == "--float") {
+            CompileC::floats = true;
         } else if (arg == "-o" && i + 1 < argc) {
             target = argv[++i];
         } else if (arg == "--echo") {
@@ -305,6 +308,10 @@ int main(int argc, char* argv[]) {
         }
     }
 
+    if (CompileC::floats && !compiling) {
+        cerr << "inkamath: --float takes --compile\nTry 'inkamath --help'.\n";
+        return 2;
+    }
     if (compiling) {
         if (files.empty() || files.size() > 2) {
             cerr << "inkamath: --compile takes a file, optionally a model it defines, and -o "
