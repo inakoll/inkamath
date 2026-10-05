@@ -55,7 +55,7 @@ digits = 17
 
 # An answer of 0 is the definition's, whose minus is a subtraction from 0
 # (C33), so never -0; C's minus in tanhe makes the compiled tanh(0) -0
-# (C105). Nor is an answer of 0 the only one taken: past -745.13 exp is 0.
+# (C98). Nor is an answer of 0 the only one taken: past -745.13 exp is 0.
 >> tanh(~0)
 0
 
