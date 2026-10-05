@@ -4030,13 +4030,14 @@ that exploring seven domains asked of the interpreter, by how many asked.
   more than a thousandth of one plus the interpreter's term from it, three
   of a float's seven digits asked and four, 2^13 units at 1, left to what a
   hundred steps accumulate. Each line then says how far its sequence came in
-  units of a float too, the spacing of floats at the interpreter's term or
-  at 1 where the term is smaller, `calm.v: within 1.1e-06, 1.4 units of a
-  float`, which is the comparison with the target's own rounding the
-  billionth never made. The estimate of the interpreter's own error is
-  unchanged and follows, so a reader sees the reference's 1e-11 beside the
-  step's 1e-7, and says where it passes the thousandth. A step's term
-  that parts is shown to nine digits, which tell floats apart; the first
+  units of a float too, the most any term came in the spacing of floats at
+  the interpreter's term or at 1 where the term is smaller, so not always
+  the distance before it: `calm.v: within 1.1e-06, 1.4 units of a float`,
+  whose 1.1e-06 is 1.2 units at its own term. That is the comparison with
+  the target's own rounding the billionth never made. The estimate of the
+  interpreter's own error is unchanged and follows, so a reader sees the
+  reference's 1e-11 beside the step's 1e-7, and says where it passes the
+  thousandth. A step's term that parts is shown to nine digits, which tell floats apart; the first
   line says `in float`; flips and margins are as they are. The verdict is
   the tolerance's, as in double: `wild` and `far.d` have lost every digit
   and part. Rejected: a report alone, which would pass them; the billionth,

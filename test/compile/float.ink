@@ -6,9 +6,11 @@
 #
 # A float target is far from one part in a billion. A term parts where it is
 # more than a thousandth of one plus the interpreter's term from it, and each
-# line says how far its sequence came, as now, and that distance in units of
-# a float: the spacing of floats at the interpreter's term, or at 1 where the
-# term is smaller. The step's term, where it parts, is shown to nine digits.
+# line says how far its sequence came, as now, and the most any of its terms
+# came in units of a float: the spacing of floats at the interpreter's term,
+# or at 1 where the term is smaller. The two need not be one term's: calm's
+# 1.1e-06 is 1.2 units, and another of its terms 1.4. The step's term, where
+# it parts, is shown to nine digits.
 #
 # 'calm', 'wild' and 'ledge' of drift.ink:
 #
