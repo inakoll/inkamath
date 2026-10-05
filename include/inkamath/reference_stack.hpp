@@ -18,8 +18,9 @@
 // A variable set while this lives, and put back however it ends.
 template <typename V>
 struct Setting {
-    Setting(V& variable, V value) : variable_(variable), previous_(variable) { variable_ = value; }
-    ~Setting() { variable_ = previous_; }
+    Setting(V& variable, V value)
+        : variable_(variable), previous_(std::exchange(variable, std::move(value))) {}
+    ~Setting() { variable_ = std::move(previous_); }
     Setting(const Setting&)            = delete;
     Setting& operator=(const Setting&) = delete;
 
@@ -83,16 +84,11 @@ public:
     // and leaves nothing behind, as what it computes is disturbed.
     template <typename Run>
     void Apart(Run run) {
-        auto memoised = std::exchange(memoised_, {}), older = std::exchange(older_, {});
-        auto unnamed = std::exchange(unnamed_, {});
-        auto heard   = std::exchange(guards, nullptr);
-        auto counted = std::exchange(histories, 0);
+        const Setting<decltype(memoised_)> memoised(memoised_, {}), older(older_, {});
+        const Setting<decltype(unnamed_)>  unnamed(unnamed_, {});
+        const Setting<decltype(guards)>    heard(guards, nullptr);
+        const Setting<std::size_t>         counted(histories, 0);
         run();
-        memoised_ = std::move(memoised);
-        older_    = std::move(older);
-        unnamed_  = std::move(unnamed);
-        guards    = std::move(heard);
-        histories = counted;
     }
 
     // Call once per top-level evaluation; the stack outlives them all.

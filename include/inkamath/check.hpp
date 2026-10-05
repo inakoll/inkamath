@@ -81,7 +81,7 @@ public:
         for (std::uint64_t seed = 1; seed <= 3; ++seed) {
             Number::Disturbance disturbance{seed, seed == 1 ? 1 : seed == 2 ? -1 : 0};
             stack.Apart([&] {
-                Number::disturbed = &disturbance;
+                const Setting<Number::Disturbance*> disturbing(Number::disturbed, &disturbance);
                 for (const auto& sequence : compiled.sequences) {
                     for (int n = first; n < first + steps; ++n) {
                         if (sequence.unnamed || (n < sequence.start && sequence.period > 1))
@@ -94,7 +94,6 @@ public:
                                                              : std::nullopt);
                     }
                 }
-                Number::disturbed = nullptr;
             });
         }
         std::optional<int> inexact;  // where the interpreter's terms stop being exact
