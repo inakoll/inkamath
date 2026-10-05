@@ -15,9 +15,9 @@
 # defines els_exp, els_log and els_tanh, and calls no pow of e.
 #
 # From an exact 'a' the interpreter reduces each argument exactly and the
-# step cannot, so its terms part from the interpreter's by a unit or so of a
-# rounding of the reduction, 'within' a few units in the last place of the
-# largest term.
+# step its double, whose rounding a function multiplies by its condition, x
+# for exp: from a = 1/3, e is 'within' 3.2e-06, 13 units in the last place
+# of its largest term.
 curves(a = 1/4) = {
     e_n = exp(a*n - 12)
     l_n = log(a*n/2 + 1/1024)
