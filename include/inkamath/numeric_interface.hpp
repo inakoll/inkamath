@@ -232,8 +232,10 @@ struct numeric_interface_imp<std::complex<T>,false>
         return numeric_interface<T>::fact(value);
     }
 
+    // A real one by its own: squared, one past 2^512 was infinite (C99).
     static auto abs(const std::complex<T>& a)
     {
+        if (a.imag() == 0) return std::abs(a.real());
         return std::sqrt(a.real()*a.real()+a.imag()*a.imag());
     }
 

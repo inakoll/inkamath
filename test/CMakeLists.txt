@@ -89,7 +89,7 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brin
                          inputs:chan inputs:twirl inputs:duo inputs:mean3 inputs:mean2
                          inputs:track inputs:twain inputs:nestv inputs:fed estimate:tie
                          estimate:chaos estimate:dyad estimate:flat estimate:halved
-                         estimate:steep elementary:els)
+                         estimate:steep estimate:giant elementary:els)
     string(REPLACE ":" ";" checked ${checked})
     list(GET checked 0 file)
     list(GET checked 1 instance)
@@ -123,6 +123,8 @@ set_tests_properties(check_halved_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^halved: 100 steps from 0, against exact values until 0 and inexact ones from there\nhalved\\.x: within 0\nhalved\\.y: within 0\n$")
 set_tests_properties(check_steep_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^steep: 100 steps from 0, against exact values until 0 and inexact ones from there\nsteep\\.y: within 0\\; the interpreter's terms about [1-9](\\.[0-9])?e-1[01] from the exact ones\n$")
+set_tests_properties(check_giant_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^giant: 100 steps from 0, against exact values until 0 and inexact ones from there\ngiant\\.y: within 0\\; the interpreter's terms about [1-9](\\.[0-9])?e\\+186 from the exact ones\n$")
 # The logistic model's four sigmoids are one limit, compiled once.
 add_test(NAME check_gate_one_limit
          COMMAND ${CMAKE_COMMAND} -E cat ${CMAKE_CURRENT_BINARY_DIR}/compile/gate.c)

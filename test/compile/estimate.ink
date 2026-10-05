@@ -87,3 +87,15 @@ doubling(x_n = n) = {
     y_n = 2*x_n
 }
 steep = doubling(x_n = grad_(w = n) bowl(w))
+
+# Two runs more than 2^512 apart are that far apart: the distance was the
+# root of a square, which overflowed there, and 'giant', 3*10^200 made
+# inexact, was "about inf from the exact ones, past the tolerance from 1"
+# (C99). Its estimate is a unit or two of its largest term, 4.5e+186:
+#
+#     giant: 100 steps from 0, against exact values until 0 and inexact ones from there
+#     giant.y: within 0; the interpreter's terms about <e> from the exact ones
+scaled(a = 3*10^200) = {
+    y_n = n*~a
+}
+giant = scaled()
