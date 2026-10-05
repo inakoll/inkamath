@@ -4055,12 +4055,16 @@ that exploring seven domains asked of the interpreter, by how many asked.
   is exact, against an interpreter given this prelude: 9,348 doubles alike to
   the bit in C and the interpreter, the 87 k among them, and 3,500 arguments
   in Python and the interpreter, exact ones among them. They part only where
-  a C compiler fuses a multiply and an add, built with -mfma: 5.1 per cent of
-  results under GCC's GNU modes and 1.2 under Clang's default, which the
-  header already says (*Fused multiply-adds*). `2^k` is `pow(2.0, k)`, as any
-  power compiles: exact under glibc 2.39 for every whole k from -1100 to 1100,
-  checked, and assumed elsewhere; where a platform's is not, interpreter and
-  step call the same one and still agree, which `ldexp` would not.
+  a C compiler fuses a multiply and an add, on hardware that has it (AArch64,
+  x86 with -mfma or -march=native): each function of the prelude is one C
+  expression, which Clang's default fuses within, even as strict C, as GCC's
+  GNU modes fuse across, so 18 per cent of results part under either, half
+  of `exp`'s over its range, worst errors within 0.05 units of the unfused
+  ones; the header already says so (*Fused multiply-adds*). `2^k` is
+  `pow(2.0, k)`, as any power compiles: exact under glibc 2.39 for every
+  whole k from -1100 to 1100, checked, and assumed elsewhere; where a
+  platform's is not, interpreter and step call the same one and still agree,
+  which `ldexp` would not.
 
   `grad` differentiates the definitions: floor's derivative is 0 and every
   guard takes its side at its threshold, so 0, 1, 2, every power of two and

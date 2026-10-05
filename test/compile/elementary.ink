@@ -4,7 +4,9 @@
 # prelude it calls is: inlined, ilogb alone writes its argument 3^13 times.
 # The step computes the doubles the interpreter computes, by the same
 # operations, so every term agrees to the bit; 'a' is a double, so every
-# argument is one too. Built as strict C, the tests contract no multiply-add.
+# argument is one too. Clang fuses a multiply and an add within an expression
+# even as strict C, so this holds on a target without the instruction, as
+# CI's x86-64 is.
 #
 #     els: 100 steps from 0, against exact values until 0 and inexact ones from there
 #     els.<s>: within 0; the interpreter's terms about <x> from the exact ones
