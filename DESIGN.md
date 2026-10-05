@@ -3764,21 +3764,23 @@ that exploring seven domains asked of the interpreter, by how many asked.
   a complex operation, a power but one to an exact 0, a factorial, an exact
   number made inexact unless it is a fraction over a power of two whose
   numerator fits 53 bits -- is left or moved a unit in the last place either
-  way, at random. Each limit, and each series without an upper bound, is
-  moved by the remainder C36 estimated where it stopped, `step*r/(1-r)`: up
-  in the first run, down in the second and either way at random in the third,
-  so a guard near a limit is found on whichever side it lies; a matrix limit
-  moves every cell by the one remainder its largest cell's steps give, as it
-  stopped by them. The estimate of a cell is the largest distance of its
-  three values from its term: infinite where a run gives none, or one that is
-  not finite, and 0 where every run gives the term itself, as for every exact
-  term no guard on an inexact value chose. Drawn by splitmix64 from seeds 1,
-  2 and 3, in the order the terms are asked, so a report is the same on every
-  platform whose `pow` and `exp` agree. Disturbing every result, exact ones
-  too (Monte Carlo arithmetic), was simulated on `fit` in
-  `test/compile/adam.ink` first: 2.9e-10 for terms 3.3e-16 from exact, as
-  `exp(0)` and the gradient's exact zeros at `w = 0` moved and Adam's `1/eps`
-  took them a hundred million fold; with the test, 3.2e-15.
+  way, at random, unless it is 0, which is exact however it was reached: a
+  square moved below it would be negative and its root complex. Each limit,
+  and each series without an upper bound, is moved by the remainder C36
+  estimated where it stopped, `step*r/(1-r)`: up in the first run, down in the
+  second and either way at random in the third, so a guard near a limit is
+  found on whichever side it lies; a matrix limit moves every cell by the one
+  remainder its largest cell's steps give, as it stopped by them. The estimate
+  of a cell is the largest distance of its three values from its term:
+  infinite where a run gives none, or one that is not finite, and 0 where
+  every run gives the term itself, as for every exact term no guard on an
+  inexact value chose. Drawn by splitmix64 from seeds 1, 2 and 3, in the order
+  the terms are asked, so a report is the same on every platform whose `pow`
+  and `exp` agree. Disturbing every result, exact ones too (Monte Carlo
+  arithmetic), was simulated on `fit` in `test/compile/adam.ink` first:
+  2.9e-10 for terms 3.3e-16 from exact, as `exp(0)` and the gradient's exact
+  zeros at `w = 0` moved and Adam's `1/eps` took them a hundred million fold;
+  with the test, 3.2e-15.
 
   It is an estimate, not a bound, and says so. C36's ratio is a heuristic: a
   series whose remainder it underestimates passes the rule and is moved by
@@ -3867,6 +3869,7 @@ that exploring seven domains asked of the interpreter, by how many asked.
   cent on `limit`, whose terms are inexact.
 
   Specified in `test/compile/estimate.ink`: `tie`, a limit that hides which
-  side of its threshold a guard is, and `chaos`, the logistic map, with their
-  reports, wired with the implementation, as are the twelve reports above.
-  Nothing in the interpreter is specified, as nothing it prints moves.
+  side of its threshold a guard is, `chaos`, the logistic map, and `flat`, a
+  power that is 0, with their reports, wired with the implementation, as are
+  the twelve reports above. Nothing in the interpreter is specified, as
+  nothing it prints moves.

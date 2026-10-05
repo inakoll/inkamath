@@ -2,8 +2,8 @@
 # line). Each term is asked three times more, every rounding taken the other
 # way with probability one half and every limit moved by the remainder it
 # estimates, up, down and at random; how far those move is reported on the
-# sequence's line: an estimate, not a bound. Both instances report 'within 0'
-# today, every term of both being one the step computes to the bit.
+# sequence's line: an estimate, not a bound. Every instance reports 'within
+# 0' today, every term being one the step computes to the bit.
 #
 # A limit stopped short hides which side of its threshold a guard is on.
 # 'half' sums to 1/2, a hundred billionth clear of the threshold, and is
@@ -35,3 +35,18 @@ lmap(r = 4, s = 1/5) = {
     x_n = r*x_(n-1)*(1 - x_(n-1))
 }
 chaos = lmap(s = ~(1/5))
+
+# A power that is 0 is exact, whatever its rounding is said to be. Moved a
+# unit below, the square of 'flat' would be negative, its root complex and
+# its guard no comparison, so a run would give no term and the estimate be
+# infinite. Its lines stay as they are:
+#
+#     flat: 100 steps from 0, against exact values until 0 and inexact ones from there
+#     flat.r: within 0
+#     flat.g: within 0
+rooted(s = 0) = {
+    r_n = (s^2)^(1/2)
+    g_n | r_n > 0 = 1
+    g_n = 0
+}
+flat = rooted(s = ~0)
