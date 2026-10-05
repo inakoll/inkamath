@@ -562,7 +562,7 @@ function(refused model body why)
 endfunction()
 refused(open "x_n) = {\n    c_n = x_(n-1)"
         "c: c_0 reads x_-1, before the stream, where x has no history")
-refused(short "x_n) = {\n    x_(-1) = 0\n    c_n = x_(n-2)"
+refused(scant "x_n) = {\n    x_(-1) = 0\n    c_n = x_(n-2)"
         "c: c_0 reads x_-2, before the stream, where x has no history")
 refused(level "x_n) = {\n    c_n = n >= 0 and x_n > x_(n-1)"
         "c: c_0 reads x_-1, before the stream, where x has no history")
@@ -701,3 +701,14 @@ holds(compile_c103 c103.h "    m_->p = -INFINITY;\n    m_->q = -1e+39;\n")
 set(args --compile c103.ink neg --float -o c103f.h)
 check(compile_c103_float)
 holds(compile_c103_float c103f.h "    m_->p = -INFINITY;\n    m_->q = -INFINITY;\n")
+
+# C104: a header or a program named after a word C keeps, or after a standard
+# header it includes, is refused.
+set(args --compile ${inputs} dot --float -o float.h)
+set(stderr "inkamath: 'float' is a name C keeps, and the header is named after it\n")
+set(exit 2)
+check(compile_c104)
+set(args --check ${CMAKE_CURRENT_LIST_DIR}/compile/drift.ink calm -o math.c)
+set(stderr "inkamath: 'math' is a name C keeps, and the program is named after it\n")
+set(exit 2)
+check(check_c104)

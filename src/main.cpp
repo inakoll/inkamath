@@ -105,14 +105,17 @@ static vector<Queued> inputs(istream& in, const filesystem::path& directory) {
     return queued;
 }
 
-// A header or a program is named after its file, which must be a C name.
+// A header or a program is named after its file, which must be a C name, and
+// neither a word C keeps nor a standard header it includes (C104).
 static bool c_name(const string& module, const string& what) {
-    if (!module.empty() && isalpha(static_cast<unsigned char>(module[0])) &&
+    const bool kept = CompileC::keywords.count(module) || module == "math" || module == "string" ||
+                      module == "stdio";
+    if (!kept && !module.empty() && isalpha(static_cast<unsigned char>(module[0])) &&
         all_of(module.begin(), module.end(),
                [](char c) { return isalnum(static_cast<unsigned char>(c)) || c == '_'; }))
         return true;
-    cerr << "inkamath: '" << module << "' is not a C name, and the " << what
-         << " is named after it\n";
+    cerr << "inkamath: '" << module << (kept ? "' is a name C keeps" : "' is not a C name")
+         << ", and the " << what << " is named after it\n";
     return false;
 }
 

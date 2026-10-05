@@ -60,6 +60,12 @@ public:
     static std::string Real() { return floats ? "float" : "double"; }
     static bool Finite(double x) { return std::isfinite(floats ? static_cast<float>(x) : x); }
     friend class CheckC;  // which writes its inputs as constants are
+    static inline const std::set<std::string> keywords = {
+        "auto",    "break",  "case",     "char",   "const",    "continue", "default",
+        "do",      "double", "else",     "enum",   "extern",   "float",    "for",
+        "goto",    "if",     "inline",   "int",    "long",     "register", "restrict",
+        "return",  "short",  "signed",   "sizeof", "static",   "struct",   "switch",
+        "typedef", "union",  "unsigned", "void",   "volatile", "while"};
 
     // The session's sequences, or with a model, those of its instance with
     // every default and no input given (DESIGN.md, phase 15).
@@ -2531,12 +2537,6 @@ private:
     // A name here is letters and digits, so it can only collide with C's own;
     // one in an instance is several, 'fast.v'.
     static void Unreserved(const std::string& key) {
-        static const std::set<std::string> keywords = {
-            "auto",    "break",  "case",     "char",   "const",    "continue", "default",
-            "do",      "double", "else",     "enum",   "extern",   "float",    "for",
-            "goto",    "if",     "inline",   "int",    "long",     "register", "restrict",
-            "return",  "short",  "signed",   "sizeof", "static",   "struct",   "switch",
-            "typedef", "union",  "unsigned", "void",   "volatile", "while"};
         for (std::size_t start = 0; start <= key.size();) {
             const std::size_t end  = std::min(key.find('.', start), key.size());
             const std::string name = key.substr(start, end - start);
