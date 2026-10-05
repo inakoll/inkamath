@@ -599,18 +599,18 @@ private:
     // written where it is called, each of log's thirteen steps would write
     // its argument three times (DESIGN.md). A constant call folds, and one
     // of another shape is written where it is called, as any other.
-    Code Prelude(const std::string& name, const Reference<Value>& function,
-                 const ParametersCall<Value>& call) {
-        const auto&       names = function.Clauses().front().parameters.parameters_names();
-        std::vector<Code> arguments;
-        for (const PExpression<Value>& argument : call.parameters_expression())
-            arguments.push_back(Emit(argument));
-        const auto constant = [](const Code& code) { return code.constant.has_value(); };
-        const auto scalar   = [](const Code& code) { return code.Scalar(); };
-        if (arguments.size() != names.size() ||
-            std::all_of(arguments.begin(), arguments.end(), constant) ||
-            !std::all_of(arguments.begin(), arguments.end(), scalar))
-            return Call(name, function, call, nullptr);
+    PExpression<Value> Prelude(const std::string& name, const Reference<Value>& function,
+                               const ParametersCall<Value>& call) {
+        const auto& names    = function.Clauses().front().parameters.parameters_names();
+        bool        constant = true, scalar = call.parameters_expression().size() == names.size();
+        std::string given;
+        for (const PExpression<Value>& argument : call.parameters_expression()) {
+            const Code code = Emit(argument);
+            constant        = constant && code.constant;
+            scalar          = scalar && code.Scalar();
+            given += (given.empty() ? "" : ", ") + code.cells[0].text;
+        }
+        if (constant || !scalar) return Answer(Call(name, function, call, nullptr));
         const std::string called = module_ + "_" + name;
         if (!functions_.count(called)) {
             Expansion   inside{{}, {}, function.home, nullptr, {}};
@@ -626,12 +626,7 @@ private:
             prelude_.push_back("static inline double " + called + "(" + signature +
                                ") {\n    return " + body.cells[0].text + ";\n}\n\n");
         }
-        std::string given;
-        for (const Code& argument : arguments)
-            given += (given.empty() ? "" : ", ") + argument.cells[0].text;
-        Code code;
-        code.cells = {Cell(called + "(" + given + ")", primary)};
-        return code;
+        return Answer(Cell(called + "(" + given + ")", primary));
     }
 
     // A name of an instance written where it is read, 'conv(lap, u_(n-1)).out':
@@ -2069,7 +2064,7 @@ private:
             if (!found.definition) throw Reason(key + " is not defined");
             if (call.subexpr()) throw Reason("a sequence with parameters");
             if (found.where == &definitions_.Builtins())
-                return Answer(Prelude(key, *found.definition, call));
+                return Prelude(key, *found.definition, call);
             return Answer(Call(key, *found.definition, call, nullptr));
         }
         if (limit_) throw Reason(key + "_...: another sequence's term in a limit's terms");
