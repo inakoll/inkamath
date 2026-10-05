@@ -154,32 +154,33 @@ a = (10^600 + 1)/10^600
 error: evaluation gave up after 1000000 steps
 
 # Through the definition exp nests 3 references deeper, tanh 5, ilogb 14 and
-# log 16, so each of these ran out of depth.
+# log 16, so each of these ran out of depth. dive(254) is the deepest whose
+# clause may read a value, so a call any deeper than one is refused.
 >> dive(k) = dive(k - 1)
 dive(k) = dive(k - 1)
 
 >> dive(k) | k < 1 = exp(~3)
 dive(k) | k < 1 = exp(~3)
 
->> dive(252)
+>> dive(254)
 ~20.0855369
 
 >> dive(k) | k < 1 = tanh(~3)
 dive(k) | k < 1 = tanh(~3)
 
->> dive(252)
+>> dive(254)
 ~0.995054754
 
 >> dive(k) | k < 1 = ilogb(~3)
 dive(k) | k < 1 = ilogb(~3)
 
->> dive(252)
+>> dive(254)
 1
 
 >> dive(k) | k < 1 = log(~3)
 dive(k) | k < 1 = log(~3)
 
->> dive(252)
+>> dive(254)
 ~1.09861229
 
 # Which calls walk the definition, seen by their depth: an exact argument,
@@ -187,19 +188,19 @@ dive(k) | k < 1 = log(~3)
 >> dive(k) | k < 1 = exp(3)
 dive(k) | k < 1 = exp(3)
 
->> dive(252)
+>> dive(254)
 error: evaluation nests more than 256 references deep
 
 >> dive(k) | k < 1 = log(3)
 dive(k) | k < 1 = log(3)
 
->> dive(252)
+>> dive(254)
 error: evaluation nests more than 256 references deep
 
 >> dive(k) | k < 1 = exp(a*a)
 dive(k) | k < 1 = exp(a*a)
 
->> dive(252)
+>> dive(254)
 error: evaluation nests more than 256 references deep
 
 >> exp(x) | x > 5000 = 7
@@ -211,7 +212,7 @@ exp(x) | x > 5000 = 7
 >> dive(k) | k < 1 = exp(~3)
 dive(k) | k < 1 = exp(~3)
 
->> dive(252)
+>> dive(254)
 error: evaluation nests more than 256 references deep
 
 >> dive(250)
