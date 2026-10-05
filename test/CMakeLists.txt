@@ -1,3 +1,8 @@
+# The checks hold a compiled step to the interpreter's rounding, which a fused
+# multiply-add, contracted where the target has one, does not keep (C97).
+add_compile_options(
+    $<$<AND:$<COMPILE_LANGUAGE:C>,$<C_COMPILER_ID:GNU,Clang,AppleClang>>:-ffp-contract=off>)
+
 add_library(doctest INTERFACE)
 target_include_directories(doctest SYSTEM INTERFACE ${PROJECT_SOURCE_DIR}/third_party)
 
