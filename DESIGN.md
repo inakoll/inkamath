@@ -3739,7 +3739,7 @@ that exploring seven domains asked of the interpreter, by how many asked.
   stated size alike, and `Expanded` no longer unwraps what no expansion
   holds: 5 lines fewer, 13,495 in all. C94, found on the way, is open.
 
-- **The interpreter's own error, estimated by `--check`.** Ranked first by an
+- `[done]` **The interpreter's own error, estimated by `--check`.** Ranked first by an
   outside review: through `exp`, `log`, `tanh` or `lim` the interpreter's
   terms are doubles, so the oracle holds a double to a double, and its report
   says only "inexact ones from there", not how far. `gate` in
@@ -3899,3 +3899,29 @@ that exploring seven domains asked of the interpreter, by how many asked.
   power that is 0, with their reports, wired with the implementation, as are
   the twelve reports above. Nothing in the interpreter is specified, as
   nothing it prints moves.
+
+  Built as specified: `test/compile/estimate.ink`'s four instances are
+  checked, `tie` and `flat` to the digit, `chaos` passing the tolerance at
+  24 and `dyad` at 27, 0.98 and 0.99 from the exact terms at worst; the
+  twelve reports moved as specified, `lap.y` and `run.y` to the digit,
+  `gate.p` 9.1e-12, `ball.p` 6.7e-16 and `head`'s `S`, `A` and `O` 1.1e-15
+  to 7.1e-15, and the six lines named stayed. No golden moved, nor any
+  expected header. Departures: the runs come before the terms compared, not
+  after, each apart, the memo, the unnamed instances and the guard hook set
+  aside and given back, so the terms compared see what they saw before; a
+  complex sum is two real ones, so Two-Sum part by part, not a rounding
+  unknown; an exact number past 64 bits made inexact is always moved, over a
+  power of two too; a matrix limit in the third run draws its way cell by
+  cell; a term before a sequence's start has an estimate as a compared one
+  does; and a sequence whose estimates are all 0 passes none to `hold_`, as
+  for `why`. Under callgrind every workload is as it was or fewer by half a
+  per cent at most, the conversion of an exact number now out of line:
+  `limit` 873 million instructions for 877, `grad` 5,715 for 5,734.
+  `fit`'s check takes 47 ms for 17. Found on the way: the reports of
+  `brink`, `ledge`, `rift`, `sill` and `seam` are held by a regular
+  expression with a `;` in it, which CTest reads as two, either passing; the
+  new ones write it `\\;`. 212 lines of sources added and 42 removed, 170
+  more in all, where about 80 were planned: 64 in `number.hpp`, the
+  error-free tests, the moves and the draws; 18 in `convergence.hpp`,
+  `matrix.hpp` and the callers; 71 in the check, and 17 in the stack setting
+  a run apart. 13,672 lines in all.
