@@ -4007,7 +4007,13 @@ that exploring seven domains asked of the interpreter, by how many asked.
   `test/compile/newton.ink`, held to the rule alone, is NaN from step 25 on,
   and with the disjunct within 1.4 units of a float at every step, stopping
   after 2 or 3 terms. A series stops where its sum stops moving, as it did,
-  `gate`'s at 24 terms at most. Rejected: the rule alone, which makes a float
+  `gate`'s at 24 terms at most. The disjunct answers where the interpreter
+  refuses a walk that creeps by a unit of a float at each term: `crawl` in
+  `float.ink`, 10^8 moved by 8, is 100000016 where the interpreter says it
+  does not converge, as a double header answers one that creeps by less
+  than half a unit, whose step is 0, by the rule alone. "A term the
+  interpreter would refuse is NaN" is untrue of either, and `--check` parts
+  at both. Rejected: the rule alone, which makes a float
   deployment of any iteration look broken where it is not; a float tolerance
   in place of 1e-10, a second constant where the disjunct is the float's own
   limit; the disjunct in double too, which would answer where the interpreter
@@ -4069,12 +4075,12 @@ that exploring seven domains asked of the interpreter, by how many asked.
 
   Specified in `test/compile/float.ink`: from earlier files `calm`, `wild`
   and `ledge`, `gate`, `ball`, `stiff` and `fan`, and of its own a
-  resonator at two radii, `hum` and `drone`, and `far`, large coordinates,
-  with their reports, worked out in C with floats and in numpy's float32,
+  resonator at two radii, `hum` and `drone`, `far`, large coordinates, and
+  `crawl`, a limit that creeps, with their reports, worked out in C with floats and in numpy's float32,
   which agree to the bit, against exact terms; and excerpts of a header
   with a vector input, of a limit and of a check program. Whole headers in
   `test/compile/expected/float`, `pid.h` and `adc.h`, hand-written. All are
   wired with the implementation: those headers compared byte for byte, and
   each instance checked by a program in `compile/float`, built with
-  `-Wdouble-promotion` under GCC and Clang, `wild`, `ledge` and `far`
-  expected to fail.
+  `-Wdouble-promotion` under GCC and Clang, `wild`, `ledge`, `far` and
+  `crawl` expected to fail.

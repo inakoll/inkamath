@@ -54,6 +54,14 @@
 #
 # with x 1.6e-07 and 1.4 units and y 8.1e-08 and 0.68, by glibc's powf.
 #
+# The disjunct answers where the interpreter refuses a walk that creeps by a
+# unit of a float at each term. 'crawl', a hundred million moved by 8, a
+# float's spacing there, stops at its second term:
+#
+#     crawl: 100 steps from 0 in float, against exact values
+#     crawl.s: within 0, 0 units of a float
+#     crawl.y: 100000016 at 0, where the interpreter gives none: s did not converge within 100 terms (last term 100000800)
+#
 # 'fan' of inputs.ink, its input a pointer to floats:
 #
 #     fan: 100 steps from 0 in float, against exact values
@@ -141,3 +149,10 @@ glide(x0 = 10^6, v = 1/100) = {
     d_n = x_n - x_(n-1)
 }
 far = glide()
+
+creep(a = 10^8, c = 8) = {
+    s_0 = a
+    s_k = s_(k-1) + c
+    y_n = lim s
+}
+crawl = creep()
