@@ -206,3 +206,13 @@ outer(u_n) = {
     y_n = inner.y_n
 }
 nestv = outer(u_n = n)
+
+# An input the instance gives is fed to the step as the interpreter reads
+# it, not compiled from the model's default for it: 'fed' gives 1 where
+# 'doubled' would give n. It was stepped on the default (DESIGN.md, C94):
+#
+#     fed.x: 0 at 0, where the interpreter gives 1
+doubled(x_n = n) = {
+    y_n = 2*x_n
+}
+fed = doubled(x_n = 1)
