@@ -3989,8 +3989,11 @@ that exploring seven domains asked of the interpreter, by how many asked.
   --float`, and a history term no float holds is refused as one no double
   holds is, in those words. Built with GCC's and Clang's `-Wdouble-promotion`
   and `-Wfloat-conversion`, both hand-written headers are silent, and a
-  `0.5` in either is not: the tests build every float header so, which holds
-  that no double is left. Rates, histories, sizes and guards are as they
+  `0.5` in an operation of either is not: the tests build every float header
+  so, which holds that no operation is done in double. A double constant
+  only assigned, `m_->q = 0.25`, passes both silently, and Clang's even
+  where it is inexact, `m_->dt = 0.1`; it is the float its `f` would have
+  written, so nothing is lost but the reading. Rates, histories, sizes and guards are as they
   are, in floats.
 
   A limit compiled in float walks the interpreter's rule, and one disjunct
