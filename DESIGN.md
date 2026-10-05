@@ -3815,18 +3815,22 @@ that exploring seven domains asked of the interpreter, by how many asked.
   sequence whose estimate is 0. A disturbed run is asked with the memo
   forgotten before and after it, and the guard hook unset; the step is fed
   the inputs as given, while the runs compute the instance's inputs again, so
-  their error is in the estimate. A limit `grad` walks is not moved, as no
-  check reaches `grad`. Each program `--check` writes moves, `hold_` taking
+  their error is in the estimate. A limit `grad` walks is not moved: a check
+  reaches `grad` only through an input the runs compute, as in
+  `lowpass(x_n = grad_(w = n) f(w))`, whose estimate then leaves it out.
+  Each program `--check` writes moves, `hold_` taking
   the estimates; the reports of the twelve whose terms are inexact somewhere
   move, `ball`, `cls`, `fit`, `gate`, `head`, `lap`, `mark`, `rnn`, `rough`,
   `run`, `sized` and `stiff`, by each line of a sequence with an inexact
   term, while `head.K`, `head.Q`, `head.V`, `cls.z`, `stiff.h` and `run.high`
   stay, being exact and chosen by no guard near its threshold. `lap.y` and
-  `run.y` are limits of geometric terms, whose remainder C36 estimates
+  `run.y` are limits of exact geometric terms, whose steps C36 reads
   exactly, so their lines are known to the digit: `lap.y: within 0; the
   interpreter's terms about 5.8e-11 from the exact ones` and `run.y: within
   1.3e-26; the interpreter's terms about 9.4e-11 from the exact ones`, the
-  largest remainder being that of `x_7`, -3/4. The rest are held by their
+  largest estimate being that of `x_7`, -3/4, seven times its remainder, as
+  C36's ratio is of steps without their sign; that of `x_1`, 3/4, is its
+  remainder, 7.6e-11. The rest are held by their
   form, their digits being the seeds'; simulated, `gate.p` is about 1e-11, a
   limit's remainder, and `ball.p`, `fit.p` and `head`'s `S`, `A` and `O`
   1e-16 to 1e-14, roundings. None of the twelve is expected to pass the
@@ -3866,7 +3870,8 @@ that exploring seven domains asked of the interpreter, by how many asked.
   overran by 40 to 170 per cent, on the reviews' cases; this one's risk is in
   what keeps a value between evaluations, the memo, a literal's cells and a
   history's terms, which a run must neither read nor fill. `--check`
-  evaluates every term four times, `fit`'s 1.6 s about 6; the inexact
+  evaluates every term four times, `fit`'s 20 ms about 80, and 1.6 s about 6
+  under the sanitizers; the inexact
   operations test a thread-local pointer, held under callgrind to one per
   cent on `limit`, whose terms are inexact.
 
