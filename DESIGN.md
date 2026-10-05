@@ -4409,14 +4409,14 @@ that exploring seven domains asked of the interpreter, by how many asked.
   scope and before the memo, for a call neither indexed nor a limit. Taken
   where the one argument is a single value, inexact, not approximated past a
   thousand digits, with an imaginary part of 0 and a finite real part,
-  positive for `log` and `ilogb`, and `Number::disturbed` is null; and where
-  the function's answer is not 0. Anywhere else the definition is walked, as
-  now. Answered as `Number(double)`: inexact, not approximated, its imaginary
-  part +0. That is what the definition answers there: each power of two it
-  meets is within the thousand digits, `ilogb`'s thresholds 2^-2048 to
-  2^2048 for a positive double, and every operation of two real values
-  answers a real double with an imaginary part of +0, whatever the sign of
-  the argument's 0. `ilogb` answers the exact whole number it is in the
+  positive for `log` and `ilogb`, and outside every run of `--check`; and
+  where the function's answer is not 0. Anywhere else the definition is
+  walked, as now. Answered as `Number(double)`: inexact, not approximated, its
+  imaginary part +0. That is what the definition answers there: each power of
+  two it meets is within the thousand digits, `ilogb`'s thresholds 2^-2048 to
+  2^2048 for a positive double, and every operation of two real values answers
+  a real double with an imaginary part of +0, whatever the sign of the
+  argument's 0. `ilogb` answers the exact whole number it is in the
   interpreter.
 
   Each exclusion is where the definition answers otherwise than C:
@@ -4434,9 +4434,12 @@ that exploring seven domains asked of the interpreter, by how many asked.
     `log(~1)` and `exp` below -745.13;
   - `grad`, whose walk carries parts through the definitions and never
     passes here;
-  - a run of `--check` estimating the interpreter's own error, which must
-    see the definition's roundings: `check_els_report` fails where the runs
-    are compiled.
+  - every run of `--check`: one estimating the interpreter's own error must
+    see the definition's roundings, `check_els_report` failing where those
+    runs are compiled, and the main run walks so that `check_els` stays the
+    standing proof that compiled and walked agree. Told by the stack's
+    `guards`, which `CheckC::Program` sets for the main run, and
+    `Number::disturbed`, set for the others.
 
   The memo is neither read nor filled. A compiled call costs less than a
   key's hash, and the walk filled the memo with each call inside it, `expk`,
@@ -4478,8 +4481,8 @@ that exploring seven domains asked of the interpreter, by how many asked.
   on parts; `limit` and `read` within 0.1 per cent. A call in a sum: `exp`
   0.16 µs for 8.8, `tanh` 0.20 for 12, `log` 0.62 for 36, some 55 times
   faster. Expected of the implementation: `hand` below 93 million, `grad`
-  within 1 per cent, the others within half of one. `--check`'s three
-  estimating runs still walk.
+  within 1 per cent, the others within half of one. Every run of
+  `--check` still walks.
 
   `log`'s `pow`: compiled, `ilogb`'s thirteen steps call `pow` twice each,
   0.34 µs of `log`'s 0.39 (the later item the review of `exp`, `log` and
@@ -4487,11 +4490,8 @@ that exploring seven domains asked of the interpreter, by how many asked.
   compiler's and moves every header that calls `log`, and this header
   follows it by `record_prelude`.
 
-  `grad` keeps its 2.6 times: it is the walk carrying parts. Compiling that
-  needs the compiler to differentiate the definitions, a C function of a
-  value and its parts for each, which it does not; not this item. A call
-  within `grad` whose argument carries no part could take the compiled
-  function; nothing measured asks for it.
+  `grad` keeps its 2.6 times, and no later item is planned: its jets need
+  every intermediate of the walk, which a compiled call does not keep.
 
   Rejected besides: libm's `exp` and `log`, the owner's refusal, and not
   the prelude's values; a hand-written `ilogb` in C++, withdrawn, a second
