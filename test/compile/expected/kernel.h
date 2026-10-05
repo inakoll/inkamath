@@ -34,6 +34,10 @@ typedef struct kernel {
     double y[1];
 } kernel;
 
+static inline double kernel_ceil(double arg_x) {
+    return -floor(-arg_x);
+}
+
 /* Computes what derives from the parameters: call it after assigning one. */
 static inline void kernel_update(kernel* m_) {
     (void)m_;
@@ -68,7 +72,7 @@ static inline void kernel_step(kernel* m_, double x) {
     m_->u[0][2][0] = m_->index_ == 0 ? 0.0 : m_->lap[0][0] * 0.0 + m_->lap[0][1] * m_->u[1][1][0] + m_->lap[0][2] * m_->u[1][1][1] + (m_->lap[1][0] * 0.0 + m_->lap[1][1] * m_->u[1][2][0] + m_->lap[1][2] * m_->u[1][2][1]) + (m_->lap[2][0] * 0.0 + m_->lap[2][1] * 0.0 + m_->lap[2][2] * 0.0);
     m_->u[0][2][1] = m_->index_ == 0 ? 0.0 : m_->lap[0][0] * m_->u[1][1][0] + m_->lap[0][1] * m_->u[1][1][1] + m_->lap[0][2] * m_->u[1][1][2] + (m_->lap[1][0] * m_->u[1][2][0] + m_->lap[1][1] * m_->u[1][2][1] + m_->lap[1][2] * m_->u[1][2][2]) + (m_->lap[2][0] * 0.0 + m_->lap[2][1] * 0.0 + m_->lap[2][2] * 0.0);
     m_->u[0][2][2] = m_->index_ == 0 ? 0.0 : m_->lap[0][0] * m_->u[1][1][1] + m_->lap[0][1] * m_->u[1][1][2] + m_->lap[0][2] * 0.0 + (m_->lap[1][0] * m_->u[1][2][1] + m_->lap[1][1] * m_->u[1][2][2] + m_->lap[1][2] * 0.0) + (m_->lap[2][0] * 0.0 + m_->lap[2][1] * 0.0 + m_->lap[2][2] * 0.0);
-    m_->y[0] = (m_->x[0] - 0.5 < 0.0 ? 0.0 : m_->x[0] - 0.5) + 32.0 - floor(-m_->x[0]);
+    m_->y[0] = (m_->x[0] - 0.5 < 0.0 ? 0.0 : m_->x[0] - 0.5) + 32.0 + kernel_ceil(m_->x[0]);
 }
 
 #endif

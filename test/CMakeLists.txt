@@ -71,6 +71,13 @@ foreach(model IN ITEMS pid pid_clamped kalman kalman2 fir heat adc net mix loop 
                      ${CMAKE_CURRENT_SOURCE_DIR}/compile/expected/${model}.h ${header})
 endforeach()
 
+# 2^k as a step computes it, exact for every k the prelude scales by.
+add_executable(compile_powers compile/powers.c)
+target_link_libraries(compile_powers PRIVATE inkamath_warnings
+                      $<$<NOT:$<C_COMPILER_ID:MSVC>>:m>)
+set_target_properties(compile_powers PROPERTIES C_STANDARD 11 C_STANDARD_REQUIRED ON C_EXTENSIONS OFF)
+add_test(NAME compile_powers COMMAND compile_powers)
+
 # The oracle: an instance compiled, and each of its terms held to the
 # interpreter's exact one by the program 'inkamath --check' writes. 'wild'
 # drifts from it, and its program says where and exits with a failure.
@@ -89,7 +96,7 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brin
                          inputs:chan inputs:twirl inputs:duo inputs:mean3 inputs:mean2
                          inputs:track inputs:twain inputs:nestv inputs:fed estimate:tie
                          estimate:chaos estimate:dyad estimate:flat estimate:halved
-                         estimate:steep)
+                         estimate:steep estimate:giant elementary:els)
     string(REPLACE ":" ";" checked ${checked})
     list(GET checked 0 file)
     list(GET checked 1 instance)
@@ -123,6 +130,8 @@ set_tests_properties(check_halved_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^halved: 100 steps from 0, against exact values until 0 and inexact ones from there\nhalved\\.x: within 0\nhalved\\.y: within 0\n$")
 set_tests_properties(check_steep_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^steep: 100 steps from 0, against exact values until 0 and inexact ones from there\nsteep\\.y: within 0\\; the interpreter's terms about [1-9](\\.[0-9])?e-1[01] from the exact ones\n$")
+set_tests_properties(check_giant_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^giant: 100 steps from 0, against exact values until 0 and inexact ones from there\ngiant\\.y: within 0\\; the interpreter's terms about [1-9](\\.[0-9])?e\\+186 from the exact ones\n$")
 # The logistic model's four sigmoids are one limit, compiled once.
 add_test(NAME check_gate_one_limit
          COMMAND ${CMAKE_COMMAND} -E cat ${CMAKE_CURRENT_BINARY_DIR}/compile/gate.c)
@@ -130,6 +139,15 @@ set_tests_properties(check_gate_one_limit PROPERTIES
                      PASS_REGULAR_EXPRESSION "gate_lim0\\(" FAIL_REGULAR_EXPRESSION "gate_lim1\\(")
 set_tests_properties(check_gate_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^gate: 100 steps from 0, against exact values until 0 and inexact ones from there\n(gate\\.[a-z]+: within [0-9.e+-]+${about}\n)+$")
+# exp, log and tanh as the prelude writes them, each a function of the
+# header's own, compiled once (DESIGN.md): every term the interpreter's.
+set_tests_properties(check_els_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^els: 100 steps from 0, against exact values until 0 and inexact ones from there\nels\\.e: within 0${about}\nels\\.g: within 0${about}\nels\\.h: within 0${about}\nels\\.l: within 0${about}\nels\\.t: within 0${about}\n$")
+add_test(NAME check_els_functions
+         COMMAND ${CMAKE_COMMAND} -E cat ${CMAKE_CURRENT_BINARY_DIR}/compile/els.c)
+set_tests_properties(check_els_functions PROPERTIES
+    PASS_REGULAR_EXPRESSION "els_exp\\(double arg_x\\).*els_log\\(double arg_x\\).*els_tanh\\(double arg_x\\)"
+    FAIL_REGULAR_EXPRESSION "pow\\(2\\.718")
 set_tests_properties(check_sized_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^sized: 100 steps from 0, against exact values until 0 and inexact ones from there\n(sized\\.[a-z]+: within [0-9.e+-]+${about}\n)+$")
 # Its sigmoid's size inferred, compiled where it is called, gives the header

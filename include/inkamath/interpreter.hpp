@@ -241,17 +241,45 @@ private:
 // Included bare beneath the session, as the built-ins are: seen from every
 // scope, and replaced by a session for itself alone (DESIGN.md, phase
 // 15). Not 'round', whose rule is the model's to choose.
+//
+// exp, log and tanh by the operations a compiled step performs on the same
+// doubles (DESIGN.md): reduced by a power of two exactly, k ln 2 taken as
+// 355/512 less a correction (Cody and Waite), rounded once where the
+// reduction ends, then a polynomial of fixed degree. exp takes 2^k in two
+// halves, as 2^k overflows or vanishes where e^x does not; log reduces by
+// ilogb, thirteen guarded steps from 2^-4096, and folds its mantissa into
+// [sqrt(2)/2, sqrt(2)); tanh is -m/(m + 2), m = e^(-2x) - 1, which does not
+// cancel near 0.
 inline constexpr const char* prelude[] = {
     "ceil(x) = -floor(-x)",
     "mod(a, b) = a - b*floor(a/b)",
-    "exp(x) = e^x",
-    // A series that converges fast only near 1, so reached by halving or
-    // doubling; written plain first, as a plain definition starts over.
-    "log(x) = 2*sum_(k=0) ((x - 1)/(x + 1))^(2*k + 1)/(2*k + 1)",
+    "exp(x) = expk(x, floor(x*1.4426950408889634 + 1/2))",
+    "exp(x) | x > 1000 = exp(1000)",
+    "exp(x) | x < -1000 = exp(-1000)",
+    "expk(x, k) = (1 + expp(~(x - k*355/512 + k*2.1219444005469057e-4)))"
+    "*2^(k - floor(k/2))*2^floor(k/2)",
+    "expp(r) = r*(1 + r*(1/2 + r*(1/6 + r*(1/24 + r*(1/120 + r*(1/720 + r*(1/5040 "
+    "+ r*(1/40320 + r*(1/362880 + r*(1/3628800 + r*(1/39916800 + r*(1/479001600 "
+    "+ r*(1/6227020800 + r/87178291200)))))))))))))",
+    "ilogb(x) = ilogbs(x, ilogbs(x, ilogbs(x, ilogbs(x, ilogbs(x, ilogbs(x, ilogbs(x, "
+    "ilogbs(x, ilogbs(x, ilogbs(x, ilogbs(x, ilogbs(x, ilogbs(x, -4096, 4096), 2048), "
+    "1024), 512), 256), 128), 64), 32), 16), 8), 4), 2), 1)",
+    "ilogbs(x, k, s) = k",
+    "ilogbs(x, k, s) | x >= 2^(k + s) = k + s",
+    "log(x) = logk(x, ilogb(x))",
     "log(x) | x <= 0 = 1/0",
-    "log(x) | x > 2 = log(x/2) + log(2)",
-    "log(x) | x < 1/2 = log(2*x) - log(2)",
-    "tanh(x) = 1 - 2/(exp(2*x) + 1)",
+    "logk(x, k) = logm(x/2^k, k)",
+    "logm(m, k) = logs(~((m - 1)/(m + 1)), k)",
+    "logm(m, k) | m*m > 2 = logs(~((m/2 - 1)/(m/2 + 1)), k + 1)",
+    "logs(s, k) = k*355/512 + (2*s*logp(s*s) - k*~2.1219444005469057e-4)",
+    "logp(z) = 1 + z*(1/3 + z*(1/5 + z*(1/7 + z*(1/9 + z*(1/11 + z*(1/13 + z*(1/15 "
+    "+ z*(1/17 + z*(1/19 + z/21)))))))))",
+    "tanh(x) = tanhp(x)",
+    "tanh(x) | x < 0 = -tanhp(-x)",
+    "tanhp(x) = tanhk(-2*x, floor(-2*x*1.4426950408889634 + 1/2))",
+    "tanhp(x) | x > 20 = ~1",
+    "tanhk(y, k) = tanhe(2^k - 1 + 2^k*expp(~(y - k*355/512 + k*2.1219444005469057e-4)))",
+    "tanhe(m) = -m/(m + 2)",
 };
 
 template <Parsable T, Numeric U>
