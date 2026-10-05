@@ -90,6 +90,15 @@
 #
 # In double each of the three is within the billionth.
 #
+# And exp past a float's range, from e^-110 by three at each step: the
+# step's terms are 0 to the third, where the interpreter's are below half
+# the least subnormal, and inf from e^91 on, where the interpreter's are
+# still doubles. So C's expf gives them, and so the prelude's exp does in
+# float, the halves of its 2^k rounding once into a subnormal:
+#
+#     steep: 100 steps from 0 in float, against exact values until 0 and inexact ones from there
+#     steep.e: inf at 67, where the interpreter gives <x>; the interpreter's term about <e> from the exact one
+#
 # The header changes only its words for numbers. 'dot' of inputs.ink, by
 # name:
 #
@@ -156,3 +165,8 @@ creep(a = 10^8, c = 8) = {
     y_n = lim s
 }
 crawl = creep()
+
+rise(a = 3, b = 110) = {
+    e_n = exp(a*n - b)
+}
+steep = rise()

@@ -4076,11 +4076,12 @@ that exploring seven domains asked of the interpreter, by how many asked.
   Specified in `test/compile/float.ink`: from earlier files `calm`, `wild`
   and `ledge`, `gate`, `ball`, `stiff` and `fan`, and of its own a
   resonator at two radii, `hum` and `drone`, `far`, large coordinates, and
-  `crawl`, a limit that creeps, with their reports, worked out in C with floats and in numpy's float32,
+  `crawl`, a limit that creeps, and `steep`, exp past a float's range,
+  with their reports, worked out in C with floats and in numpy's float32,
   which agree to the bit, against exact terms; and excerpts of a header
   with a vector input, of a limit and of a check program. Whole headers in
   `test/compile/expected/float`, `pid.h` and `adc.h`, hand-written. All are
   wired with the implementation: those headers compared byte for byte, and
   each instance checked by a program in `compile/float`, built with
-  `-Wdouble-promotion` under GCC and Clang, `wild`, `ledge`, `far` and
-  `crawl` expected to fail.
+  `-Wdouble-promotion` under GCC and Clang, `wild`, `ledge`, `far`,
+  `crawl` and `steep` expected to fail.
