@@ -57,7 +57,7 @@ struct numeric_interface_imp
      // through this path, so without them none compiled (DESIGN.md, C65).
      static T real(const T& a) { return T::real(a); }
      static T imaginary(const T& a) { return T::imaginary(a); }
-     static T inexact(const T& a) { return T::inexact(a); }
+     static T    inexact(const T& a, double remainder = 0) { return T::inexact(a, remainder); }
      static T    transpose(const T& a) { return T::transpose(a); }
      static T    floor(const T& a) { return T::floor(a); }
      template <typename Right>
@@ -104,7 +104,7 @@ struct numeric_interface_imp<std::complex<T>,false>
 
     static T real(const std::complex<T>& a) {return a.real();}
     static T imaginary(const std::complex<T>& a) {return a.imag();}
-    static std::complex<T> inexact(const std::complex<T>& a) { return a; }
+    static std::complex<T> inexact(const std::complex<T>& a, double = 0) { return a; }
     static bool            exact(const std::complex<T>&) { return false; }
     static bool            approximated(const std::complex<T>&) { return false; }
 
@@ -264,7 +264,7 @@ struct numeric_interface_imp<T,true>
     static T one() {return 1;}
     static T real(const T& a) {return a;}
     static T imaginary(const T&) {return 0;}
-    static T inexact(const T& a) { return a; }
+    static T    inexact(const T& a, double = 0) { return a; }
     static bool exact(const T&) { return false; }
     static bool approximated(const T&) { return false; }
     // Converting a double outside int's range is undefined, and NaN is

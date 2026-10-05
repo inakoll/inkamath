@@ -497,7 +497,7 @@ public:
             if (first > std::numeric_limits<int>::max() - n)
                 throw std::runtime_error("an index must be at most 2147483647");
             total = n == 0 ? term(first) : combine(total, term(first + n));
-            if (convergence.Next(total)) return Convergence<T>::Limit(total);
+            if (convergence.Next(total)) return convergence.Reached(total);
         }
         throw std::runtime_error("the " + what + " did not converge within " +
                                  std::to_string(Convergence<T>::max_terms) +

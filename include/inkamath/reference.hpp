@@ -1207,7 +1207,7 @@ private:
         for (size_t term = 0; term < Convergence<T>::max_terms; ++term) {
             evaluation = evaluate(++index);
             if (convergence.Next(evaluation)) {
-                return Convergence<T>::Limit(evaluation);
+                return convergence.Reached(evaluation);
             }
         }
         throw std::runtime_error(reference_name_ + " did not converge within " +

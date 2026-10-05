@@ -74,6 +74,28 @@ public:
             data +=
                 Array("const double", "in_" + std::to_string(k), steps * compiled.cells[k], values);
         }
+        // The interpreter's own error, estimated (DESIGN.md): each term asked
+        // three times more, apart, every rounding disturbed and every limit
+        // moved by its remainder, up, down, then either way.
+        std::map<std::pair<std::string, int>, std::vector<std::optional<Value>>> again;
+        for (std::uint64_t seed = 1; seed <= 3; ++seed) {
+            Number::Disturbance disturbance{seed, seed == 1 ? 1 : seed == 2 ? -1 : 0};
+            stack.Apart([&] {
+                const Setting<Number::Disturbance*> disturbing(Number::disturbed, &disturbance);
+                for (const auto& sequence : compiled.sequences) {
+                    for (int n = first; n < first + steps; ++n) {
+                        if (sequence.unnamed || (n < sequence.start && sequence.period > 1))
+                            continue;
+                        const std::string name  = instance + "." + sequence.name;
+                        const int         index = Floor(n - sequence.phase, sequence.period);
+                        const auto result = session.Eval(name + "_(" + std::to_string(index) + ")");
+                        const auto* value = std::get_if<Value>(&result);
+                        again[{name, index}].push_back(value ? std::optional(*value)
+                                                             : std::nullopt);
+                    }
+                }
+            });
+        }
         std::optional<int> inexact;  // where the interpreter's terms stop being exact
         for (std::size_t k = 0; k < compiled.sequences.size(); ++k) {
             const auto&              sequence = compiled.sequences[k];
@@ -87,14 +109,16 @@ public:
                 continue;
             }
             std::vector<std::string> want, known, why;
+            std::vector<double>      about(steps * cells);
             for (int n = first; n < first + steps; ++n) {
                 // Before its start the step has no term, and the interpreter
                 // should have none either; at another rate it is not asked.
-                const bool before = n < sequence.start;
-                const Term term   = before && sequence.period > 1
-                                        ? Term{{}, true, "not asked", {}}
-                                        : At(session, instance + "." + sequence.name,
-                                             Floor(n - sequence.phase, sequence.period));
+                const bool        before = n < sequence.start;
+                const std::string name   = instance + "." + sequence.name;
+                const int         index  = Floor(n - sequence.phase, sequence.period);
+                const Term        term   = before && sequence.period > 1
+                                               ? Term{{}, true, "not asked", {}, {}}
+                                               : At(session, name, index);
                 if (!term.exact && (!inexact || n < *inexact)) inexact = n;
                 const bool given = term.error.empty();
                 const char kind  = !given              ? (before ? '0' : '2')
@@ -108,11 +132,21 @@ public:
                     want.push_back(kind == '1' || kind == '3' ? term.cells[c] : "0.0");
                     known.push_back(std::string(1, kind));
                 }
+                if (kind == '1' || kind == '3')
+                    for (const auto& run : again[{name, index}])
+                        Farther(term.value, run,
+                                &about[static_cast<std::size_t>(n - first) * cells]);
             }
             const bool told = std::any_of(known.begin(), known.end(), [](const std::string& each) {
                 return each == "2" || each == "4";
             });
             if (told) data += Array("const char* const", "why_" + id, steps, why);
+            const bool estimated = *std::max_element(about.begin(), about.end()) > 0;
+            if (estimated) {
+                std::vector<std::string> written;
+                for (const double e : about) written.push_back(Double(e));
+                data += Array("const double", "about_" + id, steps * cells, written);
+            }
             data += Array("const double", "want_" + id, steps * cells, want);
             data += Array("const unsigned char", "known_" + id, steps * cells, known);
             data += "static double got_" + id + "[" + size + "];\n";
@@ -121,7 +155,8 @@ public:
             held += "    held &= hold_(\"" + instance + "." + sequence.name + "\", " +
                     std::to_string(sequence.cols) + ", " + std::to_string(cells) + ", " +
                     std::to_string(sequence.start) + ", got_" + id + ", want_" + id + ", known_" +
-                    id + ", " + (told ? "why_" + id : std::string("0")) + ");\n";
+                    id + ", " + (told ? "why_" + id : std::string("0")) + ", " +
+                    (estimated ? "about_" + id : std::string("0")) + ");\n";
         }
         std::string arguments;
         for (std::size_t k = 0; k < compiled.inputs.size(); ++k)
@@ -201,42 +236,60 @@ public:
         std::string out;
         out += "/* Generated by 'inkamath --check' from " + source + ": the instance\n";
         out += " * compiled, stepped on the inputs the interpreter gives it, and each term\n";
-        out += " * held to the interpreter's. Build it as the header would be built. */\n";
+        out += " * held to the interpreter's. Build it as the header would be built.\n";
+        out += " * Beside each, how far the interpreter's own terms may be from the exact\n";
+        out += " * ones: each asked three times more, every rounding taken the other way\n";
+        out += " * with probability one half and every limit moved by the remainder it\n";
+        out += " * estimated, and the farthest kept. An estimate, not a bound. */\n";
         out += compiled.header + "\n#include <stdio.h>\n\n";
         out += "/* A term parts from the interpreter's where they differ by more than a\n";
         out += " * billionth of one plus the interpreter's term; where the interpreter\n";
         out += " * gives none, from the sequence's start, unless it is NaN, and before it,\n";
         out += " * where the interpreter gives one. 'known' says which: 0 not asked, 1 a\n";
-        out += " * term, 2 none, 3 one before the start, 4 one that is no finite double. */\n";
+        out += " * term, 2 none, 3 one before the start, 4 one that is no finite double;\n";
+        out += " * 'about' is each term's estimate, or none where every one is 0. */\n";
         out += "static int hold_(const char* name, int cols, int cells, int from,\n";
         out += "                 const double* got, const double* want,\n";
-        out += "                 const unsigned char* known, const char* const* why) {\n";
-        out += "    double worst = 0.0;\n";
+        out += "                 const unsigned char* known, const char* const* why,\n";
+        out += "                 const double* about) {\n";
+        out += "    double worst = 0.0, most = 0.0;\n";
+        out += "    int    past  = -1;\n";
         out += "    for (int k = 0; k < " + std::to_string(steps) + " * cells; ++k) {\n";
         out += "        const double difference = fabs(got[k] - want[k]);\n";
         out += "        const int    n = " + std::to_string(first) + " + k / cells;\n";
+        out += "        const double e = about ? about[k] : 0.0;\n";
         out += "        if (known[k] == 0 || (known[k] == 2 && isnan(got[k]))) continue;\n";
         out += "        if (known[k] == 1 && difference <= 1e-9 * (1.0 + fabs(want[k]))) {\n";
         out += "            if (difference > worst) worst = difference;\n";
+        out += "            if (e > most) most = e;\n";
+        out += "            if (past < 0 && e > 1e-9 * (1.0 + fabs(want[k]))) past = n;\n";
         out += "            continue;\n        }\n";
         out += "        printf(\"%s\", name);\n";
         out += "        if (cells > 1)\n";
         out += "            printf(\"[%d,%d]\", k % cells / cols + 1, k % cells % cols + 1);\n";
         out += "        if (known[k] == 3)\n";
-        out += "            printf(\": none at %d, where the interpreter gives %.17g\\n\", n,\n";
+        out += "            printf(\": none at %d, where the interpreter gives %.17g\", n,\n";
         out += "                   want[k]);\n";
         out += "        else if (known[k] == 2)\n";
-        out += "            printf(\": %.17g at %d, where the interpreter gives none: %s\\n\",\n";
+        out += "            printf(\": %.17g at %d, where the interpreter gives none: %s\",\n";
         out += "                   got[k], n, why[k / cells]);\n";
         out += "        else if (known[k] == 4)\n";
-        out += "            printf(\": %.17g at %d, where the interpreter's term is %s\\n\",\n";
+        out += "            printf(\": %.17g at %d, where the interpreter's term is %s\",\n";
         out += "                   got[k], n, why[k / cells]);\n";
         out += "        else\n";
-        out += "            printf(\": %.17g at %d, where the interpreter gives %.17g\\n\",\n";
+        out += "            printf(\": %.17g at %d, where the interpreter gives %.17g\",\n";
         out += "                   got[k], n, want[k]);\n";
+        out += "        if (e > 0.0)\n";
+        out +=
+            "            printf(\"; the interpreter's term about %.2g from the exact one\", e);\n";
+        out += "        printf(\"\\n\");\n";
         out += "        return 0;\n    }\n";
         out += "    printf(\"%s: within %.2g\", name, worst);\n";
         out += "    if (from > " + std::to_string(first) + ") printf(\", from %d\", from);\n";
+        out += "    if (most > 0.0)\n";
+        out +=
+            "        printf(\"; the interpreter's terms about %.2g from the exact ones\", most);\n";
+        out += "    if (past >= 0) printf(\", past the tolerance from %d\", past);\n";
         out += "    printf(\"\\n\");\n    return 1;\n}\n\n";
         if (!table.empty()) out += Flips(first);
         out += data + "\nint main(void) {\n";
@@ -374,6 +427,7 @@ private:
         bool                     exact = true;
         std::string              error;
         std::string              odd;  // why it is no finite double, where it is not
+        Value                    value;
     };
 
     static Term At(Interpreter<Number>& session, const std::string& name, int n) {
@@ -389,6 +443,7 @@ private:
             answer.error = "it has no value";
             return answer;
         }
+        answer.value = *value;
         for (std::size_t i = 1; i <= value->Size().rows; ++i) {
             for (std::size_t j = 1; j <= value->Size().cols; ++j) {
                 const Number& cell = (*value)(i, j);
@@ -403,6 +458,17 @@ private:
             }
         }
         return answer;
+    }
+
+    // Widens each cell's estimate to a disturbed run's distance from the
+    // interpreter's term: infinite where the run gives none, or one of another
+    // size or not finite.
+    static void Farther(const Value& term, const std::optional<Value>& run, double* about) {
+        const bool same = run && run->Size() == term.Size();
+        for (std::size_t c = 0; c < term.Size().rows * term.Size().cols; ++c) {
+            const double d = same ? Number::abs(run->data()[c] - term.data()[c]) : HUGE_VAL;
+            about[c]       = std::max(about[c], d <= HUGE_VAL ? d : HUGE_VAL);
+        }
     }
 
     // Four values to a line, so that a term can be found by its index.
