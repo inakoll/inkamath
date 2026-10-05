@@ -3814,7 +3814,9 @@ that exploring seven domains asked of the interpreter, by how many asked.
   steps, the first line of a report, the flips, which a disturbed run's other
   clause does not move but shows in its term's estimate, and every line of a
   sequence whose estimate is 0. A disturbed run is asked with the memo
-  forgotten before and after it, and the guard hook unset; the step is fed
+  forgotten before and after it, and the guard hook unset; the unnamed
+  instances it makes, keyed by the disturbed values they read, are discarded
+  after it with the memo, so a run leaves nothing behind; the step is fed
   the inputs as given, while the runs compute the instance's inputs again, so
   their error is in the estimate. A limit `grad` walks is not moved: a check
   reaches `grad` only through an input the runs compute, as in
