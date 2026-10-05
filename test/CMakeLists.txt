@@ -133,7 +133,7 @@ set_tests_properties(check_gate_report PROPERTIES PASS_REGULAR_EXPRESSION
 # exp, log and tanh as the prelude writes them, each a function of the
 # header's own, compiled once (DESIGN.md): every term the interpreter's.
 set_tests_properties(check_els_report PROPERTIES PASS_REGULAR_EXPRESSION
-    "^els: 100 steps from 0, against exact values until 0 and inexact ones from there\n(els\\.[eghlt]: within 0${about}\n)+$")
+    "^els: 100 steps from 0, against exact values until 0 and inexact ones from there\nels\\.e: within 0${about}\nels\\.g: within 0${about}\nels\\.h: within 0${about}\nels\\.l: within 0${about}\nels\\.t: within 0${about}\n$")
 add_test(NAME check_els_functions
          COMMAND ${CMAKE_COMMAND} -E cat ${CMAKE_CURRENT_BINARY_DIR}/compile/els.c)
 set_tests_properties(check_els_functions PROPERTIES
