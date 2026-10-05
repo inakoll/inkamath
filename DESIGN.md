@@ -3794,6 +3794,13 @@ that exploring seven domains asked of the interpreter, by how many asked.
   nor stopped is not seen: `pi` and `e` are their nearest doubles, unmoved
   until an operation takes them, and `pow` is trusted to a unit.
 
+  So MANIFESTO's oracle, which compares "against an error bound", is not
+  met, and this entry does not claim it: the verdict stays the tolerance,
+  the estimate is no bound, and no bound tried stays finite on the models it
+  was for -- the review's ball 1.4e-6 on `gate` at step 10 and NaN by 20,
+  and 9.5e-8 on `ball` for terms 2.2e-16 from exact; its narrower one past
+  the tolerance on `gate` at step 19 and infinite at 66 (rejected below).
+
   Reported on each sequence's line, after what it says now, where any
   estimate is not 0: `gate.p: within 0; the interpreter's terms about 1e-11
   from the exact ones`, the largest over the terms compared, and `, past the
