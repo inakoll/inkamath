@@ -3843,9 +3843,17 @@ that exploring seven domains asked of the interpreter, by how many asked.
   itself grows the radius where the error shrinks. Over `gate`, `lim ex`'s
   series multiplies its argument's radius 2.3e5 fold at |z| = 4, where the
   true factor is e^z, 55 at most, and the radius is 1.4e-6 at step 10 and NaN
-  by 20; over `ball`, whose `exp` is the prelude's and within a unit, 9.5e-8
+  by 20; over `ball`, whose `exp` is the prelude's `e^x`, 9.5e-8
   for terms 2.2e-16 from exact by step 99. The check would have compared
-  against enclosures too wide to find anything, on the models it was for. An
+  against enclosures too wide to find anything, on the models it was for.
+  The review's own, narrower, ball does no better: on a limit's result
+  alone, C36's remainder for radius and the series walked on midpoints, its
+  argument's radius carried by the series at its two ends. On `gate` that
+  radius grows 1.6 fold a step, the descent correcting itself again, past
+  the tolerance at step 19 and infinite at 66, whatever the midpoint's
+  precision, as the radius is the remainder's and not a rounding's; with the
+  argument's radius dropped, 8.8e-12 for 4e-12, but no longer a bound, and
+  `ball`, `fit` and `chaos`, which take no limit, have none. An
   exact midpoint rounded to a bounded precision, Arb's own answer to that
   growth: a second inexact arithmetic over the bignum, with `exp`, `log` and
   powers of its own, some 300 lines, and every operation through the
