@@ -88,7 +88,14 @@
 #     far.x: within 0.99, 16 units of a float
 #     far.d: 0 at 1, where the interpreter gives 0.01
 #
-# In double each of the three is within the billionth.
+# A count stops where a float's spacing passes 1: 'tally', from 2^24 - 49,
+# adds 1 to 2^24 and rounds back to it from there, 50 behind at 99 and, as
+# 'far.x', within the tolerance:
+#
+#     tally: 100 steps from 0 in float, against exact values
+#     tally.c: within 50, 25 units of a float
+#
+# In double each of the four is within the billionth.
 #
 # And exp past a float's range, from e^-110 by three at each step: the
 # step's terms are 0 to the third, where the interpreter's are below half
@@ -165,6 +172,12 @@ creep(a = 10^8, c = 8) = {
     y_n = lim s
 }
 crawl = creep()
+
+count(c0 = 2^24 - 49) = {
+    c_0 = c0
+    c_n = c_(n-1) + 1
+}
+tally = count()
 
 rise(a = 3, b = 110) = {
     e_n = exp(a*n - b)

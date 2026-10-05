@@ -4075,8 +4075,9 @@ that exploring seven domains asked of the interpreter, by how many asked.
 
   Specified in `test/compile/float.ink`: from earlier files `calm`, `wild`
   and `ledge`, `gate`, `ball`, `stiff` and `fan`, and of its own a
-  resonator at two radii, `hum` and `drone`, `far`, large coordinates, and
-  `crawl`, a limit that creeps, and `steep`, exp past a float's range,
+  resonator at two radii, `hum` and `drone`, `far`, large coordinates,
+  `tally`, a count past 2^24, `crawl`, a limit that creeps, and `steep`,
+  exp past a float's range,
   with their reports, worked out in C with floats and in numpy's float32,
   which agree to the bit, against exact terms; and excerpts of a header
   with a vector input, of a limit and of a check program. Whole headers in
