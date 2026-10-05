@@ -180,7 +180,8 @@ At a terminal the prompt edits the line and keeps its history.
               term to the interpreter's exact one and says where one drifts;
               given a transcript alone, replay it and report each answer
               that is not the one recorded
-  --float     with --compile, write floats where it writes doubles
+  --float     with --compile or --check, write floats where they write
+              doubles
   --help      print this and exit
 
 A file whose first line that is not blank or a comment starts with '>>'
@@ -645,10 +646,10 @@ set(exit 1)
 check(check_not_transcript)
 
 
-# A float target (DESIGN.md, compile/float.ink): beside --compile, floats
-# where the header writes doubles.
+# A float target (DESIGN.md, compile/float.ink): beside --compile or an
+# instance's --check, floats where the header writes doubles.
 set(args --float first.txt)
-set(stderr "inkamath: --float takes --compile\nTry 'inkamath --help'.\n")
+set(stderr "inkamath: --float takes --compile, or --check with an instance\nTry 'inkamath --help'.\n")
 set(exit 2)
 check(float_usage)
 
@@ -680,4 +681,13 @@ holds(float_gate float/gate.h "#include <float.h>\n#include <math.h>\n"
             if (step_ <= FLT_EPSILON * fabsf(t_) && stepped_) return t_;
             if (step_ <= 1e-10f && stepped_ &&
 ]] [[    m_->p[0][0][0] = 1.0f / (1.0f + gate_lim0(m_, 0.0f - (0.0f * m_->w[0][0][0] + 0.0f * m_->w[0][1][0] + m_->b[0])));
+]])
+
+set(args --check ${CMAKE_CURRENT_LIST_DIR}/compile/drift.ink calm --float -o float/calm.c)
+check(float_calm)
+holds(float_calm float/calm.c [[static const float in_0[100] = {
+    0.0f, 0.1f, 0.2f, 0.3f,
+]] [[static float got_0[100];
+]] [[        calm_step(&m, in_0[n]);
+        memcpy(&got_0[n * 1], &m.v[0], sizeof(float) * 1);
 ]])

@@ -59,6 +59,7 @@ public:
     static inline bool floats = false;
     static std::string Real() { return floats ? "float" : "double"; }
     static bool Finite(double x) { return std::isfinite(floats ? static_cast<float>(x) : x); }
+    friend class CheckC;  // which writes its inputs as constants are
 
     // The session's sequences, or with a model, those of its instance with
     // every default and no input given (DESIGN.md, phase 15).
