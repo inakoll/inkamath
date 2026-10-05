@@ -176,8 +176,11 @@ public:
         if (!instance) return nullptr;
         const Reference<T>& model = *instance->model;
         Bound               bound = model.model->Bind(model.Name(), *instance->call);
+        // An input it gives is fed, not its default compiled (C94); one it does
+        // not give is the default, as the interpreter reads it.
         for (size_t i = 0; i < bound.size(); ++i)
-            if (!model.model->parameters[i].index.empty()) bound[i].reset();
+            if (!model.model->parameters[i].index.empty() && bound[i])
+                bound[i]->expression = nullptr;
         return Instantiate(model, bound, definition->home, std::string(), std::string(), {});
     }
 
