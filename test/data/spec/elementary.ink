@@ -19,7 +19,7 @@
 
 # The largest and the smallest a double holds, as C's exp gives them: past
 # 709.78 none, and below -745.13 none but 0. Between 709.44 and 709.78 the
-# power of two is 2^1024, and between -745.13 and -744.44 it is 2^-1075, so
+# power of two is 2^1024, and between -745.13 and -744.79 it is 2^-1075, so
 # each is taken in two halves.
 >> exp(709.78)
 ~1.79282279e+308

@@ -3988,7 +3988,7 @@ that exploring seven domains asked of the interpreter, by how many asked.
   where to r^13 it is 2^-57; its coefficients are reciprocals of whole
   numbers, as the compiler refuses `!`. 2^k is taken in two halves, since 2^k
   is infinite from 709.44 to 709.78, where e^x is not, and 0 from -745.13 to
-  -744.44, where it is the least double. Past a thousand either way, its value
+  -744.79, where it is the least double. Past a thousand either way, its value
   there, inf or 0 as C's exp gives, which also keeps an infinite x from
   becoming NaN.
 
