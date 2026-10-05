@@ -868,9 +868,8 @@ private:
 
     T Held(T term, int index, EvaluationVisitor<T>& evaluator) const {
         if (declared.empty()) return term;
-        const Extent stated = Stated([&](const PExpression<T>& bound) {
-            return static_cast<std::size_t>(AsIndex<T>(bound->accept(evaluator)));
-        });
+        const Extent stated =
+            Stated([&](const PExpression<T>& bound) { return Size(bound->accept(evaluator)); });
         if (term.Size() != stated)
             throw std::runtime_error(home->Qualified(reference_name_) + "_" +
                                      std::to_string(index) + " is " + Unlike(term.Size(), stated));

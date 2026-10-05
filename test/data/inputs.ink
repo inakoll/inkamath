@@ -164,6 +164,15 @@ error: wide(...).x_3 is a single value, where wide takes a 2x1 matrix
 .. }
 error: x is an input of grow, so its size cannot read the index n
 
+# A bound is a size, at least 1, as a cell's is.
+>> none(x_n[j<=0]) = {
+..     y_n = x_n
+.. }
+none(x_n[j<=0]) = { ... }
+
+>> none(x_n = n).y_0
+error: a size must be at least 1, not 0
+
 # Three bounds are a tensor, slices first. Compiled, it is refused.
 >> bat(x_n[b<=2, j<=1, k<=2]) = {
 ..     y_n = x_n[2]*[1; 1]
