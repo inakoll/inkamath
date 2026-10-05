@@ -3943,3 +3943,131 @@ that exploring seven domains asked of the interpreter, by how many asked.
   said its terms were about 1.1e-13 from the exact ones where they are
   1.2e-10 from them at 2, and now says 1.2e-10, `Convergence::Limit` going
   with no line more.
+- **A float target, `--float`.** Ranked first of what had not moved by an
+  outside review: the oracle is worth what separates the target from the
+  reference, and with doubles held to a billionth `--check` checks that the
+  code generator agrees with the interpreter, not how far a deployment is
+  from the exact terms. `MANIFESTO.md` names float32 first among the number
+  types for targets, and asks what carries the annotation.
+
+  Decided: the compilation carries it. `--float`, beside `--compile` or an
+  instance's `--check`, writes floats where the header writes doubles:
+  `inkamath --compile pid.ink --float -o pid.h`, `inkamath --check drift.ink
+  calm --float -o calm.c`. The model is the paper's and the number type the
+  deployment's, so one file serves a controller compiled for a desktop in
+  double and for a microcontroller in float, and the question the check
+  answers is the one asked: how far is this float deployment from the exact
+  reference. Elsewhere it is refused, `inkamath: --float takes --compile, or
+  --check with an instance`. Rejected: an annotation of the model, which
+  writes the deployment into the paper's text and needs a file per target;
+  a type per sequence or per parameter, the mixed precision of a float
+  filter with a double accumulator, which is a real need, but one no model
+  here has, and whose syntax would be a second way to say what a flag says
+  for the whole; a `typedef` the host chooses with a macro, which makes the
+  arithmetic built one of two that `--check` could not both have checked,
+  and needs a macro for every literal and every function, `floor` or
+  `floorf`, in a header meant to be read; `long double`, a double under
+  MSVC, 80 bits on x86 and 128 on AArch64, three targets under one name, and
+  closer to exact than the interpreter's own limits are. Fixed point and int8
+  are out of scope: their scaling is information about each quantity, which
+  an annotation would carry, and nothing here forecloses one.
+
+  The header, `test/compile/expected/float/pid.h` against `pid.h`: every
+  `double` a `float` -- the fields, the step's arguments, `const float x[2]`
+  for an input of more than one cell, temporaries, the functions of limits
+  and inverses, the prelude's functions where they are compiled as C ones,
+  and the index read as a value, `(float)m_->index_`, exact to 2^24 steps;
+  `long long index_` stays. Every constant is the float nearest the double
+  written today, in the shortest digits that read back as it, with `f`:
+  `0.1f`, `1.0f`, `-2.0f`, `1e+06f`, and `INFINITY` past `FLT_MAX`; so is
+  every literal the compiler writes of its own, `0.0f` and `1.0f` in a
+  guard's test, since one `0.5` left in makes C compute its expression in
+  double. `floorf`, `powf` and `fabsf` replace `floor`, `pow` and `fabs`;
+  `isnan`, `NAN` and `INFINITY` are float already, so a NaN-aware header is
+  aware the same way. The interface comment adds "Every value is a float,
+  and every operation rounds to one", the first line names `--compile
+  --float`, and a history term no float holds is refused as one no double
+  holds is, in those words. Built with GCC's and Clang's `-Wdouble-promotion`
+  and `-Wfloat-conversion`, both hand-written headers are silent, and a
+  `0.5` in either is not: the tests build every float header so, which holds
+  that no double is left. Rates, histories, sizes and guards are as they
+  are, in floats.
+
+  A limit compiled in float walks the interpreter's rule, and one disjunct
+  more: a step no larger than `FLT_EPSILON` times its term ends the walk, `if
+  (step_ <= FLT_EPSILON * fabsf(t_) && stepped_) return t_;` before the rule's
+  test, or for a limit of matrices every cell's step within `FLT_EPSILON`
+  times that cell, and `<float.h>` included where a limit is. The rule's 1e-10
+  is below a float's spacing at any term past 8.4e-4, and Newton's iterates
+  close on two floats a unit apart rather than on one: `stiff` in
+  `test/compile/newton.ink`, held to the rule alone, is NaN from step 25 on,
+  and with the disjunct within 1.4 units of a float at every step, stopping
+  after 2 or 3 terms. A series stops where its sum stops moving, as it did,
+  `gate`'s at 24 terms at most. Rejected: the rule alone, which makes a float
+  deployment of any iteration look broken where it is not; a float tolerance
+  in place of 1e-10, a second constant where the disjunct is the float's own
+  limit; the disjunct in double too, which would answer where the interpreter
+  refuses, past 4.5e5 where 1e-10 is a double's spacing, a change to the
+  language's rule and not to a target.
+
+  The prelude's `exp`, `log` and `tanh`, written in inkamath (next in line),
+  need no version of their own in float, measured in numpy's float32 operation
+  by operation against mpmath on 2e4 points each: `exp` within 1.04 units of a
+  float on [-87, 88] and 0.74 of the least subnormal below, `log` within 2.67
+  on [1/2, 2] and 1.63 over e^±80, `tanh` within 2.48 on [-10, 10].
+  `k*355/512` is exact in a float for |k| below 47,000, and `exp`'s k never
+  passes 1443; its correction, rounded to a float, moves r by 2.5e-10 at most
+  where e^x is a float other than 0 and inf; `ilogb`'s thresholds overflow to
+  inf and underflow to 0 in a float as in a double, and decide alike. Their
+  polynomials' degree is a double's, which costs a float target time and not
+  accuracy. One definition, less accurate compiled in float: that is what
+  `--check --float` measures.
+
+  `--check --float` writes the program for that header. Its inputs are the
+  floats nearest the interpreter's, written as constants are, `static const
+  float in_0[100]`, and its terms are kept as floats and read as doubles,
+  `(double)got[k]`. A float cannot meet a billionth: a term parts where it is
+  more than a thousandth of one plus the interpreter's term from it, three
+  of a float's seven digits asked and four, 2^13 units at 1, left to what a
+  hundred steps accumulate. Each line then says how far its sequence came in
+  units of a float too, the spacing of floats at the interpreter's term or
+  at 1 where the term is smaller, `calm.v: within 1.1e-06, 1.4 units of a
+  float`, which is the comparison with the target's own rounding the
+  billionth never made. The estimate of the interpreter's own error is
+  unchanged and follows, so a reader sees the reference's 1e-11 beside the
+  step's 1e-7, and says where it passes the thousandth. A step's term
+  that parts is shown to nine digits, which tell floats apart; the first
+  line says `in float`; flips and margins are as they are. The verdict is
+  the tolerance's, as in double: `wild` and `far.d` have lost every digit
+  and part. Rejected: a report alone, which would pass them; the billionth,
+  which nothing passes; a tolerance in units, a second normalisation beside
+  one plus the term; holding the float step to the double one, agreement
+  between targets, which `MANIFESTO.md` declines as a goal.
+
+  Known limits. A constant is the float nearest its double, the float
+  nearest its exact value but where that double falls halfway between two
+  floats, about one constant in 2^29. A target that computes floats in
+  double or wider, `FLT_EVAL_METHOD` 1 or x87's 2, parts from the step
+  checked, as fused multiply-adds do, and the header's first comment already
+  says to build the check as the step is built. Everything refused in
+  double, tensors and complex numbers among them, is refused in float; every
+  double header and program is byte for byte as now.
+
+  About 50 lines of sources: 25 in the compiler, a flag through `Build`, the
+  type's word, the literal's digits and suffix, the functions' names, the
+  limit's disjunct, `<float.h>` and the two sentences, the rest of the
+  fifty-odd places that write `double`, `0.0` or `floor` changed rather
+  than added; 15 in the check, the inputs, the terms, the tolerance, the
+  units and the nine digits; 10 on the command line.
+
+  Specified in `test/compile/float.ink`: from earlier files `calm`, `wild`
+  and `ledge`, `gate`, `ball`, `stiff` and `fan`, and of its own a
+  resonator at two radii, `hum` and `drone`, and `far`, large coordinates,
+  with their reports, worked out in C with floats and in numpy's float32,
+  which agree to the bit, against exact terms; and excerpts of a header
+  with a vector input, of a limit and of a check program. Whole headers in
+  `test/compile/expected/float`, `pid.h` and `adc.h`, hand-written. All are
+  wired with the implementation: those headers compared byte for byte, and
+  each instance checked by a program in `compile/float`, built with
+  `-Wdouble-promotion` under GCC and Clang, `wild`, `ledge` and `far`
+  expected to fail.
