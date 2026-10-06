@@ -4549,7 +4549,7 @@ that exploring seven domains asked of the interpreter, by how many asked.
   877, the others as before. 43 lines of sources where about 30 were
   planned: 34 in `interpreter.hpp`, 5 of them includes, 5 in
   `reference_stack.hpp` and 4 in `Reference::Eval`. 13,853 lines in all.
-- **`grad` compiled.** `--compile` refuses `grad`, "a derivative, for now",
+- `[done]` **`grad` compiled.** `--compile` refuses `grad`, "a derivative, for now",
   so every training loop in `test/compile` writes its gradient by hand, and
   the derivative the language checks is not the one deployed. The
   conformance suite asks for both, backpropagation by hand beside the
@@ -4678,6 +4678,31 @@ that exploring seven domains asked of the interpreter, by how many asked.
   refusals in `test/cli.cmake`. Nothing that compiles today reads `grad`, so
   no golden, header or report moves; README's paragraph on what the compiler
   refuses gains a sentence.
+
+  Built as specified: every report as `grad.ink` gives it, `line` in float
+  too, the two header excerpts byte for byte, and the ten refusals in their
+  words; every other header, check program and report as before. A part is
+  a `Code` beside the value's, so it rides through calls, chains and limits'
+  terms as the value does; the name is bound as a call binds a parameter,
+  and the interpreter's own `Derivative::Names` refuses what the body's names
+  decide. Departures. A comparison or a `floor` at a jump at a constant point
+  is NaN at every step rather than folded past, `j` and `o` in `edge`, found
+  on the way. A function of the prelude's part is there wherever an
+  argument's is: the conditions of its own clauses stay inside its part
+  function. A clause refused wherever taken is NaN in its part only where
+  another clause has one, so `ilogb` has neither. A cell read of a constant
+  matrix point is a double, not folded exactly. A body through an instance
+  of a model is refused where an argument moves, not wherever it reads the
+  name, and through an instance with memory written there as in a call. A
+  function of the prelude is written only where something calls it: a part
+  a `floor` or a comparison drops leaves one nothing does, which Clang
+  would not build.
+  Found on the way and registered: C110, an infinite product's 0 part; C111,
+  the prelude's part jump lost after a `floor` or a comparison; C112, a
+  global read inside a function compiled with the function's parameters,
+  which `grad` refuses only where it reads grad's own name. 371 lines of
+  sources more, where about 350 were planned: 365 in `compile.hpp` and 6 in
+  `derivative.hpp`. 14,291 lines in all.
 - **Guards on cells at run time.** A definition by cells whose guard reads
   what is not a constant, a ReLU written by its cells, is refused; compiled,
   each cell a chain, it would carry `grad`'s parts through cells too.
