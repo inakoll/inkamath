@@ -336,6 +336,10 @@ private:
         std::optional<NotSingle> refused;
         try {
             const Deeper                       deeper(*this);
+            if (std::optional<Jet> fast = Compiled(definition, indexed, arguments)) {
+                memo_.emplace(key, *fast);
+                return *fast;
+            }
             typename ReferenceStack<T>::Within within(stack_, definition.home);
             typename ReferenceStack<T>::Frame  frame(stack_);
             ParametersDefinition<T>::Bind(definition.captured, stack_);
@@ -352,6 +356,21 @@ private:
             refused = error;
         }
         definition.Refuse(*refused, arguments, [](const Jet& jet) { return *jet[0]; }, stack_);
+    }
+
+    // The prelude's own function of a double, from its header: the value, and
+    // the part where it is the walk's double (DESIGN.md).
+    std::optional<Jet> Compiled(const Reference<T>& f, bool indexed,
+                                const Arguments& arguments) const {
+        if (indexed || arguments.size() != 1 || !stack_.compiled) return {};
+        const Jet&             x     = arguments[0].second;
+        const std::optional<T> value = stack_.compiled(f, *x[0]);
+        if (!value) return {};
+        if (!Moves(x)) return Constant(*value);
+        const std::optional<T> part =
+            x.size() == 2 ? stack_.differentiated(f, *x[0], *x[1]) : std::nullopt;
+        if (!part) return {};
+        return Jet{value, part};
     }
 
     // A clause's own names hide a parameter evaluated, but the walk binds them

@@ -15,13 +15,13 @@
  *     inkamath_prelude m;
  *     inkamath_prelude_init(&m);
  *     inkamath_prelude_step(&m);  once for each index, the first 0
- *     m.c[0]  is then c_n
+ *     m.d[0]  is then d_n
  *
  * A step takes no input. After a step, m.name[k] is name_(n-k) for each
- * sequence: c. A term the interpreter would refuse is NaN, and so is every
- * term that reads one, through a guard or a comparison as through arithmetic.
- * Built with -ffinite-math-only, which -ffast-math implies, GCC removes the
- * tests that make it so, and Clang warns of each NaN.
+ * sequence: c and d. A term the interpreter would refuse is NaN, and so is
+ * every term that reads one, through a guard or a comparison as through
+ * arithmetic. Built with -ffinite-math-only, which -ffast-math implies, GCC
+ * removes the tests that make it so, and Clang warns of each NaN.
  */
 
 /* The parameters, which the host may assign, then what derives from them,
@@ -30,6 +30,7 @@
 typedef struct inkamath_prelude {
     long long index_;
     double c[1];
+    double d[1];
 } inkamath_prelude;
 
 static inline double inkamath_prelude_expp(double arg_r) {
@@ -128,6 +129,110 @@ static inline double inkamath_prelude_cos(double arg_x) {
     return isnan(inkamath_prelude_abs(arg_x)) ? NAN : inkamath_prelude_abs(arg_x) > 1048576.0 ? NAN : inkamath_prelude_sinr(arg_x, floor(arg_x * 0.6366197723675814 + 0.5), 1.0);
 }
 
+static inline double inkamath_prelude_expp_dr(double arg_r, double part_r) {
+    return part_r * (1.0 + arg_r * (0.5 + arg_r * (0.16666666666666666 + arg_r * (0.041666666666666664 + arg_r * (0.008333333333333333 + arg_r * (0.001388888888888889 + arg_r * (0.0001984126984126984 + arg_r * (2.48015873015873e-05 + arg_r * (2.7557319223985893e-06 + arg_r * (2.755731922398589e-07 + arg_r * (2.505210838544172e-08 + arg_r * (2.08767569878681e-09 + arg_r * (1.6059043836821613e-10 + arg_r / 87178291200.0))))))))))))) + arg_r * (part_r * (0.5 + arg_r * (0.16666666666666666 + arg_r * (0.041666666666666664 + arg_r * (0.008333333333333333 + arg_r * (0.001388888888888889 + arg_r * (0.0001984126984126984 + arg_r * (2.48015873015873e-05 + arg_r * (2.7557319223985893e-06 + arg_r * (2.755731922398589e-07 + arg_r * (2.505210838544172e-08 + arg_r * (2.08767569878681e-09 + arg_r * (1.6059043836821613e-10 + arg_r / 87178291200.0)))))))))))) + arg_r * (part_r * (0.16666666666666666 + arg_r * (0.041666666666666664 + arg_r * (0.008333333333333333 + arg_r * (0.001388888888888889 + arg_r * (0.0001984126984126984 + arg_r * (2.48015873015873e-05 + arg_r * (2.7557319223985893e-06 + arg_r * (2.755731922398589e-07 + arg_r * (2.505210838544172e-08 + arg_r * (2.08767569878681e-09 + arg_r * (1.6059043836821613e-10 + arg_r / 87178291200.0))))))))))) + arg_r * (part_r * (0.041666666666666664 + arg_r * (0.008333333333333333 + arg_r * (0.001388888888888889 + arg_r * (0.0001984126984126984 + arg_r * (2.48015873015873e-05 + arg_r * (2.7557319223985893e-06 + arg_r * (2.755731922398589e-07 + arg_r * (2.505210838544172e-08 + arg_r * (2.08767569878681e-09 + arg_r * (1.6059043836821613e-10 + arg_r / 87178291200.0)))))))))) + arg_r * (part_r * (0.008333333333333333 + arg_r * (0.001388888888888889 + arg_r * (0.0001984126984126984 + arg_r * (2.48015873015873e-05 + arg_r * (2.7557319223985893e-06 + arg_r * (2.755731922398589e-07 + arg_r * (2.505210838544172e-08 + arg_r * (2.08767569878681e-09 + arg_r * (1.6059043836821613e-10 + arg_r / 87178291200.0))))))))) + arg_r * (part_r * (0.001388888888888889 + arg_r * (0.0001984126984126984 + arg_r * (2.48015873015873e-05 + arg_r * (2.7557319223985893e-06 + arg_r * (2.755731922398589e-07 + arg_r * (2.505210838544172e-08 + arg_r * (2.08767569878681e-09 + arg_r * (1.6059043836821613e-10 + arg_r / 87178291200.0)))))))) + arg_r * (part_r * (0.0001984126984126984 + arg_r * (2.48015873015873e-05 + arg_r * (2.7557319223985893e-06 + arg_r * (2.755731922398589e-07 + arg_r * (2.505210838544172e-08 + arg_r * (2.08767569878681e-09 + arg_r * (1.6059043836821613e-10 + arg_r / 87178291200.0))))))) + arg_r * (part_r * (2.48015873015873e-05 + arg_r * (2.7557319223985893e-06 + arg_r * (2.755731922398589e-07 + arg_r * (2.505210838544172e-08 + arg_r * (2.08767569878681e-09 + arg_r * (1.6059043836821613e-10 + arg_r / 87178291200.0)))))) + arg_r * (part_r * (2.7557319223985893e-06 + arg_r * (2.755731922398589e-07 + arg_r * (2.505210838544172e-08 + arg_r * (2.08767569878681e-09 + arg_r * (1.6059043836821613e-10 + arg_r / 87178291200.0))))) + arg_r * (part_r * (2.755731922398589e-07 + arg_r * (2.505210838544172e-08 + arg_r * (2.08767569878681e-09 + arg_r * (1.6059043836821613e-10 + arg_r / 87178291200.0)))) + arg_r * (part_r * (2.505210838544172e-08 + arg_r * (2.08767569878681e-09 + arg_r * (1.6059043836821613e-10 + arg_r / 87178291200.0))) + arg_r * (part_r * (2.08767569878681e-09 + arg_r * (1.6059043836821613e-10 + arg_r / 87178291200.0)) + arg_r * (part_r * (1.6059043836821613e-10 + arg_r / 87178291200.0) + arg_r * (part_r / 87178291200.0)))))))))))));
+}
+
+static inline double inkamath_prelude_expk_dx(double arg_x, double arg_k, double part_x) {
+    return inkamath_prelude_expp_dr(arg_x + (0.0 - arg_k * 355.0 / 512.0) + arg_k * 0.00021219444005469057, part_x) * pow(2.0, arg_k + (0.0 - floor(arg_k / 2.0))) * pow(2.0, floor(arg_k / 2.0));
+}
+
+static inline double inkamath_prelude_exp_jx(double arg_x) {
+    return isnan(arg_x) ? NAN : arg_x > 1000.0 ? INFINITY : isnan(arg_x) ? NAN : arg_x < -1000.0 ? 0.0 : inkamath_prelude_expk(arg_x, (floor(arg_x * 1.4426950408889634 + 0.5) == arg_x * 1.4426950408889634 + 0.5 ? NAN : floor(arg_x * 1.4426950408889634 + 0.5)));
+}
+
+static inline double inkamath_prelude_exp_dx(double arg_x, double part_x) {
+    return isnan(arg_x) ? NAN : arg_x > 1000.0 ? 0.0 : isnan(arg_x) ? NAN : arg_x < -1000.0 ? 0.0 : inkamath_prelude_expk_dx(arg_x, (floor(arg_x * 1.4426950408889634 + 0.5) == arg_x * 1.4426950408889634 + 0.5 ? NAN : floor(arg_x * 1.4426950408889634 + 0.5)), part_x);
+}
+
+static inline double inkamath_prelude_logp_dz(double arg_z, double part_z) {
+    return part_z * (0.3333333333333333 + arg_z * (0.2 + arg_z * (0.14285714285714285 + arg_z * (0.1111111111111111 + arg_z * (0.09090909090909091 + arg_z * (0.07692307692307693 + arg_z * (0.06666666666666667 + arg_z * (0.058823529411764705 + arg_z * (0.05263157894736842 + arg_z / 21.0))))))))) + arg_z * (part_z * (0.2 + arg_z * (0.14285714285714285 + arg_z * (0.1111111111111111 + arg_z * (0.09090909090909091 + arg_z * (0.07692307692307693 + arg_z * (0.06666666666666667 + arg_z * (0.058823529411764705 + arg_z * (0.05263157894736842 + arg_z / 21.0)))))))) + arg_z * (part_z * (0.14285714285714285 + arg_z * (0.1111111111111111 + arg_z * (0.09090909090909091 + arg_z * (0.07692307692307693 + arg_z * (0.06666666666666667 + arg_z * (0.058823529411764705 + arg_z * (0.05263157894736842 + arg_z / 21.0))))))) + arg_z * (part_z * (0.1111111111111111 + arg_z * (0.09090909090909091 + arg_z * (0.07692307692307693 + arg_z * (0.06666666666666667 + arg_z * (0.058823529411764705 + arg_z * (0.05263157894736842 + arg_z / 21.0)))))) + arg_z * (part_z * (0.09090909090909091 + arg_z * (0.07692307692307693 + arg_z * (0.06666666666666667 + arg_z * (0.058823529411764705 + arg_z * (0.05263157894736842 + arg_z / 21.0))))) + arg_z * (part_z * (0.07692307692307693 + arg_z * (0.06666666666666667 + arg_z * (0.058823529411764705 + arg_z * (0.05263157894736842 + arg_z / 21.0)))) + arg_z * (part_z * (0.06666666666666667 + arg_z * (0.058823529411764705 + arg_z * (0.05263157894736842 + arg_z / 21.0))) + arg_z * (part_z * (0.058823529411764705 + arg_z * (0.05263157894736842 + arg_z / 21.0)) + arg_z * (part_z * (0.05263157894736842 + arg_z / 21.0) + arg_z * (part_z / 21.0)))))))));
+}
+
+static inline double inkamath_prelude_logs_ds(double arg_s, double part_s) {
+    return 2.0 * part_s * inkamath_prelude_logp(arg_s * arg_s) + 2.0 * arg_s * inkamath_prelude_logp_dz(arg_s * arg_s, part_s * arg_s + arg_s * part_s);
+}
+
+static inline double inkamath_prelude_logm_dm(double arg_m, double part_m) {
+    return isnan(arg_m * arg_m) ? NAN : arg_m * arg_m > 2.0 ? inkamath_prelude_logs_ds((arg_m / 2.0 - 1.0) / (arg_m / 2.0 + 1.0), (part_m / 2.0 + (0.0 - (arg_m / 2.0 - 1.0) / (arg_m / 2.0 + 1.0) * (part_m / 2.0))) / (arg_m / 2.0 + 1.0)) : inkamath_prelude_logs_ds((arg_m - 1.0) / (arg_m + 1.0), (part_m + (0.0 - (arg_m - 1.0) / (arg_m + 1.0) * part_m)) / (arg_m + 1.0));
+}
+
+static inline double inkamath_prelude_logk_dx(double arg_x, double arg_k, double part_x) {
+    return inkamath_prelude_logm_dm(arg_x / pow(2.0, arg_k), part_x / pow(2.0, arg_k));
+}
+
+static inline double inkamath_prelude_log_jx(double arg_x) {
+    return isnan(arg_x) ? NAN : arg_x <= 0.0 ? NAN : isnan(2.0 * arg_x) || isnan(arg_x) ? NAN : 2.0 * arg_x == arg_x ? NAN : 2.0 * arg_x == arg_x ? arg_x : inkamath_prelude_logk(arg_x, inkamath_prelude_ilogb(arg_x));
+}
+
+static inline double inkamath_prelude_log_dx(double arg_x, double part_x) {
+    return isnan(arg_x) ? NAN : arg_x <= 0.0 ? NAN : isnan(2.0 * arg_x) || isnan(arg_x) ? NAN : 2.0 * arg_x == arg_x ? NAN : 2.0 * arg_x == arg_x ? part_x : inkamath_prelude_logk_dx(arg_x, inkamath_prelude_ilogb(arg_x), part_x);
+}
+
+static inline double inkamath_prelude_tanhe_dm(double arg_m, double part_m) {
+    return (0.0 - part_m + (0.0 - (0.0 - arg_m) / (arg_m + 2.0) * part_m)) / (arg_m + 2.0);
+}
+
+static inline double inkamath_prelude_tanhk_dy(double arg_y, double arg_k, double part_y) {
+    return inkamath_prelude_tanhe_dm(pow(2.0, arg_k) - 1.0 + pow(2.0, arg_k) * inkamath_prelude_expp(arg_y + (0.0 - arg_k * 355.0 / 512.0) + arg_k * 0.00021219444005469057), pow(2.0, arg_k) * inkamath_prelude_expp_dr(arg_y + (0.0 - arg_k * 355.0 / 512.0) + arg_k * 0.00021219444005469057, part_y));
+}
+
+static inline double inkamath_prelude_tanhp_jx(double arg_x) {
+    return isnan(arg_x) ? NAN : arg_x > 20.0 ? 1.0 : inkamath_prelude_tanhk(-2.0 * arg_x, (floor(-2.0 * arg_x * 1.4426950408889634 + 0.5) == -2.0 * arg_x * 1.4426950408889634 + 0.5 ? NAN : floor(-2.0 * arg_x * 1.4426950408889634 + 0.5)));
+}
+
+static inline double inkamath_prelude_tanhp_dx(double arg_x, double part_x) {
+    return isnan(arg_x) ? NAN : arg_x > 20.0 ? 0.0 : inkamath_prelude_tanhk_dy(-2.0 * arg_x, (floor(-2.0 * arg_x * 1.4426950408889634 + 0.5) == -2.0 * arg_x * 1.4426950408889634 + 0.5 ? NAN : floor(-2.0 * arg_x * 1.4426950408889634 + 0.5)), -2.0 * part_x);
+}
+
+static inline double inkamath_prelude_tanh_jx(double arg_x) {
+    return isnan(arg_x) ? NAN : arg_x < 0.0 ? 0.0 - inkamath_prelude_tanhp_jx(0.0 - arg_x) : inkamath_prelude_tanhp_jx(arg_x);
+}
+
+static inline double inkamath_prelude_tanh_dx(double arg_x, double part_x) {
+    return isnan(arg_x) ? NAN : arg_x < 0.0 ? 0.0 - inkamath_prelude_tanhp_dx(0.0 - arg_x, 0.0 - part_x) : inkamath_prelude_tanhp_dx(arg_x, part_x);
+}
+
+static inline double inkamath_prelude_cosw_dz(double arg_z, double part_z) {
+    return 0.0 - part_z / 2.0 + ((part_z * arg_z + arg_z * part_z) * (0.041666666666666664 + (0.0 - arg_z * (0.001388888888888889 + (0.0 - arg_z * (2.48015873015873e-05 + (0.0 - arg_z * (2.755731922398589e-07 + (0.0 - arg_z * (2.08767569878681e-09 + (0.0 - arg_z * (1.1470745597729725e-11 + (0.0 - arg_z * (4.779477332387385e-14 + (0.0 - arg_z / 6402373705728000.0)))))))))))))) + arg_z * arg_z * (0.0 - (part_z * (0.001388888888888889 + (0.0 - arg_z * (2.48015873015873e-05 + (0.0 - arg_z * (2.755731922398589e-07 + (0.0 - arg_z * (2.08767569878681e-09 + (0.0 - arg_z * (1.1470745597729725e-11 + (0.0 - arg_z * (4.779477332387385e-14 + (0.0 - arg_z / 6402373705728000.0)))))))))))) + arg_z * (0.0 - (part_z * (2.48015873015873e-05 + (0.0 - arg_z * (2.755731922398589e-07 + (0.0 - arg_z * (2.08767569878681e-09 + (0.0 - arg_z * (1.1470745597729725e-11 + (0.0 - arg_z * (4.779477332387385e-14 + (0.0 - arg_z / 6402373705728000.0)))))))))) + arg_z * (0.0 - (part_z * (2.755731922398589e-07 + (0.0 - arg_z * (2.08767569878681e-09 + (0.0 - arg_z * (1.1470745597729725e-11 + (0.0 - arg_z * (4.779477332387385e-14 + (0.0 - arg_z / 6402373705728000.0)))))))) + arg_z * (0.0 - (part_z * (2.08767569878681e-09 + (0.0 - arg_z * (1.1470745597729725e-11 + (0.0 - arg_z * (4.779477332387385e-14 + (0.0 - arg_z / 6402373705728000.0)))))) + arg_z * (0.0 - (part_z * (1.1470745597729725e-11 + (0.0 - arg_z * (4.779477332387385e-14 + (0.0 - arg_z / 6402373705728000.0)))) + arg_z * (0.0 - (part_z * (4.779477332387385e-14 + (0.0 - arg_z / 6402373705728000.0)) + arg_z * (0.0 - part_z / 6402373705728000.0))))))))))))));
+}
+
+static inline double inkamath_prelude_cosp_dr(double arg_r, double part_r) {
+    return inkamath_prelude_cosw_dz(arg_r * arg_r, part_r * arg_r + arg_r * part_r);
+}
+
+static inline double inkamath_prelude_sins_dz(double arg_z, double part_z) {
+    return part_z * (0.16666666666666666 + (0.0 - arg_z * (0.008333333333333333 + (0.0 - arg_z * (0.0001984126984126984 + (0.0 - arg_z * (2.7557319223985893e-06 + (0.0 - arg_z * (2.505210838544172e-08 + (0.0 - arg_z * (1.6059043836821613e-10 + (0.0 - arg_z * (7.647163731819816e-13 + (0.0 - arg_z / 355687428096000.0)))))))))))))) + arg_z * (0.0 - (part_z * (0.008333333333333333 + (0.0 - arg_z * (0.0001984126984126984 + (0.0 - arg_z * (2.7557319223985893e-06 + (0.0 - arg_z * (2.505210838544172e-08 + (0.0 - arg_z * (1.6059043836821613e-10 + (0.0 - arg_z * (7.647163731819816e-13 + (0.0 - arg_z / 355687428096000.0)))))))))))) + arg_z * (0.0 - (part_z * (0.0001984126984126984 + (0.0 - arg_z * (2.7557319223985893e-06 + (0.0 - arg_z * (2.505210838544172e-08 + (0.0 - arg_z * (1.6059043836821613e-10 + (0.0 - arg_z * (7.647163731819816e-13 + (0.0 - arg_z / 355687428096000.0)))))))))) + arg_z * (0.0 - (part_z * (2.7557319223985893e-06 + (0.0 - arg_z * (2.505210838544172e-08 + (0.0 - arg_z * (1.6059043836821613e-10 + (0.0 - arg_z * (7.647163731819816e-13 + (0.0 - arg_z / 355687428096000.0)))))))) + arg_z * (0.0 - (part_z * (2.505210838544172e-08 + (0.0 - arg_z * (1.6059043836821613e-10 + (0.0 - arg_z * (7.647163731819816e-13 + (0.0 - arg_z / 355687428096000.0)))))) + arg_z * (0.0 - (part_z * (1.6059043836821613e-10 + (0.0 - arg_z * (7.647163731819816e-13 + (0.0 - arg_z / 355687428096000.0)))) + arg_z * (0.0 - (part_z * (7.647163731819816e-13 + (0.0 - arg_z / 355687428096000.0)) + arg_z * (0.0 - part_z / 355687428096000.0)))))))))))));
+}
+
+static inline double inkamath_prelude_sinp_dr(double arg_r, double part_r) {
+    return part_r + (0.0 - (part_r * inkamath_prelude_sins(arg_r * arg_r) + arg_r * inkamath_prelude_sins_dz(arg_r * arg_r, part_r * arg_r + arg_r * part_r)));
+}
+
+static inline double inkamath_prelude_sink_dr(double arg_r, double arg_j, double part_r) {
+    return isnan(arg_j) ? NAN : arg_j > 2.0 ? 0.0 - inkamath_prelude_cosp_dr(arg_r, part_r) : isnan(arg_j) ? NAN : arg_j > 1.0 ? 0.0 - inkamath_prelude_sinp_dr(arg_r, part_r) : isnan(arg_j) ? NAN : arg_j > 0.0 ? inkamath_prelude_cosp_dr(arg_r, part_r) : inkamath_prelude_sinp_dr(arg_r, part_r);
+}
+
+static inline double inkamath_prelude_sinr_dx(double arg_x, double arg_k, double arg_c, double part_x) {
+    return inkamath_prelude_sink_dr(arg_x + (0.0 - arg_k * 3217.0 / 2048.0) + arg_k * 2391.0 / 536870912.0 + arg_k * 8029421003.0 / 9223372036854775808.0 + arg_k * 1987263209.0 / 7.922816251426434e+28 + (0.0 - arg_k * 7744522442262977.0 / 9.134385233318143e+46), inkamath_prelude_mod(arg_k + arg_c, 4.0), part_x);
+}
+
+static inline double inkamath_prelude_sin_jx(double arg_x) {
+    return isnan(inkamath_prelude_abs(arg_x)) ? NAN : inkamath_prelude_abs(arg_x) > 1048576.0 ? NAN : inkamath_prelude_sinr(arg_x, (floor(arg_x * 0.6366197723675814 + 0.5) == arg_x * 0.6366197723675814 + 0.5 ? NAN : floor(arg_x * 0.6366197723675814 + 0.5)), 0.0);
+}
+
+static inline double inkamath_prelude_sin_dx(double arg_x, double part_x) {
+    return isnan(inkamath_prelude_abs(arg_x)) ? NAN : inkamath_prelude_abs(arg_x) > 1048576.0 ? NAN : inkamath_prelude_sinr_dx(arg_x, (floor(arg_x * 0.6366197723675814 + 0.5) == arg_x * 0.6366197723675814 + 0.5 ? NAN : floor(arg_x * 0.6366197723675814 + 0.5)), 0.0, part_x);
+}
+
+static inline double inkamath_prelude_cos_jx(double arg_x) {
+    return isnan(inkamath_prelude_abs(arg_x)) ? NAN : inkamath_prelude_abs(arg_x) > 1048576.0 ? NAN : inkamath_prelude_sinr(arg_x, (floor(arg_x * 0.6366197723675814 + 0.5) == arg_x * 0.6366197723675814 + 0.5 ? NAN : floor(arg_x * 0.6366197723675814 + 0.5)), 1.0);
+}
+
+static inline double inkamath_prelude_cos_dx(double arg_x, double part_x) {
+    return isnan(inkamath_prelude_abs(arg_x)) ? NAN : inkamath_prelude_abs(arg_x) > 1048576.0 ? NAN : inkamath_prelude_sinr_dx(arg_x, (floor(arg_x * 0.6366197723675814 + 0.5) == arg_x * 0.6366197723675814 + 0.5 ? NAN : floor(arg_x * 0.6366197723675814 + 0.5)), 1.0, part_x);
+}
+
 /* Computes what derives from the parameters: call it after assigning one. */
 static inline void inkamath_prelude_update(inkamath_prelude* m_) {
     (void)m_;
@@ -143,6 +248,8 @@ static inline void inkamath_prelude_init(inkamath_prelude* m_) {
 static inline void inkamath_prelude_step(inkamath_prelude* m_) {
     ++m_->index_;
     m_->c[0] = inkamath_prelude_exp((double)m_->index_) + inkamath_prelude_log((double)m_->index_ + 1.0) + inkamath_prelude_tanh((double)m_->index_) + inkamath_prelude_ilogb((double)m_->index_ + 1.0) + inkamath_prelude_sin((double)m_->index_) + inkamath_prelude_cos((double)m_->index_);
+    const double t0_ = inkamath_prelude_exp_jx((double)m_->index_) + inkamath_prelude_log_jx((double)m_->index_ + 1.0) + inkamath_prelude_tanh_jx((double)m_->index_) + inkamath_prelude_sin_jx((double)m_->index_) + inkamath_prelude_cos_jx((double)m_->index_);
+    m_->d[0] = (isnan(t0_) ? NAN : inkamath_prelude_exp_dx((double)m_->index_, 1.0) + inkamath_prelude_log_dx((double)m_->index_ + 1.0, 1.0) + inkamath_prelude_tanh_dx((double)m_->index_, 1.0) + inkamath_prelude_sin_dx((double)m_->index_, 1.0) + inkamath_prelude_cos_dx((double)m_->index_, 1.0));
 }
 
 #endif

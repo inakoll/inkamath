@@ -4845,9 +4845,143 @@ that exploring seven domains asked of the interpreter, by how many asked.
   `grad` or when the value written whole refuses beside cells that each have
   a clause, and constants folded from a call that ignores a moving argument
   refused. 14,431 lines in all, after `fixes5`.
-- **The prelude's part functions for the interpreter's `grad`.** Checked
-  into `inkamath_prelude.h` beside the values, they would spare its walk of
-  `exp`, `log` and `tanh` under `grad`, about 2.6 times faster.
+- `[done]` **The prelude's part functions for the interpreter's `grad`.** Under
+  `grad` the interpreter walks the prelude's definitions with jets, never
+  the fast path's compiled call: under callgrind `bench/grad.ink` is 16,418
+  million instructions at 27489db, where it was 5,750 before the prelude
+  was written in inkamath. Since `grad` compiled, the compiler writes each
+  function's part as a C function whose doubles are the walk's to the bit,
+  so the jets' intermediates are not needed after all (*The prelude called
+  compiled, for a double*). The plan's 2.6 times was the walk's cost over
+  the built-ins'; calling the header is 12 times.
+
+  Decided: `inkamath_prelude.ink` gains a sequence differentiating the five,
+  `d_n = grad_(t = n) (exp(t) + log(t + 1) + tanh(t) + sin(t) + cos(t))`, so
+  that `record_prelude` writes `inkamath_prelude_exp_dx(double arg_x,
+  double part_x)`, `_log_dx`, `_tanh_dx`, `_sin_dx` and `_cos_dx` beside the
+  values, and grad's walk calls them for a call of the prelude's own
+  function, as the fast path does outside it. Not `ilogb`, whose answer is a
+  choice of constants and has no part. Taken where:
+  - the value is one the fast path takes: a real finite inexact double, not
+    approximated, in the function's domain, outside every run of `--check`;
+  - its jet is the value and one part, the innermost grad's alone. A grad
+    inside a grad carries four, whose second derivatives the header does not
+    have, and walks. A jet with no part is the value alone, answered as the
+    fast path answers it: walking it with nothing to carry computes that;
+  - the part is a single real value, not approximated, and a double; or
+    exact, for `exp`, `sin` and `cos`, whose definitions round it at their
+    `~` before any arithmetic, so that rounding it first is the same
+    rounding. The part through a weight of exact data, a training set's
+    decimals, is exact. `tanh` meets it exactly first in `-2*x`, and `log`
+    in `x/2^k`, so where those leave a double's normal range rounding first
+    is another rounding: `grad_(t = ~0) tanh(~0.5 + t*599492/10^318)` walks
+    to ~4.7146912432892993e-313 where rounded first it is
+    ~4.7146912433387059e-313, and `grad_(t = ~1.5e-300)
+    log(t*10^200*10^200)` to ~6.67e299 where it is inf;
+  - the header's part is neither 0 nor NaN. It is 0 where the clause taken
+    has none, `exp` past 1000 and `tanh` past 20, where the walk has no part
+    at all, which an exact 0, a product with an infinity and a `floor` tell
+    from a 0 (compiled grad's known limits, C110): `1/grad_(x = ~25)
+    tanh(~1*x)` is refused, dividing by an exact 0. A part of 0 walks with
+    them. It is NaN where the reduction's `floor` jumps, in `exp`, `tanh`,
+    `sin` and `cos`, tested as the step tests it (C111, C117), and there the
+    call walks, so that the walk refuses in its own words. Nothing else in
+    the five refuses under grad for a double in their domain: no guard is an
+    equality whose sides meet there (`log`'s `2*x == x` holds at no finite
+    positive double), and no power's base moves. Every other 0 or NaN
+    walks too, as ruled on review, a known cost: a part that underflows,
+    `grad_(t = ~0) exp(~(-700) + t*10^-300)`, or NaN where an infinity meets
+    a 0 among the operations, answers as walked, only at the walk's price.
+
+  Answered as the jet `[value, part]`, the value `Number(double)` as the fast
+  path's and the part `Number(double)`, each inexact, real and not
+  approximated, which is what the walk gives there.
+
+  Asked in `Derivative::Term`, once the memo has not answered and the step
+  and the reference are taken, before the frame; the answer is memoised as
+  the walk's is. So a call is one step and one reference deep, as outside
+  grad, and a call asked again costs nothing, as walked: a sum asking
+  `exp(t)` at each of 600,000 terms, or a call at the depth limit asked once
+  before, answers as it does now. Rejected: asking before the memo, which
+  charges a remembered call a step and a reference and refuses both, as a
+  prototype did. Walked under grad, `exp` is 4 steps and nests 3
+  references deeper, `tanh` 6 and 4, `sin` and `cos` 7 and 5, and `log` 19
+  and 5 (its arguments are walked before its reference is taken, so
+  `ilogb`'s thirteen calls nest no deeper), so a line refused for its
+  million steps or its 256 references may now answer: a softplus summed
+  over 50,000 terms, and a call at the bottom of a recursion 254 deep. The
+  walk memoised its helpers' calls too, `expk`, `expp`; a grad calling one
+  by name with the same jets walks it where it was remembered, which only
+  costs can show. Nothing that answered moves or is refused.
+
+  Every run of `--check` walks, as for the values: the estimating runs see
+  the definitions' roundings, and the main run walks so that
+  `test/compile/grad.ink` compares the compiled step with the walk, not the
+  header with itself.
+
+  Measured on a prototype: two sweeps of 379,501 grads, the five at some
+  47,000 arguments over every range, their reductions' jumps and
+  neighbours, 0, and the limits of 2^20, 20 and 1000, each with exact parts
+  of 1, 1/3, 10^-320, 10^-300 and 10^300 and parts that are doubles of
+  either sign from 10^-300 to 10^300, and with the value read as well as
+  the part, `f(t)*t`, printed at 17 digits alike walked and compiled under
+  GCC 13 and Clang 18; 225,371 calls answered from the header, 20,452
+  walked for a 0, 29,226 for a NaN and the rest for an exact part through
+  `tanh` or `log`. Every golden, header and report of the 190 tests as
+  before.
+  Under callgrind `grad` from 16,418 million instructions to 1,335, 12 times
+  fewer and below the built-ins' 5,750, the others to the million as
+  before; with doubles alone taken for parts 3,266.
+  Expected of the implementation: `grad` below 1,500 million, the others
+  within half of one per cent.
+
+  Rejected besides: a part as the derivative times the argument's part,
+  from the value functions, which rounds otherwise than the walk, as
+  compiled grad found; every exact part rounded first, the counterexamples
+  above; doubles alone for parts, `grad` 2.4 times slower, as a weight's
+  part through exact data is exact; where the part is there tested in C++
+  by the prelude's thresholds, a second copy of its guards, or by a function
+  the compiler would write for it, the compiler's work, moving every header
+  that calls `exp` under grad; the `_jx` value functions, which test the
+  jump the part function tests already; a jet with one part in any slot of
+  a longer jet, a loop over the slots no model asks for.
+
+  The header grows from 148 lines to 255, of which the `_jx` functions and
+  the second sequence's step nothing calls: generated, counted apart.
+  About 45 lines of sources: 15 in `derivative.hpp`, the hook and a function
+  asking the stack; 27 in `interpreter.hpp`, the part functions beside the
+  values and the tests of a part; 3 in `reference_stack.hpp`. Besides, a
+  line of `inkamath_prelude.ink` and its comment, and a clause of README's
+  paragraph on the prelude (section 1). Past 67 the implementation stops and
+  reports. 14,419 lines in all before it, at 27489db; about 14,464 after.
+
+  Specified in `test/data/spec/fastgrad.ink`, 55 entries, 7 failing:
+  values at chosen doubles to 17 digits, unchanged, through exact parts and
+  double ones, the two that rounding first would move, where the clause has
+  no part, at each reduction's jump, a grad of a grad, an exact point and a
+  complex one; a refusal by steps that becomes an answer, mpmath's, and a
+  sum asking one call that stays an answer; five by depth that become
+  answers and one of a jet with no part, mpmath's, and five that stay, of
+  an exact point, exact parts through `tanh` and `log`, a grad inside, and
+  one reference deeper, with one asked before that stays an answer; and a
+  session's own `exp`. Taken out of the prototype one at a time, each test
+  fails an entry: of 0, of NaN, of an exact part through `tanh` and `log`,
+  and the memo asked first.
+
+  Built as specified: every entry passes as written, and the spec is the
+  golden `fastgrad.ink`; no other golden, header or report moves but the
+  prelude's header, 255 lines. One departure, of form: the part functions
+  are a table of their own beside the values', which stays as it was, not
+  a third column of it. Measured on the build: four sweeps, 807,251 lines,
+  the prototype's two and two of the review's, which give each argument as
+  `x - t*q` at an exact 0, signed zeros among both, with 42 parts exact and
+  inexact of either sign and `1/(3*g)` beside each grad `g`, so that a 0's
+  sign shows, all byte for byte the walk's at 0f96666 under GCC 13 and
+  Clang 18. Under callgrind `grad` from 16,407 million instructions to
+  1,358, 12 times fewer, the others to the million as before. 46 lines of
+  sources where about 45 were planned: 19 in `derivative.hpp`, 25 in
+  `interpreter.hpp` and 2 in `reference_stack.hpp`. 14,534 lines in all,
+  from 14,488 at 0f96666.
 - `[done]` **`sin`, `cos`, `abs`, `max` and `min` in the prelude.** A rotation, a
   pendulum or an oscillator needs `sin` and `cos`, and a clip, an L1 loss or
   a hinge `abs`, `max` and `min`; each session writes its own, as README's
