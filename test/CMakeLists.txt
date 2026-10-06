@@ -23,9 +23,13 @@ target_compile_definitions(inkamath_tests PRIVATE
 # One ctest entry per doctest suite, so that a crash in one reports as a
 # single failure rather than taking the others' results with it.
 foreach(suite IN ITEMS bignum interpreter line_editor matrix)
-    add_test(NAME ${suite} COMMAND inkamath_tests --test-suite=${suite} --no-intro)
-    set_tests_properties(${suite} PROPERTIES TIMEOUT 120)
+    add_test(NAME ${suite} COMMAND inkamath_tests --test-suite=${suite} --no-intro
+             --test-case-exclude=fastgrad)
+    set_tests_properties(${suite} PROPERTIES TIMEOUT 60)
 endforeach()
+# fastgrad.ink's 600,000 remembered calls take 25 s under sanitizers alone.
+add_test(NAME fastgrad COMMAND inkamath_tests --test-case=fastgrad --no-intro)
+set_tests_properties(fastgrad PROPERTIES TIMEOUT 120)
 
 add_test(NAME cli
          COMMAND ${CMAKE_COMMAND} -DEXE=$<TARGET_FILE:inkamath_cli>
