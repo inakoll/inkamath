@@ -85,17 +85,17 @@ descent(eta = 1/2) = {
 }
 fall = descent()
 
-# 'hinge', a ReLU by cells: each cell's part is its clause's, the clause the
-# guard takes at the point, so the slope at 0 is the one after '<'. From n =
-# 0, g is [0; 2], [0; 2], [1; 2], [1; 2], then [1; 0]:
+# 'hinge', a ReLU applied to each cell: each call's part is its clause's, the
+# clause the guard takes at the point, so the slope at 0 is the one after '<'.
+# From n = 0, g is [0; 2], [0; 2], [1; 2], [1; 2], then [1; 0]:
 #
 #     hinge: 100 steps from 0, against exact values
 #     hinge.g: within 0
 rect(x_n) = {
-    relu(z)[j<=2] = z[j]
-    relu(z)[j<=2] | z[j] < 0 = 0
+    relu(z) = z
+    relu(z) | z < 0 = 0
     a = [1, 2]
-    g_n = grad_(v = [x_n - 2; 3 - x_n]) a*relu(v)
+    g_n = grad_(v = [x_n - 2; 3 - x_n]) a*[relu(v[1]); relu(v[2])]
 }
 hinge = rect(x_n = n)
 
@@ -171,15 +171,17 @@ steer = newton(u_n = ~(1/2))
 #     h_n = grad_(t = x_n) 5
 #     k_n = grad_(t = x_n) sq
 #     m_n = grad_(t = x_n) amp(k = t).y
+#     q_n = grad_(t = x_n) cel(t)[2]
 #     amp(k = 1) = {
 #         y = 2*k
 #     }
 #     p(r)_0 = 1
 #     p(r)_k = r*p(r)_(k-1)/4 + 1
+#     cel(z)[j<=2] = j*z
 #     sq = t^2
 #     t = 3
 #
-# where the interpreter, given x_n = 2, answers a, b, f and g and refuses
+# where the interpreter, given x_n = 2, answers a, b, f, g and q and refuses
 # the rest in the words the compiler takes:
 #
 #     cannot compile a: a derivative of a derivative, for now
@@ -191,5 +193,6 @@ steer = newton(u_n = ~(1/2))
 #     cannot compile h: grad's expression does not read t
 #     cannot compile k: sq reads the global t, which grad's t does not reach
 #     cannot compile m: grad cannot differentiate through an instance yet
+#     cannot compile q: a derivative through a definition by cells, for now
 #
 # on standard output, exiting 1.

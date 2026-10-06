@@ -4572,8 +4572,7 @@ that exploring seven domains asked of the interpreter, by how many asked.
   cells and rows read, sums with constant bounds and functions compiled
   where called, whose guards choose a clause as for the value, each chain of
   values with its chain of parts beside it, so the clause that holds gives
-  the slope; definitions by cells, each cell its clause's part; and the
-  prelude. A grad inside a limit's terms, Newton's step by its own
+  the slope; and the prelude. A grad inside a limit's terms, Newton's step by its own
   derivative, and one in a guard, a clipped gradient, are compiled as
   anywhere.
 
@@ -4605,9 +4604,10 @@ that exploring seven domains asked of the interpreter, by how many asked.
   index or a size that moves is refused as a place or a size that is not a
   constant already is. Refused for now, as no model asks: a derivative of a
   derivative, which needs four parts; of a limit whose arguments move, which
-  walks the parts too; of a matrix power; and of a power whose exponent is
+  walks the parts too; of a matrix power; of a power whose exponent is
   not a constant, whose part is absent where the exponent is 0, which a
-  static part cannot say.
+  static part cannot say; and through a definition by cells, whose guards
+  the compiler takes as constants only (*Guards on cells at run time*).
 
   `--check` needs nothing new. The interpreter's terms are its grad's,
   walked by `derivative.hpp` in every run, the disturbed ones too, as
@@ -4656,11 +4656,14 @@ that exploring seven domains asked of the interpreter, by how many asked.
   float `within 2.7e-07, 1.9 units of a float`, with its step written out;
   `fall`, `test/data/prelude.ink`'s logistic regression on its log loss,
   grad's gradient beside the one written by hand, each within 0, and two of
-  its part functions; `hinge`, a ReLU by cells; `edge`, a NaN for each
+  its part functions; `hinge`, a ReLU applied to each cell; `edge`, a NaN for each
   refusal the point decides, and a grad folded; `clip`, a clipped gradient;
   `steer`, Newton's method by grad's derivative inside a limit; and the
-  refusals, a file of nine. Wired with the implementation: the six checks
+  refusals, a file of ten. Wired with the implementation: the six checks
   and their reports in `test/CMakeLists.txt`, `line` in float, and the
   refusals in `test/cli.cmake`. Nothing that compiles today reads `grad`, so
   no golden, header or report moves; README's paragraph on what the compiler
   refuses gains a sentence.
+- **Guards on cells at run time.** A definition by cells whose guard reads
+  what is not a constant, a ReLU written by its cells, is refused; compiled,
+  each cell a chain, it would carry `grad`'s parts through cells too.
