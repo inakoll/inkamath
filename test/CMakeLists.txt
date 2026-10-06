@@ -103,7 +103,7 @@ add_test(NAME prelude_header
 # drifts from it, and its program says where and exits with a failure.
 # Each as file:instance.
 foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brink drift:ledge
-                         drift:rift drift:naught drift:zeroed drift:mirrored drift:nests
+                         drift:rift drift:naught drift:zeroed drift:mirrored drift:nests drift:latch
                          delay:fir newton:stiff logistic:gate sized:sized softmax:cls steady:mark
                          rnn:rnn attention:head momentum:ball adam:fit lqr:gain
                          rates:pairs rates:odd seeded:warm cascade:servo decimate:boxcar
@@ -237,6 +237,8 @@ set_tests_properties(check_layer_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^layer: 100 steps from 0, against exact values\nlayer\\.w: within 0\nlayer\\.z: within 0\nlayer\\.h: within 0\nlayer\\.y: within 0\n$")
 set_tests_properties(check_kink_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^kink: 100 steps from 0, against exact values\nkink\\.c: within 0\nkink\\.d: within 0\nkink\\.e: within 0\nkink\\.g: within 0\nkink\\.h: within 0\nkink\\.m: within 0\n$")
+set_tests_properties(check_latch_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^latch: 100 steps from 0, against exact values\nlatch\\.m: within 0, from 1\nlatch\\.w: within 0\n$")
 set_tests_properties(check_mask_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^mask: 100 steps from 0, against exact values\nmask\\.y: within 0\n$")
 set_tests_properties(check_order_report PROPERTIES PASS_REGULAR_EXPRESSION

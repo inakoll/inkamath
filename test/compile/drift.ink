@@ -130,3 +130,15 @@ nested(u_n) = {
     s_n = grad_(t = u_n) f(f(f(t*t)))
 }
 nests = nested(u_n = n)
+
+# A guard written as a sequence of its own, which reads the guarded sequence
+# back: below the base clauses that guard asks lower still, so no guard gives
+# a term there, and the guard starts at 1 in the step as in the interpreter
+# (C146).
+latched(x_n) = {
+    w_0 = 0
+    m_n = w_(n-1) <= x_n
+    w_n | m_n = w_(n-1) + 1
+    w_n = w_(n-1) - 1/2
+}
+latch = latched(x_n = n/3)

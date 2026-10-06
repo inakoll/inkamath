@@ -3248,7 +3248,7 @@ private:
             while (sequence.bases.count(first)) first += sequence.period;  // the general clauses
             for (const auto& [read, lags] : sequence.reads) {
                 const Sequence& other = sequences_.at(read);
-                if (other.bases.empty() || other.guarded.empty()) continue;
+                if (other.bases.empty() || other.guarded.empty() || Descends(read)) continue;
                 const int reached = first - *lags.rbegin();
                 if (reached < other.start)
                     throw Refusal(name,
@@ -3385,6 +3385,29 @@ private:
 
     // The whole part of n/a, a > 0, as floor gives it.
     static int Floor(int n, int a) { return n / a - (n % a < 0 ? 1 : 0); }
+
+    // Whether a sequence's first guard always reads the sequence itself at or
+    // before the index asked, through sequences of one clause: below its base
+    // clauses that guard asks lower still, so no guard answers there, as in
+    // the interpreter. A right side not always read is not among the reads.
+    bool Descends(const std::string& name) const {
+        std::vector<std::pair<std::string, int>> next;
+        for (const auto& [read, lags] : sequences_.at(name).guarded.front().guard)
+            next.emplace_back(read, *lags.rbegin());
+        std::set<std::string> seen;
+        while (!next.empty()) {
+            const auto [read, lag] = next.back();
+            next.pop_back();
+            if (read == name && lag >= 0) return true;
+            const Sequence& s = sequences_.at(read);
+            if (!seen.insert(read).second || !s.bases.empty() || !s.guarded.empty() ||
+                !s.definition)
+                continue;
+            for (const auto& [further, lags] : s.reads)
+                next.emplace_back(further, lag + *lags.rbegin());
+        }
+        return false;
+    }
 
     // The first tick of a sequence from step n on.
     static int Tick(const Sequence& sequence, int n) {
