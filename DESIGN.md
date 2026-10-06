@@ -4560,7 +4560,9 @@ that exploring seven domains asked of the interpreter, by how many asked.
   compiler's own sums, products, quotients and powers, a constant part
   folded exactly as the interpreter's is: a product's `a'*b + a*b'`, a
   quotient's `(a' - q*b')/b`, q the quotient, a constant power's
-  `c*u^(c-1)*u'` with `pow` as written, `e^w`'s `e^w*w'`. So the gradient
+  `c*u^(c-1)*u'` with `pow` as written, `e^w`'s `e^w*w'`; a negation's part,
+  and a quotient's whose numerator has none, a subtraction from 0, `0.0 -
+  q*b'`, as C98, which lands before this, has every negation. So the gradient
   the step computes is the interpreter's to the bit wherever its values are,
   and `--check` holds it within 0. One with respect to a matrix is a pass
   over the body per cell, its seed a constant, as in the interpreter; a
