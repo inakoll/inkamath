@@ -4762,7 +4762,7 @@ that exploring seven domains asked of the interpreter, by how many asked.
   flip it reports, follow the clauses of a sequence's terms; a definition by
   cells compiled where it is called or read parts only by its values, as a
   guarded function does. Following it was rejected: its guards are asked
-  once per call, `fit`'s ReLU three times in each pass of its loss, and the
+  once per call, `rfit`'s ReLU three times in each pass of its loss, and the
   interpreter's memo asks a repeated call once, so the record would need a
   key per call that neither side has. A ReLU to be watched at its threshold
   is a term by cells, as `rift` is. Nor
@@ -4800,9 +4800,9 @@ that exploring seven domains asked of the interpreter, by how many asked.
 
   Specified in `test/compile/cellguards.ink`, its numbers worked out with
   exact fractions in Python and by hand, then seen to be the interpreter's:
-  `fit`, a ReLU network trained by `grad`, a unit reviving at the first step
+  `rfit`, a ReLU network trained by `grad`, a unit reviving at the first step
   and the samples fitted at the second, exact and within 0 in double and in
-  float; `tfit`, `fit` with its samples a tensor's slices and its ReLU of
+  float; `tfit`, `rfit` with its samples a tensor's slices and its ReLU of
   three indices, every cell's clause flipping at every step, the same in
   float; `layer`, `net.ink`'s network with `h_n = relu(z_n)`, computing h
   by `net.h`'s two lines; `kink`, each cell's slope either side of its
@@ -4811,7 +4811,7 @@ that exploring seven domains asked of the interpreter, by how many asked.
   by its values alone; `mask`, a parameter read by a cell guard become a
   field; `order`, the chain's order told from the others, the whole's cell
   and 0 at its end; and two refusals. Wired with the implementation:
-  the checks and their reports in `test/CMakeLists.txt`, `fit` and `tfit`
+  the checks and their reports in `test/CMakeLists.txt`, `rfit` and `tfit`
   in float, `crest` failing, `layer`'s lines and the refusals in
   `test/cli.cmake`. One
   recorded refusal moves: `q` in `grad.ink`, `grad_(t = x_n) cel(t)[2]`,

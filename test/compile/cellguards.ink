@@ -7,7 +7,7 @@
 # refused, 'a guard on cells that is not a constant', or under grad 'a
 # derivative through a definition by cells, for now'.
 #
-# 'fit', a network of two ReLU units trained by grad through the ReLU written
+# 'rfit', a network of two ReLU units trained by grad through the ReLU written
 # by its cells, sizes.ink's network on other data, the loss L beside it. Unit
 # 2 is dead on the first two samples and revives at the first step, after
 # which the two fit them exactly and both are dead on the third, whose target
@@ -21,15 +21,15 @@
 # term, is a multiple of 1/32 below 64, which doubles and floats hold, so
 # whatever the order of its operations the step is exact:
 #
-#     fit: 100 steps from 0, against exact values
-#     fit.W: within 0
-#     fit.L: within 0
+#     rfit: 100 steps from 0, against exact values
+#     rfit.W: within 0
+#     rfit.L: within 0
 #
-# and in float, 'inkamath --check cellguards.ink fit --float':
+# and in float, 'inkamath --check cellguards.ink rfit --float':
 #
-#     fit: 100 steps from 0 in float, against exact values
-#     fit.W: within 0, 0 units of a float
-#     fit.L: within 0, 0 units of a float
+#     rfit: 100 steps from 0 in float, against exact values
+#     rfit.W: within 0, 0 units of a float
+#     rfit.L: within 0, 0 units of a float
 #
 # No guard in it is an equality and nothing else writes NaN, so its header
 # tests nothing for it.
@@ -46,18 +46,18 @@ relunet(eta = 1/2) = {
     W_n = W_(n-1) - eta*grad_(M = W_(n-1)) loss(M)
     L_n = loss(W_n)
 }
-fit = relunet()
+rfit = relunet()
 
-# 'tfit', fit with its three samples the slices of a tensor and its ReLU a
+# 'tfit', rfit with its three samples the slices of a tensor and its ReLU a
 # function of three indices, the slice a place as the row is, so W and L are
-# fit's. H_n is the ReLU of (-1)^n times the pre-activations of W_n, so from
+# rfit's. H_n is the ReLU of (-1)^n times the pre-activations of W_n, so from
 # 2 every cell's clause flips at every step: H_0 = [1; 0;; 5/2; 0;; 0; 13/2],
 # H_1 = [0; 0;; 0; 0;; 7/2; 39/4], then at even n
 #
 #     [27/8; 3/8;; 43/8; 19/8;; 0; 0]
 #
 # and at odd n [0; 0;; 0; 0;; 81/8; 25/8]. Every value is a multiple of 1/32
-# below 64 as in fit:
+# below 64 as in rfit:
 #
 #     tfit: 100 steps from 0, against exact values
 #     tfit.W: within 0
