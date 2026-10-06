@@ -88,6 +88,46 @@ static inline double inkamath_prelude_tanh(double arg_x) {
     return isnan(arg_x) ? NAN : arg_x < 0.0 ? 0.0 - inkamath_prelude_tanhp(0.0 - arg_x) : inkamath_prelude_tanhp(arg_x);
 }
 
+static inline double inkamath_prelude_abs(double arg_x) {
+    return isnan(arg_x) ? NAN : arg_x < 0.0 ? 0.0 - arg_x : isnan(arg_x) ? NAN : arg_x >= 0.0 ? arg_x : NAN;
+}
+
+static inline double inkamath_prelude_mod(double arg_a, double arg_b) {
+    return arg_a + (0.0 - arg_b * floor(arg_a / arg_b));
+}
+
+static inline double inkamath_prelude_cosw(double arg_z) {
+    return 1.0 + (0.0 - arg_z / 2.0) + arg_z * arg_z * (0.041666666666666664 + (0.0 - arg_z * (0.001388888888888889 + (0.0 - arg_z * (2.48015873015873e-05 + (0.0 - arg_z * (2.755731922398589e-07 + (0.0 - arg_z * (2.08767569878681e-09 + (0.0 - arg_z * (1.1470745597729725e-11 + (0.0 - arg_z * (4.779477332387385e-14 + (0.0 - arg_z / 6402373705728000.0))))))))))))));
+}
+
+static inline double inkamath_prelude_cosp(double arg_r) {
+    return inkamath_prelude_cosw(arg_r * arg_r);
+}
+
+static inline double inkamath_prelude_sins(double arg_z) {
+    return arg_z * (0.16666666666666666 + (0.0 - arg_z * (0.008333333333333333 + (0.0 - arg_z * (0.0001984126984126984 + (0.0 - arg_z * (2.7557319223985893e-06 + (0.0 - arg_z * (2.505210838544172e-08 + (0.0 - arg_z * (1.6059043836821613e-10 + (0.0 - arg_z * (7.647163731819816e-13 + (0.0 - arg_z / 355687428096000.0))))))))))))));
+}
+
+static inline double inkamath_prelude_sinp(double arg_r) {
+    return arg_r + (0.0 - arg_r * inkamath_prelude_sins(arg_r * arg_r));
+}
+
+static inline double inkamath_prelude_sink(double arg_r, double arg_j) {
+    return isnan(arg_j) ? NAN : arg_j > 2.0 ? 0.0 - inkamath_prelude_cosp(arg_r) : isnan(arg_j) ? NAN : arg_j > 1.0 ? 0.0 - inkamath_prelude_sinp(arg_r) : isnan(arg_j) ? NAN : arg_j > 0.0 ? inkamath_prelude_cosp(arg_r) : inkamath_prelude_sinp(arg_r);
+}
+
+static inline double inkamath_prelude_sinr(double arg_x, double arg_k, double arg_c) {
+    return inkamath_prelude_sink(arg_x + (0.0 - arg_k * 3217.0 / 2048.0) + arg_k * 2391.0 / 536870912.0 + arg_k * 8029421003.0 / 9223372036854775808.0 + arg_k * 1987263209.0 / 7.922816251426434e+28 + (0.0 - arg_k * 7744522442262977.0 / 9.134385233318143e+46), inkamath_prelude_mod(arg_k + arg_c, 4.0));
+}
+
+static inline double inkamath_prelude_sin(double arg_x) {
+    return isnan(inkamath_prelude_abs(arg_x)) ? NAN : inkamath_prelude_abs(arg_x) > 1048576.0 ? NAN : inkamath_prelude_sinr(arg_x, floor(arg_x * 0.6366197723675814 + 0.5), 0.0);
+}
+
+static inline double inkamath_prelude_cos(double arg_x) {
+    return isnan(inkamath_prelude_abs(arg_x)) ? NAN : inkamath_prelude_abs(arg_x) > 1048576.0 ? NAN : inkamath_prelude_sinr(arg_x, floor(arg_x * 0.6366197723675814 + 0.5), 1.0);
+}
+
 /* Computes what derives from the parameters: call it after assigning one. */
 static inline void inkamath_prelude_update(inkamath_prelude* m_) {
     (void)m_;
@@ -102,7 +142,7 @@ static inline void inkamath_prelude_init(inkamath_prelude* m_) {
 /* Advances to the next index, the first at 0, and computes its terms. */
 static inline void inkamath_prelude_step(inkamath_prelude* m_) {
     ++m_->index_;
-    m_->c[0] = inkamath_prelude_exp((double)m_->index_) + inkamath_prelude_log((double)m_->index_ + 1.0) + inkamath_prelude_tanh((double)m_->index_) + inkamath_prelude_ilogb((double)m_->index_ + 1.0);
+    m_->c[0] = inkamath_prelude_exp((double)m_->index_) + inkamath_prelude_log((double)m_->index_ + 1.0) + inkamath_prelude_tanh((double)m_->index_) + inkamath_prelude_ilogb((double)m_->index_ + 1.0) + inkamath_prelude_sin((double)m_->index_) + inkamath_prelude_cos((double)m_->index_);
 }
 
 #endif

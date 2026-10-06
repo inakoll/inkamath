@@ -325,11 +325,13 @@ Interpreter<T, U>::Interpreter() {
     // a double too.
     if constexpr (std::is_same_v<T, Number>) {
         const auto& names = stack_.Builtins().names;
-        const std::array<std::pair<const Reference<U>*, double (*)(double)>, 4> functions{{
+        const std::array<std::pair<const Reference<U>*, double (*)(double)>, 6> functions{{
             {names.at("exp").get(), inkamath_prelude_exp},
             {names.at("tanh").get(), inkamath_prelude_tanh},
             {names.at("log").get(), inkamath_prelude_log},
             {names.at("ilogb").get(), inkamath_prelude_ilogb},
+            {names.at("sin").get(), inkamath_prelude_sin},
+            {names.at("cos").get(), inkamath_prelude_cos},
         }};
         stack_.compiled = [this, functions](const Reference<U>& f, const U& x) -> std::optional<U> {
             const auto found = std::find_if(functions.begin(), functions.end(),
@@ -342,7 +344,9 @@ Interpreter<T, U>::Interpreter() {
             const Number& a = x(1, 1);
             const auto    z = a.Inexact();
             if (a.exact() || Number::approximated(a) || z.imag() != 0 || !std::isfinite(z.real()) ||
-                ((c == inkamath_prelude_log || c == inkamath_prelude_ilogb) && !(z.real() > 0)))
+                ((c == inkamath_prelude_log || c == inkamath_prelude_ilogb) && !(z.real() > 0)) ||
+                ((c == inkamath_prelude_sin || c == inkamath_prelude_cos) &&
+                 std::abs(z.real()) > 0x1p20))
                 return {};
             const double y = c(z.real());
             if (c == inkamath_prelude_ilogb) return U(Number(static_cast<long long>(y)));

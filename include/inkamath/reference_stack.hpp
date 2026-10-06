@@ -163,9 +163,9 @@ public:
                        EvaluationVisitor<T>&)>
         guards;
 
-    // The prelude's exp, log, tanh and ilogb as its header computes them, for
-    // the one argument where that is what their definitions answer; given by
-    // the interpreter, for Number alone (DESIGN.md).
+    // The prelude's functions as its header computes them, for the one
+    // argument where that is what their definitions answer; given by the
+    // interpreter, for Number alone (DESIGN.md).
     std::function<std::optional<T>(const Reference<T>&, const T&)> compiled;
 
     [[nodiscard]] Scope<T>&       Target() const { return *target_; }
