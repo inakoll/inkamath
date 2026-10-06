@@ -141,6 +141,10 @@ private:
                     }
                 }
                 Compiled compiled = compiler.Print(module, source);
+                // A mark left unresolved is no C, and the compiler's mistake (C112).
+                if (std::any_of(compiled.header.begin(), compiled.header.end(),
+                                [](unsigned char c) { return c < ' ' && c != '\n'; }))
+                    throw std::runtime_error("a control character in the header, a compiler bug");
                 // One that writes NaN anywhere past the line naming its source
                 // is compiled again, aware.
                 if (aware || !WritesNan(compiled.header, compiled.header.find('\n')))
