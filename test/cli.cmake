@@ -365,6 +365,13 @@ set(stderr "inkamath: v.x_(0): evaluation nests more than 256 references deep\n"
 set(exit 1)
 check(check_walked)
 
+# Nor does a term the file asked before: its main run forgets them (C106).
+file(APPEND "${OUT}/walked.ink" "v.x_(0)\n")
+set(args --check walked.ink v -o walked.c)
+set(stderr "inkamath: v.x_(0): evaluation nests more than 256 references deep\n")
+set(exit 1)
+check(check_walked_asked)
+
 # The lines a file written is to hold, each found as given.
 function(holds name file)
     file(READ "${OUT}/${file}" text)

@@ -58,6 +58,8 @@ public:
             ReferenceStack<Value>& stack;
             ~Unhook() { stack.guards = nullptr; }
         } unhook{stack};
+        // A term the file asked before was heard by no guard (C106).
+        stack.Forget();
         const int         first = compiled.first;
         std::string       data, stepped, held;
         for (std::size_t k = 0; k < compiled.inputs.size(); ++k) {
