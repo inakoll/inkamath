@@ -3806,7 +3806,7 @@ private:
             "typedef struct " + module + " {\n" + Nested(members, "    ") + "} " + module + ";\n\n";
 
         for (const std::size_t n : inverses_) out += InverseHelper(n);
-        for (const std::string& function : prelude_) out += function;
+        const std::size_t functions = out.size();
         for (const std::string& limit : limits_) out += limit;
 
         out += "/* Computes what derives from the parameters: call it after assigning one. */\n";
@@ -3949,6 +3949,16 @@ private:
         }
         out += "}\n\n#endif\n";
         out.insert(folds, Folds(earliest));
+        // A function of the prelude where something calls it: the part one a
+        // floor or a comparison drops nothing does.
+        std::string kept, calls = out.substr(functions);
+        for (auto function = prelude_.rbegin(); function != prelude_.rend(); ++function) {
+            const std::size_t open = function->find('('), name = function->rfind(' ', open) + 1;
+            if (!Writes(calls, function->substr(name, open - name))) continue;
+            calls += *function;
+            kept = *function + kept;
+        }
+        out.insert(functions, kept);
         // Past the line naming the source, the words of the compiler's own C
         // for a double as a float's: every constant is written as one already.
         const auto inside = [&](std::size_t at) {
