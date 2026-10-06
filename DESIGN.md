@@ -4728,7 +4728,7 @@ that exploring seven domains asked of the interpreter, by how many asked.
 - **The prelude's part functions for the interpreter's `grad`.** Checked
   into `inkamath_prelude.h` beside the values, they would spare its walk of
   `exp`, `log` and `tanh` under `grad`, about 2.6 times faster.
-- **Tensors compiled.** `--compile` refuses a tensor by name, "cannot
+- `[done]` **Tensors compiled.** `--compile` refuses a tensor by name, "cannot
   compile X: a tensor", so attention per batch and per head, which the
   interpreter answers (*Tensors of rank 3*), has no step: `attention.ink`
   compiles one head of one sample. The conformance suite asks for the paper's
@@ -4809,8 +4809,8 @@ that exploring seven domains asked of the interpreter, by how many asked.
   150, counted without the refactor, so past 225 the implementation stops
   and reports. Sized against the interpreter's tensors, 222 with a literal,
   printing, `tex` and parsing the compiler does not need, inputs of more
-  than one cell, 119, and compiled `lim`, 167. 14,318 lines in all before
-  it, at f82b32b, the fixes since `grad` compiled included; about 14,470
+  than one cell, 119, and compiled `lim`, 167. 14,355 lines in all before
+  it, at cfb0abb, the fixes since `grad` compiled included; about 14,505
   after.
 
   Specified in `test/compile/tensor.ink`, its numbers worked out apart from
@@ -4827,3 +4827,28 @@ that exploring seven domains asked of the interpreter, by how many asked.
   implementation; README's paragraph on the compiler gains a sentence,
   `attention.ink`'s comment loses "the compiler refuses for now", and
   `test/data/inputs.ink`'s "Compiled, it is refused".
+
+  Built as specified: every report as `tensor.ink` gives it, `whirl` and
+  `batch` in float too, the header excerpts byte for byte and the eight
+  refusals in their words; every other header, check program and golden as
+  before, and the refactor's byte for byte. A `Code`'s cells are a tensor's
+  slice after slice, and one stretched over another's shape is read at a place
+  modulo its cells, a matrix over every slice as a single value over every
+  cell, so `+`, `-`, `/`, `*` and `'` meet slice by slice and a part rides
+  them. A read takes the cells the interpreter's read takes of a value of its
+  size whose cells are numbered, so a slice, a row and a cell, and every
+  refusal of one, are the interpreter's, as is a cell clause's outside the
+  size. Departures. A tensor whose slices are single values, met by a matrix
+  of another size, is refused, "these matrices have different sizes", where
+  the interpreter takes each slice as a single value; `whirl`'s `p` is one,
+  and nothing meets it so. A tensor's term by cells with a guard that folds is
+  not followed for flips by `--check`, which could not tell its slices apart;
+  one that does not fold is refused, as specified. A matrix stretched over the
+  slices is computed once, into temporaries, as a single value stretched over
+  a matrix is. `--check`'s `hold_` takes each term's rows too, in a program
+  for an instance with a tensor only. Specified on the way, in a commit of its
+  own: `spread`, the drift of a tensor's cell, named. Found on the way and
+  registered: C122, a cell of one term outside its size written past the
+  term's cells. The refactor, 41 lines fewer, every output byte for byte; then
+  48 lines of sources more, where about 150 were planned: 40 in `compile.hpp`
+  and 8 in `check.hpp`; and C122's 1. 14,363 lines in all.
