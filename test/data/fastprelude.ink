@@ -180,8 +180,8 @@ dive(k) | k < 1 = log(~3)
 >> dive(254)
 ~1.09861229
 
-# Which calls walk the definition, seen by their depth: an exact argument,
-# an approximated one, and a definition the session extends.
+# Which calls walk the definition, seen by their depth: an exact argument
+# and an approximated one.
 >> dive(k) | k < 1 = exp(3)
 dive(k) | k < 1 = exp(3)
 
@@ -200,11 +200,13 @@ dive(k) | k < 1 = exp(a*a)
 >> dive(254)
 error: evaluation nests more than 256 references deep
 
+# A session's clause on a name of the prelude starts a definition of its
+# own, as a model's or a file's does, so no clause of exp holds at ~1 or ~3.
 >> exp(x) | x > 5000 = 7
 exp(x) | x > 5000 = 7
 
 >> exp(~1)
-~2.71828183
+error: no clause of exp applies
 
 >> dive(k) | k < 1 = exp(~3)
 dive(k) | k < 1 = exp(~3)
@@ -213,4 +215,4 @@ dive(k) | k < 1 = exp(~3)
 error: evaluation nests more than 256 references deep
 
 >> dive(250)
-~20.0855369
+error: no clause of exp applies

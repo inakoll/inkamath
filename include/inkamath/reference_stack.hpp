@@ -140,12 +140,6 @@ public:
         Changed();
         const definition_type previous = Defined(ai_reference_name);
         definition_type       extended = previous;
-        // A clause added to a built-in extends it, as it did when the
-        // built-ins were the session's own.
-        if (!extended && target_ == &session_) {
-            const auto builtin = builtins_.names.find(ai_reference_name);
-            if (builtin != builtins_.names.end()) extended = builtin->second;
-        }
         // Made before it is stored, so that a clause refused leaves no name.
         extended =
             Extended(extended, target_, ai_reference_name, ai_parameters, ai_expression, written);
@@ -169,9 +163,9 @@ public:
                        EvaluationVisitor<T>&)>
         guards;
 
-    // The prelude's exp, log, tanh and ilogb as its header computes them, for
-    // the one argument where that is what their definitions answer; given by
-    // the interpreter, for Number alone (DESIGN.md).
+    // The prelude's functions as its header computes them, for the one
+    // argument where that is what their definitions answer; given by the
+    // interpreter, for Number alone (DESIGN.md).
     std::function<std::optional<T>(const Reference<T>&, const T&)> compiled;
 
     [[nodiscard]] Scope<T>&       Target() const { return *target_; }
