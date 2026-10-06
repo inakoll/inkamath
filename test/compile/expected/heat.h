@@ -20,11 +20,11 @@
  * A step takes q_n, the input at its index. After a step, m.name[k] is
  * name_(n-k) for each sequence: q and u (k <= 1). The parameters are fields
  * holding the file's values once heat_init has run: dt = 0.01. After assigning
- * one, call heat_update. Compiled in, as a size, a bound or a lag cannot
- * change: N. A term the interpreter would refuse is NaN, and so is every term
- * that reads one, through a guard or a comparison as through arithmetic. Built
- * with -ffinite-math-only, which -ffast-math implies, GCC removes the tests
- * that make it so, and Clang warns of each NaN.
+ * one, call heat_update. Compiled in as constants, these cannot change: N. A
+ * term the interpreter would refuse is NaN, and so is every term that reads
+ * one, through a guard or a comparison as through arithmetic. Built with
+ * -ffinite-math-only, which -ffast-math implies, GCC removes the tests that
+ * make it so, and Clang warns of each NaN.
  */
 
 /* The parameters, which the host may assign, then what derives from them,

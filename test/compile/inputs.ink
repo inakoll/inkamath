@@ -99,7 +99,7 @@
 #
 # And 'avg''s first comment says, as of any size read from a parameter:
 #
-#      * ... Compiled in, as a size, a bound or a lag cannot change: d.
+#      * ... Compiled in as constants, these cannot change: d.
 #
 # Every header in test/compile/expected stays byte for byte as it is, and
 # every program --check writes for an instance whose inputs are single

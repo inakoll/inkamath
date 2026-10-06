@@ -616,8 +616,18 @@ holds(compile_inputs_turn turn.h [[static inline void turn_init(turn* m_) {
     memcpy(m_->x[1], m_->x[0], sizeof m_->x[1]);
     memcpy(m_->x[0], x, sizeof m_->x[0]);
 ]])
-holds(compile_inputs_avg avg.h [[ Compiled in, as a size, a bound or a
- * lag cannot change: d.
+holds(compile_inputs_avg avg.h [[ Compiled in as constants, these
+ * cannot change: d.
+]])
+
+# A parameter compiled in need not be a size, a bound or a lag: a matrix
+# power's exponent and a cell's place are neither (C129).
+file(WRITE "${OUT}/pw.ink" "pw(k = 2, i = 1, x_n) = {\n    y_n = ([1 1; 0 1]^k*[x_n; 1])[i]\n}\n")
+set(args --compile pw.ink pw -o pw.h)
+check(compile_fixed_power)
+holds(compile_fixed_power pw.h [[ * name_(n-k) for each sequence: x and y. Compiled in as constants, these
+ * cannot change: i and k.
+ */
 ]])
 
 # Refused: a history of another size than the input, a default and an
