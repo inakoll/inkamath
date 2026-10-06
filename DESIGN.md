@@ -2740,6 +2740,19 @@ that exploring seven domains asked of the interpreter, by how many asked.
 - **The parts and modulus of a complex number**: a frequency response
   |T(e^{jw})| cannot be written, as `abs` refuses a complex value and nothing
   gives its real or imaginary part.
+- **A sequence with parameters read at a constant index, compiled** as a
+  loop of that many iterations: an MPC horizon, a window of backpropagation
+  through time, shooting. Compiled today only under `lim`.
+- **Block literals compiled**, `[A, B; C, D]`: refused as "a matrix built
+  from matrices", which stops the doubling algorithm's three iterates packed
+  into one term.
+- **`tex` of `==`, a negative fraction and `exp`**: `==` is set as `=`,
+  `\frac{-1}{2}` should be `-\frac{1}{2}`, `\operatorname{exp}` should be
+  `\exp`; and one tensor literal refuses a whole model's `tex`.
+- **A limit exact at an exact fixed point**: k-means reaches `C_3 == C_4`
+  exactly, yet `lim C` is inexact and `frac lim C` refused.
+- **Matrix `==` and `<>` compiled**, refused as "a comparison of matrices".
+- **`--check`'s hundred steps as an option**, with `lim`'s.
 - `[done]` **A definition as LaTeX**, `tex ?name`, a word at the start of a line as
   `frac` is, and reserved as it is. It renders what was parsed, not what was
   typed: the clauses for one index a line each, then those for every index,
