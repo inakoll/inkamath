@@ -107,7 +107,7 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brin
                          decimate:trail drift:sill drift:seam history:past history:twin
                          history:lit history:rise history:ajar history:sown history:nest history:kin history:vast
                          history:twice history:relayed history:pole
-                         history:huge history:veiled nan:run nan:sign nan:shy nan:slope nan:pair
+                         history:huge history:veiled history:cloaked history:masked nan:run nan:sign nan:shy nan:slope nan:pair
                          nan:lap nan:trim nan:any nan:cell nan:held inputs:fan inputs:grid
                          inputs:chan inputs:twirl inputs:duo inputs:mean3 inputs:mean2
                          inputs:track inputs:twain inputs:nestv inputs:fed estimate:tie
@@ -278,7 +278,11 @@ set_tests_properties(check_twice_report PROPERTIES PASS_REGULAR_EXPRESSION
 set_tests_properties(check_relayed_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^relayed: 100 steps from 0, against exact values\nrelayed\\.inner\\.c: within 0\nrelayed\\.c: within 0\nrelayed\\.y: within 0\nrelayed\\.inner\\.x: within 0\n$")
 set_tests_properties(check_veiled_report PROPERTIES PASS_REGULAR_EXPRESSION
-    "^veiled: 100 steps from 0, against exact values\nveiled\\.c_bare\\.c: not asked, as the interpreter cannot name it\nveiled\\.c: within 0\nveiled\\.c_bare\\.u: not asked, as the interpreter cannot name it\n$")
+    "^veiled: 100 steps from 0, against exact values\nveiled\\.c_bare\\.c: within 0\nveiled\\.c: within 0\nveiled\\.c_bare\\.u: within 0\n$")
+set_tests_properties(check_cloaked_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^cloaked: 100 steps from 0, against exact values\ncloaked\\.inner\\.c_bare\\.c: within 0\ncloaked\\.inner\\.c: within 0\ncloaked\\.d: within 0\ncloaked\\.inner\\.x: within 0\ncloaked\\.inner\\.c_bare\\.u: within 0\n$")
+set_tests_properties(check_masked_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^masked: 100 steps from 0, against exact values\nmasked\\.e_tenth\\.d: [0-9.e+-]+ at 9, where the interpreter gives 0\\.10000000000000001\nmasked\\.e: [0-9.e+-]+ at 9, where the interpreter gives 0\\.10000000000000001\n$")
 set_tests_properties(check_pole_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^pole: 100 steps from 0, against exact values\npole\\.y: inf at 3, where the interpreter gives none: division by zero\n$")
 set_tests_properties(check_huge_report PROPERTIES PASS_REGULAR_EXPRESSION
@@ -323,8 +327,9 @@ add_test(NAME check_sill COMMAND check_sill)
 add_test(NAME check_seam COMMAND check_seam)
 add_test(NAME check_pole COMMAND check_pole)
 add_test(NAME check_huge COMMAND check_huge)
+add_test(NAME check_masked COMMAND check_masked)
 set_tests_properties(check_wild check_brink check_rift check_sill check_seam check_pole
-                     check_huge PROPERTIES WILL_FAIL ON)
+                     check_huge check_masked PROPERTIES WILL_FAIL ON)
 
 # A float target (DESIGN.md): pid and adc's headers as compile/expected/float
 # has them, and compile/float.ink's checks, each built so that an operation done

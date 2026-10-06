@@ -84,6 +84,30 @@ public:
             data += Array("const " + CompileC::Real(), "in_" + std::to_string(k),
                           steps * compiled.cells[k], values);
         }
+        // A term of an instance the model writes unnamed is asked of one made
+        // again where the instance checked has it, as written (C84): the
+        // interpreter cannot name it.
+        std::map<std::string, std::shared_ptr<const Scope<Value>>> made;
+        for (const auto& [label, kept] : compiled.unnamed) {
+            const Scope<Value>* written = stack.InstanceScope(definition);
+            for (std::size_t at = 0, point; (point = label.find('.', at)) != std::string::npos;
+                 at             = point + 1) {
+                const auto outer = made.find(label.substr(0, point));
+                written =
+                    outer != made.end()
+                        ? outer->second.get()
+                        : stack.InstanceScope(written->names.at(label.substr(at, point - at)));
+            }
+            made[label] = stack.Detached(*kept.model, *kept.call, *written, instance + "." + label,
+                                         kept.captured);
+        }
+        const auto ask = [&](const CompileC::Compiled::Sequence& sequence, int index) {
+            if (!sequence.unnamed) return At(session, instance + "." + sequence.name, index);
+            const std::size_t                            dot = sequence.name.rfind('.');
+            const typename ReferenceStack<Value>::Within within(
+                stack, made.at(sequence.name.substr(0, dot)).get());
+            return At(session, sequence.name.substr(dot + 1), index);
+        };
         // The interpreter's own error, estimated (DESIGN.md): each term asked
         // three times more, apart, every rounding disturbed and every limit
         // moved by its remainder, up, down, then either way.
@@ -94,14 +118,11 @@ public:
                 const Setting<Number::Disturbance*> disturbing(Number::disturbed, &disturbance);
                 for (const auto& sequence : compiled.sequences) {
                     for (int n = first; n < first + steps; ++n) {
-                        if (sequence.unnamed || (n < sequence.start && sequence.period > 1))
-                            continue;
-                        const std::string name  = instance + "." + sequence.name;
-                        const int         index = Floor(n - sequence.phase, sequence.period);
-                        const auto result = session.Eval(name + "_(" + std::to_string(index) + ")");
-                        const auto* value = std::get_if<Value>(&result);
-                        again[{name, index}].push_back(value ? std::optional(*value)
-                                                             : std::nullopt);
+                        if (n < sequence.start && sequence.period > 1) continue;
+                        const int  index = Floor(n - sequence.phase, sequence.period);
+                        const Term term  = ask(sequence, index);
+                        again[{instance + "." + sequence.name, index}].push_back(
+                            term.error.empty() ? std::optional(term.value) : std::nullopt);
                     }
                 }
             });
@@ -111,13 +132,6 @@ public:
             const auto&              sequence = compiled.sequences[k];
             const std::size_t        cells    = sequence.rows * sequence.cols;
             const std::string        id = std::to_string(k), size = std::to_string(steps * cells);
-            // A term a model writes unnamed is not asked: the interpreter
-            // cannot name it (C84).
-            if (sequence.unnamed) {
-                held += "    printf(\"" + instance + "." + sequence.name +
-                        ": not asked, as the interpreter cannot name it\\n\");\n";
-                continue;
-            }
             std::vector<std::string> want, known, why;
             std::vector<double>      about(steps * cells);
             for (int n = first; n < first + steps; ++n) {
@@ -128,7 +142,7 @@ public:
                 const int         index  = Floor(n - sequence.phase, sequence.period);
                 const Term        term   = before && sequence.period > 1
                                                ? Term{{}, true, "not asked", {}, {}, {}}
-                                               : At(session, name, index);
+                                               : ask(sequence, index);
                 if (!term.exact && (!inexact || n < *inexact)) inexact = n;
                 const bool given = term.error.empty();
                 const char kind  = !given              ? (before ? '0' : '2')

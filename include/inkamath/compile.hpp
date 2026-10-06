@@ -53,6 +53,14 @@ public:
         std::vector<std::size_t> cells;      // and how many cells each has
         std::vector<Sequence>    sequences;  // those it computes, in the order it does
         std::vector<std::string> guarded;    // those whose clause is kept, 'v_clause_'
+        // Each instance the model writes unnamed, by its label, for the check
+        // to make again where the instance checked is (C84).
+        struct Unnamed {
+            const Reference<Value>*                    model;
+            const ParametersCall<Value>*               call;
+            std::vector<std::pair<std::string, Value>> captured;
+        };
+        std::map<std::string, Unnamed> unnamed;
     };
 
     // '--float' (DESIGN.md, a float target): a float wherever a double is.
@@ -445,6 +453,7 @@ private:
             std::string label = within_ + "_" + model.Name() + values;
             for (int other = 2; !labels_.insert(label).second; ++other)
                 label = within_ + "_" + model.Name() + std::to_string(other) + values;
+            unnamed_[label] = {&model, &call, captured};
             held_.push_back(definitions_.Detached(model, call, *scope_, label, captured));
             kept = held_.back().get();
             Define(*kept);
@@ -3603,7 +3612,7 @@ private:
                     else
                         out.insert(at + from.size() - (from.back() == '(' ? 1 : 0), "f");
                 }
-        Compiled compiled{out, earliest, inputs, {}, {}, {}};
+        Compiled compiled{out, earliest, inputs, {}, {}, {}, unnamed_};
         for (const std::string& name : inputs) compiled.cells.push_back(Cells(name));
         for (const std::string& name : order) {
             const Sequence& sequence = sequences_.at(name);
@@ -3631,6 +3640,7 @@ private:
     // Unnamed instances, by where they are written and what they read there.
     std::map<std::pair<const void*, std::string>, const Scope<Value>*> kept_;
     std::set<std::string>                                              labels_;
+    std::map<std::string, Compiled::Unnamed>                           unnamed_;
     std::map<std::string, Sequence>  sequences_;
     std::map<std::string, Parameter> parameters_;
     std::vector<Derived>             derived_;  // each after those it reads
