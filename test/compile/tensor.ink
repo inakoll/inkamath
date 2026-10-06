@@ -226,6 +226,18 @@ sgd(eta = 1/2, X_n[b<=2, t<=2, c<=2], Y_n[b<=2, t<=2, k<=1]) = {
 }
 batch = sgd(X_n = [1 (-1)^n; 1 -(-1)^n;; 1 1; 1 -1], Y_n = [n; 1;; n; 2])
 
+# C123: 'speck', a tensor of a single cell, keeps its three dimensions in the
+# struct, and its window and its input are moved as an array's are. y_0 = 2
+# and y_n = (n - 1) - y_(n-1), whole numbers, so
+#
+#     speck: 100 steps from 0, against exact values
+#     speck.y: within 0
+one(X_n[b<=1, t<=1, c<=1]) = {
+    y_0 = [2;;]
+    y_n = X_(n-1) - y_(n-1)
+}
+speck = one(X_n = [n;;])
+
 # What 'inkamath --compile' refuses of a file of its own, in the interpreter's
 # words where it has them: two indices of a tensor, a tensor's power, tensors
 # of different numbers of slices, a literal whose slices differ; in the

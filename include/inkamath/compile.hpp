@@ -3913,7 +3913,7 @@ private:
             for (int k = sequence.depth - 1; k > 0; --k) {
                 const std::string to   = "m_->" + name + "[" + std::to_string(k) + "]";
                 const std::string from = "m_->" + name + "[" + std::to_string(k - 1) + "]";
-                lines += sequence.size.count() == 1
+                lines += Dimensions(sequence.size).empty()
                              ? indent + to + " = " + from + ";\n"
                              : indent + "memcpy(" + to + ", " + from + ", sizeof " + to + ");\n";
             }
@@ -3922,9 +3922,11 @@ private:
         for (const std::string& name : fields)
             if (sequences_.at(name).period == 1) out += shifted(name, "    ");
         for (const std::string& name : inputs)
-            out += Cells(name) == 1 ? "    m_->" + name + "[0] = " + name + ";\n"
-                                    : "    memcpy(m_->" + name + "[0], " + name + ", sizeof m_->" +
-                                          name + "[0]);\n";
+            out += Cells(name) == 1
+                       ? "    m_->" + name + "[0]" + Subscript(sequences_.at(name).size, 0) +
+                             " = " + name + ";\n"
+                       : "    memcpy(m_->" + name + "[0], " + name + ", sizeof m_->" + name +
+                             "[0]);\n";
         for (const std::string& name : order) {
             const Sequence&   sequence = sequences_.at(name);
             const bool        scalar   = sequence.general.size() == 1;

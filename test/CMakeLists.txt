@@ -116,7 +116,8 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brin
                          estimate:steep estimate:giant elementary:els
                          grad:line grad:fall grad:hinge grad:edge grad:clip grad:steer grad:saw
                          grad:ring grad:notch grad:apart grad:smooth grad:cusp
-                         tensor:heads tensor:whirl tensor:batch tensor:spread)
+                         tensor:heads tensor:whirl tensor:batch tensor:spread
+                         tensor:speck)
     string(REPLACE ":" ";" checked ${checked})
     list(GET checked 0 file)
     list(GET checked 1 instance)
@@ -206,6 +207,8 @@ set_tests_properties(check_whirl_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^whirl: 100 steps from 0, against exact values\nwhirl\\.d: within 0\nwhirl\\.s: within 0\nwhirl\\.c: within 0\nwhirl\\.e: within 0, from 1\nwhirl\\.g: within 0\nwhirl\\.h: within 0, from 1\nwhirl\\.k: within 0\nwhirl\\.l: within 0\nwhirl\\.p: within 0\nwhirl\\.q: within 0\nwhirl\\.u: within 0, from 1\n$")
 set_tests_properties(check_batch_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^batch: 100 steps from 0, against exact values\nbatch\\.w: within 0\n$")
+set_tests_properties(check_speck_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^speck: 100 steps from 0, against exact values\nspeck\\.y: within 0\n$")
 set_tests_properties(check_spread_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^spread: 100 steps from 0, against exact values\nspread\\.d\\[2,1,2\\]: [0-9.e+-]+ at 9, where the interpreter gives 0\\.10000000000000001\n$")
 add_test(NAME check_spread COMMAND check_spread)
