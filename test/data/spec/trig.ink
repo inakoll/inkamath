@@ -192,8 +192,9 @@ digits = 17
 ~6.123233995736766e-17
 
 # The doubles nearest a multiple of pi/2, where the reduction cancels most:
-# below 2^20 the nearest is 45.553093477052, 6.2e-19 from 29 pi/2, then
-# 91.106186954104, 1.2e-18 from 29 pi; and two past 2^18. Each is mpmath's.
+# below 2^20 the nearest in absolute terms is 45.553093477052, 6.2e-19 from
+# 29 pi/2, then 91.106186954104, 1.2e-18 from 29 pi; and two past 2^18,
+# where 73 bits cancel, the most. Each is mpmath's.
 >> cos(~45.553093477052)
 ~-6.1898063658835771e-19
 

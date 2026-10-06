@@ -4764,8 +4764,9 @@ that exploring seven domains asked of the interpreter, by how many asked.
   2^20, the first two in a float for |k| < 2^12, and each subtraction is
   exact where it cancels, its operands within a factor of two (Sterbenz),
   so r is right to a unit or so however small: below 2^20 the double nearest
-  a multiple of pi/2, 45.553093477052, is 6.2e-19 from 29 pi/2, 66 bits
-  cancelled. The quadrant j = k + c mod 4 picks sin r, cos r or their
+  a multiple of pi/2 in absolute terms, 45.553093477052, is 6.2e-19 from 29
+  pi/2, 66 bits cancelled, and the most cancelled are 73 bits, at
+  321307.96. The quadrant j = k + c mod 4 picks sin r, cos r or their
   negatives, c being 1 for `cos`: x + pi/2 would round. sin r is Taylor's to
   r^17 and cos r to r^18 in Horner's form, remainders below 2^-62 and 2^-67
   on |r| <= pi/4, their coefficients reciprocals of whole numbers as `exp`'s
@@ -4794,7 +4795,7 @@ that exploring seven domains asked of the interpreter, by how many asked.
   | on [-1000, 1000] | 2.34 and 2.29 units | 72.7% |
   | on [-2^20, 2^20] | 2.43 and 2.37 units | 70.3% |
   | the 12 doubles nearest a multiple of pi/2 below 2^20 | 0.35 units | all |
-  | 20,000 exact arguments to 10^6 | 1.43 and 1.39 units | 74.5% |
+  | a sample of 20,000 exact arguments to 10^6 | 1.43 and 1.39 units | 74.5% |
   | in float, on [-6434, 6434] | 2.44 and 2.29 units of a float | 70.7% and 70.6% |
 
   The float figures are the design emulated with floats operation by
