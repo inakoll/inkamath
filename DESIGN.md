@@ -4816,5 +4816,5 @@ that exploring seven domains asked of the interpreter, by how many asked.
   recorded refusals become headers: `compile_tensor_refused`, whose file
   joins the refusals', and `inputs_batch`, with its line in `inputs.ink`'s
   comment. Wired with the implementation; README's paragraph on the compiler
-  gains a sentence, and `attention.ink`'s comment loses "the compiler
-  refuses for now".
+  gains a sentence, `attention.ink`'s comment loses "the compiler
+  refuses for now", and `test/data/inputs.ink`'s "Compiled, it is refused".
