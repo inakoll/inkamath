@@ -148,6 +148,14 @@ slow = filters.lowpass(a = 1/4, u_n = fast.v_n)
 >> frac slow.v_3
 55/128
 
+# A limit is taken of a sequence read qualified, through an instance, a model
+# applied or a file (C141).
+>> lim slow.v
+~1
+
+>> lim filters.highpass(a = 1/2, u_n = 1).low.v
+~1
+
 >> a0 = 5
 a0 = 5
 

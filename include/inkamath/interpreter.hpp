@@ -1158,13 +1158,24 @@ PExpression<U> Interpreter<T,U>::ParseLimit()
     if (Peek().type != Func || IsSeries(Peek())) {
         Fail("expected a sequence name after 'lim', not '", Peek().text, "'");
     }
-    PExpression<U> ref(new RefExpression<U>(m_tokens[m_i++].text));
-    PExpression<U> param = ParseParameters();
-    if (ParseSubExpr())
-    {
-        Fail("'lim' takes a sequence, not one of its terms");
+    // 'lim g.y', 'lim m().y', 'lim filters.g.y': the last name is the
+    // sequence, and those before it name where it is, as ParseMembers reads.
+    PExpression<U> object;
+    for (;;) {
+        PExpression<U> ref(new RefExpression<U>(m_tokens[m_i++].text));
+        PExpression<U> param = ParseParameters();
+        if (ParseSubExpr()) Fail("'lim' takes a sequence, not one of its terms");
+        if (AtEnd() || Peek().type != Dot) {
+            const auto limit = std::make_shared<FuncExpression<U>>(ref, param, nullptr, true);
+            if (!object) return limit;
+            return std::make_shared<MemberExpression<U>>(object, limit);
+        }
+        ++m_i;
+        if (AtEnd() || Peek().type != Func) Fail("expected a name after '.'");
+        PExpression<U> part = ref;
+        if (param) part = std::make_shared<FuncExpression<U>>(ref, param, nullptr);
+        object = object ? std::make_shared<MemberExpression<U>>(object, part) : part;
     }
-    return PExpression<U>(new FuncExpression<U>(ref, param, PExpression<U>(), true));
 }
 
 // 'sum_(k=1)^n body', as it is written on paper. The body is a term: it runs to
