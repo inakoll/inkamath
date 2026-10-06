@@ -78,6 +78,22 @@ target_link_libraries(compile_powers PRIVATE inkamath_warnings
 set_target_properties(compile_powers PROPERTIES C_STANDARD 11 C_STANDARD_REQUIRED ON C_EXTENSIONS OFF)
 add_test(NAME compile_powers COMMAND compile_powers)
 
+# The prelude's functions the interpreter calls on a double (DESIGN.md),
+# checked in so that building the interpreter needs no interpreter; recorded
+# as the goldens are, and its diff read.
+set(prelude ${PROJECT_SOURCE_DIR}/include/inkamath/inkamath_prelude)
+set(prelude_written ${CMAKE_CURRENT_BINARY_DIR}/prelude/inkamath_prelude.h)
+add_custom_target(record_prelude
+    COMMAND inkamath_cli --compile ${prelude}.ink -o ${prelude}.h
+    DEPENDS inkamath_cli VERBATIM)
+add_custom_command(OUTPUT ${prelude_written}
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/prelude
+    COMMAND inkamath_cli --compile ${prelude}.ink -o ${prelude_written}
+    DEPENDS inkamath_cli ${prelude}.ink VERBATIM)
+add_custom_target(prelude_header_written ALL DEPENDS ${prelude_written})
+add_test(NAME prelude_header
+         COMMAND ${CMAKE_COMMAND} -E compare_files --ignore-eol ${prelude}.h ${prelude_written})
+
 # The oracle: an instance compiled, and each of its terms held to the
 # interpreter's exact one by the program 'inkamath --check' writes. 'wild'
 # drifts from it, and its program says where and exits with a failure.
