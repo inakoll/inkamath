@@ -224,9 +224,13 @@ digits = 17
 >> sin(1/10^9)
 ~1.0000000000000001e-09
 
-# Odd to the bit: -x is reduced as x is.
+# Odd to the bit: -x is reduced as x is, but where x*2/pi + 1/2 is whole,
+# as at the double nearest 3 pi/4, and floor takes k one way on each side.
 >> sin(~(-2.5)) + sin(~2.5)
 0
+
+>> sin(~2.356194490192345) + sin(~(-2.356194490192345))
+~-1.1102230246251565e-16
 
 # A 0 has the definition's sign: sin's subtraction from 0 makes sin(-0) +0,
 # where C's is -0; abs answers its argument, so abs(-0) is -0, where C's

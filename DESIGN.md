@@ -4865,7 +4865,7 @@ that exploring seven domains asked of the interpreter, by how many asked.
   About 32 lines of sources: 22 in the prelude and 6 of its comment, 4 in
   the interpreter's fast path. 14,318 lines in all now, about 14,350 after.
 
-  Specified in `test/data/spec/trig.ink`, 105 entries, 93 failing: values at
+  Specified in `test/data/spec/trig.ink`, 104 entries, 94 failing: values at
   nine digits, mpmath's, and at seventeen, of the design emulated in C and
   in Python with exact fractions, apart from the interpreter, at hard
   arguments; exactness, refusals, `grad` and its ties, the fast path's steps
