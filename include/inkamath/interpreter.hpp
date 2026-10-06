@@ -302,10 +302,13 @@ Interpreter<T, U>::Interpreter() {
             {names.at("log").get(), inkamath_prelude_log},
             {names.at("ilogb").get(), inkamath_prelude_ilogb},
         }};
-        stack_.compiled = [functions](const Reference<U>& f, const U& x) -> std::optional<U> {
+        stack_.compiled = [this, functions](const Reference<U>& f, const U& x) -> std::optional<U> {
             const auto found = std::find_if(functions.begin(), functions.end(),
                                             [&](const auto& each) { return each.first == &f; });
-            if (found == functions.end() || !x.IsScalar() || Number::disturbed) return {};
+            // Every run of --check walks: the one its guards listen to, and
+            // the disturbed ones.
+            if (found == functions.end() || !x.IsScalar() || stack_.guards || Number::disturbed)
+                return {};
             const auto    at = found - functions.begin();  // log and ilogb from 2
             const Number& a  = x(1, 1);
             const auto    z  = a.Inexact();
