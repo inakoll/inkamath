@@ -149,6 +149,12 @@ public:
                                                : ask(sequence, index);
                 if (!term.exact && (!inexact || n < *inexact)) inexact = n;
                 const bool given = term.error.empty();
+                // Another shape than the step's is the compiler's mistake (C137).
+                if (given && term.value.Size() != sequence.size)
+                    throw std::runtime_error(name + "_(" + std::to_string(index) + ") is a " +
+                                             term.value.Size().Described() +
+                                             ", where the compiled step's is a " +
+                                             sequence.size.Described());
                 double*    at    = &about[static_cast<std::size_t>(n - first) * cells];
                 if (given)
                     for (const auto& run : again[{name, index}]) Farther(term.value, run, at);

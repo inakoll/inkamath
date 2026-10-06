@@ -179,6 +179,20 @@ og(x)[2] | x > 1 = x^3
 [1;
  2]
 
+# A size is measured by value: a clause read only for its shape, where its
+# comparison jumps, does not refuse the cells another clause gives (C134).
+>> jg(z)[i] = (z[i] > 0)*z[i]
+jg(z)[i] = (z[i] > 0)*z[i]
+
+>> jf(z)[i] | z[i] > 100 = jg(z)[i]
+jf(z)[i] | z[i] > 100 = jg(z)[i]
+
+>> jf(z)[i] = 2*z[i]
+jf(z)[i] = 2*z[i]
+
+>> grad_(t = 0) [1 1]*jf([t; 1])
+2
+
 # A size may come from a parameter, or read the name where it does not move.
 # A size is a whole number, so one that moves is at a jump.
 >> pw(x, n)[j<=n] = x^j

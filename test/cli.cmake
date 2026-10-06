@@ -427,6 +427,12 @@ set(args --check deep.ink v -o deep.c)
 set(stderr "inkamath: v.X_(0) has 4 cells, where the compiled step takes a single value, as mt states no size for X: write 'X_n[b<=2, j<=2, k<=1]'\n")
 set(exit 1)
 check(check_tensor_input)
+# A term of another shape than the step's is said to be, not read past (C137).
+file(WRITE "${OUT}/c137.ink" "mm(x_n) = {\n    h(z) = 3\n    h(z) | z > 2 = [1; 2]\n    y_n = h(x_n)\n}\nm = mm(x_n = n)\n")
+set(args --check c137.ink m -o c137.c)
+set(stderr "inkamath: m.y_(0) is a 1x1 matrix, where the compiled step's is a 2x1 matrix\n")
+set(exit 1)
+check(check_c137)
 file(WRITE "${OUT}/celled.ink" "cl(x_n) = {\n    y_n = x_n[2]\n}\ncm(u_m) = {\n    z_m = u_(m-1)[2, 3]\n}\n"
      "ct(X_n) = {\n    t_n = X_n[1, 2, 1]\n}\n")
 set(args --compile celled.ink cl -o cl.h)
@@ -894,12 +900,34 @@ set(args --compile c133s.ink -o c133s.h)
 check(compile_c133s)
 holds(compile_c133s c133s.h "    m_->w[0] = (isnan(t0_) ? NAN : isnan((isnan(m_->x[0]) ? NAN : m_->x[0] == 2.0 ? NAN : m_->x[0] > 2.0 ? 1.0 : 0.0) * m_->x[0]) ? NAN : (isnan(m_->x[0]) ? NAN : m_->x[0] == 2.0 ? NAN : m_->x[0] > 2.0 ? 1.0 : 0.0) * m_->x[0] > -1.0 ? 1.0 : 0.0);\n")
 
-# C115: a constant gradient at a point that moves is no constant to fold with
-# what reads it, a fold that would take the point again.
+# C135: a constant is folded from its operands', which a call reading what
+# moves may give.
+file(WRITE "${OUT}/c135.ink" "h(z) = 3\nf(M) = h(M) + 1\nb_n = h(x_n) + 1\nc_n = grad_(t = x_n) (h(t) + 1)*t\nd_n = f([x_n; 1])\n")
+set(args --compile c135.ink -o c135.h)
+check(compile_c135)
+holds(compile_c135 c135.h "    m_->b[0] = 4.0;\n" "    m_->c[0] = 4.0;\n" "    m_->d[0] = 4.0;\n")
+
+# C136: the interpreter refuses a matrix written whole before a cell's own
+# clause, so a cell it refuses makes every cell NaN, by value and under grad.
+file(WRITE "${OUT}/c136.ink" "k1(z) | z[1,1] > 0 = z\nk2(z) = k1(z)\nk2(z)[1,1] = 2\nw_n = k2([x_n])\n")
+set(args --compile c136.ink -o c136.h)
+check(compile_c136)
+holds(compile_c136 c136.h "    m_->w[0] = (isnan(t0_) ? NAN : 2.0);\n")
+file(WRITE "${OUT}/c136t.ink" "k1(z) | z[1,1] > 0 = z\ny_n = k1([x_n])\ny_n[1,1] = 2\n")
+set(args --compile c136t.ink -o c136t.h)
+check(compile_c136_term)
+holds(compile_c136_term c136t.h "    m_->y[0] = (isnan(t0_) ? NAN : 2.0);\n")
+file(WRITE "${OUT}/c136g.ink" "f1(z)[i,j] = z[i,j]\nf1(z)[1,1] | ((z[1,1])^2)^(1/2) >= 5 = 7\nf2(z) = f1(z)\nf2(z)[1,1] = 2\nu_n = grad_(t = x_n) f2([t])\n")
+set(args --compile c136g.ink -o c136g.h)
+check(compile_c136g)
+holds(compile_c136g c136g.h "    const double t1_ = (isnan(t0_) ? NAN : 2.0);\n    m_->u[0] = (isnan(t1_) ? NAN : 0.0);\n")
+
+# C115: a constant gradient at a point that moves folds with what reads it
+# from its value, not by taking the point again (C135).
 file(WRITE "${OUT}/c115.ink" "u_n = x_n - grad_(t = x_n) 3*t\n")
 set(args --compile c115.ink -o c115.h)
 check(compile_c115)
-holds(compile_c115 c115.h "    m_->u[0] = m_->x[0] + (0.0 - 3.0);\n")
+holds(compile_c115 c115.h "    m_->u[0] = m_->x[0] - 3.0;\n")
 
 # C112: a global a call reads sees the globals, not the call's names.
 file(WRITE "${OUT}/c112.ink" "f(x) = x + g\ng = x*2\nx = 5\ny_n = f(n)\n")
