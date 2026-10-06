@@ -308,6 +308,14 @@ set(stderr "")
 set(exit 1)
 check(compile_base_reads_refused)
 
+# C122: a cell of one term outside its size is refused in the interpreter's
+# words, where the compiler wrote past the term's cells.
+file(WRITE "${OUT}/c122.ink" "y_n[j<=2] = n\ny_1[3] = 5\n")
+set(args --compile c122.ink)
+set(stdout "cannot compile y: row 3, column 1 is outside a 2x1 matrix\n")
+set(exit 1)
+check(compile_c122)
+
 # What tensors compiled refuses (DESIGN.md, test/compile/tensor.ink), in the
 # interpreter's words where it has them; y and P compile.
 file(WRITE "${OUT}/tensor.ink" "T = [1 2; 3 4;; 5 6; 7 8]\nU = [1 2; 3 4;; 5 6; 7 8;; 9 10; 11 12]\n"

@@ -2046,6 +2046,7 @@ private:
                 if (p.guarded()) throw Reason("a guarded cell of one term");
                 const Code value = Emit(clause.expression);
                 if (!value.Scalar()) throw Reason("a cell of " + name + " must be a single value");
+                Reasoned([&] { (void)Value(shape.size)(p.slice(), p.row(), p.col()); });
                 std::string& cell =
                     cells[(static_cast<std::size_t>(p.slice() - 1) * shape.size.rows +
                            static_cast<std::size_t>(p.row() - 1)) *
