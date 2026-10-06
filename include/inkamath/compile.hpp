@@ -17,6 +17,7 @@
 #include <set>
 #include <stdexcept>
 #include <string>
+#include <tuple>
 #include <utility>
 #include <vector>
 
@@ -447,7 +448,7 @@ private:
             captured.emplace_back(name, place->second);
             values += "_" + std::to_string(numeric_interface<Value>::toInt(place->second));
         }
-        const Scope<Value>*& kept = kept_[{member.get(), values}];
+        const Scope<Value>*& kept = kept_[{scope_, member.get(), values}];
         if (!kept) {
             // Two written in one sequence are told apart by a number.
             std::string label = within_ + "_" + model.Name() + values;
@@ -3637,8 +3638,9 @@ private:
     int                              expanded_  = 0;        // how deep calls are
     std::vector<std::shared_ptr<const Scope<Value>>> held_;    // what expansions name
     std::string                                      within_;  // the sequence being compiled
-    // Unnamed instances, by where they are written and what they read there.
-    std::map<std::pair<const void*, std::string>, const Scope<Value>*> kept_;
+    // Unnamed instances, by the scope that writes them, where it does and
+    // what they read there.
+    std::map<std::tuple<const Scope<Value>*, const void*, std::string>, const Scope<Value>*> kept_;
     std::set<std::string>                                              labels_;
     std::map<std::string, Compiled::Unnamed>                           unnamed_;
     std::map<std::string, Sequence>  sequences_;

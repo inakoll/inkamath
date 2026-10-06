@@ -64,6 +64,19 @@
 #     cloaked.<name>: within 0, for each of inner.c_bare.c, inner.c, d,
 #     inner.x and inner.c_bare.u
 #
+# and where two instances the model names write it, each its own, where one
+# was kept for both and two.b.c read two.a.c_bare.c (DESIGN.md, C107):
+#
+#     two: 100 steps from 0, against exact values
+#     two.<name>: within 0, for each of a.c_bare.c, a.c, a.x, a.c_bare.u,
+#     b.c_bare.c, b.c, b.x, b.c_bare.u and d
+#
+# A guarded clause of it is checked as a named instance's, where the check
+# sought its clauses where the instance checked has none (DESIGN.md, C108):
+#
+#     hid: 100 steps from 0, against exact values
+#     hid.<name>: within 0, for each of c_capped.u, c_capped.c and c
+#
 # So its terms are compared: 'masked' multiplies a tenth by ten at each step,
 # unnamed, and parts at 9 as 'wild' does.
 #
@@ -240,6 +253,22 @@ cloak(y_n) = {
     d_n = inner.c_n
 }
 cloaked = cloak(y_n = n)
+
+cloaks(y_n) = {
+    a = veil(x_n = y_n)
+    b = veil(x_n = 2*y_n)
+    d_n = a.c_n + b.c_n
+}
+two = cloaks(y_n = n)
+
+capped(u_n) = {
+    c_n | u_n > 2 = 2
+    c_n = u_n
+}
+cap(x_n) = {
+    c_n = capped(u_n = x_n).c_n
+}
+hid = cap(x_n = n)
 
 tenth(c = 1) = {
     d_0 = c
