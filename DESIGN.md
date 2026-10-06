@@ -4647,7 +4647,9 @@ that exploring seven domains asked of the interpreter, by how many asked.
   part wherever its argument has, so a `floor`, a comparison or an `==`
   guard reading it tests a jump the interpreter, seeing no part, does not:
   `grad_(t = x) floor(tanh(t))*t` is NaN past 20, where the interpreter
-  answers 1.
+  answers 1. And a division by zero is an infinity, as anywhere in the
+  header, which only the value carries: grad keeps the part, so
+  `grad_(t = x) (t + 1/(x - 2))` is 1 at 2, where the interpreter refuses.
 
   Rejected: dual numbers in the header, a struct of value and part and a
   function per operation, which is a second arithmetic to read beside the
