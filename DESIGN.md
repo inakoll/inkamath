@@ -4838,14 +4838,15 @@ that exploring seven domains asked of the interpreter, by how many asked.
   is the argument chosen, exact or not: `max(1/3, 1/4)` is exactly 1/3.
 
   `grad` differentiates the definitions: the polynomials' derivatives,
-  within 1.54 units of cos and 1.29 of -sin on 2,000 points, and floor's 0,
-  so a few doubles where x*2/pi + 1/2 is whole are refused as floor jumping,
-  as in `exp`. `abs`'s slope at 0 is 1, its `x >= 0` clause's. At a tie
-  `max` and `min` take the first argument's slope, as TensorFlow's maximum
-  and minimum: `max(0, x)` has a ReLU's slope 0 at 0, as PyTorch's, and
-  `max(x, 0)` slope 1. Rejected: refusing the tie as a jump, where `max` is
-  continuous, which stops training at a bias set to 0; half of each slope,
-  as JAX takes it, a clause at the tie alone, which `grad` refuses.
+  within 2.04 units of cos and 1.62 of -sin at worst on a sample of 2,000
+  points, and floor's 0, so a few doubles where x*2/pi + 1/2 is whole are
+  refused as floor jumping, as in `exp`. `abs`'s slope at 0 is 1, its `x >=
+  0` clause's. At a tie `max` and `min` take the first argument's slope, as
+  TensorFlow's maximum and minimum: `max(0, x)` has a ReLU's slope 0 at 0,
+  as PyTorch's, and `max(x, 0)` slope 1. Rejected: refusing the tie as a
+  jump, where `max` is continuous, which stops training at a bias set to 0;
+  half of each slope, as JAX takes it, a clause at the tie alone, which
+  `grad` refuses.
 
   Compiled where called as `exp` is, with no change to the compiler: on a
   prototype, `<header>_sin(double arg_x)`, `_cos`, `_abs`, `_max` and `_min`
