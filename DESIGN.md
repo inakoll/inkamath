@@ -4728,9 +4728,91 @@ that exploring seven domains asked of the interpreter, by how many asked.
   review, C113 to C118, fixed, and C111 with C117. 387 lines of sources
   more, where about 350 were planned: 381 in `compile.hpp` and 6 in
   `derivative.hpp`. 14,307 lines in all.
-- **Guards on cells at run time.** A definition by cells whose guard reads
-  what is not a constant, a ReLU written by its cells, is refused; compiled,
-  each cell a chain, it would carry `grad`'s parts through cells too.
+- **Guards on cells at run time.** `--compile` decides the guards of a
+  matrix or a function by cells while compiling, and refuses one that reads
+  a value that moves, "a guard on cells that is not a constant": a ReLU
+  written by its cells, `relu(z)[i] | z[i] > 0 = z[i]`, applied in a step.
+  Under `grad` it refuses every definition by cells, guarded or not, "a
+  derivative through a definition by cells, for now", so a network trained
+  by `grad` through its activations has no step. A term by cells already
+  tests its guards at run time (*A sequence's terms cell by cell*).
+
+  Decided: the value and the parts, as the interpreter's `grad` gives both
+  (*`grad` of a definition by cells*). Each cell is the chain the interpreter
+  tries: the clauses for that cell in the order written, then those for
+  every cell, guarded before unguarded, then the cell of the matrix written
+  whole, else 0, never NaN, a cell no clause gives being 0. It is the chain
+  `Chain` makes of a function's clauses, built per cell with the cell's
+  places bound as constants, so a guard reading only places folds as now.
+  Under `grad` a cell's chain carries its chain of parts as a function's
+  does: the clause's part, 0 where the clause taken has none, and the
+  definition has a part where any cell's clause has one, as
+  `derivative.hpp` stores it, so where none does at the point nothing
+  reading it tests a jump. An equality guarding a cell
+  whose sides move is NaN where they meet, where the interpreter says
+  `pk[1,1] takes a clause at t = 0 that holds only there`, and `z*(z > 0)`
+  where its comparison jumps, as anywhere. A guard that reads a parameter is
+  a test too, where today it folds the parameter's value in and the header
+  says it is "compiled in, as a size, a bound or a lag", which a guard is
+  not: the parameter is a field and the definition is computed where the
+  parameters are, as any value reading them. No recorded header moves:
+  `heat.h`'s are the only guards on cells, and read places only.
+
+  `--check` needs nothing new. Its record of each cell's clause, and the
+  flip it reports, follow the clauses of a sequence's terms; a definition by
+  cells compiled where it is called or read parts only by its values, as a
+  guarded function does. Following it was rejected: its guards are asked
+  once per call, `fit`'s ReLU three times in each pass of its loss, and the
+  interpreter's memo asks a repeated call once, so the record would need a
+  key per call that neither side has. A ReLU to be watched at its threshold
+  is a term by cells, as `rift` is. Nor
+  is anything new in a NaN-aware header: a cell's guard tests its operands
+  as any guard does there, and a chain writes no NaN that its clauses do
+  not, so a ReLU by cells leaves a header unaware. In float the chains are
+  floats as everything is.
+
+  The tensors compiled on branch `ctensor` refuse "a tensor's cells under a
+  guard that is not a constant" for a term, whose clause `--check` keeps by
+  row and column; that refusal stays, being about the record. A tensor's
+  function by cells, a batch's ReLU, is the chain here with the slice a
+  place, and whichever of the two lands second carries the slice and a case
+  of it.
+
+  Stays refused: a guarded clause for one cell of one term, `c_2[1] | x_2 >
+  0 = 5`, "a guarded cell of one term", a term whose clause `--check` would
+  have to keep and which no model asks; a Jacobian, now reached through
+  cells and refused in the interpreter's words; and a place or a size that
+  moves, as now. Rejected: the value alone, `grad` through cells refused
+  for now, when training through the activation is the case and `Chain`
+  already carries the parts; a loop over the cells with an `if` per cell,
+  where the step is expressions and the cells are known while compiling;
+  and the ReLU rewritten as a function of single values called per cell,
+  which leaves the definition by cells refused under `grad`.
+
+  About 30 lines of sources: `CellOf` building a chain with `Condition` in
+  place of `GuardHolds`, the fallback passed in, about 15; `Cells` assembling
+  the cells' parts and where they are, about 15; the refusal and
+  `GuardHolds` 4 fewer. `TermCells` walks a term cell's clauses the same way
+  over strings; sharing the walk is looked for, landed first as a refactor,
+  every header byte for byte, where it removes lines. Sized against
+  `Chain`'s parts in `grad` compiled, about 25 lines and reused whole, and
+  sizes inferred's compiler half, 20. Past 45 the implementation stops and
+  reports. 14,355 lines in all before it, at cfb0abb; about 14,385 after.
+
+  Specified in `test/compile/cellguards.ink`, its numbers worked out with
+  exact fractions in Python and by hand, then seen to be the interpreter's:
+  `fit`, a ReLU network trained by `grad`, a unit reviving at the first step
+  and the samples fitted at the second, exact and within 0 in double and in
+  float; `layer`, `net.ink`'s network with `h_n = relu(z_n)`, computing h
+  by `net.h`'s two lines; `kink`, each cell's slope either side of its
+  threshold and NaN where the interpreter refuses; `crest`, `rift` by a
+  function, parting by its values alone; `mask`, a parameter read by a cell
+  guard become a field; and two refusals. Wired with the implementation:
+  the checks and their reports in `test/CMakeLists.txt`, `fit` in float,
+  `crest` failing, `layer`'s lines and the refusals in `test/cli.cmake`. One
+  recorded refusal moves: `q` in `grad.ink`, `grad_(t = x_n) cel(t)[2]`,
+  compiles, 2 at every step, and leaves `compile_grad_refused`; README's
+  sentence on `grad` compiled gains the network.
 - **The prelude's part functions for the interpreter's `grad`.** Checked
   into `inkamath_prelude.h` beside the values, they would spare its walk of
   `exp`, `log` and `tanh` under `grad`, about 2.6 times faster.
