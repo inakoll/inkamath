@@ -105,8 +105,8 @@ error: a comparison needs real numbers, not 1+i
 digits = 9
 
 # A compiled call is one step and one reference deep. Walked under grad exp
-# is 4 steps, tanh 6, sin and cos 7 and log 19, so this softplus ran out of
-# its million.
+# is 4 steps, tanh 6, sin and cos 7 and log 19 (6 since C139), so this
+# softplus ran out of its million.
 >> grad_(t = ~1) sum_(k=1)^50000 log(1 + exp(-t*k/50000))
 ~-8528.00195
 
@@ -177,6 +177,18 @@ dive(k, t) | k < 1 = grad_(s = ~2) exp(s*t)
 
 >> grad_(t = ~1) dive(254, t)
 error: evaluation nests more than 256 references deep
+
+# ilogb's walk answers no part, at a power of two too, so it is the header's
+# value alone: one step and one reference deep, where walked it is 14 and 2
+# (C139).
+>> dive(k, t) | k < 1 = ilogb(t)*t
+dive(k, t) | k < 1 = ilogb(t)*t
+
+>> grad_(t = ~3) dive(254, t)
+1
+
+>> grad_(t = ~4) ilogb(t)*t
+2
 
 # A call whose jet has no part is the value alone, as outside grad.
 >> deep(k, a, t) = deep(k - 1, a, t)
