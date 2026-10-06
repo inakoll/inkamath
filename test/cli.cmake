@@ -762,3 +762,10 @@ set(args --compile grad_refused.ink)
 set(stdout "cannot compile a: a derivative of a derivative, for now\ncannot compile b: a derivative of a limit, for now\ncannot compile c: grad of a matrix with respect to a matrix is a Jacobian, which it does not give\ncannot compile d: grad cannot differentiate a power whose exponent changes with t, unless its base is e\ncannot compile f: a derivative of a power whose exponent is not a constant, for now\ncannot compile g: a derivative of a matrix power, for now\ncannot compile h: grad's expression does not read t\ncannot compile k: sq reads the global t, which grad's t does not reach\ncannot compile m: grad cannot differentiate through an instance yet\ncannot compile q: a derivative through a definition by cells, for now\n")
 set(exit 1)
 check(compile_grad_refused)
+
+# C115: a constant gradient at a point that moves is no constant to fold with
+# what reads it, a fold that would take the point again.
+file(WRITE "${OUT}/c115.ink" "u_n = x_n - grad_(t = x_n) 3*t\n")
+set(args --compile c115.ink -o c115.h)
+check(compile_c115)
+holds(compile_c115 c115.h "    m_->u[0] = m_->x[0] - 3.0;\n")
