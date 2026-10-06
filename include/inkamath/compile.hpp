@@ -1278,7 +1278,7 @@ private:
         for (const Code* code : codes) {
             if (code->part.empty()) continue;
             if (code->moves.empty()) return "";
-            where += (where.empty() ? "" : " || ") + code->moves;
+            where += (where.empty() ? "(" : " || (") + code->moves + ")";
         }
         return where;
     }
