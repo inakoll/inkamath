@@ -4727,3 +4727,94 @@ that exploring seven domains asked of the interpreter, by how many asked.
 - **The prelude's part functions for the interpreter's `grad`.** Checked
   into `inkamath_prelude.h` beside the values, they would spare its walk of
   `exp`, `log` and `tanh` under `grad`, about 2.6 times faster.
+- **Tensors compiled.** `--compile` refuses a tensor by name, "cannot
+  compile X: a tensor", so attention per batch and per head, which the
+  interpreter answers (*Tensors of rank 3*), has no step: `attention.ink`
+  compiles one head of one sample. The conformance suite asks for the paper's
+  model, and a minibatch is a tensor wherever one is trained.
+
+  Decided: a tensor is a value the compiler holds as it holds a matrix, its
+  cells slice after slice and row by row, as the interpreter stores them, and
+  whatever meets one meets it slice by slice, through one function that takes
+  it apart into slices, applies itself to each and stacks the results, as the
+  interpreter's does. So a single value or a matrix meets every slice and a
+  tensor its slices in turn, for `+`, `-`, `/`, `*` and `'`; a product is
+  batched over the first index. What carries a value carries a tensor: a
+  sequence's term, a parameter, a model's input, a function's argument, a
+  term sampled at another rate, an input's history, a part under `grad`.
+
+  In the struct a term is `double O[1][2][3][4]`, window first: C's own layout
+  of that array is the interpreter's, so a host copies a batch in and out
+  whole. A tensor keeps its three dimensions even of one cell, as it keeps
+  `;;` when printed. A parameter is a field, `double s0[2][1][2]`, which init
+  writes cell by cell, as a matrix's. An input states its size by three
+  bounds, slices first, as the interpreter already reads it (C83),
+  `X_n[b<=2, t<=3, c<=4]`, and the step takes a pointer to its cells, `const
+  double X[24]`, copied into the window as a vector's is; where an input is a
+  tensor, the first comment's sentence on inputs ends "row by row, slice after
+  slice", and the last term shown is `m.O[0][b][i][j]`, "slice b+1, row i+1
+  and column j+1". Rejected: `[1][6][4]`, the same memory with a slice's rows
+  to be counted by the host; a field per slice, several fields for one term;
+  the batch last, where no paper puts it; `const double X[2][3][4]`, rejected
+  for a matrix in *An input of more than one cell*, as a cast for every host
+  under GCC's `-Wpedantic`.
+
+  One constant index reads a slice, three a cell, and a row is chained,
+  `T[b][t]`; two are refused in the interpreter's words, "a 2x2x2 tensor
+  takes one index or three, not two". A definition by three indices, a
+  sequence's term or a function, takes each cell's clause as one by two does,
+  the slice a place as the row is, so a guard that reads only places folds,
+  and its size is measured by `Reference::Measured` as now, a read's extent
+  carrying its slices: softmax's `sm(z)[b,t,s]` is the size of the scores it
+  is given. A literal `[a;; b]` is compiled slice by slice. A sum over a
+  slice's index unrolls as any sum with constant bounds.
+
+  Refused, in the interpreter's words where it has them: a power, "only a
+  matrix has a power, not a 2x2x2 tensor", which the square matrix's test
+  would otherwise let through as a matrix; tensors of different numbers of
+  slices; a literal whose slices differ. A comparison, a guard, an exponent,
+  `and`, `or` and a block of a tensor are refused in the compiler's words for
+  a matrix, "a comparison of matrices", a tensor being a stack of them: words
+  of their own were five lines for refusals no model reaches. For now: "a
+  tensor in a limit", its terms or an argument, as a limit's function fills
+  an array of rows and columns and no model iterates a tensor to a fixed
+  point; and "a derivative with respect to a tensor". A gradient whose body
+  meets tensors, with respect to a single value or a matrix, compiles, the
+  parts riding the values slice by slice: a model's weights are shared
+  matrices and its batch the tensor. Weights stacked by head, a tensor,
+  reach a loss only through softmax by cells, which compiled `grad` refuses
+  already, so nothing asks for a seed of three indices.
+
+  `--check` feeds a tensor input by its cells and holds every cell of a term,
+  reading the interpreter's slice by slice. In a header that writes NaN, a
+  tensor term with a NaN cell is NaN in every cell, the loop gaining the
+  slices'. `--float` writes floats, as everywhere. Nothing new elsewhere: an
+  instance with memory per cell is named after each place it reads, the
+  slice among them, as now. The random models gain no tensors in this entry.
+
+  First a refactor: `Code`, `Sequence` and `Parameter` carry an `Extent`
+  where they carry rows and columns, and a C subscript and an array's
+  dimensions are written from it, every header, check program and golden
+  byte for byte; about as many lines out as in. Then about 110 lines of
+  sources: the arithmetic slice by slice 25, reads of slices and cells and
+  the literal 30, definitions by three indices 20, the header's dimensions,
+  NaN loop and sentences 15, the refusals 6, the check 8 and the rest 6.
+  Sized against the interpreter's tensors, 222 with a literal, printing,
+  `tex` and parsing the compiler does not need, inputs of more than one cell,
+  119, and compiled `lim`, 167; past 165 the implementation stops and
+  reports. 14,318 lines in all before it, at f82b32b, the fixes since `grad`
+  compiled included; about 14,430 after.
+
+  Specified in `test/compile/tensor.ink`, its numbers worked out apart from
+  the interpreter and the compiler: `heads`, multi-head attention over a
+  batch, `tensor.ink`'s conformance model with its input scaled by `n/50`, so
+  that `O_50` is its `O`, held within 1e-13 where NumPy's doubles come within
+  6.7e-15 of mpmath's; `whirl`, a batch of states turned a quarter each step,
+  meeting tensors every other way, its every term exact; `batch`, a linear
+  layer trained by minibatch descent through `grad`, exact; the last two in
+  float as well; the header excerpts of each; and seven refusals. Two
+  recorded refusals become headers: `compile_tensor_refused`, whose file
+  joins the refusals', and `inputs_batch`, with its line in `inputs.ink`'s
+  comment. Wired with the implementation; README's paragraph on the compiler
+  gains a sentence, and `attention.ink`'s comment loses "the compiler
+  refuses for now".
