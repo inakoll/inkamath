@@ -60,9 +60,9 @@ static inline void loop_step(loop* m_) {
     ++m_->index_;
     m_->plt.x[1] = m_->plt.x[0];
     m_->plt.u[1] = m_->plt.u[0];
-    m_->plt.x[0] = m_->index_ == 0 ? 0.0 : m_->plt.x[1] + m_->plt.dt * (m_->plt.u[1] - m_->plt.x[1]);
+    m_->plt.x[0] = m_->index_ == 0 ? 0.0 : m_->plt.x[1] + m_->plt.dt * (m_->plt.u[1] + (0.0 - m_->plt.x[1]));
     m_->ctl.y[0] = m_->plt.x[0];
-    m_->ctl.u[0] = m_->ctl.kp * (m_->ctl.r - m_->ctl.y[0]);
+    m_->ctl.u[0] = m_->ctl.kp * (m_->ctl.r + (0.0 - m_->ctl.y[0]));
     m_->plt.u[0] = m_->ctl.u[0];
 }
 

@@ -174,8 +174,8 @@
 # alarm's first:
 #
 #     m_->v[0] = m_->q * floor(m_->x[0] / m_->q);
-#     const double t1_ = (isnan(m_->held[1] - m_->v[0]) || isnan(m_->q) ? NAN : m_->held[1] - m_->v[0] < m_->q ? 1.0 : 0.0);
-#     const double t2_ = (t1_ == 0.0 ? 0.0 : t1_ != t1_ ? NAN : (isnan(m_->v[0] - m_->held[1]) || isnan(m_->q) ? NAN : m_->v[0] - m_->held[1] < m_->q ? 1.0 : 0.0));
+#     const double t1_ = (isnan(m_->held[1] + (0.0 - m_->v[0])) || isnan(m_->q) ? NAN : m_->held[1] + (0.0 - m_->v[0]) < m_->q ? 1.0 : 0.0);
+#     const double t2_ = (t1_ == 0.0 ? 0.0 : t1_ != t1_ ? NAN : (isnan(m_->v[0] + (0.0 - m_->held[1])) || isnan(m_->q) ? NAN : m_->v[0] + (0.0 - m_->held[1]) < m_->q ? 1.0 : 0.0));
 #     m_->held[0] = m_->index_ == 0 ? 0.0 : isnan(t2_) ? NAN : t2_ != 0.0 ? m_->held[1] : m_->v[0];
 #     const double t0_ = (isnan(m_->held[0]) || isnan(m_->lo) ? NAN : m_->held[0] < m_->lo ? 1.0 : 0.0);
 #     m_->alarm[0] = (t0_ == 0.0 ? (isnan(m_->held[0]) || isnan(m_->hi) ? NAN : m_->held[0] > m_->hi ? 1.0 : 0.0) : t0_ != t0_ ? NAN : 1.0);
