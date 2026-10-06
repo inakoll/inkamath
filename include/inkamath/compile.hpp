@@ -2434,10 +2434,12 @@ private:
         if (!expression->Col()) {
             if (matrix.constant) return Fold(expression);
             const int i = Whole(row);
-            if (i < 1 || static_cast<std::size_t>(i) > matrix.rows)
+            if (i < 1 || static_cast<std::size_t>(i) > matrix.rows) {
+                if (i > 1) Unstated(*expression->Matrix(), std::to_string(i));
                 throw Reason("row " + std::to_string(i) + " is outside a " +
                              std::to_string(matrix.rows) + "x" + std::to_string(matrix.cols) +
                              " matrix");
+            }
             Code line;
             line.cols = matrix.cols;
             for (std::size_t j = 0; j < matrix.cols; ++j)
@@ -2448,11 +2450,26 @@ private:
         if (matrix.constant) return Fold(expression);
         const int i = Whole(row), j = Whole(col);
         if (i < 1 || static_cast<std::size_t>(i) > matrix.rows || j < 1 ||
-            static_cast<std::size_t>(j) > matrix.cols)
+            static_cast<std::size_t>(j) > matrix.cols) {
+            if (i > 0 && j > 0)
+                Unstated(*expression->Matrix(), std::to_string(i) + ", k<=" + std::to_string(j));
             throw Reason("row " + std::to_string(i) + ", column " + std::to_string(j) +
                          " is outside a " + std::to_string(matrix.rows) + "x" +
                          std::to_string(matrix.cols) + " matrix");
+        }
         return Answer(matrix.At(static_cast<std::size_t>(i - 1), static_cast<std::size_t>(j - 1)));
+    }
+    // A cell past an input whose model states no size, which compiles as a
+    // single value (C83), refused with the size that would hold it.
+    void Unstated(const Expression<Value>& read, const std::string& bounds) const {
+        if (!model_ || scope_ != &root_ || !dynamic_cast<const FuncExpression<Value>*>(&read))
+            return;
+        for (const typename Model<Value>::Parameter& p : model_->parameters)
+            if (p.name == read.Name() && !p.index.empty() && !p.fallback && p.bounds.empty())
+                throw Reason(p.name + " is a single value, as " +
+                             model_->header.substr(0, model_->header.find('(')) +
+                             " states no size for it: write '" + p.name + "_" + p.index +
+                             "[j<=" + bounds + "]'");
     }
     PExpression<Value> visit(FactExpression<Value>*) override { throw Reason("a factorial"); }
     PExpression<Value> visit(GradExpression<Value>*) override {

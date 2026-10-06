@@ -74,7 +74,8 @@ public:
                                              std::to_string(n) + ") has " +
                                              std::to_string(input.cells.size()) +
                                              " cells, where the compiled step takes a single "
-                                             "value");
+                                             "value" +
+                                             Unstated(*unfed.model, compiled.inputs[k], input));
                 for (const double x : input.reals)
                     values.push_back(!floats           ? Double(x)
                                      : std::signbit(x) ? "-" + CompileC::Double(-x)
@@ -452,6 +453,18 @@ private:
         Value                    value;
         std::vector<double>      reals;  // the cells, as doubles
     };
+
+    // How its model would state the size of an input given a matrix (C83).
+    static std::string Unstated(const Model<Value>& model, const std::string& name,
+                                const Term& input) {
+        const auto   p    = std::find_if(model.parameters.begin(), model.parameters.end(),
+                                         [&](const auto& each) { return each.name == name; });
+        const Extent size = input.value.Size();
+        if (p == model.parameters.end() || !p->bounds.empty() || size.slices) return "";
+        return ", as " + model.header.substr(0, model.header.find('(')) + " states no size for " +
+               name + ": write '" + name + "_" + p->index + "[j<=" + std::to_string(size.rows) +
+               (size.cols > 1 ? ", k<=" + std::to_string(size.cols) : "") + "]'";
+    }
 
     static Term At(Interpreter<Number>& session, const std::string& name, int n) {
         const std::string term   = name + "_(" + std::to_string(n) + ")";
