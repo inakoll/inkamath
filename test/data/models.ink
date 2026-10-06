@@ -193,6 +193,10 @@ error: bad is not defined
 >> use nowhere
 error: cannot read nowhere.ink
 
+# Its names are reached qualified, so a file is named as a name is (C142).
+>> use my_data
+error: use reads a file named as a name is, letters then digits, and my_data is not one
+
 # A closed loop is two instances reading each other's terms. Neither can be
 # written with its argument already defined, and neither need be: a
 # definition evaluates nothing, so the order does not matter.

@@ -1412,6 +1412,13 @@ std::string Interpreter<T, U>::Use(const std::string& s) {
     const std::string        name = m_tokens[1].text;
     std::vector<std::string> listed;
     size_t                   i = 2;
+    // Its names are reached qualified, so the file is named as a name is.
+    if (i < m_tokens.size() && !m_tokens[i].spaced && m_tokens[i].type != LPar) {
+        std::string file = name;
+        for (; i < m_tokens.size() && !m_tokens[i].spaced && m_tokens[i].type != LPar; ++i)
+            file += m_tokens[i].text;
+        Fail("use reads a file named as a name is, letters then digits, and ", file, " is not one");
+    }
     if (i < m_tokens.size()) {
         if (m_tokens[i].type != LPar) Fail("unexpected '", m_tokens[i].text, "'");
         do {
