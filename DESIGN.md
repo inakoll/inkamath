@@ -4676,3 +4676,6 @@ that exploring seven domains asked of the interpreter, by how many asked.
 - **Guards on cells at run time.** A definition by cells whose guard reads
   what is not a constant, a ReLU written by its cells, is refused; compiled,
   each cell a chain, it would carry `grad`'s parts through cells too.
+- **The prelude's part functions for the interpreter's `grad`.** Checked
+  into `inkamath_prelude.h` beside the values, they would spare its walk of
+  `exp`, `log` and `tanh` under `grad`, about 2.6 times faster.
