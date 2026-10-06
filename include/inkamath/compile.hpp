@@ -1349,14 +1349,25 @@ private:
         const auto cellwise = [&](const Code& q, const Code& b) {
             return q.Scalar() || b.Scalar() ? *Times(q, b) : Broadcast(q, b, Multiplied);
         };
+        const auto over = [&](const Part& a) {
+            return Combined(
+                a, right, [&](const Code& x, const Code& y) { return Broadcast(x, y, Divided); },
+                std::divides<>());
+        };
         Part top = PartOf(left);
         if (const Part b = PartOf(right)) top = Plus(top, Negated(cellwise(value, *b)));
-        return Answer(Parted(
-            value,
-            Combined(
-                top, right, [&](const Code& x, const Code& y) { return Broadcast(x, y, Divided); },
-                std::divides<>()),
-            {&left, &right}));
+        Part part = over(top);
+        // a'/b where b's clause has none, not an infinite quotient times 0 (C110).
+        if (part && !right.moves.empty()) {
+            const Part alone = over(PartOf(left));
+            for (std::size_t k = 0; k < part->cells.size(); ++k)
+                part->cells[k] =
+                    Cell("(" + right.moves + " ? " + part->cells[k].text + " : " +
+                             (alone ? alone->At(k / part->cols, k % part->cols).text : "0") + ")",
+                         primary);
+            part->constant.reset();
+        }
+        return Answer(Parted(value, part, {&left, &right}));
     }
 
     // A matrix product is a sum over the inner dimension, in the interpreter's
