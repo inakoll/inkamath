@@ -238,6 +238,14 @@ set(stderr "")
 set(exit 1)
 check(compile_rates_refused)
 
+# C119: a term read where the clause's index is not seen, in a call or under
+# a grad that takes its name, says so rather than naming no index.
+file(WRITE "${OUT}/c119.ink" "f(t) = x_t\ny_n = f(n)\nz_n = grad_(n = 2) n*x_n\n")
+set(args --compile c119.ink)
+set(stdout "cannot compile y: x_(...): a term read where y's index is not seen\ncannot compile z: x_(...): a term read where z's index is not seen\n")
+set(exit 1)
+check(compile_c119)
+
 # What several rates left refused (DESIGN.md): a slow sequence read back at
 # the input's rate, and a hold of a term the step never computes where the
 # interpreter could give one, before a slow sequence's first tick or below a

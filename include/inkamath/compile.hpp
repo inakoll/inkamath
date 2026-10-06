@@ -2712,8 +2712,11 @@ private:
     // How far an index is from the clause's own: 'n', or that plus constants
     // however they are spelled -- 'n-1', 'n-k-1' in a sum over k.
     int Offset(const PExpression<Value>& index, const std::string& written) {
+        // In a call, or under a grad that takes its name, the index is not seen (C119).
         const std::string only =
-            written + ": an index other than a whole multiple of " + index_ + " plus a constant";
+            written + (index_.empty() ? ": a term read where " + within_ + "'s index is not seen"
+                                      : ": an index other than a whole multiple of " + index_ +
+                                            " plus a constant");
         if (const auto* ref = dynamic_cast<RefExpression<Value>*>(index.get());
             ref && ref->Name() == index_ && !places_.count(index_))
             return 0;
