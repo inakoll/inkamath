@@ -713,16 +713,16 @@ private:
             std::optional<std::vector<std::pair<bool, std::size_t>>> takes;
             if (!body.part.empty()) {
                 const std::string& text = body.part[0].cells[0].text;
-                std::string        signature;
+                std::string        parameters;
                 takes.emplace();
                 for (const bool part : {false, true})
                     for (std::size_t i = 0; i < names.size(); ++i) {
                         const std::string taken = (part ? "part_" : "arg_") + names[i];
                         if (!Writes(text, taken)) continue;
                         takes->emplace_back(part, i);
-                        signature += (signature.empty() ? "double " : ", double ") + taken;
+                        parameters += (parameters.empty() ? "double " : ", double ") + taken;
                     }
-                prelude_.push_back("static inline double " + derived + "(" + signature +
+                prelude_.push_back("static inline double " + derived + "(" + parameters +
                                    ") {\n    return " + text + ";\n}\n\n");
             }
             parts_.emplace(derived, takes);
