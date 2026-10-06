@@ -427,12 +427,14 @@ set(args --check deep.ink v -o deep.c)
 set(stderr "inkamath: v.X_(0) has 4 cells, where the compiled step takes a single value, as mt states no size for X: write 'X_n[b<=2, j<=2, k<=1]'\n")
 set(exit 1)
 check(check_tensor_input)
-# A term of another shape than the step's is said to be, not read past (C137).
-file(WRITE "${OUT}/c137.ink" "mm(x_n) = {\n    h(z) = 3\n    h(z) | z > 2 = [1; 2]\n    y_n = h(x_n)\n}\nm = mm(x_n = n)\n")
-set(args --check c137.ink m -o c137.c)
-set(stderr "inkamath: m.y_(0) is a 1x1 matrix, where the compiled step's is a 2x1 matrix\n")
+# C138: a function whose clauses give different shapes is refused, as a
+# sequence's are, where the step stretched them to the largest. It was the one
+# way known to reach C137's guard in --check, which nothing reaches now.
+file(WRITE "${OUT}/c138.ink" "h(z) = 3\nh(z) | z > 2 = [1; 2]\ny_n = h(x_n)\n")
+set(args --compile c138.ink -o c138.h)
+set(stderr "inkamath: cannot compile y: the clauses of h have different shapes\n")
 set(exit 1)
-check(check_c137)
+check(compile_c138)
 file(WRITE "${OUT}/celled.ink" "cl(x_n) = {\n    y_n = x_n[2]\n}\ncm(u_m) = {\n    z_m = u_(m-1)[2, 3]\n}\n"
      "ct(X_n) = {\n    t_n = X_n[1, 2, 1]\n}\n")
 set(args --compile celled.ink cl -o cl.h)
