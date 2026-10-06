@@ -246,7 +246,8 @@ define again. `e` and `pi` are the only
 other built-in values, and `floor` the only built-in function: the largest
 whole number not above its argument, exact of an exact number and cell by
 cell of a matrix. `ceil(x) = -floor(-x)` and `mod(a, b) = a - b*floor(a/b)`
-come with it, from a prelude (section 5), and so do `exp`, `log` and `tanh`. Any other rounding is a line of it,
+come with it, from a prelude (section 5), and so do `exp`, `log`, `tanh`,
+`sin`, `cos`, `abs`, `max` and `min`. Any other rounding is a line of it,
 by the rule the model needs — `round(x) = floor(x + 1/2)` — and, like `pi`,
 each of them can be defined again.
 
@@ -937,18 +938,21 @@ changes its instances, as a function redefined changes what calls it.
 of its own: the session reaches its names qualified, `filters.lowpass`, and
 `use filters (lowpass)` brings in unqualified those listed. A file is read
 once, holds definitions only, and one that cannot be read or parsed loads
-nothing and says where. The prelude that defines `ceil`, `mod`, `exp`, `log`
-and `tanh`, and what they call, is included bare beneath the session, as the
-built-ins are: every scope sees it, and a session that defines one of its
-names again does so for itself alone. `exp`, `log` and `tanh` are written in
-it, accurate to a few units in the last place of a double, by the operations
-a compiled step performs: `exp(x)` is 2^k e^r, r = x - k ln 2 and e^r a
-polynomial, and `log` reduces by `ilogb`, the power of two at or below its
-argument. An exact argument is reduced exactly, nothing they give is exact,
-and `log(0)` is refused as `1/0` is. Compiled, each is a C function of the
+nothing and says where. The prelude that defines `ceil`, `mod`, `exp`, `log`,
+`tanh`, `sin`, `cos`, `abs`, `max` and `min`, and what they call, is included
+bare beneath the session, as the built-ins are: every scope sees it, and a
+session that defines one of its names again does so for itself alone. `exp`,
+`log`, `tanh`, `sin` and `cos` are written in it, accurate to a few units in
+the last place of a double, by the operations a compiled step performs:
+`exp(x)` is 2^k e^r, r = x - k ln 2 and e^r a polynomial, `log` reduces by
+`ilogb`, the power of two at or below its argument, and `sin` and `cos` by the
+multiple of pi/2 nearest theirs. An exact argument is reduced exactly, nothing
+they give is exact, and `log(0)` is refused as `1/0` is; so are `sin` and
+`cos` past 2^20 either way, where the reduction would round, so a growing
+phase such as `sin(w*t)` stops at 2^20. Compiled, each is a C function of the
 header's own; the interpreter calls the same functions, checked in as
-`include/inkamath/inkamath_prelude.h`, on a double, where they answer what
-the definitions answer.
+`include/inkamath/inkamath_prelude.h`, on a double, where they answer what the
+definitions answer.
 `test/data/models.ink` is the whole of it.
 
 Data comes in as a file of definitions like any other, written by whatever

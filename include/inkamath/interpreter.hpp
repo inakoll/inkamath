@@ -254,7 +254,11 @@ private:
 // halves, as 2^k overflows or vanishes where e^x does not; log reduces by
 // ilogb, thirteen guarded steps from 2^-4096, and folds its mantissa into
 // [sqrt(2)/2, sqrt(2)); tanh is -m/(m + 2), m = e^(-2x) - 1, which does not
-// cancel near 0.
+// cancel near 0. sin and cos reduce by k pi/2, pi/2 in five parts so that
+// every product is exact for |k| < 2^20 and every subtraction that cancels
+// is too, and pick sin r, cos r or a negative by k + c mod 4, x + pi/2 being
+// inexact; refused past 2^20, where the products round. abs, max and min are
+// README's, a guard each: at a tie the first argument's slope.
 inline constexpr const char* prelude[] = {
     "ceil(x) = -floor(-x)",
     "mod(a, b) = a - b*floor(a/b)",
@@ -288,6 +292,28 @@ inline constexpr const char* prelude[] = {
     "tanhp(x) | x > 20 = ~1",
     "tanhk(y, k) = tanhe(2^k - 1 + 2^k*expp(~(y - k*355/512 + k*2.1219444005469057e-4)))",
     "tanhe(m) = -m/(m + 2)",
+    "abs(x) | x < 0 = -x",
+    "abs(x) | x >= 0 = x",
+    "max(a, b) = a",
+    "max(a, b) | a < b = b",
+    "min(a, b) = a",
+    "min(a, b) | b < a = b",
+    "sin(x) = sinr(x, floor(x*0.6366197723675814 + 1/2), 0)",
+    "sin(x) | abs(x) > 2^20 = 1/0",
+    "cos(x) = sinr(x, floor(x*0.6366197723675814 + 1/2), 1)",
+    "cos(x) | abs(x) > 2^20 = 1/0",
+    "sinr(x, k, c) = sink(~(x - k*3217/2048 + k*2391/2^29 + k*8029421003/2^63 "
+    "+ k*1987263209/2^96 - k*7744522442262977/2^156), mod(k + c, 4))",
+    "sink(r, j) = sinp(r)",
+    "sink(r, j) | j > 2 = -cosp(r)",
+    "sink(r, j) | j > 1 = -sinp(r)",
+    "sink(r, j) | j > 0 = cosp(r)",
+    "sinp(r) = r - r*sins(r*r)",
+    "sins(z) = z*(1/6 - z*(1/120 - z*(1/5040 - z*(1/362880 - z*(1/39916800 - z*(1/6227020800 "
+    "- z*(1/1307674368000 - z/355687428096000)))))))",
+    "cosp(r) = cosw(r*r)",
+    "cosw(z) = 1 - z/2 + z*z*(1/24 - z*(1/720 - z*(1/40320 - z*(1/3628800 - z*(1/479001600 "
+    "- z*(1/87178291200 - z*(1/20922789888000 - z/6402373705728000)))))))",
 };
 
 template <Parsable T, Numeric U>
