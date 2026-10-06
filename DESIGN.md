@@ -4888,7 +4888,10 @@ that exploring seven domains asked of the interpreter, by how many asked.
     call walks, so that the walk refuses in its own words. Nothing else in
     the five refuses under grad for a double in their domain: no guard is an
     equality whose sides meet there (`log`'s `2*x == x` holds at no finite
-    positive double), and no power's base moves.
+    positive double), and no power's base moves. Every other 0 or NaN
+    walks too, as ruled on review, a known cost: a part that underflows,
+    `grad_(t = ~0) exp(~(-700) + t*10^-300)`, or NaN where an infinity meets
+    a 0 among the operations, answers as walked, only at the walk's price.
 
   Answered as the jet `[value, part]`, the value `Number(double)` as the fast
   path's and the part `Number(double)`, each inexact, real and not
