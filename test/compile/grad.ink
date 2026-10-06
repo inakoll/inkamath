@@ -118,6 +118,8 @@ hinge = rect(x_n = n)
 #     edge.d: within 0
 #     edge.f: within 0
 #     edge.g: within 0
+#     edge.h: within 0; the interpreter's terms about <e> from the exact ones
+#     edge.i: within 0
 #     edge.j: within 0
 #     edge.k: within 0
 #     edge.l: within 0
@@ -134,7 +136,11 @@ hinge = rect(x_n = n)
 # one side moves and the other does not, either may: m, a dead unit compared
 # with a live one, is 0 but NaN at 2, where they meet and the live one
 # moves (C114). v, a power whose derivative is infinite at a constant point,
-# is NaN at every n, as j and o are (C116).
+# is NaN at every n, as j and o are (C116). h, the square root of a ReLU
+# times t, is 0 below 2, where the unit is dead and its power has no part
+# to be infinite, as in the interpreter, NaN at 2 and 3*sqrt(t)/2 above, t
+# being n/2 - 1 (C118); i, its inverse, NaN to 2, the interpreter dividing
+# by 0, then -1/t^2.
 kinks(x_n) = {
     q(t) = t^2
     q(t) | t == 1 = 1
@@ -146,6 +152,8 @@ kinks(x_n) = {
     d_n = grad_(t = x_n - 1) t*(r(t) > 0)
     f_n = grad_(t = x_n) floor(t)*t
     g_n = grad_(t = x_n) q(t)
+    h_n = grad_(t = x_n - 1) r(t)^(1/2)*t
+    i_n = grad_(t = x_n - 1) r(t)^(-1)
     j_n = grad_(t = 1) t*(t > 1)
     k_n = n*grad_(t = 2) t^3
     l_n = grad_(t = x_n) t*(p(t) >= 1)

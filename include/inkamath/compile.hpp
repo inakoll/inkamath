@@ -1473,8 +1473,12 @@ private:
             value = Of(Cell("(" + Jumps(Wrap(base.cells[0], sum) + " == 0.0", {&base}) +
                                 value.cells[0].text + ")",
                             primary));
-        return Answer(
-            Parted(value, Times(Times(Literal(coefficient), power), PartOf(base)), {&base}));
+        Part part = Times(Times(Literal(coefficient), power), PartOf(base));
+        // None where its base's clause has none, not 0 times an infinity, where
+        // its value is finite (C118).
+        if (Doubles(lower)[0] < 0 && Doubles(c)[0] > 0 && !base.moves.empty())
+            part = Of(Cell("(" + base.moves + " ? " + part->cells[0].text + " : 0)", primary));
+        return Answer(Parted(value, part, {&base}));
     }
 
     // C's absorbs a NaN where the other operand is 1 or 0: pow(1, NaN) and
