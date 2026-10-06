@@ -86,13 +86,20 @@ layer = net(x_n = (-1)^n*n/4)
 # cell 0 where it is 0 by an equality and its square elsewhere: 4t - 2, so
 # 4n - 10, but NaN at 2 and 3, where cell 1 and then cell 2 take a clause
 # that holds at the point alone, as the interpreter refuses, 'pk[1,1] takes a
-# clause at t = 0 that holds only there':
+# clause at t = 0 that holds only there'. The definition has a part where
+# any cell's clause has one, and a cell read from it moves with it, as a
+# literal's does. d, a dead cell's mask, t*(up([t; t])[2] > 0): 0 to 2, both
+# cells dead and nothing moving where 0 > 0 meets, then 1. m, t*(up([t;
+# -1])[2] < 0): 0 to 2, then NaN, cell 2 dead but cell 1 alive, where the
+# interpreter says 'a comparison jumps at t = 1':
 #
 #     kink: 100 steps from 0, against exact values
 #     kink.c: within 0
+#     kink.d: within 0
 #     kink.e: within 0
 #     kink.g: within 0
 #     kink.h: within 0
+#     kink.m: within 0
 kinks(x_n) = {
     rl(z)[i,j] = z[i,j]*(z[i,j] > 0)
     up(z)[i] | z[i] > 0 = z[i]
@@ -105,6 +112,8 @@ kinks(x_n) = {
     g_n = grad_(t = x_n) [1 1]*up([t; 1])
     h_n = grad_(t = x_n) [1 1]*rd([t; 1])
     e_n = grad_(t = x_n) [1 1]*pk([t; t - 1])
+    d_n = grad_(t = x_n) t*(up([t; t])[2] > 0)
+    m_n = grad_(t = x_n) t*(up([t; -1])[2] < 0)
 }
 kink = kinks(x_n = n - 2)
 

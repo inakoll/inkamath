@@ -4805,7 +4805,8 @@ that exploring seven domains asked of the interpreter, by how many asked.
   and the samples fitted at the second, exact and within 0 in double and in
   float; `layer`, `net.ink`'s network with `h_n = relu(z_n)`, computing h
   by `net.h`'s two lines; `kink`, each cell's slope either side of its
-  threshold and NaN where the interpreter refuses; `crest`, `rift` by a
+  threshold, NaN where the interpreter refuses, and a cell moving where
+  another cell's clause has a part; `crest`, `rift` by a
   function, parting by its values alone; `mask`, a parameter read by a cell
   guard become a field; and two refusals. Wired with the implementation:
   the checks and their reports in `test/CMakeLists.txt`, `fit` in float,
