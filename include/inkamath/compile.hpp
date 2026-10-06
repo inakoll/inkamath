@@ -44,7 +44,7 @@ public:
     struct Compiled {
         struct Sequence {
             std::string name;  // as the struct reaches it, 'h.low.v'
-            std::size_t rows, cols;
+            Extent      size;
             int         period = 1, phase = 0;  // term m at step period*m + phase
             int         start = 0;              // the step of its first term, at another rate
             bool        unnamed = false;          // of an instance a model writes unnamed
@@ -223,8 +223,8 @@ private:
     }
 
     struct Code {
-        std::size_t          rows = 1, cols = 1;
-        std::vector<Cell>    cells;     // row by row
+        Extent               size;
+        std::vector<Cell>    cells;     // row by row, slice after slice
         std::optional<Value> constant;  // its exact value, where it reads no name
         bool                 whole = false;  // NaN in every cell where in one, as a term
         // Under grad (DESIGN.md, grad compiled): its part, none where the
@@ -232,10 +232,12 @@ private:
         std::vector<Code> part;
         std::string       moves;
 
-        bool Scalar() const { return cells.size() == 1; }
-        // A single value stretches to any shape, as it does in arithmetic.
-        const Cell& At(std::size_t i, std::size_t j) const {
-            return Scalar() ? cells[0] : cells[i * cols + j];
+        bool Scalar() const { return cells.size() == 1 && !size.slices; }
+        // Cell c of what it stretches to, as in arithmetic: a single value to
+        // any shape, a matrix to every slice of a tensor.
+        const Cell& At(std::size_t c) const { return cells[c % cells.size()]; }
+        const Cell& At(std::size_t i, std::size_t j, std::size_t b = 0) const {
+            return At((b * size.rows + i) * size.cols + j);
         }
     };
 
@@ -282,7 +284,7 @@ private:
         int general_clause = -1;  // the place of the clause that always applies, if one does
         Reads                                   general_reads;
         std::vector<std::string>                general;
-        std::size_t                             rows = 0, cols = 0;  // 0 until known
+        Extent                                  size{0, 0};  // none until known
         bool                                    based = false, compiling = false, compiled = false;
         std::map<std::string, std::set<int>>    reads;  // lags, by the sequence read
         Reads deferred;  // read only where the left of an 'and' or 'or' has not decided
@@ -341,7 +343,7 @@ private:
     };
 
     struct Parameter {
-        std::size_t         rows, cols;
+        Extent              size;
         std::vector<double> initial;
     };
 
@@ -581,33 +583,29 @@ private:
             if (!otherwise) throw Reason("no clause of " + name + " applies");
             return *otherwise;
         }
-        std::size_t rows = 1, cols = 1;
-        for (const auto& [condition, value] : guarded) {
-            rows = std::max(rows, value.rows);
-            cols = std::max(cols, value.cols);
-        }
-        return Chain(guarded, otherwise, rows, cols);
+        Extent size;
+        for (const auto& [condition, value] : guarded)
+            size = {std::max(size.rows, value.size.rows), std::max(size.cols, value.size.cols),
+                    std::max(size.slices, value.size.slices)};
+        return Chain(guarded, otherwise, size);
     }
 
     // Each cell as the step tests it: the guarded values in order, then the
     // one that always applies, else NaN, as where no clause applies (C86).
     static Code Chain(const std::vector<std::pair<std::string, Code>>& guarded,
-                      const std::optional<Code>& otherwise, std::size_t rows, std::size_t cols) {
+                      const std::optional<Code>& otherwise, Extent size) {
         Code chain;
-        chain.rows = rows;
-        chain.cols = cols;
-        for (std::size_t i = 0; i < rows; ++i) {
-            for (std::size_t j = 0; j < cols; ++j) {
-                if (guarded.empty() && otherwise) {
-                    chain.cells.push_back(otherwise->At(i, j));
-                    continue;
-                }
-                std::string cell;
-                for (const auto& [condition, value] : guarded)
-                    cell += condition + " ? " + value.At(i, j).text + " : ";
-                cell += otherwise ? otherwise->At(i, j).text : "NAN";
-                chain.cells.emplace_back(cell, 0);  // a conditional, below every operator
+        chain.size = size;
+        for (std::size_t c = 0; c < size.count(); ++c) {
+            if (guarded.empty() && otherwise) {
+                chain.cells.push_back(otherwise->At(c));
+                continue;
             }
+            std::string cell;
+            for (const auto& [condition, value] : guarded)
+                cell += condition + " ? " + value.At(c).text + " : ";
+            cell += otherwise ? otherwise->At(c).text : "NAN";
+            chain.cells.emplace_back(cell, 0);  // a conditional, below every operator
         }
         // Under grad, the part of the clause taken: 0 where it has none, NaN
         // where it is refused wherever taken, and beside it where it is there.
@@ -630,10 +628,10 @@ private:
         }
         if (!any) return chain;
         chain.part = {
-            Chain(parts, otherwise ? std::optional(part(*otherwise)) : std::nullopt, rows, cols)};
+            Chain(parts, otherwise ? std::optional(part(*otherwise)) : std::nullopt, size)};
         if (!always || (otherwise && there(*otherwise).cells[0].text != "1"))
             chain.moves =
-                Chain(where, otherwise ? std::optional(there(*otherwise)) : std::nullopt, 1, 1)
+                Chain(where, otherwise ? std::optional(there(*otherwise)) : std::nullopt, Extent{})
                     .cells[0]
                     .text;
         return chain;
@@ -661,7 +659,7 @@ private:
         for (const auto& [given, argument] : call.parameters_dict()) bind(given, argument);
         Reasoned([&] {
             for (const auto& [given, value] : expansion.values)
-                function.Divides(given, Value(Extent{value.rows, value.cols}), definitions_);
+                function.Divides(given, Value(value.size), definitions_);
         });
         return Inside(expansion, [&] {
             for (const std::string& parameter : names) {
@@ -698,9 +696,9 @@ private:
         const auto inside = [&](bool parts) {
             Expansion expansion{{}, {}, function.home, nullptr, {}, {}};
             for (std::size_t i = 0; i < names.size(); ++i) {
-                Code argument = Array("arg_" + names[i], 1, 1);
+                Code argument = Array("arg_" + names[i], Extent{});
                 if (parts && !arguments[i].part.empty())
-                    argument.part = {Array("part_" + names[i], 1, 1)};
+                    argument.part = {Array("part_" + names[i], Extent{})};
                 expansion.values.emplace(names[i], argument);
             }
             const Setting<Walked*>                 outside(limit_, nullptr);
@@ -841,11 +839,8 @@ private:
             if (!parameter.index.empty() && !parameter.fallback) {
                 Unreserved(parameter.name);
                 const Reference<Value>& input = *root_.names.at(parameter.name);
-                const Extent            size =
+                sequences_[parameter.name].size =
                     input.declared.empty() ? Extent{} : Stated(parameter.name, input);
-                if (size.slices) throw Refusal(parameter.name, "a tensor");
-                sequences_[parameter.name].rows = size.rows;
-                sequences_[parameter.name].cols = size.cols;
             } else if (parameter.index.empty()) {
                 try {
                     (void)Emit(std::make_shared<RefExpression<Value>>(parameter.name));
@@ -883,7 +878,6 @@ private:
     // refused rather than left out; a plain one is compiled where it is read.
     void Define(const std::string& name, const Reference<Value>& definition) {
         for (const Clause<Value>& clause : definition.Clauses()) {
-            if (clause.parameters.tensor()) throw Refusal(name, "a tensor");
             // A function is compiled where it is called, and a sequence with
             // parameters where a limit walks it.
             if (!clause.parameters.parameters_names().empty()) return;
@@ -933,8 +927,7 @@ private:
                 }
                 const auto [code, reads] = Reading(clause.expression);
                 if (!reads.empty()) throw Reason("a history that reads " + *reads.begin());
-                if (!history.declared.empty() &&
-                    Extent{code.rows, code.cols} != Stated(key, history))
+                if (!history.declared.empty() && code.size != Stated(key, history))
                     throw Reason("a history of another shape");
                 int& reach = reach_.try_emplace(key, top).first->second;
                 reach      = std::max(reach, top);
@@ -1005,16 +998,17 @@ private:
 
     template <typename Combine>
     Code Broadcast(Code left, Code right, Combine combine) {
-        if (left.Scalar() && !right.Scalar()) left = Shared(left);
-        if (right.Scalar() && !left.Scalar()) right = Shared(right);
+        if (!right.Scalar() && (left.Scalar() || left.size.slices < right.size.slices))
+            left = Shared(left);
+        if (!left.Scalar() && (right.Scalar() || right.size.slices < left.size.slices))
+            right = Shared(right);
         return Cellwise(left, right, combine);
     }
 
     void Shape(Sequence& sequence, const Code& code) {
-        if (sequence.rows && (code.rows != sequence.rows || code.cols != sequence.cols))
+        if (sequence.size.rows && code.size != sequence.size)
             throw Reason("its clauses have different shapes");
-        sequence.rows = code.rows;
-        sequence.cols = code.cols;
+        sequence.size = code.size;
     }
 
     static std::vector<std::string> Texts(const Code& code) {
@@ -1104,15 +1098,15 @@ private:
         if (!settled && sequence.guarded.empty())
             throw Refusal(name, "a sequence with no general clause");
         // Where no guard holds the interpreter says so; a step can only say NaN.
-        if (!settled) sequence.general.assign(sequence.rows * sequence.cols, "NAN");
+        if (!settled) sequence.general.assign(sequence.size.count(), "NAN");
         clause_reads_     = outer_reads;
         sequence.compiled = true;
         // An input given a term of another size than its model states.
         if (const auto input = stated_.find(name); input != stated_.end()) {
             const Home   there(*this, input->second);
             const Extent stated = Stated(name, *input->second);
-            if (Extent{sequence.rows, sequence.cols} != stated)
-                throw Refusal(name, input->second->Unlike({sequence.rows, sequence.cols}, stated));
+            if (sequence.size != stated)
+                throw Refusal(name, input->second->Unlike(sequence.size, stated));
         }
     }
 
@@ -1194,24 +1188,18 @@ private:
     }
 
     static std::vector<double> Doubles(const Value& value) {
-        // The interpreter is the reference a model is held to first; compiling
-        // attention per batch is an entry of its own (DESIGN.md).
-        if (value.Size().slices) throw Reason("a tensor");
         std::vector<double> doubles;
-        for (std::size_t i = 1; i <= value.Size().rows; ++i) {
-            for (std::size_t j = 1; j <= value.Size().cols; ++j) {
-                const auto number = value(i, j).Inexact();
-                if (number.imag() != 0) throw Reason("a complex number");
-                doubles.push_back(number.real());
-            }
+        for (std::size_t c = 0; c < value.Size().count(); ++c) {
+            const auto number = value.data()[c].Inexact();
+            if (number.imag() != 0) throw Reason("a complex number");
+            doubles.push_back(number.real());
         }
         return doubles;
     }
 
     static Code Literal(const Value& value) {
         Code code;
-        code.rows     = value.Size().rows;
-        code.cols     = value.Size().cols;
+        code.size     = value.Size();
         code.constant = value;
         for (const double x : Doubles(value)) {
             Cell cell = Atom(Double(std::abs(x)), !std::isnan(x));
@@ -1236,20 +1224,37 @@ private:
         return written + (floats ? "f" : "");
     }
 
-    // Cell by cell, a single value stretching to the other's shape, as the
-    // interpreter's arithmetic does.
+    // Cell by cell, a single value stretching to the other's shape and a
+    // matrix to a tensor's slices, as the interpreter's arithmetic does.
     template <typename Combine>
     static Code Cellwise(const Code& left, const Code& right, Combine combine) {
+        const std::size_t slices = Slices(left, right);
         if (!left.Scalar() && !right.Scalar() &&
-            (left.rows != right.rows || left.cols != right.cols))
-            throw Reason("these matrices have different sizes");
+            (left.size.rows != right.size.rows || left.size.cols != right.size.cols))
+            throw Mismatched(left, right, "these matrices have different sizes");
         Code code;
-        code.rows = left.Scalar() ? right.rows : left.rows;
-        code.cols = left.Scalar() ? right.cols : left.cols;
-        for (std::size_t i = 0; i < code.rows; ++i)
-            for (std::size_t j = 0; j < code.cols; ++j)
-                code.cells.push_back(combine(left.At(i, j), right.At(i, j)));
+        code.size        = left.Scalar() ? right.size : left.size;
+        code.size.slices = slices;
+        for (std::size_t c = 0; c < code.size.count(); ++c)
+            code.cells.push_back(combine(left.At(c), right.At(c)));
         return code;
+    }
+
+    // The interpreter takes each slice of a tensor of single values as one
+    // value over a matrix, which the compiler does not yet.
+    static Reason Mismatched(const Code& a, const Code& b, const char* words) {
+        for (const Code* c : {&a, &b})
+            if (c->size.slices && c->size.count() == c->size.slices)
+                return Reason("a tensor whose slices are single values met by a matrix, for now");
+        return Reason(words);
+    }
+
+    // How many slices a tensor met slice by slice gives, as Matrix::Sliced counts them.
+    static std::size_t Slices(const Code& a, const Code& b) {
+        if (a.size.slices && b.size.slices && a.size.slices != b.size.slices)
+            throw Reason("a " + a.size.Described() + " and a " + b.size.Described() +
+                         " have different numbers of slices");
+        return std::max(a.size.slices, b.size.slices);
     }
 
     // A negative number written is added as a subtraction, the same in IEEE
@@ -1330,9 +1335,8 @@ private:
     // A sum's part has its value's shape, which adding to more cells widens (C81).
     Code SumOf(Code value, const Code& a, const Code& b) {
         Part part = Plus(PartOf(a), PartOf(b));
-        if (part && (a.rows != b.rows || a.cols != b.cols) &&
-            (part->rows != value.rows || part->cols != value.cols))
-            part = Plus(part, Literal(Value(Extent{value.rows, value.cols})));
+        if (part && a.size != b.size && part->size != value.size)
+            part = Plus(part, Literal(Value(value.size)));
         return Parted(std::move(value), part, {&a, &b});
     }
     Code ProductOf(Code value, const Code& a, const Code& b) {
@@ -1378,10 +1382,9 @@ private:
         if (part && !right.moves.empty()) {
             const Part alone = over(PartOf(left));
             for (std::size_t k = 0; k < part->cells.size(); ++k)
-                part->cells[k] =
-                    Cell("(" + right.moves + " ? " + part->cells[k].text + " : " +
-                             (alone ? alone->At(k / part->cols, k % part->cols).text : "0") + ")",
-                         primary);
+                part->cells[k] = Cell("(" + right.moves + " ? " + part->cells[k].text + " : " +
+                                          (alone ? alone->At(k).text : "0") + ")",
+                                      primary);
             part->constant.reset();
         }
         return Answer(Parted(value, part, {&left, &right}));
@@ -1400,20 +1403,22 @@ private:
     // for each left row.
     Code Product(Code left, Code right) {
         if (left.Scalar() || right.Scalar()) return Broadcast(left, right, Multiplied);
-        if (right.cols > 1) left = Shared(left);
-        if (left.rows > 1) right = Shared(right);
-        if (left.cols != right.rows)
-            throw Reason("a matrix product needs as many columns on the left as rows on the right");
+        if (right.size.cols > 1) left = Shared(left);
+        if (left.size.rows > 1) right = Shared(right);
+        const std::size_t slices = Slices(left, right);
+        if (left.size.cols != right.size.rows)
+            throw Mismatched(
+                left, right,
+                "a matrix product needs as many columns on the left as rows on the right");
         Code code;
-        code.rows = left.rows;
-        code.cols = right.cols;
-        for (std::size_t i = 0; i < code.rows; ++i) {
-            for (std::size_t j = 0; j < code.cols; ++j) {
-                Cell cell = Multiplied(left.At(i, 0), right.At(0, j));
-                for (std::size_t k = 1; k < left.cols; ++k)
-                    cell = Added(cell, Multiplied(left.At(i, k), right.At(k, j)));
-                code.cells.push_back(cell);
-            }
+        code.size = {left.size.rows, right.size.cols, slices};
+        for (std::size_t c = 0; c < code.size.count(); ++c) {
+            const std::size_t b = c / (code.size.rows * code.size.cols),
+                              i = c / code.size.cols % code.size.rows, j = c % code.size.cols;
+            Cell cell = Multiplied(left.At(i, 0, b), right.At(0, j, b));
+            for (std::size_t k = 1; k < left.size.cols; ++k)
+                cell = Added(cell, Multiplied(left.At(i, k, b), right.At(k, j, b)));
+            code.cells.push_back(cell);
         }
         return code;
     }
@@ -1461,10 +1466,11 @@ private:
     }
     static Code Transposed(const Code& operand) {
         Code code;
-        code.rows = operand.cols;
-        code.cols = operand.rows;
-        for (std::size_t i = 0; i < code.rows; ++i)
-            for (std::size_t j = 0; j < code.cols; ++j) code.cells.push_back(operand.At(j, i));
+        code.size = {operand.size.cols, operand.size.rows, operand.size.slices};
+        for (std::size_t b = 0; b < std::max<std::size_t>(code.size.slices, 1); ++b)
+            for (std::size_t i = 0; i < code.size.rows; ++i)
+                for (std::size_t j = 0; j < code.size.cols; ++j)
+                    code.cells.push_back(operand.At(j, i, b));
         return code;
     }
 
@@ -1559,17 +1565,19 @@ private:
     // starting from the first factor instead changes only a cell that is
     // infinite, where the identity's zeros would make it NaN.
     Code Power(Code base, const Code& exponent) {
+        if (base.size.slices)
+            throw Reason("only a matrix has a power, not a " + base.size.Described());
         if (!exponent.constant) throw Reason("a matrix power whose exponent is not a constant");
         const auto power = (*exponent.constant)(1, 1).Inexact();
         if (power.imag() != 0 || power.real() != std::floor(power.real()) ||
             std::abs(power.real()) > 2147483647.0)
             throw Reason("a matrix power must be a whole number");
-        if (base.rows != base.cols) throw Reason("only a square matrix has a power");
+        if (base.size.rows != base.size.cols) throw Reason("only a square matrix has a power");
         const long long whole = static_cast<long long>(power.real());
         if (whole == 0) {
             // The identity whatever the base, but not a constant: a constant is
             // what reads no name, and an enclosing fold would read this one's.
-            Code identity = Literal(Value::Identity(Extent{base.rows, base.cols}));
+            Code identity = Literal(Value::Identity(base.size));
             identity.constant.reset();
             return identity;
         }
@@ -1587,7 +1595,7 @@ private:
     // the interpreter does: that depends on the values, so it is done as the
     // step runs.
     Code Inverse(const Code& matrix) {
-        const std::size_t n    = matrix.rows;
+        const std::size_t n    = matrix.size.rows;
         const std::string rows = Rows(matrix);
         inverses_.insert(n);
         const std::string name = Declare("inverse\x1f" + rows, [&](const std::string& t) {
@@ -1595,7 +1603,7 @@ private:
                 "double " + t + Subscript(n, n) + " = {" + rows + "};",
                 module_ + "_inverse" + std::to_string(n) + "_(" + t + ");"};
         });
-        return Array(name, n, n);
+        return Array(name, Extent{n, n});
     }
 
     static const char* Operator(Comparison op) {
@@ -1780,8 +1788,7 @@ private:
         const Code operand = Emit(call.parameters_expression()[0]);
         if (operand.constant && operand.part.empty()) return Fold(expression);
         Code code;
-        code.rows = operand.rows;
-        code.cols = operand.cols;
+        code.size = operand.size;
         for (const Cell& cell : operand.cells) {
             const std::string floor = "floor(" + cell.text + ")";
             const std::string jump  = Jumps(floor + " == " + Wrap(cell, sum), {&operand});
@@ -1791,12 +1798,11 @@ private:
     }
 
     PExpression<Value> visit(MatExpression<Value>* expression) override {
-        Code code;
-        code.rows     = expression->Size().rows;
-        code.cols     = expression->Size().cols;
+        Code                     code;
         bool                     constant = true, any = false;
         std::vector<Code>        cells, parts;
         std::vector<const Code*> from;
+        code.size = expression->Size();
         for (const PExpression<Value>& child : expression->Children()) {
             const Code& cell = cells.emplace_back(Emit(child));
             if (!cell.Scalar()) throw Reason("a matrix built from matrices");
@@ -1807,17 +1813,17 @@ private:
             parts.push_back(cell.part.empty() ? Literal(Value(Number(0))) : cell.part[0]);
         }
         for (const Code& cell : cells) from.push_back(&cell);
-        const Part part = any ? Part(Assembled(parts, code.rows, code.cols)) : Part();
+        const Part part = any ? Part(Assembled(parts, code.size)) : Part();
         return Answer(Parted(constant ? Folded(expression) : code, part, from));
     }
     // A matrix of single parts, row by row, exact where each is.
-    static Code Assembled(const std::vector<Code>& parts, std::size_t rows, std::size_t cols) {
-        Code code = Literal(Value(Extent{rows, cols}));
+    static Code Assembled(const std::vector<Code>& parts, Extent size) {
+        Code code = Literal(Value(size));
         for (std::size_t k = 0; k < parts.size(); ++k) {
             code.cells[k] = parts[k].cells[0];
             if (!parts[k].constant) code.constant.reset();
             if (code.constant)
-                (*code.constant)(k / cols + 1, k % cols + 1) = (*parts[k].constant)(1, 1);
+                (*code.constant)(k / size.cols + 1, k % size.cols + 1) = (*parts[k].constant)(1, 1);
         }
         return code;
     }
@@ -1901,70 +1907,78 @@ private:
         const std::optional<Extent> extent = Measured(name, definition, whole, fits);
         if (!extent) throw Reason(name + " has no size");
         Code shape;
-        shape.rows = extent->rows;
-        shape.cols = extent->cols;
+        shape.size = *extent;
+        for (const Clause<Value>& clause : definition.Clauses()) {
+            const ParametersDefinition<Value>& p = clause.parameters;
+            if (p.cells() && p.row_name().empty() && fits(clause))
+                Named(p, shape.size,
+                      name + "_" + (p.general() ? p.index_name() : std::to_string(p.index())));
+        }
         std::vector<std::string> cells;
-        for (std::size_t row = 1; row <= shape.rows; ++row) {
-            for (std::size_t col = 1; col <= shape.cols; ++col) {
-                std::string                chain, pick;
-                std::optional<std::string> last;
-                int                        picked  = 0;
-                const auto                 settles = [&](const Clause<Value>& clause) {
-                    const int place = static_cast<int>(&clause - definition.Clauses().data()) + 1;
-                    const ParametersDefinition<Value>& p = clause.parameters;
-                    const std::string                  outer =
-                        std::exchange(index_, p.general() ? p.index_name() : "");
-                    if (!p.row_name().empty()) {
-                        places_[p.row_name()] = Value(Number(static_cast<int>(row)));
-                        places_[p.col_name()] = Value(Number(static_cast<int>(col)));
-                    }
-                    const std::optional<std::string> condition =
-                        p.guarded() ? Condition(p.guard()) : std::optional<std::string>("");
-                    const std::optional<Code> value =
-                        condition ? std::optional<Code>(Emit(clause.expression)) : std::nullopt;
-                    places_.erase(p.row_name());
-                    places_.erase(p.col_name());
-                    index_ = outer;
-                    if (!value) return false;
-                    if (!value->Scalar())
-                        throw Reason("a cell of " + name + " must be a single value");
-                    if (condition->empty()) {
-                        last   = value->cells[0].text;
-                        picked = place;
-                    } else {
-                        chain += *condition + " ? " + value->cells[0].text + " : ";
-                        pick += Picked(*condition) + " ? " + std::to_string(place) + " : ";
-                    }
-                    return condition->empty();
-                };
-                bool settled = false;
+        for (std::size_t c = 0; c < shape.size.count(); ++c) {
+            const int slice = static_cast<int>(c / (shape.size.rows * shape.size.cols)) + 1,
+                      row   = static_cast<int>(c / shape.size.cols % shape.size.rows) + 1,
+                      col   = static_cast<int>(c % shape.size.cols) + 1;
+            std::string                chain, pick;
+            std::optional<std::string> last;
+            int                        picked  = 0;
+            const auto                 settles = [&](const Clause<Value>& clause) {
+                const int place = static_cast<int>(&clause - definition.Clauses().data()) + 1;
+                const ParametersDefinition<Value>& p = clause.parameters;
+                const std::string outer = std::exchange(index_, p.general() ? p.index_name() : "");
+                if (!p.row_name().empty()) {
+                    if (p.tensor()) places_[p.slice_name()] = Value(Number(slice));
+                    places_[p.row_name()] = Value(Number(row));
+                    places_[p.col_name()] = Value(Number(col));
+                }
+                const std::optional<std::string> condition =
+                    p.guarded() ? Condition(p.guard()) : std::optional<std::string>("");
+                // --check asks the interpreter's guards of a cell by its row and column.
+                if (p.tensor() && condition && !condition->empty())
+                    throw Reason("a tensor's cells under a guard that is not a constant, for now");
+                const std::optional<Code> value =
+                    condition ? std::optional<Code>(Emit(clause.expression)) : std::nullopt;
+                places_.erase(p.slice_name());
+                places_.erase(p.row_name());
+                places_.erase(p.col_name());
+                index_ = outer;
+                if (!value) return false;
+                if (!value->Scalar()) throw Reason("a cell of " + name + " must be a single value");
+                if (condition->empty()) {
+                    last   = value->cells[0].text;
+                    picked = place;
+                } else {
+                    chain += *condition + " ? " + value->cells[0].text + " : ";
+                    pick += Picked(*condition) + " ? " + std::to_string(place) + " : ";
+                }
+                return condition->empty();
+            };
+            bool settled = false;
+            for (const Clause<Value>& clause : definition.Clauses()) {
+                const ParametersDefinition<Value>& p = clause.parameters;
+                if (settled || !p.cells() || !p.row_name().empty() || !fits(clause)) continue;
+                if (p.slice() == slice && p.row() == row && p.col() == col)
+                    settled = settles(clause);
+            }
+            for (const bool guarded : {true, false})
                 for (const Clause<Value>& clause : definition.Clauses()) {
                     const ParametersDefinition<Value>& p = clause.parameters;
-                    if (settled || !p.cells() || !p.row_name().empty() || !fits(clause)) continue;
-                    if (p.row() < 1 || static_cast<std::size_t>(p.row()) > shape.rows ||
-                        p.col() < 1 || static_cast<std::size_t>(p.col()) > shape.cols)
-                        throw Reason("row " + std::to_string(p.row()) + ", column " +
-                                     std::to_string(p.col()) + " is outside a " +
-                                     std::to_string(shape.rows) + "x" + std::to_string(shape.cols) +
-                                     " matrix");
-                    if (static_cast<std::size_t>(p.row()) == row &&
-                        static_cast<std::size_t>(p.col()) == col)
-                        settled = settles(clause);
+                    if (settled || p.row_name().empty() || p.guarded() != guarded || !fits(clause))
+                        continue;
+                    settled = settles(clause);
                 }
-                for (const bool guarded : {true, false})
-                    for (const Clause<Value>& clause : definition.Clauses()) {
-                        const ParametersDefinition<Value>& p = clause.parameters;
-                        if (settled || p.row_name().empty() || p.guarded() != guarded ||
-                            !fits(clause))
-                            continue;
-                        settled = settles(clause);
-                    }
-                if (!last) last = whole ? whole->At(row - 1, col - 1).text : "0.0";
-                cells.push_back(chain + *last);
-                if (taken) taken->push_back(pick + std::to_string(picked));
-            }
+            if (!last) last = whole ? whole->At(c).text : "0.0";
+            cells.push_back(chain + *last);
+            if (taken) taken->push_back(pick + std::to_string(picked));
         }
         return {shape, cells};
+    }
+
+    // A clause for one cell, in the interpreter's words where it names more
+    // or fewer indices than a read of the value takes, or a cell outside it.
+    static void Named(const ParametersDefinition<Value>& p, Extent size, const std::string& name) {
+        Value value(size);
+        Reasoned([&] { Reference<Value>::Named(p, value, name); });
     }
 
     // The base terms of a sequence defined by its cells: those written whole
@@ -1999,12 +2013,14 @@ private:
                     definition.Clauses().begin(), definition.Clauses().end(),
                     [&](const Clause<Value>& c) {
                         return at(c) && c.parameters.cells() && c.parameters.row_name().empty() &&
+                               c.parameters.slice() == every.slice() &&
                                c.parameters.row() == every.row() &&
                                c.parameters.col() == every.col();
                     });
                 const std::string term = name + "_" + std::to_string(index);
                 const std::string cell =
-                    "[" + std::to_string(every.row()) + "," + std::to_string(every.col()) + "]";
+                    "[" + (every.tensor() ? std::to_string(every.slice()) + "," : "") +
+                    std::to_string(every.row()) + "," + std::to_string(every.col()) + "]";
                 if (!own)
                     throw Reason(term + " and " + name + "_" + every.index_name() + cell +
                                  " both give a cell of " + term + "; write " + term + cell +
@@ -2038,7 +2054,7 @@ private:
                 clauses_ && std::any_of(definition.Clauses().begin(), definition.Clauses().end(),
                                         [](const Clause<Value>& c) {
                                             return c.parameters.general() && c.parameters.cells() &&
-                                                   c.parameters.guarded();
+                                                   c.parameters.guarded() && !c.parameters.tensor();
                                         });
             auto [shape, cells] =
                 TermCells(name, definition, every, whole, guarded ? &sequence.taken : nullptr);
@@ -2055,8 +2071,12 @@ private:
                 if (p.guarded()) throw Reason("a guarded cell of one term");
                 const Code value = Emit(clause.expression);
                 if (!value.Scalar()) throw Reason("a cell of " + name + " must be a single value");
-                std::string& cell = cells[static_cast<std::size_t>(p.row() - 1) * shape.cols +
-                                          static_cast<std::size_t>(p.col() - 1)];
+                Named(p, shape.size, name + "_" + std::to_string(p.index()));
+                std::string& cell =
+                    cells[(static_cast<std::size_t>(p.slice() - 1) * shape.size.rows +
+                           static_cast<std::size_t>(p.row() - 1)) *
+                              shape.size.cols +
+                          static_cast<std::size_t>(p.col() - 1)];
                 cell              = "\x12" + name + "\x13 == " + std::to_string(p.index()) + " ? " +
                        value.cells[0].text + " : " + cell;
             }
@@ -2079,39 +2099,31 @@ private:
         if (!extent) throw Reason(name + " has no size");
         for (const Clause<Value>& clause : definition.Clauses()) {
             const ParametersDefinition<Value>& p = clause.parameters;
-            if (!p.cells() || !p.row_name().empty()) continue;
-            if (p.row() < 1 || static_cast<std::size_t>(p.row()) > extent->rows || p.col() < 1 ||
-                static_cast<std::size_t>(p.col()) > extent->cols)
-                throw Reason("row " + std::to_string(p.row()) + ", column " +
-                             std::to_string(p.col()) + " is outside a " +
-                             std::to_string(extent->rows) + "x" + std::to_string(extent->cols) +
-                             " matrix");
+            if (p.cells() && p.row_name().empty()) Named(p, *extent, name);
         }
         Code  code;
         Value exact(*extent);
         bool  constant = true;
-        code.rows      = extent->rows;
-        code.cols      = extent->cols;
-        for (std::size_t row = 1; row <= code.rows; ++row) {
-            for (std::size_t col = 1; col <= code.cols; ++col) {
-                const std::optional<Code> cell =
-                    CellOf(definition, static_cast<int>(row), static_cast<int>(col));
-                Code given = cell ? *cell : Literal(Value(Number(0)));
-                if (!cell && whole) {
-                    given       = Code();
-                    given.cells = {whole->At(row - 1, col - 1)};
-                    if (whole->constant) given.constant = Value((*whole->constant)(row, col));
-                }
-                if (!given.part.empty())
-                    throw Reason("a derivative through a definition by cells, for now");
-                if (!given.Scalar())
-                    throw Reason("a cell of " + name + " must be a single value, not a " +
-                                 std::to_string(given.rows) + "x" + std::to_string(given.cols) +
-                                 " matrix");
-                code.cells.push_back(given.cells[0]);
-                if (given.constant) exact(row, col) = (*given.constant)(1, 1);
-                constant = constant && given.constant;
+        code.size      = *extent;
+        for (std::size_t c = 0; c < code.size.count(); ++c) {
+            const std::optional<Code> cell =
+                CellOf(definition, static_cast<int>(c / (extent->rows * extent->cols)) + 1,
+                       static_cast<int>(c / extent->cols % extent->rows) + 1,
+                       static_cast<int>(c % extent->cols) + 1);
+            Code given = cell ? *cell : Literal(Value(Number(0)));
+            if (!cell && whole) {
+                given       = Code();
+                given.cells = {whole->At(c)};
+                if (whole->constant) given.constant = Value(whole->constant->data()[c]);
             }
+            if (!given.part.empty())
+                throw Reason("a derivative through a definition by cells, for now");
+            if (!given.Scalar())
+                throw Reason("a cell of " + name + " must be a single value, not a " +
+                             given.size.Described());
+            code.cells.push_back(given.cells[0]);
+            if (given.constant) exact.data()[c] = (*given.constant)(1, 1);
+            constant = constant && given.constant;
         }
         if (constant) code.constant = exact;
         return code;
@@ -2125,8 +2137,7 @@ private:
                                    const std::optional<Code>& whole, Fits fits) {
         return Reasoned([&] {
             return definition.Measured(
-                whole ? std::optional<Extent>(Extent{whole->rows, whole->cols}) : std::nullopt,
-                fits, name,
+                whole ? std::optional<Extent>(whole->size) : std::nullopt, fits, name,
                 [&](const Clause<Value>& clause, auto measure) {
                     const ParametersDefinition<Value>& p = clause.parameters;
                     const std::string                  outer =
@@ -2135,17 +2146,16 @@ private:
                     index_ = outer;
                 },
                 [&](const PExpression<Value>& e) { return Size(e); },
-                [&](const PExpression<Value>& e) {
-                    const Code read = Emit(e);
-                    return Extent{read.rows, read.cols};
-                });
+                [&](const PExpression<Value>& e) { return Emit(e).size; });
         });
     }
 
-    std::optional<Code> CellOf(const Reference<Value>& definition, int row, int col) {
+    std::optional<Code> CellOf(const Reference<Value>& definition, int slice, int row, int col) {
         for (const Clause<Value>& clause : definition.Clauses()) {
             const ParametersDefinition<Value>& p = clause.parameters;
-            if (!p.cells() || !p.row_name().empty() || p.row() != row || p.col() != col) continue;
+            if (!p.cells() || !p.row_name().empty() || p.slice() != slice || p.row() != row ||
+                p.col() != col)
+                continue;
             if (p.guarded() && !GuardHolds(p.guard())) continue;
             return Emit(clause.expression);
         }
@@ -2153,11 +2163,13 @@ private:
             for (const Clause<Value>& clause : definition.Clauses()) {
                 const ParametersDefinition<Value>& p = clause.parameters;
                 if (p.row_name().empty() || p.guarded() != guarded) continue;
+                if (p.tensor()) places_[p.slice_name()] = Value(Number(slice));
                 places_[p.row_name()]           = Value(Number(row));
                 places_[p.col_name()]           = Value(Number(col));
                 const bool                holds = !p.guarded() || GuardHolds(p.guard());
                 const std::optional<Code> cell =
                     holds ? std::optional<Code>(Emit(clause.expression)) : std::nullopt;
+                places_.erase(p.slice_name());
                 places_.erase(p.row_name());
                 places_.erase(p.col_name());
                 if (cell) return cell;
@@ -2202,19 +2214,21 @@ private:
                 given.values.emplace(parameter, Inside(given, [&] {
                                          return Emit(p.parameters_dict().at(parameter));
                                      }));
-        for (const auto& [parameter, code] : given.values)
+        // A limit's function fills arrays of rows and columns.
+        for (const auto& [parameter, code] : given.values) {
+            if (code.size.slices) throw Reason("a tensor in a limit, for now");
             if (!code.part.empty()) throw Reason("a derivative of a limit, for now");
+        }
         bool constant = true;
         for (const auto& [parameter, code] : given.values) constant = constant && code.constant;
         // Its terms, as locals of a function of their own. 'arg_x': no name
         // of the language has a '_', and no name of the function's own
         // begins so.
-        Walked    walked{name, names, 0, 0, 0};
+        Walked    walked{name, names, 0, {0, 0}};
         Expansion inside{{}, {}, sequence.home ? sequence.home : scope_, nullptr, {}, {}};
         for (const std::string& parameter : names) {
             const Code& argument = given.values.at(parameter);
-            inside.values.emplace(parameter,
-                                  Array("arg_" + parameter, argument.rows, argument.cols));
+            inside.values.emplace(parameter, Array("arg_" + parameter, argument.size));
         }
         Walked* const              outer_limit       = std::exchange(limit_, &walked);
         auto* const                outer_temporaries = std::exchange(temporaries_, nullptr);
@@ -2222,10 +2236,10 @@ private:
         std::map<int, Code>        bases;
         std::vector<std::string>   general;
         const auto                 shaped = [&](const Code& code) {
-            if (walked.rows && (code.rows != walked.rows || code.cols != walked.cols))
+            if (code.size.slices) throw Reason("a tensor in a limit, for now");
+            if (walked.size.rows && code.size != walked.size)
                 throw Reason("a limit of " + name + ", whose terms change size");
-            walked.rows = code.rows;
-            walked.cols = code.cols;
+            walked.size = code.size;
             return code;
         };
         try {
@@ -2256,7 +2270,7 @@ private:
                         else
                             guarded.emplace_back(*condition, value);
                     }
-                general     = Texts(Chain(guarded, otherwise, walked.rows, walked.cols));
+                general     = Texts(Chain(guarded, otherwise, walked.size));
                 index_text_ = outer_text;
                 return Code{};
             });
@@ -2276,19 +2290,18 @@ private:
             if (!bases.count(highest - lag + 1))
                 throw Reason("a limit whose terms read back past its base clauses");
 
-        const bool        scalar    = walked.rows * walked.cols == 1;
+        const bool scalar = walked.size.count() == 1;
         // Named once its text is known: a limit written again, as a function
         // applied cell by cell writes it, is the same function.
         const std::string function  = "\x1f";
         const std::string first     = std::to_string(highest + 1);
-        const std::string shape     = scalar ? "" : Subscript(walked.rows, walked.cols);
+        const std::string shape     = Dimensions(walked.size);
         const std::string tolerance = Double(Convergence<Value>::tolerance);
         // A term's cells, one assignment each, or the term itself.
         const auto each = [&](const std::string& indent, const std::string& to, const auto& from) {
             std::string out;
-            for (std::size_t c = 0; c < walked.rows * walked.cols; ++c)
-                out += indent + to + (scalar ? "" : Subscript(c / walked.cols, c % walked.cols)) +
-                       " = " + from(c) + ";\n";
+            for (std::size_t c = 0; c < walked.size.count(); ++c)
+                out += indent + to + Subscript(walked.size, c) + " = " + from(c) + ";\n";
             return out;
         };
         std::string text;
@@ -2301,9 +2314,8 @@ private:
                 "(const " + module_ + "* m_";
         for (const std::string& parameter : names) {
             const Code& argument = given.values.at(parameter);
-            text += argument.Scalar()
-                        ? ", double arg_" + parameter
-                        : ", double arg_" + parameter + Subscript(argument.rows, argument.cols);
+            text += argument.Scalar() ? ", double arg_" + parameter
+                                      : ", double arg_" + parameter + Dimensions(argument.size);
         }
         if (!scalar) text += ", double out_" + shape;
         text += ") {\n    (void)m_;\n";
@@ -2334,9 +2346,9 @@ private:
         } else {
             text += "            step_ = 0.0;\n";
             if (floats) text += "            int near_ = 1;\n";
-            text +=
-                "            for (int i_ = 0; i_ < " + std::to_string(walked.rows) + "; ++i_)\n";
-            text += "                for (int j_ = 0; j_ < " + std::to_string(walked.cols) +
+            text += "            for (int i_ = 0; i_ < " + std::to_string(walked.size.rows) +
+                    "; ++i_)\n";
+            text += "                for (int j_ = 0; j_ < " + std::to_string(walked.size.cols) +
                     "; ++j_) {\n";
             text += "                    const double d_ = fabs(t_[i_][j_] - t1_[i_][j_]);\n";
             text += "                    if (isnan(d_) || d_ > step_) step_ = d_;\n";
@@ -2391,16 +2403,15 @@ private:
             if (!temporaries_) throw Reason("a matrix argument of a limit inside a limit's terms");
             const std::string rows = Rows(argument);
             called += ", " + Declare("arg\x1f" + rows, [&](const std::string& t) {
-                          return std::vector<std::string>{"double " + t +
-                                                          Subscript(argument.rows, argument.cols) +
-                                                          " = {" + rows + "};"};
+                          return std::vector<std::string>{
+                              "double " + t + Dimensions(argument.size) + " = {" + rows + "};"};
                       });
         }
         if (scalar) return Answer(Cell(called + ")", primary));
         const std::string out = Declare("lim\x1f" + called, [&](const std::string& t) {
             return std::vector<std::string>{"double " + t + shape + ";", called + ", " + t + ");"};
         });
-        return Answer(Array(out, walked.rows, walked.cols));
+        return Answer(Array(out, walked.size));
     }
 
     // A term of the sequence a limit walks, read back from one of its own:
@@ -2419,9 +2430,9 @@ private:
         if (!own) throw Reason(limit_->name + "'s term read with other arguments than its own");
         const int lag = Lag(call.subexpr(), limit_->name);
         if (lag == 0) throw Reason(limit_->name + " is defined by itself");
-        if (!limit_->rows) throw Reason("a limit whose terms read back past its base clauses");
+        if (!limit_->size.rows) throw Reason("a limit whose terms read back past its base clauses");
         limit_->depth = std::max(limit_->depth, lag);
-        return Array("t" + std::to_string(lag) + "_", limit_->rows, limit_->cols);
+        return Array("t" + std::to_string(lag) + "_", limit_->size);
     }
 
     PExpression<Value> visit(FuncExpression<Value>* expression) override {
@@ -2455,7 +2466,7 @@ private:
         Sequence& read = sequences_[key];
         if (!definition) {
             Unreserved(key);
-            if (!read.rows) read.rows = read.cols = 1;
+            if (!read.size.rows) read.size = Extent{};
         }
         if (!reading_) return Answer(Seeded(key, read, call.subexpr()));
         if (const auto sample = Sampled(call.subexpr()))
@@ -2463,7 +2474,7 @@ private:
         if (const auto hold = Held(call.subexpr())) return Answer(Holding(key, read, *hold));
         const int lag = Lag(call.subexpr(), key) + shift_;
         Bases(key);
-        if (!read.rows) Compile(key);
+        if (!read.size.rows) Compile(key);
         // By its rate, before one with no base clause is computed again.
         if (&read != reading_ && read.period > 1)
             throw Reason(key + "_(...): read every step, and " + key + " is computed every " +
@@ -2474,7 +2485,7 @@ private:
                                : reading_->reads)[key]
             .insert(lag);
         if (clause_reads_) (*clause_reads_)[key].insert(lag);
-        Code code = Array("m_->" + key + "[" + std::to_string(lag) + "]", read.rows, read.cols);
+        Code code  = Array("m_->" + key + "[" + std::to_string(lag) + "]", read.size);
         code.whole = true;
         // Before its window holds the term, one with no base clause is
         // computed again at that index, as the interpreter answers it there
@@ -2488,8 +2499,7 @@ private:
             const std::string mark = "\x04" + std::to_string(id) + "\x05";
             code.whole             = false;
             for (std::size_t c = 0; c < code.cells.size(); ++c)
-                code.cells[c].text = mark + back.At(c / code.cols, c % code.cols).text + "\x06" +
-                                     code.cells[c].text + "\x07";
+                code.cells[c].text = mark + back.At(c).text + "\x06" + code.cells[c].text + "\x07";
         }
         return Answer(code);
     }
@@ -2555,19 +2565,26 @@ private:
         places_       = places;
         clause_reads_ = reads;
         shift_        = shift;
-        return Chain(guarded, otherwise, sequence.rows, sequence.cols);
+        return Chain(guarded, otherwise, sequence.size);
     }
 
     static std::string Subscript(std::size_t i, std::size_t j) {
         return "[" + std::to_string(i) + "][" + std::to_string(j) + "]";
     }
+    // Cell c's of an array of this size, row by row and slice after slice, or
+    // none for a single value; a tensor keeps its slice, as it keeps ';;'.
+    static std::string Subscript(Extent size, std::size_t c) {
+        if (size.count() == 1 && !size.slices) return "";
+        const std::string at = Subscript(c / size.cols % size.rows, c % size.cols);
+        return size.slices ? "[" + std::to_string(c / (size.rows * size.cols)) + "]" + at : at;
+    }
 
     // A matrix as C initialises an array, '{a, b}, {c, d}'.
     static std::string Rows(const Code& code) {
         std::string rows;
-        for (std::size_t i = 0; i < code.rows; ++i) {
+        for (std::size_t i = 0; i < code.size.rows; ++i) {
             rows += i ? ", {" : "{";
-            for (std::size_t j = 0; j < code.cols; ++j)
+            for (std::size_t j = 0; j < code.size.cols; ++j)
                 rows += (j ? ", " : "") + code.At(i, j).text;
             rows += "}";
         }
@@ -2575,13 +2592,11 @@ private:
     }
 
     // The cells of a C array, 'name[i][j]', or 'name' alone for a single value.
-    static Code Array(const std::string& name, std::size_t rows, std::size_t cols) {
+    static Code Array(const std::string& name, Extent size) {
         Code code;
-        code.rows = rows;
-        code.cols = cols;
-        for (std::size_t i = 0; i < rows; ++i)
-            for (std::size_t j = 0; j < cols; ++j)
-                code.cells.push_back(Atom(rows * cols == 1 ? name : name + Subscript(i, j)));
+        code.size = size;
+        for (std::size_t c = 0; c < size.count(); ++c)
+            code.cells.push_back(Atom(name + Subscript(size, c)));
         return code;
     }
 
@@ -2670,10 +2685,10 @@ private:
         Sequence* const seeding = basing_;
         const int       base    = base_;
         Bases(key);
-        if (!read.rows) Compile(key);
+        if (!read.size.rows) Compile(key);
         seeding->seeds.push_back({key, base, *at});
         return Array("m_->" + key + "[\x19" + std::to_string(seeding->seeds.size() - 1) + "\x1a]",
-                     read.rows, read.cols);
+                     read.size);
     }
 
     // Each base's reads as lags, once the steps computing the bases are known
@@ -2703,13 +2718,13 @@ private:
         if (shift_ || early_ >= 0 || limit_)
             throw Reason(written + ": a sample where a term is computed again");
         Bases(key);
-        if (!read.rows) Compile(key);
+        if (!read.size.rows) Compile(key);
         if (reading_->period != 1 && reading_->period != a)
             throw Reason(written + ": read every " + std::to_string(a) + " steps, and " + within_ +
                          " is computed every " + std::to_string(reading_->period));
         reading_->period = a;
         reading_->samples[key].insert(b);
-        return Array("m_->" + key + "[\x0e" + std::to_string(b) + "\x0f]", read.rows, read.cols);
+        return Array("m_->" + key + "[\x0e" + std::to_string(b) + "\x0f]", read.size);
     }
 
     // A hold: where it reads in the held sequence's window depends on that
@@ -2730,9 +2745,8 @@ private:
         reading_->holds.push_back(holds_.size() - 1);
         const std::string id = std::to_string(holds_.size() - 1);
         Code              code;
-        code.rows = read.rows;
-        code.cols = read.cols;
-        for (std::size_t c = 0; c < read.rows * read.cols; ++c)
+        code.size = read.size;
+        for (std::size_t c = 0; c < read.size.count(); ++c)
             code.cells.push_back(Atom("\x10" + id + "," + std::to_string(c) + "\x11"));
         return code;
     }
@@ -2777,11 +2791,42 @@ private:
     PExpression<Value> visit(EqualExpression<Value>*) override {
         throw Reason("a local definition");
     }
-    PExpression<Value> visit(TensorExpression<Value>*) override { throw Reason("a tensor"); }
+    // '[a;; b]', slice by slice as Matrix::Stack stacks them, and their parts too.
+    PExpression<Value> visit(TensorExpression<Value>* expression) override {
+        std::vector<Code> slices, parts;
+        bool              constant = true, any = false;
+        for (const PExpression<Value>& child : expression->Children()) {
+            const Code& slice = slices.emplace_back(Emit(child));
+            constant          = constant && slice.constant;
+            any               = any || !slice.part.empty();
+            parts.push_back(slice.part.empty() ? Literal(Value(slice.size)) : slice.part[0]);
+        }
+        std::vector<const Code*> from;
+        for (const Code& slice : slices) from.push_back(&slice);
+        return Answer(Parted(constant ? Folded(expression) : Stack(slices),
+                             any ? Part(Stack(parts)) : Part(), from));
+    }
+    static Code Stack(const std::vector<Code>& slices) {
+        Code code;
+        code.size = {slices[0].size.rows, slices[0].size.cols, slices.size()};
+        for (const Code& slice : slices) {
+            if (slice.size != slices[0].size)
+                throw Reason("the slices of a tensor have one size, not " +
+                             slices[0].size.toString() + " and " + slice.size.toString());
+            code.cells.insert(code.cells.end(), slice.cells.begin(), slice.cells.end());
+        }
+        return code;
+    }
+
+    // A row, a cell, or a tensor's slice or cell, its places constants, and so
+    // its part. Which cells it takes, or why it takes none, is the
+    // interpreter's answer for a value of its size whose cells are numbered.
     PExpression<Value> visit(CellExpression<Value>* expression) override {
-        if (expression->Slice()) throw Reason("a tensor");
-        Code       matrix = Emit(expression->Matrix());
-        const Code row    = Known(expression->Row(), "a cell whose place is not a constant");
+        Code             matrix = Emit(expression->Matrix());
+        std::vector<int> at;
+        for (const PExpression<Value>* place :
+             {&expression->Slice(), &expression->Row(), &expression->Col()})
+            if (*place) at.push_back(Whole(Known(*place, "a cell whose place is not a constant")));
         // The interpreter refuses a matrix whole where it refuses a cell. One
         // that writes NaN in a cell not taken makes the header write it.
         for (const Cell& c : matrix.cells) aware_ |= !matrix.constant && WritesNan(c.text);
@@ -2789,52 +2834,35 @@ private:
         const std::string nan = matrix.whole ? "" : Nan(matrix);
         if (!nan.empty())
             for (Cell& c : matrix.cells) c = Cell("(" + nan + c.text + ")", primary);
-        if (!expression->Col()) {
-            if (matrix.constant && matrix.part.empty()) return Fold(expression);
-            const int i = Whole(row);
-            if (i < 1 || static_cast<std::size_t>(i) > matrix.rows) {
-                if (i > 1) Unstated(*expression->Matrix(), std::to_string(i));
-                throw Reason("row " + std::to_string(i) + " is outside a " +
-                             std::to_string(matrix.rows) + "x" + std::to_string(matrix.cols) +
-                             " matrix");
-            }
-            Code line;
-            line.cols = matrix.cols;
-            for (std::size_t j = 0; j < matrix.cols; ++j)
-                line.cells.push_back(matrix.At(static_cast<std::size_t>(i - 1), j));
-            return Answer(Parted(std::move(line), Selected(PartOf(matrix), i, 0), {&matrix}));
-        }
-        const Code col = Known(expression->Col(), "a cell whose place is not a constant");
         if (matrix.constant && matrix.part.empty()) return Fold(expression);
-        const int i = Whole(row), j = Whole(col);
-        if (i < 1 || static_cast<std::size_t>(i) > matrix.rows || j < 1 ||
-            static_cast<std::size_t>(j) > matrix.cols) {
-            if (i > 0 && j > 0)
-                Unstated(*expression->Matrix(), std::to_string(i) + ", k<=" + std::to_string(j));
-            throw Reason("row " + std::to_string(i) + ", column " + std::to_string(j) +
-                         " is outside a " + std::to_string(matrix.rows) + "x" +
-                         std::to_string(matrix.cols) + " matrix");
+        const auto read = [&](const Value& v) {
+            return at.size() == 3   ? numeric_interface<Value>::cell(v, at[0], at[1], at[2])
+                   : at.size() == 2 ? numeric_interface<Value>::cell(v, at[0], at[1])
+                                    : numeric_interface<Value>::row(v, at[0]);
+        };
+        Value numbered(matrix.size), taken;
+        for (std::size_t c = 0; c < matrix.size.count(); ++c)
+            numbered.data()[c] = Number(static_cast<int>(c));
+        try {
+            taken = read(numbered);
+        } catch (const std::runtime_error& error) {
+            const auto bound = [&](std::size_t k) { return std::to_string(at[k]); };
+            if (at.size() == 1 && at[0] > 1) Unstated(*expression->Matrix(), "j<=" + bound(0));
+            if (at.size() == 2 && at[0] > 0 && at[1] > 0)
+                Unstated(*expression->Matrix(), "j<=" + bound(0) + ", k<=" + bound(1));
+            if (at.size() == 3 && at[0] > 0 && at[1] > 0 && at[2] > 0)
+                Unstated(*expression->Matrix(),
+                         "b<=" + bound(0) + ", j<=" + bound(1) + ", k<=" + bound(2));
+            throw Reason(error.what());
         }
-        return Answer(
-            Parted(Of(matrix.At(static_cast<std::size_t>(i - 1), static_cast<std::size_t>(j - 1))),
-                   Selected(PartOf(matrix), i, j), {&matrix}));
-    }
-    // A row, or with j a cell, of a part, read as its value's is.
-    static Part Selected(const Part& part, int i, int j) {
-        return Mapped(
-            part,
-            [&](const Value& v) {
-                return j ? numeric_interface<Value>::cell(v, i, j)
-                         : numeric_interface<Value>::row(v, i);
-            },
-            [&](const Code& m) {
-                Code c;
-                c.cols = j ? 1 : m.cols;
-                for (std::size_t k = 0; k < c.cols; ++k)
-                    c.cells.push_back(m.At(static_cast<std::size_t>(i - 1),
-                                           j ? static_cast<std::size_t>(j - 1) : k));
-                return c;
-            });
+        const auto window = [&](const Code& m) {
+            Code c;
+            c.size = taken.Size();
+            for (std::size_t k = 0; k < c.size.count(); ++k)
+                c.cells.push_back(m.At(static_cast<std::size_t>(taken.data()[k].Inexact().real())));
+            return c;
+        };
+        return Answer(Parted(window(matrix), Mapped(PartOf(matrix), read, window), {&matrix}));
     }
     // A cell past an input whose model states no size, which compiles as a
     // single value (C83), refused with the size that would hold it.
@@ -2845,8 +2873,8 @@ private:
             if (p.name == read.Name() && !p.index.empty() && !p.fallback && p.bounds.empty())
                 throw Reason(p.name + " is a single value, as " +
                              model_->header.substr(0, model_->header.find('(')) +
-                             " states no size for it: write '" + p.name + "_" + p.index +
-                             "[j<=" + bounds + "]'");
+                             " states no size for it: write '" + p.name + "_" + p.index + "[" +
+                             bounds + "]'");
     }
     PExpression<Value> visit(FactExpression<Value>*) override { throw Reason("a factorial"); }
     // grad compiled (DESIGN.md): its body once for each cell of the point, each
@@ -2855,15 +2883,16 @@ private:
         if (!grad_.empty()) throw Reason("a derivative of a derivative, for now");
         const std::string& name  = expression->Variable();
         const Code         point = Emit(expression->Point());
+        if (point.size.slices) throw Reason("a derivative with respect to a tensor, for now");
         Asked([&] { Reasoned([&] { Derivative<Value>(definitions_).Names(*expression); }); }, true);
         Code              body;
         std::vector<Code> parts;
         bool              any = false;
         for (std::size_t k = 0; k < point.cells.size(); ++k) {
-            const std::size_t i = k / point.cols + 1, j = k % point.cols + 1;
+            const std::size_t i = k / point.size.cols + 1, j = k % point.size.cols + 1;
             Value             seed(Number(1));
             if (!point.Scalar()) {
-                seed       = Value(Extent{point.rows, point.cols});
+                seed       = Value(point.size);
                 seed(i, j) = Number(1);
             }
             Code x = point;
@@ -2880,12 +2909,11 @@ private:
                 throw Reason(
                     "grad of a matrix with respect to a matrix is a Jacobian, which it "
                     "does not give");
-            parts.push_back(body.part.empty() ? Literal(Value(Extent{body.rows, body.cols}))
-                                              : body.part[0]);
+            parts.push_back(body.part.empty() ? Literal(Value(body.size)) : body.part[0]);
             any = any || !body.part.empty();
         }
-        Code out = point.Scalar() ? parts[0] : Assembled(parts, point.rows, point.cols);
-        if (!any) out = Literal(Value(Extent{body.rows, body.cols}));
+        Code out = point.Scalar() ? parts[0] : Assembled(parts, point.size);
+        if (!any) out = Literal(Value(body.size));
         out.part.clear();
         // A fold reading it would take its point and body again (C115).
         if (!point.constant || !body.constant) out.constant.reset();
@@ -2952,7 +2980,7 @@ private:
 
     Code Field(const std::string& name, const Value& value) {
         Unreserved(name);
-        const Parameter parameter{value.Size().rows, value.Size().cols, Doubles(value)};
+        const Parameter parameter{value.Size(), Doubles(value)};
         parameters_.emplace(name, parameter);
         read_parameters_.insert(name);
         return Fields(name, Literal(value));
@@ -2961,7 +2989,7 @@ private:
     // The struct's field for a value of this shape, cell by cell.
     static Code Fields(const std::string& name, const Code& shape) {
         Unreserved(name);
-        return Array("m_->" + name, shape.rows, shape.cols);
+        return Array("m_->" + name, shape.size);
     }
 
     // A cell that is a name or a number is read as itself, which the C
@@ -3114,10 +3142,7 @@ private:
                                         : "(m_->index_" + Less(held.phase - p * hold.a) + ") / " +
                                               a + " - (m_->index_" + Less(hold.b - q * hold.a) +
                                               ") / " + a + Less(hold.d + p - q);
-            std::string       cell =
-                "m_->" + hold.read + "[" + lag + "]" +
-                (held.rows * held.cols == 1 ? std::string()
-                                            : Subscript(c / held.cols, c % held.cols));
+            std::string       cell = "m_->" + hold.read + "[" + lag + "]" + Subscript(held.size, c);
             if (hold.from > sequence.start)
                 cell = "(m_->index_ < " + std::to_string(hold.from) + " ? NAN : " + cell + ")";
             return cell;
@@ -3483,15 +3508,12 @@ private:
                 const auto term = folded_.find({name, (slow ? sequence.first : earliest) - 1 - k});
                 if (term == folded_.end() || !term->second) continue;
                 const std::vector<double> cells = Doubles(*term->second);
-                if (term->second->Size() != Extent{sequence.rows, sequence.cols})
+                if (term->second->Size() != sequence.size)
                     throw Refusal(name, "a history of another shape");
                 for (std::size_t c = 0; c < cells.size(); ++c)
                     if (cells[c] != 0.0)
-                        lines +=
-                            "    m_->" + name + "[" + std::to_string(k) + "]" +
-                            (cells.size() == 1 ? ""
-                                               : Subscript(c / sequence.cols, c % sequence.cols)) +
-                            " = " + Double(cells[c]) + ";\n";
+                        lines += "    m_->" + name + "[" + std::to_string(k) + "]" +
+                                 Subscript(sequence.size, c) + " = " + Double(cells[c]) + ";\n";
             }
         }
         return lines;
@@ -3527,8 +3549,10 @@ private:
         return order;
     }
 
-    static std::string Dimensions(std::size_t rows, std::size_t cols) {
-        return rows * cols == 1 ? "" : Subscript(rows, cols);
+    static std::string Dimensions(Extent size) {
+        if (size.count() == 1 && !size.slices) return "";
+        return (size.slices ? "[" + std::to_string(size.slices) + "]" : "") +
+               Subscript(size.rows, size.cols);
     }
 
     // Those something reads: a cell read out of a product, or a clause that was
@@ -3660,9 +3684,7 @@ private:
         return text;
     }
 
-    std::size_t Cells(const std::string& name) const {
-        return sequences_.at(name).rows * sequences_.at(name).cols;
-    }
+    std::size_t Cells(const std::string& name) const { return sequences_.at(name).size.count(); }
 
     // The header's first comment: how to call it, in the terms of the file.
     std::string Interface(const std::string& module, const std::vector<std::string>& inputs,
@@ -3689,23 +3711,26 @@ private:
                             "*m" + (sequence.phase ? Less(-sequence.phase) : std::string()));
         }
         for (const std::string& name : inputs) {
-            const Sequence& input = sequences_.at(name);
-            const Extent    size{input.rows, input.cols};
-            inputs_n.push_back(name + "_n" +
-                               (Cells(name) == 1 ? "" : "\x01(" + size.toString() + ")"));
+            inputs_n.push_back(
+                name + "_n" +
+                (Cells(name) == 1 ? "" : "\x01(" + sequences_.at(name).size.toString() + ")"));
         }
         for (const auto& [name, parameter] : parameters_)
             parameters.push_back(parameter.initial.size() == 1
                                      ? name + "\x01=\x01" + Double(parameter.initial[0])
-                                     : name + "\x01(" + std::to_string(parameter.rows) + "x" +
-                                           std::to_string(parameter.cols) + ")");
+                                     : name + "\x01(" + parameter.size.toString() + ")");
         std::string text =
             "After a step, m.name[k] is name_(n-k) for each sequence: " + list(terms) + ".";
         if (!rated.empty())
             text += " At another rate, m.name[k] is name_(m-k), m its latest term's index: " +
                     list(rated) + ".";
+        const auto sliced = [&](auto& name) { return sequences_.at(name).size.slices > 0; };
         if (std::any_of(inputs.begin(), inputs.end(), [&](auto& name) { return Cells(name) > 1; }))
-            text = "An input of more than one cell is a pointer to its cells, row by row. " + text;
+            text = "An input of more than one cell is a pointer to its cells, row by row" +
+                   std::string(std::any_of(inputs.begin(), inputs.end(), sliced)
+                                   ? ", slice after slice. "
+                                   : ". ") +
+                   text;
         text = (inputs.empty() ? "A step takes no input. "
                 : inputs.size() == 1
                     ? "A step takes " + list(inputs_n) + ", the input at its index. "
@@ -3734,9 +3759,13 @@ private:
         if (!fields.empty()) {
             const std::string& last  = fields.back();
             const Sequence&    shown = sequences_.at(last);
-            out += " *     m." + last + (shown.rows * shown.cols == 1 ? "[0]" : "[0][i][j]") +
-                   "  is then " + last + "_n" +
-                   (shown.rows * shown.cols == 1 ? "" : ", row i+1 and column j+1") + "\n";
+            std::string        place = "[i][j]", said = ", row i+1 and column j+1";
+            if (shown.size.slices) {
+                place = "[b]" + place;
+                said  = ", slice b+1" + said;
+            }
+            if (Dimensions(shown.size).empty()) place = said = "";
+            out += " *     m." + last + "[0]" + place + "  is then " + last + "_n" + said + "\n";
         }
         out += " *\n";
         std::string line;
@@ -3847,17 +3876,16 @@ private:
         out += " * index back. */\n";
         Members members;
         for (const auto& [name, parameter] : parameters_)
-            members.push_back({"double", name, Dimensions(parameter.rows, parameter.cols)});
+            members.push_back({"double", name, Dimensions(parameter.size)});
         for (const Derived& derived : derived_)
             if (derived.read)
-                members.push_back(
-                    {"double", derived.name, Dimensions(derived.code.rows, derived.code.cols)});
+                members.push_back({"double", derived.name, Dimensions(derived.code.size)});
         members.push_back({"long long", "index_", ""});
         for (const std::string& name : fields) {
             const Sequence& sequence = sequences_.at(name);
-            members.push_back({"double", name,
-                               "[" + std::to_string(sequence.depth) + "]" +
-                                   Dimensions(sequence.rows, sequence.cols)});
+            members.push_back(
+                {"double", name,
+                 "[" + std::to_string(sequence.depth) + "]" + Dimensions(sequence.size)});
             if (clauses_ && !sequence.guarded.empty())
                 members.push_back({"int", name + "_clause_", ""});
             if (!sequence.taken.empty())
@@ -3879,11 +3907,8 @@ private:
             if (!derived.read) continue;
             std::string assignments;
             for (std::size_t c = 0; c < derived.code.cells.size(); ++c)
-                assignments += "    m_->" + derived.name +
-                               (derived.code.Scalar()
-                                    ? ""
-                                    : Subscript(c / derived.code.cols, c % derived.code.cols)) +
-                               " = " + derived.code.cells[c].text + ";\n";
+                assignments += "    m_->" + derived.name + Subscript(derived.code.size, c) + " = " +
+                               derived.code.cells[c].text + ";\n";
             out += Temporaries(derived.temporaries, assignments, "    ") + assignments;
         }
         out += "}\n\n";
@@ -3891,10 +3916,8 @@ private:
         out += "static inline void " + module + "_init(" + module + "* m_) {\n";
         out += "    memset(m_, 0, sizeof *m_);\n";
         for (const auto& [name, parameter] : parameters_) {
-            const bool scalar = parameter.rows * parameter.cols == 1;
             for (std::size_t c = 0; c < parameter.initial.size(); ++c)
-                out += "    m_->" + name +
-                       (scalar ? "" : Subscript(c / parameter.cols, c % parameter.cols)) + " = " +
+                out += "    m_->" + name + Subscript(parameter.size, c) + " = " +
                        Double(parameter.initial[c]) + ";\n";
         }
         const std::size_t folds = out.size();
@@ -3917,7 +3940,7 @@ private:
             for (int k = sequence.depth - 1; k > 0; --k) {
                 const std::string to   = "m_->" + name + "[" + std::to_string(k) + "]";
                 const std::string from = "m_->" + name + "[" + std::to_string(k - 1) + "]";
-                lines += sequence.rows * sequence.cols == 1
+                lines += Dimensions(sequence.size).empty()
                              ? indent + to + " = " + from + ";\n"
                              : indent + "memcpy(" + to + ", " + from + ", sizeof " + to + ");\n";
             }
@@ -3926,9 +3949,11 @@ private:
         for (const std::string& name : fields)
             if (sequences_.at(name).period == 1) out += shifted(name, "    ");
         for (const std::string& name : inputs)
-            out += Cells(name) == 1 ? "    m_->" + name + "[0] = " + name + ";\n"
-                                    : "    memcpy(m_->" + name + "[0], " + name + ", sizeof m_->" +
-                                          name + "[0]);\n";
+            out += Cells(name) == 1
+                       ? "    m_->" + name + "[0]" + Subscript(sequences_.at(name).size, 0) +
+                             " = " + name + ";\n"
+                       : "    memcpy(m_->" + name + "[0], " + name + ", sizeof m_->" + name +
+                             "[0]);\n";
         for (const std::string& name : order) {
             const Sequence&   sequence = sequences_.at(name);
             const bool        scalar   = sequence.general.size() == 1;
@@ -3944,9 +3969,7 @@ private:
             if (rated) out += shifted(name, indent);
             std::string assignments;
             for (std::size_t c = 0; c < sequence.general.size(); ++c) {
-                assignments += indent + "m_->" + name + "[0]" +
-                               (scalar ? "" : Subscript(c / sequence.cols, c % sequence.cols)) +
-                               " = ";
+                assignments += indent + "m_->" + name + "[0]" + Subscript(sequence.size, c) + " = ";
                 for (const auto& [index, base] : sequence.bases)
                     assignments +=
                         "m_->index_ == " + std::to_string(index) + " ? " + base[c] + " : ";
@@ -4001,11 +4024,17 @@ private:
                 std::string any;
                 for (std::size_t c = 0; c < sequence.general.size(); ++c)
                     any += std::string(c ? " || " : "") + "isnan(m_->" + name + "[0]" +
-                           Subscript(c / sequence.cols, c % sequence.cols) + ")";
-                out += indent + "if (" + any + ")\n" + indent + "    for (int i_ = 0; i_ < " +
-                       std::to_string(sequence.rows) + "; ++i_)\n" + indent +
-                       "        for (int j_ = 0; j_ < " + std::to_string(sequence.cols) +
-                       "; ++j_) m_->" + name + "[0][i_][j_] = NAN;\n";
+                           Subscript(sequence.size, c) + ")";
+                const std::string b = sequence.size.slices ? "    " : "";
+                out += indent + "if (" + any + ")\n" +
+                       (b.empty() ? ""
+                                  : indent + "    for (int b_ = 0; b_ < " +
+                                        std::to_string(sequence.size.slices) + "; ++b_)\n") +
+                       indent + b + "    for (int i_ = 0; i_ < " +
+                       std::to_string(sequence.size.rows) + "; ++i_)\n" + indent + b +
+                       "        for (int j_ = 0; j_ < " + std::to_string(sequence.size.cols) +
+                       "; ++j_) m_->" + name + "[0]" + (b.empty() ? "" : "[b_]") +
+                       "[i_][j_] = NAN;\n";
             }
             if (late) out += "    }\n";
         }
@@ -4043,9 +4072,9 @@ private:
             const bool      unnamed  = std::any_of(
                 labels_.begin(), labels_.end(),
                 [&](const std::string& label) { return name.rfind(label + ".", 0) == 0; });
-            compiled.sequences.push_back(
-                {name, sequence.rows, sequence.cols, sequence.period, sequence.phase,
-                 sequence.period * sequence.first + sequence.phase, unnamed});
+            compiled.sequences.push_back({name, sequence.size, sequence.period, sequence.phase,
+                                          sequence.period * sequence.first + sequence.phase,
+                                          unnamed});
             if (clauses_ && (!sequence.guarded.empty() || !sequence.taken.empty()))
                 compiled.guarded.push_back(name);
         }
@@ -4112,7 +4141,7 @@ private:
         std::string              name;
         std::vector<std::string> parameters;
         int                      depth = 0;           // how far back a term reads its own
-        std::size_t              rows = 0, cols = 0;  // a term's, once a clause gives it
+        Extent                   size{0, 0};          // a term's, once a clause gives it
     };
     Walked*                          limit_           = nullptr;
     int                              temporary_count_ = 0;

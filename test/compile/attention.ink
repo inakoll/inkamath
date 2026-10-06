@@ -2,8 +2,7 @@
 # suite): softmax over each row of Q K^T / sqrt(d), then the rows weighting
 # V, the softmax's size read from S as the paper leaves it unwritten. Its sum
 # still names the count of keys, 3, as the paper's sum over j does not. Per
-# head and per batch is a tensor of rank 3, which the interpreter has and the
-# compiler refuses for now (DESIGN.md, tensors of rank 3).
+# head and per batch is a tensor of rank 3: test/compile/tensor.ink's 'heads'.
 attend(d = 2) = {
     Q_n = [1 0; 0 1; 1 1]*n/10
     K_n = [1 1; 0 1; 1 0]

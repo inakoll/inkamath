@@ -1653,7 +1653,12 @@ closures need one anyway, and can bring it.
 | C119 `[fixed]` | **A term read where the clause's index is not seen named no index.** A call's body, or a grad's taking the index's name, does not see the clause's index, and the refusal of every term read there named it as empty: `f(t) = x_t` and `y_n = f(n)` said "x_(...): an index other than a whole multiple of  plus a constant", where the interpreter's y_3 is x_3. Found alongside C112. It now says "a term read where y's index is not seen", in 3 lines; `compile_c119` in `test/cli.cmake` holds it. A call given the index, give or take a constant, now reads the term as the interpreter does: each such argument's distance from the caller's index is kept for its parameter, in 18 lines, `compile_c119_call` holding it; under a grad taking the index's name the read stays refused. |
 | C120 `[fixed]` | **`--check` fed an input of -0 as +0.** Its program writes each input with `%.17g`, which gives `-0`, and C reads that as the integer 0, so a check whose input is -0 stepped +0 and could pass against the wrong value: `1/x_n > 0` at `x_n = ~0*(-1)` was taken compiled and not interpreted. Found fixing C109. Fixed by writing a number with no point or exponent as a double, `-0.0`, as the compiler does. |
 | C121 `[fixed]` | **A compiled `log` in a NaN-aware header computed each power of 2 twice.** A decision tests each operand for NaN, and each of `ilogb`'s thirteen steps compares x with `2^(k + s)`: its test was `isnan(pow(2.0, k + s))`, a second call that C, pow setting errno, does not share with the comparison's. Under callgrind a step of `y_n = log(x_n)` took 3,430 instructions with GCC -O2, against 2,011 with no NaN test, and 1,581 against 794 with Clang. Found reading the prelude header. A power of a constant above 0 but 1 is NaN only where its exponent is, and is now tested by it, in 8 lines: 1,705 and 982 instructions. Of the headers, `inkamath_prelude.h`'s `ilogbs` moves so, its values bit-identical to the walked prelude's on 480,000 arguments, each also as 1/f; `check_els_functions` holds it. |
+| C122 `[fixed]` | **A cell of one term outside its size was written past the term's cells.** The cells of one term that no base term gives are folded into the general term's, each at its row and column, and one outside the size, `y_1[3] = 5` beside `y_n[j<=2] = n`, was stored there unchecked: the compiler wrote past its cells and crashed, where the interpreter refuses y_1, "row 3, column 1 is outside a 2x1 matrix". Found implementing tensors compiled (next in line). It is now refused in those words, as a cell of every term is, in 1 line; `compile_c122` in `test/cli.cmake` holds it. |
 | C123 `[kept]` | **An exact argument nearer a multiple of pi/2 than pi/2 is held gives `sin` or `cos` wrong.** The reduction's five parts are 7.4e-49 below pi/2 (2^-159.9), and an exact argument is reduced by them exactly and rounded once, so r is off by k times that: under a unit only where r is above about k 1.3e-32, 1e-31 from pi and 1.4e-26 from a multiple near 2^20. `sin(314159265358979323846264338327950288419716939937510/10^50)`, 5.8e-51 from pi, gives ~-1.47387998e-48 where mpmath gives +5.82097494e-51. No double comes so near: below 2^20 the nearest is 6.2e-19 from 29 pi/2, and the fast path takes doubles alone. Found reviewing `trig`. Kept: more parts move the bound and do not remove it, as an exact argument may lie as near as it likes, and reducing it exactly needs pi to as many digits as it has. `trig.ink` records it. |
+| C124 `[fixed]` | **A tensor of one cell was moved as a single value.** Its member keeps its three dimensions, `double y[2][1][1][1]`, as tensors compiled decided, but the step shifted its window and copied its input as a single value's, `m_->y[1] = m_->y[0]`, which C refuses: the header did not compile. Found reviewing tensors compiled, by random models. The window now moves as an array's and the input is written to its one cell, in 2 lines; `check_speck_report` holds it, `test/compile/tensor.ink`'s `speck`. |
+| C125 `[fixed]` | **A clause for one cell that names a slice a value lacks, or none it has, compiled.** Beside a value written whole, `y_0 = [1 2;; 3 4]` with `y_0[1,2] = 5`, or `A = [1 2; 3 4]` with `A[1,1,2] = 9`, the compiler took the missing slice as the first, or dropped the one named, and wrote the cell, where the interpreter refuses the value: "a clause for one cell of y_0, a 2x1x2 tensor, names its slice, row and column". Found reviewing tensors compiled, which let through what "a tensor" had refused. The compiler now asks the interpreter's own test, `Reference::Named`, made public, in 7 lines; `compile_c124` in `test/cli.cmake` holds it. |
+| C126 `[fixed]` | **A cell of every term met a base term's own cell at its row and column alone.** Beside `y_0 = [1 2;; 3 4]` and `y_0[1,1,1] = 7`, `y_n[2,1,1] = n` was taken as given by y_0's own clause and compiled, where the interpreter asks which of y_0 and `y_n[2,1,1]` gives slice 2, row 1, column 1 of y_0; with no clause of y_0's own the refusal named `y_n[1,1]`. Found reviewing tensors compiled. The slice is now compared and named too, in 2 lines; `compile_c125` in `test/cli.cmake` holds it. |
+| C127 `[fixed]` | **A clause for one cell outside the size compiled where every cell was given before it.** A term's clauses for one cell were held to its size cell by cell, each until one gave the cell, so beside `y_0 = [1 2]`, `y_0[1,1] = 3` and `y_0[1,2] = 4`, `y_0[1,3] = 5` was never held and compiled, where the interpreter refuses y_0, "row 1, column 3 is outside a 1x2 matrix". Tensors compiled made that test build a value of the term's size for each cell and each clause, so a 150x150 matrix with two such clauses took 2.4 s to compile instead of 0.09. Found reviewing tensors compiled. Each clause is now held once, before the cells, in 4 lines; `compile_c126` in `test/cli.cmake` holds it. |
 
 **Measure instructions, not the clock.** One of those changes made the matrix
 workload 20 per cent slower by the clock and not by a single instruction: with
@@ -4910,3 +4915,130 @@ that exploring seven domains asked of the interpreter, by how many asked.
   lines of sources where about 32 were planned: 22 in the prelude, 4 of its
   comment and 4 in the fast path; 24 with the extension's deletion. 14,379
   lines in all, after `fixes4`.
+- `[done]` **Tensors compiled.** `--compile` refuses a tensor by name, "cannot
+  compile X: a tensor", so attention per batch and per head, which the
+  interpreter answers (*Tensors of rank 3*), has no step: `attention.ink`
+  compiles one head of one sample. The conformance suite asks for the paper's
+  model, and a minibatch is a tensor wherever one is trained.
+
+  Decided: a tensor is a value the compiler holds as it holds a matrix, its
+  cells slice after slice and row by row, as the interpreter stores them, and
+  whatever meets one meets it slice by slice, through one function that takes
+  it apart into slices, applies itself to each and stacks the results, as the
+  interpreter's does. So a single value or a matrix meets every slice and a
+  tensor its slices in turn, for `+`, `-`, `/`, `*` and `'`; a product is
+  batched over the first index. What carries a value carries a tensor: a
+  sequence's term, a parameter, a model's input, a function's argument, a
+  term sampled at another rate, an input's history, a part under `grad`.
+
+  In the struct a term is `double O[1][2][3][4]`, window first: C's own layout
+  of that array is the interpreter's, so a host copies a batch in and out
+  whole. A tensor keeps its three dimensions even of one cell, as it keeps
+  `;;` when printed. A parameter is a field, `double s0[2][1][2]`, which init
+  writes cell by cell, as a matrix's. An input states its size by three
+  bounds, slices first, as the interpreter already reads it (C83),
+  `X_n[b<=2, t<=3, c<=4]`, and the step takes a pointer to its cells, `const
+  double X[24]`, copied into the window as a vector's is; where an input is a
+  tensor, the first comment's sentence on inputs ends "row by row, slice after
+  slice", and the last term shown is `m.O[0][b][i][j]`, "slice b+1, row i+1
+  and column j+1". Rejected: `[1][6][4]`, the same memory with a slice's rows
+  to be counted by the host; a field per slice, several fields for one term;
+  the batch last, where no paper puts it; `const double X[2][3][4]`, rejected
+  for a matrix in *An input of more than one cell*, as a cast for every host
+  under GCC's `-Wpedantic`.
+
+  One constant index reads a slice, three a cell, and a row is chained,
+  `T[b][t]`; two are refused in the interpreter's words, "a 2x2x2 tensor
+  takes one index or three, not two". A definition by three indices, a
+  sequence's term or a function, takes each cell's clause as one by two does,
+  the slice a place as the row is, so a guard that reads only places folds,
+  and its size is measured by `Reference::Measured` as now, a read's extent
+  carrying its slices: softmax's `sm(z)[b,t,s]` is the size of the scores it
+  is given. A literal `[a;; b]` is compiled slice by slice. A sum over a
+  slice's index unrolls as any sum with constant bounds.
+
+  Refused, in the interpreter's words where it has them: a power, "only a
+  matrix has a power, not a 2x2x2 tensor", which the square matrix's test
+  would otherwise let through as a matrix; tensors of different numbers of
+  slices; a literal whose slices differ. A comparison, a guard, an exponent,
+  `and`, `or` and a block of a tensor are refused in the compiler's words for
+  a matrix, "a comparison of matrices", a tensor being a stack of them: words
+  of their own were five lines for refusals no model reaches. For now: "a
+  tensor in a limit", its terms or an argument, as a limit's function fills
+  an array of rows and columns and no model iterates a tensor to a fixed
+  point; "a derivative with respect to a tensor"; and "a tensor's cells under
+  a guard that is not a constant", one reading the index, as `--check` asks
+  the interpreter's guards of a cell by its row and column, not its slice. A
+  gradient whose body meets tensors, with respect to a single value or a
+  matrix, compiles, the parts riding the values slice by slice: a model's
+  weights are shared matrices and its batch the tensor. Weights stacked by
+  head, a tensor, reach a loss only through softmax by cells, which compiled
+  `grad` refuses already, so nothing asks for a seed of three indices.
+
+  `--check` feeds a tensor input by its cells and holds every cell of a term,
+  reading the interpreter's slice by slice, and names a cell that parts from
+  it by its slice, row and column, `spread.d[2,1,2]`, as a matrix's by its row
+  and column. In a header that writes NaN, a tensor term with a NaN cell is
+  NaN in every cell, the loop gaining the slices'. `--float` writes floats, as
+  everywhere. Nothing new elsewhere: an instance with memory per cell is named
+  after each place it reads, the slice among them, as now. The random models
+  gain no tensors in this entry.
+
+  First a refactor: `Code`, `Sequence` and `Parameter` carry an `Extent`
+  where they carry rows and columns, and a C subscript and an array's
+  dimensions are written from it, every header, check program and golden
+  byte for byte; about as many lines out as in, its own commit, its net
+  stated, and past about 15 lines more than it removes the implementation
+  stops and reports. Then about 110 lines of sources: the arithmetic slice
+  by slice 25, reads of slices and cells and the literal 30, definitions by
+  three indices 20, the header's dimensions, NaN loop and sentences 15, the
+  refusals 6, the check 8 and the rest 6; re-estimated by the review at about
+  150, counted without the refactor, so past 225 the implementation stops
+  and reports. Sized against the interpreter's tensors, 222 with a literal,
+  printing, `tex` and parsing the compiler does not need, inputs of more
+  than one cell, 119, and compiled `lim`, 167. 14,355 lines in all before
+  it, at cfb0abb, the fixes since `grad` compiled included; about 14,505
+  after.
+
+  Specified in `test/compile/tensor.ink`, its numbers worked out apart from
+  the interpreter and the compiler: `heads`, multi-head attention over a
+  batch, `tensor.ink`'s conformance model with its input scaled by `n/50`, so
+  that `O_50` is its `O`, held within 1e-13 where NumPy's doubles come within
+  6.7e-15 of mpmath's; `whirl`, a batch of states turned a quarter each step,
+  meeting tensors every other way, its every term exact; `batch`, a linear
+  layer trained by minibatch descent through `grad`, exact; the last two in
+  float as well; `spread`, a cell that drifts, named by its place; the header
+  excerpts of each; and eight refusals. Two recorded refusals become headers:
+  `compile_tensor_refused`, whose file joins the refusals', and
+  `inputs_batch`, with its line in `inputs.ink`'s comment. Wired with the
+  implementation; README's paragraph on the compiler gains a sentence,
+  `attention.ink`'s comment loses "the compiler refuses for now", and
+  `test/data/inputs.ink`'s "Compiled, it is refused".
+
+  Built as specified: every report as `tensor.ink` gives it, `whirl` and
+  `batch` in float too, the header excerpts byte for byte and the eight
+  refusals in their words; every other header, check program and golden as
+  before, and the refactor's byte for byte. A `Code`'s cells are a tensor's
+  slice after slice, and one stretched over another's shape is read at a place
+  modulo its cells, a matrix over every slice as a single value over every
+  cell, so `+`, `-`, `/`, `*` and `'` meet slice by slice and a part rides
+  them. A read takes the cells the interpreter's read takes of a value of its
+  size whose cells are numbered, so a slice, a row and a cell, and every
+  refusal of one, are the interpreter's, as is a cell clause's outside the
+  size. Departures. A tensor whose slices are single values, met by a matrix
+  of another size, is refused, "a tensor whose slices are single values met
+  by a matrix, for now", where the interpreter takes each slice as a single
+  value; `whirl`'s `p` is one, and nothing meets it so. An input that states
+  no size, read with three indices, `X_n[1,2,1]`, is refused as with one or
+  two: "write 'X_n[b<=1, j<=2, k<=1]'". A tensor's term by cells with a guard that folds is
+  not followed for flips by `--check`, which could not tell its slices apart;
+  one that does not fold is refused, as specified. A matrix stretched over the
+  slices is computed once, into temporaries, as a single value stretched over
+  a matrix is. `--check`'s `hold_` takes each term's rows too, in a program
+  for an instance with a tensor only. Specified on the way, in a commit of its
+  own: `spread`, the drift of a tensor's cell, named. Found on the way and
+  registered: C122, a cell of one term outside its size written past the
+  term's cells. The refactor, 41 lines fewer, every output byte for byte; then
+  48 lines of sources more, where about 150 were planned: 40 in `compile.hpp`
+  and 8 in `check.hpp`; C122's 1; and by its review, C124 to C127, 15, and
+  its rulings, 14. 14,416 lines in all, after `trig`.

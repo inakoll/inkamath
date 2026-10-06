@@ -108,9 +108,10 @@
 # What 'inkamath --compile' refuses, each model a file of its own, 'lone'
 # with 'dot', compiled by name with -o. A history of another size than the
 # input, stated or not (test/cli.cmake's 'swap', which said "a history that
-# is not a single value"); a tensor; a default and an instance within a
-# model each giving another size than its model states. A size that reads
-# the index is the interpreter's refusal, where the file is read:
+# is not a single value"); a default and an instance within a model each
+# giving another size than its model states; a tensor, refused here once,
+# compiles since (test/compile/tensor.ink). A size that reads the index is
+# the interpreter's refusal, where the file is read:
 #
 #     broad(x_n[j<=2]) = {
 #         x_n | n < 0 = 0
@@ -119,9 +120,6 @@
 #     swap(x_n) = {
 #         x_n | n < 0 = [0; 0]
 #         c_n = [0 1; 1 0]*x_(n-1)
-#     }
-#     batch(x_n[b<=2, j<=1, k<=2]) = {
-#         y_n = x_n[2]*[1; 1]
 #     }
 #     nil(x_n[j<=2] = 0) = {
 #         y_n = [1 2]*x_n
@@ -139,7 +137,6 @@
 #
 #     inkamath: cannot compile x: a history of another shape
 #     inkamath: cannot compile x: a history of another shape
-#     inkamath: cannot compile x: a tensor
 #     inkamath: cannot compile x: a single value, where nil takes a 2x1 matrix
 #     inkamath: cannot compile inner.x: a single value, where dot takes a 2x1 matrix
 #     inkamath: grow.ink, line 1: x is an input of grow, so its size cannot read the index n

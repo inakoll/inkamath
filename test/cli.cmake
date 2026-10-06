@@ -308,11 +308,68 @@ set(stderr "")
 set(exit 1)
 check(compile_base_reads_refused)
 
-# A tensor is refused by name: the interpreter is the reference it is held to
-# first (DESIGN.md, tensors of rank 3).
-file(WRITE "${OUT}/tensor.ink" "T = [1 2;; 3 4]\ny_0 = 0\ny_n = y_(n-1) + T[2,1,2]\nP[b<=2, j<=2, k<=2] = b\n")
+# C122: a cell of one term outside its size is refused in the interpreter's
+# words, where the compiler wrote past the term's cells.
+file(WRITE "${OUT}/c122.ink" "y_n[j<=2] = n\ny_1[3] = 5\n")
+set(args --compile c122.ink)
+set(stdout "cannot compile y: row 3, column 1 is outside a 2x1 matrix\n")
+set(exit 1)
+check(compile_c122)
+
+# C125: a clause for one cell of a value written whole names as many indices
+# as reading a cell of it takes, as the interpreter asks, where the compiler
+# took a slice where none was named and dropped one that was.
+file(WRITE "${OUT}/c125.ink" "A = [1 2; 3 4]\nA[1,1,2] = 9\nv_n = n*A\ny_0 = [1 2;; 3 4]\n"
+     "y_n = 2*y_(n-1)\ny_0[1,2] = 5\nz_n = [1 2; 3 4]\nz_1[1,1,2] = 5\nw_n = [1 2;; 3 4]\n"
+     "w_n[1,2] = 5\n")
+set(args --compile c125.ink)
+set(stdout "cannot compile v: a clause for one cell of A, a 2x2 matrix, names no slice
+cannot compile w: a clause for one cell of w_n, a 2x1x2 tensor, names its slice, row and column
+cannot compile y: a clause for one cell of y_0, a 2x1x2 tensor, names its slice, row and column
+cannot compile z: a clause for one cell of z_1, a 2x2 matrix, names no slice
+")
+set(exit 1)
+check(compile_c125)
+
+# C126: a cell of every term meets a base term's own cell at its slice too,
+# and is named by it, where the compiler took y_0[1,1,1] for y_0[2,1,1].
+file(WRITE "${OUT}/c126.ink" "y_0 = [1 2;; 3 4]\ny_0[1,1,1] = 7\ny_n = 2*y_(n-1)\ny_n[2,1,1] = n\n"
+     "z_0 = [1 2;; 3 4]\nz_n = 2*z_(n-1)\nz_n[2,1,1] = n\n")
+set(args --compile c126.ink)
+set(stdout "cannot compile y: y_0 and y_n[2,1,1] both give a cell of y_0; write y_0[2,1,1] to say which
+cannot compile z: z_0 and z_n[2,1,1] both give a cell of z_0; write z_0[2,1,1] to say which
+")
+set(exit 1)
+check(compile_c126)
+
+# C127: every clause for one cell is held to the size, as the interpreter
+# holds it, not only those met before the term's cells are all given.
+file(WRITE "${OUT}/c127.ink" "y_0 = [1 2]\ny_0[1,1] = 3\ny_0[1,2] = 4\ny_0[1,3] = 5\ny_n = y_(n-1)/2\n")
+set(args --compile c127.ink)
+set(stdout "cannot compile y: row 1, column 3 is outside a 1x2 matrix\n")
+set(exit 1)
+check(compile_c127)
+
+# What tensors compiled refuses (DESIGN.md, test/compile/tensor.ink), in the
+# interpreter's words where it has them; y and P compile.
+file(WRITE "${OUT}/tensor.ink" "T = [1 2; 3 4;; 5 6; 7 8]\nU = [1 2; 3 4;; 5 6; 7 8;; 9 10; 11 12]\n"
+     "a_n = (n*T)[2,1]\nb_n = (n*T)^2\nc_n | n*T > 1 = 1\nc_n = 0\nd_n = n*T + U\n"
+     "f_n = [n 1;; 2 3 4]\ng_n = lim p(n*T)\nh_n = grad_(V = n*T) sum_(b=1)^2 [1 1]*V[b]*[1; 1]\n"
+     "m_n[b<=2, i<=1, j<=1] | n > 2 = b\nm_n[b<=2, i<=1, j<=1] = 0\np(A)_0 = A\n"
+     "p(A)_k = p(A)_(k-1)/2\nq_n = [n;; 1] + [1 2]\nr_n = [n;; 1]*[1 2; 3 4]\n"
+     "y_0 = 0\ny_n = y_(n-1) + T[2,1,2]\nP[b<=2, j<=2, k<=2] = b\n")
 set(args --compile tensor.ink)
-set(stdout "cannot compile P: a tensor\ncannot compile y: a tensor\n")
+set(stdout "cannot compile a: a 2x2x2 tensor takes one index or three, not two
+cannot compile b: only a matrix has a power, not a 2x2x2 tensor
+cannot compile c: a comparison of matrices
+cannot compile d: a 2x2x2 tensor and a 3x2x2 tensor have different numbers of slices
+cannot compile f: the slices of a tensor have one size, not 1x2 and 1x3
+cannot compile g: a tensor in a limit, for now
+cannot compile h: a derivative with respect to a tensor, for now
+cannot compile m: a tensor's cells under a guard that is not a constant, for now
+cannot compile q: a tensor whose slices are single values met by a matrix, for now
+cannot compile r: a tensor whose slices are single values met by a matrix, for now
+")
 set(exit 1)
 check(compile_tensor_refused)
 
@@ -364,7 +421,8 @@ set(args --check wide.ink v -o wide.c)
 set(stderr "inkamath: v.x_(0) has 2 cells, where the compiled step takes a single value, as mm states no size for x: write 'x_n[j<=2]'\n")
 set(exit 1)
 check(check_matrix_input)
-file(WRITE "${OUT}/celled.ink" "cl(x_n) = {\n    y_n = x_n[2]\n}\ncm(u_m) = {\n    z_m = u_(m-1)[2, 3]\n}\n")
+file(WRITE "${OUT}/celled.ink" "cl(x_n) = {\n    y_n = x_n[2]\n}\ncm(u_m) = {\n    z_m = u_(m-1)[2, 3]\n}\n"
+     "ct(X_n) = {\n    t_n = X_n[1, 2, 1]\n}\n")
 set(args --compile celled.ink cl -o cl.h)
 set(stderr "inkamath: cannot compile y: x is a single value, as cl states no size for it: write 'x_n[j<=2]'\n")
 set(exit 1)
@@ -373,6 +431,10 @@ set(args --compile celled.ink cm -o cm.h)
 set(stderr "inkamath: cannot compile z: u is a single value, as cm states no size for it: write 'u_m[j<=2, k<=3]'\n")
 set(exit 1)
 check(compile_unstated_matrix)
+set(args --compile celled.ink ct -o ct.h)
+set(stderr "inkamath: cannot compile t: X is a single value, as ct states no size for it: write 'X_n[b<=1, j<=2, k<=1]'\n")
+set(exit 1)
+check(compile_unstated_tensor)
 
 # Every run of --check walks the prelude's definitions, so that its programs
 # hold the compiled functions to the walk (DESIGN.md): log, 16 references
@@ -558,9 +620,9 @@ holds(compile_inputs_avg avg.h [[ Compiled in, as a size, a bound or a
  * lag cannot change: d.
 ]])
 
-# Refused: a history of another size than the input, a tensor, a default and
-# an instance within a model of another size than the model states, and a
-# size that reads the index, which the interpreter refuses as it reads it.
+# Refused: a history of another size than the input, a default and an
+# instance within a model of another size than the model states, and a size
+# that reads the index, which the interpreter refuses as it reads it.
 function(unsized model text why)
     file(WRITE "${OUT}/${model}.ink" "${text}")
     set(args --compile ${model}.ink ${model} -o ${model}.h)
@@ -571,8 +633,6 @@ endfunction()
 set(dot "dot(x_n[j<=2]) = {\n    y_n = [1 2]*x_n\n}\n")
 unsized(broad "broad(x_n[j<=2]) = {\n    x_n | n < 0 = 0\n    c_n = x_(n-1)\n}\n"
         "cannot compile x: a history of another shape")
-unsized(batch "batch(x_n[b<=2, j<=1, k<=2]) = {\n    y_n = x_n[2]*[1; 1]\n}\n"
-        "cannot compile x: a tensor")
 unsized(nil "nil(x_n[j<=2] = 0) = {\n    y_n = [1 2]*x_n\n}\n"
         "cannot compile x: a single value, where nil takes a 2x1 matrix")
 unsized(lone "${dot}lone(u_n) = {\n    inner = dot(x_n = u_n)\n    y_n = inner.y_n\n}\n"
@@ -584,6 +644,12 @@ set(args --check single.ink v -o single.c)
 set(stderr "inkamath: v.x_(0): v.x_0 is a single value, where dot takes a 2x1 matrix\n")
 set(exit 1)
 check(check_inputs_single)
+
+# A tensor input, refused before tensors compiled, read by its second slice.
+file(WRITE "${OUT}/batch.ink" "batch(x_n[b<=2, j<=1, k<=2]) = {\n    y_n = x_n[2]*[1; 1]\n}\n")
+set(args --compile batch.ink batch -o batch.h)
+check(inputs_batch)
+holds(inputs_batch batch.h "    m_->y[0] = m_->x[0][1][0][0] * 1.0 + m_->x[0][1][0][1] * 1.0;\n")
 
 # A model's history of its inputs (DESIGN.md): a read before the stream that
 # no history gives, and a history that init cannot fold, each refused by name.
@@ -794,3 +860,110 @@ file(WRITE "${OUT}/c119c.ink" "f(t) = x_t\ng(s) = f(s - 1)\ny_n = f(n)\nw_n = g(
 set(args --compile c119c.ink -o c119c.h)
 check(compile_c119_call)
 holds(compile_c119_call c119c.h "    m_->y[0] = m_->x[0];\n" "    m_->w[0] = m_->x[1];\n")
+
+# Tensors compiled (DESIGN.md, compile/tensor.ink): a tensor kept as C keeps
+# double O[B][T][D], and met slice by slice as interpreted.
+set(tensor "${CMAKE_CURRENT_LIST_DIR}/compile/tensor.ink")
+set(args --compile ${tensor} mha -o mha.h)
+check(compile_tensor_mha)
+holds(compile_tensor_mha mha.h [=[ *     mha_step(&m, X);  once for each index, the first 0
+ *     m.O[0][b][i][j]  is then O_n, slice b+1, row i+1 and column j+1
+ *
+ * A step takes X_n (2x3x4), the input at its index. An input of more than one
+ * cell is a pointer to its cells, row by row, slice after slice. After a step,
+ * m.name[k] is name_(n-k) for each sequence: X and O. The parameters are
+ * fields holding the model's defaults once mha_init has run: d = 2.0. After
+ * assigning one, call mha_update.
+ */
+]=] [=[typedef struct mha {
+    double d;
+    long long index_;
+    double X[1][2][3][4];
+    double O[1][2][3][4];
+} mha;
+]=] [=[static inline void mha_step(mha* m_, const double X[24]) {
+    ++m_->index_;
+    memcpy(m_->X[0], X, sizeof m_->X[0]);
+]=])
+set(args --compile ${tensor} ring -o ring.h)
+check(compile_tensor_ring)
+holds(compile_tensor_ring ring.h [=[/* Using it:
+ *
+ *     ring m;
+ *     ring_init(&m);
+ *     ring_step(&m, X);  once for each index, the first 0
+ *     m.u[0][b][i][j]  is then u_n, slice b+1, row i+1 and column j+1
+ *
+ * A step takes X_n (2x1x2), the input at its index. An input of more than one
+ * cell is a pointer to its cells, row by row, slice after slice. After a step,
+ * m.name[k] is name_(n-k) for each sequence: X (k <= 1), d, s (k <= 1), c, e,
+ * g, k, l, p, q and u. At another rate, m.name[k] is name_(m-k), m its latest
+ * term's index: h, computed at the steps 2*m + 1. The parameters are fields
+ * holding the model's defaults once ring_init has run: s0 (2x1x2). After
+ * assigning one, call ring_update. A term the interpreter would refuse is NaN,
+ * and so is every term that reads one, through a guard or a comparison as
+ * through arithmetic. Built with -ffinite-math-only, which -ffast-math
+ * implies, GCC removes the tests that make it so, and Clang warns of each NaN.
+ */
+]=] [=[typedef struct ring {
+    double s0[2][1][2];
+    long long index_;
+    double X[2][2][1][2];
+    double d[1][2][1][2];
+    double s[2][2][1][2];
+    double c[1];
+    double e[1][2][1][2];
+    double g[1][1][2];
+    double h[1][2][1][2];
+    double k[1][2][2][1];
+    double l[1][2][1][2];
+    double p[1][2][1][1];
+    double q[1][2][1][2];
+    double u[1][2][1][2];
+} ring;
+]=] [=[static inline void ring_init(ring* m_) {
+    memset(m_, 0, sizeof *m_);
+    m_->s0[0][0][0] = 1.0;
+    m_->s0[0][0][1] = 0.0;
+    m_->s0[1][0][0] = 0.0;
+    m_->s0[1][0][1] = 1.0;
+    m_->X[0][0][0][0] = 1.0;
+    m_->X[0][0][0][1] = 1.0;
+    m_->X[0][1][0][1] = 1.0;
+    m_->index_ = -1;
+    ring_update(m_);
+}
+]=] [=[static inline void ring_step(ring* m_, const double X[4]) {
+    ++m_->index_;
+    memcpy(m_->X[1], m_->X[0], sizeof m_->X[1]);
+    memcpy(m_->s[1], m_->s[0], sizeof m_->s[1]);
+    memcpy(m_->X[0], X, sizeof m_->X[0]);
+]=] [=[    m_->s[0][0][0][0] = m_->index_ == 0 ? m_->s0[0][0][0] : m_->s[1][0][0][0] * 0.0 + m_->s[1][0][0][1] * -1.0 + m_->X[0][0][0][0];
+    m_->s[0][0][0][1] = m_->index_ == 0 ? m_->s0[0][0][1] : m_->s[1][0][0][0] * 1.0 + m_->s[1][0][0][1] * 0.0 + m_->X[0][0][0][1];
+    m_->s[0][1][0][0] = m_->index_ == 0 ? m_->s0[1][0][0] : m_->s[1][1][0][0] * 0.0 + m_->s[1][1][0][1] * -1.0 + m_->X[0][1][0][0];
+    m_->s[0][1][0][1] = m_->index_ == 0 ? m_->s0[1][0][1] : m_->s[1][1][0][0] * 1.0 + m_->s[1][1][0][1] * 0.0 + m_->X[0][1][0][1];
+    if (isnan(m_->s[0][0][0][0]) || isnan(m_->s[0][0][0][1]) || isnan(m_->s[0][1][0][0]) || isnan(m_->s[0][1][0][1]))
+        for (int b_ = 0; b_ < 2; ++b_)
+            for (int i_ = 0; i_ < 1; ++i_)
+                for (int j_ = 0; j_ < 2; ++j_) m_->s[0][b_][i_][j_] = NAN;
+]=])
+set(args --compile ${tensor} ring --float -o float/ring.h)
+check(compile_tensor_ring_float)
+holds(compile_tensor_ring_float float/ring.h [=[typedef struct ring {
+    float s0[2][1][2];
+    long long index_;
+    float X[2][2][1][2];
+]=] [=[static inline void ring_step(ring* m_, const float X[4]) {
+]=] [=[    m_->s[0][1][0][0] = m_->index_ == 0 ? m_->s0[1][0][0] : m_->s[1][1][0][0] * 0.0f + m_->s[1][1][0][1] * -1.0f + m_->X[0][1][0][0];
+]=])
+set(args --compile ${tensor} sgd -o sgd.h)
+check(compile_tensor_sgd)
+holds(compile_tensor_sgd sgd.h [=[typedef struct sgd {
+    double eta;
+    long long index_;
+    double X[1][2][2][2];
+    double Y[1][2][2][1];
+    double w[2][2][1];
+} sgd;
+]=] [=[static inline void sgd_step(sgd* m_, const double X[8], const double Y[4]) {
+]=])

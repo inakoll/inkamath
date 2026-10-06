@@ -242,7 +242,7 @@ int main(int argc, char* argv[]) {
         }
         std::string compare;
         for (const auto& field : step.sequences) {
-            const std::size_t cells  = field.rows * field.cols;
+            const std::size_t cells  = field.size.count();
             const bool        matrix = cells > 1;
             std::string       want, known;
             for (int n = 0; n < steps; ++n) {
@@ -260,8 +260,8 @@ int main(int argc, char* argv[]) {
             for (std::size_t c = 0; c < cells; ++c) {
                 const std::string at = "n * " + std::to_string(cells) + " + " + std::to_string(c);
                 const std::string got = "m." + field.name + "[0]" +
-                                        (matrix ? "[" + std::to_string(c / field.cols) + "][" +
-                                                      std::to_string(c % field.cols) + "]"
+                                        (matrix ? "[" + std::to_string(c / field.size.cols) + "][" +
+                                                      std::to_string(c % field.size.cols) + "]"
                                                 : "");
                 compare += "        ok &= near_(\"" + module + "\", \"" + field.name + "\", n, " +
                            got + ", want_" + field.name + "[" + at + "], known_" + field.name +

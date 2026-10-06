@@ -115,7 +115,9 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brin
                          estimate:chaos estimate:dyad estimate:flat estimate:halved
                          estimate:steep estimate:giant elementary:els trig:tri
                          grad:line grad:fall grad:hinge grad:edge grad:clip grad:steer grad:saw
-                         grad:ring grad:notch grad:apart grad:smooth grad:cusp)
+                         grad:ring grad:notch grad:apart grad:smooth grad:cusp
+                         tensor:heads tensor:whirl tensor:batch tensor:spread
+                         tensor:speck)
     string(REPLACE ":" ";" checked ${checked})
     list(GET checked 0 file)
     list(GET checked 1 instance)
@@ -206,6 +208,20 @@ set_tests_properties(check_apart_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^apart: 100 steps from 0, against exact values\napart\\.y: [-a-z()]+ at 0, where the interpreter gives 0\n$")
 add_test(NAME check_apart COMMAND check_apart)
 set_tests_properties(check_apart PROPERTIES WILL_FAIL ON)
+# Tensors compiled (DESIGN.md), as compile/tensor.ink gives them, and a cell
+# that parts named by its slice, row and column.
+set_tests_properties(check_heads_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^heads: 100 steps from 0, against exact values until 0 and inexact ones from there\nheads\\.O: within (0|[1-9](\\.[0-9])?e-1[4-9])${about}\n$")
+set_tests_properties(check_whirl_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^whirl: 100 steps from 0, against exact values\nwhirl\\.d: within 0\nwhirl\\.s: within 0\nwhirl\\.c: within 0\nwhirl\\.e: within 0, from 1\nwhirl\\.g: within 0\nwhirl\\.h: within 0, from 1\nwhirl\\.k: within 0\nwhirl\\.l: within 0\nwhirl\\.p: within 0\nwhirl\\.q: within 0\nwhirl\\.u: within 0, from 1\n$")
+set_tests_properties(check_batch_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^batch: 100 steps from 0, against exact values\nbatch\\.w: within 0\n$")
+set_tests_properties(check_speck_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^speck: 100 steps from 0, against exact values\nspeck\\.y: within 0\n$")
+set_tests_properties(check_spread_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^spread: 100 steps from 0, against exact values\nspread\\.d\\[2,1,2\\]: [0-9.e+-]+ at 9, where the interpreter gives 0\\.10000000000000001\n$")
+add_test(NAME check_spread COMMAND check_spread)
+set_tests_properties(check_spread PROPERTIES WILL_FAIL ON)
 set_tests_properties(check_sized_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^sized: 100 steps from 0, against exact values until 0 and inexact ones from there\n(sized\\.[a-z]+: within [0-9.e+-]+${about}\n)+$")
 # Its sigmoid's size inferred, compiled where it is called, gives the header
@@ -410,7 +426,7 @@ endforeach()
 foreach(checked IN ITEMS drift:calm drift:wild drift:ledge logistic:gate momentum:ball newton:stiff
                          inputs:fan float:hum float:drone float:far float:tally float:crawl
                          float:steep float:blast
-                         steady:mark softmax:cls grad:line)
+                         steady:mark softmax:cls grad:line tensor:whirl tensor:batch)
     string(REPLACE ":" ";" checked ${checked})
     list(GET checked 0 file)
     list(GET checked 1 instance)
@@ -438,6 +454,7 @@ set(in_float " in float, against exact values")
 set(inexact " in float, against exact values until 0 and inexact ones from there")
 set(units "[0-9.e+-]+, [0-9.]+ units of a float${about}")
 set(parts "0\\.096026361 at 6, where the interpreter gives 0\\.10000000000000001\n")
+set(exact "within 0, 0 units of a float")
 foreach(report IN ITEMS
         "calm:^calm: 100 steps from 0${in_float}\ncalm\\.v: within 1\\.1e-06, 1\\.4 units of a float\n$"
         "wild:^wild: 100 steps from 0${in_float}\nwild\\.d: ${parts}$"
@@ -455,6 +472,8 @@ foreach(report IN ITEMS
         "blast:^blast: 100 steps from 0${in_float}\nblast\\.y: within 0, 0 units of a float\nblast\\.z: within 0, 0 units of a float\n$"
         "mark:^mark: 100 steps from 0${inexact}\nmark\\.d: within ${units}\nmark\\.s: within ${units}\n$"
         "line:^line: 100 steps from 0${in_float}\nline\\.w: within 2\\.7e-07, 1\\.9 units of a float\n$"
+        "whirl:^whirl: 100 steps from 0${in_float}\nwhirl\\.d: ${exact}\nwhirl\\.s: ${exact}\nwhirl\\.c: ${exact}\nwhirl\\.e: ${exact}, from 1\nwhirl\\.g: ${exact}\nwhirl\\.h: ${exact}, from 1\nwhirl\\.k: ${exact}\nwhirl\\.l: ${exact}\nwhirl\\.p: ${exact}\nwhirl\\.q: ${exact}\nwhirl\\.u: ${exact}, from 1\n$"
+        "batch:^batch: 100 steps from 0${in_float}\nbatch\\.w: ${exact}\n$"
         "cls:^cls: 100 steps from 0${inexact}\ncls\\.z: within 2\\.4e-08, 0\\.2 units of a float\ncls\\.q: within 1\\.9e-06, 1\\.5 units of a float${about}\ncls\\.s: within 6\\.3e-08, 0\\.53 units of a float${about}\ncls\\.loss: within 4\\.1e-07, 3\\.4 units of a float${about}\n$")
     string(FIND "${report}" ":" colon)
     string(SUBSTRING "${report}" 0 ${colon} instance)

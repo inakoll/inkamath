@@ -180,7 +180,7 @@ none(x_n[j<=0]) = { ... }
 >> none(x_n = n).y_0
 error: a size must be at least 1, not 0
 
-# Three bounds are a tensor, slices first. Compiled, it is refused.
+# Three bounds are a tensor, slices first, compiled as a pointer to its cells.
 >> bat(x_n[b<=2, j<=1, k<=2]) = {
 ..     y_n = x_n[2]*[1; 1]
 .. }
