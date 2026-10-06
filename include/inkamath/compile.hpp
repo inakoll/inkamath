@@ -1173,9 +1173,12 @@ private:
     PExpression<Value> visit(NegExpression<Value>* expression) override {
         Code code = Emit(expression->m_e());
         if (code.constant) return Fold(expression);
+        // A subtraction from 0, as the interpreter's (C33): C's minus makes
+        // -0 of +0 (C98).
+        const std::string zero = floats ? "0.0f - " : "0.0 - ";
         for (Cell& cell : code.cells) {
             Cell negation(
-                "-" + (cell.magnitude.empty() ? Wrap(cell, unary) : "(" + cell.text + ")"), unary);
+                zero + (cell.magnitude.empty() ? Wrap(cell, product) : "(" + cell.text + ")"), sum);
             negation.magnitude       = cell.text;
             negation.magnitude_level = cell.level;
             negation.atom            = cell.atom;

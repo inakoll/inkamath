@@ -73,7 +73,7 @@ static inline double inkamath_prelude_log(double arg_x) {
 }
 
 static inline double inkamath_prelude_tanhe(double arg_m) {
-    return -arg_m / (arg_m + 2.0);
+    return (0.0 - arg_m) / (arg_m + 2.0);
 }
 
 static inline double inkamath_prelude_tanhk(double arg_y, double arg_k) {
@@ -85,7 +85,7 @@ static inline double inkamath_prelude_tanhp(double arg_x) {
 }
 
 static inline double inkamath_prelude_tanh(double arg_x) {
-    return isnan(arg_x) ? NAN : arg_x < 0.0 ? -inkamath_prelude_tanhp(-arg_x) : inkamath_prelude_tanhp(arg_x);
+    return isnan(arg_x) ? NAN : arg_x < 0.0 ? 0.0 - inkamath_prelude_tanhp(0.0 - arg_x) : inkamath_prelude_tanhp(arg_x);
 }
 
 /* Computes what derives from the parameters: call it after assigning one. */
