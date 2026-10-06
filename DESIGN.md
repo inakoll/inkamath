@@ -4789,7 +4789,7 @@ that exploring seven domains asked of the interpreter, by how many asked.
 
   `--check` feeds a tensor input by its cells and holds every cell of a term,
   reading the interpreter's slice by slice, and names a cell that parts from
-  it by its slice, row and column, `whirl.s[2,1,2]`, as a matrix's by its row
+  it by its slice, row and column, `spread.d[2,1,2]`, as a matrix's by its row
   and column. In a header that writes NaN, a tensor term with a NaN cell is
   NaN in every cell, the loop gaining the slices'. `--float` writes floats, as
   everywhere. Nothing new elsewhere: an instance with memory per cell is named
@@ -4819,9 +4819,10 @@ that exploring seven domains asked of the interpreter, by how many asked.
   6.7e-15 of mpmath's; `whirl`, a batch of states turned a quarter each step,
   meeting tensors every other way, its every term exact; `batch`, a linear
   layer trained by minibatch descent through `grad`, exact; the last two in
-  float as well; the header excerpts of each; and eight refusals. Two
-  recorded refusals become headers: `compile_tensor_refused`, whose file
-  joins the refusals', and `inputs_batch`, with its line in `inputs.ink`'s
-  comment. Wired with the implementation; README's paragraph on the compiler
-  gains a sentence, `attention.ink`'s comment loses "the compiler
-  refuses for now", and `test/data/inputs.ink`'s "Compiled, it is refused".
+  float as well; `spread`, a cell that drifts, named by its place; the header
+  excerpts of each; and eight refusals. Two recorded refusals become headers:
+  `compile_tensor_refused`, whose file joins the refusals', and
+  `inputs_batch`, with its line in `inputs.ink`'s comment. Wired with the
+  implementation; README's paragraph on the compiler gains a sentence,
+  `attention.ink`'s comment loses "the compiler refuses for now", and
+  `test/data/inputs.ink`'s "Compiled, it is refused".

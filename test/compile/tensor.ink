@@ -78,10 +78,6 @@ heads = mha(X_n = [1 0 1 0; 0 1 0 1; 1 1 0 0;; 0 0 1 1; 1 0 0 1; 0 1 1 0]*n/50)
 #     whirl.<name>: within 0, 0 units of a float, for each of d, s, c, g, k, l, p and q
 #     whirl.<name>: within 0, 0 units of a float, from 1, for each of e, h and u
 #
-# A cell of a tensor that parted from the interpreter's would be named by its
-# slice, row and column, as 'whirl.s[2,1,2]: ... at 3, where the interpreter
-# gives 0', as a matrix's cell is by its row and column.
-#
 # Its header, 'inkamath --compile tensor.ink ring -o ring.h', writes NaN, so a
 # tensor term with a NaN cell is NaN in every cell, the loop gaining the
 # slices':
@@ -177,6 +173,21 @@ ring(s0 = [1 0;; 0 1], X_n[b<=2, t<=1, c<=2]) = {
     u_n | n > 1 = s_(n-1)
 }
 whirl = ring(X_n = [1 (-1)^n;; 0 2])
+
+# A cell of a tensor that parts from the interpreter's is named by its slice,
+# row and column, as a matrix's is by its row and column: 'spread' is
+# test/compile/drift.ink's 'wild' in its last cell, a tenth, which a double is
+# not, times ten at every step, and 'inkamath --check tensor.ink spread' says
+#
+#     spread: 100 steps from 0, against exact values
+#     spread.d[2,1,2]: <x> at 9, where the interpreter gives 0.10000000000000001
+#
+# its program failing, as wild's does.
+tenfold(c = 1) = {
+    d_0 = [1 1;; 1 c]
+    d_n = 10*d_(n-1) - 9*[1 1;; 1 c]
+}
+spread = tenfold(c = 1/10)
 
 # 'batch', a linear layer trained by minibatch gradient descent, each step's
 # minibatch two slices of two samples, the loss the mean square over the four
