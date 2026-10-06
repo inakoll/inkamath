@@ -107,7 +107,8 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brin
                          decimate:trail drift:sill drift:seam history:past history:twin
                          history:lit history:rise history:ajar history:sown history:nest history:kin history:vast
                          history:twice history:relayed history:pole
-                         history:huge history:veiled history:cloaked history:masked nan:run nan:sign nan:shy nan:slope nan:pair
+                         history:huge history:veiled history:cloaked history:two history:masked
+                         nan:run nan:sign nan:shy nan:slope nan:pair
                          nan:lap nan:trim nan:any nan:cell nan:held inputs:fan inputs:grid
                          inputs:chan inputs:twirl inputs:duo inputs:mean3 inputs:mean2
                          inputs:track inputs:twain inputs:nestv inputs:fed estimate:tie
@@ -281,6 +282,8 @@ set_tests_properties(check_veiled_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^veiled: 100 steps from 0, against exact values\nveiled\\.c_bare\\.c: within 0\nveiled\\.c: within 0\nveiled\\.c_bare\\.u: within 0\n$")
 set_tests_properties(check_cloaked_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^cloaked: 100 steps from 0, against exact values\ncloaked\\.inner\\.c_bare\\.c: within 0\ncloaked\\.inner\\.c: within 0\ncloaked\\.d: within 0\ncloaked\\.inner\\.x: within 0\ncloaked\\.inner\\.c_bare\\.u: within 0\n$")
+set_tests_properties(check_two_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^two: 100 steps from 0, against exact values\ntwo\\.a\\.c_bare\\.c: within 0\ntwo\\.a\\.c: within 0\ntwo\\.a\\.x: within 0\ntwo\\.a\\.c_bare\\.u: within 0\ntwo\\.b\\.c_bare\\.c: within 0\ntwo\\.b\\.c: within 0\ntwo\\.b\\.x: within 0\ntwo\\.b\\.c_bare\\.u: within 0\ntwo\\.d: within 0\n$")
 set_tests_properties(check_masked_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^masked: 100 steps from 0, against exact values\nmasked\\.e_tenth\\.d: [0-9.e+-]+ at 9, where the interpreter gives 0\\.10000000000000001\nmasked\\.e: [0-9.e+-]+ at 9, where the interpreter gives 0\\.10000000000000001\n$")
 set_tests_properties(check_pole_report PROPERTIES PASS_REGULAR_EXPRESSION
