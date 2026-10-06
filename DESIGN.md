@@ -4727,3 +4727,148 @@ that exploring seven domains asked of the interpreter, by how many asked.
 - **The prelude's part functions for the interpreter's `grad`.** Checked
   into `inkamath_prelude.h` beside the values, they would spare its walk of
   `exp`, `log` and `tanh` under `grad`, about 2.6 times faster.
+- **`sin`, `cos`, `abs`, `max` and `min` in the prelude.** A rotation, a
+  pendulum or an oscillator needs `sin` and `cos`, and a clip, an L1 loss or
+  a hinge `abs`, `max` and `min`; each session writes its own, as README's
+  `abs` and `conditional.ink`'s `max` do, and README's `cos` is a series of
+  its own `exp`.
+
+  Decided as for `exp`, `log` and `tanh`: written in inkamath, no libm, the
+  interpreter and the compiled step the same operations on the same
+  doubles. The design, measured before it was written down:
+
+      abs(x) | x < 0 = -x
+      abs(x) | x >= 0 = x
+      max(a, b) = a
+      max(a, b) | a < b = b
+      min(a, b) = a
+      min(a, b) | b < a = b
+      sin(x) = sinr(x, floor(x*0.6366197723675814 + 1/2), 0)
+      sin(x) | abs(x) > 2^20 = 1/0
+      cos(x) = sinr(x, floor(x*0.6366197723675814 + 1/2), 1)
+      cos(x) | abs(x) > 2^20 = 1/0
+      sinr(x, k, c) = sink(~(x - k*3217/2048 + k*2391/2^29 + k*8029421003/2^63 + k*1987263209/2^96 - k*7744522442262977/2^156), mod(k + c, 4))
+      sink(r, j) = sinp(r)
+      sink(r, j) | j > 2 = -cosp(r)
+      sink(r, j) | j > 1 = -sinp(r)
+      sink(r, j) | j > 0 = cosp(r)
+      sinp(r) = r - r*sins(r*r)
+      sins(z) = z*(1/6 - z*(1/120 - z*(1/5040 - z*(1/362880 - z*(1/39916800 - z*(1/6227020800 - z*(1/1307674368000 - z/355687428096000)))))))
+      cosp(r) = cosw(r*r)
+      cosw(z) = 1 - z/2 + z*z*(1/24 - z*(1/720 - z*(1/40320 - z*(1/3628800 - z*(1/479001600 - z*(1/87178291200 - z*(1/20922789888000 - z/6402373705728000)))))))
+
+  k is the whole number nearest x/(pi/2), by the double nearest 2/pi, and r =
+  x - k pi/2 with pi/2 in five parts (Cody and Waite, as `exp` takes ln 2):
+  two of 12 bits, two of at most 33 and one of 53, within 2^-159 of it.
+  Every product k times a part but the last is exact in a double for |k| <
+  2^20, the first two in a float for |k| < 2^12, and each subtraction is
+  exact where it cancels, its operands within a factor of two (Sterbenz),
+  so r is right to a unit or so however small: below 2^20 the double nearest
+  a multiple of pi/2, 45.553093477052, is 6.2e-19 from 29 pi/2, 66 bits
+  cancelled. The quadrant j = k + c mod 4 picks sin r, cos r or their
+  negatives, c being 1 for `cos`: x + pi/2 would round. sin r is Taylor's to
+  r^17 and cos r to r^18 in Horner's form, remainders below 2^-62 and 2^-67
+  on |r| <= pi/4, their coefficients reciprocals of whole numbers as `exp`'s
+  are. An exact argument is reduced exactly and rounded once, at the `~`:
+  `sin(355)`, 355 being 3.0e-5 from 113 pi, is mpmath's, correctly rounded.
+
+  Past 2^20 either way, `1/0`, refused as `log` refuses 0, and NaN in a
+  header: the products would round. Rejected: Payne and Hanek's reduction,
+  2/pi to some 1,100 bits and a product of many words, which a step in
+  doubles cannot take without dozens of parts, for arguments no model of a
+  step reaches; answering past 2^20 regardless, 9.7 units off by 2^25 and
+  800 by 2^30 on random doubles; four parts of 33, 33, 33 and 53 bits, as
+  accurate in a double and rounded in a float, `sin(100)` 40 units of a
+  float off; three parts, which lose the doubles nearest a multiple of
+  pi/2; a minimax polynomial, two terms shorter, whose constants are no
+  reciprocals.
+
+  Accuracy, against sinl and cosl at 64 bits on 1e7 points a range, and
+  against mpmath at 200 bits elsewhere:
+
+  | | worst, sin and cos | correctly rounded |
+  |---|---|---|
+  | on [-pi/4, pi/4] | 0.75 and 1.25 units | 97.7% and 74.0% |
+  | on [-2 pi, 2 pi] | 1.56 and 1.45 units | 77% and 73% |
+  | on [-1000, 1000] | 2.34 and 2.29 units | 72.7% |
+  | on [-2^20, 2^20] | 2.43 and 2.37 units | 70.3% |
+  | the 12 doubles nearest a multiple of pi/2 below 2^20 | 0.35 units | all |
+  | 20,000 exact arguments to 10^6 | 1.43 and 1.39 units | 74.5% |
+  | in float, on [-6434, 6434] | 2.44 and 2.29 units of a float | 70.7% and 70.6% |
+
+  The float figures are the design emulated with floats operation by
+  operation, its constants the floats nearest the header's doubles, 2.20
+  units at the 300 floats nearest a multiple of pi/2 there; past 6434, k
+  times 3217 rounds in a float and the error grows to x*2^-24, within the
+  spacing of floats at x, which `--check --float` shows.
+
+  Nothing `sin` and `cos` give is exact: `sin(0)` and `cos(0)` are a double's
+  0 and 1, as `exp(0)` is a double's 1. A clause for 0 would make them exact,
+  and `grad` refuses a clause that holds at a point alone, so a pendulum at
+  rest would have no derivative. `pi` is the built-in, the double nearest pi,
+  so `sin(pi)` is 1.2246468e-16, the sine of that double as C's, and no
+  argument but 0 is exactly a multiple of pi; `pi` in the prelude would be
+  the same double. `sinpi(x)`, sin(pi x), exact at whole x, was rejected: a
+  sixth function no model asks for. A 0 has the definition's sign: `sin(-0)`
+  is +0, its subtraction from 0 (C33), where C's is -0.
+
+  `abs` is README's own (section 3), two guards rather than a default and
+  one, so that a session writing it, as README and `conditional.ink` do,
+  writes the prelude's clauses again, each replacing its own: `?abs` prints
+  as now, where a default would print before them. A complex number is
+  refused, "a comparison needs real numbers", as README's `abs` refuses it:
+  a modulus needs the real and imaginary parts and a root, none in the
+  prelude, and is another function. `abs(-0)` is -0, its argument, where C's
+  `fabs` is +0.
+
+  `max` and `min` take two arguments, as C's `fmax`; a matrix's greatest cell
+  is a reduction over its cells, which the language writes as `sum_` only,
+  and is refused as `exp` refuses a matrix. A NaN on either side is refused
+  by the guard, "a comparison needs a number", and NaN in a NaN-aware
+  header, where `fmax` answers the other argument and hides it. The answer
+  is the argument chosen, exact or not: `max(1/3, 1/4)` is exactly 1/3.
+
+  `grad` differentiates the definitions: the polynomials' derivatives,
+  within 1.54 units of cos and 1.29 of -sin on 2,000 points, and floor's 0,
+  so a few doubles where x*2/pi + 1/2 is whole are refused as floor jumping,
+  as in `exp`. `abs`'s slope at 0 is 1, its `x >= 0` clause's. At a tie
+  `max` and `min` take the first argument's slope, as TensorFlow's maximum
+  and minimum: `max(0, x)` has a ReLU's slope 0 at 0, as PyTorch's, and
+  `max(x, 0)` slope 1. Rejected: refusing the tie as a jump, where `max` is
+  continuous, which stops training at a bias set to 0; half of each slope,
+  as JAX takes it, a clause at the tie alone, which `grad` refuses.
+
+  Compiled where called as `exp` is, with no change to the compiler: on a
+  prototype, `<header>_sin(double arg_x)`, `_cos`, `_abs`, `_max` and `_min`
+  and their helpers, and under `grad` `_sin_dx`, `_abs_dx`, `_max_da` and the
+  like; a model of the five, a pendulum and a `grad` through each kink at its
+  tie, checked within 0 under GCC 13 and Clang 18.
+
+  Called compiled by the interpreter as `exp` is: `inkamath_prelude.ink`'s
+  sequence adds `sin(n) + cos(n)`, `record_prelude` writes them into
+  `inkamath_prelude.h`, and a call of the prelude's own `sin` or `cos` on a
+  real double within 2^20 of 0 takes the C function under `exp`'s
+  exclusions; past it the definition refuses, walked. Walked, each is some
+  40 steps and nests 5 references deeper. `abs`, `max` and `min` stay walked:
+  a guard and an operation, and `max` and `min` take two arguments where the
+  fast path's functions take one.
+
+  What moves: no golden, header or report, measured with the prototype on
+  every test of `ctest`. `conditional.ink`'s `abs` and `max` take the
+  prelude's parameters, and its `abs` the prelude's clauses; `sequences.ink`
+  and README define `sin` and `cos` plainly, which starts over. A session's
+  clause on one of the five names extends the prelude's definition, as for
+  `exp`, so it takes the prelude's parameters: `abs(y) | y < 0 = -y`, which
+  defined `abs`, is refused. `inkamath_prelude.h` gains the functions, and
+  README's paragraph on the prelude (section 1) the five names.
+
+  About 32 lines of sources: 22 in the prelude and 6 of its comment, 4 in
+  the interpreter's fast path. 14,318 lines in all now, about 14,350 after.
+
+  Specified in `test/data/spec/trig.ink`, 105 entries, 93 failing: values at
+  nine digits, mpmath's, and at seventeen, of the design emulated in C and
+  in Python with exact fractions, apart from the interpreter, at hard
+  arguments; exactness, refusals, `grad` and its ties, the fast path's steps
+  and depth, and a session's clause. And in `test/compile/trig.ink`, its
+  report every term `within 0`, wired with the implementation as
+  `inkamath_prelude.ink` is.
