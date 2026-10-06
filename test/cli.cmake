@@ -342,6 +342,14 @@ cannot compile z: z_0 and z_n[2,1,1] both give a cell of z_0; write z_0[2,1,1] t
 set(exit 1)
 check(compile_c125)
 
+# C126: every clause for one cell is held to the size, as the interpreter
+# holds it, not only those met before the term's cells are all given.
+file(WRITE "${OUT}/c126.ink" "y_0 = [1 2]\ny_0[1,1] = 3\ny_0[1,2] = 4\ny_0[1,3] = 5\ny_n = y_(n-1)/2\n")
+set(args --compile c126.ink)
+set(stdout "cannot compile y: row 1, column 3 is outside a 1x2 matrix\n")
+set(exit 1)
+check(compile_c126)
+
 # What tensors compiled refuses (DESIGN.md, test/compile/tensor.ink), in the
 # interpreter's words where it has them; y and P compile.
 file(WRITE "${OUT}/tensor.ink" "T = [1 2; 3 4;; 5 6; 7 8]\nU = [1 2; 3 4;; 5 6; 7 8;; 9 10; 11 12]\n"

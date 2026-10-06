@@ -1897,6 +1897,12 @@ private:
         if (!extent) throw Reason(name + " has no size");
         Code shape;
         shape.size = *extent;
+        for (const Clause<Value>& clause : definition.Clauses()) {
+            const ParametersDefinition<Value>& p = clause.parameters;
+            if (p.cells() && p.row_name().empty() && fits(clause))
+                Named(p, shape.size,
+                      name + "_" + (p.general() ? p.index_name() : std::to_string(p.index())));
+        }
         std::vector<std::string> cells;
         for (std::size_t c = 0; c < shape.size.count(); ++c) {
             const int slice = static_cast<int>(c / (shape.size.rows * shape.size.cols)) + 1,
@@ -1940,8 +1946,6 @@ private:
             for (const Clause<Value>& clause : definition.Clauses()) {
                 const ParametersDefinition<Value>& p = clause.parameters;
                 if (settled || !p.cells() || !p.row_name().empty() || !fits(clause)) continue;
-                Named(p, shape.size,
-                      name + "_" + (p.general() ? p.index_name() : std::to_string(p.index())));
                 if (p.slice() == slice && p.row() == row && p.col() == col)
                     settled = settles(clause);
             }
