@@ -4647,14 +4647,16 @@ that exploring seven domains asked of the interpreter, by how many asked.
   weights is too slow; finite differences, which are not the derivative and
   suffer the rounding the oracle is for.
 
-  About 250 lines of sources, in `compile.hpp` but for the static refusals,
+  About 350 lines of sources, in `compile.hpp` but for the static refusals,
   made shareable in `derivative.hpp`: the parts through Code, the rules, the
-  binding and seeding of the name, the chains of parts, the tests that are
-  NaN and the prelude's part functions. Sized against compiled `lim`, 167,
-  and the prelude's functions, 45 in the compiler: the interpreter's 830
+  binding and seeding of the name, the chains of parts and of where they
+  are, the tests that are NaN and the prelude's part functions; re-estimated
+  by the review with those conditions and without cells, so past 525 the
+  implementation stops and reports. Sized against compiled `lim`, 167, and
+  the prelude's functions, 45 in the compiler: the interpreter's 830
   include a memo, a fill, a walk of limits and derivatives of every order,
-  none of which the step has. 13,855 lines in all before it, about
-  14,100 after.
+  none of which the step has. 13,915 lines in all before it, after
+  `fixes`, about 14,265 after.
 
   Specified in `test/compile/grad.ink`, its numbers worked out apart from
   the interpreter, by hand, with exact fractions, by the step's operations
