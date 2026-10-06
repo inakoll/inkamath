@@ -78,6 +78,10 @@ heads = mha(X_n = [1 0 1 0; 0 1 0 1; 1 1 0 0;; 0 0 1 1; 1 0 0 1; 0 1 1 0]*n/50)
 #     whirl.<name>: within 0, 0 units of a float, for each of d, s, c, g, k, l, p and q
 #     whirl.<name>: within 0, 0 units of a float, from 1, for each of e, h and u
 #
+# A cell of a tensor that parted from the interpreter's would be named by its
+# slice, row and column, as 'whirl.s[2,1,2]: ... at 3, where the interpreter
+# gives 0', as a matrix's cell is by its row and column.
+#
 # Its header, 'inkamath --compile tensor.ink ring -o ring.h', writes NaN, so a
 # tensor term with a NaN cell is NaN in every cell, the loop gaining the
 # slices':

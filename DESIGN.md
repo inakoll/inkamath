@@ -4788,11 +4788,13 @@ that exploring seven domains asked of the interpreter, by how many asked.
   `grad` refuses already, so nothing asks for a seed of three indices.
 
   `--check` feeds a tensor input by its cells and holds every cell of a term,
-  reading the interpreter's slice by slice. In a header that writes NaN, a
-  tensor term with a NaN cell is NaN in every cell, the loop gaining the
-  slices'. `--float` writes floats, as everywhere. Nothing new elsewhere: an
-  instance with memory per cell is named after each place it reads, the
-  slice among them, as now. The random models gain no tensors in this entry.
+  reading the interpreter's slice by slice, and names a cell that parts from
+  it by its slice, row and column, `whirl.s[2,1,2]`, as a matrix's by its row
+  and column. In a header that writes NaN, a tensor term with a NaN cell is
+  NaN in every cell, the loop gaining the slices'. `--float` writes floats, as
+  everywhere. Nothing new elsewhere: an instance with memory per cell is named
+  after each place it reads, the slice among them, as now. The random models
+  gain no tensors in this entry.
 
   First a refactor: `Code`, `Sequence` and `Parameter` carry an `Extent`
   where they carry rows and columns, and a C subscript and an array's
