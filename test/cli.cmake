@@ -427,6 +427,12 @@ set(args --check deep.ink v -o deep.c)
 set(stderr "inkamath: v.X_(0) has 4 cells, where the compiled step takes a single value, as mt states no size for X: write 'X_n[b<=2, j<=2, k<=1]'\n")
 set(exit 1)
 check(check_tensor_input)
+# A term of another shape than the step's is said to be, not read past (C137).
+file(WRITE "${OUT}/c137.ink" "mm(x_n) = {\n    h(z) = 3\n    h(z) | z > 2 = [1; 2]\n    y_n = h(x_n)\n}\nm = mm(x_n = n)\n")
+set(args --check c137.ink m -o c137.c)
+set(stderr "inkamath: m.y_(0) is a 1x1 matrix, where the compiled step's is a 2x1 matrix\n")
+set(exit 1)
+check(check_c137)
 file(WRITE "${OUT}/celled.ink" "cl(x_n) = {\n    y_n = x_n[2]\n}\ncm(u_m) = {\n    z_m = u_(m-1)[2, 3]\n}\n"
      "ct(X_n) = {\n    t_n = X_n[1, 2, 1]\n}\n")
 set(args --compile celled.ink cl -o cl.h)
