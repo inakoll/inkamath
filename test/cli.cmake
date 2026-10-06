@@ -894,6 +894,13 @@ set(args --compile c133s.ink -o c133s.h)
 check(compile_c133s)
 holds(compile_c133s c133s.h "    m_->w[0] = (isnan(t0_) ? NAN : isnan((isnan(m_->x[0]) ? NAN : m_->x[0] == 2.0 ? NAN : m_->x[0] > 2.0 ? 1.0 : 0.0) * m_->x[0]) ? NAN : (isnan(m_->x[0]) ? NAN : m_->x[0] == 2.0 ? NAN : m_->x[0] > 2.0 ? 1.0 : 0.0) * m_->x[0] > -1.0 ? 1.0 : 0.0);\n")
 
+# C135: a constant is folded from its operands', which a call reading what
+# moves may give.
+file(WRITE "${OUT}/c135.ink" "h(z) = 3\nf(M) = h(M) + 1\nb_n = h(x_n) + 1\nc_n = grad_(t = x_n) (h(t) + 1)*t\nd_n = f([x_n; 1])\n")
+set(args --compile c135.ink -o c135.h)
+check(compile_c135)
+holds(compile_c135 c135.h "    m_->b[0] = 4.0;\n" "    m_->c[0] = 4.0;\n" "    m_->d[0] = 4.0;\n")
+
 # C115: a constant gradient at a point that moves is no constant to fold with
 # what reads it, a fold that would take the point again.
 file(WRITE "${OUT}/c115.ink" "u_n = x_n - grad_(t = x_n) 3*t\n")
