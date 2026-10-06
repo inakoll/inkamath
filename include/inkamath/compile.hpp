@@ -2846,10 +2846,13 @@ private:
         try {
             taken = read(numbered);
         } catch (const std::runtime_error& error) {
-            if (at.size() == 1 && at[0] > 1) Unstated(*expression->Matrix(), std::to_string(at[0]));
+            const auto bound = [&](std::size_t k) { return std::to_string(at[k]); };
+            if (at.size() == 1 && at[0] > 1) Unstated(*expression->Matrix(), "j<=" + bound(0));
             if (at.size() == 2 && at[0] > 0 && at[1] > 0)
+                Unstated(*expression->Matrix(), "j<=" + bound(0) + ", k<=" + bound(1));
+            if (at.size() == 3 && at[0] > 0 && at[1] > 0 && at[2] > 0)
                 Unstated(*expression->Matrix(),
-                         std::to_string(at[0]) + ", k<=" + std::to_string(at[1]));
+                         "b<=" + bound(0) + ", j<=" + bound(1) + ", k<=" + bound(2));
             throw Reason(error.what());
         }
         const auto window = [&](const Code& m) {
@@ -2870,8 +2873,8 @@ private:
             if (p.name == read.Name() && !p.index.empty() && !p.fallback && p.bounds.empty())
                 throw Reason(p.name + " is a single value, as " +
                              model_->header.substr(0, model_->header.find('(')) +
-                             " states no size for it: write '" + p.name + "_" + p.index +
-                             "[j<=" + bounds + "]'");
+                             " states no size for it: write '" + p.name + "_" + p.index + "[" +
+                             bounds + "]'");
     }
     PExpression<Value> visit(FactExpression<Value>*) override { throw Reason("a factorial"); }
     // grad compiled (DESIGN.md): its body once for each cell of the point, each

@@ -421,7 +421,8 @@ set(args --check wide.ink v -o wide.c)
 set(stderr "inkamath: v.x_(0) has 2 cells, where the compiled step takes a single value, as mm states no size for x: write 'x_n[j<=2]'\n")
 set(exit 1)
 check(check_matrix_input)
-file(WRITE "${OUT}/celled.ink" "cl(x_n) = {\n    y_n = x_n[2]\n}\ncm(u_m) = {\n    z_m = u_(m-1)[2, 3]\n}\n")
+file(WRITE "${OUT}/celled.ink" "cl(x_n) = {\n    y_n = x_n[2]\n}\ncm(u_m) = {\n    z_m = u_(m-1)[2, 3]\n}\n"
+     "ct(X_n) = {\n    t_n = X_n[1, 2, 1]\n}\n")
 set(args --compile celled.ink cl -o cl.h)
 set(stderr "inkamath: cannot compile y: x is a single value, as cl states no size for it: write 'x_n[j<=2]'\n")
 set(exit 1)
@@ -430,6 +431,10 @@ set(args --compile celled.ink cm -o cm.h)
 set(stderr "inkamath: cannot compile z: u is a single value, as cm states no size for it: write 'u_m[j<=2, k<=3]'\n")
 set(exit 1)
 check(compile_unstated_matrix)
+set(args --compile celled.ink ct -o ct.h)
+set(stderr "inkamath: cannot compile t: X is a single value, as ct states no size for it: write 'X_n[b<=1, j<=2, k<=1]'\n")
+set(exit 1)
+check(compile_unstated_tensor)
 
 # Every run of --check walks the prelude's definitions, so that its programs
 # hold the compiled functions to the walk (DESIGN.md): log, 16 references

@@ -5028,7 +5028,9 @@ that exploring seven domains asked of the interpreter, by how many asked.
   size. Departures. A tensor whose slices are single values, met by a matrix
   of another size, is refused, "a tensor whose slices are single values met
   by a matrix, for now", where the interpreter takes each slice as a single
-  value; `whirl`'s `p` is one, and nothing meets it so. A tensor's term by cells with a guard that folds is
+  value; `whirl`'s `p` is one, and nothing meets it so. An input that states
+  no size, read with three indices, `X_n[1,2,1]`, is refused as with one or
+  two: "write 'X_n[b<=1, j<=2, k<=1]'". A tensor's term by cells with a guard that folds is
   not followed for flips by `--check`, which could not tell its slices apart;
   one that does not fold is refused, as specified. A matrix stretched over the
   slices is computed once, into temporaries, as a single value stretched over
@@ -5039,4 +5041,4 @@ that exploring seven domains asked of the interpreter, by how many asked.
   term's cells. The refactor, 41 lines fewer, every output byte for byte; then
   48 lines of sources more, where about 150 were planned: 40 in `compile.hpp`
   and 8 in `check.hpp`; C122's 1; and by its review, C124 to C127, 15, and
-  its rulings, 11. 14,413 lines in all, after `trig`.
+  its rulings, 14. 14,416 lines in all, after `trig`.
