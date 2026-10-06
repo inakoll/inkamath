@@ -202,6 +202,48 @@ teeth(x_n) = {
 }
 saw = teeth(x_n = n/2)
 
+# 'ring', ceil and mod of a value that moves, each the prelude's by floor:
+# its value is a function of the header's tested for floor's jump, as the
+# interpreter refuses there. a, mod(t, 2), is 1 but NaN at every n a
+# multiple of 4; b, ceil(t)*t, is ceil(t) but NaN at every even n; c, the
+# ceil of a ReLU, is 0 below 4, where the unit is dead and nothing moves,
+# then as b at t - 2:
+#
+#     ring: 100 steps from 0, against exact values
+#     ring.a: within 0
+#     ring.b: within 0
+#     ring.c: within 0
+rounds(x_n) = {
+    r(t) = t
+    r(t) | t < 0 = 0
+    a_n = grad_(t = x_n) mod(t, 2)
+    b_n = grad_(t = x_n) ceil(t)*t
+    c_n = grad_(t = x_n - 2) ceil(r(t))*t
+}
+ring = rounds(x_n = n/2)
+
+# 'notch', the same where no part reads the value and nothing else writes
+# NaN (C113): t - mod(t, 2), 0 but NaN at every n a multiple of 4:
+#
+#     notch: 100 steps from 0, against exact values
+#     notch.y: within 0
+notched(x_n) = {
+    y_n = grad_(t = x_n) (t - mod(t, 2))
+}
+notch = notched(x_n = n/2)
+
+# 'smooth', exp's reduction at a jump of its floor, where the floor of exp
+# drops exp's part: exp's value is tested for the jump too, as ring's ceil,
+# so the step is NaN where the interpreter refuses, though exp is smooth
+# there (C111):
+#
+#     smooth: 100 steps from 0, against exact values
+#     smooth.z: within 0
+rounded(x_n) = {
+    z_n = grad_(t = x_n) floor(exp(t))*t
+}
+smooth = rounded(x_n = ~0.34657359027997264)
+
 # What stays refused, each named in 'inkamath --compile' of a file of
 #
 #     a_n = grad_(t = x_n) grad_(s = t) s^3
@@ -239,10 +281,10 @@ saw = teeth(x_n = n/2)
 #
 # on standard output, exiting 1.
 
-# Known limits (DESIGN.md, C110 and C111), each a step that parts from the
-# interpreter, its program failing. 'apart', a clamp times an infinity: where
-# the clause taken has no part the step's is 0, and 0 times inf is NaN, where
-# the interpreter has nothing to multiply and answers 0:
+# A known limit (DESIGN.md, C110), a step that parts from the interpreter,
+# its program failing. 'apart', a clamp times an infinity: where the clause
+# taken has no part the step's is 0, and 0 times inf is NaN, where the
+# interpreter has nothing to multiply and answers 0:
 #
 #     apart.y: -nan at 0, where the interpreter gives 0
 clamped(x_n) = {
@@ -251,13 +293,3 @@ clamped(x_n) = {
     y_n = grad_(t = x_n) f(t)*~(10^400)
 }
 apart = clamped(x_n = 6)
-
-# 'smooth', exp's reduction at a jump of its floor, where exp's part is NaN
-# and the floor of exp drops it: the step answers 1 where the interpreter
-# refuses, though exp is smooth there:
-#
-#     smooth.z: 1 at 0, where the interpreter gives none: floor jumps at t = ~0.34657359
-rounded(x_n) = {
-    z_n = grad_(t = x_n) floor(exp(t))*t
-}
-smooth = rounded(x_n = ~0.34657359027997264)

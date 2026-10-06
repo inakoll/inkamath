@@ -671,27 +671,28 @@ private:
         }
         if (constant || !scalar) return Answer(Call(name, function, call, nullptr));
         const std::string called = module_ + "_" + name;
+        std::string       signature;
+        for (const std::string& parameter : names)
+            signature += (signature.empty() ? "double arg_" : ", double arg_") + parameter;
         if (!functions_.count(called)) {
-            Expansion   inside{{}, {}, function.home, nullptr, {}};
-            std::string signature;
-            for (const std::string& parameter : names) {
+            Expansion inside{{}, {}, function.home, nullptr, {}};
+            for (const std::string& parameter : names)
                 inside.values.emplace(parameter, Array("arg_" + parameter, 1, 1));
-                signature += (signature.empty() ? "double arg_" : ", double arg_") + parameter;
-            }
             const Setting<Walked*>                 outside(limit_, nullptr);
             const Setting<std::vector<Temporary>*> unshared(temporaries_, nullptr);
             const Code body = Inside(inside, [&] { return Chained(name, function); });
-            functions_.insert(called);
+            functions_.emplace(called, body.cells[0].text);
             prelude_.push_back("static inline double " + called + "(" + signature +
                                ") {\n    return " + body.cells[0].text + ";\n}\n\n");
         }
-        const Code value = Of(Cell(called + "(" + given + ")", primary));
+        Code value = Of(Cell(called + "(" + given + ")", primary));
         for (std::size_t i = 0; i < names.size(); ++i)
             if (!arguments[i].part.empty()) moving += names[i];
         if (moving.empty()) return Answer(value);
+        for (const Code& argument : arguments) read.push_back(&argument);
         // Under grad, its part is a function too, 'exp_dx', of the values its
         // part reads and then the parts (DESIGN.md, grad compiled).
-        const std::string derived = called + "_d" + moving;
+        const std::string derived = called + "_d" + moving, jumped = called + "_j" + moving;
         if (!parts_.count(derived)) {
             Expansion inside{{}, {}, function.home, nullptr, {}};
             for (std::size_t i = 0; i < names.size(); ++i) {
@@ -702,6 +703,13 @@ private:
             const Setting<Walked*>                 outside(limit_, nullptr);
             const Setting<std::vector<Temporary>*> unshared(temporaries_, nullptr);
             const Code body = Inside(inside, [&] { return Chained(name, function); });
+            // Its value where an argument moves, 'mod_ja', where that tests
+            // for a jump, a floor's or an equality's, as the interpreter does.
+            if (body.cells[0].text != functions_.at(called)) {
+                functions_.emplace(jumped, body.cells[0].text);
+                prelude_.push_back("static inline double " + jumped + "(" + signature +
+                                   ") {\n    return " + body.cells[0].text + ";\n}\n\n");
+            }
             std::optional<std::vector<std::pair<bool, std::size_t>>> takes;
             if (!body.part.empty()) {
                 const std::string& text = body.part[0].cells[0].text;
@@ -719,13 +727,19 @@ private:
             }
             parts_.emplace(derived, takes);
         }
+        if (functions_.count(jumped)) {
+            aware_ = true;  // a jump's NaN reaches a grad that drops this value (C113)
+            const std::string moves = Moves(read), jumps = jumped + "(" + given + ")";
+            const std::string plain = value.cells[0].text;
+            value.cells[0].text =
+                moves.empty() ? jumps : "(" + moves + " ? " + jumps + " : " + plain + ")";
+        }
         const auto& takes = parts_.at(derived);
         if (!takes) return Answer(value);
         std::string taken;
         for (const auto& [part, i] : *takes)
             taken += (taken.empty() ? "" : ", ") +
                      (part ? arguments[i].part[0] : arguments[i]).cells[0].text;
-        for (const Code& argument : arguments) read.push_back(&argument);
         return Answer(Parted(value, Of(Cell(derived + "(" + taken + ")", primary)), read));
     }
 
@@ -4044,7 +4058,7 @@ private:
     std::set<std::size_t>            inverses_;  // the sizes a helper is needed for
     std::vector<std::string>         limits_;    // a function for each limit walked
     std::vector<std::string>           prelude_;   // and for each function of the prelude called
-    std::set<std::string>              functions_;  // their names
+    std::map<std::string, std::string> functions_;  // their names and values
     std::vector<Hold>                  holds_;
     Sequence*                          basing_ = nullptr;  // whose base clause is compiled, if one
     int                                base_   = 0;        // and its index

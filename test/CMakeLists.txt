@@ -115,7 +115,7 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brin
                          estimate:chaos estimate:dyad estimate:flat estimate:halved
                          estimate:steep estimate:giant elementary:els
                          grad:line grad:fall grad:hinge grad:edge grad:clip grad:steer grad:saw
-                         grad:apart grad:smooth)
+                         grad:ring grad:notch grad:apart grad:smooth)
     string(REPLACE ":" ";" checked ${checked})
     list(GET checked 0 file)
     list(GET checked 1 instance)
@@ -183,14 +183,17 @@ set_tests_properties(check_steer_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^steer: 100 steps from 0, against exact values until 1 and inexact ones from there\nsteer\\.x: within 0${about}\n$")
 set_tests_properties(check_saw_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^saw: 100 steps from 0, against exact values\nsaw\\.b: within 0\nsaw\\.h: within 0\n$")
-# Its known limits, C110 and C111, each held where it parts.
+set_tests_properties(check_ring_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^ring: 100 steps from 0, against exact values\nring\\.a: within 0\nring\\.b: within 0\nring\\.c: within 0\n$")
+set_tests_properties(check_notch_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^notch: 100 steps from 0, against exact values\nnotch\\.y: within 0\n$")
+set_tests_properties(check_smooth_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^smooth: 100 steps from 0, against exact values\nsmooth\\.z: within 0\n$")
+# Its known limit, C110, held where it parts.
 set_tests_properties(check_apart_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^apart: 100 steps from 0, against exact values\napart\\.y: [-a-z()]+ at 0, where the interpreter gives 0\n$")
-set_tests_properties(check_smooth_report PROPERTIES PASS_REGULAR_EXPRESSION
-    "^smooth: 100 steps from 0, against exact values\nsmooth\\.z: 1 at 0, where the interpreter gives none: floor jumps at t = ~0\\.34657359\n$")
 add_test(NAME check_apart COMMAND check_apart)
-add_test(NAME check_smooth COMMAND check_smooth)
-set_tests_properties(check_apart check_smooth PROPERTIES WILL_FAIL ON)
+set_tests_properties(check_apart PROPERTIES WILL_FAIL ON)
 set_tests_properties(check_sized_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^sized: 100 steps from 0, against exact values until 0 and inexact ones from there\n(sized\\.[a-z]+: within [0-9.e+-]+${about}\n)+$")
 # Its sigmoid's size inferred, compiled where it is called, gives the header
