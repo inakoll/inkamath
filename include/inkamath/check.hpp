@@ -296,7 +296,7 @@ public:
         out += "                 const double* about) {\n";
         out += "    double worst = 0.0, most = 0.0" + std::string(floats ? ", units = 0.0" : "") +
                ";\n";
-        out += "    int    past  = -1;\n";
+        out += "    int    past  = -1, compared = 0;\n";
         out += "    for (int k = 0; k < " + std::to_string(steps) + " * cells; ++k) {\n";
         out += "        const double difference = fabs(" + got + " - want[k]);\n";
         out += "        const int    n = " + std::to_string(first) + " + k / cells;\n";
@@ -304,6 +304,7 @@ public:
         out += "        if (known[k] == 0 || (known[k] == 2 && isnan(" + got + "))) continue;\n";
         out +=
             "        if (known[k] == 1 && difference <= " + tol + " * (1.0 + fabs(want[k]))) {\n";
+        out += "            ++compared;\n";
         out += "            if (difference > worst) worst = difference;\n";
         // In units of a float at the interpreter's term, or at 1 below it.
         if (floats)
@@ -338,6 +339,17 @@ public:
             "            printf(\"; the interpreter's term about %.2g from the exact one\", e);\n";
         out += "        printf(\"\\n\");\n";
         out += "        return 0;\n    }\n";
+        // Where neither side gives a value, 'within 0' would say one was held.
+        out += "    if (!compared) {\n";
+        out +=
+            "        printf(\"%s: no value compared, the step NaN where the interpreter gives "
+            "none\", name);\n";
+        out += "        for (int k = 0; k < " + std::to_string(steps) + " * cells; ++k)\n";
+        out += "            if (known[k] == 2) {\n";
+        out += "                printf(\", as at %d: %s\", " + std::to_string(first) +
+               " + k / cells, why[k]);\n";
+        out += "                break;\n            }\n";
+        out += "        printf(\"\\n\");\n        return 1;\n    }\n";
         out += floats
                    ? "    printf(\"%s: within %.2g, %.2g units of a float\", name, worst, units);\n"
                    : "    printf(\"%s: within %.2g\", name, worst);\n";
