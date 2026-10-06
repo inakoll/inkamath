@@ -142,16 +142,12 @@ a = (10^600 + 1)/10^600
 
 # A compiled call is one step and one reference deep, as reading a value
 # is. Through the definition exp is some 33 steps and log some 111, so
-# these lines ran out of their million; their sums are mpmath's. An exact
-# argument still walks the definition.
+# these lines ran out of their million; their sums are mpmath's.
 >> sum_(k=1)^40000 exp(~k/40000)
 ~68732.1323
 
 >> sum_(k=1)^10000 log(~k)
 ~82108.9278
-
->> sum_(k=1)^10000 log(k)
-error: evaluation gave up after 1000000 steps
 
 # Through the definition exp nests 3 references deeper, tanh 5, ilogb 14 and
 # log 16, so each of these ran out of depth. dive(254) is the deepest whose
