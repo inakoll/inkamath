@@ -4771,12 +4771,11 @@ that exploring seven domains asked of the interpreter, by how many asked.
   not, so a ReLU by cells leaves a header unaware. In float the chains are
   floats as everything is.
 
-  The tensors compiled on branch `ctensor` refuse "a tensor's cells under a
-  guard that is not a constant" for a term, whose clause `--check` keeps by
-  row and column; that refusal stays, being about the record. A tensor's
-  function by cells, a batch's ReLU, is the chain here with the slice a
-  place, and whichever of the two lands second carries the slice and a case
-  of it.
+  Tensors compiled refuse "a tensor's cells under a guard that is not a
+  constant" for a term, whose clause `--check` keeps by row and column; that
+  refusal stays, being about the record. A tensor's function by cells, a
+  batch's ReLU, is the chain here with the slice a place, as tensors
+  compiled, which landed first, bind it.
 
   Stays refused: a guarded clause for one cell of one term, `c_2[1] | x_2 >
   0 = 5`, "a guarded cell of one term", a term whose clause `--check` would
@@ -4803,6 +4802,8 @@ that exploring seven domains asked of the interpreter, by how many asked.
   exact fractions in Python and by hand, then seen to be the interpreter's:
   `fit`, a ReLU network trained by `grad`, a unit reviving at the first step
   and the samples fitted at the second, exact and within 0 in double and in
+  float; `tfit`, `fit` with its samples a tensor's slices and its ReLU of
+  three indices, every cell's clause flipping at every step, the same in
   float; `layer`, `net.ink`'s network with `h_n = relu(z_n)`, computing h
   by `net.h`'s two lines; `kink`, each cell's slope either side of its
   threshold, NaN where the interpreter refuses, and a cell moving where
@@ -4810,8 +4811,9 @@ that exploring seven domains asked of the interpreter, by how many asked.
   by its values alone; `mask`, a parameter read by a cell guard become a
   field; `order`, the chain's order told from the others, the whole's cell
   and 0 at its end; and two refusals. Wired with the implementation:
-  the checks and their reports in `test/CMakeLists.txt`, `fit` in float,
-  `crest` failing, `layer`'s lines and the refusals in `test/cli.cmake`. One
+  the checks and their reports in `test/CMakeLists.txt`, `fit` and `tfit`
+  in float, `crest` failing, `layer`'s lines and the refusals in
+  `test/cli.cmake`. One
   recorded refusal moves: `q` in `grad.ink`, `grad_(t = x_n) cel(t)[2]`,
   compiles, 2 at every step, and leaves `compile_grad_refused`; README's
   sentence on `grad` compiled gains the network.

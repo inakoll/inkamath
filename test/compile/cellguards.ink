@@ -48,6 +48,43 @@ relunet(eta = 1/2) = {
 }
 fit = relunet()
 
+# 'tfit', fit with its three samples the slices of a tensor and its ReLU a
+# function of three indices, the slice a place as the row is, so W and L are
+# fit's. H_n is the ReLU of (-1)^n times the pre-activations of W_n, so from
+# 2 every cell's clause flips at every step: H_0 = [1; 0;; 5/2; 0;; 0; 13/2],
+# H_1 = [0; 0;; 0; 0;; 7/2; 39/4], then at even n
+#
+#     [27/8; 3/8;; 43/8; 19/8;; 0; 0]
+#
+# and at odd n [0; 0;; 0; 0;; 81/8; 25/8]. Every value is a multiple of 1/32
+# below 64 as in fit:
+#
+#     tfit: 100 steps from 0, against exact values
+#     tfit.W: within 0
+#     tfit.H: within 0
+#     tfit.L: within 0
+#
+# and in float, 'inkamath --check cellguards.ink tfit --float':
+#
+#     tfit: 100 steps from 0 in float, against exact values
+#     tfit.W: within 0, 0 units of a float
+#     tfit.H: within 0, 0 units of a float
+#     tfit.L: within 0, 0 units of a float
+trelunet(eta = 1/2) = {
+    X = [0; -1;; -1; 0;; 2; 1]
+    y = [3; 3; 0]
+    b = [1; 1/2]
+    v = [1, -1]
+    relu(z)[s,i,j] | z[s,i,j] > 0 = z[s,i,j]
+    relu(z)[s,i,j] = 0
+    loss(M) = sum_(r=1)^3 (v*relu(M*X + b)[r] - y[r])^2/2
+    W_0 = [-3/2, 0; 2, 2]
+    W_n = W_(n-1) - eta*grad_(M = W_(n-1)) loss(M)
+    H_n = relu((-1)^n*(W_n*X + b))
+    L_n = loss(W_n)
+}
+tfit = trelunet()
+
 # 'layer', net.ink's network with its layer written as on paper, h_n =
 # relu(z_n), the ReLU a function by cells. Its cells are the chains net.ink's
 # term by cells gives, so its step computes h by net.h's two lines:
