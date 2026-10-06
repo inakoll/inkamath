@@ -518,7 +518,7 @@ private:
     }
 
     // An expansion's names are its own: the caller's index, cells and names
-    // are not seen inside it.
+    // are not seen inside it, nor its guard, as the interpreter's (C133).
     template <typename Body>
     Code Inside(Expansion& expansion, Body body) {
         struct Restore {
@@ -540,6 +540,7 @@ private:
         if (++expanded_ > max_expanded)
             throw Reason("calls nested " + std::to_string(max_expanded) +
                          " deep, which a recursion its guards do not end would pass");
+        const Setting<bool> unguarded(guarding_, false);
         return body();
     }
     static constexpr int max_expanded = 64;
@@ -1619,7 +1620,11 @@ private:
             return Fold(expression);
         if (!left.Scalar() || !right.Scalar()) throw Reason("a comparison of matrices");
         const std::string l = Wrap(left.cells[0], sum), r = Wrap(right.cells[0], sum);
-        return Answer(Cell("(" + Nan(left, right) + Jumps(l + " == " + r, {&left, &right}) + l +
+        // In a guard, only an equality jumps, as the interpreter's Holds.
+        const bool jumps = !guarding_ || expression->Op() == Comparison::Equal ||
+                           expression->Op() == Comparison::NotEqual;
+        return Answer(Cell("(" + Nan(left, right) +
+                               (jumps ? Jumps(l + " == " + r, {&left, &right}) : "") + l +
                                Operator(expression->Op()) + r + " ? 1.0 : 0.0)",
                            primary));
     }
@@ -1627,7 +1632,8 @@ private:
     // A guard as C tests it. Empty where it always holds, and nothing where
     // it never does.
     std::optional<std::string> Condition(const PExpression<Value>& guard) {
-        const Code code = Quiet(guard);
+        const Setting<bool> guarding(guarding_, true);
+        const Code          code = Quiet(guard);
         if (!code.Scalar()) throw Reason("a guard that is a matrix");
         if (code.constant) {
             if (!Holds(*code.constant)) return std::nullopt;
@@ -1823,8 +1829,7 @@ private:
         for (std::size_t k = 0; k < parts.size(); ++k) {
             code.cells[k] = parts[k].cells[0];
             if (!parts[k].constant) code.constant.reset();
-            if (code.constant)
-                (*code.constant)(k / size.cols + 1, k % size.cols + 1) = (*parts[k].constant)(1, 1);
+            if (code.constant) code.constant->data()[k] = (*parts[k].constant)(1, 1);
         }
         return code;
     }
@@ -1927,11 +1932,6 @@ private:
                 const int place = static_cast<int>(&clause - definition.Clauses().data()) + 1;
                 const ParametersDefinition<Value>& p = clause.parameters;
                 const std::string outer = std::exchange(index_, p.general() ? p.index_name() : "");
-                if (!p.row_name().empty()) {
-                    if (p.tensor()) places_[p.slice_name()] = Value(Number(slice));
-                    places_[p.row_name()] = Value(Number(row));
-                    places_[p.col_name()] = Value(Number(col));
-                }
                 const std::optional<std::string> condition =
                     p.guarded() ? Condition(p.guard()) : std::optional<std::string>("");
                 // --check asks the interpreter's guards of a cell by its row and column.
@@ -1939,9 +1939,6 @@ private:
                     throw Reason("a tensor's cells under a guard that is not a constant, for now");
                 const std::optional<Code> value =
                     condition ? std::optional<Code>(Emit(clause.expression)) : std::nullopt;
-                places_.erase(p.slice_name());
-                places_.erase(p.row_name());
-                places_.erase(p.col_name());
                 index_ = outer;
                 if (!value) return false;
                 if (!value->Scalar()) throw Reason("a cell of " + name + " must be a single value");
@@ -1954,25 +1951,38 @@ private:
                 }
                 return condition->empty();
             };
-            bool settled = false;
-            for (const Clause<Value>& clause : definition.Clauses()) {
-                const ParametersDefinition<Value>& p = clause.parameters;
-                if (settled || !p.cells() || !p.row_name().empty() || !fits(clause)) continue;
-                if (p.slice() == slice && p.row() == row && p.col() == col)
-                    settled = settles(clause);
-            }
-            for (const bool guarded : {true, false})
-                for (const Clause<Value>& clause : definition.Clauses()) {
-                    const ParametersDefinition<Value>& p = clause.parameters;
-                    if (settled || p.row_name().empty() || p.guarded() != guarded || !fits(clause))
-                        continue;
-                    settled = settles(clause);
-                }
+            Walk(definition, slice, row, col, fits, settles);
             if (!last) last = whole ? whole->At(c).text : "0.0";
             cells.push_back(chain + *last);
             if (taken) taken->push_back(pick + std::to_string(picked));
         }
         return {shape, cells};
+    }
+
+    // The clauses that may give a cell, in the order the interpreter tries
+    // them, those for every cell with its places bound, until one settles it.
+    template <typename Fits, typename Settles>
+    void Walk(const Reference<Value>& definition, int slice, int row, int col, Fits fits,
+              Settles settles) {
+        for (const Clause<Value>& clause : definition.Clauses()) {
+            const ParametersDefinition<Value>& p = clause.parameters;
+            if (p.cells() && p.row_name().empty() && fits(clause) && p.slice() == slice &&
+                p.row() == row && p.col() == col && settles(clause))
+                return;
+        }
+        for (const bool guarded : {true, false})
+            for (const Clause<Value>& clause : definition.Clauses()) {
+                const ParametersDefinition<Value>& p = clause.parameters;
+                if (p.row_name().empty() || p.guarded() != guarded || !fits(clause)) continue;
+                if (p.tensor()) places_[p.slice_name()] = Value(Number(slice));
+                places_[p.row_name()] = Value(Number(row));
+                places_[p.col_name()] = Value(Number(col));
+                const bool settled    = settles(clause);
+                places_.erase(p.slice_name());
+                places_.erase(p.row_name());
+                places_.erase(p.col_name());
+                if (settled) return;
+            }
     }
 
     // A clause for one cell, in the interpreter's words where it names more
@@ -2088,9 +2098,9 @@ private:
     }
 
     // A matrix defined by its cells, one cell at a time with its names bound to
-    // the cell's place. They are constants, so the size, every guard and which
-    // clause gives the cell are decided here, as the interpreter would decide
-    // them; one that cannot be is refused.
+    // the cell's place. They are constants, so the size is decided here, and a
+    // guard reading only them; one reading a value that moves is tested where
+    // the cell is. Under grad it has a part where any cell has one.
     Code Cells(const std::string& name, const Reference<Value>& definition) {
         std::optional<Code> whole;  // the matrix written whole, if it is
         for (const Clause<Value>& clause : definition.Clauses())
@@ -2102,32 +2112,37 @@ private:
             const ParametersDefinition<Value>& p = clause.parameters;
             if (p.cells() && p.row_name().empty()) Named(p, *extent, name);
         }
-        Code  code;
-        Value exact(*extent);
-        bool  constant = true;
-        code.size      = *extent;
+        Code                     code;
+        Value                    exact(*extent);
+        bool                     constant = true, any = false;
+        std::vector<Code>        cells, parts;
+        std::vector<const Code*> from;
+        code.size       = *extent;
+        const auto cell = [](const Code& matrix, std::size_t c) {
+            Code at;
+            at.cells = {matrix.At(c)};
+            if (matrix.constant) at.constant = Value(matrix.constant->data()[c]);
+            return at;
+        };
         for (std::size_t c = 0; c < code.size.count(); ++c) {
-            const std::optional<Code> cell =
-                CellOf(definition, static_cast<int>(c / (extent->rows * extent->cols)) + 1,
+            Code fallback = Literal(Value(Number(0)));
+            if (whole)
+                fallback =
+                    Parted(cell(*whole, c),
+                           whole->part.empty() ? Part() : Part(cell(whole->part[0], c)), {&*whole});
+            const Code& given = cells.emplace_back(
+                CellOf(name, definition, static_cast<int>(c / (extent->rows * extent->cols)) + 1,
                        static_cast<int>(c / extent->cols % extent->rows) + 1,
-                       static_cast<int>(c % extent->cols) + 1);
-            Code given = cell ? *cell : Literal(Value(Number(0)));
-            if (!cell && whole) {
-                given       = Code();
-                given.cells = {whole->At(c)};
-                if (whole->constant) given.constant = Value(whole->constant->data()[c]);
-            }
-            if (!given.part.empty())
-                throw Reason("a derivative through a definition by cells, for now");
-            if (!given.Scalar())
-                throw Reason("a cell of " + name + " must be a single value, not a " +
-                             given.size.Described());
+                       static_cast<int>(c % extent->cols) + 1, fallback));
             code.cells.push_back(given.cells[0]);
             if (given.constant) exact.data()[c] = (*given.constant)(1, 1);
             constant = constant && given.constant;
+            any      = any || !given.part.empty();
+            parts.push_back(given.part.empty() ? Literal(Value(Number(0))) : given.part[0]);
         }
+        for (const Code& given : cells) from.push_back(&given);
         if (constant) code.constant = exact;
-        return code;
+        return Parted(code, any ? Part(Assembled(parts, code.size)) : Part(), from);
     }
 
     // The size the interpreter measures (Reference::Measured), its bounds and
@@ -2151,36 +2166,32 @@ private:
         });
     }
 
-    std::optional<Code> CellOf(const Reference<Value>& definition, int slice, int row, int col) {
-        for (const Clause<Value>& clause : definition.Clauses()) {
-            const ParametersDefinition<Value>& p = clause.parameters;
-            if (!p.cells() || !p.row_name().empty() || p.slice() != slice || p.row() != row ||
-                p.col() != col)
-                continue;
-            if (p.guarded() && !GuardHolds(p.guard())) continue;
-            return Emit(clause.expression);
-        }
-        for (const bool guarded : {true, false}) {
-            for (const Clause<Value>& clause : definition.Clauses()) {
+    // A cell is the chain of the clauses that may give it, as a function's
+    // (Chained), the fallback its end.
+    Code CellOf(const std::string& name, const Reference<Value>& definition, int slice, int row,
+                int col, const Code& fallback) {
+        std::vector<std::pair<std::string, Code>> guarded;
+        std::optional<Code>                       otherwise;
+        Walk(
+            definition, slice, row, col, [](const Clause<Value>&) { return true; },
+            [&](const Clause<Value>& clause) {
                 const ParametersDefinition<Value>& p = clause.parameters;
-                if (p.row_name().empty() || p.guarded() != guarded) continue;
-                if (p.tensor()) places_[p.slice_name()] = Value(Number(slice));
-                places_[p.row_name()]           = Value(Number(row));
-                places_[p.col_name()]           = Value(Number(col));
-                const bool                holds = !p.guarded() || GuardHolds(p.guard());
-                const std::optional<Code> cell =
-                    holds ? std::optional<Code>(Emit(clause.expression)) : std::nullopt;
-                places_.erase(p.slice_name());
-                places_.erase(p.row_name());
-                places_.erase(p.col_name());
-                if (cell) return cell;
-            }
-        }
-        return std::nullopt;
-    }
-
-    bool GuardHolds(const PExpression<Value>& guard) {
-        return Holds(*Known(guard, "a guard on cells that is not a constant").constant);
+                const std::optional<std::string>   condition =
+                    p.guarded() ? Condition(p.guard()) : std::optional<std::string>("");
+                if (!condition) return false;
+                const Code value =
+                    condition->empty() ? Emit(clause.expression) : Taken(clause.expression);
+                if (!value.Scalar())
+                    throw Reason("a cell of " + name + " must be a single value, not a " +
+                                 value.size.Described());
+                if (condition->empty())
+                    otherwise = value;
+                else
+                    guarded.emplace_back(*condition, value);
+                return condition->empty();
+            });
+        if (guarded.empty()) return otherwise ? *otherwise : fallback;
+        return Chain(guarded, otherwise ? *otherwise : fallback, Extent{});
     }
 
     std::size_t Size(const PExpression<Value>& expression) {
@@ -2914,7 +2925,7 @@ private:
             any = any || !body.part.empty();
         }
         Code out = point.Scalar() ? parts[0] : Assembled(parts, point.size);
-        if (!any) out = Literal(Value(body.size));
+        if (!any) out = Literal(Value(point.Scalar() ? body.size : point.size));
         out.part.clear();
         // A fold reading it would take its point and body again (C115).
         if (!point.constant || !body.constant) out.constant.reset();
@@ -4103,6 +4114,7 @@ private:
     std::set<std::string>            aside_;    // definitions refused; see Refusals
     bool                             clauses_ = false;  // whether the step keeps them; see Build
     bool                             aware_ = false;  // whether it writes NaN, and so tests for it
+    bool                             guarding_ = false;  // in a guard, which asks only for values
     std::map<std::string, Value>     known_;    // globals that read only those
     std::set<std::string>            read_parameters_;      // by the value being compiled
     bool                             read_global_ = false;  // by the value being compiled

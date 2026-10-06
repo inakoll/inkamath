@@ -157,8 +157,10 @@ finds a chain's steady state and, by power iteration, a matrix's dominant
 direction at every step. A `grad` is compiled forward, each value carrying its
 part beside it by the interpreter's rules, so that the step's gradient is the
 interpreter's to the bit: `test/compile/grad.ink` trains a line and a logistic
-regression by it; a derivative of a derivative, of a limit or of a matrix
-power is refused for now. A tensor is an array as C keeps one,
+regression by it, and `test/compile/cellguards.ink` a ReLU network through
+its activation written by its cells, each cell's guards tested in the step;
+a derivative of a derivative, of a limit or of a matrix power is refused for
+now. A tensor is an array as C keeps one,
 `double O[B][T][D]`, slice after slice, and is met slice by slice as the
 interpreter meets it: `test/compile/tensor.ink` runs multi-head attention
 over a batch and trains a layer on minibatches by `grad`; a tensor in a

@@ -1662,6 +1662,8 @@ closures need one anyway, and can bring it.
 | C128 `[fixed]` | **`--check` judged a term's cells by its first that no double holds.** A term with one such cell was "no finite double" whole, so every cell of it parted, finite ones included: `p_n = p_(n-1)/2 + 7/16*p_(n-1)*p_(n-1)` from `[5/4 0; 0 2]` reported `p[1,1]`, 1.2e+19 in both, at 12, where `p[2,2]` passed every double. Found reviewing `--check`. Each cell is now judged by itself, and says why it is none, in as many lines as before; `check_sever_report`, `test/compile/history.ink`'s `sever`, holds it. |
 | C129 `[fixed]` | **A header named its fixed parameters wrongly.** Its first comment said "Compiled in, as a size, a bound or a lag cannot change", but a parameter is compiled in wherever the step needs a constant, and a matrix power's exponent and a cell's place are none of the three: `pw(k = 2, i = 1, x_n)` reading `([1 1; 0 1]^k*[x_n; 1])[i]` listed i and k so. Found reviewing tensors compiled. It now says "Compiled in as constants, these cannot change", as does `README.md`; `test/compile/expected/heat.h`'s comment moves so, and `compile_fixed_power` in `test/cli.cmake` holds it. |
 | C130 `[fixed]` | **`--check` gave no size to state for a tensor input.** An instance feeding a model's unsized input a matrix is refused with the size that would hold it, "write 'x_n[j<=2]'" (C83), but one feeding it a tensor was refused with no hint, where the compiler, for a cell read past the same input, says "write 'X_n[b<=1, j<=2, k<=1]'". Found reviewing tensors compiled. It now gives the slices too, in 2 lines; `check_tensor_input` in `test/cli.cmake` holds it. |
+| C132 `[fixed]` | **A compiled gradient with respect to a matrix was a single 0 where nothing in its body moves.** With no part in any cell of the body, the gradient was a zero of the body's shape where the interpreter's is a zero of the point's: `grad_(v = [x_n; 1]) [1 1]*f(v)`, f a step by its cells, `f(z)[i] \| z[i] > 0 = 1` and `f(z)[i] = 0`, was `u[1]` in the header where the interpreter answers `[0; 0]`, and `--check` held the first cell alone, past which it wrote its estimates. Reached before by a guarded function of constants, `grad_(v = [x_n; 1]) q(v[1])`; found reviewing guards on cells at run time, whose masks reach it. It is the point's shape now, in the same line; `compile_c132` in `test/cli.cmake` holds it. |
+| C133 `[fixed]` | **A compiled gradient was NaN where a comparison read as a value in a guard met its threshold.** Its sides moving, such a comparison was tested for a jump, as one outside a guard is, where the interpreter's guard asks only for its value and refuses an equality alone: beside `h(z) = 0`, `h(z) \| (z > 2)*z > -1 = z` gave `grad_(t = x_n) h(t)` NaN at 2, where the interpreter answers 1. Found reviewing guards on cells at run time, by fuzzing functions by cells, which reach it per cell. In a guard only an equality is tested now, and in a function it calls anything, as the interpreter's call leaves the guard, in 7 lines; `compile_c133` and `compile_c133s` in `test/cli.cmake` hold it. |
 
 **Measure instructions, not the clock.** One of those changes made the matrix
 workload 20 per cent slower by the clock and not by a single instruction: with
@@ -4634,7 +4636,7 @@ that exploring seven domains asked of the interpreter, by how many asked.
   walks the parts too; of a matrix power; of a power whose exponent is
   not a constant, which five lines would compile, its part absent where the
   exponent is 0 by the conditions below, but which no model asks; and through a definition by cells, whose guards
-  the compiler takes as constants only (*Guards on cells at run time*).
+  the compiler took as constants only, until *Guards on cells at run time*.
 
   `--check` needs nothing new. The interpreter's terms are its grad's,
   walked by `derivative.hpp` in every run, the disturbed ones too, as
@@ -4731,9 +4733,113 @@ that exploring seven domains asked of the interpreter, by how many asked.
   review, C113 to C118, fixed, and C111 with C117. 387 lines of sources
   more, where about 350 were planned: 381 in `compile.hpp` and 6 in
   `derivative.hpp`. 14,307 lines in all.
-- **Guards on cells at run time.** A definition by cells whose guard reads
-  what is not a constant, a ReLU written by its cells, is refused; compiled,
-  each cell a chain, it would carry `grad`'s parts through cells too.
+- `[done]` **Guards on cells at run time.** `--compile` decides the guards of a
+  matrix or a function by cells while compiling, and refuses one that reads
+  a value that moves, "a guard on cells that is not a constant": a ReLU
+  written by its cells, `relu(z)[i] | z[i] > 0 = z[i]`, applied in a step.
+  Under `grad` it refuses every definition by cells, guarded or not, "a
+  derivative through a definition by cells, for now", so a network trained
+  by `grad` through its activations has no step. A term by cells already
+  tests its guards at run time (*A sequence's terms cell by cell*).
+
+  Decided: the value and the parts, as the interpreter's `grad` gives both
+  (*`grad` of a definition by cells*). Each cell is the chain the interpreter
+  tries: the clauses for that cell in the order written, then those for
+  every cell, guarded before unguarded, then the cell of the matrix written
+  whole, else 0, never NaN, a cell no clause gives being 0. It is the chain
+  `Chain` makes of a function's clauses, built per cell with the cell's
+  places bound as constants, so a guard reading only places folds as now.
+  Under `grad` a cell's chain carries its chain of parts as a function's
+  does: the clause's part, 0 where the clause taken has none, and the
+  definition has a part where any cell's clause has one, as
+  `derivative.hpp` stores it, so where none does at the point nothing
+  reading it tests a jump. An equality guarding a cell
+  whose sides move is NaN where they meet, where the interpreter says
+  `pk[1,1] takes a clause at t = 0 that holds only there`, and `z*(z > 0)`
+  where its comparison jumps, as anywhere. A guard that reads a parameter is
+  a test too, where today it folds the parameter's value in and the header
+  says it is "compiled in, as a size, a bound or a lag", which a guard is
+  not: the parameter is a field and the definition is computed where the
+  parameters are, as any value reading them. No recorded header moves:
+  `heat.h`'s are the only guards on cells, and read places only.
+
+  `--check` needs nothing new. Its record of each cell's clause, and the
+  flip it reports, follow the clauses of a sequence's terms; a definition by
+  cells compiled where it is called or read parts only by its values, as a
+  guarded function does. Following it was rejected: its guards are asked
+  once per call, `rfit`'s ReLU three times in each pass of its loss, and the
+  interpreter's memo asks a repeated call once, so the record would need a
+  key per call that neither side has. A ReLU to be watched at its threshold
+  is a term by cells, as `rift` is. Nor
+  is anything new in a NaN-aware header: a cell's guard tests its operands
+  as any guard does there, and a chain writes no NaN that its clauses do
+  not, so a ReLU by cells leaves a header unaware. In float the chains are
+  floats as everything is.
+
+  Tensors compiled refuse "a tensor's cells under a guard that is not a
+  constant" for a term, whose clause `--check` keeps by row and column; that
+  refusal stays, being about the record. A tensor's function by cells, a
+  batch's ReLU, is the chain here with the slice a place, as tensors
+  compiled, which landed first, bind it.
+
+  Stays refused: a guarded clause for one cell of one term, `c_2[1] | x_2 >
+  0 = 5`, "a guarded cell of one term", a term whose clause `--check` would
+  have to keep and which no model asks; a Jacobian, now reached through
+  cells and refused in the interpreter's words; and a place or a size that
+  moves, as now. Rejected: the value alone, `grad` through cells refused
+  for now, when training through the activation is the case and `Chain`
+  already carries the parts; a loop over the cells with an `if` per cell,
+  where the step is expressions and the cells are known while compiling;
+  and the ReLU rewritten as a function of single values called per cell,
+  which leaves the definition by cells refused under `grad`.
+
+  About 30 lines of sources: `CellOf` building a chain with `Condition` in
+  place of `GuardHolds`, the fallback passed in, about 15; `Cells` assembling
+  the cells' parts and where they are, about 15; the refusal and
+  `GuardHolds` 4 fewer. `TermCells` walks a term cell's clauses the same way
+  over strings; sharing the walk is looked for, landed first as a refactor,
+  every header byte for byte, where it removes lines. Sized against
+  `Chain`'s parts in `grad` compiled, about 25 lines and reused whole, and
+  sizes inferred's compiler half, 20. Past 45 the implementation stops and
+  reports. 14,355 lines in all before it, at cfb0abb; about 14,385 after.
+
+  Specified in `test/compile/cellguards.ink`, its numbers worked out with
+  exact fractions in Python and by hand, then seen to be the interpreter's:
+  `rfit`, a ReLU network trained by `grad`, a unit reviving at the first step
+  and the samples fitted at the second, exact and within 0 in double and in
+  float; `tfit`, `rfit` with its samples a tensor's slices and its ReLU of
+  three indices, every cell's clause flipping at every step, the same in
+  float; `layer`, `net.ink`'s network with `h_n = relu(z_n)`, computing h
+  by `net.h`'s two lines; `kink`, each cell's slope either side of its
+  threshold, NaN where the interpreter refuses, and a cell moving where
+  another cell's clause has a part; `crest`, `rift` by a function, parting
+  by its values alone; `mask`, a parameter read by a cell guard become a
+  field; `order`, the chain's order told from the others, the whole's cell
+  and 0 at its end; and two refusals. Wired with the implementation:
+  the checks and their reports in `test/CMakeLists.txt`, `rfit` and `tfit`
+  in float, `crest` failing, `layer`'s lines and the refusals in
+  `test/cli.cmake`. One
+  recorded refusal moves: `q` in `grad.ink`, `grad_(t = x_n) cel(t)[2]`,
+  compiles, 2 at every step, and leaves `compile_grad_refused`; README's
+  sentence on `grad` compiled gains the network.
+
+  Built as specified: every report as `cellguards.ink` gives it, `rfit` and
+  `tfit` in float too, `layer`'s two lines byte for byte and the two
+  refusals in their words; every other header, check program and golden as
+  before. First a refactor: `Walk`, the order in which a cell's clauses are
+  tried, shared by `TermCells` and `CellOf`, every output byte for byte, 10
+  lines fewer. Departures. `fit` is `rfit`, as `adam.ink`'s `fit` already
+  names the check program, in a commit of its own. `q` compiling is held by
+  its line, `compile_cellguards_cel` in `test/cli.cmake`. Specified on the
+  way, in a commit of its own, as ruled on its review: `tfit`. Then 15 lines
+  of sources more, where about 30 were planned, all in `compile.hpp`. 14,421
+  lines in all. `Assembled` stores a constant part at its place among the
+  cells, not by row and column, which a tensor's slices need; no header
+  moved. Its review fixed C132 and C133, 8 lines, and found the
+  interpreter refusing where the step answers when it sizes a clause under
+  `grad` or when the value written whole refuses beside cells that each have
+  a clause, and constants folded from a call that ignores a moving argument
+  refused. 14,431 lines in all, after `fixes5`.
 - **The prelude's part functions for the interpreter's `grad`.** Checked
   into `inkamath_prelude.h` beside the values, they would spare its walk of
   `exp`, `log` and `tanh` under `grad`, about 2.6 times faster.
@@ -4976,7 +5082,9 @@ that exploring seven domains asked of the interpreter, by how many asked.
   matrix, compiles, the parts riding the values slice by slice: a model's
   weights are shared matrices and its batch the tensor. Weights stacked by
   head, a tensor, reach a loss only through softmax by cells, which compiled
-  `grad` refuses already, so nothing asks for a seed of three indices.
+  `grad` then refused, so nothing asked for a seed of three indices; since
+  *Guards on cells at run time* it does not, and that seed is what stays
+  between attention compiled and its training.
 
   `--check` feeds a tensor input by its cells and holds every cell of a term,
   reading the interpreter's slice by slice, and names a cell that parts from

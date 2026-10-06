@@ -847,11 +847,52 @@ holds(compile_grad_fall fall.h [[static inline double fall_exp_dx(double arg_x, 
     return 2.0 * part_s * fall_logp(arg_s * arg_s) + 2.0 * arg_s * fall_logp_dz(arg_s * arg_s, part_s * arg_s + arg_s * part_s);
 }
 ]])
-file(WRITE "${OUT}/grad_refused.ink" "a_n = grad_(t = x_n) grad_(s = t) s^3\nb_n = grad_(t = x_n) lim p(t)\nc_n = grad_(v = [x_n; 1]) 2*v\nd_n = grad_(t = x_n) 2^t\nf_n = grad_(t = x_n) t^x_n\ng_n = grad_(t = x_n) [1 1]*[t 1; 0 t]^2*[1; 1]\nh_n = grad_(t = x_n) 5\nk_n = grad_(t = x_n) sq\nm_n = grad_(t = x_n) amp(k = t).y\nq_n = grad_(t = x_n) cel(t)[2]\namp(k = 1) = {\n    y = 2*k\n}\np(r)_0 = 1\np(r)_k = r*p(r)_(k-1)/4 + 1\ncel(z)[j<=2] = j*z\nsq = t^2\nt = 3\n")
+file(WRITE "${OUT}/grad_refused.ink" "a_n = grad_(t = x_n) grad_(s = t) s^3\nb_n = grad_(t = x_n) lim p(t)\nc_n = grad_(v = [x_n; 1]) 2*v\nd_n = grad_(t = x_n) 2^t\nf_n = grad_(t = x_n) t^x_n\ng_n = grad_(t = x_n) [1 1]*[t 1; 0 t]^2*[1; 1]\nh_n = grad_(t = x_n) 5\nk_n = grad_(t = x_n) sq\nm_n = grad_(t = x_n) amp(k = t).y\namp(k = 1) = {\n    y = 2*k\n}\np(r)_0 = 1\np(r)_k = r*p(r)_(k-1)/4 + 1\nsq = t^2\nt = 3\n")
 set(args --compile grad_refused.ink)
-set(stdout "cannot compile a: a derivative of a derivative, for now\ncannot compile b: a derivative of a limit, for now\ncannot compile c: grad of a matrix with respect to a matrix is a Jacobian, which it does not give\ncannot compile d: grad cannot differentiate a power whose exponent changes with t, unless its base is e\ncannot compile f: a derivative of a power whose exponent is not a constant, for now\ncannot compile g: a derivative of a matrix power, for now\ncannot compile h: grad's expression does not read t\ncannot compile k: sq reads the global t, which grad's t does not reach\ncannot compile m: grad cannot differentiate through an instance yet\ncannot compile q: a derivative through a definition by cells, for now\n")
+set(stdout "cannot compile a: a derivative of a derivative, for now\ncannot compile b: a derivative of a limit, for now\ncannot compile c: grad of a matrix with respect to a matrix is a Jacobian, which it does not give\ncannot compile d: grad cannot differentiate a power whose exponent changes with t, unless its base is e\ncannot compile f: a derivative of a power whose exponent is not a constant, for now\ncannot compile g: a derivative of a matrix power, for now\ncannot compile h: grad's expression does not read t\ncannot compile k: sq reads the global t, which grad's t does not reach\ncannot compile m: grad cannot differentiate through an instance yet\n")
 set(exit 1)
 check(compile_grad_refused)
+
+# Guards on cells at run time (DESIGN.md, compile/cellguards.ink): a ReLU by
+# cells computed as net.h's term by cells is, grad through cells, and what
+# stays refused.
+set(cellguards "${CMAKE_CURRENT_LIST_DIR}/compile/cellguards.ink")
+set(args --compile ${cellguards} net -o cnet.h)
+check(compile_cellguards_layer)
+holds(compile_cellguards_layer cnet.h [[    m_->h[0][0][0] = m_->z[0][0][0] < 0.0 ? 0.0 : m_->z[0][0][0];
+    m_->h[0][1][0] = m_->z[0][1][0] < 0.0 ? 0.0 : m_->z[0][1][0];
+]])
+file(WRITE "${OUT}/cel.ink" "q_n = grad_(t = x_n) cel(t)[2]\ncel(z)[j<=2] = j*z\n")
+set(args --compile cel.ink -o cel.h)
+check(compile_cellguards_cel)
+holds(compile_cellguards_cel cel.h "    m_->q[0] = 2.0;\n")
+file(WRITE "${OUT}/cellguards.ink" "a_n = grad_(v = [x_n; 1]) up(v)\nc_n[j<=2] = j*x_n\n"
+     "c_2[1] | x_2 > 0 = 5\nup(z)[i] | z[i] > 0 = z[i]\nup(z)[i] = 0\nx_n = n - 1\n")
+set(args --compile cellguards.ink)
+set(stdout "cannot compile a: grad of a matrix with respect to a matrix is a Jacobian, which it does not give
+cannot compile c: a guarded cell of one term
+")
+set(exit 1)
+check(compile_cellguards_refused)
+
+# C132: a gradient with respect to a matrix that nothing moves is a zero of
+# the point's shape, not of the body's.
+file(WRITE "${OUT}/c132.ink" "f(z)[i] | z[i] > 0 = 1\nf(z)[i] = 0\nu_n = grad_(v = [x_n; 1]) [1 1]*f(v)\n")
+set(args --compile c132.ink -o c132.h)
+check(compile_c132)
+holds(compile_c132 c132.h "    m_->u[0][0][0] = 0.0;\n    m_->u[0][1][0] = 0.0;\n")
+
+# C133: a comparison read as a value in a guard does not jump where its
+# sides meet, as the interpreter's guard asks only for its value.
+file(WRITE "${OUT}/c133.ink" "h(z) = 0\nh(z) | (z > 2)*z > -1 = z\nu_n = grad_(t = x_n) h(t)\n")
+set(args --compile c133.ink -o c133.h)
+check(compile_c133)
+holds(compile_c133 c133.h "    m_->u[0] = (m_->x[0] > 2.0 ? 1.0 : 0.0) * m_->x[0] > -1.0 ? 1.0 : 0.0;\n")
+# One in a function the guard calls jumps, as a call is not the guard.
+file(WRITE "${OUT}/c133s.ink" "s(z) = (z > 2)*z\nk(z) = 0\nk(z) | s(z) > -1 = z\nw_n = grad_(t = x_n) k(t)\n")
+set(args --compile c133s.ink -o c133s.h)
+check(compile_c133s)
+holds(compile_c133s c133s.h "    m_->w[0] = (isnan(t0_) ? NAN : isnan((isnan(m_->x[0]) ? NAN : m_->x[0] == 2.0 ? NAN : m_->x[0] > 2.0 ? 1.0 : 0.0) * m_->x[0]) ? NAN : (isnan(m_->x[0]) ? NAN : m_->x[0] == 2.0 ? NAN : m_->x[0] > 2.0 ? 1.0 : 0.0) * m_->x[0] > -1.0 ? 1.0 : 0.0);\n")
 
 # C115: a constant gradient at a point that moves is no constant to fold with
 # what reads it, a fold that would take the point again.

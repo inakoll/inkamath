@@ -281,17 +281,15 @@ cusp = quotient(z_n = ~0)
 #     h_n = grad_(t = x_n) 5
 #     k_n = grad_(t = x_n) sq
 #     m_n = grad_(t = x_n) amp(k = t).y
-#     q_n = grad_(t = x_n) cel(t)[2]
 #     amp(k = 1) = {
 #         y = 2*k
 #     }
 #     p(r)_0 = 1
 #     p(r)_k = r*p(r)_(k-1)/4 + 1
-#     cel(z)[j<=2] = j*z
 #     sq = t^2
 #     t = 3
 #
-# where the interpreter, given x_n = 2, answers a, b, f, g and q and refuses
+# where the interpreter, given x_n = 2, answers a, b, f and g and refuses
 # the rest in the words the compiler takes:
 #
 #     cannot compile a: a derivative of a derivative, for now
@@ -303,7 +301,6 @@ cusp = quotient(z_n = ~0)
 #     cannot compile h: grad's expression does not read t
 #     cannot compile k: sq reads the global t, which grad's t does not reach
 #     cannot compile m: grad cannot differentiate through an instance yet
-#     cannot compile q: a derivative through a definition by cells, for now
 #
 # on standard output, exiting 1.
 
