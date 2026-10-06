@@ -37,6 +37,10 @@ public:
                                const Definition& definition, const std::string& module,
                                const std::string& source, const Scope<Value>& unfed) {
         ReferenceStack<Value>&   stack = session.Definitions();
+        // In float, a thousandth: three digits asked of seven (DESIGN.md).
+        const bool        floats = CompileC::floats;
+        const std::string tol = floats ? "1e-3" : "1e-9", form = floats ? "%.9g" : "%.17g",
+                          got = floats ? "(double)got[k]" : "got[k]";
         const CompileC::Compiled compiled =
             CompileC::Build(stack, module, source, unfed.model, &unfed, true);
         // Every guard asked on the way, from the first term on, by term and
@@ -54,6 +58,8 @@ public:
             ReferenceStack<Value>& stack;
             ~Unhook() { stack.guards = nullptr; }
         } unhook{stack};
+        // A term the file asked before was heard by no guard (C106).
+        stack.Forget();
         const int         first = compiled.first;
         std::string       data, stepped, held;
         for (std::size_t k = 0; k < compiled.inputs.size(); ++k) {
@@ -69,10 +75,13 @@ public:
                                              std::to_string(input.cells.size()) +
                                              " cells, where the compiled step takes a single "
                                              "value");
-                values.insert(values.end(), input.cells.begin(), input.cells.end());
+                for (const double x : input.reals)
+                    values.push_back(!floats           ? Double(x)
+                                     : std::signbit(x) ? "-" + CompileC::Double(-x)
+                                                       : CompileC::Double(x));
             }
-            data +=
-                Array("const double", "in_" + std::to_string(k), steps * compiled.cells[k], values);
+            data += Array("const " + CompileC::Real(), "in_" + std::to_string(k),
+                          steps * compiled.cells[k], values);
         }
         // The interpreter's own error, estimated (DESIGN.md): each term asked
         // three times more, apart, every rounding disturbed and every limit
@@ -117,7 +126,7 @@ public:
                 const std::string name   = instance + "." + sequence.name;
                 const int         index  = Floor(n - sequence.phase, sequence.period);
                 const Term        term   = before && sequence.period > 1
-                                               ? Term{{}, true, "not asked", {}, {}}
+                                               ? Term{{}, true, "not asked", {}, {}, {}}
                                                : At(session, name, index);
                 if (!term.exact && (!inexact || n < *inexact)) inexact = n;
                 const bool given = term.error.empty();
@@ -149,9 +158,10 @@ public:
             }
             data += Array("const double", "want_" + id, steps * cells, want);
             data += Array("const unsigned char", "known_" + id, steps * cells, known);
-            data += "static double got_" + id + "[" + size + "];\n";
+            data += "static " + CompileC::Real() + " got_" + id + "[" + size + "];\n";
             stepped += "        memcpy(&got_" + id + "[n * " + std::to_string(cells) + "], &m." +
-                       sequence.name + "[0], sizeof(double) * " + std::to_string(cells) + ");\n";
+                       sequence.name + "[0], sizeof(" + CompileC::Real() + ") * " +
+                       std::to_string(cells) + ");\n";
             held += "    held &= hold_(\"" + instance + "." + sequence.name + "\", " +
                     std::to_string(sequence.cols) + ", " + std::to_string(cells) + ", " +
                     std::to_string(sequence.start) + ", got_" + id + ", want_" + id + ", known_" +
@@ -243,26 +253,34 @@ public:
         out += " * estimated, and the farthest kept. An estimate, not a bound. */\n";
         out += compiled.header + "\n#include <stdio.h>\n\n";
         out += "/* A term parts from the interpreter's where they differ by more than a\n";
-        out += " * billionth of one plus the interpreter's term; where the interpreter\n";
+        out += std::string(" * ") + (floats ? "thousandth" : "billionth") +
+               " of one plus the interpreter's term; where the interpreter\n";
         out += " * gives none, from the sequence's start, unless it is NaN, and before it,\n";
         out += " * where the interpreter gives one. 'known' says which: 0 not asked, 1 a\n";
         out += " * term, 2 none, 3 one before the start, 4 one that is no finite double;\n";
         out += " * 'about' is each term's estimate, or none where every one is 0. */\n";
         out += "static int hold_(const char* name, int cols, int cells, int from,\n";
-        out += "                 const double* got, const double* want,\n";
+        out += "                 const " + CompileC::Real() + "* got, const double* want,\n";
         out += "                 const unsigned char* known, const char* const* why,\n";
         out += "                 const double* about) {\n";
-        out += "    double worst = 0.0, most = 0.0;\n";
+        out += "    double worst = 0.0, most = 0.0" + std::string(floats ? ", units = 0.0" : "") +
+               ";\n";
         out += "    int    past  = -1;\n";
         out += "    for (int k = 0; k < " + std::to_string(steps) + " * cells; ++k) {\n";
-        out += "        const double difference = fabs(got[k] - want[k]);\n";
+        out += "        const double difference = fabs(" + got + " - want[k]);\n";
         out += "        const int    n = " + std::to_string(first) + " + k / cells;\n";
         out += "        const double e = about ? about[k] : 0.0;\n";
-        out += "        if (known[k] == 0 || (known[k] == 2 && isnan(got[k]))) continue;\n";
-        out += "        if (known[k] == 1 && difference <= 1e-9 * (1.0 + fabs(want[k]))) {\n";
+        out += "        if (known[k] == 0 || (known[k] == 2 && isnan(" + got + "))) continue;\n";
+        out +=
+            "        if (known[k] == 1 && difference <= " + tol + " * (1.0 + fabs(want[k]))) {\n";
         out += "            if (difference > worst) worst = difference;\n";
+        // In units of a float at the interpreter's term, or at 1 below it.
+        if (floats)
+            out +=
+                "            units = fmax(units, ldexp(difference, 23 - ilogb(fmax(fabs(want[k]), "
+                "1.0))));\n";
         out += "            if (e > most) most = e;\n";
-        out += "            if (past < 0 && e > 1e-9 * (1.0 + fabs(want[k]))) past = n;\n";
+        out += "            if (past < 0 && e > " + tol + " * (1.0 + fabs(want[k]))) past = n;\n";
         out += "            continue;\n        }\n";
         out += "        printf(\"%s\", name);\n";
         out += "        if (cells > 1)\n";
@@ -271,20 +289,23 @@ public:
         out += "            printf(\": none at %d, where the interpreter gives %.17g\", n,\n";
         out += "                   want[k]);\n";
         out += "        else if (known[k] == 2)\n";
-        out += "            printf(\": %.17g at %d, where the interpreter gives none: %s\",\n";
-        out += "                   got[k], n, why[k / cells]);\n";
+        out +=
+            "            printf(\": " + form + " at %d, where the interpreter gives none: %s\",\n";
+        out += "                   " + got + ", n, why[k / cells]);\n";
         out += "        else if (known[k] == 4)\n";
-        out += "            printf(\": %.17g at %d, where the interpreter's term is %s\",\n";
-        out += "                   got[k], n, why[k / cells]);\n";
+        out += "            printf(\": " + form + " at %d, where the interpreter's term is %s\",\n";
+        out += "                   " + got + ", n, why[k / cells]);\n";
         out += "        else\n";
-        out += "            printf(\": %.17g at %d, where the interpreter gives %.17g\",\n";
-        out += "                   got[k], n, want[k]);\n";
+        out += "            printf(\": " + form + " at %d, where the interpreter gives %.17g\",\n";
+        out += "                   " + got + ", n, want[k]);\n";
         out += "        if (e > 0.0)\n";
         out +=
             "            printf(\"; the interpreter's term about %.2g from the exact one\", e);\n";
         out += "        printf(\"\\n\");\n";
         out += "        return 0;\n    }\n";
-        out += "    printf(\"%s: within %.2g\", name, worst);\n";
+        out += floats
+                   ? "    printf(\"%s: within %.2g, %.2g units of a float\", name, worst, units);\n"
+                   : "    printf(\"%s: within %.2g\", name, worst);\n";
         out += "    if (from > " + std::to_string(first) + ") printf(\", from %d\", from);\n";
         out += "    if (most > 0.0)\n";
         out +=
@@ -297,7 +318,8 @@ public:
         out += "    for (int n = 0; n < " + std::to_string(steps) + "; ++n) {\n";
         out += "        " + module + "_step(&m" + arguments + ");\n" + stepped + "    }\n";
         out += "    printf(\"" + instance + ": " + std::to_string(steps) + " steps from " +
-               std::to_string(first) + ", against " + against + "\\n\");\n";
+               std::to_string(first) + (floats ? " in float" : "") + ", against " + against +
+               "\\n\");\n";
         if (!table.empty())
             out += "    static const guarded_ guarded[] = {\n" + table + "    };\n" +
                    "    held &= flips_(guarded, (int)(sizeof guarded / sizeof guarded[0]));\n";
@@ -428,6 +450,7 @@ private:
         std::string              error;
         std::string              odd;  // why it is no finite double, where it is not
         Value                    value;
+        std::vector<double>      reals;  // the cells, as doubles
     };
 
     static Term At(Interpreter<Number>& session, const std::string& name, int n) {
@@ -455,6 +478,7 @@ private:
                                                            : "not a finite number";
                 answer.exact = answer.exact && cell.exact();
                 answer.cells.push_back(Double(z.real()));
+                answer.reals.push_back(z.real());
             }
         }
         return answer;

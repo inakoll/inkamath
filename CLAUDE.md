@@ -157,7 +157,9 @@ worktree of its own, as four agents, one after the other:
    independent route, errors in the spec fixed in commits of their own,
    design objections reported rather than acted on.
 3. **Implementation**, until the spec passes. The spec then becomes a golden
-   and the entry `[done]`, with its departures and lines of sources.
+   and the entry `[done]`, with its departures and lines of sources. Past
+   one and a half times the spec's cost in lines, it stops and reports
+   instead of finishing: the overrun is a decision, not a fact.
 4. **Implementation review.** Adversarial: run against `integration` on the
    same inputs, a failing test before each fix, objections reported.
 
@@ -166,3 +168,8 @@ rulings, and merges into `integration` once CI is green; `master` follows by
 fast-forward (§5). Decisions are shown to the owner after the fact, except
 one that departs from `MANIFESTO.md` or that the owner asked to make. A
 fix skips the pipeline: a failing test, the fix, a row in the defect table.
+
+CI is shared and finite, and agents use it freely; the Linux builds it runs
+are the ones run before pushing anyway. So a branch is pushed once, when it is
+ready to merge, not after each commit, and small fixes found together share a
+branch instead of taking one each. MSVC is what CI adds; wait for it.

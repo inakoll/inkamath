@@ -55,6 +55,18 @@ public:
         std::vector<std::string> guarded;    // those whose clause is kept, 'v_clause_'
     };
 
+    // '--float' (DESIGN.md, a float target): a float wherever a double is.
+    static inline bool floats = false;
+    static std::string Real() { return floats ? "float" : "double"; }
+    static bool Finite(double x) { return std::isfinite(floats ? static_cast<float>(x) : x); }
+    friend class CheckC;  // which writes its inputs as constants are
+    static inline const std::set<std::string> keywords = {
+        "auto",    "break",  "case",     "char",   "const",    "continue", "default",
+        "do",      "double", "else",     "enum",   "extern",   "float",    "for",
+        "goto",    "if",     "inline",   "int",    "long",     "register", "restrict",
+        "return",  "short",  "signed",   "sizeof", "static",   "struct",   "switch",
+        "typedef", "union",  "unsigned", "void",   "volatile", "while"};
+
     // The session's sequences, or with a model, those of its instance with
     // every default and no input given (DESIGN.md, phase 15).
     static std::string Header(ReferenceStack<Value>& definitions, const std::string& module,
@@ -594,6 +606,41 @@ private:
         });
     }
 
+    // A function of the prelude called on single values is a C function of
+    // the header's, emitted once, its parameters named as a limit's are:
+    // written where it is called, each of log's thirteen steps would write
+    // its argument three times (DESIGN.md). A constant call folds, and one
+    // of another shape is written where it is called, as any other.
+    PExpression<Value> Prelude(const std::string& name, const Reference<Value>& function,
+                               const ParametersCall<Value>& call) {
+        const auto& names    = function.Clauses().front().parameters.parameters_names();
+        bool        constant = true, scalar = call.parameters_expression().size() == names.size();
+        std::string given;
+        for (const PExpression<Value>& argument : call.parameters_expression()) {
+            const Code code = Emit(argument);
+            constant        = constant && code.constant;
+            scalar          = scalar && code.Scalar();
+            given += (given.empty() ? "" : ", ") + code.cells[0].text;
+        }
+        if (constant || !scalar) return Answer(Call(name, function, call, nullptr));
+        const std::string called = module_ + "_" + name;
+        if (!functions_.count(called)) {
+            Expansion   inside{{}, {}, function.home, nullptr, {}};
+            std::string signature;
+            for (const std::string& parameter : names) {
+                inside.values.emplace(parameter, Array("arg_" + parameter, 1, 1));
+                signature += (signature.empty() ? "double arg_" : ", double arg_") + parameter;
+            }
+            const Setting<Walked*>                 outside(limit_, nullptr);
+            const Setting<std::vector<Temporary>*> unshared(temporaries_, nullptr);
+            const Code body = Inside(inside, [&] { return Chained(name, function); });
+            functions_.insert(called);
+            prelude_.push_back("static inline double " + called + "(" + signature +
+                               ") {\n    return " + body.cells[0].text + ";\n}\n\n");
+        }
+        return Answer(Cell(called + "(" + given + ")", primary));
+    }
+
     // A name of an instance written where it is read, 'conv(lap, u_(n-1)).out':
     // one of a model without memory is a call.
     Code Instance(const Reference<Value>& model, const ParametersCall<Value>& call,
@@ -1038,12 +1085,13 @@ private:
 
     static std::string Double(double x) {
         if (std::isnan(x)) return "NAN";
-        if (std::isinf(x)) return "INFINITY";
+        if (!Finite(x)) return std::signbit(x) ? "-INFINITY" : "INFINITY";
         char        text[32];
-        const auto  end = std::to_chars(text, text + sizeof text, x).ptr;
+        const auto end = floats ? std::to_chars(text, text + sizeof text, static_cast<float>(x)).ptr
+                                : std::to_chars(text, text + sizeof text, x).ptr;
         std::string written(text, end);
         if (written.find_first_of(".e") == std::string::npos) written += ".0";
-        return written;
+        return written + (floats ? "f" : "");
     }
 
     // Cell by cell, a single value stretching to the other's shape, as the
@@ -1929,14 +1977,26 @@ private:
             text += "            step_ = fabs(t_ - t1_);\n";
         } else {
             text += "            step_ = 0.0;\n";
+            if (floats) text += "            int near_ = 1;\n";
             text +=
                 "            for (int i_ = 0; i_ < " + std::to_string(walked.rows) + "; ++i_)\n";
             text += "                for (int j_ = 0; j_ < " + std::to_string(walked.cols) +
                     "; ++j_) {\n";
             text += "                    const double d_ = fabs(t_[i_][j_] - t1_[i_][j_]);\n";
             text += "                    if (isnan(d_) || d_ > step_) step_ = d_;\n";
+            if (floats)
+                text +=
+                    "                    near_ &= d_ <= 2 * FLT_EPSILON * fabsf(t_[i_][j_]) && "
+                    "isfinite(t_[i_][j_]);\n";
             text += "                }\n";
         }
+        // A float closes on finite floats a unit or two apart (DESIGN.md, a float target).
+        if (floats)
+            text += scalar ? "            if (step_ <= 2 * FLT_EPSILON * fabsf(t_) && "
+                             "isfinite(t_) && stepped_) return t_;\n"
+                           : "            if (near_ && stepped_) {\n"
+                             "                memcpy(out_, t_, sizeof t_);\n"
+                             "                return;\n            }\n";
         text += "            if (step_ <= " + tolerance +
                 " && stepped_ &&\n                (!(before_ > 0) || (step_ / before_ < 1 &&\n"
                 "                                    step_ * (step_ / before_) / (1 - step_ / "
@@ -2028,6 +2088,8 @@ private:
         if (calls) {
             if (!found.definition) throw Reason(key + " is not defined");
             if (call.subexpr()) throw Reason("a sequence with parameters");
+            if (found.where == &definitions_.Builtins())
+                return Prelude(key, *found.definition, call);
             return Answer(Call(key, *found.definition, call, nullptr));
         }
         if (limit_) throw Reason(key + "_...: another sequence's term in a limit's terms");
@@ -2475,12 +2537,6 @@ private:
     // A name here is letters and digits, so it can only collide with C's own;
     // one in an instance is several, 'fast.v'.
     static void Unreserved(const std::string& key) {
-        static const std::set<std::string> keywords = {
-            "auto",    "break",  "case",     "char",   "const",    "continue", "default",
-            "do",      "double", "else",     "enum",   "extern",   "float",    "for",
-            "goto",    "if",     "inline",   "int",    "long",     "register", "restrict",
-            "return",  "short",  "signed",   "sizeof", "static",   "struct",   "switch",
-            "typedef", "union",  "unsigned", "void",   "volatile", "while"};
         for (std::size_t start = 0; start <= key.size();) {
             const std::size_t end  = std::min(key.find('.', start), key.size());
             const std::string name = key.substr(start, end - start);
@@ -2853,11 +2909,10 @@ private:
                 const Value term = definition->Eval(at, definitions_, true);
                 if (definitions_.histories) {
                     const std::vector<double> cells = Doubles(term);
-                    if (std::all_of(cells.begin(), cells.end(),
-                                    [](double cell) { return std::isfinite(cell); }))
+                    if (std::all_of(cells.begin(), cells.end(), Finite))
                         slot->second = term;
                     else
-                        unfolded_[{name, n}] = "a term no double holds";
+                        unfolded_[{name, n}] = "a term no " + Real() + " holds";
                 }
             } catch (const std::runtime_error& error) {
                 if (definitions_.histories)
@@ -3221,6 +3276,7 @@ private:
         std::vector<std::string> fixed(fixed_.begin(), fixed_.end());
         if (!fixed.empty())
             text += " Compiled in, as a size, a bound or a lag cannot change: " + list(fixed) + ".";
+        if (floats) text += " Every value is a float, and every operation rounds to one.";
         if (aware_)
             text +=
                 " A term the interpreter would refuse is NaN, and so is every term that reads "
@@ -3332,13 +3388,15 @@ private:
         guard += "_H";
 
         std::string out;
-        out += "/* Generated by 'inkamath --compile' from " + source + ": edit that, not this.\n";
+        out += "/* Generated by 'inkamath --compile" + std::string(floats ? " --float" : "") +
+               "' from " + source + ": edit that, not this.\n";
         out += " * The arithmetic is in the order the definitions give it, so do not build it\n";
         out += " * with -ffast-math, which reorders. A compiler may also fuse a multiply and an\n";
         out += " * add, rounding once where the definitions round twice (-ffp-contract): often\n";
         out += " * closer to exact, but the step then depends on how it is built, so build\n";
         out += " * what 'inkamath --check' writes the way the step itself is built. */\n";
         out += "#ifndef " + guard + "\n#define " + guard + "\n\n";
+        if (floats && !limits_.empty()) out += "#include <float.h>\n";
         out += "#include <math.h>\n#include <string.h>\n\n";
         out += Interface(module, inputs, fields, earliest);
         out += "/* The parameters, which the host may assign, then what derives from them,\n";
@@ -3367,6 +3425,7 @@ private:
             "typedef struct " + module + " {\n" + Nested(members, "    ") + "} " + module + ";\n\n";
 
         for (const std::size_t n : inverses_) out += InverseHelper(n);
+        for (const std::string& function : prelude_) out += function;
         for (const std::string& limit : limits_) out += limit;
 
         out += "/* Computes what derives from the parameters: call it after assigning one. */\n";
@@ -3509,6 +3568,21 @@ private:
         }
         out += "}\n\n#endif\n";
         out.insert(folds, Folds(earliest));
+        // Past the line naming the source, the words of the compiler's own C
+        // for a double as a float's: every constant is written as one already.
+        const auto inside = [&](std::size_t at) {
+            return std::isalnum(static_cast<unsigned char>(out[at])) || out[at] == '_' ||
+                   out[at] == '.';
+        };
+        for (std::size_t at = out.find('\n'); floats && at < out.size(); ++at)
+            for (const std::string from : {"double", "fabs(", "floor(", "pow(", "0.0", "1.0"})
+                if (!inside(at - 1) && out.compare(at, from.size(), from) == 0 &&
+                    (from.back() == '(' || !inside(at + from.size()))) {
+                    if (from == "double")
+                        out.replace(at, from.size(), "float");
+                    else
+                        out.insert(at + from.size() - (from.back() == '(' ? 1 : 0), "f");
+                }
         Compiled compiled{out, earliest, inputs, {}, {}, {}};
         for (const std::string& name : inputs) compiled.cells.push_back(Cells(name));
         for (const std::string& name : order) {
@@ -3568,6 +3642,8 @@ private:
     std::string                      module_;
     std::set<std::size_t>            inverses_;  // the sizes a helper is needed for
     std::vector<std::string>         limits_;    // a function for each limit walked
+    std::vector<std::string>           prelude_;   // and for each function of the prelude called
+    std::set<std::string>              functions_;  // their names
     std::vector<Hold>                  holds_;
     Sequence*                          basing_ = nullptr;  // whose base clause is compiled, if one
     int                                base_   = 0;        // and its index

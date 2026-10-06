@@ -196,6 +196,14 @@ far that guard is from its threshold in exact arithmetic: rounding explains a
 flip at a margin near zero, and not one at a large margin. `brink` in the same
 file sits exactly on its threshold, and `ledge` a trillionth from it.
 
+`--float`, beside `--compile` or an instance's `--check`, writes floats where
+the header writes doubles, every constant the nearest float, for a target that
+computes in float. Its check holds each term within a thousandth of one plus
+the interpreter's and says the most any term came in units of a float, the
+spacing of floats at the interpreter's term: `test/compile/float.ink`. A limit
+compiled in float also stops where a step is within twice `FLT_EPSILON` of its
+term, so it may answer where the interpreter says it does not converge.
+
 `--check session.ink`, given a transcript alone, replays it and shows each
 answer that is not the one recorded, as recorded (`-`) and as given now (`+`),
 under the line it answers. It is the check the tests make of
@@ -926,10 +934,17 @@ of its own: the session reaches its names qualified, `filters.lowpass`, and
 `use filters (lowpass)` brings in unqualified those listed. A file is read
 once, holds definitions only, and one that cannot be read or parsed loads
 nothing and says where. The prelude that defines `ceil`, `mod`, `exp`, `log`
-and `tanh` is included bare beneath the session, as the built-ins are: every
-scope sees it, and a session that defines one of its names again does so for
-itself alone. `exp(x)` is `e^x`, `log` a series reached by halving or
-doubling, and `log(0)` says so as `1/0` does.
+and `tanh`, and what they call, is included bare beneath the session, as the
+built-ins are: every scope sees it, and a session that defines one of its
+names again does so for itself alone. `exp`, `log` and `tanh` are written in
+it, accurate to a few units in the last place of a double, by the operations
+a compiled step performs: `exp(x)` is 2^k e^r, r = x - k ln 2 and e^r a
+polynomial, and `log` reduces by `ilogb`, the power of two at or below its
+argument. An exact argument is reduced exactly, nothing they give is exact,
+and `log(0)` is refused as `1/0` is. Compiled, each is a C function of the
+header's own; the interpreter calls the same functions, checked in as
+`include/inkamath/inkamath_prelude.h`, on a double, where they answer what
+the definitions answer.
 `test/data/models.ink` is the whole of it.
 
 Data comes in as a file of definitions like any other, written by whatever

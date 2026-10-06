@@ -1,3 +1,8 @@
+# The checks hold a compiled step to the interpreter's rounding, which a fused
+# multiply-add, contracted where the target has one, does not keep (C97).
+add_compile_options(
+    $<$<AND:$<COMPILE_LANGUAGE:C>,$<C_COMPILER_ID:GNU,Clang,AppleClang>>:-ffp-contract=off>)
+
 add_library(doctest INTERFACE)
 target_include_directories(doctest SYSTEM INTERFACE ${PROJECT_SOURCE_DIR}/third_party)
 
@@ -66,6 +71,29 @@ foreach(model IN ITEMS pid pid_clamped kalman kalman2 fir heat adc net mix loop 
                      ${CMAKE_CURRENT_SOURCE_DIR}/compile/expected/${model}.h ${header})
 endforeach()
 
+# 2^k as a step computes it, exact for every k the prelude scales by.
+add_executable(compile_powers compile/powers.c)
+target_link_libraries(compile_powers PRIVATE inkamath_warnings
+                      $<$<NOT:$<C_COMPILER_ID:MSVC>>:m>)
+set_target_properties(compile_powers PROPERTIES C_STANDARD 11 C_STANDARD_REQUIRED ON C_EXTENSIONS OFF)
+add_test(NAME compile_powers COMMAND compile_powers)
+
+# The prelude's functions the interpreter calls on a double (DESIGN.md),
+# checked in so that building the interpreter needs no interpreter; recorded
+# as the goldens are, and its diff read.
+set(prelude ${PROJECT_SOURCE_DIR}/include/inkamath/inkamath_prelude)
+set(prelude_written ${CMAKE_CURRENT_BINARY_DIR}/prelude/inkamath_prelude.h)
+add_custom_target(record_prelude
+    COMMAND inkamath_cli --compile ${prelude}.ink -o ${prelude}.h
+    DEPENDS inkamath_cli VERBATIM)
+add_custom_command(OUTPUT ${prelude_written}
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/prelude
+    COMMAND inkamath_cli --compile ${prelude}.ink -o ${prelude_written}
+    DEPENDS inkamath_cli ${prelude}.ink VERBATIM)
+add_custom_target(prelude_header_written ALL DEPENDS ${prelude_written})
+add_test(NAME prelude_header
+         COMMAND ${CMAKE_COMMAND} -E compare_files --ignore-eol ${prelude}.h ${prelude_written})
+
 # The oracle: an instance compiled, and each of its terms held to the
 # interpreter's exact one by the program 'inkamath --check' writes. 'wild'
 # drifts from it, and its program says where and exits with a failure.
@@ -84,7 +112,7 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brin
                          inputs:chan inputs:twirl inputs:duo inputs:mean3 inputs:mean2
                          inputs:track inputs:twain inputs:nestv inputs:fed estimate:tie
                          estimate:chaos estimate:dyad estimate:flat estimate:halved
-                         estimate:steep)
+                         estimate:steep estimate:giant elementary:els)
     string(REPLACE ":" ";" checked ${checked})
     list(GET checked 0 file)
     list(GET checked 1 instance)
@@ -118,6 +146,8 @@ set_tests_properties(check_halved_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^halved: 100 steps from 0, against exact values until 0 and inexact ones from there\nhalved\\.x: within 0\nhalved\\.y: within 0\n$")
 set_tests_properties(check_steep_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^steep: 100 steps from 0, against exact values until 0 and inexact ones from there\nsteep\\.y: within 0\\; the interpreter's terms about [1-9](\\.[0-9])?e-1[01] from the exact ones\n$")
+set_tests_properties(check_giant_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^giant: 100 steps from 0, against exact values until 0 and inexact ones from there\ngiant\\.y: within 0\\; the interpreter's terms about [1-9](\\.[0-9])?e\\+186 from the exact ones\n$")
 # The logistic model's four sigmoids are one limit, compiled once.
 add_test(NAME check_gate_one_limit
          COMMAND ${CMAKE_COMMAND} -E cat ${CMAKE_CURRENT_BINARY_DIR}/compile/gate.c)
@@ -125,6 +155,15 @@ set_tests_properties(check_gate_one_limit PROPERTIES
                      PASS_REGULAR_EXPRESSION "gate_lim0\\(" FAIL_REGULAR_EXPRESSION "gate_lim1\\(")
 set_tests_properties(check_gate_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^gate: 100 steps from 0, against exact values until 0 and inexact ones from there\n(gate\\.[a-z]+: within [0-9.e+-]+${about}\n)+$")
+# exp, log and tanh as the prelude writes them, each a function of the
+# header's own, compiled once (DESIGN.md): every term the interpreter's.
+set_tests_properties(check_els_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^els: 100 steps from 0, against exact values until 0 and inexact ones from there\nels\\.e: within 0${about}\nels\\.g: within 0${about}\nels\\.h: within 0${about}\nels\\.l: within 0${about}\nels\\.t: within 0${about}\n$")
+add_test(NAME check_els_functions
+         COMMAND ${CMAKE_COMMAND} -E cat ${CMAKE_CURRENT_BINARY_DIR}/compile/els.c)
+set_tests_properties(check_els_functions PROPERTIES
+    PASS_REGULAR_EXPRESSION "els_exp\\(double arg_x\\).*els_log\\(double arg_x\\).*els_tanh\\(double arg_x\\)"
+    FAIL_REGULAR_EXPRESSION "pow\\(2\\.718")
 set_tests_properties(check_sized_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^sized: 100 steps from 0, against exact values until 0 and inexact ones from there\n(sized\\.[a-z]+: within [0-9.e+-]+${about}\n)+$")
 # Its sigmoid's size inferred, compiled where it is called, gives the header
@@ -284,6 +323,87 @@ add_test(NAME check_pole COMMAND check_pole)
 add_test(NAME check_huge COMMAND check_huge)
 set_tests_properties(check_wild check_brink check_rift check_sill check_seam check_pole
                      check_huge PROPERTIES WILL_FAIL ON)
+
+# A float target (DESIGN.md): pid and adc's headers as compile/expected/float
+# has them, and compile/float.ink's checks, each built so that an operation done
+# in double is a warning.
+set(float_flags $<$<C_COMPILER_ID:GNU,Clang,AppleClang>:-Wdouble-promotion;-Wfloat-conversion>)
+foreach(model IN ITEMS pid adc)
+    set(header ${CMAKE_CURRENT_BINARY_DIR}/compile/float/${model}.h)
+    add_custom_command(OUTPUT ${header}
+        COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/compile/float
+        COMMAND inkamath_cli --compile ${CMAKE_CURRENT_SOURCE_DIR}/compile/${model}.ink --float
+                -o ${header}
+        DEPENDS inkamath_cli compile/${model}.ink
+        VERBATIM)
+    add_custom_target(float_${model} ALL DEPENDS ${header})
+    # Built alone only where a double operation is a warning.
+    if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
+        set_source_files_properties(${header} PROPERTIES LANGUAGE C
+                                    COMPILE_OPTIONS -Wno-unused-function)
+        add_library(compile_float_${model} OBJECT ${header})
+        target_compile_options(compile_float_${model} PRIVATE ${float_flags})
+        target_link_libraries(compile_float_${model} PRIVATE inkamath_warnings)
+    endif()
+    add_test(NAME compile_float_${model}_header
+             COMMAND ${CMAKE_COMMAND} -E compare_files --ignore-eol
+                     ${CMAKE_CURRENT_SOURCE_DIR}/compile/expected/float/${model}.h ${header})
+endforeach()
+
+foreach(checked IN ITEMS drift:calm drift:wild drift:ledge logistic:gate momentum:ball newton:stiff
+                         inputs:fan float:hum float:drone float:far float:tally float:crawl
+                         float:steep float:blast
+                         steady:mark softmax:cls)
+    string(REPLACE ":" ";" checked ${checked})
+    list(GET checked 0 file)
+    list(GET checked 1 instance)
+    set(program ${CMAKE_CURRENT_BINARY_DIR}/compile/float/${instance}.c)
+    add_custom_command(OUTPUT ${program}
+        COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/compile/float
+        COMMAND inkamath_cli --check ${CMAKE_CURRENT_SOURCE_DIR}/compile/${file}.ink ${instance}
+                --float -o ${program}
+        DEPENDS inkamath_cli compile/${file}.ink
+        VERBATIM)
+    add_executable(check_float_${instance} ${program})
+    target_compile_options(check_float_${instance} PRIVATE ${float_flags})
+    target_link_libraries(check_float_${instance} PRIVATE inkamath_warnings
+                          $<$<NOT:$<C_COMPILER_ID:MSVC>>:m>)
+    set_target_properties(check_float_${instance} PROPERTIES
+                          C_STANDARD 11 C_STANDARD_REQUIRED ON C_EXTENSIONS OFF)
+    add_test(NAME check_float_${instance} COMMAND check_float_${instance})
+    add_test(NAME check_float_${instance}_report COMMAND check_float_${instance})
+endforeach()
+set_tests_properties(check_float_wild check_float_ledge check_float_far check_float_crawl
+                     check_float_steep PROPERTIES WILL_FAIL ON)
+# Each report as compile/float.ink gives it; what a libm or the seeds decide,
+# by its form.
+set(in_float " in float, against exact values")
+set(inexact " in float, against exact values until 0 and inexact ones from there")
+set(units "[0-9.e+-]+, [0-9.]+ units of a float${about}")
+set(parts "0\\.096026361 at 6, where the interpreter gives 0\\.10000000000000001\n")
+foreach(report IN ITEMS
+        "calm:^calm: 100 steps from 0${in_float}\ncalm\\.v: within 1\\.1e-06, 1\\.4 units of a float\n$"
+        "wild:^wild: 100 steps from 0${in_float}\nwild\\.d: ${parts}$"
+        "ledge:^ledge: 100 steps from 0${in_float}\nledge\\.g: at 1 the compiled step takes 'g_n \\| d_n < c - w = 1' and the interpreter 'g_n = 0'\\; the guard of the first is 1e-12 from its threshold\nledge\\.d: ${parts}ledge\\.g: 1 at 1, where the interpreter gives 0\n$"
+        "gate:^gate: 100 steps from 0${inexact}\ngate\\.b: within 1\\.2e-06, 2\\.5 units of a float${about}\ngate\\.w: within 9\\.4e-07, 3\\.9 units of a float${about}\ngate\\.p: within 2\\.1e-07, 1\\.8 units of a float${about}\n$"
+        "ball:^ball: 100 steps from 0${inexact}\n(ball\\.[a-z]+: within [0-9.e+-]+, [0-5](\\.[0-9]+)? units of a float${about}\n)+$"
+        "stiff:^stiff: 100 steps from 0${inexact}\nstiff\\.h: within 6e-08, 0\\.5 units of a float\nstiff\\.x: within ${units}\nstiff\\.y: within ${units}\n$"
+        "crawl:^crawl: 100 steps from 0${in_float}\ncrawl\\.s: within 0, 0 units of a float\ncrawl\\.y: 100000016 at 0, where the interpreter gives none: s did not converge within 100 terms \\(last term 100000800\\)\n$"
+        "fan:^fan: 100 steps from 0${in_float}\nfan\\.y: within 0, 0 units of a float\n$"
+        "hum:^hum: 100 steps from 0${in_float}\nhum\\.y: within 2\\.7e-06, 22 units of a float\n$"
+        "drone:^drone: 100 steps from 0${in_float}\ndrone\\.y: within 5\\.6e-06, 47 units of a float\n$"
+        "far:^far: 100 steps from 0${in_float}\nfar\\.x: within 0\\.99, 16 units of a float\nfar\\.d: 0 at 1, where the interpreter gives 0\\.01\n$"
+        "tally:^tally: 100 steps from 0${in_float}\ntally\\.c: within 50, 25 units of a float\n$"
+        "steep:^steep: 100 steps from 0${inexact}\nsteep\\.e: inf at 67, where the interpreter gives [0-9.e+-]+\; the interpreter's term about [0-9.e+-]+ from the exact one\n$"
+        "blast:^blast: 100 steps from 0${in_float}\nblast\\.y: within 0, 0 units of a float\nblast\\.z: within 0, 0 units of a float\n$"
+        "mark:^mark: 100 steps from 0${inexact}\nmark\\.d: within ${units}\nmark\\.s: within ${units}\n$"
+        "cls:^cls: 100 steps from 0${inexact}\ncls\\.z: within 2\\.4e-08, 0\\.2 units of a float\ncls\\.q: within 1\\.9e-06, 1\\.5 units of a float${about}\ncls\\.s: within 6\\.3e-08, 0\\.53 units of a float${about}\ncls\\.loss: within 4\\.1e-07, 3\\.4 units of a float${about}\n$")
+    string(FIND "${report}" ":" colon)
+    string(SUBSTRING "${report}" 0 ${colon} instance)
+    math(EXPR colon "${colon} + 1")
+    string(SUBSTRING "${report}" ${colon} -1 expected)
+    set_tests_properties(check_float_${instance}_report PROPERTIES PASS_REGULAR_EXPRESSION "${expected}")
+endforeach()
 
 # Random models, compiled and held to the interpreter's answers: the generator
 # runs both at build time and writes one C file, built and run like the others.

@@ -1628,6 +1628,16 @@ closures need one anyway, and can bring it.
 | C93 `[fixed]` | **An input whose history is terms alone has no limit.** `lim x` asks the input's own clauses for a general one, and a history of terms has none, so with `x_(-1) = 0` and `l = lim x` in `last(x_n)`, `last(x_n = 2).l` says "x has no general clause, so it has no limit" where the terms are 2 from 0 on; a guarded history, `x_n \| n < 0 = 0`, is general, and the limit is taken. Found reviewing the implementation of an input of more than one cell, whose stated input, holding no clause at all, was refused so for any argument. An input's terms are its argument's where its history gives none, so it now has a limit whatever its history; `last` in `test/data/history.ink` holds it. |
 | C94 `[fixed]` | **`--check` steps an input its instance gives by the model's default for it.** The check compiles the instance with its inputs unbound, to feed them, and an input with a default then falls back to it: the step computes the default and takes no input, while the interpreter reads the argument. With `y_n = 2*x_n` in `dd(x_n = n)`, checking `w = dd(x_n = 1)` reports `w.x: 0 at 0, where the interpreter gives 1` and `w.y` likewise, a drift of the compiled step that is a different stream. Found reviewing the implementation of an input of more than one cell, whose sized default does the same. Such an instance wants refusing by name, as the header of its model cannot be given that input, or its argument compiled in place of the default. Now an input the instance gives is fed as the interpreter reads it, and one it does not give compiles the model's default, as the interpreter reads that; `fed` in `test/compile/inputs.ink` holds it. |
 | C95 `[fixed]` | **Five check reports were held to half their text.** A report's expected text is a CTest regular expression, and CTest reads a `;` in it as the end of one expression and the start of another, passing a test that matches either: the guard-flip lines of `brink`, `ledge`, `rift`, `sill` and `seam` hold `'...'; the guard of the first is ...`, so each report passed on its first half alone, and `brink`'s with its threshold words replaced by others still passed. Found implementing the interpreter's own error, estimated by `--check`, whose new expressions escape it. The five now write `\\;`, and the replaced words fail. |
+| C96 `[open]` | **`tex` shows a decimal of more than nine digits to nine, after a `~`.** A literal is set by the printer of values, which shows an exact number that is no short decimal to nine digits and marks it so: `c = 1.4426950408889634` is set `c = ~1.44269504`, and `f(x) = x*0.12345678901` as `x\,~0.123456789`, the `~` a space in LaTeX and the product a thin space where a digit asks a dot. What was typed is exact and should be set in full. Found specifying `exp`, `log` and `tanh`, whose constants have seventeen digits. |
+| C97 `[fixed]` | **The checks failed where the target fuses a multiply and an add.** The header leaves contraction to its build, as *Fused multiply-adds* decided, and the test targets set nothing, so `clang -march=native`, which contracts within an expression on a machine with FMA, parted from the interpreter in `brink`, `ledge`, `rift`, `sill` and `seam`. Found reviewing the specification of the prelude written in inkamath (next in line). The C test targets now build with `-ffp-contract=off` under GCC and Clang, and the five pass so built; the header's policy is unchanged. |
+| C98 `[open]` | **A compiled negation of +0 is -0.** The compiler writes a negation as C's `-`, and the interpreter as `0 - x` (C33), so at +0 the step has -0 and the interpreter +0: `1/(-x)` at `x = 0` is -inf compiled and inf interpreted, and `tanh(0)` in the prelude being written in inkamath (next in line) is -0.0 compiled. Found reviewing that specification. Writing `0.0 - x` instead moves every expected header with a negation, so it waits for a decision. `--check` holds -0 equal to 0 and cannot see it. The prelude called compiled (next in line) leaves an answer of 0 to the definition for it. |
+| C99 `[fixed]` | **`--check` estimated a huge term infinitely far from the exact one.** The absolute value of an inexact number, which is complex, was the root of the sum of the squares of its parts, and a difference past 2^512 squared is infinite: two disturbed runs of `n*~(3*10^200)`, some 10^186 apart, were `inf` apart, so its report said the interpreter's terms were "about inf from the exact ones, past the tolerance from 1", as it did of `exp`'s from about 390. A limit's step and a pivot's size took the same absolute value. Found reviewing the implementation of `exp`, `log` and `tanh` written in the prelude (next in line). A real number's is now its magnitude; a complex one's is as it was. `giant` in `test/compile/estimate.ink` holds it. |
+| C100 `[open]` | **`ilogb(0)` depends on how 0 is written.** The prelude's `ilogb` means something only of a positive number, but it is a public name, and at 0 its thirteen steps take every threshold that rounds to 0 as reached: an exact 0 passes the exact powers down to 2^-3321 and stops where they are approximated, `ilogb(0)` being -3322, and a double 0 where the double powers vanish, `ilogb(~0)` and the step's being -1075. `log` guards 0 before it asks. Found reviewing the implementation of `exp`, `log` and `tanh` written in the prelude (next in line). |
+| C101 `[open]` | **`log(~1/0)` and `log(2^3072)` name a NaN never written.** Both refuse with "a comparison needs a number, not -nan": `ilogb` answers 4095, as a power of two past a thousand digits is approximated to inf and the argument passes it, and inf over 2^4095, inf too, is NaN, which `logm`'s fold cannot compare. The step answers NaN and libm inf. A guard saying so costs more than three lines and moves two entries of `test/data/elementary.ink`, so the implementation's ruling kept it. Found reviewing that implementation (next in line). |
+| C102 `[kept]` | **A compiled double limit creeping by less than half a unit answers where the interpreter refuses.** With `s_0 = 10^17` and `s_k = s_(k-1) + 1`, `lim s` does not converge in the interpreter, whose terms are exact, but in a double every term is 10^17, a step of 0, which the rule takes as converged, so the step answers 1e+17. `--check` catches it: `y: 1e+17 at 0, where the interpreter gives none: s did not converge within 100 terms`. Inherent to doubles: a step below half the spacing at its term is no step. Found reviewing the specification of a float target (next in line), whose extra stop answers so for a step of a unit of a float, `crawl` in `test/compile/float.ink`. |
+| C103 `[fixed]` | **A parameter's default of negative infinity was written `INFINITY`.** A constant in an expression is written as its magnitude after its sign, but a default is written whole, in `init` and in the header's comment, and a whole infinity lost its sign: `p = 0 - ~(10^400)` was `m_->p = INFINITY;`, as, in a float header, was `q = 0 - 10^39`, which no float holds. Found implementing a float target (next in line). It is now `-INFINITY`; `compile_c103` in `test/cli.cmake` holds both. |
+| C104 `[fixed]` | **A header named after a word C keeps, or after a header it includes, was no C.** A header or a program is named after its file, which had only to be letters, digits and `_`: `-o double.h` wrote `typedef struct double`, and a float header written to `float.h` both is no C and, built with `-I.`, includes itself for `<float.h>`. Found reviewing the implementation of a float target (next in line). Such a name is now refused, a keyword or `math`, `string` or `stdio`, in 3 lines; `compile_c104` and `check_c104` in `test/cli.cmake` hold it, and `history_short`'s model is now `scant`. The names of libm's functions stay open: `-o nan.h` declares a type `nan` over `<math.h>`'s function, and so would `pow`, `exp` or `floor`, a list with no end the C library fixes. |
+| C106 `[fixed]` | **`--check` heard no guard of a term the file had asked.** A file's lines run before its check, and a term one of them asks is memoised, so the main run read it back without asking its guards: with `brink.g_(1)` added to `drift.ink`, `brink`'s report said the compiled step took another clause at 2, not 1. Since the prelude is called compiled (next in line), such a term was not walked either, which every run of `--check` must. Found reviewing that implementation. The main run now forgets the memo before its first input, in 1 line; `check_walked_asked` in `test/cli.cmake` holds it. |
 
 **Measure instructions, not the clock.** One of those changes made the matrix
 workload 20 per cent slower by the clock and not by a single instruction: with
@@ -3941,3 +3951,593 @@ that exploring seven domains asked of the interpreter, by how many asked.
   said its terms were about 1.1e-13 from the exact ones where they are
   1.2e-10 from them at 2, and now says 1.2e-10, `Convergence::Limit` going
   with no line more.
+- `[done]` **`exp`, `log` and `tanh` accurate, bounded and compiled.** The prelude's
+  three are each wrong in a way of their own, measured against mpmath.
+  `exp(x) = e^x` raises the double nearest e, whose error x multiplies: 340
+  units in the last place at 709. `log` is an open series stopped by a
+  limit's tolerance, 1.7e-11 from the exact value, reached by halving or
+  doubling a reference deep per factor of two, so `log(2^-1074)` and
+  `log(10^300)` run out of depth; the compiler refuses it, the halving 64
+  calls deep. `tanh(x) = 1 - 2/(exp(2*x) + 1)` cancels near 0: 5.6e-5 from
+  the exact value at 1.9e-12, seven digits at 1e-9.
+
+  Decided, the owner's: no built-in elementary function and no libm. That
+  answers *A standard library* (Openings) for the prelude: written in
+  inkamath, bounded, compilable, and in the interpreter and the compiled step
+  the same operations on the same doubles, `+`, `-`, `*`, `/`, `floor` and
+  whole powers of two. The design, measured before it was written down:
+
+      exp(x) = expk(x, floor(x*1.4426950408889634 + 1/2))
+      exp(x) | x > 1000 = exp(1000)
+      exp(x) | x < -1000 = exp(-1000)
+      expk(x, k) = (1 + expp(~(x - k*355/512 + k*2.1219444005469057e-4)))*2^(k - floor(k/2))*2^floor(k/2)
+      expp(r) = r*(1 + r*(1/2 + r*(1/6 + r*(1/24 + r*(1/120 + r*(1/720 + r*(1/5040 + r*(1/40320 + r*(1/362880 + r*(1/3628800 + r*(1/39916800 + r*(1/479001600 + r*(1/6227020800 + r/87178291200)))))))))))))
+      ilogb(x) = ilogbs(x, ilogbs(x, ilogbs(x, ilogbs(x, ilogbs(x, ilogbs(x, ilogbs(x, ilogbs(x, ilogbs(x, ilogbs(x, ilogbs(x, ilogbs(x, ilogbs(x, -4096, 4096), 2048), 1024), 512), 256), 128), 64), 32), 16), 8), 4), 2), 1)
+      ilogbs(x, k, s) = k
+      ilogbs(x, k, s) | x >= 2^(k + s) = k + s
+      log(x) = logk(x, ilogb(x))
+      log(x) | x <= 0 = 1/0
+      logk(x, k) = logm(x/2^k, k)
+      logm(m, k) = logs(~((m - 1)/(m + 1)), k)
+      logm(m, k) | m*m > 2 = logs(~((m/2 - 1)/(m/2 + 1)), k + 1)
+      logs(s, k) = k*355/512 + (2*s*logp(s*s) - k*~2.1219444005469057e-4)
+      logp(z) = 1 + z*(1/3 + z*(1/5 + z*(1/7 + z*(1/9 + z*(1/11 + z*(1/13 + z*(1/15 + z*(1/17 + z*(1/19 + z/21)))))))))
+      tanh(x) = tanhp(x)
+      tanh(x) | x < 0 = -tanhp(-x)
+      tanhp(x) = tanhk(-2*x, floor(-2*x*1.4426950408889634 + 1/2))
+      tanhp(x) | x > 20 = ~1
+      tanhk(y, k) = tanhe(2^k - 1 + 2^k*expp(~(y - k*355/512 + k*2.1219444005469057e-4)))
+      tanhe(m) = -m/(m + 2)
+
+  `exp` takes k, the whole number nearest x/ln 2, and e^x = 2^k e^r with
+  r = x - k ln 2, ln 2 being 355/512 less 2.1219444005469057e-4 (Cody and
+  Waite): k*355/512 is exact for every k below 2^44, and so is x less it, so
+  r is rounded only by the correction's product. e^r - 1 is its Taylor series
+  to r^14 in Horner's form, its remainder below 2^-62 of e^r on |r| <= ln(2)/2,
+  where to r^13 it is 2^-57; its coefficients are reciprocals of whole
+  numbers, as the compiler refuses `!`. 2^k is taken in two halves, since 2^k
+  is infinite from 709.44 to 709.78, where e^x is not, and 0 from -745.13 to
+  -744.79, where it is the least double. Past a thousand either way, its value
+  there, inf or 0 as C's exp gives, which also keeps an infinite x from
+  becoming NaN.
+
+  `log` reduces by ilogb, C's name for what it is on a double: the power of
+  two at or below x, by thirteen guarded steps from 2^-4096, so exact, and
+  right for every positive double and every exact number below 2^3072:
+  `log(10^400)` is 921.034037. From 2^3072 a threshold it tries has more
+  than a thousand digits, is approximated to inf, and the number, a double
+  only as inf, passes it, so `ilogb` answers 4095 and `log` refuses, as it
+  does inf. Eleven steps from 2^-1075, as first sketched, reach 2^972 and no
+  further. Guards rather than comparisons taken as values, so that `grad` at
+  a power of two takes the guard's side instead of refusing a jump; a
+  threshold past a thousand digits is approximated, which a comparison does
+  not mark. Like every name of the prelude it is seen
+  everywhere, `?ilogb` shows it, and it means something only of a positive
+  number. m = x/2^k, in [1, 2), is folded to [√2/2, √2), so that log just
+  below 1 does not subtract log m from ln 2; then s = (m - 1)/(m + 1), |s| <=
+  0.1716, and log m = 2s(1 + s^2/3 + ... + s^20/21), whose remainder is below
+  2^-60. k ln 2 is split as in `exp`, its correction a double so that an
+  exact k times it is C's product: the exact product rounds otherwise for 87
+  of the 2,099 k of the doubles.
+
+  `tanh` is -m/(m + 2), m = e^(-2x) - 1 taken for x >= 0 as `exp` takes it,
+  (2^k - 1) + 2^k(e^r - 1), so that near 0, where k is 0, m is the series
+  itself and nothing cancels. Odd by its guard, exactly; past 20, 1, which it
+  is to the double from 19.06 on.
+
+  An exact argument is reduced exactly and rounded once, where its reduction
+  ends: the `~` on r and on s. A double's operations are C's. The sketch's
+  `~x` first, at the entry, rounds the argument and multiplies its error by
+  the function's condition: on 2,800 exact arguments, 472 units for `exp`, at
+  613363/1000, and 2.2e10 for `log` near 1, 4.8e-6 of the value, where
+  reduced exactly it is 0.83, 1.69 and 2.43 units for the three.
+  `log(1 + 1/10^12)` would be 1.0000889e-12, the logarithm of the double
+  nearest its argument. Nothing the three give is exact, every path through
+  them passing a `~`: `exp(0)`, `log(1)` and `tanh(0)` are a double's 1, 0
+  and 0, as `exp(0)` is now. `ilogb`'s answer is exact. A guard making
+  `exp(0)` exactly 1 was rejected: `grad` refuses a clause that holds at a
+  point alone.
+
+  Accuracy over doubles, against expl, logl and tanhl at 64 bits on 2e7
+  points each, and against mpmath at 160 bits on 2e4, which agree to the
+  third decimal of a unit:
+
+  | | worst | correctly rounded |
+  |---|---|---|
+  | `exp` on [-708.39, 709.78] | 1.29 units | 88.6% |
+  | `exp` below, to -745.13 | 0.89 units of 2^-1074 | 99.1% |
+  | `log`, every positive double | 2.55 units | 99.8% |
+  | `log` on [1/2, 2] | 2.87 units | 65.6% |
+  | `tanh` on [-20, 20] | 2.77 units | 40.2% |
+  | `tanh`, \|x\| < 1 to 2^-40 | 2.83 units | 76.5% |
+
+  So `exp(1)` is a unit above e, which is the double nearest it, and
+  `exp(1) == e` is 0 where it was 1. Rejected: correct rounding, by tables or
+  double-double, several hundred lines; the shape of fdlibm's log,
+  log(1 + f) = f - (f^2/2 - s(f^2/2 + R)), within 1.24 units for 2.87, at a
+  helper and two operations more; a high part of ln 2 of 32 bits, 1.18 units
+  for 1.29; tanh as m/(m + 2) with m = e^(2x) - 1, 3.14 units; an odd
+  polynomial near 0, nineteen terms to reach 0.55.
+
+  Identical, measured: the design emulated in C, built by GCC 13 and Clang 18
+  at -O0 and -O2, and in Python with exact fractions wherever the interpreter
+  is exact, against an interpreter given this prelude: 9,348 doubles alike to
+  the bit in C and the interpreter, the 87 k among them, and 3,500 arguments
+  in Python and the interpreter, exact ones among them. They part only where
+  a C compiler fuses a multiply and an add, on hardware that has it (AArch64,
+  x86 with -mfma or -march=native): each function of the prelude is one C
+  expression, which Clang's default fuses within, even as strict C, as GCC's
+  GNU modes fuse across, so 18 per cent of results part under either, half
+  of `exp`'s over its range, worst errors within 0.05 units of the unfused
+  ones; the header already says so (*Fused multiply-adds*). `2^k` is
+  `pow(2.0, k)`, as any power compiles, and `exp2(k)` under Clang. The
+  interpreter calls `pow` for a double k, in `exp` and `tanh`, but shifts an
+  exact one, as `log`'s always is, so the two agree only where `pow` and
+  `exp2` are exact for every whole k from -1100 to 1100: assumed, and
+  `compile_powers` holds it on every platform CI builds.
+
+  `grad` differentiates the definitions: floor's derivative is 0 and every
+  guard takes its side at its threshold, so 0, 1, 2, every power of two and
+  the fold at √2 answer; `grad_(x = 2) log(x)` is 0.5. floor's argument is a
+  whole number at a few doubles near (j + 1/2) ln 2, where `grad` says floor
+  jumps: at no p/q with q <= 1000 and |x| <= 50, searched. Past a thousand
+  `exp`'s derivative is 0, a constant's, and past 20 `tanh`'s; `log`'s at
+  2^-1074 is NaN, its derivative overflowing. NaN is refused by `exp` and
+  `tanh` at their first guard, `a comparison needs a number`, as by `log`
+  now; they answered NaN. An infinite x reaches `log`'s fold as NaN and is
+  refused so too, where the step answers NaN and libm inf. `tex ?expk`,
+  `?logm`, `?logs` and `?tanhk` refuse their `~`, and `tex ?exp` shows its
+  constant as `~1.44269504` (C96).
+
+  Compiled where called, as every function is, a definition writes its
+  argument again at each reading: a header stepping `exp(a*y_(n-1) - 1)` is
+  4.9 KB of C, with `tanh` 15.7 KB, and with `log` it exhausts 4 GB, each of
+  ilogb's steps tripling the last. So a call to a function of the prelude
+  compiles to a C function of the header's own, `<header>_<name>(double
+  arg_x, ...)`, its parameters named as a limit's are, emitted once before
+  the step and the limits' functions, the prelude's calls inside it so too,
+  and one whose arguments are all constant folded as now: `exp(1000)` is
+  `INFINITY`. The step then reads as the
+  prelude does, `ball_exp(-(...))`. Rejected: temporaries for an argument
+  read twice, as `Shared` gives a matrix's operand, which hoisted before the
+  step's expression compute both sides of a guard, and which a limit's
+  function does not have; inlining where every argument is a name or a
+  number, which moves no expected header but compiles `exp(x_n)` and
+  `exp(-x_n)` two ways; a C function for every function, which moves every
+  header that calls one.
+
+  What moves, found by running this prelude, each in the implementation's
+  commit: no golden in `test/data` and no session of `README.md`, nine digits
+  hiding the rest, but README's paragraph on the prelude (section 5);
+  `test/compile/expected/kernel.h`, whose `ceil(x_n)` becomes
+  `kernel_ceil(m_->x[0])` and its function, and the comment of
+  `test/compile/kernel.ink`; `compile_log_refused` in `test/cli.cmake`,
+  whose `lg` now compiles, printing nothing; the programs `--check` writes
+  for `ball`, `fit`, `head` and `sized`, `exp` a function there, and their
+  reports' estimates, `ball.v` 1.1e-15 to 8.3e-16 and the like, and `fit`'s
+  `within`s, as its first arguments are exact and now reduced exactly:
+  `fit.a` 5.6e-17 to 8.3e-17. No test holds those digits. `gate`, `cls` and
+  `rnn` write their own series and do not move. The interpreter is slower:
+  `exp` 10 to 18 µs a call for 5, `log` about 50 for 24, a dozen calls of
+  the prelude each and log's thirteen exact powers; `bench/grad.ink` 0.81 s to
+  3.0 s and `bench/hand.ink` 0.022 s to 0.064 s.
+
+  Rejected besides: built-ins over libm, the owner's refusal, two arithmetics
+  where one is wanted and no identity between interpreter and step; an
+  `ilogb` built-in, which thirteen guarded steps make unneeded; keeping the
+  series, bounded by `lim`'s tolerance, unbounded in its terms and refused by
+  the compiler.
+
+  About 70 lines of sources: the prelude from 6 lines to 21 and a comment of
+  ten, and some 45 in the compiler for the functions. Specified in
+  `test/data/spec/elementary.ink`, 31 of its 72 entries failing, those
+  passing being values today's prelude already gives to nine digits and its
+  refusals; and in `test/compile/elementary.ink`, whose report, every term
+  `within 0`, and whose functions are wired with the compiler's half.
+
+  Built as specified, every entry passing as written, now
+  `test/data/elementary.ink`, and the spec suite gone. `els` in
+  `test/compile/elementary.ink` is checked, its five terms within 0 of the
+  interpreter's, and its program defines `els_exp`, `els_log` and
+  `els_tanh` and raises no power of e. A call to a function the built-ins'
+  scope holds but `floor`, on single values not all constant, is
+  `CompileC::Prelude`: the body compiled once, over `arg_` names, outside
+  any limit and with no temporaries, and emitted before the limits'
+  functions; a constant call folds, and one on a matrix or by named
+  arguments is written where it is called, as before. Moved as specified,
+  and nothing else: `kernel.h`, the programs of `ball`, `fit`, `head` and
+  `sized` and their estimates, README's paragraph; no golden. The step is
+  the interpreter's to the bit without contraction, which the header asks
+  of its build (*Fused multiply-adds*) and CI's x86-64 gives; the test
+  targets' `-ffp-contract=off` is C97's. By the review's rulings: 2^k is
+  built by a shift up to 2^3321, and a ratio of two powers of two converted
+  by `ldexp`, the review's 300,000 doubles and 644 exact arguments still
+  alike to the bit; `log(~1/0)` and `log(2^3072)` name a NaN never written,
+  inf over 2^4095 approximated to inf, a known limit, as a guard saying
+  otherwise costs more than three lines and moves two entries; a few doubles
+  near (j + 1/2) ln 2 are refused by `grad`,
+  `grad_(x = ~0.3465735902799727) exp(x)` saying "floor jumps"; and `grad_(x = 10^400) log(x)` is 0, not NaN as the ruling
+  had it, 1/x being below the least double. Departure: `compile_log_refused`
+  is `compile_log`, as it refuses nothing. Under callgrind `grad` goes from
+  5,750 million instructions to 14,870, 2.59 times, 17,434 before the shift;
+  `hand` from 93 to 279, 3.0 times, which the shift does not help, its exact
+  arguments' conversions not being of powers of two; `read` from 10 to 11;
+  `deep`, `harmonic`, `limit` and `matrix` within 3 million. 94 lines of
+  sources added and 7 removed, 87 more in all, where about 70 were planned:
+  28 in the prelude and its comment, 45 in the compiler and 14 in `Number`.
+  13,743 lines in all.
+
+  Its review held the step to the interpreter through the compiler itself:
+  507 instances of a model calling `exp`, `log`, `tanh` and `ilogb` on
+  doubles fed by `--check`, some 50,000 arguments over every range, built by
+  GCC 13 and Clang 18 at -O2 without contraction, 134 of them at -O0 and
+  -O3 too, every term within 0; `exp`'s to its first infinity only, where
+  the check stops. An exact argument the step reads as
+  its double, whose rounding `exp` multiplies by x: 13 units of e^21 from
+  `a = 1/3`, 189 of e^657, which `test/compile/elementary.ink` now says.
+  Clang writes `pow(2.0, k)` as `exp2(k)`, and `log`'s k is exact in the
+  interpreter, its 2^k a shift, so the step agrees where `pow` and `exp2` are
+  exact at whole k, as glibc's are from -4096 to 4096, not because both call
+  the same one: a `pow` a unit off there, preloaded into both, parts `els.l`
+  and `els.g` alone. By the review's ruling `compile_powers` holds both exact
+  from -1100 to 1100. Compiled, `log` takes 235 to 416 ns a call where libm's
+  takes 6, ilogb's thirteen steps each calling `pow` twice in a header that
+  writes NaN: a later item, by the review's ruling. The review found C99,
+  `--check` estimating a term whose runs part by more than 2^512 infinitely
+  far, `exp`'s from 390, and registered C100 and C101 open; held `els`'s
+  report to its five lines; and joins a prelude call's arguments as they are
+  emitted, every header alike: 5 lines fewer, 82 more for the item, and
+  C99's 2; 13,740 lines in all.
+- `[done]` **A float target, `--float`.** Ranked first of what had not moved by an
+  outside review: the oracle is worth what separates the target from the
+  reference, and with doubles held to a billionth `--check` checks that the
+  code generator agrees with the interpreter, not how far a deployment is
+  from the exact terms. `MANIFESTO.md` names float32 first among the number
+  types for targets, and asks what carries the annotation.
+
+  Decided: the compilation carries it. `--float`, beside `--compile` or an
+  instance's `--check`, writes floats where the header writes doubles:
+  `inkamath --compile pid.ink --float -o pid.h`, `inkamath --check drift.ink
+  calm --float -o calm.c`. The model is the paper's and the number type the
+  deployment's, so one file serves a controller compiled for a desktop in
+  double and for a microcontroller in float, and the question the check
+  answers is the one asked: how far is this float deployment from the exact
+  reference. Elsewhere it is refused, `inkamath: --float takes --compile, or
+  --check with an instance`. Rejected: an annotation of the model, which
+  writes the deployment into the paper's text and needs a file per target;
+  a type per sequence or per parameter, the mixed precision of a float
+  filter with a double accumulator, which is a real need, but one no model
+  here has, and whose syntax would be a second way to say what a flag says
+  for the whole; a `typedef` the host chooses with a macro, which makes the
+  arithmetic built one of two that `--check` could not both have checked,
+  and needs a macro for every literal and every function, `floor` or
+  `floorf`, in a header meant to be read; `long double`, a double under
+  MSVC, 80 bits on x86 and 128 on AArch64, three targets under one name, and
+  closer to exact than the interpreter's own limits are. Fixed point and int8
+  are out of scope: their scaling is information about each quantity, which
+  an annotation would carry, and nothing here forecloses one.
+
+  The header, `test/compile/expected/float/pid.h` against `pid.h`: every
+  `double` a `float` -- the fields, the step's arguments, `const float x[2]`
+  for an input of more than one cell, temporaries, the functions of limits
+  and inverses, the prelude's functions where they are compiled as C ones,
+  and the index read as a value, `(float)m_->index_`, exact to 2^24 steps;
+  `long long index_` stays. Every constant is the float nearest the double
+  written today, in the shortest digits that read back as it, with `f`:
+  `0.1f`, `1.0f`, `-2.0f`, `1e+06f`, and `INFINITY` past `FLT_MAX`; so is
+  every literal the compiler writes of its own, `0.0f` and `1.0f` in a
+  guard's test, since one `0.5` left in makes C compute its expression in
+  double. `floorf`, `powf` and `fabsf` replace `floor`, `pow` and `fabs`;
+  `isnan`, `NAN` and `INFINITY` are float already, so a NaN-aware header is
+  aware the same way. The interface comment adds "Every value is a float,
+  and every operation rounds to one", the first line names `--compile
+  --float`, and a history term no float holds is refused as one no double
+  holds is, in a float's words: "where x's history gives a term no float
+  holds", 10^39 among them. Built with GCC's and Clang's `-Wdouble-promotion`
+  and `-Wfloat-conversion`, both hand-written headers are silent, and a
+  `0.5` in an operation of either is not: the tests build every float header
+  so, which holds that no operation is done in double. A double constant
+  only assigned, `m_->q = 0.25`, passes both silently, and Clang's even
+  where it is inexact, `m_->dt = 0.1`; it is the float its `f` would have
+  written, so nothing is lost but the reading. Rates, histories, sizes and guards are as they
+  are, in floats.
+
+  A limit compiled in float walks the interpreter's rule, and one disjunct
+  more: a step no larger than twice `FLT_EPSILON` times its term, a finite
+  one, ends the walk, `if (step_ <= 2 * FLT_EPSILON * fabsf(t_) &&
+  isfinite(t_) && stepped_) return t_;` before the rule's test, or for a
+  limit of matrices every cell's step within twice `FLT_EPSILON` times that
+  cell, a finite one, and `<float.h>` included where a limit is. The rule's
+  1e-10 is below a float's spacing at any term past 8.4e-4, and Newton's iterates
+  close on two floats a unit apart rather than on one: `stiff` in
+  `test/compile/newton.ink`, held to the rule alone, is NaN from step 25 on,
+  and with the disjunct within 1.4 units of a float at every step, stopping
+  after 2 or 3 terms. A series stops where its sum stops moving, as it did,
+  `gate`'s at 24 terms at most. The disjunct answers where the interpreter
+  refuses a walk that creeps by a unit or two of a float at each term: `crawl` in
+  `float.ink`, 10^8 moved by 8, is 100000016 where the interpreter says it
+  does not converge, as a double header answers one that creeps by less
+  than half a unit, whose step is 0, by the rule alone (C102). "A term the
+  interpreter would refuse is NaN" is untrue of either, and `--check` parts
+  at both. Rejected: the rule alone, which makes a float
+  deployment of any iteration look broken where it is not; a float tolerance
+  in place of 1e-10, a second constant where the disjunct is the float's own
+  limit; the disjunct in double too, which would answer where the interpreter
+  refuses, past 4.5e5 where 1e-10 is a double's spacing, a change to the
+  language's rule and not to a target.
+
+  The prelude's `exp`, `log` and `tanh`, written in inkamath (next in line),
+  need no version of their own in float, measured on every float, in C with
+  floats operation by operation against the double libm: `exp` within 1.16
+  units of a float on [-87, 88] and 0.79 of the least subnormal below, `log`
+  within 2.85 on [1/2, 2] and 1.56 elsewhere over e^±80, `tanh` within 2.61
+  on [-10, 10]. Sampled at 2e4 points in numpy's float32, the farthest were
+  1.04, 2.67 and 2.48.
+  `k*355/512` is exact in a float for |k| below 47,000, and `exp`'s k never
+  passes 1443; its correction, rounded to a float, moves r by 2.5e-10 at most
+  where e^x is a float other than 0 and inf; `ilogb`'s thresholds overflow to
+  inf and underflow to 0 in a float as in a double, and decide alike. Their
+  polynomials' degree is a double's, which costs a float target time and not
+  accuracy. One definition, less accurate compiled in float: that is what
+  `--check --float` measures.
+
+  `--check --float` writes the program for that header. Its inputs are the
+  floats nearest the interpreter's, written as constants are, `static const
+  float in_0[100]`, and its terms are kept as floats and read as doubles,
+  `(double)got[k]`. A float cannot meet a billionth: a term parts where it is
+  more than a thousandth of one plus the interpreter's term from it, three
+  of a float's seven digits asked and four, 2^13 units at 1, left to what a
+  hundred steps accumulate. Each line then says how far its sequence came in
+  units of a float too, the most any term came in the spacing of floats at
+  the interpreter's term or at 1 where the term is smaller, so not always
+  the distance before it: `calm.v: within 1.1e-06, 1.4 units of a float`,
+  whose 1.1e-06 is 1.2 units at its own term. That is the comparison with
+  the target's own rounding the billionth never made. The estimate of the
+  interpreter's own error is unchanged and follows, so a reader sees the
+  reference's 1e-11 beside the step's 1e-7, and says where it passes the
+  thousandth. A step's term that parts is shown to nine digits, which tell floats apart; the first
+  line says `in float`; flips and margins are as they are. The verdict is
+  the tolerance's, as in double: `wild` and `far.d` have lost every digit
+  and part. Rejected: a report alone, which would pass them; the billionth,
+  which nothing passes; a tolerance in units, a second normalisation beside
+  one plus the term; holding the float step to the double one, agreement
+  between targets, which `MANIFESTO.md` declines as a goal.
+
+  Known limits. A constant is the float nearest its double, the float
+  nearest its exact value but where that double falls halfway between two
+  floats, about one constant in 2^29. A target that computes floats in
+  double or wider, `FLT_EVAL_METHOD` 1 or x87's 2, parts from the step
+  checked, as fused multiply-adds do, and the header's first comment already
+  says to build the check as the step is built. Everything refused in
+  double, tensors and complex numbers among them, is refused in float; every
+  double header and program is byte for byte as now.
+
+  About 50 lines of sources: 25 in the compiler, a flag through `Build`, the
+  type's word, the literal's digits and suffix, the functions' names, the
+  limit's disjunct, `<float.h>` and the two sentences, the rest of the
+  fifty-odd places that write `double`, `0.0` or `floor` changed rather
+  than added; 15 in the check, the inputs, the terms, the tolerance, the
+  units and the nine digits; 10 on the command line.
+
+  Specified in `test/compile/float.ink`: from earlier files `calm`, `wild`
+  and `ledge`, `gate`, `ball`, `stiff` and `fan`, and of its own a
+  resonator at two radii, `hum` and `drone`, `far`, large coordinates,
+  `tally`, a count past 2^24, `crawl`, a limit that creeps, and `steep`,
+  exp past a float's range,
+  with their reports, worked out in C with floats and in numpy's float32,
+  which agree to the bit, against exact terms; and excerpts of a header
+  with a vector input, of a limit and of a check program. Whole headers in
+  `test/compile/expected/float`, `pid.h` and `adc.h`, hand-written. All are
+  wired with the implementation: those headers compared byte for byte, and
+  each instance checked by a program in `compile/float`, built with
+  `-Wdouble-promotion` under GCC and Clang, `wild`, `ledge`, `far`,
+  `crawl` and `steep` expected to fail.
+
+  Built as specified: every report as `float.ink` gives it, the two headers
+  byte for byte, and every double header and check program byte for byte as
+  before. The header's own words for a double -- `double`, `fabs(`,
+  `floor(`, `pow(`, `0.0` and `1.0` -- are rewritten by one pass over its
+  text past the line naming its source, where the fifty-odd places that
+  write them would each have changed; each constant is the float `Double`
+  writes. Departures: a limit's comment still says it is taken "as the
+  interpreter takes it", "within 1e-10f"; an input whose sign bit is set is
+  written `-` before its magnitude, so a negative NaN is `-NAN`; `pid.h` and
+  `adc.h` in float are built alone, as C, under GCC and Clang only; and
+  `--help` names `--float`. The prelude in float, sampled at 2e6 points
+  against the double libm: `exp` 1.15 units on [-87, 88], `log` 2.83 on
+  [1/2, 2] and 2.46 over e^±80, `tanh` 2.49 on [-10, 10], each within the
+  figures above. Under callgrind every benchmark within 0.1 per cent. Found
+  on the way and left to a ruling: `mark` in `test/compile/steady.ink`,
+  power iteration, closes in float on a cell near 0.52 that alternates
+  between floats two units apart, more than `FLT_EPSILON` times the cell,
+  and is NaN at 33, so the disjunct does not end every iteration a float
+  cannot settle. 66 lines of sources more, where about 50 were planned: 35
+  in the compiler, 22 in the check and 9 on the command line. 13,806 lines
+  in all.
+
+  The review found the disjunct taking a walk past a float's range for one
+  that closes, a step of inf being no larger than `FLT_EPSILON` times an
+  infinite term: `run` in `test/compile/nan.ink` was -inf at 14, where the
+  interpreter does not converge and a double header is NaN. The term must
+  now be finite, `blast` in `float.ink`; a line more, 13,807 in all. By
+  its ruling the disjunct takes twice `FLT_EPSILON`: `mark`, and `cls` in
+  `softmax.ink`, Newton's method on a series, alternate two units apart and
+  were NaN at 33 and at 2; no other report of the 80 instances moves. With
+  C103 and C104, found on the way, 13,810 lines in all.
+- `[done]` **The prelude called compiled, for a double.** Since `exp`, `log` and `tanh`
+  are written in the prelude, the interpreter walks their definitions node by
+  node: under callgrind `bench/hand.ink` went from 93 million instructions to
+  279 and `bench/grad.ink` from 5,750 to 14,870. The compiler already writes
+  each as a C function whose doubles are the interpreter's to the bit.
+
+  Decided, the owner's in principle: the prelude compiled once by
+  `--compile`, checked in, and called by the interpreter for a call of the
+  prelude's own `exp`, `log`, `tanh` or `ilogb` on a real double. Identical by
+  construction, as the step is to the interpreter: no value moves, and two
+  kinds of refusal become answers (below).
+
+  The header is `include/inkamath/inkamath_prelude.h`, what `inkamath
+  --compile include/inkamath/inkamath_prelude.ink -o inkamath_prelude.h`
+  writes. That file's one sequence calls the four on its index, so the header
+  holds `inkamath_prelude_exp(double arg_x)`, `_log`, `_tanh` and `_ilogb`
+  and their ten helpers, `static inline`, and a struct, an init and a step
+  nothing calls, some 20 of its 108 lines. Named so that its guard is
+  `INKAMATH_PRELUDE_H` and its names are prefixed: `prelude` is the
+  interpreter's array of the prelude's lines, and `compiled` a variable in
+  `check.hpp`. `interpreter.hpp` includes it as it is, C compiled as C++:
+  operations on doubles, `pow`, `floor`, `isnan`, `NAN` and `INFINITY`, the
+  same in either. No `extern "C"`, as nothing static is linked, and no
+  namespace, as `<math.h>` cannot be included inside one and the prefix
+  scopes already; GCC 13 and Clang 18 build it at `-Wall -Wextra -Wpedantic
+  -Werror` without a word. Checked in, so building the interpreter needs no
+  interpreter; kept in step as the goldens are, by `record_prelude`, a target
+  writing it with the interpreter built, and `prelude_header`, a test
+  comparing what that interpreter writes now with the file, `compare_files
+  --ignore-eol`. A change to the prelude, or to how the compiler writes it,
+  fails until the header is recorded in the same commit, its diff read.
+  Generated, so counted apart from the sources.
+
+  Recognised by its home, as `mod` and `floor` are: once the interpreter has
+  read its prelude, it gives its stack the four definitions the built-ins'
+  scope holds and a function for each, given for `Number` and for no other
+  number type (C65). A session's, a file's or a model's definition of one of
+  the names is another definition, and so is one the session extends with a
+  clause, which copies the prelude's into the session (`Extended`): a flag
+  carried by the definition would be copied with it, its address is not.
+  Every other call pays one comparison of its home.
+
+  Asked in `Reference::Eval`, once the arguments are evaluated in the caller's
+  scope and before the memo, for a call neither indexed nor a limit. Taken
+  where the one argument is a single value, inexact, not approximated past a
+  thousand digits, with an imaginary part of 0 and a finite real part,
+  positive for `log` and `ilogb`, and outside every run of `--check`; and
+  where the function's answer is not 0. Anywhere else the definition is
+  walked, as now. Answered as `Number(double)`: inexact, not approximated, its
+  imaginary part +0. That is what the definition answers there: each power of
+  two it meets is within the thousand digits, `ilogb`'s thresholds 2^-2048 to
+  2^2048 for a positive double, and every operation of two real values answers
+  a real double with an imaginary part of +0, whatever the sign of the
+  argument's 0. `ilogb` answers the exact whole number it is in the
+  interpreter.
+
+  Each exclusion is where the definition answers otherwise than C:
+  - an exact argument, reduced exactly and rounded once where C rounds it
+    first: `exp(2/3)` is ~1.947734041054676 and `exp(~(2/3))`
+    ~1.9477340410546757;
+  - an approximated one, whose answer the definition marks so;
+  - a complex value or a matrix, which the definition refuses;
+  - inf and NaN, which its guards answer or refuse (`log(~1/0)`, C101) where
+    C gives inf or NaN; and for `log` 0 and below, refused as `1/0`, with
+    `ilogb` kept to the same domain (C100);
+  - an answer of 0. C's minus makes the compiled `tanh(~0)` -0 where the
+    definition's is 0 (C98), so the definition is asked rather than a sign
+    assumed. Of a finite double the three give 0 only at `tanh(±0)`,
+    `log(~1)` and `exp` below -745.13;
+  - `grad`, whose walk carries parts through the definitions and never
+    passes here;
+  - every run of `--check`: one estimating the interpreter's own error must
+    see the definition's roundings, `check_els_report` failing where those
+    runs are compiled, and the main run walks so that `check_els` stays the
+    standing proof that compiled and walked agree. Told by the stack's
+    `guards`, which `CheckC::Program` sets for the main run, and
+    `Number::disturbed`, set for the others.
+
+  The memo is neither read nor filled. A compiled call costs less than a
+  key's hash, and the walk filled the memo with each call inside it, `expk`,
+  `expp`, thirteen `ilogbs`, so it now turns over more slowly (C69), which
+  only keeps more.
+
+  Steps and depth: the call is one step and one reference deep, and its
+  arguments cost what they cost, as before the walk; the walk is gone. With
+  nothing memoised the walk is some 33 steps for `exp`, 111 for `log` and 84
+  for `ilogb`, and nests 3 references deeper for `exp`, 5 for `tanh`, 14 for
+  `ilogb` and 16 for `log`. So a line refused for its million steps or its
+  256 references because of these walks may now answer:
+  `sum_(k=1)^40000 exp(~k/40000)` is ~68732.1323 where it gave up. Nothing
+  that answered moves or is refused, as the compiled call never costs more
+  than the walk. A refusal by steps was already a function of what the
+  session had memoised, a call asked twice costing one step the second
+  time. Rejected: charging each call the steps its walk would take, which
+  depend on the memo and the path; walking near the depth limit, identity
+  of depth for a line where steps cannot have it.
+
+  Contraction. The interpreter's targets build with `-ffp-contract=off`
+  under GCC and Clang, set on the `inkamath` interface library: both contract
+  a multiply and an add within an expression in C++20 where the target has
+  the instruction (`-mfma`, `-march=native`, AArch64), and each function
+  here is one expression. Measured with `-mfma` and without the flag, 1,215
+  of 160,000 answers of a sweep part from the walk; with it, none. The C
+  tests' flag is C97's. MSVC is left as it is: since Visual Studio 2022 its
+  default, `/fp:precise`, does not contract whatever `/arch` says, where
+  2019's could at `/arch:AVX2`; `/fp:fast` or `/fp:contract` would.
+  `pow(2.0, k)` is the interpreter's own `pow` of a double k, held exact by
+  `compile_powers`.
+
+  Measured on a prototype that can walk instead: 63,000 doubles over every
+  range under GCC 13 and 20,000 more under Clang 18, at -O2, each given to the
+  four, and 1 over each answer for the sign of 0, printed at 17 digits, alike
+  compiled and walked. Every golden, header and report of the 152 tests as
+  before. Under callgrind `hand` from 281 million instructions to 85, below
+  the 93 before the prelude was written; `grad` 14,821 to 14,839, its calls
+  on parts; `limit` and `read` within 0.1 per cent. A call in a sum: `exp`
+  0.16 µs for 8.8, `tanh` 0.20 for 12, `log` 0.62 for 36, some 55 times
+  faster. Expected of the implementation: `hand` below 93 million, `grad`
+  within 1 per cent, the others within half of one. Every run of
+  `--check` still walks.
+
+  `log`'s `pow`: compiled, `ilogb`'s thirteen steps call `pow` twice each,
+  0.34 µs of `log`'s 0.39 (the later item the review of `exp`, `log` and
+  `tanh` ruled). Not first: it would halve `log` alone, it is the
+  compiler's and moves every header that calls `log`, and this header
+  follows it by `record_prelude`.
+
+  `grad` keeps its 2.6 times, and no later item is planned: its jets need
+  every intermediate of the walk, which a compiled call does not keep.
+
+  Rejected besides: libm's `exp` and `log`, the owner's refusal, and not
+  the prelude's values; a hand-written `ilogb` in C++, withdrawn, a second
+  definition beside the prelude's; compiling at run time, which needs a C
+  compiler where the interpreter runs, a dependency (`CLAUDE.md`, section
+  5); the header generated at build time, the interpreter needed to build
+  the interpreter; `--compile --prelude`, writing the functions alone,
+  lines in the compiler to drop 20 lines of dead C.
+
+  About 30 lines of sources: 20 in `interpreter.hpp`, the include, the test
+  of an argument and the four given to the stack; 6 in
+  `reference_stack.hpp`, holding them; 3 in `Reference::Eval`, the call.
+  Besides, 3 in `CMakeLists.txt`, the flag, and 12 in `test/CMakeLists.txt`,
+  the target and the test; README's paragraph on the prelude gains a
+  clause.
+
+  Specified in `test/data/spec/fastprelude.ink`, 64 entries, 6 failing:
+  values at chosen doubles to 17 digits, of the design's arithmetic
+  emulated in Python apart from the interpreter, and its zeros; exact
+  arguments beside their doubles; complex, matrix, non-finite and
+  out-of-domain refusals; an approximated argument; `grad`; two refusals by
+  steps that become answers and one of exact arguments that stays; four by
+  depth that become answers, and four that stay, of two exact arguments,
+  an approximated one, and an `exp` the session extends. Taken out of the
+  prototype one at a time, each exclusion fails an entry, or
+  `check_els_report` for the estimating runs. `inkamath_prelude.ink` is
+  wired with the implementation, as are the header, the target and the
+  test.
+
+  Built as specified: every entry passes as written, and the spec is the
+  golden `fastprelude.ink`; no other golden, header or report moves.
+  Departures: the stack holds one function, `compiled`, not the four
+  definitions and a function each; the interpreter gives it, holding the
+  four's addresses, and it asks every test of the argument, so that
+  `Reference::Eval` asks only the home, one argument, no index and no
+  limit. A run of `--check` is told by `guards` and `Number::disturbed`, by
+  the review's ruling, and held by `check_walked` in `cli.cmake`: an input
+  read through `log` 245 references deep, refused as walked where compiled
+  it would answer. `prelude_header` compares the file with what a custom
+  command writes on each build: 16 lines in `test/CMakeLists.txt`, not 12,
+  and the flag 4 in `CMakeLists.txt`, not 3. Measured on the build: the
+  review's sweep, 75,104 calls of the four on doubles over every range, each
+  with 1 over its answer, printed at 17 digits, alike compiled and walked
+  under GCC 13, Clang 18 and GCC with `-mfma`; under callgrind `hand` from
+  280 million instructions to 85, `grad` 14,835 to 14,876, `limit` 876 to
+  877, the others as before. 43 lines of sources where about 30 were
+  planned: 34 in `interpreter.hpp`, 5 of them includes, 5 in
+  `reference_stack.hpp` and 4 in `Reference::Eval`. 13,853 lines in all.
