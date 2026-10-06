@@ -53,9 +53,9 @@ digits = 17
 >> ilogb(~1.7976931348623157e308)
 1023
 
-# An answer of 0 is the definition's, whose minus is a subtraction from 0
-# (C33), so never -0, nor since C98 is the compiled one's in tanhe. Nor
-# is an answer of 0 the only one taken: past -745.13 exp is 0.
+# An answer of 0 has the definition's sign, whose minus is a subtraction
+# from 0 (C33), so never -0, as the compiled one's is since C98. Past
+# -745.13 exp is 0.
 >> tanh(~0)
 0
 

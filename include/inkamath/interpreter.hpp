@@ -293,7 +293,7 @@ Interpreter<T, U>::Interpreter() {
     for (const char* line : prelude) (void)Run(line);
     // Each function of the header is its definition's operations on the same
     // doubles (DESIGN.md), so it is called where the definition would answer
-    // a double too: not 0, whose sign C's minus can change (C98).
+    // a double too.
     if constexpr (std::is_same_v<T, Number>) {
         const auto& names = stack_.Builtins().names;
         const std::array<std::pair<const Reference<U>*, double (*)(double)>, 4> functions{{
@@ -317,7 +317,7 @@ Interpreter<T, U>::Interpreter() {
                 return {};
             const double y = c(z.real());
             if (c == inkamath_prelude_ilogb) return U(Number(static_cast<long long>(y)));
-            return y == 0 ? std::nullopt : std::optional(U(Number(y)));
+            return U(Number(y));
         };
     }
     ResetInterpreter();
