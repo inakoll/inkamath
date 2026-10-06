@@ -105,8 +105,8 @@ error: a comparison needs real numbers, not 1+i
 digits = 9
 
 # A compiled call is one step and one reference deep. Walked under grad exp
-# is some 5 steps, tanh 7, sin and cos 8 and log 20, so this softplus ran
-# out of its million.
+# is 4 steps, tanh 6, sin and cos 7 and log 19, so this softplus ran out of
+# its million.
 >> grad_(t = ~1) sum_(k=1)^50000 log(1 + exp(-t*k/50000))
 ~-8528.00195
 

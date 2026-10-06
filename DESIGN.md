@@ -4901,8 +4901,8 @@ that exploring seven domains asked of the interpreter, by how many asked.
   `exp(t)` at each of 600,000 terms, or a call at the depth limit asked once
   before, answers as it does now. Rejected: asking before the memo, which
   charges a remembered call a step and a reference and refuses both, as a
-  prototype did. Walked under grad, `exp` is some 5 steps and nests 3
-  references deeper, `tanh` 7 and 4, `sin` and `cos` 8 and 5, and `log` 20
+  prototype did. Walked under grad, `exp` is 4 steps and nests 3
+  references deeper, `tanh` 6 and 4, `sin` and `cos` 7 and 5, and `log` 19
   and 5 (its arguments are walked before its reference is taken, so
   `ilogb`'s thirteen calls nest no deeper), so a line refused for its
   million steps or its 256 references may now answer: a softplus summed
