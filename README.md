@@ -157,9 +157,14 @@ direction at every step. A `grad` is compiled forward, each value carrying its
 part beside it by the interpreter's rules, so that the step's gradient is the
 interpreter's to the bit: `test/compile/grad.ink` trains a line and a logistic
 regression by it; a derivative of a derivative, of a limit or of a matrix
-power is refused for now. A header that writes NaN anywhere carries it to every
-term that reads it, as the interpreter refuses them: a guard, a comparison and
-a power reading NaN answer NaN, and a matrix term with a NaN cell is NaN in
+power is refused for now. A tensor is an array as C keeps one,
+`double O[B][T][D]`, slice after slice, and is met slice by slice as the
+interpreter meets it: `test/compile/tensor.ink` runs multi-head attention
+over a batch and trains a layer on minibatches by `grad`; a tensor in a
+limit, or a `grad` with respect to one, is refused for now. A header that
+writes NaN anywhere carries it to every term that reads it, as the
+interpreter refuses them: a guard, a comparison and a power reading NaN
+answer NaN, and a matrix or tensor term with a NaN cell is NaN in
 every cell, which its first comment says. Such a header is not to be built
 with `-ffinite-math-only`, which `-ffast-math` implies: GCC removes the tests
 that carry NaN, and Clang warns of each NaN the header writes.
