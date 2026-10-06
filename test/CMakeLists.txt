@@ -176,7 +176,7 @@ set_tests_properties(check_fall_report PROPERTIES PASS_REGULAR_EXPRESSION
 set_tests_properties(check_hinge_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^hinge: 100 steps from 0, against exact values\nhinge\\.g: within 0\n$")
 set_tests_properties(check_edge_report PROPERTIES PASS_REGULAR_EXPRESSION
-    "^edge: 100 steps from 0, against exact values until 0 and inexact ones from there\nedge\\.c: within 0\nedge\\.d: within 0\nedge\\.f: within 0\nedge\\.g: within 0\nedge\\.j: within 0\nedge\\.k: within 0\nedge\\.l: within 0\nedge\\.m: within 0\nedge\\.o: within 0\nedge\\.s: within 0${about}\nedge\\.w: within 0\n$")
+    "^edge: 100 steps from 0, against exact values until 0 and inexact ones from there\nedge\\.c: within 0\nedge\\.d: within 0\nedge\\.f: within 0\nedge\\.g: within 0\nedge\\.j: within 0\nedge\\.k: within 0\nedge\\.l: within 0\nedge\\.m: within 0\nedge\\.o: within 0\nedge\\.s: within 0${about}\nedge\\.v: within 0\nedge\\.w: within 0\n$")
 set_tests_properties(check_clip_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^clip: 100 steps from 0, against exact values\nclip\\.w: within 0\n$")
 set_tests_properties(check_steer_report PROPERTIES PASS_REGULAR_EXPRESSION

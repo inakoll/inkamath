@@ -124,6 +124,7 @@ hinge = rect(x_n = n)
 #     edge.m: within 0
 #     edge.o: within 0
 #     edge.s: within 0; the interpreter's terms about <e> from the exact ones
+#     edge.v: within 0
 #     edge.w: within 0
 #
 # Each test is written in the value where the interpreter refuses, so every
@@ -132,7 +133,8 @@ hinge = rect(x_n = n)
 # '(floor(m_->x[0]) == m_->x[0] ? NAN : floor(m_->x[0])) * 1.0'. Where
 # one side moves and the other does not, either may: m, a dead unit compared
 # with a live one, is 0 but NaN at 2, where they meet and the live one
-# moves (C114).
+# moves (C114). v, a power whose derivative is infinite at a constant point,
+# is NaN at every n, as j and o are (C116).
 kinks(x_n) = {
     q(t) = t^2
     q(t) | t == 1 = 1
@@ -150,6 +152,7 @@ kinks(x_n) = {
     m_n = grad_(t = x_n - 1) (r(t - 1/2) > r(t))*t
     o_n = grad_(t = 2) floor(t)*t
     s_n = grad_(t = x_n - 1) (t^2)^(1/2)
+    v_n = n*grad_(t = 0) t^(1/2)
     w_n = grad_(t = x_n) floor(p(t))*t
 }
 edge = kinks(x_n = n/2)

@@ -1455,7 +1455,7 @@ private:
             base.constant
                  ? Exact([&] { return numeric_interface<Value>::pow(*base.constant, lower); })
                  : Powered(base, Literal(lower));
-        if (Doubles(lower)[0] < 0 && !base.constant)
+        if (Doubles(lower)[0] < 0 && (!base.constant || Doubles(*base.constant)[0] == 0.0))
             value = Of(Cell("(" + Jumps(Wrap(base.cells[0], sum) + " == 0.0", {&base}) +
                                 value.cells[0].text + ")",
                             primary));
