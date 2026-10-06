@@ -179,8 +179,8 @@ digits = 17
 >> cos(1)
 ~0.54030230586813977
 
-# Not correctly rounded: mpmath's is -0.54402111088936977, 1.1 units away,
-# within the 2.4 any double is.
+# Not correctly rounded: mpmath's, rounded, is -0.54402111088936977, a unit
+# away; this is 0.65 units from the sine, within the 2.4 of any double.
 >> sin(10)
 ~-0.54402111088936989
 
