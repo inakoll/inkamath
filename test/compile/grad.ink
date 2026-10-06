@@ -105,14 +105,22 @@ hinge = rect(x_n = n)
 # at 2; a power whose derivative is infinite at 0, s at 2. Elsewhere f is
 # floor(n/2), g is n, c is 0 below 2 and 1 above, and s is -1 below 2 and
 # 1 above, its power C's pow of a double as the interpreter's is; and k, a
-# gradient at a constant point, is folded, 12*n:
+# gradient at a constant point, is folded, 12*n. Where the clause a function
+# takes has no part, nothing there moves, as in the interpreter, so nothing
+# is tested for a jump: d, a dead ReLU unit's mask, is 0 below 2, at t = -1
+# too, NaN at 2 and 1 above; l, a clamp compared at its level, 0 below 2, NaN
+# at 2 and 1 above; w, the floor of a clamp, NaN at 0 and 2, 0 at 1 and 1
+# from 3:
 #
 #     edge: 100 steps from 0, against exact values until 0 and inexact ones from there
 #     edge.c: within 0
+#     edge.d: within 0
 #     edge.f: within 0
 #     edge.g: within 0
 #     edge.k: within 0
+#     edge.l: within 0
 #     edge.s: within 0; the interpreter's terms about <e> from the exact ones
+#     edge.w: within 0
 #
 # Each test is written in the value where the interpreter refuses, so every
 # term reading it is NaN, as for any refusal, and a gradient is NaN where the
@@ -121,11 +129,18 @@ hinge = rect(x_n = n)
 kinks(x_n) = {
     q(t) = t^2
     q(t) | t == 1 = 1
+    r(t) = t
+    r(t) | t < 0 = 0
+    p(t) = t
+    p(t) | t > 1 = 1
     c_n = grad_(t = x_n) t*(t > 1)
+    d_n = grad_(t = x_n - 1) t*(r(t) > 0)
     f_n = grad_(t = x_n) floor(t)*t
     g_n = grad_(t = x_n) q(t)
     k_n = n*grad_(t = 2) t^3
+    l_n = grad_(t = x_n) t*(p(t) >= 1)
     s_n = grad_(t = x_n - 1) (t^2)^(1/2)
+    w_n = grad_(t = x_n) floor(p(t))*t
 }
 edge = kinks(x_n = n/2)
 

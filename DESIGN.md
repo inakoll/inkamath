@@ -4617,11 +4617,18 @@ that exploring seven domains asked of the interpreter, by how many asked.
   guard reading a gradient is followed as any guard. In float the parts are
   floats as the values are, the part functions rewritten with the rest.
 
-  Known limits. A part is present by the clauses, not by the clause taken:
-  where the clause taken has none and another has, it is 0, which an
+  A part that comes through a chain of guarded clauses is there by the
+  clauses, 0 where the clause taken has none, and carries beside it where it
+  is there at all: the chain's own conditions, 1 for a clause with a part
+  and 0 for one without, `relu`'s `z < 0 ? 0 : 1`. A `floor`, a comparison
+  or a power reading the value tests for a jump only where that holds, as
+  the interpreter, seeing no part, tests none: a dead ReLU unit's mask,
+  `t*(relu(t) > 0)` at t = -1, a clamp compared at its level and the floor
+  of a clamp answer as interpreted.
+
+  Known limits. Where the clause taken has no part, the part is 0, which an
   infinite value multiplies to NaN where the interpreter has nothing to
-  multiply, and a `floor` or comparison of the value is tested for a jump
-  the interpreter, seeing no part, would not test. And a jump inside a part
+  multiply: `grad_(t = 6) f(t)*~(10^400)`, f a clamp at 1. And a jump inside a part
   function, `exp`'s `floor` at a few doubles near (j + 1/2) ln 2, is NaN in
   the part alone, lost where a `floor` or a comparison drops the part.
 
