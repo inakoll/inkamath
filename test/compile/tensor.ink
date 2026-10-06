@@ -61,20 +61,21 @@ heads = mha(X_n = [1 0 1 0; 0 1 0 1; 1 1 0 0;; 0 0 1 1; 1 0 0 1; 0 1 1 0]*n/50)
 # sequence meets the tensor another way: d and e a tensor its slices, e a
 # single value every cell, k a matrix every slice on either side and the
 # quote each slice; p is slice by slice, a 2x1x1 tensor, [1;; 1] at 0 and
-# [1;; 5] at 1; g reads slices, c a cell, q is defined by three indices whose
-# sizes are read from s; h samples s every second step and u is NaN where no
-# clause applies. Its parameter s0 and its input's history are tensors. Every
-# term is a whole number or a half, and none passes 5, so each is exact in a
-# double and in a float:
+# [1;; 5] at 1; g reads slices, c a cell, l is a literal of c's terms,
+# [c_n 1;; 1 c_n], q is defined by three indices whose sizes are read from s;
+# h samples s every second step and u is NaN where no clause applies. Its
+# parameter s0 and its input's history are tensors. Every term is a whole
+# number or a half, and none passes 5, so each is exact in a double and in a
+# float:
 #
 #     whirl: 100 steps from 0, against exact values
-#     whirl.<name>: within 0, for each of d, s, c, g, k, p and q
+#     whirl.<name>: within 0, for each of d, s, c, g, k, l, p and q
 #     whirl.<name>: within 0, from 1, for each of e, h and u
 #
 # and 'inkamath --check tensor.ink whirl --float':
 #
 #     whirl: 100 steps from 0 in float, against exact values
-#     whirl.<name>: within 0, 0 units of a float, for each of d, s, c, g, k, p and q
+#     whirl.<name>: within 0, 0 units of a float, for each of d, s, c, g, k, l, p and q
 #     whirl.<name>: within 0, 0 units of a float, from 1, for each of e, h and u
 #
 # Its header, 'inkamath --compile tensor.ink ring -o ring.h', writes NaN, so a
@@ -91,7 +92,7 @@ heads = mha(X_n = [1 0 1 0; 0 1 0 1; 1 1 0 0;; 0 0 1 1; 1 0 0 1; 0 1 1 0]*n/50)
 #      * A step takes X_n (2x1x2), the input at its index. An input of more than one
 #      * cell is a pointer to its cells, row by row, slice after slice. After a step,
 #      * m.name[k] is name_(n-k) for each sequence: X (k <= 1), d, s (k <= 1), c, e,
-#      * g, k, p, q and u. At another rate, m.name[k] is name_(m-k), m its latest
+#      * g, k, l, p, q and u. At another rate, m.name[k] is name_(m-k), m its latest
 #      * term's index: h, computed at the steps 2*m + 1. The parameters are fields
 #      * holding the model's defaults once ring_init has run: s0 (2x1x2). After
 #      * assigning one, call ring_update. A term the interpreter would refuse is NaN,
@@ -111,6 +112,7 @@ heads = mha(X_n = [1 0 1 0; 0 1 0 1; 1 1 0 0;; 0 0 1 1; 1 0 0 1; 0 1 1 0]*n/50)
 #         double g[1][1][2];
 #         double h[1][2][1][2];
 #         double k[1][2][2][1];
+#         double l[1][2][1][2];
 #         double p[1][2][1][1];
 #         double q[1][2][1][2];
 #         double u[1][2][1][2];
@@ -164,6 +166,7 @@ ring(s0 = [1 0;; 0 1], X_n[b<=2, t<=1, c<=2]) = {
     p_n = s_n*s_n'
     g_n = s_n[2] - s_n[1]
     c_n = s_n[2,1,2]
+    l_n = [c_n 1;; 1 c_n]
     q_n[b,t,c] = b*s_n[b,t,c]
     k_n = [0 2; 2 0]*s_n' + [1; 2]
     h_m = s_(2*m + 1)
