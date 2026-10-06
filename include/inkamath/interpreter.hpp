@@ -377,6 +377,7 @@ Interpreter<T, U>::Interpreter() {
             if (d == 0 || std::isnan(d)) return {};
             return U(Number(d));
         };
+        stack_.stepwise = names.at("ilogb").get();
     }
     ResetInterpreter();
 }
