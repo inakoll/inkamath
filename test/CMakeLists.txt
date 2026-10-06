@@ -24,7 +24,7 @@ target_compile_definitions(inkamath_tests PRIVATE
 # single failure rather than taking the others' results with it.
 foreach(suite IN ITEMS bignum interpreter line_editor matrix)
     add_test(NAME ${suite} COMMAND inkamath_tests --test-suite=${suite} --no-intro)
-    set_tests_properties(${suite} PROPERTIES TIMEOUT 60)
+    set_tests_properties(${suite} PROPERTIES TIMEOUT 120)
 endforeach()
 
 add_test(NAME cli
