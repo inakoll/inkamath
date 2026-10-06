@@ -105,3 +105,13 @@ subtracted(x_n) = {
     y_n = 0
 }
 zeroed = subtracted(x_n = ~0)
+
+# An input of -0 is fed as -0, not as C's integer 0 (C120):
+#
+#     mirrored: 100 steps from 0, against exact values
+#     mirrored.y: within 0
+inverted(x_n) = {
+    y_n | 1/x_n > 0 = 1
+    y_n = 0
+}
+mirrored = inverted(x_n = ~0*(-1))
