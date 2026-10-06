@@ -4363,7 +4363,7 @@ that exploring seven domains asked of the interpreter, by how many asked.
   `softmax.ink`, Newton's method on a series, alternate two units apart and
   were NaN at 33 and at 2; no other report of the 80 instances moves. With
   C103 and C104, found on the way, 13,810 lines in all.
-- **The prelude called compiled, for a double.** Since `exp`, `log` and `tanh`
+- `[done]` **The prelude called compiled, for a double.** Since `exp`, `log` and `tanh`
   are written in the prelude, the interpreter walks their definitions node by
   node: under callgrind `bench/hand.ink` went from 93 million instructions to
   279 and `bench/grad.ink` from 5,750 to 14,870. The compiler already writes
@@ -4520,3 +4520,23 @@ that exploring seven domains asked of the interpreter, by how many asked.
   `check_els_report` for the estimating runs. `inkamath_prelude.ink` is
   wired with the implementation, as are the header, the target and the
   test.
+
+  Built as specified: every entry passes as written, and the spec is the
+  golden `fastprelude.ink`; no other golden, header or report moves.
+  Departures: the stack holds one function, `compiled`, not the four
+  definitions and a function each; the interpreter gives it, holding the
+  four's addresses, and it asks every test of the argument, so that
+  `Reference::Eval` asks only the home, one argument, no index and no
+  limit. A run of `--check` is told by `guards` and `Number::disturbed`, by
+  the review's ruling, and held by `check_walked` in `cli.cmake`: an input
+  read through `log` 245 references deep, refused as walked where compiled
+  it would answer. `prelude_header` compares the file with what a custom
+  command writes on each build: 16 lines in `test/CMakeLists.txt`, not 12,
+  and the flag 4 in `CMakeLists.txt`, not 3. Measured on the build: the
+  review's sweep, 75,104 calls of the four on doubles over every range, each
+  with 1 over its answer, printed at 17 digits, alike compiled and walked
+  under GCC 13, Clang 18 and GCC with `-mfma`; under callgrind `hand` from
+  280 million instructions to 85, `grad` 14,835 to 14,876, `limit` 876 to
+  877, the others as before. 43 lines of sources where about 30 were
+  planned: 34 in `interpreter.hpp`, 5 of them includes, 5 in
+  `reference_stack.hpp` and 4 in `Reference::Eval`. 13,853 lines in all.
