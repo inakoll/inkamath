@@ -94,3 +94,14 @@ negated(x_n) = {
     y_n = 0
 }
 naught = negated(x_n = ~0)
+
+# A subtraction is an addition of a subtraction from 0, as in the
+# interpreter, so -0 less +0 is +0, where C's minus gives -0 (C109):
+#
+#     zeroed: 100 steps from 0, against exact values
+#     zeroed.y: within 0
+subtracted(x_n) = {
+    y_n | 1/(x_n*(-1) - x_n) > 0 = 1
+    y_n = 0
+}
+zeroed = subtracted(x_n = ~0)

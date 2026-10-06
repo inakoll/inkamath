@@ -74,13 +74,13 @@ static inline void chain_step(chain* m_, double x) {
     m_->slow.v[1] = m_->slow.v[0];
     m_->x[0] = x;
     m_->fast.u[0] = m_->x[0];
-    m_->fast.v[0] = m_->index_ == 0 ? 0.0 : m_->k * m_->fast.u[0] + (1.0 - m_->k) * m_->fast.v[1];
+    m_->fast.v[0] = m_->index_ == 0 ? 0.0 : m_->k * m_->fast.u[0] + (1.0 + (0.0 - m_->k)) * m_->fast.v[1];
     m_->h.u[0] = m_->x[0];
     m_->h.low.u[0] = m_->h.u[0];
-    m_->h.low.v[0] = m_->index_ == 0 ? 0.0 : m_->h.a * m_->h.low.u[0] + (1.0 - m_->h.a) * m_->h.low.v[1];
-    m_->h.v[0] = m_->h.u[0] - m_->h.low.v[0];
+    m_->h.low.v[0] = m_->index_ == 0 ? 0.0 : m_->h.a * m_->h.low.u[0] + (1.0 + (0.0 - m_->h.a)) * m_->h.low.v[1];
+    m_->h.v[0] = m_->h.u[0] + (0.0 - m_->h.low.v[0]);
     m_->slow.u[0] = m_->fast.v[0];
-    m_->slow.v[0] = m_->index_ == 0 ? 0.0 : m_->slow.a * m_->slow.u[0] + (1.0 - m_->slow.a) * m_->slow.v[1];
+    m_->slow.v[0] = m_->index_ == 0 ? 0.0 : m_->slow.a * m_->slow.u[0] + (1.0 + (0.0 - m_->slow.a)) * m_->slow.v[1];
     m_->y[0] = m_->slow.v[0] + m_->h.v[0] + 0.1;
 }
 

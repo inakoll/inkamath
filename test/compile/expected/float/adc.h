@@ -63,8 +63,8 @@ static inline void adc_step(adc* m_, float x) {
     m_->held[1] = m_->held[0];
     m_->x[0] = x;
     m_->v[0] = m_->q * floorf(m_->x[0] / m_->q);
-    const float t1_ = (isnan(m_->held[1] - m_->v[0]) || isnan(m_->q) ? NAN : m_->held[1] - m_->v[0] < m_->q ? 1.0f : 0.0f);
-    const float t2_ = (t1_ == 0.0f ? 0.0f : t1_ != t1_ ? NAN : (isnan(m_->v[0] - m_->held[1]) || isnan(m_->q) ? NAN : m_->v[0] - m_->held[1] < m_->q ? 1.0f : 0.0f));
+    const float t1_ = (isnan(m_->held[1] + (0.0f - m_->v[0])) || isnan(m_->q) ? NAN : m_->held[1] + (0.0f - m_->v[0]) < m_->q ? 1.0f : 0.0f);
+    const float t2_ = (t1_ == 0.0f ? 0.0f : t1_ != t1_ ? NAN : (isnan(m_->v[0] + (0.0f - m_->held[1])) || isnan(m_->q) ? NAN : m_->v[0] + (0.0f - m_->held[1]) < m_->q ? 1.0f : 0.0f));
     m_->held[0] = m_->index_ == 0 ? 0.0f : isnan(t2_) ? NAN : t2_ != 0.0f ? m_->held[1] : m_->v[0];
     const float t0_ = (isnan(m_->held[0]) || isnan(m_->lo) ? NAN : m_->held[0] < m_->lo ? 1.0f : 0.0f);
     m_->alarm[0] = (t0_ == 0.0f ? (isnan(m_->held[0]) || isnan(m_->hi) ? NAN : m_->held[0] > m_->hi ? 1.0f : 0.0f) : t0_ != t0_ ? NAN : 1.0f);

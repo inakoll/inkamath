@@ -99,7 +99,7 @@ add_test(NAME prelude_header
 # drifts from it, and its program says where and exits with a failure.
 # Each as file:instance.
 foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brink drift:ledge
-                         drift:rift drift:naught
+                         drift:rift drift:naught drift:zeroed
                          delay:fir newton:stiff logistic:gate sized:sized softmax:cls steady:mark
                          rnn:rnn attention:head momentum:ball adam:fit lqr:gain
                          rates:pairs rates:odd seeded:warm cascade:servo decimate:boxcar
@@ -115,7 +115,7 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brin
                          estimate:chaos estimate:dyad estimate:flat estimate:halved
                          estimate:steep estimate:giant elementary:els
                          grad:line grad:fall grad:hinge grad:edge grad:clip grad:steer grad:saw
-                         grad:ring grad:notch grad:apart grad:smooth)
+                         grad:ring grad:notch grad:apart grad:smooth grad:cusp)
     string(REPLACE ":" ";" checked ${checked})
     list(GET checked 0 file)
     list(GET checked 1 instance)
@@ -189,6 +189,8 @@ set_tests_properties(check_notch_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^notch: 100 steps from 0, against exact values\nnotch\\.y: within 0\n$")
 set_tests_properties(check_smooth_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^smooth: 100 steps from 0, against exact values\nsmooth\\.z: within 0\n$")
+set_tests_properties(check_cusp_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^cusp: 100 steps from 0, against exact values until 0 and inexact ones from there\ncusp\\.x: within 0\ncusp\\.g: within 0\n$")
 # Its known limit, C110, held where it parts.
 set_tests_properties(check_apart_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^apart: 100 steps from 0, against exact values\napart\\.y: [-a-z()]+ at 0, where the interpreter gives 0\n$")
@@ -335,6 +337,8 @@ set_tests_properties(check_fir_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^fir: 100 steps from 0, against exact values\n(fir\\.[a-z]+: within 0\n)+$")
 set_tests_properties(check_naught_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^naught: 100 steps from 0, against exact values\nnaught\\.y: within 0\n$")
+set_tests_properties(check_zeroed_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^zeroed: 100 steps from 0, against exact values\nzeroed\\.y: within 0\n$")
 set_tests_properties(check_calm_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^calm: 100 steps from 0, against exact values\ncalm\\.v: within [0-9.e+-]+\n$")
 set_tests_properties(check_wild_report PROPERTIES PASS_REGULAR_EXPRESSION

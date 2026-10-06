@@ -37,7 +37,7 @@ static inline double inkamath_prelude_expp(double arg_r) {
 }
 
 static inline double inkamath_prelude_expk(double arg_x, double arg_k) {
-    return (1.0 + inkamath_prelude_expp(arg_x - arg_k * 355.0 / 512.0 + arg_k * 0.00021219444005469057)) * pow(2.0, arg_k - floor(arg_k / 2.0)) * pow(2.0, floor(arg_k / 2.0));
+    return (1.0 + inkamath_prelude_expp(arg_x + (0.0 - arg_k * 355.0 / 512.0) + arg_k * 0.00021219444005469057)) * pow(2.0, arg_k + (0.0 - floor(arg_k / 2.0))) * pow(2.0, floor(arg_k / 2.0));
 }
 
 static inline double inkamath_prelude_exp(double arg_x) {
@@ -57,7 +57,7 @@ static inline double inkamath_prelude_logp(double arg_z) {
 }
 
 static inline double inkamath_prelude_logs(double arg_s, double arg_k) {
-    return arg_k * 355.0 / 512.0 + (2.0 * arg_s * inkamath_prelude_logp(arg_s * arg_s) - arg_k * 0.00021219444005469057);
+    return arg_k * 355.0 / 512.0 + (2.0 * arg_s * inkamath_prelude_logp(arg_s * arg_s) + (0.0 - arg_k * 0.00021219444005469057));
 }
 
 static inline double inkamath_prelude_logm(double arg_m, double arg_k) {
@@ -77,7 +77,7 @@ static inline double inkamath_prelude_tanhe(double arg_m) {
 }
 
 static inline double inkamath_prelude_tanhk(double arg_y, double arg_k) {
-    return inkamath_prelude_tanhe(pow(2.0, arg_k) - 1.0 + pow(2.0, arg_k) * inkamath_prelude_expp(arg_y - arg_k * 355.0 / 512.0 + arg_k * 0.00021219444005469057));
+    return inkamath_prelude_tanhe(pow(2.0, arg_k) - 1.0 + pow(2.0, arg_k) * inkamath_prelude_expp(arg_y + (0.0 - arg_k * 355.0 / 512.0) + arg_k * 0.00021219444005469057));
 }
 
 static inline double inkamath_prelude_tanhp(double arg_x) {
