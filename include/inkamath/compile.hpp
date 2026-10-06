@@ -1998,12 +1998,14 @@ private:
                     definition.Clauses().begin(), definition.Clauses().end(),
                     [&](const Clause<Value>& c) {
                         return at(c) && c.parameters.cells() && c.parameters.row_name().empty() &&
+                               c.parameters.slice() == every.slice() &&
                                c.parameters.row() == every.row() &&
                                c.parameters.col() == every.col();
                     });
                 const std::string term = name + "_" + std::to_string(index);
                 const std::string cell =
-                    "[" + std::to_string(every.row()) + "," + std::to_string(every.col()) + "]";
+                    "[" + (every.tensor() ? std::to_string(every.slice()) + "," : "") +
+                    std::to_string(every.row()) + "," + std::to_string(every.col()) + "]";
                 if (!own)
                     throw Reason(term + " and " + name + "_" + every.index_name() + cell +
                                  " both give a cell of " + term + "; write " + term + cell +

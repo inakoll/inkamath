@@ -331,6 +331,17 @@ cannot compile z: a clause for one cell of z_1, a 2x2 matrix, names no slice
 set(exit 1)
 check(compile_c124)
 
+# C125: a cell of every term meets a base term's own cell at its slice too,
+# and is named by it, where the compiler took y_0[1,1,1] for y_0[2,1,1].
+file(WRITE "${OUT}/c125.ink" "y_0 = [1 2;; 3 4]\ny_0[1,1,1] = 7\ny_n = 2*y_(n-1)\ny_n[2,1,1] = n\n"
+     "z_0 = [1 2;; 3 4]\nz_n = 2*z_(n-1)\nz_n[2,1,1] = n\n")
+set(args --compile c125.ink)
+set(stdout "cannot compile y: y_0 and y_n[2,1,1] both give a cell of y_0; write y_0[2,1,1] to say which
+cannot compile z: z_0 and z_n[2,1,1] both give a cell of z_0; write z_0[2,1,1] to say which
+")
+set(exit 1)
+check(compile_c125)
+
 # What tensors compiled refuses (DESIGN.md, test/compile/tensor.ink), in the
 # interpreter's words where it has them; y and P compile.
 file(WRITE "${OUT}/tensor.ink" "T = [1 2; 3 4;; 5 6; 7 8]\nU = [1 2; 3 4;; 5 6; 7 8;; 9 10; 11 12]\n"
