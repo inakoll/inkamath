@@ -352,10 +352,16 @@ a = (10^600 + 1)/10^600
 >> sin(a*a)
 ~0.841470985  # approximated past a thousand digits
 
-# A session's clause extends the prelude's definition, as for exp, so it
-# takes the prelude's parameters; a plain definition starts over.
+# A session's clause starts a definition of its own, as a model's or a
+# file's does, so this abs has one clause; a plain definition starts over.
 >> abs(y) | y < 0 = -y
-error: abs takes (x), so a clause cannot take (y)
+abs(y) | y < 0 = -y
+
+>> abs(-3)
+3
+
+>> abs(3)
+error: no clause of abs applies
 
 >> max(x, y) = (x + y + abs(x - y))/2
 max(x, y) = (x + y + abs(x - y))/2

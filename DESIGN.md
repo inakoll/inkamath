@@ -4416,9 +4416,9 @@ that exploring seven domains asked of the interpreter, by how many asked.
   read its prelude, it gives its stack the four definitions the built-ins'
   scope holds and a function for each, given for `Number` and for no other
   number type (C65). A session's, a file's or a model's definition of one of
-  the names is another definition, and so is one the session extends with a
-  clause, which copies the prelude's into the session (`Extended`): a flag
-  carried by the definition would be copied with it, its address is not.
+  the names is another definition, a guarded clause as much as a plain one:
+  a session's clause starts a definition of its own, as a model's or a
+  file's does, rather than extending the prelude's.
   Every other call pays one comparison of its home.
 
   Asked in `Reference::Eval`, once the arguments are evaluated in the caller's
@@ -4855,13 +4855,17 @@ that exploring seven domains asked of the interpreter, by how many asked.
   fast path's functions take one.
 
   What moves: no golden, header or report, measured with the prototype on
-  every test of `ctest`. `conditional.ink`'s `abs` and `max` take the
-  prelude's parameters, and its `abs` the prelude's clauses; `sequences.ink`
-  and README define `sin` and `cos` plainly, which starts over. A session's
-  clause on one of the five names extends the prelude's definition, as for
-  `exp`, so it takes the prelude's parameters: `abs(y) | y < 0 = -y`, which
-  defined `abs`, is refused. `inkamath_prelude.h` gains the functions, and
-  README's paragraph on the prelude (section 1) the five names.
+  every test of `ctest`. `conditional.ink`'s `abs` and `max`, and the `sin`
+  and `cos` of `sequences.ink` and README, are definitions of their own. A
+  session's clause on a name of the prelude starts a definition of its own,
+  as a model's or a file's does: `abs(y) | y < 0 = -y` defines `abs`, which
+  extending the prelude's would refuse for its parameter, and `abs(3)` then
+  finds no clause. The extension was a remnant of the built-ins being the
+  session's own, and is deleted before this: in `fastprelude.ink`, `exp(~1)`
+  and `dive(250)` after `exp(x) | x > 5000 = 7` move to "no clause of exp
+  applies".
+  `inkamath_prelude.h` gains the functions, and README's paragraph on the
+  prelude (section 1) the five names.
 
   About 32 lines of sources: 22 in the prelude and 6 of its comment, 4 in
   the interpreter's fast path. 14,318 lines in all now, about 14,350 after.

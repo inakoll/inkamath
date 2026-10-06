@@ -140,12 +140,6 @@ public:
         Changed();
         const definition_type previous = Defined(ai_reference_name);
         definition_type       extended = previous;
-        // A clause added to a built-in extends it, as it did when the
-        // built-ins were the session's own.
-        if (!extended && target_ == &session_) {
-            const auto builtin = builtins_.names.find(ai_reference_name);
-            if (builtin != builtins_.names.end()) extended = builtin->second;
-        }
         // Made before it is stored, so that a clause refused leaves no name.
         extended =
             Extended(extended, target_, ai_reference_name, ai_parameters, ai_expression, written);
