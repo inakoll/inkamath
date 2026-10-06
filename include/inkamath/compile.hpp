@@ -212,6 +212,7 @@ private:
         int         magnitude_level = primary;
         bool        atom            = false;  // a name or a number, as cheap to repeat as to store
         bool        number          = false;  // never NaN: a number, or the index
+        std::string nan;                      // NaN where this is, if not only where itself is
     };
 
     static Cell Atom(std::string text, bool number = false) {
@@ -1522,7 +1523,13 @@ private:
         const std::string test =
             other(exponent, 0.0) || other(base, 1.0) ? "" : Nan(base, exponent);
         const std::string power = "pow(" + base.cells[0].text + ", " + exponent.cells[0].text + ")";
-        return Of(Cell(test.empty() ? power : "(" + test + power + ")", primary));
+        Cell              cell(test.empty() ? power : "(" + test + power + ")", primary);
+        // Of a constant above 0 but 1, NaN where its exponent is: a test reads
+        // that, not a second pow, which C, setting errno, does not share.
+        if (const double b = base.constant ? Doubles(*base.constant)[0] : 0.0;
+            b > 0 && (floats ? static_cast<float>(b) != 1.0f : b != 1.0))
+            cell.nan = exponent.cells[0].text;
+        return Of(cell);
     }
 
     // The built-in e, as Derivative::Euler has it.
@@ -1542,7 +1549,8 @@ private:
         for (const Code* code : {&codes...})
             for (const Cell& cell : code->cells)
                 if (aware_ && !code->constant && !cell.number)
-                    test += (test.empty() ? "isnan(" : " || isnan(") + cell.text + ")";
+                    test += (test.empty() ? "isnan(" : " || isnan(") +
+                            (cell.nan.empty() ? cell.text : cell.nan) + ")";
         return test.empty() ? test : test + " ? NAN : ";
     }
 
