@@ -2755,6 +2755,10 @@ that exploring seven domains asked of the interpreter, by how many asked.
   exactly, yet `lim C` is inexact and `frac lim C` refused.
 - **Matrix `==` and `<>` compiled**, refused as "a comparison of matrices".
 - **`--check`'s hundred steps as an option**, with `lim`'s.
+- **Temporaries in a limit's function**: C140 shares a step's nested calls,
+  but a limit's terms are still written out whole, so a Riccati limit through
+  `ric(ric(P))` is 163 MB of header. About 25-35 lines; moves headers whose
+  limits multiply matrices, not their values.
 - `[done]` **A definition as LaTeX**, `tex ?name`, a word at the start of a line as
   `frac` is, and reserved as it is. It renders what was parsed, not what was
   typed: the clauses for one index a line each, then those for every index,
