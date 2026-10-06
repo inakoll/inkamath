@@ -180,6 +180,20 @@ newton(dt = 1/10, u_n) = {
 }
 steer = newton(u_n = ~(1/2))
 
+# 'saw', where no part reads the value that holds the interpreter's refusal,
+# in a header that writes no NaN but there (C113): b, the sawtooth
+# t - floor(t), is 1 but NaN at every even n, where the floor jumps; h, t
+# less its comparison with 1, is 1 but NaN at 2:
+#
+#     saw: 100 steps from 0, against exact values
+#     saw.b: within 0
+#     saw.h: within 0
+teeth(x_n) = {
+    b_n = grad_(t = x_n) (t - floor(t))
+    h_n = grad_(t = x_n) (t - (t > 1))
+}
+saw = teeth(x_n = n/2)
+
 # What stays refused, each named in 'inkamath --compile' of a file of
 #
 #     a_n = grad_(t = x_n) grad_(s = t) s^3

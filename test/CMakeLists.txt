@@ -114,7 +114,7 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brin
                          inputs:track inputs:twain inputs:nestv inputs:fed estimate:tie
                          estimate:chaos estimate:dyad estimate:flat estimate:halved
                          estimate:steep estimate:giant elementary:els
-                         grad:line grad:fall grad:hinge grad:edge grad:clip grad:steer
+                         grad:line grad:fall grad:hinge grad:edge grad:clip grad:steer grad:saw
                          grad:apart grad:smooth)
     string(REPLACE ":" ";" checked ${checked})
     list(GET checked 0 file)
@@ -181,6 +181,8 @@ set_tests_properties(check_clip_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^clip: 100 steps from 0, against exact values\nclip\\.w: within 0\n$")
 set_tests_properties(check_steer_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^steer: 100 steps from 0, against exact values until 1 and inexact ones from there\nsteer\\.x: within 0${about}\n$")
+set_tests_properties(check_saw_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^saw: 100 steps from 0, against exact values\nsaw\\.b: within 0\nsaw\\.h: within 0\n$")
 # Its known limits, C110 and C111, each held where it parts.
 set_tests_properties(check_apart_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^apart: 100 steps from 0, against exact values\napart\\.y: [-a-z()]+ at 0, where the interpreter gives 0\n$")

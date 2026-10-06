@@ -2829,7 +2829,9 @@ private:
         if (!point.Scalar() && constant) out.constant = exact;
         if (!any) out = Literal(Value(Extent{body.rows, body.cols}));
         out.part.clear();
-        // NaN where the value differentiated is, in a header that writes NaN.
+        // NaN where the value differentiated is, in a header that writes NaN,
+        // as one does where that value writes it and no part reads it (C113).
+        for (const Cell& c : body.cells) aware_ |= !body.constant && WritesNan(c.text);
         const std::string nan = aware_ ? Nan(Shared(body)) : "";
         for (Cell& cell : out.cells)
             if (!nan.empty()) cell = Cell("(" + nan + cell.text + ")", primary);
