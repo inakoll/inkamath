@@ -1231,13 +1231,22 @@ private:
         const std::size_t slices = Slices(left, right);
         if (!left.Scalar() && !right.Scalar() &&
             (left.size.rows != right.size.rows || left.size.cols != right.size.cols))
-            throw Reason("these matrices have different sizes");
+            throw Mismatched(left, right, "these matrices have different sizes");
         Code code;
         code.size        = left.Scalar() ? right.size : left.size;
         code.size.slices = slices;
         for (std::size_t c = 0; c < code.size.count(); ++c)
             code.cells.push_back(combine(left.At(c), right.At(c)));
         return code;
+    }
+
+    // The interpreter takes each slice of a tensor of single values as one
+    // value over a matrix, which the compiler does not yet.
+    static Reason Mismatched(const Code& a, const Code& b, const char* words) {
+        for (const Code* c : {&a, &b})
+            if (c->size.slices && c->size.count() == c->size.slices)
+                return Reason("a tensor whose slices are single values met by a matrix, for now");
+        return Reason(words);
     }
 
     // How many slices a tensor met slice by slice gives, as Matrix::Sliced counts them.
@@ -1398,7 +1407,9 @@ private:
         if (left.size.rows > 1) right = Shared(right);
         const std::size_t slices = Slices(left, right);
         if (left.size.cols != right.size.rows)
-            throw Reason("a matrix product needs as many columns on the left as rows on the right");
+            throw Mismatched(
+                left, right,
+                "a matrix product needs as many columns on the left as rows on the right");
         Code code;
         code.size = {left.size.rows, right.size.cols, slices};
         for (std::size_t c = 0; c < code.size.count(); ++c) {

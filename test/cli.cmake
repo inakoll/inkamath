@@ -356,7 +356,8 @@ file(WRITE "${OUT}/tensor.ink" "T = [1 2; 3 4;; 5 6; 7 8]\nU = [1 2; 3 4;; 5 6; 
      "a_n = (n*T)[2,1]\nb_n = (n*T)^2\nc_n | n*T > 1 = 1\nc_n = 0\nd_n = n*T + U\n"
      "f_n = [n 1;; 2 3 4]\ng_n = lim p(n*T)\nh_n = grad_(V = n*T) sum_(b=1)^2 [1 1]*V[b]*[1; 1]\n"
      "m_n[b<=2, i<=1, j<=1] | n > 2 = b\nm_n[b<=2, i<=1, j<=1] = 0\np(A)_0 = A\n"
-     "p(A)_k = p(A)_(k-1)/2\ny_0 = 0\ny_n = y_(n-1) + T[2,1,2]\nP[b<=2, j<=2, k<=2] = b\n")
+     "p(A)_k = p(A)_(k-1)/2\nq_n = [n;; 1] + [1 2]\nr_n = [n;; 1]*[1 2; 3 4]\n"
+     "y_0 = 0\ny_n = y_(n-1) + T[2,1,2]\nP[b<=2, j<=2, k<=2] = b\n")
 set(args --compile tensor.ink)
 set(stdout "cannot compile a: a 2x2x2 tensor takes one index or three, not two
 cannot compile b: only a matrix has a power, not a 2x2x2 tensor
@@ -366,6 +367,8 @@ cannot compile f: the slices of a tensor have one size, not 1x2 and 1x3
 cannot compile g: a tensor in a limit, for now
 cannot compile h: a derivative with respect to a tensor, for now
 cannot compile m: a tensor's cells under a guard that is not a constant, for now
+cannot compile q: a tensor whose slices are single values met by a matrix, for now
+cannot compile r: a tensor whose slices are single values met by a matrix, for now
 ")
 set(exit 1)
 check(compile_tensor_refused)

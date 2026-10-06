@@ -242,9 +242,10 @@ speck = one(X_n = [n;;])
 # words where it has them: two indices of a tensor, a tensor's power, tensors
 # of different numbers of slices, a literal whose slices differ; in the
 # compiler's words for a matrix, which a tensor is a stack of, a comparison;
-# and for now, a tensor in a limit, a derivative with respect to a tensor and
+# and for now, a tensor in a limit, a derivative with respect to a tensor,
 # a tensor's cells under a guard that is not a constant, as one that reads the
-# index, whose clause --check could not follow cell by cell.
+# index, whose clause --check could not follow cell by cell, and a tensor whose
+# slices are single values met by a matrix, which the interpreter stretches.
 # T and U are the session's constants, so fields, and y and P, which
 # test/cli.cmake's compile_tensor_refused refused, compile:
 #
@@ -262,6 +263,8 @@ speck = one(X_n = [n;;])
 #     m_n[b<=2, i<=1, j<=1] = 0
 #     p(A)_0 = A
 #     p(A)_k = p(A)_(k-1)/2
+#     q_n = [n;; 1] + [1 2]
+#     r_n = [n;; 1]*[1 2; 3 4]
 #     y_0 = 0
 #     y_n = y_(n-1) + T[2,1,2]
 #     P[b<=2, j<=2, k<=2] = b
@@ -274,6 +277,8 @@ speck = one(X_n = [n;;])
 #     cannot compile g: a tensor in a limit, for now
 #     cannot compile h: a derivative with respect to a tensor, for now
 #     cannot compile m: a tensor's cells under a guard that is not a constant, for now
+#     cannot compile q: a tensor whose slices are single values met by a matrix, for now
+#     cannot compile r: a tensor whose slices are single values met by a matrix, for now
 #
 # Two recorded refusals move with it: compile_tensor_refused, above, and
 # inputs_batch, test/compile/inputs.ink's 'batch', which compiles, its step
