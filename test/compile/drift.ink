@@ -115,3 +115,18 @@ inverted(x_n) = {
     y_n = 0
 }
 mirrored = inverted(x_n = ~0*(-1))
+
+# A call given to a function is computed once, however often the function
+# reads it, so calls nested ten deep are ten temporaries (C140):
+#
+#     nests: 100 steps from 0, against exact values
+#     nests.s: within 0
+#     nests.x: within 0
+nested(u_n) = {
+    f(p) = p/2 + p/4 + p/4
+    h(a, b) = a + b - a*b + b*a
+    x_0 = 0
+    x_n = h(f(f(f(f(f(f(f(f(f(f(x_(n-1))))))))))), f(f(u_n)))
+    s_n = grad_(t = u_n) f(f(f(t*t)))
+}
+nests = nested(u_n = n)
