@@ -517,7 +517,7 @@ private:
     }
 
     // An expansion's names are its own: the caller's index, cells and names
-    // are not seen inside it.
+    // are not seen inside it, nor its guard, as the interpreter's (C133).
     template <typename Body>
     Code Inside(Expansion& expansion, Body body) {
         struct Restore {
@@ -539,6 +539,7 @@ private:
         if (++expanded_ > max_expanded)
             throw Reason("calls nested " + std::to_string(max_expanded) +
                          " deep, which a recursion its guards do not end would pass");
+        const Setting<bool> unguarded(guarding_, false);
         return body();
     }
     static constexpr int max_expanded = 64;
@@ -1618,7 +1619,11 @@ private:
             return Fold(expression);
         if (!left.Scalar() || !right.Scalar()) throw Reason("a comparison of matrices");
         const std::string l = Wrap(left.cells[0], sum), r = Wrap(right.cells[0], sum);
-        return Answer(Cell("(" + Nan(left, right) + Jumps(l + " == " + r, {&left, &right}) + l +
+        // In a guard, only an equality jumps, as the interpreter's Holds.
+        const bool jumps = !guarding_ || expression->Op() == Comparison::Equal ||
+                           expression->Op() == Comparison::NotEqual;
+        return Answer(Cell("(" + Nan(left, right) +
+                               (jumps ? Jumps(l + " == " + r, {&left, &right}) : "") + l +
                                Operator(expression->Op()) + r + " ? 1.0 : 0.0)",
                            primary));
     }
@@ -1626,7 +1631,8 @@ private:
     // A guard as C tests it. Empty where it always holds, and nothing where
     // it never does.
     std::optional<std::string> Condition(const PExpression<Value>& guard) {
-        const Code code = Quiet(guard);
+        const Setting<bool> guarding(guarding_, true);
+        const Code          code = Quiet(guard);
         if (!code.Scalar()) throw Reason("a guard that is a matrix");
         if (code.constant) {
             if (!Holds(*code.constant)) return std::nullopt;
@@ -4107,6 +4113,7 @@ private:
     std::set<std::string>            aside_;    // definitions refused; see Refusals
     bool                             clauses_ = false;  // whether the step keeps them; see Build
     bool                             aware_ = false;  // whether it writes NaN, and so tests for it
+    bool                             guarding_ = false;  // in a guard, which asks only for values
     std::map<std::string, Value>     known_;    // globals that read only those
     std::set<std::string>            read_parameters_;      // by the value being compiled
     bool                             read_global_ = false;  // by the value being compiled

@@ -866,6 +866,18 @@ set(args --compile c132.ink -o c132.h)
 check(compile_c132)
 holds(compile_c132 c132.h "    m_->u[0][0][0] = 0.0;\n    m_->u[0][1][0] = 0.0;\n")
 
+# C133: a comparison read as a value in a guard does not jump where its
+# sides meet, as the interpreter's guard asks only for its value.
+file(WRITE "${OUT}/c133.ink" "h(z) = 0\nh(z) | (z > 2)*z > -1 = z\nu_n = grad_(t = x_n) h(t)\n")
+set(args --compile c133.ink -o c133.h)
+check(compile_c133)
+holds(compile_c133 c133.h "    m_->u[0] = (m_->x[0] > 2.0 ? 1.0 : 0.0) * m_->x[0] > -1.0 ? 1.0 : 0.0;\n")
+# One in a function the guard calls jumps, as a call is not the guard.
+file(WRITE "${OUT}/c133s.ink" "s(z) = (z > 2)*z\nk(z) = 0\nk(z) | s(z) > -1 = z\nw_n = grad_(t = x_n) k(t)\n")
+set(args --compile c133s.ink -o c133s.h)
+check(compile_c133s)
+holds(compile_c133s c133s.h "    m_->w[0] = (isnan(t0_) ? NAN : isnan((isnan(m_->x[0]) ? NAN : m_->x[0] == 2.0 ? NAN : m_->x[0] > 2.0 ? 1.0 : 0.0) * m_->x[0]) ? NAN : (isnan(m_->x[0]) ? NAN : m_->x[0] == 2.0 ? NAN : m_->x[0] > 2.0 ? 1.0 : 0.0) * m_->x[0] > -1.0 ? 1.0 : 0.0);\n")
+
 # C115: a constant gradient at a point that moves is no constant to fold with
 # what reads it, a fold that would take the point again.
 file(WRITE "${OUT}/c115.ink" "u_n = x_n - grad_(t = x_n) 3*t\n")
