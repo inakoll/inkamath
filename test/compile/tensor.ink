@@ -226,7 +226,7 @@ sgd(eta = 1/2, X_n[b<=2, t<=2, c<=2], Y_n[b<=2, t<=2, k<=1]) = {
 }
 batch = sgd(X_n = [1 (-1)^n; 1 -(-1)^n;; 1 1; 1 -1], Y_n = [n; 1;; n; 2])
 
-# C123: 'speck', a tensor of a single cell, keeps its three dimensions in the
+# C124: 'speck', a tensor of a single cell, keeps its three dimensions in the
 # struct, and its window and its input are moved as an array's are. y_0 = 2
 # and y_n = (n - 1) - y_(n-1), whole numbers, so
 #

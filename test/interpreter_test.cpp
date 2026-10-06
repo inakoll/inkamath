@@ -178,6 +178,9 @@ TEST_CASE("elementary") {
 TEST_CASE("fastprelude") {
     check_transcript("fastprelude.ink");
 }
+TEST_CASE("trig") {
+    check_transcript("trig.ink");
+}
 TEST_CASE("readme") {
     check_readme();
 }

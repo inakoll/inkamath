@@ -113,7 +113,7 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brin
                          inputs:chan inputs:twirl inputs:duo inputs:mean3 inputs:mean2
                          inputs:track inputs:twain inputs:nestv inputs:fed estimate:tie
                          estimate:chaos estimate:dyad estimate:flat estimate:halved
-                         estimate:steep estimate:giant elementary:els
+                         estimate:steep estimate:giant elementary:els trig:tri
                          grad:line grad:fall grad:hinge grad:edge grad:clip grad:steer grad:saw
                          grad:ring grad:notch grad:apart grad:smooth grad:cusp
                          tensor:heads tensor:whirl tensor:batch tensor:spread
@@ -170,6 +170,15 @@ add_test(NAME check_els_functions
 set_tests_properties(check_els_functions PROPERTIES
     PASS_REGULAR_EXPRESSION "els_exp\\(double arg_x\\).*els_log\\(double arg_x\\).*els_tanh\\(double arg_x\\)"
     FAIL_REGULAR_EXPRESSION "pow\\(2\\.718|isnan\\(pow\\(")
+# sin, cos, abs, max and min as the prelude writes them (DESIGN.md), and
+# grad's parts through each: every term the interpreter's.
+set_tests_properties(check_tri_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^tri: 100 steps from 0, against exact values until 0 and inexact ones from there\ntri\\.c: within 0${about}\ntri\\.g: within 0${about}\ntri\\.q: within 0${about}\ntri\\.s: within 0${about}\ntri\\.b: within 0${about}\ntri\\.l: within 0${about}\ntri\\.m: within 0${about}\ntri\\.v: within 0${about}\ntri\\.w: within 0${about}\n$")
+add_test(NAME check_tri_functions
+         COMMAND ${CMAKE_COMMAND} -E cat ${CMAKE_CURRENT_BINARY_DIR}/compile/tri.c)
+set_tests_properties(check_tri_functions PROPERTIES
+    PASS_REGULAR_EXPRESSION "tri_abs\\(double arg_x\\).*tri_sin\\(double arg_x\\).*tri_cos\\(double arg_x\\).*tri_max\\(double arg_a, double arg_b\\).*tri_max_da\\(.*tri_abs_dx\\(.*tri_cos_dx\\(.*tri_min\\(double arg_a, double arg_b\\).*tri_min_db\\(.*tri_sin_dx\\("
+    FAIL_REGULAR_EXPRESSION "[^_a-z](sin|cos)\\(")
 # grad compiled (DESIGN.md), each value carrying its part: every gradient
 # the interpreter's, as compile/grad.ink gives them.
 set_tests_properties(check_line_report PROPERTIES PASS_REGULAR_EXPRESSION

@@ -1654,10 +1654,11 @@ closures need one anyway, and can bring it.
 | C120 `[fixed]` | **`--check` fed an input of -0 as +0.** Its program writes each input with `%.17g`, which gives `-0`, and C reads that as the integer 0, so a check whose input is -0 stepped +0 and could pass against the wrong value: `1/x_n > 0` at `x_n = ~0*(-1)` was taken compiled and not interpreted. Found fixing C109. Fixed by writing a number with no point or exponent as a double, `-0.0`, as the compiler does. |
 | C121 `[fixed]` | **A compiled `log` in a NaN-aware header computed each power of 2 twice.** A decision tests each operand for NaN, and each of `ilogb`'s thirteen steps compares x with `2^(k + s)`: its test was `isnan(pow(2.0, k + s))`, a second call that C, pow setting errno, does not share with the comparison's. Under callgrind a step of `y_n = log(x_n)` took 3,430 instructions with GCC -O2, against 2,011 with no NaN test, and 1,581 against 794 with Clang. Found reading the prelude header. A power of a constant above 0 but 1 is NaN only where its exponent is, and is now tested by it, in 8 lines: 1,705 and 982 instructions. Of the headers, `inkamath_prelude.h`'s `ilogbs` moves so, its values bit-identical to the walked prelude's on 480,000 arguments, each also as 1/f; `check_els_functions` holds it. |
 | C122 `[fixed]` | **A cell of one term outside its size was written past the term's cells.** The cells of one term that no base term gives are folded into the general term's, each at its row and column, and one outside the size, `y_1[3] = 5` beside `y_n[j<=2] = n`, was stored there unchecked: the compiler wrote past its cells and crashed, where the interpreter refuses y_1, "row 3, column 1 is outside a 2x1 matrix". Found implementing tensors compiled (next in line). It is now refused in those words, as a cell of every term is, in 1 line; `compile_c122` in `test/cli.cmake` holds it. |
-| C123 `[fixed]` | **A tensor of one cell was moved as a single value.** Its member keeps its three dimensions, `double y[2][1][1][1]`, as tensors compiled decided, but the step shifted its window and copied its input as a single value's, `m_->y[1] = m_->y[0]`, which C refuses: the header did not compile. Found reviewing tensors compiled, by random models. The window now moves as an array's and the input is written to its one cell, in 2 lines; `check_speck_report` holds it, `test/compile/tensor.ink`'s `speck`. |
-| C124 `[fixed]` | **A clause for one cell that names a slice a value lacks, or none it has, compiled.** Beside a value written whole, `y_0 = [1 2;; 3 4]` with `y_0[1,2] = 5`, or `A = [1 2; 3 4]` with `A[1,1,2] = 9`, the compiler took the missing slice as the first, or dropped the one named, and wrote the cell, where the interpreter refuses the value: "a clause for one cell of y_0, a 2x1x2 tensor, names its slice, row and column". Found reviewing tensors compiled, which let through what "a tensor" had refused. The compiler now asks the interpreter's own test, `Reference::Named`, made public, in 7 lines; `compile_c124` in `test/cli.cmake` holds it. |
-| C125 `[fixed]` | **A cell of every term met a base term's own cell at its row and column alone.** Beside `y_0 = [1 2;; 3 4]` and `y_0[1,1,1] = 7`, `y_n[2,1,1] = n` was taken as given by y_0's own clause and compiled, where the interpreter asks which of y_0 and `y_n[2,1,1]` gives slice 2, row 1, column 1 of y_0; with no clause of y_0's own the refusal named `y_n[1,1]`. Found reviewing tensors compiled. The slice is now compared and named too, in 2 lines; `compile_c125` in `test/cli.cmake` holds it. |
-| C126 `[fixed]` | **A clause for one cell outside the size compiled where every cell was given before it.** A term's clauses for one cell were held to its size cell by cell, each until one gave the cell, so beside `y_0 = [1 2]`, `y_0[1,1] = 3` and `y_0[1,2] = 4`, `y_0[1,3] = 5` was never held and compiled, where the interpreter refuses y_0, "row 1, column 3 is outside a 1x2 matrix". Tensors compiled made that test build a value of the term's size for each cell and each clause, so a 150x150 matrix with two such clauses took 2.4 s to compile instead of 0.09. Found reviewing tensors compiled. Each clause is now held once, before the cells, in 4 lines; `compile_c126` in `test/cli.cmake` holds it. |
+| C123 `[kept]` | **An exact argument nearer a multiple of pi/2 than pi/2 is held gives `sin` or `cos` wrong.** The reduction's five parts are 7.4e-49 below pi/2 (2^-159.9), and an exact argument is reduced by them exactly and rounded once, so r is off by k times that: under a unit only where r is above about k 1.3e-32, 1e-31 from pi and 1.4e-26 from a multiple near 2^20. `sin(314159265358979323846264338327950288419716939937510/10^50)`, 5.8e-51 from pi, gives ~-1.47387998e-48 where mpmath gives +5.82097494e-51. No double comes so near: below 2^20 the nearest is 6.2e-19 from 29 pi/2, and the fast path takes doubles alone. Found reviewing `trig`. Kept: more parts move the bound and do not remove it, as an exact argument may lie as near as it likes, and reducing it exactly needs pi to as many digits as it has. `trig.ink` records it. |
+| C124 `[fixed]` | **A tensor of one cell was moved as a single value.** Its member keeps its three dimensions, `double y[2][1][1][1]`, as tensors compiled decided, but the step shifted its window and copied its input as a single value's, `m_->y[1] = m_->y[0]`, which C refuses: the header did not compile. Found reviewing tensors compiled, by random models. The window now moves as an array's and the input is written to its one cell, in 2 lines; `check_speck_report` holds it, `test/compile/tensor.ink`'s `speck`. |
+| C125 `[fixed]` | **A clause for one cell that names a slice a value lacks, or none it has, compiled.** Beside a value written whole, `y_0 = [1 2;; 3 4]` with `y_0[1,2] = 5`, or `A = [1 2; 3 4]` with `A[1,1,2] = 9`, the compiler took the missing slice as the first, or dropped the one named, and wrote the cell, where the interpreter refuses the value: "a clause for one cell of y_0, a 2x1x2 tensor, names its slice, row and column". Found reviewing tensors compiled, which let through what "a tensor" had refused. The compiler now asks the interpreter's own test, `Reference::Named`, made public, in 7 lines; `compile_c124` in `test/cli.cmake` holds it. |
+| C126 `[fixed]` | **A cell of every term met a base term's own cell at its row and column alone.** Beside `y_0 = [1 2;; 3 4]` and `y_0[1,1,1] = 7`, `y_n[2,1,1] = n` was taken as given by y_0's own clause and compiled, where the interpreter asks which of y_0 and `y_n[2,1,1]` gives slice 2, row 1, column 1 of y_0; with no clause of y_0's own the refusal named `y_n[1,1]`. Found reviewing tensors compiled. The slice is now compared and named too, in 2 lines; `compile_c125` in `test/cli.cmake` holds it. |
+| C127 `[fixed]` | **A clause for one cell outside the size compiled where every cell was given before it.** A term's clauses for one cell were held to its size cell by cell, each until one gave the cell, so beside `y_0 = [1 2]`, `y_0[1,1] = 3` and `y_0[1,2] = 4`, `y_0[1,3] = 5` was never held and compiled, where the interpreter refuses y_0, "row 1, column 3 is outside a 1x2 matrix". Tensors compiled made that test build a value of the term's size for each cell and each clause, so a 150x150 matrix with two such clauses took 2.4 s to compile instead of 0.09. Found reviewing tensors compiled. Each clause is now held once, before the cells, in 4 lines; `compile_c126` in `test/cli.cmake` holds it. |
 
 **Measure instructions, not the clock.** One of those changes made the matrix
 workload 20 per cent slower by the clock and not by a single instruction: with
@@ -4421,9 +4422,9 @@ that exploring seven domains asked of the interpreter, by how many asked.
   read its prelude, it gives its stack the four definitions the built-ins'
   scope holds and a function for each, given for `Number` and for no other
   number type (C65). A session's, a file's or a model's definition of one of
-  the names is another definition, and so is one the session extends with a
-  clause, which copies the prelude's into the session (`Extended`): a flag
-  carried by the definition would be copied with it, its address is not.
+  the names is another definition, a guarded clause as much as a plain one:
+  a session's clause starts a definition of its own, as a model's or a
+  file's does, rather than extending the prelude's.
   Every other call pays one comparison of its home.
 
   Asked in `Reference::Eval`, once the arguments are evaluated in the caller's
@@ -4538,7 +4539,8 @@ that exploring seven domains asked of the interpreter, by how many asked.
   out-of-domain refusals; an approximated argument; `grad`; two refusals by
   steps that become answers and one of exact arguments that stays; four by
   depth that become answers, and four that stay, of two exact arguments,
-  an approximated one, and an `exp` the session extends. Taken out of the
+  an approximated one, and an `exp` the session gives a clause, which
+  since `trig` starts a definition of its own. Taken out of the
   prototype one at a time, each exclusion fails an entry, or
   `check_els_report` for the estimating runs. `inkamath_prelude.ink` is
   wired with the implementation, as are the header, the target and the
@@ -4732,6 +4734,187 @@ that exploring seven domains asked of the interpreter, by how many asked.
 - **The prelude's part functions for the interpreter's `grad`.** Checked
   into `inkamath_prelude.h` beside the values, they would spare its walk of
   `exp`, `log` and `tanh` under `grad`, about 2.6 times faster.
+- `[done]` **`sin`, `cos`, `abs`, `max` and `min` in the prelude.** A rotation, a
+  pendulum or an oscillator needs `sin` and `cos`, and a clip, an L1 loss or
+  a hinge `abs`, `max` and `min`; each session writes its own, as README's
+  `abs` and `conditional.ink`'s `max` do, and README's `cos` is a series of
+  its own `exp`.
+
+  Decided as for `exp`, `log` and `tanh`: written in inkamath, no libm, the
+  interpreter and the compiled step the same operations on the same
+  doubles. The design, measured before it was written down:
+
+      abs(x) | x < 0 = -x
+      abs(x) | x >= 0 = x
+      max(a, b) = a
+      max(a, b) | a < b = b
+      min(a, b) = a
+      min(a, b) | b < a = b
+      sin(x) = sinr(x, floor(x*0.6366197723675814 + 1/2), 0)
+      sin(x) | abs(x) > 2^20 = 1/0
+      cos(x) = sinr(x, floor(x*0.6366197723675814 + 1/2), 1)
+      cos(x) | abs(x) > 2^20 = 1/0
+      sinr(x, k, c) = sink(~(x - k*3217/2048 + k*2391/2^29 + k*8029421003/2^63 + k*1987263209/2^96 - k*7744522442262977/2^156), mod(k + c, 4))
+      sink(r, j) = sinp(r)
+      sink(r, j) | j > 2 = -cosp(r)
+      sink(r, j) | j > 1 = -sinp(r)
+      sink(r, j) | j > 0 = cosp(r)
+      sinp(r) = r - r*sins(r*r)
+      sins(z) = z*(1/6 - z*(1/120 - z*(1/5040 - z*(1/362880 - z*(1/39916800 - z*(1/6227020800 - z*(1/1307674368000 - z/355687428096000)))))))
+      cosp(r) = cosw(r*r)
+      cosw(z) = 1 - z/2 + z*z*(1/24 - z*(1/720 - z*(1/40320 - z*(1/3628800 - z*(1/479001600 - z*(1/87178291200 - z*(1/20922789888000 - z/6402373705728000)))))))
+
+  k is the whole number nearest x/(pi/2), by the double nearest 2/pi, and r =
+  x - k pi/2 with pi/2 in five parts (Cody and Waite, as `exp` takes ln 2):
+  two of 12 bits, two of at most 33 and one of 53, within 2^-159 of it.
+  Every product k times a part but the last is exact in a double for |k| <
+  2^20, the first two in a float for |k| < 2^12, and each subtraction is
+  exact where it cancels, its operands within a factor of two (Sterbenz),
+  so r is right to a unit or so however small: below 2^20 the double nearest
+  a multiple of pi/2 in absolute terms, 45.553093477052, is 6.2e-19 from 29
+  pi/2, 66 bits cancelled, and the most cancelled are 73 bits, at
+  321307.96. The quadrant j = k + c mod 4 picks sin r, cos r or their
+  negatives, c being 1 for `cos`: x + pi/2 would round. sin r is Taylor's to
+  r^17 and cos r to r^18 in Horner's form, remainders below 2^-62 and 2^-67
+  on |r| <= pi/4, their coefficients reciprocals of whole numbers as `exp`'s
+  are. An exact argument is reduced with pi/2 so held, 7.4e-49 off, and
+  rounded once, at the `~`: `sin(355)`, 355 being 3.0e-5 from 113 pi, is
+  mpmath's, correctly rounded. r is off by k times 7.4e-49, under a unit
+  where it is above about k 1.3e-32, so an exact argument is accurate down
+  to about 1e-31 from pi and 1.4e-26 from a multiple near 2^20, and nearer
+  answers the reduction's error (C123); no double comes so near.
+
+  Past 2^20 either way, `1/0`, and NaN in a header, refused for accuracy:
+  the products would round, and the hardest doubles in [2^20, 2^22] be 2^40
+  units off, `cos` at 3442254.066112624. README says that a growing phase
+  such as `sin(w*t)` stops at 2^20. Rejected: Payne and Hanek's reduction,
+  2/pi to some 1,100 bits and a product of many words, which a step in
+  doubles cannot take without dozens of parts; answering past 2^20 regardless, 9.7 units off by 2^25 and
+  800 by 2^30 on random doubles; four parts of 33, 33, 33 and 53 bits, as
+  accurate in a double and rounded in a float, `sin(100)` 40 units of a
+  float off; three parts, which lose the doubles nearest a multiple of
+  pi/2; a minimax polynomial, two terms shorter, whose constants are no
+  reciprocals.
+
+  Accuracy, against sinl and cosl at 64 bits on 1e7 points a range, and
+  against mpmath at 200 bits elsewhere:
+
+  | | worst, sin and cos | correctly rounded |
+  |---|---|---|
+  | on [-pi/4, pi/4] | 0.75 and 1.25 units | 97.7% and 74.0% |
+  | on [-2 pi, 2 pi] | 1.56 and 1.45 units | 77% and 73% |
+  | on [-1000, 1000] | 2.34 and 2.29 units | 72.7% |
+  | on [-2^20, 2^20] | 2.43 and 2.37 units | 70.3% |
+  | the 12 doubles nearest a multiple of pi/2 below 2^20 | 0.35 units | all |
+  | a sample of 20,000 exact arguments to 10^6 | 1.43 and 1.39 units | 74.5% |
+  | in float, on [-6434, 6434] | 2.44 and 2.29 units of a float | 70.7% and 70.6% |
+
+  The float figures are the design emulated with floats operation by
+  operation, its constants the floats nearest the header's doubles, 2.20
+  units at the 300 floats nearest a multiple of pi/2 there, 1.9 on to 8192;
+  past 8192, k times 3217 passes 2^24 and rounds in a float, and the error
+  grows to x*2^-24, within the spacing of floats at x, which `--check
+  --float` shows.
+
+  Nothing `sin` and `cos` give is exact: `sin(0)` and `cos(0)` are a double's
+  0 and 1, as `exp(0)` is a double's 1. A clause for 0 would make them exact,
+  and `grad` refuses a clause that holds at a point alone, so a pendulum at
+  rest would have no derivative. `pi` is the built-in, the double nearest pi,
+  so `sin(pi)` is 1.2246468e-16, the sine of that double as C's, and no
+  argument but 0 is exactly a multiple of pi; `pi` in the prelude would be
+  the same double. `sinpi(x)`, sin(pi x), exact at whole x, was rejected: a
+  sixth function no model asks for. A 0 has the definition's sign: `sin(-0)`
+  is +0, its subtraction from 0 (C33), where C's is -0.
+
+  `abs` is README's own (section 3), two guards rather than a default and
+  one, so that a session writing it, as README and `conditional.ink` do,
+  writes the prelude's clauses again, each replacing its own: `?abs` prints
+  as now, where a default would print before them. A complex number is
+  refused, "a comparison needs real numbers", as README's `abs` refuses it:
+  a modulus needs the real and imaginary parts and a root, none in the
+  prelude, and is another function. `abs(-0)` is -0, its argument, where C's
+  `fabs` is +0.
+
+  `max` and `min` take two arguments, as C's `fmax`; a matrix's greatest cell
+  is a reduction over its cells, which the language writes as `sum_` only,
+  and is refused as `exp` refuses a matrix. A NaN on either side is refused
+  by the guard, "a comparison needs a number", and NaN in a NaN-aware
+  header, where `fmax` answers the other argument and hides it. The answer
+  is the argument chosen, exact or not: `max(1/3, 1/4)` is exactly 1/3.
+
+  `grad` differentiates the definitions: the polynomials' derivatives,
+  within 2.04 units of cos and 1.62 of -sin at worst on a sample of 2,000
+  points, and floor's 0, so a few doubles where x*2/pi + 1/2 is whole are
+  refused as floor jumping, as in `exp`. `abs`'s slope at 0 is 1, its `x >=
+  0` clause's. At a tie `max` and `min` take the first argument's slope, as
+  TensorFlow's maximum and minimum: `max(0, x)` has a ReLU's slope 0 at 0,
+  as PyTorch's, and `max(x, 0)` slope 1. Rejected: refusing the tie as a
+  jump, where `max` is continuous, which stops training at a bias set to 0;
+  half of each slope, as JAX takes it, a clause at the tie alone, which
+  `grad` refuses.
+
+  Compiled where called as `exp` is, with no change to the compiler: on a
+  prototype, `<header>_sin(double arg_x)`, `_cos`, `_abs`, `_max` and `_min`
+  and their helpers, and under `grad` `_sin_dx`, `_abs_dx`, `_max_da` and the
+  like; a model of the five, a pendulum and a `grad` through each kink at its
+  tie, checked within 0 under GCC 13 and Clang 18.
+
+  Called compiled by the interpreter as `exp` is: `inkamath_prelude.ink`'s
+  sequence adds `sin(n) + cos(n)`, `record_prelude` writes them into
+  `inkamath_prelude.h`, and a call of the prelude's own `sin` or `cos` on a
+  real double within 2^20 of 0 takes the C function under `exp`'s
+  exclusions; past it the definition refuses, walked. Walked, each is some
+  40 steps and nests 5 references deeper. `abs`, `max` and `min` stay walked:
+  a guard and an operation, and `max` and `min` take two arguments where the
+  fast path's functions take one.
+
+  What moves: no golden, header or report, measured with the prototype on
+  every test of `ctest`. `conditional.ink`'s `abs` and `max`, and the `sin`
+  and `cos` of `sequences.ink` and README, are definitions of their own. A
+  session's clause on a built-in or a name of the prelude starts a
+  definition of its own, as a model's or a file's does: `abs(y) | y < 0 =
+  -y` defines `abs`, which extending the prelude's would refuse for its
+  parameter, and `abs(3)` then finds no clause. So `floor(2.5)` after
+  `floor(x) | x > 10 = 0` finds no clause where it gave 2, `pi(x) | x > 0 =
+  1`, refused, defines `pi`, a sequence or another arity, `exp_0 = 1` or
+  `mod(a) | a > 0 = 1`, replaces the prelude's name, and a file run or
+  compiled does the same: `s_n = exp(~n)` after `exp(x) | x > 5000 = 7`
+  compiles to `n > 5000 ? 7.0 : NAN`. The extension was a remnant of the
+  built-ins being the session's own, and is deleted before this: in
+  `fastprelude.ink`, `exp(~1)` and `dive(250)` after `exp(x) | x > 5000 =
+  7` move to "no clause of exp applies".
+  `inkamath_prelude.h` gains the functions, and README's paragraph on the
+  prelude (section 1) the five names.
+
+  About 32 lines of sources: 22 in the prelude and 6 of its comment, 4 in
+  the interpreter's fast path. 14,318 lines in all now, about 14,350 after.
+
+  Specified in `test/data/spec/trig.ink`, 104 entries, 94 failing: values at
+  nine digits, mpmath's, and at seventeen, of the design emulated in C and
+  in Python with exact fractions, apart from the interpreter, at hard
+  arguments; exactness, refusals, `grad` and its ties, the fast path's steps
+  and depth, and a session's clause. And in `test/compile/trig.ink`, its
+  report every term `within 0`, wired with the implementation as
+  `inkamath_prelude.ink` is.
+
+  Built as specified: every entry passes as written, and the spec is the
+  golden `trig.ink`; no other golden, header or report moves but the
+  prelude's header. `test/compile/trig.ink` is checked as `elementary.ink`
+  is: `check_tri_report` every term within 0, its lines in the check's
+  order, c, g, q, s, b, l, m, v and w, and `check_tri_functions` the ten
+  functions and no libm `sin` or `cos`. Departures, by the review's
+  rulings: a session's clause on a built-in or a name of the prelude starts
+  a definition of its own, the extension deleted first, 6 lines, so that
+  `abs(y) | y < 0 = -y` defines `abs`, and `trig.ink` gains a clause on
+  `floor`, written by hand, and C123, recorded wrong on purpose; and the
+  refusal past 2^20 is for accuracy, which README says. Measured on the
+  build: 200,044 doubles, random on [-2^20, 2^20] and in magnitude from
+  10^-320, the nearest a multiple of pi/2 and floor's ties with their
+  neighbours, and 22 chosen, `sin` and `cos` of each and 1 over each printed
+  at 17 digits, alike compiled and walked under GCC 13 and Clang 18. 30
+  lines of sources where about 32 were planned: 22 in the prelude, 4 of its
+  comment and 4 in the fast path; 24 with the extension's deletion. 14,379
+  lines in all, after `fixes4`.
 - `[done]` **Tensors compiled.** `--compile` refuses a tensor by name, "cannot
   compile X: a tensor", so attention per batch and per head, which the
   interpreter answers (*Tensors of rank 3*), has no step: `attention.ink`
@@ -4855,4 +5038,5 @@ that exploring seven domains asked of the interpreter, by how many asked.
   registered: C122, a cell of one term outside its size written past the
   term's cells. The refactor, 41 lines fewer, every output byte for byte; then
   48 lines of sources more, where about 150 were planned: 40 in `compile.hpp`
-  and 8 in `check.hpp`; and C122's 1. 14,363 lines in all.
+  and 8 in `check.hpp`; C122's 1; and by its review, C124 to C127, 15.
+  14,402 lines in all, after `trig`.

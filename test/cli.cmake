@@ -316,39 +316,39 @@ set(stdout "cannot compile y: row 3, column 1 is outside a 2x1 matrix\n")
 set(exit 1)
 check(compile_c122)
 
-# C124: a clause for one cell of a value written whole names as many indices
+# C125: a clause for one cell of a value written whole names as many indices
 # as reading a cell of it takes, as the interpreter asks, where the compiler
 # took a slice where none was named and dropped one that was.
-file(WRITE "${OUT}/c124.ink" "A = [1 2; 3 4]\nA[1,1,2] = 9\nv_n = n*A\ny_0 = [1 2;; 3 4]\n"
+file(WRITE "${OUT}/c125.ink" "A = [1 2; 3 4]\nA[1,1,2] = 9\nv_n = n*A\ny_0 = [1 2;; 3 4]\n"
      "y_n = 2*y_(n-1)\ny_0[1,2] = 5\nz_n = [1 2; 3 4]\nz_1[1,1,2] = 5\nw_n = [1 2;; 3 4]\n"
      "w_n[1,2] = 5\n")
-set(args --compile c124.ink)
+set(args --compile c125.ink)
 set(stdout "cannot compile v: a clause for one cell of A, a 2x2 matrix, names no slice
 cannot compile w: a clause for one cell of w_n, a 2x1x2 tensor, names its slice, row and column
 cannot compile y: a clause for one cell of y_0, a 2x1x2 tensor, names its slice, row and column
 cannot compile z: a clause for one cell of z_1, a 2x2 matrix, names no slice
 ")
 set(exit 1)
-check(compile_c124)
+check(compile_c125)
 
-# C125: a cell of every term meets a base term's own cell at its slice too,
+# C126: a cell of every term meets a base term's own cell at its slice too,
 # and is named by it, where the compiler took y_0[1,1,1] for y_0[2,1,1].
-file(WRITE "${OUT}/c125.ink" "y_0 = [1 2;; 3 4]\ny_0[1,1,1] = 7\ny_n = 2*y_(n-1)\ny_n[2,1,1] = n\n"
+file(WRITE "${OUT}/c126.ink" "y_0 = [1 2;; 3 4]\ny_0[1,1,1] = 7\ny_n = 2*y_(n-1)\ny_n[2,1,1] = n\n"
      "z_0 = [1 2;; 3 4]\nz_n = 2*z_(n-1)\nz_n[2,1,1] = n\n")
-set(args --compile c125.ink)
+set(args --compile c126.ink)
 set(stdout "cannot compile y: y_0 and y_n[2,1,1] both give a cell of y_0; write y_0[2,1,1] to say which
 cannot compile z: z_0 and z_n[2,1,1] both give a cell of z_0; write z_0[2,1,1] to say which
 ")
 set(exit 1)
-check(compile_c125)
+check(compile_c126)
 
-# C126: every clause for one cell is held to the size, as the interpreter
+# C127: every clause for one cell is held to the size, as the interpreter
 # holds it, not only those met before the term's cells are all given.
-file(WRITE "${OUT}/c126.ink" "y_0 = [1 2]\ny_0[1,1] = 3\ny_0[1,2] = 4\ny_0[1,3] = 5\ny_n = y_(n-1)/2\n")
-set(args --compile c126.ink)
+file(WRITE "${OUT}/c127.ink" "y_0 = [1 2]\ny_0[1,1] = 3\ny_0[1,2] = 4\ny_0[1,3] = 5\ny_n = y_(n-1)/2\n")
+set(args --compile c127.ink)
 set(stdout "cannot compile y: row 1, column 3 is outside a 1x2 matrix\n")
 set(exit 1)
-check(compile_c126)
+check(compile_c127)
 
 # What tensors compiled refuses (DESIGN.md, test/compile/tensor.ink), in the
 # interpreter's words where it has them; y and P compile.
