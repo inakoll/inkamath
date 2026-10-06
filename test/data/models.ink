@@ -173,6 +173,14 @@ error: filters.a0 is defined in filters.ink, and only there
 >> frac filters.highpass(a = 1/2, u_n = 1).low.v_3
 7/8
 
+# A file's function is differentiated as the session's are, reading the
+# file's names; an instance's terms are not, yet (C145).
+>> grad_(t = 3) filters.power(t)
+0.6
+
+>> grad_(t = 1/2) filters.lowpass(a = t, u_n = 1).v_1
+error: grad cannot differentiate through an instance yet
+
 # Names brought in unqualified are those listed, and no others.
 >> use filters (lowpass)
 use filters (lowpass)
