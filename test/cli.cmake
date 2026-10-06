@@ -238,6 +238,14 @@ set(stderr "")
 set(exit 1)
 check(compile_rates_refused)
 
+# C119: a term read where the clause's index is not seen, in a call or under
+# a grad that takes its name, says so rather than naming no index.
+file(WRITE "${OUT}/c119.ink" "f(t) = x_t\ny_n = f(n)\nz_n = grad_(n = 2) n*x_n\n")
+set(args --compile c119.ink)
+set(stdout "cannot compile y: x_(...): a term read where y's index is not seen\ncannot compile z: x_(...): a term read where z's index is not seen\n")
+set(exit 1)
+check(compile_c119)
+
 # What several rates left refused (DESIGN.md): a slow sequence read back at
 # the input's rate, and a hold of a term the step never computes where the
 # interpreter could give one, before a slow sequence's first tick or below a
@@ -769,3 +777,13 @@ file(WRITE "${OUT}/c115.ink" "u_n = x_n - grad_(t = x_n) 3*t\n")
 set(args --compile c115.ink -o c115.h)
 check(compile_c115)
 holds(compile_c115 c115.h "    m_->u[0] = m_->x[0] - 3.0;\n")
+
+# C112: a global a call reads sees the globals, not the call's names.
+file(WRITE "${OUT}/c112.ink" "f(x) = x + g\ng = x*2\nx = 5\ny_n = f(n)\n")
+set(args --compile c112.ink -o c112.h)
+check(compile_c112)
+holds(compile_c112 c112.h "    m_->g = m_->x * 2.0;\n" "    m_->y[0] = (double)m_->index_ + m_->g;\n")
+file(WRITE "${OUT}/c112m.ink" "m(x) = {\n    y = x + g\n}\ng = x*2\nx = 5\nz_n = m(n).y\n")
+set(args --compile c112m.ink -o c112m.h)
+check(compile_c112_instance)
+holds(compile_c112_instance c112m.h "    m_->g = m_->x * 2.0;\n")

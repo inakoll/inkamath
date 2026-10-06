@@ -141,6 +141,10 @@ private:
                     }
                 }
                 Compiled compiled = compiler.Print(module, source);
+                // A mark left unresolved is no C, and the compiler's mistake (C112).
+                if (std::any_of(compiled.header.begin(), compiled.header.end(),
+                                [](unsigned char c) { return c < ' ' && c != '\n'; }))
+                    throw std::runtime_error("a control character in the header, a compiler bug");
                 // One that writes NaN anywhere past the line naming its source
                 // is compiled again, aware.
                 if (aware || !WritesNan(compiled.header, compiled.header.find('\n')))
@@ -1807,8 +1811,8 @@ private:
             return Answer(Read(derived));
         }
         if (!reading_plain_.insert(key).second) throw Reason(key + " is defined by itself");
-        // A global is evaluated in a scope of its own, where no index or place
-        // is seen.
+        // A global is evaluated in a scope of its own, where no index, place
+        // or call's name is seen (C112).
         Sequence* const   reading = std::exchange(reading_, nullptr);
         const std::string index   = std::exchange(index_, std::string());
         const auto             places  = std::exchange(places_, Captured(definition));
@@ -1819,7 +1823,8 @@ private:
         const auto cells = [](const Clause<Value>& c) { return c.parameters.cells(); };
         Code       code;
         {
-            const Home home(*this, definition);
+            const Home                home(*this, definition);
+            const Setting<Expansion*> uncalled(expansion_, nullptr);
             code = std::any_of(definition->Clauses().begin(), definition->Clauses().end(), cells)
                        ? Cells(key, *definition)
                        : Emit(definition->Clauses().front().expression);
@@ -2707,8 +2712,11 @@ private:
     // How far an index is from the clause's own: 'n', or that plus constants
     // however they are spelled -- 'n-1', 'n-k-1' in a sum over k.
     int Offset(const PExpression<Value>& index, const std::string& written) {
+        // In a call, or under a grad that takes its name, the index is not seen (C119).
         const std::string only =
-            written + ": an index other than a whole multiple of " + index_ + " plus a constant";
+            written + (index_.empty() ? ": a term read where " + within_ + "'s index is not seen"
+                                      : ": an index other than a whole multiple of " + index_ +
+                                            " plus a constant");
         if (const auto* ref = dynamic_cast<RefExpression<Value>*>(index.get());
             ref && ref->Name() == index_ && !places_.count(index_))
             return 0;
