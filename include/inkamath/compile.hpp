@@ -674,13 +674,21 @@ private:
         std::string       signature;
         for (const std::string& parameter : names)
             signature += (signature.empty() ? "double arg_" : ", double arg_") + parameter;
-        if (!functions_.count(called)) {
-            Expansion inside{{}, {}, function.home, nullptr, {}};
-            for (const std::string& parameter : names)
-                inside.values.emplace(parameter, Array("arg_" + parameter, 1, 1));
+        // Its body, its parameters 'arg_x', and with parts 'part_x' for each that moves.
+        const auto inside = [&](bool parts) {
+            Expansion expansion{{}, {}, function.home, nullptr, {}};
+            for (std::size_t i = 0; i < names.size(); ++i) {
+                Code argument = Array("arg_" + names[i], 1, 1);
+                if (parts && !arguments[i].part.empty())
+                    argument.part = {Array("part_" + names[i], 1, 1)};
+                expansion.values.emplace(names[i], argument);
+            }
             const Setting<Walked*>                 outside(limit_, nullptr);
             const Setting<std::vector<Temporary>*> unshared(temporaries_, nullptr);
-            const Code body = Inside(inside, [&] { return Chained(name, function); });
+            return Inside(expansion, [&] { return Chained(name, function); });
+        };
+        if (!functions_.count(called)) {
+            const Code body = inside(false);
             functions_.emplace(called, body.cells[0].text);
             prelude_.push_back("static inline double " + called + "(" + signature +
                                ") {\n    return " + body.cells[0].text + ";\n}\n\n");
@@ -694,15 +702,7 @@ private:
         // part reads and then the parts (DESIGN.md, grad compiled).
         const std::string derived = called + "_d" + moving, jumped = called + "_j" + moving;
         if (!parts_.count(derived)) {
-            Expansion inside{{}, {}, function.home, nullptr, {}};
-            for (std::size_t i = 0; i < names.size(); ++i) {
-                Code argument = Array("arg_" + names[i], 1, 1);
-                if (!arguments[i].part.empty()) argument.part = {Array("part_" + names[i], 1, 1)};
-                inside.values.emplace(names[i], argument);
-            }
-            const Setting<Walked*>                 outside(limit_, nullptr);
-            const Setting<std::vector<Temporary>*> unshared(temporaries_, nullptr);
-            const Code body = Inside(inside, [&] { return Chained(name, function); });
+            const Code body = inside(true);
             // Its value where an argument moves, 'mod_ja', where that tests
             // for a jump, a floor's or an equality's, as the interpreter does.
             if (body.cells[0].text != functions_.at(called)) {
