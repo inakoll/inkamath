@@ -490,10 +490,12 @@ private:
         const auto   p    = std::find_if(model.parameters.begin(), model.parameters.end(),
                                          [&](const auto& each) { return each.name == name; });
         const Extent size = input.value.Size();
-        if (p == model.parameters.end() || !p->bounds.empty() || size.slices) return "";
+        if (p == model.parameters.end() || !p->bounds.empty()) return "";
         return ", as " + model.header.substr(0, model.header.find('(')) + " states no size for " +
-               name + ": write '" + name + "_" + p->index + "[j<=" + std::to_string(size.rows) +
-               (size.cols > 1 ? ", k<=" + std::to_string(size.cols) : "") + "]'";
+               name + ": write '" + name + "_" + p->index + "[" +
+               (size.slices ? "b<=" + std::to_string(size.slices) + ", " : "") +
+               "j<=" + std::to_string(size.rows) +
+               (size.cols > 1 || size.slices ? ", k<=" + std::to_string(size.cols) : "") + "]'";
     }
 
     static Term At(Interpreter<Number>& session, const std::string& name, int n) {

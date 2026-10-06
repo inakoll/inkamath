@@ -421,6 +421,12 @@ set(args --check wide.ink v -o wide.c)
 set(stderr "inkamath: v.x_(0) has 2 cells, where the compiled step takes a single value, as mm states no size for x: write 'x_n[j<=2]'\n")
 set(exit 1)
 check(check_matrix_input)
+# A tensor too, by its slices (C130).
+file(WRITE "${OUT}/deep.ink" "mt(X_n) = {\n    t_n = 2*X_n\n}\nv = mt(X_n = [n; 1;; 2; 3])\n")
+set(args --check deep.ink v -o deep.c)
+set(stderr "inkamath: v.X_(0) has 4 cells, where the compiled step takes a single value, as mt states no size for X: write 'X_n[b<=2, j<=2, k<=1]'\n")
+set(exit 1)
+check(check_tensor_input)
 file(WRITE "${OUT}/celled.ink" "cl(x_n) = {\n    y_n = x_n[2]\n}\ncm(u_m) = {\n    z_m = u_(m-1)[2, 3]\n}\n"
      "ct(X_n) = {\n    t_n = X_n[1, 2, 1]\n}\n")
 set(args --compile celled.ink cl -o cl.h)
