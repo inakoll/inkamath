@@ -336,12 +336,16 @@ Interpreter<T, U>::Interpreter() {
         stack_.compiled = [this, functions](const Reference<U>& f, const U& x) -> std::optional<U> {
             const auto found = std::find_if(functions.begin(), functions.end(),
                                             [&](const auto& each) { return each.first == &f; });
+            if (found == functions.end() || !x.IsScalar()) return {};
+            const Number& a = x(1, 1);
+            // In its own name, as a matrix is, rather than its walk's first guard.
+            if (!(numeric_interface<Number>::imaginary(a) == 0))
+                throw std::runtime_error(f.Name() + " needs real numbers, not " +
+                                         numeric_interface<Number>::toString(a));
             // Every run of --check walks: the one its guards listen to, and
             // the disturbed ones.
-            if (found == functions.end() || !x.IsScalar() || stack_.guards || Number::disturbed)
-                return {};
+            if (stack_.guards || Number::disturbed) return {};
             const auto    c = found->second;
-            const Number& a = x(1, 1);
             const auto    z = a.Inexact();
             if (a.exact() || Number::approximated(a) || z.imag() != 0 || !std::isfinite(z.real()) ||
                 ((c == inkamath_prelude_log || c == inkamath_prelude_ilogb) && !(z.real() > 0)) ||
