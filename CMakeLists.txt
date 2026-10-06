@@ -57,6 +57,10 @@ endif()
 # --- the interpreter ---------------------------------------------------------
 add_library(inkamath INTERFACE)
 target_include_directories(inkamath INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/include)
+# The prelude's compiled functions round as its definitions do, which a fused
+# multiply-add, contracted where the target has one, does not (DESIGN.md).
+target_compile_options(inkamath INTERFACE
+    $<$<AND:$<COMPILE_LANGUAGE:CXX>,$<CXX_COMPILER_ID:GNU,Clang,AppleClang>>:-ffp-contract=off>)
 
 # --- the REPL ----------------------------------------------------------------
 add_executable(inkamath_cli src/main.cpp)

@@ -2,6 +2,7 @@
 #define H_PARSER
 
 #include <algorithm>
+#include <array>
 #include <cctype>  // isalpha
 #include <concepts>
 #include <filesystem>
@@ -9,10 +10,12 @@
 #include <iostream>
 #include <map>
 #include <memory>
+#include <optional>
 #include <sstream>
 #include <stdexcept>
 #include <string>
 #include <string_view>
+#include <type_traits>
 #include <utility>
 #include <variant>
 #include <vector>
@@ -20,8 +23,10 @@
 #include "inkamath/diagnostic.hpp"
 #include "inkamath/expression.hpp"
 #include "inkamath/expression_visitor.hpp"
+#include "inkamath/inkamath_prelude.h"
 #include "inkamath/latex.hpp"
 #include "inkamath/matrix.hpp"
+#include "inkamath/number.hpp"
 #include "inkamath/numeric_interface.hpp"
 #include "inkamath/pexpression.hpp"
 #include "inkamath/reference_stack.hpp"
@@ -286,6 +291,35 @@ template <Parsable T, Numeric U>
 Interpreter<T, U>::Interpreter() {
     const typename ReferenceStack<U>::Into builtins(stack_, stack_.Builtins());
     for (const char* line : prelude) (void)Run(line);
+    // Each function of the header is its definition's operations on the same
+    // doubles (DESIGN.md), so it is called where the definition would answer
+    // a double too: not 0, whose sign C's minus can change (C98).
+    if constexpr (std::is_same_v<T, Number>) {
+        const auto& names = stack_.Builtins().names;
+        const std::array<std::pair<const Reference<U>*, double (*)(double)>, 4> functions{{
+            {names.at("exp").get(), inkamath_prelude_exp},
+            {names.at("tanh").get(), inkamath_prelude_tanh},
+            {names.at("log").get(), inkamath_prelude_log},
+            {names.at("ilogb").get(), inkamath_prelude_ilogb},
+        }};
+        stack_.compiled = [this, functions](const Reference<U>& f, const U& x) -> std::optional<U> {
+            const auto found = std::find_if(functions.begin(), functions.end(),
+                                            [&](const auto& each) { return each.first == &f; });
+            // Every run of --check walks: the one its guards listen to, and
+            // the disturbed ones.
+            if (found == functions.end() || !x.IsScalar() || stack_.guards || Number::disturbed)
+                return {};
+            const auto    c = found->second;
+            const Number& a = x(1, 1);
+            const auto    z = a.Inexact();
+            if (a.exact() || Number::approximated(a) || z.imag() != 0 || !std::isfinite(z.real()) ||
+                ((c == inkamath_prelude_log || c == inkamath_prelude_ilogb) && !(z.real() > 0)))
+                return {};
+            const double y = c(z.real());
+            if (c == inkamath_prelude_ilogb) return U(Number(static_cast<long long>(y)));
+            return y == 0 ? std::nullopt : std::optional(U(Number(y)));
+        };
+    }
     ResetInterpreter();
 }
 

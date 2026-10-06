@@ -356,6 +356,22 @@ set(stderr "inkamath: v.x_(0) has 2 cells, where the compiled step takes a singl
 set(exit 1)
 check(check_matrix_input)
 
+# Every run of --check walks the prelude's definitions, so that its programs
+# hold the compiled functions to the walk (DESIGN.md): log, 16 references
+# deep where called compiled it is one, takes an input past 256.
+file(WRITE "${OUT}/walked.ink" "dv(k) = dv(k - 1)\ndv(k) | k < 1 = log(~3)\nmm(x_n) = {\n    y_n = x_n\n}\nv = mm(x_n = dv(245))\n")
+set(args --check walked.ink v -o walked.c)
+set(stderr "inkamath: v.x_(0): evaluation nests more than 256 references deep\n")
+set(exit 1)
+check(check_walked)
+
+# Nor does a term the file asked before: its main run forgets them (C106).
+file(APPEND "${OUT}/walked.ink" "v.x_(0)\n")
+set(args --check walked.ink v -o walked.c)
+set(stderr "inkamath: v.x_(0): evaluation nests more than 256 references deep\n")
+set(exit 1)
+check(check_walked_asked)
+
 # The lines a file written is to hold, each found as given.
 function(holds name file)
     file(READ "${OUT}/${file}" text)

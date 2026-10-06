@@ -942,7 +942,9 @@ a compiled step performs: `exp(x)` is 2^k e^r, r = x - k ln 2 and e^r a
 polynomial, and `log` reduces by `ilogb`, the power of two at or below its
 argument. An exact argument is reduced exactly, nothing they give is exact,
 and `log(0)` is refused as `1/0` is. Compiled, each is a C function of the
-header's own.
+header's own; the interpreter calls the same functions, checked in as
+`include/inkamath/inkamath_prelude.h`, on a double, where they answer what
+the definitions answer.
 `test/data/models.ink` is the whole of it.
 
 Data comes in as a file of definitions like any other, written by whatever

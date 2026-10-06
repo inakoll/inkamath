@@ -436,6 +436,10 @@ public:
 
         const auto& arguments = key.arguments;
         for (const auto& [name, value] : arguments) Divides(name, value, stack);
+        if (home == &stack.builtins_ && stack.compiled && arguments.size() == 1 && !indexed &&
+            !call.limit())
+            if (const std::optional<T> answer = stack.compiled(*this, arguments[0].second))
+                return *answer;
 
         // Only a global's answer is a function of the key and the globals
         // alone (DESIGN.md, phase 9); a local shares its name with the

@@ -175,6 +175,9 @@ TEST_CASE("inputs") {
 TEST_CASE("elementary") {
     check_transcript("elementary.ink");
 }
+TEST_CASE("fastprelude") {
+    check_transcript("fastprelude.ink");
+}
 TEST_CASE("readme") {
     check_readme();
 }
