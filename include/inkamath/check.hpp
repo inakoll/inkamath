@@ -128,9 +128,13 @@ public:
             });
         }
         std::optional<int> inexact;  // where the interpreter's terms stop being exact
+        // Where a term is a tensor, a cell is named by its slice, its row and its column.
+        const bool tensors     = std::any_of(compiled.sequences.begin(), compiled.sequences.end(),
+                                             [](const auto& s) { return s.size.slices > 0; });
+        const std::string rows = tensors ? "int rows, " : "";
         for (std::size_t k = 0; k < compiled.sequences.size(); ++k) {
             const auto&              sequence = compiled.sequences[k];
-            const std::size_t        cells    = sequence.rows * sequence.cols;
+            const std::size_t        cells    = sequence.size.count();
             const std::string        id = std::to_string(k), size = std::to_string(steps * cells);
             std::vector<std::string> want, known, why;
             std::vector<double>      about(steps * cells);
@@ -145,26 +149,27 @@ public:
                                                : ask(sequence, index);
                 if (!term.exact && (!inexact || n < *inexact)) inexact = n;
                 const bool given = term.error.empty();
-                const char kind  = !given              ? (before ? '0' : '2')
-                                   : !term.odd.empty() ? '4'
-                                   : before            ? '3'
-                                                       : '1';
-                why.push_back(kind == '2'   ? Quoted(term.error)
-                              : kind == '4' ? Quoted(term.odd)
-                                            : "0");
+                double*    at    = &about[static_cast<std::size_t>(n - first) * cells];
+                if (given)
+                    for (const auto& run : again[{name, index}]) Farther(term.value, run, at);
+                // Each cell by itself: one no double holds parts alone (C128).
                 for (std::size_t c = 0; c < cells; ++c) {
+                    const char kind = !given                 ? (before ? '0' : '2')
+                                      : !term.odd[c].empty() ? '4'
+                                      : before               ? '3'
+                                                             : '1';
+                    why.push_back(kind == '2'   ? Quoted(term.error)
+                                  : kind == '4' ? Quoted(term.odd[c])
+                                                : "0");
                     want.push_back(kind == '1' || kind == '3' ? term.cells[c] : "0.0");
                     known.push_back(std::string(1, kind));
+                    if (kind == '4') at[c] = 0;
                 }
-                if (kind == '1' || kind == '3')
-                    for (const auto& run : again[{name, index}])
-                        Farther(term.value, run,
-                                &about[static_cast<std::size_t>(n - first) * cells]);
             }
             const bool told = std::any_of(known.begin(), known.end(), [](const std::string& each) {
                 return each == "2" || each == "4";
             });
-            if (told) data += Array("const char* const", "why_" + id, steps, why);
+            if (told) data += Array("const char* const", "why_" + id, steps * cells, why);
             const bool estimated = *std::max_element(about.begin(), about.end()) > 0;
             if (estimated) {
                 std::vector<std::string> written;
@@ -178,9 +183,11 @@ public:
                        sequence.name + "[0], sizeof(" + CompileC::Real() + ") * " +
                        std::to_string(cells) + ");\n";
             held += "    held &= hold_(\"" + instance + "." + sequence.name + "\", " +
-                    std::to_string(sequence.cols) + ", " + std::to_string(cells) + ", " +
-                    std::to_string(sequence.start) + ", got_" + id + ", want_" + id + ", known_" +
-                    id + ", " + (told ? "why_" + id : std::string("0")) + ", " +
+                    std::to_string(sequence.size.cols) + ", " +
+                    (tensors ? std::to_string(sequence.size.rows) + ", " : "") +
+                    std::to_string(cells) + ", " + std::to_string(sequence.start) + ", got_" + id +
+                    ", want_" + id + ", known_" + id + ", " +
+                    (told ? "why_" + id : std::string("0")) + ", " +
                     (estimated ? "about_" + id : std::string("0")) + ");\n";
         }
         std::string arguments;
@@ -224,8 +231,8 @@ public:
                            ? std::numeric_limits<int>::min()
                            : Floor(n - found->phase, found->period);
             };
-            const std::size_t cols   = found->cols;
-            const std::size_t places = cellwise ? found->rows * cols : 1;
+            const std::size_t cols   = found->size.cols;
+            const std::size_t places = cellwise ? found->size.count() : 1;
             for (std::size_t c = 0; c < places; ++c) {
                 const int                row = cellwise ? static_cast<int>(c / cols) + 1 : 0;
                 const int                col = cellwise ? static_cast<int>(c % cols) + 1 : 0;
@@ -277,7 +284,7 @@ public:
         out += " * where the interpreter gives one. 'known' says which: 0 not asked, 1 a\n";
         out += " * term, 2 none, 3 one before the start, 4 one that is no finite double;\n";
         out += " * 'about' is each term's estimate, or none where every one is 0. */\n";
-        out += "static int hold_(const char* name, int cols, int cells, int from,\n";
+        out += "static int hold_(const char* name, int cols, " + rows + "int cells, int from,\n";
         out += "                 const " + CompileC::Real() + "* got, const double* want,\n";
         out += "                 const unsigned char* known, const char* const* why,\n";
         out += "                 const double* about) {\n";
@@ -301,7 +308,11 @@ public:
         out += "            if (past < 0 && e > " + tol + " * (1.0 + fabs(want[k]))) past = n;\n";
         out += "            continue;\n        }\n";
         out += "        printf(\"%s\", name);\n";
-        out += "        if (cells > 1)\n";
+        if (tensors)
+            out +=
+                "        if (cells > rows * cols)\n            printf(\"[%d,%d,%d]\", k % cells / "
+                "(rows * cols) + 1, k % (rows * cols) / cols + 1, k % cols + 1);\n        else ";
+        out += std::string(tensors ? "" : "        ") + "if (cells > 1)\n";
         out += "            printf(\"[%d,%d]\", k % cells / cols + 1, k % cells % cols + 1);\n";
         out += "        if (known[k] == 3)\n";
         out += "            printf(\": none at %d, where the interpreter gives %.17g\", n,\n";
@@ -309,10 +320,10 @@ public:
         out += "        else if (known[k] == 2)\n";
         out +=
             "            printf(\": " + form + " at %d, where the interpreter gives none: %s\",\n";
-        out += "                   " + got + ", n, why[k / cells]);\n";
+        out += "                   " + got + ", n, why[k]);\n";
         out += "        else if (known[k] == 4)\n";
         out += "            printf(\": " + form + " at %d, where the interpreter's term is %s\",\n";
-        out += "                   " + got + ", n, why[k / cells]);\n";
+        out += "                   " + got + ", n, why[k]);\n";
         out += "        else\n";
         out += "            printf(\": " + form + " at %d, where the interpreter gives %.17g\",\n";
         out += "                   " + got + ", n, want[k]);\n";
@@ -468,7 +479,7 @@ private:
         std::vector<std::string> cells;
         bool                     exact = true;
         std::string              error;
-        std::string              odd;  // why it is no finite double, where it is not
+        std::vector<std::string> odd;  // why each cell is no finite double, or empty
         Value                    value;
         std::vector<double>      reals;  // the cells, as doubles
     };
@@ -479,10 +490,12 @@ private:
         const auto   p    = std::find_if(model.parameters.begin(), model.parameters.end(),
                                          [&](const auto& each) { return each.name == name; });
         const Extent size = input.value.Size();
-        if (p == model.parameters.end() || !p->bounds.empty() || size.slices) return "";
+        if (p == model.parameters.end() || !p->bounds.empty()) return "";
         return ", as " + model.header.substr(0, model.header.find('(')) + " states no size for " +
-               name + ": write '" + name + "_" + p->index + "[j<=" + std::to_string(size.rows) +
-               (size.cols > 1 ? ", k<=" + std::to_string(size.cols) : "") + "]'";
+               name + ": write '" + name + "_" + p->index + "[" +
+               (size.slices ? "b<=" + std::to_string(size.slices) + ", " : "") +
+               "j<=" + std::to_string(size.rows) +
+               (size.cols > 1 || size.slices ? ", k<=" + std::to_string(size.cols) : "") + "]'";
     }
 
     static Term At(Interpreter<Number>& session, const std::string& name, int n) {
@@ -499,19 +512,16 @@ private:
             return answer;
         }
         answer.value = *value;
-        for (std::size_t i = 1; i <= value->Size().rows; ++i) {
-            for (std::size_t j = 1; j <= value->Size().cols; ++j) {
-                const Number& cell = (*value)(i, j);
-                const auto    z    = cell.Inexact();
-                if (answer.odd.empty())
-                    answer.odd = z.imag() != 0             ? "not a real number"
+        for (std::size_t c = 0; c < value->Size().count(); ++c) {
+            const Number& cell = value->data()[c];
+            const auto    z    = cell.Inexact();
+            answer.odd.push_back(z.imag() != 0             ? "not a real number"
                                  : std::isfinite(z.real()) ? ""
                                  : cell.exact()            ? "too large for a double"
-                                                           : "not a finite number";
-                answer.exact = answer.exact && cell.exact();
-                answer.cells.push_back(Double(z.real()));
-                answer.reals.push_back(z.real());
-            }
+                                                           : "not a finite number");
+            answer.exact = answer.exact && cell.exact();
+            answer.cells.push_back(Double(z.real()));
+            answer.reals.push_back(z.real());
         }
         return answer;
     }
@@ -521,7 +531,7 @@ private:
     // size or not finite.
     static void Farther(const Value& term, const std::optional<Value>& run, double* about) {
         const bool same = run && run->Size() == term.Size();
-        for (std::size_t c = 0; c < term.Size().rows * term.Size().cols; ++c) {
+        for (std::size_t c = 0; c < term.Size().count(); ++c) {
             const double d = same ? Number::abs(run->data()[c] - term.data()[c]) : HUGE_VAL;
             about[c]       = std::max(about[c], d <= HUGE_VAL ? d : HUGE_VAL);
         }

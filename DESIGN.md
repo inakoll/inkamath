@@ -1641,7 +1641,7 @@ closures need one anyway, and can bring it.
 | C107 `[fixed]` | **Two named instances of one model shared the unnamed instance it writes.** An unnamed instance was kept by where it is written and what it reads there, not by the instance that writes it, so with `a = veil(x_n = y_n)` and `b = veil(x_n = 2*y_n)` in a model, `veil` writing `bare(u_n = x_n).c_n`, the header kept one copy, `a`'s, and `b.c` read `a.c_bare.c`: `--check` reported `two.b.c: 1 at 2, where the interpreter gives 2`. It is now kept by its scope too, in 1 line; `two` in `test/compile/history.ink` holds it. |
 | C108 `[fixed]` | **`--check` refused an unnamed instance with a guarded clause.** The check reads a guarded sequence's clauses, to report a guard that takes another clause, from the instance checked by the sequence's name, and an unnamed instance's is no name there: with `c_n \| u_n > 2 = 2` and `c_n = u_n` in `capped(u_n)`, and `c_n = capped(u_n = x_n).c_n` in `cap(x_n)`, checking `hid = cap(x_n = n)` stopped, "the instance has no sequence c_capped.c", before and after C84's fix. They are now read from the instance made again for its terms (C84), in 4 lines; `hid` in `test/compile/history.ink` holds it. |
 | C109 `[fixed]` | **A compiled subtraction of +0 from -0 is -0.** The interpreter reads `a - b` as `a + -b`, the negation `0 - b` (C33), and the compiler writes it as C's `a - b`, alike but at a = -0 and b = +0, where the step has -0 and the interpreter +0: `1/(~0*(-1) - ~0)` is inf interpreted and -inf compiled. `--check` holds -0 equal to 0. Left open by C98's fix; grad compiled had it too, the quotient rule's `a' - q*b'` at x = -0 making `1/grad_(t = 1/2) ((t*x)/(1 - t))` -inf compiled. The owner's decision: the compiler writes the interpreter's operations, `a + (0.0 - b)`, `0.0f` in a float header, so they agree by construction; the interpreter keeps its +0 (C33). A negative number written stays `a - 2.0`, the same in IEEE arithmetic. 43 subtractions moved, in 9 of the 14 expected headers, both float ones and the prelude's, whose compiled and walked functions still agree to the bit, signs included, on 80,000 calls; `hand` costs 0.02% more instructions. `zeroed` in `test/compile/drift.ink` and `cusp` in `grad.ink` hold it through `1/x`. |
-| C110 `[kept]` | **A compiled gradient through a clause with no part times an infinity is NaN.** A part is there by the clauses, 0 where the clause taken has none, so `grad_(t = 6) f(t)*~(10^400)`, f a clamp at 1, has 0 times inf for its part, NaN, where the interpreter has no part to multiply and answers 0. Kept: a part of 0 is what lets a chain of clauses be one C expression, and only an infinity tells it from none; testing where each product's part is there costs a condition per product for a value no model reaches. A power whose derivative is infinite at a base of 0 reached it without an infinity written, and is tested since (C118); what stays needs an infinite value, written or a quotient's: an inexact value divided by a dead clause's 0 is an infinity in the interpreter too, so `grad_(t = x) (~(1/3)/relu(t) + t)` is NaN where x < 0 and the interpreter answers 1. Testing a quotient's part where its divisor's is there costs a choice of two parts, about 5 lines, against the power's 3. Found specifying `grad` compiled (next in line); `apart` in `test/compile/grad.ink` holds it, its program failing. |
+| C110 `[kept]` | **A compiled gradient through a clause with no part times an infinity is NaN.** A part is there by the clauses, 0 where the clause taken has none, so `grad_(t = 6) f(t)*~(10^400)`, f a clamp at 1, has 0 times inf for its part, NaN, where the interpreter has no part to multiply and answers 0. Kept: a part of 0 is what lets a chain of clauses be one C expression, and only an infinity tells it from none; testing where each product's part is there costs a condition per product for a value no model reaches. A power whose derivative is infinite at a base of 0 reached it without an infinity written, and is tested since (C118); a quotient by a dead clause's 0, `grad_(t = x) (~(1/3)/relu(t) + t)` NaN where x < 0 though the interpreter answers 1, is too: its part is a'/b where its divisor's is not there, 0 without a', in 11 lines, `e` in `edge` holding it. What stays needs an infinite value times a part of 0, written or a quotient's: `grad_(t = x) (~(1/3)/relu(t)*relu(t) + t)` is NaN where x < 0 and the interpreter answers 1. Found specifying `grad` compiled (next in line); `apart` in `test/compile/grad.ink` holds it, its program failing. |
 | C111 `[fixed]` | **A compiled gradient answered where the jump inside `exp`'s part is dropped.** `exp` reduces by `floor(x*1.4426950408889634 + 1/2)`, and at the few doubles where that is whole, ~0.34657359027997264 among them, the interpreter refuses `grad` of `exp` as it refuses any `floor` at a jump, and the compiled part function is NaN there. Where a `floor` or a comparison then reads `exp`'s value and drops its part, `grad_(t = x) floor(exp(t))*t` is 1 compiled and refused interpreted. The interpreter's refusal is itself spurious, `exp` being smooth there; the compiler's NaN follows the interpreter's. Found reviewing the specification of `grad` compiled. Fixed with C117: `exp`'s value where its argument moves is a function of its own that tests the jump, so the `floor` reads NaN there; `smooth` in `test/compile/grad.ink` holds it. |
 | C112 `[fixed]` | **A global read inside a compiled function reads the function's parameters.** A function is compiled where it is called, its parameters bound for its body, and a global its body reads is compiled where it stands but still sees those bindings: with `f(x) = x + g`, `g = x*2`, `x = 5` and `y_n = f(n)`, the interpreter's y_3 is 13, and the header computes `m_->g = (double)y * 2.0`, the call's argument, in `update`, which is no C. `grad` refuses one that reads grad's own name, through `Derivative::Names`; nothing refuses the rest. Found implementing `grad` compiled (next in line). An instance without memory read the same, its parameters for the call's. A global is now compiled with no call's names, as with no index or place, in 1 line; `compile_c112` and `compile_c112_instance` in `test/cli.cmake` hold it. A header holding a control character, a mark left unresolved as this one was, is now an error, in 3 lines, which no input reaches since. |
 | C113 `[fixed]` | **A compiled gradient answered where the interpreter refuses in a value no part reads.** The test for a refusal is written in the value, a `floor`'s or a comparison's, and `grad` keeps only the part, so where no part reads that value and the header writes no NaN otherwise, the test was dropped with it: `grad_(t = x_n) (t - floor(t))` was 1 at every whole x, where the interpreter says the floor jumps, and so for a comparison, a clause refused wherever taken and a power whose derivative is infinite. Found reviewing the implementation of `grad` compiled (next in line). A body whose value writes NaN now makes the header write it, as a cell not taken does, so its gradient is NaN where that value is, in 1 line; `saw` in `test/compile/grad.ink` holds it. |
@@ -1650,8 +1650,20 @@ closures need one anyway, and can bring it.
 | C116 `[fixed]` | **A power's infinite derivative at a constant point was infinite.** The test for a base of 0 under a power whose derivative is infinite there was written only for a base that is not a constant, and at a constant point the part folds: `n*grad_(t = 0) t^(1/2)` was `index_ * INFINITY`, where the interpreter refuses every term. Found reviewing the implementation of `grad` compiled (next in line). A constant base of 0 is now tested too, so the step is NaN at every n, as for a comparison or a `floor` at a jump at a constant point, in the same line; `v` in `edge` in `test/compile/grad.ink` holds it. |
 | C117 `[fixed]` | **A compiled gradient through `ceil` or `mod` answered at `floor`'s jump.** Each is the prelude's by `floor`, compiled as a function of the header's from its body without parts, so its `floor` tested no jump: `grad_(t = x) mod(t, 2)` was 1 and `grad_(t = x) ceil(t)*t` was `ceil(t)` at every whole x, where the interpreter says the floor jumps. Found reviewing the implementation of `grad` compiled (next in line). Where an argument moves, the value is now its body carrying parts, a function of its own, `mod_ja`, where that tests for a jump, and the plain one where the arguments' clauses leave nothing moving; its call makes the header write NaN, so that a grad that drops the value is NaN where it is (C113). In 14 lines; `ring` and `notch` in `test/compile/grad.ink` hold it. |
 | C118 `[fixed]` | **A compiled gradient through a dead ReLU under a root was NaN.** A power whose derivative is infinite at a base of 0, `c*u^(c-1)*u'` for c < 1, multiplied the part 0 of a clause that has none by the infinity of its base's 0: `grad_(t = x) relu(t)^(1/2)*t` was NaN wherever x < 0, where the interpreter, the clause taken having no part, answers 0. C110 reached by a model, with no infinity written. Found reviewing the implementation of `grad` compiled (next in line). Such a power's part, for 0 < c < 1, is now tested where its base's is there, 0 elsewhere, in 4 lines; below 0 its value is infinite there too, the interpreter refusing the division, and its part stays NaN. `h` and `i` in `edge` in `test/compile/grad.ink` hold it. |
-| C119 `[fixed]` | **A term read where the clause's index is not seen named no index.** A call's body, or a grad's taking the index's name, does not see the clause's index, and the refusal of every term read there named it as empty: `f(t) = x_t` and `y_n = f(n)` said "x_(...): an index other than a whole multiple of  plus a constant", where the interpreter's y_3 is x_3. Found alongside C112. It now says "a term read where y's index is not seen", in 3 lines; `compile_c119` in `test/cli.cmake` holds it. Compiling such a read is not done. |
+| C119 `[fixed]` | **A term read where the clause's index is not seen named no index.** A call's body, or a grad's taking the index's name, does not see the clause's index, and the refusal of every term read there named it as empty: `f(t) = x_t` and `y_n = f(n)` said "x_(...): an index other than a whole multiple of  plus a constant", where the interpreter's y_3 is x_3. Found alongside C112. It now says "a term read where y's index is not seen", in 3 lines; `compile_c119` in `test/cli.cmake` holds it. A call given the index, give or take a constant, now reads the term as the interpreter does: each such argument's distance from the caller's index is kept for its parameter, in 18 lines, `compile_c119_call` holding it; under a grad taking the index's name the read stays refused. |
 | C120 `[fixed]` | **`--check` fed an input of -0 as +0.** Its program writes each input with `%.17g`, which gives `-0`, and C reads that as the integer 0, so a check whose input is -0 stepped +0 and could pass against the wrong value: `1/x_n > 0` at `x_n = ~0*(-1)` was taken compiled and not interpreted. Found fixing C109. Fixed by writing a number with no point or exponent as a double, `-0.0`, as the compiler does. |
+| C121 `[fixed]` | **A compiled `log` in a NaN-aware header computed each power of 2 twice.** A decision tests each operand for NaN, and each of `ilogb`'s thirteen steps compares x with `2^(k + s)`: its test was `isnan(pow(2.0, k + s))`, a second call that C, pow setting errno, does not share with the comparison's. Under callgrind a step of `y_n = log(x_n)` took 3,430 instructions with GCC -O2, against 2,011 with no NaN test, and 1,581 against 794 with Clang. Found reading the prelude header. A power of a constant above 0 but 1 is NaN only where its exponent is, and is now tested by it, in 8 lines: 1,705 and 982 instructions. Of the headers, `inkamath_prelude.h`'s `ilogbs` moves so, its values bit-identical to the walked prelude's on 480,000 arguments, each also as 1/f; `check_els_functions` holds it. |
+| C122 `[fixed]` | **A cell of one term outside its size was written past the term's cells.** The cells of one term that no base term gives are folded into the general term's, each at its row and column, and one outside the size, `y_1[3] = 5` beside `y_n[j<=2] = n`, was stored there unchecked: the compiler wrote past its cells and crashed, where the interpreter refuses y_1, "row 3, column 1 is outside a 2x1 matrix". Found implementing tensors compiled (next in line). It is now refused in those words, as a cell of every term is, in 1 line; `compile_c122` in `test/cli.cmake` holds it. |
+| C123 `[kept]` | **An exact argument nearer a multiple of pi/2 than pi/2 is held gives `sin` or `cos` wrong.** The reduction's five parts are 7.4e-49 below pi/2 (2^-159.9), and an exact argument is reduced by them exactly and rounded once, so r is off by k times that: under a unit only where r is above about k 1.3e-32, 1e-31 from pi and 1.4e-26 from a multiple near 2^20. `sin(314159265358979323846264338327950288419716939937510/10^50)`, 5.8e-51 from pi, gives ~-1.47387998e-48 where mpmath gives +5.82097494e-51. No double comes so near: below 2^20 the nearest is 6.2e-19 from 29 pi/2, and the fast path takes doubles alone. Found reviewing `trig`. Kept: more parts move the bound and do not remove it, as an exact argument may lie as near as it likes, and reducing it exactly needs pi to as many digits as it has. `trig.ink` records it. |
+| C124 `[fixed]` | **A tensor of one cell was moved as a single value.** Its member keeps its three dimensions, `double y[2][1][1][1]`, as tensors compiled decided, but the step shifted its window and copied its input as a single value's, `m_->y[1] = m_->y[0]`, which C refuses: the header did not compile. Found reviewing tensors compiled, by random models. The window now moves as an array's and the input is written to its one cell, in 2 lines; `check_speck_report` holds it, `test/compile/tensor.ink`'s `speck`. |
+| C125 `[fixed]` | **A clause for one cell that names a slice a value lacks, or none it has, compiled.** Beside a value written whole, `y_0 = [1 2;; 3 4]` with `y_0[1,2] = 5`, or `A = [1 2; 3 4]` with `A[1,1,2] = 9`, the compiler took the missing slice as the first, or dropped the one named, and wrote the cell, where the interpreter refuses the value: "a clause for one cell of y_0, a 2x1x2 tensor, names its slice, row and column". Found reviewing tensors compiled, which let through what "a tensor" had refused. The compiler now asks the interpreter's own test, `Reference::Named`, made public, in 7 lines; `compile_c124` in `test/cli.cmake` holds it. |
+| C126 `[fixed]` | **A cell of every term met a base term's own cell at its row and column alone.** Beside `y_0 = [1 2;; 3 4]` and `y_0[1,1,1] = 7`, `y_n[2,1,1] = n` was taken as given by y_0's own clause and compiled, where the interpreter asks which of y_0 and `y_n[2,1,1]` gives slice 2, row 1, column 1 of y_0; with no clause of y_0's own the refusal named `y_n[1,1]`. Found reviewing tensors compiled. The slice is now compared and named too, in 2 lines; `compile_c125` in `test/cli.cmake` holds it. |
+| C127 `[fixed]` | **A clause for one cell outside the size compiled where every cell was given before it.** A term's clauses for one cell were held to its size cell by cell, each until one gave the cell, so beside `y_0 = [1 2]`, `y_0[1,1] = 3` and `y_0[1,2] = 4`, `y_0[1,3] = 5` was never held and compiled, where the interpreter refuses y_0, "row 1, column 3 is outside a 1x2 matrix". Tensors compiled made that test build a value of the term's size for each cell and each clause, so a 150x150 matrix with two such clauses took 2.4 s to compile instead of 0.09. Found reviewing tensors compiled. Each clause is now held once, before the cells, in 4 lines; `compile_c126` in `test/cli.cmake` holds it. |
+| C128 `[fixed]` | **`--check` judged a term's cells by its first that no double holds.** A term with one such cell was "no finite double" whole, so every cell of it parted, finite ones included: `p_n = p_(n-1)/2 + 7/16*p_(n-1)*p_(n-1)` from `[5/4 0; 0 2]` reported `p[1,1]`, 1.2e+19 in both, at 12, where `p[2,2]` passed every double. Found reviewing `--check`. Each cell is now judged by itself, and says why it is none, in as many lines as before; `check_sever_report`, `test/compile/history.ink`'s `sever`, holds it. |
+| C129 `[fixed]` | **A header named its fixed parameters wrongly.** Its first comment said "Compiled in, as a size, a bound or a lag cannot change", but a parameter is compiled in wherever the step needs a constant, and a matrix power's exponent and a cell's place are none of the three: `pw(k = 2, i = 1, x_n)` reading `([1 1; 0 1]^k*[x_n; 1])[i]` listed i and k so. Found reviewing tensors compiled. It now says "Compiled in as constants, these cannot change", as does `README.md`; `test/compile/expected/heat.h`'s comment moves so, and `compile_fixed_power` in `test/cli.cmake` holds it. |
+| C130 `[fixed]` | **`--check` gave no size to state for a tensor input.** An instance feeding a model's unsized input a matrix is refused with the size that would hold it, "write 'x_n[j<=2]'" (C83), but one feeding it a tensor was refused with no hint, where the compiler, for a cell read past the same input, says "write 'X_n[b<=1, j<=2, k<=1]'". Found reviewing tensors compiled. It now gives the slices too, in 2 lines; `check_tensor_input` in `test/cli.cmake` holds it. |
+| C132 `[fixed]` | **A compiled gradient with respect to a matrix was a single 0 where nothing in its body moves.** With no part in any cell of the body, the gradient was a zero of the body's shape where the interpreter's is a zero of the point's: `grad_(v = [x_n; 1]) [1 1]*f(v)`, f a step by its cells, `f(z)[i] \| z[i] > 0 = 1` and `f(z)[i] = 0`, was `u[1]` in the header where the interpreter answers `[0; 0]`, and `--check` held the first cell alone, past which it wrote its estimates. Reached before by a guarded function of constants, `grad_(v = [x_n; 1]) q(v[1])`; found reviewing guards on cells at run time, whose masks reach it. It is the point's shape now, in the same line; `compile_c132` in `test/cli.cmake` holds it. |
+| C133 `[fixed]` | **A compiled gradient was NaN where a comparison read as a value in a guard met its threshold.** Its sides moving, such a comparison was tested for a jump, as one outside a guard is, where the interpreter's guard asks only for its value and refuses an equality alone: beside `h(z) = 0`, `h(z) \| (z > 2)*z > -1 = z` gave `grad_(t = x_n) h(t)` NaN at 2, where the interpreter answers 1. Found reviewing guards on cells at run time, by fuzzing functions by cells, which reach it per cell. In a guard only an equality is tested now, and in a function it calls anything, as the interpreter's call leaves the guard, in 7 lines; `compile_c133` and `compile_c133s` in `test/cli.cmake` hold it. |
 
 **Measure instructions, not the clock.** One of those changes made the matrix
 workload 20 per cent slower by the clock and not by a single instruction: with
@@ -4415,9 +4427,9 @@ that exploring seven domains asked of the interpreter, by how many asked.
   read its prelude, it gives its stack the four definitions the built-ins'
   scope holds and a function for each, given for `Number` and for no other
   number type (C65). A session's, a file's or a model's definition of one of
-  the names is another definition, and so is one the session extends with a
-  clause, which copies the prelude's into the session (`Extended`): a flag
-  carried by the definition would be copied with it, its address is not.
+  the names is another definition, a guarded clause as much as a plain one:
+  a session's clause starts a definition of its own, as a model's or a
+  file's does, rather than extending the prelude's.
   Every other call pays one comparison of its home.
 
   Asked in `Reference::Eval`, once the arguments are evaluated in the caller's
@@ -4532,7 +4544,8 @@ that exploring seven domains asked of the interpreter, by how many asked.
   out-of-domain refusals; an approximated argument; `grad`; two refusals by
   steps that become answers and one of exact arguments that stays; four by
   depth that become answers, and four that stay, of two exact arguments,
-  an approximated one, and an `exp` the session extends. Taken out of the
+  an approximated one, and an `exp` the session gives a clause, which
+  since `trig` starts a definition of its own. Taken out of the
   prototype one at a time, each exclusion fails an entry, or
   `check_els_report` for the estimating runs. `inkamath_prelude.ink` is
   wired with the implementation, as are the header, the target and the
@@ -4623,7 +4636,7 @@ that exploring seven domains asked of the interpreter, by how many asked.
   walks the parts too; of a matrix power; of a power whose exponent is
   not a constant, which five lines would compile, its part absent where the
   exponent is 0 by the conditions below, but which no model asks; and through a definition by cells, whose guards
-  the compiler takes as constants only (*Guards on cells at run time*).
+  the compiler took as constants only, until *Guards on cells at run time*.
 
   `--check` needs nothing new. The interpreter's terms are its grad's,
   walked by `derivative.hpp` in every run, the disturbed ones too, as
@@ -4720,9 +4733,423 @@ that exploring seven domains asked of the interpreter, by how many asked.
   review, C113 to C118, fixed, and C111 with C117. 387 lines of sources
   more, where about 350 were planned: 381 in `compile.hpp` and 6 in
   `derivative.hpp`. 14,307 lines in all.
-- **Guards on cells at run time.** A definition by cells whose guard reads
-  what is not a constant, a ReLU written by its cells, is refused; compiled,
-  each cell a chain, it would carry `grad`'s parts through cells too.
+- `[done]` **Guards on cells at run time.** `--compile` decides the guards of a
+  matrix or a function by cells while compiling, and refuses one that reads
+  a value that moves, "a guard on cells that is not a constant": a ReLU
+  written by its cells, `relu(z)[i] | z[i] > 0 = z[i]`, applied in a step.
+  Under `grad` it refuses every definition by cells, guarded or not, "a
+  derivative through a definition by cells, for now", so a network trained
+  by `grad` through its activations has no step. A term by cells already
+  tests its guards at run time (*A sequence's terms cell by cell*).
+
+  Decided: the value and the parts, as the interpreter's `grad` gives both
+  (*`grad` of a definition by cells*). Each cell is the chain the interpreter
+  tries: the clauses for that cell in the order written, then those for
+  every cell, guarded before unguarded, then the cell of the matrix written
+  whole, else 0, never NaN, a cell no clause gives being 0. It is the chain
+  `Chain` makes of a function's clauses, built per cell with the cell's
+  places bound as constants, so a guard reading only places folds as now.
+  Under `grad` a cell's chain carries its chain of parts as a function's
+  does: the clause's part, 0 where the clause taken has none, and the
+  definition has a part where any cell's clause has one, as
+  `derivative.hpp` stores it, so where none does at the point nothing
+  reading it tests a jump. An equality guarding a cell
+  whose sides move is NaN where they meet, where the interpreter says
+  `pk[1,1] takes a clause at t = 0 that holds only there`, and `z*(z > 0)`
+  where its comparison jumps, as anywhere. A guard that reads a parameter is
+  a test too, where today it folds the parameter's value in and the header
+  says it is "compiled in, as a size, a bound or a lag", which a guard is
+  not: the parameter is a field and the definition is computed where the
+  parameters are, as any value reading them. No recorded header moves:
+  `heat.h`'s are the only guards on cells, and read places only.
+
+  `--check` needs nothing new. Its record of each cell's clause, and the
+  flip it reports, follow the clauses of a sequence's terms; a definition by
+  cells compiled where it is called or read parts only by its values, as a
+  guarded function does. Following it was rejected: its guards are asked
+  once per call, `rfit`'s ReLU three times in each pass of its loss, and the
+  interpreter's memo asks a repeated call once, so the record would need a
+  key per call that neither side has. A ReLU to be watched at its threshold
+  is a term by cells, as `rift` is. Nor
+  is anything new in a NaN-aware header: a cell's guard tests its operands
+  as any guard does there, and a chain writes no NaN that its clauses do
+  not, so a ReLU by cells leaves a header unaware. In float the chains are
+  floats as everything is.
+
+  Tensors compiled refuse "a tensor's cells under a guard that is not a
+  constant" for a term, whose clause `--check` keeps by row and column; that
+  refusal stays, being about the record. A tensor's function by cells, a
+  batch's ReLU, is the chain here with the slice a place, as tensors
+  compiled, which landed first, bind it.
+
+  Stays refused: a guarded clause for one cell of one term, `c_2[1] | x_2 >
+  0 = 5`, "a guarded cell of one term", a term whose clause `--check` would
+  have to keep and which no model asks; a Jacobian, now reached through
+  cells and refused in the interpreter's words; and a place or a size that
+  moves, as now. Rejected: the value alone, `grad` through cells refused
+  for now, when training through the activation is the case and `Chain`
+  already carries the parts; a loop over the cells with an `if` per cell,
+  where the step is expressions and the cells are known while compiling;
+  and the ReLU rewritten as a function of single values called per cell,
+  which leaves the definition by cells refused under `grad`.
+
+  About 30 lines of sources: `CellOf` building a chain with `Condition` in
+  place of `GuardHolds`, the fallback passed in, about 15; `Cells` assembling
+  the cells' parts and where they are, about 15; the refusal and
+  `GuardHolds` 4 fewer. `TermCells` walks a term cell's clauses the same way
+  over strings; sharing the walk is looked for, landed first as a refactor,
+  every header byte for byte, where it removes lines. Sized against
+  `Chain`'s parts in `grad` compiled, about 25 lines and reused whole, and
+  sizes inferred's compiler half, 20. Past 45 the implementation stops and
+  reports. 14,355 lines in all before it, at cfb0abb; about 14,385 after.
+
+  Specified in `test/compile/cellguards.ink`, its numbers worked out with
+  exact fractions in Python and by hand, then seen to be the interpreter's:
+  `rfit`, a ReLU network trained by `grad`, a unit reviving at the first step
+  and the samples fitted at the second, exact and within 0 in double and in
+  float; `tfit`, `rfit` with its samples a tensor's slices and its ReLU of
+  three indices, every cell's clause flipping at every step, the same in
+  float; `layer`, `net.ink`'s network with `h_n = relu(z_n)`, computing h
+  by `net.h`'s two lines; `kink`, each cell's slope either side of its
+  threshold, NaN where the interpreter refuses, and a cell moving where
+  another cell's clause has a part; `crest`, `rift` by a function, parting
+  by its values alone; `mask`, a parameter read by a cell guard become a
+  field; `order`, the chain's order told from the others, the whole's cell
+  and 0 at its end; and two refusals. Wired with the implementation:
+  the checks and their reports in `test/CMakeLists.txt`, `rfit` and `tfit`
+  in float, `crest` failing, `layer`'s lines and the refusals in
+  `test/cli.cmake`. One
+  recorded refusal moves: `q` in `grad.ink`, `grad_(t = x_n) cel(t)[2]`,
+  compiles, 2 at every step, and leaves `compile_grad_refused`; README's
+  sentence on `grad` compiled gains the network.
+
+  Built as specified: every report as `cellguards.ink` gives it, `rfit` and
+  `tfit` in float too, `layer`'s two lines byte for byte and the two
+  refusals in their words; every other header, check program and golden as
+  before. First a refactor: `Walk`, the order in which a cell's clauses are
+  tried, shared by `TermCells` and `CellOf`, every output byte for byte, 10
+  lines fewer. Departures. `fit` is `rfit`, as `adam.ink`'s `fit` already
+  names the check program, in a commit of its own. `q` compiling is held by
+  its line, `compile_cellguards_cel` in `test/cli.cmake`. Specified on the
+  way, in a commit of its own, as ruled on its review: `tfit`. Then 15 lines
+  of sources more, where about 30 were planned, all in `compile.hpp`. 14,421
+  lines in all. `Assembled` stores a constant part at its place among the
+  cells, not by row and column, which a tensor's slices need; no header
+  moved. Its review fixed C132 and C133, 8 lines, and found the
+  interpreter refusing where the step answers when it sizes a clause under
+  `grad` or when the value written whole refuses beside cells that each have
+  a clause, and constants folded from a call that ignores a moving argument
+  refused. 14,431 lines in all, after `fixes5`.
 - **The prelude's part functions for the interpreter's `grad`.** Checked
   into `inkamath_prelude.h` beside the values, they would spare its walk of
   `exp`, `log` and `tanh` under `grad`, about 2.6 times faster.
+- `[done]` **`sin`, `cos`, `abs`, `max` and `min` in the prelude.** A rotation, a
+  pendulum or an oscillator needs `sin` and `cos`, and a clip, an L1 loss or
+  a hinge `abs`, `max` and `min`; each session writes its own, as README's
+  `abs` and `conditional.ink`'s `max` do, and README's `cos` is a series of
+  its own `exp`.
+
+  Decided as for `exp`, `log` and `tanh`: written in inkamath, no libm, the
+  interpreter and the compiled step the same operations on the same
+  doubles. The design, measured before it was written down:
+
+      abs(x) | x < 0 = -x
+      abs(x) | x >= 0 = x
+      max(a, b) = a
+      max(a, b) | a < b = b
+      min(a, b) = a
+      min(a, b) | b < a = b
+      sin(x) = sinr(x, floor(x*0.6366197723675814 + 1/2), 0)
+      sin(x) | abs(x) > 2^20 = 1/0
+      cos(x) = sinr(x, floor(x*0.6366197723675814 + 1/2), 1)
+      cos(x) | abs(x) > 2^20 = 1/0
+      sinr(x, k, c) = sink(~(x - k*3217/2048 + k*2391/2^29 + k*8029421003/2^63 + k*1987263209/2^96 - k*7744522442262977/2^156), mod(k + c, 4))
+      sink(r, j) = sinp(r)
+      sink(r, j) | j > 2 = -cosp(r)
+      sink(r, j) | j > 1 = -sinp(r)
+      sink(r, j) | j > 0 = cosp(r)
+      sinp(r) = r - r*sins(r*r)
+      sins(z) = z*(1/6 - z*(1/120 - z*(1/5040 - z*(1/362880 - z*(1/39916800 - z*(1/6227020800 - z*(1/1307674368000 - z/355687428096000)))))))
+      cosp(r) = cosw(r*r)
+      cosw(z) = 1 - z/2 + z*z*(1/24 - z*(1/720 - z*(1/40320 - z*(1/3628800 - z*(1/479001600 - z*(1/87178291200 - z*(1/20922789888000 - z/6402373705728000)))))))
+
+  k is the whole number nearest x/(pi/2), by the double nearest 2/pi, and r =
+  x - k pi/2 with pi/2 in five parts (Cody and Waite, as `exp` takes ln 2):
+  two of 12 bits, two of at most 33 and one of 53, within 2^-159 of it.
+  Every product k times a part but the last is exact in a double for |k| <
+  2^20, the first two in a float for |k| < 2^12, and each subtraction is
+  exact where it cancels, its operands within a factor of two (Sterbenz),
+  so r is right to a unit or so however small: below 2^20 the double nearest
+  a multiple of pi/2 in absolute terms, 45.553093477052, is 6.2e-19 from 29
+  pi/2, 66 bits cancelled, and the most cancelled are 73 bits, at
+  321307.96. The quadrant j = k + c mod 4 picks sin r, cos r or their
+  negatives, c being 1 for `cos`: x + pi/2 would round. sin r is Taylor's to
+  r^17 and cos r to r^18 in Horner's form, remainders below 2^-62 and 2^-67
+  on |r| <= pi/4, their coefficients reciprocals of whole numbers as `exp`'s
+  are. An exact argument is reduced with pi/2 so held, 7.4e-49 off, and
+  rounded once, at the `~`: `sin(355)`, 355 being 3.0e-5 from 113 pi, is
+  mpmath's, correctly rounded. r is off by k times 7.4e-49, under a unit
+  where it is above about k 1.3e-32, so an exact argument is accurate down
+  to about 1e-31 from pi and 1.4e-26 from a multiple near 2^20, and nearer
+  answers the reduction's error (C123); no double comes so near.
+
+  Past 2^20 either way, `1/0`, and NaN in a header, refused for accuracy:
+  the products would round, and the hardest doubles in [2^20, 2^22] be 2^40
+  units off, `cos` at 3442254.066112624. README says that a growing phase
+  such as `sin(w*t)` stops at 2^20. Rejected: Payne and Hanek's reduction,
+  2/pi to some 1,100 bits and a product of many words, which a step in
+  doubles cannot take without dozens of parts; answering past 2^20 regardless, 9.7 units off by 2^25 and
+  800 by 2^30 on random doubles; four parts of 33, 33, 33 and 53 bits, as
+  accurate in a double and rounded in a float, `sin(100)` 40 units of a
+  float off; three parts, which lose the doubles nearest a multiple of
+  pi/2; a minimax polynomial, two terms shorter, whose constants are no
+  reciprocals.
+
+  Accuracy, against sinl and cosl at 64 bits on 1e7 points a range, and
+  against mpmath at 200 bits elsewhere:
+
+  | | worst, sin and cos | correctly rounded |
+  |---|---|---|
+  | on [-pi/4, pi/4] | 0.75 and 1.25 units | 97.7% and 74.0% |
+  | on [-2 pi, 2 pi] | 1.56 and 1.45 units | 77% and 73% |
+  | on [-1000, 1000] | 2.34 and 2.29 units | 72.7% |
+  | on [-2^20, 2^20] | 2.43 and 2.37 units | 70.3% |
+  | the 12 doubles nearest a multiple of pi/2 below 2^20 | 0.35 units | all |
+  | a sample of 20,000 exact arguments to 10^6 | 1.43 and 1.39 units | 74.5% |
+  | in float, on [-6434, 6434] | 2.44 and 2.29 units of a float | 70.7% and 70.6% |
+
+  The float figures are the design emulated with floats operation by
+  operation, its constants the floats nearest the header's doubles, 2.20
+  units at the 300 floats nearest a multiple of pi/2 there, 1.9 on to 8192;
+  past 8192, k times 3217 passes 2^24 and rounds in a float, and the error
+  grows to x*2^-24, within the spacing of floats at x, which `--check
+  --float` shows.
+
+  Nothing `sin` and `cos` give is exact: `sin(0)` and `cos(0)` are a double's
+  0 and 1, as `exp(0)` is a double's 1. A clause for 0 would make them exact,
+  and `grad` refuses a clause that holds at a point alone, so a pendulum at
+  rest would have no derivative. `pi` is the built-in, the double nearest pi,
+  so `sin(pi)` is 1.2246468e-16, the sine of that double as C's, and no
+  argument but 0 is exactly a multiple of pi; `pi` in the prelude would be
+  the same double. `sinpi(x)`, sin(pi x), exact at whole x, was rejected: a
+  sixth function no model asks for. A 0 has the definition's sign: `sin(-0)`
+  is +0, its subtraction from 0 (C33), where C's is -0.
+
+  `abs` is README's own (section 3), two guards rather than a default and
+  one, so that a session writing it, as README and `conditional.ink` do,
+  writes the prelude's clauses again, each replacing its own: `?abs` prints
+  as now, where a default would print before them. A complex number is
+  refused, "a comparison needs real numbers", as README's `abs` refuses it:
+  a modulus needs the real and imaginary parts and a root, none in the
+  prelude, and is another function. `abs(-0)` is -0, its argument, where C's
+  `fabs` is +0.
+
+  `max` and `min` take two arguments, as C's `fmax`; a matrix's greatest cell
+  is a reduction over its cells, which the language writes as `sum_` only,
+  and is refused as `exp` refuses a matrix. A NaN on either side is refused
+  by the guard, "a comparison needs a number", and NaN in a NaN-aware
+  header, where `fmax` answers the other argument and hides it. The answer
+  is the argument chosen, exact or not: `max(1/3, 1/4)` is exactly 1/3.
+
+  `grad` differentiates the definitions: the polynomials' derivatives,
+  within 2.04 units of cos and 1.62 of -sin at worst on a sample of 2,000
+  points, and floor's 0, so a few doubles where x*2/pi + 1/2 is whole are
+  refused as floor jumping, as in `exp`. `abs`'s slope at 0 is 1, its `x >=
+  0` clause's. At a tie `max` and `min` take the first argument's slope, as
+  TensorFlow's maximum and minimum: `max(0, x)` has a ReLU's slope 0 at 0,
+  as PyTorch's, and `max(x, 0)` slope 1. Rejected: refusing the tie as a
+  jump, where `max` is continuous, which stops training at a bias set to 0;
+  half of each slope, as JAX takes it, a clause at the tie alone, which
+  `grad` refuses.
+
+  Compiled where called as `exp` is, with no change to the compiler: on a
+  prototype, `<header>_sin(double arg_x)`, `_cos`, `_abs`, `_max` and `_min`
+  and their helpers, and under `grad` `_sin_dx`, `_abs_dx`, `_max_da` and the
+  like; a model of the five, a pendulum and a `grad` through each kink at its
+  tie, checked within 0 under GCC 13 and Clang 18.
+
+  Called compiled by the interpreter as `exp` is: `inkamath_prelude.ink`'s
+  sequence adds `sin(n) + cos(n)`, `record_prelude` writes them into
+  `inkamath_prelude.h`, and a call of the prelude's own `sin` or `cos` on a
+  real double within 2^20 of 0 takes the C function under `exp`'s
+  exclusions; past it the definition refuses, walked. Walked, each is some
+  40 steps and nests 5 references deeper. `abs`, `max` and `min` stay walked:
+  a guard and an operation, and `max` and `min` take two arguments where the
+  fast path's functions take one.
+
+  What moves: no golden, header or report, measured with the prototype on
+  every test of `ctest`. `conditional.ink`'s `abs` and `max`, and the `sin`
+  and `cos` of `sequences.ink` and README, are definitions of their own. A
+  session's clause on a built-in or a name of the prelude starts a
+  definition of its own, as a model's or a file's does: `abs(y) | y < 0 =
+  -y` defines `abs`, which extending the prelude's would refuse for its
+  parameter, and `abs(3)` then finds no clause. So `floor(2.5)` after
+  `floor(x) | x > 10 = 0` finds no clause where it gave 2, `pi(x) | x > 0 =
+  1`, refused, defines `pi`, a sequence or another arity, `exp_0 = 1` or
+  `mod(a) | a > 0 = 1`, replaces the prelude's name, and a file run or
+  compiled does the same: `s_n = exp(~n)` after `exp(x) | x > 5000 = 7`
+  compiles to `n > 5000 ? 7.0 : NAN`. The extension was a remnant of the
+  built-ins being the session's own, and is deleted before this: in
+  `fastprelude.ink`, `exp(~1)` and `dive(250)` after `exp(x) | x > 5000 =
+  7` move to "no clause of exp applies".
+  `inkamath_prelude.h` gains the functions, and README's paragraph on the
+  prelude (section 1) the five names.
+
+  About 32 lines of sources: 22 in the prelude and 6 of its comment, 4 in
+  the interpreter's fast path. 14,318 lines in all now, about 14,350 after.
+
+  Specified in `test/data/spec/trig.ink`, 104 entries, 94 failing: values at
+  nine digits, mpmath's, and at seventeen, of the design emulated in C and
+  in Python with exact fractions, apart from the interpreter, at hard
+  arguments; exactness, refusals, `grad` and its ties, the fast path's steps
+  and depth, and a session's clause. And in `test/compile/trig.ink`, its
+  report every term `within 0`, wired with the implementation as
+  `inkamath_prelude.ink` is.
+
+  Built as specified: every entry passes as written, and the spec is the
+  golden `trig.ink`; no other golden, header or report moves but the
+  prelude's header. `test/compile/trig.ink` is checked as `elementary.ink`
+  is: `check_tri_report` every term within 0, its lines in the check's
+  order, c, g, q, s, b, l, m, v and w, and `check_tri_functions` the ten
+  functions and no libm `sin` or `cos`. Departures, by the review's
+  rulings: a session's clause on a built-in or a name of the prelude starts
+  a definition of its own, the extension deleted first, 6 lines, so that
+  `abs(y) | y < 0 = -y` defines `abs`, and `trig.ink` gains a clause on
+  `floor`, written by hand, and C123, recorded wrong on purpose; and the
+  refusal past 2^20 is for accuracy, which README says. Measured on the
+  build: 200,044 doubles, random on [-2^20, 2^20] and in magnitude from
+  10^-320, the nearest a multiple of pi/2 and floor's ties with their
+  neighbours, and 22 chosen, `sin` and `cos` of each and 1 over each printed
+  at 17 digits, alike compiled and walked under GCC 13 and Clang 18. 30
+  lines of sources where about 32 were planned: 22 in the prelude, 4 of its
+  comment and 4 in the fast path; 24 with the extension's deletion. 14,379
+  lines in all, after `fixes4`.
+- `[done]` **Tensors compiled.** `--compile` refuses a tensor by name, "cannot
+  compile X: a tensor", so attention per batch and per head, which the
+  interpreter answers (*Tensors of rank 3*), has no step: `attention.ink`
+  compiles one head of one sample. The conformance suite asks for the paper's
+  model, and a minibatch is a tensor wherever one is trained.
+
+  Decided: a tensor is a value the compiler holds as it holds a matrix, its
+  cells slice after slice and row by row, as the interpreter stores them, and
+  whatever meets one meets it slice by slice, through one function that takes
+  it apart into slices, applies itself to each and stacks the results, as the
+  interpreter's does. So a single value or a matrix meets every slice and a
+  tensor its slices in turn, for `+`, `-`, `/`, `*` and `'`; a product is
+  batched over the first index. What carries a value carries a tensor: a
+  sequence's term, a parameter, a model's input, a function's argument, a
+  term sampled at another rate, an input's history, a part under `grad`.
+
+  In the struct a term is `double O[1][2][3][4]`, window first: C's own layout
+  of that array is the interpreter's, so a host copies a batch in and out
+  whole. A tensor keeps its three dimensions even of one cell, as it keeps
+  `;;` when printed. A parameter is a field, `double s0[2][1][2]`, which init
+  writes cell by cell, as a matrix's. An input states its size by three
+  bounds, slices first, as the interpreter already reads it (C83),
+  `X_n[b<=2, t<=3, c<=4]`, and the step takes a pointer to its cells, `const
+  double X[24]`, copied into the window as a vector's is; where an input is a
+  tensor, the first comment's sentence on inputs ends "row by row, slice after
+  slice", and the last term shown is `m.O[0][b][i][j]`, "slice b+1, row i+1
+  and column j+1". Rejected: `[1][6][4]`, the same memory with a slice's rows
+  to be counted by the host; a field per slice, several fields for one term;
+  the batch last, where no paper puts it; `const double X[2][3][4]`, rejected
+  for a matrix in *An input of more than one cell*, as a cast for every host
+  under GCC's `-Wpedantic`.
+
+  One constant index reads a slice, three a cell, and a row is chained,
+  `T[b][t]`; two are refused in the interpreter's words, "a 2x2x2 tensor
+  takes one index or three, not two". A definition by three indices, a
+  sequence's term or a function, takes each cell's clause as one by two does,
+  the slice a place as the row is, so a guard that reads only places folds,
+  and its size is measured by `Reference::Measured` as now, a read's extent
+  carrying its slices: softmax's `sm(z)[b,t,s]` is the size of the scores it
+  is given. A literal `[a;; b]` is compiled slice by slice. A sum over a
+  slice's index unrolls as any sum with constant bounds.
+
+  Refused, in the interpreter's words where it has them: a power, "only a
+  matrix has a power, not a 2x2x2 tensor", which the square matrix's test
+  would otherwise let through as a matrix; tensors of different numbers of
+  slices; a literal whose slices differ. A comparison, a guard, an exponent,
+  `and`, `or` and a block of a tensor are refused in the compiler's words for
+  a matrix, "a comparison of matrices", a tensor being a stack of them: words
+  of their own were five lines for refusals no model reaches. For now: "a
+  tensor in a limit", its terms or an argument, as a limit's function fills
+  an array of rows and columns and no model iterates a tensor to a fixed
+  point; "a derivative with respect to a tensor"; and "a tensor's cells under
+  a guard that is not a constant", one reading the index, as `--check` asks
+  the interpreter's guards of a cell by its row and column, not its slice. A
+  gradient whose body meets tensors, with respect to a single value or a
+  matrix, compiles, the parts riding the values slice by slice: a model's
+  weights are shared matrices and its batch the tensor. Weights stacked by
+  head, a tensor, reach a loss only through softmax by cells, which compiled
+  `grad` then refused, so nothing asked for a seed of three indices; since
+  *Guards on cells at run time* it does not, and that seed is what stays
+  between attention compiled and its training.
+
+  `--check` feeds a tensor input by its cells and holds every cell of a term,
+  reading the interpreter's slice by slice, and names a cell that parts from
+  it by its slice, row and column, `spread.d[2,1,2]`, as a matrix's by its row
+  and column. In a header that writes NaN, a tensor term with a NaN cell is
+  NaN in every cell, the loop gaining the slices'. `--float` writes floats, as
+  everywhere. Nothing new elsewhere: an instance with memory per cell is named
+  after each place it reads, the slice among them, as now. The random models
+  gain no tensors in this entry.
+
+  First a refactor: `Code`, `Sequence` and `Parameter` carry an `Extent`
+  where they carry rows and columns, and a C subscript and an array's
+  dimensions are written from it, every header, check program and golden
+  byte for byte; about as many lines out as in, its own commit, its net
+  stated, and past about 15 lines more than it removes the implementation
+  stops and reports. Then about 110 lines of sources: the arithmetic slice
+  by slice 25, reads of slices and cells and the literal 30, definitions by
+  three indices 20, the header's dimensions, NaN loop and sentences 15, the
+  refusals 6, the check 8 and the rest 6; re-estimated by the review at about
+  150, counted without the refactor, so past 225 the implementation stops
+  and reports. Sized against the interpreter's tensors, 222 with a literal,
+  printing, `tex` and parsing the compiler does not need, inputs of more
+  than one cell, 119, and compiled `lim`, 167. 14,355 lines in all before
+  it, at cfb0abb, the fixes since `grad` compiled included; about 14,505
+  after.
+
+  Specified in `test/compile/tensor.ink`, its numbers worked out apart from
+  the interpreter and the compiler: `heads`, multi-head attention over a
+  batch, `tensor.ink`'s conformance model with its input scaled by `n/50`, so
+  that `O_50` is its `O`, held within 1e-13 where NumPy's doubles come within
+  6.7e-15 of mpmath's; `whirl`, a batch of states turned a quarter each step,
+  meeting tensors every other way, its every term exact; `batch`, a linear
+  layer trained by minibatch descent through `grad`, exact; the last two in
+  float as well; `spread`, a cell that drifts, named by its place; the header
+  excerpts of each; and eight refusals. Two recorded refusals become headers:
+  `compile_tensor_refused`, whose file joins the refusals', and
+  `inputs_batch`, with its line in `inputs.ink`'s comment. Wired with the
+  implementation; README's paragraph on the compiler gains a sentence,
+  `attention.ink`'s comment loses "the compiler refuses for now", and
+  `test/data/inputs.ink`'s "Compiled, it is refused".
+
+  Built as specified: every report as `tensor.ink` gives it, `whirl` and
+  `batch` in float too, the header excerpts byte for byte and the eight
+  refusals in their words; every other header, check program and golden as
+  before, and the refactor's byte for byte. A `Code`'s cells are a tensor's
+  slice after slice, and one stretched over another's shape is read at a place
+  modulo its cells, a matrix over every slice as a single value over every
+  cell, so `+`, `-`, `/`, `*` and `'` meet slice by slice and a part rides
+  them. A read takes the cells the interpreter's read takes of a value of its
+  size whose cells are numbered, so a slice, a row and a cell, and every
+  refusal of one, are the interpreter's, as is a cell clause's outside the
+  size. Departures. A tensor whose slices are single values, met by a matrix
+  of another size, is refused, "a tensor whose slices are single values met
+  by a matrix, for now", where the interpreter takes each slice as a single
+  value; `whirl`'s `p` is one, and nothing meets it so. An input that states
+  no size, read with three indices, `X_n[1,2,1]`, is refused as with one or
+  two: "write 'X_n[b<=1, j<=2, k<=1]'". A tensor's term by cells with a guard that folds is
+  not followed for flips by `--check`, which could not tell its slices apart;
+  one that does not fold is refused, as specified. A matrix stretched over the
+  slices is computed once, into temporaries, as a single value stretched over
+  a matrix is. `--check`'s `hold_` takes each term's rows too, in a program
+  for an instance with a tensor only. Specified on the way, in a commit of its
+  own: `spread`, the drift of a tensor's cell, named. Found on the way and
+  registered: C122, a cell of one term outside its size written past the
+  term's cells. The refactor, 41 lines fewer, every output byte for byte; then
+  48 lines of sources more, where about 150 were planned: 40 in `compile.hpp`
+  and 8 in `check.hpp`; C122's 1; and by its review, C124 to C127, 15, and
+  its rulings, 14. 14,416 lines in all, after `trig`.

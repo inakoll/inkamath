@@ -116,6 +116,7 @@ hinge = rect(x_n = n)
 #     edge: 100 steps from 0, against exact values until 0 and inexact ones from there
 #     edge.c: within 0
 #     edge.d: within 0
+#     edge.e: within 0; the interpreter's terms about <e> from the exact ones
 #     edge.f: within 0
 #     edge.g: within 0
 #     edge.h: within 0; the interpreter's terms about <e> from the exact ones
@@ -140,7 +141,9 @@ hinge = rect(x_n = n)
 # times t, is 0 below 2, where the unit is dead and its power has no part
 # to be infinite, as in the interpreter, NaN at 2 and 3*sqrt(t)/2 above, t
 # being n/2 - 1 (C118); i, its inverse, NaN to 2, the interpreter dividing
-# by 0, then -1/t^2.
+# by 0, then -1/t^2. e, a third over the ReLU plus t, t being n/2 - 5/4, is
+# 1 to 2, where the unit is dead and its quotient has no part to be
+# infinite, as in the interpreter, then 1 - 1/(3t^2) (C110).
 kinks(x_n) = {
     q(t) = t^2
     q(t) | t == 1 = 1
@@ -150,6 +153,7 @@ kinks(x_n) = {
     p(t) | t > 1 = 1
     c_n = grad_(t = x_n) t*(t > 1)
     d_n = grad_(t = x_n - 1) t*(r(t) > 0)
+    e_n = grad_(t = x_n - 5/4) (~(1/3)/r(t) + t)
     f_n = grad_(t = x_n) floor(t)*t
     g_n = grad_(t = x_n) q(t)
     h_n = grad_(t = x_n - 1) r(t)^(1/2)*t
@@ -277,17 +281,15 @@ cusp = quotient(z_n = ~0)
 #     h_n = grad_(t = x_n) 5
 #     k_n = grad_(t = x_n) sq
 #     m_n = grad_(t = x_n) amp(k = t).y
-#     q_n = grad_(t = x_n) cel(t)[2]
 #     amp(k = 1) = {
 #         y = 2*k
 #     }
 #     p(r)_0 = 1
 #     p(r)_k = r*p(r)_(k-1)/4 + 1
-#     cel(z)[j<=2] = j*z
 #     sq = t^2
 #     t = 3
 #
-# where the interpreter, given x_n = 2, answers a, b, f, g and q and refuses
+# where the interpreter, given x_n = 2, answers a, b, f and g and refuses
 # the rest in the words the compiler takes:
 #
 #     cannot compile a: a derivative of a derivative, for now
@@ -299,7 +301,6 @@ cusp = quotient(z_n = ~0)
 #     cannot compile h: grad's expression does not read t
 #     cannot compile k: sq reads the global t, which grad's t does not reach
 #     cannot compile m: grad cannot differentiate through an instance yet
-#     cannot compile q: a derivative through a definition by cells, for now
 #
 # on standard output, exiting 1.
 

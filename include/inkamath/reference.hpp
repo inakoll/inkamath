@@ -533,6 +533,17 @@ public:
         return true;
     }
 
+    // A cell is named by as many indices as reading it takes: a value written
+    // whole, unlike clauses for all cells, says its rank only when evaluated.
+    static void Named(const ParametersDefinition<T>& p, T& value, const std::string& name) {
+        if (p.tensor() != bool(value.Size().slices)) {
+            throw std::runtime_error("a clause for one cell of " + name + ", a " +
+                                     value.Size().Described() + ", names " +
+                                     (p.tensor() ? "no slice" : "its slice, row and column"));
+        }
+        (void)value(p.slice(), p.row(), p.col());
+    }
+
 private:
     // A recurrence nests one reference per term it reaches back, so a term far
     // from its base runs out of depth. Filled from the base up instead, each
@@ -979,17 +990,6 @@ private:
             }
         }
         return matrix;
-    }
-
-    // A cell is named by as many indices as reading it takes: a value written
-    // whole, unlike clauses for all cells, says its rank only when evaluated.
-    static void Named(const ParametersDefinition<T>& p, T& value, const std::string& name) {
-        if (p.tensor() != bool(value.Size().slices)) {
-            throw std::runtime_error("a clause for one cell of " + name + ", a " +
-                                     value.Size().Described() + ", names " +
-                                     (p.tensor() ? "no slice" : "its slice, row and column"));
-        }
-        (void)value(p.slice(), p.row(), p.col());
     }
 
     template <typename Walk>

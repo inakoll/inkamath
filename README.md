@@ -114,8 +114,9 @@ terms, an `init` and a `step`, for a filter to run where the interpreter cannot.
 What derives from the parameters alone is computed by `update`, which `init`
 calls and the host calls again after assigning a parameter. The header opens
 with how to call it: the step's inputs, what each field holds after a step,
-and the parameters with their values. A parameter that
-gives a size, a bound or a lag is compiled in instead, as the header says.
+and the parameters with their values. A parameter read where the step
+needs a constant, a size or an exponent, is compiled in instead, as the
+header says.
 `test/compile/pid.ink` is a PID controller, and `test/compile/expected/pid.h`
 is what it compiles to; `test/compile/kalman.ink` is a Kalman filter over
 matrices.
@@ -156,10 +157,17 @@ finds a chain's steady state and, by power iteration, a matrix's dominant
 direction at every step. A `grad` is compiled forward, each value carrying its
 part beside it by the interpreter's rules, so that the step's gradient is the
 interpreter's to the bit: `test/compile/grad.ink` trains a line and a logistic
-regression by it; a derivative of a derivative, of a limit or of a matrix
-power is refused for now. A header that writes NaN anywhere carries it to every
-term that reads it, as the interpreter refuses them: a guard, a comparison and
-a power reading NaN answer NaN, and a matrix term with a NaN cell is NaN in
+regression by it, and `test/compile/cellguards.ink` a ReLU network through
+its activation written by its cells, each cell's guards tested in the step;
+a derivative of a derivative, of a limit or of a matrix power is refused for
+now. A tensor is an array as C keeps one,
+`double O[B][T][D]`, slice after slice, and is met slice by slice as the
+interpreter meets it: `test/compile/tensor.ink` runs multi-head attention
+over a batch and trains a layer on minibatches by `grad`; a tensor in a
+limit, or a `grad` with respect to one, is refused for now. A header that
+writes NaN anywhere carries it to every term that reads it, as the
+interpreter refuses them: a guard, a comparison and a power reading NaN
+answer NaN, and a matrix or tensor term with a NaN cell is NaN in
 every cell, which its first comment says. Such a header is not to be built
 with `-ffinite-math-only`, which `-ffast-math` implies: GCC removes the tests
 that carry NaN, and Clang warns of each NaN the header writes.
@@ -246,7 +254,8 @@ define again. `e` and `pi` are the only
 other built-in values, and `floor` the only built-in function: the largest
 whole number not above its argument, exact of an exact number and cell by
 cell of a matrix. `ceil(x) = -floor(-x)` and `mod(a, b) = a - b*floor(a/b)`
-come with it, from a prelude (section 5), and so do `exp`, `log` and `tanh`. Any other rounding is a line of it,
+come with it, from a prelude (section 5), and so do `exp`, `log`, `tanh`,
+`sin`, `cos`, `abs`, `max` and `min`. Any other rounding is a line of it,
 by the rule the model needs — `round(x) = floor(x + 1/2)` — and, like `pi`,
 each of them can be defined again.
 
@@ -585,6 +594,10 @@ step_0 = 1
 >> step_0 | 1 = 7
 error: step_0 is already defined without a guard, so this clause can never apply
 ```
+
+Only a definition of one's own is patched up so: a clause on a built-in or a
+name of the prelude starts a definition, and after `floor(x) | x > 10 = 0`,
+`floor(2.5)` finds no clause.
 
 A comparison is a number — `1` or `0` — so a guard is simply an expression
 that is not zero, and `sgn(x) = (x>0) - (x<0)` needs no guard at all. Ordering
@@ -937,18 +950,21 @@ changes its instances, as a function redefined changes what calls it.
 of its own: the session reaches its names qualified, `filters.lowpass`, and
 `use filters (lowpass)` brings in unqualified those listed. A file is read
 once, holds definitions only, and one that cannot be read or parsed loads
-nothing and says where. The prelude that defines `ceil`, `mod`, `exp`, `log`
-and `tanh`, and what they call, is included bare beneath the session, as the
-built-ins are: every scope sees it, and a session that defines one of its
-names again does so for itself alone. `exp`, `log` and `tanh` are written in
-it, accurate to a few units in the last place of a double, by the operations
-a compiled step performs: `exp(x)` is 2^k e^r, r = x - k ln 2 and e^r a
-polynomial, and `log` reduces by `ilogb`, the power of two at or below its
-argument. An exact argument is reduced exactly, nothing they give is exact,
-and `log(0)` is refused as `1/0` is. Compiled, each is a C function of the
+nothing and says where. The prelude that defines `ceil`, `mod`, `exp`, `log`,
+`tanh`, `sin`, `cos`, `abs`, `max` and `min`, and what they call, is included
+bare beneath the session, as the built-ins are: every scope sees it, and a
+session that defines one of its names again does so for itself alone. `exp`,
+`log`, `tanh`, `sin` and `cos` are written in it, accurate to a few units in
+the last place of a double, by the operations a compiled step performs:
+`exp(x)` is 2^k e^r, r = x - k ln 2 and e^r a polynomial, `log` reduces by
+`ilogb`, the power of two at or below its argument, and `sin` and `cos` by the
+multiple of pi/2 nearest theirs. An exact argument is reduced exactly, save
+within about 1e-31 of a multiple of pi/2 (C123), nothing they give is exact, and `log(0)` is refused as `1/0` is; so are `sin` and
+`cos` past 2^20 either way, where the reduction would round, so a growing
+phase such as `sin(w*t)` stops at 2^20. Compiled, each is a C function of the
 header's own; the interpreter calls the same functions, checked in as
-`include/inkamath/inkamath_prelude.h`, on a double, where they answer what
-the definitions answer.
+`include/inkamath/inkamath_prelude.h`, on a double, where they answer what the
+definitions answer.
 `test/data/models.ink` is the whole of it.
 
 Data comes in as a file of definitions like any other, written by whatever

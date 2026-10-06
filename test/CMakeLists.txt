@@ -107,15 +107,18 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brin
                          decimate:trail drift:sill drift:seam history:past history:twin
                          history:lit history:rise history:ajar history:sown history:nest history:kin history:vast
                          history:twice history:relayed history:pole
-                         history:huge history:veiled history:cloaked history:two history:hid history:masked
+                         history:huge history:sever history:veiled history:cloaked history:two history:hid history:masked
                          nan:run nan:sign nan:shy nan:slope nan:pair
                          nan:lap nan:trim nan:any nan:cell nan:held inputs:fan inputs:grid
                          inputs:chan inputs:twirl inputs:duo inputs:mean3 inputs:mean2
                          inputs:track inputs:twain inputs:nestv inputs:fed estimate:tie
                          estimate:chaos estimate:dyad estimate:flat estimate:halved
-                         estimate:steep estimate:giant elementary:els
+                         estimate:steep estimate:giant elementary:els trig:tri
                          grad:line grad:fall grad:hinge grad:edge grad:clip grad:steer grad:saw
-                         grad:ring grad:notch grad:apart grad:smooth grad:cusp)
+                         grad:ring grad:notch grad:apart grad:smooth grad:cusp
+                         tensor:heads tensor:whirl tensor:batch tensor:spread
+                         tensor:speck cellguards:rfit cellguards:tfit cellguards:layer
+                         cellguards:kink cellguards:crest cellguards:mask cellguards:order)
     string(REPLACE ":" ";" checked ${checked})
     list(GET checked 0 file)
     list(GET checked 1 instance)
@@ -159,14 +162,24 @@ set_tests_properties(check_gate_one_limit PROPERTIES
 set_tests_properties(check_gate_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^gate: 100 steps from 0, against exact values until 0 and inexact ones from there\n(gate\\.[a-z]+: within [0-9.e+-]+${about}\n)+$")
 # exp, log and tanh as the prelude writes them, each a function of the
-# header's own, compiled once (DESIGN.md): every term the interpreter's.
+# header's own, compiled once (DESIGN.md): every term the interpreter's. A
+# power of 2 is tested for NaN by its exponent, not by a second pow.
 set_tests_properties(check_els_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^els: 100 steps from 0, against exact values until 0 and inexact ones from there\nels\\.e: within 0${about}\nels\\.g: within 0${about}\nels\\.h: within 0${about}\nels\\.l: within 0${about}\nels\\.t: within 0${about}\n$")
 add_test(NAME check_els_functions
          COMMAND ${CMAKE_COMMAND} -E cat ${CMAKE_CURRENT_BINARY_DIR}/compile/els.c)
 set_tests_properties(check_els_functions PROPERTIES
     PASS_REGULAR_EXPRESSION "els_exp\\(double arg_x\\).*els_log\\(double arg_x\\).*els_tanh\\(double arg_x\\)"
-    FAIL_REGULAR_EXPRESSION "pow\\(2\\.718")
+    FAIL_REGULAR_EXPRESSION "pow\\(2\\.718|isnan\\(pow\\(")
+# sin, cos, abs, max and min as the prelude writes them (DESIGN.md), and
+# grad's parts through each: every term the interpreter's.
+set_tests_properties(check_tri_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^tri: 100 steps from 0, against exact values until 0 and inexact ones from there\ntri\\.c: within 0${about}\ntri\\.g: within 0${about}\ntri\\.q: within 0${about}\ntri\\.s: within 0${about}\ntri\\.b: within 0${about}\ntri\\.l: within 0${about}\ntri\\.m: within 0${about}\ntri\\.v: within 0${about}\ntri\\.w: within 0${about}\n$")
+add_test(NAME check_tri_functions
+         COMMAND ${CMAKE_COMMAND} -E cat ${CMAKE_CURRENT_BINARY_DIR}/compile/tri.c)
+set_tests_properties(check_tri_functions PROPERTIES
+    PASS_REGULAR_EXPRESSION "tri_abs\\(double arg_x\\).*tri_sin\\(double arg_x\\).*tri_cos\\(double arg_x\\).*tri_max\\(double arg_a, double arg_b\\).*tri_max_da\\(.*tri_abs_dx\\(.*tri_cos_dx\\(.*tri_min\\(double arg_a, double arg_b\\).*tri_min_db\\(.*tri_sin_dx\\("
+    FAIL_REGULAR_EXPRESSION "[^_a-z](sin|cos)\\(")
 # grad compiled (DESIGN.md), each value carrying its part: every gradient
 # the interpreter's, as compile/grad.ink gives them.
 set_tests_properties(check_line_report PROPERTIES PASS_REGULAR_EXPRESSION
@@ -176,7 +189,7 @@ set_tests_properties(check_fall_report PROPERTIES PASS_REGULAR_EXPRESSION
 set_tests_properties(check_hinge_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^hinge: 100 steps from 0, against exact values\nhinge\\.g: within 0\n$")
 set_tests_properties(check_edge_report PROPERTIES PASS_REGULAR_EXPRESSION
-    "^edge: 100 steps from 0, against exact values until 0 and inexact ones from there\nedge\\.c: within 0\nedge\\.d: within 0\nedge\\.f: within 0\nedge\\.g: within 0\nedge\\.h: within 0${about}\nedge\\.i: within 0\nedge\\.j: within 0\nedge\\.k: within 0\nedge\\.l: within 0\nedge\\.m: within 0\nedge\\.o: within 0\nedge\\.s: within 0${about}\nedge\\.v: within 0\nedge\\.w: within 0\n$")
+    "^edge: 100 steps from 0, against exact values until 0 and inexact ones from there\nedge\\.c: within 0\nedge\\.d: within 0\nedge\\.e: within 0${about}\nedge\\.f: within 0\nedge\\.g: within 0\nedge\\.h: within 0${about}\nedge\\.i: within 0\nedge\\.j: within 0\nedge\\.k: within 0\nedge\\.l: within 0\nedge\\.m: within 0\nedge\\.o: within 0\nedge\\.s: within 0${about}\nedge\\.v: within 0\nedge\\.w: within 0\n$")
 set_tests_properties(check_clip_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^clip: 100 steps from 0, against exact values\nclip\\.w: within 0\n$")
 set_tests_properties(check_steer_report PROPERTIES PASS_REGULAR_EXPRESSION
@@ -196,6 +209,38 @@ set_tests_properties(check_apart_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^apart: 100 steps from 0, against exact values\napart\\.y: [-a-z()]+ at 0, where the interpreter gives 0\n$")
 add_test(NAME check_apart COMMAND check_apart)
 set_tests_properties(check_apart PROPERTIES WILL_FAIL ON)
+# Tensors compiled (DESIGN.md), as compile/tensor.ink gives them, and a cell
+# that parts named by its slice, row and column.
+set_tests_properties(check_heads_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^heads: 100 steps from 0, against exact values until 0 and inexact ones from there\nheads\\.O: within (0|[1-9](\\.[0-9])?e-1[4-9])${about}\n$")
+set_tests_properties(check_whirl_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^whirl: 100 steps from 0, against exact values\nwhirl\\.d: within 0\nwhirl\\.s: within 0\nwhirl\\.c: within 0\nwhirl\\.e: within 0, from 1\nwhirl\\.g: within 0\nwhirl\\.h: within 0, from 1\nwhirl\\.k: within 0\nwhirl\\.l: within 0\nwhirl\\.p: within 0\nwhirl\\.q: within 0\nwhirl\\.u: within 0, from 1\n$")
+set_tests_properties(check_batch_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^batch: 100 steps from 0, against exact values\nbatch\\.w: within 0\n$")
+set_tests_properties(check_speck_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^speck: 100 steps from 0, against exact values\nspeck\\.y: within 0\n$")
+set_tests_properties(check_spread_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^spread: 100 steps from 0, against exact values\nspread\\.d\\[2,1,2\\]: [0-9.e+-]+ at 9, where the interpreter gives 0\\.10000000000000001\n$")
+add_test(NAME check_spread COMMAND check_spread)
+set_tests_properties(check_spread PROPERTIES WILL_FAIL ON)
+# Guards on cells at run time (DESIGN.md), as compile/cellguards.ink gives
+# them, and crest parting by its values alone.
+set_tests_properties(check_rfit_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^rfit: 100 steps from 0, against exact values\nrfit\\.W: within 0\nrfit\\.L: within 0\n$")
+set_tests_properties(check_tfit_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^tfit: 100 steps from 0, against exact values\ntfit\\.W: within 0\ntfit\\.H: within 0\ntfit\\.L: within 0\n$")
+set_tests_properties(check_layer_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^layer: 100 steps from 0, against exact values\nlayer\\.w: within 0\nlayer\\.z: within 0\nlayer\\.h: within 0\nlayer\\.y: within 0\n$")
+set_tests_properties(check_kink_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^kink: 100 steps from 0, against exact values\nkink\\.c: within 0\nkink\\.d: within 0\nkink\\.e: within 0\nkink\\.g: within 0\nkink\\.h: within 0\nkink\\.m: within 0\n$")
+set_tests_properties(check_mask_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^mask: 100 steps from 0, against exact values\nmask\\.y: within 0\n$")
+set_tests_properties(check_order_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^order: 100 steps from 0, against exact values\norder\\.k: within 0\norder\\.p: within 0\norder\\.s: within 0\n$")
+set_tests_properties(check_crest_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^crest: 100 steps from 0, against exact values\ncrest\\.d\\[1,1\\]: [0-9.e+-]+ at 9, where the interpreter gives 0\\.10000000000000001\ncrest\\.g\\[1,1\\]: 1 at 1, where the interpreter gives 0\n$")
+add_test(NAME check_crest COMMAND check_crest)
+set_tests_properties(check_crest PROPERTIES WILL_FAIL ON)
 set_tests_properties(check_sized_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^sized: 100 steps from 0, against exact values until 0 and inexact ones from there\n(sized\\.[a-z]+: within [0-9.e+-]+${about}\n)+$")
 # Its sigmoid's size inferred, compiled where it is called, gives the header
@@ -323,6 +368,8 @@ set_tests_properties(check_pole_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^pole: 100 steps from 0, against exact values\npole\\.y: inf at 3, where the interpreter gives none: division by zero\n$")
 set_tests_properties(check_huge_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^huge: 100 steps from 0, against exact values\nhuge\\.y: inf at 31, where the interpreter's term is too large for a double\n$")
+set_tests_properties(check_sever_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^sever: 100 steps from 0, against exact values until 10 and inexact ones from there\nsever\\.p\\[2,2\\]: inf at 12, where the interpreter's term is not a finite number\n$")
 set_tests_properties(check_warm_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^warm: 100 steps from 0, against exact values\n(warm\\.[a-z]+: within [0-9.e+-]+\n)+$")
 set_tests_properties(check_rnn_report PROPERTIES PASS_REGULAR_EXPRESSION
@@ -368,8 +415,9 @@ add_test(NAME check_seam COMMAND check_seam)
 add_test(NAME check_pole COMMAND check_pole)
 add_test(NAME check_huge COMMAND check_huge)
 add_test(NAME check_masked COMMAND check_masked)
+add_test(NAME check_sever COMMAND check_sever)
 set_tests_properties(check_wild check_brink check_rift check_sill check_seam check_pole
-                     check_huge check_masked PROPERTIES WILL_FAIL ON)
+                     check_huge check_masked check_sever PROPERTIES WILL_FAIL ON)
 
 # A float target (DESIGN.md): pid and adc's headers as compile/expected/float
 # has them, and compile/float.ink's checks, each built so that an operation done
@@ -400,7 +448,8 @@ endforeach()
 foreach(checked IN ITEMS drift:calm drift:wild drift:ledge logistic:gate momentum:ball newton:stiff
                          inputs:fan float:hum float:drone float:far float:tally float:crawl
                          float:steep float:blast
-                         steady:mark softmax:cls grad:line)
+                         steady:mark softmax:cls grad:line tensor:whirl tensor:batch
+                         cellguards:rfit cellguards:tfit)
     string(REPLACE ":" ";" checked ${checked})
     list(GET checked 0 file)
     list(GET checked 1 instance)
@@ -428,6 +477,7 @@ set(in_float " in float, against exact values")
 set(inexact " in float, against exact values until 0 and inexact ones from there")
 set(units "[0-9.e+-]+, [0-9.]+ units of a float${about}")
 set(parts "0\\.096026361 at 6, where the interpreter gives 0\\.10000000000000001\n")
+set(exact "within 0, 0 units of a float")
 foreach(report IN ITEMS
         "calm:^calm: 100 steps from 0${in_float}\ncalm\\.v: within 1\\.1e-06, 1\\.4 units of a float\n$"
         "wild:^wild: 100 steps from 0${in_float}\nwild\\.d: ${parts}$"
@@ -445,6 +495,10 @@ foreach(report IN ITEMS
         "blast:^blast: 100 steps from 0${in_float}\nblast\\.y: within 0, 0 units of a float\nblast\\.z: within 0, 0 units of a float\n$"
         "mark:^mark: 100 steps from 0${inexact}\nmark\\.d: within ${units}\nmark\\.s: within ${units}\n$"
         "line:^line: 100 steps from 0${in_float}\nline\\.w: within 2\\.7e-07, 1\\.9 units of a float\n$"
+        "whirl:^whirl: 100 steps from 0${in_float}\nwhirl\\.d: ${exact}\nwhirl\\.s: ${exact}\nwhirl\\.c: ${exact}\nwhirl\\.e: ${exact}, from 1\nwhirl\\.g: ${exact}\nwhirl\\.h: ${exact}, from 1\nwhirl\\.k: ${exact}\nwhirl\\.l: ${exact}\nwhirl\\.p: ${exact}\nwhirl\\.q: ${exact}\nwhirl\\.u: ${exact}, from 1\n$"
+        "batch:^batch: 100 steps from 0${in_float}\nbatch\\.w: ${exact}\n$"
+        "rfit:^rfit: 100 steps from 0${in_float}\nrfit\\.W: ${exact}\nrfit\\.L: ${exact}\n$"
+        "tfit:^tfit: 100 steps from 0${in_float}\ntfit\\.W: ${exact}\ntfit\\.H: ${exact}\ntfit\\.L: ${exact}\n$"
         "cls:^cls: 100 steps from 0${inexact}\ncls\\.z: within 2\\.4e-08, 0\\.2 units of a float\ncls\\.q: within 1\\.9e-06, 1\\.5 units of a float${about}\ncls\\.s: within 6\\.3e-08, 0\\.53 units of a float${about}\ncls\\.loss: within 4\\.1e-07, 3\\.4 units of a float${about}\n$")
     string(FIND "${report}" ":" colon)
     string(SUBSTRING "${report}" 0 ${colon} instance)
