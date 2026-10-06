@@ -61,7 +61,7 @@
 #     lap.y: within <x>
 #
 #     trim: 100 steps from 0, against exact values
-#     trim.y: within 0
+#     trim.y: no value compared, the step NaN where the interpreter gives none, as at 0: no clause of r applies
 #
 #     any: 100 steps from 0, against exact values
 #     any.y: within 0
@@ -73,7 +73,8 @@
 # no sequence's term: 'cell' reads one of a matrix written inline, c from 2,
 # of one given to a function, p from 2, and of a term computed again, b from
 # 3; 'held' of a value from the parameters, at every step. Each answered 1
-# where the interpreter gives none, and is to report within 0:
+# where the interpreter gives none, and is to report within 0, or, held,
+# that it has no value to compare:
 #
 #     cell: 100 steps from 0, against exact values
 #     cell.b: within 0
@@ -82,7 +83,7 @@
 #     cell.p: within 0
 #
 #     held: 100 steps from 0, against exact values
-#     held.d: within 0
+#     held.d: no value compared, the step NaN where the interpreter gives none, as at 0: no clause of r applies
 #
 # Each model compiles as now, nothing on stderr, and its step decides so,
 # 'inkamath --compile nan.ink <model> -o <model>.h' writing, for level,

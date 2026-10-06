@@ -127,8 +127,8 @@
 # every step, as the interpreter does not converge and a double header says:
 #
 #     blast: 100 steps from 0 in float, against exact values
-#     blast.y: within 0, 0 units of a float
-#     blast.z: within 0, 0 units of a float
+#     blast.y: no value compared, the step NaN where the interpreter gives none, as at 0: p did not converge within 100 terms (last term <x>)
+#     blast.z: no value compared, the step NaN where the interpreter gives none, as at 0: v did not converge within 100 terms (last term <v>)
 #
 # The header changes only its words for numbers. 'dot' of inputs.ink, by
 # name:

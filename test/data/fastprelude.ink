@@ -92,9 +92,18 @@ inf
 >> digits = 9
 digits = 9
 
-# Not a double that is real: refused by the definition, as before.
+# Not a double that is real: refused in its name, as a matrix is (C147).
 >> exp(~1 + i)
-error: a comparison needs real numbers, not 1+i
+error: exp needs real numbers, not 1+i
+
+>> exp(i*pi)
+error: exp needs real numbers, not i*~3.14159265
+
+>> log(i)
+error: log needs real numbers, not i
+
+>> tanh(i)
+error: tanh needs real numbers, not i
 
 >> exp([~1 ~2])
 error: exp needs single values, not a 1x2 matrix; write it by its cells

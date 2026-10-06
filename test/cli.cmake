@@ -449,6 +449,12 @@ set(args --compile celled.ink ct -o ct.h)
 set(stderr "inkamath: cannot compile t: X is a single value, as ct states no size for it: write 'X_n[b<=1, j<=2, k<=1]'\n")
 set(exit 1)
 check(compile_unstated_tensor)
+# Read through a sequence that is a single value because the input is (C144).
+file(WRITE "${OUT}/through.ink" "mon(x_n) = {\n    e_n = 2*x_n\n    k_n = e_n[2]\n}\n")
+set(args --compile through.ink mon -o mon.h)
+set(stderr "inkamath: cannot compile k: e reads x, a single value, as mon states no size for it: write 'x_n[j<=2]'\n")
+set(exit 1)
+check(compile_unstated_through)
 
 # Every run of --check walks the prelude's definitions, so that its programs
 # hold the compiled functions to the walk (DESIGN.md): log, 16 references

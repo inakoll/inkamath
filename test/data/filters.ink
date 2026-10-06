@@ -1,4 +1,5 @@
-# A library for models.ink: two filters over a default of the file's.
+# A library for models.ink: two filters and a power over a default of the
+# file's.
 a0 = 1/10
 
 lowpass(a = a0, u_n) = {
@@ -10,3 +11,5 @@ highpass(a = a0, u_n) = {
     low = lowpass(a, u_n)
     v_n = u_n - low.v_n
 }
+
+power(x) = a0*x^2

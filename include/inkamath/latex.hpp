@@ -347,8 +347,13 @@ private:
         }
         if (dynamic_cast<const TensorExpression<T>*>(&e))
             throw std::runtime_error("tex cannot show ';;', which has no form on paper");
-        if (const auto* member = dynamic_cast<const MemberExpression<T>*>(&e))
-            return {Of(*member->Object()).text + "." + Of(*member->Member()).text};
+        if (const auto* member = dynamic_cast<const MemberExpression<T>*>(&e)) {
+            const std::string object = Of(*member->Object()).text + ".";
+            const auto*       call = dynamic_cast<const FuncExpression<T>*>(member->Member().get());
+            if (call && call->limit())
+                return {"\\lim_{n \\to \\infty} " + object + Name(call->Name()) + "_n", Level::sum};
+            return {object + Of(*member->Member()).text};
+        }
         if (const auto* call = dynamic_cast<const FuncExpression<T>*>(&e)) {
             const std::string& name = call->Name();
             if (call->limit()) return {"\\lim_{n \\to \\infty} " + Name(name) + "_n", Level::sum};

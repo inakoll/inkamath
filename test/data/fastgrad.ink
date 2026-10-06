@@ -99,7 +99,7 @@ error: floor jumps at x = ~0.785398163
 ~2.7182818284590451
 
 >> grad_(x = ~1 + i) exp(x)
-error: a comparison needs real numbers, not 1+i
+error: exp needs real numbers, not 1+i
 
 >> digits = 9
 digits = 9

@@ -90,6 +90,12 @@ l = lim s
 >> tex ?l
 l = \lim_{n \to \infty} s_n
 
+>> gl = lim g.y
+gl = lim g.y
+
+>> tex ?gl
+\mathit{gl} = \lim_{n \to \infty} g.y_n
+
 >> m(x) = floor(x/2) + (x + 1)^2
 m(x) = floor(x/2) + (x + 1)^2
 

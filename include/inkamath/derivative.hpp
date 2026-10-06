@@ -248,9 +248,17 @@ private:
         if (auto* x = Exactly<SeriesExpression<T>>(e)) return Series(*x);
         if (auto* x = Exactly<GradExpression<T>>(e)) return Grad(*x);
         if (auto* x = Exactly<MemberExpression<T>>(e)) {
-            if (Reads(*x))
+            if (!Reads(*x)) return Constant(x->accept(ordinary_));
+            // A file holds definitions, as the session does; an instance runs a model.
+            auto* const call   = dynamic_cast<FuncExpression<T>*>(x->Member().get());
+            auto* const object = Exactly<RefExpression<T>>(*x->Object());
+            const auto  file   = object ? stack_.Global(object->Name()) : nullptr;
+            if (!call || !file || !file->file)
                 throw std::runtime_error("grad cannot differentiate through an instance yet");
-            return Constant(x->accept(ordinary_));
+            const auto found = file->file->names.find(call->Name());
+            if (found == file->file->names.end()) return Constant(x->accept(ordinary_));
+            if (call->Call().subexpr()) (void)Index(call->Call().subexpr());
+            return Call(*call, found->second, *x);
         }
         throw std::runtime_error("grad cannot differentiate a local definition yet");
     }
@@ -285,11 +293,16 @@ private:
     Jet Call(FuncExpression<T>& call) {
         if (Lookup(call.Name()) || !Reads(call)) return Constant(call.accept(ordinary_));
         if (call.Call().subexpr()) (void)Index(call.Call().subexpr());
-        const auto definition = stack_.Global(call.Name());
         if (stack_.Binds(call.Name()))
             throw std::runtime_error("grad cannot differentiate a local definition yet");
+        return Call(call, stack_.Global(call.Name()), call);
+    }
+
+    // 'written' is the call as the expression has it, 'sq.f(t)' for f in a file.
+    Jet Call(FuncExpression<T>& call, const typename ReferenceStack<T>::definition_type& definition,
+             Expression<T>& written) {
         if (!definition || !definition->Value() || definition->Clauses().empty())
-            return Constant(call.accept(ordinary_));
+            return Constant(written.accept(ordinary_));
         const ParametersCall<T>&       p          = call.Call();
         const ParametersDefinition<T>& parameters = definition->Clauses().front().parameters;
         parameters.CheckArity(definition->Name(), p);

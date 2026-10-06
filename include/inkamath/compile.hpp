@@ -2920,16 +2920,28 @@ private:
         return Answer(Parted(window(matrix), Mapped(PartOf(matrix), read, window), {&matrix}));
     }
     // A cell past an input whose model states no size, which compiles as a
-    // single value (C83), refused with the size that would hold it.
+    // single value (C83), or past a single value computed from one, refused
+    // with the size that would hold it.
     void Unstated(const Expression<Value>& read, const std::string& bounds) const {
         if (!model_ || scope_ != &root_ || !dynamic_cast<const FuncExpression<Value>*>(&read))
             return;
-        for (const typename Model<Value>::Parameter& p : model_->parameters)
-            if (p.name == read.Name() && !p.index.empty() && !p.fallback && p.bounds.empty())
-                throw Reason(p.name + " is a single value, as " +
-                             model_->header.substr(0, model_->header.find('(')) +
-                             " states no size for it: write '" + p.name + "_" + p.index + "[" +
-                             bounds + "]'");
+        std::set<std::string>    seen;
+        std::vector<std::string> next{read.Name()};
+        while (!next.empty()) {
+            const std::string name = next.back();
+            next.pop_back();
+            if (!seen.insert(name).second) continue;
+            for (const typename Model<Value>::Parameter& p : model_->parameters)
+                if (p.name == name && !p.index.empty() && !p.fallback && p.bounds.empty())
+                    throw Reason((name == read.Name() ? "" : read.Name() + " reads ") + p.name +
+                                 (name == read.Name() ? " is" : ",") + " a single value, as " +
+                                 model_->header.substr(0, model_->header.find('(')) +
+                                 " states no size for it: write '" + p.name + "_" + p.index + "[" +
+                                 bounds + "]'");
+            const auto sequence = sequences_.find(name);
+            if (sequence != sequences_.end() && sequence->second.size.count() == 1)
+                for (const auto& [reads, lags] : sequence->second.reads) next.push_back(reads);
+        }
     }
     PExpression<Value> visit(FactExpression<Value>*) override { throw Reason("a factorial"); }
     // grad compiled (DESIGN.md): its body once for each cell of the point, each
@@ -3236,7 +3248,7 @@ private:
             while (sequence.bases.count(first)) first += sequence.period;  // the general clauses
             for (const auto& [read, lags] : sequence.reads) {
                 const Sequence& other = sequences_.at(read);
-                if (other.bases.empty() || other.guarded.empty()) continue;
+                if (other.bases.empty() || other.guarded.empty() || Descends(read)) continue;
                 const int reached = first - *lags.rbegin();
                 if (reached < other.start)
                     throw Refusal(name,
@@ -3373,6 +3385,29 @@ private:
 
     // The whole part of n/a, a > 0, as floor gives it.
     static int Floor(int n, int a) { return n / a - (n % a < 0 ? 1 : 0); }
+
+    // Whether a sequence's first guard always reads the sequence itself at or
+    // before the index asked, through sequences of one clause: below its base
+    // clauses that guard asks lower still, so no guard answers there, as in
+    // the interpreter. A right side not always read is not among the reads.
+    bool Descends(const std::string& name) const {
+        std::vector<std::pair<std::string, int>> next;
+        for (const auto& [read, lags] : sequences_.at(name).guarded.front().guard)
+            next.emplace_back(read, *lags.rbegin());
+        std::set<std::string> seen;
+        while (!next.empty()) {
+            const auto [read, lag] = next.back();
+            next.pop_back();
+            if (read == name && lag >= 0) return true;
+            const Sequence& s = sequences_.at(read);
+            if (!seen.insert(read).second || !s.bases.empty() || !s.guarded.empty() ||
+                !s.definition)
+                continue;
+            for (const auto& [further, lags] : s.reads)
+                next.emplace_back(further, lag + *lags.rbegin());
+        }
+        return false;
+    }
 
     // The first tick of a sequence from step n on.
     static int Tick(const Sequence& sequence, int n) {

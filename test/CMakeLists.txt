@@ -103,7 +103,7 @@ add_test(NAME prelude_header
 # drifts from it, and its program says where and exits with a failure.
 # Each as file:instance.
 foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brink drift:ledge
-                         drift:rift drift:naught drift:zeroed drift:mirrored drift:nests
+                         drift:rift drift:naught drift:zeroed drift:mirrored drift:nests drift:latch drift:toil
                          delay:fir newton:stiff logistic:gate sized:sized softmax:cls steady:mark
                          rnn:rnn attention:head momentum:ball adam:fit lqr:gain
                          rates:pairs rates:odd seeded:warm cascade:servo decimate:boxcar
@@ -193,7 +193,7 @@ set_tests_properties(check_fall_report PROPERTIES PASS_REGULAR_EXPRESSION
 set_tests_properties(check_hinge_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^hinge: 100 steps from 0, against exact values\nhinge\\.g: within 0\n$")
 set_tests_properties(check_edge_report PROPERTIES PASS_REGULAR_EXPRESSION
-    "^edge: 100 steps from 0, against exact values until 0 and inexact ones from there\nedge\\.c: within 0\nedge\\.d: within 0\nedge\\.e: within 0${about}\nedge\\.f: within 0\nedge\\.g: within 0\nedge\\.h: within 0${about}\nedge\\.i: within 0\nedge\\.j: within 0\nedge\\.k: within 0\nedge\\.l: within 0\nedge\\.m: within 0\nedge\\.o: within 0\nedge\\.s: within 0${about}\nedge\\.v: within 0\nedge\\.w: within 0\n$")
+    "^edge: 100 steps from 0, against exact values until 0 and inexact ones from there\nedge\\.c: within 0\nedge\\.d: within 0\nedge\\.e: within 0${about}\nedge\\.f: within 0\nedge\\.g: within 0\nedge\\.h: within 0${about}\nedge\\.i: within 0\nedge\\.j: no value compared, the step NaN where the interpreter gives none, as at 0: a comparison jumps at t = 1\nedge\\.k: within 0\nedge\\.l: within 0\nedge\\.m: within 0\nedge\\.o: no value compared, the step NaN where the interpreter gives none, as at 0: floor jumps at t = 2\nedge\\.s: within 0${about}\nedge\\.v: no value compared, the step NaN where the interpreter gives none, as at 0: a power's derivative is infinite at t = 0\nedge\\.w: within 0\n$")
 set_tests_properties(check_clip_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^clip: 100 steps from 0, against exact values\nclip\\.w: within 0\n$")
 set_tests_properties(check_steer_report PROPERTIES PASS_REGULAR_EXPRESSION
@@ -205,7 +205,7 @@ set_tests_properties(check_ring_report PROPERTIES PASS_REGULAR_EXPRESSION
 set_tests_properties(check_notch_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^notch: 100 steps from 0, against exact values\nnotch\\.y: within 0\n$")
 set_tests_properties(check_smooth_report PROPERTIES PASS_REGULAR_EXPRESSION
-    "^smooth: 100 steps from 0, against exact values\nsmooth\\.z: within 0\n$")
+    "^smooth: 100 steps from 0, against exact values\nsmooth\\.z: no value compared, the step NaN where the interpreter gives none, as at 0: floor jumps at t = ~0\\.34657359\n$")
 set_tests_properties(check_cusp_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^cusp: 100 steps from 0, against exact values until 0 and inexact ones from there\ncusp\\.x: within 0\ncusp\\.g: within 0\n$")
 # Its known limit, C110, held where it parts.
@@ -237,6 +237,10 @@ set_tests_properties(check_layer_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^layer: 100 steps from 0, against exact values\nlayer\\.w: within 0\nlayer\\.z: within 0\nlayer\\.h: within 0\nlayer\\.y: within 0\n$")
 set_tests_properties(check_kink_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^kink: 100 steps from 0, against exact values\nkink\\.c: within 0\nkink\\.d: within 0\nkink\\.e: within 0\nkink\\.g: within 0\nkink\\.h: within 0\nkink\\.m: within 0\n$")
+set_tests_properties(check_toil_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^toil: 100 steps from 0, against exact values until 0 and inexact ones from there\ntoil\\.y: within 0\; the interpreter ran out of steps at 2, not compared\n$")
+set_tests_properties(check_latch_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^latch: 100 steps from 0, against exact values\nlatch\\.m: within 0, from 1\nlatch\\.w: within 0\n$")
 set_tests_properties(check_mask_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^mask: 100 steps from 0, against exact values\nmask\\.y: within 0\n$")
 set_tests_properties(check_order_report PROPERTIES PASS_REGULAR_EXPRESSION
@@ -302,13 +306,13 @@ set_tests_properties(check_pair_report PROPERTIES PASS_REGULAR_EXPRESSION
 set_tests_properties(check_lap_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^lap: 100 steps from 0, against exact values until 0 and inexact ones from there\nlap\\.y: within [0-9.e+-]+\\; the interpreter's terms about 5\\.8e-11 from the exact ones\n$")
 set_tests_properties(check_trim_report PROPERTIES PASS_REGULAR_EXPRESSION
-    "^trim: 100 steps from 0, against exact values\ntrim\\.y: within 0\n$")
+    "^trim: 100 steps from 0, against exact values\ntrim\\.y: no value compared, the step NaN where the interpreter gives none, as at 0: no clause of r applies\n$")
 set_tests_properties(check_any_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^any: 100 steps from 0, against exact values\nany\\.y: within 0\nany\\.o: within 0\n$")
 set_tests_properties(check_cell_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^cell: 100 steps from 0, against exact values\ncell\\.b: within 0\ncell\\.c: within 0\ncell\\.m: within 0\ncell\\.p: within 0\n$")
 set_tests_properties(check_held_report PROPERTIES PASS_REGULAR_EXPRESSION
-    "^held: 100 steps from 0, against exact values\nheld\\.d: within 0\n$")
+    "^held: 100 steps from 0, against exact values\nheld\\.d: no value compared, the step NaN where the interpreter gives none, as at 0: no clause of r applies\n$")
 # A model's input of more than one cell (DESIGN.md, C83), every term exact.
 set_tests_properties(check_fan_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^fan: 100 steps from 0, against exact values\nfan\\.y: within 0\n$")
@@ -498,7 +502,7 @@ foreach(report IN ITEMS
         "far:^far: 100 steps from 0${in_float}\nfar\\.x: within 0\\.99, 16 units of a float\nfar\\.d: 0 at 1, where the interpreter gives 0\\.01\n$"
         "tally:^tally: 100 steps from 0${in_float}\ntally\\.c: within 50, 25 units of a float\n$"
         "steep:^steep: 100 steps from 0${inexact}\nsteep\\.e: inf at 67, where the interpreter gives [0-9.e+-]+\; the interpreter's term about [0-9.e+-]+ from the exact one\n$"
-        "blast:^blast: 100 steps from 0${in_float}\nblast\\.y: within 0, 0 units of a float\nblast\\.z: within 0, 0 units of a float\n$"
+        "blast:^blast: 100 steps from 0${in_float}\nblast\\.y: no value compared, the step NaN where the interpreter gives none, as at 0: p did not converge within 100 terms \\(last term [^)]+\\)\nblast\\.z: no value compared, the step NaN where the interpreter gives none, as at 0: v did not converge within 100 terms \\(last term [^)]+\\)\n$"
         "mark:^mark: 100 steps from 0${inexact}\nmark\\.d: within ${units}\nmark\\.s: within ${units}\n$"
         "line:^line: 100 steps from 0${in_float}\nline\\.w: within 2\\.7e-07, 1\\.9 units of a float\n$"
         "whirl:^whirl: 100 steps from 0${in_float}\nwhirl\\.d: ${exact}\nwhirl\\.s: ${exact}\nwhirl\\.c: ${exact}\nwhirl\\.e: ${exact}, from 1\nwhirl\\.g: ${exact}\nwhirl\\.h: ${exact}, from 1\nwhirl\\.k: ${exact}\nwhirl\\.l: ${exact}\nwhirl\\.p: ${exact}\nwhirl\\.q: ${exact}\nwhirl\\.u: ${exact}, from 1\n$"
