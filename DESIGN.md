@@ -2737,6 +2737,9 @@ that exploring seven domains asked of the interpreter, by how many asked.
 - **Steps and tolerance as options**, when a model asks: a hundred steps is
   short of what a slow filter settles in, and a billionth is loose for a
   well-conditioned step.
+- **The parts and modulus of a complex number**: a frequency response
+  |T(e^{jw})| cannot be written, as `abs` refuses a complex value and nothing
+  gives its real or imaginary part.
 - `[done]` **A definition as LaTeX**, `tex ?name`, a word at the start of a line as
   `frac` is, and reserved as it is. It renders what was parsed, not what was
   typed: the clauses for one index a line each, then those for every index,
