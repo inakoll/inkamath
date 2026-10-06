@@ -901,12 +901,12 @@ set(args --compile c135.ink -o c135.h)
 check(compile_c135)
 holds(compile_c135 c135.h "    m_->b[0] = 4.0;\n" "    m_->c[0] = 4.0;\n" "    m_->d[0] = 4.0;\n")
 
-# C115: a constant gradient at a point that moves is no constant to fold with
-# what reads it, a fold that would take the point again.
+# C115: a constant gradient at a point that moves folds with what reads it
+# from its value, not by taking the point again (C135).
 file(WRITE "${OUT}/c115.ink" "u_n = x_n - grad_(t = x_n) 3*t\n")
 set(args --compile c115.ink -o c115.h)
 check(compile_c115)
-holds(compile_c115 c115.h "    m_->u[0] = m_->x[0] + (0.0 - 3.0);\n")
+holds(compile_c115 c115.h "    m_->u[0] = m_->x[0] - 3.0;\n")
 
 # C112: a global a call reads sees the globals, not the call's names.
 file(WRITE "${OUT}/c112.ink" "f(x) = x + g\ng = x*2\nx = 5\ny_n = f(n)\n")

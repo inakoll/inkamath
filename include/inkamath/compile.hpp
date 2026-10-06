@@ -2946,8 +2946,6 @@ private:
         Code out = point.Scalar() ? parts[0] : Assembled(parts, point.size);
         if (!any) out = Literal(Value(point.Scalar() ? body.size : point.size));
         out.part.clear();
-        // A fold reading it would take its point and body again (C115).
-        if (!point.constant || !body.constant) out.constant.reset();
         // NaN where the value differentiated is, in a header that writes NaN,
         // as one does where that value writes it and no part reads it (C113).
         for (const Cell& c : body.cells) aware_ |= !body.constant && WritesNan(c.text);
