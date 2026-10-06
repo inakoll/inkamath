@@ -145,7 +145,7 @@ public:
                 const std::string name   = instance + "." + sequence.name;
                 const int         index  = Floor(n - sequence.phase, sequence.period);
                 const Term        term   = before && sequence.period > 1
-                                               ? Term{{}, true, "not asked", {}, {}, {}}
+                                               ? Term{{}, true, "not asked", {}, {}, {}, false}
                                                : ask(sequence, index);
                 if (!term.exact && (!inexact || n < *inexact)) inexact = n;
                 const bool given = term.error.empty();
@@ -160,7 +160,8 @@ public:
                     for (const auto& run : again[{name, index}]) Farther(term.value, run, at);
                 // Each cell by itself: one no double holds parts alone (C128).
                 for (std::size_t c = 0; c < cells; ++c) {
-                    const char kind = !given                 ? (before ? '0' : '2')
+                    const char kind = !given && term.spent   ? '5'
+                                      : !given               ? (before ? '0' : '2')
                                       : !term.odd[c].empty() ? '4'
                                       : before               ? '3'
                                                              : '1';
@@ -288,7 +289,8 @@ public:
                " of one plus the interpreter's term; where the interpreter\n";
         out += " * gives none, from the sequence's start, unless it is NaN, and before it,\n";
         out += " * where the interpreter gives one. 'known' says which: 0 not asked, 1 a\n";
-        out += " * term, 2 none, 3 one before the start, 4 one that is no finite double;\n";
+        out += " * term, 2 none, 3 one before the start, 4 one that is no finite double,\n";
+        out += " * 5 none, the interpreter out of steps;\n";
         out += " * 'about' is each term's estimate, or none where every one is 0. */\n";
         out += "static int hold_(const char* name, int cols, " + rows + "int cells, int from,\n";
         out += "                 const " + CompileC::Real() + "* got, const double* want,\n";
@@ -296,12 +298,14 @@ public:
         out += "                 const double* about) {\n";
         out += "    double worst = 0.0, most = 0.0" + std::string(floats ? ", units = 0.0" : "") +
                ";\n";
-        out += "    int    past  = -1, compared = 0;\n";
+        out += "    int    past  = -1, compared = 0, spent = -1, more = 0;\n";
         out += "    for (int k = 0; k < " + std::to_string(steps) + " * cells; ++k) {\n";
         out += "        const double difference = fabs(" + got + " - want[k]);\n";
         out += "        const int    n = " + std::to_string(first) + " + k / cells;\n";
         out += "        const double e = about ? about[k] : 0.0;\n";
         out += "        if (known[k] == 0 || (known[k] == 2 && isnan(" + got + "))) continue;\n";
+        out += "        if (known[k] == 5) {\n            more += spent >= 0;\n";
+        out += "            if (spent < 0) spent = n;\n            continue;\n        }\n";
         out +=
             "        if (known[k] == 1 && difference <= " + tol + " * (1.0 + fabs(want[k]))) {\n";
         out += "            ++compared;\n";
@@ -339,17 +343,23 @@ public:
             "            printf(\"; the interpreter's term about %.2g from the exact one\", e);\n";
         out += "        printf(\"\\n\");\n";
         out += "        return 0;\n    }\n";
+        // A term the interpreter gave up on is no answer the step could be held to.
+        const std::string spent =
+            "    if (spent >= 0) {\n"
+            "        printf(\"; the interpreter ran out of steps at %d\", spent);\n"
+            "        if (more) printf(\" and %d more\", more);\n"
+            "        printf(\", not compared\");\n    }\n";
         // Where neither side gives a value, 'within 0' would say one was held.
         out += "    if (!compared) {\n";
-        out +=
-            "        printf(\"%s: no value compared, the step NaN where the interpreter gives "
-            "none\", name);\n";
+        out += "        printf(\"%s: no value compared\", name);\n";
         out += "        for (int k = 0; k < " + std::to_string(steps) + " * cells; ++k)\n";
         out += "            if (known[k] == 2) {\n";
-        out += "                printf(\", as at %d: %s\", " + std::to_string(first) +
-               " + k / cells, why[k]);\n";
+        out +=
+            "                printf(\", the step NaN where the interpreter gives none, as at "
+            "%d: %s\", " +
+            std::to_string(first) + " + k / cells, why[k]);\n";
         out += "                break;\n            }\n";
-        out += "        printf(\"\\n\");\n        return 1;\n    }\n";
+        out += spent + "        printf(\"\\n\");\n        return 1;\n    }\n";
         out += floats
                    ? "    printf(\"%s: within %.2g, %.2g units of a float\", name, worst, units);\n"
                    : "    printf(\"%s: within %.2g\", name, worst);\n";
@@ -358,7 +368,7 @@ public:
         out +=
             "        printf(\"; the interpreter's terms about %.2g from the exact ones\", most);\n";
         out += "    if (past >= 0) printf(\", past the tolerance from %d\", past);\n";
-        out += "    printf(\"\\n\");\n    return 1;\n}\n\n";
+        out += spent + "    printf(\"\\n\");\n    return 1;\n}\n\n";
         if (!table.empty()) out += Flips(first);
         out += data + "\nint main(void) {\n";
         out += "    " + module + " m;\n    int held = 1;\n    " + module + "_init(&m);\n";
@@ -499,7 +509,8 @@ private:
         std::string              error;
         std::vector<std::string> odd;  // why each cell is no finite double, or empty
         Value                    value;
-        std::vector<double>      reals;  // the cells, as doubles
+        std::vector<double>      reals;          // the cells, as doubles
+        bool                     spent = false;  // the interpreter ran out of steps
     };
 
     // How its model would state the size of an input given a matrix (C83).
@@ -522,6 +533,7 @@ private:
         Term              answer;
         if (const auto* diagnostic = std::get_if<Diagnostic>(&result)) {
             answer.error = diagnostic->message;
+            answer.spent = session.Definitions().Spent();
             return answer;
         }
         const auto* value = std::get_if<Interpreter<Number>::matrix_type>(&result);

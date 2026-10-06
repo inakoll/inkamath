@@ -360,6 +360,9 @@ public:
     // Whether a call's frame is open to bind in.
     [[nodiscard]] bool Framed() const { return open_ != 0; }
 
+    // Whether the evaluation ran out of steps, which says nothing of its answer.
+    [[nodiscard]] bool Spent() const { return steps_ >= max_steps; }
+
     // One step of an evaluation that reads no name, and so never passes
     // through Eval: a sum of a constant still has to end.
     void Step() { Budget step(*this); }
