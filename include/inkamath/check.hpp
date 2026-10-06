@@ -190,8 +190,13 @@ public:
                                                       std::to_string(compiled.cells[k]) + "]";
         std::string table;
         for (std::size_t k = 0; k < compiled.guarded.size(); ++k) {
-            const std::string&       name      = compiled.guarded[k];
-            const Reference<Value>&  reference = Resolve(stack, definition, name);
+            const std::string& name = compiled.guarded[k];
+            const auto found = std::find_if(compiled.sequences.begin(), compiled.sequences.end(),
+                                            [&](const auto& s) { return s.name == name; });
+            const std::size_t       dot = name.rfind('.');
+            const Reference<Value>& reference =
+                found->unnamed ? *made.at(name.substr(0, dot))->names.at(name.substr(dot + 1))
+                               : Resolve(stack, definition, name);
             const auto&              clauses   = reference.Clauses();
             const std::string        id = std::to_string(k), count = std::to_string(clauses.size());
             // A term chosen cell by cell is reported cell by cell; the clause
@@ -213,8 +218,6 @@ public:
             }
             data += Array("const char* const", "written_" + id, clauses.size() + 1, written);
             data += Array("const int", "rank_" + id, clauses.size() + 1, rank);
-            const auto found = std::find_if(compiled.sequences.begin(), compiled.sequences.end(),
-                                            [&](const auto& s) { return s.name == name; });
             // At another rate, the clause of the latest term computed, none before.
             const auto term = [&](int n) {
                 return found->period > 1 && n < found->start
