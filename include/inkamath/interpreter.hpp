@@ -352,6 +352,31 @@ Interpreter<T, U>::Interpreter() {
             if (c == inkamath_prelude_ilogb) return U(Number(static_cast<long long>(y)));
             return U(Number(y));
         };
+        // A part exact is rounded first by exp, sin and cos, as their
+        // definitions round it; a 0 or a NaN walks, which tells a clause
+        // without a part from a 0 and refuses a jump in its own words.
+        const std::array<std::pair<const Reference<U>*, double (*)(double, double)>, 5> parts{{
+            {names.at("exp").get(), inkamath_prelude_exp_dx},
+            {names.at("tanh").get(), inkamath_prelude_tanh_dx},
+            {names.at("log").get(), inkamath_prelude_log_dx},
+            {names.at("sin").get(), inkamath_prelude_sin_dx},
+            {names.at("cos").get(), inkamath_prelude_cos_dx},
+        }};
+        stack_.differentiated = [parts](const Reference<U>& f, const U& x,
+                                        const U& dx) -> std::optional<U> {
+            const auto found = std::find_if(parts.begin(), parts.end(),
+                                            [&](const auto& each) { return each.first == &f; });
+            if (found == parts.end() || !dx.IsScalar()) return {};
+            const auto    c = found->second;
+            const Number& p = dx(1, 1);
+            const auto    q = p.Inexact();
+            if ((p.exact() && (c == inkamath_prelude_tanh_dx || c == inkamath_prelude_log_dx)) ||
+                Number::approximated(p) || q.imag() != 0)
+                return {};
+            const double d = c(x(1, 1).Inexact().real(), q.real());
+            if (d == 0 || std::isnan(d)) return {};
+            return U(Number(d));
+        };
     }
     ResetInterpreter();
 }

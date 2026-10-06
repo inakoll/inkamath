@@ -962,9 +962,9 @@ multiple of pi/2 nearest theirs. An exact argument is reduced exactly, save
 within about 1e-31 of a multiple of pi/2 (C123), nothing they give is exact, and `log(0)` is refused as `1/0` is; so are `sin` and
 `cos` past 2^20 either way, where the reduction would round, so a growing
 phase such as `sin(w*t)` stops at 2^20. Compiled, each is a C function of the
-header's own; the interpreter calls the same functions, checked in as
-`include/inkamath/inkamath_prelude.h`, on a double, where they answer what the
-definitions answer.
+header's own; the interpreter calls the same functions, and under `grad` their
+parts, checked in as `include/inkamath/inkamath_prelude.h`, on a double, where
+they answer what the definitions answer.
 `test/data/models.ink` is the whole of it.
 
 Data comes in as a file of definitions like any other, written by whatever
