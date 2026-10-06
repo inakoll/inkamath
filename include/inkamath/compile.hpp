@@ -1754,29 +1754,32 @@ private:
         Code code;
         code.rows     = expression->Size().rows;
         code.cols     = expression->Size().cols;
-        bool constant = true, exactly = true;
-        // Each cell's part, 0 where it has none (Derivative::Literal).
-        Code                     part = code;
-        Value                    exact(Extent{code.rows, code.cols});
-        std::vector<Code>        cells;
+        bool                     constant = true, any = false;
+        std::vector<Code>        cells, parts;
         std::vector<const Code*> from;
         for (const PExpression<Value>& child : expression->Children()) {
             const Code& cell = cells.emplace_back(Emit(child));
             if (!cell.Scalar()) throw Reason("a matrix built from matrices");
             constant = constant && cell.constant;
+            any      = any || !cell.part.empty();
             code.cells.push_back(cell.cells[0]);
-            const Code        p = cell.part.empty() ? Literal(Value(Number(0))) : cell.part[0];
-            const std::size_t k = part.cells.size();
-            part.cells.push_back(p.cells[0]);
-            exactly = exactly && p.constant;
-            if (p.constant) exact(k / code.cols + 1, k % code.cols + 1) = (*p.constant)(1, 1);
+            // Each cell's part, 0 where it has none (Derivative::Literal).
+            parts.push_back(cell.part.empty() ? Literal(Value(Number(0))) : cell.part[0]);
         }
         for (const Code& cell : cells) from.push_back(&cell);
-        if (exactly) part.constant = exact;
-        const bool any =
-            std::any_of(cells.begin(), cells.end(), [](const Code& c) { return !c.part.empty(); });
-        return Answer(
-            Parted(constant ? Folded(expression) : code, any ? Part(part) : Part(), from));
+        const Part part = any ? Part(Assembled(parts, code.rows, code.cols)) : Part();
+        return Answer(Parted(constant ? Folded(expression) : code, part, from));
+    }
+    // A matrix of single parts, row by row, exact where each is.
+    static Code Assembled(const std::vector<Code>& parts, std::size_t rows, std::size_t cols) {
+        Code code = Literal(Value(Extent{rows, cols}));
+        for (std::size_t k = 0; k < parts.size(); ++k) {
+            code.cells[k] = parts[k].cells[0];
+            if (!parts[k].constant) code.constant.reset();
+            if (code.constant)
+                (*code.constant)(k / cols + 1, k % cols + 1) = (*parts[k].constant)(1, 1);
+        }
+        return code;
     }
 
     PExpression<Value> visit(RefExpression<Value>* expression) override {
@@ -2807,11 +2810,9 @@ private:
         const std::string& name  = expression->Variable();
         const Code         point = Emit(expression->Point());
         Asked([&] { Reasoned([&] { Derivative<Value>(definitions_).Names(*expression); }); }, true);
-        Code body, out;
-        out.rows = point.rows;
-        out.cols = point.cols;
-        Value exact(Extent{point.rows, point.cols});
-        bool  any = false, constant = true;
+        Code              body;
+        std::vector<Code> parts;
+        bool              any = false;
         for (std::size_t k = 0; k < point.cells.size(); ++k) {
             const std::size_t i = k / point.cols + 1, j = k % point.cols + 1;
             Value             seed(Number(1));
@@ -2833,18 +2834,11 @@ private:
                 throw Reason(
                     "grad of a matrix with respect to a matrix is a Jacobian, which it "
                     "does not give");
-            const Code part =
-                body.part.empty() ? Literal(Value(Extent{body.rows, body.cols})) : body.part[0];
+            parts.push_back(body.part.empty() ? Literal(Value(Extent{body.rows, body.cols}))
+                                              : body.part[0]);
             any = any || !body.part.empty();
-            if (point.Scalar()) {
-                out = part;
-                break;
-            }
-            out.cells.push_back(part.cells[0]);
-            constant = constant && part.constant;
-            if (part.constant) exact(i, j) = (*part.constant)(1, 1);
         }
-        if (!point.Scalar() && constant) out.constant = exact;
+        Code out = point.Scalar() ? parts[0] : Assembled(parts, point.rows, point.cols);
         if (!any) out = Literal(Value(Extent{body.rows, body.cols}));
         out.part.clear();
         // A fold reading it would take its point and body again (C115).
