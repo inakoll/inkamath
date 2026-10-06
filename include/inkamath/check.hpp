@@ -130,7 +130,7 @@ public:
         std::optional<int> inexact;  // where the interpreter's terms stop being exact
         for (std::size_t k = 0; k < compiled.sequences.size(); ++k) {
             const auto&              sequence = compiled.sequences[k];
-            const std::size_t        cells    = sequence.rows * sequence.cols;
+            const std::size_t        cells    = sequence.size.count();
             const std::string        id = std::to_string(k), size = std::to_string(steps * cells);
             std::vector<std::string> want, known, why;
             std::vector<double>      about(steps * cells);
@@ -178,7 +178,7 @@ public:
                        sequence.name + "[0], sizeof(" + CompileC::Real() + ") * " +
                        std::to_string(cells) + ");\n";
             held += "    held &= hold_(\"" + instance + "." + sequence.name + "\", " +
-                    std::to_string(sequence.cols) + ", " + std::to_string(cells) + ", " +
+                    std::to_string(sequence.size.cols) + ", " + std::to_string(cells) + ", " +
                     std::to_string(sequence.start) + ", got_" + id + ", want_" + id + ", known_" +
                     id + ", " + (told ? "why_" + id : std::string("0")) + ", " +
                     (estimated ? "about_" + id : std::string("0")) + ");\n";
@@ -224,8 +224,8 @@ public:
                            ? std::numeric_limits<int>::min()
                            : Floor(n - found->phase, found->period);
             };
-            const std::size_t cols   = found->cols;
-            const std::size_t places = cellwise ? found->rows * cols : 1;
+            const std::size_t cols   = found->size.cols;
+            const std::size_t places = cellwise ? found->size.count() : 1;
             for (std::size_t c = 0; c < places; ++c) {
                 const int                row = cellwise ? static_cast<int>(c / cols) + 1 : 0;
                 const int                col = cellwise ? static_cast<int>(c % cols) + 1 : 0;
