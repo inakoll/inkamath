@@ -421,6 +421,12 @@ set(args --check wide.ink v -o wide.c)
 set(stderr "inkamath: v.x_(0) has 2 cells, where the compiled step takes a single value, as mm states no size for x: write 'x_n[j<=2]'\n")
 set(exit 1)
 check(check_matrix_input)
+# A tensor too, by its slices (C130).
+file(WRITE "${OUT}/deep.ink" "mt(X_n) = {\n    t_n = 2*X_n\n}\nv = mt(X_n = [n; 1;; 2; 3])\n")
+set(args --check deep.ink v -o deep.c)
+set(stderr "inkamath: v.X_(0) has 4 cells, where the compiled step takes a single value, as mt states no size for X: write 'X_n[b<=2, j<=2, k<=1]'\n")
+set(exit 1)
+check(check_tensor_input)
 file(WRITE "${OUT}/celled.ink" "cl(x_n) = {\n    y_n = x_n[2]\n}\ncm(u_m) = {\n    z_m = u_(m-1)[2, 3]\n}\n"
      "ct(X_n) = {\n    t_n = X_n[1, 2, 1]\n}\n")
 set(args --compile celled.ink cl -o cl.h)
@@ -616,8 +622,18 @@ holds(compile_inputs_turn turn.h [[static inline void turn_init(turn* m_) {
     memcpy(m_->x[1], m_->x[0], sizeof m_->x[1]);
     memcpy(m_->x[0], x, sizeof m_->x[0]);
 ]])
-holds(compile_inputs_avg avg.h [[ Compiled in, as a size, a bound or a
- * lag cannot change: d.
+holds(compile_inputs_avg avg.h [[ Compiled in as constants, these
+ * cannot change: d.
+]])
+
+# A parameter compiled in need not be a size, a bound or a lag: a matrix
+# power's exponent and a cell's place are neither (C129).
+file(WRITE "${OUT}/pw.ink" "pw(k = 2, i = 1, x_n) = {\n    y_n = ([1 1; 0 1]^k*[x_n; 1])[i]\n}\n")
+set(args --compile pw.ink pw -o pw.h)
+check(compile_fixed_power)
+holds(compile_fixed_power pw.h [[ * name_(n-k) for each sequence: x and y. Compiled in as constants, these
+ * cannot change: i and k.
+ */
 ]])
 
 # Refused: a history of another size than the input, a default and an

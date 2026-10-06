@@ -114,8 +114,9 @@ terms, an `init` and a `step`, for a filter to run where the interpreter cannot.
 What derives from the parameters alone is computed by `update`, which `init`
 calls and the host calls again after assigning a parameter. The header opens
 with how to call it: the step's inputs, what each field holds after a step,
-and the parameters with their values. A parameter that
-gives a size, a bound or a lag is compiled in instead, as the header says.
+and the parameters with their values. A parameter read where the step
+needs a constant, a size or an exponent, is compiled in instead, as the
+header says.
 `test/compile/pid.ink` is a PID controller, and `test/compile/expected/pid.h`
 is what it compiles to; `test/compile/kalman.ink` is a Kalman filter over
 matrices.
