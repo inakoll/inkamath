@@ -55,8 +55,8 @@ static inline void mix_step(mix* m_, double u, double b) {
     m_->v[1] = m_->v[0];
     m_->u[0] = u;
     m_->b[0] = b;
-    m_->m[0] = m_->g * m_->u[0] + (1.0 - m_->g) * m_->b[0];
-    m_->v[0] = m_->index_ == 0 ? 0.0 : m_->a * m_->m[0] + (1.0 - m_->a) * m_->v[1];
+    m_->m[0] = m_->g * m_->u[0] + (1.0 + (0.0 - m_->g)) * m_->b[0];
+    m_->v[0] = m_->index_ == 0 ? 0.0 : m_->a * m_->m[0] + (1.0 + (0.0 - m_->a)) * m_->v[1];
 }
 
 #endif

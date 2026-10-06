@@ -1235,7 +1235,10 @@ private:
         return code;
     }
 
-    // a + (-b) is a - b in IEEE arithmetic, and reads as what was written.
+    // A negative number written is added as a subtraction, the same in IEEE
+    // arithmetic, and reads as what was written. A negation computed is 0 - b
+    // and added as such, as the interpreter's: -0 - +0 is -0, -0 + (0 - +0)
+    // +0 (C109).
     static Cell Added(const Cell& left, const Cell& right) {
         if (!right.magnitude.empty())
             return {Wrap(left, sum) + " - " + Wrap(right.magnitude, right.magnitude_level, product),
@@ -1402,8 +1405,6 @@ private:
         for (Cell& cell : code.cells) {
             Cell negation(
                 zero + (cell.magnitude.empty() ? Wrap(cell, product) : "(" + cell.text + ")"), sum);
-            negation.magnitude       = cell.text;
-            negation.magnitude_level = cell.level;
             negation.atom            = cell.atom;
             cell                     = negation;
         }

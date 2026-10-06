@@ -94,21 +94,21 @@ static inline void bank_step(bank* m_, double x) {
     m_->y_smooth.v[1] = m_->y_smooth.v[0];
     m_->x[0] = x;
     m_->bank_smooth_1.u[0] = m_->x[0];
-    m_->bank_smooth_1.v[0] = m_->index_ == 0 ? 0.0 : m_->bank_smooth_1.a * m_->bank_smooth_1.u[0] + (1.0 - m_->bank_smooth_1.a) * m_->bank_smooth_1.v[1];
+    m_->bank_smooth_1.v[0] = m_->index_ == 0 ? 0.0 : m_->bank_smooth_1.a * m_->bank_smooth_1.u[0] + (1.0 + (0.0 - m_->bank_smooth_1.a)) * m_->bank_smooth_1.v[1];
     m_->bank_smooth_2.u[0] = m_->x[0];
-    m_->bank_smooth_2.v[0] = m_->index_ == 0 ? 0.0 : m_->bank_smooth_2.a * m_->bank_smooth_2.u[0] + (1.0 - m_->bank_smooth_2.a) * m_->bank_smooth_2.v[1];
+    m_->bank_smooth_2.v[0] = m_->index_ == 0 ? 0.0 : m_->bank_smooth_2.a * m_->bank_smooth_2.u[0] + (1.0 + (0.0 - m_->bank_smooth_2.a)) * m_->bank_smooth_2.v[1];
     m_->bank_smooth_3.u[0] = m_->x[0];
-    m_->bank_smooth_3.v[0] = m_->index_ == 0 ? 0.0 : m_->bank_smooth_3.a * m_->bank_smooth_3.u[0] + (1.0 - m_->bank_smooth_3.a) * m_->bank_smooth_3.v[1];
+    m_->bank_smooth_3.v[0] = m_->index_ == 0 ? 0.0 : m_->bank_smooth_3.a * m_->bank_smooth_3.u[0] + (1.0 + (0.0 - m_->bank_smooth_3.a)) * m_->bank_smooth_3.v[1];
     m_->bank[0][0][0] = m_->bank_smooth_1.v[0];
     m_->bank[0][1][0] = m_->bank_smooth_2.v[0];
     m_->bank[0][2][0] = m_->bank_smooth_3.v[0];
     m_->s_sharp.u[0] = m_->x[0];
     m_->s_sharp.v_smooth.u[0] = m_->s_sharp.u[0];
-    m_->s_sharp.v_smooth.v[0] = m_->index_ == 0 ? 0.0 : m_->s_sharp.a * m_->s_sharp.v_smooth.u[0] + (1.0 - m_->s_sharp.a) * m_->s_sharp.v_smooth.v[1];
-    m_->s_sharp.v[0] = 2.0 * m_->s_sharp.u[0] - m_->s_sharp.v_smooth.v[0];
+    m_->s_sharp.v_smooth.v[0] = m_->index_ == 0 ? 0.0 : m_->s_sharp.a * m_->s_sharp.v_smooth.u[0] + (1.0 + (0.0 - m_->s_sharp.a)) * m_->s_sharp.v_smooth.v[1];
+    m_->s_sharp.v[0] = 2.0 * m_->s_sharp.u[0] + (0.0 - m_->s_sharp.v_smooth.v[0]);
     m_->s[0] = m_->s_sharp.v[0];
     m_->y_smooth.u[0] = m_->bank[0][2][0];
-    m_->y_smooth.v[0] = m_->index_ == 0 ? 0.0 : m_->y_smooth.a * m_->y_smooth.u[0] + (1.0 - m_->y_smooth.a) * m_->y_smooth.v[1];
+    m_->y_smooth.v[0] = m_->index_ == 0 ? 0.0 : m_->y_smooth.a * m_->y_smooth.u[0] + (1.0 + (0.0 - m_->y_smooth.a)) * m_->y_smooth.v[1];
     m_->y[0] = m_->y_smooth.v[0];
 }
 

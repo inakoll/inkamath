@@ -709,12 +709,12 @@ set(args --compile ${CMAKE_CURRENT_LIST_DIR}/compile/logistic.ink logit --float 
 check(float_gate)
 holds(float_gate float/gate.h "#include <float.h>\n#include <math.h>\n"
       [[static inline float gate_lim0(const gate* m_, float arg_z) {]]
-      [[        const float t_ = t1_ + (t1_ - t2_) * arg_z / (float)k_;
+      [[        const float t_ = t1_ + (t1_ + (0.0f - t2_)) * arg_z / (float)k_;
         if (started_) {
             step_ = fabsf(t_ - t1_);
             if (step_ <= 2 * FLT_EPSILON * fabsf(t_) && isfinite(t_) && stepped_) return t_;
             if (step_ <= 1e-10f && stepped_ &&
-]] [[    m_->p[0][0][0] = 1.0f / (1.0f + gate_lim0(m_, 0.0f - (0.0f * m_->w[0][0][0] + 0.0f * m_->w[0][1][0] + m_->b[0])));
+]] [[    m_->p[0][0][0] = 1.0f / (1.0f + gate_lim0(m_, 0.0f + (0.0f - (0.0f * m_->w[0][0][0] + 0.0f * m_->w[0][1][0] + m_->b[0]))));
 ]])
 
 set(args --check ${CMAKE_CURRENT_LIST_DIR}/compile/drift.ink calm --float -o float/calm.c)
@@ -753,8 +753,8 @@ check(check_c104)
 set(grad "${CMAKE_CURRENT_LIST_DIR}/compile/grad.ink")
 set(args --compile ${grad} lsq -o lsq.h)
 check(compile_grad_line)
-holds(compile_grad_line lsq.h [[    m_->w[0][0][0] = m_->index_ == 0 ? 0.0 : m_->w[1][0][0] - m_->eta * (2.0 * pow(1.0 * m_->w[1][0][0] + 0.0 * m_->w[1][1][0] - 1.0, 1.0) * 1.0 / 8.0 + 2.0 * pow(1.0 * m_->w[1][0][0] + 1.0 * m_->w[1][1][0] - 3.0, 1.0) * 1.0 / 8.0 + 2.0 * pow(1.0 * m_->w[1][0][0] + 2.0 * m_->w[1][1][0] - 5.0, 1.0) * 1.0 / 8.0 + 2.0 * pow(1.0 * m_->w[1][0][0] + 3.0 * m_->w[1][1][0] - 7.0, 1.0) * 1.0 / 8.0);
-    m_->w[0][1][0] = m_->index_ == 0 ? 0.0 : m_->w[1][1][0] - m_->eta * (2.0 * pow(1.0 * m_->w[1][0][0] + 0.0 * m_->w[1][1][0] - 1.0, 1.0) * 0.0 / 8.0 + 2.0 * pow(1.0 * m_->w[1][0][0] + 1.0 * m_->w[1][1][0] - 3.0, 1.0) * 1.0 / 8.0 + 2.0 * pow(1.0 * m_->w[1][0][0] + 2.0 * m_->w[1][1][0] - 5.0, 1.0) * 2.0 / 8.0 + 2.0 * pow(1.0 * m_->w[1][0][0] + 3.0 * m_->w[1][1][0] - 7.0, 1.0) * 3.0 / 8.0);
+holds(compile_grad_line lsq.h [[    m_->w[0][0][0] = m_->index_ == 0 ? 0.0 : m_->w[1][0][0] + (0.0 - m_->eta * (2.0 * pow(1.0 * m_->w[1][0][0] + 0.0 * m_->w[1][1][0] - 1.0, 1.0) * 1.0 / 8.0 + 2.0 * pow(1.0 * m_->w[1][0][0] + 1.0 * m_->w[1][1][0] - 3.0, 1.0) * 1.0 / 8.0 + 2.0 * pow(1.0 * m_->w[1][0][0] + 2.0 * m_->w[1][1][0] - 5.0, 1.0) * 1.0 / 8.0 + 2.0 * pow(1.0 * m_->w[1][0][0] + 3.0 * m_->w[1][1][0] - 7.0, 1.0) * 1.0 / 8.0));
+    m_->w[0][1][0] = m_->index_ == 0 ? 0.0 : m_->w[1][1][0] + (0.0 - m_->eta * (2.0 * pow(1.0 * m_->w[1][0][0] + 0.0 * m_->w[1][1][0] - 1.0, 1.0) * 0.0 / 8.0 + 2.0 * pow(1.0 * m_->w[1][0][0] + 1.0 * m_->w[1][1][0] - 3.0, 1.0) * 1.0 / 8.0 + 2.0 * pow(1.0 * m_->w[1][0][0] + 2.0 * m_->w[1][1][0] - 5.0, 1.0) * 2.0 / 8.0 + 2.0 * pow(1.0 * m_->w[1][0][0] + 3.0 * m_->w[1][1][0] - 7.0, 1.0) * 3.0 / 8.0));
 ]])
 set(args --compile ${grad} descent -o fall.h)
 check(compile_grad_fall)
@@ -776,7 +776,7 @@ check(compile_grad_refused)
 file(WRITE "${OUT}/c115.ink" "u_n = x_n - grad_(t = x_n) 3*t\n")
 set(args --compile c115.ink -o c115.h)
 check(compile_c115)
-holds(compile_c115 c115.h "    m_->u[0] = m_->x[0] - 3.0;\n")
+holds(compile_c115 c115.h "    m_->u[0] = m_->x[0] + (0.0 - 3.0);\n")
 
 # C112: a global a call reads sees the globals, not the call's names.
 file(WRITE "${OUT}/c112.ink" "f(x) = x + g\ng = x*2\nx = 5\ny_n = f(n)\n")

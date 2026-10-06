@@ -443,13 +443,15 @@ private:
     // n/a rounded down, a > 0: a term's index is negative below its first.
     static int Floor(int n, int a) { return n / a - (n % a < 0 ? 1 : 0); }
 
-    // As C reads it back: '%.17g' writes 'inf' and 'nan', which it does not (C91).
+    // As C reads it back: '%.17g' writes 'inf' and 'nan', which it does not
+    // (C91), and '-0', which it reads as the integer 0 (C120).
     static std::string Double(double x) {
         if (std::isnan(x)) return "NAN";
         if (std::isinf(x)) return x < 0 ? "-INFINITY" : "INFINITY";
         char text[40];
         std::snprintf(text, sizeof text, "%.17g", x);
-        return text;
+        const std::string written = text;
+        return written.find_first_of(".e") == std::string::npos ? written + ".0" : written;
     }
 
     static std::string Quoted(const std::string& text) {
