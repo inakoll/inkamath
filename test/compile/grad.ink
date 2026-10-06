@@ -105,7 +105,8 @@ hinge = rect(x_n = n)
 # at 2; a power whose derivative is infinite at 0, s at 2. Elsewhere f is
 # floor(n/2), g is n, c is 0 below 2 and 1 above, and s is -1 below 2 and
 # 1 above, its power C's pow of a double as the interpreter's is; and k, a
-# gradient at a constant point, is folded, 12*n. Where the clause a function
+# gradient at a constant point, is folded, 12*n, but for a jump there, as j's
+# comparison and o's floor, NaN at every n. Where the clause a function
 # takes has no part, nothing there moves, as in the interpreter, so nothing
 # is tested for a jump: d, a dead ReLU unit's mask, is 0 below 2, at t = -1
 # too, NaN at 2 and 1 above; l, a clamp compared at its level, 0 below 2, NaN
@@ -117,8 +118,10 @@ hinge = rect(x_n = n)
 #     edge.d: within 0
 #     edge.f: within 0
 #     edge.g: within 0
+#     edge.j: within 0
 #     edge.k: within 0
 #     edge.l: within 0
+#     edge.o: within 0
 #     edge.s: within 0; the interpreter's terms about <e> from the exact ones
 #     edge.w: within 0
 #
@@ -137,8 +140,10 @@ kinks(x_n) = {
     d_n = grad_(t = x_n - 1) t*(r(t) > 0)
     f_n = grad_(t = x_n) floor(t)*t
     g_n = grad_(t = x_n) q(t)
+    j_n = grad_(t = 1) t*(t > 1)
     k_n = n*grad_(t = 2) t^3
     l_n = grad_(t = x_n) t*(p(t) >= 1)
+    o_n = grad_(t = 2) floor(t)*t
     s_n = grad_(t = x_n - 1) (t^2)^(1/2)
     w_n = grad_(t = x_n) floor(p(t))*t
 }

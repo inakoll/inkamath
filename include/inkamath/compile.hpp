@@ -1547,7 +1547,9 @@ private:
 
     PExpression<Value> visit(CompareExpression<Value>* expression) override {
         const Code left = Emit(expression->m_e1()), right = Emit(expression->m_e2());
-        if (left.constant && right.constant) return Fold(expression);
+        // At a constant point too, a jump is tested, not folded.
+        if (left.constant && right.constant && left.part.empty() && right.part.empty())
+            return Fold(expression);
         if (!left.Scalar() || !right.Scalar()) throw Reason("a comparison of matrices");
         const std::string l = Wrap(left.cells[0], sum), r = Wrap(right.cells[0], sum);
         return Answer(Cell("(" + Nan(left, right) + Jumps(l + " == " + r, {&left, &right}) + l +
@@ -1718,7 +1720,7 @@ private:
         if (call.parameters_expression().size() != 1 || !call.parameters_dict().empty())
             throw Reason("floor expects 1 argument");
         const Code operand = Emit(call.parameters_expression()[0]);
-        if (operand.constant) return Fold(expression);
+        if (operand.constant && operand.part.empty()) return Fold(expression);
         Code code;
         code.rows = operand.rows;
         code.cols = operand.cols;
