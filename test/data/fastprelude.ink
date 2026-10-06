@@ -108,7 +108,7 @@ error: division by zero
 error: division by zero
 
 >> log(~1/0)
-error: a comparison needs a number, not -nan
+inf
 
 >> exp(~0/0)
 error: a comparison needs a number, not -nan
@@ -116,8 +116,9 @@ error: a comparison needs a number, not -nan
 >> exp(~1/0)
 inf
 
+# ilogb tries no power of two past 2^3321 (C101).
 >> ilogb(~1/0)
-4095
+3321
 
 # A double approximated past a thousand digits stays so through the
 # definition, which says it.

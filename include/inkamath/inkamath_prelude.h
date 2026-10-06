@@ -45,7 +45,7 @@ static inline double inkamath_prelude_exp(double arg_x) {
 }
 
 static inline double inkamath_prelude_ilogbs(double arg_x, double arg_k, double arg_s) {
-    return isnan(arg_x) || isnan(pow(2.0, arg_k + arg_s)) ? NAN : arg_x >= pow(2.0, arg_k + arg_s) ? arg_k + arg_s : arg_k;
+    return isnan(arg_k + arg_s) ? NAN : arg_k + arg_s > 3321.0 ? arg_k : isnan(arg_x) || isnan(pow(2.0, arg_k + arg_s)) ? NAN : arg_x >= pow(2.0, arg_k + arg_s) ? arg_k + arg_s : arg_k;
 }
 
 static inline double inkamath_prelude_ilogb(double arg_x) {
@@ -69,7 +69,7 @@ static inline double inkamath_prelude_logk(double arg_x, double arg_k) {
 }
 
 static inline double inkamath_prelude_log(double arg_x) {
-    return isnan(arg_x) ? NAN : arg_x <= 0.0 ? NAN : inkamath_prelude_logk(arg_x, inkamath_prelude_ilogb(arg_x));
+    return isnan(arg_x) ? NAN : arg_x <= 0.0 ? NAN : isnan(2.0 * arg_x) || isnan(arg_x) ? NAN : 2.0 * arg_x == arg_x ? arg_x : inkamath_prelude_logk(arg_x, inkamath_prelude_ilogb(arg_x));
 }
 
 static inline double inkamath_prelude_tanhe(double arg_m) {
