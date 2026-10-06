@@ -1922,8 +1922,9 @@ private:
     template <typename Fits>
     std::pair<Code, std::vector<std::string>> TermCells(const std::string&      name,
                                                         const Reference<Value>& definition,
-                                                        Fits fits, const std::optional<Code>& whole,
+                                                        Fits fits, std::optional<Code> whole,
                                                         std::vector<std::string>* taken = nullptr) {
+        const std::string           nan    = Refused(whole);
         const std::optional<Extent> extent = Measured(name, definition, whole, fits);
         if (!extent) throw Reason(name + " has no size");
         Code shape;
@@ -1967,7 +1968,7 @@ private:
             };
             Walk(definition, slice, row, col, fits, settles);
             if (!last) last = whole ? whole->At(c).text : "0.0";
-            cells.push_back(chain + *last);
+            cells.push_back(nan.empty() ? chain + *last : "(" + nan + chain + *last + ")");
             if (taken) taken->push_back(pick + std::to_string(picked));
         }
         return {shape, cells};
@@ -2111,6 +2112,15 @@ private:
         });
     }
 
+    // The interpreter refuses the matrix written whole before a cell's own
+    // clause is reached, so where a cell of it writes NaN every cell does (C136).
+    std::string Refused(std::optional<Code>& whole) {
+        if (!whole) return "";
+        for (const Cell& c : whole->cells) aware_ |= !whole->constant && WritesNan(c.text);
+        if (aware_ && !whole->constant) whole = Shared(*whole);
+        return Nan(*whole);
+    }
+
     // A matrix defined by its cells, one cell at a time with its names bound to
     // the cell's place. They are constants, so the size is decided here, and a
     // guard reading only them; one reading a value that moves is tested where
@@ -2119,6 +2129,7 @@ private:
         std::optional<Code> whole;  // the matrix written whole, if it is
         for (const Clause<Value>& clause : definition.Clauses())
             if (!clause.parameters.cells()) whole = Emit(clause.expression);
+        const std::string           nan = Refused(whole);
         const std::optional<Extent> extent =
             Measured(name, definition, whole, [](const Clause<Value>&) { return true; });
         if (!extent) throw Reason(name + " has no size");
@@ -2148,9 +2159,11 @@ private:
                 CellOf(name, definition, static_cast<int>(c / (extent->rows * extent->cols)) + 1,
                        static_cast<int>(c / extent->cols % extent->rows) + 1,
                        static_cast<int>(c % extent->cols) + 1, fallback));
-            code.cells.push_back(given.cells[0]);
+            code.cells.push_back(nan.empty()
+                                     ? given.cells[0]
+                                     : Cell("(" + nan + given.cells[0].text + ")", primary));
             if (given.constant) exact.data()[c] = (*given.constant)(1, 1);
-            constant = constant && given.constant;
+            constant = constant && given.constant && nan.empty();
             any      = any || !given.part.empty();
             parts.push_back(given.part.empty() ? Literal(Value(Number(0))) : given.part[0]);
         }

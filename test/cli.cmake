@@ -901,6 +901,21 @@ set(args --compile c135.ink -o c135.h)
 check(compile_c135)
 holds(compile_c135 c135.h "    m_->b[0] = 4.0;\n" "    m_->c[0] = 4.0;\n" "    m_->d[0] = 4.0;\n")
 
+# C136: the interpreter refuses a matrix written whole before a cell's own
+# clause, so a cell it refuses makes every cell NaN, by value and under grad.
+file(WRITE "${OUT}/c136.ink" "k1(z) | z[1,1] > 0 = z\nk2(z) = k1(z)\nk2(z)[1,1] = 2\nw_n = k2([x_n])\n")
+set(args --compile c136.ink -o c136.h)
+check(compile_c136)
+holds(compile_c136 c136.h "    m_->w[0] = (isnan(t0_) ? NAN : 2.0);\n")
+file(WRITE "${OUT}/c136t.ink" "k1(z) | z[1,1] > 0 = z\ny_n = k1([x_n])\ny_n[1,1] = 2\n")
+set(args --compile c136t.ink -o c136t.h)
+check(compile_c136_term)
+holds(compile_c136_term c136t.h "    m_->y[0] = (isnan(t0_) ? NAN : 2.0);\n")
+file(WRITE "${OUT}/c136g.ink" "f1(z)[i,j] = z[i,j]\nf1(z)[1,1] | ((z[1,1])^2)^(1/2) >= 5 = 7\nf2(z) = f1(z)\nf2(z)[1,1] = 2\nu_n = grad_(t = x_n) f2([t])\n")
+set(args --compile c136g.ink -o c136g.h)
+check(compile_c136g)
+holds(compile_c136g c136g.h "    const double t1_ = (isnan(t0_) ? NAN : 2.0);\n    m_->u[0] = (isnan(t1_) ? NAN : 0.0);\n")
+
 # C115: a constant gradient at a point that moves folds with what reads it
 # from its value, not by taking the point again (C135).
 file(WRITE "${OUT}/c115.ink" "u_n = x_n - grad_(t = x_n) 3*t\n")
