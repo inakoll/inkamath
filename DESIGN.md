@@ -4727,7 +4727,7 @@ that exploring seven domains asked of the interpreter, by how many asked.
 - **The prelude's part functions for the interpreter's `grad`.** Checked
   into `inkamath_prelude.h` beside the values, they would spare its walk of
   `exp`, `log` and `tanh` under `grad`, about 2.6 times faster.
-- **`sin`, `cos`, `abs`, `max` and `min` in the prelude.** A rotation, a
+- `[done]` **`sin`, `cos`, `abs`, `max` and `min` in the prelude.** A rotation, a
   pendulum or an oscillator needs `sin` and `cos`, and a clip, an L1 loss or
   a hinge `abs`, `max` and `min`; each session writes its own, as README's
   `abs` and `conditional.ink`'s `max` do, and README's `cos` is a series of
@@ -4879,3 +4879,20 @@ that exploring seven domains asked of the interpreter, by how many asked.
   and depth, and a session's clause. And in `test/compile/trig.ink`, its
   report every term `within 0`, wired with the implementation as
   `inkamath_prelude.ink` is.
+
+  Built as specified: every entry passes as written, and the spec is the
+  golden `trig.ink`; no other golden, header or report moves but the
+  prelude's header. `test/compile/trig.ink` is checked as `elementary.ink`
+  is: `check_tri_report` every term within 0, its lines in the check's
+  order, c, g, q, s, b, l, m, v and w, and `check_tri_functions` the ten
+  functions and no libm `sin` or `cos`. Departures, by the review's
+  rulings: a session's clause on a name of the prelude starts a definition
+  of its own, the extension deleted first, 6 lines, so that `abs(y) | y < 0
+  = -y` defines `abs`; and the refusal past 2^20 is for accuracy, which
+  README says. Measured on the build: 200,044 doubles, random on [-2^20,
+  2^20] and in magnitude from 10^-320, the nearest a multiple of pi/2 and
+  floor's ties with their neighbours, and 22 chosen, `sin` and `cos` of
+  each and 1 over each printed at 17 digits, alike compiled and walked
+  under GCC 13 and Clang 18. 30 lines of sources where about 32 were
+  planned: 22 in the prelude, 4 of its comment and 4 in the fast path; 24
+  with the extension's deletion. 14,379 lines in all, after `fixes4`.
