@@ -2920,16 +2920,28 @@ private:
         return Answer(Parted(window(matrix), Mapped(PartOf(matrix), read, window), {&matrix}));
     }
     // A cell past an input whose model states no size, which compiles as a
-    // single value (C83), refused with the size that would hold it.
+    // single value (C83), or past a single value computed from one, refused
+    // with the size that would hold it.
     void Unstated(const Expression<Value>& read, const std::string& bounds) const {
         if (!model_ || scope_ != &root_ || !dynamic_cast<const FuncExpression<Value>*>(&read))
             return;
-        for (const typename Model<Value>::Parameter& p : model_->parameters)
-            if (p.name == read.Name() && !p.index.empty() && !p.fallback && p.bounds.empty())
-                throw Reason(p.name + " is a single value, as " +
-                             model_->header.substr(0, model_->header.find('(')) +
-                             " states no size for it: write '" + p.name + "_" + p.index + "[" +
-                             bounds + "]'");
+        std::set<std::string>    seen;
+        std::vector<std::string> next{read.Name()};
+        while (!next.empty()) {
+            const std::string name = next.back();
+            next.pop_back();
+            if (!seen.insert(name).second) continue;
+            for (const typename Model<Value>::Parameter& p : model_->parameters)
+                if (p.name == name && !p.index.empty() && !p.fallback && p.bounds.empty())
+                    throw Reason((name == read.Name() ? "" : read.Name() + " reads ") + p.name +
+                                 (name == read.Name() ? " is" : ",") + " a single value, as " +
+                                 model_->header.substr(0, model_->header.find('(')) +
+                                 " states no size for it: write '" + p.name + "_" + p.index + "[" +
+                                 bounds + "]'");
+            const auto sequence = sequences_.find(name);
+            if (sequence != sequences_.end() && sequence->second.size.count() == 1)
+                for (const auto& [reads, lags] : sequence->second.reads) next.push_back(reads);
+        }
     }
     PExpression<Value> visit(FactExpression<Value>*) override { throw Reason("a factorial"); }
     // grad compiled (DESIGN.md): its body once for each cell of the point, each
