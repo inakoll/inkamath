@@ -4799,15 +4799,18 @@ that exploring seven domains asked of the interpreter, by how many asked.
   First a refactor: `Code`, `Sequence` and `Parameter` carry an `Extent`
   where they carry rows and columns, and a C subscript and an array's
   dimensions are written from it, every header, check program and golden
-  byte for byte; about as many lines out as in. Then about 110 lines of
-  sources: the arithmetic slice by slice 25, reads of slices and cells and
-  the literal 30, definitions by three indices 20, the header's dimensions,
-  NaN loop and sentences 15, the refusals 6, the check 8 and the rest 6.
-  Sized against the interpreter's tensors, 222 with a literal, printing,
-  `tex` and parsing the compiler does not need, inputs of more than one cell,
-  119, and compiled `lim`, 167; past 165 the implementation stops and
-  reports. 14,318 lines in all before it, at f82b32b, the fixes since `grad`
-  compiled included; about 14,430 after.
+  byte for byte; about as many lines out as in, its own commit, its net
+  stated, and past about 15 lines more than it removes the implementation
+  stops and reports. Then about 110 lines of sources: the arithmetic slice
+  by slice 25, reads of slices and cells and the literal 30, definitions by
+  three indices 20, the header's dimensions, NaN loop and sentences 15, the
+  refusals 6, the check 8 and the rest 6; re-estimated by the review at about
+  150, counted without the refactor, so past 225 the implementation stops
+  and reports. Sized against the interpreter's tensors, 222 with a literal,
+  printing, `tex` and parsing the compiler does not need, inputs of more
+  than one cell, 119, and compiled `lim`, 167. 14,318 lines in all before
+  it, at f82b32b, the fixes since `grad` compiled included; about 14,470
+  after.
 
   Specified in `test/compile/tensor.ink`, its numbers worked out apart from
   the interpreter and the compiler: `heads`, multi-head attention over a
