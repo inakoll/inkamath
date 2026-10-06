@@ -585,10 +585,11 @@ private:
             if (!otherwise) throw Reason("no clause of " + name + " applies");
             return *otherwise;
         }
-        Extent size;
+        // The interpreter answers each clause's own shape, which a step cannot (C138).
+        const Extent size = guarded.front().second.size;
         for (const auto& [condition, value] : guarded)
-            size = {std::max(size.rows, value.size.rows), std::max(size.cols, value.size.cols),
-                    std::max(size.slices, value.size.slices)};
+            if (value.size != size || (otherwise && otherwise->size != size))
+                throw Reason("the clauses of " + name + " have different shapes");
         return Chain(guarded, otherwise, size);
     }
 
