@@ -1940,7 +1940,8 @@ private:
             for (const Clause<Value>& clause : definition.Clauses()) {
                 const ParametersDefinition<Value>& p = clause.parameters;
                 if (settled || !p.cells() || !p.row_name().empty() || !fits(clause)) continue;
-                Reasoned([&] { (void)Value(shape.size)(p.slice(), p.row(), p.col()); });
+                Named(p, shape.size,
+                      name + "_" + (p.general() ? p.index_name() : std::to_string(p.index())));
                 if (p.slice() == slice && p.row() == row && p.col() == col)
                     settled = settles(clause);
             }
@@ -1956,6 +1957,13 @@ private:
             if (taken) taken->push_back(pick + std::to_string(picked));
         }
         return {shape, cells};
+    }
+
+    // A clause for one cell, in the interpreter's words where it names more
+    // or fewer indices than a read of the value takes, or a cell outside it.
+    static void Named(const ParametersDefinition<Value>& p, Extent size, const std::string& name) {
+        Value value(size);
+        Reasoned([&] { Reference<Value>::Named(p, value, name); });
     }
 
     // The base terms of a sequence defined by its cells: those written whole
@@ -2046,7 +2054,7 @@ private:
                 if (p.guarded()) throw Reason("a guarded cell of one term");
                 const Code value = Emit(clause.expression);
                 if (!value.Scalar()) throw Reason("a cell of " + name + " must be a single value");
-                Reasoned([&] { (void)Value(shape.size)(p.slice(), p.row(), p.col()); });
+                Named(p, shape.size, name + "_" + std::to_string(p.index()));
                 std::string& cell =
                     cells[(static_cast<std::size_t>(p.slice() - 1) * shape.size.rows +
                            static_cast<std::size_t>(p.row() - 1)) *
@@ -2074,8 +2082,7 @@ private:
         if (!extent) throw Reason(name + " has no size");
         for (const Clause<Value>& clause : definition.Clauses()) {
             const ParametersDefinition<Value>& p = clause.parameters;
-            if (p.cells() && p.row_name().empty())
-                Reasoned([&] { (void)Value(extent.value())(p.slice(), p.row(), p.col()); });
+            if (p.cells() && p.row_name().empty()) Named(p, *extent, name);
         }
         Code  code;
         Value exact(*extent);

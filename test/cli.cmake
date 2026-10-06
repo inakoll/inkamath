@@ -316,6 +316,21 @@ set(stdout "cannot compile y: row 3, column 1 is outside a 2x1 matrix\n")
 set(exit 1)
 check(compile_c122)
 
+# C124: a clause for one cell of a value written whole names as many indices
+# as reading a cell of it takes, as the interpreter asks, where the compiler
+# took a slice where none was named and dropped one that was.
+file(WRITE "${OUT}/c124.ink" "A = [1 2; 3 4]\nA[1,1,2] = 9\nv_n = n*A\ny_0 = [1 2;; 3 4]\n"
+     "y_n = 2*y_(n-1)\ny_0[1,2] = 5\nz_n = [1 2; 3 4]\nz_1[1,1,2] = 5\nw_n = [1 2;; 3 4]\n"
+     "w_n[1,2] = 5\n")
+set(args --compile c124.ink)
+set(stdout "cannot compile v: a clause for one cell of A, a 2x2 matrix, names no slice
+cannot compile w: a clause for one cell of w_n, a 2x1x2 tensor, names its slice, row and column
+cannot compile y: a clause for one cell of y_0, a 2x1x2 tensor, names its slice, row and column
+cannot compile z: a clause for one cell of z_1, a 2x2 matrix, names no slice
+")
+set(exit 1)
+check(compile_c124)
+
 # What tensors compiled refuses (DESIGN.md, test/compile/tensor.ink), in the
 # interpreter's words where it has them; y and P compile.
 file(WRITE "${OUT}/tensor.ink" "T = [1 2; 3 4;; 5 6; 7 8]\nU = [1 2; 3 4;; 5 6; 7 8;; 9 10; 11 12]\n"
