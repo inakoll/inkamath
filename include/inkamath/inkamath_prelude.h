@@ -49,7 +49,7 @@ static inline double inkamath_prelude_ilogbs(double arg_x, double arg_k, double 
 }
 
 static inline double inkamath_prelude_ilogb(double arg_x) {
-    return inkamath_prelude_ilogbs(arg_x, inkamath_prelude_ilogbs(arg_x, inkamath_prelude_ilogbs(arg_x, inkamath_prelude_ilogbs(arg_x, inkamath_prelude_ilogbs(arg_x, inkamath_prelude_ilogbs(arg_x, inkamath_prelude_ilogbs(arg_x, inkamath_prelude_ilogbs(arg_x, inkamath_prelude_ilogbs(arg_x, inkamath_prelude_ilogbs(arg_x, inkamath_prelude_ilogbs(arg_x, inkamath_prelude_ilogbs(arg_x, inkamath_prelude_ilogbs(arg_x, -4096.0, 4096.0), 2048.0), 1024.0), 512.0), 256.0), 128.0), 64.0), 32.0), 16.0), 8.0), 4.0), 2.0), 1.0);
+    return isnan(arg_x) ? NAN : arg_x <= 0.0 ? NAN : inkamath_prelude_ilogbs(arg_x, inkamath_prelude_ilogbs(arg_x, inkamath_prelude_ilogbs(arg_x, inkamath_prelude_ilogbs(arg_x, inkamath_prelude_ilogbs(arg_x, inkamath_prelude_ilogbs(arg_x, inkamath_prelude_ilogbs(arg_x, inkamath_prelude_ilogbs(arg_x, inkamath_prelude_ilogbs(arg_x, inkamath_prelude_ilogbs(arg_x, inkamath_prelude_ilogbs(arg_x, inkamath_prelude_ilogbs(arg_x, inkamath_prelude_ilogbs(arg_x, -4096.0, 4096.0), 2048.0), 1024.0), 512.0), 256.0), 128.0), 64.0), 32.0), 16.0), 8.0), 4.0), 2.0), 1.0);
 }
 
 static inline double inkamath_prelude_logp(double arg_z) {

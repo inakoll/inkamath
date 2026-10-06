@@ -175,6 +175,16 @@ digits = 9
 >> frac ilogb(~3)
 1
 
+# Of 0 and below, refused as log is, however 0 is written (C100).
+>> ilogb(0)
+error: division by zero
+
+>> ilogb(~0)
+error: division by zero
+
+>> ilogb(-1)
+error: division by zero
+
 # grad differentiates the definitions: floor's derivative is 0, and a guard
 # at its threshold takes its own side, so 1, 2 and the powers of two answer.
 >> grad_(x = 0) exp(x)

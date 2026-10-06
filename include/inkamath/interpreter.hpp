@@ -269,6 +269,7 @@ inline constexpr const char* prelude[] = {
     "ilogb(x) = ilogbs(x, ilogbs(x, ilogbs(x, ilogbs(x, ilogbs(x, ilogbs(x, ilogbs(x, "
     "ilogbs(x, ilogbs(x, ilogbs(x, ilogbs(x, ilogbs(x, ilogbs(x, -4096, 4096), 2048), "
     "1024), 512), 256), 128), 64), 32), 16), 8), 4), 2), 1)",
+    "ilogb(x) | x <= 0 = 1/0",
     "ilogbs(x, k, s) = k",
     "ilogbs(x, k, s) | x >= 2^(k + s) = k + s",
     "log(x) = logk(x, ilogb(x))",
