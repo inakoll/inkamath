@@ -114,7 +114,8 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brin
                          inputs:track inputs:twain inputs:nestv inputs:fed estimate:tie
                          estimate:chaos estimate:dyad estimate:flat estimate:halved
                          estimate:steep estimate:giant elementary:els
-                         grad:line grad:fall grad:hinge grad:edge grad:clip grad:steer)
+                         grad:line grad:fall grad:hinge grad:edge grad:clip grad:steer
+                         grad:apart grad:smooth)
     string(REPLACE ":" ";" checked ${checked})
     list(GET checked 0 file)
     list(GET checked 1 instance)
@@ -180,6 +181,14 @@ set_tests_properties(check_clip_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^clip: 100 steps from 0, against exact values\nclip\\.w: within 0\n$")
 set_tests_properties(check_steer_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^steer: 100 steps from 0, against exact values until 1 and inexact ones from there\nsteer\\.x: within 0${about}\n$")
+# Its known limits, C110 and C111, each held where it parts.
+set_tests_properties(check_apart_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^apart: 100 steps from 0, against exact values\napart\\.y: [-a-z()]+ at 0, where the interpreter gives 0\n$")
+set_tests_properties(check_smooth_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^smooth: 100 steps from 0, against exact values\nsmooth\\.z: 1 at 0, where the interpreter gives none: floor jumps at t = ~0\\.34657359\n$")
+add_test(NAME check_apart COMMAND check_apart)
+add_test(NAME check_smooth COMMAND check_smooth)
+set_tests_properties(check_apart check_smooth PROPERTIES WILL_FAIL ON)
 set_tests_properties(check_sized_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^sized: 100 steps from 0, against exact values until 0 and inexact ones from there\n(sized\\.[a-z]+: within [0-9.e+-]+${about}\n)+$")
 # Its sigmoid's size inferred, compiled where it is called, gives the header

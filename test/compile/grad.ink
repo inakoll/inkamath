@@ -216,3 +216,26 @@ steer = newton(u_n = ~(1/2))
 #     cannot compile q: a derivative through a definition by cells, for now
 #
 # on standard output, exiting 1.
+
+# Known limits (DESIGN.md, C110 and C111), each a step that parts from the
+# interpreter, its program failing. 'apart', a clamp times an infinity: where
+# the clause taken has no part the step's is 0, and 0 times inf is NaN, where
+# the interpreter has nothing to multiply and answers 0:
+#
+#     apart.y: -nan at 0, where the interpreter gives 0
+clamped(x_n) = {
+    f(t) = t
+    f(t) | t > 1 = 1
+    y_n = grad_(t = x_n) f(t)*~(10^400)
+}
+apart = clamped(x_n = 6)
+
+# 'smooth', exp's reduction at a jump of its floor, where exp's part is NaN
+# and the floor of exp drops it: the step answers 1 where the interpreter
+# refuses, though exp is smooth there:
+#
+#     smooth.z: 1 at 0, where the interpreter gives none: floor jumps at t = ~0.34657359
+rounded(x_n) = {
+    z_n = grad_(t = x_n) floor(exp(t))*t
+}
+smooth = rounded(x_n = ~0.34657359027997264)
