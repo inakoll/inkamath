@@ -149,26 +149,27 @@ public:
                                                : ask(sequence, index);
                 if (!term.exact && (!inexact || n < *inexact)) inexact = n;
                 const bool given = term.error.empty();
-                const char kind  = !given              ? (before ? '0' : '2')
-                                   : !term.odd.empty() ? '4'
-                                   : before            ? '3'
-                                                       : '1';
-                why.push_back(kind == '2'   ? Quoted(term.error)
-                              : kind == '4' ? Quoted(term.odd)
-                                            : "0");
+                double*    at    = &about[static_cast<std::size_t>(n - first) * cells];
+                if (given)
+                    for (const auto& run : again[{name, index}]) Farther(term.value, run, at);
+                // Each cell by itself: one no double holds parts alone (C128).
                 for (std::size_t c = 0; c < cells; ++c) {
+                    const char kind = !given                 ? (before ? '0' : '2')
+                                      : !term.odd[c].empty() ? '4'
+                                      : before               ? '3'
+                                                             : '1';
+                    why.push_back(kind == '2'   ? Quoted(term.error)
+                                  : kind == '4' ? Quoted(term.odd[c])
+                                                : "0");
                     want.push_back(kind == '1' || kind == '3' ? term.cells[c] : "0.0");
                     known.push_back(std::string(1, kind));
+                    if (kind == '4') at[c] = 0;
                 }
-                if (kind == '1' || kind == '3')
-                    for (const auto& run : again[{name, index}])
-                        Farther(term.value, run,
-                                &about[static_cast<std::size_t>(n - first) * cells]);
             }
             const bool told = std::any_of(known.begin(), known.end(), [](const std::string& each) {
                 return each == "2" || each == "4";
             });
-            if (told) data += Array("const char* const", "why_" + id, steps, why);
+            if (told) data += Array("const char* const", "why_" + id, steps * cells, why);
             const bool estimated = *std::max_element(about.begin(), about.end()) > 0;
             if (estimated) {
                 std::vector<std::string> written;
@@ -319,10 +320,10 @@ public:
         out += "        else if (known[k] == 2)\n";
         out +=
             "            printf(\": " + form + " at %d, where the interpreter gives none: %s\",\n";
-        out += "                   " + got + ", n, why[k / cells]);\n";
+        out += "                   " + got + ", n, why[k]);\n";
         out += "        else if (known[k] == 4)\n";
         out += "            printf(\": " + form + " at %d, where the interpreter's term is %s\",\n";
-        out += "                   " + got + ", n, why[k / cells]);\n";
+        out += "                   " + got + ", n, why[k]);\n";
         out += "        else\n";
         out += "            printf(\": " + form + " at %d, where the interpreter gives %.17g\",\n";
         out += "                   " + got + ", n, want[k]);\n";
@@ -478,7 +479,7 @@ private:
         std::vector<std::string> cells;
         bool                     exact = true;
         std::string              error;
-        std::string              odd;  // why it is no finite double, where it is not
+        std::vector<std::string> odd;  // why each cell is no finite double, or empty
         Value                    value;
         std::vector<double>      reals;  // the cells, as doubles
     };
@@ -512,11 +513,10 @@ private:
         for (std::size_t c = 0; c < value->Size().count(); ++c) {
             const Number& cell = value->data()[c];
             const auto    z    = cell.Inexact();
-            if (answer.odd.empty())
-                answer.odd = z.imag() != 0             ? "not a real number"
-                             : std::isfinite(z.real()) ? ""
-                             : cell.exact()            ? "too large for a double"
-                                                       : "not a finite number";
+            answer.odd.push_back(z.imag() != 0             ? "not a real number"
+                                 : std::isfinite(z.real()) ? ""
+                                 : cell.exact()            ? "too large for a double"
+                                                           : "not a finite number");
             answer.exact = answer.exact && cell.exact();
             answer.cells.push_back(Double(z.real()));
             answer.reals.push_back(z.real());
