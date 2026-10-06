@@ -662,7 +662,6 @@ private:
         bool        constant = true, scalar = call.parameters_expression().size() == names.size();
         std::string       given, moving;
         std::vector<Code> arguments;
-        std::vector<const Code*> read;
         for (const PExpression<Value>& argument : call.parameters_expression()) {
             const Code& code = arguments.emplace_back(Emit(argument));
             constant         = constant && code.constant;
@@ -697,6 +696,7 @@ private:
         for (std::size_t i = 0; i < names.size(); ++i)
             if (!arguments[i].part.empty()) moving += names[i];
         if (moving.empty()) return Answer(value);
+        std::vector<const Code*> read;
         for (const Code& argument : arguments) read.push_back(&argument);
         // Under grad, its part is a function too, 'exp_dx', of the values its
         // part reads and then the parts (DESIGN.md, grad compiled).
