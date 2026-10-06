@@ -171,9 +171,10 @@ private:
     }
 
     // Parameters read where the compiled code needs a constant -- a size, a
-    // bound, a lag -- which the struct cannot let the host change. The file is
-    // compiled again with them fixed, and so a constant everywhere they are
-    // read. A parameter is never read once fixed, so this ends.
+    // bound, a lag, an exponent, a place -- which the struct cannot let the
+    // host change. The file is compiled again with them fixed, and so a
+    // constant everywhere they are read. A parameter is never read once fixed,
+    // so this ends.
     struct Fix {
         std::set<std::string> names;
     };
@@ -3754,7 +3755,7 @@ private:
                     "_update.";
         std::vector<std::string> fixed(fixed_.begin(), fixed_.end());
         if (!fixed.empty())
-            text += " Compiled in, as a size, a bound or a lag cannot change: " + list(fixed) + ".";
+            text += " Compiled in as constants, these cannot change: " + list(fixed) + ".";
         if (floats) text += " Every value is a float, and every operation rounds to one.";
         if (aware_)
             text +=

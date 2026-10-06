@@ -97,6 +97,13 @@
 #     huge: 100 steps from 0, against exact values
 #     huge.y: inf at 31, where the interpreter's term is too large for a double
 #
+# Each cell of a term is judged by itself: 'sever' squares a diagonal whose
+# second cell passes every double at 12, its first still 1.2e+19, and its
+# first was reported as not a finite number (DESIGN.md, C128).
+#
+#     sever: 100 steps from 0, against exact values until 10 and inexact ones from there
+#     sever.p[2,2]: inf at 12, where the interpreter's term is not a finite number
+#
 # What 'inkamath --compile' refuses, each model a file of its own compiled
 # by name with -o. A read before the stream that no history gives, in a
 # clause, beyond a term of the history, and on the right of an 'and' whose
@@ -289,6 +296,12 @@ grow(x_n) = {
     y_n = y_(n-1)*10^10 + x_n
 }
 huge = grow(x_n = n)
+
+square(x_n) = {
+    p_0 = [5/4 0; 0 2]
+    p_n = p_(n-1)/2 + 7/16*p_(n-1)*p_(n-1) + 0*x_n
+}
+sever = square(x_n = 0)
 
 # A guard compiled on its own reads a term that is compiled on the way, and
 # that term's reads are its own: 'd' starts at 1, where y_(n-1) exists, and
