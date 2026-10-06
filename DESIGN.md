@@ -4715,9 +4715,9 @@ that exploring seven domains asked of the interpreter, by how many asked.
   the prelude's part jump lost after a `floor` or a comparison; C112, a
   global read inside a function compiled with the function's parameters,
   which `grad` refuses only where it reads grad's own name; and by its
-  review, C113 to C117, fixed, and C111 with C117. 375 lines of sources more, where about 350
-  were planned: 369 in `compile.hpp` and 6 in `derivative.hpp`. 14,295 lines
-  in all.
+  review, C113 to C118, fixed, and C111 with C117. 387 lines of sources
+  more, where about 350 were planned: 381 in `compile.hpp` and 6 in
+  `derivative.hpp`. 14,307 lines in all.
 - **Guards on cells at run time.** A definition by cells whose guard reads
   what is not a constant, a ReLU written by its cells, is refused; compiled,
   each cell a chain, it would carry `grad`'s parts through cells too.
