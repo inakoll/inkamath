@@ -55,10 +55,15 @@ error: 1 was approximated, so it has no exact fraction
 >> cos(pi/2)
 ~6.123234e-17
 
-# 355 is 3.0e-5 from 113 pi: an exact argument is reduced exactly, however
-# much cancels.
+# 355 is 3.0e-5 from 113 pi: an exact argument is reduced with pi/2 held to
+# 2^-159, however much cancels.
 >> sin(355)
 ~-3.01443534e-05
+
+# Wrong on purpose (DESIGN.md, C123): 5.8e-51 from pi, nearer than pi/2 is
+# held, so the answer is the reduction's error; mpmath's is +5.82097494e-51.
+>> sin(314159265358979323846264338327950288419716939937510/10^50)
+~-1.47387998e-48
 
 # Up to 2^20 either way, where every product of the reduction is exact in a
 # double, and refused past it, where they round: the hardest doubles below

@@ -1653,6 +1653,7 @@ closures need one anyway, and can bring it.
 | C119 `[fixed]` | **A term read where the clause's index is not seen named no index.** A call's body, or a grad's taking the index's name, does not see the clause's index, and the refusal of every term read there named it as empty: `f(t) = x_t` and `y_n = f(n)` said "x_(...): an index other than a whole multiple of  plus a constant", where the interpreter's y_3 is x_3. Found alongside C112. It now says "a term read where y's index is not seen", in 3 lines; `compile_c119` in `test/cli.cmake` holds it. A call given the index, give or take a constant, now reads the term as the interpreter does: each such argument's distance from the caller's index is kept for its parameter, in 18 lines, `compile_c119_call` holding it; under a grad taking the index's name the read stays refused. |
 | C120 `[fixed]` | **`--check` fed an input of -0 as +0.** Its program writes each input with `%.17g`, which gives `-0`, and C reads that as the integer 0, so a check whose input is -0 stepped +0 and could pass against the wrong value: `1/x_n > 0` at `x_n = ~0*(-1)` was taken compiled and not interpreted. Found fixing C109. Fixed by writing a number with no point or exponent as a double, `-0.0`, as the compiler does. |
 | C121 `[fixed]` | **A compiled `log` in a NaN-aware header computed each power of 2 twice.** A decision tests each operand for NaN, and each of `ilogb`'s thirteen steps compares x with `2^(k + s)`: its test was `isnan(pow(2.0, k + s))`, a second call that C, pow setting errno, does not share with the comparison's. Under callgrind a step of `y_n = log(x_n)` took 3,430 instructions with GCC -O2, against 2,011 with no NaN test, and 1,581 against 794 with Clang. Found reading the prelude header. A power of a constant above 0 but 1 is NaN only where its exponent is, and is now tested by it, in 8 lines: 1,705 and 982 instructions. Of the headers, `inkamath_prelude.h`'s `ilogbs` moves so, its values bit-identical to the walked prelude's on 480,000 arguments, each also as 1/f; `check_els_functions` holds it. |
+| C123 `[kept]` | **An exact argument nearer a multiple of pi/2 than pi/2 is held gives `sin` or `cos` wrong.** The reduction's five parts are 7.4e-49 below pi/2 (2^-159.9), and an exact argument is reduced by them exactly and rounded once, so r is off by k times that: under a unit only where r is above about k 1.3e-32, 1e-31 from pi and 1.4e-26 from a multiple near 2^20. `sin(314159265358979323846264338327950288419716939937510/10^50)`, 5.8e-51 from pi, gives ~-1.47387998e-48 where mpmath gives +5.82097494e-51. No double comes so near: below 2^20 the nearest is 6.2e-19 from 29 pi/2, and the fast path takes doubles alone. Found reviewing `trig`. Kept: more parts move the bound and do not remove it, as an exact argument may lie as near as it likes, and reducing it exactly needs pi to as many digits as it has. `trig.ink` records it. |
 
 **Measure instructions, not the clock.** One of those changes made the matrix
 workload 20 per cent slower by the clock and not by a single instruction: with
@@ -4771,8 +4772,12 @@ that exploring seven domains asked of the interpreter, by how many asked.
   negatives, c being 1 for `cos`: x + pi/2 would round. sin r is Taylor's to
   r^17 and cos r to r^18 in Horner's form, remainders below 2^-62 and 2^-67
   on |r| <= pi/4, their coefficients reciprocals of whole numbers as `exp`'s
-  are. An exact argument is reduced exactly and rounded once, at the `~`:
-  `sin(355)`, 355 being 3.0e-5 from 113 pi, is mpmath's, correctly rounded.
+  are. An exact argument is reduced with pi/2 so held, 7.4e-49 off, and
+  rounded once, at the `~`: `sin(355)`, 355 being 3.0e-5 from 113 pi, is
+  mpmath's, correctly rounded. r is off by k times 7.4e-49, under a unit
+  where it is above about k 1.3e-32, so an exact argument is accurate down
+  to about 1e-31 from pi and 1.4e-26 from a multiple near 2^20, and nearer
+  answers the reduction's error (C123); no double comes so near.
 
   Past 2^20 either way, `1/0`, and NaN in a header, refused for accuracy:
   the products would round, and the hardest doubles in [2^20, 2^22] be 2^40
@@ -4895,11 +4900,12 @@ that exploring seven domains asked of the interpreter, by how many asked.
   rulings: a session's clause on a built-in or a name of the prelude starts
   a definition of its own, the extension deleted first, 6 lines, so that
   `abs(y) | y < 0 = -y` defines `abs`, and `trig.ink` gains a clause on
-  `floor`, written by hand; and the refusal past 2^20 is for accuracy, which
-  README says. Measured on the build: 200,044 doubles, random on [-2^20,
-  2^20] and in magnitude from 10^-320, the nearest a multiple of pi/2 and
-  floor's ties with their neighbours, and 22 chosen, `sin` and `cos` of
-  each and 1 over each printed at 17 digits, alike compiled and walked
-  under GCC 13 and Clang 18. 30 lines of sources where about 32 were
-  planned: 22 in the prelude, 4 of its comment and 4 in the fast path; 24
-  with the extension's deletion. 14,379 lines in all, after `fixes4`.
+  `floor`, written by hand, and C123, recorded wrong on purpose; and the
+  refusal past 2^20 is for accuracy, which README says. Measured on the
+  build: 200,044 doubles, random on [-2^20, 2^20] and in magnitude from
+  10^-320, the nearest a multiple of pi/2 and floor's ties with their
+  neighbours, and 22 chosen, `sin` and `cos` of each and 1 over each printed
+  at 17 digits, alike compiled and walked under GCC 13 and Clang 18. 30
+  lines of sources where about 32 were planned: 22 in the prelude, 4 of its
+  comment and 4 in the fast path; 24 with the extension's deletion. 14,379
+  lines in all, after `fixes4`.
