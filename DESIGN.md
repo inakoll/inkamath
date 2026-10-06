@@ -4772,11 +4772,12 @@ that exploring seven domains asked of the interpreter, by how many asked.
   are. An exact argument is reduced exactly and rounded once, at the `~`:
   `sin(355)`, 355 being 3.0e-5 from 113 pi, is mpmath's, correctly rounded.
 
-  Past 2^20 either way, `1/0`, refused as `log` refuses 0, and NaN in a
-  header: the products would round. Rejected: Payne and Hanek's reduction,
+  Past 2^20 either way, `1/0`, and NaN in a header, refused for accuracy:
+  the products would round, and the hardest doubles in [2^20, 2^22] be 2^40
+  units off, `cos` at 3442254.066112624. README says that a growing phase
+  such as `sin(w*t)` stops at 2^20. Rejected: Payne and Hanek's reduction,
   2/pi to some 1,100 bits and a product of many words, which a step in
-  doubles cannot take without dozens of parts, for arguments no model of a
-  step reaches; answering past 2^20 regardless, 9.7 units off by 2^25 and
+  doubles cannot take without dozens of parts; answering past 2^20 regardless, 9.7 units off by 2^25 and
   800 by 2^30 on random doubles; four parts of 33, 33, 33 and 53 bits, as
   accurate in a double and rounded in a float, `sin(100)` 40 units of a
   float off; three parts, which lose the doubles nearest a multiple of

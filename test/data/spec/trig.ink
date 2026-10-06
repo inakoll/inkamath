@@ -61,7 +61,8 @@ error: 1 was approximated, so it has no exact fraction
 ~-3.01443534e-05
 
 # Up to 2^20 either way, where every product of the reduction is exact in a
-# double, and refused past it, as log refuses 0.
+# double, and refused past it, where they round: the hardest doubles below
+# 2^22 would be 2^40 units off.
 >> sin(1048576)
 ~0.33049314
 
