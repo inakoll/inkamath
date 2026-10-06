@@ -153,6 +153,36 @@ masked(k = 2, x_n) = {
 }
 mask = masked(k = 3, x_n = n)
 
+# 'order', each cell's chain in the interpreter's order, which the models
+# above do not tell from others: the cell's own clauses in the order written;
+# then those for every cell, the guarded in the order written and before the
+# unguarded, wherever it is written; then the matrix written whole, with its
+# part; else 0, not the NaN of a function no clause of which applies. t being
+# n - 2, p is [0; 0; 0] to 3, [1; 0; 0] at 4, [1; 1; 2] at 5, then [1; 1;
+# 3]: the order written gives [0; 0; 0] throughout, the guarded reversed
+# [2; 2; 2] at 5, and cell 3's own clause after the others [1; 1; 1] from 6.
+# s, by guarded clauses alone, is [0; 2-n] to 2, then [n-2; 0]. k, the
+# slope of the whole's 10*z up to 1 and of z^2 above, z being [t; 2*t], is
+# 30 to 2, 18 at 3, where cell 2 alone is above 1, then 10n - 20:
+#
+#     order: 100 steps from 0, against exact values
+#     order.k: within 0
+#     order.p: within 0
+#     order.s: within 0
+orders(x_n) = {
+    pick(z)[i] = 0
+    pick(z)[i] | z[i] > i = 1
+    pick(z)[i] | z[i] > 2 = 2
+    pick(z)[3] | z[1] > 3 = 3
+    pos(z)[i] | z[i] > 0 = z[i]
+    keep(z) = 10*z
+    keep(z)[i] | z[i] > 1 = z[i]^2
+    p_n = pick([x_n; x_n; x_n])
+    s_n = pos([x_n; -x_n])
+    k_n = grad_(t = x_n) [1 1]*keep([t; 2*t])
+}
+order = orders(x_n = n - 2)
+
 # What stays refused, each named in 'inkamath --compile' of a file of
 #
 #     a_n = grad_(v = [x_n; 1]) up(v)
