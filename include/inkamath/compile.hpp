@@ -646,10 +646,20 @@ private:
               const ParametersCall<Value>& call, Expansion* outer) {
         const ParametersDefinition<Value>& p = function.Clauses().front().parameters;
         Reasoned([&] { p.CheckArity(name, call); });
+        ++calls_;
         Expansion expansion{{}, {}, outer ? outer->scope : function.home, outer, {}, {}};
         // An argument the caller's index, give or take a constant, indexes a term (C119).
         const auto bind = [&](const std::string& given, const PExpression<Value>& argument) {
-            expansion.values.emplace(given, Emit(argument));
+            // A call's value, and its part, written at each reading, would
+            // multiply at each call nested in it (C140): each is computed once.
+            const int  before = calls_;
+            Code       value  = Emit(argument);
+            const auto share  = [&](const auto& self, Code& code) -> void {
+                for (Code& part : code.part) self(self, part);
+                code = Shared(code);
+            };
+            if (calls_ != before && !value.constant) share(share, value);
+            expansion.values.emplace(given, value);
             if (Plain(*argument)) try {
                     expansion.offsets.emplace(given, Offset(argument, given));
                 } catch (const Reason&) {
@@ -4139,6 +4149,7 @@ private:
     const Scope<Value>*              own_ = nullptr;  // the scope after a point, for one name
     Expansion*                       expansion_ = nullptr;  // the call being compiled, if one is
     int                              expanded_  = 0;        // how deep calls are
+    int                              calls_     = 0;        // how many were compiled
     std::vector<std::shared_ptr<const Scope<Value>>> held_;    // what expansions name
     std::string                                      within_;  // the sequence being compiled
     // Unnamed instances, by the scope that writes them, where it does and

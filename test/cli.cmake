@@ -478,6 +478,18 @@ function(holds name file)
     endforeach()
 endfunction()
 
+# C140: a call's value given to a function is computed once, where written at
+# each reading of the parameter it tripled at each call nested here, 1.2 MB.
+file(WRITE "${OUT}/c140.ink" "f(p) = p/2 + p/3 + p/5\nx_0 = 1\nx_n = f(f(f(f(f(f(f(f(f(f(x_(n-1)))))))))))\n")
+set(args --compile c140.ink -o c140.h)
+check(compile_c140)
+holds(compile_c140 c140.h "    const double t8_ = t7_ / 2.0 + t7_ / 3.0 + t7_ / 5.0;\n"
+      "    m_->x[0] = m_->index_ == 0 ? 1.0 : t8_ / 2.0 + t8_ / 3.0 + t8_ / 5.0;\n")
+file(SIZE "${OUT}/c140.h" size)
+if(size GREATER 4096)
+    message(SEND_ERROR "compile_c140: c140.h is ${size} bytes")
+endif()
+
 # C90: the clause --check keeps is 0 where a guard of 'and' reads NaN, as no
 # clause is taken, where the NaN was converted to an int.
 file(WRITE "${OUT}/c90.ink" "gate(x_n) = {\n    y_0 = 1\n    y_n = y_(n-1) + x_n\n    z_n | x_n > 0 and y_(n-2) > 0 = 1\n    z_n = 0\n}\ng = gate(x_n = 1)\n")

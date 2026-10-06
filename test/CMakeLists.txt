@@ -103,7 +103,7 @@ add_test(NAME prelude_header
 # drifts from it, and its program says where and exits with a failure.
 # Each as file:instance.
 foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brink drift:ledge
-                         drift:rift drift:naught drift:zeroed drift:mirrored
+                         drift:rift drift:naught drift:zeroed drift:mirrored drift:nests
                          delay:fir newton:stiff logistic:gate sized:sized softmax:cls steady:mark
                          rnn:rnn attention:head momentum:ball adam:fit lqr:gain
                          rates:pairs rates:odd seeded:warm cascade:servo decimate:boxcar
@@ -392,6 +392,8 @@ set_tests_properties(check_zeroed_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^zeroed: 100 steps from 0, against exact values\nzeroed\\.y: within 0\n$")
 set_tests_properties(check_mirrored_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^mirrored: 100 steps from 0, against exact values\nmirrored\\.y: within 0\n$")
+set_tests_properties(check_nests_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^nests: 100 steps from 0, against exact values\nnests\\.s: within 0\nnests\\.x: within 0\n$")
 set_tests_properties(check_calm_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^calm: 100 steps from 0, against exact values\ncalm\\.v: within [0-9.e+-]+\n$")
 set_tests_properties(check_wild_report PROPERTIES PASS_REGULAR_EXPRESSION
