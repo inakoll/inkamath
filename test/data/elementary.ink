@@ -66,14 +66,18 @@ inf
 >> log(1/10^400)
 ~-921.034037
 
-# From 2^3072 the powers of two ilogb tries pass a thousand digits and are
-# approximated to inf, which the number passes as a double; its quotient is
-# NaN, as inf's is.
+# From 2^3322 a power of two passes a thousand digits and is approximated to
+# inf, which an exact number past a double passes as one, so ilogb tries
+# none past 2^3321, above every exact number; and inf is the one number its
+# own double, whose log is itself (C101).
 >> log(2^3072)
-error: a comparison needs a number, not -nan
+~2129.34814
+
+>> log(10^999)
+~2300.28251
 
 >> log(~1/0)
-error: a comparison needs a number, not -nan
+inf
 
 >> log(0)
 error: division by zero
@@ -156,7 +160,7 @@ digits = 9
 
 # ilogb, C's name for the power of two at or below a number, which log
 # reduces by: thirteen guarded steps from 2^-4096, so exact, and right for
-# every double and every exact number below 2^3072.
+# every double and every exact number.
 >> ilogb(1)
 0
 
@@ -172,8 +176,21 @@ digits = 9
 >> ilogb(10^400)
 1328
 
+>> ilogb(10^999)
+3318
+
 >> frac ilogb(~3)
 1
+
+# Of 0 and below, refused as log is, however 0 is written (C100).
+>> ilogb(0)
+error: division by zero
+
+>> ilogb(~0)
+error: division by zero
+
+>> ilogb(-1)
+error: division by zero
 
 # grad differentiates the definitions: floor's derivative is 0, and a guard
 # at its threshold takes its own side, so 1, 2 and the powers of two answer.
@@ -229,19 +246,20 @@ exp(x) | x < -1000 = exp(-1000)
 >> ?log
 log(x) = logk(x, ilogb(x))
 log(x) | x <= 0 = 1/0
+log(x) | 2*x == x = x
 
 >> ?tanh
 tanh(x) = tanhp(x)
 tanh(x) | x < 0 = -tanhp(-x)
 
 >> tex ?log
-\operatorname{log}(x) = \begin{cases} \frac{1}{0} & \text{if } x \le 0 \\ \operatorname{logk}(x, \operatorname{ilogb}(x)) & \text{otherwise} \end{cases}
+\operatorname{log}(x) = \begin{cases} \frac{1}{0} & \text{if } x \le 0 \\ x & \text{if } 2\,x = x \\ \operatorname{logk}(x, \operatorname{ilogb}(x)) & \text{otherwise} \end{cases}
 
 >> tex ?tanh
 \operatorname{tanh}(x) = \begin{cases} -\operatorname{tanhp}(-x) & \text{if } x < 0 \\ \operatorname{tanhp}(x) & \text{otherwise} \end{cases}
 
 >> tex ?ilogbs
-\operatorname{ilogbs}(x, k, s) = \begin{cases} k + s & \text{if } x \ge 2^{k + s} \\ k & \text{otherwise} \end{cases}
+\operatorname{ilogbs}(x, k, s) = \begin{cases} k & \text{if } k + s > 3321 \\ k + s & \text{if } x \ge 2^{k + s} \\ k & \text{otherwise} \end{cases}
 
 # Where a reduction ends in '~', which has no form on paper.
 >> tex ?expk

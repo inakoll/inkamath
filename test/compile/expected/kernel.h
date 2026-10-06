@@ -35,7 +35,7 @@ typedef struct kernel {
 } kernel;
 
 static inline double kernel_ceil(double arg_x) {
-    return -floor(-arg_x);
+    return 0.0 - floor(0.0 - arg_x);
 }
 
 /* Computes what derives from the parameters: call it after assigning one. */

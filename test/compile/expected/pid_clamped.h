@@ -69,9 +69,9 @@ static inline void pid_clamped_step(pid_clamped* m_, double y) {
     m_->y[0] = y;
     m_->e[0] = m_->r - m_->y[0];
     m_->d[0] = m_->index_ == 0 ? 0.0 : (m_->e[0] - m_->e[1]) / m_->dt;
-    m_->s[0] = m_->index_ == 0 ? 0.0 : m_->u[1] >= m_->umax ? m_->s[1] : m_->u[1] <= -m_->umax ? m_->s[1] : m_->s[1] + m_->e[0] * m_->dt;
+    m_->s[0] = m_->index_ == 0 ? 0.0 : m_->u[1] >= m_->umax ? m_->s[1] : m_->u[1] <= 0.0 - m_->umax ? m_->s[1] : m_->s[1] + m_->e[0] * m_->dt;
     m_->v[0] = m_->kp * m_->e[0] + m_->ki * m_->s[0] + m_->kd * m_->d[0];
-    m_->u[0] = m_->v[0] > m_->umax ? m_->umax : m_->v[0] < -m_->umax ? -m_->umax : m_->v[0];
+    m_->u[0] = m_->v[0] > m_->umax ? m_->umax : m_->v[0] < 0.0 - m_->umax ? 0.0 - m_->umax : m_->v[0];
 }
 
 #endif

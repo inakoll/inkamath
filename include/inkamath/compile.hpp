@@ -53,6 +53,14 @@ public:
         std::vector<std::size_t> cells;      // and how many cells each has
         std::vector<Sequence>    sequences;  // those it computes, in the order it does
         std::vector<std::string> guarded;    // those whose clause is kept, 'v_clause_'
+        // Each instance the model writes unnamed, by its label, for the check
+        // to make again where the instance checked is (C84).
+        struct Unnamed {
+            const Reference<Value>*                    model;
+            const ParametersCall<Value>*               call;
+            std::vector<std::pair<std::string, Value>> captured;
+        };
+        std::map<std::string, Unnamed> unnamed;
     };
 
     // '--float' (DESIGN.md, a float target): a float wherever a double is.
@@ -445,6 +453,7 @@ private:
             std::string label = within_ + "_" + model.Name() + values;
             for (int other = 2; !labels_.insert(label).second; ++other)
                 label = within_ + "_" + model.Name() + std::to_string(other) + values;
+            unnamed_[label] = {&model, &call, captured};
             held_.push_back(definitions_.Detached(model, call, *scope_, label, captured));
             kept = held_.back().get();
             Define(*kept);
@@ -1173,9 +1182,12 @@ private:
     PExpression<Value> visit(NegExpression<Value>* expression) override {
         Code code = Emit(expression->m_e());
         if (code.constant) return Fold(expression);
+        // A subtraction from 0, as the interpreter's (C33): C's minus makes
+        // -0 of +0 (C98).
+        const std::string zero = floats ? "0.0f - " : "0.0 - ";
         for (Cell& cell : code.cells) {
             Cell negation(
-                "-" + (cell.magnitude.empty() ? Wrap(cell, unary) : "(" + cell.text + ")"), unary);
+                zero + (cell.magnitude.empty() ? Wrap(cell, product) : "(" + cell.text + ")"), sum);
             negation.magnitude       = cell.text;
             negation.magnitude_level = cell.level;
             negation.atom            = cell.atom;
@@ -2431,10 +2443,12 @@ private:
         if (!expression->Col()) {
             if (matrix.constant) return Fold(expression);
             const int i = Whole(row);
-            if (i < 1 || static_cast<std::size_t>(i) > matrix.rows)
+            if (i < 1 || static_cast<std::size_t>(i) > matrix.rows) {
+                if (i > 1) Unstated(*expression->Matrix(), std::to_string(i));
                 throw Reason("row " + std::to_string(i) + " is outside a " +
                              std::to_string(matrix.rows) + "x" + std::to_string(matrix.cols) +
                              " matrix");
+            }
             Code line;
             line.cols = matrix.cols;
             for (std::size_t j = 0; j < matrix.cols; ++j)
@@ -2445,11 +2459,26 @@ private:
         if (matrix.constant) return Fold(expression);
         const int i = Whole(row), j = Whole(col);
         if (i < 1 || static_cast<std::size_t>(i) > matrix.rows || j < 1 ||
-            static_cast<std::size_t>(j) > matrix.cols)
+            static_cast<std::size_t>(j) > matrix.cols) {
+            if (i > 0 && j > 0)
+                Unstated(*expression->Matrix(), std::to_string(i) + ", k<=" + std::to_string(j));
             throw Reason("row " + std::to_string(i) + ", column " + std::to_string(j) +
                          " is outside a " + std::to_string(matrix.rows) + "x" +
                          std::to_string(matrix.cols) + " matrix");
+        }
         return Answer(matrix.At(static_cast<std::size_t>(i - 1), static_cast<std::size_t>(j - 1)));
+    }
+    // A cell past an input whose model states no size, which compiles as a
+    // single value (C83), refused with the size that would hold it.
+    void Unstated(const Expression<Value>& read, const std::string& bounds) const {
+        if (!model_ || scope_ != &root_ || !dynamic_cast<const FuncExpression<Value>*>(&read))
+            return;
+        for (const typename Model<Value>::Parameter& p : model_->parameters)
+            if (p.name == read.Name() && !p.index.empty() && !p.fallback && p.bounds.empty())
+                throw Reason(p.name + " is a single value, as " +
+                             model_->header.substr(0, model_->header.find('(')) +
+                             " states no size for it: write '" + p.name + "_" + p.index +
+                             "[j<=" + bounds + "]'");
     }
     PExpression<Value> visit(FactExpression<Value>*) override { throw Reason("a factorial"); }
     PExpression<Value> visit(GradExpression<Value>*) override {
@@ -3583,7 +3612,7 @@ private:
                     else
                         out.insert(at + from.size() - (from.back() == '(' ? 1 : 0), "f");
                 }
-        Compiled compiled{out, earliest, inputs, {}, {}, {}};
+        Compiled compiled{out, earliest, inputs, {}, {}, {}, unnamed_};
         for (const std::string& name : inputs) compiled.cells.push_back(Cells(name));
         for (const std::string& name : order) {
             const Sequence& sequence = sequences_.at(name);
@@ -3611,6 +3640,7 @@ private:
     // Unnamed instances, by where they are written and what they read there.
     std::map<std::pair<const void*, std::string>, const Scope<Value>*> kept_;
     std::set<std::string>                                              labels_;
+    std::map<std::string, Compiled::Unnamed>                           unnamed_;
     std::map<std::string, Sequence>  sequences_;
     std::map<std::string, Parameter> parameters_;
     std::vector<Derived>             derived_;  // each after those it reads

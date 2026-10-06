@@ -83,3 +83,14 @@ strided(c = 1/10) = {
     g_m[j<=2] = 0
 }
 seam = strided()
+
+# A negation is a subtraction from 0, as in the interpreter (C33), so the
+# negation of +0 is +0, where C's minus gives -0 and 1/(-x_n) -inf (C98):
+#
+#     naught: 100 steps from 0, against exact values
+#     naught.y: within 0
+negated(x_n) = {
+    y_n | 1/(-x_n) > 0 = 1
+    y_n = 0
+}
+naught = negated(x_n = ~0)
