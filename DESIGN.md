@@ -4533,7 +4533,8 @@ that exploring seven domains asked of the interpreter, by how many asked.
   out-of-domain refusals; an approximated argument; `grad`; two refusals by
   steps that become answers and one of exact arguments that stays; four by
   depth that become answers, and four that stay, of two exact arguments,
-  an approximated one, and an `exp` the session extends. Taken out of the
+  an approximated one, and an `exp` the session gives a clause, which
+  since `trig` starts a definition of its own. Taken out of the
   prototype one at a time, each exclusion fails an entry, or
   `check_els_report` for the estimating runs. `inkamath_prelude.ink` is
   wired with the implementation, as are the header, the target and the
@@ -4859,13 +4860,18 @@ that exploring seven domains asked of the interpreter, by how many asked.
   What moves: no golden, header or report, measured with the prototype on
   every test of `ctest`. `conditional.ink`'s `abs` and `max`, and the `sin`
   and `cos` of `sequences.ink` and README, are definitions of their own. A
-  session's clause on a name of the prelude starts a definition of its own,
-  as a model's or a file's does: `abs(y) | y < 0 = -y` defines `abs`, which
-  extending the prelude's would refuse for its parameter, and `abs(3)` then
-  finds no clause. The extension was a remnant of the built-ins being the
-  session's own, and is deleted before this: in `fastprelude.ink`, `exp(~1)`
-  and `dive(250)` after `exp(x) | x > 5000 = 7` move to "no clause of exp
-  applies".
+  session's clause on a built-in or a name of the prelude starts a
+  definition of its own, as a model's or a file's does: `abs(y) | y < 0 =
+  -y` defines `abs`, which extending the prelude's would refuse for its
+  parameter, and `abs(3)` then finds no clause. So `floor(2.5)` after
+  `floor(x) | x > 10 = 0` finds no clause where it gave 2, `pi(x) | x > 0 =
+  1`, refused, defines `pi`, a sequence or another arity, `exp_0 = 1` or
+  `mod(a) | a > 0 = 1`, replaces the prelude's name, and a file run or
+  compiled does the same: `s_n = exp(~n)` after `exp(x) | x > 5000 = 7`
+  compiles to `n > 5000 ? 7.0 : NAN`. The extension was a remnant of the
+  built-ins being the session's own, and is deleted before this: in
+  `fastprelude.ink`, `exp(~1)` and `dive(250)` after `exp(x) | x > 5000 =
+  7` move to "no clause of exp applies".
   `inkamath_prelude.h` gains the functions, and README's paragraph on the
   prelude (section 1) the five names.
 
@@ -4886,9 +4892,10 @@ that exploring seven domains asked of the interpreter, by how many asked.
   is: `check_tri_report` every term within 0, its lines in the check's
   order, c, g, q, s, b, l, m, v and w, and `check_tri_functions` the ten
   functions and no libm `sin` or `cos`. Departures, by the review's
-  rulings: a session's clause on a name of the prelude starts a definition
-  of its own, the extension deleted first, 6 lines, so that `abs(y) | y < 0
-  = -y` defines `abs`; and the refusal past 2^20 is for accuracy, which
+  rulings: a session's clause on a built-in or a name of the prelude starts
+  a definition of its own, the extension deleted first, 6 lines, so that
+  `abs(y) | y < 0 = -y` defines `abs`, and `trig.ink` gains a clause on
+  `floor`, written by hand; and the refusal past 2^20 is for accuracy, which
   README says. Measured on the build: 200,044 doubles, random on [-2^20,
   2^20] and in magnitude from 10^-320, the nearest a multiple of pi/2 and
   floor's ties with their neighbours, and 22 chosen, `sin` and `cos` of

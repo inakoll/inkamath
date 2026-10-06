@@ -370,3 +370,11 @@ max(x, y) = (x + y + abs(x - y))/2
 
 >> max(3, 7)
 7
+
+# A clause on a built-in starts a definition too: this floor holds above
+# 10 alone.
+>> floor(x) | x > 10 = 0
+floor(x) | x > 10 = 0
+
+>> floor(2.5)
+error: no clause of floor applies

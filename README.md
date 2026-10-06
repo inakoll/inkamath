@@ -587,6 +587,10 @@ step_0 = 1
 error: step_0 is already defined without a guard, so this clause can never apply
 ```
 
+Only a definition of one's own is patched up so: a clause on a built-in or a
+name of the prelude starts a definition, and after `floor(x) | x > 10 = 0`,
+`floor(2.5)` finds no clause.
+
 A comparison is a number — `1` or `0` — so a guard is simply an expression
 that is not zero, and `sgn(x) = (x>0) - (x<0)` needs no guard at all. Ordering
 needs real numbers; equality does not. Neither takes NaN, which `0/~0` is, nor
