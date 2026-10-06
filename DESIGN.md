@@ -4605,8 +4605,8 @@ that exploring seven domains asked of the interpreter, by how many asked.
   constant already is. Refused for now, as no model asks: a derivative of a
   derivative, which needs four parts; of a limit whose arguments move, which
   walks the parts too; of a matrix power; of a power whose exponent is
-  not a constant, whose part is absent where the exponent is 0, which a
-  static part cannot say; and through a definition by cells, whose guards
+  not a constant, which five lines would compile, its part absent where the
+  exponent is 0 by the conditions below, but which no model asks; and through a definition by cells, whose guards
   the compiler takes as constants only (*Guards on cells at run time*).
 
   `--check` needs nothing new. The interpreter's terms are its grad's,
