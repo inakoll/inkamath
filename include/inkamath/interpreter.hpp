@@ -309,14 +309,14 @@ Interpreter<T, U>::Interpreter() {
             // the disturbed ones.
             if (found == functions.end() || !x.IsScalar() || stack_.guards || Number::disturbed)
                 return {};
-            const auto    at = found - functions.begin();  // log and ilogb from 2
-            const Number& a  = x(1, 1);
-            const auto    z  = a.Inexact();
+            const auto    c = found->second;
+            const Number& a = x(1, 1);
+            const auto    z = a.Inexact();
             if (a.exact() || Number::approximated(a) || z.imag() != 0 || !std::isfinite(z.real()) ||
-                (at >= 2 && !(z.real() > 0)))
+                ((c == inkamath_prelude_log || c == inkamath_prelude_ilogb) && !(z.real() > 0)))
                 return {};
-            const double y = found->second(z.real());
-            if (at == 3) return U(Number(static_cast<long long>(y)));
+            const double y = c(z.real());
+            if (c == inkamath_prelude_ilogb) return U(Number(static_cast<long long>(y)));
             return y == 0 ? std::nullopt : std::optional(U(Number(y)));
         };
     }
