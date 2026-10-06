@@ -153,7 +153,11 @@ regression, its `exp` a limit written in inkamath, as `test/compile/softmax.ink`
 writes softmax and cross-entropy, `log` being Newton's method on `exp`. A
 limit of matrices fills an array, cell by cell: `test/compile/steady.ink`
 finds a chain's steady state and, by power iteration, a matrix's dominant
-direction at every step. A header that writes NaN anywhere carries it to every
+direction at every step. A `grad` is compiled forward, each value carrying its
+part beside it by the interpreter's rules, so that the step's gradient is the
+interpreter's to the bit: `test/compile/grad.ink` trains a line and a logistic
+regression by it; a derivative of a derivative, of a limit or of a matrix
+power is refused for now. A header that writes NaN anywhere carries it to every
 term that reads it, as the interpreter refuses them: a guard, a comparison and
 a power reading NaN answer NaN, and a matrix term with a NaN cell is NaN in
 every cell, which its first comment says. Such a header is not to be built

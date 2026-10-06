@@ -31,6 +31,14 @@ public:
         return *Grad(grad)[0];
     }
 
+    // What grad refuses by the names its body reads, before any value: the
+    // compiler asks it too (DESIGN.md, grad compiled).
+    void Names(const GradExpression<T>& grad) {
+        Unreached(grad.Body(), grad.Variable());
+        if (!Mentions(*grad.Body(), grad.Variable()))
+            throw std::runtime_error("grad's expression does not read " + grad.Variable());
+    }
+
 private:
     // Indexed by a set of grads as bits, [0] being the value; empty where the
     // derivative is zero, so that a zero needs no shape.
@@ -675,9 +683,7 @@ private:
         const Jet          point = Eval(grad.Point());
         const T&           at    = *point[0];
         const std::string& name  = grad.Variable();
-        Unreached(grad.Body(), name);
-        if (!Mentions(*grad.Body(), name))
-            throw std::runtime_error("grad's expression does not read " + name);
+        Names(grad);
         if (order_ == max_order)
             throw std::runtime_error("grad nests more than " + std::to_string(max_order) + " deep");
         const std::size_t bit = Size();
