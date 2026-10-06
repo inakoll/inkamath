@@ -215,7 +215,9 @@ batch = sgd(X_n = [1 (-1)^n; 1 -(-1)^n;; 1 1; 1 -1], Y_n = [n; 1;; n; 2])
 # words where it has them: two indices of a tensor, a tensor's power, tensors
 # of different numbers of slices, a literal whose slices differ; in the
 # compiler's words for a matrix, which a tensor is a stack of, a comparison;
-# and for now, a tensor in a limit and a derivative with respect to a tensor.
+# and for now, a tensor in a limit, a derivative with respect to a tensor and
+# a tensor's cells under a guard that is not a constant, as one that reads the
+# index, whose clause --check could not follow cell by cell.
 # T and U are the session's constants, so fields, and y and P, which
 # test/cli.cmake's compile_tensor_refused refused, compile:
 #
@@ -229,6 +231,8 @@ batch = sgd(X_n = [1 (-1)^n; 1 -(-1)^n;; 1 1; 1 -1], Y_n = [n; 1;; n; 2])
 #     f_n = [n 1;; 2 3 4]
 #     g_n = lim p(n*T)
 #     h_n = grad_(V = n*T) sum_(b=1)^2 [1 1]*V[b]*[1; 1]
+#     m_n[b<=2, i<=1, j<=1] | n > 2 = b
+#     m_n[b<=2, i<=1, j<=1] = 0
 #     p(A)_0 = A
 #     p(A)_k = p(A)_(k-1)/2
 #     y_0 = 0
@@ -242,6 +246,7 @@ batch = sgd(X_n = [1 (-1)^n; 1 -(-1)^n;; 1 1; 1 -1], Y_n = [n; 1;; n; 2])
 #     cannot compile f: the slices of a tensor have one size, not 1x2 and 1x3
 #     cannot compile g: a tensor in a limit, for now
 #     cannot compile h: a derivative with respect to a tensor, for now
+#     cannot compile m: a tensor's cells under a guard that is not a constant, for now
 #
 # Two recorded refusals move with it: compile_tensor_refused, above, and
 # inputs_batch, test/compile/inputs.ink's 'batch', which compiles, its step

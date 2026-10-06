@@ -4778,12 +4778,14 @@ that exploring seven domains asked of the interpreter, by how many asked.
   of their own were five lines for refusals no model reaches. For now: "a
   tensor in a limit", its terms or an argument, as a limit's function fills
   an array of rows and columns and no model iterates a tensor to a fixed
-  point; and "a derivative with respect to a tensor". A gradient whose body
-  meets tensors, with respect to a single value or a matrix, compiles, the
-  parts riding the values slice by slice: a model's weights are shared
-  matrices and its batch the tensor. Weights stacked by head, a tensor,
-  reach a loss only through softmax by cells, which compiled `grad` refuses
-  already, so nothing asks for a seed of three indices.
+  point; "a derivative with respect to a tensor"; and "a tensor's cells under
+  a guard that is not a constant", one reading the index, as `--check` asks
+  the interpreter's guards of a cell by its row and column, not its slice. A
+  gradient whose body meets tensors, with respect to a single value or a
+  matrix, compiles, the parts riding the values slice by slice: a model's
+  weights are shared matrices and its batch the tensor. Weights stacked by
+  head, a tensor, reach a loss only through softmax by cells, which compiled
+  `grad` refuses already, so nothing asks for a seed of three indices.
 
   `--check` feeds a tensor input by its cells and holds every cell of a term,
   reading the interpreter's slice by slice. In a header that writes NaN, a
@@ -4812,7 +4814,7 @@ that exploring seven domains asked of the interpreter, by how many asked.
   6.7e-15 of mpmath's; `whirl`, a batch of states turned a quarter each step,
   meeting tensors every other way, its every term exact; `batch`, a linear
   layer trained by minibatch descent through `grad`, exact; the last two in
-  float as well; the header excerpts of each; and seven refusals. Two
+  float as well; the header excerpts of each; and eight refusals. Two
   recorded refusals become headers: `compile_tensor_refused`, whose file
   joins the refusals', and `inputs_batch`, with its line in `inputs.ink`'s
   comment. Wired with the implementation; README's paragraph on the compiler
