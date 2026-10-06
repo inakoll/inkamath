@@ -4845,7 +4845,7 @@ that exploring seven domains asked of the interpreter, by how many asked.
   `grad` or when the value written whole refuses beside cells that each have
   a clause, and constants folded from a call that ignores a moving argument
   refused. 14,431 lines in all, after `fixes5`.
-- **The prelude's part functions for the interpreter's `grad`.** Under
+- `[done]` **The prelude's part functions for the interpreter's `grad`.** Under
   `grad` the interpreter walks the prelude's definitions with jets, never
   the fast path's compiled call: under callgrind `bench/grad.ink` is 16,418
   million instructions at 27489db, where it was 5,750 before the prelude
@@ -4967,6 +4967,21 @@ that exploring seven domains asked of the interpreter, by how many asked.
   session's own `exp`. Taken out of the prototype one at a time, each test
   fails an entry: of 0, of NaN, of an exact part through `tanh` and `log`,
   and the memo asked first.
+
+  Built as specified: every entry passes as written, and the spec is the
+  golden `fastgrad.ink`; no other golden, header or report moves but the
+  prelude's header, 255 lines. One departure, of form: the part functions
+  are a table of their own beside the values', which stays as it was, not
+  a third column of it. Measured on the build: four sweeps, 807,251 lines,
+  the prototype's two and two of the review's, which give each argument as
+  `x - t*q` at an exact 0, signed zeros among both, with 42 parts exact and
+  inexact of either sign and `1/(3*g)` beside each grad `g`, so that a 0's
+  sign shows, all byte for byte the walk's at 0f96666 under GCC 13 and
+  Clang 18. Under callgrind `grad` from 16,407 million instructions to
+  1,358, 12 times fewer, the others to the million as before. 46 lines of
+  sources where about 45 were planned: 19 in `derivative.hpp`, 25 in
+  `interpreter.hpp` and 2 in `reference_stack.hpp`. 14,534 lines in all,
+  from 14,488 at 0f96666.
 - `[done]` **`sin`, `cos`, `abs`, `max` and `min` in the prelude.** A rotation, a
   pendulum or an oscillator needs `sin` and `cos`, and a clip, an L1 loss or
   a hinge `abs`, `max` and `min`; each session writes its own, as README's
