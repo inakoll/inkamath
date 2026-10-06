@@ -4642,7 +4642,12 @@ that exploring seven domains asked of the interpreter, by how many asked.
 
   Known limits. Where the clause taken has no part, the part is 0, which an
   infinite value multiplies to NaN where the interpreter has nothing to
-  multiply: `grad_(t = 6) f(t)*~(10^400)`, f a clamp at 1.
+  multiply: `grad_(t = 6) f(t)*~(10^400)`, f a clamp at 1. A function of the
+  prelude saturated, `tanh` past 20 or `exp` past 1000 either way, has its
+  part wherever its argument has, so a `floor`, a comparison or an `==`
+  guard reading it tests a jump the interpreter, seeing no part, does not:
+  `grad_(t = x) floor(tanh(t))*t` is NaN past 20, where the interpreter
+  answers 1.
 
   Rejected: dual numbers in the header, a struct of value and part and a
   function per operation, which is a second arithmetic to read beside the
