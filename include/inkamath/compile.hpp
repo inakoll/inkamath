@@ -388,6 +388,7 @@ private:
         const Scope<Value>*                            scope;   // where the rest are sought
         Expansion*                                     outer;   // the model a function is in
         std::set<std::string>                          computing;
+        std::map<std::string, int>                     offsets;  // from the caller's index
     };
 
     // What an expansion gives a name, if one does.
@@ -473,6 +474,13 @@ private:
         }
         own_ = kept;
         return Emit(member);
+    }
+
+    // Read again, it reads no term and calls nothing anew.
+    static bool Plain(const Expression<Value>& e) {
+        return !dynamic_cast<const FuncExpression<Value>*>(&e) &&
+               std::all_of(e.Children().begin(), e.Children().end(),
+                           [](const auto& c) { return !c || Plain(*c); });
     }
 
     // The names an expression reads, but not those after a point.
@@ -636,12 +644,20 @@ private:
               const ParametersCall<Value>& call, Expansion* outer) {
         const ParametersDefinition<Value>& p = function.Clauses().front().parameters;
         Reasoned([&] { p.CheckArity(name, call); });
-        Expansion expansion{{}, {}, outer ? outer->scope : function.home, outer, {}};
+        Expansion expansion{{}, {}, outer ? outer->scope : function.home, outer, {}, {}};
+        // An argument the caller's index, give or take a constant, indexes a term (C119).
+        const auto bind = [&](const std::string& given, const PExpression<Value>& argument) {
+            expansion.values.emplace(given, Emit(argument));
+            if (Plain(*argument)) try {
+                    expansion.offsets.emplace(given, Offset(argument, given));
+                } catch (const Reason&) {
+                } catch (const Fix&) {
+                }
+        };
         const std::vector<std::string>& names = p.parameters_names();
         for (std::size_t i = 0; i < call.parameters_expression().size(); ++i)
-            expansion.values.emplace(names[i], Emit(call.parameters_expression()[i]));
-        for (const auto& [given, argument] : call.parameters_dict())
-            expansion.values.emplace(given, Emit(argument));
+            bind(names[i], call.parameters_expression()[i]);
+        for (const auto& [given, argument] : call.parameters_dict()) bind(given, argument);
         Reasoned([&] {
             for (const auto& [given, value] : expansion.values)
                 function.Divides(given, Value(Extent{value.rows, value.cols}), definitions_);
@@ -679,7 +695,7 @@ private:
             signature += (signature.empty() ? "double arg_" : ", double arg_") + parameter;
         // Its body, its parameters 'arg_x', and with parts 'part_x' for each that moves.
         const auto inside = [&](bool parts) {
-            Expansion expansion{{}, {}, function.home, nullptr, {}};
+            Expansion expansion{{}, {}, function.home, nullptr, {}, {}};
             for (std::size_t i = 0; i < names.size(); ++i) {
                 Code argument = Array("arg_" + names[i], 1, 1);
                 if (parts && !arguments[i].part.empty())
@@ -762,7 +778,7 @@ private:
             return Kept(model, call, member);
         const auto bound = Reasoned([&] { return m.Bind(model.Name(), call); });
         held_.push_back(definitions_.Defaults(model));
-        Expansion expansion{{}, {}, m.scope, nullptr, {}};
+        Expansion expansion{{}, {}, m.scope, nullptr, {}, {}};
         for (std::size_t i = 0; i < m.parameters.size(); ++i) {
             if (!bound[i]) continue;
             const Code& given =
@@ -2167,7 +2183,7 @@ private:
         Reasoned([&] { p.CheckArity(name, call); });
         // The arguments, where the limit is read; a default, where it is not
         // given, reads the others.
-        Expansion                       given{{}, {}, scope_, expansion_, {}};
+        Expansion                       given{{}, {}, scope_, expansion_, {}, {}};
         const std::vector<std::string>& names = p.parameters_names();
         for (std::size_t i = 0; i < call.parameters_expression().size(); ++i)
             given.values.emplace(names[i], Emit(call.parameters_expression()[i]));
@@ -2186,7 +2202,7 @@ private:
         // of the language has a '_', and no name of the function's own
         // begins so.
         Walked    walked{name, names, 0, 0, 0};
-        Expansion inside{{}, {}, sequence.home ? sequence.home : scope_, nullptr, {}};
+        Expansion inside{{}, {}, sequence.home ? sequence.home : scope_, nullptr, {}, {}};
         for (const std::string& parameter : names) {
             const Code& argument = given.values.at(parameter);
             inside.values.emplace(parameter,
@@ -2729,9 +2745,11 @@ private:
             written + (index_.empty() ? ": a term read where " + within_ + "'s index is not seen"
                                       : ": an index other than a whole multiple of " + index_ +
                                             " plus a constant");
-        if (const auto* ref = dynamic_cast<RefExpression<Value>*>(index.get());
-            ref && ref->Name() == index_ && !places_.count(index_))
-            return 0;
+        const auto* ref = dynamic_cast<RefExpression<Value>*>(index.get());
+        if (ref && ref->Name() == index_ && !places_.count(index_)) return 0;
+        if (ref && expansion_ && expansion_->offsets.count(ref->Name()) &&
+            !places_.count(ref->Name()))
+            return expansion_->offsets.at(ref->Name());
         const auto* sum = dynamic_cast<AddExpression<Value>*>(index.get());
         if (!sum) throw Reason(only);
         const auto [left, left_reads]   = Reading(sum->m_e1());
@@ -2842,7 +2860,7 @@ private:
             }
             Code x = point;
             x.part = {Literal(seed)};
-            Expansion bound{{{name, x}}, {}, scope_, expansion_, {}};
+            Expansion bound{{{name, x}}, {}, scope_, expansion_, {}, {}};
             auto      places = places_;
             places.erase(name);
             const Setting<std::map<std::string, Value>> hidden(places_, places);

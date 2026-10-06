@@ -238,11 +238,11 @@ set(stderr "")
 set(exit 1)
 check(compile_rates_refused)
 
-# C119: a term read where the clause's index is not seen, in a call or under
-# a grad that takes its name, says so rather than naming no index.
+# C119: a term read where the clause's index is not seen, under a grad that
+# takes its name, says so rather than naming no index.
 file(WRITE "${OUT}/c119.ink" "f(t) = x_t\ny_n = f(n)\nz_n = grad_(n = 2) n*x_n\n")
 set(args --compile c119.ink)
-set(stdout "cannot compile y: x_(...): a term read where y's index is not seen\ncannot compile z: x_(...): a term read where z's index is not seen\n")
+set(stdout "cannot compile z: x_(...): a term read where z's index is not seen\n")
 set(exit 1)
 check(compile_c119)
 
@@ -787,3 +787,10 @@ file(WRITE "${OUT}/c112m.ink" "m(x) = {\n    y = x + g\n}\ng = x*2\nx = 5\nz_n =
 set(args --compile c112m.ink -o c112m.h)
 check(compile_c112_instance)
 holds(compile_c112_instance c112m.h "    m_->g = m_->x * 2.0;\n")
+
+# C119: a term read in a call given the clause's index, give or take a
+# constant, is read as the interpreter reads it.
+file(WRITE "${OUT}/c119c.ink" "f(t) = x_t\ng(s) = f(s - 1)\ny_n = f(n)\nw_n = g(s = n)\n")
+set(args --compile c119c.ink -o c119c.h)
+check(compile_c119_call)
+holds(compile_c119_call c119c.h "    m_->y[0] = m_->x[0];\n" "    m_->w[0] = m_->x[1];\n")
