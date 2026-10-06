@@ -1926,11 +1926,6 @@ private:
                 const int place = static_cast<int>(&clause - definition.Clauses().data()) + 1;
                 const ParametersDefinition<Value>& p = clause.parameters;
                 const std::string outer = std::exchange(index_, p.general() ? p.index_name() : "");
-                if (!p.row_name().empty()) {
-                    if (p.tensor()) places_[p.slice_name()] = Value(Number(slice));
-                    places_[p.row_name()] = Value(Number(row));
-                    places_[p.col_name()] = Value(Number(col));
-                }
                 const std::optional<std::string> condition =
                     p.guarded() ? Condition(p.guard()) : std::optional<std::string>("");
                 // --check asks the interpreter's guards of a cell by its row and column.
@@ -1938,9 +1933,6 @@ private:
                     throw Reason("a tensor's cells under a guard that is not a constant, for now");
                 const std::optional<Code> value =
                     condition ? std::optional<Code>(Emit(clause.expression)) : std::nullopt;
-                places_.erase(p.slice_name());
-                places_.erase(p.row_name());
-                places_.erase(p.col_name());
                 index_ = outer;
                 if (!value) return false;
                 if (!value->Scalar()) throw Reason("a cell of " + name + " must be a single value");
@@ -1953,25 +1945,38 @@ private:
                 }
                 return condition->empty();
             };
-            bool settled = false;
-            for (const Clause<Value>& clause : definition.Clauses()) {
-                const ParametersDefinition<Value>& p = clause.parameters;
-                if (settled || !p.cells() || !p.row_name().empty() || !fits(clause)) continue;
-                if (p.slice() == slice && p.row() == row && p.col() == col)
-                    settled = settles(clause);
-            }
-            for (const bool guarded : {true, false})
-                for (const Clause<Value>& clause : definition.Clauses()) {
-                    const ParametersDefinition<Value>& p = clause.parameters;
-                    if (settled || p.row_name().empty() || p.guarded() != guarded || !fits(clause))
-                        continue;
-                    settled = settles(clause);
-                }
+            Walk(definition, slice, row, col, fits, settles);
             if (!last) last = whole ? whole->At(c).text : "0.0";
             cells.push_back(chain + *last);
             if (taken) taken->push_back(pick + std::to_string(picked));
         }
         return {shape, cells};
+    }
+
+    // The clauses that may give a cell, in the order the interpreter tries
+    // them, those for every cell with its places bound, until one settles it.
+    template <typename Fits, typename Settles>
+    void Walk(const Reference<Value>& definition, int slice, int row, int col, Fits fits,
+              Settles settles) {
+        for (const Clause<Value>& clause : definition.Clauses()) {
+            const ParametersDefinition<Value>& p = clause.parameters;
+            if (p.cells() && p.row_name().empty() && fits(clause) && p.slice() == slice &&
+                p.row() == row && p.col() == col && settles(clause))
+                return;
+        }
+        for (const bool guarded : {true, false})
+            for (const Clause<Value>& clause : definition.Clauses()) {
+                const ParametersDefinition<Value>& p = clause.parameters;
+                if (p.row_name().empty() || p.guarded() != guarded || !fits(clause)) continue;
+                if (p.tensor()) places_[p.slice_name()] = Value(Number(slice));
+                places_[p.row_name()] = Value(Number(row));
+                places_[p.col_name()] = Value(Number(col));
+                const bool settled    = settles(clause);
+                places_.erase(p.slice_name());
+                places_.erase(p.row_name());
+                places_.erase(p.col_name());
+                if (settled) return;
+            }
     }
 
     // A clause for one cell, in the interpreter's words where it names more
@@ -2151,31 +2156,16 @@ private:
     }
 
     std::optional<Code> CellOf(const Reference<Value>& definition, int slice, int row, int col) {
-        for (const Clause<Value>& clause : definition.Clauses()) {
-            const ParametersDefinition<Value>& p = clause.parameters;
-            if (!p.cells() || !p.row_name().empty() || p.slice() != slice || p.row() != row ||
-                p.col() != col)
-                continue;
-            if (p.guarded() && !GuardHolds(p.guard())) continue;
-            return Emit(clause.expression);
-        }
-        for (const bool guarded : {true, false}) {
-            for (const Clause<Value>& clause : definition.Clauses()) {
+        std::optional<Code> cell;
+        Walk(
+            definition, slice, row, col, [](const Clause<Value>&) { return true; },
+            [&](const Clause<Value>& clause) {
                 const ParametersDefinition<Value>& p = clause.parameters;
-                if (p.row_name().empty() || p.guarded() != guarded) continue;
-                if (p.tensor()) places_[p.slice_name()] = Value(Number(slice));
-                places_[p.row_name()]           = Value(Number(row));
-                places_[p.col_name()]           = Value(Number(col));
-                const bool                holds = !p.guarded() || GuardHolds(p.guard());
-                const std::optional<Code> cell =
-                    holds ? std::optional<Code>(Emit(clause.expression)) : std::nullopt;
-                places_.erase(p.slice_name());
-                places_.erase(p.row_name());
-                places_.erase(p.col_name());
-                if (cell) return cell;
-            }
-        }
-        return std::nullopt;
+                if (p.guarded() && !GuardHolds(p.guard())) return false;
+                cell = Emit(clause.expression);
+                return true;
+            });
+        return cell;
     }
 
     bool GuardHolds(const PExpression<Value>& guard) {
