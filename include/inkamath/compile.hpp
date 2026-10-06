@@ -1822,8 +1822,7 @@ private:
         for (std::size_t k = 0; k < parts.size(); ++k) {
             code.cells[k] = parts[k].cells[0];
             if (!parts[k].constant) code.constant.reset();
-            if (code.constant)
-                (*code.constant)(k / size.cols + 1, k % size.cols + 1) = (*parts[k].constant)(1, 1);
+            if (code.constant) code.constant->data()[k] = (*parts[k].constant)(1, 1);
         }
         return code;
     }
@@ -2092,9 +2091,9 @@ private:
     }
 
     // A matrix defined by its cells, one cell at a time with its names bound to
-    // the cell's place. They are constants, so the size, every guard and which
-    // clause gives the cell are decided here, as the interpreter would decide
-    // them; one that cannot be is refused.
+    // the cell's place. They are constants, so the size is decided here, and a
+    // guard reading only them; one reading a value that moves is tested where
+    // the cell is. Under grad it has a part where any cell has one.
     Code Cells(const std::string& name, const Reference<Value>& definition) {
         std::optional<Code> whole;  // the matrix written whole, if it is
         for (const Clause<Value>& clause : definition.Clauses())
@@ -2106,32 +2105,37 @@ private:
             const ParametersDefinition<Value>& p = clause.parameters;
             if (p.cells() && p.row_name().empty()) Named(p, *extent, name);
         }
-        Code  code;
-        Value exact(*extent);
-        bool  constant = true;
-        code.size      = *extent;
+        Code                     code;
+        Value                    exact(*extent);
+        bool                     constant = true, any = false;
+        std::vector<Code>        cells, parts;
+        std::vector<const Code*> from;
+        code.size       = *extent;
+        const auto cell = [](const Code& matrix, std::size_t c) {
+            Code at;
+            at.cells = {matrix.At(c)};
+            if (matrix.constant) at.constant = Value(matrix.constant->data()[c]);
+            return at;
+        };
         for (std::size_t c = 0; c < code.size.count(); ++c) {
-            const std::optional<Code> cell =
-                CellOf(definition, static_cast<int>(c / (extent->rows * extent->cols)) + 1,
+            Code fallback = Literal(Value(Number(0)));
+            if (whole)
+                fallback =
+                    Parted(cell(*whole, c),
+                           whole->part.empty() ? Part() : Part(cell(whole->part[0], c)), {&*whole});
+            const Code& given = cells.emplace_back(
+                CellOf(name, definition, static_cast<int>(c / (extent->rows * extent->cols)) + 1,
                        static_cast<int>(c / extent->cols % extent->rows) + 1,
-                       static_cast<int>(c % extent->cols) + 1);
-            Code given = cell ? *cell : Literal(Value(Number(0)));
-            if (!cell && whole) {
-                given       = Code();
-                given.cells = {whole->At(c)};
-                if (whole->constant) given.constant = Value(whole->constant->data()[c]);
-            }
-            if (!given.part.empty())
-                throw Reason("a derivative through a definition by cells, for now");
-            if (!given.Scalar())
-                throw Reason("a cell of " + name + " must be a single value, not a " +
-                             given.size.Described());
+                       static_cast<int>(c % extent->cols) + 1, fallback));
             code.cells.push_back(given.cells[0]);
             if (given.constant) exact.data()[c] = (*given.constant)(1, 1);
             constant = constant && given.constant;
+            any      = any || !given.part.empty();
+            parts.push_back(given.part.empty() ? Literal(Value(Number(0))) : given.part[0]);
         }
+        for (const Code& given : cells) from.push_back(&given);
         if (constant) code.constant = exact;
-        return code;
+        return Parted(code, any ? Part(Assembled(parts, code.size)) : Part(), from);
     }
 
     // The size the interpreter measures (Reference::Measured), its bounds and
@@ -2155,21 +2159,32 @@ private:
         });
     }
 
-    std::optional<Code> CellOf(const Reference<Value>& definition, int slice, int row, int col) {
-        std::optional<Code> cell;
+    // A cell is the chain of the clauses that may give it, as a function's
+    // (Chained), the fallback its end.
+    Code CellOf(const std::string& name, const Reference<Value>& definition, int slice, int row,
+                int col, const Code& fallback) {
+        std::vector<std::pair<std::string, Code>> guarded;
+        std::optional<Code>                       otherwise;
         Walk(
             definition, slice, row, col, [](const Clause<Value>&) { return true; },
             [&](const Clause<Value>& clause) {
                 const ParametersDefinition<Value>& p = clause.parameters;
-                if (p.guarded() && !GuardHolds(p.guard())) return false;
-                cell = Emit(clause.expression);
-                return true;
+                const std::optional<std::string>   condition =
+                    p.guarded() ? Condition(p.guard()) : std::optional<std::string>("");
+                if (!condition) return false;
+                const Code value =
+                    condition->empty() ? Emit(clause.expression) : Taken(clause.expression);
+                if (!value.Scalar())
+                    throw Reason("a cell of " + name + " must be a single value, not a " +
+                                 value.size.Described());
+                if (condition->empty())
+                    otherwise = value;
+                else
+                    guarded.emplace_back(*condition, value);
+                return condition->empty();
             });
-        return cell;
-    }
-
-    bool GuardHolds(const PExpression<Value>& guard) {
-        return Holds(*Known(guard, "a guard on cells that is not a constant").constant);
+        if (guarded.empty()) return otherwise ? *otherwise : fallback;
+        return Chain(guarded, otherwise ? *otherwise : fallback, Extent{});
     }
 
     std::size_t Size(const PExpression<Value>& expression) {

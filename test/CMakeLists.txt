@@ -117,7 +117,8 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brin
                          grad:line grad:fall grad:hinge grad:edge grad:clip grad:steer grad:saw
                          grad:ring grad:notch grad:apart grad:smooth grad:cusp
                          tensor:heads tensor:whirl tensor:batch tensor:spread
-                         tensor:speck)
+                         tensor:speck cellguards:rfit cellguards:tfit cellguards:layer
+                         cellguards:kink cellguards:crest cellguards:mask cellguards:order)
     string(REPLACE ":" ";" checked ${checked})
     list(GET checked 0 file)
     list(GET checked 1 instance)
@@ -222,6 +223,24 @@ set_tests_properties(check_spread_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^spread: 100 steps from 0, against exact values\nspread\\.d\\[2,1,2\\]: [0-9.e+-]+ at 9, where the interpreter gives 0\\.10000000000000001\n$")
 add_test(NAME check_spread COMMAND check_spread)
 set_tests_properties(check_spread PROPERTIES WILL_FAIL ON)
+# Guards on cells at run time (DESIGN.md), as compile/cellguards.ink gives
+# them, and crest parting by its values alone.
+set_tests_properties(check_rfit_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^rfit: 100 steps from 0, against exact values\nrfit\\.W: within 0\nrfit\\.L: within 0\n$")
+set_tests_properties(check_tfit_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^tfit: 100 steps from 0, against exact values\ntfit\\.W: within 0\ntfit\\.H: within 0\ntfit\\.L: within 0\n$")
+set_tests_properties(check_layer_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^layer: 100 steps from 0, against exact values\nlayer\\.w: within 0\nlayer\\.z: within 0\nlayer\\.h: within 0\nlayer\\.y: within 0\n$")
+set_tests_properties(check_kink_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^kink: 100 steps from 0, against exact values\nkink\\.c: within 0\nkink\\.d: within 0\nkink\\.e: within 0\nkink\\.g: within 0\nkink\\.h: within 0\nkink\\.m: within 0\n$")
+set_tests_properties(check_mask_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^mask: 100 steps from 0, against exact values\nmask\\.y: within 0\n$")
+set_tests_properties(check_order_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^order: 100 steps from 0, against exact values\norder\\.k: within 0\norder\\.p: within 0\norder\\.s: within 0\n$")
+set_tests_properties(check_crest_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^crest: 100 steps from 0, against exact values\ncrest\\.d\\[1,1\\]: [0-9.e+-]+ at 9, where the interpreter gives 0\\.10000000000000001\ncrest\\.g\\[1,1\\]: 1 at 1, where the interpreter gives 0\n$")
+add_test(NAME check_crest COMMAND check_crest)
+set_tests_properties(check_crest PROPERTIES WILL_FAIL ON)
 set_tests_properties(check_sized_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^sized: 100 steps from 0, against exact values until 0 and inexact ones from there\n(sized\\.[a-z]+: within [0-9.e+-]+${about}\n)+$")
 # Its sigmoid's size inferred, compiled where it is called, gives the header
@@ -426,7 +445,8 @@ endforeach()
 foreach(checked IN ITEMS drift:calm drift:wild drift:ledge logistic:gate momentum:ball newton:stiff
                          inputs:fan float:hum float:drone float:far float:tally float:crawl
                          float:steep float:blast
-                         steady:mark softmax:cls grad:line tensor:whirl tensor:batch)
+                         steady:mark softmax:cls grad:line tensor:whirl tensor:batch
+                         cellguards:rfit cellguards:tfit)
     string(REPLACE ":" ";" checked ${checked})
     list(GET checked 0 file)
     list(GET checked 1 instance)
@@ -474,6 +494,8 @@ foreach(report IN ITEMS
         "line:^line: 100 steps from 0${in_float}\nline\\.w: within 2\\.7e-07, 1\\.9 units of a float\n$"
         "whirl:^whirl: 100 steps from 0${in_float}\nwhirl\\.d: ${exact}\nwhirl\\.s: ${exact}\nwhirl\\.c: ${exact}\nwhirl\\.e: ${exact}, from 1\nwhirl\\.g: ${exact}\nwhirl\\.h: ${exact}, from 1\nwhirl\\.k: ${exact}\nwhirl\\.l: ${exact}\nwhirl\\.p: ${exact}\nwhirl\\.q: ${exact}\nwhirl\\.u: ${exact}, from 1\n$"
         "batch:^batch: 100 steps from 0${in_float}\nbatch\\.w: ${exact}\n$"
+        "rfit:^rfit: 100 steps from 0${in_float}\nrfit\\.W: ${exact}\nrfit\\.L: ${exact}\n$"
+        "tfit:^tfit: 100 steps from 0${in_float}\ntfit\\.W: ${exact}\ntfit\\.H: ${exact}\ntfit\\.L: ${exact}\n$"
         "cls:^cls: 100 steps from 0${inexact}\ncls\\.z: within 2\\.4e-08, 0\\.2 units of a float\ncls\\.q: within 1\\.9e-06, 1\\.5 units of a float${about}\ncls\\.s: within 6\\.3e-08, 0\\.53 units of a float${about}\ncls\\.loss: within 4\\.1e-07, 3\\.4 units of a float${about}\n$")
     string(FIND "${report}" ":" colon)
     string(SUBSTRING "${report}" 0 ${colon} instance)

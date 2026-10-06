@@ -4631,7 +4631,7 @@ that exploring seven domains asked of the interpreter, by how many asked.
   walks the parts too; of a matrix power; of a power whose exponent is
   not a constant, which five lines would compile, its part absent where the
   exponent is 0 by the conditions below, but which no model asks; and through a definition by cells, whose guards
-  the compiler takes as constants only (*Guards on cells at run time*).
+  the compiler took as constants only, until *Guards on cells at run time*.
 
   `--check` needs nothing new. The interpreter's terms are its grad's,
   walked by `derivative.hpp` in every run, the disturbed ones too, as
@@ -4728,7 +4728,7 @@ that exploring seven domains asked of the interpreter, by how many asked.
   review, C113 to C118, fixed, and C111 with C117. 387 lines of sources
   more, where about 350 were planned: 381 in `compile.hpp` and 6 in
   `derivative.hpp`. 14,307 lines in all.
-- **Guards on cells at run time.** `--compile` decides the guards of a
+- `[done]` **Guards on cells at run time.** `--compile` decides the guards of a
   matrix or a function by cells while compiling, and refuses one that reads
   a value that moves, "a guard on cells that is not a constant": a ReLU
   written by its cells, `relu(z)[i] | z[i] > 0 = z[i]`, applied in a step.
@@ -4817,6 +4817,18 @@ that exploring seven domains asked of the interpreter, by how many asked.
   recorded refusal moves: `q` in `grad.ink`, `grad_(t = x_n) cel(t)[2]`,
   compiles, 2 at every step, and leaves `compile_grad_refused`; README's
   sentence on `grad` compiled gains the network.
+
+  Built as specified: every report as `cellguards.ink` gives it, `rfit` and
+  `tfit` in float too, `layer`'s two lines byte for byte and the two
+  refusals in their words; every other header, check program and golden as
+  before. First a refactor: `Walk`, the order in which a cell's clauses are
+  tried, shared by `TermCells` and `CellOf`, every output byte for byte, 10
+  lines fewer. Departures. `fit` is `rfit`, as `adam.ink`'s `fit` already
+  names the check program, in a commit of its own. `q` compiling is held by
+  its line, `compile_cellguards_cel` in `test/cli.cmake`. Specified on the
+  way, in a commit of its own, as ruled on its review: `tfit`. Then 15 lines
+  of sources more, where about 30 were planned, all in `compile.hpp`. 14,421
+  lines in all.
 - **The prelude's part functions for the interpreter's `grad`.** Checked
   into `inkamath_prelude.h` beside the values, they would spare its walk of
   `exp`, `log` and `tanh` under `grad`, about 2.6 times faster.
@@ -5059,7 +5071,9 @@ that exploring seven domains asked of the interpreter, by how many asked.
   matrix, compiles, the parts riding the values slice by slice: a model's
   weights are shared matrices and its batch the tensor. Weights stacked by
   head, a tensor, reach a loss only through softmax by cells, which compiled
-  `grad` refuses already, so nothing asks for a seed of three indices.
+  `grad` then refused, so nothing asked for a seed of three indices; since
+  *Guards on cells at run time* it does not, and that seed is what stays
+  between attention compiled and its training.
 
   `--check` feeds a tensor input by its cells and holds every cell of a term,
   reading the interpreter's slice by slice, and names a cell that parts from
