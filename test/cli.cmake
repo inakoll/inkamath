@@ -238,6 +238,14 @@ set(stderr "")
 set(exit 1)
 check(compile_rates_refused)
 
+# C119: a term read where the clause's index is not seen, in a call or under
+# a grad that takes its name, says so rather than naming no index.
+file(WRITE "${OUT}/c119.ink" "f(t) = x_t\ny_n = f(n)\nz_n = grad_(n = 2) n*x_n\n")
+set(args --compile c119.ink)
+set(stdout "cannot compile y: x_(...): a term read where y's index is not seen\ncannot compile z: x_(...): a term read where z's index is not seen\n")
+set(exit 1)
+check(compile_c119)
+
 # What several rates left refused (DESIGN.md): a slow sequence read back at
 # the input's rate, and a hold of a term the step never computes where the
 # interpreter could give one, before a slow sequence's first tick or below a
@@ -349,12 +357,22 @@ check(check_usage)
 
 # The step takes a single value for an input whose model states no size, so
 # an instance giving a matrix is refused by name, where it was read past its
-# one cell (C83).
+# one cell, and so is a model reading a cell past it; each says how to state
+# the size (C83).
 file(WRITE "${OUT}/wide.ink" "mm(x_n) = {\n    y_n = [1 2]*x_n\n}\nv = mm(x_n = [n; 1])\n")
 set(args --check wide.ink v -o wide.c)
-set(stderr "inkamath: v.x_(0) has 2 cells, where the compiled step takes a single value\n")
+set(stderr "inkamath: v.x_(0) has 2 cells, where the compiled step takes a single value, as mm states no size for x: write 'x_n[j<=2]'\n")
 set(exit 1)
 check(check_matrix_input)
+file(WRITE "${OUT}/celled.ink" "cl(x_n) = {\n    y_n = x_n[2]\n}\ncm(u_m) = {\n    z_m = u_(m-1)[2, 3]\n}\n")
+set(args --compile celled.ink cl -o cl.h)
+set(stderr "inkamath: cannot compile y: x is a single value, as cl states no size for it: write 'x_n[j<=2]'\n")
+set(exit 1)
+check(compile_unstated_cell)
+set(args --compile celled.ink cm -o cm.h)
+set(stderr "inkamath: cannot compile z: u is a single value, as cm states no size for it: write 'u_m[j<=2, k<=3]'\n")
+set(exit 1)
+check(compile_unstated_matrix)
 
 # Every run of --check walks the prelude's definitions, so that its programs
 # hold the compiled functions to the walk (DESIGN.md): log, 16 references
@@ -728,3 +746,44 @@ set(args --check ${CMAKE_CURRENT_LIST_DIR}/compile/drift.ink calm -o math.c)
 set(stderr "inkamath: 'math' is a name C keeps, and the program is named after it\n")
 set(exit 2)
 check(check_c104)
+
+# grad compiled (DESIGN.md, compile/grad.ink): the gradient written out, each
+# function of the prelude called on a value that moves with one for its part,
+# and what stays refused named in the interpreter's words where it has them.
+set(grad "${CMAKE_CURRENT_LIST_DIR}/compile/grad.ink")
+set(args --compile ${grad} lsq -o lsq.h)
+check(compile_grad_line)
+holds(compile_grad_line lsq.h [[    m_->w[0][0][0] = m_->index_ == 0 ? 0.0 : m_->w[1][0][0] - m_->eta * (2.0 * pow(1.0 * m_->w[1][0][0] + 0.0 * m_->w[1][1][0] - 1.0, 1.0) * 1.0 / 8.0 + 2.0 * pow(1.0 * m_->w[1][0][0] + 1.0 * m_->w[1][1][0] - 3.0, 1.0) * 1.0 / 8.0 + 2.0 * pow(1.0 * m_->w[1][0][0] + 2.0 * m_->w[1][1][0] - 5.0, 1.0) * 1.0 / 8.0 + 2.0 * pow(1.0 * m_->w[1][0][0] + 3.0 * m_->w[1][1][0] - 7.0, 1.0) * 1.0 / 8.0);
+    m_->w[0][1][0] = m_->index_ == 0 ? 0.0 : m_->w[1][1][0] - m_->eta * (2.0 * pow(1.0 * m_->w[1][0][0] + 0.0 * m_->w[1][1][0] - 1.0, 1.0) * 0.0 / 8.0 + 2.0 * pow(1.0 * m_->w[1][0][0] + 1.0 * m_->w[1][1][0] - 3.0, 1.0) * 1.0 / 8.0 + 2.0 * pow(1.0 * m_->w[1][0][0] + 2.0 * m_->w[1][1][0] - 5.0, 1.0) * 2.0 / 8.0 + 2.0 * pow(1.0 * m_->w[1][0][0] + 3.0 * m_->w[1][1][0] - 7.0, 1.0) * 3.0 / 8.0);
+]])
+set(args --compile ${grad} descent -o fall.h)
+check(compile_grad_fall)
+holds(compile_grad_fall fall.h [[static inline double fall_exp_dx(double arg_x, double part_x) {
+    return isnan(arg_x) ? NAN : arg_x > 1000.0 ? 0.0 : isnan(arg_x) ? NAN : arg_x < -1000.0 ? 0.0 : fall_expk_dx(arg_x, (floor(arg_x * 1.4426950408889634 + 0.5) == arg_x * 1.4426950408889634 + 0.5 ? NAN : floor(arg_x * 1.4426950408889634 + 0.5)), part_x);
+}
+]] [[static inline double fall_logs_ds(double arg_s, double part_s) {
+    return 2.0 * part_s * fall_logp(arg_s * arg_s) + 2.0 * arg_s * fall_logp_dz(arg_s * arg_s, part_s * arg_s + arg_s * part_s);
+}
+]])
+file(WRITE "${OUT}/grad_refused.ink" "a_n = grad_(t = x_n) grad_(s = t) s^3\nb_n = grad_(t = x_n) lim p(t)\nc_n = grad_(v = [x_n; 1]) 2*v\nd_n = grad_(t = x_n) 2^t\nf_n = grad_(t = x_n) t^x_n\ng_n = grad_(t = x_n) [1 1]*[t 1; 0 t]^2*[1; 1]\nh_n = grad_(t = x_n) 5\nk_n = grad_(t = x_n) sq\nm_n = grad_(t = x_n) amp(k = t).y\nq_n = grad_(t = x_n) cel(t)[2]\namp(k = 1) = {\n    y = 2*k\n}\np(r)_0 = 1\np(r)_k = r*p(r)_(k-1)/4 + 1\ncel(z)[j<=2] = j*z\nsq = t^2\nt = 3\n")
+set(args --compile grad_refused.ink)
+set(stdout "cannot compile a: a derivative of a derivative, for now\ncannot compile b: a derivative of a limit, for now\ncannot compile c: grad of a matrix with respect to a matrix is a Jacobian, which it does not give\ncannot compile d: grad cannot differentiate a power whose exponent changes with t, unless its base is e\ncannot compile f: a derivative of a power whose exponent is not a constant, for now\ncannot compile g: a derivative of a matrix power, for now\ncannot compile h: grad's expression does not read t\ncannot compile k: sq reads the global t, which grad's t does not reach\ncannot compile m: grad cannot differentiate through an instance yet\ncannot compile q: a derivative through a definition by cells, for now\n")
+set(exit 1)
+check(compile_grad_refused)
+
+# C115: a constant gradient at a point that moves is no constant to fold with
+# what reads it, a fold that would take the point again.
+file(WRITE "${OUT}/c115.ink" "u_n = x_n - grad_(t = x_n) 3*t\n")
+set(args --compile c115.ink -o c115.h)
+check(compile_c115)
+holds(compile_c115 c115.h "    m_->u[0] = m_->x[0] - 3.0;\n")
+
+# C112: a global a call reads sees the globals, not the call's names.
+file(WRITE "${OUT}/c112.ink" "f(x) = x + g\ng = x*2\nx = 5\ny_n = f(n)\n")
+set(args --compile c112.ink -o c112.h)
+check(compile_c112)
+holds(compile_c112 c112.h "    m_->g = m_->x * 2.0;\n" "    m_->y[0] = (double)m_->index_ + m_->g;\n")
+file(WRITE "${OUT}/c112m.ink" "m(x) = {\n    y = x + g\n}\ng = x*2\nx = 5\nz_n = m(n).y\n")
+set(args --compile c112m.ink -o c112m.h)
+check(compile_c112_instance)
+holds(compile_c112_instance c112m.h "    m_->g = m_->x * 2.0;\n")

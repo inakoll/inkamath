@@ -52,12 +52,37 @@
 #     relayed.<name>: within 0, for each of c, y, inner.c and inner.x
 #
 # An instance written unnamed, whose terms the interpreter cannot name
-# (C84), is said not to be asked, where its lines read 'within 0':
+# (C84), is asked of one made again where the instance checked is, as it is
+# written, where its lines read 'within 0' asking nothing:
 #
 #     veiled: 100 steps from 0, against exact values
-#     veiled.c_bare.<name>: not asked, as the interpreter cannot name it, for
-#     each of c and u
-#     veiled.c: within 0
+#     veiled.<name>: within 0, for each of c_bare.c, c and c_bare.u
+#
+# and where an instance the model names writes it:
+#
+#     cloaked: 100 steps from 0, against exact values
+#     cloaked.<name>: within 0, for each of inner.c_bare.c, inner.c, d,
+#     inner.x and inner.c_bare.u
+#
+# and where two instances the model names write it, each its own, where one
+# was kept for both and two.b.c read two.a.c_bare.c (DESIGN.md, C107):
+#
+#     two: 100 steps from 0, against exact values
+#     two.<name>: within 0, for each of a.c_bare.c, a.c, a.x, a.c_bare.u,
+#     b.c_bare.c, b.c, b.x, b.c_bare.u and d
+#
+# A guarded clause of it is checked as a named instance's, where the check
+# sought its clauses where the instance checked has none (DESIGN.md, C108):
+#
+#     hid: 100 steps from 0, against exact values
+#     hid.<name>: within 0, for each of c_capped.u, c_capped.c and c
+#
+# So its terms are compared: 'masked' multiplies a tenth by ten at each step,
+# unnamed, and parts at 9 as 'wild' does.
+#
+#     masked: 100 steps from 0, against exact values
+#     masked.e_tenth.d: <x> at 9, where the interpreter gives 0.10000000000000001
+#     masked.e: <x> at 9, where the interpreter gives 0.10000000000000001
 #
 # A term the step computes and the interpreter cannot give parts, where it
 # was skipped: 'pole' reported 'within 0', its step inf at 3.
@@ -222,6 +247,37 @@ veil(x_n) = {
     c_n = bare(u_n = x_n).c_n
 }
 veiled = veil(x_n = n)
+
+cloak(y_n) = {
+    inner = veil(x_n = y_n)
+    d_n = inner.c_n
+}
+cloaked = cloak(y_n = n)
+
+cloaks(y_n) = {
+    a = veil(x_n = y_n)
+    b = veil(x_n = 2*y_n)
+    d_n = a.c_n + b.c_n
+}
+two = cloaks(y_n = n)
+
+capped(u_n) = {
+    c_n | u_n > 2 = 2
+    c_n = u_n
+}
+cap(x_n) = {
+    c_n = capped(u_n = x_n).c_n
+}
+hid = cap(x_n = n)
+
+tenth(c = 1) = {
+    d_0 = c
+    d_n = 10*d_(n-1) - 9*c
+}
+mask(c = 1/10, x_n) = {
+    e_n = tenth(c = c).d_n + x_n
+}
+masked = mask(x_n = 0)
 
 inv(x_n) = {
     y_n = 1/(x_n - 3)

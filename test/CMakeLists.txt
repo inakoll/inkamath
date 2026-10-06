@@ -99,7 +99,7 @@ add_test(NAME prelude_header
 # drifts from it, and its program says where and exits with a failure.
 # Each as file:instance.
 foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brink drift:ledge
-                         drift:rift
+                         drift:rift drift:naught
                          delay:fir newton:stiff logistic:gate sized:sized softmax:cls steady:mark
                          rnn:rnn attention:head momentum:ball adam:fit lqr:gain
                          rates:pairs rates:odd seeded:warm cascade:servo decimate:boxcar
@@ -107,12 +107,15 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brin
                          decimate:trail drift:sill drift:seam history:past history:twin
                          history:lit history:rise history:ajar history:sown history:nest history:kin history:vast
                          history:twice history:relayed history:pole
-                         history:huge history:veiled nan:run nan:sign nan:shy nan:slope nan:pair
+                         history:huge history:veiled history:cloaked history:two history:hid history:masked
+                         nan:run nan:sign nan:shy nan:slope nan:pair
                          nan:lap nan:trim nan:any nan:cell nan:held inputs:fan inputs:grid
                          inputs:chan inputs:twirl inputs:duo inputs:mean3 inputs:mean2
                          inputs:track inputs:twain inputs:nestv inputs:fed estimate:tie
                          estimate:chaos estimate:dyad estimate:flat estimate:halved
-                         estimate:steep estimate:giant elementary:els)
+                         estimate:steep estimate:giant elementary:els
+                         grad:line grad:fall grad:hinge grad:edge grad:clip grad:steer grad:saw
+                         grad:ring grad:notch grad:apart grad:smooth)
     string(REPLACE ":" ";" checked ${checked})
     list(GET checked 0 file)
     list(GET checked 1 instance)
@@ -164,6 +167,33 @@ add_test(NAME check_els_functions
 set_tests_properties(check_els_functions PROPERTIES
     PASS_REGULAR_EXPRESSION "els_exp\\(double arg_x\\).*els_log\\(double arg_x\\).*els_tanh\\(double arg_x\\)"
     FAIL_REGULAR_EXPRESSION "pow\\(2\\.718")
+# grad compiled (DESIGN.md), each value carrying its part: every gradient
+# the interpreter's, as compile/grad.ink gives them.
+set_tests_properties(check_line_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^line: 100 steps from 0, against exact values\nline\\.w: within 4\\.4e-16\n$")
+set_tests_properties(check_fall_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^fall: 100 steps from 0, against exact values until 1 and inexact ones from there\nfall\\.u: within 0${about}\nfall\\.w: within 0${about}\n$")
+set_tests_properties(check_hinge_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^hinge: 100 steps from 0, against exact values\nhinge\\.g: within 0\n$")
+set_tests_properties(check_edge_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^edge: 100 steps from 0, against exact values until 0 and inexact ones from there\nedge\\.c: within 0\nedge\\.d: within 0\nedge\\.f: within 0\nedge\\.g: within 0\nedge\\.h: within 0${about}\nedge\\.i: within 0\nedge\\.j: within 0\nedge\\.k: within 0\nedge\\.l: within 0\nedge\\.m: within 0\nedge\\.o: within 0\nedge\\.s: within 0${about}\nedge\\.v: within 0\nedge\\.w: within 0\n$")
+set_tests_properties(check_clip_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^clip: 100 steps from 0, against exact values\nclip\\.w: within 0\n$")
+set_tests_properties(check_steer_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^steer: 100 steps from 0, against exact values until 1 and inexact ones from there\nsteer\\.x: within 0${about}\n$")
+set_tests_properties(check_saw_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^saw: 100 steps from 0, against exact values\nsaw\\.b: within 0\nsaw\\.h: within 0\n$")
+set_tests_properties(check_ring_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^ring: 100 steps from 0, against exact values\nring\\.a: within 0\nring\\.b: within 0\nring\\.c: within 0\n$")
+set_tests_properties(check_notch_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^notch: 100 steps from 0, against exact values\nnotch\\.y: within 0\n$")
+set_tests_properties(check_smooth_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^smooth: 100 steps from 0, against exact values\nsmooth\\.z: within 0\n$")
+# Its known limit, C110, held where it parts.
+set_tests_properties(check_apart_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^apart: 100 steps from 0, against exact values\napart\\.y: [-a-z()]+ at 0, where the interpreter gives 0\n$")
+add_test(NAME check_apart COMMAND check_apart)
+set_tests_properties(check_apart PROPERTIES WILL_FAIL ON)
 set_tests_properties(check_sized_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^sized: 100 steps from 0, against exact values until 0 and inexact ones from there\n(sized\\.[a-z]+: within [0-9.e+-]+${about}\n)+$")
 # Its sigmoid's size inferred, compiled where it is called, gives the header
@@ -278,7 +308,15 @@ set_tests_properties(check_twice_report PROPERTIES PASS_REGULAR_EXPRESSION
 set_tests_properties(check_relayed_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^relayed: 100 steps from 0, against exact values\nrelayed\\.inner\\.c: within 0\nrelayed\\.c: within 0\nrelayed\\.y: within 0\nrelayed\\.inner\\.x: within 0\n$")
 set_tests_properties(check_veiled_report PROPERTIES PASS_REGULAR_EXPRESSION
-    "^veiled: 100 steps from 0, against exact values\nveiled\\.c_bare\\.c: not asked, as the interpreter cannot name it\nveiled\\.c: within 0\nveiled\\.c_bare\\.u: not asked, as the interpreter cannot name it\n$")
+    "^veiled: 100 steps from 0, against exact values\nveiled\\.c_bare\\.c: within 0\nveiled\\.c: within 0\nveiled\\.c_bare\\.u: within 0\n$")
+set_tests_properties(check_cloaked_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^cloaked: 100 steps from 0, against exact values\ncloaked\\.inner\\.c_bare\\.c: within 0\ncloaked\\.inner\\.c: within 0\ncloaked\\.d: within 0\ncloaked\\.inner\\.x: within 0\ncloaked\\.inner\\.c_bare\\.u: within 0\n$")
+set_tests_properties(check_two_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^two: 100 steps from 0, against exact values\ntwo\\.a\\.c_bare\\.c: within 0\ntwo\\.a\\.c: within 0\ntwo\\.a\\.x: within 0\ntwo\\.a\\.c_bare\\.u: within 0\ntwo\\.b\\.c_bare\\.c: within 0\ntwo\\.b\\.c: within 0\ntwo\\.b\\.x: within 0\ntwo\\.b\\.c_bare\\.u: within 0\ntwo\\.d: within 0\n$")
+set_tests_properties(check_hid_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^hid: 100 steps from 0, against exact values\nhid\\.c_capped\\.u: within 0\nhid\\.c_capped\\.c: within 0\nhid\\.c: within 0\n$")
+set_tests_properties(check_masked_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^masked: 100 steps from 0, against exact values\nmasked\\.e_tenth\\.d: [0-9.e+-]+ at 9, where the interpreter gives 0\\.10000000000000001\nmasked\\.e: [0-9.e+-]+ at 9, where the interpreter gives 0\\.10000000000000001\n$")
 set_tests_properties(check_pole_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^pole: 100 steps from 0, against exact values\npole\\.y: inf at 3, where the interpreter gives none: division by zero\n$")
 set_tests_properties(check_huge_report PROPERTIES PASS_REGULAR_EXPRESSION
@@ -295,6 +333,8 @@ set_tests_properties(check_stiff_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^stiff: 100 steps from 0, against exact values until 0 and inexact ones from there\nstiff\\.h: within 0\n(stiff\\.[a-z]+: within [0-9.e+-]+${about}\n)+$")
 set_tests_properties(check_fir_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^fir: 100 steps from 0, against exact values\n(fir\\.[a-z]+: within 0\n)+$")
+set_tests_properties(check_naught_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^naught: 100 steps from 0, against exact values\nnaught\\.y: within 0\n$")
 set_tests_properties(check_calm_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^calm: 100 steps from 0, against exact values\ncalm\\.v: within [0-9.e+-]+\n$")
 set_tests_properties(check_wild_report PROPERTIES PASS_REGULAR_EXPRESSION
@@ -321,8 +361,9 @@ add_test(NAME check_sill COMMAND check_sill)
 add_test(NAME check_seam COMMAND check_seam)
 add_test(NAME check_pole COMMAND check_pole)
 add_test(NAME check_huge COMMAND check_huge)
+add_test(NAME check_masked COMMAND check_masked)
 set_tests_properties(check_wild check_brink check_rift check_sill check_seam check_pole
-                     check_huge PROPERTIES WILL_FAIL ON)
+                     check_huge check_masked PROPERTIES WILL_FAIL ON)
 
 # A float target (DESIGN.md): pid and adc's headers as compile/expected/float
 # has them, and compile/float.ink's checks, each built so that an operation done
@@ -353,7 +394,7 @@ endforeach()
 foreach(checked IN ITEMS drift:calm drift:wild drift:ledge logistic:gate momentum:ball newton:stiff
                          inputs:fan float:hum float:drone float:far float:tally float:crawl
                          float:steep float:blast
-                         steady:mark softmax:cls)
+                         steady:mark softmax:cls grad:line)
     string(REPLACE ":" ";" checked ${checked})
     list(GET checked 0 file)
     list(GET checked 1 instance)
@@ -397,6 +438,7 @@ foreach(report IN ITEMS
         "steep:^steep: 100 steps from 0${inexact}\nsteep\\.e: inf at 67, where the interpreter gives [0-9.e+-]+\; the interpreter's term about [0-9.e+-]+ from the exact one\n$"
         "blast:^blast: 100 steps from 0${in_float}\nblast\\.y: within 0, 0 units of a float\nblast\\.z: within 0, 0 units of a float\n$"
         "mark:^mark: 100 steps from 0${inexact}\nmark\\.d: within ${units}\nmark\\.s: within ${units}\n$"
+        "line:^line: 100 steps from 0${in_float}\nline\\.w: within 2\\.7e-07, 1\\.9 units of a float\n$"
         "cls:^cls: 100 steps from 0${inexact}\ncls\\.z: within 2\\.4e-08, 0\\.2 units of a float\ncls\\.q: within 1\\.9e-06, 1\\.5 units of a float${about}\ncls\\.s: within 6\\.3e-08, 0\\.53 units of a float${about}\ncls\\.loss: within 4\\.1e-07, 3\\.4 units of a float${about}\n$")
     string(FIND "${report}" ":" colon)
     string(SUBSTRING "${report}" 0 ${colon} instance)

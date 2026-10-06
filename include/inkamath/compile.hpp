@@ -11,12 +11,14 @@
 #include <charconv>
 #include <cmath>
 #include <cstddef>
+#include <functional>
 #include <limits>
 #include <map>
 #include <optional>
 #include <set>
 #include <stdexcept>
 #include <string>
+#include <tuple>
 #include <utility>
 #include <vector>
 
@@ -53,6 +55,14 @@ public:
         std::vector<std::size_t> cells;      // and how many cells each has
         std::vector<Sequence>    sequences;  // those it computes, in the order it does
         std::vector<std::string> guarded;    // those whose clause is kept, 'v_clause_'
+        // Each instance the model writes unnamed, by its label, for the check
+        // to make again where the instance checked is (C84).
+        struct Unnamed {
+            const Reference<Value>*                    model;
+            const ParametersCall<Value>*               call;
+            std::vector<std::pair<std::string, Value>> captured;
+        };
+        std::map<std::string, Unnamed> unnamed;
     };
 
     // '--float' (DESIGN.md, a float target): a float wherever a double is.
@@ -131,6 +141,10 @@ private:
                     }
                 }
                 Compiled compiled = compiler.Print(module, source);
+                // A mark left unresolved is no C, and the compiler's mistake (C112).
+                if (std::any_of(compiled.header.begin(), compiled.header.end(),
+                                [](unsigned char c) { return c < ' ' && c != '\n'; }))
+                    throw std::runtime_error("a control character in the header, a compiler bug");
                 // One that writes NaN anywhere past the line naming its source
                 // is compiled again, aware.
                 if (aware || !WritesNan(compiled.header, compiled.header.find('\n')))
@@ -144,12 +158,15 @@ private:
 
     // Whether C reads NAN in it from 'from' on: as a word, which no name can be.
     static bool WritesNan(const std::string& code, std::size_t from = 0) {
+        return Writes(code, "NAN", from);
+    }
+    static bool Writes(const std::string& code, const std::string& word, std::size_t from = 0) {
         const auto name = [&](std::size_t at) {
             return std::isalnum(static_cast<unsigned char>(code[at])) || code[at] == '_';
         };
-        for (std::size_t at = code.find("NAN", from); at != std::string::npos;
-             at             = code.find("NAN", at + 1))
-            if ((at == 0 || !name(at - 1)) && !name(at + 3)) return true;
+        for (std::size_t at = code.find(word, from); at != std::string::npos;
+             at             = code.find(word, at + 1))
+            if ((at == 0 || !name(at - 1)) && !name(at + word.size())) return true;
         return false;
     }
 
@@ -209,6 +226,10 @@ private:
         std::vector<Cell>    cells;     // row by row
         std::optional<Value> constant;  // its exact value, where it reads no name
         bool                 whole = false;  // NaN in every cell where in one, as a term
+        // Under grad (DESIGN.md, grad compiled): its part, none where the
+        // interpreter's is absent, and where it is there, if not always.
+        std::vector<Code> part;
+        std::string       moves;
 
         bool Scalar() const { return cells.size() == 1; }
         // A single value stretches to any shape, as it does in arithmetic.
@@ -439,12 +460,13 @@ private:
             captured.emplace_back(name, place->second);
             values += "_" + std::to_string(numeric_interface<Value>::toInt(place->second));
         }
-        const Scope<Value>*& kept = kept_[{member.get(), values}];
+        const Scope<Value>*& kept = kept_[{scope_, member.get(), values}];
         if (!kept) {
             // Two written in one sequence are told apart by a number.
             std::string label = within_ + "_" + model.Name() + values;
             for (int other = 2; !labels_.insert(label).second; ++other)
                 label = within_ + "_" + model.Name() + std::to_string(other) + values;
+            unnamed_[label] = {&model, &call, captured};
             held_.push_back(definitions_.Detached(model, call, *scope_, label, captured));
             kept = held_.back().get();
             Define(*kept);
@@ -578,6 +600,33 @@ private:
                 chain.cells.emplace_back(cell, 0);  // a conditional, below every operator
             }
         }
+        // Under grad, the part of the clause taken: 0 where it has none, NaN
+        // where it is refused wherever taken, and beside it where it is there.
+        bool any = otherwise && !otherwise->part.empty(), always = true;
+        std::vector<std::pair<std::string, Code>> parts, where;
+        const auto                                part = [](const Code& c) {
+            if (!c.part.empty()) return c.part[0];
+            return c.cells[0].text == "NAN" ? Of(Atom("NAN")) : Literal(Value(Number(0)));
+        };
+        const auto there = [](const Code& c) {
+            return Of(Atom(c.part.empty() && c.cells[0].text != "NAN" ? "0"
+                           : c.moves.empty()                          ? "1"
+                                                                      : "(" + c.moves + ")"));
+        };
+        for (const auto& [condition, value] : guarded) {
+            any    = any || !value.part.empty();
+            always = always && there(value).cells[0].text == "1";
+            parts.emplace_back(condition, part(value));
+            where.emplace_back(condition, there(value));
+        }
+        if (!any) return chain;
+        chain.part = {
+            Chain(parts, otherwise ? std::optional(part(*otherwise)) : std::nullopt, rows, cols)};
+        if (!always || (otherwise && there(*otherwise).cells[0].text != "1"))
+            chain.moves =
+                Chain(where, otherwise ? std::optional(there(*otherwise)) : std::nullopt, 1, 1)
+                    .cells[0]
+                    .text;
         return chain;
     }
 
@@ -615,30 +664,87 @@ private:
                                const ParametersCall<Value>& call) {
         const auto& names    = function.Clauses().front().parameters.parameters_names();
         bool        constant = true, scalar = call.parameters_expression().size() == names.size();
-        std::string given;
+        std::string       given, moving;
+        std::vector<Code> arguments;
         for (const PExpression<Value>& argument : call.parameters_expression()) {
-            const Code code = Emit(argument);
-            constant        = constant && code.constant;
-            scalar          = scalar && code.Scalar();
+            const Code& code = arguments.emplace_back(Emit(argument));
+            constant         = constant && code.constant;
+            scalar           = scalar && code.Scalar();
             given += (given.empty() ? "" : ", ") + code.cells[0].text;
         }
         if (constant || !scalar) return Answer(Call(name, function, call, nullptr));
         const std::string called = module_ + "_" + name;
-        if (!functions_.count(called)) {
-            Expansion   inside{{}, {}, function.home, nullptr, {}};
-            std::string signature;
-            for (const std::string& parameter : names) {
-                inside.values.emplace(parameter, Array("arg_" + parameter, 1, 1));
-                signature += (signature.empty() ? "double arg_" : ", double arg_") + parameter;
+        std::string       signature;
+        for (const std::string& parameter : names)
+            signature += (signature.empty() ? "double arg_" : ", double arg_") + parameter;
+        // Its body, its parameters 'arg_x', and with parts 'part_x' for each that moves.
+        const auto inside = [&](bool parts) {
+            Expansion expansion{{}, {}, function.home, nullptr, {}};
+            for (std::size_t i = 0; i < names.size(); ++i) {
+                Code argument = Array("arg_" + names[i], 1, 1);
+                if (parts && !arguments[i].part.empty())
+                    argument.part = {Array("part_" + names[i], 1, 1)};
+                expansion.values.emplace(names[i], argument);
             }
             const Setting<Walked*>                 outside(limit_, nullptr);
             const Setting<std::vector<Temporary>*> unshared(temporaries_, nullptr);
-            const Code body = Inside(inside, [&] { return Chained(name, function); });
-            functions_.insert(called);
+            return Inside(expansion, [&] { return Chained(name, function); });
+        };
+        if (!functions_.count(called)) {
+            const Code body = inside(false);
+            functions_.emplace(called, body.cells[0].text);
             prelude_.push_back("static inline double " + called + "(" + signature +
                                ") {\n    return " + body.cells[0].text + ";\n}\n\n");
         }
-        return Answer(Cell(called + "(" + given + ")", primary));
+        Code value = Of(Cell(called + "(" + given + ")", primary));
+        for (std::size_t i = 0; i < names.size(); ++i)
+            if (!arguments[i].part.empty()) moving += names[i];
+        if (moving.empty()) return Answer(value);
+        std::vector<const Code*> read;
+        for (const Code& argument : arguments) read.push_back(&argument);
+        // Under grad, its part is a function too, 'exp_dx', of the values its
+        // part reads and then the parts (DESIGN.md, grad compiled).
+        const std::string derived = called + "_d" + moving, jumped = called + "_j" + moving;
+        if (!parts_.count(derived)) {
+            const Code body = inside(true);
+            // Its value where an argument moves, 'mod_ja', where that tests
+            // for a jump, a floor's or an equality's, as the interpreter does.
+            if (body.cells[0].text != functions_.at(called)) {
+                functions_.emplace(jumped, body.cells[0].text);
+                prelude_.push_back("static inline double " + jumped + "(" + signature +
+                                   ") {\n    return " + body.cells[0].text + ";\n}\n\n");
+            }
+            std::optional<std::vector<std::pair<bool, std::size_t>>> takes;
+            if (!body.part.empty()) {
+                const std::string& text = body.part[0].cells[0].text;
+                std::string        parameters;
+                takes.emplace();
+                for (const bool part : {false, true})
+                    for (std::size_t i = 0; i < names.size(); ++i) {
+                        const std::string taken = (part ? "part_" : "arg_") + names[i];
+                        if (!Writes(text, taken)) continue;
+                        takes->emplace_back(part, i);
+                        parameters += (parameters.empty() ? "double " : ", double ") + taken;
+                    }
+                prelude_.push_back("static inline double " + derived + "(" + parameters +
+                                   ") {\n    return " + text + ";\n}\n\n");
+            }
+            parts_.emplace(derived, takes);
+        }
+        if (functions_.count(jumped)) {
+            aware_ = true;  // a jump's NaN reaches a grad that drops this value (C113)
+            const std::string moves = Moves(read), jumps = jumped + "(" + given + ")";
+            const std::string plain = value.cells[0].text;
+            value.cells[0].text =
+                moves.empty() ? jumps : "(" + moves + " ? " + jumps + " : " + plain + ")";
+        }
+        const auto& takes = parts_.at(derived);
+        if (!takes) return Answer(value);
+        std::string taken;
+        for (const auto& [part, i] : *takes)
+            taken += (taken.empty() ? "" : ", ") +
+                     (part ? arguments[i].part[0] : arguments[i]).cells[0].text;
+        return Answer(Parted(value, Of(Cell(derived + "(" + taken + ")", primary)), read));
     }
 
     // A name of an instance written where it is read, 'conv(lap, u_(n-1)).out':
@@ -657,9 +763,14 @@ private:
         const auto bound = Reasoned([&] { return m.Bind(model.Name(), call); });
         held_.push_back(definitions_.Defaults(model));
         Expansion expansion{{}, {}, m.scope, nullptr, {}};
-        for (std::size_t i = 0; i < m.parameters.size(); ++i)
-            if (bound[i])
-                expansion.values.emplace(m.parameters[i].name, Emit(bound[i]->expression));
+        for (std::size_t i = 0; i < m.parameters.size(); ++i) {
+            if (!bound[i]) continue;
+            const Code& given =
+                expansion.values.emplace(m.parameters[i].name, Emit(bound[i]->expression))
+                    .first->second;
+            if (!given.part.empty())
+                throw Reason("grad cannot differentiate through an instance yet");
+        }
         for (const auto& [name, definition] : held_.back()->names)
             if (!expansion.values.count(name)) expansion.own.emplace(name, definition.get());
         return Inside(expansion, [&] { return Emit(member); });
@@ -1005,7 +1116,7 @@ private:
     // A value the compiled code needs as a constant; see Fix.
     Code Known(const PExpression<Value>& expression, const std::string& refusal) {
         auto [code, reads] = Reading(expression);
-        if (code.constant) return code;
+        if (code.constant && code.part.empty()) return code;
         if (!reads.empty()) throw Fix{std::move(reads)};
         throw Reason(refusal);
     }
@@ -1027,11 +1138,12 @@ private:
         return Answer(std::move(code));
     }
 
-    // Exactly, as the interpreter would, and rounded once: 0.1 + 0.2 is 3/10
-    // here, which a C compiler folding the doubles would not find.
-    // By the interpreter, where the expression is read: a cell's names and
-    // what a call gives are locals there, and a function it calls is its own.
-    PExpression<Value> Fold(Expression<Value>* expression) {
+    // The interpreter, where the expression is read: a cell's names and what
+    // a call gives are locals there, and a function it calls is its own. With
+    // 'every', those that are not constants too, for what asks only whether a
+    // name is a local.
+    template <typename F>
+    auto Asked(F f, bool every = false) {
         definitions_.BeginEvaluation();
         const typename ReferenceStack<Value>::Within within(definitions_, scope_);
         const typename ReferenceStack<Value>::Frame  frame(definitions_);
@@ -1039,16 +1151,29 @@ private:
         for (const Expansion* call = expansion_; call; call = call->outer) calls.push_back(call);
         for (auto call = calls.rbegin(); call != calls.rend(); ++call)
             for (const auto& [name, code] : (*call)->values)
-                if (code.constant) definitions_.BindValue(name, *code.constant);
+                if (code.constant || every)
+                    definitions_.BindValue(name, code.constant ? *code.constant : Value(Number(0)));
         for (const auto& [name, value] : places_) definitions_.BindValue(name, value);
-        EvaluationVisitor<Value> evaluator(definitions_);
-        try {
-            return Answer(Literal(expression->accept(evaluator)));
-        } catch (const Reason&) {
-            throw;
-        } catch (const std::runtime_error& error) {
-            throw Undefined(error.what());
-        }
+        if (every && !index_.empty()) definitions_.BindValue(index_, Value(Number(0)));
+        return f();
+    }
+    // Exactly, as the interpreter would, and rounded once: 0.1 + 0.2 is 3/10
+    // here, which a C compiler folding the doubles would not find.
+    PExpression<Value> Fold(Expression<Value>* expression) {
+        return Asked([&] {
+            EvaluationVisitor<Value> evaluator(definitions_);
+            try {
+                return Answer(Literal(expression->accept(evaluator)));
+            } catch (const Reason&) {
+                throw;
+            } catch (const std::runtime_error& error) {
+                throw Undefined(error.what());
+            }
+        });
+    }
+    Code Folded(Expression<Value>* expression) {
+        Fold(expression);
+        return code_;
     }
 
     static std::vector<double> Doubles(const Value& value) {
@@ -1123,6 +1248,84 @@ private:
     static Cell Divided(const Cell& left, const Cell& right) {
         return {Wrap(left, product) + " / " + Wrap(right, unary), product};
     }
+    static Code Of(Cell cell) {
+        Code code;
+        code.cells = {std::move(cell)};
+        return code;
+    }
+
+    // grad's arithmetic on parts (DESIGN.md, grad compiled), as Derivative's,
+    // a part absent where its is, and exactly where both are constants.
+    using Part = std::optional<Code>;
+    static Part PartOf(const Code& code) { return code.part.empty() ? Part() : code.part[0]; }
+    template <typename F>
+    static Code Exact(F f) {
+        try {
+            return Literal(f());
+        } catch (const Reason&) {
+            throw;
+        } catch (const std::runtime_error& error) {
+            throw Undefined(error.what());
+        }
+    }
+    template <typename Written, typename Exactly>
+    static Part Combined(const Part& a, const Part& b, Written written, Exactly exactly) {
+        if (!a || !b) return std::nullopt;
+        if (a->constant && b->constant)
+            return Exact([&] { return exactly(*a->constant, *b->constant); });
+        return written(*a, *b);
+    }
+    Part Plus(const Part& a, const Part& b) {
+        if (!a || !b) return a ? a : b;
+        return Combined(
+            a, b, [&](const Code& x, const Code& y) { return Broadcast(x, y, Added); },
+            std::plus<>());
+    }
+    Part Times(const Part& a, const Part& b) {
+        return Combined(
+            a, b, [&](const Code& x, const Code& y) { return Product(x, y); }, std::multiplies<>());
+    }
+    template <typename Exactly, typename Written>
+    static Part Mapped(const Part& part, Exactly exactly, Written written) {
+        if (part && part->constant) return Exact([&] { return exactly(*part->constant); });
+        return part ? Part(written(*part)) : part;
+    }
+    // Where any of these has its part: always, where one always has.
+    static std::string Moves(const std::vector<const Code*>& codes) {
+        std::string where;
+        for (const Code* code : codes) {
+            if (code->part.empty()) continue;
+            if (code->moves.empty()) return "";
+            where += (where.empty() ? "(" : " || (") + code->moves + ")";
+        }
+        return where;
+    }
+    static Code Parted(Code value, const Part& part, const std::vector<const Code*>& from) {
+        value.part.clear();
+        value.moves.clear();
+        if (part) value.moves = Moves(from);
+        if (part) value.part.push_back(*part);
+        return value;
+    }
+    // A sum's part has its value's shape, which adding to more cells widens (C81).
+    Code SumOf(Code value, const Code& a, const Code& b) {
+        Part part = Plus(PartOf(a), PartOf(b));
+        if (part && (a.rows != b.rows || a.cols != b.cols) &&
+            (part->rows != value.rows || part->cols != value.cols))
+            part = Plus(part, Literal(Value(Extent{value.rows, value.cols})));
+        return Parted(std::move(value), part, {&a, &b});
+    }
+    Code ProductOf(Code value, const Code& a, const Code& b) {
+        return Parted(std::move(value), Plus(Times(PartOf(a), b), Times(a, PartOf(b))), {&a, &b});
+    }
+    // Where the interpreter refuses for the point's sake, NaN: where 'meet'
+    // holds and what it reads moves there.
+    static std::string Jumps(const std::string& meet, const std::vector<const Code*>& codes) {
+        if (std::all_of(codes.begin(), codes.end(), [](const Code* c) { return c->part.empty(); }))
+            return "";
+        const std::string moves = Moves(codes);
+        return meet + (moves.empty() ? "" : " && (" + moves + ")") + " ? NAN : ";
+    }
 
     PExpression<Value> visit(ValExpression<Value>* expression) override {
         return Answer(Literal(expression->value));
@@ -1130,22 +1333,36 @@ private:
 
     PExpression<Value> visit(AddExpression<Value>* expression) override {
         const Code left = Emit(expression->m_e1()), right = Emit(expression->m_e2());
-        if (left.constant && right.constant) return Fold(expression);
-        return Answer(Broadcast(left, right, Added));
+        return Answer(SumOf(
+            left.constant && right.constant ? Folded(expression) : Broadcast(left, right, Added),
+            left, right));
     }
 
+    // A quotient's part is (a' - q*b')/b, q the quotient, from 0 where a has none.
     PExpression<Value> visit(DivExpression<Value>* expression) override {
         const Code left = Emit(expression->m_e1()), right = Emit(expression->m_e2());
-        if (left.constant && right.constant) return Fold(expression);
-        return Answer(Broadcast(left, right, Divided));
+        const Code value =
+            left.constant && right.constant ? Folded(expression) : Broadcast(left, right, Divided);
+        const auto cellwise = [&](const Code& q, const Code& b) {
+            return q.Scalar() || b.Scalar() ? *Times(q, b) : Broadcast(q, b, Multiplied);
+        };
+        Part top = PartOf(left);
+        if (const Part b = PartOf(right)) top = Plus(top, Negated(cellwise(value, *b)));
+        return Answer(Parted(
+            value,
+            Combined(
+                top, right, [&](const Code& x, const Code& y) { return Broadcast(x, y, Divided); },
+                std::divides<>()),
+            {&left, &right}));
     }
 
     // A matrix product is a sum over the inner dimension, in the interpreter's
     // order.
     PExpression<Value> visit(MultExpression<Value>* expression) override {
         const Code left = Emit(expression->m_e1()), right = Emit(expression->m_e2());
-        if (left.constant && right.constant) return Fold(expression);
-        return Answer(Product(left, right));
+        return Answer(
+            ProductOf(left.constant && right.constant ? Folded(expression) : Product(left, right),
+                      left, right));
     }
 
     // Each left cell is read once for each right column, each right cell once
@@ -1171,53 +1388,120 @@ private:
     }
 
     PExpression<Value> visit(NegExpression<Value>* expression) override {
-        Code code = Emit(expression->m_e());
-        if (code.constant) return Fold(expression);
+        const Code operand = Emit(expression->m_e());
+        const Part part    = PartOf(operand);
+        return Answer(Parted(operand.constant ? Folded(expression) : Negated(operand),
+                             part ? Part(Negated(*part)) : part, {&operand}));
+    }
+
+    // A subtraction from 0, as the interpreter's (C33): C's minus makes -0 of
+    // +0 (C98).
+    static Code Negated(Code code) {
+        if (code.constant) return Exact([&] { return -*code.constant; });
+        const std::string zero = floats ? "0.0f - " : "0.0 - ";
         for (Cell& cell : code.cells) {
             Cell negation(
-                "-" + (cell.magnitude.empty() ? Wrap(cell, unary) : "(" + cell.text + ")"), unary);
+                zero + (cell.magnitude.empty() ? Wrap(cell, product) : "(" + cell.text + ")"), sum);
             negation.magnitude       = cell.text;
             negation.magnitude_level = cell.level;
             negation.atom            = cell.atom;
             cell                     = negation;
         }
-        return Answer(code);
+        return code;
     }
 
     PExpression<Value> visit(InexactExpression<Value>* expression) override {
         const Code operand = Emit(expression->m_e());
-        return operand.constant ? Fold(expression) : Answer(operand);
+        return Answer(
+            Parted(operand.constant ? Folded(expression) : operand,
+                   Mapped(
+                       PartOf(operand),
+                       [](const Value& v) { return numeric_interface<Value>::inexact(v); },
+                       [](const Code& c) { return c; }),
+                   {&operand}));
     }
 
     PExpression<Value> visit(TransposeExpression<Value>* expression) override {
         const Code operand = Emit(expression->m_e());
-        if (operand.constant) return Fold(expression);
+        return Answer(Parted(
+            operand.constant ? Folded(expression) : Transposed(operand),
+            Mapped(
+                PartOf(operand),
+                [](const Value& v) { return numeric_interface<Value>::transpose(v); }, Transposed),
+            {&operand}));
+    }
+    static Code Transposed(const Code& operand) {
         Code code;
         code.rows = operand.cols;
         code.cols = operand.rows;
         for (std::size_t i = 0; i < code.rows; ++i)
             for (std::size_t j = 0; j < code.cols; ++j) code.cells.push_back(operand.At(j, i));
-        return Answer(code);
+        return code;
     }
 
+    // Under grad (Derivative::Power), e^w's part is e^w*w', and a constant
+    // power's c*u^(c-1)*u', none where c is 0, NaN where u is 0 and c < 1.
     PExpression<Value> visit(PowExpression<Value>* expression) override {
         const Code base = Emit(expression->m_e1());
         const Code exponent =
             base.Scalar()
                 ? Emit(expression->m_e2())
                 : Known(expression->m_e2(), "a matrix power whose exponent is not a constant");
-        if (base.constant && exponent.constant) return Fold(expression);
-        if (!exponent.Scalar()) throw Reason("a matrix cannot be an exponent");
-        if (!base.Scalar()) return Answer(Power(base, exponent));
-        // C's absorbs a NaN where the other operand is 1 or 0: pow(1, NaN) and
-        // pow(NaN, 0) are 1.
+        if (!base.part.empty() && !base.Scalar())
+            throw Reason("a derivative of a matrix power, for now");
+        Code value;
+        if (base.constant && exponent.constant) {
+            value = Folded(expression);
+        } else {
+            if (!exponent.Scalar()) throw Reason("a matrix cannot be an exponent");
+            if (!base.Scalar()) return Answer(Power(base, exponent));
+            value = Powered(base, exponent);
+        }
+        if (!exponent.part.empty()) {
+            if (!Euler(*expression->m_e1()))
+                throw Reason("grad cannot differentiate a power whose exponent changes with " +
+                             grad_ + ", unless its base is e");
+            return Answer(Parted(value, Times(value, PartOf(exponent)), {&exponent}));
+        }
+        if (base.part.empty()) return Answer(value);
+        if (!exponent.constant)
+            throw Reason("a derivative of a power whose exponent is not a constant, for now");
+        const Value c = *exponent.constant, coefficient = Value(Number(1)) * (c - Value(Number(0)));
+        if (coefficient(1, 1) == Number(0)) return Answer(value);
+        const Value lower = c - Value(Number(1));
+        const Code  power =
+            base.constant
+                 ? Exact([&] { return numeric_interface<Value>::pow(*base.constant, lower); })
+                 : Powered(base, Literal(lower));
+        if (Doubles(lower)[0] < 0 && (!base.constant || Doubles(*base.constant)[0] == 0.0))
+            value = Of(Cell("(" + Jumps(Wrap(base.cells[0], sum) + " == 0.0", {&base}) +
+                                value.cells[0].text + ")",
+                            primary));
+        Part part = Times(Times(Literal(coefficient), power), PartOf(base));
+        // None where its base's clause has none, not 0 times an infinity, where
+        // its value is finite (C118).
+        if (Doubles(lower)[0] < 0 && Doubles(c)[0] > 0 && !base.moves.empty())
+            part = Of(Cell("(" + base.moves + " ? " + part->cells[0].text + " : 0)", primary));
+        return Answer(Parted(value, part, {&base}));
+    }
+
+    // C's absorbs a NaN where the other operand is 1 or 0: pow(1, NaN) and
+    // pow(NaN, 0) are 1.
+    Code Powered(const Code& base, const Code& exponent) const {
         const auto other = [](const Code& c, double v) {
             return c.constant && Doubles(*c.constant)[0] != v;
         };
         const std::string test =
             other(exponent, 0.0) || other(base, 1.0) ? "" : Nan(base, exponent);
         const std::string power = "pow(" + base.cells[0].text + ", " + exponent.cells[0].text + ")";
-        return Answer(Cell(test.empty() ? power : "(" + test + power + ")", primary));
+        return Of(Cell(test.empty() ? power : "(" + test + power + ")", primary));
+    }
+
+    // The built-in e, as Derivative::Euler has it.
+    bool Euler(const Expression<Value>& base) {
+        return dynamic_cast<const RefExpression<Value>*>(&base) && base.Name() == "e" &&
+               !places_.count("e") && !Expanded("e") &&
+               Lookup("e").where == &definitions_.Builtins();
     }
 
     // In a header that writes NaN, a decision on a value is NaN where an
@@ -1285,11 +1569,13 @@ private:
 
     PExpression<Value> visit(CompareExpression<Value>* expression) override {
         const Code left = Emit(expression->m_e1()), right = Emit(expression->m_e2());
-        if (left.constant && right.constant) return Fold(expression);
+        // At a constant point too, a jump is tested, not folded.
+        if (left.constant && right.constant && left.part.empty() && right.part.empty())
+            return Fold(expression);
         if (!left.Scalar() || !right.Scalar()) throw Reason("a comparison of matrices");
-        return Answer(Cell("(" + Nan(left, right) + Wrap(left.cells[0], sum) +
-                               Operator(expression->Op()) + Wrap(right.cells[0], sum) +
-                               " ? 1.0 : 0.0)",
+        const std::string l = Wrap(left.cells[0], sum), r = Wrap(right.cells[0], sum);
+        return Answer(Cell("(" + Nan(left, right) + Jumps(l + " == " + r, {&left, &right}) + l +
+                               Operator(expression->Op()) + r + " ? 1.0 : 0.0)",
                            primary));
     }
 
@@ -1344,8 +1630,12 @@ private:
         if (code.constant) return Holds(*code.constant) ? "1" : "0";
         if (const auto* compare = dynamic_cast<CompareExpression<Value>*>(expression.get())) {
             const Code left = Emit(compare->m_e1()), right = Emit(compare->m_e2());
-            return Nan(left, right) + Wrap(left.cells[0], sum) + Operator(compare->Op()) +
-                   Wrap(right.cells[0], sum);
+            const std::string l = Wrap(left.cells[0], sum), r = Wrap(right.cells[0], sum);
+            // Under grad, an equality whose sides move takes its clause at the point alone.
+            const bool equality =
+                compare->Op() == Comparison::Equal || compare->Op() == Comparison::NotEqual;
+            return Nan(left, right) + (equality ? Jumps(l + " == " + r, {&left, &right}) : "") + l +
+                   Operator(compare->Op()) + r;
         }
         return Nan(code) + Wrap(code.cells[0], sum) + " != 0.0";
     }
@@ -1451,9 +1741,16 @@ private:
         const ParametersCall<Value>& call = expression->Call();
         if (call.parameters_expression().size() != 1 || !call.parameters_dict().empty())
             throw Reason("floor expects 1 argument");
-        Code code = Emit(call.parameters_expression()[0]);
-        if (code.constant) return Fold(expression);
-        for (Cell& cell : code.cells) cell = Cell("floor(" + cell.text + ")", primary);
+        const Code operand = Emit(call.parameters_expression()[0]);
+        if (operand.constant && operand.part.empty()) return Fold(expression);
+        Code code;
+        code.rows = operand.rows;
+        code.cols = operand.cols;
+        for (const Cell& cell : operand.cells) {
+            const std::string floor = "floor(" + cell.text + ")";
+            const std::string jump  = Jumps(floor + " == " + Wrap(cell, sum), {&operand});
+            code.cells.emplace_back(jump.empty() ? floor : "(" + jump + floor + ")", primary);
+        }
         return Answer(code);
     }
 
@@ -1461,14 +1758,32 @@ private:
         Code code;
         code.rows     = expression->Size().rows;
         code.cols     = expression->Size().cols;
-        bool constant = true;
+        bool                     constant = true, any = false;
+        std::vector<Code>        cells, parts;
+        std::vector<const Code*> from;
         for (const PExpression<Value>& child : expression->Children()) {
-            const Code cell = Emit(child);
+            const Code& cell = cells.emplace_back(Emit(child));
             if (!cell.Scalar()) throw Reason("a matrix built from matrices");
             constant = constant && cell.constant;
+            any      = any || !cell.part.empty();
             code.cells.push_back(cell.cells[0]);
+            // Each cell's part, 0 where it has none (Derivative::Literal).
+            parts.push_back(cell.part.empty() ? Literal(Value(Number(0))) : cell.part[0]);
         }
-        return constant ? Fold(expression) : Answer(code);
+        for (const Code& cell : cells) from.push_back(&cell);
+        const Part part = any ? Part(Assembled(parts, code.rows, code.cols)) : Part();
+        return Answer(Parted(constant ? Folded(expression) : code, part, from));
+    }
+    // A matrix of single parts, row by row, exact where each is.
+    static Code Assembled(const std::vector<Code>& parts, std::size_t rows, std::size_t cols) {
+        Code code = Literal(Value(Extent{rows, cols}));
+        for (std::size_t k = 0; k < parts.size(); ++k) {
+            code.cells[k] = parts[k].cells[0];
+            if (!parts[k].constant) code.constant.reset();
+            if (code.constant)
+                (*code.constant)(k / cols + 1, k % cols + 1) = (*parts[k].constant)(1, 1);
+        }
+        return code;
     }
 
     PExpression<Value> visit(RefExpression<Value>* expression) override {
@@ -1496,8 +1811,8 @@ private:
             return Answer(Read(derived));
         }
         if (!reading_plain_.insert(key).second) throw Reason(key + " is defined by itself");
-        // A global is evaluated in a scope of its own, where no index or place
-        // is seen.
+        // A global is evaluated in a scope of its own, where no index, place
+        // or call's name is seen (C112).
         Sequence* const   reading = std::exchange(reading_, nullptr);
         const std::string index   = std::exchange(index_, std::string());
         const auto             places  = std::exchange(places_, Captured(definition));
@@ -1508,7 +1823,8 @@ private:
         const auto cells = [](const Clause<Value>& c) { return c.parameters.cells(); };
         Code       code;
         {
-            const Home home(*this, definition);
+            const Home                home(*this, definition);
+            const Setting<Expansion*> uncalled(expansion_, nullptr);
             code = std::any_of(definition->Clauses().begin(), definition->Clauses().end(), cells)
                        ? Cells(key, *definition)
                        : Emit(definition->Clauses().front().expression);
@@ -1750,6 +2066,8 @@ private:
                     given.cells = {whole->At(row - 1, col - 1)};
                     if (whole->constant) given.constant = Value((*whole->constant)(row, col));
                 }
+                if (!given.part.empty())
+                    throw Reason("a derivative through a definition by cells, for now");
                 if (!given.Scalar())
                     throw Reason("a cell of " + name + " must be a single value, not a " +
                                  std::to_string(given.rows) + "x" + std::to_string(given.cols) +
@@ -1848,6 +2166,8 @@ private:
                 given.values.emplace(parameter, Inside(given, [&] {
                                          return Emit(p.parameters_dict().at(parameter));
                                      }));
+        for (const auto& [parameter, code] : given.values)
+            if (!code.part.empty()) throw Reason("a derivative of a limit, for now");
         bool constant = true;
         for (const auto& [parameter, code] : given.values) constant = constant && code.constant;
         // Its terms, as locals of a function of their own. 'arg_x': no name
@@ -2392,8 +2712,11 @@ private:
     // How far an index is from the clause's own: 'n', or that plus constants
     // however they are spelled -- 'n-1', 'n-k-1' in a sum over k.
     int Offset(const PExpression<Value>& index, const std::string& written) {
+        // In a call, or under a grad that takes its name, the index is not seen (C119).
         const std::string only =
-            written + ": an index other than a whole multiple of " + index_ + " plus a constant";
+            written + (index_.empty() ? ": a term read where " + within_ + "'s index is not seen"
+                                      : ": an index other than a whole multiple of " + index_ +
+                                            " plus a constant");
         if (const auto* ref = dynamic_cast<RefExpression<Value>*>(index.get());
             ref && ref->Name() == index_ && !places_.count(index_))
             return 0;
@@ -2429,31 +2752,113 @@ private:
         if (!nan.empty())
             for (Cell& c : matrix.cells) c = Cell("(" + nan + c.text + ")", primary);
         if (!expression->Col()) {
-            if (matrix.constant) return Fold(expression);
+            if (matrix.constant && matrix.part.empty()) return Fold(expression);
             const int i = Whole(row);
-            if (i < 1 || static_cast<std::size_t>(i) > matrix.rows)
+            if (i < 1 || static_cast<std::size_t>(i) > matrix.rows) {
+                if (i > 1) Unstated(*expression->Matrix(), std::to_string(i));
                 throw Reason("row " + std::to_string(i) + " is outside a " +
                              std::to_string(matrix.rows) + "x" + std::to_string(matrix.cols) +
                              " matrix");
+            }
             Code line;
             line.cols = matrix.cols;
             for (std::size_t j = 0; j < matrix.cols; ++j)
                 line.cells.push_back(matrix.At(static_cast<std::size_t>(i - 1), j));
-            return Answer(std::move(line));
+            return Answer(Parted(std::move(line), Selected(PartOf(matrix), i, 0), {&matrix}));
         }
         const Code col = Known(expression->Col(), "a cell whose place is not a constant");
-        if (matrix.constant) return Fold(expression);
+        if (matrix.constant && matrix.part.empty()) return Fold(expression);
         const int i = Whole(row), j = Whole(col);
         if (i < 1 || static_cast<std::size_t>(i) > matrix.rows || j < 1 ||
-            static_cast<std::size_t>(j) > matrix.cols)
+            static_cast<std::size_t>(j) > matrix.cols) {
+            if (i > 0 && j > 0)
+                Unstated(*expression->Matrix(), std::to_string(i) + ", k<=" + std::to_string(j));
             throw Reason("row " + std::to_string(i) + ", column " + std::to_string(j) +
                          " is outside a " + std::to_string(matrix.rows) + "x" +
                          std::to_string(matrix.cols) + " matrix");
-        return Answer(matrix.At(static_cast<std::size_t>(i - 1), static_cast<std::size_t>(j - 1)));
+        }
+        return Answer(
+            Parted(Of(matrix.At(static_cast<std::size_t>(i - 1), static_cast<std::size_t>(j - 1))),
+                   Selected(PartOf(matrix), i, j), {&matrix}));
+    }
+    // A row, or with j a cell, of a part, read as its value's is.
+    static Part Selected(const Part& part, int i, int j) {
+        return Mapped(
+            part,
+            [&](const Value& v) {
+                return j ? numeric_interface<Value>::cell(v, i, j)
+                         : numeric_interface<Value>::row(v, i);
+            },
+            [&](const Code& m) {
+                Code c;
+                c.cols = j ? 1 : m.cols;
+                for (std::size_t k = 0; k < c.cols; ++k)
+                    c.cells.push_back(m.At(static_cast<std::size_t>(i - 1),
+                                           j ? static_cast<std::size_t>(j - 1) : k));
+                return c;
+            });
+    }
+    // A cell past an input whose model states no size, which compiles as a
+    // single value (C83), refused with the size that would hold it.
+    void Unstated(const Expression<Value>& read, const std::string& bounds) const {
+        if (!model_ || scope_ != &root_ || !dynamic_cast<const FuncExpression<Value>*>(&read))
+            return;
+        for (const typename Model<Value>::Parameter& p : model_->parameters)
+            if (p.name == read.Name() && !p.index.empty() && !p.fallback && p.bounds.empty())
+                throw Reason(p.name + " is a single value, as " +
+                             model_->header.substr(0, model_->header.find('(')) +
+                             " states no size for it: write '" + p.name + "_" + p.index +
+                             "[j<=" + bounds + "]'");
     }
     PExpression<Value> visit(FactExpression<Value>*) override { throw Reason("a factorial"); }
-    PExpression<Value> visit(GradExpression<Value>*) override {
-        throw Reason("a derivative, for now");
+    // grad compiled (DESIGN.md): its body once for each cell of the point, each
+    // value carrying its part, the name's a constant seed, as the interpreter's.
+    PExpression<Value> visit(GradExpression<Value>* expression) override {
+        if (!grad_.empty()) throw Reason("a derivative of a derivative, for now");
+        const std::string& name  = expression->Variable();
+        const Code         point = Emit(expression->Point());
+        Asked([&] { Reasoned([&] { Derivative<Value>(definitions_).Names(*expression); }); }, true);
+        Code              body;
+        std::vector<Code> parts;
+        bool              any = false;
+        for (std::size_t k = 0; k < point.cells.size(); ++k) {
+            const std::size_t i = k / point.cols + 1, j = k % point.cols + 1;
+            Value             seed(Number(1));
+            if (!point.Scalar()) {
+                seed       = Value(Extent{point.rows, point.cols});
+                seed(i, j) = Number(1);
+            }
+            Code x = point;
+            x.part = {Literal(seed)};
+            Expansion bound{{{name, x}}, {}, scope_, expansion_, {}};
+            auto      places = places_;
+            places.erase(name);
+            const Setting<std::map<std::string, Value>> hidden(places_, places);
+            const Setting<std::string> index(index_, index_ == name ? std::string() : index_);
+            const Setting<Expansion*>  binding(expansion_, &bound);
+            const Setting<std::string> differentiating(grad_, name);
+            body = Emit(expression->Body());
+            if (!point.Scalar() && !body.Scalar())
+                throw Reason(
+                    "grad of a matrix with respect to a matrix is a Jacobian, which it "
+                    "does not give");
+            parts.push_back(body.part.empty() ? Literal(Value(Extent{body.rows, body.cols}))
+                                              : body.part[0]);
+            any = any || !body.part.empty();
+        }
+        Code out = point.Scalar() ? parts[0] : Assembled(parts, point.rows, point.cols);
+        if (!any) out = Literal(Value(Extent{body.rows, body.cols}));
+        out.part.clear();
+        // A fold reading it would take its point and body again (C115).
+        if (!point.constant || !body.constant) out.constant.reset();
+        // NaN where the value differentiated is, in a header that writes NaN,
+        // as one does where that value writes it and no part reads it (C113).
+        for (const Cell& c : body.cells) aware_ |= !body.constant && WritesNan(c.text);
+        const std::string nan = aware_ ? Nan(Shared(body)) : "";
+        for (Cell& cell : out.cells)
+            if (!nan.empty()) cell = Cell("(" + nan + cell.text + ")", primary);
+        if (!nan.empty()) out.constant.reset();
+        return Answer(out);
     }
     // Unrolled, since each term is a line of C: a thousand is a filter no one
     // would write out as one.
@@ -2483,14 +2888,14 @@ private:
             const Code term = Emit(expression->Body());
             constant        = constant && term.constant;
             total           = k == first              ? term
-                              : expression->Product() ? Product(total, term)
-                                                      : Broadcast(total, term, Added);
+                              : expression->Product() ? ProductOf(Product(total, term), total, term)
+                                                      : SumOf(Broadcast(total, term, Added), total, term);
         }
         if (outer)
             places_[name] = *outer;
         else
             places_.erase(name);
-        return constant ? Fold(expression) : Answer(total);
+        return Answer(constant ? Parted(Folded(expression), PartOf(total), {&total}) : total);
     }
     PExpression<Value> visit_other(Expression<Value>*) override { throw Reason("this expression"); }
 
@@ -3425,7 +3830,7 @@ private:
             "typedef struct " + module + " {\n" + Nested(members, "    ") + "} " + module + ";\n\n";
 
         for (const std::size_t n : inverses_) out += InverseHelper(n);
-        for (const std::string& function : prelude_) out += function;
+        const std::size_t functions = out.size();
         for (const std::string& limit : limits_) out += limit;
 
         out += "/* Computes what derives from the parameters: call it after assigning one. */\n";
@@ -3568,6 +3973,16 @@ private:
         }
         out += "}\n\n#endif\n";
         out.insert(folds, Folds(earliest));
+        // A function of the prelude where something calls it: the part one a
+        // floor or a comparison drops nothing does.
+        std::string kept, calls = out.substr(functions);
+        for (auto function = prelude_.rbegin(); function != prelude_.rend(); ++function) {
+            const std::size_t open = function->find('('), name = function->rfind(' ', open) + 1;
+            if (!Writes(calls, function->substr(name, open - name))) continue;
+            calls += *function;
+            kept = *function + kept;
+        }
+        out.insert(functions, kept);
         // Past the line naming the source, the words of the compiler's own C
         // for a double as a float's: every constant is written as one already.
         const auto inside = [&](std::size_t at) {
@@ -3583,7 +3998,7 @@ private:
                     else
                         out.insert(at + from.size() - (from.back() == '(' ? 1 : 0), "f");
                 }
-        Compiled compiled{out, earliest, inputs, {}, {}, {}};
+        Compiled compiled{out, earliest, inputs, {}, {}, {}, unnamed_};
         for (const std::string& name : inputs) compiled.cells.push_back(Cells(name));
         for (const std::string& name : order) {
             const Sequence& sequence = sequences_.at(name);
@@ -3608,9 +4023,11 @@ private:
     int                              expanded_  = 0;        // how deep calls are
     std::vector<std::shared_ptr<const Scope<Value>>> held_;    // what expansions name
     std::string                                      within_;  // the sequence being compiled
-    // Unnamed instances, by where they are written and what they read there.
-    std::map<std::pair<const void*, std::string>, const Scope<Value>*> kept_;
+    // Unnamed instances, by the scope that writes them, where it does and
+    // what they read there.
+    std::map<std::tuple<const Scope<Value>*, const void*, std::string>, const Scope<Value>*> kept_;
     std::set<std::string>                                              labels_;
+    std::map<std::string, Compiled::Unnamed>                           unnamed_;
     std::map<std::string, Sequence>  sequences_;
     std::map<std::string, Parameter> parameters_;
     std::vector<Derived>             derived_;  // each after those it reads
@@ -3624,6 +4041,10 @@ private:
     std::set<std::string>            reading_plain_;
     Sequence*   reading_ = nullptr;  // the sequence whose general clause this is
     std::string index_;              // and the name of its index
+    std::string                      grad_;  // the name grad differentiates by, in its body
+    // Each prelude part function, 'exp_dx': which values and parts it takes,
+    // or none where there is no part.
+    std::map<std::string, std::optional<std::vector<std::pair<bool, std::size_t>>>> parts_;
     std::vector<Temporary>*          temporaries_ = nullptr;  // where this sequence's are declared
     Reads*      clause_reads_ = nullptr;               // what the clause being compiled reads
     bool                             deferring_ = false;  // compiling the right of an 'and' or 'or'
@@ -3643,7 +4064,7 @@ private:
     std::set<std::size_t>            inverses_;  // the sizes a helper is needed for
     std::vector<std::string>         limits_;    // a function for each limit walked
     std::vector<std::string>           prelude_;   // and for each function of the prelude called
-    std::set<std::string>              functions_;  // their names
+    std::map<std::string, std::string> functions_;  // their names and values
     std::vector<Hold>                  holds_;
     Sequence*                          basing_ = nullptr;  // whose base clause is compiled, if one
     int                                base_   = 0;        // and its index

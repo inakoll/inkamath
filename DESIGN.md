@@ -1615,8 +1615,8 @@ closures need one anyway, and can bring it.
 | C80 `[fixed]` | **`grad` reads a parameter that an index or a row hides.** A clause's index, row, column and slice are bound where its parameters are, and hide one of the same name, but `grad` seeks a name among the arguments it differentiates before the values bound: with `g(n)_n = n`, `g(x)_2` is 2 for every `x`, and `grad_(x = 1) g(x)_2` answers 1; with `f(j)[j<=2] = j`, `grad_(x = 1) [1 1]*f(x)` answers 2, not 0. Found building `grad` of definitions by cells (next in line), whose walk binds a row as the evaluator does. Hiding the clause's names from the arguments where they are bound, as a sum's index is hidden, would fix both; the walk binds them in `Reference`, where `grad` cannot hide them, so for now a clause whose index, slice, row or column names a parameter is refused under `grad`, "grad cannot differentiate sm yet: its row t hides its parameter t": a temperature `t` beside attention's rows `t` answered `[10; 10]` for `[1; 2]`. The C80 entries at the end of `test/data/grad.ink` hold it. |
 | C81 `[fixed]` | **`grad` kept the slope of a single value added to a matrix single.** A sum adds a single value to every cell, and a matrix to every slice of a tensor, but a part that only one side had kept that side's shape, so `grad_(x = 1) [1 1]*(x + [1; 2])` answered `[1, 1]` where the slope is 2, `([1 2; 3 4] + x)^2` the slope it would have were x added to the diagonal only, and `f(x)[j<=1] = (x + [1 2])*[1; 1]`, whose cell stores its part's first, a slope of 1 for 2. Found reviewing `grad` of definitions by cells (next in line), whose walk stores a cell's part as its value is stored. Now a sum's part is widened to its value's shape; `grad.ink` holds it. |
 | C82 `[fixed]` | **A guarded clause written whole beside clauses for cells is never asked.** With `Q2(x)[j<=2] = x` and `Q2(x) \| x > 1 = [0 0]`, `Q2(2)` is `[2; 2]`, and with `R \| 1 > 0 = [5 5]` before `R[j<=2] = j`, `R` is `[1; 2]`: the walk over the cells takes a clause written whole only as the value of the cells no clause gives, and a guarded one not even then. Found by the review of `grad` of definitions by cells (next in line), with which `grad` agrees. Taking the whole definition where it holds, before its cells, would add nothing a guard on each cell does not say, `R(x)[i<=2] \| x > 1 = 0`, so such a clause is refused where it is written, in either order, "Pw is defined by its cells, so a clause for all of it cannot be guarded; guard its cells"; a clause written whole and unguarded stays the matrix the cells override. The entries at the end of `test/data/matrices.ink` and `test/data/terms.ink` hold it. |
-| C83 `[open]` | **A model's input is compiled as a single value, whatever it is.** The step takes one double for each input and the compiler reads the input as 1x1, so with `mm(x_n) = { y_n = [1 2]*x_n }` the header computes a 1x2 term where the interpreter, given `x_n = [n; 1]`, answers a single value. `--check` of that instance crashed, reading a second cell of each term the interpreter gave one of; it now refuses the instance by name, "v.x_(0) has 2 cells, where the compiled step takes a single value", and `check_matrix_input` in `test/cli.cmake` holds it. Found specifying a model's history of its inputs (next in line). What stays open is the header: an input wants a shape, taken as an array as a matrix parameter is, or a refusal by name. Specified in next in line, *an input of more than one cell*: the model states the size in its signature, `x_n[j<=2]`, and the step takes the input's cells. |
-| C84 `[open]` | **`--check` compares nothing of an instance a model writes unnamed.** With `bare(u_n) = { c_n = u_(n-1) }` and `wrap(x_n) = { c_n = bare(u_n = x_n).c_n }` checked as `nest = wrap(x_n = n)`, the step keeps the instance as `c_bare`, and the check asks the interpreter for `nest.c_bare.c_0`, which it cannot name, "a term has no names", so every term of `c_bare.c` and `c_bare.u` is skipped and each line reads `within 0`. No checked instance writes one. Found reviewing the specification of a model's history of its inputs (next in line), whose check reports a term the interpreter cannot give instead of skipping it, which would turn each such line red. The check wants to ask for such a term through the definition that writes the instance, or to say by name that it cannot. It now says so, `veiled.c_bare.c: not asked, as the interpreter cannot name it`, where each line read `within 0`; asking stays open. |
+| C83 `[fixed]` | **A model's input is compiled as a single value, whatever it is.** The step takes one double for each input and the compiler reads the input as 1x1, so with `mm(x_n) = { y_n = [1 2]*x_n }` the header computes a 1x2 term where the interpreter, given `x_n = [n; 1]`, answers a single value. `--check` of that instance crashed, reading a second cell of each term the interpreter gave one of; it now refuses the instance by name, "v.x_(0) has 2 cells, where the compiled step takes a single value", and `check_matrix_input` in `test/cli.cmake` holds it. Found specifying a model's history of its inputs (next in line). What stays open is the header: an input wants a shape, taken as an array as a matrix parameter is, or a refusal by name. Specified in next in line, *an input of more than one cell*: the model states the size in its signature, `x_n[j<=2]`, and the step takes the input's cells, as built. One whose size is not stated compiles as a single value still, as specified, and each refusal of another now says how to state it: a cell past it, `cannot compile y: x is a single value, as cl states no size for it: write 'x_n[j<=2]'`, and `--check`'s, which ends `, as mm states no size for x: write 'x_n[j<=2]'`. |
+| C84 `[fixed]` | **`--check` compares nothing of an instance a model writes unnamed.** With `bare(u_n) = { c_n = u_(n-1) }` and `wrap(x_n) = { c_n = bare(u_n = x_n).c_n }` checked as `nest = wrap(x_n = n)`, the step keeps the instance as `c_bare`, and the check asks the interpreter for `nest.c_bare.c_0`, which it cannot name, "a term has no names", so every term of `c_bare.c` and `c_bare.u` is skipped and each line reads `within 0`. No checked instance writes one. Found reviewing the specification of a model's history of its inputs (next in line), whose check reports a term the interpreter cannot give instead of skipping it, which would turn each such line red. The check wants to ask for such a term through the definition that writes the instance, or to say by name that it cannot. It said so, `veiled.c_bare.c: not asked, as the interpreter cannot name it`, where each line read `within 0`. Now the check makes the instance again where the instance checked has it, from the model, call and captured places the compiler kept it by, and asks its terms there: `veiled`'s lines read `within 0` having asked, `cloaked`'s unnamed instance is written within a named one, and `masked`'s parts at 9 as `wild` does, in `test/compile/history.ink`; 24 lines more. |
 | C85 `[fixed]` | **`tex` sets a base term apart from the guarded clauses written before it.** Clauses are tried in the order written (C45): after `y_n \| n < 0 = 0`, `y_(-1) = 3` and `y_n = n`, `y_(-1)` is 0, but `tex ?y` sets `y_{-1} = 3` on a line of its own above the cases, as if it held. Found reviewing the specification of a model's history of its inputs (next in line), whose clauses on an input may come in either order. `tex` wants the clauses in the order they are tried, or the base term left out where an earlier clause covers it. Now a term written after a guard is a case in its place, `3 & \text{if } n = -1`, and one written before every guard keeps its line, which holds; the C85 entries at the end of `test/data/tex.ink` hold it. |
 | C86 `[fixed]` | **A clause whose value is a constant that fails refuses the whole model when compiled.** The compiler folds a constant value exactly, and a failure there is taken as the model's: in a model `gd(a = 2)` defining `h(x) = 1`, `h(x) \| x <= 0 = 1/0` and `y_n = h(a + n)`, `--compile` says "cannot compile y: division by zero" where the interpreter answers 1 for every term and never takes the clause, and `[1 2]*[1 2]` there says a product's sizes. `log`'s `log(x) \| x <= 0 = 1/0` is one, so a model calling `log` is refused in those words instead of "a sum or a product with no upper bound", which its series earns. Found specifying a function applied to each cell, `f.(x)`, which sizes inferred replaced (next in line). A clause written to refuse wants compiling as what a step does where the interpreter refuses, NaN as for a limit that does not converge, or a refusal naming the function and its clause. Now a guarded value whose fold fails is NaN where its guard holds, as where no clause applies, so `gd` compiles and `log` is refused for its halving, `log(x/2)` while `x > 2`, which recurses, "calls nested 64 deep"; `compile_c86` and `compile_log_refused` in `test/cli.cmake` hold it. A value that always applies and fails still refuses. |
 | C87 `[fixed]` | **The hint for a definition of one-cell clauses alone is written for another.** With `w[2] = 5`, reading `w` says "w has no size; write it as w[j<=rows, k<=cols]", two indices where its clause writes one; with `f(x)[1,1] = 5`, `f(1)` says "write it as f[j<=rows, k<=cols]", without its parameters, a clause `f` refuses, as it takes `(x)`. Found reviewing the specification of sizes inferred in a definition by cells (next in line), whose hints are written as the clause is, `sh(z)[i<=rows]`. The hint wants the clause's parameters and as many indices as it writes. It now has them, `w[j<=rows]` and `f(x)[j<=rows, k<=cols]`, written from the clause as a hint for a clause for all cells is, and one defined inside an expression, which keeps no text, from its names, `pc[i<=rows]`; the C87 entries of `test/data/matrices.ink` hold it. |
@@ -1630,14 +1630,27 @@ closures need one anyway, and can bring it.
 | C95 `[fixed]` | **Five check reports were held to half their text.** A report's expected text is a CTest regular expression, and CTest reads a `;` in it as the end of one expression and the start of another, passing a test that matches either: the guard-flip lines of `brink`, `ledge`, `rift`, `sill` and `seam` hold `'...'; the guard of the first is ...`, so each report passed on its first half alone, and `brink`'s with its threshold words replaced by others still passed. Found implementing the interpreter's own error, estimated by `--check`, whose new expressions escape it. The five now write `\\;`, and the replaced words fail. |
 | C96 `[open]` | **`tex` shows a decimal of more than nine digits to nine, after a `~`.** A literal is set by the printer of values, which shows an exact number that is no short decimal to nine digits and marks it so: `c = 1.4426950408889634` is set `c = ~1.44269504`, and `f(x) = x*0.12345678901` as `x\,~0.123456789`, the `~` a space in LaTeX and the product a thin space where a digit asks a dot. What was typed is exact and should be set in full. Found specifying `exp`, `log` and `tanh`, whose constants have seventeen digits. |
 | C97 `[fixed]` | **The checks failed where the target fuses a multiply and an add.** The header leaves contraction to its build, as *Fused multiply-adds* decided, and the test targets set nothing, so `clang -march=native`, which contracts within an expression on a machine with FMA, parted from the interpreter in `brink`, `ledge`, `rift`, `sill` and `seam`. Found reviewing the specification of the prelude written in inkamath (next in line). The C test targets now build with `-ffp-contract=off` under GCC and Clang, and the five pass so built; the header's policy is unchanged. |
-| C98 `[open]` | **A compiled negation of +0 is -0.** The compiler writes a negation as C's `-`, and the interpreter as `0 - x` (C33), so at +0 the step has -0 and the interpreter +0: `1/(-x)` at `x = 0` is -inf compiled and inf interpreted, and `tanh(0)` in the prelude being written in inkamath (next in line) is -0.0 compiled. Found reviewing that specification. Writing `0.0 - x` instead moves every expected header with a negation, so it waits for a decision. `--check` holds -0 equal to 0 and cannot see it. The prelude called compiled (next in line) leaves an answer of 0 to the definition for it. |
+| C98 `[fixed]` | **A compiled negation of +0 is -0.** The compiler writes a negation as C's `-`, and the interpreter as `0 - x` (C33), so at +0 the step has -0 and the interpreter +0: `1/(-x)` at `x = 0` is -inf compiled and inf interpreted, and `tanh(0)` in the prelude being written in inkamath (next in line) is -0.0 compiled. Found reviewing that specification. A negation is now written `0.0 - x`, which moves `pid_clamped.h`, `kernel.h`'s `ceil` and the prelude's header and nothing else; `--check` holds -0 equal to 0, so `naught` in `test/compile/drift.ink` holds it through a guard reading `1/(-x_n)`. A subtraction stays C's, which C109 keeps open. The prelude called compiled (next in line), which left an answer of 0 to the definition for it, no longer does. |
 | C99 `[fixed]` | **`--check` estimated a huge term infinitely far from the exact one.** The absolute value of an inexact number, which is complex, was the root of the sum of the squares of its parts, and a difference past 2^512 squared is infinite: two disturbed runs of `n*~(3*10^200)`, some 10^186 apart, were `inf` apart, so its report said the interpreter's terms were "about inf from the exact ones, past the tolerance from 1", as it did of `exp`'s from about 390. A limit's step and a pivot's size took the same absolute value. Found reviewing the implementation of `exp`, `log` and `tanh` written in the prelude (next in line). A real number's is now its magnitude; a complex one's is as it was. `giant` in `test/compile/estimate.ink` holds it. |
-| C100 `[open]` | **`ilogb(0)` depends on how 0 is written.** The prelude's `ilogb` means something only of a positive number, but it is a public name, and at 0 its thirteen steps take every threshold that rounds to 0 as reached: an exact 0 passes the exact powers down to 2^-3321 and stops where they are approximated, `ilogb(0)` being -3322, and a double 0 where the double powers vanish, `ilogb(~0)` and the step's being -1075. `log` guards 0 before it asks. Found reviewing the implementation of `exp`, `log` and `tanh` written in the prelude (next in line). |
-| C101 `[open]` | **`log(~1/0)` and `log(2^3072)` name a NaN never written.** Both refuse with "a comparison needs a number, not -nan": `ilogb` answers 4095, as a power of two past a thousand digits is approximated to inf and the argument passes it, and inf over 2^4095, inf too, is NaN, which `logm`'s fold cannot compare. The step answers NaN and libm inf. A guard saying so costs more than three lines and moves two entries of `test/data/elementary.ink`, so the implementation's ruling kept it. Found reviewing that implementation (next in line). |
+| C100 `[fixed]` | **`ilogb(0)` depends on how 0 is written.** The prelude's `ilogb` means something only of a positive number, but it is a public name, and at 0 its thirteen steps take every threshold that rounds to 0 as reached: an exact 0 passes the exact powers down to 2^-3321 and stops where they are approximated, `ilogb(0)` being -3322, and a double 0 where the double powers vanish, `ilogb(~0)` and the step's being -1075. `log` guards 0 before it asks. Found reviewing the implementation of `exp`, `log` and `tanh` written in the prelude (next in line). Now `ilogb(x) | x <= 0 = 1/0` refuses 0 and below as `log` does, and the header's `ilogb` is NaN there. |
+| C101 `[fixed]` | **`log(~1/0)` and `log(2^3072)` name a NaN never written.** Both refuse with "a comparison needs a number, not -nan": `ilogb` answers 4095, as a power of two past a thousand digits is approximated to inf and the argument passes it, and inf over 2^4095, inf too, is NaN, which `logm`'s fold cannot compare. The step answers NaN and libm inf. A guard saying so costs more than three lines and moves two entries of `test/data/elementary.ink`, so the implementation's ruling kept it. Found reviewing that implementation (next in line). Two clauses now: `ilogbs(x, k, s) | k + s > 3321 = k`, so that `ilogb` tries no power past 2^3321, which every exact number is below, and answers 3072 at 2^3072 and 3321 at inf; and `log(x) | 2*x == x = x`, inf being the one positive number its own double, so `log(~1/0)` is inf, as in libm and now the step, and `log(2^3072)` 2129.34814. Five entries of `test/data/elementary.ink` and two of `fastprelude.ink` move; no double's answer does. |
 | C102 `[kept]` | **A compiled double limit creeping by less than half a unit answers where the interpreter refuses.** With `s_0 = 10^17` and `s_k = s_(k-1) + 1`, `lim s` does not converge in the interpreter, whose terms are exact, but in a double every term is 10^17, a step of 0, which the rule takes as converged, so the step answers 1e+17. `--check` catches it: `y: 1e+17 at 0, where the interpreter gives none: s did not converge within 100 terms`. Inherent to doubles: a step below half the spacing at its term is no step. Found reviewing the specification of a float target (next in line), whose extra stop answers so for a step of a unit of a float, `crawl` in `test/compile/float.ink`. |
 | C103 `[fixed]` | **A parameter's default of negative infinity was written `INFINITY`.** A constant in an expression is written as its magnitude after its sign, but a default is written whole, in `init` and in the header's comment, and a whole infinity lost its sign: `p = 0 - ~(10^400)` was `m_->p = INFINITY;`, as, in a float header, was `q = 0 - 10^39`, which no float holds. Found implementing a float target (next in line). It is now `-INFINITY`; `compile_c103` in `test/cli.cmake` holds both. |
 | C104 `[fixed]` | **A header named after a word C keeps, or after a header it includes, was no C.** A header or a program is named after its file, which had only to be letters, digits and `_`: `-o double.h` wrote `typedef struct double`, and a float header written to `float.h` both is no C and, built with `-I.`, includes itself for `<float.h>`. Found reviewing the implementation of a float target (next in line). Such a name is now refused, a keyword or `math`, `string` or `stdio`, in 3 lines; `compile_c104` and `check_c104` in `test/cli.cmake` hold it, and `history_short`'s model is now `scant`. The names of libm's functions stay open: `-o nan.h` declares a type `nan` over `<math.h>`'s function, and so would `pow`, `exp` or `floor`, a list with no end the C library fixes. |
 | C106 `[fixed]` | **`--check` heard no guard of a term the file had asked.** A file's lines run before its check, and a term one of them asks is memoised, so the main run read it back without asking its guards: with `brink.g_(1)` added to `drift.ink`, `brink`'s report said the compiled step took another clause at 2, not 1. Since the prelude is called compiled (next in line), such a term was not walked either, which every run of `--check` must. Found reviewing that implementation. The main run now forgets the memo before its first input, in 1 line; `check_walked_asked` in `test/cli.cmake` holds it. |
+| C107 `[fixed]` | **Two named instances of one model shared the unnamed instance it writes.** An unnamed instance was kept by where it is written and what it reads there, not by the instance that writes it, so with `a = veil(x_n = y_n)` and `b = veil(x_n = 2*y_n)` in a model, `veil` writing `bare(u_n = x_n).c_n`, the header kept one copy, `a`'s, and `b.c` read `a.c_bare.c`: `--check` reported `two.b.c: 1 at 2, where the interpreter gives 2`. It is now kept by its scope too, in 1 line; `two` in `test/compile/history.ink` holds it. |
+| C108 `[fixed]` | **`--check` refused an unnamed instance with a guarded clause.** The check reads a guarded sequence's clauses, to report a guard that takes another clause, from the instance checked by the sequence's name, and an unnamed instance's is no name there: with `c_n \| u_n > 2 = 2` and `c_n = u_n` in `capped(u_n)`, and `c_n = capped(u_n = x_n).c_n` in `cap(x_n)`, checking `hid = cap(x_n = n)` stopped, "the instance has no sequence c_capped.c", before and after C84's fix. They are now read from the instance made again for its terms (C84), in 4 lines; `hid` in `test/compile/history.ink` holds it. |
+| C109 `[open]` | **A compiled subtraction of +0 from -0 is -0.** The interpreter reads `a - b` as `a + -b`, the negation `0 - b` (C33), and the compiler writes it as C's `a - b`, alike but at a = -0 and b = +0, where the step has -0 and the interpreter +0: `1/(~0*(-1) - ~0)` is inf interpreted and -inf compiled. `--check` holds -0 equal to 0. Left open by C98's fix. Closing it is a decision about signed zeros: the compiler writing `a + (0.0 - b)`, or the interpreter subtracting directly. |
+| C110 `[kept]` | **A compiled gradient through a clause with no part times an infinity is NaN.** A part is there by the clauses, 0 where the clause taken has none, so `grad_(t = 6) f(t)*~(10^400)`, f a clamp at 1, has 0 times inf for its part, NaN, where the interpreter has no part to multiply and answers 0. Kept: a part of 0 is what lets a chain of clauses be one C expression, and only an infinity tells it from none; testing where each product's part is there costs a condition per product for a value no model reaches. A power whose derivative is infinite at a base of 0 reached it without an infinity written, and is tested since (C118); what stays needs an infinite value, written or a quotient's: an inexact value divided by a dead clause's 0 is an infinity in the interpreter too, so `grad_(t = x) (~(1/3)/relu(t) + t)` is NaN where x < 0 and the interpreter answers 1. Testing a quotient's part where its divisor's is there costs a choice of two parts, about 5 lines, against the power's 3. Found specifying `grad` compiled (next in line); `apart` in `test/compile/grad.ink` holds it, its program failing. |
+| C111 `[fixed]` | **A compiled gradient answered where the jump inside `exp`'s part is dropped.** `exp` reduces by `floor(x*1.4426950408889634 + 1/2)`, and at the few doubles where that is whole, ~0.34657359027997264 among them, the interpreter refuses `grad` of `exp` as it refuses any `floor` at a jump, and the compiled part function is NaN there. Where a `floor` or a comparison then reads `exp`'s value and drops its part, `grad_(t = x) floor(exp(t))*t` is 1 compiled and refused interpreted. The interpreter's refusal is itself spurious, `exp` being smooth there; the compiler's NaN follows the interpreter's. Found reviewing the specification of `grad` compiled. Fixed with C117: `exp`'s value where its argument moves is a function of its own that tests the jump, so the `floor` reads NaN there; `smooth` in `test/compile/grad.ink` holds it. |
+| C112 `[fixed]` | **A global read inside a compiled function reads the function's parameters.** A function is compiled where it is called, its parameters bound for its body, and a global its body reads is compiled where it stands but still sees those bindings: with `f(x) = x + g`, `g = x*2`, `x = 5` and `y_n = f(n)`, the interpreter's y_3 is 13, and the header computes `m_->g = (double)y * 2.0`, the call's argument, in `update`, which is no C. `grad` refuses one that reads grad's own name, through `Derivative::Names`; nothing refuses the rest. Found implementing `grad` compiled (next in line). An instance without memory read the same, its parameters for the call's. A global is now compiled with no call's names, as with no index or place, in 1 line; `compile_c112` and `compile_c112_instance` in `test/cli.cmake` hold it. A header holding a control character, a mark left unresolved as this one was, is now an error, in 3 lines, which no input reaches since. |
+| C113 `[fixed]` | **A compiled gradient answered where the interpreter refuses in a value no part reads.** The test for a refusal is written in the value, a `floor`'s or a comparison's, and `grad` keeps only the part, so where no part reads that value and the header writes no NaN otherwise, the test was dropped with it: `grad_(t = x_n) (t - floor(t))` was 1 at every whole x, where the interpreter says the floor jumps, and so for a comparison, a clause refused wherever taken and a power whose derivative is infinite. Found reviewing the implementation of `grad` compiled (next in line). A body whose value writes NaN now makes the header write it, as a cell not taken does, so its gradient is NaN where that value is, in 1 line; `saw` in `test/compile/grad.ink` holds it. |
+| C114 `[fixed]` | **Where one of two operands' parts is there was read by C as one conditional.** Each is a chain of conditionals, `z < 0.0 ? 0 : 1`, and they were joined by `||` unparenthesised, which binds tighter: `a ? 0 : 1 || b ? 0 : 1` is false wherever the first is, so a comparison of a dead ReLU unit with a live one, `grad_(t = x_n - 1) (r(t - 1/2) > r(t))*t` with r a ReLU, was 0 at t = 0, where they meet and the interpreter, the live one moving, says the comparison jumps. Found reviewing the implementation of `grad` compiled (next in line). Each is now parenthesised, in the same line; `m` in `edge` in `test/compile/grad.ink` holds it. |
+| C115 `[fixed]` | **A constant gradient at a point that moves refused what read it.** A gradient whose part is a constant, `grad_(t = x_n) 3*t`, was a constant of the step, and an operator reading two constants folds by the interpreter, which takes the grad again, point and body, without the step's names: `u_n = x_n - grad_(t = x_n) 3*t` said "cannot compile u: n is not defined", in a header that writes no NaN, where an aware one compiled it. Found reviewing the implementation of `grad` compiled (next in line). It is now a constant only where its point and body are, in 1 line; `compile_c115` in `test/cli.cmake` holds it. What reads it then rounds in the step: `(1/10)*grad_(t = x_n) 3*t` is `0.1 * 3.0` there and 3/10 interpreted, a unit apart. |
+| C116 `[fixed]` | **A power's infinite derivative at a constant point was infinite.** The test for a base of 0 under a power whose derivative is infinite there was written only for a base that is not a constant, and at a constant point the part folds: `n*grad_(t = 0) t^(1/2)` was `index_ * INFINITY`, where the interpreter refuses every term. Found reviewing the implementation of `grad` compiled (next in line). A constant base of 0 is now tested too, so the step is NaN at every n, as for a comparison or a `floor` at a jump at a constant point, in the same line; `v` in `edge` in `test/compile/grad.ink` holds it. |
+| C117 `[fixed]` | **A compiled gradient through `ceil` or `mod` answered at `floor`'s jump.** Each is the prelude's by `floor`, compiled as a function of the header's from its body without parts, so its `floor` tested no jump: `grad_(t = x) mod(t, 2)` was 1 and `grad_(t = x) ceil(t)*t` was `ceil(t)` at every whole x, where the interpreter says the floor jumps. Found reviewing the implementation of `grad` compiled (next in line). Where an argument moves, the value is now its body carrying parts, a function of its own, `mod_ja`, where that tests for a jump, and the plain one where the arguments' clauses leave nothing moving; its call makes the header write NaN, so that a grad that drops the value is NaN where it is (C113). In 14 lines; `ring` and `notch` in `test/compile/grad.ink` hold it. |
+| C118 `[fixed]` | **A compiled gradient through a dead ReLU under a root was NaN.** A power whose derivative is infinite at a base of 0, `c*u^(c-1)*u'` for c < 1, multiplied the part 0 of a clause that has none by the infinity of its base's 0: `grad_(t = x) relu(t)^(1/2)*t` was NaN wherever x < 0, where the interpreter, the clause taken having no part, answers 0. C110 reached by a model, with no infinity written. Found reviewing the implementation of `grad` compiled (next in line). Such a power's part, for 0 < c < 1, is now tested where its base's is there, 0 elsewhere, in 4 lines; below 0 its value is infinite there too, the interpreter refusing the division, and its part stays NaN. `h` and `i` in `edge` in `test/compile/grad.ink` hold it. |
+| C119 `[fixed]` | **A term read where the clause's index is not seen named no index.** A call's body, or a grad's taking the index's name, does not see the clause's index, and the refusal of every term read there named it as empty: `f(t) = x_t` and `y_n = f(n)` said "x_(...): an index other than a whole multiple of  plus a constant", where the interpreter's y_3 is x_3. Found alongside C112. It now says "a term read where y's index is not seen", in 3 lines; `compile_c119` in `test/cli.cmake` holds it. Compiling such a read is not done. |
 
 **Measure instructions, not the clock.** One of those changes made the matrix
 workload 20 per cent slower by the clock and not by a single instruction: with
@@ -4432,7 +4445,9 @@ that exploring seven domains asked of the interpreter, by how many asked.
   - an answer of 0. C's minus makes the compiled `tanh(~0)` -0 where the
     definition's is 0 (C98), so the definition is asked rather than a sign
     assumed. Of a finite double the three give 0 only at `tanh(±0)`,
-    `log(~1)` and `exp` below -745.13;
+    `log(~1)` and `exp` below -745.13. Gone with C98's fix, which gives
+    every such 0 the definition's sign, by a sweep of 144,545 arguments,
+    19,176 of them answering 0, each 1/f the walk's;
   - `grad`, whose walk carries parts through the definitions and never
     passes here;
   - every run of `--check`: one estimating the interpreter's own error must
@@ -4541,3 +4556,172 @@ that exploring seven domains asked of the interpreter, by how many asked.
   877, the others as before. 43 lines of sources where about 30 were
   planned: 34 in `interpreter.hpp`, 5 of them includes, 5 in
   `reference_stack.hpp` and 4 in `Reference::Eval`. 13,853 lines in all.
+- `[done]` **`grad` compiled.** `--compile` refuses `grad`, "a derivative, for now",
+  so every training loop in `test/compile` writes its gradient by hand, and
+  the derivative the language checks is not the one deployed. The
+  conformance suite asks for both, backpropagation by hand beside the
+  gradient construct's.
+
+  Decided: forward, as the interpreter takes it and as differentiation's
+  entry foresaw, first derivatives only. Under `grad`, each value compiled
+  carries its part: cells of its own shape beside its cells, absent where
+  the interpreter's is, of a constant, `floor` or a comparison. A part is
+  made by the interpreter's rule for the node, in its order, out of the
+  compiler's own sums, products, quotients and powers, a constant part
+  folded exactly as the interpreter's is: a product's `a'*b + a*b'`, a
+  quotient's `(a' - q*b')/b`, q the quotient, a constant power's
+  `c*u^(c-1)*u'` with `pow` as written, `e^w`'s `e^w*w'`; a negation's part,
+  and a quotient's whose numerator has none, a subtraction from 0, `0.0 -
+  q*b'`, as C98, which lands before this, has every negation. So the gradient
+  the step computes is the interpreter's to the bit wherever its values are,
+  and `--check` holds it within 0. One with respect to a matrix is a pass
+  over the body per cell, its seed a constant, as in the interpreter; a
+  matrix's with respect to a single value has the matrix's shape. A grad
+  whose point and body read only constants folds, exactly.
+
+  What compiles: a point that is any value the step has, a term, a
+  parameter, an input; a body through arithmetic, transposes, literals,
+  cells and rows read, sums with constant bounds and functions compiled
+  where called, whose guards choose a clause as for the value, each chain of
+  values with its chain of parts beside it, so the clause that holds gives
+  the slope; and the prelude. A grad inside a limit's terms, Newton's step by its own
+  derivative, and one in a guard, a clipped gradient, are compiled as
+  anywhere.
+
+  Written where it is called, the prelude's part would write its argument
+  again at each reading, as its value did before it was a function of the
+  header's (*`exp`, `log` and `tanh` accurate*). So a function of the prelude
+  called on a value that moves has a C function for its part beside the one
+  for its value, emitted once: `fall_exp_dx(double arg_x, double part_x)`,
+  named with `d` and each parameter that moves, its parameters those its
+  part reads and then the parts. `ilogb`'s answer is a choice of constants,
+  so it has no part and no such function. Where an argument moves, its
+  value is a function too where that tests for a jump, `mod_ja`, a
+  `floor`'s or an equality guard's, as the interpreter refuses there (C117).
+  Taking one function for the
+  derivative, times the argument's part, was rejected: the interpreter
+  carries the part through each operation, and doubles do not distribute,
+  so the step would part from it by a unit here and there.
+
+  Where the interpreter refuses for the point's sake, the step is NaN,
+  written in the value where the refusal is made, so that it reaches every
+  term reading it as any refusal does: `floor` of a value that moves, where
+  it is whole, `(floor(u) == u ? NAN : floor(u))`; a comparison read as a
+  value whose sides move, where they meet; a guard's `==` or `<>` whose sides
+  move, where they meet, its clause then taken or left at the point alone; a
+  power of a moving base whose derivative is infinite there, at a base of 0.
+  In a header that writes NaN, a gradient is NaN where the value of what it
+  differentiates is, since only its part is kept; a clause refused wherever
+  it is taken, `log`'s `1/0`, is NaN in its part too. A refusal the shapes
+  decide stays one, in the interpreter's words: a body that does not read the
+  name, a definition reading the global of it, a Jacobian, an exponent that
+  changes with the name over any base but `e`, a body through an instance. An
+  index or a size that moves is refused as a place or a size that is not a
+  constant already is. Refused for now, as no model asks: a derivative of a
+  derivative, which needs four parts; of a limit whose arguments move, which
+  walks the parts too; of a matrix power; of a power whose exponent is
+  not a constant, which five lines would compile, its part absent where the
+  exponent is 0 by the conditions below, but which no model asks; and through a definition by cells, whose guards
+  the compiler takes as constants only (*Guards on cells at run time*).
+
+  `--check` needs nothing new. The interpreter's terms are its grad's,
+  walked by `derivative.hpp` in every run, the disturbed ones too, as
+  `steep` in `test/compile/estimate.ink` already shows. A flip is followed
+  for a sequence's guarded clauses only, so a guard inside the body, a
+  ReLU's, parts only by its values, as one inside a function called; a
+  guard reading a gradient is followed as any guard. In float the parts are
+  floats as the values are, the part functions rewritten with the rest.
+
+  A part that comes through a chain of guarded clauses is there by the
+  clauses, 0 where the clause taken has none, and carries beside it where it
+  is there at all: the chain's own conditions, 1 for a clause with a part
+  and 0 for one without, `relu`'s `z < 0 ? 0 : 1`. A `floor`, a comparison
+  or a power reading the value tests for a jump only where that holds, as
+  the interpreter, seeing no part, tests none: a dead ReLU unit's mask,
+  `t*(relu(t) > 0)` at t = -1, a clamp compared at its level and the floor
+  of a clamp answer as interpreted.
+
+  Known limits. Where the clause taken has no part, the part is 0, which an
+  infinite value multiplies to NaN where the interpreter has nothing to
+  multiply: `grad_(t = 6) f(t)*~(10^400)`, f a clamp at 1. A function of the
+  prelude saturated, `tanh` past 20 or `exp` past 1000 either way, has its
+  part wherever its argument has, so a `floor`, a comparison or an `==`
+  guard reading it tests a jump the interpreter, seeing no part, does not:
+  `grad_(t = x) floor(tanh(t))*t` is NaN past 20, where the interpreter
+  answers 1. And a division by zero is an infinity, as anywhere in the
+  header, which only the value carries: grad keeps the part, so
+  `grad_(t = x) (t + 1/(x - 2))` is 1 at 2, where the interpreter refuses.
+
+  Rejected: dual numbers in the header, a struct of value and part and a
+  function per operation, which is a second arithmetic to read beside the
+  doubles, and one for a float target, past which the cells, guards, NaN and
+  temporaries the compiler has would not reach; the derivative definitions
+  planned before differentiation, which shapes known while compiling make
+  possible here, but each refusal that needs a value, each absent part and
+  each guard would still be a node, and the parts over cells are that
+  transformation done where the compiler already is; reverse mode, an
+  adjoint step, one pass for every weight where forward takes one per
+  weight, as `MANIFESTO.md` places in the compiler, but whose roundings are
+  not the interpreter's, so that `--check` could hold it to the tolerance
+  only, and which needs a tape -- an entry of its own when a model with many
+  weights is too slow; finite differences, which are not the derivative and
+  suffer the rounding the oracle is for.
+
+  About 350 lines of sources, in `compile.hpp` but for the static refusals,
+  made shareable in `derivative.hpp`: the parts through Code, the rules, the
+  binding and seeding of the name, the chains of parts and of where they
+  are, the tests that are NaN and the prelude's part functions; re-estimated
+  by the review with those conditions and without cells, so past 525 the
+  implementation stops and reports. Sized against compiled `lim`, 167, and
+  the prelude's functions, 45 in the compiler: the interpreter's 830
+  include a memo, a fill, a walk of limits and derivatives of every order,
+  none of which the step has. 13,915 lines in all before it, after
+  `fixes`, about 14,265 after.
+
+  Specified in `test/compile/grad.ink`, its numbers worked out apart from
+  the interpreter, by hand, with exact fractions, by the step's operations
+  in doubles and floats in C and numpy, and by mpmath: `line`, least
+  squares on exact data, its terms exact fractions, `within 4.4e-16`, and in
+  float `within 2.7e-07, 1.9 units of a float`, with its step written out;
+  `fall`, `test/data/prelude.ink`'s logistic regression on its log loss,
+  grad's gradient beside the one written by hand, each within 0, and two of
+  its part functions; `hinge`, a ReLU applied to each cell; `edge`, a NaN for each
+  refusal the point decides, and a grad folded; `clip`, a clipped gradient;
+  `steer`, Newton's method by grad's derivative inside a limit; and the
+  refusals, a file of ten. Wired with the implementation: the six checks
+  and their reports in `test/CMakeLists.txt`, `line` in float, and the
+  refusals in `test/cli.cmake`. Nothing that compiles today reads `grad`, so
+  no golden, header or report moves; README's paragraph on what the compiler
+  refuses gains a sentence.
+
+  Built as specified: every report as `grad.ink` gives it, `line` in float
+  too, the two header excerpts byte for byte, and the ten refusals in their
+  words; every other header, check program and report as before. A part is
+  a `Code` beside the value's, so it rides through calls, chains and limits'
+  terms as the value does; the name is bound as a call binds a parameter,
+  and the interpreter's own `Derivative::Names` refuses what the body's names
+  decide. Departures. A comparison or a `floor` at a jump at a constant point
+  is NaN at every step rather than folded past, `j` and `o` in `edge`, found
+  on the way. A function of the prelude's part is there wherever an
+  argument's is: the conditions of its own clauses stay inside its part
+  function. A clause refused wherever taken is NaN in its part only where
+  another clause has one, so `ilogb` has neither. A cell read of a constant
+  matrix point is a double, not folded exactly. A body through an instance
+  of a model is refused where an argument moves, not wherever it reads the
+  name, and through an instance with memory written there as in a call. A
+  function of the prelude is written only where something calls it: a part
+  a `floor` or a comparison drops leaves one nothing does, which Clang
+  would not build.
+  Found on the way and registered: C110, an infinite product's 0 part; C111,
+  the prelude's part jump lost after a `floor` or a comparison; C112, a
+  global read inside a function compiled with the function's parameters,
+  which `grad` refuses only where it reads grad's own name; and by its
+  review, C113 to C118, fixed, and C111 with C117. 387 lines of sources
+  more, where about 350 were planned: 381 in `compile.hpp` and 6 in
+  `derivative.hpp`. 14,307 lines in all.
+- **Guards on cells at run time.** A definition by cells whose guard reads
+  what is not a constant, a ReLU written by its cells, is refused; compiled,
+  each cell a chain, it would carry `grad`'s parts through cells too.
+- **The prelude's part functions for the interpreter's `grad`.** Checked
+  into `inkamath_prelude.h` beside the values, they would spare its walk of
+  `exp`, `log` and `tanh` under `grad`, about 2.6 times faster.

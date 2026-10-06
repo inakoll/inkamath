@@ -74,7 +74,8 @@ public:
                                              std::to_string(n) + ") has " +
                                              std::to_string(input.cells.size()) +
                                              " cells, where the compiled step takes a single "
-                                             "value");
+                                             "value" +
+                                             Unstated(*unfed.model, compiled.inputs[k], input));
                 for (const double x : input.reals)
                     values.push_back(!floats           ? Double(x)
                                      : std::signbit(x) ? "-" + CompileC::Double(-x)
@@ -83,6 +84,30 @@ public:
             data += Array("const " + CompileC::Real(), "in_" + std::to_string(k),
                           steps * compiled.cells[k], values);
         }
+        // A term of an instance the model writes unnamed is asked of one made
+        // again where the instance checked has it, as written (C84): the
+        // interpreter cannot name it.
+        std::map<std::string, std::shared_ptr<const Scope<Value>>> made;
+        for (const auto& [label, kept] : compiled.unnamed) {
+            const Scope<Value>* written = stack.InstanceScope(definition);
+            for (std::size_t at = 0, point; (point = label.find('.', at)) != std::string::npos;
+                 at             = point + 1) {
+                const auto outer = made.find(label.substr(0, point));
+                written =
+                    outer != made.end()
+                        ? outer->second.get()
+                        : stack.InstanceScope(written->names.at(label.substr(at, point - at)));
+            }
+            made[label] = stack.Detached(*kept.model, *kept.call, *written, instance + "." + label,
+                                         kept.captured);
+        }
+        const auto ask = [&](const CompileC::Compiled::Sequence& sequence, int index) {
+            if (!sequence.unnamed) return At(session, instance + "." + sequence.name, index);
+            const std::size_t                            dot = sequence.name.rfind('.');
+            const typename ReferenceStack<Value>::Within within(
+                stack, made.at(sequence.name.substr(0, dot)).get());
+            return At(session, sequence.name.substr(dot + 1), index);
+        };
         // The interpreter's own error, estimated (DESIGN.md): each term asked
         // three times more, apart, every rounding disturbed and every limit
         // moved by its remainder, up, down, then either way.
@@ -93,14 +118,11 @@ public:
                 const Setting<Number::Disturbance*> disturbing(Number::disturbed, &disturbance);
                 for (const auto& sequence : compiled.sequences) {
                     for (int n = first; n < first + steps; ++n) {
-                        if (sequence.unnamed || (n < sequence.start && sequence.period > 1))
-                            continue;
-                        const std::string name  = instance + "." + sequence.name;
-                        const int         index = Floor(n - sequence.phase, sequence.period);
-                        const auto result = session.Eval(name + "_(" + std::to_string(index) + ")");
-                        const auto* value = std::get_if<Value>(&result);
-                        again[{name, index}].push_back(value ? std::optional(*value)
-                                                             : std::nullopt);
+                        if (n < sequence.start && sequence.period > 1) continue;
+                        const int  index = Floor(n - sequence.phase, sequence.period);
+                        const Term term  = ask(sequence, index);
+                        again[{instance + "." + sequence.name, index}].push_back(
+                            term.error.empty() ? std::optional(term.value) : std::nullopt);
                     }
                 }
             });
@@ -110,13 +132,6 @@ public:
             const auto&              sequence = compiled.sequences[k];
             const std::size_t        cells    = sequence.rows * sequence.cols;
             const std::string        id = std::to_string(k), size = std::to_string(steps * cells);
-            // A term a model writes unnamed is not asked: the interpreter
-            // cannot name it (C84).
-            if (sequence.unnamed) {
-                held += "    printf(\"" + instance + "." + sequence.name +
-                        ": not asked, as the interpreter cannot name it\\n\");\n";
-                continue;
-            }
             std::vector<std::string> want, known, why;
             std::vector<double>      about(steps * cells);
             for (int n = first; n < first + steps; ++n) {
@@ -127,7 +142,7 @@ public:
                 const int         index  = Floor(n - sequence.phase, sequence.period);
                 const Term        term   = before && sequence.period > 1
                                                ? Term{{}, true, "not asked", {}, {}, {}}
-                                               : At(session, name, index);
+                                               : ask(sequence, index);
                 if (!term.exact && (!inexact || n < *inexact)) inexact = n;
                 const bool given = term.error.empty();
                 const char kind  = !given              ? (before ? '0' : '2')
@@ -175,8 +190,13 @@ public:
                                                       std::to_string(compiled.cells[k]) + "]";
         std::string table;
         for (std::size_t k = 0; k < compiled.guarded.size(); ++k) {
-            const std::string&       name      = compiled.guarded[k];
-            const Reference<Value>&  reference = Resolve(stack, definition, name);
+            const std::string& name = compiled.guarded[k];
+            const auto found = std::find_if(compiled.sequences.begin(), compiled.sequences.end(),
+                                            [&](const auto& s) { return s.name == name; });
+            const std::size_t       dot = name.rfind('.');
+            const Reference<Value>& reference =
+                found->unnamed ? *made.at(name.substr(0, dot))->names.at(name.substr(dot + 1))
+                               : Resolve(stack, definition, name);
             const auto&              clauses   = reference.Clauses();
             const std::string        id = std::to_string(k), count = std::to_string(clauses.size());
             // A term chosen cell by cell is reported cell by cell; the clause
@@ -198,8 +218,6 @@ public:
             }
             data += Array("const char* const", "written_" + id, clauses.size() + 1, written);
             data += Array("const int", "rank_" + id, clauses.size() + 1, rank);
-            const auto found = std::find_if(compiled.sequences.begin(), compiled.sequences.end(),
-                                            [&](const auto& s) { return s.name == name; });
             // At another rate, the clause of the latest term computed, none before.
             const auto term = [&](int n) {
                 return found->period > 1 && n < found->start
@@ -452,6 +470,18 @@ private:
         Value                    value;
         std::vector<double>      reals;  // the cells, as doubles
     };
+
+    // How its model would state the size of an input given a matrix (C83).
+    static std::string Unstated(const Model<Value>& model, const std::string& name,
+                                const Term& input) {
+        const auto   p    = std::find_if(model.parameters.begin(), model.parameters.end(),
+                                         [&](const auto& each) { return each.name == name; });
+        const Extent size = input.value.Size();
+        if (p == model.parameters.end() || !p->bounds.empty() || size.slices) return "";
+        return ", as " + model.header.substr(0, model.header.find('(')) + " states no size for " +
+               name + ": write '" + name + "_" + p->index + "[j<=" + std::to_string(size.rows) +
+               (size.cols > 1 ? ", k<=" + std::to_string(size.cols) : "") + "]'";
+    }
 
     static Term At(Interpreter<Number>& session, const std::string& name, int n) {
         const std::string term   = name + "_(" + std::to_string(n) + ")";

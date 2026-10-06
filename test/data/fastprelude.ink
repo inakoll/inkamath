@@ -53,9 +53,9 @@ digits = 17
 >> ilogb(~1.7976931348623157e308)
 1023
 
-# An answer of 0 is the definition's, whose minus is a subtraction from 0
-# (C33), so never -0; C's minus in tanhe makes the compiled tanh(0) -0
-# (C98). Nor is an answer of 0 the only one taken: past -745.13 exp is 0.
+# An answer of 0 has the definition's sign, whose minus is a subtraction
+# from 0 (C33), so never -0, as the compiled one's is since C98. Past
+# -745.13 exp is 0.
 >> tanh(~0)
 0
 
@@ -108,7 +108,7 @@ error: division by zero
 error: division by zero
 
 >> log(~1/0)
-error: a comparison needs a number, not -nan
+inf
 
 >> exp(~0/0)
 error: a comparison needs a number, not -nan
@@ -116,8 +116,9 @@ error: a comparison needs a number, not -nan
 >> exp(~1/0)
 inf
 
+# ilogb tries no power of two past 2^3321 (C101).
 >> ilogb(~1/0)
-4095
+3321
 
 # A double approximated past a thousand digits stays so through the
 # definition, which says it.
