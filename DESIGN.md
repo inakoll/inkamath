@@ -4798,9 +4798,10 @@ that exploring seven domains asked of the interpreter, by how many asked.
 
   The float figures are the design emulated with floats operation by
   operation, its constants the floats nearest the header's doubles, 2.20
-  units at the 300 floats nearest a multiple of pi/2 there; past 6434, k
-  times 3217 rounds in a float and the error grows to x*2^-24, within the
-  spacing of floats at x, which `--check --float` shows.
+  units at the 300 floats nearest a multiple of pi/2 there, 1.9 on to 8192;
+  past 8192, k times 3217 passes 2^24 and rounds in a float, and the error
+  grows to x*2^-24, within the spacing of floats at x, which `--check
+  --float` shows.
 
   Nothing `sin` and `cos` give is exact: `sin(0)` and `cos(0)` are a double's
   0 and 1, as `exp(0)` is a double's 1. A clause for 0 would make them exact,
