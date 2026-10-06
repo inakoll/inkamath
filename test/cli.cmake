@@ -859,6 +859,13 @@ cannot compile c: a guarded cell of one term
 set(exit 1)
 check(compile_cellguards_refused)
 
+# C132: a gradient with respect to a matrix that nothing moves is a zero of
+# the point's shape, not of the body's.
+file(WRITE "${OUT}/c132.ink" "f(z)[i] | z[i] > 0 = 1\nf(z)[i] = 0\nu_n = grad_(v = [x_n; 1]) [1 1]*f(v)\n")
+set(args --compile c132.ink -o c132.h)
+check(compile_c132)
+holds(compile_c132 c132.h "    m_->u[0][0][0] = 0.0;\n    m_->u[0][1][0] = 0.0;\n")
+
 # C115: a constant gradient at a point that moves is no constant to fold with
 # what reads it, a fold that would take the point again.
 file(WRITE "${OUT}/c115.ink" "u_n = x_n - grad_(t = x_n) 3*t\n")

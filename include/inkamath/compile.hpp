@@ -2918,7 +2918,7 @@ private:
             any = any || !body.part.empty();
         }
         Code out = point.Scalar() ? parts[0] : Assembled(parts, point.size);
-        if (!any) out = Literal(Value(body.size));
+        if (!any) out = Literal(Value(point.Scalar() ? body.size : point.size));
         out.part.clear();
         // A fold reading it would take its point and body again (C115).
         if (!point.constant || !body.constant) out.constant.reset();
