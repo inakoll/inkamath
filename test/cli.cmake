@@ -769,3 +769,13 @@ file(WRITE "${OUT}/c115.ink" "u_n = x_n - grad_(t = x_n) 3*t\n")
 set(args --compile c115.ink -o c115.h)
 check(compile_c115)
 holds(compile_c115 c115.h "    m_->u[0] = m_->x[0] - 3.0;\n")
+
+# C112: a global a call reads sees the globals, not the call's names.
+file(WRITE "${OUT}/c112.ink" "f(x) = x + g\ng = x*2\nx = 5\ny_n = f(n)\n")
+set(args --compile c112.ink -o c112.h)
+check(compile_c112)
+holds(compile_c112 c112.h "    m_->g = m_->x * 2.0;\n" "    m_->y[0] = (double)m_->index_ + m_->g;\n")
+file(WRITE "${OUT}/c112m.ink" "m(x) = {\n    y = x + g\n}\ng = x*2\nx = 5\nz_n = m(n).y\n")
+set(args --compile c112m.ink -o c112m.h)
+check(compile_c112_instance)
+holds(compile_c112_instance c112m.h "    m_->g = m_->x * 2.0;\n")

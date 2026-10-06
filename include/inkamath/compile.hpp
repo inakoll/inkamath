@@ -1807,8 +1807,8 @@ private:
             return Answer(Read(derived));
         }
         if (!reading_plain_.insert(key).second) throw Reason(key + " is defined by itself");
-        // A global is evaluated in a scope of its own, where no index or place
-        // is seen.
+        // A global is evaluated in a scope of its own, where no index, place
+        // or call's name is seen (C112).
         Sequence* const   reading = std::exchange(reading_, nullptr);
         const std::string index   = std::exchange(index_, std::string());
         const auto             places  = std::exchange(places_, Captured(definition));
@@ -1819,7 +1819,8 @@ private:
         const auto cells = [](const Clause<Value>& c) { return c.parameters.cells(); };
         Code       code;
         {
-            const Home home(*this, definition);
+            const Home                home(*this, definition);
+            const Setting<Expansion*> uncalled(expansion_, nullptr);
             code = std::any_of(definition->Clauses().begin(), definition->Clauses().end(), cells)
                        ? Cells(key, *definition)
                        : Emit(definition->Clauses().front().expression);
