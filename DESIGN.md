@@ -1641,6 +1641,15 @@ closures need one anyway, and can bring it.
 | C107 `[fixed]` | **Two named instances of one model shared the unnamed instance it writes.** An unnamed instance was kept by where it is written and what it reads there, not by the instance that writes it, so with `a = veil(x_n = y_n)` and `b = veil(x_n = 2*y_n)` in a model, `veil` writing `bare(u_n = x_n).c_n`, the header kept one copy, `a`'s, and `b.c` read `a.c_bare.c`: `--check` reported `two.b.c: 1 at 2, where the interpreter gives 2`. It is now kept by its scope too, in 1 line; `two` in `test/compile/history.ink` holds it. |
 | C108 `[fixed]` | **`--check` refused an unnamed instance with a guarded clause.** The check reads a guarded sequence's clauses, to report a guard that takes another clause, from the instance checked by the sequence's name, and an unnamed instance's is no name there: with `c_n \| u_n > 2 = 2` and `c_n = u_n` in `capped(u_n)`, and `c_n = capped(u_n = x_n).c_n` in `cap(x_n)`, checking `hid = cap(x_n = n)` stopped, "the instance has no sequence c_capped.c", before and after C84's fix. They are now read from the instance made again for its terms (C84), in 4 lines; `hid` in `test/compile/history.ink` holds it. |
 | C109 `[open]` | **A compiled subtraction of +0 from -0 is -0.** The interpreter reads `a - b` as `a + -b`, the negation `0 - b` (C33), and the compiler writes it as C's `a - b`, alike but at a = -0 and b = +0, where the step has -0 and the interpreter +0: `1/(~0*(-1) - ~0)` is inf interpreted and -inf compiled. `--check` holds -0 equal to 0. Left open by C98's fix. Closing it is a decision about signed zeros: the compiler writing `a + (0.0 - b)`, or the interpreter subtracting directly. |
+| C110 `[kept]` | **A compiled gradient through a clause with no part times an infinity is NaN.** A part is there by the clauses, 0 where the clause taken has none, so `grad_(t = 6) f(t)*~(10^400)`, f a clamp at 1, has 0 times inf for its part, NaN, where the interpreter has no part to multiply and answers 0. Kept: a part of 0 is what lets a chain of clauses be one C expression, and only an infinity tells it from none; testing where each product's part is there costs a condition per product for a value no model reaches. A power whose derivative is infinite at a base of 0 reached it without an infinity written, and is tested since (C118); what stays needs an infinite value, written or a quotient's: an inexact value divided by a dead clause's 0 is an infinity in the interpreter too, so `grad_(t = x) (~(1/3)/relu(t) + t)` is NaN where x < 0 and the interpreter answers 1. Testing a quotient's part where its divisor's is there costs a choice of two parts, about 5 lines, against the power's 3. Found specifying `grad` compiled (next in line); `apart` in `test/compile/grad.ink` holds it, its program failing. |
+| C111 `[fixed]` | **A compiled gradient answered where the jump inside `exp`'s part is dropped.** `exp` reduces by `floor(x*1.4426950408889634 + 1/2)`, and at the few doubles where that is whole, ~0.34657359027997264 among them, the interpreter refuses `grad` of `exp` as it refuses any `floor` at a jump, and the compiled part function is NaN there. Where a `floor` or a comparison then reads `exp`'s value and drops its part, `grad_(t = x) floor(exp(t))*t` is 1 compiled and refused interpreted. The interpreter's refusal is itself spurious, `exp` being smooth there; the compiler's NaN follows the interpreter's. Found reviewing the specification of `grad` compiled. Fixed with C117: `exp`'s value where its argument moves is a function of its own that tests the jump, so the `floor` reads NaN there; `smooth` in `test/compile/grad.ink` holds it. |
+| C112 `[open]` | **A global read inside a compiled function reads the function's parameters.** A function is compiled where it is called, its parameters bound for its body, and a global its body reads is compiled where it stands but still sees those bindings: with `f(x) = x + g`, `g = x*2`, `x = 5` and `y_n = f(n)`, the interpreter's y_3 is 13, and the header computes `m_->g = (double)y * 2.0`, the call's argument, in `update`, which is no C. `grad` refuses one that reads grad's own name, through `Derivative::Names`; nothing refuses the rest. Found implementing `grad` compiled (next in line). |
+| C113 `[fixed]` | **A compiled gradient answered where the interpreter refuses in a value no part reads.** The test for a refusal is written in the value, a `floor`'s or a comparison's, and `grad` keeps only the part, so where no part reads that value and the header writes no NaN otherwise, the test was dropped with it: `grad_(t = x_n) (t - floor(t))` was 1 at every whole x, where the interpreter says the floor jumps, and so for a comparison, a clause refused wherever taken and a power whose derivative is infinite. Found reviewing the implementation of `grad` compiled (next in line). A body whose value writes NaN now makes the header write it, as a cell not taken does, so its gradient is NaN where that value is, in 1 line; `saw` in `test/compile/grad.ink` holds it. |
+| C114 `[fixed]` | **Where one of two operands' parts is there was read by C as one conditional.** Each is a chain of conditionals, `z < 0.0 ? 0 : 1`, and they were joined by `||` unparenthesised, which binds tighter: `a ? 0 : 1 || b ? 0 : 1` is false wherever the first is, so a comparison of a dead ReLU unit with a live one, `grad_(t = x_n - 1) (r(t - 1/2) > r(t))*t` with r a ReLU, was 0 at t = 0, where they meet and the interpreter, the live one moving, says the comparison jumps. Found reviewing the implementation of `grad` compiled (next in line). Each is now parenthesised, in the same line; `m` in `edge` in `test/compile/grad.ink` holds it. |
+| C115 `[fixed]` | **A constant gradient at a point that moves refused what read it.** A gradient whose part is a constant, `grad_(t = x_n) 3*t`, was a constant of the step, and an operator reading two constants folds by the interpreter, which takes the grad again, point and body, without the step's names: `u_n = x_n - grad_(t = x_n) 3*t` said "cannot compile u: n is not defined", in a header that writes no NaN, where an aware one compiled it. Found reviewing the implementation of `grad` compiled (next in line). It is now a constant only where its point and body are, in 1 line; `compile_c115` in `test/cli.cmake` holds it. What reads it then rounds in the step: `(1/10)*grad_(t = x_n) 3*t` is `0.1 * 3.0` there and 3/10 interpreted, a unit apart. |
+| C116 `[fixed]` | **A power's infinite derivative at a constant point was infinite.** The test for a base of 0 under a power whose derivative is infinite there was written only for a base that is not a constant, and at a constant point the part folds: `n*grad_(t = 0) t^(1/2)` was `index_ * INFINITY`, where the interpreter refuses every term. Found reviewing the implementation of `grad` compiled (next in line). A constant base of 0 is now tested too, so the step is NaN at every n, as for a comparison or a `floor` at a jump at a constant point, in the same line; `v` in `edge` in `test/compile/grad.ink` holds it. |
+| C117 `[fixed]` | **A compiled gradient through `ceil` or `mod` answered at `floor`'s jump.** Each is the prelude's by `floor`, compiled as a function of the header's from its body without parts, so its `floor` tested no jump: `grad_(t = x) mod(t, 2)` was 1 and `grad_(t = x) ceil(t)*t` was `ceil(t)` at every whole x, where the interpreter says the floor jumps. Found reviewing the implementation of `grad` compiled (next in line). Where an argument moves, the value is now its body carrying parts, a function of its own, `mod_ja`, where that tests for a jump, and the plain one where the arguments' clauses leave nothing moving; its call makes the header write NaN, so that a grad that drops the value is NaN where it is (C113). In 14 lines; `ring` and `notch` in `test/compile/grad.ink` hold it. |
+| C118 `[fixed]` | **A compiled gradient through a dead ReLU under a root was NaN.** A power whose derivative is infinite at a base of 0, `c*u^(c-1)*u'` for c < 1, multiplied the part 0 of a clause that has none by the infinity of its base's 0: `grad_(t = x) relu(t)^(1/2)*t` was NaN wherever x < 0, where the interpreter, the clause taken having no part, answers 0. C110 reached by a model, with no infinity written. Found reviewing the implementation of `grad` compiled (next in line). Such a power's part, for 0 < c < 1, is now tested where its base's is there, 0 elsewhere, in 4 lines; below 0 its value is infinite there too, the interpreter refusing the division, and its part stays NaN. `h` and `i` in `edge` in `test/compile/grad.ink` hold it. |
 
 **Measure instructions, not the clock.** One of those changes made the matrix
 workload 20 per cent slower by the clock and not by a single instruction: with
@@ -4546,3 +4555,172 @@ that exploring seven domains asked of the interpreter, by how many asked.
   877, the others as before. 43 lines of sources where about 30 were
   planned: 34 in `interpreter.hpp`, 5 of them includes, 5 in
   `reference_stack.hpp` and 4 in `Reference::Eval`. 13,853 lines in all.
+- `[done]` **`grad` compiled.** `--compile` refuses `grad`, "a derivative, for now",
+  so every training loop in `test/compile` writes its gradient by hand, and
+  the derivative the language checks is not the one deployed. The
+  conformance suite asks for both, backpropagation by hand beside the
+  gradient construct's.
+
+  Decided: forward, as the interpreter takes it and as differentiation's
+  entry foresaw, first derivatives only. Under `grad`, each value compiled
+  carries its part: cells of its own shape beside its cells, absent where
+  the interpreter's is, of a constant, `floor` or a comparison. A part is
+  made by the interpreter's rule for the node, in its order, out of the
+  compiler's own sums, products, quotients and powers, a constant part
+  folded exactly as the interpreter's is: a product's `a'*b + a*b'`, a
+  quotient's `(a' - q*b')/b`, q the quotient, a constant power's
+  `c*u^(c-1)*u'` with `pow` as written, `e^w`'s `e^w*w'`; a negation's part,
+  and a quotient's whose numerator has none, a subtraction from 0, `0.0 -
+  q*b'`, as C98, which lands before this, has every negation. So the gradient
+  the step computes is the interpreter's to the bit wherever its values are,
+  and `--check` holds it within 0. One with respect to a matrix is a pass
+  over the body per cell, its seed a constant, as in the interpreter; a
+  matrix's with respect to a single value has the matrix's shape. A grad
+  whose point and body read only constants folds, exactly.
+
+  What compiles: a point that is any value the step has, a term, a
+  parameter, an input; a body through arithmetic, transposes, literals,
+  cells and rows read, sums with constant bounds and functions compiled
+  where called, whose guards choose a clause as for the value, each chain of
+  values with its chain of parts beside it, so the clause that holds gives
+  the slope; and the prelude. A grad inside a limit's terms, Newton's step by its own
+  derivative, and one in a guard, a clipped gradient, are compiled as
+  anywhere.
+
+  Written where it is called, the prelude's part would write its argument
+  again at each reading, as its value did before it was a function of the
+  header's (*`exp`, `log` and `tanh` accurate*). So a function of the prelude
+  called on a value that moves has a C function for its part beside the one
+  for its value, emitted once: `fall_exp_dx(double arg_x, double part_x)`,
+  named with `d` and each parameter that moves, its parameters those its
+  part reads and then the parts. `ilogb`'s answer is a choice of constants,
+  so it has no part and no such function. Where an argument moves, its
+  value is a function too where that tests for a jump, `mod_ja`, a
+  `floor`'s or an equality guard's, as the interpreter refuses there (C117).
+  Taking one function for the
+  derivative, times the argument's part, was rejected: the interpreter
+  carries the part through each operation, and doubles do not distribute,
+  so the step would part from it by a unit here and there.
+
+  Where the interpreter refuses for the point's sake, the step is NaN,
+  written in the value where the refusal is made, so that it reaches every
+  term reading it as any refusal does: `floor` of a value that moves, where
+  it is whole, `(floor(u) == u ? NAN : floor(u))`; a comparison read as a
+  value whose sides move, where they meet; a guard's `==` or `<>` whose sides
+  move, where they meet, its clause then taken or left at the point alone; a
+  power of a moving base whose derivative is infinite there, at a base of 0.
+  In a header that writes NaN, a gradient is NaN where the value of what it
+  differentiates is, since only its part is kept; a clause refused wherever
+  it is taken, `log`'s `1/0`, is NaN in its part too. A refusal the shapes
+  decide stays one, in the interpreter's words: a body that does not read the
+  name, a definition reading the global of it, a Jacobian, an exponent that
+  changes with the name over any base but `e`, a body through an instance. An
+  index or a size that moves is refused as a place or a size that is not a
+  constant already is. Refused for now, as no model asks: a derivative of a
+  derivative, which needs four parts; of a limit whose arguments move, which
+  walks the parts too; of a matrix power; of a power whose exponent is
+  not a constant, which five lines would compile, its part absent where the
+  exponent is 0 by the conditions below, but which no model asks; and through a definition by cells, whose guards
+  the compiler takes as constants only (*Guards on cells at run time*).
+
+  `--check` needs nothing new. The interpreter's terms are its grad's,
+  walked by `derivative.hpp` in every run, the disturbed ones too, as
+  `steep` in `test/compile/estimate.ink` already shows. A flip is followed
+  for a sequence's guarded clauses only, so a guard inside the body, a
+  ReLU's, parts only by its values, as one inside a function called; a
+  guard reading a gradient is followed as any guard. In float the parts are
+  floats as the values are, the part functions rewritten with the rest.
+
+  A part that comes through a chain of guarded clauses is there by the
+  clauses, 0 where the clause taken has none, and carries beside it where it
+  is there at all: the chain's own conditions, 1 for a clause with a part
+  and 0 for one without, `relu`'s `z < 0 ? 0 : 1`. A `floor`, a comparison
+  or a power reading the value tests for a jump only where that holds, as
+  the interpreter, seeing no part, tests none: a dead ReLU unit's mask,
+  `t*(relu(t) > 0)` at t = -1, a clamp compared at its level and the floor
+  of a clamp answer as interpreted.
+
+  Known limits. Where the clause taken has no part, the part is 0, which an
+  infinite value multiplies to NaN where the interpreter has nothing to
+  multiply: `grad_(t = 6) f(t)*~(10^400)`, f a clamp at 1. A function of the
+  prelude saturated, `tanh` past 20 or `exp` past 1000 either way, has its
+  part wherever its argument has, so a `floor`, a comparison or an `==`
+  guard reading it tests a jump the interpreter, seeing no part, does not:
+  `grad_(t = x) floor(tanh(t))*t` is NaN past 20, where the interpreter
+  answers 1. And a division by zero is an infinity, as anywhere in the
+  header, which only the value carries: grad keeps the part, so
+  `grad_(t = x) (t + 1/(x - 2))` is 1 at 2, where the interpreter refuses.
+
+  Rejected: dual numbers in the header, a struct of value and part and a
+  function per operation, which is a second arithmetic to read beside the
+  doubles, and one for a float target, past which the cells, guards, NaN and
+  temporaries the compiler has would not reach; the derivative definitions
+  planned before differentiation, which shapes known while compiling make
+  possible here, but each refusal that needs a value, each absent part and
+  each guard would still be a node, and the parts over cells are that
+  transformation done where the compiler already is; reverse mode, an
+  adjoint step, one pass for every weight where forward takes one per
+  weight, as `MANIFESTO.md` places in the compiler, but whose roundings are
+  not the interpreter's, so that `--check` could hold it to the tolerance
+  only, and which needs a tape -- an entry of its own when a model with many
+  weights is too slow; finite differences, which are not the derivative and
+  suffer the rounding the oracle is for.
+
+  About 350 lines of sources, in `compile.hpp` but for the static refusals,
+  made shareable in `derivative.hpp`: the parts through Code, the rules, the
+  binding and seeding of the name, the chains of parts and of where they
+  are, the tests that are NaN and the prelude's part functions; re-estimated
+  by the review with those conditions and without cells, so past 525 the
+  implementation stops and reports. Sized against compiled `lim`, 167, and
+  the prelude's functions, 45 in the compiler: the interpreter's 830
+  include a memo, a fill, a walk of limits and derivatives of every order,
+  none of which the step has. 13,915 lines in all before it, after
+  `fixes`, about 14,265 after.
+
+  Specified in `test/compile/grad.ink`, its numbers worked out apart from
+  the interpreter, by hand, with exact fractions, by the step's operations
+  in doubles and floats in C and numpy, and by mpmath: `line`, least
+  squares on exact data, its terms exact fractions, `within 4.4e-16`, and in
+  float `within 2.7e-07, 1.9 units of a float`, with its step written out;
+  `fall`, `test/data/prelude.ink`'s logistic regression on its log loss,
+  grad's gradient beside the one written by hand, each within 0, and two of
+  its part functions; `hinge`, a ReLU applied to each cell; `edge`, a NaN for each
+  refusal the point decides, and a grad folded; `clip`, a clipped gradient;
+  `steer`, Newton's method by grad's derivative inside a limit; and the
+  refusals, a file of ten. Wired with the implementation: the six checks
+  and their reports in `test/CMakeLists.txt`, `line` in float, and the
+  refusals in `test/cli.cmake`. Nothing that compiles today reads `grad`, so
+  no golden, header or report moves; README's paragraph on what the compiler
+  refuses gains a sentence.
+
+  Built as specified: every report as `grad.ink` gives it, `line` in float
+  too, the two header excerpts byte for byte, and the ten refusals in their
+  words; every other header, check program and report as before. A part is
+  a `Code` beside the value's, so it rides through calls, chains and limits'
+  terms as the value does; the name is bound as a call binds a parameter,
+  and the interpreter's own `Derivative::Names` refuses what the body's names
+  decide. Departures. A comparison or a `floor` at a jump at a constant point
+  is NaN at every step rather than folded past, `j` and `o` in `edge`, found
+  on the way. A function of the prelude's part is there wherever an
+  argument's is: the conditions of its own clauses stay inside its part
+  function. A clause refused wherever taken is NaN in its part only where
+  another clause has one, so `ilogb` has neither. A cell read of a constant
+  matrix point is a double, not folded exactly. A body through an instance
+  of a model is refused where an argument moves, not wherever it reads the
+  name, and through an instance with memory written there as in a call. A
+  function of the prelude is written only where something calls it: a part
+  a `floor` or a comparison drops leaves one nothing does, which Clang
+  would not build.
+  Found on the way and registered: C110, an infinite product's 0 part; C111,
+  the prelude's part jump lost after a `floor` or a comparison; C112, a
+  global read inside a function compiled with the function's parameters,
+  which `grad` refuses only where it reads grad's own name; and by its
+  review, C113 to C118, fixed, and C111 with C117. 387 lines of sources
+  more, where about 350 were planned: 381 in `compile.hpp` and 6 in
+  `derivative.hpp`. 14,307 lines in all.
+- **Guards on cells at run time.** A definition by cells whose guard reads
+  what is not a constant, a ReLU written by its cells, is refused; compiled,
+  each cell a chain, it would carry `grad`'s parts through cells too.
+- **The prelude's part functions for the interpreter's `grad`.** Checked
+  into `inkamath_prelude.h` beside the values, they would spare its walk of
+  `exp`, `log` and `tanh` under `grad`, about 2.6 times faster.
