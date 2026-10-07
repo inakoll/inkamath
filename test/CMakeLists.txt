@@ -125,7 +125,9 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brin
                          tensor:speck cellguards:rfit cellguards:tfit cellguards:layer
                          cellguards:kink cellguards:crest cellguards:mask cellguards:order
                          grad:swing thresholds:dies thresholds:beat stable:moments stable:peak
-                         reddi:thm1 reddi:fixed reddi:gen)
+                         reddi:thm1 reddi:fixed reddi:gen
+                         kahan:sums kahan:muller kahan:rounded kahan:surprise kahan:solveur
+                         rump:rump)
     string(REPLACE ":" ";" checked ${checked})
     list(GET checked 0 file)
     list(GET checked 1 instance)
@@ -256,6 +258,21 @@ set_tests_properties(check_fixed_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^fixed: 100 steps from 0${until2}\nfixed\\.x: within 0, from 1${about}\nfixed\\.R: within 0${about}\nfixed\\.g: within 0, from 1\nfixed\\.v: within 2\\.2e-16\nfixed\\.w: within 0\n$")
 set_tests_properties(check_gen_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^gen: 100 steps from 0${until2}\ngen\\.h: within 0, from 2${about}\ngen\\.x: within 0, from 1${about}\ngen\\.R: within 0${about}\ngen\\.g: within 0, from 1\ngen\\.m: within 1\\.1e-16\ngen\\.v: within 0\n$")
+# Kahan (2006): Muller's recurrence parting where the paper's table has it,
+# and Rump's example (2010) at once; compile/kahan.ink and rump.ink.
+set(inexact0 ", against exact values until 0 and inexact ones from there")
+set_tests_properties(check_sums_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^sums: 100 steps from 0, against exact values\nsums\\.c: within 9e-13, from 1\nsums\\.o: within 3\\.6e-12\nsums\\.plain: within 5\\.5e-12\nsums\\.s: within 1\\.8e-12\nsums\\.comp: within 9e-13\nsums\\.total: within 1\\.8e-12\n$")
+set_tests_properties(check_muller_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^muller: 100 steps from 0, against exact values\nmuller\\.x: 4\\.9455373955305078 at 7, where the interpreter gives 4\\.9455374041239164\n$")
+set_tests_properties(check_rounded_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^rounded: 100 steps from 0${inexact0}\nrounded\\.x: within 0${about}, past the tolerance from 7\n$")
+set_tests_properties(check_surprise_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^surprise: 100 steps from 0${inexact0}\nsurprise\\.g: within 0${about}, past the tolerance from 0\nsurprise\\.k: within 0${about}\n$")
+set_tests_properties(check_solveur_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^solveur: 100 steps from 0, against exact values\nsolveur\\.d: within 0\nsolveur\\.z: within 0\n$")
+set_tests_properties(check_rump_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^rump: 100 steps from 0, against exact values\nrump\\.g: 1\\.1726039400531787 at 0, where the interpreter gives -0\\.82739605994682142\n$")
 set_tests_properties(check_mask_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^mask: 100 steps from 0, against exact values\nmask\\.y: within 0\n$")
 set_tests_properties(check_order_report PROPERTIES PASS_REGULAR_EXPRESSION
@@ -452,8 +469,11 @@ add_test(NAME check_pole COMMAND check_pole)
 add_test(NAME check_huge COMMAND check_huge)
 add_test(NAME check_masked COMMAND check_masked)
 add_test(NAME check_sever COMMAND check_sever)
+add_test(NAME check_muller COMMAND check_muller)
+add_test(NAME check_rump COMMAND check_rump)
 set_tests_properties(check_wild check_brink check_rift check_sill check_seam check_pole
-                     check_huge check_masked check_sever check_moments PROPERTIES WILL_FAIL ON)
+                     check_huge check_masked check_sever check_moments check_muller check_rump
+                     PROPERTIES WILL_FAIL ON)
 
 # A float target (DESIGN.md): pid and adc's headers as compile/expected/float
 # has them, and compile/float.ink's checks, each built so that an operation done
@@ -486,7 +506,8 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:ledge logistic:gate momentu
                          float:steep float:blast
                          steady:mark softmax:cls grad:line tensor:whirl tensor:batch
                          cellguards:rfit cellguards:tfit thresholds:dies thresholds:beat stable:peak
-                         reddi:thm1 reddi:fixed reddi:gen)
+                         reddi:thm1 reddi:fixed reddi:gen
+                         kahan:sums kahan:muller kahan:rounded kahan:surprise kahan:solveur rump:rump)
     string(REPLACE ":" ";" checked ${checked})
     list(GET checked 0 file)
     list(GET checked 1 instance)
@@ -508,7 +529,8 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:ledge logistic:gate momentu
 endforeach()
 set_tests_properties(check_float_wild check_float_ledge check_float_far check_float_crawl
                      check_float_steep check_float_dies check_float_beat check_float_peak
-                     PROPERTIES WILL_FAIL ON)
+                     check_float_muller check_float_rounded check_float_surprise
+                     check_float_solveur check_float_rump PROPERTIES WILL_FAIL ON)
 # Each report as compile/float.ink gives it; what a libm or the seeds decide,
 # by its form.
 set(in_float " in float, against exact values")
@@ -543,6 +565,12 @@ foreach(report IN ITEMS
         "thm1:^thm1: 100 steps from 0 in float${until2}\nthm1\\.h: within 1\\.2e-07, 1 units of a float, from 2${about}\nthm1\\.x: within 6\\.8e-08, 0\\.57 units of a float, from 1${about}\nthm1\\.R: within 9\\.3e-06, 2\\.4 units of a float${about}\nthm1\\.g: ${exact}, from 1\nthm1\\.m: ${exact}\nthm1\\.v: within 1e-06, 1\\.7 units of a float\n$"
         "fixed:^fixed: 100 steps from 0 in float${until2}\nfixed\\.x: within 1\\.3e-07, 1\\.1 units of a float, from 1${about}\nfixed\\.R: within 4\\.3e-06, 2\\.2 units of a float${about}\nfixed\\.g: ${exact}, from 1\nfixed\\.v: within 1e-06, 1\\.7 units of a float\nfixed\\.w: within 1e-06, 1\\.1 units of a float\n$"
         "gen:^gen: 100 steps from 0 in float${until2}\ngen\\.h: within 1\\.8e-07, 1\\.5 units of a float, from 2${about}\ngen\\.x: within 1\\.6e-07, 1\\.4 units of a float, from 1${about}\ngen\\.R: within 2e-06, 15 units of a float${about}\ngen\\.g: ${exact}, from 1\ngen\\.m: within 4\\.8e-07, 1 units of a float\ngen\\.v: within 7\\.2e-06, 0\\.47 units of a float\n$"
+        "sums:^sums: 100 steps from 0${in_float}\nsums\\.c: within 0\\.00048, 4\\.1e\\+03 units of a float, from 1\nsums\\.o: within 0\\.0029, 2\\.9 units of a float\nsums\\.plain: within 0\\.0028, 2\\.8 units of a float\nsums\\.s: within 0\\.00047, 0\\.48 units of a float\nsums\\.comp: within 0\\.00048, 4\\.1e\\+03 units of a float\nsums\\.total: within 0\\.00051, 0\\.52 units of a float\n$"
+        "muller:^muller: 100 steps from 0${in_float}\nmuller\\.x: 4\\.98312378 at 6, where the interpreter gives 4\\.9108474990827933\n$"
+        "rounded:^rounded: 100 steps from 0${inexact}\nrounded\\.x: 4\\.98312378 at 6, where the interpreter gives 4\\.9108474986606296\; the interpreter's term about [0-9.e+-]+ from the exact one\n$"
+        "surprise:^surprise: 100 steps from 0${inexact}\nsurprise\\.g: 1 at 0, where the interpreter gives 0\; the interpreter's term about [0-9.e+-]+ from the exact one\nsurprise\\.k: ${exact}${about}\n$"
+        "solveur:^solveur: 100 steps from 0${in_float}\nsolveur\\.d: 0 at 0, where the interpreter gives -1\nsolveur\\.z\\[1,1\\]: [-a-z()]+ at 0, where the interpreter gives 12582909\n$"
+        "rump:^rump: 100 steps from 0${in_float}\nrump\\.g: 1\\.17260396 at 0, where the interpreter gives -0\\.82739605994682142\n$"
         "cls:^cls: 100 steps from 0${inexact}\ncls\\.z: within 2\\.4e-08, 0\\.2 units of a float\ncls\\.q: within 1\\.9e-06, 1\\.5 units of a float${about}\ncls\\.s: within 6\\.3e-08, 0\\.53 units of a float${about}\ncls\\.loss: within 4\\.1e-07, 3\\.4 units of a float${about}\n$")
     string(FIND "${report}" ":" colon)
     string(SUBSTRING "${report}" 0 ${colon} instance)
