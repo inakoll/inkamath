@@ -39,6 +39,36 @@ int AsIndex(const T& value) {
     return index;
 }
 
+// A parameter as a signature writes it, a function's or a model's: 'x',
+// 'x = 1', 'v[j<=n]' or 'x_n[j<=2]', whose places are a cell's or, with a
+// default, the left side's.
+template <typename T>
+struct WrittenParameter {
+    explicit WrittenParameter(const PExpression<T>& written) : left(written) {
+        if (const auto* equal = dynamic_cast<const EqualExpression<T>*>(written.get()))
+            left = equal->m_e1(), fallback = equal->m_e2();
+        std::vector<PExpression<T>> places;
+        if (const auto* cell = dynamic_cast<const CellExpression<T>*>(left.get()))
+            places = {cell->Slice(), cell->Row(), cell->Col()}, left = cell->Matrix();
+        else if (const auto* sized = dynamic_cast<const FuncExpression<T>*>(left.get()))
+            places = {sized->Children()[5], sized->Children()[3], sized->Children()[4]};
+        term = dynamic_cast<const FuncExpression<T>*>(left.get());
+        for (const PExpression<T>& place : places) {
+            const auto* compare = dynamic_cast<const CompareExpression<T>*>(place.get());
+            if (compare && compare->Op() == Comparison::LessEqual &&
+                dynamic_cast<const RefExpression<T>*>(compare->m_e1().get()))
+                bounds.push_back(compare);
+            else
+                bounded = bounded && !place;
+        }
+    }
+
+    PExpression<T>                           left, fallback;
+    const FuncExpression<T>*                 term = nullptr;
+    std::vector<const CompareExpression<T>*> bounds;          // 'j<=2', slices first
+    bool                                     bounded = true;  // each place one
+};
+
 // The left-hand side of a definition: 'f(x, y)_n' or 'f_0'.
 //
 // README.md section 4: an index written as an identifier names the
@@ -116,28 +146,16 @@ public:
     // A parameter is a name, 'x' or 'x = 1', or a name and its size,
     // 'v[j<=n]': anything else was dropped in silence (C150).
     void Parameter(const PExpression<T>& written, EvaluationVisitor<T>& evaluator) {
-        const auto* equal = dynamic_cast<const EqualExpression<T>*>(written.get());
-        if (!equal && !parameters_dict_.empty())
+        const WrittenParameter<T> w(written);
+        if (!w.fallback && !parameters_dict_.empty())
             throw std::runtime_error("a positional argument cannot follow a keyword argument");
-        const Expression<T>*        left = equal ? equal->m_e1().get() : written.get();
-        std::vector<PExpression<T>> places;
-        if (const auto* cell = dynamic_cast<const CellExpression<T>*>(left)) {
-            places = {cell->Slice(), cell->Row(), cell->Col()};
-            left   = dynamic_cast<const RefExpression<T>*>(cell->Matrix().get());
-        } else if (const auto* sized = dynamic_cast<const FuncExpression<T>*>(left);
-                   sized && !sized->m_e1() && !sized->m_e2() && !sized->Children()[2]) {
-            places = {sized->Children()[5], sized->Children()[3], sized->Children()[4]};
-        } else if (!dynamic_cast<const RefExpression<T>*>(left)) {
-            left = nullptr;
-        }
-        Size                     size;
-        std::vector<std::string> indices;
-        for (const PExpression<T>& place : places) {
-            const auto* compare = dynamic_cast<const CompareExpression<T>*>(place.get());
-            if (place && (!compare || compare->Op() != Comparison::LessEqual ||
-                          !dynamic_cast<const RefExpression<T>*>(compare->m_e1().get())))
-                left = nullptr;
-            if (!place || !left) continue;
+        if (!w.bounded || (w.term ? w.term->m_e1() || w.term->m_e2() || w.term->Children()[2]
+                                  : !dynamic_cast<const RefExpression<T>*>(w.left.get())))
+            throw std::runtime_error(
+                "a parameter is a name, as 'x' or 'x = 1', or a name and its "
+                "size, as 'v[j<=n]'");
+        Size size;
+        for (const CompareExpression<T>* compare : w.bounds) {
             const PExpression<T>& bound = compare->m_e2();
             const bool            named = dynamic_cast<const RefExpression<T>*>(bound.get());
             if (!named && !dynamic_cast<const ValExpression<T>*>(bound.get()))
@@ -148,22 +166,19 @@ public:
                 throw std::runtime_error("a size must be at least 1, not " +
                                          std::to_string(number));
             const std::string& index = compare->m_e1()->Name();
-            if (std::count(indices.begin(), indices.end(), index))
+            if (std::count_if(w.bounds.begin(), w.bounds.end(), [&](const auto* other) {
+                    return other->m_e1()->Name() == index;
+                }) > 1)
                 throw std::runtime_error(
-                    places[0] ? "a parameter's slice, row and column need three names"
-                              : "a parameter's row and column need two names");
-            indices.push_back(index);
+                    w.bounds.size() == 3 ? "a parameter's slice, row and column need three names"
+                                         : "a parameter's row and column need two names");
             size.bounds.emplace_back(named ? bound->Name() : "", number);
             size.written += (size.written.empty() ? "" : ", ") + index +
                             "<=" + (named ? bound->Name() : std::to_string(number));
         }
-        if (!left)
-            throw std::runtime_error(
-                "a parameter is a name, as 'x' or 'x = 1', or a name and its "
-                "size, as 'v[j<=n]'");
-        if (!size.bounds.empty()) size.written = left->Name() + "[" + size.written + "]";
-        parameters_names_.push_back(left->Name());
-        if (equal) parameters_dict_[left->Name()] = equal->m_e2();
+        if (!size.bounds.empty()) size.written = w.left->Name() + "[" + size.written + "]";
+        parameters_names_.push_back(w.left->Name());
+        if (w.fallback) parameters_dict_[w.left->Name()] = w.fallback;
         sizes_.push_back(std::move(size));
     }
 
