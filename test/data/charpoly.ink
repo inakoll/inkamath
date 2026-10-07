@@ -281,6 +281,15 @@ digits = 9
 >> rho([~1 2; 3 4]*10^307)
 ~5.37228132e+307
 
+# Nor need the sum of |A[j,k]|: past a double, it is summed a power of 4
+# per row smaller, 2e308 here, and rho is (5 + 33^(1/2))/2 times 2e307,
+# 1.07e308, as is abscissa (C196).
+>> rho([~1 2; 3 4]*2*10^307)
+~1.07445626e+308
+
+>> abscissa([~1 2; 3 4]*2*10^307)
+~1.07445626e+308
+
 # Past a double's range, the answer is the double ~ makes of it, marked, as
 # A/B's tests are past a thousand digits (C191).
 >> rho([1 2; 3 4]*10^400)

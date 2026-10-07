@@ -351,6 +351,8 @@ inline constexpr const char* prelude[] = {
     "schurcohn(p[j<=m], r = 1) | r >= 0 and sum_(j=1)^m abs(p[j]) >= 0 "
     "= hurwitz(schurcohnm(p, r))",
     "rhoe(A[j<=n, k<=n]) = rhop(sum_(j=1)^n sum_(k=1)^n abs(A[j,k]))",
+    "rhoe(A[j<=n, k<=n]) | sum_(j=1)^n sum_(k=1)^n abs(A[j,k]) >= 2^1024 "
+    "= rhop(sum_(j=1)^n sum_(k=1)^n abs(A[j,k])/4^n) + 2*n",
     "rhop(s) = ilogb(s + (s == 0)) + 1 + 0*s",
     "rhod(x, e) = x*2^(e - floor(e/2))*2^floor(e/2)",
     "rhos(b) = b[2] - b[1] <= 2^-53*min(abs(b[1]), abs(b[2]))",
