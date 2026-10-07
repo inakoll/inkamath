@@ -48,6 +48,21 @@ eigen(x_n) = {
 }
 poly = eigen(x_n = n)
 
+# 'thirds', the same at x_n = ~(n/3), where the order of the operations
+# shows: at 1, taken one after another as written, d is -0.6666666666666675
+# and g's first cell -6.661338147750939e-16, where 4x - 2 and 3x - 1 at that
+# x round to -0.6666666666666667 and -5.551115123125783e-17. Every value
+# below is worked out in Python's doubles in the interpreter's order, a
+# matrix product's sum from its first term and grad's part of a product
+# a'*b + a*b', a matrix's at a time; the step takes the same order, so:
+#
+#     thirds: 100 steps from 0, against exact values until 0 and inexact ones from there
+#     thirds.A: within 0; the interpreter's terms about <e> from the exact ones
+#     thirds.c: within 0; the interpreter's terms about <e> from the exact ones
+#     thirds.d: within 0; the interpreter's terms about <e> from the exact ones
+#     thirds.g: within 0; the interpreter's terms about <e> from the exact ones
+thirds = eigen(x_n = ~(n/3))
+
 # 'plan', a model-predictive controller's few steps of projected gradient
 # over a horizon of two moves, MANIFESTO.md's solver within a step with a
 # fixed number of iterations: u(s)_k is the plan after k steps from 0 for
