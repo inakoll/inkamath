@@ -504,7 +504,7 @@ foreach(model IN ITEMS pid adc)
 endforeach()
 
 foreach(checked IN ITEMS drift:calm drift:wild drift:ledge logistic:gate momentum:ball newton:stiff
-                         inputs:fan float:hum float:drone float:far float:tally float:crawl
+                         drift:radix inputs:fan float:hum float:drone float:far float:tally float:crawl
                          float:steep float:blast
                          steady:mark softmax:cls grad:line tensor:whirl tensor:batch
                          cellguards:rfit cellguards:tfit thresholds:dies thresholds:beat stable:peak
@@ -549,6 +549,7 @@ foreach(report IN ITEMS
         "stiff:^stiff: 100 steps from 0${inexact}\nstiff\\.h: within 6e-08, 0\\.5 units of a float\nstiff\\.x: within ${units}\nstiff\\.y: within ${units}\n$"
         "crawl:^crawl: 100 steps from 0${in_float}\ncrawl\\.s: within 0, 0 units of a float\ncrawl\\.y: 100000016 at 0, where the interpreter gives none: s did not converge within 100 terms \\(last term 100000800\\)\n$"
         "fan:^fan: 100 steps from 0${in_float}\nfan\\.y: within 0, 0 units of a float\n$"
+        "radix:^radix: 100 steps from 0${in_float}\nradix\\.y: ${exact}\n$"
         "hum:^hum: 100 steps from 0${in_float}\nhum\\.y: within 2\\.7e-06, 22 units of a float\n$"
         "drone:^drone: 100 steps from 0${in_float}\ndrone\\.y: within 5\\.6e-06, 47 units of a float\n$"
         "far:^far: 100 steps from 0${in_float}\nfar\\.x: within 0\\.99, 16 units of a float\nfar\\.d: 0 at 1, where the interpreter gives 0\\.01\n$"

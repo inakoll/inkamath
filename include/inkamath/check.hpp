@@ -483,10 +483,11 @@ private:
     static int Floor(int n, int a) { return n / a - (n % a < 0 ? 1 : 0); }
 
     // As C reads it back: '%.17g' writes 'inf' and 'nan', which it does not
-    // (C91), and '-0', which it reads as the integer 0 (C120).
+    // (C91), and '-0', which it reads as the integer 0 (C120). NAN and
+    // INFINITY are floats, whose promotion a float's program warns of (C164).
     static std::string Double(double x) {
-        if (std::isnan(x)) return "NAN";
-        if (std::isinf(x)) return x < 0 ? "-INFINITY" : "INFINITY";
+        if (std::isnan(x)) return "(double)NAN";
+        if (std::isinf(x)) return x < 0 ? "-(double)INFINITY" : "(double)INFINITY";
         char text[40];
         std::snprintf(text, sizeof text, "%.17g", x);
         const std::string written = text;
