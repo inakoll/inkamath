@@ -100,10 +100,8 @@ public:
                          PExpression<T> col       = PExpression<T>(),
                          PExpression<T> slice     = PExpression<T>())
         : guard_(guard), signature_(std::move(signature)) {
-        const auto list = dynamic_cast<const MatExpression<T>*>(params.get());
-        for (const PExpression<T>& written :
-             list ? params->Children() : std::vector<PExpression<T>>(params ? 1 : 0, params))
-            Parameter(written, evaluator);
+        if (params)
+            for (const PExpression<T>& written : params->Children()) Parameter(written, evaluator);
         if(subexpr) {
             indexed_ = true;
             if(RefExpression<T>* variable = dynamic_cast<RefExpression<T>*>(subexpr.get())) {

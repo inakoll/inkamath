@@ -117,8 +117,10 @@ public:
         // because the language can compute it only by a search.
         EvaluationVisitor<T> evaluator(*this);
         const auto           x = std::make_shared<RefExpression<T>>("x");
-        this->Set("floor", ParametersDefinition<T>(x, PExpression<T>(), evaluator),
-                  std::make_shared<FloorExpression<T>>(x));
+        this->Set(
+            "floor",
+            ParametersDefinition<T>(std::make_shared<MatExpression<T>>(x), nullptr, evaluator),
+            std::make_shared<FloorExpression<T>>(x));
     }
 
     // Scopes point at one another.
