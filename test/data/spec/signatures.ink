@@ -241,8 +241,8 @@ on(n)[j<=n] = 1
 >> pw(A[j<=n, k<=n])_0 = on(n)
 pw(A[j<=n, k<=n])_0 = on(n)
 
->> pw(A)_m = A*pw(A)_(m-1)/(A*pw(A)_(m-1))[1]
-pw(A)_m = A*pw(A)_(m-1)/(A*pw(A)_(m-1))[1]
+>> pw(A)_m = A*pw(A)_(m-1)/(A*pw(A)_(m-1))[n]
+pw(A)_m = A*pw(A)_(m-1)/(A*pw(A)_(m-1))[n]
 
 >> lim pw([4 1 1; 1 4 1; 1 1 4])
 [1;
