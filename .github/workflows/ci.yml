@@ -75,9 +75,14 @@ jobs:
 
   sanitizers:
     name: asan+ubsan
-    runs-on: [self-hosted, dedibox]
+    # The dedibox's cores take the interpreter suite past its 60 s under the
+    # sanitizers; hosted until the suite is split.
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      - name: Install ninja and ccache
+        run: sudo apt-get update && sudo apt-get install -y ninja-build ccache
 
       - name: Configure
         run: >
