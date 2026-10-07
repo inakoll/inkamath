@@ -162,6 +162,18 @@ error: re has no complex derivative at z = 1+i
 >> grad_(z = i) abs(z)
 error: abs has no complex derivative at z = i
 
+# The prelude's abs alone: a session's function whose guard reads a part
+# is refused in the part's words, as it may be holomorphic where its guard
+# holds.
+>> f(z) | re(z) > 0 = z
+f(z) | re(z) > 0 = z
+
+>> f(z) = -z
+f(z) = -z
+
+>> grad_(z = 1+i) f(z)
+error: re has no complex derivative at z = 1+i
+
 # tex shows them as any call, not as the paper's Re and Im.
 >> R(z) = re(z) + im(z)
 R(z) = re(z) + im(z)

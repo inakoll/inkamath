@@ -2844,8 +2844,10 @@ that exploring seven domains asked of the interpreter, by how many asked.
   where its argument moves and a grad's point has an imaginary part,
   `re has no complex derivative at z = 1+i`. abs is refused in its own,
   `abs has no complex derivative at z = i`, not in those of the im its
-  guard reads first, in at most 3 lines. A holomorphic function keeps its
-  derivative at a complex point, as now.
+  guard reads first, in at most 3 lines; the prelude's abs alone, as a
+  session's function whose guard reads a part may be holomorphic where
+  the guard holds, so is refused in the part's words, not its own. A
+  holomorphic function keeps its derivative at a complex point, as now.
 
   **The prelude's refusals.** `hurwitzt`, `hurwitz`, `schurcohn` and
   `rhoe` read abs only to refuse a complex argument, as the prelude's
