@@ -1890,6 +1890,13 @@ private:
             if (fixed_.count(key)) throw Reason(key + " is not defined");
             return Answer(Field(key, Value(Number(NAN))));
         }
+        // 'f()' is 'f', a call with every default (C169).
+        if (!definition->Clauses().empty() &&
+            !definition->Clauses().front().parameters.parameters_names().empty()) {
+            if (found.where == &definitions_.Builtins())
+                return Prelude(key, *definition, ParametersCall<Value>());
+            return Answer(Call(key, *definition, ParametersCall<Value>(), nullptr));
+        }
         if (IsSequence(*definition)) throw Reason(key + " is a sequence; index it");
         read_global_ = true;
         if (const auto known = known_.find(key); known != known_.end())
