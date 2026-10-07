@@ -1038,7 +1038,7 @@ to the number it once produced:
  6, 8]
 ```
 
-On a sequence `?` shows every clause, in the order they were written, and
+On a sequence `?` shows every clause, in the order they are tried, and
 `?name_0` shows one of them:
 
 ```

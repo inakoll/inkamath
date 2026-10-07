@@ -288,6 +288,16 @@ clamp(x) | x < 0 = 0
 >> cases.clamp(-3)
 -3
 
+# The fallback is listed after the guards, where it is tried, wherever it
+# was written (C162): here the file's comes before the session's guard.
+>> ?clamp
+clamp(x) | x > 1 = 1
+clamp(x) | x < 0 = 0
+clamp(x) = x
+
+>> tex ?clamp
+\operatorname{clamp}(x) = \begin{cases} 1 & \text{if } x > 1 \\ 0 & \text{if } x < 0 \\ x & \text{otherwise} \end{cases}
+
 # A file may define its own name, which brought in is that definition
 # (C160).
 >> clear cases
@@ -321,8 +331,8 @@ max(a, b) = a
 clear max
 
 >> ?max
-max(a, b) = a
 max(a, b) | a < b = b
+max(a, b) = a
 
 >> clear max
 error: max comes with the language, so it cannot be cleared
