@@ -298,6 +298,24 @@ inf  # approximated past a thousand digits
 >> rho([1 2; 3 4]/10^400)
 0  # approximated past a thousand digits
 
+# So is it where the tests stay exact: the bracket is certified, its double,
+# subnormal or none, is not, and a stable system's abscissa of -10^-400 is
+# no marginal 0 (C197).
+>> rho(10^400)
+inf  # approximated past a thousand digits
+
+>> rho(10^-400)
+0  # approximated past a thousand digits
+
+>> rho(10^-320)
+~9.99988867e-321  # approximated past a thousand digits
+
+>> abscissa(-10^-400)
+0  # approximated past a thousand digits
+
+>> abscissa(-10^-400) < 0
+0  # approximated past a thousand digits
+
 # Five by five, the tests exact; ten by ten, in bisection_digits.ink, they
 # are not.
 >> rho([6 -8 -6 -5 -6; 6 7 2 -9 -8; -3 -1 2 0 -4; -6 4 4 -9 -7; -1 -2 7 0 -2]/10)

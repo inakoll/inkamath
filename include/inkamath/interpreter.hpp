@@ -328,8 +328,9 @@ inline constexpr const char* prelude[] = {
     // scaled by 2^e in two halves so that no factor leaves a double, and
     // keep halving past the 64th while the bracket is wider than 2^-53 of
     // its end nearer 0, up to 256. An answer the cap ended is marked, by
-    // 0*10^-1000, a 0 approximated past a thousand digits (DESIGN.md), but
-    // for a polynomial lambda^n, whose radius is 0.
+    // 0*10^-1000, a 0 approximated past a thousand digits (DESIGN.md), as
+    // is one whose double is not normal, but for a polynomial lambda^n, whose
+    // radius is 0.
     "charpolym(A)_1 = A^0",
     "charpolym(A)_m = A*charpolym(A)_(m-1) + charpolyc(A)_(m-1)*A^0",
     "charpolyc(A)_0 = 1",
@@ -361,7 +362,7 @@ inline constexpr const char* prelude[] = {
     "rhou(A)_m | m > 64 and rhos(rhou(A)_(m-1)) = rhou(A)_(m-1)",
     "rhob(A)_m = rhod(rhou(A)_m, rhoe(A))",
     "rhoh(p, b) = b + (b[2] - b[1])/2*([1; 0] - schurcohn(p, (b[1] + b[2])/2)*[1; 1])",
-    "rhoa(u, b) | rhos(u) = ~b[1]",
+    "rhoa(u, b) | rhos(u) and abs(~b[1]) >= 2^-1022 and abs(~b[1]) < 2^1024 = ~b[1]",
     "rhoa(u, b) = ~b[1] + 0*10^-1000",
     "rho(A[j<=n, k<=n]) = rhoa(rhou(A)_256, rhob(A)_256)",
     "rho(A[j<=n, k<=n]) | sum_(j=2)^(n+1) abs(charpoly(rhod(A, -rhoe(A)))[j]) == 0 = ~0",
