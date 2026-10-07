@@ -114,6 +114,10 @@ purpose.
   ```
 
   Run it. Do not report work as done on the strength of "it should compile".
+- The same checks can run on the build worker instead of locally:
+  `inkworker.py submit <worktree> HEAD` (repository `inakoll/inkworker`) builds
+  the committed HEAD with GCC, Clang and the sanitizers and prints a summary
+  naming the commit it built; a result for another commit is void.
 - `master` moves only by fast-forward, never by force. In cloud sessions a
   checkout, merge and push of `master` in the main checkout is refused, so
   merge in a detached worktree of `origin/master`
