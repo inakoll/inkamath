@@ -273,6 +273,14 @@ error: an index must be exact, and 2 was approximated
 >> grad_(x = rt_20) x*(x > c and 1 > 0)
 0  # approximated past a thousand digits
 
+# And floor's jump and a comparison's, decided by an approximated number,
+# mark what they are added to (C167).
+>> grad_(x = rt_20) (floor(x) + x)
+1  # approximated past a thousand digits
+
+>> grad_(x = rt_20) ((x > c) + x)
+1  # approximated past a thousand digits
+
 # The prelude's guards. exp past a thousand reads its argument, here 2^4000
 # approximated to inf.
 >> exp(2^4000)
