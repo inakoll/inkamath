@@ -6,7 +6,6 @@
 #include "inkamath/expression.hpp"
 
 #include <algorithm>
-#include <map>
 
 template <typename T>
 class ReferenceStack;
@@ -251,67 +250,6 @@ public:
             stack.BindValue(argument.first, argument.second);
         }
     }
-
-    // A default belongs to the definition, not to the call: it is evaluated
-    // only when the call leaves its parameter empty, and in the callee's
-    // scope, so that it can refer to the definition's other parameters, and
-    // the sizes they state.
-    void BindDefaults(const ParametersCall<T>& param_call, EvaluationVisitor<T>& evaluator,
-                      const std::string& reference_name, const std::vector<Size>& sizes) const {
-        const size_t positional = param_call.parameters_expression().size();
-        Measure      measure(reference_name, sizes);
-        for (size_t i = 0; i < parameters_names_.size(); ++i) {
-            const std::string& name     = parameters_names_[i];
-            auto fallback = parameters_dict_.find(name);
-            if (i >= positional && !param_call.parameters_dict().count(name) &&
-                fallback != parameters_dict_.end())
-                evaluator.stack().BindValue(name, fallback->second->accept(evaluator));
-            if (i < sizes.size() && !sizes[i].bounds.empty())
-                for (const auto& [size, n] :
-                     measure(i, evaluator.stack().Eval(name, ParametersCall<T>()).Size()))
-                    evaluator.stack().BindValue(size, T(static_cast<int>(n)));
-        }
-    }
-
-    // The sizes a call binds, a parameter at a time: a name takes the extent
-    // it first meets and holds the others to it, and one that disagrees is
-    // refused before the body, in the words of the parameters that state it
-    // (DESIGN.md, a size bound by a signature).
-    struct Measure {
-        Measure(const std::string& name, const std::vector<Size>& sizes)
-            : name(name), sizes(sizes), given(sizes.size()) {}
-
-        // The names parameter i binds, given a value of extent e, and theirs.
-        std::vector<std::pair<std::string, size_t>> operator()(size_t i, const Extent& e) {
-            const auto&  bounds = sizes[i].bounds;
-            const size_t at[] = {e.slices, e.rows, e.cols}, *d = at + (bounds.size() != 3);
-            given[i]          = e;
-            const auto refuse = [&](size_t first) {
-                const bool two = first != i;
-                throw std::runtime_error(name + " takes " +
-                                         (two ? sizes[first].written + " and " : "") +
-                                         sizes[i].written + ", not " +
-                                         (two ? given[first].Called() + " and " : "") + e.Called());
-            };
-            if ((bounds.size() == 3) != (e.slices != 0) || (bounds.size() == 1 && e.cols != 1))
-                refuse(i);
-            std::vector<std::pair<std::string, size_t>> bound;
-            for (size_t b = 0; b < bounds.size(); ++b) {
-                const auto& [size, number] = bounds[b];
-                if (size.empty() && d[b] != static_cast<size_t>(number)) refuse(i);
-                if (size.empty()) continue;
-                const auto [seen, fresh] = seen_.try_emplace(size, d[b], i);
-                if (fresh) bound.emplace_back(size, d[b]);
-                if (seen->second.first != d[b]) refuse(seen->second.second);
-            }
-            return bound;
-        }
-
-        const std::string&                               name;
-        const std::vector<Size>&                         sizes;
-        std::vector<Extent>                              given;
-        std::map<std::string, std::pair<size_t, size_t>> seen_;  // its extent, who stated it first
-    };
 
     // 'j<=2' names a row and bounds it; a name alone is left unbounded, for the
     // definition to say it has no size; anything else is one row.

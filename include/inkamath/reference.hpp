@@ -11,6 +11,7 @@
 #include <algorithm>
 #include <array>
 #include <exception>
+#include <map>
 #include <memory>
 #include <numeric>
 #include <optional>
@@ -285,9 +286,66 @@ public:
     }
 
     [[nodiscard]] const std::vector<Clause<T>>& Clauses() const { return clauses_; }
-    [[nodiscard]] const std::vector<typename ParametersDefinition<T>::Size>& Sizes() const {
-        return sizes_;
+
+    // A default belongs to the definition, not to the call: it is evaluated
+    // only when the call leaves its parameter empty, and in the callee's
+    // scope, so that it can refer to the definition's other parameters, and
+    // the sizes they state.
+    void BindDefaults(const ParametersCall<T>& call, EvaluationVisitor<T>& evaluator) const {
+        const ParametersDefinition<T>&  p     = CallParameters();
+        const std::vector<std::string>& names = p.parameters_names();
+        Measure                         measure(*this);
+        for (size_t i = 0; i < names.size(); ++i) {
+            const auto fallback = p.parameters_dict().find(names[i]);
+            if (i >= call.parameters_expression().size() &&
+                !call.parameters_dict().count(names[i]) && fallback != p.parameters_dict().end())
+                evaluator.stack().BindValue(names[i], fallback->second->accept(evaluator));
+            if (!sizes_[i].bounds.empty())
+                for (const auto& [size, n] :
+                     measure(i, evaluator.stack().Eval(names[i], ParametersCall<T>()).Size()))
+                    evaluator.stack().BindValue(size, T(static_cast<int>(n)));
+        }
     }
+
+    // The sizes a call binds, a parameter at a time: a name takes the extent
+    // it first meets and holds the others to it, and one that disagrees is
+    // refused before the body, in the words of the parameters that state it
+    // (DESIGN.md, a size bound by a signature).
+    struct Measure {
+        explicit Measure(const Reference& of) : of(of) {}
+
+        // The names parameter i binds, given a value of extent e, and theirs.
+        std::vector<std::pair<std::string, size_t>> operator()(size_t i, const Extent& e) {
+            const auto& sizes  = of.sizes_;
+            const auto& bounds = sizes[i].bounds;
+            if (bounds.empty()) return {};
+            const size_t at[] = {e.slices, e.rows, e.cols}, *d = at + (bounds.size() != 3);
+            given[i]          = e;
+            const auto refuse = [&](size_t first) {
+                const bool two = first != i;
+                throw std::runtime_error(of.reference_name_ + " takes " +
+                                         (two ? sizes[first].written + " and " : "") +
+                                         sizes[i].written + ", not " +
+                                         (two ? given[first].Called() + " and " : "") + e.Called());
+            };
+            if ((bounds.size() == 3) != (e.slices != 0) || (bounds.size() == 1 && e.cols != 1))
+                refuse(i);
+            std::vector<std::pair<std::string, size_t>> bound;
+            for (size_t b = 0; b < bounds.size(); ++b) {
+                const auto& [size, number] = bounds[b];
+                if (size.empty() && d[b] != static_cast<size_t>(number)) refuse(i);
+                if (size.empty()) continue;
+                const auto [seen, fresh] = seen_.try_emplace(size, d[b], i);
+                if (fresh) bound.emplace_back(size, d[b]);
+                if (seen->second.first != d[b]) refuse(seen->second.second);
+            }
+            return bound;
+        }
+
+        const Reference&                                 of;
+        std::map<size_t, Extent>                         given;
+        std::map<std::string, std::pair<size_t, size_t>> seen_;  // its extent, who stated it first
+    };
 
     // The value of a plain definition by a literal of numbers, once built.
     [[nodiscard]] const T* Kept() const {
@@ -490,7 +548,7 @@ public:
             ParametersDefinition<T>::Bind(captured, stack);
             ParametersDefinition<T>::Bind(arguments, stack);
             EvaluationVisitor<T> evaluator(stack);
-            parameters.BindDefaults(call, evaluator, reference_name_, sizes_);
+            BindDefaults(call, evaluator);
             if (call.limit()) {
                 // A guarded general clause is a general clause: it is the index
                 // that makes it one (DESIGN.md, C54); an input's argument has one.
@@ -686,7 +744,7 @@ private:
         ParametersDefinition<T>::Bind(captured, stack);
         ParametersDefinition<T>::Bind(arguments, stack);
         EvaluationVisitor<T> evaluator(stack);
-        CallParameters().BindDefaults(call, evaluator, reference_name_, sizes_);
+        BindDefaults(call, evaluator);
         const T evaluation = EvalImp(true, k, evaluator);
         if (memoisable) stack.Memoise(std::move(key), evaluation);
         return evaluation;
