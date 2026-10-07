@@ -68,22 +68,30 @@ inf
 
 # From 2^3322 a power of two passes a thousand digits and is approximated to
 # inf, which an exact number past a double passes as one, so ilogb tries
-# none past 2^3321, above every exact number; and inf is the one number its
-# own double, whose log is itself (C101).
+# none past 2^3321, above every exact number; and inf is the one positive
+# number whose reciprocal is 0, whose log is itself (C101). Not its own
+# double: twice an exact number from 5*10^999 is approximated to inf too,
+# whose log was the number itself (C157).
 >> log(2^3072)
 ~2129.34814
 
 >> log(10^999)
 ~2300.28251
 
+>> log(5*10^999)
+~2301.89195
+
+>> log(2^3321)
+~2301.94179
+
 >> log(~1/0)
 inf
 
 >> log(0)
-error: division by zero
+error: log needs a number above 0, not 0
 
 >> log(-1)
-error: division by zero
+error: log needs a number above 0, not -1
 
 >> tanh(1/2)
 ~0.462117157
@@ -184,13 +192,13 @@ digits = 9
 
 # Of 0 and below, refused as log is, however 0 is written (C100).
 >> ilogb(0)
-error: division by zero
+error: ilogb needs a number above 0, not 0
 
 >> ilogb(~0)
-error: division by zero
+error: ilogb needs a number above 0, not 0
 
 >> ilogb(-1)
-error: division by zero
+error: ilogb needs a number above 0, not -1
 
 # grad differentiates the definitions: floor's derivative is 0, and a guard
 # at its threshold takes its own side, so 1, 2 and the powers of two answer.
@@ -223,7 +231,7 @@ inf
 ~0.333333333
 
 >> grad_(x = 0) log(x)
-error: division by zero
+error: log needs a number above 0, not 0
 
 >> grad_(x = 0) tanh(x)
 1
@@ -239,27 +247,27 @@ error: division by zero
 
 # Their definitions, as the prelude writes them.
 >> ?exp
-exp(x) = expk(x, floor(x*1.4426950408889634 + 1/2))
 exp(x) | x > 1000 = exp(1000)
 exp(x) | x < -1000 = exp(-1000)
+exp(x) = expk(x, floor(x*1.4426950408889634 + 1/2))
 
 >> ?log
-log(x) = logk(x, ilogb(x))
 log(x) | x <= 0 = 1/0
-log(x) | 2*x == x = x
+log(x) | 1/x == 0 = x
+log(x) = logk(x, ilogb(x))
 
 >> ?tanh
-tanh(x) = tanhp(x)
 tanh(x) | x < 0 = -tanhp(-x)
+tanh(x) = tanhp(x)
 
 >> tex ?log
-\operatorname{log}(x) = \begin{cases} \frac{1}{0} & \text{if } x \le 0 \\ x & \text{if } 2\,x = x \\ \operatorname{logk}(x, \operatorname{ilogb}(x)) & \text{otherwise} \end{cases}
+\operatorname{log}(x) = \begin{cases} \frac{1}{0} & \text{if } x \le 0 \\ x & \text{if } \frac{1}{x} = 0 \\ \operatorname{logk}(x, \operatorname{ilogb}(x)) & \text{otherwise} \end{cases}
 
 >> tex ?tanh
 \operatorname{tanh}(x) = \begin{cases} -\operatorname{tanhp}(-x) & \text{if } x < 0 \\ \operatorname{tanhp}(x) & \text{otherwise} \end{cases}
 
 >> tex ?ilogbs
-\operatorname{ilogbs}(x, k, s) = \begin{cases} k & \text{if } k + s > 3321 \\ k + s & \text{if } x \ge 2^{k + s} \\ k & \text{otherwise} \end{cases}
+\operatorname{ilogbs}(x, k, s) = \begin{cases} k & \text{if } k + s > 3321 \\ k + s & \text{if } k + s < -3321 \\ k + s & \text{if } x \ge 2^{k + s} \\ k & \text{otherwise} \end{cases}
 
 # Where a reduction ends in '~', which has no form on paper.
 >> tex ?expk

@@ -46,7 +46,7 @@ static inline double inkamath_prelude_exp(double arg_x) {
 }
 
 static inline double inkamath_prelude_ilogbs(double arg_x, double arg_k, double arg_s) {
-    return isnan(arg_k + arg_s) ? NAN : arg_k + arg_s > 3321.0 ? arg_k : isnan(arg_x) || isnan(arg_k + arg_s) ? NAN : arg_x >= pow(2.0, arg_k + arg_s) ? arg_k + arg_s : arg_k;
+    return isnan(arg_k + arg_s) ? NAN : arg_k + arg_s > 3321.0 ? arg_k : isnan(arg_k + arg_s) ? NAN : arg_k + arg_s < -3321.0 ? arg_k + arg_s : isnan(arg_x) || isnan(arg_k + arg_s) ? NAN : arg_x >= pow(2.0, arg_k + arg_s) ? arg_k + arg_s : arg_k;
 }
 
 static inline double inkamath_prelude_ilogb(double arg_x) {
@@ -62,7 +62,7 @@ static inline double inkamath_prelude_logs(double arg_s, double arg_k) {
 }
 
 static inline double inkamath_prelude_logm(double arg_m, double arg_k) {
-    return isnan(arg_m * arg_m) ? NAN : arg_m * arg_m > 2.0 ? inkamath_prelude_logs((arg_m / 2.0 - 1.0) / (arg_m / 2.0 + 1.0), arg_k + 1.0) : inkamath_prelude_logs((arg_m - 1.0) / (arg_m + 1.0), arg_k);
+    return isnan(arg_m) || isnan(2.0 / arg_m) ? NAN : arg_m > 2.0 / arg_m ? inkamath_prelude_logs((arg_m / 2.0 - 1.0) / (arg_m / 2.0 + 1.0), arg_k + 1.0) : inkamath_prelude_logs((arg_m - 1.0) / (arg_m + 1.0), arg_k);
 }
 
 static inline double inkamath_prelude_logk(double arg_x, double arg_k) {
@@ -70,7 +70,7 @@ static inline double inkamath_prelude_logk(double arg_x, double arg_k) {
 }
 
 static inline double inkamath_prelude_log(double arg_x) {
-    return isnan(arg_x) ? NAN : arg_x <= 0.0 ? NAN : isnan(2.0 * arg_x) || isnan(arg_x) ? NAN : 2.0 * arg_x == arg_x ? arg_x : inkamath_prelude_logk(arg_x, inkamath_prelude_ilogb(arg_x));
+    return isnan(arg_x) ? NAN : arg_x <= 0.0 ? NAN : isnan(1.0 / arg_x) ? NAN : 1.0 / arg_x == 0.0 ? arg_x : inkamath_prelude_logk(arg_x, inkamath_prelude_ilogb(arg_x));
 }
 
 static inline double inkamath_prelude_tanhe(double arg_m) {
@@ -154,7 +154,7 @@ static inline double inkamath_prelude_logs_ds(double arg_s, double part_s) {
 }
 
 static inline double inkamath_prelude_logm_dm(double arg_m, double part_m) {
-    return isnan(arg_m * arg_m) ? NAN : arg_m * arg_m > 2.0 ? inkamath_prelude_logs_ds((arg_m / 2.0 - 1.0) / (arg_m / 2.0 + 1.0), (part_m / 2.0 + (0.0 - (arg_m / 2.0 - 1.0) / (arg_m / 2.0 + 1.0) * (part_m / 2.0))) / (arg_m / 2.0 + 1.0)) : inkamath_prelude_logs_ds((arg_m - 1.0) / (arg_m + 1.0), (part_m + (0.0 - (arg_m - 1.0) / (arg_m + 1.0) * part_m)) / (arg_m + 1.0));
+    return isnan(arg_m) || isnan(2.0 / arg_m) ? NAN : arg_m > 2.0 / arg_m ? inkamath_prelude_logs_ds((arg_m / 2.0 - 1.0) / (arg_m / 2.0 + 1.0), (part_m / 2.0 + (0.0 - (arg_m / 2.0 - 1.0) / (arg_m / 2.0 + 1.0) * (part_m / 2.0))) / (arg_m / 2.0 + 1.0)) : inkamath_prelude_logs_ds((arg_m - 1.0) / (arg_m + 1.0), (part_m + (0.0 - (arg_m - 1.0) / (arg_m + 1.0) * part_m)) / (arg_m + 1.0));
 }
 
 static inline double inkamath_prelude_logk_dx(double arg_x, double arg_k, double part_x) {
@@ -162,11 +162,11 @@ static inline double inkamath_prelude_logk_dx(double arg_x, double arg_k, double
 }
 
 static inline double inkamath_prelude_log_jx(double arg_x) {
-    return isnan(arg_x) ? NAN : arg_x <= 0.0 ? NAN : isnan(2.0 * arg_x) || isnan(arg_x) ? NAN : 2.0 * arg_x == arg_x ? NAN : 2.0 * arg_x == arg_x ? arg_x : inkamath_prelude_logk(arg_x, inkamath_prelude_ilogb(arg_x));
+    return isnan(arg_x) ? NAN : arg_x <= 0.0 ? NAN : isnan(1.0 / arg_x) ? NAN : 1.0 / arg_x == 0.0 ? NAN : 1.0 / arg_x == 0.0 ? arg_x : inkamath_prelude_logk(arg_x, inkamath_prelude_ilogb(arg_x));
 }
 
 static inline double inkamath_prelude_log_dx(double arg_x, double part_x) {
-    return isnan(arg_x) ? NAN : arg_x <= 0.0 ? NAN : isnan(2.0 * arg_x) || isnan(arg_x) ? NAN : 2.0 * arg_x == arg_x ? NAN : 2.0 * arg_x == arg_x ? part_x : inkamath_prelude_logk_dx(arg_x, inkamath_prelude_ilogb(arg_x), part_x);
+    return isnan(arg_x) ? NAN : arg_x <= 0.0 ? NAN : isnan(1.0 / arg_x) ? NAN : 1.0 / arg_x == 0.0 ? NAN : 1.0 / arg_x == 0.0 ? part_x : inkamath_prelude_logk_dx(arg_x, inkamath_prelude_ilogb(arg_x), part_x);
 }
 
 static inline double inkamath_prelude_tanhe_dm(double arg_m, double part_m) {

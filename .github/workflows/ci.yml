@@ -12,7 +12,7 @@ concurrency:
 jobs:
   build:
     name: ${{ matrix.compiler }} / ${{ matrix.build_type }}
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, dedibox]
     strategy:
       fail-fast: false
       matrix:
@@ -21,8 +21,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install ninja
-        run: sudo apt-get update && sudo apt-get install -y ninja-build
+      - name: Toolchain
+        run: echo "::notice::$(. /etc/os-release; echo $PRETTY_NAME); $(cmake --version | head -1); ninja $(ninja --version); $(g++ --version | head -1); $(clang++ --version | head -1); $(ccache --version | head -1)"
 
       - name: Configure
         env:
@@ -32,12 +32,25 @@ jobs:
           cmake -S . -B build -G Ninja
           -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
           -DINKAMATH_WERROR=ON
+          -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
+
+      # Its log is out of reach of who reads the run through the API.
+      - name: Report a failed configure
+        if: failure()
+        run: cmake -S . -B build -G Ninja 2>&1 | grep -A3 -i "error" | head -20 | sed 's/^/::error::/'
 
       - name: Build
         run: cmake --build build
 
       - name: Test
-        run: ctest --test-dir build --output-on-failure
+        run: ctest --test-dir build --output-on-failure -j$(nproc)
+
+      - name: Report failed tests
+        if: failure()
+        run: |
+          f=build/Testing/Temporary
+          sed 's/^/::error::failed /' $f/LastTestsFailed.log 2>/dev/null || true
+          grep -E "^[0-9]+/[0-9]+ Test|Test time" $f/LastTest.log 2>/dev/null | grep -iE "fail|timeout|Test time" | head -20 | sed 's/^/::error::/' || true
 
   windows:
     name: msvc / ${{ matrix.build_type }}
@@ -58,22 +71,20 @@ jobs:
         run: cmake --build build --config ${{ matrix.build_type }}
 
       - name: Test
-        run: ctest --test-dir build -C ${{ matrix.build_type }} --output-on-failure
+        run: ctest --test-dir build -C ${{ matrix.build_type }} --output-on-failure -j $env:NUMBER_OF_PROCESSORS
 
   sanitizers:
     name: asan+ubsan
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, dedibox]
     steps:
       - uses: actions/checkout@v4
-
-      - name: Install ninja
-        run: sudo apt-get update && sudo apt-get install -y ninja-build
 
       - name: Configure
         run: >
           cmake -S . -B build -G Ninja
           -DCMAKE_BUILD_TYPE=Debug
           -DINKAMATH_SANITIZE=address,undefined
+          -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
 
       - name: Build
         run: cmake --build build
@@ -81,11 +92,18 @@ jobs:
       - name: Test
         env:
           UBSAN_OPTIONS: print_stacktrace=1:halt_on_error=1
-        run: ctest --test-dir build --output-on-failure
+        run: ctest --test-dir build --output-on-failure -j$(nproc)
+
+      - name: Report failed tests
+        if: failure()
+        run: |
+          f=build/Testing/Temporary
+          sed 's/^/::error::failed /' $f/LastTestsFailed.log 2>/dev/null || true
+          grep -E "^[0-9]+/[0-9]+ Test|Test time" $f/LastTest.log 2>/dev/null | grep -iE "fail|timeout|Test time" | head -20 | sed 's/^/::error::/' || true
 
   format:
     name: clang-format
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, dedibox]
     steps:
       - uses: actions/checkout@v4
         with:

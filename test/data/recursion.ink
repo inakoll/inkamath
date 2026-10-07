@@ -39,3 +39,28 @@ gm(x,y)_n = (am(x,y)_(n-1) * gm(x,y)_(n-1))^0.5
 >> ?gm
 gm(x,y)_0 = (x*y)^0.5
 gm(x,y)_n = (am(x,y)_(n-1) * gm(x,y)_(n-1))^0.5
+
+# A term has a million steps of its own, not counting the terms it computes,
+# which have theirs (C149). Each w here takes some fifty thousand, so w_25
+# cold used to give up, and answered once w_20 had been asked: whether a term
+# answered depended on what came before it. It is 1/2^25.
+>> w_0 = 1
+w_0 = 1
+
+>> w_n = w_(n-1)/2 + sum_(k=1)^50000 0
+w_n = w_(n-1)/2 + sum_(k=1)^50000 0
+
+>> w_25
+~2.98023224e-08
+
+# So do the terms a limit walks: each p takes some fifteen thousand steps, and
+# the walk used to give up unless p_50 had been asked first. p_k is
+# 4 - 4*(3/4)^k.
+>> p_0 = ~0
+p_0 = ~0
+
+>> p_k = 3/4*p_(k-1) + 1 + sum_(j=1)^15000 0
+p_k = 3/4*p_(k-1) + 1 + sum_(j=1)^15000 0
+
+>> lim p
+~4

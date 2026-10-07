@@ -108,13 +108,13 @@ error: tanh needs real numbers, not i
 >> exp([~1 ~2])
 error: exp needs single values, not a 1x2 matrix; write it by its cells
 
-# Out of log's domain, or not finite, as the definition answers it, where
-# the C function would be NaN or inf.
+# Out of log's domain, refused in its name, or not finite, as the
+# definition answers it, where the C function would be NaN or inf.
 >> log(~0)
-error: division by zero
+error: log needs a number above 0, not 0
 
 >> log(~(-2))
-error: division by zero
+error: log needs a number above 0, not -2
 
 >> log(~1/0)
 inf
@@ -152,7 +152,8 @@ a = (10^600 + 1)/10^600
 
 # A compiled call is one step and one reference deep, as reading a value
 # is. Through the definition exp is some 33 steps and log some 111, so
-# these lines ran out of their million; their sums are mpmath's.
+# these lines ran out of their million until each call had its own (C149);
+# their sums are mpmath's.
 >> sum_(k=1)^40000 exp(~k/40000)
 ~68732.1323
 

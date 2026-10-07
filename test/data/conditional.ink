@@ -25,10 +25,10 @@
 #   section 4's rule that a base case beats the general clause whatever the
 #   order of definition.
 #
-#   No 'otherwise' clause. A plain unguarded definition still replaces the
-#   whole definition (C11), so a default would have to be a second reserved
-#   word; the complement is usually one character -- 'x < 0' and 'x >= 0' --
-#   and when nothing applies the interpreter says so.
+#   No 'otherwise' keyword. The unguarded clause for every call is the
+#   default, tried after the guards wherever it is written, so a paper's
+#   "otherwise" is that clause written last; and when nothing applies the
+#   interpreter says so.
 #
 # Comparisons answer 1 and 0. There is no truth type because every value here
 # is a number, and a guard holds when it is not zero.
@@ -260,6 +260,32 @@ sg(x) | x < [12][1,1] = 20
 >> sg(0)
 10
 
+# So does a space that begins the next element: '[1 -2]' is two elements and
+# '[1 - 2]' one, '[pi [1]]' two and '[pi[1]]' one, so each pair is two
+# names (C159).
+>> sn(x) | x == [1 -2][1,1] = 10
+sn(x) | x == [1 -2][1,1] = 10
+
+>> sn(x) | x == [1 - 2][1,1] = 20
+sn(x) | x == [1 - 2][1,1] = 20
+
+>> ?sn
+sn(x) | x == [1 -2][1,1] = 10
+sn(x) | x == [1 - 2][1,1] = 20
+
+>> sn(1)
+10
+
+>> sv(x) | x == [pi [1]][1,1] = 10
+sv(x) | x == [pi [1]][1,1] = 10
+
+>> sv(x) | x == [pi[1]][1,1] = 20
+sv(x) | x == [pi[1]][1,1] = 20
+
+>> ?sv
+sv(x) | x == [pi [1]][1,1] = 10
+sv(x) | x == [pi[1]][1,1] = 20
+
 # A guard that does not hold must leave nothing behind. The index was bound
 # before the guard was tested and never removed, so a rejected clause shadowed
 # a global, clobbered an argument, and poisoned the guards written after it
@@ -307,10 +333,10 @@ pg_0 | cg > 5 = 2
 pick(x) | x < 0 = 0-x
 
 >> pick(z) | 1 = z
-error: pick takes (x), so a clause cannot take (z)
+error: pick takes (x), so a clause cannot take (z); write 'clear pick' first
 
 >> pick(x, z) | 1 = x+z
-error: pick takes (x), so a clause cannot take (x, z)
+error: pick takes (x), so a clause cannot take (x, z); write 'clear pick' first
 
 >> pick(x) | 1 = x
 pick(x) | 1 = x

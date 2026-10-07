@@ -20,16 +20,35 @@ target_compile_definitions(inkamath_tests PRIVATE
     INKAMATH_TEST_DATA_DIR="${CMAKE_CURRENT_SOURCE_DIR}/data"
     INKAMATH_SOURCE_DIR="${PROJECT_SOURCE_DIR}")
 
-# One ctest entry per doctest suite, so that a crash in one reports as a
-# single failure rather than taking the others' results with it.
-foreach(suite IN ITEMS bignum interpreter line_editor matrix)
-    add_test(NAME ${suite} COMMAND inkamath_tests --test-suite=${suite} --no-intro
-             --test-case-exclude=fastgrad)
-    set_tests_properties(${suite} PROPERTIES TIMEOUT 60)
+# One ctest entry per doctest suite, and one per golden transcript, each
+# its test case of the same name: a crash reports as a single failure rather
+# than taking the others' results with it, the goldens run in parallel, and
+# each timeout is a tripwire for one file rather than for the sum of them.
+# The goldens are the files interpreter_test.cpp replays; the others in
+# data/ are libraries they load.
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS interpreter_test.cpp)
+file(STRINGS interpreter_test.cpp goldens REGEX "check_transcript\\(\"[a-z_]+\\.ink\"\\)")
+set(golden_cases "")
+foreach(golden IN LISTS goldens)
+    string(REGEX REPLACE ".*\"([a-z_]+)\\.ink\".*" "\\1" case "${golden}")
+    list(APPEND golden_cases ${case})
+    add_test(NAME ${case}.ink COMMAND inkamath_tests --test-suite=interpreter
+             --test-case=${case} --no-intro)
+    # A golden without its case runs none, which is a failure, not a pass.
+    set_tests_properties(${case}.ink PROPERTIES TIMEOUT 60
+                         FAIL_REGULAR_EXPRESSION "test cases: +0 \\|")
 endforeach()
 # fastgrad.ink's 600,000 remembered calls take 25 s under sanitizers alone.
-add_test(NAME fastgrad COMMAND inkamath_tests --test-case=fastgrad --no-intro)
-set_tests_properties(fastgrad PROPERTIES TIMEOUT 120)
+set_tests_properties(fastgrad.ink PROPERTIES TIMEOUT 120)
+foreach(suite IN ITEMS bignum line_editor matrix)
+    add_test(NAME ${suite} COMMAND inkamath_tests --test-suite=${suite} --no-intro)
+    set_tests_properties(${suite} PROPERTIES TIMEOUT 60)
+endforeach()
+# The interpreter's cases that are not goldens: README.md's sessions and the rest.
+string(REPLACE ";" "," golden_cases "${golden_cases}")
+add_test(NAME interpreter COMMAND inkamath_tests --test-suite=interpreter --no-intro
+         --test-case-exclude=${golden_cases})
+set_tests_properties(interpreter PROPERTIES TIMEOUT 60)
 
 add_test(NAME cli
          COMMAND ${CMAKE_COMMAND} -DEXE=$<TARGET_FILE:inkamath_cli>
@@ -104,6 +123,7 @@ add_test(NAME prelude_header
 # Each as file:instance.
 foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brink drift:ledge
                          drift:rift drift:naught drift:zeroed drift:mirrored drift:nests drift:latch drift:toil
+                         drift:late drift:radix
                          delay:fir newton:stiff logistic:gate sized:sized softmax:cls steady:mark
                          rnn:rnn attention:head momentum:ball adam:fit lqr:gain
                          rates:pairs rates:odd seeded:warm cascade:servo decimate:boxcar
@@ -122,7 +142,11 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brin
                          grad:ring grad:notch grad:apart grad:smooth grad:cusp
                          tensor:heads tensor:whirl tensor:batch tensor:spread
                          tensor:speck cellguards:rfit cellguards:tfit cellguards:layer
-                         cellguards:kink cellguards:crest cellguards:mask cellguards:order)
+                         cellguards:kink cellguards:crest cellguards:mask cellguards:order
+                         grad:swing thresholds:dies thresholds:beat stable:moments stable:peak
+                         reddi:thm1 reddi:fixed reddi:gen
+                         kahan:sums kahan:muller kahan:rounded kahan:surprise kahan:solveur
+                         rump:rump signatures:inv)
     string(REPLACE ":" ";" checked ${checked})
     list(GET checked 0 file)
     list(GET checked 1 instance)
@@ -208,6 +232,8 @@ set_tests_properties(check_smooth_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^smooth: 100 steps from 0, against exact values\nsmooth\\.z: no value compared, the step NaN where the interpreter gives none, as at 0: floor jumps at t = ~0\\.34657359\n$")
 set_tests_properties(check_cusp_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^cusp: 100 steps from 0, against exact values until 0 and inexact ones from there\ncusp\\.x: within 0\ncusp\\.g: within 0\n$")
+set_tests_properties(check_swing_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^swing: 100 steps from 0, against exact values until 1 and inexact ones from there\n(swing\\.[A-Za-z]+: within [0-9.e+-]+(, from 1)?${about}\n)+$")
 # Its known limit, C110, held where it parts.
 set_tests_properties(check_apart_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^apart: 100 steps from 0, against exact values\napart\\.y: [-a-z()]+ at 0, where the interpreter gives 0\n$")
@@ -241,6 +267,31 @@ set_tests_properties(check_toil_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^toil: 100 steps from 0, against exact values until 0 and inexact ones from there\ntoil\\.y: within 0\; the interpreter ran out of steps at 2, not compared\n$")
 set_tests_properties(check_latch_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^latch: 100 steps from 0, against exact values\nlatch\\.m: within 0, from 1\nlatch\\.w: within 0\n$")
+set_tests_properties(check_late_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^late: 100 steps from 0, against exact values\nlate\\.v: within 0\nlate\\.x: within 0, from 1\n$")
+# Reddi, Kale and Kumar's iterates from 1, their steps from 2.
+set(until2 ", against exact values until 2 and inexact ones from there")
+set_tests_properties(check_thm1_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^thm1: 100 steps from 0${until2}\nthm1\\.h: within 0, from 2${about}\nthm1\\.x: within 0, from 1${about}\nthm1\\.R: within 0${about}\nthm1\\.g: within 0, from 1\nthm1\\.m: within 0\nthm1\\.v: within 2\\.2e-16\n$")
+set_tests_properties(check_fixed_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^fixed: 100 steps from 0${until2}\nfixed\\.x: within 0, from 1${about}\nfixed\\.R: within 0${about}\nfixed\\.g: within 0, from 1\nfixed\\.v: within 2\\.2e-16\nfixed\\.w: within 0\n$")
+set_tests_properties(check_gen_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^gen: 100 steps from 0${until2}\ngen\\.h: within 0, from 2${about}\ngen\\.x: within 0, from 1${about}\ngen\\.R: within 0${about}\ngen\\.g: within 0, from 1\ngen\\.m: within 1\\.1e-16\ngen\\.v: within 0\n$")
+# Kahan (2006): Muller's recurrence parting where the paper's table has it,
+# and Rump's example (2010) at once; compile/kahan.ink and rump.ink.
+set(inexact0 ", against exact values until 0 and inexact ones from there")
+set_tests_properties(check_sums_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^sums: 100 steps from 0, against exact values\nsums\\.c: within 9e-13, from 1\nsums\\.o: within 3\\.6e-12\nsums\\.plain: within 5\\.5e-12\nsums\\.s: within 1\\.8e-12\nsums\\.comp: within 9e-13\nsums\\.total: within 1\\.8e-12\n$")
+set_tests_properties(check_muller_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^muller: 100 steps from 0, against exact values\nmuller\\.x: 4\\.9455373955305078 at 7, where the interpreter gives 4\\.9455374041239164\n$")
+set_tests_properties(check_rounded_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^rounded: 100 steps from 0${inexact0}\nrounded\\.x: within 0${about}, past the tolerance from 7\n$")
+set_tests_properties(check_surprise_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^surprise: 100 steps from 0${inexact0}\nsurprise\\.g: within 0${about}, past the tolerance from 0\nsurprise\\.k: within 0${about}\n$")
+set_tests_properties(check_solveur_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^solveur: 100 steps from 0, against exact values\nsolveur\\.d: within 0\nsolveur\\.z: within 0\n$")
+set_tests_properties(check_rump_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^rump: 100 steps from 0, against exact values\nrump\\.g: 1\\.1726039400531787 at 0, where the interpreter gives -0\\.82739605994682142\n$")
 set_tests_properties(check_mask_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^mask: 100 steps from 0, against exact values\nmask\\.y: within 0\n$")
 set_tests_properties(check_order_report PROPERTIES PASS_REGULAR_EXPRESSION
@@ -277,6 +328,48 @@ add_custom_target(sized_headers ALL DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/compile/
 add_test(NAME compile_sized_header
          COMMAND ${CMAKE_COMMAND} -E compare_files ${CMAKE_CURRENT_BINARY_DIR}/compile/inferred/sized.h
                  ${CMAKE_CURRENT_BINARY_DIR}/compile/bounded/sized.h)
+set_tests_properties(check_inv_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^inv: 100 steps from 0, against exact values\ninv\\.A: within 0\ninv\\.c: within 0\ninv\\.d: within 0\ninv\\.g: within 0\ninv\\.t: within 0\ninv\\.u: within 0\ninv\\.v: within 0\ninv\\.o: within 0\ninv\\.s: within 0\n$")
+# Each size its signature names folds where tr is called, so the header is the
+# one written with every size a number, byte for byte (DESIGN.md, a size bound
+# by a signature); tr2 is tr at 2x2.
+file(READ compile/signatures.ink signatures_named)
+set(signatures_numbered "${signatures_named}")
+function(numbered named number)
+    string(FIND "${signatures_numbered}" "${named}" at)
+    if(at EQUAL -1)
+        message(FATAL_ERROR "compile/signatures.ink no longer has ${named}")
+    endif()
+    string(REPLACE "${named}" "${number}" signatures_numbered "${signatures_numbered}")
+    set(signatures_numbered "${signatures_numbered}" PARENT_SCOPE)
+endfunction()
+numbered("tr(M[j<=n, k<=n]) = sum_(j=1)^n" "tr(M) = sum_(j=1)^3")
+numbered("c2(M[j<=n, k<=n])" "tr2(M) = sum_(j=1)^2 M[j,j]\n    c2(M)")
+numbered("sq(v[j<=n]) = sum_(j=1)^n" "sq(v) = sum_(j=1)^3")
+numbered("outer(x[j<=m], y[k<=n])[j<=m, k<=n]" "outer(x, y)[j<=3, k<=2]")
+numbered("u_n = tr([n" "u_n = tr2([n")
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS compile/signatures.ink)
+file(CONFIGURE OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/compile/numbered/signatures.ink
+     CONTENT "${signatures_numbered}" @ONLY)
+foreach(variant IN ITEMS named numbered)
+    set(source ${CMAKE_CURRENT_SOURCE_DIR}/compile/signatures.ink)
+    if(variant STREQUAL numbered)
+        set(source ${CMAKE_CURRENT_BINARY_DIR}/compile/numbered/signatures.ink)
+    endif()
+    add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/compile/${variant}/signatures.h
+        COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/compile/${variant}
+        COMMAND inkamath_cli --compile ${source} invariants
+                -o ${CMAKE_CURRENT_BINARY_DIR}/compile/${variant}/signatures.h
+        DEPENDS inkamath_cli ${source}
+        VERBATIM)
+endforeach()
+add_custom_target(signatures_headers ALL
+                  DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/compile/named/signatures.h
+                          ${CMAKE_CURRENT_BINARY_DIR}/compile/numbered/signatures.h)
+add_test(NAME compile_signatures_header
+         COMMAND ${CMAKE_COMMAND} -E compare_files
+                 ${CMAKE_CURRENT_BINARY_DIR}/compile/named/signatures.h
+                 ${CMAKE_CURRENT_BINARY_DIR}/compile/numbered/signatures.h)
 set_tests_properties(check_cls_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^cls: 100 steps from 0, against exact values until 0 and inexact ones from there\ncls\\.z: within 0\n(cls\\.[a-z]+: within [0-9.e+-]+${about}\n)+$")
 set_tests_properties(check_ball_report PROPERTIES PASS_REGULAR_EXPRESSION
@@ -396,6 +489,8 @@ set_tests_properties(check_zeroed_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^zeroed: 100 steps from 0, against exact values\nzeroed\\.y: within 0\n$")
 set_tests_properties(check_mirrored_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^mirrored: 100 steps from 0, against exact values\nmirrored\\.y: within 0\n$")
+set_tests_properties(check_radix_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^radix: 100 steps from 0, against exact values\nradix\\.y: within 0\n$")
 set_tests_properties(check_nests_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^nests: 100 steps from 0, against exact values\nnests\\.s: within 0\nnests\\.x: within 0\n$")
 set_tests_properties(check_calm_report PROPERTIES PASS_REGULAR_EXPRESSION
@@ -416,6 +511,17 @@ set_tests_properties(check_sill_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^sill: 100 steps from 0, against exact values\nsill\\.g: at 2 the compiled step takes 'g_m \\| d_\\(2\\*m\\) < c = 1' and the interpreter 'g_m = 0'\\; the guard of the first is exactly on its threshold\nsill\\.d: [0-9.e+-]+ at 9, where the interpreter gives 0\\.10000000000000001\nsill\\.g: 1 at 2, where the interpreter gives 0\n$")
 set_tests_properties(check_seam_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^seam: 100 steps from 0, against exact values\nseam\\.g\\[1,1\\]: at 2 the compiled step takes 'g_m\\[j<=2\\] \\| d_\\(2\\*m\\)\\[j\\] < c\\*j = 1' and the interpreter 'g_m\\[j<=2\\] = 0'\\; the guard of the first is exactly on its threshold\nseam\\.d\\[1,1\\]: [0-9.e+-]+ at 9, where the interpreter gives 0\\.10000000000000001\nseam\\.g\\[1,1\\]: 1 at 2, where the interpreter gives 0\n$")
+# compile/thresholds.ink and stable.ink in double: each threshold met as the
+# interpreter meets it, and the textbook variance parting at once.
+set_tests_properties(check_dies_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^dies: 100 steps from 0, against exact values\ndies\\.b: within 0\ndies\\.alive: within 0\n$")
+set_tests_properties(check_beat_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^beat: 100 steps from 0, against exact values\n(beat\\.(x|xh|e): within [0-9.e+-]+\n)+beat\\.locked: within 0\n$")
+set_tests_properties(check_moments_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^moments: 100 steps from 0, against exact values\n(moments\\.(S1|S2|mu|M2): within [0-9.e+-]+\n)+moments\\.naive: [0-9.e+-]+ at 1, where the interpreter gives 0\\.1225\nmoments\\.welford: within [0-9.e+-]+\n$")
+set_tests_properties(check_peak_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^peak: 100 steps from 0, against exact values until 0 and inexact ones from there\npeak\\.Q: within 0\n(peak\\.[SAB]: within [0-9.e+-]+${about}\n)+$")
+add_test(NAME check_moments COMMAND check_moments)
 add_test(NAME check_calm COMMAND check_calm)
 add_test(NAME check_wild COMMAND check_wild)
 add_test(NAME check_brink COMMAND check_brink)
@@ -426,8 +532,11 @@ add_test(NAME check_pole COMMAND check_pole)
 add_test(NAME check_huge COMMAND check_huge)
 add_test(NAME check_masked COMMAND check_masked)
 add_test(NAME check_sever COMMAND check_sever)
+add_test(NAME check_muller COMMAND check_muller)
+add_test(NAME check_rump COMMAND check_rump)
 set_tests_properties(check_wild check_brink check_rift check_sill check_seam check_pole
-                     check_huge check_masked check_sever PROPERTIES WILL_FAIL ON)
+                     check_huge check_masked check_sever check_moments check_muller check_rump
+                     PROPERTIES WILL_FAIL ON)
 
 # A float target (DESIGN.md): pid and adc's headers as compile/expected/float
 # has them, and compile/float.ink's checks, each built so that an operation done
@@ -456,10 +565,12 @@ foreach(model IN ITEMS pid adc)
 endforeach()
 
 foreach(checked IN ITEMS drift:calm drift:wild drift:ledge logistic:gate momentum:ball newton:stiff
-                         inputs:fan float:hum float:drone float:far float:tally float:crawl
+                         drift:radix inputs:fan float:hum float:drone float:far float:tally float:crawl
                          float:steep float:blast
                          steady:mark softmax:cls grad:line tensor:whirl tensor:batch
-                         cellguards:rfit cellguards:tfit)
+                         cellguards:rfit cellguards:tfit thresholds:dies thresholds:beat stable:peak
+                         reddi:thm1 reddi:fixed reddi:gen
+                         kahan:sums kahan:muller kahan:rounded kahan:surprise kahan:solveur rump:rump)
     string(REPLACE ":" ";" checked ${checked})
     list(GET checked 0 file)
     list(GET checked 1 instance)
@@ -480,7 +591,9 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:ledge logistic:gate momentu
     add_test(NAME check_float_${instance}_report COMMAND check_float_${instance})
 endforeach()
 set_tests_properties(check_float_wild check_float_ledge check_float_far check_float_crawl
-                     check_float_steep PROPERTIES WILL_FAIL ON)
+                     check_float_steep check_float_dies check_float_beat check_float_peak
+                     check_float_muller check_float_rounded check_float_surprise
+                     check_float_solveur check_float_rump PROPERTIES WILL_FAIL ON)
 # Each report as compile/float.ink gives it; what a libm or the seeds decide,
 # by its form.
 set(in_float " in float, against exact values")
@@ -497,6 +610,7 @@ foreach(report IN ITEMS
         "stiff:^stiff: 100 steps from 0${inexact}\nstiff\\.h: within 6e-08, 0\\.5 units of a float\nstiff\\.x: within ${units}\nstiff\\.y: within ${units}\n$"
         "crawl:^crawl: 100 steps from 0${in_float}\ncrawl\\.s: within 0, 0 units of a float\ncrawl\\.y: 100000016 at 0, where the interpreter gives none: s did not converge within 100 terms \\(last term 100000800\\)\n$"
         "fan:^fan: 100 steps from 0${in_float}\nfan\\.y: within 0, 0 units of a float\n$"
+        "radix:^radix: 100 steps from 0${in_float}\nradix\\.y: ${exact}\n$"
         "hum:^hum: 100 steps from 0${in_float}\nhum\\.y: within 2\\.7e-06, 22 units of a float\n$"
         "drone:^drone: 100 steps from 0${in_float}\ndrone\\.y: within 5\\.6e-06, 47 units of a float\n$"
         "far:^far: 100 steps from 0${in_float}\nfar\\.x: within 0\\.99, 16 units of a float\nfar\\.d: 0 at 1, where the interpreter gives 0\\.01\n$"
@@ -509,6 +623,18 @@ foreach(report IN ITEMS
         "batch:^batch: 100 steps from 0${in_float}\nbatch\\.w: ${exact}\n$"
         "rfit:^rfit: 100 steps from 0${in_float}\nrfit\\.W: ${exact}\nrfit\\.L: ${exact}\n$"
         "tfit:^tfit: 100 steps from 0${in_float}\ntfit\\.W: ${exact}\ntfit\\.H: ${exact}\ntfit\\.L: ${exact}\n$"
+        "dies:^dies: 100 steps from 0${in_float}\ndies\\.alive: at 3 the compiled step takes 'alive_n \\| b_n > 0 = 1' and the interpreter 'alive_n = 0'\\; the guard of the first is exactly on its threshold\ndies\\.b: -0\\.0728999898 at 4, where the interpreter gives 0\ndies\\.alive: 1 at 3, where the interpreter gives 0\n$"
+        "beat:^beat: 100 steps from 0${in_float}\nbeat\\.locked: at 2 the compiled step takes 'locked_n = 0' and the interpreter 'locked_n \\| e_n\\[1\\] == 0 and e_n\\[2\\] == 0 = 1'\\; the guard of the second is exactly on its threshold\n(beat\\.(x|xh|e): within [0-9.e+-]+, [0-9.e+-]+ units of a float\n)+beat\\.locked: 0 at 2, where the interpreter gives 1\n$"
+        "peak:^peak: 100 steps from 0${inexact}\npeak\\.Q: ${exact}\npeak\\.S: within ${units}\npeak\\.A\\[3,1\\]: [-a-z()]+ at 63, where the interpreter gives 1\\; the interpreter's term about [0-9.e+-]+ from the exact one\npeak\\.B: within ${units}\n$"
+        "thm1:^thm1: 100 steps from 0 in float${until2}\nthm1\\.h: within 1\\.2e-07, 1 units of a float, from 2${about}\nthm1\\.x: within 6\\.8e-08, 0\\.57 units of a float, from 1${about}\nthm1\\.R: within 9\\.3e-06, 2\\.4 units of a float${about}\nthm1\\.g: ${exact}, from 1\nthm1\\.m: ${exact}\nthm1\\.v: within 1e-06, 1\\.7 units of a float\n$"
+        "fixed:^fixed: 100 steps from 0 in float${until2}\nfixed\\.x: within 1\\.3e-07, 1\\.1 units of a float, from 1${about}\nfixed\\.R: within 4\\.3e-06, 2\\.2 units of a float${about}\nfixed\\.g: ${exact}, from 1\nfixed\\.v: within 1e-06, 1\\.7 units of a float\nfixed\\.w: within 1e-06, 1\\.1 units of a float\n$"
+        "gen:^gen: 100 steps from 0 in float${until2}\ngen\\.h: within 1\\.8e-07, 1\\.5 units of a float, from 2${about}\ngen\\.x: within 1\\.6e-07, 1\\.4 units of a float, from 1${about}\ngen\\.R: within 2e-06, 15 units of a float${about}\ngen\\.g: ${exact}, from 1\ngen\\.m: within 4\\.8e-07, 1 units of a float\ngen\\.v: within 7\\.2e-06, 0\\.47 units of a float\n$"
+        "sums:^sums: 100 steps from 0${in_float}\nsums\\.c: within 0\\.00048, 4\\.1e\\+03 units of a float, from 1\nsums\\.o: within 0\\.0029, 2\\.9 units of a float\nsums\\.plain: within 0\\.0028, 2\\.8 units of a float\nsums\\.s: within 0\\.00047, 0\\.48 units of a float\nsums\\.comp: within 0\\.00048, 4\\.1e\\+03 units of a float\nsums\\.total: within 0\\.00051, 0\\.52 units of a float\n$"
+        "muller:^muller: 100 steps from 0${in_float}\nmuller\\.x: 4\\.98312378 at 6, where the interpreter gives 4\\.9108474990827933\n$"
+        "rounded:^rounded: 100 steps from 0${inexact}\nrounded\\.x: 4\\.98312378 at 6, where the interpreter gives 4\\.9108474986606296\; the interpreter's term about [0-9.e+-]+ from the exact one\n$"
+        "surprise:^surprise: 100 steps from 0${inexact}\nsurprise\\.g: 1 at 0, where the interpreter gives 0\; the interpreter's term about [0-9.e+-]+ from the exact one\nsurprise\\.k: ${exact}${about}\n$"
+        "solveur:^solveur: 100 steps from 0${in_float}\nsolveur\\.d: 0 at 0, where the interpreter gives -1\nsolveur\\.z\\[1,1\\]: [-a-z()]+ at 0, where the interpreter gives 12582909\n$"
+        "rump:^rump: 100 steps from 0${in_float}\nrump\\.g: 1\\.17260396 at 0, where the interpreter gives -0\\.82739605994682142\n$"
         "cls:^cls: 100 steps from 0${inexact}\ncls\\.z: within 2\\.4e-08, 0\\.2 units of a float\ncls\\.q: within 1\\.9e-06, 1\\.5 units of a float${about}\ncls\\.s: within 6\\.3e-08, 0\\.53 units of a float${about}\ncls\\.loss: within 4\\.1e-07, 3\\.4 units of a float${about}\n$")
     string(FIND "${report}" ":" colon)
     string(SUBSTRING "${report}" 0 ${colon} instance)

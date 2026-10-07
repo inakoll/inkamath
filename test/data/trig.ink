@@ -75,16 +75,16 @@ error: 1 was approximated, so it has no exact fraction
 ~0.943808394
 
 >> sin(1048577)
-error: division by zero
+error: sin needs a number between -2^20 and 2^20
 
 >> cos(~(-2000000))
-error: division by zero
+error: cos needs a number between -2^20 and 2^20
 
 >> sin(10^400)
-error: division by zero
+error: sin needs a number between -2^20 and 2^20
 
 >> sin(~1/0)
-error: division by zero
+error: sin needs a number between -2^20 and 2^20
 
 # Not a real number, refused as exp refuses it.
 >> sin(0/~0)
@@ -275,7 +275,7 @@ digits = 9
 ~0.936752128
 
 >> grad_(x = 2^21) sin(x)
-error: division by zero
+error: sin needs a number between -2^20 and 2^20
 
 # Where x*2/pi + 1/2 is whole, floor jumps, as in exp.
 >> grad_(x = 1/2/0.6366197723675814) sin(x)
@@ -317,8 +317,8 @@ error: floor jumps at x = ~0.785398163
 
 # sin and cos of a real double within 2^20 are called compiled, as exp is:
 # one step and one reference deep. Through the definition each is some 40
-# steps and nests 5 references deeper, so these ran out of steps and of
-# depth; the sums are mpmath's.
+# steps and nests 5 references deeper, so these ran out of steps, until each
+# call had its own (C149), and of depth; the sums are mpmath's.
 >> sum_(k=1)^40000 sin(~k/40000)
 ~18388.3285
 
@@ -360,7 +360,7 @@ a = (10^600 + 1)/10^600
 ~0.841470985  # approximated past a thousand digits
 
 # A session's clause starts a definition of its own, as a model's or a
-# file's does, so this abs has one clause; a plain definition starts over.
+# file's does, so this abs has one clause.
 >> abs(y) | y < 0 = -y
 abs(y) | y < 0 = -y
 

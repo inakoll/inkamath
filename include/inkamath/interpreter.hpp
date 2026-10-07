@@ -183,6 +183,10 @@ private:
     static bool IsLogic(const Token<T>& token) {
         return IsWord(token, "and") || IsWord(token, "or");
     }
+    // 'clear f', not reserved, so 'clear' alone or 'clear = 2' is a name.
+    bool Clearing() const {
+        return IsWord(m_tokens[0], "clear") && m_tokens.size() > 1 && m_tokens[1].type == Func;
+    }
     // 'frac', 'digits' and 'tex' are about the whole line, so they begin it.
     static bool BeginsLine(const Token<T>& token) {
         return IsWord(token, "frac") || IsWord(token, "digits") || IsWord(token, "tex");
@@ -276,13 +280,14 @@ inline constexpr const char* prelude[] = {
     "ilogb(x) | x <= 0 = 1/0",
     "ilogbs(x, k, s) = k",
     "ilogbs(x, k, s) | k + s > 3321 = k",
+    "ilogbs(x, k, s) | k + s < -3321 = k + s",
     "ilogbs(x, k, s) | x >= 2^(k + s) = k + s",
     "log(x) = logk(x, ilogb(x))",
     "log(x) | x <= 0 = 1/0",
-    "log(x) | 2*x == x = x",
+    "log(x) | 1/x == 0 = x",
     "logk(x, k) = logm(x/2^k, k)",
     "logm(m, k) = logs(~((m - 1)/(m + 1)), k)",
-    "logm(m, k) | m*m > 2 = logs(~((m/2 - 1)/(m/2 + 1)), k + 1)",
+    "logm(m, k) | m > 2/m = logs(~((m/2 - 1)/(m/2 + 1)), k + 1)",
     "logs(s, k) = k*355/512 + (2*s*logp(s*s) - k*~2.1219444005469057e-4)",
     "logp(z) = 1 + z*(1/3 + z*(1/5 + z*(1/7 + z*(1/9 + z*(1/11 + z*(1/13 + z*(1/15 "
     "+ z*(1/17 + z*(1/19 + z/21)))))))))",
@@ -342,15 +347,19 @@ Interpreter<T, U>::Interpreter() {
             if (!(numeric_interface<Number>::imaginary(a) == 0))
                 throw std::runtime_error(f.Name() + " needs real numbers, not " +
                                          numeric_interface<Number>::toString(a));
+            // In its own name, not as the 1/0 its walk takes there.
+            const auto c = found->second;
+            if ((c == inkamath_prelude_log || c == inkamath_prelude_ilogb) && a <= Number(0))
+                throw std::runtime_error(f.Name() + " needs a number above 0, not " +
+                                         numeric_interface<Number>::toString(a));
+            if ((c == inkamath_prelude_sin || c == inkamath_prelude_cos) &&
+                (a > Number(1 << 20) || a < Number(-(1 << 20))))
+                throw std::runtime_error(f.Name() + " needs a number between -2^20 and 2^20");
             // Every run of --check walks: the one its guards listen to, and
             // the disturbed ones.
             if (stack_.guards || Number::disturbed) return {};
-            const auto    c = found->second;
-            const auto    z = a.Inexact();
-            if (a.exact() || Number::approximated(a) || z.imag() != 0 || !std::isfinite(z.real()) ||
-                ((c == inkamath_prelude_log || c == inkamath_prelude_ilogb) && !(z.real() > 0)) ||
-                ((c == inkamath_prelude_sin || c == inkamath_prelude_cos) &&
-                 std::abs(z.real()) > 0x1p20))
+            const auto z = a.Inexact();
+            if (a.exact() || Number::approximated(a) || z.imag() != 0 || !std::isfinite(z.real()))
                 return {};
             const double y = c(z.real());
             if (c == inkamath_prelude_ilogb) return U(Number(static_cast<long long>(y)));
@@ -666,8 +675,9 @@ PExpression<U> Interpreter<T,U>::ParseEqualExpr()
             std::string signature;
             for(size_t token = signature_begin; token < m_i; ++token) {
                 // Kept apart: joined, '[1 2]' and '[12]' are the same string,
-                // and the two clauses become one (DESIGN.md, C55).
-                signature += '\x1f';
+                // and the two clauses become one (DESIGN.md, C55); and so is
+                // the space that parts '[1 -2]' from '[1 - 2]' (C159).
+                signature += m_tokens[token].apart ? "\x1f " : "\x1f";
                 signature += m_tokens[token].text;
             }
             ++m_i;
@@ -767,8 +777,10 @@ PExpression<U> Interpreter<T,U>::ParseAddExpr(PExpression<U> lead)
     PExpression<U> e = ParseMultExpr(lead);
     while (!AtEnd() && (Peek().type == Add || Peek().type == Min) )
     {
-        if (listed_ && Peek().spaced && m_i + 1 < m_tokens.size() && !m_tokens[m_i + 1].spaced)
+        if (listed_ && Peek().spaced && m_i + 1 < m_tokens.size() && !m_tokens[m_i + 1].spaced) {
+            m_tokens[m_i].apart = true;
             break;
+        }
         if (m_tokens[m_i++].type == Add)
         {
             e.reset(new AddExpression<U>(e,ParseMultExpr()));
@@ -1064,6 +1076,7 @@ PExpression<U> Interpreter<T, U>::ParseQuotes(PExpression<U> e) {
 template <Parsable T, Numeric U>
 PExpression<U> Interpreter<T, U>::ParseCell(PExpression<U> matrix) {
     if (AtEnd() || Peek().type != LBra || Peek().spaced) {
+        if (!AtEnd() && Peek().type == LBra) m_tokens[m_i].apart = true;
         return matrix;
     }
     ++m_i;
@@ -1385,6 +1398,12 @@ typename Interpreter<T, U>::Result Interpreter<T, U>::Run(const std::string& s) 
     Lexer(s);
     if (IsWord(m_tokens[0], "use") && m_tokens.size() > 1 && m_tokens[1].type == Func)
         return Echo{Use(s)};
+    if (Clearing()) {
+        if (m_tokens.size() > 2)
+            Fail("clear clears a whole definition, as 'clear ", m_tokens[1].text, "'");
+        stack_.Clear(m_tokens[1].text);
+        return Echo{AsWritten(s)};
+    }
     const bool fraction = IsWord(m_tokens[0], "frac");
     if ((BeginsLine(m_tokens[0]) || IsGrad(m_tokens[0])) && DefinesReserved()) {
         Fail(m_tokens[0].text, " is reserved, so it cannot be defined");
@@ -1440,7 +1459,9 @@ std::string Interpreter<T, U>::Use(const std::string& s) {
     auto used  = std::make_shared<Reference<U>>(name);
     used->file = file;
     used->home = &stack_.Target();
-    stack_.Put(name, used);
+    for (const std::string& brought : listed) stack_.Vacant(brought, *file->names.at(brought));
+    // A name of the file's own, brought in, takes the file's place (C160).
+    if (std::ranges::find(listed, name) == listed.end()) stack_.Put(name, used);
     for (const std::string& brought : listed) stack_.Put(brought, file->names.at(brought));
     return AsWritten(s);
 }
@@ -1531,36 +1552,16 @@ std::pair<std::string, std::shared_ptr<Model<U>>> Interpreter<T, U>::ParseModel(
     if (params) given = params->Children();
     for (const PExpression<U>& written : given) {
         typename Model<U>::Parameter parameter;
-        PExpression<U>               left = written;
-        if (const auto* equal = dynamic_cast<const EqualExpression<U>*>(written.get())) {
-            left               = equal->m_e1();
-            parameter.fallback = equal->m_e2();
-        }
-        // Its places are a cell's, or with a default the left side's.
-        std::vector<PExpression<U>> places;
-        if (const auto* cell = dynamic_cast<const CellExpression<U>*>(left.get())) {
-            places = {cell->Slice(), cell->Row(), cell->Col()};
-            left   = cell->Matrix();
-        }
-        const auto* term = dynamic_cast<const FuncExpression<U>*>(left.get());
-        if (term && places.empty())
-            places = {term->Children()[5], term->Children()[3], term->Children()[4]};
-        bool bounded = true;  // each place, as 'j<=2'
-        for (const PExpression<U>& place : places) {
-            const auto* compare = dynamic_cast<const CompareExpression<U>*>(place.get());
-            if (compare && compare->Op() == Comparison::LessEqual &&
-                dynamic_cast<const RefExpression<U>*>(compare->m_e1().get()))
-                parameter.bounds.push_back(compare->m_e2());
-            else
-                bounded = bounded && !place;
-        }
+        const WrittenParameter<U>    w(written);
+        parameter.fallback = w.fallback;
+        for (const auto* bound : w.bounds) parameter.bounds.push_back(bound->m_e2());
         const auto* index =
-            term ? dynamic_cast<const RefExpression<U>*>(term->m_e2().get()) : nullptr;
-        if (dynamic_cast<const RefExpression<U>*>(left.get()) && bounded &&
+            w.term ? dynamic_cast<const RefExpression<U>*>(w.term->m_e2().get()) : nullptr;
+        if (dynamic_cast<const RefExpression<U>*>(w.left.get()) && w.bounded &&
             parameter.bounds.empty()) {
-            parameter.name = left->Name();
-        } else if (index && bounded && !term->m_e1() && !term->Children()[2]) {
-            parameter.name  = term->Name();
+            parameter.name = w.left->Name();
+        } else if (index && w.bounded && !w.term->m_e1() && !w.term->Children()[2]) {
+            parameter.name  = w.term->Name();
             parameter.index = index->Name();
         } else {
             Fail("a model's parameter is a name, as 'k = 2', or an input, as 'x_n' or 'x_n[j<=2]'");
@@ -1586,7 +1587,7 @@ std::pair<std::string, std::shared_ptr<Model<U>>> Interpreter<T, U>::ParseModel(
         } else {
             ResetInterpreter();
             Lexer(statement.written);
-            statement.definition = ParseAll();
+            if (!Clearing()) statement.definition = ParseAll();
             if (!dynamic_cast<const EqualExpression<U>*>(statement.definition.get()))
                 Fail("a model's body holds definitions, not '", statement.written, "'");
             statement.name = statement.definition->Name();

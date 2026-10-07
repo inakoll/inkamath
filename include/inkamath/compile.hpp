@@ -674,13 +674,25 @@ private:
             for (const auto& [given, value] : expansion.values)
                 function.Divides(given, Value(value.size), definitions_);
         });
-        return Inside(expansion, [&] {
-            for (const std::string& parameter : names) {
-                if (expansion.values.count(parameter)) continue;
-                expansion.values.emplace(parameter, Emit(p.parameters_dict().at(parameter)));
-            }
-            return Chained(name, function);
-        });
+        Defaults(function, expansion);
+        return Inside(expansion, [&] { return Chained(name, function); });
+    }
+
+    // A default reads the others inside the function, and the sizes stated
+    // before it, constants (DESIGN.md, a size bound by a signature).
+    void Defaults(const Reference<Value>& function, Expansion& expansion) {
+        const ParametersDefinition<Value>& p = function.Clauses().front().parameters;
+        typename Reference<Value>::Measure measure(function);
+        for (std::size_t i = 0; i < p.parameters_names().size(); ++i) {
+            const std::string& parameter = p.parameters_names()[i];
+            if (!expansion.values.count(parameter))
+                expansion.values.emplace(parameter, Inside(expansion, [&] {
+                                             return Emit(p.parameters_dict().at(parameter));
+                                         }));
+            const Extent given = expansion.values.at(parameter).size;
+            for (const auto& [size, n] : Reasoned([&] { return measure(i, given); }))
+                expansion.values.emplace(size, Literal(Value(Number(static_cast<int>(n)))));
+        }
     }
 
     // A function of the prelude called on single values is a C function of
@@ -724,6 +736,7 @@ private:
             prelude_.push_back("static inline double " + called + "(" + signature +
                                ") {\n    return " + body.cells[0].text + ";\n}\n\n");
         }
+        ++calls_;  // an argument this is in is computed once, as of a call of the source's (C155)
         Code value = Of(Cell(called + "(" + given + ")", primary));
         for (std::size_t i = 0; i < names.size(); ++i)
             if (!arguments[i].part.empty()) moving += names[i];
@@ -1537,14 +1550,17 @@ private:
     }
 
     // C's absorbs a NaN where the other operand is 1 or 0: pow(1, NaN) and
-    // pow(NaN, 0) are 1.
+    // pow(NaN, 0) are 1. C's sqrt(-0) is -0, the interpreter's +0 (C163).
     Code Powered(const Code& base, const Code& exponent) const {
         const auto other = [](const Code& c, double v) {
             return c.constant && Doubles(*c.constant)[0] != v;
         };
         const std::string test =
             other(exponent, 0.0) || other(base, 1.0) ? "" : Nan(base, exponent);
-        const std::string power = "pow(" + base.cells[0].text + ", " + exponent.cells[0].text + ")";
+        const std::string power =
+            exponent.constant && Doubles(*exponent.constant)[0] == 0.5
+                ? "sqrt(0.0 + " + Wrap(base.cells[0], product) + ")"
+                : "pow(" + base.cells[0].text + ", " + exponent.cells[0].text + ")";
         Cell              cell(test.empty() ? power : "(" + test + power + ")", primary);
         // Of a constant above 0 but 1, NaN where its exponent is: a test reads
         // that, not a second pow, which C, setting errno, does not share.
@@ -1873,6 +1889,13 @@ private:
         if (!definition) {
             if (fixed_.count(key)) throw Reason(key + " is not defined");
             return Answer(Field(key, Value(Number(NAN))));
+        }
+        // 'f()' is 'f', a call with every default (C169).
+        if (!definition->Clauses().empty() &&
+            !definition->Clauses().front().parameters.parameters_names().empty()) {
+            if (found.where == &definitions_.Builtins())
+                return Prelude(key, *definition, ParametersCall<Value>());
+            return Answer(Call(key, *definition, ParametersCall<Value>(), nullptr));
         }
         if (IsSequence(*definition)) throw Reason(key + " is a sequence; index it");
         read_global_ = true;
@@ -2259,11 +2282,7 @@ private:
             given.values.emplace(names[i], Emit(call.parameters_expression()[i]));
         for (const auto& [parameter, argument] : call.parameters_dict())
             given.values.emplace(parameter, Emit(argument));
-        for (const std::string& parameter : names)
-            if (!given.values.count(parameter))
-                given.values.emplace(parameter, Inside(given, [&] {
-                                         return Emit(p.parameters_dict().at(parameter));
-                                     }));
+        Defaults(sequence, given);
         // A limit's function fills arrays of rows and columns.
         for (const auto& [parameter, code] : given.values) {
             if (code.size.slices) throw Reason("a tensor in a limit, for now");
@@ -2280,6 +2299,7 @@ private:
             const Code& argument = given.values.at(parameter);
             inside.values.emplace(parameter, Array("arg_" + parameter, argument.size));
         }
+        inside.values.insert(given.values.begin(), given.values.end());  // the sizes, constants
         Walked* const              outer_limit       = std::exchange(limit_, &walked);
         auto* const                outer_temporaries = std::exchange(temporaries_, nullptr);
         auto                       outer_reads       = std::exchange(read_parameters_, {});
@@ -3232,6 +3252,7 @@ private:
         for (auto& [name, sequence] : sequences_) {
             if (sequence.bases.empty()) continue;
             sequence.start = sequence.bases.begin()->first;
+            sequence.first = (sequence.start - sequence.phase) / sequence.period;
             earliest       = std::min(earliest.value_or(sequence.start), sequence.start);
         }
         for (auto& [name, sequence] : sequences_) {
@@ -3683,7 +3704,7 @@ private:
                "];\n"
                "    for (int i = 0; i < " +
                size + "; ++i)\n        for (int j = 0; j < " + size +
-               "; ++j) r[i][j] = i == j;\n"
+               "; ++j) r[i][j] = i == j ? 1.0 : 0.0;\n"
                "    for (int col = 0; col < " +
                size +
                "; ++col) {\n"
@@ -4153,7 +4174,8 @@ private:
                    out[at] == '.';
         };
         for (std::size_t at = out.find('\n'); floats && at < out.size(); ++at)
-            for (const std::string from : {"double", "fabs(", "floor(", "pow(", "0.0", "1.0"})
+            for (const std::string from :
+                 {"double", "fabs(", "floor(", "pow(", "sqrt(", "0.0", "1.0"})
                 if (!inside(at - 1) && out.compare(at, from.size(), from) == 0 &&
                     (from.back() == '(' || !inside(at + from.size()))) {
                     if (from == "double")

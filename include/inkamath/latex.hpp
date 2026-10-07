@@ -17,6 +17,8 @@
 // paper sets it, so that a transcription can be read against its page.
 template <typename T>
 class Latex {
+    using Sizes = std::vector<typename ParametersDefinition<T>::Size>;
+
 public:
     static std::string Definition(const Reference<T>& definition) {
         if (definition.model) throw std::runtime_error("tex cannot show a model yet");
@@ -52,23 +54,26 @@ public:
         }
         const bool  bycells = std::any_of(definition.Clauses().begin(), definition.Clauses().end(),
                                           [](const Clause<T>& c) { return c.parameters.cells(); });
+        // A left side for several clauses has the sizes any of them states,
+        // one for a clause alone those it states (C171).
         std::string out;
         const auto  whole = [&] {
             if (!cases.empty())
-                out += Left(name, cases.front()->parameters) + " = " + Cases(cases) + "\n";
+                out += Left(name, cases.front()->parameters, definition.Sizes()) + " = " +
+                       Cases(cases) + "\n";
         };
         if (bycells) whole();
         for (const auto& line : lines) {
             const ParametersDefinition<T>& p = line.front()->parameters;
             if (!p.cells())
-                out += Left(name, p) + " = " + Of(*line.front()->expression).text + "\n";
+                out += Left(name, p, p.sizes()) + " = " + Of(*line.front()->expression).text + "\n";
             else
-                out += Entry(name, p) + " = " + Cases(line) + Bounds(p) + "\n";
+                out += Entry(name, p, definition.Sizes()) + " = " + Cases(line) + Bounds(p) + "\n";
         }
         if (!bycells) whole();
         if (!cells.empty())
-            out += Entry(name, cells.front()->parameters) + " = " + Cases(cells) +
-                   Bounds(cells.front()->parameters);
+            out += Entry(name, cells.front()->parameters, definition.Sizes()) + " = " +
+                   Cases(cells) + Bounds(cells.front()->parameters);
         return Trimmed(out);
     }
 
@@ -169,7 +174,8 @@ private:
 
     // An entry of a definition by cells, 'M_{j,k}', or a term's, 'x_{n,j}':
     // one subscript, as a term's cell is read.
-    static std::string Entry(const std::string& name, const ParametersDefinition<T>& p) {
+    static std::string Entry(const std::string& name, const ParametersDefinition<T>& p,
+                             const Sizes& sizes) {
         std::string subscript;
         if (p.indexed())
             subscript = (p.general() ? p.index_name() : std::to_string(p.index())) + ",";
@@ -179,7 +185,7 @@ private:
         subscript += p.row_name().empty() ? std::to_string(p.row()) : p.row_name();
         if (!p.column())
             subscript += "," + (p.col_name().empty() ? std::to_string(p.col()) : p.col_name());
-        return Head(name, p) + "_" + Braced(subscript);
+        return Head(name, p, sizes) + "_" + Braced(subscript);
     }
 
     // Where the names of a clause for every cell range, those bounded as
@@ -195,13 +201,19 @@ private:
         return out;
     }
 
-    static std::string Head(const std::string& name, const ParametersDefinition<T>& p) {
+    static std::string Head(const std::string& name, const ParametersDefinition<T>& p,
+                            const Sizes& sizes) {
         std::string left = p.parameters_names().empty() ? Name(name) : Operator(name);
         if (!p.parameters_names().empty()) {
             left += "(";
             for (std::size_t k = 0; k < p.parameters_names().size(); ++k) {
                 const std::string& parameter = p.parameters_names()[k];
                 left += (k ? ", " : "") + Name(parameter);
+                const auto& size = sizes[k].bounds;
+                for (std::size_t b = 0; b < size.size(); ++b)
+                    left += (b ? " \\times " : " \\in \\mathbb{R}^{") +
+                            (size[b].second ? size[b].first : Name(size[b].first));
+                if (!size.empty()) left += "}";
                 const auto fallback = p.parameters_dict().find(parameter);
                 if (fallback != p.parameters_dict().end())
                     left += " = " + Of(*fallback->second).text;
@@ -211,9 +223,10 @@ private:
         return left;
     }
 
-    static std::string Left(const std::string& name, const ParametersDefinition<T>& p) {
-        if (!p.indexed()) return Head(name, p);
-        return Head(name, p) + "_" +
+    static std::string Left(const std::string& name, const ParametersDefinition<T>& p,
+                            const Sizes& sizes) {
+        if (!p.indexed()) return Head(name, p, sizes);
+        return Head(name, p, sizes) + "_" +
                Braced(p.general() ? p.index_name() : std::to_string(p.index()));
     }
 
@@ -280,8 +293,10 @@ private:
             const bool        digit = std::isdigit(static_cast<unsigned char>(right.front()));
             return {left + (digit ? " \\cdot " : "\\,") + right, product};
         }
+        // Parenthesised under a power, a factorial or an index, as on paper.
         if (const auto* ratio = dynamic_cast<const DivExpression<T>*>(&e))
-            return {"\\frac{" + Of(*ratio->m_e1()).text + "}{" + Of(*ratio->m_e2()).text + "}"};
+            return {"\\frac{" + Of(*ratio->m_e1()).text + "}{" + Of(*ratio->m_e2()).text + "}",
+                    Level::power};
         if (const auto* power = dynamic_cast<const PowExpression<T>*>(&e)) {
             return {
                 Wrapped(Of(*power->m_e1(), tight), primary) + "^" + Braced(Of(*power->m_e2()).text),

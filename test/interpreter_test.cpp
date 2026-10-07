@@ -184,6 +184,27 @@ TEST_CASE("trig") {
 TEST_CASE("fastgrad") {
     check_transcript("fastgrad.ink");
 }
+TEST_CASE("reddi") {
+    check_transcript("reddi.ink");
+}
+TEST_CASE("clauses") {
+    check_transcript("clauses.ink");
+}
+TEST_CASE("approximated") {
+    check_transcript("approximated.ink");
+}
+TEST_CASE("signatures") {
+    check_transcript("signatures.ink");
+}
+TEST_CASE("kahan") {
+    check_transcript("kahan.ink");
+}
+TEST_CASE("muller") {
+    check_transcript("muller.ink");
+}
+TEST_CASE("rump") {
+    check_transcript("rump.ink");
+}
 TEST_CASE("readme") {
     check_readme();
 }

@@ -10,6 +10,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cctype>
 #include <exception>
 #include <memory>
 #include <numeric>
@@ -17,6 +18,7 @@
 #include <stdexcept>
 #include <tuple>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 
 // Nesting too deep, told apart from other failures because a recurrence can
@@ -92,6 +94,8 @@ struct Model;
 template <typename T>
 class Reference {
 public:
+    using Size = typename ParametersDefinition<T>::Size;
+
     Reference() = default;
     explicit Reference(std::string name) : reference_name_(std::move(name)) {}
 
@@ -128,13 +132,9 @@ public:
 
     // 'a single value, where dot takes a 2x1 matrix'.
     [[nodiscard]] std::string Unlike(const Extent& given, const Extent& stated) const {
-        const auto described = [](const Extent& e) {
-            return e.count() == 1 && !e.slices ? std::string("a single value")
-                                               : "a " + e.Described();
-        };
         const std::string& header = home->model->header;
-        return described(given) + ", where " + header.substr(0, header.find('(')) + " takes " +
-               described(stated);
+        return given.Called() + ", where " + header.substr(0, header.find('(')) + " takes " +
+               stated.Called();
     }
 
     [[nodiscard]] bool Value() const { return !model && !file && !input; }
@@ -158,6 +158,11 @@ public:
         return *applied_;
     }
 
+    // How to start anew, where 'clear' can be written: not in a model's body.
+    [[nodiscard]] std::string Advice() const {
+        return home && !home->model ? "; write 'clear " + reference_name_ + "' first" : "";
+    }
+
     void add_expression(const std::string& ai_reference_name, const ParametersDefinition<T>& ai_parameters, PExpression<T>  ai_expression, const std::string& written = std::string()) {
         applied_.reset();
         if(reference_name_.empty()) {
@@ -166,12 +171,14 @@ public:
         else if(reference_name_ != ai_reference_name) {
             throw std::runtime_error(std::string("Interpreter internal error : invalid reference names ") + ai_reference_name + " and " + reference_name_);
         }
+        if (model || file)
+            throw std::runtime_error(reference_name_ + (model ? " is a model" : " is a file") +
+                                     Advice());
 
         // One definition per name, kept as the clauses that make it up in the
-        // order they were written. A plain definition replaces all of them
-        // (C11), which is how a definition is started over; anything else
-        // replaces the clause that names the same thing and is appended when
-        // there is none.
+        // order they were written. A clause replaces the one that names the
+        // same thing and is appended when there is none; a plain one that is
+        // the whole definition is replaced parameters and all.
         Clause<T> clause{ai_parameters, ai_expression, written, {}};
         // A parameter of the definition's name hides the definition.
         const std::vector<std::string>& own = ai_parameters.parameters_names();
@@ -180,16 +187,29 @@ public:
             for (const PExpression<T>& e : {ai_parameters.guard(), ai_expression})
                 Reads(e, ai_parameters, hidden ? "" : reference_name_, {}, clause.reads);
         // One call binds the parameters once, for whichever clause answers, so
-        // the clauses have to agree on their names. One that disagrees could
-        // only ever read a global under its own name (DESIGN.md, C51).
-        const bool starts_over = IsPlain(clause);
-        if(!clauses_.empty() && !starts_over
-           && ai_parameters.parameters_names() != CallParameters().parameters_names()) {
-            throw std::runtime_error(reference_name_ + " takes ("
-                                     + Joined(CallParameters().parameters_names())
-                                     + "), so a clause cannot take ("
-                                     + Joined(ai_parameters.parameters_names()) + ")");
+        // the clauses have to agree on their names and defaults. One that
+        // disagrees could only ever read a global under its own name (DESIGN.md,
+        // C51), or a default not its own (C154).
+        if (clauses_.size() == 1 && IsPlain(clauses_.front()) && IsPlain(clause)) clauses_.clear();
+        if (!clauses_.empty() && Taken(ai_parameters, false) != Taken(CallParameters(), false)) {
+            throw std::runtime_error(reference_name_ + " takes (" + Shown(clauses_.front()) +
+                                     "), so a clause cannot take (" + Shown(clause) + ")" +
+                                     Advice());
         }
+        // The sizes are the definition's as the names are: stated in one
+        // clause, they hold for every clause, so two clauses state the same.
+        std::vector<Size> sizes = clauses_.empty() ? std::vector<Size>(own.size()) : sizes_;
+        for (std::size_t i = 0; i < own.size(); ++i) {
+            const Size& size = ai_parameters.sizes()[i];
+            if (size.bounds.empty()) continue;
+            if (!sizes[i].bounds.empty() && sizes[i].bounds != size.bounds)
+                throw std::runtime_error(reference_name_ + " takes " + own[i] + " of size " +
+                                         Of(sizes[i]) + ", so a clause cannot take it of size " +
+                                         Of(size) + Advice());
+            sizes[i] = size;
+        }
+        for (const Clause<T>& c : clauses_) Clash(sizes, c.parameters);
+        Clash(sizes, ai_parameters);
         // A base clause answers for one index rather than for every call, so
         // it is not a default and keeps its place: a guard added after one
         // could never apply, and saying so beats doing nothing.
@@ -217,18 +237,26 @@ public:
         // a sequence's.
         const bool matrix_cells = FirstThat(
             [](const Clause<T>& c) { return c.parameters.cells() && !c.parameters.indexed(); });
-        if (!starts_over && ((ai_parameters.cells() && !ai_parameters.indexed() && Sequence()) ||
-                             (ai_parameters.indexed() && matrix_cells))) {
+        if ((ai_parameters.cells() && !ai_parameters.indexed() && Sequence()) ||
+            (ai_parameters.indexed() && matrix_cells)) {
             throw std::runtime_error(
                 reference_name_ + (matrix_cells ? " is defined by its cells, so it has no index"
                                                 : " is a sequence, so it has no cells of its own"));
+        }
+        // Kept, a value and a sequence of one name were both (C11, C70).
+        if (!clauses_.empty() && ai_parameters.indexed() != Sequence()) {
+            throw std::runtime_error(reference_name_ +
+                                     (Sequence()
+                                          ? " is a sequence, so a clause of it has an index"
+                                          : " is not a sequence, so a clause of it has no index") +
+                                     Advice());
         }
         // The walk over the cells never asks a guarded clause written whole
         // (C82), and a guard on each cell says the same.
         const auto whole_guarded = [](const Clause<T>& c) {
             return c.parameters.guarded() && !c.parameters.cells();
         };
-        if (!starts_over && ai_parameters.guarded() && !ai_parameters.cells() &&
+        if (ai_parameters.guarded() && !ai_parameters.cells() &&
             FirstThat([](const Clause<T>& c) { return c.parameters.cells(); })) {
             throw std::runtime_error(reference_name_ +
                                      " is defined by its cells, so a clause for all of it cannot "
@@ -239,36 +267,89 @@ public:
                                      " has a guarded clause for all of it, so it cannot be "
                                      "defined by its cells; guard its cells");
         }
-        if (starts_over) {
-            clauses_.clear();
-        } else if (ai_parameters.indexed() ||
-                   (!ai_parameters.guarded() && !ai_parameters.cells())) {
-            // An index turns a value into a sequence, so the plain clause goes,
-            // guarded or not: kept, the name was both (DESIGN.md, C70).
-            // A cell clause of a matrix keeps it: a matrix written whole has
-            // cells, and the clause overrides one, as a base clause does a
-            // general one.
-            std::erase_if(clauses_, IsPlain);
-        }
         // Writing a clause again replaces it where it stands. Position is what
         // dispatch follows, so a clause that moved would answer differently
         // (DESIGN.md, C45); a guarded clause is named by its left-hand
         // side, which is how it can be corrected at all (C46).
-        for(Clause<T>& existing : clauses_) {
-            const bool same =
-                ai_parameters.guarded()
-                    ? existing.parameters.guarded() &&
-                          existing.parameters.signature() == ai_parameters.signature()
-                    : !existing.parameters.guarded() && Shape(existing) == Shape(clause);
-            if(same) {
-                existing = clause;
-                return;
-            }
-        }
-        clauses_.push_back(clause);
+        const auto existing =
+            std::find_if(clauses_.begin(), clauses_.end(), [&](const Clause<T>& c) {
+                return ai_parameters.guarded()
+                           ? c.parameters.guarded() && Taken(c.parameters, false, true) ==
+                                                           Taken(ai_parameters, false, true)
+                           : !c.parameters.guarded() && Shape(c) == Shape(clause);
+            });
+        if (existing != clauses_.end())
+            *existing = clause;
+        else
+            clauses_.push_back(clause);
+        // The sizes held are those the remaining clauses state (C166).
+        sizes_.assign(own.size(), Size());
+        for (const Clause<T>& c : clauses_)
+            for (std::size_t i = 0; i < own.size(); ++i)
+                if (!c.parameters.sizes()[i].bounds.empty()) sizes_[i] = c.parameters.sizes()[i];
     }
 
     [[nodiscard]] const std::vector<Clause<T>>& Clauses() const { return clauses_; }
+    [[nodiscard]] const std::vector<Size>&      Sizes() const { return sizes_; }
+
+    // A default belongs to the definition, not to the call: it is evaluated
+    // only when the call leaves its parameter empty, and in the callee's
+    // scope, so that it can refer to the definition's other parameters, and
+    // the sizes they state.
+    void BindDefaults(const ParametersCall<T>& call, EvaluationVisitor<T>& evaluator) const {
+        const ParametersDefinition<T>&  p     = CallParameters();
+        const std::vector<std::string>& names = p.parameters_names();
+        Measure                         measure(*this);
+        for (size_t i = 0; i < names.size(); ++i) {
+            const auto fallback = p.parameters_dict().find(names[i]);
+            if (i >= call.parameters_expression().size() &&
+                !call.parameters_dict().count(names[i]) && fallback != p.parameters_dict().end())
+                evaluator.stack().BindValue(names[i], fallback->second->accept(evaluator));
+            if (!sizes_[i].bounds.empty())
+                for (const auto& [size, n] :
+                     measure(i, evaluator.stack().Eval(names[i], ParametersCall<T>()).Size()))
+                    evaluator.stack().BindValue(size, T(static_cast<int>(n)));
+        }
+    }
+
+    // The sizes a call binds, a parameter at a time: a name takes the extent
+    // it first meets and holds the others to it, and one that disagrees is
+    // refused before the body, in the words of the parameters that state it
+    // (DESIGN.md, a size bound by a signature).
+    struct Measure {
+        explicit Measure(const Reference& of) : of(of) {}
+
+        std::vector<std::pair<std::string, size_t>> operator()(size_t i, const Extent& e) {
+            const auto& sizes  = of.sizes_;
+            const auto& bounds = sizes[i].bounds;
+            if (bounds.empty()) return {};
+            const size_t at[] = {e.slices, e.rows, e.cols}, *d = at + (bounds.size() != 3);
+            given[i]          = e;
+            const auto refuse = [&](size_t first) {
+                const bool two = first != i;
+                throw std::runtime_error(of.reference_name_ + " takes " +
+                                         (two ? sizes[first].written + " and " : "") +
+                                         sizes[i].written + ", not " +
+                                         (two ? given[first].Called() + " and " : "") + e.Called());
+            };
+            if ((bounds.size() == 3) != (e.slices != 0) || (bounds.size() == 1 && e.cols != 1))
+                refuse(i);
+            std::vector<std::pair<std::string, size_t>> bound;
+            for (size_t b = 0; b < bounds.size(); ++b) {
+                const auto& [size, number] = bounds[b];
+                if (number && d[b] != number) refuse(i);
+                if (number) continue;
+                const auto [seen, fresh] = sized.try_emplace(size, d[b], i);
+                if (fresh) bound.emplace_back(size, d[b]);
+                if (seen->second.first != d[b]) refuse(seen->second.second);
+            }
+            return bound;
+        }
+
+        const Reference&                                           of;
+        std::unordered_map<size_t, Extent>                         given;
+        std::unordered_map<std::string, std::pair<size_t, size_t>> sized;  // its extent, who first
+    };
 
     // The value of a plain definition by a literal of numbers, once built.
     [[nodiscard]] const T* Kept() const {
@@ -403,11 +484,17 @@ public:
             return Written(*clause);
         }
 
+        // As they are tried: an unguarded clause for every call or every
+        // cell is the fallback, after the guards wherever written (C162).
         std::string description;
-        for(const Clause<T>& clause : clauses_) {
-            if(!description.empty()) description += '\n';
-            description += Written(clause);
-        }
+        for (const bool fallback : {false, true})
+            for (const Clause<T>& clause : clauses_) {
+                const bool last =
+                    !clause.parameters.guarded() && !IsBase(clause) && !IsOneCell(clause);
+                if (last != fallback) continue;
+                if (!description.empty()) description += '\n';
+                description += Written(clause);
+            }
         return description;
     }
 
@@ -458,12 +545,14 @@ public:
         // after the handler, as a fill is.
         std::optional<NotSingle> refused;
         try {
+            std::optional<typename ReferenceStack<T>::OwnSteps> own;
+            if (memoisable) own.emplace(stack);
             typename ReferenceStack<T>::Within within(stack, home);
             typename ReferenceStack<T>::Frame  frame(stack);
             ParametersDefinition<T>::Bind(captured, stack);
             ParametersDefinition<T>::Bind(arguments, stack);
             EvaluationVisitor<T> evaluator(stack);
-            parameters.BindDefaults(call, evaluator);
+            BindDefaults(call, evaluator);
             if (call.limit()) {
                 // A guarded general clause is a general clause: it is the index
                 // that makes it one (DESIGN.md, C54); an input's argument has one.
@@ -514,6 +603,12 @@ public:
         throw std::runtime_error(reference_name_ + " needs single values, not a " +
                                  refused.shape.Described() +
                                  (Cells() ? "" : "; write it by its cells"));
+    }
+
+    // A refusal an approximated guard decided may be wrong, and says so.
+    std::string Unapplied(bool past) const {
+        return "no clause of " + reference_name_ + " applies" +
+               (past ? ", by a guard approximated past a thousand digits" : "");
     }
 
     // Does this clause answer this call? Asked by grad too. The shape is
@@ -646,12 +741,14 @@ private:
         MemoKey<T> key = memoisable ? MemoKey<T>{this, true, k, arguments} : MemoKey<T>();
         if (memoisable)
             if (const T* memoised = stack.Memoised(key)) return *memoised;
+        std::optional<typename ReferenceStack<T>::OwnSteps> own;
+        if (memoisable) own.emplace(stack);
         typename ReferenceStack<T>::Within within(stack, home);
         typename ReferenceStack<T>::Frame  frame(stack);
         ParametersDefinition<T>::Bind(captured, stack);
         ParametersDefinition<T>::Bind(arguments, stack);
         EvaluationVisitor<T> evaluator(stack);
-        CallParameters().BindDefaults(call, evaluator);
+        BindDefaults(call, evaluator);
         const T evaluation = EvalImp(true, k, evaluator);
         if (memoisable) stack.Memoise(std::move(key), evaluation);
         return evaluation;
@@ -719,13 +816,97 @@ private:
         return FirstThat([](const Clause<T>& c) { return c.parameters.cells(); }) != nullptr;
     }
 
-    static std::string Joined(const std::vector<std::string>& names) {
-        std::string joined;
-        for(const std::string& name : names) {
-            if(!joined.empty()) joined += ", ";
-            joined += name;
+    // The tokens between a clause's parentheses, defaults and all: kept apart
+    // to compare, or shown spaced, as '[1 2]' and '[12]' differ (C55). With
+    // 'rest', and those after them, which name a guarded clause (C170).
+    static std::string Taken(const ParametersDefinition<T>& p, bool shown, bool rest = false) {
+        const std::string& s = p.signature();
+        std::string        taken;
+        int                depth = 0;
+        bool               sign  = false;  // one that begins an element, as in '[1 -2]'
+        // A parameter's size, which one clause states for all, is compared and
+        // shown apart.
+        int sized = 0, after = 0;  // tokens since the parameter began
+        for (size_t at = s.find('\x1f', 1), next; at != std::string::npos; at = next) {
+            next                    = s.find('\x1f', at + 1);
+            const std::string token = s.substr(at + 1, next - at - 1);
+            if ((depth += (token == "(") - (token == ")")) == 0)
+                return rest ? taken + s.substr(at) : taken;
+            if (depth == 1 && token == "(") continue;
+            if (sized || (after == 1 && token == "[")) {
+                sized += (token == "[") - (token == "]");
+                continue;
+            }
+            after            = depth == 1 && token == "," ? 0 : after + 1;
+            const bool tight = taken.empty() || taken.back() == '(' || taken.back() == '[' ||
+                               token[0] == ' ' || sign || token == ")" || token == "]" ||
+                               token == ",";
+            taken += (!shown ? "\x1f" : tight ? "" : " ") + token;
+            sign = token == " -" || token == " +";
         }
-        return joined;
+        return taken;
+    }
+
+    // As '?f' shows them, written (C158): spaced token by token, '[1 -2]'
+    // reads '[1 - 2]'. Bound inside an expression, a clause keeps no text.
+    [[nodiscard]] std::string Shown(const Clause<T>& c) const {
+        const std::string& w = c.written;
+        if (w.empty()) return Taken(c.parameters, true);
+        const size_t name = w.find(reference_name_) + reference_name_.size();
+        const size_t open = w.find_first_not_of(" \t", name);
+        if (open == std::string::npos || w[open] != '(') return "";
+        // The sizes apart, as they are compared (C173): a bracket that
+        // follows a parameter's name.
+        const auto  named = [](char ch) { return std::isalnum(static_cast<unsigned char>(ch)); };
+        std::string shown;
+        bool        head  = true;
+        int         depth = 1;
+        for (size_t at = open + 1; at < w.size(); ++at) {
+            const char ch = w[at];
+            if (head && ch == '[' && named(w[at - 1])) {
+                for (int inner = 1; inner > 0 && ++at < w.size();)
+                    inner += (w[at] == '[') - (w[at] == ']');
+                head = false;
+                continue;
+            }
+            if ((depth += (ch == '(' || ch == '[') - (ch == ')' || ch == ']')) == 0) break;
+            head = (depth == 1 && ch == ',') || (head && (named(ch) || ch == ' '));
+            shown += ch;
+        }
+        return shown;
+    }
+
+    static std::string Of(const Size& size) {
+        std::string out;
+        for (const auto& [name, number] : size.bounds) out += (out.empty() ? "" : " x ") + name;
+        return out;
+    }
+
+    // A size is bound as a parameter is, so its name is its own, and a
+    // default reads only the sizes stated before it.
+    void Clash(const std::vector<Size>& sizes, const ParametersDefinition<T>& p) const {
+        const std::vector<std::string>& names = p.parameters_names();
+        std::vector<std::string>        stated;
+        for (std::size_t d = 0; d < sizes.size(); ++d)
+            for (const auto& [name, number] : sizes[d].bounds) {
+                if (number || std::count(stated.begin(), stated.end(), name)) continue;
+                stated.push_back(name);
+                const char* what =
+                    std::count(names.begin(), names.end(), name) ? "a parameter"
+                    : name == p.index_name()                     ? "an index"
+                    : name == p.row_name() || name == p.col_name() || name == p.slice_name()
+                        ? "a cell's index"
+                        : nullptr;
+                if (what)
+                    throw std::runtime_error(reference_name_ + " has " + what +
+                                             " and a size named " + name);
+                for (std::size_t e = 0; e <= d; ++e)
+                    if (const auto fallback = p.parameters_dict().find(names[e]);
+                        fallback != p.parameters_dict().end() && Mentions(*fallback->second, name))
+                        throw std::runtime_error(reference_name_ + "'s default for " + names[e] +
+                                                 " reads the size " + name +
+                                                 ", not stated before it");
+            }
     }
 
     // The matrices a clause reads at an index of the cell it leaves unbounded,
@@ -862,13 +1043,30 @@ private:
         using Result = T;
         EvaluationVisitor<T>& evaluator;
 
-        T Eval(const PExpression<T>& e) { return e->accept(evaluator); }
+        // Whether a guard read since the last clause chosen was approximated,
+        // which makes that clause's answer approximated (DESIGN.md, C68).
+        bool past = false;
+
+        void Marked(T& value) {
+            if (std::exchange(past, false)) value = numeric_interface<T>::marked(value);
+        }
+        T Eval(const PExpression<T>& e) {
+            T value = e->accept(evaluator);
+            Marked(value);
+            return value;
+        }
         T Bound(const PExpression<T>& e) { return e->accept(evaluator); }
+        void Settle(T& into, int slice, int row, int col) {
+            if (std::exchange(past, false))
+                into(slice, row, col) =
+                    numeric_interface<typename T::value_type>::marked(into(slice, row, col));
+        }
         // A guard, told to --check where the clause is every term's.
         bool Holds(const Reference& definition, const Clause<T>& clause, int index, int, int row,
                    int col) {
-            const bool held =
-                numeric_interface<T>::truth(clause.parameters.guard()->accept(evaluator));
+            const T guard   = clause.parameters.guard()->accept(evaluator);
+            past            = past || numeric_interface<T>::approximated(guard);
+            const bool held = numeric_interface<T>::truth(guard);
             if (clause.parameters.general() && evaluator.stack().guards)
                 evaluator.stack().guards(definition, clause, index, row, col, held, evaluator);
             return held;
@@ -884,8 +1082,8 @@ private:
 
     T Held(T term, int index, EvaluationVisitor<T>& evaluator) const {
         if (declared.empty()) return term;
-        const Extent stated =
-            Stated([&](const PExpression<T>& bound) { return Size(bound->accept(evaluator)); });
+        const Extent stated = Stated(
+            [&](const PExpression<T>& bound) { return AsSize<T>(bound->accept(evaluator)); });
         if (term.Size() != stated)
             throw std::runtime_error(home->Qualified(reference_name_) + "_" +
                                      std::to_string(index) + " is " + Unlike(term.Size(), stated));
@@ -910,16 +1108,18 @@ private:
             if(IsGeneral(clause) || IsPlain(clause)) continue;
             if (Selects(clause, indexed, index, values)) {
                 if (argument) ++evaluator.stack().histories;
-                return Held(clause.expression->accept(evaluator), index, evaluator);
+                return Held(values.Eval(clause.expression), index, evaluator);
             }
         }
         if (argument) {
-            return Held(evaluator.stack().Evaluate(
-                            *argument,
-                            ParametersCall<T>(PExpression<T>(),
+            T value = Held(evaluator.stack().Evaluate(
+                               *argument, ParametersCall<T>(
+                                              PExpression<T>(),
                                               indexed ? std::make_shared<ValExpression<T>>(T(index))
                                                       : PExpression<T>())),
-                        index, evaluator);
+                           index, evaluator);
+            values.Marked(value);
+            return value;
         }
         if(indexed) {
             // An index on something that is not a sequence used to be dropped
@@ -938,16 +1138,16 @@ private:
                 }
             }
             if(Guarded()) {
-                throw std::runtime_error("no clause of " + reference_name_ + " applies");
+                throw std::runtime_error(Unapplied(values.past));
             }
             throw std::runtime_error(reference_name_ + " has no clause for index "
                                      + std::to_string(index));
         }
         if(const Clause<T>* plain = Plain()) {
-            return plain->expression->accept(evaluator);
+            return values.Eval(plain->expression);
         }
         if (Guarded() && !Cells()) {
-            throw std::runtime_error("no clause of " + reference_name_ + " applies");
+            throw std::runtime_error(Unapplied(values.past));
         }
         // Nothing sensible to invent: a sequence has no value under its bare
         // name. A limit is something the user asks for, not something a
@@ -986,6 +1186,7 @@ private:
                 for (int col = 1; col <= static_cast<int>(extent->cols); ++col) {
                     auto cell = Cell(slice, row, col, walk);
                     if (cell) walk.Store(matrix, slice, row, col, Single(*cell, walk), *cell);
+                    walk.Settle(matrix, slice, row, col);
                 }
             }
         }
@@ -1022,19 +1223,11 @@ private:
                 }
                 measure();
             },
-            [&](const PExpression<T>& e) { return Size(walk.Bound(e)); },
+            [&](const PExpression<T>& e) { return AsSize<T>(walk.Bound(e)); },
             [&](const PExpression<T>& e) {
                 EvaluationVisitor<T> values(walk.stack());
                 return e->accept(values).Size();
             });
-    }
-
-    static size_t Size(const T& value) {
-        const int size = AsIndex<T>(value);
-        if (size < 1) {
-            throw std::runtime_error("a size must be at least 1, not " + std::to_string(size));
-        }
-        return static_cast<size_t>(size);
     }
 
     // A cell's own clause if it has one, as a base clause beats a sequence's
@@ -1176,6 +1369,7 @@ private:
                         cell = AllCells(s, r, c, index, general, walk);
                     }
                     if (cell) walk.Store(term, s, r, c, Single(*cell, walk), *cell);
+                    walk.Settle(term, s, r, c);
                 }
             }
         }
@@ -1217,7 +1411,7 @@ private:
         }
         throw std::runtime_error(reference_name_ + " did not converge within " +
                                  std::to_string(Convergence<T>::max_terms) + " terms (last term " +
-                                 numeric_interface<T>::toString(evaluation) + ")");
+                                 Convergence<T>::Last(evaluation) + ")");
     }
 
     void SetIndex(const std::string& name, int index, ReferenceStack<T>& stack) const {
@@ -1228,6 +1422,7 @@ private:
 
     // The whole definition: its clauses, in the order they were written.
     std::vector<Clause<T>> clauses_;
+    std::vector<Size>      sizes_;  // stated in any clause, for every one
 
     mutable std::optional<bool> applied_;
 };

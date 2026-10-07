@@ -23,6 +23,9 @@ struct Extent
                std::to_string(cols);
     }
     std::string Described() const { return toString() + (slices ? " tensor" : " matrix"); }
+    std::string Called() const {
+        return count() == 1 && !slices ? "a single value" : "a " + Described();
+    }
 
     friend bool operator==(const Extent&, const Extent&) = default;
 };

@@ -38,6 +38,46 @@ int AsIndex(const T& value) {
     return index;
 }
 
+template <typename T>
+size_t AsSize(const T& value) {
+    if (numeric_interface<T>::abs(value) > 2147483647.0)
+        throw std::runtime_error("a size must be between 1 and 2147483647, not " +
+                                 numeric_interface<T>::toString(value));
+    const int size = AsIndex<T>(value);
+    if (size < 1)
+        throw std::runtime_error("a size must be at least 1, not " + std::to_string(size));
+    return static_cast<size_t>(size);
+}
+
+// A parameter as a function's or a model's signature writes it, its places a
+// cell's, 'v[j<=n]', or with a default the left side's, 'v[j<=n] = [1; 2]'.
+template <typename T>
+struct WrittenParameter {
+    explicit WrittenParameter(const PExpression<T>& written) : left(written) {
+        if (const auto* equal = dynamic_cast<const EqualExpression<T>*>(written.get()))
+            left = equal->m_e1(), fallback = equal->m_e2();
+        std::vector<PExpression<T>> places;
+        if (const auto* cell = dynamic_cast<const CellExpression<T>*>(left.get()))
+            places = {cell->Slice(), cell->Row(), cell->Col()}, left = cell->Matrix();
+        else if (const auto* sized = dynamic_cast<const FuncExpression<T>*>(left.get()))
+            places = {sized->Children()[5], sized->Children()[3], sized->Children()[4]};
+        term = dynamic_cast<const FuncExpression<T>*>(left.get());
+        for (const PExpression<T>& place : places) {
+            const auto* compare = dynamic_cast<const CompareExpression<T>*>(place.get());
+            if (compare && compare->Op() == Comparison::LessEqual &&
+                dynamic_cast<const RefExpression<T>*>(compare->m_e1().get()))
+                bounds.push_back(compare);
+            else
+                bounded = bounded && !place;
+        }
+    }
+
+    PExpression<T>                           left, fallback;
+    const FuncExpression<T>*                 term = nullptr;
+    std::vector<const CompareExpression<T>*> bounds;          // 'j<=2', slices first
+    bool                                     bounded = true;  // each place one
+};
+
 // The left-hand side of a definition: 'f(x, y)_n' or 'f_0'.
 //
 // README.md section 4: an index written as an identifier names the
@@ -47,6 +87,13 @@ template <typename T>
 class ParametersDefinition
 {
 public:
+    // A parameter's size, as 'M[j<=n, k<=n]' states it: its bounds, slices
+    // first, each a name and 0, or a whole number and its digits.
+    struct Size {
+        std::vector<std::pair<std::string, size_t>> bounds;
+        std::string                                 written;
+    };
+
     ParametersDefinition() = default;
 
     ParametersDefinition(PExpression<T> params, PExpression<T> subexpr,
@@ -56,12 +103,8 @@ public:
                          PExpression<T> col       = PExpression<T>(),
                          PExpression<T> slice     = PExpression<T>())
         : guard_(guard), signature_(std::move(signature)) {
-        if(params) {
-            ParametersVisitor<T> params_visitor;
-            params->accept(params_visitor);
-            parameters_names_ = params_visitor.get_parameters_names();
-            parameters_dict_ = params_visitor.get_parameters_dict();
-        }
+        if (params)
+            for (const PExpression<T>& written : params->Children()) Parameter(written, evaluator);
         if(subexpr) {
             indexed_ = true;
             if(RefExpression<T>* variable = dynamic_cast<RefExpression<T>*>(subexpr.get())) {
@@ -105,6 +148,35 @@ public:
                                              : "a cell's row and column need two names");
             }
         }
+    }
+
+    // A parameter is a name, 'x' or 'x = 1', or a name and its size,
+    // 'v[j<=n]': anything else was dropped in silence (C150).
+    void Parameter(const PExpression<T>& written, EvaluationVisitor<T>& evaluator) {
+        const WrittenParameter<T> w(written);
+        if (!w.fallback && !parameters_dict_.empty())
+            throw std::runtime_error("a positional argument cannot follow a keyword argument");
+        if (!w.bounded || (w.term ? w.term->m_e1() || w.term->m_e2() || w.term->Children()[2]
+                                  : !dynamic_cast<const RefExpression<T>*>(w.left.get())))
+            throw std::runtime_error(
+                "a parameter is a name, as 'x' or 'x = 1', or a name and its "
+                "size, as 'v[j<=n]'");
+        Size size;
+        for (const CompareExpression<T>* compare : w.bounds) {
+            const PExpression<T>& bound = compare->m_e2();
+            const bool            named = dynamic_cast<const RefExpression<T>*>(bound.get());
+            if (!named && !dynamic_cast<const ValExpression<T>*>(bound.get()))
+                throw std::runtime_error(
+                    "a size is a whole number or a name, as 'v[j<=3]' or 'v[j<=n]'");
+            const size_t number = named ? 0 : AsSize<T>(bound->accept(evaluator));
+            size.bounds.emplace_back(named ? bound->Name() : std::to_string(number), number);
+            size.written += (size.written.empty() ? "" : ", ") + compare->m_e1()->Name() +
+                            "<=" + size.bounds.back().first;
+        }
+        if (!size.bounds.empty()) size.written = w.left->Name() + "[" + size.written + "]";
+        parameters_names_.push_back(w.left->Name());
+        if (w.fallback) parameters_dict_[w.left->Name()] = w.fallback;
+        sizes_.push_back(std::move(size));
     }
 
     // Arity is checked here rather than at the call site because this is the
@@ -177,20 +249,6 @@ public:
         }
     }
 
-    // A default belongs to the definition, not to the call: it is evaluated
-    // only when the call leaves its parameter empty, and in the callee's
-    // scope, so that it can refer to the definition's other parameters.
-    void BindDefaults(const ParametersCall<T>& param_call, EvaluationVisitor<T>& evaluator) const {
-        const size_t positional = param_call.parameters_expression().size();
-        for(size_t i = positional; i < parameters_names_.size(); ++i) {
-            const std::string& name = parameters_names_[i];
-            if(param_call.parameters_dict().count(name) != 0) continue;
-            auto fallback = parameters_dict_.find(name);
-            if(fallback == parameters_dict_.end()) continue;
-            evaluator.stack().BindValue(name, fallback->second->accept(evaluator));
-        }
-    }
-
     // 'j<=2' names a row and bounds it; a name alone is left unbounded, for the
     // definition to say it has no size; anything else is one row.
     static void Place(const PExpression<T>& place, std::string& name, PExpression<T>& bound,
@@ -235,11 +293,13 @@ public:
     const std::string& index_name() const {return index_name_;}
     const std::vector<std::string>& parameters_names() const {return parameters_names_;}
     const ExprDict<T>& parameters_dict() const {return parameters_dict_;}
+    const std::vector<Size>&        sizes() const { return sizes_; }
     bool indexed() const {return indexed_;}
     bool general() const {return indexed_ && !index_name_.empty();}
 
 
 protected:
+    std::vector<Size>        sizes_;  // as this clause states them
     PExpression<T> guard_;
     std::string signature_;
     std::vector<std::string> parameters_names_;

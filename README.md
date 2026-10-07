@@ -71,9 +71,13 @@ exp(x)_n=sum_(k=0)^n x^k/!k
 ```
 
 Without an upper bound the sum is the series itself, summed to its limit, and
-`exp` needs neither a sequence nor `lim`: it is an ordinary function.
+`exp` needs neither a sequence nor `lim`: it is an ordinary function. A name
+has one definition, so the sequence goes first:
 
 ```
+>> clear exp
+clear exp
+
 >> exp(x)=sum_(k=0) x^k/!k
 exp(x)=sum_(k=0) x^k/!k
 
@@ -241,7 +245,9 @@ approached — `pi`, `e`, a root, a limit — is inexact, as is anything written
 after `~`, and an inexact number makes inexact whatever it touches. An exact
 number that outgrows a thousand digits becomes inexact rather than wrong, and
 an answer that did ends in `# approximated past a thousand digits`, a comment,
-so it still reads back. Dividing by an exact zero is an error.
+so it still reads back. So does a comparison that reads such a number, and
+the answer of a clause a guard reading one chose, since a truth read from a
+double may be wrong. Dividing by an exact zero is an error.
 
 Every number prints in decimal: an exact whole number in full, anything else
 to nine significant digits, with `~` in front unless what is printed is all of
@@ -257,7 +263,7 @@ cell of a matrix. `ceil(x) = -floor(-x)` and `mod(a, b) = a - b*floor(a/b)`
 come with it, from a prelude (section 5), and so do `exp`, `log`, `tanh`,
 `sin`, `cos`, `abs`, `max` and `min`. Any other rounding is a line of it,
 by the rule the model needs — `round(x) = floor(x + 1/2)` — and, like `pi`,
-each of them can be defined again.
+each of them can be defined again, and given back by `clear`.
 
 | | |
 |---|---|
@@ -273,6 +279,7 @@ each of them can be defined again.
 | `expr and expr` `expr or expr` | both, either: 1 or 0, the right read only if needed |
 | `name = expr` | definition (section 3) |
 | `name \| cond = expr` | a definition in cases (section 3) |
+| `clear name` | drop a definition (section 3) |
 | `lim name` | the limit of a sequence (section 4) |
 | `name.name` | a name of an instance or a file (section 5) |
 | `use file` | read a file's definitions (section 5) |
@@ -623,8 +630,58 @@ If no clause applies, the interpreter says so rather than inventing a value:
 error: a comparison needs real numbers, not i
 ```
 
-A name has one definition. Defining it again replaces what was there — a
-plain definition clears the guarded clauses with it.
+A default written last is a paper's "otherwise", and means the same:
+
+```
+>> clamp(x) | x > 1 = 1
+clamp(x) | x > 1 = 1
+
+>> clamp(x) = x
+clamp(x) = x
+
+>> clamp(5)
+1
+```
+
+A name has one definition, and a clause written again replaces itself where it
+stands. A plain definition alone is replaced parameters and all, as nothing
+else goes with it; beside other clauses, or in a sequence, a clause takes the
+definition's parameters, defaults included, and one that cannot join is
+refused. `clear` drops a whole definition, and the name is then what it is
+beneath — a built-in, the prelude's, or nothing:
+
+```
+>> clamp(x, y) = x
+error: clamp takes (x), so a clause cannot take (x, y); write 'clear clamp' first
+
+>> clear clamp
+clear clamp
+
+>> clamp(x, y) = x
+clamp(x, y) = x
+```
+
+A parameter may state its size by bounds, as a definition by cells does:
+`v[j<=n]` is a column, `M[j<=n, k<=n]` a square matrix and `T[b<=p, j<=m,
+k<=n]` a tensor, slices first. A bound that is a name is bound by the call to
+the argument's size, a whole number, so the body can loop over it; a name
+written twice is one size, and a single value is a 1x1 matrix. An argument of
+another size is refused before the body is evaluated:
+
+```
+>> tr(M[j<=n, k<=n]) = sum_(j=1)^n M[j,j]
+tr(M[j<=n, k<=n]) = sum_(j=1)^n M[j,j]
+
+>> tr([1 2; 3 4])
+5
+
+>> tr([1 2 3; 4 5 6])
+error: tr takes M[j<=n, k<=n], not a 2x3 matrix
+```
+
+A size is bound as a parameter is, so inside the definition it hides a name
+defined at the prompt: after `n = 10`, `tr` still reads its argument's size.
+A model's input reads the names in its bounds instead (section 5).
 
 ### 4. Sequences
 
@@ -915,6 +972,10 @@ dot(x_n[j<=2]) = { ... }
 error: dot(...).x_3 is a single value, where dot takes a 2x1 matrix
 ```
 
+A bound may be a name, which the model reads where it is defined, as it reads
+any other: the model is compiled before any argument exists, so its input
+binds no size, where a function's parameter does (section 3).
+
 Defining an instance evaluates nothing, so two that read each other's terms,
 a controller and the plant it drives, are written in either order:
 
@@ -953,13 +1014,14 @@ once, holds definitions only, and one that cannot be read or parsed loads
 nothing and says where. The prelude that defines `ceil`, `mod`, `exp`, `log`,
 `tanh`, `sin`, `cos`, `abs`, `max` and `min`, and what they call, is included
 bare beneath the session, as the built-ins are: every scope sees it, and a
-session that defines one of its names again does so for itself alone. `exp`,
-`log`, `tanh`, `sin` and `cos` are written in it, accurate to a few units in
+session that defines one of its names again does so for itself alone, and
+clearing it gives the prelude's back. `exp`, `log`, `tanh`, `sin` and `cos`
+are written in it, accurate to a few units in
 the last place of a double, by the operations a compiled step performs:
 `exp(x)` is 2^k e^r, r = x - k ln 2 and e^r a polynomial, `log` reduces by
 `ilogb`, the power of two at or below its argument, and `sin` and `cos` by the
 multiple of pi/2 nearest theirs. An exact argument is reduced exactly, save
-within about 1e-31 of a multiple of pi/2 (C123), nothing they give is exact, and `log(0)` is refused as `1/0` is; so are `sin` and
+within about 1e-31 of a multiple of pi/2 (C123), nothing they give is exact, and `log(0)` is refused in log's own name; so are `sin` and
 `cos` past 2^20 either way, where the reduction would round, so a growing
 phase such as `sin(w*t)` stops at 2^20. Compiled, each is a C function of the
 header's own; the interpreter calls the same functions, and under `grad` their
@@ -1004,7 +1066,7 @@ to the number it once produced:
  6, 8]
 ```
 
-On a sequence `?` shows every clause, in the order they were written, and
+On a sequence `?` shows every clause, in the order they are tried, and
 `?name_0` shows one of them:
 
 ```

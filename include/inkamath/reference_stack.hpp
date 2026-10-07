@@ -66,8 +66,8 @@ public:
     // terms of every sequence it passes through (DESIGN.md, C69).
     static constexpr size_t max_memoised = 100000;
 
-    // How far a fill goes from its base: each term has the budget of a line,
-    // so this is what bounds its time, at a few seconds.
+    // How far a fill goes from its base, and how many terms a line computes:
+    // each has a million steps of its own, so this is what bounds its time.
     static constexpr int max_filled = 10000000;
 
     // The terms a model's history has given, counted with nothing memoised,
@@ -95,6 +95,8 @@ public:
     void BeginEvaluation() {
         depth_       = 0;
         steps_       = 0;
+        terms_       = 0;
+        spent_       = false;
         fill_failed_ = false;
     }
 
@@ -115,8 +117,10 @@ public:
         // because the language can compute it only by a search.
         EvaluationVisitor<T> evaluator(*this);
         const auto           x = std::make_shared<RefExpression<T>>("x");
-        this->Set("floor", ParametersDefinition<T>(x, PExpression<T>(), evaluator),
-                  std::make_shared<FloorExpression<T>>(x));
+        this->Set(
+            "floor",
+            ParametersDefinition<T>(std::make_shared<MatExpression<T>>(x), nullptr, evaluator),
+            std::make_shared<FloorExpression<T>>(x));
     }
 
     // Scopes point at one another.
@@ -147,12 +151,29 @@ public:
         Causal(ai_reference_name, previous);
     }
 
-    // A model, a file used, or a name brought in from one.
+    // A model, a file used, or a name brought in from one: only over nothing,
+    // a model over a model, or a file or a name over itself.
+    void Vacant(const std::string& name, const Reference<T>& definition) const {
+        const definition_type previous = Defined(name);
+        if (previous && previous.get() != &definition && !(previous->model && definition.model) &&
+            !(previous->file && previous->file == definition.file))
+            throw std::runtime_error(name + " is already defined" + previous->Advice());
+    }
     void Put(const std::string& name, definition_type definition) {
+        Vacant(name, *definition);
         Changed();
         const definition_type previous = Defined(name);
         target_->names[name]           = std::move(definition);
         Causal(name, previous);
+    }
+
+    // 'clear f': f means what it means beneath the scope being defined in.
+    void Clear(const std::string& name) {
+        if (target_->names.erase(name) == 0)
+            throw std::runtime_error(name + (FindGlobal(name) ? " comes with the language, so it "
+                                                                "cannot be cleared"
+                                                              : " is not defined"));
+        Changed();
     }
 
     // Told of each guard of a general clause a term's selection asks, and
@@ -325,7 +346,7 @@ public:
     void FillFailed() { fill_failed_ = true; }
 
     struct Filling {
-        explicit Filling(ReferenceStack<T>& stack) : stack_(stack), steps_(stack.steps_) {
+        explicit Filling(ReferenceStack<T>& stack) : stack_(stack), terms_(stack.terms_) {
             stack_.filling_ = true;
         }
         ~Filling() { stack_.filling_ = false; }
@@ -333,12 +354,37 @@ public:
         Filling& operator=(const Filling&) = delete;
 
         // A fill stands for asking each term on a line of its own, so each
-        // has the budget that line would have had.
-        void Next() { stack_.steps_ = steps_; }
+        // computes as many terms as that line could, and the one asked starts
+        // its steps again, as it would have with the others memoised.
+        void Next() {
+            stack_.terms_ = terms_;
+            stack_.steps_ = 0;
+        }
 
     private:
         ReferenceStack<T>& stack_;
-        size_t             steps_;
+        size_t             terms_;
+    };
+
+    // A memoised term's steps are its own, from none, and not its caller's,
+    // who takes one step for it whether it is memoised or not: so whether a
+    // term answers does not depend on what the session asked before (C149).
+    struct OwnSteps {
+        explicit OwnSteps(ReferenceStack& stack) : stack_(stack), steps_(stack.steps_) {
+            if (++stack_.terms_ > max_filled) {
+                stack_.spent_ = true;
+                throw std::runtime_error("evaluation gave up after computing " +
+                                         std::to_string(max_filled) + " terms");
+            }
+            stack_.steps_ = 0;
+        }
+        ~OwnSteps() { stack_.steps_ = steps_; }
+        OwnSteps(const OwnSteps&)            = delete;
+        OwnSteps& operator=(const OwnSteps&) = delete;
+
+    private:
+        ReferenceStack& stack_;
+        size_t          steps_;
     };
 
     [[nodiscard]] const scope_type& Globals() const { return session_.names; }
@@ -361,7 +407,7 @@ public:
     [[nodiscard]] bool Framed() const { return open_ != 0; }
 
     // Whether the evaluation ran out of steps, which says nothing of its answer.
-    [[nodiscard]] bool Spent() const { return steps_ >= max_steps; }
+    [[nodiscard]] bool Spent() const { return spent_; }
 
     // One step of an evaluation that reads no name, and so never passes
     // through Eval: a sum of a constant still has to end.
@@ -573,11 +619,10 @@ private:
                                     const std::string&             name,
                                     const ParametersDefinition<T>& parameters,
                                     PExpression<T> expression, const std::string& written) {
-        std::shared_ptr<Reference<T>> updated = existing && existing->Value()
-                                                    ? std::make_shared<Reference<T>>(*existing)
-                                                    : std::make_shared<Reference<T>>();
-        updated->add_expression(name, parameters, std::move(expression), written);
+        std::shared_ptr<Reference<T>> updated =
+            existing ? std::make_shared<Reference<T>>(*existing) : std::make_shared<Reference<T>>();
         updated->home = home;
+        updated->add_expression(name, parameters, std::move(expression), written);
         return updated;
     }
 
@@ -818,6 +863,7 @@ private:
                 auto definition   = std::make_shared<Reference<T>>(statement.name);
                 definition->model = std::move(nested);
                 definition->home  = scope.get();
+                Vacant(statement.name, *definition);
                 slot              = std::move(definition);
                 continue;
             }
@@ -888,6 +934,7 @@ private:
                                     " references deep");
             }
             if(stack_.steps_ >= max_steps) {
+                stack_.spent_ = true;
                 throw std::runtime_error("evaluation gave up after "
                                          + std::to_string(max_steps) + " steps");
             }
@@ -904,6 +951,8 @@ private:
 
     size_t depth_ = 0;
     size_t steps_ = 0;
+    size_t                                         terms_       = 0;
+    bool                                           spent_       = false;
     bool                                     filling_     = false;
     bool                                     fill_failed_ = false;
     std::unordered_map<MemoKey<T>, T, MemoHash<T>> memoised_, older_;
