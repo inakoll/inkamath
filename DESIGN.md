@@ -5419,10 +5419,11 @@ that exploring seven domains asked of the interpreter, by how many asked.
   Without it, ilogb's exact answer chosen there becomes a double, the
   thresholds after it doubles that vanish, and `ilogb(1/10^950)` is -3073
   where it is -3156, `log(1/10^950)` refused. And `logm`'s fold `m*m > 2`
-  becomes `~m*m > 2`: of an exact argument with parts past 500 digits the
+  becomes `m > 2/m`: of an exact argument with parts past 500 digits the
   square passes the bound, and `log(10^999)` would be marked for a choice
-  between two reductions equally accurate. A double's fold is the same
-  product, and the header's line with it.
+  between two reductions equally accurate. `2/m` has m's digits, so it never
+  passes, and its truth is the square's for an exact m and for a double,
+  whose answers stay as they are; the header's line moves with it.
 
   Rejected:
   - Marking only an unsafe comparison, its gap below the error's bound. No

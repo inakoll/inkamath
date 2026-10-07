@@ -259,8 +259,8 @@ inf  # approximated past a thousand digits
 >> max(rt_11, 3)
 3
 
-# log folds its mantissa by a square it rounds first, inexact by '~', so an
-# exact argument whose square passes the thousand digits is not marked;
+# log folds its mantissa by comparing it with 2 over it, not its square, so
+# an exact argument whose square would pass the thousand digits is not marked;
 # ilogb takes a threshold below 2^-3321 as passed, as every number it is
 # given is above it, rather than reading 2^-3584 approximated to 0, so that
 # the answer it chose stays exact and the thresholds after it too.
