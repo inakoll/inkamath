@@ -411,5 +411,9 @@ error: a size must be at least 1, not 0
 >> bad(x[j<=-1]) = x
 error: a size must be at least 1, not -1
 
+# In a size's words, not an index's (C172).
+>> bad(x[j<=4000000000]) = x
+error: a size must be between 1 and 2147483647, not 4000000000
+
 >> bad(1)
 error: bad is not defined

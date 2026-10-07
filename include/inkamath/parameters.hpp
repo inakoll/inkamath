@@ -40,6 +40,9 @@ int AsIndex(const T& value) {
 
 template <typename T>
 size_t AsSize(const T& value) {
+    if (numeric_interface<T>::abs(value) > 2147483647.0)
+        throw std::runtime_error("a size must be between 1 and 2147483647, not " +
+                                 numeric_interface<T>::toString(value));
     const int size = AsIndex<T>(value);
     if (size < 1)
         throw std::runtime_error("a size must be at least 1, not " + std::to_string(size));
