@@ -2852,7 +2852,9 @@ that exploring seven domains asked of the interpreter, by how many asked.
   refused, "a complex number", so `re(x)` compiles to x and `im(x)` to 0:
   abs's first guard folds to 0 and its clause away, as a constant guard
   does, so `inkamath_prelude.h` and the expected headers do not move. A
-  frequency response does not compile: `e^(i*w)` is refused as now.
+  frequency response does not compile: `e^(i*w)` is refused as now, which
+  a case of `test/cli.cmake` added with the implementation holds,
+  `y_n = abs(e^(i*w*n))` refused "cannot compile y: a complex number".
 
   Rejected:
   - **`real` and `imag`**, MATLAB's, NumPy's and C's: longer, and not the
