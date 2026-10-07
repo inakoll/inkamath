@@ -59,7 +59,7 @@ inv = invariants()
 #
 #     cannot compile w: tr takes M[j<=n, k<=n], not a 2x3 matrix
 #
-# The characteristic polynomial of test/data/spec/signatures.ink, cp and det,
+# The characteristic polynomial of test/data/signatures.ink, cp and det,
 # stays refused, its fc(A)_n a function's sequence read at an index:
 # 'cannot compile d: a sequence with parameters'. Every header in
 # test/compile/expected stays byte for byte as it is.
