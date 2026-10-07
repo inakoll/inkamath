@@ -1321,10 +1321,6 @@ private:
             }
         });
     }
-    Code Folded(Expression<Value>* expression) {
-        Fold(expression);
-        return code_;
-    }
     // From the operands' constants, not the expression again, which may read
     // a name that moves where its value does not, in a call (C135).
     template <typename F, typename... Operands>
@@ -1536,14 +1532,25 @@ private:
     }
 
     // A matrix product is a sum over the inner dimension, in the interpreter's
-    // order. A power's is folded again, as A^-1*b solves.
+    // order. A^-1*b of constants is solved, as the interpreter solves it, from
+    // A's constant (C193).
     PExpression<Value> visit(MultExpression<Value>* expression) override {
         const Code left = Emit(expression->m_e1()), right = Emit(expression->m_e2());
         if (!left.constant || !right.constant)
             return Answer(ProductOf(Product(left, right), left, right));
-        const bool power = dynamic_cast<PowExpression<Value>*>(expression->m_e1().get());
-        return Answer(ProductOf(
-            power ? Folded(expression) : Exactly(std::multiplies<>(), left, right), left, right));
+        const auto* power = dynamic_cast<PowExpression<Value>*>(expression->m_e1().get());
+        const auto* exponent =
+            power ? dynamic_cast<ValExpression<Value>*>(power->m_e2().get()) : nullptr;
+        if (exponent && numeric_interface<Value>::exact(exponent->value) &&
+            exponent->value == Value(Number(-1))) {
+            const Code base = Emit(power->m_e1());
+            const auto b    = [&] { return *right.constant; };
+            if (base.constant)
+                return Answer(ProductOf(
+                    Exact([&] { return numeric_interface<Value>::solve(*base.constant, b); }), left,
+                    right));
+        }
+        return Answer(ProductOf(Exactly(std::multiplies<>(), left, right), left, right));
     }
 
     // Each left cell is read once for each right column, each right cell once
