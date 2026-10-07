@@ -670,8 +670,9 @@ PExpression<U> Interpreter<T,U>::ParseEqualExpr()
             std::string signature;
             for(size_t token = signature_begin; token < m_i; ++token) {
                 // Kept apart: joined, '[1 2]' and '[12]' are the same string,
-                // and the two clauses become one (DESIGN.md, C55).
-                signature += '\x1f';
+                // and the two clauses become one (DESIGN.md, C55); and so is
+                // the space that parts '[1 -2]' from '[1 - 2]' (C159).
+                signature += m_tokens[token].apart ? "\x1f " : "\x1f";
                 signature += m_tokens[token].text;
             }
             ++m_i;
@@ -771,8 +772,10 @@ PExpression<U> Interpreter<T,U>::ParseAddExpr(PExpression<U> lead)
     PExpression<U> e = ParseMultExpr(lead);
     while (!AtEnd() && (Peek().type == Add || Peek().type == Min) )
     {
-        if (listed_ && Peek().spaced && m_i + 1 < m_tokens.size() && !m_tokens[m_i + 1].spaced)
+        if (listed_ && Peek().spaced && m_i + 1 < m_tokens.size() && !m_tokens[m_i + 1].spaced) {
+            m_tokens[m_i].apart = true;
             break;
+        }
         if (m_tokens[m_i++].type == Add)
         {
             e.reset(new AddExpression<U>(e,ParseMultExpr()));
@@ -1068,6 +1071,7 @@ PExpression<U> Interpreter<T, U>::ParseQuotes(PExpression<U> e) {
 template <Parsable T, Numeric U>
 PExpression<U> Interpreter<T, U>::ParseCell(PExpression<U> matrix) {
     if (AtEnd() || Peek().type != LBra || Peek().spaced) {
+        if (!AtEnd() && Peek().type == LBra) m_tokens[m_i].apart = true;
         return matrix;
     }
     ++m_i;

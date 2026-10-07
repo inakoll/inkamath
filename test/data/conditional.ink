@@ -260,6 +260,32 @@ sg(x) | x < [12][1,1] = 20
 >> sg(0)
 10
 
+# So does a space that begins the next element: '[1 -2]' is two elements and
+# '[1 - 2]' one, '[pi [1]]' two and '[pi[1]]' one, so each pair is two
+# names (C159).
+>> sn(x) | x == [1 -2][1,1] = 10
+sn(x) | x == [1 -2][1,1] = 10
+
+>> sn(x) | x == [1 - 2][1,1] = 20
+sn(x) | x == [1 - 2][1,1] = 20
+
+>> ?sn
+sn(x) | x == [1 -2][1,1] = 10
+sn(x) | x == [1 - 2][1,1] = 20
+
+>> sn(1)
+10
+
+>> sv(x) | x == [pi [1]][1,1] = 10
+sv(x) | x == [pi [1]][1,1] = 10
+
+>> sv(x) | x == [pi[1]][1,1] = 20
+sv(x) | x == [pi[1]][1,1] = 20
+
+>> ?sv
+sv(x) | x == [pi [1]][1,1] = 10
+sv(x) | x == [pi[1]][1,1] = 20
+
 # A guard that does not hold must leave nothing behind. The index was bound
 # before the guard was tested and never removed, so a rejected clause shadowed
 # a global, clobbered an argument, and poisoned the guards written after it

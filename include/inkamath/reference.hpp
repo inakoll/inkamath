@@ -732,14 +732,17 @@ private:
         const std::string& s = p.signature();
         std::string        taken;
         int                depth = 0;
+        bool               sign  = false;  // one that begins an element, as in '[1 -2]'
         for (size_t at = s.find('\x1f', 1), next; at != std::string::npos; at = next) {
             next                    = s.find('\x1f', at + 1);
             const std::string token = s.substr(at + 1, next - at - 1);
             if ((depth += (token == "(") - (token == ")")) == 0) break;
             if (depth == 1 && token == "(") continue;
             const bool tight = taken.empty() || taken.back() == '(' || taken.back() == '[' ||
-                               token == ")" || token == "]" || token == ",";
+                               token[0] == ' ' || sign || token == ")" || token == "]" ||
+                               token == ",";
             taken += (!shown ? "\x1f" : tight ? "" : " ") + token;
+            sign = token == " -" || token == " +";
         }
         return taken;
     }

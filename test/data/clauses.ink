@@ -212,6 +212,23 @@ error: gm takes (x, k = [1 -2]), so a clause cannot take (x); write 'clear gm' f
 >> gm(x, k=f(1)) = x
 error: gm takes (x, k = [1 -2]), so a clause cannot take (x, k=f(1)); write 'clear gm' first
 
+# And they are told apart as such: '[1 - 2]' is another default (C159).
+>> gm(x, k = [1 - 2]) | x < 0 = k
+error: gm takes (x, k = [1 -2]), so a clause cannot take (x, k = [1 - 2]); write 'clear gm' first
+
+>> gm(x, k = [1  -2]) | x < 0 = k
+gm(x, k = [1  -2]) | x < 0 = k
+
+>> gm(-1)
+[1, -2]
+
+# A line's local keeps no text, and its tokens stand in, with that space.
+>> lq(x) = (q(x, k = [1 -2]) | x > 0 = 1) + (q(x) = 2)
+lq(x) = (q(x, k = [1 -2]) | x > 0 = 1) + (q(x) = 2)
+
+>> lq(1)
+error: q takes (x, k = [1 -2]), so a clause cannot take (x)
+
 # A model and a file are each one statement. Written again a model replaces
 # itself, and its instances follow; a clause cannot join either, nor either
 # replace a name defined otherwise.
