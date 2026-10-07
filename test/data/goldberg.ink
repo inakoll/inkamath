@@ -391,6 +391,16 @@ X = ~(10^200)
 >> ((~3*~10^200)^2 + (~4*~10^200)^2)^(1/2)
 inf
 
+# Signed Zero: the principal root of -1 + i0 is i, as C's csqrt has it.
+>> (-1)^(1/2)
+i
+
+>> (-1)^(1/2) == i
+1
+
+>> (-4)^(1/2)
+i*2
+
 # Denormalized Numbers: base 10, 3 digits, emin = -98. 6.87e-97 minus
 # 6.81e-97 flushes to 0, and with gradual underflow is .6e-98; Smith's
 # formula for (2e-98 + i 1e-98)/(4e-98 + i 2e-98) gives 0.5 with gradual
