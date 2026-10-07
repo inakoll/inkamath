@@ -68,13 +68,21 @@ inf
 
 # From 2^3322 a power of two passes a thousand digits and is approximated to
 # inf, which an exact number past a double passes as one, so ilogb tries
-# none past 2^3321, above every exact number; and inf is the one number its
-# own double, whose log is itself (C101).
+# none past 2^3321, above every exact number; and inf is the one positive
+# number whose reciprocal is 0, whose log is itself (C101). Not its own
+# double: twice an exact number from 5*10^999 is approximated to inf too,
+# whose log was the number itself (C157).
 >> log(2^3072)
 ~2129.34814
 
 >> log(10^999)
 ~2300.28251
+
+>> log(5*10^999)
+~2301.89195
+
+>> log(2^3321)
+~2301.94179
 
 >> log(~1/0)
 inf
@@ -246,14 +254,14 @@ exp(x) | x < -1000 = exp(-1000)
 >> ?log
 log(x) = logk(x, ilogb(x))
 log(x) | x <= 0 = 1/0
-log(x) | 2*x == x = x
+log(x) | 1/x == 0 = x
 
 >> ?tanh
 tanh(x) = tanhp(x)
 tanh(x) | x < 0 = -tanhp(-x)
 
 >> tex ?log
-\operatorname{log}(x) = \begin{cases} \frac{1}{0} & \text{if } x \le 0 \\ x & \text{if } 2\,x = x \\ \operatorname{logk}(x, \operatorname{ilogb}(x)) & \text{otherwise} \end{cases}
+\operatorname{log}(x) = \begin{cases} \frac{1}{0} & \text{if } x \le 0 \\ x & \text{if } \frac{1}{x} = 0 \\ \operatorname{logk}(x, \operatorname{ilogb}(x)) & \text{otherwise} \end{cases}
 
 >> tex ?tanh
 \operatorname{tanh}(x) = \begin{cases} -\operatorname{tanhp}(-x) & \text{if } x < 0 \\ \operatorname{tanhp}(x) & \text{otherwise} \end{cases}

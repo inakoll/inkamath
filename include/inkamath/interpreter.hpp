@@ -283,7 +283,7 @@ inline constexpr const char* prelude[] = {
     "ilogbs(x, k, s) | x >= 2^(k + s) = k + s",
     "log(x) = logk(x, ilogb(x))",
     "log(x) | x <= 0 = 1/0",
-    "log(x) | 2*x == x = x",
+    "log(x) | 1/x == 0 = x",
     "logk(x, k) = logm(x/2^k, k)",
     "logm(m, k) = logs(~((m - 1)/(m + 1)), k)",
     "logm(m, k) | m*m > 2 = logs(~((m/2 - 1)/(m/2 + 1)), k + 1)",
