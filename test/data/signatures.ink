@@ -254,6 +254,17 @@ fm(A[j<=n, k<=n])_m = A*fm(A)_(m-1) + fc(A)_(m-1)*id(n)
 >> fm(A[r<=p, c<=p])_m = A
 error: fm takes A of size n x n, so a clause cannot take it of size p x p; write 'clear fm' first
 
+# Clauses agree on their names and defaults apart from their sizes, so a
+# clause refused for a default is quoted without them (C173).
+>> hf(v[j<=n], s = n) | s > 1 = s
+hf(v[j<=n], s = n) | s > 1 = s
+
+>> hf(v) = 1
+error: hf takes (v, s = n), so a clause cannot take (v); write 'clear hf' first
+
+>> hf(w[j<=m], s = m) = 1
+error: hf takes (v, s = n), so a clause cannot take (w, s = m); write 'clear hf' first
+
 # Clauses agree on their sizes, not on the names of their indices.
 >> sz(v[j<=n]) | n == 1 = 0
 sz(v[j<=n]) | n == 1 = 0

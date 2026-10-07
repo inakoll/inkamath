@@ -10,6 +10,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cctype>
 #include <exception>
 #include <memory>
 #include <numeric>
@@ -823,7 +824,8 @@ private:
         std::string        taken;
         int                depth = 0;
         bool               sign  = false;  // one that begins an element, as in '[1 -2]'
-        // A parameter's size, which one clause states for all, is compared apart.
+        // A parameter's size, which one clause states for all, is compared and
+        // shown apart.
         int sized = 0, after = 0;  // tokens since the parameter began
         for (size_t at = s.find('\x1f', 1), next; at != std::string::npos; at = next) {
             next                    = s.find('\x1f', at + 1);
@@ -831,7 +833,7 @@ private:
             if ((depth += (token == "(") - (token == ")")) == 0)
                 return rest ? taken + s.substr(at) : taken;
             if (depth == 1 && token == "(") continue;
-            if (!shown && (sized || (after == 1 && token == "["))) {
+            if (sized || (after == 1 && token == "[")) {
                 sized += (token == "[") - (token == "]");
                 continue;
             }
@@ -853,10 +855,25 @@ private:
         const size_t name = w.find(reference_name_) + reference_name_.size();
         const size_t open = w.find_first_not_of(" \t", name);
         if (open == std::string::npos || w[open] != '(') return "";
-        size_t close = open;
-        for (int depth = 1; depth > 0 && ++close < w.size();)
-            depth += (w[close] == '(') - (w[close] == ')');
-        return w.substr(open + 1, close - open - 1);
+        // The sizes apart, as they are compared (C173): a bracket that
+        // follows a parameter's name.
+        const auto  named = [](char ch) { return std::isalnum(static_cast<unsigned char>(ch)); };
+        std::string shown;
+        bool        head  = true;
+        int         depth = 1;
+        for (size_t at = open + 1; at < w.size(); ++at) {
+            const char ch = w[at];
+            if (head && ch == '[' && named(w[at - 1])) {
+                for (int inner = 1; inner > 0 && ++at < w.size();)
+                    inner += (w[at] == '[') - (w[at] == ']');
+                head = false;
+                continue;
+            }
+            if ((depth += (ch == '(' || ch == '[') - (ch == ')' || ch == ']')) == 0) break;
+            head = (depth == 1 && ch == ',') || (head && (named(ch) || ch == ' '));
+            shown += ch;
+        }
+        return shown;
     }
 
     static std::string Of(const Size& size) {
