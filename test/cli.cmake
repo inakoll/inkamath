@@ -714,6 +714,15 @@ set(stderr "inkamath: v.x_(0): v.x_0 is a single value, where dot takes a 2x1 ma
 set(exit 1)
 check(check_inputs_single)
 
+# A size its signature names, measured where it is called, is refused there in
+# the interpreter's words, a call's shapes being static (DESIGN.md, a size
+# bound by a signature).
+file(WRITE "${OUT}/sizes.ink" "tr(M[j<=n, k<=n]) = sum_(j=1)^n M[j,j]\nw_n = tr([n, 1, 2; 3, 4, 5])\n")
+set(args --compile sizes.ink)
+set(stdout "cannot compile w: tr takes M[j<=n, k<=n], not a 2x3 matrix\n")
+set(exit 1)
+check(compile_signature_refused)
+
 # A tensor input, refused before tensors compiled, read by its second slice.
 file(WRITE "${OUT}/batch.ink" "batch(x_n[b<=2, j<=1, k<=2]) = {\n    y_n = x_n[2]*[1; 1]\n}\n")
 set(args --compile batch.ink batch -o batch.h)

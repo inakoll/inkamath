@@ -2,13 +2,13 @@
 # a call is compiled where it is made, at its argument's shape, so each size
 # its signature names is a constant there and folds, and a sum to n unrolls
 # as one to 3 does. tr is called at 3x3 and at 2x2. Every number below is
-# worked out apart from the interpreter, none recorded. Today the sized
-# parameters are dropped (C150), and 'inkamath --compile' refuses the model:
-# 'cannot compile c: c2 takes no arguments'.
+# worked out apart from the interpreter, none recorded. Before the sized
+# parameters were read, they were dropped (C150), and 'inkamath --compile'
+# refused the model: 'cannot compile c: c2 takes no arguments'.
 #
 # The header 'inkamath --compile signatures.ink invariants' writes is the one
 # written with every size a number, byte for byte, as sized.ink's is, from a
-# file of the same name, which compiles today:
+# file of the same name that test/CMakeLists.txt writes:
 #
 #     invariants() = {
 #         tr(M) = sum_(j=1)^3 M[j,j]
@@ -52,7 +52,7 @@ invariants() = {
 inv = invariants()
 
 # What 'inkamath --compile' refuses of a file of its own, in the
-# interpreter's words, its shapes being static:
+# interpreter's words, its shapes being static (test/cli.cmake):
 #
 #     tr(M[j<=n, k<=n]) = sum_(j=1)^n M[j,j]
 #     w_n = tr([n, 1, 2; 3, 4, 5])
