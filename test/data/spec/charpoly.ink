@@ -1,0 +1,318 @@
+# The characteristic polynomial, Routh's and Schur's tests, and the spectral
+# radius and abscissa, in the prelude, written in inkamath (DESIGN.md, next
+# in line). Written by hand, never recorded: every value was worked out apart
+# from the interpreter, polynomials and roots exactly with sympy, eigenvalues
+# with mpmath at 60 digits, and each bracket by bisecting in Python's
+# fractions with every test decided from the exact eigenvalue.
+
+# Faddeev and LeVerrier's characteristic polynomial, det(lambda*I - A), as a
+# column, highest power first, exactly.
+>> charpoly([1 2; 3 4])
+[ 1;
+ -5;
+ -2]
+
+>> charpoly([2 0 0; 0 3 4; 0 4 9])
+[  1;
+ -14;
+  35;
+ -22]
+
+# A companion matrix gives back the polynomial it was built from, (s + 1)^4.
+>> charpoly([-4 -6 -4 -1; 1 0 0 0; 0 1 0 0; 0 0 1 0])
+[1;
+ 4;
+ 6;
+ 4;
+ 1]
+
+>> frac charpoly([1 1/2 1/3; 1/2 1/3 1/4; 1/3 1/4 1/5])
+[      1;
+  -23/15;
+ 127/720;
+ -1/2160]
+
+# A single value is a 1x1 matrix.
+>> charpoly(5)
+[ 1;
+ -5]
+
+# Complex entries are taken, the polynomial being exact over them.
+>> charpoly([1 i; -i 1])
+[ 1;
+ -2;
+  0]
+
+>> charpoly([i 0; 0 2])
+[   1;
+ -2-i;
+  i*2]
+
+>> charpoly([1 2 3])
+error: charpoly takes A[j<=n, k<=n], not a 1x3 matrix
+
+# Its last coefficient is det(A) for n even, whose gradient is the cofactor
+# matrix.
+>> grad_(A = [1 2; 3 4]) charpoly(A)[3]
+[ 4, -3;
+ -2,  1]
+
+# Routh's test: every root in Re s < 0, strictly, so a root on the axis
+# fails it. (s + 1)^3, then (s + 1)(s^2 + 1).
+>> hurwitz([1; 3; 3; 1])
+1
+
+>> hurwitz([1; 1; 1; 1])
+0
+
+# Third order: stable where a1*a2 > a0*a3.
+>> hurwitz([1; 2; 1; 1])
+1
+
+>> hurwitz([1; 1; 1; 2])
+0
+
+# Every fifth root of unity but 1: positive coefficients, two roots to the
+# right, and a zero in Routh's first column.
+>> hurwitz([1; 1; 1; 1; 1])
+0
+
+>> hurwitz([1; 5; 10; 10; 5; 1])
+1
+
+# A polynomial's sign does not move its roots.
+>> hurwitz([-1; -3; -3; -1])
+1
+
+# A leading 0 is a root at infinity, which no half-plane holds; the zero
+# polynomial vanishes everywhere; a nonzero constant has no root to fail.
+>> hurwitz([0; 1; 2])
+0
+
+>> hurwitz([0])
+0
+
+>> hurwitz([5])
+1
+
+# Every root in Re s < s0: s^2 + s + 1 has its roots on Re s = -1/2.
+>> hurwitz([1; 1; 1], -1/2)
+0
+
+>> hurwitz([1; 1; 1], -49/100)
+1
+
+# A damped oscillator, its rate of decay 1/10: stable, decaying faster than
+# 1/20, not faster than 1/10; and undamped.
+>> hurwitz(charpoly([0 1; -1 -1/5]))
+1
+
+>> hurwitz(charpoly([0 1; -1 -1/5]), -1/20)
+1
+
+>> hurwitz(charpoly([0 1; -1 -1/5]), -1/10)
+0
+
+>> hurwitz(charpoly([0 1; -1 0]))
+0
+
+# A test is flat where it does not jump.
+>> grad_(a = 2) hurwitz([1; a; 1])
+0
+
+>> hurwitz([1 2 3])
+error: hurwitz takes p[j<=m], not a 1x3 matrix
+
+# Refused in the words abs refuses it with.
+>> hurwitz([1; i])
+error: a comparison needs real numbers, not i
+
+# Schur's test: every root in |z| < 1, strictly, or in |z| < r.
+>> schur([1; -1/2])
+1
+
+>> schur([1; -1])
+0
+
+>> schur([1; 0; 1/4])
+1
+
+>> schur([1; 0; 1])
+0
+
+>> schur([1; 0; 1], 2)
+1
+
+# Roots -1 and -1/2.
+>> schur([2; 3; 1])
+0
+
+>> schur([1; -1/2], 1/2)
+0
+
+>> schur([0; 1; 1/2])
+0
+
+# No root is in a disc of radius 0, and no disc has a negative one.
+>> schur([1; 1/2], 0)
+0
+
+>> schur([1; 1/2], -1)
+error: no clause of schur applies
+
+# A discrete-time system is stable where every eigenvalue is in the unit
+# disc: 1/2 and -3/4; then 1/2 + i and 1/2 - i, of modulus sqrt(5)/2 =
+# 1.1180339887.
+>> schur(charpoly([1/2 1/4; 0 -3/4]))
+1
+
+>> schur(charpoly([1/2 1; -1 1/2]))
+0
+
+>> schur(charpoly([1/2 1; -1 1/2]), 1118/1000)
+0
+
+>> schur(charpoly([1/2 1; -1 1/2]), 1119/1000)
+1
+
+>> schur([1; i])
+error: a comparison needs real numbers, not 1-i
+
+# The spectral radius by bisection on Schur's test, 64 halvings of [0, B)
+# with B the power of two above the sum of |A[j,k]|: rhob(A)_m is the
+# bracket after m, its lower end at most rho and its upper end above it,
+# exact, and the answer its lower end, inexact.
+>> rho([1/2 1; -1 1/2])
+~1.11803399
+
+>> frac rhob([1/2 1; -1 1/2])_64
+[5156021714044493573/4611686018427387904;
+ 2578010857022246787/2305843009213693952]
+
+# Each halving more halves it: B = 4 here.
+>> frac rhob([1/2 1; -1 1/2])_70[2] - rhob([1/2 1; -1 1/2])_70[1]
+1/295147905179352825856
+
+# The spectral abscissa by Routh's test, from [-B, B): that of the damped
+# oscillator, -1/10, below.
+>> abscissa([0 1; -1 -1/5])
+~-0.1
+
+>> frac abscissab([0 1; -1 -1/5])_64
+[  -57646075230342349/576460752303423488;
+ -230584300921369395/2305843009213693952]
+
+>> digits = 17
+digits = 17
+
+>> rho([1/2 1; -1 1/2])
+~1.1180339887498949
+
+>> abscissa([0 1; -1 -1/5])
+~-0.10000000000000001
+
+>> digits = 9
+digits = 9
+
+# A bound on the boundary fails its strict test and becomes the lower end,
+# so a value a halving reaches is the answer, every digit of it.
+>> rho([2 0; 0 -3])
+3
+
+>> abscissa([2 0; 0 -3])
+2
+
+>> abscissa([1/2 1; -1 1/2])
+0.5
+
+>> rho([0 1; 0 0])
+0
+
+>> abscissa([0 1; 0 0])
+0
+
+>> rho([0 0; 0 0])
+0
+
+>> rho(-1/3)
+~0.333333333
+
+>> abscissa(-1/3)
+~-0.333333333
+
+# Scaled by a power of two, every bracket is.
+>> rho(2*[1/2 1; -1 1/2]) == 2*rho([1/2 1; -1 1/2])
+1
+
+# Five by five, the tests exact; ten by ten, the late ones read numbers
+# past a thousand digits, so the answer is marked (NumPy: 1.7463140334187077
+# and 1.239222528823944).
+>> rho([6 -8 -6 -5 -6; 6 7 2 -9 -8; -3 -1 2 0 -4; -6 4 4 -9 -7; -1 -2 7 0 -2]/10)
+~1.13016494
+
+>> abscissa([6 -8 -6 -5 -6; 6 7 2 -9 -8; -3 -1 2 0 -4; -6 4 4 -9 -7; -1 -2 7 0 -2]/10)
+~0.850451511
+
+>> A = [6 -8 -6 -5 -6 6 7 2 -9 -8; -3 -1 2 0 -4 -6 4 4 -9 -7; -1 -2 7 0 -2 -1 3 2 -6 5; 5 9 5 -4 -3 3 3 4 7 -4; 8 -9 -8 9 8 -4 -7 -4 -9 7; 3 2 -5 -1 -6 5 0 -9 -5 4; 0 -2 -5 -8 2 3 0 8 8 -6; 2 2 -5 -4 0 5 -4 4 3 -5; -2 6 7 3 -9 3 -5 6 8 -1; 9 5 -3 7 -2 -8 2 7 3 -2]/10
+A = [6 -8 -6 -5 -6 6 7 2 -9 -8; -3 -1 2 0 -4 -6 4 4 -9 -7; -1 -2 7 0 -2 -1 3 2 -6 5; 5 9 5 -4 -3 3 3 4 7 -4; 8 -9 -8 9 8 -4 -7 -4 -9 7; 3 2 -5 -1 -6 5 0 -9 -5 4; 0 -2 -5 -8 2 3 0 8 8 -6; 2 2 -5 -4 0 5 -4 4 3 -5; -2 6 7 3 -9 3 -5 6 8 -1; 9 5 -3 7 -2 -8 2 7 3 -2]/10
+
+>> rho(A)
+~1.74631403  # approximated past a thousand digits
+
+>> abscissa(A)
+~1.23922253  # approximated past a thousand digits
+
+# An inexact matrix is bisected by rounded tests, so its bracket is inexact
+# too and certifies nothing.
+>> rho([~1/2 1; -1 1/2])
+~1.11803399
+
+>> frac rhob([~1/2 1; -1 1/2])_64
+error: ~1.11803399 was approximated, so it has no exact fraction
+
+# One approximated past a thousand digits marks the answer: rt_20 is within
+# a double of sqrt(2).
+>> rt_0 = 1
+rt_0 = 1
+
+>> rt_n = (rt_(n-1) + 2/rt_(n-1))/2
+rt_n = (rt_(n-1) + 2/rt_(n-1))/2
+
+>> rho([rt_20 0; 0 1/2])
+~1.41421356  # approximated past a thousand digits
+
+>> rho([1 2; 3 4; 5 6])
+error: rho takes A[j<=n, k<=n], not a 3x2 matrix
+
+>> abscissa([1 2 3])
+error: abscissa takes A[j<=n, k<=n], not a 1x3 matrix
+
+# In abs's words, as hurwitz is.
+>> rho([1 i; -i 1])
+error: a comparison needs real numbers, not i
+
+# The bisection is a staircase in A, flat between its steps, so its
+# derivative is not rho's: refused, for now. A rho that does not move is
+# a constant.
+>> grad_(A = [1/2 1; -1 1/2]) rho(A)
+error: grad cannot differentiate rho yet
+
+>> grad_(a = 1/2) abscissa([a 1; -1 1/2])
+error: grad cannot differentiate abscissa yet
+
+>> grad_(a = 2) a*rho([1/2 1; -1 1/2])
+~1.11803399
+
+# The names are the prelude's: a session may take one for itself, as a
+# density, and clear gives it back.
+>> rho = 1000
+rho = 1000
+
+>> rho*2
+2000
+
+>> clear rho
+clear rho
+
+>> rho([2])
+2

@@ -5661,3 +5661,156 @@ that exploring seven domains asked of the interpreter, by how many asked.
   `latex.hpp` 5; `extent.hpp` 3; `reference_stack.hpp` 2; `interpreter.hpp`
   -20, a model's input read by the shared helper. 15,007 lines in all,
   after `fixes11`.
+- **The characteristic polynomial and stability, in the prelude**, the
+  second step towards eigenvalues, approved by the owner: `charpoly(A)`
+  exactly, Routh's and Schur's tests, and the spectral radius and abscissa
+  by bisection on those tests, certified while they are exact. Written in
+  inkamath with the sizes a signature binds, the eigenvalue research's
+  `dim(A) = on(A)'*on(A)` gone. The design, measured on a prototype:
+
+      charpolym(A)_1 = A^0
+      charpolym(A)_m = A*charpolym(A)_(m-1) + charpolyc(A)_(m-1)*A^0
+      charpolyc(A)_0 = 1
+      charpolyc(A[j<=n, k<=n])_m = -sum_(j=1)^n (A*charpolym(A)_m)[j,j]/m
+      charpoly(A[j<=n, k<=n])[j<=n+1] = charpolyc(A)_(j-1)
+      binomial(a, b) = !a/(!b*!(a - b))
+      binomial(a, b) | b < 0 or b > a = 0
+      hurwitzc(q[j<=m], i) = 0
+      hurwitzc(q[j<=m], i) | i <= m = q[i]
+      hurwitzr(q)_0 = q
+      hurwitzr(q[j<=m])_k[j<=m] = hurwitzc(hurwitzr(q)_(k-1), j + 1) - mod(j + 1, 2)*hurwitzr(q)_(k-1)[1]/hurwitzr(q)_(k-1)[2]*hurwitzc(hurwitzr(q)_(k-1), j + 2)
+      hurwitzt(q[j<=m])_0 = sum_(j=1)^m abs(q[j]) > 0 and q[1] <> 0
+      hurwitzt(q)_k = hurwitzt(q)_(k-1) and hurwitzr(q)_(k-1)[2]*q[1] > 0
+      hurwitzs(p[j<=m], s)[t<=m] = sum_(i=1)^t p[i]*binomial(m-i, m-t)*s^(t-i)
+      hurwitz(p[j<=m], s = 0) = hurwitzt(hurwitzs(p, s))_(m-1)
+      schurm(p[j<=m], r)[t<=m] = sum_(i=1)^m p[i]*r^(m-i)*sum_(a=0)^(m-i) binomial(m-i, a)*binomial(i-1, m-t-a)*(-1)^(m-t-a)
+      schur(p[j<=m], r = 1) | r >= 0 = hurwitz(schurm(p, r))
+      rhon(A[j<=n, k<=n]) = rhop(sum_(j=1)^n sum_(k=1)^n abs(A[j,k]))
+      rhop(s) = 2^(ilogb(s + (s == 0)) + 1) + 0*s
+      rhob(A)_0 = [0; rhon(A)]
+      rhob(A)_m = rhoh(charpoly(A), rhob(A)_(m-1))
+      rhoh(p, b) = b + (b[2] - b[1])/2*([1; 0] - schur(p, (b[1] + b[2])/2)*[1; 1])
+      rho(A[j<=n, k<=n]) = ~rhob(A)_64[1]
+      abscissab(A)_0 = [-1; 1]*rhon(A)
+      abscissab(A)_m = abscissah(charpoly(A), abscissab(A)_(m-1))
+      abscissah(p, b) = b + (b[2] - b[1])/2*([1; 0] - hurwitz(p, (b[1] + b[2])/2)*[1; 1])
+      abscissa(A[j<=n, k<=n]) = ~abscissab(A)_64[1]
+
+  `charpoly(A)` is det(lambda I - A) as a column, highest power first and
+  monic, as MATLAB's and NumPy's `poly` give it: Faddeev and LeVerrier, M_1
+  = I, M_m = A M_(m-1) + c_(m-1) I, c_m = -tr(A M_m)/m, exact, of complex
+  entries too, and differentiable, so `grad` of its last coefficient is the
+  cofactor matrix. `hurwitz(p, s = 0)` is 1 where every root of p is in Re z
+  < s, `schur(p, r = 1)` where every one is in |z| < r, both strictly: the
+  polynomial a column of m cells, degree m - 1. Routh's test is its first
+  column, all of p[1]'s sign and none 0, taken as a recurrence on the
+  polynomial rather than on pairs of rows: p_k drops its leading coefficient
+  and subtracts a0/a1 times its odd part, as the array's next row does, so
+  its leading coefficient is the column's next entry, and the test reads
+  that entry before the term that divides by it, `and` not reading further.
+  A shift `p(z + s)` gives the half-plane Re z < s; the map
+  `z = r(1 + w)/(1 - w)`, the disc |z| < r onto Re w < 0, gives Schur's. A
+  leading 0 is a root at infinity, which neither region holds, so it answers
+  0: the map's image has one exactly where -r is a root, on the circle, and
+  needs no case of its own. The zero polynomial answers 0, a nonzero
+  constant 1.
+
+  `rho(A)` and `abscissa(A)` bisect a bracket, `rhob(A)_m` and
+  `abscissab(A)_m`, [lo; hi] with lo <= rho < hi: Schur's test at the
+  midpoint is the truth that rho < x, Routh's after the shift that alpha <
+  x, and the bracket keeps the half it says. From [0, B) and [-B, B), B the
+  power of two above the sum of |A[j,k]|, which bounds rho strictly, 2 for
+  the zero matrix; so every midpoint is dyadic, the brackets of 2A are those
+  of A doubled, and `frac rhob(A)_m` shows one exactly, as tight as m asks.
+  The answer is lo after 64 halvings, made inexact: 2^-64 of B, under a unit
+  of a double where rho is within 2^11 of B. A bound on the boundary fails
+  its strict test and becomes lo, so an eigenvalue a halving reaches is the
+  answer exactly: `rho([2 0; 0 -3])` is 3, `abscissa([1/2 1; -1 1/2])` 0.5,
+  a nilpotent matrix's rho 0. The research's comment said (lo, hi]; its own
+  guards kept [lo, hi).
+
+  What it costs. A test at a midpoint of b bits reads, in Routh's column,
+  ratios of Hurwitz determinants of polynomials whose coefficients carry n b
+  bits, so about n^2 b bits, and past 3,322 (a thousand digits) they are
+  approximated and, by *A truth read from an approximated number*, every
+  test after is marked and so is the answer. On random matrices of tenths,
+  certified to 64 halvings up to 6x6 for `rho`, whose map doubles the bits,
+  and 8x8 for `abscissa`; on the research's, the marks start at the 40th
+  halving of `rho` at 8x8, the 32nd at 10x10, the 24th at 12x12, and of
+  `abscissa` at the 56th at 10x10. Marked, the answers are a double's:
+  against NumPy, within 2e-15 relative at 10x10 and 12x12, 1.3e-13 at 32x32.
+  0.1 s at 5x5, 0.2 s at 10x10, 0.4 s at 12x12, 9 s at 24x24 and 55 s at
+  32x32, every term inside its own million steps: no budget is added.
+
+  Decided besides:
+  - **Names.** `charpoly`, as sympy and PARI say it; `poly` is too common a
+    word. `hurwitz` and `schur` name the property, a Hurwitz or a Schur
+    polynomial, not the method, so `routh`, `jury` and `stable` were
+    rejected. `rho` is the paper's rho(A); `abscissa`, as `alpha` is every
+    learning rate's name. A session may take any of them for itself,
+    `rho = 1000` a density, and `clear` gives it back. The helpers are
+    prefixed by their function, as `expk` and `sinr` are; `binomial` is
+    named for what it is, both tests using it.
+  - **Refused.** A matrix not square, by its signature:
+    `rho takes A[j<=n, k<=n], not a 3x2 matrix`. A complex entry by every
+    test, in abs's words, as C147 left `abs`:
+    `a comparison needs real numbers, not i`, every cell passing through abs
+    before Routh reads one, as a complex polynomial can pass the column: the
+    map's image of z + i, `(1 - i)w + (1 + i)`, tests (1 + i)(1 - i) = 2 >
+    0. Their own words would be about 5 lines of C++ beside C147's: the
+    owner's to decide. A negative radius, `no clause of schur applies`.
+  - **An inexact matrix** is bisected by rounded tests whose truths are
+    exact, so its bracket would print exact fractions certifying nothing;
+    `+ 0*s` keeps it inexact, and `frac` refuses it. An approximated one
+    marks the answer, as any choice it makes.
+  - **grad.** A bracket is a staircase in A, so grad's rule, flat where no
+    comparison jumps, makes `grad` of `rho` 0 everywhere, exactly the
+    staircase's and not rho's. Refused, `grad cannot differentiate rho yet`,
+    where the argument moves: a pointer to each of the two in the stack, as
+    `stepwise` points to `ilogb`, and one check in `derivative.hpp`'s call,
+    about 6 lines of C++. The tests and the brackets keep grad's rule: flat,
+    or refused where they jump. Rejected for now: the research's Newton
+    polish, one step on p from the certified point, which serves a real
+    simple eigenvalue, where both examples here have a dominant pair; and a
+    step on D(r), the last Hurwitz determinant of the map's image, whose
+    root is rho for a pair too, but whose slope is wrong without a word
+    where two eigenvalues share the largest modulus, and which divides by 0
+    where the bracket's end is exact. A later item, with a model that trains
+    a spectral radius.
+  - **Stopping.** 64 halvings, fixed. Rejected: relative to the answer,
+    which never stops at 0, where a nilpotent matrix and many abscissas are;
+    absolute, which breaks the scaling and wastes steps on a large matrix;
+    `lim`, which stops by a double's tolerance; stopping where the tests
+    stop being exact, which nothing in the language can ask; and 40
+    halvings, which would certify about 8x8 but leave the digits past the
+    twelfth wrong at `digits = 17` behind a `~` that says only that they are
+    not the whole value. The answer is the lower end, not the midpoint, so 0
+    prints as 0 and a dyadic eigenvalue as itself; the bracket as the answer
+    was rejected, a column where a number is asked.
+  - **Schur by the map, then Routh**, as the research did. The Schur-Cohn
+    recursion, (a0 p - an p~)/z, was weighed: no map and no binomials, but
+    five lines where the map costs three over Routh, and its fraction-free
+    form doubles the bits at each step.
+  - **Compiled**: refused in the compiler's words,
+    `cannot compile x: a sequence with parameters`, until *A sequence with
+    parameters read at a constant index, compiled* lands; a case of
+    `test/cli.cmake` with the implementation.
+
+  What moves: no golden and no header, as no test names any of them; the
+  prelude is read at every start, 27 lines more. README's section 1 lists
+  the names with the prelude's others, and section 2 shows `charpoly` and
+  `rho`.
+
+  About 40 lines: 27 of the prelude and some 6 of its comment, and 6 of C++
+  for grad. 15,055 lines at 75c03ae, by
+  `wc -l include/inkamath/*.hpp src/*`. Past 60 the implementation stops and
+  reports.
+
+  Specified in `test/data/spec/charpoly.ink`, 81 entries replayed by the
+  spec suite, 73 failing by design, those passing being the definitions
+  echoing themselves, `digits` and a session's `rho`: values by sympy,
+  mpmath at 60 digits and NumPy, and each bracket by bisection in Python's
+  fractions with every test decided from the exact eigenvalue, apart from
+  the interpreter. The prototype above, defined in a session, gives every
+  answer but grad's two refusals and the last, which needs the name to be
+  the prelude's.
