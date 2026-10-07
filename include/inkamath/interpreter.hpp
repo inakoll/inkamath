@@ -330,7 +330,7 @@ inline constexpr const char* prelude[] = {
     // its end nearer 0, up to 256. An answer the cap ended is marked, by
     // 0*10^-1000, a 0 approximated past a thousand digits (DESIGN.md), as
     // is one whose double is not normal, but for a polynomial lambda^n, whose
-    // radius is 0.
+    // radius is 0, or lambda^k q, q stable, whose abscissa is.
     "charpolym(A)_1 = A^0",
     "charpolym(A)_m = A*charpolym(A)_(m-1) + charpolyc(A)_(m-1)*A^0",
     "charpolyc(A)_0 = 1",
@@ -372,6 +372,11 @@ inline constexpr const char* prelude[] = {
     "abscissab(A)_m = rhod(abscissau(A)_m, rhoe(A))",
     "abscissah(p, b) = b + (b[2] - b[1])/2*([1; 0] - hurwitz(p, (b[1] + b[2])/2)*[1; 1])",
     "abscissa(A[j<=n, k<=n]) = rhoa(abscissau(A)_256, abscissab(A)_256)",
+    "abscissa(A[j<=n, k<=n]) | charpoly(rhod(A, -rhoe(A)))[n+1] == 0 "
+    "and abscissaq(charpoly(rhod(A, -rhoe(A)))) = ~0",
+    "abscissaq(p[j<=m]) = hurwitz(p)",
+    "abscissaq(p[j<=m]) | p[m] == 0 = abscissaq(abscissat(p))",
+    "abscissat(p[j<=m])[j<=m-1] = p[j]",
 };
 
 template <Parsable T, Numeric U>

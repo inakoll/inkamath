@@ -6,12 +6,28 @@
 # it is marked, as is every answer the cap ends, right or not: the tests
 # cannot tell a marginal system's abscissa from a value below the last
 # bracket (C192). A nilpotent matrix's rho is not bisected: its polynomial
-# is lambda^n, every eigenvalue 0 (C195).
+# is lambda^n, every eigenvalue 0 (C195). Nor is an abscissa whose
+# polynomial is lambda^k q, every root of q left of the axis: 0 is an
+# eigenvalue and none is right of it (C198). A pair on the axis, ±i here,
+# which Routh's strict test cannot tell from one right of it, is marked
+# still, and 1, right of a 0, is bisected.
 >> rho([0 1; 0 0])
 0
 
 >> abscissa([0 1; 0 0])
+0
+
+>> abscissa([0 0; 0 -1])
+0
+
+>> abscissa([0 0 0; 0 -1 1; 0 -1 -1])
+0
+
+>> abscissa([0 0 0; 0 0 1; 0 -1 0])
 0  # approximated past a thousand digits
+
+>> abscissa([1 0; 0 0])
+1
 
 >> rho([0 0; 0 0])
 0
