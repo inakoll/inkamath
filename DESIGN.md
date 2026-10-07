@@ -5730,8 +5730,9 @@ that exploring seven domains asked of the interpreter, by how many asked.
   scaled back by B, so the tests' numbers are near 1 whatever A's scale.
   Unscaled, the prototype's `rho([~1 2; 3 4]/10^100)*10^100` was 18.3, its
   polynomial's rounded coefficients near 10^-200, `rho(10^-300)` was
-  1.49e-300 and marked, its tests past a thousand digits, and the 10x10
-  below over 10^20 was 8.7e-19, and times 10^30 refused a NaN.
+  1.49e-300 and marked, its tests past a thousand digits, as were exact
+  `rho([1 2; 3 4]/10^150)`, 1.96e-149, and times 10^250, which refused a
+  NaN.
   The answer is lo, made inexact, after 64 halvings and as many more as
   leave the bracket wider than 2^-53 of its end nearer 0, `rhos`, up to
   256: within a unit of a double of rho wherever rho is above 2^-203 of B.
@@ -5851,10 +5852,11 @@ that exploring seven domains asked of the interpreter, by how many asked.
   prelude header is unchanged, as its file calls none of them. Departures:
   the staircases are a set of the two in the stack, and grad's check sits
   in its call, before a limit or a term; the comment is 8 lines. 0.2 s for
-  the 10x10 here, 0.8 s for it times 10^30, 0.1 s for a nilpotent 2x2 run
-  to 256 halvings; the golden takes 95 s under the sanitizers, its 10x10
-  polynomials over B exact, so its timeout is 300 s, as fastgrad.ink's is
-  120. 50 lines landed against about 45: the prelude 33 and its
+  the 10x10 here, 0.1 s for a nilpotent 2x2 run to 256 halvings; the
+  golden takes 31 s under the sanitizers, within the 60 s of every golden
+  but fastgrad.ink, its scaled entries a 2x2's, which fails unscaled as the
+  10x10 did, at 2 s where the 10x10 took 63. 50 lines landed against about
+  45: the prelude 33 and its
   comment 8 in `interpreter.hpp`, with 2 binding the staircases,
   `reference_stack.hpp` 3 and `derivative.hpp` 4. 15,126 lines in all,
   after `charpoly`.

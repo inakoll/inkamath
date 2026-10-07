@@ -267,6 +267,14 @@ digits = 9
 >> rho([~1 2; 3 4]/10^100)*10^100
 ~5.37228132
 
+# Exact, unscaled, their tests would pass a thousand digits and be rounded
+# to doubles that underflow, or overflow to a NaN.
+>> rho([1 2; 3 4]/10^150)
+~5.37228132e-150
+
+>> rho([1 2; 3 4]*10^250)
+~5.37228132e+250
+
 # Five by five, the tests exact; ten by ten, the late ones read numbers
 # past a thousand digits, so the answer is marked (NumPy: 1.7463140334187077
 # and 1.239222528823944).
@@ -284,12 +292,6 @@ A = [6 -8 -6 -5 -6 6 7 2 -9 -8; -3 -1 2 0 -4 -6 4 4 -9 -7; -1 -2 7 0 -2 -1 3 2 -
 
 >> abscissa(A)
 ~1.23922253  # approximated past a thousand digits
-
->> rho(A/10^20)
-~1.74631403e-20  # approximated past a thousand digits
-
->> rho(A*10^30)
-~1.74631403e+30  # approximated past a thousand digits
 
 # An inexact matrix is bisected by rounded tests, so its bracket is inexact
 # too and certifies nothing.
