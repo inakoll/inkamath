@@ -21,6 +21,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Toolchain
+        run: echo "::notice::$(. /etc/os-release; echo $PRETTY_NAME); $(cmake --version | head -1); ninja $(ninja --version); $(g++ --version | head -1); $(clang++ --version | head -1); $(ccache --version | head -1)"
+
       - name: Configure
         env:
           CXX: ${{ matrix.compiler }}
@@ -30,6 +33,11 @@ jobs:
           -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
           -DINKAMATH_WERROR=ON
           -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
+
+      # Its log is out of reach of who reads the run through the API.
+      - name: Report a failed configure
+        if: failure()
+        run: cmake -S . -B build -G Ninja 2>&1 | grep -A3 -i "error" | head -20 | sed 's/^/::error::/'
 
       - name: Build
         run: cmake --build build
