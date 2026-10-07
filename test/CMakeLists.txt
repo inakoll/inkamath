@@ -20,16 +20,35 @@ target_compile_definitions(inkamath_tests PRIVATE
     INKAMATH_TEST_DATA_DIR="${CMAKE_CURRENT_SOURCE_DIR}/data"
     INKAMATH_SOURCE_DIR="${PROJECT_SOURCE_DIR}")
 
-# One ctest entry per doctest suite, so that a crash in one reports as a
-# single failure rather than taking the others' results with it.
-foreach(suite IN ITEMS bignum interpreter line_editor matrix)
-    add_test(NAME ${suite} COMMAND inkamath_tests --test-suite=${suite} --no-intro
-             --test-case-exclude=fastgrad)
-    set_tests_properties(${suite} PROPERTIES TIMEOUT 60)
+# One ctest entry per doctest suite, and one per golden transcript, each
+# its test case of the same name: a crash reports as a single failure rather
+# than taking the others' results with it, the goldens run in parallel, and
+# each timeout is a tripwire for one file rather than for the sum of them.
+# The goldens are the files interpreter_test.cpp replays; the others in
+# data/ are libraries they load.
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS interpreter_test.cpp)
+file(STRINGS interpreter_test.cpp goldens REGEX "check_transcript\\(\"[a-z_]+\\.ink\"\\)")
+set(golden_cases "")
+foreach(golden IN LISTS goldens)
+    string(REGEX REPLACE ".*\"([a-z_]+)\\.ink\".*" "\\1" case "${golden}")
+    list(APPEND golden_cases ${case})
+    add_test(NAME ${case}.ink COMMAND inkamath_tests --test-suite=interpreter
+             --test-case=${case} --no-intro)
+    # A golden without its case runs none, which is a failure, not a pass.
+    set_tests_properties(${case}.ink PROPERTIES TIMEOUT 60
+                         FAIL_REGULAR_EXPRESSION "test cases: +0 \\|")
 endforeach()
 # fastgrad.ink's 600,000 remembered calls take 25 s under sanitizers alone.
-add_test(NAME fastgrad COMMAND inkamath_tests --test-case=fastgrad --no-intro)
-set_tests_properties(fastgrad PROPERTIES TIMEOUT 120)
+set_tests_properties(fastgrad.ink PROPERTIES TIMEOUT 120)
+foreach(suite IN ITEMS bignum line_editor matrix)
+    add_test(NAME ${suite} COMMAND inkamath_tests --test-suite=${suite} --no-intro)
+    set_tests_properties(${suite} PROPERTIES TIMEOUT 60)
+endforeach()
+# The interpreter's cases that are not goldens: README.md's sessions and the rest.
+string(REPLACE ";" "," golden_cases "${golden_cases}")
+add_test(NAME interpreter COMMAND inkamath_tests --test-suite=interpreter --no-intro
+         --test-case-exclude=${golden_cases})
+set_tests_properties(interpreter PROPERTIES TIMEOUT 60)
 
 add_test(NAME cli
          COMMAND ${CMAKE_COMMAND} -DEXE=$<TARGET_FILE:inkamath_cli>
