@@ -1126,7 +1126,7 @@ holds(compile_iterates_roots roots.h [[    const double t0_ = sqrt(0.0 + m_->x[0
 set(args --compile ${iterates} mpc -o mpc.h)
 check(compile_iterates_mpc)
 holds(compile_iterates_mpc mpc.h " call mpc_update. Compiled in as constants, these cannot change: iters.\n")
-file(WRITE "${OUT}/iterates.ink" "a_n = r(x_n)_n\nb_n = r(x_n)_1001\nc_n = q(x_n)_3\nd_n = z(x_n)_2\ne_n = p(x_n)_2\nf_n = w(x_n)_70\ng_n = r(x_n)_(1/2)\nh_n = lim nw(x_n)\nnw(a)_0 = a\nnw(a)_k = nw(a)_(k-1)/2 + r(a)_2\np(x)_0 = x\np(x)_k = p(x)_(k+1)/2\nq(x)_0 = x\nq(x)_k = q(x)_(k-2) + 1\nr(x)_0 = x\nr(x)_k = r(x)_(k-1)/2 + 1\nw(x)_0 = x\nw(x)_k = w(x/2)_(k-1)\nz(x)_0 = x\nz(x)_k = z(x)_k/2\n")
+file(WRITE "${OUT}/iterates.ink" "a_n = r(x_n)_n\nb_n = r(x_n)_1001\nc_n = q(x_n)_3\nd_n = z(x_n)_2\ne_n = p(x_n)_2\nf_n = w(x_n)_70\ng_n = r(x_n)_(1/2)\nh_n = lim nw(x_n)\nu_n = y(x_n)_0\nnw(a)_0 = a\nnw(a)_k = nw(a)_(k-1)/2 + r(a)_2\np(x)_0 = x\np(x)_k = p(x)_(k+1)/2\nq(x)_0 = x\nq(x)_k = q(x)_(k-2) + 1\nr(x)_0 = x\nr(x)_k = r(x)_(k-1)/2 + 1\nw(x)_0 = x\nw(x)_k = w(x/2)_(k-1)\ny(x)_0 = [x; 1]\ny(x)_k[j<=2] = x*j\nz(x)_0 = x\nz(x)_k = z(x)_k/2\n")
 set(args --compile iterates.ink)
 set(stdout "cannot compile a: a sequence with parameters read at an index that is not a constant
 cannot compile b: r_1001 is 1001 terms from its base, and a step writes out at most 1000
@@ -1136,6 +1136,7 @@ cannot compile e: p_(...): a term after the one being computed
 cannot compile f: calls nested 64 deep, which a recursion its guards do not end would pass
 cannot compile g: an index must be a whole number, not 0.5
 cannot compile h: a sequence with parameters in a limit's terms, for now
+cannot compile u: a sequence with parameters by cells, for now
 ")
 set(exit 1)
 check(compile_iterates_refused)

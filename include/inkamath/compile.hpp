@@ -568,8 +568,10 @@ private:
         if (IsSequence(definition) != bool(at))
             throw Reason(name + (at ? " is not a sequence" : " is a sequence; index it"));
         const auto cells = [](const Clause<Value>& c) { return c.parameters.cells(); };
-        if (std::any_of(definition.Clauses().begin(), definition.Clauses().end(), cells))
+        if (std::any_of(definition.Clauses().begin(), definition.Clauses().end(), cells)) {
+            if (at) throw Reason("a sequence with parameters by cells, for now");
             return Cells(name, definition);
+        }
         std::vector<std::pair<std::string, Code>> guarded;
         std::optional<Code>                       otherwise;
         const Clause<Value>* const                lowest = definition.EndBase(true);

@@ -157,6 +157,7 @@ gaps = reach(x_n = n)
 #     f_n = w(x_n)_70
 #     g_n = r(x_n)_(1/2)
 #     h_n = lim nw(x_n)
+#     u_n = y(x_n)_0
 #     nw(a)_0 = a
 #     nw(a)_k = nw(a)_(k-1)/2 + r(a)_2
 #     p(x)_0 = x
@@ -167,10 +168,12 @@ gaps = reach(x_n = n)
 #     r(x)_k = r(x)_(k-1)/2 + 1
 #     w(x)_0 = x
 #     w(x)_k = w(x/2)_(k-1)
+#     y(x)_0 = [x; 1]
+#     y(x)_k[j<=2] = x*j
 #     z(x)_0 = x
 #     z(x)_k = z(x)_k/2
 #
-# where the interpreter, given x_n = 2, answers a, b, f and h, refuses c
+# where the interpreter, given x_n = 2, answers a, b, f, h and u, refuses c
 # and g in the words the compiler takes, and runs out of depth for d and e:
 #
 #     cannot compile a: a sequence with parameters read at an index that is not a constant
@@ -181,5 +184,6 @@ gaps = reach(x_n = n)
 #     cannot compile f: calls nested 64 deep, which a recursion its guards do not end would pass
 #     cannot compile g: an index must be a whole number, not 0.5
 #     cannot compile h: a sequence with parameters in a limit's terms, for now
+#     cannot compile u: a sequence with parameters by cells, for now
 #
 # on standard output, exiting 1.
