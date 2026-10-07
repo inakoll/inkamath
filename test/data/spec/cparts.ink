@@ -181,6 +181,17 @@ R(z) = re(z) + im(z)
 >> tex ?R
 R(z) = \operatorname{re}(z) + \operatorname{im}(z)
 
+# Their own definitions shown, through the node: `?` names a built-in, as
+# `?floor` does, and tex shows its body as the call it is.
+>> ?re
+re
+
+>> tex ?re
+\operatorname{re}(x) = \operatorname{re}(x)
+
+>> tex ?im
+\operatorname{im}(x) = \operatorname{im}(x)
+
 # A session's re is its own; the prelude's abs keeps the built-in.
 >> re = 3000
 re = 3000

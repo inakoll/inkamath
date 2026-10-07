@@ -2816,7 +2816,10 @@ that exploring seven domains asked of the interpreter, by how many asked.
   pair is. Named as the paper writes Re and Im, lowercase as every name
   here; a session may define either again, as `floor`, and the prelude
   keeps its own. `tex` shows `\operatorname{re}(z)`, as any call, not
-  the paper's `\operatorname{Re}`.
+  the paper's `\operatorname{Re}`, and the node as that call: `tex ?re`
+  is `\operatorname{re}(x) = \operatorname{re}(x)`, where floor's is
+  `\lfloor x \rfloor`. `?re` is `re`, as `?floor` is `floor`: a built-in
+  has no written form, and the node is not asked.
 
   **abs** is the root of re^2 + im^2, each part first divided by s =
   2^ilogb of the larger, exactly, so where a double holds the squares it is
@@ -2899,8 +2902,8 @@ that exploring seven domains asked of the interpreter, by how many asked.
   3. 15,327 lines at ebf47fd, by `wc -l include/inkamath/*.hpp src/*`.
   Past 51 the implementation stops and reports.
 
-  Specified in `test/data/spec/cparts.ink`, 45 entries replayed by the spec
-  suite, 34 failing by design, those passing being definitions and
+  Specified in `test/data/spec/cparts.ink`, 53 entries replayed by the spec
+  suite, 40 failing by design, those passing being definitions and
   `clear` echoing themselves, the refusal of a matrix, a real number's abs,
   H(0) and a call's `tex`: the response, its parts and slopes exactly
   with sympy, each rounded to 9 digits with mpmath and none within 0.04 of
