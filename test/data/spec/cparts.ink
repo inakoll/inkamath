@@ -138,7 +138,8 @@ M[k<=5] = H(pi*(k-1)/4)
 ~0.64
 
 # The magnitude's slope, -4 sqrt(5)/25 at pi/2, and 0 at its peak, where
-# T is real and T' = -4i is not: abs's real clauses take the real part.
+# T is real and T' = -4i is not: abs's real clauses take the real part
+# (C201).
 >> grad_(w = pi/2) H(w)
 ~-0.357770876
 

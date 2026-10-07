@@ -1723,6 +1723,7 @@ closures need one anyway, and can bring it.
 | C198 `[fixed]` | **`abscissa` of a marginal system with an exact eigenvalue 0 was marked as approximated.** Its 0 is no bracket's, as C195's rho was not: `abscissa([0 0; 0 -1])` and `abscissa([0 1; 0 0])` were 0 "approximated past a thousand digits". A polynomial lambda^k q, k at least 1 and q passing Routh's strict test, has 0 for an eigenvalue and none right of it, so its abscissa is answered 0 without a bisection now, unmarked, in 4 lines of the prelude, the factor stripped of q a cell at a time; bisection_cap.ink holds it, its `abscissa([0 1; 0 0])` moves to unmarked, and README's section 2 says so. A pair on the axis, `[0 0 0; 0 0 1; 0 -1 0]`'s ±i beside its 0 or `[0 1; -1 0]`'s alone, fails the strict test as one right of it would, and is marked still: telling the two apart takes Routh's singular cases, an auxiliary polynomial, which no cheap test gives. |
 | C199 `[fixed]` | **`smax` of a matrix far past a double's range refused with a NaN.** `smaxd` checks its answer by scaling it back, and `rhod` scales by A's power in two halves, each a double only up to about 2^1074: from about 10^647 up or 10^-646 down a half was inf or 0, and scaling the inf or 0 back multiplied it by the other, so `smax(10^700)` and `smax([10^-700 0; 0 10^-700])` were "a comparison needs a number, not -nan" where `eig` answers them inf and 0, marked. A nonzero answer whose double is 0 or inf is marked without the round trip now, in 1 line of the prelude, wrapped; eig.ink holds it, and no other answer moved. |
 | C200 `[fixed]` | **`eigb` gave a bracket where there is no eigenvalue to bracket.** eig's guard, Hermite's test, was eig's alone, so its bracket counted the roots of a matrix with complex ones as if all were real: `eigb([0 1; -1 0], 1)_64` was [0; 0], an exact bracket certifying 0 for ±i, `eigb([2 1; 1 3], 3)_64` [~8; 8] for a third eigenvalue of a 2x2, and `eigb([2 1; 1 3], 3/2)_64` the second's. eigb asks what eig asks now, and a whole k from 1 to n, and `eigk` scales `eigu`'s bracket back itself, so eig pays the test once, in 2 lines changed, one of them wrapped; eig.ink holds it, and no other answer moved. |
+| C201 `[open]` | **abs's slope of a real value whose derivative is complex was complex.** abs answered x or -x, and so passed on x's derivative or its negative: with `T(z) = 1/(z - 1/2)`, `grad_(w = 0) abs(T(e^(i*w)))` answered `-i*4`, T's own slope, where |T| is real and peaks at w = 0, its slope 0. Found specifying the parts and modulus of a complex number (next in line), which closes it, its real clauses taking re(x); `test/data/spec/cparts.ink` holds it. |
 
 **Measure instructions, not the clock.** One of those changes made the matrix
 workload 20 per cent slower by the clock and not by a single instruction: with
@@ -2827,8 +2828,8 @@ that exploring seven domains asked of the interpreter, by how many asked.
   **The real clauses take re(x).** A real value's derivative may be
   complex: T(e^{iw}) = 1/(e^{iw} - 1/2) is 2 at w = 0, and T' = -4i, so the
   clause `x` makes the slope of |T| -4i, which `grad_(w = 0) H(w)` answers
-  today; |T| is real and peaks there, its slope 0, re(T'). A defect of
-  today's abs, found writing this spec, fixed by it.
+  today; |T| is real and peaks there, its slope 0, re(T'). C201, a
+  defect of today's abs found writing this spec, which this fixes.
 
   **grad.** Of a variable at a real point, a part's derivative is the
   derivative's part, and abs's follows from its clauses: re(conj(z) z')/|z|
