@@ -224,6 +224,27 @@ gl(x) | x > c = x
 >> grad_(x = rt_20) h(x)
 error: no clause of h applies, by a guard approximated past a thousand digits
 
+# Yet a clause's constant answer does not move with x: log's ilogb, chosen
+# by guards that read x, is still no exponent that changes.
+>> grad_(x = rt_20) log(x)
+~0.707106781  # approximated past a thousand digits
+
+# And a size such a guard chose is refused as without grad, not as a jump.
+>> ix(x) = 2
+ix(x) = 2
+
+>> ix(x) | x > 5 = 3
+ix(x) | x > 5 = 3
+
+>> S(x)[j<=ix(x)] = x
+S(x)[j<=ix(x)] = x
+
+>> S(rt_20)
+error: an index must be exact, and 2 was approximated
+
+>> grad_(x = rt_20) S(x)
+error: an index must be exact, and 2 was approximated
+
 >> grad_(x = rt_20) x*(x > c and 1 > 0)
 0  # approximated past a thousand digits
 
