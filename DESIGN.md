@@ -2763,6 +2763,16 @@ that exploring seven domains asked of the interpreter, by how many asked.
   exactly, yet `lim C` is inexact and `frac lim C` refused.
 - **Matrix `==` and `<>` compiled**, refused as "a comparison of matrices".
 - **`--check`'s hundred steps as an option**, with `lim`'s.
+- **A cumulative sum compiled as an accumulator**, `sum_(t=1)^n e(t)`:
+  refused as "a sum whose bounds are not constants", where a regret or a
+  running loss is exactly that (Reddi et al. 2018).
+- **The forward form `x_(t+1) = ...`**: refused as "t is not defined", so a
+  paper's update must be shifted to t-1 by hand, where transcriptions slip.
+- **`--check` says how far a term parts**, not only where it first does: the
+  largest difference and where, as MANIFESTO asks of how a difference grows.
+- **`atan` in the prelude**, written as `exp` and `log` are, `asin` and
+  `acos` from it: Kahan's angle formulas cannot be written without.
+- **An instance named again**, `a = thm1.adam`, then `a.x_1`.
 - **Temporaries in a limit's function**: C140 shares a step's nested calls,
   but a limit's terms are still written out whole, so a Riccati limit through
   `ric(ric(P))` is 163 MB of header. About 25-35 lines; moves headers whose
