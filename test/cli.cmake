@@ -723,6 +723,15 @@ set(stdout "cannot compile w: tr takes M[j<=n, k<=n], not a 2x3 matrix\n")
 set(exit 1)
 check(compile_signature_refused)
 
+# The prelude's charpoly compiles; rho does not yet, by hurwitzb's factorial,
+# and grad refuses it and abscissa where A moves, as the interpreter does
+# (DESIGN.md, the characteristic polynomial and stability).
+file(WRITE "${OUT}/charpoly.ink" "x_n = rho([n 1; -1 1/2])\nz_n = charpoly([n 1; 2 3])[2]\ng_n = grad_(a = n) rho([a 1; -1 1/2])\nh_n = grad_(a = n) abscissa(a)\n")
+set(args --compile charpoly.ink)
+set(stdout "cannot compile g: grad cannot differentiate rho yet\ncannot compile h: grad cannot differentiate abscissa yet\ncannot compile x: a factorial\n")
+set(exit 1)
+check(compile_charpoly_refused)
+
 # A tensor input, refused before tensors compiled, read by its second slice.
 file(WRITE "${OUT}/batch.ink" "batch(x_n[b<=2, j<=1, k<=2]) = {\n    y_n = x_n[2]*[1; 1]\n}\n")
 set(args --compile batch.ink batch -o batch.h)
@@ -1108,3 +1117,35 @@ holds(compile_tensor_sgd sgd.h [=[typedef struct sgd {
 } sgd;
 ]=] [=[static inline void sgd_step(sgd* m_, const double X[8], const double Y[4]) {
 ]=])
+
+# A sequence with parameters read at a constant index, compiled (DESIGN.md,
+# compile/iterates.ink): each term below the one read a temporary, the one
+# read written where it is read, a count read there compiled in, and what
+# stays refused named in the interpreter's words where it has them.
+set(iterates "${CMAKE_CURRENT_LIST_DIR}/compile/iterates.ink")
+set(args --compile ${iterates} roots -o roots.h)
+check(compile_iterates_roots)
+holds(compile_iterates_roots roots.h [[    const double t0_ = sqrt(0.0 + m_->x[0]);
+    const double t1_ = sqrt(0.0 + t0_);
+]] [[    const double t126_ = sqrt(0.0 + t125_);
+    const double t127_ = sqrt(0.0 + t126_);
+    const double t128_ = pow(t127_, 2.0);
+]] [[    m_->h[0] = pow(t254_, 2.0);
+]])
+set(args --compile ${iterates} mpc -o mpc.h)
+check(compile_iterates_mpc)
+holds(compile_iterates_mpc mpc.h " call mpc_update. Compiled in as constants, these cannot change: iters.\n")
+file(WRITE "${OUT}/iterates.ink" "a_n = r(x_n)_n\nb_n = r(x_n)_1001\nc_n = q(x_n)_3\nd_n = z(x_n)_2\ne_n = p(x_n)_2\nf_n = w(x_n)_70\ng_n = r(x_n)_(1/2)\nh_n = lim nw(x_n)\nu_n = y(x_n)_0\nnw(a)_0 = a\nnw(a)_k = nw(a)_(k-1)/2 + r(a)_2\np(x)_0 = x\np(x)_k = p(x)_(k+1)/2\nq(x)_0 = x\nq(x)_k = q(x)_(k-2) + 1\nr(x)_0 = x\nr(x)_k = r(x)_(k-1)/2 + 1\nw(x)_0 = x\nw(x)_k = w(x/2)_(k-1)\ny(x)_0 = [x; 1]\ny(x)_k[j<=2] = x*j\nz(x)_0 = x\nz(x)_k = z(x)_k/2\n")
+set(args --compile iterates.ink)
+set(stdout "cannot compile a: a sequence with parameters read at an index that is not a constant
+cannot compile b: r_1001 is 1001 terms from its base, and a step writes out at most 1000
+cannot compile c: q has no clause for index -1
+cannot compile d: z is defined by itself
+cannot compile e: p_(...): a term after the one being computed
+cannot compile f: calls nested 64 deep, which a recursion its guards do not end would pass
+cannot compile g: an index must be a whole number, not 0.5
+cannot compile h: a sequence with parameters in a limit's terms, for now
+cannot compile u: a sequence with parameters by cells, for now
+")
+set(exit 1)
+check(compile_iterates_refused)

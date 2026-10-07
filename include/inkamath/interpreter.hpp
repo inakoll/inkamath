@@ -319,6 +319,54 @@ inline constexpr const char* prelude[] = {
     "cosp(r) = cosw(r*r)",
     "cosw(z) = 1 - z/2 + z*z*(1/24 - z*(1/720 - z*(1/40320 - z*(1/3628800 - z*(1/479001600 "
     "- z*(1/87178291200 - z*(1/20922789888000 - z/6402373705728000)))))))",
+    // charpoly is det(lambda I - A), highest power first, by Faddeev and
+    // LeVerrier. hurwitz is Routh's test of every root of p in Re z < s, its
+    // column as a recurrence on the polynomial, and schurcohn of every one in
+    // |z| < r, Routh's on the image of z = r(1 + w)/(1 - w). Each abs exists
+    // only to refuse a complex argument, by name, as one can pass the column. rho
+    // and abscissa bisect on them a bracket of A/B, B = 2^e above A's cells,
+    // scaled by 2^e in two halves so that no factor leaves a double, and
+    // keep halving past the 64th while the bracket is wider than 2^-53 of
+    // its end nearer 0, up to 256. An answer the cap ended is marked, by
+    // 0*10^-1000, a 0 approximated past a thousand digits (DESIGN.md).
+    "charpolym(A)_1 = A^0",
+    "charpolym(A)_m = A*charpolym(A)_(m-1) + charpolyc(A)_(m-1)*A^0",
+    "charpolyc(A)_0 = 1",
+    "charpolyc(A[j<=n, k<=n])_m = -sum_(j=1)^n (A*charpolym(A)_m)[j,j]/m",
+    "charpoly(A[j<=n, k<=n])[j<=n+1] = charpolyc(A)_(j-1)",
+    "hurwitzb(a, b) = !a/(!b*!(a - b))",
+    "hurwitzb(a, b) | b < 0 or b > a = 0",
+    "hurwitzc(q[j<=m], i) = 0",
+    "hurwitzc(q[j<=m], i) | i <= m = q[i]",
+    "hurwitzr(q)_0 = q",
+    "hurwitzr(q[j<=m])_k[j<=m] = hurwitzc(hurwitzr(q)_(k-1), j + 1) - mod(j + 1, 2)"
+    "*hurwitzr(q)_(k-1)[1]/hurwitzr(q)_(k-1)[2]*hurwitzc(hurwitzr(q)_(k-1), j + 2)",
+    "hurwitzt(q[j<=m])_0 = sum_(j=1)^m abs(q[j]) > 0 and q[1] <> 0",
+    "hurwitzt(q)_k = hurwitzt(q)_(k-1) and hurwitzr(q)_(k-1)[2]*q[1] > 0",
+    "hurwitzs(p[j<=m], s)[t<=m] = sum_(i=1)^t p[i]*hurwitzb(m-i, m-t)*s^(t-i)",
+    "hurwitz(p[j<=m], s = 0) | abs(s) >= 0 = hurwitzt(hurwitzs(p, s))_(m-1)",
+    "schurcohnm(p[j<=m], r)[t<=m] = sum_(i=1)^m p[i]*r^(m-i)*sum_(a=0)^(m-i) "
+    "hurwitzb(m-i, a)*hurwitzb(i-1, m-t-a)*(-1)^(m-t-a)",
+    "schurcohn(p[j<=m], r = 1) | r >= 0 and sum_(j=1)^m abs(p[j]) >= 0 "
+    "= hurwitz(schurcohnm(p, r))",
+    "rhoe(A[j<=n, k<=n]) = rhop(sum_(j=1)^n sum_(k=1)^n abs(A[j,k]))",
+    "rhop(s) = ilogb(s + (s == 0)) + 1 + 0*s",
+    "rhod(x, e) = x*2^(e - floor(e/2))*2^floor(e/2)",
+    "rhos(b) = b[2] - b[1] <= 2^-53*min(abs(b[1]), abs(b[2]))",
+    "rhou(A)_0 = [0; 1]",
+    "rhou(A)_m = rhoh(charpoly(rhod(A, -rhoe(A))), rhou(A)_(m-1))",
+    "rhou(A)_m | m > 64 and rhos(rhou(A)_(m-1)) = rhou(A)_(m-1)",
+    "rhob(A)_m = rhod(rhou(A)_m, rhoe(A))",
+    "rhoh(p, b) = b + (b[2] - b[1])/2*([1; 0] - schurcohn(p, (b[1] + b[2])/2)*[1; 1])",
+    "rhoa(u, b) | rhos(u) = ~b[1]",
+    "rhoa(u, b) = ~b[1] + 0*10^-1000",
+    "rho(A[j<=n, k<=n]) = rhoa(rhou(A)_256, rhob(A)_256)",
+    "abscissau(A)_0 = [-1; 1]",
+    "abscissau(A)_m = abscissah(charpoly(rhod(A, -rhoe(A))), abscissau(A)_(m-1))",
+    "abscissau(A)_m | m > 64 and rhos(abscissau(A)_(m-1)) = abscissau(A)_(m-1)",
+    "abscissab(A)_m = rhod(abscissau(A)_m, rhoe(A))",
+    "abscissah(p, b) = b + (b[2] - b[1])/2*([1; 0] - hurwitz(p, (b[1] + b[2])/2)*[1; 1])",
+    "abscissa(A[j<=n, k<=n]) = rhoa(abscissau(A)_256, abscissab(A)_256)",
 };
 
 template <Parsable T, Numeric U>
@@ -392,6 +440,8 @@ Interpreter<T, U>::Interpreter() {
         };
         stack_.stepwise = names.at("ilogb").get();
     }
+    const auto& names = stack_.Builtins().names;
+    stack_.staircases = {names.at("rho").get(), names.at("abscissa").get()};
     ResetInterpreter();
 }
 

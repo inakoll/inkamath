@@ -314,6 +314,10 @@ private:
         for (const auto& [keyword, argument] : p.parameters_dict())
             arguments.emplace_back(keyword, Eval(argument));
         for (const auto& [given, jet] : arguments) definition->Divides(given, *jet[0], stack_);
+        for (const auto& [given, jet] : arguments)
+            if (Moves(jet) && stack_.staircases.contains(definition.get()))
+                throw std::runtime_error("grad cannot differentiate " + definition->Name() +
+                                         " yet");
         if (p.limit()) return Limit(*definition, p, arguments);
         int        index   = 0;
         const bool indexed = p.TryEvalIndex(stack_, index);

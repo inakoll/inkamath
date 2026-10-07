@@ -196,6 +196,15 @@ TEST_CASE("approximated") {
 TEST_CASE("signatures") {
     check_transcript("signatures.ink");
 }
+TEST_CASE("charpoly") {
+    check_transcript("charpoly.ink");
+}
+TEST_CASE("bisection_digits") {
+    check_transcript("bisection_digits.ink");
+}
+TEST_CASE("bisection_cap") {
+    check_transcript("bisection_cap.ink");
+}
 TEST_CASE("kahan") {
     check_transcript("kahan.ink");
 }
@@ -204,6 +213,9 @@ TEST_CASE("muller") {
 }
 TEST_CASE("rump") {
     check_transcript("rump.ink");
+}
+TEST_CASE("goldberg") {
+    check_transcript("goldberg.ink");
 }
 TEST_CASE("readme") {
     check_readme();

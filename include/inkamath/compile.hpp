@@ -11,6 +11,7 @@
 #include <charconv>
 #include <cmath>
 #include <cstddef>
+#include <exception>
 #include <functional>
 #include <limits>
 #include <map>
@@ -561,19 +562,38 @@ private:
     // A value that is not a sequence, its clauses tried as the interpreter
     // tries them: the guarded in the order written, then the one that always
     // applies.
-    Code Chained(const std::string& name, const Reference<Value>& definition) {
-        if (IsSequence(definition)) throw Reason(name + " is a sequence; index it");
+    // At an index, as Reference::EvalImp tries them: a base clause where it
+    // is written, and the general one down to the lowest base.
+    Code Chained(const std::string& name, const Reference<Value>& definition,
+                 std::optional<int> at = std::nullopt) {
+        if (IsSequence(definition) != bool(at))
+            throw Reason(name + (at ? " is not a sequence" : " is a sequence; index it"));
         const auto cells = [](const Clause<Value>& c) { return c.parameters.cells(); };
-        if (std::any_of(definition.Clauses().begin(), definition.Clauses().end(), cells))
+        if (std::any_of(definition.Clauses().begin(), definition.Clauses().end(), cells)) {
+            if (at) throw Reason("a sequence with parameters by cells, for now");
             return Cells(name, definition);
+        }
         std::vector<std::pair<std::string, Code>> guarded;
         std::optional<Code>                       otherwise;
+        const Clause<Value>* const                lowest = definition.EndBase(true);
+        // Each clause sees its own index alone, as Reference::Selects binds it (C186).
+        using Values                           = decltype(expansion_->values);
+        const auto                     unbound = at ? expansion_->values : Values();
+        std::optional<Setting<Values>> restore;
+        if (at) restore.emplace(expansion_->values, unbound);
         for (const bool guard : {true, false}) {
             for (const Clause<Value>& clause : definition.Clauses()) {
-                const ParametersDefinition<Value>& p = clause.parameters;
-                if (otherwise || p.guarded() != guard) continue;
+                const ParametersDefinition<Value>& p    = clause.parameters;
+                const bool                         base = at && !p.general();
+                if (otherwise || (p.guarded() || base) != guard || (base && p.index() != *at) ||
+                    (at && !guard && lowest && *at < lowest->parameters.index()))
+                    continue;
+                if (at) expansion_->values = unbound;
+                if (at && p.general())
+                    expansion_->values.insert_or_assign(p.index_name(),
+                                                        Literal(Value(Number(*at))));
                 const std::optional<std::string> condition =
-                    guard ? Condition(p.guard()) : std::optional<std::string>("");
+                    p.guarded() ? Condition(p.guard()) : std::optional<std::string>("");
                 if (!condition) continue;
                 if (condition->empty())
                     otherwise = Emit(clause.expression);
@@ -582,7 +602,9 @@ private:
             }
         }
         if (guarded.empty()) {
-            if (!otherwise) throw Reason("no clause of " + name + " applies");
+            if (!otherwise)
+                throw Reason(at ? name + " has no clause for index " + std::to_string(*at)
+                                : "no clause of " + name + " applies");
             return *otherwise;
         }
         // The interpreter answers each clause's own shape, which a step cannot (C138).
@@ -640,25 +662,35 @@ private:
         return chain;
     }
 
+    // rho and abscissa are staircases in A, refused where it moves, as the
+    // interpreter refuses them, rather than answer the staircase's 0.
+    void Staircase(const Reference<Value>& function, const Code& argument) const {
+        if (!argument.part.empty() && definitions_.staircases.contains(&function))
+            throw Reason("grad cannot differentiate " + function.Name() + " yet");
+    }
+
     // A function called: its parameters bound to the arguments, read where the
-    // call is, and its defaults to what they read inside it.
+    // call is, and its defaults to what they read inside it; read at an
+    // index, 'f(x)_k', a term of a sequence with parameters (DESIGN.md).
     Code Call(const std::string& name, const Reference<Value>& function,
               const ParametersCall<Value>& call, Expansion* outer) {
         const ParametersDefinition<Value>& p = function.Clauses().front().parameters;
         Reasoned([&] { p.CheckArity(name, call); });
+        std::optional<int> at;
+        if (call.subexpr() && !temporaries_)
+            throw Reason("a sequence with parameters in a limit's terms, for now");
+        if (call.subexpr())
+            at = Whole(Known(call.subexpr(),
+                             "a sequence with parameters read at an index that is not a constant"));
         ++calls_;
         Expansion expansion{{}, {}, outer ? outer->scope : function.home, outer, {}, {}};
         // An argument the caller's index, give or take a constant, indexes a term (C119).
         const auto bind = [&](const std::string& given, const PExpression<Value>& argument) {
             // A call's value, and its part, written at each reading, would
             // multiply at each call nested in it (C140): each is computed once.
-            const int  before = calls_;
-            Code       value  = Emit(argument);
-            const auto share  = [&](const auto& self, Code& code) -> void {
-                for (Code& part : code.part) self(self, part);
-                code = Shared(code);
-            };
-            if (calls_ != before && !value.constant) share(share, value);
+            const int before = calls_;
+            Code      value  = Emit(argument);
+            if ((at || calls_ != before) && !value.constant) value = SharedAll(value);
             expansion.values.emplace(given, value);
             if (Plain(*argument)) try {
                     expansion.offsets.emplace(given, Offset(argument, given));
@@ -670,12 +702,67 @@ private:
         for (std::size_t i = 0; i < call.parameters_expression().size(); ++i)
             bind(names[i], call.parameters_expression()[i]);
         for (const auto& [given, argument] : call.parameters_dict()) bind(given, argument);
+        for (const auto& [given, value] : expansion.values) Staircase(function, value);
         Reasoned([&] {
             for (const auto& [given, value] : expansion.values)
                 function.Divides(given, Value(value.size), definitions_);
         });
         Defaults(function, expansion);
+        if (at) return Term(name, function, expansion, *at);
         return Inside(expansion, [&] { return Chained(name, function); });
+    }
+
+    // Filled from the lowest base, by the interpreter's stride (Reference::Filled),
+    // each term once for its arguments' code, shape and exact value (C187),
+    // and a temporary once a term reads it; one the fill cannot compute is
+    // refused where a read reaches it, as the interpreter's recursion is.
+    Code Term(const std::string& name, const Reference<Value>& function, Expansion& expansion,
+              int k) {
+        std::string args;
+        const auto  text = [&](const auto& self, const Code& code) -> void {
+            args += code.size.toString() + '\x1d';
+            if (code.constant) Value::key(*code.constant, args);
+            for (const Cell& cell : code.cells) args += cell.text + '\x1f';
+            args += code.moves + '\x1e';
+            for (const Code& part : code.part) self(self, part);
+        };
+        for (const auto& [given, value] : expansion.values) text(text, value);
+        int& computing = computing_.try_emplace({&function, args}, std::numeric_limits<int>::max())
+                             .first->second;
+        if (k >= computing)
+            throw Reason(k == computing ? name + " is defined by itself"
+                                        : name + "_(...): a term after the one being computed");
+        const auto term = [&](int j, bool inner) {
+            const std::tuple<const void*, const void*, std::string, int> key{temporaries_,
+                                                                             &function, args, j};
+            if (const auto failed = failed_.find(key); failed != failed_.end())
+                std::rethrow_exception(failed->second);
+            auto found = terms_.find(key);
+            if (found == terms_.end()) try {
+                    const Setting<int> within(computing, j), deeper(terming_, terming_ + 1);
+                    const Code code = Inside(expansion, [&] { return Chained(name, function, j); });
+                    found           = terms_.insert({key, {code, false}}).first;
+                } catch (const Reason&) {
+                    failed_.try_emplace(key, std::current_exception());
+                    throw;
+                }
+            if (inner && !found->second.second)
+                found->second = {SharedAll(found->second.first), true};
+            return found->second.first;
+        };
+        const Clause<Value>* lowest = function.EndBase(true);
+        const long long      distance =
+            lowest ? static_cast<long long>(k) - lowest->parameters.index() : 0;
+        if (distance > max_terms)
+            throw Reason(name + "_" + std::to_string(k) + " is " + std::to_string(distance) +
+                         " terms from its base, and a step writes out at most " +
+                         std::to_string(max_terms));
+        const int stride = function.Stride();
+        for (long long j = k - (distance - 1) / stride * stride; j < k; j += stride) try {
+                (void)term(static_cast<int>(j), true);
+            } catch (const Reason&) {
+            }
+        return term(k, terming_ > 0);
     }
 
     // A default reads the others inside the function, and the sizes stated
@@ -711,6 +798,7 @@ private:
             constant         = constant && code.constant;
             scalar           = scalar && code.Scalar();
             given += (given.empty() ? "" : ", ") + code.cells[0].text;
+            Staircase(function, code);
         }
         if (constant || !scalar) return Answer(Call(name, function, call, nullptr));
         const std::string called = module_ + "_" + name;
@@ -1011,15 +1099,23 @@ private:
     template <typename Lines>
     std::string Declare(const std::string& value, Lines lines) {
         if (!temporaries_) throw Reason("a matrix inverse outside a sequence");
-        for (const Temporary& temporary : *temporaries_)
-            if (temporary.value == value) return temporary.name;
+        // Checked, as an ended list may have left its address to another.
+        std::size_t& at = declared_[{temporaries_, value}];
+        if (at < temporaries_->size() && (*temporaries_)[at].value == value)
+            return (*temporaries_)[at].name;
         const std::string name = "t" + std::to_string(temporary_count_++) + "_";
+        at                     = temporaries_->size();
         temporaries_->push_back({name, value, lines(name)});
         return name;
     }
     Code Shared(Code code) {
         for (Cell& cell : code.cells) cell = Shared(cell);
         return code;
+    }
+    // Its parts too (C140).
+    Code SharedAll(Code code) {
+        for (Code& part : code.part) part = SharedAll(part);
+        return Shared(code);
     }
 
     template <typename Combine>
@@ -1929,6 +2025,9 @@ private:
         index_                    = index;
         places_                   = places;
         temporaries_              = outer_temporaries;
+        const auto in = [&](const auto& term) { return std::get<0>(term.first) == &temporaries; };
+        std::erase_if(terms_, in);
+        std::erase_if(failed_, in);
         const bool reads          = std::exchange(read_global_, true);
         const auto parameters     = std::exchange(read_parameters_, std::move(outer_parameters));
         read_parameters_.insert(parameters.begin(), parameters.end());
@@ -2513,10 +2612,7 @@ private:
         if (limit_ && name == limit_->name && call.subexpr()) return Answer(Earlier(call));
         if (calls && !own_) {
             const auto [local, in] = Local(name);
-            if (local) {
-                if (call.subexpr() || call.limit()) throw Reason("a sequence with parameters");
-                return Answer(Call(name, *local, call, in));
-            }
+            if (local) return Answer(Call(name, *local, call, in));
         }
         const Found        found = Lookup(name);
         const std::string& key   = found.key;
@@ -2524,8 +2620,7 @@ private:
         if (name == "floor" && found.where == &definitions_.Builtins()) return Floor(expression);
         if (calls) {
             if (!found.definition) throw Reason(key + " is not defined");
-            if (call.subexpr()) throw Reason("a sequence with parameters");
-            if (found.where == &definitions_.Builtins())
+            if (found.where == &definitions_.Builtins() && !call.subexpr())
                 return Prelude(key, *found.definition, call);
             return Answer(Call(key, *found.definition, call, nullptr));
         }
@@ -3544,6 +3639,8 @@ private:
         const auto index    = std::exchange(index_, std::string());
         const auto outer    = std::exchange(places_, places);
         bool       decides  = false;
+        std::vector<Temporary> scratch;  // what a term read there declares, kept nowhere (C188)
+        const Setting<std::vector<Temporary>*> within(temporaries_, &scratch);
         try {
             const Code code = Quiet(check.left);
             decides         = code.constant && Holds(*code.constant) != check.conjunction;
@@ -3552,6 +3649,9 @@ private:
         scope_  = scope;
         index_  = index;
         places_ = outer;
+        const auto in = [&](const auto& term) { return std::get<0>(term.first) == &scratch; };
+        std::erase_if(terms_, in);
+        std::erase_if(failed_, in);
         return decides;
     }
 
@@ -3677,15 +3777,27 @@ private:
     // say so.
     static std::string Temporaries(const std::vector<Temporary>& declared,
                                    const std::string& assignments, const std::string& indent) {
-        std::string read = assignments, kept;
+        std::set<std::string> read;  // names: a search of the text kept grows with its square
+        const auto            reads = [&read](const std::string& text) {
+            const char* const word =
+                "_0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+            for (std::size_t at = 0, end = 0; end != std::string::npos; at = end + 1) {
+                end = text.find_first_not_of(word, at);
+                read.insert(text.substr(at, end - at));
+            }
+        };
+        reads(assignments);
+        std::vector<std::string> kept;
         for (auto temporary = declared.rbegin(); temporary != declared.rend(); ++temporary) {
-            if (read.find(temporary->name) == std::string::npos) continue;
+            if (!read.count(temporary->name)) continue;
             std::string lines;
             for (const std::string& line : temporary->lines) lines += indent + line + "\n";
-            read += lines;
-            kept = lines + kept;
+            reads(lines);
+            kept.push_back(std::move(lines));
         }
-        return kept;
+        std::string out;
+        for (auto lines = kept.rbegin(); lines != kept.rend(); ++lines) out += *lines;
+        return out;
     }
 
     // The interpreter's Gauss-Jordan (Matrix::Inverse), step for step: the
@@ -4233,6 +4345,15 @@ private:
     // or none where there is no part.
     std::map<std::string, std::optional<std::vector<std::pair<bool, std::size_t>>>> parts_;
     std::vector<Temporary>*          temporaries_ = nullptr;  // where this sequence's are declared
+    std::map<std::pair<const void*, std::string>, std::size_t> declared_;  // each value's place
+    // Terms of sequences with parameters, by the list of temporaries they are
+    // in, the definition, its arguments' code and the index, and why the fill
+    // could not compute those it could not; and the index of the term of each
+    // being computed.
+    std::map<std::tuple<const void*, const void*, std::string, int>, std::pair<Code, bool>> terms_;
+    std::map<std::tuple<const void*, const void*, std::string, int>, std::exception_ptr>    failed_;
+    std::map<std::pair<const void*, std::string>, int> computing_;
+    int                                                terming_ = 0;        // terms being computed
     Reads*      clause_reads_ = nullptr;               // what the clause being compiled reads
     bool                             deferring_ = false;  // compiling the right of an 'and' or 'or'
     int                        shift_ = 0;  // how far back the term being computed again is; see At

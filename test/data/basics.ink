@@ -97,12 +97,12 @@ i
 # The principal square root of a negative number, which used to depend on how
 # the minus was written: unary minus left a -0 imaginary part, putting the
 # value on the far side of the branch cut, so this answered 'i*-2' where
-# '(0-4)^0.5' answered 'i*2'.
+# '(0-4)^0.5' answered 'i*2'. Both had a real part of 1e-16 until C174.
 >> (-4)^0.5
-~1.2246468e-16+i*2
+i*2
 
 >> (0-4)^0.5
-~1.2246468e-16+i*2
+i*2
 
 # 'i' is the imaginary unit only when it is not the start of a longer name.
 # Every identifier beginning with 'i' used to be a syntax error.

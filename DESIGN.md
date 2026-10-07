@@ -1704,6 +1704,16 @@ closures need one anyway, and can bring it.
 | C171 `[fixed]` | **`tex` set one left side for several clauses with the first one's sizes.** Cases, and a definition's cells, are one left side for their clauses, and it was the first clause's: beside `gs(x) \| n > 1 = 1`, `gs(x[j<=n]) = n` was set `\operatorname{gs}(x) = \begin{cases} 1 & \text{if } n > 1 ...`, its n bound nowhere. Such a left side has the definition's sizes now, and a clause on a line of its own still those it states, as `tex ?fm` has them, in 9 lines more; signatures.ink holds it. Found reviewing *A size bound by a signature*. |
 | C172 `[fixed]` | **A size past an int was refused in an index's words.** `bad(x[j<=4000000000]) = x` was "an index must be between -2147483648 and 2147483647, not 4000000000", a range no size has; a cell's bound and a model's input's alike. It is "a size must be between 1 and 2147483647, not 4000000000" now, in 3 lines, a bound that is not whole still refused as an index is; signatures.ink holds it. Found reviewing *A size bound by a signature*. |
 | C173 `[fixed]` | **A clause refused for its names or defaults was quoted with its sizes.** The clauses agree on their names and defaults with the sizes apart (C154, C166), yet the refusal quoted the sizes as written: beside `hf(v[j<=n], s = n) \| s > 1 = s`, `hf(v) = 1` was "hf takes (v[j<=n], s = n), so a clause cannot take (v)", pointing at a size where the default differs. Both sides are quoted without their sizes now, "hf takes (v, s = n)", in 17 lines more; signatures.ink holds it. Found reviewing *A size bound by a signature*. |
+| C174 `[fixed]` | **The principal square root of a negative number was not exact.** A power of 1/2 of a negative or complex number went through `exp(log(x)/2)`, which leaves cos(π/2) in the real part: `(-1)^(1/2)` was `~6.123234e-17+i` and `(-1)^(1/2) == i` 0, where C's csqrt gives i exactly (Goldberg 1991, *Signed Zero*). It is the complex `sqrt` now, in 1 line, the +0 imaginary part of C33 keeping its branch; goldberg.ink holds it. basics.ink's `(-4)^0.5` and `(0-4)^0.5` lose their real part of 1e-16, and approximated.ink's root of a negative approximated number its 9e-25. Found transcribing Goldberg (1991). |
+| C175 `[fixed]` | **A fractional power of an exact number past a double's range overflowed or underflowed.** The base was made a double first: `((3*10^200)^2 + (4*10^200)^2)^(1/2)` was inf where the root, 5e200, is a double (Goldberg 1991, *Infinity*), `(10^-400)^(1/2)` 0, and `(2^1100)^(1/4)` inf. An exact number no normal double holds has a power of 2 taken out first now, x^y = 2^(e*y) (x/2^e)^y with e even, so a root of 1/2 is still C153's correctly rounded sqrt, in 14 lines; goldberg.ink holds it. No golden or expected header moved. A constant folded by `--compile` gets the same root, and `--check` of a parameter past a double's range, inf in the step, now reports the interpreter's finite term where both were inf. A complex exponent is as it was. Found transcribing Goldberg (1991). |
+| C180 `[fixed]` | **Compiling took a time that grew with the square of a step's temporaries.** `Declare` looked a value up in its sequence's list one temporary after another, and `Temporaries` searched the text kept for each name, a text growing with each line kept: backpropagation through time by 32 nested calls of `R(V, h, x) = V*h + x*h0`, hidden 8, and `grad_(V = W)` of the sum of its last state, is 10,872 temporaries and 3.2 MB of C, and took 15.1 s to compile, 16 calls 3.4 s. Found reviewing *A sequence with parameters read at a constant index, compiled*, whose terms written out reach such counts. A value's place is kept by its list, and the names read are a set, in 16 lines: 1.7 s and 0.7 s, the same headers, and no expected header moved. No test holds it, a bound on time being one the Debug and sanitized builds would cross for reasons of their own; this measure is its note. |
+| C185 `[fixed]` | **A sequence with parameters by cells was compiled as a matrix by cells.** `Chained` handed a definition with a clause by cells to `Cells`, which knows no index: with `y(x)_0 = [x; 1]` and `y(x)_k[j<=2] = x*j`, `y(x_n)_0` compiled to `[x; 2x]` where the interpreter answers the base clause, `[x; 1]`, and a clause reading its index said "k is not defined". Found reviewing *A sequence with parameters read at a constant index, compiled*. Refused by name now, "a sequence with parameters by cells, for now", in 2 lines; `compile_iterates_refused` in `test/cli.cmake` holds it. |
+| C186 `[fixed]` | **A term of a sequence with parameters saw the index another clause had bound.** `Chained` bound each general clause's index where the function's parameters are, and left it there for the clauses after it and the terms after it: with `c = 10` a parameter of the model, `f(x)_c | c < 3 = c` and `f(x)_j | j > 0 = f(x)_(j-1) + c` read c as the last index tried, so `f(x)_4` compiled to 9 where the interpreter answers 22, and a base clause `q(x)_3 = c` after `q(x)_c` to 2, not 10. Found reviewing *A sequence with parameters read at a constant index, compiled*. Each clause sees its own index alone now, as `Reference::Selects` binds it, in 4 lines; `memo` in `test/compile/iterates.ink` holds it. |
+| C187 `[fixed]` | **Terms of a sequence with parameters were shared between arguments written alike.** A term was kept by the text of its arguments' cells, which two exact constants of one double, or a column and a row of the same cells, share: `g(1/2)_20` and `g(1/2 + 2^-60)_20`, with `g(x)_k = g(x)_(k-1)*4 - 3/2`, both compiled to 1/2 where the second is 1/2 + 2^-20, and `h([x; 1])_1` and `h([x, 1])_1` to one column, so a function weighing each cell by its column answered 4 where the interpreter answers 6. Found reviewing *A sequence with parameters read at a constant index, compiled*. A term is kept by its arguments' shape and exact value too now, in 3 lines; `memo` in `test/compile/iterates.ink` holds it. |
+| C188 `[fixed]` | **A term read on the left of an `and` was not folded where the step starts.** Whether the left decides before the stream is asked by compiling it again there, where no list of temporaries is, so a sequence with parameters read in it was refused and the right taken as read: with `t(y)_k = t(y)_(k-1)*2 - 1`, `l_n | t(n)_3 > 5 and x_(n-1) > 2 = 1` was "l_0 reads x_-1, before the stream", where the interpreter's left is -7 > 5 and answers l_0, as the compiler does for a call. Found reviewing *A sequence with parameters read at a constant index, compiled*. The left is compiled with a list of its own there, kept nowhere, in 4 lines; `memo` in `test/compile/iterates.ink` holds it. |
+| C190 `[fixed]` | **`rho` and `abscissa` of an inexact matrix whose cells sum to 2^1023 or more refused with a NaN.** B, the power of two above the sum, was 2^1024, made inexact with the matrix, so inf: `rho(~1e308)` was "a comparison needs a number, not -nan", as were `abscissa(~-1e308)` and `rho([~1 2; 3 4]*10^307)`. The bracket bisected is A/B's now, `rhou(A)_m` and `abscissau(A)_m`, from [0; 1] and [-1; 1], and `rhod` scales by B's power in two halves, each a double, A to A/B and the bracket back: `rhob` and `abscissab` are still A's. 3 lines more and one of comment; charpoly.ink holds it, and no other answer moved. A matrix whose sum is itself past a double, `[~1 2; 3 4]*2*10^307`, still refuses. Found reviewing *The characteristic polynomial and stability*. |
+| C191 `[fixed]` | **`rho` of an exact matrix whose answer is past a double's range refused with a NaN.** `rho([1 2; 3 4]*10^400)` and `/10^400`: A/B's tests are past a thousand digits, so approximated, and the bracket of them was multiplied by an exact B no double holds. Fixed by C190's change: they are inf and 0, the doubles `~` makes of 5.37e400 and 5.37e-400, marked. Found reviewing *The characteristic polynomial and stability*. |
+| C192 `[fixed]` | **An answer the 256-halving cap ended was printed as certified.** The cap stops a bisection the relative stop has not, and the bracket it leaves is no answer below 2^-203 of B: `abscissa([-10^-100 0; 0 -1])` was ~-3.45e-77, -2^-254, `abscissa([10^-80 0; 0 -1])` 0 for an unstable system, and `rho([0 1; 10^-200 0])` 0, all unmarked. An answer whose bracket at the cap is wider than 2^-53 of its end nearer 0 is marked now, `+ 0*10^-1000` adding a 0 approximated past a thousand digits, so a comparison of it is marked too. A 0 is never within 2^-53 of itself, so a nilpotent matrix's rho and a marginal system's abscissa, right, are marked as well: the tests cannot tell them from a value below the last bracket, and README's section 2 says so. bisection_cap.ink holds it, and its three such 0s move to marked. 2 lines more and one of comment. Found reviewing *The characteristic polynomial and stability*. |
 
 **Measure instructions, not the clock.** One of those changes made the matrix
 workload 20 per cent slower by the clock and not by a single instruction: with
@@ -2775,9 +2785,138 @@ that exploring seven domains asked of the interpreter, by how many asked.
 - **The parts and modulus of a complex number**: a frequency response
   |T(e^{jw})| cannot be written, as `abs` refuses a complex value and nothing
   gives its real or imaginary part.
-- **A sequence with parameters read at a constant index, compiled** as a
-  loop of that many iterations: an MPC horizon, a window of backpropagation
-  through time, shooting. Compiled today only under `lim`.
+- `[done]` **A sequence with parameters read at a constant index, compiled.**
+  `--compile` refuses `f(x)_K` anywhere but under `lim`, "a sequence with
+  parameters", where the interpreter answers: `det` by Faddeev-LeVerrier in
+  `test/data/signatures.ink`, an MPC horizon of a few steps of projected
+  gradient, a window of backpropagation through time, Kahan's §10
+  `r(x)_128`, and shooting with a fixed number of iterations, for a step
+  whose time must be bounded (`MANIFESTO.md`). The plan said a loop of K
+  iterations.
+
+  Decided: written out, as a sum with constant bounds is, not a loop.
+  `f(args)_K` is compiled where it is read, as a call is, its terms filled
+  as the interpreter fills them (`Reference::Filled`): from the lowest base
+  clause up to K, by the stride the reads give, each term by the clause the
+  interpreter takes at its index, the index bound as a constant as a sum's
+  is, so a guard on it folds and `fc`'s `/m` is a number. Each term the read
+  reaches is a temporary of the step, by C140's mechanism, and the term read
+  is written where it is read, as a call's value is; a term is compiled once
+  for the code and parts of its arguments, so `fm`'s two reads of the term
+  before do not double at each term, and `cp`'s four cells share `fc`'s
+  terms. A term that reads another sequence with parameters reads it the
+  same way, so `fm` and `fc` fill each other. A term the fill computes and
+  the read does not reach is not written, a temporary nothing reads being a
+  warning the step is built without; a term the fill cannot compute is
+  refused only where a read reaches it, as the interpreter's recursion is.
+
+  The index is any that folds to a whole number where it is read: a literal,
+  a constant, a cell's place (`cp`'s `j - 1`), a size a signature binds
+  (`det`'s n), a parameter of a function compiled where it is called. A
+  model's parameter read there is compiled in, as one bounding a sum is, and
+  the header says so. One that reads the step's index or a term moves, and is
+  refused: computed from its base at each step, it would make a step's time
+  grow with n. At most 1000 terms from the lowest base, as a sum has, in the
+  words of the interpreter's fill. Without a base clause a term is compiled
+  where it is read, and its reads nest as calls do, 64 deep.
+
+  A term being step code, what the step does carries through it: matrices
+  and tensors, guards on cells at run time, NaN where the interpreter
+  refuses, `--float`, and grad's parts, so `grad_(B = A_n) det(B)` is the
+  cofactors through both sequences, which is backpropagation through time's
+  case too. A read with other arguments, `w(x/2)_(k-1)`, nests as a call
+  does, where a limit refuses it. The operations are the interpreter's in its
+  order, so `--check` holds a term within 0 where its arguments are the
+  interpreter's; guards inside a term part only by their values, as a
+  function's do.
+
+  Refused, by name: an index that is not a constant, "a sequence with
+  parameters read at an index that is not a constant", as a sum's bounds are;
+  past 1000 terms, `r_1001 is 1001 terms from its base, and a step writes
+  out at most 1000`; below the lowest base, in the interpreter's words, `q has
+  no clause for index -1`; a term reading itself, `z is defined by itself`,
+  and one ahead of it, `p_(...): a term after the one being computed`, in a
+  limit's words, where the interpreter runs out of depth; reads nested past
+  64, in a call's; an index that is not whole, in the interpreter's; and a
+  read in a limit's terms, "a sequence with parameters in a limit's terms,
+  for now". A limit's function has no temporaries, so its terms would be
+  written whole, K deep and for `fm` doubling at each. *Temporaries in a
+  limit's function* is the same mechanism, a limit's own list, and lifts
+  that refusal when it lands: Newton's shooting under `lim` waits for it,
+  while shooting by a fixed number of secant steps is two nested reads and
+  compiles now.
+
+  Rejected. The plan's loop, a function of the header's beside `lim`'s, the
+  terms in rolling locals and K a counter: its one gain is a header of
+  constant size in K, and a K the host may set. It would share `lim`'s walk
+  and its limits: one sequence reading only its own terms, so `det`'s `fm`
+  and `fc` refused; no parts, so no gradient through it, neither `det`'s nor
+  backpropagation's; no tensor, no guarded base clause, a matrix only where
+  temporaries exist, and a row read at the term's index not a constant place,
+  which a window of inputs is. Each would be lifted by a second copy of what
+  the step does. Kahan's 256 terms are 256 lines; when a target's code size
+  asks, a loop is an entry of its own. A term compiled as a call, by
+  recursion, was rejected as it nests a call per term: Kahan's 128 past the
+  64, and the C++ stack at depth K. Every term the fill computes written,
+  for the warnings. A K that moves, for a step's time. And refusing other
+  arguments, as `lim` does, where the interpreter answers and a call's form
+  exists.
+
+  About 65 lines of sources, in `compile.hpp`: the read, its index and its
+  refusals 12, the arguments bound as `Call` binds them, shared, 5, the
+  terms kept by their arguments' code 8, the fill by the interpreter's stride
+  12, a clause chosen at an index, `Chained` given one, 15, a term read from
+  itself or ahead 6, the rest 7; and `Reference::Stride` made public. The
+  temporaries nothing reads, `Temporaries` drops already. Sized against
+  compiled `lim`, 167, of which it shares only words, and C140, 11. Past 97
+  the implementation stops and reports. 15,055 lines in all at 75c03ae.
+
+  Specified in `test/compile/iterates.ink`: `poly`, `det` and the
+  characteristic polynomial as `signatures.ink` writes them, with grad's
+  cofactors, exact, in double and in float; `plan`, an MPC horizon whose
+  count is a parameter compiled in; `graph`, Kahan's 128 roots then 128
+  squares, held to the interpreter and with a header excerpt; `gaps`, reads
+  that skip terms; and a file of eight refusals. Wired with the
+  implementation: the four checks and their reports in
+  `test/CMakeLists.txt`, `poly` in float, `graph`'s estimate by its form; the
+  excerpt and `plan`'s `cannot change: iters.` in `test/cli.cmake`, with the
+  refusals. Nothing that compiles today reads such a sequence, so no golden,
+  header or report should move. README's paragraph on the compiler gains a
+  sentence, and the closing note of `test/compile/signatures.ink`, that `det`
+  stays refused, goes.
+
+  Built as specified, with the review's rulings: `thirds`, `poly` at
+  x_n = ~(n/3), where the order of the operations shows, held within 0;
+  C180, a compile time growing with the square of a step's temporaries,
+  fixed first; and `graph`'s first line corrected by hand, its terms
+  inexact from 0, the interpreter's power of 1/2 being inexact wherever it
+  is taken. Departures. A term is kept by the list of temporaries it is in,
+  its definition, its arguments' code, parts and all, and its index, so the
+  terms of a global's list go with it, and the NaN-aware compile, a
+  compiler of its own, starts afresh. A term is a temporary once a term or
+  the fill reads it, the one read outside them written where it is read. A
+  read's arguments are always computed once, by `SharedAll`, which `Call`'s
+  binding shares. The compiler always fills from the base, where the
+  interpreter fills only past its depth; the terms are the same either way.
+  A refusal of a limit in a local's call, which the limit's own path had
+  already taken, went. 68 lines of sources against 65 planned,
+  `compile.hpp` 66 and `reference.hpp` 2, and C180's 16: 15,160 lines in
+  all, after `fixes13`. By its review, C185 to C188, 13 lines, and a
+  ruling: a term the fill cannot compute was refused where no read reaches
+  it, `g(x)_k = f(x)_k` filling g_1, which reads f_-1, so `g(x_n)_4` was
+  refused where the interpreter answers; such a term is now kept with its
+  reason, refused where a read reaches it, and `Chained` puts its index
+  back however it ends, in 17 lines, held by `unread`. 15,190 lines in all.
+
+  Written out, a step's code grows with K and with its term. Measured with
+  `gcc -O2` on a program stepping it, `plan` widened to d moves and K
+  iterations is 58 KB of header and 0.9 s at d = 2 and K = 100, 0.55 MB and
+  5.0 s at d = 6, and 2.0 MB and 11 s at d = 10; at K = 1000, 0.59 MB and
+  6.8 s, 5.8 MB and 76 s, and 22 MB and 400 s. Backpropagation through time
+  by 32 nested calls, hidden 8, the review measured at 3.2 MB and 109 s;
+  grad being forward mode, a part for each cell of the weights, it holds
+  for small networks alone. Those are the threshold a loop, an entry of its
+  own, is to be weighed against.
 - **Block literals compiled**, `[A, B; C, D]`: refused as "a matrix built
   from matrices", which stops the doubling algorithm's three iterates packed
   into one term.
@@ -2801,6 +2940,16 @@ that exploring seven domains asked of the interpreter, by how many asked.
 - **A constant folded from an approximated number, listed**: `--compile`
   folds `(2^4000 > 2^3999)` to 0.0 and `3^3000/3^2999` to NAN silently,
   where the interpreter marks them, and its header lists nothing.
+- **`--check` measures relative to the term**: its tolerance, units and
+  estimate are absolute below 1, so -1e-30 against 1e-30 passes "within
+  2e-30" and 0 against 1e-200 "within 1e-200" (Goldberg 1991). Count units at
+  the interpreter's own term, the pass rule unchanged.
+- **`--float` and a constant folded in double**: a constant computed from
+  inexact numbers is folded in double and written as a float, so a machine
+  epsilon loop puts 2^-53 into a float header and checks "within 0". Refuse
+  it, or name it in the header.
+- **`--check` names the parameters the target rounds**, so a parameter no
+  float holds (Goldberg's 4.53) is not read as the step's own error.
 - **Refuse a repetition that adds nothing, in every context**: an index name
   repeated in a size (`x_n[j<=2, j<=2]` in a model's input,
   `M[j<=n, j<=n]` in a signature), a parameter or default written twice, a
@@ -5649,3 +5798,213 @@ that exploring seven domains asked of the interpreter, by how many asked.
   `latex.hpp` 5; `extent.hpp` 3; `reference_stack.hpp` 2; `interpreter.hpp`
   -20, a model's input read by the shared helper. 15,007 lines in all,
   after `fixes11`.
+- `[done]` **The characteristic polynomial and stability, in the prelude**,
+  the second step towards eigenvalues, approved by the owner: `charpoly(A)`
+  exactly, Routh's and the Schur-Cohn tests, and the spectral radius and
+  abscissa by bisection on those tests, certified while they are exact.
+  Written in inkamath with the sizes a signature binds, the eigenvalue
+  research's `dim(A) = on(A)'*on(A)` gone. The design, measured on a
+  prototype:
+
+      charpolym(A)_1 = A^0
+      charpolym(A)_m = A*charpolym(A)_(m-1) + charpolyc(A)_(m-1)*A^0
+      charpolyc(A)_0 = 1
+      charpolyc(A[j<=n, k<=n])_m = -sum_(j=1)^n (A*charpolym(A)_m)[j,j]/m
+      charpoly(A[j<=n, k<=n])[j<=n+1] = charpolyc(A)_(j-1)
+      hurwitzb(a, b) = !a/(!b*!(a - b))
+      hurwitzb(a, b) | b < 0 or b > a = 0
+      hurwitzc(q[j<=m], i) = 0
+      hurwitzc(q[j<=m], i) | i <= m = q[i]
+      hurwitzr(q)_0 = q
+      hurwitzr(q[j<=m])_k[j<=m] = hurwitzc(hurwitzr(q)_(k-1), j + 1) - mod(j + 1, 2)*hurwitzr(q)_(k-1)[1]/hurwitzr(q)_(k-1)[2]*hurwitzc(hurwitzr(q)_(k-1), j + 2)
+      hurwitzt(q[j<=m])_0 = sum_(j=1)^m abs(q[j]) > 0 and q[1] <> 0
+      hurwitzt(q)_k = hurwitzt(q)_(k-1) and hurwitzr(q)_(k-1)[2]*q[1] > 0
+      hurwitzs(p[j<=m], s)[t<=m] = sum_(i=1)^t p[i]*hurwitzb(m-i, m-t)*s^(t-i)
+      hurwitz(p[j<=m], s = 0) = hurwitzt(hurwitzs(p, s))_(m-1)
+      schurcohnm(p[j<=m], r)[t<=m] = sum_(i=1)^m p[i]*r^(m-i)*sum_(a=0)^(m-i) hurwitzb(m-i, a)*hurwitzb(i-1, m-t-a)*(-1)^(m-t-a)
+      schurcohn(p[j<=m], r = 1) | r >= 0 and sum_(j=1)^m abs(p[j]) >= 0 = hurwitz(schurcohnm(p, r))
+      rhon(A[j<=n, k<=n]) = rhop(sum_(j=1)^n sum_(k=1)^n abs(A[j,k]))
+      rhop(s) = 2^(ilogb(s + (s == 0)) + 1) + 0*s
+      rhos(b) = b[2] - b[1] <= 2^-53*min(abs(b[1]), abs(b[2]))
+      rhob(A)_0 = [0; rhon(A)]
+      rhob(A)_m = rhon(A)*rhoh(charpoly(A/rhon(A)), rhob(A)_(m-1)/rhon(A))
+      rhob(A)_m | m > 64 and rhos(rhob(A)_(m-1)) = rhob(A)_(m-1)
+      rhoh(p, b) = b + (b[2] - b[1])/2*([1; 0] - schurcohn(p, (b[1] + b[2])/2)*[1; 1])
+      rho(A[j<=n, k<=n]) = ~rhob(A)_256[1]
+      abscissab(A)_0 = [-1; 1]*rhon(A)
+      abscissab(A)_m = rhon(A)*abscissah(charpoly(A/rhon(A)), abscissab(A)_(m-1)/rhon(A))
+      abscissab(A)_m | m > 64 and rhos(abscissab(A)_(m-1)) = abscissab(A)_(m-1)
+      abscissah(p, b) = b + (b[2] - b[1])/2*([1; 0] - hurwitz(p, (b[1] + b[2])/2)*[1; 1])
+      abscissa(A[j<=n, k<=n]) = ~abscissab(A)_256[1]
+
+  `charpoly(A)` is det(lambda I - A) as a column, highest power first and
+  monic, as MATLAB's and NumPy's `poly` give it: Faddeev and LeVerrier, M_1
+  = I, M_m = A M_(m-1) + c_(m-1) I, c_m = -tr(A M_m)/m, exact, of complex
+  entries too, and differentiable, so `grad` of its last coefficient is the
+  cofactor matrix. `hurwitz(p, s = 0)` is 1 where every root of p is in Re z
+  < s, `schurcohn(p, r = 1)` where every one is in |z| < r, both strictly:
+  the polynomial a column of m cells, degree m - 1. Routh's test is its
+  first column, all of p[1]'s sign and none 0, taken as a recurrence on the
+  polynomial rather than on pairs of rows: p_k drops its leading coefficient
+  and subtracts a0/a1 times its odd part, as the array's next row does, so
+  its leading coefficient is the column's next entry, and the test reads
+  that entry before the term that divides by it, `and` not reading further.
+  A shift `p(z + s)` gives the half-plane Re z < s; the map
+  `z = r(1 + w)/(1 - w)`, the disc |z| < r onto Re w < 0, the Schur-Cohn
+  test. A leading 0 is a root at infinity, which neither region holds, so it
+  answers 0: the map's image has one exactly where -r is a root, on the
+  circle, and needs no case of its own. The zero polynomial answers 0, a
+  nonzero constant 1.
+
+  `rho(A)` and `abscissa(A)` bisect a bracket, `rhob(A)_m` and
+  `abscissab(A)_m`, [lo; hi] with lo <= rho < hi: the Schur-Cohn test at the
+  midpoint is the truth that rho < x, Routh's after the shift that alpha <
+  x, and the bracket keeps the half it says. From [0, B) and [-B, B), B the
+  power of two above the sum of |A[j,k]|, which bounds rho strictly, 2 for
+  the zero matrix; so every midpoint is dyadic, the brackets of 2A are those
+  of A doubled, and `frac rhob(A)_m` shows one exactly, as tight as m asks.
+  The tests are of A/B, exactly, B being a power of two, and the bracket is
+  scaled back by B, so the tests' numbers are near 1 whatever A's scale.
+  Unscaled, the prototype's `rho([~1 2; 3 4]/10^100)*10^100` was 18.3, its
+  polynomial's rounded coefficients near 10^-200, `rho(10^-300)` was
+  1.49e-300 and marked, its tests past a thousand digits, as were exact
+  `rho([1 2; 3 4]/10^150)`, 1.96e-149, and times 10^250, which refused a
+  NaN.
+  The answer is lo, made inexact, after 64 halvings and as many more as
+  leave the bracket wider than 2^-53 of its end nearer 0, `rhos`, up to
+  256: within a unit of a double of rho wherever rho is above 2^-203 of B.
+  After 64 alone, `abscissa([1/10^30 0; 0 -1])`, unstable, was 0 unmarked,
+  and `rho([0 1; 1/10^30 0])`, 10^-15, right to 4 digits. A 0 never stops
+  it, a nilpotent matrix's rho or a marginal system's abscissa, hence the
+  cap; 256, as past it a test of a matrix above 3x3 would read, by the
+  estimate below, numbers past a thousand digits, so the halvings would be
+  marked, and 2^-203 of B is far below what a double's eigenvalue resolves,
+  about 2^-52 of the matrix's norm. An answer the cap ends, wider than
+  `rhos` asks, is marked (C192), a 0 always. A bound on the boundary fails
+  its strict test and becomes lo, so an eigenvalue a halving reaches is the
+  answer exactly: `rho([2 0; 0 -3])` is 3, `abscissa([1/2 1; -1 1/2])` 0.5,
+  a nilpotent matrix's rho 0, marked. The research's comment said (lo,
+  hi]; its own guards kept [lo, hi).
+
+  What it costs. A test at a midpoint of b bits reads, in Routh's column,
+  ratios of Hurwitz determinants of polynomials whose coefficients carry n b
+  bits, so about n^2 b bits, and past 3,322 (a thousand digits) they are
+  approximated and, by *A truth read from an approximated number*, every
+  test after is marked and so is the answer. On random matrices of tenths,
+  certified to 64 halvings up to 6x6 for `rho`, whose map doubles the bits,
+  and 8x8 for `abscissa`; on the research's, the marks start at the 39th
+  halving of `rho` at 8x8, the 26th at 10x10, the 19th at 12x12, and of
+  `abscissa` at the 51st at 10x10. Marked, the answers are a double's:
+  against NumPy, within 2e-15 relative at 10x10 and 12x12, 1.3e-13 at 32x32.
+  0.1 s at 5x5, 0.2 s at 10x10, 0.4 s at 12x12, 9 s at 24x24 and 55 s at
+  32x32, every term inside its own million steps: no budget is added.
+
+  Decided besides:
+  - **Names.** `charpoly`, as sympy and PARI say it; `poly` is too common a
+    word. `hurwitz` names the property, a Hurwitz polynomial, and
+    `schurcohn` the test for a Schur polynomial, every root in the disc, by
+    whatever method, leaving `schur` free for the decomposition the
+    eigenvalue work may want; `routh`, `jury` and `stable` were rejected.
+    `rho` is the paper's rho(A); `abscissa`, as `alpha` is every learning
+    rate's name. A session may take any of them for itself, `rho = 1000` a
+    density, and `clear` gives it back. The helpers are prefixed by their
+    function, as `expk` and `sinr` are, `hurwitzb`, the binomial
+    coefficient, too: a helper, not a public `binomial`, by the review's
+    ruling.
+  - **Refused.** A matrix not square, by its signature:
+    `rho takes A[j<=n, k<=n], not a 3x2 matrix`. A complex entry by every
+    test, in abs's words, as C147 left `abs`:
+    `a comparison needs real numbers, not i`, every cell passing through abs
+    before Routh reads one, as a complex polynomial can pass the column: the
+    map's image of z + i, `(1 - i)w + (1 + i)`, tests (1 + i)(1 - i) = 2 >
+    0. The sum of the abs exists for that alone, and a prelude comment says
+    so. `schurcohn` checks the polynomial written, not its image, so
+    `schurcohn([1; i])` names i, not a cell of the image, 1 - i; and
+    `hurwitz` its s, guarded by `abs(s) >= 0` as `schurcohn` by `r >= 0`,
+    so `hurwitz([1; 1/2], i)` names i, not 1/2 + i, by the implementation
+    review's ruling. Their own
+    words would be about 5 lines of C++ beside C147's: kept in abs's, by
+    the review's ruling. A negative radius,
+    `no clause of schurcohn applies`.
+  - **An inexact matrix** is bisected by rounded tests whose truths are
+    exact, so its bracket would print exact fractions certifying nothing;
+    `+ 0*s` keeps it inexact, and `frac` refuses it. An approximated one
+    marks the answer, as any choice it makes.
+  - **grad.** A bracket is a staircase in A, so grad's rule, flat where no
+    comparison jumps, makes `grad` of `rho` 0 everywhere, exactly the
+    staircase's and not rho's. Refused, `grad cannot differentiate rho yet`,
+    where the argument moves: a pointer to each of the two in the stack, as
+    `stepwise` points to `ilogb`, and one check in `derivative.hpp`'s call,
+    about 6 lines of C++. The tests and the brackets keep grad's rule: flat,
+    or refused where they jump. Rejected for now: the research's Newton
+    polish, one step on p from the certified point, which serves a real
+    simple eigenvalue, where both examples here have a dominant pair; and a
+    step on D(r), the last Hurwitz determinant of the map's image, whose
+    root is rho for a pair too, but whose slope is wrong without a word
+    where two eigenvalues share the largest modulus, and which divides by 0
+    where the bracket's end is exact. A later item, with a model that trains
+    a spectral radius.
+  - **Stopping.** 64 halvings at least, then relative, up to 256, by the
+    review's ruling, which kept the 64. Rejected: 64 halvings alone, which
+    printed an unstable abscissa of 10^-30 as 0; relative alone, which
+    never stops at 0, where a nilpotent matrix and many abscissas are, but
+    for a cap; absolute, which breaks the scaling and wastes steps on a
+    large matrix; `lim`, which stops by a double's tolerance; and stopping
+    where the tests stop being exact, which nothing in the language can
+    ask. The answer is the lower end, not the midpoint, so 0 prints as 0
+    and a dyadic eigenvalue as itself; the bracket as the answer was
+    rejected, a column where a number is asked.
+  - **Schur by the map, then Routh**, as the research did. The Schur-Cohn
+    recursion, (a0 p - an p~)/z, was weighed: no map and no binomials, but
+    five lines where the map costs three over Routh, and its fraction-free
+    form doubles the bits at each step.
+  - **Compiled**: `charpoly` compiles since *A sequence with parameters
+    read at a constant index, compiled*; `rho` and `abscissa` do not yet,
+    `hurwitzb`'s factorial refused. grad refuses them in `compile.hpp`'s
+    call where an argument moves, `Staircase`, as `derivative.hpp` does:
+    without it, their refusal under grad came only from the factorial and
+    from `A^0`'s derivative, and once those compile grad would answer the
+    staircase's 0. A case of `test/cli.cmake` holds both.
+
+  What moves: no golden and no header, as no test names any of them; the
+  prelude is read at every start, 33 lines more. README's section 1 lists
+  the names with the prelude's others, and section 2 shows `charpoly` and
+  `rho`.
+
+  About 45 lines: 31 of the prelude, the stop's 3 and a longer `schurcohn`
+  among them, some 8 of its comment, and 6 of C++ for grad. 15,055 lines at
+  75c03ae, by `wc -l include/inkamath/*.hpp src/*`. Past 60 the
+  implementation stops and reports.
+
+  Specified in `test/data/spec/charpoly.ink`, 88 entries replayed by the
+  spec suite, 80 failing by design, those passing being the definitions
+  echoing themselves, `digits` and a session's `rho`: values by sympy,
+  mpmath at 60 digits and NumPy, and each bracket by bisection in Python's
+  fractions with every test decided from the exact eigenvalue, apart from
+  the interpreter. The prototype above, defined in a session, gives every
+  answer but grad's two refusals and the last, which needs the name to be
+  the prelude's.
+
+  Built as specified: the spec is the golden `charpoly.ink`, 88 entries,
+  and the compiled refusal a case of `cli.cmake`; README's sections 1 and 5
+  list the names, and section 2 shows `charpoly`, `hurwitz`, `rho` and
+  `abscissa` and says where the answers stop being certified. The compiled
+  prelude header is unchanged, as its file calls none of them. Departures:
+  the staircases are a set of the two in the stack, and grad's check sits
+  in its call, before a limit or a term; the comment is 8 lines. 0.2 s for
+  the 10x10 here, 0.1 s for a nilpotent 2x2 run to 256 halvings; the
+  golden takes 31 s under the sanitizers, within the 60 s of every golden
+  but fastgrad.ink, its scaled entries a 2x2's, which fails unscaled as the
+  10x10 did, at 2 s where the 10x10 took 63. The 10x10's two answers are
+  since `bisection_digits.ink`, and the bisections the cap ends
+  `bisection_cap.ink`, goldens of their own that run beside it: 11 s, 16 s
+  and 13 s under the sanitizers with C192's entries, where the one file
+  took 50 s on the build worker. 50 lines landed against about
+  45: the prelude 33 and its
+  comment 8 in `interpreter.hpp`, with 2 binding the staircases,
+  `reference_stack.hpp` 3 and `derivative.hpp` 4. The review's C190 put
+  the bisection in A/B's units, `rhou` and `abscissau`, `rhod` scaling by
+  B's power in two halves, so that B need not be a double: 4 lines more;
+  C192 marks an answer the cap ended, 3 more: 57 in all. Compiled grad's
+  refusal, after the merge of `fixedloop`, 9 more in `compile.hpp`: 66 in
+  all. 15,256 lines in all, after `charpoly`, on integration's 15,190.

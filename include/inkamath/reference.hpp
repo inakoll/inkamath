@@ -684,6 +684,7 @@ private:
         return EvalImp(true, index, evaluator);
     }
 
+public:
     // How far apart the terms a fill computes: the greatest common divisor of
     // how far back the general clauses read terms, this sequence's or another
     // that reads it back, as a term reaches only those below it by such
@@ -701,6 +702,7 @@ private:
         return stride == 0 ? 1 : stride;
     }
 
+private:
     bool Lags(const PExpression<T>& expression, const std::string& index, int& stride) const {
         if (!expression) return true;
         if (const auto* term = dynamic_cast<const FuncExpression<T>*>(expression.get());
