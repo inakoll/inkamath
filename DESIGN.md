@@ -5449,11 +5449,13 @@ that exploring seven domains asked of the interpreter, by how many asked.
   C68's sentence; `elementary.ink`'s `tex ?ilogbs`, by its clause;
   `inkamath_prelude.h`'s `ilogbs`, one test more and its answers the same.
   README's paragraph on numbers (section 1) gains the rule, and C68's row a
-  line that it is reversed here. Outside the tests, the 12x12 eigenvalue
-  sessions are refused, "an index must be exact, and 13 was approximated",
-  where they answered: their `dim` counts a Sturm polynomial's cells by
-  `A[i,1] == A[i,1]`, which past the bound is marked, and a size the
-  language has only as a number. Callgrind, prototype against integration:
+  line that it is reversed here. Outside the tests, the eigenvalue
+  sessions from 8x8 are refused, "an index must be exact, and 9 was
+  approximated": the spectral radius and the H-infinity norm at 8x8 and
+  10x10 and the 10x10 Hilbert eigenvalues, which answered, and the 12x12
+  ones, which ran out of steps or refused already. Their `dim` counts a
+  Sturm polynomial's cells by `A[i,1] == A[i,1]`, which past the bound is
+  marked, and a size the language has only as a number. Callgrind, prototype against integration:
   `hand` 0.4%, `grad` 1.1% and `limit` 1.3% more.
 
   About 55 lines of sources: `matrix.hpp` 7, the comparison and the mark;
