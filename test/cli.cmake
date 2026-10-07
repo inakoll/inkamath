@@ -496,6 +496,15 @@ if(size GREATER 4096)
     message(SEND_ERROR "compile_c140: c140.h is ${size} bytes")
 endif()
 
+# C153: a power of 1/2 is C's sqrt, rounded correctly, where pow need not be.
+file(WRITE "${OUT}/c153.ink" "x_0 = 2\nx_n = x_(n-1)^(1/2) + x_(n-1)^0.5\n")
+set(args --compile c153.ink -o c153.h)
+check(compile_c153)
+holds(compile_c153 c153.h "2.0 : sqrt(m_->x[1]) + sqrt(m_->x[1]);\n")
+set(args --compile c153.ink --float -o c153f.h)
+check(compile_float_c153)
+holds(compile_float_c153 c153f.h "2.0f : sqrtf(m_->x[1]) + sqrtf(m_->x[1]);\n")
+
 # C90: the clause --check keeps is 0 where a guard of 'and' reads NaN, as no
 # clause is taken, where the NaN was converted to an int.
 file(WRITE "${OUT}/c90.ink" "gate(x_n) = {\n    y_0 = 1\n    y_n = y_(n-1) + x_n\n    z_n | x_n > 0 and y_(n-2) > 0 = 1\n    z_n = 0\n}\ng = gate(x_n = 1)\n")

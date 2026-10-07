@@ -248,16 +248,14 @@ set_tests_properties(check_latch_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^latch: 100 steps from 0, against exact values\nlatch\\.m: within 0, from 1\nlatch\\.w: within 0\n$")
 set_tests_properties(check_late_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^late: 100 steps from 0, against exact values\nlate\\.v: within 0\nlate\\.x: within 0, from 1\n$")
-# Reddi, Kale and Kumar's iterates from 1, their steps from 2; a libm's
-# square root decides x, h and R.
+# Reddi, Kale and Kumar's iterates from 1, their steps from 2.
 set(until2 ", against exact values until 2 and inexact ones from there")
-set(near "within [0-9.e+-]+")
 set_tests_properties(check_thm1_report PROPERTIES PASS_REGULAR_EXPRESSION
-    "^thm1: 100 steps from 0${until2}\nthm1\\.h: ${near}, from 2${about}\nthm1\\.x: ${near}, from 1${about}\nthm1\\.R: ${near}${about}\nthm1\\.g: within 0, from 1\nthm1\\.m: within 0\nthm1\\.v: within 2\\.2e-16\n$")
+    "^thm1: 100 steps from 0${until2}\nthm1\\.h: within 0, from 2${about}\nthm1\\.x: within 0, from 1${about}\nthm1\\.R: within 0${about}\nthm1\\.g: within 0, from 1\nthm1\\.m: within 0\nthm1\\.v: within 2\\.2e-16\n$")
 set_tests_properties(check_fixed_report PROPERTIES PASS_REGULAR_EXPRESSION
-    "^fixed: 100 steps from 0${until2}\nfixed\\.x: ${near}, from 1${about}\nfixed\\.R: ${near}${about}\nfixed\\.g: within 0, from 1\nfixed\\.v: within 2\\.2e-16\nfixed\\.w: within 0\n$")
+    "^fixed: 100 steps from 0${until2}\nfixed\\.x: within 0, from 1${about}\nfixed\\.R: within 0${about}\nfixed\\.g: within 0, from 1\nfixed\\.v: within 2\\.2e-16\nfixed\\.w: within 0\n$")
 set_tests_properties(check_gen_report PROPERTIES PASS_REGULAR_EXPRESSION
-    "^gen: 100 steps from 0${until2}\ngen\\.h: ${near}, from 2${about}\ngen\\.x: ${near}, from 1${about}\ngen\\.R: ${near}${about}\ngen\\.g: within 0, from 1\ngen\\.m: within 1\\.1e-16\ngen\\.v: within 0\n$")
+    "^gen: 100 steps from 0${until2}\ngen\\.h: within 0, from 2${about}\ngen\\.x: within 0, from 1${about}\ngen\\.R: within 0${about}\ngen\\.g: within 0, from 1\ngen\\.m: within 1\\.1e-16\ngen\\.v: within 0\n$")
 set_tests_properties(check_mask_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^mask: 100 steps from 0, against exact values\nmask\\.y: within 0\n$")
 set_tests_properties(check_order_report PROPERTIES PASS_REGULAR_EXPRESSION
@@ -518,7 +516,6 @@ set(inexact " in float, against exact values until 0 and inexact ones from there
 set(units "[0-9.e+-]+, [0-9.]+ units of a float${about}")
 set(parts "0\\.096026361 at 6, where the interpreter gives 0\\.10000000000000001\n")
 set(exact "within 0, 0 units of a float")
-set(funits "within [0-9.e+-]+, [0-9.]+ units of a float")
 foreach(report IN ITEMS
         "calm:^calm: 100 steps from 0${in_float}\ncalm\\.v: within 1\\.1e-06, 1\\.4 units of a float\n$"
         "wild:^wild: 100 steps from 0${in_float}\nwild\\.d: ${parts}$"
@@ -543,9 +540,9 @@ foreach(report IN ITEMS
         "dies:^dies: 100 steps from 0${in_float}\ndies\\.alive: at 3 the compiled step takes 'alive_n \\| b_n > 0 = 1' and the interpreter 'alive_n = 0'\\; the guard of the first is exactly on its threshold\ndies\\.b: -0\\.0728999898 at 4, where the interpreter gives 0\ndies\\.alive: 1 at 3, where the interpreter gives 0\n$"
         "beat:^beat: 100 steps from 0${in_float}\nbeat\\.locked: at 2 the compiled step takes 'locked_n = 0' and the interpreter 'locked_n \\| e_n\\[1\\] == 0 and e_n\\[2\\] == 0 = 1'\\; the guard of the second is exactly on its threshold\n(beat\\.(x|xh|e): within [0-9.e+-]+, [0-9.e+-]+ units of a float\n)+beat\\.locked: 0 at 2, where the interpreter gives 1\n$"
         "peak:^peak: 100 steps from 0${inexact}\npeak\\.Q: ${exact}\npeak\\.S: within ${units}\npeak\\.A\\[3,1\\]: [-a-z()]+ at 63, where the interpreter gives 1\\; the interpreter's term about [0-9.e+-]+ from the exact one\npeak\\.B: within ${units}\n$"
-        "thm1:^thm1: 100 steps from 0 in float${until2}\nthm1\\.h: ${funits}, from 2${about}\nthm1\\.x: ${funits}, from 1${about}\nthm1\\.R: ${funits}${about}\nthm1\\.g: ${exact}, from 1\nthm1\\.m: ${exact}\nthm1\\.v: within 1e-06, 1\\.7 units of a float\n$"
-        "fixed:^fixed: 100 steps from 0 in float${until2}\nfixed\\.x: ${funits}, from 1${about}\nfixed\\.R: ${funits}${about}\nfixed\\.g: ${exact}, from 1\nfixed\\.v: within 1e-06, 1\\.7 units of a float\nfixed\\.w: within 1e-06, 1\\.1 units of a float\n$"
-        "gen:^gen: 100 steps from 0 in float${until2}\ngen\\.h: ${funits}, from 2${about}\ngen\\.x: ${funits}, from 1${about}\ngen\\.R: ${funits}${about}\ngen\\.g: ${exact}, from 1\ngen\\.m: within 4\\.8e-07, 1 units of a float\ngen\\.v: within 7\\.2e-06, 0\\.47 units of a float\n$"
+        "thm1:^thm1: 100 steps from 0 in float${until2}\nthm1\\.h: within 1\\.2e-07, 1 units of a float, from 2${about}\nthm1\\.x: within 6\\.8e-08, 0\\.57 units of a float, from 1${about}\nthm1\\.R: within 9\\.3e-06, 2\\.4 units of a float${about}\nthm1\\.g: ${exact}, from 1\nthm1\\.m: ${exact}\nthm1\\.v: within 1e-06, 1\\.7 units of a float\n$"
+        "fixed:^fixed: 100 steps from 0 in float${until2}\nfixed\\.x: within 1\\.3e-07, 1\\.1 units of a float, from 1${about}\nfixed\\.R: within 4\\.3e-06, 2\\.2 units of a float${about}\nfixed\\.g: ${exact}, from 1\nfixed\\.v: within 1e-06, 1\\.7 units of a float\nfixed\\.w: within 1e-06, 1\\.1 units of a float\n$"
+        "gen:^gen: 100 steps from 0 in float${until2}\ngen\\.h: within 1\\.8e-07, 1\\.5 units of a float, from 2${about}\ngen\\.x: within 1\\.6e-07, 1\\.4 units of a float, from 1${about}\ngen\\.R: within 2e-06, 15 units of a float${about}\ngen\\.g: ${exact}, from 1\ngen\\.m: within 4\\.8e-07, 1 units of a float\ngen\\.v: within 7\\.2e-06, 0\\.47 units of a float\n$"
         "cls:^cls: 100 steps from 0${inexact}\ncls\\.z: within 2\\.4e-08, 0\\.2 units of a float\ncls\\.q: within 1\\.9e-06, 1\\.5 units of a float${about}\ncls\\.s: within 6\\.3e-08, 0\\.53 units of a float${about}\ncls\\.loss: within 4\\.1e-07, 3\\.4 units of a float${about}\n$")
     string(FIND "${report}" ":" colon)
     string(SUBSTRING "${report}" 0 ${colon} instance)

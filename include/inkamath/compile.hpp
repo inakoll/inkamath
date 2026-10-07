@@ -1544,7 +1544,10 @@ private:
         };
         const std::string test =
             other(exponent, 0.0) || other(base, 1.0) ? "" : Nan(base, exponent);
-        const std::string power = "pow(" + base.cells[0].text + ", " + exponent.cells[0].text + ")";
+        const std::string power =
+            exponent.constant && Doubles(*exponent.constant)[0] == 0.5
+                ? "sqrt(" + base.cells[0].text + ")"
+                : "pow(" + base.cells[0].text + ", " + exponent.cells[0].text + ")";
         Cell              cell(test.empty() ? power : "(" + test + power + ")", primary);
         // Of a constant above 0 but 1, NaN where its exponent is: a test reads
         // that, not a second pow, which C, setting errno, does not share.
@@ -4154,7 +4157,8 @@ private:
                    out[at] == '.';
         };
         for (std::size_t at = out.find('\n'); floats && at < out.size(); ++at)
-            for (const std::string from : {"double", "fabs(", "floor(", "pow(", "0.0", "1.0"})
+            for (const std::string from :
+                 {"double", "fabs(", "floor(", "pow(", "sqrt(", "0.0", "1.0"})
                 if (!inside(at - 1) && out.compare(at, from.size(), from) == 0 &&
                     (from.back() == '(' || !inside(at + from.size()))) {
                     if (from == "double")
