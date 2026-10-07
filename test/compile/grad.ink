@@ -304,6 +304,33 @@ cusp = quotient(z_n = ~0)
 #
 # on standard output, exiting 1.
 
+# An extended Kalman filter (Simon, Optimal State Estimation, 13.2) on a
+# pendulum measured by its bob's horizontal position, its Jacobians F and H
+# by grad, cell by cell, rather than by hand; sin and its part are the
+# prelude's.
+ekf(h = 1/20, g = 981/100, q = 1/1000, r = 1/100, z_n) = {
+    f(v) = [v[1] + h*v[2]; v[2] - h*g*sin(v[1])]
+    m(v) = sin(v[1])
+    F(x)[i<=2, j<=2] = (grad_(v = x) f(v)[i])[j]
+    H(x)[i<=1, j<=2] = (grad_(v = x) m(v))[j]
+    Q = [q 0; 0 q]
+    I[j<=2, k<=2] = j == k
+    x_0 = [0; 0]
+    P_0 = [1 0; 0 1]
+    xp_n = f(x_(n-1))
+    Pp_n = F(x_(n-1))*P_(n-1)*F(x_(n-1))' + Q
+    K_n = Pp_n*H(xp_n)'*(H(xp_n)*Pp_n*H(xp_n)' + r)^-1
+    x_n = xp_n + K_n*(z_n - m(xp_n))
+    P_n = (I - K_n*H(xp_n))*Pp_n
+}
+pendulum(h = 1/20, g = 981/100) = {
+    s_0 = [1/2; 0]
+    s_n = [s_(n-1)[1] + h*s_(n-1)[2]; s_(n-1)[2] - h*g*sin(s_(n-1)[1])]
+    z_n = sin(s_n[1]) + mod(37*n, 11)/100 - 1/20
+}
+bob = pendulum()
+swing = ekf(z_n = bob.z_n)
+
 # A known limit (DESIGN.md, C110), a step that parts from the interpreter,
 # its program failing. 'apart', a clamp times an infinity: where the clause
 # taken has no part the step's is 0, and 0 times inf is NaN, where the

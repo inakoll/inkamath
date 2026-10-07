@@ -123,7 +123,7 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brin
                          tensor:heads tensor:whirl tensor:batch tensor:spread
                          tensor:speck cellguards:rfit cellguards:tfit cellguards:layer
                          cellguards:kink cellguards:crest cellguards:mask cellguards:order
-                         thresholds:dies thresholds:beat stable:moments stable:peak)
+                         grad:swing thresholds:dies thresholds:beat stable:moments stable:peak)
     string(REPLACE ":" ";" checked ${checked})
     list(GET checked 0 file)
     list(GET checked 1 instance)
@@ -209,6 +209,8 @@ set_tests_properties(check_smooth_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^smooth: 100 steps from 0, against exact values\nsmooth\\.z: no value compared, the step NaN where the interpreter gives none, as at 0: floor jumps at t = ~0\\.34657359\n$")
 set_tests_properties(check_cusp_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^cusp: 100 steps from 0, against exact values until 0 and inexact ones from there\ncusp\\.x: within 0\ncusp\\.g: within 0\n$")
+set_tests_properties(check_swing_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^swing: 100 steps from 0, against exact values until 1 and inexact ones from there\n(swing\\.[A-Za-z]+: within [0-9.e+-]+(, from 1)?${about}\n)+$")
 # Its known limit, C110, held where it parts.
 set_tests_properties(check_apart_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^apart: 100 steps from 0, against exact values\napart\\.y: [-a-z()]+ at 0, where the interpreter gives 0\n$")
