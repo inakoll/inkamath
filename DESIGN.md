@@ -6008,3 +6008,172 @@ that exploring seven domains asked of the interpreter, by how many asked.
   C192 marks an answer the cap ended, 3 more: 57 in all. Compiled grad's
   refusal, after the merge of `fixedloop`, 9 more in `compile.hpp`: 66 in
   all. 15,256 lines in all, after `charpoly`, on integration's 15,190.
+- **The real eigenvalues and the largest singular value, in the prelude**,
+  the third step towards eigenvalues: `eig(A)`, every eigenvalue of a matrix
+  whose characteristic polynomial has only real roots, a symmetric one
+  first, as a column, smallest first, each certified by bisection as `rho`
+  is; and `smax(A)`, sqrt(lambda_max(A'A)). Written in inkamath on
+  `charpoly`, `hurwitzs` and `rho`'s scaling and stop. The design, measured
+  on a prototype:
+
+      eigl(q)_1 = q[1]
+      eigl(q)_j = eigl(q)_(j-1)
+      eigl(q)_j | q[j] <> 0 = q[j]
+      eigv(q[j<=m]) = sum_(j=2)^m (q[j]*eigl(q)_(j-1) < 0)
+      eigm(A[j<=n, k<=n])[j<=n, k<=n] = sum_(i=1)^n (A^(j+k-2))[i,i]
+      eigr(A) = A' == A or eigv(charpoly(-eigm(rhod(A, -rhoe(A))))) == 0
+      eigz(A[j<=n, k<=n], i) = eigv(charpoly(-A)) < i and eigv(charpoly(A)) <= n - i
+      eigh(p, i, b) = b + (b[2] - b[1])/2*([1; 0] - (eigv(hurwitzs(p, -(b[1] + b[2])/2)) >= i)*[1; 1])
+      eigu(A, i)_0 | eigz(rhod(A, -rhoe(A)), i) = [0; 0]
+      eigu(A, i)_0 = [-1; 1]
+      eigu(A, i)_m = eigh(charpoly(rhod(-A, -rhoe(A))), i, eigu(A, i)_(m-1))
+      eigu(A, i)_m | m > 64 and rhos(eigu(A, i)_(m-1)) = eigu(A, i)_(m-1)
+      eigb(A, i)_m = rhod(eigu(A, i)_m, rhoe(A))
+      eigk(A, i) = rhoa(eigu(A, i)_256, eigb(A, i)_256)
+      eigc(A[j<=n, k<=n])[i<=n] = eigk(A, i)
+      eig(A[j<=n, k<=n]) | eigr(A) = eigc(A)
+      smax(A[j<=m, k<=n]) = rhod(eigk(rhod(A, -rhoe(A))'*rhod(A, -rhoe(A)), n)^(1/2), rhoe(A))
+
+  with `rhoe(A[j<=m, k<=n])`, any matrix, rho's own signature still
+  refusing one not square first.
+
+  **The count.** Descartes' rule of signs is exact for a polynomial whose
+  roots are all real: the sign changes of its coefficients, zeros skipped,
+  are its roots above 0 with their multiplicity. So the eigenvalues of A
+  below x are the sign changes of charpoly(-A)'s shift by -x, `hurwitzs`,
+  which Routh's test already has, and lambda_k < x exactly where there are
+  k of them or more. `eigv` counts, `eigl` carrying the last sign that is
+  not 0. The bracket of the k-th, `eigb(A, k)_m`, is bisected as `rho`'s
+  is: of A/B from [-1, 1), B = 2^e above the sum of |A[j,k]| (C190), the
+  test at the midpoint keeping the half it says, [lo, hi) with lo <=
+  lambda_k < hi, the answer lo made inexact, so a dyadic eigenvalue is
+  itself. Each k is bisected on its own count, so equal eigenvalues are
+  never parted, each copy the same answer, and distinct ones are parted at
+  the first midpoint between them, 1 -+ 10^-12 within 64 halvings; the memo
+  shares every midpoint two bisections have in common, so a repeated
+  eigenvalue costs one. Ascending, as MATLAB's `eig` of a symmetric matrix
+  and NumPy's `eigvalsh` give them.
+
+  **All real, or refused.** The count is exact only if every root is real;
+  of x^2 + 1 it would answer 0 twice. A symmetric matrix's are, so `A' ==
+  A` asks nothing more. Another's are tested by Hermite's criterion: the
+  Hankel matrix of power sums, H[j,k] = tr(A^(j+k-2)), is positive
+  semidefinite exactly where every root is real, its rank the distinct
+  roots and its signature the distinct real ones; H being symmetric, that
+  is charpoly(-H) without a sign change, Descartes again. Of A/B, so that
+  its powers stay near 1. A matrix with a complex eigenvalue is refused,
+  `eig needs a matrix whose eigenvalues are all real`, its real ones not
+  given alone: a column whose length depends on the values is no column a
+  paper writes. The prelude cannot word a refusal, so the guard's failure
+  on eig is given these words in C++, about 5 lines beside `Unapplied`;
+  `no clause of eig applies`, the words with none, says nothing of why,
+  and `abs(i)`'s refusal as the words was rejected as a lie that reads
+  well.
+
+  **Zero, certified.** 0 is the one value the relative stop never reaches,
+  so `rho` of a nilpotent matrix runs to the cap and is marked (C192).
+  Here it is certified where it is exact, by the counts at 0, which need no
+  shift: lambda_k = 0 where fewer than k eigenvalues are below 0 and at
+  most n - k above, and its bracket is [0; 0] from the start, `rhos` true
+  of it, so the answer is 0 unmarked: a singular symmetric matrix, the
+  zero matrix, a nilpotent one. One line. Any other exact eigenvalue that
+  is not dyadic stops by the relative rule; one below 2^-203 of B, not 0,
+  is the bracket the cap leaves, marked, `eig([1/10^100 0; 0 1])` [0; 1].
+
+  **What it costs.** A test is one shift, about m^2 products, and a count;
+  no Routh column and no map, so a test at a midpoint of b bits reads
+  numbers of about n b bits, where `rho`'s read n^2 b. On the research's
+  symmetric matrices of tenths, certified up to 20x20, marked at 24x24
+  and then within a double of NumPy's; 0.03 s for a 2x2, 0.05 s for
+  Hilbert's 5x5, 0.3 s for its 8x8, 0.4 s at 10x10, 1.1 s at 12x12, 4 s at
+  16x16, 14 s at 20x20 and 36 s at 24x24. The spec replays in 10 s under
+  the sanitizers. Hermite's test is one `charpoly` more, of an n x n.
+
+  Decided besides:
+  - **Names.** `eig`, MATLAB's and Octave's; `eigvals` and `eigenvals`,
+    NumPy's and sympy's, are longer for nothing. `eigb` is the bracket, as
+    `rhob` is, the helpers prefixed `eig`. `smax`, the paper's sigma_max;
+    `norm` is a vector's and Frobenius's too, `sigma` every activation's,
+    `svd` a decomposition, `norm2` read as a squared norm.
+  - **smax.** sqrt of the largest eigenvalue of S'S, S = A/2^e with
+    rho's e, scaled back by 2^e: A'A unscaled would be 10^400 of
+    `[~1 2; 3 4]*10^200`, inf, where sigma is a double. S'S is n x n, n
+    A's columns; the smaller of S'S and SS' would spare a wide matrix's
+    zero eigenvalues, certified at once: a line for nothing. Its
+    eigenvalue is `eigk`'s at k = n, by the same count, not `abscissa`'s,
+    whose Routh column reads n^2 b bits and whose 0 is marked.
+  - **Refused besides.** A matrix not square, by eig's signature. A complex
+    entry in abs's words, `a comparison needs real numbers, not i`, `rhoe`
+    reading every cell before a test does, so a Hermitian matrix too, as
+    `rho` refuses it; of smax, A's cell, not one of A'A.
+  - **An inexact matrix** is bisected by rounded tests, its bracket inexact
+    and `frac` refusing it, as rho's. Hermite's test is rounded too, so a
+    nonsymmetric inexact matrix with a repeated eigenvalue, H singular, may
+    be refused; README says so. An approximated one marks the answer.
+  - **grad.** A bracket is a staircase: `eig` and `smax` join `rho` and
+    `abscissa` in the stack's staircases, `grad cannot differentiate eig
+    yet` in the interpreter and the compiler alike, one line. A simple
+    eigenvalue's derivative, v'dA v of a symmetric matrix, is a later item
+    with rho's.
+  - **Compiled**: neither, as `rho`: `eig` stops at `A' == A`, "a
+    comparison of matrices", and `smax` at `hurwitzb`'s factorial. A case
+    of `test/cli.cmake`, `g_n = grad_(a = n) eig([a 1; 1 2])[1]`, holds
+    compiled grad's refusal.
+
+  Rejected:
+  - **Sturm's sequence**, the research's `sturm.ink` and `eig.ink`: it
+    counts distinct real roots of any polynomial, so it tells real roots
+    from complex ones by itself, but it needs polynomial division in
+    inkamath, a leading coefficient, a shift and a remainder recurrence,
+    and a tower of gcds for the multiplicities, about 30 lines against
+    `eigl`, `eigv`, `eigm` and `eigr`'s 6, and its remainders'
+    coefficients grow where a shift's do not.
+  - **Budan and Fourier**, the research's `symeig.ink`: the same count as
+    the shift, by n derivatives evaluated at x, each a helper the shift
+    does not need.
+  - **Sylvester's inertia**, the negative pivots of A - xI: a pivot is 0
+    at a dyadic x where a leading minor has that eigenvalue, which
+    exact elimination cannot step over, and it serves a symmetric matrix
+    alone.
+  - **Refusing every matrix not symmetric**: `[1 2; 3 4]`, a companion
+    matrix and a triangular one have real eigenvalues, and Hermite's test
+    is a line.
+  - **Certifying every dyadic eigenvalue exactly**, by a second count at
+    each midpoint: a nonzero dyadic one is reached and stops; 0 alone
+    needed it.
+  - **The research's `lim`** stop and its `ilogb(nb(A)) + 50` halvings,
+    replaced by rho's, as rho's were.
+
+  **H-infinity, later.** ||G||_inf of C(sI - A)^-1 B, A stable, is the
+  least gamma such that the Hamiltonian [A, BB'/gamma^2; -C'C, -A'] has no
+  eigenvalue on the imaginary axis, bisected on gamma as the research's
+  `hinf.ink` did. Its characteristic polynomial is even, q(s^2), and the
+  test is whether q has a real root at or below 0: q's roots are not all
+  real, so Descartes cannot count them. It needs a count of real roots of
+  any polynomial in a half-line: Sturm's sequence, or Hermite's forms,
+  whose signatures count distinct real roots, weighted by -u for those
+  below 0, read by Descartes on their characteristic polynomials, which
+  are real-rooted, so with what this item adds. Then an upper bound to
+  start from, `hurwitz` for A's stability, a D term's gamma^2 I - D'D, and
+  the staircase. Not specified here.
+
+  What moves: no golden and no header, as no test names any of them; the
+  prelude gains 17 definitions, read at every start. README's section 1 lists
+  `eig`, `eigb` and `smax` with the prelude's others, and section 2 shows
+  `eig` and `smax` and says what is refused.
+
+  About 30 lines: 19 of the prelude, two of them wrapped, some 6 of its
+  comment, 5 of C++ for the refusal's words and 1 for the staircases.
+  15,256 lines at d3c2149, by `wc -l include/inkamath/*.hpp src/*`. Past
+  45 the implementation stops and reports.
+
+  Specified in `test/data/spec/eig.ink`, 48 entries replayed by the spec
+  suite, 41 failing by design, those passing being definitions echoing
+  themselves, `digits` and a session's `eig`: eigenvalues exactly with
+  sympy, its real roots compared exactly, Hilbert's with mpmath at 60
+  digits, the 6x6 and `smax` against NumPy, and each bracket by bisection
+  in Python's fractions with every test decided from the exact
+  eigenvalue, printed by a transcription of `Number::Shown`, apart from
+  the interpreter. The prototype above, defined in a session, gives every
+  answer but the two refusals' words, grad's two and a session's `eig`,
+  which needs the name to be the prelude's.
