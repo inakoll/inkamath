@@ -147,7 +147,8 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brin
                          reddi:thm1 reddi:fixed reddi:gen
                          kahan:sums kahan:muller kahan:rounded kahan:surprise kahan:solveur
                          rump:rump signatures:inv
-                         goldberg:year goldberg:needled goldberg:big goldberg:seven)
+                         goldberg:year goldberg:needled goldberg:big goldberg:seven
+                         iterates:poly iterates:thirds iterates:plan iterates:graph iterates:gaps)
     string(REPLACE ":" ";" checked ${checked})
     list(GET checked 0 file)
     list(GET checked 1 instance)
@@ -381,6 +382,19 @@ add_test(NAME compile_signatures_header
          COMMAND ${CMAKE_COMMAND} -E compare_files
                  ${CMAKE_CURRENT_BINARY_DIR}/compile/named/signatures.h
                  ${CMAKE_CURRENT_BINARY_DIR}/compile/numbered/signatures.h)
+# A sequence with parameters read at a constant index (DESIGN.md), as
+# compile/iterates.ink gives it; graph's estimate by its form, inf where a
+# disturbed run rounds a root above 1.
+set_tests_properties(check_poly_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^poly: 100 steps from 0, against exact values\npoly\\.A: within 0\npoly\\.c: within 0\npoly\\.d: within 0\npoly\\.g: within 0\n$")
+set_tests_properties(check_thirds_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^thirds: 100 steps from 0${inexact0}\nthirds\\.A: within 0${about}\nthirds\\.c: within 0${about}\nthirds\\.d: within 0${about}\nthirds\\.g: within 0${about}\n$")
+set_tests_properties(check_plan_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^plan: 100 steps from 0, against exact values\nplan\\.y: within 0\n$")
+set_tests_properties(check_graph_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^graph: 100 steps from 0${inexact0}\ngraph\\.h: within 0\\; the interpreter's terms about ([0-9.e+-]+|inf) from the exact ones, past the tolerance from [0-9]+\n$")
+set_tests_properties(check_gaps_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^gaps: 100 steps from 0, against exact values\ngaps\\.a: within 0\ngaps\\.b: within 0\n$")
 set_tests_properties(check_cls_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^cls: 100 steps from 0, against exact values until 0 and inexact ones from there\ncls\\.z: within 0\n(cls\\.[a-z]+: within [0-9.e+-]+${about}\n)+$")
 set_tests_properties(check_ball_report PROPERTIES PASS_REGULAR_EXPRESSION
@@ -584,7 +598,7 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:ledge logistic:gate momentu
                          cellguards:rfit cellguards:tfit thresholds:dies thresholds:beat stable:peak
                          reddi:thm1 reddi:fixed reddi:gen
                          kahan:sums kahan:muller kahan:rounded kahan:surprise kahan:solveur rump:rump
-                         goldberg:year goldberg:needle goldberg:big goldberg:seven)
+                         goldberg:year goldberg:needle goldberg:big goldberg:seven iterates:poly)
     string(REPLACE ":" ";" checked ${checked})
     list(GET checked 0 file)
     list(GET checked 1 instance)
@@ -654,6 +668,7 @@ foreach(report IN ITEMS
         "needle:^needle: 100 steps from 0${inexact}\nneedle\\.heron: 0\\.0186444204 at 0, where the interpreter gives 0\\.016146540115034271\; the interpreter's term about [0-9.e+-]+ from the exact one\nneedle\\.kahan: within 5\\.3e-10, 0\\.0044 units of a float${about}\n$"
         "big:^big: 100 steps from 0${in_float}\nbig\\.s: within 2e-30, 1\\.7e-23 units of a float\nbig\\.t: ${exact}\nbig\\.w: 0 at 0, where the interpreter gives 1\n$"
         "seven:^seven: 100 steps from 0${in_float}\nseven\\.t: ${exact}\nseven\\.u: within 3\\.8e-06, 32 units of a float\n$"
+        "poly:^poly: 100 steps from 0${in_float}\npoly\\.A: ${exact}\npoly\\.c: ${exact}\npoly\\.d: ${exact}\npoly\\.g: ${exact}\n$"
         "cls:^cls: 100 steps from 0${inexact}\ncls\\.z: within 2\\.4e-08, 0\\.2 units of a float\ncls\\.q: within 1\\.9e-06, 1\\.5 units of a float${about}\ncls\\.s: within 6\\.3e-08, 0\\.53 units of a float${about}\ncls\\.loss: within 4\\.1e-07, 3\\.4 units of a float${about}\n$")
     string(FIND "${report}" ":" colon)
     string(SUBSTRING "${report}" 0 ${colon} instance)

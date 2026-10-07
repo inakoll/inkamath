@@ -6,8 +6,7 @@
 # each term the term read reaches is a temporary of the step, as C140's are,
 # and the term read is written where it is read. Every number below is
 # worked out apart from the interpreter, with exact fractions, Python's
-# doubles and numpy's floats; none is recorded. Today each model is refused,
-# 'cannot compile c: a sequence with parameters'.
+# doubles and numpy's floats; none is recorded.
 #
 # 'poly', the characteristic polynomial of test/data/signatures.ink by
 # Faddeev-LeVerrier, as written there: fm and fc read each other, fc at its

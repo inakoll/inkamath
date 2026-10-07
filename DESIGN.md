@@ -2778,7 +2778,7 @@ that exploring seven domains asked of the interpreter, by how many asked.
 - **The parts and modulus of a complex number**: a frequency response
   |T(e^{jw})| cannot be written, as `abs` refuses a complex value and nothing
   gives its real or imaginary part.
-- **A sequence with parameters read at a constant index, compiled.**
+- `[done]` **A sequence with parameters read at a constant index, compiled.**
   `--compile` refuses `f(x)_K` anywhere but under `lim`, "a sequence with
   parameters", where the interpreter answers: `det` by Faddeev-LeVerrier in
   `test/data/signatures.ink`, an MPC horizon of a few steps of projected
@@ -2877,6 +2877,34 @@ that exploring seven domains asked of the interpreter, by how many asked.
   header or report should move. README's paragraph on the compiler gains a
   sentence, and the closing note of `test/compile/signatures.ink`, that `det`
   stays refused, goes.
+
+  Built as specified, with the review's rulings: `thirds`, `poly` at
+  x_n = ~(n/3), where the order of the operations shows, held within 0;
+  C180, a compile time growing with the square of a step's temporaries,
+  fixed first; and `graph`'s first line corrected by hand, its terms
+  inexact from 0, the interpreter's power of 1/2 being inexact wherever it
+  is taken. Departures. A term is kept by the list of temporaries it is in,
+  its definition, its arguments' code, parts and all, and its index, so the
+  terms of a global's list go with it, and the NaN-aware compile, a
+  compiler of its own, starts afresh. A term is a temporary once a term or
+  the fill reads it, the one read outside them written where it is read. A
+  read's arguments are always computed once, by `SharedAll`, which `Call`'s
+  binding shares. The compiler always fills from the base, where the
+  interpreter fills only past its depth; the terms are the same either way.
+  A refusal of a limit in a local's call, which the limit's own path had
+  already taken, went. 68 lines of sources against 65 planned,
+  `compile.hpp` 66 and `reference.hpp` 2, and C180's 16: 15,160 lines in
+  all, after `fixes13`.
+
+  Written out, a step's code grows with K and with its term. Measured with
+  `gcc -O2` on a program stepping it, `plan` widened to d moves and K
+  iterations is 58 KB of header and 0.9 s at d = 2 and K = 100, 0.55 MB and
+  5.0 s at d = 6, and 2.0 MB and 11 s at d = 10; at K = 1000, 0.59 MB and
+  6.8 s, 5.8 MB and 76 s, and 22 MB and 400 s. Backpropagation through time
+  by 32 nested calls, hidden 8, the review measured at 3.2 MB and 109 s;
+  grad being forward mode, a part for each cell of the weights, it holds
+  for small networks alone. Those are the threshold a loop, an entry of its
+  own, is to be weighed against.
 - **Block literals compiled**, `[A, B; C, D]`: refused as "a matrix built
   from matrices", which stops the doubling algorithm's three iterates packed
   into one term.
