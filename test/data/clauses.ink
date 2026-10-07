@@ -1,5 +1,5 @@
-# Cases in a paper's order, and 'clear' (DESIGN.md, next in line). Written
-# by hand from the rules, never recorded.
+# Cases in a paper's order, and 'clear' (DESIGN.md, next in line), written
+# by hand from the rules.
 
 # A paper writes the cases first and "otherwise" last. The unguarded clause
 # joins the definition as its fallback, tried after the guards, as it does

@@ -5257,7 +5257,7 @@ that exploring seven domains asked of the interpreter, by how many asked.
   48 lines of sources more, where about 150 were planned: 40 in `compile.hpp`
   and 8 in `check.hpp`; C122's 1; and by its review, C124 to C127, 15, and
   its rulings, 14. 14,416 lines in all, after `trig`.
-- **Cases in a paper's order, and `clear`.** A paper writes the cases first
+- `[done]` **Cases in a paper's order, and `clear`.** A paper writes the cases first
   and "otherwise" last, `clamp(x) | x > 1 = 1` then `clamp(x) = x`, and here
   the second line starts the definition over and drops the guard (C11):
   `clamp(5)` is 5. A sequence written so, `s_n | n > 1 = 1` then `s_n = n`,
@@ -5336,8 +5336,26 @@ that exploring seven domains asked of the interpreter, by how many asked.
   alone 2. 14,653 lines in all now, about 14,685 after; past 45 net the
   implementation stops and reports.
 
-  Specified in `test/data/spec/clauses.ink`, 112 entries, 47 failing, with
+  Specified in `test/data/spec/clauses.ink`, 115 entries, 47 failing, with
   `test/data/cases.ink` for `use`: the cases in a paper's order at the
   prompt, in a model's body under `grad` and in a file; sequences and cells
   as they are; a matrix written whole after its cells; each refusal; models,
   files and `use`; the prelude; callers and the memo; and `clear` itself.
+
+  Built as specified, with the review's rulings: the spec is the golden
+  `clauses.ink`, 116 entries with `clear` in a file used, which `cases.ink`
+  holds; the goldens and README passages listed above moved, and no header or
+  report. Departures. A refusal shows a clause's parameters as the tokens the
+  clause keeps of its left side and compares, spaced, `(x, k = 1 / 2)`, since
+  joined `[1 2]` and `[12]` are one (C55); `[1 -2]` shows as `[1 - 2]`. `use`
+  checks every name it brings in before it binds the file, so one refused
+  binds nothing. The advice is given where the definition lives, the session
+  or a file, and not in a model's body or for a line's local. Found on the way
+  and registered: C154, fixed here. 40 lines of sources where about 30 were
+  planned, and 45 was the limit: 12 in `reference.hpp`, the restart and C70's
+  erasure out against the refusals, the clause on a model or a file, the plain
+  clause alone and the advice, with C154's tokens in place of the names, 9
+  more than their join; 17 in `reference_stack.hpp`, a model, a file and a
+  name brought in only over nothing or their like, in a model's body too, and
+  `clear`; 11 in `interpreter.hpp`, the word, and `clear` refused in a model's
+  body. 14,727 lines in all, after `budget`.
