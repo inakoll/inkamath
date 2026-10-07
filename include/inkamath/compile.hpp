@@ -662,7 +662,7 @@ private:
         return chain;
     }
 
-    // rho and abscissa are staircases in A, refused where it moves, as the
+    // rho, abscissa, eig and smax are staircases in A, refused where it moves, as the
     // interpreter refuses them, rather than answer the staircase's 0.
     void Staircase(const Reference<Value>& function, const Code& argument) const {
         if (!argument.part.empty() && definitions_.staircases.contains(&function))

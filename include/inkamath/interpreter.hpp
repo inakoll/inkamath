@@ -349,7 +349,7 @@ inline constexpr const char* prelude[] = {
     "hurwitzb(m-i, a)*hurwitzb(i-1, m-t-a)*(-1)^(m-t-a)",
     "schurcohn(p[j<=m], r = 1) | r >= 0 and sum_(j=1)^m abs(p[j]) >= 0 "
     "= hurwitz(schurcohnm(p, r))",
-    "rhoe(A[j<=n, k<=n]) = rhop(sum_(j=1)^n sum_(k=1)^n abs(A[j,k]))",
+    "rhoe(A[j<=m, k<=n]) = rhop(sum_(j=1)^m sum_(k=1)^n abs(A[j,k]))",
     "rhop(s) = ilogb(s + (s == 0)) + 1 + 0*s",
     "rhod(x, e) = x*2^(e - floor(e/2))*2^floor(e/2)",
     "rhos(b) = b[2] - b[1] <= 2^-53*min(abs(b[1]), abs(b[2]))",
@@ -367,6 +367,31 @@ inline constexpr const char* prelude[] = {
     "abscissab(A)_m = rhod(abscissau(A)_m, rhoe(A))",
     "abscissah(p, b) = b + (b[2] - b[1])/2*([1; 0] - hurwitz(p, (b[1] + b[2])/2)*[1; 1])",
     "abscissa(A[j<=n, k<=n]) = rhoa(abscissau(A)_256, abscissab(A)_256)",
+    // eig bisects each eigenvalue of A/B on its own count: by Descartes'
+    // rule, exact where every root is real, the sign changes of
+    // charpoly(-A) shifted by -x are the eigenvalues below x. They are all
+    // real where A is symmetric or Hermite's matrix of power sums, eigm, has
+    // no negative eigenvalue; a 0 is certified by the counts at 0. smax is
+    // the root of S'S's largest, S = A/2^e, and e put back after it.
+    "eigl(q)_1 = q[1]",
+    "eigl(q)_j = eigl(q)_(j-1)",
+    "eigl(q)_j | q[j] <> 0 = q[j]",
+    "eigv(q[j<=m]) = sum_(j=2)^m (q[j]*eigl(q)_(j-1) < 0)",
+    "eigm(A[j<=n, k<=n])[j<=n, k<=n] = sum_(i=1)^n (A^(j+k-2))[i,i]",
+    "eigr(A) = A' == A or eigv(charpoly(-eigm(rhod(A, -rhoe(A))))) == 0",
+    "eigz(A[j<=n, k<=n], i) = eigv(charpoly(-A)) < i and eigv(charpoly(A)) <= n - i",
+    "eigh(p, i, b) = b + (b[2] - b[1])/2*([1; 0] "
+    "- (eigv(hurwitzs(p, -(b[1] + b[2])/2)) >= i)*[1; 1])",
+    "eigu(A, i)_0 | eigz(rhod(A, -rhoe(A)), i) = [0; 0]",
+    "eigu(A, i)_0 = [-1; 1]",
+    "eigu(A, i)_m = eigh(charpoly(rhod(-A, -rhoe(A))), i, eigu(A, i)_(m-1))",
+    "eigu(A, i)_m | m > 64 and rhos(eigu(A, i)_(m-1)) = eigu(A, i)_(m-1)",
+    "eigb(A, i)_m = rhod(eigu(A, i)_m, rhoe(A))",
+    "eigk(A, i) = rhoa(eigu(A, i)_256, eigb(A, i)_256)",
+    "eigc(A[j<=n, k<=n])[i<=n] = eigk(A, i)",
+    "eig(A[j<=n, k<=n]) | eigr(A) = eigc(A)",
+    "smax(A[j<=m, k<=n]) = smaxd(eigk(rhod(A, -rhoe(A))'*rhod(A, -rhoe(A)), n)^(1/2), rhoe(A))",
+    "smaxd(x, e) = rhod(x, e) + 0*10^(-1000*(rhod(rhod(x, e), -e) <> x))",
 };
 
 template <Parsable T, Numeric U>
@@ -441,7 +466,8 @@ Interpreter<T, U>::Interpreter() {
         stack_.stepwise = names.at("ilogb").get();
     }
     const auto& names = stack_.Builtins().names;
-    stack_.staircases = {names.at("rho").get(), names.at("abscissa").get()};
+    stack_.staircases = {names.at("rho").get(), names.at("abscissa").get(), names.at("eig").get(),
+                         names.at("smax").get()};
     ResetInterpreter();
 }
 

@@ -732,6 +732,14 @@ set(stdout "cannot compile g: grad cannot differentiate rho yet\ncannot compile 
 set(exit 1)
 check(compile_charpoly_refused)
 
+# Nor do eig and smax, by a comparison of matrices and hurwitzb's factorial,
+# and grad refuses them where A moves (DESIGN.md, eig and smax).
+file(WRITE "${OUT}/eig.ink" "x_n = eig([n 1; 1 2])[1]\ny_n = smax([n 2; 3 4])\ng_n = grad_(a = n) eig([a 1; 1 2])[1]\nh_n = grad_(a = n) smax([a 2; 3 4])\n")
+set(args --compile eig.ink)
+set(stdout "cannot compile g: grad cannot differentiate eig yet\ncannot compile h: grad cannot differentiate smax yet\ncannot compile x: a comparison of matrices\ncannot compile y: a factorial\n")
+set(exit 1)
+check(compile_eig_refused)
+
 # A tensor input, refused before tensors compiled, read by its second slice.
 file(WRITE "${OUT}/batch.ink" "batch(x_n[b<=2, j<=1, k<=2]) = {\n    y_n = x_n[2]*[1; 1]\n}\n")
 set(args --compile batch.ink batch -o batch.h)

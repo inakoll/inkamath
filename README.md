@@ -266,8 +266,8 @@ whole number not above its argument, exact of an exact number and cell by
 cell of a matrix. `ceil(x) = -floor(-x)` and `mod(a, b) = a - b*floor(a/b)`
 come with it, from a prelude (section 5), and so do `exp`, `log`, `tanh`,
 `sin`, `cos`, `abs`, `max` and `min`, and, of matrices, `charpoly`,
-`hurwitz`, `schurcohn`, `rho` and `abscissa` (section 2). Any other
-rounding is a line of it, by the rule the model needs —
+`hurwitz`, `schurcohn`, `rho`, `abscissa`, `eig` and `smax` (section 2).
+Any other rounding is a line of it, by the rule the model needs —
 `round(x) = floor(x + 1/2)` — and, like `pi`, each of them can be defined
 again, and given back by `clear`.
 
@@ -539,6 +539,33 @@ bisection being a staircase:
 
 >> abscissa([0 1; -1 -1/5])
 ~-0.1
+```
+
+`eig(A)` is the eigenvalues of a square matrix as a column, smallest first,
+each as often as its multiplicity, and `smax(A)` the largest singular value
+of any matrix, the root of the largest eigenvalue of A'A. Each eigenvalue
+is bisected as `rho` is, on a count of those below the midpoint, certified
+and marked as rho's: `eigb(A, k)_m` is the k-th one's bracket, and a 0 is
+certified without one. The count holds only where every eigenvalue is
+real, so `eig` refuses a matrix with a complex one rather than give its
+real ones alone; a symmetric matrix has none, and any other is asked by
+Hermite's test. Of an inexact matrix that test is rounded, so a
+nonsymmetric one with a repeated eigenvalue may be refused, and a complex
+pair within rounding of the real axis taken for a real one; a repeated
+eigenvalue of an inexact matrix is good to about 8 digits. Of a symmetric
+matrix of tenths, `eig` is certified up to about 20x20. `grad` refuses
+both:
+
+```
+>> eig([2 1; 1 3])
+[~1.38196601;
+ ~3.61803399]
+
+>> eig([0 1; -1 0])
+error: eig needs a matrix whose eigenvalues are all real
+
+>> smax([1 2; 3 4; 5 6])
+~9.52551809
 ```
 
 ### 3. Definitions
@@ -1054,9 +1081,10 @@ of its own: the session reaches its names qualified, `filters.lowpass`, and
 once, holds definitions only, and one that cannot be read or parsed loads
 nothing and says where. The prelude that defines `ceil`, `mod`, `exp`, `log`,
 `tanh`, `sin`, `cos`, `abs`, `max`, `min`, `charpoly`, `hurwitz`,
-`schurcohn`, `rho`, `rhob`, `abscissa` and `abscissab`, and what they call,
-is included bare beneath the session, as the built-ins are: every scope sees
-it, and a session that defines one of its names again does so for itself
+`schurcohn`, `rho`, `rhob`, `abscissa`, `abscissab`, `eig`, `eigb`
+and `smax`, and what they call, is included bare beneath the
+session, as the built-ins are: every scope sees it, and a session
+that defines one of its names again does so for itself
 alone, and clearing it gives the prelude's back. `exp`, `log`, `tanh`,
 `sin` and `cos` are written in it, accurate to a few units in the last
 place of a double, by the operations a compiled step performs:

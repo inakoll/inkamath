@@ -605,9 +605,12 @@ public:
                                  (Cells() ? "" : "; write it by its cells"));
     }
 
-    // A refusal an approximated guard decided may be wrong, and says so.
+    // A refusal an approximated guard decided may be wrong, and says so. The
+    // prelude's eig has one guard, which it cannot word (DESIGN.md).
     std::string Unapplied(bool past) const {
-        return "no clause of " + reference_name_ + " applies" +
+        const bool eig = reference_name_ == "eig" && home && !home->parent;
+        return (eig ? "eig needs a matrix whose eigenvalues are all real"
+                    : "no clause of " + reference_name_ + " applies") +
                (past ? ", by a guard approximated past a thousand digits" : "");
     }
 
