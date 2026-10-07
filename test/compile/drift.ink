@@ -143,15 +143,15 @@ latched(x_n) = {
 }
 latch = latched(x_n = n/3)
 
-# A term the interpreter runs out of steps for, a limit of a thousand-term
-# sum, is no answer, and not compared: 'toil' at 2 (C148).
+# A term the interpreter runs out of steps for, a thousand-term sum reading
+# one at each term, is no answer, and not compared: 'toil' at 2 (C148). A
+# limit of such sums answers, each term it walks having its own steps (C149).
 #
 #     toil: 100 steps from 0, against exact values until 0 and inexact ones from there
 #     toil.y: within 0; the interpreter ran out of steps at 2, not compared
 heavy(x_n) = {
-    p(r)_0 = 0
-    p(r)_k = 3/4*p(r)_(k-1) + sum_(j=1)^1000 (r/j^3 + r/j^4 + r/j^5 + r/j^6 + r/j^7 + r/j^8)
-    y_n | n == 2 = lim p(x_n)
+    s = sum_(j=1)^1000 ~1/j^2
+    y_n | n == 2 = sum_(k=1)^1000 x_n*s/k^2
     y_n = x_n
 }
 toil = heavy(x_n = ~1)

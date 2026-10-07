@@ -317,8 +317,8 @@ error: floor jumps at x = ~0.785398163
 
 # sin and cos of a real double within 2^20 are called compiled, as exp is:
 # one step and one reference deep. Through the definition each is some 40
-# steps and nests 5 references deeper, so these ran out of steps and of
-# depth; the sums are mpmath's.
+# steps and nests 5 references deeper, so these ran out of steps, until each
+# call had its own (C149), and of depth; the sums are mpmath's.
 >> sum_(k=1)^40000 sin(~k/40000)
 ~18388.3285
 

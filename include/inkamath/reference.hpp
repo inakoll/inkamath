@@ -458,6 +458,8 @@ public:
         // after the handler, as a fill is.
         std::optional<NotSingle> refused;
         try {
+            std::optional<typename ReferenceStack<T>::OwnSteps> own;
+            if (memoisable) own.emplace(stack);
             typename ReferenceStack<T>::Within within(stack, home);
             typename ReferenceStack<T>::Frame  frame(stack);
             ParametersDefinition<T>::Bind(captured, stack);
@@ -646,6 +648,8 @@ private:
         MemoKey<T> key = memoisable ? MemoKey<T>{this, true, k, arguments} : MemoKey<T>();
         if (memoisable)
             if (const T* memoised = stack.Memoised(key)) return *memoised;
+        std::optional<typename ReferenceStack<T>::OwnSteps> own;
+        if (memoisable) own.emplace(stack);
         typename ReferenceStack<T>::Within within(stack, home);
         typename ReferenceStack<T>::Frame  frame(stack);
         ParametersDefinition<T>::Bind(captured, stack);
