@@ -46,9 +46,8 @@ size_t AsSize(const T& value) {
     return static_cast<size_t>(size);
 }
 
-// A parameter as a signature writes it, a function's or a model's: 'x',
-// 'x = 1', 'v[j<=n]' or 'x_n[j<=2]', whose places are a cell's or, with a
-// default, the left side's.
+// A parameter as a function's or a model's signature writes it, its places a
+// cell's, 'v[j<=n]', or with a default the left side's, 'v[j<=n] = [1; 2]'.
 template <typename T>
 struct WrittenParameter {
     explicit WrittenParameter(const PExpression<T>& written) : left(written) {

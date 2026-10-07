@@ -678,9 +678,8 @@ private:
         return Inside(expansion, [&] { return Chained(name, function); });
     }
 
-    // Each parameter not given takes its default, which reads the others
-    // inside the function, and each size it states its extent, a constant
-    // (DESIGN.md, a size bound by a signature).
+    // A default reads the others inside the function, and the sizes stated
+    // before it, constants (DESIGN.md, a size bound by a signature).
     void Defaults(const Reference<Value>& function, Expansion& expansion) {
         const ParametersDefinition<Value>& p = function.Clauses().front().parameters;
         typename Reference<Value>::Measure measure(function);

@@ -11,7 +11,6 @@
 #include <algorithm>
 #include <array>
 #include <exception>
-#include <map>
 #include <memory>
 #include <numeric>
 #include <optional>
@@ -315,7 +314,6 @@ public:
     struct Measure {
         explicit Measure(const Reference& of) : of(of) {}
 
-        // The names parameter i binds, given a value of extent e, and theirs.
         std::vector<std::pair<std::string, size_t>> operator()(size_t i, const Extent& e) {
             const auto& sizes  = of.sizes_;
             const auto& bounds = sizes[i].bounds;
@@ -343,9 +341,9 @@ public:
             return bound;
         }
 
-        const Reference&                                 of;
-        std::map<size_t, Extent>                         given;
-        std::map<std::string, std::pair<size_t, size_t>> seen_;  // its extent, who stated it first
+        const Reference&                                           of;
+        std::unordered_map<size_t, Extent>                         given;
+        std::unordered_map<std::string, std::pair<size_t, size_t>> seen_;  // its extent, who first
     };
 
     // The value of a plain definition by a literal of numbers, once built.
@@ -855,7 +853,6 @@ private:
         return w.substr(open + 1, close - open - 1);
     }
 
-    // 'n x n'.
     static std::string Of(const Size& size) {
         std::string out;
         for (const auto& [name, number] : size.bounds)
@@ -1403,9 +1400,7 @@ private:
 
     // The whole definition: its clauses, in the order they were written.
     std::vector<Clause<T>> clauses_;
-    // The sizes its parameters state, in whichever clause (DESIGN.md, a size
-    // bound by a signature).
-    std::vector<Size> sizes_;
+    std::vector<Size>      sizes_;  // stated in any clause, for every one
 
     mutable std::optional<bool> applied_;
 };
