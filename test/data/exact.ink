@@ -84,6 +84,11 @@ error: 3 was approximated, so it has no exact fraction
 >> 4^(1/2)
 2
 
+# A power of 1/2 is a square root, rounded correctly, where libm's pow
+# answered 1 (C153).
+>> (1 - 1/2^53)^(1/2) == 1 - 1/2^53
+1
+
 >> 2^(1/2)*2^(1/2)
 ~2
 

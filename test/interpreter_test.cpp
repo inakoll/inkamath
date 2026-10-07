@@ -193,6 +193,15 @@ TEST_CASE("clauses") {
 TEST_CASE("approximated") {
     check_transcript("approximated.ink");
 }
+TEST_CASE("kahan") {
+    check_transcript("kahan.ink");
+}
+TEST_CASE("muller") {
+    check_transcript("muller.ink");
+}
+TEST_CASE("rump") {
+    check_transcript("rump.ink");
+}
 TEST_CASE("readme") {
     check_readme();
 }
