@@ -1683,6 +1683,7 @@ closures need one anyway, and can bring it.
 | C151 `[fixed]` | **`--check` held a sequence from step 0 when its lowest base clause was above it.** Beside `v_0 = 0`, a sequence `x_1 = 1`, `x_n = x_(n-1)/2` starts at 1 in the step, whose header guards it so, but the program held it from 0, "x: 0 at 0, where the interpreter gives none: x has no clause for index 0", and failed: a sequence with base clauses had its start set and not its first term, which the program reads. Both are set now, in 1 line; `late` in `test/compile/drift.ink` holds it. Found transcribing Reddi, Kale and Kumar (ICLR 2018), whose iterates start at 1. |
 | C152 `[fixed]` | **`tex` set a fraction raised to a power without its parentheses.** `(a/b)^2` was `\frac{a}{b}^2`. A fraction binds as a power now, so a power, a factorial, a transpose or an index parenthesises it, `(\frac{a}{b})^2`, as `(x + 1)^2` is, in 1 line; latex.ink holds it. Found transcribing Reddi, Kale and Kumar (ICLR 2018). |
 | C154 `[fixed]` | **A clause's default was never read.** C51 compared the names of a clause's parameters with the definition's and not their defaults, so beside `g(x, k = 2) \| x > 0 = k*x`, `g(x, k = 3) \| x < 0 = k` was accepted, listed by `?g`, and `g(-1)` answered 2: one call binds the parameters once, with the first clause's defaults. The same for a default the first clause lacks, which C51 named and did not refuse. Fixed by *Cases in a paper's order, and `clear`* (next in line), which compares the tokens between a clause's parentheses, defaults and all, and refuses a clause whose defaults differ as one whose names do; `clauses.ink` holds it. |
+| C158 `[fixed]` | **A refusal misquoted a clause's parameters.** *Cases in a paper's order* showed them as the tokens it compares, spaced one by one, so beside `gm(x, k = [1 -2]) \| x > 0 = k`, `gm(x) = x` was refused with "gm takes (x, k = [1 - 2])", one element where two were written, and `k=f(1)` read `k = f (1)`. A refusal quotes them as written now, as `?gm` shows the clause, in 14 lines; the tokens stand in only for a line's local, which keeps no text. `clauses.ink` holds it. Found reviewing *Cases in a paper's order*. |
 
 **Measure instructions, not the clock.** One of those changes made the matrix
 workload 20 per cent slower by the clock and not by a single instruction: with
@@ -5347,9 +5348,9 @@ that exploring seven domains asked of the interpreter, by how many asked.
   Built as specified, with the review's rulings: the spec is the golden
   `clauses.ink`, 116 entries with `clear` in a file used, which `cases.ink`
   holds; the goldens and README passages listed above moved, and no header or
-  report. Departures. A refusal shows a clause's parameters as the tokens the
-  clause keeps of its left side and compares, spaced, `(x, k = 1 / 2)`, since
-  joined `[1 2]` and `[12]` are one (C55); `[1 -2]` shows as `[1 - 2]`. `use`
+  report. Departures. A refusal quotes a clause's parameters as written, as
+  `?f` shows them, and a line's local, which keeps no text, as the tokens it
+  compares, spaced (C158). `use`
   checks every name it brings in before it binds the file, so one refused
   binds nothing. The advice is given where the definition lives, the session
   or a file, and not in a model's body or for a line's local. Found on the way
@@ -5360,4 +5361,4 @@ that exploring seven domains asked of the interpreter, by how many asked.
   more than their join; 17 in `reference_stack.hpp`, a model, a file and a
   name brought in only over nothing or their like, in a model's body too, and
   `clear`; 11 in `interpreter.hpp`, the word, and `clear` refused in a model's
-  body. 14,727 lines in all, after `budget`.
+  body. 14,727 lines in all, after `budget`. By its review, C158, 14 lines.

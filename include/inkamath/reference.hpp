@@ -192,9 +192,9 @@ public:
         // C51), or a default not its own (C154).
         if (clauses_.size() == 1 && IsPlain(clauses_.front()) && IsPlain(clause)) clauses_.clear();
         if (!clauses_.empty() && Taken(ai_parameters, false) != Taken(CallParameters(), false)) {
-            throw std::runtime_error(reference_name_ + " takes (" + Taken(CallParameters(), true) +
-                                     "), so a clause cannot take (" + Taken(ai_parameters, true) +
-                                     ")" + Advice());
+            throw std::runtime_error(reference_name_ + " takes (" + Shown(clauses_.front()) +
+                                     "), so a clause cannot take (" + Shown(clause) + ")" +
+                                     Advice());
         }
         // A base clause answers for one index rather than for every call, so
         // it is not a default and keeps its place: a guard added after one
@@ -742,6 +742,20 @@ private:
             taken += (!shown ? "\x1f" : tight ? "" : " ") + token;
         }
         return taken;
+    }
+
+    // As '?f' shows them, written (C158): spaced token by token, '[1 -2]'
+    // reads '[1 - 2]'. Bound inside an expression, a clause keeps no text.
+    [[nodiscard]] std::string Shown(const Clause<T>& c) const {
+        const std::string& w = c.written;
+        if (w.empty()) return Taken(c.parameters, true);
+        const size_t name = w.find(reference_name_) + reference_name_.size();
+        const size_t open = w.find_first_not_of(" \t", name);
+        if (open == std::string::npos || w[open] != '(') return "";
+        size_t close = open;
+        for (int depth = 1; depth > 0 && ++close < w.size();)
+            depth += (w[close] == '(') - (w[close] == ')');
+        return w.substr(open + 1, close - open - 1);
     }
 
     // The matrices a clause reads at an index of the cell it leaves unbounded,

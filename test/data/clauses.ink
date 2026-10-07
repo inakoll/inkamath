@@ -201,6 +201,17 @@ gd(x, k) | x > 0 = k
 >> gd(x, k = 3) | x < 0 = k
 error: gd takes (x, k), so a clause cannot take (x, k = 3); write 'clear gd' first
 
+# A refusal quotes the parameters as '?gm' shows them, as written. Spaced
+# token by token, '[1 -2]', two elements, read '[1 - 2]', one (C158).
+>> gm(x, k = [1 -2]) | x > 0 = k
+gm(x, k = [1 -2]) | x > 0 = k
+
+>> gm(x) = x
+error: gm takes (x, k = [1 -2]), so a clause cannot take (x); write 'clear gm' first
+
+>> gm(x, k=f(1)) = x
+error: gm takes (x, k = [1 -2]), so a clause cannot take (x, k=f(1)); write 'clear gm' first
+
 # A model and a file are each one statement. Written again a model replaces
 # itself, and its instances follow; a clause cannot join either, nor either
 # replace a name defined otherwise.
