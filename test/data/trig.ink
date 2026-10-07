@@ -75,16 +75,16 @@ error: 1 was approximated, so it has no exact fraction
 ~0.943808394
 
 >> sin(1048577)
-error: division by zero
+error: sin needs a number between -2^20 and 2^20
 
 >> cos(~(-2000000))
-error: division by zero
+error: cos needs a number between -2^20 and 2^20
 
 >> sin(10^400)
-error: division by zero
+error: sin needs a number between -2^20 and 2^20
 
 >> sin(~1/0)
-error: division by zero
+error: sin needs a number between -2^20 and 2^20
 
 # Not a real number, refused as exp refuses it.
 >> sin(0/~0)
@@ -275,7 +275,7 @@ digits = 9
 ~0.936752128
 
 >> grad_(x = 2^21) sin(x)
-error: division by zero
+error: sin needs a number between -2^20 and 2^20
 
 # Where x*2/pi + 1/2 is whole, floor jumps, as in exp.
 >> grad_(x = 1/2/0.6366197723675814) sin(x)

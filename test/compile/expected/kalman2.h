@@ -52,7 +52,7 @@ typedef struct kalman2 {
 static inline void kalman2_inverse2_(double a[2][2]) {
     double r[2][2];
     for (int i = 0; i < 2; ++i)
-        for (int j = 0; j < 2; ++j) r[i][j] = i == j;
+        for (int j = 0; j < 2; ++j) r[i][j] = i == j ? 1.0 : 0.0;
     for (int col = 0; col < 2; ++col) {
         int pivot = col;
         for (int row = col + 1; row < 2; ++row)

@@ -162,6 +162,8 @@ struct numeric_interface_imp<std::complex<T>,false>
         // 2^0.5 came out a bit off, and 2^1024 squared an infinity into a NaN
         // imaginary part.
         if (a.imag() == 0 && b.imag() == 0 && (a.real() >= 0 || b.real() == std::floor(b.real()))) {
+            // Rounded correctly, where libm's pow need not be (C153).
+            if (b.real() == 0.5 && a.real() > 0) return std::sqrt(a.real());
             return std::pow(a.real(), b.real());
         }
         // A whole power of a complex number is repeated multiplication:

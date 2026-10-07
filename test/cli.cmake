@@ -496,6 +496,33 @@ if(size GREATER 4096)
     message(SEND_ERROR "compile_c140: c140.h is ${size} bytes")
 endif()
 
+# C155: as is a call of the prelude's, where it was written at each reading.
+file(WRITE "${OUT}/c155.ink" "h(t) = (t - 1)/t\nh(t) | t == 1 = t\nh(t) | t == 0 = 1\nf(z) = h(exp(z))\nx_0 = 1/2\nx_n = f(f(x_(n-1)))\n")
+set(args --compile c155.ink -o c155.h)
+check(compile_c155)
+file(READ "${OUT}/c155.h" text)
+string(REGEX MATCHALL "c155_exp\\(" calls "${text}")
+list(LENGTH calls calls)
+if(NOT calls EQUAL 3)
+    message(SEND_ERROR "compile_c155: c155_exp written ${calls} times, not 3")
+endif()
+
+# C153: a power of 1/2 is C's sqrt, rounded correctly, where pow need not be.
+file(WRITE "${OUT}/c153.ink" "x_0 = 2\nx_n = x_(n-1)^(1/2) + x_(n-1)^0.5\n")
+set(args --compile c153.ink -o c153.h)
+check(compile_c153)
+holds(compile_c153 c153.h "2.0 : sqrt(m_->x[1]) + sqrt(m_->x[1]);\n")
+set(args --compile c153.ink --float -o c153f.h)
+check(compile_float_c153)
+holds(compile_float_c153 c153f.h "2.0f : sqrtf(m_->x[1]) + sqrtf(m_->x[1]);\n")
+
+# C161: a float's inverse starts from the identity in floats, which MSVC's
+# /W4 asks of an int converted to one.
+file(WRITE "${OUT}/c161.ink" "z_n = [2 1; 1 n]^-1*[1; 1]\n")
+set(args --compile c161.ink --float -o c161.h)
+check(compile_float_c161)
+holds(compile_float_c161 c161.h "; ++j) r[i][j] = i == j ? 1.0f : 0.0f;\n")
+
 # C90: the clause --check keeps is 0 where a guard of 'and' reads NaN, as no
 # clause is taken, where the NaN was converted to an int.
 file(WRITE "${OUT}/c90.ink" "gate(x_n) = {\n    y_0 = 1\n    y_n = y_(n-1) + x_n\n    z_n | x_n > 0 and y_(n-2) > 0 = 1\n    z_n = 0\n}\ng = gate(x_n = 1)\n")

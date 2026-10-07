@@ -993,7 +993,7 @@ the last place of a double, by the operations a compiled step performs:
 `exp(x)` is 2^k e^r, r = x - k ln 2 and e^r a polynomial, `log` reduces by
 `ilogb`, the power of two at or below its argument, and `sin` and `cos` by the
 multiple of pi/2 nearest theirs. An exact argument is reduced exactly, save
-within about 1e-31 of a multiple of pi/2 (C123), nothing they give is exact, and `log(0)` is refused as `1/0` is; so are `sin` and
+within about 1e-31 of a multiple of pi/2 (C123), nothing they give is exact, and `log(0)` is refused in log's own name; so are `sin` and
 `cos` past 2^20 either way, where the reduction would round, so a growing
 phase such as `sin(w*t)` stops at 2^20. Compiled, each is a C function of the
 header's own; the interpreter calls the same functions, and under `grad` their

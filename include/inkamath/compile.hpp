@@ -724,6 +724,7 @@ private:
             prelude_.push_back("static inline double " + called + "(" + signature +
                                ") {\n    return " + body.cells[0].text + ";\n}\n\n");
         }
+        ++calls_;  // an argument this is in is computed once, as of a call of the source's (C155)
         Code value = Of(Cell(called + "(" + given + ")", primary));
         for (std::size_t i = 0; i < names.size(); ++i)
             if (!arguments[i].part.empty()) moving += names[i];
@@ -1544,7 +1545,10 @@ private:
         };
         const std::string test =
             other(exponent, 0.0) || other(base, 1.0) ? "" : Nan(base, exponent);
-        const std::string power = "pow(" + base.cells[0].text + ", " + exponent.cells[0].text + ")";
+        const std::string power =
+            exponent.constant && Doubles(*exponent.constant)[0] == 0.5
+                ? "sqrt(" + base.cells[0].text + ")"
+                : "pow(" + base.cells[0].text + ", " + exponent.cells[0].text + ")";
         Cell              cell(test.empty() ? power : "(" + test + power + ")", primary);
         // Of a constant above 0 but 1, NaN where its exponent is: a test reads
         // that, not a second pow, which C, setting errno, does not share.
@@ -3684,7 +3688,7 @@ private:
                "];\n"
                "    for (int i = 0; i < " +
                size + "; ++i)\n        for (int j = 0; j < " + size +
-               "; ++j) r[i][j] = i == j;\n"
+               "; ++j) r[i][j] = i == j ? 1.0 : 0.0;\n"
                "    for (int col = 0; col < " +
                size +
                "; ++col) {\n"
@@ -4154,7 +4158,8 @@ private:
                    out[at] == '.';
         };
         for (std::size_t at = out.find('\n'); floats && at < out.size(); ++at)
-            for (const std::string from : {"double", "fabs(", "floor(", "pow(", "0.0", "1.0"})
+            for (const std::string from :
+                 {"double", "fabs(", "floor(", "pow(", "sqrt(", "0.0", "1.0"})
                 if (!inside(at - 1) && out.compare(at, from.size(), from) == 0 &&
                     (from.back() == '(' || !inside(at + from.size()))) {
                     if (from == "double")
