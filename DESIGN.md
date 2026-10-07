@@ -2777,9 +2777,106 @@ that exploring seven domains asked of the interpreter, by how many asked.
 - **The parts and modulus of a complex number**: a frequency response
   |T(e^{jw})| cannot be written, as `abs` refuses a complex value and nothing
   gives its real or imaginary part.
-- **A sequence with parameters read at a constant index, compiled** as a
-  loop of that many iterations: an MPC horizon, a window of backpropagation
-  through time, shooting. Compiled today only under `lim`.
+- **A sequence with parameters read at a constant index, compiled.**
+  `--compile` refuses `f(x)_K` anywhere but under `lim`, "a sequence with
+  parameters", where the interpreter answers: `det` by Faddeev-LeVerrier in
+  `test/data/signatures.ink`, an MPC horizon of a few steps of projected
+  gradient, a window of backpropagation through time, Kahan's §10
+  `r(x)_128`, and shooting with a fixed number of iterations, for a step
+  whose time must be bounded (`MANIFESTO.md`). The plan said a loop of K
+  iterations.
+
+  Decided: written out, as a sum with constant bounds is, not a loop.
+  `f(args)_K` is compiled where it is read, as a call is, its terms filled
+  as the interpreter fills them (`Reference::Filled`): from the lowest base
+  clause up to K, by the stride the reads give, each term by the clause the
+  interpreter takes at its index, the index bound as a constant as a sum's
+  is, so a guard on it folds and `fc`'s `/m` is a number. Each term the read
+  reaches is a temporary of the step, by C140's mechanism, and the term read
+  is written where it is read, as a call's value is; a term is compiled once
+  for the code and parts of its arguments, so `fm`'s two reads of the term
+  before do not double at each term, and `cp`'s four cells share `fc`'s
+  terms. A term that reads another sequence with parameters reads it the
+  same way, so `fm` and `fc` fill each other. A term the fill computes and
+  the read does not reach is not written, a temporary nothing reads being a
+  warning the step is built without; a fill that fails refuses the read, as
+  the interpreter's does past its depth.
+
+  The index is any that folds to a whole number where it is read: a literal,
+  a constant, a cell's place (`cp`'s `j - 1`), a size a signature binds
+  (`det`'s n), a parameter of a function compiled where it is called. A
+  model's parameter read there is compiled in, as one bounding a sum is, and
+  the header says so. One that reads the step's index or a term moves, and is
+  refused: computed from its base at each step, it would make a step's time
+  grow with n. At most 1000 terms from the lowest base, as a sum has, in the
+  words of the interpreter's fill. Without a base clause a term is compiled
+  where it is read, and its reads nest as calls do, 64 deep.
+
+  A term being step code, what the step does carries through it: matrices
+  and tensors, guards on cells at run time, NaN where the interpreter
+  refuses, `--float`, and grad's parts, so `grad_(B = A_n) det(B)` is the
+  cofactors through both sequences, which is backpropagation through time's
+  case too. A read with other arguments, `w(x/2)_(k-1)`, nests as a call
+  does, where a limit refuses it. The operations are the interpreter's in its
+  order, so `--check` holds a term within 0 where its arguments are the
+  interpreter's; guards inside a term part only by their values, as a
+  function's do.
+
+  Refused, by name: an index that is not a constant, "a sequence with
+  parameters read at an index that is not a constant", as a sum's bounds are;
+  past 1000 terms, `r_1001 is 1001 terms from its base, and a step writes
+  out at most 1000`; below the lowest base, in the interpreter's words, `q has
+  no clause for index -1`; a term reading itself, `z is defined by itself`,
+  and one ahead of it, `p_(...): a term after the one being computed`, in a
+  limit's words, where the interpreter runs out of depth; reads nested past
+  64, in a call's; an index that is not whole, in the interpreter's; and a
+  read in a limit's terms, "a sequence with parameters in a limit's terms,
+  for now". A limit's function has no temporaries, so its terms would be
+  written whole, K deep and for `fm` doubling at each. *Temporaries in a
+  limit's function* is the same mechanism, a limit's own list, and lifts
+  that refusal when it lands: Newton's shooting under `lim` waits for it,
+  while shooting by a fixed number of secant steps is two nested reads and
+  compiles now.
+
+  Rejected. The plan's loop, a function of the header's beside `lim`'s, the
+  terms in rolling locals and K a counter: its one gain is a header of
+  constant size in K, and a K the host may set. It would share `lim`'s walk
+  and its limits: one sequence reading only its own terms, so `det`'s `fm`
+  and `fc` refused; no parts, so no gradient through it, neither `det`'s nor
+  backpropagation's; no tensor, no guarded base clause, a matrix only where
+  temporaries exist, and a row read at the term's index not a constant place,
+  which a window of inputs is. Each would be lifted by a second copy of what
+  the step does. Kahan's 256 terms are 256 lines; when a target's code size
+  asks, a loop is an entry of its own. A term compiled as a call, by
+  recursion, was rejected as it nests a call per term: Kahan's 128 past the
+  64, and the C++ stack at depth K. Every term the fill computes written,
+  for the warnings. A K that moves, for a step's time. And refusing other
+  arguments, as `lim` does, where the interpreter answers and a call's form
+  exists.
+
+  About 75 lines of sources, in `compile.hpp`: the read, its index and its
+  refusals 12, the arguments bound as `Call` binds them, shared, 5, the
+  terms kept by their arguments' code 8, the fill by the interpreter's stride
+  12, a clause chosen at an index, `Chained` given one, 15, a term read from
+  itself or ahead 6, the temporaries nothing reads dropped 10, the rest 7;
+  and `Reference::Stride` made public. Sized against compiled `lim`, 167, of
+  which it shares only words, and C140, 11. Past 112 the implementation
+  stops and reports. 15,055 lines in all at 75c03ae.
+
+  Specified in `test/compile/iterates.ink`: `poly`, `det` and the
+  characteristic polynomial as `signatures.ink` writes them, with grad's
+  cofactors, exact, in double and in float; `plan`, an MPC horizon whose
+  count is a parameter compiled in; `graph`, Kahan's 128 roots then 128
+  squares, held to the interpreter and with a header excerpt; `gaps`, reads
+  that skip terms; and a file of eight refusals. Wired with the
+  implementation: the four checks and their reports in
+  `test/CMakeLists.txt`, `poly` in float, `graph`'s estimate by its form; the
+  excerpt and `plan`'s `cannot change: iters.` in `test/cli.cmake`, with the
+  refusals. Nothing that compiles today reads such a sequence, so no golden,
+  header or report should move, dropping unread temporaries included, since
+  one would be a warning now. README's paragraph on the compiler gains a
+  sentence, and the closing note of `test/compile/signatures.ink`, that `det`
+  stays refused, goes.
 - **Block literals compiled**, `[A, B; C, D]`: refused as "a matrix built
   from matrices", which stops the doubling algorithm's three iterates packed
   into one term.
