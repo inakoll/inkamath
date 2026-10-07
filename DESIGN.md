@@ -2801,6 +2801,16 @@ that exploring seven domains asked of the interpreter, by how many asked.
 - **A constant folded from an approximated number, listed**: `--compile`
   folds `(2^4000 > 2^3999)` to 0.0 and `3^3000/3^2999` to NAN silently,
   where the interpreter marks them, and its header lists nothing.
+- **`--check` measures relative to the term**: its tolerance, units and
+  estimate are absolute below 1, so -1e-30 against 1e-30 passes "within
+  2e-30" and 0 against 1e-200 "within 1e-200" (Goldberg 1991). Count units at
+  the interpreter's own term, the pass rule unchanged.
+- **`--float` and a constant folded in double**: a constant computed from
+  inexact numbers is folded in double and written as a float, so a machine
+  epsilon loop puts 2^-53 into a float header and checks "within 0". Refuse
+  it, or name it in the header.
+- **`--check` names the parameters the target rounds**, so a parameter no
+  float holds (Goldberg's 4.53) is not read as the step's own error.
 - **Refuse a repetition that adds nothing, in every context**: an index name
   repeated in a size (`x_n[j<=2, j<=2]` in a model's input,
   `M[j<=n, j<=n]` in a signature), a parameter or default written twice, a
