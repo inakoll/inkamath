@@ -1691,6 +1691,7 @@ closures need one anyway, and can bring it.
 | C159 `[fixed]` | **Two left sides that differed by a space that parts two elements were one.** A clause is named by the tokens of its left side (C46, C55), and C154 compares the defaults by them, but the tokens keep no space, and inside a matrix or an argument list a space before a sign, or before a bracket, begins the next element: `[1 -2]` is two elements and `[1 - 2]` one, `[pi [1]]` two and `[pi[1]]` one. So `sn(x) \| x == [1 - 2][1,1] = 20` replaced `sn(x) \| x == [1 -2][1,1] = 10`, and beside `gm(x, k = [1 -2]) \| x > 0 = k` a clause with the default `[1 - 2]` joined, and `gm(-1)` answered `[1, -2]`. The parser marks the space that parts two elements now, and the left side keeps it, in 9 lines; a space anywhere else still names nothing, so `x > 0 -1` and `x > 0 - 1` are one guard. conditional.ink and clauses.ink hold it. Found reviewing *Cases in a paper's order*. |
 | C160 `[fixed]` | **`use` refused to bring in a name of the file's own.** *Cases in a paper's order* binds a name brought in only over nothing or itself, and `use eig (cp, eig)` bound the file `eig`, then refused the function `eig` over it, "eig is already defined; write 'clear eig' first", which `clear eig` could not help, and left the file bound, where a refused `use` binds nothing. Twenty-eight explorations of eigenvalues and H-infinity norms stopped at their first line. The name takes the file's place now, as it did, in 1 line; `cases.ink` defines `cases`, and `clauses.ink` brings it in, twice. Found reviewing *Cases in a paper's order*. |
 | C161 `[fixed]` | **A float header's matrix inverse did not build under MSVC's warnings.** The inverse starts from the identity, written `r[i][j] = i == j`, an int converted to the cell's type: nothing to say of a double, but MSVC's /W4 warns of one converted to a float, so a float header inverting a matrix stopped a build with /WX. Written `i == j ? 1.0 : 0.0` now, `1.0f : 0.0f` in a float's, in 1 line; `compile_float_c161` in `test/cli.cmake` holds it, and the expected heat.h and kalman2.h move with it, their inverse's identity alone. Found by CI, checking Kahan's ProSolveur (2006, §9) in float. |
+| C165 `[fixed]` | **A part a clause lacked, chosen by an approximated guard, marked nothing it reached.** Under `grad` such a part stays lacking, so that nothing it leaves constant moves, and grad marked its answer only where the body had no derivative at all: beside `gc(x) = x` and `gc(x) \| x < c = 3`, `grad_(x = rt_20) (gc(x) + x)` answered 1 unmarked, where 2 is right, and `[gc(x) x]` and a matrix by its cells likewise, against the specification's "a part the clause chosen lacks is 0 approximated". A grad that differentiated a clause such a guard chose marks its whole answer now, in 2 lines; approximated.ink holds it. Found reviewing *A truth read from an approximated number*. |
 
 **Measure instructions, not the clock.** One of those changes made the matrix
 workload 20 per cent slower by the clock and not by a single instruction: with
@@ -5494,11 +5495,13 @@ that exploring seven domains asked of the interpreter, by how many asked.
   becoming a 0 approximated, so that nothing it leaves constant moves, by
   the review's ruling; grad's answer where the body has no derivative is 0
   approximated if the body's value is, so `grad_(x = rt_20) floor(x)` is
-  marked too, floor's jump decided by an approximated number. An input's
-  argument reached past a guard approximated is marked as a clause is.
+  marked too, floor's jump decided by an approximated number; and, by its
+  review, grad's whole answer is marked where such a part might reach it
+  (C165). An input's argument reached past a guard approximated is marked
+  as a clause is.
   C101's `log(2^3321)`, which answered 2^3321, answered inf marked, as
   wrong, until C157. Callgrind against integration: `deep` 0.8%,
-  `grad` 0.7% and `limit` 0.7% more. 69 lines of sources where about 55
-  were planned: `derivative.hpp` 25, `reference.hpp` 28, `matrix.hpp` 12,
+  `grad` 0.8% and `limit` 0.7% more. 71 lines of sources where about 55
+  were planned: `derivative.hpp` 27, `reference.hpp` 28, `matrix.hpp` 12,
   `number.hpp`, `numeric_interface.hpp`, the evaluator's `and` and `or` and
-  the prelude 1 each. 14,834 lines in all, after `fixes10`.
+  the prelude 1 each. 14,836 lines in all, after `fixes10`.

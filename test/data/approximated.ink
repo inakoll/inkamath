@@ -224,6 +224,31 @@ gl(x) | x > c = x
 >> grad_(x = rt_20) h(x)
 error: no clause of h applies, by a guard approximated past a thousand digits
 
+# And it marks what it is added to (C165). Had the guard read rt_20 < c
+# rightly, gc would be x, and these slopes 2 and [1, 1].
+>> gc(x) = x
+gc(x) = x
+
+>> gc(x) | x < c = 3
+gc(x) | x < c = 3
+
+>> grad_(x = rt_20) (gc(x) + x)
+1  # approximated past a thousand digits
+
+>> grad_(x = rt_20) [gc(x) x]
+[0, 1]  # approximated past a thousand digits
+
+# Cell by cell too: the first cell's slope is 1.
+>> G(x)[j<=2] = x*j
+G(x)[j<=2] = x*j
+
+>> G(x)[j<=2] | j == 1 and x < c = 3
+G(x)[j<=2] | j == 1 and x < c = 3
+
+>> grad_(x = rt_20) G(x)
+[0;
+ 2]  # approximated past a thousand digits
+
 # Yet a clause's constant answer does not move with x: log's ilogb, chosen
 # by guards that read x, is still no exponent that changes.
 >> grad_(x = rt_20) log(x)

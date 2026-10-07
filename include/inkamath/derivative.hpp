@@ -764,12 +764,13 @@ private:
             }
             if (any) out[s] = gradient;
         }
-        // A derivative none of the body has is 0, approximated with its value.
-        if (!out[0]) {
-            out[0] = Zero(parts[0][0]->Size());
-            if (numeric_interface<T>::approximated(*parts[0][0]))
-                out[0] = numeric_interface<T>::marked(*out[0]);
-        }
+        // A derivative none of the body has is 0, approximated with its value;
+        // and a part a clause lacked is 0 approximated if a guard that read an
+        // approximated number chose it, which marks whatever it might reach.
+        const bool none = !out[0];
+        if (none) out[0] = Zero(parts[0][0]->Size());
+        if (chosen_ || (none && numeric_interface<T>::approximated(*parts[0][0])))
+            out = Map(std::move(out), numeric_interface<T>::marked);
         return out;
     }
 
@@ -849,15 +850,14 @@ private:
         const Reference<T>& definition;
 
         // As Reference's Values has it; a part the clause lacks stays so, as
-        // nothing moves it, and grad's answer of it is marked with the value.
+        // nothing moves it, and grad's answer is marked for it.
         bool past = false;
 
         Jet Eval(const PExpression<T>& e) {
             Jet jet = d.Eval(e);
-            if (std::exchange(past, false))
-                for (auto& part : jet)
-                    if (part) part = numeric_interface<T>::marked(*part);
-            return jet;
+            if (!std::exchange(past, false)) return jet;
+            d.chosen_ = true;
+            return Map(std::move(jet), numeric_interface<T>::marked);
         }
         // A size is a whole number, so one that moves is at a jump.
         T Bound(const PExpression<T>& e) {
@@ -877,6 +877,7 @@ private:
         }
         void Settle(Jet& into, int slice, int row, int col) {
             if (!std::exchange(past, false)) return;
+            d.chosen_ = true;
             for (auto& part : into)
                 if (part)
                     (*part)(slice, row, col) =
@@ -977,6 +978,7 @@ private:
     std::size_t                                           depth_   = 0;
     bool                                                  guard_   = false;
     bool                                                  filling_ = false;
+    bool                                                  chosen_  = false;
     const Guarded*                                        guarded_ = nullptr;
 };
 
