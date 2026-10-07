@@ -2806,9 +2806,12 @@ that exploring seven domains asked of the interpreter, by how many asked.
   **re and im** are built in as `floor` is, a definition the interpreter
   starts with whose body is a node the language cannot write: nothing it
   has takes a complex number apart, a comparison and `floor` refusing one
-  and `'` not conjugating. One node for both, a flag saying which part, on
-  `Number`'s `real` and `imaginary`, which exist. Cell by cell of a matrix,
-  as `floor` is, for nothing. Of an exact number, itself and an exact 0; of
+  and `'` not conjugating. floor's node becomes the one node of the three,
+  carrying its name and the function it applies to each cell: floor, and
+  `Number`'s `real` and `imaginary`, which exist. That rename is a
+  refactor commit of its own, first, every golden and header
+  byte-identical. Cell by cell of a matrix, as `floor` is, for nothing.
+  Of an exact number, itself and an exact 0; of
   a complex one, a part of a pair of doubles, inexact and marked as the
   pair is. Named as the paper writes Re and Im, lowercase as every name
   here; a session may define either again, as `floor`, and the prelude
@@ -2876,6 +2879,9 @@ that exploring seven domains asked of the interpreter, by how many asked.
   - **arg**, the phase of a Bode plot: atan2, which the prelude does not
     have; an item of its own when a model asks.
   - **abs's real clauses unchanged**: the slope -4i above.
+  - **A node of their own**, one for both with a flag: a class, its three
+    visitor slots and a copy of `Matrix`'s map for floor, about 50 lines
+    of C++ where sharing floor's is about 30.
 
   What moves: trig.ink's `?abs`, which lists the new clause, and its
   `abs(i)`, 1 where it was refused, with the comments over them; the
@@ -2884,11 +2890,12 @@ that exploring seven domains asked of the interpreter, by how many asked.
   lists `re` and `im` with `floor` and says abs takes a complex number,
   with the frequency response as its example.
 
-  About 59 lines: 3 of the prelude and 8 edited, 1 of its comment; about
-  53 of C++, the node and its visitors 15, `Matrix` 8, its definitions 6,
-  grad 15, the compiler 8. 15,327 lines at ebf47fd, by `wc -l
-  include/inkamath/*.hpp src/*`. Past 88 the implementation stops and
-  reports.
+  About 34 lines: 3 of the prelude and 8 edited, 1 of its comment; about
+  30 of C++, the refactor 4, the node's name and function, the
+  definitions 4, grad 13, the parts' rule 6, the complex point 2, floor's
+  jump asked of floor alone 2 and abs named 3, the compiler 6 and `tex`
+  3. 15,327 lines at ebf47fd, by `wc -l include/inkamath/*.hpp src/*`.
+  Past 51 the implementation stops and reports.
 
   Specified in `test/data/spec/cparts.ink`, 45 entries replayed by the spec
   suite, 34 failing by design, those passing being definitions and
