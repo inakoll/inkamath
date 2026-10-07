@@ -4,16 +4,26 @@
 
 # A 0 is never within 2^-53 of itself, so the cap ends its bisection and
 # it is marked, as is every answer the cap ends, right or not: the tests
-# cannot tell a nilpotent matrix's rho, or a marginal system's abscissa,
-# from a value below the last bracket (C192).
+# cannot tell a marginal system's abscissa from a value below the last
+# bracket (C192). A nilpotent matrix's rho is not bisected: its polynomial
+# is lambda^n, every eigenvalue 0 (C195).
 >> rho([0 1; 0 0])
-0  # approximated past a thousand digits
+0
 
 >> abscissa([0 1; 0 0])
 0  # approximated past a thousand digits
 
 >> rho([0 0; 0 0])
-0  # approximated past a thousand digits
+0
+
+>> rho([0 1 2; 0 0 3; 0 0 0])
+0
+
+>> rho([~0 1; 0 0])
+0
+
+>> rho(0)
+0
 
 # Below 2^-256 of B, the bracket at the cap is no answer: -2^-254 for
 # -10^-100, and 0 for an unstable 10^-80 and a radius of 10^-100 (C192).

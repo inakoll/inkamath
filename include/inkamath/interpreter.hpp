@@ -328,7 +328,8 @@ inline constexpr const char* prelude[] = {
     // scaled by 2^e in two halves so that no factor leaves a double, and
     // keep halving past the 64th while the bracket is wider than 2^-53 of
     // its end nearer 0, up to 256. An answer the cap ended is marked, by
-    // 0*10^-1000, a 0 approximated past a thousand digits (DESIGN.md).
+    // 0*10^-1000, a 0 approximated past a thousand digits (DESIGN.md), but
+    // for a polynomial lambda^n, whose radius is 0.
     "charpolym(A)_1 = A^0",
     "charpolym(A)_m = A*charpolym(A)_(m-1) + charpolyc(A)_(m-1)*A^0",
     "charpolyc(A)_0 = 1",
@@ -361,6 +362,7 @@ inline constexpr const char* prelude[] = {
     "rhoa(u, b) | rhos(u) = ~b[1]",
     "rhoa(u, b) = ~b[1] + 0*10^-1000",
     "rho(A[j<=n, k<=n]) = rhoa(rhou(A)_256, rhob(A)_256)",
+    "rho(A[j<=n, k<=n]) | sum_(j=2)^(n+1) abs(charpoly(rhod(A, -rhoe(A)))[j]) == 0 = ~0",
     "abscissau(A)_0 = [-1; 1]",
     "abscissau(A)_m = abscissah(charpoly(rhod(A, -rhoe(A))), abscissau(A)_(m-1))",
     "abscissau(A)_m | m > 64 and rhos(abscissau(A)_(m-1)) = abscissau(A)_(m-1)",
