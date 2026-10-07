@@ -398,8 +398,9 @@ inline constexpr const char* prelude[] = {
     "eigu(A, i)_0 = [-1; 1]",
     "eigu(A, i)_m = eigh(charpoly(rhod(-A, -rhoe(A))), i, eigu(A, i)_(m-1))",
     "eigu(A, i)_m | m > 64 and rhos(eigu(A, i)_(m-1)) = eigu(A, i)_(m-1)",
-    "eigb(A, i)_m = rhod(eigu(A, i)_m, rhoe(A))",
-    "eigk(A, i) = rhoa(eigu(A, i)_256, eigb(A, i)_256)",
+    "eigb(A[j<=n, k<=n], i)_m | eigr(A) and i == floor(i) and i >= 1 and i <= n "
+    "= rhod(eigu(A, i)_m, rhoe(A))",
+    "eigk(A, i) = rhoa(eigu(A, i)_256, rhod(eigu(A, i)_256, rhoe(A)))",
     "eigc(A[j<=n, k<=n])[i<=n] = eigk(A, i)",
     "eig(A[j<=n, k<=n]) | eigr(A) = eigc(A)",
     "smax(A[j<=m, k<=n]) = smaxd(eigk(rhod(A, -rhoe(A))'*rhod(A, -rhoe(A)), n)^(1/2), rhoe(A))",

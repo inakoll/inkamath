@@ -119,6 +119,17 @@ error: eig needs a matrix whose eigenvalues are all real
 >> eig([2 0 0; 0 0 1; 0 -1 0])
 error: eig needs a matrix whose eigenvalues are all real
 
+# Nor has such a matrix a k-th bracket, and a 2x2 has no third: eigb
+# asks what eig asks.
+>> eigb([0 1; -1 0], 1)_64
+error: no clause of eigb applies
+
+>> eigb([2 1; 1 3], 3)_64
+error: no clause of eigb applies
+
+>> eigb([2 1; 1 3], 3/2)_64
+error: no clause of eigb applies
+
 # Hermite's test past a thousand digits is rounded, and this one, its
 # matrix exact and its eigenvalue 1/3 + 7^-600 twice, is refused: in words
 # that say the guard was approximated.
