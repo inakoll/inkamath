@@ -316,6 +316,10 @@ inf  # approximated past a thousand digits
 >> abscissa(-10^-400) < 0
 0  # approximated past a thousand digits
 
+# An end that is itself 0, certified, is not: its double is exact.
+>> rhoa([0; 0], [0; 0])
+0
+
 # Five by five, the tests exact; ten by ten, in bisection_digits.ink, they
 # are not.
 >> rho([6 -8 -6 -5 -6; 6 7 2 -9 -8; -3 -1 2 0 -4; -6 4 4 -9 -7; -1 -2 7 0 -2]/10)
