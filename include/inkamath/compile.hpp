@@ -1011,9 +1011,12 @@ private:
     template <typename Lines>
     std::string Declare(const std::string& value, Lines lines) {
         if (!temporaries_) throw Reason("a matrix inverse outside a sequence");
-        for (const Temporary& temporary : *temporaries_)
-            if (temporary.value == value) return temporary.name;
+        // Checked, as an ended list may have left its address to another.
+        std::size_t& at = declared_[{temporaries_, value}];
+        if (at < temporaries_->size() && (*temporaries_)[at].value == value)
+            return (*temporaries_)[at].name;
         const std::string name = "t" + std::to_string(temporary_count_++) + "_";
+        at                     = temporaries_->size();
         temporaries_->push_back({name, value, lines(name)});
         return name;
     }
@@ -3677,15 +3680,27 @@ private:
     // say so.
     static std::string Temporaries(const std::vector<Temporary>& declared,
                                    const std::string& assignments, const std::string& indent) {
-        std::string read = assignments, kept;
+        std::set<std::string> read;  // names: a search of the text kept grows with its square
+        const auto            reads = [&read](const std::string& text) {
+            const char* const word =
+                "_0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+            for (std::size_t at = 0, end = 0; end != std::string::npos; at = end + 1) {
+                end = text.find_first_not_of(word, at);
+                read.insert(text.substr(at, end - at));
+            }
+        };
+        reads(assignments);
+        std::vector<std::string> kept;
         for (auto temporary = declared.rbegin(); temporary != declared.rend(); ++temporary) {
-            if (read.find(temporary->name) == std::string::npos) continue;
+            if (!read.count(temporary->name)) continue;
             std::string lines;
             for (const std::string& line : temporary->lines) lines += indent + line + "\n";
-            read += lines;
-            kept = lines + kept;
+            reads(lines);
+            kept.push_back(std::move(lines));
         }
-        return kept;
+        std::string out;
+        for (auto lines = kept.rbegin(); lines != kept.rend(); ++lines) out += *lines;
+        return out;
     }
 
     // The interpreter's Gauss-Jordan (Matrix::Inverse), step for step: the
@@ -4233,6 +4248,7 @@ private:
     // or none where there is no part.
     std::map<std::string, std::optional<std::vector<std::pair<bool, std::size_t>>>> parts_;
     std::vector<Temporary>*          temporaries_ = nullptr;  // where this sequence's are declared
+    std::map<std::pair<const void*, std::string>, std::size_t> declared_;   // each value's place
     Reads*      clause_reads_ = nullptr;               // what the clause being compiled reads
     bool                             deferring_ = false;  // compiling the right of an 'and' or 'or'
     int                        shift_ = 0;  // how far back the term being computed again is; see At
