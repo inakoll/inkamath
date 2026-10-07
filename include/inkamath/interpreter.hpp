@@ -404,6 +404,8 @@ inline constexpr const char* prelude[] = {
     "eig(A[j<=n, k<=n]) | eigr(A) = eigc(A)",
     "smax(A[j<=m, k<=n]) = smaxd(eigk(rhod(A, -rhoe(A))'*rhod(A, -rhoe(A)), n)^(1/2), rhoe(A))",
     "smaxd(x, e) = rhod(x, e) + 0*10^(-1000*(rhod(rhod(x, e), -e) <> x))",
+    "smaxd(x, e) | x <> 0 and (rhod(x, e) == 0 or abs(rhod(x, e)) >= 2^1024) "
+    "= rhod(x, e) + 0*10^-1000",
 };
 
 template <Parsable T, Numeric U>

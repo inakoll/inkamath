@@ -211,6 +211,14 @@ inf  # approximated past a thousand digits
 >> smax(10^-400)
 0  # approximated past a thousand digits
 
+# Far enough past a double's range, half of A's scale is no double either:
+# the answer is inf or 0 still, not inf times 0.
+>> smax(10^700)
+inf  # approximated past a thousand digits
+
+>> smax([10^-700 0; 0 10^-700])
+0  # approximated past a thousand digits
+
 >> eig([1 2 3])
 error: eig takes A[j<=n, k<=n], not a 1x3 matrix
 
