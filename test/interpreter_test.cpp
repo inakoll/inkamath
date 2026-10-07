@@ -196,6 +196,9 @@ TEST_CASE("kahan") {
 TEST_CASE("muller") {
     check_transcript("muller.ink");
 }
+TEST_CASE("rump") {
+    check_transcript("rump.ink");
+}
 TEST_CASE("readme") {
     check_readme();
 }
