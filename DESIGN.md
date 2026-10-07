@@ -5312,19 +5312,24 @@ that exploring seven domains asked of the interpreter, by how many asked.
   Restarting where a clause cannot join: the trap in another shape.
   Reserving `clear`: `use` is not.
 
-  What moves, by a prototype on every test: `matrices.ink`'s `T = [1 2; 3
-  4]`, "starts it over", keeps its cells and gains `clear T` before it;
+  What moves, by a prototype on every test: `matrices.ink`'s `T = [1 2; 3 4]`,
+  "starts it over", keeps its cells and gains `clear T` before it;
   `references.ink`'s C11 entries, `m=5` after `m_n` and `p_0=1` after `p=9`,
-  are refused and gain a `clear` each; `sequences.ink`'s C70 entry,
-  `rv_n | n > 0 = 1` after `rv = 5`, is refused, `?rv` is `rv = 5` and
-  `rv_1` "rv is not a sequence"; `conditional.ink`'s two C51 refusals gain
-  the way out; `trig.ink`'s "a plain definition starts over" goes. README's
-  `exp(x)=sum_(k=0) x^k/!k`, after the sequence `exp`, is refused and gains
-  `clear exp`; section 3's "a plain definition clears the guarded clauses
-  with it" becomes this rule, with `clamp`, the table gains `clear name`,
-  and section 5 says a prelude's name cleared is the prelude's again. No
-  header, check report or other golden moves. The rows of C11, C51 and C70
-  and phase 10's "the way to start over" are history and stay.
+  are refused and gain a `clear` each; `sequences.ink`'s C70 entry, `rv_n | n
+  > 0 = 1` after `rv = 5`, is refused, `?rv` is `rv = 5` and `rv_1` "rv is not
+  a sequence"; `conditional.ink`'s two C51 refusals gain the way out;
+  `trig.ink`'s "a plain definition starts over" goes, and the comments that
+  say the old rule become this one: `conditional.ink`'s "No 'otherwise'
+  clause", `references.ink`'s "a plain definition replaces whatever the name
+  held" and "a clause turns a plain definition into a sequence", and
+  `matrices.ink`'s "starts it over". README's `exp(x)=sum_(k=0) x^k/!k`, after
+  the sequence `exp`, is refused and gains `clear exp`; section 3's "a plain
+  definition clears the guarded clauses with it" becomes this rule, with
+  `clamp`, the operator table gains `clear name`, section 1's "can be defined
+  again" adds that `clear` gives it back, and section 5 says a prelude's name
+  cleared is the prelude's again. No header, check report or other golden
+  moves. The rows of C11, C51 and C70 and phase 10's "the way to start over"
+  are history and stay.
 
   About 30 lines of sources net: the restart and C70's erasure out, about
   13; the refusals 12, `clear` 15, the model's body 2, the plain clause
