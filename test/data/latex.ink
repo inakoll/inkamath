@@ -102,6 +102,13 @@ m(x) = floor(x/2) + (x + 1)^2
 >> tex ?m
 m(x) = \lfloor \frac{x}{2} \rfloor + (x + 1)^2
 
+# A fraction raised to a power is parenthesised, as it was written (C152).
+>> q = (a/b)^2
+q = (a/b)^2
+
+>> tex ?q
+q = (\frac{a}{b})^2
+
 # A function of more than one letter is an operator's name.
 >> sq(x) = x^2
 sq(x) = x^2
