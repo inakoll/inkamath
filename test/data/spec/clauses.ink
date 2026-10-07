@@ -71,6 +71,11 @@ use cases
 >> cases.clamp(1/2)
 0.5
 
+# 'clear' is read there as at the prompt: cases.ink clears its sequence step
+# and makes it a value.
+>> cases.step
+2
+
 # A sequence and a definition by cells kept their guards already.
 >> s_n | n > 1 = 1
 s_n | n > 1 = 1

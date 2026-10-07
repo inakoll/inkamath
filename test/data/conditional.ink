@@ -25,10 +25,10 @@
 #   section 4's rule that a base case beats the general clause whatever the
 #   order of definition.
 #
-#   No 'otherwise' clause. A plain unguarded definition still replaces the
-#   whole definition (C11), so a default would have to be a second reserved
-#   word; the complement is usually one character -- 'x < 0' and 'x >= 0' --
-#   and when nothing applies the interpreter says so.
+#   No 'otherwise' keyword. The unguarded clause for every call is the
+#   default, tried after the guards wherever it is written, so a paper's
+#   "otherwise" is that clause written last; and when nothing applies the
+#   interpreter says so.
 #
 # Comparisons answer 1 and 0. There is no truth type because every value here
 # is a number, and a guard holds when it is not zero.
@@ -307,10 +307,10 @@ pg_0 | cg > 5 = 2
 pick(x) | x < 0 = 0-x
 
 >> pick(z) | 1 = z
-error: pick takes (x), so a clause cannot take (z)
+error: pick takes (x), so a clause cannot take (z); write 'clear pick' first
 
 >> pick(x, z) | 1 = x+z
-error: pick takes (x), so a clause cannot take (x, z)
+error: pick takes (x), so a clause cannot take (x, z); write 'clear pick' first
 
 >> pick(x) | 1 = x
 pick(x) | 1 = x

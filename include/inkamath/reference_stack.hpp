@@ -149,12 +149,29 @@ public:
         Causal(ai_reference_name, previous);
     }
 
-    // A model, a file used, or a name brought in from one.
+    // A model, a file used, or a name brought in from one: only over nothing,
+    // a model over a model, or a file or a name over itself.
+    void Vacant(const std::string& name, const Reference<T>& definition) const {
+        const definition_type previous = Defined(name);
+        if (previous && previous.get() != &definition && !(previous->model && definition.model) &&
+            !(previous->file && previous->file == definition.file))
+            throw std::runtime_error(name + " is already defined" + previous->Advice());
+    }
     void Put(const std::string& name, definition_type definition) {
+        Vacant(name, *definition);
         Changed();
         const definition_type previous = Defined(name);
         target_->names[name]           = std::move(definition);
         Causal(name, previous);
+    }
+
+    // 'clear f': f means what it means beneath the scope being defined in.
+    void Clear(const std::string& name) {
+        if (target_->names.erase(name) == 0)
+            throw std::runtime_error(name + (FindGlobal(name) ? " comes with the language, so it "
+                                                                "cannot be cleared"
+                                                              : " is not defined"));
+        Changed();
     }
 
     // Told of each guard of a general clause a term's selection asks, and
@@ -600,11 +617,10 @@ private:
                                     const std::string&             name,
                                     const ParametersDefinition<T>& parameters,
                                     PExpression<T> expression, const std::string& written) {
-        std::shared_ptr<Reference<T>> updated = existing && existing->Value()
-                                                    ? std::make_shared<Reference<T>>(*existing)
-                                                    : std::make_shared<Reference<T>>();
-        updated->add_expression(name, parameters, std::move(expression), written);
+        std::shared_ptr<Reference<T>> updated =
+            existing ? std::make_shared<Reference<T>>(*existing) : std::make_shared<Reference<T>>();
         updated->home = home;
+        updated->add_expression(name, parameters, std::move(expression), written);
         return updated;
     }
 
@@ -845,6 +861,7 @@ private:
                 auto definition   = std::make_shared<Reference<T>>(statement.name);
                 definition->model = std::move(nested);
                 definition->home  = scope.get();
+                Vacant(statement.name, *definition);
                 slot              = std::move(definition);
                 continue;
             }

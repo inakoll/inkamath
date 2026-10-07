@@ -360,7 +360,7 @@ a = (10^600 + 1)/10^600
 ~0.841470985  # approximated past a thousand digits
 
 # A session's clause starts a definition of its own, as a model's or a
-# file's does, so this abs has one clause; a plain definition starts over.
+# file's does, so this abs has one clause.
 >> abs(y) | y < 0 = -y
 abs(y) | y < 0 = -y
 

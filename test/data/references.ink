@@ -197,15 +197,21 @@ gg(m) = m+m
 >> gg([1 2 3 4])
 [2, 4, 6, 8]
 
-# One definition per name. An indexed clause extends a sequence; a plain
-# definition replaces whatever the name held. The two used to coexist, with
-# an undocumented precedence that made a plain definition unreachable
-# (DESIGN.md, C11).
+# One definition per name. An indexed clause extends a sequence, and a plain
+# one is refused there. The two used to coexist, with an undocumented
+# precedence that made a plain definition unreachable (DESIGN.md, C11);
+# 'clear' starts the name anew.
 >> m_n=2*n
 m_n=2*n
 
 >> m_3
 6
+
+>> m=5
+error: m is a sequence, so a clause of it has an index; write 'clear m' first
+
+>> clear m
+clear m
 
 >> m=5
 m=5
@@ -222,9 +228,16 @@ error: m is not a sequence
 >> ?m_3
 error: m is not a sequence
 
-# The reverse: a clause turns a plain definition into a sequence.
+# The reverse: a clause with an index is refused on a plain definition, and
+# after 'clear' starts a sequence.
 >> p=9
 p=9
+
+>> p_0=1
+error: p is not a sequence, so a clause of it has no index; write 'clear p' first
+
+>> clear p
+clear p
 
 >> p_0=1
 p_0=1

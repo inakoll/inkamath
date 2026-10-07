@@ -158,6 +158,11 @@ public:
         return *applied_;
     }
 
+    // How to start anew, where 'clear' can be written: not in a model's body.
+    [[nodiscard]] std::string Advice() const {
+        return home && !home->model ? "; write 'clear " + reference_name_ + "' first" : "";
+    }
+
     void add_expression(const std::string& ai_reference_name, const ParametersDefinition<T>& ai_parameters, PExpression<T>  ai_expression, const std::string& written = std::string()) {
         applied_.reset();
         if(reference_name_.empty()) {
@@ -166,12 +171,14 @@ public:
         else if(reference_name_ != ai_reference_name) {
             throw std::runtime_error(std::string("Interpreter internal error : invalid reference names ") + ai_reference_name + " and " + reference_name_);
         }
+        if (model || file)
+            throw std::runtime_error(reference_name_ + (model ? " is a model" : " is a file") +
+                                     Advice());
 
         // One definition per name, kept as the clauses that make it up in the
-        // order they were written. A plain definition replaces all of them
-        // (C11), which is how a definition is started over; anything else
-        // replaces the clause that names the same thing and is appended when
-        // there is none.
+        // order they were written. A clause replaces the one that names the
+        // same thing and is appended when there is none; a plain one that is
+        // the whole definition is replaced parameters and all.
         Clause<T> clause{ai_parameters, ai_expression, written, {}};
         // A parameter of the definition's name hides the definition.
         const std::vector<std::string>& own = ai_parameters.parameters_names();
@@ -180,15 +187,14 @@ public:
             for (const PExpression<T>& e : {ai_parameters.guard(), ai_expression})
                 Reads(e, ai_parameters, hidden ? "" : reference_name_, {}, clause.reads);
         // One call binds the parameters once, for whichever clause answers, so
-        // the clauses have to agree on their names. One that disagrees could
-        // only ever read a global under its own name (DESIGN.md, C51).
-        const bool starts_over = IsPlain(clause);
-        if(!clauses_.empty() && !starts_over
-           && ai_parameters.parameters_names() != CallParameters().parameters_names()) {
-            throw std::runtime_error(reference_name_ + " takes ("
-                                     + Joined(CallParameters().parameters_names())
-                                     + "), so a clause cannot take ("
-                                     + Joined(ai_parameters.parameters_names()) + ")");
+        // the clauses have to agree on their names and defaults. One that
+        // disagrees could only ever read a global under its own name (DESIGN.md,
+        // C51), or a default not its own (C154).
+        if (clauses_.size() == 1 && IsPlain(clauses_.front()) && IsPlain(clause)) clauses_.clear();
+        if (!clauses_.empty() && Taken(ai_parameters, false) != Taken(CallParameters(), false)) {
+            throw std::runtime_error(reference_name_ + " takes (" + Taken(CallParameters(), true) +
+                                     "), so a clause cannot take (" + Taken(ai_parameters, true) +
+                                     ")" + Advice());
         }
         // A base clause answers for one index rather than for every call, so
         // it is not a default and keeps its place: a guard added after one
@@ -217,18 +223,26 @@ public:
         // a sequence's.
         const bool matrix_cells = FirstThat(
             [](const Clause<T>& c) { return c.parameters.cells() && !c.parameters.indexed(); });
-        if (!starts_over && ((ai_parameters.cells() && !ai_parameters.indexed() && Sequence()) ||
-                             (ai_parameters.indexed() && matrix_cells))) {
+        if ((ai_parameters.cells() && !ai_parameters.indexed() && Sequence()) ||
+            (ai_parameters.indexed() && matrix_cells)) {
             throw std::runtime_error(
                 reference_name_ + (matrix_cells ? " is defined by its cells, so it has no index"
                                                 : " is a sequence, so it has no cells of its own"));
+        }
+        // Kept, a value and a sequence of one name were both (C11, C70).
+        if (!clauses_.empty() && ai_parameters.indexed() != Sequence()) {
+            throw std::runtime_error(reference_name_ +
+                                     (Sequence()
+                                          ? " is a sequence, so a clause of it has an index"
+                                          : " is not a sequence, so a clause of it has no index") +
+                                     Advice());
         }
         // The walk over the cells never asks a guarded clause written whole
         // (C82), and a guard on each cell says the same.
         const auto whole_guarded = [](const Clause<T>& c) {
             return c.parameters.guarded() && !c.parameters.cells();
         };
-        if (!starts_over && ai_parameters.guarded() && !ai_parameters.cells() &&
+        if (ai_parameters.guarded() && !ai_parameters.cells() &&
             FirstThat([](const Clause<T>& c) { return c.parameters.cells(); })) {
             throw std::runtime_error(reference_name_ +
                                      " is defined by its cells, so a clause for all of it cannot "
@@ -238,17 +252,6 @@ public:
             throw std::runtime_error(reference_name_ +
                                      " has a guarded clause for all of it, so it cannot be "
                                      "defined by its cells; guard its cells");
-        }
-        if (starts_over) {
-            clauses_.clear();
-        } else if (ai_parameters.indexed() ||
-                   (!ai_parameters.guarded() && !ai_parameters.cells())) {
-            // An index turns a value into a sequence, so the plain clause goes,
-            // guarded or not: kept, the name was both (DESIGN.md, C70).
-            // A cell clause of a matrix keeps it: a matrix written whole has
-            // cells, and the clause overrides one, as a base clause does a
-            // general one.
-            std::erase_if(clauses_, IsPlain);
         }
         // Writing a clause again replaces it where it stands. Position is what
         // dispatch follows, so a clause that moved would answer differently
@@ -723,13 +726,22 @@ private:
         return FirstThat([](const Clause<T>& c) { return c.parameters.cells(); }) != nullptr;
     }
 
-    static std::string Joined(const std::vector<std::string>& names) {
-        std::string joined;
-        for(const std::string& name : names) {
-            if(!joined.empty()) joined += ", ";
-            joined += name;
+    // The tokens between a clause's parentheses, defaults and all: kept apart
+    // to compare, or shown spaced, as '[1 2]' and '[12]' differ (C55).
+    static std::string Taken(const ParametersDefinition<T>& p, bool shown) {
+        const std::string& s = p.signature();
+        std::string        taken;
+        int                depth = 0;
+        for (size_t at = s.find('\x1f', 1), next; at != std::string::npos; at = next) {
+            next                    = s.find('\x1f', at + 1);
+            const std::string token = s.substr(at + 1, next - at - 1);
+            if ((depth += (token == "(") - (token == ")")) == 0) break;
+            if (depth == 1 && token == "(") continue;
+            const bool tight = taken.empty() || taken.back() == '(' || taken.back() == '[' ||
+                               token == ")" || token == "]" || token == ",";
+            taken += (!shown ? "\x1f" : tight ? "" : " ") + token;
         }
-        return joined;
+        return taken;
     }
 
     // The matrices a clause reads at an index of the cell it leaves unbounded,

@@ -183,6 +183,10 @@ private:
     static bool IsLogic(const Token<T>& token) {
         return IsWord(token, "and") || IsWord(token, "or");
     }
+    // 'clear f', not reserved, so 'clear' alone or 'clear = 2' is a name.
+    bool Clearing() const {
+        return IsWord(m_tokens[0], "clear") && m_tokens.size() > 1 && m_tokens[1].type == Func;
+    }
     // 'frac', 'digits' and 'tex' are about the whole line, so they begin it.
     static bool BeginsLine(const Token<T>& token) {
         return IsWord(token, "frac") || IsWord(token, "digits") || IsWord(token, "tex");
@@ -1385,6 +1389,12 @@ typename Interpreter<T, U>::Result Interpreter<T, U>::Run(const std::string& s) 
     Lexer(s);
     if (IsWord(m_tokens[0], "use") && m_tokens.size() > 1 && m_tokens[1].type == Func)
         return Echo{Use(s)};
+    if (Clearing()) {
+        if (m_tokens.size() > 2)
+            Fail("clear clears a whole definition, as 'clear ", m_tokens[1].text, "'");
+        stack_.Clear(m_tokens[1].text);
+        return Echo{AsWritten(s)};
+    }
     const bool fraction = IsWord(m_tokens[0], "frac");
     if ((BeginsLine(m_tokens[0]) || IsGrad(m_tokens[0])) && DefinesReserved()) {
         Fail(m_tokens[0].text, " is reserved, so it cannot be defined");
@@ -1440,6 +1450,7 @@ std::string Interpreter<T, U>::Use(const std::string& s) {
     auto used  = std::make_shared<Reference<U>>(name);
     used->file = file;
     used->home = &stack_.Target();
+    for (const std::string& brought : listed) stack_.Vacant(brought, *file->names.at(brought));
     stack_.Put(name, used);
     for (const std::string& brought : listed) stack_.Put(brought, file->names.at(brought));
     return AsWritten(s);
@@ -1586,7 +1597,7 @@ std::pair<std::string, std::shared_ptr<Model<U>>> Interpreter<T, U>::ParseModel(
         } else {
             ResetInterpreter();
             Lexer(statement.written);
-            statement.definition = ParseAll();
+            if (!Clearing()) statement.definition = ParseAll();
             if (!dynamic_cast<const EqualExpression<U>*>(statement.definition.get()))
                 Fail("a model's body holds definitions, not '", statement.written, "'");
             statement.name = statement.definition->Name();
