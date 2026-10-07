@@ -173,3 +173,23 @@ CI is shared and finite, and agents use it freely; the Linux builds it runs
 are the ones run before pushing anyway. So a branch is pushed once, when it is
 ready to merge, not after each commit, and small fixes found together share a
 branch instead of taking one each. MSVC is what CI adds; wait for it.
+
+## 9. Exploring
+
+To find what to change, an agent uses the language as a demanding user
+would: free exploration of a field, or one paper transcribed. It works in a
+detached worktree and the scratchpad and commits nothing. Its report has
+three classes: defects, each with a minimal reproducer; friction, each with
+the smallest change that would help, judged against `MANIFESTO.md`; and
+showcases.
+
+Whoever runs it triages: defects become fixes, friction becomes a line in
+"Next in line" and nothing more, and the chosen showcases go to a second
+agent that turns them into tests, `test/compile/` for a `--check` story, a
+golden for an exact result, each trimmed to its point and citing its source.
+
+A paper's published numbers are an oracle the code cannot have shaped: the
+entries taken from it are written by hand, as a spec is, never recorded, and
+a mismatch is reported as a defect, a mistranscription or an error in the
+paper, with the evidence for which. Cite the paper by section and equation;
+do not copy its text.
