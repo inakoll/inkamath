@@ -38,6 +38,14 @@ int AsIndex(const T& value) {
     return index;
 }
 
+template <typename T>
+size_t AsSize(const T& value) {
+    const int size = AsIndex<T>(value);
+    if (size < 1)
+        throw std::runtime_error("a size must be at least 1, not " + std::to_string(size));
+    return static_cast<size_t>(size);
+}
+
 // A parameter as a signature writes it, a function's or a model's: 'x',
 // 'x = 1', 'v[j<=n]' or 'x_n[j<=2]', whose places are a cell's or, with a
 // default, the left side's.
@@ -80,8 +88,8 @@ public:
     // A parameter's size, as 'M[j<=n, k<=n]' states it: its bounds, slices
     // first, each a name or, where that is empty, a whole number.
     struct Size {
-        std::vector<std::pair<std::string, int>> bounds;
-        std::string                              written;
+        std::vector<std::pair<std::string, size_t>> bounds;
+        std::string                                 written;
     };
 
     ParametersDefinition() = default;
@@ -160,10 +168,7 @@ public:
             if (!named && !dynamic_cast<const ValExpression<T>*>(bound.get()))
                 throw std::runtime_error(
                     "a size is a whole number or a name, as 'v[j<=3]' or 'v[j<=n]'");
-            const int number = named ? 1 : AsIndex<T>(bound->accept(evaluator));
-            if (number < 1)
-                throw std::runtime_error("a size must be at least 1, not " +
-                                         std::to_string(number));
+            const size_t       number = named ? 0 : AsSize<T>(bound->accept(evaluator));
             const std::string& index = compare->m_e1()->Name();
             if (std::count_if(w.bounds.begin(), w.bounds.end(), [&](const auto* other) {
                     return other->m_e1()->Name() == index;

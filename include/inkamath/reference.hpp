@@ -333,7 +333,7 @@ public:
             std::vector<std::pair<std::string, size_t>> bound;
             for (size_t b = 0; b < bounds.size(); ++b) {
                 const auto& [size, number] = bounds[b];
-                if (size.empty() && d[b] != static_cast<size_t>(number)) refuse(i);
+                if (size.empty() && d[b] != number) refuse(i);
                 if (size.empty()) continue;
                 const auto [seen, fresh] = seen_.try_emplace(size, d[b], i);
                 if (fresh) bound.emplace_back(size, d[b]);
@@ -1068,8 +1068,8 @@ private:
 
     T Held(T term, int index, EvaluationVisitor<T>& evaluator) const {
         if (declared.empty()) return term;
-        const Extent stated =
-            Stated([&](const PExpression<T>& bound) { return Size(bound->accept(evaluator)); });
+        const Extent stated = Stated(
+            [&](const PExpression<T>& bound) { return AsSize<T>(bound->accept(evaluator)); });
         if (term.Size() != stated)
             throw std::runtime_error(home->Qualified(reference_name_) + "_" +
                                      std::to_string(index) + " is " + Unlike(term.Size(), stated));
@@ -1209,19 +1209,11 @@ private:
                 }
                 measure();
             },
-            [&](const PExpression<T>& e) { return Size(walk.Bound(e)); },
+            [&](const PExpression<T>& e) { return AsSize<T>(walk.Bound(e)); },
             [&](const PExpression<T>& e) {
                 EvaluationVisitor<T> values(walk.stack());
                 return e->accept(values).Size();
             });
-    }
-
-    static size_t Size(const T& value) {
-        const int size = AsIndex<T>(value);
-        if (size < 1) {
-            throw std::runtime_error("a size must be at least 1, not " + std::to_string(size));
-        }
-        return static_cast<size_t>(size);
     }
 
     // A cell's own clause if it has one, as a base clause beats a sequence's
