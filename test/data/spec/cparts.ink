@@ -154,6 +154,13 @@ error: re has no complex derivative at z = 1+i
 >> grad_(z = i) abs(z)
 error: abs has no complex derivative at z = i
 
+# tex shows them as any call, not as the paper's Re and Im.
+>> R(z) = re(z) + im(z)
+R(z) = re(z) + im(z)
+
+>> tex ?R
+R(z) = \operatorname{re}(z) + \operatorname{im}(z)
+
 # A session's re is its own; the prelude's abs keeps the built-in.
 >> re = 3000
 re = 3000

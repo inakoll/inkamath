@@ -2811,7 +2811,8 @@ that exploring seven domains asked of the interpreter, by how many asked.
   a complex one, a part of a pair of doubles, inexact and marked as the
   pair is. Named as the paper writes Re and Im, lowercase as every name
   here; a session may define either again, as `floor`, and the prelude
-  keeps its own. `tex` shows `\operatorname{re}(z)`, as any call.
+  keeps its own. `tex` shows `\operatorname{re}(z)`, as any call, not
+  the paper's `\operatorname{Re}`.
 
   **abs** is the root of re^2 + im^2, each part first divided by s =
   2^ilogb of the larger, exactly, so where a double holds the squares it is
@@ -2885,13 +2886,13 @@ that exploring seven domains asked of the interpreter, by how many asked.
   include/inkamath/*.hpp src/*`. Past 87 the implementation stops and
   reports.
 
-  Specified in `test/data/spec/cparts.ink`, 43 entries replayed by the spec
+  Specified in `test/data/spec/cparts.ink`, 45 entries replayed by the spec
   suite, 34 failing by design, those passing being definitions and
-  `clear` echoing themselves, the refusal of a matrix, a real number's abs
-  and H(0): the response, its parts and slopes exactly with sympy,
-  each rounded to 9 digits with mpmath and none within 0.04 of a digit's
-  half; the range and the marks in Python's doubles through the scaling
-  above.
+  `clear` echoing themselves, the refusal of a matrix, a real number's abs,
+  H(0) and a call's `tex`: the response, its parts and slopes exactly
+  with sympy, each rounded to 9 digits with mpmath and none within 0.04 of
+  a digit's half; the range and the marks in Python's doubles through the
+  scaling above.
 - `[done]` **A sequence with parameters read at a constant index, compiled.**
   `--compile` refuses `f(x)_K` anywhere but under `lim`, "a sequence with
   parameters", where the interpreter answers: `det` by Faddeev-LeVerrier in
