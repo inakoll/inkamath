@@ -5735,9 +5735,9 @@ that exploring seven domains asked of the interpreter, by how many asked.
   approximated and, by *A truth read from an approximated number*, every
   test after is marked and so is the answer. On random matrices of tenths,
   certified to 64 halvings up to 6x6 for `rho`, whose map doubles the bits,
-  and 8x8 for `abscissa`; on the research's, the marks start at the 40th
-  halving of `rho` at 8x8, the 32nd at 10x10, the 24th at 12x12, and of
-  `abscissa` at the 56th at 10x10. Marked, the answers are a double's:
+  and 8x8 for `abscissa`; on the research's, the marks start at the 39th
+  halving of `rho` at 8x8, the 26th at 10x10, the 19th at 12x12, and of
+  `abscissa` at the 51st at 10x10. Marked, the answers are a double's:
   against NumPy, within 2e-15 relative at 10x10 and 12x12, 1.3e-13 at 32x32.
   0.1 s at 5x5, 0.2 s at 10x10, 0.4 s at 12x12, 9 s at 24x24 and 55 s at
   32x32, every term inside its own million steps: no budget is added.
