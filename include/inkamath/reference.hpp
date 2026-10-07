@@ -820,20 +820,17 @@ private:
         int                depth = 0;
         bool               sign  = false;  // one that begins an element, as in '[1 -2]'
         // A parameter's size, which one clause states for all, is compared apart.
-        int  sized = 0;
-        bool start = true, named = false;
+        int sized = 0, after = 0;  // tokens since the parameter began
         for (size_t at = s.find('\x1f', 1), next; at != std::string::npos; at = next) {
             next                    = s.find('\x1f', at + 1);
             const std::string token = s.substr(at + 1, next - at - 1);
             if ((depth += (token == "(") - (token == ")")) == 0) break;
             if (depth == 1 && token == "(") continue;
-            if (!shown && (sized || (named && token == "["))) {
+            if (!shown && (sized || (after == 1 && token == "["))) {
                 sized += (token == "[") - (token == "]");
-                named = false;
                 continue;
             }
-            named            = start;
-            start            = depth == 1 && token == ",";
+            after            = depth == 1 && token == "," ? 0 : after + 1;
             const bool tight = taken.empty() || taken.back() == '(' || taken.back() == '[' ||
                                token[0] == ' ' || sign || token == ")" || token == "]" ||
                                token == ",";
