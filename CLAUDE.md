@@ -55,6 +55,10 @@ Specifically:
   in case" is code the next reader has to understand.
 - **Prefer removing to adding.** A change that deletes 40 lines and adds 10 is
   usually the better change. Say so when you find one.
+- **What the implementation happens to accept is not a meaning.** A
+  repetition or a form that adds nothing is refused rather than kept for
+  consistency with an artifact, and "it is accepted elsewhere" is not a reason
+  to accept it.
 
 ## 3. Behaviour changes are explicit
 
@@ -159,7 +163,10 @@ worktree of its own, as four agents, one after the other:
 3. **Implementation**, until the spec passes. The spec then becomes a golden
    and the entry `[done]`, with its departures and lines of sources. Past
    one and a half times the spec's cost in lines, it stops and reports
-   instead of finishing: the overrun is a decision, not a fact.
+   instead of finishing: the overrun is a decision, not a fact. A decision
+   on an overrun weighs each behaviour on its own merit: none is dropped only
+   because it fits the gap, and a budget missed by a little is better than a
+   refusal lost to meet it.
 4. **Implementation review.** Adversarial: run against `integration` on the
    same inputs, a failing test before each fix, objections reported.
 
