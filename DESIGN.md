@@ -2780,6 +2780,9 @@ that exploring seven domains asked of the interpreter, by how many asked.
 - **`atan` in the prelude**, written as `exp` and `log` are, `asin` and
   `acos` from it: Kahan's angle formulas cannot be written without.
 - **An instance named again**, `a = thm1.adam`, then `a.x_1`.
+- **A constant folded from an approximated number, listed**: `--compile`
+  folds `(2^4000 > 2^3999)` to 0.0 and `3^3000/3^2999` to NAN silently,
+  where the interpreter marks them, and its header lists nothing.
 - **Temporaries in a limit's function**: C140 shares a step's nested calls,
   but a limit's terms are still written out whole, so a Riccati limit through
   `ric(ric(P))` is 163 MB of header. About 25-35 lines; moves headers whose
@@ -5364,7 +5367,7 @@ that exploring seven domains asked of the interpreter, by how many asked.
   name brought in only over nothing or their like, in a model's body too, and
   `clear`; 11 in `interpreter.hpp`, the word, and `clear` refused in a model's
   body. 14,727 lines in all, after `budget`. By its review, C158 to C160, 24 lines.
-- **A truth read from an approximated number.** With `rt_0 = 1`, `rt_n =
+- `[done]` **A truth read from an approximated number.** With `rt_0 = 1`, `rt_n =
   (rt_(n-1) + 2/rt_(n-1))/2` and `c = 14142135623730950488/10^19`, `rt_20 >
   c` answers 0 and says nothing, where rt_20 is above the square root of 2
   and c below it: approximated at the twelfth step, rt_20 is the double one
@@ -5473,3 +5476,24 @@ that exploring seven domains asked of the interpreter, by how many asked.
   the prelude's guards, and the answers its two lines keep. Expected values
   by exact arithmetic and the doubles emulated in Python, apart from the
   interpreter.
+
+  Built as specified: every entry passes as written, and the spec is the
+  golden `approximated.ink`. What moved is what the prototype measured:
+  `bignum.ink`'s `rt_20 > 1` and its comment, `elementary.ink`'s `tex
+  ?ilogbs` and the prelude's header, whose values are unchanged: 159,003
+  calls on doubles, 1 over each among them, print alike compiled and
+  walked, and 35,032 on exact and double arguments as before; with the
+  rule, of those only the calls of an argument already approximated move,
+  marked, and C101's. Departures:
+  under `grad` a part the clause chosen lacks stays lacking rather than
+  becoming a 0 approximated, so that nothing it leaves constant moves, by
+  the review's ruling; grad's answer where the body has no derivative is 0
+  approximated if the body's value is, so `grad_(x = rt_20) floor(x)` is
+  marked too, floor's jump decided by an approximated number. An input's
+  argument reached past a guard approximated is marked as a clause is.
+  C101's `log(2^3321)`, which answered 2^3321, answers inf marked, as
+  wrong, until `fixes10`. Callgrind against integration: `hand` 0.6%,
+  `grad` 1.0% and `limit` 1.4% more. 65 lines of sources where about 55
+  were planned: `derivative.hpp` 25, `reference.hpp` 24, `matrix.hpp` 12,
+  `number.hpp`, `numeric_interface.hpp`, the evaluator's `and` and `or` and
+  the prelude 1 each. 14,819 lines in all, after `clauses`.
