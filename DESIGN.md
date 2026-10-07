@@ -2793,6 +2793,12 @@ that exploring seven domains asked of the interpreter, by how many asked.
 - **A constant folded from an approximated number, listed**: `--compile`
   folds `(2^4000 > 2^3999)` to 0.0 and `3^3000/3^2999` to NAN silently,
   where the interpreter marks them, and its header lists nothing.
+- **Refuse a repetition that adds nothing, in every context**: an index name
+  repeated in a size (`x_n[j<=2, j<=2]` in a model's input,
+  `M[j<=n, j<=n]` in a signature), a parameter or default written twice, a
+  size stated twice. Accepting such a repetition is an artifact of the
+  implementation, not a meaning, and hides the slip it usually is (`j, j`
+  meant `j, k`). Low priority.
 - **Temporaries in a limit's function**: C140 shares a step's nested calls,
   but a limit's terms are still written out whole, so a Riccati limit through
   `ric(ric(P))` is 163 MB of header. About 25-35 lines; moves headers whose
