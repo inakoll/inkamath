@@ -148,6 +148,14 @@ slow = filters.lowpass(a = 1/4, u_n = fast.v_n)
 >> frac slow.v_3
 55/128
 
+# A limit is taken of a sequence read qualified, through an instance, a model
+# applied or a file (C141).
+>> lim slow.v
+~1
+
+>> lim filters.highpass(a = 1/2, u_n = 1).low.v
+~1
+
 >> a0 = 5
 a0 = 5
 
@@ -164,6 +172,14 @@ error: filters.a0 is defined in filters.ink, and only there
 
 >> frac filters.highpass(a = 1/2, u_n = 1).low.v_3
 7/8
+
+# A file's function is differentiated as the session's are, reading the
+# file's names; an instance's terms are not, yet (C145).
+>> grad_(t = 3) filters.power(t)
+0.6
+
+>> grad_(t = 1/2) filters.lowpass(a = t, u_n = 1).v_1
+error: grad cannot differentiate through an instance yet
 
 # Names brought in unqualified are those listed, and no others.
 >> use filters (lowpass)
@@ -184,6 +200,10 @@ error: bad is not defined
 
 >> use nowhere
 error: cannot read nowhere.ink
+
+# Its names are reached qualified, so a file is named as a name is (C142).
+>> use my_data
+error: use reads a file named as a name is, letters then digits, and my_data is not one
 
 # A closed loop is two instances reading each other's terms. Neither can be
 # written with its argument already defined, and neither need be: a

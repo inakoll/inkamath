@@ -336,12 +336,16 @@ Interpreter<T, U>::Interpreter() {
         stack_.compiled = [this, functions](const Reference<U>& f, const U& x) -> std::optional<U> {
             const auto found = std::find_if(functions.begin(), functions.end(),
                                             [&](const auto& each) { return each.first == &f; });
+            if (found == functions.end() || !x.IsScalar()) return {};
+            const Number& a = x(1, 1);
+            // In its own name, as a matrix is, rather than its walk's first guard.
+            if (!(numeric_interface<Number>::imaginary(a) == 0))
+                throw std::runtime_error(f.Name() + " needs real numbers, not " +
+                                         numeric_interface<Number>::toString(a));
             // Every run of --check walks: the one its guards listen to, and
             // the disturbed ones.
-            if (found == functions.end() || !x.IsScalar() || stack_.guards || Number::disturbed)
-                return {};
+            if (stack_.guards || Number::disturbed) return {};
             const auto    c = found->second;
-            const Number& a = x(1, 1);
             const auto    z = a.Inexact();
             if (a.exact() || Number::approximated(a) || z.imag() != 0 || !std::isfinite(z.real()) ||
                 ((c == inkamath_prelude_log || c == inkamath_prelude_ilogb) && !(z.real() > 0)) ||
@@ -352,6 +356,32 @@ Interpreter<T, U>::Interpreter() {
             if (c == inkamath_prelude_ilogb) return U(Number(static_cast<long long>(y)));
             return U(Number(y));
         };
+        // A part exact is rounded first by exp, sin and cos, as their
+        // definitions round it; a 0 or a NaN walks, which tells a clause
+        // without a part from a 0 and refuses a jump in its own words.
+        const std::array<std::pair<const Reference<U>*, double (*)(double, double)>, 5> parts{{
+            {names.at("exp").get(), inkamath_prelude_exp_dx},
+            {names.at("tanh").get(), inkamath_prelude_tanh_dx},
+            {names.at("log").get(), inkamath_prelude_log_dx},
+            {names.at("sin").get(), inkamath_prelude_sin_dx},
+            {names.at("cos").get(), inkamath_prelude_cos_dx},
+        }};
+        stack_.differentiated = [parts](const Reference<U>& f, const U& x,
+                                        const U& dx) -> std::optional<U> {
+            const auto found = std::find_if(parts.begin(), parts.end(),
+                                            [&](const auto& each) { return each.first == &f; });
+            if (found == parts.end() || !dx.IsScalar()) return {};
+            const auto    c = found->second;
+            const Number& p = dx(1, 1);
+            const auto    q = p.Inexact();
+            if ((p.exact() && (c == inkamath_prelude_tanh_dx || c == inkamath_prelude_log_dx)) ||
+                Number::approximated(p) || q.imag() != 0)
+                return {};
+            const double d = c(x(1, 1).Inexact().real(), q.real());
+            if (d == 0 || std::isnan(d)) return {};
+            return U(Number(d));
+        };
+        stack_.stepwise = names.at("ilogb").get();
     }
     ResetInterpreter();
 }
@@ -1132,13 +1162,24 @@ PExpression<U> Interpreter<T,U>::ParseLimit()
     if (Peek().type != Func || IsSeries(Peek())) {
         Fail("expected a sequence name after 'lim', not '", Peek().text, "'");
     }
-    PExpression<U> ref(new RefExpression<U>(m_tokens[m_i++].text));
-    PExpression<U> param = ParseParameters();
-    if (ParseSubExpr())
-    {
-        Fail("'lim' takes a sequence, not one of its terms");
+    // 'lim g.y', 'lim m().y', 'lim filters.g.y': the last name is the
+    // sequence, and those before it name where it is, as ParseMembers reads.
+    PExpression<U> object;
+    for (;;) {
+        PExpression<U> ref(new RefExpression<U>(m_tokens[m_i++].text));
+        PExpression<U> param = ParseParameters();
+        if (ParseSubExpr()) Fail("'lim' takes a sequence, not one of its terms");
+        if (AtEnd() || Peek().type != Dot) {
+            const auto limit = std::make_shared<FuncExpression<U>>(ref, param, nullptr, true);
+            if (!object) return limit;
+            return std::make_shared<MemberExpression<U>>(object, limit);
+        }
+        ++m_i;
+        if (AtEnd() || Peek().type != Func) Fail("expected a name after '.'");
+        PExpression<U> part = ref;
+        if (param) part = std::make_shared<FuncExpression<U>>(ref, param, nullptr);
+        object = object ? std::make_shared<MemberExpression<U>>(object, part) : part;
     }
-    return PExpression<U>(new FuncExpression<U>(ref, param, PExpression<U>(), true));
 }
 
 // 'sum_(k=1)^n body', as it is written on paper. The body is a term: it runs to
@@ -1375,6 +1416,13 @@ std::string Interpreter<T, U>::Use(const std::string& s) {
     const std::string        name = m_tokens[1].text;
     std::vector<std::string> listed;
     size_t                   i = 2;
+    // Its names are reached qualified, so the file is named as a name is.
+    if (i < m_tokens.size() && !m_tokens[i].spaced && m_tokens[i].type != LPar) {
+        std::string file = name;
+        for (; i < m_tokens.size() && !m_tokens[i].spaced && m_tokens[i].type != LPar; ++i)
+            file += m_tokens[i].text;
+        Fail("use reads a file named as a name is, letters then digits, and ", file, " is not one");
+    }
     if (i < m_tokens.size()) {
         if (m_tokens[i].type != LPar) Fail("unexpected '", m_tokens[i].text, "'");
         do {

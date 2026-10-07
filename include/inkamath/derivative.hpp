@@ -248,9 +248,17 @@ private:
         if (auto* x = Exactly<SeriesExpression<T>>(e)) return Series(*x);
         if (auto* x = Exactly<GradExpression<T>>(e)) return Grad(*x);
         if (auto* x = Exactly<MemberExpression<T>>(e)) {
-            if (Reads(*x))
+            if (!Reads(*x)) return Constant(x->accept(ordinary_));
+            // A file holds definitions, as the session does; an instance runs a model.
+            auto* const call   = dynamic_cast<FuncExpression<T>*>(x->Member().get());
+            auto* const object = Exactly<RefExpression<T>>(*x->Object());
+            const auto  file   = object ? stack_.Global(object->Name()) : nullptr;
+            if (!call || !file || !file->file)
                 throw std::runtime_error("grad cannot differentiate through an instance yet");
-            return Constant(x->accept(ordinary_));
+            const auto found = file->file->names.find(call->Name());
+            if (found == file->file->names.end()) return Constant(x->accept(ordinary_));
+            if (call->Call().subexpr()) (void)Index(call->Call().subexpr());
+            return Call(*call, found->second, *x);
         }
         throw std::runtime_error("grad cannot differentiate a local definition yet");
     }
@@ -285,11 +293,16 @@ private:
     Jet Call(FuncExpression<T>& call) {
         if (Lookup(call.Name()) || !Reads(call)) return Constant(call.accept(ordinary_));
         if (call.Call().subexpr()) (void)Index(call.Call().subexpr());
-        const auto definition = stack_.Global(call.Name());
         if (stack_.Binds(call.Name()))
             throw std::runtime_error("grad cannot differentiate a local definition yet");
+        return Call(call, stack_.Global(call.Name()), call);
+    }
+
+    // 'written' is the call as the expression has it, 'sq.f(t)' for f in a file.
+    Jet Call(FuncExpression<T>& call, const typename ReferenceStack<T>::definition_type& definition,
+             Expression<T>& written) {
         if (!definition || !definition->Value() || definition->Clauses().empty())
-            return Constant(call.accept(ordinary_));
+            return Constant(written.accept(ordinary_));
         const ParametersCall<T>&       p          = call.Call();
         const ParametersDefinition<T>& parameters = definition->Clauses().front().parameters;
         parameters.CheckArity(definition->Name(), p);
@@ -336,6 +349,10 @@ private:
         std::optional<NotSingle> refused;
         try {
             const Deeper                       deeper(*this);
+            if (std::optional<Jet> fast = Compiled(definition, indexed, arguments)) {
+                memo_.emplace(key, *fast);
+                return *fast;
+            }
             typename ReferenceStack<T>::Within within(stack_, definition.home);
             typename ReferenceStack<T>::Frame  frame(stack_);
             ParametersDefinition<T>::Bind(definition.captured, stack_);
@@ -352,6 +369,21 @@ private:
             refused = error;
         }
         definition.Refuse(*refused, arguments, [](const Jet& jet) { return *jet[0]; }, stack_);
+    }
+
+    // The prelude's own function of a double, from its header: the value, and
+    // the part where it is the walk's double (DESIGN.md).
+    std::optional<Jet> Compiled(const Reference<T>& f, bool indexed,
+                                const Arguments& arguments) const {
+        if (indexed || arguments.size() != 1 || !stack_.compiled) return {};
+        const Jet&             x     = arguments[0].second;
+        const std::optional<T> value = stack_.compiled(f, *x[0]);
+        if (!value) return {};
+        if (!Moves(x) || &f == stack_.stepwise) return Constant(*value);
+        const std::optional<T> part =
+            x.size() == 2 ? stack_.differentiated(f, *x[0], *x[1]) : std::nullopt;
+        if (!part) return {};
+        return Jet{value, part};
     }
 
     // A clause's own names hide a parameter evaluated, but the walk binds them

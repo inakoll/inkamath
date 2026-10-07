@@ -90,6 +90,12 @@ l = lim s
 >> tex ?l
 l = \lim_{n \to \infty} s_n
 
+>> gl = lim g.y
+gl = lim g.y
+
+>> tex ?gl
+\mathit{gl} = \lim_{n \to \infty} g.y_n
+
 >> m(x) = floor(x/2) + (x + 1)^2
 m(x) = floor(x/2) + (x + 1)^2
 
@@ -172,3 +178,16 @@ ga = alpha*sum_(k=1)^3 k
 
 >> tex ?ga
 \mathit{ga} = \alpha\,\sum_{k=1}^{3} k
+
+# A decimal typed is exact, and set in full however many its digits (C96).
+>> c = 1.4426950408889634
+c = 1.4426950408889634
+
+>> tex ?c
+c = 1.4426950408889634
+
+>> g(x) = x*0.12345678901
+g(x) = x*0.12345678901
+
+>> tex ?g
+g(x) = x \cdot 0.12345678901

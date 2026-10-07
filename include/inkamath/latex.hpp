@@ -240,12 +240,23 @@ private:
         return out;
     }
 
+    // A decimal typed is exact, and set in full where it ends (C96).
+    static std::string Typed(const typename T::value_type& x) {
+        using Cell             = numeric_interface<typename T::value_type>;
+        const std::string text = Cell::toString(x);
+        for (int digits = 17; text.find('~') != std::string::npos && digits <= 1024; digits *= 2)
+            if (const std::string all = Cell::toString(x, digits);
+                all.find('~') == std::string::npos)
+                return all;
+        return text;
+    }
+
     // An expression, its operators spaced unless it is an index, where
     // they are set tight.
     static Text Of(const Expression<T>& e, bool tight = false) {
         const std::string plus = tight ? "+" : " + ", minus = tight ? "-" : " - ";
         if (const auto* value = dynamic_cast<const ValExpression<T>*>(&e)) {
-            const std::string text = numeric_interface<T>::toString(value->value);
+            const std::string text = T::toString(value->value, Typed);
             return {text, text.front() == '-' ? unary : primary};
         }
         if (const auto* sum = dynamic_cast<const AddExpression<T>*>(&e)) {
@@ -336,8 +347,13 @@ private:
         }
         if (dynamic_cast<const TensorExpression<T>*>(&e))
             throw std::runtime_error("tex cannot show ';;', which has no form on paper");
-        if (const auto* member = dynamic_cast<const MemberExpression<T>*>(&e))
-            return {Of(*member->Object()).text + "." + Of(*member->Member()).text};
+        if (const auto* member = dynamic_cast<const MemberExpression<T>*>(&e)) {
+            const std::string object = Of(*member->Object()).text + ".";
+            const auto*       call = dynamic_cast<const FuncExpression<T>*>(member->Member().get());
+            if (call && call->limit())
+                return {"\\lim_{n \\to \\infty} " + object + Name(call->Name()) + "_n", Level::sum};
+            return {object + Of(*member->Member()).text};
+        }
         if (const auto* call = dynamic_cast<const FuncExpression<T>*>(&e)) {
             const std::string& name = call->Name();
             if (call->limit()) return {"\\lim_{n \\to \\infty} " + Name(name) + "_n", Level::sum};

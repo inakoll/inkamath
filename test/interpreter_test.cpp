@@ -181,6 +181,9 @@ TEST_CASE("fastprelude") {
 TEST_CASE("trig") {
     check_transcript("trig.ink");
 }
+TEST_CASE("fastgrad") {
+    check_transcript("fastgrad.ink");
+}
 TEST_CASE("readme") {
     check_readme();
 }

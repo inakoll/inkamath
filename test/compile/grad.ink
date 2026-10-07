@@ -121,13 +121,13 @@ hinge = rect(x_n = n)
 #     edge.g: within 0
 #     edge.h: within 0; the interpreter's terms about <e> from the exact ones
 #     edge.i: within 0
-#     edge.j: within 0
+#     edge.j: no value compared, the step NaN where the interpreter gives none, as at 0: a comparison jumps at t = 1
 #     edge.k: within 0
 #     edge.l: within 0
 #     edge.m: within 0
-#     edge.o: within 0
+#     edge.o: no value compared, the step NaN where the interpreter gives none, as at 0: floor jumps at t = 2
 #     edge.s: within 0; the interpreter's terms about <e> from the exact ones
-#     edge.v: within 0
+#     edge.v: no value compared, the step NaN where the interpreter gives none, as at 0: a power's derivative is infinite at t = 0
 #     edge.w: within 0
 #
 # Each test is written in the value where the interpreter refuses, so every
@@ -250,7 +250,7 @@ notch = notched(x_n = n/2)
 # there (C111):
 #
 #     smooth: 100 steps from 0, against exact values
-#     smooth.z: within 0
+#     smooth.z: no value compared, the step NaN where the interpreter gives none, as at 0: floor jumps at t = <t>
 rounded(x_n) = {
     z_n = grad_(t = x_n) floor(exp(t))*t
 }

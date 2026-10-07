@@ -1006,8 +1006,9 @@ private:
         return extent.slices ? static_cast<int>(extent.slices) : 1;
     }
 
-    // Measured by the walk, each bound and each read in the frame the clause's
-    // cells see: a general clause's at the term's index.
+    // Measured in the frame the clause's cells see, a general clause's at the
+    // term's index: each bound by the walk, and each read by its value, as
+    // under grad what is read only for its shape has no slope to refuse (C134).
     template <typename Fits, typename Walk>
     std::optional<Extent> Sized(std::optional<typename Walk::Result>& whole, Fits fits, int index,
                                 const std::string& subject, Walk& walk) const {
@@ -1023,8 +1024,8 @@ private:
             },
             [&](const PExpression<T>& e) { return Size(walk.Bound(e)); },
             [&](const PExpression<T>& e) {
-                auto value = walk.Eval(e);
-                return walk.Value(value).Size();
+                EvaluationVisitor<T> values(walk.stack());
+                return e->accept(values).Size();
             });
     }
 

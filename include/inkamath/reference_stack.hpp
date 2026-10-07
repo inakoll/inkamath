@@ -167,6 +167,13 @@ public:
     // argument where that is what their definitions answer; given by the
     // interpreter, for Number alone (DESIGN.md).
     std::function<std::optional<T>(const Reference<T>&, const T&)> compiled;
+    // And the part under grad, from the argument and its part, set with
+    // compiled and called only where it answered, which tested the argument
+    // real, finite, inexact and not approximated.
+    std::function<std::optional<T>(const Reference<T>&, const T&, const T&)> differentiated;
+    // And ilogb, whose walk under grad answers no part where compiled
+    // answers, at a power of two too: no guard of it is an equality (C139).
+    const Reference<T>* stepwise = nullptr;
 
     [[nodiscard]] Scope<T>&       Target() const { return *target_; }
     [[nodiscard]] Scope<T>&       Builtins() { return builtins_; }
@@ -352,6 +359,9 @@ public:
 
     // Whether a call's frame is open to bind in.
     [[nodiscard]] bool Framed() const { return open_ != 0; }
+
+    // Whether the evaluation ran out of steps, which says nothing of its answer.
+    [[nodiscard]] bool Spent() const { return steps_ >= max_steps; }
 
     // One step of an evaluation that reads no name, and so never passes
     // through Eval: a sum of a constant still has to end.

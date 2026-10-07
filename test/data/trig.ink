@@ -91,10 +91,10 @@ error: division by zero
 error: a comparison needs a number, not -nan
 
 >> cos(i)
-error: a comparison needs real numbers, not i
+error: cos needs real numbers, not i
 
 >> sin(~1 + i)
-error: a comparison needs real numbers, not 1+i
+error: sin needs real numbers, not 1+i
 
 >> sin([1 2])
 error: sin needs single values, not a 1x2 matrix; write it by its cells

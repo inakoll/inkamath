@@ -585,10 +585,11 @@ private:
             if (!otherwise) throw Reason("no clause of " + name + " applies");
             return *otherwise;
         }
-        Extent size;
+        // The interpreter answers each clause's own shape, which a step cannot (C138).
+        const Extent size = guarded.front().second.size;
         for (const auto& [condition, value] : guarded)
-            size = {std::max(size.rows, value.size.rows), std::max(size.cols, value.size.cols),
-                    std::max(size.slices, value.size.slices)};
+            if (value.size != size || (otherwise && otherwise->size != size))
+                throw Reason("the clauses of " + name + " have different shapes");
         return Chain(guarded, otherwise, size);
     }
 
@@ -645,10 +646,20 @@ private:
               const ParametersCall<Value>& call, Expansion* outer) {
         const ParametersDefinition<Value>& p = function.Clauses().front().parameters;
         Reasoned([&] { p.CheckArity(name, call); });
+        ++calls_;
         Expansion expansion{{}, {}, outer ? outer->scope : function.home, outer, {}, {}};
         // An argument the caller's index, give or take a constant, indexes a term (C119).
         const auto bind = [&](const std::string& given, const PExpression<Value>& argument) {
-            expansion.values.emplace(given, Emit(argument));
+            // A call's value, and its part, written at each reading, would
+            // multiply at each call nested in it (C140): each is computed once.
+            const int  before = calls_;
+            Code       value  = Emit(argument);
+            const auto share  = [&](const auto& self, Code& code) -> void {
+                for (Code& part : code.part) self(self, part);
+                code = Shared(code);
+            };
+            if (calls_ != before && !value.constant) share(share, value);
+            expansion.values.emplace(given, value);
             if (Plain(*argument)) try {
                     expansion.offsets.emplace(given, Offset(argument, given));
                 } catch (const Reason&) {
@@ -1188,6 +1199,12 @@ private:
         Fold(expression);
         return code_;
     }
+    // From the operands' constants, not the expression again, which may read
+    // a name that moves where its value does not, in a call (C135).
+    template <typename F, typename... Operands>
+    static Code Exactly(F f, const Operands&... operands) {
+        return Exact([&] { return f(*operands.constant...); });
+    }
 
     static std::vector<double> Doubles(const Value& value) {
         std::vector<double> doubles;
@@ -1359,16 +1376,16 @@ private:
 
     PExpression<Value> visit(AddExpression<Value>* expression) override {
         const Code left = Emit(expression->m_e1()), right = Emit(expression->m_e2());
-        return Answer(SumOf(
-            left.constant && right.constant ? Folded(expression) : Broadcast(left, right, Added),
-            left, right));
+        return Answer(SumOf(left.constant && right.constant ? Exactly(std::plus<>(), left, right)
+                                                            : Broadcast(left, right, Added),
+                            left, right));
     }
 
     // A quotient's part is (a' - q*b')/b, q the quotient, from 0 where a has none.
     PExpression<Value> visit(DivExpression<Value>* expression) override {
         const Code left = Emit(expression->m_e1()), right = Emit(expression->m_e2());
-        const Code value =
-            left.constant && right.constant ? Folded(expression) : Broadcast(left, right, Divided);
+        const Code value = left.constant && right.constant ? Exactly(std::divides<>(), left, right)
+                                                           : Broadcast(left, right, Divided);
         const auto cellwise = [&](const Code& q, const Code& b) {
             return q.Scalar() || b.Scalar() ? *Times(q, b) : Broadcast(q, b, Multiplied);
         };
@@ -1393,12 +1410,14 @@ private:
     }
 
     // A matrix product is a sum over the inner dimension, in the interpreter's
-    // order.
+    // order. A power's is folded again, as A^-1*b solves.
     PExpression<Value> visit(MultExpression<Value>* expression) override {
         const Code left = Emit(expression->m_e1()), right = Emit(expression->m_e2());
-        return Answer(
-            ProductOf(left.constant && right.constant ? Folded(expression) : Product(left, right),
-                      left, right));
+        if (!left.constant || !right.constant)
+            return Answer(ProductOf(Product(left, right), left, right));
+        const bool power = dynamic_cast<PowExpression<Value>*>(expression->m_e1().get());
+        return Answer(ProductOf(
+            power ? Folded(expression) : Exactly(std::multiplies<>(), left, right), left, right));
     }
 
     // Each left cell is read once for each right column, each right cell once
@@ -1428,8 +1447,7 @@ private:
     PExpression<Value> visit(NegExpression<Value>* expression) override {
         const Code operand = Emit(expression->m_e());
         const Part part    = PartOf(operand);
-        return Answer(Parted(operand.constant ? Folded(expression) : Negated(operand),
-                             part ? Part(Negated(*part)) : part, {&operand}));
+        return Answer(Parted(Negated(operand), part ? Part(Negated(*part)) : part, {&operand}));
     }
 
     // A subtraction from 0, as the interpreter's (C33): C's minus makes -0 of
@@ -1448,23 +1466,19 @@ private:
 
     PExpression<Value> visit(InexactExpression<Value>* expression) override {
         const Code operand = Emit(expression->m_e());
-        return Answer(
-            Parted(operand.constant ? Folded(expression) : operand,
-                   Mapped(
-                       PartOf(operand),
-                       [](const Value& v) { return numeric_interface<Value>::inexact(v); },
-                       [](const Code& c) { return c; }),
-                   {&operand}));
+        const auto inexact = [](const Value& v) { return numeric_interface<Value>::inexact(v); };
+        return Answer(Parted(operand.constant ? Exactly(inexact, operand) : operand,
+                             Mapped(PartOf(operand), inexact, [](const Code& c) { return c; }),
+                             {&operand}));
     }
 
     PExpression<Value> visit(TransposeExpression<Value>* expression) override {
         const Code operand = Emit(expression->m_e());
-        return Answer(Parted(
-            operand.constant ? Folded(expression) : Transposed(operand),
-            Mapped(
-                PartOf(operand),
-                [](const Value& v) { return numeric_interface<Value>::transpose(v); }, Transposed),
-            {&operand}));
+        const auto transpose = [](const Value& v) {
+            return numeric_interface<Value>::transpose(v);
+        };
+        return Answer(Parted(operand.constant ? Exactly(transpose, operand) : Transposed(operand),
+                             Mapped(PartOf(operand), transpose, Transposed), {&operand}));
     }
     static Code Transposed(const Code& operand) {
         Code code;
@@ -1488,7 +1502,7 @@ private:
             throw Reason("a derivative of a matrix power, for now");
         Code value;
         if (base.constant && exponent.constant) {
-            value = Folded(expression);
+            value = Exactly(numeric_interface<Value>::pow, base, exponent);
         } else {
             if (!exponent.Scalar()) throw Reason("a matrix cannot be an exponent");
             if (!base.Scalar()) return Answer(Power(base, exponent));
@@ -1617,7 +1631,11 @@ private:
         const Code left = Emit(expression->m_e1()), right = Emit(expression->m_e2());
         // At a constant point too, a jump is tested, not folded.
         if (left.constant && right.constant && left.part.empty() && right.part.empty())
-            return Fold(expression);
+            return Answer(Exactly(
+                [&](const Value& a, const Value& b) {
+                    return numeric_interface<Value>::compare(a, b, expression->Op());
+                },
+                left, right));
         if (!left.Scalar() || !right.Scalar()) throw Reason("a comparison of matrices");
         const std::string l = Wrap(left.cells[0], sum), r = Wrap(right.cells[0], sum);
         // In a guard, only an equality jumps, as the interpreter's Holds.
@@ -1793,7 +1811,8 @@ private:
         if (call.parameters_expression().size() != 1 || !call.parameters_dict().empty())
             throw Reason("floor expects 1 argument");
         const Code operand = Emit(call.parameters_expression()[0]);
-        if (operand.constant && operand.part.empty()) return Fold(expression);
+        if (operand.constant && operand.part.empty())
+            return Answer(Exactly(numeric_interface<Value>::floor, operand));
         Code code;
         code.size = operand.size;
         for (const Cell& cell : operand.cells) {
@@ -1820,8 +1839,14 @@ private:
             parts.push_back(cell.part.empty() ? Literal(Value(Number(0))) : cell.part[0]);
         }
         for (const Code& cell : cells) from.push_back(&cell);
-        const Part part = any ? Part(Assembled(parts, code.size)) : Part();
-        return Answer(Parted(constant ? Folded(expression) : code, part, from));
+        const Part part    = any ? Part(Assembled(parts, code.size)) : Part();
+        const auto literal = [&] {
+            Value value(code.size);
+            for (std::size_t c = 0; c < cells.size(); ++c)
+                value.data()[c] = (*cells[c].constant)(1, 1);
+            return value;
+        };
+        return Answer(Parted(constant ? Exact(literal) : code, part, from));
     }
     // A matrix of single parts, row by row, exact where each is.
     static Code Assembled(const std::vector<Code>& parts, Extent size) {
@@ -1908,8 +1933,9 @@ private:
     template <typename Fits>
     std::pair<Code, std::vector<std::string>> TermCells(const std::string&      name,
                                                         const Reference<Value>& definition,
-                                                        Fits fits, const std::optional<Code>& whole,
+                                                        Fits fits, std::optional<Code> whole,
                                                         std::vector<std::string>* taken = nullptr) {
+        const std::string           nan    = Refused(whole);
         const std::optional<Extent> extent = Measured(name, definition, whole, fits);
         if (!extent) throw Reason(name + " has no size");
         Code shape;
@@ -1953,7 +1979,7 @@ private:
             };
             Walk(definition, slice, row, col, fits, settles);
             if (!last) last = whole ? whole->At(c).text : "0.0";
-            cells.push_back(chain + *last);
+            cells.push_back(nan.empty() ? chain + *last : "(" + nan + chain + *last + ")");
             if (taken) taken->push_back(pick + std::to_string(picked));
         }
         return {shape, cells};
@@ -2097,6 +2123,15 @@ private:
         });
     }
 
+    // The interpreter refuses the matrix written whole before a cell's own
+    // clause is reached, so where a cell of it writes NaN every cell does (C136).
+    std::string Refused(std::optional<Code>& whole) {
+        if (!whole) return "";
+        for (const Cell& c : whole->cells) aware_ |= !whole->constant && WritesNan(c.text);
+        if (aware_ && !whole->constant) whole = Shared(*whole);
+        return Nan(*whole);
+    }
+
     // A matrix defined by its cells, one cell at a time with its names bound to
     // the cell's place. They are constants, so the size is decided here, and a
     // guard reading only them; one reading a value that moves is tested where
@@ -2105,6 +2140,7 @@ private:
         std::optional<Code> whole;  // the matrix written whole, if it is
         for (const Clause<Value>& clause : definition.Clauses())
             if (!clause.parameters.cells()) whole = Emit(clause.expression);
+        const std::string           nan = Refused(whole);
         const std::optional<Extent> extent =
             Measured(name, definition, whole, [](const Clause<Value>&) { return true; });
         if (!extent) throw Reason(name + " has no size");
@@ -2134,9 +2170,11 @@ private:
                 CellOf(name, definition, static_cast<int>(c / (extent->rows * extent->cols)) + 1,
                        static_cast<int>(c / extent->cols % extent->rows) + 1,
                        static_cast<int>(c % extent->cols) + 1, fallback));
-            code.cells.push_back(given.cells[0]);
+            code.cells.push_back(nan.empty()
+                                     ? given.cells[0]
+                                     : Cell("(" + nan + given.cells[0].text + ")", primary));
             if (given.constant) exact.data()[c] = (*given.constant)(1, 1);
-            constant = constant && given.constant;
+            constant = constant && given.constant && nan.empty();
             any      = any || !given.part.empty();
             parts.push_back(given.part.empty() ? Literal(Value(Number(0))) : given.part[0]);
         }
@@ -2815,7 +2853,12 @@ private:
         }
         std::vector<const Code*> from;
         for (const Code& slice : slices) from.push_back(&slice);
-        return Answer(Parted(constant ? Folded(expression) : Stack(slices),
+        const auto stacked = [&] {
+            std::vector<Value> values;
+            for (const Code& slice : slices) values.push_back(*slice.constant);
+            return Value::Stack(values);
+        };
+        return Answer(Parted(constant ? Exact(stacked) : Stack(slices),
                              any ? Part(Stack(parts)) : Part(), from));
     }
     static Code Stack(const std::vector<Code>& slices) {
@@ -2846,12 +2889,12 @@ private:
         const std::string nan = matrix.whole ? "" : Nan(matrix);
         if (!nan.empty())
             for (Cell& c : matrix.cells) c = Cell("(" + nan + c.text + ")", primary);
-        if (matrix.constant && matrix.part.empty()) return Fold(expression);
         const auto read = [&](const Value& v) {
             return at.size() == 3   ? numeric_interface<Value>::cell(v, at[0], at[1], at[2])
                    : at.size() == 2 ? numeric_interface<Value>::cell(v, at[0], at[1])
                                     : numeric_interface<Value>::row(v, at[0]);
         };
+        if (matrix.constant && matrix.part.empty()) return Answer(Exactly(read, matrix));
         Value numbered(matrix.size), taken;
         for (std::size_t c = 0; c < matrix.size.count(); ++c)
             numbered.data()[c] = Number(static_cast<int>(c));
@@ -2877,16 +2920,28 @@ private:
         return Answer(Parted(window(matrix), Mapped(PartOf(matrix), read, window), {&matrix}));
     }
     // A cell past an input whose model states no size, which compiles as a
-    // single value (C83), refused with the size that would hold it.
+    // single value (C83), or past a single value computed from one, refused
+    // with the size that would hold it.
     void Unstated(const Expression<Value>& read, const std::string& bounds) const {
         if (!model_ || scope_ != &root_ || !dynamic_cast<const FuncExpression<Value>*>(&read))
             return;
-        for (const typename Model<Value>::Parameter& p : model_->parameters)
-            if (p.name == read.Name() && !p.index.empty() && !p.fallback && p.bounds.empty())
-                throw Reason(p.name + " is a single value, as " +
-                             model_->header.substr(0, model_->header.find('(')) +
-                             " states no size for it: write '" + p.name + "_" + p.index + "[" +
-                             bounds + "]'");
+        std::set<std::string>    seen;
+        std::vector<std::string> next{read.Name()};
+        while (!next.empty()) {
+            const std::string name = next.back();
+            next.pop_back();
+            if (!seen.insert(name).second) continue;
+            for (const typename Model<Value>::Parameter& p : model_->parameters)
+                if (p.name == name && !p.index.empty() && !p.fallback && p.bounds.empty())
+                    throw Reason((name == read.Name() ? "" : read.Name() + " reads ") + p.name +
+                                 (name == read.Name() ? " is" : ",") + " a single value, as " +
+                                 model_->header.substr(0, model_->header.find('(')) +
+                                 " states no size for it: write '" + p.name + "_" + p.index + "[" +
+                                 bounds + "]'");
+            const auto sequence = sequences_.find(name);
+            if (sequence != sequences_.end() && sequence->second.size.count() == 1)
+                for (const auto& [reads, lags] : sequence->second.reads) next.push_back(reads);
+        }
     }
     PExpression<Value> visit(FactExpression<Value>*) override { throw Reason("a factorial"); }
     // grad compiled (DESIGN.md): its body once for each cell of the point, each
@@ -2927,8 +2982,6 @@ private:
         Code out = point.Scalar() ? parts[0] : Assembled(parts, point.size);
         if (!any) out = Literal(Value(point.Scalar() ? body.size : point.size));
         out.part.clear();
-        // A fold reading it would take its point and body again (C115).
-        if (!point.constant || !body.constant) out.constant.reset();
         // NaN where the value differentiated is, in a header that writes NaN,
         // as one does where that value writes it and no part reads it (C113).
         for (const Cell& c : body.cells) aware_ |= !body.constant && WritesNan(c.text);
@@ -2959,12 +3012,14 @@ private:
         const auto                 found = places_.find(name);
         const std::optional<Value> outer =
             found == places_.end() ? std::nullopt : std::optional<Value>(found->second);
-        Code total;
-        bool constant = true;
+        Code               total;
+        bool               constant = true;
+        std::vector<Value> terms;
         for (int k = first; k <= last; ++k) {
             places_[name]   = Value(Number(k));
             const Code term = Emit(expression->Body());
             constant        = constant && term.constant;
+            if (constant) terms.push_back(*term.constant);
             total           = k == first              ? term
                               : expression->Product() ? ProductOf(Product(total, term), total, term)
                                                       : SumOf(Broadcast(total, term, Added), total, term);
@@ -2973,7 +3028,13 @@ private:
             places_[name] = *outer;
         else
             places_.erase(name);
-        return Answer(constant ? Parted(Folded(expression), PartOf(total), {&total}) : total);
+        const auto exact = [&] {
+            Value value = terms[0];
+            for (std::size_t k = 1; k < terms.size(); ++k)
+                value = expression->Product() ? value * terms[k] : value + terms[k];
+            return value;
+        };
+        return Answer(constant ? Parted(Exact(exact), PartOf(total), {&total}) : total);
     }
     PExpression<Value> visit_other(Expression<Value>*) override { throw Reason("this expression"); }
 
@@ -3187,7 +3248,7 @@ private:
             while (sequence.bases.count(first)) first += sequence.period;  // the general clauses
             for (const auto& [read, lags] : sequence.reads) {
                 const Sequence& other = sequences_.at(read);
-                if (other.bases.empty() || other.guarded.empty()) continue;
+                if (other.bases.empty() || other.guarded.empty() || Descends(read)) continue;
                 const int reached = first - *lags.rbegin();
                 if (reached < other.start)
                     throw Refusal(name,
@@ -3324,6 +3385,29 @@ private:
 
     // The whole part of n/a, a > 0, as floor gives it.
     static int Floor(int n, int a) { return n / a - (n % a < 0 ? 1 : 0); }
+
+    // Whether a sequence's first guard always reads the sequence itself at or
+    // before the index asked, through sequences of one clause: below its base
+    // clauses that guard asks lower still, so no guard answers there, as in
+    // the interpreter. A right side not always read is not among the reads.
+    bool Descends(const std::string& name) const {
+        std::vector<std::pair<std::string, int>> next;
+        for (const auto& [read, lags] : sequences_.at(name).guarded.front().guard)
+            next.emplace_back(read, *lags.rbegin());
+        std::set<std::string> seen;
+        while (!next.empty()) {
+            const auto [read, lag] = next.back();
+            next.pop_back();
+            if (read == name && lag >= 0) return true;
+            const Sequence& s = sequences_.at(read);
+            if (!seen.insert(read).second || !s.bases.empty() || !s.guarded.empty() ||
+                !s.definition)
+                continue;
+            for (const auto& [further, lags] : s.reads)
+                next.emplace_back(further, lag + *lags.rbegin());
+        }
+        return false;
+    }
 
     // The first tick of a sequence from step n on.
     static int Tick(const Sequence& sequence, int n) {
@@ -4100,6 +4184,7 @@ private:
     const Scope<Value>*              own_ = nullptr;  // the scope after a point, for one name
     Expansion*                       expansion_ = nullptr;  // the call being compiled, if one is
     int                              expanded_  = 0;        // how deep calls are
+    int                              calls_     = 0;        // how many were compiled
     std::vector<std::shared_ptr<const Scope<Value>>> held_;    // what expansions name
     std::string                                      within_;  // the sequence being compiled
     // Unnamed instances, by the scope that writes them, where it does and
