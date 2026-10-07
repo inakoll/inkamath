@@ -2793,7 +2793,100 @@ that exploring seven domains asked of the interpreter, by how many asked.
   well-conditioned step.
 - **The parts and modulus of a complex number**: a frequency response
   |T(e^{jw})| cannot be written, as `abs` refuses a complex value and nothing
-  gives its real or imaginary part.
+  gives its real or imaginary part. Decided: `re(z)` and `im(z)` built in,
+  and `abs` extended in the prelude:
+
+      abs(x) | im(x) < 0 or im(x) > 0 = absz(re(x), im(x), 2^ilogb(max(abs(re(x)), abs(im(x)))))
+      abs(x) | x < 0 = -re(x)
+      abs(x) | x >= 0 = re(x)
+      absz(a, b, s) = s*((a/s)*(a/s) + (b/s)*(b/s))^(1/2)
+
+  **re and im** are built in as `floor` is, a definition the interpreter
+  starts with whose body is a node the language cannot write: nothing it
+  has takes a complex number apart, a comparison and `floor` refusing one
+  and `'` not conjugating. One node for both, a flag saying which part, on
+  `Number`'s `real` and `imaginary`, which exist. Cell by cell of a matrix,
+  as `floor` is, for nothing. Of an exact number, itself and an exact 0; of
+  a complex one, a part of a pair of doubles, inexact and marked as the
+  pair is. Named as the paper writes Re and Im, lowercase as every name
+  here; a session may define either again, as `floor`, and the prelude
+  keeps its own. `tex` shows `\operatorname{re}(z)`, as any call.
+
+  **abs** is the root of re^2 + im^2, each part first divided by s =
+  2^ilogb of the larger, exactly, so where a double holds the squares it is
+  the double sqrt(a*a + b*b) gives, and elsewhere it neither overflows nor
+  underflows: unscaled, `abs(3*10^200 + 4*10^200*i)` is inf and
+  `abs(3*10^-200 + 4*10^-200*i)` 0. |3+4i| is the double 5, all of it, so
+  printed `5`, but inexact, `frac` refusing it: a complex number is a pair
+  of doubles, and exact ones are not this item. |1+i| is the correctly
+  rounded root of 2, the double `2^(1/2)` is (C153). A real number's is
+  exact, as before. The guard reads `<` and `>`, not `<>`: a whole matrix
+  `<>` 0 answers 1, so abs of a matrix would take the complex clause, where
+  `<` refuses it in abs's words, as now.
+
+  **The real clauses take re(x).** A real value's derivative may be
+  complex: T(e^{iw}) = 1/(e^{iw} - 1/2) is 2 at w = 0, and T' = -4i, so the
+  clause `x` makes the slope of |T| -4i, which `grad_(w = 0) H(w)` answers
+  today; |T| is real and peaks there, its slope 0, re(T'). A defect of
+  today's abs, found writing this spec, fixed by it.
+
+  **grad.** Of a variable at a real point, a part's derivative is the
+  derivative's part, and abs's follows from its clauses: re(conj(z) z')/|z|
+  off 0, and re(z') at 0, as the order of guards gives a real abs's slope
+  at 0. At a complex point neither part is complex differentiable, so
+  where its argument moves and a grad's point has an imaginary part,
+  `re has no complex derivative at z = 1+i`; abs is refused in im's words,
+  its guard reading im first, as hurwitz is in abs's. A holomorphic
+  function keeps its derivative at a complex point, as now.
+
+  **The prelude's refusals.** `hurwitzt`, `hurwitz`, `schurcohn` and
+  `rhoe` read abs only to refuse a complex argument, as the prelude's
+  comment says; abs taking one, they read `max(x, -x)`, which refuses in
+  the same words naming the same number. Tried: with that alone, every
+  golden passes unchanged.
+
+  **Compiled.** Every compiled value is real, a complex literal being
+  refused, "a complex number", so `re(x)` compiles to x and `im(x)` to 0:
+  abs's first guard folds to 0 and its clause away, as a constant guard
+  does, so `inkamath_prelude.h` and the expected headers do not move. A
+  frequency response does not compile: `e^(i*w)` is refused as now.
+
+  Rejected:
+  - **`real` and `imag`**, MATLAB's, NumPy's and C's: longer, and not the
+    paper's.
+  - **A name of its own for |z|**, `cabs` or `mag`: a second way to say a
+    real number's abs, which the paper writes |x| as it writes |z|.
+  - **abs native**, hypot: abs is the prelude's, redefinable and read by
+    the compiler; within an ulp of the root above, and not readable.
+  - **im as re(-i*z)**, one node: 0*inf is a NaN part, and im of an exact
+    number would be inexact.
+  - **re and im refusing a matrix**, as abs does: abs refuses because a
+    function of the prelude with guards does; a built-in node is cell by
+    cell for free, as `floor` is.
+  - **conj**, `re(z) - i*im(z)`: a line a session writes as `round` is,
+    which the magnitude does not need, and which would ask for a quote
+    that conjugates, decided against (README section 2).
+  - **arg**, the phase of a Bode plot: atan2, which the prelude does not
+    have; an item of its own when a model asks.
+  - **abs's real clauses unchanged**: the slope -4i above.
+
+  What moves: no golden and no header. README's section 1 lists `re` and
+  `im` with `floor` and says abs takes a complex number, with the frequency
+  response as its example.
+
+  About 55 lines: 2 of the prelude and 8 edited, 1 of its comment; about
+  50 of C++, the node and its visitors 15, `Matrix` 8, its definitions 6,
+  grad 12, the compiler 8. 15,327 lines at ebf47fd, by `wc -l
+  include/inkamath/*.hpp src/*`. Past 82 the implementation stops and
+  reports.
+
+  Specified in `test/data/spec/cparts.ink`, 43 entries replayed by the spec
+  suite, 34 failing by design, those passing being definitions and
+  `clear` echoing themselves, the refusal of a matrix, a real number's abs
+  and H(0): the response, its parts and slopes exactly with sympy,
+  each rounded to 9 digits with mpmath and none within 0.04 of a digit's
+  half; the range and the marks in Python's doubles through the scaling
+  above.
 - `[done]` **A sequence with parameters read at a constant index, compiled.**
   `--compile` refuses `f(x)_K` anywhere but under `lim`, "a sequence with
   parameters", where the interpreter answers: `det` by Faddeev-LeVerrier in
