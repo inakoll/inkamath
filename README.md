@@ -71,9 +71,13 @@ exp(x)_n=sum_(k=0)^n x^k/!k
 ```
 
 Without an upper bound the sum is the series itself, summed to its limit, and
-`exp` needs neither a sequence nor `lim`: it is an ordinary function.
+`exp` needs neither a sequence nor `lim`: it is an ordinary function. A name
+has one definition, so the sequence goes first:
 
 ```
+>> clear exp
+clear exp
+
 >> exp(x)=sum_(k=0) x^k/!k
 exp(x)=sum_(k=0) x^k/!k
 
@@ -257,7 +261,7 @@ cell of a matrix. `ceil(x) = -floor(-x)` and `mod(a, b) = a - b*floor(a/b)`
 come with it, from a prelude (section 5), and so do `exp`, `log`, `tanh`,
 `sin`, `cos`, `abs`, `max` and `min`. Any other rounding is a line of it,
 by the rule the model needs — `round(x) = floor(x + 1/2)` — and, like `pi`,
-each of them can be defined again.
+each of them can be defined again, and given back by `clear`.
 
 | | |
 |---|---|
@@ -273,6 +277,7 @@ each of them can be defined again.
 | `expr and expr` `expr or expr` | both, either: 1 or 0, the right read only if needed |
 | `name = expr` | definition (section 3) |
 | `name \| cond = expr` | a definition in cases (section 3) |
+| `clear name` | drop a definition (section 3) |
 | `lim name` | the limit of a sequence (section 4) |
 | `name.name` | a name of an instance or a file (section 5) |
 | `use file` | read a file's definitions (section 5) |
@@ -623,8 +628,36 @@ If no clause applies, the interpreter says so rather than inventing a value:
 error: a comparison needs real numbers, not i
 ```
 
-A name has one definition. Defining it again replaces what was there — a
-plain definition clears the guarded clauses with it.
+A default written last is a paper's "otherwise", and means the same:
+
+```
+>> clamp(x) | x > 1 = 1
+clamp(x) | x > 1 = 1
+
+>> clamp(x) = x
+clamp(x) = x
+
+>> clamp(5)
+1
+```
+
+A name has one definition, and a clause written again replaces itself where it
+stands. A plain definition alone is replaced parameters and all, as nothing
+else goes with it; beside other clauses, or in a sequence, a clause takes the
+definition's parameters, defaults included, and one that cannot join is
+refused. `clear` drops a whole definition, and the name is then what it is
+beneath — a built-in, the prelude's, or nothing:
+
+```
+>> clamp(x, y) = x
+error: clamp takes (x), so a clause cannot take (x, y); write 'clear clamp' first
+
+>> clear clamp
+clear clamp
+
+>> clamp(x, y) = x
+clamp(x, y) = x
+```
 
 ### 4. Sequences
 
@@ -953,8 +986,9 @@ once, holds definitions only, and one that cannot be read or parsed loads
 nothing and says where. The prelude that defines `ceil`, `mod`, `exp`, `log`,
 `tanh`, `sin`, `cos`, `abs`, `max` and `min`, and what they call, is included
 bare beneath the session, as the built-ins are: every scope sees it, and a
-session that defines one of its names again does so for itself alone. `exp`,
-`log`, `tanh`, `sin` and `cos` are written in it, accurate to a few units in
+session that defines one of its names again does so for itself alone, and
+clearing it gives the prelude's back. `exp`, `log`, `tanh`, `sin` and `cos`
+are written in it, accurate to a few units in
 the last place of a double, by the operations a compiled step performs:
 `exp(x)` is 2^k e^r, r = x - k ln 2 and e^r a polynomial, `log` reduces by
 `ilogb`, the power of two at or below its argument, and `sin` and `cos` by the

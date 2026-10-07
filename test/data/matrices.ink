@@ -287,7 +287,11 @@ T[j<=3, k<=3] | j == k = 7
 >> T
 error: the clauses of T give it different sizes
 
-# Writing the whole matrix again starts it over, as it does a sequence.
+# Written whole, a matrix joins its cells' clauses, so starting it over
+# takes 'clear', as a sequence does.
+>> clear T
+clear T
+
 >> T = [1 2; 3 4]
 T = [1 2; 3 4]
 

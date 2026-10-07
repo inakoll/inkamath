@@ -1682,6 +1682,10 @@ closures need one anyway, and can bring it.
 | C149 `[fixed]` | **Whether a term answered depended on what the session had asked before it.** The million steps were a line's, and a memoised term cost its caller one step when remembered and its whole body when not, so a line refused cold answered once the terms below it were remembered: beside `w_n = f(w_(n-1))/2`, f summing ten thousand calls, `w_30` gave up cold and answered after `w_20`, and so did a logistic regression's `w_100` after `w_50` and a network's `E_30` after `E_20`. Phase 9 calls steps an accident of how a term is evaluated; this one was the memo's. Approved as a change of behaviour: each memoised term now has a million steps of its own, from none, not counting the terms it computes, which have theirs, and its caller takes one step for it, remembered or not, so a term's steps no longer depend on the memo. Work that is not memoised -- a sum, a plain definition, a local's call -- counts against the term or line it is in, as before; a grad's memo lasts one grad, so its walked calls count against what asked it, and fastgrad.ink's softplus still runs out walked. Depth is unchanged, and still depends on the memo, which a fill (C69) makes up for. A fill's terms each start from none, the term asked included. What bounds time: a line computes at most ten million terms, `max_filled`, as a fill goes ten million terms from its base, and a filled term counts afresh as a line of its own does; so a line's time is bounded as a fill's was, and a tree of 2^40 distinct calls gives up after ten million terms in 13 s, where it gave up after a million steps in 0.6 s. That count depends on the memo as time does, but a line that answered had a million steps and took about one for each term it computed, so none is refused by it. `--check` holds a term refused by either as out of steps (C148). Only refused lines moved: `w_25` and `lim p` answer in recursion.ink, each over a million steps that gave up cold, and drift.ink's `toil`, whose limit of thousand-term sums now answers, reads such a sum at each of a thousand terms to stay out of steps. 28 lines. |
 | C151 `[fixed]` | **`--check` held a sequence from step 0 when its lowest base clause was above it.** Beside `v_0 = 0`, a sequence `x_1 = 1`, `x_n = x_(n-1)/2` starts at 1 in the step, whose header guards it so, but the program held it from 0, "x: 0 at 0, where the interpreter gives none: x has no clause for index 0", and failed: a sequence with base clauses had its start set and not its first term, which the program reads. Both are set now, in 1 line; `late` in `test/compile/drift.ink` holds it. Found transcribing Reddi, Kale and Kumar (ICLR 2018), whose iterates start at 1. |
 | C152 `[fixed]` | **`tex` set a fraction raised to a power without its parentheses.** `(a/b)^2` was `\frac{a}{b}^2`. A fraction binds as a power now, so a power, a factorial, a transpose or an index parenthesises it, `(\frac{a}{b})^2`, as `(x + 1)^2` is, in 1 line; latex.ink holds it. Found transcribing Reddi, Kale and Kumar (ICLR 2018). |
+| C154 `[fixed]` | **A clause's default was never read.** C51 compared the names of a clause's parameters with the definition's and not their defaults, so beside `g(x, k = 2) \| x > 0 = k*x`, `g(x, k = 3) \| x < 0 = k` was accepted, listed by `?g`, and `g(-1)` answered 2: one call binds the parameters once, with the first clause's defaults. The same for a default the first clause lacks, which C51 named and did not refuse. Fixed by *Cases in a paper's order, and `clear`* (next in line), which compares the tokens between a clause's parentheses, defaults and all, and refuses a clause whose defaults differ as one whose names do; `clauses.ink` holds it. |
+| C158 `[fixed]` | **A refusal misquoted a clause's parameters.** *Cases in a paper's order* showed them as the tokens it compares, spaced one by one, so beside `gm(x, k = [1 -2]) \| x > 0 = k`, `gm(x) = x` was refused with "gm takes (x, k = [1 - 2])", one element where two were written, and `k=f(1)` read `k = f (1)`. A refusal quotes them as written now, as `?gm` shows the clause, in 14 lines; the tokens stand in only for a line's local, which keeps no text. `clauses.ink` holds it. Found reviewing *Cases in a paper's order*. |
+| C159 `[fixed]` | **Two left sides that differed by a space that parts two elements were one.** A clause is named by the tokens of its left side (C46, C55), and C154 compares the defaults by them, but the tokens keep no space, and inside a matrix or an argument list a space before a sign, or before a bracket, begins the next element: `[1 -2]` is two elements and `[1 - 2]` one, `[pi [1]]` two and `[pi[1]]` one. So `sn(x) \| x == [1 - 2][1,1] = 20` replaced `sn(x) \| x == [1 -2][1,1] = 10`, and beside `gm(x, k = [1 -2]) \| x > 0 = k` a clause with the default `[1 - 2]` joined, and `gm(-1)` answered `[1, -2]`. The parser marks the space that parts two elements now, and the left side keeps it, in 9 lines; a space anywhere else still names nothing, so `x > 0 -1` and `x > 0 - 1` are one guard. conditional.ink and clauses.ink hold it. Found reviewing *Cases in a paper's order*. |
+| C160 `[fixed]` | **`use` refused to bring in a name of the file's own.** *Cases in a paper's order* binds a name brought in only over nothing or itself, and `use eig (cp, eig)` bound the file `eig`, then refused the function `eig` over it, "eig is already defined; write 'clear eig' first", which `clear eig` could not help, and left the file bound, where a refused `use` binds nothing. Twenty-eight explorations of eigenvalues and H-infinity norms stopped at their first line. The name takes the file's place now, as it did, in 1 line; `cases.ink` defines `cases`, and `clauses.ink` brings it in, twice. Found reviewing *Cases in a paper's order*. |
 
 **Measure instructions, not the clock.** One of those changes made the matrix
 workload 20 per cent slower by the clock and not by a single instruction: with
@@ -5258,3 +5262,105 @@ that exploring seven domains asked of the interpreter, by how many asked.
   48 lines of sources more, where about 150 were planned: 40 in `compile.hpp`
   and 8 in `check.hpp`; C122's 1; and by its review, C124 to C127, 15, and
   its rulings, 14. 14,416 lines in all, after `trig`.
+- `[done]` **Cases in a paper's order, and `clear`.** A paper writes the cases first
+  and "otherwise" last, `clamp(x) | x > 1 = 1` then `clamp(x) = x`, and here
+  the second line starts the definition over and drops the guard (C11):
+  `clamp(5)` is 5. A sequence written so, `s_n | n > 1 = 1` then `s_n = n`,
+  and a definition by cells keep their guards, so one order means two
+  things. It bit a model: a ReLU so written in a model's body was 0
+  everywhere and its slope 0, and the unit meant to die never lived. The
+  restart was the prompt's way to start a definition over, and is as much a
+  way to lose one without a word.
+
+  Decided: nothing a name holds is dropped but by `clear`, at the prompt as
+  in a file and a model's body, since a transcript, a file run and a file
+  used are the same lines and should mean one thing.
+  - A clause joins its name's definition in the scope it is written in. An
+    unguarded one for every call, plain or general, is the fallback, tried
+    after the guards wherever it was written, as now. Written again, a
+    clause replaces itself where it stands (C45, C46); a plain one that is
+    the whole definition is replaced parameters and all, since nothing else
+    goes with it, so `f(x) = x` then `f(x, y) = x + y` needs no `clear`.
+  - A clause that cannot join is refused, and says how to start anew, "; write
+    'clear f' first", but in a model's body, where `clear` cannot be written:
+    other parameters beside other clauses (C51, which a plain clause escaped),
+    defaults among them (C154), a clause without an index on a sequence or
+    with one on what is not (C70 dropped the value), any clause on a model or
+    a file used. A model is one statement and replaces a model only; `use`
+    binds a file, or brings in a name, only over nothing or the same.
+  - `clear f`, a word at the start of a line as `use` is and not reserved,
+    drops what `f` is in the scope it is written in: clauses, a model, an
+    instance, a file used or a name brought in. The name then means what it
+    means beneath, the prelude's or a built-in, or nothing, and `?f`, `tex
+    ?f` and every caller follow, the memo going as with any definition. A
+    name defined only beneath is refused, "abs comes with the language, so
+    it cannot be cleared", as are a name defined nowhere and anything after
+    the name: no single clause is removed. A model's body holds definitions,
+    so not `clear`; a file used reads it as the session does. A file is not
+    read again for being cleared and used again.
+  - Unchanged: a session's clause on a name of the prelude or a built-in
+    starts a definition of the session's own (trig), which the clauses after
+    it join; one on a name brought in by `use` joins the session's copy,
+    never the file's. `--compile` runs a file as the session does and
+    compiles the clauses it leaves, with no change: on a prototype the ReLU
+    compiles to `b > 0 ? b : 0`, its slope to `b > 0 ? 1 : 0`.
+
+  Rejected: the prompt keeping the restart while files accumulate, since a
+  transcript, a file run and `--compile`'s file are run as the prompt is, so
+  the trap would stay where models are written and one text mean two
+  things. `f(x) := x` to restart: a paper reads `:=` as `=`, so the
+  difference would be invisible on the page and in `tex`, and it is a
+  second way to write a definition (MANIFESTO, *What it is not for*); `clear`
+  says what nothing says now, and gives a prelude's name back. A marker
+  word, `new f(x) = x`: the same in more letters. Removing one clause: a
+  syntax for an edit nobody has needed, which `clear` and rewriting say.
+  Restarting where a clause cannot join: the trap in another shape.
+  Reserving `clear`: `use` is not.
+
+  What moves, by a prototype on every test: `matrices.ink`'s `T = [1 2; 3 4]`,
+  "starts it over", keeps its cells and gains `clear T` before it;
+  `references.ink`'s C11 entries, `m=5` after `m_n` and `p_0=1` after `p=9`,
+  are refused and gain a `clear` each; `sequences.ink`'s C70 entry, `rv_n | n
+  > 0 = 1` after `rv = 5`, is refused, `?rv` is `rv = 5` and `rv_1` "rv is not
+  a sequence"; `conditional.ink`'s two C51 refusals gain the way out;
+  `trig.ink`'s "a plain definition starts over" goes, and the comments that
+  say the old rule become this one: `conditional.ink`'s "No 'otherwise'
+  clause", `references.ink`'s "a plain definition replaces whatever the name
+  held" and "a clause turns a plain definition into a sequence", and
+  `matrices.ink`'s "starts it over". README's `exp(x)=sum_(k=0) x^k/!k`, after
+  the sequence `exp`, is refused and gains `clear exp`; section 3's "a plain
+  definition clears the guarded clauses with it" becomes this rule, with
+  `clamp`, the operator table gains `clear name`, section 1's "can be defined
+  again" adds that `clear` gives it back, and section 5 says a prelude's name
+  cleared is the prelude's again. No header, check report or other golden
+  moves. The rows of C11, C51 and C70 and phase 10's "the way to start over"
+  are history and stay.
+
+  About 30 lines of sources net: the restart and C70's erasure out, about
+  13; the refusals 12, `clear` 15, the model's body 2, the plain clause
+  alone 2. 14,653 lines in all now, about 14,685 after; past 45 net the
+  implementation stops and reports.
+
+  Specified in `test/data/spec/clauses.ink`, 115 entries, 47 failing, with
+  `test/data/cases.ink` for `use`: the cases in a paper's order at the
+  prompt, in a model's body under `grad` and in a file; sequences and cells
+  as they are; a matrix written whole after its cells; each refusal; models,
+  files and `use`; the prelude; callers and the memo; and `clear` itself.
+
+  Built as specified, with the review's rulings: the spec is the golden
+  `clauses.ink`, 116 entries with `clear` in a file used, which `cases.ink`
+  holds; the goldens and README passages listed above moved, and no header or
+  report. Departures. A refusal quotes a clause's parameters as written, as
+  `?f` shows them, and a line's local, which keeps no text, as the tokens it
+  compares, spaced (C158). `use`
+  checks every name it brings in before it binds the file, so one refused
+  binds nothing. The advice is given where the definition lives, the session
+  or a file, and not in a model's body or for a line's local. Found on the way
+  and registered: C154, fixed here. 40 lines of sources where about 30 were
+  planned, and 45 was the limit: 12 in `reference.hpp`, the restart and C70's
+  erasure out against the refusals, the clause on a model or a file, the plain
+  clause alone and the advice, with C154's tokens in place of the names, 9
+  more than their join; 17 in `reference_stack.hpp`, a model, a file and a
+  name brought in only over nothing or their like, in a model's body too, and
+  `clear`; 11 in `interpreter.hpp`, the word, and `clear` refused in a model's
+  body. 14,727 lines in all, after `budget`. By its review, C158 to C160, 24 lines.

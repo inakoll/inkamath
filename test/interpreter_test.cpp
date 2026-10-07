@@ -187,6 +187,9 @@ TEST_CASE("fastgrad") {
 TEST_CASE("reddi") {
     check_transcript("reddi.ink");
 }
+TEST_CASE("clauses") {
+    check_transcript("clauses.ink");
+}
 TEST_CASE("readme") {
     check_readme();
 }
