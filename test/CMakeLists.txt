@@ -127,7 +127,7 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brin
                          grad:swing thresholds:dies thresholds:beat stable:moments stable:peak
                          reddi:thm1 reddi:fixed reddi:gen
                          kahan:sums kahan:muller kahan:rounded kahan:surprise kahan:solveur
-                         rump:rump)
+                         rump:rump signatures:inv)
     string(REPLACE ":" ";" checked ${checked})
     list(GET checked 0 file)
     list(GET checked 1 instance)
@@ -309,6 +309,48 @@ add_custom_target(sized_headers ALL DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/compile/
 add_test(NAME compile_sized_header
          COMMAND ${CMAKE_COMMAND} -E compare_files ${CMAKE_CURRENT_BINARY_DIR}/compile/inferred/sized.h
                  ${CMAKE_CURRENT_BINARY_DIR}/compile/bounded/sized.h)
+set_tests_properties(check_inv_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^inv: 100 steps from 0, against exact values\ninv\\.A: within 0\ninv\\.c: within 0\ninv\\.g: within 0\ninv\\.t: within 0\ninv\\.u: within 0\ninv\\.v: within 0\ninv\\.o: within 0\ninv\\.s: within 0\n$")
+# Each size its signature names folds where tr is called, so the header is the
+# one written with every size a number, byte for byte (DESIGN.md, a size bound
+# by a signature); tr2 is tr at 2x2.
+file(READ compile/signatures.ink signatures_named)
+set(signatures_numbered "${signatures_named}")
+function(numbered named number)
+    string(FIND "${signatures_numbered}" "${named}" at)
+    if(at EQUAL -1)
+        message(FATAL_ERROR "compile/signatures.ink no longer has ${named}")
+    endif()
+    string(REPLACE "${named}" "${number}" signatures_numbered "${signatures_numbered}")
+    set(signatures_numbered "${signatures_numbered}" PARENT_SCOPE)
+endfunction()
+numbered("tr(M[j<=n, k<=n]) = sum_(j=1)^n" "tr(M) = sum_(j=1)^3")
+numbered("c2(M[j<=n, k<=n])" "tr2(M) = sum_(j=1)^2 M[j,j]\n    c2(M)")
+numbered("sq(v[j<=n]) = sum_(j=1)^n" "sq(v) = sum_(j=1)^3")
+numbered("outer(x[j<=m], y[k<=n])[j<=m, k<=n]" "outer(x, y)[j<=3, k<=2]")
+numbered("u_n = tr([n" "u_n = tr2([n")
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS compile/signatures.ink)
+file(CONFIGURE OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/compile/numbered/signatures.ink
+     CONTENT "${signatures_numbered}" @ONLY)
+foreach(variant IN ITEMS named numbered)
+    set(source ${CMAKE_CURRENT_SOURCE_DIR}/compile/signatures.ink)
+    if(variant STREQUAL numbered)
+        set(source ${CMAKE_CURRENT_BINARY_DIR}/compile/numbered/signatures.ink)
+    endif()
+    add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/compile/${variant}/signatures.h
+        COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/compile/${variant}
+        COMMAND inkamath_cli --compile ${source} invariants
+                -o ${CMAKE_CURRENT_BINARY_DIR}/compile/${variant}/signatures.h
+        DEPENDS inkamath_cli ${source}
+        VERBATIM)
+endforeach()
+add_custom_target(signatures_headers ALL
+                  DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/compile/named/signatures.h
+                          ${CMAKE_CURRENT_BINARY_DIR}/compile/numbered/signatures.h)
+add_test(NAME compile_signatures_header
+         COMMAND ${CMAKE_COMMAND} -E compare_files
+                 ${CMAKE_CURRENT_BINARY_DIR}/compile/named/signatures.h
+                 ${CMAKE_CURRENT_BINARY_DIR}/compile/numbered/signatures.h)
 set_tests_properties(check_cls_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^cls: 100 steps from 0, against exact values until 0 and inexact ones from there\ncls\\.z: within 0\n(cls\\.[a-z]+: within [0-9.e+-]+${about}\n)+$")
 set_tests_properties(check_ball_report PROPERTIES PASS_REGULAR_EXPRESSION

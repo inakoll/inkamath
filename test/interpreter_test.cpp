@@ -193,6 +193,9 @@ TEST_CASE("clauses") {
 TEST_CASE("approximated") {
     check_transcript("approximated.ink");
 }
+TEST_CASE("signatures") {
+    check_transcript("signatures.ink");
+}
 TEST_CASE("kahan") {
     check_transcript("kahan.ink");
 }

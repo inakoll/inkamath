@@ -202,6 +202,11 @@ private:
             for (std::size_t k = 0; k < p.parameters_names().size(); ++k) {
                 const std::string& parameter = p.parameters_names()[k];
                 left += (k ? ", " : "") + Name(parameter);
+                const auto& size = p.sizes()[k].bounds;
+                for (std::size_t b = 0; b < size.size(); ++b)
+                    left += (b ? " \\times " : " \\in \\mathbb{R}^{") +
+                            (size[b].second ? size[b].first : Name(size[b].first));
+                if (!size.empty()) left += "}";
                 const auto fallback = p.parameters_dict().find(parameter);
                 if (fallback != p.parameters_dict().end())
                     left += " = " + Of(*fallback->second).text;

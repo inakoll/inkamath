@@ -1680,6 +1680,7 @@ closures need one anyway, and can bring it.
 | C147 `[fixed]` | **The prelude's functions refused a complex number in their walk's words.** `exp(i*pi)` was "a comparison needs real numbers, not i*~3.14159265", the first guard of the walk speaking, where `sin([1 2])` names sin. exp, log, tanh, sin, cos and ilogb now say "exp needs real numbers, not i*~3.14159265" before they walk, in 6 lines, under grad too; fastprelude.ink, trig.ink and fastgrad.ink moved with it, `exp(~1 + i)`, `cos(i)`, `sin(~1 + i)` and `grad_(x = ~1 + i) exp(x)`, and fastprelude.ink adds `exp(i*pi)`, `log(i)` and `tanh(i)`. `abs`, `max` and `min` refuse as README's `abs` does. |
 | C148 `[fixed]` | **`--check` called a term the interpreter ran out of steps for a disagreement.** A term past the million steps is no answer, but the program held the step to it as to a refusal, "toil.y: 25.40430835089893 at 2, where the interpreter gives none: evaluation gave up after 1000000 steps", and failed. Such a term is not compared now, and the sequence's line says so, "toil.y: within 0; the interpreter ran out of steps at 2, not compared", in 20 lines; `toil` in `test/compile/drift.ink` holds it. The budget is still a line's, so whether a term runs out depends on what the session asked before it: a decision for the language, not taken here, but in C149. |
 | C149 `[fixed]` | **Whether a term answered depended on what the session had asked before it.** The million steps were a line's, and a memoised term cost its caller one step when remembered and its whole body when not, so a line refused cold answered once the terms below it were remembered: beside `w_n = f(w_(n-1))/2`, f summing ten thousand calls, `w_30` gave up cold and answered after `w_20`, and so did a logistic regression's `w_100` after `w_50` and a network's `E_30` after `E_20`. Phase 9 calls steps an accident of how a term is evaluated; this one was the memo's. Approved as a change of behaviour: each memoised term now has a million steps of its own, from none, not counting the terms it computes, which have theirs, and its caller takes one step for it, remembered or not, so a term's steps no longer depend on the memo. Work that is not memoised -- a sum, a plain definition, a local's call -- counts against the term or line it is in, as before; a grad's memo lasts one grad, so its walked calls count against what asked it, and fastgrad.ink's softplus still runs out walked. Depth is unchanged, and still depends on the memo, which a fill (C69) makes up for. A fill's terms each start from none, the term asked included. What bounds time: a line computes at most ten million terms, `max_filled`, as a fill goes ten million terms from its base, and a filled term counts afresh as a line of its own does; so a line's time is bounded as a fill's was, and a tree of 2^40 distinct calls gives up after ten million terms in 13 s, where it gave up after a million steps in 0.6 s. That count depends on the memo as time does, but a line that answered had a million steps and took about one for each term it computed, so none is refused by it. `--check` holds a term refused by either as out of steps (C148). Only refused lines moved: `w_25` and `lim p` answer in recursion.ink, each over a million steps that gave up cold, and drift.ink's `toil`, whose limit of thousand-term sums now answers, reads such a sum at each of a thousand terms to stay out of steps. 28 lines. |
+| C150 `[fixed]` | **A parameter that is not a name was dropped in silence.** A function's parameters are parsed as an expression and its names alone kept, so `h(x, 2) = x` took one argument and answered `h(1)`, `h(2) = 3` took none, and `tr(M[j<=n, k<=n]) = sum_(j=1)^n M[j,j]` none, "tr takes no arguments", its body reading M and n as the session's. Found specifying a size bound by a signature, which closes it: a parameter is a name, `x` or `x = 1`, or a name and its size, `v[j<=n]`, and anything else is refused where written, "a parameter is a name, as 'x' or 'x = 1', or a name and its size, as 'v[j<=n]'"; `signatures.ink` holds it. |
 | C151 `[fixed]` | **`--check` held a sequence from step 0 when its lowest base clause was above it.** Beside `v_0 = 0`, a sequence `x_1 = 1`, `x_n = x_(n-1)/2` starts at 1 in the step, whose header guards it so, but the program held it from 0, "x: 0 at 0, where the interpreter gives none: x has no clause for index 0", and failed: a sequence with base clauses had its start set and not its first term, which the program reads. Both are set now, in 1 line; `late` in `test/compile/drift.ink` holds it. Found transcribing Reddi, Kale and Kumar (ICLR 2018), whose iterates start at 1. |
 | C152 `[fixed]` | **`tex` set a fraction raised to a power without its parentheses.** `(a/b)^2` was `\frac{a}{b}^2`. A fraction binds as a power now, so a power, a factorial, a transpose or an index parenthesises it, `(\frac{a}{b})^2`, as `(x + 1)^2` is, in 1 line; latex.ink holds it. Found transcribing Reddi, Kale and Kumar (ICLR 2018). |
 | C153 `[fixed]` | **A power of 1/2 was not a correctly rounded square root.** `x^(1/2)` was `pow(x, 0.5)` in the interpreter and the header, and glibc's pow is not correctly rounded: `(1 - 1/2^53)^(1/2)` answered 1, where the root rounds to 1 - 1/2^53, so Kahan's 128 roots then 128 squares (2006, §10) gave 1 for every x > 0, and `--check`, both sides sharing the error, could not see it. Of a positive real number it is `sqrt` now, in both, and `sqrtf` in a float header, in 6 lines; exact.ink and `compile_c153` in `test/cli.cmake` hold it. No golden or expected header moved; reddi's reports, left loose for a libm's pow, are exact now. A negative or complex base keeps its branch (C33), and `(-0)^(1/2)` was -0 in a header, as C's sqrt has it, until C163. Found transcribing Kahan (2006). |
@@ -1695,6 +1696,7 @@ closures need one anyway, and can bring it.
 | C163 `[fixed]` | **`(-0)^(1/2)` was -0 in a header and +0 in the interpreter.** C153 made a power of 1/2 C's sqrt, which keeps the sign of zero, where the interpreter's power gives +0; `--check` holds -0 equal to 0 and could not see it, though `1/x^(1/2)` is -inf in the step and inf in the interpreter. The header writes `sqrt(0.0 + x)` now, -0 plus +0 being +0 and every other x itself, `sqrtf(0.0f + x)` in a float's, in 1 line; `radix` in `test/compile/drift.ink` holds it. No expected header moved, none having a power of 1/2; `compile_c153`'s lines in `test/cli.cmake` move with it. |
 | C164 `[fixed]` | **A float's check program with an infinite value did not build under Clang's warnings.** `--check` writes the interpreter's terms, their estimates and each guard's distance from its threshold into arrays of doubles, an infinity as `INFINITY` and a NaN as `NAN`, both floats in C; a float's program is built with `-Wdouble-promotion`, which Clang reads into the promotion of either, so checking in float a guard infinitely far from its threshold, `1/x_n^(1/2) > 0` at -0, stopped with -Werror. GCC does not warn of a macro's constant. They are written `(double)INFINITY` and `(double)NAN` now, in 2 lines; `radix` in `test/compile/drift.ink`, checked in float, holds it. Found checking C163 in float. |
 | C165 `[fixed]` | **A part a clause lacked, chosen by an approximated guard, marked nothing it reached.** Under `grad` such a part stays lacking, so that nothing it leaves constant moves, and grad marked its answer only where the body had no derivative at all: beside `gc(x) = x` and `gc(x) \| x < c = 3`, `grad_(x = rt_20) (gc(x) + x)` answered 1 unmarked, where 2 is right, and `[gc(x) x]` and a matrix by its cells likewise, against the specification's "a part the clause chosen lacks is 0 approximated". A grad that differentiated a clause such a guard chose marks its whole answer now, in 2 lines; approximated.ink holds it. Found reviewing *A truth read from an approximated number*. |
+| C166 `[fixed]` | **A clause written again kept the sizes of the one it replaced.** The sizes are the definition's, stated in one clause for all, and were held as every clause written had stated them: after `f(x[j<=n])_m = n`, `f(x)_m = 1` replaced the only clause stating a size and `?f` showed it alone, yet `f([1 2])_0` was "f takes x[j<=n], not a 1x2 matrix". A clause is still checked against those before it, as the names are (C51), but the sizes held are those the remaining clauses state, in 3 lines; signatures.ink holds it. Found reviewing *A size bound by a signature*. |
 
 **Measure instructions, not the clock.** One of those changes made the matrix
 workload 20 per cent slower by the clock and not by a single instruction: with
@@ -5514,3 +5516,127 @@ that exploring seven domains asked of the interpreter, by how many asked.
   were planned: `derivative.hpp` 27, `reference.hpp` 28, `matrix.hpp` 12,
   `number.hpp`, `numeric_interface.hpp`, the evaluator's `and` and `or` and
   the prelude 1 each. 14,836 lines in all, after `fixes10`.
+- `[done]` **A size bound by a signature**, the first step towards eigenvalues:
+  `tr(M[j<=n, k<=n]) = sum_(j=1)^n M[j,j]`, M in R^(n x n), so that a
+  function loops over its argument's size. The eigenvalue prototypes
+  measured one, `dim(A) = on(A)'*on(A)` with `on(A)[i] = A[i,1] ==
+  A[i,1]`, a comparison of the point that `grad` refuses as a jump and the
+  compiler cannot fold. Today the text parses as something else: a parameter
+  that is not a name is dropped in silence (C150), so `tr([1 2; 3 4])` is
+  "tr takes no arguments" and `tex ?tr` sets `\mathit{tr}`.
+
+  Decided. A parameter is a name, `x` or `x = 1`, or a name and its size,
+  by bounds as a model's input states one (C83): `v[j<=n]` a column,
+  `M[j<=m, k<=n]` a matrix, `T[b<=p, j<=m, k<=n]` a tensor, slices first. A
+  bound is a whole number, at least 1, or a name, a size the call binds to
+  the argument's, exact and constant for that call; a name repeated, in one
+  parameter or two, is one size, so `M[j<=n, k<=n]` is square and `dot(x[j<=n],
+  y[j<=n])` takes two columns of one length. A single value is a 1x1 matrix,
+  as a size inferred reads one, and a row is not a column, as for an input.
+  A size that disagrees is refused at the call, before the body, naming the
+  parameters that state it, as written, and what each was given: `tr takes
+  M[j<=n, k<=n], not a 2x3 matrix`, `dot takes x[j<=n] and y[j<=n], not a
+  2x1 matrix and a 3x1 matrix`. It is a statement, not a guard: no other
+  clause is tried. Anything else in a signature is refused where written, `a
+  parameter is a name, as 'x' or 'x = 1', or a name and its size, as
+  'v[j<=n]'`, and a bound that is neither, `a size is a whole number or a
+  name, as 'v[j<=3]' or 'v[j<=n]'`.
+
+  A size is bound as a parameter is: the body alone sees it, as a sum's
+  bound, a number, an index, a cell's bound or an argument, `id(n)`, and it
+  hides the session's name. That answers *Sizes inferred*'s objection to
+  `[j<=n]`, whose meaning would change the day a global n is defined: n is
+  bound here as x is in `f(x)`. A model's input reads the names in its
+  bounds and binds none, since the model is compiled before any argument
+  exists; a function is compiled where it is called, at its argument's
+  shape. The index names, j and k, bind nothing: they say which bound is
+  which, and the body may reuse them, as tr's sum and `rev(v[j<=n])[j<=n]`'s
+  cells do. Binding them was rejected, a value of j meaning nothing outside
+  a cell. A size named as a parameter, the definition's index or one of its
+  cells' indices is refused, `bad has a parameter and a size named n`;
+  reading the parameter, as a model's bound does, was rejected as a second
+  way to state one size, `f(n, x[j<=n])` saying nothing `f(x[j<=n])` does
+  not.
+
+  The sizes are the definition's, as its parameters' names are (C51):
+  stated in one clause, they hold for every clause and are bound once per
+  call, a clause with the names alone taking them, so a base clause need
+  not repeat them; two that state different sizes are refused, the
+  names of their indices aside, `fm takes A of size n x n, so a clause
+  cannot take it of size p x p; write 'clear fm' first`. Each clause's own
+  was rejected: a guard would see n in one clause and not the next. A
+  parameter binds its sizes as it is bound, so a default reads the sizes of
+  the arguments given, `scale(v[j<=n], s = n)`, and a default is held to its
+  parameter's size and gives it, `pad(v[j<=n] = [1; 2])`; one that reads a
+  size stated by its own parameter or a later one is refused where written,
+  `late's default for s reads the size n, not stated before it`. A
+  repeated index in a signature binds nothing, so `M[j<=n, j<=n]` means
+  `M[j<=n, k<=n]`. Refusing every such repetition, in signatures and model
+  inputs alike, is queued as *Refuse a repetition that adds nothing*.
+
+  Nothing new elsewhere. The memo keys a call by its arguments and their
+  shapes (C50), the sizes a function of them; `sum`, `lim` and a function's
+  sequence read a size as a parameter. Under `grad` a size is a constant,
+  the shape never moving. `?name` prints as written; `tex` sets a size as an
+  input's, `\operatorname{tr}(M \in \mathbb{R}^{n \times n})`, each clause
+  as written. Compiled, a call's sizes are its argument's extent, folded
+  where it is called, and a disagreement is refused in the interpreter's
+  words; `--check` needs nothing. The prototypes' characteristic polynomial,
+  Faddeev-LeVerrier, needs no `dim`:
+
+      id(n)[j<=n, k<=n] = j == k
+      fm(A)_0 = 0*A
+      fm(A[j<=n, k<=n])_m = A*fm(A)_(m-1) + fc(A)_(m-1)*id(n)
+      fc(A)_0 = 1
+      fc(A)_m = -tr(A*fm(A)_m)/m
+      cp(A[j<=n, k<=n])[j<=n+1] = fc(A)_(j-1)
+      det(A[j<=n, k<=n]) = (-1)^n*fc(A)_n
+
+  and `grad_(A = [1 2; 3 4]) det(A)` is the cofactor matrix. It does not
+  compile: `fc(A)_n` is a function's sequence read at an index, "a sequence
+  with parameters", which *A sequence with parameters read at a constant
+  index, compiled* lifts.
+
+  Rejected besides: a type, `M : R^(n x n)`, rejected for inputs as a
+  second way to write a size beside bounds; `rows(M)`, which no paper writes
+  (*Sizes inferred*); `M[n, n]`, which reads a cell; and sizes for a
+  model's parameters, `k[j<=2] = [1; 2]`, refused as now, which nothing has
+  asked for.
+
+  About 105 lines: the signature read and its refusals 30, the definition's
+  sizes and the clauses' agreement 12, binding and checking with its words
+  35, shared by the interpreter's two calls, `grad`'s and the compiler's,
+  `tex` 6, the compiler's constants 15, the rest 7. The prototypes' guess of
+  40 to 70 counted the binding alone. Past 160 the implementation stops and
+  reports. 14,653 lines at eee8d5e, by `wc -l include/inkamath/*.hpp src/*`.
+
+  Specified in `test/data/spec/signatures.ink`, 73 of its 103 entries
+  failing, those passing being definitions echoing themselves, `?tr` and
+  `n`; and in `test/compile/signatures.ink`, a model calling tr at two
+  shapes, whose header is to be the one its sizes written as numbers give,
+  byte for byte, and whose `--check` report is exact, with one refusal; both
+  wired with the implementation. README's section 3 gains `tr` with the
+  implementation.
+
+  Built as specified, but for the overrun's ruling: the spec is the golden
+  `signatures.ink`, 102 entries, the refusal of a parameter's repeated
+  index queued with its entry (above); `test/compile/signatures.ink`'s
+  header is its numbered twin's, byte for byte, `inv`'s report is exact and
+  its refusal is a case of `cli.cmake`; README's section 3 gains `tr` and a
+  size hiding a session's name, and section 5 a model's bound reading one.
+  Departures. A function's parameter and a model's input are read by one
+  helper, and `floor` is given its parameter as a list, as the parser gives
+  one. The definition binds its defaults and its sizes,
+  `Reference::BindDefaults`, for the interpreter's calls and `grad`'s; the
+  compiler binds its own, one default and its sizes at a time, by the same
+  measure. A bound that is not whole, `x[j<=2.5]`, is refused as an index
+  is, "an index must be a whole number, not 2.5". About 105 lines planned,
+  161 landed, past the stop line by decision: the first build was 197, a
+  review for size took out 29, mostly by sharing what a model's input and
+  `Reference::Size` already had, and the ruling 7, the refusal and a line it
+  freed. `reference.hpp` 105, the definition's sizes, their agreement and
+  their names, and binding and measuring a call's, with `BindDefaults`
+  moved there; `parameters.hpp` 57, reading a parameter; `compile.hpp` 9;
+  `latex.hpp` 5; `extent.hpp` 3; `reference_stack.hpp` 2; `interpreter.hpp`
+  -20, a model's input read by the shared helper. 15,004 lines in all,
+  after `fixes11`.

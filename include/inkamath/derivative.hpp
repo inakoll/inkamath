@@ -357,7 +357,7 @@ private:
             typename ReferenceStack<T>::Frame  frame(stack_);
             ParametersDefinition<T>::Bind(definition.captured, stack_);
             for (const auto& [name, jet] : arguments) stack_.BindValue(name, *jet[0]);
-            definition.Clauses().front().parameters.BindDefaults(call, ordinary_);
+            definition.BindDefaults(call, ordinary_);
             const Local local(*this);
             for (const auto& argument : arguments) frames_.back().push_back(argument);
             Hidden(definition, arguments);
