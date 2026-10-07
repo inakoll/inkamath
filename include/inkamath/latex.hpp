@@ -280,8 +280,10 @@ private:
             const bool        digit = std::isdigit(static_cast<unsigned char>(right.front()));
             return {left + (digit ? " \\cdot " : "\\,") + right, product};
         }
+        // Parenthesised under a power, a factorial or an index, as on paper.
         if (const auto* ratio = dynamic_cast<const DivExpression<T>*>(&e))
-            return {"\\frac{" + Of(*ratio->m_e1()).text + "}{" + Of(*ratio->m_e2()).text + "}"};
+            return {"\\frac{" + Of(*ratio->m_e1()).text + "}{" + Of(*ratio->m_e2()).text + "}",
+                    Level::power};
         if (const auto* power = dynamic_cast<const PowExpression<T>*>(&e)) {
             return {
                 Wrapped(Of(*power->m_e1(), tight), primary) + "^" + Braced(Of(*power->m_e2()).text),

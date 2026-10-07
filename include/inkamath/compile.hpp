@@ -3232,6 +3232,7 @@ private:
         for (auto& [name, sequence] : sequences_) {
             if (sequence.bases.empty()) continue;
             sequence.start = sequence.bases.begin()->first;
+            sequence.first = (sequence.start - sequence.phase) / sequence.period;
             earliest       = std::min(earliest.value_or(sequence.start), sequence.start);
         }
         for (auto& [name, sequence] : sequences_) {

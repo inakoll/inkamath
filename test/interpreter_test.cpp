@@ -184,6 +184,9 @@ TEST_CASE("trig") {
 TEST_CASE("fastgrad") {
     check_transcript("fastgrad.ink");
 }
+TEST_CASE("reddi") {
+    check_transcript("reddi.ink");
+}
 TEST_CASE("clauses") {
     check_transcript("clauses.ink");
 }
