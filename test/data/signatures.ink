@@ -281,6 +281,24 @@ rs(x)_m = 1
 >> rs([1 2])_0
 1
 
+# A guarded clause too, named by its guard and not by the sizes it states
+# (C170).
+>> rg(x[j<=n]) | n > 1 = n
+rg(x[j<=n]) | n > 1 = n
+
+>> rg(x[j<=n]) = 0
+rg(x[j<=n]) = 0
+
+>> rg(x) | n > 1 = 1
+rg(x) | n > 1 = 1
+
+>> ?rg
+rg(x) | n > 1 = 1
+rg(x[j<=n]) = 0
+
+>> rg([1; 2])
+1
+
 # A sequence of a function reads its size in any clause, and its limit is
 # its terms'.
 >> on(n)[j<=n] = 1

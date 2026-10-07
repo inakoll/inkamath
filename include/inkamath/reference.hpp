@@ -273,8 +273,8 @@ public:
         const auto existing =
             std::find_if(clauses_.begin(), clauses_.end(), [&](const Clause<T>& c) {
                 return ai_parameters.guarded()
-                           ? c.parameters.guarded() &&
-                                 c.parameters.signature() == ai_parameters.signature()
+                           ? c.parameters.guarded() && Taken(c.parameters, false, true) ==
+                                                           Taken(ai_parameters, false, true)
                            : !c.parameters.guarded() && Shape(c) == Shape(clause);
             });
         if (existing != clauses_.end())
@@ -815,8 +815,9 @@ private:
     }
 
     // The tokens between a clause's parentheses, defaults and all: kept apart
-    // to compare, or shown spaced, as '[1 2]' and '[12]' differ (C55).
-    static std::string Taken(const ParametersDefinition<T>& p, bool shown) {
+    // to compare, or shown spaced, as '[1 2]' and '[12]' differ (C55). With
+    // 'rest', and those after them, which name a guarded clause (C170).
+    static std::string Taken(const ParametersDefinition<T>& p, bool shown, bool rest = false) {
         const std::string& s = p.signature();
         std::string        taken;
         int                depth = 0;
@@ -826,7 +827,8 @@ private:
         for (size_t at = s.find('\x1f', 1), next; at != std::string::npos; at = next) {
             next                    = s.find('\x1f', at + 1);
             const std::string token = s.substr(at + 1, next - at - 1);
-            if ((depth += (token == "(") - (token == ")")) == 0) break;
+            if ((depth += (token == "(") - (token == ")")) == 0)
+                return rest ? taken + s.substr(at) : taken;
             if (depth == 1 && token == "(") continue;
             if (!shown && (sized || (after == 1 && token == "["))) {
                 sized += (token == "[") - (token == "]");
