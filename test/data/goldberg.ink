@@ -391,6 +391,20 @@ X = ~(10^200)
 >> ((~3*~10^200)^2 + (~4*~10^200)^2)^(1/2)
 inf
 
+# Exact, the squares are far inside a thousand digits, and their root
+# 5*10^200 a double. So below the range: 10^-400's root is 10^-200.
+>> ((3*10^200)^2 + (4*10^200)^2)^(1/2)
+~5e+200
+
+>> (10^400)^(1/2)
+~1e+200
+
+>> (10^-400)^(1/2)
+~1e-200
+
+>> (2^1100)^(1/4)
+~6.07084029e+82
+
 # Signed Zero: the principal root of -1 + i0 is i, as C's csqrt has it.
 >> (-1)^(1/2)
 i
