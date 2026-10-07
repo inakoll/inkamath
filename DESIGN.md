@@ -2854,14 +2854,14 @@ that exploring seven domains asked of the interpreter, by how many asked.
   arguments, as `lim` does, where the interpreter answers and a call's form
   exists.
 
-  About 75 lines of sources, in `compile.hpp`: the read, its index and its
+  About 65 lines of sources, in `compile.hpp`: the read, its index and its
   refusals 12, the arguments bound as `Call` binds them, shared, 5, the
   terms kept by their arguments' code 8, the fill by the interpreter's stride
   12, a clause chosen at an index, `Chained` given one, 15, a term read from
-  itself or ahead 6, the temporaries nothing reads dropped 10, the rest 7;
-  and `Reference::Stride` made public. Sized against compiled `lim`, 167, of
-  which it shares only words, and C140, 11. Past 112 the implementation
-  stops and reports. 15,055 lines in all at 75c03ae.
+  itself or ahead 6, the rest 7; and `Reference::Stride` made public. The
+  temporaries nothing reads, `Temporaries` drops already. Sized against
+  compiled `lim`, 167, of which it shares only words, and C140, 11. Past 97
+  the implementation stops and reports. 15,055 lines in all at 75c03ae.
 
   Specified in `test/compile/iterates.ink`: `poly`, `det` and the
   characteristic polynomial as `signatures.ink` writes them, with grad's
@@ -2873,8 +2873,7 @@ that exploring seven domains asked of the interpreter, by how many asked.
   `test/CMakeLists.txt`, `poly` in float, `graph`'s estimate by its form; the
   excerpt and `plan`'s `cannot change: iters.` in `test/cli.cmake`, with the
   refusals. Nothing that compiles today reads such a sequence, so no golden,
-  header or report should move, dropping unread temporaries included, since
-  one would be a warning now. README's paragraph on the compiler gains a
+  header or report should move. README's paragraph on the compiler gains a
   sentence, and the closing note of `test/compile/signatures.ink`, that `det`
   stays refused, goes.
 - **Block literals compiled**, `[A, B; C, D]`: refused as "a matrix built
