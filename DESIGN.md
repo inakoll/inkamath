@@ -5640,12 +5640,12 @@ that exploring seven domains asked of the interpreter, by how many asked.
   compiler binds its own, one default and its sizes at a time, by the same
   measure. A bound that is not whole, `x[j<=2.5]`, is refused as an index
   is, "an index must be a whole number, not 2.5". About 105 lines planned,
-  161 landed, past the stop line by decision: the first build was 197, a
+  164 landed, past the stop line by decision: the first build was 197, a
   review for size took out 29, mostly by sharing what a model's input and
   `Reference::Size` already had, and the ruling 7, the refusal and a line it
-  freed. `reference.hpp` 105, the definition's sizes, their agreement and
+  freed, and C166 put 3 back. `reference.hpp` 108, the definition's sizes, their agreement and
   their names, and binding and measuring a call's, with `BindDefaults`
   moved there; `parameters.hpp` 57, reading a parameter; `compile.hpp` 9;
   `latex.hpp` 5; `extent.hpp` 3; `reference_stack.hpp` 2; `interpreter.hpp`
-  -20, a model's input read by the shared helper. 15,004 lines in all,
+  -20, a model's input read by the shared helper. 15,007 lines in all,
   after `fixes11`.
