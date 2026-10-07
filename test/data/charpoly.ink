@@ -275,6 +275,25 @@ digits = 9
 >> rho([1 2; 3 4]*10^250)
 ~5.37228132e+250
 
+# B need not be a double: the bracket is of A/B inside, and A is scaled to
+# it and back by B's power in two halves, each a double (C190).
+>> rho(~1e308)
+~1e+308
+
+>> abscissa(~-1e308)
+~-1e+308
+
+>> rho([~1 2; 3 4]*10^307)
+~5.37228132e+307
+
+# Past a double's range, the answer is the double ~ makes of it, marked, as
+# A/B's tests are past a thousand digits (C191).
+>> rho([1 2; 3 4]*10^400)
+inf  # approximated past a thousand digits
+
+>> rho([1 2; 3 4]/10^400)
+0  # approximated past a thousand digits
+
 # Five by five, the tests exact; ten by ten, the late ones read numbers
 # past a thousand digits, so the answer is marked (NumPy: 1.7463140334187077
 # and 1.239222528823944).

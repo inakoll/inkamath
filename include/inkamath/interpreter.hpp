@@ -324,9 +324,10 @@ inline constexpr const char* prelude[] = {
     // column as a recurrence on the polynomial, and schurcohn of every one in
     // |z| < r, Routh's on the image of z = r(1 + w)/(1 - w). The sums of abs
     // exist only to refuse a complex entry, which can pass the column. rho
-    // and abscissa bisect on them, testing A/B, B a power of two above A's
-    // cells, and keep halving past the 64th while the bracket is wider than
-    // 2^-53 of its end nearer 0, up to 256 (DESIGN.md).
+    // and abscissa bisect on them a bracket of A/B, B = 2^e above A's cells,
+    // scaled by 2^e in two halves so that no factor leaves a double, and
+    // keep halving past the 64th while the bracket is wider than 2^-53 of
+    // its end nearer 0, up to 256 (DESIGN.md).
     "charpolym(A)_1 = A^0",
     "charpolym(A)_m = A*charpolym(A)_(m-1) + charpolyc(A)_(m-1)*A^0",
     "charpolyc(A)_0 = 1",
@@ -347,17 +348,20 @@ inline constexpr const char* prelude[] = {
     "hurwitzb(m-i, a)*hurwitzb(i-1, m-t-a)*(-1)^(m-t-a)",
     "schurcohn(p[j<=m], r = 1) | r >= 0 and sum_(j=1)^m abs(p[j]) >= 0 "
     "= hurwitz(schurcohnm(p, r))",
-    "rhon(A[j<=n, k<=n]) = rhop(sum_(j=1)^n sum_(k=1)^n abs(A[j,k]))",
-    "rhop(s) = 2^(ilogb(s + (s == 0)) + 1) + 0*s",
+    "rhoe(A[j<=n, k<=n]) = rhop(sum_(j=1)^n sum_(k=1)^n abs(A[j,k]))",
+    "rhop(s) = ilogb(s + (s == 0)) + 1 + 0*s",
+    "rhod(x, e) = x*2^(e - floor(e/2))*2^floor(e/2)",
     "rhos(b) = b[2] - b[1] <= 2^-53*min(abs(b[1]), abs(b[2]))",
-    "rhob(A)_0 = [0; rhon(A)]",
-    "rhob(A)_m = rhon(A)*rhoh(charpoly(A/rhon(A)), rhob(A)_(m-1)/rhon(A))",
-    "rhob(A)_m | m > 64 and rhos(rhob(A)_(m-1)) = rhob(A)_(m-1)",
+    "rhou(A)_0 = [0; 1]",
+    "rhou(A)_m = rhoh(charpoly(rhod(A, -rhoe(A))), rhou(A)_(m-1))",
+    "rhou(A)_m | m > 64 and rhos(rhou(A)_(m-1)) = rhou(A)_(m-1)",
+    "rhob(A)_m = rhod(rhou(A)_m, rhoe(A))",
     "rhoh(p, b) = b + (b[2] - b[1])/2*([1; 0] - schurcohn(p, (b[1] + b[2])/2)*[1; 1])",
     "rho(A[j<=n, k<=n]) = ~rhob(A)_256[1]",
-    "abscissab(A)_0 = [-1; 1]*rhon(A)",
-    "abscissab(A)_m = rhon(A)*abscissah(charpoly(A/rhon(A)), abscissab(A)_(m-1)/rhon(A))",
-    "abscissab(A)_m | m > 64 and rhos(abscissab(A)_(m-1)) = abscissab(A)_(m-1)",
+    "abscissau(A)_0 = [-1; 1]",
+    "abscissau(A)_m = abscissah(charpoly(rhod(A, -rhoe(A))), abscissau(A)_(m-1))",
+    "abscissau(A)_m | m > 64 and rhos(abscissau(A)_(m-1)) = abscissau(A)_(m-1)",
+    "abscissab(A)_m = rhod(abscissau(A)_m, rhoe(A))",
     "abscissah(p, b) = b + (b[2] - b[1])/2*([1; 0] - hurwitz(p, (b[1] + b[2])/2)*[1; 1])",
     "abscissa(A[j<=n, k<=n]) = ~abscissab(A)_256[1]",
 };
