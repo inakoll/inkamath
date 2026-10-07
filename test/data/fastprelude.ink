@@ -152,7 +152,8 @@ a = (10^600 + 1)/10^600
 
 # A compiled call is one step and one reference deep, as reading a value
 # is. Through the definition exp is some 33 steps and log some 111, so
-# these lines ran out of their million; their sums are mpmath's.
+# these lines ran out of their million until each call had its own (C149);
+# their sums are mpmath's.
 >> sum_(k=1)^40000 exp(~k/40000)
 ~68732.1323
 
