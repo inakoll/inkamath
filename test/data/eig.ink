@@ -1,8 +1,8 @@
 # The real eigenvalues and the largest singular value, in the prelude,
-# written in inkamath (DESIGN.md, next in line). Written by hand, never
-# recorded: eigenvalues exactly with sympy, real roots compared exactly,
-# and each bracket by bisecting in Python's fractions with every test
-# decided from the exact eigenvalue, apart from the interpreter.
+# written in inkamath (DESIGN.md, next in line). Every value was worked out
+# apart from the interpreter, as its specification: eigenvalues exactly with
+# sympy, real roots compared exactly, and each bracket by bisecting in
+# Python's fractions with every test decided from the exact eigenvalue.
 
 # The eigenvalues as a column, smallest first, each with its multiplicity.
 >> eig([3 0 0; 0 -1 0; 0 0 2])

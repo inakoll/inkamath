@@ -6015,11 +6015,11 @@ that exploring seven domains asked of the interpreter, by how many asked.
   C192 marks an answer the cap ended, 3 more: 57 in all. Compiled grad's
   refusal, after the merge of `fixedloop`, 9 more in `compile.hpp`: 66 in
   all. 15,256 lines in all, after `charpoly`, on integration's 15,190.
-- **The real eigenvalues and the largest singular value, in the prelude**,
-  the third step towards eigenvalues: `eig(A)`, every eigenvalue of a matrix
-  whose characteristic polynomial has only real roots, a symmetric one
-  first, as a column, smallest first, each certified by bisection as `rho`
-  is; and `smax(A)`, sqrt(lambda_max(A'A)). Written in inkamath on
+- `[done]` **The real eigenvalues and the largest singular value, in the
+  prelude**, the third step towards eigenvalues: `eig(A)`, every eigenvalue
+  of a matrix whose characteristic polynomial has only real roots, a
+  symmetric one first, as a column, smallest first, each certified by
+  bisection as `rho` is; and `smax(A)`, sqrt(lambda_max(A'A)). Written in inkamath on
   `charpoly`, `hurwitzs` and `rho`'s scaling and stop. The design, measured
   on a prototype:
 
@@ -6202,3 +6202,17 @@ that exploring seven domains asked of the interpreter, by how many asked.
   answer but the three refusals' words, grad's two, the marks past a
   double's range and a session's `eig`, which needs the name to be the
   prelude's.
+
+  Built as specified: the spec is the golden `eig.ink`, 54 entries, and the
+  compiled refusals a case of `cli.cmake`; README's sections 1 and 5 list
+  the names, and section 2 shows `eig` and `smax` and says what is refused.
+  Departures: smax's mark is `smaxd`, a definition more, which marks where
+  scaling back by 2^e does not come back to the same double, so a
+  subnormal it loses digits of too, and a subnormal it does not, of
+  `~1e-320`, unmarked where `eig`'s is marked; the refusal's words are
+  given to the prelude's `eig`, known by its name and its scope, as
+  `mod`'s are; `rhoe` of any matrix takes fixes14's clause for a sum past
+  a double with it, over 2^(m+n). The golden replays in 5 s under the
+  sanitizers. 29 lines landed against about 31: the prelude 19 and its
+  comment 6, 1 binding the staircases, and 3 in `reference.hpp`. 15,324
+  lines in all, after `eig`.
