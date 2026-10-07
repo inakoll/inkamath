@@ -6065,7 +6065,11 @@ that exploring seven domains asked of the interpreter, by how many asked.
   `eig needs a matrix whose eigenvalues are all real`, its real ones not
   given alone: a column whose length depends on the values is no column a
   paper writes. The prelude cannot word a refusal, so the guard's failure
-  on eig is given these words in C++, about 5 lines beside `Unapplied`;
+  on eig is given these words in C++, about 5 lines inside `Unapplied`,
+  which keeps its suffix where the guard was approximated past a thousand
+  digits: `eig needs a matrix whose eigenvalues are all real, by a guard
+  approximated past a thousand digits` is what an exact matrix whose test
+  passes them may get, its eigenvalues real or not.
   `no clause of eig applies`, the words with none, says nothing of why,
   and `abs(i)`'s refusal as the words was rejected as a lie that reads
   well.
@@ -6109,7 +6113,9 @@ that exploring seven domains asked of the interpreter, by how many asked.
   - **An inexact matrix** is bisected by rounded tests, its bracket inexact
     and `frac` refusing it, as rho's. Hermite's test is rounded too, so a
     nonsymmetric inexact matrix with a repeated eigenvalue, H singular, may
-    be refused; README says so. An approximated one marks the answer.
+    be refused, and so may an exact one whose test passes a thousand
+    digits, `[1/3 + 1/7^600 1; 0 1/3 + 1/7^600]`, its refusal saying so;
+    README says both. An approximated one marks the answer.
   - **grad.** A bracket is a staircase: `eig` and `smax` join `rho` and
     `abscissa` in the stack's staircases, `grad cannot differentiate eig
     yet` in the interpreter and the compiler alike, one line. A simple
@@ -6167,13 +6173,13 @@ that exploring seven domains asked of the interpreter, by how many asked.
   15,256 lines at d3c2149, by `wc -l include/inkamath/*.hpp src/*`. Past
   45 the implementation stops and reports.
 
-  Specified in `test/data/spec/eig.ink`, 48 entries replayed by the spec
-  suite, 41 failing by design, those passing being definitions echoing
+  Specified in `test/data/spec/eig.ink`, 49 entries replayed by the spec
+  suite, 42 failing by design, those passing being definitions echoing
   themselves, `digits` and a session's `eig`: eigenvalues exactly with
   sympy, its real roots compared exactly, Hilbert's with mpmath at 60
   digits, the 6x6 and `smax` against NumPy, and each bracket by bisection
   in Python's fractions with every test decided from the exact
   eigenvalue, printed by a transcription of `Number::Shown`, apart from
   the interpreter. The prototype above, defined in a session, gives every
-  answer but the two refusals' words, grad's two and a session's `eig`,
+  answer but the three refusals' words, grad's two and a session's `eig`,
   which needs the name to be the prelude's.

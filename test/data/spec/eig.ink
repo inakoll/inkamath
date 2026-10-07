@@ -119,6 +119,12 @@ error: eig needs a matrix whose eigenvalues are all real
 >> eig([2 0 0; 0 0 1; 0 -1 0])
 error: eig needs a matrix whose eigenvalues are all real
 
+# Hermite's test past a thousand digits is rounded, and this one, its
+# matrix exact and its eigenvalue 1/3 + 7^-600 twice, is refused: in words
+# that say the guard was approximated.
+>> eig([1/3 + 1/7^600 1; 0 1/3 + 1/7^600])
+error: eig needs a matrix whose eigenvalues are all real, by a guard approximated past a thousand digits
+
 # A single value is a 1x1 matrix.
 >> eig(-1/3)
 ~-0.333333333
