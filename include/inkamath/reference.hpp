@@ -339,7 +339,7 @@ public:
                 const auto& [size, number] = bounds[b];
                 if (number && d[b] != number) refuse(i);
                 if (number) continue;
-                const auto [seen, fresh] = seen_.try_emplace(size, d[b], i);
+                const auto [seen, fresh] = sized.try_emplace(size, d[b], i);
                 if (fresh) bound.emplace_back(size, d[b]);
                 if (seen->second.first != d[b]) refuse(seen->second.second);
             }
@@ -348,7 +348,7 @@ public:
 
         const Reference&                                           of;
         std::unordered_map<size_t, Extent>                         given;
-        std::unordered_map<std::string, std::pair<size_t, size_t>> seen_;  // its extent, who first
+        std::unordered_map<std::string, std::pair<size_t, size_t>> sized;  // its extent, who first
     };
 
     // The value of a plain definition by a literal of numbers, once built.
