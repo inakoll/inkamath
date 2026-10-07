@@ -121,7 +121,7 @@ error: ~1.41421356 was approximated past a thousand digits, so it has no exact f
 ~1.41421356  # approximated past a thousand digits
 
 # What is computed from it is approximated too, even where it prints whole,
-# and a comparison is not: it is a truth, exactly.
+# and so is a comparison: a truth read from a double may be wrong.
 >> rt_20*0
 0  # approximated past a thousand digits
 
@@ -129,7 +129,7 @@ error: ~1.41421356 was approximated past a thousand digits, so it has no exact f
 [1, ~1.41421356]  # approximated past a thousand digits
 
 >> rt_20 > 1
-1
+1  # approximated past a thousand digits
 
 # What is inexact by nature, or made so by '~', never was exact to lose: the
 # limit is taken while its terms are still exact.

@@ -445,19 +445,20 @@ private:
         for (const Clause<T>& clause : definition.Clauses()) {
             const ParametersDefinition<T>& p = clause.parameters;
             if (!p.guarded() && (!p.indexed() || p.general())) continue;
-            if (definition.Selects(clause, indexed, index, parts)) return Eval(clause.expression);
+            if (definition.Selects(clause, indexed, index, parts))
+                return parts.Eval(clause.expression);
         }
         if (indexed) {
             if (plain) throw std::runtime_error(name + " is not a sequence");
             if (general && (!lowest || index >= *lowest)) {
                 stack_.BindValue(general->parameters.index_name(), T(index));
-                return Eval(general->expression);
+                return parts.Eval(general->expression);
             }
-            if (guarded) throw std::runtime_error("no clause of " + name + " applies");
+            if (guarded) throw std::runtime_error(definition.Unapplied(parts.past));
             throw std::runtime_error(name + " has no clause for index " + std::to_string(index));
         }
-        if (plain) return Eval(plain->expression);
-        if (guarded) throw std::runtime_error("no clause of " + name + " applies");
+        if (plain) return parts.Eval(plain->expression);
+        if (guarded) throw std::runtime_error(definition.Unapplied(parts.past));
         throw std::runtime_error(name + " is a sequence; index it (" + name + "_" +
                                  std::to_string(lowest.value_or(0)) + ")");
     }
@@ -480,11 +481,10 @@ private:
     // A guard is asked for its value; a comparison in it that holds at the
     // point only, an equality where its sides move apart, takes a clause
     // whose slope is not the function's.
-    bool Holds(const Guarded& what, const PExpression<T>& guard) {
-        const Setting<bool>            guarding(guard_, true);
-        const Setting<const Guarded*>  naming(guarded_, &what);
-        const Jet                      held = Eval(guard);
-        return numeric_interface<T>::truth(*held[0]);
+    T Holds(const Guarded& what, const PExpression<T>& guard) {
+        const Setting<bool>           guarding(guard_, true);
+        const Setting<const Guarded*> naming(guarded_, &what);
+        return *Eval(guard)[0];
     }
 
     Jet Compare(CompareExpression<T>& compare) {
@@ -504,10 +504,11 @@ private:
         const auto truth = [&](const Jet& jet) {
             return numeric_interface<T>::truth(*jet[0], logic.Word());
         };
-        const bool left    = truth(Eval(logic.m_e1()));
+        const Jet  first   = Eval(logic.m_e1());
+        const bool left    = truth(first);
         const bool decided = left != logic.Conjunction();
-        const bool answer  = decided ? left : truth(Eval(logic.m_e2()));
-        return Constant(T(typename T::value_type(answer ? 1 : 0)));
+        const Jet  second  = decided ? first : Eval(logic.m_e2());
+        return Constant(T::Held(decided ? left : truth(second), *first[0], *second[0]));
     }
 
     Jet Floor(FloorExpression<T>& floor) {
@@ -763,7 +764,12 @@ private:
             }
             if (any) out[s] = gradient;
         }
-        if (!out[0]) out[0] = Zero(parts[0][0]->Size());
+        // A derivative none of the body has is 0, approximated with its value.
+        if (!out[0]) {
+            out[0] = Zero(parts[0][0]->Size());
+            if (numeric_interface<T>::approximated(*parts[0][0]))
+                out[0] = numeric_interface<T>::marked(*out[0]);
+        }
         return out;
     }
 
@@ -842,7 +848,17 @@ private:
         Derivative&         d;
         const Reference<T>& definition;
 
-        Jet Eval(const PExpression<T>& e) { return d.Eval(e); }
+        // As Reference's Values has it; a part the clause lacks stays so, as
+        // nothing moves it, and grad's answer of it is marked with the value.
+        bool past = false;
+
+        Jet Eval(const PExpression<T>& e) {
+            Jet jet = d.Eval(e);
+            if (std::exchange(past, false))
+                for (auto& part : jet)
+                    if (part) part = numeric_interface<T>::marked(*part);
+            return jet;
+        }
         // A size is a whole number, so one that moves is at a jump.
         T Bound(const PExpression<T>& e) {
             const Jet size = d.Eval(e);
@@ -854,8 +870,17 @@ private:
         bool Holds(const Reference<T>&, const Clause<T>& clause, int index, int slice, int row,
                    int col) {
             const ParametersDefinition<T>& p = clause.parameters;
-            return d.Holds({definition.Name(), row != 0 ? &p : nullptr, index, slice, row, col},
-                           p.guard());
+            const T                        guard = d.Holds(
+                {definition.Name(), row != 0 ? &p : nullptr, index, slice, row, col}, p.guard());
+            past = past || numeric_interface<T>::approximated(guard);
+            return numeric_interface<T>::truth(guard);
+        }
+        void Settle(Jet& into, int slice, int row, int col) {
+            if (!std::exchange(past, false)) return;
+            for (auto& part : into)
+                if (part)
+                    (*part)(slice, row, col) =
+                        numeric_interface<typename T::value_type>::marked((*part)(slice, row, col));
         }
         static T&   Value(Jet& jet) { return *jet[0]; }
         Jet         Blank(Extent extent) const { return d.Constant(T(extent)); }

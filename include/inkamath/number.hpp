@@ -135,6 +135,7 @@ public:
     // Inexact because an exact value passed the thousand digits, here or in
     // what it was computed from, which '~' alone cannot tell from 1/3.
     static bool approximated(const Number& a) { return !a.exact() && a.num_ != 0; }
+    static Number marked(const Number& a) { return Approximate(a.Inexact(), true); }
 
     // A memo key carries the kind: dbl(1/2) and dbl(~0.5) are different calls.
     // The kind also says how many bytes follow, so keys never run together.
