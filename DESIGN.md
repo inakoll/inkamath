@@ -5598,7 +5598,7 @@ that exploring seven domains asked of the interpreter, by how many asked.
   40 to 70 counted the binding alone. Past 160 the implementation stops and
   reports. 14,653 lines at eee8d5e, by `wc -l include/inkamath/*.hpp src/*`.
 
-  Specified in `test/data/spec/signatures.ink`, 59 of its 84 entries
+  Specified in `test/data/spec/signatures.ink`, 67 of its 96 entries
   failing, those passing being definitions echoing themselves, `?tr` and
   `n`; and in `test/compile/signatures.ink`, a model calling tr at two
   shapes, whose header is to be the one its sizes written as numbers give,

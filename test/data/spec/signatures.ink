@@ -80,6 +80,13 @@ size(M[j<=m, k<=n]) = [m n]
 >> size(5)
 [1, 1]
 
+# The memo keys a call by its arguments' shapes too.
+>> size([1 2])
+[1, 2]
+
+>> size([1; 2])
+[2, 1]
+
 >> jk(M[j<=m, k<=n]) = j
 jk(M[j<=m, k<=n]) = j
 
@@ -155,6 +162,13 @@ cnt(v[j<=n]) = n
 >> n
 10
 
+# The prelude's names are hidden as the session's are.
+>> ne(v[j<=e]) = e
+ne(v[j<=e]) = e
+
+>> ne([1; 1; 1])
+3
+
 # A default is held to its size and gives it; a default may read a size its
 # argument gave.
 >> pad(v[j<=n] = [1; 2]) = n
@@ -179,6 +193,12 @@ scale(v[j<=n], s = n) = s*v
 >> scale([1; 2], 3)
 [3;
  6]
+
+>> pd(v[j<=3] = [1; 2]) = v
+pd(v[j<=3] = [1; 2]) = v
+
+>> pd()
+error: pd takes v[j<=3], not a 2x1 matrix
 
 # The sizes are the definition's, as its parameters' names are: stated in one
 # clause, they hold for every clause. The characteristic polynomial by
@@ -249,6 +269,22 @@ pw(A)_m = A*pw(A)_(m-1)/(A*pw(A)_(m-1))[n]
  1;
  1]
 
+# A guard reads the sizes, and each call of a recursion binds its own.
+>> drop(v[j<=n])[j<=n-1] = v[j]
+drop(v[j<=n])[j<=n-1] = v[j]
+
+>> tot(v[j<=n]) = v[n] + tot(drop(v))
+tot(v[j<=n]) = v[n] + tot(drop(v))
+
+>> tot(v) | n == 1 = v[1]
+tot(v) | n == 1 = v[1]
+
+>> tot([1; 2; 3])
+6
+
+>> tot(5)
+5
+
 # Under grad a size is a constant, the shape never moving.
 >> grad_(A = [1 2; 3 4]) tr(A*A)
 [2, 6;
@@ -297,6 +333,9 @@ error: a size is a whole number or a name, as 'v[j<=3]' or 'v[j<=n]'
 
 >> bad(x[j<=0]) = x
 error: a size must be at least 1, not 0
+
+>> bad(x[j<=-1]) = x
+error: a size must be at least 1, not -1
 
 >> bad(1)
 error: bad is not defined
