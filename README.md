@@ -156,6 +156,10 @@ solves each step of a stiff equation by Newton's method, a sequence with
 parameters under `lim`, and `test/compile/logistic.ink` trains a logistic
 regression, its `exp` a limit written in inkamath, as `test/compile/softmax.ink`
 writes softmax and cross-entropy, `log` being Newton's method on `exp`. A
+sequence with parameters read at a constant index, `f(x)_K`, is written out
+as a sum with constant bounds is, each term below the one read a temporary of
+the step: `test/compile/iterates.ink` takes a determinant by Faddeev-LeVerrier,
+grad through it, and a few steps of projected gradient. A
 limit of matrices fills an array, cell by cell: `test/compile/steady.ink`
 finds a chain's steady state and, by power iteration, a matrix's dominant
 direction at every step. A `grad` is compiled forward, each value carrying its
