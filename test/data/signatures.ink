@@ -299,6 +299,26 @@ rg(x[j<=n]) = 0
 >> rg([1; 2])
 1
 
+# One left side set for several clauses has the sizes one of them states
+# (C171).
+>> gs(x) | n > 1 = 1
+gs(x) | n > 1 = 1
+
+>> gs(x[j<=n]) = n
+gs(x[j<=n]) = n
+
+>> tex ?gs
+\operatorname{gs}(x \in \mathbb{R}^{n}) = \begin{cases} 1 & \text{if } n > 1 \\ n & \text{otherwise} \end{cases}
+
+>> cs(x)[j<=2] | n > 1 = 1
+cs(x)[j<=2] | n > 1 = 1
+
+>> cs(x[j<=n])[j<=2] = n
+cs(x[j<=n])[j<=2] = n
+
+>> tex ?cs
+\operatorname{cs}(x \in \mathbb{R}^{n})_j = \begin{cases} 1 & \text{if } n > 1 \\ n & \text{otherwise} \end{cases}, \quad 1 \le j \le 2
+
 # A sequence of a function reads its size in any clause, and its limit is
 # its terms'.
 >> on(n)[j<=n] = 1

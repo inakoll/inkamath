@@ -289,6 +289,7 @@ public:
     }
 
     [[nodiscard]] const std::vector<Clause<T>>& Clauses() const { return clauses_; }
+    [[nodiscard]] const std::vector<Size>&      Sizes() const { return sizes_; }
 
     // A default belongs to the definition, not to the call: it is evaluated
     // only when the call leaves its parameter empty, and in the callee's
