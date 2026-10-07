@@ -5276,13 +5276,13 @@ that exploring seven domains asked of the interpreter, by how many asked.
     clause replaces itself where it stands (C45, C46); a plain one that is
     the whole definition is replaced parameters and all, since nothing else
     goes with it, so `f(x) = x` then `f(x, y) = x + y` needs no `clear`.
-  - A clause that cannot join is refused, and says how to start anew,
-    "; write 'clear f' first": other parameters beside other clauses (C51,
-    which a plain clause escaped), defaults among them (C154), a clause
-    without an index on a sequence or with one on what is not (C70 dropped
-    the value), any clause on a model or a file used. A model is one
-    statement and replaces a model only; `use` binds a file, or brings in a
-    name, only over nothing or the same.
+  - A clause that cannot join is refused, and says how to start anew, "; write
+    'clear f' first", but in a model's body, where `clear` cannot be written:
+    other parameters beside other clauses (C51, which a plain clause escaped),
+    defaults among them (C154), a clause without an index on a sequence or
+    with one on what is not (C70 dropped the value), any clause on a model or
+    a file used. A model is one statement and replaces a model only; `use`
+    binds a file, or brings in a name, only over nothing or the same.
   - `clear f`, a word at the start of a line as `use` is and not reserved,
     drops what `f` is in the scope it is written in: clauses, a model, an
     instance, a file used or a name brought in. The name then means what it
@@ -5331,7 +5331,7 @@ that exploring seven domains asked of the interpreter, by how many asked.
   alone 2. 14,653 lines in all now, about 14,685 after; past 45 net the
   implementation stops and reports.
 
-  Specified in `test/data/spec/clauses.ink`, 109 entries, 44 failing, with
+  Specified in `test/data/spec/clauses.ink`, 112 entries, 47 failing, with
   `test/data/cases.ink` for `use`: the cases in a paper's order at the
   prompt, in a model's body under `grad` and in a file; sequences and cells
   as they are; a matrix written whole after its cells; each refusal; models,

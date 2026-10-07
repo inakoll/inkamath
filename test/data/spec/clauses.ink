@@ -377,3 +377,32 @@ error: clear is not defined
 ..     clear y
 .. }
 error: a model's body holds definitions, not 'clear y'
+
+# So a refusal there does not advise 'clear'. A model in it, as at the
+# prompt, replaces a model only, and no clause joins one.
+>> mb(k = 1) = {
+..     y_n = k
+..     y = 2
+.. }
+mb(k = 1) = { ... }
+
+>> mb().y_1
+error: y is a sequence, so a clause of it has an index
+
+>> mn(k = 1) = {
+..     y = k
+..     y(a = 1) = { z = a }
+.. }
+mn(k = 1) = { ... }
+
+>> mn().y
+error: y is already defined
+
+>> mo(k = 1) = {
+..     y(a = 1) = { z = a }
+..     y = k
+.. }
+mo(k = 1) = { ... }
+
+>> mo().y
+error: y is a model
