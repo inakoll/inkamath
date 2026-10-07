@@ -496,6 +496,17 @@ if(size GREATER 4096)
     message(SEND_ERROR "compile_c140: c140.h is ${size} bytes")
 endif()
 
+# C155: as is a call of the prelude's, where it was written at each reading.
+file(WRITE "${OUT}/c155.ink" "h(t) = (t - 1)/t\nh(t) | t == 1 = t\nh(t) | t == 0 = 1\nf(z) = h(exp(z))\nx_0 = 1/2\nx_n = f(f(x_(n-1)))\n")
+set(args --compile c155.ink -o c155.h)
+check(compile_c155)
+file(READ "${OUT}/c155.h" text)
+string(REGEX MATCHALL "c155_exp\\(" calls "${text}")
+list(LENGTH calls calls)
+if(NOT calls EQUAL 3)
+    message(SEND_ERROR "compile_c155: c155_exp written ${calls} times, not 3")
+endif()
+
 # C153: a power of 1/2 is C's sqrt, rounded correctly, where pow need not be.
 file(WRITE "${OUT}/c153.ink" "x_0 = 2\nx_n = x_(n-1)^(1/2) + x_(n-1)^0.5\n")
 set(args --compile c153.ink -o c153.h)

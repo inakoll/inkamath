@@ -724,6 +724,7 @@ private:
             prelude_.push_back("static inline double " + called + "(" + signature +
                                ") {\n    return " + body.cells[0].text + ";\n}\n\n");
         }
+        ++calls_;  // an argument this is in is computed once, as of a call of the source's (C155)
         Code value = Of(Cell(called + "(" + given + ")", primary));
         for (std::size_t i = 0; i < names.size(); ++i)
             if (!arguments[i].part.empty()) moving += names[i];
