@@ -6091,7 +6091,9 @@ that exploring seven domains asked of the interpreter, by how many asked.
   no Routh column and no map, so a test at a midpoint of b bits reads
   numbers of about n b bits, where `rho`'s read n^2 b. On the research's
   symmetric matrices of tenths, certified up to 20x20, marked at 24x24
-  and then within a double of NumPy's; 0.03 s for a 2x2, 0.05 s for
+  and then within a double of NumPy's, measured on symmetric matrices
+  alone: a marked repeated eigenvalue of another can be off at the ninth
+  digit, as an inexact one's is; 0.03 s for a 2x2, 0.05 s for
   Hilbert's 5x5, 0.3 s for its 8x8, 0.4 s at 10x10, 1.1 s at 12x12, 4 s at
   16x16, 14 s at 20x20 and 36 s at 24x24. The spec replays in 10 s under
   the sanitizers. Hermite's test is one `charpoly` more, of an n x n.
@@ -6119,8 +6121,12 @@ that exploring seven domains asked of the interpreter, by how many asked.
     and `frac` refusing it, as rho's. Hermite's test is rounded too, so a
     nonsymmetric inexact matrix with a repeated eigenvalue, H singular, may
     be refused, and so may an exact one whose test passes a thousand
-    digits, `[1/3 + 1/7^600 1; 0 1/3 + 1/7^600]`, its refusal saying so;
-    README says both. An approximated one marks the answer.
+    digits, `[1/3 + 1/7^600 1; 0 1/3 + 1/7^600]`, its refusal saying so.
+    A repeated eigenvalue of an inexact matrix is good to about 8 digits,
+    the square root of a double's, `eig([~1 1; 0 1])` [1; ~1.00000001],
+    and a complex pair within rounding of the real axis may be accepted,
+    `[~1 1; -10^-20 1]`'s 1 +- 10^-10 i as the same. README says all
+    three. An approximated one marks the answer.
   - **grad.** A bracket is a staircase: `eig` and `smax` join `rho` and
     `abscissa` in the stack's staircases, `grad cannot differentiate eig
     yet` in the interpreter and the compiler alike, one line. A simple
