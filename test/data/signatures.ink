@@ -1,10 +1,11 @@
-# A size bound by a function's signature (DESIGN.md, next in line): a
-# parameter states its size by bounds, as a model's input does, and a bound
-# that is a name is bound by the call to the argument's size, a whole number
-# constant for that call. Every value below is worked out by hand or with
-# exact fractions apart from the interpreter, none recorded. Today a parameter
-# that is not a name is dropped in silence (C150): the definitions echo, and
-# their calls are refused, 'tr takes no arguments', or answer without it.
+# A size bound by a function's signature (DESIGN.md, a size bound by a
+# signature): a parameter states its size by bounds, as a model's input does,
+# and a bound that is a name is bound by the call to the argument's size, a
+# whole number constant for that call. Every value below was worked out by
+# hand or with exact fractions apart from the interpreter, as its
+# specification. Before, a parameter that is not a name was dropped in
+# silence (C150): the definitions echoed, and their calls were refused, 'tr
+# takes no arguments', or answered without it.
 
 # The trace, M an n by n matrix: the call binds n to M's size.
 >> tr(M[j<=n, k<=n]) = sum_(j=1)^n M[j,j]
