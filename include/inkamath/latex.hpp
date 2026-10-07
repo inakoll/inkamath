@@ -205,8 +205,7 @@ private:
                 const auto& size = p.sizes()[k].bounds;
                 for (std::size_t b = 0; b < size.size(); ++b)
                     left += (b ? " \\times " : " \\in \\mathbb{R}^{") +
-                            (size[b].first.empty() ? std::to_string(size[b].second)
-                                                   : Name(size[b].first));
+                            (size[b].second ? size[b].first : Name(size[b].first));
                 if (!size.empty()) left += "}";
                 const auto fallback = p.parameters_dict().find(parameter);
                 if (fallback != p.parameters_dict().end())

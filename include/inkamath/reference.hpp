@@ -332,8 +332,8 @@ public:
             std::vector<std::pair<std::string, size_t>> bound;
             for (size_t b = 0; b < bounds.size(); ++b) {
                 const auto& [size, number] = bounds[b];
-                if (size.empty() && d[b] != number) refuse(i);
-                if (size.empty()) continue;
+                if (number && d[b] != number) refuse(i);
+                if (number) continue;
                 const auto [seen, fresh] = seen_.try_emplace(size, d[b], i);
                 if (fresh) bound.emplace_back(size, d[b]);
                 if (seen->second.first != d[b]) refuse(seen->second.second);
@@ -855,8 +855,7 @@ private:
 
     static std::string Of(const Size& size) {
         std::string out;
-        for (const auto& [name, number] : size.bounds)
-            out += (out.empty() ? "" : " x ") + (name.empty() ? std::to_string(number) : name);
+        for (const auto& [name, number] : size.bounds) out += (out.empty() ? "" : " x ") + name;
         return out;
     }
 
@@ -867,7 +866,7 @@ private:
         std::vector<std::string>        stated;
         for (std::size_t d = 0; d < sizes.size(); ++d)
             for (const auto& [name, number] : sizes[d].bounds) {
-                if (name.empty() || std::count(stated.begin(), stated.end(), name)) continue;
+                if (number || std::count(stated.begin(), stated.end(), name)) continue;
                 stated.push_back(name);
                 const char* what =
                     std::count(names.begin(), names.end(), name) ? "a parameter"

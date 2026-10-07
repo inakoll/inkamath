@@ -85,7 +85,7 @@ class ParametersDefinition
 {
 public:
     // A parameter's size, as 'M[j<=n, k<=n]' states it: its bounds, slices
-    // first, each a name or, where that is empty, a whole number.
+    // first, each a name and 0, or a whole number and its digits.
     struct Size {
         std::vector<std::pair<std::string, size_t>> bounds;
         std::string                                 written;
@@ -173,9 +173,9 @@ public:
                 throw std::runtime_error(
                     w.bounds.size() == 3 ? "a parameter's slice, row and column need three names"
                                          : "a parameter's row and column need two names");
-            size.bounds.emplace_back(named ? bound->Name() : "", number);
-            size.written += (size.written.empty() ? "" : ", ") + index +
-                            "<=" + (named ? bound->Name() : std::to_string(number));
+            size.bounds.emplace_back(named ? bound->Name() : std::to_string(number), number);
+            size.written +=
+                (size.written.empty() ? "" : ", ") + index + "<=" + size.bounds.back().first;
         }
         if (!size.bounds.empty()) size.written = w.left->Name() + "[" + size.written + "]";
         parameters_names_.push_back(w.left->Name());
