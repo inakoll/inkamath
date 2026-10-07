@@ -135,6 +135,17 @@ error: p is not a sequence, so a clause of it has no index; write 'clear p' firs
 >> p
 9
 
+# Guarded or not: a guarded clause beside one of the other kind made the name
+# both, where C70 dropped only an unguarded value.
+>> q(x) | x > 0 = 1
+q(x) | x > 0 = 1
+
+>> q(x)_n = n
+error: q is not a sequence, so a clause of it has no index; write 'clear q' first
+
+>> s | 1 = 5
+error: s is a sequence, so a clause of it has an index; write 'clear s' first
+
 # A definition that is one plain clause is replaced by another, parameters
 # and all, since nothing else is dropped. Beside other clauses the
 # parameters must agree (C51).

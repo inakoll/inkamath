@@ -5329,7 +5329,7 @@ that exploring seven domains asked of the interpreter, by how many asked.
   alone 2. 14,653 lines in all now, about 14,685 after; past 45 net the
   implementation stops and reports.
 
-  Specified in `test/data/spec/clauses.ink`, 97 entries, 39 failing, with
+  Specified in `test/data/spec/clauses.ink`, 100 entries, 41 failing, with
   `test/data/cases.ink` for `use`: the cases in a paper's order at the
   prompt, in a model's body under `grad` and in a file; sequences and cells
   as they are; a matrix written whole after its cells; each refusal; models,
