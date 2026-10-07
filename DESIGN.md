@@ -5958,14 +5958,13 @@ that exploring seven domains asked of the interpreter, by how many asked.
     recursion, (a0 p - an p~)/z, was weighed: no map and no binomials, but
     five lines where the map costs three over Routh, and its fraction-free
     form doubles the bits at each step.
-  - **Compiled**: refused in the compiler's words,
-    `cannot compile x: a sequence with parameters`, until *A sequence with
-    parameters read at a constant index, compiled* lands; a case of
-    `test/cli.cmake` with the implementation. *A sequence with parameters
-    read at a constant index, compiled*, in flight, would compile them: if
-    it lands first, compiled `rho` and `abscissa` must refuse grad in
-    `compile.hpp` as `derivative.hpp` does, and the case of `cli.cmake`
-    changes; whichever lands second reconciles them.
+  - **Compiled**: `charpoly` compiles since *A sequence with parameters
+    read at a constant index, compiled*; `rho` and `abscissa` do not yet,
+    `hurwitzb`'s factorial refused. grad refuses them in `compile.hpp`'s
+    call where an argument moves, `Staircase`, as `derivative.hpp` does:
+    without it, their refusal under grad came only from the factorial and
+    from `A^0`'s derivative, and once those compile grad would answer the
+    staircase's 0. A case of `test/cli.cmake` holds both.
 
   What moves: no golden and no header, as no test names any of them; the
   prelude is read at every start, 33 lines more. README's section 1 lists
@@ -6006,5 +6005,6 @@ that exploring seven domains asked of the interpreter, by how many asked.
   `reference_stack.hpp` 3 and `derivative.hpp` 4. The review's C190 put
   the bisection in A/B's units, `rhou` and `abscissau`, `rhod` scaling by
   B's power in two halves, so that B need not be a double: 4 lines more;
-  C192 marks an answer the cap ended, 3 more: 57 in all. 15,133 lines in
-  all, after `charpoly`.
+  C192 marks an answer the cap ended, 3 more: 57 in all. Compiled grad's
+  refusal, after the merge of `fixedloop`, 9 more in `compile.hpp`: 66 in
+  all. 15,256 lines in all, after `charpoly`, on integration's 15,190.

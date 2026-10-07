@@ -662,6 +662,13 @@ private:
         return chain;
     }
 
+    // rho and abscissa are staircases in A, refused where it moves, as the
+    // interpreter refuses them, rather than answer the staircase's 0.
+    void Staircase(const Reference<Value>& function, const Code& argument) const {
+        if (!argument.part.empty() && definitions_.staircases.contains(&function))
+            throw Reason("grad cannot differentiate " + function.Name() + " yet");
+    }
+
     // A function called: its parameters bound to the arguments, read where the
     // call is, and its defaults to what they read inside it; read at an
     // index, 'f(x)_k', a term of a sequence with parameters (DESIGN.md).
@@ -695,6 +702,7 @@ private:
         for (std::size_t i = 0; i < call.parameters_expression().size(); ++i)
             bind(names[i], call.parameters_expression()[i]);
         for (const auto& [given, argument] : call.parameters_dict()) bind(given, argument);
+        for (const auto& [given, value] : expansion.values) Staircase(function, value);
         Reasoned([&] {
             for (const auto& [given, value] : expansion.values)
                 function.Divides(given, Value(value.size), definitions_);
@@ -790,6 +798,7 @@ private:
             constant         = constant && code.constant;
             scalar           = scalar && code.Scalar();
             given += (given.empty() ? "" : ", ") + code.cells[0].text;
+            Staircase(function, code);
         }
         if (constant || !scalar) return Answer(Call(name, function, call, nullptr));
         const std::string called = module_ + "_" + name;

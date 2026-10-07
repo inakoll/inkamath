@@ -723,11 +723,12 @@ set(stdout "cannot compile w: tr takes M[j<=n, k<=n], not a 2x3 matrix\n")
 set(exit 1)
 check(compile_signature_refused)
 
-# The prelude's charpoly compiles; rho does not yet, by hurwitzb's factorial
+# The prelude's charpoly compiles; rho does not yet, by hurwitzb's factorial,
+# and grad refuses it and abscissa where A moves, as the interpreter does
 # (DESIGN.md, the characteristic polynomial and stability).
-file(WRITE "${OUT}/charpoly.ink" "x_n = rho([n 1; -1 1/2])\nz_n = charpoly([n 1; 2 3])[2]\n")
+file(WRITE "${OUT}/charpoly.ink" "x_n = rho([n 1; -1 1/2])\nz_n = charpoly([n 1; 2 3])[2]\ng_n = grad_(a = n) rho([a 1; -1 1/2])\nh_n = grad_(a = n) abscissa(a)\n")
 set(args --compile charpoly.ink)
-set(stdout "cannot compile x: a factorial\n")
+set(stdout "cannot compile g: grad cannot differentiate rho yet\ncannot compile h: grad cannot differentiate abscissa yet\ncannot compile x: a factorial\n")
 set(exit 1)
 check(compile_charpoly_refused)
 
