@@ -43,7 +43,7 @@ typedef struct heat {
 static inline void heat_inverse3_(double a[3][3]) {
     double r[3][3];
     for (int i = 0; i < 3; ++i)
-        for (int j = 0; j < 3; ++j) r[i][j] = i == j;
+        for (int j = 0; j < 3; ++j) r[i][j] = i == j ? 1.0 : 0.0;
     for (int col = 0; col < 3; ++col) {
         int pivot = col;
         for (int row = col + 1; row < 3; ++row)

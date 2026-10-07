@@ -3688,7 +3688,7 @@ private:
                "];\n"
                "    for (int i = 0; i < " +
                size + "; ++i)\n        for (int j = 0; j < " + size +
-               "; ++j) r[i][j] = i == j;\n"
+               "; ++j) r[i][j] = i == j ? 1.0 : 0.0;\n"
                "    for (int col = 0; col < " +
                size +
                "; ++col) {\n"

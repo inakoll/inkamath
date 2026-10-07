@@ -516,6 +516,13 @@ set(args --compile c153.ink --float -o c153f.h)
 check(compile_float_c153)
 holds(compile_float_c153 c153f.h "2.0f : sqrtf(m_->x[1]) + sqrtf(m_->x[1]);\n")
 
+# C161: a float's inverse starts from the identity in floats, which MSVC's
+# /W4 asks of an int converted to one.
+file(WRITE "${OUT}/c161.ink" "z_n = [2 1; 1 n]^-1*[1; 1]\n")
+set(args --compile c161.ink --float -o c161.h)
+check(compile_float_c161)
+holds(compile_float_c161 c161.h "; ++j) r[i][j] = i == j ? 1.0f : 0.0f;\n")
+
 # C90: the clause --check keeps is 0 where a guard of 'and' reads NaN, as no
 # clause is taken, where the NaN was converted to an int.
 file(WRITE "${OUT}/c90.ink" "gate(x_n) = {\n    y_0 = 1\n    y_n = y_(n-1) + x_n\n    z_n | x_n > 0 and y_(n-2) > 0 = 1\n    z_n = 0\n}\ng = gate(x_n = 1)\n")
