@@ -104,6 +104,7 @@ add_test(NAME prelude_header
 # Each as file:instance.
 foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brink drift:ledge
                          drift:rift drift:naught drift:zeroed drift:mirrored drift:nests drift:latch drift:toil
+                         drift:late
                          delay:fir newton:stiff logistic:gate sized:sized softmax:cls steady:mark
                          rnn:rnn attention:head momentum:ball adam:fit lqr:gain
                          rates:pairs rates:odd seeded:warm cascade:servo decimate:boxcar
@@ -244,6 +245,8 @@ set_tests_properties(check_toil_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^toil: 100 steps from 0, against exact values until 0 and inexact ones from there\ntoil\\.y: within 0\; the interpreter ran out of steps at 2, not compared\n$")
 set_tests_properties(check_latch_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^latch: 100 steps from 0, against exact values\nlatch\\.m: within 0, from 1\nlatch\\.w: within 0\n$")
+set_tests_properties(check_late_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^late: 100 steps from 0, against exact values\nlate\\.v: within 0\nlate\\.x: within 0, from 1\n$")
 set_tests_properties(check_mask_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^mask: 100 steps from 0, against exact values\nmask\\.y: within 0\n$")
 set_tests_properties(check_order_report PROPERTIES PASS_REGULAR_EXPRESSION

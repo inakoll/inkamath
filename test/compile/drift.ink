@@ -155,3 +155,17 @@ heavy(x_n) = {
     y_n = x_n
 }
 toil = heavy(x_n = ~1)
+
+# A sequence based at 1 beside one based at 0: the step starts it at 1, and
+# the interpreter has no term of it at 0 (C151).
+#
+#     late: 100 steps from 0, against exact values
+#     late.v: within 0
+#     late.x: within 0, from 1
+offset() = {
+    v_0 = 0
+    v_n = v_(n-1) + 1
+    x_1 = 1
+    x_n = x_(n-1)/2
+}
+late = offset()
