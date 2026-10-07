@@ -1708,6 +1708,7 @@ closures need one anyway, and can bring it.
 | C175 `[fixed]` | **A fractional power of an exact number past a double's range overflowed or underflowed.** The base was made a double first: `((3*10^200)^2 + (4*10^200)^2)^(1/2)` was inf where the root, 5e200, is a double (Goldberg 1991, *Infinity*), `(10^-400)^(1/2)` 0, and `(2^1100)^(1/4)` inf. An exact number no normal double holds has a power of 2 taken out first now, x^y = 2^(e*y) (x/2^e)^y with e even, so a root of 1/2 is still C153's correctly rounded sqrt, in 14 lines; goldberg.ink holds it. No golden or expected header moved. A constant folded by `--compile` gets the same root, and `--check` of a parameter past a double's range, inf in the step, now reports the interpreter's finite term where both were inf. A complex exponent is as it was. Found transcribing Goldberg (1991). |
 | C190 `[fixed]` | **`rho` and `abscissa` of an inexact matrix whose cells sum to 2^1023 or more refused with a NaN.** B, the power of two above the sum, was 2^1024, made inexact with the matrix, so inf: `rho(~1e308)` was "a comparison needs a number, not -nan", as were `abscissa(~-1e308)` and `rho([~1 2; 3 4]*10^307)`. The bracket bisected is A/B's now, `rhou(A)_m` and `abscissau(A)_m`, from [0; 1] and [-1; 1], and `rhod` scales by B's power in two halves, each a double, A to A/B and the bracket back: `rhob` and `abscissab` are still A's. 3 lines more and one of comment; charpoly.ink holds it, and no other answer moved. A matrix whose sum is itself past a double, `[~1 2; 3 4]*2*10^307`, still refuses. Found reviewing *The characteristic polynomial and stability*. |
 | C191 `[fixed]` | **`rho` of an exact matrix whose answer is past a double's range refused with a NaN.** `rho([1 2; 3 4]*10^400)` and `/10^400`: A/B's tests are past a thousand digits, so approximated, and the bracket of them was multiplied by an exact B no double holds. Fixed by C190's change: they are inf and 0, the doubles `~` makes of 5.37e400 and 5.37e-400, marked. Found reviewing *The characteristic polynomial and stability*. |
+| C192 `[fixed]` | **An answer the 256-halving cap ended was printed as certified.** The cap stops a bisection the relative stop has not, and the bracket it leaves is no answer below 2^-203 of B: `abscissa([-10^-100 0; 0 -1])` was ~-3.45e-77, -2^-254, `abscissa([10^-80 0; 0 -1])` 0 for an unstable system, and `rho([0 1; 10^-200 0])` 0, all unmarked. An answer whose bracket at the cap is wider than 2^-53 of its end nearer 0 is marked now, `+ 0*10^-1000` adding a 0 approximated past a thousand digits, so a comparison of it is marked too. A 0 is never within 2^-53 of itself, so a nilpotent matrix's rho and a marginal system's abscissa, right, are marked as well: the tests cannot tell them from a value below the last bracket, and README's section 2 says so. bisection_cap.ink holds it, and its three such 0s move to marked. 2 lines more and one of comment. Found reviewing *The characteristic polynomial and stability*. |
 
 **Measure instructions, not the clock.** One of those changes made the matrix
 workload 20 per cent slower by the clock and not by a single instruction: with
@@ -5744,11 +5745,12 @@ that exploring seven domains asked of the interpreter, by how many asked.
   cap; 256, as past it a test of a matrix above 3x3 would read, by the
   estimate below, numbers past a thousand digits, so the halvings would be
   marked, and 2^-203 of B is far below what a double's eigenvalue resolves,
-  about 2^-52 of the matrix's norm. A bound on the boundary fails
+  about 2^-52 of the matrix's norm. An answer the cap ends, wider than
+  `rhos` asks, is marked (C192), a 0 always. A bound on the boundary fails
   its strict test and becomes lo, so an eigenvalue a halving reaches is the
   answer exactly: `rho([2 0; 0 -3])` is 3, `abscissa([1/2 1; -1 1/2])` 0.5,
-  a nilpotent matrix's rho 0. The research's comment said (lo, hi]; its own
-  guards kept [lo, hi).
+  a nilpotent matrix's rho 0, marked. The research's comment said (lo,
+  hi]; its own guards kept [lo, hi).
 
   What it costs. A test at a midpoint of b bits reads, in Routh's column,
   ratios of Hurwitz determinants of polynomials whose coefficients carry n b
@@ -5859,11 +5861,13 @@ that exploring seven domains asked of the interpreter, by how many asked.
   but fastgrad.ink, its scaled entries a 2x2's, which fails unscaled as the
   10x10 did, at 2 s where the 10x10 took 63. The 10x10's two answers are
   since `bisection_digits.ink`, and the bisections the cap ends
-  `bisection_cap.ink`, goldens of their own that run beside it, where the
-  one file took 50 s on the build worker. 50 lines landed against about
+  `bisection_cap.ink`, goldens of their own that run beside it: 11 s, 16 s
+  and 13 s under the sanitizers with C192's entries, where the one file
+  took 50 s on the build worker. 50 lines landed against about
   45: the prelude 33 and its
   comment 8 in `interpreter.hpp`, with 2 binding the staircases,
   `reference_stack.hpp` 3 and `derivative.hpp` 4. The review's C190 put
   the bisection in A/B's units, `rhou` and `abscissau`, `rhod` scaling by
-  B's power in two halves, so that B need not be a double: 4 lines more,
-  54 in all. 15,130 lines in all, after `charpoly`.
+  B's power in two halves, so that B need not be a double: 4 lines more;
+  C192 marks an answer the cap ended, 3 more: 57 in all. 15,133 lines in
+  all, after `charpoly`.

@@ -513,7 +513,10 @@ and the answer is lo, inexact, once the bracket is within 2^-53 of its end
 nearer 0, after 64 halvings and at most 256. It is certified while the tests
 are exact; their numbers grow with the matrix and the halvings, and past a
 thousand digits they are approximated and the answer is marked, within a
-double's accuracy but no longer proved. Of a matrix of tenths, `rho` is
+double's accuracy but no longer proved. An answer the 256th halving leaves
+wider is marked too: one below about 2^-202 of the sum of |A[j,k]|, and
+every 0, which no bracket is within 2^-53 of, so the tests cannot tell a
+nilpotent matrix's rho from a small one. Of a matrix of tenths, `rho` is
 certified up to about 6x6 and `abscissa` 8x8. `grad` refuses both, a
 bisection being a staircase:
 
