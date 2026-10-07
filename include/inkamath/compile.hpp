@@ -702,11 +702,14 @@ private:
     }
 
     // Filled from the lowest base, by the interpreter's stride (Reference::Filled),
-    // each term once for its arguments' code, and a temporary once a term reads it.
+    // each term once for its arguments' code, shape and exact value (C187),
+    // and a temporary once a term reads it.
     Code Term(const std::string& name, const Reference<Value>& function, Expansion& expansion,
               int k) {
         std::string args;
         const auto  text = [&](const auto& self, const Code& code) -> void {
+            args += code.size.toString() + '\x1d';
+            if (code.constant) Value::key(*code.constant, args);
             for (const Cell& cell : code.cells) args += cell.text + '\x1f';
             args += code.moves + '\x1e';
             for (const Code& part : code.part) self(self, part);

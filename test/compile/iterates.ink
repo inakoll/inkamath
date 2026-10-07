@@ -150,10 +150,17 @@ gaps = reach(x_n = n)
 # 'memo', terms whose clauses name their index alike, each clause seeing
 # its own index alone, as the interpreter binds it (C186): f_1 and f_2 are
 # their index, 1 and 2, then each term 10 more, the model's c, so a_n is 22;
-# q_3 is c, 10, as its base clause does not bind c, so e_n is 11:
+# q_3 is c, 10, as its base clause does not bind c, so e_n is 11. And
+# terms kept apart where their arguments are written alike, by their exact
+# value and their shape (C187): 1/2 and 1/2 + 2^-60 are one double, and g
+# keeps 1/2 where it moves 2^-60 by 4^20, so b_n is n + 3/2 + 2^-19; h_1
+# of a column and of a row is twice it, and s weighs each cell by its
+# column, so d_n is (2n + 2) + (2n + 4), 4n + 6:
 #
 #     memo: 100 steps from 0, against exact values
 #     memo.a: within 0
+#     memo.b: within 0
+#     memo.d: within 0
 #     memo.e: within 0
 alike(c = 10, x_n) = {
     f(x)_0 = x
@@ -162,7 +169,14 @@ alike(c = 10, x_n) = {
     q(x)_0 = x
     q(x)_c = q(x)_(c-1) + 1
     q(x)_3 = c
+    g(x)_0 = x
+    g(x)_k = g(x)_(k-1)*4 - 3/2
+    h(v)_0 = v
+    h(v)_k = h(v)_(k-1)*2
+    s(M[j<=r, k<=w]) = sum_(j=1)^r sum_(i=1)^w M[j,i]*i
     a_n = f(x_n)_4
+    b_n = x_n + g(1/2)_20 + 2*g(1/2 + 2^-60)_20
+    d_n = s(h([x_n; 1])_1) + s(h([x_n, 1])_1)
     e_n = q(x_n)_4
 }
 memo = alike(x_n = n)
