@@ -167,6 +167,9 @@ struct numeric_interface_imp<std::complex<T>,false>
             if (b.real() == 0.5 && a.real() > 0) return std::sqrt(a.real());
             return std::pow(a.real(), b.real());
         }
+        // The principal root, exactly i of -1 where exp(log(a)/2) leaves
+        // cos(pi/2) in the real part.
+        if (b == T(0.5)) return std::sqrt(a);
         // A whole power of a complex number is repeated multiplication:
         // exp(b*log(a)) leaves i^2 a rounding error away from -1.
         // The range check is not pedantry: converting a double outside int's

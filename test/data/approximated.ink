@@ -54,7 +54,7 @@ c = 14142135623730950488/10^19
 # Which is also why a root, inexact by nature, keeps the mark of what it
 # reads: this one is about 4.1e-11, real.
 >> (rt_20 - c)^(1/2)
-~9.12432968e-25+i*~1.49011612e-08  # approximated past a thousand digits
+i*~1.49011612e-08  # approximated past a thousand digits
 
 >> (rt_11 - c)^(1/2)
 ~4.10940897e-11

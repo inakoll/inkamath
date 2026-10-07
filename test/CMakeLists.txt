@@ -146,7 +146,8 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brin
                          grad:swing thresholds:dies thresholds:beat stable:moments stable:peak
                          reddi:thm1 reddi:fixed reddi:gen
                          kahan:sums kahan:muller kahan:rounded kahan:surprise kahan:solveur
-                         rump:rump signatures:inv)
+                         rump:rump signatures:inv
+                         goldberg:year goldberg:needled goldberg:big goldberg:seven)
     string(REPLACE ":" ";" checked ${checked})
     list(GET checked 0 file)
     list(GET checked 1 instance)
@@ -292,6 +293,16 @@ set_tests_properties(check_solveur_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^solveur: 100 steps from 0, against exact values\nsolveur\\.d: within 0\nsolveur\\.z: within 0\n$")
 set_tests_properties(check_rump_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^rump: 100 steps from 0, against exact values\nrump\\.g: 1\\.1726039400531787 at 0, where the interpreter gives -0\\.82739605994682142\n$")
+# Goldberg (1991): Heron's formula parting at a needle, and (x + y) + z
+# from x + (y + z) at 1e30, as the paper has them; compile/goldberg.ink.
+set_tests_properties(check_year_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^year: 100 steps from 0${inexact0}\nyear\\.naive: within 0${about}\nyear\\.thm4: within 0${about}\n$")
+set_tests_properties(check_needled_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^needled: 100 steps from 0${inexact0}\nneedled\\.heron: 8\\.0466270446777376e-07 at 0, where the interpreter gives 6\\.9685834354698204e-07\\; the interpreter's term about [0-9.e+-]+ from the exact one\nneedled\\.kahan: within 0${about}\n$")
+set_tests_properties(check_big_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^big: 100 steps from 0, against exact values\nbig\\.s: within 2e-30\nbig\\.t: within 0\nbig\\.w: 0 at 0, where the interpreter gives 1\n$")
+set_tests_properties(check_seven_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^seven: 100 steps from 0, against exact values\nseven\\.t: within 0\nseven\\.u: within 1\\.4e-14\n$")
 set_tests_properties(check_mask_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^mask: 100 steps from 0, against exact values\nmask\\.y: within 0\n$")
 set_tests_properties(check_order_report PROPERTIES PASS_REGULAR_EXPRESSION
@@ -534,9 +545,11 @@ add_test(NAME check_masked COMMAND check_masked)
 add_test(NAME check_sever COMMAND check_sever)
 add_test(NAME check_muller COMMAND check_muller)
 add_test(NAME check_rump COMMAND check_rump)
+add_test(NAME check_needled COMMAND check_needled)
+add_test(NAME check_big COMMAND check_big)
 set_tests_properties(check_wild check_brink check_rift check_sill check_seam check_pole
                      check_huge check_masked check_sever check_moments check_muller check_rump
-                     PROPERTIES WILL_FAIL ON)
+                     check_needled check_big PROPERTIES WILL_FAIL ON)
 
 # A float target (DESIGN.md): pid and adc's headers as compile/expected/float
 # has them, and compile/float.ink's checks, each built so that an operation done
@@ -570,7 +583,8 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:ledge logistic:gate momentu
                          steady:mark softmax:cls grad:line tensor:whirl tensor:batch
                          cellguards:rfit cellguards:tfit thresholds:dies thresholds:beat stable:peak
                          reddi:thm1 reddi:fixed reddi:gen
-                         kahan:sums kahan:muller kahan:rounded kahan:surprise kahan:solveur rump:rump)
+                         kahan:sums kahan:muller kahan:rounded kahan:surprise kahan:solveur rump:rump
+                         goldberg:year goldberg:needle goldberg:big goldberg:seven)
     string(REPLACE ":" ";" checked ${checked})
     list(GET checked 0 file)
     list(GET checked 1 instance)
@@ -593,7 +607,8 @@ endforeach()
 set_tests_properties(check_float_wild check_float_ledge check_float_far check_float_crawl
                      check_float_steep check_float_dies check_float_beat check_float_peak
                      check_float_muller check_float_rounded check_float_surprise
-                     check_float_solveur check_float_rump PROPERTIES WILL_FAIL ON)
+                     check_float_solveur check_float_rump check_float_needle check_float_big
+                     PROPERTIES WILL_FAIL ON)
 # Each report as compile/float.ink gives it; what a libm or the seeds decide,
 # by its form.
 set(in_float " in float, against exact values")
@@ -635,6 +650,10 @@ foreach(report IN ITEMS
         "surprise:^surprise: 100 steps from 0${inexact}\nsurprise\\.g: 1 at 0, where the interpreter gives 0\; the interpreter's term about [0-9.e+-]+ from the exact one\nsurprise\\.k: ${exact}${about}\n$"
         "solveur:^solveur: 100 steps from 0${in_float}\nsolveur\\.d: 0 at 0, where the interpreter gives -1\nsolveur\\.z\\[1,1\\]: [-a-z()]+ at 0, where the interpreter gives 12582909\n$"
         "rump:^rump: 100 steps from 0${in_float}\nrump\\.g: 1\\.17260396 at 0, where the interpreter gives -0\\.82739605994682142\n$"
+        "year:^year: 100 steps from 0${inexact}\nyear\\.naive: within [0-9.]+, [1-9](\\.[0-9])?e\\+02 units of a float${about}\nyear\\.thm4: within [0-9.e-]+, [1-9](\\.[0-9])? units of a float${about}\n$"
+        "needle:^needle: 100 steps from 0${inexact}\nneedle\\.heron: 0\\.0186444204 at 0, where the interpreter gives 0\\.016146540115034271\; the interpreter's term about [0-9.e+-]+ from the exact one\nneedle\\.kahan: within 5\\.3e-10, 0\\.0044 units of a float${about}\n$"
+        "big:^big: 100 steps from 0${in_float}\nbig\\.s: within 2e-30, 1\\.7e-23 units of a float\nbig\\.t: ${exact}\nbig\\.w: 0 at 0, where the interpreter gives 1\n$"
+        "seven:^seven: 100 steps from 0${in_float}\nseven\\.t: ${exact}\nseven\\.u: within 3\\.8e-06, 32 units of a float\n$"
         "cls:^cls: 100 steps from 0${inexact}\ncls\\.z: within 2\\.4e-08, 0\\.2 units of a float\ncls\\.q: within 1\\.9e-06, 1\\.5 units of a float${about}\ncls\\.s: within 6\\.3e-08, 0\\.53 units of a float${about}\ncls\\.loss: within 4\\.1e-07, 3\\.4 units of a float${about}\n$")
     string(FIND "${report}" ":" colon)
     string(SUBSTRING "${report}" 0 ${colon} instance)
