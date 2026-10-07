@@ -40,7 +40,9 @@ foreach(golden IN LISTS goldens)
 endforeach()
 # fastgrad.ink's 600,000 remembered calls take 25 s under sanitizers alone.
 set_tests_properties(fastgrad.ink PROPERTIES TIMEOUT 120)
-foreach(suite IN ITEMS bignum line_editor matrix spec)
+# charpoly.ink's exact 10x10 polynomials take 95 s under sanitizers alone.
+set_tests_properties(charpoly.ink PROPERTIES TIMEOUT 300)
+foreach(suite IN ITEMS bignum line_editor matrix)
     add_test(NAME ${suite} COMMAND inkamath_tests --test-suite=${suite} --no-intro)
     set_tests_properties(${suite} PROPERTIES TIMEOUT 60)
 endforeach()

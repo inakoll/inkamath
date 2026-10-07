@@ -261,7 +261,8 @@ other built-in values, and `floor` the only built-in function: the largest
 whole number not above its argument, exact of an exact number and cell by
 cell of a matrix. `ceil(x) = -floor(-x)` and `mod(a, b) = a - b*floor(a/b)`
 come with it, from a prelude (section 5), and so do `exp`, `log`, `tanh`,
-`sin`, `cos`, `abs`, `max` and `min`. Any other rounding is a line of it,
+`sin`, `cos`, `abs`, `max` and `min`, and, of matrices, `charpoly`,
+`hurwitz`, `schurcohn`, `rho` and `abscissa` (section 2). Any other rounding is a line of it,
 by the rule the model needs — `round(x) = floor(x + 1/2)` — and, like `pi`,
 each of them can be defined again, and given back by `clear`.
 
@@ -498,6 +499,38 @@ B = [1 2; 3 4;; 5 6; 7 8]
   7;;
  11;
  15]
+```
+
+The prelude gives the characteristic polynomial and the stability tests.
+`charpoly(A)` is det(lambda I - A) as a column, highest power first,
+exactly. Of a polynomial so written, `hurwitz(p, s = 0)` is 1 where every
+root has its real part below s, and `schurcohn(p, r = 1)` where every root
+is inside |z| < r, both strictly. `rho(A)`, the spectral radius, and
+`abscissa(A)`, the largest real part of an eigenvalue, bisect on those
+tests: `rhob(A)_m` and `abscissab(A)_m` are the brackets [lo; hi] after m
+halvings, lo at most the value and hi above it, exact of an exact matrix,
+and the answer is lo, inexact, once the bracket is within 2^-53 of its end
+nearer 0, after 64 halvings and at most 256. It is certified while the tests
+are exact; their numbers grow with the matrix and the halvings, and past a
+thousand digits they are approximated and the answer is marked, within a
+double's accuracy but no longer proved. Of a matrix of tenths, `rho` is
+certified up to about 6x6 and `abscissa` 8x8. `grad` refuses both, a
+bisection being a staircase:
+
+```
+>> charpoly([1 2; 3 4])
+[ 1;
+ -5;
+ -2]
+
+>> hurwitz(charpoly([0 1; -1 -1/5]))
+1
+
+>> rho([1/2 1; -1 1/2])
+~1.11803399
+
+>> abscissa([0 1; -1 -1/5])
+~-0.1
 ```
 
 ### 3. Definitions
@@ -1012,10 +1045,11 @@ of its own: the session reaches its names qualified, `filters.lowpass`, and
 `use filters (lowpass)` brings in unqualified those listed. A file is read
 once, holds definitions only, and one that cannot be read or parsed loads
 nothing and says where. The prelude that defines `ceil`, `mod`, `exp`, `log`,
-`tanh`, `sin`, `cos`, `abs`, `max` and `min`, and what they call, is included
-bare beneath the session, as the built-ins are: every scope sees it, and a
-session that defines one of its names again does so for itself alone, and
-clearing it gives the prelude's back. `exp`, `log`, `tanh`, `sin` and `cos`
+`tanh`, `sin`, `cos`, `abs`, `max`, `min`, `charpoly`, `hurwitz`,
+`schurcohn`, `rho`, `rhob`, `abscissa` and `abscissab`, and what they call,
+is included bare beneath the session, as the built-ins are: every scope sees
+it, and a session that defines one of its names again does so for itself
+alone, and clearing it gives the prelude's back. `exp`, `log`, `tanh`, `sin` and `cos`
 are written in it, accurate to a few units in
 the last place of a double, by the operations a compiled step performs:
 `exp(x)` is 2^k e^r, r = x - k ln 2 and e^r a polynomial, `log` reduces by

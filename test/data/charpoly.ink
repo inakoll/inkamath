@@ -1,10 +1,9 @@
 # The characteristic polynomial, Routh's and the Schur-Cohn tests, and the
 # spectral radius and abscissa, in the prelude, written in inkamath
-# (DESIGN.md, next in line). Written by hand, never recorded: every value
-# was worked out apart from the interpreter, polynomials and roots exactly
-# with sympy, eigenvalues with mpmath at 60 digits, and each bracket by
-# bisecting in Python's fractions with every test decided from the exact
-# eigenvalue.
+# (DESIGN.md, next in line). Every value was worked out apart from the
+# interpreter, as its specification: polynomials and roots exactly with
+# sympy, eigenvalues with mpmath at 60 digits, and each bracket by bisecting
+# in Python's fractions with every test decided from the exact eigenvalue.
 
 # Faddeev and LeVerrier's characteristic polynomial, det(lambda*I - A), as a
 # column, highest power first, exactly.

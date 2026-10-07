@@ -723,6 +723,15 @@ set(stdout "cannot compile w: tr takes M[j<=n, k<=n], not a 2x3 matrix\n")
 set(exit 1)
 check(compile_signature_refused)
 
+# The prelude's charpoly and rho read a sequence with parameters at an
+# index, which does not compile yet (DESIGN.md, the characteristic polynomial
+# and stability).
+file(WRITE "${OUT}/charpoly.ink" "x_n = rho([n 1; -1 1/2])\nz_n = charpoly([n 1; 2 3])[2]\n")
+set(args --compile charpoly.ink)
+set(stdout "cannot compile x: a sequence with parameters\ncannot compile z: a sequence with parameters\n")
+set(exit 1)
+check(compile_charpoly_refused)
+
 # A tensor input, refused before tensors compiled, read by its second slice.
 file(WRITE "${OUT}/batch.ink" "batch(x_n[b<=2, j<=1, k<=2]) = {\n    y_n = x_n[2]*[1; 1]\n}\n")
 set(args --compile batch.ink batch -o batch.h)

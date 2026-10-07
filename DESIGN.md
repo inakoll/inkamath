@@ -5661,8 +5661,8 @@ that exploring seven domains asked of the interpreter, by how many asked.
   `latex.hpp` 5; `extent.hpp` 3; `reference_stack.hpp` 2; `interpreter.hpp`
   -20, a model's input read by the shared helper. 15,007 lines in all,
   after `fixes11`.
-- **The characteristic polynomial and stability, in the prelude**, the
-  second step towards eigenvalues, approved by the owner: `charpoly(A)`
+- `[done]` **The characteristic polynomial and stability, in the prelude**,
+  the second step towards eigenvalues, approved by the owner: `charpoly(A)`
   exactly, Routh's and the Schur-Cohn tests, and the spectral radius and
   abscissa by bisection on those tests, certified while they are exact.
   Written in inkamath with the sizes a signature binds, the eigenvalue
@@ -5674,17 +5674,17 @@ that exploring seven domains asked of the interpreter, by how many asked.
       charpolyc(A)_0 = 1
       charpolyc(A[j<=n, k<=n])_m = -sum_(j=1)^n (A*charpolym(A)_m)[j,j]/m
       charpoly(A[j<=n, k<=n])[j<=n+1] = charpolyc(A)_(j-1)
-      binomial(a, b) = !a/(!b*!(a - b))
-      binomial(a, b) | b < 0 or b > a = 0
+      hurwitzb(a, b) = !a/(!b*!(a - b))
+      hurwitzb(a, b) | b < 0 or b > a = 0
       hurwitzc(q[j<=m], i) = 0
       hurwitzc(q[j<=m], i) | i <= m = q[i]
       hurwitzr(q)_0 = q
       hurwitzr(q[j<=m])_k[j<=m] = hurwitzc(hurwitzr(q)_(k-1), j + 1) - mod(j + 1, 2)*hurwitzr(q)_(k-1)[1]/hurwitzr(q)_(k-1)[2]*hurwitzc(hurwitzr(q)_(k-1), j + 2)
       hurwitzt(q[j<=m])_0 = sum_(j=1)^m abs(q[j]) > 0 and q[1] <> 0
       hurwitzt(q)_k = hurwitzt(q)_(k-1) and hurwitzr(q)_(k-1)[2]*q[1] > 0
-      hurwitzs(p[j<=m], s)[t<=m] = sum_(i=1)^t p[i]*binomial(m-i, m-t)*s^(t-i)
+      hurwitzs(p[j<=m], s)[t<=m] = sum_(i=1)^t p[i]*hurwitzb(m-i, m-t)*s^(t-i)
       hurwitz(p[j<=m], s = 0) = hurwitzt(hurwitzs(p, s))_(m-1)
-      schurcohnm(p[j<=m], r)[t<=m] = sum_(i=1)^m p[i]*r^(m-i)*sum_(a=0)^(m-i) binomial(m-i, a)*binomial(i-1, m-t-a)*(-1)^(m-t-a)
+      schurcohnm(p[j<=m], r)[t<=m] = sum_(i=1)^m p[i]*r^(m-i)*sum_(a=0)^(m-i) hurwitzb(m-i, a)*hurwitzb(i-1, m-t-a)*(-1)^(m-t-a)
       schurcohn(p[j<=m], r = 1) | r >= 0 and sum_(j=1)^m abs(p[j]) >= 0 = hurwitz(schurcohnm(p, r))
       rhon(A[j<=n, k<=n]) = rhop(sum_(j=1)^n sum_(k=1)^n abs(A[j,k]))
       rhop(s) = 2^(ilogb(s + (s == 0)) + 1) + 0*s
@@ -5769,8 +5769,9 @@ that exploring seven domains asked of the interpreter, by how many asked.
     `rho` is the paper's rho(A); `abscissa`, as `alpha` is every learning
     rate's name. A session may take any of them for itself, `rho = 1000` a
     density, and `clear` gives it back. The helpers are prefixed by their
-    function, as `expk` and `sinr` are; `binomial` is named for what it is,
-    both tests using it.
+    function, as `expk` and `sinr` are, `hurwitzb`, the binomial
+    coefficient, too: a helper, not a public `binomial`, by the review's
+    ruling.
   - **Refused.** A matrix not square, by its signature:
     `rho takes A[j<=n, k<=n], not a 3x2 matrix`. A complex entry by every
     test, in abs's words, as C147 left `abs`:
@@ -5818,17 +5819,21 @@ that exploring seven domains asked of the interpreter, by how many asked.
   - **Compiled**: refused in the compiler's words,
     `cannot compile x: a sequence with parameters`, until *A sequence with
     parameters read at a constant index, compiled* lands; a case of
-    `test/cli.cmake` with the implementation.
+    `test/cli.cmake` with the implementation. *A sequence with parameters
+    read at a constant index, compiled*, in flight, would compile them: if
+    it lands first, compiled `rho` and `abscissa` must refuse grad in
+    `compile.hpp` as `derivative.hpp` does, and the case of `cli.cmake`
+    changes; whichever lands second reconciles them.
 
   What moves: no golden and no header, as no test names any of them; the
-  prelude is read at every start, 27 lines more. README's section 1 lists
+  prelude is read at every start, 33 lines more. README's section 1 lists
   the names with the prelude's others, and section 2 shows `charpoly` and
   `rho`.
 
-  About 45 lines: 31 of the prelude, the stop's 3 and a longer
-  `schurcohn` among them, some 8 of its comment, and 6 of C++ for grad. 15,055 lines at 75c03ae, by
-  `wc -l include/inkamath/*.hpp src/*`. Past 60 the implementation stops and
-  reports.
+  About 45 lines: 31 of the prelude, the stop's 3 and a longer `schurcohn`
+  among them, some 8 of its comment, and 6 of C++ for grad. 15,055 lines at
+  75c03ae, by `wc -l include/inkamath/*.hpp src/*`. Past 60 the
+  implementation stops and reports.
 
   Specified in `test/data/spec/charpoly.ink`, 88 entries replayed by the
   spec suite, 80 failing by design, those passing being the definitions
@@ -5838,3 +5843,18 @@ that exploring seven domains asked of the interpreter, by how many asked.
   the interpreter. The prototype above, defined in a session, gives every
   answer but grad's two refusals and the last, which needs the name to be
   the prelude's.
+
+  Built as specified: the spec is the golden `charpoly.ink`, 88 entries,
+  and the compiled refusal a case of `cli.cmake`; README's sections 1 and 5
+  list the names, and section 2 shows `charpoly`, `hurwitz`, `rho` and
+  `abscissa` and says where the answers stop being certified. The compiled
+  prelude header is unchanged, as its file calls none of them. Departures:
+  the staircases are a set of the two in the stack, and grad's check sits
+  in its call, before a limit or a term; the comment is 8 lines. 0.2 s for
+  the 10x10 here, 0.8 s for it times 10^30, 0.1 s for a nilpotent 2x2 run
+  to 256 halvings; the golden takes 95 s under the sanitizers, its 10x10
+  polynomials over B exact, so its timeout is 300 s, as fastgrad.ink's is
+  120. 50 lines landed against about 45: the prelude 33 and its
+  comment 8 in `interpreter.hpp`, with 2 binding the staircases,
+  `reference_stack.hpp` 3 and `derivative.hpp` 4. 15,126 lines in all,
+  after `charpoly`.
