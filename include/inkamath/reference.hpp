@@ -94,6 +94,8 @@ struct Model;
 template <typename T>
 class Reference {
 public:
+    using Size = typename ParametersDefinition<T>::Size;
+
     Reference() = default;
     explicit Reference(std::string name) : reference_name_(std::move(name)) {}
 
@@ -196,16 +198,15 @@ public:
         }
         // The sizes are the definition's as the names are: stated in one
         // clause, they hold for every clause, so two clauses state the same.
-        std::vector<typename ParametersDefinition<T>::Size> sizes;
-        if (!clauses_.empty()) sizes = sizes_;
-        sizes.resize(own.size());
+        std::vector<Size> sizes = clauses_.empty() ? std::vector<Size>(own.size()) : sizes_;
         for (std::size_t i = 0; i < own.size(); ++i) {
-            const auto& size = ai_parameters.sizes()[i];
-            if (!sizes[i].bounds.empty() && !size.bounds.empty() && sizes[i].bounds != size.bounds)
+            const Size& size = ai_parameters.sizes()[i];
+            if (size.bounds.empty()) continue;
+            if (!sizes[i].bounds.empty() && sizes[i].bounds != size.bounds)
                 throw std::runtime_error(reference_name_ + " takes " + own[i] + " of size " +
                                          Of(sizes[i]) + ", so a clause cannot take it of size " +
                                          Of(size) + Advice());
-            if (!size.bounds.empty()) sizes[i] = size;
+            sizes[i] = size;
         }
         for (const Clause<T>& c : clauses_) Clash(sizes, c.parameters);
         Clash(sizes, ai_parameters);
@@ -855,7 +856,7 @@ private:
     }
 
     // 'n x n'.
-    static std::string Of(const typename ParametersDefinition<T>::Size& size) {
+    static std::string Of(const Size& size) {
         std::string out;
         for (const auto& [name, number] : size.bounds)
             out += (out.empty() ? "" : " x ") + (name.empty() ? std::to_string(number) : name);
@@ -864,32 +865,29 @@ private:
 
     // A size is bound as a parameter is, so its name is its own, and a
     // default reads only the sizes stated before it.
-    void Clash(const std::vector<typename ParametersDefinition<T>::Size>& sizes,
-               const ParametersDefinition<T>&                             p) const {
+    void Clash(const std::vector<Size>& sizes, const ParametersDefinition<T>& p) const {
         const std::vector<std::string>& names = p.parameters_names();
-        std::vector<std::string>        before;
-        for (std::size_t d = 0; d < sizes.size(); ++d) {
-            const auto fallback = p.parameters_dict().find(names[d]);
-            for (const auto& size : sizes)
-                for (const auto& [name, number] : size.bounds) {
-                    const char* what =
-                        std::count(names.begin(), names.end(), name) ? "a parameter"
-                        : name == p.index_name()                     ? "an index"
-                        : name == p.row_name() || name == p.col_name() || name == p.slice_name()
-                            ? "a cell's index"
-                            : nullptr;
-                    if (!name.empty() && what)
-                        throw std::runtime_error(reference_name_ + " has " + what +
-                                                 " and a size named " + name);
-                    if (!name.empty() && fallback != p.parameters_dict().end() &&
-                        !std::count(before.begin(), before.end(), name) &&
-                        Mentions(*fallback->second, name))
-                        throw std::runtime_error(reference_name_ + "'s default for " + names[d] +
+        std::vector<std::string>        stated;
+        for (std::size_t d = 0; d < sizes.size(); ++d)
+            for (const auto& [name, number] : sizes[d].bounds) {
+                if (name.empty() || std::count(stated.begin(), stated.end(), name)) continue;
+                stated.push_back(name);
+                const char* what =
+                    std::count(names.begin(), names.end(), name) ? "a parameter"
+                    : name == p.index_name()                     ? "an index"
+                    : name == p.row_name() || name == p.col_name() || name == p.slice_name()
+                        ? "a cell's index"
+                        : nullptr;
+                if (what)
+                    throw std::runtime_error(reference_name_ + " has " + what +
+                                             " and a size named " + name);
+                for (std::size_t e = 0; e <= d; ++e)
+                    if (const auto fallback = p.parameters_dict().find(names[e]);
+                        fallback != p.parameters_dict().end() && Mentions(*fallback->second, name))
+                        throw std::runtime_error(reference_name_ + "'s default for " + names[e] +
                                                  " reads the size " + name +
                                                  ", not stated before it");
-                }
-            for (const auto& [name, number] : sizes[d].bounds) before.push_back(name);
-        }
+            }
     }
 
     // The matrices a clause reads at an index of the cell it leaves unbounded,
@@ -1407,7 +1405,7 @@ private:
     std::vector<Clause<T>> clauses_;
     // The sizes its parameters state, in whichever clause (DESIGN.md, a size
     // bound by a signature).
-    std::vector<typename ParametersDefinition<T>::Size> sizes_;
+    std::vector<Size> sizes_;
 
     mutable std::optional<bool> applied_;
 };
