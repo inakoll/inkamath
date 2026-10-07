@@ -5364,3 +5364,109 @@ that exploring seven domains asked of the interpreter, by how many asked.
   name brought in only over nothing or their like, in a model's body too, and
   `clear`; 11 in `interpreter.hpp`, the word, and `clear` refused in a model's
   body. 14,727 lines in all, after `budget`. By its review, C158 to C160, 24 lines.
+- **A truth read from an approximated number.** With `rt_0 = 1`, `rt_n =
+  (rt_(n-1) + 2/rt_(n-1))/2` and `c = 14142135623730950488/10^19`, `rt_20 >
+  c` answers 0 and says nothing, where rt_20 is above the square root of 2
+  and c below it: approximated at the twelfth step, rt_20 is the double one
+  unit below the double nearest c. Beside `g(x) = 2` and `g(x) | x > c =
+  1`, `g(rt_20)` answers 2, as plainly. C68 decided it: "A comparison is not
+  either: it is a truth, exactly." A truth is exact only if what it compares
+  is, and one read from a double is not a little off when it is wrong but
+  wholly so, and a guard turns it into another clause. The eigenvalue
+  research's intervals, counted by Sturm sequences past the bound with
+  `sgn(x) = (x > 0) - (x < 0)`, were exact fractions, "certified", and wrong.
+  That sentence is reversed, as `MANIFESTO.md` asks of an oracle past its
+  horizon: say which it is giving.
+
+  Decided, by one rule, C68's own: what is computed from an approximated
+  number is approximated, a choice among it.
+  - A comparison of numbers or of whole matrices that reads one answers 1 or
+    0 approximated, the double with the mark, as `rt_20*0` is; `and` and
+    `or` where a side they read is. A side not read cannot mark them.
+  - A guard that reads one chooses by an approximated truth, so the answer
+    of the clause chosen is approximated, whether that clause's own guard
+    held or one tried before it failed, as `g(rt_20)`'s did. An exact answer
+    becomes its double: the mark is an inexact number's, in the half of its
+    layout an exact one uses. "No clause of h applies" decided so ends ", by
+    a guard approximated past a thousand digits". By cells, each cell by the
+    guards read for it; under `grad`, the derivative of the clause chosen,
+    value and parts, a part it lacks a 0 approximated.
+  - So such a truth has no `frac`, is no index or bound, refused as any
+    approximated index is, and makes inexact what it multiplies. The mark is
+    in the value, so a term remembered is read again marked.
+  - Every comparison is marked, however far from its threshold, as nothing
+    tells how far the double is from its exact value: `rt_20 > 1` is `1  #
+    approximated past a thousand digits`.
+
+  Unchanged: what is inexact by nature or by `~`, unmarked by C68, so
+  `~rt_11 > c` is a plain 0, wrong as it is. What such an operation
+  computes from an approximated number stays marked, as C68 has it: Reddi's
+  Adam transcribed takes `v_n^(1/2)` of exact decimals past the bound and
+  is marked, an answer inexact anyway, but `(rt_20 - c)^(1/2)` is
+  1.49e-8 imaginary for 4.1e-11 real, and clearing the mark at a root would
+  hide it. A limit's stopping rule, in
+  doubles always; its answer is a term, marked if the term is. `tex`, which
+  prints no value. The compiler, which approximates nothing: a constant it
+  folds from a marked truth is the same double, a header with `2^4000 > 1`
+  unmoved. `--check` holds the step to an interpreter term chosen by an
+  approximated guard as to an inexact one, and says from which index, which
+  no report in the tests reaches.
+
+  Two lines of the prelude, so that the rule marks nothing C68 would not.
+  `ilogbs(x, k, s) | k + s < -3321 = k + s`, as C101's `k + s > 3321`: every
+  exact number is above 2^-3322 and every double too, so a threshold below
+  is passed, where now it is 2^-3584 approximated to 0 and passed by x >= 0.
+  Without it, ilogb's exact answer chosen there becomes a double, the
+  thresholds after it doubles that vanish, and `ilogb(1/10^950)` is -3073
+  where it is -3156, `log(1/10^950)` refused. And `logm`'s fold `m*m > 2`
+  becomes `~m*m > 2`: of an exact argument with parts past 500 digits the
+  square passes the bound, and `log(10^999)` would be marked for a choice
+  between two reductions equally accurate. A double's fold is the same
+  product, and the header's line with it.
+
+  Rejected:
+  - Marking only an unsafe comparison, its gap below the error's bound. No
+    bound is carried, and after a cancellation the double is any distance
+    off: `(rt_20 - c)*10^16 > -1` reads -2.22 for about 1.7e-5, 55% of the
+    threshold away and on the wrong side. A radius beside each double is
+    ball arithmetic, rejected for `--check`'s estimate (*The interpreter's
+    own error*); a relative gap would certify that answer.
+  - Refusing, as "refuses rather than guesses" would read: a model past its
+    horizon -- the epidemic in doubles from its eighth step -- decides most
+    guards rightly, and marked it answers and says so.
+  - An exact answer kept exact and marked: a mark on exact numbers, carried
+    by every fast path of `+`, `-`, `*` and `/`.
+  - Kleene's `and` and `or`, an exact side that decides alone clearing the
+    mark: a second rule beside arithmetic's, where `0*rt_20` is marked too,
+    and reading the exact side first already avoids it.
+  - Comparing a double with an exact number exactly: rt_20's double is below
+    c too, so `rt_20 > c` stays 0, and `~0.1 == 1/10` moves from 1 to 0.
+  - Marking only the clause whose own guard held: `g(rt_20)` is the other
+    case.
+
+  What moves, measured with a prototype on every test of `ctest`:
+  `bignum.ink`'s `rt_20 > 1`, marked, and the comment above it that states
+  C68's sentence; `elementary.ink`'s `tex ?ilogbs`, by its clause;
+  `inkamath_prelude.h`'s `ilogbs`, one test more and its answers the same.
+  README's paragraph on numbers (section 1) gains the rule, and C68's row a
+  line that it is reversed here. Outside the tests, the 12x12 eigenvalue
+  sessions are refused, "an index must be exact, and 13 was approximated",
+  where they answered: their `dim` counts a Sturm polynomial's cells by
+  `A[i,1] == A[i,1]`, which past the bound is marked, and a size the
+  language has only as a number. Callgrind, prototype against integration:
+  `hand` 0.4%, `grad` 1.1% and `limit` 1.3% more.
+
+  About 55 lines of sources: `matrix.hpp` 7, the comparison and the mark;
+  `number.hpp` and `numeric_interface.hpp` 4, the mark; the evaluator's
+  `and` and `or` 4; `reference.hpp` 18, the guards, cells and refusal;
+  `derivative.hpp` 20, the same under `grad`; the prelude 1. 14,653 lines in
+  all now, about 14,710 after; past about 83, the implementation stops and
+  reports.
+
+  Specified in `test/data/spec/approximated.ink`, 65 entries, 28 failing:
+  every comparison and `and`, `or` and matrix `==` against what stays exact
+  beside it; arithmetic, `frac`, indices, a sum's bound and a remembered
+  count; guards that hold, fail, are not read, or refuse; cells; `grad`;
+  the prelude's guards, and the answers its two lines keep. Expected values
+  by exact arithmetic and the doubles emulated in Python, apart from the
+  interpreter.
