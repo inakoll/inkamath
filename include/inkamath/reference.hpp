@@ -407,11 +407,17 @@ public:
             return Written(*clause);
         }
 
+        // As they are tried: an unguarded clause for every call or every
+        // cell is the fallback, after the guards wherever written (C162).
         std::string description;
-        for(const Clause<T>& clause : clauses_) {
-            if(!description.empty()) description += '\n';
-            description += Written(clause);
-        }
+        for (const bool fallback : {false, true})
+            for (const Clause<T>& clause : clauses_) {
+                const bool last =
+                    !clause.parameters.guarded() && !IsBase(clause) && !IsOneCell(clause);
+                if (last != fallback) continue;
+                if (!description.empty()) description += '\n';
+                description += Written(clause);
+            }
         return description;
     }
 

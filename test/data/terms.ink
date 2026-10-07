@@ -64,8 +64,8 @@ w_n[j<=3, k<=1] | j == 1 = x_n
 
 >> ?w
 w_0[j<=3, k<=1] = 0
-w_n[j<=3, k<=1] = w_(n-1)[j-1, 1]
 w_n[j<=3, k<=1] | j == 1 = x_n
+w_n[j<=3, k<=1] = w_(n-1)[j-1, 1]
 
 # A cell no clause gives is 0.
 >> e_n[j<=2, k<=2] | j == k = n

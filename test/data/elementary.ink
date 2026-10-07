@@ -247,18 +247,18 @@ error: log needs a number above 0, not 0
 
 # Their definitions, as the prelude writes them.
 >> ?exp
-exp(x) = expk(x, floor(x*1.4426950408889634 + 1/2))
 exp(x) | x > 1000 = exp(1000)
 exp(x) | x < -1000 = exp(-1000)
+exp(x) = expk(x, floor(x*1.4426950408889634 + 1/2))
 
 >> ?log
-log(x) = logk(x, ilogb(x))
 log(x) | x <= 0 = 1/0
 log(x) | 1/x == 0 = x
+log(x) = logk(x, ilogb(x))
 
 >> ?tanh
-tanh(x) = tanhp(x)
 tanh(x) | x < 0 = -tanhp(-x)
+tanh(x) = tanhp(x)
 
 >> tex ?log
 \operatorname{log}(x) = \begin{cases} \frac{1}{0} & \text{if } x \le 0 \\ x & \text{if } \frac{1}{x} = 0 \\ \operatorname{logk}(x, \operatorname{ilogb}(x)) & \text{otherwise} \end{cases}

@@ -1538,7 +1538,7 @@ private:
     }
 
     // C's absorbs a NaN where the other operand is 1 or 0: pow(1, NaN) and
-    // pow(NaN, 0) are 1.
+    // pow(NaN, 0) are 1. C's sqrt(-0) is -0, the interpreter's +0 (C163).
     Code Powered(const Code& base, const Code& exponent) const {
         const auto other = [](const Code& c, double v) {
             return c.constant && Doubles(*c.constant)[0] != v;
@@ -1547,7 +1547,7 @@ private:
             other(exponent, 0.0) || other(base, 1.0) ? "" : Nan(base, exponent);
         const std::string power =
             exponent.constant && Doubles(*exponent.constant)[0] == 0.5
-                ? "sqrt(" + base.cells[0].text + ")"
+                ? "sqrt(0.0 + " + Wrap(base.cells[0], product) + ")"
                 : "pow(" + base.cells[0].text + ", " + exponent.cells[0].text + ")";
         Cell              cell(test.empty() ? power : "(" + test + power + ")", primary);
         // Of a constant above 0 but 1, NaN where its exponent is: a test reads

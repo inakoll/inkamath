@@ -28,7 +28,8 @@ f(x,y)   =   x^2+y
 
 # A sequence is one definition, so '?' shows all of its clauses at once --
 # the thing three parallel slots used to make impossible (DESIGN.md,
-# C11). They print in the order they were written.
+# C11). They print in the order they are tried, the general clause last
+# wherever it was written (C162).
 >> s_0 = 1
 s_0 = 1
 
@@ -46,8 +47,8 @@ u_n = 2*n
 u_3 = 100
 
 >> ?u
-u_n = 2*n
 u_3 = 100
+u_n = 2*n
 
 # One clause on its own.
 >> ?u_3
