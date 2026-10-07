@@ -1391,7 +1391,7 @@ private:
         }
         throw std::runtime_error(reference_name_ + " did not converge within " +
                                  std::to_string(Convergence<T>::max_terms) + " terms (last term " +
-                                 numeric_interface<T>::toString(evaluation) + ")");
+                                 Convergence<T>::Last(evaluation) + ")");
     }
 
     void SetIndex(const std::string& name, int index, ReferenceStack<T>& stack) const {

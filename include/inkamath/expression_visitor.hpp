@@ -503,7 +503,7 @@ public:
         throw std::runtime_error("the " + what + " did not converge within " +
                                  std::to_string(Convergence<T>::max_terms) +
                                  " terms (last partial " + what + " " +
-                                 numeric_interface<T>::toString(total) + ")");
+                                 Convergence<T>::Last(total) + ")");
     }
 
     T visit(GradExpression<T>* expr) override { return Derivative<T>(stack_).At(*expr); }

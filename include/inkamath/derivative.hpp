@@ -655,7 +655,7 @@ private:
             throw std::runtime_error((s == 0 ? what : "the derivative of " + what) +
                                      " did not converge within " +
                                      std::to_string(Convergence<T>::max_terms) + " terms (" + last +
-                                     " " + numeric_interface<T>::toString(value) + ")");
+                                     " " + Convergence<T>::Last(value) + ")");
         }
         std::vector<Convergence<T>> parts;
         std::vector<bool>           settled;
