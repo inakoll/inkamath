@@ -116,6 +116,16 @@ inverted(x_n) = {
 }
 mirrored = inverted(x_n = ~0*(-1))
 
+# A root of -0 is +0, as in the interpreter, where C's sqrt gives -0 (C163):
+#
+#     radix: 100 steps from 0, against exact values
+#     radix.y: within 0
+radical(x_n) = {
+    y_n | 1/x_n^(1/2) > 0 = 1
+    y_n = 0
+}
+radix = radical(x_n = ~0*(-1))
+
 # A call given to a function is computed once, however often the function
 # reads it, so calls nested ten deep are ten temporaries (C140):
 #

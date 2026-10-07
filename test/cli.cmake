@@ -511,10 +511,10 @@ endif()
 file(WRITE "${OUT}/c153.ink" "x_0 = 2\nx_n = x_(n-1)^(1/2) + x_(n-1)^0.5\n")
 set(args --compile c153.ink -o c153.h)
 check(compile_c153)
-holds(compile_c153 c153.h "2.0 : sqrt(m_->x[1]) + sqrt(m_->x[1]);\n")
+holds(compile_c153 c153.h "2.0 : sqrt(0.0 + m_->x[1]) + sqrt(0.0 + m_->x[1]);\n")
 set(args --compile c153.ink --float -o c153f.h)
 check(compile_float_c153)
-holds(compile_float_c153 c153f.h "2.0f : sqrtf(m_->x[1]) + sqrtf(m_->x[1]);\n")
+holds(compile_float_c153 c153f.h "2.0f : sqrtf(0.0f + m_->x[1]) + sqrtf(0.0f + m_->x[1]);\n")
 
 # C161: a float's inverse starts from the identity in floats, which MSVC's
 # /W4 asks of an int converted to one.
