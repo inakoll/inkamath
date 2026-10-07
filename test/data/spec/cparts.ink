@@ -147,12 +147,12 @@ M[k<=5] = H(pi*(k-1)/4)
 0
 
 # A part has no derivative in a complex variable, nor has the modulus,
-# refused by the im its guard reads.
+# refused in its own words rather than its guard's im's.
 >> grad_(z = 1+i) re(z)
 error: re has no complex derivative at z = 1+i
 
 >> grad_(z = i) abs(z)
-error: im has no complex derivative at z = i
+error: abs has no complex derivative at z = i
 
 # A session's re is its own; the prelude's abs keeps the built-in.
 >> re = 3000

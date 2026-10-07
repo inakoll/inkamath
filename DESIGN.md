@@ -2836,9 +2836,10 @@ that exploring seven domains asked of the interpreter, by how many asked.
   off 0, and re(z') at 0, as the order of guards gives a real abs's slope
   at 0. At a complex point neither part is complex differentiable, so
   where its argument moves and a grad's point has an imaginary part,
-  `re has no complex derivative at z = 1+i`; abs is refused in im's words,
-  its guard reading im first, as hurwitz is in abs's. A holomorphic
-  function keeps its derivative at a complex point, as now.
+  `re has no complex derivative at z = 1+i`. abs is refused in its own,
+  `abs has no complex derivative at z = i`, not in those of the im its
+  guard reads first, in at most 3 lines. A holomorphic function keeps its
+  derivative at a complex point, as now.
 
   **The prelude's refusals.** `hurwitzt`, `hurwitz`, `schurcohn` and
   `rhoe` read abs only to refuse a complex argument, as the prelude's
@@ -2878,10 +2879,10 @@ that exploring seven domains asked of the interpreter, by how many asked.
   lists `re` and `im` with `floor` and says abs takes a complex number,
   with the frequency response as its example.
 
-  About 55 lines: 2 of the prelude and 8 edited, 1 of its comment; about
-  50 of C++, the node and its visitors 15, `Matrix` 8, its definitions 6,
-  grad 12, the compiler 8. 15,327 lines at ebf47fd, by `wc -l
-  include/inkamath/*.hpp src/*`. Past 82 the implementation stops and
+  About 58 lines: 2 of the prelude and 8 edited, 1 of its comment; about
+  53 of C++, the node and its visitors 15, `Matrix` 8, its definitions 6,
+  grad 15, the compiler 8. 15,327 lines at ebf47fd, by `wc -l
+  include/inkamath/*.hpp src/*`. Past 87 the implementation stops and
   reports.
 
   Specified in `test/data/spec/cparts.ink`, 43 entries replayed by the spec
