@@ -329,7 +329,7 @@ add_test(NAME compile_sized_header
          COMMAND ${CMAKE_COMMAND} -E compare_files ${CMAKE_CURRENT_BINARY_DIR}/compile/inferred/sized.h
                  ${CMAKE_CURRENT_BINARY_DIR}/compile/bounded/sized.h)
 set_tests_properties(check_inv_report PROPERTIES PASS_REGULAR_EXPRESSION
-    "^inv: 100 steps from 0, against exact values\ninv\\.A: within 0\ninv\\.c: within 0\ninv\\.g: within 0\ninv\\.t: within 0\ninv\\.u: within 0\ninv\\.v: within 0\ninv\\.o: within 0\ninv\\.s: within 0\n$")
+    "^inv: 100 steps from 0, against exact values\ninv\\.A: within 0\ninv\\.c: within 0\ninv\\.d: within 0\ninv\\.g: within 0\ninv\\.t: within 0\ninv\\.u: within 0\ninv\\.v: within 0\ninv\\.o: within 0\ninv\\.s: within 0\n$")
 # Each size its signature names folds where tr is called, so the header is the
 # one written with every size a number, byte for byte (DESIGN.md, a size bound
 # by a signature); tr2 is tr at 2x2.

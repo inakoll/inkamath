@@ -491,6 +491,8 @@ private:
         const Jet a     = Eval(compare.m_e1());
         const Jet b     = Eval(compare.m_e2());
         const T   value = numeric_interface<T>::compare(*a[0], *b[0], compare.Op());
+        // A jump an approximated number rules out marks the answer (C167).
+        chosen_ = chosen_ || ((Moves(a) || Moves(b)) && numeric_interface<T>::approximated(value));
         if (*a[0] == *b[0] && (Moves(a) || Moves(b))) {
             if (!guard_) throw std::runtime_error("a comparison jumps at " + Where());
             if (compare.Op() == Comparison::Equal || compare.Op() == Comparison::NotEqual)
@@ -514,6 +516,7 @@ private:
     Jet Floor(FloorExpression<T>& floor) {
         const Jet u     = Eval(floor.m_e());
         const T   value = numeric_interface<T>::floor(*u[0]);
+        chosen_         = chosen_ || (Moves(u) && numeric_interface<T>::approximated(*u[0]));
         for (std::size_t k = 0; k < value.Size().count(); ++k) {
             if (!(u[0]->data()[k] == value.data()[k])) continue;
             if (Moves(u)) throw std::runtime_error("floor jumps at " + Where());
@@ -652,7 +655,7 @@ private:
             throw std::runtime_error((s == 0 ? what : "the derivative of " + what) +
                                      " did not converge within " +
                                      std::to_string(Convergence<T>::max_terms) + " terms (" + last +
-                                     " " + numeric_interface<T>::toString(value) + ")");
+                                     " " + Convergence<T>::Last(value) + ")");
         }
         std::vector<Convergence<T>> parts;
         std::vector<bool>           settled;

@@ -254,6 +254,17 @@ fm(A[j<=n, k<=n])_m = A*fm(A)_(m-1) + fc(A)_(m-1)*id(n)
 >> fm(A[r<=p, c<=p])_m = A
 error: fm takes A of size n x n, so a clause cannot take it of size p x p; write 'clear fm' first
 
+# Clauses agree on their names and defaults apart from their sizes, so a
+# clause refused for a default is quoted without them (C173).
+>> hf(v[j<=n], s = n) | s > 1 = s
+hf(v[j<=n], s = n) | s > 1 = s
+
+>> hf(v) = 1
+error: hf takes (v, s = n), so a clause cannot take (v); write 'clear hf' first
+
+>> hf(w[j<=m], s = m) = 1
+error: hf takes (v, s = n), so a clause cannot take (w, s = m); write 'clear hf' first
+
 # Clauses agree on their sizes, not on the names of their indices.
 >> sz(v[j<=n]) | n == 1 = 0
 sz(v[j<=n]) | n == 1 = 0
@@ -280,6 +291,44 @@ rs(x)_m = 1
 
 >> rs([1 2])_0
 1
+
+# A guarded clause too, named by its guard and not by the sizes it states
+# (C170).
+>> rg(x[j<=n]) | n > 1 = n
+rg(x[j<=n]) | n > 1 = n
+
+>> rg(x[j<=n]) = 0
+rg(x[j<=n]) = 0
+
+>> rg(x) | n > 1 = 1
+rg(x) | n > 1 = 1
+
+>> ?rg
+rg(x) | n > 1 = 1
+rg(x[j<=n]) = 0
+
+>> rg([1; 2])
+1
+
+# One left side set for several clauses has the sizes one of them states
+# (C171).
+>> gs(x) | n > 1 = 1
+gs(x) | n > 1 = 1
+
+>> gs(x[j<=n]) = n
+gs(x[j<=n]) = n
+
+>> tex ?gs
+\operatorname{gs}(x \in \mathbb{R}^{n}) = \begin{cases} 1 & \text{if } n > 1 \\ n & \text{otherwise} \end{cases}
+
+>> cs(x)[j<=2] | n > 1 = 1
+cs(x)[j<=2] | n > 1 = 1
+
+>> cs(x[j<=n])[j<=2] = n
+cs(x[j<=n])[j<=2] = n
+
+>> tex ?cs
+\operatorname{cs}(x \in \mathbb{R}^{n})_j = \begin{cases} 1 & \text{if } n > 1 \\ n & \text{otherwise} \end{cases}, \quad 1 \le j \le 2
 
 # A sequence of a function reads its size in any clause, and its limit is
 # its terms'.
@@ -372,6 +421,10 @@ error: a size must be at least 1, not 0
 
 >> bad(x[j<=-1]) = x
 error: a size must be at least 1, not -1
+
+# In a size's words, not an index's (C172).
+>> bad(x[j<=4000000000]) = x
+error: a size must be between 1 and 2147483647, not 4000000000
 
 >> bad(1)
 error: bad is not defined

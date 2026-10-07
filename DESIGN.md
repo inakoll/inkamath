@@ -1697,6 +1697,13 @@ closures need one anyway, and can bring it.
 | C164 `[fixed]` | **A float's check program with an infinite value did not build under Clang's warnings.** `--check` writes the interpreter's terms, their estimates and each guard's distance from its threshold into arrays of doubles, an infinity as `INFINITY` and a NaN as `NAN`, both floats in C; a float's program is built with `-Wdouble-promotion`, which Clang reads into the promotion of either, so checking in float a guard infinitely far from its threshold, `1/x_n^(1/2) > 0` at -0, stopped with -Werror. GCC does not warn of a macro's constant. They are written `(double)INFINITY` and `(double)NAN` now, in 2 lines; `radix` in `test/compile/drift.ink`, checked in float, holds it. Found checking C163 in float. |
 | C165 `[fixed]` | **A part a clause lacked, chosen by an approximated guard, marked nothing it reached.** Under `grad` such a part stays lacking, so that nothing it leaves constant moves, and grad marked its answer only where the body had no derivative at all: beside `gc(x) = x` and `gc(x) \| x < c = 3`, `grad_(x = rt_20) (gc(x) + x)` answered 1 unmarked, where 2 is right, and `[gc(x) x]` and a matrix by its cells likewise, against the specification's "a part the clause chosen lacks is 0 approximated". A grad that differentiated a clause such a guard chose marks its whole answer now, in 2 lines; approximated.ink holds it. Found reviewing *A truth read from an approximated number*. |
 | C166 `[fixed]` | **A clause written again kept the sizes of the one it replaced.** The sizes are the definition's, stated in one clause for all, and were held as every clause written had stated them: after `f(x[j<=n])_m = n`, `f(x)_m = 1` replaced the only clause stating a size and `?f` showed it alone, yet `f([1 2])_0` was "f takes x[j<=n], not a 1x2 matrix". A clause is still checked against those before it, as the names are (C51), but the sizes held are those the remaining clauses state, in 3 lines; signatures.ink holds it. Found reviewing *A size bound by a signature*. |
+| C167 `[fixed]` | **A jump ruled out by an approximated number marked nothing beside it.** Under `grad`, floor and a comparison are flat where no jump is, and whether one is reads the number: `grad_(x = rt_20) (floor(x) + x)` and `((x > c) + x)` answered 1 unmarked, though C165 marks what a guard so decided reaches, and only a body with no derivative at all, `floor(x)` alone, was marked. Such a test marks grad's whole answer now, as C165's guard does, in 2 lines; approximated.ink holds it. Found reviewing *A truth read from an approximated number*. |
+| C168 `[fixed]` | **A limit's refusal quoted an approximated term without its mark.** Beside `W_n = W_(n-1) + rt_20`, `lim W` was "W did not converge within 100 terms (last term ~141.421356)", the value an answer would mark, and so were a series' last partial sum and a limit's under `grad`. The three quote it as `~141.421356, approximated past a thousand digits` now, in 7 lines; approximated.ink holds it. Found reviewing *A truth read from an approximated number*. |
+| C169 `[fixed]` | **The compiler read a function with every default, called with no arguments, as a plain value.** `f()` parses as `f`, and the interpreter calls f with its defaults; the compiler emitted f's body with no parameter bound, so beside `pd2(v = [1; 2]) = v[2]`, `t_n = pd2()` was "cannot compile t: row 2 is outside a 1x1 matrix", and in a model, where v named another of its sequences, "v is a sequence; index it". Such a name is compiled as a call with no arguments now, refused in the interpreter's words where a parameter has no default, in 6 lines; compile/signatures.ink's d holds it. Older than *A size bound by a signature*; found reviewing it. |
+| C170 `[fixed]` | **A guarded clause written again without its sizes was added, never to apply.** A guarded clause is named by its left side, and the sizes, the definition's, were part of the name: after `k(x[j<=n]) \| n > 1 = n`, `k(x) \| n > 1 = 1` was appended behind the clause it meant to replace, which answered first, where an unguarded clause written again replaces its own whatever sizes it states (C166). The left sides are compared with their sizes apart now, as the parameters are (C154), in 3 lines; signatures.ink holds it. Found reviewing *A size bound by a signature*. |
+| C171 `[fixed]` | **`tex` set one left side for several clauses with the first one's sizes.** Cases, and a definition's cells, are one left side for their clauses, and it was the first clause's: beside `gs(x) \| n > 1 = 1`, `gs(x[j<=n]) = n` was set `\operatorname{gs}(x) = \begin{cases} 1 & \text{if } n > 1 ...`, its n bound nowhere. Such a left side has the definition's sizes now, and a clause on a line of its own still those it states, as `tex ?fm` has them, in 9 lines more; signatures.ink holds it. Found reviewing *A size bound by a signature*. |
+| C172 `[fixed]` | **A size past an int was refused in an index's words.** `bad(x[j<=4000000000]) = x` was "an index must be between -2147483648 and 2147483647, not 4000000000", a range no size has; a cell's bound and a model's input's alike. It is "a size must be between 1 and 2147483647, not 4000000000" now, in 3 lines, a bound that is not whole still refused as an index is; signatures.ink holds it. Found reviewing *A size bound by a signature*. |
+| C173 `[fixed]` | **A clause refused for its names or defaults was quoted with its sizes.** The clauses agree on their names and defaults with the sizes apart (C154, C166), yet the refusal quoted the sizes as written: beside `hf(v[j<=n], s = n) \| s > 1 = s`, `hf(v) = 1` was "hf takes (v[j<=n], s = n), so a clause cannot take (v)", pointing at a size where the default differs. Both sides are quoted without their sizes now, "hf takes (v, s = n)", in 17 lines more; signatures.ink holds it. Found reviewing *A size bound by a signature*. |
 
 **Measure instructions, not the clock.** One of those changes made the matrix
 workload 20 per cent slower by the clock and not by a single instruction: with
@@ -5407,7 +5414,9 @@ that exploring seven domains asked of the interpreter, by how many asked.
     of the clause chosen is approximated, whether that clause's own guard
     held or one tried before it failed, as `g(rt_20)`'s did. An exact answer
     becomes its double: the mark is an inexact number's, in the half of its
-    layout an exact one uses. "No clause of h applies" decided so ends ", by
+    layout an exact one uses. So beside `bg(x) = 10^400` and `bg(x) | x > c
+    = 1`, `bg(rt_20)` is inf and `bg(rt_20)/10^399` -nan, both marked, as
+    C68's representation has them: wrong, but not silently. "No clause of h applies" decided so ends ", by
     a guard approximated past a thousand digits". By cells, each cell by the
     guards read for it; under `grad`, the derivative of the clause chosen,
     value and parts, a part it lacks a 0 approximated.
@@ -5631,12 +5640,12 @@ that exploring seven domains asked of the interpreter, by how many asked.
   compiler binds its own, one default and its sizes at a time, by the same
   measure. A bound that is not whole, `x[j<=2.5]`, is refused as an index
   is, "an index must be a whole number, not 2.5". About 105 lines planned,
-  161 landed, past the stop line by decision: the first build was 197, a
+  164 landed, past the stop line by decision: the first build was 197, a
   review for size took out 29, mostly by sharing what a model's input and
   `Reference::Size` already had, and the ruling 7, the refusal and a line it
-  freed. `reference.hpp` 105, the definition's sizes, their agreement and
+  freed, and C166 put 3 back. `reference.hpp` 108, the definition's sizes, their agreement and
   their names, and binding and measuring a call's, with `BindDefaults`
   moved there; `parameters.hpp` 57, reading a parameter; `compile.hpp` 9;
   `latex.hpp` 5; `extent.hpp` 3; `reference_stack.hpp` 2; `interpreter.hpp`
-  -20, a model's input read by the shared helper. 15,004 lines in all,
+  -20, a model's input read by the shared helper. 15,007 lines in all,
   after `fixes11`.

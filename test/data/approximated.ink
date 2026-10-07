@@ -177,6 +177,28 @@ error: no clause of h applies, by a guard approximated past a thousand digits
 >> h(1)
 error: no clause of h applies
 
+# And one that quotes a value marks it as an answer would (C168).
+>> W_0 = 0
+W_0 = 0
+
+>> W_n = W_(n-1) + rt_20
+W_n = W_(n-1) + rt_20
+
+>> lim W
+error: W did not converge within 100 terms (last term ~141.421356, approximated past a thousand digits)
+
+>> sum_(k=1) rt_20
+error: the sum did not converge within 100 terms (last partial sum ~141.421356, approximated past a thousand digits)
+
+>> V(x)_0 = 0
+V(x)_0 = 0
+
+>> V(x)_n = V(x)_(n-1) + x*rt_20
+V(x)_n = V(x)_(n-1) + x*rt_20
+
+>> grad_(x = 1) lim V(x)
+error: V did not converge within 100 terms (last term ~141.421356, approximated past a thousand digits)
+
 >> hs_n | rt_n > c = n
 hs_n | rt_n > c = n
 
@@ -272,6 +294,14 @@ error: an index must be exact, and 2 was approximated
 
 >> grad_(x = rt_20) x*(x > c and 1 > 0)
 0  # approximated past a thousand digits
+
+# And floor's jump and a comparison's, decided by an approximated number,
+# mark what they are added to (C167).
+>> grad_(x = rt_20) (floor(x) + x)
+1  # approximated past a thousand digits
+
+>> grad_(x = rt_20) ((x > c) + x)
+1  # approximated past a thousand digits
 
 # The prelude's guards. exp past a thousand reads its argument, here 2^4000
 # approximated to inf.
