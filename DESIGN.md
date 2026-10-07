@@ -5408,7 +5408,9 @@ that exploring seven domains asked of the interpreter, by how many asked.
     of the clause chosen is approximated, whether that clause's own guard
     held or one tried before it failed, as `g(rt_20)`'s did. An exact answer
     becomes its double: the mark is an inexact number's, in the half of its
-    layout an exact one uses. "No clause of h applies" decided so ends ", by
+    layout an exact one uses. So beside `bg(x) = 10^400` and `bg(x) | x > c
+    = 1`, `bg(rt_20)` is inf and `bg(rt_20)/10^399` -nan, both marked, as
+    C68's representation has them: wrong, but not silently. "No clause of h applies" decided so ends ", by
     a guard approximated past a thousand digits". By cells, each cell by the
     guards read for it; under `grad`, the derivative of the clause chosen,
     value and parts, a part it lacks a 0 approximated.
