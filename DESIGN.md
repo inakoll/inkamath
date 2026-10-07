@@ -5463,7 +5463,7 @@ that exploring seven domains asked of the interpreter, by how many asked.
   all now, about 14,710 after; past about 83, the implementation stops and
   reports.
 
-  Specified in `test/data/spec/approximated.ink`, 65 entries, 28 failing:
+  Specified in `test/data/spec/approximated.ink`, 71 entries, 32 failing:
   every comparison and `and`, `or` and matrix `==` against what stays exact
   beside it; arithmetic, `frac`, indices, a sum's bound and a remembered
   count; guards that hold, fail, are not read, or refuse; cells; `grad`;

@@ -42,6 +42,10 @@ c = 14142135623730950488/10^19
 >> ~rt_11 > c
 0
 
+# '~' of what was approximated keeps the mark, and so does what reads it.
+>> ~rt_20 > c
+0  # approximated past a thousand digits
+
 # Far from its threshold, and on the wrong side of it: (rt_20 - c)*10^16 is
 # about 1.7e-5, and -2.22 approximated. No gap tells a safe comparison.
 >> (rt_20 - c)*10^16 > -1
@@ -173,6 +177,15 @@ error: no clause of h applies, by a guard approximated past a thousand digits
 >> h(1)
 error: no clause of h applies
 
+>> hs_n | rt_n > c = n
+hs_n | rt_n > c = n
+
+>> hs_11
+11
+
+>> hs_20
+error: no clause of hs applies, by a guard approximated past a thousand digits
+
 # Cell by cell, each cell by the guards it read.
 >> M[j<=2, k<=2] = j
 M[j<=2, k<=2] = j
@@ -203,6 +216,13 @@ gl(x) | x > c = x
 
 >> grad_(x = rt_11) gl(x)
 1
+
+# A part the clause chosen lacks is 0 approximated, and a refusal says so.
+>> grad_(x = rt_20) g(x)
+0  # approximated past a thousand digits
+
+>> grad_(x = rt_20) h(x)
+error: no clause of h applies, by a guard approximated past a thousand digits
 
 >> grad_(x = rt_20) x*(x > c and 1 > 0)
 0  # approximated past a thousand digits
