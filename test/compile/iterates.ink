@@ -97,7 +97,7 @@ plan = mpc(x_n = n/4 - 3)
 #     const double t127_ = sqrt(0.0 + t126_);
 #     const double t128_ = pow(t127_, 2.0);
 #     ...
-#     m_->h[0] = pow(t253_, 2.0);
+#     m_->h[0] = pow(t254_, 2.0);
 roots(x_n) = {
     r(x)_0 = x
     r(x)_k = r(x)_(k-1)^(1/2)
