@@ -245,7 +245,9 @@ approached — `pi`, `e`, a root, a limit — is inexact, as is anything written
 after `~`, and an inexact number makes inexact whatever it touches. An exact
 number that outgrows a thousand digits becomes inexact rather than wrong, and
 an answer that did ends in `# approximated past a thousand digits`, a comment,
-so it still reads back. Dividing by an exact zero is an error.
+so it still reads back. So does a comparison that reads such a number, and
+the answer of a clause a guard reading one chose, since a truth read from a
+double may be wrong. Dividing by an exact zero is an error.
 
 Every number prints in decimal: an exact whole number in full, anything else
 to nine significant digits, with `~` in front unless what is printed is all of

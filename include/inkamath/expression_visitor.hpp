@@ -308,10 +308,11 @@ public:
         const auto truth = [expr](const T& value) {
             return numeric_interface<T>::truth(value, expr->Word());
         };
-        const bool left    = truth(expr->m_e1()->accept(*this));
+        const T    first   = expr->m_e1()->accept(*this);
+        const bool left    = truth(first);
         const bool decided = left != expr->Conjunction();
-        const bool answer  = decided ? left : truth(expr->m_e2()->accept(*this));
-        return T(typename T::value_type(answer ? 1 : 0));
+        const T    second  = decided ? first : expr->m_e2()->accept(*this);
+        return T::Held(decided ? left : truth(second), first, second);
     }
 
     T visit(CellExpression<T>* expr) override {

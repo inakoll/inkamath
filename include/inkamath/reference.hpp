@@ -17,6 +17,7 @@
 #include <stdexcept>
 #include <tuple>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 
 // Nesting too deep, told apart from other failures because a recurrence can
@@ -521,6 +522,12 @@ public:
                                  (Cells() ? "" : "; write it by its cells"));
     }
 
+    // A refusal an approximated guard decided may be wrong, and says so.
+    std::string Unapplied(bool past) const {
+        return "no clause of " + reference_name_ + " applies" +
+               (past ? ", by a guard approximated past a thousand digits" : "");
+    }
+
     // Does this clause answer this call? Asked by grad too. The shape is
     // checked first and the guard last, because a guard may read the index it
     // is being asked about -- and the index is bound on trial, so that a
@@ -895,13 +902,30 @@ private:
         using Result = T;
         EvaluationVisitor<T>& evaluator;
 
-        T Eval(const PExpression<T>& e) { return e->accept(evaluator); }
+        // Whether a guard read since the last clause chosen was approximated,
+        // which makes that clause's answer approximated (DESIGN.md, C68).
+        bool past = false;
+
+        void Marked(T& value) {
+            if (std::exchange(past, false)) value = numeric_interface<T>::marked(value);
+        }
+        T Eval(const PExpression<T>& e) {
+            T value = e->accept(evaluator);
+            Marked(value);
+            return value;
+        }
         T Bound(const PExpression<T>& e) { return e->accept(evaluator); }
+        void Settle(T& into, int slice, int row, int col) {
+            if (std::exchange(past, false))
+                into(slice, row, col) =
+                    numeric_interface<typename T::value_type>::marked(into(slice, row, col));
+        }
         // A guard, told to --check where the clause is every term's.
         bool Holds(const Reference& definition, const Clause<T>& clause, int index, int, int row,
                    int col) {
-            const bool held =
-                numeric_interface<T>::truth(clause.parameters.guard()->accept(evaluator));
+            const T guard   = clause.parameters.guard()->accept(evaluator);
+            past            = past || numeric_interface<T>::approximated(guard);
+            const bool held = numeric_interface<T>::truth(guard);
             if (clause.parameters.general() && evaluator.stack().guards)
                 evaluator.stack().guards(definition, clause, index, row, col, held, evaluator);
             return held;
@@ -943,16 +967,18 @@ private:
             if(IsGeneral(clause) || IsPlain(clause)) continue;
             if (Selects(clause, indexed, index, values)) {
                 if (argument) ++evaluator.stack().histories;
-                return Held(clause.expression->accept(evaluator), index, evaluator);
+                return Held(values.Eval(clause.expression), index, evaluator);
             }
         }
         if (argument) {
-            return Held(evaluator.stack().Evaluate(
-                            *argument,
-                            ParametersCall<T>(PExpression<T>(),
+            T value = Held(evaluator.stack().Evaluate(
+                               *argument, ParametersCall<T>(
+                                              PExpression<T>(),
                                               indexed ? std::make_shared<ValExpression<T>>(T(index))
                                                       : PExpression<T>())),
-                        index, evaluator);
+                           index, evaluator);
+            values.Marked(value);
+            return value;
         }
         if(indexed) {
             // An index on something that is not a sequence used to be dropped
@@ -971,16 +997,16 @@ private:
                 }
             }
             if(Guarded()) {
-                throw std::runtime_error("no clause of " + reference_name_ + " applies");
+                throw std::runtime_error(Unapplied(values.past));
             }
             throw std::runtime_error(reference_name_ + " has no clause for index "
                                      + std::to_string(index));
         }
         if(const Clause<T>* plain = Plain()) {
-            return plain->expression->accept(evaluator);
+            return values.Eval(plain->expression);
         }
         if (Guarded() && !Cells()) {
-            throw std::runtime_error("no clause of " + reference_name_ + " applies");
+            throw std::runtime_error(Unapplied(values.past));
         }
         // Nothing sensible to invent: a sequence has no value under its bare
         // name. A limit is something the user asks for, not something a
@@ -1019,6 +1045,7 @@ private:
                 for (int col = 1; col <= static_cast<int>(extent->cols); ++col) {
                     auto cell = Cell(slice, row, col, walk);
                     if (cell) walk.Store(matrix, slice, row, col, Single(*cell, walk), *cell);
+                    walk.Settle(matrix, slice, row, col);
                 }
             }
         }
@@ -1209,6 +1236,7 @@ private:
                         cell = AllCells(s, r, c, index, general, walk);
                     }
                     if (cell) walk.Store(term, s, r, c, Single(*cell, walk), *cell);
+                    walk.Settle(term, s, r, c);
                 }
             }
         }

@@ -190,6 +190,9 @@ TEST_CASE("reddi") {
 TEST_CASE("clauses") {
     check_transcript("clauses.ink");
 }
+TEST_CASE("approximated") {
+    check_transcript("approximated.ink");
+}
 TEST_CASE("kahan") {
     check_transcript("kahan.ink");
 }

@@ -1600,7 +1600,7 @@ closures need one anyway, and can bring it.
 |---|---|
 | C66 `[fixed]` | **A limit could disagree with its own terms.** `Converge` evaluated every term in the one frame of the limit's call, so a local bound by one term was still there for the next: with `c = 100`, the terms of `w_n = w_(n-1)/2 + c + 0*(c = 1)` tend to 200 and `lim w` answered 101. Each term is now evaluated as indexing evaluates it, in a frame of its own and through the memo, which also stops each term's call for the one before from computing it a second time. |
 | C67 `[fixed]` | **Cell brackets after a named index went to the index.** A subscript's index was parsed as any simple expression, and a name there takes cell brackets, so `r_n[1,1]` was `r_(n[1,1])` -- the whole term, since the first cell of a single value is itself -- while `r_1[1,1]` was the cell. Found by the compiler, whose Kalman filter read `x_n[1,1]`; the quote had just been through the same fault, `x_(n-1)'` transposing the index. An index no longer takes brackets or a quote after it; those are the term's. |
-| C68 `[fixed]` | **Exactness ran out without a word.** Past a thousand digits a number is approximated, by design, and phase 13 made `~` say only that the digits shown are not the whole value, whatever the kind, leaving `frac` to tell the kinds apart. That leaves nothing to tell a user who does not ask that an answer from exact inputs is now a double: an epidemic model is computed in doubles from its eighth step, and an exact third looks the same as a value whose exactness ran out. An inexact number now carries whether it was approximated past the bound, in the half of its layout an inexact number did not use, so a `Number` is no larger; what is computed from it carries it on, and an answer that has it ends in `# approximated past a thousand digits`, a comment, so that it still reads back as what it says. What was inexact by nature, or made so by `~`, is not marked: it never was exact. A comparison is not either: it is a truth, exactly. `frac` says why it refuses. Specified in `bignum.ink` first; five goldens that crossed the bound moved with it, `!(10^20)`, `!1e400`, `2^2147483648`, `0.5^3000000000` and `(0-2)^(2^70+1)`, each exact until it passed the thousand digits. |
+| C68 `[fixed]` | **Exactness ran out without a word.** Past a thousand digits a number is approximated, by design, and phase 13 made `~` say only that the digits shown are not the whole value, whatever the kind, leaving `frac` to tell the kinds apart. That leaves nothing to tell a user who does not ask that an answer from exact inputs is now a double: an epidemic model is computed in doubles from its eighth step, and an exact third looks the same as a value whose exactness ran out. An inexact number now carries whether it was approximated past the bound, in the half of its layout an inexact number did not use, so a `Number` is no larger; what is computed from it carries it on, and an answer that has it ends in `# approximated past a thousand digits`, a comment, so that it still reads back as what it says. What was inexact by nature, or made so by `~`, is not marked: it never was exact. A comparison is not either: it is a truth, exactly. (Reversed by *A truth read from an approximated number*, next in line: a truth read from an approximated number is approximated, and so is the clause a guard chooses by it.) `frac` says why it refuses. Specified in `bignum.ink` first; five goldens that crossed the bound moved with it, `!(10^20)`, `!1e400`, `2^2147483648`, `0.5^3000000000` and `(0-2)^(2^70+1)`, each exact until it passed the thousand digits. |
 | C69 `[fixed]` | **A long recurrence failed at 256 deep, which was neither the cause nor true.** Phase 14 fills a sequence from its base up so that each term finds the one before it remembered, and two things undid that past a few hundred thousand terms. The step budget counted the whole fill as one evaluation, so `g_600000` gave up at the millionth step; and a full memo was dropped whole, which phase 9 could call harmless because nothing then relied on it, so `ma_60000`, which reads `mb` as `mb` reads `ma`, lost the other sequence's latest term at the hundred-thousandth entry and nested down again. Either way the fill failed and reported the depth. The memo now keeps two generations of half the size, dropping the older when the newer fills, so the latest terms of every sequence survive at no cost per entry; each filled term has the step budget a line of its own would have, since a fill stands for asking them in order; and a fill goes ten million terms from its base at most, about three seconds, so that a slip such as `g_2000000000` says how far it is rather than hanging the session. A term that reads back further than fifty thousand entries of the memo can still be lost. |
 | C70 `[fixed]` | **A guarded clause with an index left the value it followed.** An index turns a value into a sequence, so an unguarded one drops the plain clause; a guarded one did not, and after `r = 5` and `r_n \| n > 0 = 1` the name was both, `r` answering 5 and `r_1` answering 1. The interpreter coped, and the compiler, which asks a definition's first clause whether it is a sequence, took it for the value and compiled nothing. Found through the built-in `e`: `e_n[j<=2, k<=2] \| j == k = n` is only guarded clauses, and left Euler's number beside them. Any clause with an index drops the value now. `sequences.ink` says so; nothing else moved. |
 | C71 `[fixed]` | **A compiled step started a term later than the interpreter where a guard decides what the term it reads back reads.** With `a_n \| n/8 - 3/4 > 2 = u_(n-1) + ...`, `a_n = 1/8` and `b_n = a_(n-1)/2` without a base, the interpreter answers `b_0` from `a_(-1)`, where the guard fails and the constant clause reads nothing. The compiler started `b` where every term `a` might read exists, so at 1, and left `b_0` at 0; it computed a term again at an earlier index only for a closed form, which reads no term at all. Found by the random models under another seed, and older than phase 15. Now a sequence with no base clause begins, for its readers, wherever some path through its clauses answers, and a reader that needs one of its terms before the window holds it computes the term again at that index, its guards tried in order and each read checked where it is read, NaN before it exists as the interpreter reports it. Where no reader needs it the step is as it was, so no header compiled before moved; `test/compile/back.ink` holds both cases. |
@@ -1691,6 +1691,7 @@ closures need one anyway, and can bring it.
 | C159 `[fixed]` | **Two left sides that differed by a space that parts two elements were one.** A clause is named by the tokens of its left side (C46, C55), and C154 compares the defaults by them, but the tokens keep no space, and inside a matrix or an argument list a space before a sign, or before a bracket, begins the next element: `[1 -2]` is two elements and `[1 - 2]` one, `[pi [1]]` two and `[pi[1]]` one. So `sn(x) \| x == [1 - 2][1,1] = 20` replaced `sn(x) \| x == [1 -2][1,1] = 10`, and beside `gm(x, k = [1 -2]) \| x > 0 = k` a clause with the default `[1 - 2]` joined, and `gm(-1)` answered `[1, -2]`. The parser marks the space that parts two elements now, and the left side keeps it, in 9 lines; a space anywhere else still names nothing, so `x > 0 -1` and `x > 0 - 1` are one guard. conditional.ink and clauses.ink hold it. Found reviewing *Cases in a paper's order*. |
 | C160 `[fixed]` | **`use` refused to bring in a name of the file's own.** *Cases in a paper's order* binds a name brought in only over nothing or itself, and `use eig (cp, eig)` bound the file `eig`, then refused the function `eig` over it, "eig is already defined; write 'clear eig' first", which `clear eig` could not help, and left the file bound, where a refused `use` binds nothing. Twenty-eight explorations of eigenvalues and H-infinity norms stopped at their first line. The name takes the file's place now, as it did, in 1 line; `cases.ink` defines `cases`, and `clauses.ink` brings it in, twice. Found reviewing *Cases in a paper's order*. |
 | C161 `[fixed]` | **A float header's matrix inverse did not build under MSVC's warnings.** The inverse starts from the identity, written `r[i][j] = i == j`, an int converted to the cell's type: nothing to say of a double, but MSVC's /W4 warns of one converted to a float, so a float header inverting a matrix stopped a build with /WX. Written `i == j ? 1.0 : 0.0` now, `1.0f : 0.0f` in a float's, in 1 line; `compile_float_c161` in `test/cli.cmake` holds it, and the expected heat.h and kalman2.h move with it, their inverse's identity alone. Found by CI, checking Kahan's ProSolveur (2006, §9) in float. |
+| C165 `[fixed]` | **A part a clause lacked, chosen by an approximated guard, marked nothing it reached.** Under `grad` such a part stays lacking, so that nothing it leaves constant moves, and grad marked its answer only where the body had no derivative at all: beside `gc(x) = x` and `gc(x) \| x < c = 3`, `grad_(x = rt_20) (gc(x) + x)` answered 1 unmarked, where 2 is right, and `[gc(x) x]` and a matrix by its cells likewise, against the specification's "a part the clause chosen lacks is 0 approximated". A grad that differentiated a clause such a guard chose marks its whole answer now, in 2 lines; approximated.ink holds it. Found reviewing *A truth read from an approximated number*. |
 
 **Measure instructions, not the clock.** One of those changes made the matrix
 workload 20 per cent slower by the clock and not by a single instruction: with
@@ -2785,6 +2786,9 @@ that exploring seven domains asked of the interpreter, by how many asked.
 - **`atan` in the prelude**, written as `exp` and `log` are, `asin` and
   `acos` from it: Kahan's angle formulas cannot be written without.
 - **An instance named again**, `a = thm1.adam`, then `a.x_1`.
+- **A constant folded from an approximated number, listed**: `--compile`
+  folds `(2^4000 > 2^3999)` to 0.0 and `3^3000/3^2999` to NAN silently,
+  where the interpreter marks them, and its header lists nothing.
 - **Temporaries in a limit's function**: C140 shares a step's nested calls,
   but a limit's terms are still written out whole, so a Riccati limit through
   `ric(ric(P))` is 163 MB of header. About 25-35 lines; moves headers whose
@@ -5369,3 +5373,135 @@ that exploring seven domains asked of the interpreter, by how many asked.
   name brought in only over nothing or their like, in a model's body too, and
   `clear`; 11 in `interpreter.hpp`, the word, and `clear` refused in a model's
   body. 14,727 lines in all, after `budget`. By its review, C158 to C160, 24 lines.
+- `[done]` **A truth read from an approximated number.** With `rt_0 = 1`, `rt_n =
+  (rt_(n-1) + 2/rt_(n-1))/2` and `c = 14142135623730950488/10^19`, `rt_20 >
+  c` answers 0 and says nothing, where rt_20 is above the square root of 2
+  and c below it: approximated at the twelfth step, rt_20 is the double one
+  unit below the double nearest c. Beside `g(x) = 2` and `g(x) | x > c =
+  1`, `g(rt_20)` answers 2, as plainly. C68 decided it: "A comparison is not
+  either: it is a truth, exactly." A truth is exact only if what it compares
+  is, and one read from a double is not a little off when it is wrong but
+  wholly so, and a guard turns it into another clause. The eigenvalue
+  research's intervals, counted by Sturm sequences past the bound with
+  `sgn(x) = (x > 0) - (x < 0)`, were exact fractions, "certified", and wrong.
+  That sentence is reversed, as `MANIFESTO.md` asks of an oracle past its
+  horizon: say which it is giving.
+
+  Decided, by one rule, C68's own: what is computed from an approximated
+  number is approximated, a choice among it.
+  - A comparison of numbers or of whole matrices that reads one answers 1 or
+    0 approximated, the double with the mark, as `rt_20*0` is; `and` and
+    `or` where a side they read is. A side not read cannot mark them.
+  - A guard that reads one chooses by an approximated truth, so the answer
+    of the clause chosen is approximated, whether that clause's own guard
+    held or one tried before it failed, as `g(rt_20)`'s did. An exact answer
+    becomes its double: the mark is an inexact number's, in the half of its
+    layout an exact one uses. "No clause of h applies" decided so ends ", by
+    a guard approximated past a thousand digits". By cells, each cell by the
+    guards read for it; under `grad`, the derivative of the clause chosen,
+    value and parts, a part it lacks a 0 approximated.
+  - So such a truth has no `frac`, is no index or bound, refused as any
+    approximated index is, and makes inexact what it multiplies. The mark is
+    in the value, so a term remembered is read again marked.
+  - Every comparison is marked, however far from its threshold, as nothing
+    tells how far the double is from its exact value: `rt_20 > 1` is `1  #
+    approximated past a thousand digits`.
+
+  Unchanged: what is inexact by nature or by `~`, unmarked by C68, so
+  `~rt_11 > c` is a plain 0, wrong as it is. What such an operation
+  computes from an approximated number stays marked, as C68 has it: Reddi's
+  Adam transcribed takes `v_n^(1/2)` of exact decimals past the bound and
+  is marked, an answer inexact anyway, but `(rt_20 - c)^(1/2)` is
+  1.49e-8 imaginary for 4.1e-11 real, and clearing the mark at a root would
+  hide it. A limit's stopping rule, in
+  doubles always; its answer is a term, marked if the term is. `tex`, which
+  prints no value. The compiler, which approximates nothing: a constant it
+  folds from a marked truth is the same double, a header with `2^4000 > 1`
+  unmoved. `--check` holds the step to an interpreter term chosen by an
+  approximated guard as to an inexact one, and says from which index, which
+  no report in the tests reaches.
+
+  Two lines of the prelude, so that the rule marks nothing C68 would not.
+  `ilogbs(x, k, s) | k + s < -3321 = k + s`, as C101's `k + s > 3321`: every
+  exact number is above 2^-3322 and every double too, so a threshold below
+  is passed, where now it is 2^-3584 approximated to 0 and passed by x >= 0.
+  Without it, ilogb's exact answer chosen there becomes a double, the
+  thresholds after it doubles that vanish, and `ilogb(1/10^950)` is -3073
+  where it is -3156, `log(1/10^950)` refused. And `logm`'s fold `m*m > 2`
+  becomes `m > 2/m`: of an exact argument with parts past 500 digits the
+  square passes the bound, and `log(10^999)` would be marked for a choice
+  between two reductions equally accurate. `2/m` has m's digits, so it never
+  passes, and its truth is the square's for an exact m and for a double,
+  whose answers stay as they are; the header's line moves with it.
+
+  Rejected:
+  - Marking only an unsafe comparison, its gap below the error's bound. No
+    bound is carried, and after a cancellation the double is any distance
+    off: `(rt_20 - c)*10^16 > -1` reads -2.22 for about 1.7e-5, 55% of the
+    threshold away and on the wrong side. A radius beside each double is
+    ball arithmetic, rejected for `--check`'s estimate (*The interpreter's
+    own error*); a relative gap would certify that answer.
+  - Refusing, as "refuses rather than guesses" would read: a model past its
+    horizon -- the epidemic in doubles from its eighth step -- decides most
+    guards rightly, and marked it answers and says so.
+  - An exact answer kept exact and marked: a mark on exact numbers, carried
+    by every fast path of `+`, `-`, `*` and `/`.
+  - Kleene's `and` and `or`, an exact side that decides alone clearing the
+    mark: a second rule beside arithmetic's, where `0*rt_20` is marked too,
+    and reading the exact side first already avoids it.
+  - Comparing a double with an exact number exactly: rt_20's double is below
+    c too, so `rt_20 > c` stays 0, and `~0.1 == 1/10` moves from 1 to 0.
+  - Marking only the clause whose own guard held: `g(rt_20)` is the other
+    case.
+
+  What moves, measured with a prototype on every test of `ctest`:
+  `bignum.ink`'s `rt_20 > 1`, marked, and the comment above it that states
+  C68's sentence; `elementary.ink`'s `tex ?ilogbs`, by its clause;
+  `inkamath_prelude.h`'s `ilogbs`, one test more and its answers the same.
+  README's paragraph on numbers (section 1) gains the rule, and C68's row a
+  line that it is reversed here. Outside the tests, the eigenvalue
+  sessions from 8x8 are refused, "an index must be exact, and 9 was
+  approximated": the spectral radius and the H-infinity norm at 8x8 and
+  10x10 and the 10x10 Hilbert eigenvalues, which answered, and the 12x12
+  ones, which ran out of steps or refused already. Their `dim` counts a
+  Sturm polynomial's cells by `A[i,1] == A[i,1]`, which past the bound is
+  marked, and a size the language has only as a number. Callgrind, prototype against integration:
+  `hand` 0.4%, `grad` 1.1% and `limit` 1.3% more.
+
+  About 55 lines of sources: `matrix.hpp` 7, the comparison and the mark;
+  `number.hpp` and `numeric_interface.hpp` 4, the mark; the evaluator's
+  `and` and `or` 4; `reference.hpp` 18, the guards, cells and refusal;
+  `derivative.hpp` 20, the same under `grad`; the prelude 1. 14,653 lines in
+  all now, about 14,710 after; past about 83, the implementation stops and
+  reports.
+
+  Specified in `test/data/spec/approximated.ink`, 77 entries, 34 failing:
+  every comparison and `and`, `or` and matrix `==` against what stays exact
+  beside it; arithmetic, `frac`, indices, a sum's bound and a remembered
+  count; guards that hold, fail, are not read, or refuse; cells; `grad`;
+  the prelude's guards, and the answers its two lines keep. Expected values
+  by exact arithmetic and the doubles emulated in Python, apart from the
+  interpreter.
+
+  Built as specified: every entry passes as written, and the spec is the
+  golden `approximated.ink`. What moved is what the prototype measured:
+  `bignum.ink`'s `rt_20 > 1` and its comment, `elementary.ink`'s `tex
+  ?ilogbs` and the prelude's header, whose values are unchanged: 159,003
+  calls on doubles, 1 over each among them, print alike compiled and
+  walked, and 35,032 on exact and double arguments as before; with the
+  rule, of those only the calls of an argument already approximated move,
+  marked, and C101's. Departures:
+  under `grad` a part the clause chosen lacks stays lacking rather than
+  becoming a 0 approximated, so that nothing it leaves constant moves, by
+  the review's ruling; grad's answer where the body has no derivative is 0
+  approximated if the body's value is, so `grad_(x = rt_20) floor(x)` is
+  marked too, floor's jump decided by an approximated number; and, by its
+  review, grad's whole answer is marked where such a part might reach it
+  (C165). An input's argument reached past a guard approximated is marked
+  as a clause is.
+  C101's `log(2^3321)`, which answered 2^3321, answered inf marked, as
+  wrong, until C157. Callgrind against integration: `deep` 0.8%,
+  `grad` 0.8% and `limit` 0.7% more. 71 lines of sources where about 55
+  were planned: `derivative.hpp` 27, `reference.hpp` 28, `matrix.hpp` 12,
+  `number.hpp`, `numeric_interface.hpp`, the evaluator's `and` and `or` and
+  the prelude 1 each. 14,836 lines in all, after `fixes10`.

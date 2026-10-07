@@ -202,12 +202,24 @@ public:
             for (const Matrix<T>* m : {&a, &b})
                 std::for_each(m->data(), m->data() + m->extent_.count(),
                               [](const T& x) { Numeric(x); });
-            return Matrix<T>((op == Comparison::Equal) == (a == b) ? numeric_interface<T>::one()
-                                                                   : numeric_interface<T>::zero());
+            return Held((op == Comparison::Equal) == (a == b), a, b);
         }
-        return Matrix<T>(Ordered(Numeric(a.Comparable()), op, Numeric(b.Comparable()))
-                             ? numeric_interface<T>::one()
-                             : numeric_interface<T>::zero());
+        return Held(Ordered(Numeric(a.Comparable()), op, Numeric(b.Comparable())), a, b);
+    }
+
+    // A truth read from a number approximated past the bound is approximated
+    // too, as whatever is computed from it (DESIGN.md, C68 reversed).
+    static Matrix<T> Held(bool held, const Matrix<T>& a, const Matrix<T>& b) {
+        const T truth = held ? numeric_interface<T>::one() : numeric_interface<T>::zero();
+        return Matrix<T>(approximated(a) || approximated(b) ? numeric_interface<T>::marked(truth)
+                                                            : truth);
+    }
+
+    static Matrix<T> marked(const Matrix<T>& a) {
+        Matrix<T> c(a);
+        std::transform(c.data(), c.data() + c.extent_.count(), c.data(),
+                       numeric_interface<T>::marked);
+        return c;
     }
 
     // A guard holds when it is not zero.
