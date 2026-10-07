@@ -5568,11 +5568,10 @@ that exploring seven domains asked of the interpreter, by how many asked.
   the arguments given, `scale(v[j<=n], s = n)`, and a default is held to its
   parameter's size and gives it, `pad(v[j<=n] = [1; 2])`; one that reads a
   size stated by its own parameter or a later one is refused where written,
-  `late's default for s reads the size n, not stated before it`. Two indices
-  of one parameter may share a name, since neither binds: `M[j<=n, j<=n]`
-  is `M[j<=n, k<=n]`. Refusing it, as a cell's two are, was specified and
-  dropped, with its entry, for its 6 lines when the implementation ran past
-  its stop line.
+  `late's default for s reads the size n, not stated before it`. A
+  repeated index in a signature binds nothing, so `M[j<=n, j<=n]` means
+  `M[j<=n, k<=n]`. Refusing every such repetition, in signatures and model
+  inputs alike, is queued as *Refuse a repetition that adds nothing*.
 
   Nothing new elsewhere. The memo keys a call by its arguments and their
   shapes (C50), the sizes a function of them; `sum`, `lim` and a function's
@@ -5620,7 +5619,7 @@ that exploring seven domains asked of the interpreter, by how many asked.
 
   Built as specified, but for the overrun's ruling: the spec is the golden
   `signatures.ink`, 102 entries, the refusal of a parameter's repeated
-  index dropped with its entry (above); `test/compile/signatures.ink`'s
+  index queued with its entry (above); `test/compile/signatures.ink`'s
   header is its numbered twin's, byte for byte, `inv`'s report is exact and
   its refusal is a case of `cli.cmake`; README's section 3 gains `tr` and a
   size hiding a session's name, and section 5 a model's bound reading one.
