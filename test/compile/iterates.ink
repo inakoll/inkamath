@@ -147,6 +147,26 @@ reach(x_n) = {
 }
 gaps = reach(x_n = n)
 
+# 'memo', terms whose clauses name their index alike, each clause seeing
+# its own index alone, as the interpreter binds it (C186): f_1 and f_2 are
+# their index, 1 and 2, then each term 10 more, the model's c, so a_n is 22;
+# q_3 is c, 10, as its base clause does not bind c, so e_n is 11:
+#
+#     memo: 100 steps from 0, against exact values
+#     memo.a: within 0
+#     memo.e: within 0
+alike(c = 10, x_n) = {
+    f(x)_0 = x
+    f(x)_c | c < 3 = c
+    f(x)_j | j > 0 = f(x)_(j-1) + c
+    q(x)_0 = x
+    q(x)_c = q(x)_(c-1) + 1
+    q(x)_3 = c
+    a_n = f(x_n)_4
+    e_n = q(x_n)_4
+}
+memo = alike(x_n = n)
+
 # What stays refused, each named in 'inkamath --compile' of a file of
 #
 #     a_n = r(x_n)_n

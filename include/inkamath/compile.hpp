@@ -575,6 +575,8 @@ private:
         std::vector<std::pair<std::string, Code>> guarded;
         std::optional<Code>                       otherwise;
         const Clause<Value>* const                lowest = definition.EndBase(true);
+        // Each clause sees its own index alone, as Reference::Selects binds it (C186).
+        const auto unbound = at ? expansion_->values : decltype(expansion_->values)();
         for (const bool guard : {true, false}) {
             for (const Clause<Value>& clause : definition.Clauses()) {
                 const ParametersDefinition<Value>& p    = clause.parameters;
@@ -582,6 +584,7 @@ private:
                 if (otherwise || (p.guarded() || base) != guard || (base && p.index() != *at) ||
                     (at && !guard && lowest && *at < lowest->parameters.index()))
                     continue;
+                if (at) expansion_->values = unbound;
                 if (at && p.general())
                     expansion_->values.insert_or_assign(p.index_name(),
                                                         Literal(Value(Number(*at))));
@@ -594,6 +597,7 @@ private:
                     guarded.emplace_back(*condition, Taken(clause.expression));
             }
         }
+        if (at) expansion_->values = unbound;
         if (guarded.empty()) {
             if (!otherwise)
                 throw Reason(at ? name + " has no clause for index " + std::to_string(*at)
