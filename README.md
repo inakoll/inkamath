@@ -552,12 +552,14 @@ and marked as rho's: `eigb(A, k)_m` is the k-th one's bracket, and a 0 is
 certified without one. The count holds only where every eigenvalue is
 real, so `eig` refuses a matrix with a complex one rather than give its
 real ones alone; a symmetric matrix has none, and any other is asked by
-Hermite's test. Of an inexact matrix that test is rounded, so a
-nonsymmetric one with a repeated eigenvalue may be refused, and a complex
-pair within rounding of the real axis taken for a real one; a repeated
-eigenvalue of an inexact matrix is good to about 8 digits. Of a symmetric
-matrix of tenths, `eig` is certified up to about 20x20. `grad` refuses
-both:
+Hermite's test. Of an inexact matrix that test is rounded: it refuses
+most nonsymmetric ones from about 5x5, and symmetric ones but for rounding,
+such as `Q*D*Q'`, from 5x5 or 6x6, which `eig((A + A')/2)` asks as
+symmetric; and it may take a complex pair within about 8 digits of the real
+axis for a real one. A k-fold eigenvalue of an inexact matrix is good to
+about 16/k digits. An exact matrix whose test passes a thousand digits may
+be refused, saying so, or answered, marked. Of a symmetric matrix of
+tenths, `eig` is certified up to about 20x20. `grad` refuses both:
 
 ```
 >> eig([2 1; 1 3])

@@ -6127,15 +6127,22 @@ that exploring seven domains asked of the interpreter, by how many asked.
     reading every cell before a test does, so a Hermitian matrix too, as
     `rho` refuses it; of smax, A's cell, not one of A'A.
   - **An inexact matrix** is bisected by rounded tests, its bracket inexact
-    and `frac` refusing it, as rho's. Hermite's test is rounded too, so a
-    nonsymmetric inexact matrix with a repeated eigenvalue, H singular, may
-    be refused, and so may an exact one whose test passes a thousand
-    digits, `[1/3 + 1/7^600 1; 0 1/3 + 1/7^600]`, its refusal saying so.
-    A repeated eigenvalue of an inexact matrix is good to about 8 digits,
-    the square root of a double's, `eig([~1 1; 0 1])` [1; ~1.00000001],
-    and a complex pair within rounding of the real axis may be accepted,
-    `[~1 1; -10^-20 1]`'s 1 +- 10^-10 i as the same. README says all
-    three. An approximated one marks the answer.
+    and `frac` refusing it, as rho's. Hermite's test is rounded too, and
+    H, a Hankel matrix of power sums, is ill-conditioned, so the review
+    found most nonsymmetric inexact matrices refused from about 5x5 even
+    with their eigenvalues well apart, and symmetric ones but for rounding,
+    `Q*D*Q'`, from 5x5 or 6x6; `(A + A')/2` is the way round. An exact
+    one whose test passes a thousand digits may be refused,
+    `[1/3 + 1/7^600 1; 0 1/3 + 1/7^600]`, its refusal saying so, and
+    nonsymmetric 6x6 to 8x8 matrices whose cells have a few dozen digits
+    reach that horizon: H's entries are powers up to 2n - 2, and its
+    characteristic polynomial their products. Or it may pass, the answer
+    marked, as any an approximated guard chose: `[1 1; -1/10^500 1]`, whose
+    eigenvalues are complex, is [1; 1] marked. A k-fold eigenvalue of an
+    inexact matrix is good to about 16/k digits, `eig([~1 1; 0 1])` [1;
+    ~1.00000001] and the inexact 3x3 identity's third ~1.0000069, and a
+    complex pair within about 8 digits of the real axis may be accepted,
+    `[~3 10^-7 0; -10^-7 3 0; 0 0 1]` as about [1; 3; 3]. README says each.
   - **grad.** A bracket is a staircase: `eig` and `smax` join `rho` and
     `abscissa` in the stack's staircases, `grad cannot differentiate eig
     yet` in the interpreter and the compiler alike, one line. A simple
@@ -6218,3 +6225,9 @@ that exploring seven domains asked of the interpreter, by how many asked.
   sanitizers. 29 lines landed against about 31: the prelude 19 and its
   comment 6, 1 binding the staircases, and 3 in `reference.hpp`. 15,324
   lines in all, after `eig`.
+- **An inertia count for inexact symmetric matrices**: the negative pivots
+  of LDL' of A - xI count the eigenvalues below x, backward stable, where the
+  rounded Descartes count of `eig` loses a k-fold eigenvalue to about 16/k
+  digits and Hermite's test refuses symmetric matrices but for rounding.
+  Rejected for `eig` only for an exact dyadic midpoint that zeroes a pivot,
+  which an inexact matrix does not meet.
