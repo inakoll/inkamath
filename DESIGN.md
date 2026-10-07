@@ -2870,9 +2870,12 @@ that exploring seven domains asked of the interpreter, by how many asked.
     have; an item of its own when a model asks.
   - **abs's real clauses unchanged**: the slope -4i above.
 
-  What moves: no golden and no header. README's section 1 lists `re` and
-  `im` with `floor` and says abs takes a complex number, with the frequency
-  response as its example.
+  What moves: trig.ink's `?abs`, which lists the new clause, and its
+  `abs(i)`, 1 where it was refused, with the comments over them; the
+  comments of charpoly.ink and eig.ink that say hurwitz and rho refuse in
+  abs's words, the same words now max's. No header. README's section 1
+  lists `re` and `im` with `floor` and says abs takes a complex number,
+  with the frequency response as its example.
 
   About 55 lines: 2 of the prelude and 8 edited, 1 of its comment; about
   50 of C++, the node and its visitors 15, `Matrix` 8, its definitions 6,
