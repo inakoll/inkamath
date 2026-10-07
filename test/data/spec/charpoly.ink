@@ -1,9 +1,10 @@
-# The characteristic polynomial, Routh's and Schur's tests, and the spectral
-# radius and abscissa, in the prelude, written in inkamath (DESIGN.md, next
-# in line). Written by hand, never recorded: every value was worked out apart
-# from the interpreter, polynomials and roots exactly with sympy, eigenvalues
-# with mpmath at 60 digits, and each bracket by bisecting in Python's
-# fractions with every test decided from the exact eigenvalue.
+# The characteristic polynomial, Routh's and the Schur-Cohn tests, and the
+# spectral radius and abscissa, in the prelude, written in inkamath
+# (DESIGN.md, next in line). Written by hand, never recorded: every value
+# was worked out apart from the interpreter, polynomials and roots exactly
+# with sympy, eigenvalues with mpmath at 60 digits, and each bracket by
+# bisecting in Python's fractions with every test decided from the exact
+# eigenvalue.
 
 # Faddeev and LeVerrier's characteristic polynomial, det(lambda*I - A), as a
 # column, highest power first, exactly.
@@ -127,59 +128,60 @@ error: hurwitz takes p[j<=m], not a 1x3 matrix
 >> hurwitz([1; i])
 error: a comparison needs real numbers, not i
 
-# Schur's test: every root in |z| < 1, strictly, or in |z| < r.
->> schur([1; -1/2])
+# The Schur-Cohn test: every root in |z| < 1, strictly, or in |z| < r.
+>> schurcohn([1; -1/2])
 1
 
->> schur([1; -1])
+>> schurcohn([1; -1])
 0
 
->> schur([1; 0; 1/4])
+>> schurcohn([1; 0; 1/4])
 1
 
->> schur([1; 0; 1])
+>> schurcohn([1; 0; 1])
 0
 
->> schur([1; 0; 1], 2)
+>> schurcohn([1; 0; 1], 2)
 1
 
 # Roots -1 and -1/2.
->> schur([2; 3; 1])
+>> schurcohn([2; 3; 1])
 0
 
->> schur([1; -1/2], 1/2)
+>> schurcohn([1; -1/2], 1/2)
 0
 
->> schur([0; 1; 1/2])
+>> schurcohn([0; 1; 1/2])
 0
 
 # No root is in a disc of radius 0, and no disc has a negative one.
->> schur([1; 1/2], 0)
+>> schurcohn([1; 1/2], 0)
 0
 
->> schur([1; 1/2], -1)
-error: no clause of schur applies
+>> schurcohn([1; 1/2], -1)
+error: no clause of schurcohn applies
 
 # A discrete-time system is stable where every eigenvalue is in the unit
 # disc: 1/2 and -3/4; then 1/2 + i and 1/2 - i, of modulus sqrt(5)/2 =
 # 1.1180339887.
->> schur(charpoly([1/2 1/4; 0 -3/4]))
+>> schurcohn(charpoly([1/2 1/4; 0 -3/4]))
 1
 
->> schur(charpoly([1/2 1; -1 1/2]))
+>> schurcohn(charpoly([1/2 1; -1 1/2]))
 0
 
->> schur(charpoly([1/2 1; -1 1/2]), 1118/1000)
+>> schurcohn(charpoly([1/2 1; -1 1/2]), 1118/1000)
 0
 
->> schur(charpoly([1/2 1; -1 1/2]), 1119/1000)
+>> schurcohn(charpoly([1/2 1; -1 1/2]), 1119/1000)
 1
 
->> schur([1; i])
-error: a comparison needs real numbers, not 1-i
+# Refused on the polynomial written, not on a cell of its image.
+>> schurcohn([1; i])
+error: a comparison needs real numbers, not i
 
-# The spectral radius by bisection on Schur's test, 64 halvings of [0, B)
-# with B the power of two above the sum of |A[j,k]|: rhob(A)_m is the
+# The spectral radius by bisection on the Schur-Cohn test, 64 halvings of
+# [0, B) with B the power of two above the sum of |A[j,k]|: rhob(A)_m is the
 # bracket after m, its lower end at most rho and its upper end above it,
 # exact, and the answer its lower end, inexact.
 >> rho([1/2 1; -1 1/2])

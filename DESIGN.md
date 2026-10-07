@@ -5663,10 +5663,11 @@ that exploring seven domains asked of the interpreter, by how many asked.
   after `fixes11`.
 - **The characteristic polynomial and stability, in the prelude**, the
   second step towards eigenvalues, approved by the owner: `charpoly(A)`
-  exactly, Routh's and Schur's tests, and the spectral radius and abscissa
-  by bisection on those tests, certified while they are exact. Written in
-  inkamath with the sizes a signature binds, the eigenvalue research's
-  `dim(A) = on(A)'*on(A)` gone. The design, measured on a prototype:
+  exactly, Routh's and the Schur-Cohn tests, and the spectral radius and
+  abscissa by bisection on those tests, certified while they are exact.
+  Written in inkamath with the sizes a signature binds, the eigenvalue
+  research's `dim(A) = on(A)'*on(A)` gone. The design, measured on a
+  prototype:
 
       charpolym(A)_1 = A^0
       charpolym(A)_m = A*charpolym(A)_(m-1) + charpolyc(A)_(m-1)*A^0
@@ -5683,13 +5684,13 @@ that exploring seven domains asked of the interpreter, by how many asked.
       hurwitzt(q)_k = hurwitzt(q)_(k-1) and hurwitzr(q)_(k-1)[2]*q[1] > 0
       hurwitzs(p[j<=m], s)[t<=m] = sum_(i=1)^t p[i]*binomial(m-i, m-t)*s^(t-i)
       hurwitz(p[j<=m], s = 0) = hurwitzt(hurwitzs(p, s))_(m-1)
-      schurm(p[j<=m], r)[t<=m] = sum_(i=1)^m p[i]*r^(m-i)*sum_(a=0)^(m-i) binomial(m-i, a)*binomial(i-1, m-t-a)*(-1)^(m-t-a)
-      schur(p[j<=m], r = 1) | r >= 0 = hurwitz(schurm(p, r))
+      schurcohnm(p[j<=m], r)[t<=m] = sum_(i=1)^m p[i]*r^(m-i)*sum_(a=0)^(m-i) binomial(m-i, a)*binomial(i-1, m-t-a)*(-1)^(m-t-a)
+      schurcohn(p[j<=m], r = 1) | r >= 0 and sum_(j=1)^m abs(p[j]) >= 0 = hurwitz(schurcohnm(p, r))
       rhon(A[j<=n, k<=n]) = rhop(sum_(j=1)^n sum_(k=1)^n abs(A[j,k]))
       rhop(s) = 2^(ilogb(s + (s == 0)) + 1) + 0*s
       rhob(A)_0 = [0; rhon(A)]
       rhob(A)_m = rhoh(charpoly(A), rhob(A)_(m-1))
-      rhoh(p, b) = b + (b[2] - b[1])/2*([1; 0] - schur(p, (b[1] + b[2])/2)*[1; 1])
+      rhoh(p, b) = b + (b[2] - b[1])/2*([1; 0] - schurcohn(p, (b[1] + b[2])/2)*[1; 1])
       rho(A[j<=n, k<=n]) = ~rhob(A)_64[1]
       abscissab(A)_0 = [-1; 1]*rhon(A)
       abscissab(A)_m = abscissah(charpoly(A), abscissab(A)_(m-1))
@@ -5701,22 +5702,22 @@ that exploring seven domains asked of the interpreter, by how many asked.
   = I, M_m = A M_(m-1) + c_(m-1) I, c_m = -tr(A M_m)/m, exact, of complex
   entries too, and differentiable, so `grad` of its last coefficient is the
   cofactor matrix. `hurwitz(p, s = 0)` is 1 where every root of p is in Re z
-  < s, `schur(p, r = 1)` where every one is in |z| < r, both strictly: the
-  polynomial a column of m cells, degree m - 1. Routh's test is its first
-  column, all of p[1]'s sign and none 0, taken as a recurrence on the
+  < s, `schurcohn(p, r = 1)` where every one is in |z| < r, both strictly:
+  the polynomial a column of m cells, degree m - 1. Routh's test is its
+  first column, all of p[1]'s sign and none 0, taken as a recurrence on the
   polynomial rather than on pairs of rows: p_k drops its leading coefficient
   and subtracts a0/a1 times its odd part, as the array's next row does, so
   its leading coefficient is the column's next entry, and the test reads
   that entry before the term that divides by it, `and` not reading further.
   A shift `p(z + s)` gives the half-plane Re z < s; the map
-  `z = r(1 + w)/(1 - w)`, the disc |z| < r onto Re w < 0, gives Schur's. A
-  leading 0 is a root at infinity, which neither region holds, so it answers
-  0: the map's image has one exactly where -r is a root, on the circle, and
-  needs no case of its own. The zero polynomial answers 0, a nonzero
-  constant 1.
+  `z = r(1 + w)/(1 - w)`, the disc |z| < r onto Re w < 0, the Schur-Cohn
+  test. A leading 0 is a root at infinity, which neither region holds, so it
+  answers 0: the map's image has one exactly where -r is a root, on the
+  circle, and needs no case of its own. The zero polynomial answers 0, a
+  nonzero constant 1.
 
   `rho(A)` and `abscissa(A)` bisect a bracket, `rhob(A)_m` and
-  `abscissab(A)_m`, [lo; hi] with lo <= rho < hi: Schur's test at the
+  `abscissab(A)_m`, [lo; hi] with lo <= rho < hi: the Schur-Cohn test at the
   midpoint is the truth that rho < x, Routh's after the shift that alpha <
   x, and the bracket keeps the half it says. From [0, B) and [-B, B), B the
   power of two above the sum of |A[j,k]|, which bounds rho strictly, 2 for
@@ -5744,21 +5745,27 @@ that exploring seven domains asked of the interpreter, by how many asked.
 
   Decided besides:
   - **Names.** `charpoly`, as sympy and PARI say it; `poly` is too common a
-    word. `hurwitz` and `schur` name the property, a Hurwitz or a Schur
-    polynomial, not the method, so `routh`, `jury` and `stable` were
-    rejected. `rho` is the paper's rho(A); `abscissa`, as `alpha` is every
-    learning rate's name. A session may take any of them for itself,
-    `rho = 1000` a density, and `clear` gives it back. The helpers are
-    prefixed by their function, as `expk` and `sinr` are; `binomial` is
-    named for what it is, both tests using it.
+    word. `hurwitz` names the property, a Hurwitz polynomial, and
+    `schurcohn` the test for a Schur polynomial, every root in the disc, by
+    whatever method, leaving `schur` free for the decomposition the
+    eigenvalue work may want; `routh`, `jury` and `stable` were rejected.
+    `rho` is the paper's rho(A); `abscissa`, as `alpha` is every learning
+    rate's name. A session may take any of them for itself, `rho = 1000` a
+    density, and `clear` gives it back. The helpers are prefixed by their
+    function, as `expk` and `sinr` are; `binomial` is named for what it is,
+    both tests using it.
   - **Refused.** A matrix not square, by its signature:
     `rho takes A[j<=n, k<=n], not a 3x2 matrix`. A complex entry by every
     test, in abs's words, as C147 left `abs`:
     `a comparison needs real numbers, not i`, every cell passing through abs
     before Routh reads one, as a complex polynomial can pass the column: the
     map's image of z + i, `(1 - i)w + (1 + i)`, tests (1 + i)(1 - i) = 2 >
-    0. Their own words would be about 5 lines of C++ beside C147's: the
-    owner's to decide. A negative radius, `no clause of schur applies`.
+    0. The sum of the abs exists for that alone, and a prelude comment says
+    so. `schurcohn` checks the polynomial written, not its image, so
+    `schurcohn([1; i])` names i, not a cell of the image, 1 - i. Their own
+    words would be about 5 lines of C++ beside C147's: kept in abs's, by
+    the review's ruling. A negative radius,
+    `no clause of schurcohn applies`.
   - **An inexact matrix** is bisected by rounded tests whose truths are
     exact, so its bracket would print exact fractions certifying nothing;
     `+ 0*s` keeps it inexact, and `frac` refuses it. An approximated one
