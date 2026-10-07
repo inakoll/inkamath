@@ -5497,8 +5497,8 @@ that exploring seven domains asked of the interpreter, by how many asked.
   marked too, floor's jump decided by an approximated number. An input's
   argument reached past a guard approximated is marked as a clause is.
   C101's `log(2^3321)`, which answered 2^3321, answered inf marked, as
-  wrong, until C157. Callgrind against integration: `hand` 0.6%,
-  `grad` 1.0% and `limit` 1.4% more. 65 lines of sources where about 55
-  were planned: `derivative.hpp` 25, `reference.hpp` 24, `matrix.hpp` 12,
+  wrong, until C157. Callgrind against integration: `deep` 0.8%,
+  `grad` 0.7% and `limit` 0.7% more. 69 lines of sources where about 55
+  were planned: `derivative.hpp` 25, `reference.hpp` 28, `matrix.hpp` 12,
   `number.hpp`, `numeric_interface.hpp`, the evaluator's `and` and `or` and
-  the prelude 1 each. 14,830 lines in all, after `fixes10`.
+  the prelude 1 each. 14,834 lines in all, after `fixes10`.

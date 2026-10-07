@@ -906,11 +906,14 @@ private:
         // which makes that clause's answer approximated (DESIGN.md, C68).
         bool past = false;
 
-        T Marked(T value) {
+        void Marked(T& value) {
             if (std::exchange(past, false)) value = numeric_interface<T>::marked(value);
+        }
+        T Eval(const PExpression<T>& e) {
+            T value = e->accept(evaluator);
+            Marked(value);
             return value;
         }
-        T    Eval(const PExpression<T>& e) { return Marked(e->accept(evaluator)); }
         T Bound(const PExpression<T>& e) { return e->accept(evaluator); }
         void Settle(T& into, int slice, int row, int col) {
             if (std::exchange(past, false))
@@ -968,13 +971,14 @@ private:
             }
         }
         if (argument) {
-            return values.Marked(
-                Held(evaluator.stack().Evaluate(
-                         *argument,
-                         ParametersCall<T>(PExpression<T>(),
-                                           indexed ? std::make_shared<ValExpression<T>>(T(index))
-                                                   : PExpression<T>())),
-                     index, evaluator));
+            T value = Held(evaluator.stack().Evaluate(
+                               *argument, ParametersCall<T>(
+                                              PExpression<T>(),
+                                              indexed ? std::make_shared<ValExpression<T>>(T(index))
+                                                      : PExpression<T>())),
+                           index, evaluator);
+            values.Marked(value);
+            return value;
         }
         if(indexed) {
             // An index on something that is not a sequence used to be dropped
