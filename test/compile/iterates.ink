@@ -56,9 +56,9 @@ poly = eigen(x_n = n)
 # where the step needs a constant, so it is compiled in, as a sum's bound
 # is, and the header's first comment ends 'cannot change: iters.' The state
 # is n/4 - 3: at -3 the plan is [1; 31/32], at 0 [0; 0], at 1 [-75/128;
-# -57/256]; its first move is clipped from 7/4 on, both from 13/4. Every
-# value, parts included, is a fraction over a power of two no larger than
-# 2^16, exact in doubles:
+# -57/256]; its first move is clipped up to -7/4 and from 7/4 on, both
+# from 13/4. Every value, parts included, is a fraction over a power of
+# two no larger than 2^16, exact in doubles:
 #
 #     plan: 100 steps from 0, against exact values
 #     plan.y: within 0
