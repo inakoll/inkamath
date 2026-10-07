@@ -3616,6 +3616,8 @@ private:
         const auto index    = std::exchange(index_, std::string());
         const auto outer    = std::exchange(places_, places);
         bool       decides  = false;
+        std::vector<Temporary> scratch;  // what a term read there declares, kept nowhere (C188)
+        const Setting<std::vector<Temporary>*> within(temporaries_, &scratch);
         try {
             const Code code = Quiet(check.left);
             decides         = code.constant && Holds(*code.constant) != check.conjunction;
@@ -3624,6 +3626,8 @@ private:
         scope_  = scope;
         index_  = index;
         places_ = outer;
+        std::erase_if(terms_,
+                      [&](const auto& term) { return std::get<0>(term.first) == &scratch; });
         return decides;
     }
 

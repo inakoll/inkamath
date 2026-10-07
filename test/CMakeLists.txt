@@ -397,7 +397,7 @@ set_tests_properties(check_graph_report PROPERTIES PASS_REGULAR_EXPRESSION
 set_tests_properties(check_gaps_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^gaps: 100 steps from 0, against exact values\ngaps\\.a: within 0\ngaps\\.b: within 0\n$")
 set_tests_properties(check_memo_report PROPERTIES PASS_REGULAR_EXPRESSION
-    "^memo: 100 steps from 0, against exact values\nmemo\\.a: within 0\nmemo\\.b: within 0\nmemo\\.d: within 0\nmemo\\.e: within 0\n$")
+    "^memo: 100 steps from 0, against exact values\nmemo\\.a: within 0\nmemo\\.b: within 0\nmemo\\.d: within 0\nmemo\\.e: within 0\nmemo\\.l: within 0\n$")
 set_tests_properties(check_cls_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^cls: 100 steps from 0, against exact values until 0 and inexact ones from there\ncls\\.z: within 0\n(cls\\.[a-z]+: within [0-9.e+-]+${about}\n)+$")
 set_tests_properties(check_ball_report PROPERTIES PASS_REGULAR_EXPRESSION

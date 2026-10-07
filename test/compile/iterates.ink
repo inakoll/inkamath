@@ -155,13 +155,17 @@ gaps = reach(x_n = n)
 # value and their shape (C187): 1/2 and 1/2 + 2^-60 are one double, and g
 # keeps 1/2 where it moves 2^-60 by 4^20, so b_n is n + 3/2 + 2^-19; h_1
 # of a column and of a row is twice it, and s weighs each cell by its
-# column, so d_n is (2n + 2) + (2n + 4), 4n + 6:
+# column, so d_n is (2n + 2) + (2n + 4), 4n + 6. A term read on the left
+# of an 'and' is folded where the step starts, as a call is, so that x_-1,
+# which its right reads, is never asked for (C188): t(n)_3 is 8n - 7, so
+# l_n is 1 from 4 on, where x_(n-1) passes 2, and 0 before:
 #
 #     memo: 100 steps from 0, against exact values
 #     memo.a: within 0
 #     memo.b: within 0
 #     memo.d: within 0
 #     memo.e: within 0
+#     memo.l: within 0
 alike(c = 10, x_n) = {
     f(x)_0 = x
     f(x)_c | c < 3 = c
@@ -174,10 +178,14 @@ alike(c = 10, x_n) = {
     h(v)_0 = v
     h(v)_k = h(v)_(k-1)*2
     s(M[j<=r, k<=w]) = sum_(j=1)^r sum_(i=1)^w M[j,i]*i
+    t(y)_0 = y
+    t(y)_k = t(y)_(k-1)*2 - 1
     a_n = f(x_n)_4
     b_n = x_n + g(1/2)_20 + 2*g(1/2 + 2^-60)_20
     d_n = s(h([x_n; 1])_1) + s(h([x_n, 1])_1)
     e_n = q(x_n)_4
+    l_n | t(n)_3 > 5 and x_(n-1) > 2 = 1
+    l_n = 0
 }
 memo = alike(x_n = n)
 
