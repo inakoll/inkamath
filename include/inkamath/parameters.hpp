@@ -6,6 +6,7 @@
 #include "inkamath/expression.hpp"
 
 #include <algorithm>
+#include <map>
 
 template <typename T>
 class ReferenceStack;
@@ -47,6 +48,13 @@ template <typename T>
 class ParametersDefinition
 {
 public:
+    // A parameter's size, as 'M[j<=n, k<=n]' states it: its bounds, slices
+    // first, each a name or, where that is empty, a whole number.
+    struct Size {
+        std::vector<std::pair<std::string, int>> bounds;
+        std::string                              written;
+    };
+
     ParametersDefinition() = default;
 
     ParametersDefinition(PExpression<T> params, PExpression<T> subexpr,
@@ -56,12 +64,10 @@ public:
                          PExpression<T> col       = PExpression<T>(),
                          PExpression<T> slice     = PExpression<T>())
         : guard_(guard), signature_(std::move(signature)) {
-        if(params) {
-            ParametersVisitor<T> params_visitor;
-            params->accept(params_visitor);
-            parameters_names_ = params_visitor.get_parameters_names();
-            parameters_dict_ = params_visitor.get_parameters_dict();
-        }
+        const auto list = dynamic_cast<const MatExpression<T>*>(params.get());
+        for (const PExpression<T>& written :
+             list ? params->Children() : std::vector<PExpression<T>>(params ? 1 : 0, params))
+            Parameter(written, evaluator);
         if(subexpr) {
             indexed_ = true;
             if(RefExpression<T>* variable = dynamic_cast<RefExpression<T>*>(subexpr.get())) {
@@ -105,6 +111,60 @@ public:
                                              : "a cell's row and column need two names");
             }
         }
+    }
+
+    // A parameter is a name, 'x' or 'x = 1', or a name and its size,
+    // 'v[j<=n]': anything else was dropped in silence (C150).
+    void Parameter(const PExpression<T>& written, EvaluationVisitor<T>& evaluator) {
+        const auto* equal = dynamic_cast<const EqualExpression<T>*>(written.get());
+        if (!equal && !parameters_dict_.empty())
+            throw std::runtime_error("a positional argument cannot follow a keyword argument");
+        const Expression<T>*        left = equal ? equal->m_e1().get() : written.get();
+        std::vector<PExpression<T>> places;
+        if (const auto* cell = dynamic_cast<const CellExpression<T>*>(left)) {
+            places = {cell->Slice(), cell->Row(), cell->Col()};
+            left   = dynamic_cast<const RefExpression<T>*>(cell->Matrix().get());
+        } else if (const auto* sized = dynamic_cast<const FuncExpression<T>*>(left);
+                   sized && !sized->m_e1() && !sized->m_e2() && !sized->Children()[2]) {
+            places = {sized->Children()[5], sized->Children()[3], sized->Children()[4]};
+        } else if (!dynamic_cast<const RefExpression<T>*>(left)) {
+            left = nullptr;
+        }
+        Size                     size;
+        std::vector<std::string> indices;
+        for (const PExpression<T>& place : places) {
+            const auto* compare = dynamic_cast<const CompareExpression<T>*>(place.get());
+            if (place && (!compare || compare->Op() != Comparison::LessEqual ||
+                          !dynamic_cast<const RefExpression<T>*>(compare->m_e1().get())))
+                left = nullptr;
+            if (!place || !left) continue;
+            const PExpression<T>& bound = compare->m_e2();
+            const bool            named = dynamic_cast<const RefExpression<T>*>(bound.get());
+            if (!named && !dynamic_cast<const ValExpression<T>*>(bound.get()))
+                throw std::runtime_error(
+                    "a size is a whole number or a name, as 'v[j<=3]' or 'v[j<=n]'");
+            const int number = named ? 1 : AsIndex<T>(bound->accept(evaluator));
+            if (number < 1)
+                throw std::runtime_error("a size must be at least 1, not " +
+                                         std::to_string(number));
+            const std::string& index = compare->m_e1()->Name();
+            if (std::count(indices.begin(), indices.end(), index))
+                throw std::runtime_error(
+                    places[0] ? "a parameter's slice, row and column need three names"
+                              : "a parameter's row and column need two names");
+            indices.push_back(index);
+            size.bounds.emplace_back(named ? bound->Name() : "", number);
+            size.written += (size.written.empty() ? "" : ", ") + index +
+                            "<=" + (named ? bound->Name() : std::to_string(number));
+        }
+        if (!left)
+            throw std::runtime_error(
+                "a parameter is a name, as 'x' or 'x = 1', or a name and its "
+                "size, as 'v[j<=n]'");
+        if (!size.bounds.empty()) size.written = left->Name() + "[" + size.written + "]";
+        parameters_names_.push_back(left->Name());
+        if (equal) parameters_dict_[left->Name()] = equal->m_e2();
+        sizes_.push_back(std::move(size));
     }
 
     // Arity is checked here rather than at the call site because this is the
@@ -179,17 +239,64 @@ public:
 
     // A default belongs to the definition, not to the call: it is evaluated
     // only when the call leaves its parameter empty, and in the callee's
-    // scope, so that it can refer to the definition's other parameters.
-    void BindDefaults(const ParametersCall<T>& param_call, EvaluationVisitor<T>& evaluator) const {
+    // scope, so that it can refer to the definition's other parameters, and
+    // the sizes they state.
+    void BindDefaults(const ParametersCall<T>& param_call, EvaluationVisitor<T>& evaluator,
+                      const std::string& reference_name, const std::vector<Size>& sizes) const {
         const size_t positional = param_call.parameters_expression().size();
-        for(size_t i = positional; i < parameters_names_.size(); ++i) {
-            const std::string& name = parameters_names_[i];
-            if(param_call.parameters_dict().count(name) != 0) continue;
+        Measure      measure(reference_name, sizes);
+        for (size_t i = 0; i < parameters_names_.size(); ++i) {
+            const std::string& name     = parameters_names_[i];
             auto fallback = parameters_dict_.find(name);
-            if(fallback == parameters_dict_.end()) continue;
-            evaluator.stack().BindValue(name, fallback->second->accept(evaluator));
+            if (i >= positional && !param_call.parameters_dict().count(name) &&
+                fallback != parameters_dict_.end())
+                evaluator.stack().BindValue(name, fallback->second->accept(evaluator));
+            if (i < sizes.size() && !sizes[i].bounds.empty())
+                for (const auto& [size, n] :
+                     measure(i, evaluator.stack().Eval(name, ParametersCall<T>()).Size()))
+                    evaluator.stack().BindValue(size, T(static_cast<int>(n)));
         }
     }
+
+    // The sizes a call binds, a parameter at a time: a name takes the extent
+    // it first meets and holds the others to it, and one that disagrees is
+    // refused before the body, in the words of the parameters that state it
+    // (DESIGN.md, a size bound by a signature).
+    struct Measure {
+        Measure(const std::string& name, const std::vector<Size>& sizes)
+            : name(name), sizes(sizes), given(sizes.size()) {}
+
+        // The names parameter i binds, given a value of extent e, and theirs.
+        std::vector<std::pair<std::string, size_t>> operator()(size_t i, const Extent& e) {
+            const auto&  bounds = sizes[i].bounds;
+            const size_t at[] = {e.slices, e.rows, e.cols}, *d = at + (bounds.size() != 3);
+            given[i]          = e;
+            const auto refuse = [&](size_t first) {
+                const bool two = first != i;
+                throw std::runtime_error(name + " takes " +
+                                         (two ? sizes[first].written + " and " : "") +
+                                         sizes[i].written + ", not " +
+                                         (two ? given[first].Called() + " and " : "") + e.Called());
+            };
+            if ((bounds.size() == 3) != (e.slices != 0) || (bounds.size() == 1 && e.cols != 1))
+                refuse(i);
+            std::vector<std::pair<std::string, size_t>> bound;
+            for (size_t b = 0; b < bounds.size(); ++b) {
+                const auto& [size, number] = bounds[b];
+                if (size.empty() && d[b] != static_cast<size_t>(number)) refuse(i);
+                if (size.empty()) continue;
+                const auto [seen, fresh] = seen_.try_emplace(size, d[b], i);
+                if (fresh) bound.emplace_back(size, d[b]);
+                if (seen->second.first != d[b]) refuse(seen->second.second);
+            }
+            return bound;
+        }
+
+        const std::string&                               name;
+        const std::vector<Size>&                         sizes;
+        std::vector<Extent>                              given;
+        std::map<std::string, std::pair<size_t, size_t>> seen_;  // its extent, who stated it first
+    };
 
     // 'j<=2' names a row and bounds it; a name alone is left unbounded, for the
     // definition to say it has no size; anything else is one row.
@@ -235,11 +342,13 @@ public:
     const std::string& index_name() const {return index_name_;}
     const std::vector<std::string>& parameters_names() const {return parameters_names_;}
     const ExprDict<T>& parameters_dict() const {return parameters_dict_;}
+    const std::vector<Size>&        sizes() const { return sizes_; }
     bool indexed() const {return indexed_;}
     bool general() const {return indexed_ && !index_name_.empty();}
 
 
 protected:
+    std::vector<Size>        sizes_;  // as this clause states them
     PExpression<T> guard_;
     std::string signature_;
     std::vector<std::string> parameters_names_;

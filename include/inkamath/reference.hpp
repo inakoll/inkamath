@@ -129,13 +129,9 @@ public:
 
     // 'a single value, where dot takes a 2x1 matrix'.
     [[nodiscard]] std::string Unlike(const Extent& given, const Extent& stated) const {
-        const auto described = [](const Extent& e) {
-            return e.count() == 1 && !e.slices ? std::string("a single value")
-                                               : "a " + e.Described();
-        };
         const std::string& header = home->model->header;
-        return described(given) + ", where " + header.substr(0, header.find('(')) + " takes " +
-               described(stated);
+        return given.Called() + ", where " + header.substr(0, header.find('(')) + " takes " +
+               stated.Called();
     }
 
     [[nodiscard]] bool Value() const { return !model && !file && !input; }
@@ -197,6 +193,21 @@ public:
                                      "), so a clause cannot take (" + Shown(clause) + ")" +
                                      Advice());
         }
+        // The sizes are the definition's as the names are: stated in one
+        // clause, they hold for every clause, so two clauses state the same.
+        std::vector<typename ParametersDefinition<T>::Size> sizes;
+        if (!clauses_.empty()) sizes = sizes_;
+        sizes.resize(own.size());
+        for (std::size_t i = 0; i < own.size(); ++i) {
+            const auto& size = ai_parameters.sizes()[i];
+            if (!sizes[i].bounds.empty() && !size.bounds.empty() && sizes[i].bounds != size.bounds)
+                throw std::runtime_error(reference_name_ + " takes " + own[i] + " of size " +
+                                         Of(sizes[i]) + ", so a clause cannot take it of size " +
+                                         Of(size) + Advice());
+            if (!size.bounds.empty()) sizes[i] = size;
+        }
+        for (const Clause<T>& c : clauses_) Clash(sizes, c.parameters);
+        Clash(sizes, ai_parameters);
         // A base clause answers for one index rather than for every call, so
         // it is not a default and keeps its place: a guard added after one
         // could never apply, and saying so beats doing nothing.
@@ -258,6 +269,7 @@ public:
         // dispatch follows, so a clause that moved would answer differently
         // (DESIGN.md, C45); a guarded clause is named by its left-hand
         // side, which is how it can be corrected at all (C46).
+        sizes_ = std::move(sizes);
         for(Clause<T>& existing : clauses_) {
             const bool same =
                 ai_parameters.guarded()
@@ -273,6 +285,9 @@ public:
     }
 
     [[nodiscard]] const std::vector<Clause<T>>& Clauses() const { return clauses_; }
+    [[nodiscard]] const std::vector<typename ParametersDefinition<T>::Size>& Sizes() const {
+        return sizes_;
+    }
 
     // The value of a plain definition by a literal of numbers, once built.
     [[nodiscard]] const T* Kept() const {
@@ -475,7 +490,7 @@ public:
             ParametersDefinition<T>::Bind(captured, stack);
             ParametersDefinition<T>::Bind(arguments, stack);
             EvaluationVisitor<T> evaluator(stack);
-            parameters.BindDefaults(call, evaluator);
+            parameters.BindDefaults(call, evaluator, reference_name_, sizes_);
             if (call.limit()) {
                 // A guarded general clause is a general clause: it is the index
                 // that makes it one (DESIGN.md, C54); an input's argument has one.
@@ -671,7 +686,7 @@ private:
         ParametersDefinition<T>::Bind(captured, stack);
         ParametersDefinition<T>::Bind(arguments, stack);
         EvaluationVisitor<T> evaluator(stack);
-        CallParameters().BindDefaults(call, evaluator);
+        CallParameters().BindDefaults(call, evaluator, reference_name_, sizes_);
         const T evaluation = EvalImp(true, k, evaluator);
         if (memoisable) stack.Memoise(std::move(key), evaluation);
         return evaluation;
@@ -746,11 +761,21 @@ private:
         std::string        taken;
         int                depth = 0;
         bool               sign  = false;  // one that begins an element, as in '[1 -2]'
+        // A parameter's size, which one clause states for all, is compared apart.
+        int  sized = 0;
+        bool start = true, named = false;
         for (size_t at = s.find('\x1f', 1), next; at != std::string::npos; at = next) {
             next                    = s.find('\x1f', at + 1);
             const std::string token = s.substr(at + 1, next - at - 1);
             if ((depth += (token == "(") - (token == ")")) == 0) break;
             if (depth == 1 && token == "(") continue;
+            if (!shown && (sized || (named && token == "["))) {
+                sized += (token == "[") - (token == "]");
+                named = false;
+                continue;
+            }
+            named            = start;
+            start            = depth == 1 && token == ",";
             const bool tight = taken.empty() || taken.back() == '(' || taken.back() == '[' ||
                                token[0] == ' ' || sign || token == ")" || token == "]" ||
                                token == ",";
@@ -772,6 +797,44 @@ private:
         for (int depth = 1; depth > 0 && ++close < w.size();)
             depth += (w[close] == '(') - (w[close] == ')');
         return w.substr(open + 1, close - open - 1);
+    }
+
+    // 'n x n'.
+    static std::string Of(const typename ParametersDefinition<T>::Size& size) {
+        std::string out;
+        for (const auto& [name, number] : size.bounds)
+            out += (out.empty() ? "" : " x ") + (name.empty() ? std::to_string(number) : name);
+        return out;
+    }
+
+    // A size is bound as a parameter is, so its name is its own, and a
+    // default reads only the sizes stated before it.
+    void Clash(const std::vector<typename ParametersDefinition<T>::Size>& sizes,
+               const ParametersDefinition<T>&                             p) const {
+        const std::vector<std::string>& names = p.parameters_names();
+        std::vector<std::string>        before;
+        for (std::size_t d = 0; d < sizes.size(); ++d) {
+            const auto fallback = p.parameters_dict().find(names[d]);
+            for (const auto& size : sizes)
+                for (const auto& [name, number] : size.bounds) {
+                    const char* what =
+                        std::count(names.begin(), names.end(), name) ? "a parameter"
+                        : name == p.index_name()                     ? "an index"
+                        : name == p.row_name() || name == p.col_name() || name == p.slice_name()
+                            ? "a cell's index"
+                            : nullptr;
+                    if (!name.empty() && what)
+                        throw std::runtime_error(reference_name_ + " has " + what +
+                                                 " and a size named " + name);
+                    if (!name.empty() && fallback != p.parameters_dict().end() &&
+                        !std::count(before.begin(), before.end(), name) &&
+                        Mentions(*fallback->second, name))
+                        throw std::runtime_error(reference_name_ + "'s default for " + names[d] +
+                                                 " reads the size " + name +
+                                                 ", not stated before it");
+                }
+            for (const auto& [name, number] : sizes[d].bounds) before.push_back(name);
+        }
     }
 
     // The matrices a clause reads at an index of the cell it leaves unbounded,
@@ -1295,6 +1358,9 @@ private:
 
     // The whole definition: its clauses, in the order they were written.
     std::vector<Clause<T>> clauses_;
+    // The sizes its parameters state, in whichever clause (DESIGN.md, a size
+    // bound by a signature).
+    std::vector<typename ParametersDefinition<T>::Size> sizes_;
 
     mutable std::optional<bool> applied_;
 };

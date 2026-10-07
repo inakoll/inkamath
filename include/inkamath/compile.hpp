@@ -674,13 +674,27 @@ private:
             for (const auto& [given, value] : expansion.values)
                 function.Divides(given, Value(value.size), definitions_);
         });
-        return Inside(expansion, [&] {
-            for (const std::string& parameter : names) {
-                if (expansion.values.count(parameter)) continue;
-                expansion.values.emplace(parameter, Emit(p.parameters_dict().at(parameter)));
-            }
-            return Chained(name, function);
-        });
+        Defaults(name, function, expansion);
+        return Inside(expansion, [&] { return Chained(name, function); });
+    }
+
+    // Each parameter not given takes its default, which reads the others
+    // inside the function, and each size it states its extent, a constant
+    // (DESIGN.md, a size bound by a signature).
+    void Defaults(const std::string& name, const Reference<Value>& function, Expansion& expansion) {
+        const ParametersDefinition<Value>&            p = function.Clauses().front().parameters;
+        typename ParametersDefinition<Value>::Measure measure(name, function.Sizes());
+        for (std::size_t i = 0; i < p.parameters_names().size(); ++i) {
+            const std::string& parameter = p.parameters_names()[i];
+            if (!expansion.values.count(parameter))
+                expansion.values.emplace(parameter, Inside(expansion, [&] {
+                                             return Emit(p.parameters_dict().at(parameter));
+                                         }));
+            if (i >= function.Sizes().size() || function.Sizes()[i].bounds.empty()) continue;
+            const Extent given = expansion.values.at(parameter).size;
+            for (const auto& [size, n] : Reasoned([&] { return measure(i, given); }))
+                expansion.values.emplace(size, Literal(Value(Number(static_cast<int>(n)))));
+        }
     }
 
     // A function of the prelude called on single values is a C function of
@@ -2263,11 +2277,7 @@ private:
             given.values.emplace(names[i], Emit(call.parameters_expression()[i]));
         for (const auto& [parameter, argument] : call.parameters_dict())
             given.values.emplace(parameter, Emit(argument));
-        for (const std::string& parameter : names)
-            if (!given.values.count(parameter))
-                given.values.emplace(parameter, Inside(given, [&] {
-                                         return Emit(p.parameters_dict().at(parameter));
-                                     }));
+        Defaults(name, sequence, given);
         // A limit's function fills arrays of rows and columns.
         for (const auto& [parameter, code] : given.values) {
             if (code.size.slices) throw Reason("a tensor in a limit, for now");
@@ -2284,6 +2294,7 @@ private:
             const Code& argument = given.values.at(parameter);
             inside.values.emplace(parameter, Array("arg_" + parameter, argument.size));
         }
+        inside.values.insert(given.values.begin(), given.values.end());  // the sizes, constants
         Walked* const              outer_limit       = std::exchange(limit_, &walked);
         auto* const                outer_temporaries = std::exchange(temporaries_, nullptr);
         auto                       outer_reads       = std::exchange(read_parameters_, {});
