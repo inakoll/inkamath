@@ -661,6 +661,28 @@ clear clamp
 clamp(x, y) = x
 ```
 
+A parameter may state its size by bounds, as a definition by cells does:
+`v[j<=n]` is a column, `M[j<=n, k<=n]` a square matrix and `T[b<=p, j<=m,
+k<=n]` a tensor, slices first. A bound that is a name is bound by the call to
+the argument's size, a whole number, so the body can loop over it; a name
+written twice is one size, and a single value is a 1x1 matrix. An argument of
+another size is refused before the body is evaluated:
+
+```
+>> tr(M[j<=n, k<=n]) = sum_(j=1)^n M[j,j]
+tr(M[j<=n, k<=n]) = sum_(j=1)^n M[j,j]
+
+>> tr([1 2; 3 4])
+5
+
+>> tr([1 2 3; 4 5 6])
+error: tr takes M[j<=n, k<=n], not a 2x3 matrix
+```
+
+A size is bound as a parameter is, so inside the definition it hides a name
+defined at the prompt: after `n = 10`, `tr` still reads its argument's size.
+A model's input reads the names in its bounds instead (section 5).
+
 ### 4. Sequences
 
 A name indexed with `_` is a sequence. It is one definition with several
@@ -949,6 +971,10 @@ dot(x_n[j<=2]) = { ... }
 >> dot(x_n = n).y_3
 error: dot(...).x_3 is a single value, where dot takes a 2x1 matrix
 ```
+
+A bound may be a name, which the model reads where it is defined, as it reads
+any other: the model is compiled before any argument exists, so its input
+binds no size, where a function's parameter does (section 3).
 
 Defining an instance evaluates nothing, so two that read each other's terms,
 a controller and the plant it drives, are written in either order:
