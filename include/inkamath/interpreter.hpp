@@ -322,8 +322,8 @@ inline constexpr const char* prelude[] = {
     // charpoly is det(lambda I - A), highest power first, by Faddeev and
     // LeVerrier. hurwitz is Routh's test of every root of p in Re z < s, its
     // column as a recurrence on the polynomial, and schurcohn of every one in
-    // |z| < r, Routh's on the image of z = r(1 + w)/(1 - w). The sums of abs
-    // exist only to refuse a complex entry, which can pass the column. rho
+    // |z| < r, Routh's on the image of z = r(1 + w)/(1 - w). Each abs exists
+    // only to refuse a complex argument, by name, as one can pass the column. rho
     // and abscissa bisect on them a bracket of A/B, B = 2^e above A's cells,
     // scaled by 2^e in two halves so that no factor leaves a double, and
     // keep halving past the 64th while the bracket is wider than 2^-53 of
@@ -344,7 +344,7 @@ inline constexpr const char* prelude[] = {
     "hurwitzt(q[j<=m])_0 = sum_(j=1)^m abs(q[j]) > 0 and q[1] <> 0",
     "hurwitzt(q)_k = hurwitzt(q)_(k-1) and hurwitzr(q)_(k-1)[2]*q[1] > 0",
     "hurwitzs(p[j<=m], s)[t<=m] = sum_(i=1)^t p[i]*hurwitzb(m-i, m-t)*s^(t-i)",
-    "hurwitz(p[j<=m], s = 0) = hurwitzt(hurwitzs(p, s))_(m-1)",
+    "hurwitz(p[j<=m], s = 0) | abs(s) >= 0 = hurwitzt(hurwitzs(p, s))_(m-1)",
     "schurcohnm(p[j<=m], r)[t<=m] = sum_(i=1)^m p[i]*r^(m-i)*sum_(a=0)^(m-i) "
     "hurwitzb(m-i, a)*hurwitzb(i-1, m-t-a)*(-1)^(m-t-a)",
     "schurcohn(p[j<=m], r = 1) | r >= 0 and sum_(j=1)^m abs(p[j]) >= 0 "

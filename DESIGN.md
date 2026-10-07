@@ -5785,7 +5785,10 @@ that exploring seven domains asked of the interpreter, by how many asked.
     map's image of z + i, `(1 - i)w + (1 + i)`, tests (1 + i)(1 - i) = 2 >
     0. The sum of the abs exists for that alone, and a prelude comment says
     so. `schurcohn` checks the polynomial written, not its image, so
-    `schurcohn([1; i])` names i, not a cell of the image, 1 - i. Their own
+    `schurcohn([1; i])` names i, not a cell of the image, 1 - i; and
+    `hurwitz` its s, guarded by `abs(s) >= 0` as `schurcohn` by `r >= 0`,
+    so `hurwitz([1; 1/2], i)` names i, not 1/2 + i, by the implementation
+    review's ruling. Their own
     words would be about 5 lines of C++ beside C147's: kept in abs's, by
     the review's ruling. A negative radius,
     `no clause of schurcohn applies`.

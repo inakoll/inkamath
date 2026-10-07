@@ -127,6 +127,10 @@ error: hurwitz takes p[j<=m], not a 1x3 matrix
 >> hurwitz([1; i])
 error: a comparison needs real numbers, not i
 
+# A complex s is named, not a cell of the shifted polynomial, 1/2 + i.
+>> hurwitz([1; 1/2], i)
+error: a comparison needs real numbers, not i
+
 # The Schur-Cohn test: every root in |z| < 1, strictly, or in |z| < r.
 >> schurcohn([1; -1/2])
 1
