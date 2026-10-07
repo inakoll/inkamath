@@ -5,3 +5,5 @@ clamp(x) = x
 step_n = n
 clear step
 step = 2
+# A name of the file's own.
+cases(x) = 2*x

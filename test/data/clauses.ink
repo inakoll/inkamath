@@ -288,6 +288,20 @@ clamp(x) | x < 0 = 0
 >> cases.clamp(-3)
 -3
 
+# A file may define its own name, which brought in is that definition
+# (C160).
+>> clear cases
+clear cases
+
+>> use cases (cases)
+use cases (cases)
+
+>> cases(2)
+4
+
+>> use cases (cases)
+use cases (cases)
+
 # A session's clause on a name of the prelude starts a definition of its own
 # (trig), and the clauses after it join that one. Cleared, the name is the
 # prelude's again; the prelude's and the built-ins cannot be cleared.

@@ -1455,7 +1455,8 @@ std::string Interpreter<T, U>::Use(const std::string& s) {
     used->file = file;
     used->home = &stack_.Target();
     for (const std::string& brought : listed) stack_.Vacant(brought, *file->names.at(brought));
-    stack_.Put(name, used);
+    // A name of the file's own, brought in, takes the file's place (C160).
+    if (std::ranges::find(listed, name) == listed.end()) stack_.Put(name, used);
     for (const std::string& brought : listed) stack_.Put(brought, file->names.at(brought));
     return AsWritten(s);
 }
