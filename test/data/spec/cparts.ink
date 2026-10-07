@@ -68,6 +68,14 @@ error: 5 was approximated, so it has no exact fraction
 >> abs(3*10^-200 + 4*10^-200*i)
 ~5e-200
 
+# An infinite part's modulus is inf, as hypot's is, not the NaN of inf
+# scaled by inf.
+>> abs(1/~0 + i)
+inf
+
+>> abs(-1/~0 + i)
+inf
+
 # A part of an approximated number is marked, and so is its modulus,
 # sqrt(13).
 >> x = 2 + 0*10^-1000

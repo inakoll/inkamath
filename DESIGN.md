@@ -2801,6 +2801,7 @@ that exploring seven domains asked of the interpreter, by how many asked.
       abs(x) | x < 0 = -re(x)
       abs(x) | x >= 0 = re(x)
       absz(a, b, s) = s*((a/s)*(a/s) + (b/s)*(b/s))^(1/2)
+      absz(a, b, s) | 1/a == 0 or 1/b == 0 = 1/~0
 
   **re and im** are built in as `floor` is, a definition the interpreter
   starts with whose body is a node the language cannot write: nothing it
@@ -2821,8 +2822,9 @@ that exploring seven domains asked of the interpreter, by how many asked.
   `abs(3*10^-200 + 4*10^-200*i)` 0. |3+4i| is the double 5, all of it, so
   printed `5`, but inexact, `frac` refusing it: a complex number is a pair
   of doubles, and exact ones are not this item. |1+i| is the correctly
-  rounded root of 2, the double `2^(1/2)` is (C153). A real number's is
-  exact, as before. The guard reads `<` and `>`, not `<>`: a whole matrix
+  rounded root of 2, the double `2^(1/2)` is (C153). An infinite part's
+  is inf, as hypot's is, where the scaling would divide inf by inf: a
+  clause of its own. A real number's is exact, as before. The guard reads `<` and `>`, not `<>`: a whole matrix
   `<>` 0 answers 1, so abs of a matrix would take the complex clause, where
   `<` refuses it in abs's words, as now.
 
@@ -2882,10 +2884,10 @@ that exploring seven domains asked of the interpreter, by how many asked.
   lists `re` and `im` with `floor` and says abs takes a complex number,
   with the frequency response as its example.
 
-  About 58 lines: 2 of the prelude and 8 edited, 1 of its comment; about
+  About 59 lines: 3 of the prelude and 8 edited, 1 of its comment; about
   53 of C++, the node and its visitors 15, `Matrix` 8, its definitions 6,
   grad 15, the compiler 8. 15,327 lines at ebf47fd, by `wc -l
-  include/inkamath/*.hpp src/*`. Past 87 the implementation stops and
+  include/inkamath/*.hpp src/*`. Past 88 the implementation stops and
   reports.
 
   Specified in `test/data/spec/cparts.ink`, 45 entries replayed by the spec
