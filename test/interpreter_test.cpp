@@ -199,6 +199,12 @@ TEST_CASE("signatures") {
 TEST_CASE("charpoly") {
     check_transcript("charpoly.ink");
 }
+TEST_CASE("bisection_digits") {
+    check_transcript("bisection_digits.ink");
+}
+TEST_CASE("bisection_cap") {
+    check_transcript("bisection_cap.ink");
+}
 TEST_CASE("kahan") {
     check_transcript("kahan.ink");
 }

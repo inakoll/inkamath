@@ -5857,7 +5857,10 @@ that exploring seven domains asked of the interpreter, by how many asked.
   the 10x10 here, 0.1 s for a nilpotent 2x2 run to 256 halvings; the
   golden takes 31 s under the sanitizers, within the 60 s of every golden
   but fastgrad.ink, its scaled entries a 2x2's, which fails unscaled as the
-  10x10 did, at 2 s where the 10x10 took 63. 50 lines landed against about
+  10x10 did, at 2 s where the 10x10 took 63. The 10x10's two answers are
+  since `bisection_digits.ink`, and the bisections the cap ends
+  `bisection_cap.ink`, goldens of their own that run beside it, where the
+  one file took 50 s on the build worker. 50 lines landed against about
   45: the prelude 33 and its
   comment 8 in `interpreter.hpp`, with 2 binding the staircases,
   `reference_stack.hpp` 3 and `derivative.hpp` 4. The review's C190 put
