@@ -5563,7 +5563,10 @@ that exploring seven domains asked of the interpreter, by how many asked.
   parameter's size and gives it, `pad(v[j<=n] = [1; 2])`; one that reads a
   size stated by its own parameter or a later one is refused where written,
   `late's default for s reads the size n, not stated before it`. Two indices
-  of one parameter need two names, as a cell's do.
+  of one parameter may share a name, since neither binds: `M[j<=n, j<=n]`
+  is `M[j<=n, k<=n]`. Refusing it, as a cell's two are, was specified and
+  dropped, with its entry, for its 6 lines when the implementation ran past
+  its stop line.
 
   Nothing new elsewhere. The memo keys a call by its arguments and their
   shapes (C50), the sizes a function of them; `sum`, `lim` and a function's

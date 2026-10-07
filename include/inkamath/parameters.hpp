@@ -165,17 +165,10 @@ public:
             if (!named && !dynamic_cast<const ValExpression<T>*>(bound.get()))
                 throw std::runtime_error(
                     "a size is a whole number or a name, as 'v[j<=3]' or 'v[j<=n]'");
-            const size_t       number = named ? 0 : AsSize<T>(bound->accept(evaluator));
-            const std::string& index = compare->m_e1()->Name();
-            if (std::count_if(w.bounds.begin(), w.bounds.end(), [&](const auto* other) {
-                    return other->m_e1()->Name() == index;
-                }) > 1)
-                throw std::runtime_error(
-                    w.bounds.size() == 3 ? "a parameter's slice, row and column need three names"
-                                         : "a parameter's row and column need two names");
+            const size_t number = named ? 0 : AsSize<T>(bound->accept(evaluator));
             size.bounds.emplace_back(named ? bound->Name() : std::to_string(number), number);
-            size.written +=
-                (size.written.empty() ? "" : ", ") + index + "<=" + size.bounds.back().first;
+            size.written += (size.written.empty() ? "" : ", ") + compare->m_e1()->Name() +
+                            "<=" + size.bounds.back().first;
         }
         if (!size.bounds.empty()) size.written = w.left->Name() + "[" + size.written + "]";
         parameters_names_.push_back(w.left->Name());

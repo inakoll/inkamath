@@ -332,10 +332,6 @@ error: late's default for s reads the size n, not stated before it
 >> late(v[j<=n] = [1; n]) = v
 error: late's default for v reads the size n, not stated before it
 
-# Two indices of one parameter need two names, as a cell's do.
->> bad(M[j<=n, j<=n]) = 1
-error: a parameter's row and column need two names
-
 # A parameter is a name or a name and its size; anything else, dropped in
 # silence before (C150), is refused.
 >> bad(2) = 3
