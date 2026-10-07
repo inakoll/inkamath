@@ -5689,11 +5689,11 @@ that exploring seven domains asked of the interpreter, by how many asked.
       rhon(A[j<=n, k<=n]) = rhop(sum_(j=1)^n sum_(k=1)^n abs(A[j,k]))
       rhop(s) = 2^(ilogb(s + (s == 0)) + 1) + 0*s
       rhob(A)_0 = [0; rhon(A)]
-      rhob(A)_m = rhoh(charpoly(A), rhob(A)_(m-1))
+      rhob(A)_m = rhon(A)*rhoh(charpoly(A/rhon(A)), rhob(A)_(m-1)/rhon(A))
       rhoh(p, b) = b + (b[2] - b[1])/2*([1; 0] - schurcohn(p, (b[1] + b[2])/2)*[1; 1])
       rho(A[j<=n, k<=n]) = ~rhob(A)_64[1]
       abscissab(A)_0 = [-1; 1]*rhon(A)
-      abscissab(A)_m = abscissah(charpoly(A), abscissab(A)_(m-1))
+      abscissab(A)_m = rhon(A)*abscissah(charpoly(A/rhon(A)), abscissab(A)_(m-1)/rhon(A))
       abscissah(p, b) = b + (b[2] - b[1])/2*([1; 0] - hurwitz(p, (b[1] + b[2])/2)*[1; 1])
       abscissa(A[j<=n, k<=n]) = ~abscissab(A)_64[1]
 
@@ -5723,6 +5723,12 @@ that exploring seven domains asked of the interpreter, by how many asked.
   power of two above the sum of |A[j,k]|, which bounds rho strictly, 2 for
   the zero matrix; so every midpoint is dyadic, the brackets of 2A are those
   of A doubled, and `frac rhob(A)_m` shows one exactly, as tight as m asks.
+  The tests are of A/B, exactly, B being a power of two, and the bracket is
+  scaled back by B, so the tests' numbers are near 1 whatever A's scale.
+  Unscaled, the prototype's `rho([~1 2; 3 4]/10^100)*10^100` was 18.3, its
+  polynomial's rounded coefficients near 10^-200, `rho(10^-300)` was
+  1.49e-300 and marked, its tests past a thousand digits, and the 10x10
+  below over 10^20 was 8.7e-19, and times 10^30 refused a NaN.
   The answer is lo after 64 halvings, made inexact: 2^-64 of B, under a unit
   of a double where rho is within 2^11 of B. A bound on the boundary fails
   its strict test and becomes lo, so an eigenvalue a halving reaches is the

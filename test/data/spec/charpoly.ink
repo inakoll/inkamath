@@ -246,6 +246,15 @@ digits = 9
 >> rho(2*[1/2 1; -1 1/2]) == 2*rho([1/2 1; -1 1/2])
 1
 
+# The tests are of A/B, exactly, and the bracket scaled back by B, so a
+# small matrix or a large one tests numbers a double holds: rounded, the
+# coefficients of [1 2; 3 4]/10^100's polynomial would underflow.
+>> rho(10^-300)
+~1e-300
+
+>> rho([~1 2; 3 4]/10^100)*10^100
+~5.37228132
+
 # Five by five, the tests exact; ten by ten, the late ones read numbers
 # past a thousand digits, so the answer is marked (NumPy: 1.7463140334187077
 # and 1.239222528823944).
@@ -263,6 +272,12 @@ A = [6 -8 -6 -5 -6 6 7 2 -9 -8; -3 -1 2 0 -4 -6 4 4 -9 -7; -1 -2 7 0 -2 -1 3 2 -
 
 >> abscissa(A)
 ~1.23922253  # approximated past a thousand digits
+
+>> rho(A/10^20)
+~1.74631403e-20  # approximated past a thousand digits
+
+>> rho(A*10^30)
+~1.74631403e+30  # approximated past a thousand digits
 
 # An inexact matrix is bisected by rounded tests, so its bracket is inexact
 # too and certifies nothing.
