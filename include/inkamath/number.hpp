@@ -14,6 +14,7 @@
 #include <functional>
 #include <limits>
 #include <memory>
+#include <numbers>
 #include <numeric>
 #include <optional>
 #include <stdexcept>
@@ -267,17 +268,18 @@ public:
         // An exact number no normal double holds has a power of 2 taken out
         // first, x^y = 2^(e*y) (x/2^e)^y, as log reduces by ilogb; e even
         // keeps a root's 2^(e/2) exact.
-        const double y = b.Inexact().real();
-        if (a.big_ && !std::isnormal(base.real()) && b.Inexact().imag() == 0 && std::isfinite(y)) {
+        const double y = b.Inexact().real(), t = b.Inexact().imag();
+        if (a.big_ && !std::isnormal(base.real()) && std::isfinite(y) && std::isfinite(t)) {
             const Big& r = *a.big_;
             const long e =
                 (static_cast<long>(r.num.bits()) - static_cast<long>(r.den.bits())) & ~1L;
             const double m = e >= 0 ? Nearest(r.num, r.den.Shifted(static_cast<std::size_t>(e)))
                                     : Nearest(r.num.Shifted(static_cast<std::size_t>(-e)), r.den);
             const double s = std::clamp(static_cast<double>(e) * y, -1e4, 1e4), k = std::floor(s);
-            const inexact_type z = numeric_interface<inexact_type>::pow(
-                                       inexact_type(r.negative ? -m : m), b.Inexact()) *
-                                   std::exp2(s - k);
+            inexact_type z = numeric_interface<inexact_type>::pow(inexact_type(r.negative ? -m : m),
+                                                                  b.Inexact()) *
+                             std::exp2(s - k);
+            if (t != 0) z *= std::polar(1.0, static_cast<double>(e) * t * std::numbers::ln2);
             return Approximate(rounded({std::ldexp(z.real(), static_cast<int>(k)),
                                         std::ldexp(z.imag(), static_cast<int>(k))}),
                                past);

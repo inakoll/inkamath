@@ -285,3 +285,16 @@ kept(x_n, a = -1) = {
     d_n = 0
 }
 held = kept(x_n = n)
+
+# An argument a function never reads is computed all the same, as the
+# interpreter computes it, so its refusal is the call's: F ignores its M,
+# and so grad's body its t (C189). g, h and y answered 0 or 1 from step 2,
+# where each is to report within 0.
+unread(x_n) = {
+    r(v) | v > 0 = v
+    F(M) = 1
+    y_n = F(r(x_n))
+    g_n = grad_(t = r(x_n)) F(t)
+    h_n = grad_(t = x_n) F(r(t))
+}
+idle = unread(x_n = 2 - n)

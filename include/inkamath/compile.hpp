@@ -684,13 +684,18 @@ private:
                              "a sequence with parameters read at an index that is not a constant"));
         ++calls_;
         Expansion expansion{{}, {}, outer ? outer->scope : function.home, outer, {}, {}};
+        std::vector<Code> nans;
         // An argument the caller's index, give or take a constant, indexes a term (C119).
         const auto bind = [&](const std::string& given, const PExpression<Value>& argument) {
             // A call's value, and its part, written at each reading, would
             // multiply at each call nested in it (C140): each is computed once.
             const int before = calls_;
             Code      value  = Emit(argument);
+            bool      nan    = false;
+            for (const Cell& c : value.cells) nan = nan || WritesNan(c.text) || nans_.count(c.text);
             if ((at || calls_ != before) && !value.constant) value = SharedAll(value);
+            if (nan)
+                for (const Cell& c : nans.emplace_back(value).cells) nans_.insert(c.text);
             expansion.values.emplace(given, value);
             if (Plain(*argument)) try {
                     expansion.offsets.emplace(given, Offset(argument, given));
@@ -708,8 +713,20 @@ private:
                 function.Divides(given, Value(value.size), definitions_);
         });
         Defaults(function, expansion);
-        if (at) return Term(name, function, expansion, *at);
-        return Inside(expansion, [&] { return Chained(name, function); });
+        Code result = at ? Term(name, function, expansion, *at)
+                         : Inside(expansion, [&] { return Chained(name, function); });
+        // The interpreter computes an argument the function does not read, so
+        // its refusal is the call's (C189).
+        std::string written, nan;
+        for (const Cell& cell : result.cells) written += cell.text + ' ';
+        for (const Code& value : nans)
+            if (std::none_of(value.cells.begin(), value.cells.end(),
+                             [&](const Cell& c) { return Writes(written, c.text); }))
+                nan += (aware_ = true, Nan(value));
+        if (nan.empty()) return result;
+        for (Cell& cell : result.cells) cell = Cell("(" + nan + cell.text + ")", primary);
+        result.constant.reset();
+        return result;
     }
 
     // Filled from the lowest base, by the interpreter's stride (Reference::Filled),
@@ -1304,10 +1321,6 @@ private:
             }
         });
     }
-    Code Folded(Expression<Value>* expression) {
-        Fold(expression);
-        return code_;
-    }
     // From the operands' constants, not the expression again, which may read
     // a name that moves where its value does not, in a call (C135).
     template <typename F, typename... Operands>
@@ -1519,14 +1532,25 @@ private:
     }
 
     // A matrix product is a sum over the inner dimension, in the interpreter's
-    // order. A power's is folded again, as A^-1*b solves.
+    // order. A^-1*b of constants is solved, as the interpreter solves it, from
+    // A's constant (C193).
     PExpression<Value> visit(MultExpression<Value>* expression) override {
         const Code left = Emit(expression->m_e1()), right = Emit(expression->m_e2());
         if (!left.constant || !right.constant)
             return Answer(ProductOf(Product(left, right), left, right));
-        const bool power = dynamic_cast<PowExpression<Value>*>(expression->m_e1().get());
-        return Answer(ProductOf(
-            power ? Folded(expression) : Exactly(std::multiplies<>(), left, right), left, right));
+        const auto* power = dynamic_cast<PowExpression<Value>*>(expression->m_e1().get());
+        const auto* exponent =
+            power ? dynamic_cast<ValExpression<Value>*>(power->m_e2().get()) : nullptr;
+        if (exponent && numeric_interface<Value>::exact(exponent->value) &&
+            exponent->value == Value(Number(-1))) {
+            const Code base = Emit(power->m_e1());
+            const auto b    = [&] { return *right.constant; };
+            if (base.constant)
+                return Answer(ProductOf(
+                    Exact([&] { return numeric_interface<Value>::solve(*base.constant, b); }), left,
+                    right));
+        }
+        return Answer(ProductOf(Exactly(std::multiplies<>(), left, right), left, right));
     }
 
     // Each left cell is read once for each right column, each right cell once
@@ -4333,6 +4357,7 @@ private:
     std::set<std::string>            aside_;    // definitions refused; see Refusals
     bool                             clauses_ = false;  // whether the step keeps them; see Build
     bool                             aware_ = false;  // whether it writes NaN, and so tests for it
+    std::set<std::string>            nans_;             // arguments' cells that may be NaN
     bool                             guarding_ = false;  // in a guard, which asks only for values
     std::map<std::string, Value>     known_;    // globals that read only those
     std::set<std::string>            read_parameters_;      // by the value being compiled

@@ -521,7 +521,10 @@ thousand digits they are approximated and the answer is marked, within a
 double's accuracy but no longer proved. An answer the 256th halving leaves
 wider is marked too: one below about 2^-202 of the sum of |A[j,k]|, and
 every 0, which no bracket is within 2^-53 of, so the tests cannot tell a
-nilpotent matrix's rho from a small one. Of a matrix of tenths, `rho` is
+marginal system's abscissa from a small one. A nilpotent matrix's rho, its
+polynomial lambda^n, is 0 and certified, and so is an abscissa whose
+polynomial is lambda^k q, q's roots left of the axis, but not one with a
+pair on it. Of a matrix of tenths, `rho` is
 certified up to about 6x6 and `abscissa` 8x8. `grad` refuses both, a
 bisection being a staircase:
 
