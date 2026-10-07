@@ -267,6 +267,20 @@ sz(v[i<=n]) = n
 >> sz(3)
 0
 
+# A clause written again replaces the one before, the sizes it stated with
+# it: the sizes are those of the clauses that remain.
+>> rs(x[j<=n])_m = n
+rs(x[j<=n])_m = n
+
+>> rs(x)_m = 1
+rs(x)_m = 1
+
+>> ?rs
+rs(x)_m = 1
+
+>> rs([1 2])_0
+1
+
 # A sequence of a function reads its size in any clause, and its limit is
 # its terms'.
 >> on(n)[j<=n] = 1

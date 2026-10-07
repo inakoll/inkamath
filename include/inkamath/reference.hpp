@@ -270,19 +270,22 @@ public:
         // dispatch follows, so a clause that moved would answer differently
         // (DESIGN.md, C45); a guarded clause is named by its left-hand
         // side, which is how it can be corrected at all (C46).
-        sizes_ = std::move(sizes);
-        for(Clause<T>& existing : clauses_) {
-            const bool same =
-                ai_parameters.guarded()
-                    ? existing.parameters.guarded() &&
-                          existing.parameters.signature() == ai_parameters.signature()
-                    : !existing.parameters.guarded() && Shape(existing) == Shape(clause);
-            if(same) {
-                existing = clause;
-                return;
-            }
-        }
-        clauses_.push_back(clause);
+        const auto existing =
+            std::find_if(clauses_.begin(), clauses_.end(), [&](const Clause<T>& c) {
+                return ai_parameters.guarded()
+                           ? c.parameters.guarded() &&
+                                 c.parameters.signature() == ai_parameters.signature()
+                           : !c.parameters.guarded() && Shape(c) == Shape(clause);
+            });
+        if (existing != clauses_.end())
+            *existing = clause;
+        else
+            clauses_.push_back(clause);
+        // The sizes held are those the remaining clauses state (C166).
+        sizes_.assign(own.size(), Size());
+        for (const Clause<T>& c : clauses_)
+            for (std::size_t i = 0; i < own.size(); ++i)
+                if (!c.parameters.sizes()[i].bounds.empty()) sizes_[i] = c.parameters.sizes()[i];
     }
 
     [[nodiscard]] const std::vector<Clause<T>>& Clauses() const { return clauses_; }
