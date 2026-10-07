@@ -5256,3 +5256,81 @@ that exploring seven domains asked of the interpreter, by how many asked.
   48 lines of sources more, where about 150 were planned: 40 in `compile.hpp`
   and 8 in `check.hpp`; C122's 1; and by its review, C124 to C127, 15, and
   its rulings, 14. 14,416 lines in all, after `trig`.
+- **Cases in a paper's order, and `clear`.** A paper writes the cases first
+  and "otherwise" last, `clamp(x) | x > 1 = 1` then `clamp(x) = x`, and here
+  the second line starts the definition over and drops the guard (C11):
+  `clamp(5)` is 5. A sequence written so, `s_n | n > 1 = 1` then `s_n = n`,
+  and a definition by cells keep their guards, so one order means two
+  things. It bit a model: a ReLU so written in a model's body was 0
+  everywhere and its slope 0, and the unit meant to die never lived. The
+  restart was the prompt's way to start a definition over, and is as much a
+  way to lose one without a word.
+
+  Decided: nothing a name holds is dropped but by `clear`, at the prompt as
+  in a file and a model's body, since a transcript, a file run and a file
+  used are the same lines and should mean one thing.
+  - A clause joins its name's definition in the scope it is written in. An
+    unguarded one for every call, plain or general, is the fallback, tried
+    after the guards wherever it was written, as now. Written again, a
+    clause replaces itself where it stands (C45, C46); a plain one that is
+    the whole definition is replaced parameters and all, since nothing else
+    goes with it, so `f(x) = x` then `f(x, y) = x + y` needs no `clear`.
+  - A clause that cannot join is refused, and says how to start anew,
+    "; write 'clear f' first": other parameters beside other clauses (C51,
+    which a plain clause escaped), a clause without an index on a sequence
+    or with one on what is not (C70 dropped the value), any clause on a model
+    or a file used. A model is one statement and replaces a model only;
+    `use` binds a file, or brings in a name, only over nothing or the same.
+  - `clear f`, a word at the start of a line as `use` is and not reserved,
+    drops what `f` is in the scope it is written in: clauses, a model, an
+    instance, a file used or a name brought in. The name then means what it
+    means beneath, the prelude's or a built-in, or nothing, and `?f`, `tex
+    ?f` and every caller follow, the memo going as with any definition. A
+    name defined only beneath is refused, "abs comes with the language, so
+    it cannot be cleared", as are a name defined nowhere and anything after
+    the name: no single clause is removed. A model's body holds definitions,
+    so not `clear`; a file used reads it as the session does. A file is not
+    read again for being cleared and used again.
+  - Unchanged: a session's clause on a name of the prelude or a built-in
+    starts a definition of the session's own (trig), which the clauses after
+    it join; one on a name brought in by `use` joins the session's copy,
+    never the file's. `--compile` runs a file as the session does and
+    compiles the clauses it leaves, with no change: on a prototype the ReLU
+    compiles to `b > 0 ? b : 0`, its slope to `b > 0 ? 1 : 0`.
+
+  Rejected: the prompt keeping the restart while files accumulate, since a
+  transcript, a file run and `--compile`'s file are run as the prompt is, so
+  the trap would stay where models are written and one text mean two
+  things. `f(x) := x` to restart: a paper reads `:=` as `=`, so the
+  difference would be invisible on the page and in `tex`, and it is a
+  second way to write a definition (MANIFESTO, *What it is not for*); `clear`
+  says what nothing says now, and gives a prelude's name back. A marker
+  word, `new f(x) = x`: the same in more letters. Removing one clause: a
+  syntax for an edit nobody has needed, which `clear` and rewriting say.
+  Restarting where a clause cannot join: the trap in another shape.
+  Reserving `clear`: `use` is not.
+
+  What moves, by a prototype on every test: `matrices.ink`'s `T = [1 2; 3
+  4]`, "starts it over", keeps its cells and gains `clear T` before it;
+  `references.ink`'s C11 entries, `m=5` after `m_n` and `p_0=1` after `p=9`,
+  are refused and gain a `clear` each; `sequences.ink`'s C70 entry,
+  `rv_n | n > 0 = 1` after `rv = 5`, is refused, `?rv` is `rv = 5` and
+  `rv_1` "rv is not a sequence"; `conditional.ink`'s two C51 refusals gain
+  the way out; `trig.ink`'s "a plain definition starts over" goes. README's
+  `exp(x)=sum_(k=0) x^k/!k`, after the sequence `exp`, is refused and gains
+  `clear exp`; section 3's "a plain definition clears the guarded clauses
+  with it" becomes this rule, with `clamp`, the table gains `clear name`,
+  and section 5 says a prelude's name cleared is the prelude's again. No
+  header, check report or other golden moves. The rows of C11, C51 and C70
+  and phase 10's "the way to start over" are history and stay.
+
+  About 30 lines of sources net: the restart and C70's erasure out, about
+  13; the refusals 12, `clear` 15, the model's body 2, the plain clause
+  alone 2. 14,653 lines in all now, about 14,685 after; past 45 net the
+  implementation stops and reports.
+
+  Specified in `test/data/spec/clauses.ink`, 97 entries, 39 failing, with
+  `test/data/cases.ink` for `use`: the cases in a paper's order at the
+  prompt, in a model's body under `grad` and in a file; sequences and cells
+  as they are; a matrix written whole after its cells; each refusal; models,
+  files and `use`; the prelude; callers and the memo; and `clear` itself.
