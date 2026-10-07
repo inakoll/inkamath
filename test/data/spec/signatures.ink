@@ -3,7 +3,7 @@
 # that is a name is bound by the call to the argument's size, a whole number
 # constant for that call. Every value below is worked out by hand or with
 # exact fractions apart from the interpreter, none recorded. Today a parameter
-# that is not a name is dropped in silence (C149): the definitions echo, and
+# that is not a name is dropped in silence (C150): the definitions echo, and
 # their calls are refused, 'tr takes no arguments', or answer without it.
 
 # The trace, M an n by n matrix: the call binds n to M's size.
@@ -312,7 +312,7 @@ error: bad has an index and a size named n
 error: bad has a cell's index and a size named k
 
 # A parameter is a name or a name and its size; anything else, dropped in
-# silence before (C149), is refused.
+# silence before (C150), is refused.
 >> bad(2) = 3
 error: a parameter is a name, as 'x' or 'x = 1', or a name and its size, as 'v[j<=n]'
 

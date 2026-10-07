@@ -3,7 +3,7 @@
 # its signature names is a constant there and folds, and a sum to n unrolls
 # as one to 3 does. tr is called at 3x3 and at 2x2. Every number below is
 # worked out apart from the interpreter, none recorded. Today the sized
-# parameters are dropped (C149), and 'inkamath --compile' refuses the model:
+# parameters are dropped (C150), and 'inkamath --compile' refuses the model:
 # 'cannot compile c: c2 takes no arguments'.
 #
 # The header 'inkamath --compile signatures.ink invariants' writes is the one
