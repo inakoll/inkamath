@@ -122,7 +122,8 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brin
                          grad:ring grad:notch grad:apart grad:smooth grad:cusp
                          tensor:heads tensor:whirl tensor:batch tensor:spread
                          tensor:speck cellguards:rfit cellguards:tfit cellguards:layer
-                         cellguards:kink cellguards:crest cellguards:mask cellguards:order)
+                         cellguards:kink cellguards:crest cellguards:mask cellguards:order
+                         thresholds:dies thresholds:beat)
     string(REPLACE ":" ";" checked ${checked})
     list(GET checked 0 file)
     list(GET checked 1 instance)
@@ -416,6 +417,12 @@ set_tests_properties(check_sill_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^sill: 100 steps from 0, against exact values\nsill\\.g: at 2 the compiled step takes 'g_m \\| d_\\(2\\*m\\) < c = 1' and the interpreter 'g_m = 0'\\; the guard of the first is exactly on its threshold\nsill\\.d: [0-9.e+-]+ at 9, where the interpreter gives 0\\.10000000000000001\nsill\\.g: 1 at 2, where the interpreter gives 0\n$")
 set_tests_properties(check_seam_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^seam: 100 steps from 0, against exact values\nseam\\.g\\[1,1\\]: at 2 the compiled step takes 'g_m\\[j<=2\\] \\| d_\\(2\\*m\\)\\[j\\] < c\\*j = 1' and the interpreter 'g_m\\[j<=2\\] = 0'\\; the guard of the first is exactly on its threshold\nseam\\.d\\[1,1\\]: [0-9.e+-]+ at 9, where the interpreter gives 0\\.10000000000000001\nseam\\.g\\[1,1\\]: 1 at 2, where the interpreter gives 0\n$")
+# compile/thresholds.ink in double: each threshold met as the interpreter
+# meets it.
+set_tests_properties(check_dies_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^dies: 100 steps from 0, against exact values\ndies\\.b: within 0\ndies\\.alive: within 0\n$")
+set_tests_properties(check_beat_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^beat: 100 steps from 0, against exact values\n(beat\\.(x|xh|e): within [0-9.e+-]+\n)+beat\\.locked: within 0\n$")
 add_test(NAME check_calm COMMAND check_calm)
 add_test(NAME check_wild COMMAND check_wild)
 add_test(NAME check_brink COMMAND check_brink)
@@ -459,7 +466,7 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:ledge logistic:gate momentu
                          inputs:fan float:hum float:drone float:far float:tally float:crawl
                          float:steep float:blast
                          steady:mark softmax:cls grad:line tensor:whirl tensor:batch
-                         cellguards:rfit cellguards:tfit)
+                         cellguards:rfit cellguards:tfit thresholds:dies thresholds:beat)
     string(REPLACE ":" ";" checked ${checked})
     list(GET checked 0 file)
     list(GET checked 1 instance)
@@ -480,7 +487,8 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:ledge logistic:gate momentu
     add_test(NAME check_float_${instance}_report COMMAND check_float_${instance})
 endforeach()
 set_tests_properties(check_float_wild check_float_ledge check_float_far check_float_crawl
-                     check_float_steep PROPERTIES WILL_FAIL ON)
+                     check_float_steep check_float_dies check_float_beat
+                     PROPERTIES WILL_FAIL ON)
 # Each report as compile/float.ink gives it; what a libm or the seeds decide,
 # by its form.
 set(in_float " in float, against exact values")
@@ -509,6 +517,8 @@ foreach(report IN ITEMS
         "batch:^batch: 100 steps from 0${in_float}\nbatch\\.w: ${exact}\n$"
         "rfit:^rfit: 100 steps from 0${in_float}\nrfit\\.W: ${exact}\nrfit\\.L: ${exact}\n$"
         "tfit:^tfit: 100 steps from 0${in_float}\ntfit\\.W: ${exact}\ntfit\\.H: ${exact}\ntfit\\.L: ${exact}\n$"
+        "dies:^dies: 100 steps from 0${in_float}\ndies\\.alive: at 3 the compiled step takes 'alive_n \\| b_n > 0 = 1' and the interpreter 'alive_n = 0'\\; the guard of the first is exactly on its threshold\ndies\\.b: -0\\.0728999898 at 4, where the interpreter gives 0\ndies\\.alive: 1 at 3, where the interpreter gives 0\n$"
+        "beat:^beat: 100 steps from 0${in_float}\nbeat\\.locked: at 2 the compiled step takes 'locked_n = 0' and the interpreter 'locked_n \\| e_n\\[1\\] == 0 and e_n\\[2\\] == 0 = 1'\\; the guard of the second is exactly on its threshold\n(beat\\.(x|xh|e): within [0-9.e+-]+, [0-9.e+-]+ units of a float\n)+beat\\.locked: 0 at 2, where the interpreter gives 1\n$"
         "cls:^cls: 100 steps from 0${inexact}\ncls\\.z: within 2\\.4e-08, 0\\.2 units of a float\ncls\\.q: within 1\\.9e-06, 1\\.5 units of a float${about}\ncls\\.s: within 6\\.3e-08, 0\\.53 units of a float${about}\ncls\\.loss: within 4\\.1e-07, 3\\.4 units of a float${about}\n$")
     string(FIND "${report}" ":" colon)
     string(SUBSTRING "${report}" 0 ${colon} instance)
