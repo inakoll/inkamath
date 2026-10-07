@@ -413,3 +413,67 @@ dW = grad_(w = W0) loss(w) - hand(W0)
 
 >> sum_(j=1)^2 sum_(k=1)^2 dW[j,k]^2 < 1/10^24
 1
+
+# Backpropagation by hand (Rumelhart, Hinton & Williams 1986; Bishop, PRML,
+# 5.3) for a 2-3-1 ReLU network with a squared loss: delta2 = y - t and
+# delta1 = (W2' delta2) * relu'(z1), each gradient exactly grad's.
+>> x = [1/2; -3/2]
+x = [1/2; -3/2]
+
+>> t = 2
+t = 2
+
+>> W1 = [1 -1; 1/2 1; -2 1/3]
+W1 = [1 -1; 1/2 1; -2 1/3]
+
+>> b1 = [1/4; -1; 1]
+b1 = [1/4; -1; 1]
+
+>> W2 = [1 -1/2 2]
+W2 = [1 -1/2 2]
+
+>> b2 = 1/3
+b2 = 1/3
+
+>> relu(z)[j] | z[j] > 0 = z[j]
+relu(z)[j] | z[j] > 0 = z[j]
+
+>> relu(z)[j] = 0
+relu(z)[j] = 0
+
+>> cost(A, a, B, c) = (B*relu(A*x + a) + c - t)^2/2
+cost(A, a, B, c) = (B*relu(A*x + a) + c - t)^2/2
+
+>> z1 = W1*x + b1
+z1 = W1*x + b1
+
+>> d2 = W2*relu(z1) + b2 - t
+d2 = W2*relu(z1) + b2 - t
+
+>> d1[j<=3] = W2[1,j]*d2*(z1[j] > 0)
+d1[j<=3] = W2[1,j]*d2*(z1[j] > 0)
+
+>> grad_(A = W1) cost(A, b1, W2, b2) == d1*x' and grad_(a = b1) cost(W1, a, W2, b2) == d1
+1
+
+>> grad_(B = W2) cost(W1, b1, B, b2) == d2*relu(z1)' and grad_(c = b2) cost(W1, b1, W2, c) == d2
+1
+
+# Gradient checking (LeCun et al. 1998, "Efficient BackProp"): the cost is
+# piecewise quadratic in each weight, so a central difference is the
+# derivative exactly, however wide the step, until the step crosses a kink:
+# z1[3] = -1/2 changes sign where W1[3,2] moves by 1/3.
+>> E(j, k)[r<=3, c<=2] = r == j and c == k
+E(j, k)[r<=3, c<=2] = r == j and c == k
+
+>> err(h, j, k) = (cost(W1 + h*E(j, k), b1, W2, b2) - cost(W1 - h*E(j, k), b1, W2, b2))/(2*h) - (d1*x')[j,k]
+err(h, j, k) = (cost(W1 + h*E(j, k), b1, W2, b2) - cost(W1 - h*E(j, k), b1, W2, b2))/(2*h) - (d1*x')[j,k]
+
+>> err(3, 1, 1)
+0
+
+>> err(1/3, 3, 2)
+0
+
+>> frac err(1/2, 3, 2)
+-5/12
