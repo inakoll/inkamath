@@ -180,10 +180,11 @@ error: no clause of schurcohn applies
 >> schurcohn([1; i])
 error: a comparison needs real numbers, not i
 
-# The spectral radius by bisection on the Schur-Cohn test, 64 halvings of
-# [0, B) with B the power of two above the sum of |A[j,k]|: rhob(A)_m is the
-# bracket after m, its lower end at most rho and its upper end above it,
-# exact, and the answer its lower end, inexact.
+# The spectral radius by bisection on the Schur-Cohn test, from [0, B), B
+# the power of two above the sum of |A[j,k]|: rhob(A)_m is the bracket after
+# m halvings, its lower end at most rho and its upper end above it, exact,
+# and the answer its lower end, inexact, once the bracket is within 2^-53 of
+# its end nearer 0: after 64 halvings at least and 256 at most.
 >> rho([1/2 1; -1 1/2])
 ~1.11803399
 
@@ -191,9 +192,13 @@ error: a comparison needs real numbers, not i
 [5156021714044493573/4611686018427387904;
  2578010857022246787/2305843009213693952]
 
-# Each halving more halves it: B = 4 here.
+# Each halving halves it, B = 4 here; past the 64th, only while it is
+# wider than 2^-53 of its end nearer 0, which this one no longer is.
+>> frac rhob([1/2 1; -1 1/2])_40[2] - rhob([1/2 1; -1 1/2])_40[1]
+1/274877906944
+
 >> frac rhob([1/2 1; -1 1/2])_70[2] - rhob([1/2 1; -1 1/2])_70[1]
-1/295147905179352825856
+1/4611686018427387904
 
 # The spectral abscissa by Routh's test, from [-B, B): that of the damped
 # oscillator, -1/10, below.
@@ -235,6 +240,14 @@ digits = 9
 
 >> rho([0 0; 0 0])
 0
+
+# A value far below B takes more halvings: unstable by 10^-30, an abscissa
+# is not 0, and a radius of 10^-15 has every digit.
+>> abscissa([1/10^30 0; 0 -1])
+~1e-30
+
+>> rho([0 1; 1/10^30 0])
+~1e-15
 
 >> rho(-1/3)
 ~0.333333333

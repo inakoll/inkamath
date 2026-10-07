@@ -5688,14 +5688,17 @@ that exploring seven domains asked of the interpreter, by how many asked.
       schurcohn(p[j<=m], r = 1) | r >= 0 and sum_(j=1)^m abs(p[j]) >= 0 = hurwitz(schurcohnm(p, r))
       rhon(A[j<=n, k<=n]) = rhop(sum_(j=1)^n sum_(k=1)^n abs(A[j,k]))
       rhop(s) = 2^(ilogb(s + (s == 0)) + 1) + 0*s
+      rhos(b) = b[2] - b[1] <= 2^-53*min(abs(b[1]), abs(b[2]))
       rhob(A)_0 = [0; rhon(A)]
       rhob(A)_m = rhon(A)*rhoh(charpoly(A/rhon(A)), rhob(A)_(m-1)/rhon(A))
+      rhob(A)_m | m > 64 and rhos(rhob(A)_(m-1)) = rhob(A)_(m-1)
       rhoh(p, b) = b + (b[2] - b[1])/2*([1; 0] - schurcohn(p, (b[1] + b[2])/2)*[1; 1])
-      rho(A[j<=n, k<=n]) = ~rhob(A)_64[1]
+      rho(A[j<=n, k<=n]) = ~rhob(A)_256[1]
       abscissab(A)_0 = [-1; 1]*rhon(A)
       abscissab(A)_m = rhon(A)*abscissah(charpoly(A/rhon(A)), abscissab(A)_(m-1)/rhon(A))
+      abscissab(A)_m | m > 64 and rhos(abscissab(A)_(m-1)) = abscissab(A)_(m-1)
       abscissah(p, b) = b + (b[2] - b[1])/2*([1; 0] - hurwitz(p, (b[1] + b[2])/2)*[1; 1])
-      abscissa(A[j<=n, k<=n]) = ~abscissab(A)_64[1]
+      abscissa(A[j<=n, k<=n]) = ~abscissab(A)_256[1]
 
   `charpoly(A)` is det(lambda I - A) as a column, highest power first and
   monic, as MATLAB's and NumPy's `poly` give it: Faddeev and LeVerrier, M_1
@@ -5729,8 +5732,16 @@ that exploring seven domains asked of the interpreter, by how many asked.
   polynomial's rounded coefficients near 10^-200, `rho(10^-300)` was
   1.49e-300 and marked, its tests past a thousand digits, and the 10x10
   below over 10^20 was 8.7e-19, and times 10^30 refused a NaN.
-  The answer is lo after 64 halvings, made inexact: 2^-64 of B, under a unit
-  of a double where rho is within 2^11 of B. A bound on the boundary fails
+  The answer is lo, made inexact, after 64 halvings and as many more as
+  leave the bracket wider than 2^-53 of its end nearer 0, `rhos`, up to
+  256: within a unit of a double of rho wherever rho is above 2^-203 of B.
+  After 64 alone, `abscissa([1/10^30 0; 0 -1])`, unstable, was 0 unmarked,
+  and `rho([0 1; 1/10^30 0])`, 10^-15, right to 4 digits. A 0 never stops
+  it, a nilpotent matrix's rho or a marginal system's abscissa, hence the
+  cap; 256, as past it a test of a matrix above 3x3 would read, by the
+  estimate below, numbers past a thousand digits, so the halvings would be
+  marked, and 2^-203 of B is far below what a double's eigenvalue resolves,
+  about 2^-52 of the matrix's norm. A bound on the boundary fails
   its strict test and becomes lo, so an eigenvalue a halving reaches is the
   answer exactly: `rho([2 0; 0 -3])` is 3, `abscissa([1/2 1; -1 1/2])` 0.5,
   a nilpotent matrix's rho 0. The research's comment said (lo, hi]; its own
@@ -5790,16 +5801,16 @@ that exploring seven domains asked of the interpreter, by how many asked.
     where two eigenvalues share the largest modulus, and which divides by 0
     where the bracket's end is exact. A later item, with a model that trains
     a spectral radius.
-  - **Stopping.** 64 halvings, fixed. Rejected: relative to the answer,
-    which never stops at 0, where a nilpotent matrix and many abscissas are;
-    absolute, which breaks the scaling and wastes steps on a large matrix;
-    `lim`, which stops by a double's tolerance; stopping where the tests
-    stop being exact, which nothing in the language can ask; and 40
-    halvings, which would certify about 8x8 but leave the digits past the
-    twelfth wrong at `digits = 17` behind a `~` that says only that they are
-    not the whole value. The answer is the lower end, not the midpoint, so 0
-    prints as 0 and a dyadic eigenvalue as itself; the bracket as the answer
-    was rejected, a column where a number is asked.
+  - **Stopping.** 64 halvings at least, then relative, up to 256, by the
+    review's ruling, which kept the 64. Rejected: 64 halvings alone, which
+    printed an unstable abscissa of 10^-30 as 0; relative alone, which
+    never stops at 0, where a nilpotent matrix and many abscissas are, but
+    for a cap; absolute, which breaks the scaling and wastes steps on a
+    large matrix; `lim`, which stops by a double's tolerance; and stopping
+    where the tests stop being exact, which nothing in the language can
+    ask. The answer is the lower end, not the midpoint, so 0 prints as 0
+    and a dyadic eigenvalue as itself; the bracket as the answer was
+    rejected, a column where a number is asked.
   - **Schur by the map, then Routh**, as the research did. The Schur-Cohn
     recursion, (a0 p - an p~)/z, was weighed: no map and no binomials, but
     five lines where the map costs three over Routh, and its fraction-free
@@ -5814,13 +5825,13 @@ that exploring seven domains asked of the interpreter, by how many asked.
   the names with the prelude's others, and section 2 shows `charpoly` and
   `rho`.
 
-  About 40 lines: 27 of the prelude and some 6 of its comment, and 6 of C++
-  for grad. 15,055 lines at 75c03ae, by
+  About 45 lines: 31 of the prelude, the stop's 3 and a longer
+  `schurcohn` among them, some 8 of its comment, and 6 of C++ for grad. 15,055 lines at 75c03ae, by
   `wc -l include/inkamath/*.hpp src/*`. Past 60 the implementation stops and
   reports.
 
-  Specified in `test/data/spec/charpoly.ink`, 81 entries replayed by the
-  spec suite, 73 failing by design, those passing being the definitions
+  Specified in `test/data/spec/charpoly.ink`, 88 entries replayed by the
+  spec suite, 80 failing by design, those passing being the definitions
   echoing themselves, `digits` and a session's `rho`: values by sympy,
   mpmath at 60 digits and NumPy, and each bracket by bisection in Python's
   fractions with every test decided from the exact eigenvalue, apart from
