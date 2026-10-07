@@ -37,6 +37,9 @@ endif()
 if(INKAMATH_SANITIZE)
     add_compile_options(-fsanitize=${INKAMATH_SANITIZE} -fno-omit-frame-pointer)
     add_link_options(-fsanitize=${INKAMATH_SANITIZE})
+    # -O0 makes the sanitized test suite several times slower for no
+    # check gained; -Og keeps most of -O1's speed at half its compile time.
+    add_compile_options($<$<CONFIG:Debug>:-Og>)
     # Container precondition checks. The sanitizers miss an out-of-range
     # operator[] whenever the index still lands inside the allocation, which
     # is most of the time for a vector with spare capacity.
