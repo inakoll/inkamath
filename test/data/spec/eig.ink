@@ -151,6 +151,19 @@ error: ~1.38196601 was approximated, so it has no exact fraction
 [~1e-150;
  ~3e-150]
 
+# Past a double's range, an answer is the double ~ makes of it, inf or 0,
+# marked though every test is exact: a 0 that is not one is not certified.
+>> eig([2 1; 1 3]*10^400)
+[inf;
+ inf]  # approximated past a thousand digits
+
+>> eig([2 1; 1 3]/10^400)
+[0;
+ 0]  # approximated past a thousand digits
+
+>> eig(10^-400)
+0  # approximated past a thousand digits
+
 # One approximated past a thousand digits marks the answer: rt_20 is
 # within a double of sqrt(2).
 >> rt_0 = 1
@@ -189,6 +202,14 @@ rt_n = (rt_(n-1) + 2/rt_(n-1))/2
 
 >> smax([1 2; 3 4]/10^200)
 ~5.4649857e-200
+
+# Marked as eig's are, though they pass the range only as A's scale is
+# put back, after eigk's answer.
+>> smax(10^400)
+inf  # approximated past a thousand digits
+
+>> smax(10^-400)
+0  # approximated past a thousand digits
 
 >> eig([1 2 3])
 error: eig takes A[j<=n, k<=n], not a 1x3 matrix

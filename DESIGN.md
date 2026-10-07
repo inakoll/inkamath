@@ -6083,6 +6083,9 @@ that exploring seven domains asked of the interpreter, by how many asked.
   zero matrix, a nilpotent one. One line. Any other exact eigenvalue that
   is not dyadic stops by the relative rule; one below 2^-203 of B, not 0,
   is the bracket the cap leaves, marked, `eig([1/10^100 0; 0 1])` [0; 1].
+  One past a double's range is the double `~` makes of it, inf or a 0
+  that is not one, marked though every test is exact, by `rhoa` as
+  fixes14 marks rho's and abscissa's: `eig([2 1; 1 3]/10^400)`, [0; 0].
 
   **What it costs.** A test is one shift, about m^2 products, and a count;
   no Routh column and no map, so a test at a midpoint of b bits reads
@@ -6105,7 +6108,9 @@ that exploring seven domains asked of the interpreter, by how many asked.
     A's columns; the smaller of S'S and SS' would spare a wide matrix's
     zero eigenvalues, certified at once: a line for nothing. Its
     eigenvalue is `eigk`'s at k = n, by the same count, not `abscissa`'s,
-    whose Routh column reads n^2 b bits and whose 0 is marked.
+    whose Routh column reads n^2 b bits and whose 0 is marked. Past a
+    double's range its answer is marked as eig's, by its own scaling back,
+    which comes after `rhoa`: a line.
   - **Refused besides.** A matrix not square, by eig's signature. A complex
     entry in abs's words, `a comparison needs real numbers, not i`, `rhoe`
     reading every cell before a test does, so a Hermitian matrix too, as
@@ -6168,18 +6173,19 @@ that exploring seven domains asked of the interpreter, by how many asked.
   `eig`, `eigb` and `smax` with the prelude's others, and section 2 shows
   `eig` and `smax` and says what is refused.
 
-  About 30 lines: 19 of the prelude, two of them wrapped, some 6 of its
+  About 31 lines: 20 of the prelude, two of them wrapped, some 6 of its
   comment, 5 of C++ for the refusal's words and 1 for the staircases.
   15,256 lines at d3c2149, by `wc -l include/inkamath/*.hpp src/*`. Past
-  45 the implementation stops and reports.
+  46 the implementation stops and reports.
 
-  Specified in `test/data/spec/eig.ink`, 49 entries replayed by the spec
-  suite, 42 failing by design, those passing being definitions echoing
+  Specified in `test/data/spec/eig.ink`, 54 entries replayed by the spec
+  suite, 47 failing by design, those passing being definitions echoing
   themselves, `digits` and a session's `eig`: eigenvalues exactly with
   sympy, its real roots compared exactly, Hilbert's with mpmath at 60
   digits, the 6x6 and `smax` against NumPy, and each bracket by bisection
   in Python's fractions with every test decided from the exact
   eigenvalue, printed by a transcription of `Number::Shown`, apart from
   the interpreter. The prototype above, defined in a session, gives every
-  answer but the three refusals' words, grad's two and a session's `eig`,
-  which needs the name to be the prelude's.
+  answer but the three refusals' words, grad's two, the marks past a
+  double's range and a session's `eig`, which needs the name to be the
+  prelude's.
