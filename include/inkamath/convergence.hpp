@@ -33,6 +33,13 @@ public:
     // the walk stopped (Number::inexact).
     T Reached(const T& value) const { return numeric_interface<T>::inexact(value, remainder_); }
 
+    // The last value, in a refusal, marked as an answer would be (C168).
+    static std::string Last(const T& value) {
+        return numeric_interface<T>::toString(value) +
+               (numeric_interface<T>::approximated(value) ? ", approximated past a thousand digits"
+                                                          : "");
+    }
+
     // The next value; true when it is the limit. The first is never: one value
     // has nothing to be compared with.
     [[nodiscard]] bool Next(const T& value) {

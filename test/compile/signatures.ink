@@ -23,12 +23,14 @@
 #
 # its other lines as below. Its terms are whole numbers below 10^8 at every
 # step to 99, t_n = 5 - n, u_n = 2n, c_n = 5 - 6n, v_n = [n^2 + 2; 3n + 3;
-# -n], s_n = (n^2 + 2)^2 + (3n + 3)^2 + n^2, o_n = [v_n, -v_n] and g_n =
-# 2*A_n', so the step is exact:
+# -n], s_n = (n^2 + 2)^2 + (3n + 3)^2 + n^2, o_n = [v_n, -v_n], g_n =
+# 2*A_n' and d_n = n + 2, pd2() being pd2 with its default, which it was
+# compiled without (C169), so the step is exact:
 #
 #     inv: 100 steps from 0, against exact values
 #     inv.A: within 0
 #     inv.c: within 0
+#     inv.d: within 0
 #     inv.g: within 0
 #     inv.t: within 0
 #     inv.u: within 0
@@ -48,6 +50,8 @@ invariants() = {
     s_n = sq(v_n)
     o_n = outer(v_n, [1; -1])
     g_n = grad_(B = A_n) tr(B*B)
+    pd2(v = [1; 2]) = v[2]
+    d_n = pd2() + n
 }
 inv = invariants()
 
