@@ -262,9 +262,10 @@ whole number not above its argument, exact of an exact number and cell by
 cell of a matrix. `ceil(x) = -floor(-x)` and `mod(a, b) = a - b*floor(a/b)`
 come with it, from a prelude (section 5), and so do `exp`, `log`, `tanh`,
 `sin`, `cos`, `abs`, `max` and `min`, and, of matrices, `charpoly`,
-`hurwitz`, `schurcohn`, `rho` and `abscissa` (section 2). Any other rounding is a line of it,
-by the rule the model needs — `round(x) = floor(x + 1/2)` — and, like `pi`,
-each of them can be defined again, and given back by `clear`.
+`hurwitz`, `schurcohn`, `rho` and `abscissa` (section 2). Any other
+rounding is a line of it, by the rule the model needs —
+`round(x) = floor(x + 1/2)` — and, like `pi`, each of them can be defined
+again, and given back by `clear`.
 
 | | |
 |---|---|
@@ -1052,9 +1053,9 @@ nothing and says where. The prelude that defines `ceil`, `mod`, `exp`, `log`,
 `schurcohn`, `rho`, `rhob`, `abscissa` and `abscissab`, and what they call,
 is included bare beneath the session, as the built-ins are: every scope sees
 it, and a session that defines one of its names again does so for itself
-alone, and clearing it gives the prelude's back. `exp`, `log`, `tanh`, `sin` and `cos`
-are written in it, accurate to a few units in
-the last place of a double, by the operations a compiled step performs:
+alone, and clearing it gives the prelude's back. `exp`, `log`, `tanh`,
+`sin` and `cos` are written in it, accurate to a few units in the last
+place of a double, by the operations a compiled step performs:
 `exp(x)` is 2^k e^r, r = x - k ln 2 and e^r a polynomial, `log` reduces by
 `ilogb`, the power of two at or below its argument, and `sin` and `cos` by the
 multiple of pi/2 nearest theirs. An exact argument is reduced exactly, save
