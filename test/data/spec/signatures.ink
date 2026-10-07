@@ -251,7 +251,20 @@ fm(A[j<=n, k<=n])_m = A*fm(A)_(m-1) + fc(A)_(m-1)*id(n)
 \operatorname{fm}(A \in \mathbb{R}^{n \times n})_m = A\,\operatorname{fm}(A)_{m-1} + \operatorname{fc}(A)_{m-1}\,\operatorname{id}(n)
 
 >> fm(A[r<=p, c<=p])_m = A
-error: fm takes (A[j<=n, k<=n]), so a clause cannot take (A[r<=p, c<=p])
+error: fm takes A of size n x n, so a clause cannot take it of size p x p; write 'clear fm' first
+
+# Clauses agree on their sizes, not on the names of their indices.
+>> sz(v[j<=n]) | n == 1 = 0
+sz(v[j<=n]) | n == 1 = 0
+
+>> sz(v[i<=n]) = n
+sz(v[i<=n]) = n
+
+>> sz([1; 2])
+2
+
+>> sz(3)
+0
 
 # A sequence of a function reads its size in any clause, and its limit is
 # its terms'.
@@ -310,6 +323,18 @@ error: bad has an index and a size named n
 
 >> bad(x[j<=k])[k<=2] = x[1]
 error: bad has a cell's index and a size named k
+
+# A size is bound once a parameter is, so a default reads only the sizes
+# stated before it.
+>> late(s = n, v[j<=n] = [1; 2]) = s
+error: late's default for s reads the size n, not stated before it
+
+>> late(v[j<=n] = [1; n]) = v
+error: late's default for v reads the size n, not stated before it
+
+# Two indices of one parameter need two names, as a cell's do.
+>> bad(M[j<=n, j<=n]) = 1
+error: a parameter's row and column need two names
 
 # A parameter is a name or a name and its size; anything else, dropped in
 # silence before (C150), is refused.

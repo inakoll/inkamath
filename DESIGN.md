@@ -5554,13 +5554,16 @@ that exploring seven domains asked of the interpreter, by how many asked.
   The sizes are the definition's, as its parameters' names are (C51):
   stated in one clause, they hold for every clause and are bound once per
   call, a clause with the names alone taking them, so a base clause need
-  not repeat them; two that state different ones are refused in today's
-  words, `fm takes (A[j<=n, k<=n]), so a clause cannot take (A[r<=p,
-  c<=p])`. Each clause's own was rejected: a guard would see n in one clause
-  and not the next. A parameter binds its sizes as it is bound, so a default
-  reads the sizes of the arguments given, `scale(v[j<=n], s = n)`, and a
-  default is held to its parameter's size and gives it, `pad(v[j<=n] = [1;
-  2])`.
+  not repeat them; two that state different sizes are refused, the
+  names of their indices aside, `fm takes A of size n x n, so a clause
+  cannot take it of size p x p; write 'clear fm' first`. Each clause's own
+  was rejected: a guard would see n in one clause and not the next. A
+  parameter binds its sizes as it is bound, so a default reads the sizes of
+  the arguments given, `scale(v[j<=n], s = n)`, and a default is held to its
+  parameter's size and gives it, `pad(v[j<=n] = [1; 2])`; one that reads a
+  size stated by its own parameter or a later one is refused where written,
+  `late's default for s reads the size n, not stated before it`. Two indices
+  of one parameter need two names, as a cell's do.
 
   Nothing new elsewhere. The memo keys a call by its arguments and their
   shapes (C50), the sizes a function of them; `sum`, `lim` and a function's
@@ -5598,7 +5601,7 @@ that exploring seven domains asked of the interpreter, by how many asked.
   40 to 70 counted the binding alone. Past 160 the implementation stops and
   reports. 14,653 lines at eee8d5e, by `wc -l include/inkamath/*.hpp src/*`.
 
-  Specified in `test/data/spec/signatures.ink`, 67 of its 96 entries
+  Specified in `test/data/spec/signatures.ink`, 73 of its 103 entries
   failing, those passing being definitions echoing themselves, `?tr` and
   `n`; and in `test/compile/signatures.ink`, a model calling tr at two
   shapes, whose header is to be the one its sizes written as numbers give,
