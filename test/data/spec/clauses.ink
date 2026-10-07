@@ -167,6 +167,35 @@ error: f takes (x, y), so a clause cannot take (x); write 'clear f' first
 >> f(3, 2)
 3
 
+# A default is part of the parameters, so the clauses agree on it too: one
+# call binds it once, and a clause's own default was never read (C154).
+>> g(x, k = 2) | x > 0 = k*x
+g(x, k = 2) | x > 0 = k*x
+
+>> g(x, k = 3) | x < 0 = k
+error: g takes (x, k = 2), so a clause cannot take (x, k = 3); write 'clear g' first
+
+>> g(x, k) | x < 0 = k
+error: g takes (x, k = 2), so a clause cannot take (x, k); write 'clear g' first
+
+>> g(x, k = 2) | x < 0 = k
+g(x, k = 2) | x < 0 = k
+
+>> g(-1)
+2
+
+>> g(-1, 5)
+5
+
+>> g(3)
+6
+
+>> gd(x, k) | x > 0 = k
+gd(x, k) | x > 0 = k
+
+>> gd(x, k = 3) | x < 0 = k
+error: gd takes (x, k), so a clause cannot take (x, k = 3); write 'clear gd' first
+
 # A model and a file are each one statement. Written again a model replaces
 # itself, and its instances follow; a clause cannot join either, nor either
 # replace a name defined otherwise.

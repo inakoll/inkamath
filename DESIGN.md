@@ -1680,6 +1680,7 @@ closures need one anyway, and can bring it.
 | C147 `[fixed]` | **The prelude's functions refused a complex number in their walk's words.** `exp(i*pi)` was "a comparison needs real numbers, not i*~3.14159265", the first guard of the walk speaking, where `sin([1 2])` names sin. exp, log, tanh, sin, cos and ilogb now say "exp needs real numbers, not i*~3.14159265" before they walk, in 6 lines, under grad too; fastprelude.ink, trig.ink and fastgrad.ink moved with it, `exp(~1 + i)`, `cos(i)`, `sin(~1 + i)` and `grad_(x = ~1 + i) exp(x)`, and fastprelude.ink adds `exp(i*pi)`, `log(i)` and `tanh(i)`. `abs`, `max` and `min` refuse as README's `abs` does. |
 | C148 `[fixed]` | **`--check` called a term the interpreter ran out of steps for a disagreement.** A term past the million steps is no answer, but the program held the step to it as to a refusal, "toil.y: 25.40430835089893 at 2, where the interpreter gives none: evaluation gave up after 1000000 steps", and failed. Such a term is not compared now, and the sequence's line says so, "toil.y: within 0; the interpreter ran out of steps at 2, not compared", in 20 lines; `toil` in `test/compile/drift.ink` holds it. The budget is still a line's, so whether a term runs out depends on what the session asked before it: a decision for the language, not taken here, but in C149. |
 | C149 `[fixed]` | **Whether a term answered depended on what the session had asked before it.** The million steps were a line's, and a memoised term cost its caller one step when remembered and its whole body when not, so a line refused cold answered once the terms below it were remembered: beside `w_n = f(w_(n-1))/2`, f summing ten thousand calls, `w_30` gave up cold and answered after `w_20`, and so did a logistic regression's `w_100` after `w_50` and a network's `E_30` after `E_20`. Phase 9 calls steps an accident of how a term is evaluated; this one was the memo's. Approved as a change of behaviour: each memoised term now has a million steps of its own, from none, not counting the terms it computes, which have theirs, and its caller takes one step for it, remembered or not, so a term's steps no longer depend on the memo. Work that is not memoised -- a sum, a plain definition, a local's call -- counts against the term or line it is in, as before; a grad's memo lasts one grad, so its walked calls count against what asked it, and fastgrad.ink's softplus still runs out walked. Depth is unchanged, and still depends on the memo, which a fill (C69) makes up for. A fill's terms each start from none, the term asked included. What bounds time: a line computes at most ten million terms, `max_filled`, as a fill goes ten million terms from its base, and a filled term counts afresh as a line of its own does; so a line's time is bounded as a fill's was, and a tree of 2^40 distinct calls gives up after ten million terms in 13 s, where it gave up after a million steps in 0.6 s. That count depends on the memo as time does, but a line that answered had a million steps and took about one for each term it computed, so none is refused by it. `--check` holds a term refused by either as out of steps (C148). Only refused lines moved: `w_25` and `lim p` answer in recursion.ink, each over a million steps that gave up cold, and drift.ink's `toil`, whose limit of thousand-term sums now answers, reads such a sum at each of a thousand terms to stay out of steps. 28 lines. |
+| C154 `[open]` | **A clause's default was never read.** C51 compared the names of a clause's parameters with the definition's and not their defaults, so beside `g(x, k = 2) \| x > 0 = k*x`, `g(x, k = 3) \| x < 0 = k` was accepted, listed by `?g`, and `g(-1)` answered 2: one call binds the parameters once, with the first clause's defaults. The same for a default the first clause lacks, which C51 named and did not refuse. Closed by *Cases in a paper's order, and `clear`* (next in line), which refuses a clause whose defaults differ as one whose names do; `spec/clauses.ink` holds it. |
 
 **Measure instructions, not the clock.** One of those changes made the matrix
 workload 20 per cent slower by the clock and not by a single instruction: with
@@ -5277,10 +5278,11 @@ that exploring seven domains asked of the interpreter, by how many asked.
     goes with it, so `f(x) = x` then `f(x, y) = x + y` needs no `clear`.
   - A clause that cannot join is refused, and says how to start anew,
     "; write 'clear f' first": other parameters beside other clauses (C51,
-    which a plain clause escaped), a clause without an index on a sequence
-    or with one on what is not (C70 dropped the value), any clause on a model
-    or a file used. A model is one statement and replaces a model only;
-    `use` binds a file, or brings in a name, only over nothing or the same.
+    which a plain clause escaped), defaults among them (C154), a clause
+    without an index on a sequence or with one on what is not (C70 dropped
+    the value), any clause on a model or a file used. A model is one
+    statement and replaces a model only; `use` binds a file, or brings in a
+    name, only over nothing or the same.
   - `clear f`, a word at the start of a line as `use` is and not reserved,
     drops what `f` is in the scope it is written in: clauses, a model, an
     instance, a file used or a name brought in. The name then means what it
@@ -5329,7 +5331,7 @@ that exploring seven domains asked of the interpreter, by how many asked.
   alone 2. 14,653 lines in all now, about 14,685 after; past 45 net the
   implementation stops and reports.
 
-  Specified in `test/data/spec/clauses.ink`, 100 entries, 41 failing, with
+  Specified in `test/data/spec/clauses.ink`, 109 entries, 44 failing, with
   `test/data/cases.ink` for `use`: the cases in a paper's order at the
   prompt, in a model's body under `grad` and in a file; sequences and cells
   as they are; a matrix written whole after its cells; each refusal; models,
