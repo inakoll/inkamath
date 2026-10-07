@@ -581,3 +581,39 @@ Dw(x)[i<=2] = x
 >> Dw(1)
 [1;
  1]
+
+# A certificate of stability, exactly (Lyapunov 1892; Kailath, Linear
+# Systems, 2.6): a closed loop x_n = A x_(n-1) is stable iff A' P A - P = -Q
+# has a positive definite solution, found by vec(P) = (I - A' (x) A')^-1 vec(Q),
+# the Kronecker product written by its cells.
+>> A = [1 1; 0 1] - [1/2; 1]*[1/4 1]
+A = [1 1; 0 1] - [1/2; 1]*[1/4 1]
+
+>> kron(X, Y)[i<=4, j<=4] = X[ceil(i/2), ceil(j/2)]*Y[mod(i-1, 2)+1, mod(j-1, 2)+1]
+kron(X, Y)[i<=4, j<=4] = X[ceil(i/2), ceil(j/2)]*Y[mod(i-1, 2)+1, mod(j-1, 2)+1]
+
+>> vec(X)[i<=4] = X[mod(i-1, 2)+1, ceil(i/2)]
+vec(X)[i<=4] = X[mod(i-1, 2)+1, ceil(i/2)]
+
+>> unvec(v)[i<=2, j<=2] = v[2*(j-1)+i]
+unvec(v)[i<=2, j<=2] = v[2*(j-1)+i]
+
+>> I4[i<=4, j<=4] = i == j
+I4[i<=4, j<=4] = i == j
+
+>> Q = [1 0; 0 1]
+Q = [1 0; 0 1]
+
+>> P = unvec((I4 - kron(A', A'))^-1*vec(Q))
+P = unvec((I4 - kron(A', A'))^-1*vec(Q))
+
+>> frac P
+[153/56,   17/16;
+  17/16, 377/224]
+
+>> A'*P*A - P + Q
+[0, 0;
+ 0, 0]
+
+>> P[1,1] > 0 and P[1,1]*P[2,2] - P[1,2]^2 > 0
+1
