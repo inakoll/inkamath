@@ -189,6 +189,23 @@ alike(c = 10, x_n) = {
 }
 memo = alike(x_n = n)
 
+# 'unread', a term the fill computes and no read reaches: g reads none of
+# its own terms, so g(x)_4 is f(x)_4, f_2 times x, f_0 times x twice, x^2,
+# and g_1 and g_3, which would read f_-1, are never asked for. A term the
+# fill cannot compute is refused only where a read reaches it, as the
+# interpreter's recursion does:
+#
+#     unread: 100 steps from 0, against exact values
+#     unread.y: within 0
+aside(x_n) = {
+    f(x)_0 = 1
+    f(x)_k = f(x)_(k-2)*x
+    g(x)_0 = x
+    g(x)_k = f(x)_k
+    y_n = g(x_n)_4
+}
+unread = aside(x_n = n)
+
 # What stays refused, each named in 'inkamath --compile' of a file of
 #
 #     a_n = r(x_n)_n

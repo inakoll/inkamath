@@ -11,6 +11,7 @@
 #include <charconv>
 #include <cmath>
 #include <cstddef>
+#include <exception>
 #include <functional>
 #include <limits>
 #include <map>
@@ -576,7 +577,10 @@ private:
         std::optional<Code>                       otherwise;
         const Clause<Value>* const                lowest = definition.EndBase(true);
         // Each clause sees its own index alone, as Reference::Selects binds it (C186).
-        const auto unbound = at ? expansion_->values : decltype(expansion_->values)();
+        using Values                           = decltype(expansion_->values);
+        const auto                     unbound = at ? expansion_->values : Values();
+        std::optional<Setting<Values>> restore;
+        if (at) restore.emplace(expansion_->values, unbound);
         for (const bool guard : {true, false}) {
             for (const Clause<Value>& clause : definition.Clauses()) {
                 const ParametersDefinition<Value>& p    = clause.parameters;
@@ -597,7 +601,6 @@ private:
                     guarded.emplace_back(*condition, Taken(clause.expression));
             }
         }
-        if (at) expansion_->values = unbound;
         if (guarded.empty()) {
             if (!otherwise)
                 throw Reason(at ? name + " has no clause for index " + std::to_string(*at)
@@ -703,7 +706,8 @@ private:
 
     // Filled from the lowest base, by the interpreter's stride (Reference::Filled),
     // each term once for its arguments' code, shape and exact value (C187),
-    // and a temporary once a term reads it.
+    // and a temporary once a term reads it; one the fill cannot compute is
+    // refused where a read reaches it, as the interpreter's recursion is.
     Code Term(const std::string& name, const Reference<Value>& function, Expansion& expansion,
               int k) {
         std::string args;
@@ -721,12 +725,19 @@ private:
             throw Reason(k == computing ? name + " is defined by itself"
                                         : name + "_(...): a term after the one being computed");
         const auto term = [&](int j, bool inner) {
-            auto found = terms_.find({temporaries_, &function, args, j});
-            if (found == terms_.end()) {
-                const Setting<int> within(computing, j), deeper(terming_, terming_ + 1);
-                const Code code = Inside(expansion, [&] { return Chained(name, function, j); });
-                found = terms_.insert({{temporaries_, &function, args, j}, {code, false}}).first;
-            }
+            const std::tuple<const void*, const void*, std::string, int> key{temporaries_,
+                                                                             &function, args, j};
+            if (const auto failed = failed_.find(key); failed != failed_.end())
+                std::rethrow_exception(failed->second);
+            auto found = terms_.find(key);
+            if (found == terms_.end()) try {
+                    const Setting<int> within(computing, j), deeper(terming_, terming_ + 1);
+                    const Code code = Inside(expansion, [&] { return Chained(name, function, j); });
+                    found           = terms_.insert({key, {code, false}}).first;
+                } catch (const Reason&) {
+                    failed_.try_emplace(key, std::current_exception());
+                    throw;
+                }
             if (inner && !found->second.second)
                 found->second = {SharedAll(found->second.first), true};
             return found->second.first;
@@ -739,8 +750,10 @@ private:
                          " terms from its base, and a step writes out at most " +
                          std::to_string(max_terms));
         const int stride = function.Stride();
-        for (long long j = k - (distance - 1) / stride * stride; j < k; j += stride)
-            (void)term(static_cast<int>(j), true);
+        for (long long j = k - (distance - 1) / stride * stride; j < k; j += stride) try {
+                (void)term(static_cast<int>(j), true);
+            } catch (const Reason&) {
+            }
         return term(k, terming_ > 0);
     }
 
@@ -2003,8 +2016,9 @@ private:
         index_                    = index;
         places_                   = places;
         temporaries_              = outer_temporaries;
-        std::erase_if(terms_,
-                      [&](const auto& term) { return std::get<0>(term.first) == &temporaries; });
+        const auto in = [&](const auto& term) { return std::get<0>(term.first) == &temporaries; };
+        std::erase_if(terms_, in);
+        std::erase_if(failed_, in);
         const bool reads          = std::exchange(read_global_, true);
         const auto parameters     = std::exchange(read_parameters_, std::move(outer_parameters));
         read_parameters_.insert(parameters.begin(), parameters.end());
@@ -3626,8 +3640,9 @@ private:
         scope_  = scope;
         index_  = index;
         places_ = outer;
-        std::erase_if(terms_,
-                      [&](const auto& term) { return std::get<0>(term.first) == &scratch; });
+        const auto in = [&](const auto& term) { return std::get<0>(term.first) == &scratch; };
+        std::erase_if(terms_, in);
+        std::erase_if(failed_, in);
         return decides;
     }
 
@@ -4323,9 +4338,11 @@ private:
     std::vector<Temporary>*          temporaries_ = nullptr;  // where this sequence's are declared
     std::map<std::pair<const void*, std::string>, std::size_t> declared_;  // each value's place
     // Terms of sequences with parameters, by the list of temporaries they are
-    // in, the definition, its arguments' code and the index; and the index of
-    // the term of each being computed.
+    // in, the definition, its arguments' code and the index, and why the fill
+    // could not compute those it could not; and the index of the term of each
+    // being computed.
     std::map<std::tuple<const void*, const void*, std::string, int>, std::pair<Code, bool>> terms_;
+    std::map<std::tuple<const void*, const void*, std::string, int>, std::exception_ptr>    failed_;
     std::map<std::pair<const void*, std::string>, int> computing_;
     int                                                terming_ = 0;        // terms being computed
     Reads*      clause_reads_ = nullptr;               // what the clause being compiled reads

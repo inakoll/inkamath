@@ -2804,8 +2804,8 @@ that exploring seven domains asked of the interpreter, by how many asked.
   terms. A term that reads another sequence with parameters reads it the
   same way, so `fm` and `fc` fill each other. A term the fill computes and
   the read does not reach is not written, a temporary nothing reads being a
-  warning the step is built without; a fill that fails refuses the read, as
-  the interpreter's does past its depth.
+  warning the step is built without; a term the fill cannot compute is
+  refused only where a read reaches it, as the interpreter's recursion is.
 
   The index is any that folds to a whole number where it is read: a literal,
   a constant, a cell's place (`cp`'s `j - 1`), a size a signature binds
@@ -2898,7 +2898,12 @@ that exploring seven domains asked of the interpreter, by how many asked.
   A refusal of a limit in a local's call, which the limit's own path had
   already taken, went. 68 lines of sources against 65 planned,
   `compile.hpp` 66 and `reference.hpp` 2, and C180's 16: 15,160 lines in
-  all, after `fixes13`.
+  all, after `fixes13`. By its review, C185 to C188, 13 lines, and a
+  ruling: a term the fill cannot compute was refused where no read reaches
+  it, `g(x)_k = f(x)_k` filling g_1, which reads f_-1, so `g(x_n)_4` was
+  refused where the interpreter answers; such a term is now kept with its
+  reason, refused where a read reaches it, and `Chained` puts its index
+  back however it ends, in 17 lines, held by `unread`. 15,190 lines in all.
 
   Written out, a step's code grows with K and with its term. Measured with
   `gcc -O2` on a program stepping it, `plan` widened to d moves and K

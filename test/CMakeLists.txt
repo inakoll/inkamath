@@ -149,7 +149,7 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brin
                          rump:rump signatures:inv
                          goldberg:year goldberg:needled goldberg:big goldberg:seven
                          iterates:poly iterates:thirds iterates:plan iterates:graph iterates:gaps
-                         iterates:memo)
+                         iterates:memo iterates:unread)
     string(REPLACE ":" ";" checked ${checked})
     list(GET checked 0 file)
     list(GET checked 1 instance)
@@ -398,6 +398,8 @@ set_tests_properties(check_gaps_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^gaps: 100 steps from 0, against exact values\ngaps\\.a: within 0\ngaps\\.b: within 0\n$")
 set_tests_properties(check_memo_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^memo: 100 steps from 0, against exact values\nmemo\\.a: within 0\nmemo\\.b: within 0\nmemo\\.d: within 0\nmemo\\.e: within 0\nmemo\\.l: within 0\n$")
+set_tests_properties(check_unread_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^unread: 100 steps from 0, against exact values\nunread\\.y: within 0\n$")
 set_tests_properties(check_cls_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^cls: 100 steps from 0, against exact values until 0 and inexact ones from there\ncls\\.z: within 0\n(cls\\.[a-z]+: within [0-9.e+-]+${about}\n)+$")
 set_tests_properties(check_ball_report PROPERTIES PASS_REGULAR_EXPRESSION
