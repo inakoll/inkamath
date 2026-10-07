@@ -80,10 +80,10 @@ inf
 inf
 
 >> log(0)
-error: division by zero
+error: log needs a number above 0, not 0
 
 >> log(-1)
-error: division by zero
+error: log needs a number above 0, not -1
 
 >> tanh(1/2)
 ~0.462117157
@@ -184,13 +184,13 @@ digits = 9
 
 # Of 0 and below, refused as log is, however 0 is written (C100).
 >> ilogb(0)
-error: division by zero
+error: ilogb needs a number above 0, not 0
 
 >> ilogb(~0)
-error: division by zero
+error: ilogb needs a number above 0, not 0
 
 >> ilogb(-1)
-error: division by zero
+error: ilogb needs a number above 0, not -1
 
 # grad differentiates the definitions: floor's derivative is 0, and a guard
 # at its threshold takes its own side, so 1, 2 and the powers of two answer.
@@ -223,7 +223,7 @@ inf
 ~0.333333333
 
 >> grad_(x = 0) log(x)
-error: division by zero
+error: log needs a number above 0, not 0
 
 >> grad_(x = 0) tanh(x)
 1

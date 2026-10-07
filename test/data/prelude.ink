@@ -27,9 +27,9 @@
 >> tanh(1/2)
 ~0.462117157
 
-# log(0) has no value, and says so as 1/0 does.
+# log(0) has no value, and says so in its own name.
 >> log(0)
-error: division by zero
+error: log needs a number above 0, not 0
 
 >> grad_(x = 1) exp(x)
 ~2.71828183

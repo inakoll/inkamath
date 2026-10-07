@@ -108,13 +108,13 @@ error: tanh needs real numbers, not i
 >> exp([~1 ~2])
 error: exp needs single values, not a 1x2 matrix; write it by its cells
 
-# Out of log's domain, or not finite, as the definition answers it, where
-# the C function would be NaN or inf.
+# Out of log's domain, refused in its name, or not finite, as the
+# definition answers it, where the C function would be NaN or inf.
 >> log(~0)
-error: division by zero
+error: log needs a number above 0, not 0
 
 >> log(~(-2))
-error: division by zero
+error: log needs a number above 0, not -2
 
 >> log(~1/0)
 inf
