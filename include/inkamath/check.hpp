@@ -234,9 +234,12 @@ public:
         // first run's.
         std::map<std::pair<int, const Sequence*>, std::pair<int, std::string>> straddles;
         const auto straddle = [&](int n, const Sequence* sequence, const std::string& place,
-                                  const std::vector<Clause<Value>>& clauses, int took, int chose,
-                                  const Asked& seen) {
-            if (took == chose || std::min(took, chose) < 0 ||
+                                  const std::vector<Clause<Value>>& clauses, int fallback,
+                                  const Asked& them, const Asked& seen) {
+            const int took = them.chosen.value_or(fallback), chose = seen.chosen.value_or(fallback);
+            // One that took no clause tried the other's, or was refused before (C252).
+            if (took == chose || (!them.chosen && !them.margins.count(chose)) ||
+                (!seen.chosen && !seen.margins.count(took)) || std::min(took, chose) < 0 ||
                 std::max(took, chose) >= static_cast<int>(clauses.size()))
                 return;
             const bool earlier = clauses[took].parameters.guarded() &&
@@ -306,9 +309,8 @@ public:
                     for (int r = 1; r <= 3 && asking != asked.end(); ++r)
                         if (const auto them = asked.find({r, &reference, term(n), row, col});
                             them != asked.end())
-                            straddle(n, &*found, place, clauses,
-                                     them->second.chosen.value_or(general),
-                                     asking->second.chosen.value_or(general), asking->second);
+                            straddle(n, &*found, place, clauses, general, them->second,
+                                     asking->second);
                     want.push_back(asking == asked.end() ? "0"
                                    : asking->second.chosen
                                        ? std::to_string(*asking->second.chosen + 1)
@@ -344,9 +346,7 @@ public:
                 for (int other = 1; other <= 3; ++other)
                     if (const auto them = calls.find({other, sequence, n, reference});
                         them != calls.end() && c < them->second.size())
-                        straddle(n, sequence, "", clauses,
-                                 them->second[c].chosen.value_or(fallback),
-                                 heard[c].chosen.value_or(fallback), heard[c]);
+                        straddle(n, sequence, "", clauses, fallback, them->second[c], heard[c]);
         }
         const std::string against = !inexact ? "exact values"
                                              : "exact values until " + std::to_string(*inexact) +

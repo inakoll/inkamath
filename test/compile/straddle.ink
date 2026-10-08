@@ -142,3 +142,21 @@ detour(w = 1/10^11) = {
     x_n = s(1/2 - w)_3 + H(-1)
 }
 parted = detour()
+
+# A run that cannot ask a guard takes no clause. Moved up, 1/2 - y_n is 0,
+# whose log is refused after H's first guard was asked: the estimate says
+# the run gives no term, and no line says it took 'H(x) = 0'.
+#
+#     unasked: 100 steps from 0, against exact values until 0 and inexact ones from there
+#     unasked.y: within 0; the interpreter's terms about 5.8e-11 from the exact ones
+#     unasked.g: within 0; the interpreter's terms about inf from the exact ones, past the tolerance from 0
+logged() = {
+    half(a)_0 = 0
+    half(a)_k = half(a)_(k-1) + a/2^(k+1)
+    H(x) | x > 1 = 2
+    H(x) | log(x) < 0 = 1
+    H(x) = 0
+    y_n = lim half(1)
+    g_n = H(1/2 - y_n)
+}
+unasked = logged()
