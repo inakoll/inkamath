@@ -385,6 +385,14 @@ error: ~1 was approximated past a thousand digits, so it has no exact fraction
 >> grad_(x = ~2) 3*x
 3
 
+# The prelude's functions of a double, computed in C, answer as their
+# walks do, whose guards read the double.
+>> grad_(x = ~3) ilogb(x)
+~0
+
+>> grad_(x = ~3) [exp(x) 5]
+[~20.0855369, ~0]
+
 # Values the rule must not move. A matrix of doubles is bisected in
 # doubles now, and stops where the bracket's ends are adjacent doubles,
 # unmarked as before.
