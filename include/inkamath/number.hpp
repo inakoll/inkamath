@@ -402,8 +402,8 @@ private:
         if (a.exact() && b.exact()) return BigProduct(a.Ratio(), b.Ratio());
         const inexact_type x = a.Inexact(), y = b.Inexact();
         const bool         past = approximated(a) || approximated(b);
-        if (a.exact() && std::isinf(x.real())) return Approximate(Beyond(x.real(), y), past);
-        if (b.exact() && std::isinf(y.real())) return Approximate(Beyond(y.real(), x), past);
+        if (Finite(a, x, b)) return Approximate(Beyond(x, y), past);
+        if (Finite(b, y, a)) return Approximate(Beyond(y, x), past);
         if (!(x.imag() == 0 && y.imag() == 0)) return Approximate(Unit(x * y), past);
         // Of two real numbers the real product, whose infinity the complex
         // formula turns into a NaN imaginary part (C88).
@@ -420,20 +420,30 @@ private:
         }
         const inexact_type x = a.Inexact(), y = b.Inexact();
         const bool         past = approximated(a) || approximated(b);
-        if (a.exact() && std::isinf(x.real()) && !(y.imag() == 0) && std::isfinite(y.real()) &&
+        if (Finite(a, x, b) && !(y.imag() == 0) && std::isfinite(y.real()) &&
             std::isfinite(y.imag()))
-            return Approximate(Beyond(x.real(), std::conj(y)), past);
+            return Approximate(Beyond(x, std::conj(y)), past);
         if (!(x.imag() == 0 && y.imag() == 0)) return Approximate(Unit(x / y), past);
         // The exact quotient is q + r/y.
         const double q = x.real() / y.real(), r = disturbed ? std::fma(-q, y.real(), x.real()) : 0;
         return Approximate(Other(q, y.real() > 0 ? r : -r), past);
     }
 
-    // An exact number past a double's range, e its double, times z: finite,
-    // so 0 by a 0 part rather than NaN (C207), and inf by any other.
-    static inexact_type Beyond(double e, inexact_type z) {
-        const auto part = [e](double p) { return p == 0 ? std::copysign(1.0, e) * p : e * p; };
-        return {part(z.real()), part(z.imag())};
+    // A number exact, or approximated from an exact one, whose double e is
+    // past a double's range: finite all the same (C207, C209), so 0 by a 0
+    // part of b, unless b's 0 is approximated too and may be anything.
+    static bool Finite(const Number& a, inexact_type e, const Number& b) {
+        return (a.exact() || (approximated(a) && !approximated(b))) &&
+               (std::isinf(e.real()) || std::isinf(e.imag()));
+    }
+
+    // Such an e times z: 0 by a 0 part rather than NaN, and inf by any other.
+    static inexact_type Beyond(inexact_type e, inexact_type z) {
+        const auto term = [](double p, double q) {
+            return p == 0 || q == 0 ? std::copysign(1.0, p) * std::copysign(0.0, q) : p * q;
+        };
+        return {term(e.real(), z.real()) - term(e.imag(), z.imag()),
+                term(e.real(), z.imag()) + term(e.imag(), z.real())};
     }
 
     // splitmix64 (Steele, Lea and Flood), a bit a draw.

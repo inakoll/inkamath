@@ -149,7 +149,7 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brin
                          rump:rump signatures:inv
                          goldberg:year goldberg:needled goldberg:big goldberg:seven
                          iterates:poly iterates:thirds iterates:plan iterates:graph iterates:gaps
-                         iterates:memo iterates:unread)
+                         iterates:memo iterates:unread iterates:lone)
     string(REPLACE ":" ";" checked ${checked})
     list(GET checked 0 file)
     list(GET checked 1 instance)
@@ -400,6 +400,8 @@ set_tests_properties(check_memo_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^memo: 100 steps from 0, against exact values\nmemo\\.a: within 0\nmemo\\.b: within 0\nmemo\\.d: within 0\nmemo\\.e: within 0\nmemo\\.l: within 0\n$")
 set_tests_properties(check_unread_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^unread: 100 steps from 0, against exact values\nunread\\.y: within 0\n$")
+set_tests_properties(check_lone_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^lone: 100 steps from 0, against exact values\nlone\\.y: within 0\nlone\\.z: within 0\n$")
 set_tests_properties(check_cls_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^cls: 100 steps from 0, against exact values until 0 and inexact ones from there\ncls\\.z: within 0\n(cls\\.[a-z]+: within [0-9.e+-]+${about}\n)+$")
 set_tests_properties(check_ball_report PROPERTIES PASS_REGULAR_EXPRESSION
@@ -437,7 +439,7 @@ set_tests_properties(check_cell_report PROPERTIES PASS_REGULAR_EXPRESSION
 set_tests_properties(check_held_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^held: 100 steps from 0, against exact values\nheld\\.d: no value compared, the step NaN where the interpreter gives none, as at 0: no clause of r applies\n$")
 set_tests_properties(check_idle_report PROPERTIES PASS_REGULAR_EXPRESSION
-    "^idle: 100 steps from 0, against exact values\nidle\\.g: within 0\nidle\\.h: within 0\nidle\\.y: within 0\n$")
+    "^idle: 100 steps from 0, against exact values\nidle\\.g: within 0\nidle\\.h: within 0\nidle\\.k: within 0\nidle\\.l: within 0\nidle\\.y: within 0\n$")
 set_tests_properties(check_imag_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^imag: 100 steps from 0, against [^\n]*\nimag\\.x: within 0\nimag\\.z: within 0\n$")
 # A model's input of more than one cell (DESIGN.md, C83), every term exact.

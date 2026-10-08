@@ -166,6 +166,18 @@ i*inf
 >> 10^400*~0
 0
 
+# So is an exact number approximated past a double's range, as 10^2000/3
+# is: an exact 0 times it is 0, and its product or quotient with i a part 0,
+# where each read -nan (DESIGN.md, C209).
+>> 0*(10^2000/3)
+0  # approximated past a thousand digits
+
+>> (10^2000/3)*i
+i*inf  # approximated past a thousand digits
+
+>> (10^2000/3)/i
+-i*inf  # approximated past a thousand digits
+
 # NaN is not a number, so a comparison of it has no answer, and is refused
 # rather than guessed false, as C has it (DESIGN.md, a NaN reaches every term
 # that reads it). Nor are two NaNs equal, or a matrix with one equal to any.

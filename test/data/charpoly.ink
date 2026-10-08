@@ -329,6 +329,13 @@ error: rho needs finite cells, not inf
 >> abscissa([~1 1; 1 1]*10^310)
 error: abscissa needs finite cells, not inf
 
+# Nor has it a bracket, which read -nan (DESIGN.md, C210).
+>> rhob([1 ~10^310; 0 1])_64
+error: rhob needs finite cells, not inf
+
+>> abscissab([~1 1; 1 1]*10^310)_64
+error: abscissab needs finite cells, not inf
+
 # Five by five, the tests exact; ten by ten, in bisection_digits.ink, they
 # are not.
 >> rho([6 -8 -6 -5 -6; 6 7 2 -9 -8; -3 -1 2 0 -4; -6 4 4 -9 -7; -1 -2 7 0 -2]/10)

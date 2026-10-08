@@ -206,6 +206,21 @@ aside(x_n) = {
 }
 unread = aside(x_n = n)
 
+# 'lone', a function of the prelude given a number, which the header writes
+# as a function of its own, holding no sequence with parameters nor the
+# sizes its signature names: z, charpoly of one, was refused "a sequence
+# with parameters in a limit's terms", and y, rhoe of one, "m is not
+# defined". Each is written where it is called now (C213):
+#
+#     lone: 100 steps from 0, against exact values
+#     lone.y: within 0
+#     lone.z: within 0
+single(x_n) = {
+    y_n = rhoe(x_n)
+    z_n = charpoly(x_n)[2]
+}
+lone = single(x_n = n + 1)
+
 # What stays refused, each named in 'inkamath --compile' of a file of
 #
 #     a_n = r(x_n)_n

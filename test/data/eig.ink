@@ -237,6 +237,10 @@ error: eig needs finite cells, not inf
 >> smax(~-10^310)
 error: smax needs finite cells, not -inf
 
+# Nor has it a bracket, which read -nan (DESIGN.md, C210).
+>> eigb([~1 1; 1 1]*10^310, 1)_64
+error: eigb needs finite cells, not inf
+
 >> eig([1 2 3])
 error: eig takes A[j<=n, k<=n], not a 1x3 matrix
 
@@ -253,6 +257,11 @@ error: grad cannot differentiate eig yet
 
 >> grad_(a = 1) smax([a 2; 3 4])
 error: grad cannot differentiate smax yet
+
+# So is a bracket, which was refused as "a comparison jumps at a = 1"
+# (C210).
+>> grad_(a = 1) eigb([a 0; 0 3], 1)_64
+error: grad cannot differentiate eigb yet
 
 >> grad_(a = 2) a*eig([2 1; 1 2])
 [1;

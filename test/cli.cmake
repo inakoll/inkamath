@@ -725,10 +725,11 @@ check(compile_signature_refused)
 
 # The prelude's charpoly compiles; rho does not yet, by hurwitzb's factorial,
 # and grad refuses it and abscissa where A moves, as the interpreter does
-# (DESIGN.md, the characteristic polynomial and stability).
-file(WRITE "${OUT}/charpoly.ink" "x_n = rho([n 1; -1 1/2])\nz_n = charpoly([n 1; 2 3])[2]\ng_n = grad_(a = n) rho([a 1; -1 1/2])\nh_n = grad_(a = n) abscissa(a)\n")
+# (DESIGN.md, the characteristic polynomial and stability). A 1x1 matrix is
+# refused alike, where its sizes went unbound, "n is not defined" (C213).
+file(WRITE "${OUT}/charpoly.ink" "x_n = rho([n 1; -1 1/2])\nz_n = charpoly([n 1; 2 3])[2]\ng_n = grad_(a = n) rho([a 1; -1 1/2])\nh_n = grad_(a = n) abscissa(a)\ns_n = rho([1/(n+2)])\n")
 set(args --compile charpoly.ink)
-set(stdout "cannot compile g: grad cannot differentiate rho yet\ncannot compile h: grad cannot differentiate abscissa yet\ncannot compile x: a factorial\n")
+set(stdout "cannot compile g: grad cannot differentiate rho yet\ncannot compile h: grad cannot differentiate abscissa yet\ncannot compile s: a factorial\ncannot compile x: a factorial\n")
 set(exit 1)
 check(compile_charpoly_refused)
 
@@ -739,6 +740,17 @@ set(args --compile eig.ink)
 set(stdout "cannot compile g: grad cannot differentiate eig yet\ncannot compile h: grad cannot differentiate smax yet\ncannot compile x: a comparison of matrices\ncannot compile y: a factorial\n")
 set(exit 1)
 check(compile_eig_refused)
+
+# Nor do hinf and dhinf, by hurwitzb's factorial in their guards, and grad
+# refuses them where A moves (DESIGN.md, the H-infinity norm). Of a 1x1
+# matrix, dhinf's sizes went unbound, "n is not defined", and hinf's
+# sequence with parameters was "in a limit's terms", where there is none
+# (C213).
+file(WRITE "${OUT}/hinf.ink" "x_t = hinf(-t-1, 1, 1)\ng_t = grad_(a = t) hinf(-a-1, 1, 1)\nh_t = grad_(a = t) dhinf(1/(a+2), 1, 1)\nd_t = dhinf(1/(t+2), 1, 1)\n")
+set(args --compile hinf.ink)
+set(stdout "cannot compile d: a factorial\ncannot compile g: grad cannot differentiate hinf yet\ncannot compile h: grad cannot differentiate dhinf yet\ncannot compile x: a factorial\n")
+set(exit 1)
+check(compile_hinf_refused)
 
 # A tensor input, refused before tensors compiled, read by its second slice.
 file(WRITE "${OUT}/batch.ink" "batch(x_n[b<=2, j<=1, k<=2]) = {\n    y_n = x_n[2]*[1; 1]\n}\n")

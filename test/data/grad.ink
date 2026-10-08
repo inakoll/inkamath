@@ -71,6 +71,24 @@ gz[j<=x] = j
 >> grad_(x = 2) x*gz
 error: gz reads the global x, which grad's x does not reach
 
+# A signature's sizes are the function's own, as its parameters are, so a
+# grad's name like one reads no global through it; each was refused, as
+# "fa reads the global a", and through rho and charpoly the prelude's m and
+# n (C212).
+>> fa(X[j<=a, k<=b]) = sum_(j=1)^a X[j,1]
+fa(X[j<=a, k<=b]) = sum_(j=1)^a X[j,1]
+
+>> grad_(a = 1) a*fa([1; 2])
+3
+
+>> grad_(m = 2) m*rho([1/2])
+0.5
+
+>> grad_(n = 1) n*charpoly([1 2; 3 4])
+[ 1;
+ -5;
+ -2]
+
 # A sum term by term, and a sequence through its recurrence. A term already
 # remembered is not an answer for its derivative.
 >> grad_(x = 1) sum_(k=1)^3 k*x^k

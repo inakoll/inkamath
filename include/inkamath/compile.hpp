@@ -161,6 +161,12 @@ private:
     static bool WritesNan(const std::string& code, std::size_t from = 0) {
         return Writes(code, "NAN", from);
     }
+    // Or may answer it, calling a function of the header that does (C211).
+    bool MayNan(const std::string& code) const {
+        return WritesNan(code) ||
+               std::any_of(nan_functions_.begin(), nan_functions_.end(),
+                           [&](const std::string& f) { return Writes(code, f); });
+    }
     static bool Writes(const std::string& code, const std::string& word, std::size_t from = 0) {
         const auto name = [&](std::size_t at) {
             return std::isalnum(static_cast<unsigned char>(code[at])) || code[at] == '_';
@@ -662,8 +668,9 @@ private:
         return chain;
     }
 
-    // rho, abscissa, eig and smax are staircases in A, refused where it moves, as the
-    // interpreter refuses them, rather than answer the staircase's 0.
+    // rho, abscissa, eig, smax, hinf, dhinf and their brackets are staircases
+    // in A, refused where it moves, as the interpreter refuses them, rather
+    // than answer the staircase's 0.
     void Staircase(const Reference<Value>& function, const Code& argument) const {
         if (!argument.part.empty() && definitions_.staircases.contains(&function))
             throw Reason("grad cannot differentiate " + function.Name() + " yet");
@@ -692,7 +699,7 @@ private:
             const int before = calls_;
             Code      value  = Emit(argument);
             bool      nan    = false;
-            for (const Cell& c : value.cells) nan = nan || WritesNan(c.text) || nans_.count(c.text);
+            for (const Cell& c : value.cells) nan = nan || MayNan(c.text) || nans_.count(c.text);
             if ((at || calls_ != before) && !value.constant) value = SharedAll(value);
             if (nan)
                 for (const Cell& c : nans.emplace_back(value).cells) nans_.insert(c.text);
@@ -817,7 +824,9 @@ private:
             given += (given.empty() ? "" : ", ") + code.cells[0].text;
             Staircase(function, code);
         }
-        if (constant || !scalar) return Answer(Call(name, function, call, nullptr));
+        std::set<const Reference<Value>*> seen;
+        if (constant || !scalar || Iterates(function, seen))
+            return Answer(Call(name, function, call, nullptr));
         const std::string called = module_ + "_" + name;
         std::string       signature;
         for (const std::string& parameter : names)
@@ -831,6 +840,7 @@ private:
                     argument.part = {Array("part_" + names[i], Extent{})};
                 expansion.values.emplace(names[i], argument);
             }
+            Defaults(function, expansion);  // the sizes its signature names (C213)
             const Setting<Walked*>                 outside(limit_, nullptr);
             const Setting<std::vector<Temporary>*> unshared(temporaries_, nullptr);
             return Inside(expansion, [&] { return Chained(name, function); });
@@ -838,6 +848,7 @@ private:
         if (!functions_.count(called)) {
             const Code body = inside(false);
             functions_.emplace(called, body.cells[0].text);
+            if (MayNan(body.cells[0].text)) nan_functions_.insert(called);
             prelude_.push_back("static inline double " + called + "(" + signature +
                                ") {\n    return " + body.cells[0].text + ";\n}\n\n");
         }
@@ -857,6 +868,7 @@ private:
             // for a jump, a floor's or an equality's, as the interpreter does.
             if (body.cells[0].text != functions_.at(called)) {
                 functions_.emplace(jumped, body.cells[0].text);
+                if (MayNan(body.cells[0].text)) nan_functions_.insert(jumped);
                 prelude_.push_back("static inline double " + jumped + "(" + signature +
                                    ") {\n    return " + body.cells[0].text + ";\n}\n\n");
             }
@@ -891,6 +903,27 @@ private:
             taken += (taken.empty() ? "" : ", ") +
                      (part ? arguments[i].part[0] : arguments[i]).cells[0].text;
         return Answer(Parted(value, Of(Cell(derived + "(" + taken + ")", primary)), read));
+    }
+
+    // Whether a function of the prelude reads a sequence with parameters,
+    // itself or through what it calls, which its function in the header
+    // cannot hold: it is written where it is called, as of a matrix (C213).
+    bool Iterates(const Reference<Value>& function, std::set<const Reference<Value>*>& seen) {
+        const auto reads = [&](const auto& self, const PExpression<Value>& e) -> bool {
+            const auto* call = dynamic_cast<const FuncExpression<Value>*>(e.get());
+            if (call && call->m_e2()) return true;
+            const auto found =
+                call ? function.home->names.find(call->Name()) : function.home->names.end();
+            if (found != function.home->names.end() && seen.insert(found->second.get()).second &&
+                Iterates(*found->second, seen))
+                return true;
+            return e && std::any_of(e->Children().begin(), e->Children().end(),
+                                    [&](const PExpression<Value>& c) { return self(self, c); });
+        };
+        return std::any_of(
+            function.Clauses().begin(), function.Clauses().end(), [&](const Clause<Value>& c) {
+                return reads(reads, c.expression) || reads(reads, c.parameters.guard());
+            });
     }
 
     // A name of an instance written where it is read, 'conv(lap, u_(n-1)).out':
@@ -4377,6 +4410,7 @@ private:
     bool                             clauses_ = false;  // whether the step keeps them; see Build
     bool                             aware_ = false;  // whether it writes NaN, and so tests for it
     std::set<std::string>            nans_;             // arguments' cells that may be NaN
+    std::set<std::string>            nan_functions_;    // the header's that may answer NaN
     bool                             guarding_ = false;  // in a guard, which asks only for values
     std::map<std::string, Value>     known_;    // globals that read only those
     std::set<std::string>            read_parameters_;      // by the value being compiled
