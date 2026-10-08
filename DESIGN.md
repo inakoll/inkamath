@@ -945,6 +945,17 @@ Recorded so they are not re-litigated later, or drifted into by accident.
   to say so out loud rather than drift towards one. Recorded, not scheduled:
   if it is ever wanted, it starts with extents, not with rewrite rules.
 
+- **Epistemic levels in printing.** An external review proposed that a value
+  carry its level, exact, certified (rho, eig, hinf and the others) or
+  rounded, and that printing say which. A prototype measured two notations,
+  a `≈` per certified cell and a `# certified` mark on the answer: the level
+  survives only on those functions' direct answers, since any arithmetic
+  rounds it; `≈` breaks reading back and column alignment; and either mark
+  makes a certified `0.5` look less exact than a rounded `0.5`, which prints
+  bare. Decided by the owner: the REPL is no place for a distinction the eye
+  cannot parse reliably. If it surfaces, it does at a C API or in an output
+  format meant for programs.
+
 ## Openings
 
 Not scheduled, and not Deferred either -- Deferred is for what has been argued
@@ -1740,6 +1751,9 @@ closures need one anyway, and can bring it.
 | C215 `[fixed]` | **grad answered 0 for the limit of a bisection.** A comparison is flat between its jumps, so every term of a bisection has a 0 derivative, and C72's rule took its limit's to be theirs: with `b(x)_0 = [0; 1]` and `b(x)_n` halving b toward x, `grad_(x = 1/3) lim b(x)` was [0; 0], where lim b(x) is [x; x]. A limit whose terms read a comparison or a floor moving with grad's variable is refused now, as rho is, a bisection being a staircase: "grad cannot differentiate lim b, whose terms step with x at a comparison or a floor". A term remembered carries what it read, so one taken before the limit counts. The rule stands for every other limit, and for abs, max and min, whose guards step where they are continuous. 31 lines; grad.ink holds it, and no other answer moved. |
 | C216 `[fixed]` | **`hinf` could answer an ulp above the norm.** It took the root of its bracket's lower end as a double and multiplied it by the system's scale, rounding twice after the bisection: `hinf(-1, 1, 3, 22)` was `~25.000000000000004`, where |T(iw)|^2 = (625 + 484w^2)/(1 + w^2) peaks at 25 at w = 0, and `dhinf(1/5, 1, 20)` was `~24.999999999999996`, under its 25 at z = 1. The scale is folded into the lower end exactly now, but for a power of 2, and its root bisected by hinff, whose lower end is rounded once as rho's is: at most the norm's double. Of 3,960 first-order systems, continuous and discrete, whose norms are exact, 643 were above that double and 553 below it, by up to 2 ulps each way; all 3,960 are now that double, each a third slower, where no golden's time moved. 3 lines of the prelude more; hinf.ink and hinfdata.ink hold the two, and no other answer moved. |
 | C217 `[fixed]` | **`frac i` said i was approximated.** A complex number is a pair of doubles, exact or not, and `frac` refused every inexact number as approximated, which i, 0 and 1, is not: `frac i` was "i was approximated, so it has no exact fraction". One with an imaginary part is refused as complex now, "i is complex", and README's section 1, which has a literal stay exact through `+`, `-`, `*` and `/`, says that whatever i touches is inexact. A real number i made, such as `i*i`, is still said to be approximated, as nothing tells it from one that was. 2 lines; exact.ink holds it, and no other answer moved. |
+| C220 `[fixed]` | **A value derived from a parameter whose cell was a temporary of the update was read by the temporary's name, which the step does not declare.** A derived value's cell that is a name or a number is written where it is read rather than kept in a field, and a temporary's name is one: `p = 1/2`, `R = [p, 1; 2, 3]^(0-1)` and `x_n = R*[n; 1]` wrote `t0_[0][0]` in the step, a header that did not build, as did `[exp(p), [1, 2; 3, 4]]` once block literals stretch a computed value. Such a cell is read from its field now, in 3 lines of `compile.hpp` more; `cli.cmake` holds the step, and no recorded header moved. |
+| C221 `[fixed]` | **A cell taken from a matrix answered where another of its cells is NaN by a function of the header.** C211's gap: where a cell is taken, a header tests every cell of the matrix once one of them writes NaN, and a call of log, which may answer NaN, did not count: `[x_n, log(x_n)][1, 1]`, in a header nothing else made aware, answered x_n where the interpreter refuses the matrix whole. Such a call counts now, in a line changed of `compile.hpp`; `nan.ink`'s `took` holds it, and no recorded header moved. A division by zero there is still an infinity, which no test catches. |
+| C225 `[fixed]` | **The prelude's stated worst errors were sample maxima.** DESIGN gave the worst errors of `exp`, `log`, `tanh`, `sin` and `cos`, and of their parts, from 1e7 or 2e7 random points a range or 2,000 for the parts, and elementary.ink and trig.ink comments bounds from them. A sweep of 1e8 to 4e8 points a range against a 64-bit long double, its farthest confirmed by mpmath at 256 bits, passes each: `exp` 1.307 units at 635.2779388398857 (1.29 stated, "1.3 everywhere" in elementary.ink), 0.900 of 2^-1074 at -708.7539819250273 (0.89), `log` 2.938 at 1.0038647811079129 (2.87), `tanh` 2.967 at -0.20806425077771573 (2.83), `sin` 2.431 at -36502.41508093197 (2.43, "2.4" in trig.ink), `cos` 2.445 at -660945.4787059261 (2.37), and the parts 2.445 from cos and 2.426 from -sin at -660945.4787059261 and 651843.0266746085 (2.04 and 1.62). The functions stand: the figures are the sweep's now, measured and still no bound, and README states them. `--check` cannot see an error the interpreter and a header share, so `test/prelude_test.cpp` holds the five, the two parts and `ilogb` to `test/data/prelude_reference.txt`, 2,400 arguments with mpmath's correctly rounded values, written once by `test/prelude_reference.py`: the sweep's farthest, the doubles nearest a multiple of pi/2 or ln 2, subnormals and either end of `exp`'s range; its skipped case `sweep` is the sweep. Two comments moved, elementary.ink's and trig.ink's, and no answer. Found by an external review. |
 
 **Measure instructions, not the clock.** One of those changes made the matrix
 workload 20 per cent slower by the clock and not by a single instruction: with
@@ -3071,9 +3085,108 @@ that exploring seven domains asked of the interpreter, by how many asked.
   grad being forward mode, a part for each cell of the weights, it holds
   for small networks alone. Those are the threshold a loop, an entry of its
   own, is to be weighed against.
-- **Block literals compiled**, `[A, B; C, D]`: refused as "a matrix built
-  from matrices", which stops the doubling algorithm's three iterates packed
-  into one term.
+- `[done]` **Block literals compiled.** `--compile` refuses a literal any of
+  whose cells is not a single value, "a matrix built from matrices": the
+  augmented system of integral action, `[A, 0; -C, 1]` and `[B; 0]`, the
+  controllability matrix `[B, A*B, A^2*B]`, the doubling algorithm's three
+  iterates packed into one term, `[A_k, G_k, H_k]`. The interpreter lays
+  them out (README.md, section 2).
+
+  The queued line is partly overtaken (CLAUDE.md, section 7). The three
+  iterates compile today as three sequences with parameters read at a
+  constant count, `Y` below, which landed after the line was queued. Packing
+  them is needed only under `lim`, which walks one sequence, and there the
+  Riccati doubling also inverts I + G_k H_k inside a limit's function,
+  refused "a matrix inverse outside a sequence", words that mislead there,
+  the inverse being inside the limit's sequence: a defect of wording, for a
+  fix of its own, which moves `d`'s line in `blocks.ink`. With the 2x2
+  inverse written by hand it compiles to 8.6 MB of header today.
+  *Temporaries in a limit's function* would lift both, an inverse being a
+  temporary, so that case needs the two items. Blocks alone give the packed
+  iterates at a constant count, and under `lim` a doubling with no inverse,
+  Smith's for the Stein equation.
+
+  Decided: the interpreter's layout (`EvaluationVisitor`'s literal), at
+  compile time, as every shape is known there. Each block is compiled; a
+  band of rows is as tall as its tallest block and a band of columns as wide
+  as its widest; a single value is stretched over its block and computed
+  once, as arithmetic's stretch shares it and as the interpreter evaluates a
+  block once; any other block fills its place exactly. The result is the
+  cells of each block written into their places, a constant where every
+  block is: no array, copy, loop or size at run time, so a literal whose
+  stretched values are names or numbers compiles to the header the same
+  literal written cell by cell does. A literal of single values is the case
+  where every band is one cell, so every recorded header is unchanged, the
+  prelude's too. Nested blocks, a tensor's slices, a term, a sequence with
+  parameters whose terms widen by a block, each term its own size, a limit's
+  terms and an update all compile by the same code. Under `grad`, each
+  block's part, 0 of the block's shape where it has none, laid out by the
+  same rule, as `Derivative::Literal` builds the literal of parts and
+  evaluates it. `--check`, `--float` and NaN-aware headers need nothing: the
+  layout computes nothing.
+
+  Refused: a tensor as a block, in the interpreter's words, "a tensor
+  cannot be a block of a literal, only a matrix can"; and a block that is
+  not a single value and does not fill its place, "a block that does not
+  fill its band". The interpreter continues such a block with its corner
+  (C41), kept there as the residue of an idea and recorded as no meaning;
+  compiled, it would be an artifact written into generated code, to be
+  undone when C41 is decided (CLAUDE.md, section 2). A size that is not
+  constant does not reach the layout: a term whose shape changes is
+  refused already, "its clauses have different shapes".
+
+  Rejected:
+  - **C41 compiled as the interpreter has it.** The same lines; refused for
+    the reason above.
+  - **The single value's stretch refused too.** `[A, 0; 0, B]` and `[B; 0]`
+    are how a paper writes a block diagonal and an augmented input, and
+    `matrices.ink` states the stretch as meant, where C41's corner is
+    recorded as not.
+  - **A block copied at run time**, by `memcpy` or a loop: a block is
+    cells, an array only where it is a field or a term, so each would need
+    a temporary array and a size at run time, for cells known while
+    compiling, and the header would no longer be the cell-by-cell one.
+  - **Blocks rewritten as cells by the parser**: it has no sizes, and
+    `?name` and `tex` print what was parsed.
+  - **The workaround**, a function by cells with a guard per block, which
+    compiles today: three clauses where the paper writes one bracket.
+
+  About 25 lines of sources, in `compile.hpp`: the layout about 30, the
+  bands, the refusal, the shared stretch and the cells and constant; the
+  visit about 18, each block compiled and its part; against the visit's
+  24, which go. `Assembled` stays, for a definition by cells and grad's
+  point. Sized against the tensor literal's, 30, which does as much for
+  slices, and C140, 11. Past 37 the implementation stops and reports.
+  15,584 lines in all at c182657.
+
+  Specified in `test/compile/blocks.ink`, its numbers worked out with
+  exact fractions and sympy, with Python's doubles in the step's order,
+  Gauss-Jordan transcribed from `Matrix::Inverse`, and with numpy and
+  scipy, then seen to be the interpreter's: `dare`, the structure-
+  preserving doubling for the Riccati equation, packed and read at 6
+  doublings, beside the three sequences, their difference within 0 and
+  the gain; `smith`, Smith's doubling packed under `lim`; `deadbeat`,
+  integral action from the plant's parameters, its gain by Ackermann's
+  formula over a controllability matrix built by blocks; `nested`, blocks
+  within blocks, a delay line and a tensor's slices, also in float;
+  `sloped`, `grad` through blocks, by a number and by a matrix; a header
+  that is byte for byte the cell-by-cell one, its excerpt from today's
+  compile of the cell form; and four refusals, `lim` of the Riccati
+  doubling among them. Wired with the implementation: the checks and
+  their reports in `test/CMakeLists.txt`, `dare`'s figures as written,
+  which a transcription of the step's order reproduces, `nested` in float,
+  the header and the refusals in `test/cli.cmake`. No golden, header or
+  report should move, as no test records the old refusal. README's
+  paragraph on the compiler gains a sentence. Nothing changes in the
+  interpreter, so no transcript in `test/data/spec`.
+
+  Done as decided, `Laid` laying out a literal's values and its parts.
+  Departures: `nest` and `slope` became `nested` and `sloped`, the check
+  targets of the first names being `history.ink`'s and `nan.ink`'s; and
+  `nested` gained the case its review found missing, a short row among
+  blocks, `[A, x_n*A; A]`, ended by a 0 stretched over 2x2, its value
+  worked out with fractions. 24 lines of sources against 25 planned, all
+  in `compile.hpp`: 15,608 lines in all.
 - **`tex` of `==`, a negative fraction and `exp`**: `==` is set as `=`,
   `\frac{-1}{2}` should be `-\frac{1}{2}`, `\operatorname{exp}` should be
   `\exp`; and one tensor literal refuses a whole model's `tex`.
@@ -3126,7 +3239,9 @@ that exploring seven domains asked of the interpreter, by how many asked.
 - **Temporaries in a limit's function**: C140 shares a step's nested calls,
   but a limit's terms are still written out whole, so a Riccati limit through
   `ric(ric(P))` is 163 MB of header. About 25-35 lines; moves headers whose
-  limits multiply matrices, not their values.
+  limits multiply matrices, not their values. The doubling algorithm for the
+  Riccati equation under `lim` needs it too, its inverse a temporary (block
+  literals compiled, above).
 - `[done]` **A definition as LaTeX**, `tex ?name`, a word at the start of a line as
   `frac` is, and reserved as it is. It renders what was parsed, not what was
   typed: the clauses for one index a line each, then those for every index,
@@ -4461,23 +4576,24 @@ that exploring seven domains asked of the interpreter, by how many asked.
 
   Accuracy over doubles, against expl, logl and tanhl at 64 bits on 2e7
   points each, and against mpmath at 160 bits on 2e4, which agree to the
-  third decimal of a unit:
+  third decimal of a unit; the worst errors are a sweep's of 1e8 to 4e8
+  points a range, confirmed by mpmath, and no bound (C225):
 
   | | worst | correctly rounded |
   |---|---|---|
-  | `exp` on [-708.39, 709.78] | 1.29 units | 88.6% |
-  | `exp` below, to -745.13 | 0.89 units of 2^-1074 | 99.1% |
-  | `log`, every positive double | 2.55 units | 99.8% |
-  | `log` on [1/2, 2] | 2.87 units | 65.6% |
-  | `tanh` on [-20, 20] | 2.77 units | 40.2% |
-  | `tanh`, \|x\| < 1 to 2^-40 | 2.83 units | 76.5% |
+  | `exp` on [-708.39, 709.78] | 1.307 units, at 635.2779388398857 | 88.6% |
+  | `exp` below, to -745.13 | 0.900 units of 2^-1074, at -708.7539819250273 | 99.1% |
+  | `log`, every positive double | 2.938 units, at 1.0038647811079129 | 99.8% |
+  | `log` on [1/2, 2] | the same | 65.6% |
+  | `tanh` on [-20, 20] | 2.967 units, at -0.20806425077771573 | 40.2% |
+  | `tanh`, \|x\| < 1 to 2^-40 | the same | 76.5% |
 
   So `exp(1)` is a unit above e, which is the double nearest it, and
   `exp(1) == e` is 0 where it was 1. Rejected: correct rounding, by tables or
   double-double, several hundred lines; the shape of fdlibm's log,
-  log(1 + f) = f - (f^2/2 - s(f^2/2 + R)), within 1.24 units for 2.87, at a
-  helper and two operations more; a high part of ln 2 of 32 bits, 1.18 units
-  for 1.29; tanh as m/(m + 2) with m = e^(2x) - 1, 3.14 units; an odd
+  log(1 + f) = f - (f^2/2 - s(f^2/2 + R)), within 1.24 units for 2.87 on
+  the 2e7 points, at a helper and two operations more; a high part of ln 2
+  of 32 bits, 1.18 units for 1.29; tanh as m/(m + 2) with m = e^(2x) - 1, 3.14 units; an odd
   polynomial near 0, nineteen terms to reach 0.55.
 
   Identical, measured: the design emulated in C, built by GCC 13 and Clang 18
@@ -5358,14 +5474,16 @@ that exploring seven domains asked of the interpreter, by how many asked.
   reciprocals.
 
   Accuracy, against sinl and cosl at 64 bits on 1e7 points a range, and
-  against mpmath at 200 bits elsewhere:
+  against mpmath at 200 bits elsewhere; the first four rows' worst errors
+  are a sweep's of 2e8 points a range, confirmed by mpmath, and no bound
+  (C225):
 
   | | worst, sin and cos | correctly rounded |
   |---|---|---|
-  | on [-pi/4, pi/4] | 0.75 and 1.25 units | 97.7% and 74.0% |
-  | on [-2 pi, 2 pi] | 1.56 and 1.45 units | 77% and 73% |
-  | on [-1000, 1000] | 2.34 and 2.29 units | 72.7% |
-  | on [-2^20, 2^20] | 2.43 and 2.37 units | 70.3% |
+  | on [-pi/4, pi/4] | 0.760 and 1.255 units, at -0.7821688726213682 and 0.7726675189999381 | 97.7% and 74.0% |
+  | on [-2 pi, 2 pi] | 1.569 and 1.442 units, at -0.7881873522461342 and -4.743642741448404 | 77% and 73% |
+  | on [-1000, 1000] | 2.417 and 2.403 units, at 914.0782110333698 and 457.1642583033149 | 72.7% |
+  | on [-2^20, 2^20] | 2.431 and 2.445 units, at -36502.41508093197 and -660945.4787059261 | 70.3% |
   | the 12 doubles nearest a multiple of pi/2 below 2^20 | 0.35 units | all |
   | a sample of 20,000 exact arguments to 10^6 | 1.43 and 1.39 units | 74.5% |
   | in float, on [-6434, 6434] | 2.44 and 2.29 units of a float | 70.7% and 70.6% |
@@ -5404,8 +5522,8 @@ that exploring seven domains asked of the interpreter, by how many asked.
   is the argument chosen, exact or not: `max(1/3, 1/4)` is exactly 1/3.
 
   `grad` differentiates the definitions: the polynomials' derivatives,
-  within 2.04 units of cos and 1.62 of -sin at worst on a sample of 2,000
-  points, and floor's 0, so a few doubles where x*2/pi + 1/2 is whole are
+  2.445 units from cos and 2.426 from -sin at worst, at -660945.4787059261
+  and 651843.0266746085 (C225), and floor's 0, so a few doubles where x*2/pi + 1/2 is whole are
   refused as floor jumping, as in `exp`. `abs`'s slope at 0 is 1, its `x >=
   0` clause's. At a tie `max` and `min` take the first argument's slope, as
   TensorFlow's maximum and minimum: `max(0, x)` has a ReLU's slope 0 at 0,

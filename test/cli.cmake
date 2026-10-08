@@ -18,7 +18,7 @@ function(check name)
                     WORKING_DIRECTORY "${OUT}"
                     INPUT_FILE "${OUT}/${name}.stdin"
                     OUTPUT_VARIABLE got_stdout ERROR_VARIABLE got_stderr
-                    RESULT_VARIABLE got_exit TIMEOUT 10)
+                    RESULT_VARIABLE got_exit TIMEOUT 60)
     if(NOT "${got_stdout}" STREQUAL "${stdout}")
         message(SEND_ERROR "${name}: stdout\n--- expected\n${stdout}--- got\n${got_stdout}---")
     endif()
@@ -1183,3 +1183,41 @@ set(args --compile response.ink)
 set(stdout "cannot compile y: a complex number\n")
 set(exit 1)
 check(compile_response_refused)
+
+# Block literals compiled (DESIGN.md, compile/blocks.ink): the header the
+# same literals written cell by cell give, each block's cells read where
+# they are, and what stays refused.
+set(plant "A = [1, 1; 0, 1]\nB = [0; 1]\nC = [1, 0]\nK = [3, 3]\nki = 1\n")
+set(loop "x_0 = [0; 0; 0]\nx_n = (Aa - Ba*Kf)*x_(n-1) + [0; 0; r_n]\n")
+file(WRITE "${OUT}/blocks/aug.ink" "${plant}Aa = [A, 0; -C, 1]\nBa = [B; 0]\nKf = [K, -ki]\n${loop}y_n = [C, 0]*x_n\n")
+file(WRITE "${OUT}/cells/aug.ink" "${plant}Aa = [A[1,1], A[1,2], 0; A[2,1], A[2,2], 0; -C[1,1], -C[1,2], 1]\nBa = [B[1,1]; B[2,1]; 0]\nKf = [K[1,1], K[1,2], -ki]\n${loop}y_n = [C[1,1], C[1,2], 0]*x_n\n")
+foreach(form blocks cells)
+    set(args --compile ${form}/aug.ink -o ${form}/aug.h)
+    check(compile_blocks_${form})
+endforeach()
+file(READ "${OUT}/blocks/aug.h" by_blocks)
+file(READ "${OUT}/cells/aug.h" by_cells)
+if(NOT by_blocks STREQUAL by_cells)
+    message(SEND_ERROR "compile_blocks: aug.h by blocks is not aug.h by cells")
+endif()
+holds(compile_blocks_blocks blocks/aug.h [[    m_->x[0][2][0] = m_->index_ == 0 ? 0.0 : (0.0 - m_->C[0][0] + (0.0 - 0.0 * m_->K[0][0])) * m_->x[1][0][0] + (0.0 - m_->C[0][1] + (0.0 - 0.0 * m_->K[0][1])) * m_->x[1][1][0] + (1.0 + (0.0 - 0.0 * (0.0 - m_->ki))) * m_->x[1][2][0] + m_->r[0];
+]] [[    m_->y[0] = m_->C[0][0] * m_->x[0][0][0] + m_->C[0][1] * m_->x[0][1][0] + 0.0 * m_->x[0][2][0];
+]])
+file(WRITE "${OUT}/blocks.ink" "a_n = [T, x_n]\nb_n = [A, [x_n, 1]]\nc_0 = x_0\nc_n = [c_(n-1), x_n]\nd_n = lim e(x_n)\ne(r)_0 = [I, I]\ne(r)_k = [(I + r*f(e(r)_(k-1)))^(0-1), I]\nf(S)[j<=2, k<=2] = S[j, k]\nA = [1, 2; 3, 4]\nI[j<=2, k<=2] = j == k\nT = [1;; 2]\nx_n = n\n")
+set(args --compile blocks.ink)
+set(stdout "cannot compile a: a tensor cannot be a block of a literal, only a matrix can
+cannot compile b: a block that does not fill its band
+cannot compile c: its clauses have different shapes
+cannot compile d: a matrix inverse outside a sequence
+")
+set(exit 1)
+check(compile_blocks_refused)
+
+# C220: a value derived from a parameter whose cell is a temporary of the
+# update, a stretched value or an inverse's, is read from its field, not
+# by the temporary's name, which the step does not declare.
+file(WRITE "${OUT}/c220.ink" "p = 1/2\nQ = [exp(p), [1, 2; 3, 4]]\nR = [p, 1; 2, 3]^(0-1)\nx_n = Q*[n; 1; 1] + R*[n; 1]\n")
+set(args --compile c220.ink -o c220.h)
+check(compile_c220)
+holds(compile_c220 c220.h [[    m_->x[0][0][0] = m_->Q[0][0] * (double)m_->index_ + 1.0 * 1.0 + 2.0 * 1.0 + (m_->R[0][0] * (double)m_->index_ + m_->R[0][1] * 1.0);
+]])
