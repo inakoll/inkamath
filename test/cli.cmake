@@ -293,6 +293,13 @@ set(stdout "cannot compile w: q_(...): one sequence at another rate read by anot
 set(exit 1)
 check(compile_c233)
 
+# C234: as is one on the right of an 'and', which compiled to a wrong term.
+file(WRITE "${OUT}/c234.ink" "y_0 = 0\ny_m = x_(2*m)\nc_n | x_n > 0 and y_(n-1) > 0 = n\nc_n = 0\n")
+set(args --compile c234.ink)
+set(stdout "cannot compile c: y_(...): read every step, and y is computed every 2\n")
+set(exit 1)
+check(compile_c234)
+
 # C86: a clause the interpreter refuses wherever it is taken is what a step
 # says there, NaN, so a model whose guard never takes it compiles, as log
 # does, its '| x <= 0 = 1/0' NaN in the header's function for it.
