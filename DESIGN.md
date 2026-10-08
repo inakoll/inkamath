@@ -6480,9 +6480,11 @@ that exploring seven domains asked of the interpreter, by how many asked.
   products and their characteristic polynomials, and `eigv` multiplies two
   coefficients to read a sign, doubling their digits, where comparing the
   signs would not: eig's horizon too, an item of its own. Certified: of
-  small whole numbers, up to 8x8 with one input and 6x6 with two inputs and
-  two outputs; of cells with three digits 5x5, with six 4x4, with twelve
-  3x3. Past that the tests are approximated and the answer marked: a 4x4 of
+  small whole numbers, up to 8x8 with one input and 5x5 with two inputs and
+  two outputs, not 6x6 as first measured, which the review found past a
+  thousand digits in 4 random ones of 4; of cells with three digits 5x5,
+  with six 4x4, with twelve 3x3. Past that the tests are approximated and
+  the answer marked, refused since the review (below): a 4x4 of
   twelve-digit cells within 2e-16, a 5x5 within 3e-11, a 4x4 of 16-digit
   cells within 1.2e-7, against mpmath. 0.05 s for a 2x2, 0.6 s at 4x4, 7 s
   at 6x6 and 50 s at 8x8 with one input; 0.2 s at 3x3, 4 s at 5x5 and 17 s
@@ -6623,6 +6625,28 @@ that exploring seven domains asked of the interpreter, by how many asked.
   argument alone; the refusals' words are a table in `Unapplied` with
   eig's. 80 lines landed against about 81: the prelude 46 and its comment
   10, and 24 of C++. 15,527 lines in all, after `hinf`.
+
+  With the review's ruling: a test approximated past a thousand digits is
+  refused, `hinf needs tests within a thousand digits`, rather than marked,
+  as a marked answer was off by any factor: a damping of 10^-100 answered
+  2.47e100 for 1e100, a 4x4 of `dhinf` of small rationals 2608 for 1077, a
+  3x3 whose states are scaled 10^10 apart in doubles 2 for 0.636, and cells
+  of 200 digits 10^10 apart 0 for 1e9. `hinfi(x)`, a definition more, is
+  whether x is exact: x == x is a double where x was approximated, and
+  2^-1100 cannot move it. hinfy, hinfg and hinfp ask it of the polynomials,
+  the bound and each test, in words that say no guard of a double, as
+  hinfi's answer is never wrong; hinfy's guard below 2^-1022 goes, the
+  polynomials past a thousand digits refused before it. hinfy still divides
+  them, without which an approximated test is a NaN before it is refused.
+  So time scales are certified up to some 10^50 apart and refused from
+  10^60, a mode B cannot reach up to 10^80 slower; full doubles up to 2x2
+  and 3x3 of one scale, cells k/7 (10 of 10), where 3x3 of several scales
+  are refused in 6 of 7 and 4x4 of k/7 in 7 of 8; and a 3x3 whose states
+  are scaled 10^10 apart, 10^4 in doubles, but not 10^15 or 10^5. The
+  known limit above, a coupling of 2^-500, is certified now. Under
+  `dhinf` the refusal names hinf: naming dhinf would need the caller in
+  `Unapplied`, more than 2 lines. 8 lines more and 1 for C208: 89 lines,
+  15,536 in all.
 - **Doubles read exactly by rho, abscissa and eig**, as hinf reads them:
   each inexact cell the rational its double is, an answer certified for the
   data as stored or marked, where rounded tests misjudge unmarked. To weigh

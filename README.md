@@ -591,14 +591,19 @@ C(iwI - A)^-1 B + D over every frequency w, the peak of |T(iw)| for one
 input and one output, D left out being 0. `dhinf(A, B, C, D)` is the same
 of x_(n+1) = Ax_n + Bu_n over the unit circle, so `dhinf(1/2, 1, 1)` is the
 peak of section 1's T, at z = 1. Each bisects the norm's square, certified
-and marked as rho's, on whether the Hamiltonian has an eigenvalue on the
-imaginary axis, which an exact count of real roots tells. The system is
-divided by its largest cells first, exactly, so its units cost nothing, and
-an inexact cell is read as the exact rational its double is: the answer is
-certified for the data as stored, or marked. Certified of small whole
-numbers up to 8x8 with one input, and of full doubles up to 3x3; a system
-whose tests would leave a double's range, time scales some 10^154 apart, is
-refused. The norm is of a stable A: `hinf` refuses an eigenvalue of A on or
+as rho's, on whether the Hamiltonian has an eigenvalue on the imaginary
+axis, which an exact count of real roots tells, and refuses a test whose
+numbers would pass a thousand digits rather than read it from doubles, so
+an answer is marked only where it leaves a double's range. The system is
+divided by its largest cells first, exactly, so the units of its input,
+output and time cost nothing, though not its state's: a 3x3 whose states
+are scaled 10^15 apart, or 10^5 apart in doubles, is refused. An inexact
+cell is read as the exact rational its double is, so the answer is
+certified for the data as stored. Certified of small whole numbers up to
+8x8 with one input and 5x5 with two inputs and two outputs, and of full
+doubles up to 2x2, or 3x3 of one scale such as k/7; refused past that, and
+where time scales are 10^60 apart or a mode B cannot reach is 10^90
+slower. The norm is of a stable A: `hinf` refuses an eigenvalue of A on or
 right of the imaginary axis and `dhinf` one on or outside the unit circle,
 even where it cancels in the transfer function. `grad` refuses both:
 
