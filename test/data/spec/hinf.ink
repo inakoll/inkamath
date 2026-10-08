@@ -106,6 +106,11 @@ inf  # approximated past a thousand digits
 >> hinf([0 1; -1 -1/2 + 1/7^600], [0; 1], [1 0])
 ~2.06559112  # approximated past a thousand digits
 
+# Time scales 10^200 apart, 1/(s + 1) + 1/(s + 10^-200): 1 + 10^200 at
+# w = 0, its tests past a thousand digits.
+>> hinf([-1 0; 0 -10^-200], [1; 1], [1 1])
+~1e+200  # approximated past a thousand digits
+
 # The discrete-time norm, over the unit circle: 1/(z - 1/2) peaks at
 # z = 1, 1/(z + 1/2) at z = -1, both 2, and 1/(z^2 - z + 1/2) at 2 sqrt(2).
 >> dhinf(1/2, 1, 1)

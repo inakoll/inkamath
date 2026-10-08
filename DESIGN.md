@@ -6393,7 +6393,8 @@ that exploring seven domains asked of the interpreter, by how many asked.
       hinfj(M[j<=p, k<=q]) = hinfm(M)_(p*q) + (M == 0*M)
       hinfd(x, f) = x*f
       hinfd(x, f) | x <> 0 and (abs(x*f) < 2^-1022 or abs(x*f) >= 2^1024) = x*f + 0*10^-1000
-      hinfe(A, B, C, D, f) = hinfd(rhod(rhoa(hinfu(A, B, C, D, rhop(hinfw(A, B, C, D)))_256, hinfu(A, B, C, D, rhop(hinfw(A, B, C, D)))_256), rhop(hinfw(A, B, C, D)))^(1/2), f)
+      hinfg(A, B, C, D) = 2*ceil(rhop(hinfw(A, B, C, D))/2)
+      hinfe(A, B, C, D, f) = hinfd(rhod(rhoa(hinfu(A, B, C, D, hinfg(A, B, C, D))_256, hinfu(A, B, C, D, hinfg(A, B, C, D))_256)^(1/2), hinfg(A, B, C, D)/2), f)
       hinfe(A, B, C, D, f) | hinfw(A, B, C, D) == 0 = ~0
       hinfb(A, B, C, D, f) = hinfe(A, B/hinfj([B; D]), C, D/hinfj([B; D]), f*hinfj([B; D]))
       hinf(A[j<=n, k<=n], B[j<=n, k<=m], C[j<=p, k<=n], D[j<=p, k<=m] = 0*C*B) | hurwitz(charpoly(A/hinfj(A))) = hinfb(A/hinfj(A), B/hinfj(A), C/hinfj([C, D]), D/hinfj([C, D]), hinfj([C, D]))
@@ -6434,19 +6435,20 @@ that exploring seven domains asked of the interpreter, by how many asked.
   test took 44.
 
   **The bracket.** [lo, hi) on g, lo <= ||G||^2 < hi, from [0, U), in units
-  of U = 2^e above 2 tr(D'D) + 8n tr(PQ), P and Q the Gramians, A P + P A' =
-  -BB' and A'Q + QA = -C'C, each solved as one n^2 x n^2 system, `hinfk` the
-  Kronecker sum. It bounds the norm: ||G|| <= ||D|| + 2 times the sum of the
-  Hankel singular values (Enns; Glover, 1984), at most ||D||_F + 2 (n tr
-  PQ)^(1/2), whose square is at most twice the sum of the two's. Each Hankel
-  singular value being at most ||G|| (Nehari), U is within a factor 4 min(p,
-  m) + 16 n^2 of ||G||^2, so a certified bisection stops by the relative
-  rule within the 64 halvings up to about 10x10, and never near the cap. And
-  2 tr(D'D) + 8n tr(PQ) is 0 exactly where G is, every Hankel singular value
-  and D being 0, so 0 is answered at once, certified, as rho's nilpotent 0
-  is. The research's bound, `up(A, B, C)_40`, doubled until the test said
-  above: rejected, as a mode near the axis needs as many doublings as its
-  distance has bits, and a cap would leave a bracket that certifies nothing.
+  of U = 2^e above 2 tr(D'D) + 8n tr(PQ), e even, `hinfg`, P and Q the
+  Gramians, A P + P A' = -BB' and A'Q + QA = -C'C, each solved as one n^2 x
+  n^2 system, `hinfk` the Kronecker sum. It bounds the norm: ||G|| <= ||D||
+  + 2 times the sum of the Hankel singular values (Enns; Glover, 1984), at
+  most ||D||_F + 2 (n tr PQ)^(1/2), whose square is at most twice the sum of
+  the two's. Each Hankel singular value being at most ||G|| (Nehari), U is
+  within a factor 8 min(p, m) + 32 n^2 of ||G||^2, so a certified bisection
+  stops by the relative rule within 65 halvings up to about 10x10, and never
+  near the cap. And 2 tr(D'D) + 8n tr(PQ) is 0 exactly where G is, every
+  Hankel singular value and D being 0, so 0 is answered at once, certified,
+  as rho's nilpotent 0 is. The research's bound, `up(A, B, C)_40`, doubled
+  until the test said above: rejected, as a mode near the axis needs as many
+  doublings as its distance has bits, and a cap would leave a bracket that
+  certifies nothing.
 
   **Normalised by the largest cells, exactly.** The tests' numbers are
   exact, so a power of two buys them range alone and costs digits: dividing
@@ -6466,10 +6468,11 @@ that exploring seven domains asked of the interpreter, by how many asked.
 
   **Stop and marks**, rho's: 64 halvings at least, then while the bracket is
   wider than 2^-53 of its end nearer 0, up to 256; the answer is the root of
-  lo, scaled back, inexact. Marked where a test was approximated past a
-  thousand digits, and where the answer's double is not normal, inf, 0 or
-  subnormal, `hinfd`, as eig's (C197, C199). The cap never ends a certified
-  bisection (above).
+  lo, then scaled back by 2^(e/2), inexact: scaled first, g's double would
+  leave a double's range at half the norm's exponent, 1e400 for a norm of
+  1e200. Marked where a test was approximated past a thousand digits, and
+  where the answer's double is not normal, inf, 0 or subnormal, `hinfd`, as
+  eig's (C197, C199). The cap never ends a certified bisection (above).
 
   **What it costs.** A test at a midpoint of b bits reads q's coefficients,
   of about m b bits more than H's data, then two Bezoutians of their
@@ -6511,6 +6514,14 @@ that exploring seven domains asked of the interpreter, by how many asked.
   unstable mode that cancels is refused too; the norm is of the system
   written. Sizes by the signature: D left out is `0*C*B`, p x m zeros, and a
   0 written for a D of two columns is a single value, refused.
+
+  **Time scales far apart**: 1/(s + 1) + 1/(s + 10^-200) is answered 1e200,
+  marked, its tests past a thousand digits, which the prototype's take to a
+  NaN, refused in a comparison's words. The implementation may refuse in
+  plain words instead where the NaN's cause costs more than about 5 lines, a
+  departure it reports. Known limit: a norm small beside its normalised
+  cells, a coupling of 2^-500 in a 2x2, is answered 0 marked, its tests past
+  a thousand digits before its double is reached.
 
   **Discrete time**, `dhinf`, the supremum over |z| = 1, which is the norm
   the language's own models have (MANIFESTO.md, not continuous time), A in
@@ -6564,25 +6575,25 @@ that exploring seven domains asked of the interpreter, by how many asked.
   `hinf` and `dhinf`, and section 2 shows them beside |T(iw)| and says what
   is certified, with the implementation.
 
-  About 63 lines: the prelude 41, eight of them wrapped, some 10 of its
+  About 64 lines: the prelude 42, eight of them wrapped, some 10 of its
   comment, and 12 of C++: the two refusals' words 4, C206's check over every
   argument 5, the staircases 1 and its wrapping. 15,447 lines at f898d7e, by
-  `wc -l include/inkamath/*.hpp src/*`. Past 95 the implementation stops and
+  `wc -l include/inkamath/*.hpp src/*`. Past 96 the implementation stops and
   reports.
 
-  Specified in `test/data/spec/hinf.ink`, 49 entries replayed by the spec
-  suite, 42 failing by design, those passing being definitions and
-  `digits` echoing themselves, |T(iw)| at the peak and a session's `hinf`:
-  the norm exactly with sympy for one input and one output, from the
-  critical points of |G(iw)|^2 in w^2 or of |G(e^(iw))|^2 in cos w, with
-  mpmath at 60 digits for two, a sweep and a golden section, python-control's
-  linfnorm agreeing within 1e-14 but at the extreme scales, where it fails;
-  each bracket by bisection in Python's fractions with every test decided
-  from that norm, and its double printed by a transcription of
-  `Number::Shown`, apart from the interpreter. The prototype above, defined
-  in a session, gives every answer but the refusals' words, the inf cell's,
-  grad's two and a session's `hinf`, which need the C++ and the name to be
-  the prelude's.
+  Specified in `test/data/spec/hinf.ink`, 50 entries replayed by the spec
+  suite, 43 failing by design, those passing being definitions and `digits`
+  echoing themselves, |T(iw)| at the peak and a session's `hinf`: the norm
+  exactly with sympy for one input and one output, from the critical points
+  of |G(iw)|^2 in w^2 or of |G(e^(iw))|^2 in cos w, with mpmath at 60 digits
+  for two, a sweep and a golden section, python-control's linfnorm agreeing
+  within 1e-14 but at the extreme scales, where it fails; each bracket by
+  bisection in Python's fractions with every test decided from that norm,
+  and its double printed by a transcription of `Number::Shown`, apart from
+  the interpreter. The prototype above, defined in a session, gives every
+  answer but the refusals' words, the inf cell's, grad's two, a session's
+  `hinf`, which need the C++ and the name to be the prelude's, and the time
+  scales far apart.
 - **An inertia count for inexact symmetric matrices**: the negative pivots
   of LDL' of A - xI count the eigenvalues below x, backward stable, where the
   rounded Descartes count of `eig` loses a k-fold eigenvalue to about 16/k
