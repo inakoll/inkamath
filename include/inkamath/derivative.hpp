@@ -451,12 +451,15 @@ private:
     // The prelude's own function of a double, from its header: the value, and
     // the part where it is the walk's double (DESIGN.md).
     std::optional<Jet> Compiled(const Reference<T>& f, bool indexed,
-                                const Arguments& arguments) const {
+                                const Arguments& arguments) {
         if (indexed || arguments.size() != 1 || !stack_.compiled) return {};
         const Jet&             x     = arguments[0].second;
         const std::optional<T> value = stack_.compiled(f, *x[0]);
         if (!value) return {};
-        if (!Moves(x) || &f == stack_.stepwise) return Constant(*value);
+        if (!Moves(x)) return Constant(*value);
+        // The walk's guards read the double that moves (C271).
+        rounded_ = true;
+        if (&f == stack_.stepwise) return Constant(*value);
         const std::optional<T> part =
             x.size() == 2 ? stack_.differentiated(f, *x[0], *x[1]) : std::nullopt;
         if (!part) return {};
