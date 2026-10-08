@@ -824,7 +824,9 @@ private:
             given += (given.empty() ? "" : ", ") + code.cells[0].text;
             Staircase(function, code);
         }
-        if (constant || !scalar) return Answer(Call(name, function, call, nullptr));
+        std::set<const Reference<Value>*> seen;
+        if (constant || !scalar || Iterates(function, seen))
+            return Answer(Call(name, function, call, nullptr));
         const std::string called = module_ + "_" + name;
         std::string       signature;
         for (const std::string& parameter : names)
@@ -838,6 +840,7 @@ private:
                     argument.part = {Array("part_" + names[i], Extent{})};
                 expansion.values.emplace(names[i], argument);
             }
+            Defaults(function, expansion);  // the sizes its signature names (C213)
             const Setting<Walked*>                 outside(limit_, nullptr);
             const Setting<std::vector<Temporary>*> unshared(temporaries_, nullptr);
             return Inside(expansion, [&] { return Chained(name, function); });
@@ -900,6 +903,27 @@ private:
             taken += (taken.empty() ? "" : ", ") +
                      (part ? arguments[i].part[0] : arguments[i]).cells[0].text;
         return Answer(Parted(value, Of(Cell(derived + "(" + taken + ")", primary)), read));
+    }
+
+    // Whether a function of the prelude reads a sequence with parameters,
+    // itself or through what it calls, which its function in the header
+    // cannot hold: it is written where it is called, as of a matrix (C213).
+    bool Iterates(const Reference<Value>& function, std::set<const Reference<Value>*>& seen) {
+        const auto reads = [&](const auto& self, const PExpression<Value>& e) -> bool {
+            const auto* call = dynamic_cast<const FuncExpression<Value>*>(e.get());
+            if (call && call->m_e2()) return true;
+            const auto found =
+                call ? function.home->names.find(call->Name()) : function.home->names.end();
+            if (found != function.home->names.end() && seen.insert(found->second.get()).second &&
+                Iterates(*found->second, seen))
+                return true;
+            return e && std::any_of(e->Children().begin(), e->Children().end(),
+                                    [&](const PExpression<Value>& c) { return self(self, c); });
+        };
+        return std::any_of(
+            function.Clauses().begin(), function.Clauses().end(), [&](const Clause<Value>& c) {
+                return reads(reads, c.expression) || reads(reads, c.parameters.guard());
+            });
     }
 
     // A name of an instance written where it is read, 'conv(lap, u_(n-1)).out':
