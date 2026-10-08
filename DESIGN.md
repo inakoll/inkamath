@@ -1748,6 +1748,8 @@ closures need one anyway, and can bring it.
 | C212 `[fixed]` | **grad refused a variable named like a size of a called function's signature.** Its check that a definition reads no global of grad's name bound a definition's parameters and indices but not the sizes its signature names, which are its own: `grad_(a = 1) a*fa([1; 2])`, with `fa(X[j<=a, k<=b]) = sum_(j=1)^a X[j,1]`, was "fa reads the global a, which grad's a does not reach", and through the prelude so were `grad_(m = 2) m*rho([1/2])`, hurwitzt's m, and `grad_(n = 1) n*charpoly([1 2; 3 4])`, charpolyc's n. The sizes are bound with the names now, in 2 lines and one of comment; grad.ink holds it, and no other answer moved. |
 | C213 `[fixed]` | **A function of the prelude given a number was refused in words not its own.** Called on a number, such a function is a function of the header, whose body was compiled without the sizes its signature names and without a sequence's temporaries: `y_t = rho([1/(t+2)])` and `dhinf(1/(t+2), 1, 1)` were "n is not defined", `rhoe(t)` "m is not defined", and `hinf(-t-1, 1, 1)` and `charpoly(t)` "a sequence with parameters in a limit's terms", where there is no limit. Its body binds the sizes now, and one that reads a sequence with parameters, itself or through what it calls, is written where it is called, as of a matrix, in 20 lines and 4 of comment: rho, hinf and dhinf of a number are refused in their definitions' words, "a factorial", hurwitzb's, and rhoe and charpoly of one compile. `compile_charpoly_refused` and `compile_hinf_refused` in `test/cli.cmake` hold it, its `x` moving from the limit's words, and `lone` in `test/compile/iterates.ink`; no expected header moved. |
 | C214 `[fixed]` | **`eigv` read a sign by multiplying two coefficients, doubling their digits.** Descartes' count, eig's and hinf's, took a sign change where `q[j]*eigl(q)_(j-1) < 0`, so a test passed a thousand digits at half the size its coefficients do, and was marked or refused there: `hinf([0 1; -1 -10^-100], [0; 1], [1 0])` was "hinf needs tests within a thousand digits", where the peak of a damping 2z = 10^-100 is 1/(2z(1 - z^2)^(1/2)), 10^100. The signs are compared now, in 1 line of the prelude more; hinfdata.ink holds it, and no other answer moved. Measured on random matrices against the same binary before it, each new answer checked against NumPy: eig of symmetric matrices of tenths, marked at 28x28, is certified at 36x36 (7 minutes); hinf of small whole numbers, refused at 9x9 with one input and 6x6 with two, is certified at 10x10 and 9x9, of full doubles at 3x3 (4 of 4, refused before) and of doubles k/7 at 4x4 (4 of 4, refused before in 4); time scales 10^90 apart are certified, 10^50 before, and a mode B cannot reach 10^150 slower, 10^80 before. README's section 2 says so. |
+| C220 `[fixed]` | **A value derived from a parameter whose cell was a temporary of the update was read by the temporary's name, which the step does not declare.** A derived value's cell that is a name or a number is written where it is read rather than kept in a field, and a temporary's name is one: `p = 1/2`, `R = [p, 1; 2, 3]^(0-1)` and `x_n = R*[n; 1]` wrote `t0_[0][0]` in the step, a header that did not build, as did `[exp(p), [1, 2; 3, 4]]` once block literals stretch a computed value. Such a cell is read from its field now, in 3 lines of `compile.hpp` more; `cli.cmake` holds the step, and no recorded header moved. |
+| C221 `[fixed]` | **A cell taken from a matrix answered where another of its cells is NaN by a function of the header.** C211's gap: where a cell is taken, a header tests every cell of the matrix once one of them writes NaN, and a call of log, which may answer NaN, did not count: `[x_n, log(x_n)][1, 1]`, in a header nothing else made aware, answered x_n where the interpreter refuses the matrix whole. Such a call counts now, in a line changed of `compile.hpp`; `nan.ink`'s `took` holds it, and no recorded header moved. A division by zero there is still an infinity, which no test catches. |
 
 **Measure instructions, not the clock.** One of those changes made the matrix
 workload 20 per cent slower by the clock and not by a single instruction: with
@@ -3079,9 +3081,108 @@ that exploring seven domains asked of the interpreter, by how many asked.
   grad being forward mode, a part for each cell of the weights, it holds
   for small networks alone. Those are the threshold a loop, an entry of its
   own, is to be weighed against.
-- **Block literals compiled**, `[A, B; C, D]`: refused as "a matrix built
-  from matrices", which stops the doubling algorithm's three iterates packed
-  into one term.
+- `[done]` **Block literals compiled.** `--compile` refuses a literal any of
+  whose cells is not a single value, "a matrix built from matrices": the
+  augmented system of integral action, `[A, 0; -C, 1]` and `[B; 0]`, the
+  controllability matrix `[B, A*B, A^2*B]`, the doubling algorithm's three
+  iterates packed into one term, `[A_k, G_k, H_k]`. The interpreter lays
+  them out (README.md, section 2).
+
+  The queued line is partly overtaken (CLAUDE.md, section 7). The three
+  iterates compile today as three sequences with parameters read at a
+  constant count, `Y` below, which landed after the line was queued. Packing
+  them is needed only under `lim`, which walks one sequence, and there the
+  Riccati doubling also inverts I + G_k H_k inside a limit's function,
+  refused "a matrix inverse outside a sequence", words that mislead there,
+  the inverse being inside the limit's sequence: a defect of wording, for a
+  fix of its own, which moves `d`'s line in `blocks.ink`. With the 2x2
+  inverse written by hand it compiles to 8.6 MB of header today.
+  *Temporaries in a limit's function* would lift both, an inverse being a
+  temporary, so that case needs the two items. Blocks alone give the packed
+  iterates at a constant count, and under `lim` a doubling with no inverse,
+  Smith's for the Stein equation.
+
+  Decided: the interpreter's layout (`EvaluationVisitor`'s literal), at
+  compile time, as every shape is known there. Each block is compiled; a
+  band of rows is as tall as its tallest block and a band of columns as wide
+  as its widest; a single value is stretched over its block and computed
+  once, as arithmetic's stretch shares it and as the interpreter evaluates a
+  block once; any other block fills its place exactly. The result is the
+  cells of each block written into their places, a constant where every
+  block is: no array, copy, loop or size at run time, so a literal whose
+  stretched values are names or numbers compiles to the header the same
+  literal written cell by cell does. A literal of single values is the case
+  where every band is one cell, so every recorded header is unchanged, the
+  prelude's too. Nested blocks, a tensor's slices, a term, a sequence with
+  parameters whose terms widen by a block, each term its own size, a limit's
+  terms and an update all compile by the same code. Under `grad`, each
+  block's part, 0 of the block's shape where it has none, laid out by the
+  same rule, as `Derivative::Literal` builds the literal of parts and
+  evaluates it. `--check`, `--float` and NaN-aware headers need nothing: the
+  layout computes nothing.
+
+  Refused: a tensor as a block, in the interpreter's words, "a tensor
+  cannot be a block of a literal, only a matrix can"; and a block that is
+  not a single value and does not fill its place, "a block that does not
+  fill its band". The interpreter continues such a block with its corner
+  (C41), kept there as the residue of an idea and recorded as no meaning;
+  compiled, it would be an artifact written into generated code, to be
+  undone when C41 is decided (CLAUDE.md, section 2). A size that is not
+  constant does not reach the layout: a term whose shape changes is
+  refused already, "its clauses have different shapes".
+
+  Rejected:
+  - **C41 compiled as the interpreter has it.** The same lines; refused for
+    the reason above.
+  - **The single value's stretch refused too.** `[A, 0; 0, B]` and `[B; 0]`
+    are how a paper writes a block diagonal and an augmented input, and
+    `matrices.ink` states the stretch as meant, where C41's corner is
+    recorded as not.
+  - **A block copied at run time**, by `memcpy` or a loop: a block is
+    cells, an array only where it is a field or a term, so each would need
+    a temporary array and a size at run time, for cells known while
+    compiling, and the header would no longer be the cell-by-cell one.
+  - **Blocks rewritten as cells by the parser**: it has no sizes, and
+    `?name` and `tex` print what was parsed.
+  - **The workaround**, a function by cells with a guard per block, which
+    compiles today: three clauses where the paper writes one bracket.
+
+  About 25 lines of sources, in `compile.hpp`: the layout about 30, the
+  bands, the refusal, the shared stretch and the cells and constant; the
+  visit about 18, each block compiled and its part; against the visit's
+  24, which go. `Assembled` stays, for a definition by cells and grad's
+  point. Sized against the tensor literal's, 30, which does as much for
+  slices, and C140, 11. Past 37 the implementation stops and reports.
+  15,584 lines in all at c182657.
+
+  Specified in `test/compile/blocks.ink`, its numbers worked out with
+  exact fractions and sympy, with Python's doubles in the step's order,
+  Gauss-Jordan transcribed from `Matrix::Inverse`, and with numpy and
+  scipy, then seen to be the interpreter's: `dare`, the structure-
+  preserving doubling for the Riccati equation, packed and read at 6
+  doublings, beside the three sequences, their difference within 0 and
+  the gain; `smith`, Smith's doubling packed under `lim`; `deadbeat`,
+  integral action from the plant's parameters, its gain by Ackermann's
+  formula over a controllability matrix built by blocks; `nested`, blocks
+  within blocks, a delay line and a tensor's slices, also in float;
+  `sloped`, `grad` through blocks, by a number and by a matrix; a header
+  that is byte for byte the cell-by-cell one, its excerpt from today's
+  compile of the cell form; and four refusals, `lim` of the Riccati
+  doubling among them. Wired with the implementation: the checks and
+  their reports in `test/CMakeLists.txt`, `dare`'s figures as written,
+  which a transcription of the step's order reproduces, `nested` in float,
+  the header and the refusals in `test/cli.cmake`. No golden, header or
+  report should move, as no test records the old refusal. README's
+  paragraph on the compiler gains a sentence. Nothing changes in the
+  interpreter, so no transcript in `test/data/spec`.
+
+  Done as decided, `Laid` laying out a literal's values and its parts.
+  Departures: `nest` and `slope` became `nested` and `sloped`, the check
+  targets of the first names being `history.ink`'s and `nan.ink`'s; and
+  `nested` gained the case its review found missing, a short row among
+  blocks, `[A, x_n*A; A]`, ended by a 0 stretched over 2x2, its value
+  worked out with fractions. 24 lines of sources against 25 planned, all
+  in `compile.hpp`: 15,608 lines in all.
 - **`tex` of `==`, a negative fraction and `exp`**: `==` is set as `=`,
   `\frac{-1}{2}` should be `-\frac{1}{2}`, `\operatorname{exp}` should be
   `\exp`; and one tensor literal refuses a whole model's `tex`.
@@ -3121,7 +3222,9 @@ that exploring seven domains asked of the interpreter, by how many asked.
 - **Temporaries in a limit's function**: C140 shares a step's nested calls,
   but a limit's terms are still written out whole, so a Riccati limit through
   `ric(ric(P))` is 163 MB of header. About 25-35 lines; moves headers whose
-  limits multiply matrices, not their values.
+  limits multiply matrices, not their values. The doubling algorithm for the
+  Riccati equation under `lim` needs it too, its inverse a temporary (block
+  literals compiled, above).
 - `[done]` **A definition as LaTeX**, `tex ?name`, a word at the start of a line as
   `frac` is, and reserved as it is. It renders what was parsed, not what was
   typed: the clauses for one index a line each, then those for every index,

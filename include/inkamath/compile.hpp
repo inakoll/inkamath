@@ -2009,30 +2009,54 @@ private:
         return Answer(code);
     }
 
+    // '[A, B; C, D]' as the interpreter lays it out (README.md, section 2),
+    // and its parts, 0 of a block's shape where it has none (Derivative::Literal).
     PExpression<Value> visit(MatExpression<Value>* expression) override {
-        Code                     code;
-        bool                     constant = true, any = false;
-        std::vector<Code>        cells, parts;
-        std::vector<const Code*> from;
-        code.size = expression->Size();
+        std::vector<Code> blocks, parts;
+        bool              any = false;
         for (const PExpression<Value>& child : expression->Children()) {
-            const Code& cell = cells.emplace_back(Emit(child));
-            if (!cell.Scalar()) throw Reason("a matrix built from matrices");
-            constant = constant && cell.constant;
-            any      = any || !cell.part.empty();
-            code.cells.push_back(cell.cells[0]);
-            // Each cell's part, 0 where it has none (Derivative::Literal).
-            parts.push_back(cell.part.empty() ? Literal(Value(Number(0))) : cell.part[0]);
+            const Code& block = blocks.emplace_back(Emit(child));
+            if (block.size.slices)
+                throw Reason("a tensor cannot be a block of a literal, only a matrix can");
+            any = any || !block.part.empty();
+            parts.push_back(block.part.empty() ? Literal(Value(block.size)) : block.part[0]);
         }
-        for (const Code& cell : cells) from.push_back(&cell);
-        const Part part    = any ? Part(Assembled(parts, code.size)) : Part();
-        const auto literal = [&] {
-            Value value(code.size);
-            for (std::size_t c = 0; c < cells.size(); ++c)
-                value.data()[c] = (*cells[c].constant)(1, 1);
-            return value;
-        };
-        return Answer(Parted(constant ? Exact(literal) : code, part, from));
+        std::vector<const Code*> from;
+        for (const Code& block : blocks) from.push_back(&block);
+        Code code = Laid(blocks, expression->Size());
+        if (code.constant) code = Literal(*code.constant);
+        return Answer(Parted(code, any ? Part(Laid(parts, expression->Size())) : Part(), from));
+    }
+    // Each band as tall or as wide as its largest block, a single value
+    // stretched over its block and computed once; any other block fills its
+    // place, as C41's corner is no meaning.
+    Code Laid(const std::vector<Code>& blocks, Extent bands) {
+        std::vector<std::size_t> rows(bands.rows, 1), cols(bands.cols, 1);
+        for (std::size_t b = 0; b < blocks.size(); ++b) {
+            rows[b / bands.cols] = std::max(rows[b / bands.cols], blocks[b].size.rows);
+            cols[b % bands.cols] = std::max(cols[b % bands.cols], blocks[b].size.cols);
+        }
+        Code code;
+        code.size = {std::reduce(rows.begin(), rows.end()), std::reduce(cols.begin(), cols.end())};
+        code.constant = Value(code.size);
+        for (std::size_t i = 0; i < rows.size(); ++i)
+            for (std::size_t r = 0; r < rows[i]; ++r)
+                for (std::size_t j = 0; j < cols.size(); ++j) {
+                    const Code& block = blocks[i * cols.size() + j];
+                    if (!block.Scalar() && block.size != Extent{rows[i], cols[j]})
+                        throw Reason("a block that does not fill its band");
+                    const bool stretched = block.Scalar() && rows[i] * cols[j] > 1;
+                    const Cell one       = stretched ? Shared(block.cells[0]) : block.cells[0];
+                    if (!block.constant) code.constant.reset();
+                    for (std::size_t c = 0; c < cols[j]; ++c) {
+                        const std::size_t at = block.Scalar() ? 0 : r * cols[j] + c;
+                        code.cells.push_back(block.Scalar() ? one : block.cells[at]);
+                        if (code.constant)
+                            code.constant->data()[code.cells.size() - 1] =
+                                block.constant->data()[at];
+                    }
+                }
+        return code;
     }
     // A matrix of single parts, row by row, exact where each is.
     static Code Assembled(const std::vector<Code>& parts, Extent size) {
@@ -3075,7 +3099,7 @@ private:
             if (*place) at.push_back(Whole(Known(*place, "a cell whose place is not a constant")));
         // The interpreter refuses a matrix whole where it refuses a cell. One
         // that writes NaN in a cell not taken makes the header write it.
-        for (const Cell& c : matrix.cells) aware_ |= !matrix.constant && WritesNan(c.text);
+        for (const Cell& c : matrix.cells) aware_ |= !matrix.constant && MayNan(c.text);
         if (aware_ && !matrix.whole && !matrix.constant) matrix = Shared(matrix);
         const std::string nan = matrix.whole ? "" : Nan(matrix);
         if (!nan.empty())
@@ -3257,12 +3281,15 @@ private:
     }
 
     // A cell that is a name or a number is read as itself, which the C
-    // compiler can see through, rather than from the field.
+    // compiler can see through, rather than from the field; not a temporary
+    // of the update's, which the step does not declare (C220).
     static Code Read(Derived& derived) {
         Code code = Fields(derived.name, derived.code);
         for (std::size_t c = 0; c < code.cells.size(); ++c) {
-            if (derived.code.cells[c].atom)
-                code.cells[c] = derived.code.cells[c];
+            const Cell& cell = derived.code.cells[c];
+            const auto  own  = [&](const Temporary& t) { return cell.text.starts_with(t.name); };
+            if (cell.atom && std::ranges::none_of(derived.temporaries, own))
+                code.cells[c] = cell;
             else
                 derived.read = true;
         }
