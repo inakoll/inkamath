@@ -39,14 +39,14 @@
 
 # Complex entries are taken, the polynomial being exact over them.
 >> charpoly([1 i; -i 1])
-[ 1;
- -2;
-  0]
+[  1;
+ ~-2;
+  ~0]
 
 >> charpoly([i 0; 0 2])
-[   1;
- -2-i;
-  i*2]
+[      1;
+ ~(-2-i);
+  ~(i*2)]
 
 >> charpoly([1 2 3])
 error: charpoly takes A[j<=n, k<=n], not a 1x3 matrix
@@ -125,11 +125,11 @@ error: hurwitz takes p[j<=m], not a 1x3 matrix
 
 # Refused in the words max refuses it with.
 >> hurwitz([1; i])
-error: a comparison needs real numbers, not i
+error: a comparison needs real numbers, not ~(i)
 
 # A complex s is named, not a cell of the shifted polynomial, 1/2 + i.
 >> hurwitz([1; 1/2], i)
-error: a comparison needs real numbers, not i
+error: a comparison needs real numbers, not ~(i)
 
 # The Schur-Cohn test: every root in |z| < 1, strictly, or in |z| < r.
 >> schurcohn([1; -1/2])
@@ -181,7 +181,7 @@ error: no clause of schurcohn applies
 
 # Refused on the polynomial written, not on a cell of its image.
 >> schurcohn([1; i])
-error: a comparison needs real numbers, not i
+error: a comparison needs real numbers, not ~(i)
 
 # The spectral radius by bisection on the Schur-Cohn test, from [0, B), B
 # the power of two above the sum of |A[j,k]|: rhob(A)_m is the bracket after
@@ -227,13 +227,13 @@ digits = 9
 # A bound on the boundary fails its strict test and becomes the lower end,
 # so a value a halving reaches is the answer, every digit of it.
 >> rho([2 0; 0 -3])
-3
+~3
 
 >> abscissa([2 0; 0 -3])
-2
+~2
 
 >> abscissa([1/2 1; -1 1/2])
-0.5
+~0.5
 
 # A value far below B takes more halvings: unstable by 10^-30, an abscissa
 # is not 0, and a radius of 10^-15 has every digit.
@@ -251,7 +251,7 @@ digits = 9
 
 # Scaled by a power of two, every bracket is.
 >> rho(2*[1/2 1; -1 1/2]) == 2*rho([1/2 1; -1 1/2])
-1
+~1
 
 # The tests are of A/B, exactly, and the bracket scaled back by B, so a
 # small matrix or a large one tests numbers a double holds: rounded, the
@@ -293,48 +293,48 @@ digits = 9
 # Past a double's range, the answer is the double ~ makes of it, marked, as
 # A/B's tests are past a thousand digits (C191).
 >> rho([1 2; 3 4]*10^400)
-inf  # approximated past a thousand digits
+~inf  # approximated past a thousand digits
 
 >> rho([1 2; 3 4]/10^400)
-0  # approximated past a thousand digits
+~0  # approximated past a thousand digits
 
 # So is it where the tests stay exact: the bracket is certified, its double,
 # subnormal or none, is not, and a stable system's abscissa of -10^-400 is
 # no marginal 0 (C197).
 >> rho(10^400)
-inf  # approximated past a thousand digits
+~inf  # approximated past a thousand digits
 
 >> rho(10^-400)
-0  # approximated past a thousand digits
+~0  # approximated past a thousand digits
 
 >> rho(10^-320)
 ~9.99988867e-321  # approximated past a thousand digits
 
 >> abscissa(-10^-400)
-0  # approximated past a thousand digits
+~0  # approximated past a thousand digits
 
 >> abscissa(-10^-400) < 0
-0  # approximated past a thousand digits
+~0  # approximated past a thousand digits
 
 # An end that is itself 0, certified, is not: its double is exact.
 >> rhoa([0; 0], [0; 0])
-0
+~0
 
 # A cell that is itself inf is a double whose value is lost, and no radius
 # is certified of it, inf or other: [1 x; 0 1]'s is 1 and [x x; -x -x]'s 0
 # whatever x is (C206).
 >> rho([1 ~10^310; 0 1])
-error: rho needs finite cells, not inf
+error: rho needs finite cells, not ~inf
 
 >> abscissa([~1 1; 1 1]*10^310)
-error: abscissa needs finite cells, not inf
+error: abscissa needs finite cells, not ~inf
 
 # Nor has it a bracket, which read -nan (DESIGN.md, C210).
 >> rhob([1 ~10^310; 0 1])_64
-error: rhob needs finite cells, not inf
+error: rhob needs finite cells, not ~inf
 
 >> abscissab([~1 1; 1 1]*10^310)_64
-error: abscissab needs finite cells, not inf
+error: abscissab needs finite cells, not ~inf
 
 # Five by five, the tests exact; ten by ten, in bisection_digits.ink, they
 # are not.
@@ -371,7 +371,7 @@ error: abscissa takes A[j<=n, k<=n], not a 1x3 matrix
 
 # In max's words, as hurwitz is.
 >> rho([1 i; -i 1])
-error: a comparison needs real numbers, not i
+error: a comparison needs real numbers, not ~(i)
 
 # The bisection is a staircase in A, flat between its steps, so its
 # derivative is not rho's: refused, for now. A rho that does not move is
@@ -397,4 +397,4 @@ rho = 1000
 clear rho
 
 >> rho([2])
-2
+~2

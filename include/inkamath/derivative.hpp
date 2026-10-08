@@ -86,6 +86,12 @@ private:
         return jet;
     }
 
+    // Approximated past the bound, or only inexact (C241).
+    template <typename V>
+    static V Marked(bool approximated, const V& v) {
+        return approximated ? numeric_interface<V>::marked(v) : numeric_interface<V>::inexact(v);
+    }
+
     static void Add(std::optional<T>& total, const T& term) {
         total = total ? *total + term : term;
     }
@@ -564,8 +570,10 @@ private:
         const T   value = numeric_interface<T>::compare(*a[0], *b[0], compare.Op());
         Stepped(a);
         Stepped(b);
-        // A jump an approximated number rules out marks the answer (C167).
+        // A jump an approximated number rules out marks the answer (C167), and
+        // an inexact one makes it inexact.
         chosen_ = chosen_ || ((Moves(a) || Moves(b)) && numeric_interface<T>::approximated(value));
+        rounded_ = rounded_ || ((Moves(a) || Moves(b)) && !numeric_interface<T>::exact(value));
         if (*a[0] == *b[0] && (Moves(a) || Moves(b))) {
             if (!guard_) throw std::runtime_error("a comparison jumps at " + Where());
             if (compare.Op() == Comparison::Equal || compare.Op() == Comparison::NotEqual)
@@ -597,6 +605,7 @@ private:
         const T value = cell(*u[0]);
         Stepped(u);
         chosen_       = chosen_ || (Moves(u) && numeric_interface<T>::approximated(*u[0]));
+        rounded_      = rounded_ || (Moves(u) && !numeric_interface<T>::exact(*u[0]));
         for (std::size_t k = 0; k < value.Size().count(); ++k) {
             if (!(u[0]->data()[k] == value.data()[k])) continue;
             if (Moves(u)) throw std::runtime_error("floor jumps at " + Where());
@@ -873,6 +882,8 @@ private:
         if (none) out[0] = Zero(parts[0][0]->Size());
         if (chosen_ || (none && numeric_interface<T>::approximated(*parts[0][0])))
             out = Map(std::move(out), numeric_interface<T>::marked);
+        else if (rounded_)
+            out = Map(std::move(out), [](const T& v) { return Marked(false, v); });
         return out;
     }
 
@@ -955,14 +966,21 @@ private:
         const Reference<T>& definition;
 
         // As Reference's Values has it; a part the clause lacks stays so, as
-        // nothing moves it, and grad's answer is marked for it.
-        bool past = false;
+        // nothing moves it, and grad's answer is marked for it, or inexact.
+        bool past = false, rounded = false;
 
+        // Whether the clause just chosen is approximated, if it is marked.
+        std::optional<bool> Chosen() {
+            const bool marked = std::exchange(past, false), inexact = std::exchange(rounded, false);
+            if (!marked && !inexact) return std::nullopt;
+            (marked ? d.chosen_ : d.rounded_) = true;
+            return marked;
+        }
         Jet Eval(const PExpression<T>& e) {
-            Jet jet = d.Eval(e);
-            if (!std::exchange(past, false)) return jet;
-            d.chosen_ = true;
-            return Map(std::move(jet), numeric_interface<T>::marked);
+            Jet        jet    = d.Eval(e);
+            const auto marked = Chosen();
+            return marked ? Map(std::move(jet), [&](const T& v) { return Marked(*marked, v); })
+                          : jet;
         }
         // A size is a whole number, so one that moves is at a jump.
         T Bound(const PExpression<T>& e) {
@@ -977,16 +995,14 @@ private:
             const ParametersDefinition<T>& p = clause.parameters;
             const T                        guard = d.Holds(
                 {definition.Name(), row != 0 ? &p : nullptr, index, slice, row, col}, p.guard());
-            past = past || numeric_interface<T>::approximated(guard);
+            past    = past || numeric_interface<T>::approximated(guard);
+            rounded = rounded || !numeric_interface<T>::exact(guard);
             return numeric_interface<T>::truth(guard);
         }
         void Settle(Jet& into, int slice, int row, int col) {
-            if (!std::exchange(past, false)) return;
-            d.chosen_ = true;
-            for (auto& part : into)
-                if (part)
-                    (*part)(slice, row, col) =
-                        numeric_interface<typename T::value_type>::marked((*part)(slice, row, col));
+            if (const auto marked = Chosen())
+                for (auto& part : into)
+                    if (part) (*part)(slice, row, col) = Marked(*marked, (*part)(slice, row, col));
         }
         static T&   Value(Jet& jet) { return *jet[0]; }
         Jet         Blank(Extent extent) const { return d.Constant(T(extent)); }
@@ -1084,6 +1100,7 @@ private:
     bool                                                  guard_   = false;
     bool                                                  filling_ = false;
     bool                                                  chosen_  = false;
+    bool                                                  rounded_ = false;
     std::size_t                                           stepped_ = 0;
     std::size_t                                           complex_ = 0;  // grads at a complex point
     const Guarded*                                        guarded_ = nullptr;

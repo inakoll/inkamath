@@ -129,7 +129,7 @@ given = fedby(u_n = U(-1))
 # where the interpreter does not, and that call is not paired with the
 # interpreter's of H(-1), which is 1 from its threshold in every run.
 #
-#     parted: 100 steps from 0, against exact values
+#     parted: 100 steps from 0, against exact values until 0 and inexact ones from there
 #     parted.x: at 0 a disturbed run takes 's(c)_k | lim half(1) >= c = H(1)' and the interpreter 's(c)_k = 0'; the guard of the first is 4.8e-11 from its threshold
 #     parted.x: within 0; the interpreter's terms about 1 from the exact ones, past the tolerance from 0
 detour(w = 1/10^11) = {
@@ -180,7 +180,7 @@ recalled = twinned()
 # parted's s with a base clause: the clause where no guard holds is the
 # general one, not the base, which no term at 3 takes.
 #
-#     founded: 100 steps from 0, against exact values
+#     founded: 100 steps from 0, against exact values until 0 and inexact ones from there
 #     founded.x: at 0 a disturbed run takes 's(c)_k | lim half(1) >= c = 1' and the interpreter 's(c)_k = 0'; the guard of the first is 4.8e-11 from its threshold
 #     founded.x: within 0; the interpreter's terms about 1 from the exact ones, past the tolerance from 0
 based(w = 1/10^11) = {

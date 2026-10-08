@@ -1063,11 +1063,15 @@ private:
         EvaluationVisitor<T>& evaluator;
 
         // Whether a guard read since the last clause chosen was approximated,
-        // which makes that clause's answer approximated (DESIGN.md, C68).
-        bool past = false;
+        // or inexact, which makes that clause's answer so (DESIGN.md, C68, C241).
+        bool past = false, rounded = false;
 
-        void Marked(T& value) {
-            if (std::exchange(past, false)) value = numeric_interface<T>::marked(value);
+        template <typename V>
+        void Marked(V& value) {
+            if (past || rounded)
+                value = past ? numeric_interface<V>::marked(value)
+                             : numeric_interface<V>::inexact(value);
+            past = rounded = false;
         }
         T Eval(const PExpression<T>& e) {
             T value = e->accept(evaluator);
@@ -1075,11 +1079,7 @@ private:
             return value;
         }
         T Bound(const PExpression<T>& e) { return e->accept(evaluator); }
-        void Settle(T& into, int slice, int row, int col) {
-            if (std::exchange(past, false))
-                into(slice, row, col) =
-                    numeric_interface<typename T::value_type>::marked(into(slice, row, col));
-        }
+        void Settle(T& into, int slice, int row, int col) { Marked(into(slice, row, col)); }
         // A guard, told to --check where the clause is every term's, or a
         // function's outside the prelude.
         bool Holds(const Reference& definition, const Clause<T>& clause, int index, int, int row,
@@ -1087,6 +1087,7 @@ private:
             const T guard   = clause.parameters.guard()->accept(evaluator);
             past            = past || numeric_interface<T>::approximated(guard);
             const bool held = numeric_interface<T>::truth(guard);
+            rounded |= !numeric_interface<T>::exact(guard);
             const ParametersDefinition<T>& p    = clause.parameters;
             if (evaluator.stack().guards &&
                 (p.general() || (!p.indexed() && definition.home != &evaluator.stack().Builtins())))

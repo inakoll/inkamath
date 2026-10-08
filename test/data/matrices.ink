@@ -165,8 +165,8 @@ q_n = r_n[1,1]
 # It does not conjugate: MATLAB's and Julia's quote is the conjugate
 # transpose, which is the same only for real matrices.
 >> [1 i]'
-[1;
- i]
+[   1;
+ ~(i)]
 
 # A matrix defined by its cells: the brackets name the row and the column and
 # bound them, which is the size, and the right-hand side is any cell. The names
@@ -461,7 +461,7 @@ error: a matrix product needs as many columns on the left as rows on the right
 
 # An inexact exponent makes the power inexact, as it does a number's.
 >> frac s^~2
-error: 1 was approximated, so it has no exact fraction
+error: ~1 was approximated, so it has no exact fraction
 
 # A large power ends: it multiplied once per unit of the exponent, which is
 # two billion products here.

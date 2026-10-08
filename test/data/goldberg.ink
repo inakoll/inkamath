@@ -159,7 +159,7 @@ heron = d(d(d(d(sh*d(sh - a))*d(sh - b))*d(sh - c))^(1/2))
 ~3.04
 
 >> fl(10, 1, (heron - (s*(s - a)*(s - b)*(s - c))^(1/2))/0.01)
-70
+~70
 
 >> k = [d(a + d(b + c)); d(c - d(a - b)); d(c + d(a - b)); d(a + d(b - c))]
 k = [d(a + d(b + c)); d(c - d(a - b)); d(c + d(a - b)); d(a + d(b - c))]
@@ -331,7 +331,7 @@ g2(x, y) = fl(2, 3, x - chop(y, 2^(ex(2, x) - 3)))
 
 # Theorem 7 in double: (3.0/10.0)*10.0 is 3.
 >> (~3/~10)*~10 == 3
-1
+~1
 
 # Dekker's exact sum, x + y = (x + y rounded) + ((x - that) + y), holds in
 # base 2 only: base 10 with 5 digits, x = .99998, y = .99997.
@@ -352,23 +352,23 @@ t(x) = fl(10, 5, x)
 # Ambiguity: (x + y) + z is 1 and x + (y + z) is 0 at x = 10^30,
 # y = -10^30, z = 1.
 >> (~10^30 + ~(-10^30)) + ~1
-1
+~1
 
 >> ~10^30 + (~(-10^30) + ~1)
-0
+~0
 
 # Infinity: 3/inf is 0, 4 - inf is -inf, sqrt(inf) is inf, inf/inf NaN.
 >> inf = ~1/~0
 inf = ~1/~0
 
 >> 3/inf
-0
+~0
 
 >> 4 - inf
--inf
+~-inf
 
 >> inf^(1/2)
-inf
+~inf
 
 >> inf/inf
 -nan
@@ -379,17 +379,17 @@ inf
 X = ~(10^200)
 
 >> X/(X^2 + 1)
-0
+~0
 
 >> 1/(X + 1/X)
 ~1e-200
 
 >> 1/(~0 + 1/~0)
-0
+~0
 
 # The hypotenuse at 3*10^200 and 4*10^200 is inf in IEEE.
 >> ((~3*~10^200)^2 + (~4*~10^200)^2)^(1/2)
-inf
+~inf
 
 # Exact, the squares are far inside a thousand digits, and their root
 # 5*10^200 a double. So below the range: 10^-400's root is 10^-200.
@@ -408,20 +408,20 @@ inf
 # A complex exponent too: 10^200 at an angle of 400 ln 10, and 10^-200 at
 # minus that, by mpmath.
 >> (10^400)^(1/2+i)
-~-8.53885989e+199-i*~5.20460102e+199
+~(-8.53885989e+199-i*5.20460102e+199)
 
 >> (10^-400)^(1/2+i)
-~-8.53885989e-201+i*~5.20460102e-201
+~(-8.53885989e-201+i*5.20460102e-201)
 
 # Signed Zero: the principal root of -1 + i0 is i, as C's csqrt has it.
 >> (-1)^(1/2)
-i
+~(i)
 
 >> (-1)^(1/2) == i
-1
+~1
 
 >> (-4)^(1/2)
-i*2
+~(i*2)
 
 # Denormalized Numbers: base 10, 3 digits, emin = -98. 6.87e-97 minus
 # 6.81e-97 flushes to 0, and with gradual underflow is .6e-98; Smith's
@@ -485,7 +485,7 @@ digits = 16
 ~0.3
 
 >> ~0.3 == ~0.1 + ~0.2
-0
+~0
 
 >> digits = 17
 digits = 17
@@ -494,7 +494,7 @@ digits = 17
 ~0.30000000000000004
 
 >> ~0.30000000000000004 == ~0.1 + ~0.2
-1
+~1
 
 >> digits = 9
 digits = 9
@@ -520,7 +520,7 @@ me(e) | ~1 + e/2 > 1 = me(e/2)
 me(e) = e/2
 
 >> me(~1) == 2^-53
-1
+~1
 
 >> mx(e) | 1 + e/2 > 1 = mx(e/2)
 mx(e) | 1 + e/2 > 1 = mx(e/2)

@@ -315,8 +315,8 @@ error: x takes no arguments
 lx(x_n[j<=2]) = { ... }
 
 >> lx(x_n = [1; 2]).l
-[1;
- 2]
+[~1;
+ ~2]
 
 >> lx(x_n = 1).l
 error: lx(...).x_1 is a single value, where lx takes a 2x1 matrix

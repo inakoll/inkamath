@@ -87,7 +87,7 @@ seam = strided()
 # A negation is a subtraction from 0, as in the interpreter (C33), so the
 # negation of +0 is +0, where C's minus gives -0 and 1/(-x_n) -inf (C98):
 #
-#     naught: 100 steps from 0, against exact values
+#     naught: 100 steps from 0, against exact values until 0 and inexact ones from there
 #     naught.y: within 0
 negated(x_n) = {
     y_n | 1/(-x_n) > 0 = 1
@@ -98,7 +98,7 @@ naught = negated(x_n = ~0)
 # A subtraction is an addition of a subtraction from 0, as in the
 # interpreter, so -0 less +0 is +0, where C's minus gives -0 (C109):
 #
-#     zeroed: 100 steps from 0, against exact values
+#     zeroed: 100 steps from 0, against exact values until 0 and inexact ones from there
 #     zeroed.y: within 0
 subtracted(x_n) = {
     y_n | 1/(x_n*(-1) - x_n) > 0 = 1
@@ -108,7 +108,7 @@ zeroed = subtracted(x_n = ~0)
 
 # An input of -0 is fed as -0, not as C's integer 0 (C120):
 #
-#     mirrored: 100 steps from 0, against exact values
+#     mirrored: 100 steps from 0, against exact values until 0 and inexact ones from there
 #     mirrored.y: within 0
 inverted(x_n) = {
     y_n | 1/x_n > 0 = 1
@@ -118,7 +118,7 @@ mirrored = inverted(x_n = ~0*(-1))
 
 # A root of -0 is +0, as in the interpreter, where C's sqrt gives -0 (C163):
 #
-#     radix: 100 steps from 0, against exact values
+#     radix: 100 steps from 0, against exact values until 0 and inexact ones from there
 #     radix.y: within 0
 radical(x_n) = {
     y_n | 1/x_n^(1/2) > 0 = 1

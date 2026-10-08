@@ -80,29 +80,29 @@ error: a is not defined
 # fourteen, and the imaginary part here was 4.58636533e-14 -- the error in pi,
 # not the error of the arithmetic (DESIGN.md, C34).
 >> e^(i*pi)
--1+i*~1.2246468e-16
+~(-1+i*1.2246468e-16)
 
 >> i
-i
+~(i)
 
 >> i*i
--1
+~-1
 
 >> 2+3*i
-2+i*3
+~(2+i*3)
 
 >> (1+i)*(1-i)
-2
+~2
 
 # The principal square root of a negative number, which used to depend on how
 # the minus was written: unary minus left a -0 imaginary part, putting the
 # value on the far side of the branch cut, so this answered 'i*-2' where
 # '(0-4)^0.5' answered 'i*2'. Both had a real part of 1e-16 until C174.
 >> (-4)^0.5
-i*2
+~(i*2)
 
 >> (0-4)^0.5
-i*2
+~(i*2)
 
 # 'i' is the imaginary unit only when it is not the start of a longer name.
 # Every identifier beginning with 'i' used to be a syntax error.
@@ -119,7 +119,7 @@ index=7
 8
 
 >> i*2
-i*2
+~(i*2)
 
 # A tab separates as a space does. The lexer's whitespace case was ' ' and
 # nothing else, so a pasted or indented line was 'unexpected character'

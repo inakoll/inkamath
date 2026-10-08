@@ -29,22 +29,22 @@ f(q) = 2 + (4 + q)^(1/2)
 P(f) = [2*f f; f f]
 
 >> A'*P(f(5)) + P(f(5))*A - P(f(5))*B*B'*P(f(5)) + 5*G*G'
-[0, 0;
- 0, 0]
+[~0, ~0;
+ ~0, ~0]
 
 >> B'*P(f(5))
-[5, 5]
+[~5, ~5]
 
 >> S(d) = [d d; d 2*d]
 S(d) = [d d; d 2*d]
 
 >> A*S(f(21)) + S(f(21))*A' - S(f(21))*C'*C*S(f(21)) + 21*G*G'
-[0, 0;
- 0, 0]
+[~0, ~0;
+ ~0, ~0]
 
 >> S(f(21))*C'
-[7;
- 7]
+[~7;
+ ~7]
 
 # The full system matrix, m the gain at the plant's input that only the
 # plant knows. Its characteristic polynomial moves with m in its last two
@@ -77,7 +77,7 @@ Acl(m, f, d) = [A, -m*B*f*G'; d*G*C, A - B*f*G' - d*G*C]
 1
 
 >> abscissa(Acl(36/35, 5, 7))
-0
+~0
 
 # The lower end is where the third Hurwitz determinant vanishes, at
 # d = f = 5 43/25 - 9 sqrt(5)/25, 0.915015528 (sympy), bisected here on
@@ -134,13 +134,13 @@ low(f, d)_n = (b = low(f, d)_(n-1)) + (b[2] - b[1])/2*([1; 0] - hurwitz(charpoly
 # ((s - 1)/(s + 1))^2. There |L(iw)| = 4w/(1 + w^2) is 1 at w = 2 - sqrt(3),
 # where Re L = -8w^2/(1 + w^2)^2 = -1/2: the 60 degrees of phase.
 >> hinf(A - B*5*G', B, -5*G', 1)
-1
+~1
 
 >> hinf(A - B*4*G', B, -4*G', 1)
-1
+~1
 
 >> L(f, s) = f*G'*(s*A^0 - A)^-1*B
 L(f, s) = f*G'*(s*A^0 - A)^-1*B
 
 >> re(L(4, i*(2 - 3^(1/2))))
--0.5
+~-0.5

@@ -56,25 +56,26 @@ digits = 17
 ~6.6666666666666663e+299
 
 # Where the clause taken has no part, past 20 for tanh and 1000 for exp, the
-# header's part is 0 and the walk has none, which an exact 0, a product with
-# an infinity and a floor tell apart; so is a part of 0.
+# header's part is 0 and the walk has none, which a 0, inexact as a guard
+# reading a double chose the clause (C241), a product with an infinity and a
+# floor tell apart; so is a part of 0.
 >> grad_(x = ~25) tanh(~1*x)
-0
+~0
 
 >> 1/grad_(x = ~25) tanh(~1*x)
-error: division by zero
+~inf
 
 >> grad_(x = ~1001) exp(x)*~(10^400)
-0
+~0
 
 >> grad_(x = ~25) floor(tanh(~1*x))*x
-1
+~1
 
 >> grad_(x = ~0) exp(x*0)
-0
+~0
 
 >> 1/grad_(x = ~0) exp(x*0)
-inf
+~inf
 
 # Where a reduction's floor jumps the header's part is NaN, and the walk
 # refuses in its own words.
@@ -99,7 +100,7 @@ error: floor jumps at x = ~0.785398163
 ~2.7182818284590451
 
 >> grad_(x = ~1 + i) exp(x)
-error: exp needs real numbers, not 1+i
+error: exp needs real numbers, not ~(1+i)
 
 >> digits = 9
 digits = 9
@@ -185,10 +186,10 @@ error: evaluation nests more than 256 references deep
 dive(k, t) | k < 1 = ilogb(t)*t
 
 >> grad_(t = ~3) dive(254, t)
-1
+~1
 
 >> grad_(t = ~4) ilogb(t)*t
-2
+~2
 
 # A call whose jet has no part is the value alone, as outside grad.
 >> deep(k, a, t) = deep(k - 1, a, t)
@@ -205,4 +206,4 @@ deep(k, a, t) | k < 1 = exp(a)*t
 exp(x) = x*x
 
 >> grad_(x = ~3) exp(x)
-6
+~6

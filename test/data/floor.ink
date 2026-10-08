@@ -24,15 +24,15 @@
 8
 
 >> floor((~0.7+0.1)*10)
-7
+~7
 
 # Of an inexact number it is inexact, as whatever an inexact number touches
 # is, even where it prints whole; and an approximation past the bound says so.
 >> frac floor(pi)
-error: 3 was approximated, so it has no exact fraction
+error: ~3 was approximated, so it has no exact fraction
 
 >> floor(2^3322)
-inf  # approximated past a thousand digits
+~inf  # approximated past a thousand digits
 
 # A matrix cell by cell, as '+' and '/' are.
 >> floor([1/2, -1/2; 5/2, 7])
@@ -41,7 +41,7 @@ inf  # approximated past a thousand digits
 
 # What it refuses.
 >> floor(i)
-error: floor needs a real number, not i
+error: floor needs a real number, not ~(i)
 
 >> floor(1, 2)
 error: floor expects 1 argument, got 2

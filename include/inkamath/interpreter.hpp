@@ -330,11 +330,11 @@ inline constexpr const char* prelude[] = {
     // and abscissa bisect on them a bracket of A/B, B = 2^e above A's cells,
     // scaled by 2^e in two halves so that no factor leaves a double, and
     // keep halving past the 64th while the bracket is wider than 2^-53 of
-    // its end nearer 0, up to 256. An answer the cap ended is marked, by
-    // 0*10^-1000, a 0 approximated past a thousand digits (DESIGN.md), as
-    // is one whose double is not normal where its end is not 0, but for a
-    // polynomial lambda^n, whose radius is 0, or lambda^k q, q stable, whose
-    // abscissa is.
+    // its end nearer 0 and its midpoint is neither end, up to 256. An
+    // answer the cap ended is marked, by 0*10^-1000, a 0 approximated past
+    // a thousand digits (DESIGN.md), as is one whose double is not normal
+    // where its end is not 0, but for a polynomial lambda^n, whose radius is
+    // 0, or lambda^k q, q stable, whose abscissa is.
     "charpolym(A)_1 = A^0",
     "charpolym(A)_m = A*charpolym(A)_(m-1) + charpolyc(A)_(m-1)*A^0",
     "charpolyc(A)_0 = 1",
@@ -360,7 +360,8 @@ inline constexpr const char* prelude[] = {
     "= rhop(sum_(j=1)^m sum_(k=1)^n max(A[j,k], -A[j,k])/2^(m+n)) + m + n",
     "rhop(s) = ilogb(s + (s == 0)) + 1 + 0*s",
     "rhod(x, e) = x*2^(e - floor(e/2))*2^floor(e/2)",
-    "rhos(b) = b[2] - b[1] <= 2^-53*min(abs(b[1]), abs(b[2]))",
+    "rhos(b) = b[2] - b[1] <= 2^-53*min(abs(b[1]), abs(b[2])) "
+    "or (b[1] + b[2])/2 == b[1] or (b[1] + b[2])/2 == b[2]",
     "rhou(A)_0 = [0; 1]",
     "rhou(A)_m = rhoh(charpoly(rhod(A, -rhoe(A))), rhou(A)_(m-1))",
     "rhou(A)_m | m > 64 and rhos(rhou(A)_(m-1)) = rhou(A)_(m-1)",
@@ -408,9 +409,10 @@ inline constexpr const char* prelude[] = {
     "eigc(A[j<=n, k<=n])[i<=n] = eigk(A, i)",
     "eig(A[j<=n, k<=n]) | eigr(A) = eigc(A)",
     "smax(A[j<=m, k<=n]) = smaxd(eigk(rhod(A, -rhoe(A))'*rhod(A, -rhoe(A)), n)^(1/2), rhoe(A))",
-    "smaxd(x, e) = rhod(x, e) + 0*10^(-1000*(rhod(rhod(x, e), -e) <> x))",
+    "smaxd(x, e) = rhod(x, e)",
     "smaxd(x, e) | x <> 0 and (rhod(x, e) == 0 or abs(rhod(x, e)) >= 2^1024) "
     "= rhod(x, e) + 0*10^-1000",
+    "smaxd(x, e) | rhod(rhod(x, e), -e) <> x = rhod(x, e) + 0*10^-1000",
     // hinf bisects g = gamma^2 in units of 2^e above 2 tr(D'D) + 8n tr(PQ),
     // P and Q the Gramians, on whether the Hamiltonian of gamma has an
     // eigenvalue iw: det(R) det(sI - H), R = gI - D'D, is q(s^2), of degree
@@ -539,7 +541,9 @@ Interpreter<T, U>::Interpreter() {
             if (a.exact() || Number::approximated(a) || z.imag() != 0 || !std::isfinite(z.real()))
                 return {};
             const double y = c(z.real());
-            if (c == inkamath_prelude_ilogb) return U(Number(static_cast<long long>(y)));
+            // Inexact, as the walk's k, its guards reading a double.
+            if (c == inkamath_prelude_ilogb)
+                return U(Number::inexact(Number(static_cast<long long>(y))));
             return U(Number(y));
         };
         // A part exact is rounded first by exp, sin and cos, as their

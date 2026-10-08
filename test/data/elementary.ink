@@ -9,7 +9,7 @@
 ~2.71828183
 
 >> exp(0)
-1
+~1
 
 >> exp(-1)
 ~0.367879441
@@ -25,20 +25,20 @@
 ~1.79282279e+308
 
 >> exp(710)
-inf
+~inf
 
 >> exp(-745)
 ~4.94065646e-324
 
 >> exp(-746)
-0
+~0
 
 # Past a thousand either way, its value there, no double lying between.
 >> exp(10^400)
-inf
+~inf
 
 >> exp(-10^400)
-0
+~0
 
 >> log(10)
 ~2.30258509
@@ -85,7 +85,7 @@ inf
 ~2301.94179
 
 >> log(~1/0)
-inf
+~inf
 
 >> log(0)
 error: log needs a number above 0, not 0
@@ -100,7 +100,7 @@ error: log needs a number above 0, not -1
 ~-0.462117157
 
 >> tanh(0)
-0
+~0
 
 # Near 0, where 1 - 2/(exp(2*x) + 1) cancelled: it gave seven digits here.
 >> tanh(1/10^9)
@@ -110,20 +110,20 @@ error: log needs a number above 0, not -1
 ~0.995054754
 
 >> tanh(21)
-1
+~1
 
 >> tanh(-21)
--1
+~-1
 
 # Nothing they give is exact, exp(0) no more than before.
 >> frac exp(0)
-error: 1 was approximated, so it has no exact fraction
+error: ~1 was approximated, so it has no exact fraction
 
 >> frac log(1)
-error: 0 was approximated, so it has no exact fraction
+error: ~0 was approximated, so it has no exact fraction
 
 >> frac tanh(0)
-error: 0 was approximated, so it has no exact fraction
+error: ~0 was approximated, so it has no exact fraction
 
 # NaN is no number to compare, and each of the three asks a guard first, as
 # log did: exp and tanh answered NaN.
@@ -189,14 +189,14 @@ digits = 9
 3318
 
 >> frac ilogb(~3)
-1
+error: ~1 was approximated, so it has no exact fraction
 
 # Of 0 and below, refused as log is, however 0 is written (C100).
 >> ilogb(0)
 error: ilogb needs a number above 0, not 0
 
 >> ilogb(~0)
-error: ilogb needs a number above 0, not 0
+error: ilogb needs a number above 0, not ~0
 
 >> ilogb(-1)
 error: ilogb needs a number above 0, not -1
@@ -204,7 +204,7 @@ error: ilogb needs a number above 0, not -1
 # grad differentiates the definitions: floor's derivative is 0, and a guard
 # at its threshold takes its own side, so 1, 2 and the powers of two answer.
 >> grad_(x = 0) exp(x)
-1
+~1
 
 >> grad_(x = 1) exp(x)
 ~2.71828183
@@ -213,20 +213,20 @@ error: ilogb needs a number above 0, not -1
 ~0.367879441
 
 >> grad_(x = 800) exp(x)
-inf
+~inf
 
 # Past a thousand, the derivative of a constant.
 >> grad_(x = 1001) exp(x)
 0
 
 >> grad_(x = 1) log(x)
-1
+~1
 
 >> grad_(x = 2) log(x)
-0.5
+~0.5
 
 >> grad_(x = 1/2) log(x)
-2
+~2
 
 >> grad_(x = 3) log(x)
 ~0.333333333
@@ -235,7 +235,7 @@ inf
 error: log needs a number above 0, not 0
 
 >> grad_(x = 0) tanh(x)
-1
+~1
 
 >> grad_(x = 1/2) tanh(x)
 ~0.786447733

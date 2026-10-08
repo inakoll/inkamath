@@ -55,11 +55,11 @@
 
 # Ordering needs real numbers, as the factorial does (DESIGN.md, C42).
 >> i < 1
-error: a comparison needs real numbers, not i
+error: a comparison needs real numbers, not ~(i)
 
 # Equality does not.
 >> i == i
-1
+~1
 
 # A comparison needs single values. Cell by cell was considered and left out:
 # it would answer with a matrix of ones and zeros that nothing in the language
@@ -74,7 +74,7 @@ error: a comparison needs single values, not a 1x2 matrix
 1
 
 >> [1 2;3 4]/3 == [~0.333333333, ~0.666666667; 1, ~1.33333333]
-0
+~0
 
 >> [1 2] <> [2 1]
 1

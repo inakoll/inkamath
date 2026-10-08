@@ -6,9 +6,9 @@
 
 # The eigenvalues as a column, smallest first, each with its multiplicity.
 >> eig([3 0 0; 0 -1 0; 0 0 2])
-[-1;
-  2;
-  3]
+[~-1;
+  ~2;
+  ~3]
 
 # (5 - sqrt(5))/2 and (5 + sqrt(5))/2.
 >> eig([2 1; 1 3])
@@ -28,9 +28,9 @@
 # A repeated eigenvalue is each of its copies, the count being exact with
 # multiplicity: 1 twice, then -sqrt(2) and sqrt(2) twice each.
 >> eig([2 1 1; 1 2 1; 1 1 2])
-[1;
- 1;
- 4]
+[~1;
+ ~1;
+ ~4]
 
 >> eig([1 0 1 0; 0 1 0 1; 1 0 -1 0; 0 1 0 -1])
 [~-1.41421356;
@@ -57,7 +57,7 @@ digits = 9
 # A 0 is certified exactly, by the counts at 0: no bisection, so no cap
 # and no mark. 0, 2 - sqrt(2) and 2 + sqrt(2).
 >> eig([1 1 1; 1 1 1; 1 1 2])
-[           0;
+[          ~0;
  ~0.585786438;
   ~3.41421356]
 
@@ -66,19 +66,19 @@ digits = 9
  0]
 
 >> eig([0 0; 0 0])
-[0;
- 0]
+[~0;
+ ~0]
 
 # Not symmetric, and nilpotent: its roots are real, both 0.
 >> eig([0 1; 0 0])
-[0;
- 0]
+[~0;
+ ~0]
 
 # An eigenvalue that is not 0 but below 2^-203 of B is the bracket the
 # 256th halving leaves, marked, as rho's is.
 >> eig([1/10^100 0; 0 1])
-[0;
- 1]  # approximated past a thousand digits
+[~0;
+ ~1]  # approximated past a thousand digits
 
 # Hilbert's 5x5 (mpmath: 3.287928772e-6, 3.058980402e-4, 0.01140749162,
 # 0.2085342186, 1.567050691), and a symmetric 6x6 of tenths (NumPy:
@@ -106,10 +106,10 @@ digits = 9
    ~5.37228132]
 
 >> eig([-4 -6 -4 -1; 1 0 0 0; 0 1 0 0; 0 0 1 0])
-[-1;
- -1;
- -1;
- -1]
+[~-1;
+ ~-1;
+ ~-1;
+ ~-1]
 
 # Complex roots are refused, i and -i, and 2 with i and -i: not the real
 # ones alone.
@@ -141,7 +141,7 @@ error: eig needs a matrix whose eigenvalues are all real, by a guard approximate
 ~-0.333333333
 
 >> eig(5)
-5
+~5
 
 # An inexact matrix is bisected by rounded tests, so its bracket certifies
 # nothing.
@@ -165,15 +165,15 @@ error: ~1.38196601 was approximated, so it has no exact fraction
 # Past a double's range, an answer is the double ~ makes of it, inf or 0,
 # marked though every test is exact: a 0 that is not one is not certified.
 >> eig([2 1; 1 3]*10^400)
-[inf;
- inf]  # approximated past a thousand digits
+[~inf;
+ ~inf]  # approximated past a thousand digits
 
 >> eig([2 1; 1 3]/10^400)
-[0;
- 0]  # approximated past a thousand digits
+[~0;
+ ~0]  # approximated past a thousand digits
 
 >> eig(10^-400)
-0  # approximated past a thousand digits
+~0  # approximated past a thousand digits
 
 # One approximated past a thousand digits marks the answer: rt_20 is
 # within a double of sqrt(2).
@@ -184,7 +184,7 @@ rt_0 = 1
 rt_n = (rt_(n-1) + 2/rt_(n-1))/2
 
 >> eig([rt_20 0; 0 1/2])
-[        0.5;
+[       ~0.5;
  ~1.41421356]  # approximated past a thousand digits
 
 # The largest singular value, sqrt of the largest eigenvalue of A'A, of a
@@ -196,16 +196,16 @@ rt_n = (rt_(n-1) + 2/rt_(n-1))/2
 ~9.508032
 
 >> smax([3 4])
-5
+~5
 
 >> smax([3; 4])
-5
+~5
 
 >> smax(-2)
-2
+~2
 
 >> smax(0*[1 2; 3 4])
-0
+~0
 
 # A is scaled before A'A is formed, which would be 10^400 and 10^-400.
 >> smax([~1 2; 3 4]*10^200)
@@ -217,39 +217,39 @@ rt_n = (rt_(n-1) + 2/rt_(n-1))/2
 # Marked as eig's are, though they pass the range only as A's scale is
 # put back, after eigk's answer.
 >> smax(10^400)
-inf  # approximated past a thousand digits
+~inf  # approximated past a thousand digits
 
 >> smax(10^-400)
-0  # approximated past a thousand digits
+~0  # approximated past a thousand digits
 
 # Far enough past a double's range, half of A's scale is no double either:
 # the answer is inf or 0 still, not inf times 0.
 >> smax(10^700)
-inf  # approximated past a thousand digits
+~inf  # approximated past a thousand digits
 
 >> smax([10^-700 0; 0 10^-700])
-0  # approximated past a thousand digits
+~0  # approximated past a thousand digits
 
 # A cell that is itself inf has no value to scale, as rho's has not (C206).
 >> eig([~1 1; 1 1]*10^310)
-error: eig needs finite cells, not inf
+error: eig needs finite cells, not ~inf
 
 >> smax(~-10^310)
-error: smax needs finite cells, not -inf
+error: smax needs finite cells, not ~-inf
 
 # Nor has it a bracket, which read -nan (DESIGN.md, C210).
 >> eigb([~1 1; 1 1]*10^310, 1)_64
-error: eigb needs finite cells, not inf
+error: eigb needs finite cells, not ~inf
 
 >> eig([1 2 3])
 error: eig takes A[j<=n, k<=n], not a 1x3 matrix
 
 # In max's words, as rho is.
 >> eig([1 i; -i 1])
-error: a comparison needs real numbers, not i
+error: a comparison needs real numbers, not ~(i)
 
 >> smax([1 i])
-error: a comparison needs real numbers, not i
+error: a comparison needs real numbers, not ~(i)
 
 # Bisections are staircases in A: refused where it moves, as rho is.
 >> grad_(A = [2 1; 1 3]) eig(A)
@@ -264,8 +264,8 @@ error: grad cannot differentiate smax yet
 error: grad cannot differentiate eigb yet
 
 >> grad_(a = 2) a*eig([2 1; 1 2])
-[1;
- 3]
+[~1;
+ ~3]
 
 # The names are the prelude's, which a session may take for itself.
 >> eig = 7
@@ -278,4 +278,4 @@ eig = 7
 clear eig
 
 >> eig([2])
-2
+~2

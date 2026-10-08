@@ -257,16 +257,18 @@ Language
 A literal is exact as written, and stays exact through `+`, `-`, `*`, `/` and
 whole powers: `1/3+1/3+1/3` is `1`, and `0.1+0.2` is `0.3`. What can only be
 approached — `pi`, `e`, a root, a limit — is inexact, as is anything written
-after `~`, and an inexact number makes inexact whatever it touches. An exact
-number that outgrows a thousand digits becomes inexact rather than wrong, and
-an answer that did ends in `# approximated past a thousand digits`, a comment,
-so it still reads back. So does a comparison that reads such a number, and
-the answer of a clause a guard reading one chose, since a truth read from a
-double may be wrong. Dividing by an exact zero is an error.
+after `~`, and an inexact number makes inexact whatever it touches: a
+comparison that reads one, since a truth read from a double may be wrong, and
+the answer of a clause a guard reading one chose. An exact number that
+outgrows a thousand digits becomes inexact rather than wrong, and an answer
+that did ends in `# approximated past a thousand digits`, a comment, so it
+still reads back; so does whatever such a number touches, a truth and a
+clause chosen too. Dividing by an exact zero is an error.
 
 Every number prints in decimal: an exact whole number in full, anything else
-to nine significant digits, with `~` in front unless what is printed is all of
-the value. `frac` at the start of a line shows the answer as its exact
+to nine significant digits, with `~` in front unless it is exact and what is
+printed is all of it, so a bare number is exact and is what it shows. A
+complex number has one, before its parts in parentheses. `frac` at the start of a line shows the answer as its exact
 fraction, and `digits = n` sets how many digits are shown.
 
 Numbers are complex; `i` is the imaginary unit, a name that a bound one (a
@@ -294,10 +296,10 @@ again, and given back by `clear`.
 | `expr+expr` `expr-expr` | addition, subtraction |
 | `expr*expr` `expr/expr` | multiplication, division |
 | `expr^expr` | power; of a square matrix, a whole one, negative for the inverse |
-| `expr<expr` `expr>expr` | comparison, answering 1 or 0 |
+| `expr<expr` `expr>expr` | comparison, answering 1 or 0, inexact where a side read is |
 | `expr<=expr` `expr>=expr` | the same, or equal |
 | `expr==expr` `expr<>expr` | equal, not equal, of numbers or whole matrices |
-| `expr and expr` `expr or expr` | both, either: 1 or 0, the right read only if needed |
+| `expr and expr` `expr or expr` | both, either: 1 or 0, inexact where a side read is, the right read only if needed |
 | `name = expr` | definition (section 3) |
 | `name \| cond = expr` | a definition in cases (section 3) |
 | `clear name` | drop a definition (section 3) |
@@ -332,16 +334,16 @@ runs to the end of the line.
 120
 
 >> 2+3*i
-2+i*3
+~(2+i*3)
 
 >> (1+i)*(1-i)
-2
+~2
 
 >> floor(-7/2)
 -4
 
 >> im(2+3*i)
-3
+~3
 
 >> T(z) = 1/(z - 1/2)
 T(z) = 1/(z - 1/2)
@@ -554,7 +556,7 @@ is inside |z| < r, both strictly. `rho(A)`, the spectral radius, and
 tests: `rhob(A)_m` and `abscissab(A)_m` are the brackets [lo; hi] after m
 halvings, lo at most the value and hi above it, exact of an exact matrix,
 and the answer is lo, inexact, once the bracket is within 2^-53 of its end
-nearer 0, after 64 halvings and at most 256. It is certified while the tests
+nearer 0, or its ends are adjacent doubles, after 64 halvings and at most 256. It is certified while the tests
 are exact; their numbers grow with the matrix and the halvings, and past a
 thousand digits they are approximated and the answer is marked, within a
 double's accuracy but no longer proved. An answer the 256th halving leaves
@@ -639,7 +641,7 @@ even where it cancels in the transfer function. `grad` refuses both:
 ~2.06559112
 
 >> dhinf(1/2, 1, 1)
-2
+~2
 
 >> hinf(1, 1, 1)
 error: hinf needs every eigenvalue of A left of the imaginary axis
@@ -772,7 +774,7 @@ If no clause applies, the interpreter says so rather than inventing a value:
 
 ```
 >> abs(i)
-error: a comparison needs real numbers, not i
+error: a comparison needs real numbers, not ~(i)
 ```
 
 A default written last is a paper's "otherwise", and means the same:

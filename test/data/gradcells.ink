@@ -113,8 +113,8 @@ hl(a)_n = a^2
 lc(a)[j<=2] = lim hl(a*j)
 
 >> grad_(a = 3) lc(a)
-[ 6;
- 24]
+[ ~6;
+ ~24]
 
 # A clause that holds at the point only is refused, naming the cell. A
 # cell's place never moves, so a guard on it is no jump.
@@ -280,8 +280,8 @@ m(a)_2[j<=2] = j
 m(a)_n[j<=2] = a*j^2
 
 >> grad_(a = 3) lim m(a)
-[1;
- 4]
+[~1;
+ ~4]
 
 # A clause for one cell is no base term, so the walk starts below it: ob_6
 # divides by zero at 3, and the limit, reached at ob_4, never reads it.
@@ -295,12 +295,12 @@ ob(a)_n[j<=2] = a*j^2
 ob(a)_6[1] = 1/(a - 3)
 
 >> lim ob(3)
-[ 3;
- 12]
+[ ~3;
+ ~12]
 
 >> grad_(a = 3) lim ob(a)
-[1;
- 4]
+[~1;
+ ~4]
 
 # Without parameters a definition by cells reads only globals, which grad's
 # name does not reach: a constant, or refused as any definition is.
@@ -412,7 +412,7 @@ W0 = [1 0; 1 1]
 dW = grad_(w = W0) loss(w) - hand(W0)
 
 >> sum_(j=1)^2 sum_(k=1)^2 dW[j,k]^2 < 1/10^24
-1
+~1
 
 # Backpropagation by hand (Rumelhart, Hinton & Williams 1986; Bishop, PRML,
 # 5.3) for a 2-3-1 ReLU network with a squared loss: delta2 = y - t and

@@ -1397,7 +1397,8 @@ What it decides, revising step 1's display:
   the digits continue, and `0.666666667...` claims a 7 that 2/3 does not have.
   An inexact number that is exactly what is printed needs no mark (`i*i` is
   `-1`), a complex number is marked part by part where it is inexact, and step
-  1's trailing point goes.
+  1's trailing point goes. (Reversed by C240: `~` before every inexact number,
+  and once before a complex number's parts, `~(2+i*3)`.)
 - **`~` is also an operator**: in front of anything, it makes it inexact, so
   every answer reads back as what it says it is, and `root_0 = ~1` starts an
   approximate iteration. With a bignum that is no nicety -- exact Newton's
@@ -1770,7 +1771,7 @@ closures need one anyway, and can bring it.
 | C254 `[fixed]` | **C251 quoted a sequence's base clause as the one where no guard holds.** The clause taken where none holds was the first without a guard, a function's, and of a sequence with parameters its base: `s(c)_0 = 5` before parted's clauses said "the interpreter 's(c)_0 = 5'" of s at 3. It is the first without a guard and without an index, or a general one, now, in 3 lines more and one of comment; `founded` in `test/compile/straddle.ink` holds it, and no other check program moved. |
 | C260 `[fixed]` | **The interpreter continued a block that does not fill its band with its corner.** C41 kept it as the residue of an idea, recorded as no meaning, and *Block literals* refuses it compiled, "a block that does not fill its band": `[a, [3 4]]`, with `a` 2x2, was `[1, 2, 3, 4; 3, 4, 4, 4]`, and `[[1 2 3], a]` filled a row with `3 3 3`. What the implementation accepts is not a meaning (CLAUDE.md, section 2), so the interpreter refuses it in the same words now, a single value still stretched over its place, in 3 lines and 2 of comment; matrices.ink holds it, those two answers, its `[a [3 4]]` and vectors.ink's moving to the refusal, and no other answer moved. `...` stays unclaimed for a continuation written out. |
 | C261 `[fixed]` | **Compiled, a matrix inverse in a limit's terms was refused as outside a sequence.** A limit's terms are a sequence, the one it walks, but have no temporaries, where an inverse is computed: `d_n = lim e(x_n)`, `e(r)_k = [(I + r*f(e(r)_(k-1)))^(0-1), I]`, the Riccati doubling under `lim`, was "a matrix inverse outside a sequence". It is "a matrix inverse inside a limit's terms" now, as a limit of matrices there is refused, the only place an inverse meets no temporaries, a sequence and a global having them and the prelude's C functions inverting nothing, in no line more and 2 of comment; `compile_blocks_refused` in `test/cli.cmake` holds it, `d`'s line moving as *Block literals* said it would, and no other refusal moved. |
-| C262 `[fixed]` | **An exact number past a double's range compared with a double as 0 or inf.** The exact operand became a double first, as C242's did in arithmetic: `10^-400 == ~0` was 1, `10^-400 > ~0` 0, `10^400 == 1/~0` 1, and `max(~0, 10^-400)` was 0. Such a number, one whose double is 0 or inf, is compared with a finite double exactly, the double read as the fraction it is, and with inf or NaN as any finite number is, so those are 0, 1, 0 and 1e-400; `==` and the orders share it, and so do max, min and every guard. Within the range an exact number still compares as its nearest double, `1/3 == ~(1/3)` 1, and two exact numbers compared exactly already. In 19 lines and 3 of comment, 1 going; errors.ink holds it, and no other answer moved. A comparison with an inexact operand still gives an exact truth. |
+| C262 `[fixed]` | **An exact number past a double's range compared with a double as 0 or inf.** The exact operand became a double first, as C242's did in arithmetic: `10^-400 == ~0` was 1, `10^-400 > ~0` 0, `10^400 == 1/~0` 1, and `max(~0, 10^-400)` was 0. Such a number, one whose double is 0 or inf, is compared with a finite double exactly, the double read as the fraction it is, and with inf or NaN as any finite number is, so those are 0, 1, 0 and 1e-400; `==` and the orders share it, and so do max, min and every guard. Within the range an exact number still compares as its nearest double, `1/3 == ~(1/3)` 1, and two exact numbers compared exactly already. In 19 lines and 3 of comment, 1 going; errors.ink holds it, and no other answer moved. A comparison with an inexact operand still gives an exact truth (until C241). |
 
 **Measure instructions, not the clock.** One of those changes made the matrix
 workload 20 per cent slower by the clock and not by a single instruction: with
@@ -5881,8 +5882,9 @@ that exploring seven domains asked of the interpreter, by how many asked.
     approximated past a thousand digits`.
 
   Unchanged: what is inexact by nature or by `~`, unmarked by C68, so
-  `~rt_11 > c` is a plain 0, wrong as it is. What such an operation
-  computes from an approximated number stays marked, as C68 has it: Reddi's
+  `~rt_11 > c` is a plain 0, wrong as it is. (Reversed by C241: it is
+  `~0`.) What such an operation computes from an approximated number stays
+  marked, as C68 has it: Reddi's
   Adam transcribed takes `v_n^(1/2)` of exact decimals past the bound and
   is marked, an answer inexact anyway, but `(rt_20 - c)^(1/2)` is
   1.49e-8 imaginary for 4.1e-11 real, and clearing the mark at a root would

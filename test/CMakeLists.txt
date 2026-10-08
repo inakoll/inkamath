@@ -208,13 +208,13 @@ set_tests_properties(check_acc_report PROPERTIES PASS_REGULAR_EXPRESSION
 set_tests_properties(check_given_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^given: 100 steps from 0, against exact values\ngiven\\.x: within 0\n$")
 set_tests_properties(check_parted_report PROPERTIES PASS_REGULAR_EXPRESSION
-    "^parted: 100 steps from 0, against exact values\nparted\\.x: at 0 a disturbed run takes 's\\(c\\)_k \\| lim half\\(1\\) >= c = H\\(1\\)' and the interpreter 's\\(c\\)_k = 0'\\; the guard of the first is 4\\.8e-11 from its threshold\nparted\\.x: within 0\\; the interpreter's terms about 1 from the exact ones, past the tolerance from 0\n$")
+    "^parted: 100 steps from 0, against exact values until 0 and inexact ones from there\nparted\\.x: at 0 a disturbed run takes 's\\(c\\)_k \\| lim half\\(1\\) >= c = H\\(1\\)' and the interpreter 's\\(c\\)_k = 0'\\; the guard of the first is 4\\.8e-11 from its threshold\nparted\\.x: within 0\\; the interpreter's terms about 1 from the exact ones, past the tolerance from 0\n$")
 set_tests_properties(check_unasked_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^unasked: ${straddled}\nunasked\\.y: within 0\\; the interpreter's terms about 5\\.8e-11 from the exact ones\nunasked\\.g: within 0\\; the interpreter's terms about inf from the exact ones, past the tolerance from 0\n$")
 set_tests_properties(check_recalled_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^recalled: ${straddled}\nrecalled\\.y: within 0${about}\nrecalled\\.z: within 0${about}\nrecalled\\.x: within 0\n$")
 set_tests_properties(check_founded_report PROPERTIES PASS_REGULAR_EXPRESSION
-    "^founded: 100 steps from 0, against exact values\nfounded\\.x: at 0 a disturbed run takes 's\\(c\\)_k \\| lim half\\(1\\) >= c = 1' and the interpreter 's\\(c\\)_k = 0'\\; the guard of the first is 4\\.8e-11 from its threshold\nfounded\\.x: within 0\\; the interpreter's terms about 1 from the exact ones, past the tolerance from 0\n$")
+    "^founded: 100 steps from 0, against exact values until 0 and inexact ones from there\nfounded\\.x: at 0 a disturbed run takes 's\\(c\\)_k \\| lim half\\(1\\) >= c = 1' and the interpreter 's\\(c\\)_k = 0'\\; the guard of the first is 4\\.8e-11 from its threshold\nfounded\\.x: within 0\\; the interpreter's terms about 1 from the exact ones, past the tolerance from 0\n$")
 add_test(NAME check_knee COMMAND check_knee)
 add_test(NAME check_both COMMAND check_both)
 set_tests_properties(check_both PROPERTIES WILL_FAIL ON)
@@ -581,13 +581,13 @@ set_tests_properties(check_stiff_report PROPERTIES PASS_REGULAR_EXPRESSION
 set_tests_properties(check_fir_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^fir: 100 steps from 0, against exact values\n(fir\\.[a-z]+: within 0\n)+$")
 set_tests_properties(check_naught_report PROPERTIES PASS_REGULAR_EXPRESSION
-    "^naught: 100 steps from 0, against exact values\nnaught\\.y: within 0\n$")
+    "^naught: 100 steps from 0, against exact values until 0 and inexact ones from there\nnaught\\.y: within 0\n$")
 set_tests_properties(check_zeroed_report PROPERTIES PASS_REGULAR_EXPRESSION
-    "^zeroed: 100 steps from 0, against exact values\nzeroed\\.y: within 0\n$")
+    "^zeroed: 100 steps from 0, against exact values until 0 and inexact ones from there\nzeroed\\.y: within 0\n$")
 set_tests_properties(check_mirrored_report PROPERTIES PASS_REGULAR_EXPRESSION
-    "^mirrored: 100 steps from 0, against exact values\nmirrored\\.y: within 0\n$")
+    "^mirrored: 100 steps from 0, against exact values until 0 and inexact ones from there\nmirrored\\.y: within 0\n$")
 set_tests_properties(check_radix_report PROPERTIES PASS_REGULAR_EXPRESSION
-    "^radix: 100 steps from 0, against exact values\nradix\\.y: within 0\n$")
+    "^radix: 100 steps from 0, against exact values until 0 and inexact ones from there\nradix\\.y: within 0\n$")
 set_tests_properties(check_nests_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^nests: 100 steps from 0, against exact values\nnests\\.s: within 0\nnests\\.x: within 0\n$")
 set_tests_properties(check_calm_report PROPERTIES PASS_REGULAR_EXPRESSION
@@ -712,7 +712,7 @@ foreach(report IN ITEMS
         "stiff:^stiff: 100 steps from 0${inexact}\nstiff\\.h: within 6e-08, 0\\.5 units of a float\nstiff\\.x: within ${units}\nstiff\\.y: within ${units}\n$"
         "crawl:^crawl: 100 steps from 0${in_float}\ncrawl\\.s: within 0, 0 units of a float\ncrawl\\.y: 100000016 at 0, where the interpreter gives none: s did not converge within 100 terms \\(last term 100000800\\)\n$"
         "fan:^fan: 100 steps from 0${in_float}\nfan\\.y: within 0, 0 units of a float\n$"
-        "radix:^radix: 100 steps from 0${in_float}\nradix\\.y: ${exact}\n$"
+        "radix:^radix: 100 steps from 0${inexact}\nradix\\.y: ${exact}\n$"
         "hum:^hum: 100 steps from 0${in_float}\nhum\\.y: within 2\\.7e-06, 22 units of a float\n$"
         "drone:^drone: 100 steps from 0${in_float}\ndrone\\.y: within 5\\.6e-06, 47 units of a float\n$"
         "far:^far: 100 steps from 0${in_float}\nfar\\.x: within 0\\.99, 16 units of a float\nfar\\.d: 0 at 1, where the interpreter gives 0\\.01\n$"

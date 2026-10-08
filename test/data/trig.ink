@@ -36,16 +36,16 @@
 # A double's 0 and 1, as exp(0) is a double's 1: a clause for 0 alone would
 # make them exact, and grad refuses a clause that holds at a point alone.
 >> sin(0)
-0
+~0
 
 >> frac sin(0)
-error: 0 was approximated, so it has no exact fraction
+error: ~0 was approximated, so it has no exact fraction
 
 >> cos(0)
-1
+~1
 
 >> frac cos(0)
-error: 1 was approximated, so it has no exact fraction
+error: ~1 was approximated, so it has no exact fraction
 
 # pi is the double nearest it, so these are the sine and cosine of that
 # double, as C gives them.
@@ -91,10 +91,10 @@ error: sin needs a number between -2^20 and 2^20
 error: a comparison needs a number, not -nan
 
 >> cos(i)
-error: cos needs real numbers, not i
+error: cos needs real numbers, not ~(i)
 
 >> sin(~1 + i)
-error: sin needs real numbers, not 1+i
+error: sin needs real numbers, not ~(1+i)
 
 >> sin([1 2])
 error: sin needs single values, not a 1x2 matrix; write it by its cells
@@ -116,15 +116,15 @@ abs(x) | x >= 0 = re(x)
 0
 
 >> abs(~(-2.5))
-2.5
+~2.5
 
 >> abs(-1/~0)
-inf
+~inf
 
 # A complex number's modulus, the root of re^2 + im^2, inexact as the
 # number is.
 >> abs(i)
-1
+~1
 
 >> abs(0/~0)
 error: a comparison needs a number, not -nan
@@ -146,19 +146,19 @@ error: abs needs single values, not a 1x2 matrix; write it by its cells
 1/4
 
 >> frac min(1/3, ~0.5)
-1/3
+error: ~0.333333333 was approximated, so it has no exact fraction
 
 >> max(1/3, ~0.5)
-0.5
+~0.5
 
 >> max(2, 2)
 2
 
 >> max(~1/0, 1)
-inf
+~inf
 
 >> min(-1/~0, 1)
--inf
+~-inf
 
 # NaN is no number to compare, on either side: C's fmax would answer the
 # other argument, which hides it.
@@ -169,7 +169,7 @@ error: a comparison needs a number, not -nan
 error: a comparison needs a number, not -nan
 
 >> max(i, 1)
-error: a comparison needs real numbers, not i
+error: a comparison needs real numbers, not ~(i)
 
 # The greatest cell of a matrix is a reduction over its cells, not this.
 >> max([1 2], [2 1])
@@ -236,7 +236,7 @@ digits = 17
 # Odd to the bit: -x is reduced as x is, but where x*2/pi + 1/2 is whole,
 # as at the double nearest 3 pi/4, and floor takes k one way on each side.
 >> sin(~(-2.5)) + sin(~2.5)
-0
+~0
 
 >> sin(~2.356194490192345) + sin(~(-2.356194490192345))
 ~-1.1102230246251565e-16
@@ -245,10 +245,10 @@ digits = 17
 # where C's is -0; abs answers its argument, so abs(-0) is -0, where C's
 # fabs is +0.
 >> 1/sin(~0*(-1))
-inf
+~inf
 
 >> 1/abs(~0*(-1))
--inf
+~-inf
 
 >> digits = 9
 digits = 9
@@ -256,10 +256,10 @@ digits = 9
 # grad differentiates the definitions: the polynomials' own derivatives, and
 # floor's 0.
 >> grad_(x = 0) sin(x)
-1
+~1
 
 >> grad_(x = 0) cos(x)
-0
+~0
 
 >> grad_(x = 1) sin(x)
 ~0.540302306

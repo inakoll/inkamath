@@ -116,7 +116,7 @@ after(x_n) = { ... }
 last(x_n) = { ... }
 
 >> last(x_n = 2).l
-2
+~2
 
 # A history may be any expression in its index.
 >> ramp(x_n) = {

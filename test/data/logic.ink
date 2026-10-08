@@ -25,10 +25,10 @@
 0
 
 >> 0 or ~0.5
-1
+~1
 
 >> i and 1
-1
+~1
 
 # 'and' binds tighter than 'or', and both looser than a comparison and than
 # arithmetic, as in every language that has them.

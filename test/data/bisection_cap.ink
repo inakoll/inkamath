@@ -12,34 +12,34 @@
 # which Routh's strict test cannot tell from one right of it, is marked
 # still, and 1, right of a 0, is bisected.
 >> rho([0 1; 0 0])
-0
+~0
 
 >> abscissa([0 1; 0 0])
-0
+~0
 
 >> abscissa([0 0; 0 -1])
-0
+~0
 
 >> abscissa([0 0 0; 0 -1 1; 0 -1 -1])
-0
+~0
 
 >> abscissa([0 0 0; 0 0 1; 0 -1 0])
-0  # approximated past a thousand digits
+~0  # approximated past a thousand digits
 
 >> abscissa([1 0; 0 0])
-1
+~1
 
 >> rho([0 0; 0 0])
-0
+~0
 
 >> rho([0 1 2; 0 0 3; 0 0 0])
-0
+~0
 
 >> rho([~0 1; 0 0])
-0
+~0
 
 >> rho(0)
-0
+~0
 
 # Below 2^-256 of B, the bracket at the cap is no answer: -2^-254 for
 # -10^-100, and 0 for an unstable 10^-80 and a radius of 10^-100 (C192).
@@ -47,13 +47,13 @@
 ~-3.45446742e-77  # approximated past a thousand digits
 
 >> abscissa([10^-80 0; 0 -1])
-0  # approximated past a thousand digits
+~0  # approximated past a thousand digits
 
 >> abscissa([10^-80 0; 0 -1]) > 0
-0  # approximated past a thousand digits
+~0  # approximated past a thousand digits
 
 >> rho([0 1; 10^-200 0])
-0  # approximated past a thousand digits
+~0  # approximated past a thousand digits
 
 >> rho([0 1; 10^-200 0]) > 0
-0  # approximated past a thousand digits
+~0  # approximated past a thousand digits

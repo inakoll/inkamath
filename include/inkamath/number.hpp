@@ -197,13 +197,17 @@ public:
 
     // Every number prints in decimal: an exact whole number in full, anything
     // else to `digits` significant digits -- 17 at most for a double, which
-    // holds no more -- and with '~' in front unless what is printed is all of
-    // the value. A complex number is marked part by part.
+    // holds no more -- and with '~' in front unless it is exact and what is
+    // printed is all of it. A complex number is marked once, NaN not at all:
+    // it is no value a decimal approximates (DESIGN.md, C240).
     static std::string toString(const Number& a, int digits = numeric_interface_precision) {
         if (!a.exact()) {
-            const int shown = std::min(digits, 17);
-            return numeric_interface<inexact_type>::toString(
-                a.inexact_, [shown](double part) { return Decimal(part, shown); });
+            const int    shown = std::min(digits, 17);
+            const auto   part  = [shown](double x) { return Decimal(x, shown); };
+            const double x     = a.inexact_.real();
+            if (!(a.inexact_.imag() == 0) || std::isnan(x))
+                return numeric_interface<inexact_type>::toString(a.inexact_, part);
+            return "~" + part(x);
         }
         if (a.big_) {
             const Big& b = *a.big_;
@@ -236,8 +240,15 @@ public:
 
     // A whole power of an exact number is exact; anything else is approached.
     static Number pow(const Number& a, const Number& b) {
-        // Rounded, but to an exact 0, which gives 1.
-        const auto rounded = [&](inexact_type z) { return b.small() && b.num_ == 0 ? z : Unit(z); };
+        // Rounded, but to an exact 0, which gives 1, and a power of 2 to a
+        // whole power, which a normal double holds exactly.
+        const auto rounded = [&](inexact_type z) {
+            int        e = 0;
+            const auto m = a.Inexact(), y = b.Inexact();
+            const bool two = m.imag() == 0 && y.imag() == 0 && std::frexp(m.real(), &e) == 0.5 &&
+                             y.real() == std::floor(y.real()) && std::isnormal(z.real());
+            return (b.small() && b.num_ == 0) || two ? z : Unit(z);
+        };
         const bool whole = b.small() ? b.den_ == 1 : b.big_ && b.big_->den == Natural(1);
         const bool odd =
             b.small() ? (b.num_ & 1) != 0 : b.big_ && (b.big_->num.limbs()[0] & 1) != 0;
@@ -898,11 +909,12 @@ private:
         Digits            lead;
         lead.digits   = written.substr(0, 1) + written.substr(2, e - 2);
         lead.exponent = std::stoi(written.substr(e + 1));
-        return Shown(lead, x < 0, count);
+        return Shown(lead, x < 0, count, "");
     }
 
-    // Rounded half to even, with an exponent below 1e-4 and from 10^count up.
-    static std::string Shown(Digits lead, bool negative, int count) {
+    // Rounded half to even, with an exponent below 1e-4 and from 10^count up,
+    // with `cut` in front where digits are dropped.
+    static std::string Shown(Digits lead, bool negative, int count, const char* cut = "~") {
         std::string&      d    = lead.digits;
         const std::size_t kept = static_cast<std::size_t>(count);
         d.resize(std::max(d.size(), kept + 1), '0');
@@ -934,7 +946,7 @@ private:
             text = d.substr(0, whole) + (d.size() > whole ? "." + d.substr(whole) : "");
         }
         const bool exact = next == '0' && !rest;
-        return (exact ? "" : "~") + std::string(negative ? "-" : "") + text;
+        return (exact ? "" : cut) + std::string(negative ? "-" : "") + text;
     }
 
     template <typename Op>
