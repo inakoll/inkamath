@@ -3156,11 +3156,12 @@ that exploring seven domains asked of the interpreter, by how many asked.
   that is byte for byte the cell-by-cell one, its excerpt from today's
   compile of the cell form; and four refusals, `lim` of the Riccati
   doubling among them. Wired with the implementation: the checks and
-  their reports in `test/CMakeLists.txt`, `nest` in float, the header and
-  the refusals in `test/cli.cmake`. No golden, header or report should
-  move, as no test records the old refusal. README's paragraph on the
-  compiler gains a sentence. Nothing changes in the interpreter, so no
-  transcript in `test/data/spec`.
+  their reports in `test/CMakeLists.txt`, `dare`'s figures as written,
+  which a transcription of the step's order reproduces, `nest` in float,
+  the header and the refusals in `test/cli.cmake`. No golden, header or
+  report should move, as no test records the old refusal. README's
+  paragraph on the compiler gains a sentence. Nothing changes in the
+  interpreter, so no transcript in `test/data/spec`.
 - **`tex` of `==`, a negative fraction and `exp`**: `==` is set as `=`,
   `\frac{-1}{2}` should be `-\frac{1}{2}`, `\operatorname{exp}` should be
   `\exp`; and one tensor literal refuses a whole model's `tex`.
