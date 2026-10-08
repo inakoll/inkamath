@@ -521,6 +521,8 @@ public:
         MemoKey<T> key{this, indexed, indexed ? index : 0,
                        parameters.EvaluateArguments(call, caller)};
 
+        if (stack.read && stack.staircases.contains(this))
+            for (auto& [name, value] : key.arguments) stack.read(*this, value);
         const auto& arguments = key.arguments;
         for (const auto& [name, value] : arguments) Divides(name, value, stack);
         if (home == &stack.builtins_ && stack.compiled && arguments.size() == 1 && !indexed &&
