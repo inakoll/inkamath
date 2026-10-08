@@ -3077,34 +3077,34 @@ that exploring seven domains asked of the interpreter, by how many asked.
 
   The queued line is partly overtaken (CLAUDE.md, section 7). The three
   iterates compile today as three sequences with parameters read at a
-  constant count, `Y` below, which landed after the line was queued.
-  Packing them is needed only under `lim`, which walks one sequence, and
-  there the Riccati doubling also inverts I + G_k H_k inside a limit's
-  function, refused "a matrix inverse outside a sequence"; with the 2x2
-  inverse written by hand it compiles to 8.6 MB of header today.
-  *Temporaries in a limit's function* would lift both, an inverse being a
-  temporary, so that case needs the two items. Blocks alone give the packed iterates at a constant count,
-  and under `lim` a doubling with no inverse, Smith's for the Stein
-  equation.
+  constant count, `Y` below, which landed after the line was queued. Packing
+  them is needed only under `lim`, which walks one sequence, and there the
+  Riccati doubling also inverts I + G_k H_k inside a limit's function,
+  refused "a matrix inverse outside a sequence"; with the 2x2 inverse
+  written by hand it compiles to 8.6 MB of header today. *Temporaries in a
+  limit's function* would lift both, an inverse being a temporary, so that
+  case needs the two items. Blocks alone give the packed iterates at a
+  constant count, and under `lim` a doubling with no inverse, Smith's for
+  the Stein equation.
 
   Decided: the interpreter's layout (`EvaluationVisitor`'s literal), at
   compile time, as every shape is known there. Each block is compiled; a
-  band of rows is as tall as its tallest block and a band of columns as
-  wide as its widest; a single value is stretched over its block and
-  computed once, as arithmetic's stretch shares it and as the interpreter
-  evaluates a block once; any other block fills its place exactly. The
-  result is the cells of each block written into their places, a constant
-  where every block is: no array, copy, loop or size at run time, so a
-  literal whose stretched values are names or numbers compiles to the
-  header the same literal written cell by cell does. A literal of single values is the case where every band is one
-  cell, so every recorded header is unchanged, the prelude's too. Nested
-  blocks, a tensor's slices, a term, a sequence with parameters whose
-  terms widen by a block, each term its own size, a limit's terms and an
-  update all compile by the same code. Under `grad`, each block's part,
-  0 of the block's shape where it has none, laid out by the same rule,
-  as `Derivative::Literal` builds the literal of parts and evaluates it.
-  `--check`, `--float` and NaN-aware headers need nothing: the layout
-  computes nothing.
+  band of rows is as tall as its tallest block and a band of columns as wide
+  as its widest; a single value is stretched over its block and computed
+  once, as arithmetic's stretch shares it and as the interpreter evaluates a
+  block once; any other block fills its place exactly. The result is the
+  cells of each block written into their places, a constant where every
+  block is: no array, copy, loop or size at run time, so a literal whose
+  stretched values are names or numbers compiles to the header the same
+  literal written cell by cell does. A literal of single values is the case
+  where every band is one cell, so every recorded header is unchanged, the
+  prelude's too. Nested blocks, a tensor's slices, a term, a sequence with
+  parameters whose terms widen by a block, each term its own size, a limit's
+  terms and an update all compile by the same code. Under `grad`, each
+  block's part, 0 of the block's shape where it has none, laid out by the
+  same rule, as `Derivative::Literal` builds the literal of parts and
+  evaluates it. `--check`, `--float` and NaN-aware headers need nothing: the
+  layout computes nothing.
 
   Refused: a tensor as a block, in the interpreter's words, "a tensor
   cannot be a block of a literal, only a matrix can"; and a block that is
