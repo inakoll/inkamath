@@ -437,7 +437,7 @@ set_tests_properties(check_cell_report PROPERTIES PASS_REGULAR_EXPRESSION
 set_tests_properties(check_held_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^held: 100 steps from 0, against exact values\nheld\\.d: no value compared, the step NaN where the interpreter gives none, as at 0: no clause of r applies\n$")
 set_tests_properties(check_idle_report PROPERTIES PASS_REGULAR_EXPRESSION
-    "^idle: 100 steps from 0, against exact values\nidle\\.g: within 0\nidle\\.h: within 0\nidle\\.y: within 0\n$")
+    "^idle: 100 steps from 0, against exact values\nidle\\.g: within 0\nidle\\.h: within 0\nidle\\.k: within 0\nidle\\.l: within 0\nidle\\.y: within 0\n$")
 set_tests_properties(check_imag_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^imag: 100 steps from 0, against [^\n]*\nimag\\.x: within 0\nimag\\.z: within 0\n$")
 # A model's input of more than one cell (DESIGN.md, C83), every term exact.
