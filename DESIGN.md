@@ -6726,13 +6726,17 @@ that exploring seven domains asked of the interpreter, by how many asked.
     they part it is the jump, which is how far the term may be, and the line
     above says it is a clause's. "Unknown" in its place would lose the first
     and say less than the second.
-  - **One walk, two lines.** The straddle and the flip are read from one
-    table, of the guarded sequences, their written clauses and the margins,
-    which gains an array per guarded place: the clause a run took where it
-    is not the interpreter's, else 0. The margin's words become a function
-    both lines call. Both lines are printed where both happen, the straddle
-    first; where they are at one step, as `knee` in float, the flip is
-    within the interpreter's own error.
+  - **Where it is found, the smaller of two.** The straddle is the
+    interpreter's alone, so it may be found in the program, read from the
+    flips' table, of the guarded sequences, their written clauses and the
+    margins, which gains an array per guarded place, the clause a run took
+    where it is not the interpreter's, else 0, with the margin's words a
+    function both lines call; or once by `--check`, the program printing it
+    as one fixed line. Either is acceptable; the implementation takes the
+    smaller and says which. A function's guard has no place in the flips'
+    table, which weighs for the second. Both lines are printed where both
+    happen, the straddle first; where they are at one step, as `knee` in
+    float, the flip is within the interpreter's own error.
   - **The exit status is the step's.** A straddle is the reference's doubt,
     not the step's fault: `tie` steps to the bit. The verdict stays the
     tolerance's, as the estimate's entry decided.
@@ -6773,11 +6777,11 @@ that exploring seven domains asked of the interpreter, by how many asked.
   About 50 lines: as the prototype measured them formatted, the hook set in
   each run and the clauses recorded, 10; the array per guarded place, 10;
   the straddle's walk in the program written, less the flip's margin words
-  now shared, 15; and, not prototyped, the functions' guards, 15: the hook
-  told of a guard outside the prelude in `reference.hpp`, the guards heard
-  by ask in the interpreter's run and in each, and the margin measured
-  unheard. 15,584 lines in all now; past 75 the implementation stops and
-  reports.
+  now shared, 15, or less found by `--check`; and, not prototyped, the
+  functions' guards, 15: the hook told of a guard outside the prelude in
+  `reference.hpp`, the guards heard by ask in the interpreter's run and in
+  each, and the margin measured unheard. 15,584 lines in all now; past 75
+  the implementation stops and reports.
 
   Specified in `test/compile/straddle.ink`: `knee`, a ReLU whose kink the
   run moved down passes, the clauses meeting so that its estimate is its
