@@ -212,6 +212,55 @@ i*~1.14298739e+300
 >> ~-2^1023 + 2^1024
 ~8.98846567e+307
 
+# Nor is it 0 or inf to a comparison with a double, which it is compared with
+# exactly: 10^-400 is above 0 and below 2^-1074, and 10^400 above the largest
+# double and below inf, where the first read 0 and the second inf (DESIGN.md,
+# C262). Two exact numbers compared exactly already.
+>> 10^-400 == ~0
+0
+
+>> 10^-400 <> ~0
+1
+
+>> 10^-400 > ~0
+1
+
+>> -10^-400 < ~0
+1
+
+>> 10^-400 == ~0*i
+0
+
+>> 10^-400 < ~2^-1074
+1
+
+>> 10^400 == 1/~0
+0
+
+>> 10^400 < 1/~0
+1
+
+>> -10^400 > -1/~0
+1
+
+>> 10^400 > ~1.7976931348623157e308
+1
+
+>> ~1.7976931348623157e308 < 10^400
+1
+
+>> max(~0, 10^-400)
+1e-400
+
+>> min(~0, -10^-400)
+-1e-400
+
+>> 10^-400 == 10^-401
+0
+
+>> 10^400 < 0/~0
+error: a comparison needs a number, not -nan
+
 # NaN is not a number, so a comparison of it has no answer, and is refused
 # rather than guessed false, as C has it (DESIGN.md, a NaN reaches every term
 # that reads it). Nor are two NaNs equal, or a matrix with one equal to any.
