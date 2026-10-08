@@ -1736,6 +1736,7 @@ closures need one anyway, and can bring it.
 | C211 `[fixed]` | **A compiled call answered where an argument it never reads is NaN by a function of the header.** C189's gap: an argument was taken to be NaN where its text writes NAN, and log, sin, cos and ilogb are functions of the header that write it inside: with `F(M) = 1`, `y_n = F(log(n - 5))` checked "1 at 0, where the interpreter gives none: log needs a number above 0", and so did `grad_(t = x_n) F(log(t))`, through log's function for a moving argument. A function of the header whose body may be NaN is known by name now, and an argument calling it may be NaN, in 8 lines and one of comment; `idle` in `test/compile/nan.ink` holds it, and no expected header moved. |
 | C212 `[fixed]` | **grad refused a variable named like a size of a called function's signature.** Its check that a definition reads no global of grad's name bound a definition's parameters and indices but not the sizes its signature names, which are its own: `grad_(a = 1) a*fa([1; 2])`, with `fa(X[j<=a, k<=b]) = sum_(j=1)^a X[j,1]`, was "fa reads the global a, which grad's a does not reach", and through the prelude so were `grad_(m = 2) m*rho([1/2])`, hurwitzt's m, and `grad_(n = 1) n*charpoly([1 2; 3 4])`, charpolyc's n. The sizes are bound with the names now, in 2 lines and one of comment; grad.ink holds it, and no other answer moved. |
 | C213 `[fixed]` | **A function of the prelude given a number was refused in words not its own.** Called on a number, such a function is a function of the header, whose body was compiled without the sizes its signature names and without a sequence's temporaries: `y_t = rho([1/(t+2)])` and `dhinf(1/(t+2), 1, 1)` were "n is not defined", `rhoe(t)` "m is not defined", and `hinf(-t-1, 1, 1)` and `charpoly(t)` "a sequence with parameters in a limit's terms", where there is no limit. Its body binds the sizes now, and one that reads a sequence with parameters, itself or through what it calls, is written where it is called, as of a matrix, in 20 lines and 4 of comment: rho, hinf and dhinf of a number are refused in their definitions' words, "a factorial", hurwitzb's, and rhoe and charpoly of one compile. `compile_charpoly_refused` and `compile_hinf_refused` in `test/cli.cmake` hold it, its `x` moving from the limit's words, and `lone` in `test/compile/iterates.ink`; no expected header moved. |
+| C214 `[fixed]` | **`eigv` read a sign by multiplying two coefficients, doubling their digits.** Descartes' count, eig's and hinf's, took a sign change where `q[j]*eigl(q)_(j-1) < 0`, so a test passed a thousand digits at half the size its coefficients do, and was marked or refused there: `hinf([0 1; -1 -10^-100], [0; 1], [1 0])` was "hinf needs tests within a thousand digits", where the peak of a damping 2z = 10^-100 is 1/(2z(1 - z^2)^(1/2)), 10^100. The signs are compared now, in 1 line of the prelude more; hinfdata.ink holds it, and no other answer moved. Measured on random matrices against the same binary before it, each new answer checked against NumPy: eig of symmetric matrices of tenths, marked at 28x28, is certified at 36x36 (7 minutes); hinf of small whole numbers, refused at 9x9 with one input and 6x6 with two, is certified at 10x10 and 9x9, of full doubles at 3x3 (4 of 4, refused before) and of doubles k/7 at 4x4 (4 of 4, refused before in 4); time scales 10^90 apart are certified, 10^50 before, and a mode B cannot reach 10^150 slower, 10^80 before. README's section 2 says so. |
 
 **Measure instructions, not the clock.** One of those changes made the matrix
 workload 20 per cent slower by the clock and not by a single instruction: with
@@ -6240,8 +6241,8 @@ that exploring seven domains asked of the interpreter, by how many asked.
   **What it costs.** A test is one shift, about m^2 products, and a count;
   no Routh column and no map, so a test at a midpoint of b bits reads
   numbers of about n b bits, where `rho`'s read n^2 b. On the research's
-  symmetric matrices of tenths, certified up to 20x20, marked at 24x24
-  and then within a double of NumPy's, measured on symmetric matrices
+  symmetric matrices of tenths, certified up to 20x20 (36x36 since
+  C214), marked at 24x24 and then within a double of NumPy's, measured on symmetric matrices
   alone: a marked repeated eigenvalue of another can be off at the ninth
   digit, as an inexact one's is; 0.03 s for a 2x2, 0.05 s for
   Hilbert's 5x5, 0.3 s for its 8x8, 0.4 s at 10x10, 1.1 s at 12x12, 4 s at
@@ -6482,9 +6483,9 @@ that exploring seven domains asked of the interpreter, by how many asked.
 
   **What it costs.** A test at a midpoint of b bits reads q's coefficients,
   of about m b bits more than H's data, then two Bezoutians of their
-  products and their characteristic polynomials, and `eigv` multiplies two
+  products and their characteristic polynomials, and `eigv` multiplied two
   coefficients to read a sign, doubling their digits, where comparing the
-  signs would not: eig's horizon too, an item of its own. Certified: of
+  signs does not, as it does since C214: eig's horizon too. Certified: of
   small whole numbers, up to 8x8 with one input and 5x5 with two inputs and
   two outputs, not 6x6 as first measured, which the review found past a
   thousand digits in 4 random ones of 4; of cells with three digits 5x5,

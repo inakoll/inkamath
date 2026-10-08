@@ -571,7 +571,7 @@ symmetric; and it may take a complex pair within about 8 digits of the real
 axis for a real one. A k-fold eigenvalue of an inexact matrix is good to
 about 16/k digits. An exact matrix whose test passes a thousand digits may
 be refused, saying so, or answered, marked. Of a symmetric matrix of
-tenths, `eig` is certified up to about 20x20. `grad` refuses both:
+tenths, `eig` is certified up to about 36x36. `grad` refuses both:
 
 ```
 >> eig([2 1; 1 3])
@@ -600,10 +600,10 @@ output and time cost nothing, though not its state's: a 3x3 whose states
 are scaled 10^15 apart, or 10^5 apart in doubles, is refused. An inexact
 cell is read as the exact rational its double is, so the answer is
 certified for the data as stored. Certified of small whole numbers up to
-8x8 with one input and 5x5 with two inputs and two outputs, and of full
-doubles up to 2x2, or 3x3 of one scale such as k/7; refused past that, and
-where time scales are 10^60 apart or a mode B cannot reach is 10^90
-slower. The norm is of a stable A: `hinf` refuses an eigenvalue of A on or
+10x10 with one input and 9x9 with two inputs and two outputs, the largest
+measured, and of full doubles up to 3x3, or 4x4 of one scale such as k/7;
+refused past that, and where time scales are 10^95 apart or a mode B
+cannot reach is 10^160 slower. The norm is of a stable A: `hinf` refuses an eigenvalue of A on or
 right of the imaginary axis and `dhinf` one on or outside the unit circle,
 even where it cancels in the transfer function. `grad` refuses both:
 

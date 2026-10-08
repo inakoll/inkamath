@@ -391,7 +391,8 @@ inline constexpr const char* prelude[] = {
     "eigl(q)_1 = q[1]",
     "eigl(q)_j = eigl(q)_(j-1)",
     "eigl(q)_j | q[j] <> 0 = q[j]",
-    "eigv(q[j<=m]) = sum_(j=2)^m (q[j]*eigl(q)_(j-1) < 0)",
+    "eigv(q[j<=m]) = sum_(j=2)^m (q[j] < 0 and eigl(q)_(j-1) > 0 or q[j] > 0 and "
+    "eigl(q)_(j-1) < 0)",
     "eigm(A[j<=n, k<=n])[j<=n, k<=n] = sum_(i=1)^n (A^(j+k-2))[i,i]",
     "eigr(A) = A' == A or eigv(charpoly(-eigm(rhod(A, -rhoe(A))))) == 0",
     "eigz(A[j<=n, k<=n], i) = eigv(charpoly(-A)) < i and eigv(charpoly(A)) <= n - i",
