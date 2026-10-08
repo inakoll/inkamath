@@ -122,18 +122,21 @@ deadbeat = servo(r_n = floor(n/10))
 # above the three before it; M, a 4x4 block matrix beside w, w' below it and
 # 1 in the corner, its zero block a single value stretched over 2x2; T, a
 # tensor whose slices are block literals, each with a single value stretched
-# over a 2x1 block. x_n is (-1)^n n/4, so at 3, x_3 = -3/4 and
+# over a 2x1 block; S, a short row among blocks, ended by a 0 stretched over
+# 2x2. x_n is (-1)^n n/4, so at 3, x_3 = -3/4 and
 #
 #     w_3 = [-3/4; 1/2; -1/4; 0]
 #     M_3 = [1/2, 1, -3/8, -3/4, -3/4; 0, 1/2, 0, -3/8, 1/2;
 #            0, 0, 1/2, 1, -1/4; 0, 0, 0, 1/2, 0; -3/4, 1/2, -1/4, 0, 1]
 #     T_3 = [1/2, 1, -3/4; 0, 1/2, -3/4;; 1/2, 1/2, 0; 1/2, 1, 1/2]
+#     S_3 = [1/2, 1, -3/8, -3/4; 0, 1/2, 0, -3/8; 1/2, 1, 0, 0; 0, 1/2, 0, 0]
 #     y_3 = 59/8
 #
 # as numpy's block and sympy's BlockMatrix lay them out. Every value to 99
 # is a multiple of 1/16 below 2^10, which doubles and floats hold:
 #
 #     nest: 100 steps from 0, against exact values
+#     nest.S: within 0
 #     nest.w: within 0
 #     nest.M: within 0
 #     nest.T: within 0
@@ -147,6 +150,7 @@ stacked(x_n) = {
     w_n = [x_n; [w_(n-1)[1]; w_(n-1)[2]; w_(n-1)[3]]]
     M_n = [[A, x_n*A; 0, A], w_n; w_n', 1]
     T_n = [A, w_n[1];; w_n[2], A']
+    S_n = [A, x_n*A; A]
     y_n = [1, 1, 1, 1, 1]*M_n*[1; 2; 3; 4; 5]
 }
 nest = stacked(x_n = (-1)^n*n/4)
