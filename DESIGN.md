@@ -3080,7 +3080,18 @@ that exploring seven domains asked of the interpreter, by how many asked.
 - **A limit exact at an exact fixed point**: k-means reaches `C_3 == C_4`
   exactly, yet `lim C` is inexact and `frac lim C` refused.
 - **Matrix `==` and `<>` compiled**, refused as "a comparison of matrices".
-- **`--check`'s hundred steps as an option**, with `lim`'s.
+- **A matrix `==` a single value refused**, naming `0*M`: Doyle 1978's
+  Riccati equation checked as `ric(12) == 0` answers 0, a matrix being
+  equal to no single value, where its residual is the zero matrix and
+  `ric(12) == [0 0; 0 0]` answers 1.
+- **`lim` ends at a single repeated term**: `r(x)_n = r(x)_(n-1) +
+  (r(x)_(n-1) + 2^-n <= x)*2^-n`, x's binary digits, answers
+  `lim r(1/3)` 0.25 from its terms 0, 0, 1/4, 1/4. The smallest change to
+  weigh: two zero steps in a row, or README saying that one ends it.
+- **`--check`'s hundred steps as an option**, with `lim`'s. Doyle 1978's
+  loop at dt = 1/10 is ten time units in them, where the nominal loop has
+  not settled, [-1.18; 1.50] from [1; 0], and the one past its margin,
+  m = 6/5, has not run away; a thousand show both.
 - **A cumulative sum compiled as an accumulator**, `sum_(t=1)^n e(t)`:
   refused as "a sum whose bounds are not constants", where a regret or a
   running loss is exactly that (Reddi et al. 2018).
@@ -3089,7 +3100,9 @@ that exploring seven domains asked of the interpreter, by how many asked.
 - **`--check` says how far a term parts**, not only where it first does: the
   largest difference and where, as MANIFESTO asks of how a difference grows.
 - **`atan` in the prelude**, written as `exp` and `log` are, `asin` and
-  `acos` from it: Kahan's angle formulas cannot be written without.
+  `acos` from it: Kahan's angle formulas cannot be written without. Doyle
+  1978 asks for `arg` too, its phase margin being arg L(iw) at crossover,
+  of which only cos(PM) = -Re L can be written now.
 - **An instance named again**, `a = thm1.adam`, then `a.x_1`.
 - **A constant folded from an approximated number, listed**: `--compile`
   folds `(2^4000 > 2^3999)` to 0.0 and `3^3000/3^2999` to NAN silently,
@@ -6660,7 +6673,12 @@ that exploring seven domains asked of the interpreter, by how many asked.
   each inexact cell the rational its double is, an answer certified for the
   data as stored or marked, where rounded tests misjudge unmarked. To weigh
   against the inertia count below, by its cost in time under the
-  sanitizers.
+  sanitizers. Doyle 1978's example meets it where q and sigma grow and its
+  margin closes to 1: with f = 2 + sqrt(5) in a double,
+  `hurwitz(charpoly(Acl(m, f, f)))` is 1 at m = 1 + 1/f^2, where the data
+  as stored is unstable, and with f = 2 + sqrt(10^8 + 4), 0 at
+  m = 1 + 1/f^2 - 10^-12, where it is stable; each decided exactly from the
+  doubles.
 - **An inertia count for inexact symmetric matrices**: the negative pivots
   of LDL' of A - xI count the eigenvalues below x, backward stable, where the
   rounded Descartes count of `eig` loses a k-fold eigenvalue to about 16/k
