@@ -230,6 +230,11 @@ private:
         return cell;
     }
 
+    // Where a part is there, if not always: a condition, or where any of
+    // several is. Made at each operation under grad and written at few, its
+    // text is made where it is written (C231).
+    struct Moving;
+    using Where = std::shared_ptr<const Moving>;
     struct Code {
         Extent               size;
         std::vector<Cell>    cells;     // row by row, slice after slice
@@ -238,7 +243,7 @@ private:
         // Under grad (DESIGN.md, grad compiled): its part, none where the
         // interpreter's is absent, and where it is there, if not always.
         std::vector<Code> part;
-        std::string       moves;
+        Where             moves;
 
         bool Scalar() const { return cells.size() == 1 && !size.slices; }
         // Cell c of what it stretches to, as in arithmetic: a single value to
@@ -247,6 +252,11 @@ private:
         const Cell& At(std::size_t i, std::size_t j, std::size_t b = 0) const {
             return At((b * size.rows + i) * size.cols + j);
         }
+    };
+
+    struct Moving {
+        std::string        text;
+        std::vector<Where> any;
     };
 
     // A value a step computes once, before the sequence that reads it: its
@@ -648,8 +658,8 @@ private:
         };
         const auto there = [](const Code& c) {
             return Of(Atom(c.part.empty() && c.cells[0].text != "NAN" ? "0"
-                           : c.moves.empty()                          ? "1"
-                                                                      : "(" + c.moves + ")"));
+                           : !c.moves                                 ? "1"
+                                                                      : "(" + Text(c.moves) + ")"));
         };
         for (const auto& [condition, value] : guarded) {
             any    = any || !value.part.empty();
@@ -661,10 +671,11 @@ private:
         chain.part = {
             Chain(parts, otherwise ? std::optional(part(*otherwise)) : std::nullopt, size)};
         if (!always || (otherwise && there(*otherwise).cells[0].text != "1"))
-            chain.moves =
+            chain.moves = std::make_shared<const Moving>(Moving{
                 Chain(where, otherwise ? std::optional(there(*otherwise)) : std::nullopt, Extent{})
                     .cells[0]
-                    .text;
+                    .text,
+                {}});
         return chain;
     }
 
@@ -764,7 +775,7 @@ private:
             args += code.size.toString() + '\x1d';
             if (code.constant) Value::key(*code.constant, args);
             for (const Cell& cell : code.cells) args += cell.text + '\x1f';
-            args += code.moves + '\x1e';
+            args += Text(code.moves) + '\x1e';
             for (const Code& part : code.part) self(self, part);
         };
         for (const auto& [given, value] : expansion.values) text(text, value);
@@ -918,7 +929,7 @@ private:
         }
         if (functions_.count(jumped)) {
             aware_ = true;  // a jump's NaN reaches a grad that drops this value (C113)
-            const std::string moves = Moves(read), jumps = jumped + "(" + given + ")";
+            const std::string moves = Text(Moves(read)), jumps = jumped + "(" + given + ")";
             const std::string plain = value.cells[0].text;
             value.cells[0].text =
                 moves.empty() ? jumps : "(" + moves + " ? " + jumps + " : " + plain + ")";
@@ -1518,18 +1529,25 @@ private:
         return part ? Part(written(*part)) : part;
     }
     // Where any of these has its part: always, where one always has.
-    static std::string Moves(const std::vector<const Code*>& codes) {
-        std::string where;
+    static Where Moves(const std::vector<const Code*>& codes) {
+        std::vector<Where> any;
         for (const Code* code : codes) {
             if (code->part.empty()) continue;
-            if (code->moves.empty()) return "";
-            where += (where.empty() ? "(" : " || (") + code->moves + ")";
+            if (!code->moves) return nullptr;
+            any.push_back(code->moves);
         }
-        return where;
+        return any.empty() ? nullptr : std::make_shared<const Moving>(Moving{"", std::move(any)});
+    }
+    static std::string Text(const Where& where) {
+        if (!where || where->any.empty()) return where ? where->text : "";
+        std::string text;
+        for (const Where& one : where->any)
+            text += (text.empty() ? "(" : " || (") + Text(one) + ")";
+        return text;
     }
     static Code Parted(Code value, const Part& part, const std::vector<const Code*>& from) {
         value.part.clear();
-        value.moves.clear();
+        value.moves.reset();
         if (part) value.moves = Moves(from);
         if (part) value.part.push_back(*part);
         return value;
@@ -1549,7 +1567,7 @@ private:
     static std::string Jumps(const std::string& meet, const std::vector<const Code*>& codes) {
         if (std::all_of(codes.begin(), codes.end(), [](const Code* c) { return c->part.empty(); }))
             return "";
-        const std::string moves = Moves(codes);
+        const std::string moves = Text(Moves(codes));
         return meet + (moves.empty() ? "" : " && (" + moves + ")") + " ? NAN : ";
     }
 
@@ -1581,11 +1599,11 @@ private:
         if (const Part b = PartOf(right)) top = Plus(top, Negated(cellwise(value, *b)));
         Part part = over(top);
         // a'/b where b's clause has none, not an infinite quotient times 0 (C110).
-        if (part && !right.moves.empty()) {
+        if (part && right.moves) {
             const Part alone = over(PartOf(left));
             for (std::size_t k = 0; k < part->cells.size(); ++k)
-                part->cells[k] = Cell("(" + right.moves + " ? " + part->cells[k].text + " : " +
-                                          (alone ? alone->At(k).text : "0") + ")",
+                part->cells[k] = Cell("(" + Text(right.moves) + " ? " + part->cells[k].text +
+                                          " : " + (alone ? alone->At(k).text : "0") + ")",
                                       primary);
             part->constant.reset();
         }
@@ -1725,8 +1743,9 @@ private:
         Part part = Times(Times(Literal(coefficient), power), PartOf(base));
         // None where its base's clause has none, not 0 times an infinity, where
         // its value is finite (C118).
-        if (Doubles(lower)[0] < 0 && Doubles(c)[0] > 0 && !base.moves.empty())
-            part = Of(Cell("(" + base.moves + " ? " + part->cells[0].text + " : 0)", primary));
+        if (Doubles(lower)[0] < 0 && Doubles(c)[0] > 0 && base.moves)
+            part =
+                Of(Cell("(" + Text(base.moves) + " ? " + part->cells[0].text + " : 0)", primary));
         return Answer(Parted(value, part, {&base}));
     }
 
