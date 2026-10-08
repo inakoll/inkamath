@@ -52,8 +52,8 @@ public:
         using Sequence = CompileC::Compiled::Sequence;
         std::map<std::tuple<int, const Sequence*, int, const Reference<Value>*>, std::vector<Asked>>
                                         calls;
-        int                             run = 0;
-        std::pair<const Sequence*, int> asking{nullptr, 0};
+        int                             sample = 0;
+        std::pair<const Sequence*, int> now{nullptr, 0};
         bool                            measuring = false;
         const auto hook = [&](const Reference<Value>& reference, const Clause<Value>& clause, int n,
                               int row, int col, bool held, EvaluationVisitor<Value>& evaluator) {
@@ -61,14 +61,14 @@ public:
             const int place = static_cast<int>(&clause - reference.Clauses().data());
             auto*     call  = clause.parameters.general()
                                   ? nullptr
-                                  : &calls[{run, asking.first, asking.second, &reference}];
+                                  : &calls[{sample, now.first, now.second, &reference}];
             if (call && (call->empty() || call->back().chosen ||
                          call->back().margins.rbegin()->first >= place))
                 call->emplace_back();
-            Asked&              seen = call ? call->back() : asked[{run, &reference, n, row, col}];
+            Asked& seen = call ? call->back() : asked[{sample, &reference, n, row, col}];
             const Setting<bool> quiet(measuring, true);
             seen.margins[place] =
-                run ? std::optional<Number>() : Margin(*clause.parameters.guard(), evaluator);
+                sample ? std::optional<Number>() : Margin(*clause.parameters.guard(), evaluator);
             if (held) seen.chosen = place;
         };
         const Setting<decltype(stack.guards)> listening(stack.guards, hook);
@@ -131,11 +131,11 @@ public:
             stack.Apart([&] {
                 const Setting<Number::Disturbance*> disturbing(Number::disturbed, &disturbance);
                 const Setting<decltype(stack.guards)> heard(stack.guards, hook);
-                const Setting<int>                    counted(run, static_cast<int>(seed));
+                const Setting<int>                    counted(sample, static_cast<int>(seed));
                 for (const auto& sequence : compiled.sequences) {
                     for (int n = first; n < first + steps; ++n) {
                         if (n < sequence.start && sequence.period > 1) continue;
-                        asking           = {&sequence, n};
+                        now              = {&sequence, n};
                         const int  index = Floor(n - sequence.phase, sequence.period);
                         const Term term  = ask(sequence, index);
                         again[{instance + "." + sequence.name, index}].push_back(
@@ -161,7 +161,7 @@ public:
                 const bool        before = n < sequence.start;
                 const std::string name   = instance + "." + sequence.name;
                 const int         index  = Floor(n - sequence.phase, sequence.period);
-                asking                   = {&sequence, n};
+                now                      = {&sequence, n};
                 const Term        term   = before && sequence.period > 1
                                                ? Term{{}, true, "not asked", {}, {}, {}, false}
                                                : ask(sequence, index);
