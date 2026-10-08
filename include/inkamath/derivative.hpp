@@ -343,10 +343,10 @@ private:
             for (std::size_t s = 1; s < im.size(); ++s)
                 if (im[s] && !IsZero(*im[s])) with |= s;
             if (!with || !IsZero(*im[0])) continue;
-            const auto& [name, point] = grads_[std::bit_width(with) - 1];
+            const auto& [grad, point] = grads_[std::bit_width(with) - 1];
             throw std::runtime_error(
                 definition->Name() +
-                " has no derivative where its argument leaves the real line at " + name + " = " +
+                " has no derivative where its argument leaves the real line at " + grad + " = " +
                 point);
         }
         for (const auto& [given, jet] : arguments)
