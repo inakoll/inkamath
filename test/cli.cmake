@@ -286,6 +286,20 @@ set(stdout "cannot compile s: u_(...): read every 8 steps, and u is computed eve
 set(exit 1)
 check(compile_c74)
 
+# C233: a slow sequence read back by another as slow said "read every step".
+file(WRITE "${OUT}/c233.ink" "q_0 = 0\nq_m = q_(m-1) + x_(2*m)\nw_0 = 0\nw_m = w_(m-1) + q_(m-1) + x_(2*m)\n")
+set(args --compile c233.ink)
+set(stdout "cannot compile w: q_(...): one sequence at another rate read by another; hold q at the input's rate and sample the hold\n")
+set(exit 1)
+check(compile_c233)
+
+# C234: as is one on the right of an 'and', which compiled to a wrong term.
+file(WRITE "${OUT}/c234.ink" "y_0 = 0\ny_m = x_(2*m)\nc_n | x_n > 0 and y_(n-1) > 0 = n\nc_n = 0\n")
+set(args --compile c234.ink)
+set(stdout "cannot compile c: y_(...): read every step, and y is computed every 2\n")
+set(exit 1)
+check(compile_c234)
+
 # C86: a clause the interpreter refuses wherever it is taken is what a step
 # says there, NaN, so a model whose guard never takes it compiles, as log
 # does, its '| x <= 0 = 1/0' NaN in the header's function for it.
@@ -495,6 +509,24 @@ file(SIZE "${OUT}/c140.h" size)
 if(size GREATER 4096)
     message(SEND_ERROR "compile_c140: c140.h is ${size} bytes")
 endif()
+
+# C230: a cell of a call read in a sum or in a cell compiled every cell of
+# the call at each reading, 300^3 cells here and 4^10 down g's chain.
+file(WRITE "${OUT}/c230.ink" "f(x)[i<=300] = x*i\nh(x)[i<=300] = f(x)[i] + 1\ng0(x)[i<=4] = x*i\n")
+foreach(k RANGE 1 10)
+    math(EXPR j "${k} - 1")
+    file(APPEND "${OUT}/c230.ink" "g${k}(x)[i<=4] = g${j}(x)[i] + 1\n")
+endforeach()
+file(APPEND "${OUT}/c230.ink" "y_n = sum_(i=1)^300 h(n)[i] + sum_(i=1)^4 g10(n)[i]\n")
+set(args --compile c230.ink -o c230.h)
+check(compile_c230)
+holds(compile_c230 c230.h "(double)m_->index_ * 300.0 + 1.0) + ((double)m_->index_ * 1.0 + 1.0 + 1.0 + 1.0 + 1.0 + 1.0 + 1.0 + 1.0 + 1.0 + 1.0 + 1.0 + ((double)m_->index_ * 2.0 + 1.0")
+
+# C231: under grad, where a sum's part is there was written out at each
+# partial sum, each term's being where any cell of m's is: 999^2 times 22 KB.
+file(WRITE "${OUT}/c231.ink" "A[i<=32] = mod(3*i, 7) - 3 + 1/2\nrelu(z)[i] | z[i] > 0 = z[i]\nrelu(z)[i] = 0\nh(m) = sum_(i=1)^999 m[1 + mod(i, 32)]\nw_0 = 1/2\nw_n = w_(n-1) - grad_(v = w_(n-1)) h(relu(relu(A*v)))/1024\n")
+set(args --compile c231.ink -o c231.h)
+check(compile_c231)
 
 # C155: as is a call of the prelude's, where it was written at each reading.
 file(WRITE "${OUT}/c155.ink" "h(t) = (t - 1)/t\nh(t) | t == 1 = t\nh(t) | t == 0 = 1\nf(z) = h(exp(z))\nx_0 = 1/2\nx_n = f(f(x_(n-1)))\n")

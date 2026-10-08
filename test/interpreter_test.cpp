@@ -163,6 +163,12 @@ TEST_CASE("tensor") {
 TEST_CASE("gradcells") {
     check_transcript("gradcells.ink");
 }
+TEST_CASE("conv") {
+    check_transcript("conv.ink");
+}
+TEST_CASE("minibatch") {
+    check_transcript("minibatch.ink");
+}
 TEST_CASE("sizes") {
     check_transcript("sizes.ink");
 }

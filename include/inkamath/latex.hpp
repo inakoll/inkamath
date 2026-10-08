@@ -341,9 +341,13 @@ private:
         }
         if (const auto* series = dynamic_cast<const SeriesExpression<T>*>(&e)) {
             const std::string upper = series->Upper() ? Of(*series->Upper()).text : "\\infty";
+            // A sum that is its body reaches to its end, as one ending a product.
+            const Text body = Of(*series->Body());
             return {std::string(series->Product() ? "\\prod" : "\\sum") + "_{" + series->Index() +
                         "=" + Of(*series->Lower(), true).text + "}^{" + upper + "} " +
-                        Wrapped(Of(*series->Body()), product),
+                        (dynamic_cast<const SeriesExpression<T>*>(series->Body().get())
+                             ? body.text
+                             : Wrapped(body, product)),
                     Level::sum};
         }
         if (const auto* grad = dynamic_cast<const GradExpression<T>*>(&e)) {

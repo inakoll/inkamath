@@ -140,7 +140,7 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brin
                          estimate:chaos estimate:dyad estimate:flat estimate:halved
                          estimate:steep estimate:giant elementary:els trig:tri
                          grad:line grad:fall grad:hinge grad:edge grad:clip grad:steer grad:saw
-                         grad:ring grad:notch grad:apart grad:smooth grad:cusp
+                         grad:ring grad:notch grad:apart grad:smooth grad:cusp grad:over
                          tensor:heads tensor:whirl tensor:batch tensor:spread
                          tensor:speck cellguards:rfit cellguards:tfit cellguards:layer
                          cellguards:kink cellguards:crest cellguards:mask cellguards:order
@@ -151,7 +151,7 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brin
                          goldberg:year goldberg:needled goldberg:big goldberg:seven
                          iterates:poly iterates:thirds iterates:plan iterates:graph iterates:gaps
                          iterates:memo iterates:unread iterates:lone blocks:dare blocks:smith
-                         blocks:deadbeat blocks:nested blocks:sloped)
+                         blocks:deadbeat blocks:nested blocks:sloped conv:see conv:learn)
     string(REPLACE ":" ";" checked ${checked})
     list(GET checked 0 file)
     list(GET checked 1 instance)
@@ -239,6 +239,8 @@ set_tests_properties(check_cusp_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^cusp: 100 steps from 0, against exact values until 0 and inexact ones from there\ncusp\\.x: within 0\ncusp\\.g: within 0\n$")
 set_tests_properties(check_swing_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^swing: 100 steps from 0, against exact values until 1 and inexact ones from there\n(swing\\.[A-Za-z]+: within [0-9.e+-]+(, from 1)?${about}\n)+$")
+set_tests_properties(check_over_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^over: 100 steps from 0, against exact values until 0 and inexact ones from there\nover\\.y: within 1\\.4e-20\nover\\.z: within [0-9.e+-]+${about}\n$")
 # Its known limit, C110, held where it parts.
 set_tests_properties(check_apart_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^apart: 100 steps from 0, against exact values\napart\\.y: [-a-z()]+ at 0, where the interpreter gives 0\n$")
@@ -400,6 +402,12 @@ set_tests_properties(check_gaps_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^gaps: 100 steps from 0, against exact values\ngaps\\.a: within 0\ngaps\\.b: within 0\n$")
 set_tests_properties(check_memo_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^memo: 100 steps from 0, against exact values\nmemo\\.a: within 0\nmemo\\.b: within 0\nmemo\\.d: within 0\nmemo\\.e: within 0\nmemo\\.l: within 0\n$")
+# A convolutional network's forward pass and its training (Goodfellow et al.
+# 2016, §9.5), as compile/conv.ink gives them.
+set_tests_properties(check_see_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^see: 100 steps from 0, against exact values\nsee\\.Xp: within 0\nsee\\.Z: within 0\nsee\\.M: within 0\nsee\\.s: within 0\n$")
+set_tests_properties(check_learn_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^learn: 100 steps from 0, against exact values\nlearn\\.K: within 0\nlearn\\.W: within 0\nlearn\\.a: within 0\nlearn\\.d: within 0\nlearn\\.E: within [1-9](\\.[0-9])?e-1[4-6]\n$")
 set_tests_properties(check_unread_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^unread: 100 steps from 0, against exact values\nunread\\.y: within 0\n$")
 set_tests_properties(check_lone_report PROPERTIES PASS_REGULAR_EXPRESSION
@@ -625,7 +633,7 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:ledge logistic:gate momentu
                          reddi:thm1 reddi:fixed reddi:gen
                          kahan:sums kahan:muller kahan:rounded kahan:surprise kahan:solveur rump:rump
                          goldberg:year goldberg:needle goldberg:big goldberg:seven iterates:poly
-                         blocks:nested)
+                         blocks:nested conv:see)
     string(REPLACE ":" ";" checked ${checked})
     list(GET checked 0 file)
     list(GET checked 1 instance)
@@ -697,6 +705,7 @@ foreach(report IN ITEMS
         "seven:^seven: 100 steps from 0${in_float}\nseven\\.t: ${exact}\nseven\\.u: within 3\\.8e-06, 32 units of a float\n$"
         "poly:^poly: 100 steps from 0${in_float}\npoly\\.A: ${exact}\npoly\\.c: ${exact}\npoly\\.d: ${exact}\npoly\\.g: ${exact}\n$"
         "nested:^nested: 100 steps from 0${in_float}\nnested\\.S: ${exact}\nnested\\.w: ${exact}\nnested\\.M: ${exact}\nnested\\.T: ${exact}\nnested\\.y: ${exact}\n$"
+        "see:^see: 100 steps from 0${in_float}\nsee\\.Xp: ${exact}\nsee\\.Z: ${exact}\nsee\\.M: ${exact}\nsee\\.s: ${exact}\n$"
         "cls:^cls: 100 steps from 0${inexact}\ncls\\.z: within 2\\.4e-08, 0\\.2 units of a float\ncls\\.q: within 1\\.9e-06, 1\\.5 units of a float${about}\ncls\\.s: within 6\\.3e-08, 0\\.53 units of a float${about}\ncls\\.loss: within 4\\.1e-07, 3\\.4 units of a float${about}\n$")
     string(FIND "${report}" ":" colon)
     string(SUBSTRING "${report}" 0 ${colon} instance)

@@ -186,6 +186,19 @@ ga = alpha*sum_(k=1)^3 k
 >> tex ?ga
 \mathit{ga} = \alpha\,\sum_{k=1}^{3} k
 
+# Nor does one that is a sum's body, as a product's (C232).
+>> hh_n = sum_(j=1)^n sum_(k=1)^j j*k
+hh_n = sum_(j=1)^n sum_(k=1)^j j*k
+
+>> tex ?hh
+\mathit{hh}_n = \sum_{j=1}^{n} \sum_{k=1}^{j} j\,k
+
+>> pp_n = sum_(j=1)^n prod_(k=1)^j k
+pp_n = sum_(j=1)^n prod_(k=1)^j k
+
+>> tex ?pp
+\mathit{pp}_n = \sum_{j=1}^{n} \prod_{k=1}^{j} k
+
 # A decimal typed is exact, and set in full however many its digits (C96).
 >> c = 1.4426950408889634
 c = 1.4426950408889634

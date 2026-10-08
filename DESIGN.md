@@ -1751,6 +1751,12 @@ closures need one anyway, and can bring it.
 | C220 `[fixed]` | **A value derived from a parameter whose cell was a temporary of the update was read by the temporary's name, which the step does not declare.** A derived value's cell that is a name or a number is written where it is read rather than kept in a field, and a temporary's name is one: `p = 1/2`, `R = [p, 1; 2, 3]^(0-1)` and `x_n = R*[n; 1]` wrote `t0_[0][0]` in the step, a header that did not build, as did `[exp(p), [1, 2; 3, 4]]` once block literals stretch a computed value. Such a cell is read from its field now, in 3 lines of `compile.hpp` more; `cli.cmake` holds the step, and no recorded header moved. |
 | C221 `[fixed]` | **A cell taken from a matrix answered where another of its cells is NaN by a function of the header.** C211's gap: where a cell is taken, a header tests every cell of the matrix once one of them writes NaN, and a call of log, which may answer NaN, did not count: `[x_n, log(x_n)][1, 1]`, in a header nothing else made aware, answered x_n where the interpreter refuses the matrix whole. Such a call counts now, in a line changed of `compile.hpp`; `nan.ink`'s `took` holds it, and no recorded header moved. A division by zero there is still an infinity, which no test catches. |
 | C225 `[fixed]` | **The prelude's stated worst errors were sample maxima.** DESIGN gave the worst errors of `exp`, `log`, `tanh`, `sin` and `cos`, and of their parts, from 1e7 or 2e7 random points a range or 2,000 for the parts, and elementary.ink and trig.ink comments bounds from them. A sweep of 1e8 to 4e8 points a range against a 64-bit long double, its farthest confirmed by mpmath at 256 bits, passes each: `exp` 1.307 units at 635.2779388398857 (1.29 stated, "1.3 everywhere" in elementary.ink), 0.900 of 2^-1074 at -708.7539819250273 (0.89), `log` 2.938 at 1.0038647811079129 (2.87), `tanh` 2.967 at -0.20806425077771573 (2.83), `sin` 2.431 at -36502.41508093197 (2.43, "2.4" in trig.ink), `cos` 2.445 at -660945.4787059261 (2.37), and the parts 2.445 from cos and 2.426 from -sin at -660945.4787059261 and 651843.0266746085 (2.04 and 1.62). The functions stand: the figures are the sweep's now, measured and still no bound, and README states them. `--check` cannot see an error the interpreter and a header share, so `test/prelude_test.cpp` holds the five, the two parts and `ilogb` to `test/data/prelude_reference.txt`, 2,400 arguments with mpmath's correctly rounded values, written once by `test/prelude_reference.py`: the sweep's farthest, the doubles nearest a multiple of pi/2 or ln 2, subnormals and either end of `exp`'s range; its skipped case `sweep` is the sweep. Two comments moved, elementary.ink's and trig.ink's, and no answer. Found by an external review. |
+| C230 `[fixed]` | **A cell of a call compiled every cell of the call at each reading.** A function defined by its cells compiles where it is called, and a call read at one cell compiled them all: beside `f(x)[i<=N] = x*i`, `y_n = sum_(i=1)^N f(n)[i]` compiled N^2 cells, 1.4 s at N = 800 where `h(f(n))`, f's cells given once, takes 0.07 s, and a chain `f1(x)[i<=4] = f0(x)[i] + 1`, f2 of f1 and so on, compiled 4^K cells at depth K, over 2 minutes at 8 under the sanitizers. Within a loop that binds places alone, a sum's or a definition's by its cells, a call is compiled once for the code it is given now, unless it reads a term, which depends on where it is read, as a term of a sequence with parameters is kept (C187), in 26 lines and 5 of comment: 0.12 s at N = 800, and the chain linear. A cell read still takes the interpreter's answer for a value of the call's size, so the sum is still quadratic, as through an argument. `compile_c230` in `test/cli.cmake` holds it, and no expected header moved. Found transcribing a convolutional network (Goodfellow, Bengio and Courville 2016, §9.5). |
+| C231 `[fixed]` | **Under grad, a sum over the cells of a guarded definition by cells compiled in cubic time.** Where a value's part is there is a condition, the conditions of what it is computed from joined by `\|\|`, and a cell read from a matrix takes the matrix's, where any cell's part is: beside `relu(z)[i] \| z[i] > 0 = z[i]` and `relu(z)[i] = 0`, each term of `h(m) = sum_(i=1)^N m[i]` in `grad_(v = w_(n-1)) h(relu(A*v))` was N cells' conditions long, and each partial sum copied all those before it, a condition of N^2 cells never written to the header: 4.0 s at N = 512 and 28 s at 999, the header 187 KB. The condition is a tree of the ones it joins now, its text made only where it is written, in 15 lines and 3 of comment: 0.28 s and 0.84 s. `compile_c231` in `test/cli.cmake` holds it, and no expected header moved. Found transcribing a convolutional network (Goodfellow, Bengio and Courville 2016, §9.5). |
+| C232 `[fixed]` | **`tex` bracketed a sum that is a sum's body.** A sum ending a product reaches to its end, as on paper, but one that is another's body was wrapped as any operand: `h_n = sum_(j=1)^n sum_(k=1)^j j*k` was set `\sum_{j=1}^{n} (\sum_{k=1}^{j} j\,k)`, and a product in a sum likewise. A sum or a product that is a sum's or a product's body is set bare now, in 3 lines and 1 of comment; latex.ink holds it, and no other answer moved. Found transcribing a convolutional network (Goodfellow, Bengio and Courville 2016, §9.5). |
+| C233 `[fixed]` | **A slow sequence read back by another as slow was refused as read every step.** README's section on several rates says one read by another is refused naming the hold at the input's rate to sample instead, but a read at a lag was refused where it was read, before the reader's own rate was known: beside `q_m = q_(m-1) + x_(2*m)`, `w_m = w_(m-1) + q_(m-1) + x_(2*m)` was "q_(...): read every step, and q is computed every 2", w being computed every 2 as well. Such a read is recorded and refused by the reader's rate once its clauses are compiled now, as one of a sequence compiled after its reader already was, "q_(...): one sequence at another rate read by another; hold q at the input's rate and sample the hold", in 2 lines and 1 of comment; `compile_c233` in `test/cli.cmake` holds it, and no other refusal moved. Compiling such a read, both sequences of one period and phase, is a decision for the language (next in line). Found transcribing a convolutional network (Goodfellow, Bengio and Courville 2016, §9.5). |
+| C234 `[fixed]` | **A slow sequence read on the right of an `and` compiled to a wrong term.** A read of a sequence at another rate, at a lag, is refused by the reader's rate, but the right of an `and` or `or` keeps its reads apart, as they defer, and those were not asked: beside `y_m = x_(2*m)`, `c_n \| x_n > 0 and y_(n-1) > 0 = n` compiled, reading y's window, and `--check` of it on `x_n = 1 + n` gave 0 at 2 where the interpreter gives 2. Its reads are asked as the others now, "y_(...): read every step, and y is computed every 2", in 3 lines and 1 of comment; `compile_c234` in `test/cli.cmake` holds it, and no expected header moved. Found fixing C233. |
+| C235 `[fixed]` | **Compiled, the part of a quotient by a guarded call was 1.** Where the divisor's clause taken may have no part, the quotient's is written `(moves ? a'/b... : 0)`, moves where the divisor's is there; for a call's clauses that is their own conditional, `c ? 1 : 0`, written bare before the `?`, which C reads as `c ? 1 : (0 ? ... : 0)`: beside `f(v) \| v > 0 = v*v` and `f(v) = 2`, `y_n = grad_(v = n + 1) 1/f(v)` was 1 at every step where the interpreter gives -2/(n + 1)^3. A power's part where its base's clause has none is written alike, and `g(v)^(1/2)`, g's clauses `v*v*v*v` and 2, was 1 for 2v. Such a condition is bracketed now, in 3 lines and 1 of comment; `over` in `test/compile/grad.ink` holds both, y's tolerance worked out in doubles apart from the interpreter. No expected header moved; edge's check program did, `e` a quotient by a clamp whose chain happened to read right. Found fixing C231. |
 
 **Measure instructions, not the clock.** One of those changes made the matrix
 workload 20 per cent slower by the clock and not by a single instruction: with
@@ -6782,3 +6788,47 @@ that exploring seven domains asked of the interpreter, by how many asked.
   digits and Hermite's test refuses symmetric matrices but for rounding.
   Rejected for `eig` only for an exact dyadic midpoint that zeroes a pivot,
   which an inexact matrix does not meet.
+
+After transcribing a small convolutional network (Goodfellow, Bengio and
+Courville 2016, §9.5; LeCun et al. 1998, §II.B), its training compiled and
+checked: what it asked of the compiler, each with its smallest change.
+
+- **A compiled gradient with respect to a tensor**, "a derivative with
+  respect to a tensor, for now": the seed of three indices *Tensors
+  compiled* left between attention and its training, met again by an input
+  gradient over a batch of images. The seed's slice taken from its cell as
+  its row and column are, and the parts assembled into an extent with
+  slices; about 10 lines, the interpreter's seeds unchanged.
+- **A read between slow sequences of one period and phase**, refused since
+  C233 as one at another rate read by another: a minibatch as time, each
+  term of the weights reading two consecutive samples, trains its weights
+  as slow sequences that read each other at `m-1`. Where both tick at the
+  same steps, the read is a lag in the reader's own terms, as its own
+  history is; about 15 lines in `Rate`, the hold at the input's rate still
+  the answer for another period.
+- **A tensor term under a guard that is not a constant**, `A_n[b,o,p] |
+  Z_n[b,o,p] > 0`, "a tensor's cells under a guard that is not a constant,
+  for now": a batched ReLU as a term rather than a call. Tested at run time
+  cell by cell as a matrix term's guards are, `--check` naming the clause by
+  slice, row and column.
+- **Single values met by a matrix compiled**, a per-channel bias `T + [1/2;;
+  -1/2]`, "a tensor whose slices are single values met by a matrix, for
+  now": each slice's value stretched over the other's cells in `Cellwise`, as
+  the interpreter's arithmetic does; a few lines.
+- **`grad` through a local**, "grad cannot differentiate a local definition
+  yet", compiled "a local definition": `(z = Q*P) ...` written once in a
+  loss must be a call instead. A local's jet bound in the frame for the rest
+  of the line, as a call's parameters are, and compiled as an expansion's
+  value.
+- **The size of a forward-mode header, measured**, before reverse mode is
+  weighed (`MANIFESTO.md`): the network's 47 weights trained by four grads
+  are 2.16 MB of header, as each direction writes a guard's dot product
+  again and each seed as `0.0*P + ... + 1.0*P`. A temporary for a guard's
+  operands, and `0.0*x` folded where x is finite, are the first two
+  measurements to take.
+- **A maximum or minimum over an index**, `max_(i=1)^n`, as a sum is
+  written: max-pooling over a window is nested `max` calls today. Minor,
+  until a second model asks.
+- **The compiled sum's thousand terms**: a LeNet-sized layer's dot product
+  over a batch would pass `max_terms`, which bounds an unrolled sum written
+  as lines of C, not a loop.
