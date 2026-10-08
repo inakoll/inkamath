@@ -150,7 +150,8 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brin
                          goldberg:year goldberg:needled goldberg:big goldberg:seven
                          iterates:poly iterates:thirds iterates:plan iterates:graph iterates:gaps
                          iterates:memo iterates:unread iterates:lone
-                         straddle:knee straddle:crease straddle:plain straddle:both straddle:acc)
+                         straddle:knee straddle:crease straddle:plain straddle:both straddle:acc
+                         straddle:given)
     string(REPLACE ":" ";" checked ${checked})
     list(GET checked 0 file)
     list(GET checked 1 instance)
@@ -200,6 +201,8 @@ set_tests_properties(check_both_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^both: ${straddled}\nboth\\.g: at 3 a disturbed run takes 'g_n \\| n\\*y_n >= 3/2 = 1' and the interpreter 'g_n = 0'\\; the guard of the first is 1\\.7e-10 from its threshold\nboth\\.h: at 1 the compiled step takes 'h_n \\| d_n < c = 1' and the interpreter 'h_n = 0'\\; the guard of the first is exactly on its threshold\nboth\\.d: [0-9.e+-]+ at 9, where the interpreter gives 0\\.10000000000000001\nboth\\.h: 1 at 1, where the interpreter gives 0\nboth\\.y: within 0\\; the interpreter's terms about 5\\.8e-11 from the exact ones\nboth\\.g: within 0\\; the interpreter's terms about 1 from the exact ones, past the tolerance from 3\n$")
 set_tests_properties(check_acc_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^acc: ${straddled}\nacc\\.x: at 1 a disturbed run takes 'H\\(x\\) \\| x >= 0 = 1' and the interpreter 'H\\(x\\) = 0'\\; the guard of the first is 4\\.8e-11 from its threshold\nacc\\.y: within 0\\; the interpreter's terms about 5\\.8e-11 from the exact ones\nacc\\.x: within 0\\; the interpreter's terms about 99 from the exact ones, past the tolerance from 1\n$")
+set_tests_properties(check_given_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^given: 100 steps from 0, against exact values\ngiven\\.x: within 0\n$")
 add_test(NAME check_knee COMMAND check_knee)
 add_test(NAME check_both COMMAND check_both)
 set_tests_properties(check_both PROPERTIES WILL_FAIL ON)

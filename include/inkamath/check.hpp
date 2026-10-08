@@ -98,6 +98,9 @@ public:
             data += Array("const " + CompileC::Real(), "in_" + std::to_string(k),
                           steps * compiled.cells[k], values);
         }
+        // Asked again within the terms, as a disturbed run asks them, so that
+        // the functions they call are heard in the same asks (C250).
+        stack.Forget();
         // A term of an instance the model writes unnamed is asked of one made
         // again where the instance checked has it, as written (C84): the
         // interpreter cannot name it.

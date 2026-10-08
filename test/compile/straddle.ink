@@ -110,3 +110,16 @@ gated(w = 1/10^11) = {
     x_n = x_(n-1) + H(y_n - (1/2 - w))
 }
 acc = gated()
+
+# A function the input calls as well as the step. The interpreter asks the
+# input before any term and a run within each, and their calls are paired
+# all the same: every term exact, no run takes another clause.
+#
+#     given: 100 steps from 0, against exact values
+#     given.x: within 0
+U(x) | x >= 0 = 1
+U(x) = 0
+fedby(u_n) = {
+    x_n = u_n + U(1)
+}
+given = fedby(u_n = U(-1))
