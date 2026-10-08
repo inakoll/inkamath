@@ -508,6 +508,12 @@ set(args --compile c230.ink -o c230.h)
 check(compile_c230)
 holds(compile_c230 c230.h "(double)m_->index_ * 300.0 + 1.0) + ((double)m_->index_ * 1.0 + 1.0 + 1.0 + 1.0 + 1.0 + 1.0 + 1.0 + 1.0 + 1.0 + 1.0 + 1.0 + ((double)m_->index_ * 2.0 + 1.0")
 
+# C231: under grad, where a sum's part is there was written out at each
+# partial sum, each term's being where any cell of m's is: 999^2 times 22 KB.
+file(WRITE "${OUT}/c231.ink" "A[i<=32] = mod(3*i, 7) - 3 + 1/2\nrelu(z)[i] | z[i] > 0 = z[i]\nrelu(z)[i] = 0\nh(m) = sum_(i=1)^999 m[1 + mod(i, 32)]\nw_0 = 1/2\nw_n = w_(n-1) - grad_(v = w_(n-1)) h(relu(relu(A*v)))/1024\n")
+set(args --compile c231.ink -o c231.h)
+check(compile_c231)
+
 # C155: as is a call of the prelude's, where it was written at each reading.
 file(WRITE "${OUT}/c155.ink" "h(t) = (t - 1)/t\nh(t) | t == 1 = t\nh(t) | t == 0 = 1\nf(z) = h(exp(z))\nx_0 = 1/2\nx_n = f(f(x_(n-1)))\n")
 set(args --compile c155.ink -o c155.h)
