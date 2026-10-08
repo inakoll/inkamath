@@ -325,14 +325,30 @@ private:
         for (const auto& [keyword, argument] : p.parameters_dict())
             arguments.emplace_back(keyword, Eval(argument));
         for (const auto& [given, jet] : arguments) definition->Divides(given, *jet[0], stack_);
-        // In its own words, not its guard's im's or its clauses' re's.
-        const auto& names = stack_.Builtins().names;
-        if (complex_ && (definition == names.at("abs") || definition == names.at("max") ||
-                         definition == names.at("min")))
+        // In its own words, not its guard's im's. max and min are defined on
+        // the real line alone, so not where a real argument's parts leave it,
+        // as |z| is (C205).
+        using Part         = numeric_interface<typename T::value_type>;
+        const auto  cell   = [](auto f) { return [f](const T& v) { return T::Cells(v, f); }; };
+        const auto& names  = stack_.Builtins().names;
+        const bool  ranked = definition == names.at("max") || definition == names.at("min");
+        if (complex_ && (definition == names.at("abs") || ranked))
             for (const auto& [given, jet] : arguments)
                 if (const std::string at = Complex(jet); !at.empty())
                     throw std::runtime_error(definition->Name() + " has no complex derivative at " +
                                              at);
+        for (const auto& [given, jet] : arguments) {
+            const Jet   im   = ranked ? Map(jet, cell(Part::imaginary)) : Jet();
+            std::size_t with = 0;
+            for (std::size_t s = 1; s < im.size(); ++s)
+                if (im[s] && !IsZero(*im[s])) with |= s;
+            if (!with || !IsZero(*im[0])) continue;
+            const auto& [name, point] = grads_[std::bit_width(with) - 1];
+            throw std::runtime_error(
+                definition->Name() +
+                " has no derivative where its argument leaves the real line at " + name + " = " +
+                point);
+        }
         for (const auto& [given, jet] : arguments)
             if (Moves(jet) && stack_.staircases.contains(definition.get()))
                 throw std::runtime_error("grad cannot differentiate " + definition->Name() +
@@ -343,8 +359,6 @@ private:
         Jet        out     = Term(*definition, p, indexed, index, arguments);
         // |z| squared is re^2 + im^2, whose parts past the first the real
         // clauses lack where z is real and its parts are not (C203).
-        using Part      = numeric_interface<typename T::value_type>;
-        const auto cell = [](auto f) { return [f](const T& v) { return T::Cells(v, f); }; };
         if (out.size() > 2 && arguments.size() == 1 && !IsZero(*out[0]) &&
             definition == stack_.Builtins().names.at("abs")) {
             const Jet re     = Map(arguments[0].second, cell(Part::real));
