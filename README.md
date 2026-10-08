@@ -264,7 +264,8 @@ fraction, and `digits = n` sets how many digits are shown.
 
 Numbers are complex; `i` is the imaginary unit, a name that a bound one (a
 sum's index, a cell's row) shadows in its own scope and that nothing may
-define again. `e` and `pi` are the only
+define again. A complex number is a pair of doubles, so whatever `i` touches
+is inexact, even where it comes out real and whole. `e` and `pi` are the only
 other built-in values, and `floor`, `re` and `im` the only built-in
 functions, each cell by cell of a matrix: the largest whole number not above
 its argument, exact of an exact number, and a complex number's real and

@@ -1748,6 +1748,9 @@ closures need one anyway, and can bring it.
 | C212 `[fixed]` | **grad refused a variable named like a size of a called function's signature.** Its check that a definition reads no global of grad's name bound a definition's parameters and indices but not the sizes its signature names, which are its own: `grad_(a = 1) a*fa([1; 2])`, with `fa(X[j<=a, k<=b]) = sum_(j=1)^a X[j,1]`, was "fa reads the global a, which grad's a does not reach", and through the prelude so were `grad_(m = 2) m*rho([1/2])`, hurwitzt's m, and `grad_(n = 1) n*charpoly([1 2; 3 4])`, charpolyc's n. The sizes are bound with the names now, in 2 lines and one of comment; grad.ink holds it, and no other answer moved. |
 | C213 `[fixed]` | **A function of the prelude given a number was refused in words not its own.** Called on a number, such a function is a function of the header, whose body was compiled without the sizes its signature names and without a sequence's temporaries: `y_t = rho([1/(t+2)])` and `dhinf(1/(t+2), 1, 1)` were "n is not defined", `rhoe(t)` "m is not defined", and `hinf(-t-1, 1, 1)` and `charpoly(t)` "a sequence with parameters in a limit's terms", where there is no limit. Its body binds the sizes now, and one that reads a sequence with parameters, itself or through what it calls, is written where it is called, as of a matrix, in 20 lines and 4 of comment: rho, hinf and dhinf of a number are refused in their definitions' words, "a factorial", hurwitzb's, and rhoe and charpoly of one compile. `compile_charpoly_refused` and `compile_hinf_refused` in `test/cli.cmake` hold it, its `x` moving from the limit's words, and `lone` in `test/compile/iterates.ink`; no expected header moved. |
 | C214 `[fixed]` | **`eigv` read a sign by multiplying two coefficients, doubling their digits.** Descartes' count, eig's and hinf's, took a sign change where `q[j]*eigl(q)_(j-1) < 0`, so a test passed a thousand digits at half the size its coefficients do, and was marked or refused there: `hinf([0 1; -1 -10^-100], [0; 1], [1 0])` was "hinf needs tests within a thousand digits", where the peak of a damping 2z = 10^-100 is 1/(2z(1 - z^2)^(1/2)), 10^100. The signs are compared now, in 1 line of the prelude more; hinfdata.ink holds it, and no other answer moved. Measured on random matrices against the same binary before it, each new answer checked against NumPy: eig of symmetric matrices of tenths, marked at 28x28, is certified at 36x36 (7 minutes); hinf of small whole numbers, refused at 9x9 with one input and 6x6 with two, is certified at 10x10 and 9x9, of full doubles at 3x3 (4 of 4, refused before) and of doubles k/7 at 4x4 (4 of 4, refused before in 4); time scales 10^90 apart are certified, 10^50 before, and a mode B cannot reach 10^150 slower, 10^80 before. README's section 2 says so. |
+| C215 `[fixed]` | **grad answered 0 for the limit of a bisection.** A comparison is flat between its jumps, so every term of a bisection has a 0 derivative, and C72's rule took its limit's to be theirs: with `b(x)_0 = [0; 1]` and `b(x)_n` halving b toward x, `grad_(x = 1/3) lim b(x)` was [0; 0], where lim b(x) is [x; x]. A limit whose terms read a comparison or a floor moving with grad's variable is refused now, as rho is, a bisection being a staircase: "grad cannot differentiate lim b, whose terms step with x at a comparison or a floor". A term remembered carries what it read, so one taken before the limit counts. The rule stands for every other limit, and for abs, max and min, whose guards step where they are continuous. 31 lines; grad.ink holds it, and no other answer moved. |
+| C216 `[fixed]` | **`hinf` could answer an ulp above the norm.** It took the root of its bracket's lower end as a double and multiplied it by the system's scale, rounding twice after the bisection: `hinf(-1, 1, 3, 22)` was `~25.000000000000004`, where |T(iw)|^2 = (625 + 484w^2)/(1 + w^2) peaks at 25 at w = 0, and `dhinf(1/5, 1, 20)` was `~24.999999999999996`, under its 25 at z = 1. The scale is folded into the lower end exactly now, but for a power of 2, and its root bisected by hinff, whose lower end is rounded once as rho's is: at most the norm's double. Of 3,960 first-order systems, continuous and discrete, whose norms are exact, 643 were above that double and 553 below it, by up to 2 ulps each way; all 3,960 are now that double, each a third slower, where no golden's time moved. 3 lines of the prelude more; hinf.ink and hinfdata.ink hold the two, and no other answer moved. |
+| C217 `[fixed]` | **`frac i` said i was approximated.** A complex number is a pair of doubles, exact or not, and `frac` refused every inexact number as approximated, which i, 0 and 1, is not: `frac i` was "i was approximated, so it has no exact fraction". One with an imaginary part is refused as complex now, "i is complex", and README's section 1, which has a literal stay exact through `+`, `-`, `*` and `/`, says that whatever i touches is inexact. A real number i made, such as `i*i`, is still said to be approximated, as nothing tells it from one that was. 2 lines; exact.ink holds it, and no other answer moved. |
 | C220 `[fixed]` | **A value derived from a parameter whose cell was a temporary of the update was read by the temporary's name, which the step does not declare.** A derived value's cell that is a name or a number is written where it is read rather than kept in a field, and a temporary's name is one: `p = 1/2`, `R = [p, 1; 2, 3]^(0-1)` and `x_n = R*[n; 1]` wrote `t0_[0][0]` in the step, a header that did not build, as did `[exp(p), [1, 2; 3, 4]]` once block literals stretch a computed value. Such a cell is read from its field now, in 3 lines of `compile.hpp` more; `cli.cmake` holds the step, and no recorded header moved. |
 | C221 `[fixed]` | **A cell taken from a matrix answered where another of its cells is NaN by a function of the header.** C211's gap: where a cell is taken, a header tests every cell of the matrix once one of them writes NaN, and a call of log, which may answer NaN, did not count: `[x_n, log(x_n)][1, 1]`, in a header nothing else made aware, answered x_n where the interpreter refuses the matrix whole. Such a call counts now, in a line changed of `compile.hpp`; `nan.ink`'s `took` holds it, and no recorded header moved. A division by zero there is still an infinity, which no test catches. |
 | C225 `[fixed]` | **The prelude's stated worst errors were sample maxima.** DESIGN gave the worst errors of `exp`, `log`, `tanh`, `sin` and `cos`, and of their parts, from 1e7 or 2e7 random points a range or 2,000 for the parts, and elementary.ink and trig.ink comments bounds from them. A sweep of 1e8 to 4e8 points a range against a 64-bit long double, its farthest confirmed by mpmath at 256 bits, passes each: `exp` 1.307 units at 635.2779388398857 (1.29 stated, "1.3 everywhere" in elementary.ink), 0.900 of 2^-1074 at -708.7539819250273 (0.89), `log` 2.938 at 1.0038647811079129 (2.87), `tanh` 2.967 at -0.20806425077771573 (2.83), `sin` 2.431 at -36502.41508093197 (2.43, "2.4" in trig.ink), `cos` 2.445 at -660945.4787059261 (2.37), and the parts 2.445 from cos and 2.426 from -sin at -660945.4787059261 and 651843.0266746085 (2.04 and 1.62). The functions stand: the figures are the sweep's now, measured and still no bound, and README states them. `--check` cannot see an error the interpreter and a header share, so `test/prelude_test.cpp` holds the five, the two parts and `ilogb` to `test/data/prelude_reference.txt`, 2,400 arguments with mpmath's correctly rounded values, written once by `test/prelude_reference.py`: the sweep's farthest, the doubles nearest a multiple of pi/2 or ln 2, subnormals and either end of `exp`'s range; its skipped case `sweep` is the sweep. Two comments moved, elementary.ink's and trig.ink's, and no answer. Found by an external review. |
@@ -3196,7 +3199,18 @@ that exploring seven domains asked of the interpreter, by how many asked.
 - **A limit exact at an exact fixed point**: k-means reaches `C_3 == C_4`
   exactly, yet `lim C` is inexact and `frac lim C` refused.
 - **Matrix `==` and `<>` compiled**, refused as "a comparison of matrices".
-- **`--check`'s hundred steps as an option**, with `lim`'s.
+- **A matrix `==` a single value refused**, naming `0*M`: Doyle 1978's
+  Riccati equation checked as `ric(12) == 0` answers 0, a matrix being
+  equal to no single value, where its residual is the zero matrix and
+  `ric(12) == [0 0; 0 0]` answers 1.
+- **`lim` ends at a single repeated term**: `r(x)_n = r(x)_(n-1) +
+  (r(x)_(n-1) + 2^-n <= x)*2^-n`, x's binary digits, answers
+  `lim r(1/3)` 0.25 from its terms 0, 0, 1/4, 1/4. The smallest change to
+  weigh: two zero steps in a row, or README saying that one ends it.
+- **`--check`'s hundred steps as an option**, with `lim`'s. Doyle 1978's
+  loop at dt = 1/10 is ten time units in them, where the nominal loop has
+  not settled, [-1.18; 1.50] from [1; 0], and the one past its margin,
+  m = 6/5, has not run away; a thousand show both.
 - **A cumulative sum compiled as an accumulator**, `sum_(t=1)^n e(t)`:
   refused as "a sum whose bounds are not constants", where a regret or a
   running loss is exactly that (Reddi et al. 2018).
@@ -3205,7 +3219,9 @@ that exploring seven domains asked of the interpreter, by how many asked.
 - **`--check` says how far a term parts**, not only where it first does: the
   largest difference and where, as MANIFESTO asks of how a difference grows.
 - **`atan` in the prelude**, written as `exp` and `log` are, `asin` and
-  `acos` from it: Kahan's angle formulas cannot be written without.
+  `acos` from it: Kahan's angle formulas cannot be written without. Doyle
+  1978 asks for `arg` too, its phase margin being arg L(iw) at crossover,
+  of which only cos(PM) = -Re L can be written now.
 - **An instance named again**, `a = thm1.adam`, then `a.x_1`.
 - **A constant folded from an approximated number, listed**: `--compile`
   folds `(2^4000 > 2^3999)` to 0.0 and `3^3000/3^2999` to NAN silently,
@@ -6781,7 +6797,12 @@ that exploring seven domains asked of the interpreter, by how many asked.
   each inexact cell the rational its double is, an answer certified for the
   data as stored or marked, where rounded tests misjudge unmarked. To weigh
   against the inertia count below, by its cost in time under the
-  sanitizers.
+  sanitizers. Doyle 1978's example meets it where q and sigma grow and its
+  margin closes to 1: with f = 2 + sqrt(5) in a double,
+  `hurwitz(charpoly(Acl(m, f, f)))` is 1 at m = 1 + 1/f^2, where the data
+  as stored is unstable, and with f = 2 + sqrt(10^8 + 4), 0 at
+  m = 1 + 1/f^2 - 10^-12, where it is stable; each decided exactly from the
+  doubles.
 - **An inertia count for inexact symmetric matrices**: the negative pivots
   of LDL' of A - xI count the eigenvalues below x, backward stable, where the
   rounded Descartes count of `eig` loses a k-fold eigenvalue to about 16/k

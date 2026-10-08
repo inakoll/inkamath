@@ -149,6 +149,7 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brin
                          kahan:sums kahan:muller kahan:rounded kahan:surprise kahan:solveur
                          rump:rump signatures:inv
                          goldberg:year goldberg:needled goldberg:big goldberg:seven
+                         doyle:regulated doyle:replayed
                          iterates:poly iterates:thirds iterates:plan iterates:graph iterates:gaps
                          iterates:memo iterates:unread iterates:lone blocks:dare blocks:smith
                          blocks:deadbeat blocks:nested blocks:sloped conv:see conv:learn)
@@ -309,6 +310,12 @@ set_tests_properties(check_big_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^big: 100 steps from 0, against exact values\nbig\\.s: within 2e-30\nbig\\.t: within 0\nbig\\.w: 0 at 0, where the interpreter gives 1\n$")
 set_tests_properties(check_seven_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^seven: 100 steps from 0, against exact values\nseven\\.t: within 0\nseven\\.u: within 1\\.4e-14\n$")
+# Doyle (1978): his LQG loop closed, its rounding damped, and its unstable
+# plant replayed alone, its rounding grown some 10^5; compile/doyle.ink.
+set_tests_properties(check_regulated_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^regulated: 100 steps from 0, against exact values\n(regulated\\.[a-z.]+: within [1-9](\\.[0-9])?e-1[3-5]\n)+$")
+set_tests_properties(check_replayed_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^replayed: 100 steps from 0, against exact values\nreplayed\\.x: within [1-9](\\.[0-9])?e-1[01]\nreplayed\\.y: within [1-9](\\.[0-9])?e-1[01]\n$")
 set_tests_properties(check_mask_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^mask: 100 steps from 0, against exact values\nmask\\.y: within 0\n$")
 set_tests_properties(check_order_report PROPERTIES PASS_REGULAR_EXPRESSION

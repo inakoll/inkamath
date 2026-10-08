@@ -421,9 +421,11 @@ inline constexpr const char* prelude[] = {
     // polynomial, the bound or a test was approximated past a thousand
     // digits, hinfi: x == x is then a double, which 2^-1100 cannot move.
     // The system is divided by its largest cells, time by A's, output by
-    // [C, D]'s and input by [B; D]'s; the root is taken before scaling back,
-    // and marked where its double is not normal. dhinf is hinf of the
-    // system's image by z = (1 + s)/(1 - s), which keeps the norm.
+    // [C, D]'s and input by [B; D]'s; the root of the bracket's lower end,
+    // scaled back exactly but by a power of 2, is bisected by hinff to be
+    // rounded once, so never past the norm's double (C216), and marked where
+    // that double is not normal. dhinf is hinf of the system's image by
+    // z = (1 + s)/(1 - s), which keeps the norm.
     "hinfc(p[j<=m], k) = 0",
     "hinfc(p[j<=m], k) | k < m = p[m-k]",
     "hinfz(f[k<=m], w)[i<=m-1, j<=m-1] = sum_(b=0)^(min(i, j)-1) (hinfc(f, "
@@ -457,11 +459,17 @@ inline constexpr const char* prelude[] = {
     "hinfm(M[j<=p, k<=q])_t = max(hinfm(M)_(t-1), max(M[floor((t-1)/q)+1, mod(t-1, q)+1], "
     "-M[floor((t-1)/q)+1, mod(t-1, q)+1]))",
     "hinfj(M[j<=p, k<=q]) = hinfm(M)_(p*q) + (M == 0*M)",
-    "hinfd(x, f) = x*f",
-    "hinfd(x, f) | x <> 0 and (abs(x*f) < 2^-1022 or abs(x*f) >= 2^1024) = x*f + 0*10^-1000",
+    "hinfd(x, k) = rhod(x, k)",
+    "hinfd(x, k) | x <> 0 and (abs(rhod(x, k)) < 2^-1022 or abs(rhod(x, k)) >= 2^1024) "
+    "= rhod(x, k) + 0*10^-1000",
     "hinfg(A, B, C, D) | hinfi(hinfw(A, B, C, D)) = 2*ceil(rhop(hinfw(A, B, C, D))/2)",
-    "hinfe(A, B, C, D, f) = hinfd(rhod(rhoa(hinfu(A, B, C, D, hinfg(A, B, C, D))_256, hinfu(A, B, "
-    "C, D, hinfg(A, B, C, D))_256)^(1/2), hinfg(A, B, C, D)/2), f)",
+    "hinff(y)_0 = [0; 1]",
+    "hinff(y)_k = hinff(y)_(k-1) + (hinff(y)_(k-1)[2] - hinff(y)_(k-1)[1])/2*([1; 0] "
+    "- ((hinff(y)_(k-1)[1] + hinff(y)_(k-1)[2])^2/4 > y)*[1; 1])",
+    "hinff(y)_k | k > 64 and hinff(y)_(k-1)[2] - hinff(y)_(k-1)[1] <= 2^-64*hinff(y)_(k-1)[1] "
+    "= hinff(y)_(k-1)",
+    "hinfe(A, B, C, D, f) = hinfd(rhoa(hinfu(A, B, C, D, hinfg(A, B, C, D))_256, hinff(hinfu(A, B, "
+    "C, D, hinfg(A, B, C, D))_256[1]*(f/2^rhop(f))^2)_256), hinfg(A, B, C, D)/2 + rhop(f))",
     "hinfe(A, B, C, D, f) | hinfw(A, B, C, D) == 0 = ~0",
     "hinfb(A, B, C, D, f) = hinfe(A, B/hinfj([B; D]), C, D/hinfj([B; D]), f*hinfj([B; D]))",
     "hinf(A[j<=n, k<=n], B[j<=n, k<=m], C[j<=p, k<=n], D[j<=p, k<=m] = 0*C*B) | "

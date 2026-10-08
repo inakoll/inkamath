@@ -192,24 +192,6 @@ r_n=q_n-(q_(n+1)-q_n)^2/(q_(n+2)-2*q_(n+1)+q_n)
 >> r_20
 ~0.693134637
 
-# A term far from the base is filled from the base up, each finding the one
-# before it remembered, so a recurrence is not limited by how deep references
-# nest. This one failed at 256 deep (DESIGN.md, phase 14).
->> g_0=1
-g_0=1
-
->> g_n=g_(n-1)+1
-g_n=g_(n-1)+1
-
->> g_10
-11
-
->> g_500
-501
-
->> g_5000
-5001
-
 # Sequences that reach back to each other fill alike.
 >> ma_0=0
 ma_0=0
@@ -275,14 +257,6 @@ pb_n = pa_(n-2) + 1
 # (DESIGN.md, C69).
 >> ma_60000
 60000
-
->> g_600000
-600001
-
-# Up to ten million terms from the base, so that a slip of the keyboard costs
-# seconds and not the session.
->> g_2000000000
-error: g_2000000000 is 2000000000 terms from its base, and a fill stops at 10000000
 
 # Recursion is still bounded: one that reaches up, away from its base, never
 # arrives, and past the budget the interpreter says so rather than dying

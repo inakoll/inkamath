@@ -100,6 +100,9 @@ TEST_CASE("conditional") {
 TEST_CASE("sequences") {
     check_transcript("sequences.ink");
 }
+TEST_CASE("fill") {
+    check_transcript("fill.ink");
+}
 TEST_CASE("series") {
     check_transcript("series.ink");
 }
@@ -234,6 +237,9 @@ TEST_CASE("rump") {
 }
 TEST_CASE("goldberg") {
     check_transcript("goldberg.ink");
+}
+TEST_CASE("doyle") {
+    check_transcript("doyle.ink");
 }
 TEST_CASE("readme") {
     check_readme();
