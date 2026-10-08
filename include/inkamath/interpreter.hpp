@@ -356,9 +356,15 @@ inline constexpr const char* prelude[] = {
     "schurcohn(p[j<=m], r = 1) | r >= 0 and sum_(j=1)^m max(p[j], -p[j]) >= 0 "
     "= hurwitz(schurcohnm(p, r))",
     "rhoe(A[j<=m, k<=n]) = rhop(sum_(j=1)^m sum_(k=1)^n max(A[j,k], -A[j,k]))",
+    // The sum is inf by 4^n too only where an exact cell past a double meets
+    // an inexact one; the power is then the largest cell's, 4^n more (C272).
+    "rhoe(A[j<=m, k<=n]) | rhow(A) >= 2^1024 and rhow(A) == 2*rhow(A) "
+    "= hinfm(rhok(A))_(m*n) + m + n",
     "rhoe(A[j<=m, k<=n]) | sum_(j=1)^m sum_(k=1)^n max(A[j,k], -A[j,k]) >= 2^1024 "
     "= rhop(sum_(j=1)^m sum_(k=1)^n max(A[j,k], -A[j,k])/2^(m+n)) + m + n",
     "rhop(s) = ilogb(s + (s == 0)) + 1 + 0*s",
+    "rhow(A[j<=m, k<=n]) = sum_(j=1)^m sum_(k=1)^n max(A[j,k], -A[j,k])/2^(m+n)",
+    "rhok(A[j<=m, k<=n])[j<=m, k<=n] = max(rhop(max(A[j,k], -A[j,k])), 0)",
     "rhod(x, e) = x*2^(e - floor(e/2))*2^floor(e/2)",
     "rhos(b) = b[2] - b[1] <= 2^-53*min(abs(b[1]), abs(b[2])) "
     "or (b[1] + b[2])/2 == b[1] or (b[1] + b[2])/2 == b[2]",
