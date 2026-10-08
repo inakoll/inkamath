@@ -100,6 +100,8 @@ public:
     friend bool operator==(const Number& a, const Number& b) {
         if (a.small() && b.small()) return a.num_ == b.num_ && a.den_ == b.den_;
         if (a.exact() && b.exact()) return a.big_ && b.big_ && *a.big_ == *b.big_;
+        if (a.big_ || b.big_)
+            return Order(a, b, std::equal_to<>()) && a.Inexact().imag() == b.Inexact().imag();
         return a.Inexact() == b.Inexact();
     }
 
@@ -938,7 +940,23 @@ private:
     template <typename Op>
     static bool Order(const Number& a, const Number& b, Op op) {
         if (a.exact() && b.exact()) return op(Compare(a, b), 0);
-        return op(a.Inexact().real(), b.Inexact().real());
+        const double x = a.Inexact().real(), y = b.Inexact().real();
+        if (Lost(a, x) && std::isfinite(y)) return op(Compare(a.Ratio(), Dyadic(y)), 0);
+        if (Lost(b, y) && std::isfinite(x)) return op(Compare(Dyadic(x), b.Ratio()), 0);
+        return op(Lost(a, x) ? 0 : x, Lost(b, y) ? 0 : y);
+    }
+
+    // An exact number whose double is 0 or inf, which it is not, so compared
+    // with a double exactly, and with inf or NaN as any finite number (C262).
+    static bool Lost(const Number& a, double x) { return a.big_ && (std::isinf(x) || x == 0); }
+
+    // A finite double as the fraction it is.
+    static Big Dyadic(double x) {
+        int        e     = 0;
+        const auto m     = static_cast<Natural::wide>(std::ldexp(std::frexp(std::abs(x), &e), 53));
+        const auto shift = static_cast<std::size_t>(std::abs(e - 53));
+        return e >= 53 ? Big{x < 0, Natural(m).Shifted(shift), Natural(1)}
+                       : Big{x < 0, Natural(m), Natural(1).Shifted(shift)};
     }
 
     // The sign of a/b - c/d, read from a*d against c*b in 128 bits: two
