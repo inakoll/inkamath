@@ -6747,7 +6747,12 @@ that exploring seven domains asked of the interpreter, by how many asked.
       truths inexact, and adjacent doubles are never 2^-53 apart relative:
       after 256 steps the answer was marked, `rho([~0.5 1; -1 0.5])`
       `~1.11803399  # approximated...`. An exact bracket's midpoint is never
-      an end, so no exact answer moves; 1 line of the prelude.
+      an end, so no exact answer moves; 1 line of the prelude. An inexact
+      one moves by a unit, the bracket's lower double where the exact
+      bracket's end was rounded to nearest: of rho, abscissa, eig and smax
+      of 1000 random 2x2 and 3x3 matrices of doubles, 414 at 17 digits,
+      161 nearer the true value and 229 further, where both are off by up
+      to 306 units.
     - `smaxd` marks by `0*10^(-1000*truth)`, and of an inexact truth
       10^~-1000 is a plain double 0: `smax(10^-310)` lost its mark. It
       becomes a guard after the other; 1 line.
