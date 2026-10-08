@@ -336,6 +336,15 @@ error: rhob needs finite cells, not ~inf
 >> abscissab([~1 1; 1 1]*10^310)_64
 error: abscissab needs finite cells, not ~inf
 
+# An exact cell past a double is no inf, though an inexact one beside it
+# makes their sum one, by 4^n too: the radius is 10^400's, inf as a double
+# and marked, as C191's of an exact matrix (C272).
+>> rho([~1 0; 0 10^400])
+~inf  # approximated past a thousand digits
+
+>> abscissa([~1 0; 0 10^400])
+~inf  # approximated past a thousand digits
+
 # Five by five, the tests exact; ten by ten, in bisection_digits.ink, they
 # are not.
 >> rho([6 -8 -6 -5 -6; 6 7 2 -9 -8; -3 -1 2 0 -4; -6 4 4 -9 -7; -1 -2 7 0 -2]/10)
