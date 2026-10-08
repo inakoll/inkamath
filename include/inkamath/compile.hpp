@@ -1186,7 +1186,9 @@ private:
     // The same value is the same temporary within one sequence's step.
     template <typename Lines>
     std::string Declare(const std::string& value, Lines lines) {
-        if (!temporaries_) throw Reason("a matrix inverse outside a sequence");
+        // A sequence or a global has them; a limit's terms do not, and the
+        // prelude's C functions invert nothing (C261).
+        if (!temporaries_) throw Reason("a matrix inverse inside a limit's terms");
         // Checked, as an ended list may have left its address to another.
         std::size_t& at = declared_[{temporaries_, value}];
         if (at < temporaries_->size() && (*temporaries_)[at].value == value)
