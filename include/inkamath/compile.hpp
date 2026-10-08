@@ -720,8 +720,8 @@ private:
                 function.Divides(given, Value(value.size), definitions_);
         });
         Defaults(function, expansion);
-        Code result = at ? Term(name, function, expansion, *at)
-                         : Inside(expansion, [&] { return Chained(name, function); });
+        Code result =
+            at ? Term(name, function, expansion, *at) : Memoized(name, function, expansion, outer);
         // The interpreter computes an argument the function does not read, so
         // its refusal is the call's (C189).
         std::string written, nan;
@@ -736,12 +736,29 @@ private:
         return result;
     }
 
-    // Filled from the lowest base, by the interpreter's stride (Reference::Filled),
-    // each term once for its arguments' code, shape and exact value (C187),
-    // and a temporary once a term reads it; one the fill cannot compute is
-    // refused where a read reaches it, as the interpreter's recursion is.
-    Code Term(const std::string& name, const Reference<Value>& function, Expansion& expansion,
-              int k) {
+    // Within a loop that binds places alone, a sum's or a definition's by its
+    // cells, a call is one value for the code it is given, unless it reads a
+    // term, which depends on where: compiled at each place, a call by cells
+    // wrote all its cells at each (C230). Kept by the temporaries it declared.
+    using Memo =
+        std::pair<const void*, std::map<std::tuple<const void*, std::string, std::string>, Code>>;
+    Code Memoized(const std::string& name, const Reference<Value>& function, Expansion& expansion,
+                  const Expansion* outer) {
+        const auto compiled = [&] {
+            return Inside(expansion, [&] { return Chained(name, function); });
+        };
+        if (outer || !temporaries_ || memo_.first != temporaries_) return compiled();
+        const auto key = std::tuple(static_cast<const void*>(&function), grad_, Given(expansion));
+        if (const auto found = memo_.second.find(key); found != memo_.second.end())
+            return found->second;
+        const int situated = situated_;
+        Code      code     = compiled();
+        if (situated_ == situated) memo_.second.emplace(key, code);
+        return code;
+    }
+
+    // The code of each value given, its shape, exact value, cells, moves and parts.
+    static std::string Given(const Expansion& expansion) {
         std::string args;
         const auto  text = [&](const auto& self, const Code& code) -> void {
             args += code.size.toString() + '\x1d';
@@ -751,6 +768,16 @@ private:
             for (const Code& part : code.part) self(self, part);
         };
         for (const auto& [given, value] : expansion.values) text(text, value);
+        return args;
+    }
+
+    // Filled from the lowest base, by the interpreter's stride (Reference::Filled),
+    // each term once for its arguments' code, shape and exact value (C187),
+    // and a temporary once a term reads it; one the fill cannot compute is
+    // refused where a read reaches it, as the interpreter's recursion is.
+    Code Term(const std::string& name, const Reference<Value>& function, Expansion& expansion,
+              int k) {
+        const std::string args = Given(expansion);
         int& computing = computing_.try_emplace({&function, args}, std::numeric_limits<int>::max())
                              .first->second;
         if (k >= computing)
@@ -1289,6 +1316,7 @@ private:
 
     // A value, and the parameters it reads.
     std::pair<Code, std::set<std::string>> Reading(const PExpression<Value>& expression) {
+        const Setting<Memo> unseen(memo_, {});  // a call kept outside would not say what it reads
         auto       outer = std::exchange(read_parameters_, {});
         const Code code  = Emit(expression);
         auto       reads = std::exchange(read_parameters_, std::move(outer));
@@ -2333,6 +2361,7 @@ private:
     // guard reading only them; one reading a value that moves is tested where
     // the cell is. Under grad it has a part where any cell has one.
     Code Cells(const std::string& name, const Reference<Value>& definition) {
+        const Setting<Memo> memo(memo_, {temporaries_, {}});
         std::optional<Code> whole;  // the matrix written whole, if it is
         for (const Clause<Value>& clause : definition.Clauses())
             if (!clause.parameters.cells()) whole = Emit(clause.expression);
@@ -2682,6 +2711,7 @@ private:
         const std::string&           name  = expression->Name();
         const ParametersCall<Value>& call  = expression->Call();
         const bool calls = !call.parameters_expression().empty() || !call.parameters_dict().empty();
+        situated_ += call.limit() || !calls;
         if (call.limit()) return Limit(expression, name, call);
         if (limit_ && name == limit_->name && call.subexpr()) return Answer(Earlier(call));
         if (calls && !own_) {
@@ -3206,6 +3236,7 @@ private:
         Code               total;
         bool               constant = true;
         std::vector<Value> terms;
+        const Setting<Memo> memo(memo_, {temporaries_, {}});
         for (int k = first; k <= last; ++k) {
             places_[name]   = Value(Number(k));
             const Code term = Emit(expression->Body());
@@ -4431,6 +4462,8 @@ private:
     std::map<std::tuple<const void*, const void*, std::string, int>, std::pair<Code, bool>> terms_;
     std::map<std::tuple<const void*, const void*, std::string, int>, std::exception_ptr>    failed_;
     std::map<std::pair<const void*, std::string>, int> computing_;
+    Memo                                               memo_;  // the loop's, if one binds places
+    int                                                situated_ = 0;        // terms read, counted
     int                                                terming_ = 0;        // terms being computed
     Reads*      clause_reads_ = nullptr;               // what the clause being compiled reads
     bool                             deferring_ = false;  // compiling the right of an 'and' or 'or'
