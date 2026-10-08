@@ -6829,3 +6829,10 @@ that exploring seven domains asked of the interpreter, by how many asked.
   comparison, told apart from a guard's, paired by order within an ask as a
   function's guard is, and a wording for an expression no clause quotes:
   more than the five lines it was allowed, so left for its own entry.
+- **A straddle that changes how many calls a run makes.** Since C253 a
+  run's calls of a function are paired with the interpreter's only where
+  it made as many, as a call remembered by its arguments is not heard: in
+  `x_n = lim t(y_n)` with `t(a)_k = t(a)_(k-1) + H(a - (1/2 - w))/2^k`,
+  tie's straddle in H, the run moved up rounds H's argument two ways and
+  calls H twice where the interpreter calls it once, and nothing is said. Hearing a
+  remembered call, or pairing calls by their arguments, would say it.
