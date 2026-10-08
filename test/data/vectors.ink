@@ -62,11 +62,10 @@ error: row 2 is outside a 1x2 matrix
 
 # Brackets index only what they touch. A space before them means what it
 # means anywhere else: in a literal it separates blocks, so this is a row of
-# two blocks, as '[a, [3 4]]' is, not the row a[3 4] of a; outside one it is
-# a product without its operator.
+# two blocks, as '[a, [3 4]]' is, not the row a[3 4] of a, and refused as
+# it is (C260); outside one it is a product without its operator.
 >> [a [3 4]]
-[1, 2, 3, 4;
- 3, 4, 4, 4]
+error: a block that does not fill its band
 
 >> a [1]
 error: unexpected '[' -- the operator '*' is probably missing

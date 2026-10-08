@@ -424,6 +424,11 @@ public:
         T retval(Extent{rn, rm});
         for(size_t i = 0; i < n; ++i) {
             for(size_t j = 0; j < m; ++j) {
+                // Any block but a single value fills its place, as C41's
+                // corner is no meaning (C260).
+                const Extent block = sizes[i * m + j];
+                if (block.count() != 1 && (block.rows != i_rows[i] || block.cols != j_cols[j]))
+                    throw std::runtime_error("a block that does not fill its band");
                 for(size_t ri = 0; ri < i_rows[i]; ++ri) {
                     for(size_t rj = 0; rj < j_cols[j]; ++rj) {
                         const Extent s = sizes[i*m+j];
@@ -432,7 +437,7 @@ public:
                             retval((ri_rows[i]+ri+1), (rj_cols[j]+rj+1)) = evaluation[i*m+j](ri+1, rj+1);
                         }
                         else {
-                            // extend the previous (up and left) evaluated cell result
+                            // a single value, stretched over its place
                             retval((ri_rows[i]+ri+1), (rj_cols[j]+rj+1)) = evaluation[i*m+j](s.rows, s.cols);
                         }
                     }

@@ -1186,7 +1186,9 @@ private:
     // The same value is the same temporary within one sequence's step.
     template <typename Lines>
     std::string Declare(const std::string& value, Lines lines) {
-        if (!temporaries_) throw Reason("a matrix inverse outside a sequence");
+        // A sequence or a global has them; a limit's terms do not, and the
+        // prelude's C functions invert nothing (C261).
+        if (!temporaries_) throw Reason("a matrix inverse inside a limit's terms");
         // Checked, as an ended list may have left its address to another.
         std::size_t& at = declared_[{temporaries_, value}];
         if (at < temporaries_->size() && (*temporaries_)[at].value == value)
@@ -2079,8 +2081,8 @@ private:
         return Answer(Parted(code, any ? Part(Laid(parts, expression->Size())) : Part(), from));
     }
     // Each band as tall or as wide as its largest block, a single value
-    // stretched over its block and computed once; any other block fills its
-    // place, as C41's corner is no meaning.
+    // stretched over its block and computed once per step, Shared; any
+    // other block fills its place, as C41's corner is no meaning.
     Code Laid(const std::vector<Code>& blocks, Extent bands) {
         std::vector<std::size_t> rows(bands.rows, 1), cols(bands.cols, 1);
         for (std::size_t b = 0; b < blocks.size(); ++b) {

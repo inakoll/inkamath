@@ -217,15 +217,14 @@ sloped = slopes(x_n = n/4)
 #     T = [1;; 2]
 #     x_n = n
 #
-# where the interpreter refuses a in the words below, gives b_2 as [1, 2, 2,
-# 1; 3, 4, 1, 1], the row [2, 1] continued by its corner, which C41 keeps
-# and records as no meaning, c_3 as [0, 1, 2, 3], a term that widens at
-# every step, and d_2 as [1/2, 0, 1, 0; 0, 1/2, 0, 1], its 1/2 inexact:
+# where the interpreter refuses a and b in the words below, b since C260,
+# gives c_3 as [0, 1, 2, 3], a term that widens at every step, and d_2 as
+# [1/2, 0, 1, 0; 0, 1/2, 0, 1], its 1/2 inexact:
 #
 #     cannot compile a: a tensor cannot be a block of a literal, only a matrix can
 #     cannot compile b: a block that does not fill its band
 #     cannot compile c: its clauses have different shapes
-#     cannot compile d: a matrix inverse outside a sequence
+#     cannot compile d: a matrix inverse inside a limit's terms
 #
 # on standard output, exiting 1. Today a, b and d are refused as 'a matrix
 # built from matrices'; d stays refused until a limit's function has

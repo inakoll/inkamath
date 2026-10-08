@@ -178,6 +178,40 @@ i*inf  # approximated past a thousand digits
 >> (10^2000/3)/i
 -i*inf  # approximated past a thousand digits
 
+# With a double, such an exact number is the double of what it makes, as
+# its power is (C175): 10^400 2^-332 is about 1.14e300 and 10^-400 1e300
+# 1e-100, which read inf and 0, the exact number made a double first, and
+# so did 2^1024 - 2^1023, 2^1023 (DESIGN.md, C242).
+>> 10^400*~2^-332
+~1.14298739e+300
+
+>> 10^400/~2^332
+~1.14298739e+300
+
+>> 10^-400*~1e300
+~1e-100
+
+>> ~1e300/10^400
+~1e-100
+
+>> 10^-400/~2^-1074
+~2.02402253e-77
+
+>> 10^400*(~2^-332*i)
+i*~1.14298739e+300
+
+>> 10^400/(~2^332*i)
+-i*~1.14298739e+300
+
+>> 2^1024 - ~2^1023
+~8.98846567e+307
+
+>> ~2^1023 - 2^1024
+~-8.98846567e+307
+
+>> ~-2^1023 + 2^1024
+~8.98846567e+307
+
 # NaN is not a number, so a comparison of it has no answer, and is refused
 # rather than guessed false, as C has it (DESIGN.md, a NaN reaches every term
 # that reads it). Nor are two NaNs equal, or a matrix with one equal to any.

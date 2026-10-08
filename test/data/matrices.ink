@@ -314,11 +314,10 @@ error: row 3, column 1 is outside a 2x2 matrix
 [1, 4]
 
 # A space before the brackets separates blocks here too, so this is a row of
-# two blocks, as '[a, [3 4]]' is. It was refused while a space could still
-# begin an index (vectors.ink).
+# two blocks, as '[a, [3 4]]' is, refused as it is (C260). It was refused
+# while a space could still begin an index (vectors.ink).
 >> [a [3 4]]
-[1, 2, 3, 4;
- 3, 4, 4, 4]
+error: a block that does not fill its band
 
 >> [a, [3 4;5 6]]
 [1, 2, 3, 4;
@@ -402,20 +401,14 @@ error: row 3, column 1 is outside a 2x2 matrix
 [1, 2, 0;
  3, 4, 0]
 
-# RECORDED AS IT IS, NOT AS IT SHOULD BE (DESIGN.md, C41). A block
-# continues with its last value, which for a single value is the stretch above
-# and reads as an ellipsis -- '[a, 0]' pads the band with zeros. For a larger
-# block it repeats a corner instead: the second row under '[3 4]' is '4 4' and
-# the second row under '[1 2 3]' is '3 3 3', which nobody wrote. Kept while it
-# may still be the residue of an idea, and recorded so it cannot change in
-# silence.
+# Any other block fills its place or is refused, as compiled. These repeated
+# a corner, the second row under '[3 4]' '4 4' and under '[1 2 3]' '3 3 3',
+# which nobody wrote (DESIGN.md, C41, C260).
 >> [a, [3 4]]
-[1, 2, 3, 4;
- 3, 4, 4, 4]
+error: a block that does not fill its band
 
 >> [[1 2 3], a]
-[1, 2, 3, 1, 2;
- 3, 3, 3, 3, 4]
+error: a block that does not fill its band
 
 # A matrix power is repeated multiplication. It used to square the
 # accumulator, so 'a^n' computed 'a^(2^(n-1))' -- right at 1 and 2 and wrong
