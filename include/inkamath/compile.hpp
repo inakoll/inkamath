@@ -1545,6 +1545,10 @@ private:
             text += (text.empty() ? "(" : " || (") + Text(one) + ")";
         return text;
     }
+    // As the condition of a '?': a clause's own, itself one, bracketed (C235).
+    static std::string Whether(const Where& where) {
+        return where->any.empty() ? "(" + where->text + ")" : Text(where);
+    }
     static Code Parted(Code value, const Part& part, const std::vector<const Code*>& from) {
         value.part.clear();
         value.moves.reset();
@@ -1602,7 +1606,7 @@ private:
         if (part && right.moves) {
             const Part alone = over(PartOf(left));
             for (std::size_t k = 0; k < part->cells.size(); ++k)
-                part->cells[k] = Cell("(" + Text(right.moves) + " ? " + part->cells[k].text +
+                part->cells[k] = Cell("(" + Whether(right.moves) + " ? " + part->cells[k].text +
                                           " : " + (alone ? alone->At(k).text : "0") + ")",
                                       primary);
             part->constant.reset();
@@ -1744,8 +1748,8 @@ private:
         // None where its base's clause has none, not 0 times an infinity, where
         // its value is finite (C118).
         if (Doubles(lower)[0] < 0 && Doubles(c)[0] > 0 && base.moves)
-            part =
-                Of(Cell("(" + Text(base.moves) + " ? " + part->cells[0].text + " : 0)", primary));
+            part = Of(
+                Cell("(" + Whether(base.moves) + " ? " + part->cells[0].text + " : 0)", primary));
         return Answer(Parted(value, part, {&base}));
     }
 
