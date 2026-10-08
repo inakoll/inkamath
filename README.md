@@ -261,12 +261,15 @@ fraction, and `digits = n` sets how many digits are shown.
 Numbers are complex; `i` is the imaginary unit, a name that a bound one (a
 sum's index, a cell's row) shadows in its own scope and that nothing may
 define again. `e` and `pi` are the only
-other built-in values, and `floor` the only built-in function: the largest
-whole number not above its argument, exact of an exact number and cell by
-cell of a matrix. `ceil(x) = -floor(-x)` and `mod(a, b) = a - b*floor(a/b)`
-come with it, from a prelude (section 5), and so do `exp`, `log`, `tanh`,
-`sin`, `cos`, `abs`, `max` and `min`, and, of matrices, `charpoly`,
-`hurwitz`, `schurcohn`, `rho`, `abscissa`, `eig` and `smax` (section 2).
+other built-in values, and `floor`, `re` and `im` the only built-in
+functions, each cell by cell of a matrix: the largest whole number not above
+its argument, exact of an exact number, and a complex number's real and
+imaginary parts, the paper's Re and Im. `ceil(x) = -floor(-x)` and
+`mod(a, b) = a - b*floor(a/b)` come with them, from a prelude (section 5),
+and so do `exp`, `log`, `tanh`, `sin`, `cos`, `abs`, `max` and `min`, and,
+of matrices, `charpoly`, `hurwitz`, `schurcohn`, `rho`, `abscissa`, `eig`
+and `smax` (section 2). `abs` takes a complex number too, |z|, so a
+frequency response's magnitude |T(e^{iw})| is written as on paper.
 Any other rounding is a line of it, by the rule the model needs —
 `round(x) = floor(x + 1/2)` — and, like `pi`, each of them can be defined
 again, and given back by `clear`.
@@ -324,6 +327,15 @@ runs to the end of the line.
 
 >> floor(-7/2)
 -4
+
+>> im(2+3*i)
+3
+
+>> T(z) = 1/(z - 1/2)
+T(z) = 1/(z - 1/2)
+
+>> abs(T(e^(i*pi/2)))
+~0.894427191
 ```
 
 ### 2. Matrices
