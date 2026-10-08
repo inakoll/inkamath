@@ -1941,12 +1941,15 @@ private:
         return Answer(Cell("(" + Test(self) + " ? 1.0 : 0.0)", primary));
     }
 
-    // The built-in, as C's; exactly, where what it is given is a constant.
-    PExpression<Value> Floor(FuncExpression<Value>* expression) {
+    // floor as C's, exactly where what it is given is a constant; re and im
+    // of a compiled value, which is real.
+    PExpression<Value> Builtin(FuncExpression<Value>* expression) {
         const ParametersCall<Value>& call = expression->Call();
         if (call.parameters_expression().size() != 1 || !call.parameters_dict().empty())
-            throw Reason("floor expects 1 argument");
+            throw Reason(expression->Name() + " expects 1 argument");
         const Code operand = Emit(call.parameters_expression()[0]);
+        if (expression->Name() == "re") return Answer(operand);
+        if (expression->Name() == "im") return Answer(Literal(Value(operand.size)));
         if (operand.constant && operand.part.empty())
             return Answer(
                 Exactly([](const Value& v) { return Value::Cells(v, Number::floor); }, operand));
@@ -2642,7 +2645,9 @@ private:
         const Found        found = Lookup(name);
         const std::string& key   = found.key;
         if (call.limit()) throw Reason("a limit");
-        if (name == "floor" && found.where == &definitions_.Builtins()) return Floor(expression);
+        if ((name == "floor" || name == "re" || name == "im") &&
+            found.where == &definitions_.Builtins())
+            return Builtin(expression);
         if (calls) {
             if (!found.definition) throw Reason(key + " is not defined");
             if (found.where == &definitions_.Builtins() && !call.subexpr())

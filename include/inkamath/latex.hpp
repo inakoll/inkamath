@@ -308,8 +308,11 @@ private:
             return {Wrapped(Of(*factorial->m_e(), tight), primary) + "!", Level::power};
         if (const auto* transpose = dynamic_cast<const TransposeExpression<T>*>(&e))
             return {Wrapped(Of(*transpose->m_e(), tight), primary) + "^\\mathsf{T}", Level::power};
-        if (const auto* floor = dynamic_cast<const BuiltinExpression<T>*>(&e))
-            return {"\\lfloor " + Of(*floor->m_e()).text + " \\rfloor"};
+        if (const auto* builtin = dynamic_cast<const BuiltinExpression<T>*>(&e)) {
+            const std::string x = Of(*builtin->m_e()).text;
+            if (builtin->name != "floor") return {Operator(builtin->name) + "(" + x + ")"};
+            return {"\\lfloor " + x + " \\rfloor"};
+        }
         if (dynamic_cast<const InexactExpression<T>*>(&e))
             throw std::runtime_error("tex cannot show '~', which has no form on paper");
         if (const auto* compare = dynamic_cast<const CompareExpression<T>*>(&e)) {

@@ -233,7 +233,7 @@ inf  # approximated past a thousand digits
 >> eig([1 2 3])
 error: eig takes A[j<=n, k<=n], not a 1x3 matrix
 
-# In abs's words, as rho is.
+# In max's words, as rho is.
 >> eig([1 i; -i 1])
 error: a comparison needs real numbers, not i
 

@@ -99,10 +99,12 @@ error: sin needs real numbers, not 1+i
 >> sin([1 2])
 error: sin needs single values, not a 1x2 matrix; write it by its cells
 
-# abs is README's own, two guards; its value is exact of an exact number.
+# abs is README's two guards, each taking re(x), after one for a complex
+# number; its value is exact of an exact number.
 >> ?abs
-abs(x) | x < 0 = -x
-abs(x) | x >= 0 = x
+abs(x) | im(x) < 0 or im(x) > 0 = absz(re(x), im(x), 2^ilogb(max(abs(re(x)), abs(im(x)))))
+abs(x) | x < 0 = -re(x)
+abs(x) | x >= 0 = re(x)
 
 >> abs(-3)
 3
@@ -119,10 +121,10 @@ abs(x) | x >= 0 = x
 >> abs(-1/~0)
 inf
 
-# A modulus needs the real and imaginary parts and a root, which the
-# prelude has not: a complex number is refused, as README's abs refuses it.
+# A complex number's modulus, the root of re^2 + im^2, inexact as the
+# number is.
 >> abs(i)
-error: a comparison needs real numbers, not i
+1
 
 >> abs(0/~0)
 error: a comparison needs a number, not -nan

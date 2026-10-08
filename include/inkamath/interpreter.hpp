@@ -297,8 +297,11 @@ inline constexpr const char* prelude[] = {
     "tanhp(x) | x > 20 = ~1",
     "tanhk(y, k) = tanhe(2^k - 1 + 2^k*expp(~(y - k*355/512 + k*2.1219444005469057e-4)))",
     "tanhe(m) = -m/(m + 2)",
-    "abs(x) | x < 0 = -x",
-    "abs(x) | x >= 0 = x",
+    "abs(x) | im(x) < 0 or im(x) > 0 = absz(re(x), im(x), 2^ilogb(max(abs(re(x)), abs(im(x)))))",
+    "abs(x) | x < 0 = -re(x)",
+    "abs(x) | x >= 0 = re(x)",
+    "absz(a, b, s) = s*((a/s)*(a/s) + (b/s)*(b/s))^(1/2)",
+    "absz(a, b, s) | 1/a == 0 or 1/b == 0 = 1/~0",
     "max(a, b) = a",
     "max(a, b) | a < b = b",
     "min(a, b) = a",
@@ -322,8 +325,8 @@ inline constexpr const char* prelude[] = {
     // charpoly is det(lambda I - A), highest power first, by Faddeev and
     // LeVerrier. hurwitz is Routh's test of every root of p in Re z < s, its
     // column as a recurrence on the polynomial, and schurcohn of every one in
-    // |z| < r, Routh's on the image of z = r(1 + w)/(1 - w). Each abs exists
-    // only to refuse a complex argument, by name, as one can pass the column. rho
+    // |z| < r, Routh's on the image of z = r(1 + w)/(1 - w). Each max(x, -x)
+    // is an abs that refuses a complex argument, as one can pass the column. rho
     // and abscissa bisect on them a bracket of A/B, B = 2^e above A's cells,
     // scaled by 2^e in two halves so that no factor leaves a double, and
     // keep halving past the 64th while the bracket is wider than 2^-53 of
@@ -344,17 +347,17 @@ inline constexpr const char* prelude[] = {
     "hurwitzr(q)_0 = q",
     "hurwitzr(q[j<=m])_k[j<=m] = hurwitzc(hurwitzr(q)_(k-1), j + 1) - mod(j + 1, 2)"
     "*hurwitzr(q)_(k-1)[1]/hurwitzr(q)_(k-1)[2]*hurwitzc(hurwitzr(q)_(k-1), j + 2)",
-    "hurwitzt(q[j<=m])_0 = sum_(j=1)^m abs(q[j]) > 0 and q[1] <> 0",
+    "hurwitzt(q[j<=m])_0 = sum_(j=1)^m max(q[j], -q[j]) > 0 and q[1] <> 0",
     "hurwitzt(q)_k = hurwitzt(q)_(k-1) and hurwitzr(q)_(k-1)[2]*q[1] > 0",
     "hurwitzs(p[j<=m], s)[t<=m] = sum_(i=1)^t p[i]*hurwitzb(m-i, m-t)*s^(t-i)",
-    "hurwitz(p[j<=m], s = 0) | abs(s) >= 0 = hurwitzt(hurwitzs(p, s))_(m-1)",
+    "hurwitz(p[j<=m], s = 0) | max(s, -s) >= 0 = hurwitzt(hurwitzs(p, s))_(m-1)",
     "schurcohnm(p[j<=m], r)[t<=m] = sum_(i=1)^m p[i]*r^(m-i)*sum_(a=0)^(m-i) "
     "hurwitzb(m-i, a)*hurwitzb(i-1, m-t-a)*(-1)^(m-t-a)",
-    "schurcohn(p[j<=m], r = 1) | r >= 0 and sum_(j=1)^m abs(p[j]) >= 0 "
+    "schurcohn(p[j<=m], r = 1) | r >= 0 and sum_(j=1)^m max(p[j], -p[j]) >= 0 "
     "= hurwitz(schurcohnm(p, r))",
-    "rhoe(A[j<=m, k<=n]) = rhop(sum_(j=1)^m sum_(k=1)^n abs(A[j,k]))",
-    "rhoe(A[j<=m, k<=n]) | sum_(j=1)^m sum_(k=1)^n abs(A[j,k]) >= 2^1024 "
-    "= rhop(sum_(j=1)^m sum_(k=1)^n abs(A[j,k])/2^(m+n)) + m + n",
+    "rhoe(A[j<=m, k<=n]) = rhop(sum_(j=1)^m sum_(k=1)^n max(A[j,k], -A[j,k]))",
+    "rhoe(A[j<=m, k<=n]) | sum_(j=1)^m sum_(k=1)^n max(A[j,k], -A[j,k]) >= 2^1024 "
+    "= rhop(sum_(j=1)^m sum_(k=1)^n max(A[j,k], -A[j,k])/2^(m+n)) + m + n",
     "rhop(s) = ilogb(s + (s == 0)) + 1 + 0*s",
     "rhod(x, e) = x*2^(e - floor(e/2))*2^floor(e/2)",
     "rhos(b) = b[2] - b[1] <= 2^-53*min(abs(b[1]), abs(b[2]))",

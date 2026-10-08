@@ -123,7 +123,7 @@ error: charpoly takes A[j<=n, k<=n], not a 1x3 matrix
 >> hurwitz([1 2 3])
 error: hurwitz takes p[j<=m], not a 1x3 matrix
 
-# Refused in the words abs refuses it with.
+# Refused in the words max refuses it with.
 >> hurwitz([1; i])
 error: a comparison needs real numbers, not i
 
@@ -353,7 +353,7 @@ error: rho takes A[j<=n, k<=n], not a 3x2 matrix
 >> abscissa([1 2 3])
 error: abscissa takes A[j<=n, k<=n], not a 1x3 matrix
 
-# In abs's words, as hurwitz is.
+# In max's words, as hurwitz is.
 >> rho([1 i; -i 1])
 error: a comparison needs real numbers, not i
 

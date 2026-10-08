@@ -1163,3 +1163,11 @@ cannot compile u: a sequence with parameters by cells, for now
 ")
 set(exit 1)
 check(compile_iterates_refused)
+
+# A frequency response does not compile: a compiled value is real, so the
+# complex e^(i*w*n) is refused, not its abs.
+file(WRITE "${OUT}/response.ink" "y_n = abs(e^(i*w*n))\n")
+set(args --compile response.ink)
+set(stdout "cannot compile y: a complex number\n")
+set(exit 1)
+check(compile_response_refused)

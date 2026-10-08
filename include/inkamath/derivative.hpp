@@ -225,7 +225,7 @@ private:
         if (auto* x = Exactly<TransposeExpression<T>>(e))
             return Map(Eval(x->m_e()),
                        [](const T& v) { return numeric_interface<T>::transpose(v); });
-        if (auto* x = Exactly<BuiltinExpression<T>>(e)) return Floor(*x);
+        if (auto* x = Exactly<BuiltinExpression<T>>(e)) return Builtin(*x);
         if (auto* x = Exactly<FactExpression<T>>(e)) {
             const Jet u = Eval(x->m_e());
             if (Moves(u)) throw std::runtime_error("grad cannot differentiate a factorial");
@@ -314,6 +314,10 @@ private:
         for (const auto& [keyword, argument] : p.parameters_dict())
             arguments.emplace_back(keyword, Eval(argument));
         for (const auto& [given, jet] : arguments) definition->Divides(given, *jet[0], stack_);
+        // In its own words, not its guard's im's.
+        if (complex_ && !arguments.empty() && Moves(arguments[0].second) &&
+            definition == stack_.Builtins().names.at("abs"))
+            throw std::runtime_error("abs has no complex derivative at " + Where());
         for (const auto& [given, jet] : arguments)
             if (Moves(jet) && stack_.staircases.contains(definition.get()))
                 throw std::runtime_error("grad cannot differentiate " + definition->Name() +
@@ -517,13 +521,19 @@ private:
         return Constant(T::Held(decided ? left : truth(second), *first[0], *second[0]));
     }
 
-    Jet Floor(BuiltinExpression<T>& floor) {
-        const Jet u     = Eval(floor.m_e());
-        const T   value = T::Cells(*u[0], floor.function);
-        chosen_         = chosen_ || (Moves(u) && numeric_interface<T>::approximated(*u[0]));
+    // A part of a value moving with a real variable moves as the value's
+    // part does; with a complex one it has no derivative.
+    Jet Builtin(BuiltinExpression<T>& node) {
+        const Jet  u    = Eval(node.m_e());
+        const auto cell = [&node](const T& v) { return T::Cells(v, node.function); };
+        if (node.name != "floor" && complex_ && Moves(u))
+            throw std::runtime_error(node.name + " has no complex derivative at " + Where());
+        if (node.name != "floor") return Map(u, cell);
+        const T value = cell(*u[0]);
+        chosen_       = chosen_ || (Moves(u) && numeric_interface<T>::approximated(*u[0]));
         for (std::size_t k = 0; k < value.Size().count(); ++k) {
             if (!(u[0]->data()[k] == value.data()[k])) continue;
-            if (Moves(u)) throw std::runtime_error(floor.name + " jumps at " + Where());
+            if (Moves(u)) throw std::runtime_error("floor jumps at " + Where());
         }
         return Constant(value);
     }
@@ -730,6 +740,10 @@ private:
         std::vector<Jet>  parts;
         {
             const Order order(*this, name, numeric_interface<T>::toString(at));
+            const Setting<bool> complex(
+                complex_,
+                complex_ ||
+                    !IsZero(T::Cells(at, numeric_interface<typename T::value_type>::imaginary)));
             std::optional<typename ReferenceStack<T>::Frame> frame;
             if (!stack_.Framed()) frame.emplace(stack_);
             typename ReferenceStack<T>::Trial bound(stack_, name);
@@ -986,6 +1000,7 @@ private:
     bool                                                  guard_   = false;
     bool                                                  filling_ = false;
     bool                                                  chosen_  = false;
+    bool                                                  complex_ = false;  // a grad's point
     const Guarded*                                        guarded_ = nullptr;
 };
 
