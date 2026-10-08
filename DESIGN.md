@@ -6759,11 +6759,14 @@ that exploring seven domains asked of the interpreter, by how many asked.
     `grad_(t = ~(1.5e-300)) log(t*10^200*10^200)` becomes `~inf`.
   - **Compiled.** No header moves: compiled values are doubles, printed by
     none of this, and a constant folded from an inexact truth is the same
-    double. `--check` holds a term a guard chose by an inexact truth to an
-    inexact one and says from which index: `naught`, `zeroed`, `mirrored`,
-    `radix` in double and in float, and `apart` report "against exact
-    values until 0 and inexact ones from there"; no estimate moves. `?`
-    and `tex` print definitions, unchanged.
+    double. `--check` holds a term inexact by this rule to an inexact one
+    and says from which index: `naught`, `zeroed`, `mirrored`, `radix` in
+    double and in float, and `vast` report "against exact values until 0
+    and inexact ones from there". No compiled term moves; the
+    interpreter's estimates a disturbed run prints do, its coins falling
+    elsewhere, 45 of 117 by up to 4.5 times and `graph`'s first past the
+    tolerance from 2 to 1, which their expectations leave open. `?` and
+    `tex` print definitions, unchanged.
 
   Rejected:
   - **A `# rounded` comment**, as the approximated one: one per answer
@@ -6795,8 +6798,8 @@ that exploring seven domains asked of the interpreter, by how many asked.
   `2+3*i`, `(1+i)*(1-i)`, `im(2+3*i)`, `dhinf(1/2, 1, 1)` and `abs(i)`'s
   refusal; section 1's paragraph on printing and its sentence on guards,
   made general; the table's comparisons and `and` and `or`, "1 or 0,
-  inexact where a side read is". `test/CMakeLists.txt`: the six `--check`
-  reports above, and their comments in `test/compile`.
+  inexact where a side read is". `test/CMakeLists.txt`: the five of those
+  `--check` reports it pins, and their comments in `test/compile`.
 
   About 50 lines of sources: `number.hpp` 6 the printing and 7 the
   disturbed power; `matrix.hpp` 2, the truth; `reference.hpp` 7, the
