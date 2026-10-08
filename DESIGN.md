@@ -3068,9 +3068,97 @@ that exploring seven domains asked of the interpreter, by how many asked.
   grad being forward mode, a part for each cell of the weights, it holds
   for small networks alone. Those are the threshold a loop, an entry of its
   own, is to be weighed against.
-- **Block literals compiled**, `[A, B; C, D]`: refused as "a matrix built
-  from matrices", which stops the doubling algorithm's three iterates packed
-  into one term.
+- **Block literals compiled.** `--compile` refuses a literal any of whose
+  cells is not a single value, "a matrix built from matrices": the
+  augmented system of integral action, `[A, 0; -C, 1]` and `[B; 0]`, the
+  controllability matrix `[B, A*B, A^2*B]`, the doubling algorithm's three
+  iterates packed into one term, `[A_k, G_k, H_k]`. The interpreter lays
+  them out (README.md, section 2).
+
+  The queued line is partly overtaken (CLAUDE.md, section 7). The three
+  iterates compile today as three sequences with parameters read at a
+  constant count, `Y` below, which landed after the line was queued.
+  Packing them is needed only under `lim`, which walks one sequence, and
+  there the Riccati doubling also inverts I + G_k H_k inside a limit's
+  function, refused "a matrix inverse outside a sequence"; with the 2x2
+  inverse written by hand it compiles to 8.6 MB of header today.
+  *Temporaries in a limit's function* would lift both, an inverse being a
+  temporary, so that case needs the two items. Blocks alone give the packed iterates at a constant count,
+  and under `lim` a doubling with no inverse, Smith's for the Stein
+  equation.
+
+  Decided: the interpreter's layout (`EvaluationVisitor`'s literal), at
+  compile time, as every shape is known there. Each block is compiled; a
+  band of rows is as tall as its tallest block and a band of columns as
+  wide as its widest; a single value is stretched over its block and
+  computed once, as arithmetic's stretch shares it and as the interpreter
+  evaluates a block once; any other block fills its place exactly. The
+  result is the cells of each block written into their places, a constant
+  where every block is: no array, copy, loop or size at run time, so a
+  literal whose stretched values are names or numbers compiles to the
+  header the same literal written cell by cell does. A literal of single values is the case where every band is one
+  cell, so every recorded header is unchanged, the prelude's too. Nested
+  blocks, a tensor's slices, a term, a sequence with parameters whose
+  terms widen by a block, each term its own size, a limit's terms and an
+  update all compile by the same code. Under `grad`, each block's part,
+  0 of the block's shape where it has none, laid out by the same rule,
+  as `Derivative::Literal` builds the literal of parts and evaluates it.
+  `--check`, `--float` and NaN-aware headers need nothing: the layout
+  computes nothing.
+
+  Refused: a tensor as a block, in the interpreter's words, "a tensor
+  cannot be a block of a literal, only a matrix can"; and a block that is
+  not a single value and does not fill its place, "a block that does not
+  fill its band". The interpreter continues such a block with its corner
+  (C41), kept there as the residue of an idea and recorded as no meaning;
+  compiled, it would be an artifact written into generated code, to be
+  undone when C41 is decided (CLAUDE.md, section 2). A size that is not
+  constant does not reach the layout: a term whose shape changes is
+  refused already, "its clauses have different shapes".
+
+  Rejected:
+  - **C41 compiled as the interpreter has it.** The same lines; refused for
+    the reason above.
+  - **The single value's stretch refused too.** `[A, 0; 0, B]` and `[B; 0]`
+    are how a paper writes a block diagonal and an augmented input, and
+    `matrices.ink` states the stretch as meant, where C41's corner is
+    recorded as not.
+  - **A block copied at run time**, by `memcpy` or a loop: a block is
+    cells, an array only where it is a field or a term, so each would need
+    a temporary array and a size at run time, for cells known while
+    compiling, and the header would no longer be the cell-by-cell one.
+  - **Blocks rewritten as cells by the parser**: it has no sizes, and
+    `?name` and `tex` print what was parsed.
+  - **The workaround**, a function by cells with a guard per block, which
+    compiles today: three clauses where the paper writes one bracket.
+
+  About 25 lines of sources, in `compile.hpp`: the layout about 30, the
+  bands, the refusal, the shared stretch and the cells and constant; the
+  visit about 18, each block compiled and its part; against the visit's
+  24, which go. `Assembled` stays, for a definition by cells and grad's
+  point. Sized against the tensor literal's, 30, which does as much for
+  slices, and C140, 11. Past 37 the implementation stops and reports.
+  15,584 lines in all at c182657.
+
+  Specified in `test/compile/blocks.ink`, its numbers worked out with
+  exact fractions and sympy, with Python's doubles in the step's order,
+  Gauss-Jordan transcribed from `Matrix::Inverse`, and with numpy and
+  scipy, then seen to be the interpreter's: `dare`, the structure-
+  preserving doubling for the Riccati equation, packed and read at 6
+  doublings, beside the three sequences, their difference within 0 and
+  the gain; `smith`, Smith's doubling packed under `lim`; `deadbeat`,
+  integral action from the plant's parameters, its gain by Ackermann's
+  formula over a controllability matrix built by blocks; `nest`, blocks
+  within blocks, a delay line and a tensor's slices, also in float;
+  `slope`, `grad` through blocks, by a number and by a matrix; a header
+  that is byte for byte the cell-by-cell one, its excerpt from today's
+  compile of the cell form; and four refusals, `lim` of the Riccati
+  doubling among them. Wired with the implementation: the checks and
+  their reports in `test/CMakeLists.txt`, `nest` in float, the header and
+  the refusals in `test/cli.cmake`. No golden, header or report should
+  move, as no test records the old refusal. README's paragraph on the
+  compiler gains a sentence. Nothing changes in the interpreter, so no
+  transcript in `test/data/spec`.
 - **`tex` of `==`, a negative fraction and `exp`**: `==` is set as `=`,
   `\frac{-1}{2}` should be `-\frac{1}{2}`, `\operatorname{exp}` should be
   `\exp`; and one tensor literal refuses a whole model's `tex`.
