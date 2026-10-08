@@ -135,7 +135,8 @@ error: a comparison needs a number, not -nan
 
 # Every digit, where the arithmetic shows. exp(1) is a unit in the last place
 # above e, which is the double nearest e: a polynomial in doubles is not
-# correctly rounded, and is within 1.3 units of exp everywhere.
+# correctly rounded, and is 1.307 units from exp at worst, at 635.2779388398857
+# (C225).
 >> digits = 17
 digits = 17
 

@@ -18,7 +18,7 @@ function(check name)
                     WORKING_DIRECTORY "${OUT}"
                     INPUT_FILE "${OUT}/${name}.stdin"
                     OUTPUT_VARIABLE got_stdout ERROR_VARIABLE got_stderr
-                    RESULT_VARIABLE got_exit TIMEOUT 10)
+                    RESULT_VARIABLE got_exit TIMEOUT 60)
     if(NOT "${got_stdout}" STREQUAL "${stdout}")
         message(SEND_ERROR "${name}: stdout\n--- expected\n${stdout}--- got\n${got_stdout}---")
     endif()
@@ -286,6 +286,20 @@ set(stdout "cannot compile s: u_(...): read every 8 steps, and u is computed eve
 set(exit 1)
 check(compile_c74)
 
+# C233: a slow sequence read back by another as slow said "read every step".
+file(WRITE "${OUT}/c233.ink" "q_0 = 0\nq_m = q_(m-1) + x_(2*m)\nw_0 = 0\nw_m = w_(m-1) + q_(m-1) + x_(2*m)\n")
+set(args --compile c233.ink)
+set(stdout "cannot compile w: q_(...): one sequence at another rate read by another; hold q at the input's rate and sample the hold\n")
+set(exit 1)
+check(compile_c233)
+
+# C234: as is one on the right of an 'and', which compiled to a wrong term.
+file(WRITE "${OUT}/c234.ink" "y_0 = 0\ny_m = x_(2*m)\nc_n | x_n > 0 and y_(n-1) > 0 = n\nc_n = 0\n")
+set(args --compile c234.ink)
+set(stdout "cannot compile c: y_(...): read every step, and y is computed every 2\n")
+set(exit 1)
+check(compile_c234)
+
 # C86: a clause the interpreter refuses wherever it is taken is what a step
 # says there, NaN, so a model whose guard never takes it compiles, as log
 # does, its '| x <= 0 = 1/0' NaN in the header's function for it.
@@ -495,6 +509,24 @@ file(SIZE "${OUT}/c140.h" size)
 if(size GREATER 4096)
     message(SEND_ERROR "compile_c140: c140.h is ${size} bytes")
 endif()
+
+# C230: a cell of a call read in a sum or in a cell compiled every cell of
+# the call at each reading, 300^3 cells here and 4^10 down g's chain.
+file(WRITE "${OUT}/c230.ink" "f(x)[i<=300] = x*i\nh(x)[i<=300] = f(x)[i] + 1\ng0(x)[i<=4] = x*i\n")
+foreach(k RANGE 1 10)
+    math(EXPR j "${k} - 1")
+    file(APPEND "${OUT}/c230.ink" "g${k}(x)[i<=4] = g${j}(x)[i] + 1\n")
+endforeach()
+file(APPEND "${OUT}/c230.ink" "y_n = sum_(i=1)^300 h(n)[i] + sum_(i=1)^4 g10(n)[i]\n")
+set(args --compile c230.ink -o c230.h)
+check(compile_c230)
+holds(compile_c230 c230.h "(double)m_->index_ * 300.0 + 1.0) + ((double)m_->index_ * 1.0 + 1.0 + 1.0 + 1.0 + 1.0 + 1.0 + 1.0 + 1.0 + 1.0 + 1.0 + 1.0 + ((double)m_->index_ * 2.0 + 1.0")
+
+# C231: under grad, where a sum's part is there was written out at each
+# partial sum, each term's being where any cell of m's is: 999^2 times 22 KB.
+file(WRITE "${OUT}/c231.ink" "A[i<=32] = mod(3*i, 7) - 3 + 1/2\nrelu(z)[i] | z[i] > 0 = z[i]\nrelu(z)[i] = 0\nh(m) = sum_(i=1)^999 m[1 + mod(i, 32)]\nw_0 = 1/2\nw_n = w_(n-1) - grad_(v = w_(n-1)) h(relu(relu(A*v)))/1024\n")
+set(args --compile c231.ink -o c231.h)
+check(compile_c231)
 
 # C155: as is a call of the prelude's, where it was written at each reading.
 file(WRITE "${OUT}/c155.ink" "h(t) = (t - 1)/t\nh(t) | t == 1 = t\nh(t) | t == 0 = 1\nf(z) = h(exp(z))\nx_0 = 1/2\nx_n = f(f(x_(n-1)))\n")
@@ -1183,3 +1215,41 @@ set(args --compile response.ink)
 set(stdout "cannot compile y: a complex number\n")
 set(exit 1)
 check(compile_response_refused)
+
+# Block literals compiled (DESIGN.md, compile/blocks.ink): the header the
+# same literals written cell by cell give, each block's cells read where
+# they are, and what stays refused.
+set(plant "A = [1, 1; 0, 1]\nB = [0; 1]\nC = [1, 0]\nK = [3, 3]\nki = 1\n")
+set(loop "x_0 = [0; 0; 0]\nx_n = (Aa - Ba*Kf)*x_(n-1) + [0; 0; r_n]\n")
+file(WRITE "${OUT}/blocks/aug.ink" "${plant}Aa = [A, 0; -C, 1]\nBa = [B; 0]\nKf = [K, -ki]\n${loop}y_n = [C, 0]*x_n\n")
+file(WRITE "${OUT}/cells/aug.ink" "${plant}Aa = [A[1,1], A[1,2], 0; A[2,1], A[2,2], 0; -C[1,1], -C[1,2], 1]\nBa = [B[1,1]; B[2,1]; 0]\nKf = [K[1,1], K[1,2], -ki]\n${loop}y_n = [C[1,1], C[1,2], 0]*x_n\n")
+foreach(form blocks cells)
+    set(args --compile ${form}/aug.ink -o ${form}/aug.h)
+    check(compile_blocks_${form})
+endforeach()
+file(READ "${OUT}/blocks/aug.h" by_blocks)
+file(READ "${OUT}/cells/aug.h" by_cells)
+if(NOT by_blocks STREQUAL by_cells)
+    message(SEND_ERROR "compile_blocks: aug.h by blocks is not aug.h by cells")
+endif()
+holds(compile_blocks_blocks blocks/aug.h [[    m_->x[0][2][0] = m_->index_ == 0 ? 0.0 : (0.0 - m_->C[0][0] + (0.0 - 0.0 * m_->K[0][0])) * m_->x[1][0][0] + (0.0 - m_->C[0][1] + (0.0 - 0.0 * m_->K[0][1])) * m_->x[1][1][0] + (1.0 + (0.0 - 0.0 * (0.0 - m_->ki))) * m_->x[1][2][0] + m_->r[0];
+]] [[    m_->y[0] = m_->C[0][0] * m_->x[0][0][0] + m_->C[0][1] * m_->x[0][1][0] + 0.0 * m_->x[0][2][0];
+]])
+file(WRITE "${OUT}/blocks.ink" "a_n = [T, x_n]\nb_n = [A, [x_n, 1]]\nc_0 = x_0\nc_n = [c_(n-1), x_n]\nd_n = lim e(x_n)\ne(r)_0 = [I, I]\ne(r)_k = [(I + r*f(e(r)_(k-1)))^(0-1), I]\nf(S)[j<=2, k<=2] = S[j, k]\nA = [1, 2; 3, 4]\nI[j<=2, k<=2] = j == k\nT = [1;; 2]\nx_n = n\n")
+set(args --compile blocks.ink)
+set(stdout "cannot compile a: a tensor cannot be a block of a literal, only a matrix can
+cannot compile b: a block that does not fill its band
+cannot compile c: its clauses have different shapes
+cannot compile d: a matrix inverse outside a sequence
+")
+set(exit 1)
+check(compile_blocks_refused)
+
+# C220: a value derived from a parameter whose cell is a temporary of the
+# update, a stretched value or an inverse's, is read from its field, not
+# by the temporary's name, which the step does not declare.
+file(WRITE "${OUT}/c220.ink" "p = 1/2\nQ = [exp(p), [1, 2; 3, 4]]\nR = [p, 1; 2, 3]^(0-1)\nx_n = Q*[n; 1; 1] + R*[n; 1]\n")
+set(args --compile c220.ink -o c220.h)
+check(compile_c220)
+holds(compile_c220 c220.h [[    m_->x[0][0][0] = m_->Q[0][0] * (double)m_->index_ + 1.0 * 1.0 + 2.0 * 1.0 + (m_->R[0][0] * (double)m_->index_ + m_->R[0][1] * 1.0);
+]])

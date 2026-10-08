@@ -12,6 +12,7 @@ add_executable(inkamath_tests
     interpreter_test.cpp
     line_editor_test.cpp
     matrix_test.cpp
+    prelude_test.cpp
     )
 
 target_link_libraries(inkamath_tests PRIVATE inkamath doctest inkamath_warnings)
@@ -40,7 +41,7 @@ foreach(golden IN LISTS goldens)
 endforeach()
 # fastgrad.ink's 600,000 remembered calls take 25 s under sanitizers alone.
 set_tests_properties(fastgrad.ink PROPERTIES TIMEOUT 120)
-foreach(suite IN ITEMS bignum line_editor matrix)
+foreach(suite IN ITEMS bignum line_editor matrix prelude)
     add_test(NAME ${suite} COMMAND inkamath_tests --test-suite=${suite} --no-intro)
     set_tests_properties(${suite} PROPERTIES TIMEOUT 60)
 endforeach()
@@ -133,13 +134,13 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brin
                          history:twice history:relayed history:pole
                          history:huge history:sever history:veiled history:cloaked history:two history:hid history:masked
                          nan:run nan:sign nan:shy nan:slope nan:pair
-                         nan:lap nan:trim nan:any nan:cell nan:held nan:idle nan:imag inputs:fan inputs:grid
+                         nan:lap nan:trim nan:any nan:cell nan:held nan:idle nan:imag nan:took inputs:fan inputs:grid
                          inputs:chan inputs:twirl inputs:duo inputs:mean3 inputs:mean2
                          inputs:track inputs:twain inputs:nestv inputs:fed estimate:tie
                          estimate:chaos estimate:dyad estimate:flat estimate:halved
                          estimate:steep estimate:giant elementary:els trig:tri
                          grad:line grad:fall grad:hinge grad:edge grad:clip grad:steer grad:saw
-                         grad:ring grad:notch grad:apart grad:smooth grad:cusp
+                         grad:ring grad:notch grad:apart grad:smooth grad:cusp grad:over
                          tensor:heads tensor:whirl tensor:batch tensor:spread
                          tensor:speck cellguards:rfit cellguards:tfit cellguards:layer
                          cellguards:kink cellguards:crest cellguards:mask cellguards:order
@@ -148,8 +149,10 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brin
                          kahan:sums kahan:muller kahan:rounded kahan:surprise kahan:solveur
                          rump:rump signatures:inv
                          goldberg:year goldberg:needled goldberg:big goldberg:seven
+                         doyle:regulated doyle:replayed
                          iterates:poly iterates:thirds iterates:plan iterates:graph iterates:gaps
-                         iterates:memo iterates:unread iterates:lone
+                         iterates:memo iterates:unread iterates:lone blocks:dare blocks:smith
+                         blocks:deadbeat blocks:nested blocks:sloped conv:see conv:learn
                          straddle:knee straddle:crease straddle:plain straddle:both straddle:acc
                          straddle:given straddle:parted straddle:unasked
                          straddle:recalled straddle:founded)
@@ -267,6 +270,8 @@ set_tests_properties(check_cusp_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^cusp: 100 steps from 0, against exact values until 0 and inexact ones from there\ncusp\\.x: within 0\ncusp\\.g: within 0\n$")
 set_tests_properties(check_swing_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^swing: 100 steps from 0, against exact values until 1 and inexact ones from there\n(swing\\.[A-Za-z]+: within [0-9.e+-]+(, from 1)?${about}\n)+$")
+set_tests_properties(check_over_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^over: 100 steps from 0, against exact values until 0 and inexact ones from there\nover\\.y: within 1\\.4e-20\nover\\.z: within [0-9.e+-]+${about}\n$")
 # Its known limit, C110, held where it parts.
 set_tests_properties(check_apart_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^apart: 100 steps from 0, against exact values\napart\\.y: [-a-z()]+ at 0, where the interpreter gives 0\n$")
@@ -336,6 +341,12 @@ set_tests_properties(check_big_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^big: 100 steps from 0, against exact values\nbig\\.s: within 2e-30\nbig\\.t: within 0\nbig\\.w: 0 at 0, where the interpreter gives 1\n$")
 set_tests_properties(check_seven_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^seven: 100 steps from 0, against exact values\nseven\\.t: within 0\nseven\\.u: within 1\\.4e-14\n$")
+# Doyle (1978): his LQG loop closed, its rounding damped, and its unstable
+# plant replayed alone, its rounding grown some 10^5; compile/doyle.ink.
+set_tests_properties(check_regulated_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^regulated: 100 steps from 0, against exact values\n(regulated\\.[a-z.]+: within [1-9](\\.[0-9])?e-1[3-5]\n)+$")
+set_tests_properties(check_replayed_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^replayed: 100 steps from 0, against exact values\nreplayed\\.x: within [1-9](\\.[0-9])?e-1[01]\nreplayed\\.y: within [1-9](\\.[0-9])?e-1[01]\n$")
 set_tests_properties(check_mask_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^mask: 100 steps from 0, against exact values\nmask\\.y: within 0\n$")
 set_tests_properties(check_order_report PROPERTIES PASS_REGULAR_EXPRESSION
@@ -429,10 +440,27 @@ set_tests_properties(check_gaps_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^gaps: 100 steps from 0, against exact values\ngaps\\.a: within 0\ngaps\\.b: within 0\n$")
 set_tests_properties(check_memo_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^memo: 100 steps from 0, against exact values\nmemo\\.a: within 0\nmemo\\.b: within 0\nmemo\\.d: within 0\nmemo\\.e: within 0\nmemo\\.l: within 0\n$")
+# A convolutional network's forward pass and its training (Goodfellow et al.
+# 2016, §9.5), as compile/conv.ink gives them.
+set_tests_properties(check_see_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^see: 100 steps from 0, against exact values\nsee\\.Xp: within 0\nsee\\.Z: within 0\nsee\\.M: within 0\nsee\\.s: within 0\n$")
+set_tests_properties(check_learn_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^learn: 100 steps from 0, against exact values\nlearn\\.K: within 0\nlearn\\.W: within 0\nlearn\\.a: within 0\nlearn\\.d: within 0\nlearn\\.E: within [1-9](\\.[0-9])?e-1[4-6]\n$")
 set_tests_properties(check_unread_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^unread: 100 steps from 0, against exact values\nunread\\.y: within 0\n$")
 set_tests_properties(check_lone_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^lone: 100 steps from 0, against exact values\nlone\\.y: within 0\nlone\\.z: within 0\n$")
+# Block literals compiled (DESIGN.md), as compile/blocks.ink gives them.
+set_tests_properties(check_dare_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^dare: 100 steps from 0, against exact values\ndare\\.X: within 7\\.1e-15\ndare\\.F: within 2\\.2e-16\ndare\\.Y: within 7\\.1e-15\ndare\\.D: within 0\n$")
+set_tests_properties(check_smith_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^smith: 100 steps from 0${inexact0}\nsmith\\.P: within 0${about}\n$")
+set_tests_properties(check_deadbeat_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^deadbeat: 100 steps from 0, against exact values\ndeadbeat\\.x: within 0\ndeadbeat\\.y: within 0\n$")
+set_tests_properties(check_nested_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^nested: 100 steps from 0, against exact values\nnested\\.S: within 0\nnested\\.w: within 0\nnested\\.M: within 0\nnested\\.T: within 0\nnested\\.y: within 0\n$")
+set_tests_properties(check_sloped_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^sloped: 100 steps from 0, against exact values\nsloped\\.c: within 0\nsloped\\.g: within 0\n$")
 set_tests_properties(check_cls_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^cls: 100 steps from 0, against exact values until 0 and inexact ones from there\ncls\\.z: within 0\n(cls\\.[a-z]+: within [0-9.e+-]+${about}\n)+$")
 set_tests_properties(check_ball_report PROPERTIES PASS_REGULAR_EXPRESSION
@@ -473,6 +501,8 @@ set_tests_properties(check_idle_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^idle: 100 steps from 0, against exact values\nidle\\.g: within 0\nidle\\.h: within 0\nidle\\.k: within 0\nidle\\.l: within 0\nidle\\.y: within 0\n$")
 set_tests_properties(check_imag_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^imag: 100 steps from 0, against [^\n]*\nimag\\.x: within 0\nimag\\.z: within 0\n$")
+set_tests_properties(check_took_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^took: 100 steps from 0, against [^\n]*\ntook\\.w: within 0\n$")
 # A model's input of more than one cell (DESIGN.md, C83), every term exact.
 set_tests_properties(check_fan_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^fan: 100 steps from 0, against exact values\nfan\\.y: within 0\n$")
@@ -641,7 +671,7 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:ledge logistic:gate momentu
                          reddi:thm1 reddi:fixed reddi:gen
                          kahan:sums kahan:muller kahan:rounded kahan:surprise kahan:solveur rump:rump
                          goldberg:year goldberg:needle goldberg:big goldberg:seven iterates:poly
-                         straddle:knee)
+                         blocks:nested conv:see straddle:knee)
     string(REPLACE ":" ";" checked ${checked})
     list(GET checked 0 file)
     list(GET checked 1 instance)
@@ -712,6 +742,8 @@ foreach(report IN ITEMS
         "big:^big: 100 steps from 0${in_float}\nbig\\.s: within 2e-30, 1\\.7e-23 units of a float\nbig\\.t: ${exact}\nbig\\.w: 0 at 0, where the interpreter gives 1\n$"
         "seven:^seven: 100 steps from 0${in_float}\nseven\\.t: ${exact}\nseven\\.u: within 3\\.8e-06, 32 units of a float\n$"
         "poly:^poly: 100 steps from 0${in_float}\npoly\\.A: ${exact}\npoly\\.c: ${exact}\npoly\\.d: ${exact}\npoly\\.g: ${exact}\n$"
+        "nested:^nested: 100 steps from 0${in_float}\nnested\\.S: ${exact}\nnested\\.w: ${exact}\nnested\\.M: ${exact}\nnested\\.T: ${exact}\nnested\\.y: ${exact}\n$"
+        "see:^see: 100 steps from 0${in_float}\nsee\\.Xp: ${exact}\nsee\\.Z: ${exact}\nsee\\.M: ${exact}\nsee\\.s: ${exact}\n$"
         "knee:^knee: 100 steps from 0${inexact}\n${knee_r}knee\\.r: at 0 the compiled step takes 'r_n = 0' and the interpreter 'r_n \\| y_n > c = y_n - c'\\; the guard of the second is 4\\.2e-11 from its threshold\nknee\\.y: within [0-9.e+-]+, [0-9.e+-]+ units of a float\\; the interpreter's terms about 5\\.8e-11 from the exact ones\nknee\\.r: within 4\\.2e-11, 0\\.00035 units of a float\\; the interpreter's terms about 5\\.8e-11 from the exact ones\n$"
         "cls:^cls: 100 steps from 0${inexact}\ncls\\.z: within 2\\.4e-08, 0\\.2 units of a float\ncls\\.q: within 1\\.9e-06, 1\\.5 units of a float${about}\ncls\\.s: within 6\\.3e-08, 0\\.53 units of a float${about}\ncls\\.loss: within 4\\.1e-07, 3\\.4 units of a float${about}\n$")
     string(FIND "${report}" ":" colon)

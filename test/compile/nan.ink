@@ -309,3 +309,12 @@ stray(a = 1) = {
     z_n = im(sin(2^21*(n - 5))) + a
 }
 imag = stray()
+
+# A cell taken from a matrix is NaN where another of its cells is, as the
+# interpreter refuses the matrix whole, though that cell's NaN is log's, a
+# function of the header, and nothing else in the header writes one: w
+# answered 2 - n where log refuses, from step 2 (C221).
+taken(x_n) = {
+    w_n = [x_n, log(x_n)][1, 1]
+}
+took = taken(x_n = 2 - n)

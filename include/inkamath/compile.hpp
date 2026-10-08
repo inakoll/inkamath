@@ -230,6 +230,11 @@ private:
         return cell;
     }
 
+    // Where a part is there, if not always: a condition, or where any of
+    // several is. Made at each operation under grad and written at few, its
+    // text is made where it is written (C231).
+    struct Moving;
+    using Where = std::shared_ptr<const Moving>;
     struct Code {
         Extent               size;
         std::vector<Cell>    cells;     // row by row, slice after slice
@@ -238,7 +243,7 @@ private:
         // Under grad (DESIGN.md, grad compiled): its part, none where the
         // interpreter's is absent, and where it is there, if not always.
         std::vector<Code> part;
-        std::string       moves;
+        Where             moves;
 
         bool Scalar() const { return cells.size() == 1 && !size.slices; }
         // Cell c of what it stretches to, as in arithmetic: a single value to
@@ -247,6 +252,11 @@ private:
         const Cell& At(std::size_t i, std::size_t j, std::size_t b = 0) const {
             return At((b * size.rows + i) * size.cols + j);
         }
+    };
+
+    struct Moving {
+        std::string        text;
+        std::vector<Where> any;
     };
 
     // A value a step computes once, before the sequence that reads it: its
@@ -648,8 +658,8 @@ private:
         };
         const auto there = [](const Code& c) {
             return Of(Atom(c.part.empty() && c.cells[0].text != "NAN" ? "0"
-                           : c.moves.empty()                          ? "1"
-                                                                      : "(" + c.moves + ")"));
+                           : !c.moves                                 ? "1"
+                                                                      : "(" + Text(c.moves) + ")"));
         };
         for (const auto& [condition, value] : guarded) {
             any    = any || !value.part.empty();
@@ -661,10 +671,11 @@ private:
         chain.part = {
             Chain(parts, otherwise ? std::optional(part(*otherwise)) : std::nullopt, size)};
         if (!always || (otherwise && there(*otherwise).cells[0].text != "1"))
-            chain.moves =
+            chain.moves = std::make_shared<const Moving>(Moving{
                 Chain(where, otherwise ? std::optional(there(*otherwise)) : std::nullopt, Extent{})
                     .cells[0]
-                    .text;
+                    .text,
+                {}});
         return chain;
     }
 
@@ -720,8 +731,8 @@ private:
                 function.Divides(given, Value(value.size), definitions_);
         });
         Defaults(function, expansion);
-        Code result = at ? Term(name, function, expansion, *at)
-                         : Inside(expansion, [&] { return Chained(name, function); });
+        Code result =
+            at ? Term(name, function, expansion, *at) : Memoized(name, function, expansion, outer);
         // The interpreter computes an argument the function does not read, so
         // its refusal is the call's (C189).
         std::string written, nan;
@@ -736,21 +747,48 @@ private:
         return result;
     }
 
+    // Within a loop that binds places alone, a sum's or a definition's by its
+    // cells, a call is one value for the code it is given, unless it reads a
+    // term, which depends on where: compiled at each place, a call by cells
+    // wrote all its cells at each (C230). Kept by the temporaries it declared.
+    using Memo =
+        std::pair<const void*, std::map<std::tuple<const void*, std::string, std::string>, Code>>;
+    Code Memoized(const std::string& name, const Reference<Value>& function, Expansion& expansion,
+                  const Expansion* outer) {
+        const auto compiled = [&] {
+            return Inside(expansion, [&] { return Chained(name, function); });
+        };
+        if (outer || !temporaries_ || memo_.first != temporaries_) return compiled();
+        const auto key = std::tuple(static_cast<const void*>(&function), grad_, Given(expansion));
+        if (const auto found = memo_.second.find(key); found != memo_.second.end())
+            return found->second;
+        const int situated = situated_;
+        Code      code     = compiled();
+        if (situated_ == situated) memo_.second.emplace(key, code);
+        return code;
+    }
+
+    // The code of each value given, its shape, exact value, cells, moves and parts.
+    static std::string Given(const Expansion& expansion) {
+        std::string args;
+        const auto  text = [&](const auto& self, const Code& code) -> void {
+            args += code.size.toString() + '\x1d';
+            if (code.constant) Value::key(*code.constant, args);
+            for (const Cell& cell : code.cells) args += cell.text + '\x1f';
+            args += Text(code.moves) + '\x1e';
+            for (const Code& part : code.part) self(self, part);
+        };
+        for (const auto& [given, value] : expansion.values) text(text, value);
+        return args;
+    }
+
     // Filled from the lowest base, by the interpreter's stride (Reference::Filled),
     // each term once for its arguments' code, shape and exact value (C187),
     // and a temporary once a term reads it; one the fill cannot compute is
     // refused where a read reaches it, as the interpreter's recursion is.
     Code Term(const std::string& name, const Reference<Value>& function, Expansion& expansion,
               int k) {
-        std::string args;
-        const auto  text = [&](const auto& self, const Code& code) -> void {
-            args += code.size.toString() + '\x1d';
-            if (code.constant) Value::key(*code.constant, args);
-            for (const Cell& cell : code.cells) args += cell.text + '\x1f';
-            args += code.moves + '\x1e';
-            for (const Code& part : code.part) self(self, part);
-        };
-        for (const auto& [given, value] : expansion.values) text(text, value);
+        const std::string args = Given(expansion);
         int& computing = computing_.try_emplace({&function, args}, std::numeric_limits<int>::max())
                              .first->second;
         if (k >= computing)
@@ -891,7 +929,7 @@ private:
         }
         if (functions_.count(jumped)) {
             aware_ = true;  // a jump's NaN reaches a grad that drops this value (C113)
-            const std::string moves = Moves(read), jumps = jumped + "(" + given + ")";
+            const std::string moves = Text(Moves(read)), jumps = jumped + "(" + given + ")";
             const std::string plain = value.cells[0].text;
             value.cells[0].text =
                 moves.empty() ? jumps : "(" + moves + " ? " + jumps + " : " + plain + ")";
@@ -1289,6 +1327,7 @@ private:
 
     // A value, and the parameters it reads.
     std::pair<Code, std::set<std::string>> Reading(const PExpression<Value>& expression) {
+        const Setting<Memo> unseen(memo_, {});  // a call kept outside would not say what it reads
         auto       outer = std::exchange(read_parameters_, {});
         const Code code  = Emit(expression);
         auto       reads = std::exchange(read_parameters_, std::move(outer));
@@ -1490,18 +1529,29 @@ private:
         return part ? Part(written(*part)) : part;
     }
     // Where any of these has its part: always, where one always has.
-    static std::string Moves(const std::vector<const Code*>& codes) {
-        std::string where;
+    static Where Moves(const std::vector<const Code*>& codes) {
+        std::vector<Where> any;
         for (const Code* code : codes) {
             if (code->part.empty()) continue;
-            if (code->moves.empty()) return "";
-            where += (where.empty() ? "(" : " || (") + code->moves + ")";
+            if (!code->moves) return nullptr;
+            any.push_back(code->moves);
         }
-        return where;
+        return any.empty() ? nullptr : std::make_shared<const Moving>(Moving{"", std::move(any)});
+    }
+    static std::string Text(const Where& where) {
+        if (!where || where->any.empty()) return where ? where->text : "";
+        std::string text;
+        for (const Where& one : where->any)
+            text += (text.empty() ? "(" : " || (") + Text(one) + ")";
+        return text;
+    }
+    // As the condition of a '?': a clause's own, itself one, bracketed (C235).
+    static std::string Whether(const Where& where) {
+        return where->any.empty() ? "(" + where->text + ")" : Text(where);
     }
     static Code Parted(Code value, const Part& part, const std::vector<const Code*>& from) {
         value.part.clear();
-        value.moves.clear();
+        value.moves.reset();
         if (part) value.moves = Moves(from);
         if (part) value.part.push_back(*part);
         return value;
@@ -1521,7 +1571,7 @@ private:
     static std::string Jumps(const std::string& meet, const std::vector<const Code*>& codes) {
         if (std::all_of(codes.begin(), codes.end(), [](const Code* c) { return c->part.empty(); }))
             return "";
-        const std::string moves = Moves(codes);
+        const std::string moves = Text(Moves(codes));
         return meet + (moves.empty() ? "" : " && (" + moves + ")") + " ? NAN : ";
     }
 
@@ -1553,11 +1603,11 @@ private:
         if (const Part b = PartOf(right)) top = Plus(top, Negated(cellwise(value, *b)));
         Part part = over(top);
         // a'/b where b's clause has none, not an infinite quotient times 0 (C110).
-        if (part && !right.moves.empty()) {
+        if (part && right.moves) {
             const Part alone = over(PartOf(left));
             for (std::size_t k = 0; k < part->cells.size(); ++k)
-                part->cells[k] = Cell("(" + right.moves + " ? " + part->cells[k].text + " : " +
-                                          (alone ? alone->At(k).text : "0") + ")",
+                part->cells[k] = Cell("(" + Whether(right.moves) + " ? " + part->cells[k].text +
+                                          " : " + (alone ? alone->At(k).text : "0") + ")",
                                       primary);
             part->constant.reset();
         }
@@ -1697,8 +1747,9 @@ private:
         Part part = Times(Times(Literal(coefficient), power), PartOf(base));
         // None where its base's clause has none, not 0 times an infinity, where
         // its value is finite (C118).
-        if (Doubles(lower)[0] < 0 && Doubles(c)[0] > 0 && !base.moves.empty())
-            part = Of(Cell("(" + base.moves + " ? " + part->cells[0].text + " : 0)", primary));
+        if (Doubles(lower)[0] < 0 && Doubles(c)[0] > 0 && base.moves)
+            part = Of(
+                Cell("(" + Whether(base.moves) + " ? " + part->cells[0].text + " : 0)", primary));
         return Answer(Parted(value, part, {&base}));
     }
 
@@ -2009,30 +2060,54 @@ private:
         return Answer(code);
     }
 
+    // '[A, B; C, D]' as the interpreter lays it out (README.md, section 2),
+    // and its parts, 0 of a block's shape where it has none (Derivative::Literal).
     PExpression<Value> visit(MatExpression<Value>* expression) override {
-        Code                     code;
-        bool                     constant = true, any = false;
-        std::vector<Code>        cells, parts;
-        std::vector<const Code*> from;
-        code.size = expression->Size();
+        std::vector<Code> blocks, parts;
+        bool              any = false;
         for (const PExpression<Value>& child : expression->Children()) {
-            const Code& cell = cells.emplace_back(Emit(child));
-            if (!cell.Scalar()) throw Reason("a matrix built from matrices");
-            constant = constant && cell.constant;
-            any      = any || !cell.part.empty();
-            code.cells.push_back(cell.cells[0]);
-            // Each cell's part, 0 where it has none (Derivative::Literal).
-            parts.push_back(cell.part.empty() ? Literal(Value(Number(0))) : cell.part[0]);
+            const Code& block = blocks.emplace_back(Emit(child));
+            if (block.size.slices)
+                throw Reason("a tensor cannot be a block of a literal, only a matrix can");
+            any = any || !block.part.empty();
+            parts.push_back(block.part.empty() ? Literal(Value(block.size)) : block.part[0]);
         }
-        for (const Code& cell : cells) from.push_back(&cell);
-        const Part part    = any ? Part(Assembled(parts, code.size)) : Part();
-        const auto literal = [&] {
-            Value value(code.size);
-            for (std::size_t c = 0; c < cells.size(); ++c)
-                value.data()[c] = (*cells[c].constant)(1, 1);
-            return value;
-        };
-        return Answer(Parted(constant ? Exact(literal) : code, part, from));
+        std::vector<const Code*> from;
+        for (const Code& block : blocks) from.push_back(&block);
+        Code code = Laid(blocks, expression->Size());
+        if (code.constant) code = Literal(*code.constant);
+        return Answer(Parted(code, any ? Part(Laid(parts, expression->Size())) : Part(), from));
+    }
+    // Each band as tall or as wide as its largest block, a single value
+    // stretched over its block and computed once; any other block fills its
+    // place, as C41's corner is no meaning.
+    Code Laid(const std::vector<Code>& blocks, Extent bands) {
+        std::vector<std::size_t> rows(bands.rows, 1), cols(bands.cols, 1);
+        for (std::size_t b = 0; b < blocks.size(); ++b) {
+            rows[b / bands.cols] = std::max(rows[b / bands.cols], blocks[b].size.rows);
+            cols[b % bands.cols] = std::max(cols[b % bands.cols], blocks[b].size.cols);
+        }
+        Code code;
+        code.size = {std::reduce(rows.begin(), rows.end()), std::reduce(cols.begin(), cols.end())};
+        code.constant = Value(code.size);
+        for (std::size_t i = 0; i < rows.size(); ++i)
+            for (std::size_t r = 0; r < rows[i]; ++r)
+                for (std::size_t j = 0; j < cols.size(); ++j) {
+                    const Code& block = blocks[i * cols.size() + j];
+                    if (!block.Scalar() && block.size != Extent{rows[i], cols[j]})
+                        throw Reason("a block that does not fill its band");
+                    const bool stretched = block.Scalar() && rows[i] * cols[j] > 1;
+                    const Cell one       = stretched ? Shared(block.cells[0]) : block.cells[0];
+                    if (!block.constant) code.constant.reset();
+                    for (std::size_t c = 0; c < cols[j]; ++c) {
+                        const std::size_t at = block.Scalar() ? 0 : r * cols[j] + c;
+                        code.cells.push_back(block.Scalar() ? one : block.cells[at]);
+                        if (code.constant)
+                            code.constant->data()[code.cells.size() - 1] =
+                                block.constant->data()[at];
+                    }
+                }
+        return code;
     }
     // A matrix of single parts, row by row, exact where each is.
     static Code Assembled(const std::vector<Code>& parts, Extent size) {
@@ -2333,6 +2408,7 @@ private:
     // guard reading only them; one reading a value that moves is tested where
     // the cell is. Under grad it has a part where any cell has one.
     Code Cells(const std::string& name, const Reference<Value>& definition) {
+        const Setting<Memo> memo(memo_, {temporaries_, {}});
         std::optional<Code> whole;  // the matrix written whole, if it is
         for (const Clause<Value>& clause : definition.Clauses())
             if (!clause.parameters.cells()) whole = Emit(clause.expression);
@@ -2682,6 +2758,7 @@ private:
         const std::string&           name  = expression->Name();
         const ParametersCall<Value>& call  = expression->Call();
         const bool calls = !call.parameters_expression().empty() || !call.parameters_dict().empty();
+        situated_ += call.limit() || !calls;
         if (call.limit()) return Limit(expression, name, call);
         if (limit_ && name == limit_->name && call.subexpr()) return Answer(Earlier(call));
         if (calls && !own_) {
@@ -2716,10 +2793,12 @@ private:
         const int lag = Lag(call.subexpr(), key) + shift_;
         Bases(key);
         if (!read.size.rows) Compile(key);
-        // By its rate, before one with no base clause is computed again.
-        if (&read != reading_ && read.period > 1)
-            throw Reason(key + "_(...): read every step, and " + key + " is computed every " +
-                         std::to_string(read.period));
+        // Refused by its rate once the reader's is known (Rate), before one
+        // with no base clause is computed again.
+        if (&read != reading_ && read.period > 1) {
+            reading_->reads[key].insert(lag);
+            return Answer(Array("m_->" + key + "[0]", read.size));
+        }
         if (lag > 0 && ClosedForm(read) && !histories_.count(key)) return Answer(At(read, lag));
         (shift_ && early_ >= 0 ? earlies_[static_cast<std::size_t>(early_)].reads
          : deferring_          ? reading_->deferred
@@ -3075,7 +3154,7 @@ private:
             if (*place) at.push_back(Whole(Known(*place, "a cell whose place is not a constant")));
         // The interpreter refuses a matrix whole where it refuses a cell. One
         // that writes NaN in a cell not taken makes the header write it.
-        for (const Cell& c : matrix.cells) aware_ |= !matrix.constant && WritesNan(c.text);
+        for (const Cell& c : matrix.cells) aware_ |= !matrix.constant && MayNan(c.text);
         if (aware_ && !matrix.whole && !matrix.constant) matrix = Shared(matrix);
         const std::string nan = matrix.whole ? "" : Nan(matrix);
         if (!nan.empty())
@@ -3206,6 +3285,7 @@ private:
         Code               total;
         bool               constant = true;
         std::vector<Value> terms;
+        const Setting<Memo> memo(memo_, {temporaries_, {}});
         for (int k = first; k <= last; ++k) {
             places_[name]   = Value(Number(k));
             const Code term = Emit(expression->Body());
@@ -3257,12 +3337,15 @@ private:
     }
 
     // A cell that is a name or a number is read as itself, which the C
-    // compiler can see through, rather than from the field.
+    // compiler can see through, rather than from the field; not a temporary
+    // of the update's, which the step does not declare (C220).
     static Code Read(Derived& derived) {
         Code code = Fields(derived.name, derived.code);
         for (std::size_t c = 0; c < code.cells.size(); ++c) {
-            if (derived.code.cells[c].atom)
-                code.cells[c] = derived.code.cells[c];
+            const Cell& cell = derived.code.cells[c];
+            const auto  own  = [&](const Temporary& t) { return cell.text.starts_with(t.name); };
+            if (cell.atom && std::ranges::none_of(derived.temporaries, own))
+                code.cells[c] = cell;
             else
                 derived.read = true;
         }
@@ -3285,12 +3368,6 @@ private:
     // keyed by the step that computes them; its samples as lags of the
     // input's; its own terms read back, in its own terms.
     void Rate(const std::string& name, Sequence& sequence) {
-        for (const auto& [read, lags] : sequence.reads) {
-            const int period = sequences_.at(read).period;
-            if (read != name && period > 1)
-                throw Refusal(name, read + "_(...): read every step, and " + read +
-                                        " is computed every " + std::to_string(period));
-        }
         // A slow sequence read by another says what a hold at the input's
         // rate sampled says, but for a hold at another period, which no hold
         // says (C74).
@@ -3299,6 +3376,15 @@ private:
                                      "_(...): one sequence at another rate read by another; hold " +
                                      read + " at the input's rate and sample the hold");
         };
+        // What the right of an 'and' or 'or' reads too (C234).
+        for (const Reads* some : {&sequence.reads, &sequence.deferred})
+            for (const auto& [read, lags] : *some) {
+                const int period = sequences_.at(read).period;
+                if (read != name && period > 1 && sequence.period > 1) throw another(read);
+                if (read != name && period > 1)
+                    throw Refusal(name, read + "_(...): read every step, and " + read +
+                                            " is computed every " + std::to_string(period));
+            }
         for (const std::size_t h : sequence.holds) {
             const Hold& hold   = holds_[h];
             const int   every  = sequence.period * hold.a;
@@ -3312,10 +3398,12 @@ private:
         if (sequence.period == 1) return;
         for (const auto& [read, offsets] : sequence.samples)
             if (sequences_.at(read).period > 1) throw another(read);
-        for (const auto& [read, lags] : sequence.reads)
-            if (read != name)
-                throw Refusal(name, read + "_(...): read every step, and " + name +
-                                        " is computed every " + std::to_string(sequence.period));
+        for (const Reads* some : {&sequence.reads, &sequence.deferred})
+            for (const auto& [read, lags] : *some)
+                if (read != name)
+                    throw Refusal(name, read + "_(...): read every step, and " + name +
+                                            " is computed every " +
+                                            std::to_string(sequence.period));
         // Without a base clause, a term is computed at the step of its
         // latest sample, and the first is settled with the starts.
         int phase = std::numeric_limits<int>::min();
@@ -4431,6 +4519,8 @@ private:
     std::map<std::tuple<const void*, const void*, std::string, int>, std::pair<Code, bool>> terms_;
     std::map<std::tuple<const void*, const void*, std::string, int>, std::exception_ptr>    failed_;
     std::map<std::pair<const void*, std::string>, int> computing_;
+    Memo                                               memo_;  // the loop's, if one binds places
+    int                                                situated_ = 0;        // terms read, counted
     int                                                terming_ = 0;        // terms being computed
     Reads*      clause_reads_ = nullptr;               // what the clause being compiled reads
     bool                             deferring_ = false;  // compiling the right of an 'and' or 'or'
