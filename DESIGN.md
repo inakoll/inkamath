@@ -1730,6 +1730,7 @@ closures need one anyway, and can bring it.
 | C205 `[fixed]` | **max's and min's slope of a real value whose derivative is complex was complex.** Each answered a or b, and so passed on its derivative: `grad_(w = 0) max(T(e^(i*w)), 0)` and `min(3, T(e^(i*w)))` answered `-i*4`, T's own slope. Unlike |T| (C201), neither is defined but at w = 0, where T is real, their comparison refusing T anywhere near it, so they have no derivative there, and re(T')'s 0 would be an extension nobody wrote. Under grad, max and min are refused where a real argument's parts leave the real line, "max has no derivative where its argument leaves the real line at w = 0", in that grad's name, whichever argument is taken, and at a complex point in their own words, as abs is, where `grad_(z = i) max(z - i, 0)` was 1, in 15 lines more and 2 of comment; cparts.ink holds it, and no other answer moved. |
 | C206 `[fixed]` | **`rho`, `abscissa`, `eig` and `smax` of an inexact cell that is itself inf refused with a NaN.** Its matrix scaled by B is inf, and its polynomial NaN: `rho([1 ~10^310; 0 1])`, `abscissa([~1 1; 1 1]*10^310)`, `eig` and `smax` of such cells were "a comparison needs a number, not -nan". An inf cell is a double whose value is lost, unlike an exact one past a double, whose radius C191 and C197 answer inf, marked, where it passes a double: no answer is certified of it, inf or other, as [1 x; 0 1]'s radius is 1 and [x x; -x -x]'s 0 whatever x is. So the four refuse it in plain words, "rho needs finite cells, not inf", a NaN cell too, in 7 lines and 2 of comment; charpoly.ink and eig.ink hold it, and no other answer moved. `eigb`, of two arguments, is as it was. |
 | C207 `[fixed]` | **A product of an exact number past a double's range with a 0 part was NaN.** The exact number was made a double, inf, first, and inf times the other's 0 is NaN: `10^400*i` was `-nan+i*inf` and `re(10^400*i)` -nan, `10^400/i` `-nan-i*inf` and `10^400*~0` -nan, where the exact number is finite and each 0 part of the product 0. Such a product takes each part of the other alone now, 0 by a 0 and inf by any other, and a quotient by a complex number its conjugate's, in 9 lines and 2 of comment; errors.ink holds it, and no other answer moved. An inf that is a double, `~10^400*i`, is as it was: its value is lost, as C206's cell's. |
+| C208 `[fixed]` | **`dhinf` of time scales far apart refused with a NaN.** hinf's bound on the norm, 2 tr(D'D) + 8n tr(PQ), is at least its square, and its Gramians, approximated past a thousand digits, left a double first: `dhinf([1/2 0; 0 1 - 10^-200], [1; 1], [1 1])`, the bilinear map's cells of 200 digits, was "a comparison needs a number, not -nan", and so was hinf of such cells. It is refused as the tests are, "hinf needs tests within a double's range", by a guard on the bound where it is inf, in 1 line; hinfdata.ink holds it, and no other answer moved. Cells of 400 digits 10^400 apart still make the bound NaN, `hinf([-1 0; 0 -10^-400], [1; 1/(3 - 10^-400)], [1 1])`, its solve multiplying an exact 0 by a cell approximated past a double, which is NaN, as `0*(10^2000/3)` is. |
 
 **Measure instructions, not the clock.** One of those changes made the matrix
 workload 20 per cent slower by the clock and not by a single instruction: with
@@ -6360,6 +6361,297 @@ that exploring seven domains asked of the interpreter, by how many asked.
   sanitizers. 29 lines landed against about 31: the prelude 19 and its
   comment 6, 1 binding the staircases, and 3 in `reference.hpp`. 15,324
   lines in all, after `eig`.
+- `[done]` **The H-infinity norm, in the prelude**, the fourth step towards
+  eigenvalues, which *The real eigenvalues* left for later: `hinf(A, B, C,
+  D)`, the largest singular value of G(iw) = C(iwI - A)^-1 B + D over every
+  frequency, A stable, and `dhinf(A, B, C, D)`, the same over the unit
+  circle, each bisected and certified as `rho` is. Written in inkamath on
+  `charpoly`, `hurwitz`, `schurcohn`, `eigv` and rho's stop and marks. The
+  design, measured on a prototype:
+
+      hinfc(p[j<=m], k) = 0
+      hinfc(p[j<=m], k) | k < m = p[m-k]
+      hinfz(f[k<=m], w)[i<=m-1, j<=m-1] = sum_(b=0)^(min(i, j)-1) (hinfc(f, i+j-1-b)*(b+w)*hinfc(f, b+w) - hinfc(f, b)*(i+j-1-b+w)*hinfc(f, i+j-1-b+w))
+      hinfa(p[j<=m])[j<=m] = (-1)^j*p[j]
+      hinfs(X) = eigv(charpoly(X)) - eigv(hinfa(charpoly(X)))
+      hinfq(c[j<=m])[j<=(m+1)/2] = c[2*j-1]
+      hinft(q) = hinfs(hinfz(q, 1)) <> hinfs(hinfz(q, 0))
+      hinfh(A, B, C, K, R) = [A + B*R*K, B*R*B'; -C'*C - K'*R*K, -(A + B*R*K)']
+      hinfr(D, g) = g*(D'*D)^0 - D'*D
+      hinfx(A[j<=n, k<=n], B, C, D[j<=p, k<=m], e)[i<=m+1, j<=2*n+1] = (-1)^m*charpoly(hinfr(D, i*2^e))[m+1]*charpoly(hinfh(A, B, C, D'*C, hinfr(D, i*2^e)^-1))[j]
+      hinfn(m)[i<=m+1, k<=m+1] = i^(k-1)
+      hinfo(u, m)[i<=1, k<=m+1] = u^(k-1)
+      hinfl(A, B, C, D[j<=p, k<=m], e, u) = hurwitz(charpoly(D'*D), u*2^e) == 0 or hinft(hinfq((hinfo(u, m)*hinfn(m)^-1*hinfx(A, B, C, D, e))'))
+      hinfk(A[j<=n, k<=n])[r<=n*n, c<=n*n] = A[floor((r-1)/n)+1, floor((c-1)/n)+1]*(mod(r-1, n) == mod(c-1, n)) + (floor((r-1)/n) == floor((c-1)/n))*A[mod(r-1, n)+1, mod(c-1, n)+1]
+      hinfv(M[j<=n, k<=n])[r<=n*n] = M[floor((r-1)/n)+1, mod(r-1, n)+1]
+      hinfw(A[j<=n, k<=n], B, C, D[j<=p, k<=m]) = 2*sum_(j=1)^p sum_(k=1)^m D[j,k]^2 + 8*n*((hinfk(A)^-1*hinfv(B*B'))'*hinfk(A')^-1*hinfv(C'*C))[1,1]
+      hinfu(A, B, C, D, e)_0 = [0; 1]
+      hinfu(A, B, C, D, e)_m = hinfp(A, B, C, D, e, hinfu(A, B, C, D, e)_(m-1))
+      hinfp(A, B, C, D, e, b) = b + (b[2] - b[1])/2*([1; 0] - (hinfl(A, B, C, D, e, (b[1] + b[2])/2) == 0)*[1; 1])
+      hinfu(A, B, C, D, e)_m | m > 64 and rhos(hinfu(A, B, C, D, e)_(m-1)) = hinfu(A, B, C, D, e)_(m-1)
+      hinfm(M)_0 = 0
+      hinfm(M[j<=p, k<=q])_t = max(hinfm(M)_(t-1), max(M[floor((t-1)/q)+1, mod(t-1, q)+1], -M[floor((t-1)/q)+1, mod(t-1, q)+1]))
+      hinfj(M[j<=p, k<=q]) = hinfm(M)_(p*q) + (M == 0*M)
+      hinfd(x, f) = x*f
+      hinfd(x, f) | x <> 0 and (abs(x*f) < 2^-1022 or abs(x*f) >= 2^1024) = x*f + 0*10^-1000
+      hinfg(A, B, C, D) = 2*ceil(rhop(hinfw(A, B, C, D))/2)
+      hinfe(A, B, C, D, f) = hinfd(rhod(rhoa(hinfu(A, B, C, D, hinfg(A, B, C, D))_256, hinfu(A, B, C, D, hinfg(A, B, C, D))_256)^(1/2), hinfg(A, B, C, D)/2), f)
+      hinfe(A, B, C, D, f) | hinfw(A, B, C, D) == 0 = ~0
+      hinfb(A, B, C, D, f) = hinfe(A, B/hinfj([B; D]), C, D/hinfj([B; D]), f*hinfj([B; D]))
+      hinf(A[j<=n, k<=n], B[j<=n, k<=m], C[j<=p, k<=n], D[j<=p, k<=m] = 0*C*B) | hurwitz(charpoly(A/hinfj(A))) = hinfb(A/hinfj(A), B/hinfj(A), C/hinfj([C, D]), D/hinfj([C, D]), hinfj([C, D]))
+      dhinf(A[j<=n, k<=n], B[j<=n, k<=m], C[j<=p, k<=n], D[j<=p, k<=m] = 0*C*B) | schurcohn(charpoly(A)) = hinf((A + A^0)^-1*(A - A^0), 2*(A + A^0)^-1*B, C*(A + A^0)^-1, D - C*(A + A^0)^-1*B)
+
+  **The test.** Above D's largest singular value, gamma is a singular value
+  of G(iw) exactly where iw is an eigenvalue of the Hamiltonian H = [A + B
+  R^-1 D'C, B R^-1 B'; -C'(I + D R^-1 D')C, -(A + B R^-1 D'C)'], R = gamma^2
+  I - D'D (Boyd, Balakrishnan and Kabamba, 1989), and the largest singular
+  value is continuous and tends to D's as w grows; so gamma <= ||G|| exactly
+  where H has an eigenvalue on the axis. The bisection is of g = gamma^2,
+  which is all R reads, and a g at or below D's largest squared singular
+  value is below the norm by `hurwitz(charpoly(D'D), g)`, which spares R's
+  inverse where it has none. H being Hamiltonian, det(sI - H) = q(s^2), and
+  an eigenvalue iw is a root -w^2 of q at or below 0. q's roots are not all
+  real, so Descartes cannot count them, as the eig entry found; Hermite's
+  forms can, through Bezoutians (Hermite and Hurwitz): the Bezoutian of q
+  and q' has for signature the number of q's distinct real roots, and that
+  of q and x q' those above 0 less those below, so their difference, twice
+  the roots below 0 and one for a root at 0, is nonzero exactly where q has
+  a root at or below 0. `hinfz(q, 1)` and `hinfz(q, 0)` are the two, one
+  line by the formula B[i,j] = sum_b (f_(i+j-1-b) g_b - f_b g_(i+j-1-b))
+  with g's coefficients read from f's. A Bezoutian is symmetric, so its
+  signature is Descartes on its characteristic polynomial, `eigv` as eig
+  counts, less the same with every other sign changed. At the norm, where it
+  is attained, the peak's two imaginary eigenvalues meet, and a double root
+  counts once: the test says at or below, so a norm a midpoint reaches is
+  the bracket's lower end and the answer itself, as a dyadic eigenvalue is
+  rho's.
+
+  **One polynomial for every test.** det(R) det(sI - H) is the determinant
+  of [sI - H0, U; V, gI - D'D], H0 = [A, 0; -C'C, -A'], U = [B; -C'D] and V
+  = [D'C, B'], so a polynomial of degree m in g, m the inputs: it is
+  interpolated once from its values at g = 2^e, 2 2^e, ..., (m + 1) 2^e,
+  `hinfx`, each a characteristic polynomial of 2n x 2n, and each test reads
+  it at its midpoint as a row of powers: before the normalisation below, 11
+  s for a 6x6 of one input, where a characteristic polynomial of H at every
+  test took 44.
+
+  **The bracket.** [lo, hi) on g, lo <= ||G||^2 < hi, from [0, U), in units
+  of U = 2^e above 2 tr(D'D) + 8n tr(PQ), e even, `hinfg`, P and Q the
+  Gramians, A P + P A' = -BB' and A'Q + QA = -C'C, each solved as one n^2 x
+  n^2 system, `hinfk` the Kronecker sum. It bounds the norm: ||G|| <= ||D||
+  + 2 times the sum of the Hankel singular values (Enns; Glover, 1984), at
+  most ||D||_F + 2 (n tr PQ)^(1/2), whose square is at most twice the sum of
+  the two's. Each Hankel singular value being at most ||G|| (Nehari), U is
+  within a factor 8 min(p, m) + 32 n^2 of ||G||^2, so a certified bisection
+  stops by the relative rule within 65 halvings up to about 10x10, and never
+  near the cap. And 2 tr(D'D) + 8n tr(PQ) is 0 exactly where G is, every
+  Hankel singular value and D being 0, so 0 is answered at once, certified,
+  as rho's nilpotent 0 is. The research's bound, `up(A, B, C)_40`, doubled
+  until the test said above: rejected, as a mode near the axis needs as many
+  doublings as its distance has bits, and a cap would leave a bracket that
+  certifies nothing.
+
+  **Normalised by the largest cells, exactly.** The tests' numbers are
+  exact, so a power of two buys them range alone and costs digits: dividing
+  [1 2; 3 4] by 8 puts an 8 in every denominator, and 10^200 by a power of
+  two leaves its 5^200. The system is divided instead by its largest cells,
+  rational: time by A's, A and B, which leaves the norm; the output by [C,
+  D]'s; the input by [B; D]'s, the answer multiplied back by the two. A
+  common factor goes entirely and cells whose largest is 1 do not move.
+  Measured on an 8x8 of whole numbers and one input: certified so, marked by
+  powers of two and off at the eighth digit; on 1/(s^2 + s/2 + 1) with C
+  times 10^200: certified so, marked by powers of two and 6.1e200 for
+  2.07e200; unnormalised, the 8x8 certified and the resonance refused with a
+  NaN. The sum of the cells, rho's measure but exact, was tried: as good at
+  the extremes, but it moves every cell of a textbook system, so a dyadic
+  norm, s/(s + 1)'s 1, is no bracket's end in its units, and the 8x8 is
+  marked where the largest cell certifies it.
+
+  **Stop and marks**, rho's: 64 halvings at least, then while the bracket is
+  wider than 2^-53 of its end nearer 0, up to 256; the answer is the root of
+  lo, then scaled back by 2^(e/2), inexact: scaled first, g's double would
+  leave a double's range at half the norm's exponent, 1e400 for a norm of
+  1e200. Marked where a test was approximated past a thousand digits, and
+  where the answer's double is not normal, inf, 0 or subnormal, `hinfd`, as
+  eig's (C197, C199). The cap never ends a certified bisection (above).
+
+  **What it costs.** A test at a midpoint of b bits reads q's coefficients,
+  of about m b bits more than H's data, then two Bezoutians of their
+  products and their characteristic polynomials, and `eigv` multiplies two
+  coefficients to read a sign, doubling their digits, where comparing the
+  signs would not: eig's horizon too, an item of its own. Certified: of
+  small whole numbers, up to 8x8 with one input and 5x5 with two inputs and
+  two outputs, not 6x6 as first measured, which the review found past a
+  thousand digits in 4 random ones of 4; of cells with three digits 5x5,
+  with six 4x4, with twelve 3x3. Past that the tests are approximated and
+  the answer marked, refused since the review (below): a 4x4 of
+  twelve-digit cells within 2e-16, a 5x5 within 3e-11, a 4x4 of 16-digit
+  cells within 1.2e-7, against mpmath. 0.05 s for a 2x2, 0.6 s at 4x4, 7 s
+  at 6x6 and 50 s at 8x8 with one input; 0.2 s at 3x3, 4 s at 5x5 and 17 s
+  at 6x6 with two. The spec replays in 14 s under the sanitizers.
+
+  **An inexact system** is read exactly: each inexact cell of hinf's and
+  dhinf's arguments is the rational its double is, so an answer is certified
+  for the data as stored, or marked, never silently wrong. In C++, about 15
+  lines on the loop that C206's check needs anyway, a cell already
+  approximated past a thousand digits kept as it is, its mark with it.
+  Measured on cells k/7, each a full mantissa: certified up to 3x3 and some
+  5x5, marked from 4x4, within 1e-9 at 5x5 and 5e-6 at 6x6; whole numbers
+  made inexact read back exactly and are certified as they are. 1.1 s for a
+  2x2 and 19 s at 3x3 under the sanitizers with one input, 57 s at 5x5,
+  where rounded tests take 0.6, 0.9 and 2.6 s; in Release 0.1, 0.5 and 7 s.
+  Rejected: rounded tests, as rho's matrix has, which misjudge as n grows,
+  at the peak's double root and away from it: on random systems of small
+  whole numbers made inexact, 20 with one input and 20 with two at each size
+  up to 5x5, within 3e-11 up to 3x3, 3e-7 at 4x4 and 1e-2 at 5x5; at 6x6, of
+  8 with two inputs the median is 1e-2, and of 12 with one, one is answered
+  13.5 for 2.87, unmarked. And refusing an inexact cell, which costs 7 lines
+  of C++ and every discretised plant whose pole is an `exp`. rho, abscissa
+  and eig keep their rounded tests for now (next in line). A cell that is
+  itself inf or NaN is refused as C206 refuses rho's, `hinf needs finite
+  cells, not inf`, on the same loop over every argument. A complex cell is
+  refused in max's words, as rho's, the normalisation reading every cell.
+
+  **Unstable, refused.** A stable A is the norm's hypothesis: `hinf needs
+  every eigenvalue of A left of the imaginary axis`, by `hurwitz`, words
+  given in C++ as eig's guard's are. A pole on the axis makes the norm
+  infinite, and is refused alike rather than answered inf: it may cancel,
+  and telling which is a controllability test this item does not need. An
+  unstable mode that cancels is refused too; the norm is of the system
+  written. Sizes by the signature: D left out is `0*C*B`, p x m zeros, and a
+  0 written for a D of two columns is a single value, refused.
+
+  **Time scales far apart**: 1/(s + 1) + 1/(s + 10^-200) is answered 1e200,
+  marked, its tests past a thousand digits, which the prototype's take to a
+  NaN, refused in a comparison's words. The implementation may refuse in
+  plain words instead where the NaN's cause costs more than about 5 lines, a
+  departure it reports. Known limit: a norm small beside its normalised
+  cells, a coupling of 2^-500 in a 2x2, is answered 0 marked, its tests past
+  a thousand digits before its double is reached.
+
+  **Discrete time**, `dhinf`, the supremum over |z| = 1, which is the norm
+  the language's own models have (MANIFESTO.md, not continuous time), A in
+  the unit circle by `schurcohn`: the bilinear map z = (1 + s)/(1 - s) takes
+  the circle onto the axis and keeps the norm, so dhinf is hinf of ((A +
+  I)^-1 (A - I), 2 (A + I)^-1 B, C (A + I)^-1, D - C (A + I)^-1 B), the
+  map's sqrt(2) on B and on C made one 2 on B, exactly. A + I is invertible,
+  -1 being outside the open disc, and the refusal, `dhinf needs every
+  eigenvalue of A inside the unit circle`, comes first. A Schur-Cohn
+  analogue on the circle, a count of the symplectic pencil's roots on |z| =
+  1, was rejected: the map is one line and reuses every test.
+
+  Decided besides:
+  - **Two inputs and outputs, now.** The Hamiltonian serves any number at
+    no line more; the interpolation's degree is m. One input alone was
+    rejected as a restriction that saves nothing.
+  - **Names.** `hinf`, as the paper writes H-infinity; `hinfnorm`, MATLAB's
+    and python-control's, is longer for nothing, and `norm` a vector's.
+    `dhinf`, as MATLAB's `dlqr` and `dlyap` are the discrete `lqr` and
+    `lyap`; `hinfz` reads as a helper. Helpers prefixed `hinf`. No public
+    bracket: one of gamma^2 is a column no paper writes, and smax has none.
+  - **grad.** A bracket is a staircase: hinf and dhinf join rho's set,
+    `grad cannot differentiate hinf yet`, in the interpreter and the
+    compiler, a line. The norm's derivative at a simple peak, Re(u' dG v)
+    at the peak's frequency, is a later item with rho's.
+  - **Compiled**: neither, as rho: `hurwitz` stops at hurwitzb's factorial.
+    A case of `test/cli.cmake` holds it and compiled grad's refusal, with
+    the implementation.
+
+  Rejected:
+  - **Sturm's sequence**, the research's `hinf.ink`: q's remainders at 0
+    and at -inf count its roots below 0, but polynomial division is some
+    12 lines where the Bezoutians are 4, as the eig entry found for eig.
+  - **Hermite's matrix of power sums**, which the eig entry proposed, from
+    tr(H^(2k)): powers up to H^(4n-2), whose entries carry four times a
+    Bezoutian's digits.
+  - **Routh's array on the even polynomial**, with the singular case's
+    auxiliary polynomial: a zero row at once, and further singular cases
+    exactly where the test matters, at a double root.
+  - **The bounded real lemma**, a Riccati equation solvable exactly where
+    gamma is above the norm: no exact solver. **Sampling |G(iw)|**:
+    certifies nothing.
+  - **The quadratically convergent iteration** (Bruinsma and Steinbuch,
+    1990): it needs the imaginary eigenvalues themselves and G's singular
+    values between them, complex and inexact.
+  - **Bisecting gamma**: R reads gamma^2 alone, and a norm whose square is
+    dyadic, sqrt(2), would be no bracket's end.
+
+  What moves: no golden and no header, as no test names either; the prelude
+  gains 30 definitions, read at every start. README's sections 1 and 5 list
+  `hinf` and `dhinf`, and section 2 shows them beside |T(iw)| and says what
+  is certified, with the implementation.
+
+  About 81 lines: the prelude 42, eight of them wrapped, some 12 of its
+  comment, and 27 of C++: the two refusals' words 4, C206's check over every
+  argument and the exact reading on its loop 20, the staircases 1 and its
+  wrapping. 15,447 lines at f898d7e, by `wc -l include/inkamath/*.hpp
+  src/*`. Past 122 the implementation stops and reports.
+
+  Specified in `test/data/spec/hinf.ink`, 52 entries replayed by the spec
+  suite, 43 failing by design, those passing being definitions and `digits`
+  echoing themselves, |T(iw)| at the peak and a session's `hinf`: the norm
+  exactly with sympy for one input and one output, an inexact cell's as its
+  double's rational, from the critical points of |G(iw)|^2 in w^2 or of
+  |G(e^(iw))|^2 in cos w, with mpmath at 60 digits for two, a sweep and a
+  golden section, python-control's linfnorm agreeing within 1e-14 but at the
+  extreme scales, where it fails; each bracket by bisection in Python's
+  fractions with every test decided from that norm, and its double printed
+  by a transcription of `Number::Shown`, apart from the interpreter. The
+  prototype above, defined in a session, gives every answer but the
+  refusals' words, the inf cell's, grad's two, a session's `hinf`, which
+  need the C++ and the name to be the prelude's, the inexact entries, which
+  it gives on the doubles written as rationals, and the time scales far
+  apart.
+
+  Built as specified but for the time scales far apart: the spec is the
+  goldens `hinf.ink`, 13 entries, the norm's values, and `hinfdata.ink`, 40,
+  what it reads and refuses and the discrete norm, two so that each replays
+  well within a test's minute under the sanitizers, in 10 s and 9 s; the
+  compiled refusals are a case of `cli.cmake`; README's sections 1 and 5
+  list the names, and section 2 shows `hinf` and `dhinf` and says what is
+  certified and how an inexact cell is read. Departures: 1/(s + 1) + 1/(s + 10^-200) is refused,
+  `hinf needs tests within a double's range`, rather than answered 1e200:
+  its tests pass a thousand digits holding 10^-400 beside 1, which no double
+  holds, so none of them is decided, and what the prototype took to a NaN
+  is refused in words. `hinfy`, a definition more, divides the interpolated
+  polynomials by a power of two before the tests, and refuses them where a
+  cell is inf or below 2^-1022 of the largest: undivided, 10^100 apart was
+  a NaN too, its Bezoutians past a double, and from 10^160 an approximated
+  bracket met the exact polynomials past it; divided, it is answered
+  1e100, marked, up to some 10^152 apart, and refused from 10^154, where an
+  answer would be marked but off by a factor, 2.4 at 10^170. The exact
+  reading and C206's check are one hook, `checked`, which evaluation and grad
+  call on each argument of a staircase, where the check had run on a single
+  argument alone; the refusals' words are a table in `Unapplied` with
+  eig's. 80 lines landed against about 81: the prelude 46 and its comment
+  10, and 24 of C++. 15,527 lines in all, after `hinf`.
+
+  With the review's ruling: a test approximated past a thousand digits is
+  refused, `hinf needs tests within a thousand digits`, rather than marked,
+  as a marked answer was off by any factor: a damping of 10^-100 answered
+  2.47e100 for 1e100, a 4x4 of `dhinf` of small rationals 2608 for 1077, a
+  3x3 whose states are scaled 10^10 apart in doubles 2 for 0.636, and cells
+  of 200 digits 10^10 apart 0 for 1e9. `hinfi(x)`, a definition more, is
+  whether x is exact: x == x is a double where x was approximated, and
+  2^-1100 cannot move it. hinfy, hinfg and hinfp ask it of the polynomials,
+  the bound and each test, in words that say no guard of a double, as
+  hinfi's answer is never wrong; hinfy's guard below 2^-1022 goes, the
+  polynomials past a thousand digits refused before it. hinfy still divides
+  them, without which an approximated test is a NaN before it is refused.
+  So time scales are certified up to some 10^50 apart and refused from
+  10^60, a mode B cannot reach up to 10^80 slower; full doubles up to 2x2
+  and 3x3 of one scale, cells k/7 (10 of 10), where 3x3 of several scales
+  are refused in 6 of 7 and 4x4 of k/7 in 7 of 8; and a 3x3 whose states
+  are scaled 10^10 apart, 10^4 in doubles, but not 10^15 or 10^5. The
+  known limit above, a coupling of 2^-500, is certified now. Under
+  `dhinf` the refusal names hinf: naming dhinf would need the caller in
+  `Unapplied`, more than 2 lines. 8 lines more and 1 for C208: 89 lines,
+  15,536 in all.
+- **Doubles read exactly by rho, abscissa and eig**, as hinf reads them:
+  each inexact cell the rational its double is, an answer certified for the
+  data as stored or marked, where rounded tests misjudge unmarked. To weigh
+  against the inertia count below, by its cost in time under the
+  sanitizers.
 - **An inertia count for inexact symmetric matrices**: the negative pivots
   of LDL' of A - xI count the eigenvalues below x, backward stable, where the
   rounded Descartes count of `eig` loses a k-fold eigenvalue to about 16/k

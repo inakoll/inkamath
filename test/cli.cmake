@@ -740,6 +740,14 @@ set(stdout "cannot compile g: grad cannot differentiate eig yet\ncannot compile 
 set(exit 1)
 check(compile_eig_refused)
 
+# Nor do hinf and dhinf, whose bisection is a sequence of parameters, and
+# grad refuses them where A moves (DESIGN.md, the H-infinity norm).
+file(WRITE "${OUT}/hinf.ink" "x_t = hinf(-t-1, 1, 1)\ng_t = grad_(a = t) hinf(-a-1, 1, 1)\nh_t = grad_(a = t) dhinf(1/(a+2), 1, 1)\n")
+set(args --compile hinf.ink)
+set(stdout "cannot compile g: grad cannot differentiate hinf yet\ncannot compile h: grad cannot differentiate dhinf yet\ncannot compile x: a sequence with parameters in a limit's terms, for now\n")
+set(exit 1)
+check(compile_hinf_refused)
+
 # A tensor input, refused before tensors compiled, read by its second slice.
 file(WRITE "${OUT}/batch.ink" "batch(x_n[b<=2, j<=1, k<=2]) = {\n    y_n = x_n[2]*[1; 1]\n}\n")
 set(args --compile batch.ink batch -o batch.h)

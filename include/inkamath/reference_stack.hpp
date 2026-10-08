@@ -200,9 +200,12 @@ public:
     // And ilogb, whose walk under grad answers no part where compiled
     // answers, at a power of two too: no guard of it is an equality (C139).
     const Reference<T>* stepwise = nullptr;
-    // And rho, abscissa, eig and smax, whose bisections are staircases in A:
-    // grad refuses them where A moves rather than answer the staircase's 0.
+    // And rho, abscissa, eig, smax, hinf and dhinf, whose bisections are
+    // staircases in A: grad refuses them where A moves rather than answer the
+    // staircase's 0.
     std::set<const Reference<T>*> staircases;
+    // Their arguments, checked and read before a call, by the interpreter.
+    std::function<void(const Reference<T>&, T&)> checked;
 
     [[nodiscard]] Scope<T>&       Target() const { return *target_; }
     [[nodiscard]] Scope<T>&       Builtins() { return builtins_; }

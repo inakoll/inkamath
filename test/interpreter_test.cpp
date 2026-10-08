@@ -205,6 +205,12 @@ TEST_CASE("charpoly") {
 TEST_CASE("eig") {
     check_transcript("eig.ink");
 }
+TEST_CASE("hinf") {
+    check_transcript("hinf.ink");
+}
+TEST_CASE("hinfdata") {
+    check_transcript("hinfdata.ink");
+}
 TEST_CASE("bisection_digits") {
     check_transcript("bisection_digits.ink");
 }
