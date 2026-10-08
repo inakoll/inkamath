@@ -1949,7 +1949,20 @@ private:
             throw Reason(expression->Name() + " expects 1 argument");
         const Code operand = Emit(call.parameters_expression()[0]);
         if (expression->Name() == "re") return Answer(operand);
-        if (expression->Name() == "im") return Answer(Literal(Value(operand.size)));
+        if (expression->Name() == "im") {
+            // 0, but NaN where its operand is, as the interpreter refuses it
+            // there, as a call's unread argument (C204); in a guard 0, as abs's
+            // first folds, its other clauses reading x.
+            Code zero = Literal(Value(operand.size));
+            if (guarding_ || operand.constant ||
+                std::all_of(operand.cells.begin(), operand.cells.end(),
+                            [](const Cell& c) { return c.number; }))
+                return Answer(zero);
+            const std::string test = (aware_ = true, Nan(Shared(operand)));
+            for (Cell& cell : zero.cells) cell = Cell("(" + test + cell.text + ")", primary);
+            zero.constant.reset();
+            return Answer(zero);
+        }
         if (operand.constant && operand.part.empty())
             return Answer(
                 Exactly([](const Value& v) { return Value::Cells(v, Number::floor); }, operand));
