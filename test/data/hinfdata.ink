@@ -52,17 +52,21 @@ inf  # approximated past a thousand digits
 >> hinf([0 1; -1 -1/2], [0; 1], [1 0]/10^400)
 0  # approximated past a thousand digits
 
+# A damping of 10^-100 peaks at 1/(2z(1 - z^2)^(1/2)), 2z = 10^-100, so
+# 10^100: refused while a test read a sign from the product of two
+# coefficients, doubling their digits, and its doubles had answered
+# 2.47e100 (DESIGN.md, C214).
+>> hinf([0 1; -1 -10^-100], [0; 1], [1 0])
+~1e+100
+
 # A test whose numbers would pass a thousand digits is refused: read from
 # doubles it may misjudge any step, and a marked answer be off by any
 # factor. A damping of 1/4 - 7^-600/2, whose polynomial's coefficients have
-# a thousand digits from the first test; a damping of 10^-100, whose 10^100
-# doubles answered 2.47e100; time scales 10^100 apart, 1/(s + 1) +
-# 1/(s + 10^-100), where 10^50 apart is certified, 1 + 10^50; and 10^200
-# apart in discrete time, whose bound on the norm leaves a double first.
+# a thousand digits from the first test; time scales 10^100 apart, 1/(s +
+# 1) + 1/(s + 10^-100), where 10^50 apart is certified, 1 + 10^50; and
+# 10^200 apart in discrete time, whose bound on the norm leaves a double
+# first.
 >> hinf([0 1; -1 -1/2 + 1/7^600], [0; 1], [1 0])
-error: hinf needs tests within a thousand digits
-
->> hinf([0 1; -1 -10^-100], [0; 1], [1 0])
 error: hinf needs tests within a thousand digits
 
 >> hinf([-1 0; 0 -10^-50], [1; 1], [1 1])
