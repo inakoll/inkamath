@@ -172,7 +172,11 @@ now. A tensor is an array as C keeps one,
 `double O[B][T][D]`, slice after slice, and is met slice by slice as the
 interpreter meets it: `test/compile/tensor.ink` runs multi-head attention
 over a batch and trains a layer on minibatches by `grad`; a tensor in a
-limit, or a `grad` with respect to one, is refused for now. A header that
+limit, or a `grad` with respect to one, is refused for now. A block literal,
+`[A, 0; -C, 1]`, is laid out as the interpreter lays it out (section 2),
+each block's cells written into their place: `test/compile/blocks.ink`
+packs a doubling algorithm's iterates into one term, and refuses a block
+that does not fill its band. A header that
 writes NaN anywhere carries it to every term that reads it, as the
 interpreter refuses them: a guard, a comparison and a power reading NaN
 answer NaN, and a matrix or tensor term with a NaN cell is NaN in
@@ -212,9 +216,16 @@ tolerance (`test/compile/estimate.ink`). `test/compile/drift.ink` has an instanc
 holds and one that does not: a tenth computed again at every step, whose
 rounding each step multiplies by ten. Before the values, it reports the first step
 at which a compiled guard takes another clause than the interpreter's, and how
-far that guard is from its threshold in exact arithmetic: rounding explains a
-flip at a margin near zero, and not one at a large margin. `brink` in the same
-file sits exactly on its threshold, and `ledge` a trillionth from it.
+far that guard is from its threshold as the interpreter computes it, exactly
+where both its sides are exact and in doubles where one is not: rounding
+explains a flip at a margin near zero, and not one at a large margin. `brink`
+in the same file sits exactly on its threshold, and `ledge` a trillionth from
+it. Before that, it reports the first step at which a disturbed run takes
+another clause than the interpreter, at a sequence's guard or a function's the
+file writes, in the same words: there the estimate is a clause's, not a
+rounding's, and the check does not fail for it (`test/compile/straddle.ink`,
+where `crease`'s 0.30000000000000004 is 5.6e-17 from the double nearest its
+threshold 3/10).
 
 `--float`, beside `--compile` or an instance's `--check`, writes floats where
 the header writes doubles, every constant the nearest float, for a target that
@@ -260,7 +271,8 @@ fraction, and `digits = n` sets how many digits are shown.
 
 Numbers are complex; `i` is the imaginary unit, a name that a bound one (a
 sum's index, a cell's row) shadows in its own scope and that nothing may
-define again. `e` and `pi` are the only
+define again. A complex number is a pair of doubles, so whatever `i` touches
+is inexact, even where it comes out real and whole. `e` and `pi` are the only
 other built-in values, and `floor`, `re` and `im` the only built-in
 functions, each cell by cell of a matrix: the largest whole number not above
 its argument, exact of an exact number, and a complex number's real and
@@ -368,6 +380,21 @@ evaluate to. If `a` is the 2x2 matrix above, then `[a, a; a, a]` is 4x4:
  3, 4, 3, 4;
  1, 2, 1, 2;
  3, 4, 3, 4]
+```
+
+Each row of blocks is a band as tall as its tallest block, each column of
+blocks a band as wide as its widest, and a block's place is where its two
+bands meet. A single value is stretched over its place, so `[a, 0]` borders
+`a` with zeros; any other block must fill its place, and one that does not
+is refused rather than continued by its corner:
+
+```
+>> [a, 0]
+[1, 2, 0;
+ 3, 4, 0]
+
+>> [a, [3 4]]
+error: a block that does not fill its band
 ```
 
 A matrix prints as the literal that would produce it, with its columns
@@ -1136,7 +1163,7 @@ nothing and says where. The prelude that defines `ceil`, `mod`, `exp`, `log`,
 session, as the built-ins are: every scope sees it, and a session
 that defines one of its names again does so for itself
 alone, and clearing it gives the prelude's back. `exp`, `log`, `tanh`,
-`sin` and `cos` are written in it, accurate to a few units in the last
+`sin` and `cos` are written in it, accurate to under 3 units in the last
 place of a double, by the operations a compiled step performs:
 `exp(x)` is 2^k e^r, r = x - k ln 2 and e^r a polynomial, `log` reduces by
 `ilogb`, the power of two at or below its argument, and `sin` and `cos` by the
@@ -1146,7 +1173,9 @@ within about 1e-31 of a multiple of pi/2 (C123), nothing they give is exact, and
 phase such as `sin(w*t)` stops at 2^20. Compiled, each is a C function of the
 header's own; the interpreter calls the same functions, and under `grad` their
 parts, checked in as `include/inkamath/inkamath_prelude.h`, on a double, where
-they answer what the definitions answer.
+they answer what the definitions answer. Measured against mpmath, at worst
+`exp` is 1.31 units off, `log` 2.94, `tanh` 2.97, `sin` 2.43 and `cos` 2.45
+(`test/prelude_test.cpp`).
 `test/data/models.ink` is the whole of it.
 
 Data comes in as a file of definitions like any other, written by whatever

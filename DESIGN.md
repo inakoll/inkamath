@@ -215,7 +215,7 @@ C59, and no amount of reading would have shown C48.
 | C44 `[fixed]` | **The concepts do not ask for what the product needs.** `Matrix::mul` accumulates with `c(i,j) += ...`, and neither `Numeric` nor `Parsable` mentions `+=` on the cell type. It goes unnoticed because the concept checks `a*b` as an expression and a template body is not instantiated by overload resolution, so the requirement only bites when someone supplies a number type and gets a template error inside `matrix.hpp` rather than a concept failure at the interface. Found by instantiating `Interpreter<Rational>`: a type that satisfied everything the concepts state still failed to compile. Stated, in the one line `Numeric`'s requires-clause had room for. Writing the accumulation as `c(i,j) = c(i,j) + ...` instead would have asked less of the type at the cost of a copy per term, which is the wrong trade for a bignum. No test: the only one that proves it is an out-of-tree instantiation, and a negative concept test -- a type built to satisfy everything but this -- costs more than it protects. |
 | C43 `[fixed]` | **A number could not start with the point.** `.5` reported `unexpected character '.'`, while `1e3`, `0x10` and `2i` all lexed -- the exotic spellings worked and the common one did not, because the lexer's case list holds the ten digits and nothing else. `strtod` reads `.5` without being asked; only the dispatch was missing. A point that does not begin a number still reports the same message, so `a.b` is unchanged. |
 | C42 `[fixed]` | **The factorial answered for every argument it had no business accepting.** `!5.5` was `120`, `!(0-3)` was `1`, `!(2+i*3)` was `2` and `!i` was `1`. The loop multiplies `i` while `i <= n`, so a fraction truncates, a negative gives the empty product, and the complex layer passed `a.real()` down without looking at the rest, dropping the imaginary part before the loop ever saw it. Four plausible numbers where there should be four diagnostics, which is C13 in an operator nobody had pointed at -- the corpus tested `!5` and `!0` and stopped. Found by typing `!5.5` while checking what the lexer accepts. |
-| C41 `[kept]` | **A block that does not fill its band continues with its own last cell.** `[a, [3 4]]`, with `a` 2x2, gives `1 2 3 4 / 3 4 4 4`; `[[1 2 3], a]` fills a whole row with `3 3 3`. The code says so in as many words -- *"extend the previous (up and left) evaluated cell result"* -- so it is deliberate, and read charitably the rule is **a block continues with its last value**, which is an ellipsis: `[a, 0]` pads the band with zeros and `[a, 1]` with ones, and that is a notation a matrix wants. The author does not remember the use case and suspects exactly this: an attempt at the `...` of matrix notation. Where it stops being statable is the multi-cell block, where continuing `[3 4]` with `4 4` is a corner repeated rather than a continuation anybody wrote. It is the third answer to one question -- a literal's short row pads with zeros (README.md section 2), a single value stretches, a short block repeats a corner -- and only the first two can be said out loud. **Decision: kept, and recorded as it is** in `matrices.ink` with the entry saying so. Not turned into a diagnostic while it may still be the residue of an idea; when the idea is found or ruled out, this goes and an explicit notation for the continuation replaces it, rather than a fourth fill rule. Phase 13 leaves `...` unclaimed for it. |
+| C41 `[fixed]` | **A block that does not fill its band continues with its own last cell.** `[a, [3 4]]`, with `a` 2x2, gives `1 2 3 4 / 3 4 4 4`; `[[1 2 3], a]` fills a whole row with `3 3 3`. The code says so in as many words -- *"extend the previous (up and left) evaluated cell result"* -- so it is deliberate, and read charitably the rule is **a block continues with its last value**, which is an ellipsis: `[a, 0]` pads the band with zeros and `[a, 1]` with ones, and that is a notation a matrix wants. The author does not remember the use case and suspects exactly this: an attempt at the `...` of matrix notation. Where it stops being statable is the multi-cell block, where continuing `[3 4]` with `4 4` is a corner repeated rather than a continuation anybody wrote. It is the third answer to one question -- a literal's short row pads with zeros (README.md section 2), a single value stretches, a short block repeats a corner -- and only the first two can be said out loud. **Decision: kept, and recorded as it is** in `matrices.ink` with the entry saying so. Not turned into a diagnostic while it may still be the residue of an idea; when the idea is found or ruled out, this goes and an explicit notation for the continuation replaces it, rather than a fourth fill rule. Phase 13 leaves `...` unclaimed for it. **Since refused** in the compiler's words, a single value still stretched (C260). |
 | C40 `[fixed]` | **A matrix could be built and never read.** `a(1,2)` was `a takes no arguments` and `a_1` was `a is not a sequence`: the language had no way at all to get a value back out of a matrix, which is half of what the second of the three ideas is for. `Matrix::operator()` was there, with a good out-of-range message, and nothing in the language reached it. `m[i,j]` now does, one-based as the rows and columns are written, and composing with everything a name can carry -- `f(3)[1,2]` and `s_3[1,2]` both work. The brackets were chosen over parentheses to match array indexing elsewhere, and they collide with the matrix literal in exactly one place: inside a literal, and inside an argument list, a space between two expressions separates them, so `[[1 2] [3 4]]` is a row of two blocks. Outside one, juxtaposition means nothing, and the brackets index whatever is in front of them -- `[1 2;3 4][2,1]` and `(a*a)[1,1]` both work. Inside one, only a name takes an index, which leaves a single form changed: `[a [3 4]]`, a row of blocks whose second follows a name with a space, now reads as an index of `a` and reports that it needs a row and a column. That form was legal, unused in the corpus and in `README.md`, and is written `[a, [3 4]]` instead; the change turns it into a diagnostic rather than a wrong answer. `Matrix::Offset` takes a signed index so that `m[0-1,1]` names the row it asked for instead of one that wrapped. |
 | C39 `[fixed]` | **A limit that cannot be taken reports an internal-sounding reason.** `lim k` on a sequence of matrices said `a matrix has no absolute value`, which names neither the sequence nor what the interpreter was doing when it needed one. Every other refusal from `lim` names the sequence -- `k has no general clause, so it has no limit`. It now reads `k has no limit: a matrix has no absolute value`, keeping the reason and adding the context, which also covers the case where the terms change size between iterations. |
 | C38 `[fixed]` | **A scalar stretches over a matrix for `*` and for nothing else.** `a*2` and `2*a` worked, `a/2`, `a-1` and `1+a` all reported `these matrices have different sizes`. The scalar case lived in `mul`, which needs one because matrix multiplication does; `BinaryOp`, behind `+`, `-` and `/`, compared extents and gave up. Nothing chose that: `/` is documented as working cell by cell, and a literal already stretches a scalar -- `[a; 1]` spreads the 1 across the block above it. `a*0.5` working while `a/2` did not is the sharp form. Now a single value stretches on either side of all four, with the operand order kept, so `1-a` subtracts each cell from one. |
@@ -1748,9 +1748,29 @@ closures need one anyway, and can bring it.
 | C212 `[fixed]` | **grad refused a variable named like a size of a called function's signature.** Its check that a definition reads no global of grad's name bound a definition's parameters and indices but not the sizes its signature names, which are its own: `grad_(a = 1) a*fa([1; 2])`, with `fa(X[j<=a, k<=b]) = sum_(j=1)^a X[j,1]`, was "fa reads the global a, which grad's a does not reach", and through the prelude so were `grad_(m = 2) m*rho([1/2])`, hurwitzt's m, and `grad_(n = 1) n*charpoly([1 2; 3 4])`, charpolyc's n. The sizes are bound with the names now, in 2 lines and one of comment; grad.ink holds it, and no other answer moved. |
 | C213 `[fixed]` | **A function of the prelude given a number was refused in words not its own.** Called on a number, such a function is a function of the header, whose body was compiled without the sizes its signature names and without a sequence's temporaries: `y_t = rho([1/(t+2)])` and `dhinf(1/(t+2), 1, 1)` were "n is not defined", `rhoe(t)` "m is not defined", and `hinf(-t-1, 1, 1)` and `charpoly(t)` "a sequence with parameters in a limit's terms", where there is no limit. Its body binds the sizes now, and one that reads a sequence with parameters, itself or through what it calls, is written where it is called, as of a matrix, in 20 lines and 4 of comment: rho, hinf and dhinf of a number are refused in their definitions' words, "a factorial", hurwitzb's, and rhoe and charpoly of one compile. `compile_charpoly_refused` and `compile_hinf_refused` in `test/cli.cmake` hold it, its `x` moving from the limit's words, and `lone` in `test/compile/iterates.ink`; no expected header moved. |
 | C214 `[fixed]` | **`eigv` read a sign by multiplying two coefficients, doubling their digits.** Descartes' count, eig's and hinf's, took a sign change where `q[j]*eigl(q)_(j-1) < 0`, so a test passed a thousand digits at half the size its coefficients do, and was marked or refused there: `hinf([0 1; -1 -10^-100], [0; 1], [1 0])` was "hinf needs tests within a thousand digits", where the peak of a damping 2z = 10^-100 is 1/(2z(1 - z^2)^(1/2)), 10^100. The signs are compared now, in 1 line of the prelude more; hinfdata.ink holds it, and no other answer moved. Measured on random matrices against the same binary before it, each new answer checked against NumPy: eig of symmetric matrices of tenths, marked at 28x28, is certified at 36x36 (7 minutes); hinf of small whole numbers, refused at 9x9 with one input and 6x6 with two, is certified at 10x10 and 9x9, of full doubles at 3x3 (4 of 4, refused before) and of doubles k/7 at 4x4 (4 of 4, refused before in 4); time scales 10^90 apart are certified, 10^50 before, and a mode B cannot reach 10^150 slower, 10^80 before. README's section 2 says so. |
+| C215 `[fixed]` | **grad answered 0 for the limit of a bisection.** A comparison is flat between its jumps, so every term of a bisection has a 0 derivative, and C72's rule took its limit's to be theirs: with `b(x)_0 = [0; 1]` and `b(x)_n` halving b toward x, `grad_(x = 1/3) lim b(x)` was [0; 0], where lim b(x) is [x; x]. A limit whose terms read a comparison or a floor moving with grad's variable is refused now, as rho is, a bisection being a staircase: "grad cannot differentiate lim b, whose terms step with x at a comparison or a floor". A term remembered carries what it read, so one taken before the limit counts. The rule stands for every other limit, and for abs, max and min, whose guards step where they are continuous. 31 lines; grad.ink holds it, and no other answer moved. |
+| C216 `[fixed]` | **`hinf` could answer an ulp above the norm.** It took the root of its bracket's lower end as a double and multiplied it by the system's scale, rounding twice after the bisection: `hinf(-1, 1, 3, 22)` was `~25.000000000000004`, where |T(iw)|^2 = (625 + 484w^2)/(1 + w^2) peaks at 25 at w = 0, and `dhinf(1/5, 1, 20)` was `~24.999999999999996`, under its 25 at z = 1. The scale is folded into the lower end exactly now, but for a power of 2, and its root bisected by hinff, whose lower end is rounded once as rho's is: at most the norm's double. Of 3,960 first-order systems, continuous and discrete, whose norms are exact, 643 were above that double and 553 below it, by up to 2 ulps each way; all 3,960 are now that double, each a third slower, where no golden's time moved. 3 lines of the prelude more; hinf.ink and hinfdata.ink hold the two, and no other answer moved. |
+| C217 `[fixed]` | **`frac i` said i was approximated.** A complex number is a pair of doubles, exact or not, and `frac` refused every inexact number as approximated, which i, 0 and 1, is not: `frac i` was "i was approximated, so it has no exact fraction". One with an imaginary part is refused as complex now, "i is complex", and README's section 1, which has a literal stay exact through `+`, `-`, `*` and `/`, says that whatever i touches is inexact. A real number i made, such as `i*i`, is still said to be approximated, as nothing tells it from one that was. 2 lines; exact.ink holds it, and no other answer moved. |
+| C220 `[fixed]` | **A value derived from a parameter whose cell was a temporary of the update was read by the temporary's name, which the step does not declare.** A derived value's cell that is a name or a number is written where it is read rather than kept in a field, and a temporary's name is one: `p = 1/2`, `R = [p, 1; 2, 3]^(0-1)` and `x_n = R*[n; 1]` wrote `t0_[0][0]` in the step, a header that did not build, as did `[exp(p), [1, 2; 3, 4]]` once block literals stretch a computed value. Such a cell is read from its field now, in 3 lines of `compile.hpp` more; `cli.cmake` holds the step, and no recorded header moved. |
+| C221 `[fixed]` | **A cell taken from a matrix answered where another of its cells is NaN by a function of the header.** C211's gap: where a cell is taken, a header tests every cell of the matrix once one of them writes NaN, and a call of log, which may answer NaN, did not count: `[x_n, log(x_n)][1, 1]`, in a header nothing else made aware, answered x_n where the interpreter refuses the matrix whole. Such a call counts now, in a line changed of `compile.hpp`; `nan.ink`'s `took` holds it, and no recorded header moved. A division by zero there is still an infinity, which no test catches. |
+| C225 `[fixed]` | **The prelude's stated worst errors were sample maxima.** DESIGN gave the worst errors of `exp`, `log`, `tanh`, `sin` and `cos`, and of their parts, from 1e7 or 2e7 random points a range or 2,000 for the parts, and elementary.ink and trig.ink comments bounds from them. A sweep of 1e8 to 4e8 points a range against a 64-bit long double, its farthest confirmed by mpmath at 256 bits, passes each: `exp` 1.307 units at 635.2779388398857 (1.29 stated, "1.3 everywhere" in elementary.ink), 0.900 of 2^-1074 at -708.7539819250273 (0.89), `log` 2.938 at 1.0038647811079129 (2.87), `tanh` 2.967 at -0.20806425077771573 (2.83), `sin` 2.431 at -36502.41508093197 (2.43, "2.4" in trig.ink), `cos` 2.445 at -660945.4787059261 (2.37), and the parts 2.445 from cos and 2.426 from -sin at -660945.4787059261 and 651843.0266746085 (2.04 and 1.62). The functions stand: the figures are the sweep's now, measured and still no bound, and README states them. `--check` cannot see an error the interpreter and a header share, so `test/prelude_test.cpp` holds the five, the two parts and `ilogb` to `test/data/prelude_reference.txt`, 2,400 arguments with mpmath's correctly rounded values, written once by `test/prelude_reference.py`: the sweep's farthest, the doubles nearest a multiple of pi/2 or ln 2, subnormals and either end of `exp`'s range; its skipped case `sweep` is the sweep. Two comments moved, elementary.ink's and trig.ink's, and no answer. Found by an external review. |
+| C230 `[fixed]` | **A cell of a call compiled every cell of the call at each reading.** A function defined by its cells compiles where it is called, and a call read at one cell compiled them all: beside `f(x)[i<=N] = x*i`, `y_n = sum_(i=1)^N f(n)[i]` compiled N^2 cells, 1.4 s at N = 800 where `h(f(n))`, f's cells given once, takes 0.07 s, and a chain `f1(x)[i<=4] = f0(x)[i] + 1`, f2 of f1 and so on, compiled 4^K cells at depth K, over 2 minutes at 8 under the sanitizers. Within a loop that binds places alone, a sum's or a definition's by its cells, a call is compiled once for the code it is given now, unless it reads a term, which depends on where it is read, as a term of a sequence with parameters is kept (C187), in 26 lines and 5 of comment: 0.12 s at N = 800, and the chain linear. A cell read still takes the interpreter's answer for a value of the call's size, so the sum is still quadratic, as through an argument. `compile_c230` in `test/cli.cmake` holds it, and no expected header moved. Found transcribing a convolutional network (Goodfellow, Bengio and Courville 2016, §9.5). |
+| C231 `[fixed]` | **Under grad, a sum over the cells of a guarded definition by cells compiled in cubic time.** Where a value's part is there is a condition, the conditions of what it is computed from joined by `\|\|`, and a cell read from a matrix takes the matrix's, where any cell's part is: beside `relu(z)[i] \| z[i] > 0 = z[i]` and `relu(z)[i] = 0`, each term of `h(m) = sum_(i=1)^N m[i]` in `grad_(v = w_(n-1)) h(relu(A*v))` was N cells' conditions long, and each partial sum copied all those before it, a condition of N^2 cells never written to the header: 4.0 s at N = 512 and 28 s at 999, the header 187 KB. The condition is a tree of the ones it joins now, its text made only where it is written, in 15 lines and 3 of comment: 0.28 s and 0.84 s. `compile_c231` in `test/cli.cmake` holds it, and no expected header moved. Found transcribing a convolutional network (Goodfellow, Bengio and Courville 2016, §9.5). |
+| C232 `[fixed]` | **`tex` bracketed a sum that is a sum's body.** A sum ending a product reaches to its end, as on paper, but one that is another's body was wrapped as any operand: `h_n = sum_(j=1)^n sum_(k=1)^j j*k` was set `\sum_{j=1}^{n} (\sum_{k=1}^{j} j\,k)`, and a product in a sum likewise. A sum or a product that is a sum's or a product's body is set bare now, in 3 lines and 1 of comment; latex.ink holds it, and no other answer moved. Found transcribing a convolutional network (Goodfellow, Bengio and Courville 2016, §9.5). |
+| C233 `[fixed]` | **A slow sequence read back by another as slow was refused as read every step.** README's section on several rates says one read by another is refused naming the hold at the input's rate to sample instead, but a read at a lag was refused where it was read, before the reader's own rate was known: beside `q_m = q_(m-1) + x_(2*m)`, `w_m = w_(m-1) + q_(m-1) + x_(2*m)` was "q_(...): read every step, and q is computed every 2", w being computed every 2 as well. Such a read is recorded and refused by the reader's rate once its clauses are compiled now, as one of a sequence compiled after its reader already was, "q_(...): one sequence at another rate read by another; hold q at the input's rate and sample the hold", in 2 lines and 1 of comment; `compile_c233` in `test/cli.cmake` holds it, and no other refusal moved. Compiling such a read, both sequences of one period and phase, is a decision for the language (next in line). Found transcribing a convolutional network (Goodfellow, Bengio and Courville 2016, §9.5). |
+| C234 `[fixed]` | **A slow sequence read on the right of an `and` compiled to a wrong term.** A read of a sequence at another rate, at a lag, is refused by the reader's rate, but the right of an `and` or `or` keeps its reads apart, as they defer, and those were not asked: beside `y_m = x_(2*m)`, `c_n \| x_n > 0 and y_(n-1) > 0 = n` compiled, reading y's window, and `--check` of it on `x_n = 1 + n` gave 0 at 2 where the interpreter gives 2. Its reads are asked as the others now, "y_(...): read every step, and y is computed every 2", in 3 lines and 1 of comment; `compile_c234` in `test/cli.cmake` holds it, and no expected header moved. Found fixing C233. |
+| C235 `[fixed]` | **Compiled, the part of a quotient by a guarded call was 1.** Where the divisor's clause taken may have no part, the quotient's is written `(moves ? a'/b... : 0)`, moves where the divisor's is there; for a call's clauses that is their own conditional, `c ? 1 : 0`, written bare before the `?`, which C reads as `c ? 1 : (0 ? ... : 0)`: beside `f(v) \| v > 0 = v*v` and `f(v) = 2`, `y_n = grad_(v = n + 1) 1/f(v)` was 1 at every step where the interpreter gives -2/(n + 1)^3. A power's part where its base's clause has none is written alike, and `g(v)^(1/2)`, g's clauses `v*v*v*v` and 2, was 1 for 2v. Such a condition is bracketed now, in 3 lines and 1 of comment; `over` in `test/compile/grad.ink` holds both, y's tolerance worked out in doubles apart from the interpreter. No expected header moved; edge's check program did, `e` a quotient by a clamp whose chain happened to read right. Found fixing C231. |
 | C240 `[open]` | **A bare number could be inexact.** `~` said only that the digits shown are not all of the value (phase 13), so an inexact number whose decimal is complete printed bare, as an exact one does, and read back exact: `~0.5` was `0.5`, `dhinf(1/2, 1, 1)` `2` and `rho([0 1; 0 0])` `0`. `MANIFESTO.md`'s "the meaning is exact" needs a bare number to mean an exact one. Specified by *A bare number is exact, and a truth read from a double is not* (next in line); `test/data/spec/inexact.ink` holds it. |
 | C241 `[open]` | **A truth read from a rounded number was exact.** A comparison of doubles answered an exact 1 or 0, so rounding became a confident truth: with `A = [1/2 1; -1 1/2]`, `rho(A)^2 == 5/4` was an exact 0 where the answer is 1, `~0.1*3 > 3/10` an exact 1, and a clause a guard chose by such a truth answered plainly, as C68 had it for every number but one approximated past a thousand digits. Specified by the same item; `test/data/spec/inexact.ink` holds it. |
-| C242 `[open]` | **An exact number past a double's range times a double was inf or 0.** The exact operand became a double first: `10^400*~2^-332` is inf where the product is about 1.14e300, `10^400/~2^332` too, and `10^-400*~1e300` is 0 where it is 1e-100. Found specifying C240 and C241: with log's scale 2^ilogb(x) inexact, `grad_(t = ~(1.5e-300)) log(t*10^200*10^200)` in fastgrad.ink would be `~inf` for 6.67e299. |
+| C242 `[fixed]` | **An exact number past a double's range times a double was inf or 0.** The exact operand became a double first: `10^400*~2^-332` is inf where the product is about 1.14e300, `10^400/~2^332` too, and `10^-400*~1e300` is 0 where it is 1e-100. Found specifying C240 and C241: with log's scale 2^ilogb(x) inexact, `grad_(t = ~(1.5e-300)) log(t*10^200*10^200)` in fastgrad.ink would be `~inf` for 6.67e299. A product or quotient of such a number with a double takes a power of 2 out of each first, as C175's power does, and a sum one above the range out of both, so `2^1024 - ~2^1023` is 2^1023 where it was inf, in 44 lines and 11 of comment, 14 and 3 going: C175's reduction is shared, and C207's exact operand is taken so. A double's operations run within 0.3 per cent of their instructions before it under callgrind. errors.ink holds it, and no other answer moved; `10^-400/~0` is inf, as `1/~0` is, where it was -nan. |
+| C250 `[fixed]` | **A function the inputs call was paired amiss with the step's calls by --check.** The interpreter asked the inputs before any term, and a disturbed run within its asks, so a run's calls of a function both call began with the inputs' and were paired with the step's: `x_n = u_n + U(1)` fed `u_n = U(-1)`, every term exact, said "a disturbed run takes 'U(x) = 0' and the interpreter 'U(x) \| x >= 0 = 1'", and a straddle of the step's call went unsaid. The inputs are forgotten once read now, and asked again within the terms as a run asks them, in 1 line and 2 of comment; `given` in `test/compile/straddle.ink` holds it, and no other check program moved. |
+| C251 `[fixed]` | **A run that took another clause of a sequence with parameters went unheard by --check, and the calls after it were paired amiss.** Its guard was heard as a term's of the instance, which only the flips' sequences are looked up by: `x_n = s(1/2 - w)_3 + H(-1)`, s's guard tie's, said "a disturbed run takes 'H(x) \| x >= 0 = 1' and the interpreter 'H(x) = 0'; the guard of the first is 1 from its threshold", the run's call of H in s's first clause paired with the interpreter's H(-1). A sequence with parameters outside the prelude is heard as a function is now, and of the straddles of one ask the guard heard first is reported, where F's or that of G called in F's guard was the one of the lower address; in 7 lines and 2 of comment. `parted` in `test/compile/straddle.ink` holds it, and no other check program moved. |
+| C252 `[fixed]` | **A run refused within a term's guards was said by --check to take the clause where none holds.** A selection that stopped at a guard the run could not ask was read as one that tried them all: `g_n = H(1/2 - y_n)`, with `H(x) \| x > 1 = 2`, `H(x) \| log(x) < 0 = 1` and `H(x) = 0`, said "a disturbed run takes 'H(x) = 0' and the interpreter 'H(x) \| log(x) < 0 = 1'; the guard of the second is 24 from its threshold", where the run moved up asks log(0) and gives no term, as the estimate says; the interpreter refused alike was said to take it too. A side where no guard held is taken to the clause where none holds now only where it asked the other side's guard, in as many lines as before, one more of comment; `unasked` in `test/compile/straddle.ink` holds it, and no other check program moved. |
+| C253 `[fixed]` | **A call the interpreter remembered was not heard, and --check paired the calls after it amiss.** A function's answer is remembered by its arguments, and a run that rounds two of them apart calls it where the interpreter remembers: `x_n = U(y_n) + U(z_n) + U(-1)`, y and z the same sum in another order, said "a disturbed run takes 'U(x) \| x >= 0 = 1' and the interpreter 'U(x) = 0'; the guard of the first is 1 from its threshold", pairing the run's U(z_n) with the interpreter's U(-1). A run's calls are paired now only where it made as many as the interpreter, in no line more and one of comment; `recalled` in `test/compile/straddle.ink` holds it, and no other check program moved. A straddle that changes how many calls a run makes goes unsaid, as of a function called again within a limit's terms with an argument the run rounds two ways. |
+| C254 `[fixed]` | **C251 quoted a sequence's base clause as the one where no guard holds.** The clause taken where none holds was the first without a guard, a function's, and of a sequence with parameters its base: `s(c)_0 = 5` before parted's clauses said "the interpreter 's(c)_0 = 5'" of s at 3. It is the first without a guard and without an index, or a general one, now, in 3 lines more and one of comment; `founded` in `test/compile/straddle.ink` holds it, and no other check program moved. |
+| C260 `[fixed]` | **The interpreter continued a block that does not fill its band with its corner.** C41 kept it as the residue of an idea, recorded as no meaning, and *Block literals* refuses it compiled, "a block that does not fill its band": `[a, [3 4]]`, with `a` 2x2, was `[1, 2, 3, 4; 3, 4, 4, 4]`, and `[[1 2 3], a]` filled a row with `3 3 3`. What the implementation accepts is not a meaning (CLAUDE.md, section 2), so the interpreter refuses it in the same words now, a single value still stretched over its place, in 3 lines and 2 of comment; matrices.ink holds it, those two answers, its `[a [3 4]]` and vectors.ink's moving to the refusal, and no other answer moved. `...` stays unclaimed for a continuation written out. |
+| C261 `[fixed]` | **Compiled, a matrix inverse in a limit's terms was refused as outside a sequence.** A limit's terms are a sequence, the one it walks, but have no temporaries, where an inverse is computed: `d_n = lim e(x_n)`, `e(r)_k = [(I + r*f(e(r)_(k-1)))^(0-1), I]`, the Riccati doubling under `lim`, was "a matrix inverse outside a sequence". It is "a matrix inverse inside a limit's terms" now, as a limit of matrices there is refused, the only place an inverse meets no temporaries, a sequence and a global having them and the prelude's C functions inverting nothing, in no line more and 2 of comment; `compile_blocks_refused` in `test/cli.cmake` holds it, `d`'s line moving as *Block literals* said it would, and no other refusal moved. |
+| C262 `[fixed]` | **An exact number past a double's range compared with a double as 0 or inf.** The exact operand became a double first, as C242's did in arithmetic: `10^-400 == ~0` was 1, `10^-400 > ~0` 0, `10^400 == 1/~0` 1, and `max(~0, 10^-400)` was 0. Such a number, one whose double is 0 or inf, is compared with a finite double exactly, the double read as the fraction it is, and with inf or NaN as any finite number is, so those are 0, 1, 0 and 1e-400; `==` and the orders share it, and so do max, min and every guard. Within the range an exact number still compares as its nearest double, `1/3 == ~(1/3)` 1, and two exact numbers compared exactly already. In 19 lines and 3 of comment, 1 going; errors.ink holds it, and no other answer moved. A comparison with an inexact operand still gives an exact truth. |
 
 **Measure instructions, not the clock.** One of those changes made the matrix
 workload 20 per cent slower by the clock and not by a single instruction: with
@@ -3082,16 +3102,128 @@ that exploring seven domains asked of the interpreter, by how many asked.
   grad being forward mode, a part for each cell of the weights, it holds
   for small networks alone. Those are the threshold a loop, an entry of its
   own, is to be weighed against.
-- **Block literals compiled**, `[A, B; C, D]`: refused as "a matrix built
-  from matrices", which stops the doubling algorithm's three iterates packed
-  into one term.
+- `[done]` **Block literals compiled.** `--compile` refuses a literal any of
+  whose cells is not a single value, "a matrix built from matrices": the
+  augmented system of integral action, `[A, 0; -C, 1]` and `[B; 0]`, the
+  controllability matrix `[B, A*B, A^2*B]`, the doubling algorithm's three
+  iterates packed into one term, `[A_k, G_k, H_k]`. The interpreter lays
+  them out (README.md, section 2).
+
+  The queued line is partly overtaken (CLAUDE.md, section 7). The three
+  iterates compile today as three sequences with parameters read at a
+  constant count, `Y` below, which landed after the line was queued. Packing
+  them is needed only under `lim`, which walks one sequence, and there the
+  Riccati doubling also inverts I + G_k H_k inside a limit's function,
+  refused "a matrix inverse outside a sequence", words that mislead there,
+  the inverse being inside the limit's sequence: a defect of wording, for a
+  fix of its own, which moves `d`'s line in `blocks.ink`. With the 2x2
+  inverse written by hand it compiles to 8.6 MB of header today.
+  *Temporaries in a limit's function* would lift both, an inverse being a
+  temporary, so that case needs the two items. Blocks alone give the packed
+  iterates at a constant count, and under `lim` a doubling with no inverse,
+  Smith's for the Stein equation.
+
+  Decided: the interpreter's layout (`EvaluationVisitor`'s literal), at
+  compile time, as every shape is known there. Each block is compiled; a
+  band of rows is as tall as its tallest block and a band of columns as wide
+  as its widest; a single value is stretched over its block and computed
+  once per step, as arithmetic's stretch shares it and as the interpreter
+  evaluates a block once, but written in each cell where a step has no
+  temporaries, in a limit's function or the prelude's C functions; any
+  other block fills its place exactly. The result is the
+  cells of each block written into their places, a constant where every
+  block is: no array, copy, loop or size at run time, so a literal whose
+  stretched values are names or numbers compiles to the header the same
+  literal written cell by cell does. A literal of single values is the case
+  where every band is one cell, so every recorded header is unchanged, the
+  prelude's too. Nested blocks, a tensor's slices, a term, a sequence with
+  parameters whose terms widen by a block, each term its own size, a limit's
+  terms and an update all compile by the same code. Under `grad`, each
+  block's part, 0 of the block's shape where it has none, laid out by the
+  same rule, as `Derivative::Literal` builds the literal of parts and
+  evaluates it. `--check`, `--float` and NaN-aware headers need nothing: the
+  layout computes nothing.
+
+  Refused: a tensor as a block, in the interpreter's words, "a tensor
+  cannot be a block of a literal, only a matrix can"; and a block that is
+  not a single value and does not fill its place, "a block that does not
+  fill its band". The interpreter continues such a block with its corner
+  (C41), kept there as the residue of an idea and recorded as no meaning;
+  compiled, it would be an artifact written into generated code, to be
+  undone when C41 is decided (CLAUDE.md, section 2). A size that is not
+  constant does not reach the layout: a term whose shape changes is
+  refused already, "its clauses have different shapes".
+
+  Rejected:
+  - **C41 compiled as the interpreter has it.** The same lines; refused for
+    the reason above.
+  - **The single value's stretch refused too.** `[A, 0; 0, B]` and `[B; 0]`
+    are how a paper writes a block diagonal and an augmented input, and
+    `matrices.ink` states the stretch as meant, where C41's corner is
+    recorded as not.
+  - **A block copied at run time**, by `memcpy` or a loop: a block is
+    cells, an array only where it is a field or a term, so each would need
+    a temporary array and a size at run time, for cells known while
+    compiling, and the header would no longer be the cell-by-cell one.
+  - **Blocks rewritten as cells by the parser**: it has no sizes, and
+    `?name` and `tex` print what was parsed.
+  - **The workaround**, a function by cells with a guard per block, which
+    compiles today: three clauses where the paper writes one bracket.
+
+  About 25 lines of sources, in `compile.hpp`: the layout about 30, the
+  bands, the refusal, the shared stretch and the cells and constant; the
+  visit about 18, each block compiled and its part; against the visit's
+  24, which go. `Assembled` stays, for a definition by cells and grad's
+  point. Sized against the tensor literal's, 30, which does as much for
+  slices, and C140, 11. Past 37 the implementation stops and reports.
+  15,584 lines in all at c182657.
+
+  Specified in `test/compile/blocks.ink`, its numbers worked out with
+  exact fractions and sympy, with Python's doubles in the step's order,
+  Gauss-Jordan transcribed from `Matrix::Inverse`, and with numpy and
+  scipy, then seen to be the interpreter's: `dare`, the structure-
+  preserving doubling for the Riccati equation, packed and read at 6
+  doublings, beside the three sequences, their difference within 0 and
+  the gain; `smith`, Smith's doubling packed under `lim`; `deadbeat`,
+  integral action from the plant's parameters, its gain by Ackermann's
+  formula over a controllability matrix built by blocks; `nested`, blocks
+  within blocks, a delay line and a tensor's slices, also in float;
+  `sloped`, `grad` through blocks, by a number and by a matrix; a header
+  that is byte for byte the cell-by-cell one, its excerpt from today's
+  compile of the cell form; and four refusals, `lim` of the Riccati
+  doubling among them. Wired with the implementation: the checks and
+  their reports in `test/CMakeLists.txt`, `dare`'s figures as written,
+  which a transcription of the step's order reproduces, `nested` in float,
+  the header and the refusals in `test/cli.cmake`. No golden, header or
+  report should move, as no test records the old refusal. README's
+  paragraph on the compiler gains a sentence. Nothing changes in the
+  interpreter, so no transcript in `test/data/spec`.
+
+  Done as decided, `Laid` laying out a literal's values and its parts.
+  Departures: `nest` and `slope` became `nested` and `sloped`, the check
+  targets of the first names being `history.ink`'s and `nan.ink`'s; and
+  `nested` gained the case its review found missing, a short row among
+  blocks, `[A, x_n*A; A]`, ended by a 0 stretched over 2x2, its value
+  worked out with fractions. 24 lines of sources against 25 planned, all
+  in `compile.hpp`: 15,608 lines in all.
 - **`tex` of `==`, a negative fraction and `exp`**: `==` is set as `=`,
   `\frac{-1}{2}` should be `-\frac{1}{2}`, `\operatorname{exp}` should be
   `\exp`; and one tensor literal refuses a whole model's `tex`.
 - **A limit exact at an exact fixed point**: k-means reaches `C_3 == C_4`
   exactly, yet `lim C` is inexact and `frac lim C` refused.
 - **Matrix `==` and `<>` compiled**, refused as "a comparison of matrices".
-- **`--check`'s hundred steps as an option**, with `lim`'s.
+- **A matrix `==` a single value refused**, naming `0*M`: Doyle 1978's
+  Riccati equation checked as `ric(12) == 0` answers 0, a matrix being
+  equal to no single value, where its residual is the zero matrix and
+  `ric(12) == [0 0; 0 0]` answers 1.
+- **`lim` ends at a single repeated term**: `r(x)_n = r(x)_(n-1) +
+  (r(x)_(n-1) + 2^-n <= x)*2^-n`, x's binary digits, answers
+  `lim r(1/3)` 0.25 from its terms 0, 0, 1/4, 1/4. The smallest change to
+  weigh: two zero steps in a row, or README saying that one ends it.
+- **`--check`'s hundred steps as an option**, with `lim`'s. Doyle 1978's
+  loop at dt = 1/10 is ten time units in them, where the nominal loop has
+  not settled, [-1.18; 1.50] from [1; 0], and the one past its margin,
+  m = 6/5, has not run away; a thousand show both.
 - **A cumulative sum compiled as an accumulator**, `sum_(t=1)^n e(t)`:
   refused as "a sum whose bounds are not constants", where a regret or a
   running loss is exactly that (Reddi et al. 2018).
@@ -3100,7 +3232,9 @@ that exploring seven domains asked of the interpreter, by how many asked.
 - **`--check` says how far a term parts**, not only where it first does: the
   largest difference and where, as MANIFESTO asks of how a difference grows.
 - **`atan` in the prelude**, written as `exp` and `log` are, `asin` and
-  `acos` from it: Kahan's angle formulas cannot be written without.
+  `acos` from it: Kahan's angle formulas cannot be written without. Doyle
+  1978 asks for `arg` too, its phase margin being arg L(iw) at crossover,
+  of which only cos(PM) = -Re L can be written now.
 - **An instance named again**, `a = thm1.adam`, then `a.x_1`.
 - **A constant folded from an approximated number, listed**: `--compile`
   folds `(2^4000 > 2^3999)` to 0.0 and `3^3000/3^2999` to NAN silently,
@@ -3124,7 +3258,9 @@ that exploring seven domains asked of the interpreter, by how many asked.
 - **Temporaries in a limit's function**: C140 shares a step's nested calls,
   but a limit's terms are still written out whole, so a Riccati limit through
   `ric(ric(P))` is 163 MB of header. About 25-35 lines; moves headers whose
-  limits multiply matrices, not their values.
+  limits multiply matrices, not their values. The doubling algorithm for the
+  Riccati equation under `lim` needs it too, its inverse a temporary (block
+  literals compiled, above).
 - `[done]` **A definition as LaTeX**, `tex ?name`, a word at the start of a line as
   `frac` is, and reserved as it is. It renders what was parsed, not what was
   typed: the clauses for one index a line each, then those for every index,
@@ -4459,23 +4595,24 @@ that exploring seven domains asked of the interpreter, by how many asked.
 
   Accuracy over doubles, against expl, logl and tanhl at 64 bits on 2e7
   points each, and against mpmath at 160 bits on 2e4, which agree to the
-  third decimal of a unit:
+  third decimal of a unit; the worst errors are a sweep's of 1e8 to 4e8
+  points a range, confirmed by mpmath, and no bound (C225):
 
   | | worst | correctly rounded |
   |---|---|---|
-  | `exp` on [-708.39, 709.78] | 1.29 units | 88.6% |
-  | `exp` below, to -745.13 | 0.89 units of 2^-1074 | 99.1% |
-  | `log`, every positive double | 2.55 units | 99.8% |
-  | `log` on [1/2, 2] | 2.87 units | 65.6% |
-  | `tanh` on [-20, 20] | 2.77 units | 40.2% |
-  | `tanh`, \|x\| < 1 to 2^-40 | 2.83 units | 76.5% |
+  | `exp` on [-708.39, 709.78] | 1.307 units, at 635.2779388398857 | 88.6% |
+  | `exp` below, to -745.13 | 0.900 units of 2^-1074, at -708.7539819250273 | 99.1% |
+  | `log`, every positive double | 2.938 units, at 1.0038647811079129 | 99.8% |
+  | `log` on [1/2, 2] | the same | 65.6% |
+  | `tanh` on [-20, 20] | 2.967 units, at -0.20806425077771573 | 40.2% |
+  | `tanh`, \|x\| < 1 to 2^-40 | the same | 76.5% |
 
   So `exp(1)` is a unit above e, which is the double nearest it, and
   `exp(1) == e` is 0 where it was 1. Rejected: correct rounding, by tables or
   double-double, several hundred lines; the shape of fdlibm's log,
-  log(1 + f) = f - (f^2/2 - s(f^2/2 + R)), within 1.24 units for 2.87, at a
-  helper and two operations more; a high part of ln 2 of 32 bits, 1.18 units
-  for 1.29; tanh as m/(m + 2) with m = e^(2x) - 1, 3.14 units; an odd
+  log(1 + f) = f - (f^2/2 - s(f^2/2 + R)), within 1.24 units for 2.87 on
+  the 2e7 points, at a helper and two operations more; a high part of ln 2
+  of 32 bits, 1.18 units for 1.29; tanh as m/(m + 2) with m = e^(2x) - 1, 3.14 units; an odd
   polynomial near 0, nineteen terms to reach 0.55.
 
   Identical, measured: the design emulated in C, built by GCC 13 and Clang 18
@@ -5356,14 +5493,16 @@ that exploring seven domains asked of the interpreter, by how many asked.
   reciprocals.
 
   Accuracy, against sinl and cosl at 64 bits on 1e7 points a range, and
-  against mpmath at 200 bits elsewhere:
+  against mpmath at 200 bits elsewhere; the first four rows' worst errors
+  are a sweep's of 2e8 points a range, confirmed by mpmath, and no bound
+  (C225):
 
   | | worst, sin and cos | correctly rounded |
   |---|---|---|
-  | on [-pi/4, pi/4] | 0.75 and 1.25 units | 97.7% and 74.0% |
-  | on [-2 pi, 2 pi] | 1.56 and 1.45 units | 77% and 73% |
-  | on [-1000, 1000] | 2.34 and 2.29 units | 72.7% |
-  | on [-2^20, 2^20] | 2.43 and 2.37 units | 70.3% |
+  | on [-pi/4, pi/4] | 0.760 and 1.255 units, at -0.7821688726213682 and 0.7726675189999381 | 97.7% and 74.0% |
+  | on [-2 pi, 2 pi] | 1.569 and 1.442 units, at -0.7881873522461342 and -4.743642741448404 | 77% and 73% |
+  | on [-1000, 1000] | 2.417 and 2.403 units, at 914.0782110333698 and 457.1642583033149 | 72.7% |
+  | on [-2^20, 2^20] | 2.431 and 2.445 units, at -36502.41508093197 and -660945.4787059261 | 70.3% |
   | the 12 doubles nearest a multiple of pi/2 below 2^20 | 0.35 units | all |
   | a sample of 20,000 exact arguments to 10^6 | 1.43 and 1.39 units | 74.5% |
   | in float, on [-6434, 6434] | 2.44 and 2.29 units of a float | 70.7% and 70.6% |
@@ -5402,8 +5541,8 @@ that exploring seven domains asked of the interpreter, by how many asked.
   is the argument chosen, exact or not: `max(1/3, 1/4)` is exactly 1/3.
 
   `grad` differentiates the definitions: the polynomials' derivatives,
-  within 2.04 units of cos and 1.62 of -sin at worst on a sample of 2,000
-  points, and floor's 0, so a few doubles where x*2/pi + 1/2 is whole are
+  2.445 units from cos and 2.426 from -sin at worst, at -660945.4787059261
+  and 651843.0266746085 (C225), and floor's 0, so a few doubles where x*2/pi + 1/2 is whole are
   refused as floor jumping, as in `exp`. `abs`'s slope at 0 is 1, its `x >=
   0` clause's. At a tie `max` and `min` take the first argument's slope, as
   TensorFlow's maximum and minimum: `max(0, x)` has a ReLU's slope 0 at 0,
@@ -6671,13 +6810,230 @@ that exploring seven domains asked of the interpreter, by how many asked.
   each inexact cell the rational its double is, an answer certified for the
   data as stored or marked, where rounded tests misjudge unmarked. To weigh
   against the inertia count below, by its cost in time under the
-  sanitizers.
+  sanitizers. Doyle 1978's example meets it where q and sigma grow and its
+  margin closes to 1: with f = 2 + sqrt(5) in a double,
+  `hurwitz(charpoly(Acl(m, f, f)))` is 1 at m = 1 + 1/f^2, where the data
+  as stored is unstable, and with f = 2 + sqrt(10^8 + 4), 0 at
+  m = 1 + 1/f^2 - 10^-12, where it is stable; each decided exactly from the
+  doubles.
 - **An inertia count for inexact symmetric matrices**: the negative pivots
   of LDL' of A - xI count the eigenvalues below x, backward stable, where the
   rounded Descartes count of `eig` loses a k-fold eigenvalue to about 16/k
   digits and Hermite's test refuses symmetric matrices but for rounding.
   Rejected for `eig` only for an exact dyadic midpoint that zeroes a pivot,
   which an inexact matrix does not meet.
+- `[done]` **A guard the interpreter's own error straddles.** From an outside
+  review. `--check` estimates the interpreter's error by asking each term
+  three times more, disturbed (*The interpreter's own error, estimated by
+  `--check`*), as CESTAC does with CADNA's three samples, and shares its
+  known weakness: where the runs straddle a guard they take different
+  clauses, and the spread there is a clause's, not a rounding's. CADNA calls
+  it an unstable branching. `tie` in `test/compile/estimate.ink` says its
+  `g` is "about 1 from the exact ones, past the tolerance from 0" and not
+  why; a ReLU at its kink straddled alike says 5.8e-11, which is right, and
+  nothing says that the interpreter's own clause was in doubt. The flips
+  (*Guards that flip*) give a guard's margin as the interpreter computes it,
+  and where that is in doubles nothing says whether it is within the
+  interpreter's own error.
+
+  Decided:
+  - **What is observed: the clause each run takes**, of the guards the flips
+    follow: a sequence's guarded general clauses, cell by cell where it is
+    chosen so, of the instance and of those it writes unnamed. The hook the
+    flips listen with is set in each run too, recording the clause chosen
+    and evaluating nothing, so no coin is drawn and every estimate keeps its
+    digits. A run disagrees at a term where it takes another clause than the
+    interpreter's.
+  - **And the guards of the functions the file writes**, in its models or
+    outside them: `README.md` writes a ReLU as `ramp(x)`, and `H(x)` in
+    `gated` straddled is `tie` again, "about 99" and no word of why. The
+    hook is told of their guards too. Such a call has no term of its own:
+    it is the step's and the sequence's the check was asking when it was
+    made, the k-th guard of the function heard in that ask paired with the
+    k-th in the interpreter's, as the runs ask the sequences in the order
+    the interpreter's terms are asked. A guard heard again while a margin is
+    measured is not counted, as a run measures none. The flips still
+    follow only the sequences': a function's guard flipped compiled parts
+    the outputs by its values, reported where they part.
+  - **Not observed**: a comparison taken as a value, `floor`, where a limit
+    stops, and the prelude's guards. The first three choose no clause: their
+    jump is in the values, which the estimate measures as it does now, a
+    comparison straddled being "about 1"; the step names no clause for them,
+    so no flip is reported of them either; and hearing them is a hook in
+    every comparison and in `Convergence`. A limit stopping a term sooner or
+    later moves by about a step, within the remainder it is moved by anyway.
+    The prelude's are placed where either clause is as accurate, `logm`'s
+    fold and `ilogbs`, so they would be reported of every model through
+    `log`.
+  - **Reported once**, at the first step a run takes another clause, after
+    the first line and before the flips, as it is about the reference they
+    are held to: `tie.g: at 0 a disturbed run takes 'g_n | y_n >= 1/2 - w =
+    1' and the interpreter 'g_n = 0'; the guard of the first is 4.8e-11 from
+    its threshold`. The flip's words with a disturbed run in the step's
+    place, and the margin the flip would give, read against the estimate of
+    what the guard reads, 5.8e-11 on `tie.y`'s line. The first only, as for
+    a flip: a run that took another clause has another trajectory, and what
+    it chooses after follows from it. Where runs disagree differently, the
+    first run's clause. At one step, the first in the order the sequences
+    are asked; a function's straddle is named by its ask's sequence and
+    quotes the function's clauses: `acc.x: at 1 a disturbed run takes 'H(x)
+    | x >= 0 = 1' and the interpreter 'H(x) = 0'; the guard of the first is
+    4.8e-11 from its threshold`.
+  - **The estimate is printed as before.** Where the clauses meet at the
+    guard it is right: `knee.r` is "about 5.8e-11", its error exactly. Where
+    they part it is the jump, which is how far the term may be, and the line
+    above says it is a clause's. "Unknown" in its place would lose the first
+    and say less than the second.
+  - **Where it is found, the smaller of two.** The straddle is the
+    interpreter's alone, so it may be found in the program, read from the
+    flips' table, of the guarded sequences, their written clauses and the
+    margins, which gains an array per guarded place, the clause a run took
+    where it is not the interpreter's, else 0, with the margin's words a
+    function both lines call; or once by `--check`, the program printing it
+    as one fixed line. Either is acceptable; the implementation takes the
+    smaller and says which. A function's guard has no place in the flips'
+    table, which weighs for the second. Both lines are printed where both
+    happen, the straddle first; where they are at one step, as `knee` in
+    float, the flip is within the interpreter's own error.
+  - **The exit status is the step's.** A straddle is the reference's doubt,
+    not the step's fault: `tie` steps to the bit. The verdict stays the
+    tolerance's, as the estimate's entry decided.
+  - **`--float`** changes nothing: the runs are the interpreter's.
+
+  Rejected:
+  - **More samples.** Three are CADNA's. A straddle within a limit's
+    remainder is found by the runs moved up and down whatever the seeds, and
+    one within a rounding is drawn again at every step, `crease`'s found at
+    0 with probability 7/8. Each sample more is an evaluation of every term,
+    and moves the digits of every estimate.
+  - **Ignoring it**: `tie.g`'s "about 1" with no word of why, and `knee`'s
+    doubt in silence.
+  - **CADNA's synchronous branching and its counts.** CADNA computes its
+    samples together, takes one branch for all of them by their mean and
+    counts it where their difference is not significant, with unstable
+    multiplications, divisions and cancellations. That needs every operation
+    to see every sample, a Number of three doubles through every operation:
+    a second arithmetic, as the ball rejected in the estimate's entry was.
+    Branching by the mean would also hide the jump the estimate shows now,
+    `tie.g` "within 0" where the exact answer is 1. And a count of unstable
+    products is nothing a model's reader acts on, a cancellation's cost
+    being in the estimate already; the guards are where the outputs part
+    (`MANIFESTO.md`, *The oracle*).
+  - **On the sequence's line**: the sequence straddled is not always the one
+    whose estimate it moves, and the clauses' words would be needed there
+    anyway.
+  - **Every straddle**, or each sequence's first: they follow from the
+    first, as flips do.
+  - **Failing the check**: above.
+
+  What moves, measured with a prototype on every check of `ctest`: `tie`'s
+  report, by the line above, and nothing else; every other report byte for
+  byte, the estimates' digits with them, the hook drawing no coin. No golden
+  and no expected header. README's paragraph on the check gains a sentence,
+  with the implementation.
+
+  About 50 lines: as the prototype measured them formatted, the hook set in
+  each run and the clauses recorded, 10; the array per guarded place, 10;
+  the straddle's walk in the program written, less the flip's margin words
+  now shared, 15, or less found by `--check`; and, not prototyped, the
+  functions' guards, 15: the hook told of a guard outside the prelude in
+  `reference.hpp`, the guards heard by ask in the interpreter's run and in
+  each, and the margin measured unheard. 15,584 lines in all now; past 75
+  the implementation stops and reports.
+
+  Specified in `test/compile/straddle.ink`: `knee`, a ReLU whose kink the
+  run moved down passes, the clauses meeting so that its estimate is its
+  error, and the same in float, where the step's flip follows at the same
+  margin; `crease`, a ReLU at its kink reached by `~(1/10) + ~(2/10)`,
+  straddled by roundings at a step the seeds draw; `plain`, the same sum far
+  from its threshold, with no line; and `both`, a straddle at 3 and brink's
+  flip at 1, the straddle first; `acc`, `tie` again through a function's
+  guard, straddled at 1 where `x` first calls it. With `tie`'s line above.
+  Unwired, as a report failing by design fails `ctest`: wired with the
+  implementation.
+  Expected lines by hand: the limit's stop, 1/2 - 2^-34, and its remainder
+  by C36's rule; the doubles and margins in Python's correctly rounded
+  floats and fractions; each run's clause enumerated over its draws, the
+  runs moved up and down deciding `knee`, `both` and `tie` whatever the
+  seeds; `crease`'s step and every estimate's digits not a limit's by
+  their form.
+
+  Built as specified: every line of `straddle.ink` passes as written,
+  wired as the compile stories are, `crease`'s step by its form, and
+  `tie` gains its line. Found once by `--check` and printed as one fixed
+  line, the smaller: the program gains nothing, and a function's guard,
+  which has no place in the flips' table, is found as a sequence's is. The
+  hook is told of the guards of a clause without an index outside the
+  prelude too, and hears a function's calls by ask, a call begun where its
+  guards are tried again. Departures: `surprise` in `kahan.ink` gains a
+  line as well, which the prototype, without the functions, could not see:
+  a run rounding t = exp(Q(x)^2) off 1 takes Th's `(t - 1)/log(t)` where
+  the interpreter's t is 1 exactly, and the estimate, 8.9e-16, says the
+  clauses meet there, as Kahan meant them to; held by its form, in double
+  and in float. A guard heard while a margin is measured is not counted
+  for the flips either, which moved no report. A function the inputs
+  call was paired amiss where the step calls it too (C250). Every other check
+  program and header byte for byte. 72 lines of sources where about 50
+  were planned: `check.hpp` 68, `reference.hpp` 3, `reference_stack.hpp`
+  1. 15,656 lines in all.
+- **A comparison taken as a value, straddled.** `g_n = y_n >= 1/2 - w` is
+  `tie` with no clause, and keeps its "about 1" with no word of why after
+  the straddle above. Hearing it is a hook in the evaluator's every
+  comparison, told apart from a guard's, paired by order within an ask as a
+  function's guard is, and a wording for an expression no clause quotes:
+  more than the five lines it was allowed, so left for its own entry.
+- **A straddle that changes how many calls a run makes.** Since C253 a
+  run's calls of a function are paired with the interpreter's only where
+  it made as many, as a call remembered by its arguments is not heard: in
+  `x_n = lim t(y_n)` with `t(a)_k = t(a)_(k-1) + H(a - (1/2 - w))/2^k`,
+  tie's straddle in H, the run moved up rounds H's argument two ways and
+  calls H twice where the interpreter calls it once, and nothing is said.
+  Hearing a remembered call, or pairing calls by their arguments, would say
+  it.
+
+After transcribing a small convolutional network (Goodfellow, Bengio and
+Courville 2016, §9.5; LeCun et al. 1998, §II.B), its training compiled and
+checked: what it asked of the compiler, each with its smallest change.
+
+- **A compiled gradient with respect to a tensor**, "a derivative with
+  respect to a tensor, for now": the seed of three indices *Tensors
+  compiled* left between attention and its training, met again by an input
+  gradient over a batch of images. The seed's slice taken from its cell as
+  its row and column are, and the parts assembled into an extent with
+  slices; about 10 lines, the interpreter's seeds unchanged.
+- **A read between slow sequences of one period and phase**, refused since
+  C233 as one at another rate read by another: a minibatch as time, each
+  term of the weights reading two consecutive samples, trains its weights
+  as slow sequences that read each other at `m-1`. Where both tick at the
+  same steps, the read is a lag in the reader's own terms, as its own
+  history is; about 15 lines in `Rate`, the hold at the input's rate still
+  the answer for another period.
+- **A tensor term under a guard that is not a constant**, `A_n[b,o,p] |
+  Z_n[b,o,p] > 0`, "a tensor's cells under a guard that is not a constant,
+  for now": a batched ReLU as a term rather than a call. Tested at run time
+  cell by cell as a matrix term's guards are, `--check` naming the clause by
+  slice, row and column.
+- **Single values met by a matrix compiled**, a per-channel bias `T + [1/2;;
+  -1/2]`, "a tensor whose slices are single values met by a matrix, for
+  now": each slice's value stretched over the other's cells in `Cellwise`, as
+  the interpreter's arithmetic does; a few lines.
+- **`grad` through a local**, "grad cannot differentiate a local definition
+  yet", compiled "a local definition": `(z = Q*P) ...` written once in a
+  loss must be a call instead. A local's jet bound in the frame for the rest
+  of the line, as a call's parameters are, and compiled as an expansion's
+  value.
+- **The size of a forward-mode header, measured**, before reverse mode is
+  weighed (`MANIFESTO.md`): the network's 47 weights trained by four grads
+  are 2.16 MB of header, as each direction writes a guard's dot product
+  again and each seed as `0.0*P + ... + 1.0*P`. A temporary for a guard's
+  operands, and `0.0*x` folded where x is finite, are the first two
+  measurements to take.
+- **A maximum or minimum over an index**, `max_(i=1)^n`, as a sum is
+  written: max-pooling over a window is nested `max` calls today. Minor,
+  until a second model asks.
+- **The compiled sum's thousand terms**: a LeNet-sized layer's dot product
+  over a batch would pass `max_terms`, which bounds an unrolled sum written
+  as lines of C, not a loop.
 - **A bare number is exact, and a truth read from a double is not** (C240,
   C241). `~` says only that the digits shown are not all of the value, so
   `~0.5`, `dhinf(1/2, 1, 1)` and `rho([0 1; 0 0])` print `0.5`, `2` and `0`,

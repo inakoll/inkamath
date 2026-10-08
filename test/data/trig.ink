@@ -188,7 +188,7 @@ digits = 17
 ~0.54030230586813977
 
 # Not correctly rounded: mpmath's, rounded, is -0.54402111088936977, a unit
-# away; this is 0.65 units from the sine, within the 2.4 of any double.
+# away; this is 0.65 units from the sine, within the 2.43 of any double (C225).
 >> sin(10)
 ~-0.54402111088936989
 

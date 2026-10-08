@@ -113,6 +113,9 @@ TEST_CASE("conditional") {
 TEST_CASE("sequences") {
     check_transcript("sequences.ink");
 }
+TEST_CASE("fill") {
+    check_transcript("fill.ink");
+}
 TEST_CASE("series") {
     check_transcript("series.ink");
 }
@@ -175,6 +178,12 @@ TEST_CASE("tensor") {
 }
 TEST_CASE("gradcells") {
     check_transcript("gradcells.ink");
+}
+TEST_CASE("conv") {
+    check_transcript("conv.ink");
+}
+TEST_CASE("minibatch") {
+    check_transcript("minibatch.ink");
 }
 TEST_CASE("sizes") {
     check_transcript("sizes.ink");
@@ -241,6 +250,9 @@ TEST_CASE("rump") {
 }
 TEST_CASE("goldberg") {
     check_transcript("goldberg.ink");
+}
+TEST_CASE("doyle") {
+    check_transcript("doyle.ink");
 }
 TEST_CASE("readme") {
     check_readme();

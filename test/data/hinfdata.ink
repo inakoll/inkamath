@@ -30,6 +30,10 @@
 >> dhinf([0 1; -1/2 1], [0; 1], [1 0])
 ~2.82842712
 
+# 20/(z - 1/5) peaks at z = 1, 25, which it was an ulp below (C216).
+>> dhinf(1/5, 1, 20)
+25
+
 # Normalised by its largest cells, exactly, so a scale is no cost: an
 # output in other units, a time scale, an input.
 >> hinf([0 1; -1 -1/2], [0; 1], [1 0]*10^200)

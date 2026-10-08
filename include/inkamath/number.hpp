@@ -100,6 +100,8 @@ public:
     friend bool operator==(const Number& a, const Number& b) {
         if (a.small() && b.small()) return a.num_ == b.num_ && a.den_ == b.den_;
         if (a.exact() && b.exact()) return a.big_ && b.big_ && *a.big_ == *b.big_;
+        if (a.big_ || b.big_)
+            return Order(a, b, std::equal_to<>()) && a.Inexact().imag() == b.Inexact().imag();
         return a.Inexact() == b.Inexact();
     }
 
@@ -215,10 +217,12 @@ public:
     }
 
     static std::string fraction(const Number& a, int digits) {
+        // A complex number is a pair of doubles, approximated or not (C217).
         if (!a.exact()) {
-            throw std::runtime_error(toString(a, digits) + " was approximated" +
-                                     (approximated(a) ? " past a thousand digits" : "") +
-                                     ", so it has no exact fraction");
+            const char* why = approximated(a)          ? " was approximated past a thousand digits"
+                              : a.inexact_.imag() != 0 ? " is complex"
+                                                       : " was approximated";
+            throw std::runtime_error(toString(a, digits) + why + ", so it has no exact fraction");
         }
         if (a.big_) {
             const Big&        b    = *a.big_;
@@ -270,19 +274,13 @@ public:
         // keeps a root's 2^(e/2) exact.
         const double y = b.Inexact().real(), t = b.Inexact().imag();
         if (a.big_ && !std::isnormal(base.real()) && std::isfinite(y) && std::isfinite(t)) {
-            const Big& r = *a.big_;
-            const long e =
-                (static_cast<long>(r.num.bits()) - static_cast<long>(r.den.bits())) & ~1L;
-            const double m = e >= 0 ? Nearest(r.num, r.den.Shifted(static_cast<std::size_t>(e)))
-                                    : Nearest(r.num.Shifted(static_cast<std::size_t>(-e)), r.den);
-            const double s = std::clamp(static_cast<double>(e) * y, -1e4, 1e4), k = std::floor(s);
-            inexact_type z = numeric_interface<inexact_type>::pow(inexact_type(r.negative ? -m : m),
-                                                                  b.Inexact()) *
-                             std::exp2(s - k);
-            if (t != 0) z *= std::polar(1.0, static_cast<double>(e) * t * std::numbers::ln2);
-            return Approximate(rounded({std::ldexp(z.real(), static_cast<int>(k)),
-                                        std::ldexp(z.imag(), static_cast<int>(k))}),
-                               past);
+            const int    e = (Exponent(a) - 1) & ~1;
+            const double s = std::clamp(e * y, -1e4, 1e4), k = std::floor(s);
+            inexact_type z =
+                numeric_interface<inexact_type>::pow(Part(a, e).inexact_, b.Inexact()) *
+                std::exp2(s - k);
+            if (t != 0) z *= std::polar(1.0, e * t * std::numbers::ln2);
+            return Approximate(rounded(Ldexp(z, static_cast<int>(k))), past);
         }
         return Approximate(rounded(numeric_interface<inexact_type>::pow(base, b.Inexact())), past);
     }
@@ -385,6 +383,8 @@ private:
     INKAMATH_NOINLINE static Number Plus(const Number& a, const Number& b) {
         if (a.exact() && b.exact()) return BigSum(a.Ratio(), b.Ratio());
         const inexact_type x = a.Inexact(), y = b.Inexact();
+        if (a.big_ || b.big_)
+            if (const auto sum = Scaled(a, x, b, y, 0, Plus)) return *sum;
         return Approximate(Added(x, y, x + y), approximated(a) || approximated(b));
     }
 
@@ -395,12 +395,16 @@ private:
             return BigSum(a.Ratio(), negated);
         }
         const inexact_type x = a.Inexact(), y = b.Inexact();
+        if (a.big_ || b.big_)
+            if (const auto difference = Scaled(a, x, b, y, 0, Minus)) return *difference;
         return Approximate(Added(x, -y, x - y), approximated(a) || approximated(b));
     }
 
     INKAMATH_NOINLINE static Number Times(const Number& a, const Number& b) {
         if (a.exact() && b.exact()) return BigProduct(a.Ratio(), b.Ratio());
         const inexact_type x = a.Inexact(), y = b.Inexact();
+        if (a.big_ || b.big_)
+            if (const auto product = Scaled(a, x, b, y, 1, Times)) return *product;
         const bool         past = approximated(a) || approximated(b);
         if (Finite(a, x, b)) return Approximate(Beyond(x, y), past);
         if (Finite(b, y, a)) return Approximate(Beyond(y, x), past);
@@ -419,6 +423,8 @@ private:
             return BigProduct(a.Ratio(), reciprocal);
         }
         const inexact_type x = a.Inexact(), y = b.Inexact();
+        if (a.big_ || b.big_)
+            if (const auto quotient = Scaled(a, x, b, y, -1, Over)) return *quotient;
         const bool         past = approximated(a) || approximated(b);
         if (Finite(a, x, b) && !(y.imag() == 0) && std::isfinite(y.real()) &&
             std::isfinite(y.imag()))
@@ -429,11 +435,49 @@ private:
         return Approximate(Other(q, y.real() > 0 ? r : -r), past);
     }
 
-    // A number exact, or approximated from an exact one, whose double e is
-    // past a double's range: finite all the same (C207, C209), so 0 by a 0
-    // part of b, unless b's 0 is approximated too and may be anything.
+    // An exact number no normal double holds, with a double, as C175's power
+    // has it: each over a power of 2 first, its own for a product (how 1) or
+    // quotient (-1) and the exact one's for a sum (0), so that the result
+    // leaves the range only where its value does (C242). A sum only above
+    // the range: below it, the exact number's double is off by less than
+    // the least double.
+    static std::optional<Number> Scaled(const Number& a, inexact_type x, const Number& b,
+                                        inexact_type y, int how,
+                                        Number (*op)(const Number&, const Number&)) {
+        const auto outside = [how](const Number& n, inexact_type z) {
+            return n.big_ && (how == 0 ? std::isinf(z.real()) : !std::isnormal(z.real()));
+        };
+        if (!outside(a, x) && !outside(b, y)) return std::nullopt;
+        const int big = Exponent(outside(a, x) ? a : b);
+        const int e = how == 0 ? big : Exponent(a), f = how == 0 ? big : Exponent(b);
+        return Approximate(Ldexp(op(Part(a, e), Part(b, f)).inexact_, how == 0 ? big : e + how * f),
+                           approximated(a) || approximated(b));
+    }
+
+    // The e that puts a's larger part within [1/4, 1] over 2^e, and a over it.
+    static int Exponent(const Number& a) {
+        const auto bits = [](const Natural& n) { return static_cast<int>(n.bits()); };
+        if (a.big_) return bits(a.big_->num) - bits(a.big_->den) + 1;
+        const double larger = std::max(std::abs(a.inexact_.real()), std::abs(a.inexact_.imag()));
+        return std::isfinite(larger) && larger != 0 ? std::ilogb(larger) + 1 : 0;
+    }
+    static Number Part(const Number& a, int e) {
+        if (!a.big_) return Number(Ldexp(a.inexact_, -e));
+        const Big&   r = *a.big_;
+        const double m = e >= 0 ? Nearest(r.num, r.den.Shifted(static_cast<std::size_t>(e)))
+                                : Nearest(r.num.Shifted(static_cast<std::size_t>(-e)), r.den);
+        return Number(r.negative ? -m : m);
+    }
+    static inexact_type Ldexp(inexact_type z, int e) {
+        return {std::ldexp(z.real(), e), std::ldexp(z.imag(), e)};
+    }
+
+    // A number approximated from an exact one, whose double e is past a
+    // double's range: finite all the same (C209), so 0 by a 0 part of b,
+    // unless b's 0 is approximated too and may be anything. An exact one is
+    // Scaled (C207).
     static bool Finite(const Number& a, inexact_type e, const Number& b) {
-        return (a.exact() || (approximated(a) && !approximated(b))) &&
+        return approximated(a) && !approximated(b) &&
                (std::isinf(e.real()) || std::isinf(e.imag()));
     }
 
@@ -896,7 +940,23 @@ private:
     template <typename Op>
     static bool Order(const Number& a, const Number& b, Op op) {
         if (a.exact() && b.exact()) return op(Compare(a, b), 0);
-        return op(a.Inexact().real(), b.Inexact().real());
+        const double x = a.Inexact().real(), y = b.Inexact().real();
+        if (Lost(a, x) && std::isfinite(y)) return op(Compare(a.Ratio(), Dyadic(y)), 0);
+        if (Lost(b, y) && std::isfinite(x)) return op(Compare(Dyadic(x), b.Ratio()), 0);
+        return op(Lost(a, x) ? 0 : x, Lost(b, y) ? 0 : y);
+    }
+
+    // An exact number whose double is 0 or inf, which it is not, so compared
+    // with a double exactly, and with inf or NaN as any finite number (C262).
+    static bool Lost(const Number& a, double x) { return a.big_ && (std::isinf(x) || x == 0); }
+
+    // A finite double as the fraction it is.
+    static Big Dyadic(double x) {
+        int        e     = 0;
+        const auto m     = static_cast<Natural::wide>(std::ldexp(std::frexp(std::abs(x), &e), 53));
+        const auto shift = static_cast<std::size_t>(std::abs(e - 53));
+        return e >= 53 ? Big{x < 0, Natural(m).Shifted(shift), Natural(1)}
+                       : Big{x < 0, Natural(m), Natural(1).Shifted(shift)};
     }
 
     // The sign of a/b - c/d, read from a*d against c*b in 128 bits: two
