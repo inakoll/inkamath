@@ -6740,8 +6740,8 @@ that exploring seven domains asked of the interpreter, by how many asked.
   - **`frac`** refuses an inexact truth in its words: `frac (~0.1*3 >
     3/10)` is "~1 was approximated, so it has no exact fraction".
   - **What the rule must not move**, four changes, measured by a prototype:
-    - ilogb's double path, in C, answers its k inexact, as its walk does
-      now, which it must equal; 1 line.
+    - ilogb's double path, in C, answers its k inexact, as its walk then
+      does, which it must equal; 1 line.
     - `rhos` also stops where the midpoint is an end. Of an inexact matrix
       rho, abscissa and eig now bisect a bracket of doubles, their tests'
       truths inexact, and adjacent doubles are never 2^-53 apart relative:
@@ -6759,7 +6759,7 @@ that exploring seven domains asked of the interpreter, by how many asked.
     - A disturbed run no longer moves a power of two to a whole power,
       whose double is exact: log's scale 2^ilogb(x) is inexact now, and
       moving it took `surprise.k`'s estimate in `kahan.ink` from 8.9e-16 to
-      inf; about 5 lines.
+      inf; 7 lines.
     And C242 is fixed first, a fix of its own, or fastgrad's
     `grad_(t = ~(1.5e-300)) log(t*10^200*10^200)` becomes `~inf`.
   - **Compiled.** No header moves: compiled values are doubles, printed by
