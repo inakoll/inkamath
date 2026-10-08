@@ -907,6 +907,9 @@ private:
             for (const std::string* other :
                  {&p.index_name(), &p.slice_name(), &p.row_name(), &p.col_name()})
                 if (!other->empty()) bound.insert(*other);
+            // A signature's sizes are its own, as its names are (C212).
+            for (const auto& size : definition.Sizes())
+                for (const auto& [given, digits] : size.bounds) bound.insert(given);
             for (const PExpression<T>& read :
                  {clause.expression, p.guard(), p.slices(), p.rows(), p.cols()})
                 Scan(read, name, bound, &definition, seen);
