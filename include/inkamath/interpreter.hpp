@@ -410,6 +410,62 @@ inline constexpr const char* prelude[] = {
     "smaxd(x, e) = rhod(x, e) + 0*10^(-1000*(rhod(rhod(x, e), -e) <> x))",
     "smaxd(x, e) | x <> 0 and (rhod(x, e) == 0 or abs(rhod(x, e)) >= 2^1024) "
     "= rhod(x, e) + 0*10^-1000",
+    // hinf bisects g = gamma^2 in units of 2^e above 2 tr(D'D) + 8n tr(PQ),
+    // P and Q the Gramians, on whether the Hamiltonian of gamma has an
+    // eigenvalue iw: det(R) det(sI - H), R = gI - D'D, is q(s^2), of degree
+    // m in g, interpolated once by hinfx and normalised by hinfy, which
+    // refuses one past a double; q has a root at or below 0 exactly where its
+    // Bezoutians with q' and with s q' differ in signature, Descartes' count
+    // of each as eig's. The system is divided by its largest cells, time by
+    // A's, output by [C, D]'s and input by [B; D]'s; the root is taken before
+    // scaling back, and marked where its double is not normal. dhinf is
+    // hinf of the system's image by z = (1 + s)/(1 - s), which keeps the norm.
+    "hinfc(p[j<=m], k) = 0",
+    "hinfc(p[j<=m], k) | k < m = p[m-k]",
+    "hinfz(f[k<=m], w)[i<=m-1, j<=m-1] = sum_(b=0)^(min(i, j)-1) (hinfc(f, "
+    "i+j-1-b)*(b+w)*hinfc(f, b+w) - hinfc(f, b)*(i+j-1-b+w)*hinfc(f, i+j-1-b+w))",
+    "hinfa(p[j<=m])[j<=m] = (-1)^j*p[j]",
+    "hinfs(X) = eigv(charpoly(X)) - eigv(hinfa(charpoly(X)))",
+    "hinfq(c[j<=m])[j<=(m+1)/2] = c[2*j-1]",
+    "hinft(q) = hinfs(hinfz(q, 1)) <> hinfs(hinfz(q, 0))",
+    "hinfh(A, B, C, K, R) = [A + B*R*K, B*R*B'; -C'*C - K'*R*K, -(A + B*R*K)']",
+    "hinfr(D, g) = g*(D'*D)^0 - D'*D",
+    "hinfx(A[j<=n, k<=n], B, C, D[j<=p, k<=m], e)[i<=m+1, j<=2*n+1] = (-1)^m*charpoly(hinfr(D, "
+    "i*2^e))[m+1]*charpoly(hinfh(A, B, C, D'*C, hinfr(D, i*2^e)^-1))[j]",
+    "hinfn(m)[i<=m+1, k<=m+1] = i^(k-1)",
+    "hinfo(u, m)[i<=1, k<=m+1] = u^(k-1)",
+    "hinfl(A, B, C, D[j<=p, k<=m], e, u) = hurwitz(charpoly(D'*D), u*2^e) == 0 or "
+    "hinft(hinfq((hinfo(u, m)*hinfn(m)^-1*hinfy(hinfx(A, B, C, D, e)))'))",
+    "hinfy(X[j<=p, k<=q]) | 1/(sum_(j=1)^p sum_(k=1)^q abs(X[j,k]) + 1) > 0 and sum_(j=1)^p "
+    "sum_(k=1)^q (abs(X[j,k]) > 0 and abs(X[j,k]) < 2^(rhoe(X) - 1022)) == 0 = rhod(X, -rhoe(X))",
+    "hinfk(A[j<=n, k<=n])[r<=n*n, c<=n*n] = A[floor((r-1)/n)+1, floor((c-1)/n)+1]*(mod(r-1, n) == "
+    "mod(c-1, n)) + (floor((r-1)/n) == floor((c-1)/n))*A[mod(r-1, n)+1, mod(c-1, n)+1]",
+    "hinfv(M[j<=n, k<=n])[r<=n*n] = M[floor((r-1)/n)+1, mod(r-1, n)+1]",
+    "hinfw(A[j<=n, k<=n], B, C, D[j<=p, k<=m]) = 2*sum_(j=1)^p sum_(k=1)^m D[j,k]^2 + "
+    "8*n*((hinfk(A)^-1*hinfv(B*B'))'*hinfk(A')^-1*hinfv(C'*C))[1,1]",
+    "hinfu(A, B, C, D, e)_0 = [0; 1]",
+    "hinfu(A, B, C, D, e)_m = hinfp(A, B, C, D, e, hinfu(A, B, C, D, e)_(m-1))",
+    "hinfp(A, B, C, D, e, b) = b + (b[2] - b[1])/2*([1; 0] - (hinfl(A, B, C, D, e, (b[1] + "
+    "b[2])/2) == 0)*[1; 1])",
+    "hinfu(A, B, C, D, e)_m | m > 64 and rhos(hinfu(A, B, C, D, e)_(m-1)) = hinfu(A, B, C, D, "
+    "e)_(m-1)",
+    "hinfm(M)_0 = 0",
+    "hinfm(M[j<=p, k<=q])_t = max(hinfm(M)_(t-1), max(M[floor((t-1)/q)+1, mod(t-1, q)+1], "
+    "-M[floor((t-1)/q)+1, mod(t-1, q)+1]))",
+    "hinfj(M[j<=p, k<=q]) = hinfm(M)_(p*q) + (M == 0*M)",
+    "hinfd(x, f) = x*f",
+    "hinfd(x, f) | x <> 0 and (abs(x*f) < 2^-1022 or abs(x*f) >= 2^1024) = x*f + 0*10^-1000",
+    "hinfg(A, B, C, D) = 2*ceil(rhop(hinfw(A, B, C, D))/2)",
+    "hinfe(A, B, C, D, f) = hinfd(rhod(rhoa(hinfu(A, B, C, D, hinfg(A, B, C, D))_256, hinfu(A, B, "
+    "C, D, hinfg(A, B, C, D))_256)^(1/2), hinfg(A, B, C, D)/2), f)",
+    "hinfe(A, B, C, D, f) | hinfw(A, B, C, D) == 0 = ~0",
+    "hinfb(A, B, C, D, f) = hinfe(A, B/hinfj([B; D]), C, D/hinfj([B; D]), f*hinfj([B; D]))",
+    "hinf(A[j<=n, k<=n], B[j<=n, k<=m], C[j<=p, k<=n], D[j<=p, k<=m] = 0*C*B) | "
+    "hurwitz(charpoly(A/hinfj(A))) = hinfb(A/hinfj(A), B/hinfj(A), C/hinfj([C, D]), D/hinfj([C, "
+    "D]), hinfj([C, D]))",
+    "dhinf(A[j<=n, k<=n], B[j<=n, k<=m], C[j<=p, k<=n], D[j<=p, k<=m] = 0*C*B) | "
+    "schurcohn(charpoly(A)) = hinf((A + A^0)^-1*(A - A^0), 2*(A + A^0)^-1*B, C*(A + A^0)^-1, D - "
+    "C*(A + A^0)^-1*B)",
 };
 
 template <Parsable T, Numeric U>
@@ -429,15 +485,23 @@ Interpreter<T, U>::Interpreter() {
             {names.at("sin").get(), inkamath_prelude_sin},
             {names.at("cos").get(), inkamath_prelude_cos},
         }};
-        // An inexact cell inf or NaN has lost its value, and no eigenvalue of
-        // it is certified, inf or other (C206).
-        stack_.read = [](const Reference<U>& f, U& x) {
-            for (std::size_t k = 0; k < x.Size().count(); ++k)
-                if (const Number& c = x.data()[k];
-                    !c.exact() &&
-                    !(std::isfinite(c.Inexact().real()) && std::isfinite(c.Inexact().imag())))
+        // An inexact cell inf or NaN has lost its value, and no eigenvalue or
+        // norm of it is certified, inf or other (C206). hinf and dhinf read
+        // any other real one as the rational its double is (DESIGN.md).
+        stack_.read = [hinf = names.at("hinf").get(), dhinf = names.at("dhinf").get()](
+                          const Reference<U>& f, U& x) {
+            for (std::size_t k = 0; k < x.Size().count(); ++k) {
+                Number& c = x.data()[k];
+                if (c.exact()) continue;
+                const auto z = c.Inexact();
+                if (!std::isfinite(z.real()) || !std::isfinite(z.imag()))
                     throw std::runtime_error(f.Name() + " needs finite cells, not " +
                                              numeric_interface<Number>::toString(c));
+                int          e = 0;
+                const double m = std::ldexp(std::frexp(z.real(), &e), 53);
+                if ((&f == hinf || &f == dhinf) && z.imag() == 0 && !Number::approximated(c))
+                    c = Number(static_cast<long long>(m)) * Number::pow(2, e - 53);
+            }
         };
         stack_.compiled = [this, functions](const Reference<U>& f, const U& x) -> std::optional<U> {
             const auto found = std::find_if(functions.begin(), functions.end(),
@@ -494,8 +558,9 @@ Interpreter<T, U>::Interpreter() {
         stack_.stepwise = names.at("ilogb").get();
     }
     const auto& names = stack_.Builtins().names;
-    stack_.staircases = {names.at("rho").get(), names.at("abscissa").get(), names.at("eig").get(),
-                         names.at("smax").get()};
+    stack_.staircases = {names.at("rho").get(),  names.at("abscissa").get(),
+                         names.at("eig").get(),  names.at("smax").get(),
+                         names.at("hinf").get(), names.at("dhinf").get()};
     ResetInterpreter();
 }
 

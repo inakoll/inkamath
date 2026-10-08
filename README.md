@@ -267,8 +267,8 @@ its argument, exact of an exact number, and a complex number's real and
 imaginary parts, the paper's Re and Im. `ceil(x) = -floor(-x)` and
 `mod(a, b) = a - b*floor(a/b)` come with them, from a prelude (section 5),
 and so do `exp`, `log`, `tanh`, `sin`, `cos`, `abs`, `max` and `min`, and,
-of matrices, `charpoly`, `hurwitz`, `schurcohn`, `rho`, `abscissa`, `eig`
-and `smax` (section 2). `abs` takes a complex number too, |z|, so a
+of matrices, `charpoly`, `hurwitz`, `schurcohn`, `rho`, `abscissa`, `eig`,
+`smax`, `hinf` and `dhinf` (section 2). `abs` takes a complex number too, |z|, so a
 frequency response's magnitude |T(e^{iw})| is written as on paper.
 Any other rounding is a line of it, by the rule the model needs —
 `round(x) = floor(x + 1/2)` — and, like `pi`, each of them can be defined
@@ -583,6 +583,34 @@ error: eig needs a matrix whose eigenvalues are all real
 
 >> smax([1 2; 3 4; 5 6])
 ~9.52551809
+```
+
+`hinf(A, B, C, D)` is the H-infinity norm of the stable system x' = Ax +
+Bu, y = Cx + Du: the largest singular value of its transfer function
+C(iwI - A)^-1 B + D over every frequency w, the peak of |T(iw)| for one
+input and one output, D left out being 0. `dhinf(A, B, C, D)` is the same
+of x_(n+1) = Ax_n + Bu_n over the unit circle, so `dhinf(1/2, 1, 1)` is the
+peak of section 1's T, at z = 1. Each bisects the norm's square, certified
+and marked as rho's, on whether the Hamiltonian has an eigenvalue on the
+imaginary axis, which an exact count of real roots tells. The system is
+divided by its largest cells first, exactly, so its units cost nothing, and
+an inexact cell is read as the exact rational its double is: the answer is
+certified for the data as stored, or marked. Certified of small whole
+numbers up to 8x8 with one input, and of full doubles up to 3x3; a system
+whose tests would leave a double's range, time scales some 10^154 apart, is
+refused. The norm is of a stable A: `hinf` refuses an eigenvalue of A on or
+right of the imaginary axis and `dhinf` one on or outside the unit circle,
+even where it cancels in the transfer function. `grad` refuses both:
+
+```
+>> hinf([0 1; -1 -1/2], [0; 1], [1 0])
+~2.06559112
+
+>> dhinf(1/2, 1, 1)
+2
+
+>> hinf(1, 1, 1)
+error: hinf needs every eigenvalue of A left of the imaginary axis
 ```
 
 ### 3. Definitions
@@ -1098,8 +1126,8 @@ of its own: the session reaches its names qualified, `filters.lowpass`, and
 once, holds definitions only, and one that cannot be read or parsed loads
 nothing and says where. The prelude that defines `ceil`, `mod`, `exp`, `log`,
 `tanh`, `sin`, `cos`, `abs`, `max`, `min`, `charpoly`, `hurwitz`,
-`schurcohn`, `rho`, `rhob`, `abscissa`, `abscissab`, `eig`, `eigb`
-and `smax`, and what they call, is included bare beneath the
+`schurcohn`, `rho`, `rhob`, `abscissa`, `abscissab`, `eig`, `eigb`,
+`smax`, `hinf` and `dhinf`, and what they call, is included bare beneath the
 session, as the built-ins are: every scope sees it, and a session
 that defines one of its names again does so for itself
 alone, and clearing it gives the prelude's back. `exp`, `log`, `tanh`,

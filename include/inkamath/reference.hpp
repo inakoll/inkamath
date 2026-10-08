@@ -608,11 +608,17 @@ public:
     }
 
     // A refusal an approximated guard decided may be wrong, and says so. The
-    // prelude's eig has one guard, which it cannot word (DESIGN.md).
+    // prelude's eig, hinf, dhinf and hinfy have one guard each, which it
+    // cannot word (DESIGN.md).
     std::string Unapplied(bool past) const {
-        const bool eig = reference_name_ == "eig" && home && !home->parent;
-        return (eig ? "eig needs a matrix whose eigenvalues are all real"
-                    : "no clause of " + reference_name_ + " applies") +
+        static const std::unordered_map<std::string, std::string> needs{
+            {"eig", "eig needs a matrix whose eigenvalues are all real"},
+            {"hinf", "hinf needs every eigenvalue of A left of the imaginary axis"},
+            {"dhinf", "dhinf needs every eigenvalue of A inside the unit circle"},
+            {"hinfy", "hinf needs tests within a double's range"}};
+        const auto prelude = home && !home->parent ? needs.find(reference_name_) : needs.end();
+        return (prelude != needs.end() ? prelude->second
+                                       : "no clause of " + reference_name_ + " applies") +
                (past ? ", by a guard approximated past a thousand digits" : "");
     }
 
