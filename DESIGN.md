@@ -6485,26 +6485,29 @@ that exploring seven domains asked of the interpreter, by how many asked.
   twelve-digit cells within 2e-16, a 5x5 within 3e-11, a 4x4 of 16-digit
   cells within 1.2e-7, against mpmath. 0.05 s for a 2x2, 0.6 s at 4x4, 7 s
   at 6x6 and 50 s at 8x8 with one input; 0.2 s at 3x3, 4 s at 5x5 and 17 s
-  at 6x6 with two. The spec replays in 12 s under the sanitizers.
+  at 6x6 with two. The spec replays in 14 s under the sanitizers.
 
-  **An inexact system** is bisected by rounded tests, as rho's matrix is,
-  its answer inexact and unmarked. A Bezoutian's signature by its
-  characteristic polynomial, rounded, misjudges as n grows, and not only at
-  the peak's double root: on random systems of small whole numbers made
-  inexact, 20 with one input and 20 with two at each size up to 5x5,
-  within 3e-11 up to 3x3, 3e-7 at 4x4 and 1e-2 at 5x5; at 6x6, of 8 with
-  two inputs the median is 1e-2, and of 12 with one, one is answered 13.5
-  for 2.87, a test above its norm judged below. README says so, as it says
-  eig's k-fold eigenvalue is good to 16/k digits. Rejected: refusing an
-  inexact cell, which costs 7 lines of C++ and every discretised plant
-  whose pole is an `exp`; and
-  reading a double as the dyadic number it is, exactly, which certifies an
-  inexact 3x3 and marks a 4x4, but is a reading of an inexact number nothing
-  else in the language makes. A cell that is itself inf or NaN is refused as
-  C206 refuses rho's, `hinf needs finite cells, not inf`: the check that one
-  argument passes takes every argument of hinf and dhinf, about 5 lines. A
-  complex cell is refused in max's words, as rho's, the normalisation
-  reading every cell.
+  **An inexact system** is read exactly: each inexact cell of hinf's and
+  dhinf's arguments is the rational its double is, so an answer is certified
+  for the data as stored, or marked, never silently wrong. In C++, about 15
+  lines on the loop that C206's check needs anyway, a cell already
+  approximated past a thousand digits kept as it is, its mark with it.
+  Measured on cells k/7, each a full mantissa: certified up to 3x3 and some
+  5x5, marked from 4x4, within 1e-9 at 5x5 and 5e-6 at 6x6; whole numbers
+  made inexact read back exactly and are certified as they are. 1.1 s for a
+  2x2 and 19 s at 3x3 under the sanitizers with one input, 57 s at 5x5,
+  where rounded tests take 0.6, 0.9 and 2.6 s; in Release 0.1, 0.5 and 7 s.
+  Rejected: rounded tests, as rho's matrix has, which misjudge as n grows,
+  at the peak's double root and away from it: on random systems of small
+  whole numbers made inexact, 20 with one input and 20 with two at each size
+  up to 5x5, within 3e-11 up to 3x3, 3e-7 at 4x4 and 1e-2 at 5x5; at 6x6, of
+  8 with two inputs the median is 1e-2, and of 12 with one, one is answered
+  13.5 for 2.87, unmarked. And refusing an inexact cell, which costs 7 lines
+  of C++ and every discretised plant whose pole is an `exp`. rho, abscissa
+  and eig keep their rounded tests for now (next in line). A cell that is
+  itself inf or NaN is refused as C206 refuses rho's, `hinf needs finite
+  cells, not inf`, on the same loop over every argument. A complex cell is
+  refused in max's words, as rho's, the normalisation reading every cell.
 
   **Unstable, refused.** A stable A is the norm's hypothesis: `hinf needs
   every eigenvalue of A left of the imaginary axis`, by `hurwitz`, words
@@ -6575,25 +6578,32 @@ that exploring seven domains asked of the interpreter, by how many asked.
   `hinf` and `dhinf`, and section 2 shows them beside |T(iw)| and says what
   is certified, with the implementation.
 
-  About 64 lines: the prelude 42, eight of them wrapped, some 10 of its
-  comment, and 12 of C++: the two refusals' words 4, C206's check over every
-  argument 5, the staircases 1 and its wrapping. 15,447 lines at f898d7e, by
-  `wc -l include/inkamath/*.hpp src/*`. Past 96 the implementation stops and
-  reports.
+  About 81 lines: the prelude 42, eight of them wrapped, some 12 of its
+  comment, and 27 of C++: the two refusals' words 4, C206's check over every
+  argument and the exact reading on its loop 20, the staircases 1 and its
+  wrapping. 15,447 lines at f898d7e, by `wc -l include/inkamath/*.hpp
+  src/*`. Past 122 the implementation stops and reports.
 
-  Specified in `test/data/spec/hinf.ink`, 50 entries replayed by the spec
+  Specified in `test/data/spec/hinf.ink`, 52 entries replayed by the spec
   suite, 43 failing by design, those passing being definitions and `digits`
   echoing themselves, |T(iw)| at the peak and a session's `hinf`: the norm
-  exactly with sympy for one input and one output, from the critical points
-  of |G(iw)|^2 in w^2 or of |G(e^(iw))|^2 in cos w, with mpmath at 60 digits
-  for two, a sweep and a golden section, python-control's linfnorm agreeing
-  within 1e-14 but at the extreme scales, where it fails; each bracket by
-  bisection in Python's fractions with every test decided from that norm,
-  and its double printed by a transcription of `Number::Shown`, apart from
-  the interpreter. The prototype above, defined in a session, gives every
-  answer but the refusals' words, the inf cell's, grad's two, a session's
-  `hinf`, which need the C++ and the name to be the prelude's, and the time
-  scales far apart.
+  exactly with sympy for one input and one output, an inexact cell's as its
+  double's rational, from the critical points of |G(iw)|^2 in w^2 or of
+  |G(e^(iw))|^2 in cos w, with mpmath at 60 digits for two, a sweep and a
+  golden section, python-control's linfnorm agreeing within 1e-14 but at the
+  extreme scales, where it fails; each bracket by bisection in Python's
+  fractions with every test decided from that norm, and its double printed
+  by a transcription of `Number::Shown`, apart from the interpreter. The
+  prototype above, defined in a session, gives every answer but the
+  refusals' words, the inf cell's, grad's two, a session's `hinf`, which
+  need the C++ and the name to be the prelude's, the inexact entries, which
+  it gives on the doubles written as rationals, and the time scales far
+  apart.
+- **Doubles read exactly by rho, abscissa and eig**, as hinf reads them:
+  each inexact cell the rational its double is, an answer certified for the
+  data as stored or marked, where rounded tests misjudge unmarked. To weigh
+  against the inertia count below, by its cost in time under the
+  sanitizers.
 - **An inertia count for inexact symmetric matrices**: the negative pivots
   of LDL' of A - xI count the eigenvalues below x, backward stable, where the
   rounded Descartes count of `eig` loses a k-fold eigenvalue to about 16/k

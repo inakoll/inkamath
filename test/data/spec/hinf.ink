@@ -147,18 +147,26 @@ error: dhinf needs every eigenvalue of A inside the unit circle
 >> dhinf(-1, 1, 1)
 error: dhinf needs every eigenvalue of A inside the unit circle
 
-# An inexact system is bisected by rounded tests, as rho's matrix is, and
-# is good to many more digits than shown at this size: 8/sqrt(15) again,
-# 1/sqrt(2), and a discretised lag, e^(-1/2) the pole of 1/(s + 1) sampled
-# every 1/2, 1/(1 - e^(-1/2)) at z = 1.
+# An inexact cell is read as the exact rational its double is, so the
+# answer is certified for the data as stored, or marked: 8/sqrt(15) again,
+# -0.5 being a double exactly; 1 over sqrt(2)'s double; and a discretised
+# lag, a = e^(-1/2) the pole of 1/(s + 1) sampled every 1/2, peaking at
+# z = 1, 1/(1 - a) for a's double to its last digit, where rounded tests
+# answer ...7989.
 >> hinf([0 1; -1 ~-0.5], [0; 1], [1 0])
 ~2.06559112
 
 >> hinf(-2^(1/2), 1, 1)
 ~0.707106781
 
+>> digits = 17
+digits = 17
+
 >> dhinf(exp(-1/2), 1, 1)
-~2.54149408
+~2.5414940825367984
+
+>> digits = 9
+digits = 9
 
 # A cell that is itself inf has no value to scale, as rho's has not (C206).
 >> hinf(-1, ~10^310, 1)
