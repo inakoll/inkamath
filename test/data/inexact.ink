@@ -348,6 +348,9 @@ error: an index must be exact, and ~2 was approximated
 >> smax(~-10^310)
 error: smax needs finite cells, not ~-inf
 
+>> !~5.5
+error: a factorial needs a whole number, not ~5.5
+
 # frac refuses an inexact truth, and an approximated one as before.
 >> frac (1/3 + 1/3 > 1/2)
 1
