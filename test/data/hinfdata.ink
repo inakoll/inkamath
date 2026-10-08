@@ -71,6 +71,11 @@ error: hinf needs tests within a thousand digits
 >> hinf([-1 0; 0 -10^-100], [1; 1], [1 1])
 error: hinf needs tests within a thousand digits
 
+# So are cells 10^400 apart, whose solve multiplied an exact 0 by a cell
+# approximated past a double, which read -nan (DESIGN.md, C209).
+>> hinf([-1 0; 0 -10^-400], [1; 1/(3 - 10^-400)], [1 1])
+error: hinf needs tests within a thousand digits
+
 >> dhinf([1/2 0; 0 1 - 10^-200], [1; 1], [1 1])
 error: hinf needs tests within a thousand digits
 
