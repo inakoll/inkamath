@@ -342,6 +342,18 @@ gi(x)_n = gi(x)_(n-1)/2 + x*(n > 2)
 >> grad_(x = 1) lim gi(x)
 ~2
 
+# abs, max and min are continuous where their guards step, so a limit of
+# terms that read them keeps the rule: 2(|x| - max(x, 0)) is -2x below 0,
+# where it was refused as a staircase (C215).
+>> ab(x)_0 = 0
+ab(x)_0 = 0
+
+>> ab(x)_n = ab(x)_(n-1)/2 + abs(x) - max(x, 0)
+ab(x)_n = ab(x)_(n-1)/2 + abs(x) - max(x, 0)
+
+>> grad_(x = -1) lim ab(x)
+~-2
+
 # A partial is taken one name at a time, and a derivative is an expression
 # like any other: it can be differentiated, and defined as a function of its
 # point.
