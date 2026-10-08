@@ -163,6 +163,14 @@ M[k<=5] = H(pi*(k-1)/4)
 >> grad_(v = 0) grad_(w = v) H(w)
 -4
 
+# max and min answer a or b, and so passed on T's slope, -4i, where each is
+# real: their clauses take the real part too (C205).
+>> grad_(w = 0) max(T(e^(i*w)), 0)
+0
+
+>> grad_(w = 0) min(3, T(e^(i*w)))
+0
+
 # A part has no derivative in a complex variable, nor has the modulus,
 # refused in its own words rather than its guard's im's.
 >> grad_(z = 1+i) re(z)
@@ -170,6 +178,12 @@ error: re has no complex derivative at z = 1+i
 
 >> grad_(z = i) abs(z)
 error: abs has no complex derivative at z = i
+
+>> grad_(z = i) max(z - i, 0)
+error: max has no complex derivative at z = i
+
+>> grad_(z = i) min(0, z - i)
+error: min has no complex derivative at z = i
 
 # Only a variable whose point is complex: re(w) moves with the real w
 # alone (C202).
