@@ -154,6 +154,15 @@ M[k<=5] = H(pi*(k-1)/4)
 >> grad_(w = 0) H(w)
 0
 
+# Past the first, |z|'s parts are not re(z)'s where z is real and its
+# parts are not: |1 + i*w| is (1 + w^2)^(1/2), whose second derivative at
+# 0 is 1, and H's at its peak is -4 (C203).
+>> grad_(v = 0) grad_(w = v) abs(1 + i*w)
+1
+
+>> grad_(v = 0) grad_(w = v) H(w)
+-4
+
 # A part has no derivative in a complex variable, nor has the modulus,
 # refused in its own words rather than its guard's im's.
 >> grad_(z = 1+i) re(z)
