@@ -3281,12 +3281,15 @@ private:
     }
 
     // A cell that is a name or a number is read as itself, which the C
-    // compiler can see through, rather than from the field.
+    // compiler can see through, rather than from the field; not a temporary
+    // of the update's, which the step does not declare (C220).
     static Code Read(Derived& derived) {
         Code code = Fields(derived.name, derived.code);
         for (std::size_t c = 0; c < code.cells.size(); ++c) {
-            if (derived.code.cells[c].atom)
-                code.cells[c] = derived.code.cells[c];
+            const Cell& cell = derived.code.cells[c];
+            const auto  own  = [&](const Temporary& t) { return cell.text.starts_with(t.name); };
+            if (cell.atom && std::ranges::none_of(derived.temporaries, own))
+                code.cells[c] = cell;
             else
                 derived.read = true;
         }
