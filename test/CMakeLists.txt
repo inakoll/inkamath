@@ -149,7 +149,7 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brin
                          rump:rump signatures:inv
                          goldberg:year goldberg:needled goldberg:big goldberg:seven
                          iterates:poly iterates:thirds iterates:plan iterates:graph iterates:gaps
-                         iterates:memo iterates:unread iterates:lone conv:see)
+                         iterates:memo iterates:unread iterates:lone conv:see conv:learn)
     string(REPLACE ":" ";" checked ${checked})
     list(GET checked 0 file)
     list(GET checked 1 instance)
@@ -400,10 +400,12 @@ set_tests_properties(check_gaps_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^gaps: 100 steps from 0, against exact values\ngaps\\.a: within 0\ngaps\\.b: within 0\n$")
 set_tests_properties(check_memo_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^memo: 100 steps from 0, against exact values\nmemo\\.a: within 0\nmemo\\.b: within 0\nmemo\\.d: within 0\nmemo\\.e: within 0\nmemo\\.l: within 0\n$")
-# A convolutional network's forward pass (Goodfellow et al. 2016, §9.5), as
-# compile/conv.ink gives it.
+# A convolutional network's forward pass and its training (Goodfellow et al.
+# 2016, §9.5), as compile/conv.ink gives them.
 set_tests_properties(check_see_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^see: 100 steps from 0, against exact values\nsee\\.Xp: within 0\nsee\\.Z: within 0\nsee\\.M: within 0\nsee\\.s: within 0\n$")
+set_tests_properties(check_learn_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^learn: 100 steps from 0, against exact values\nlearn\\.K: within 0\nlearn\\.W: within 0\nlearn\\.a: within 0\nlearn\\.d: within 0\nlearn\\.E: within [1-9](\\.[0-9])?e-1[4-6]\n$")
 set_tests_properties(check_unread_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^unread: 100 steps from 0, against exact values\nunread\\.y: within 0\n$")
 set_tests_properties(check_lone_report PROPERTIES PASS_REGULAR_EXPRESSION
