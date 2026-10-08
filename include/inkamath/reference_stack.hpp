@@ -120,7 +120,8 @@ public:
         this->Set(
             "floor",
             ParametersDefinition<T>(std::make_shared<MatExpression<T>>(x), nullptr, evaluator),
-            std::make_shared<FloorExpression<T>>(x));
+            std::make_shared<BuiltinExpression<T>>(
+                x, "floor", numeric_interface<typename T::value_type>::floor));
     }
 
     // Scopes point at one another.

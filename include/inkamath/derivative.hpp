@@ -225,7 +225,7 @@ private:
         if (auto* x = Exactly<TransposeExpression<T>>(e))
             return Map(Eval(x->m_e()),
                        [](const T& v) { return numeric_interface<T>::transpose(v); });
-        if (auto* x = Exactly<FloorExpression<T>>(e)) return Floor(*x);
+        if (auto* x = Exactly<BuiltinExpression<T>>(e)) return Floor(*x);
         if (auto* x = Exactly<FactExpression<T>>(e)) {
             const Jet u = Eval(x->m_e());
             if (Moves(u)) throw std::runtime_error("grad cannot differentiate a factorial");
@@ -517,13 +517,13 @@ private:
         return Constant(T::Held(decided ? left : truth(second), *first[0], *second[0]));
     }
 
-    Jet Floor(FloorExpression<T>& floor) {
+    Jet Floor(BuiltinExpression<T>& floor) {
         const Jet u     = Eval(floor.m_e());
-        const T   value = numeric_interface<T>::floor(*u[0]);
+        const T   value = T::Cells(*u[0], floor.function);
         chosen_         = chosen_ || (Moves(u) && numeric_interface<T>::approximated(*u[0]));
         for (std::size_t k = 0; k < value.Size().count(); ++k) {
             if (!(u[0]->data()[k] == value.data()[k])) continue;
-            if (Moves(u)) throw std::runtime_error("floor jumps at " + Where());
+            if (Moves(u)) throw std::runtime_error(floor.name + " jumps at " + Where());
         }
         return Constant(value);
     }

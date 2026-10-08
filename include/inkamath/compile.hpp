@@ -1948,7 +1948,8 @@ private:
             throw Reason("floor expects 1 argument");
         const Code operand = Emit(call.parameters_expression()[0]);
         if (operand.constant && operand.part.empty())
-            return Answer(Exactly(numeric_interface<Value>::floor, operand));
+            return Answer(
+                Exactly([](const Value& v) { return Value::Cells(v, Number::floor); }, operand));
         Code code;
         code.size = operand.size;
         for (const Cell& cell : operand.cells) {
