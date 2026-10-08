@@ -118,7 +118,7 @@ servo(A = [1, 1; 0, 1], B = [0; 1], C = [1, 0], r_n) = {
 }
 deadbeat = servo(r_n = floor(n/10))
 
-# 'nest', blocks within blocks: w, a delay line whose newest sample is put
+# 'nested', blocks within blocks: w, a delay line whose newest sample is put
 # above the three before it; M, a 4x4 block matrix beside w, w' below it and
 # 1 in the corner, its zero block a single value stretched over 2x2; T, a
 # tensor whose slices are block literals, each with a single value stretched
@@ -135,14 +135,14 @@ deadbeat = servo(r_n = floor(n/10))
 # as numpy's block and sympy's BlockMatrix lay them out. Every value to 99
 # is a multiple of 1/16 below 2^10, which doubles and floats hold:
 #
-#     nest: 100 steps from 0, against exact values
-#     nest.S: within 0
-#     nest.w: within 0
-#     nest.M: within 0
-#     nest.T: within 0
-#     nest.y: within 0
+#     nested: 100 steps from 0, against exact values
+#     nested.S: within 0
+#     nested.w: within 0
+#     nested.M: within 0
+#     nested.T: within 0
+#     nested.y: within 0
 #
-# and in float, 'inkamath --check blocks.ink nest --float', each 'within 0,
+# and in float, 'inkamath --check blocks.ink nested --float', each 'within 0,
 # 0 units of a float'.
 stacked(x_n) = {
     A = [1/2, 1; 0, 1/2]
@@ -153,25 +153,25 @@ stacked(x_n) = {
     S_n = [A, x_n*A; A]
     y_n = [1, 1, 1, 1, 1]*M_n*[1; 2; 3; 4; 5]
 }
-nest = stacked(x_n = (-1)^n*n/4)
+nested = stacked(x_n = (-1)^n*n/4)
 
-# 'slope', grad through blocks, each block's part laid out as its value is,
+# 'sloped', grad through blocks, each block's part laid out as its value is,
 # 0 where a block has none. g: with u = [1; 2; 3; 4], u'[tA, t^2; 0, At]u
 # is 160t + 21t^2, t^2 and 0 each stretched over 2x2, so g_n = 160 + 42x_n.
 # c, by the matrix M = x_n A: u'[M, M'; 0, MM]u, whose gradient sympy gives
 # as [78x + 4, 135x + 8; 110x + 6, 188x + 12], at x_3 = 3/4 [125/2, 437/4;
 # 177/2, 153]. With x_n = n/4, every value is a multiple of 1/4 below 2^20:
 #
-#     slope: 100 steps from 0, against exact values
-#     slope.c: within 0
-#     slope.g: within 0
+#     sloped: 100 steps from 0, against exact values
+#     sloped.c: within 0
+#     sloped.g: within 0
 slopes(x_n) = {
     A = [1, 2; 3, 4]
     u = [1; 2; 3; 4]
     g_n = grad_(t = x_n) u'*[t*A, t^2; 0, A*t]*u
     c_n = grad_(M = x_n*A) u'*[M, M'; 0, M*M]*u
 }
-slope = slopes(x_n = n/4)
+sloped = slopes(x_n = n/4)
 
 # The layout, cell by cell: 'inkamath --compile aug.ink -o aug.h' of a file
 # aug.ink holding

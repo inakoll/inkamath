@@ -3150,14 +3150,14 @@ that exploring seven domains asked of the interpreter, by how many asked.
   doublings, beside the three sequences, their difference within 0 and
   the gain; `smith`, Smith's doubling packed under `lim`; `deadbeat`,
   integral action from the plant's parameters, its gain by Ackermann's
-  formula over a controllability matrix built by blocks; `nest`, blocks
+  formula over a controllability matrix built by blocks; `nested`, blocks
   within blocks, a delay line and a tensor's slices, also in float;
-  `slope`, `grad` through blocks, by a number and by a matrix; a header
+  `sloped`, `grad` through blocks, by a number and by a matrix; a header
   that is byte for byte the cell-by-cell one, its excerpt from today's
   compile of the cell form; and four refusals, `lim` of the Riccati
   doubling among them. Wired with the implementation: the checks and
   their reports in `test/CMakeLists.txt`, `dare`'s figures as written,
-  which a transcription of the step's order reproduces, `nest` in float,
+  which a transcription of the step's order reproduces, `nested` in float,
   the header and the refusals in `test/cli.cmake`. No golden, header or
   report should move, as no test records the old refusal. README's
   paragraph on the compiler gains a sentence. Nothing changes in the
