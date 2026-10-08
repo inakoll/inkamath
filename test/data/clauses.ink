@@ -331,8 +331,8 @@ max(a, b) = a
 clear max
 
 >> ?max
-max(a, b) | a < b = b
-max(a, b) = a
+max(a, b) | a < b = re(b)
+max(a, b) = re(a)
 
 >> clear max
 error: max comes with the language, so it cannot be cleared

@@ -325,10 +325,14 @@ private:
         for (const auto& [keyword, argument] : p.parameters_dict())
             arguments.emplace_back(keyword, Eval(argument));
         for (const auto& [given, jet] : arguments) definition->Divides(given, *jet[0], stack_);
-        // In its own words, not its guard's im's.
-        const std::string at = complex_ && !arguments.empty() ? Complex(arguments[0].second) : "";
-        if (!at.empty() && definition == stack_.Builtins().names.at("abs"))
-            throw std::runtime_error("abs has no complex derivative at " + at);
+        // In its own words, not its guard's im's or its clauses' re's.
+        const auto& names = stack_.Builtins().names;
+        if (complex_ && (definition == names.at("abs") || definition == names.at("max") ||
+                         definition == names.at("min")))
+            for (const auto& [given, jet] : arguments)
+                if (const std::string at = Complex(jet); !at.empty())
+                    throw std::runtime_error(definition->Name() + " has no complex derivative at " +
+                                             at);
         for (const auto& [given, jet] : arguments)
             if (Moves(jet) && stack_.staircases.contains(definition.get()))
                 throw std::runtime_error("grad cannot differentiate " + definition->Name() +
