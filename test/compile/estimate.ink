@@ -9,9 +9,10 @@
 # 'half' sums to 1/2, a hundred billionth clear of the threshold, and is
 # stopped at 1/2 - 2^-34, below it, so interpreter and step answer 0 where
 # the exact answer is 1. Moved up by its remainder, 2^-34, it is 1/2 exactly
-# and the guard holds.
+# and the guard holds, which the line after the first says (straddle.ink).
 #
 #     tie: 100 steps from 0, against exact values until 0 and inexact ones from there
+#     tie.g: at 0 a disturbed run takes 'g_n | y_n >= 1/2 - w = 1' and the interpreter 'g_n = 0'; the guard of the first is 4.8e-11 from its threshold
 #     tie.y: within 0; the interpreter's terms about 5.8e-11 from the exact ones
 #     tie.g: within 0; the interpreter's terms about 1 from the exact ones, past the tolerance from 0
 tied(w = 1/10^11) = {

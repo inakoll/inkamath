@@ -1080,13 +1080,16 @@ private:
                 into(slice, row, col) =
                     numeric_interface<typename T::value_type>::marked(into(slice, row, col));
         }
-        // A guard, told to --check where the clause is every term's.
+        // A guard, told to --check where the clause is every term's, or a
+        // function's outside the prelude.
         bool Holds(const Reference& definition, const Clause<T>& clause, int index, int, int row,
                    int col) {
             const T guard   = clause.parameters.guard()->accept(evaluator);
             past            = past || numeric_interface<T>::approximated(guard);
             const bool held = numeric_interface<T>::truth(guard);
-            if (clause.parameters.general() && evaluator.stack().guards)
+            const ParametersDefinition<T>& p    = clause.parameters;
+            if (evaluator.stack().guards &&
+                (p.general() || (!p.indexed() && definition.home != &evaluator.stack().Builtins())))
                 evaluator.stack().guards(definition, clause, index, row, col, held, evaluator);
             return held;
         }

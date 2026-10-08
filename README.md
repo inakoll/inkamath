@@ -214,7 +214,11 @@ rounding each step multiplies by ten. Before the values, it reports the first st
 at which a compiled guard takes another clause than the interpreter's, and how
 far that guard is from its threshold in exact arithmetic: rounding explains a
 flip at a margin near zero, and not one at a large margin. `brink` in the same
-file sits exactly on its threshold, and `ledge` a trillionth from it.
+file sits exactly on its threshold, and `ledge` a trillionth from it. Before
+that, it reports the first step at which a disturbed run takes another clause
+than the interpreter, at a sequence's guard or a function's the file writes,
+in the same words: there the estimate is a clause's, not a rounding's, and the
+check does not fail for it (`test/compile/straddle.ink`).
 
 `--float`, beside `--compile` or an instance's `--check`, writes floats where
 the header writes doubles, every constant the nearest float, for a target that

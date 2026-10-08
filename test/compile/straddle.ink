@@ -1,4 +1,4 @@
-# A guard the interpreter's own error straddles (DESIGN.md, next in line).
+# A guard the interpreter's own error straddles (DESIGN.md).
 # --check estimates that error by asking each term three times more, every
 # rounding taken the other way at random and every limit moved by its
 # remainder, up, down, then either way. Where a run takes another clause than
@@ -6,12 +6,6 @@
 # first step at which one does is reported after the first line, with the
 # margin of the guard that decided, as the interpreter computes it. The
 # estimate is printed as before, and the exit status is the step's.
-#
-# Unwired: a report's expected text is a test's property, and one failing by
-# design would fail the build's own tests. It is wired with the
-# implementation, as estimate.ink was, and so is the line tie gains there:
-#
-#     tie.g: at 0 a disturbed run takes 'g_n | y_n >= 1/2 - w = 1' and the interpreter 'g_n = 0'; the guard of the first is 4.8e-11 from its threshold
 
 # A ReLU at its kink, reached by a limit. 'y' stops at 1/2 - 2^-34 and is
 # moved by 2^-34, up to 1/2 in the first run and down to 1/2 - 2^-33 in the

@@ -43,21 +43,35 @@ public:
                           got = floats ? "(double)got[k]" : "got[k]";
         const CompileC::Compiled compiled =
             CompileC::Build(stack, module, source, unfed.model, &unfed, true);
-        // Every guard asked on the way, from the first term on, by term and
-        // cell: a term asked for again is remembered, and its guards are not
-        // asked twice.
-        std::map<std::tuple<const Reference<Value>*, int, int, int>, Asked> asked;
-        stack.guards = [&](const Reference<Value>& reference, const Clause<Value>& clause, int n,
-                           int row, int col, bool held, EvaluationVisitor<Value>& evaluator) {
-            const int place     = static_cast<int>(&clause - reference.Clauses().data());
-            Asked&    seen      = asked[{&reference, n, row, col}];
-            seen.margins[place] = Margin(*clause.parameters.guard(), evaluator);
+        // Every guard asked on the way, from the first term on, by run, term
+        // and cell: a term asked for again is remembered, and its guards are
+        // not asked twice. A function's by run, ask and call, a call begun
+        // where its guards are tried again; none while a margin is measured,
+        // as a disturbed run measures none (DESIGN.md).
+        std::map<std::tuple<int, const Reference<Value>*, int, int, int>, Asked> asked;
+        using Sequence = CompileC::Compiled::Sequence;
+        std::map<std::tuple<int, const Sequence*, int, const Reference<Value>*>, std::vector<Asked>>
+                                        calls;
+        int                             run = 0;
+        std::pair<const Sequence*, int> asking{nullptr, 0};
+        bool                            measuring = false;
+        const auto hook = [&](const Reference<Value>& reference, const Clause<Value>& clause, int n,
+                              int row, int col, bool held, EvaluationVisitor<Value>& evaluator) {
+            if (measuring) return;
+            const int place = static_cast<int>(&clause - reference.Clauses().data());
+            auto*     call  = clause.parameters.general()
+                                  ? nullptr
+                                  : &calls[{run, asking.first, asking.second, &reference}];
+            if (call && (call->empty() || call->back().chosen ||
+                         call->back().margins.rbegin()->first >= place))
+                call->emplace_back();
+            Asked&              seen = call ? call->back() : asked[{run, &reference, n, row, col}];
+            const Setting<bool> quiet(measuring, true);
+            seen.margins[place] =
+                run ? std::optional<Number>() : Margin(*clause.parameters.guard(), evaluator);
             if (held) seen.chosen = place;
         };
-        struct Unhook {
-            ReferenceStack<Value>& stack;
-            ~Unhook() { stack.guards = nullptr; }
-        } unhook{stack};
+        const Setting<decltype(stack.guards)> listening(stack.guards, hook);
         // A term the file asked before was heard by no guard (C106).
         stack.Forget();
         const int         first = compiled.first;
@@ -116,9 +130,12 @@ public:
             Number::Disturbance disturbance{seed, seed == 1 ? 1 : seed == 2 ? -1 : 0};
             stack.Apart([&] {
                 const Setting<Number::Disturbance*> disturbing(Number::disturbed, &disturbance);
+                const Setting<decltype(stack.guards)> heard(stack.guards, hook);
+                const Setting<int>                    counted(run, static_cast<int>(seed));
                 for (const auto& sequence : compiled.sequences) {
                     for (int n = first; n < first + steps; ++n) {
                         if (n < sequence.start && sequence.period > 1) continue;
+                        asking           = {&sequence, n};
                         const int  index = Floor(n - sequence.phase, sequence.period);
                         const Term term  = ask(sequence, index);
                         again[{instance + "." + sequence.name, index}].push_back(
@@ -144,6 +161,7 @@ public:
                 const bool        before = n < sequence.start;
                 const std::string name   = instance + "." + sequence.name;
                 const int         index  = Floor(n - sequence.phase, sequence.period);
+                asking                   = {&sequence, n};
                 const Term        term   = before && sequence.period > 1
                                                ? Term{{}, true, "not asked", {}, {}, {}, false}
                                                : ask(sequence, index);
@@ -202,6 +220,32 @@ public:
             arguments += compiled.cells[k] == 1 ? ", in_" + std::to_string(k) + "[n]"
                                                 : ", &in_" + std::to_string(k) + "[n * " +
                                                       std::to_string(compiled.cells[k]) + "]";
+        // The first step at which a disturbed run takes another clause than
+        // the interpreter (DESIGN.md), in a flip's words: at one step, the
+        // first sequence asked's, and the first run's.
+        std::map<std::pair<int, const Sequence*>, std::string> straddles;
+        const auto straddle = [&](int n, const Sequence* sequence, const std::string& place,
+                                  const std::vector<Clause<Value>>& clauses, int took, int chose,
+                                  const Asked& seen) {
+            if (took == chose || std::min(took, chose) < 0 ||
+                std::max(took, chose) >= static_cast<int>(clauses.size()))
+                return;
+            const bool earlier = clauses[took].parameters.guarded() &&
+                                 (took < chose || !clauses[chose].parameters.guarded());
+            std::string line = instance + "." + sequence->name + place + ": at " +
+                               std::to_string(n) + " a disturbed run takes '" +
+                               clauses[took].written + "' and the interpreter '" +
+                               clauses[chose].written + "'";
+            const auto margin = seen.margins.find(earlier ? took : chose);
+            if (margin != seen.margins.end() && margin->second) {
+                const double d = margin->second->Inexact().real();
+                char         text[40];
+                std::snprintf(text, sizeof text, "%.2g from", d);
+                line += std::string("; the guard of the ") + (earlier ? "first" : "second") +
+                        " is " + (d == 0.0 ? "exactly on" : text) + " its threshold";
+            }
+            straddles.emplace(std::pair(n, sequence), line);
+        };
         std::string table;
         for (std::size_t k = 0; k < compiled.guarded.size(); ++k) {
             const std::string& name = compiled.guarded[k];
@@ -244,9 +288,17 @@ public:
                 const int                row = cellwise ? static_cast<int>(c / cols) + 1 : 0;
                 const int                col = cellwise ? static_cast<int>(c % cols) + 1 : 0;
                 const std::string        at  = id + (cellwise ? "_" + std::to_string(c) : "");
+                const std::string        place =
+                    cellwise ? "[" + std::to_string(row) + "," + std::to_string(col) + "]" : "";
                 std::vector<std::string> want, margin;
                 for (int n = first; n < first + steps; ++n) {
-                    const auto asking = asked.find({&reference, term(n), row, col});
+                    const auto asking = asked.find({0, &reference, term(n), row, col});
+                    for (int r = 1; r <= 3 && asking != asked.end(); ++r)
+                        if (const auto them = asked.find({r, &reference, term(n), row, col});
+                            them != asked.end())
+                            straddle(n, &*found, place, clauses,
+                                     them->second.chosen.value_or(general),
+                                     asking->second.chosen.value_or(general), asking->second);
                     want.push_back(asking == asked.end() ? "0"
                                    : asking->second.chosen
                                        ? std::to_string(*asking->second.chosen + 1)
@@ -264,12 +316,27 @@ public:
                 data += "static int taken_" + at + "[" + std::to_string(steps) + "];\n";
                 stepped += "        taken_" + at + "[n] = m." + name + "_clause_" +
                            (cellwise ? "[" + std::to_string(c) + "]" : "") + ";\n";
-                const std::string place =
-                    cellwise ? "[" + std::to_string(row) + "," + std::to_string(col) + "]" : "";
                 table += "        {\"" + instance + "." + name + place + "\", " + count +
                          ", written_" + id + ", rank_" + id + ", clause_" + at + ", taken_" + at +
                          ", margin_" + at + "},\n";
             }
+        }
+        // A function's, named by the sequence asked, its calls paired in order.
+        for (const auto& [key, heard] : calls) {
+            const auto& [r, sequence, n, reference] = key;
+            if (r || !sequence) continue;
+            const auto& clauses  = reference->Clauses();
+            const int   fallback = static_cast<int>(
+                std::find_if(clauses.begin(), clauses.end(),
+                               [](const auto& c) { return !c.parameters.guarded(); }) -
+                clauses.begin());
+            for (std::size_t c = 0; c < heard.size(); ++c)
+                for (int other = 1; other <= 3; ++other)
+                    if (const auto them = calls.find({other, sequence, n, reference});
+                        them != calls.end() && c < them->second.size())
+                        straddle(n, sequence, "", clauses,
+                                 them->second[c].chosen.value_or(fallback),
+                                 heard[c].chosen.value_or(fallback), heard[c]);
         }
         const std::string against = !inexact ? "exact values"
                                              : "exact values until " + std::to_string(*inexact) +
@@ -377,6 +444,7 @@ public:
         out += "    printf(\"" + instance + ": " + std::to_string(steps) + " steps from " +
                std::to_string(first) + (floats ? " in float" : "") + ", against " + against +
                "\\n\");\n";
+        if (!straddles.empty()) out += "    puts(" + Quoted(straddles.begin()->second) + ");\n";
         if (!table.empty())
             out += "    static const guarded_ guarded[] = {\n" + table + "    };\n" +
                    "    held &= flips_(guarded, (int)(sizeof guarded / sizeof guarded[0]));\n";

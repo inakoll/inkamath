@@ -43,8 +43,10 @@ rounded = recurrence(x0 = ~4, x1 = ~(17/4))
 
 # §6, a smooth surprise: G(x) = T(Q(x)^2) is 1, Q(x) being 0, yet 0 at
 # every n to 9999 in double, where float gives 1 at n = 1. The estimate
-# exposes T, and Kahan's Th, through log, holds:
+# exposes T, and Kahan's Th, through log, holds. A disturbed run that
+# rounds t off 1 takes Th's other clause, which meets the first there:
 #
+#     surprise.k: at 0 a disturbed run takes 'Th(t, z) = (t - 1)/log(t)' and the interpreter 'Th(t, z) | t == 1 = t'; the guard of the second is exactly on its threshold
 #     surprise.g: within 0; the interpreter's terms about 5.4e+16 from the exact ones, past the tolerance from 0
 #     surprise.k: within 0; the interpreter's terms about 8.9e-16 from the exact ones
 #   in float:
