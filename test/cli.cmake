@@ -286,6 +286,13 @@ set(stdout "cannot compile s: u_(...): read every 8 steps, and u is computed eve
 set(exit 1)
 check(compile_c74)
 
+# C233: a slow sequence read back by another as slow said "read every step".
+file(WRITE "${OUT}/c233.ink" "q_0 = 0\nq_m = q_(m-1) + x_(2*m)\nw_0 = 0\nw_m = w_(m-1) + q_(m-1) + x_(2*m)\n")
+set(args --compile c233.ink)
+set(stdout "cannot compile w: q_(...): one sequence at another rate read by another; hold q at the input's rate and sample the hold\n")
+set(exit 1)
+check(compile_c233)
+
 # C86: a clause the interpreter refuses wherever it is taken is what a step
 # says there, NaN, so a model whose guard never takes it compiles, as log
 # does, its '| x <= 0 = 1/0' NaN in the header's function for it.
