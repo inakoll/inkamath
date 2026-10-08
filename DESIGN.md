@@ -6360,7 +6360,7 @@ that exploring seven domains asked of the interpreter, by how many asked.
   sanitizers. 29 lines landed against about 31: the prelude 19 and its
   comment 6, 1 binding the staircases, and 3 in `reference.hpp`. 15,324
   lines in all, after `eig`.
-- **The H-infinity norm, in the prelude**, the fourth step towards
+- `[done]` **The H-infinity norm, in the prelude**, the fourth step towards
   eigenvalues, which *The real eigenvalues* left for later: `hinf(A, B, C,
   D)`, the largest singular value of G(iw) = C(iwI - A)^-1 B + D over every
   frequency, A stable, and `dhinf(A, B, C, D)`, the same over the unit
@@ -6599,6 +6599,29 @@ that exploring seven domains asked of the interpreter, by how many asked.
   need the C++ and the name to be the prelude's, the inexact entries, which
   it gives on the doubles written as rationals, and the time scales far
   apart.
+
+  Built as specified but for the time scales far apart: the spec is the
+  goldens `hinf.ink`, 20 entries, the norm's values, and `hinfdata.ink`, 33,
+  what it reads and refuses, two so that each replays well within a test's
+  minute under the sanitizers, in 12 s and 5 s; the compiled refusals are a
+  case of `cli.cmake`; README's sections 1 and 5 list the names, and
+  section 2 shows `hinf` and `dhinf` and says what is certified and how an
+  inexact cell is read. Departures: 1/(s + 1) + 1/(s + 10^-200) is refused,
+  `hinf needs tests within a double's range`, rather than answered 1e200:
+  its tests pass a thousand digits holding 10^-400 beside 1, which no double
+  holds, so none of them is decided, and what the prototype took to a NaN
+  is refused in words. `hinfy`, a definition more, divides the interpolated
+  polynomials by a power of two before the tests, and refuses them where a
+  cell is inf or below 2^-1022 of the largest: undivided, 10^100 apart was
+  a NaN too, its Bezoutians past a double, and from 10^160 an approximated
+  bracket met the exact polynomials past it; divided, it is answered
+  1e100, marked, up to some 10^152 apart, and refused from 10^154, where an
+  answer would be marked but off by a factor, 2.4 at 10^170. The exact
+  reading and C206's check are one hook, `read`, which evaluation and grad
+  call on each argument of a staircase, where the check had run on a single
+  argument alone; the refusals' words are a table in `Unapplied` with
+  eig's. 80 lines landed against about 81: the prelude 46 and its comment
+  10, and 24 of C++. 15,527 lines in all, after `hinf`.
 - **Doubles read exactly by rho, abscissa and eig**, as hinf reads them:
   each inexact cell the rational its double is, an answer certified for the
   data as stored or marked, where rounded tests misjudge unmarked. To weigh
