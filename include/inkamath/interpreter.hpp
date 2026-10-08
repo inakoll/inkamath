@@ -561,9 +561,10 @@ Interpreter<T, U>::Interpreter() {
         stack_.stepwise = names.at("ilogb").get();
     }
     const auto& names = stack_.Builtins().names;
-    stack_.staircases = {names.at("rho").get(),  names.at("abscissa").get(),
-                         names.at("eig").get(),  names.at("smax").get(),
-                         names.at("hinf").get(), names.at("dhinf").get()};
+    stack_.staircases = {
+        names.at("rho").get(),  names.at("abscissa").get(),  names.at("eig").get(),
+        names.at("smax").get(), names.at("hinf").get(),      names.at("dhinf").get(),
+        names.at("rhob").get(), names.at("abscissab").get(), names.at("eigb").get()};
     ResetInterpreter();
 }
 
