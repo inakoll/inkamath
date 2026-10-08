@@ -3345,13 +3345,15 @@ private:
                                      "_(...): one sequence at another rate read by another; hold " +
                                      read + " at the input's rate and sample the hold");
         };
-        for (const auto& [read, lags] : sequence.reads) {
-            const int period = sequences_.at(read).period;
-            if (read != name && period > 1 && sequence.period > 1) throw another(read);
-            if (read != name && period > 1)
-                throw Refusal(name, read + "_(...): read every step, and " + read +
-                                        " is computed every " + std::to_string(period));
-        }
+        // What the right of an 'and' or 'or' reads too (C234).
+        for (const Reads* some : {&sequence.reads, &sequence.deferred})
+            for (const auto& [read, lags] : *some) {
+                const int period = sequences_.at(read).period;
+                if (read != name && period > 1 && sequence.period > 1) throw another(read);
+                if (read != name && period > 1)
+                    throw Refusal(name, read + "_(...): read every step, and " + read +
+                                            " is computed every " + std::to_string(period));
+            }
         for (const std::size_t h : sequence.holds) {
             const Hold& hold   = holds_[h];
             const int   every  = sequence.period * hold.a;
@@ -3365,10 +3367,12 @@ private:
         if (sequence.period == 1) return;
         for (const auto& [read, offsets] : sequence.samples)
             if (sequences_.at(read).period > 1) throw another(read);
-        for (const auto& [read, lags] : sequence.reads)
-            if (read != name)
-                throw Refusal(name, read + "_(...): read every step, and " + name +
-                                        " is computed every " + std::to_string(sequence.period));
+        for (const Reads* some : {&sequence.reads, &sequence.deferred})
+            for (const auto& [read, lags] : *some)
+                if (read != name)
+                    throw Refusal(name, read + "_(...): read every step, and " + name +
+                                            " is computed every " +
+                                            std::to_string(sequence.period));
         // Without a base clause, a term is computed at the step of its
         // latest sample, and the first is settled with the starts.
         int phase = std::numeric_limits<int>::min();
