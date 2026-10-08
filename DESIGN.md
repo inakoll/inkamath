@@ -6664,7 +6664,7 @@ that exploring seven domains asked of the interpreter, by how many asked.
   digits and Hermite's test refuses symmetric matrices but for rounding.
   Rejected for `eig` only for an exact dyadic midpoint that zeroes a pivot,
   which an inexact matrix does not meet.
-- **A guard the interpreter's own error straddles.** From an outside
+- `[done]` **A guard the interpreter's own error straddles.** From an outside
   review. `--check` estimates the interpreter's error by asking each term
   three times more, disturbed (*The interpreter's own error, estimated by
   `--check`*), as CESTAC does with CADNA's three samples, and shares its
@@ -6799,6 +6799,27 @@ that exploring seven domains asked of the interpreter, by how many asked.
   runs moved up and down deciding `knee`, `both` and `tie` whatever the
   seeds; `crease`'s step and every estimate's digits not a limit's by
   their form.
+
+  Built as specified: every line of `straddle.ink` passes as written,
+  wired as the compile stories are, `crease`'s step by its form, and
+  `tie` gains its line. Found once by `--check` and printed as one fixed
+  line, the smaller: the program gains nothing, and a function's guard,
+  which has no place in the flips' table, is found as a sequence's is. The
+  hook is told of the guards of a clause without an index outside the
+  prelude too, and hears a function's calls by ask, a call begun where its
+  guards are tried again. Departures: `surprise` in `kahan.ink` gains a
+  line as well, which the prototype, without the functions, could not see:
+  a run rounding t = exp(Q(x)^2) off 1 takes Th's `(t - 1)/log(t)` where
+  the interpreter's t is 1 exactly, and the estimate, 8.9e-16, says the
+  clauses meet there, as Kahan meant them to; held by its form, in double
+  and in float. A guard heard while a margin is measured is not counted
+  for the flips either, which moved no report. Known limit: a function
+  the inputs call is heard in the interpreter's run as they are asked,
+  before any term, and in a run within the asks, so where the step's
+  sequences call it too their calls may be paired amiss. Every other check
+  program and header byte for byte. 72 lines of sources where about 50
+  were planned: `check.hpp` 68, `reference.hpp` 3, `reference_stack.hpp`
+  1. 15,656 lines in all.
 - **A comparison taken as a value, straddled.** `g_n = y_n >= 1/2 - w` is
   `tie` with no clause, and keeps its "about 1" with no word of why after
   the straddle above. Hearing it is a hook in the evaluator's every
