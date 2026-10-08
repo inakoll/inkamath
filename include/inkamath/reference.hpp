@@ -15,6 +15,7 @@
 #include <memory>
 #include <numeric>
 #include <optional>
+#include <set>
 #include <stdexcept>
 #include <tuple>
 #include <unordered_map>
@@ -608,19 +609,23 @@ public:
     }
 
     // A refusal an approximated guard decided may be wrong, and says so. The
-    // prelude's eig, hinf, dhinf, hinfy and hinfg have one guard each, which it
-    // cannot word (DESIGN.md).
+    // prelude's eig, hinf and dhinf have one guard each, which it cannot word,
+    // and so have hinfy, hinfg and hinfp, whose guard asks whether a number
+    // was approximated, which no double answers wrongly (DESIGN.md).
     std::string Unapplied(bool past) const {
         static const std::unordered_map<std::string, std::string> needs{
             {"eig", "eig needs a matrix whose eigenvalues are all real"},
             {"hinf", "hinf needs every eigenvalue of A left of the imaginary axis"},
             {"dhinf", "dhinf needs every eigenvalue of A inside the unit circle"},
-            {"hinfy", "hinf needs tests within a double's range"},
-            {"hinfg", "hinf needs tests within a double's range"}};
+            {"hinfy", "hinf needs tests within a thousand digits"},
+            {"hinfg", "hinf needs tests within a thousand digits"},
+            {"hinfp", "hinf needs tests within a thousand digits"}};
         const auto worded = home && !home->parent ? needs.find(reference_name_) : needs.end();
+        static const std::set<std::string> sure{"hinfy", "hinfg", "hinfp"};
+        const bool doubt = past && !(worded != needs.end() && sure.contains(reference_name_));
         return (worded != needs.end() ? worded->second
                                       : "no clause of " + reference_name_ + " applies") +
-               (past ? ", by a guard approximated past a thousand digits" : "");
+               (doubt ? ", by a guard approximated past a thousand digits" : "");
     }
 
     // Does this clause answer this call? Asked by grad too. The shape is

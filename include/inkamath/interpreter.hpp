@@ -413,13 +413,16 @@ inline constexpr const char* prelude[] = {
     // hinf bisects g = gamma^2 in units of 2^e above 2 tr(D'D) + 8n tr(PQ),
     // P and Q the Gramians, on whether the Hamiltonian of gamma has an
     // eigenvalue iw: det(R) det(sI - H), R = gI - D'D, is q(s^2), of degree
-    // m in g, interpolated once by hinfx and normalised by hinfy, which
-    // refuses one past a double; q has a root at or below 0 exactly where its
-    // Bezoutians with q' and with s q' differ in signature, Descartes' count
-    // of each as eig's. The system is divided by its largest cells, time by
-    // A's, output by [C, D]'s and input by [B; D]'s; the root is taken before
-    // scaling back, and marked where its double is not normal. dhinf is
-    // hinf of the system's image by z = (1 + s)/(1 - s), which keeps the norm.
+    // m in g, interpolated once by hinfx and normalised by hinfy; q has a
+    // root at or below 0 exactly where its Bezoutians with q' and with s q'
+    // differ in signature, Descartes' count of each as eig's. A test read
+    // from doubles may misjudge, so hinfy, hinfg and hinfp refuse where the
+    // polynomial, the bound or a test was approximated past a thousand
+    // digits, hinfi: x == x is then a double, which 2^-1100 cannot move.
+    // The system is divided by its largest cells, time by A's, output by
+    // [C, D]'s and input by [B; D]'s; the root is taken before scaling back,
+    // and marked where its double is not normal. dhinf is hinf of the
+    // system's image by z = (1 + s)/(1 - s), which keeps the norm.
     "hinfc(p[j<=m], k) = 0",
     "hinfc(p[j<=m], k) | k < m = p[m-k]",
     "hinfz(f[k<=m], w)[i<=m-1, j<=m-1] = sum_(b=0)^(min(i, j)-1) (hinfc(f, "
@@ -436,8 +439,8 @@ inline constexpr const char* prelude[] = {
     "hinfo(u, m)[i<=1, k<=m+1] = u^(k-1)",
     "hinfl(A, B, C, D[j<=p, k<=m], e, u) = hurwitz(charpoly(D'*D), u*2^e) == 0 or "
     "hinft(hinfq((hinfo(u, m)*hinfn(m)^-1*hinfy(hinfx(A, B, C, D, e)))'))",
-    "hinfy(X[j<=p, k<=q]) | 1/(sum_(j=1)^p sum_(k=1)^q abs(X[j,k]) + 1) > 0 and sum_(j=1)^p "
-    "sum_(k=1)^q (abs(X[j,k]) > 0 and abs(X[j,k]) < 2^(rhoe(X) - 1022)) == 0 = rhod(X, -rhoe(X))",
+    "hinfy(X) | hinfi(X) = rhod(X, -rhoe(X))",
+    "hinfi(x) = (x == x) + 2^-1100 <> (x == x)",
     "hinfk(A[j<=n, k<=n])[r<=n*n, c<=n*n] = A[floor((r-1)/n)+1, floor((c-1)/n)+1]*(mod(r-1, n) == "
     "mod(c-1, n)) + (floor((r-1)/n) == floor((c-1)/n))*A[mod(r-1, n)+1, mod(c-1, n)+1]",
     "hinfv(M[j<=n, k<=n])[r<=n*n] = M[floor((r-1)/n)+1, mod(r-1, n)+1]",
@@ -445,8 +448,8 @@ inline constexpr const char* prelude[] = {
     "8*n*((hinfk(A)^-1*hinfv(B*B'))'*hinfk(A')^-1*hinfv(C'*C))[1,1]",
     "hinfu(A, B, C, D, e)_0 = [0; 1]",
     "hinfu(A, B, C, D, e)_m = hinfp(A, B, C, D, e, hinfu(A, B, C, D, e)_(m-1))",
-    "hinfp(A, B, C, D, e, b) = b + (b[2] - b[1])/2*([1; 0] - (hinfl(A, B, C, D, e, (b[1] + "
-    "b[2])/2) == 0)*[1; 1])",
+    "hinfp(A, B, C, D, e, b) | hinfi(hinfl(A, B, C, D, e, (b[1] + b[2])/2)) = b + (b[2] - "
+    "b[1])/2*([1; 0] - (hinfl(A, B, C, D, e, (b[1] + b[2])/2) == 0)*[1; 1])",
     "hinfu(A, B, C, D, e)_m | m > 64 and rhos(hinfu(A, B, C, D, e)_(m-1)) = hinfu(A, B, C, D, "
     "e)_(m-1)",
     "hinfm(M)_0 = 0",
@@ -455,7 +458,7 @@ inline constexpr const char* prelude[] = {
     "hinfj(M[j<=p, k<=q]) = hinfm(M)_(p*q) + (M == 0*M)",
     "hinfd(x, f) = x*f",
     "hinfd(x, f) | x <> 0 and (abs(x*f) < 2^-1022 or abs(x*f) >= 2^1024) = x*f + 0*10^-1000",
-    "hinfg(A, B, C, D) | 1/(hinfw(A, B, C, D) + 1) > 0 = 2*ceil(rhop(hinfw(A, B, C, D))/2)",
+    "hinfg(A, B, C, D) | hinfi(hinfw(A, B, C, D)) = 2*ceil(rhop(hinfw(A, B, C, D))/2)",
     "hinfe(A, B, C, D, f) = hinfd(rhod(rhoa(hinfu(A, B, C, D, hinfg(A, B, C, D))_256, hinfu(A, B, "
     "C, D, hinfg(A, B, C, D))_256)^(1/2), hinfg(A, B, C, D)/2), f)",
     "hinfe(A, B, C, D, f) | hinfw(A, B, C, D) == 0 = ~0",
