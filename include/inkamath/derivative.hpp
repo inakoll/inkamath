@@ -336,7 +336,28 @@ private:
         if (p.limit()) return Limit(*definition, p, arguments);
         int        index   = 0;
         const bool indexed = p.TryEvalIndex(stack_, index);
-        return Term(*definition, p, indexed, index, arguments);
+        Jet        out     = Term(*definition, p, indexed, index, arguments);
+        // |z| squared is re^2 + im^2, whose parts past the first the real
+        // clauses lack where z is real and its parts are not (C203).
+        using Part      = numeric_interface<typename T::value_type>;
+        const auto cell = [](auto f) { return [f](const T& v) { return T::Cells(v, f); }; };
+        if (out.size() > 2 && arguments.size() == 1 && !IsZero(*out[0]) &&
+            definition == stack_.Builtins().names.at("abs")) {
+            const Jet re     = Map(arguments[0].second, cell(Part::real));
+            const Jet im     = Map(arguments[0].second, cell(Part::imaginary));
+            const Jet square = Sum(Product(re, re), Product(im, im));
+            bool      leaves = false;
+            for (std::size_t s = 1; s < im.size(); ++s)
+                leaves = leaves || (im[s] && !IsZero(*im[s]));
+            for (std::size_t s = 1; leaves && IsZero(*im[0]) && s < out.size(); ++s) {
+                if (std::popcount(s) < 2) continue;
+                out[s] = square[s];
+                for (std::size_t part = (s - 1) & s; part != 0; part = (part - 1) & s)
+                    if (out[part] && out[s ^ part]) Add(out[s], -(*out[part] * *out[s ^ part]));
+                if (out[s]) out[s] = *out[s] / (T(2) * *out[0]);
+            }
+        }
+        return out;
     }
 
     std::string Key(const Reference<T>& definition, bool indexed, int index,
