@@ -42,8 +42,10 @@ jobs:
       - name: Build
         run: cmake --build build
 
+      # Three runners and the build worker share the box's 12 cores: more
+      # tests at once only stretch each towards its timeout.
       - name: Test
-        run: ctest --test-dir build --output-on-failure -j$(nproc)
+        run: ctest --test-dir build --output-on-failure -j4
 
       - name: Report failed tests
         if: failure()
@@ -92,7 +94,7 @@ jobs:
       - name: Test
         env:
           UBSAN_OPTIONS: print_stacktrace=1:halt_on_error=1
-        run: ctest --test-dir build --output-on-failure -j$(nproc)
+        run: ctest --test-dir build --output-on-failure -j4
 
       - name: Report failed tests
         if: failure()
