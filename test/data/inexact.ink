@@ -1,5 +1,5 @@
 # A bare number is exact, and a truth read from a double is not (DESIGN.md,
-# next in line; C240, C241). Every value was written from the rule, apart
+# C240, C241). Every value was written from the rule, apart
 # from the interpreter: by hand, and in Python's doubles where a double's
 # rounding is the point.
 
