@@ -176,3 +176,19 @@ twinned() = {
     x_n = U(y_n) + U(z_n) + U(-1)
 }
 recalled = twinned()
+
+# parted's s with a base clause: the clause where no guard holds is the
+# general one, not the base, which no term at 3 takes.
+#
+#     founded: 100 steps from 0, against exact values
+#     founded.x: at 0 a disturbed run takes 's(c)_k | lim half(1) >= c = 1' and the interpreter 's(c)_k = 0'; the guard of the first is 4.8e-11 from its threshold
+#     founded.x: within 0; the interpreter's terms about 1 from the exact ones, past the tolerance from 0
+based(w = 1/10^11) = {
+    half(a)_0 = 0
+    half(a)_k = half(a)_(k-1) + a/2^(k+1)
+    s(c)_0 = 5
+    s(c)_k | lim half(1) >= c = 1
+    s(c)_k = 0
+    x_n = s(1/2 - w)_3
+}
+founded = based()

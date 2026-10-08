@@ -341,7 +341,11 @@ public:
             const auto& clauses  = reference->Clauses();
             const int   fallback = static_cast<int>(
                 std::find_if(clauses.begin(), clauses.end(),
-                               [](const auto& c) { return !c.parameters.guarded(); }) -
+                               [](const auto& c) {
+                                 // A sequence's base clause is no fallback (C254).
+                                 return !c.parameters.guarded() &&
+                                        c.parameters.general() == c.parameters.indexed();
+                             }) -
                 clauses.begin());
             for (std::size_t c = 0; c < heard.size(); ++c)
                 for (int other = 1; other <= 3; ++other)

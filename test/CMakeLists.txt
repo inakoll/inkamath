@@ -152,7 +152,7 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brin
                          iterates:memo iterates:unread iterates:lone
                          straddle:knee straddle:crease straddle:plain straddle:both straddle:acc
                          straddle:given straddle:parted straddle:unasked
-                         straddle:recalled)
+                         straddle:recalled straddle:founded)
     string(REPLACE ":" ";" checked ${checked})
     list(GET checked 0 file)
     list(GET checked 1 instance)
@@ -210,6 +210,8 @@ set_tests_properties(check_unasked_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^unasked: ${straddled}\nunasked\\.y: within 0\\; the interpreter's terms about 5\\.8e-11 from the exact ones\nunasked\\.g: within 0\\; the interpreter's terms about inf from the exact ones, past the tolerance from 0\n$")
 set_tests_properties(check_recalled_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^recalled: ${straddled}\nrecalled\\.y: within 0${about}\nrecalled\\.z: within 0${about}\nrecalled\\.x: within 0\n$")
+set_tests_properties(check_founded_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^founded: 100 steps from 0, against exact values\nfounded\\.x: at 0 a disturbed run takes 's\\(c\\)_k \\| lim half\\(1\\) >= c = 1' and the interpreter 's\\(c\\)_k = 0'\\; the guard of the first is 4\\.8e-11 from its threshold\nfounded\\.x: within 0\\; the interpreter's terms about 1 from the exact ones, past the tolerance from 0\n$")
 add_test(NAME check_knee COMMAND check_knee)
 add_test(NAME check_both COMMAND check_both)
 set_tests_properties(check_both PROPERTIES WILL_FAIL ON)
