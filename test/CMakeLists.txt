@@ -149,7 +149,8 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brin
                          rump:rump signatures:inv
                          goldberg:year goldberg:needled goldberg:big goldberg:seven
                          iterates:poly iterates:thirds iterates:plan iterates:graph iterates:gaps
-                         iterates:memo iterates:unread iterates:lone)
+                         iterates:memo iterates:unread iterates:lone blocks:dare blocks:smith
+                         blocks:deadbeat blocks:nested blocks:sloped)
     string(REPLACE ":" ";" checked ${checked})
     list(GET checked 0 file)
     list(GET checked 1 instance)
@@ -402,6 +403,17 @@ set_tests_properties(check_unread_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^unread: 100 steps from 0, against exact values\nunread\\.y: within 0\n$")
 set_tests_properties(check_lone_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^lone: 100 steps from 0, against exact values\nlone\\.y: within 0\nlone\\.z: within 0\n$")
+# Block literals compiled (DESIGN.md), as compile/blocks.ink gives them.
+set_tests_properties(check_dare_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^dare: 100 steps from 0, against exact values\ndare\\.X: within 7\\.1e-15\ndare\\.F: within 2\\.2e-16\ndare\\.Y: within 7\\.1e-15\ndare\\.D: within 0\n$")
+set_tests_properties(check_smith_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^smith: 100 steps from 0${inexact0}\nsmith\\.P: within 0${about}\n$")
+set_tests_properties(check_deadbeat_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^deadbeat: 100 steps from 0, against exact values\ndeadbeat\\.x: within 0\ndeadbeat\\.y: within 0\n$")
+set_tests_properties(check_nested_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^nested: 100 steps from 0, against exact values\nnested\\.S: within 0\nnested\\.w: within 0\nnested\\.M: within 0\nnested\\.T: within 0\nnested\\.y: within 0\n$")
+set_tests_properties(check_sloped_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^sloped: 100 steps from 0, against exact values\nsloped\\.c: within 0\nsloped\\.g: within 0\n$")
 set_tests_properties(check_cls_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^cls: 100 steps from 0, against exact values until 0 and inexact ones from there\ncls\\.z: within 0\n(cls\\.[a-z]+: within [0-9.e+-]+${about}\n)+$")
 set_tests_properties(check_ball_report PROPERTIES PASS_REGULAR_EXPRESSION
@@ -609,7 +621,8 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:ledge logistic:gate momentu
                          cellguards:rfit cellguards:tfit thresholds:dies thresholds:beat stable:peak
                          reddi:thm1 reddi:fixed reddi:gen
                          kahan:sums kahan:muller kahan:rounded kahan:surprise kahan:solveur rump:rump
-                         goldberg:year goldberg:needle goldberg:big goldberg:seven iterates:poly)
+                         goldberg:year goldberg:needle goldberg:big goldberg:seven iterates:poly
+                         blocks:nested)
     string(REPLACE ":" ";" checked ${checked})
     list(GET checked 0 file)
     list(GET checked 1 instance)
@@ -680,6 +693,7 @@ foreach(report IN ITEMS
         "big:^big: 100 steps from 0${in_float}\nbig\\.s: within 2e-30, 1\\.7e-23 units of a float\nbig\\.t: ${exact}\nbig\\.w: 0 at 0, where the interpreter gives 1\n$"
         "seven:^seven: 100 steps from 0${in_float}\nseven\\.t: ${exact}\nseven\\.u: within 3\\.8e-06, 32 units of a float\n$"
         "poly:^poly: 100 steps from 0${in_float}\npoly\\.A: ${exact}\npoly\\.c: ${exact}\npoly\\.d: ${exact}\npoly\\.g: ${exact}\n$"
+        "nested:^nested: 100 steps from 0${in_float}\nnested\\.S: ${exact}\nnested\\.w: ${exact}\nnested\\.M: ${exact}\nnested\\.T: ${exact}\nnested\\.y: ${exact}\n$"
         "cls:^cls: 100 steps from 0${inexact}\ncls\\.z: within 2\\.4e-08, 0\\.2 units of a float\ncls\\.q: within 1\\.9e-06, 1\\.5 units of a float${about}\ncls\\.s: within 6\\.3e-08, 0\\.53 units of a float${about}\ncls\\.loss: within 4\\.1e-07, 3\\.4 units of a float${about}\n$")
     string(FIND "${report}" ":" colon)
     string(SUBSTRING "${report}" 0 ${colon} instance)

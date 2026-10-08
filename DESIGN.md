@@ -3068,8 +3068,8 @@ that exploring seven domains asked of the interpreter, by how many asked.
   grad being forward mode, a part for each cell of the weights, it holds
   for small networks alone. Those are the threshold a loop, an entry of its
   own, is to be weighed against.
-- **Block literals compiled.** `--compile` refuses a literal any of whose
-  cells is not a single value, "a matrix built from matrices": the
+- `[done]` **Block literals compiled.** `--compile` refuses a literal any of
+  whose cells is not a single value, "a matrix built from matrices": the
   augmented system of integral action, `[A, 0; -C, 1]` and `[B; 0]`, the
   controllability matrix `[B, A*B, A^2*B]`, the doubling algorithm's three
   iterates packed into one term, `[A_k, G_k, H_k]`. The interpreter lays
@@ -3162,6 +3162,14 @@ that exploring seven domains asked of the interpreter, by how many asked.
   report should move, as no test records the old refusal. README's
   paragraph on the compiler gains a sentence. Nothing changes in the
   interpreter, so no transcript in `test/data/spec`.
+
+  Done as decided, `Laid` laying out a literal's values and its parts.
+  Departures: `nest` and `slope` became `nested` and `sloped`, the check
+  targets of the first names being `history.ink`'s and `nan.ink`'s; and
+  `nested` gained the case its review found missing, a short row among
+  blocks, `[A, x_n*A; A]`, ended by a 0 stretched over 2x2, its value
+  worked out with fractions. 24 lines of sources against 25 planned, all
+  in `compile.hpp`: 15,608 lines in all.
 - **`tex` of `==`, a negative fraction and `exp`**: `==` is set as `=`,
   `\frac{-1}{2}` should be `-\frac{1}{2}`, `\operatorname{exp}` should be
   `\exp`; and one tensor literal refuses a whole model's `tex`.

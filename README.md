@@ -172,7 +172,11 @@ now. A tensor is an array as C keeps one,
 `double O[B][T][D]`, slice after slice, and is met slice by slice as the
 interpreter meets it: `test/compile/tensor.ink` runs multi-head attention
 over a batch and trains a layer on minibatches by `grad`; a tensor in a
-limit, or a `grad` with respect to one, is refused for now. A header that
+limit, or a `grad` with respect to one, is refused for now. A block literal,
+`[A, 0; -C, 1]`, is laid out as the interpreter lays it out (section 2),
+each block's cells written into their place: `test/compile/blocks.ink`
+packs a doubling algorithm's iterates into one term, and refuses a block
+that does not fill its band. A header that
 writes NaN anywhere carries it to every term that reads it, as the
 interpreter refuses them: a guard, a comparison and a power reading NaN
 answer NaN, and a matrix or tensor term with a NaN cell is NaN in
