@@ -232,6 +232,9 @@ TEST_CASE("rump") {
 TEST_CASE("goldberg") {
     check_transcript("goldberg.ink");
 }
+TEST_CASE("doyle") {
+    check_transcript("doyle.ink");
+}
 TEST_CASE("readme") {
     check_readme();
 }
