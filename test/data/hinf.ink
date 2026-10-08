@@ -48,6 +48,12 @@ digits = 9
 >> hinf(-2, 1, 1, 1)
 1.5
 
+# 22 + 3/(s + 1): |G(iw)|^2 = (625 + 484w^2)/(1 + w^2) falls from 25 at
+# w = 0. It was an ulp above, its root rounded before 22 scaled it back
+# (DESIGN.md, C216).
+>> hinf(-1, 1, 3, 22)
+25
+
 # Two inputs and two outputs: (sI - A)^-1 of a normal A, whose largest
 # singular value is 1 over the distance from iw to the nearest eigenvalue,
 # -1 + 2i, so 1 at w = 2.
