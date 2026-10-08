@@ -162,6 +162,17 @@ error: re has no complex derivative at z = 1+i
 >> grad_(z = i) abs(z)
 error: abs has no complex derivative at z = i
 
+# Only a variable whose point is complex: re(w) moves with the real w
+# alone (C202).
+>> grad_(v = i) v*grad_(w = 1) re(w)
+1
+
+>> grad_(w = 1) grad_(v = i) v*re(w)
+1
+
+>> grad_(v = i) grad_(w = 1) re(w*v)
+error: re has no complex derivative at v = i
+
 # The prelude's abs alone: a session's function whose guard reads a part
 # is refused in the part's words, as it may be holomorphic where its guard
 # holds.
