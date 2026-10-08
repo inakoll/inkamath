@@ -6694,22 +6694,29 @@ that exploring seven domains asked of the interpreter, by how many asked.
   and a choice among it too; and printing shows the kind.
   - **Printing.** `~` before every inexact number, whatever its digits:
     `~0.5`, `~2`, `~0`, `~-1`, `~inf`. Cell by cell of a matrix,
-    `[1, ~2]`, columns aligned as now; part by part of a complex number,
-    `~2+i*~3`, `i*~2`, and the unit too, `~i`, `-~i`, `~1-~i`. An exact
-    number prints as now, bare where the decimal is all of it and `~` where
-    digits are cut, `1/3` `~0.333333333`. So a bare number is exact and is
-    what it shows; `~` says the digits are cut or the number is a double,
-    and `frac` still tells which. NaN has none, `-nan`: it is no value a
-    decimal approximates. An error quotes a number so: "an index must be
-    exact, and ~2 was approximated". The approximated comment stays after
-    the marks, `~0  # approximated past a thousand digits`: `~` says
-    inexact, the comment why, and that asking for less might keep it exact.
-    This reverses phase 13's "an inexact number that is exactly what is
-    printed needs no mark" and "the default display may hide the kind".
+    `[1, ~2]`, columns aligned as now. A complex number has one, before
+    its parts in parentheses, `~(2+i*3)`, `~(i*2)`, `~(1-i)`, `~(i)`, one
+    per cell of a matrix, `[1, ~(i)]`: no complex number is exact, the
+    unit being a double, so none prints bare, and one whose imaginary part
+    is 0 prints as a real, `(1+i)*(1-i)` `~2`. An exact number prints as
+    now, bare where the decimal is all of it and `~` where digits are cut,
+    `1/3` `~0.333333333`. So a bare number is exact and is what it shows;
+    `~` says the digits are cut or the number is a double, and `frac`
+    still tells which. NaN has none, `-nan`, nor a complex number of two,
+    `-nan+i*-nan`: it is no value a decimal approximates. An error quotes
+    a number so: "an index must be exact, and ~2 was approximated". The
+    approximated comment stays after the marks,
+    `~0  # approximated past a thousand digits`: `~` says inexact, the
+    comment why, and that asking for less might keep it exact. This reverses phase 13's "an inexact
+    number that is exactly what is printed needs no mark" and "the default
+    display may hide the kind".
   - **Reading back.** `~1` is the double 1, printed `~1`, so an answer reads
     back as its kind too, where `0.5` printed for `~0.5` read back as an
-    exact half; `~i`, `~1-~i` and a matrix of marked cells read back as
-    printed. `inf` does not read, as now.
+    exact half; a matrix of marked cells reads back as printed, and so does
+    `~(2+i*3)`: `~` of 2+i*3, whose `i*3` and sum round nothing a part of
+    17 digits does not, so the pair of doubles printed, as checked at 17
+    digits on `e^(i*pi)`, `(1+i)/3` and `(10^-400)^(1/2+i)`. `inf` does
+    not read, as now.
   - **Truths.** A comparison of numbers or of whole matrices that reads an
     inexact number answers 1 or 0 inexact: `~0.1*3 > 3/10` is `~1`,
     `rho(A)^2 == 5/4` `~0`, `i == i` `~1`; whole matrices where a cell of
@@ -6791,13 +6798,17 @@ that exploring seven domains asked of the interpreter, by how many asked.
   - **No `~` on a cut exact decimal**, `~` meaning only a double: `1/3`
     printed `0.333333333` reads back as another exact number.
   - **A bare `i`**: the unit is a double, as every complex number here.
+  - **A mark per part**, `~2+i*~3`, `~1-~i`: two marks for one complex
+    double, the owner's ruling; and `~i` for `~(i)`, one form for every
+    complex number.
   - **`~-nan`**: a form that adds nothing.
 
-  What moves, measured with a prototype at 7868bda: 367 golden lines in 34
-  files, 324 of them in 32 by printing alone and 43 by truths and guards
-  (reddi 10, fastgrad 6, goldberg 5, fastprelude 5, kahan 3, conditional
-  and logic 2 each, and one each in ten files). All but three only gain a
-  `~`: `frac ilogb(~3)` and `frac min(1/3, ~0.5)` are refused, and
+  What moves, measured with a prototype at 7868bda: 371 golden lines in 34
+  files, 328 of them in 32 by printing alone, 49 of those complex, and 43
+  by truths and guards (reddi 10, fastgrad 6, goldberg 5, fastprelude 5,
+  kahan 3, conditional and logic 2 each, and one each in ten files). All
+  but three only gain a `~`, a complex number its parentheses too:
+  `frac ilogb(~3)` and `frac min(1/3, ~0.5)` are refused, and
   `1/grad_(x = ~25) tanh(~1*x)` is `~inf`. Comments that state the old
   rule move with their entries: decimals.ink's on `~`, cparts.ink's "printed
   without '~'", approximated.ink's `~rt_11 > c` and fastgrad.ink's exact 0;
@@ -6817,13 +6828,13 @@ that exploring seven domains asked of the interpreter, by how many asked.
   by `wc -l include/inkamath/*.hpp src/*`. Past 75 the implementation
   stops and reports.
 
-  Specified in `test/data/spec/inexact.ink`, 115 entries replayed by the
-  spec suite, 69 failing by design, those passing being exact values,
+  Specified in `test/data/spec/inexact.ink`, 122 entries replayed by the
+  spec suite, 72 failing by design, those passing being exact values,
   definitions, refusals that quote no inexact number and what must not
   move: bare and marked numbers, 0, inf, NaN and 17 digits; matrices of
-  mixed cells; complex parts and the unit; reading `~1` back; truths of
-  exact and inexact comparisons and of whole matrices; `and` and `or`; a
-  guard that holds, fails, refuses, by cells and counted into an index;
+  mixed cells; complex numbers, the unit and two NaNs; reading `~1` and a
+  complex number back; truths of exact and inexact comparisons and of
+  whole matrices; `and` and `or`; a guard that holds, fails, refuses, by cells and counted into an index;
   the prelude's guards and ilogb; `frac`; grad; and README's examples.
   Written from the rule, each double by hand or in Python apart from the
   interpreter; the prototype agrees with every entry but the one C242

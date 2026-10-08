@@ -91,25 +91,35 @@ digits = 9
 >> [0 1]*~1
 [~0, ~1]
 
-# A complex number is a pair of doubles, so each part printed is marked,
-# the unit too.
+# A complex number is a pair of doubles, never exact, the unit too: one
+# '~' before its parts in parentheses, which print bare. One whose
+# imaginary part is 0 prints as a real.
 >> i
-~i
+~(i)
 
 >> -i
--~i
+~(-i)
 
 >> 1-i
-~1-~i
+~(1-i)
 
 >> 2*i
-i*~2
+~(i*2)
 
 >> i*0
 ~0
 
+# One mark per cell of a matrix.
 >> [1 i]
-[1, ~i]
+[1, ~(i)]
+
+>> [1 i; 2*i 3]
+[     1, ~(i);
+ ~(i*2),    3]
+
+# Two NaN parts are no value, and bare as NaN is.
+>> (0/~0)*i
+-nan+i*-nan
 
 >> abs(3+4*i)
 ~5
@@ -128,11 +138,27 @@ i*~2
 >> frac ~1
 error: ~1 was approximated, so it has no exact fraction
 
->> ~1-~i
-~1-~i
+>> ~(1-i)
+~(1-i)
 
->> ~2+i*~3 == 2+3*i
+>> ~(2+i*3) == 2+3*i
 ~1
+
+# At 17 digits a complex number reads back as the pair of doubles it was.
+>> digits = 17
+digits = 17
+
+>> z = (1+i)/3
+z = (1+i)/3
+
+>> z
+~(0.33333333333333331+i*0.33333333333333331)
+
+>> ~(0.33333333333333331+i*0.33333333333333331) == z
+~1
+
+>> digits = 9
+digits = 9
 
 >> [1, ~2; 3, ~0.1] == [1 ~2; 3 ~0.1]
 ~1
@@ -373,7 +399,7 @@ error: ~1 was approximated past a thousand digits, so it has no exact fraction
 
 # README.md's examples that move.
 >> 2+3*i
-~2+i*~3
+~(2+i*3)
 
 >> (1+i)*(1-i)
 ~2
@@ -388,4 +414,4 @@ ab(x) | x < 0 = 0-x
 ab(x) | x >= 0 = x
 
 >> ab(i)
-error: a comparison needs real numbers, not ~i
+error: a comparison needs real numbers, not ~(i)
