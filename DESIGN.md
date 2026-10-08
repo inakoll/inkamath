@@ -6686,17 +6686,27 @@ that exploring seven domains asked of the interpreter, by how many asked.
     and evaluating nothing, so no coin is drawn and every estimate keeps its
     digits. A run disagrees at a term where it takes another clause than the
     interpreter's.
+  - **And the guards of the functions the file writes**, in its models or
+    outside them: `README.md` writes a ReLU as `ramp(x)`, and `H(x)` in
+    `gated` straddled is `tie` again, "about 99" and no word of why. The
+    hook is told of their guards too. Such a call has no term of its own:
+    it is the step's and the sequence's the check was asking when it was
+    made, the k-th guard of the function heard in that ask paired with the
+    k-th in the interpreter's, as the runs ask the sequences in the order
+    the interpreter's terms are asked. A guard heard again while a margin is
+    measured is not counted, as a run measures none. The flips still
+    follow only the sequences': a function's guard flipped compiled parts
+    the outputs by its values, reported where they part.
   - **Not observed**: a comparison taken as a value, `floor`, where a limit
-    stops, and a function's guards. The first three choose no clause: their
+    stops, and the prelude's guards. The first three choose no clause: their
     jump is in the values, which the estimate measures as it does now, a
     comparison straddled being "about 1"; the step names no clause for them,
     so no flip is reported of them either; and hearing them is a hook in
     every comparison and in `Convergence`. A limit stopping a term sooner or
     later moves by about a step, within the remainder it is moved by anyway.
-    A function's guard parts the outputs only by its values, as the flips
-    have it, and the prelude's are placed where either clause is as
-    accurate, `logm`'s fold and `ilogbs`, so they would be reported of every
-    model through `log`.
+    The prelude's are placed where either clause is as accurate, `logm`'s
+    fold and `ilogbs`, so they would be reported of every model through
+    `log`.
   - **Reported once**, at the first step a run takes another clause, after
     the first line and before the flips, as it is about the reference they
     are held to: `tie.g: at 0 a disturbed run takes 'g_n | y_n >= 1/2 - w =
@@ -6706,7 +6716,11 @@ that exploring seven domains asked of the interpreter, by how many asked.
     what the guard reads, 5.8e-11 on `tie.y`'s line. The first only, as for
     a flip: a run that took another clause has another trajectory, and what
     it chooses after follows from it. Where runs disagree differently, the
-    first run's clause.
+    first run's clause. At one step, the first in the order the sequences
+    are asked; a function's straddle is named by its ask's sequence and
+    quotes the function's clauses: `acc.x: at 1 a disturbed run takes 'H(x)
+    | x >= 0 = 1' and the interpreter 'H(x) = 0'; the guard of the first is
+    4.8e-11 from its threshold`.
   - **The estimate is printed as before.** Where the clauses meet at the
     guard it is right: `knee.r` is "about 5.8e-11", its error exactly. Where
     they part it is the jump, which is how far the term may be, and the line
@@ -6756,11 +6770,14 @@ that exploring seven domains asked of the interpreter, by how many asked.
   and no expected header. README's paragraph on the check gains a sentence,
   with the implementation.
 
-  About 35 lines, all in `check.hpp`, as the prototype measured them
-  formatted: the hook set in each run and the clauses recorded, 10; the
-  array per guarded place, 10; the straddle's walk in the program written,
-  less the flip's margin words now shared, 15. 15,584 lines in all now; past
-  53 the implementation stops and reports.
+  About 50 lines: as the prototype measured them formatted, the hook set in
+  each run and the clauses recorded, 10; the array per guarded place, 10;
+  the straddle's walk in the program written, less the flip's margin words
+  now shared, 15; and, not prototyped, the functions' guards, 15: the hook
+  told of a guard outside the prelude in `reference.hpp`, the guards heard
+  by ask in the interpreter's run and in each, and the margin measured
+  unheard. 15,584 lines in all now; past 75 the implementation stops and
+  reports.
 
   Specified in `test/compile/straddle.ink`: `knee`, a ReLU whose kink the
   run moved down passes, the clauses meeting so that its estimate is its
@@ -6768,8 +6785,10 @@ that exploring seven domains asked of the interpreter, by how many asked.
   margin; `crease`, a ReLU at its kink reached by `~(1/10) + ~(2/10)`,
   straddled by roundings at a step the seeds draw; `plain`, the same sum far
   from its threshold, with no line; and `both`, a straddle at 3 and brink's
-  flip at 1, the straddle first. With `tie`'s line above. Unwired, as a
-  report failing by design fails `ctest`: wired with the implementation.
+  flip at 1, the straddle first; `acc`, `tie` again through a function's
+  guard, straddled at 1 where `x` first calls it. With `tie`'s line above.
+  Unwired, as a report failing by design fails `ctest`: wired with the
+  implementation.
   Expected lines by hand: the limit's stop, 1/2 - 2^-34, and its remainder
   by C36's rule; the doubles and margins in Python's correctly rounded
   floats and fractions; each run's clause enumerated over its draws, the

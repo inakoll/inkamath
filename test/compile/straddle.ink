@@ -95,3 +95,24 @@ paired(c = 1/10) = {
     h_n = 0
 }
 both = paired()
+
+# tie's straddle through a function's guard, as README writes a ramp: H is a
+# step, asked of 'y' less the threshold. Its interpreter's argument is
+# 2^-34 - 10^-11 = -4.8e-11 and H takes 0, the run moved up's is +1e-11 and
+# H takes 1, so the exact 'x' is n and the interpreter's 0. The call is
+# 'x''s, first made at 1: x_0 is its base.
+#
+#     acc: 100 steps from 0, against exact values until 0 and inexact ones from there
+#     acc.x: at 1 a disturbed run takes 'H(x) | x >= 0 = 1' and the interpreter 'H(x) = 0'; the guard of the first is 4.8e-11 from its threshold
+#     acc.y: within 0; the interpreter's terms about 5.8e-11 from the exact ones
+#     acc.x: within 0; the interpreter's terms about 99 from the exact ones, past the tolerance from 1
+gated(w = 1/10^11) = {
+    half(a)_0 = 0
+    half(a)_k = half(a)_(k-1) + a/2^(k+1)
+    H(x) | x >= 0 = 1
+    H(x) = 0
+    y_n = lim half(1)
+    x_0 = 0
+    x_n = x_(n-1) + H(y_n - (1/2 - w))
+}
+acc = gated()
