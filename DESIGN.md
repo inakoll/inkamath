@@ -945,6 +945,17 @@ Recorded so they are not re-litigated later, or drifted into by accident.
   to say so out loud rather than drift towards one. Recorded, not scheduled:
   if it is ever wanted, it starts with extents, not with rewrite rules.
 
+- **Epistemic levels in printing.** An external review proposed that a value
+  carry its level, exact, certified (rho, eig, hinf and the others) or
+  rounded, and that printing say which. A prototype measured two notations,
+  a `≈` per certified cell and a `# certified` mark on the answer: the level
+  survives only on those functions' direct answers, since any arithmetic
+  rounds it; `≈` breaks reading back and column alignment; and either mark
+  makes a certified `0.5` look less exact than a rounded `0.5`, which prints
+  bare. Decided by the owner: the REPL is no place for a distinction the eye
+  cannot parse reliably. If it surfaces, it does at a C API or in an output
+  format meant for programs.
+
 ## Openings
 
 Not scheduled, and not Deferred either -- Deferred is for what has been argued
