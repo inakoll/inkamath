@@ -608,14 +608,15 @@ public:
     }
 
     // A refusal an approximated guard decided may be wrong, and says so. The
-    // prelude's eig, hinf, dhinf and hinfy have one guard each, which it
+    // prelude's eig, hinf, dhinf, hinfy and hinfg have one guard each, which it
     // cannot word (DESIGN.md).
     std::string Unapplied(bool past) const {
         static const std::unordered_map<std::string, std::string> needs{
             {"eig", "eig needs a matrix whose eigenvalues are all real"},
             {"hinf", "hinf needs every eigenvalue of A left of the imaginary axis"},
             {"dhinf", "dhinf needs every eigenvalue of A inside the unit circle"},
-            {"hinfy", "hinf needs tests within a double's range"}};
+            {"hinfy", "hinf needs tests within a double's range"},
+            {"hinfg", "hinf needs tests within a double's range"}};
         const auto worded = home && !home->parent ? needs.find(reference_name_) : needs.end();
         return (worded != needs.end() ? worded->second
                                       : "no clause of " + reference_name_ + " applies") +

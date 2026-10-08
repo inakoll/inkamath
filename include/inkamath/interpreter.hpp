@@ -455,7 +455,7 @@ inline constexpr const char* prelude[] = {
     "hinfj(M[j<=p, k<=q]) = hinfm(M)_(p*q) + (M == 0*M)",
     "hinfd(x, f) = x*f",
     "hinfd(x, f) | x <> 0 and (abs(x*f) < 2^-1022 or abs(x*f) >= 2^1024) = x*f + 0*10^-1000",
-    "hinfg(A, B, C, D) = 2*ceil(rhop(hinfw(A, B, C, D))/2)",
+    "hinfg(A, B, C, D) | 1/(hinfw(A, B, C, D) + 1) > 0 = 2*ceil(rhop(hinfw(A, B, C, D))/2)",
     "hinfe(A, B, C, D, f) = hinfd(rhod(rhoa(hinfu(A, B, C, D, hinfg(A, B, C, D))_256, hinfu(A, B, "
     "C, D, hinfg(A, B, C, D))_256)^(1/2), hinfg(A, B, C, D)/2), f)",
     "hinfe(A, B, C, D, f) | hinfw(A, B, C, D) == 0 = ~0",
