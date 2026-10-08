@@ -230,6 +230,13 @@ inf  # approximated past a thousand digits
 >> smax([10^-700 0; 0 10^-700])
 0  # approximated past a thousand digits
 
+# A cell that is itself inf has no value to scale, as rho's has not (C206).
+>> eig([~1 1; 1 1]*10^310)
+error: eig needs finite cells, not inf
+
+>> smax(~-10^310)
+error: smax needs finite cells, not -inf
+
 >> eig([1 2 3])
 error: eig takes A[j<=n, k<=n], not a 1x3 matrix
 

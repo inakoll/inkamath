@@ -320,6 +320,15 @@ inf  # approximated past a thousand digits
 >> rhoa([0; 0], [0; 0])
 0
 
+# A cell that is itself inf is a double whose value is lost, and no radius
+# is certified of it, inf or other: [1 x; 0 1]'s is 1 and [x x; -x -x]'s 0
+# whatever x is (C206).
+>> rho([1 ~10^310; 0 1])
+error: rho needs finite cells, not inf
+
+>> abscissa([~1 1; 1 1]*10^310)
+error: abscissa needs finite cells, not inf
+
 # Five by five, the tests exact; ten by ten, in bisection_digits.ink, they
 # are not.
 >> rho([6 -8 -6 -5 -6; 6 7 2 -9 -8; -3 -1 2 0 -4; -6 4 4 -9 -7; -1 -2 7 0 -2]/10)
