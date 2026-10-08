@@ -6795,3 +6795,9 @@ that exploring seven domains asked of the interpreter, by how many asked.
   runs moved up and down deciding `knee`, `both` and `tie` whatever the
   seeds; `crease`'s step and every estimate's digits not a limit's by
   their form.
+- **A comparison taken as a value, straddled.** `g_n = y_n >= 1/2 - w` is
+  `tie` with no clause, and keeps its "about 1" with no word of why after
+  the straddle above. Hearing it is a hook in the evaluator's every
+  comparison, told apart from a guard's, paired by order within an ask as a
+  function's guard is, and a wording for an expression no clause quotes:
+  more than the five lines it was allowed, so left for its own entry.
