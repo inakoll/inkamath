@@ -52,24 +52,27 @@ inf  # approximated past a thousand digits
 >> hinf([0 1; -1 -1/2], [0; 1], [1 0]/10^400)
 0  # approximated past a thousand digits
 
-# Tests whose numbers pass a thousand digits are approximated, and the
-# answer marked: a damping of 1/4 - 7^-600/2, whose polynomial's
-# coefficients have a thousand digits from the first test.
+# A test whose numbers would pass a thousand digits is refused: read from
+# doubles it may misjudge any step, and a marked answer be off by any
+# factor. A damping of 1/4 - 7^-600/2, whose polynomial's coefficients have
+# a thousand digits from the first test; a damping of 10^-100, whose 10^100
+# doubles answered 2.47e100; time scales 10^100 apart, 1/(s + 1) +
+# 1/(s + 10^-100), where 10^50 apart is certified, 1 + 10^50; and 10^200
+# apart in discrete time, whose bound on the norm leaves a double first.
 >> hinf([0 1; -1 -1/2 + 1/7^600], [0; 1], [1 0])
-~2.06559112  # approximated past a thousand digits
+error: hinf needs tests within a thousand digits
 
-# Time scales 10^100 apart, 1/(s + 1) + 1/(s + 10^-100): 1 + 10^100 at
-# w = 0, its tests past a thousand digits. At 10^200 apart their doubles
-# could not hold them, and it is refused rather than answered from them.
+>> hinf([0 1; -1 -10^-100], [0; 1], [1 0])
+error: hinf needs tests within a thousand digits
+
+>> hinf([-1 0; 0 -10^-50], [1; 1], [1 1])
+~1e+50
+
 >> hinf([-1 0; 0 -10^-100], [1; 1], [1 1])
-~1e+100  # approximated past a thousand digits
+error: hinf needs tests within a thousand digits
 
->> hinf([-1 0; 0 -10^-200], [1; 1], [1 1])
-error: hinf needs tests within a double's range, by a guard approximated past a thousand digits
-
-# So is a discrete pair, whose bound on the norm leaves a double first.
 >> dhinf([1/2 0; 0 1 - 10^-200], [1; 1], [1 1])
-error: hinf needs tests within a double's range, by a guard approximated past a thousand digits
+error: hinf needs tests within a thousand digits
 
 # Unstable, refused in words: the norm of G is that of a stable A. A
 # pole on the axis, an integrator or an undamped pair, makes it infinite,
