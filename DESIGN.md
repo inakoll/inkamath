@@ -6486,12 +6486,15 @@ that exploring seven domains asked of the interpreter, by how many asked.
 
   **An inexact system** is bisected by rounded tests, as rho's matrix is,
   its answer inexact and unmarked. A Bezoutian's signature by its
-  characteristic polynomial, rounded, loses digits as n grows, the peak
-  being a double root: on random systems of small whole numbers made
-  inexact, within 1e-12 up to 3x3, 1e-9 at 4x4, and as few as 4 digits at
-  5x5 and 6 at 6x6. README says so, as it says eig's k-fold eigenvalue is
-  good to 16/k digits. Rejected: refusing an inexact cell, which costs 7
-  lines of C++ and every discretised plant whose pole is an `exp`; and
+  characteristic polynomial, rounded, misjudges as n grows, and not only at
+  the peak's double root: on random systems of small whole numbers made
+  inexact, 20 with one input and 20 with two at each size up to 5x5,
+  within 3e-11 up to 3x3, 3e-7 at 4x4 and 1e-2 at 5x5; at 6x6, of 8 with
+  two inputs the median is 1e-2, and of 12 with one, one is answered 13.5
+  for 2.87, a test above its norm judged below. README says so, as it says
+  eig's k-fold eigenvalue is good to 16/k digits. Rejected: refusing an
+  inexact cell, which costs 7 lines of C++ and every discretised plant
+  whose pole is an `exp`; and
   reading a double as the dyadic number it is, exactly, which certifies an
   inexact 3x3 and marks a 4x4, but is a reading of an inexact number nothing
   else in the language makes. A cell that is itself inf or NaN is refused as
