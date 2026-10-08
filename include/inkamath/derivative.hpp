@@ -401,7 +401,10 @@ private:
     Jet Term(const Reference<T>& definition, const ParametersCall<T>& call, bool indexed, int index,
              const Arguments& arguments) {
         const std::string key = Key(definition, indexed, index, arguments);
-        if (const auto found = memo_.find(key); found != memo_.end()) return found->second;
+        if (const auto found = memo_.find(key); found != memo_.end()) {
+            stepped_ |= found->second.second;
+            return found->second.first;
+        }
         if (indexed && !filling_ && depth_ >= ReferenceStack<T>::max_depth / 2)
             Fill(definition, call, index, arguments);
         stack_.Step();
@@ -410,9 +413,10 @@ private:
         try {
             const Deeper                       deeper(*this);
             if (std::optional<Jet> fast = Compiled(definition, indexed, arguments)) {
-                memo_.emplace(key, *fast);
+                memo_.emplace(key, std::pair(*fast, std::size_t(0)));
                 return *fast;
             }
+            const std::size_t                  outer = std::exchange(stepped_, 0);
             typename ReferenceStack<T>::Within within(stack_, definition.home);
             typename ReferenceStack<T>::Frame  frame(stack_);
             ParametersDefinition<T>::Bind(definition.captured, stack_);
@@ -423,7 +427,9 @@ private:
             Hidden(definition, arguments);
             const Setting<bool> unguarded(guard_, false);
             Jet              result = Dispatch(definition, indexed, index);
-            memo_.emplace(key, result);
+            stepped_ &= Size() - 1;
+            memo_.emplace(key, std::pair(result, stepped_));
+            stepped_ |= outer;
             return result;
         } catch (const NotSingle& error) {
             refused = error;
@@ -551,6 +557,8 @@ private:
         const Jet a     = Eval(compare.m_e1());
         const Jet b     = Eval(compare.m_e2());
         const T   value = numeric_interface<T>::compare(*a[0], *b[0], compare.Op());
+        Stepped(a);
+        Stepped(b);
         // A jump an approximated number rules out marks the answer (C167).
         chosen_ = chosen_ || ((Moves(a) || Moves(b)) && numeric_interface<T>::approximated(value));
         if (*a[0] == *b[0] && (Moves(a) || Moves(b))) {
@@ -582,6 +590,7 @@ private:
             throw std::runtime_error(node.name + " has no complex derivative at " + at);
         if (node.name != "floor") return Map(u, cell);
         const T value = cell(*u[0]);
+        Stepped(u);
         chosen_       = chosen_ || (Moves(u) && numeric_interface<T>::approximated(*u[0]));
         for (std::size_t k = 0; k < value.Size().count(); ++k) {
             if (!(u[0]->data()[k] == value.data()[k])) continue;
@@ -689,6 +698,14 @@ private:
         return builtin != stack_.Builtins().names.end() && stack_.Global("e") == builtin->second;
     }
 
+    // A comparison or floor that moves is flat but at its jumps, so a limit
+    // of terms that read one, as a bisection's, is a staircase whose terms'
+    // derivatives say nothing of its own (C215): the grads one moved with.
+    void Stepped(const Jet& u) {
+        for (std::size_t s = 1; s < u.size(); ++s)
+            if (u[s]) stepped_ |= s;
+    }
+
     // Each part converging by the rule lim follows, and the limit when all
     // have at the same term.
     struct Walk {
@@ -736,14 +753,22 @@ private:
         for (const Clause<T>& clause : definition.Clauses())
             general = general || clause.parameters.general();
         if (!general) throw std::runtime_error(name + " has no general clause, so it has no limit");
-        Walk                   walk(name, Size());
+        Walk                       walk(name, Size());
+        const Setting<std::size_t> stepped(stepped_, 0);
+        const auto                 at = [&](long long k) {
+            Jet term = Term(definition, call, true, static_cast<int>(k), arguments);
+            if (const std::size_t with = stepped_ & (Size() - 1))
+                throw std::runtime_error(
+                    "grad cannot differentiate lim " + name + ", whose terms step with " +
+                    grads_[std::bit_width(with) - 1].first + " at a comparison or a floor");
+            return term;
+        };
         const Clause<T>* const highest = definition.EndBase(false);
         long long              index   = highest ? highest->parameters.index() : 0;
-        if (highest)
-            (void)walk.Next(Term(definition, call, true, static_cast<int>(index), arguments));
+        if (highest) (void)walk.Next(at(index));
         Jet term;
         for (std::size_t n = 0; n < Convergence<T>::max_terms; ++n) {
-            term = Term(definition, call, true, static_cast<int>(++index), arguments);
+            term = at(++index);
             if (walk.Next(term)) return walk.Limit(term);
         }
         walk.Fail(name, "last term", term);
@@ -1049,11 +1074,12 @@ private:
     int                                                   order_ = 0;
     std::vector<std::pair<std::string, std::string>>      grads_;  // name and point, innermost last
     std::vector<std::vector<std::pair<std::string, Jet>>> frames_;
-    std::map<std::string, Jet>                            memo_;
+    std::map<std::string, std::pair<Jet, std::size_t>>    memo_;  // and the grads it stepped with
     std::size_t                                           depth_   = 0;
     bool                                                  guard_   = false;
     bool                                                  filling_ = false;
     bool                                                  chosen_  = false;
+    std::size_t                                           stepped_ = 0;
     std::size_t                                           complex_ = 0;  // grads at a complex point
     const Guarded*                                        guarded_ = nullptr;
 };
