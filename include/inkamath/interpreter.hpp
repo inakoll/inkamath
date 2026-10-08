@@ -430,6 +430,15 @@ Interpreter<T, U>::Interpreter() {
             {names.at("cos").get(), inkamath_prelude_cos},
         }};
         stack_.compiled = [this, functions](const Reference<U>& f, const U& x) -> std::optional<U> {
+            // An inexact cell inf or NaN has lost its value, and no
+            // eigenvalue of it is certified, inf or other (C206).
+            if (stack_.staircases.contains(&f))
+                for (std::size_t k = 0; k < x.Size().count(); ++k)
+                    if (const Number& c = x.data()[k];
+                        !c.exact() &&
+                        !(std::isfinite(c.Inexact().real()) && std::isfinite(c.Inexact().imag())))
+                        throw std::runtime_error(f.Name() + " needs finite cells, not " +
+                                                 numeric_interface<Number>::toString(c));
             const auto found = std::find_if(functions.begin(), functions.end(),
                                             [&](const auto& each) { return each.first == &f; });
             if (found == functions.end() || !x.IsScalar()) return {};
