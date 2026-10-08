@@ -215,10 +215,12 @@ public:
     }
 
     static std::string fraction(const Number& a, int digits) {
+        // A complex number is a pair of doubles, approximated or not (C217).
         if (!a.exact()) {
-            throw std::runtime_error(toString(a, digits) + " was approximated" +
-                                     (approximated(a) ? " past a thousand digits" : "") +
-                                     ", so it has no exact fraction");
+            const char* why = approximated(a)          ? " was approximated past a thousand digits"
+                              : a.inexact_.imag() != 0 ? " is complex"
+                                                       : " was approximated";
+            throw std::runtime_error(toString(a, digits) + why + ", so it has no exact fraction");
         }
         if (a.big_) {
             const Big&        b    = *a.big_;

@@ -96,6 +96,14 @@ error: 3 was approximated, so it has no exact fraction
 >> frac i*i
 error: -1 was approximated, so it has no exact fraction
 
+# i itself is not approximated: a complex number is a pair of doubles, here
+# exactly 0 and 1, which no fraction is (DESIGN.md, C217).
+>> frac i
+error: i is complex, so it has no exact fraction
+
+>> frac 1/3 + 2*i
+error: ~0.333333333+i*2 is complex, so it has no exact fraction
+
 # A trailing zero is not a digit the literal needs, however many there are:
 # these went inexact once the digits passed 64 bits.
 >> frac 1.00000000000000000000
