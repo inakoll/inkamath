@@ -6681,3 +6681,47 @@ that exploring seven domains asked of the interpreter, by how many asked.
   digits and Hermite's test refuses symmetric matrices but for rounding.
   Rejected for `eig` only for an exact dyadic midpoint that zeroes a pivot,
   which an inexact matrix does not meet.
+
+After transcribing a small convolutional network (Goodfellow, Bengio and
+Courville 2016, §9.5; LeCun et al. 1998, §II.B), its training compiled and
+checked: what it asked of the compiler, each with its smallest change.
+
+- **A compiled gradient with respect to a tensor**, "a derivative with
+  respect to a tensor, for now": the seed of three indices *Tensors
+  compiled* left between attention and its training, met again by an input
+  gradient over a batch of images. The seed's slice taken from its cell as
+  its row and column are, and the parts assembled into an extent with
+  slices; about 10 lines, the interpreter's seeds unchanged.
+- **A read between slow sequences of one period and phase**, refused since
+  C233 as one at another rate read by another: a minibatch as time, each
+  term of the weights reading two consecutive samples, trains its weights
+  as slow sequences that read each other at `m-1`. Where both tick at the
+  same steps, the read is a lag in the reader's own terms, as its own
+  history is; about 15 lines in `Rate`, the hold at the input's rate still
+  the answer for another period.
+- **A tensor term under a guard that is not a constant**, `A_n[b,o,p] |
+  Z_n[b,o,p] > 0`, "a tensor's cells under a guard that is not a constant,
+  for now": a batched ReLU as a term rather than a call. Tested at run time
+  cell by cell as a matrix term's guards are, `--check` naming the clause by
+  slice, row and column.
+- **Single values met by a matrix compiled**, a per-channel bias `T + [1/2;;
+  -1/2]`, "a tensor whose slices are single values met by a matrix, for
+  now": each slice's value stretched over the other's cells in `Cellwise`, as
+  the interpreter's arithmetic does; a few lines.
+- **`grad` through a local**, "grad cannot differentiate a local definition
+  yet", compiled "a local definition": `(z = Q*P) ...` written once in a
+  loss must be a call instead. A local's jet bound in the frame for the rest
+  of the line, as a call's parameters are, and compiled as an expansion's
+  value.
+- **The size of a forward-mode header, measured**, before reverse mode is
+  weighed (`MANIFESTO.md`): the network's 47 weights trained by four grads
+  are 2.16 MB of header, as each direction writes a guard's dot product
+  again and each seed as `0.0*P + ... + 1.0*P`. A temporary for a guard's
+  operands, and `0.0*x` folded where x is finite, are the first two
+  measurements to take.
+- **A maximum or minimum over an index**, `max_(i=1)^n`, as a sum is
+  written: max-pooling over a window is nested `max` calls today. Minor,
+  until a second model asks.
+- **The compiled sum's thousand terms**: a LeNet-sized layer's dot product
+  over a batch would pass `max_terms`, which bounds an unrolled sum written
+  as lines of C, not a loop.
