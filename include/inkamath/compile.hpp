@@ -2765,10 +2765,12 @@ private:
         const int lag = Lag(call.subexpr(), key) + shift_;
         Bases(key);
         if (!read.size.rows) Compile(key);
-        // By its rate, before one with no base clause is computed again.
-        if (&read != reading_ && read.period > 1)
-            throw Reason(key + "_(...): read every step, and " + key + " is computed every " +
-                         std::to_string(read.period));
+        // Refused by its rate once the reader's is known (Rate), before one
+        // with no base clause is computed again.
+        if (&read != reading_ && read.period > 1) {
+            reading_->reads[key].insert(lag);
+            return Answer(Array("m_->" + key + "[0]", read.size));
+        }
         if (lag > 0 && ClosedForm(read) && !histories_.count(key)) return Answer(At(read, lag));
         (shift_ && early_ >= 0 ? earlies_[static_cast<std::size_t>(early_)].reads
          : deferring_          ? reading_->deferred
@@ -3335,12 +3337,6 @@ private:
     // keyed by the step that computes them; its samples as lags of the
     // input's; its own terms read back, in its own terms.
     void Rate(const std::string& name, Sequence& sequence) {
-        for (const auto& [read, lags] : sequence.reads) {
-            const int period = sequences_.at(read).period;
-            if (read != name && period > 1)
-                throw Refusal(name, read + "_(...): read every step, and " + read +
-                                        " is computed every " + std::to_string(period));
-        }
         // A slow sequence read by another says what a hold at the input's
         // rate sampled says, but for a hold at another period, which no hold
         // says (C74).
@@ -3349,6 +3345,13 @@ private:
                                      "_(...): one sequence at another rate read by another; hold " +
                                      read + " at the input's rate and sample the hold");
         };
+        for (const auto& [read, lags] : sequence.reads) {
+            const int period = sequences_.at(read).period;
+            if (read != name && period > 1 && sequence.period > 1) throw another(read);
+            if (read != name && period > 1)
+                throw Refusal(name, read + "_(...): read every step, and " + read +
+                                        " is computed every " + std::to_string(period));
+        }
         for (const std::size_t h : sequence.holds) {
             const Hold& hold   = holds_[h];
             const int   every  = sequence.period * hold.a;
