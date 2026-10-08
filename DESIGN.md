@@ -6664,3 +6664,115 @@ that exploring seven domains asked of the interpreter, by how many asked.
   digits and Hermite's test refuses symmetric matrices but for rounding.
   Rejected for `eig` only for an exact dyadic midpoint that zeroes a pivot,
   which an inexact matrix does not meet.
+- **A guard the interpreter's own error straddles.** From an outside
+  review. `--check` estimates the interpreter's error by asking each term
+  three times more, disturbed (*The interpreter's own error, estimated by
+  `--check`*), as CESTAC does with CADNA's three samples, and shares its
+  known weakness: where the runs straddle a guard they take different
+  clauses, and the spread there is a clause's, not a rounding's. CADNA calls
+  it an unstable branching. `tie` in `test/compile/estimate.ink` says its
+  `g` is "about 1 from the exact ones, past the tolerance from 0" and not
+  why; a ReLU at its kink straddled alike says 5.8e-11, which is right, and
+  nothing says that the interpreter's own clause was in doubt. The flips
+  (*Guards that flip*) give a guard's margin as the interpreter computes it,
+  and where that is in doubles nothing says whether it is within the
+  interpreter's own error.
+
+  Decided:
+  - **What is observed: the clause each run takes**, of the guards the flips
+    follow: a sequence's guarded general clauses, cell by cell where it is
+    chosen so, of the instance and of those it writes unnamed. The hook the
+    flips listen with is set in each run too, recording the clause chosen
+    and evaluating nothing, so no coin is drawn and every estimate keeps its
+    digits. A run disagrees at a term where it takes another clause than the
+    interpreter's.
+  - **Not observed**: a comparison taken as a value, `floor`, where a limit
+    stops, and a function's guards. The first three choose no clause: their
+    jump is in the values, which the estimate measures as it does now, a
+    comparison straddled being "about 1"; the step names no clause for them,
+    so no flip is reported of them either; and hearing them is a hook in
+    every comparison and in `Convergence`. A limit stopping a term sooner or
+    later moves by about a step, within the remainder it is moved by anyway.
+    A function's guard parts the outputs only by its values, as the flips
+    have it, and the prelude's are placed where either clause is as
+    accurate, `logm`'s fold and `ilogbs`, so they would be reported of every
+    model through `log`.
+  - **Reported once**, at the first step a run takes another clause, after
+    the first line and before the flips, as it is about the reference they
+    are held to: `tie.g: at 0 a disturbed run takes 'g_n | y_n >= 1/2 - w =
+    1' and the interpreter 'g_n = 0'; the guard of the first is 4.8e-11 from
+    its threshold`. The flip's words with a disturbed run in the step's
+    place, and the margin the flip would give, read against the estimate of
+    what the guard reads, 5.8e-11 on `tie.y`'s line. The first only, as for
+    a flip: a run that took another clause has another trajectory, and what
+    it chooses after follows from it. Where runs disagree differently, the
+    first run's clause.
+  - **The estimate is printed as before.** Where the clauses meet at the
+    guard it is right: `knee.r` is "about 5.8e-11", its error exactly. Where
+    they part it is the jump, which is how far the term may be, and the line
+    above says it is a clause's. "Unknown" in its place would lose the first
+    and say less than the second.
+  - **One walk, two lines.** The straddle and the flip are read from one
+    table, of the guarded sequences, their written clauses and the margins,
+    which gains an array per guarded place: the clause a run took where it
+    is not the interpreter's, else 0. The margin's words become a function
+    both lines call. Both lines are printed where both happen, the straddle
+    first; where they are at one step, as `knee` in float, the flip is
+    within the interpreter's own error.
+  - **The exit status is the step's.** A straddle is the reference's doubt,
+    not the step's fault: `tie` steps to the bit. The verdict stays the
+    tolerance's, as the estimate's entry decided.
+  - **`--float`** changes nothing: the runs are the interpreter's.
+
+  Rejected:
+  - **More samples.** Three are CADNA's. A straddle within a limit's
+    remainder is found by the runs moved up and down whatever the seeds, and
+    one within a rounding is drawn again at every step, `crease`'s found at
+    0 with probability 7/8. Each sample more is an evaluation of every term,
+    and moves the digits of every estimate.
+  - **Ignoring it**: `tie.g`'s "about 1" with no word of why, and `knee`'s
+    doubt in silence.
+  - **CADNA's synchronous branching and its counts.** CADNA computes its
+    samples together, takes one branch for all of them by their mean and
+    counts it where their difference is not significant, with unstable
+    multiplications, divisions and cancellations. That needs every operation
+    to see every sample, a Number of three doubles through every operation:
+    a second arithmetic, as the ball rejected in the estimate's entry was.
+    Branching by the mean would also hide the jump the estimate shows now,
+    `tie.g` "within 0" where the exact answer is 1. And a count of unstable
+    products is nothing a model's reader acts on, a cancellation's cost
+    being in the estimate already; the guards are where the outputs part
+    (`MANIFESTO.md`, *The oracle*).
+  - **On the sequence's line**: the sequence straddled is not always the one
+    whose estimate it moves, and the clauses' words would be needed there
+    anyway.
+  - **Every straddle**, or each sequence's first: they follow from the
+    first, as flips do.
+  - **Failing the check**: above.
+
+  What moves, measured with a prototype on every check of `ctest`: `tie`'s
+  report, by the line above, and nothing else; every other report byte for
+  byte, the estimates' digits with them, the hook drawing no coin. No golden
+  and no expected header. README's paragraph on the check gains a sentence,
+  with the implementation.
+
+  About 35 lines, all in `check.hpp`, as the prototype measured them
+  formatted: the hook set in each run and the clauses recorded, 10; the
+  array per guarded place, 10; the straddle's walk in the program written,
+  less the flip's margin words now shared, 15. 15,584 lines in all now; past
+  53 the implementation stops and reports.
+
+  Specified in `test/compile/straddle.ink`: `knee`, a ReLU whose kink the
+  run moved down passes, the clauses meeting so that its estimate is its
+  error, and the same in float, where the step's flip follows at the same
+  margin; `crease`, a ReLU at its kink reached by `~(1/10) + ~(2/10)`,
+  straddled by roundings at a step the seeds draw; `plain`, the same sum far
+  from its threshold, with no line; and `both`, a straddle at 3 and brink's
+  flip at 1, the straddle first. With `tie`'s line above. Unwired, as a
+  report failing by design fails `ctest`: wired with the implementation.
+  Expected lines by hand: the limit's stop, 1/2 - 2^-34, and its remainder
+  by C36's rule; the doubles and margins in Python's correctly rounded
+  floats and fractions; each run's clause enumerated over its draws, the
+  runs moved up and down deciding `knee`, `both` and `tie` whatever the
+  seeds; `crease`'s step and every estimate's digits not a limit's by
+  their form.
