@@ -151,6 +151,21 @@ inf
 >> 10^400*~1
 inf
 
+# An exact number past a double's range is finite all the same, so its
+# product with a 0 part of the other is 0, not inf times 0: 10^400 i is
+# i*inf, which read '-nan+i*inf', and its real part 0 (DESIGN.md, C207).
+>> 10^400*i
+i*inf
+
+>> re(10^400*i)
+0
+
+>> 10^400/i
+-i*inf
+
+>> 10^400*~0
+0
+
 # NaN is not a number, so a comparison of it has no answer, and is refused
 # rather than guessed false, as C has it (DESIGN.md, a NaN reaches every term
 # that reads it). Nor are two NaNs equal, or a matrix with one equal to any.
