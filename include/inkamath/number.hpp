@@ -456,8 +456,8 @@ private:
     static int Exponent(const Number& a) {
         const auto bits = [](const Natural& n) { return static_cast<int>(n.bits()); };
         if (a.big_) return bits(a.big_->num) - bits(a.big_->den) + 1;
-        const double top = std::max(std::abs(a.inexact_.real()), std::abs(a.inexact_.imag()));
-        return std::isfinite(top) && top != 0 ? std::ilogb(top) + 1 : 0;
+        const double larger = std::max(std::abs(a.inexact_.real()), std::abs(a.inexact_.imag()));
+        return std::isfinite(larger) && larger != 0 ? std::ilogb(larger) + 1 : 0;
     }
     static Number Part(const Number& a, int e) {
         if (!a.big_) return Number(Ldexp(a.inexact_, -e));
