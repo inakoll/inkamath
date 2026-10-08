@@ -40,7 +40,7 @@ foreach(golden IN LISTS goldens)
 endforeach()
 # fastgrad.ink's 600,000 remembered calls take 25 s under sanitizers alone.
 set_tests_properties(fastgrad.ink PROPERTIES TIMEOUT 120)
-foreach(suite IN ITEMS bignum line_editor matrix spec)
+foreach(suite IN ITEMS bignum line_editor matrix)
     add_test(NAME ${suite} COMMAND inkamath_tests --test-suite=${suite} --no-intro)
     set_tests_properties(${suite} PROPERTIES TIMEOUT 60)
 endforeach()

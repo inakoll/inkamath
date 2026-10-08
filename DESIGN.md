@@ -1723,7 +1723,7 @@ closures need one anyway, and can bring it.
 | C198 `[fixed]` | **`abscissa` of a marginal system with an exact eigenvalue 0 was marked as approximated.** Its 0 is no bracket's, as C195's rho was not: `abscissa([0 0; 0 -1])` and `abscissa([0 1; 0 0])` were 0 "approximated past a thousand digits". A polynomial lambda^k q, k at least 1 and q passing Routh's strict test, has 0 for an eigenvalue and none right of it, so its abscissa is answered 0 without a bisection now, unmarked, in 4 lines of the prelude, the factor stripped of q a cell at a time; bisection_cap.ink holds it, its `abscissa([0 1; 0 0])` moves to unmarked, and README's section 2 says so. A pair on the axis, `[0 0 0; 0 0 1; 0 -1 0]`'s ±i beside its 0 or `[0 1; -1 0]`'s alone, fails the strict test as one right of it would, and is marked still: telling the two apart takes Routh's singular cases, an auxiliary polynomial, which no cheap test gives. |
 | C199 `[fixed]` | **`smax` of a matrix far past a double's range refused with a NaN.** `smaxd` checks its answer by scaling it back, and `rhod` scales by A's power in two halves, each a double only up to about 2^1074: from about 10^647 up or 10^-646 down a half was inf or 0, and scaling the inf or 0 back multiplied it by the other, so `smax(10^700)` and `smax([10^-700 0; 0 10^-700])` were "a comparison needs a number, not -nan" where `eig` answers them inf and 0, marked. A nonzero answer whose double is 0 or inf is marked without the round trip now, in 1 line of the prelude, wrapped; eig.ink holds it, and no other answer moved. |
 | C200 `[fixed]` | **`eigb` gave a bracket where there is no eigenvalue to bracket.** eig's guard, Hermite's test, was eig's alone, so its bracket counted the roots of a matrix with complex ones as if all were real: `eigb([0 1; -1 0], 1)_64` was [0; 0], an exact bracket certifying 0 for ±i, `eigb([2 1; 1 3], 3)_64` [~8; 8] for a third eigenvalue of a 2x2, and `eigb([2 1; 1 3], 3/2)_64` the second's. eigb asks what eig asks now, and a whole k from 1 to n, and `eigk` scales `eigu`'s bracket back itself, so eig pays the test once, in 2 lines changed, one of them wrapped; eig.ink holds it, and no other answer moved. |
-| C201 `[open]` | **abs's slope of a real value whose derivative is complex was complex.** abs answered x or -x, and so passed on x's derivative or its negative: with `T(z) = 1/(z - 1/2)`, `grad_(w = 0) abs(T(e^(i*w)))` answered `-i*4`, T's own slope, where |T| is real and peaks at w = 0, its slope 0. Found specifying the parts and modulus of a complex number (next in line), which closes it, its real clauses taking re(x); `test/data/spec/cparts.ink` holds it. |
+| C201 `[fixed]` | **abs's slope of a real value whose derivative is complex was complex.** abs answered x or -x, and so passed on x's derivative or its negative: with `T(z) = 1/(z - 1/2)`, `grad_(w = 0) abs(T(e^(i*w)))` answered `-i*4`, T's own slope, where |T| is real and peaks at w = 0, its slope 0. Found specifying the parts and modulus of a complex number (next in line), which fixed it, its real clauses taking re(x); `cparts.ink` holds it. |
 
 **Measure instructions, not the clock.** One of those changes made the matrix
 workload 20 per cent slower by the clock and not by a single instruction: with
@@ -2792,8 +2792,8 @@ that exploring seven domains asked of the interpreter, by how many asked.
 - **Steps and tolerance as options**, when a model asks: a hundred steps is
   short of what a slow filter settles in, and a billionth is loose for a
   well-conditioned step.
-- **The parts and modulus of a complex number**: a frequency response
-  |T(e^{jw})| cannot be written, as `abs` refuses a complex value and nothing
+- `[done]` **The parts and modulus of a complex number**: a frequency
+  response |T(e^{jw})| cannot be written, as `abs` refuses a complex value and nothing
   gives its real or imaginary part. Decided: `re(z)` and `im(z)` built in,
   and `abs` extended in the prelude:
 
@@ -2909,6 +2909,21 @@ that exploring seven domains asked of the interpreter, by how many asked.
   with sympy, each rounded to 9 digits with mpmath and none within 0.04 of
   a digit's half; the range and the marks in Python's doubles through the
   scaling above.
+
+  Built as specified: the spec is the golden `cparts.ink`, 53 entries, and
+  the compiled frequency response a case of `cli.cmake`; README's section
+  1 lists `re` and `im` and shows |T|. Departures: the node is
+  `BuiltinExpression`, and `Matrix`'s `floor` became `Cells`, a cell's
+  function applied to each, which the compiler's constant floor calls
+  too; a point is complex for grad where any grad around it has one, so a
+  part moving under a complex grad is refused in the innermost grad's
+  name; the prelude's abs is known by its definition in the built-in
+  scope. 37 lines landed against about 34: the refactor 7, where 4 were
+  estimated, the node's constructor and `Cells`; the prelude 3, its
+  comment rewritten in place; the definitions 4 with a line of comment;
+  grad 15, the parts' rule and floor's jump 6, the complex point 5 and
+  abs named 4; the compiler 5 and `tex` 3. 15,364 lines in all, after
+  `cparts`.
 - `[done]` **A sequence with parameters read at a constant index, compiled.**
   `--compile` refuses `f(x)_K` anywhere but under `lim`, "a sequence with
   parameters", where the interpreter answers: `det` by Faddeev-LeVerrier in
