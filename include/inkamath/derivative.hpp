@@ -3,6 +3,7 @@
 
 #include "inkamath/reference_stack.hpp"
 
+#include <bit>
 #include <cstddef>
 #include <cstdint>
 #include <map>
@@ -190,6 +191,16 @@ private:
         return grads_.back().first + " = " + grads_.back().second;
     }
 
+    // The innermost grad u moves with whose point is complex, empty if none.
+    [[nodiscard]] std::string Complex(const Jet& u) const {
+        std::size_t with = 0;
+        for (std::size_t s = 1; s < u.size(); ++s)
+            if (u[s]) with |= s;
+        if (!(with & complex_)) return "";
+        const auto& [name, point] = grads_[std::bit_width(with & complex_) - 1];
+        return name + " = " + point;
+    }
+
     Jet Eval(const PExpression<T>& e) { return Eval(*e); }
 
     // A dynamic_cast without its search of the bases, which is most of what
@@ -315,9 +326,9 @@ private:
             arguments.emplace_back(keyword, Eval(argument));
         for (const auto& [given, jet] : arguments) definition->Divides(given, *jet[0], stack_);
         // In its own words, not its guard's im's.
-        if (complex_ && !arguments.empty() && Moves(arguments[0].second) &&
-            definition == stack_.Builtins().names.at("abs"))
-            throw std::runtime_error("abs has no complex derivative at " + Where());
+        const std::string at = complex_ && !arguments.empty() ? Complex(arguments[0].second) : "";
+        if (!at.empty() && definition == stack_.Builtins().names.at("abs"))
+            throw std::runtime_error("abs has no complex derivative at " + at);
         for (const auto& [given, jet] : arguments)
             if (Moves(jet) && stack_.staircases.contains(definition.get()))
                 throw std::runtime_error("grad cannot differentiate " + definition->Name() +
@@ -526,8 +537,8 @@ private:
     Jet Builtin(BuiltinExpression<T>& node) {
         const Jet  u    = Eval(node.m_e());
         const auto cell = [&node](const T& v) { return T::Cells(v, node.function); };
-        if (node.name != "floor" && complex_ && Moves(u))
-            throw std::runtime_error(node.name + " has no complex derivative at " + Where());
+        if (const std::string at = Complex(u); node.name != "floor" && !at.empty())
+            throw std::runtime_error(node.name + " has no complex derivative at " + at);
         if (node.name != "floor") return Map(u, cell);
         const T value = cell(*u[0]);
         chosen_       = chosen_ || (Moves(u) && numeric_interface<T>::approximated(*u[0]));
@@ -740,10 +751,9 @@ private:
         std::vector<Jet>  parts;
         {
             const Order order(*this, name, numeric_interface<T>::toString(at));
-            const Setting<bool> complex(
-                complex_,
-                complex_ ||
-                    !IsZero(T::Cells(at, numeric_interface<typename T::value_type>::imaginary)));
+            const bool  real =
+                IsZero(T::Cells(at, numeric_interface<typename T::value_type>::imaginary));
+            const Setting<std::size_t> complex(complex_, complex_ | (real ? 0 : bit));
             std::optional<typename ReferenceStack<T>::Frame> frame;
             if (!stack_.Framed()) frame.emplace(stack_);
             typename ReferenceStack<T>::Trial bound(stack_, name);
@@ -1000,7 +1010,7 @@ private:
     bool                                                  guard_   = false;
     bool                                                  filling_ = false;
     bool                                                  chosen_  = false;
-    bool                                                  complex_ = false;  // a grad's point
+    std::size_t                                           complex_ = 0;  // grads at a complex point
     const Guarded*                                        guarded_ = nullptr;
 };
 
