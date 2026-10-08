@@ -375,6 +375,21 @@ evaluate to. If `a` is the 2x2 matrix above, then `[a, a; a, a]` is 4x4:
  3, 4, 3, 4]
 ```
 
+Each row of blocks is a band as tall as its tallest block, each column of
+blocks a band as wide as its widest, and a block's place is where its two
+bands meet. A single value is stretched over its place, so `[a, 0]` borders
+`a` with zeros; any other block must fill its place, and one that does not
+is refused rather than continued by its corner:
+
+```
+>> [a, 0]
+[1, 2, 0;
+ 3, 4, 0]
+
+>> [a, [3 4]]
+error: a block that does not fill its band
+```
+
 A matrix prints as the literal that would produce it, with its columns
 aligned, so what is printed can be typed back. At the prompt a line with an
 unclosed bracket is continued — `..` asks for the rest — which is what lets a

@@ -3119,8 +3119,10 @@ that exploring seven domains asked of the interpreter, by how many asked.
   compile time, as every shape is known there. Each block is compiled; a
   band of rows is as tall as its tallest block and a band of columns as wide
   as its widest; a single value is stretched over its block and computed
-  once, as arithmetic's stretch shares it and as the interpreter evaluates a
-  block once; any other block fills its place exactly. The result is the
+  once per step, as arithmetic's stretch shares it and as the interpreter
+  evaluates a block once, but written in each cell where a step has no
+  temporaries, in a limit's function or the prelude's C functions; any
+  other block fills its place exactly. The result is the
   cells of each block written into their places, a constant where every
   block is: no array, copy, loop or size at run time, so a literal whose
   stretched values are names or numbers compiles to the header the same

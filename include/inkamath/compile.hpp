@@ -2081,8 +2081,8 @@ private:
         return Answer(Parted(code, any ? Part(Laid(parts, expression->Size())) : Part(), from));
     }
     // Each band as tall or as wide as its largest block, a single value
-    // stretched over its block and computed once; any other block fills its
-    // place, as C41's corner is no meaning.
+    // stretched over its block and computed once per step, Shared; any
+    // other block fills its place, as C41's corner is no meaning.
     Code Laid(const std::vector<Code>& blocks, Extent bands) {
         std::vector<std::size_t> rows(bands.rows, 1), cols(bands.cols, 1);
         for (std::size_t b = 0; b < blocks.size(); ++b) {
