@@ -496,6 +496,18 @@ if(size GREATER 4096)
     message(SEND_ERROR "compile_c140: c140.h is ${size} bytes")
 endif()
 
+# C230: a cell of a call read in a sum or in a cell compiled every cell of
+# the call at each reading, 300^3 cells here and 4^10 down g's chain.
+file(WRITE "${OUT}/c230.ink" "f(x)[i<=300] = x*i\nh(x)[i<=300] = f(x)[i] + 1\ng0(x)[i<=4] = x*i\n")
+foreach(k RANGE 1 10)
+    math(EXPR j "${k} - 1")
+    file(APPEND "${OUT}/c230.ink" "g${k}(x)[i<=4] = g${j}(x)[i] + 1\n")
+endforeach()
+file(APPEND "${OUT}/c230.ink" "y_n = sum_(i=1)^300 h(n)[i] + sum_(i=1)^4 g10(n)[i]\n")
+set(args --compile c230.ink -o c230.h)
+check(compile_c230)
+holds(compile_c230 c230.h "(double)m_->index_ * 300.0 + 1.0) + ((double)m_->index_ * 1.0 + 1.0 + 1.0 + 1.0 + 1.0 + 1.0 + 1.0 + 1.0 + 1.0 + 1.0 + 1.0 + ((double)m_->index_ * 2.0 + 1.0")
+
 # C155: as is a call of the prelude's, where it was written at each reading.
 file(WRITE "${OUT}/c155.ink" "h(t) = (t - 1)/t\nh(t) | t == 1 = t\nh(t) | t == 0 = 1\nf(z) = h(exp(z))\nx_0 = 1/2\nx_n = f(f(x_(n-1)))\n")
 set(args --compile c155.ink -o c155.h)
