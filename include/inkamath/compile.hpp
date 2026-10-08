@@ -3099,7 +3099,7 @@ private:
             if (*place) at.push_back(Whole(Known(*place, "a cell whose place is not a constant")));
         // The interpreter refuses a matrix whole where it refuses a cell. One
         // that writes NaN in a cell not taken makes the header write it.
-        for (const Cell& c : matrix.cells) aware_ |= !matrix.constant && WritesNan(c.text);
+        for (const Cell& c : matrix.cells) aware_ |= !matrix.constant && MayNan(c.text);
         if (aware_ && !matrix.whole && !matrix.constant) matrix = Shared(matrix);
         const std::string nan = matrix.whole ? "" : Nan(matrix);
         if (!nan.empty())
