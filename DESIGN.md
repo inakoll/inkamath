@@ -1750,6 +1750,7 @@ closures need one anyway, and can bring it.
 | C214 `[fixed]` | **`eigv` read a sign by multiplying two coefficients, doubling their digits.** Descartes' count, eig's and hinf's, took a sign change where `q[j]*eigl(q)_(j-1) < 0`, so a test passed a thousand digits at half the size its coefficients do, and was marked or refused there: `hinf([0 1; -1 -10^-100], [0; 1], [1 0])` was "hinf needs tests within a thousand digits", where the peak of a damping 2z = 10^-100 is 1/(2z(1 - z^2)^(1/2)), 10^100. The signs are compared now, in 1 line of the prelude more; hinfdata.ink holds it, and no other answer moved. Measured on random matrices against the same binary before it, each new answer checked against NumPy: eig of symmetric matrices of tenths, marked at 28x28, is certified at 36x36 (7 minutes); hinf of small whole numbers, refused at 9x9 with one input and 6x6 with two, is certified at 10x10 and 9x9, of full doubles at 3x3 (4 of 4, refused before) and of doubles k/7 at 4x4 (4 of 4, refused before in 4); time scales 10^90 apart are certified, 10^50 before, and a mode B cannot reach 10^150 slower, 10^80 before. README's section 2 says so. |
 | C220 `[fixed]` | **A value derived from a parameter whose cell was a temporary of the update was read by the temporary's name, which the step does not declare.** A derived value's cell that is a name or a number is written where it is read rather than kept in a field, and a temporary's name is one: `p = 1/2`, `R = [p, 1; 2, 3]^(0-1)` and `x_n = R*[n; 1]` wrote `t0_[0][0]` in the step, a header that did not build, as did `[exp(p), [1, 2; 3, 4]]` once block literals stretch a computed value. Such a cell is read from its field now, in 3 lines of `compile.hpp` more; `cli.cmake` holds the step, and no recorded header moved. |
 | C221 `[fixed]` | **A cell taken from a matrix answered where another of its cells is NaN by a function of the header.** C211's gap: where a cell is taken, a header tests every cell of the matrix once one of them writes NaN, and a call of log, which may answer NaN, did not count: `[x_n, log(x_n)][1, 1]`, in a header nothing else made aware, answered x_n where the interpreter refuses the matrix whole. Such a call counts now, in a line changed of `compile.hpp`; `nan.ink`'s `took` holds it, and no recorded header moved. A division by zero there is still an infinity, which no test catches. |
+| C225 `[fixed]` | **The prelude's stated worst errors were sample maxima.** DESIGN gave the worst errors of `exp`, `log`, `tanh`, `sin` and `cos`, and of their parts, from 1e7 or 2e7 random points a range or 2,000 for the parts, and elementary.ink and trig.ink comments bounds from them. A sweep of 1e8 to 4e8 points a range against a 64-bit long double, its farthest confirmed by mpmath at 256 bits, passes each: `exp` 1.307 units at 635.2779388398857 (1.29 stated, "1.3 everywhere" in elementary.ink), 0.900 of 2^-1074 at -708.7539819250273 (0.89), `log` 2.938 at 1.0038647811079129 (2.87), `tanh` 2.967 at -0.20806425077771573 (2.83), `sin` 2.431 at -36502.41508093197 (2.43, "2.4" in trig.ink), `cos` 2.445 at -660945.4787059261 (2.37), and the parts 2.445 from cos and 2.426 from -sin at -660945.4787059261 and 651843.0266746085 (2.04 and 1.62). The functions stand: the figures are the sweep's now, measured and still no bound, and README states them. `--check` cannot see an error the interpreter and a header share, so `test/prelude_test.cpp` holds the five, the two parts and `ilogb` to `test/data/prelude_reference.txt`, 2,400 arguments with mpmath's correctly rounded values, written once by `test/prelude_reference.py`: the sweep's farthest, the doubles nearest a multiple of pi/2 or ln 2, subnormals and either end of `exp`'s range; its skipped case `sweep` is the sweep. Two comments moved, elementary.ink's and trig.ink's, and no answer. Found by an external review. |
 
 **Measure instructions, not the clock.** One of those changes made the matrix
 workload 20 per cent slower by the clock and not by a single instruction: with
@@ -4559,23 +4560,24 @@ that exploring seven domains asked of the interpreter, by how many asked.
 
   Accuracy over doubles, against expl, logl and tanhl at 64 bits on 2e7
   points each, and against mpmath at 160 bits on 2e4, which agree to the
-  third decimal of a unit:
+  third decimal of a unit; the worst errors are a sweep's of 1e8 to 4e8
+  points a range, confirmed by mpmath, and no bound (C225):
 
   | | worst | correctly rounded |
   |---|---|---|
-  | `exp` on [-708.39, 709.78] | 1.29 units | 88.6% |
-  | `exp` below, to -745.13 | 0.89 units of 2^-1074 | 99.1% |
-  | `log`, every positive double | 2.55 units | 99.8% |
-  | `log` on [1/2, 2] | 2.87 units | 65.6% |
-  | `tanh` on [-20, 20] | 2.77 units | 40.2% |
-  | `tanh`, \|x\| < 1 to 2^-40 | 2.83 units | 76.5% |
+  | `exp` on [-708.39, 709.78] | 1.307 units, at 635.2779388398857 | 88.6% |
+  | `exp` below, to -745.13 | 0.900 units of 2^-1074, at -708.7539819250273 | 99.1% |
+  | `log`, every positive double | 2.938 units, at 1.0038647811079129 | 99.8% |
+  | `log` on [1/2, 2] | the same | 65.6% |
+  | `tanh` on [-20, 20] | 2.967 units, at -0.20806425077771573 | 40.2% |
+  | `tanh`, \|x\| < 1 to 2^-40 | the same | 76.5% |
 
   So `exp(1)` is a unit above e, which is the double nearest it, and
   `exp(1) == e` is 0 where it was 1. Rejected: correct rounding, by tables or
   double-double, several hundred lines; the shape of fdlibm's log,
-  log(1 + f) = f - (f^2/2 - s(f^2/2 + R)), within 1.24 units for 2.87, at a
-  helper and two operations more; a high part of ln 2 of 32 bits, 1.18 units
-  for 1.29; tanh as m/(m + 2) with m = e^(2x) - 1, 3.14 units; an odd
+  log(1 + f) = f - (f^2/2 - s(f^2/2 + R)), within 1.24 units for 2.87 on
+  the 2e7 points, at a helper and two operations more; a high part of ln 2
+  of 32 bits, 1.18 units for 1.29; tanh as m/(m + 2) with m = e^(2x) - 1, 3.14 units; an odd
   polynomial near 0, nineteen terms to reach 0.55.
 
   Identical, measured: the design emulated in C, built by GCC 13 and Clang 18
@@ -5456,14 +5458,16 @@ that exploring seven domains asked of the interpreter, by how many asked.
   reciprocals.
 
   Accuracy, against sinl and cosl at 64 bits on 1e7 points a range, and
-  against mpmath at 200 bits elsewhere:
+  against mpmath at 200 bits elsewhere; the first four rows' worst errors
+  are a sweep's of 2e8 points a range, confirmed by mpmath, and no bound
+  (C225):
 
   | | worst, sin and cos | correctly rounded |
   |---|---|---|
-  | on [-pi/4, pi/4] | 0.75 and 1.25 units | 97.7% and 74.0% |
-  | on [-2 pi, 2 pi] | 1.56 and 1.45 units | 77% and 73% |
-  | on [-1000, 1000] | 2.34 and 2.29 units | 72.7% |
-  | on [-2^20, 2^20] | 2.43 and 2.37 units | 70.3% |
+  | on [-pi/4, pi/4] | 0.760 and 1.255 units, at -0.7821688726213682 and 0.7726675189999381 | 97.7% and 74.0% |
+  | on [-2 pi, 2 pi] | 1.569 and 1.442 units, at -0.7881873522461342 and -4.743642741448404 | 77% and 73% |
+  | on [-1000, 1000] | 2.417 and 2.403 units, at 914.0782110333698 and 457.1642583033149 | 72.7% |
+  | on [-2^20, 2^20] | 2.431 and 2.445 units, at -36502.41508093197 and -660945.4787059261 | 70.3% |
   | the 12 doubles nearest a multiple of pi/2 below 2^20 | 0.35 units | all |
   | a sample of 20,000 exact arguments to 10^6 | 1.43 and 1.39 units | 74.5% |
   | in float, on [-6434, 6434] | 2.44 and 2.29 units of a float | 70.7% and 70.6% |
@@ -5502,8 +5506,8 @@ that exploring seven domains asked of the interpreter, by how many asked.
   is the argument chosen, exact or not: `max(1/3, 1/4)` is exactly 1/3.
 
   `grad` differentiates the definitions: the polynomials' derivatives,
-  within 2.04 units of cos and 1.62 of -sin at worst on a sample of 2,000
-  points, and floor's 0, so a few doubles where x*2/pi + 1/2 is whole are
+  2.445 units from cos and 2.426 from -sin at worst, at -660945.4787059261
+  and 651843.0266746085 (C225), and floor's 0, so a few doubles where x*2/pi + 1/2 is whole are
   refused as floor jumping, as in `exp`. `abs`'s slope at 0 is 1, its `x >=
   0` clause's. At a tie `max` and `min` take the first argument's slope, as
   TensorFlow's maximum and minimum: `max(0, x)` has a ReLU's slope 0 at 0,
