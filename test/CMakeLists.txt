@@ -133,7 +133,7 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brin
                          history:twice history:relayed history:pole
                          history:huge history:sever history:veiled history:cloaked history:two history:hid history:masked
                          nan:run nan:sign nan:shy nan:slope nan:pair
-                         nan:lap nan:trim nan:any nan:cell nan:held nan:idle nan:imag inputs:fan inputs:grid
+                         nan:lap nan:trim nan:any nan:cell nan:held nan:idle nan:imag nan:took inputs:fan inputs:grid
                          inputs:chan inputs:twirl inputs:duo inputs:mean3 inputs:mean2
                          inputs:track inputs:twain inputs:nestv inputs:fed estimate:tie
                          estimate:chaos estimate:dyad estimate:flat estimate:halved
@@ -454,6 +454,8 @@ set_tests_properties(check_idle_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^idle: 100 steps from 0, against exact values\nidle\\.g: within 0\nidle\\.h: within 0\nidle\\.k: within 0\nidle\\.l: within 0\nidle\\.y: within 0\n$")
 set_tests_properties(check_imag_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^imag: 100 steps from 0, against [^\n]*\nimag\\.x: within 0\nimag\\.z: within 0\n$")
+set_tests_properties(check_took_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^took: 100 steps from 0, against [^\n]*\ntook\\.w: within 0\n$")
 # A model's input of more than one cell (DESIGN.md, C83), every term exact.
 set_tests_properties(check_fan_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^fan: 100 steps from 0, against exact values\nfan\\.y: within 0\n$")
