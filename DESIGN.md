@@ -3253,6 +3253,10 @@ that exploring seven domains asked of the interpreter, by how many asked.
   it, or name it in the header.
 - **`--check` names the parameters the target rounds**, so a parameter no
   float holds (Goldberg's 4.53) is not read as the step's own error.
+- **`--check` quotes an inexact term with its `~`**: its reports print the
+  interpreter's terms bare, "where the interpreter gives
+  0.10000000000000001", where the REPL marks them since C240. The check
+  program would carry whether each term is exact beside its value.
 - **Refuse a repetition that adds nothing, in every context**: an index name
   repeated in a size (`x_n[j<=2, j<=2]` in a model's input,
   `M[j<=n, j<=n]` in a signature), a parameter or default written twice, a
