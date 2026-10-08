@@ -6617,7 +6617,7 @@ that exploring seven domains asked of the interpreter, by how many asked.
   bracket met the exact polynomials past it; divided, it is answered
   1e100, marked, up to some 10^152 apart, and refused from 10^154, where an
   answer would be marked but off by a factor, 2.4 at 10^170. The exact
-  reading and C206's check are one hook, `read`, which evaluation and grad
+  reading and C206's check are one hook, `checked`, which evaluation and grad
   call on each argument of a staircase, where the check had run on a single
   argument alone; the refusals' words are a table in `Unapplied` with
   eig's. 80 lines landed against about 81: the prelude 46 and its comment

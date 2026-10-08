@@ -205,7 +205,7 @@ public:
     // staircase's 0.
     std::set<const Reference<T>*> staircases;
     // Their arguments, checked and read before a call, by the interpreter.
-    std::function<void(const Reference<T>&, T&)> read;
+    std::function<void(const Reference<T>&, T&)> checked;
 
     [[nodiscard]] Scope<T>&       Target() const { return *target_; }
     [[nodiscard]] Scope<T>&       Builtins() { return builtins_; }

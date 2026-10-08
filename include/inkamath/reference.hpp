@@ -521,8 +521,8 @@ public:
         MemoKey<T> key{this, indexed, indexed ? index : 0,
                        parameters.EvaluateArguments(call, caller)};
 
-        if (stack.read && stack.staircases.contains(this))
-            for (auto& [name, value] : key.arguments) stack.read(*this, value);
+        if (stack.checked && stack.staircases.contains(this))
+            for (auto& [name, value] : key.arguments) stack.checked(*this, value);
         const auto& arguments = key.arguments;
         for (const auto& [name, value] : arguments) Divides(name, value, stack);
         if (home == &stack.builtins_ && stack.compiled && arguments.size() == 1 && !indexed &&
@@ -616,9 +616,9 @@ public:
             {"hinf", "hinf needs every eigenvalue of A left of the imaginary axis"},
             {"dhinf", "dhinf needs every eigenvalue of A inside the unit circle"},
             {"hinfy", "hinf needs tests within a double's range"}};
-        const auto prelude = home && !home->parent ? needs.find(reference_name_) : needs.end();
-        return (prelude != needs.end() ? prelude->second
-                                       : "no clause of " + reference_name_ + " applies") +
+        const auto worded = home && !home->parent ? needs.find(reference_name_) : needs.end();
+        return (worded != needs.end() ? worded->second
+                                      : "no clause of " + reference_name_ + " applies") +
                (past ? ", by a guard approximated past a thousand digits" : "");
     }
 

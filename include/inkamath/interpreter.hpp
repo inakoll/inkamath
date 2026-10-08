@@ -488,8 +488,8 @@ Interpreter<T, U>::Interpreter() {
         // An inexact cell inf or NaN has lost its value, and no eigenvalue or
         // norm of it is certified, inf or other (C206). hinf and dhinf read
         // any other real one as the rational its double is (DESIGN.md).
-        stack_.read = [hinf = names.at("hinf").get(), dhinf = names.at("dhinf").get()](
-                          const Reference<U>& f, U& x) {
+        stack_.checked = [hinf = names.at("hinf").get(), dhinf = names.at("dhinf").get()](
+                             const Reference<U>& f, U& x) {
             for (std::size_t k = 0; k < x.Size().count(); ++k) {
                 Number& c = x.data()[k];
                 if (c.exact()) continue;

@@ -353,8 +353,8 @@ private:
             if (Moves(jet) && stack_.staircases.contains(definition.get()))
                 throw std::runtime_error("grad cannot differentiate " + definition->Name() +
                                          " yet");
-        if (stack_.read && stack_.staircases.contains(definition.get()))
-            for (auto& [given, jet] : arguments) stack_.read(*definition, *jet[0]);
+        if (stack_.checked && stack_.staircases.contains(definition.get()))
+            for (auto& [given, jet] : arguments) stack_.checked(*definition, *jet[0]);
         if (p.limit()) return Limit(*definition, p, arguments);
         int        index   = 0;
         const bool indexed = p.TryEvalIndex(stack_, index);
