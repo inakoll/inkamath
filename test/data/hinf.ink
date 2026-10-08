@@ -61,30 +61,3 @@ digits = 9
 
 >> hinf([-2 -3; 2 -1], [-1 1; 0 2], [1 2], [-1 1])
 ~3.24470738
-
-# The norm is the transfer function's: a slow mode B cannot reach adds
-# nothing, and G = 0 is certified 0 without a bisection, as is a system
-# whose one mode B reaches C cannot see. G = D is D's largest singular
-# value.
->> hinf([-1 0; 0 -1/1000000], [1; 0], [1 1])
-1
-
->> hinf(-1, 0, 1)
-0
-
->> hinf([-1 0; 0 -2], [1; 0], [0 1])
-0
-
->> hinf(-1, 1, 0, -3)
-3
-
-# The discrete-time norm, over the unit circle: 1/(z - 1/2) peaks at
-# z = 1, 1/(z + 1/2) at z = -1, both 2, and 1/(z^2 - z + 1/2) at 2 sqrt(2).
->> dhinf(1/2, 1, 1)
-2
-
->> dhinf(-1/2, 1, 1)
-2
-
->> dhinf([0 1; -1/2 1], [0; 1], [1 0])
-~2.82842712

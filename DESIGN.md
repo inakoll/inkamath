@@ -6601,12 +6601,12 @@ that exploring seven domains asked of the interpreter, by how many asked.
   apart.
 
   Built as specified but for the time scales far apart: the spec is the
-  goldens `hinf.ink`, 20 entries, the norm's values, and `hinfdata.ink`, 33,
-  what it reads and refuses, two so that each replays well within a test's
-  minute under the sanitizers, in 12 s and 5 s; the compiled refusals are a
-  case of `cli.cmake`; README's sections 1 and 5 list the names, and
-  section 2 shows `hinf` and `dhinf` and says what is certified and how an
-  inexact cell is read. Departures: 1/(s + 1) + 1/(s + 10^-200) is refused,
+  goldens `hinf.ink`, 13 entries, the norm's values, and `hinfdata.ink`, 40,
+  what it reads and refuses and the discrete norm, two so that each replays
+  well within a test's minute under the sanitizers, in 10 s and 9 s; the
+  compiled refusals are a case of `cli.cmake`; README's sections 1 and 5
+  list the names, and section 2 shows `hinf` and `dhinf` and says what is
+  certified and how an inexact cell is read. Departures: 1/(s + 1) + 1/(s + 10^-200) is refused,
   `hinf needs tests within a double's range`, rather than answered 1e200:
   its tests pass a thousand digits holding 10^-400 beside 1, which no double
   holds, so none of them is decided, and what the prototype took to a NaN
