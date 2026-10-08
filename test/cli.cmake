@@ -1212,3 +1212,12 @@ cannot compile d: a matrix inverse outside a sequence
 ")
 set(exit 1)
 check(compile_blocks_refused)
+
+# C220: a value derived from a parameter whose cell is a temporary of the
+# update, a stretched value or an inverse's, is read from its field, not
+# by the temporary's name, which the step does not declare.
+file(WRITE "${OUT}/c220.ink" "p = 1/2\nQ = [exp(p), [1, 2; 3, 4]]\nR = [p, 1; 2, 3]^(0-1)\nx_n = Q*[n; 1; 1] + R*[n; 1]\n")
+set(args --compile c220.ink -o c220.h)
+check(compile_c220)
+holds(compile_c220 c220.h [[    m_->x[0][0][0] = m_->Q[0][0] * (double)m_->index_ + 1.0 * 1.0 + 2.0 * 1.0 + (m_->R[0][0] * (double)m_->index_ + m_->R[0][1] * 1.0);
+]])
