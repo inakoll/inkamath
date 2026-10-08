@@ -6741,7 +6741,10 @@ that exploring seven domains asked of the interpreter, by how many asked.
     3/10)` is "~1 was approximated, so it has no exact fraction".
   - **What the rule must not move**, four changes, measured by a prototype:
     - ilogb's double path, in C, answers its k inexact, as its walk then
-      does, which it must equal; 1 line.
+      does, which it must equal; 1 line. So ilogb of a double is no
+      index, `x_(ilogb(~8))` refused where it was 3, `1/ilogb(~1)` is
+      `~inf` where it was division by zero, and `1.1^ilogb(~8)` a double
+      power, `~1.3310000000000004` where it was 1.331.
     - `rhos` also stops where the midpoint is an end. Of an inexact matrix
       rho, abscissa and eig now bisect a bracket of doubles, their tests'
       truths inexact, and adjacent doubles are never 2^-53 apart relative:
