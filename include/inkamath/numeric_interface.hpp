@@ -234,7 +234,9 @@ struct numeric_interface_imp<std::complex<T>,false>
             throw std::runtime_error("a factorial cannot be negative");
         }
         if(value != std::floor(value)) {
+            // Marked as Number prints a double, NaN bare (C270).
             throw std::runtime_error("a factorial needs a whole number, not "
+                                     + std::string(value == value ? "~" : "")
                                      + numeric_interface<T>::toString(value));
         }
         return numeric_interface<T>::fact(value);
