@@ -1748,6 +1748,9 @@ closures need one anyway, and can bring it.
 | C212 `[fixed]` | **grad refused a variable named like a size of a called function's signature.** Its check that a definition reads no global of grad's name bound a definition's parameters and indices but not the sizes its signature names, which are its own: `grad_(a = 1) a*fa([1; 2])`, with `fa(X[j<=a, k<=b]) = sum_(j=1)^a X[j,1]`, was "fa reads the global a, which grad's a does not reach", and through the prelude so were `grad_(m = 2) m*rho([1/2])`, hurwitzt's m, and `grad_(n = 1) n*charpoly([1 2; 3 4])`, charpolyc's n. The sizes are bound with the names now, in 2 lines and one of comment; grad.ink holds it, and no other answer moved. |
 | C213 `[fixed]` | **A function of the prelude given a number was refused in words not its own.** Called on a number, such a function is a function of the header, whose body was compiled without the sizes its signature names and without a sequence's temporaries: `y_t = rho([1/(t+2)])` and `dhinf(1/(t+2), 1, 1)` were "n is not defined", `rhoe(t)` "m is not defined", and `hinf(-t-1, 1, 1)` and `charpoly(t)` "a sequence with parameters in a limit's terms", where there is no limit. Its body binds the sizes now, and one that reads a sequence with parameters, itself or through what it calls, is written where it is called, as of a matrix, in 20 lines and 4 of comment: rho, hinf and dhinf of a number are refused in their definitions' words, "a factorial", hurwitzb's, and rhoe and charpoly of one compile. `compile_charpoly_refused` and `compile_hinf_refused` in `test/cli.cmake` hold it, its `x` moving from the limit's words, and `lone` in `test/compile/iterates.ink`; no expected header moved. |
 | C214 `[fixed]` | **`eigv` read a sign by multiplying two coefficients, doubling their digits.** Descartes' count, eig's and hinf's, took a sign change where `q[j]*eigl(q)_(j-1) < 0`, so a test passed a thousand digits at half the size its coefficients do, and was marked or refused there: `hinf([0 1; -1 -10^-100], [0; 1], [1 0])` was "hinf needs tests within a thousand digits", where the peak of a damping 2z = 10^-100 is 1/(2z(1 - z^2)^(1/2)), 10^100. The signs are compared now, in 1 line of the prelude more; hinfdata.ink holds it, and no other answer moved. Measured on random matrices against the same binary before it, each new answer checked against NumPy: eig of symmetric matrices of tenths, marked at 28x28, is certified at 36x36 (7 minutes); hinf of small whole numbers, refused at 9x9 with one input and 6x6 with two, is certified at 10x10 and 9x9, of full doubles at 3x3 (4 of 4, refused before) and of doubles k/7 at 4x4 (4 of 4, refused before in 4); time scales 10^90 apart are certified, 10^50 before, and a mode B cannot reach 10^150 slower, 10^80 before. README's section 2 says so. |
+| C240 `[open]` | **A bare number could be inexact.** `~` said only that the digits shown are not all of the value (phase 13), so an inexact number whose decimal is complete printed bare, as an exact one does, and read back exact: `~0.5` was `0.5`, `dhinf(1/2, 1, 1)` `2` and `rho([0 1; 0 0])` `0`. `MANIFESTO.md`'s "the meaning is exact" needs a bare number to mean an exact one. Specified by *A bare number is exact, and a truth read from a double is not* (next in line); `test/data/spec/inexact.ink` holds it. |
+| C241 `[open]` | **A truth read from a rounded number was exact.** A comparison of doubles answered an exact 1 or 0, so rounding became a confident truth: with `A = [1/2 1; -1 1/2]`, `rho(A)^2 == 5/4` was an exact 0 where the answer is 1, `~0.1*3 > 3/10` an exact 1, and a clause a guard chose by such a truth answered plainly, as C68 had it for every number but one approximated past a thousand digits. Specified by the same item; `test/data/spec/inexact.ink` holds it. |
+| C242 `[open]` | **An exact number past a double's range times a double was inf or 0.** The exact operand became a double first: `10^400*~2^-332` is inf where the product is about 1.14e300, `10^400/~2^332` too, and `10^-400*~1e300` is 0 where it is 1e-100. Found specifying C240 and C241: with log's scale 2^ilogb(x) inexact, `grad_(t = ~(1.5e-300)) log(t*10^200*10^200)` in fastgrad.ink would be `~inf` for 6.67e299. |
 
 **Measure instructions, not the clock.** One of those changes made the matrix
 workload 20 per cent slower by the clock and not by a single instruction: with
@@ -6675,3 +6678,142 @@ that exploring seven domains asked of the interpreter, by how many asked.
   digits and Hermite's test refuses symmetric matrices but for rounding.
   Rejected for `eig` only for an exact dyadic midpoint that zeroes a pivot,
   which an inexact matrix does not meet.
+- **A bare number is exact, and a truth read from a double is not** (C240,
+  C241). `~` says only that the digits shown are not all of the value, so
+  `~0.5`, `dhinf(1/2, 1, 1)` and `rho([0 1; 0 0])` print `0.5`, `2` and `0`,
+  as exact numbers do, and read back exact. And a comparison of doubles
+  answers an exact 1 or 0: `rho(A)^2 == 5/4`, A = [1/2 1; -1 1/2], is 0
+  where it is 1, `~0.1*3 > 3/10` is 1, and a guard turns either into
+  another clause, plainly. `MANIFESTO.md`'s "the meaning is exact" needs a
+  bare number to mean an exact one, and a truth to be exact only if what it
+  compares is. This is not *Epistemic levels in printing* (deferred): one
+  distinction, exact or not, which `frac` already makes.
+
+  Decided, by one rule, C68's extended from approximated numbers to every
+  inexact one: what is computed from an inexact number is inexact, a truth
+  and a choice among it too; and printing shows the kind.
+  - **Printing.** `~` before every inexact number, whatever its digits:
+    `~0.5`, `~2`, `~0`, `~-1`, `~inf`. Cell by cell of a matrix,
+    `[1, ~2]`, columns aligned as now; part by part of a complex number,
+    `~2+i*~3`, `i*~2`, and the unit too, `~i`, `-~i`, `~1-~i`. An exact
+    number prints as now, bare where the decimal is all of it and `~` where
+    digits are cut, `1/3` `~0.333333333`. So a bare number is exact and is
+    what it shows; `~` says the digits are cut or the number is a double,
+    and `frac` still tells which. NaN has none, `-nan`: it is no value a
+    decimal approximates. An error quotes a number so: "an index must be
+    exact, and ~2 was approximated". The approximated comment stays after
+    the marks, `~0  # approximated past a thousand digits`: `~` says
+    inexact, the comment why, and that asking for less might keep it exact.
+    This reverses phase 13's "an inexact number that is exactly what is
+    printed needs no mark" and "the default display may hide the kind".
+  - **Reading back.** `~1` is the double 1, printed `~1`, so an answer reads
+    back as its kind too, where `0.5` printed for `~0.5` read back as an
+    exact half; `~i`, `~1-~i` and a matrix of marked cells read back as
+    printed. `inf` does not read, as now.
+  - **Truths.** A comparison of numbers or of whole matrices that reads an
+    inexact number answers 1 or 0 inexact: `~0.1*3 > 3/10` is `~1`,
+    `rho(A)^2 == 5/4` `~0`, `i == i` `~1`; whole matrices where a cell of
+    either is, `[1 ~2] == [3 ~2]` `~0`. Every one, however far from its
+    threshold, `~2 > 1` `~1`, as C68's: no bound is carried. One reading
+    an approximated number is marked, as now.
+  - **`and` and `or`**, inexact where a side they read is, as for the mark:
+    `~0 and 1` is `~0` and `1 and ~1` `~1`, but `0 and ~1` is `0` and
+    `1 or ~0` `1`. The language has no `if`: guards and these two are its
+    conditions.
+  - **Guards.** A guard reading an inexact truth chooses as the double
+    says, and the answer of the clause chosen is inexact, an exact one
+    becoming its double, whether its own guard held or one before it
+    failed: with `g(x) | x > 1 = 1` and `g(x) = 0`, `g(~2)` is `~1` and
+    `g(~1/2)` `~0`; `max(2, ~1)` is `~2`, `min(1/3, ~0.5)` `~0.333333333`,
+    `ilogb(~8)` `~3`. By cells, each cell by the guards read for it. A
+    refusal keeps its words: an error has no value to mark, and ", by a
+    rounded guard" would end every refusal of a double by the prelude. A
+    count of such choices is inexact, so no index or bound: `x_(c_10)` is
+    refused, "an index must be exact, and ~5 was approximated", where it
+    answered. No test or README example does so.
+  - **grad.** A clause chosen by an inexact truth makes grad's whole answer
+    inexact, value and parts, as C165 marks it for an approximated one; a
+    part the clause lacks stays lacking. `grad_(x = ~2) g(x)` is `~0`, and
+    `1/grad_(x = ~25) tanh(~1*x)` `~inf` where it was "division by zero".
+    Without such a guard a part is what arithmetic makes it:
+    `grad_(x = ~2) 3*x` is `3`.
+  - **`frac`** refuses an inexact truth in its words: `frac (~0.1*3 >
+    3/10)` is "~1 was approximated, so it has no exact fraction".
+  - **What the rule must not move**, four changes, measured by a prototype:
+    - ilogb's double path, in C, answers its k inexact, as its walk does
+      now, which it must equal; 1 line.
+    - `rhos` also stops where the midpoint is an end. Of an inexact matrix
+      rho, abscissa and eig now bisect a bracket of doubles, their tests'
+      truths inexact, and adjacent doubles are never 2^-53 apart relative:
+      after 256 steps the answer was marked, `rho([~0.5 1; -1 0.5])`
+      `~1.11803399  # approximated...`. An exact bracket's midpoint is never
+      an end, so no exact answer moves; 1 line of the prelude.
+    - `smaxd` marks by `0*10^(-1000*truth)`, and of an inexact truth
+      10^~-1000 is a plain double 0: `smax(10^-310)` lost its mark. It
+      becomes a guard after the other; 1 line.
+    - A disturbed run no longer moves a power of two to a whole power,
+      whose double is exact: log's scale 2^ilogb(x) is inexact now, and
+      moving it took `surprise.k`'s estimate in `kahan.ink` from 8.9e-16 to
+      inf; about 5 lines.
+    And C242 is fixed first, a fix of its own, or fastgrad's
+    `grad_(t = ~(1.5e-300)) log(t*10^200*10^200)` becomes `~inf`.
+  - **Compiled.** No header moves: compiled values are doubles, printed by
+    none of this, and a constant folded from an inexact truth is the same
+    double. `--check` holds a term a guard chose by an inexact truth to an
+    inexact one and says from which index: `naught`, `zeroed`, `mirrored`,
+    `radix` in double and in float, and `apart` report "against exact
+    values until 0 and inexact ones from there"; no estimate moves. `?`
+    and `tex` print definitions, unchanged.
+
+  Rejected:
+  - **A `# rounded` comment**, as the approximated one: one per answer
+    cannot say which cell, it would end most answers, and `~` is per cell
+    already and reads back.
+  - **Truths left exact, and the gap documented**: an exact 0 for a true
+    equation is the confident wrong answer `MANIFESTO.md` excludes. C68
+    left `~rt_11 > c` "a plain 0, wrong as it is" because nothing printed
+    would have shown it; printing now does.
+  - **The truth inexact but not the clause it chooses**: with `h(x) | x ==
+    5/4 = 1` and `h(x) = 0`, `h(rho(A)^2)` would print a bare 0 that is 1.
+  - **Marking only near a threshold**, or **comparing a double with an
+    exact number exactly**: C68's reasons.
+  - **No `~` on a cut exact decimal**, `~` meaning only a double: `1/3`
+    printed `0.333333333` reads back as another exact number.
+  - **A bare `i`**: the unit is a double, as every complex number here.
+  - **`~-nan`**: a form that adds nothing.
+
+  What moves, measured with a prototype at 7868bda: 367 golden lines in 34
+  files, 324 of them in 32 by printing alone and 43 by truths and guards
+  (reddi 10, fastgrad 6, goldberg 5, fastprelude 5, kahan 3, conditional
+  and logic 2 each, and one each in ten files). All but three only gain a
+  `~`: `frac ilogb(~3)` and `frac min(1/3, ~0.5)` are refused, and
+  `1/grad_(x = ~25) tanh(~1*x)` is `~inf`. Comments that state the old
+  rule move with their entries: decimals.ink's on `~`, cparts.ink's "printed
+  without '~'", approximated.ink's `~rt_11 > c` and fastgrad.ink's exact 0;
+  and *A truth read from an approximated number* gains a line that its
+  "unchanged" is reversed here, as C68's row did. README.md: five examples,
+  `2+3*i`, `(1+i)*(1-i)`, `im(2+3*i)`, `dhinf(1/2, 1, 1)` and `abs(i)`'s
+  refusal; section 1's paragraph on printing and its sentence on guards,
+  made general; the table's comparisons and `and` and `or`, "1 or 0,
+  inexact where a side read is". `test/CMakeLists.txt`: the six `--check`
+  reports above, and their comments in `test/compile`.
+
+  About 50 lines of sources: `number.hpp` 6 the printing and 7 the
+  disturbed power; `matrix.hpp` 2, the truth; `reference.hpp` 7, the
+  guards; `derivative.hpp` 18, the same under grad; `interpreter.hpp` 1,
+  ilogb, and the prelude 2; then comments. The prototype added 50 and
+  removed 9, without them. C242 is not counted. 15,584 lines at 7868bda,
+  by `wc -l include/inkamath/*.hpp src/*`. Past 75 the implementation
+  stops and reports.
+
+  Specified in `test/data/spec/inexact.ink`, 115 entries replayed by the
+  spec suite, 69 failing by design, those passing being exact values,
+  definitions, refusals that quote no inexact number and what must not
+  move: bare and marked numbers, 0, inf, NaN and 17 digits; matrices of
+  mixed cells; complex parts and the unit; reading `~1` back; truths of
+  exact and inexact comparisons and of whole matrices; `and` and `or`; a
+  guard that holds, fails, refuses, by cells and counted into an index;
+  the prelude's guards and ilogb; `frac`; grad; and README's examples.
+  Written from the rule, each double by hand or in Python apart from the
+  interpreter; the prototype agrees with every entry but the one C242
+  holds.
