@@ -67,6 +67,10 @@ inf  # approximated past a thousand digits
 >> hinf([-1 0; 0 -10^-200], [1; 1], [1 1])
 error: hinf needs tests within a double's range, by a guard approximated past a thousand digits
 
+# So is a discrete pair, whose bound on the norm leaves a double first.
+>> dhinf([1/2 0; 0 1 - 10^-200], [1; 1], [1 1])
+error: hinf needs tests within a double's range, by a guard approximated past a thousand digits
+
 # Unstable, refused in words: the norm of G is that of a stable A. A
 # pole on the axis, an integrator or an undamped pair, makes it infinite,
 # and is refused alike rather than answered inf, as the pole may cancel; so
