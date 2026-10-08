@@ -39,6 +39,20 @@
 >> -~10^400
 ~-inf
 
+# A double's 0 has a sign, which 1/x tells: -10^-400 is -0 as a double. It
+# reads back as +0 still, ~ taking -0's exact 0 (C273). An exact 0 has none.
+>> ~-10^-400
+~-0
+
+>> 1/~-10^-400
+~-inf
+
+>> [~-10^-400, ~0]
+[~-0, ~0]
+
+>> -0
+0
+
 >> floor(~2.5)
 ~2
 

@@ -241,6 +241,15 @@ error: smax needs finite cells, not ~-inf
 >> eigb([~1 1; 1 1]*10^310, 1)_64
 error: eigb needs finite cells, not ~inf
 
+# An exact cell past a double has one, as rho's has (C272): 1 over A's
+# scale, past 10^400, is below every double, so 0, as of the exact matrix.
+>> eig([~1 0; 0 10^400])
+[  ~0;
+ ~inf]  # approximated past a thousand digits
+
+>> smax([~1 0; 0 10^400])
+~inf  # approximated past a thousand digits
+
 >> eig([1 2 3])
 error: eig takes A[j<=n, k<=n], not a 1x3 matrix
 

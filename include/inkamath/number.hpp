@@ -899,7 +899,7 @@ private:
     // has 767 significant digits at most.
     static std::string Decimal(double x, int count) {
         if (!std::isfinite(x)) return numeric_interface<double>::toString(x);
-        if (x == 0) return "0";
+        if (x == 0) return std::signbit(x) ? "-0" : "0";
         char       text[800];
         const auto end =
             std::to_chars(text, text + sizeof text, std::abs(x), std::chars_format::scientific, 766)

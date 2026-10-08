@@ -255,7 +255,7 @@ error: a factorial needs a real number, not ~(i)
 ~0
 
 >> min(~0, -10^-400)
-~0
+~-0
 
 >> 10^-400 == 10^-401
 0
