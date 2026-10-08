@@ -302,6 +302,46 @@ h(x)_n = h(x)_(n-1)/(1 + x^2)
 >> grad_(x = 0) lim h(x)
 1
 
+# A bisection is a staircase in x, flat between its jumps, so each term's
+# derivative is 0 where that of its limit, [x; x], is not: refused, as rho
+# is, where it answered [0; 0] (C215). A term alone is the staircase.
+>> bis(x)_0 = [0; 1]
+bis(x)_0 = [0; 1]
+
+>> bis(x)_n = bis(x)_(n-1) + (bis(x)_(n-1)[2] - bis(x)_(n-1)[1])/2*([1; 0] - ((bis(x)_(n-1)[1] + bis(x)_(n-1)[2])/2 > x)*[1; 1])
+bis(x)_n = bis(x)_(n-1) + (bis(x)_(n-1)[2] - bis(x)_(n-1)[1])/2*([1; 0] - ((bis(x)_(n-1)[1] + bis(x)_(n-1)[2])/2 > x)*[1; 1])
+
+>> lim bis(1/3)
+[~0.333333333;
+ ~0.333333333]
+
+>> grad_(x = 1/3) lim bis(x)
+error: grad cannot differentiate lim bis, whose terms step with x at a comparison or a floor
+
+>> grad_(x = 1/3) bis(x)_8
+[0;
+ 0]
+
+# Its terms remembered before the limit step all the same, and so does a
+# floor; a comparison of the index alone does not move.
+>> grad_(x = 1/3) (bis(x)_70 + lim bis(x))
+error: grad cannot differentiate lim bis, whose terms step with x at a comparison or a floor
+
+>> fl(x)_n = floor(10^n*x)/10^n
+fl(x)_n = floor(10^n*x)/10^n
+
+>> grad_(x = 1/3) lim fl(x)
+error: grad cannot differentiate lim fl, whose terms step with x at a comparison or a floor
+
+>> gi(x)_0 = 1
+gi(x)_0 = 1
+
+>> gi(x)_n = gi(x)_(n-1)/2 + x*(n > 2)
+gi(x)_n = gi(x)_(n-1)/2 + x*(n > 2)
+
+>> grad_(x = 1) lim gi(x)
+~2
+
 # A partial is taken one name at a time, and a derivative is an expression
 # like any other: it can be differentiated, and defined as a function of its
 # point.
