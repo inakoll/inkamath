@@ -298,3 +298,11 @@ unread(x_n) = {
     h_n = grad_(t = x_n) F(r(t))
 }
 idle = unread(x_n = 2 - n)
+
+# So is im's, though im of a compiled value, real, is 0: x and z answered
+# 1 where log and sin refuse, from step 0 (C204).
+stray(a = 1) = {
+    x_n = im(log(n - 5)) + a
+    z_n = im(sin(2^21*(n - 5))) + a
+}
+imag = stray()
