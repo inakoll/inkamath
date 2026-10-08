@@ -333,7 +333,8 @@ public:
                          ", margin_" + at + "},\n";
             }
         }
-        // A function's, named by the sequence asked, its calls paired in order.
+        // A function's, named by the sequence asked, its calls paired in order
+        // where a run made as many: a call remembered is not heard (C253).
         for (const auto& [key, heard] : calls) {
             const auto& [r, sequence, n, reference] = key;
             if (r || !sequence) continue;
@@ -345,7 +346,7 @@ public:
             for (std::size_t c = 0; c < heard.size(); ++c)
                 for (int other = 1; other <= 3; ++other)
                     if (const auto them = calls.find({other, sequence, n, reference});
-                        them != calls.end() && c < them->second.size())
+                        them != calls.end() && them->second.size() == heard.size())
                         straddle(n, sequence, "", clauses, fallback, them->second[c], heard[c]);
         }
         const std::string against = !inexact ? "exact values"

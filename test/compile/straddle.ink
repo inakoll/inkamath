@@ -160,3 +160,19 @@ logged() = {
     g_n = H(1/2 - y_n)
 }
 unasked = logged()
+
+# A call the interpreter remembers is not heard again. Its sums are one
+# double, so U of the second is the first's, remembered, where a run that
+# rounds them apart calls U twice; its calls are then not U(-1)'s, and no
+# guard is near its threshold in any run.
+#
+#     recalled: 100 steps from 0, against exact values until 0 and inexact ones from there
+#     recalled.y: within 0; the interpreter's terms about <e> from the exact ones
+#     recalled.z: within 0; the interpreter's terms about <e> from the exact ones
+#     recalled.x: within 0
+twinned() = {
+    y_n = ~(1/10) + ~(2/10)
+    z_n = ~(2/10) + ~(1/10)
+    x_n = U(y_n) + U(z_n) + U(-1)
+}
+recalled = twinned()
