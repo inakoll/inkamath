@@ -3080,12 +3080,14 @@ that exploring seven domains asked of the interpreter, by how many asked.
   constant count, `Y` below, which landed after the line was queued. Packing
   them is needed only under `lim`, which walks one sequence, and there the
   Riccati doubling also inverts I + G_k H_k inside a limit's function,
-  refused "a matrix inverse outside a sequence"; with the 2x2 inverse
-  written by hand it compiles to 8.6 MB of header today. *Temporaries in a
-  limit's function* would lift both, an inverse being a temporary, so that
-  case needs the two items. Blocks alone give the packed iterates at a
-  constant count, and under `lim` a doubling with no inverse, Smith's for
-  the Stein equation.
+  refused "a matrix inverse outside a sequence", words that mislead there,
+  the inverse being inside the limit's sequence: a defect of wording, for a
+  fix of its own, which moves `d`'s line in `blocks.ink`. With the 2x2
+  inverse written by hand it compiles to 8.6 MB of header today.
+  *Temporaries in a limit's function* would lift both, an inverse being a
+  temporary, so that case needs the two items. Blocks alone give the packed
+  iterates at a constant count, and under `lim` a doubling with no inverse,
+  Smith's for the Stein equation.
 
   Decided: the interpreter's layout (`EvaluationVisitor`'s literal), at
   compile time, as every shape is known there. Each block is compiled; a
@@ -3198,7 +3200,9 @@ that exploring seven domains asked of the interpreter, by how many asked.
 - **Temporaries in a limit's function**: C140 shares a step's nested calls,
   but a limit's terms are still written out whole, so a Riccati limit through
   `ric(ric(P))` is 163 MB of header. About 25-35 lines; moves headers whose
-  limits multiply matrices, not their values.
+  limits multiply matrices, not their values. The doubling algorithm for the
+  Riccati equation under `lim` needs it too, its inverse a temporary (block
+  literals compiled, above).
 - `[done]` **A definition as LaTeX**, `tex ?name`, a word at the start of a line as
   `frac` is, and reserved as it is. It renders what was parsed, not what was
   typed: the clauses for one index a line each, then those for every index,
