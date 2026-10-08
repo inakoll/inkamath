@@ -1136,7 +1136,7 @@ nothing and says where. The prelude that defines `ceil`, `mod`, `exp`, `log`,
 session, as the built-ins are: every scope sees it, and a session
 that defines one of its names again does so for itself
 alone, and clearing it gives the prelude's back. `exp`, `log`, `tanh`,
-`sin` and `cos` are written in it, accurate to a few units in the last
+`sin` and `cos` are written in it, accurate to under 3 units in the last
 place of a double, by the operations a compiled step performs:
 `exp(x)` is 2^k e^r, r = x - k ln 2 and e^r a polynomial, `log` reduces by
 `ilogb`, the power of two at or below its argument, and `sin` and `cos` by the
@@ -1146,7 +1146,9 @@ within about 1e-31 of a multiple of pi/2 (C123), nothing they give is exact, and
 phase such as `sin(w*t)` stops at 2^20. Compiled, each is a C function of the
 header's own; the interpreter calls the same functions, and under `grad` their
 parts, checked in as `include/inkamath/inkamath_prelude.h`, on a double, where
-they answer what the definitions answer.
+they answer what the definitions answer. Measured against mpmath, at worst
+`exp` is 1.31 units off, `log` 2.94, `tanh` 2.97, `sin` 2.43 and `cos` 2.45
+(`test/prelude_test.cpp`).
 `test/data/models.ink` is the whole of it.
 
 Data comes in as a file of definitions like any other, written by whatever

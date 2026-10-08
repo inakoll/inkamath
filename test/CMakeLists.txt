@@ -12,6 +12,7 @@ add_executable(inkamath_tests
     interpreter_test.cpp
     line_editor_test.cpp
     matrix_test.cpp
+    prelude_test.cpp
     )
 
 target_link_libraries(inkamath_tests PRIVATE inkamath doctest inkamath_warnings)
@@ -40,7 +41,7 @@ foreach(golden IN LISTS goldens)
 endforeach()
 # fastgrad.ink's 600,000 remembered calls take 25 s under sanitizers alone.
 set_tests_properties(fastgrad.ink PROPERTIES TIMEOUT 120)
-foreach(suite IN ITEMS bignum line_editor matrix)
+foreach(suite IN ITEMS bignum line_editor matrix prelude)
     add_test(NAME ${suite} COMMAND inkamath_tests --test-suite=${suite} --no-intro)
     set_tests_properties(${suite} PROPERTIES TIMEOUT 60)
 endforeach()
