@@ -3,6 +3,7 @@
 
 #include "inkamath/reference_stack.hpp"
 
+#include <bit>
 #include <cstddef>
 #include <cstdint>
 #include <map>
@@ -190,6 +191,16 @@ private:
         return grads_.back().first + " = " + grads_.back().second;
     }
 
+    // The innermost grad u moves with whose point is complex, empty if none.
+    [[nodiscard]] std::string Complex(const Jet& u) const {
+        std::size_t with = 0;
+        for (std::size_t s = 1; s < u.size(); ++s)
+            if (u[s]) with |= s;
+        if (!(with & complex_)) return "";
+        const auto& [name, point] = grads_[std::bit_width(with & complex_) - 1];
+        return name + " = " + point;
+    }
+
     Jet Eval(const PExpression<T>& e) { return Eval(*e); }
 
     // A dynamic_cast without its search of the bases, which is most of what
@@ -225,7 +236,7 @@ private:
         if (auto* x = Exactly<TransposeExpression<T>>(e))
             return Map(Eval(x->m_e()),
                        [](const T& v) { return numeric_interface<T>::transpose(v); });
-        if (auto* x = Exactly<FloorExpression<T>>(e)) return Floor(*x);
+        if (auto* x = Exactly<BuiltinExpression<T>>(e)) return Builtin(*x);
         if (auto* x = Exactly<FactExpression<T>>(e)) {
             const Jet u = Eval(x->m_e());
             if (Moves(u)) throw std::runtime_error("grad cannot differentiate a factorial");
@@ -314,6 +325,30 @@ private:
         for (const auto& [keyword, argument] : p.parameters_dict())
             arguments.emplace_back(keyword, Eval(argument));
         for (const auto& [given, jet] : arguments) definition->Divides(given, *jet[0], stack_);
+        // In its own words, not its guard's im's. max and min are defined on
+        // the real line alone, so not where a real argument's parts leave it,
+        // as |z| is (C205).
+        using Part         = numeric_interface<typename T::value_type>;
+        const auto  cell   = [](auto f) { return [f](const T& v) { return T::Cells(v, f); }; };
+        const auto& names  = stack_.Builtins().names;
+        const bool  ranked = definition == names.at("max") || definition == names.at("min");
+        if (complex_ && (definition == names.at("abs") || ranked))
+            for (const auto& [given, jet] : arguments)
+                if (const std::string at = Complex(jet); !at.empty())
+                    throw std::runtime_error(definition->Name() + " has no complex derivative at " +
+                                             at);
+        for (const auto& [given, jet] : arguments) {
+            const Jet   im   = ranked ? Map(jet, cell(Part::imaginary)) : Jet();
+            std::size_t with = 0;
+            for (std::size_t s = 1; s < im.size(); ++s)
+                if (im[s] && !IsZero(*im[s])) with |= s;
+            if (!with || !IsZero(*im[0])) continue;
+            const auto& [grad, point] = grads_[std::bit_width(with) - 1];
+            throw std::runtime_error(
+                definition->Name() +
+                " has no derivative where its argument leaves the real line at " + grad + " = " +
+                point);
+        }
         for (const auto& [given, jet] : arguments)
             if (Moves(jet) && stack_.staircases.contains(definition.get()))
                 throw std::runtime_error("grad cannot differentiate " + definition->Name() +
@@ -321,7 +356,26 @@ private:
         if (p.limit()) return Limit(*definition, p, arguments);
         int        index   = 0;
         const bool indexed = p.TryEvalIndex(stack_, index);
-        return Term(*definition, p, indexed, index, arguments);
+        Jet        out     = Term(*definition, p, indexed, index, arguments);
+        // |z| squared is re^2 + im^2, whose parts past the first the real
+        // clauses lack where z is real and its parts are not (C203).
+        if (out.size() > 2 && arguments.size() == 1 && !IsZero(*out[0]) &&
+            definition == stack_.Builtins().names.at("abs")) {
+            const Jet re     = Map(arguments[0].second, cell(Part::real));
+            const Jet im     = Map(arguments[0].second, cell(Part::imaginary));
+            const Jet square = Sum(Product(re, re), Product(im, im));
+            bool      leaves = false;
+            for (std::size_t s = 1; s < im.size(); ++s)
+                leaves = leaves || (im[s] && !IsZero(*im[s]));
+            for (std::size_t s = 1; leaves && IsZero(*im[0]) && s < out.size(); ++s) {
+                if (std::popcount(s) < 2) continue;
+                out[s] = square[s];
+                for (std::size_t part = (s - 1) & s; part != 0; part = (part - 1) & s)
+                    if (out[part] && out[s ^ part]) Add(out[s], -(*out[part] * *out[s ^ part]));
+                if (out[s]) out[s] = *out[s] / (T(2) * *out[0]);
+            }
+        }
+        return out;
     }
 
     std::string Key(const Reference<T>& definition, bool indexed, int index,
@@ -517,10 +571,16 @@ private:
         return Constant(T::Held(decided ? left : truth(second), *first[0], *second[0]));
     }
 
-    Jet Floor(FloorExpression<T>& floor) {
-        const Jet u     = Eval(floor.m_e());
-        const T   value = numeric_interface<T>::floor(*u[0]);
-        chosen_         = chosen_ || (Moves(u) && numeric_interface<T>::approximated(*u[0]));
+    // A part of a value moving with a real variable moves as the value's
+    // part does; with a complex one it has no derivative.
+    Jet Builtin(BuiltinExpression<T>& node) {
+        const Jet  u    = Eval(node.m_e());
+        const auto cell = [&node](const T& v) { return T::Cells(v, node.function); };
+        if (const std::string at = Complex(u); node.name != "floor" && !at.empty())
+            throw std::runtime_error(node.name + " has no complex derivative at " + at);
+        if (node.name != "floor") return Map(u, cell);
+        const T value = cell(*u[0]);
+        chosen_       = chosen_ || (Moves(u) && numeric_interface<T>::approximated(*u[0]));
         for (std::size_t k = 0; k < value.Size().count(); ++k) {
             if (!(u[0]->data()[k] == value.data()[k])) continue;
             if (Moves(u)) throw std::runtime_error("floor jumps at " + Where());
@@ -730,6 +790,9 @@ private:
         std::vector<Jet>  parts;
         {
             const Order order(*this, name, numeric_interface<T>::toString(at));
+            const bool  real =
+                IsZero(T::Cells(at, numeric_interface<typename T::value_type>::imaginary));
+            const Setting<std::size_t> complex(complex_, complex_ | (real ? 0 : bit));
             std::optional<typename ReferenceStack<T>::Frame> frame;
             if (!stack_.Framed()) frame.emplace(stack_);
             typename ReferenceStack<T>::Trial bound(stack_, name);
@@ -986,6 +1049,7 @@ private:
     bool                                                  guard_   = false;
     bool                                                  filling_ = false;
     bool                                                  chosen_  = false;
+    std::size_t                                           complex_ = 0;  // grads at a complex point
     const Guarded*                                        guarded_ = nullptr;
 };
 

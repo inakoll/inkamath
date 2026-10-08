@@ -181,6 +181,9 @@ TEST_CASE("fastprelude") {
 TEST_CASE("trig") {
     check_transcript("trig.ink");
 }
+TEST_CASE("cparts") {
+    check_transcript("cparts.ink");
+}
 TEST_CASE("fastgrad") {
     check_transcript("fastgrad.ink");
 }
@@ -198,6 +201,9 @@ TEST_CASE("signatures") {
 }
 TEST_CASE("charpoly") {
     check_transcript("charpoly.ink");
+}
+TEST_CASE("eig") {
+    check_transcript("eig.ink");
 }
 TEST_CASE("bisection_digits") {
     check_transcript("bisection_digits.ink");

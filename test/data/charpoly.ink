@@ -123,7 +123,7 @@ error: charpoly takes A[j<=n, k<=n], not a 1x3 matrix
 >> hurwitz([1 2 3])
 error: hurwitz takes p[j<=m], not a 1x3 matrix
 
-# Refused in the words abs refuses it with.
+# Refused in the words max refuses it with.
 >> hurwitz([1; i])
 error: a comparison needs real numbers, not i
 
@@ -281,6 +281,15 @@ digits = 9
 >> rho([~1 2; 3 4]*10^307)
 ~5.37228132e+307
 
+# Nor need the sum of |A[j,k]|: past a double, it is summed a power of 4
+# per row smaller, 2e308 here, and rho is (5 + 33^(1/2))/2 times 2e307,
+# 1.07e308, as is abscissa (C196).
+>> rho([~1 2; 3 4]*2*10^307)
+~1.07445626e+308
+
+>> abscissa([~1 2; 3 4]*2*10^307)
+~1.07445626e+308
+
 # Past a double's range, the answer is the double ~ makes of it, marked, as
 # A/B's tests are past a thousand digits (C191).
 >> rho([1 2; 3 4]*10^400)
@@ -288,6 +297,37 @@ inf  # approximated past a thousand digits
 
 >> rho([1 2; 3 4]/10^400)
 0  # approximated past a thousand digits
+
+# So is it where the tests stay exact: the bracket is certified, its double,
+# subnormal or none, is not, and a stable system's abscissa of -10^-400 is
+# no marginal 0 (C197).
+>> rho(10^400)
+inf  # approximated past a thousand digits
+
+>> rho(10^-400)
+0  # approximated past a thousand digits
+
+>> rho(10^-320)
+~9.99988867e-321  # approximated past a thousand digits
+
+>> abscissa(-10^-400)
+0  # approximated past a thousand digits
+
+>> abscissa(-10^-400) < 0
+0  # approximated past a thousand digits
+
+# An end that is itself 0, certified, is not: its double is exact.
+>> rhoa([0; 0], [0; 0])
+0
+
+# A cell that is itself inf is a double whose value is lost, and no radius
+# is certified of it, inf or other: [1 x; 0 1]'s is 1 and [x x; -x -x]'s 0
+# whatever x is (C206).
+>> rho([1 ~10^310; 0 1])
+error: rho needs finite cells, not inf
+
+>> abscissa([~1 1; 1 1]*10^310)
+error: abscissa needs finite cells, not inf
 
 # Five by five, the tests exact; ten by ten, in bisection_digits.ink, they
 # are not.
@@ -322,7 +362,7 @@ error: rho takes A[j<=n, k<=n], not a 3x2 matrix
 >> abscissa([1 2 3])
 error: abscissa takes A[j<=n, k<=n], not a 1x3 matrix
 
-# In abs's words, as hurwitz is.
+# In max's words, as hurwitz is.
 >> rho([1 i; -i 1])
 error: a comparison needs real numbers, not i
 

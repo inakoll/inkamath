@@ -190,11 +190,17 @@ public:
     T accept(FoldingVisitor<T>& v) override { return v.visit(this); }
 };
 
-// 'floor(x)', the one function built in; ReferenceStack defines it.
+// A function built in, applied to each cell, as 'floor(x)'; ReferenceStack
+// defines them.
 template <typename T>
-class FloorExpression final : public UnaryExpression<T> {
+class BuiltinExpression final : public UnaryExpression<T> {
 public:
-    explicit FloorExpression(PExpression<T> e) : UnaryExpression<T>(e) {}
+    using Cell = typename T::value_type;
+    BuiltinExpression(PExpression<T> e, std::string name, Cell (*function)(const Cell&))
+        : UnaryExpression<T>(e), name(std::move(name)), function(function) {}
+
+    const std::string name;
+    Cell (*const function)(const Cell&);
 
     PExpression<T> accept(TransformationVisitor<T>& v) override { return v.visit(this); }
 

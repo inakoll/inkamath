@@ -662,7 +662,7 @@ private:
         return chain;
     }
 
-    // rho and abscissa are staircases in A, refused where it moves, as the
+    // rho, abscissa, eig and smax are staircases in A, refused where it moves, as the
     // interpreter refuses them, rather than answer the staircase's 0.
     void Staircase(const Reference<Value>& function, const Code& argument) const {
         if (!argument.part.empty() && definitions_.staircases.contains(&function))
@@ -684,13 +684,18 @@ private:
                              "a sequence with parameters read at an index that is not a constant"));
         ++calls_;
         Expansion expansion{{}, {}, outer ? outer->scope : function.home, outer, {}, {}};
+        std::vector<Code> nans;
         // An argument the caller's index, give or take a constant, indexes a term (C119).
         const auto bind = [&](const std::string& given, const PExpression<Value>& argument) {
             // A call's value, and its part, written at each reading, would
             // multiply at each call nested in it (C140): each is computed once.
             const int before = calls_;
             Code      value  = Emit(argument);
+            bool      nan    = false;
+            for (const Cell& c : value.cells) nan = nan || WritesNan(c.text) || nans_.count(c.text);
             if ((at || calls_ != before) && !value.constant) value = SharedAll(value);
+            if (nan)
+                for (const Cell& c : nans.emplace_back(value).cells) nans_.insert(c.text);
             expansion.values.emplace(given, value);
             if (Plain(*argument)) try {
                     expansion.offsets.emplace(given, Offset(argument, given));
@@ -708,8 +713,20 @@ private:
                 function.Divides(given, Value(value.size), definitions_);
         });
         Defaults(function, expansion);
-        if (at) return Term(name, function, expansion, *at);
-        return Inside(expansion, [&] { return Chained(name, function); });
+        Code result = at ? Term(name, function, expansion, *at)
+                         : Inside(expansion, [&] { return Chained(name, function); });
+        // The interpreter computes an argument the function does not read, so
+        // its refusal is the call's (C189).
+        std::string written, nan;
+        for (const Cell& cell : result.cells) written += cell.text + ' ';
+        for (const Code& value : nans)
+            if (std::none_of(value.cells.begin(), value.cells.end(),
+                             [&](const Cell& c) { return Writes(written, c.text); }))
+                nan += (aware_ = true, Nan(value));
+        if (nan.empty()) return result;
+        for (Cell& cell : result.cells) cell = Cell("(" + nan + cell.text + ")", primary);
+        result.constant.reset();
+        return result;
     }
 
     // Filled from the lowest base, by the interpreter's stride (Reference::Filled),
@@ -1304,10 +1321,6 @@ private:
             }
         });
     }
-    Code Folded(Expression<Value>* expression) {
-        Fold(expression);
-        return code_;
-    }
     // From the operands' constants, not the expression again, which may read
     // a name that moves where its value does not, in a call (C135).
     template <typename F, typename... Operands>
@@ -1519,14 +1532,25 @@ private:
     }
 
     // A matrix product is a sum over the inner dimension, in the interpreter's
-    // order. A power's is folded again, as A^-1*b solves.
+    // order. A^-1*b of constants is solved, as the interpreter solves it, from
+    // A's constant (C193).
     PExpression<Value> visit(MultExpression<Value>* expression) override {
         const Code left = Emit(expression->m_e1()), right = Emit(expression->m_e2());
         if (!left.constant || !right.constant)
             return Answer(ProductOf(Product(left, right), left, right));
-        const bool power = dynamic_cast<PowExpression<Value>*>(expression->m_e1().get());
-        return Answer(ProductOf(
-            power ? Folded(expression) : Exactly(std::multiplies<>(), left, right), left, right));
+        const auto* power = dynamic_cast<PowExpression<Value>*>(expression->m_e1().get());
+        const auto* exponent =
+            power ? dynamic_cast<ValExpression<Value>*>(power->m_e2().get()) : nullptr;
+        if (exponent && numeric_interface<Value>::exact(exponent->value) &&
+            exponent->value == Value(Number(-1))) {
+            const Code base = Emit(power->m_e1());
+            const auto b    = [&] { return *right.constant; };
+            if (base.constant)
+                return Answer(ProductOf(
+                    Exact([&] { return numeric_interface<Value>::solve(*base.constant, b); }), left,
+                    right));
+        }
+        return Answer(ProductOf(Exactly(std::multiplies<>(), left, right), left, right));
     }
 
     // Each left cell is read once for each right column, each right cell once
@@ -1917,14 +1941,31 @@ private:
         return Answer(Cell("(" + Test(self) + " ? 1.0 : 0.0)", primary));
     }
 
-    // The built-in, as C's; exactly, where what it is given is a constant.
-    PExpression<Value> Floor(FuncExpression<Value>* expression) {
+    // floor as C's, exactly where what it is given is a constant; re and im
+    // of a compiled value, which is real.
+    PExpression<Value> Builtin(FuncExpression<Value>* expression) {
         const ParametersCall<Value>& call = expression->Call();
         if (call.parameters_expression().size() != 1 || !call.parameters_dict().empty())
-            throw Reason("floor expects 1 argument");
+            throw Reason(expression->Name() + " expects 1 argument");
         const Code operand = Emit(call.parameters_expression()[0]);
+        if (expression->Name() == "re") return Answer(operand);
+        if (expression->Name() == "im") {
+            // 0, but NaN where its operand is, as the interpreter refuses it
+            // there, as a call's unread argument (C204); in a guard 0, as abs's
+            // first folds, its other clauses reading x.
+            Code zero = Literal(Value(operand.size));
+            if (guarding_ || operand.constant ||
+                std::all_of(operand.cells.begin(), operand.cells.end(),
+                            [](const Cell& c) { return c.number; }))
+                return Answer(zero);
+            const std::string test = (aware_ = true, Nan(Shared(operand)));
+            for (Cell& cell : zero.cells) cell = Cell("(" + test + cell.text + ")", primary);
+            zero.constant.reset();
+            return Answer(zero);
+        }
         if (operand.constant && operand.part.empty())
-            return Answer(Exactly(numeric_interface<Value>::floor, operand));
+            return Answer(
+                Exactly([](const Value& v) { return Value::Cells(v, Number::floor); }, operand));
         Code code;
         code.size = operand.size;
         for (const Cell& cell : operand.cells) {
@@ -2617,7 +2658,9 @@ private:
         const Found        found = Lookup(name);
         const std::string& key   = found.key;
         if (call.limit()) throw Reason("a limit");
-        if (name == "floor" && found.where == &definitions_.Builtins()) return Floor(expression);
+        if ((name == "floor" || name == "re" || name == "im") &&
+            found.where == &definitions_.Builtins())
+            return Builtin(expression);
         if (calls) {
             if (!found.definition) throw Reason(key + " is not defined");
             if (found.where == &definitions_.Builtins() && !call.subexpr())
@@ -4333,6 +4376,7 @@ private:
     std::set<std::string>            aside_;    // definitions refused; see Refusals
     bool                             clauses_ = false;  // whether the step keeps them; see Build
     bool                             aware_ = false;  // whether it writes NaN, and so tests for it
+    std::set<std::string>            nans_;             // arguments' cells that may be NaN
     bool                             guarding_ = false;  // in a guard, which asks only for values
     std::map<std::string, Value>     known_;    // globals that read only those
     std::set<std::string>            read_parameters_;      // by the value being compiled

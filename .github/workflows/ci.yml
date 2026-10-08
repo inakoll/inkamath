@@ -68,7 +68,7 @@ jobs:
         run: cmake -S . -B build -DINKAMATH_WERROR=ON
 
       - name: Build
-        run: cmake --build build --config ${{ matrix.build_type }}
+        run: cmake --build build --config ${{ matrix.build_type }} --parallel
 
       - name: Test
         run: ctest --test-dir build -C ${{ matrix.build_type }} --output-on-failure -j $env:NUMBER_OF_PROCESSORS

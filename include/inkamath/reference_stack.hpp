@@ -113,14 +113,19 @@ public:
         char*                  end = nullptr;
         (void)numeric_interface<typename T::value_type>::parse(unit, "i", end);
         this->Set("i", ParametersDefinition<T>(), std::make_shared<ValExpression<T>>(T(unit)));
-        // A definition like these, so a session may replace it; native,
-        // because the language can compute it only by a search.
+        // Definitions like these, so a session may replace one; native, as
+        // floor is computed only by a search and nothing written takes a
+        // complex number apart.
         EvaluationVisitor<T> evaluator(*this);
         const auto           x = std::make_shared<RefExpression<T>>("x");
-        this->Set(
-            "floor",
-            ParametersDefinition<T>(std::make_shared<MatExpression<T>>(x), nullptr, evaluator),
-            std::make_shared<FloorExpression<T>>(x));
+        using Cell             = numeric_interface<typename T::value_type>;
+        const std::pair<const char*, typename T::value_type (*)(const typename T::value_type&)>
+            natives[] = {{"floor", Cell::floor}, {"re", Cell::real}, {"im", Cell::imaginary}};
+        for (const auto& [name, f] : natives)
+            this->Set(
+                name,
+                ParametersDefinition<T>(std::make_shared<MatExpression<T>>(x), nullptr, evaluator),
+                std::make_shared<BuiltinExpression<T>>(x, name, f));
     }
 
     // Scopes point at one another.
@@ -195,8 +200,8 @@ public:
     // And ilogb, whose walk under grad answers no part where compiled
     // answers, at a power of two too: no guard of it is an equality (C139).
     const Reference<T>* stepwise = nullptr;
-    // And rho and abscissa, whose bisections are staircases in A: grad
-    // refuses them where A moves rather than answer the staircase's 0.
+    // And rho, abscissa, eig and smax, whose bisections are staircases in A:
+    // grad refuses them where A moves rather than answer the staircase's 0.
     std::set<const Reference<T>*> staircases;
 
     [[nodiscard]] Scope<T>&       Target() const { return *target_; }

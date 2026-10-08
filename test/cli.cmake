@@ -732,6 +732,14 @@ set(stdout "cannot compile g: grad cannot differentiate rho yet\ncannot compile 
 set(exit 1)
 check(compile_charpoly_refused)
 
+# Nor do eig and smax, by a comparison of matrices and hurwitzb's factorial,
+# and grad refuses them where A moves (DESIGN.md, eig and smax).
+file(WRITE "${OUT}/eig.ink" "x_n = eig([n 1; 1 2])[1]\ny_n = smax([n 2; 3 4])\ng_n = grad_(a = n) eig([a 1; 1 2])[1]\nh_n = grad_(a = n) smax([a 2; 3 4])\n")
+set(args --compile eig.ink)
+set(stdout "cannot compile g: grad cannot differentiate eig yet\ncannot compile h: grad cannot differentiate smax yet\ncannot compile x: a comparison of matrices\ncannot compile y: a factorial\n")
+set(exit 1)
+check(compile_eig_refused)
+
 # A tensor input, refused before tensors compiled, read by its second slice.
 file(WRITE "${OUT}/batch.ink" "batch(x_n[b<=2, j<=1, k<=2]) = {\n    y_n = x_n[2]*[1; 1]\n}\n")
 set(args --compile batch.ink batch -o batch.h)
@@ -971,6 +979,12 @@ file(WRITE "${OUT}/c135.ink" "h(z) = 3\nf(M) = h(M) + 1\nb_n = h(x_n) + 1\nc_n =
 set(args --compile c135.ink -o c135.h)
 check(compile_c135)
 holds(compile_c135 c135.h "    m_->b[0] = 4.0;\n" "    m_->c[0] = 4.0;\n" "    m_->d[0] = 4.0;\n")
+# C193: so is a product whose left is a power, and A^-1*b solved from them.
+file(WRITE "${OUT}/c193.ink" "h(z) = 3\nf(z) = 2^(1/2)*h(z)\nb_n = f(x_n)\nc_n = [2 0; 0 4]^-1*[h(x_n); 1]\n")
+set(args --compile c193.ink -o c193.h)
+check(compile_c193)
+holds(compile_c193 c193.h "    m_->b[0] = 4.242640687119286;\n" "    m_->c[0][0][0] = 1.5;\n"
+      "    m_->c[0][1][0] = 0.25;\n")
 
 # C136: the interpreter refuses a matrix written whole before a cell's own
 # clause, so a cell it refuses makes every cell NaN, by value and under grad.
@@ -1149,3 +1163,11 @@ cannot compile u: a sequence with parameters by cells, for now
 ")
 set(exit 1)
 check(compile_iterates_refused)
+
+# A frequency response does not compile: a compiled value is real, so the
+# complex e^(i*w*n) is refused, not its abs.
+file(WRITE "${OUT}/response.ink" "y_n = abs(e^(i*w*n))\n")
+set(args --compile response.ink)
+set(stdout "cannot compile y: a complex number\n")
+set(exit 1)
+check(compile_response_refused)

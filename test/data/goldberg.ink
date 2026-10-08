@@ -405,6 +405,14 @@ inf
 >> (2^1100)^(1/4)
 ~6.07084029e+82
 
+# A complex exponent too: 10^200 at an angle of 400 ln 10, and 10^-200 at
+# minus that, by mpmath.
+>> (10^400)^(1/2+i)
+~-8.53885989e+199-i*~5.20460102e+199
+
+>> (10^-400)^(1/2+i)
+~-8.53885989e-201+i*~5.20460102e-201
+
 # Signed Zero: the principal root of -1 + i0 is i, as C's csqrt has it.
 >> (-1)^(1/2)
 i

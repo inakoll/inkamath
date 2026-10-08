@@ -1711,9 +1711,25 @@ closures need one anyway, and can bring it.
 | C186 `[fixed]` | **A term of a sequence with parameters saw the index another clause had bound.** `Chained` bound each general clause's index where the function's parameters are, and left it there for the clauses after it and the terms after it: with `c = 10` a parameter of the model, `f(x)_c | c < 3 = c` and `f(x)_j | j > 0 = f(x)_(j-1) + c` read c as the last index tried, so `f(x)_4` compiled to 9 where the interpreter answers 22, and a base clause `q(x)_3 = c` after `q(x)_c` to 2, not 10. Found reviewing *A sequence with parameters read at a constant index, compiled*. Each clause sees its own index alone now, as `Reference::Selects` binds it, in 4 lines; `memo` in `test/compile/iterates.ink` holds it. |
 | C187 `[fixed]` | **Terms of a sequence with parameters were shared between arguments written alike.** A term was kept by the text of its arguments' cells, which two exact constants of one double, or a column and a row of the same cells, share: `g(1/2)_20` and `g(1/2 + 2^-60)_20`, with `g(x)_k = g(x)_(k-1)*4 - 3/2`, both compiled to 1/2 where the second is 1/2 + 2^-20, and `h([x; 1])_1` and `h([x, 1])_1` to one column, so a function weighing each cell by its column answered 4 where the interpreter answers 6. Found reviewing *A sequence with parameters read at a constant index, compiled*. A term is kept by its arguments' shape and exact value too now, in 3 lines; `memo` in `test/compile/iterates.ink` holds it. |
 | C188 `[fixed]` | **A term read on the left of an `and` was not folded where the step starts.** Whether the left decides before the stream is asked by compiling it again there, where no list of temporaries is, so a sequence with parameters read in it was refused and the right taken as read: with `t(y)_k = t(y)_(k-1)*2 - 1`, `l_n | t(n)_3 > 5 and x_(n-1) > 2 = 1` was "l_0 reads x_-1, before the stream", where the interpreter's left is -7 > 5 and answers l_0, as the compiler does for a call. Found reviewing *A sequence with parameters read at a constant index, compiled*. The left is compiled with a list of its own there, kept nowhere, in 4 lines; `memo` in `test/compile/iterates.ink` holds it. |
+| C189 `[fixed]` | **A compiled call answered where the interpreter refuses an argument the function never reads.** The interpreter computes every argument, so with `F(M) = 1` and `r(v) \| v > 0 = v`, `F(r(x_n))` refuses where no clause of r applies, but the step wrote 1, the argument nowhere; so did `grad_(t = r(x_n)) F(t)`, whose body ignores its variable, and `grad_(t = x_n) F(r(t))`, 0. In a header that writes NaN, a call is NaN where an argument that may be NaN and that its value does not read is, in 18 lines, an argument passed on through another call counted as read only where that call reads it; `idle` in `test/compile/nan.ink` holds it. A division by 0 is inf in the step, not NaN, and is as it was (`pole`). |
 | C190 `[fixed]` | **`rho` and `abscissa` of an inexact matrix whose cells sum to 2^1023 or more refused with a NaN.** B, the power of two above the sum, was 2^1024, made inexact with the matrix, so inf: `rho(~1e308)` was "a comparison needs a number, not -nan", as were `abscissa(~-1e308)` and `rho([~1 2; 3 4]*10^307)`. The bracket bisected is A/B's now, `rhou(A)_m` and `abscissau(A)_m`, from [0; 1] and [-1; 1], and `rhod` scales by B's power in two halves, each a double, A to A/B and the bracket back: `rhob` and `abscissab` are still A's. 3 lines more and one of comment; charpoly.ink holds it, and no other answer moved. A matrix whose sum is itself past a double, `[~1 2; 3 4]*2*10^307`, still refuses. Found reviewing *The characteristic polynomial and stability*. |
 | C191 `[fixed]` | **`rho` of an exact matrix whose answer is past a double's range refused with a NaN.** `rho([1 2; 3 4]*10^400)` and `/10^400`: A/B's tests are past a thousand digits, so approximated, and the bracket of them was multiplied by an exact B no double holds. Fixed by C190's change: they are inf and 0, the doubles `~` makes of 5.37e400 and 5.37e-400, marked. Found reviewing *The characteristic polynomial and stability*. |
 | C192 `[fixed]` | **An answer the 256-halving cap ended was printed as certified.** The cap stops a bisection the relative stop has not, and the bracket it leaves is no answer below 2^-203 of B: `abscissa([-10^-100 0; 0 -1])` was ~-3.45e-77, -2^-254, `abscissa([10^-80 0; 0 -1])` 0 for an unstable system, and `rho([0 1; 10^-200 0])` 0, all unmarked. An answer whose bracket at the cap is wider than 2^-53 of its end nearer 0 is marked now, `+ 0*10^-1000` adding a 0 approximated past a thousand digits, so a comparison of it is marked too. A 0 is never within 2^-53 of itself, so a nilpotent matrix's rho and a marginal system's abscissa, right, are marked as well: the tests cannot tell them from a value below the last bracket, and README's section 2 says so. bisection_cap.ink holds it, and its three such 0s move to marked. 2 lines more and one of comment. Found reviewing *The characteristic polynomial and stability*. |
+| C193 `[fixed]` | **A constant product whose left is a power was refused where it read a name that moves.** C135 left it folded by evaluating its expression again, for `A^-1*b` to be solved as the interpreter solves it, and that reads what its operands read: beside `h(z) = 3`, `f(z) = 2^(1/2)*h(z)` called as `f(x_n)` was refused, "x is not defined", and so was `[2 0; 0 4]^-1*[h(x_n); 1]`, where the interpreter answers 4.24264069 and [3/2; 1/4]. A power is multiplied from the constants now, as any operator, and `A^-1*b`, whose -1 the interpreter reads as written, solved from A's and b's, in 7 lines more; `compile_c193` in `test/cli.cmake` holds it. Only a limit is still folded again. |
+| C194 `[fixed]` | **A complex power of an exact number past a double's range overflowed or underflowed.** C175 took a power of 2 out of such a base for a real exponent only: `(10^400)^(1/2+i)` was inf+i*-nan where it is 10^200 at an angle of 400 ln 10, about -8.54e199 - 5.20e199i, and `(10^-400)^(1/2+i)` 0. The power of 2 is taken out for a complex exponent too now, 2^(e*y) turning by e*Im(y)*ln 2, in 2 lines; goldberg.ink holds it, and no other answer moved. Found reviewing C175. |
+| C195 `[fixed]` | **`rho` of a nilpotent matrix was marked as approximated.** Its radius is 0, which no bracket is within 2^-53 of, so since C192 the cap ended its bisection and marked it: `rho([0 1; 0 0])` and `rho([0 0; 0 0])` were 0 "approximated past a thousand digits", where every eigenvalue is 0. A matrix whose polynomial is lambda^n, every coefficient after the first 0, is answered 0 without a bisection now, unmarked, in 1 line of the prelude and one of comment; bisection_cap.ink holds it, its two such answers move to unmarked, and README's section 2 says so. `abscissa` is as it was, its 0 marked, a nilpotent matrix's among them. |
+| C196 `[fixed]` | **`rho` and `abscissa` of an inexact matrix whose cells sum past a double refused with a NaN.** C190's residual: B's power was taken of the sum of |A[j,k]|, which was inf, and `rhop`'s `0*s`, kept to carry a mark, made it NaN: `rho([~1 2; 3 4]*2*10^307)` was "a comparison needs a number, not -nan" where it is (5 + 33^(1/2))/2 times 2e307, 1.07e308. A sum of 2^1024 or more is taken of the cells over 4^n, which n^2 cells within a double cannot take past one, and its power raised by 2n, in 2 lines; exact, that is the same power, and an inexact sum below it never takes the clause. charpoly.ink holds it, and no other answer moved. |
+| C197 `[fixed]` | **`rho` and `abscissa` past a double's range were unmarked where the tests stay exact.** The bracket is certified, but the answer is its double: `rho(10^400)` was inf and `rho(10^-400)` 0, unmarked, and `abscissa(-10^-400)` 0, a stable system shown as marginal. An answer whose double is not normal is marked now, as one the cap ended, a subnormal `rho(10^-320)` among them, its ~9.99988867e-321 not 10^-320's digits, unless its exact end is itself 0, a certified 0 whose double is exact, in 1 line changed, one more and one of comment; charpoly.ink holds it, and no other answer moved. So is the inf of an inexact matrix whose radius passes a double, `rho(~1e308*[1 1; 1 1])`, which no test can tell from the exact case. |
+| C198 `[fixed]` | **`abscissa` of a marginal system with an exact eigenvalue 0 was marked as approximated.** Its 0 is no bracket's, as C195's rho was not: `abscissa([0 0; 0 -1])` and `abscissa([0 1; 0 0])` were 0 "approximated past a thousand digits". A polynomial lambda^k q, k at least 1 and q passing Routh's strict test, has 0 for an eigenvalue and none right of it, so its abscissa is answered 0 without a bisection now, unmarked, in 4 lines of the prelude, the factor stripped of q a cell at a time; bisection_cap.ink holds it, its `abscissa([0 1; 0 0])` moves to unmarked, and README's section 2 says so. A pair on the axis, `[0 0 0; 0 0 1; 0 -1 0]`'s ±i beside its 0 or `[0 1; -1 0]`'s alone, fails the strict test as one right of it would, and is marked still: telling the two apart takes Routh's singular cases, an auxiliary polynomial, which no cheap test gives. |
+| C199 `[fixed]` | **`smax` of a matrix far past a double's range refused with a NaN.** `smaxd` checks its answer by scaling it back, and `rhod` scales by A's power in two halves, each a double only up to about 2^1074: from about 10^647 up or 10^-646 down a half was inf or 0, and scaling the inf or 0 back multiplied it by the other, so `smax(10^700)` and `smax([10^-700 0; 0 10^-700])` were "a comparison needs a number, not -nan" where `eig` answers them inf and 0, marked. A nonzero answer whose double is 0 or inf is marked without the round trip now, in 1 line of the prelude, wrapped; eig.ink holds it, and no other answer moved. |
+| C200 `[fixed]` | **`eigb` gave a bracket where there is no eigenvalue to bracket.** eig's guard, Hermite's test, was eig's alone, so its bracket counted the roots of a matrix with complex ones as if all were real: `eigb([0 1; -1 0], 1)_64` was [0; 0], an exact bracket certifying 0 for ±i, `eigb([2 1; 1 3], 3)_64` [~8; 8] for a third eigenvalue of a 2x2, and `eigb([2 1; 1 3], 3/2)_64` the second's. eigb asks what eig asks now, and a whole k from 1 to n, and `eigk` scales `eigu`'s bracket back itself, so eig pays the test once, in 2 lines changed, one of them wrapped; eig.ink holds it, and no other answer moved. |
+| C201 `[fixed]` | **abs's slope of a real value whose derivative is complex was complex.** abs answered x or -x, and so passed on x's derivative or its negative: with `T(z) = 1/(z - 1/2)`, `grad_(w = 0) abs(T(e^(i*w)))` answered `-i*4`, T's own slope, where |T| is real and peaks at w = 0, its slope 0. Found specifying the parts and modulus of a complex number (next in line), which fixed it, its real clauses taking re(x); `cparts.ink` holds it. |
+| C202 `[fixed]` | **A part moving with a real variable was refused under a complex grad.** A point was complex for grad where any grad around it had one, and a refusal named the innermost: `grad_(v = i) v*grad_(w = 1) re(w)` and `grad_(w = 1) grad_(v = i) v*re(w)` were "re has no complex derivative" where both are 1, and `grad_(v = i) grad_(w = 1) re(w*v)` was refused "at w = 1", a real point. A jet's parts are indexed by the grads they are of, so the grads at a complex point are a mask of those, and a part, or abs, is refused where it moves with one of them, in the innermost one's name, in 9 lines more. Found reviewing the parts and modulus of a complex number; `cparts.ink` holds it. |
+| C203 `[fixed]` | **abs's second derivative of a real value whose parts are complex was re(x)'s.** C201's real clauses give |z|'s first part, sign(z) re(z'), and so its parts past the first, re(z'') at the second, which lack im(z')^2/|z|: `grad_(v = 0) grad_(w = v) abs(1 + i*w)` was 0 where (1 + w^2)^(1/2)'s is 1, and |T(e^{iw})|'s at its peak -12 where it is -4. Where a nested grad differentiates the prelude's abs of a real nonzero value whose parts are not all real, each part past the first is solved from |z|^2 = re(z)^2 + im(z)^2, as `Inverse` solves A*B = 1, in 18 lines; a real argument's parts are its clause's, as before, so no compiled grad moves. Found reviewing the parts and modulus of a complex number; `cparts.ink` holds it. |
+| C204 `[fixed]` | **A compiled `im(x)` discarded its operand.** im of a compiled value, real, was a literal 0, so x was never computed: `x_n = im(log(n - 5)) + a` checked "1 at 0, where the interpreter gives none: log needs a number above 0", and so did sin out of its range. im is NaN where x is now, x computed once and the header written aware, as a call's unread argument is (C189), in 11 lines and 3 of comment; `imag` in `test/compile/nan.ink` holds it. In a guard it is 0 still, so that abs's first guard folds, its other clauses reading x, and the prelude's header is as it was: a guard that reads im alone, `| im(log(n - 5)) == 0`, holds where the interpreter refuses. A division by 0 is inf in the step, not NaN, and im of it 0, as C189's pole. |
+| C205 `[fixed]` | **max's and min's slope of a real value whose derivative is complex was complex.** Each answered a or b, and so passed on its derivative: `grad_(w = 0) max(T(e^(i*w)), 0)` and `min(3, T(e^(i*w)))` answered `-i*4`, T's own slope. Unlike |T| (C201), neither is defined but at w = 0, where T is real, their comparison refusing T anywhere near it, so they have no derivative there, and re(T')'s 0 would be an extension nobody wrote. Under grad, max and min are refused where a real argument's parts leave the real line, "max has no derivative where its argument leaves the real line at w = 0", in that grad's name, whichever argument is taken, and at a complex point in their own words, as abs is, where `grad_(z = i) max(z - i, 0)` was 1, in 15 lines more and 2 of comment; cparts.ink holds it, and no other answer moved. |
+| C206 `[fixed]` | **`rho`, `abscissa`, `eig` and `smax` of an inexact cell that is itself inf refused with a NaN.** Its matrix scaled by B is inf, and its polynomial NaN: `rho([1 ~10^310; 0 1])`, `abscissa([~1 1; 1 1]*10^310)`, `eig` and `smax` of such cells were "a comparison needs a number, not -nan". An inf cell is a double whose value is lost, unlike an exact one past a double, whose radius C191 and C197 answer inf, marked, where it passes a double: no answer is certified of it, inf or other, as [1 x; 0 1]'s radius is 1 and [x x; -x -x]'s 0 whatever x is. So the four refuse it in plain words, "rho needs finite cells, not inf", a NaN cell too, in 7 lines and 2 of comment; charpoly.ink and eig.ink hold it, and no other answer moved. `eigb`, of two arguments, is as it was. |
+| C207 `[fixed]` | **A product of an exact number past a double's range with a 0 part was NaN.** The exact number was made a double, inf, first, and inf times the other's 0 is NaN: `10^400*i` was `-nan+i*inf` and `re(10^400*i)` -nan, `10^400/i` `-nan-i*inf` and `10^400*~0` -nan, where the exact number is finite and each 0 part of the product 0. Such a product takes each part of the other alone now, 0 by a 0 and inf by any other, and a quotient by a complex number its conjugate's, in 9 lines and 2 of comment; errors.ink holds it, and no other answer moved. An inf that is a double, `~10^400*i`, is as it was: its value is lost, as C206's cell's. |
 
 **Measure instructions, not the clock.** One of those changes made the matrix
 workload 20 per cent slower by the clock and not by a single instruction: with
@@ -2782,9 +2798,137 @@ that exploring seven domains asked of the interpreter, by how many asked.
 - **Steps and tolerance as options**, when a model asks: a hundred steps is
   short of what a slow filter settles in, and a billionth is loose for a
   well-conditioned step.
-- **The parts and modulus of a complex number**: a frequency response
-  |T(e^{jw})| cannot be written, as `abs` refuses a complex value and nothing
-  gives its real or imaginary part.
+- `[done]` **The parts and modulus of a complex number**: a frequency
+  response |T(e^{jw})| cannot be written, as `abs` refuses a complex value and nothing
+  gives its real or imaginary part. Decided: `re(z)` and `im(z)` built in,
+  and `abs` extended in the prelude:
+
+      abs(x) | im(x) < 0 or im(x) > 0 = absz(re(x), im(x), 2^ilogb(max(abs(re(x)), abs(im(x)))))
+      abs(x) | x < 0 = -re(x)
+      abs(x) | x >= 0 = re(x)
+      absz(a, b, s) = s*((a/s)*(a/s) + (b/s)*(b/s))^(1/2)
+      absz(a, b, s) | 1/a == 0 or 1/b == 0 = 1/~0
+
+  **re and im** are built in as `floor` is, a definition the interpreter
+  starts with whose body is a node the language cannot write: nothing it
+  has takes a complex number apart, a comparison and `floor` refusing one
+  and `'` not conjugating. floor's node becomes the one node of the three,
+  carrying its name and the function it applies to each cell: floor, and
+  `Number`'s `real` and `imaginary`, which exist. That rename is a
+  refactor commit of its own, first, every golden and header
+  byte-identical. Cell by cell of a matrix, as `floor` is, for nothing.
+  Of an exact number, itself and an exact 0; of
+  a complex one, a part of a pair of doubles, inexact and marked as the
+  pair is. Named as the paper writes Re and Im, lowercase as every name
+  here; a session may define either again, as `floor`, and the prelude
+  keeps its own. `tex` shows `\operatorname{re}(z)`, as any call, not
+  the paper's `\operatorname{Re}`, and the node as that call: `tex ?re`
+  is `\operatorname{re}(x) = \operatorname{re}(x)`, where floor's is
+  `\lfloor x \rfloor`. `?re` is `re`, as `?floor` is `floor`: a built-in
+  has no written form, and the node is not asked.
+
+  **abs** is the root of re^2 + im^2, each part first divided by s =
+  2^ilogb of the larger, exactly, so where a double holds the squares it is
+  the double sqrt(a*a + b*b) gives, and elsewhere it neither overflows nor
+  underflows: unscaled, `abs(3*10^200 + 4*10^200*i)` is inf and
+  `abs(3*10^-200 + 4*10^-200*i)` 0. |3+4i| is the double 5, all of it, so
+  printed `5`, but inexact, `frac` refusing it: a complex number is a pair
+  of doubles, and exact ones are not this item. |1+i| is the correctly
+  rounded root of 2, the double `2^(1/2)` is (C153). An infinite part's
+  is inf, as hypot's is, where the scaling would divide inf by inf: a
+  clause of its own. A real number's is exact, as before. The guard reads `<` and `>`, not `<>`: a whole matrix
+  `<>` 0 answers 1, so abs of a matrix would take the complex clause, where
+  `<` refuses it in abs's words, as now.
+
+  **The real clauses take re(x).** A real value's derivative may be
+  complex: T(e^{iw}) = 1/(e^{iw} - 1/2) is 2 at w = 0, and T' = -4i, so the
+  clause `x` makes the slope of |T| -4i, which `grad_(w = 0) H(w)` answers
+  today; |T| is real and peaks there, its slope 0, re(T'). C201, a
+  defect of today's abs found writing this spec, which this fixes.
+
+  **grad.** Of a variable at a real point, a part's derivative is the
+  derivative's part, and abs's follows from its clauses: re(conj(z) z')/|z|
+  off 0, and re(z') at 0, as the order of guards gives a real abs's slope
+  at 0. At a complex point neither part is complex differentiable, so
+  where its argument moves and a grad's point has an imaginary part,
+  `re has no complex derivative at z = 1+i`. abs is refused in its own,
+  `abs has no complex derivative at z = i`, not in those of the im its
+  guard reads first, in at most 3 lines; the prelude's abs alone, as a
+  session's function whose guard reads a part may be holomorphic where
+  the guard holds, so is refused in the part's words, not its own. A
+  holomorphic function keeps its derivative at a complex point, as now.
+
+  **The prelude's refusals.** `hurwitzt`, `hurwitz`, `schurcohn` and
+  `rhoe` read abs only to refuse a complex argument, as the prelude's
+  comment says; abs taking one, they read `max(x, -x)`, which refuses in
+  the same words naming the same number. Tried: with that alone, every
+  golden passes unchanged.
+
+  **Compiled.** Every compiled value is real, a complex literal being
+  refused, "a complex number", so `re(x)` compiles to x and `im(x)` to 0:
+  abs's first guard folds to 0 and its clause away, as a constant guard
+  does, so `inkamath_prelude.h` and the expected headers do not move. A
+  frequency response does not compile: `e^(i*w)` is refused as now, which
+  a case of `test/cli.cmake` added with the implementation holds,
+  `y_n = abs(e^(i*w*n))` refused "cannot compile y: a complex number".
+
+  Rejected:
+  - **`real` and `imag`**, MATLAB's, NumPy's and C's: longer, and not the
+    paper's.
+  - **A name of its own for |z|**, `cabs` or `mag`: a second way to say a
+    real number's abs, which the paper writes |x| as it writes |z|.
+  - **abs native**, hypot: abs is the prelude's, redefinable and read by
+    the compiler; within an ulp of the root above, and not readable.
+  - **im as re(-i*z)**, one node: 0*inf is a NaN part, and im of an exact
+    number would be inexact.
+  - **re and im refusing a matrix**, as abs does: abs refuses because a
+    function of the prelude with guards does; a built-in node is cell by
+    cell for free, as `floor` is.
+  - **conj**, `re(z) - i*im(z)`: a line a session writes as `round` is,
+    which the magnitude does not need, and which would ask for a quote
+    that conjugates, decided against (README section 2).
+  - **arg**, the phase of a Bode plot: atan2, which the prelude does not
+    have; an item of its own when a model asks.
+  - **abs's real clauses unchanged**: the slope -4i above.
+  - **A node of their own**, one for both with a flag: a class, its three
+    visitor slots and a copy of `Matrix`'s map for floor, about 50 lines
+    of C++ where sharing floor's is about 30.
+
+  What moves: trig.ink's `?abs`, which lists the new clause, and its
+  `abs(i)`, 1 where it was refused, with the comments over them; the
+  comments of charpoly.ink and eig.ink that say hurwitz and rho refuse in
+  abs's words, the same words now max's. No header. README's section 1
+  lists `re` and `im` with `floor` and says abs takes a complex number,
+  with the frequency response as its example.
+
+  About 34 lines: 3 of the prelude and 8 edited, 1 of its comment; about
+  30 of C++, the refactor 4, the node's name and function, the
+  definitions 4, grad 13, the parts' rule 6, the complex point 2, floor's
+  jump asked of floor alone 2 and abs named 3, the compiler 6 and `tex`
+  3. 15,327 lines at ebf47fd, by `wc -l include/inkamath/*.hpp src/*`.
+  Past 51 the implementation stops and reports.
+
+  Specified in `test/data/spec/cparts.ink`, 53 entries replayed by the spec
+  suite, 40 failing by design, those passing being definitions and
+  `clear` echoing themselves, the refusal of a matrix, a real number's abs,
+  H(0) and a call's `tex`: the response, its parts and slopes exactly
+  with sympy, each rounded to 9 digits with mpmath and none within 0.04 of
+  a digit's half; the range and the marks in Python's doubles through the
+  scaling above.
+
+  Built as specified: the spec is the golden `cparts.ink`, 53 entries, and
+  the compiled frequency response a case of `cli.cmake`; README's section
+  1 lists `re` and `im` and shows |T|. Departures: the node is
+  `BuiltinExpression`, and `Matrix`'s `floor` became `Cells`, a cell's
+  function applied to each, which the compiler's constant floor calls
+  too; a part is refused where it moves with a grad whose point is
+  complex, in that grad's name (C202); the prelude's abs is known by its definition in the built-in
+  scope. 37 lines landed against about 34: the refactor 7, where 4 were
+  estimated, the node's constructor and `Cells`; the prelude 3, its
+  comment rewritten in place; the definitions 4 with a line of comment;
+  grad 15, the parts' rule and floor's jump 6, the complex point 5 and
+  abs named 4; the compiler 5 and `tex` 3. 15,364 lines in all, after
+  `cparts`.
 - `[done]` **A sequence with parameters read at a constant index, compiled.**
   `--compile` refuses `f(x)_K` anywhere but under `lim`, "a sequence with
   parameters", where the interpreter answers: `det` by Faddeev-LeVerrier in
@@ -6008,3 +6152,217 @@ that exploring seven domains asked of the interpreter, by how many asked.
   C192 marks an answer the cap ended, 3 more: 57 in all. Compiled grad's
   refusal, after the merge of `fixedloop`, 9 more in `compile.hpp`: 66 in
   all. 15,256 lines in all, after `charpoly`, on integration's 15,190.
+- `[done]` **The real eigenvalues and the largest singular value, in the
+  prelude**, the third step towards eigenvalues: `eig(A)`, every eigenvalue
+  of a matrix whose characteristic polynomial has only real roots, a
+  symmetric one first, as a column, smallest first, each certified by
+  bisection as `rho` is; and `smax(A)`, sqrt(lambda_max(A'A)). Written in inkamath on
+  `charpoly`, `hurwitzs` and `rho`'s scaling and stop. The design, measured
+  on a prototype:
+
+      eigl(q)_1 = q[1]
+      eigl(q)_j = eigl(q)_(j-1)
+      eigl(q)_j | q[j] <> 0 = q[j]
+      eigv(q[j<=m]) = sum_(j=2)^m (q[j]*eigl(q)_(j-1) < 0)
+      eigm(A[j<=n, k<=n])[j<=n, k<=n] = sum_(i=1)^n (A^(j+k-2))[i,i]
+      eigr(A) = A' == A or eigv(charpoly(-eigm(rhod(A, -rhoe(A))))) == 0
+      eigz(A[j<=n, k<=n], i) = eigv(charpoly(-A)) < i and eigv(charpoly(A)) <= n - i
+      eigh(p, i, b) = b + (b[2] - b[1])/2*([1; 0] - (eigv(hurwitzs(p, -(b[1] + b[2])/2)) >= i)*[1; 1])
+      eigu(A, i)_0 | eigz(rhod(A, -rhoe(A)), i) = [0; 0]
+      eigu(A, i)_0 = [-1; 1]
+      eigu(A, i)_m = eigh(charpoly(rhod(-A, -rhoe(A))), i, eigu(A, i)_(m-1))
+      eigu(A, i)_m | m > 64 and rhos(eigu(A, i)_(m-1)) = eigu(A, i)_(m-1)
+      eigb(A, i)_m = rhod(eigu(A, i)_m, rhoe(A))
+      eigk(A, i) = rhoa(eigu(A, i)_256, eigb(A, i)_256)
+      eigc(A[j<=n, k<=n])[i<=n] = eigk(A, i)
+      eig(A[j<=n, k<=n]) | eigr(A) = eigc(A)
+      smax(A[j<=m, k<=n]) = rhod(eigk(rhod(A, -rhoe(A))'*rhod(A, -rhoe(A)), n)^(1/2), rhoe(A))
+
+  with `rhoe(A[j<=m, k<=n])`, any matrix, rho's own signature still
+  refusing one not square first.
+
+  **The count.** Descartes' rule of signs is exact for a polynomial whose
+  roots are all real: the sign changes of its coefficients, zeros skipped,
+  are its roots above 0 with their multiplicity. So the eigenvalues of A
+  below x are the sign changes of charpoly(-A)'s shift by -x, `hurwitzs`,
+  which Routh's test already has, and lambda_k < x exactly where there are
+  k of them or more. `eigv` counts, `eigl` carrying the last sign that is
+  not 0. The bracket of the k-th, `eigb(A, k)_m`, is bisected as `rho`'s
+  is: of A/B from [-1, 1), B = 2^e above the sum of |A[j,k]| (C190), the
+  test at the midpoint keeping the half it says, [lo, hi) with lo <=
+  lambda_k < hi, the answer lo made inexact, so a dyadic eigenvalue is
+  itself. Each k is bisected on its own count, so equal eigenvalues are
+  never parted, each copy the same answer, and distinct ones are parted at
+  the first midpoint between them, 1 -+ 10^-12 within 64 halvings; the memo
+  shares every midpoint two bisections have in common, so a repeated
+  eigenvalue costs one. Ascending, as MATLAB's `eig` of a symmetric matrix
+  and NumPy's `eigvalsh` give them.
+
+  **All real, or refused.** The count is exact only if every root is real;
+  of x^2 + 1 it would answer 0 twice. A symmetric matrix's are, so `A' ==
+  A` asks nothing more. Another's are tested by Hermite's criterion: the
+  Hankel matrix of power sums, H[j,k] = tr(A^(j+k-2)), is positive
+  semidefinite exactly where every root is real, its rank the distinct
+  roots and its signature the distinct real ones; H being symmetric, that
+  is charpoly(-H) without a sign change, Descartes again. Of A/B, so that
+  its powers stay near 1. A matrix with a complex eigenvalue is refused,
+  `eig needs a matrix whose eigenvalues are all real`, its real ones not
+  given alone: a column whose length depends on the values is no column a
+  paper writes. The prelude cannot word a refusal, so the guard's failure
+  on eig is given these words in C++, about 5 lines inside `Unapplied`,
+  which keeps its suffix where the guard was approximated past a thousand
+  digits: `eig needs a matrix whose eigenvalues are all real, by a guard
+  approximated past a thousand digits` is what an exact matrix whose test
+  passes them may get, its eigenvalues real or not.
+  `no clause of eig applies`, the words with none, says nothing of why,
+  and `abs(i)`'s refusal as the words was rejected as a lie that reads
+  well.
+
+  **Zero, certified.** 0 is the one value the relative stop never reaches,
+  so `rho` of a nilpotent matrix runs to the cap and is marked (C192).
+  Here it is certified where it is exact, by the counts at 0, which need no
+  shift: lambda_k = 0 where fewer than k eigenvalues are below 0 and at
+  most n - k above, and its bracket is [0; 0] from the start, `rhos` true
+  of it, so the answer is 0 unmarked: a singular symmetric matrix, the
+  zero matrix, a nilpotent one. One line. Any other exact eigenvalue that
+  is not dyadic stops by the relative rule; one below 2^-203 of B, not 0,
+  is the bracket the cap leaves, marked, `eig([1/10^100 0; 0 1])` [0; 1].
+  One past a double's range is the double `~` makes of it, inf or a 0
+  that is not one, marked though every test is exact, by `rhoa` as
+  fixes14 marks rho's and abscissa's: `eig([2 1; 1 3]/10^400)`, [0; 0].
+
+  **What it costs.** A test is one shift, about m^2 products, and a count;
+  no Routh column and no map, so a test at a midpoint of b bits reads
+  numbers of about n b bits, where `rho`'s read n^2 b. On the research's
+  symmetric matrices of tenths, certified up to 20x20, marked at 24x24
+  and then within a double of NumPy's, measured on symmetric matrices
+  alone: a marked repeated eigenvalue of another can be off at the ninth
+  digit, as an inexact one's is; 0.03 s for a 2x2, 0.05 s for
+  Hilbert's 5x5, 0.3 s for its 8x8, 0.4 s at 10x10, 1.1 s at 12x12, 4 s at
+  16x16, 14 s at 20x20 and 36 s at 24x24. The spec replays in 10 s under
+  the sanitizers. Hermite's test is one `charpoly` more, of an n x n.
+
+  Decided besides:
+  - **Names.** `eig`, MATLAB's and Octave's; `eigvals` and `eigenvals`,
+    NumPy's and sympy's, are longer for nothing. `eigb` is the bracket, as
+    `rhob` is, the helpers prefixed `eig`. `smax`, the paper's sigma_max;
+    `norm` is a vector's and Frobenius's too, `sigma` every activation's,
+    `svd` a decomposition, `norm2` read as a squared norm.
+  - **smax.** sqrt of the largest eigenvalue of S'S, S = A/2^e with
+    rho's e, scaled back by 2^e: A'A unscaled would be 10^400 of
+    `[~1 2; 3 4]*10^200`, inf, where sigma is a double. S'S is n x n, n
+    A's columns; the smaller of S'S and SS' would spare a wide matrix's
+    zero eigenvalues, certified at once: a line for nothing. Its
+    eigenvalue is `eigk`'s at k = n, by the same count, not `abscissa`'s,
+    whose Routh column reads n^2 b bits and whose 0 is marked. Past a
+    double's range its answer is marked as eig's, by its own scaling back,
+    which comes after `rhoa`: a line.
+  - **Refused besides.** A matrix not square, by eig's signature. A complex
+    entry in abs's words, `a comparison needs real numbers, not i`, `rhoe`
+    reading every cell before a test does, so a Hermitian matrix too, as
+    `rho` refuses it; of smax, A's cell, not one of A'A.
+  - **An inexact matrix** is bisected by rounded tests, its bracket inexact
+    and `frac` refusing it, as rho's. Hermite's test is rounded too, and
+    H, a Hankel matrix of power sums, is ill-conditioned, so the review
+    found most nonsymmetric inexact matrices refused from about 5x5 even
+    with their eigenvalues well apart, and symmetric ones but for rounding,
+    `Q*D*Q'`, from 5x5 or 6x6; `(A + A')/2` is the way round. An exact
+    one whose test passes a thousand digits may be refused,
+    `[1/3 + 1/7^600 1; 0 1/3 + 1/7^600]`, its refusal saying so, and
+    nonsymmetric 6x6 to 8x8 matrices whose cells have a few dozen digits
+    reach that horizon: H's entries are powers up to 2n - 2, and its
+    characteristic polynomial their products. Or it may pass, the answer
+    marked, as any an approximated guard chose: `[1 1; -1/10^500 1]`, whose
+    eigenvalues are complex, is [1; 1] marked. A k-fold eigenvalue of an
+    inexact matrix is good to about 16/k digits, `eig([~1 1; 0 1])` [1;
+    ~1.00000001] and the inexact 3x3 identity's third ~1.0000069, and a
+    complex pair within about 8 digits of the real axis may be accepted,
+    `[~3 10^-7 0; -10^-7 3 0; 0 0 1]` as about [1; 3; 3]. README says each.
+  - **grad.** A bracket is a staircase: `eig` and `smax` join `rho` and
+    `abscissa` in the stack's staircases, `grad cannot differentiate eig
+    yet` in the interpreter and the compiler alike, one line. A simple
+    eigenvalue's derivative, v'dA v of a symmetric matrix, is a later item
+    with rho's.
+  - **Compiled**: neither, as `rho`: `eig` stops at `A' == A`, "a
+    comparison of matrices", and `smax` at `hurwitzb`'s factorial. A case
+    of `test/cli.cmake`, `g_n = grad_(a = n) eig([a 1; 1 2])[1]`, holds
+    compiled grad's refusal.
+
+  Rejected:
+  - **Sturm's sequence**, the research's `sturm.ink` and `eig.ink`: it
+    counts distinct real roots of any polynomial, so it tells real roots
+    from complex ones by itself, but it needs polynomial division in
+    inkamath, a leading coefficient, a shift and a remainder recurrence,
+    and a tower of gcds for the multiplicities, about 30 lines against
+    `eigl`, `eigv`, `eigm` and `eigr`'s 6, and its remainders'
+    coefficients grow where a shift's do not.
+  - **Budan and Fourier**, the research's `symeig.ink`: the same count as
+    the shift, by n derivatives evaluated at x, each a helper the shift
+    does not need.
+  - **Sylvester's inertia**, the negative pivots of A - xI: a pivot is 0
+    at a dyadic x where a leading minor has that eigenvalue, which
+    exact elimination cannot step over, and it serves a symmetric matrix
+    alone.
+  - **Refusing every matrix not symmetric**: `[1 2; 3 4]`, a companion
+    matrix and a triangular one have real eigenvalues, and Hermite's test
+    is a line.
+  - **Certifying every dyadic eigenvalue exactly**, by a second count at
+    each midpoint: a nonzero dyadic one is reached and stops; 0 alone
+    needed it.
+  - **The research's `lim`** stop and its `ilogb(nb(A)) + 50` halvings,
+    replaced by rho's, as rho's were.
+
+  **H-infinity, later.** ||G||_inf of C(sI - A)^-1 B, A stable, is the
+  least gamma such that the Hamiltonian [A, BB'/gamma^2; -C'C, -A'] has no
+  eigenvalue on the imaginary axis, bisected on gamma as the research's
+  `hinf.ink` did. Its characteristic polynomial is even, q(s^2), and the
+  test is whether q has a real root at or below 0: q's roots are not all
+  real, so Descartes cannot count them. It needs a count of real roots of
+  any polynomial in a half-line: Sturm's sequence, or Hermite's forms,
+  whose signatures count distinct real roots, weighted by -u for those
+  below 0, read by Descartes on their characteristic polynomials, which
+  are real-rooted, so with what this item adds. Then an upper bound to
+  start from, `hurwitz` for A's stability, a D term's gamma^2 I - D'D, and
+  the staircase. Not specified here.
+
+  What moves: no golden and no header, as no test names any of them; the
+  prelude gains 17 definitions, read at every start. README's section 1 lists
+  `eig`, `eigb` and `smax` with the prelude's others, and section 2 shows
+  `eig` and `smax` and says what is refused.
+
+  About 31 lines: 20 of the prelude, two of them wrapped, some 6 of its
+  comment, 5 of C++ for the refusal's words and 1 for the staircases.
+  15,256 lines at d3c2149, by `wc -l include/inkamath/*.hpp src/*`. Past
+  46 the implementation stops and reports.
+
+  Specified in `test/data/spec/eig.ink`, 54 entries replayed by the spec
+  suite, 47 failing by design, those passing being definitions echoing
+  themselves, `digits` and a session's `eig`: eigenvalues exactly with
+  sympy, its real roots compared exactly, Hilbert's with mpmath at 60
+  digits, the 6x6 and `smax` against NumPy, and each bracket by bisection
+  in Python's fractions with every test decided from the exact
+  eigenvalue, printed by a transcription of `Number::Shown`, apart from
+  the interpreter. The prototype above, defined in a session, gives every
+  answer but the three refusals' words, grad's two, the marks past a
+  double's range and a session's `eig`, which needs the name to be the
+  prelude's.
+
+  Built as specified: the spec is the golden `eig.ink`, 54 entries, and the
+  compiled refusals a case of `cli.cmake`; README's sections 1 and 5 list
+  the names, and section 2 shows `eig` and `smax` and says what is refused.
+  Departures: smax's mark is `smaxd`, a definition more, which marks where
+  scaling back by 2^e does not come back to the same double, so a
+  subnormal it loses digits of too, and a subnormal it does not, of
+  `~1e-320`, unmarked where `eig`'s is marked; the refusal's words are
+  given to the prelude's `eig`, known by its name and its scope, as
+  `mod`'s are; `rhoe` of any matrix takes fixes14's clause for a sum past
+  a double with it, over 2^(m+n). The golden replays in 5 s under the
+  sanitizers. 29 lines landed against about 31: the prelude 19 and its
+  comment 6, 1 binding the staircases, and 3 in `reference.hpp`. 15,324
+  lines in all, after `eig`.
+- **An inertia count for inexact symmetric matrices**: the negative pivots
+  of LDL' of A - xI count the eigenvalues below x, backward stable, where the
+  rounded Descartes count of `eig` loses a k-fold eigenvalue to about 16/k
+  digits and Hermite's test refuses symmetric matrices but for rounding.
+  Rejected for `eig` only for an exact dyadic midpoint that zeroes a pivot,
+  which an inexact matrix does not meet.

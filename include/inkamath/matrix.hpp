@@ -134,10 +134,9 @@ public:
         return c;
     }
 
-    static Matrix<T> floor(const Matrix<T>& a) {
+    static Matrix<T> Cells(const Matrix<T>& a, T (*f)(const T&)) {
         Matrix<T> c(a);
-        std::transform(c.data(), c.data() + c.extent_.count(), c.data(),
-                       [](const T& value) { return numeric_interface<T>::floor(value); });
+        std::transform(c.data(), c.data() + c.extent_.count(), c.data(), f);
         return c;
     }
 

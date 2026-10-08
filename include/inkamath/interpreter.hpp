@@ -297,8 +297,11 @@ inline constexpr const char* prelude[] = {
     "tanhp(x) | x > 20 = ~1",
     "tanhk(y, k) = tanhe(2^k - 1 + 2^k*expp(~(y - k*355/512 + k*2.1219444005469057e-4)))",
     "tanhe(m) = -m/(m + 2)",
-    "abs(x) | x < 0 = -x",
-    "abs(x) | x >= 0 = x",
+    "abs(x) | im(x) < 0 or im(x) > 0 = absz(re(x), im(x), 2^ilogb(max(abs(re(x)), abs(im(x)))))",
+    "abs(x) | x < 0 = -re(x)",
+    "abs(x) | x >= 0 = re(x)",
+    "absz(a, b, s) = s*((a/s)*(a/s) + (b/s)*(b/s))^(1/2)",
+    "absz(a, b, s) | 1/a == 0 or 1/b == 0 = 1/~0",
     "max(a, b) = a",
     "max(a, b) | a < b = b",
     "min(a, b) = a",
@@ -322,13 +325,16 @@ inline constexpr const char* prelude[] = {
     // charpoly is det(lambda I - A), highest power first, by Faddeev and
     // LeVerrier. hurwitz is Routh's test of every root of p in Re z < s, its
     // column as a recurrence on the polynomial, and schurcohn of every one in
-    // |z| < r, Routh's on the image of z = r(1 + w)/(1 - w). Each abs exists
-    // only to refuse a complex argument, by name, as one can pass the column. rho
+    // |z| < r, Routh's on the image of z = r(1 + w)/(1 - w). Each max(x, -x)
+    // is an abs that refuses a complex argument, as one can pass the column. rho
     // and abscissa bisect on them a bracket of A/B, B = 2^e above A's cells,
     // scaled by 2^e in two halves so that no factor leaves a double, and
     // keep halving past the 64th while the bracket is wider than 2^-53 of
     // its end nearer 0, up to 256. An answer the cap ended is marked, by
-    // 0*10^-1000, a 0 approximated past a thousand digits (DESIGN.md).
+    // 0*10^-1000, a 0 approximated past a thousand digits (DESIGN.md), as
+    // is one whose double is not normal where its end is not 0, but for a
+    // polynomial lambda^n, whose radius is 0, or lambda^k q, q stable, whose
+    // abscissa is.
     "charpolym(A)_1 = A^0",
     "charpolym(A)_m = A*charpolym(A)_(m-1) + charpolyc(A)_(m-1)*A^0",
     "charpolyc(A)_0 = 1",
@@ -341,15 +347,17 @@ inline constexpr const char* prelude[] = {
     "hurwitzr(q)_0 = q",
     "hurwitzr(q[j<=m])_k[j<=m] = hurwitzc(hurwitzr(q)_(k-1), j + 1) - mod(j + 1, 2)"
     "*hurwitzr(q)_(k-1)[1]/hurwitzr(q)_(k-1)[2]*hurwitzc(hurwitzr(q)_(k-1), j + 2)",
-    "hurwitzt(q[j<=m])_0 = sum_(j=1)^m abs(q[j]) > 0 and q[1] <> 0",
+    "hurwitzt(q[j<=m])_0 = sum_(j=1)^m max(q[j], -q[j]) > 0 and q[1] <> 0",
     "hurwitzt(q)_k = hurwitzt(q)_(k-1) and hurwitzr(q)_(k-1)[2]*q[1] > 0",
     "hurwitzs(p[j<=m], s)[t<=m] = sum_(i=1)^t p[i]*hurwitzb(m-i, m-t)*s^(t-i)",
-    "hurwitz(p[j<=m], s = 0) | abs(s) >= 0 = hurwitzt(hurwitzs(p, s))_(m-1)",
+    "hurwitz(p[j<=m], s = 0) | max(s, -s) >= 0 = hurwitzt(hurwitzs(p, s))_(m-1)",
     "schurcohnm(p[j<=m], r)[t<=m] = sum_(i=1)^m p[i]*r^(m-i)*sum_(a=0)^(m-i) "
     "hurwitzb(m-i, a)*hurwitzb(i-1, m-t-a)*(-1)^(m-t-a)",
-    "schurcohn(p[j<=m], r = 1) | r >= 0 and sum_(j=1)^m abs(p[j]) >= 0 "
+    "schurcohn(p[j<=m], r = 1) | r >= 0 and sum_(j=1)^m max(p[j], -p[j]) >= 0 "
     "= hurwitz(schurcohnm(p, r))",
-    "rhoe(A[j<=n, k<=n]) = rhop(sum_(j=1)^n sum_(k=1)^n abs(A[j,k]))",
+    "rhoe(A[j<=m, k<=n]) = rhop(sum_(j=1)^m sum_(k=1)^n max(A[j,k], -A[j,k]))",
+    "rhoe(A[j<=m, k<=n]) | sum_(j=1)^m sum_(k=1)^n max(A[j,k], -A[j,k]) >= 2^1024 "
+    "= rhop(sum_(j=1)^m sum_(k=1)^n max(A[j,k], -A[j,k])/2^(m+n)) + m + n",
     "rhop(s) = ilogb(s + (s == 0)) + 1 + 0*s",
     "rhod(x, e) = x*2^(e - floor(e/2))*2^floor(e/2)",
     "rhos(b) = b[2] - b[1] <= 2^-53*min(abs(b[1]), abs(b[2]))",
@@ -358,15 +366,50 @@ inline constexpr const char* prelude[] = {
     "rhou(A)_m | m > 64 and rhos(rhou(A)_(m-1)) = rhou(A)_(m-1)",
     "rhob(A)_m = rhod(rhou(A)_m, rhoe(A))",
     "rhoh(p, b) = b + (b[2] - b[1])/2*([1; 0] - schurcohn(p, (b[1] + b[2])/2)*[1; 1])",
-    "rhoa(u, b) | rhos(u) = ~b[1]",
+    "rhoa(u, b) | rhos(u) and (b[1] == 0 or abs(~b[1]) >= 2^-1022 and abs(~b[1]) < 2^1024) "
+    "= ~b[1]",
     "rhoa(u, b) = ~b[1] + 0*10^-1000",
     "rho(A[j<=n, k<=n]) = rhoa(rhou(A)_256, rhob(A)_256)",
+    "rho(A[j<=n, k<=n]) | sum_(j=2)^(n+1) abs(charpoly(rhod(A, -rhoe(A)))[j]) == 0 = ~0",
     "abscissau(A)_0 = [-1; 1]",
     "abscissau(A)_m = abscissah(charpoly(rhod(A, -rhoe(A))), abscissau(A)_(m-1))",
     "abscissau(A)_m | m > 64 and rhos(abscissau(A)_(m-1)) = abscissau(A)_(m-1)",
     "abscissab(A)_m = rhod(abscissau(A)_m, rhoe(A))",
     "abscissah(p, b) = b + (b[2] - b[1])/2*([1; 0] - hurwitz(p, (b[1] + b[2])/2)*[1; 1])",
     "abscissa(A[j<=n, k<=n]) = rhoa(abscissau(A)_256, abscissab(A)_256)",
+    "abscissa(A[j<=n, k<=n]) | charpoly(rhod(A, -rhoe(A)))[n+1] == 0 "
+    "and abscissaq(charpoly(rhod(A, -rhoe(A)))) = ~0",
+    "abscissaq(p[j<=m]) = hurwitz(p)",
+    "abscissaq(p[j<=m]) | p[m] == 0 = abscissaq(abscissat(p))",
+    "abscissat(p[j<=m])[j<=m-1] = p[j]",
+    // eig bisects each eigenvalue of A/B on its own count: by Descartes'
+    // rule, exact where every root is real, the sign changes of
+    // charpoly(-A) shifted by -x are the eigenvalues below x. They are all
+    // real where A is symmetric or Hermite's matrix of power sums, eigm, has
+    // no negative eigenvalue; a 0 is certified by the counts at 0. smax is
+    // the root of S'S's largest, S = A/2^e, and e put back after it.
+    "eigl(q)_1 = q[1]",
+    "eigl(q)_j = eigl(q)_(j-1)",
+    "eigl(q)_j | q[j] <> 0 = q[j]",
+    "eigv(q[j<=m]) = sum_(j=2)^m (q[j]*eigl(q)_(j-1) < 0)",
+    "eigm(A[j<=n, k<=n])[j<=n, k<=n] = sum_(i=1)^n (A^(j+k-2))[i,i]",
+    "eigr(A) = A' == A or eigv(charpoly(-eigm(rhod(A, -rhoe(A))))) == 0",
+    "eigz(A[j<=n, k<=n], i) = eigv(charpoly(-A)) < i and eigv(charpoly(A)) <= n - i",
+    "eigh(p, i, b) = b + (b[2] - b[1])/2*([1; 0] "
+    "- (eigv(hurwitzs(p, -(b[1] + b[2])/2)) >= i)*[1; 1])",
+    "eigu(A, i)_0 | eigz(rhod(A, -rhoe(A)), i) = [0; 0]",
+    "eigu(A, i)_0 = [-1; 1]",
+    "eigu(A, i)_m = eigh(charpoly(rhod(-A, -rhoe(A))), i, eigu(A, i)_(m-1))",
+    "eigu(A, i)_m | m > 64 and rhos(eigu(A, i)_(m-1)) = eigu(A, i)_(m-1)",
+    "eigb(A[j<=n, k<=n], i)_m | eigr(A) and i == floor(i) and i >= 1 and i <= n "
+    "= rhod(eigu(A, i)_m, rhoe(A))",
+    "eigk(A, i) = rhoa(eigu(A, i)_256, rhod(eigu(A, i)_256, rhoe(A)))",
+    "eigc(A[j<=n, k<=n])[i<=n] = eigk(A, i)",
+    "eig(A[j<=n, k<=n]) | eigr(A) = eigc(A)",
+    "smax(A[j<=m, k<=n]) = smaxd(eigk(rhod(A, -rhoe(A))'*rhod(A, -rhoe(A)), n)^(1/2), rhoe(A))",
+    "smaxd(x, e) = rhod(x, e) + 0*10^(-1000*(rhod(rhod(x, e), -e) <> x))",
+    "smaxd(x, e) | x <> 0 and (rhod(x, e) == 0 or abs(rhod(x, e)) >= 2^1024) "
+    "= rhod(x, e) + 0*10^-1000",
 };
 
 template <Parsable T, Numeric U>
@@ -387,6 +430,15 @@ Interpreter<T, U>::Interpreter() {
             {names.at("cos").get(), inkamath_prelude_cos},
         }};
         stack_.compiled = [this, functions](const Reference<U>& f, const U& x) -> std::optional<U> {
+            // An inexact cell inf or NaN has lost its value, and no
+            // eigenvalue of it is certified, inf or other (C206).
+            if (stack_.staircases.contains(&f))
+                for (std::size_t k = 0; k < x.Size().count(); ++k)
+                    if (const Number& c = x.data()[k];
+                        !c.exact() &&
+                        !(std::isfinite(c.Inexact().real()) && std::isfinite(c.Inexact().imag())))
+                        throw std::runtime_error(f.Name() + " needs finite cells, not " +
+                                                 numeric_interface<Number>::toString(c));
             const auto found = std::find_if(functions.begin(), functions.end(),
                                             [&](const auto& each) { return each.first == &f; });
             if (found == functions.end() || !x.IsScalar()) return {};
@@ -441,7 +493,8 @@ Interpreter<T, U>::Interpreter() {
         stack_.stepwise = names.at("ilogb").get();
     }
     const auto& names = stack_.Builtins().names;
-    stack_.staircases = {names.at("rho").get(), names.at("abscissa").get()};
+    stack_.staircases = {names.at("rho").get(), names.at("abscissa").get(), names.at("eig").get(),
+                         names.at("smax").get()};
     ResetInterpreter();
 }
 

@@ -285,3 +285,24 @@ kept(x_n, a = -1) = {
     d_n = 0
 }
 held = kept(x_n = n)
+
+# An argument a function never reads is computed all the same, as the
+# interpreter computes it, so its refusal is the call's: F ignores its M,
+# and so grad's body its t (C189). g, h and y answered 0 or 1 from step 2,
+# where each is to report within 0.
+unread(x_n) = {
+    r(v) | v > 0 = v
+    F(M) = 1
+    y_n = F(r(x_n))
+    g_n = grad_(t = r(x_n)) F(t)
+    h_n = grad_(t = x_n) F(r(t))
+}
+idle = unread(x_n = 2 - n)
+
+# So is im's, though im of a compiled value, real, is 0: x and z answered
+# 1 where log and sin refuse, from step 0 (C204).
+stray(a = 1) = {
+    x_n = im(log(n - 5)) + a
+    z_n = im(sin(2^21*(n - 5))) + a
+}
+imag = stray()
