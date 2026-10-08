@@ -1240,7 +1240,7 @@ set(args --compile blocks.ink)
 set(stdout "cannot compile a: a tensor cannot be a block of a literal, only a matrix can
 cannot compile b: a block that does not fill its band
 cannot compile c: its clauses have different shapes
-cannot compile d: a matrix inverse outside a sequence
+cannot compile d: a matrix inverse inside a limit's terms
 ")
 set(exit 1)
 check(compile_blocks_refused)
