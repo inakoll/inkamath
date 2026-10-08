@@ -161,6 +161,12 @@ private:
     static bool WritesNan(const std::string& code, std::size_t from = 0) {
         return Writes(code, "NAN", from);
     }
+    // Or may answer it, calling a function of the header that does (C211).
+    bool MayNan(const std::string& code) const {
+        return WritesNan(code) ||
+               std::any_of(nan_functions_.begin(), nan_functions_.end(),
+                           [&](const std::string& f) { return Writes(code, f); });
+    }
     static bool Writes(const std::string& code, const std::string& word, std::size_t from = 0) {
         const auto name = [&](std::size_t at) {
             return std::isalnum(static_cast<unsigned char>(code[at])) || code[at] == '_';
@@ -693,7 +699,7 @@ private:
             const int before = calls_;
             Code      value  = Emit(argument);
             bool      nan    = false;
-            for (const Cell& c : value.cells) nan = nan || WritesNan(c.text) || nans_.count(c.text);
+            for (const Cell& c : value.cells) nan = nan || MayNan(c.text) || nans_.count(c.text);
             if ((at || calls_ != before) && !value.constant) value = SharedAll(value);
             if (nan)
                 for (const Cell& c : nans.emplace_back(value).cells) nans_.insert(c.text);
@@ -839,6 +845,7 @@ private:
         if (!functions_.count(called)) {
             const Code body = inside(false);
             functions_.emplace(called, body.cells[0].text);
+            if (MayNan(body.cells[0].text)) nan_functions_.insert(called);
             prelude_.push_back("static inline double " + called + "(" + signature +
                                ") {\n    return " + body.cells[0].text + ";\n}\n\n");
         }
@@ -858,6 +865,7 @@ private:
             // for a jump, a floor's or an equality's, as the interpreter does.
             if (body.cells[0].text != functions_.at(called)) {
                 functions_.emplace(jumped, body.cells[0].text);
+                if (MayNan(body.cells[0].text)) nan_functions_.insert(jumped);
                 prelude_.push_back("static inline double " + jumped + "(" + signature +
                                    ") {\n    return " + body.cells[0].text + ";\n}\n\n");
             }
@@ -4378,6 +4386,7 @@ private:
     bool                             clauses_ = false;  // whether the step keeps them; see Build
     bool                             aware_ = false;  // whether it writes NaN, and so tests for it
     std::set<std::string>            nans_;             // arguments' cells that may be NaN
+    std::set<std::string>            nan_functions_;    // the header's that may answer NaN
     bool                             guarding_ = false;  // in a guard, which asks only for values
     std::map<std::string, Value>     known_;    // globals that read only those
     std::set<std::string>            read_parameters_;      // by the value being compiled
