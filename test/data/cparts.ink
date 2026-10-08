@@ -163,13 +163,14 @@ M[k<=5] = H(pi*(k-1)/4)
 >> grad_(v = 0) grad_(w = v) H(w)
 -4
 
-# max and min answer a or b, and so passed on T's slope, -4i, where each is
-# real: their clauses take the real part too (C205).
+# max and min answered a or b, and so passed on T's slope, -4i, where each
+# is real; but T leaves the real line there, where neither is defined, and
+# has no derivative at 0 to give, unlike |T| (C205).
 >> grad_(w = 0) max(T(e^(i*w)), 0)
-0
+error: max has no derivative where its argument leaves the real line at w = 0
 
 >> grad_(w = 0) min(3, T(e^(i*w)))
-0
+error: min has no derivative where its argument leaves the real line at w = 0
 
 # A part has no derivative in a complex variable, nor has the modulus,
 # refused in its own words rather than its guard's im's.
