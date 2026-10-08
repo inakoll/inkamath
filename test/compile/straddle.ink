@@ -123,3 +123,22 @@ fedby(u_n) = {
     x_n = u_n + U(1)
 }
 given = fedby(u_n = U(-1))
+
+# A sequence with parameters is heard as a function is. Asked at 3, s is
+# tie's straddle again: a run moved up takes its first clause and calls H
+# where the interpreter does not, and that call is not paired with the
+# interpreter's of H(-1), which is 1 from its threshold in every run.
+#
+#     parted: 100 steps from 0, against exact values
+#     parted.x: at 0 a disturbed run takes 's(c)_k | lim half(1) >= c = H(1)' and the interpreter 's(c)_k = 0'; the guard of the first is 4.8e-11 from its threshold
+#     parted.x: within 0; the interpreter's terms about 1 from the exact ones, past the tolerance from 0
+detour(w = 1/10^11) = {
+    half(a)_0 = 0
+    half(a)_k = half(a)_(k-1) + a/2^(k+1)
+    H(x) | x >= 0 = 1
+    H(x) = 0
+    s(c)_k | lim half(1) >= c = H(1)
+    s(c)_k = 0
+    x_n = s(1/2 - w)_3 + H(-1)
+}
+parted = detour()

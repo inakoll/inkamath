@@ -55,17 +55,22 @@ public:
         int                             sample = 0;
         std::pair<const Sequence*, int> now{nullptr, 0};
         bool                            measuring = false;
+        int                             order     = 0;
         const auto hook = [&](const Reference<Value>& reference, const Clause<Value>& clause, int n,
                               int row, int col, bool held, EvaluationVisitor<Value>& evaluator) {
             if (measuring) return;
-            const int place = static_cast<int>(&clause - reference.Clauses().data());
-            auto*     call  = clause.parameters.general()
-                                  ? nullptr
-                                  : &calls[{sample, now.first, now.second, &reference}];
+            const int   place = static_cast<int>(&clause - reference.Clauses().data());
+            const auto& p     = clause.parameters;
+            // A sequence with parameters is asked as a function is (C251).
+            auto* call =
+                p.general() && (p.parameters_names().empty() || reference.home == &stack.Builtins())
+                    ? nullptr
+                    : &calls[{sample, now.first, now.second, &reference}];
             if (call && (call->empty() || call->back().chosen ||
                          call->back().margins.rbegin()->first >= place))
                 call->emplace_back();
             Asked& seen = call ? call->back() : asked[{sample, &reference, n, row, col}];
+            if (!seen.heard) seen.heard = ++order;
             const Setting<bool> quiet(measuring, true);
             seen.margins[place] =
                 sample ? std::optional<Number>() : Margin(*clause.parameters.guard(), evaluator);
@@ -225,8 +230,9 @@ public:
                                                       std::to_string(compiled.cells[k]) + "]";
         // The first step at which a disturbed run takes another clause than
         // the interpreter (DESIGN.md), in a flip's words: at one step, the
-        // first sequence asked's, and the first run's.
-        std::map<std::pair<int, const Sequence*>, std::string> straddles;
+        // first sequence asked's, in it the first guard heard (C251), and the
+        // first run's.
+        std::map<std::pair<int, const Sequence*>, std::pair<int, std::string>> straddles;
         const auto straddle = [&](int n, const Sequence* sequence, const std::string& place,
                                   const std::vector<Clause<Value>>& clauses, int took, int chose,
                                   const Asked& seen) {
@@ -247,7 +253,8 @@ public:
                 line += std::string("; the guard of the ") + (earlier ? "first" : "second") +
                         " is " + (d == 0.0 ? "exactly on" : text) + " its threshold";
             }
-            straddles.emplace(std::pair(n, sequence), line);
+            const auto [at, fresh] = straddles.try_emplace({n, sequence}, seen.heard, line);
+            if (!fresh && seen.heard < at->second.first) at->second = {seen.heard, line};
         };
         std::string table;
         for (std::size_t k = 0; k < compiled.guarded.size(); ++k) {
@@ -447,7 +454,8 @@ public:
         out += "    printf(\"" + instance + ": " + std::to_string(steps) + " steps from " +
                std::to_string(first) + (floats ? " in float" : "") + ", against " + against +
                "\\n\");\n";
-        if (!straddles.empty()) out += "    puts(" + Quoted(straddles.begin()->second) + ");\n";
+        if (!straddles.empty())
+            out += "    puts(" + Quoted(straddles.begin()->second.second) + ");\n";
         if (!table.empty())
             out += "    static const guarded_ guarded[] = {\n" + table + "    };\n" +
                    "    held &= flips_(guarded, (int)(sizeof guarded / sizeof guarded[0]));\n";
@@ -461,6 +469,7 @@ private:
     struct Asked {
         std::optional<int>                   chosen;
         std::map<int, std::optional<Number>> margins;
+        int                                  heard = 0;  // in the interpreter's run, its order
     };
 
     // How far a guard is from going the other way, exactly: for a comparison,
