@@ -212,13 +212,16 @@ tolerance (`test/compile/estimate.ink`). `test/compile/drift.ink` has an instanc
 holds and one that does not: a tenth computed again at every step, whose
 rounding each step multiplies by ten. Before the values, it reports the first step
 at which a compiled guard takes another clause than the interpreter's, and how
-far that guard is from its threshold in exact arithmetic: rounding explains a
-flip at a margin near zero, and not one at a large margin. `brink` in the same
-file sits exactly on its threshold, and `ledge` a trillionth from it. Before
-that, it reports the first step at which a disturbed run takes another clause
-than the interpreter, at a sequence's guard or a function's the file writes,
-in the same words: there the estimate is a clause's, not a rounding's, and the
-check does not fail for it (`test/compile/straddle.ink`).
+far that guard is from its threshold as the interpreter computes it, exactly
+where both its sides are exact and in doubles where one is not: rounding
+explains a flip at a margin near zero, and not one at a large margin. `brink`
+in the same file sits exactly on its threshold, and `ledge` a trillionth from
+it. Before that, it reports the first step at which a disturbed run takes
+another clause than the interpreter, at a sequence's guard or a function's the
+file writes, in the same words: there the estimate is a clause's, not a
+rounding's, and the check does not fail for it (`test/compile/straddle.ink`,
+where `crease`'s 0.30000000000000004 is 5.6e-17 from the double nearest its
+threshold 3/10).
 
 `--float`, beside `--compile` or an instance's `--check`, writes floats where
 the header writes doubles, every constant the nearest float, for a target that
