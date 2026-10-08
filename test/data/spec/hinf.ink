@@ -15,7 +15,8 @@
 >> hinf(-2, 1, 3)
 1.5
 
-# 1/(s + 3): 1/3, which no halving reaches.
+# 1/(s + 3): 1/3, which no double holds. Normalised by its input, its
+# norm is 1, which a halving reaches; the third scaling it back is rounded.
 >> hinf(-3, 1, 1)
 ~0.333333333
 
