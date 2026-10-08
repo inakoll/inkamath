@@ -427,6 +427,11 @@ private:
             Hidden(definition, arguments);
             const Setting<bool> unguarded(guard_, false);
             Jet              result = Dispatch(definition, indexed, index);
+            // abs, max and min are continuous where their guards step.
+            const auto& names = stack_.Builtins().names;
+            if (&definition == names.at("abs").get() || &definition == names.at("max").get() ||
+                &definition == names.at("min").get())
+                stepped_ = 0;
             stepped_ &= Size() - 1;
             memo_.emplace(key, std::pair(result, stepped_));
             stepped_ |= outer;
