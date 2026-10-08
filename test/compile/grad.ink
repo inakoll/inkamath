@@ -343,3 +343,22 @@ clamped(x_n) = {
     y_n = grad_(t = x_n) f(t)*~(10^400)
 }
 apart = clamped(x_n = 6)
+
+# C235: a quotient by a value whose clause taken may have no part is its
+# part where that clause has one, a condition that is the clauses' own
+# conditional, which was written bare before the quotient's '?': the step
+# took 1 for -2/v^3, at every step, and a power's likewise 1 for 2*v, the
+# derivative of (v^4)^(1/2). The interpreter's square root is not exact, so
+# z is held to its terms, y to the exact ones as computed in doubles:
+#
+#     over: 100 steps from 0, against exact values until 0 and inexact ones from there
+#     over.y: within 1.4e-20
+inverse(x_n) = {
+    f(v) | v > 0 = v*v
+    f(v) = 2
+    y_n = grad_(v = x_n) 1/f(v)
+    g(v) | v > 0 = v*v*v*v
+    g(v) = 2
+    z_n = grad_(v = x_n) g(v)^(1/2)
+}
+over = inverse(x_n = n + 1)
