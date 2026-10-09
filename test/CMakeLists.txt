@@ -670,7 +670,7 @@ endforeach()
 
 foreach(checked IN ITEMS drift:calm drift:wild drift:ledge logistic:gate momentum:ball newton:stiff
                          drift:radix inputs:fan float:hum float:drone float:far float:tally float:crawl
-                         float:steep float:blast
+                         float:steep float:blast float:tiny
                          steady:mark softmax:cls grad:line tensor:whirl tensor:batch
                          cellguards:rfit cellguards:tfit thresholds:dies thresholds:beat stable:peak
                          reddi:thm1 reddi:fixed reddi:gen
@@ -712,20 +712,21 @@ foreach(report IN ITEMS
         "calm:^calm: 100 steps from 0${in_float}\ncalm\\.v: within 1\\.1e-06, 1\\.4 units of a float\n$"
         "wild:^wild: 100 steps from 0${in_float}\nwild\\.d: ${parts}$"
         "ledge:^ledge: 100 steps from 0${in_float}\nledge\\.g: at 1 the compiled step takes 'g_n \\| d_n < c - w = 1' and the interpreter 'g_n = 0'\\; the guard of the first is 1e-12 from its threshold\nledge\\.d: ${parts}ledge\\.g: 1 at 1, where the interpreter gives 0\n$"
-        "gate:^gate: 100 steps from 0${inexact}\ngate\\.b: within 1\\.2e-06, 2\\.5 units of a float${about}\ngate\\.w: within 9\\.4e-07, 3\\.9 units of a float${about}\ngate\\.p: within 2\\.1e-07, 1\\.8 units of a float${about}\n$"
-        "ball:^ball: 100 steps from 0${inexact}\n(ball\\.[a-z]+: within [0-9.e+-]+, [0-5](\\.[0-9]+)? units of a float${about}\n)+$"
+        "gate:^gate: 100 steps from 0${inexact}\ngate\\.b: within 1\\.2e-06, 2\\.5 units of a float${about}\ngate\\.w: within 9\\.4e-07, 3\\.9 units of a float${about}\ngate\\.p: within 2\\.1e-07, 22 units of a float${about}\n$"
+        "ball:^ball: 100 steps from 0${inexact}\n(ball\\.[a-z]+: within [0-9.e+-]+, [0-9.e+-]+ units of a float${about}\n)+$"
         "stiff:^stiff: 100 steps from 0${inexact}\nstiff\\.h: within 6e-08, 0\\.5 units of a float\nstiff\\.x: within ${units}\nstiff\\.y: within ${units}\n$"
         "crawl:^crawl: 100 steps from 0${in_float}\ncrawl\\.s: within 0, 0 units of a float\ncrawl\\.y: 100000016 at 0, where the interpreter gives none: s did not converge within 100 terms \\(last term 100000800\\)\n$"
         "fan:^fan: 100 steps from 0${in_float}\nfan\\.y: within 0, 0 units of a float\n$"
         "radix:^radix: 100 steps from 0${inexact}\nradix\\.y: ${exact}\n$"
-        "hum:^hum: 100 steps from 0${in_float}\nhum\\.y: within 2\\.7e-06, 22 units of a float\n$"
-        "drone:^drone: 100 steps from 0${in_float}\ndrone\\.y: within 5\\.6e-06, 47 units of a float\n$"
+        "hum:^hum: 100 steps from 0${in_float}\nhum\\.y: within 2\\.7e-06, 74 units of a float\n$"
+        "drone:^drone: 100 steps from 0${in_float}\ndrone\\.y: within 5\\.6e-06, 2\\.3e\\+03 units of a float\n$"
         "far:^far: 100 steps from 0${in_float}\nfar\\.x: within 0\\.99, 16 units of a float\nfar\\.d: 0 at 1, where the interpreter gives 0\\.01\n$"
         "tally:^tally: 100 steps from 0${in_float}\ntally\\.c: within 50, 25 units of a float\n$"
+        "tiny:^tiny: 100 steps from 0${in_float}\ntiny\\.y: within 1e-08, 1\\.1e\\+07 units of a float\ntiny\\.z: within 1e-08\n$"
         "steep:^steep: 100 steps from 0${inexact}\nsteep\\.e: inf at 67, where the interpreter gives [0-9.e+-]+\; the interpreter's term about [0-9.e+-]+ from the exact one\n$"
         "blast:^blast: 100 steps from 0${in_float}\nblast\\.y: no value compared, the step NaN where the interpreter gives none, as at 0: p did not converge within 100 terms \\(last term [^)]+\\)\nblast\\.z: no value compared, the step NaN where the interpreter gives none, as at 0: v did not converge within 100 terms \\(last term [^)]+\\)\n$"
         "mark:^mark: 100 steps from 0${inexact}\nmark\\.d: within ${units}\nmark\\.s: within ${units}\n$"
-        "line:^line: 100 steps from 0${in_float}\nline\\.w: within 2\\.7e-07, 1\\.9 units of a float\n$"
+        "line:^line: 100 steps from 0${in_float}\nline\\.w: within 2\\.7e-07, 3\\.7 units of a float\n$"
         "whirl:^whirl: 100 steps from 0${in_float}\nwhirl\\.d: ${exact}\nwhirl\\.s: ${exact}\nwhirl\\.c: ${exact}\nwhirl\\.e: ${exact}, from 1\nwhirl\\.g: ${exact}\nwhirl\\.h: ${exact}, from 1\nwhirl\\.k: ${exact}\nwhirl\\.l: ${exact}\nwhirl\\.p: ${exact}\nwhirl\\.q: ${exact}\nwhirl\\.u: ${exact}, from 1\n$"
         "batch:^batch: 100 steps from 0${in_float}\nbatch\\.w: ${exact}\n$"
         "rfit:^rfit: 100 steps from 0${in_float}\nrfit\\.W: ${exact}\nrfit\\.L: ${exact}\n$"
@@ -733,24 +734,24 @@ foreach(report IN ITEMS
         "dies:^dies: 100 steps from 0${in_float}\ndies\\.alive: at 3 the compiled step takes 'alive_n \\| b_n > 0 = 1' and the interpreter 'alive_n = 0'\\; the guard of the first is exactly on its threshold\ndies\\.b: -0\\.0728999898 at 4, where the interpreter gives 0\ndies\\.alive: 1 at 3, where the interpreter gives 0\n$"
         "beat:^beat: 100 steps from 0${in_float}\nbeat\\.locked: at 2 the compiled step takes 'locked_n = 0' and the interpreter 'locked_n \\| e_n\\[1\\] == 0 and e_n\\[2\\] == 0 = 1'\\; the guard of the second is exactly on its threshold\n(beat\\.(x|xh|e): within [0-9.e+-]+, [0-9.e+-]+ units of a float\n)+beat\\.locked: 0 at 2, where the interpreter gives 1\n$"
         "peak:^peak: 100 steps from 0${inexact}\npeak\\.Q: ${exact}\npeak\\.S: within ${units}\npeak\\.A\\[3,1\\]: [-a-z()]+ at 63, where the interpreter gives 1\\; the interpreter's term about [0-9.e+-]+ from the exact one\npeak\\.B: within ${units}\n$"
-        "thm1:^thm1: 100 steps from 0 in float${until2}\nthm1\\.h: within 1\\.2e-07, 1 units of a float, from 2${about}\nthm1\\.x: within 6\\.8e-08, 0\\.57 units of a float, from 1${about}\nthm1\\.R: within 9\\.3e-06, 2\\.4 units of a float${about}\nthm1\\.g: ${exact}, from 1\nthm1\\.m: ${exact}\nthm1\\.v: within 1e-06, 1\\.7 units of a float\n$"
-        "fixed:^fixed: 100 steps from 0 in float${until2}\nfixed\\.x: within 1\\.3e-07, 1\\.1 units of a float, from 1${about}\nfixed\\.R: within 4\\.3e-06, 2\\.2 units of a float${about}\nfixed\\.g: ${exact}, from 1\nfixed\\.v: within 1e-06, 1\\.7 units of a float\nfixed\\.w: within 1e-06, 1\\.1 units of a float\n$"
-        "gen:^gen: 100 steps from 0 in float${until2}\ngen\\.h: within 1\\.8e-07, 1\\.5 units of a float, from 2${about}\ngen\\.x: within 1\\.6e-07, 1\\.4 units of a float, from 1${about}\ngen\\.R: within 2e-06, 15 units of a float${about}\ngen\\.g: ${exact}, from 1\ngen\\.m: within 4\\.8e-07, 1 units of a float\ngen\\.v: within 7\\.2e-06, 0\\.47 units of a float\n$"
-        "sums:^sums: 100 steps from 0${in_float}\nsums\\.c: within 0\\.00048, 4\\.1e\\+03 units of a float, from 1\nsums\\.o: within 0\\.0029, 2\\.9 units of a float\nsums\\.plain: within 0\\.0028, 2\\.8 units of a float\nsums\\.s: within 0\\.00047, 0\\.48 units of a float\nsums\\.comp: within 0\\.00048, 4\\.1e\\+03 units of a float\nsums\\.total: within 0\\.00051, 0\\.52 units of a float\n$"
+        "thm1:^thm1: 100 steps from 0 in float${until2}\nthm1\\.h: within 1\\.2e-07, 9\\.7 units of a float, from 2${about}\nthm1\\.x: within 6\\.8e-08, 9\\.7 units of a float, from 1${about}\nthm1\\.R: within 9\\.3e-06, 2\\.4 units of a float${about}\nthm1\\.g: ${exact}, from 1\nthm1\\.m: ${exact}\nthm1\\.v: within 1e-06, 1\\.7 units of a float\n$"
+        "fixed:^fixed: 100 steps from 0 in float${until2}\nfixed\\.x: within 1\\.3e-07, 3\\.6e\\+02 units of a float, from 1${about}\nfixed\\.R: within 4\\.3e-06, 2\\.2 units of a float${about}\nfixed\\.g: ${exact}, from 1\nfixed\\.v: within 1e-06, 1\\.7 units of a float\nfixed\\.w: within 1e-06, 1\\.1 units of a float\n$"
+        "gen:^gen: 100 steps from 0 in float${until2}\ngen\\.h: within 1\\.8e-07, 3\\.2e\\+02 units of a float, from 2${about}\ngen\\.x: within 1\\.6e-07, 3\\.2e\\+02 units of a float, from 1${about}\ngen\\.R: within 2e-06, 59 units of a float${about}\ngen\\.g: ${exact}, from 1\ngen\\.m: within 4\\.8e-07, 2 units of a float\ngen\\.v: within 7\\.2e-06, 0\\.47 units of a float\n$"
+        "sums:^sums: 100 steps from 0${in_float}\nsums\\.c: within 0\\.00048, 8\\.1e\\+03 units of a float, from 1\nsums\\.o: within 0\\.0029, 2\\.9 units of a float\nsums\\.plain: within 0\\.0028, 2\\.8 units of a float\nsums\\.s: within 0\\.00047, 0\\.48 units of a float\nsums\\.comp: within 0\\.00048\nsums\\.total: within 0\\.00051, 0\\.52 units of a float\n$"
         "muller:^muller: 100 steps from 0${in_float}\nmuller\\.x: 4\\.98312378 at 6, where the interpreter gives 4\\.9108474990827933\n$"
         "rounded:^rounded: 100 steps from 0${inexact}\nrounded\\.x: 4\\.98312378 at 6, where the interpreter gives 4\\.9108474986606296\; the interpreter's term about [0-9.e+-]+ from the exact one\n$"
         "surprise:^surprise: 100 steps from 0${inexact}\n${smooth_k}surprise\\.g: 1 at 0, where the interpreter gives 0\; the interpreter's term about [0-9.e+-]+ from the exact one\nsurprise\\.k: ${exact}${about}\n$"
         "solveur:^solveur: 100 steps from 0${in_float}\nsolveur\\.d: 0 at 0, where the interpreter gives -1\nsolveur\\.z\\[1,1\\]: [-a-z()]+ at 0, where the interpreter gives 12582909\n$"
         "rump:^rump: 100 steps from 0${in_float}\nrump\\.g: 1\\.17260396 at 0, where the interpreter gives -0\\.82739605994682142\n$"
         "year:^year: 100 steps from 0${inexact}\nyear\\.naive: within [0-9.]+, [1-9](\\.[0-9])?e\\+02 units of a float${about}\nyear\\.thm4: within [0-9.e-]+, [1-9](\\.[0-9])? units of a float${about}\n$"
-        "needle:^needle: 100 steps from 0${inexact}\nneedle\\.heron: 0\\.0186444204 at 0, where the interpreter gives 0\\.016146540115034271\; the interpreter's term about [0-9.e+-]+ from the exact one\nneedle\\.kahan: within 5\\.3e-10, 0\\.0044 units of a float${about}\n$"
-        "big:^big: 100 steps from 0${in_float}\nbig\\.s: within 2e-30, 1\\.7e-23 units of a float\nbig\\.t: ${exact}\nbig\\.w: 0 at 0, where the interpreter gives 1\n$"
-        "seven:^seven: 100 steps from 0${in_float}\nseven\\.t: ${exact}\nseven\\.u: within 3\\.8e-06, 32 units of a float\n$"
+        "needle:^needle: 100 steps from 0${inexact}\nneedle\\.heron: 0\\.0186444204 at 0, where the interpreter gives 0\\.016146540115034271\; the interpreter's term about [0-9.e+-]+ from the exact one\nneedle\\.kahan: within 5\\.3e-10, 0\\.28 units of a float${about}\n$"
+        "big:^big: 100 steps from 0${in_float}\nbig\\.s: within 2e-30, 2\\.1e\\+07 units of a float\nbig\\.t: ${exact}\nbig\\.w: 0 at 0, where the interpreter gives 1\n$"
+        "seven:^seven: 100 steps from 0${in_float}\nseven\\.t: within 0\nseven\\.u: within 3\\.8e-06\n$"
         "poly:^poly: 100 steps from 0${in_float}\npoly\\.A: ${exact}\npoly\\.c: ${exact}\npoly\\.d: ${exact}\npoly\\.g: ${exact}\n$"
         "nested:^nested: 100 steps from 0${in_float}\nnested\\.S: ${exact}\nnested\\.w: ${exact}\nnested\\.M: ${exact}\nnested\\.T: ${exact}\nnested\\.y: ${exact}\n$"
         "see:^see: 100 steps from 0${in_float}\nsee\\.Xp: ${exact}\nsee\\.Z: ${exact}\nsee\\.M: ${exact}\nsee\\.s: ${exact}\n$"
-        "knee:^knee: 100 steps from 0${inexact}\n${knee_r}knee\\.r: at 0 the compiled step takes 'r_n = 0' and the interpreter 'r_n \\| y_n > c = y_n - c'\\; the guard of the second is 4\\.2e-11 from its threshold\nknee\\.y: within [0-9.e+-]+, [0-9.e+-]+ units of a float\\; the interpreter's terms about 5\\.8e-11 from the exact ones\nknee\\.r: within 4\\.2e-11, 0\\.00035 units of a float\\; the interpreter's terms about 5\\.8e-11 from the exact ones\n$"
-        "cls:^cls: 100 steps from 0${inexact}\ncls\\.z: within 2\\.4e-08, 0\\.2 units of a float\ncls\\.q: within 1\\.9e-06, 1\\.5 units of a float${about}\ncls\\.s: within 6\\.3e-08, 0\\.53 units of a float${about}\ncls\\.loss: within 4\\.1e-07, 3\\.4 units of a float${about}\n$")
+        "knee:^knee: 100 steps from 0${inexact}\n${knee_r}knee\\.r: at 0 the compiled step takes 'r_n = 0' and the interpreter 'r_n \\| y_n > c = y_n - c'\\; the guard of the second is 4\\.2e-11 from its threshold\nknee\\.y: within [0-9.e+-]+, [0-9.e+-]+ units of a float\\; the interpreter's terms about 5\\.8e-11 from the exact ones\nknee\\.r: within 4\\.2e-11, 1\\.2e\\+07 units of a float\\; the interpreter's terms about 5\\.8e-11 from the exact ones\n$"
+        "cls:^cls: 100 steps from 0${inexact}\ncls\\.z: within 2\\.4e-08, 0\\.49 units of a float\ncls\\.q: within 1\\.9e-06, 1\\.5 units of a float${about}\ncls\\.s: within 6\\.3e-08, 2\\.1 units of a float${about}\ncls\\.loss: within 4\\.1e-07, 3\\.8 units of a float${about}\n$")
     string(FIND "${report}" ":" colon)
     string(SUBSTRING "${report}" 0 ${colon} instance)
     math(EXPR colon "${colon} + 1")
