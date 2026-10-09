@@ -238,6 +238,10 @@ private:
     // it begins the next element.
     bool listed_ = false;
 
+    // Each series' index, word and the '+' or '-' its body ended at, which an
+    // error reading the index past it names.
+    std::vector<std::tuple<std::string, std::string, std::size_t>> ended_;
+
     PExpression<U> m_E;
     ReferenceStack<U> stack_;
     int               digits_ = numeric_interface_precision;
@@ -596,6 +600,7 @@ void Interpreter<T,U>::ResetInterpreter()
     m_E.reset();
     m_tokens.clear();
     m_i = 0;
+    ended_.clear();
 }
 
 template <Parsable T, Numeric U>
@@ -1435,8 +1440,11 @@ PExpression<U> Interpreter<T, U>::ParseSeries() {
             Fail("expected the last index after '^', as in ", example, ", not '", Peek().text, "'");
         }
     }
-    return std::make_shared<SeriesExpression<U>>(word == "prod", index, lower, upper,
-                                                 ParseMultExpr());
+    const auto series =
+        std::make_shared<SeriesExpression<U>>(word == "prod", index, lower, upper, ParseMultExpr());
+    if (!AtEnd() && (Peek().type == Add || Peek().type == Min))
+        ended_.emplace_back(index, word, m_i);
+    return series;
 }
 
 // 'grad_(x = a) body', bound as a sum is, its body a term as a sum's is.
@@ -1531,7 +1539,14 @@ typename Interpreter<T, U>::Result Interpreter<T, U>::Eval(const std::string& s)
     } catch (const std::exception& e) {
         // Deliberately not catch(...): an exception that is not std::exception
         // is our bug, and laundering it into a diagnostic would hide it.
-        result = Diagnostic{e.what()};
+        std::string what = e.what();
+        for (const auto& [index, word, at] : ended_)
+            if (what == index + " is not defined" &&
+                std::any_of(m_tokens.begin() + static_cast<std::ptrdiff_t>(at), m_tokens.end(),
+                            [&](const Token<T>& t) { return t.type == Func && t.text == index; }))
+                what = index + " is bound in the " + (word == "sum" ? "sum" : "product") +
+                       "'s body alone, which ended at the '" + m_tokens[at].text + "'";
+        result = Diagnostic{what};
     }
     ResetInterpreter();  // reset whatever happens and forgive the user
     return result;
