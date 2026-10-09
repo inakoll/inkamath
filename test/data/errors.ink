@@ -82,7 +82,7 @@ error: an index must be a whole number, not 0.5
 f_0=1
 
 >> f_(2+i)
-error: an index must be a whole number, not 2+i
+error: an index must be a whole number, not ~(2+i)
 
 >> f_(0.5)
 error: an index must be a whole number, not 0.5
@@ -114,69 +114,154 @@ error: a factorial needs a whole number, not 5.5
 error: a factorial cannot be negative
 
 >> !(2+i*3)
-error: a factorial needs a real number, not 2+i*3
+error: a factorial needs a real number, not ~(2+i*3)
 
 >> !i
-error: a factorial needs a real number, not i
+error: a factorial needs a real number, not ~(i)
 
 # 171! overflows a double, so counting past it can only reach infinity -- and
 # the counter is itself a double, which stops advancing at 2^53. '!(10^20)'
 # and '!1e16' ran for ever and took the session with them, since a hung
 # process loses every definition in it (DESIGN.md, C47).
 >> !~171
-inf
+~inf
 
 >> !(10^20)
-inf  # approximated past a thousand digits
+~inf  # approximated past a thousand digits
 
 >> !1e400
-inf  # approximated past a thousand digits
+~inf  # approximated past a thousand digits
 
 # A part that is NaN is present but has no sign, and answers false to every
 # comparison, so the imaginary unit used to be dropped while its magnitude was
 # still printed: this read '-nan*inf' (DESIGN.md, C31). The zero is inexact
 # because an exact one cannot be divided by (phase 13).
 >> i/~0
--nan+i*inf
+~(-nan+i*inf)
 
 # A real product or quotient of real numbers is the real one. Taken as a
 # complex one, an infinity times the zero imaginary part made a NaN there:
 # these read 'inf+i*-nan' and '-nan+i*-nan' (DESIGN.md, C88).
 >> 1/~0
-inf
+~inf
 
 >> 0/~0
 -nan
 
 >> 10^400*~1
-inf
+~inf
 
 # An exact number past a double's range is finite all the same, so its
 # product with a 0 part of the other is 0, not inf times 0: 10^400 i is
 # i*inf, which read '-nan+i*inf', and its real part 0 (DESIGN.md, C207).
 >> 10^400*i
-i*inf
+~(i*inf)
 
 >> re(10^400*i)
-0
+~0
 
 >> 10^400/i
--i*inf
+~(-i*inf)
 
 >> 10^400*~0
-0
+~0
 
 # So is an exact number approximated past a double's range, as 10^2000/3
 # is: an exact 0 times it is 0, and its product or quotient with i a part 0,
 # where each read -nan (DESIGN.md, C209).
 >> 0*(10^2000/3)
-0  # approximated past a thousand digits
+~0  # approximated past a thousand digits
 
 >> (10^2000/3)*i
-i*inf  # approximated past a thousand digits
+~(i*inf)  # approximated past a thousand digits
 
 >> (10^2000/3)/i
--i*inf  # approximated past a thousand digits
+~(-i*inf)  # approximated past a thousand digits
+
+# With a double, such an exact number is the double of what it makes, as
+# its power is (C175): 10^400 2^-332 is about 1.14e300 and 10^-400 1e300
+# 1e-100, which read inf and 0, the exact number made a double first, and
+# so did 2^1024 - 2^1023, 2^1023 (DESIGN.md, C242).
+>> 10^400*~2^-332
+~1.14298739e+300
+
+>> 10^400/~2^332
+~1.14298739e+300
+
+>> 10^-400*~1e300
+~1e-100
+
+>> ~1e300/10^400
+~1e-100
+
+>> 10^-400/~2^-1074
+~2.02402253e-77
+
+>> 10^400*(~2^-332*i)
+~(i*1.14298739e+300)
+
+>> 10^400/(~2^332*i)
+~(-i*1.14298739e+300)
+
+>> 2^1024 - ~2^1023
+~8.98846567e+307
+
+>> ~2^1023 - 2^1024
+~-8.98846567e+307
+
+>> ~-2^1023 + 2^1024
+~8.98846567e+307
+
+# Nor is it 0 or inf to a comparison with a double, which it is compared with
+# exactly: 10^-400 is above 0 and below 2^-1074, and 10^400 above the largest
+# double and below inf, where the first read 0 and the second inf (DESIGN.md,
+# C262). Two exact numbers compared exactly already.
+>> 10^-400 == ~0
+~0
+
+>> 10^-400 <> ~0
+~1
+
+>> 10^-400 > ~0
+~1
+
+>> -10^-400 < ~0
+~1
+
+>> 10^-400 == ~0*i
+~0
+
+>> 10^-400 < ~2^-1074
+~1
+
+>> 10^400 == 1/~0
+~0
+
+>> 10^400 < 1/~0
+~1
+
+>> -10^400 > -1/~0
+~1
+
+>> 10^400 > ~1.7976931348623157e308
+~1
+
+>> ~1.7976931348623157e308 < 10^400
+~1
+
+# max chooses 10^-400 by a truth read from a double, so its answer is
+# inexact, the double of 10^-400, 0 (C241).
+>> max(~0, 10^-400)
+~0
+
+>> min(~0, -10^-400)
+~-0
+
+>> 10^-400 == 10^-401
+0
+
+>> 10^400 < 0/~0
+error: a comparison needs a number, not -nan
 
 # NaN is not a number, so a comparison of it has no answer, and is refused
 # rather than guessed false, as C has it (DESIGN.md, a NaN reaches every term
@@ -201,16 +286,16 @@ error: a comparison needs a number, not -nan
 # An exponent outside int's range used to be converted to one anyway, which is
 # undefined: this answered 0 (DESIGN.md, C28).
 >> 2^2147483648
-inf  # approximated past a thousand digits
+~inf  # approximated past a thousand digits
 
 >> 0.5^3000000000
-0  # approximated past a thousand digits
+~0  # approximated past a thousand digits
 
 # A real power of a real number is the real power. Taken as a complex one it
 # squared an infinity into a NaN imaginary part, and put a square root a bit
 # away from the double nearest it.
 >> (~2)^1024
-inf
+~inf
 
 >> digits = 17
 digits = 17

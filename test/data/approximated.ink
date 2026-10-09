@@ -18,43 +18,44 @@ c = 14142135623730950488/10^19
 # Approximated at the twelfth step, rt_20 is the double one unit below
 # 1.4142135623730951, the double nearest c, and the comparison says 0.
 >> rt_20 > c
-0  # approximated past a thousand digits
+~0  # approximated past a thousand digits
 
 >> rt_20 < c
-1  # approximated past a thousand digits
+~1  # approximated past a thousand digits
 
 >> rt_20 == c
-0  # approximated past a thousand digits
+~0  # approximated past a thousand digits
 
 >> rt_20 <> c
-1  # approximated past a thousand digits
+~1  # approximated past a thousand digits
 
 # Decided rightly, and marked all the same.
 >> rt_20 > 1
-1  # approximated past a thousand digits
+~1  # approximated past a thousand digits
 
 # Still exact at the eleventh step, and so a truth exactly.
 >> rt_11 > c
 1
 
-# Inexact by '~', which was never exact to lose, is not marked, wrong as it
-# is here: the double nearest rt_11 is the double nearest c.
+# Inexact by '~', which was never exact to lose, is not marked approximated,
+# but its truth is inexact, and wrong here: the double nearest rt_11 is the
+# double nearest c (C241).
 >> ~rt_11 > c
-0
+~0
 
 # '~' of what was approximated keeps the mark, and so does what reads it.
 >> ~rt_20 > c
-0  # approximated past a thousand digits
+~0  # approximated past a thousand digits
 
 # Far from its threshold, and on the wrong side of it: (rt_20 - c)*10^16 is
 # about 1.7e-5, and -2.22 approximated. No gap tells a safe comparison.
 >> (rt_20 - c)*10^16 > -1
-0  # approximated past a thousand digits
+~0  # approximated past a thousand digits
 
 # Which is also why a root, inexact by nature, keeps the mark of what it
 # reads: this one is about 4.1e-11, real.
 >> (rt_20 - c)^(1/2)
-i*~1.49011612e-08  # approximated past a thousand digits
+~(i*1.49011612e-08)  # approximated past a thousand digits
 
 >> (rt_11 - c)^(1/2)
 ~4.10940897e-11
@@ -62,10 +63,10 @@ i*~1.49011612e-08  # approximated past a thousand digits
 # 'and' and 'or' are approximated where a side they read is; a side they do
 # not read cannot mark them.
 >> rt_20 > 1 and 1 > 0
-1  # approximated past a thousand digits
+~1  # approximated past a thousand digits
 
 >> 1 > 0 and rt_20 > 1
-1  # approximated past a thousand digits
+~1  # approximated past a thousand digits
 
 >> 0 > 1 and rt_20 > 1
 0
@@ -74,11 +75,11 @@ i*~1.49011612e-08  # approximated past a thousand digits
 1
 
 >> rt_20 > c or 1 > 0
-1  # approximated past a thousand digits
+~1  # approximated past a thousand digits
 
 # Whole matrices too.
 >> [1 rt_20] == [1 rt_20]
-1  # approximated past a thousand digits
+~1  # approximated past a thousand digits
 
 >> [1 rt_11] == [1 rt_11]
 1
@@ -95,7 +96,7 @@ sgn(x) = (x > 0) - (x < 0)
 1
 
 >> sgn(rt_20 - c)
--1  # approximated past a thousand digits
+~-1  # approximated past a thousand digits
 
 # A count of truths, remembered term by term and read again: the nine terms
 # past the bound count none of the nine they should.
@@ -109,23 +110,23 @@ cnt_n = cnt_(n-1) + (rt_n > c)
 11
 
 >> cnt_20
-11  # approximated past a thousand digits
+~11  # approximated past a thousand digits
 
 >> cnt_20 - cnt_11
-0  # approximated past a thousand digits
+~0  # approximated past a thousand digits
 
 # It has no exact fraction, and is no index.
 >> frac rt_20 > 1
-error: 1 was approximated past a thousand digits, so it has no exact fraction
+error: ~1 was approximated past a thousand digits, so it has no exact fraction
 
 >> u_n = n
 u_n = n
 
 >> u_(rt_20 > 1)
-error: an index must be exact, and 1 was approximated
+error: an index must be exact, and ~1 was approximated
 
 >> sum_(k=1)^(rt_20 > 1) k
-error: an index must be exact, and 1 was approximated
+error: an index must be exact, and ~1 was approximated
 
 # A guard that reads an approximated number chooses its clause by an
 # approximated truth: the answer is approximated, whether the guard held
@@ -137,7 +138,7 @@ g(x) = 2
 g(x) | x > c = 1
 
 >> g(rt_20)
-2  # approximated past a thousand digits
+~2  # approximated past a thousand digits
 
 >> g(rt_11)
 1
@@ -149,10 +150,10 @@ f(x) = 2
 f(x) | x > 1 = 1
 
 >> f(rt_20)
-1  # approximated past a thousand digits
+~1  # approximated past a thousand digits
 
 >> frac g(rt_20)
-error: 2 was approximated past a thousand digits, so it has no exact fraction
+error: ~2 was approximated past a thousand digits, so it has no exact fraction
 
 # A guard that is never read cannot mark the answer.
 >> p(x) = 3
@@ -216,11 +217,11 @@ M[j<=2, k<=2] = j
 M[j<=2, k<=2] | j == 1 and rt_20 > c = 7
 
 >> M
-[1, 1;
- 2, 2]  # approximated past a thousand digits
+[~1, ~1;
+  2,  2]  # approximated past a thousand digits
 
 >> M[1,2]
-1  # approximated past a thousand digits
+~1  # approximated past a thousand digits
 
 >> M[2,1]
 2
@@ -234,14 +235,14 @@ gl(x) = 2*x
 gl(x) | x > c = x
 
 >> grad_(x = rt_20) gl(x)
-2  # approximated past a thousand digits
+~2  # approximated past a thousand digits
 
 >> grad_(x = rt_11) gl(x)
 1
 
 # A part the clause chosen lacks is 0 approximated, and a refusal says so.
 >> grad_(x = rt_20) g(x)
-0  # approximated past a thousand digits
+~0  # approximated past a thousand digits
 
 >> grad_(x = rt_20) h(x)
 error: no clause of h applies, by a guard approximated past a thousand digits
@@ -255,10 +256,10 @@ gc(x) = x
 gc(x) | x < c = 3
 
 >> grad_(x = rt_20) (gc(x) + x)
-1  # approximated past a thousand digits
+~1  # approximated past a thousand digits
 
 >> grad_(x = rt_20) [gc(x) x]
-[0, 1]  # approximated past a thousand digits
+[~0, ~1]  # approximated past a thousand digits
 
 # Cell by cell too: the first cell's slope is 1.
 >> G(x)[j<=2] = x*j
@@ -268,8 +269,8 @@ G(x)[j<=2] = x*j
 G(x)[j<=2] | j == 1 and x < c = 3
 
 >> grad_(x = rt_20) G(x)
-[0;
- 2]  # approximated past a thousand digits
+[~0;
+ ~2]  # approximated past a thousand digits
 
 # Yet a clause's constant answer does not move with x: log's ilogb, chosen
 # by guards that read x, is still no exponent that changes.
@@ -287,29 +288,29 @@ ix(x) | x > 5 = 3
 S(x)[j<=ix(x)] = x
 
 >> S(rt_20)
-error: an index must be exact, and 2 was approximated
+error: an index must be exact, and ~2 was approximated
 
 >> grad_(x = rt_20) S(x)
-error: an index must be exact, and 2 was approximated
+error: an index must be exact, and ~2 was approximated
 
 >> grad_(x = rt_20) x*(x > c and 1 > 0)
-0  # approximated past a thousand digits
+~0  # approximated past a thousand digits
 
 # And floor's jump and a comparison's, decided by an approximated number,
 # mark what they are added to (C167).
 >> grad_(x = rt_20) (floor(x) + x)
-1  # approximated past a thousand digits
+~1  # approximated past a thousand digits
 
 >> grad_(x = rt_20) ((x > c) + x)
-1  # approximated past a thousand digits
+~1  # approximated past a thousand digits
 
 # The prelude's guards. exp past a thousand reads its argument, here 2^4000
 # approximated to inf.
 >> exp(2^4000)
-inf  # approximated past a thousand digits
+~inf  # approximated past a thousand digits
 
 >> max(rt_20, 3)
-3  # approximated past a thousand digits
+~3  # approximated past a thousand digits
 
 >> max(rt_11, 3)
 3

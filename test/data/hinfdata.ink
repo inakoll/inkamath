@@ -8,31 +8,31 @@
 # whose one mode B reaches C cannot see. G = D is D's largest singular
 # value.
 >> hinf([-1 0; 0 -1/1000000], [1; 0], [1 1])
-1
+~1
 
 >> hinf(-1, 0, 1)
-0
+~0
 
 >> hinf([-1 0; 0 -2], [1; 0], [0 1])
-0
+~0
 
 >> hinf(-1, 1, 0, -3)
-3
+~3
 
 # The discrete-time norm, over the unit circle: 1/(z - 1/2) peaks at
 # z = 1, 1/(z + 1/2) at z = -1, both 2, and 1/(z^2 - z + 1/2) at 2 sqrt(2).
 >> dhinf(1/2, 1, 1)
-2
+~2
 
 >> dhinf(-1/2, 1, 1)
-2
+~2
 
 >> dhinf([0 1; -1/2 1], [0; 1], [1 0])
 ~2.82842712
 
 # 20/(z - 1/5) peaks at z = 1, 25, which it was an ulp below (C216).
 >> dhinf(1/5, 1, 20)
-25
+~25
 
 # Normalised by its largest cells, exactly, so a scale is no cost: an
 # output in other units, a time scale, an input.
@@ -51,10 +51,10 @@
 # Past a double's range, the double ~ makes of it, inf or 0, marked though
 # every test is exact, as eig's is.
 >> hinf([0 1; -1 -1/2], [0; 1], [1 0]*10^400)
-inf  # approximated past a thousand digits
+~inf  # approximated past a thousand digits
 
 >> hinf([0 1; -1 -1/2], [0; 1], [1 0]/10^400)
-0  # approximated past a thousand digits
+~0  # approximated past a thousand digits
 
 # A damping of 10^-100 peaks at 1/(2z(1 - z^2)^(1/2)), 2z = 10^-100, so
 # 10^100: refused while a test read a sign from the product of two
@@ -135,11 +135,11 @@ digits = 9
 
 # A cell that is itself inf has no value to scale, as rho's has not (C206).
 >> hinf(-1, ~10^310, 1)
-error: hinf needs finite cells, not inf
+error: hinf needs finite cells, not ~inf
 
 # A complex cell in max's words, as rho refuses one.
 >> hinf(-1, i, 1)
-error: a comparison needs real numbers, not i
+error: a comparison needs real numbers, not ~(i)
 
 # Sizes by the signature. A 0 for a D of two columns is a single value.
 >> hinf([1 2 3], 1, 1)
@@ -160,7 +160,7 @@ error: grad cannot differentiate hinf yet
 error: grad cannot differentiate dhinf yet
 
 >> grad_(a = 2) a*hinf(-1, 1, 1)
-1
+~1
 
 # The names are the prelude's, which a session may take for itself.
 >> hinf = 7
@@ -173,4 +173,4 @@ hinf = 7
 clear hinf
 
 >> hinf(-1, 1, 1)
-1
+~1

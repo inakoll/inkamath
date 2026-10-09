@@ -120,7 +120,7 @@ lt_n | n > 2 = 5
 lt_n = n
 
 >> lim lt
-5
+~5
 
 # And a general clause that is guarded is still a general clause.
 >> lc_0 = 1
@@ -326,7 +326,7 @@ o_0=~1e308
 o_n=o_(n-1)+o_(n-1)
 
 >> lim o
-error: o did not converge within 100 terms (last term inf)
+error: o did not converge within 100 terms (last term ~inf)
 
 # A recurrence has no implicit value below its lowest clause. The old fallback
 # was zero -- the additive identity, right for a sum and wrong for a product

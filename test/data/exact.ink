@@ -42,10 +42,10 @@
 -1
 
 >> (0-2)^(2^70+1)
--inf  # approximated past a thousand digits
+~-inf  # approximated past a thousand digits
 
 >> (~(0-1))^(2^63+1)
--1
+~-1
 
 >> 0^(2^70)
 0
@@ -72,7 +72,7 @@ error: division by zero
 1000
 
 >> frac 5/2 + ~0.5
-error: 3 was approximated, so it has no exact fraction
+error: ~3 was approximated, so it has no exact fraction
 
 # What can only be approached.
 >> pi
@@ -82,27 +82,27 @@ error: 3 was approximated, so it has no exact fraction
 ~1.41421356
 
 >> 4^(1/2)
-2
+~2
 
 # A power of 1/2 is a square root, rounded correctly, where libm's pow
 # answered 1 (C153).
 >> (1 - 1/2^53)^(1/2) == 1 - 1/2^53
-1
+~1
 
 >> 2^(1/2)*2^(1/2)
 ~2
 
 # A complex number is inexact, even when it happens to be real and whole.
 >> frac i*i
-error: -1 was approximated, so it has no exact fraction
+error: ~-1 was approximated, so it has no exact fraction
 
 # i itself is not approximated: a complex number is a pair of doubles, here
 # exactly 0 and 1, which no fraction is (DESIGN.md, C217).
 >> frac i
-error: i is complex, so it has no exact fraction
+error: ~(i) is complex, so it has no exact fraction
 
 >> frac 1/3 + 2*i
-error: ~0.333333333+i*2 is complex, so it has no exact fraction
+error: ~(0.333333333+i*2) is complex, so it has no exact fraction
 
 # A trailing zero is not a digit the literal needs, however many there are:
 # these went inexact once the digits passed 64 bits.
@@ -180,10 +180,10 @@ error: an index must be a whole number, not ~2
 # An index is exact. Taken as a whole number it would drop the '~', and the
 # answer would claim an exactness nothing gave it.
 >> s_(~2)
-error: an index must be exact, and 2 was approximated
+error: an index must be exact, and ~2 was approximated
 
 >> sum_(k=1)^(~3) k
-error: an index must be exact, and 3 was approximated
+error: an index must be exact, and ~3 was approximated
 
 >> fib_0 = 0
 fib_0 = 0
@@ -241,7 +241,7 @@ lt_n | n > 2 = 5
 lt_n = n
 
 >> frac lim lt
-error: 5 was approximated, so it has no exact fraction
+error: ~5 was approximated, so it has no exact fraction
 
 # Every cell has its own kind.
 >> a = [1 2;3 4]
@@ -252,7 +252,7 @@ a = [1 2;3 4]
             1,  ~1.33333333]
 
 >> a[~1, 2]
-error: an index must be exact, and 1 was approximated
+error: an index must be exact, and ~1 was approximated
 
 >> [1/10 ~0.1]*3
 [0.3, ~0.3]
@@ -273,4 +273,4 @@ dbl(x) = x*2
 1
 
 >> frac dbl(~0.5)
-error: 1 was approximated, so it has no exact fraction
+error: ~1 was approximated, so it has no exact fraction

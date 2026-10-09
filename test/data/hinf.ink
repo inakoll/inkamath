@@ -13,7 +13,7 @@
 # G(iw) over every frequency. D may be left out. 3/(s + 2) peaks at w = 0,
 # 3/2, reached exactly by a halving and so itself.
 >> hinf(-2, 1, 3)
-1.5
+~1.5
 
 # 1/(s + 3): 1/3, which no double holds. Normalised by its input, its
 # norm is 1, which a halving reaches; the third scaling it back is rounded.
@@ -42,23 +42,23 @@ digits = 9
 
 # s/(s + 1) rises to 1 as w grows and never reaches it: the norm is D's.
 >> hinf(-1, -1, 1, 1)
-1
+~1
 
 # 1 + 1/(s + 2) falls from 3/2 at w = 0.
 >> hinf(-2, 1, 1, 1)
-1.5
+~1.5
 
 # 22 + 3/(s + 1): |G(iw)|^2 = (625 + 484w^2)/(1 + w^2) falls from 25 at
 # w = 0. It was an ulp above, its root rounded before 22 scaled it back
 # (DESIGN.md, C216).
 >> hinf(-1, 1, 3, 22)
-25
+~25
 
 # Two inputs and two outputs: (sI - A)^-1 of a normal A, whose largest
 # singular value is 1 over the distance from iw to the nearest eigenvalue,
 # -1 + 2i, so 1 at w = 2.
 >> hinf([-1 2; -2 -1], [1 0; 0 1], [1 0; 0 1])
-1
+~1
 
 # With D, peaking at w = 2.32459288 (mpmath: 3.723454759512796; linfnorm
 # 3.723454759512783), and its first output alone, at w = 2.39330777.

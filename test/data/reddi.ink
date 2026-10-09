@@ -41,32 +41,32 @@ a = adam()
 
 # x_(3t+1) = 1 for every t, the claim proved by induction.
 >> a.x_4
-1
+~1
 
 >> sum_(k=0)^100 (a.x_(3*k+1) == 1)
-101
+~101
 
 >> sum_(t=1)^300 (a.x_t > 0)
-300
+~300
 
 # R_3 = C - x_2 - x_3 + C - 2, and R_T >= (2C-4)T/3.
 >> a.R_3
 ~3.41070233
 
 >> a.R_300 >= (2*3 - 4)*300/3
-1
+~1
 
 # Eq. (6)'s second inequality needs 1/sqrt(3t+3) >= 1/sqrt(2(3t+1)),
 # false at t = 0; the claim T_2 >= T_1 still holds there, since with
 # b = beta2 it reads 1/sqrt(2(2-b)) + 1/sqrt(3(1+2b-b^2)) >= 1.
 >> 1/(3*0 + 3)^(1/2) >= 1/(2*(3*0 + 1))^(1/2)
-0
+~0
 
 >> q(b) = 1/(2*(2 - b))^(1/2) + 1/(3*(1 + 2*b - b^2))^(1/2)
 q(b) = 1/(2*(2 - b))^(1/2) + 1/(3*(1 + 2*b - b^2))^(1/2)
 
 >> q(1/5) >= 1
-1
+~1
 
 # AMSGrad, Algorithm 2 with beta_1t = 0: v-hat the running max of v.
 >> ams(C = 3, alpha = 9/10, b2 = 1/(1 + C^2)) = {
@@ -99,7 +99,7 @@ z = ams()
 ~8.20720721
 
 >> z.R_300 <= 2^2*300^(1/2)/z.alpha*z.w_300^(1/2) + z.alpha*(1 + log(300))^(1/2)/(1 - z.b2)^(1/2)*1100^(1/2)
-1
+~1
 
 # Theorem 2 (Appendix B): period C, the C that eq. (7) asks of
 # beta1 = beta2 = 1/2 is 20, and eq. (9) holds exactly.
@@ -116,7 +116,7 @@ c(C) = c7(C, 1/2, 1/2, (1/2)/(1/2)^(1/2))
 0
 
 >> c(20)
-1
+~1
 
 # m_20 = -(1 - b1^19) + (1-b1) b1^19 C, from m_0 = 0.
 >> frac gen.m_20
@@ -130,7 +130,7 @@ c(C) = c7(C, 1/2, 1/2, (1/2)/(1/2)^(1/2))
 
 # x_(kC) = 1 from some T', and each period after it a regret of 2.
 >> sum_(k=1)^100 (gen.x_(20*k) == 1)
-100
+~100
 
 >> gen.R_2000 - gen.R_20 >= 2*(2000 - 20)/20
-1
+~1

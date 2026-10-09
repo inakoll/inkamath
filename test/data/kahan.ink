@@ -7,16 +7,16 @@
 0
 
 >> ((~(4/3) - 1)*3 - 1)*2^52
--1
+~-1
 
 >> ~0.4*10 == 4
-1
+~1
 
 >> ~0.7*10 == 7
-1
+~1
 
 >> ~0.4*7 == ~0.7*4
-0
+~0
 
 >> 0.4*7 == 0.7*4
 1
@@ -31,7 +31,7 @@ t = 3/10
 error: division by zero
 
 >> (3*~u - ~t)/(2*~u - ~t + ~u)
-2
+~2
 
 # §6, a smooth surprise: G(x) is 1 for every real x, yet 0 in double at
 # every n to 9999, held here to 999 for the sanitizers' time; T computed
@@ -49,7 +49,7 @@ Q(y) = abs(y - (y^2 + 1)^(1/2)) - 1/(y + (y^2 + 1)^(1/2))
 G(x) = T(Q(x)^2)
 
 >> sum_(n=1)^999 G(n)
-0
+~0
 
 >> Th(t, z) = (t - 1)/log(t)
 Th(t, z) = (t - 1)/log(t)
@@ -64,7 +64,7 @@ Th(t, z) | t == 0 = -1/z
 Gk(x) = Th(exp(Q(x)^2), Q(x)^2)
 
 >> sum_(n=1)^999 Gk(n)
-999
+~999
 
 # §7: Spike(x) at the double nearest 4/3 and its neighbours, and at 4/3,
 # where it has no value: the log of 0 (C156).
@@ -110,13 +110,13 @@ s(x)_0 = r(x)_128
 s(x)_k = s(x)_(k-1)^2
 
 >> s(0)_128
-0
+~0
 
 >> s(1)_128
-1
+~1
 
 >> s(3/4)_128
-0
+~0
 
 >> s(2)_128
-1
+~1

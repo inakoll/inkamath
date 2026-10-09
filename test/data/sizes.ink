@@ -41,7 +41,7 @@ rl(z)[i,j] = z[i,j]*(z[i,j] > 0)
 act(z)[i,j] = tanh(z[i,j])
 
 >> act([0 1/2])
-[0, ~0.462117157]
+[~0, ~0.462117157]
 
 >> act(1/2)
 ~0.462117157
@@ -478,7 +478,7 @@ error: exp needs single values, not a 2x2 matrix; write it by its cells
 ex(z)[i,j] = exp(z[i,j])
 
 >> ex([0 1; 2 3])
-[         1, ~2.71828183;
+[        ~1, ~2.71828183;
  ~7.3890561, ~20.0855369]
 
 # Outside a call, an operator keeps its words; e^A is the matrix
@@ -504,7 +504,7 @@ error: exp needs single values, not a 1x3 matrix; write it by its cells
 sg(z)[i,j] = sig(z[i,j])
 
 >> sg([0 1 -1])
-[0.5, ~0.731058579, ~0.268941421]
+[~0.5, ~0.731058579, ~0.268941421]
 
 # A guard, and a tensor.
 >> nonzero(x) | x = 1
@@ -544,7 +544,7 @@ error: tri needs single values, not a 1x2 matrix; write it by its cells
 th3(z)[s,i,j] = tanh(z[s,i,j])
 
 >> th3([0;; 1/2])
-[           0;;
+[          ~0;;
  ~0.462117157]
 
 # A value of a shape no call was given keeps the operator's words.
@@ -717,7 +717,7 @@ W0 = [1 0; 0 1; 1/2 -1/2]
 ~3.50663326
 
 >> ss((grad_(W = W0) L(W)) - G(W0)) < 1/10^16
-1
+~1
 
 >> W1 = W0 - grad_(W = W0) L(W)/2
 W1 = W0 - grad_(W = W0) L(W)/2

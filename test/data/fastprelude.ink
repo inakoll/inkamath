@@ -42,34 +42,34 @@ digits = 17
 ~-1.0000000000000001e-09
 
 >> tanh(~19.5)
-1
+~1
 
 >> ilogb(~0.1)
--4
+~-4
 
 >> ilogb(~(5e-324))
--1074
+~-1074
 
 >> ilogb(~1.7976931348623157e308)
-1023
+~1023
 
 # An answer of 0 has the definition's sign, whose minus is a subtraction
 # from 0 (C33), so never -0, as the compiled one's is since C98. Past
 # -745.13 exp is 0.
 >> tanh(~0)
-0
+~0
 
 >> 1/tanh(~0)
-inf
+~inf
 
 >> 1/tanh(~0*(-1))
-inf
+~inf
 
 >> 1/log(~1)
-inf
+~inf
 
 >> 1/exp(~(-800))
-inf
+~inf
 
 # An exact argument is reduced exactly and rounded once, where C rounds it
 # first: the definition answers it, and the double nearest it is another
@@ -94,16 +94,16 @@ digits = 9
 
 # Not a double that is real: refused in its name, as a matrix is (C147).
 >> exp(~1 + i)
-error: exp needs real numbers, not 1+i
+error: exp needs real numbers, not ~(1+i)
 
 >> exp(i*pi)
-error: exp needs real numbers, not i*~3.14159265
+error: exp needs real numbers, not ~(i*3.14159265)
 
 >> log(i)
-error: log needs real numbers, not i
+error: log needs real numbers, not ~(i)
 
 >> tanh(i)
-error: tanh needs real numbers, not i
+error: tanh needs real numbers, not ~(i)
 
 >> exp([~1 ~2])
 error: exp needs single values, not a 1x2 matrix; write it by its cells
@@ -111,23 +111,23 @@ error: exp needs single values, not a 1x2 matrix; write it by its cells
 # Out of log's domain, refused in its name, or not finite, as the
 # definition answers it, where the C function would be NaN or inf.
 >> log(~0)
-error: log needs a number above 0, not 0
+error: log needs a number above 0, not ~0
 
 >> log(~(-2))
-error: log needs a number above 0, not -2
+error: log needs a number above 0, not ~-2
 
 >> log(~1/0)
-inf
+~inf
 
 >> exp(~0/0)
 error: a comparison needs a number, not -nan
 
 >> exp(~1/0)
-inf
+~inf
 
 # ilogb tries no power of two past 2^3321 (C101).
 >> ilogb(~1/0)
-3321
+~3321
 
 # A double approximated past a thousand digits stays so through the
 # definition, which says it.
@@ -138,7 +138,7 @@ a = (10^600 + 1)/10^600
 ~2.71828183  # approximated past a thousand digits
 
 >> log(a*a)
-0  # approximated past a thousand digits
+~0  # approximated past a thousand digits
 
 # grad carries its parts through the definitions, as before.
 >> grad_(x = ~1) exp(x)
@@ -182,7 +182,7 @@ dive(k) | k < 1 = tanh(~3)
 dive(k) | k < 1 = ilogb(~3)
 
 >> dive(254)
-1
+~1
 
 >> dive(k) | k < 1 = log(~3)
 dive(k) | k < 1 = log(~3)

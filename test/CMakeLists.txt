@@ -152,7 +152,10 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brin
                          doyle:regulated doyle:replayed
                          iterates:poly iterates:thirds iterates:plan iterates:graph iterates:gaps
                          iterates:memo iterates:unread iterates:lone blocks:dare blocks:smith
-                         blocks:deadbeat blocks:nested blocks:sloped conv:see conv:learn)
+                         blocks:deadbeat blocks:nested blocks:sloped conv:see conv:learn
+                         straddle:knee straddle:crease straddle:plain straddle:both straddle:acc
+                         straddle:given straddle:parted straddle:unasked
+                         straddle:recalled straddle:founded)
     string(REPLACE ":" ";" checked ${checked})
     list(GET checked 0 file)
     list(GET checked 1 instance)
@@ -175,7 +178,7 @@ endforeach()
 # remainder alone gives them.
 set(about "\\; the interpreter's terms about [0-9.e+-]+ from the exact ones")
 set_tests_properties(check_tie_report PROPERTIES PASS_REGULAR_EXPRESSION
-    "^tie: 100 steps from 0, against exact values until 0 and inexact ones from there\ntie\\.y: within 0\\; the interpreter's terms about 5\\.8e-11 from the exact ones\ntie\\.g: within 0\\; the interpreter's terms about 1 from the exact ones, past the tolerance from 0\n$")
+    "^tie: 100 steps from 0, against exact values until 0 and inexact ones from there\ntie\\.g: at 0 a disturbed run takes 'g_n \\| y_n >= 1/2 - w = 1' and the interpreter 'g_n = 0'\\; the guard of the first is 4\\.8e-11 from its threshold\ntie\\.y: within 0\\; the interpreter's terms about 5\\.8e-11 from the exact ones\ntie\\.g: within 0\\; the interpreter's terms about 1 from the exact ones, past the tolerance from 0\n$")
 set_tests_properties(check_chaos_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^chaos: 100 steps from 0, against exact values until 0 and inexact ones from there\nchaos\\.x: within 0${about}, past the tolerance from [0-9]+\n$")
 set_tests_properties(check_dyad_report PROPERTIES PASS_REGULAR_EXPRESSION
@@ -188,6 +191,33 @@ set_tests_properties(check_steep_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^steep: 100 steps from 0, against exact values until 0 and inexact ones from there\nsteep\\.y: within 0\\; the interpreter's terms about [1-9](\\.[0-9])?e-1[01] from the exact ones\n$")
 set_tests_properties(check_giant_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^giant: 100 steps from 0, against exact values until 0 and inexact ones from there\ngiant\\.y: within 0\\; the interpreter's terms about [1-9](\\.[0-9])?e\\+186 from the exact ones\n$")
+# A guard the disturbed runs straddle (DESIGN.md), as compile/straddle.ink
+# gives it: crease's step is the seeds'. A straddle fails no check.
+set(straddled "100 steps from 0, against exact values until 0 and inexact ones from there")
+set(knee_r "knee\\.r: at 0 a disturbed run takes 'r_n = 0' and the interpreter 'r_n \\| y_n > c = y_n - c'\\; the guard of the second is 4\\.2e-11 from its threshold\n")
+set_tests_properties(check_knee_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^knee: ${straddled}\n${knee_r}knee\\.y: within 0\\; the interpreter's terms about 5\\.8e-11 from the exact ones\nknee\\.r: within 0\\; the interpreter's terms about 5\\.8e-11 from the exact ones\n$")
+set_tests_properties(check_crease_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^crease: ${straddled}\ncrease\\.r: at [0-9]+ a disturbed run takes 'r_n = 0' and the interpreter 'r_n \\| s_n > c = s_n - c'\\; the guard of the second is 5\\.6e-17 from its threshold\ncrease\\.s: within 0${about}\ncrease\\.r: within 0${about}\n$")
+set_tests_properties(check_plain_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^plain: ${straddled}\nplain\\.s: within 0${about}\nplain\\.r: within 0${about}\n$")
+set_tests_properties(check_both_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^both: ${straddled}\nboth\\.g: at 3 a disturbed run takes 'g_n \\| n\\*y_n >= 3/2 = 1' and the interpreter 'g_n = 0'\\; the guard of the first is 1\\.7e-10 from its threshold\nboth\\.h: at 1 the compiled step takes 'h_n \\| d_n < c = 1' and the interpreter 'h_n = 0'\\; the guard of the first is exactly on its threshold\nboth\\.d: [0-9.e+-]+ at 9, where the interpreter gives 0\\.10000000000000001\nboth\\.h: 1 at 1, where the interpreter gives 0\nboth\\.y: within 0\\; the interpreter's terms about 5\\.8e-11 from the exact ones\nboth\\.g: within 0\\; the interpreter's terms about 1 from the exact ones, past the tolerance from 3\n$")
+set_tests_properties(check_acc_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^acc: ${straddled}\nacc\\.x: at 1 a disturbed run takes 'H\\(x\\) \\| x >= 0 = 1' and the interpreter 'H\\(x\\) = 0'\\; the guard of the first is 4\\.8e-11 from its threshold\nacc\\.y: within 0\\; the interpreter's terms about 5\\.8e-11 from the exact ones\nacc\\.x: within 0\\; the interpreter's terms about 99 from the exact ones, past the tolerance from 1\n$")
+set_tests_properties(check_given_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^given: 100 steps from 0, against exact values\ngiven\\.x: within 0\n$")
+set_tests_properties(check_parted_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^parted: 100 steps from 0, against exact values until 0 and inexact ones from there\nparted\\.x: at 0 a disturbed run takes 's\\(c\\)_k \\| lim half\\(1\\) >= c = H\\(1\\)' and the interpreter 's\\(c\\)_k = 0'\\; the guard of the first is 4\\.8e-11 from its threshold\nparted\\.x: within 0\\; the interpreter's terms about 1 from the exact ones, past the tolerance from 0\n$")
+set_tests_properties(check_unasked_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^unasked: ${straddled}\nunasked\\.y: within 0\\; the interpreter's terms about 5\\.8e-11 from the exact ones\nunasked\\.g: within 0\\; the interpreter's terms about inf from the exact ones, past the tolerance from 0\n$")
+set_tests_properties(check_recalled_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^recalled: ${straddled}\nrecalled\\.y: within 0${about}\nrecalled\\.z: within 0${about}\nrecalled\\.x: within 0\n$")
+set_tests_properties(check_founded_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^founded: 100 steps from 0, against exact values until 0 and inexact ones from there\nfounded\\.x: at 0 a disturbed run takes 's\\(c\\)_k \\| lim half\\(1\\) >= c = 1' and the interpreter 's\\(c\\)_k = 0'\\; the guard of the first is 4\\.8e-11 from its threshold\nfounded\\.x: within 0\\; the interpreter's terms about 1 from the exact ones, past the tolerance from 0\n$")
+add_test(NAME check_knee COMMAND check_knee)
+add_test(NAME check_both COMMAND check_both)
+set_tests_properties(check_both PROPERTIES WILL_FAIL ON)
 # The logistic model's four sigmoids are one limit, compiled once.
 add_test(NAME check_gate_one_limit
          COMMAND ${CMAKE_COMMAND} -E cat ${CMAKE_CURRENT_BINARY_DIR}/compile/gate.c)
@@ -288,6 +318,7 @@ set_tests_properties(check_gen_report PROPERTIES PASS_REGULAR_EXPRESSION
 # Kahan (2006): Muller's recurrence parting where the paper's table has it,
 # and Rump's example (2010) at once; compile/kahan.ink and rump.ink.
 set(inexact0 ", against exact values until 0 and inexact ones from there")
+set(smooth_k "surprise\\.k: at [0-9]+ a disturbed run takes 'Th\\(t, z\\) = \\(t - 1\\)/log\\(t\\)' and the interpreter 'Th\\(t, z\\) \\| t == 1 = t'\\; the guard of the second is exactly on its threshold\n")
 set_tests_properties(check_sums_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^sums: 100 steps from 0, against exact values\nsums\\.c: within 9e-13, from 1\nsums\\.o: within 3\\.6e-12\nsums\\.plain: within 5\\.5e-12\nsums\\.s: within 1\\.8e-12\nsums\\.comp: within 9e-13\nsums\\.total: within 1\\.8e-12\n$")
 set_tests_properties(check_muller_report PROPERTIES PASS_REGULAR_EXPRESSION
@@ -295,7 +326,7 @@ set_tests_properties(check_muller_report PROPERTIES PASS_REGULAR_EXPRESSION
 set_tests_properties(check_rounded_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^rounded: 100 steps from 0${inexact0}\nrounded\\.x: within 0${about}, past the tolerance from 7\n$")
 set_tests_properties(check_surprise_report PROPERTIES PASS_REGULAR_EXPRESSION
-    "^surprise: 100 steps from 0${inexact0}\nsurprise\\.g: within 0${about}, past the tolerance from 0\nsurprise\\.k: within 0${about}\n$")
+    "^surprise: 100 steps from 0${inexact0}\n${smooth_k}surprise\\.g: within 0${about}, past the tolerance from 0\nsurprise\\.k: within 0${about}\n$")
 set_tests_properties(check_solveur_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^solveur: 100 steps from 0, against exact values\nsolveur\\.d: within 0\nsolveur\\.z: within 0\n$")
 set_tests_properties(check_rump_report PROPERTIES PASS_REGULAR_EXPRESSION
@@ -550,13 +581,13 @@ set_tests_properties(check_stiff_report PROPERTIES PASS_REGULAR_EXPRESSION
 set_tests_properties(check_fir_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^fir: 100 steps from 0, against exact values\n(fir\\.[a-z]+: within 0\n)+$")
 set_tests_properties(check_naught_report PROPERTIES PASS_REGULAR_EXPRESSION
-    "^naught: 100 steps from 0, against exact values\nnaught\\.y: within 0\n$")
+    "^naught: 100 steps from 0, against exact values until 0 and inexact ones from there\nnaught\\.y: within 0\n$")
 set_tests_properties(check_zeroed_report PROPERTIES PASS_REGULAR_EXPRESSION
-    "^zeroed: 100 steps from 0, against exact values\nzeroed\\.y: within 0\n$")
+    "^zeroed: 100 steps from 0, against exact values until 0 and inexact ones from there\nzeroed\\.y: within 0\n$")
 set_tests_properties(check_mirrored_report PROPERTIES PASS_REGULAR_EXPRESSION
-    "^mirrored: 100 steps from 0, against exact values\nmirrored\\.y: within 0\n$")
+    "^mirrored: 100 steps from 0, against exact values until 0 and inexact ones from there\nmirrored\\.y: within 0\n$")
 set_tests_properties(check_radix_report PROPERTIES PASS_REGULAR_EXPRESSION
-    "^radix: 100 steps from 0, against exact values\nradix\\.y: within 0\n$")
+    "^radix: 100 steps from 0, against exact values until 0 and inexact ones from there\nradix\\.y: within 0\n$")
 set_tests_properties(check_nests_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^nests: 100 steps from 0, against exact values\nnests\\.s: within 0\nnests\\.x: within 0\n$")
 set_tests_properties(check_calm_report PROPERTIES PASS_REGULAR_EXPRESSION
@@ -640,7 +671,7 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:ledge logistic:gate momentu
                          reddi:thm1 reddi:fixed reddi:gen
                          kahan:sums kahan:muller kahan:rounded kahan:surprise kahan:solveur rump:rump
                          goldberg:year goldberg:needle goldberg:big goldberg:seven iterates:poly
-                         blocks:nested conv:see)
+                         blocks:nested conv:see straddle:knee)
     string(REPLACE ":" ";" checked ${checked})
     list(GET checked 0 file)
     list(GET checked 1 instance)
@@ -664,7 +695,7 @@ set_tests_properties(check_float_wild check_float_ledge check_float_far check_fl
                      check_float_steep check_float_dies check_float_beat check_float_peak
                      check_float_muller check_float_rounded check_float_surprise
                      check_float_solveur check_float_rump check_float_needle check_float_big
-                     PROPERTIES WILL_FAIL ON)
+                     check_float_knee PROPERTIES WILL_FAIL ON)
 # Each report as compile/float.ink gives it; what a libm or the seeds decide,
 # by its form.
 set(in_float " in float, against exact values")
@@ -681,7 +712,7 @@ foreach(report IN ITEMS
         "stiff:^stiff: 100 steps from 0${inexact}\nstiff\\.h: within 6e-08, 0\\.5 units of a float\nstiff\\.x: within ${units}\nstiff\\.y: within ${units}\n$"
         "crawl:^crawl: 100 steps from 0${in_float}\ncrawl\\.s: within 0, 0 units of a float\ncrawl\\.y: 100000016 at 0, where the interpreter gives none: s did not converge within 100 terms \\(last term 100000800\\)\n$"
         "fan:^fan: 100 steps from 0${in_float}\nfan\\.y: within 0, 0 units of a float\n$"
-        "radix:^radix: 100 steps from 0${in_float}\nradix\\.y: ${exact}\n$"
+        "radix:^radix: 100 steps from 0${inexact}\nradix\\.y: ${exact}\n$"
         "hum:^hum: 100 steps from 0${in_float}\nhum\\.y: within 2\\.7e-06, 22 units of a float\n$"
         "drone:^drone: 100 steps from 0${in_float}\ndrone\\.y: within 5\\.6e-06, 47 units of a float\n$"
         "far:^far: 100 steps from 0${in_float}\nfar\\.x: within 0\\.99, 16 units of a float\nfar\\.d: 0 at 1, where the interpreter gives 0\\.01\n$"
@@ -703,7 +734,7 @@ foreach(report IN ITEMS
         "sums:^sums: 100 steps from 0${in_float}\nsums\\.c: within 0\\.00048, 4\\.1e\\+03 units of a float, from 1\nsums\\.o: within 0\\.0029, 2\\.9 units of a float\nsums\\.plain: within 0\\.0028, 2\\.8 units of a float\nsums\\.s: within 0\\.00047, 0\\.48 units of a float\nsums\\.comp: within 0\\.00048, 4\\.1e\\+03 units of a float\nsums\\.total: within 0\\.00051, 0\\.52 units of a float\n$"
         "muller:^muller: 100 steps from 0${in_float}\nmuller\\.x: 4\\.98312378 at 6, where the interpreter gives 4\\.9108474990827933\n$"
         "rounded:^rounded: 100 steps from 0${inexact}\nrounded\\.x: 4\\.98312378 at 6, where the interpreter gives 4\\.9108474986606296\; the interpreter's term about [0-9.e+-]+ from the exact one\n$"
-        "surprise:^surprise: 100 steps from 0${inexact}\nsurprise\\.g: 1 at 0, where the interpreter gives 0\; the interpreter's term about [0-9.e+-]+ from the exact one\nsurprise\\.k: ${exact}${about}\n$"
+        "surprise:^surprise: 100 steps from 0${inexact}\n${smooth_k}surprise\\.g: 1 at 0, where the interpreter gives 0\; the interpreter's term about [0-9.e+-]+ from the exact one\nsurprise\\.k: ${exact}${about}\n$"
         "solveur:^solveur: 100 steps from 0${in_float}\nsolveur\\.d: 0 at 0, where the interpreter gives -1\nsolveur\\.z\\[1,1\\]: [-a-z()]+ at 0, where the interpreter gives 12582909\n$"
         "rump:^rump: 100 steps from 0${in_float}\nrump\\.g: 1\\.17260396 at 0, where the interpreter gives -0\\.82739605994682142\n$"
         "year:^year: 100 steps from 0${inexact}\nyear\\.naive: within [0-9.]+, [1-9](\\.[0-9])?e\\+02 units of a float${about}\nyear\\.thm4: within [0-9.e-]+, [1-9](\\.[0-9])? units of a float${about}\n$"
@@ -713,6 +744,7 @@ foreach(report IN ITEMS
         "poly:^poly: 100 steps from 0${in_float}\npoly\\.A: ${exact}\npoly\\.c: ${exact}\npoly\\.d: ${exact}\npoly\\.g: ${exact}\n$"
         "nested:^nested: 100 steps from 0${in_float}\nnested\\.S: ${exact}\nnested\\.w: ${exact}\nnested\\.M: ${exact}\nnested\\.T: ${exact}\nnested\\.y: ${exact}\n$"
         "see:^see: 100 steps from 0${in_float}\nsee\\.Xp: ${exact}\nsee\\.Z: ${exact}\nsee\\.M: ${exact}\nsee\\.s: ${exact}\n$"
+        "knee:^knee: 100 steps from 0${inexact}\n${knee_r}knee\\.r: at 0 the compiled step takes 'r_n = 0' and the interpreter 'r_n \\| y_n > c = y_n - c'\\; the guard of the second is 4\\.2e-11 from its threshold\nknee\\.y: within [0-9.e+-]+, [0-9.e+-]+ units of a float\\; the interpreter's terms about 5\\.8e-11 from the exact ones\nknee\\.r: within 4\\.2e-11, 0\\.00035 units of a float\\; the interpreter's terms about 5\\.8e-11 from the exact ones\n$"
         "cls:^cls: 100 steps from 0${inexact}\ncls\\.z: within 2\\.4e-08, 0\\.2 units of a float\ncls\\.q: within 1\\.9e-06, 1\\.5 units of a float${about}\ncls\\.s: within 6\\.3e-08, 0\\.53 units of a float${about}\ncls\\.loss: within 4\\.1e-07, 3\\.4 units of a float${about}\n$")
     string(FIND "${report}" ":" colon)
     string(SUBSTRING "${report}" 0 ${colon} instance)

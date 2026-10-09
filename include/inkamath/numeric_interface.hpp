@@ -151,7 +151,9 @@ struct numeric_interface_imp<std::complex<T>,false>
                 s += "*" + part(imag);
             }
         }
-        return s;
+        // Never exact, as i is a double: one mark before the parts, but for
+        // two NaNs, no value at all (DESIGN.md, C240).
+        return has_imag && !(real != real && imag != imag) ? "~(" + s + ")" : s;
     }
 
     static std::complex<T> pow(const std::complex<T>& a,
@@ -232,7 +234,9 @@ struct numeric_interface_imp<std::complex<T>,false>
             throw std::runtime_error("a factorial cannot be negative");
         }
         if(value != std::floor(value)) {
+            // Marked as Number prints a double, NaN bare (C270).
             throw std::runtime_error("a factorial needs a whole number, not "
+                                     + std::string(value == value ? "~" : "")
                                      + numeric_interface<T>::toString(value));
         }
         return numeric_interface<T>::fact(value);

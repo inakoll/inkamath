@@ -60,7 +60,7 @@ w_n = E(w_(n-1), w_(n-2))
 ~168.93916767106
 
 >> w_80
-100
+~100
 
 # x_n = y_(n+1)/y_n, with y_n linear in x_2 for x_1 = 17/4, so x_80 has
 # its pole where y_80 vanishes: 2.24e-100 below x_2 = 76/17.

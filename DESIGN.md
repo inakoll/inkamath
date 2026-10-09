@@ -215,7 +215,7 @@ C59, and no amount of reading would have shown C48.
 | C44 `[fixed]` | **The concepts do not ask for what the product needs.** `Matrix::mul` accumulates with `c(i,j) += ...`, and neither `Numeric` nor `Parsable` mentions `+=` on the cell type. It goes unnoticed because the concept checks `a*b` as an expression and a template body is not instantiated by overload resolution, so the requirement only bites when someone supplies a number type and gets a template error inside `matrix.hpp` rather than a concept failure at the interface. Found by instantiating `Interpreter<Rational>`: a type that satisfied everything the concepts state still failed to compile. Stated, in the one line `Numeric`'s requires-clause had room for. Writing the accumulation as `c(i,j) = c(i,j) + ...` instead would have asked less of the type at the cost of a copy per term, which is the wrong trade for a bignum. No test: the only one that proves it is an out-of-tree instantiation, and a negative concept test -- a type built to satisfy everything but this -- costs more than it protects. |
 | C43 `[fixed]` | **A number could not start with the point.** `.5` reported `unexpected character '.'`, while `1e3`, `0x10` and `2i` all lexed -- the exotic spellings worked and the common one did not, because the lexer's case list holds the ten digits and nothing else. `strtod` reads `.5` without being asked; only the dispatch was missing. A point that does not begin a number still reports the same message, so `a.b` is unchanged. |
 | C42 `[fixed]` | **The factorial answered for every argument it had no business accepting.** `!5.5` was `120`, `!(0-3)` was `1`, `!(2+i*3)` was `2` and `!i` was `1`. The loop multiplies `i` while `i <= n`, so a fraction truncates, a negative gives the empty product, and the complex layer passed `a.real()` down without looking at the rest, dropping the imaginary part before the loop ever saw it. Four plausible numbers where there should be four diagnostics, which is C13 in an operator nobody had pointed at -- the corpus tested `!5` and `!0` and stopped. Found by typing `!5.5` while checking what the lexer accepts. |
-| C41 `[kept]` | **A block that does not fill its band continues with its own last cell.** `[a, [3 4]]`, with `a` 2x2, gives `1 2 3 4 / 3 4 4 4`; `[[1 2 3], a]` fills a whole row with `3 3 3`. The code says so in as many words -- *"extend the previous (up and left) evaluated cell result"* -- so it is deliberate, and read charitably the rule is **a block continues with its last value**, which is an ellipsis: `[a, 0]` pads the band with zeros and `[a, 1]` with ones, and that is a notation a matrix wants. The author does not remember the use case and suspects exactly this: an attempt at the `...` of matrix notation. Where it stops being statable is the multi-cell block, where continuing `[3 4]` with `4 4` is a corner repeated rather than a continuation anybody wrote. It is the third answer to one question -- a literal's short row pads with zeros (README.md section 2), a single value stretches, a short block repeats a corner -- and only the first two can be said out loud. **Decision: kept, and recorded as it is** in `matrices.ink` with the entry saying so. Not turned into a diagnostic while it may still be the residue of an idea; when the idea is found or ruled out, this goes and an explicit notation for the continuation replaces it, rather than a fourth fill rule. Phase 13 leaves `...` unclaimed for it. |
+| C41 `[fixed]` | **A block that does not fill its band continues with its own last cell.** `[a, [3 4]]`, with `a` 2x2, gives `1 2 3 4 / 3 4 4 4`; `[[1 2 3], a]` fills a whole row with `3 3 3`. The code says so in as many words -- *"extend the previous (up and left) evaluated cell result"* -- so it is deliberate, and read charitably the rule is **a block continues with its last value**, which is an ellipsis: `[a, 0]` pads the band with zeros and `[a, 1]` with ones, and that is a notation a matrix wants. The author does not remember the use case and suspects exactly this: an attempt at the `...` of matrix notation. Where it stops being statable is the multi-cell block, where continuing `[3 4]` with `4 4` is a corner repeated rather than a continuation anybody wrote. It is the third answer to one question -- a literal's short row pads with zeros (README.md section 2), a single value stretches, a short block repeats a corner -- and only the first two can be said out loud. **Decision: kept, and recorded as it is** in `matrices.ink` with the entry saying so. Not turned into a diagnostic while it may still be the residue of an idea; when the idea is found or ruled out, this goes and an explicit notation for the continuation replaces it, rather than a fourth fill rule. Phase 13 leaves `...` unclaimed for it. **Since refused** in the compiler's words, a single value still stretched (C260). |
 | C40 `[fixed]` | **A matrix could be built and never read.** `a(1,2)` was `a takes no arguments` and `a_1` was `a is not a sequence`: the language had no way at all to get a value back out of a matrix, which is half of what the second of the three ideas is for. `Matrix::operator()` was there, with a good out-of-range message, and nothing in the language reached it. `m[i,j]` now does, one-based as the rows and columns are written, and composing with everything a name can carry -- `f(3)[1,2]` and `s_3[1,2]` both work. The brackets were chosen over parentheses to match array indexing elsewhere, and they collide with the matrix literal in exactly one place: inside a literal, and inside an argument list, a space between two expressions separates them, so `[[1 2] [3 4]]` is a row of two blocks. Outside one, juxtaposition means nothing, and the brackets index whatever is in front of them -- `[1 2;3 4][2,1]` and `(a*a)[1,1]` both work. Inside one, only a name takes an index, which leaves a single form changed: `[a [3 4]]`, a row of blocks whose second follows a name with a space, now reads as an index of `a` and reports that it needs a row and a column. That form was legal, unused in the corpus and in `README.md`, and is written `[a, [3 4]]` instead; the change turns it into a diagnostic rather than a wrong answer. `Matrix::Offset` takes a signed index so that `m[0-1,1]` names the row it asked for instead of one that wrapped. |
 | C39 `[fixed]` | **A limit that cannot be taken reports an internal-sounding reason.** `lim k` on a sequence of matrices said `a matrix has no absolute value`, which names neither the sequence nor what the interpreter was doing when it needed one. Every other refusal from `lim` names the sequence -- `k has no general clause, so it has no limit`. It now reads `k has no limit: a matrix has no absolute value`, keeping the reason and adding the context, which also covers the case where the terms change size between iterations. |
 | C38 `[fixed]` | **A scalar stretches over a matrix for `*` and for nothing else.** `a*2` and `2*a` worked, `a/2`, `a-1` and `1+a` all reported `these matrices have different sizes`. The scalar case lived in `mul`, which needs one because matrix multiplication does; `BinaryOp`, behind `+`, `-` and `/`, compared extents and gave up. Nothing chose that: `/` is documented as working cell by cell, and a literal already stretches a scalar -- `[a; 1]` spreads the 1 across the block above it. `a*0.5` working while `a/2` did not is the sharp form. Now a single value stretches on either side of all four, with the operand order kept, so `1-a` subtracts each cell from one. |
@@ -1397,7 +1397,8 @@ What it decides, revising step 1's display:
   the digits continue, and `0.666666667...` claims a 7 that 2/3 does not have.
   An inexact number that is exactly what is printed needs no mark (`i*i` is
   `-1`), a complex number is marked part by part where it is inexact, and step
-  1's trailing point goes.
+  1's trailing point goes. (Reversed by C240: `~` before every inexact number,
+  and once before a complex number's parts, `~(2+i*3)`.)
 - **`~` is also an operator**: in front of anything, it makes it inexact, so
   every answer reads back as what it says it is, and `root_0 = ~1` starts an
   approximate iteration. With a bignum that is no nicety -- exact Newton's
@@ -1760,6 +1761,21 @@ closures need one anyway, and can bring it.
 | C233 `[fixed]` | **A slow sequence read back by another as slow was refused as read every step.** README's section on several rates says one read by another is refused naming the hold at the input's rate to sample instead, but a read at a lag was refused where it was read, before the reader's own rate was known: beside `q_m = q_(m-1) + x_(2*m)`, `w_m = w_(m-1) + q_(m-1) + x_(2*m)` was "q_(...): read every step, and q is computed every 2", w being computed every 2 as well. Such a read is recorded and refused by the reader's rate once its clauses are compiled now, as one of a sequence compiled after its reader already was, "q_(...): one sequence at another rate read by another; hold q at the input's rate and sample the hold", in 2 lines and 1 of comment; `compile_c233` in `test/cli.cmake` holds it, and no other refusal moved. Compiling such a read, both sequences of one period and phase, is a decision for the language (next in line). Found transcribing a convolutional network (Goodfellow, Bengio and Courville 2016, §9.5). |
 | C234 `[fixed]` | **A slow sequence read on the right of an `and` compiled to a wrong term.** A read of a sequence at another rate, at a lag, is refused by the reader's rate, but the right of an `and` or `or` keeps its reads apart, as they defer, and those were not asked: beside `y_m = x_(2*m)`, `c_n \| x_n > 0 and y_(n-1) > 0 = n` compiled, reading y's window, and `--check` of it on `x_n = 1 + n` gave 0 at 2 where the interpreter gives 2. Its reads are asked as the others now, "y_(...): read every step, and y is computed every 2", in 3 lines and 1 of comment; `compile_c234` in `test/cli.cmake` holds it, and no expected header moved. Found fixing C233. |
 | C235 `[fixed]` | **Compiled, the part of a quotient by a guarded call was 1.** Where the divisor's clause taken may have no part, the quotient's is written `(moves ? a'/b... : 0)`, moves where the divisor's is there; for a call's clauses that is their own conditional, `c ? 1 : 0`, written bare before the `?`, which C reads as `c ? 1 : (0 ? ... : 0)`: beside `f(v) \| v > 0 = v*v` and `f(v) = 2`, `y_n = grad_(v = n + 1) 1/f(v)` was 1 at every step where the interpreter gives -2/(n + 1)^3. A power's part where its base's clause has none is written alike, and `g(v)^(1/2)`, g's clauses `v*v*v*v` and 2, was 1 for 2v. Such a condition is bracketed now, in 3 lines and 1 of comment; `over` in `test/compile/grad.ink` holds both, y's tolerance worked out in doubles apart from the interpreter. No expected header moved; edge's check program did, `e` a quotient by a clamp whose chain happened to read right. Found fixing C231. |
+| C240 `[fixed]` | **A bare number could be inexact.** `~` said only that the digits shown are not all of the value (phase 13), so an inexact number whose decimal is complete printed bare, as an exact one does, and read back exact: `~0.5` was `0.5`, `dhinf(1/2, 1, 1)` `2` and `rho([0 1; 0 0])` `0`. `MANIFESTO.md`'s "the meaning is exact" needs a bare number to mean an exact one. Fixed by *A bare number is exact, and a truth read from a double is not*: `~` is printed before every inexact number, and once before a complex number's parts, `~(2+i*3)`; `inexact.ink` holds it. |
+| C241 `[fixed]` | **A truth read from a rounded number was exact.** A comparison of doubles answered an exact 1 or 0, so rounding became a confident truth: with `A = [1/2 1; -1 1/2]`, `rho(A)^2 == 5/4` was an exact 0 where the answer is 1, `~0.1*3 > 3/10` an exact 1, and a clause a guard chose by such a truth answered plainly, as C68 had it for every number but one approximated past a thousand digits. Fixed by the same item: a truth that reads an inexact number is inexact, and so is the answer of a clause a guard chose by one, under grad too; `inexact.ink` holds it. |
+| C242 `[fixed]` | **An exact number past a double's range times a double was inf or 0.** The exact operand became a double first: `10^400*~2^-332` is inf where the product is about 1.14e300, `10^400/~2^332` too, and `10^-400*~1e300` is 0 where it is 1e-100. Found specifying C240 and C241: with log's scale 2^ilogb(x) inexact, `grad_(t = ~(1.5e-300)) log(t*10^200*10^200)` in fastgrad.ink would be `~inf` for 6.67e299. A product or quotient of such a number with a double takes a power of 2 out of each first, as C175's power does, and a sum one above the range out of both, so `2^1024 - ~2^1023` is 2^1023 where it was inf, in 44 lines and 11 of comment, 14 and 3 going: C175's reduction is shared, and C207's exact operand is taken so. A double's operations run within 0.3 per cent of their instructions before it under callgrind. errors.ink holds it, and no other answer moved; `10^-400/~0` is inf, as `1/~0` is, where it was -nan. |
+| C250 `[fixed]` | **A function the inputs call was paired amiss with the step's calls by --check.** The interpreter asked the inputs before any term, and a disturbed run within its asks, so a run's calls of a function both call began with the inputs' and were paired with the step's: `x_n = u_n + U(1)` fed `u_n = U(-1)`, every term exact, said "a disturbed run takes 'U(x) = 0' and the interpreter 'U(x) \| x >= 0 = 1'", and a straddle of the step's call went unsaid. The inputs are forgotten once read now, and asked again within the terms as a run asks them, in 1 line and 2 of comment; `given` in `test/compile/straddle.ink` holds it, and no other check program moved. |
+| C251 `[fixed]` | **A run that took another clause of a sequence with parameters went unheard by --check, and the calls after it were paired amiss.** Its guard was heard as a term's of the instance, which only the flips' sequences are looked up by: `x_n = s(1/2 - w)_3 + H(-1)`, s's guard tie's, said "a disturbed run takes 'H(x) \| x >= 0 = 1' and the interpreter 'H(x) = 0'; the guard of the first is 1 from its threshold", the run's call of H in s's first clause paired with the interpreter's H(-1). A sequence with parameters outside the prelude is heard as a function is now, and of the straddles of one ask the guard heard first is reported, where F's or that of G called in F's guard was the one of the lower address; in 7 lines and 2 of comment. `parted` in `test/compile/straddle.ink` holds it, and no other check program moved. |
+| C252 `[fixed]` | **A run refused within a term's guards was said by --check to take the clause where none holds.** A selection that stopped at a guard the run could not ask was read as one that tried them all: `g_n = H(1/2 - y_n)`, with `H(x) \| x > 1 = 2`, `H(x) \| log(x) < 0 = 1` and `H(x) = 0`, said "a disturbed run takes 'H(x) = 0' and the interpreter 'H(x) \| log(x) < 0 = 1'; the guard of the second is 24 from its threshold", where the run moved up asks log(0) and gives no term, as the estimate says; the interpreter refused alike was said to take it too. A side where no guard held is taken to the clause where none holds now only where it asked the other side's guard, in as many lines as before, one more of comment; `unasked` in `test/compile/straddle.ink` holds it, and no other check program moved. |
+| C253 `[fixed]` | **A call the interpreter remembered was not heard, and --check paired the calls after it amiss.** A function's answer is remembered by its arguments, and a run that rounds two of them apart calls it where the interpreter remembers: `x_n = U(y_n) + U(z_n) + U(-1)`, y and z the same sum in another order, said "a disturbed run takes 'U(x) \| x >= 0 = 1' and the interpreter 'U(x) = 0'; the guard of the first is 1 from its threshold", pairing the run's U(z_n) with the interpreter's U(-1). A run's calls are paired now only where it made as many as the interpreter, in no line more and one of comment; `recalled` in `test/compile/straddle.ink` holds it, and no other check program moved. A straddle that changes how many calls a run makes goes unsaid, as of a function called again within a limit's terms with an argument the run rounds two ways. |
+| C254 `[fixed]` | **C251 quoted a sequence's base clause as the one where no guard holds.** The clause taken where none holds was the first without a guard, a function's, and of a sequence with parameters its base: `s(c)_0 = 5` before parted's clauses said "the interpreter 's(c)_0 = 5'" of s at 3. It is the first without a guard and without an index, or a general one, now, in 3 lines more and one of comment; `founded` in `test/compile/straddle.ink` holds it, and no other check program moved. |
+| C260 `[fixed]` | **The interpreter continued a block that does not fill its band with its corner.** C41 kept it as the residue of an idea, recorded as no meaning, and *Block literals* refuses it compiled, "a block that does not fill its band": `[a, [3 4]]`, with `a` 2x2, was `[1, 2, 3, 4; 3, 4, 4, 4]`, and `[[1 2 3], a]` filled a row with `3 3 3`. What the implementation accepts is not a meaning (CLAUDE.md, section 2), so the interpreter refuses it in the same words now, a single value still stretched over its place, in 3 lines and 2 of comment; matrices.ink holds it, those two answers, its `[a [3 4]]` and vectors.ink's moving to the refusal, and no other answer moved. `...` stays unclaimed for a continuation written out. |
+| C261 `[fixed]` | **Compiled, a matrix inverse in a limit's terms was refused as outside a sequence.** A limit's terms are a sequence, the one it walks, but have no temporaries, where an inverse is computed: `d_n = lim e(x_n)`, `e(r)_k = [(I + r*f(e(r)_(k-1)))^(0-1), I]`, the Riccati doubling under `lim`, was "a matrix inverse outside a sequence". It is "a matrix inverse inside a limit's terms" now, as a limit of matrices there is refused, the only place an inverse meets no temporaries, a sequence and a global having them and the prelude's C functions inverting nothing, in no line more and 2 of comment; `compile_blocks_refused` in `test/cli.cmake` holds it, `d`'s line moving as *Block literals* said it would, and no other refusal moved. |
+| C262 `[fixed]` | **An exact number past a double's range compared with a double as 0 or inf.** The exact operand became a double first, as C242's did in arithmetic: `10^-400 == ~0` was 1, `10^-400 > ~0` 0, `10^400 == 1/~0` 1, and `max(~0, 10^-400)` was 0. Such a number, one whose double is 0 or inf, is compared with a finite double exactly, the double read as the fraction it is, and with inf or NaN as any finite number is, so those are 0, 1, 0 and 1e-400; `==` and the orders share it, and so do max, min and every guard. Within the range an exact number still compares as its nearest double, `1/3 == ~(1/3)` 1, and two exact numbers compared exactly already. In 19 lines and 3 of comment, 1 going; errors.ink holds it, and no other answer moved. A comparison with an inexact operand still gives an exact truth (until C241). |
+| C270 `[fixed]` | **A factorial quoted a double it refused bare.** C240 quotes an inexact number in an error as it prints, but the factorial's refusal of a fraction printed the double itself: `!~5.5` was "a factorial needs a whole number, not 5.5", as `!5.5` is. It is "not ~5.5" now, NaN still bare, in 1 line and 1 of comment; inexact.ink holds it, and no other answer moved. |
+| C271 `[fixed]` | **Under grad, the prelude's C functions of a moving double skipped what their walks mark.** C241 makes grad's whole answer inexact where a clause is chosen by an inexact truth, and each walk of exp, log, tanh, sin, cos and ilogb reads its argument in a guard, but their header computes them where it is a double and chose nothing: `grad_(x = ~3) ilogb(x)` was `0` where its walk is `~0`, and `grad_(x = ~3) [exp(x) 5]` `[~20.0855369, 0]`. Such a call makes the answer inexact now, as the walk would, in 2 lines and 1 of comment; inexact.ink holds it, and no other answer moved. |
+| C272 `[fixed]` | **`rho`, `abscissa`, `eig` and `smax` of an exact cell past a double beside an inexact one refused with a NaN.** C196's residual: the sum of |A[j,k]| is a double, inf, and so is it over 4^n where a cell is itself past a double, so `rhop`'s `0*s` made B's power NaN: `rho([~1 0; 0 10^400])` was "a comparison needs a number, not -nan" where `rho([~1 0; 0 10^309])` is inf, marked. The cell is no inf, as C206's is: its value is exact, and the radius 10^400's, inf as a double and marked, as C191's of an exact matrix. Where the sum is still inf over 4^n, the power is taken of the largest cell's, which `ilogb` takes of an exact number past a double, raised by m + n, in 4 lines and 2 of comment; an exact sum never takes the clause. charpoly.ink and eig.ink hold it, and no other answer moved. |
+| C273 `[fixed]` | **An inexact -0 printed as +0.** A double's 0 has a sign, which 1/x tells, but C240's print dropped it: `~-10^-400` was `~0` where `1/~-10^-400` is `~-inf`. It prints `~-0` now, in 1 line; inexact.ink holds it, and errors.ink's `min(~0, -10^-400)`, -10^-400's double, moved to `~-0`. Reading it back still gives +0, so `1/` of what was printed is `~inf`: `~` takes the exact 0 of `-0`, and negation is `0 - x` (C33), so `-~0` is +0 too; only `~0*(-1)` writes -0. A complex number's -0 part, left out of `~(…)`, is lost alike. |
 
 **Measure instructions, not the clock.** One of those changes made the matrix
 workload 20 per cent slower by the clock and not by a single instruction: with
@@ -3116,8 +3132,10 @@ that exploring seven domains asked of the interpreter, by how many asked.
   compile time, as every shape is known there. Each block is compiled; a
   band of rows is as tall as its tallest block and a band of columns as wide
   as its widest; a single value is stretched over its block and computed
-  once, as arithmetic's stretch shares it and as the interpreter evaluates a
-  block once; any other block fills its place exactly. The result is the
+  once per step, as arithmetic's stretch shares it and as the interpreter
+  evaluates a block once, but written in each cell where a step has no
+  temporaries, in a limit's function or the prelude's C functions; any
+  other block fills its place exactly. The result is the
   cells of each block written into their places, a constant where every
   block is: no array, copy, loop or size at run time, so a literal whose
   stretched values are names or numbers compiles to the header the same
@@ -3236,6 +3254,10 @@ that exploring seven domains asked of the interpreter, by how many asked.
   it, or name it in the header.
 - **`--check` names the parameters the target rounds**, so a parameter no
   float holds (Goldberg's 4.53) is not read as the step's own error.
+- **`--check` quotes an inexact term with its `~`**: its reports print the
+  interpreter's terms bare, "where the interpreter gives
+  0.10000000000000001", where the REPL marks them since C240. The check
+  program would carry whether each term is exact beside its value.
 - **Refuse a repetition that adds nothing, in every context**: an index name
   repeated in a size (`x_n[j<=2, j<=2]` in a model's input,
   `M[j<=n, j<=n]` in a signature), a parameter or default written twice, a
@@ -5868,8 +5890,9 @@ that exploring seven domains asked of the interpreter, by how many asked.
     approximated past a thousand digits`.
 
   Unchanged: what is inexact by nature or by `~`, unmarked by C68, so
-  `~rt_11 > c` is a plain 0, wrong as it is. What such an operation
-  computes from an approximated number stays marked, as C68 has it: Reddi's
+  `~rt_11 > c` is a plain 0, wrong as it is. (Reversed by C241: it is
+  `~0`.) What such an operation computes from an approximated number stays
+  marked, as C68 has it: Reddi's
   Adam transcribed takes `v_n^(1/2)` of exact decimals past the bound and
   is marked, an answer inexact anyway, but `(rt_20 - c)^(1/2)` is
   1.49e-8 imaginary for 4.1e-11 real, and clearing the mark at a root would
@@ -6809,6 +6832,174 @@ that exploring seven domains asked of the interpreter, by how many asked.
   digits and Hermite's test refuses symmetric matrices but for rounding.
   Rejected for `eig` only for an exact dyadic midpoint that zeroes a pivot,
   which an inexact matrix does not meet.
+- `[done]` **A guard the interpreter's own error straddles.** From an outside
+  review. `--check` estimates the interpreter's error by asking each term
+  three times more, disturbed (*The interpreter's own error, estimated by
+  `--check`*), as CESTAC does with CADNA's three samples, and shares its
+  known weakness: where the runs straddle a guard they take different
+  clauses, and the spread there is a clause's, not a rounding's. CADNA calls
+  it an unstable branching. `tie` in `test/compile/estimate.ink` says its
+  `g` is "about 1 from the exact ones, past the tolerance from 0" and not
+  why; a ReLU at its kink straddled alike says 5.8e-11, which is right, and
+  nothing says that the interpreter's own clause was in doubt. The flips
+  (*Guards that flip*) give a guard's margin as the interpreter computes it,
+  and where that is in doubles nothing says whether it is within the
+  interpreter's own error.
+
+  Decided:
+  - **What is observed: the clause each run takes**, of the guards the flips
+    follow: a sequence's guarded general clauses, cell by cell where it is
+    chosen so, of the instance and of those it writes unnamed. The hook the
+    flips listen with is set in each run too, recording the clause chosen
+    and evaluating nothing, so no coin is drawn and every estimate keeps its
+    digits. A run disagrees at a term where it takes another clause than the
+    interpreter's.
+  - **And the guards of the functions the file writes**, in its models or
+    outside them: `README.md` writes a ReLU as `ramp(x)`, and `H(x)` in
+    `gated` straddled is `tie` again, "about 99" and no word of why. The
+    hook is told of their guards too. Such a call has no term of its own:
+    it is the step's and the sequence's the check was asking when it was
+    made, the k-th guard of the function heard in that ask paired with the
+    k-th in the interpreter's, as the runs ask the sequences in the order
+    the interpreter's terms are asked. A guard heard again while a margin is
+    measured is not counted, as a run measures none. The flips still
+    follow only the sequences': a function's guard flipped compiled parts
+    the outputs by its values, reported where they part.
+  - **Not observed**: a comparison taken as a value, `floor`, where a limit
+    stops, and the prelude's guards. The first three choose no clause: their
+    jump is in the values, which the estimate measures as it does now, a
+    comparison straddled being "about 1"; the step names no clause for them,
+    so no flip is reported of them either; and hearing them is a hook in
+    every comparison and in `Convergence`. A limit stopping a term sooner or
+    later moves by about a step, within the remainder it is moved by anyway.
+    The prelude's are placed where either clause is as accurate, `logm`'s
+    fold and `ilogbs`, so they would be reported of every model through
+    `log`.
+  - **Reported once**, at the first step a run takes another clause, after
+    the first line and before the flips, as it is about the reference they
+    are held to: `tie.g: at 0 a disturbed run takes 'g_n | y_n >= 1/2 - w =
+    1' and the interpreter 'g_n = 0'; the guard of the first is 4.8e-11 from
+    its threshold`. The flip's words with a disturbed run in the step's
+    place, and the margin the flip would give, read against the estimate of
+    what the guard reads, 5.8e-11 on `tie.y`'s line. The first only, as for
+    a flip: a run that took another clause has another trajectory, and what
+    it chooses after follows from it. Where runs disagree differently, the
+    first run's clause. At one step, the first in the order the sequences
+    are asked; a function's straddle is named by its ask's sequence and
+    quotes the function's clauses: `acc.x: at 1 a disturbed run takes 'H(x)
+    | x >= 0 = 1' and the interpreter 'H(x) = 0'; the guard of the first is
+    4.8e-11 from its threshold`.
+  - **The estimate is printed as before.** Where the clauses meet at the
+    guard it is right: `knee.r` is "about 5.8e-11", its error exactly. Where
+    they part it is the jump, which is how far the term may be, and the line
+    above says it is a clause's. "Unknown" in its place would lose the first
+    and say less than the second.
+  - **Where it is found, the smaller of two.** The straddle is the
+    interpreter's alone, so it may be found in the program, read from the
+    flips' table, of the guarded sequences, their written clauses and the
+    margins, which gains an array per guarded place, the clause a run took
+    where it is not the interpreter's, else 0, with the margin's words a
+    function both lines call; or once by `--check`, the program printing it
+    as one fixed line. Either is acceptable; the implementation takes the
+    smaller and says which. A function's guard has no place in the flips'
+    table, which weighs for the second. Both lines are printed where both
+    happen, the straddle first; where they are at one step, as `knee` in
+    float, the flip is within the interpreter's own error.
+  - **The exit status is the step's.** A straddle is the reference's doubt,
+    not the step's fault: `tie` steps to the bit. The verdict stays the
+    tolerance's, as the estimate's entry decided.
+  - **`--float`** changes nothing: the runs are the interpreter's.
+
+  Rejected:
+  - **More samples.** Three are CADNA's. A straddle within a limit's
+    remainder is found by the runs moved up and down whatever the seeds, and
+    one within a rounding is drawn again at every step, `crease`'s found at
+    0 with probability 7/8. Each sample more is an evaluation of every term,
+    and moves the digits of every estimate.
+  - **Ignoring it**: `tie.g`'s "about 1" with no word of why, and `knee`'s
+    doubt in silence.
+  - **CADNA's synchronous branching and its counts.** CADNA computes its
+    samples together, takes one branch for all of them by their mean and
+    counts it where their difference is not significant, with unstable
+    multiplications, divisions and cancellations. That needs every operation
+    to see every sample, a Number of three doubles through every operation:
+    a second arithmetic, as the ball rejected in the estimate's entry was.
+    Branching by the mean would also hide the jump the estimate shows now,
+    `tie.g` "within 0" where the exact answer is 1. And a count of unstable
+    products is nothing a model's reader acts on, a cancellation's cost
+    being in the estimate already; the guards are where the outputs part
+    (`MANIFESTO.md`, *The oracle*).
+  - **On the sequence's line**: the sequence straddled is not always the one
+    whose estimate it moves, and the clauses' words would be needed there
+    anyway.
+  - **Every straddle**, or each sequence's first: they follow from the
+    first, as flips do.
+  - **Failing the check**: above.
+
+  What moves, measured with a prototype on every check of `ctest`: `tie`'s
+  report, by the line above, and nothing else; every other report byte for
+  byte, the estimates' digits with them, the hook drawing no coin. No golden
+  and no expected header. README's paragraph on the check gains a sentence,
+  with the implementation.
+
+  About 50 lines: as the prototype measured them formatted, the hook set in
+  each run and the clauses recorded, 10; the array per guarded place, 10;
+  the straddle's walk in the program written, less the flip's margin words
+  now shared, 15, or less found by `--check`; and, not prototyped, the
+  functions' guards, 15: the hook told of a guard outside the prelude in
+  `reference.hpp`, the guards heard by ask in the interpreter's run and in
+  each, and the margin measured unheard. 15,584 lines in all now; past 75
+  the implementation stops and reports.
+
+  Specified in `test/compile/straddle.ink`: `knee`, a ReLU whose kink the
+  run moved down passes, the clauses meeting so that its estimate is its
+  error, and the same in float, where the step's flip follows at the same
+  margin; `crease`, a ReLU at its kink reached by `~(1/10) + ~(2/10)`,
+  straddled by roundings at a step the seeds draw; `plain`, the same sum far
+  from its threshold, with no line; and `both`, a straddle at 3 and brink's
+  flip at 1, the straddle first; `acc`, `tie` again through a function's
+  guard, straddled at 1 where `x` first calls it. With `tie`'s line above.
+  Unwired, as a report failing by design fails `ctest`: wired with the
+  implementation.
+  Expected lines by hand: the limit's stop, 1/2 - 2^-34, and its remainder
+  by C36's rule; the doubles and margins in Python's correctly rounded
+  floats and fractions; each run's clause enumerated over its draws, the
+  runs moved up and down deciding `knee`, `both` and `tie` whatever the
+  seeds; `crease`'s step and every estimate's digits not a limit's by
+  their form.
+
+  Built as specified: every line of `straddle.ink` passes as written,
+  wired as the compile stories are, `crease`'s step by its form, and
+  `tie` gains its line. Found once by `--check` and printed as one fixed
+  line, the smaller: the program gains nothing, and a function's guard,
+  which has no place in the flips' table, is found as a sequence's is. The
+  hook is told of the guards of a clause without an index outside the
+  prelude too, and hears a function's calls by ask, a call begun where its
+  guards are tried again. Departures: `surprise` in `kahan.ink` gains a
+  line as well, which the prototype, without the functions, could not see:
+  a run rounding t = exp(Q(x)^2) off 1 takes Th's `(t - 1)/log(t)` where
+  the interpreter's t is 1 exactly, and the estimate, 8.9e-16, says the
+  clauses meet there, as Kahan meant them to; held by its form, in double
+  and in float. A guard heard while a margin is measured is not counted
+  for the flips either, which moved no report. A function the inputs
+  call was paired amiss where the step calls it too (C250). Every other check
+  program and header byte for byte. 72 lines of sources where about 50
+  were planned: `check.hpp` 68, `reference.hpp` 3, `reference_stack.hpp`
+  1. 15,656 lines in all.
+- **A comparison taken as a value, straddled.** `g_n = y_n >= 1/2 - w` is
+  `tie` with no clause, and keeps its "about 1" with no word of why after
+  the straddle above. Hearing it is a hook in the evaluator's every
+  comparison, told apart from a guard's, paired by order within an ask as a
+  function's guard is, and a wording for an expression no clause quotes:
+  more than the five lines it was allowed, so left for its own entry.
+- **A straddle that changes how many calls a run makes.** Since C253 a
+  run's calls of a function are paired with the interpreter's only where
+  it made as many, as a call remembered by its arguments is not heard: in
+  `x_n = lim t(y_n)` with `t(a)_k = t(a)_(k-1) + H(a - (1/2 - w))/2^k`,
+  tie's straddle in H, the run moved up rounds H's argument two ways and
+  calls H twice where the interpreter calls it once, and nothing is said.
+  Hearing a remembered call, or pairing calls by their arguments, would say
+  it.
 
 After transcribing a small convolutional network (Goodfellow, Bengio and
 Courville 2016, §9.5; LeCun et al. 1998, §II.B), its training compiled and
@@ -6853,3 +7044,182 @@ checked: what it asked of the compiler, each with its smallest change.
 - **The compiled sum's thousand terms**: a LeNet-sized layer's dot product
   over a batch would pass `max_terms`, which bounds an unrolled sum written
   as lines of C, not a loop.
+- `[done]` **A bare number is exact, and a truth read from a double is
+  not** (C240, C241). `~` says only that the digits shown are not all of the value, so
+  `~0.5`, `dhinf(1/2, 1, 1)` and `rho([0 1; 0 0])` print `0.5`, `2` and `0`,
+  as exact numbers do, and read back exact. And a comparison of doubles
+  answers an exact 1 or 0: `rho(A)^2 == 5/4`, A = [1/2 1; -1 1/2], is 0
+  where it is 1, `~0.1*3 > 3/10` is 1, and a guard turns either into
+  another clause, plainly. `MANIFESTO.md`'s "the meaning is exact" needs a
+  bare number to mean an exact one, and a truth to be exact only if what it
+  compares is. This is not *Epistemic levels in printing* (deferred): one
+  distinction, exact or not, which `frac` already makes.
+
+  Decided, by one rule, C68's extended from approximated numbers to every
+  inexact one: what is computed from an inexact number is inexact, a truth
+  and a choice among it too; and printing shows the kind.
+  - **Printing.** `~` before every inexact number, whatever its digits:
+    `~0.5`, `~2`, `~0`, `~-1`, `~inf`. Cell by cell of a matrix,
+    `[1, ~2]`, columns aligned as now. A complex number has one, before
+    its parts in parentheses, `~(2+i*3)`, `~(i*2)`, `~(1-i)`, `~(i)`, one
+    per cell of a matrix, `[1, ~(i)]`: no complex number is exact, the
+    unit being a double, so none prints bare, and one whose imaginary part
+    is 0 prints as a real, `(1+i)*(1-i)` `~2`. An exact number prints as
+    now, bare where the decimal is all of it and `~` where digits are cut,
+    `1/3` `~0.333333333`. So a bare number is exact and is what it shows;
+    `~` says the digits are cut or the number is a double, and `frac`
+    still tells which. NaN has none, `-nan`, nor a complex number of two,
+    `-nan+i*-nan`: it is no value a decimal approximates. An error quotes
+    a number so: "an index must be exact, and ~2 was approximated". The
+    approximated comment stays after the marks,
+    `~0  # approximated past a thousand digits`: `~` says inexact, the
+    comment why, and that asking for less might keep it exact. This reverses phase 13's "an inexact
+    number that is exactly what is printed needs no mark" and "the default
+    display may hide the kind".
+  - **Reading back.** `~1` is the double 1, printed `~1`, so an answer reads
+    back as its kind too, where `0.5` printed for `~0.5` read back as an
+    exact half; a matrix of marked cells reads back as printed, and so does
+    `~(2+i*3)`: `~` of 2+i*3, whose `i*3` and sum round nothing a part of
+    17 digits does not, so the pair of doubles printed, as checked at 17
+    digits on `e^(i*pi)`, `(1+i)/3` and `(10^-400)^(1/2+i)`. `inf` does
+    not read, as now.
+  - **Truths.** A comparison of numbers or of whole matrices that reads an
+    inexact number answers 1 or 0 inexact: `~0.1*3 > 3/10` is `~1`,
+    `rho(A)^2 == 5/4` `~0`, `i == i` `~1`; whole matrices where a cell of
+    either is, `[1 ~2] == [3 ~2]` `~0`. Every one, however far from its
+    threshold, `~2 > 1` `~1`, as C68's: no bound is carried. One reading
+    an approximated number is marked, as now.
+  - **`and` and `or`**, inexact where a side they read is, as for the mark:
+    `~0 and 1` is `~0` and `1 and ~1` `~1`, but `0 and ~1` is `0` and
+    `1 or ~0` `1`. The language has no `if`: guards and these two are its
+    conditions.
+  - **Guards.** A guard reading an inexact truth chooses as the double
+    says, and the answer of the clause chosen is inexact, an exact one
+    becoming its double, whether its own guard held or one before it
+    failed: with `g(x) | x > 1 = 1` and `g(x) = 0`, `g(~2)` is `~1` and
+    `g(~1/2)` `~0`; `max(2, ~1)` is `~2`, `min(1/3, ~0.5)` `~0.333333333`,
+    `ilogb(~8)` `~3`. By cells, each cell by the guards read for it. A
+    refusal keeps its words: an error has no value to mark, and ", by a
+    rounded guard" would end every refusal of a double by the prelude. A
+    count of such choices is inexact, so no index or bound: `x_(c_10)` is
+    refused, "an index must be exact, and ~5 was approximated", where it
+    answered. No test or README example does so.
+  - **grad.** A clause chosen by an inexact truth makes grad's whole answer
+    inexact, value and parts, as C165 marks it for an approximated one; a
+    part the clause lacks stays lacking. `grad_(x = ~2) g(x)` is `~0`, and
+    `1/grad_(x = ~25) tanh(~1*x)` `~inf` where it was "division by zero".
+    Without such a guard a part is what arithmetic makes it:
+    `grad_(x = ~2) 3*x` is `3`.
+  - **`frac`** refuses an inexact truth in its words: `frac (~0.1*3 >
+    3/10)` is "~1 was approximated, so it has no exact fraction".
+  - **What the rule must not move**, four changes, measured by a prototype:
+    - ilogb's double path, in C, answers its k inexact, as its walk then
+      does, which it must equal; 1 line. So ilogb of a double is no
+      index, `x_(ilogb(~8))` refused where it was 3, `1/ilogb(~1)` is
+      `~inf` where it was division by zero, and `1.1^ilogb(~8)` a double
+      power, `~1.3310000000000004` where it was 1.331.
+    - `rhos` also stops where the midpoint is an end. Of an inexact matrix
+      rho, abscissa and eig now bisect a bracket of doubles, their tests'
+      truths inexact, and adjacent doubles are never 2^-53 apart relative:
+      after 256 steps the answer was marked, `rho([~0.5 1; -1 0.5])`
+      `~1.11803399  # approximated...`. An exact bracket's midpoint is never
+      an end, so no exact answer moves; 1 line of the prelude. An inexact
+      one moves by a unit, the bracket's lower double where the exact
+      bracket's end was rounded to nearest: of rho, abscissa, eig and smax
+      of 1000 random 2x2 and 3x3 matrices of doubles, 414 at 17 digits,
+      161 nearer the true value and 229 further, where both are off by up
+      to 306 units.
+    - `smaxd` marks by `0*10^(-1000*truth)`, and of an inexact truth
+      10^~-1000 is a plain double 0: `smax(10^-310)` lost its mark. It
+      becomes a guard after the other; 1 line.
+    - A disturbed run no longer moves a power of two to a whole power,
+      whose double is exact: log's scale 2^ilogb(x) is inexact now, and
+      moving it took `surprise.k`'s estimate in `kahan.ink` from 8.9e-16 to
+      inf; 7 lines.
+    And C242 is fixed first, a fix of its own, or fastgrad's
+    `grad_(t = ~(1.5e-300)) log(t*10^200*10^200)` becomes `~inf`.
+  - **Compiled.** No header moves: compiled values are doubles, printed by
+    none of this, and a constant folded from an inexact truth is the same
+    double. `--check` holds a term inexact by this rule to an inexact one
+    and says from which index: `naught`, `zeroed`, `mirrored`, `radix` in
+    double and in float, and `vast` report "against exact values until 0
+    and inexact ones from there". No compiled term moves; the
+    interpreter's estimates a disturbed run prints do, its coins falling
+    elsewhere, 45 of 117 by up to 4.5 times and `graph`'s first past the
+    tolerance from 2 to 1, which their expectations leave open. `?` and
+    `tex` print definitions, unchanged.
+
+  Rejected:
+  - **A `# rounded` comment**, as the approximated one: one per answer
+    cannot say which cell, it would end most answers, and `~` is per cell
+    already and reads back.
+  - **Truths left exact, and the gap documented**: an exact 0 for a true
+    equation is the confident wrong answer `MANIFESTO.md` excludes. C68
+    left `~rt_11 > c` "a plain 0, wrong as it is" because nothing printed
+    would have shown it; printing now does.
+  - **The truth inexact but not the clause it chooses**: with `h(x) | x ==
+    5/4 = 1` and `h(x) = 0`, `h(rho(A)^2)` would print a bare 0 that is 1.
+  - **Marking only near a threshold**, or **comparing a double with an
+    exact number exactly**: C68's reasons.
+  - **No `~` on a cut exact decimal**, `~` meaning only a double: `1/3`
+    printed `0.333333333` reads back as another exact number.
+  - **A bare `i`**: the unit is a double, as every complex number here.
+  - **A mark per part**, `~2+i*~3`, `~1-~i`: two marks for one complex
+    double, the owner's ruling; and `~i` for `~(i)`, one form for every
+    complex number.
+  - **`~-nan`**: a form that adds nothing.
+
+  What moves, measured with a prototype at 7868bda: 371 golden lines in 34
+  files, 328 of them in 32 by printing alone, 49 of those complex, and 43
+  by truths and guards (reddi 10, fastgrad 6, goldberg 5, fastprelude 5,
+  kahan 3, conditional and logic 2 each, and one each in ten files). All
+  but three only gain a `~`, a complex number its parentheses too:
+  `frac ilogb(~3)` and `frac min(1/3, ~0.5)` are refused, and
+  `1/grad_(x = ~25) tanh(~1*x)` is `~inf`. Comments that state the old
+  rule move with their entries: decimals.ink's on `~`, cparts.ink's "printed
+  without '~'", approximated.ink's `~rt_11 > c` and fastgrad.ink's exact 0;
+  and *A truth read from an approximated number* gains a line that its
+  "unchanged" is reversed here, as C68's row did. README.md: five examples,
+  `2+3*i`, `(1+i)*(1-i)`, `im(2+3*i)`, `dhinf(1/2, 1, 1)` and `abs(i)`'s
+  refusal; section 1's paragraph on printing and its sentence on guards,
+  made general; the table's comparisons and `and` and `or`, "1 or 0,
+  inexact where a side read is". `test/CMakeLists.txt`: the five of those
+  `--check` reports it pins, and their comments in `test/compile`.
+
+  About 50 lines of sources: `number.hpp` 6 the printing and 7 the
+  disturbed power; `matrix.hpp` 2, the truth; `reference.hpp` 7, the
+  guards; `derivative.hpp` 18, the same under grad; `interpreter.hpp` 1,
+  ilogb, and the prelude 2; then comments. The prototype added 50 and
+  removed 9, without them. C242 is not counted. 15,584 lines at 7868bda,
+  by `wc -l include/inkamath/*.hpp src/*`. Past 75 the implementation
+  stops and reports.
+
+  Specified in `test/data/spec/inexact.ink`, 122 entries replayed by the
+  spec suite, 72 failing by design, those passing being exact values,
+  definitions, refusals that quote no inexact number and what must not
+  move: bare and marked numbers, 0, inf, NaN and 17 digits; matrices of
+  mixed cells; complex numbers, the unit and two NaNs; reading `~1` and a
+  complex number back; truths of exact and inexact comparisons and of
+  whole matrices; `and` and `or`; a guard that holds, fails, refuses, by cells and counted into an index;
+  the prelude's guards and ilogb; `frac`; grad; and README's examples.
+  Written from the rule, each double by hand or in Python apart from the
+  interpreter; the prototype agrees with every entry but the one C242
+  holds.
+
+  Built as specified: every entry of `inexact.ink` passes as written, now a
+  golden, and the spec suite goes. A complex number's `~(...)` is written by
+  the complex number's own printing, around any pair but two NaNs, and a
+  double's digits print bare there, `~` put once in front. Departures:
+  `max(~0, 10^-400)` and `min(~0, -10^-400)` in `errors.ink`, C262's answers
+  merged since, move from 1e-400 and -1e-400 to `~0`: max chooses exactly,
+  but by a truth read from a double, so its answer is inexact, the double of
+  10^-400, 0; a value move the reviews did not list, kept as the rule has it
+  and left for a ruling. `parted` and `founded` in `straddle.ink`, also
+  merged since, report "until 0 and inexact ones from there" with the five,
+  their guard reading a limit. No golden shows a unit move of an inexact
+  matrix's rho, eig, abscissa or smax. 402 golden lines in 35 files, 50 of
+  them complex and 52 by truths and guards; past the marks, five answers:
+  the two `frac` refusals, `1/grad_(x = ~25) tanh(~1*x)` `~inf`, and the
+  two above. 38 lines of sources where about 50 were planned, 27 of code:
+  `derivative.hpp` 17, `number.hpp` 12, `interpreter.hpp` 4, `matrix.hpp`
+  2, `numeric_interface.hpp` 2 and `reference.hpp` 1. 15,911 lines in all.

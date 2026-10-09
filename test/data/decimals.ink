@@ -8,8 +8,8 @@
 # Every number prints in decimal. An exact whole number prints in full;
 # anything else is rounded to 'digits' significant digits -- 9 unless set, and
 # 17 at most for an inexact number, which holds no more -- with an exponent
-# below 1e-4 and from 10^digits up, and with '~' in front unless what is
-# printed is exactly the value.
+# below 1e-4 and from 10^digits up, and with '~' in front unless the number
+# is exact and what is printed is all of it (C240).
 #
 # A literal is exact as written, point and exponent included: 0.1 is 1/10.
 # '~' in front of anything makes it inexact, so every answer reads back as
@@ -91,8 +91,8 @@
 ~3.14159265
 
 # What can only be approached, and i: a complex number is inexact. An inexact
-# number that is exactly what is printed needs no mark -- the mark is about the
-# digits, not the kind -- and a complex number is marked where it is inexact.
+# number is marked whatever its digits, as a bare one would read back exact,
+# and a complex number once, before its parts (C240).
 >> pi
 ~3.14159265
 
@@ -103,16 +103,16 @@
 ~2
 
 >> i*i
--1
+~-1
 
 >> 2+3*i
-2+i*3
+~(2+i*3)
 
 >> e^(i*pi)
--1+i*~1.2246468e-16
+~(-1+i*1.2246468e-16)
 
 >> ~1
-1
+~1
 
 # Exact past 64 bits, to a thousand digits (bignum.ink). These were specified
 # as approximated where 64 bits ran out: 2^63 as ~9.22337204e+18.
@@ -152,7 +152,7 @@ lt_n | n > 2 = 5
 lt_n = n
 
 >> lim lt
-5
+~5
 
 # Sequences, exact while they fit.
 >> s_0 = 1
@@ -223,8 +223,8 @@ error: ~0.333333333 was approximated, so it has no exact fraction
 >> 1 + frac 2
 error: frac can only begin a line
 
-# The kind is still there, and 'frac' is how to see it. A memo key that
-# dropped the kind would answer the fourth line from the third (C50).
+# The kind is still there, shown and by 'frac'. A memo key that dropped the
+# kind would answer the fourth line from the third (C50).
 >> half(x) = x/2
 half(x) = x/2
 
@@ -232,13 +232,13 @@ half(x) = x/2
 0.5
 
 >> half(~1)
-0.5
+~0.5
 
 >> frac half(1)
 1/2
 
 >> frac half(~1)
-error: 0.5 was approximated, so it has no exact fraction
+error: ~0.5 was approximated, so it has no exact fraction
 
 # Newton's method doubles an exact fraction's digits at every step, so an
 # iteration meant to be approximate starts from an approximation.

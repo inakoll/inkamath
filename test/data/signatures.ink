@@ -342,9 +342,9 @@ pw(A[j<=n, k<=n])_0 = on(n)
 pw(A)_m = A*pw(A)_(m-1)/(A*pw(A)_(m-1))[n]
 
 >> lim pw([4 1 1; 1 4 1; 1 1 4])
-[1;
- 1;
- 1]
+[~1;
+ ~1;
+ ~1]
 
 # A guard reads the sizes, and each call of a recursion binds its own.
 >> drop(v[j<=n])[j<=n-1] = v[j]

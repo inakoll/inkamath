@@ -216,9 +216,16 @@ tolerance (`test/compile/estimate.ink`). `test/compile/drift.ink` has an instanc
 holds and one that does not: a tenth computed again at every step, whose
 rounding each step multiplies by ten. Before the values, it reports the first step
 at which a compiled guard takes another clause than the interpreter's, and how
-far that guard is from its threshold in exact arithmetic: rounding explains a
-flip at a margin near zero, and not one at a large margin. `brink` in the same
-file sits exactly on its threshold, and `ledge` a trillionth from it.
+far that guard is from its threshold as the interpreter computes it, exactly
+where both its sides are exact and in doubles where one is not: rounding
+explains a flip at a margin near zero, and not one at a large margin. `brink`
+in the same file sits exactly on its threshold, and `ledge` a trillionth from
+it. Before that, it reports the first step at which a disturbed run takes
+another clause than the interpreter, at a sequence's guard or a function's the
+file writes, in the same words: there the estimate is a clause's, not a
+rounding's, and the check does not fail for it (`test/compile/straddle.ink`,
+where `crease`'s 0.30000000000000004 is 5.6e-17 from the double nearest its
+threshold 3/10).
 
 `--float`, beside `--compile` or an instance's `--check`, writes floats where
 the header writes doubles, every constant the nearest float, for a target that
@@ -250,16 +257,18 @@ Language
 A literal is exact as written, and stays exact through `+`, `-`, `*`, `/` and
 whole powers: `1/3+1/3+1/3` is `1`, and `0.1+0.2` is `0.3`. What can only be
 approached — `pi`, `e`, a root, a limit — is inexact, as is anything written
-after `~`, and an inexact number makes inexact whatever it touches. An exact
-number that outgrows a thousand digits becomes inexact rather than wrong, and
-an answer that did ends in `# approximated past a thousand digits`, a comment,
-so it still reads back. So does a comparison that reads such a number, and
-the answer of a clause a guard reading one chose, since a truth read from a
-double may be wrong. Dividing by an exact zero is an error.
+after `~`, and an inexact number makes inexact whatever it touches: a
+comparison that reads one, since a truth read from a double may be wrong, and
+the answer of a clause a guard reading one chose. An exact number that
+outgrows a thousand digits becomes inexact rather than wrong, and an answer
+that did ends in `# approximated past a thousand digits`, a comment, so it
+still reads back; so does whatever such a number touches, a truth and a
+clause chosen too. Dividing by an exact zero is an error.
 
 Every number prints in decimal: an exact whole number in full, anything else
-to nine significant digits, with `~` in front unless what is printed is all of
-the value. `frac` at the start of a line shows the answer as its exact
+to nine significant digits, with `~` in front unless it is exact and what is
+printed is all of it, so a bare number is exact and is what it shows. A
+complex number has one, before its parts in parentheses. `frac` at the start of a line shows the answer as its exact
 fraction, and `digits = n` sets how many digits are shown.
 
 Numbers are complex; `i` is the imaginary unit, a name that a bound one (a
@@ -287,10 +296,10 @@ again, and given back by `clear`.
 | `expr+expr` `expr-expr` | addition, subtraction |
 | `expr*expr` `expr/expr` | multiplication, division |
 | `expr^expr` | power; of a square matrix, a whole one, negative for the inverse |
-| `expr<expr` `expr>expr` | comparison, answering 1 or 0 |
+| `expr<expr` `expr>expr` | comparison, answering 1 or 0, inexact where a side read is |
 | `expr<=expr` `expr>=expr` | the same, or equal |
 | `expr==expr` `expr<>expr` | equal, not equal, of numbers or whole matrices |
-| `expr and expr` `expr or expr` | both, either: 1 or 0, the right read only if needed |
+| `expr and expr` `expr or expr` | both, either: 1 or 0, inexact where a side read is, the right read only if needed |
 | `name = expr` | definition (section 3) |
 | `name \| cond = expr` | a definition in cases (section 3) |
 | `clear name` | drop a definition (section 3) |
@@ -325,16 +334,16 @@ runs to the end of the line.
 120
 
 >> 2+3*i
-2+i*3
+~(2+i*3)
 
 >> (1+i)*(1-i)
-2
+~2
 
 >> floor(-7/2)
 -4
 
 >> im(2+3*i)
-3
+~3
 
 >> T(z) = 1/(z - 1/2)
 T(z) = 1/(z - 1/2)
@@ -373,6 +382,21 @@ evaluate to. If `a` is the 2x2 matrix above, then `[a, a; a, a]` is 4x4:
  3, 4, 3, 4;
  1, 2, 1, 2;
  3, 4, 3, 4]
+```
+
+Each row of blocks is a band as tall as its tallest block, each column of
+blocks a band as wide as its widest, and a block's place is where its two
+bands meet. A single value is stretched over its place, so `[a, 0]` borders
+`a` with zeros; any other block must fill its place, and one that does not
+is refused rather than continued by its corner:
+
+```
+>> [a, 0]
+[1, 2, 0;
+ 3, 4, 0]
+
+>> [a, [3 4]]
+error: a block that does not fill its band
 ```
 
 A matrix prints as the literal that would produce it, with its columns
@@ -532,7 +556,7 @@ is inside |z| < r, both strictly. `rho(A)`, the spectral radius, and
 tests: `rhob(A)_m` and `abscissab(A)_m` are the brackets [lo; hi] after m
 halvings, lo at most the value and hi above it, exact of an exact matrix,
 and the answer is lo, inexact, once the bracket is within 2^-53 of its end
-nearer 0, after 64 halvings and at most 256. It is certified while the tests
+nearer 0, or its ends are adjacent doubles, after 64 halvings and at most 256. It is certified while the tests
 are exact; their numbers grow with the matrix and the halvings, and past a
 thousand digits they are approximated and the answer is marked, within a
 double's accuracy but no longer proved. An answer the 256th halving leaves
@@ -617,7 +641,7 @@ even where it cancels in the transfer function. `grad` refuses both:
 ~2.06559112
 
 >> dhinf(1/2, 1, 1)
-2
+~2
 
 >> hinf(1, 1, 1)
 error: hinf needs every eigenvalue of A left of the imaginary axis
@@ -750,7 +774,7 @@ If no clause applies, the interpreter says so rather than inventing a value:
 
 ```
 >> abs(i)
-error: a comparison needs real numbers, not i
+error: a comparison needs real numbers, not ~(i)
 ```
 
 A default written last is a paper's "otherwise", and means the same:

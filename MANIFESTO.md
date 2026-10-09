@@ -254,8 +254,11 @@ Hints, in the order they cost:
 - **A gradient construct.** Something like `grad(L, w)`, the first construct to
   take a definition rather than a value. It is the one piece of paper notation,
   the nabla, that every training equation uses.
-- **Reverse mode later, and only when a model shows forward mode too slow.**
-  In the interpreter, a tape recorded during evaluation; in the compiler, an
+- **Reverse mode, deferred while the bottleneck is elsewhere.** Wanted:
+  forward mode's cost grows with the number of parameters, and no target size
+  caps what the language should handle. It waits until gradients are what
+  limits the models being written. In the interpreter, a tape recorded during
+  evaluation; in the compiler, an
   adjoint step emitted by transformation. Through time, the history it needs
   conflicts with a step that keeps only its latest terms; a fixed window of
   truncation is a lag, and lags are already compiled in as sizes.

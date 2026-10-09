@@ -6,10 +6,10 @@
 # 'pi', it cannot be defined again: an answer is printed outside every such
 # scope, and its 'i' must always be the unit.
 >> i^2
--1
+~-1
 
 >> 3 + i
-3+i
+~(3+i)
 
 >> ?i
 i
@@ -39,7 +39,7 @@ x_i = i/2
 
 # Outside the scope that binds it, it is the unit again.
 >> (sum_(i=1)^2 i) + i
-3+i
+~(3+i)
 
 # Inside one, the unit is reached through a name defined outside it, as an
 # engineer's j would be.
@@ -47,7 +47,7 @@ x_i = i/2
 j = i
 
 >> sum_(i=1)^2 i*j
-i*3
+~(i*3)
 
 # A definition of it, in any of its forms, is refused: the answers printed
 # would then mean something other than what they say.

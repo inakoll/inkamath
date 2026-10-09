@@ -206,12 +206,14 @@ public:
         return Held(Ordered(Numeric(a.Comparable()), op, Numeric(b.Comparable())), a, b);
     }
 
-    // A truth read from a number approximated past the bound is approximated
-    // too, as whatever is computed from it (DESIGN.md, C68 reversed).
+    // A truth read from an inexact number is inexact, and from one
+    // approximated past the bound approximated, as whatever is computed from
+    // it (DESIGN.md, C68 reversed, C241).
     static Matrix<T> Held(bool held, const Matrix<T>& a, const Matrix<T>& b) {
         const T truth = held ? numeric_interface<T>::one() : numeric_interface<T>::zero();
-        return Matrix<T>(approximated(a) || approximated(b) ? numeric_interface<T>::marked(truth)
-                                                            : truth);
+        if (approximated(a) || approximated(b))
+            return Matrix<T>(numeric_interface<T>::marked(truth));
+        return Matrix<T>(exact(a) && exact(b) ? truth : numeric_interface<T>::inexact(truth));
     }
 
     static Matrix<T> marked(const Matrix<T>& a) {

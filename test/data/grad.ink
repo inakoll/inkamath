@@ -82,7 +82,7 @@ fa(X[j<=a, k<=b]) = sum_(j=1)^a X[j,1]
 3
 
 >> grad_(m = 2) m*rho([1/2])
-0.5
+~0.5
 
 >> grad_(n = 1) n*charpoly([1 2; 3 4])
 [ 1;
@@ -188,7 +188,7 @@ error: floor jumps at x = 0
 # A power, where its derivative is finite, and with an exponent that changes
 # with the name only where its base is e: any other base needs a logarithm.
 >> grad_(x = 4) x^(1/2)
-0.25
+~0.25
 
 >> grad_(x = 0) x^(1/2)
 error: a power's derivative is infinite at x = 0
@@ -206,7 +206,7 @@ error: a power's derivative is infinite at x = 0
 1
 
 >> grad_(x = 0) e^(2*x)
-2
+~2
 
 >> grad_(x = 1) 2^x
 error: grad cannot differentiate a power whose exponent changes with x, unless its base is e
@@ -216,7 +216,7 @@ error: grad cannot differentiate a power whose exponent changes with x, unless i
 
 # A complex derivative is the derivative, not its conjugate.
 >> grad_(z = 1 + i) z^2
-2+i*2
+~(2+i*2)
 
 # With respect to a matrix, a single value's gradient is shaped as the
 # matrix; with respect to a single value, a matrix's is shaped as the matrix.
@@ -284,7 +284,7 @@ sq(x)_0 = 1
 sq(x)_n = (sq(x)_(n-1) + x/sq(x)_(n-1))/2
 
 >> grad_(x = 4) lim sq(x)
-0.25
+~0.25
 
 >> grad_(x = 0) lim sq(x)
 error: the derivative of sq did not converge within 100 terms (last term ~4.225502e+29)
@@ -300,7 +300,7 @@ h(x)_0 = x
 h(x)_n = h(x)_(n-1)/(1 + x^2)
 
 >> grad_(x = 0) lim h(x)
-1
+~1
 
 # A bisection is a staircase in x, flat between its jumps, so each term's
 # derivative is 0 where that of its limit, [x; x], is not: refused, as rho

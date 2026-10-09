@@ -100,6 +100,8 @@ public:
     friend bool operator==(const Number& a, const Number& b) {
         if (a.small() && b.small()) return a.num_ == b.num_ && a.den_ == b.den_;
         if (a.exact() && b.exact()) return a.big_ && b.big_ && *a.big_ == *b.big_;
+        if (a.big_ || b.big_)
+            return Order(a, b, std::equal_to<>()) && a.Inexact().imag() == b.Inexact().imag();
         return a.Inexact() == b.Inexact();
     }
 
@@ -195,13 +197,17 @@ public:
 
     // Every number prints in decimal: an exact whole number in full, anything
     // else to `digits` significant digits -- 17 at most for a double, which
-    // holds no more -- and with '~' in front unless what is printed is all of
-    // the value. A complex number is marked part by part.
+    // holds no more -- and with '~' in front unless it is exact and what is
+    // printed is all of it. A complex number is marked once, NaN not at all:
+    // it is no value a decimal approximates (DESIGN.md, C240).
     static std::string toString(const Number& a, int digits = numeric_interface_precision) {
         if (!a.exact()) {
-            const int shown = std::min(digits, 17);
-            return numeric_interface<inexact_type>::toString(
-                a.inexact_, [shown](double part) { return Decimal(part, shown); });
+            const int    shown = std::min(digits, 17);
+            const auto   part  = [shown](double x) { return Decimal(x, shown); };
+            const double x     = a.inexact_.real();
+            if (!(a.inexact_.imag() == 0) || std::isnan(x))
+                return numeric_interface<inexact_type>::toString(a.inexact_, part);
+            return "~" + part(x);
         }
         if (a.big_) {
             const Big& b = *a.big_;
@@ -234,8 +240,15 @@ public:
 
     // A whole power of an exact number is exact; anything else is approached.
     static Number pow(const Number& a, const Number& b) {
-        // Rounded, but to an exact 0, which gives 1.
-        const auto rounded = [&](inexact_type z) { return b.small() && b.num_ == 0 ? z : Unit(z); };
+        // Rounded, but to an exact 0, which gives 1, and a power of 2 to a
+        // whole power, which a normal double holds exactly.
+        const auto rounded = [&](inexact_type z) {
+            int        e = 0;
+            const auto m = a.Inexact(), y = b.Inexact();
+            const bool two = m.imag() == 0 && y.imag() == 0 && std::frexp(m.real(), &e) == 0.5 &&
+                             y.real() == std::floor(y.real()) && std::isnormal(z.real());
+            return (b.small() && b.num_ == 0) || two ? z : Unit(z);
+        };
         const bool whole = b.small() ? b.den_ == 1 : b.big_ && b.big_->den == Natural(1);
         const bool odd =
             b.small() ? (b.num_ & 1) != 0 : b.big_ && (b.big_->num.limbs()[0] & 1) != 0;
@@ -272,19 +285,13 @@ public:
         // keeps a root's 2^(e/2) exact.
         const double y = b.Inexact().real(), t = b.Inexact().imag();
         if (a.big_ && !std::isnormal(base.real()) && std::isfinite(y) && std::isfinite(t)) {
-            const Big& r = *a.big_;
-            const long e =
-                (static_cast<long>(r.num.bits()) - static_cast<long>(r.den.bits())) & ~1L;
-            const double m = e >= 0 ? Nearest(r.num, r.den.Shifted(static_cast<std::size_t>(e)))
-                                    : Nearest(r.num.Shifted(static_cast<std::size_t>(-e)), r.den);
-            const double s = std::clamp(static_cast<double>(e) * y, -1e4, 1e4), k = std::floor(s);
-            inexact_type z = numeric_interface<inexact_type>::pow(inexact_type(r.negative ? -m : m),
-                                                                  b.Inexact()) *
-                             std::exp2(s - k);
-            if (t != 0) z *= std::polar(1.0, static_cast<double>(e) * t * std::numbers::ln2);
-            return Approximate(rounded({std::ldexp(z.real(), static_cast<int>(k)),
-                                        std::ldexp(z.imag(), static_cast<int>(k))}),
-                               past);
+            const int    e = (Exponent(a) - 1) & ~1;
+            const double s = std::clamp(e * y, -1e4, 1e4), k = std::floor(s);
+            inexact_type z =
+                numeric_interface<inexact_type>::pow(Part(a, e).inexact_, b.Inexact()) *
+                std::exp2(s - k);
+            if (t != 0) z *= std::polar(1.0, e * t * std::numbers::ln2);
+            return Approximate(rounded(Ldexp(z, static_cast<int>(k))), past);
         }
         return Approximate(rounded(numeric_interface<inexact_type>::pow(base, b.Inexact())), past);
     }
@@ -387,6 +394,8 @@ private:
     INKAMATH_NOINLINE static Number Plus(const Number& a, const Number& b) {
         if (a.exact() && b.exact()) return BigSum(a.Ratio(), b.Ratio());
         const inexact_type x = a.Inexact(), y = b.Inexact();
+        if (a.big_ || b.big_)
+            if (const auto sum = Scaled(a, x, b, y, 0, Plus)) return *sum;
         return Approximate(Added(x, y, x + y), approximated(a) || approximated(b));
     }
 
@@ -397,12 +406,16 @@ private:
             return BigSum(a.Ratio(), negated);
         }
         const inexact_type x = a.Inexact(), y = b.Inexact();
+        if (a.big_ || b.big_)
+            if (const auto difference = Scaled(a, x, b, y, 0, Minus)) return *difference;
         return Approximate(Added(x, -y, x - y), approximated(a) || approximated(b));
     }
 
     INKAMATH_NOINLINE static Number Times(const Number& a, const Number& b) {
         if (a.exact() && b.exact()) return BigProduct(a.Ratio(), b.Ratio());
         const inexact_type x = a.Inexact(), y = b.Inexact();
+        if (a.big_ || b.big_)
+            if (const auto product = Scaled(a, x, b, y, 1, Times)) return *product;
         const bool         past = approximated(a) || approximated(b);
         if (Finite(a, x, b)) return Approximate(Beyond(x, y), past);
         if (Finite(b, y, a)) return Approximate(Beyond(y, x), past);
@@ -421,6 +434,8 @@ private:
             return BigProduct(a.Ratio(), reciprocal);
         }
         const inexact_type x = a.Inexact(), y = b.Inexact();
+        if (a.big_ || b.big_)
+            if (const auto quotient = Scaled(a, x, b, y, -1, Over)) return *quotient;
         const bool         past = approximated(a) || approximated(b);
         if (Finite(a, x, b) && !(y.imag() == 0) && std::isfinite(y.real()) &&
             std::isfinite(y.imag()))
@@ -431,11 +446,49 @@ private:
         return Approximate(Other(q, y.real() > 0 ? r : -r), past);
     }
 
-    // A number exact, or approximated from an exact one, whose double e is
-    // past a double's range: finite all the same (C207, C209), so 0 by a 0
-    // part of b, unless b's 0 is approximated too and may be anything.
+    // An exact number no normal double holds, with a double, as C175's power
+    // has it: each over a power of 2 first, its own for a product (how 1) or
+    // quotient (-1) and the exact one's for a sum (0), so that the result
+    // leaves the range only where its value does (C242). A sum only above
+    // the range: below it, the exact number's double is off by less than
+    // the least double.
+    static std::optional<Number> Scaled(const Number& a, inexact_type x, const Number& b,
+                                        inexact_type y, int how,
+                                        Number (*op)(const Number&, const Number&)) {
+        const auto outside = [how](const Number& n, inexact_type z) {
+            return n.big_ && (how == 0 ? std::isinf(z.real()) : !std::isnormal(z.real()));
+        };
+        if (!outside(a, x) && !outside(b, y)) return std::nullopt;
+        const int big = Exponent(outside(a, x) ? a : b);
+        const int e = how == 0 ? big : Exponent(a), f = how == 0 ? big : Exponent(b);
+        return Approximate(Ldexp(op(Part(a, e), Part(b, f)).inexact_, how == 0 ? big : e + how * f),
+                           approximated(a) || approximated(b));
+    }
+
+    // The e that puts a's larger part within [1/4, 1] over 2^e, and a over it.
+    static int Exponent(const Number& a) {
+        const auto bits = [](const Natural& n) { return static_cast<int>(n.bits()); };
+        if (a.big_) return bits(a.big_->num) - bits(a.big_->den) + 1;
+        const double larger = std::max(std::abs(a.inexact_.real()), std::abs(a.inexact_.imag()));
+        return std::isfinite(larger) && larger != 0 ? std::ilogb(larger) + 1 : 0;
+    }
+    static Number Part(const Number& a, int e) {
+        if (!a.big_) return Number(Ldexp(a.inexact_, -e));
+        const Big&   r = *a.big_;
+        const double m = e >= 0 ? Nearest(r.num, r.den.Shifted(static_cast<std::size_t>(e)))
+                                : Nearest(r.num.Shifted(static_cast<std::size_t>(-e)), r.den);
+        return Number(r.negative ? -m : m);
+    }
+    static inexact_type Ldexp(inexact_type z, int e) {
+        return {std::ldexp(z.real(), e), std::ldexp(z.imag(), e)};
+    }
+
+    // A number approximated from an exact one, whose double e is past a
+    // double's range: finite all the same (C209), so 0 by a 0 part of b,
+    // unless b's 0 is approximated too and may be anything. An exact one is
+    // Scaled (C207).
     static bool Finite(const Number& a, inexact_type e, const Number& b) {
-        return (a.exact() || (approximated(a) && !approximated(b))) &&
+        return approximated(a) && !approximated(b) &&
                (std::isinf(e.real()) || std::isinf(e.imag()));
     }
 
@@ -846,7 +899,7 @@ private:
     // has 767 significant digits at most.
     static std::string Decimal(double x, int count) {
         if (!std::isfinite(x)) return numeric_interface<double>::toString(x);
-        if (x == 0) return "0";
+        if (x == 0) return std::signbit(x) ? "-0" : "0";
         char       text[800];
         const auto end =
             std::to_chars(text, text + sizeof text, std::abs(x), std::chars_format::scientific, 766)
@@ -856,11 +909,12 @@ private:
         Digits            lead;
         lead.digits   = written.substr(0, 1) + written.substr(2, e - 2);
         lead.exponent = std::stoi(written.substr(e + 1));
-        return Shown(lead, x < 0, count);
+        return Shown(lead, x < 0, count, "");
     }
 
-    // Rounded half to even, with an exponent below 1e-4 and from 10^count up.
-    static std::string Shown(Digits lead, bool negative, int count) {
+    // Rounded half to even, with an exponent below 1e-4 and from 10^count up,
+    // with `cut` in front where digits are dropped.
+    static std::string Shown(Digits lead, bool negative, int count, const char* cut = "~") {
         std::string&      d    = lead.digits;
         const std::size_t kept = static_cast<std::size_t>(count);
         d.resize(std::max(d.size(), kept + 1), '0');
@@ -892,13 +946,29 @@ private:
             text = d.substr(0, whole) + (d.size() > whole ? "." + d.substr(whole) : "");
         }
         const bool exact = next == '0' && !rest;
-        return (exact ? "" : "~") + std::string(negative ? "-" : "") + text;
+        return (exact ? "" : cut) + std::string(negative ? "-" : "") + text;
     }
 
     template <typename Op>
     static bool Order(const Number& a, const Number& b, Op op) {
         if (a.exact() && b.exact()) return op(Compare(a, b), 0);
-        return op(a.Inexact().real(), b.Inexact().real());
+        const double x = a.Inexact().real(), y = b.Inexact().real();
+        if (Lost(a, x) && std::isfinite(y)) return op(Compare(a.Ratio(), Dyadic(y)), 0);
+        if (Lost(b, y) && std::isfinite(x)) return op(Compare(Dyadic(x), b.Ratio()), 0);
+        return op(Lost(a, x) ? 0 : x, Lost(b, y) ? 0 : y);
+    }
+
+    // An exact number whose double is 0 or inf, which it is not, so compared
+    // with a double exactly, and with inf or NaN as any finite number (C262).
+    static bool Lost(const Number& a, double x) { return a.big_ && (std::isinf(x) || x == 0); }
+
+    // A finite double as the fraction it is.
+    static Big Dyadic(double x) {
+        int        e     = 0;
+        const auto m     = static_cast<Natural::wide>(std::ldexp(std::frexp(std::abs(x), &e), 53));
+        const auto shift = static_cast<std::size_t>(std::abs(e - 53));
+        return e >= 53 ? Big{x < 0, Natural(m).Shifted(shift), Natural(1)}
+                       : Big{x < 0, Natural(m), Natural(1).Shifted(shift)};
     }
 
     // The sign of a/b - c/d, read from a*d against c*b in 128 bits: two
