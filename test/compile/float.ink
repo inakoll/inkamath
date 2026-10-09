@@ -8,8 +8,8 @@
 # more than a thousandth of one plus the interpreter's term from it, and each
 # line says how far its sequence came, as now, and the most any of its terms
 # came in units of a float: the spacing of floats at the interpreter's term,
-# or at 1 where the term is smaller. The two need not be one term's: calm's
-# 1.1e-06 is 1.2 units, and another of its terms 1.4. The step's term, where
+# however small, and none where that term is 0. The two need not be one
+# term's: calm's 1.1e-06 is 1.2 units, and another of its terms 1.4. The step's term, where
 # it parts, is shown to nine digits.
 #
 # 'calm', 'wild' and 'ledge' of drift.ink:
@@ -31,12 +31,12 @@
 # 'gate' of logistic.ink, its limit walked in float, and 'ball' of
 # momentum.ink, its exp the prelude's. Each estimate is the seeds', and
 # ball's digits are its powf's or, with the prelude written in inkamath, its
-# exp's; either way under 6 units:
+# exp's, and its units, counted at terms that close on 0, theirs too:
 #
 #     gate: 100 steps from 0 in float, against exact values until 0 and inexact ones from there
 #     gate.b: within 1.2e-06, 2.5 units of a float; the interpreter's terms about <e> from the exact ones
 #     gate.w: within 9.4e-07, 3.9 units of a float; the interpreter's terms about <e> from the exact ones
-#     gate.p: within 2.1e-07, 1.8 units of a float; the interpreter's terms about <e> from the exact ones
+#     gate.p: within 2.1e-07, 22 units of a float; the interpreter's terms about <e> from the exact ones
 #
 #     ball: 100 steps from 0 in float, against exact values until 0 and inexact ones from there
 #     ball.<s>: within <d>, <u> units of a float; the interpreter's terms about <e> from the exact ones
@@ -52,7 +52,7 @@
 #     stiff.x: within <d>, <u> units of a float; the interpreter's terms about <e> from the exact ones
 #     stiff.y: within <d>, <u> units of a float; the interpreter's terms about <e> from the exact ones
 #
-# with x 1.6e-07 and 1.4 units and y 8.1e-08 and 0.68, by glibc's powf.
+# with x 1.6e-07 and 2.7 units and y 8.1e-08 and 2.7, by glibc's powf.
 #
 # Twice, as some iterates alternate two units apart: 'mark' of steady.ink,
 # power iteration, at step 33, and 'cls' of softmax.ink, Newton's method on
@@ -62,13 +62,13 @@
 #     mark: 100 steps from 0 in float, against exact values until 0 and inexact ones from there
 #     mark.<s>: within <d>, <u> units of a float; the interpreter's terms about <e> from the exact ones
 #
-# with d 1.1e-07 and 0.9 units and s 1.4e-07 and 1.1, by glibc's, and
+# with d 1.1e-07 and 2.2 units and s 1.4e-07 and 2.9, by glibc's, and
 #
 #     cls: 100 steps from 0 in float, against exact values until 0 and inexact ones from there
-#     cls.z: within 2.4e-08, 0.2 units of a float
+#     cls.z: within 2.4e-08, 0.49 units of a float
 #     cls.q: within 1.9e-06, 1.5 units of a float; the interpreter's terms about <e> from the exact ones
-#     cls.s: within 6.3e-08, 0.53 units of a float; the interpreter's terms about <e> from the exact ones
-#     cls.loss: within 4.1e-07, 3.4 units of a float; the interpreter's terms about <e> from the exact ones
+#     cls.s: within 6.3e-08, 2.1 units of a float; the interpreter's terms about <e> from the exact ones
+#     cls.loss: within 4.1e-07, 3.8 units of a float; the interpreter's terms about <e> from the exact ones
 #
 # The disjunct answers where the interpreter refuses a walk that creeps by a
 # unit or two of a float at each term. 'crawl', a hundred million moved by 8, a
@@ -89,10 +89,10 @@
 # and 'drone' at 0.999, from rest, on a step:
 #
 #     hum: 100 steps from 0 in float, against exact values
-#     hum.y: within 2.7e-06, 22 units of a float
+#     hum.y: within 2.7e-06, 74 units of a float
 #
 #     drone: 100 steps from 0 in float, against exact values
-#     drone.y: within 5.6e-06, 47 units of a float
+#     drone.y: within 5.6e-06, 2.3e+03 units of a float
 #
 # And large coordinates: a position a million from its origin, moved a
 # hundredth at each step. A float's spacing there is a sixteenth, so the
@@ -112,6 +112,17 @@
 #     tally.c: within 50, 25 units of a float
 #
 # In double each of the four is within the billionth.
+#
+# A small term is measured at its own spacing, not at 1's (C274): 'tiny'
+# adds 1e-8 to 1, where a float's spacing is 1.2e-7, so its step gives 0
+# for y = 1e-8, a difference of 1e-8 that is 1e-8 * 2^50, 1.1e+07 units of
+# a float at y's spacing, 2^-50, and so not the 0.084 of 1's. Where the
+# interpreter's term is 0, as z's, units would say nothing, and a line
+# none of whose terms is anything else gives none:
+#
+#     tiny: 100 steps from 0 in float, against exact values
+#     tiny.y: within 1e-08, 1.1e+07 units of a float
+#     tiny.z: within 1e-08
 #
 # And exp past a float's range, from e^-110 by three at each step: the
 # step's terms are 0 to the third, where the interpreter's are below half
@@ -217,3 +228,9 @@ burst(x_n) = {
     z_n = lim v(x_n)
 }
 blast = burst(x_n = 0 - 5/2)
+
+lift(a = 1/100000000, u_n) = {
+    y_n = (1 + a*u_n) - 1
+    z_n = (1 + a*u_n) - 1 - a*u_n
+}
+tiny = lift(u_n = 1)

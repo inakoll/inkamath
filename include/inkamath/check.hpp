@@ -380,7 +380,8 @@ public:
         out += "                 const double* about) {\n";
         out += "    double worst = 0.0, most = 0.0" + std::string(floats ? ", units = 0.0" : "") +
                ";\n";
-        out += "    int    past  = -1, compared = 0, spent = -1, more = 0;\n";
+        out += "    int    past  = -1, compared = 0, spent = -1, more = 0" +
+               std::string(floats ? ", measured = 0" : "") + ";\n";
         out += "    for (int k = 0; k < " + std::to_string(steps) + " * cells; ++k) {\n";
         out += "        const double difference = fabs(" + got + " - want[k]);\n";
         out += "        const int    n = " + std::to_string(first) + " + k / cells;\n";
@@ -392,11 +393,14 @@ public:
             "        if (known[k] == 1 && difference <= " + tol + " * (1.0 + fabs(want[k]))) {\n";
         out += "            ++compared;\n";
         out += "            if (difference > worst) worst = difference;\n";
-        // In units of a float at the interpreter's term, or at 1 below it.
+        // In units of a float at the interpreter's term, not at 1, so that a small term
+        // cannot hide below 1's spacing (C274): 2^-149 below the normal floats. At a
+        // term of 0 a unit says nothing, so none is counted there.
         if (floats)
             out +=
-                "            units = fmax(units, ldexp(difference, 23 - ilogb(fmax(fabs(want[k]), "
-                "1.0))));\n";
+                "            if (want[k] != 0.0) {\n                units = fmax(units, "
+                "ldexp(difference, 23 - ilogb(fmax(fabs(want[k]), ldexp(1.0, -126)))));\n"
+                "                measured = 1;\n            }\n";
         out += "            if (e > most) most = e;\n";
         out += "            if (past < 0 && e > " + tol + " * (1.0 + fabs(want[k]))) past = n;\n";
         out += "            continue;\n        }\n";
@@ -442,9 +446,8 @@ public:
             std::to_string(first) + " + k / cells, why[k]);\n";
         out += "                break;\n            }\n";
         out += spent + "        printf(\"\\n\");\n        return 1;\n    }\n";
-        out += floats
-                   ? "    printf(\"%s: within %.2g, %.2g units of a float\", name, worst, units);\n"
-                   : "    printf(\"%s: within %.2g\", name, worst);\n";
+        out += "    printf(\"%s: within %.2g\", name, worst);\n";
+        if (floats) out += "    if (measured) printf(\", %.2g units of a float\", units);\n";
         out += "    if (from > " + std::to_string(first) + ") printf(\", from %d\", from);\n";
         out += "    if (most > 0.0)\n";
         out +=

@@ -17,7 +17,7 @@
 # and in float, 'inkamath --check grad.ink line --float':
 #
 #     line: 100 steps from 0 in float, against exact values
-#     line.w: within 2.7e-07, 1.9 units of a float
+#     line.w: within 2.7e-07, 3.7 units of a float
 #
 # Its header writes the gradient out: the part of each square is 2*u^1*u',
 # pow included, as the interpreter takes it, u' being a cell of X, folded:

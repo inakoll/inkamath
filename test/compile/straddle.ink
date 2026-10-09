@@ -27,7 +27,7 @@
 #     knee.r: at 0 a disturbed run takes 'r_n = 0' and the interpreter 'r_n | y_n > c = y_n - c'; the guard of the second is 4.2e-11 from its threshold
 #     knee.r: at 0 the compiled step takes 'r_n = 0' and the interpreter 'r_n | y_n > c = y_n - c'; the guard of the second is 4.2e-11 from its threshold
 #     knee.y: within <x>, <u> units of a float; the interpreter's terms about 5.8e-11 from the exact ones
-#     knee.r: within 4.2e-11, 0.00035 units of a float; the interpreter's terms about 5.8e-11 from the exact ones
+#     knee.r: within 4.2e-11, 1.2e+07 units of a float; the interpreter's terms about 5.8e-11 from the exact ones
 kinked(c = 1/2 - 1/10^10) = {
     half(a)_0 = 0
     half(a)_k = half(a)_(k-1) + a/2^(k+1)
