@@ -12,3 +12,12 @@ euler(dt = 1/10, u_n) = {
     y_n = x_n/lim h
 }
 stiff = euler(u_n = 1/2)
+
+# A repeated term is not a limit (DESIGN.md, C279): the binary digits of
+# 1/(n + 2), where each 0 repeats the term before.
+binary(u_n) = {
+    dig(x)_0 = 0
+    dig(x)_k = dig(x)_(k-1) + (dig(x)_(k-1) + 2^-k <= x)*2^-k
+    y_n = lim dig(u_n)
+}
+halves = binary(u_n = 1/(n + 2))

@@ -2679,18 +2679,21 @@ private:
                     "isfinite(t_[i_][j_]);\n";
             text += "                }\n";
         }
-        // A float closes on finite floats a unit or two apart (DESIGN.md, a float target).
+        // A float closes on finite floats a unit or two apart (DESIGN.md, a float target);
+        // a step of 0 is left to the rule below, which a pause does not pass (C279).
         if (floats)
-            text += scalar ? "            if (step_ <= 2 * FLT_EPSILON * fabsf(t_) && "
+            text += scalar ? "            if (step_ > 0 && step_ <= 2 * FLT_EPSILON * fabsf(t_) && "
                              "isfinite(t_) && stepped_) return t_;\n"
-                           : "            if (near_ && stepped_) {\n"
+                           : "            if (near_ && step_ > 0 && stepped_) {\n"
                              "                memcpy(out_, t_, sizeof t_);\n"
                              "                return;\n            }\n";
         text += "            if (step_ <= " + tolerance +
                 " && stepped_ &&\n                (!(before_ > 0) || (step_ / before_ < 1 &&\n"
                 "                                    step_ * (step_ / before_) / (1 - step_ / "
                 "before_) <= " +
-                tolerance + "))) {\n";
+                tolerance +
+                " &&\n                                    (step_ > 0 || before_ <= " + tolerance +
+                ")))) {\n";
         text += scalar ? "                return t_;\n"
                        : "                memcpy(out_, t_, sizeof t_);\n                return;\n";
         text +=

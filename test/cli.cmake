@@ -33,6 +33,25 @@ function(check name)
     endforeach()
 endfunction()
 
+# The lines a file written is to hold, each found as given.
+function(holds name file)
+    file(READ "${OUT}/${file}" text)
+    math(EXPR last "${ARGC} - 1")
+    foreach(i RANGE 2 ${last})
+        string(FIND "${text}" "${ARGV${i}}" at)
+        if(at EQUAL -1)
+            message(SEND_ERROR "${name}: ${file} does not hold\n${ARGV${i}}")
+        endif()
+    endforeach()
+endfunction()
+
+# Read by cases in both parts.
+set(inputs "${CMAKE_CURRENT_LIST_DIR}/compile/inputs.ink")
+
+# The cases run as two tests of about equal time under the sanitizers: PART 1
+# up to charpoly's refusal, 2 from eig's, and both where PART is not given.
+if(NOT PART EQUAL 2)
+
 # Read from a pipe, it is a filter: no banner, no prompt, one answer for each
 # input, a definition answering with itself.
 set(input "1+1\nsum_(k=1)^10 k\na=2\na*3\n")
@@ -486,18 +505,6 @@ set(stderr "inkamath: v.x_(0): evaluation nests more than 256 references deep\n"
 set(exit 1)
 check(check_walked_asked)
 
-# The lines a file written is to hold, each found as given.
-function(holds name file)
-    file(READ "${OUT}/${file}" text)
-    math(EXPR last "${ARGC} - 1")
-    foreach(i RANGE 2 ${last})
-        string(FIND "${text}" "${ARGV${i}}" at)
-        if(at EQUAL -1)
-            message(SEND_ERROR "${name}: ${file} does not hold\n${ARGV${i}}")
-        endif()
-    endforeach()
-endfunction()
-
 # C140: a call's value given to a function is computed once, where written at
 # each reading of the parameter it tripled at each call nested here, 1.2 MB.
 file(WRITE "${OUT}/c140.ink" "f(p) = p/2 + p/3 + p/5\nx_0 = 1\nx_n = f(f(f(f(f(f(f(f(f(f(x_(n-1)))))))))))\n")
@@ -661,7 +668,6 @@ holds(check_nan_any any.c [[m_->o_clause_ = isnan(t1_) ? 0 : t1_ != 0.0 ? 1 : 2;
 
 # An input whose model states its size, x_n[j<=2], is a pointer to its cells,
 # row by row, as test/compile/inputs.ink specifies (C83).
-set(inputs "${CMAKE_CURRENT_LIST_DIR}/compile/inputs.ink")
 foreach(model IN ITEMS dot ctl turn avg)
     set(args --compile ${inputs} ${model} -o ${model}.h)
     check(compile_inputs_${model})
@@ -764,6 +770,14 @@ set(args --compile charpoly.ink)
 set(stdout "cannot compile g: grad cannot differentiate rho yet\ncannot compile h: grad cannot differentiate abscissa yet\ncannot compile s: a factorial\ncannot compile x: a factorial\n")
 set(exit 1)
 check(compile_charpoly_refused)
+
+if(PART EQUAL 1)
+    return()
+endif()
+endif()
+
+# check_not_transcript reads the models.ink part 1 writes.
+file(WRITE "${OUT}/models.ink" "gain(k = 2, x_n) = { y_n = k*x_n + z_n }\n")
 
 # Nor do eig and smax, by a comparison of matrices and hurwitzb's factorial,
 # and grad refuses them where A moves (DESIGN.md, eig and smax).
@@ -917,7 +931,7 @@ holds(float_gate float/gate.h "#include <float.h>\n#include <math.h>\n"
       [[        const float t_ = t1_ + (t1_ + (0.0f - t2_)) * arg_z / (float)k_;
         if (started_) {
             step_ = fabsf(t_ - t1_);
-            if (step_ <= 2 * FLT_EPSILON * fabsf(t_) && isfinite(t_) && stepped_) return t_;
+            if (step_ > 0 && step_ <= 2 * FLT_EPSILON * fabsf(t_) && isfinite(t_) && stepped_) return t_;
             if (step_ <= 1e-10f && stepped_ &&
 ]] [[    m_->p[0][0][0] = 1.0f / (1.0f + gate_lim0(m_, 0.0f + (0.0f - (0.0f * m_->w[0][0][0] + 0.0f * m_->w[0][1][0] + m_->b[0]))));
 ]])

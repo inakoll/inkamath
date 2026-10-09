@@ -1781,6 +1781,7 @@ closures need one anyway, and can bring it.
 | C276 `[fixed]` | **`tex` dropped the brackets of a comparison that is a whole right-hand side.** A comparison binds loosest, so after the definition's `=` it was set bare: `I[j<=2, k<=2] = j == k` was `I_{j,k} = j = k`, a chain, and `pos(x) = x > 0 and x < 1` `\operatorname{pos}(x) = x > 0 \land x < 1`. The right-hand side is now bracketed where it binds more loosely than a sum, as inside a product, `I_{j,k} = (j = k)`, in 1 line, 2 changed and 1 of comment; a value in `cases` keeps none, its row saying where it ends. tex.ink holds it, and no other answer moved. |
 | C277 `[fixed]` | **Reading one cell of a stored matrix copied the whole of it.** A cell's read evaluated its matrix, and the answer a term remembers, a parameter's value and a local's were each returned by copy: with `T_n[p<=200, q<=200] = p == q`, summing `T_1[p,q]` over its cells took 7.8 s, against 0.34 s at 100x100, and as long through a parameter, longer through a local. Only a literal was read where it is kept. Now a term or call remembered, a parameter and a local are too, found again once the cell's place is read, as reading it may bind or remember and so move them; a matrix not remembered is evaluated as before, and so is any error, in the same order. At 300x300 the three sums took 177 s and take 0.17 s, in Release. In 32 lines and 5 of comment, the term's key being Eval's own, moved out of it to be asked first. matrices.ink holds it, its entries passing the 60 s timeout threefold before; no other answer moved. |
 | C278 `[fixed]` | **An index read past where its sum's body ended was only "not defined".** A sum's body is a term, ending at the next '+' or '-', so `sum_(k=1)^3 (k<>1) + (k<>2)` reads k outside it, and said "k is not defined", which hid why. Now such an error, on a line whose sum or product ended its body at a '+' or '-' before a read of its index, says "k is bound in the sum's body alone, which ended at the '+'", in 12 lines and 2 of comment. Only the line typed is known so: a definition's sum read through a later call, `f(x) = sum_(k=1)^3 x + k` then `f(1)`, still says "k is not defined". series.ink holds it, and no other answer moved. |
+| C279 `[fixed]` | **`lim` stopped at a term repeated once, wrong and unmarked.** C36's remainder, `step*r/(1-r)`, is 0 for a step of 0 whatever the step before it, so a term equal to the one before ended the walk: with the binary digits of x, `r(x)_n = r(x)_(n-1) + (r(x)_(n-1) + 2^-n <= x)*2^-n`, `lim r(1/3)` was 0.25, since r_2 = r_3, where the limit is 1/3. A step of 0 now forms no ratio either, as the step after one already did not, and the step before it is what may be left: the walk goes on past a pause and stops within 2^-34/3 of 1/3, and --check moves such a limit by that step. The compiled walk takes the same rule, and a float's stop on floats a unit or two apart, which a step of 0 passed too, leaves such a step to it, in 3 lines, 2 changed and 3 of comment; `float_gate` in `test/cli.cmake` quotes the new stop. A sequence that stays where it repeated after a step over the tolerance stops a term later on the same value and remainder, and after one within it stops where it did, moved by that step rather than by 0; no golden moved; one repeated twice running, `lim r(1/5)` at 0, still stops, as any rule over a few terms can be fooled. A series without an upper bound stopped so too, `sum_(k=0) (k<>2)/2^k` at 3/2 for 7/4. sequences.ink and series.ink hold it, and `halves` in `test/compile/newton.ink` the compiled walk, in double and in float. |
 
 **Measure instructions, not the clock.** One of those changes made the matrix
 workload 20 per cent slower by the clock and not by a single instruction: with
@@ -3302,6 +3303,17 @@ that exploring seven domains asked of the interpreter, by how many asked.
   elements, an idiom no paper writes. The cost is phase 14's: a remembered
   value skips its body's steps, so `sum_(k=1)^400 A*A` would answer where it
   gives up.
+- **A base clause reading another sequence's base at its own index**:
+  with `v_0 = 0`, `a_0 = v_0`, `a_n = v_(n-1)` and `v_n = a_n`, the
+  interpreter answers and `--compile` refuses a, "it and the terms it reads
+  need each other". The step orders the sequences once for every index, and
+  at the base a needs v first where later v needs a. Newmark's natural start,
+  `a_0 = M^-1*(f_0 - K*u_0)`, is one; found exploring finite elements. Three
+  ways, each over 25 lines: the base steps in an order of their own, the
+  step emitted twice; the read base inlined at a seed of the same index,
+  reworking `Seeded` and `Rated`'s placeholders per cell; or a constant
+  base folded, which covers Newmark's only where `f_0` and `u_0` are
+  constants.
 - `[done]` **A definition as LaTeX**, `tex ?name`, a word at the start of a line as
   `frac` is, and reserved as it is. It renders what was parsed, not what was
   typed: the clauses for one index a line each, then those for every index,
