@@ -244,6 +244,24 @@ TEST_CASE("doyle") {
 TEST_CASE("translunar") {
     check_transcript("translunar.ink");
 }
+TEST_CASE("truss_calfem") {
+    check_transcript("truss_calfem.ink");
+}
+TEST_CASE("truss_pratt") {
+    check_transcript("truss_pratt.ink");
+}
+TEST_CASE("beam") {
+    check_transcript("beam.ink");
+}
+TEST_CASE("modal") {
+    check_transcript("modal.ink");
+}
+TEST_CASE("cook") {
+    check_transcript("cook.ink");
+}
+TEST_CASE("dynamics") {
+    check_transcript("dynamics.ink");
+}
 TEST_CASE("inexact") {
     check_transcript("inexact.ink");
 }
