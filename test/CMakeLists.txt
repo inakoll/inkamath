@@ -149,7 +149,7 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brin
                          kahan:sums kahan:muller kahan:rounded kahan:surprise kahan:solveur
                          rump:rump signatures:inv
                          goldberg:year goldberg:needled goldberg:big goldberg:seven
-                         doyle:regulated doyle:replayed apollo11:whole
+                         doyle:regulated doyle:replayed apollo11:whole dyn:nm dyn:cd
                          iterates:poly iterates:thirds iterates:plan iterates:graph iterates:gaps
                          iterates:memo iterates:unread iterates:lone blocks:dare blocks:smith
                          blocks:deadbeat blocks:nested blocks:sloped conv:see conv:learn
@@ -352,6 +352,13 @@ set_tests_properties(check_replayed_report PROPERTIES PASS_REGULAR_EXPRESSION
 set(rate "within [1-9](\\.[0-9])?e-15, from 1${about}\n")
 set_tests_properties(check_whole_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^whole: 100 steps from 0, against exact values until 0 and inexact ones from there\nwhole\\.k1: ${rate}whole\\.k2: ${rate}whole\\.k3: ${rate}whole\\.k4: ${rate}whole\\.y: within [1-9](\\.[0-9])?e-1[01]${about}\n$")
+# A cantilever stepped by Newmark's average acceleration and by central
+# differences, each within a few roundings of the exact terms; compile/dyn.ink.
+set(fem "within [1-9](\\.[0-9])?e-")
+set_tests_properties(check_nm_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^nm: 100 steps from 0, against exact values until 35 and inexact ones from there\nnm\\.a: ${fem}(09|1[01])${about}\nnm\\.u: ${fem}1[3-6]${about}\nnm\\.tip: ${fem}1[3-6]${about}\nnm\\.v: ${fem}1[1-3]${about}\n$")
+set_tests_properties(check_cd_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^cd: 100 steps from 0, against exact values until 85 and inexact ones from there\ncd\\.u: ${fem}1[4-7]${about}\ncd\\.tip: ${fem}1[4-7]${about}\n$")
 set_tests_properties(check_mask_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^mask: 100 steps from 0, against exact values\nmask\\.y: within 0\n$")
 set_tests_properties(check_order_report PROPERTIES PASS_REGULAR_EXPRESSION
@@ -676,7 +683,7 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:ledge logistic:gate momentu
                          reddi:thm1 reddi:fixed reddi:gen
                          kahan:sums kahan:muller kahan:rounded kahan:surprise kahan:solveur rump:rump
                          goldberg:year goldberg:needle goldberg:big goldberg:seven iterates:poly
-                         blocks:nested conv:see straddle:knee apollo11:whole)
+                         blocks:nested conv:see straddle:knee apollo11:whole dyn:nm dyn:cd)
     string(REPLACE ":" ";" checked ${checked})
     list(GET checked 0 file)
     list(GET checked 1 instance)
@@ -700,7 +707,7 @@ set_tests_properties(check_float_wild check_float_ledge check_float_far check_fl
                      check_float_steep check_float_dies check_float_beat check_float_peak
                      check_float_muller check_float_rounded check_float_surprise
                      check_float_solveur check_float_rump check_float_needle check_float_big
-                     check_float_knee PROPERTIES WILL_FAIL ON)
+                     check_float_knee check_float_nm PROPERTIES WILL_FAIL ON)
 # Each report as compile/float.ink gives it; what a libm or the seeds decide,
 # by its form.
 set(in_float " in float, against exact values")
@@ -752,6 +759,8 @@ foreach(report IN ITEMS
         "see:^see: 100 steps from 0${in_float}\nsee\\.Xp: ${exact}\nsee\\.Z: ${exact}\nsee\\.M: ${exact}\nsee\\.s: ${exact}\n$"
         "knee:^knee: 100 steps from 0${inexact}\n${knee_r}knee\\.r: at 0 the compiled step takes 'r_n = 0' and the interpreter 'r_n \\| y_n > c = y_n - c'\\; the guard of the second is 4\\.2e-11 from its threshold\nknee\\.y: within [0-9.e+-]+, [0-9.e+-]+ units of a float\\; the interpreter's terms about 5\\.8e-11 from the exact ones\nknee\\.r: within 4\\.2e-11, 1\\.2e\\+07 units of a float\\; the interpreter's terms about 5\\.8e-11 from the exact ones\n$"
         "whole:^whole: 100 steps from 0${inexact}\n(whole\\.k[1-4]: within [1-9](\\.[0-9])?e-0[67], [1-9](\\.[0-9])?e\\+0[2-5] units of a float, from 1${about}\n)+whole\\.y: within 0\\.[0-9]+, [1-9](\\.[0-9])?e\\+0[2-5] units of a float${about}\n$"
+        "nm:^nm: 100 steps from 0 in float, against exact values until 35 and inexact ones from there\nnm\\.a\\[[0-9],1\\]: [-0-9.e+]+ at [0-9]+, where the interpreter gives [-0-9.e+]+(\\; the interpreter's term about [0-9.e+-]+ from the exact one)?\n(nm\\.[a-z]+: within [0-9.e+-]+, [0-9.e+-]+ units of a float${about}\n)+$"
+        "cd:^cd: 100 steps from 0 in float, against exact values until 85 and inexact ones from there\n(cd\\.[a-z]+: within [1-9](\\.[0-9])?e-0[6-8], [0-9.e+-]+ units of a float${about}\n)+$"
         "cls:^cls: 100 steps from 0${inexact}\ncls\\.z: within 2\\.4e-08, 0\\.49 units of a float\ncls\\.q: within 1\\.9e-06, 1\\.5 units of a float${about}\ncls\\.s: within 6\\.3e-08, 2\\.1 units of a float${about}\ncls\\.loss: within 4\\.1e-07, 3\\.8 units of a float${about}\n$")
     string(FIND "${report}" ":" colon)
     string(SUBSTRING "${report}" 0 ${colon} instance)
