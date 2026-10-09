@@ -506,10 +506,10 @@ Interpreter<T, U>::Interpreter() {
             {names.at("cos").get(), inkamath_prelude_cos},
         }};
         // An inexact cell inf or NaN has lost its value, and no eigenvalue or
-        // norm of it is certified, inf or other (C206). hinf and dhinf read
-        // any other real one as the rational its double is (DESIGN.md).
-        stack_.checked = [hinf = names.at("hinf").get(), dhinf = names.at("dhinf").get()](
-                             const Reference<U>& f, U& x) {
+        // norm of it is certified, inf or other (C206). Any other real one is
+        // read as the rational its double is (DESIGN.md, C275).
+        stack_.checked = [](const Reference<U>& f, U& x) {
+            bool read = false;
             for (std::size_t k = 0; k < x.Size().count(); ++k) {
                 Number& c = x.data()[k];
                 if (c.exact()) continue;
@@ -519,9 +519,12 @@ Interpreter<T, U>::Interpreter() {
                                              numeric_interface<Number>::toString(c));
                 int          e = 0;
                 const double m = std::ldexp(std::frexp(z.real(), &e), 53);
-                if ((&f == hinf || &f == dhinf) && z.imag() == 0 && !Number::approximated(c))
-                    c = Number(static_cast<long long>(m)) * Number::pow(2, e - 53);
+                if (z.imag() == 0 && !Number::approximated(c)) {
+                    c    = Number(static_cast<long long>(m)) * Number::pow(2, e - 53);
+                    read = true;
+                }
             }
+            return read;
         };
         stack_.compiled = [this, functions](const Reference<U>& f, const U& x) -> std::optional<U> {
             const auto found = std::find_if(functions.begin(), functions.end(),

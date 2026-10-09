@@ -555,8 +555,8 @@ root has its real part below s, and `schurcohn(p, r = 1)` where every root
 is inside |z| < r, both strictly. `rho(A)`, the spectral radius, and
 `abscissa(A)`, the largest real part of an eigenvalue, bisect on those
 tests: `rhob(A)_m` and `abscissab(A)_m` are the brackets [lo; hi] after m
-halvings, lo at most the value and hi above it, exact of an exact matrix,
-and the answer is lo, inexact, once the bracket is within 2^-53 of its end
+halvings, lo at most the value and hi above it, and the answer is lo,
+inexact, once the bracket is within 2^-53 of its end
 nearer 0, or its ends are adjacent doubles, after 64 halvings and at most 256. It is certified while the tests
 are exact; their numbers grow with the matrix and the halvings, and past a
 thousand digits they are approximated and the answer is marked, within a
@@ -567,8 +567,12 @@ marginal system's abscissa from a small one. A nilpotent matrix's rho, its
 polynomial lambda^n, is 0 and certified, and so is an abscissa whose
 polynomial is lambda^k q, q's roots left of the axis, but not one with a
 pair on it. Of a matrix of tenths, `rho` is
-certified up to about 6x6 and `abscissa` 8x8. `grad` refuses both, a
-bisection being a staircase:
+certified up to about 6x6 and `abscissa` 8x8. An inexact cell is read as
+the exact rational its double is, as by `hinf` below, so the answer is
+right for the data as stored, certified or marked as of an exact matrix,
+and inexact, a bracket too: of full doubles, `rho` is certified up to 6x6
+and `abscissa` 8x8 as well. `grad` refuses both, a bisection being a
+staircase:
 
 ```
 >> charpoly([1 2; 3 4])
@@ -594,14 +598,17 @@ and marked as rho's: `eigb(A, k)_m` is the k-th one's bracket, and a 0 is
 certified without one. The count holds only where every eigenvalue is
 real, so `eig` refuses a matrix with a complex one rather than give its
 real ones alone; a symmetric matrix has none, and any other is asked by
-Hermite's test. Of an inexact matrix that test is rounded: it refuses
-most nonsymmetric ones from about 5x5, and symmetric ones but for rounding,
-such as `Q*D*Q'`, from 5x5 or 6x6, which `eig((A + A')/2)` asks as
-symmetric; and it may take a complex pair within about 8 digits of the real
-axis for a real one. A k-fold eigenvalue of an inexact matrix is good to
-about 16/k digits. An exact matrix whose test passes a thousand digits may
-be refused, saying so, or answered, marked. Of a symmetric matrix of
-tenths, `eig` is certified up to about 36x36. `grad` refuses both:
+Hermite's test. An inexact matrix is read as `rho` reads it, so its
+eigenvalues are those of the data as stored: a k-fold one of the matrix
+meant may be split by the rounding of its cells, and `eig` gives the split
+ones, each right. Hermite's test of doubles is exact too, and passes past
+a thousand digits from about 8x8, as the symmetric test does not: `Q*D*Q'`
+rounded, symmetric but for rounding, is answered up to 7x7 and refused
+from 8x8, saying so, which `eig((A + A')/2)` asks as symmetric. An exact
+matrix whose test passes a thousand digits may be refused, saying so, or
+answered, marked. Of a symmetric matrix of tenths, `eig` is certified up
+to about 36x36, and of full doubles up to 24x24 at least, in 200 s.
+`grad` refuses both:
 
 ```
 >> eig([2 1; 1 3])

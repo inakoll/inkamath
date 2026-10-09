@@ -407,9 +407,8 @@ error: ~1 was approximated past a thousand digits, so it has no exact fraction
 >> grad_(x = ~3) [exp(x) 5]
 [~20.0855369, ~0]
 
-# Values the rule must not move. A matrix of doubles is bisected in
-# doubles now, and stops where the bracket's ends are adjacent doubles,
-# unmarked as before.
+# Values the rule must not move. A matrix of doubles is bisected as the
+# rationals they are (C275), unmarked as before.
 >> rho([~0.5 1; -1 0.5])
 ~1.11803399
 

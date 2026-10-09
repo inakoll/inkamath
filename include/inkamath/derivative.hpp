@@ -359,12 +359,16 @@ private:
             if (Moves(jet) && stack_.staircases.contains(definition.get()))
                 throw std::runtime_error("grad cannot differentiate " + definition->Name() +
                                          " yet");
+        bool read = false;
         if (stack_.checked && stack_.staircases.contains(definition.get()))
-            for (auto& [given, jet] : arguments) stack_.checked(*definition, *jet[0]);
+            for (auto& [given, jet] : arguments)
+                read = stack_.checked(*definition, *jet[0]) || read;
         if (p.limit()) return Limit(*definition, p, arguments);
         int        index   = 0;
         const bool indexed = p.TryEvalIndex(stack_, index);
         Jet        out     = Term(*definition, p, indexed, index, arguments);
+        for (auto& part : out)
+            if (read && part) part = numeric_interface<T>::inexact(*part);
         // |z| squared is re^2 + im^2, whose parts past the first the real
         // clauses lack where z is real and its parts are not (C203).
         if (out.size() > 2 && arguments.size() == 1 && !IsZero(*out[0]) &&

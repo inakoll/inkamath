@@ -353,8 +353,9 @@ error: abscissab needs finite cells, not ~inf
 >> abscissa([6 -8 -6 -5 -6; 6 7 2 -9 -8; -3 -1 2 0 -4; -6 4 4 -9 -7; -1 -2 7 0 -2]/10)
 ~0.850451511
 
-# An inexact matrix is bisected by rounded tests, so its bracket is inexact
-# too and certifies nothing.
+# An inexact matrix is read as the rationals its doubles are, so its
+# bracket is certified for the data as stored, and inexact, as all that is
+# read from a double (C275).
 >> rho([~1/2 1; -1 1/2])
 ~1.11803399
 

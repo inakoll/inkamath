@@ -1777,6 +1777,7 @@ closures need one anyway, and can bring it.
 | C272 `[fixed]` | **`rho`, `abscissa`, `eig` and `smax` of an exact cell past a double beside an inexact one refused with a NaN.** C196's residual: the sum of |A[j,k]| is a double, inf, and so is it over 4^n where a cell is itself past a double, so `rhop`'s `0*s` made B's power NaN: `rho([~1 0; 0 10^400])` was "a comparison needs a number, not -nan" where `rho([~1 0; 0 10^309])` is inf, marked. The cell is no inf, as C206's is: its value is exact, and the radius 10^400's, inf as a double and marked, as C191's of an exact matrix. Where the sum is still inf over 4^n, the power is taken of the largest cell's, which `ilogb` takes of an exact number past a double, raised by m + n, in 4 lines and 2 of comment; an exact sum never takes the clause. charpoly.ink and eig.ink hold it, and no other answer moved. |
 | C273 `[fixed]` | **An inexact -0 printed as +0.** A double's 0 has a sign, which 1/x tells, but C240's print dropped it: `~-10^-400` was `~0` where `1/~-10^-400` is `~-inf`. It prints `~-0` now, in 1 line; inexact.ink holds it, and errors.ink's `min(~0, -10^-400)`, -10^-400's double, moved to `~-0`. Reading it back still gives +0, so `1/` of what was printed is `~inf`: `~` takes the exact 0 of `-0`, and negation is `0 - x` (C33), so `-~0` is +0 too; only `~0*(-1)` writes -0. A complex number's -0 part, left out of `~(…)`, is lost alike. |
 | C274 `[fixed]` | **`--check --float` counted a small term's error in units of a float at 1.** README says at the term, but the check took the spacing at 1 for any term smaller, so a term lost whole hid below 1's spacing: `y_n = (1 + a*u_n) - 1`, a = 1e-8, is 0 in float against the exact 1e-8, and its line said "within 1e-08, 0.084 units of a float", where at y's own spacing, 2^-50, it is 1.1e+07. Each term is now measured at its own spacing, 2^-149 below the normal floats; a term of 0 counts no unit, since its spacing says nothing of the error, and a line none of whose terms is anything else gives "within" alone. In 7 lines for 6 and 3 of comment; float.ink's `tiny` holds it. No check passes or fails otherwise, as units decide neither; 21 reports moved, each where its largest unit is at a term below 1: gate.p, ball, big.s, cls.z, cls.s, cls.loss, drone.y, hum.y, fixed.x, gen.h, gen.x, gen.R, gen.m, knee.r, line.w, needle.kahan, sums.c and thm1.h and x, and seven.t, seven.u and sums.comp, whose terms are all 0, lost their units. |
+| C275 `[fixed]` | **`eig`, `rho`, `abscissa` and `smax` of doubles were wrong, unmarked.** Their counts read a characteristic polynomial computed in doubles, whose rounding sends roots off the real line: with `D(n)[j<=n, k<=n] = (j == k)*~10^(j-1)`, `eig(D(8))` was 2.59 twice and 754 twice for 1 to 10^7, `abscissa(-D(8))` 778 for -1, and `rho` of 1/3's double four times 0.33339. Each inexact cell is now read as the rational its double is, as hinf's are (*An inexact system* under `hinf`), through the same `checked` hook for every staircase, so an answer is right for the data as stored, certified or marked at the thousand-digit horizon as an exact matrix's; and the answer is inexact still (C240), a bracket too, which the hook now says, in 14 lines and 2 of comment. No golden moved; inexact.ink holds it. Hermite's test is exact of doubles too: answered up to 7x7 where the rounded one refused from 5x5, refused from 8x8 past a thousand digits. Of random full doubles, `rho` is certified up to 6x6 and `abscissa` 8x8, as of tenths, and a symmetric `eig` up to 24x24 at least. It costs time where the matrix grows: a symmetric 10x10 of doubles 1.6 s for 0.14, 18x18 38 s for 0.66, in Release; the goldens under the sanitizers, eig.ink 17 s to 21, charpoly.ink 18 to 20, inexact.ink 2.4 to 3.1 before its entries. |
 
 **Measure instructions, not the clock.** One of those changes made the matrix
 workload 20 per cent slower by the clock and not by a single instruction: with
@@ -6830,7 +6831,7 @@ that exploring seven domains asked of the interpreter, by how many asked.
   `dhinf` the refusal names hinf: naming dhinf would need the caller in
   `Unapplied`, more than 2 lines. 8 lines more and 1 for C208: 89 lines,
   15,536 in all.
-- **Doubles read exactly by rho, abscissa and eig**, as hinf reads them:
+- `[done]` **Doubles read exactly by rho, abscissa and eig**, as hinf reads them:
   each inexact cell the rational its double is, an answer certified for the
   data as stored or marked, where rounded tests misjudge unmarked. To weigh
   against the inertia count below, by its cost in time under the
@@ -6839,7 +6840,8 @@ that exploring seven domains asked of the interpreter, by how many asked.
   `hurwitz(charpoly(Acl(m, f, f)))` is 1 at m = 1 + 1/f^2, where the data
   as stored is unstable, and with f = 2 + sqrt(10^8 + 4), 0 at
   m = 1 + 1/f^2 - 10^-12, where it is stable; each decided exactly from the
-  doubles.
+  doubles. Done by C275, smax and the brackets with them, at the cost in
+  time it gives.
 - **An inertia count for inexact symmetric matrices**: the negative pivots
   of LDL' of A - xI count the eigenvalues below x, backward stable, where the
   rounded Descartes count of `eig` loses a k-fold eigenvalue to about 16/k

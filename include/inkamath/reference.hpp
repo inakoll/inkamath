@@ -522,8 +522,17 @@ public:
         MemoKey<T> key{this, indexed, indexed ? index : 0,
                        parameters.EvaluateArguments(call, caller)};
 
+        bool read = false;
         if (stack.checked && stack.staircases.contains(this))
-            for (auto& [name, value] : key.arguments) stack.checked(*this, value);
+            for (auto& [name, value] : key.arguments) read = stack.checked(*this, value) || read;
+        // Doubles read exactly still make an inexact answer (C240, C275).
+        if (read)
+            return numeric_interface<T>::inexact(Answer(call, stack, global, indexed, index, key));
+        return Answer(call, stack, global, indexed, index, key);
+    }
+
+    T Answer(const ParametersCall<T>& call, ReferenceStack<T>& stack, bool global, bool indexed,
+             int index, MemoKey<T>& key) const {
         const auto& arguments = key.arguments;
         for (const auto& [name, value] : arguments) Divides(name, value, stack);
         if (home == &stack.builtins_ && stack.compiled && arguments.size() == 1 && !indexed &&

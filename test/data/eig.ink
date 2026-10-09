@@ -143,8 +143,9 @@ error: eig needs a matrix whose eigenvalues are all real, by a guard approximate
 >> eig(5)
 ~5
 
-# An inexact matrix is bisected by rounded tests, so its bracket certifies
-# nothing.
+# An inexact matrix is read as the rationals its doubles are, so its
+# bracket is certified for the data as stored, and inexact, as all that is
+# read from a double (C275).
 >> eig([~2 1; 1 3])
 [~1.38196601;
  ~3.61803399]
@@ -271,6 +272,11 @@ error: grad cannot differentiate smax yet
 # (C210).
 >> grad_(a = 1) eigb([a 0; 0 3], 1)_64
 error: grad cannot differentiate eigb yet
+
+# A bracket of doubles is inexact under grad too, where its matrix reads
+# the variable and does not move with it.
+>> frac grad_(a = 2) a*eigb([~2 0; 0 3 + (a > 1)], 1)_64
+error: ~2 was approximated, so it has no exact fraction
 
 >> grad_(a = 2) a*eig([2 1; 1 2])
 [~1;
