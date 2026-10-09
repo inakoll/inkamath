@@ -417,6 +417,40 @@ error: ~1 was approximated past a thousand digits, so it has no exact fraction
 [~1.38196601;
  ~3.61803399]
 
+# Each double is the rational it stores, so the eigenvalues are 1 to 10^6
+# exactly; counted from a characteristic polynomial in doubles they were
+# 0.993 and 10.007 and the abscissa -0.993, unmarked, and of D(8) 2.59
+# twice and 754 twice (C275).
+>> D(n)[j<=n, k<=n] = (j == k)*~10^(j-1)
+D(n)[j<=n, k<=n] = (j == k)*~10^(j-1)
+
+>> eig(D(7))
+[      ~1;
+      ~10;
+     ~100;
+    ~1000;
+   ~10000;
+  ~100000;
+ ~1000000]
+
+>> abscissa(-D(7))
+~-1
+
+>> eigb(D(7), 1)_64
+[~1;
+ ~1]
+
+# A k-fold eigenvalue lost about 16/k digits: 1/3's double four times was
+# 0.33339 by rho and 0.33333341 by smax.
+>> T(n)[j<=n, k<=n] = (j == k)*~(1/3)
+T(n)[j<=n, k<=n] = (j == k)*~(1/3)
+
+>> rho(T(4))
+~0.333333333
+
+>> smax(T(4))
+~0.333333333
+
 # log of a double scales by 2^ilogb, inexact now: an exact part past a
 # double's range is still divided exactly (C242). The slope is 1/t.
 >> grad_(t = ~(1.5e-300)) log(t*10^200*10^200)
