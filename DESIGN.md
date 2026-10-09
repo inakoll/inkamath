@@ -6900,6 +6900,8 @@ that exploring seven domains asked of the interpreter, by how many asked.
   default that is not a value, which no signature has; and refusing a
   non-symmetric A beside any B but the identity, which would tell the
   identity apart from its multiples: eig(A, 2*A^0) answers as eig(A/2) does.
+  Riccati and Hamiltonian pencils are out of scope: neither has B
+  symmetric positive definite, and eig refuses both.
 
   **Refused**, in plain words: `eig needs B symmetric positive definite`,
   for B indefinite, singular or not symmetric, before A is looked at. One
@@ -6959,10 +6961,14 @@ that exploring seven domains asked of the interpreter, by how many asked.
   12x12 and 118 s at 16x16, certified. The spec replays in 28 s under the
   sanitizers (Debug), 20 of them the 8 unknowns.
 
-  What moves: no golden. eig of one argument takes eigg's clause, A' == A or
-  Hermite's test of I^-1 A, which is A; `eig expects 1 argument, got 2`
-  goes, which nothing recorded. README's section 2 shows eig(K, M).
-  `modal.ink`'s comment pointing here goes stale.
+  What moves: no golden but one. eig of one argument takes eigg's clause,
+  A' == A or Hermite's test of I^-1 A, which is A; `eig expects 1 argument,
+  got 2` goes, which nothing recorded. README's section 2 shows eig(K, M).
+  `modal.ink` moves on purpose: its Schur-complement prototype, from the
+  comment on Sylvester's law to `~br(3, 1)_60`, gives way to
+  `eig(Kf(3), Mf(3))`, worked out as the spec's: 12.3648691229,
+  488.713223585, 3901.99889943, 19788.3448179, 70089.0184261 and
+  278568.782393, at 12 digits, the first the one its comment gives.
 
   About 6 lines: the prelude 2 more, eig's clause wrapped and eigg's, 1 of
   C++ for eigg's words and 3 of comment. 16,000 lines at 05f1483, by `wc -l
