@@ -2847,9 +2847,6 @@ that exploring seven domains asked of the interpreter, by how many asked.
   checked with its reader's, after compiling, which is where the refusal of
   `v` in `compile_rates_refused` now comes from, in the same words. The
   refusals are in `test/cli.cmake`, with C74's.
-- **Steps and tolerance as options**, when a model asks: a hundred steps is
-  short of what a slow filter settles in, and a billionth is loose for a
-  well-conditioned step.
 - `[done]` **The parts and modulus of a complex number**: a frequency
   response |T(e^{jw})| cannot be written, as `abs` refuses a complex value and nothing
   gives its real or imaginary part. Decided: `re(z)` and `im(z)` built in,
@@ -3231,12 +3228,108 @@ that exploring seven domains asked of the interpreter, by how many asked.
   (r(x)_(n-1) + 2^-n <= x)*2^-n`, x's binary digits, answers
   `lim r(1/3)` 0.25 from its terms 0, 0, 1/4, 1/4. The smallest change to
   weigh: two zero steps in a row, or README saying that one ends it.
-- **`--check`'s hundred steps as an option**, with `lim`'s. Doyle 1978's
-  loop at dt = 1/10 is ten time units in them, where the nominal loop has
-  not settled, [-1.18; 1.50] from [1; 0], and the one past its margin,
-  m = 6/5, has not run away; a thousand show both. Apollo 11's translunar
+- **`--check`'s hundred steps as an option, `--steps n`.** Doyle 1978's loop
+  at dt = 1/10 is ten time units in a hundred steps, where the nominal loop
+  has not settled, [-1.18; 1.50] from [1; 0], and the one past its margin, m
+  = 6/5, has not run away; a thousand show both. Apollo 11's translunar
   coast is a thousand Runge-Kutta steps of 177 s, of which its check can
-  hold only a hundred of 1767 s.
+  hold only a hundred of 1767 s. A slow filter settles later still.
+
+  Decided:
+  - **`--steps n`**, beside `--check file instance -o check.c`, anywhere on
+    the line as the other options are, with `--float` or without. n is
+    written in decimal digits, the first not 0, from 1 to 100000. Without
+    it, a hundred, so no report moves, and `--steps 100` writes the same
+    program byte for byte.
+  - **n counts the step's calls**, as the first line already does: terms
+    from the first to the first plus n - 1. A model of N steps after its
+    initial term is checked whole with N + 1, Apollo's coast, y_0 to y_1000,
+    with 1001. The check reads no parameter of the model: `N` is a name the
+    user chose, and Doyle's loop has a dt and none.
+  - **The first line says n**, `coast: 1001 steps from 0, against exact
+    values`, and `1 step` for one. Nothing else in the report changes words:
+    the values, the estimate, the flips and the straddles each cover the n
+    steps.
+  - **Refused, before anything runs**, as an unknown option is, exit 2:
+    every value that is not such a number, in one sentence, `--steps takes a
+    whole number from 1 to 100000`: 0, -5, 2.5, 1e3, 100001, and --steps
+    last on the line; and `+5` and `0100`, forms that add nothing (CLAUDE.md
+    §2). Given twice, `--steps is given twice`, even alike. With
+    `--compile`, a transcript's `--check` or files run, `--steps takes
+    --check with an instance`, as `--float` is refused: a header has no run,
+    and a transcript no steps.
+  - **The limit, 100000, is a judgement**, as `lim`'s hundred terms are
+    (C36), not a technical bound: a hundred times the most a model has
+    asked. The program holds every term of every cell as an initializer, its
+    value, its estimate and what is known of it, some 50 bytes a term: 5 MB
+    a cell at the limit, and a layer's thousand cells 5 GB, past what a
+    compiler builds as a test; the program's int index, steps by cells,
+    passes 2^31 only in one of 100 GB. The interpreter's own cost is n terms
+    four times, each asked upward in an evaluation of its own and finding
+    the one before memoised, so n spends none of its million steps; a term
+    that does is reported as today, "ran out of steps at K". The memo keeps
+    100000 results and, filling, its newer half, which is what a walk upward
+    reads.
+  - **Exact terms grow with n**, a rational recurrence's by digits each
+    step, to the thousand, where the interpreter approximates and goes on in
+    doubles: a term costs at most a thousand digits' arithmetic, and the
+    first line says where as it does now, `until 334 and inexact ones from
+    there`. Nothing new to report.
+  - **The estimate's three runs** take the same n steps, so a check costs
+    four walks of n terms, as it costs four of a hundred now; "past the
+    tolerance from K" and the straddle look over n. The flips' table is n
+    long.
+
+  Rejected:
+  - **The tolerances as options**, the rest of the line queued as "Steps and
+    tolerance as options", which this entry replaces. `lim`'s 1e-10, on its
+    step and its remainder, and its hundred terms are what `lim` means: an
+    option would make a transcript's answers depend on the command line that
+    replays it, and the compiled walk takes the same rule so that the check
+    compares like with like. `--check`'s billionth only decides the exit:
+    the report already prints the largest difference, `line.w: within
+    4.4e-16`, which says how well conditioned a step is, and a test that
+    wants it tighter holds those digits, as `test/CMakeLists.txt` does. No
+    model has asked for another verdict (CLAUDE.md §2); one that does is an
+    entry of its own.
+  - **A count written in the file**, a definition or the model's `N`: a file
+    holds definitions, and one only `--check` reads is a second language
+    inside the first; nothing tells a parameter is a count of steps; and one
+    instance checked at two counts would need two files.
+  - **An environment variable**: invisible in the command that runs the
+    check, where a ctest line should say everything it does.
+  - **`--steps=n` or `-n`**: one spelling, as `-o` has.
+  - **n as the last index**: the option would count one thing and the first
+    line another.
+  - **A thousand by default**: 338 report lines in the stories and
+    `test/CMakeLists.txt` move, and every check takes ten times as long.
+
+  About 20 lines of sources: `main.cpp` 14, the option read and refused,
+  passed to `check`, and the help's two lines; `check.hpp` 6, the step count
+  a parameter of `Program` and `Flips` where it is a constant, and `1 step`.
+  Past 30 the implementation stops and reports. README's paragraph on
+  `--check` gains a sentence. About 16,000 lines in all.
+
+  Specified in `test/compile/steps.ink`: `coast`, a body thrown up and
+  falling back by semi-implicit Euler, a thousand steps of 1/8, whole at
+  1001, every term within 0 in double and in float, and at 1 step;
+  `runaway`, 4^n, within 0 at 150 steps and parting at 512 at a thousand,
+  where 2^1024 is no double; `horizon`, a filter of time constant a
+  thousand, exact until 334 and inexact from there. And in
+  `test/compile/steps.cmake`, in `test/cli.cmake`'s form: the programs'
+  first lines and sizes, `--steps 100` as the default byte for byte, 100000
+  read, the refusals, nine of a value, one twice and three of a mode, the
+  usage without `-o`, and `--help`. Unwired, every case failing today on the
+  unknown option: the implementation moves the cases into `test/cli.cmake`
+  and deletes the file, and wires the three instances with their counts
+  beside the other checks in `test/CMakeLists.txt`, an entry
+  `file:instance:n` naming its target after both, `runaway` at 1000 failing
+  as `wild` does. Expected lines by hand: `coast` by its closed forms, v_n =
+  64 - n/8 and y_n = 8n - n(n+1)/128, multiples of 1/64 below 2^11;
+  `runaway` by powers of two; `horizon`'s 334 by its denominator, 10^(3n) in
+  lowest terms, and its difference, 1.1e-16, by the step simulated in Python
+  against exact fractions, its estimate's digits being the seeds'; the
+  programs' lines by `check.hpp`'s text.
 - **A cumulative sum compiled as an accumulator**, `sum_(t=1)^n e(t)`:
   refused as "a sum whose bounds are not constants", where a regret or a
   running loss is exactly that (Reddi et al. 2018).
