@@ -25,6 +25,13 @@
 >> sum_(k=1)^3 -k - 1
 -7
 
+# So an index read past that '+' is not the sum's, and is told so.
+>> sum_(k=1)^3 (k<>1) + (k<>2)
+error: k is bound in the sum's body alone, which ended at the '+'
+
+>> prod_(j=1)^3 j - j
+error: j is bound in the product's body alone, which ended at the '-'
+
 >> sum_(k=1)^3 (k+1)
 9
 
