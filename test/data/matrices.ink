@@ -614,3 +614,21 @@ P = unvec((I4 - kron(A', A'))^-1*vec(Q))
 
 >> P[1,1] > 0 and P[1,1]*P[2,2] - P[1,2]^2 > 0
 1
+
+# A cell is read where its matrix is stored, a term's, a parameter's or a
+# local's, not from a copy of the whole: each sum below copied the 300x300
+# matrix at each of its 90,000 reads, for minutes (C277).
+>> Id_n[p<=300, q<=300] = p == q
+Id_n[p<=300, q<=300] = p == q
+
+>> sum_(p=1)^300 sum_(q=1)^300 Id_1[p,q]
+300
+
+>> total(A) = sum_(p=1)^300 sum_(q=1)^300 A[p,q]
+total(A) = sum_(p=1)^300 sum_(q=1)^300 A[p,q]
+
+>> total(Id_1)
+300
+
+>> (L = Id_1)[1,1]*0 + sum_(p=1)^300 sum_(q=1)^300 L[p,q]
+300
