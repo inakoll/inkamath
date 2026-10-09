@@ -316,19 +316,23 @@ public:
     }
 
     T visit(CellExpression<T>* expr) override {
-        const T* kept      = stack_.Kept(*expr->Matrix());
-        const T  evaluated = kept ? T() : expr->Matrix()->accept(*this);
-        const T& matrix    = kept ? *kept : evaluated;
+        const auto stored    = stack_.Stored(*expr->Matrix());
+        const T    evaluated = stored ? T() : expr->Matrix()->accept(*this);
+        T          again;
+        const auto matrix = [&]() -> const T& {
+            const T* found = stored ? stored() : &evaluated;
+            return found ? *found : again = expr->Matrix()->accept(*this);
+        };
         if (expr->Slice()) {
             const int slice = AsIndex<T>(expr->Slice()->accept(*this));
             const int row   = AsIndex<T>(expr->Row()->accept(*this));
-            return numeric_interface<T>::cell(matrix, slice, row,
-                                              AsIndex<T>(expr->Col()->accept(*this)));
+            const int col   = AsIndex<T>(expr->Col()->accept(*this));
+            return numeric_interface<T>::cell(matrix(), slice, row, col);
         }
         const int row = AsIndex<T>(expr->Row()->accept(*this));
-        if (!expr->Col()) return numeric_interface<T>::row(matrix, row);
+        if (!expr->Col()) return numeric_interface<T>::row(matrix(), row);
         const int col = AsIndex<T>(expr->Col()->accept(*this));
-        return numeric_interface<T>::cell(matrix, row, col);
+        return numeric_interface<T>::cell(matrix(), row, col);
     }
 
     T visit(NegExpression<T>* expr) override {

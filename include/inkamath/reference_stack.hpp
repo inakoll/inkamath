@@ -328,6 +328,35 @@ public:
         return kept;
     }
 
+    // A matrix whose cell is read where it is stored, a literal's, a
+    // parameter's or a remembered term's, rather than in a copy of the whole
+    // (C277): found again by what this returns, as reading the cell's place
+    // may bind or remember, and so move it. Empty for anything else.
+    std::function<const T*()> Stored(const Expression<T>& e) {
+        if (const T* kept = Kept(e)) return [kept] { return kept; };
+        const auto* call = dynamic_cast<const FuncExpression<T>*>(&e);
+        if (!call && !dynamic_cast<const RefExpression<T>*>(&e)) return {};
+        if (FindBinding(e.Name())) {
+            const auto held = [this, name = e.Name()]() -> const T* {
+                const Binding* found = FindBinding(name);
+                return !found              ? nullptr
+                       : found->definition ? found->definition->Kept()
+                                           : &found->value;
+            };
+            if (call || !held()) return {};
+            Step();
+            return held;
+        }
+        const definition_type definition = call ? FindGlobal(e.Name()) : nullptr;
+        if (!definition || !definition->Value() || call->Call().limit() ||
+            staircases.contains(definition.get()))
+            return {};
+        MemoKey<T> key = definition->Key(call->Call(), *this);
+        if (!Memoised(key)) return {};
+        Step();
+        return [this, key = std::move(key)] { return Memoised(key); };
+    }
+
     // 'g.y_3': the index and the arguments are the caller's, and the name is
     // sought in the object's scope alone.
     T Member(const MemberExpression<T>& member) {

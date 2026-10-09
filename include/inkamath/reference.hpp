@@ -352,11 +352,14 @@ public:
         std::unordered_map<std::string, std::pair<size_t, size_t>> sized;  // its extent, who first
     };
 
-    // The value of a plain definition by a literal of numbers, once built.
+    // The value of a plain definition by a literal of numbers, once built,
+    // or by a value, as a local's.
     [[nodiscard]] const T* Kept() const {
         const Clause<T>* only = clauses_.size() == 1 ? &clauses_.front() : nullptr;
         if (!Value() || !only || !IsPlain(*only) || !only->parameters.parameters_names().empty())
             return nullptr;
+        if (const auto* value = dynamic_cast<const ValExpression<T>*>(only->expression.get()))
+            return &value->value;
         const auto* literal = dynamic_cast<const MatExpression<T>*>(only->expression.get());
         return literal && literal->built ? &*literal->built : nullptr;
     }
@@ -509,18 +512,22 @@ public:
         }
     }
 
-    T Eval(const ParametersCall<T>& call, ReferenceStack<T>& stack, bool global = true) const {
+    // The index and the arguments belong to the caller, so they are
+    // evaluated before the callee's scope exists.
+    MemoKey<T> Key(const ParametersCall<T>& call, ReferenceStack<T>& stack) const {
         const ParametersDefinition<T>& parameters = CallParameters();
         parameters.CheckArity(reference_name_, call);
-
-        // The index and the arguments belong to the caller, so they are
-        // evaluated before the callee's scope exists.
         EvaluationVisitor<T> caller(stack);
         int index = 0;
         const bool indexed = call.TryEvalIndex(stack, index);
         // The key holds the arguments, so that a call copies none of them.
-        MemoKey<T> key{this, indexed, indexed ? index : 0,
-                       parameters.EvaluateArguments(call, caller)};
+        return {this, indexed, indexed ? index : 0, parameters.EvaluateArguments(call, caller)};
+    }
+
+    T Eval(const ParametersCall<T>& call, ReferenceStack<T>& stack, bool global = true) const {
+        MemoKey<T> key     = Key(call, stack);
+        const bool indexed = key.indexed;
+        const int  index   = key.index;
 
         bool read = false;
         if (stack.checked && stack.staircases.contains(this))
