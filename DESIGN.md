@@ -6859,63 +6859,61 @@ that exploring seven domains asked of the interpreter, by how many asked.
   m = 1 + 1/f^2 - 10^-12, where it is stable; each decided exactly from the
   doubles. Done by C275, smax and the brackets with them, at the cost in
   time it gives.
-- **The generalized symmetric eigenproblem, `eig(A, B)`**, the fifth step
-  towards eigenvalues: every lambda of A phi = lambda B phi, A symmetric
-  and B symmetric positive definite, as a column, smallest first, each
-  certified as eig's are. A structure's frequencies, K phi = omega^2 M phi,
-  and its buckling loads, K phi = lambda K_G phi; Fisher's discriminant,
-  S_b w = lambda S_w w; a normalized cut, (D - W) y = lambda D y. It takes
-  the place of two lines here, an inertia count for inexact symmetric
-  matrices and `eig(K, M)` by it. Exploring finite elements formed M^-1 K
-  (`modal.ink`), which is not symmetric and so asks Hermite's test: 6.3 s
-  for 8 unknowns, 32 s for 10, refused past a thousand digits from 12. The
-  design, measured on a prototype:
+- **The generalized eigenproblem, `eig(A, B)`**, the fifth step towards
+  eigenvalues: every lambda of A phi = lambda B phi, B symmetric positive
+  definite, as a column, smallest first, each certified as eig's are. A
+  structure's frequencies, K phi = omega^2 M phi, and its buckling loads,
+  K phi = lambda K_G phi; Fisher's discriminant, S_b w = lambda S_w w; a
+  normalized cut, (D - W) y = lambda D y. It takes the place of two lines
+  here, an inertia count for inexact symmetric matrices and `eig(K, M)` by
+  it. Exploring finite elements formed M^-1 K (`modal.ink`), which is not
+  symmetric and so asks Hermite's test: 6.3 s for 8 unknowns, 32 s for 10,
+  refused past a thousand digits from 12. The design, measured on a
+  prototype:
 
-      eig(A[j<=n, k<=n], B[j<=n, k<=n] = A^0) | B == B^0 and eigr(A) = eigc(A)
-      eig(A[j<=n, k<=n], B[j<=n, k<=n] = A^0) | B <> B^0 = eigg(A, B)
-      eigg(A[j<=n, k<=n], B) | rhoe([A, B]) == rhoe([A, B]) and A' == A and B' == B and eigv(charpoly(B)) == n = eigc(B^-1*A)
+      eig(A[j<=n, k<=n], B[j<=n, k<=n] = A^0) | rhoe([A, B]) == rhoe([A, B]) and B' == B and eigv(charpoly(B)) == n = eigg(A, B^-1*A)
+      eigg(A, C) | A' == A or eigr(C) = eigc(C)
 
   **The count.** B^-1 A is not symmetric but is similar to L^-1 A L^-T,
-  B = L L', so its eigenvalues are real, and Descartes' count on its
-  characteristic polynomial, det(lambda B - A)/det(B), is exact without
-  Hermite's test: the pencil's definiteness is the certificate that test
-  was for. So the eigenvalues are `eigc` of B^-1 A, eig's bisection, scale,
-  stop, certified 0 and marks unchanged, and the bracket is eig(B^-1*A)'s
-  where Hermite's test passes. B is positive definite where its own
-  polynomial, real-rooted as B is symmetric, has every root above 0: n
+  B = L L', so where A is symmetric its eigenvalues are real, and Descartes'
+  count on its characteristic polynomial, det(lambda B - A)/det(B), is exact
+  without Hermite's test: the pencil's definiteness is the certificate that
+  test was for. So the eigenvalues are `eigc` of B^-1 A, eig's bisection,
+  scale, stop, certified 0 and marks unchanged, and the bracket is
+  eig(B^-1*A)'s where Hermite's test passes. A not symmetric asks that test
+  of B^-1 A, `eigr`, as eig(B^-1*A) does. B is positive definite where its
+  own polynomial, real-rooted as B is symmetric, has every root above 0: n
   sign changes, `eigv(charpoly(B)) == n`, Descartes again. `rhoe([A, B])`
   reads every cell before B^-1 A is formed, for its refusal alone.
 
-  **Name and form.** `eig(A, B)`, MATLAB's and Octave's, B a second
-  argument whose default is the identity: a definition has one parameter
-  list, so a second argument is a default or a second name. Against
-  CLAUDE.md's "no second way to say something", eig(A, B) is not
-  eig(B^-1*A) spelled otherwise. It is the paper's K phi = lambda M phi; it
-  answers where eig(B^-1*A) is refused, past a thousand digits from 12
-  unknowns, and of doubles from 8x8 (C275); it is 14 times faster where
-  both answer, 0.43 s against 6.3 at 8 unknowns; and it refuses what it
-  cannot certify. eig(B^-1*A) stays as it is, eig of a matrix, which no
-  rule refuses for having been a product. Rejected: `eigh(A, B)`, SciPy's,
-  and `geig`, a second name for eigenvalues; and a default that is not a
-  value, which no signature has. The identity is told apart only as a
-  value, so eig(A, I) is eig(A) whatever A, decided by Hermite's test as
-  before; beside any other B a non-symmetric A is refused, though B^-1 A's
-  eigenvalues may be real, since Hermite's test of B^-1 A is eig(B^-1*A),
-  which is there to be written. A Riccati pencil is neither symmetric nor
-  definite and stays out.
+  **Name and form.** `eig(A, B)`, MATLAB's and Octave's, B a second argument
+  whose default is the identity: a definition has one parameter list, so a
+  second argument is a default or a second name. It means eig(B^-1*A) for
+  every A, B symmetric positive definite, and against CLAUDE.md's "no second
+  way to say something" earns its place where A is symmetric: it is the
+  paper's K phi = lambda M phi; it answers where eig(B^-1*A) is refused,
+  past a thousand digits from 12 unknowns, and of doubles from 8x8 (C275);
+  it is 14 times faster where both answer, 0.43 s against 6.3 at 8 unknowns;
+  and it refuses what it cannot certify. eig(B^-1*A) stays as it is, eig of
+  a matrix, which no rule refuses for having been a product. Rejected:
+  `eigh(A, B)`, SciPy's, and `geig`, a second name for eigenvalues; a
+  default that is not a value, which no signature has; and refusing a
+  non-symmetric A beside any B but the identity, which would tell the
+  identity apart from its multiples: eig(A, 2*A^0) answers as eig(A/2) does.
 
-  **Refused**, in plain words: `eig needs A symmetric and B symmetric
-  positive definite`, for B indefinite, singular or not symmetric, or A not
-  symmetric, beside a B that is not the identity. One set of words: which
-  premise failed is in the matrices, and two sets would cost a guard each.
-  A lumped mass that gives a rotation no mass is singular, and condensing
-  the rotation out is the model's to write. The words are eigg's guard's,
-  in `Unapplied`'s table, as eig's and hinf's are. A matrix not square, or
-  A and B of different sizes, by the signature: `eig takes A[j<=n, k<=n]
-  and B[j<=n, k<=n], not a 2x2 matrix and a 1x3 matrix`. A complex cell of
-  A or B in max's words, `a comparison needs real numbers, not ~(i)`, not
-  a cell of B^-1 A. An inf cell of either, `eig needs finite cells, not
-  ~inf`, by C206's check.
+  **Refused**, in plain words: `eig needs B symmetric positive definite`,
+  for B indefinite, singular or not symmetric, before A is looked at. One
+  set of words: which premise failed is in B, and two sets would cost a
+  guard each. A lumped mass that gives a rotation no mass is singular, and
+  condensing the rotation out is the model's to write. The words are eig's
+  guard's, in `Unapplied`'s table; eig's present words, `eig needs a matrix
+  whose eigenvalues are all real`, move there to eigg's name, for a complex
+  eigenvalue of B^-1 A, approximated guard and all. A matrix not square, or
+  A and B of different sizes, by the signature: `eig takes A[j<=n, k<=n] and
+  B[j<=n, k<=n], not a 2x2 matrix and a 1x3 matrix`. A complex cell of A or
+  B in max's words, `a comparison needs real numbers, not ~(i)`, not a cell
+  of B^-1 A. An inf cell of either, `eig needs finite cells, not ~inf`, by
+  C206's check.
   - **Doubles read exactly**: `checked` reads every argument of a
     staircase as the rationals its doubles are (C275), B's too, and the
     answer is inexact. Nothing to add.
@@ -6923,7 +6921,7 @@ that exploring seven domains asked of the interpreter, by how many asked.
     yet`, as the staircase check reads every argument; flat where neither
     does. A simple eigenvalue's derivative, phi'(dA - lambda dB)phi with
     phi'B phi = 1, is a later item with rho's.
-  - **Compiled**: nothing new. eig stops at `B == B^0`, a comparison of
+  - **Compiled**: nothing new. eig stops at `B' == B`, a comparison of
     matrices, as it stopped at `A' == A`; compiled grad's refusal,
     `Staircase`, reads every argument already.
   - **`eigb`** stays of A alone: a pencil's bracket would take B before k,
@@ -6954,33 +6952,38 @@ that exploring seven domains asked of the interpreter, by how many asked.
     8x8, 4.3 against 1.7 at 10x10, 16.8 against 9.0 at 14x14. Where both
     certify every answer is the same, the counts being exact. Not switched.
 
-  **What it costs**: eig's, of B^-1 A, with one characteristic polynomial
-  of B more. In Release, the cantilever's 8 unknowns in 0.43 s, 16 in 12 s
-  and 24 in 132 s, certified; random pencils of doubles 1.9 s at 8x8, 22 s
-  at 12x12 and 118 s at 16x16, certified. The spec replays in about 30 s
-  under the sanitizers (Debug), 20 of them the 8 unknowns.
+  **What it costs**: eig's, of B^-1 A, with one characteristic polynomial of
+  B more; eig of one argument, that of the identity, its inverse and a
+  product. In Release, the cantilever's 8 unknowns in 0.43 s, 16 in 12 s and
+  24 in 132 s, certified; random pencils of doubles 1.9 s at 8x8, 22 s at
+  12x12 and 118 s at 16x16, certified. The spec replays in 28 s under the
+  sanitizers (Debug), 20 of them the 8 unknowns.
 
-  What moves: no golden. eig of one argument takes the clause it took,
-  after its default B is compared with the identity; `eig expects 1
-  argument, got 2` goes, which nothing recorded. README's section 2 shows
-  eig(K, M). `modal.ink`'s comment pointing here goes stale.
+  What moves: no golden. eig of one argument takes eigg's clause, A' == A or
+  Hermite's test of I^-1 A, which is A; `eig expects 1 argument, got 2`
+  goes, which nothing recorded. README's section 2 shows eig(K, M).
+  `modal.ink`'s comment pointing here goes stale.
 
-  About 8 lines: the prelude 3 more, eigg's wrapped, 3 of comment and 1
-  of C++ for the words. 16,000 lines at 05f1483, by `wc -l
-  include/inkamath/*.hpp src/*`. Past 12 the implementation stops and
+  About 6 lines: the prelude 2 more, eig's clause wrapped and eigg's, 1 of
+  C++ for eigg's words and 3 of comment. 16,000 lines at 05f1483, by `wc -l
+  include/inkamath/*.hpp src/*`. Past 9 the implementation stops and
   reports.
 
-  Specified in `test/data/spec/geneig.ink`, 53 entries replayed by the
-  spec suite, 37 failing by design, those passing being definitions
-  echoing themselves, `digits` and eig of one argument: eigenvalues as the
-  roots of det(A - x B) in sympy, exactly, and each bracket by bisection
-  of B^-1 A over 2^e in Python's fractions with every test decided from
-  them, printed by a transcription of `Number::Shown`; the cantilever's
-  against mpmath's eigenvalues of M^-1 K at 30 digits too, and the
-  buckling loads against 12 by hand and Euler's pi^2. The prototype above,
-  defined in a session, gives every answer but the refusals' words, grad's
-  two, the inf cells and the 3x3 pencil of doubles, which need the name to
-  be the prelude's staircase.
+  Specified in `test/data/spec/geneig.ink`, 56 entries replayed by the spec
+  suite, 39 failing by design, those passing being definitions echoing
+  themselves, `digits` and eig of one argument: eigenvalues as the roots of
+  det(A - x B) in sympy, exactly, and each bracket by bisection of B^-1 A
+  over 2^e in Python's fractions with every test decided from them, printed
+  by a transcription of `Number::Shown`; the cantilever's against mpmath's
+  eigenvalues of M^-1 K at 30 digits too, and the buckling loads against 12
+  by hand and Euler's pi^2. Reviewed by another route: B^-1 A's
+  characteristic polynomial by Faddeev and LeVerrier in fractions, bisected
+  on Descartes' count of it shifted at each midpoint, each bracket holding
+  sympy's root, printed by Python's `%g`. The prototype above, defined in a
+  session, gives every answer but the refusals' words, grad's two, the inf
+  cells and the 3x3 pencil of doubles, which need the name to be the
+  prelude's staircase; put in the prelude, eigg's words in the table, it
+  gives all 56.
 - `[done]` **A guard the interpreter's own error straddles.** From an outside
   review. `--check` estimates the interpreter's error by asking each term
   three times more, disturbed (*The interpreter's own error, estimated by

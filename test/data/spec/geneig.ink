@@ -1,10 +1,10 @@
-# The generalized symmetric eigenproblem, eig(A, B): every lambda of
-# A phi = lambda B phi, A symmetric and B symmetric positive definite, as a
-# column, smallest first (DESIGN.md, next in line). Every value was worked
-# out apart from the interpreter, as its specification: the eigenvalues as
-# the roots of det(A - x B) in sympy, exactly, and each bracket by
-# bisecting B^-1 A over 2^e in Python's fractions with every test decided
-# from them, printed as Number::Shown prints a double.
+# The generalized eigenproblem, eig(A, B): every lambda of A phi = lambda
+# B phi, B symmetric positive definite, as a column, smallest first
+# (DESIGN.md, next in line). Every value was worked out apart from the
+# interpreter, as its specification: the eigenvalues as the roots of
+# det(A - x B) in sympy, exactly, and each bracket by bisecting B^-1 A
+# over 2^e in Python's fractions with every test decided from them,
+# printed as Number::Shown prints a double.
 
 # det(A - x B) = (2 - 2x)^2 - (1 + x)^2 = (3 - x)(1 - 3x), by hand: 1/3
 # and 3, which a halving reaches, so it is itself.
@@ -17,8 +17,10 @@
 [~1.58578644;
  ~4.41421356]
 
-# B the identity, B's default, is the standard problem, eig(A), whatever
-# A is.
+# eig(A, B) is eig(B^-1*A) whatever A is: B the identity, B's default, is
+# the standard problem, and a non-symmetric A asks Hermite's test of
+# B^-1*A, as eig does, refused in eig's words where an eigenvalue is
+# complex.
 >> eig([2 1; 1 3], [1 0; 0 1])
 [~1.38196601;
  ~3.61803399]
@@ -28,6 +30,23 @@
    ~5.37228132]
 
 >> eig([0 1; -1 0], [1 0; 0 1])
+error: eig needs a matrix whose eigenvalues are all real
+
+# det(A - x B) = (3x + 1)(x - 2), by hand; and beside a multiple of the
+# identity, a scale.
+>> eig([1 2; 3 4], [2 1; 1 2])
+[~-0.333333333;
+            ~2]
+
+>> eig([1 2; 3 4], [2 0; 0 2])
+[~-0.186140662;
+   ~2.68614066]
+
+>> eig([1 2; 3 4]/2)
+[~-0.186140662;
+   ~2.68614066]
+
+>> eig([0 1; -1 0], [2 0; 0 2])
 error: eig needs a matrix whose eigenvalues are all real
 
 # A repeated eigenvalue is each of its copies. A = L D L' and B = L L', L
@@ -172,34 +191,30 @@ digits = 9
 >> frac eig([~2 -1; -1 2], [2 1; 1 2])
 error: ~0.333333333 was approximated, so it has no exact fraction
 
-# B symmetric positive definite and A symmetric are what make every
-# eigenvalue real, so a pencil without them is refused, in one set of
-# words: B indefinite, singular or not symmetric, or A not symmetric.
+# B symmetric positive definite is what makes every eigenvalue real where
+# A is symmetric, so a B without it is refused, in one set of words, and
+# before A is looked at: B indefinite, singular or not symmetric.
 >> eig([2 1; 1 2], [1 0; 0 -1])
-error: eig needs A symmetric and B symmetric positive definite
+error: eig needs B symmetric positive definite
 
 >> eig([2 1; 1 2], [1 1; 1 1])
-error: eig needs A symmetric and B symmetric positive definite
+error: eig needs B symmetric positive definite
 
 >> eig([2 1; 1 2], [2 1; 0 2])
-error: eig needs A symmetric and B symmetric positive definite
+error: eig needs B symmetric positive definite
 
->> eig([1 2; 3 4], [2 1; 1 2])
-error: eig needs A symmetric and B symmetric positive definite
+>> eig([0 1; -1 0], [1 0; 0 -1])
+error: eig needs B symmetric positive definite
 
 # A lumped mass that gives a rotation none is singular: condensing the
 # rotation out is the model's to write.
 >> eig(Kf(1), [1/2 0; 0 0])
-error: eig needs A symmetric and B symmetric positive definite
+error: eig needs B symmetric positive definite
 
-# Refused though the eigenvalues are real: A not symmetric beside a
-# multiple of the identity, and B indefinite, which eig(B^-1*A) answers by
-# Hermite's test.
->> eig([1 2; 3 4], [2 0; 0 2])
-error: eig needs A symmetric and B symmetric positive definite
-
+# Refused though the eigenvalues are real: B indefinite, which
+# eig(B^-1*A) answers by Hermite's test.
 >> eig([1 0; 0 1], [1 0; 0 -1])
-error: eig needs A symmetric and B symmetric positive definite
+error: eig needs B symmetric positive definite
 
 >> eig([1 0; 0 -1]^-1*[1 0; 0 1])
 [~-1;
