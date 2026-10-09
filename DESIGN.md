@@ -3288,6 +3288,20 @@ that exploring seven domains asked of the interpreter, by how many asked.
   limits multiply matrices, not their values. The doubling algorithm for the
   Riccati equation under `lim` needs it too, its inverse a temporary (block
   literals compiled, above).
+- **An exact root of a perfect power**: `25^(1/2)` is `~5` and
+  `(4/9)^(1/2)` `~0.666666667`, where the root is a rational. x^(p/q) is
+  exact where x's numerator and denominator are perfect q-th powers, as
+  MANIFESTO.md's "exact numbers wherever the mathematics allows" asks.
+  Found exploring finite elements.
+- **Plain definitions remembered**, specified as the language change
+  phase 14 called it when it rejected memoising them (*Rejected: memoising
+  a plain definition*). A plain definition is computed again at each read, so a
+  stiffness matrix with its supports struck by cells, reading an assembled
+  `K` at each, assembles K again for every cell; passing K as a parameter,
+  `bc(K, fx)`, evaluates it once and was ten times faster exploring finite
+  elements, an idiom no paper writes. The cost is phase 14's: a remembered
+  value skips its body's steps, so `sum_(k=1)^400 A*A` would answer where it
+  gives up.
 - `[done]` **A definition as LaTeX**, `tex ?name`, a word at the start of a line as
   `frac` is, and reserved as it is. It renders what was parsed, not what was
   typed: the clauses for one index a line each, then those for every index,
@@ -6850,7 +6864,21 @@ that exploring seven domains asked of the interpreter, by how many asked.
   rounded Descartes count of `eig` loses a k-fold eigenvalue to about 16/k
   digits and Hermite's test refuses symmetric matrices but for rounding.
   Rejected for `eig` only for an exact dyadic midpoint that zeroes a pivot,
-  which an inexact matrix does not meet.
+  which an inexact matrix does not meet. Since C275 the count reads the
+  doubles exactly, right but slower as n grows, 38 s for a symmetric 18x18
+  of doubles. And **`eig(K, M)`**, the generalized symmetric problem
+  K phi = lambda M phi of every structure's modes, by the same count
+  exactly: by Sylvester's law of inertia the negative pivots of LDL' of
+  K - sM are the eigenvalues below s, M positive definite, without forming
+  M^-1 K, which is not symmetric and so asks Hermite's test. Exploring
+  finite elements, a cantilever of Hermite elements with its consistent
+  mass: `eig(Mf(5)^-1*Kf(5))`, 10 unknowns, took 32 s and 6 elements were
+  refused past a thousand digits; the count written in the language, the
+  pivots as Schur complements `sc(A)_k[j,l] = sc(A)_(k-1)[j,l] - (j > k
+  and l > k)*sc(A)_(k-1)[j,k]*sc(A)_(k-1)[k,l]/sc(A)_(k-1)[k,k]` and 60
+  halvings of [0, 2^30] on them, gave the first mode of 8 elements in
+  2.7 s and four modes of 16 in 4 minutes, marked past a thousand digits.
+  M not positive definite is refused, as eig's complex eigenvalues are.
 - `[done]` **A guard the interpreter's own error straddles.** From an outside
   review. `--check` estimates the interpreter's error by asking each term
   three times more, disturbed (*The interpreter's own error, estimated by
