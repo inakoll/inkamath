@@ -66,7 +66,7 @@ public:
         for (const auto& line : lines) {
             const ParametersDefinition<T>& p = line.front()->parameters;
             if (!p.cells())
-                out += Left(name, p, p.sizes()) + " = " + Of(*line.front()->expression).text + "\n";
+                out += Left(name, p, p.sizes()) + " = " + Right(*line.front()->expression) + "\n";
             else
                 out += Entry(name, p, definition.Sizes()) + " = " + Cases(line) + Bounds(p) + "\n";
         }
@@ -149,7 +149,7 @@ private:
     // they are tried.
     static std::string Cases(const std::vector<const Clause<T>*>& cases) {
         if (cases.size() == 1 && !cases.front()->parameters.guarded())
-            return Of(*cases.front()->expression).text;
+            return Right(*cases.front()->expression);
         // A term among the cases is named by the index the others take.
         std::string index;
         for (const Clause<T>* clause : cases)
@@ -233,6 +233,9 @@ private:
     static std::string Wrapped(const Text& text, int level) {
         return text.level < level ? "(" + text.text + ")" : text.text;
     }
+
+    // After '=', where a comparison would read as a chain, 'j = j = k'.
+    static std::string Right(const Expression<T>& e) { return Wrapped(Of(e), sum); }
 
     // As written, in their order: a keyword's name with the index an input's
     // is written with, 'x_n = n'.
