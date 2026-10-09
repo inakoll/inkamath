@@ -125,7 +125,7 @@ add_test(NAME prelude_header
 foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brink drift:ledge
                          drift:rift drift:naught drift:zeroed drift:mirrored drift:nests drift:latch drift:toil
                          drift:late drift:radix
-                         delay:fir newton:stiff logistic:gate sized:sized softmax:cls steady:mark
+                         delay:fir newton:stiff newton:halves logistic:gate sized:sized softmax:cls steady:mark
                          rnn:rnn attention:head momentum:ball adam:fit lqr:gain
                          rates:pairs rates:odd seeded:warm cascade:servo decimate:boxcar
                          decimate:stride decimate:frame decimate:lead
@@ -590,6 +590,8 @@ set_tests_properties(check_mark_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^mark: 100 steps from 0, against exact values until 0 and inexact ones from there\n(mark\\.[a-z]+: within [0-9.e+-]+${about}\n)+$")
 set_tests_properties(check_stiff_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^stiff: 100 steps from 0, against exact values until 0 and inexact ones from there\nstiff\\.h: within 0\n(stiff\\.[a-z]+: within [0-9.e+-]+${about}\n)+$")
+set_tests_properties(check_halves_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^halves: 100 steps from 0, against exact values until 0 and inexact ones from there\nhalves\\.y: within 0${about}\n$")
 set_tests_properties(check_fir_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^fir: 100 steps from 0, against exact values\n(fir\\.[a-z]+: within 0\n)+$")
 set_tests_properties(check_naught_report PROPERTIES PASS_REGULAR_EXPRESSION
@@ -676,6 +678,7 @@ foreach(model IN ITEMS pid adc)
 endforeach()
 
 foreach(checked IN ITEMS drift:calm drift:wild drift:ledge logistic:gate momentum:ball newton:stiff
+                         newton:halves
                          drift:radix inputs:fan float:hum float:drone float:far float:tally float:crawl
                          float:steep float:blast float:tiny
                          steady:mark softmax:cls grad:line tensor:whirl tensor:batch
@@ -722,6 +725,7 @@ foreach(report IN ITEMS
         "gate:^gate: 100 steps from 0${inexact}\ngate\\.b: within 1\\.2e-06, 2\\.5 units of a float${about}\ngate\\.w: within 9\\.4e-07, 3\\.9 units of a float${about}\ngate\\.p: within 2\\.1e-07, 22 units of a float${about}\n$"
         "ball:^ball: 100 steps from 0${inexact}\n(ball\\.[a-z]+: within [0-9.e+-]+, [0-9.e+-]+ units of a float${about}\n)+$"
         "stiff:^stiff: 100 steps from 0${inexact}\nstiff\\.h: within 6e-08, 0\\.5 units of a float\nstiff\\.x: within ${units}\nstiff\\.y: within ${units}\n$"
+        "halves:^halves: 100 steps from 0${inexact}\nhalves\\.y: within ${units}\n$"
         "crawl:^crawl: 100 steps from 0${in_float}\ncrawl\\.s: within 0, 0 units of a float\ncrawl\\.y: 100000016 at 0, where the interpreter gives none: s did not converge within 100 terms \\(last term 100000800\\)\n$"
         "fan:^fan: 100 steps from 0${in_float}\nfan\\.y: within 0, 0 units of a float\n$"
         "radix:^radix: 100 steps from 0${inexact}\nradix\\.y: ${exact}\n$"

@@ -74,8 +74,11 @@ private:
     // above the step that would otherwise have been called convergence.
     // One step is no evidence at all, which is why 'stepped_' is required.
     // After a step of 0 there is no ratio, and the last step is what is left.
+    // At a step of 0 there is none either: a term may pause and move on, as
+    // a binary digit of 0 does (C279), and the step before is what may be left.
     static Step Remainder(Step step, Step previous_step) {
         if (!(previous_step > 0)) return step;
+        if (!(step > 0)) return previous_step;
         const Step ratio = step / previous_step;
         if (!(ratio < 1)) return std::numeric_limits<Step>::infinity();
         return step * ratio / (1 - ratio);

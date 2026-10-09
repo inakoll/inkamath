@@ -145,6 +145,11 @@ error: the sum did not converge within 100 terms (last partial sum 5050)
 >> sum_(k=1) 1/k^2
 error: the sum did not converge within 100 terms (last partial sum ~1.6349839)
 
+# A term of 0 is not the end of the series: the partial sums 1, 3/2, 3/2
+# stopped at 3/2, where 2 - 1/4 is the sum (DESIGN.md, C279).
+>> sum_(k=0) (k<>2)/2^k
+~1.75
+
 # A term is a step, whatever its body: a sum that reads no name still has to
 # end, and ends where any other evaluation does.
 >> sum_(k=1)^(10^7) 1

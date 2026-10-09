@@ -917,7 +917,7 @@ holds(float_gate float/gate.h "#include <float.h>\n#include <math.h>\n"
       [[        const float t_ = t1_ + (t1_ + (0.0f - t2_)) * arg_z / (float)k_;
         if (started_) {
             step_ = fabsf(t_ - t1_);
-            if (step_ <= 2 * FLT_EPSILON * fabsf(t_) && isfinite(t_) && stepped_) return t_;
+            if (step_ > 0 && step_ <= 2 * FLT_EPSILON * fabsf(t_) && isfinite(t_) && stepped_) return t_;
             if (step_ <= 1e-10f && stepped_ &&
 ]] [[    m_->p[0][0][0] = 1.0f / (1.0f + gate_lim0(m_, 0.0f + (0.0f - (0.0f * m_->w[0][0][0] + 0.0f * m_->w[0][1][0] + m_->b[0]))));
 ]])
