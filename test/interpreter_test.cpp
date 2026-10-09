@@ -241,6 +241,9 @@ TEST_CASE("goldberg") {
 TEST_CASE("doyle") {
     check_transcript("doyle.ink");
 }
+TEST_CASE("translunar") {
+    check_transcript("translunar.ink");
+}
 TEST_CASE("inexact") {
     check_transcript("inexact.ink");
 }
