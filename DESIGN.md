@@ -3228,7 +3228,9 @@ that exploring seven domains asked of the interpreter, by how many asked.
 - **`--check`'s hundred steps as an option**, with `lim`'s. Doyle 1978's
   loop at dt = 1/10 is ten time units in them, where the nominal loop has
   not settled, [-1.18; 1.50] from [1; 0], and the one past its margin,
-  m = 6/5, has not run away; a thousand show both.
+  m = 6/5, has not run away; a thousand show both. Apollo 11's translunar
+  coast is a thousand Runge-Kutta steps of 177 s, of which its check can
+  hold only a hundred of 1767 s.
 - **A cumulative sum compiled as an accumulator**, `sum_(t=1)^n e(t)`:
   refused as "a sum whose bounds are not constants", where a regret or a
   running loss is exactly that (Reddi et al. 2018).
@@ -3239,7 +3241,18 @@ that exploring seven domains asked of the interpreter, by how many asked.
 - **`atan` in the prelude**, written as `exp` and `log` are, `asin` and
   `acos` from it: Kahan's angle formulas cannot be written without. Doyle
   1978 asks for `arg` too, its phase margin being arg L(iw) at crossover,
-  of which only cos(PM) = -Re L can be written now.
+  of which only cos(PM) = -Re L can be written now. Apollo 11's coast
+  writes `asin`, a flight path angle, as a Newton limit and `acosh`, the
+  hyperbolic anomaly at pericynthion, from `log`; reading its state back
+  in the Mission Report's latitude, longitude and heading needs `atan2`,
+  which its check did in Python.
+- **A cell at a computed whole index, compiled**: `T[k,1]` with
+  `k = floor(t/H) + 1`, an ephemeris read at the row a time falls in, is
+  refused as "a cell whose place is not a constant", so Apollo 11's coast
+  takes the Moon and the Sun as inputs, read by the interpreter, where the
+  step could read its table itself. Compile it as a C array read, NaN
+  where the index is no whole number within the table, where the
+  interpreter refuses.
 - **An instance named again**, `a = thm1.adam`, then `a.x_1`.
 - **A constant folded from an approximated number, listed**: `--compile`
   folds `(2^4000 > 2^3999)` to 0.0 and `3^3000/3^2999` to NAN silently,
