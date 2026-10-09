@@ -3303,6 +3303,17 @@ that exploring seven domains asked of the interpreter, by how many asked.
   elements, an idiom no paper writes. The cost is phase 14's: a remembered
   value skips its body's steps, so `sum_(k=1)^400 A*A` would answer where it
   gives up.
+- **A base clause reading another sequence's base at its own index**:
+  with `v_0 = 0`, `a_0 = v_0`, `a_n = v_(n-1)` and `v_n = a_n`, the
+  interpreter answers and `--compile` refuses a, "it and the terms it reads
+  need each other". The step orders the sequences once for every index, and
+  at the base a needs v first where later v needs a. Newmark's natural start,
+  `a_0 = M^-1*(f_0 - K*u_0)`, is one; found exploring finite elements. Three
+  ways, each over 25 lines: the base steps in an order of their own, the
+  step emitted twice; the read base inlined at a seed of the same index,
+  reworking `Seeded` and `Rated`'s placeholders per cell; or a constant
+  base folded, which covers Newmark's only where `f_0` and `u_0` are
+  constants.
 - `[done]` **A definition as LaTeX**, `tex ?name`, a word at the start of a line as
   `frac` is, and reserved as it is. It renders what was parsed, not what was
   typed: the clauses for one index a line each, then those for every index,
