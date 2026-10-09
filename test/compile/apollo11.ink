@@ -22,7 +22,15 @@
 #     whole.k4: within <d>, from 1; the interpreter's terms about <e> from the exact ones
 #     whole.y: within <x>; the interpreter's terms about <e> from the exact ones
 #
-# with each <d> of the order of 1e-15 and <x> of 1e-11.
+# with each <d> of the order of 1e-15 and <x> of 1e-11. In float, its
+# smallest components each held at their own spacing, by glibc's powf:
+#
+#     whole: 100 steps from 0 in float, against exact values until 0 and inexact ones from there
+#     whole.k1: within 5.9e-07, 1.3e+03 units of a float, from 1; the interpreter's terms about <e> from the exact ones
+#     whole.k2: within 1.1e-06, 4.7e+04 units of a float, from 1; the interpreter's terms about <e> from the exact ones
+#     whole.k3: within 1.2e-06, 7e+04 units of a float, from 1; the interpreter's terms about <e> from the exact ones
+#     whole.k4: within 1.6e-06, 1.2e+03 units of a float, from 1; the interpreter's terms about <e> from the exact ones
+#     whole.y: within 0.12, 8.2e+02 units of a float; the interpreter's terms about <e> from the exact ones
 
 # The Moon and the Sun as test/data/apollo11.ink has them.
 moon = [~-336966.9204551392, ~194138.639202848, ~101206.5456161044, ~-0.5090478454659974, ~-0.7334248916578737, ~-0.4043985312284881;

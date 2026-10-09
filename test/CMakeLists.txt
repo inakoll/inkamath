@@ -676,7 +676,7 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:ledge logistic:gate momentu
                          reddi:thm1 reddi:fixed reddi:gen
                          kahan:sums kahan:muller kahan:rounded kahan:surprise kahan:solveur rump:rump
                          goldberg:year goldberg:needle goldberg:big goldberg:seven iterates:poly
-                         blocks:nested conv:see straddle:knee)
+                         blocks:nested conv:see straddle:knee apollo11:whole)
     string(REPLACE ":" ";" checked ${checked})
     list(GET checked 0 file)
     list(GET checked 1 instance)
@@ -751,6 +751,7 @@ foreach(report IN ITEMS
         "nested:^nested: 100 steps from 0${in_float}\nnested\\.S: ${exact}\nnested\\.w: ${exact}\nnested\\.M: ${exact}\nnested\\.T: ${exact}\nnested\\.y: ${exact}\n$"
         "see:^see: 100 steps from 0${in_float}\nsee\\.Xp: ${exact}\nsee\\.Z: ${exact}\nsee\\.M: ${exact}\nsee\\.s: ${exact}\n$"
         "knee:^knee: 100 steps from 0${inexact}\n${knee_r}knee\\.r: at 0 the compiled step takes 'r_n = 0' and the interpreter 'r_n \\| y_n > c = y_n - c'\\; the guard of the second is 4\\.2e-11 from its threshold\nknee\\.y: within [0-9.e+-]+, [0-9.e+-]+ units of a float\\; the interpreter's terms about 5\\.8e-11 from the exact ones\nknee\\.r: within 4\\.2e-11, 1\\.2e\\+07 units of a float\\; the interpreter's terms about 5\\.8e-11 from the exact ones\n$"
+        "whole:^whole: 100 steps from 0${inexact}\n(whole\\.k[1-4]: within [1-9](\\.[0-9])?e-0[67], [1-9](\\.[0-9])?e\\+0[2-5] units of a float, from 1${about}\n)+whole\\.y: within 0\\.[0-9]+, [1-9](\\.[0-9])?e\\+0[2-5] units of a float${about}\n$"
         "cls:^cls: 100 steps from 0${inexact}\ncls\\.z: within 2\\.4e-08, 0\\.49 units of a float\ncls\\.q: within 1\\.9e-06, 1\\.5 units of a float${about}\ncls\\.s: within 6\\.3e-08, 2\\.1 units of a float${about}\ncls\\.loss: within 4\\.1e-07, 3\\.8 units of a float${about}\n$")
     string(FIND "${report}" ":" colon)
     string(SUBSTRING "${report}" 0 ${colon} instance)
