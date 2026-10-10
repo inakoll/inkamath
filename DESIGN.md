@@ -3323,11 +3323,13 @@ that exploring seven domains asked of the interpreter, by how many asked.
   read, the refusals, nine of a value, one twice and three of a mode, the
   usage without `-o`, and `--help`. Unwired, every case failing today on the
   unknown option: the implementation moves the cases into `test/cli.cmake`
-  and deletes the file, and wires the three instances with their counts
-  beside the other checks in `test/CMakeLists.txt`, an entry
-  `file:instance:n` naming its target after both, `runaway` at 1000 failing
-  as `wild` does. Expected lines by hand: `coast` by its closed forms, v_n =
-  64 - n/8 and y_n = 8n - n(n+1)/128, multiples of 1/64 below 2^11;
+  and deletes the file, and wires each report the file gives, `coast` at
+  1001 and 1, `runaway` at 150 and 1000 and `horizon` at 1000 beside the
+  other checks in `test/CMakeLists.txt`, and `coast` at 1001 beside the
+  float ones, an entry `file:instance:n` in both lists naming its target
+  after both, `runaway` at 1000 failing as `wild` does. Expected lines by
+  hand: `coast` by its closed forms, v_n = 64 - n/8 and y_n = 8n -
+  n(n+1)/128, multiples of 1/64 below 2^11;
   `runaway` by powers of two; `horizon`'s 334 by its denominator, 10^(3n) in
   lowest terms, and its difference, 1.1e-16, by the step simulated in Python
   against exact fractions, its estimate's digits being the seeds'; the
