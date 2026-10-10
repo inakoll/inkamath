@@ -688,9 +688,11 @@ private:
 
     Jet Power(PowExpression<T>& power) {
         const Jet u = Eval(power.m_e1());
-        const Jet w = Eval(power.m_e2());
+        // Asked as the base is read, before the exponent may bind a local e.
+        const bool euler = Euler(*power.m_e1());
+        const Jet  w     = Eval(power.m_e2());
         if (Moves(w)) {
-            if (!Euler(*power.m_e1()))
+            if (!euler)
                 throw std::runtime_error(
                     "grad cannot differentiate a power whose exponent changes with " +
                     grads_.back().first + ", unless its base is e");

@@ -140,3 +140,42 @@ error: a local cannot take parameters
 
 >> grad_(x = 3) x + (lf(y = 1) = y)
 error: a local cannot take parameters
+
+# An empty list neither, which adds nothing: it was read as no list at all
+# (C314).
+>> (lg() = 1) + lg()
+error: a local cannot take parameters
+
+>> grad_(x = 1) ((lg() = x) + lg)
+error: a local cannot take parameters
+
+# Nor an index, which is a parameter: s_3 read the global n for its index,
+# and was 40 with n = 1, or n was not defined (C309).
+>> (s_n = n) + s_3
+error: a local cannot take an index
+
+>> n = 1
+n = 1
+
+>> (s_n = 10*n) + s_3
+error: a local cannot take an index
+
+>> grad_(x = 2) ((s_n = n*x) + s_3)
+error: a local cannot take an index
+
+>> clear n
+clear n
+
+# A local by cells is evaluated in a frame of its own, as a call is, so it
+# takes the values its line binds there along: it read neither x nor t,
+# "not defined" (C310).
+>> h2(x) = (M[j<=2] = j*x) + M
+h2(x) = (M[j<=2] = j*x) + M
+
+>> h2(3)
+[ 6;
+ 12]
+
+>> (t = 2) + (M[j<=2] = j*t) + M
+[ 6;
+ 10]

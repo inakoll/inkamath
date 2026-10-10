@@ -45,12 +45,13 @@ function(holds name file)
     endforeach()
 endfunction()
 
-# Read by cases in both parts.
+# Read by cases in every part.
 set(inputs "${CMAKE_CURRENT_LIST_DIR}/compile/inputs.ink")
 
-# The cases run as two tests of about equal time under the sanitizers: PART 1
-# up to charpoly's refusal, 2 from eig's, and both where PART is not given.
-if(NOT PART EQUAL 2)
+# The cases run as three tests of about equal time under the sanitizers: PART
+# 1 up to charpoly's refusal, 2 from it, 3 from eig's, and all where PART is
+# not given.
+if(NOT PART OR PART EQUAL 1)
 
 # Read from a pipe, it is a filter: no banner, no prompt, one answer for each
 # input, a definition answering with itself.
@@ -902,6 +903,13 @@ set(stdout "cannot compile w: tr takes M[j<=n, k<=n], not a 2x3 matrix\n")
 set(exit 1)
 check(compile_signature_refused)
 
+if(PART EQUAL 1)
+    return()
+endif()
+endif()
+
+if(NOT PART EQUAL 3)
+
 # The prelude's charpoly compiles; rho does not yet, by hurwitzb's factorial,
 # and grad refuses it and abscissa where A moves, as the interpreter does
 # (DESIGN.md, the characteristic polynomial and stability). A 1x1 matrix is
@@ -912,21 +920,8 @@ set(stdout "cannot compile g: grad cannot differentiate rho yet\ncannot compile 
 set(exit 1)
 check(compile_charpoly_refused)
 
-if(PART EQUAL 1)
-    return()
-endif()
-endif()
-
 # check_not_transcript reads the models.ink part 1 writes.
 file(WRITE "${OUT}/models.ink" "gain(k = 2, x_n) = { y_n = k*x_n + z_n }\n")
-
-# Nor do eig and smax, by a comparison of matrices and hurwitzb's factorial,
-# and grad refuses them where A moves (DESIGN.md, eig and smax).
-file(WRITE "${OUT}/eig.ink" "x_n = eig([n 1; 1 2])[1]\ny_n = smax([n 2; 3 4])\ng_n = grad_(a = n) eig([a 1; 1 2])[1]\nh_n = grad_(a = n) smax([a 2; 3 4])\n")
-set(args --compile eig.ink)
-set(stdout "cannot compile g: grad cannot differentiate eig yet\ncannot compile h: grad cannot differentiate smax yet\ncannot compile x: a comparison of matrices\ncannot compile y: a factorial\n")
-set(exit 1)
-check(compile_eig_refused)
 
 # Nor do hinf and dhinf, by hurwitzb's factorial in their guards, and grad
 # refuses them where A moves (DESIGN.md, the H-infinity norm). Of a 1x1
@@ -1152,6 +1147,23 @@ cannot compile c: a guarded cell of one term
 ")
 set(exit 1)
 check(compile_cellguards_refused)
+
+if(PART EQUAL 2)
+    return()
+endif()
+endif()
+
+# Made in part 2 too, which part 3 runs without.
+file(MAKE_DIRECTORY "${OUT}/float")
+
+# Nor do eig and smax, as rho does not, by a comparison of matrices and
+# hurwitzb's factorial, and grad refuses them where A moves (DESIGN.md, eig
+# and smax).
+file(WRITE "${OUT}/eig.ink" "x_n = eig([n 1; 1 2])[1]\ny_n = smax([n 2; 3 4])\ng_n = grad_(a = n) eig([a 1; 1 2])[1]\nh_n = grad_(a = n) smax([a 2; 3 4])\n")
+set(args --compile eig.ink)
+set(stdout "cannot compile g: grad cannot differentiate eig yet\ncannot compile h: grad cannot differentiate smax yet\ncannot compile x: a comparison of matrices\ncannot compile y: a factorial\n")
+set(exit 1)
+check(compile_eig_refused)
 
 # C132: a gradient with respect to a matrix that nothing moves is a zero of
 # the point's shape, not of the body's.

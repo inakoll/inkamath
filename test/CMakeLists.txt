@@ -39,7 +39,7 @@ foreach(golden IN LISTS goldens)
     set_tests_properties(${case}.ink PROPERTIES TIMEOUT 60
                          FAIL_REGULAR_EXPRESSION "test cases: +0 \\|")
 endforeach()
-# fastgrad.ink's 600,000 remembered calls take 25 s under sanitizers alone.
+# fastgrad.ink's 600,000 remembered calls take 19 s under sanitizers alone.
 set_tests_properties(fastgrad.ink PROPERTIES TIMEOUT 120)
 foreach(suite IN ITEMS bignum line_editor matrix prelude)
     add_test(NAME ${suite} COMMAND inkamath_tests --test-suite=${suite} --no-intro)
@@ -51,7 +51,7 @@ add_test(NAME interpreter COMMAND inkamath_tests --test-suite=interpreter --no-i
          --test-case-exclude=${golden_cases})
 set_tests_properties(interpreter PROPERTIES TIMEOUT 60)
 
-foreach(part 1 2)
+foreach(part 1 2 3)
     add_test(NAME cli_${part}
              COMMAND ${CMAKE_COMMAND} -DEXE=$<TARGET_FILE:inkamath_cli> -DPART=${part}
                      -DOUT=${CMAKE_CURRENT_BINARY_DIR}/cli_${part}
@@ -136,7 +136,8 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brin
                          history:twice history:relayed history:pole
                          history:huge history:sever history:veiled history:cloaked history:two history:hid history:masked
                          nan:run nan:sign nan:shy nan:slope nan:pair
-                         nan:lap nan:trim nan:any nan:cell nan:held nan:idle nan:imag nan:took inputs:fan inputs:grid
+                         nan:lap nan:trim nan:any nan:cell nan:held nan:idle nan:imag nan:took nan:shut nan:root
+                         inputs:fan inputs:grid
                          inputs:chan inputs:twirl inputs:duo inputs:mean3 inputs:mean2
                          inputs:track inputs:twain inputs:nestv inputs:fed estimate:tie
                          estimate:chaos estimate:dyad estimate:flat estimate:halved
@@ -643,6 +644,8 @@ set_tests_properties(check_pole_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^pole: 100 steps from 0, against exact values\npole\\.y: inf at 3, where the interpreter gives none: division by zero\n$")
 set_tests_properties(check_huge_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^huge: 100 steps from 0, against exact values\nhuge\\.y: inf at 31, where the interpreter's term is too large for a double\n$")
+set_tests_properties(check_root_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^root: 100 steps from 0, against exact values until 0 and inexact ones from there\nroot\\.g\\[1,1\\]: -?nan[()a-z]* at 3, where the interpreter's term is not a real matrix\n$")
 set_tests_properties(check_sever_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^sever: 100 steps from 0, against exact values until 10 and inexact ones from there\nsever\\.p\\[2,2\\]: inf at 12, where the interpreter's term is not a finite number\n$")
 set_tests_properties(check_warm_report PROPERTIES PASS_REGULAR_EXPRESSION
