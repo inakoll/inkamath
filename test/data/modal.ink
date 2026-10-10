@@ -38,7 +38,7 @@ digits = 12
  ~5648.58713391;
   ~47584.197757]
 
-# Three elements, as the pencil, M^-1 K not formed.
+# Three elements, as the pencil, which spares M^-1 K Hermite's test.
 >> eig(Kf(3), Mf(3))
 [~12.3648691229;
  ~488.713223585;
