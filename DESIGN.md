@@ -3396,10 +3396,103 @@ that exploring seven domains asked of the interpreter, by how many asked.
   Riccati equation under `lim` needs it too, its inverse a temporary (block
   literals compiled, above).
 - **An exact root of a perfect power**: `25^(1/2)` is `~5` and
-  `(4/9)^(1/2)` `~0.666666667`, where the root is a rational. x^(p/q) is
-  exact where x's numerator and denominator are perfect q-th powers, as
-  MANIFESTO.md's "exact numbers wherever the mathematics allows" asks.
-  Found exploring finite elements.
+  `(4/9)^(1/2)` `~0.666666667`, where the root is a rational, so every
+  truss whose lengths come from its coordinates goes inexact and
+  `truss_calfem.ink` types them. MANIFESTO.md asks for exact numbers
+  "wherever the mathematics allows". Found exploring finite elements.
+
+  **The rule.** x^(p/q), x and the exponent exact, p/q reduced and not
+  whole, is exact where x >= 0 and x's reduced numerator and denominator
+  are both perfect q-th powers: it is then r^p, r their roots' quotient,
+  by the whole power's own rules, approximated past a thousand digits as a
+  whole power is, and marked so, which `(49/36)^(1185/2)` was not.
+  Anything else is as before. So `25^(1/2)` is 5, `8^(2/3)` 4,
+  `27^(-1/3)` 1/3, `(9/4)^(3/2)` 3.375, `2^(1/2)` still `~1.41421356`,
+  and a truth read from an exact root exact (C241): `25^(1/2) == 5` is 1,
+  not `~1`.
+  - **Any q.** A whole number from 2 up has a whole q-th root only for q
+    below its bit length, at most 3,322 within a thousand digits, so no cap
+    is needed: a larger q, `1^(1/10^30)`, is decided at once, 0 and 1
+    alone passing. `(2^1000)^(1/1000)` is 2.
+  - **The test** is the integer root by Newton's method from above, the
+    numerator first and the denominator only if the numerator passed,
+    checked by raising it back. On a prototype in Release: about 60 us for
+    a thousand-digit number that is not a square, 1 us for a small one, the
+    prototype taking naturals for every size; no golden's time moved.
+  - **An exponent written as a decimal** is the exact fraction it says
+    (phase 13): `25^0.5` is 5 and `16^0.75` 8, and `8^0.333` stays inexact,
+    333/1000 asking a thousandth root.
+  - **Zero.** 0 to a positive power is 0, where it was `~0`. To a negative
+    one it is a division by an exact zero, as `0^-1` is: `0^(-1/2)` was
+    `~inf` and is refused, `division by zero`. Moves an answer, for the
+    rule README.md states.
+  - **A negative base keeps its principal root** (C33, C174). The
+    principal value of x^(p/q), x < 0, is |x|^(p/q) e^(i pi p/q), never
+    real for p/q not whole, so a negative base is never exact and
+    `(-8)^(1/3)` stays `~(1+i*1.73205081)`; nothing recorded moves.
+    Rejected: the real root for an odd q, -2, which a paper's cube root of
+    -8 means. Its value would depend on exactness: `(~-8)^(1/3)` or an
+    exponent `0.3333` would keep the principal root, and whether a number
+    is exact may decide how it is shown, never which number it is. MATLAB,
+    NumPy and sympy give the principal root too, and the real one by a
+    function of its own. Here the real root is a definition in cases,
+    `cbrt(x) | x < 0 = -(-x)^(1/3)`, exact for a perfect cube under this
+    rule.
+  - **Inexact base or exponent**, a base approximated past a thousand
+    digits among them: as before, the double's root.
+  - **Matrices**: out of scope. `A^(1/2)` is refused as before; a matrix's
+    square root is not unique, its principal one needs eigenvectors, and
+    none was asked for. Cell by cell it is written by cells, and each root
+    is exact.
+  - **grad**: nothing to add. Derivative::Power takes c u^(c-1) through the
+    same power, so `grad_(x = 4) x^(1/2)` is 0.25, and a bar's length
+    `(x^2 + 16)^(1/2)` moves by 3/5 at x = 3. Its refusals are unchanged.
+  - **Compiled**: a header writes doubles, and a constant folded from the
+    interpreter's value is now the double of the exact root, never an ulp
+    off as `pow`'s may be; no expected header moved on the prototype. One
+    thing to keep: grad compiled folds u^(c-1) at a constant base, which at
+    0 with c < 1 is now a division by zero, where it was inf, and the
+    prototype refused `edge`'s v in `test/compile/grad.ink`, "cannot compile
+    v: division by zero". Left to C's pow there, inf, v stays NaN at every
+    step as C116 made it: 1 line.
+
+  Rejected:
+  - **Square roots alone**: the test is the same for any q, and a cap
+    would make `8^(2/3)` and `16^0.25` inexact for no reason the
+    mathematics gives.
+  - **A function, `sqrt(x)` or `root(x, q)`**: a second way to write
+    x^(1/2), against MANIFESTO.md, which would still leave `25^(1/2)`
+    inexact.
+  - **Roots kept exact as algebraic numbers**, `2^(1/2)` carried as itself:
+    a computer algebra system, a non-goal.
+
+  What moves, on the prototype: `exact.ink`'s `4^(1/2)`, under "What can
+  only be approached", to 2, its comment with it; `grad.ink`'s `grad_(x = 4)
+  x^(1/2)` to 0.25; `kahan.ink`'s 128 roots then squares of 0 and of 1, to 0
+  and 1; `goldberg.ink`'s four entries for C175, its hypotenuse 5*10^200,
+  10^200 and 2^275 in full and 10^-200 bare, C175's path being held instead
+  by `roots.ink`'s four bases that are not perfect powers; `doyle.ink`,
+  whose f(5) = 2 + 9^(1/2) and f(21) are 5 and 7 exactly, so both Riccati
+  residuals are exact zeros and the gains [5, 5] and [7; 7]; and three
+  `--check` reports in `test/CMakeLists.txt`, terms exact further: `edge`
+  until 3 and `edge.s` within 1.1e-16, `over` exact throughout, `graph`
+  until 1. README.md's "a root" among what can only be approached becomes a
+  root that is not rational, and `truss_calfem.ink`'s comment on its typed
+  lengths goes stale.
+
+  About 30 lines: the prototype's 28 in `number.hpp`, 3 of them comment,
+  and 2 in `compile.hpp`. 16,024 lines at 6921a84, by `wc -l
+  include/inkamath/*.hpp src/*`. Past 45 the implementation stops and
+  reports.
+
+  Specified in `test/data/spec/roots.ink`, 86 entries replayed by the spec
+  suite, 40 failing by design, those passing being definitions echoing
+  themselves, the refusals and the answers that stay inexact. Each exact
+  root in sympy, the truss's displacements and forces solved again in
+  sympy from its computed lengths, each inexact answer the double C's sqrt
+  or pow gives checked against mpmath to the nine digits shown, and all
+  printed by a transcription of `Number::Shown`. The prototype, discarded,
+  passes every entry.
 - **Plain definitions remembered**, specified as the language change
   phase 14 called it when it rejected memoising them (*Rejected: memoising
   a plain definition*). A plain definition is computed again at each read, so a
