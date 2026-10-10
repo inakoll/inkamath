@@ -8139,7 +8139,7 @@ checked: what it asked of the compiler, each with its smallest change.
     compiler. Three steps hold every value `saliency` specifies, its images
     repeating every three steps and G reading no earlier term; the
     interpreter's own speed, and whether a run exact throughout needs its
-    three disturbed runs, are not this item's.
+    three disturbed runs (next in line), are not this item's.
 
   Measured on the prototype: `saliency`'s `--compile` 3.0 s to 0.1, and
   B^4 to near B^2, 0.04, 0.15, 0.37 and 0.75 s for one image to four,
@@ -8175,6 +8175,12 @@ checked: what it asked of the compiler, each with its smallest change.
   the three seeds its head's slice of W^Q takes, and the header under
   40,000 bytes. Wired with the implementation, with the prelude's header
   recorded again.
+- **No disturbed runs where the exact run is exact throughout**, an
+  oracle change: `--check` runs the interpreter three times more, its
+  roundings and limits disturbed, and a run with no inexact term has none
+  to disturb. On the forward-mode header's prototype, `saliency`'s 100
+  steps take 7.7 s of `--check`, 0.16 of them compiling, and the three
+  runs three quarters of the rest.
 - **A maximum or minimum over an index**, `max_(i=1)^n`, as a sum is
   written: max-pooling over a window is nested `max` calls today. Minor,
   until a second model asks.
