@@ -1740,9 +1740,10 @@ private:
         // u^(c-1) at 0 is C's pow's inf, where the interpreter divides by 0.
         const Value lower = c - Value(Number(1));
         const Code  power =
-            base.constant && (Doubles(lower)[0] >= 0 || Doubles(*base.constant)[0] != 0.0)
-                 ? Exact([&] { return numeric_interface<Value>::pow(*base.constant, lower); })
-                 : Powered(base, Literal(lower));
+            !base.constant ? Powered(base, Literal(lower))
+            : Doubles(lower)[0] < 0 && Doubles(*base.constant)[0] == 0.0
+                ? Literal(Value(Number(HUGE_VAL)))
+                : Exact([&] { return numeric_interface<Value>::pow(*base.constant, lower); });
         if (Doubles(lower)[0] < 0 && (!base.constant || Doubles(*base.constant)[0] == 0.0))
             value = Of(Cell("(" + Jumps(Wrap(base.cells[0], sum) + " == 0.0", {&base}) +
                                 value.cells[0].text + ")",
