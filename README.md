@@ -632,7 +632,10 @@ real, without Hermite's test, and any other A is asked it of B^-1 A, as
 `eig(B^-1*A)` is. So a cantilever's M^-1 K, refused past a thousand digits
 from 12 unknowns, is certified as `eig(K, M)` at 24. Doubles in A and B are
 read as the rationals they are, so the answer is right for the data as
-stored, and inexact:
+stored, and inexact. A B of doubles symmetric only up to rounding, as
+X'*D*X, is refused: write (B + B')/2. An A not symmetric then has B^-1 A
+exact and larger than the rounded product, marked from about 5x5 and
+refused from 6x6 where `eig(B^-1*A)` of the rounded product still answers:
 
 ```
 >> eig([2 -1; -1 2], [2 1; 1 2])
