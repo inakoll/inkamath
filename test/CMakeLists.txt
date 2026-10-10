@@ -161,7 +161,7 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brin
                          steps:runaway:150 steps:runaway:1000 steps:horizon:1000
                          robertson:inside:2000 robertson:outside:2000 robertson:rober
                          implicit:kinetic implicit:jacobian implicit:doubling implicit:inset
-                         implicit:layered)
+                         implicit:layered tensorgrad:attend tensorgrad:small)
     string(REPLACE ":" ";" checked ${checked})
     list(POP_FRONT checked file instance count)
     set(name ${instance})
@@ -517,6 +517,12 @@ set_tests_properties(check_see_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^see: 100 steps from 0, against exact values\nsee\\.Xp: within 0\nsee\\.Z: within 0\nsee\\.M: within 0\nsee\\.s: within 0\n$")
 set_tests_properties(check_learn_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^learn: 100 steps from 0, against exact values\nlearn\\.K: within 0\nlearn\\.W: within 0\nlearn\\.a: within 0\nlearn\\.d: within 0\nlearn\\.E: within [1-9](\\.[0-9])?e-1[4-6]\n$")
+# A gradient with respect to a tensor compiled (DESIGN.md), as
+# compile/tensorgrad.ink gives it; attend's exp is a double's, as heads' is.
+set_tests_properties(check_attend_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^attend: 100 steps from 0, against exact values until 1 and inexact ones from there\nattend\\.WQ: within (0|[1-9](\\.[0-9])?e-1[4-9])${about}\n$")
+set_tests_properties(check_small_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^small: 100 steps from 0, against exact values\nsmall\\.g: within 0\nsmall\\.o: within 0\nsmall\\.s: within 0\n$")
 set_tests_properties(check_unread_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^unread: 100 steps from 0, against exact values\nunread\\.y: within 0\n$")
 set_tests_properties(check_lone_report PROPERTIES PASS_REGULAR_EXPRESSION
@@ -747,7 +753,7 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:ledge logistic:gate momentu
                          goldberg:year goldberg:needle goldberg:big goldberg:seven iterates:poly
                          blocks:nested conv:see straddle:knee apollo11:whole dyn:nm dyn:cd
                          steps:coast:1001 robertson:inside:2000 robertson:outside:2000
-                         robertson:rober)
+                         robertson:rober tensorgrad:small)
     string(REPLACE ":" ";" checked ${checked})
     list(POP_FRONT checked file instance count)
     set(name ${instance})
@@ -835,6 +841,7 @@ foreach(report IN ITEMS
         "outside_2000:^outside: 2000 steps from 0 in float, against exact values until 6 and inexact ones from there\noutside\\.y: within 0\\.00061, 1e\\+10 units of a float${about}\n$"
         "rober:^rober: 100 steps from 0 in float, against exact values until 1 and inexact ones from there\nrober\\.y: within 2\\.6e-07, 4\\.4 units of a float${about}\n$"
         "cd:^cd: 100 steps from 0 in float, against exact values until 85 and inexact ones from there\n(cd\\.[a-z]+: within [1-9](\\.[0-9])?e-0[6-8], [0-9.e+-]+ units of a float${about}\n)+$"
+        "small:^small: 100 steps from 0${in_float}\nsmall\\.g: ${exact}\nsmall\\.o: ${exact}\nsmall\\.s: ${exact}\n$"
         "cls:^cls: 100 steps from 0${inexact}\ncls\\.z: within 2\\.4e-08, 0\\.49 units of a float\ncls\\.q: within 1\\.9e-06, 1\\.5 units of a float${about}\ncls\\.s: within 6\\.3e-08, 2\\.1 units of a float${about}\ncls\\.loss: within 4\\.1e-07, 3\\.8 units of a float${about}\n$")
     string(FIND "${report}" ":" colon)
     string(SUBSTRING "${report}" 0 ${colon} instance)
