@@ -3547,7 +3547,7 @@ that exploring seven domains asked of the interpreter, by how many asked.
   -0.9655946220305717, acos 5.278 at -0.966307379845344 and acosh 5.309 at
   1.4415185508643205, above the 20,000 points' figures;
   `test/prelude_test.cpp` holds the table's parts within 2.91, 5.42, 5.28
-  and 5.31, which reach at most 1.90, 2.90, 1.80 and 2.14. The sweep finds
+  and 5.31, each farthest in the table since review. The sweep finds
   the values within the review's figures, atan 1.432, asin 2.440, acos 2.461
   and acosh 3.429. 50 lines of sources against about 45: the prelude 26 and
   its comment 5, the fast path's table 8, its refusals 7 and the part's test

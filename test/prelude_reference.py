@@ -108,6 +108,13 @@ scanned |= {
              "0x1.141677a5d4e81p+0 0x1.11fa63e8638aep+0 0x1.176f736dfa446p+0 0x1.124b5a5651565p+0 "
              "0x1.10b36159bb631p+0",
 }
+# Their parts' farthest, from the implementation's sweep; acos's is in
+# asin's, which prelude_test.cpp negates for it.
+scanned |= {
+    "atan_dx": "0x1.bbad07414fd41p+0",
+    "asin_dx": "-0x1.ee626b15a12bbp-1 -0x1.eebfd744a36e7p-1",
+    "acosh_dx": "0x1.71075c188a213p+0",
+}
 scanned = {k: [float.fromhex(x) for x in v.split()] for k, v in scanned.items()}
 
 ln2 = mpmath.log(2)
@@ -186,6 +193,8 @@ section("asin", mpmath.asin, asin_args)
 section("acos", mpmath.acos, acos_args)
 section("acosh", mpmath.acosh, acosh_args)
 # The parts grad takes, where they are finite; acos's is asin's negated.
-section("atan_dx", lambda x: 1 / (1 + x * x), atan_args)
-section("asin_dx", lambda x: 1 / mpmath.sqrt(1 - x * x), [x for x in asin_args if abs(x) < 1])
-section("acosh_dx", lambda x: 1 / mpmath.sqrt(x * x - 1), [x for x in acosh_args if x > 1])
+section("atan_dx", lambda x: 1 / (1 + x * x), atan_args + scanned["atan_dx"])
+section("asin_dx", lambda x: 1 / mpmath.sqrt(1 - x * x),
+        [x for x in asin_args if abs(x) < 1] + scanned["asin_dx"])
+section("acosh_dx", lambda x: 1 / mpmath.sqrt(x * x - 1),
+        [x for x in acosh_args if x > 1] + scanned["acosh_dx"])
