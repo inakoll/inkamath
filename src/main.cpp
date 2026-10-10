@@ -60,6 +60,8 @@ At a terminal the prompt edits the line and keeps its history.
               that is not the one recorded
   --float     with --compile or --check, write floats where they write
               doubles
+  --steps n   with --check and an instance, step it n times rather than
+              100, n from 1 to 100000
   --help      print this and exit
 
 A file whose first line that is not blank or a comment starts with '>>'
@@ -200,7 +202,7 @@ static int compile(const string& source, const string& name, const string& targe
 
 // The oracle (DESIGN.md, next in line): an instance the file defines,
 // compiled, and the program that holds it to the interpreter.
-static int check(const string& source, const string& name, const string& target) {
+static int check(const string& source, const string& name, const string& target, int steps) {
     ifstream in(source);
     if (!in) {
         cerr << "inkamath: cannot open '" << source << "'\n";
@@ -221,7 +223,8 @@ static int check(const string& source, const string& name, const string& target)
             cerr << "inkamath: " << file << " defines no instance " << name << '\n';
             return 1;
         }
-        program = CheckC::Program(p, name, found->second, module, name + " in " + file, *unfed);
+        program =
+            CheckC::Program(p, name, found->second, module, name + " in " + file, *unfed, steps);
     } catch (const runtime_error& error) {
         cerr << "inkamath: " << error.what() << '\n';
         return 1;
@@ -280,6 +283,7 @@ static int replay(const string& source) {
 
 int main(int argc, char* argv[]) {
     bool           echo = false, then_input = false, compiling = false, checking = false;
+    int            steps = 0;  // not given
     string         target;
     vector<string> files;
     for (int i = 1; i < argc; ++i) {
@@ -298,7 +302,19 @@ int main(int argc, char* argv[]) {
             checking = true;
         } else if (arg == "--float") {
             CompileC::floats = true;
-        } else if (arg == "-o" && i + 1 < argc) {
+        } else if (arg == "--steps") {
+            const string n   = i + 1 < argc ? argv[++i] : "";
+            const char*  why = steps ? "is given twice" : "takes a whole number from 1 to 100000";
+            if (steps || n.empty() || n.size() > 6 || n[0] == '0' ||
+                n.find_first_not_of("0123456789") != string::npos || (steps = stoi(n)) > 100000) {
+                cerr << "inkamath: --steps " << why << "\nTry 'inkamath --help'.\n";
+                return 2;
+            }
+        } else if (arg == "-o") {
+            if (i + 1 == argc) {
+                cerr << "inkamath: -o takes a file to write\nTry 'inkamath --help'.\n";
+                return 2;
+            }
             target = argv[++i];
         } else if (arg == "--echo") {
             echo = true;
@@ -317,6 +333,10 @@ int main(int argc, char* argv[]) {
                 "Try 'inkamath --help'.\n";
         return 2;
     }
+    if (steps && (compiling || !checking || files.size() != 2)) {
+        cerr << "inkamath: --steps takes --check with an instance\nTry 'inkamath --help'.\n";
+        return 2;
+    }
     if (compiling) {
         if (files.empty() || files.size() > 2) {
             cerr << "inkamath: --compile takes a file, optionally a model it defines, and -o "
@@ -333,7 +353,7 @@ int main(int argc, char* argv[]) {
                     "-o check.c\nTry 'inkamath --help'.\n";
             return 2;
         }
-        return check(files[0], files[1], target);
+        return check(files[0], files[1], target, steps ? steps : 100);
     }
 
     // Every file is read before anything runs, so that a command line which

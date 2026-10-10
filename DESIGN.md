@@ -1782,6 +1782,7 @@ closures need one anyway, and can bring it.
 | C277 `[fixed]` | **Reading one cell of a stored matrix copied the whole of it.** A cell's read evaluated its matrix, and the answer a term remembers, a parameter's value and a local's were each returned by copy: with `T_n[p<=200, q<=200] = p == q`, summing `T_1[p,q]` over its cells took 7.8 s, against 0.34 s at 100x100, and as long through a parameter, longer through a local. Only a literal was read where it is kept. Now a term or call remembered, a parameter and a local are too, found again once the cell's place is read, as reading it may bind or remember and so move them; a matrix not remembered is evaluated as before, and so is any error, in the same order. At 300x300 the three sums took 177 s and take 0.17 s, in Release. In 32 lines and 5 of comment, the term's key being Eval's own, moved out of it to be asked first. matrices.ink holds it, its entries passing the 60 s timeout threefold before; no other answer moved. |
 | C278 `[fixed]` | **An index read past where its sum's body ended was only "not defined".** A sum's body is a term, ending at the next '+' or '-', so `sum_(k=1)^3 (k<>1) + (k<>2)` reads k outside it, and said "k is not defined", which hid why. Now such an error, on a line whose sum or product ended its body at a '+' or '-' before a read of its index, says "k is bound in the sum's body alone, which ended at the '+'", in 12 lines and 2 of comment. Only the line typed is known so: a definition's sum read through a later call, `f(x) = sum_(k=1)^3 x + k` then `f(1)`, still says "k is not defined". series.ink holds it, and no other answer moved. |
 | C279 `[fixed]` | **`lim` stopped at a term repeated once, wrong and unmarked.** C36's remainder, `step*r/(1-r)`, is 0 for a step of 0 whatever the step before it, so a term equal to the one before ended the walk: with the binary digits of x, `r(x)_n = r(x)_(n-1) + (r(x)_(n-1) + 2^-n <= x)*2^-n`, `lim r(1/3)` was 0.25, since r_2 = r_3, where the limit is 1/3. A step of 0 now forms no ratio either, as the step after one already did not, and the step before it is what may be left: the walk goes on past a pause and stops within 2^-34/3 of 1/3, and --check moves such a limit by that step. The compiled walk takes the same rule, and a float's stop on floats a unit or two apart, which a step of 0 passed too, leaves such a step to it, in 3 lines, 2 changed and 3 of comment; `float_gate` in `test/cli.cmake` quotes the new stop. A sequence that stays where it repeated after a step over the tolerance stops a term later on the same value and remainder, and after one within it stops where it did, moved by that step rather than by 0; no golden moved; one repeated twice running, `lim r(1/5)` at 0, still stops, as any rule over a few terms can be fooled. A series without an upper bound stopped so too, `sum_(k=0) (k<>2)/2^k` at 3/2 for 7/4. sequences.ink and series.ink hold it, and `halves` in `test/compile/newton.ink` the compiled walk, in double and in float. |
+| C280 `[fixed]` | **`-o` last on the line was an unknown option.** `--check coast.ink coast -o` said "unknown option '-o'", where `--steps` last says what it takes. Found reviewing the specification of `--steps n`. Now `-o` last says "-o takes a file to write", exit 2; `check_output_missing` in `test/cli.cmake` holds it. |
 | C281 `[fixed]` | **`eig(A, B)` of a B whose cells are far from 1 refused it, or with a NaN.** Its test of B positive definite counted the roots of B's characteristic polynomial unscaled, whose last coefficient is det(B), 10^-1200 for 4 unknowns in 10^-300, past a thousand digits: `eig(Kf(2), Mf(2)/10^300)` was refused "by a guard approximated past a thousand digits", `eig(Kf(2), Mf(2)*10^300)` "a comparison needs a number, not -nan", and so was `eig(Kf(4), Mf(4)*10^150)`, which now answers, marked past a thousand digits in B^-1 A's own count. B is counted over 2^e now, as eig counts B^-1 A, so a double's 2^e never passes the digits: `eig(I, I*~10^-300)` of 4 unknowns was refused too. In 1 line changed; geneig.ink holds it, and no other answer moved. |
 
 **Measure instructions, not the clock.** One of those changes made the matrix
@@ -2848,9 +2849,6 @@ that exploring seven domains asked of the interpreter, by how many asked.
   checked with its reader's, after compiling, which is where the refusal of
   `v` in `compile_rates_refused` now comes from, in the same words. The
   refusals are in `test/cli.cmake`, with C74's.
-- **Steps and tolerance as options**, when a model asks: a hundred steps is
-  short of what a slow filter settles in, and a billionth is loose for a
-  well-conditioned step.
 - `[done]` **The parts and modulus of a complex number**: a frequency
   response |T(e^{jw})| cannot be written, as `abs` refuses a complex value and nothing
   gives its real or imaginary part. Decided: `re(z)` and `im(z)` built in,
@@ -3232,12 +3230,120 @@ that exploring seven domains asked of the interpreter, by how many asked.
   (r(x)_(n-1) + 2^-n <= x)*2^-n`, x's binary digits, answers
   `lim r(1/3)` 0.25 from its terms 0, 0, 1/4, 1/4. The smallest change to
   weigh: two zero steps in a row, or README saying that one ends it.
-- **`--check`'s hundred steps as an option**, with `lim`'s. Doyle 1978's
-  loop at dt = 1/10 is ten time units in them, where the nominal loop has
-  not settled, [-1.18; 1.50] from [1; 0], and the one past its margin,
-  m = 6/5, has not run away; a thousand show both. Apollo 11's translunar
+- `[done]` **`--check`'s hundred steps as an option, `--steps n`.** Doyle 1978's loop
+  at dt = 1/10 is ten time units in a hundred steps, where the nominal loop
+  has not settled, [-1.18; 1.50] from [1; 0], and the one past its margin, m
+  = 6/5, has not run away; a thousand show both. Apollo 11's translunar
   coast is a thousand Runge-Kutta steps of 177 s, of which its check can
-  hold only a hundred of 1767 s.
+  hold only a hundred of 1767 s. A slow filter settles later still.
+
+  Decided:
+  - **`--steps n`**, beside `--check file instance -o check.c`, anywhere on
+    the line as the other options are, with `--float` or without. n is
+    written in decimal digits, the first not 0, from 1 to 100000. Without
+    it, a hundred, so no report moves, and `--steps 100` writes the same
+    program byte for byte.
+  - **n counts the step's calls**, as the first line already does: terms
+    from the first to the first plus n - 1. A model of N steps after its
+    initial term is checked whole with N + 1, Apollo's coast, y_0 to y_1000,
+    with 1001. The check reads no parameter of the model: `N` is a name the
+    user chose, and Doyle's loop has a dt and none.
+  - **The first line says n**, `coast: 1001 steps from 0, against exact
+    values`, and `1 step` for one. Nothing else in the report changes words:
+    the values, the estimate, the flips and the straddles each cover the n
+    steps.
+  - **Refused, before anything runs**, as an unknown option is, exit 2:
+    every value that is not such a number, in one sentence, `--steps takes a
+    whole number from 1 to 100000`: 0, -5, 2.5, 1e3, 100001, and --steps
+    last on the line; and `+5` and `0100`, forms that add nothing (CLAUDE.md
+    §2). Given twice, `--steps is given twice`, even alike. With
+    `--compile`, a transcript's `--check` or files run, `--steps takes
+    --check with an instance`, as `--float` is refused: a header has no run,
+    and a transcript no steps.
+  - **The limit, 100000, is a judgement**, as `lim`'s hundred terms are
+    (C36), not a technical bound: a hundred times the most a model has
+    asked. The program holds every term of every cell as an initializer, its
+    value, its estimate and what is known of it, some 50 bytes a term: 5 MB
+    a cell at the limit, and a layer's thousand cells 5 GB, past what a
+    compiler builds as a test; the program's int index, steps by cells,
+    passes 2^31 only in one of 100 GB. The interpreter's own cost is n terms
+    four times, each asked upward in an evaluation of its own and finding
+    the one before memoised, so n spends none of its million steps; a term
+    that does is reported as today, "ran out of steps at K". The memo keeps
+    100000 results and, filling, its newer half, which is what a walk upward
+    reads.
+  - **Exact terms grow with n**, a rational recurrence's by digits each
+    step, to the thousand, where the interpreter approximates and goes on in
+    doubles: a term costs at most a thousand digits' arithmetic, and the
+    first line says where as it does now, `until 334 and inexact ones from
+    there`. Nothing new to report.
+  - **The estimate's three runs** take the same n steps, so a check costs
+    four walks of n terms, as it costs four of a hundred now; "past the
+    tolerance from K" and the straddle look over n. The flips' table is n
+    long.
+
+  Rejected:
+  - **The tolerances as options**, the rest of the line queued as "Steps and
+    tolerance as options", which this entry replaces. `lim`'s 1e-10, on its
+    step and its remainder, and its hundred terms are what `lim` means: an
+    option would make a transcript's answers depend on the command line that
+    replays it, and the compiled walk takes the same rule so that the check
+    compares like with like. `--check`'s billionth only decides the exit:
+    the report already prints the largest difference, `line.w: within
+    4.4e-16`, which says how well conditioned a step is, and a test that
+    wants it tighter holds those digits, as `test/CMakeLists.txt` does. No
+    model has asked for another verdict (CLAUDE.md §2); one that does is an
+    entry of its own.
+  - **A count written in the file**, a definition or the model's `N`: a file
+    holds definitions, and one only `--check` reads is a second language
+    inside the first; nothing tells a parameter is a count of steps; and one
+    instance checked at two counts would need two files.
+  - **An environment variable**: invisible in the command that runs the
+    check, where a ctest line should say everything it does.
+  - **`--steps=n` or `-n`**: one spelling, as `-o` has.
+  - **n as the last index**: the option would count one thing and the first
+    line another.
+  - **A thousand by default**: 338 report lines in the stories and
+    `test/CMakeLists.txt` move, and every check takes ten times as long.
+
+  About 20 lines of sources: `main.cpp` 14, the option read and refused,
+  passed to `check`, and the help's two lines; `check.hpp` 6, the step count
+  a parameter of `Program` and `Flips` where it is a constant, and `1 step`.
+  Past 30 the implementation stops and reports. README's paragraph on
+  `--check` gains a sentence saying plainly that n counts the step's calls,
+  the first term's among them, so that a model of N steps after its initial
+  term is checked whole with `--steps` N + 1. About 16,000 lines in all.
+
+  Specified in `test/compile/steps.ink`: `coast`, a body thrown up and
+  falling back by semi-implicit Euler, a thousand steps of 1/8, whole at
+  1001, every term within 0 in double and in float, and at 1 step;
+  `runaway`, 4^n, within 0 at 150 steps and parting at 512 at a thousand,
+  where 2^1024 is no double; `horizon`, a filter of time constant a
+  thousand, exact until 334 and inexact from there. And in
+  `test/compile/steps.cmake`, in `test/cli.cmake`'s form: the programs'
+  first lines and sizes, `--steps 100` as the default byte for byte, 100000
+  read, the refusals, nine of a value, one twice and three of a mode, the
+  usage without `-o`, and `--help`. Unwired, every case failing today on the
+  unknown option: the implementation moves the cases into `test/cli.cmake`
+  and deletes the file, and wires each report the file gives, `coast` at
+  1001 and 1, `runaway` at 150 and 1000 and `horizon` at 1000 beside the
+  other checks in `test/CMakeLists.txt`, and `coast` at 1001 beside the
+  float ones, an entry `file:instance:n` in both lists naming its target
+  after both, `runaway` at 1000 failing as `wild` does. Expected lines by
+  hand: `coast` by its closed forms, v_n = 64 - n/8 and y_n = 8n -
+  n(n+1)/128, multiples of 1/64 below 2^11;
+  `runaway` by powers of two; `horizon`'s 334 by its denominator, 10^(3n) in
+  lowest terms, and its difference, 1.1e-16, by the step simulated in Python
+  against exact fractions, its estimate's digits being the seeds'; the
+  programs' lines by `check.hpp`'s text.
+
+  Built as specified: every line of `steps.ink` passes as written,
+  `horizon`'s estimate 1.7e-15, held by its form. Departures, the review's:
+  the help's two lines go to the `help` case, not a `help_steps`, and the
+  cases to `cli.cmake`'s first part; `steps.cmake` is gone. Every other
+  check program and header byte for byte. 25 lines of sources written where
+  about 20 were planned, 14 more in all: `main.cpp` 16 more, `check.hpp` 2
+  fewer. 16,282 lines in all.
 - **A cumulative sum compiled as an accumulator**, `sum_(t=1)^n e(t)`:
   refused as "a sum whose bounds are not constants", where a regret or a
   running loss is exactly that (Reddi et al. 2018).

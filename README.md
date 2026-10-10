@@ -227,6 +227,11 @@ rounding's, and the check does not fail for it (`test/compile/straddle.ink`,
 where `crease`'s 0.30000000000000004 is 5.6e-17 from the double nearest its
 threshold 3/10).
 
+`--steps n` beside it steps the instance n times rather than a hundred, n
+from 1 to 100000. n counts the step's calls, the one that computes the first
+term among them, so a model of N steps after its initial term, `y_0` to
+`y_N`, is checked whole with `--steps` N + 1 (`test/compile/steps.ink`).
+
 `--float`, beside `--compile` or an instance's `--check`, writes floats where
 the header writes doubles, every constant the nearest float, for a target that
 computes in float. Its check holds each term within a thousandth of one plus
