@@ -344,8 +344,26 @@ static inline void inkamath_prelude_init(inkamath_prelude* m_) {
 static inline void inkamath_prelude_step(inkamath_prelude* m_) {
     ++m_->index_;
     m_->c[0] = inkamath_prelude_exp((double)m_->index_) + inkamath_prelude_log((double)m_->index_ + 1.0) + inkamath_prelude_tanh((double)m_->index_) + inkamath_prelude_ilogb((double)m_->index_ + 1.0) + inkamath_prelude_sin((double)m_->index_) + inkamath_prelude_cos((double)m_->index_) + inkamath_prelude_atan((double)m_->index_) + inkamath_prelude_asin((double)m_->index_) + inkamath_prelude_acos((double)m_->index_) + inkamath_prelude_acosh((double)m_->index_ + 1.0);
-    const double t0_ = inkamath_prelude_exp_jx((double)m_->index_) + inkamath_prelude_log_jx((double)m_->index_ + 1.0) + inkamath_prelude_tanh_jx((double)m_->index_) + inkamath_prelude_sin_jx((double)m_->index_) + inkamath_prelude_cos_jx((double)m_->index_) + inkamath_prelude_atan((double)m_->index_) + inkamath_prelude_asin_jx((double)m_->index_) + inkamath_prelude_acos_jx((double)m_->index_) + inkamath_prelude_acosh_jx((double)m_->index_ + 1.0);
-    m_->d[0] = (isnan(t0_) ? NAN : inkamath_prelude_exp_dx((double)m_->index_, 1.0) + inkamath_prelude_log_dx((double)m_->index_ + 1.0, 1.0) + inkamath_prelude_tanh_dx((double)m_->index_, 1.0) + inkamath_prelude_sin_dx((double)m_->index_, 1.0) + inkamath_prelude_cos_dx((double)m_->index_, 1.0) + inkamath_prelude_atan_dx((double)m_->index_, 1.0) + inkamath_prelude_asin_dx((double)m_->index_, 1.0) + inkamath_prelude_acos_dx((double)m_->index_, 1.0) + inkamath_prelude_acosh_dx((double)m_->index_ + 1.0, 1.0));
+    const double t0_ = inkamath_prelude_exp_jx((double)m_->index_);
+    const double t1_ = inkamath_prelude_exp_dx((double)m_->index_, 1.0);
+    const double t2_ = inkamath_prelude_log_jx((double)m_->index_ + 1.0);
+    const double t3_ = inkamath_prelude_log_dx((double)m_->index_ + 1.0, 1.0);
+    const double t4_ = inkamath_prelude_tanh_jx((double)m_->index_);
+    const double t5_ = inkamath_prelude_tanh_dx((double)m_->index_, 1.0);
+    const double t6_ = inkamath_prelude_sin_jx((double)m_->index_);
+    const double t7_ = inkamath_prelude_sin_dx((double)m_->index_, 1.0);
+    const double t8_ = inkamath_prelude_cos_jx((double)m_->index_);
+    const double t9_ = inkamath_prelude_cos_dx((double)m_->index_, 1.0);
+    const double t10_ = inkamath_prelude_atan((double)m_->index_);
+    const double t11_ = inkamath_prelude_atan_dx((double)m_->index_, 1.0);
+    const double t12_ = inkamath_prelude_asin_jx((double)m_->index_);
+    const double t13_ = inkamath_prelude_asin_dx((double)m_->index_, 1.0);
+    const double t14_ = inkamath_prelude_acos_jx((double)m_->index_);
+    const double t15_ = inkamath_prelude_acos_dx((double)m_->index_, 1.0);
+    const double t16_ = inkamath_prelude_acosh_jx((double)m_->index_ + 1.0);
+    const double t17_ = inkamath_prelude_acosh_dx((double)m_->index_ + 1.0, 1.0);
+    const double t18_ = t0_ + t2_ + t4_ + t6_ + t8_ + t10_ + t12_ + t14_ + t16_;
+    m_->d[0] = (isnan(t18_) ? NAN : t1_ + t3_ + t5_ + t7_ + t9_ + t11_ + t13_ + t15_ + t17_);
 }
 
 #endif

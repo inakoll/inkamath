@@ -164,9 +164,9 @@ private:
     }
     // Or may answer it, calling a function of the header that does (C211).
     bool MayNan(const std::string& code) const {
-        return WritesNan(code) ||
-               std::any_of(nan_functions_.begin(), nan_functions_.end(),
-                           [&](const std::string& f) { return Writes(code, f); });
+        const auto writes = [&](const std::string& f) { return Writes(code, f); };
+        return WritesNan(code) || std::ranges::any_of(nan_functions_, writes) ||
+               std::ranges::any_of(nan_temporaries_, writes);
     }
     static bool Writes(const std::string& code, const std::string& word, std::size_t from = 0) {
         const auto name = [&](std::size_t at) {
@@ -746,10 +746,11 @@ private:
         return result;
     }
 
-    // Within a loop that binds places alone, a sum's or a definition's by its
-    // cells, a call is one value for the code it is given, unless it reads a
-    // term, which depends on where: compiled at each place, a call by cells
-    // wrote all its cells at each (C230). Kept by the temporaries it declared.
+    // Within a step, or a loop that binds places alone, a sum's or a
+    // definition's by its cells, where it declares in another list, a call is
+    // one value for the code it is given, unless it reads a term, which
+    // depends on where: compiled at each place, a call by cells wrote all its
+    // cells at each (C230). Kept by the temporaries it declared.
     using Memo =
         std::pair<const void*, std::map<std::tuple<const void*, std::string, std::string>, Code>>;
     Code Memoized(const std::string& name, const Reference<Value>& function, Expansion& expansion,
@@ -934,12 +935,22 @@ private:
                 moves.empty() ? jumps : "(" + moves + " ? " + jumps + " : " + plain + ")";
         }
         const auto& takes = parts_.at(derived);
+        value             = Called(value);  // first: compilers order arguments apart
         if (!takes) return Answer(value);
         std::string taken;
         for (const auto& [part, i] : *takes)
             taken += (taken.empty() ? "" : ", ") +
                      (part ? arguments[i].part[0] : arguments[i]).cells[0].text;
-        return Answer(Parted(value, Of(Cell(derived + "(" + taken + ")", primary)), read));
+        return Answer(Parted(value, Called(Of(Cell(derived + "(" + taken + ")", primary))), read));
+    }
+
+    // Where its argument moves, a temporary, which every part over it reads
+    // again (C140), a name that may be NaN where the call may (C189, C211).
+    Code Called(Code code) {
+        const bool nan = MayNan(code.cells[0].text);
+        code           = Shared(code);
+        if (nan && code.cells[0].atom) nan_temporaries_.insert(code.cells[0].text);
+        return code;
     }
 
     // Whether a function of the prelude reads a sequence with parameters,
@@ -1155,6 +1166,7 @@ private:
         const int  outer_shift  = std::exchange(shift_, 0);
         // Nor the reader's guard, which defers what it reads (C92).
         const bool outer_deferring  = std::exchange(deferring_, false);
+        const Setting<Memo> memo(memo_, {temporaries_, {}});
         auto       outer_parameters = std::exchange(read_parameters_, {});
         try {
             body();
@@ -1845,7 +1857,7 @@ private:
                 module_ + "_inverse" + std::to_string(n) + "_(" + t + ");"};
         });
         // The helper writes NaN into it, out of the cells' sight (C308).
-        nan_functions_.insert(name);
+        nan_temporaries_.insert(name);
         return Array(name, Extent{n, n});
     }
 
@@ -2415,7 +2427,8 @@ private:
     // guard reading only them; one reading a value that moves is tested where
     // the cell is. Under grad it has a part where any cell has one.
     Code Cells(const std::string& name, const Reference<Value>& definition) {
-        const Setting<Memo> memo(memo_, {temporaries_, {}});
+        std::optional<Setting<Memo>> memo;
+        if (memo_.first != temporaries_) memo.emplace(memo_, Memo{temporaries_, {}});
         std::optional<Code> whole;  // the matrix written whole, if it is
         for (const Clause<Value>& clause : definition.Clauses())
             if (!clause.parameters.cells()) whole = Emit(clause.expression);
@@ -2558,6 +2571,8 @@ private:
         inside.values.insert(given.values.begin(), given.values.end());  // the sizes, constants
         Walked* const              outer_limit       = std::exchange(limit_, &walked);
         auto* const                outer_temporaries = std::exchange(temporaries_, walked.based);
+        // Its names are its own: a step's t1_ is not its term before (C308).
+        const Setting<std::set<std::string>> apart(nan_temporaries_, {});
         auto                       outer_reads       = std::exchange(read_parameters_, {});
         std::map<int, Code>        bases;
         std::vector<std::string>   general;
@@ -3293,7 +3308,8 @@ private:
         Code               total;
         bool               constant = true;
         std::vector<Value> terms;
-        const Setting<Memo> memo(memo_, {temporaries_, {}});
+        std::optional<Setting<Memo>> memo;
+        if (memo_.first != temporaries_) memo.emplace(memo_, Memo{temporaries_, {}});
         for (int k = first; k <= last; ++k) {
             places_[name]   = Value(Number(k));
             const Code term = Emit(expression->Body());
@@ -4506,7 +4522,8 @@ private:
     bool                             clauses_ = false;  // whether the step keeps them; see Build
     bool                             aware_ = false;  // whether it writes NaN, and so tests for it
     std::set<std::string>            nans_;             // arguments' cells that may be NaN
-    std::set<std::string>            nan_functions_;    // the header's names that may hold NaN
+    std::set<std::string>            nan_functions_;    // the header's that may answer NaN
+    std::set<std::string>            nan_temporaries_;  // and the step's or limit's, by name
     bool                             guarding_ = false;  // in a guard, which asks only for values
     std::map<std::string, Value>     known_;    // globals that read only those
     std::set<std::string>            read_parameters_;      // by the value being compiled

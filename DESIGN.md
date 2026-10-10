@@ -1812,6 +1812,7 @@ closures need one anyway, and can bring it.
 | C312 `[fixed]` | **`--check` held a cell of a matrix that is not real to the interpreter's real one.** The step writes a matrix NaN whole where a cell is (C221), and a root of a negative number is NaN in C, so where `g_n = grad_(v = [1, 2; 3, x_n]) v[2,2]^(1/2)` reads -1 every cell is NaN, while the interpreter gives `[~0, ~0; ~0, ~(3.061617e-17-i*0.5)]`; the check said "nan at 3, where the interpreter gives 0" of g[1,1], the cell that is real, rather than why there is no real answer, as it says of a scalar. Each cell of a matrix with a cell that is not real is held to that now, "where the interpreter's term is not a real matrix", in 4 lines and 2 of comment; `root` in `test/compile/nan.ink` holds it. The check still fails there, as it does wherever the interpreter's term is not real. |
 | C313 `[open]` | **grad's search for a global of its name takes a local bound where evaluation does not reach as bound.** The search is static, in the order of evaluation (C305), and cannot know that a short-circuit skips its right side or that a sum has no terms: with globals `x = 100` and `t = x^2`, `grad_(x = 2) (((x > 5) and ((t = x) > 0)) + t)` and `grad_(x = 2) ((sum_(k=1)^0 (t = k*x)) + t)` answer 0, the global t's derivative through a global x that grad's x does not reach, where "t reads the global x, which grad's x does not reach" is due. Found reviewing grad through a local. Not fixed statically: a local in a sum's body or a short-circuit's right side taken as not bound would refuse where it is, as `grad_(x = 2) ((sum_(k=1)^3 (t = k*x)) + t)`, 9, and a false refusal is no better than this rare wrong answer. The fix is the check done during evaluation, in "Next in line". gradlocal.ink records both answers, wrong on purpose. |
 | C314 `[fixed]` | **A local could take an empty parameter list.** The parser reads `g()` as `g`, as an instance's `gain()` is gain, so C303 did not see it: `(lg() = 1) + lg()` was 2, a list that adds nothing (CLAUDE.md, section 2). Found reviewing C309. The definition says it was written with one now, and a local so written is refused as C303's are, "a local cannot take parameters", in the evaluator and grad's walk; `g() = 1` as a statement is `g = 1` still. In 6 lines, 2 of comment, and 3 changed; locals.ink holds it. |
+| C315 `[fixed]` | **A temporary that may be NaN was known by a name a limit's function gives its own.** Under grad a call of the header's whose argument moves is a temporary, and one that may be NaN joined `nan_functions_` by its name; a limit's function names its term before `t1_` and its temporaries `v0_` on, so a step's `t1_`, atan's, or another limit's `v0_`, exp's, made an argument there reading its own `t1_` or `v0_` tested for a NaN nothing gives it, C189's `isnan(...) ? NAN :`, in a limit where nothing moves: the same values in a longer header. Found reviewing the size of a forward-mode header. They are a set of their own, `nan_temporaries_`, which a limit's function starts empty; in 3 lines more, 1 of comment, and 4 changed. `compile_c315` in `test/cli.cmake` holds it. |
 
 **Measure instructions, not the clock.** One of those changes made the matrix
 workload 20 per cent slower by the clock and not by a single instruction: with
@@ -8055,28 +8056,162 @@ checked: what it asked of the compiler, each with its smallest change.
   its part beside it under `grad`. Open: a local in a sum unrolled term by
   term, which persists across terms, in a chain of guarded clauses, and in
   a model's clause, once per step.
-- **The size of a forward-mode header, measured**, before reverse mode is
-  weighed (`MANIFESTO.md`): the network's 47 weights trained by four grads
-  are 2.16 MB of header, as each direction writes a guard's dot product
-  again and each seed as `0.0*P + ... + 1.0*P`. A temporary for a guard's
-  operands, and `0.0*x` folded where x is finite, are the first two
-  measurements to take.
-  Measured with a prototype of *a compiled gradient with respect to a
-  tensor*:
-  - inkamath's own time grows near the cube of the batch: each pass
-    computes every image's loss, and copies the code of the whole argument
-    through every cell of `pad`. `tensorgrad.ink`'s network, 18 passes: a
-    49 KB header, `--compile` 3.0 s, its check program built in 0.5 s at
-    GCC -O2; on 2x3x4 images, 24 passes, 61 KB and 5.4 s; on 4x3x4, 48
-    passes, 221 KB and 86 s.
-  - exp's part is written out at each of its uses in every pass. Attention's
-    W^Q at `tensor.ink`'s size, 2x4x2, 16 passes: a 1.28 MB header, its
-    check program 57 s at GCC -O1, 4 min 40 at -O2, 2 min at Clang -O2,
-    where `heads`, forward, builds in 0.45 s. At the smallest multi-head
-    size, 2x2x1, 4 passes, 10.5 s at GCC -O2 and 2.6 s at Clang; one pass
-    alone, for one cell of W^Q, 4.3 s.
-  `tensorgrad.ink`'s `saliency` is its acceptance test, wired when its
-  `--check` takes under 30 s under the sanitizers, where it took 593 s.
+- `[done]` **The size of a forward-mode header, measured**, before reverse
+  mode is weighed (`MANIFESTO.md`). The item named two costs, measured
+  with a prototype of *a compiled gradient with respect to a tensor*:
+  inkamath's own time near the cube of the batch on `tensorgrad.ink`'s
+  `saliency`, 593 s of `--check` under the sanitizers, and exp's part
+  written at each of its uses in every pass, attention's W^Q at
+  `tensor.ink`'s size (2x4x2, 16 passes) 1.28 MB of header and 4 min 40 at
+  GCC -O2.
+
+  Measured again, by profile and by count, at b942d0d:
+  - **Most of `saliency`'s time is not the compiler's.** Its `--check` is
+    11.6 s in RelWithDebInfo: 3.0 s compiling, the rest the oracle's four
+    runs of the interpreter, exact and three disturbed, of 100 steps of 18
+    passes, 1.9 s each. Under the sanitizers the compile is 154 s and one run of
+    the interpreter 106 s; with the compile at 10 s, `--check` still takes
+    481 s, nearly all the four runs: no change to the compiler brings 100
+    steps under 30 s.
+  - **The compile is near the fourth power of the batch, B^4, and its
+    header near B^2**: one image of 3x3 to four, 0.17, 2.8, 14 and 50 s,
+    16, 45, 94 and 157 KB. 96 per cent of it compiles definitions by cells
+    again: C230 keeps a call once for the code it is given within the
+    innermost loop alone, and conv's cell is two nested sums, each opening
+    a memo of its own, so `pad(X)` is compiled again for each cell and each
+    u of every conv, and `L`'s two calls of `s`, outside any loop, compile
+    conv twice: 4,824 compilations of a definition by cells in 18 passes.
+    The header is the same either way.
+  - **In attention's header, exp's value and part are written at each
+    reading, and its argument's NaN test with them.** At `tensor.ink`'s
+    size, 36 values of exp are written 2,412 times and 324 parts 1,296
+    times, 1.17 MB of the 1.27; each argument carries the test of all 18
+    scores of its head, the score matrix being read by its cells, 1.06 MB
+    of it. grad's rules read a value again in each part, the quotient's
+    twice, so a call whose argument moves is written again by every part
+    over it.
+  - **The item's first two measurements**: a guard's dot product is already
+    a temporary, relu's guard reading conv's (`t26_ > 0.0`, C140), and
+    `0.0*x` is 72 products in `saliency`'s header and 342 in attention's,
+    a few KB, foldable only where x is known finite, which a parameter is
+    not. The network of 47 weights the item cites is not in the repository;
+    `conv.ink`'s `train`, four grads of 10 weights, is 38,617 bytes.
+
+  Decided, two changes, the header's values the same operations in the
+  same order:
+  - **A call is kept for the code it is given within a step's list, not a
+    loop's.** Within compiles a sequence with a memo for its list, and a
+    sum or a definition by cells opens one only where the list is not the
+    memo's, so a call is compiled once for the code it is given wherever
+    the step reads it. C230's argument holds as it stands: an expansion's
+    names are its own, so what a call compiles to depends on the code it is
+    given alone. As now, a call that reads a term, one inside a model's
+    expansion and one under `Reading` are not kept, and a limit's lists, a
+    derived value's and the scratch one keep a memo per loop. No header
+    moves.
+  - **Under grad, a call of a function of the header whose argument moves
+    is a temporary, its value then its part**, as an argument a call was
+    compiled in is (C140, C155). The value is declared first, explicitly:
+    C++ leaves the order of a call's arguments to the compiler, and the
+    prototype built by GCC declares the prelude's `exp_dx` first, by Clang
+    `exp_jx`. A temporary whose call may be NaN, by `MayNan` of its text,
+    joins `nan_temporaries_` (C315), so that C189 and C211 read its name
+    as they read the call, but where a function of the source reads a may-NaN
+    argument only through such a call: its answer writes the temporary,
+    not the argument, and C189 adds the argument's test, `isnan(...) ?
+    NAN :`, over-testing, the same values in a longer header. A call whose
+    argument does not move is written where the source writes it, as now.
+
+  So the may-NaN flag *Shared at every value written twice* waits for is
+  not a prerequisite here: a call's temporary carries its NaN by its name,
+  as a function of the header does. **General value numbering is not
+  needed**, and stays its own item. The owner asked whether the compiler
+  would benefit from temporaries generally; for forward mode, measured,
+  it would not: the first cost is no text at all, and the second is one
+  kind of text, which one rule shares. With both, what is still written
+  twice in attention's step is the NaN test of a matrix read by its cells,
+  103 KB of its 245 (*A matrix read by its cells tested for NaN once*,
+  which on the prototype took the header to 162 KB and GCC's time not at
+  all), and softmax's denominators, at most 24 KB, all that general value
+  numbering would add here.
+
+  Rejected:
+  - **Sharing every call of the header's, forward too**: it moves
+    `kernel.h`'s `ceil` and the prelude's `c` step into lines of their own
+    with nothing read twice.
+  - **Sharing at the reader**, a product's or a quotient's operands under
+    grad: more sites, and every product under grad moves, read twice or
+    not.
+  - **The NaN normalisation folded in**: a third of the bytes and none of
+    GCC's time, an item of its own.
+  - **Folding `0.0*x`**: a few KB, and 0 times an infinite parameter is NaN.
+  - **One memo for the whole compile**: a list's temporaries are not
+    another's, and a step's are kept by its list's address.
+  - **Keeping 100 steps and 30 s**: unreachable by any change to the
+    compiler. Three steps hold every value `saliency` specifies, its images
+    repeating every three steps and G reading no earlier term; the
+    interpreter's own speed, and whether a run exact throughout needs its
+    three disturbed runs (next in line), are not this item's.
+
+  Measured on the prototype: `saliency`'s `--compile` 3.0 s to 0.1, and
+  B^4 to near B^2, 0.04, 0.15, 0.37 and 0.75 s for one image to four,
+  their headers byte for byte; under the sanitizers its `--compile` 154 s
+  to 10 and its `--check` of 3 steps 171 s to 23, 22 in float, 100 steps
+  593 s to 481. Attention's W^Q at `tensor.ink`'s size 1,274,039
+  bytes to 252,577, exp written 36 and 324 times, GCC -O2 214 s to 10 and
+  Clang -O2 3.5 s; `attn` in `tensorgrad.ink` 81,259 bytes to 30,684, GCC
+  -O2 3.8 s to 0.35; `attend`'s `--check` under the sanitizers 42 s to 40,
+  the interpreter's. `train` grows 38,617 bytes to 40,041, its max calls
+  written once each and now a line each, a growth accepted.
+
+  What moves: of the recorded headers, `inkamath_prelude.h`'s `d` step
+  alone, its nine calls' values and parts as 18 temporaries; nothing in
+  `test/compile/expected`, no excerpt in `test/cli.cmake`, no golden. Of
+  the check programs, those that call a function of the header under grad,
+  `saliency`'s through max among them, their reports identical: the
+  prototype passed all 420 tests of `ctest` but `prelude_header`, and
+  `saliency`, `attend` and `small` printed the same reports byte for byte.
+
+  About 12 lines in `compile.hpp`: the prototype's 15 added and 4 removed,
+  3 for the memo and 8 for the temporaries, and 1 to declare the value
+  first. 16,252 lines in all at b942d0d, by `wc -l include/inkamath/*.hpp
+  src/*`; past 18 the implementation stops and reports.
+
+  Specified in `test/compile/tensorgrad.ink`'s comments, unwired, each
+  number worked out from the model, none recorded: `saliency` at 3 steps,
+  in double and float, `tensorgrad:saliency:3` among the checked instances
+  of `test/CMakeLists.txt` and its float checks; and `attn`'s header, the
+  cli case `compile_attend_calls` of `test/cli.cmake`: `attn_exp_jx(`
+  written 17 times, its definition and once for each of the 16 scores,
+  `attn_exp_dx(` 49, its definition and once for each score and each of
+  the three seeds its head's slice of W^Q takes, and the header under
+  40,000 bytes. Wired with the implementation, with the prelude's header
+  recorded again.
+
+  Built as specified, in 14 lines of `compile.hpp` against about 12: 4
+  for the memo, one of them comment, and 10 for the temporaries, a
+  function of 6 with 2 of comment and a blank line. Departures: the value
+  is declared first by a statement of its own before the part's call is
+  written, not by an order within one; and a name joins `nan_temporaries_`
+  only where the cell shared is a temporary's, at no line, so that a
+  call's text inside a function of the header, where nothing is shared, is
+  not taken for a name. The prelude's `d` step moves though nothing in it
+  is read twice, a move accepted and recorded in the commit that makes it.
+  `tensorgrad:saliency:3` passes as written, in double and float, and
+  `compile_attend_calls` counts 17 and 49 in 30,684 bytes. Under the
+  sanitizers in Debug, `saliency`'s `--check` of 3 steps takes 24 s, in
+  float too, its model's `--compile` 10 s, and `attend`'s `--check` 35 s;
+  in RelWithDebInfo `saliency`'s `--check` 3.0 s to 0.5. Every golden,
+  every header of `test/compile/expected` and every other recorded header
+  byte for byte, the reports of all 232 check programs, regenerated before
+  and after, identical, and `train` 38,617 bytes to 40,041 as measured.
+  16,266 lines in all, 16,252 at d041418.
+- **No disturbed runs where the exact run is exact throughout**, an
+  oracle change: `--check` runs the interpreter three times more, its
+  roundings and limits disturbed, and a run with no inexact term has none
+  to disturb. On the forward-mode header's prototype, `saliency`'s 100
+  steps take 7.7 s of `--check`, 0.16 of them compiling, and the three
+  runs three quarters of the rest.
 - **A maximum or minimum over an index**, `max_(i=1)^n`, as a sum is
   written: max-pooling over a window is nested `max` calls today. Minor,
   until a second model asks.
