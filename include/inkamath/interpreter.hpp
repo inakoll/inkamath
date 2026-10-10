@@ -516,9 +516,9 @@ Interpreter<T, U>::Interpreter() {
         }};
         // An inexact cell inf or NaN has lost its value, and no eigenvalue or
         // norm of it is certified, inf or other (C206). Any other real one is
-        // read as the rational its double is (DESIGN.md, C275).
+        // read as the rational its double is (DESIGN.md, C275, C296).
         stack_.checked = [](const Reference<U>& f, U& x) {
-            bool read = false;
+            int read = 0;
             for (std::size_t k = 0; k < x.Size().count(); ++k) {
                 Number& c = x.data()[k];
                 if (c.exact()) continue;
@@ -528,9 +528,9 @@ Interpreter<T, U>::Interpreter() {
                                              numeric_interface<Number>::toString(c));
                 int          e = 0;
                 const double m = std::ldexp(std::frexp(z.real(), &e), 53);
-                if (z.imag() == 0 && !Number::approximated(c)) {
+                if (z.imag() == 0) {
+                    read = std::max(read, Number::approximated(c) ? 2 : 1);
                     c    = Number(static_cast<long long>(m)) * Number::pow(2, e - 53);
-                    read = true;
                 }
             }
             return read;

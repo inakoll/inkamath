@@ -575,7 +575,8 @@ pair on it. Of a matrix of tenths, `rho` is
 certified up to about 6x6 and `abscissa` 8x8. An inexact cell is read as
 the exact rational its double is, as by `hinf` below, so the answer is
 right for the data as stored, certified or marked as of an exact matrix,
-and inexact, a bracket too: of full doubles, `rho` is certified up to 6x6
+and inexact, a bracket too, marked where a cell was approximated past a
+thousand digits: of full doubles, `rho` is certified up to 6x6
 and `abscissa` 8x8 as well. `grad` refuses both, a bisection being a
 staircase:
 
@@ -660,7 +661,8 @@ peak of section 1's T, at z = 1. Each bisects the norm's square, certified
 as rho's, on whether the Hamiltonian has an eigenvalue on the imaginary
 axis, which an exact count of real roots tells, and refuses a test whose
 numbers would pass a thousand digits rather than read it from doubles, so
-an answer is marked only where it leaves a double's range. The system is
+an answer is marked only where it leaves a double's range or a cell was
+approximated past a thousand digits. The system is
 divided by its largest cells first, exactly, so the units of its input,
 output and time cost nothing, though not its state's: a 3x3 whose states
 are scaled 10^15 apart, or 10^5 apart in doubles, is refused. An inexact

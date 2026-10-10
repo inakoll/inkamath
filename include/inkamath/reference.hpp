@@ -529,10 +529,14 @@ public:
         const bool indexed = key.indexed;
         const int  index   = key.index;
 
-        bool read = false;
+        int read = 0;
         if (stack.checked && stack.staircases.contains(this))
-            for (auto& [name, value] : key.arguments) read = stack.checked(*this, value) || read;
-        // Doubles read exactly still make an inexact answer (C240, C275).
+            for (auto& [name, value] : key.arguments)
+                read = std::max(read, stack.checked(*this, value));
+        // Doubles read exactly still make an inexact answer (C240, C275),
+        // and approximated ones a marked answer (C296).
+        if (read > 1)
+            return numeric_interface<T>::marked(Answer(call, stack, global, indexed, index, key));
         if (read)
             return numeric_interface<T>::inexact(Answer(call, stack, global, indexed, index, key));
         return Answer(call, stack, global, indexed, index, key);
