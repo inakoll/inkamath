@@ -170,6 +170,12 @@ w = 1
 >> clear w
 clear w
 
+# A power's base is read before its exponent, so a local e the exponent
+# binds is not the base, which is the built-in e as the evaluator reads it:
+# grad refused it "unless its base is e" (C311).
+>> grad_(x = 1) e^((e = 2)*x)
+~14.7781122
+
 # Two layers, each named where it is computed, as a convolutional network
 # names its pooled activations; without locals, each layer is a function of
 # every parameter before it, and the gradients are the same.
