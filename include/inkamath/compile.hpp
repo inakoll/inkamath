@@ -746,10 +746,11 @@ private:
         return result;
     }
 
-    // Within a loop that binds places alone, a sum's or a definition's by its
-    // cells, a call is one value for the code it is given, unless it reads a
-    // term, which depends on where: compiled at each place, a call by cells
-    // wrote all its cells at each (C230). Kept by the temporaries it declared.
+    // Within a step, or a loop that binds places alone, a sum's or a
+    // definition's by its cells, where it declares in another list, a call is
+    // one value for the code it is given, unless it reads a term, which
+    // depends on where: compiled at each place, a call by cells wrote all its
+    // cells at each (C230). Kept by the temporaries it declared.
     using Memo =
         std::pair<const void*, std::map<std::tuple<const void*, std::string, std::string>, Code>>;
     Code Memoized(const std::string& name, const Reference<Value>& function, Expansion& expansion,
@@ -1155,6 +1156,7 @@ private:
         const int  outer_shift  = std::exchange(shift_, 0);
         // Nor the reader's guard, which defers what it reads (C92).
         const bool outer_deferring  = std::exchange(deferring_, false);
+        const Setting<Memo> memo(memo_, {temporaries_, {}});
         auto       outer_parameters = std::exchange(read_parameters_, {});
         try {
             body();
@@ -2413,7 +2415,8 @@ private:
     // guard reading only them; one reading a value that moves is tested where
     // the cell is. Under grad it has a part where any cell has one.
     Code Cells(const std::string& name, const Reference<Value>& definition) {
-        const Setting<Memo> memo(memo_, {temporaries_, {}});
+        std::optional<Setting<Memo>> memo;
+        if (memo_.first != temporaries_) memo.emplace(memo_, Memo{temporaries_, {}});
         std::optional<Code> whole;  // the matrix written whole, if it is
         for (const Clause<Value>& clause : definition.Clauses())
             if (!clause.parameters.cells()) whole = Emit(clause.expression);
@@ -3291,7 +3294,8 @@ private:
         Code               total;
         bool               constant = true;
         std::vector<Value> terms;
-        const Setting<Memo> memo(memo_, {temporaries_, {}});
+        std::optional<Setting<Memo>> memo;
+        if (memo_.first != temporaries_) memo.emplace(memo_, Memo{temporaries_, {}});
         for (int k = first; k <= last; ++k) {
             places_[name]   = Value(Number(k));
             const Code term = Emit(expression->Body());
