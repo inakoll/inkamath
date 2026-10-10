@@ -140,3 +140,20 @@ error: a local cannot take parameters
 
 >> grad_(x = 3) x + (lf(y = 1) = y)
 error: a local cannot take parameters
+
+# Nor an index, which is a parameter: s_3 read the global n for its index,
+# and was 40 with n = 1, or n was not defined (C309).
+>> (s_n = n) + s_3
+error: a local cannot take an index
+
+>> n = 1
+n = 1
+
+>> (s_n = 10*n) + s_3
+error: a local cannot take an index
+
+>> grad_(x = 2) ((s_n = n*x) + s_3)
+error: a local cannot take an index
+
+>> clear n
+clear n

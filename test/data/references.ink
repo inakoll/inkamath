@@ -147,12 +147,13 @@ y=20
 # global: the answer it gives must not be remembered as the global's. The
 # memoised answer used to be keyed on the name alone, so 'cc_0' kept the
 # local's 99 after the line that bound it had ended, and a local even reached
-# a callee that lexical scoping keeps it out of (DESIGN.md, C49).
+# a callee that lexical scoping keeps it out of (DESIGN.md, C49). A local
+# cannot take an index now (C309), so none is remembered.
 >> cc_0 = 1
 cc_0 = 1
 
 >> (cc_0 = 99)+0
-99
+error: a local cannot take an index
 
 >> cc_0
 1
@@ -161,7 +162,7 @@ cc_0 = 1
 1
 
 >> (cc_0 = 99)+0
-99
+error: a local cannot take an index
 
 # The other way round: a remembered global must not answer for a local that
 # has just been bound.
@@ -172,7 +173,7 @@ dd_0 = 1
 1
 
 >> (dd_0 = 99)+0
-99
+error: a local cannot take an index
 
 # And a callee sees the global, whatever the caller bound on its own line,
 # which is a value: a local cannot take parameters (C303).
