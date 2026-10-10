@@ -164,9 +164,9 @@ private:
     }
     // Or may answer it, calling a function of the header that does (C211).
     bool MayNan(const std::string& code) const {
-        return WritesNan(code) ||
-               std::any_of(nan_functions_.begin(), nan_functions_.end(),
-                           [&](const std::string& f) { return Writes(code, f); });
+        const auto writes = [&](const std::string& f) { return Writes(code, f); };
+        return WritesNan(code) || std::ranges::any_of(nan_functions_, writes) ||
+               std::ranges::any_of(nan_temporaries_, writes);
     }
     static bool Writes(const std::string& code, const std::string& word, std::size_t from = 0) {
         const auto name = [&](std::size_t at) {
@@ -949,7 +949,7 @@ private:
     Code Called(Code code) {
         const bool nan = MayNan(code.cells[0].text);
         code           = Shared(code);
-        if (nan && code.cells[0].atom) nan_functions_.insert(code.cells[0].text);
+        if (nan && code.cells[0].atom) nan_temporaries_.insert(code.cells[0].text);
         return code;
     }
 
@@ -2569,6 +2569,8 @@ private:
         inside.values.insert(given.values.begin(), given.values.end());  // the sizes, constants
         Walked* const              outer_limit       = std::exchange(limit_, &walked);
         auto* const                outer_temporaries = std::exchange(temporaries_, walked.based);
+        // Its names are its own: a step's t1_ is not its term before (C308).
+        const Setting<std::set<std::string>> apart(nan_temporaries_, {});
         auto                       outer_reads       = std::exchange(read_parameters_, {});
         std::map<int, Code>        bases;
         std::vector<std::string>   general;
@@ -4519,6 +4521,7 @@ private:
     bool                             aware_ = false;  // whether it writes NaN, and so tests for it
     std::set<std::string>            nans_;             // arguments' cells that may be NaN
     std::set<std::string>            nan_functions_;    // the header's that may answer NaN
+    std::set<std::string>            nan_temporaries_;  // and the step's or limit's, by name
     bool                             guarding_ = false;  // in a guard, which asks only for values
     std::map<std::string, Value>     known_;    // globals that read only those
     std::set<std::string>            read_parameters_;      // by the value being compiled
