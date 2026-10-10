@@ -3457,7 +3457,9 @@ that exploring seven domains asked of the interpreter, by how many asked.
     0 with c < 1 is now a division by zero, where it was inf, and the
     prototype refused `edge`'s v in `test/compile/grad.ink`, "cannot compile
     v: division by zero". Left to C's pow there, inf, v stays NaN at every
-    step as C116 made it: 1 line.
+    step as C116 made it: 1 line. A constant `0^(-1/2)`, or the same power
+    under `grad_(t = 0) t^(-1/2)`, is refused as `0^-1` is, "cannot compile
+    y: division by zero", where it compiled.
 
   Rejected:
   - **Square roots alone**: the test is the same for any q, and a cap
