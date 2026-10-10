@@ -274,8 +274,7 @@ private:
                 throw std::runtime_error("grad cannot differentiate through an instance yet");
             const auto found = file->file->names.find(call->Name());
             if (found == file->file->names.end()) return Constant(x->accept(ordinary_));
-            if (call->Call().subexpr()) (void)Index(call->Call().subexpr());
-            return Call(*call, found->second, *x);
+            return Call(*call, found->second, *x, Index(call->Call()));
         }
         if (auto* x = Exactly<EqualExpression<T>>(e)) {
             EvaluationVisitor<T>::Unparametrized(*x);
@@ -324,14 +323,14 @@ private:
 
     Jet Call(FuncExpression<T>& call) {
         if (Lookup(call.Name()) || !Reads(call)) return Constant(call.accept(ordinary_));
-        if (call.Call().subexpr()) (void)Index(call.Call().subexpr());
+        const std::optional<int> index = Index(call.Call());
         if (stack_.Binds(call.Name())) return Constant(call.accept(ordinary_));
-        return Call(call, stack_.Global(call.Name()), call);
+        return Call(call, stack_.Global(call.Name()), call, index);
     }
 
     // 'written' is the call as the expression has it, 'sq.f(t)' for f in a file.
     Jet Call(FuncExpression<T>& call, const typename ReferenceStack<T>::definition_type& definition,
-             Expression<T>& written) {
+             Expression<T>& written, std::optional<int> index) {
         if (!definition || !definition->Value() || definition->Clauses().empty())
             return Constant(written.accept(ordinary_));
         const ParametersCall<T>&       p          = call.Call();
@@ -378,9 +377,7 @@ private:
             for (auto& [given, jet] : arguments)
                 read = std::max(read, stack_.checked(*definition, *jet[0]));
         if (p.limit()) return Limit(*definition, p, arguments);
-        int        index   = 0;
-        const bool indexed = p.TryEvalIndex(stack_, index);
-        Jet        out     = Term(*definition, p, indexed, index, arguments);
+        Jet out = Term(*definition, p, index.has_value(), index.value_or(0), arguments);
         for (auto& part : out)
             if (read && part) part = Marked(read > 1, *part);
         // |z| squared is re^2 + im^2, whose parts past the first the real
@@ -657,9 +654,17 @@ private:
 
     // An index is a whole number, so one that moves is at a jump, as floor
     // is at a whole number (C78).
+    // Once, as the evaluator does, since it may bind a local (C304).
     int Index(const PExpression<T>& e, const std::string& what = "an index") {
-        if (Reads(*e) && Moves(Eval(e))) throw std::runtime_error(what + " jumps at " + Where());
-        return AsIndex<T>(e->accept(ordinary_));
+        if (!Reads(*e)) return AsIndex<T>(e->accept(ordinary_));
+        const Jet index = Eval(e);
+        if (Moves(index)) throw std::runtime_error(what + " jumps at " + Where());
+        return AsIndex<T>(*index[0]);
+    }
+
+    std::optional<int> Index(const ParametersCall<T>& call) {
+        if (!call.subexpr()) return std::nullopt;
+        return Index(call.subexpr());
     }
 
     Jet Cell(CellExpression<T>& cell) {
