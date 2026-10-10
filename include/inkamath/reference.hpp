@@ -625,13 +625,14 @@ public:
     }
 
     // A refusal an approximated guard decided may be wrong, and says so. The
-    // prelude's eig, eigg, hinf and dhinf have one guard each, which it cannot word,
+    // prelude's eig, eigg, hinf, dhinf and atan2 have guards it cannot word,
     // and so have hinfy, hinfg and hinfp, whose guard asks whether a number
     // was approximated, which no double answers wrongly (DESIGN.md).
     std::string Unapplied(bool past) const {
         static const std::unordered_map<std::string, std::string> needs{
             {"eig", "eig needs B symmetric positive definite"},
             {"eigg", "eig needs a matrix whose eigenvalues are all real"},
+            {"atan2", "atan2 needs y or x other than 0"},
             {"hinf", "hinf needs every eigenvalue of A left of the imaginary axis"},
             {"dhinf", "dhinf needs every eigenvalue of A inside the unit circle"},
             {"hinfy", "hinf needs tests within a thousand digits"},

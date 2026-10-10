@@ -95,12 +95,7 @@ state(g, lat, lon, h, v, fpa, hdg) = [fixed(g)'*ecef(lat, lon, h*nmi); fixed(g)'
 mcc = state(hms(26, 45, 1.8), ~6.00, ~-11.17, ~109477.2, ~5010.0, ~76.88, ~120.87)
 loi = hms(75, 49, 50.4)
 
-# What the prelude lacks (DESIGN.md, next in line): asin by Newton's
-# method, acosh and sinh from log and exp. And table 5-IV's radius.
-asn(x)_0 = x
-asn(x)_k = asn(x)_(k-1) - (sin(asn(x)_(k-1)) - x)/cos(asn(x)_(k-1))
-asin(x) = lim asn(x)
-acosh(x) = log(x + (x^2 - 1)^(1/2))
+# What the prelude lacks: sinh, from exp. And table 5-IV's radius.
 sinh(x) = (exp(x) - exp(-x))/2
 cross(a, b) = [a[2]*b[3] - a[3]*b[2]; a[3]*b[1] - a[1]*b[3]; a[1]*b[2] - a[2]*b[1]]
 sgn(x) = (x > 0) - (x < 0)
