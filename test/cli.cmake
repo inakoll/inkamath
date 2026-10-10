@@ -654,6 +654,12 @@ set(stderr "inkamath: cannot compile y: division by zero\n")
 set(exit 1)
 check(compile_pole)
 
+# C286: grad's u^(c-1) at a constant 0 is C's pow's inf, folded.
+file(WRITE "${OUT}/c286.ink" "y_n = grad_(t = 0) t^(1/2)\n")
+set(args --compile c286.ink -o c286.h)
+check(compile_c286)
+holds(compile_c286 c286.h "(isnan(t0_) ? NAN : INFINITY);\n")
+
 # C161: a float's inverse starts from the identity in floats, which MSVC's
 # /W4 asks of an int converted to one.
 file(WRITE "${OUT}/c161.ink" "z_n = [2 1; 1 n]^-1*[1; 1]\n")
