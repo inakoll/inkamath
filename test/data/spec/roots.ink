@@ -164,7 +164,8 @@ cbrt(x) = x^(1/3)
 1
 
 # C175's path, for bases past a double's range that are not perfect
-# powers, as before.
+# powers, as before: goldberg.ink's four entries for it, which these
+# replace there when this becomes a golden.
 >> (2*10^400)^(1/2)
 ~1.41421356e+200
 

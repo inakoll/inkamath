@@ -3475,8 +3475,10 @@ that exploring seven domains asked of the interpreter, by how many asked.
   only be approached", to 2, its comment with it; `grad.ink`'s `grad_(x = 4)
   x^(1/2)` to 0.25; `kahan.ink`'s 128 roots then squares of 0 and of 1, to 0
   and 1; `goldberg.ink`'s four entries for C175, its hypotenuse 5*10^200,
-  10^200 and 2^275 in full and 10^-200 bare, C175's path being held instead
-  by `roots.ink`'s four bases that are not perfect powers; `doyle.ink`,
+  10^200 and 2^275 in full and 10^-200 bare, rewritten with `roots.ink`'s
+  four bases that are not perfect powers so that they still hold C175's
+  path, those four moving there when the spec becomes a golden, and the
+  exact cases staying in `roots.ink`; `doyle.ink`,
   whose f(5) = 2 + 9^(1/2) and f(21) are 5 and 7 exactly, so both Riccati
   residuals are exact zeros and the gains [5, 5] and [7; 7]; and three
   `--check` reports in `test/CMakeLists.txt`, terms exact further: `edge`
