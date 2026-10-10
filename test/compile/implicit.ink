@@ -5,9 +5,9 @@
 # iterate. Every number below is worked out apart from the interpreter,
 # with mpmath, sympy and Python's doubles and fractions, the
 # limit's stopping rule transcribed from convergence.hpp; none is recorded.
-# Today 'kinetic', 'jacobian' and 'doubling' are refused, "a matrix inverse
-# inside a limit's terms", 'inset', "a sequence with parameters in a
-# limit's terms, for now", and 'layered', "a limit of matrices inside a
+# Before, 'kinetic', 'jacobian' and 'doubling' were refused, "a matrix
+# inverse inside a limit's terms", 'inset', "a sequence with parameters in
+# a limit's terms, for now", and 'layered', "a limit of matrices inside a
 # limit's terms".
 #
 # 'kinetic', backward Euler on Robertson's kinetics (Robertson 1966; Hairer
@@ -138,12 +138,12 @@ layered = layers(x_n = ~(n/3))
 #     y_0 = [1; 0; 0]
 #     y_n = lim nw(y_(n-1))
 #
-# the inverse by Cramer's rule, which compiles today to 237 KB, 'm_->h *'
+# the inverse by Cramer's rule, which compiled to 237 KB before, 'm_->h *'
 # written 2,169 times. Each call nested in solve's arguments is a temporary
 # of the iterate, so h is read once per cell of h*J(z) and of h*f(z): 'm_->h *'
 # 12 times, and the header under 32 KB. With J replaced by Jg, 12.9 MB
-# today, 'm_->h *' 12 times too and the header under 32 KB. With solve(A,
-# b) replaced by A^-1*b, as kinetic writes it, refused today, the header
+# before, 'm_->h *' 12 times too and the header under 32 KB. With solve(A,
+# b) replaced by A^-1*b, as kinetic writes it, refused before, the header
 # holds 'm_->h *' 12 times, 'cramer_inverse3_(' twice, its definition and
 # its one call, in the limit's function, and is under 32 KB; compiled with
 # --float, it holds no 'double', and 'float v0_[3][3] = ' declares the
