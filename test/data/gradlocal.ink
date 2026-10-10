@@ -285,6 +285,14 @@ ft(x) = t + (t = 2*x)
 >> grad_(x = 3) ft(x)
 error: t reads the global x, which grad's x does not reach
 
+# A size is read before the clause it walks, so a local the clause binds
+# does not hide the global the size reads (C305).
+>> fz(v)[j <= floor(t/5000)] = (t = 2)*v
+fz(v)[j <= floor(t/5000)] = (t = 2)*v
+
+>> grad_(x = 2) ([1 1]*fz(x))
+error: t reads the global x, which grad's x does not reach
+
 >> clear t
 clear t
 
