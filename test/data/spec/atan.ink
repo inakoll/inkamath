@@ -1,14 +1,14 @@
 # atan, atan2, asin, acos and acosh in the prelude (DESIGN.md, next in
-# line), written in inkamath as exp, log, sin and cos are. atan reduces
-# |x| by the nearest of 0, 1/2, 1, 2 and infinity, atan(c) + atan((x -
-# c)/(1 + cx)), to |u| <= 4/15, rounds once where the reduction ends, then
-# sums Taylor's series to u^29; atan2 is atan(y/x) moved by pi, or pi/2 less
-# atan(x/y) on the axis; asin and acos are atan2 of x and the root of (1 -
-# x)(1 + x); acosh is log(x + root(x^2 - 1)), its rounding added back, and
-# near 1 the series log takes. Expected values are mpmath's at nine digits,
-# and at seventeen mpmath's correctly rounded double, or where the design
-# rounds otherwise the design's own, emulated apart from the interpreter in
-# C and in Python with exact fractions, and said so.
+# line), written in inkamath as exp, log, sin and cos are. atan reduces |x|
+# by one of 0, 1/2, 1, 2 and infinity, chosen by thresholds, atan(c) +
+# atan((x - c)/(1 + cx)), to |u| <= 4/15, rounds once where the reduction
+# ends, then sums Taylor's series to u^29; atan2 is atan(y/x) moved by pi,
+# or pi/2 less atan(x/y) on the axis; asin and acos are atan2 of x and the
+# root of (1 - x)(1 + x); acosh is log(x + root(x^2 - 1)), its rounding
+# added back, and near 1 the series log takes. Expected values are mpmath's
+# at nine digits, and at seventeen mpmath's correctly rounded double, or
+# where the design rounds otherwise the design's own, emulated apart from
+# the interpreter in C and in Python with exact fractions, and said so.
 >> atan(1)
 ~0.785398163
 

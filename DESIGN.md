@@ -3392,17 +3392,18 @@ that exploring seven domains asked of the interpreter, by how many asked.
       acosh(x) | x < 17/16 = logs(((x - 1)/(x + 1))^(1/2), 0)
       acoshr(x, r) = log(x + r) + (x - (x + r) + r)/(x + r)
 
-  `atan` is odd by its guard, as `tanh` is, and reduces t = |x| by the
-  nearest c of 0, 1/2, 1, 2 and infinity, atan t = atan c + atan u with u =
-  (t - c)/(1 + tc), so |u| <= 4/15; atan c is a double and its remainder
-  (Cody and Waite), the remainder added to the series first. The thresholds
-  17/64, 3/4, 11/8 and 15/4 are dyadic, so that a guard compares a double
-  with what a double holds, as the prelude's do; 17/64 rather than 1/4 keeps
-  atan c + atan u at 1/4 or above, 1.44 units at worst for 1.92. 2t - 1 and
-  t - 1 are exact where they cancel (Sterbenz). atan u is Taylor's series to
-  u^29 in Horner's form, remainder below 2^-62 of u, its coefficients
-  reciprocals of whole numbers. An exact argument is reduced exactly and
-  rounded once, at the `~`.
+  `atan` is odd by its guard, as `tanh` is, and reduces t = |x| by c, one of
+  0, 1/2, 1, 2 and infinity as the thresholds below choose,
+  atan t = atan c + atan u with u = (t - c)/(1 + tc), so |u| <= 4/15, which
+  u = -1/t reaches at 15/4, every other branch's bound below it; atan c is a
+  double and its remainder (Cody and Waite), the remainder added to the
+  series first. The thresholds 17/64, 3/4, 11/8 and 15/4 are dyadic, so that
+  a guard compares a double with what a double holds, as the prelude's do;
+  17/64 rather than 1/4 keeps atan c + atan u at 1/4 or above, 1.44 units at
+  worst for 1.92. 2t - 1 and t - 1 are exact where they cancel (Sterbenz).
+  atan u is Taylor's series to u^29 in Horner's form, remainder below 2^-62
+  of u, its coefficients reciprocals of whole numbers. An exact argument is
+  reduced exactly and rounded once, at the `~`.
 
   `atan2(y, x)`, y first, as C, Fortran and the papers write it: the angle
   of (x, y) in (-pi, pi]. Off the y axis, atan(y/x), moved by pi, in two
