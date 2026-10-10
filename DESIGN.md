@@ -7815,7 +7815,7 @@ After transcribing a small convolutional network (Goodfellow, Bengio and
 Courville 2016, §9.5; LeCun et al. 1998, §II.B), its training compiled and
 checked: what it asked of the compiler, each with its smallest change.
 
-- **A compiled gradient with respect to a tensor**, "a derivative with
+- `[done]` **A compiled gradient with respect to a tensor**, "a derivative with
   respect to a tensor, for now": the seed of three indices *Tensors
   compiled* left between attention and its training, met again by an input
   gradient over a batch of images. The interpreter answers it (*Tensors of
@@ -7897,6 +7897,21 @@ checked: what it asked of the compiler, each with its smallest change.
   with their reports, the first and last among the float checks, and the
   refusals' file as `compile_tensorgrad_refused` in `test/cli.cmake`.
   Whether `attend`'s 10 s of GCC belongs in CI is for whoever merges.
+
+  Built as specified: `small` and `attend` pass as written, `small` in
+  float too, checked instances of `test/CMakeLists.txt` with their
+  reports, and the refusals as `compile_tensorgrad_refused`; README names
+  `tensorgrad.ink` where its refusal goes. Departure: `saliency` passes
+  as written, in double and float, but by hand: its `--check` takes 593 s
+  under the sanitizers in Debug, 125 s in Debug and 11 s in
+  RelWithDebInfo, all in inkamath's own compile time, the cube of the
+  batch below, so it waits, unwired, for the queued *size of a
+  forward-mode header*, whose acceptance test it is. Under the sanitizers
+  in Debug, `attend`'s `--check` takes 42 s and `small`'s 28 s, in double
+  and in float, their programs under a second to build; `attend`'s takes
+  10 s at GCC -O2, as specified. Every golden and recorded header byte for
+  byte. 6 lines added and 8 removed in `compile.hpp`, as planned: 16,252
+  lines in all, 16,254 at 8b5279d.
 - **A read between slow sequences of one period and phase**, refused since
   C233 as one at another rate read by another: a minibatch as time, each
   term of the weights reading two consecutive samples, trains its weights
@@ -8053,6 +8068,8 @@ checked: what it asked of the compiler, each with its smallest change.
     where `heads`, forward, builds in 0.45 s. At the smallest multi-head
     size, 2x2x1, 4 passes, 10.5 s at GCC -O2 and 2.6 s at Clang; one pass
     alone, for one cell of W^Q, 4.3 s.
+  `tensorgrad.ink`'s `saliency` is its acceptance test, wired when its
+  `--check` takes under 30 s under the sanitizers, where it took 593 s.
 - **A maximum or minimum over an index**, `max_(i=1)^n`, as a sum is
   written: max-pooling over a window is nested `max` calls today. Minor,
   until a second model asks.
