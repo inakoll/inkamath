@@ -5,6 +5,7 @@
 #include <iostream>
 #include <sstream>
 #include <string>
+#include <utility>
 #include <variant>
 #include <vector>
 
@@ -296,16 +297,17 @@ int main(int argc, char* argv[]) {
             cout << "inkamath " INKAMATH_VERSION "\n";
             return 0;
         }
-        if (arg == "--compile") {
-            compiling = true;
-        } else if (arg == "--check") {
-            checking = true;
-        } else if (arg == "--float") {
-            if (CompileC::floats) {
-                cerr << "inkamath: --float is given twice\nTry 'inkamath --help'.\n";
+        bool* const flag = arg == "--compile" ? &compiling
+                           : arg == "--check" ? &checking
+                           : arg == "--float" ? &CompileC::floats
+                           : arg == "--echo"  ? &echo
+                           : arg == "-i"      ? &then_input
+                                              : nullptr;
+        if (flag) {
+            if (std::exchange(*flag, true)) {
+                cerr << "inkamath: " << arg << " is given twice\nTry 'inkamath --help'.\n";
                 return 2;
             }
-            CompileC::floats = true;
         } else if (arg == "--steps") {
             const string n   = i + 1 < argc ? argv[++i] : "";
             const char*  why = steps ? "is given twice" : "takes a whole number from 1 to 100000";
@@ -322,10 +324,6 @@ int main(int argc, char* argv[]) {
                 return 2;
             }
             target = argv[++i];
-        } else if (arg == "--echo") {
-            echo = true;
-        } else if (arg == "-i") {
-            then_input = true;
         } else if (arg.size() > 1 && arg[0] == '-') {
             cerr << "inkamath: unknown option '" << arg << "'\nTry 'inkamath --help'.\n";
             return 2;
