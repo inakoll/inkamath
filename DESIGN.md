@@ -8478,7 +8478,8 @@ checked: what it asked of the compiler, each with its smallest change.
     pass for the cell multiplied a 0, of its seed or of a constant, by a
     double: `grad_(W = [1 2; 3 4]) [1 1]*W*[~1; 2]` is `[~1, 2; ~1, 2]`,
     forward mode's `[~1, ~2; ~1, ~2]`. Both keep "a bare number is exact"
-    (C240).
+    (C240). Fewer marks are the owner's decision: reverse mode is not meant
+    to match forward mode's.
   - **Forward mode stays, and nothing is deleted.** It serves a single
     value, a derivative of a matrix, a grad inside a grad, a complex point,
     and whatever reverse mode gives way on. Its pass per cell, some 15 lines
