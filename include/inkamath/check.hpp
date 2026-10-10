@@ -629,10 +629,16 @@ private:
             return answer;
         }
         answer.value = *value;
+        // The step writes a matrix NaN whole where a cell is (C221): one with
+        // a cell that is not real is not real in any (C312).
+        const bool real =
+            std::all_of(value->data(), value->data() + value->Size().count(),
+                        [](const Number& cell) { return cell.Inexact().imag() == 0; });
         for (std::size_t c = 0; c < value->Size().count(); ++c) {
             const Number& cell = value->data()[c];
             const auto    z    = cell.Inexact();
             answer.odd.push_back(z.imag() != 0             ? "not a real number"
+                                 : !real                   ? "not a real matrix"
                                  : std::isfinite(z.real()) ? ""
                                  : cell.exact()            ? "too large for a double"
                                                            : "not a finite number");
