@@ -3688,7 +3688,9 @@ that exploring seven domains asked of the interpreter, by how many asked.
     computed once, before the loop, and would be computed again at each
     iterate or shadowed there.
   - **Hoisting what reads only the arguments** out of the loop: the reader
-    sees one iterate as the source writes it, and -O2 hoists it anyway.
+    sees one iterate as the source writes it, and hoisting is a change of
+    its own, queued below. -O2 does not do it: a limit or an inverse
+    reading only the arguments is walked again at each iterate.
   - **Writing the walk inline in the step**: a limit read twice, or cell
     by cell, is one function (`logistic`'s four sigmoids).
 
@@ -3741,6 +3743,12 @@ that exploring seven domains asked of the interpreter, by how many asked.
   previous term is such a matrix, 16 reads there. Normalising it once per
   step or iterate where it has a list, every cell NaN where one is, as a
   term is, and reading it whole after. Moves headers, not values.
+- **A limit's invariants hoisted out of its iterate**: a limit or a
+  matrix inverse that reads only the function's arguments is declared in
+  the iterate's list, so walked again at each iterate, and gcc -O2 leaves
+  it there: `layered` in `test/compile/implicit.ink` ran 15 to 20 times
+  faster with its inner limit hoisted by hand. Declared in the bases' list
+  instead, before the loop. Moves headers, not values.
 - **Shared at every value written twice**, value numbering in general, as
   weighed under *Temporaries in a limit's function*: forward mode's guard
   copied per direction among what it would serve. Needs a cell to carry
