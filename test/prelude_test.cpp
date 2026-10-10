@@ -117,7 +117,7 @@ TEST_CASE("atan, asin, acos and acosh's parts") {
     for (Reference& r : negated) r.y = -r.y, r.d = -r.d;
     const auto by = [](double (*f)(double, double)) { return [f](double x) { return f(x, 1); }; };
     within("atan's part", table("atan_dx"), by(inkamath_prelude_atan_dx), 2.91);
-    within("asin's part", table("asin_dx"), by(inkamath_prelude_asin_dx), 5.63);
+    within("asin's part", table("asin_dx"), by(inkamath_prelude_asin_dx), 5.46);
     within("acos's part", negated, by(inkamath_prelude_acos_dx), 5.46);
     within("acosh's part", table("acosh_dx"), by(inkamath_prelude_acosh_dx), 5.31);
 }

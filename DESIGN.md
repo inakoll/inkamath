@@ -1784,6 +1784,7 @@ closures need one anyway, and can bring it.
 | C279 `[fixed]` | **`lim` stopped at a term repeated once, wrong and unmarked.** C36's remainder, `step*r/(1-r)`, is 0 for a step of 0 whatever the step before it, so a term equal to the one before ended the walk: with the binary digits of x, `r(x)_n = r(x)_(n-1) + (r(x)_(n-1) + 2^-n <= x)*2^-n`, `lim r(1/3)` was 0.25, since r_2 = r_3, where the limit is 1/3. A step of 0 now forms no ratio either, as the step after one already did not, and the step before it is what may be left: the walk goes on past a pause and stops within 2^-34/3 of 1/3, and --check moves such a limit by that step. The compiled walk takes the same rule, and a float's stop on floats a unit or two apart, which a step of 0 passed too, leaves such a step to it, in 3 lines, 2 changed and 3 of comment; `float_gate` in `test/cli.cmake` quotes the new stop. A sequence that stays where it repeated after a step over the tolerance stops a term later on the same value and remainder, and after one within it stops where it did, moved by that step rather than by 0; no golden moved; one repeated twice running, `lim r(1/5)` at 0, still stops, as any rule over a few terms can be fooled. A series without an upper bound stopped so too, `sum_(k=0) (k<>2)/2^k` at 3/2 for 7/4. sequences.ink and series.ink hold it, and `halves` in `test/compile/newton.ink` the compiled walk, in double and in float. |
 | C280 `[fixed]` | **`-o` last on the line was an unknown option.** `--check coast.ink coast -o` said "unknown option '-o'", where `--steps` last says what it takes. Found reviewing the specification of `--steps n`. Now `-o` last says "-o takes a file to write", exit 2; `check_output_missing` in `test/cli.cmake` holds it. |
 | C281 `[fixed]` | **`eig(A, B)` of a B whose cells are far from 1 refused it, or with a NaN.** Its test of B positive definite counted the roots of B's characteristic polynomial unscaled, whose last coefficient is det(B), 10^-1200 for 4 unknowns in 10^-300, past a thousand digits: `eig(Kf(2), Mf(2)/10^300)` was refused "by a guard approximated past a thousand digits", `eig(Kf(2), Mf(2)*10^300)` "a comparison needs a number, not -nan", and so was `eig(Kf(4), Mf(4)*10^150)`, which now answers, marked past a thousand digits in B^-1 A's own count. B is counted over 2^e now, as eig counts B^-1 A, so a double's 2^e never passes the digits: `eig(I, I*~10^-300)` of 4 unknowns was refused too. In 1 line changed; geneig.ink holds it, and no other answer moved. |
+| C290 `[fixed]` | **`atan2`'s partial in x was NaN far from the x axis, and it refused a complex y in atan's words.** Off the y axis it was atan(y/x), whose partial in x is atan's part times -y/x^2: once that overflowed, 0 times inf, so `grad_(x = ~1e-300) atan2(1, x)` was `-nan` where x = 0 gave -1; and `atan2(1 + i, 1)` said "atan needs real numbers". Found reviewing the implementation of the inverse functions. It is pi/2 less atan(x/y) wherever \|y\| > \|x\| now, its first two guards `y > x and y > -x` and its mirror, so the quotient is of the smaller coordinate by the larger, and either argument complex meets a comparison first, "a comparison needs real numbers", as hurwitz's and hinf's do. atan2(4, 3) moves a unit, to 0.9272952180016123, 0.59 from mpmath's; acos(1/2) is correctly rounded now; asin past 1/root 2 and acos within it move, within their bounds, and asin's part is acos's negated. In 1 line more, the clauses reordered; atan.ink holds it. |
 
 **Measure instructions, not the clock.** One of those changes made the matrix
 workload 20 per cent slower by the clock and not by a single instruction: with
@@ -3377,11 +3378,11 @@ that exploring seven domains asked of the interpreter, by how many asked.
       atank(c, d, u) = c + (d + atans(u))
       atans(u) = u - u*atanz(u*u)
       atanz(z) = z*(1/3 - z*(1/5 - z*(1/7 - z*(1/9 - z*(1/11 - z*(1/13 - z*(1/15 - z*(1/17 - z*(1/19 - z*(1/21 - z*(1/23 - z*(1/25 - z*(1/27 - z/29)))))))))))))
+      atan2(y, x) | y > x and y > -x = 1.5707963267948966 + (6.123233995736766e-17 - atan(x/y))
+      atan2(y, x) | y < x and y < -x = -1.5707963267948966 - (6.123233995736766e-17 + atan(x/y))
       atan2(y, x) | x > 0 = atan(y/x)
       atan2(y, x) | x < 0 and y >= 0 = 3.141592653589793 + (1.2246467991473532e-16 + atan(y/x))
       atan2(y, x) | x < 0 = -3.141592653589793 + (atan(y/x) - 1.2246467991473532e-16)
-      atan2(y, x) | y > 0 = 1.5707963267948966 + (6.123233995736766e-17 - atan(x/y))
-      atan2(y, x) | y < 0 = -1.5707963267948966 - (6.123233995736766e-17 + atan(x/y))
       asin(x) = atan2(x, ((1 - x)*(1 + x))^(1/2))
       asin(x) | x < -1 or x > 1 = 1/0
       acos(x) = atan2(((1 - x)*(1 + x))^(1/2), x)
@@ -3406,10 +3407,12 @@ that exploring seven domains asked of the interpreter, by how many asked.
   reduced exactly and rounded once, at the `~`.
 
   `atan2(y, x)`, y first, as C, Fortran and the papers write it: the angle
-  of (x, y) in (-pi, pi]. Off the y axis, atan(y/x), moved by pi, in two
-  parts, for x < 0; on it, pi/2 less atan(x/y), which is 0 there but keeps
-  the partial in x for `grad`. The negative x axis is pi, its clause the one
-  from above. A double's -0 is 0, as it is everywhere in the language (C33,
+  of (x, y) in (-pi, pi]. Where |y| > |x|, the y axis too, pi/2 less
+  atan(x/y), which keeps the partial in x for `grad` there and from
+  overflowing near it (C290), and where not atan(y/x), moved by pi, in two
+  parts, for x < 0; a complex argument meets a comparison first, "a
+  comparison needs real numbers", as in the prelude's other functions of
+  two. The negative x axis is pi, its clause the one from above. A double's -0 is 0, as it is everywhere in the language (C33,
   C98, `sin(-0)`): `atan2(-0, -1)` is pi where C's is -pi, an exact 0 has no
   sign, and an angle would otherwise depend on how its 0 was reached. The
   origin has no angle: no clause holds, "atan2 needs y or x other than 0",
@@ -3453,16 +3456,20 @@ that exploring seven domains asked of the interpreter, by how many asked.
   | `atan` on [-1, 1] | 1.437 units, at 0.26611689320540033 | 92.2% |
   | `atan` on [-16, 16] | 1.086, at 0.2703338111176379 | 95.0% |
   | `atan`, every exponent | 1.394, at -0.2742618299210873 | 100.0% |
-  | `atan2`, \|x\| and \|y\| from 2^-60 to 2^60 | 1.893, at 0.51329973818231467, 1.9305107949267404 | 82.0% |
-  | `asin` on [-1, 1] | 2.613, at 0.24545971397793295 | 73.3% |
+  | `atan2`, \|x\| and \|y\| from 2^-60 to 2^60 | 1.893, at 0.51329973818231467, 1.9305107949267404 | 96.9% |
+  | `asin` on [-1, 1] | 2.613, at 0.24545971397793295 | 69.0% |
   | `asin`, \|x\| from 2^-1074 to 1/2 | 2.442, at 0.24300644216948256 | 98.5% |
-  | `asin`, 1 - 2^-k | 1.736, at -0.8171986468000391 | 98.0% |
-  | `acos` on [-1, 1] | 2.612, at 0.96611943779089537 | 77.5% |
+  | `asin`, 1 - 2^-k | 2.185, at 0.8278614485044568 | 97.5% |
+  | `acos` on [-1, 1] | 2.612, at 0.96611943779089537 | 84.0% |
   | `acos`, 1 - 2^-k | 2.466, at 0.9632802889868292 | 79.9% |
   | `acosh` on [1, 2] | 3.567, at 1.0652371257850854 | 69.8% |
   | `acosh`, every exponent | 2.658, at 1.0702269022327004 | 80.7% |
 
-  acosh's worst is log's own, near its fold at root 2, just above 17/16.
+  atan2's correctly rounded and asin's and acos's three rows are the
+  review's, after C290 moved atan2's clauses, by its count of 10^8 doubles
+  a range, 2*10^7 pairs for atan2, which gave 82.0%, 72.2%, 1.785 units and
+  98.0%, and 77.4% before. acosh's worst is log's own, near its fold at
+  root 2, just above 17/16.
   Rejected: `asin` by Newton under `lim` and `acos` by bisection, the
   explorations', unbounded in their steps and refused compiled; fdlibm's
   breakpoints, 7/16 to 39/16, |u| to 7/16, 23 terms of Taylor's series
@@ -3479,7 +3486,7 @@ that exploring seven domains asked of the interpreter, by how many asked.
   4.1 for asin, 3.9 for acos and 3.0 for acosh on 20,000 points, forward
   mode emulated over doubles; the implementation's sweep sets their bounds.
   atan2's partials, x/(x^2 + y^2) and -y/(x^2 + y^2), come through both
-  axes' clauses. Where a part is infinite, asin and acos at 1 and -1, acosh
+  halves' clauses. Where a part is infinite, asin and acos at 1 and -1, acosh
   at 1, the root refuses, "a power's derivative is infinite at x = 1"; at
   the origin atan2 refuses in its words.
 
@@ -3546,15 +3553,18 @@ that exploring seven domains asked of the interpreter, by how many asked.
   are atan 2.903 units at 1.7331089529469212, asin 5.417 at
   -0.9655946220305717, acos 5.278 at -0.966307379845344 and acosh 5.309 at
   1.4415185508643205, above the 20,000 points' figures; on review, three
-  seeds more and acos's part near 1, which the sweep lacked, find asin's
-  5.623 at -0.8652814440599897 and acos's 5.459 at 0.9663790997275507, so
-  `test/prelude_test.cpp` holds the table's parts within 2.91, 5.63, 5.46
-  and 5.31, each farthest in the table. The sweep finds
+  seeds more and acos's part near 1, which the sweep lacked, find acos's
+  5.459 at 0.9663790997275507, and since C290 asin's part is acos's
+  negated, so `test/prelude_test.cpp` holds the table's parts within 2.91,
+  5.46, 5.46 and 5.31, each farthest in the table. The sweep finds
   the values within the review's figures, atan 1.432, asin 2.440, acos 2.461
-  and acosh 3.429. 50 lines of sources against about 45: the prelude 26 and
-  its comment 5, the fast path's table 8, its refusals 7 and the part's test
+  and acosh 3.429. 51 lines of sources against about 45: the prelude 26 and
+  its comment 6, the fast path's table 8, its refusals 7 and the part's test
   3, and `Unapplied`'s table 1 for atan2's words; the header 96 more, 351
-  lines. 16,431 lines in all.
+  lines. 16,432 lines in all. On review atan2 takes pi/2 less atan(x/y)
+  wherever |y| > |x|, not on the y axis alone (C290): atan2(4, 3), asin
+  past 1/root 2 and acos within it move, acos(1/2) is correctly rounded
+  now, and atan2's worst stays 1.893, at |y| < |x|.
 - **A cell at a computed whole index, compiled**: `T[k,1]` with
   `k = floor(t/H) + 1`, an ephemeris read at the row a time falls in, is
   refused as "a cell whose place is not a constant", so Apollo 11's coast

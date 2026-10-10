@@ -3,8 +3,8 @@
 # by one of 0, 1/2, 1, 2 and infinity, chosen by thresholds, atan(c) +
 # atan((x - c)/(1 + cx)), to |u| <= 4/15, rounds once where the reduction
 # ends, then sums Taylor's series to u^29; atan2 is atan(y/x) moved by pi,
-# or pi/2 less atan(x/y) on the axis; asin and acos are atan2 of x and the
-# root of (1 - x)(1 + x); acosh is log(x + root(x^2 - 1)), its rounding
+# or pi/2 less atan(x/y) where |y| > |x|; asin and acos are atan2 of x and
+# the root of (1 - x)(1 + x); acosh is log(x + root(x^2 - 1)), its rounding
 # added back, and near 1 the series log takes. Expected values are mpmath's
 # at nine digits, and at seventeen mpmath's correctly rounded double, or
 # where the design rounds otherwise the design's own, emulated apart from
@@ -356,9 +356,6 @@ digits = 17
 >> atan2(-1, -1)
 ~-2.3561944901923448
 
->> atan2(4, 3)
-~0.92729521800161219
-
 >> atan2(3, -4)
 ~2.4980915447965089
 
@@ -368,18 +365,22 @@ digits = 17
 >> asin(1/2)
 ~0.52359877559829893
 
+>> acos(1/2)
+~1.0471975511965979
+
 >> asin(~(1 - 2^-53))
 ~1.5707963118937354
 
 >> acos(~(-1 + 2^-53))
 ~3.1415926386886319
 
-# Not correctly rounded: mpmath's are 1.0471975511965979,
-# 1.4142135623848802e-05 and 1.4901161193847656e-08, 2^-26: 0.52, 0.64 and
-# 0.96 units. And asin's farthest of 10^8 doubles a range, 2.44 units from
+# Not correctly rounded: mpmath's are 0.92729521800161219,
+# 1.4142135623848802e-05 and 1.4901161193847656e-08, 2^-26: 0.59, 0.64 and
+# 0.96 units, atan2(4, 3) being pi/2 less atan(3/4), as |y| is the larger
+# (C290). And asin's farthest of 10^8 doubles a range, 2.44 units from
 # mpmath's 0.24546399978245742, its root and quotient each rounded.
->> acos(1/2)
-~1.0471975511965976
+>> atan2(4, 3)
+~0.9272952180016123
 
 >> acos(1 - 10^-10)
 ~1.4142135623848801e-05

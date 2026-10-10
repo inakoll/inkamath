@@ -267,8 +267,9 @@ private:
 // is too, and pick sin r, cos r or a negative by k + c mod 4, x + pi/2 being
 // inexact; refused past 2^20, where the products round. atan reduces by
 // atan c, c one of 0, 1/2, 1, 2 and infinity, in two parts (Cody and Waite),
-// to |u| <= 4/15, Taylor's series to u^29; atan2 is atan(y/x) moved by pi,
-// or pi/2 less atan(x/y); asin and acos atan2 of x and the root of (1 -
+// to |u| <= 4/15, Taylor's series to u^29; atan2 is pi/2 less atan(x/y)
+// where |y| > |x|, else atan(y/x) moved by pi, so that no partial of the
+// quotient overflows; asin and acos atan2 of x and the root of (1 -
 // x)(1 + x), exact near 1; acosh log(x + r), what x + r rounded added back,
 // and below 17/16 log's series. abs, max and min are README's, a guard
 // each: at a tie the first argument's slope.
@@ -343,11 +344,11 @@ inline constexpr const char* prelude[] = {
     "atans(u) = u - u*atanz(u*u)",
     "atanz(z) = z*(1/3 - z*(1/5 - z*(1/7 - z*(1/9 - z*(1/11 - z*(1/13 - z*(1/15 - z*(1/17 "
     "- z*(1/19 - z*(1/21 - z*(1/23 - z*(1/25 - z*(1/27 - z/29)))))))))))))",
+    "atan2(y, x) | y > x and y > -x = 1.5707963267948966 + (6.123233995736766e-17 - atan(x/y))",
+    "atan2(y, x) | y < x and y < -x = -1.5707963267948966 - (6.123233995736766e-17 + atan(x/y))",
     "atan2(y, x) | x > 0 = atan(y/x)",
     "atan2(y, x) | x < 0 and y >= 0 = 3.141592653589793 + (1.2246467991473532e-16 + atan(y/x))",
     "atan2(y, x) | x < 0 = -3.141592653589793 + (atan(y/x) - 1.2246467991473532e-16)",
-    "atan2(y, x) | y > 0 = 1.5707963267948966 + (6.123233995736766e-17 - atan(x/y))",
-    "atan2(y, x) | y < 0 = -1.5707963267948966 - (6.123233995736766e-17 + atan(x/y))",
     "asin(x) = atan2(x, ((1 - x)*(1 + x))^(1/2))",
     "asin(x) | x < -1 or x > 1 = 1/0",
     "acos(x) = atan2(((1 - x)*(1 + x))^(1/2), x)",
