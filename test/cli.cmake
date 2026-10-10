@@ -689,6 +689,15 @@ if(NOT values EQUAL 17 OR NOT parts EQUAL 49 OR NOT size LESS 40000)
                        "${parts}, in ${size} bytes")
 endif()
 
+# C308: a temporary that may be NaN was known by its name, which a limit's
+# function names its own by: the step's t1_, atan's, and nw's v0_, exp's,
+# made nw's t1_ and q's v1_ tested for a NaN nothing gives them.
+file(WRITE "${OUT}/c308.ink" "F(M) = 1\nG(v) = v*v\nr(s, v) = exp(s) - v\nnw(v)_0 = 0\nnw(v)_k = nw(v)_(k-1) - r(nw(v)_(k-1), v)/grad_(s = nw(v)_(k-1)) r(s, v)\nq(v)_0 = v\nq(v)_k = F(G(G(q(v)_(k-1)) + 1))*q(v)_(k-1)/2\na_n = G(G(n) + 1) + grad_(s = n) atan(s)\nb_n = lim nw(n + 1)\nc_n = lim q(n)\n")
+set(args --compile c308.ink -o c308.h)
+check(compile_c308)
+holds(compile_c308 c308.h "        const double v2_ = v0_ + (0.0 - arg_v);\n"
+      "        const double t_ = 1.0 * t1_ / 2.0;\n")
+
 # C153: a power of 1/2 is C's sqrt, rounded correctly, where pow need not be.
 file(WRITE "${OUT}/c153.ink" "x_0 = 2\nx_n = x_(n-1)^(1/2) + x_(n-1)^0.5\n")
 set(args --compile c153.ink -o c153.h)
