@@ -3693,8 +3693,8 @@ that exploring seven domains asked of the interpreter, by how many asked.
 
   What moves, on a prototype, discarded: no golden, the interpreter being
   untouched; no expected header, the prelude's or a float one included,
-  and no excerpt in `test/cli.cmake`; of the 75 check programs of a file
-  with a `lim`, three, and `mark` of the 19 in float, their reports
+  and no excerpt in `test/cli.cmake`; of the 55 check programs of a file
+  using `lim`, three, and `mark` of the 16 in float, their reports
   unchanged: `smith`, 40,388 bytes to 32,386, its doubling's products
   sharing their operands; `mark`, 32,895 to 32,703 and in float 32,969 to
   32,774, power iteration's `A*pw`; and `steer`, 13,322 to 13,354, the
