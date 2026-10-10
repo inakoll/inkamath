@@ -450,6 +450,31 @@ T(n)[j<=n, k<=n] = (j == k)*~(1/3)
 >> smax(T(4))
 ~0.333333333
 
+# A cell approximated past a thousand digits is read as its double too, and
+# the answer keeps its mark: ua's double is 1, so the eigenvalues are 1 to
+# 10^6, the abscissa -1 and the peak of 1/(s + 1) + 1/(s + 10), at s = 0,
+# 1.1; read rounded they were D(7)'s above, and refused (C296).
+>> ua = 1 + 1/3^2100
+ua = 1 + 1/3^2100
+
+>> Du(n)[j<=n, k<=n] = (j == k)*10^(j-1)*ua
+Du(n)[j<=n, k<=n] = (j == k)*10^(j-1)*ua
+
+>> eig(Du(7))
+[      ~1;
+      ~10;
+     ~100;
+    ~1000;
+   ~10000;
+  ~100000;
+ ~1000000]  # approximated past a thousand digits
+
+>> grad_(x = 1) x*abscissa(-Du(7))
+~-1  # approximated past a thousand digits
+
+>> hinf(-Du(2), [1; 1], [1 1])
+~1.1  # approximated past a thousand digits
+
 # log of a double scales by 2^ilogb, inexact now: an exact part past a
 # double's range is still divided exactly (C242). The slope is 1/t.
 >> grad_(t = ~(1.5e-300)) log(t*10^200*10^200)

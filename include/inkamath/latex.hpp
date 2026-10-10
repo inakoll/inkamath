@@ -267,6 +267,18 @@ private:
         return text;
     }
 
+    // A limit with its arguments, its index a letter they do not read:
+    // 'lim s(b_(n-1))' is '\lim_{k \to \infty} s(b_{n-1})_k'.
+    static Text Limit(const std::string& object, const FuncExpression<T>& call) {
+        std::string index;
+        for (const char letter : std::string("nkmjipq"))
+            if (!Mentions(call, index = std::string(1, letter))) break;
+        const std::string& name = call.Name();
+        const std::string  term =
+            call.m_e1() ? Operator(name) + "(" + Arguments(call.Call()) + ")" : Name(name);
+        return {"\\lim_{" + index + " \\to \\infty} " + object + term + "_" + index, Level::sum};
+    }
+
     // An expression, its operators spaced unless it is an index, where
     // they are set tight.
     static Text Of(const Expression<T>& e, bool tight = false) {
@@ -375,13 +387,12 @@ private:
         if (const auto* member = dynamic_cast<const MemberExpression<T>*>(&e)) {
             const std::string object = Of(*member->Object()).text + ".";
             const auto*       call = dynamic_cast<const FuncExpression<T>*>(member->Member().get());
-            if (call && call->limit())
-                return {"\\lim_{n \\to \\infty} " + object + Name(call->Name()) + "_n", Level::sum};
+            if (call && call->limit()) return Limit(object, *call);
             return {object + Of(*member->Member()).text};
         }
         if (const auto* call = dynamic_cast<const FuncExpression<T>*>(&e)) {
             const std::string& name = call->Name();
-            if (call->limit()) return {"\\lim_{n \\to \\infty} " + Name(name) + "_n", Level::sum};
+            if (call->limit()) return Limit("", *call);
             const ParametersCall<T>& arguments = call->Call();
             if (name == "floor" && arguments.parameters_expression().size() == 1)
                 return {"\\lfloor " + Of(*arguments.parameters_expression().front()).text +

@@ -227,8 +227,8 @@ rounding's, and the check does not fail for it (`test/compile/straddle.ink`,
 where `crease`'s 0.30000000000000004 is 5.6e-17 from the double nearest its
 threshold 3/10).
 
-`--steps n` beside it steps the instance n times rather than a hundred, n
-from 1 to 100000. n counts the step's calls, the one that computes the first
+`--steps n` beside an instance's `--check` steps it n times rather than a
+hundred, n from 1 to 100000. n counts the step's calls, the one that computes the first
 term among them, so a model of N steps after its initial term, `y_0` to
 `y_N`, is checked whole with `--steps` N + 1 (`test/compile/steps.ink`).
 
@@ -576,7 +576,8 @@ pair on it. Of a matrix of tenths, `rho` is
 certified up to about 6x6 and `abscissa` 8x8. An inexact cell is read as
 the exact rational its double is, as by `hinf` below, so the answer is
 right for the data as stored, certified or marked as of an exact matrix,
-and inexact, a bracket too: of full doubles, `rho` is certified up to 6x6
+and inexact, a bracket too, marked where a cell was approximated past a
+thousand digits: of full doubles, `rho` is certified up to 6x6
 and `abscissa` 8x8 as well. `grad` refuses both, a bisection being a
 staircase:
 
@@ -661,7 +662,8 @@ peak of section 1's T, at z = 1. Each bisects the norm's square, certified
 as rho's, on whether the Hamiltonian has an eigenvalue on the imaginary
 axis, which an exact count of real roots tells, and refuses a test whose
 numbers would pass a thousand digits rather than read it from doubles, so
-an answer is marked only where it leaves a double's range. The system is
+an answer is marked only where it leaves a double's range or a cell was
+approximated past a thousand digits. The system is
 divided by its largest cells first, exactly, so the units of its input,
 output and time cost nothing, though not its state's: a 3x3 whose states
 are scaled 10^15 apart, or 10^5 apart in doubles, is refused. An inexact
@@ -925,6 +927,10 @@ u_n=2*n
 >> lim u
 error: u did not converge within 100 terms (last term 200)
 ```
+
+The 1e-10 is absolute, so for a cell far below 1, where it settles few of
+the cell's own digits, a read at a count known to suffice, `f(x)_K`, gives
+the exact discrete value instead.
 
 `lim` stops when the last step is under the tolerance *and* the remainder the
 steps imply is too. A series can converge too slowly to be summed this way —

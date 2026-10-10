@@ -274,6 +274,12 @@ TEST_CASE("dynamics") {
 TEST_CASE("inexact") {
     check_transcript("inexact.ink");
 }
+TEST_CASE("explicit") {
+    check_transcript("explicit.ink");
+}
+TEST_CASE("implicit") {
+    check_transcript("implicit.ink");
+}
 TEST_CASE("readme") {
     check_readme();
 }

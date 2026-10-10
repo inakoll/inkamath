@@ -206,8 +206,9 @@ public:
     // refuses them where A moves rather than answer the staircase's 0.
     std::set<const Reference<T>*> staircases;
     // Their arguments, checked and read before a call, by the interpreter:
-    // true where a double was read as the rational it is.
-    std::function<bool(const Reference<T>&, T&)> checked;
+    // 1 where a double was read as the rational it is, 2 where one was
+    // approximated past a thousand digits, else 0.
+    std::function<int(const Reference<T>&, T&)> checked;
 
     [[nodiscard]] Scope<T>&       Target() const { return *target_; }
     [[nodiscard]] Scope<T>&       Builtins() { return builtins_; }

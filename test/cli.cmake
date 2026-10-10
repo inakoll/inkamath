@@ -518,6 +518,15 @@ set(args --check coast.ink coast --steps 10 --steps 10 -o twice.c)
 set(stderr "inkamath: --steps is given twice\nTry 'inkamath --help'.\n")
 set(exit 2)
 check(check_steps_twice)
+# And so are -o and --float, a repetition adding nothing (C297).
+set(args --check coast.ink coast -o twice.c -o twice.c)
+set(stderr "inkamath: -o is given twice\nTry 'inkamath --help'.\n")
+set(exit 2)
+check(check_output_twice)
+set(args --check coast.ink coast --float --float -o twice.c)
+set(stderr "inkamath: --float is given twice\nTry 'inkamath --help'.\n")
+set(exit 2)
+check(check_float_twice)
 
 # Only an instance's check has steps: not a header, a transcript replayed,
 # or files run.
@@ -536,6 +545,15 @@ set(args --check coast.ink coast --steps 10)
 set(stderr "inkamath: --check takes a transcript, or a file, an instance it defines and -o check.c\nTry 'inkamath --help'.\n")
 set(exit 2)
 check(check_steps_usage)
+# And so is one a word too many, with --steps or --float, where each said it
+# takes --check with an instance (C298).
+foreach(option IN ITEMS "steps;--steps;5" "float;--float")
+    list(POP_FRONT option name)
+    set(args --check coast.ink coast extra ${option} -o extra.c)
+    set(stderr "inkamath: --check takes a transcript, or a file, an instance it defines and -o check.c\nTry 'inkamath --help'.\n")
+    set(exit 2)
+    check(check_${name}_extra_usage)
+endforeach()
 
 # The step takes a single value for an input whose model states no size, so
 # an instance giving a matrix is refused by name, where it was read past its

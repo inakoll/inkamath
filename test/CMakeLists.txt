@@ -158,7 +158,8 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brin
                          straddle:knee straddle:crease straddle:plain straddle:both straddle:acc
                          straddle:given straddle:parted straddle:unasked
                          straddle:recalled straddle:founded steps:coast:1001 steps:coast:1
-                         steps:runaway:150 steps:runaway:1000 steps:horizon:1000)
+                         steps:runaway:150 steps:runaway:1000 steps:horizon:1000
+                         robertson:inside:2000 robertson:outside:2000 robertson:rober)
     string(REPLACE ":" ";" checked ${checked})
     list(POP_FRONT checked file instance count)
     set(name ${instance})
@@ -235,6 +236,18 @@ set_tests_properties(check_runaway_1000_report PROPERTIES PASS_REGULAR_EXPRESSIO
     "^runaway: 1000 steps from 0, against exact values\nrunaway\\.x: inf at 512, where the interpreter's term is too large for a double\n$")
 set_tests_properties(check_horizon_1000_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^horizon: 1000 steps from 0, against exact values until 334 and inexact ones from there\nhorizon\\.y: within 1\\.1e-16${about}\n$")
+# Robertson's kinetics (1966), compile/robertson.ink: forward Euler just
+# inside its stability limit held, and just outside parting where the step's
+# rounding, grown, passes a billionth; backward Euler the interpreter's.
+set(euler40 "2000 steps from 0, against exact values until 6 and inexact ones from there")
+set_tests_properties(check_inside_2000_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^inside: ${euler40}\ninside\\.y: within 1\\.1e-16${about}\n$")
+set_tests_properties(check_outside_2000_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^outside: ${euler40}\noutside\\.y\\[3,1\\]: 0\\.28588530803419726 at 1113, where the interpreter gives 0\\.28588530674176821\\; the interpreter's term about [0-9.e+-]+ from the exact one\n$")
+set_tests_properties(check_rober_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^rober: 100 steps from 0, against exact values until 1 and inexact ones from there\nrober\\.y: within 0${about}\n$")
+add_test(NAME check_outside_2000 COMMAND check_outside_2000)
+set_tests_properties(check_outside_2000 PROPERTIES WILL_FAIL ON)
 add_test(NAME check_runaway_1000 COMMAND check_runaway_1000)
 set_tests_properties(check_runaway_1000 PROPERTIES WILL_FAIL ON)
 add_test(NAME check_knee COMMAND check_knee)
@@ -718,7 +731,8 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:ledge logistic:gate momentu
                          kahan:sums kahan:muller kahan:rounded kahan:surprise kahan:solveur rump:rump
                          goldberg:year goldberg:needle goldberg:big goldberg:seven iterates:poly
                          blocks:nested conv:see straddle:knee apollo11:whole dyn:nm dyn:cd
-                         steps:coast:1001)
+                         steps:coast:1001 robertson:inside:2000 robertson:outside:2000
+                         robertson:rober)
     string(REPLACE ":" ";" checked ${checked})
     list(POP_FRONT checked file instance count)
     set(name ${instance})
@@ -802,6 +816,9 @@ foreach(report IN ITEMS
         "whole:^whole: 100 steps from 0${inexact}\n(whole\\.k[1-4]: within [1-9](\\.[0-9])?e-0[67], [1-9](\\.[0-9])?e\\+0[2-5] units of a float, from 1${about}\n)+whole\\.y: within 0\\.[0-9]+, [1-9](\\.[0-9])?e\\+0[2-5] units of a float${about}\n$"
         "nm:^nm: 100 steps from 0 in float, against exact values until 35 and inexact ones from there\nnm\\.a\\[[0-9],1\\]: [-0-9.e+]+ at [0-9]+, where the interpreter gives [-0-9.e+]+(\\; the interpreter's term about [0-9.e+-]+ from the exact one)?\n(nm\\.[a-z]+: within [0-9.e+-]+, [0-9.e+-]+ units of a float${about}\n)+$"
         "coast_1001:^coast: 1001 steps from 0${in_float}\ncoast\\.v: ${exact}\ncoast\\.y: ${exact}\n$"
+        "inside_2000:^inside: 2000 steps from 0 in float, against exact values until 6 and inexact ones from there\ninside\\.y: within 2e-05, 3\\.3e\\+02 units of a float${about}\n$"
+        "outside_2000:^outside: 2000 steps from 0 in float, against exact values until 6 and inexact ones from there\noutside\\.y: within 0\\.00061, 1e\\+10 units of a float${about}\n$"
+        "rober:^rober: 100 steps from 0 in float, against exact values until 1 and inexact ones from there\nrober\\.y: within 2\\.6e-07, 4\\.4 units of a float${about}\n$"
         "cd:^cd: 100 steps from 0 in float, against exact values until 85 and inexact ones from there\n(cd\\.[a-z]+: within [1-9](\\.[0-9])?e-0[6-8], [0-9.e+-]+ units of a float${about}\n)+$"
         "cls:^cls: 100 steps from 0${inexact}\ncls\\.z: within 2\\.4e-08, 0\\.49 units of a float\ncls\\.q: within 1\\.9e-06, 1\\.5 units of a float${about}\ncls\\.s: within 6\\.3e-08, 2\\.1 units of a float${about}\ncls\\.loss: within 4\\.1e-07, 3\\.8 units of a float${about}\n$")
     string(FIND "${report}" ":" colon)

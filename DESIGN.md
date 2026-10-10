@@ -1787,6 +1787,10 @@ closures need one anyway, and can bring it.
 | C285 `[fixed]` | **An exact root of a large q raised its guess to q - 1 by q - 2 products.** Each of Newton's steps in `Root` took x^(q-1) a factor at a time, so a q-th root of a thousand digits cost about q^2 limbs and q allocations: `(2^3321)^(1/3321)` 1.2 ms in Release and 56 ms under the sanitizers, where it was 6 us before exact roots. By squaring now, as `BigPower` does, in 3 lines: 15 us, 1.1 ms under the sanitizers. `roots.ink` holds it, its sum of 3000 such roots passing the 60 s timeout under the sanitizers before and the file 3.5 s there now, 3.6 s to 0.06 s in Release; no other answer moved. Found reviewing exact roots. |
 | C286 `[fixed]` | **grad compiled wrote u^(c-1) at a constant 0 as a call of `pow`, where it folded to `INFINITY`.** Exact roots made 0^(-1/2) a division by zero, so the power at a constant base 0 was left to C, and `grad_(t = 0) t^(1/2)` compiled to `0.5 * pow(0.0, -0.5) * 1.0` where it was `INFINITY`, a constant ~0 base too: the same value, a header moved and less readable. It is C's inf as a literal now, in 1 line; `compile_c286` in `test/cli.cmake` holds it, and every header is the one before exact roots. Found reviewing exact roots. |
 | C290 `[fixed]` | **`atan2`'s partial in x was NaN far from the x axis, and it refused a complex y in atan's words.** Off the y axis it was atan(y/x), whose partial in x is atan's part times -y/x^2: once that overflowed, 0 times inf, so `grad_(x = ~1e-300) atan2(1, x)` was `-nan` where x = 0 gave -1; and `atan2(1 + i, 1)` said "atan needs real numbers". Found reviewing the implementation of the inverse functions. It is pi/2 less atan(x/y) wherever \|y\| > \|x\| now, its first two guards `y > x and y > -x` and its mirror, so the quotient is of the smaller coordinate by the larger, and either argument complex meets a comparison first, "a comparison needs real numbers", as hurwitz's and hinf's do. atan2(4, 3) moves a unit, to 0.9272952180016123, 0.59 from mpmath's; acos(1/2) is correctly rounded now; asin past 1/root 2 and acos within it move, within their bounds, and asin's part is acos's negated. In 1 line more, the clauses reordered; atan.ink holds it. |
+| C295 `[fixed]` | **`tex` of a limit dropped its arguments and reused the index they read.** Its term was set as `Name(name) + \"_n\"` whatever the call: with `t(x)_k = t(x)_(k-1)/2 + 1`, `b_n = lim t(b_(n-1))` was `b_n = \lim_{n \to \infty} t_n`. Its arguments are set as a call's now, and its index is the first of n, k, m, j, i, p, q that the call does not read, `\lim_{k \to \infty} t(b_{n-1})_k`, rather than the index t's definition uses, which `tex` of one expression does not see and which the arguments may read as well; a limit without arguments keeps n. In 9 lines, 2 changed and 2 of comment; latex.ink holds it, and no other answer moved. Found integrating Robertson's kinetics. |
+| C296 `[fixed]` | **`eig`, `abscissa`, `rho`, `smax`, `hinf` and `dhinf` of a cell approximated past a thousand digits kept their rounded tests.** C275 read every inexact cell as the rational its double is but one approximated, to keep its mark, so such a cell's tests were rounded as before C275, marked yet wildly wrong: with `ua = 1 + 1/3^2100` and `Du(n)[j<=n, k<=n] = (j == k)*10^(j-1)*ua`, `eig(Du(8))` was 2.59 twice and 754 twice for 1 to 10^7, and `abscissa(-Du(8))` 778 for -1, both marked, where README says a marked answer is within a double's accuracy; `hinf(-Du(2), [1; 1], [1 1])` was refused, 'needs tests within a thousand digits'. Such a cell is read as its double too now, and the answer marked rather than inexact, as `rhoa`'s `+ 0*10^-1000` marks one, under grad as well: the hook says which it read, in 3 lines more, 8 changed and 2 of comment. inexact.ink holds it at 7x7, where eig gave 0.993 for 1 and the abscissa -0.993, and `hinf`; `dhinf(Du(2)/100, [1; 1], [1 1])` answers 100/99 + 10/9 alike, marked. No other answer moved. Found integrating Robertson's kinetics. |
+| C297 `[fixed]` | **A repeated `-o` or `--float` was accepted, where a repeated `--steps` is refused.** `-o a.c -o b.c` wrote b.c alone and `--float --float` was one, a repetition that adds nothing (CLAUDE.md, section 2). Each says \"is given twice\" now, exit 2, as `--steps` does, in 5 lines and 2 changed; `check_output_twice` and `check_float_twice` in `test/cli.cmake` hold it. `--compile`, `--check`, `--echo` and `-i` repeated are still one. Found reviewing `--steps n`. |
+| C298 `[fixed]` | **`--check` with a word too many beside `--steps` or `--float` was told the option needs an instance.** Each refused unless the files were two, so `--check f inst extra --steps 5 -o x.c` said \"--steps takes --check with an instance\" where both were given, and `--float` alike. Each is refused in its own words now only where no `--check` but a transcript's replay is asked, any other check malformed told `--check`'s usage, in 1 line, 2 changed and 2 of comment; `check_steps_extra_usage` and `check_float_extra_usage` in `test/cli.cmake` hold it. Found reviewing `--steps n`. |
 
 **Measure instructions, not the clock.** One of those changes made the matrix
 workload 20 per cent slower by the clock and not by a single instruction: with
@@ -3346,7 +3350,7 @@ that exploring seven domains asked of the interpreter, by how many asked.
   cases to `cli.cmake`'s first part; `steps.cmake` is gone. Every other
   check program and header byte for byte. 25 lines of sources written where
   about 20 were planned, 14 more in all: `main.cpp` 16 more, `check.hpp` 2
-  fewer. 16,282 lines in all.
+  fewer. 16,282 lines in all, 16,286 after C280.
 - **A cumulative sum compiled as an accumulator**, `sum_(t=1)^n e(t)`:
   refused as "a sum whose bounds are not constants", where a regret or a
   running loss is exactly that (Reddi et al. 2018).
@@ -3603,7 +3607,30 @@ that exploring seven domains asked of the interpreter, by how many asked.
   `ric(ric(P))` is 163 MB of header. About 25-35 lines; moves headers whose
   limits multiply matrices, not their values. The doubling algorithm for the
   Riccati equation under `lim` needs it too, its inverse a temporary (block
-  literals compiled, above).
+  literals compiled, above). Robertson's kinetics (1966) measure it:
+  backward Euler with each step's Newton iteration under `lim` is a 210 KB
+  header with the 3x3 inverse written by hand, and 10.6 MB with grad's
+  Jacobian, which gcc -O0 builds in 258 s and 4.4 GB and -O2 did not
+  finish in 600 s, where the same Newton read at a constant count,
+  `nw(y)_12`, is 24 KB and 58 KB.
+- **A limit's previous term tested for NaN once**: inside a limit's
+  function each read of the previous term's cell carries an `isnan` of
+  all its cells, 1,464 of them in Robertson's backward Euler; normalising
+  once per iterate halves its 210 KB header. Cheaper than temporaries, and
+  apart from them.
+- **`--check` names the cell and step of its worst units**: a float run of
+  Robertson's kinetics passed with its small concentrations negative and
+  50 times off, and `outside`'s in `test/compile/robertson.ink` passes at
+  1e+10 units, the line saying neither which cell nor where.
+- **`--check`'s remainder of a limit assumes linear convergence**: C36's
+  step*r/(1-r) reads the ratio of two steps, pessimistic for Newton's
+  quadratic convergence, whose last step is far below the one before.
+- **`tex` of a local definition**, refused as "tex cannot show a local
+  definition": print it as written, `(z = …)`, as Robertson's Newton
+  iteration names its iterate.
+- **The first index where a condition holds**, as a query: where the
+  explicit step's stability limit -2/lam passes h, found by bisecting
+  terms by hand. Minor.
 - `[done]` **An exact root of a perfect power**: `25^(1/2)` is `~5` and
   `(4/9)^(1/2)` `~0.666666667`, where the root is a rational, so every
   truss whose lengths come from its coordinates goes inexact and
@@ -3666,7 +3693,8 @@ that exploring seven domains asked of the interpreter, by how many asked.
     0 with c < 1 is now a division by zero, where it was inf, and the
     prototype refused `edge`'s v in `test/compile/grad.ink`, "cannot compile
     v: division by zero". Left to C's pow there, inf, v stays NaN at every
-    step as C116 made it: 1 line. A constant `0^(-1/2)`, or the same power
+    step as C116 made it: 1 line, and C286's 1 more folds it to C's inf as
+    a literal again. A constant `0^(-1/2)`, or the same power
     under `grad_(t = 0) t^(-1/2)`, is refused as `0^-1` is, "cannot compile
     y: division by zero", where it compiled.
 
@@ -3724,9 +3752,14 @@ that exploring seven domains asked of the interpreter, by how many asked.
   `reddi.ink` took a fifth more instructions. In Release, 2^(1/2) 43 ns to 54 and 2^(1/3) 64
   to 97; of a thousand digits, a non-square 3.9 us to 4.7, a square 3.8 to
   40, a hundredth power 3.9 to 37; no golden over 1.9 per cent more
-  instructions. Compiled, the refusal is the cli case `compile_pole`. 41
-  lines landed against about 30, 6 of them comment: `number.hpp` 40,
-  `compile.hpp` 1. 16,071 lines in all, with integration.
+  instructions. Compiled, the refusal is the cli case `compile_pole`.
+  Moved too, unlisted: `reddi`'s `fixed` and `gen` checks' estimates,
+  Adam's roots of exact squares exact now, fixed.x's 5.6e-16 to 6.7e-16
+  and fixed.R's 2.5e-14 to 4.6e-14, gen.x's 3.3e-16 to 4.4e-16 and gen.R's
+  2.1e-14 to 1.8e-14, held by their reports' form. 41 lines landed against
+  about 30, 6 of them comment: `number.hpp` 40, `compile.hpp` 1. 16,071
+  lines in all, with integration; 45 after C285's 3 and C286's 1,
+  `number.hpp` 43 and `compile.hpp` 2, and 16,075 in all.
 - **Plain definitions remembered**, specified as the language change
   phase 14 called it when it rejected memoising them (*Rejected: memoising
   a plain definition*). A plain definition is computed again at each read, so a

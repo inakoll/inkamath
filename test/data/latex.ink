@@ -96,6 +96,29 @@ gl = lim g.y
 >> tex ?gl
 \mathit{gl} = \lim_{n \to \infty} g.y_n
 
+# A limit's arguments are shown, its index one they do not read (C295).
+>> t(x)_0 = x
+t(x)_0 = x
+
+>> t(x)_k = t(x)_(k-1)/2 + 1
+t(x)_k = t(x)_(k-1)/2 + 1
+
+>> b_0 = 1
+b_0 = 1
+
+>> b_n = lim t(b_(n-1))
+b_n = lim t(b_(n-1))
+
+>> tex ?b
+b_0 = 1
+b_n = \lim_{k \to \infty} t(b_{n-1})_k
+
+>> lt = lim t(1)
+lt = lim t(1)
+
+>> tex ?lt
+\mathit{lt} = \lim_{n \to \infty} t(1)_n
+
 >> m(x) = floor(x/2) + (x + 1)^2
 m(x) = floor(x/2) + (x + 1)^2
 
