@@ -7817,9 +7817,96 @@ checked: what it asked of the compiler, each with its smallest change.
 - **A compiled gradient with respect to a tensor**, "a derivative with
   respect to a tensor, for now": the seed of three indices *Tensors
   compiled* left between attention and its training, met again by an input
-  gradient over a batch of images. The seed's slice taken from its cell as
-  its row and column are, and the parts assembled into an extent with
-  slices; about 10 lines, the interpreter's seeds unchanged.
+  gradient over a batch of images. The interpreter answers it (*Tensors of
+  rank 3*); the compiler refuses it before seeding anything.
+
+  Decided:
+  - **The seed is the interpreter's.** One pass for each cell of the point,
+    slice after slice and row by row, that cell 1 and every other 0, the
+    cell found by its place among the cells, as the interpreter's
+    `seed.data()[k]` finds it, rather than by its row and column; the parts
+    assembled into the point's extent, slices with it, which `Assembled`
+    already does by place. So a single value's gradient with respect to a
+    tensor is shaped as the tensor: a batch of two 3x3 images gives a
+    2x3x3 gradient, slice b the image b's. A tensor of one cell, `[n;;]`,
+    gives a tensor of one cell, not a single value, the rank being part of
+    the value.
+  - **Whatever holds the tensor**: a model's input (the images), a
+    parameter (a field), the step's own last term (W^Q trained), a value
+    computed. The point is a value the compiler already holds, read where
+    it is; the seed is a constant beside it. Nothing tells them apart, and
+    nothing needs to.
+  - **What stays refused, in the interpreter's words**: a gradient that is
+    not a single value with respect to a tensor, "grad of a tensor with
+    respect to a tensor is a Jacobian, which it does not give", and "grad
+    of a matrix with respect to a tensor". The words name both kinds as
+    the interpreter's do, which corrects one refusal compiled today: a
+    tensor's gradient with respect to a matrix, `grad_(v = [n 1]) v*T`, is
+    refused as "grad of a matrix with respect to a matrix". Found writing
+    this: a defect to register, fixed by the same lines. A derivative of
+    a derivative stays "for now", tensor or not.
+  - **`--float`** writes floats, as everywhere.
+  - **The passes are a matrix's.** Forward mode seeds one pass per cell, so
+    a 2x3x4 seed costs 24 passes of the body, as a 6x4 matrix's or 24
+    single parameters' do today, and `MANIFESTO.md` accepts that for tens
+    or hundreds of weights. Acceptable as a rule; what a pass costs is the
+    queued *size of a forward-mode header*'s to measure, not this entry's.
+    Measured with a prototype, it is large where a body is:
+    - The network of `saliency` below, 18 passes: a 49 KB header,
+      `--compile` 3.0 s, its check program built in 0.5 s at GCC -O2. On
+      2x3x4 images, 24 passes, 61 KB and 5.4 s; on 4x3x4, 48 passes, 221
+      KB and 86 s. inkamath's own time grows near the cube of the batch:
+      each pass computes every image's loss, and copies the code of the
+      whole argument through every cell of `pad`.
+    - Attention's W^Q at `tensor.ink`'s size, 2x4x2, 16 passes: a 1.28 MB
+      header, its check program 57 s at GCC -O1, 4 min 40 at -O2, 2 min at
+      Clang -O2, where `heads`, forward, builds in 0.45 s. At the smallest
+      multi-head size, 2x2x1, 4 passes, 10.5 s at GCC -O2 and 2.6 s at
+      Clang; one pass alone, for one cell of W^Q, 4.3 s. So the cost is
+      exp's part written out at each of its uses in every pass, which the
+      queued item's temporaries are about, and not the seed.
+
+  Rejected:
+  - **Seeding by slice, row and column**, as the exploration above put it:
+    three places computed from the cell's position, to write a cell that
+    position already names. The interpreter seeds by position.
+  - **A tensor of one cell taken as a single value**, or a gradient
+    flattened to a matrix: the compiled step is held to the interpreter,
+    whose gradient keeps the point's rank (C50, *Tensors of rank 3*).
+  - **Reverse mode for a tensor**: deferred by `MANIFESTO.md` until
+    gradients limit the models written; the passes cost what a matrix's
+    already do, and the measurements above say where a pass's cost lies.
+  - **Keeping the compiler's single wording** for a Jacobian: it miscalls a
+    tensor a matrix, and naming both kinds is a line.
+
+  What moves: `compile_tensor_refused` in `test/cli.cmake` loses its `h`,
+  which compiles, and `test/compile/tensor.ink`'s comment loses "a
+  derivative with respect to a tensor"; README's paragraph on the compiler,
+  "a tensor in a limit, or a `grad` with respect to one, is refused for
+  now", keeps the limit only. No header in `test/compile/expected` and no
+  golden: the prototype moved only that test of `ctest`.
+
+  About 6 lines, as the prototype wrote them, removing 8: the refusal
+  gone, the seed by its place, the words by kind. 16,218 lines in all
+  now, by `wc -l include/inkamath/*.hpp src/*`; past 9 the implementation
+  stops and reports.
+
+  Specified in `test/compile/tensorgrad.ink`, each value worked out apart
+  from the interpreter and the compiler: `saliency`, the network's input
+  gradient over a batch of two images, by backpropagation by hand in exact
+  fractions and by central differences of them, exact, in float too;
+  `attend`, attention's W^Q, two heads of width 1 stacked as a tensor,
+  trained as the step's term, by central differences in mpmath at 50
+  digits, held as `heads` is; `small`, a batch of two 2x2 states coupled
+  across slices, its gradient at a parameter, descended from the step's
+  own term, and at a tensor of one cell, exact in exact fractions, in
+  float too; and the three refusals above. Unwired, since a model that
+  does not compile fails the build, not a test: wired with the
+  implementation, `tensorgrad:saliency`, `tensorgrad:attend` and
+  `tensorgrad:small` among the checked instances of `test/CMakeLists.txt`
+  with their reports, the first and last among the float checks, and the
+  refusals' file as `compile_tensorgrad_refused` in `test/cli.cmake`.
+  Whether `attend`'s 10 s of GCC belongs in CI is for whoever merges.
 - **A read between slow sequences of one period and phase**, refused since
   C233 as one at another rate read by another: a minibatch as time, each
   term of the weights reading two consecutive samples, trains its weights
