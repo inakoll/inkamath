@@ -81,7 +81,7 @@ attend = attn(X_n = [1 0; 1 1;; 0 1; 1 -1]/2)
 
 # Its header, 'inkamath --compile tensorgrad.ink attn -o attn.h', computes
 # each value of exp and each part once, a temporary (DESIGN.md, the size of
-# a forward-mode header), test/cli.cmake's compile_attend_calls, unwired.
+# a forward-mode header), test/cli.cmake's compile_attend_calls.
 # A head's scores are 2x2x2, 8 values, 16 for both heads; a pass seeds one
 # cell of W^Q, so a head's slice of the seed is either of its two cells or
 # 0, three parts for each of its 8 scores, 48 for both, 0.0*x not folded:
@@ -89,8 +89,6 @@ attend = attn(X_n = [1 0; 1 1;; 0 1; 1 -1]/2)
 #     'attn_exp_jx(' written 17 times: its definition, and 16 temporaries
 #     'attn_exp_dx(' written 49 times: its definition, and 48 temporaries
 #     attn.h under 40,000 bytes
-#
-# Today they are written 289 and 145 times, in 81,259 bytes.
 
 # 'small', a batch of two 2x2 states, each pulled toward its input turned a
 # quarter back and toward the other's negation: E is the sum over the cells

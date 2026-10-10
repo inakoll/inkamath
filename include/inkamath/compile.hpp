@@ -935,12 +935,22 @@ private:
                 moves.empty() ? jumps : "(" + moves + " ? " + jumps + " : " + plain + ")";
         }
         const auto& takes = parts_.at(derived);
+        value             = Called(value);  // first: compilers order arguments apart
         if (!takes) return Answer(value);
         std::string taken;
         for (const auto& [part, i] : *takes)
             taken += (taken.empty() ? "" : ", ") +
                      (part ? arguments[i].part[0] : arguments[i]).cells[0].text;
-        return Answer(Parted(value, Of(Cell(derived + "(" + taken + ")", primary)), read));
+        return Answer(Parted(value, Called(Of(Cell(derived + "(" + taken + ")", primary))), read));
+    }
+
+    // Where its argument moves, a temporary, which every part over it reads
+    // again (C140), a name that may be NaN where the call may (C189, C211).
+    Code Called(Code code) {
+        const bool nan = MayNan(code.cells[0].text);
+        code           = Shared(code);
+        if (nan && code.cells[0].atom) nan_functions_.insert(code.cells[0].text);
+        return code;
     }
 
     // Whether a function of the prelude reads a sequence with parameters,

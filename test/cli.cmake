@@ -674,6 +674,21 @@ if(NOT calls EQUAL 3)
     message(SEND_ERROR "compile_c155: c155_exp written ${calls} times, not 3")
 endif()
 
+# Under grad, its value and part are temporaries where its argument moves:
+# exp's in attention, once for each score and each seed (compile/tensorgrad.ink).
+set(args --compile "${CMAKE_CURRENT_LIST_DIR}/compile/tensorgrad.ink" attn -o attn.h)
+check(compile_attend_calls)
+file(READ "${OUT}/attn.h" text)
+string(REGEX MATCHALL "attn_exp_jx\\(" values "${text}")
+string(REGEX MATCHALL "attn_exp_dx\\(" parts "${text}")
+list(LENGTH values values)
+list(LENGTH parts parts)
+file(SIZE "${OUT}/attn.h" size)
+if(NOT values EQUAL 17 OR NOT parts EQUAL 49 OR NOT size LESS 40000)
+    message(SEND_ERROR "compile_attend_calls: attn_exp_jx( ${values} times, attn_exp_dx( "
+                       "${parts}, in ${size} bytes")
+endif()
+
 # C153: a power of 1/2 is C's sqrt, rounded correctly, where pow need not be.
 file(WRITE "${OUT}/c153.ink" "x_0 = 2\nx_n = x_(n-1)^(1/2) + x_(n-1)^0.5\n")
 set(args --compile c153.ink -o c153.h)
