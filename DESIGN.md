@@ -7689,25 +7689,25 @@ checked: what it asked of the compiler, each with its smallest change.
   carries its parts.
 
   Decided: `Derivative::Eval`, meeting a local, evaluates its right-hand side
-  with its parts and binds the jet in the innermost of grad's frames, where
-  a call's parameters and grad's name are, in place of any binding of the
-  name there; and binds its value in the evaluator's frame as
-  `EvaluationVisitor` does, so that what grad reads as a value, a sum's
-  bound, an index, a name it leaves to the evaluator, reads the same local.
-  One bound where grad leaves the evaluation to the evaluator, in a sum's
-  bounds, ends any jet of its name in grad's frame, which would read a
-  value the evaluator no longer gives: in `(n = x) + (sum_(k=1)^((n = 3))
-  k) + n*x`, the last `n` is 3.
-  The rest follows from the frame. Left to right, and not there before its
-  binding, where the name is the global's or not defined. It shadows a
-  parameter; grad's own name and a sum's index it cannot, refused in both
-  evaluators by a fix that lands before this item, "k is the sum's index,
-  so a local cannot define it". Its extent is the frame: a call's
-  evaluation, whose locals die with it and so never reach what is
+  with its parts and binds the jet in the innermost of grad's frames, where a
+  call's parameters and grad's name are, in place of any binding of the name
+  there; and binds its value in the evaluator's frame as `EvaluationVisitor`
+  does, so that what grad reads as a value, a sum's bound, an index, a name
+  it leaves to the evaluator, reads the same local. One bound where grad
+  leaves the evaluation to the evaluator, in a sum's bounds, ends any jet of
+  its name in grad's frame, which would read a value the evaluator no longer
+  gives: in `(n = x) + (sum_(k=1)^((n = 3)) k) + n*x`, the last `n` is 3. The
+  rest follows from the frame. Left to right, a power's base before its
+  exponent as the evaluator reads it, where grad reads the exponent first
+  today, and not there before its binding, where the name is the global's or
+  not defined. It shadows a parameter; grad's own name and a sum's index it
+  cannot, refused in both evaluators by a fix that lands before this item, "k
+  is the sum's index, so a local cannot define it". Its extent is the frame:
+  a call's evaluation, whose locals die with it and so never reach what is
   remembered, or the line, so that one bound in grad's body is read after
   grad, at the point, its parts past grad's dropped as any value's are, as
-  `(sum_(k=1)^3 (t = k)) + t` reads the last term's. A local in an
-  argument is the caller's.
+  `(sum_(k=1)^3 (t = k)) + t` reads the last term's. A local in an argument
+  is the caller's.
 
   A grad opens no frame of its own, its name being bound in the one it is
   in, so a local bound outside an inner grad is read inside it with its
@@ -7753,27 +7753,28 @@ checked: what it asked of the compiler, each with its smallest change.
   paper gives, which the fix refuses instead; and passes per cell that share
   their locals.
 
-  About 33 lines, all in `derivative.hpp`: 10 to bind, in place of the
-  refusal; 3 for a call of a local; 2 for one in a sum's bounds; 10 to put
-  a pass's locals back; 8 for the search in order. 16,151 lines at cc686c5,
-  by `wc -l include/inkamath/*.hpp src/*`. Past 50 the implementation stops
-  and reports.
+  About 34 lines, all in `derivative.hpp`: 10 to bind, in place of the
+  refusal; 3 for a call of a local; 2 for one in a sum's bounds; 1 to read
+  a power's base first; 10 to put a pass's locals back; 8 for the search in
+  order. 16,151 lines at cc686c5, by `wc -l include/inkamath/*.hpp src/*`.
+  Past 51 the implementation stops and reports.
 
-  Specified in `test/data/spec/gradlocal.ink`, 76 entries replayed by the
-  spec suite, 38 failing by design, those passing being definitions echoing
+  Specified in `test/data/spec/gradlocal.ink`, 78 entries replayed by the
+  spec suite, 40 failing by design, those passing being definitions echoing
   themselves, values without `grad`, `clear`, and a local or a global read
   before the local's binding or on the next line. Covered: a local in a
-  function, in grad's body and in an argument, read twice, chained, shadowing
-  a parameter, refused for grad's name and a sum's index, constant, bound in
-  grad's point, in a guard, a term and a limit's terms, a sum's body, after
-  it and in its bound, of matrices and a tensor, a gradient with respect to a
-  matrix, over a global and over a local of the line, a two-layer network
-  beside the same network without locals, nested grads three ways,
-  Runge-Kutta's stages, the extent of a call and of the line, the search past
-  a global, and the two refusals. Every value is sympy's, each local
-  substituted by hand into the closed form it names; the network's gradients
-  are also what the network without locals gives today, and Runge-Kutta's
-  step what the interpreter gives without `grad`.
+  function, in grad's body and in an argument, read twice, chained, in a
+  power's base and its exponent, shadowing a parameter, refused for grad's
+  name and a sum's index, constant, bound in grad's point, in a guard, a term
+  and a limit's terms, a sum's body, after it and in its bound, of matrices
+  and a tensor, a gradient with respect to a matrix, over a global and over a
+  local of the line, a two-layer network beside the same network without
+  locals, nested grads three ways, Runge-Kutta's stages, the extent of a call
+  and of the line, the search past a global, and the two refusals. Every
+  value is sympy's, each local substituted by hand into the closed form it
+  names; the network's gradients are also what the network without locals
+  gives today, and Runge-Kutta's step what the interpreter gives without
+  `grad`.
 - **Locals compiled**, "a local definition": a step written with
   Runge-Kutta's stages as locals is a call per stage in a header. A local as
   a C temporary where it is bound, read after it in the evaluator's order,

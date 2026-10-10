@@ -41,6 +41,13 @@ g(x) = (u = x*x) + (v = u + 1) + v
 >> grad_(x = 3) g(x)
 18
 
+# Left to right as the evaluator reads, a power's base before its exponent.
+>> grad_(x = 2) (x + 0*(n = 3))^n
+12
+
+>> grad_(x = 2) (n*x)^(n = 2)
+error: n is not defined
+
 # A local shadows a parameter from its binding on. grad's own name and a
 # sum's index it cannot: the fix that refuses them in both evaluators lands
 # before this item.
