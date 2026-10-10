@@ -277,6 +277,10 @@ private:
             if (call->Call().subexpr()) (void)Index(call->Call().subexpr());
             return Call(*call, found->second, *x);
         }
+        if (auto* x = Exactly<EqualExpression<T>>(e)) {
+            EvaluationVisitor<T>::Unparametrized(*x);
+            stack_.Definable(x->Name());
+        }
         throw std::runtime_error("grad cannot differentiate a local definition yet");
     }
 
@@ -643,8 +647,8 @@ private:
 
     // An index is a whole number, so one that moves is at a jump, as floor
     // is at a whole number (C78).
-    int Index(const PExpression<T>& e) {
-        if (Reads(*e) && Moves(Eval(e))) throw std::runtime_error("an index jumps at " + Where());
+    int Index(const PExpression<T>& e, const std::string& what = "an index") {
+        if (Reads(*e) && Moves(Eval(e))) throw std::runtime_error(what + " jumps at " + Where());
         return AsIndex<T>(e->accept(ordinary_));
     }
 
@@ -796,16 +800,17 @@ private:
     }
 
     Jet Series(SeriesExpression<T>& series) {
-        const int  first    = AsIndex<T>(series.Lower()->accept(ordinary_));
-        const bool infinite = !series.Upper();
-        const int  last     = infinite ? first : AsIndex<T>(series.Upper()->accept(ordinary_));
+        const std::string bound    = series.Product() ? "the product's bound" : "the sum's bound";
+        const int         first    = Index(series.Lower(), bound);
+        const bool        infinite = !series.Upper();
+        const int         last     = infinite ? first : Index(series.Upper(), bound);
         std::optional<typename ReferenceStack<T>::Frame> frame;
         if (!stack_.Framed()) frame.emplace(stack_);
         typename ReferenceStack<T>::Trial index(stack_, series.Index());
         const Shadow                      hidden(*this, series.Index(), std::nullopt);
         const auto                        term = [&](int k) {
             stack_.Step();
-            stack_.BindValue(series.Index(), T(k));
+            stack_.BindValue(series.Index(), T(k), series.Role());
             return Eval(series.Body());
         };
         const auto combine = [&](const Jet& total, const Jet& next) {
@@ -844,7 +849,7 @@ private:
             std::optional<typename ReferenceStack<T>::Frame> frame;
             if (!stack_.Framed()) frame.emplace(stack_);
             typename ReferenceStack<T>::Trial bound(stack_, name);
-            stack_.BindValue(name, at);
+            stack_.BindValue(name, at, "grad's variable");
             // A single value's gradient with respect to a matrix, one cell at a time.
             const Extent      extent = at.Size();
             const std::size_t cells  = at.IsScalar() ? 1 : extent.count();
@@ -999,12 +1004,16 @@ private:
         }
         bool Holds(const Reference<T>&, const Clause<T>& clause, int index, int slice, int row,
                    int col) {
+            typename ReferenceStack<T>::Tentative locals(d.stack_, clause.parameters.binds());
+
             const ParametersDefinition<T>& p = clause.parameters;
             const T                        guard = d.Holds(
                 {definition.Name(), row != 0 ? &p : nullptr, index, slice, row, col}, p.guard());
             past    = past || numeric_interface<T>::approximated(guard);
             rounded = rounded || !numeric_interface<T>::exact(guard);
-            return numeric_interface<T>::truth(guard);
+            const bool held = numeric_interface<T>::truth(guard);
+            if (held) locals.keep();
+            return held;
         }
         void Settle(Jet& into, int slice, int row, int col) {
             if (const auto marked = Chosen())

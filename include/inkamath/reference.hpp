@@ -1106,9 +1106,12 @@ private:
         // function's outside the prelude.
         bool Holds(const Reference& definition, const Clause<T>& clause, int index, int, int row,
                    int col) {
+            typename ReferenceStack<T>::Tentative locals(evaluator.stack(),
+                                                         clause.parameters.binds());
             const T guard   = clause.parameters.guard()->accept(evaluator);
             past            = past || numeric_interface<T>::approximated(guard);
             const bool held = numeric_interface<T>::truth(guard);
+            if (held) locals.keep();
             rounded |= !numeric_interface<T>::exact(guard);
             const ParametersDefinition<T>& p    = clause.parameters;
             if (evaluator.stack().guards &&

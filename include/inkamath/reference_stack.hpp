@@ -52,6 +52,7 @@ public:
         std::string     name;
         T               value;
         definition_type definition;   // null when the binding is a value
+        const char*     role = nullptr;  // a sum's index or grad's variable: no local's
     };
     typedef std::vector<Binding> frame_type;
 
@@ -137,6 +138,7 @@ public:
     // or an index, which is part of the key and cannot invalidate anything.
     void Set(const std::string& ai_reference_name, const ParametersDefinition<T>& ai_parameters, PExpression<T>  ai_expression, const std::string& written = std::string()) {
         if (open_ != 0) {
+            Definable(ai_reference_name);
             definition_type& slot = FrameSlot(ai_reference_name).definition;
             slot =
                 Extended(slot, nullptr, ai_reference_name, ai_parameters, ai_expression, written);
@@ -282,10 +284,19 @@ public:
     // has already opened. It was a whole Reference wrapping a heap
     // ValExpression: a make_shared, a Clause and a ParametersDefinition per
     // binding, per call, and again per term of a sequence for the index.
-    void BindValue(const std::string& name, const T& value) {
+    void BindValue(const std::string& name, const T& value, const char* role = nullptr) {
         Binding& slot = FrameSlot(name);
         slot.value = value;
         slot.definition.reset();
+        slot.role = role;
+    }
+
+    // A local may shadow anything but what a construct binds for its own use.
+    void Definable(const std::string& name) const {
+        const Binding* binding = FindBinding(name);
+        if (binding && binding->role)
+            throw std::runtime_error(name + " is " + binding->role +
+                                     ", so a local cannot define it");
     }
 
     std::string Describe(const std::string& ai_reference_name, const ParametersCall<T>& ai_parameters) {
@@ -504,6 +515,24 @@ public:
         bool            kept_ = false;
     };
 
+    // The frame as a guard found it, put back unless the guard holds (C300).
+    struct Tentative {
+        Tentative(ReferenceStack<T>& stack, bool binds) : stack_(stack) {
+            if (binds && stack_.open_ != 0) frame_ = stack_.frames_[stack_.open_ - 1];
+        }
+        ~Tentative() {
+            if (frame_ && !kept_) stack_.frames_[stack_.open_ - 1] = std::move(*frame_);
+        }
+        void keep() { kept_ = true; }
+        Tentative(const Tentative&)            = delete;
+        Tentative& operator=(const Tentative&) = delete;
+
+    private:
+        ReferenceStack<T>&        stack_;
+        std::optional<frame_type> frame_;
+        bool                      kept_ = false;
+    };
+
     // The scope of one call's parameters.
     struct Frame {
     public:
@@ -522,6 +551,7 @@ public:
 
 private:
     friend struct Trial;
+    friend struct Tentative;
     friend class Reference<T>;
 
     definition_type Defined(const std::string& name) const {

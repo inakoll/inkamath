@@ -527,6 +527,13 @@ set(args --check coast.ink coast --float --float -o twice.c)
 set(stderr "inkamath: --float is given twice\nTry 'inkamath --help'.\n")
 set(exit 2)
 check(check_float_twice)
+# And the rest, each one alike (C302).
+foreach(twice IN ITEMS --compile --check --echo -i)
+    set(args ${twice} ${twice} coast.ink)
+    set(stderr "inkamath: ${twice} is given twice\nTry 'inkamath --help'.\n")
+    set(exit 2)
+    check(twice_${twice})
+endforeach()
 
 # Only an instance's check has steps: not a header, a transcript replayed,
 # or files run.

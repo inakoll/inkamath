@@ -370,6 +370,9 @@ public:
 
     [[nodiscard]] bool                  Product() const { return product_; }
     [[nodiscard]] const std::string&    Index() const { return index_; }
+    [[nodiscard]] const char*           Role() const {
+        return product_ ? "the product's index" : "the sum's index";
+    }
     [[nodiscard]] const PExpression<T>& Lower() const { return this->Children()[0]; }
     // Null for a series without an upper bound.
     [[nodiscard]] const PExpression<T>& Upper() const { return this->Children()[1]; }
