@@ -3351,14 +3351,184 @@ that exploring seven domains asked of the interpreter, by how many asked.
   paper's update must be shifted to t-1 by hand, where transcriptions slip.
 - **`--check` says how far a term parts**, not only where it first does: the
   largest difference and where, as MANIFESTO asks of how a difference grows.
-- **`atan` in the prelude**, written as `exp` and `log` are, `asin` and
-  `acos` from it: Kahan's angle formulas cannot be written without. Doyle
-  1978 asks for `arg` too, its phase margin being arg L(iw) at crossover,
-  of which only cos(PM) = -Re L can be written now. Apollo 11's coast
-  writes `asin`, a flight path angle, as a Newton limit and `acosh`, the
-  hyperbolic anomaly at pericynthion, from `log`; reading its state back
-  in the Mission Report's latitude, longitude and heading needs `atan2`,
-  which its check did in Python.
+- **`atan`, `atan2`, `asin`, `acos` and `acosh` in the prelude.** Kahan's
+  angle formulas cannot be written without atan. Doyle 1978's phase margin
+  is the angle of L(iw) at crossover, of which only cos(PM) = -Re L could
+  be written, its exploration bisecting `cos` for `acos`. Apollo 11's coast
+  writes `asin`, a flight path angle, as a Newton limit, and `acosh`, the
+  hyperbolic anomaly at pericynthion, from `log`, which loses every digit
+  near 1 where the anomaly is 0; reading its state back in the Mission
+  Report's longitude and heading needs `atan2`, which its check did in
+  Python. No model asked for `asinh`, `atanh` or `tan`, so none is added.
+
+  Decided as for `exp` and `sin`: written in inkamath, no libm, the
+  interpreter and the compiled step the same operations on the same doubles,
+  with one more, the root: `x^(1/2)` of a positive double is C's `sqrt` in
+  both since C153, correctly rounded, and `abs` already takes it. The
+  design, measured before it was written down:
+
+      atan(x) = atanp(x)
+      atan(x) | x < 0 = -atanp(-x)
+      atanp(t) = atans(~t)
+      atanp(t) | t > 15/4 = atank(1.5707963267948966, 6.123233995736766e-17, ~(-1/t))
+      atanp(t) | t > 11/8 = atank(1.1071487177940904, 9.40447137356638e-17, ~((t - 2)/(2*t + 1)))
+      atanp(t) | t > 3/4 = atank(0.7853981633974483, 3.061616997868383e-17, ~((t - 1)/(t + 1)))
+      atanp(t) | t > 17/64 = atank(0.4636476090008061, 2.2698777452961687e-17, ~((2*t - 1)/(2 + t)))
+      atank(c, d, u) = c + (d + atans(u))
+      atans(u) = u - u*atanz(u*u)
+      atanz(z) = z*(1/3 - z*(1/5 - z*(1/7 - z*(1/9 - z*(1/11 - z*(1/13 - z*(1/15 - z*(1/17 - z*(1/19 - z*(1/21 - z*(1/23 - z*(1/25 - z*(1/27 - z/29)))))))))))))
+      atan2(y, x) | x > 0 = atan(y/x)
+      atan2(y, x) | x < 0 and y >= 0 = 3.141592653589793 + (1.2246467991473532e-16 + atan(y/x))
+      atan2(y, x) | x < 0 = -3.141592653589793 + (atan(y/x) - 1.2246467991473532e-16)
+      atan2(y, x) | y > 0 = 1.5707963267948966 + (6.123233995736766e-17 - atan(x/y))
+      atan2(y, x) | y < 0 = -1.5707963267948966 - (6.123233995736766e-17 + atan(x/y))
+      asin(x) = atan2(x, ((1 - x)*(1 + x))^(1/2))
+      asin(x) | x < -1 or x > 1 = 1/0
+      acos(x) = atan2(((1 - x)*(1 + x))^(1/2), x)
+      acos(x) | x < -1 or x > 1 = 1/0
+      acosh(x) = acoshr(x, ((x - 1)*(x + 1))^(1/2))
+      acosh(x) | x < 1 = 1/0
+      acosh(x) | x > 2^26 = log(x) + 0.6931471805599453
+      acosh(x) | x < 17/16 = logs(((x - 1)/(x + 1))^(1/2), 0)
+      acoshr(x, r) = log(x + r) + (x - (x + r) + r)/(x + r)
+
+  `atan` is odd by its guard, as `tanh` is, and reduces t = |x| by the
+  nearest c of 0, 1/2, 1, 2 and infinity, atan t = atan c + atan u with u =
+  (t - c)/(1 + tc), so |u| <= 4/15; atan c is a double and its remainder
+  (Cody and Waite), the remainder added to the series first. The thresholds
+  17/64, 3/4, 11/8 and 15/4 are dyadic, so that a guard compares a double
+  with what a double holds, as the prelude's do; 17/64 rather than 1/4 keeps
+  atan c + atan u at 1/4 or above, 1.42 units at worst for 1.88. 2t - 1 and
+  t - 1 are exact where they cancel (Sterbenz). atan u is Taylor's series to
+  u^29 in Horner's form, remainder below 2^-62 of u, its coefficients
+  reciprocals of whole numbers. An exact argument is reduced exactly and
+  rounded once, at the `~`.
+
+  `atan2(y, x)`, y first, as C, Fortran and the papers write it: the angle
+  of (x, y) in (-pi, pi]. Off the y axis, atan(y/x), moved by pi, in two
+  parts, for x < 0; on it, pi/2 less atan(x/y), which is 0 there but keeps
+  the partial in x for `grad`. The negative x axis is pi, its clause the one
+  from above. A double's -0 is 0, as it is everywhere in the language (C33,
+  C98, `sin(-0)`): `atan2(-0, -1)` is pi where C's is -pi, an exact 0 has no
+  sign, and an angle would otherwise depend on how its 0 was reached. The
+  origin has no angle: no clause holds, "atan2 needs y or x other than 0",
+  eigg's way of wording a guard (`Unapplied`), where C answers 0 or pi by
+  the zeros' signs. Two infinities give inf/inf, refused as NaN is, "a
+  comparison needs a number, not -nan": a known limit, as C101 was, which a
+  guard would cost a clause to word. Exact arguments are divided exactly.
+
+  `asin` and `acos` are atan2 of x and the root of (1 - x)(1 + x), so that 1
+  - x is exact from 1/2 to 1, where 1 - x^2 would cancel: acos(1 - 10^-10)
+  keeps all its digits, where pi/2 - asin(x) is 2.4e7 units off near 1, and
+  asin(1) and acos(-1) are pi/2 and pi to the double, through atan2's axes,
+  where atan(x/root) divides by 0. Past 1 either way refused in plain words,
+  "asin needs a number between -1 and 1, not 2", before the walk as C156
+  refuses log of 0, and NaN in a header, which `1/0` gives: the prelude's
+  functions are real, as `log(-1)` is refused while `(-1)^(1/2)`, the power
+  operator, takes its complex branch. An exact number just past 1 is refused
+  and its double, 1, is not.
+
+  `acosh` is log(x + r), r the root of (x - 1)(x + 1), x - 1 exact up to 2,
+  with what x + r lost in rounding added back, (x - (x + r)) + r being that
+  loss exactly (Dekker); below 17/16 it is 2 atanh of the root of (x - 1)/(x
+  + 1), which is `logs` at k = 0, the series `log` takes where its argument
+  is near 1, its remainder below 2^-60 there, where log's own error would
+  otherwise be the answer's; past 2^26 it is log(2x), as x^2 overflows from
+  2^512. Apollo's log(x + root(x^2 - 1)) is 2.5e7 units off near 1. Refused
+  below 1, "acosh needs a number at least 1, not 0.5".
+
+  Nothing they give is exact, as `sin(0)` is not: atan(0), asin(0), acos(1),
+  acosh(1) and atan2(0, 1) are a double's 0, since `grad` refuses a clause
+  that holds at a point alone. atan(1), atan2(1, 0), asin(1) and acos(-1)
+  are pi/4, pi/2, pi/2 and pi to the double, so `4*atan(1) == pi`.
+
+  Accuracy over doubles, against atanl, asinl, acosl, acoshl and atan2l at
+  64 bits on 10^8 points a range, the farthest of each confirmed by mpmath
+  at 256 bits, and no bound:
+
+  | | worst | correctly rounded |
+  |---|---|---|
+  | `atan` on [-1, 1] | 1.422 units, at -0.2689771099460534 | 92.2% |
+  | `atan` on [-16, 16] | 1.086, at 0.2703338111176379 | 95.0% |
+  | `atan`, every exponent | 1.394, at -0.2742618299210873 | 100.0% |
+  | `atan2`, \|x\| and \|y\| from 2^-60 to 2^60 | 1.815 | 82.0% |
+  | `asin` on [-1, 1] | 2.195, at -0.3052601891030118 | 73.3% |
+  | `asin`, \|x\| from 2^-1074 to 1/2 | 2.442, at 0.24300644216948256 | 98.5% |
+  | `asin`, 1 - 2^-k | 1.736, at -0.8171986468000391 | 98.0% |
+  | `acos` on [-1, 1] | 2.323, at 0.9540953772565255 | 77.5% |
+  | `acos`, 1 - 2^-k | 2.466, at 0.9632802889868292 | 79.9% |
+  | `acosh` on [1, 2] | 3.186, at 1.0685528068531271 | 69.8% |
+  | `acosh`, every exponent | 2.658, at 1.0702269022327004 | 80.7% |
+
+  acosh's worst is log's own, near its fold at root 2, just above 17/16.
+  Rejected: `asin` by Newton under `lim` and `acos` by bisection, the
+  explorations', unbounded in their steps and refused compiled; fdlibm's
+  breakpoints, 7/16 to 39/16, |u| to 7/16, 23 terms of Taylor's series
+  where its constants are minimax; two branches, pi/4 and pi/2 alone,
+  |u| <= 7/16 in 23 terms, 2.19 units at 0.4517; a minimax polynomial,
+  whose constants are no reciprocals; halving by atan x = 2 atan(x/(1 +
+  root(1 + x^2))), a root and its roundings each time; asin as atan(x/root(1
+  - x^2)), which divides by 0 at 1; acos as 2 atan(root((1 - x)/(1 + x))),
+  at -1; C's signed zeros; answering atan2(0, 0); answering a complex asin.
+
+  `grad` differentiates the definitions, guards taking their side at a
+  threshold, where the parts are continuous. The parts, 1/(1 + x^2),
+  1/root(1 - x^2) and 1/root(x^2 - 1), are within about 2.5 units for atan,
+  4.1 for asin, 3.9 for acos and 3.0 for acosh on 20,000 points, forward
+  mode emulated over doubles; the implementation's sweep sets their bounds.
+  atan2's partials, x/(x^2 + y^2) and -y/(x^2 + y^2), come through both
+  axes' clauses. Where a part is infinite, asin and acos at 1 and -1, acosh
+  at 1, the root refuses, "a power's derivative is infinite at x = 1"; at
+  the origin atan2 refuses in its words.
+
+  Called compiled by the interpreter as `sin` is: `inkamath_prelude.ink`'s
+  sequences add atan, asin, acos and acosh and their parts, and a call of
+  one on a real double takes the header's function, the domain refused first
+  in its own words, under grad too, and a part that is infinite walks to the
+  root's refusal. Walked, each nests two to six references deeper. `atan2`
+  stays walked, two arguments, as `max` does; the atan it calls is compiled.
+  Compiled in a model where called, as `sin` is, with no change to the
+  compiler.
+
+  Held to mpmath as C225 holds the others: `test/data/prelude_reference.txt`
+  gains sections atan, asin, acos and acosh, 344, 321, 319 and 324
+  arguments, and the parts atan_dx, asin_dx and acosh_dx (acos's is asin's
+  negated, as cos's is sin's), written by `test/prelude_reference.py` with
+  the old sections' bytes unchanged: thresholds and their neighbours, 1 -
+  2^-k, 1 + 2^-k, subnormals, the largest double and the sweep's farthest.
+  The design emulated has 1.422, 2.442, 2.466 and 3.186 there, so
+  `test/prelude_test.cpp` holds atan, asin, acos and acosh within 1.43,
+  2.45, 2.47 and 3.19, and the parts within what the implementation's sweep
+  measures; its skipped `sweep` gains their ranges.
+
+  What moves, in the implementation's commit: no golden. `apollo11.ink`
+  deletes its own `asn`, `asin` and `acosh`, the prelude's now, and
+  `translunar.ink`'s answers, at the digits they show, are to stay; the
+  header `inkamath_prelude.h` is recorded again; README's paragraph on the
+  prelude names the five; `test/compile/atan.ink` is wired as `trig.ink` is,
+  its report every term within 0 and its program defining the five and no
+  libm atan, asin, acos or acosh.
+
+  About 45 lines of sources: 25 in the prelude and 5 of its comment, 15 in
+  the interpreter's fast path and its refusals and 1 in `Unapplied`'s table,
+  the header generated aside. 16,285 lines in all now, by `wc -l
+  include/inkamath/*.hpp include/inkamath/*.h src/*`. Past 68 the
+  implementation stops and reports.
+
+  Specified in `test/data/spec/atan.ink`, 168 entries replayed by the spec
+  suite, 152 failing, those passing being definitions and `digits`: values
+  at nine digits, mpmath's; at seventeen, mpmath's correctly rounded double
+  where the design gives it and the design's own where not, said so, the
+  design emulated in C and in Python with exact fractions, apart from the
+  interpreter; special values and signs, atan2 in every quadrant, on the
+  axes and with signed zeros, near 1 and -1, large arguments and subnormals,
+  refusals, `grad`, the fast path's depth, Doyle's phase margin both ways
+  and Apollo's state read back. The design, given to the interpreter as a
+  session's definitions, answers 152 of the 168 entries as written, all but
+  the 16 that need the fast path and the words of the refusals; the C
+  emulation is that session's to the bit on 4,832 doubles, and the Python
+  one on 1,200 exact arguments. And in `test/compile/atan.ink`, wired with
+  the implementation; that prototype checks within 0.
 - **A cell at a computed whole index, compiled**: `T[k,1]` with
   `k = floor(t/H) + 1`, an ephemeris read at the row a time falls in, is
   refused as "a cell whose place is not a constant", so Apollo 11's coast
