@@ -157,3 +157,17 @@ error: a local cannot take an index
 
 >> clear n
 clear n
+
+# A local by cells is evaluated in a frame of its own, as a call is, so it
+# takes the values its line binds there along: it read neither x nor t,
+# "not defined" (C310).
+>> h2(x) = (M[j<=2] = j*x) + M
+h2(x) = (M[j<=2] = j*x) + M
+
+>> h2(3)
+[ 6;
+ 12]
+
+>> (t = 2) + (M[j<=2] = j*t) + M
+[ 6;
+ 10]

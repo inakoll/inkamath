@@ -139,9 +139,18 @@ public:
     void Set(const std::string& ai_reference_name, const ParametersDefinition<T>& ai_parameters, PExpression<T>  ai_expression, const std::string& written = std::string()) {
         if (open_ != 0) {
             Definable(ai_reference_name);
+            // A local by cells is evaluated in a frame of its own: it takes
+            // the values of this one along (C310).
+            Captures captured;
+            if (ai_parameters.cells())
+                for (const Binding& b : frames_[open_ - 1])
+                    if (const T* value = b.definition ? b.definition->Kept() : &b.value)
+                        captured.emplace_back(b.name, *value);
             definition_type& slot = FrameSlot(ai_reference_name).definition;
-            slot =
+            const auto       local =
                 Extended(slot, nullptr, ai_reference_name, ai_parameters, ai_expression, written);
+            local->captured = std::move(captured);
+            slot            = local;
             return;
         }
         // An answer prints the unit as 'i', so no definition may make it
@@ -688,10 +697,11 @@ private:
     }
 
     // Updating and initialising are the same operation.
-    static definition_type Extended(const definition_type& existing, const Scope<T>* home,
-                                    const std::string&             name,
-                                    const ParametersDefinition<T>& parameters,
-                                    PExpression<T> expression, const std::string& written) {
+    static std::shared_ptr<Reference<T>> Extended(const definition_type& existing,
+                                                  const Scope<T>* home, const std::string& name,
+                                                  const ParametersDefinition<T>& parameters,
+                                                  PExpression<T>                 expression,
+                                                  const std::string&             written) {
         std::shared_ptr<Reference<T>> updated =
             existing ? std::make_shared<Reference<T>>(*existing) : std::make_shared<Reference<T>>();
         updated->home = home;
