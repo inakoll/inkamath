@@ -1000,12 +1000,16 @@ private:
         }
         bool Holds(const Reference<T>&, const Clause<T>& clause, int index, int slice, int row,
                    int col) {
+            typename ReferenceStack<T>::Tentative locals(d.stack_, clause.parameters.binds());
+
             const ParametersDefinition<T>& p = clause.parameters;
             const T                        guard = d.Holds(
                 {definition.Name(), row != 0 ? &p : nullptr, index, slice, row, col}, p.guard());
             past    = past || numeric_interface<T>::approximated(guard);
             rounded = rounded || !numeric_interface<T>::exact(guard);
-            return numeric_interface<T>::truth(guard);
+            const bool held = numeric_interface<T>::truth(guard);
+            if (held) locals.keep();
+            return held;
         }
         void Settle(Jet& into, int slice, int row, int col) {
             if (const auto marked = Chosen())

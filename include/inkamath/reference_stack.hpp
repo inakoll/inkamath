@@ -515,6 +515,24 @@ public:
         bool            kept_ = false;
     };
 
+    // The frame as a guard found it, put back unless the guard holds (C300).
+    struct Tentative {
+        Tentative(ReferenceStack<T>& stack, bool binds) : stack_(stack) {
+            if (binds && stack_.open_ != 0) frame_ = stack_.frames_[stack_.open_ - 1];
+        }
+        ~Tentative() {
+            if (frame_ && !kept_) stack_.frames_[stack_.open_ - 1] = std::move(*frame_);
+        }
+        void keep() { kept_ = true; }
+        Tentative(const Tentative&)            = delete;
+        Tentative& operator=(const Tentative&) = delete;
+
+    private:
+        ReferenceStack<T>&        stack_;
+        std::optional<frame_type> frame_;
+        bool                      kept_ = false;
+    };
+
     // The scope of one call's parameters.
     struct Frame {
     public:
@@ -533,6 +551,7 @@ public:
 
 private:
     friend struct Trial;
+    friend struct Tentative;
     friend class Reference<T>;
 
     definition_type Defined(const std::string& name) const {
