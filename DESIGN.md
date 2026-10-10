@@ -3308,7 +3308,9 @@ that exploring seven domains asked of the interpreter, by how many asked.
   passed to `check`, and the help's two lines; `check.hpp` 6, the step count
   a parameter of `Program` and `Flips` where it is a constant, and `1 step`.
   Past 30 the implementation stops and reports. README's paragraph on
-  `--check` gains a sentence. About 16,000 lines in all.
+  `--check` gains a sentence saying plainly that n counts the step's calls,
+  the first term's among them, so that a model of N steps after its initial
+  term is checked whole with `--steps` N + 1. About 16,000 lines in all.
 
   Specified in `test/compile/steps.ink`: `coast`, a body thrown up and
   falling back by semi-implicit Euler, a thousand steps of 1/8, whole at
