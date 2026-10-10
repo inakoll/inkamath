@@ -8103,11 +8103,12 @@ checked: what it asked of the compiler, each with its smallest change.
   - **Under grad, a call of a function of the header whose argument moves
     is a temporary, its value then its part**, as an argument a call was
     compiled in is (C140, C155). The value is declared first, explicitly:
-    C++ leaves the order of a call's arguments to the compiler, and GCC and
-    MSVC would number them apart. A temporary whose call may be NaN, by
-    `MayNan` of its text, joins `nan_functions_`, so that C189 and C211 read
-    its name as they read the call. A call whose argument does not move is
-    written where the source writes it, as now.
+    C++ leaves the order of a call's arguments to the compiler, and the
+    prototype built by GCC declares the prelude's `exp_dx` first, by Clang
+    `exp_jx`. A temporary whose call may be NaN, by `MayNan` of its text,
+    joins `nan_functions_`, so that C189 and C211 read its name as they
+    read the call. A call whose argument does not move is written where
+    the source writes it, as now.
 
   So the may-NaN flag *Shared at every value written twice* waits for is
   not a prerequisite here: a call's temporary carries its NaN by its name,
