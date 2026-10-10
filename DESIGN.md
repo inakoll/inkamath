@@ -7852,20 +7852,8 @@ checked: what it asked of the compiler, each with its smallest change.
     single parameters' do today, and `MANIFESTO.md` accepts that for tens
     or hundreds of weights. Acceptable as a rule; what a pass costs is the
     queued *size of a forward-mode header*'s to measure, not this entry's.
-    Measured with a prototype, it is large where a body is:
-    - The network of `saliency` below, 18 passes: a 49 KB header,
-      `--compile` 3.0 s, its check program built in 0.5 s at GCC -O2. On
-      2x3x4 images, 24 passes, 61 KB and 5.4 s; on 4x3x4, 48 passes, 221
-      KB and 86 s. inkamath's own time grows near the cube of the batch:
-      each pass computes every image's loss, and copies the code of the
-      whole argument through every cell of `pad`.
-    - Attention's W^Q at `tensor.ink`'s size, 2x4x2, 16 passes: a 1.28 MB
-      header, its check program 57 s at GCC -O1, 4 min 40 at -O2, 2 min at
-      Clang -O2, where `heads`, forward, builds in 0.45 s. At the smallest
-      multi-head size, 2x2x1, 4 passes, 10.5 s at GCC -O2 and 2.6 s at
-      Clang; one pass alone, for one cell of W^Q, 4.3 s. So the cost is
-      exp's part written out at each of its uses in every pass, which the
-      queued item's temporaries are about, and not the seed.
+    Measured with a prototype, it is large where a body is: the figures
+    are in that item.
 
   Rejected:
   - **Seeding by slice, row and column**, as the exploration above put it:
@@ -7876,7 +7864,8 @@ checked: what it asked of the compiler, each with its smallest change.
     whose gradient keeps the point's rank (C50, *Tensors of rank 3*).
   - **Reverse mode for a tensor**: deferred by `MANIFESTO.md` until
     gradients limit the models written; the passes cost what a matrix's
-    already do, and the measurements above say where a pass's cost lies.
+    already do, and the queued item's measurements say where a pass's
+    cost lies.
   - **Keeping the compiler's single wording** for a Jacobian: it miscalls a
     tensor a matrix, and naming both kinds is a line.
 
@@ -8050,6 +8039,20 @@ checked: what it asked of the compiler, each with its smallest change.
   again and each seed as `0.0*P + ... + 1.0*P`. A temporary for a guard's
   operands, and `0.0*x` folded where x is finite, are the first two
   measurements to take.
+  Measured with a prototype of *a compiled gradient with respect to a
+  tensor*:
+  - inkamath's own time grows near the cube of the batch: each pass
+    computes every image's loss, and copies the code of the whole argument
+    through every cell of `pad`. `tensorgrad.ink`'s network, 18 passes: a
+    49 KB header, `--compile` 3.0 s, its check program built in 0.5 s at
+    GCC -O2; on 2x3x4 images, 24 passes, 61 KB and 5.4 s; on 4x3x4, 48
+    passes, 221 KB and 86 s.
+  - exp's part is written out at each of its uses in every pass. Attention's
+    W^Q at `tensor.ink`'s size, 2x4x2, 16 passes: a 1.28 MB header, its
+    check program 57 s at GCC -O1, 4 min 40 at -O2, 2 min at Clang -O2,
+    where `heads`, forward, builds in 0.45 s. At the smallest multi-head
+    size, 2x2x1, 4 passes, 10.5 s at GCC -O2 and 2.6 s at Clang; one pass
+    alone, for one cell of W^Q, 4.3 s.
 - **A maximum or minimum over an index**, `max_(i=1)^n`, as a sum is
   written: max-pooling over a window is nested `max` calls today. Minor,
   until a second model asks.
