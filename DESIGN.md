@@ -3395,7 +3395,7 @@ that exploring seven domains asked of the interpreter, by how many asked.
   limits multiply matrices, not their values. The doubling algorithm for the
   Riccati equation under `lim` needs it too, its inverse a temporary (block
   literals compiled, above).
-- **An exact root of a perfect power**: `25^(1/2)` is `~5` and
+- `[done]` **An exact root of a perfect power**: `25^(1/2)` is `~5` and
   `(4/9)^(1/2)` `~0.666666667`, where the root is a rational, so every
   truss whose lengths come from its coordinates goes inexact and
   `truss_calfem.ink` types them. MANIFESTO.md asks for exact numbers
@@ -3503,6 +3503,21 @@ that exploring seven domains asked of the interpreter, by how many asked.
   or pow gives checked against mpmath to the nine digits shown, and all
   printed by a transcription of `Number::Shown`. The prototype, discarded,
   passes every entry.
+
+  Built as specified: every entry passes as written, and the spec is the
+  golden `roots.ink`, its truss gone to `truss_calfem.ink` and its four
+  bases of C175's path to `goldberg.ink`; the spec suite goes, it its only
+  file. Departures, for time: as the review asked, 64 bits take the
+  double's root, rounded and raised back, and past them Newton starts just
+  above the double's root, where from 2^ceil(bits/q) a q near 100 took 300
+  us of a thousand-digit number; and an even q asks first whether the
+  number is a square mod 64 and mod 63, without which Adam's roots in
+  `reddi.ink` took a fifth more instructions. In Release, 2^(1/2) 43 ns to 54 and 2^(1/3) 64
+  to 97; of a thousand digits, a non-square 3.9 us to 4.7, a square 3.8 to
+  40, a hundredth power 3.9 to 37; no golden over 1.9 per cent more
+  instructions. Compiled, the refusal is the cli case `compile_pole`. 41
+  lines landed against about 30, 6 of them comment: `number.hpp` 40,
+  `compile.hpp` 1. 16,065 lines in all.
 - **Plain definitions remembered**, specified as the language change
   phase 14 called it when it rejected memoising them (*Rejected: memoising
   a plain definition*). A plain definition is computed again at each read, so a

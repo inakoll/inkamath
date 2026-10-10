@@ -163,21 +163,6 @@ cbrt(x) = x^(1/3)
 >> 4^(1001/2) == 2^1001
 1
 
-# C175's path, for bases past a double's range that are not perfect
-# powers, as before: goldberg.ink's four entries for it, which these
-# replace there when this becomes a golden.
->> (2*10^400)^(1/2)
-~1.41421356e+200
-
->> (2*10^-400)^(1/2)
-~1.41421356e-200
-
->> (2^1101)^(1/4)
-~7.21948646e+82
-
->> ((3*10^200)^2 + (4*10^200)^2 + 1)^(1/2)
-~5e+200
-
 # The root is exact and its power past a thousand digits: (7/6)^1185,
 # whose numerator has 1002, approximated as a whole power is.
 >> (49/36)^(1185/2)
@@ -239,71 +224,7 @@ error: division by zero
 >> grad_(x = 0) x^-1
 error: division by zero
 
-# A truss's lengths from its coordinates. The 3-4-5 bar first, then
-# truss_calfem.ink's three bars with their lengths computed where that
-# golden types them, which it takes in their place when this becomes a
-# golden; its displacements and forces are unchanged, worked again in
-# sympy from the computed lengths.
+# A bar's length from its ends, the 3-4-5 triangle's; truss_calfem.ink
+# computes a truss's so.
 >> (3^2 + 4^2)^(1/2)
 5
-
->> X = [0 0; 0 6/5; 8/5 0; 8/5 6/5]
-X = [0 0; 0 6/5; 8/5 0; 8/5 6/5]
-
->> C = [1 3; 3 4; 2 3]
-C = [1 3; 3 4; 2 3]
-
->> dx(e) = X[C[e,2],1] - X[C[e,1],1]
-dx(e) = X[C[e,2],1] - X[C[e,1],1]
-
->> dy(e) = X[C[e,2],2] - X[C[e,1],2]
-dy(e) = X[C[e,2],2] - X[C[e,1],2]
-
->> L(e) = (dx(e)^2 + dy(e)^2)^(1/2)
-L(e) = (dx(e)^2 + dy(e)^2)^(1/2)
-
->> [L(1); L(2); L(3)]
-[1.6;
- 1.2;
-   2]
-
->> Ar = [6; 3; 10]/10^4
-Ar = [6; 3; 10]/10^4
-
->> Em = 2*10^11
-Em = 2*10^11
-
->> t(e) = [-dx(e) -dy(e) dx(e) dy(e)]
-t(e) = [-dx(e) -dy(e) dx(e) dy(e)]
-
->> ke(e) = Em*Ar[e]/L(e)^3*t(e)'*t(e)
-ke(e) = Em*Ar[e]/L(e)^3*t(e)'*t(e)
-
->> G(e)[a<=4, p<=8] = p == 2*C[e, ceil(a/2)] - mod(a, 2)
-G(e)[a<=4, p<=8] = p == 2*C[e, ceil(a/2)] - mod(a, 2)
-
->> K = sum_(e=1)^3 G(e)'*ke(e)*G(e)
-K = sum_(e=1)^3 G(e)'*ke(e)*G(e)
-
->> S[f<=2, p<=8] = p == f + 4
-S[f<=2, p<=8] = p == f + 4
-
->> F[p<=8] | p == 6 = -80000
-F[p<=8] | p == 6 = -80000
-
->> u = S'*(S*K*S')^-1*S*F
-u = S'*(S*K*S')^-1*S*F
-
->> Nf(e) = Em*Ar[e]/L(e)^2*t(e)*G(e)*u
-Nf(e) = Em*Ar[e]/L(e)^2*t(e)*G(e)*u
-
->> frac u[5]
--48/120625
-
->> frac u[6]
--139/120625
-
->> frac [Nf(1); Nf(2); Nf(3)]
-[-5760000/193;
- 11120000/193;
-  7200000/193]
