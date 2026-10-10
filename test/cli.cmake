@@ -389,7 +389,7 @@ check(compile_c127)
 # interpreter's words where it has them; y and P compile.
 file(WRITE "${OUT}/tensor.ink" "T = [1 2; 3 4;; 5 6; 7 8]\nU = [1 2; 3 4;; 5 6; 7 8;; 9 10; 11 12]\n"
      "a_n = (n*T)[2,1]\nb_n = (n*T)^2\nc_n | n*T > 1 = 1\nc_n = 0\nd_n = n*T + U\n"
-     "f_n = [n 1;; 2 3 4]\ng_n = lim p(n*T)\nh_n = grad_(V = n*T) sum_(b=1)^2 [1 1]*V[b]*[1; 1]\n"
+     "f_n = [n 1;; 2 3 4]\ng_n = lim p(n*T)\n"
      "m_n[b<=2, i<=1, j<=1] | n > 2 = b\nm_n[b<=2, i<=1, j<=1] = 0\np(A)_0 = A\n"
      "p(A)_k = p(A)_(k-1)/2\nq_n = [n;; 1] + [1 2]\nr_n = [n;; 1]*[1 2; 3 4]\n"
      "y_0 = 0\ny_n = y_(n-1) + T[2,1,2]\nP[b<=2, j<=2, k<=2] = b\n")
@@ -400,13 +400,24 @@ cannot compile c: a comparison of matrices
 cannot compile d: a 2x2x2 tensor and a 3x2x2 tensor have different numbers of slices
 cannot compile f: the slices of a tensor have one size, not 1x2 and 1x3
 cannot compile g: a tensor in a limit, for now
-cannot compile h: a derivative with respect to a tensor, for now
 cannot compile m: a tensor's cells under a guard that is not a constant, for now
 cannot compile q: a tensor whose slices are single values met by a matrix, for now
 cannot compile r: a tensor whose slices are single values met by a matrix, for now
 ")
 set(exit 1)
 check(compile_tensor_refused)
+
+# A gradient with respect to a tensor compiled refuses a Jacobian, as the
+# interpreter does, in its words (test/compile/tensorgrad.ink).
+file(WRITE "${OUT}/tensorgrad.ink" "T = [1 2; 3 4;; 5 6; 7 8]\nh_n = grad_(V = n*T) 2*V\n"
+     "k_n = grad_(V = n*T) V[1]\nw_n = grad_(v = [n 1]) v*T\n")
+set(args --compile tensorgrad.ink)
+set(stdout "cannot compile h: grad of a tensor with respect to a tensor is a Jacobian, which it does not give
+cannot compile k: grad of a matrix with respect to a tensor is a Jacobian, which it does not give
+cannot compile w: grad of a tensor with respect to a matrix is a Jacobian, which it does not give
+")
+set(exit 1)
+check(compile_tensorgrad_refused)
 
 # The prelude's mod refuses a matrix to divide by, as the interpreter does,
 # rather than compile the product of matrices it would be.

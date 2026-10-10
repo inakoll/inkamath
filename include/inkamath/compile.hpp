@@ -3228,17 +3228,15 @@ private:
         if (!grad_.empty()) throw Reason("a derivative of a derivative, for now");
         const std::string& name  = expression->Variable();
         const Code         point = Emit(expression->Point());
-        if (point.size.slices) throw Reason("a derivative with respect to a tensor, for now");
         Asked([&] { Reasoned([&] { Derivative<Value>(definitions_).Names(*expression); }); }, true);
         Code              body;
         std::vector<Code> parts;
         bool              any = false;
         for (std::size_t k = 0; k < point.cells.size(); ++k) {
-            const std::size_t i = k / point.size.cols + 1, j = k % point.size.cols + 1;
-            Value             seed(Number(1));
+            Value seed(Number(1));
             if (!point.Scalar()) {
-                seed       = Value(point.size);
-                seed(i, j) = Number(1);
+                seed           = Value(point.size);
+                seed.data()[k] = Number(1);
             }
             Code x = point;
             x.part = {Literal(seed)};
@@ -3250,10 +3248,10 @@ private:
             const Setting<Expansion*>  binding(expansion_, &bound);
             const Setting<std::string> differentiating(grad_, name);
             body = Emit(expression->Body());
+            const auto kind = [](const Code& c) { return c.size.slices ? "tensor" : "matrix"; };
             if (!point.Scalar() && !body.Scalar())
-                throw Reason(
-                    "grad of a matrix with respect to a matrix is a Jacobian, which it "
-                    "does not give");
+                throw Reason(std::string("grad of a ") + kind(body) + " with respect to a " +
+                             kind(point) + " is a Jacobian, which it does not give");
             parts.push_back(body.part.empty() ? Literal(Value(body.size)) : body.part[0]);
             any = any || !body.part.empty();
         }

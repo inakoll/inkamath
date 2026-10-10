@@ -175,8 +175,9 @@ a derivative of a derivative, of a limit or of a matrix power is refused for
 now. A tensor is an array as C keeps one,
 `double O[B][T][D]`, slice after slice, and is met slice by slice as the
 interpreter meets it: `test/compile/tensor.ink` runs multi-head attention
-over a batch and trains a layer on minibatches by `grad`; a tensor in a
-limit, or a `grad` with respect to one, is refused for now. A block literal,
+over a batch and trains a layer on minibatches by `grad`, and
+`test/compile/tensorgrad.ink` takes a `grad` with respect to a tensor; a
+tensor in a limit is refused for now. A block literal,
 `[A, 0; -C, 1]`, is laid out as the interpreter lays it out (section 2),
 each block's cells written into their place: `test/compile/blocks.ink`
 packs a doubling algorithm's iterates into one term, and refuses a block

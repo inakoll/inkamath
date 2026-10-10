@@ -3,8 +3,7 @@
 # by row, that cell seeded with 1 and every other with 0, as the interpreter
 # seeds it; a single value's gradient is shaped as the tensor. Every number
 # below is worked out apart from the interpreter and the compiler; none is
-# recorded. Today 'inkamath --compile tensorgrad.ink' refuses each model,
-# "a derivative with respect to a tensor, for now".
+# recorded.
 
 # 'saliency', the input gradient of a small convolutional network over a
 # batch (Goodfellow, Bengio and Courville 2016, §9.5): conv.ink's 'learn'
@@ -32,6 +31,8 @@
 #
 #     saliency: 100 steps from 0 in float, against exact values
 #     saliency.G: within 0, 0 units of a float
+#
+# Unwired: the queued "size of a forward-mode header, measured" wires it.
 probe(K = [1 -1; 2 0], d = 1/4, W = [1 -1; 2 1], a = 1/2, X_n[b<=2, i<=3, j<=3]) = {
     pad(X)[b<=2, i<=5, j<=5] | i > 1 and i < 5 and j > 1 and j < 5 = X[b, i-1, j-1]
     pad(X)[b<=2, i<=5, j<=5] = 0
@@ -116,8 +117,8 @@ pull(eta = 1/2, P = [1 -1; 0 2;; 2 0; -1 1], X_n[b<=2, i<=2, j<=2]) = {
 small = pull(X_n = [n 1; 0 -1;; 1 0; -1 n])
 
 # What stays refused, in the interpreter's words: a gradient with respect to
-# a tensor that is not a single value is a Jacobian. h and k are refused
-# today as the models above are. A file of its own:
+# a tensor that is not a single value is a Jacobian. A file of its own,
+# test/cli.cmake's compile_tensorgrad_refused:
 #
 #     T = [1 2; 3 4;; 5 6; 7 8]
 #     h_n = grad_(V = n*T) 2*V
@@ -128,5 +129,5 @@ small = pull(X_n = [n 1; 0 -1;; 1 0; -1 n])
 #     cannot compile k: grad of a matrix with respect to a tensor is a Jacobian, which it does not give
 #     cannot compile w: grad of a tensor with respect to a matrix is a Jacobian, which it does not give
 #
-# w is refused today in words that miscall its tensor a matrix: "grad of a
+# w was refused in words that miscalled its tensor a matrix: "grad of a
 # matrix with respect to a matrix" (C307).
