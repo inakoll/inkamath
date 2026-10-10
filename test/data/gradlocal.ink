@@ -299,3 +299,21 @@ error: a local cannot take parameters
 
 >> (a = 3) + grad_(x = 2) a(x)
 error: a takes no arguments
+
+# An index is evaluated once, as the evaluator evaluates it, so a local
+# bound in one is bound once (C304): a cell's, a sum's bound, and a term's,
+# whose index was evaluated twice even with no local under grad.
+>> L = [10; 20; 30]
+L = [10; 20; 30]
+
+>> grad_(x = 2) ((i = 1) + x*L[(i = i + 1)] + i*x)
+22
+
+>> grad_(x = 2) ((m = 1) + (sum_(k=1)^((m = m + 1)) x) + m*x)
+4
+
+>> (m = 1) + (grad_(x = 2) s(x)_((m = m + 1))) + m
+13
+
+>> grad_(x = 2) ((m = 1) + s(x)_((m = m + 1)) + m*x)
+12
