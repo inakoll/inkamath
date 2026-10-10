@@ -644,8 +644,8 @@ private:
 
     // An index is a whole number, so one that moves is at a jump, as floor
     // is at a whole number (C78).
-    int Index(const PExpression<T>& e) {
-        if (Reads(*e) && Moves(Eval(e))) throw std::runtime_error("an index jumps at " + Where());
+    int Index(const PExpression<T>& e, const std::string& what = "an index") {
+        if (Reads(*e) && Moves(Eval(e))) throw std::runtime_error(what + " jumps at " + Where());
         return AsIndex<T>(e->accept(ordinary_));
     }
 
@@ -797,9 +797,10 @@ private:
     }
 
     Jet Series(SeriesExpression<T>& series) {
-        const int  first    = AsIndex<T>(series.Lower()->accept(ordinary_));
-        const bool infinite = !series.Upper();
-        const int  last     = infinite ? first : AsIndex<T>(series.Upper()->accept(ordinary_));
+        const std::string bound    = series.Product() ? "the product's bound" : "the sum's bound";
+        const int         first    = Index(series.Lower(), bound);
+        const bool        infinite = !series.Upper();
+        const int         last     = infinite ? first : Index(series.Upper(), bound);
         std::optional<typename ReferenceStack<T>::Frame> frame;
         if (!stack_.Framed()) frame.emplace(stack_);
         typename ReferenceStack<T>::Trial index(stack_, series.Index());

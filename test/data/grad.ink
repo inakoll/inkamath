@@ -518,3 +518,13 @@ error: an index jumps at x = 2
 
 >> grad_(x = 5/2) x*sk_(floor(x))
 4
+
+# A sum's bounds are indices too, and one that moves is refused alike (C301).
+>> grad_(x = 3) sum_(k=1)^x k*x
+error: the sum's bound jumps at x = 3
+
+>> grad_(x = 3) prod_(k=x)^4 x
+error: the product's bound jumps at x = 3
+
+>> grad_(x = 5/2) sum_(k=1)^(floor(x)) k*x
+3
