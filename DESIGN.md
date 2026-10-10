@@ -1809,6 +1809,7 @@ closures need one anyway, and can bring it.
 | C310 `[fixed]` | **A local by cells could not read its line's values.** It is a definition bound in the frame, read in a frame of its own as a call is, where the line is out of sight, as C29 found for a local before phase 8: `h2(x) = (M[j<=2] = j*x) + M` then `h2(3)` said "x is not defined", and `(t = 2) + (M[j<=2] = j*t) + M` "t is not defined". It takes the frame's values along now, the parameters and the line's locals that are values, as an unnamed instance's argument does, in 7 lines more, 2 of comment and 2 changed; locals.ink holds it. Another local by cells is not a value and stays out of sight: `(N[j<=2] = j) + (M[j<=2] = 2*N[j]) + M` says "N is not defined". |
 | C311 `[fixed]` | **grad took a power's base for a local e its exponent binds.** It asked whether the base is the built-in e after it had read the exponent, so `grad_(x = 1) e^((e = 2)*x)` was refused "unless its base is e", where the evaluator reads the base first, the built-in e, and answers e^2. It asks as the base is read now and answers 2e^2, in 1 line more, 2 changed and 1 of comment; gradlocal.ink holds it. The compiler refuses a local. |
 | C312 `[fixed]` | **`--check` held a cell of a matrix that is not real to the interpreter's real one.** The step writes a matrix NaN whole where a cell is (C221), and a root of a negative number is NaN in C, so where `g_n = grad_(v = [1, 2; 3, x_n]) v[2,2]^(1/2)` reads -1 every cell is NaN, while the interpreter gives `[~0, ~0; ~0, ~(3.061617e-17-i*0.5)]`; the check said "nan at 3, where the interpreter gives 0" of g[1,1], the cell that is real, rather than why there is no real answer, as it says of a scalar. Each cell of a matrix with a cell that is not real is held to that now, "where the interpreter's term is not a real matrix", in 4 lines and 2 of comment; `root` in `test/compile/nan.ink` holds it. The check still fails there, as it does wherever the interpreter's term is not real. |
+| C313 `[open]` | **grad's search for a global of its name takes a local bound where evaluation does not reach as bound.** The search is static, in the order of evaluation (C305), and cannot know that a short-circuit skips its right side or that a sum has no terms: with globals `x = 100` and `t = x^2`, `grad_(x = 2) (((x > 5) and ((t = x) > 0)) + t)` and `grad_(x = 2) ((sum_(k=1)^0 (t = k*x)) + t)` answer 0, the global t's derivative through a global x that grad's x does not reach, where "t reads the global x, which grad's x does not reach" is due. Found reviewing grad through a local. Not fixed statically: a local in a sum's body or a short-circuit's right side taken as not bound would refuse where it is, as `grad_(x = 2) ((sum_(k=1)^3 (t = k*x)) + t)`, 9, and a false refusal is no better than this rare wrong answer. The fix is the check done during evaluation, in "Next in line". gradlocal.ink records both answers, wrong on purpose. |
 
 **Measure instructions, not the clock.** One of those changes made the matrix
 workload 20 per cent slower by the clock and not by a single instruction: with
@@ -7973,6 +7974,15 @@ checked: what it asked of the compiler, each with its smallest change.
 - **The compiled sum's thousand terms**: a LeNet-sized layer's dot product
   over a batch would pass `max_terms`, which bounds an unrolled sum written
   as lines of C, not a loop.
+- **grad's global-name check done during evaluation** (C313). The search
+  for a global that reads grad's variable is static, so a local bound where
+  evaluation does not reach, past a short-circuit or in a sum with no
+  terms, hides the global. Static repairs refuse where they must not:
+  taking a sum's local as unbound refuses `grad_(x = 2) ((sum_(k=1)^3 (t =
+  k*x)) + t)`, 9. Checked as each global is read instead: the reads made
+  through the ordinary evaluator too, which a subtree that does not read
+  grad's frame goes to whole, and the compiler's use of the static search
+  kept or replaced. Well over 20 lines.
 - `[done]` **A bare number is exact, and a truth read from a double is
   not** (C240, C241). `~` says only that the digits shown are not all of the value, so
   `~0.5`, `dhinf(1/2, 1, 1)` and `rho([0 1; 0 0])` print `0.5`, `2` and `0`,

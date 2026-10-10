@@ -299,6 +299,16 @@ fz(v)[j <= floor(t/5000)] = (t = 2)*v
 >> grad_(x = 2) ([1 1]*fz(x))
 error: t reads the global x, which grad's x does not reach
 
+# Wrong on purpose (DESIGN.md, C313): a local bound where evaluation does
+# not reach, past a short-circuit or in a sum with no terms, hides the
+# global from the search all the same, so t is the global, which reads the
+# global x, and each answers 0 where it is to be refused as above.
+>> grad_(x = 2) (((x > 5) and ((t = x) > 0)) + t)
+0
+
+>> grad_(x = 2) ((sum_(k=1)^0 (t = k*x)) + t)
+0
+
 >> clear t
 clear t
 
