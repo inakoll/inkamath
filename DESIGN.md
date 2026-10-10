@@ -7694,6 +7694,10 @@ checked: what it asked of the compiler, each with its smallest change.
   name there; and binds its value in the evaluator's frame as
   `EvaluationVisitor` does, so that what grad reads as a value, a sum's
   bound, an index, a name it leaves to the evaluator, reads the same local.
+  One bound where grad leaves the evaluation to the evaluator, in a sum's
+  bounds, ends any jet of its name in grad's frame, which would read a
+  value the evaluator no longer gives: in `(n = x) + (sum_(k=1)^((n = 3))
+  k) + n*x`, the last `n` is 3.
   The rest follows from the frame. Left to right, and not there before its
   binding, where the name is the global's or not defined. It shadows a
   parameter; grad's own name and a sum's index it cannot, refused in both
@@ -7748,23 +7752,23 @@ checked: what it asked of the compiler, each with its smallest change.
   paper gives, which the fix refuses instead; and passes per cell that share
   their locals.
 
-  About 31 lines, all in `derivative.hpp`: 10 to bind, in place of the
-  refusal; 3 for a call of a local; 10 to put a pass's locals back; 8 for
-  the search in order. 16,151 lines at cc686c5, by `wc -l
-  include/inkamath/*.hpp src/*`. Past 47 the implementation stops and
-  reports.
+  About 33 lines, all in `derivative.hpp`: 10 to bind, in place of the
+  refusal; 3 for a call of a local; 2 for one in a sum's bounds; 10 to put
+  a pass's locals back; 8 for the search in order. 16,151 lines at cc686c5,
+  by `wc -l include/inkamath/*.hpp src/*`. Past 50 the implementation stops
+  and reports.
 
-  Specified in `test/data/spec/gradlocal.ink`, 70 entries replayed by the
-  spec suite, 32 failing by design, those passing being definitions echoing
+  Specified in `test/data/spec/gradlocal.ink`, 71 entries replayed by the
+  spec suite, 33 failing by design, those passing being definitions echoing
   themselves, values without `grad`, `clear`, and a local or a global read
   before the local's binding or on the next line. Covered: a local in a
   function, in grad's body and in an argument, read twice, chained, shadowing
   a parameter, refused for grad's name and a sum's index, constant, bound in
-  grad's point, in a guard, a term and a limit's terms, a sum's body and
-  after it, of matrices and a tensor, a gradient with respect to a matrix, a
-  two-layer network beside the same network without locals, nested grads
-  three ways, Runge-Kutta's stages, the line's extent, the search past a
-  global, and the two refusals. Every value is sympy's, each local
+  grad's point, in a guard, a term and a limit's terms, a sum's body, after
+  it and in its bound, of matrices and a tensor, a gradient with respect to a
+  matrix, a two-layer network beside the same network without locals, nested
+  grads three ways, Runge-Kutta's stages, the line's extent, the search past
+  a global, and the two refusals. Every value is sympy's, each local
   substituted by hand into the closed form it names; the network's gradients
   are also what the network without locals gives today, and Runge-Kutta's
   step what the interpreter gives without `grad`.

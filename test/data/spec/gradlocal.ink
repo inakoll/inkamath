@@ -107,6 +107,11 @@ nr(x)_n = (p = nr(x)_(n-1)) - (p*p - x)/(2*p)
 >> grad_(x = 2) ((sum_(k=1)^3 (t = k*x)) + t)
 9
 
+# Bound in a sum's bound, which grad leaves to the evaluator: n is 3 from
+# there on, as the evaluator has it, and not the x bound before it.
+>> grad_(x = 2) ((n = x) + (sum_(k=1)^((n = 3)) k) + n*x)
+4
+
 # Matrices and tensors carry their parts as single values do.
 >> A = [1 2; 3 4]
 A = [1 2; 3 4]
