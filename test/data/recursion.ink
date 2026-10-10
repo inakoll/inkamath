@@ -64,3 +64,8 @@ p_k = 3/4*p_(k-1) + 1 + sum_(j=1)^15000 0
 
 >> lim p
 ~4
+
+# And so does each pass of a grad by a matrix, one for each cell: each takes
+# some five hundred thousand steps here, and the two together gave up (C318).
+>> grad_(a = [1 2]) (sum_(k=1)^510000 1)*a[1,2]
+[0, 510000]
