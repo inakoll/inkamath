@@ -7877,7 +7877,7 @@ checked: what it asked of the compiler, each with its smallest change.
   golden: the prototype moved only that test of `ctest`.
 
   About 6 lines, as the prototype wrote them, removing 8: the refusal
-  gone, the seed by its place, the words by kind. 16,218 lines in all
+  gone, the seed by its place, the words by kind. 16,254 lines in all
   now, by `wc -l include/inkamath/*.hpp src/*`; past 9 the implementation
   stops and reports.
 

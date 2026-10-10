@@ -2114,7 +2114,7 @@ private:
                 }
         return code;
     }
-    // A matrix of single parts, row by row, exact where each is.
+    // A matrix or tensor of single parts, by place, exact where each is.
     static Code Assembled(const std::vector<Code>& parts, Extent size) {
         Code code = Literal(Value(size));
         for (std::size_t k = 0; k < parts.size(); ++k) {
