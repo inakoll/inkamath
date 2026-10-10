@@ -3718,7 +3718,7 @@ that exploring seven domains asked of the interpreter, by how many asked.
   comments the cli cases, `m_->h *` 12 times in each of Robertson's three
   headers, each under 32 KB, the inverse called once, the float header
   holding no `double`, and the two refusals that leave. Each number worked
-  out with mpmath, scipy, sympy and Python's doubles and fractions under
+  out with mpmath, sympy and Python's doubles and fractions under
   the stopping rule transcribed, none recorded; each "within 0" argued,
   the interpreter's terms being doubles in the step's order or, for
   `inset`, dyadic fractions a double holds. The prototype passes every

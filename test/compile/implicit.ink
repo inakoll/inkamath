@@ -3,7 +3,7 @@
 # inverse, a call nested in an argument, a product's operands and a
 # sequence with parameters read at a constant are each written once per
 # iterate. Every number below is worked out apart from the interpreter,
-# with mpmath, scipy, sympy and Python's doubles and fractions, the
+# with mpmath, sympy and Python's doubles and fractions, the
 # limit's stopping rule transcribed from convergence.hpp; none is recorded.
 # Today 'kinetic', 'jacobian' and 'doubling' are refused, "a matrix inverse
 # inside a limit's terms", 'inset', "a sequence with parameters in a
@@ -21,8 +21,8 @@
 #     y_100 = [0.84200607353507096; 1.6284288113351236e-05; 0.15797764217681569]
 #
 # their sum 1 within 1e-60. Python's doubles, Newton under the limit's rule
-# and numpy's inverse, come within 5.1e-16 of them, relatively, in every
-# cell to 100, in 3 to 12 iterations a step:
+# and the interpreter's Gauss-Jordan transcribed, come within 5.1e-16 of
+# them, relatively, in every cell to 100, in 3 to 12 iterations a step:
 #
 #     kinetic: 100 steps from 0, against exact values until 0 and inexact ones from there
 #     kinetic.y: within 0; the interpreter's terms about <e> from the exact ones
@@ -60,12 +60,12 @@ jacobian = graded()
 # Riccati equation (Chu, Fan, Lin and Wang 2004) under lim instead of read
 # at 6 doublings: its three iterates packed into one term, W_k = (I + G_k
 # H_k)^-1 a temporary of the iterate. r_n is inexact, so the interpreter's
-# terms are doubles in the step's order. At r = 1, X rounds to scipy's
-# solve_discrete_are, [2.947122966707013, 2.3692054070924664;
-# 2.3692054070924664, 4.61313426099618]; at r = 5/4 the solution is
-# rational by sympy, [3, 5/2; 5/2, 5], with the gain F = [2/5, 6/5]. Python's
-# doubles under the limit's rule stop after 6 to 8 doublings, within 2.3e-14
-# of scipy, relatively, for every r_n to 99:
+# terms are doubles in the step's order. At r = 1, X rounds to sympy's
+# root, [2.947122966707013, 2.3692054070924664; 2.3692054070924664,
+# 4.61313426099618]; at r = 5/4 the solution is rational by sympy, [3, 5/2;
+# 5/2, 5], with the gain F = [2/5, 6/5]. Python's doubles under the limit's
+# rule, Gauss-Jordan as above, stop after 6 to 8 doublings, within 4.8e-16
+# of mpmath's, relatively, for every r_n to 99:
 #
 #     doubling: 100 steps from 0, against exact values until 0 and inexact ones from there
 #     doubling.X: within 0; the interpreter's terms about <e> from the exact ones
