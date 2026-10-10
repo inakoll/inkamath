@@ -334,12 +334,15 @@ int main(int argc, char* argv[]) {
         }
     }
 
-    if (CompileC::floats && !compiling && (!checking || files.size() != 2)) {
+    // Any --check but a transcript's replay is an instance's, and one
+    // malformed is told --check's usage.
+    const bool instance = checking && (files.size() != 1 || !target.empty());
+    if (CompileC::floats && !compiling && !instance) {
         cerr << "inkamath: --float takes --compile, or --check with an instance\n"
                 "Try 'inkamath --help'.\n";
         return 2;
     }
-    if (steps && (compiling || !checking || files.size() != 2)) {
+    if (steps && (compiling || !instance)) {
         cerr << "inkamath: --steps takes --check with an instance\nTry 'inkamath --help'.\n";
         return 2;
     }
