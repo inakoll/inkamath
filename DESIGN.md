@@ -6871,7 +6871,7 @@ that exploring seven domains asked of the interpreter, by how many asked.
   m = 1 + 1/f^2 - 10^-12, where it is stable; each decided exactly from the
   doubles. Done by C275, smax and the brackets with them, at the cost in
   time it gives.
-- **The generalized eigenproblem, `eig(A, B)`**, the fifth step towards
+- `[done]` **The generalized eigenproblem, `eig(A, B)`**, the fifth step towards
   eigenvalues: every lambda of A phi = lambda B phi, B symmetric positive
   definite, as a column, smallest first, each certified as eig's are. A
   structure's frequencies, K phi = omega^2 M phi, and its buckling loads,
@@ -7002,6 +7002,13 @@ that exploring seven domains asked of the interpreter, by how many asked.
   cells and the 3x3 pencil of doubles, which need the name to be the
   prelude's staircase; put in the prelude, eigg's words in the table, it
   gives all 56.
+
+  Built as specified, with no departure: the spec is the golden
+  `geneig.ink`, and the spec suite goes, it its only file. `modal.ink`'s
+  Schur-complement prototype gives way to `eig(Kf(3), Mf(3))`, its six
+  values as above; README's section 2 shows eig(A, B). 6 lines landed
+  against about 6: the prelude 2 more and its comment 3, and 1 of C++ for
+  eigg's words. 16,012 lines in all.
 - `[done]` **A guard the interpreter's own error straddles.** From an outside
   review. `--check` estimates the interpreter's error by asking each term
   three times more, disturbed (*The interpreter's own error, estimated by
