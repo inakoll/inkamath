@@ -8461,8 +8461,9 @@ checked: what it asked of the compiler, each with its smallest change.
     (C72), which needs the parts' values; a complex value multiplying a part
     needs conjugates for `re`, `im` and `abs`; a grad inside needs parts of
     parts. Meeting one, the walk stops, its locals are put back in both
-    frames and its flags reset, as between forward mode's passes, and forward
-    mode evaluates the grad from the start; the steps the walk took stay
+    frames, its flags reset and its remembered terms forgotten, since a term
+    remembered answers without raising the flags its walk raised, and
+    forward mode evaluates the grad from the start; the steps the walk took stay
     spent, a line's last few could run out where they did not. A complex point is known before,
     and goes to forward mode at once. Every refusal keeps its words: whether
     a part is there, all that C73, C78, C301, a moving size and the
@@ -8533,7 +8534,7 @@ checked: what it asked of the compiler, each with its smallest change.
   at 29bf717, by `wc -l include/inkamath/*.hpp src/*`. Past 530 the
   implementation stops and reports.
 
-  Specified in `test/data/spec/reverse.ink`, 117 answers replayed by the
+  Specified in `test/data/spec/reverse.ink`, 120 answers replayed by the
   spec suite, restored for it, 4 failing by design: the three marks above
   and the count, `grad_(w = [1 2 3 4 5 6 7 8 9 10]) (w*w' + sum_(k=1)^120000
   k)`, whose ten evaluations of a 120,000-step sum run out of a line's
@@ -8546,7 +8547,8 @@ checked: what it asked of the compiler, each with its smallest change.
   unembedding, and the loss after one step on every weight, NumPy's by the
   exploration's `rev.py`; the refusals, each in its words; and what gives
   way, a moving limit and its divergent derivative, an endless sum, a
-  complex value and point, and a grad inside. README's paragraph on `grad`
+  complex value and point, and a grad inside, after a clause an inexact
+  truth chose in a term the walk remembered. README's paragraph on `grad`
   gains that a gradient with respect to a matrix costs one evaluation and a
   sweep back, whatever its cells.
 - **The compiler's adjoint step**, after the tape: `--compile` keeps
