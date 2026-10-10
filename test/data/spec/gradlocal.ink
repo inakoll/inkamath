@@ -227,8 +227,10 @@ error: t is not defined
 error: t is not defined
 
 # A local shadows a global from its binding on, so a global of the local's
-# name that reads the global of grad's name is not reached through it; read
-# before the binding, it is, and is refused as any such definition is.
+# name that reads the global of grad's name is not reached through it, in
+# the order of evaluation: a guard before its clause, a sum's body before
+# what follows it. Read before the binding, it is, and is refused as any
+# such definition is.
 >> x = 100
 x = 100
 
@@ -237,6 +239,15 @@ t = x^2
 
 >> grad_(x = 3) f(x)
 26
+
+>> grad_(x = 3) ((t = 2*x) + t*t)
+26
+
+>> grad_(x = 3) pos(x)
+24
+
+>> grad_(x = 2) ((sum_(k=1)^3 (t = k*x)) + t)
+9
 
 >> ft(x) = t + (t = 2*x)
 ft(x) = t + (t = 2*x)

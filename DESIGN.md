@@ -7727,9 +7727,10 @@ checked: what it asked of the compiler, each with its smallest change.
   on the order of its cells.
 
   The search for a definition reading the global of grad's name follows the
-  locals in order: a name is the local's from its binding on, so with a
-  global `t = x^2`, `t` read after `(t = 2*x)` is not followed to the global,
-  and read before it is, and refused as now.
+  locals in the order they are evaluated, a guard before its clause and a
+  sum's body before what follows it: a name is the local's from its binding
+  on, so with a global `t = x^2`, `t` read after `(t = 2*x)` is not followed
+  to the global, and read before it is, and refused as now.
 
   Stays refused: a local with parameters, `(g(y) = y*x)`, which binds an
   expression and not a value, "grad cannot differentiate a local function".
@@ -7758,8 +7759,8 @@ checked: what it asked of the compiler, each with its smallest change.
   by `wc -l include/inkamath/*.hpp src/*`. Past 50 the implementation stops
   and reports.
 
-  Specified in `test/data/spec/gradlocal.ink`, 71 entries replayed by the
-  spec suite, 33 failing by design, those passing being definitions echoing
+  Specified in `test/data/spec/gradlocal.ink`, 74 entries replayed by the
+  spec suite, 36 failing by design, those passing being definitions echoing
   themselves, values without `grad`, `clear`, and a local or a global read
   before the local's binding or on the next line. Covered: a local in a
   function, in grad's body and in an argument, read twice, chained, shadowing
