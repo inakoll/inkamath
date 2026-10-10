@@ -51,7 +51,7 @@ add_test(NAME interpreter COMMAND inkamath_tests --test-suite=interpreter --no-i
          --test-case-exclude=${golden_cases})
 set_tests_properties(interpreter PROPERTIES TIMEOUT 60)
 
-foreach(part 1 2)
+foreach(part 1 2 3)
     add_test(NAME cli_${part}
              COMMAND ${CMAKE_COMMAND} -DEXE=$<TARGET_FILE:inkamath_cli> -DPART=${part}
                      -DOUT=${CMAKE_CURRENT_BINARY_DIR}/cli_${part}
