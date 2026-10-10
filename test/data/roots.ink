@@ -92,6 +92,12 @@ error: ~1.41421356 was approximated, so it has no exact fraction
 >> (2^1000)^(1/1000)
 2
 
+# Its root raised to q - 1 by squaring, not by q - 2 products: each was
+# a millisecond at q = 3321, and this sum past the timeout under the
+# sanitizers (C285).
+>> sum_(k=1)^3000 (2^3321)^(1/3321)
+6000
+
 >> 1^(1/10^30)
 1
 
