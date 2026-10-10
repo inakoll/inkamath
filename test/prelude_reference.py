@@ -108,11 +108,13 @@ scanned |= {
              "0x1.141677a5d4e81p+0 0x1.11fa63e8638aep+0 0x1.176f736dfa446p+0 0x1.124b5a5651565p+0 "
              "0x1.10b36159bb631p+0",
 }
-# Their parts' farthest, from the implementation's sweep; acos's is in
-# asin's, which prelude_test.cpp negates for it.
+# Their parts' farthest, from the implementation's sweep, then asin's and
+# acos's from the review's; acos's are in asin's, which prelude_test.cpp
+# negates for it.
 scanned |= {
     "atan_dx": "0x1.bbad07414fd41p+0",
-    "asin_dx": "-0x1.ee626b15a12bbp-1 -0x1.eebfd744a36e7p-1",
+    "asin_dx": "-0x1.ee626b15a12bbp-1 -0x1.eebfd744a36e7p-1 -0x1.bb062b602588dp-1 "
+               "0x1.eec93dc9bc4a1p-1",
     "acosh_dx": "0x1.71075c188a213p+0",
 }
 scanned = {k: [float.fromhex(x) for x in v.split()] for k, v in scanned.items()}
