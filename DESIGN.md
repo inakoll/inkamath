@@ -7681,10 +7681,98 @@ checked: what it asked of the compiler, each with its smallest change.
   now": each slice's value stretched over the other's cells in `Cellwise`, as
   the interpreter's arithmetic does; a few lines.
 - **`grad` through a local**, "grad cannot differentiate a local definition
-  yet", compiled "a local definition": `(z = Q*P) ...` written once in a
-  loss must be a call instead. A local's jet bound in the frame for the rest
-  of the line, as a call's parameters are, and compiled as an expansion's
-  value.
+  yet": `(z = Q*P) ...` written once in a loss must be a call instead. The
+  CNN exploration passed every layer's parameters down, or wrote a function
+  only to name pooled activations; Robertson's and Runge-Kutta's stages are
+  locals, `(a = f(u))`. Phase 8 does not move: a local binds the value of its
+  right-hand side once, for the rest of the line, and under `grad` a value
+  carries its parts.
+
+  Decided: `Derivative::Eval`, meeting a local, evaluates its right-hand side
+  with its parts and binds the jet in the innermost of grad's frames, where
+  a call's parameters and grad's name are, in place of any binding of the
+  name there; and binds its value in the evaluator's frame as
+  `EvaluationVisitor` does, so that what grad reads as a value, a sum's
+  bound, an index, a name it leaves to the evaluator, reads the same local.
+  The rest follows from the frame. Left to right, and not there before its
+  binding, where the name is the global's or not defined. It shadows a
+  parameter, grad's own name, and a sum's index until the next term binds
+  it again, so the index is hidden anew at each term, as the evaluator
+  binds it anew. Its extent is the frame: a call's evaluation, whose locals
+  die with it and so never reach what is remembered, or the line, so that
+  one bound in grad's body is read after grad, at the point, its parts past
+  grad's dropped as any value's are, as `(sum_(k=1)^3 (t = k)) + t` reads
+  the last term's. A local in an argument is the caller's.
+
+  A grad opens no frame of its own, its name being bound in the one it is
+  in, so a local bound outside an inner grad is read inside it with its
+  outer parts, which multiply with the inner as any parts do, and one bound
+  inside is read after it at the inner point, moving with the outer name. A
+  matrix's or a tensor's parts have its shape, as any value's. A local that
+  does not move has its value alone; one the evaluator bound, before grad
+  on the line or in a call grad evaluated as a constant, is read as a
+  constant, as now. A guard is evaluated with its parts, so a local bound
+  in it is read by the clause it chooses with them; each term a limit walks
+  is a call in a frame of its own, as C66 has it.
+
+  A gradient with respect to a matrix is one evaluation at the point that
+  takes a pass per cell: the locals a pass binds, in both frames, are put
+  back before the next, so the second cell's pass does not read the first's,
+  and the last pass's stay for the line. Otherwise a gradient would depend
+  on the order of its cells.
+
+  The search for a definition reading the global of grad's name follows the
+  locals in order: a name is the local's from its binding on, so with a
+  global `t = x^2`, `t` read after `(t = 2*x)` is not followed to the global,
+  and read before it is, and refused as now.
+
+  Stays refused: a local with parameters, `(g(y) = y*x)`, which binds an
+  expression and not a value, "grad cannot differentiate a local function".
+  A call of a local, `(a = 3) + grad_(x = 2) a(x)`, refused as a local
+  definition, is the evaluator's error, "a takes no arguments".
+
+  The interpreter only. `--compile` refuses every local, under `grad` or not
+  (Robertson's "a local definition"), so there is no compiled local for a
+  derivative to go through; compiling locals is an entry of its own, queued
+  below, and costs `grad` nothing more once it lands, since every compiled
+  value carries its part beside it. The line queued here had a local
+  "compiled as an expansion's value"; that is the other entry's.
+
+  Rejected: substituting the right-hand side for the name, the call by name
+  phase 8 rejected, which evaluates it at each read and reads what it names
+  where it is read, so `(t = 2*x) + (x = 10) + t` would read the second `x`;
+  a frame for grad's body, which would end a local there, where phase 8
+  ends it at the line; refusing a local that shadows grad's name or a sum's
+  index, smaller, but the evaluator answers 12 for `sum_(k=1)^3 ((k = 2) +
+  k)` and grad must answer its value; and passes per cell that share their
+  locals.
+
+  About 35 lines, all in `derivative.hpp`: 10 to bind, in place of the
+  refusal; 3 for a call of a local; 3 to hide a sum's index at each term; 10
+  to put a pass's locals back; 8 for the search in order. 16,151 lines at
+  cc686c5, by `wc -l include/inkamath/*.hpp src/*`. Past 53 the
+  implementation stops and reports.
+
+  Specified in `test/data/spec/gradlocal.ink`, 70 entries replayed by the
+  spec suite, 32 failing by design, those passing being definitions echoing
+  themselves, values without `grad`, `clear`, and a local or a global read
+  before the local's binding or on the next line. Covered: a local in a
+  function, in grad's body and in an argument, read twice, chained, shadowing
+  a parameter, grad's name and a sum's index, constant, bound in grad's
+  point, in a guard, a term and a limit's terms, a sum's body and after it,
+  of matrices and a tensor, a gradient with respect to a matrix, a two-layer
+  network beside the same network without locals, nested grads three ways,
+  Runge-Kutta's stages, the line's extent, the search past a global, and the
+  two refusals. Every value is sympy's, each local substituted by hand into
+  the closed form it names; the network's gradients are also what the network
+  without locals gives today, and Runge-Kutta's step what the interpreter
+  gives without `grad`.
+- **Locals compiled**, "a local definition": a step written with
+  Runge-Kutta's stages as locals is a call per stage in a header. A local as
+  a C temporary where it is bound, read after it in the evaluator's order,
+  its part beside it under `grad`. Open: a local in a sum unrolled term by
+  term, which persists across terms, in a chain of guarded clauses, and in
+  a model's clause, once per step.
 - **The size of a forward-mode header, measured**, before reverse mode is
   weighed (`MANIFESTO.md`): the network's 47 weights trained by four grads
   are 2.16 MB of header, as each direction writes a guard's dot product
