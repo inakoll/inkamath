@@ -7636,7 +7636,9 @@ that exploring seven domains asked of the interpreter, by how many asked.
   Schur-complement prototype gives way to `eig(Kf(3), Mf(3))`, its six
   values as above; README's section 2 shows eig(A, B). 6 lines landed
   against about 6: the prelude 2 more and its comment 3, and 1 of C++ for
-  eigg's words. 16,012 lines in all.
+  eigg's words. 16,012 lines in all. The 8x8, `eig(Kf(4), Mf(4))`, is
+  since in `geneig_cantilever.ink`, a golden of its own that runs beside
+  it, where the one file took 38 s under the sanitizers, 24 s after C306.
 - `[done]` **A guard the interpreter's own error straddles.** From an outside
   review. `--check` estimates the interpreter's error by asking each term
   three times more, disturbed (*The interpreter's own error, estimated by

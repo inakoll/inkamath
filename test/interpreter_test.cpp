@@ -265,6 +265,9 @@ TEST_CASE("modal") {
 TEST_CASE("geneig") {
     check_transcript("geneig.ink");
 }
+TEST_CASE("geneig_cantilever") {
+    check_transcript("geneig_cantilever.ink");
+}
 TEST_CASE("cook") {
     check_transcript("cook.ink");
 }

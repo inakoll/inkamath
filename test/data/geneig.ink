@@ -72,7 +72,8 @@ error: eig needs a matrix whose eigenvalues are all real
 # A cantilever's modes, K phi = omega^2 M phi, as modal.ink defines it:
 # Hermite elements with their consistent mass, EI = rhoA = L = 1. mpmath's
 # eigenvalues of M^-1 K at 30 digits agree; they converge from above to
-# (beta L)^4, 12.3623634 and 485.518819 (Blevins, table 8-1).
+# (beta L)^4, 12.3623634 and 485.518819 (Blevins, table 8-1). Eight
+# unknowns, of four elements, are in geneig_cantilever.ink.
 >> h(n) = 1/n
 h(n) = 1/n
 
@@ -111,17 +112,6 @@ digits = 12
 # asks Hermite's test, as it is not symmetric.
 >> eig(Kf(2), Mf(2)) == eig(Mf(2)^-1*Kf(2))
 ~1
-
-# Eight unknowns, of four elements.
->> eig(Kf(4), Mf(4))
-[~12.3631720798;
- ~486.650937534;
-  ~3865.7172606;
- ~15044.8965027;
- ~52046.6722755;
- ~134241.343496;
- ~337385.710043;
- ~908306.291396]
 
 >> digits = 9
 digits = 9
