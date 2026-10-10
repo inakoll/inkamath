@@ -174,7 +174,8 @@ dd_0 = 1
 >> (dd_0 = 99)+0
 99
 
-# And a callee sees the global, whatever the caller bound on its own line.
+# And a callee sees the global, whatever the caller bound on its own line,
+# which is a value: a local cannot take parameters (C303).
 >> ee(x) = x+1
 ee(x) = x+1
 
@@ -182,6 +183,9 @@ ee(x) = x+1
 ff(n) = ee(n)
 
 >> (ee(x) = x+100)*0 + ff(2)
+error: a local cannot take parameters
+
+>> (ee = 5)*0 + ff(2)
 3
 
 # Two arguments with the same cells and different shapes are two questions.

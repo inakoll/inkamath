@@ -281,6 +281,7 @@ public:
     // a lookup, in the callee frame that lookup pushes, where the parameter it
     // captured is no longer visible -- which is what C29 found.
     T visit(EqualExpression<T>* expr) override {
+        Unparametrized(*expr);
         if(!expr->m_e1()->Children().empty()) {
             Bind(expr);
             return expr->m_e1()->accept(*this);
@@ -289,6 +290,14 @@ public:
         this->stack_.Set(expr->Name(), ParametersDefinition<T>(),
                          PExpression<T>(new ValExpression<T>(value)));
         return value;
+    }
+
+    // With parameters a local would be a function, which could not capture
+    // the line's names (C29): it is a value (C303).
+    static void Unparametrized(const EqualExpression<T>& expr) {
+        const std::vector<PExpression<T>>& signature = expr.m_e1()->Children();
+        if (!signature.empty() && signature[0])
+            throw std::runtime_error("a local cannot take parameters");
     }
 
     // The two operands are sequenced: C++ leaves the order of `f(a) + f(b)`

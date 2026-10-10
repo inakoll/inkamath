@@ -277,7 +277,10 @@ private:
             if (call->Call().subexpr()) (void)Index(call->Call().subexpr());
             return Call(*call, found->second, *x);
         }
-        if (auto* x = Exactly<EqualExpression<T>>(e)) stack_.Definable(x->Name());
+        if (auto* x = Exactly<EqualExpression<T>>(e)) {
+            EvaluationVisitor<T>::Unparametrized(*x);
+            stack_.Definable(x->Name());
+        }
         throw std::runtime_error("grad cannot differentiate a local definition yet");
     }
 
