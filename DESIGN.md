@@ -8150,7 +8150,7 @@ checked: what it asked of the compiler, each with its smallest change.
   Clang -O2 3.5 s; `attn` in `tensorgrad.ink` 81,259 bytes to 30,684, GCC
   -O2 3.8 s to 0.35; `attend`'s `--check` under the sanitizers 42 s to 40,
   the interpreter's. `train` grows 38,617 bytes to 40,041, its max calls
-  written once each and now a line each.
+  written once each and now a line each, a growth accepted.
 
   What moves: of the recorded headers, `inkamath_prelude.h`'s `d` step
   alone, its nine calls' values and parts as 18 temporaries; nothing in
