@@ -118,13 +118,15 @@ public:
 template <typename T>
 class EqualExpression final : public BinaryExpression<T> {
 public:
-    explicit EqualExpression(PExpression<T> e1, PExpression<T> e2)
-    : BinaryExpression<T>(e1,e2)
-    {}
+    explicit EqualExpression(PExpression<T> e1, PExpression<T> e2, bool listed = false)
+        : BinaryExpression<T>(e1, e2), listed_(listed) {}
 
     const std::string& Name() const override {
         return BinaryExpression<T>::m_e1()->Name();
     }
+
+    // 'g() = 1', which as a statement is 'g = 1' (C314).
+    [[nodiscard]] bool Listed() const { return listed_; }
 
     PExpression<T> accept(TransformationVisitor<T> &v) override {
         return v.visit(this);
@@ -133,7 +135,9 @@ public:
     T accept(FoldingVisitor<T> &v) override {
         return v.visit(this);
     }
-protected:
+
+private:
+    bool listed_;
 };
 
 template <typename T>

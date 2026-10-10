@@ -938,6 +938,7 @@ PExpression<U> Interpreter<T,U>::ParseEqualExpr()
                 signature += m_tokens[token].apart ? "\x1f " : "\x1f";
                 signature += m_tokens[token].text;
             }
+            const bool listed = m_i > signature_begin + 1;  // 'g()', nothing else
             ++m_i;
             expr = Parse();
             if (params || sub || guard || place) {
@@ -948,7 +949,7 @@ PExpression<U> Interpreter<T,U>::ParseEqualExpr()
                                                    place ? place->Slice() : PExpression<U>())),
                                                expr));
             } else {
-                e.reset(new EqualExpression<U>(ref, expr));
+                e.reset(new EqualExpression<U>(ref, expr, listed));
             }
         }
         else {

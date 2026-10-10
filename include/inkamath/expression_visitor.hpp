@@ -297,7 +297,7 @@ public:
     // which it would read as a global (C309).
     static void Unparametrized(const EqualExpression<T>& expr) {
         const std::vector<PExpression<T>>& signature = expr.m_e1()->Children();
-        if (!signature.empty() && signature[0])
+        if ((!signature.empty() && signature[0]) || expr.Listed())
             throw std::runtime_error("a local cannot take parameters");
         if (!signature.empty() && signature[1])
             throw std::runtime_error("a local cannot take an index");
