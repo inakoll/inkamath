@@ -286,8 +286,9 @@ functions, each cell by cell of a matrix: the largest whole number not above
 its argument, exact of an exact number, and a complex number's real and
 imaginary parts, the paper's Re and Im. `ceil(x) = -floor(-x)` and
 `mod(a, b) = a - b*floor(a/b)` come with them, from a prelude (section 5),
-and so do `exp`, `log`, `tanh`, `sin`, `cos`, `abs`, `max` and `min`, and,
-of matrices, `charpoly`, `hurwitz`, `schurcohn`, `rho`, `abscissa`, `eig`,
+and so do `exp`, `log`, `tanh`, `sin`, `cos`, `atan`, `atan2`, `asin`,
+`acos`, `acosh`, `abs`, `max` and `min`, and, of matrices, `charpoly`,
+`hurwitz`, `schurcohn`, `rho`, `abscissa`, `eig`,
 `smax`, `hinf` and `dhinf` (section 2). `abs` takes a complex number too, |z|, so a
 frequency response's magnitude |T(e^{iw})| is written as on paper.
 Any other rounding is a line of it, by the rule the model needs —
@@ -1196,25 +1197,34 @@ of its own: the session reaches its names qualified, `filters.lowpass`, and
 `use filters (lowpass)` brings in unqualified those listed. A file is read
 once, holds definitions only, and one that cannot be read or parsed loads
 nothing and says where. The prelude that defines `ceil`, `mod`, `exp`, `log`,
-`tanh`, `sin`, `cos`, `abs`, `max`, `min`, `charpoly`, `hurwitz`,
+`tanh`, `sin`, `cos`, `atan`, `atan2`, `asin`, `acos`, `acosh`, `abs`,
+`max`, `min`, `charpoly`, `hurwitz`,
 `schurcohn`, `rho`, `rhob`, `abscissa`, `abscissab`, `eig`, `eigb`,
 `smax`, `hinf` and `dhinf`, and what they call, is included bare beneath the
 session, as the built-ins are: every scope sees it, and a session
 that defines one of its names again does so for itself
 alone, and clearing it gives the prelude's back. `exp`, `log`, `tanh`,
 `sin` and `cos` are written in it, accurate to under 3 units in the last
-place of a double, by the operations a compiled step performs:
+place of a double, and `atan`, `atan2`, `asin` and `acos` to under 2.7 and
+`acosh` to under 3.6, by the operations a compiled step performs:
 `exp(x)` is 2^k e^r, r = x - k ln 2 and e^r a polynomial, `log` reduces by
 `ilogb`, the power of two at or below its argument, and `sin` and `cos` by the
 multiple of pi/2 nearest theirs. An exact argument is reduced exactly, save
 within about 1e-31 of a multiple of pi/2 (C123), nothing they give is exact, and `log(0)` is refused in log's own name; so are `sin` and
 `cos` past 2^20 either way, where the reduction would round, so a growing
-phase such as `sin(w*t)` stops at 2^20. Compiled, each is a C function of the
+phase such as `sin(w*t)` stops at 2^20. `atan` reduces by one of 0, 1/2, 1,
+2 and infinity, `atan2(y, x)` is the angle of (x, y) in (-pi, pi], `asin` and
+`acos` are `atan2` of x and the root of (1 - x)(1 + x), and `acosh` is
+log(x + root(x^2 - 1)), what the sum rounded added back. `asin` and `acos`
+refuse past 1 either way, `acosh` below 1 and `atan2` the origin, each in its
+own words; a double's -0 is 0, so `atan2(~0*(-1), -1)` is pi, where C's is
+-pi. Compiled, each is a C function of the
 header's own; the interpreter calls the same functions, and under `grad` their
 parts, checked in as `include/inkamath/inkamath_prelude.h`, on a double, where
 they answer what the definitions answer. Measured against mpmath, at worst
-`exp` is 1.31 units off, `log` 2.94, `tanh` 2.97, `sin` 2.43 and `cos` 2.45
-(`test/prelude_test.cpp`).
+`exp` is 1.31 units off, `log` 2.94, `tanh` 2.97, `sin` 2.43, `cos` 2.45,
+`atan` 1.44, `atan2` 1.89, `asin` 2.61, `acos` 2.61 and `acosh` 3.57, log's
+own error near its fold (`test/prelude_test.cpp`).
 `test/data/models.ink` is the whole of it.
 
 Data comes in as a file of definitions like any other, written by whatever
