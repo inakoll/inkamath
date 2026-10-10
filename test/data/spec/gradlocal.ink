@@ -24,6 +24,10 @@ f(x) = (t = 2*x) + t*t
 >> grad_(x = 3) (f(1*(t = x)) + t)
 27
 
+# One bound in a call dies with it, remembered or not.
+>> grad_(x = 3) (f(x) + f(x) + t)
+error: t is not defined
+
 # Read more than once, and one local read by the next.
 >> cube(x) = (t = x + 1)*t*t
 cube(x) = (t = x + 1)*t*t
@@ -139,6 +143,12 @@ w = 1
 >> (grad_(v = [1; 2]) (w*v'*v + 0*(w = 5))) + w
 [7;
  9]
+
+# What a pass puts back is what its local shadowed, here a local of the line
+# before grad, and not the global behind it.
+>> (w = 2) + (grad_(v = [1; 2]) (w*v'*v + 0*(w = 5))) + w
+[11;
+ 15]
 
 >> clear w
 clear w

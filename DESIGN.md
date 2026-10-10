@@ -7759,16 +7759,17 @@ checked: what it asked of the compiler, each with its smallest change.
   by `wc -l include/inkamath/*.hpp src/*`. Past 50 the implementation stops
   and reports.
 
-  Specified in `test/data/spec/gradlocal.ink`, 74 entries replayed by the
-  spec suite, 36 failing by design, those passing being definitions echoing
+  Specified in `test/data/spec/gradlocal.ink`, 76 entries replayed by the
+  spec suite, 38 failing by design, those passing being definitions echoing
   themselves, values without `grad`, `clear`, and a local or a global read
   before the local's binding or on the next line. Covered: a local in a
   function, in grad's body and in an argument, read twice, chained, shadowing
   a parameter, refused for grad's name and a sum's index, constant, bound in
   grad's point, in a guard, a term and a limit's terms, a sum's body, after
   it and in its bound, of matrices and a tensor, a gradient with respect to a
-  matrix, a two-layer network beside the same network without locals, nested
-  grads three ways, Runge-Kutta's stages, the line's extent, the search past
+  matrix, over a global and over a local of the line, a two-layer network
+  beside the same network without locals, nested grads three ways,
+  Runge-Kutta's stages, the extent of a call and of the line, the search past
   a global, and the two refusals. Every value is sympy's, each local
   substituted by hand into the closed form it names; the network's gradients
   are also what the network without locals gives today, and Runge-Kutta's
