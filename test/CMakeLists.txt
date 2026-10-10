@@ -123,7 +123,7 @@ add_test(NAME prelude_header
 # The oracle: an instance compiled, and each of its terms held to the
 # interpreter's exact one by the program 'inkamath --check' writes. 'wild'
 # drifts from it, and its program says where and exits with a failure.
-# Each as file:instance.
+# Each as file:instance, or file:instance:n with --steps n.
 foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brink drift:ledge
                          drift:rift drift:naught drift:zeroed drift:mirrored drift:nests drift:latch drift:toil
                          drift:late drift:radix
@@ -157,23 +157,29 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brin
                          blocks:deadbeat blocks:nested blocks:sloped conv:see conv:learn
                          straddle:knee straddle:crease straddle:plain straddle:both straddle:acc
                          straddle:given straddle:parted straddle:unasked
-                         straddle:recalled straddle:founded)
+                         straddle:recalled straddle:founded steps:coast:1001 steps:coast:1
+                         steps:runaway:150 steps:runaway:1000 steps:horizon:1000)
     string(REPLACE ":" ";" checked ${checked})
-    list(GET checked 0 file)
-    list(GET checked 1 instance)
-    set(program ${CMAKE_CURRENT_BINARY_DIR}/compile/${instance}.c)
+    list(POP_FRONT checked file instance count)
+    set(name ${instance})
+    set(steps "")
+    if(count)
+        set(name ${instance}_${count})
+        set(steps --steps ${count})
+    endif()
+    set(program ${CMAKE_CURRENT_BINARY_DIR}/compile/${name}.c)
     add_custom_command(OUTPUT ${program}
         COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/compile
         COMMAND inkamath_cli --check ${CMAKE_CURRENT_SOURCE_DIR}/compile/${file}.ink ${instance}
-                -o ${program}
+                ${steps} -o ${program}
         DEPENDS inkamath_cli compile/${file}.ink
         VERBATIM)
-    add_executable(check_${instance} ${program})
-    target_link_libraries(check_${instance} PRIVATE inkamath_warnings
+    add_executable(check_${name} ${program})
+    target_link_libraries(check_${name} PRIVATE inkamath_warnings
                           $<$<NOT:$<C_COMPILER_ID:MSVC>>:m>)
-    set_target_properties(check_${instance} PROPERTIES
+    set_target_properties(check_${name} PROPERTIES
                           C_STANDARD 11 C_STANDARD_REQUIRED ON C_EXTENSIONS OFF)
-    add_test(NAME check_${instance}_report COMMAND check_${instance})
+    add_test(NAME check_${name}_report COMMAND check_${name})
 endforeach()
 # The interpreter's own error, estimated where any term is inexact (DESIGN.md):
 # its digits are the seeds', so held by its form but where a limit's
@@ -217,6 +223,20 @@ set_tests_properties(check_recalled_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^recalled: ${straddled}\nrecalled\\.y: within 0${about}\nrecalled\\.z: within 0${about}\nrecalled\\.x: within 0\n$")
 set_tests_properties(check_founded_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^founded: 100 steps from 0, against exact values until 0 and inexact ones from there\nfounded\\.x: at 0 a disturbed run takes 's\\(c\\)_k \\| lim half\\(1\\) >= c = 1' and the interpreter 's\\(c\\)_k = 0'\\; the guard of the first is 4\\.8e-11 from its threshold\nfounded\\.x: within 0\\; the interpreter's terms about 1 from the exact ones, past the tolerance from 0\n$")
+# compile/steps.ink, each over its --steps n: runaway at 1000 fails as wild does.
+set(coast "coast\\.v: within 0\ncoast\\.y: within 0\n$")
+set_tests_properties(check_coast_1001_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^coast: 1001 steps from 0, against exact values\n${coast}")
+set_tests_properties(check_coast_1_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^coast: 1 step from 0, against exact values\n${coast}")
+set_tests_properties(check_runaway_150_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^runaway: 150 steps from 0, against exact values\nrunaway\\.x: within 0\n$")
+set_tests_properties(check_runaway_1000_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^runaway: 1000 steps from 0, against exact values\nrunaway\\.x: inf at 512, where the interpreter's term is too large for a double\n$")
+set_tests_properties(check_horizon_1000_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^horizon: 1000 steps from 0, against exact values until 334 and inexact ones from there\nhorizon\\.y: within 1\\.1e-16${about}\n$")
+add_test(NAME check_runaway_1000 COMMAND check_runaway_1000)
+set_tests_properties(check_runaway_1000 PROPERTIES WILL_FAIL ON)
 add_test(NAME check_knee COMMAND check_knee)
 add_test(NAME check_both COMMAND check_both)
 set_tests_properties(check_both PROPERTIES WILL_FAIL ON)
@@ -688,25 +708,31 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:ledge logistic:gate momentu
                          reddi:thm1 reddi:fixed reddi:gen
                          kahan:sums kahan:muller kahan:rounded kahan:surprise kahan:solveur rump:rump
                          goldberg:year goldberg:needle goldberg:big goldberg:seven iterates:poly
-                         blocks:nested conv:see straddle:knee apollo11:whole dyn:nm dyn:cd)
+                         blocks:nested conv:see straddle:knee apollo11:whole dyn:nm dyn:cd
+                         steps:coast:1001)
     string(REPLACE ":" ";" checked ${checked})
-    list(GET checked 0 file)
-    list(GET checked 1 instance)
-    set(program ${CMAKE_CURRENT_BINARY_DIR}/compile/float/${instance}.c)
+    list(POP_FRONT checked file instance count)
+    set(name ${instance})
+    set(steps "")
+    if(count)
+        set(name ${instance}_${count})
+        set(steps --steps ${count})
+    endif()
+    set(program ${CMAKE_CURRENT_BINARY_DIR}/compile/float/${name}.c)
     add_custom_command(OUTPUT ${program}
         COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/compile/float
         COMMAND inkamath_cli --check ${CMAKE_CURRENT_SOURCE_DIR}/compile/${file}.ink ${instance}
-                --float -o ${program}
+                ${steps} --float -o ${program}
         DEPENDS inkamath_cli compile/${file}.ink
         VERBATIM)
-    add_executable(check_float_${instance} ${program})
-    target_compile_options(check_float_${instance} PRIVATE ${float_flags})
-    target_link_libraries(check_float_${instance} PRIVATE inkamath_warnings
+    add_executable(check_float_${name} ${program})
+    target_compile_options(check_float_${name} PRIVATE ${float_flags})
+    target_link_libraries(check_float_${name} PRIVATE inkamath_warnings
                           $<$<NOT:$<C_COMPILER_ID:MSVC>>:m>)
-    set_target_properties(check_float_${instance} PROPERTIES
+    set_target_properties(check_float_${name} PROPERTIES
                           C_STANDARD 11 C_STANDARD_REQUIRED ON C_EXTENSIONS OFF)
-    add_test(NAME check_float_${instance} COMMAND check_float_${instance})
-    add_test(NAME check_float_${instance}_report COMMAND check_float_${instance})
+    add_test(NAME check_float_${name} COMMAND check_float_${name})
+    add_test(NAME check_float_${name}_report COMMAND check_float_${name})
 endforeach()
 set_tests_properties(check_float_wild check_float_ledge check_float_far check_float_crawl
                      check_float_steep check_float_dies check_float_beat check_float_peak
@@ -766,6 +792,7 @@ foreach(report IN ITEMS
         "knee:^knee: 100 steps from 0${inexact}\n${knee_r}knee\\.r: at 0 the compiled step takes 'r_n = 0' and the interpreter 'r_n \\| y_n > c = y_n - c'\\; the guard of the second is 4\\.2e-11 from its threshold\nknee\\.y: within [0-9.e+-]+, [0-9.e+-]+ units of a float\\; the interpreter's terms about 5\\.8e-11 from the exact ones\nknee\\.r: within 4\\.2e-11, 1\\.2e\\+07 units of a float\\; the interpreter's terms about 5\\.8e-11 from the exact ones\n$"
         "whole:^whole: 100 steps from 0${inexact}\n(whole\\.k[1-4]: within [1-9](\\.[0-9])?e-0[67], [1-9](\\.[0-9])?e\\+0[2-5] units of a float, from 1${about}\n)+whole\\.y: within 0\\.[0-9]+, [1-9](\\.[0-9])?e\\+0[2-5] units of a float${about}\n$"
         "nm:^nm: 100 steps from 0 in float, against exact values until 35 and inexact ones from there\nnm\\.a\\[[0-9],1\\]: [-0-9.e+]+ at [0-9]+, where the interpreter gives [-0-9.e+]+(\\; the interpreter's term about [0-9.e+-]+ from the exact one)?\n(nm\\.[a-z]+: within [0-9.e+-]+, [0-9.e+-]+ units of a float${about}\n)+$"
+        "coast_1001:^coast: 1001 steps from 0${in_float}\ncoast\\.v: ${exact}\ncoast\\.y: ${exact}\n$"
         "cd:^cd: 100 steps from 0 in float, against exact values until 85 and inexact ones from there\n(cd\\.[a-z]+: within [1-9](\\.[0-9])?e-0[6-8], [0-9.e+-]+ units of a float${about}\n)+$"
         "cls:^cls: 100 steps from 0${inexact}\ncls\\.z: within 2\\.4e-08, 0\\.49 units of a float\ncls\\.q: within 1\\.9e-06, 1\\.5 units of a float${about}\ncls\\.s: within 6\\.3e-08, 2\\.1 units of a float${about}\ncls\\.loss: within 4\\.1e-07, 3\\.8 units of a float${about}\n$")
     string(FIND "${report}" ":" colon)

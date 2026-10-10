@@ -3228,7 +3228,7 @@ that exploring seven domains asked of the interpreter, by how many asked.
   (r(x)_(n-1) + 2^-n <= x)*2^-n`, x's binary digits, answers
   `lim r(1/3)` 0.25 from its terms 0, 0, 1/4, 1/4. The smallest change to
   weigh: two zero steps in a row, or README saying that one ends it.
-- **`--check`'s hundred steps as an option, `--steps n`.** Doyle 1978's loop
+- `[done]` **`--check`'s hundred steps as an option, `--steps n`.** Doyle 1978's loop
   at dt = 1/10 is ten time units in a hundred steps, where the nominal loop
   has not settled, [-1.18; 1.50] from [1; 0], and the one past its margin, m
   = 6/5, has not run away; a thousand show both. Apollo 11's translunar
@@ -3334,6 +3334,14 @@ that exploring seven domains asked of the interpreter, by how many asked.
   lowest terms, and its difference, 1.1e-16, by the step simulated in Python
   against exact fractions, its estimate's digits being the seeds'; the
   programs' lines by `check.hpp`'s text.
+
+  Built as specified: every line of `steps.ink` passes as written,
+  `horizon`'s estimate 1.7e-15, held by its form. Departures, the review's:
+  the help's two lines go to the `help` case, not a `help_steps`, and the
+  cases to `cli.cmake`'s first part; `steps.cmake` is gone. Every other
+  check program and header byte for byte. 25 lines of sources written where
+  about 20 were planned, 14 more in all: `main.cpp` 16 more, `check.hpp` 2
+  fewer. 16,282 lines in all.
 - **A cumulative sum compiled as an accumulator**, `sum_(t=1)^n e(t)`:
   refused as "a sum whose bounds are not constants", where a regret or a
   running loss is exactly that (Reddi et al. 2018).

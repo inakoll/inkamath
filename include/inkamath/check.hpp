@@ -27,15 +27,13 @@ class CheckC {
 public:
     using Value = Matrix<Number>;
 
-    static constexpr int steps = 100;
-
     using Definition = std::shared_ptr<const Reference<Value>>;
 
     // 'definition' names the instance, and 'unfed' is it with its parameters
     // and no input, as ReferenceStack::Unfed makes it.
     static std::string Program(Interpreter<Number>& session, const std::string& instance,
                                const Definition& definition, const std::string& module,
-                               const std::string& source, const Scope<Value>& unfed) {
+                               const std::string& source, const Scope<Value>& unfed, int steps) {
         ReferenceStack<Value>&   stack = session.Definitions();
         // In float, a thousandth: three digits asked of seven (DESIGN.md).
         const bool        floats = CompileC::floats;
@@ -454,14 +452,14 @@ public:
             "        printf(\"; the interpreter's terms about %.2g from the exact ones\", most);\n";
         out += "    if (past >= 0) printf(\", past the tolerance from %d\", past);\n";
         out += spent + "    printf(\"\\n\");\n    return 1;\n}\n\n";
-        if (!table.empty()) out += Flips(first);
+        if (!table.empty()) out += Flips(first, steps);
         out += data + "\nint main(void) {\n";
         out += "    " + module + " m;\n    int held = 1;\n    " + module + "_init(&m);\n";
         out += "    for (int n = 0; n < " + std::to_string(steps) + "; ++n) {\n";
         out += "        " + module + "_step(&m" + arguments + ");\n" + stepped + "    }\n";
-        out += "    printf(\"" + instance + ": " + std::to_string(steps) + " steps from " +
-               std::to_string(first) + (floats ? " in float" : "") + ", against " + against +
-               "\\n\");\n";
+        out += "    printf(\"" + instance + ": " + std::to_string(steps) +
+               (steps == 1 ? " step from " : " steps from ") + std::to_string(first) +
+               (floats ? " in float" : "") + ", against " + against + "\\n\");\n";
         if (!straddles.empty())
             out += "    puts(" + Quoted(straddles.begin()->second.second) + ");\n";
         if (!table.empty())
@@ -527,7 +525,7 @@ private:
         throw std::runtime_error("the instance has no sequence " + name);
     }
 
-    static std::string Flips(int first) {
+    static std::string Flips(int first, int steps) {
         const std::string index = first == 0 ? "" : std::to_string(first) + " + ";
         std::string       out;
         out += "/* A guarded sequence: each clause as written and the order it is tried in,\n";
