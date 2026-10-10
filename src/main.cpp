@@ -301,6 +301,10 @@ int main(int argc, char* argv[]) {
         } else if (arg == "--check") {
             checking = true;
         } else if (arg == "--float") {
+            if (CompileC::floats) {
+                cerr << "inkamath: --float is given twice\nTry 'inkamath --help'.\n";
+                return 2;
+            }
             CompileC::floats = true;
         } else if (arg == "--steps") {
             const string n   = i + 1 < argc ? argv[++i] : "";
@@ -311,8 +315,10 @@ int main(int argc, char* argv[]) {
                 return 2;
             }
         } else if (arg == "-o") {
-            if (i + 1 == argc) {
-                cerr << "inkamath: -o takes a file to write\nTry 'inkamath --help'.\n";
+            if (!target.empty() || i + 1 == argc) {
+                cerr << "inkamath: -o "
+                     << (target.empty() ? "takes a file to write" : "is given twice")
+                     << "\nTry 'inkamath --help'.\n";
                 return 2;
             }
             target = argv[++i];
