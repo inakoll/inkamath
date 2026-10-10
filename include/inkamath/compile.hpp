@@ -11,6 +11,7 @@
 #include <charconv>
 #include <cmath>
 #include <cstddef>
+#include <deque>
 #include <exception>
 #include <functional>
 #include <limits>
@@ -2546,7 +2547,7 @@ private:
         // Its terms, as locals of a function of their own. 'arg_x': no name
         // of the language has a '_', and no name of the function's own
         // begins so.
-        Walked    walked{name, names, 0, {0, 0}, &lists_[lists_.size()], &lists_[lists_.size()]};
+        Walked    walked{name, names, 0, {0, 0}, &lists_.emplace_back(), &lists_.emplace_back()};
         Expansion inside{{}, {}, sequence.home ? sequence.home : scope_, nullptr, {}, {}};
         for (const std::string& parameter : names) {
             const Code& argument = given.values.at(parameter);
@@ -2719,7 +2720,7 @@ private:
             limits_.push_back(text.replace(text.find(function), function.size(), named->second));
 
         // Where it is read: a matrix argument, or a matrix answer, is an
-        // array of the step's.
+        // array of the step's, or of the enclosing limit's.
         std::string called = named->second + "(m_";
         for (const std::string& parameter : names) {
             const Code& argument = given.values.at(parameter);
@@ -4558,10 +4559,11 @@ private:
         std::vector<std::string> parameters;
         int                      depth = 0;           // how far back a term reads its own
         Extent                   size{0, 0};          // a term's, once a clause gives it
-        std::vector<Temporary>*  based, *iterated;  // its temporaries, the bases' and an iterate's
+        std::vector<Temporary>*  based;               // its temporaries, the bases'
+        std::vector<Temporary>*  iterated;            // and an iterate's
         int                      count = 0;
     };
-    std::map<std::size_t, std::vector<Temporary>> lists_;  // those, kept as a step's are
+    std::deque<std::vector<Temporary>> lists_;  // those, kept as a step's are
     Walked*                          limit_           = nullptr;
     int                              temporary_count_ = 0;
     std::map<std::string, Value>     places_;             // a cell's row and column, by their names
