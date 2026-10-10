@@ -3485,9 +3485,10 @@ that exploring seven domains asked of the interpreter, by how many asked.
   include/inkamath/*.hpp src/*`. Past 45 the implementation stops and
   reports.
 
-  Specified in `test/data/spec/roots.ink`, 86 entries replayed by the spec
+  Specified in `test/data/spec/roots.ink`, 84 entries replayed by the spec
   suite, 40 failing by design, those passing being definitions echoing
-  themselves, the refusals and the answers that stay inexact. Each exact
+  themselves, the refusals, the answers that stay inexact and two exact
+  ones whose nine digits are as before. Each exact
   root in sympy, the truss's displacements and forces solved again in
   sympy from its computed lengths, each inexact answer the double C's sqrt
   or pow gives checked against mpmath to the nine digits shown, and all
