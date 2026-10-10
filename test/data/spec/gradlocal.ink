@@ -37,8 +37,9 @@ g(x) = (u = x*x) + (v = u + 1) + v
 >> grad_(x = 3) g(x)
 18
 
-# A local shadows a parameter from its binding on, grad's own name as any
-# other, and a sum's index until the next term binds it again.
+# A local shadows a parameter from its binding on. grad's own name and a
+# sum's index it cannot: the fix that refuses them in both evaluators lands
+# before this item.
 >> h(x) = x*((x = 10) + x)
 h(x) = x*((x = 10) + x)
 
@@ -49,10 +50,10 @@ h(x) = x*((x = 10) + x)
 20
 
 >> grad_(x = 2) x*((x = 5) + x)
-10
+error: x is grad's variable, so a local cannot define it
 
 >> grad_(x = 1) sum_(k=1)^3 x*k*((k = 2) + k)
-24
+error: k is the sum's index, so a local cannot define it
 
 # A local that does not move with the name has no part, and one bound in the
 # point is read in the body, as the point is read around grad.
