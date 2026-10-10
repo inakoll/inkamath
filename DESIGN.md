@@ -1804,6 +1804,7 @@ closures need one anyway, and can bring it.
 | C304 `[fixed]` | **grad evaluated an index more than once.** A call's index was read for a jump and again for the term, and an index that reads grad's frame, a cell's or a sum's bound, with its parts and again by the evaluator: a local bound in one was bound each time, so `(m = 1) + (grad_(x = 2) s(x)_((m = m + 1))) + m` read `s(x)_3` where the evaluator reads `s(x)_2`, and under grad through a local `L[(i = i + 1)]` read `L[3]`, the evaluator's frame a step past grad's. Found reviewing grad through a local. An index is evaluated once, with its parts where it reads grad's frame, and a call's is passed to the term; in 5 lines more, 1 of comment, and 10 changed. The C304 entries in gradlocal.ink hold it. |
 | C305 `[fixed]` | **grad's search for a global of its name took a clause's local as bound before the clause's size.** Grad through a local scans a clause in the order of evaluation, its guard before its expression, but the sizes it reads after both, where the walk reads them first: with globals `x = 100` and `t = x^2`, `fz(v)[j <= floor(t/5000)] = (t = 2)*v` and `grad_(x = 2) ([1 1]*fz(x))` answered 4, the size reading the global t that reads the global x while the search took t for the local. Found reviewing grad through a local. The sizes come first now, refused "t reads the global x, which grad's x does not reach"; in 1 line changed. The C305 entry in gradlocal.ink holds it. |
 | C306 `[fixed]` | **`charpoly` multiplied A M_m n times for each coefficient.** Its coefficient c_m = -tr(A M_m)/m was written `sum_(j=1)^n (A*charpolym(A)_m)[j,j]`, and a sum evaluates its term once per index, so each step took n + 1 products of n by n where one is the work, felt by every staircase that counts on it: of the 8x8 B^-1 A of `eig(Kf(4), Mf(4))` in geneig.ink, charpoly took 4.5 s under the sanitizers and the entry 21 s, which took the file to 38 s and past the 60 s timeout on a shared machine. A M_m is remembered now, as `charpolyp`, and read for the trace and for M_(m+1), in 1 line more, 2 changed and 3 of comment: 0.8 s and 10 s, the same products, so no answer moved. Found by geneig.ink's timeout in CI. |
+| C307 `[open]` | **A tensor's gradient with respect to a matrix was refused as a matrix's.** The compiled grad had one wording for a Jacobian, so `grad_(v = [n 1]) v*T`, T a 2x2x2 tensor, was refused "grad of a matrix with respect to a matrix is a Jacobian, which it does not give", where the interpreter says "grad of a tensor with respect to a matrix". Found specifying a compiled gradient with respect to a tensor (next in line), which closes it, naming each kind as the interpreter does; `w` among `test/compile/tensorgrad.ink`'s refusals holds it. |
 
 **Measure instructions, not the clock.** One of those changes made the matrix
 workload 20 per cent slower by the clock and not by a single instruction: with
@@ -7842,8 +7843,8 @@ checked: what it asked of the compiler, each with its smallest change.
     of a matrix with respect to a tensor". The words name both kinds as
     the interpreter's do, which corrects one refusal compiled today: a
     tensor's gradient with respect to a matrix, `grad_(v = [n 1]) v*T`, is
-    refused as "grad of a matrix with respect to a matrix". Found writing
-    this: a defect to register, fixed by the same lines. A derivative of
+    refused as "grad of a matrix with respect to a matrix", C307, a defect
+    found writing this, which the same lines fix. A derivative of
     a derivative stays "for now", tensor or not.
   - **`--float`** writes floats, as everywhere.
   - **The passes are a matrix's.** Forward mode seeds one pass per cell, so

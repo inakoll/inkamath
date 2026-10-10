@@ -129,4 +129,4 @@ small = pull(X_n = [n 1; 0 -1;; 1 0; -1 n])
 #     cannot compile w: grad of a tensor with respect to a matrix is a Jacobian, which it does not give
 #
 # w is refused today in words that miscall its tensor a matrix: "grad of a
-# matrix with respect to a matrix".
+# matrix with respect to a matrix" (C307).
