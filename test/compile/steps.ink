@@ -63,8 +63,8 @@ runaway = grow()
 # 10^(3n), whose numerator is odd and not a multiple of 5. Its denominator
 # is a thousand digits at 333 and past them at 334, where the interpreter
 # approximates the term and computes in doubles from there; the first line
-# says so as it does at a hundred steps, 'inkamath --check steps.ink
-# horizon --steps 1000':
+# says so as it says it of any check whose terms turn inexact, 'inkamath
+# --check steps.ink horizon --steps 1000':
 #
 #     horizon: 1000 steps from 0, against exact values until 334 and inexact ones from there
 #     horizon.y: within <d>; the interpreter's terms about <e> from the exact ones
