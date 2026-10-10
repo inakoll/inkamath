@@ -259,6 +259,9 @@ TEST_CASE("beam") {
 TEST_CASE("modal") {
     check_transcript("modal.ink");
 }
+TEST_CASE("geneig") {
+    check_transcript("geneig.ink");
+}
 TEST_CASE("cook") {
     check_transcript("cook.ink");
 }

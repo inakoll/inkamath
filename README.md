@@ -627,6 +627,30 @@ error: eig needs a matrix whose eigenvalues are all real
 ~9.52551809
 ```
 
+`eig(A, B)` is the generalized problem's: every lambda of A phi = lambda B
+phi, a structure's frequencies K phi = omega^2 M phi or its buckling loads,
+as a column, smallest first; `eig(A)` is `eig(A, A^0)`. B must be
+symmetric positive definite, and a B indefinite, singular or not symmetric
+is refused before A is looked at. The eigenvalues are B^-1 A's, bisected,
+certified and marked as eig's; beside such a B a symmetric A has every one
+real, without Hermite's test, and any other A is asked it of B^-1 A, as
+`eig(B^-1*A)` is. So a cantilever's M^-1 K, refused past a thousand digits
+from 12 unknowns, is certified as `eig(K, M)` at 24. Doubles in A and B are
+read as the rationals they are, so the answer is right for the data as
+stored, and inexact. A B of doubles symmetric only up to rounding, as
+X'*D*X, is refused: write (B + B')/2. An A not symmetric then has B^-1 A
+exact and larger than the rounded product, marked from about 5x5 and
+refused from 6x6 where `eig(B^-1*A)` of the rounded product still answers:
+
+```
+>> eig([2 -1; -1 2], [2 1; 1 2])
+[~0.333333333;
+           ~3]
+
+>> eig([2 1; 1 2], [1 0; 0 -1])
+error: eig needs B symmetric positive definite
+```
+
 `hinf(A, B, C, D)` is the H-infinity norm of the stable system x' = Ax +
 Bu, y = Cx + Du: the largest singular value of its transfer function
 C(iwI - A)^-1 B + D over every frequency w, the peak of |T(iw)| for one

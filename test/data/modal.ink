@@ -38,30 +38,11 @@ digits = 12
  ~5648.58713391;
   ~47584.197757]
 
-# Sylvester's law of inertia: the negative pivots of LDL' of K - s M count
-# the eigenvalues below s, exactly, without M^-1 K (DESIGN.md, next in
-# line: eig(K, M)); bisected, the first of three elements, 12.3648691229.
->> sc(A)_0 = A
-sc(A)_0 = A
-
->> sc(A[j<=m, l<=m])_k[j<=m, l<=m] = sc(A)_(k-1)[j,l] - (j > k and l > k)*sc(A)_(k-1)[j,k]*sc(A)_(k-1)[k,l]/sc(A)_(k-1)[k,k]
-sc(A[j<=m, l<=m])_k[j<=m, l<=m] = sc(A)_(k-1)[j,l] - (j > k and l > k)*sc(A)_(k-1)[j,k]*sc(A)_(k-1)[k,l]/sc(A)_(k-1)[k,k]
-
->> neg(A[j<=m, l<=m]) = sum_(k=1)^m (sc(A)_(k-1)[k,k] < 0)
-neg(A[j<=m, l<=m]) = sum_(k=1)^m (sc(A)_(k-1)[k,k] < 0)
-
->> cnt(n, s) = neg(Kf(n) - s*Mf(n))
-cnt(n, s) = neg(Kf(n) - s*Mf(n))
-
->> [cnt(2, 12), cnt(2, 13), cnt(2, 494), cnt(2, 47585)]
-[0, 1, 2, 4]
-
->> br(n, r)_0 = [0; 2^30]
-br(n, r)_0 = [0; 2^30]
-
->> br(n, r)_b = br(n, r)_(b-1) + (br(n, r)_(b-1)[2] - br(n, r)_(b-1)[1])/2*([1; 0] - (cnt(n, (br(n, r)_(b-1)[1] + br(n, r)_(b-1)[2])/2) >= r)*[1; 1])
-br(n, r)_b = br(n, r)_(b-1) + (br(n, r)_(b-1)[2] - br(n, r)_(b-1)[1])/2*([1; 0] - (cnt(n, (br(n, r)_(b-1)[1] + br(n, r)_(b-1)[2])/2) >= r)*[1; 1])
-
->> ~br(3, 1)_60
-[~12.3648691224;
- ~12.3648691233]
+# Three elements, as the pencil, which spares M^-1 K Hermite's test.
+>> eig(Kf(3), Mf(3))
+[~12.3648691229;
+ ~488.713223585;
+ ~3901.99889943;
+ ~19788.3448179;
+ ~70089.0184261;
+ ~278568.782393]

@@ -1783,6 +1783,7 @@ closures need one anyway, and can bring it.
 | C278 `[fixed]` | **An index read past where its sum's body ended was only "not defined".** A sum's body is a term, ending at the next '+' or '-', so `sum_(k=1)^3 (k<>1) + (k<>2)` reads k outside it, and said "k is not defined", which hid why. Now such an error, on a line whose sum or product ended its body at a '+' or '-' before a read of its index, says "k is bound in the sum's body alone, which ended at the '+'", in 12 lines and 2 of comment. Only the line typed is known so: a definition's sum read through a later call, `f(x) = sum_(k=1)^3 x + k` then `f(1)`, still says "k is not defined". series.ink holds it, and no other answer moved. |
 | C279 `[fixed]` | **`lim` stopped at a term repeated once, wrong and unmarked.** C36's remainder, `step*r/(1-r)`, is 0 for a step of 0 whatever the step before it, so a term equal to the one before ended the walk: with the binary digits of x, `r(x)_n = r(x)_(n-1) + (r(x)_(n-1) + 2^-n <= x)*2^-n`, `lim r(1/3)` was 0.25, since r_2 = r_3, where the limit is 1/3. A step of 0 now forms no ratio either, as the step after one already did not, and the step before it is what may be left: the walk goes on past a pause and stops within 2^-34/3 of 1/3, and --check moves such a limit by that step. The compiled walk takes the same rule, and a float's stop on floats a unit or two apart, which a step of 0 passed too, leaves such a step to it, in 3 lines, 2 changed and 3 of comment; `float_gate` in `test/cli.cmake` quotes the new stop. A sequence that stays where it repeated after a step over the tolerance stops a term later on the same value and remainder, and after one within it stops where it did, moved by that step rather than by 0; no golden moved; one repeated twice running, `lim r(1/5)` at 0, still stops, as any rule over a few terms can be fooled. A series without an upper bound stopped so too, `sum_(k=0) (k<>2)/2^k` at 3/2 for 7/4. sequences.ink and series.ink hold it, and `halves` in `test/compile/newton.ink` the compiled walk, in double and in float. |
 | C280 `[fixed]` | **`-o` last on the line was an unknown option.** `--check coast.ink coast -o` said "unknown option '-o'", where `--steps` last says what it takes. Found reviewing the specification of `--steps n`. Now `-o` last says "-o takes a file to write", exit 2; `check_output_missing` in `test/cli.cmake` holds it. |
+| C281 `[fixed]` | **`eig(A, B)` of a B whose cells are far from 1 refused it, or with a NaN.** Its test of B positive definite counted the roots of B's characteristic polynomial unscaled, whose last coefficient is det(B), 10^-1200 for 4 unknowns in 10^-300, past a thousand digits: `eig(Kf(2), Mf(2)/10^300)` was refused "by a guard approximated past a thousand digits", `eig(Kf(2), Mf(2)*10^300)` "a comparison needs a number, not -nan", and so was `eig(Kf(4), Mf(4)*10^150)`, which now answers, marked past a thousand digits in B^-1 A's own count. B is counted over 2^e now, as eig counts B^-1 A, so a double's 2^e never passes the digits: `eig(I, I*~10^-300)` of 4 unknowns was refused too. In 1 line changed; geneig.ink holds it, and no other answer moved. |
 
 **Measure instructions, not the clock.** One of those changes made the matrix
 workload 20 per cent slower by the clock and not by a single instruction: with
@@ -7095,26 +7096,144 @@ that exploring seven domains asked of the interpreter, by how many asked.
   m = 1 + 1/f^2 - 10^-12, where it is stable; each decided exactly from the
   doubles. Done by C275, smax and the brackets with them, at the cost in
   time it gives.
-- **An inertia count for inexact symmetric matrices**: the negative pivots
-  of LDL' of A - xI count the eigenvalues below x, backward stable, where the
-  rounded Descartes count of `eig` loses a k-fold eigenvalue to about 16/k
-  digits and Hermite's test refuses symmetric matrices but for rounding.
-  Rejected for `eig` only for an exact dyadic midpoint that zeroes a pivot,
-  which an inexact matrix does not meet. Since C275 the count reads the
-  doubles exactly, right but slower as n grows, 38 s for a symmetric 18x18
-  of doubles. And **`eig(K, M)`**, the generalized symmetric problem
-  K phi = lambda M phi of every structure's modes, by the same count
-  exactly: by Sylvester's law of inertia the negative pivots of LDL' of
-  K - sM are the eigenvalues below s, M positive definite, without forming
-  M^-1 K, which is not symmetric and so asks Hermite's test. Exploring
-  finite elements, a cantilever of Hermite elements with its consistent
-  mass: `eig(Mf(5)^-1*Kf(5))`, 10 unknowns, took 32 s and 6 elements were
-  refused past a thousand digits; the count written in the language, the
-  pivots as Schur complements `sc(A)_k[j,l] = sc(A)_(k-1)[j,l] - (j > k
-  and l > k)*sc(A)_(k-1)[j,k]*sc(A)_(k-1)[k,l]/sc(A)_(k-1)[k,k]` and 60
-  halvings of [0, 2^30] on them, gave the first mode of 8 elements in
-  2.7 s and four modes of 16 in 4 minutes, marked past a thousand digits.
-  M not positive definite is refused, as eig's complex eigenvalues are.
+- `[done]` **The generalized eigenproblem, `eig(A, B)`**, the fifth step towards
+  eigenvalues: every lambda of A phi = lambda B phi, B symmetric positive
+  definite, as a column, smallest first, each certified as eig's are. A
+  structure's frequencies, K phi = omega^2 M phi, and its buckling loads,
+  K phi = lambda K_G phi; Fisher's discriminant, S_b w = lambda S_w w; a
+  normalized cut, (D - W) y = lambda D y. It takes the place of two lines
+  here, an inertia count for inexact symmetric matrices and `eig(K, M)` by
+  it. Exploring finite elements formed M^-1 K (`modal.ink`), which is not
+  symmetric and so asks Hermite's test: 6.3 s for 8 unknowns, 32 s for 10,
+  refused past a thousand digits from 12. The design, measured on a
+  prototype:
+
+      eig(A[j<=n, k<=n], B[j<=n, k<=n] = A^0) | rhoe([A, B]) == rhoe([A, B]) and B' == B and eigv(charpoly(B)) == n = eigg(A, B^-1*A)
+      eigg(A, C) | A' == A or eigr(C) = eigc(C)
+
+  **The count.** B^-1 A is not symmetric but is similar to L^-1 A L^-T,
+  B = L L', so where A is symmetric its eigenvalues are real, and Descartes'
+  count on its characteristic polynomial, det(lambda B - A)/det(B), is exact
+  without Hermite's test: the pencil's definiteness is the certificate that
+  test was for. So the eigenvalues are `eigc` of B^-1 A, eig's bisection,
+  scale, stop, certified 0 and marks unchanged, and the bracket is
+  eig(B^-1*A)'s where Hermite's test passes. A not symmetric asks that test
+  of B^-1 A, `eigr`, as eig(B^-1*A) does. B is positive definite where its
+  own polynomial, real-rooted as B is symmetric, has every root above 0: n
+  sign changes, `eigv(charpoly(B)) == n`, Descartes again. `rhoe([A, B])`
+  reads every cell before B^-1 A is formed, for its refusal alone.
+
+  **Name and form.** `eig(A, B)`, MATLAB's and Octave's, B a second argument
+  whose default is the identity: a definition has one parameter list, so a
+  second argument is a default or a second name. It means eig(B^-1*A) for
+  every A, B symmetric positive definite, and against CLAUDE.md's "no second
+  way to say something" earns its place where A is symmetric: it is the
+  paper's K phi = lambda M phi; it answers where eig(B^-1*A) is refused,
+  past a thousand digits from 12 unknowns, and of doubles from 8x8 (C275);
+  it is 14 times faster where both answer, 0.43 s against 6.3 at 8 unknowns;
+  and it refuses what it cannot certify. eig(B^-1*A) stays as it is, eig of
+  a matrix, which no rule refuses for having been a product. Rejected:
+  `eigh(A, B)`, SciPy's, and `geig`, a second name for eigenvalues; a
+  default that is not a value, which no signature has; and refusing a
+  non-symmetric A beside any B but the identity, which would tell the
+  identity apart from its multiples: eig(A, 2*A^0) answers as eig(A/2) does.
+  Riccati and Hamiltonian pencils are out of scope: neither has B
+  symmetric positive definite, and eig refuses both.
+
+  **Refused**, in plain words: `eig needs B symmetric positive definite`,
+  for B indefinite, singular or not symmetric, before A is looked at. One
+  set of words: which premise failed is in B, and two sets would cost a
+  guard each. A lumped mass that gives a rotation no mass is singular, and
+  condensing the rotation out is the model's to write. The words are eig's
+  guard's, in `Unapplied`'s table; eig's present words, `eig needs a matrix
+  whose eigenvalues are all real`, move there to eigg's name, for a complex
+  eigenvalue of B^-1 A, approximated guard and all. A matrix not square, or
+  A and B of different sizes, by the signature: `eig takes A[j<=n, k<=n] and
+  B[j<=n, k<=n], not a 2x2 matrix and a 1x3 matrix`. A complex cell of A or
+  B in max's words, `a comparison needs real numbers, not ~(i)`, not a cell
+  of B^-1 A. An inf cell of either, `eig needs finite cells, not ~inf`, by
+  C206's check.
+  - **Doubles read exactly**: `checked` reads every argument of a
+    staircase as the rationals its doubles are (C275), B's too, and the
+    answer is inexact. Nothing to add.
+  - **grad**: refused where A or B moves, `grad cannot differentiate eig
+    yet`, as the staircase check reads every argument; flat where neither
+    does. A simple eigenvalue's derivative, phi'(dA - lambda dB)phi with
+    phi'B phi = 1, is a later item with rho's.
+  - **Compiled**: nothing new. eig stops at `B' == B`, a comparison of
+    matrices, as it stopped at `A' == A`; compiled grad's refusal,
+    `Staircase`, reads every argument already.
+  - **`eigb`** stays of A alone: a pencil's bracket would take B before k,
+    and no model asks for one.
+
+  Rejected:
+  - **The inertia count**, the negative pivots of LDL' of A - xB, which
+    count the eigenvalues below x by Sylvester's law. Prototyped in fixes23
+    and here as a recurrence on Schur complements, its matrix a parameter,
+    and bisected exactly as `eigc`: slower at every size measured, in
+    Release. On the cantilever, 0.90 s against the reduction's 0.43 at 8
+    unknowns and 14.0 against 11.7 at 16; at 24, marked past a thousand
+    digits in 84 s where the reduction is certified in 132. On random
+    pencils of doubles, 5.3 s against 1.9 at 8x8 and 41 against 22 at
+    12x12; at 16x16, marked in 138 s where the reduction is certified in
+    118. Its three lines also lack what it needs: a pivot is 0 where a
+    midpoint is an eigenvalue of a leading sub-pencil, which a 2x2 block
+    or symmetric pivoting must step over, `[0 1; 1 0]` at the first
+    midpoint and `[1 0; 0 3]` at the fourth. Its argument, backward
+    stability in doubles, went with C275: both counts read doubles
+    exactly, and so give the same bracket.
+  - **An exact Cholesky of B**, for the symmetric L^-1 A L^-T: its square
+    roots are not rational, so its cells would be rounded. LDL', rational,
+    leaves the pencil (L^-1 A L^-T, D), similar to B^-1 A, and nothing
+    gained.
+  - **Plain eig(A) by the inertia count**, as eig(A, I): on random
+    symmetric matrices of doubles, read exactly, 1.69 s against 0.63 at
+    8x8, 4.3 against 1.7 at 10x10, 16.8 against 9.0 at 14x14. Where both
+    certify every answer is the same, the counts being exact. Not switched.
+
+  **What it costs**: eig's, of B^-1 A, with one characteristic polynomial of
+  B more; eig of one argument, that of the identity, its inverse and a
+  product. In Release, the cantilever's 8 unknowns in 0.43 s, 16 in 12 s and
+  24 in 132 s, certified; random pencils of doubles 1.9 s at 8x8, 22 s at
+  12x12 and 118 s at 16x16, certified. The spec replays in 28 s under the
+  sanitizers (Debug), 20 of them the 8 unknowns.
+
+  What moves: no golden but one. eig of one argument takes eigg's clause,
+  A' == A or Hermite's test of I^-1 A, which is A; `eig expects 1 argument,
+  got 2` goes, which nothing recorded. README's section 2 shows eig(K, M).
+  `modal.ink` moves on purpose: its Schur-complement prototype, from the
+  comment on Sylvester's law to `~br(3, 1)_60`, gives way to
+  `eig(Kf(3), Mf(3))`, worked out as the spec's: 12.3648691229,
+  488.713223585, 3901.99889943, 19788.3448179, 70089.0184261 and
+  278568.782393, at 12 digits, the first the one its comment gives.
+
+  About 6 lines: the prelude 2 more, eig's clause wrapped and eigg's, 1 of
+  C++ for eigg's words and 3 of comment. 16,000 lines at 05f1483, by `wc -l
+  include/inkamath/*.hpp src/*`. Past 9 the implementation stops and
+  reports.
+
+  Specified in `test/data/spec/geneig.ink`, 56 entries replayed by the spec
+  suite, 39 failing by design, those passing being definitions echoing
+  themselves, `digits` and eig of one argument: eigenvalues as the roots of
+  det(A - x B) in sympy, exactly, and each bracket by bisection of B^-1 A
+  over 2^e in Python's fractions with every test decided from them, printed
+  by a transcription of `Number::Shown`; the cantilever's against mpmath's
+  eigenvalues of M^-1 K at 30 digits too, and the buckling loads against 12
+  by hand and Euler's pi^2. Reviewed by another route: B^-1 A's
+  characteristic polynomial by Faddeev and LeVerrier in fractions, bisected
+  on Descartes' count of it shifted at each midpoint, each bracket holding
+  sympy's root, printed by Python's `%g`. The prototype above, defined in a
+  session, gives every answer but the refusals' words, grad's two, the inf
+  cells and the 3x3 pencil of doubles, which need the name to be the
+  prelude's staircase; put in the prelude, eigg's words in the table, it
+  gives all 56.
+
+  Built as specified, with no departure: the spec is the golden
+  `geneig.ink`, and the spec suite goes, it its only file. `modal.ink`'s
+  Schur-complement prototype gives way to `eig(Kf(3), Mf(3))`, its six
+  values as above; README's section 2 shows eig(A, B). 6 lines landed
+  against about 6: the prelude 2 more and its comment 3, and 1 of C++ for
+  eigg's words. 16,012 lines in all.
 - `[done]` **A guard the interpreter's own error straddles.** From an outside
   review. `--check` estimates the interpreter's error by asking each term
   three times more, disturbed (*The interpreter's own error, estimated by
