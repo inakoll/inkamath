@@ -93,16 +93,20 @@ scanned = {
             "0x1.c90a02d1b3414p+9 0x1.c92a0eb1173eap+9 0x1.c92a0cd508d58p+8 -0x1.9f89c9e9be13ap+9",
 }
 # atan's, asin's, acos's and acosh's, from the spec's sweep of the design
-# emulated in C, 10^8 doubles a range (DESIGN.md, next in line).
+# emulated in C, 10^8 doubles a range, the last the review's, 4*10^8 near
+# the farthest (DESIGN.md, next in line).
 scanned |= {
     "atan": "-0x1.136ebc4a5d13cp-2 -0x1.112d6ec17206cp-2 0x1.10d8b8ccd05acp-2 0x1.52c682675688p-2 "
-            "0x1.14d262f7036p-2 0x1.40d88e2e70d8p-2 -0x1.18d817d8356fcp-2 -0x1.2e5873451260cp-2",
+            "0x1.14d262f7036p-2 0x1.40d88e2e70d8p-2 -0x1.18d817d8356fcp-2 -0x1.2e5873451260cp-2 "
+            "0x1.1080f264ebd8cp-2",
     "asin": "-0x1.38962083df72cp-2 0x1.fa3f6321c6a88p-3 0x1.0e66fe34c715cp-2 -0x1.a267dc6caee93p-1 "
-            "0x1.80327cecd229fp-1 0x1.f1ad5c8eae93dp-3 -0x1.fe177c8420458p-4 -0x1.fc0fc02fcf4cap-4",
+            "0x1.80327cecd229fp-1 0x1.f1ad5c8eae93dp-3 -0x1.fe177c8420458p-4 -0x1.fc0fc02fcf4cap-4 "
+            "0x1.f6b395202a77bp-3",
     "acos": "0x1.e87f307529c22p-1 0x1.ee799c18c981cp-1 0x1.ee7b2f761f038p-1 0x1.ed3312f428e37p-1 "
-            "0x1.f051bf44cde6fp-1 0x1.f029beed12917p-1",
+            "0x1.f051bf44cde6fp-1 0x1.f029beed12917p-1 0x1.eea734faaf00bp-1",
     "acosh": "0x1.118cad3f7bb21p+0 0x1.13293f0c7a961p+0 0x1.1252a6236737dp+0 0x1.13ae058db8da9p+0 "
-             "0x1.141677a5d4e81p+0 0x1.11fa63e8638aep+0 0x1.176f736dfa446p+0 0x1.124b5a5651565p+0",
+             "0x1.141677a5d4e81p+0 0x1.11fa63e8638aep+0 0x1.176f736dfa446p+0 0x1.124b5a5651565p+0 "
+             "0x1.10b36159bb631p+0",
 }
 scanned = {k: [float.fromhex(x) for x in v.split()] for k, v in scanned.items()}
 

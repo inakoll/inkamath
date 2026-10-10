@@ -3398,7 +3398,7 @@ that exploring seven domains asked of the interpreter, by how many asked.
   (Cody and Waite), the remainder added to the series first. The thresholds
   17/64, 3/4, 11/8 and 15/4 are dyadic, so that a guard compares a double
   with what a double holds, as the prelude's do; 17/64 rather than 1/4 keeps
-  atan c + atan u at 1/4 or above, 1.42 units at worst for 1.88. 2t - 1 and
+  atan c + atan u at 1/4 or above, 1.44 units at worst for 1.92. 2t - 1 and
   t - 1 are exact where they cancel (Sterbenz). atan u is Taylor's series to
   u^29 in Horner's form, remainder below 2^-62 of u, its coefficients
   reciprocals of whole numbers. An exact argument is reduced exactly and
@@ -3443,21 +3443,22 @@ that exploring seven domains asked of the interpreter, by how many asked.
   are pi/4, pi/2, pi/2 and pi to the double, so `4*atan(1) == pi`.
 
   Accuracy over doubles, against atanl, asinl, acosl, acoshl and atan2l at
-  64 bits on 10^8 points a range, the farthest of each confirmed by mpmath
-  at 256 bits, and no bound:
+  64 bits on 10^8 points a range, then the review's 4*10^8 near each
+  farthest against libquadmath, which moved five, the farthest of each
+  confirmed by mpmath at 256 bits, and no bound:
 
   | | worst | correctly rounded |
   |---|---|---|
-  | `atan` on [-1, 1] | 1.422 units, at -0.2689771099460534 | 92.2% |
+  | `atan` on [-1, 1] | 1.437 units, at 0.26611689320540033 | 92.2% |
   | `atan` on [-16, 16] | 1.086, at 0.2703338111176379 | 95.0% |
   | `atan`, every exponent | 1.394, at -0.2742618299210873 | 100.0% |
-  | `atan2`, \|x\| and \|y\| from 2^-60 to 2^60 | 1.815 | 82.0% |
-  | `asin` on [-1, 1] | 2.195, at -0.3052601891030118 | 73.3% |
+  | `atan2`, \|x\| and \|y\| from 2^-60 to 2^60 | 1.893, at 0.51329973818231467, 1.9305107949267404 | 82.0% |
+  | `asin` on [-1, 1] | 2.613, at 0.24545971397793295 | 73.3% |
   | `asin`, \|x\| from 2^-1074 to 1/2 | 2.442, at 0.24300644216948256 | 98.5% |
   | `asin`, 1 - 2^-k | 1.736, at -0.8171986468000391 | 98.0% |
-  | `acos` on [-1, 1] | 2.323, at 0.9540953772565255 | 77.5% |
+  | `acos` on [-1, 1] | 2.612, at 0.96611943779089537 | 77.5% |
   | `acos`, 1 - 2^-k | 2.466, at 0.9632802889868292 | 79.9% |
-  | `acosh` on [1, 2] | 3.186, at 1.0685528068531271 | 69.8% |
+  | `acosh` on [1, 2] | 3.567, at 1.0652371257850854 | 69.8% |
   | `acosh`, every exponent | 2.658, at 1.0702269022327004 | 80.7% |
 
   acosh's worst is log's own, near its fold at root 2, just above 17/16.
@@ -3491,14 +3492,14 @@ that exploring seven domains asked of the interpreter, by how many asked.
   compiler.
 
   Held to mpmath as C225 holds the others: `test/data/prelude_reference.txt`
-  gains sections atan, asin, acos and acosh, 344, 321, 319 and 324
+  gains sections atan, asin, acos and acosh, 345, 322, 320 and 325
   arguments, and the parts atan_dx, asin_dx and acosh_dx (acos's is asin's
   negated, as cos's is sin's), written by `test/prelude_reference.py` with
   the old sections' bytes unchanged: thresholds and their neighbours, 1 -
   2^-k, 1 + 2^-k, subnormals, the largest double and the sweep's farthest.
-  The design emulated has 1.422, 2.442, 2.466 and 3.186 there, so
-  `test/prelude_test.cpp` holds atan, asin, acos and acosh within 1.43,
-  2.45, 2.47 and 3.19, and the parts within what the implementation's sweep
+  The design emulated has 1.437, 2.613, 2.612 and 3.567 there, so
+  `test/prelude_test.cpp` holds atan, asin, acos and acosh within 1.44,
+  2.62, 2.62 and 3.57, and the parts within what the implementation's sweep
   measures; its skipped `sweep` gains their ranges.
 
   What moves, in the implementation's commit: no golden. `apollo11.ink`
