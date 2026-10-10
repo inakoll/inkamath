@@ -3608,7 +3608,7 @@ that exploring seven domains asked of the interpreter, by how many asked.
   header, and Robertson's kinetics (1966) under backward Euler, each step's
   Newton iteration under `lim`, are 237 KB at cc686c5 with the 3x3 inverse
   by Cramer's rule written by hand, `m_->h *` written 2,169 times, and
-  12.9 MB with grad's Jacobian, which gcc -O0 built in 258 s and 4.4 GB and
+  12.9 MB with grad's Jacobian, which gcc -O0 builds in 435 s and 5.7 GB and
   -O2 did not finish in 600 s; the same Newton read at a constant count,
   `nw(y)_12`, is 24 KB and 58 KB. The paper's `^-1` is refused there
   (C261), and so is the doubling algorithm for the Riccati equation under
