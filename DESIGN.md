@@ -8118,7 +8118,7 @@ checked: what it asked of the compiler, each with its smallest change.
   it would not: the first cost is no text at all, and the second is one
   kind of text, which one rule shares. With both, what is still written
   twice in attention's step is the NaN test of a matrix read by its cells,
-  94 KB of its 215 (*A matrix read by its cells tested for NaN once*,
+  103 KB of its 245 (*A matrix read by its cells tested for NaN once*,
   which on the prototype took the header to 162 KB and GCC's time not at
   all), and softmax's denominators, at most 24 KB, all that general value
   numbering would add here.
