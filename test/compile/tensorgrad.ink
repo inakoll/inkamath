@@ -34,9 +34,8 @@
 #     saliency: 3 steps from 0 in float, against exact values
 #     saliency.G: within 0, 0 units of a float
 #
-# Unwired: the queued "size of a forward-mode header, measured" wires it,
-# as tensorgrad:saliency:3; at 100 steps the oracle's four runs of the
-# interpreter take some 470 s under the sanitizers.
+# Checked as tensorgrad:saliency:3: at 100 steps the oracle's four runs of
+# the interpreter take some 470 s under the sanitizers.
 probe(K = [1 -1; 2 0], d = 1/4, W = [1 -1; 2 1], a = 1/2, X_n[b<=2, i<=3, j<=3]) = {
     pad(X)[b<=2, i<=5, j<=5] | i > 1 and i < 5 and j > 1 and j < 5 = X[b, i-1, j-1]
     pad(X)[b<=2, i<=5, j<=5] = 0
