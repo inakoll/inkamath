@@ -1497,10 +1497,3 @@ set(args --compile twice.ink -o twice.h)
 check(compile_limit_globals)
 holds(compile_limit_globals twice.h "    const double t0_ = m_->a + m_->a;\n"
       "    const double t2_ = m_->a - 2.0;\n")
-
-# C316: whether a cell may be NaN searched it for each name in a set that
-# grows with every call under grad: 95 s here, 2 s since, and 28 s under the
-# sanitizers, so in the lightest part. The timeout holds it.
-file(WRITE "${OUT}/c316.ink" "m(x_n[i<=1000]) = {\n    w_0 = 1/2\n    w_n = w_(n-1) - grad_(v = w_(n-1)) sum_(i=1)^1000 (exp(v*x_n[i]) + exp(2*v*x_n[i]) + exp(3*v*x_n[i]))\n}\n")
-set(args --compile c316.ink m -o c316.h)
-check(compile_c316)

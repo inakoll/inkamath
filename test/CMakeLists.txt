@@ -59,6 +59,19 @@ foreach(part 1 2 3)
     set_tests_properties(cli_${part} PROPERTIES TIMEOUT 120)
 endforeach()
 
+# C316: a cell's may-NaN test searched it for each name in a set that grows
+# with every call under grad. The timeout holds it: 95 s before the fix and 2 s
+# since in a release build, 632 s and 28 s under the sanitizers, which no size
+# separates within one timeout, so theirs is 300 s, ten times since.
+file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/c316.ink "m(x_n[i<=1000]) = {\n    w_0 = 1/2\n    w_n = w_(n-1) - grad_(v = w_(n-1)) sum_(i=1)^1000 (exp(v*x_n[i]) + exp(2*v*x_n[i]) + exp(3*v*x_n[i]))\n}\n")
+add_test(NAME compile_c316 COMMAND inkamath_cli --compile ${CMAKE_CURRENT_BINARY_DIR}/c316.ink m
+                                   -o ${CMAKE_CURRENT_BINARY_DIR}/c316.h)
+if(INKAMATH_SANITIZE)
+    set_tests_properties(compile_c316 PROPERTIES TIMEOUT 300)
+else()
+    set_tests_properties(compile_c316 PROPERTIES TIMEOUT 60)
+endif()
+
 # Regenerate the golden transcripts from current behaviour. Always review the
 # resulting diff: it is the record of what the change you just made did.
 add_custom_target(record_goldens
