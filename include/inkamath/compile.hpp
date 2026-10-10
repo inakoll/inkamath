@@ -1844,6 +1844,8 @@ private:
                 "double " + t + Subscript(n, n) + " = {" + rows + "};",
                 module_ + "_inverse" + std::to_string(n) + "_(" + t + ");"};
         });
+        // The helper writes NaN into it, out of the cells' sight (C308).
+        nan_functions_.insert(name);
         return Array(name, Extent{n, n});
     }
 
@@ -4506,7 +4508,7 @@ private:
     bool                             clauses_ = false;  // whether the step keeps them; see Build
     bool                             aware_ = false;  // whether it writes NaN, and so tests for it
     std::set<std::string>            nans_;             // arguments' cells that may be NaN
-    std::set<std::string>            nan_functions_;    // the header's that may answer NaN
+    std::set<std::string>            nan_functions_;    // the header's names that may hold NaN
     bool                             guarding_ = false;  // in a guard, which asks only for values
     std::map<std::string, Value>     known_;    // globals that read only those
     std::set<std::string>            read_parameters_;      // by the value being compiled

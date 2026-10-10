@@ -318,3 +318,15 @@ taken(x_n) = {
     w_n = [x_n, log(x_n)][1, 1]
 }
 took = taken(x_n = 2 - n)
+
+# So is a singular inverse's, which the header's helper writes into the
+# cells of a temporary, out of the argument's sight: x answered 1 at 2,
+# and y, through a limit, 2 at 0, where the interpreter refuses (C308).
+singular() = {
+    F(M) = 1
+    g(b)_0 = 0
+    g(b)_k = g(b)_(k-1)/2 + F([b, 1; 1, b]^-1)
+    x_n = F([n - 2, 0; 0, 1]^-1)
+    y_n = lim g(n - 1)
+}
+shut = singular()
