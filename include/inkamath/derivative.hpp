@@ -874,7 +874,7 @@ private:
             const bool binds = ParametersDefinition<T>::Binds(*grad.Body());
             for (std::size_t k = 0; k < cells; ++k) {
                 // Each pass has steps of its own, as a term has (C318).
-                const typename ReferenceStack<T>::OwnSteps steps(stack_);
+                const typename ReferenceStack<T>::OwnSteps own_steps(stack_);
                 const bool                            undo = binds && k + 1 < cells;
                 typename ReferenceStack<T>::Tentative locals(stack_, undo);
                 const Arguments                       own = undo ? frames_.back() : Arguments();
