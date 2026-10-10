@@ -257,7 +257,7 @@ lone = single(x_n = n + 1)
 #     cannot compile e: p_(...): a term after the one being computed
 #     cannot compile f: calls nested 64 deep, which a recursion its guards do not end would pass
 #     cannot compile g: an index must be a whole number, not 0.5
-#     cannot compile h: a sequence with parameters in a limit's terms, for now
 #     cannot compile u: a sequence with parameters by cells, for now
 #
-# on standard output, exiting 1.
+# on standard output, exiting 1. h compiles since a limit's function has
+# temporaries (DESIGN.md), as implicit.ink's 'inset'.

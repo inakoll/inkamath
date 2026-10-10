@@ -224,9 +224,7 @@ sloped = slopes(x_n = n/4)
 #     cannot compile a: a tensor cannot be a block of a literal, only a matrix can
 #     cannot compile b: a block that does not fill its band
 #     cannot compile c: its clauses have different shapes
-#     cannot compile d: a matrix inverse inside a limit's terms
 #
-# on standard output, exiting 1. Today a, b and d are refused as 'a matrix
-# built from matrices'; d stays refused until a limit's function has
-# temporaries (DESIGN.md, next in line), which is what the doubling
-# algorithm for the Riccati equation needs under lim.
+# on standard output, exiting 1. d compiles since a limit's function has
+# temporaries (DESIGN.md), as the doubling algorithm for the Riccati
+# equation does under lim in implicit.ink.

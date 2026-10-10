@@ -1346,7 +1346,6 @@ cannot compile d: z is defined by itself
 cannot compile e: p_(...): a term after the one being computed
 cannot compile f: calls nested 64 deep, which a recursion its guards do not end would pass
 cannot compile g: an index must be a whole number, not 0.5
-cannot compile h: a sequence with parameters in a limit's terms, for now
 cannot compile u: a sequence with parameters by cells, for now
 ")
 set(exit 1)
@@ -1384,7 +1383,6 @@ set(args --compile blocks.ink)
 set(stdout "cannot compile a: a tensor cannot be a block of a literal, only a matrix can
 cannot compile b: a block that does not fill its band
 cannot compile c: its clauses have different shapes
-cannot compile d: a matrix inverse inside a limit's terms
 ")
 set(exit 1)
 check(compile_blocks_refused)
@@ -1397,3 +1395,44 @@ set(args --compile c220.ink -o c220.h)
 check(compile_c220)
 holds(compile_c220 c220.h [[    m_->x[0][0][0] = m_->Q[0][0] * (double)m_->index_ + 1.0 * 1.0 + 2.0 * 1.0 + (m_->R[0][0] * (double)m_->index_ + m_->R[0][1] * 1.0);
 ]])
+
+# Temporaries in a limit's function (DESIGN.md, compile/implicit.ink): each
+# value of Robertson's Newton iterate written once, h read 12 times, by
+# Cramer's rule, through grad's Jacobian, and by the inverse called once.
+set(rober "k1 = 0.04\nk2 = 3*10^7\nk3 = 10^4\nf(y) = [-k1*y[1] + k3*y[2]*y[3]; k1*y[1] - k3*y[2]*y[3] - k2*y[2]*y[2]; k2*y[2]*y[2]]\nJ(y) = [-k1, k3*y[3], k3*y[2]; k1, -k3*y[3] - 2*k2*y[2], -k3*y[2]; 0, 2*k2*y[2], 0]\nJg(y)[j<=3, k<=3] = (grad_(v = y) f(v)[j])[k]\nI = [1 0 0; 0 1 0; 0 0 1]\nc(j) = mod(j - 1, 3) + 1\nadj(A)[j<=3, k<=3] = A[c(k+1), c(j+1)]*A[c(k+2), c(j+2)] - A[c(k+1), c(j+2)]*A[c(k+2), c(j+1)]\ndet3(A) = (A[1]*adj(A))[1,1]\nsolve(A, b) = adj(A)*b/det3(A)\nh = 1/10\nnw(yp)_0 = yp\ny_0 = [1; 0; 0]\ny_n = lim nw(y_(n-1))\nnw(yp)_k = nw(yp)_(k-1) - ")
+set(newton "nw(yp)_(k-1) - yp - h*f(nw(yp)_(k-1))")
+file(WRITE "${OUT}/solve/cramer.ink" "${rober}solve(I - h*J(nw(yp)_(k-1)), ${newton})\n")
+file(WRITE "${OUT}/grad/cramer.ink" "${rober}solve(I - h*Jg(nw(yp)_(k-1)), ${newton})\n")
+file(WRITE "${OUT}/inverse/cramer.ink" "${rober}(I - h*J(nw(yp)_(k-1)))^-1*(${newton})\n")
+foreach(form solve grad inverse)
+    set(args --compile ${form}/cramer.ink -o ${form}/cramer.h)
+    check(compile_implicit_${form})
+    file(READ "${OUT}/${form}/cramer.h" text)
+    string(REGEX MATCHALL "m_->h \\*" reads "${text}")
+    list(LENGTH reads reads)
+    file(SIZE "${OUT}/${form}/cramer.h" size)
+    if(NOT reads EQUAL 12 OR NOT size LESS 32768)
+        message(SEND_ERROR "compile_implicit_${form}: h read ${reads} times in ${size} bytes")
+    endif()
+endforeach()
+string(REGEX MATCHALL "cramer_inverse3_\\(" calls "${text}")
+list(LENGTH calls calls)
+if(NOT calls EQUAL 2)
+    message(SEND_ERROR "compile_implicit_inverse: cramer_inverse3_ written ${calls} times, not 2")
+endif()
+set(args --compile inverse/cramer.ink --float -o float/cramer.h)
+check(compile_float_implicit)
+file(READ "${OUT}/float/cramer.h" text)
+string(FIND "${text}" "double" at)
+if(NOT at EQUAL -1)
+    message(SEND_ERROR "compile_float_implicit: float/cramer.h holds 'double'")
+endif()
+holds(compile_float_implicit float/cramer.h "float v0_[3][3] = ")
+
+# A global's temporaries, read first in a limit's terms, are numbered as
+# the update's, not as that limit's: two such are two names.
+file(WRITE "${OUT}/twice.ink" "a = 1/2\nM = [a, 1; 1, a]\nP = (M + M)*(M + M)\nQ = (M - 2)*(M - 2)\ns(x)_0 = x\ns(x)_k = s(x)_(k-1)/2 + P[1,1]*x\nr(x)_0 = x\nr(x)_k = r(x)_(k-1)/2 + Q[1,1]*x\ny_n = lim s(n) + lim r(n)\n")
+set(args --compile twice.ink -o twice.h)
+check(compile_limit_globals)
+holds(compile_limit_globals twice.h "    const double t0_ = m_->a + m_->a;\n"
+      "    const double t2_ = m_->a - 2.0;\n")

@@ -11,6 +11,7 @@
 #include <charconv>
 #include <cmath>
 #include <cstddef>
+#include <deque>
 #include <exception>
 #include <functional>
 #include <limits>
@@ -695,8 +696,6 @@ private:
         const ParametersDefinition<Value>& p = function.Clauses().front().parameters;
         Reasoned([&] { p.CheckArity(name, call); });
         std::optional<int> at;
-        if (call.subexpr() && !temporaries_)
-            throw Reason("a sequence with parameters in a limit's terms, for now");
         if (call.subexpr())
             at = Whole(Known(call.subexpr(),
                              "a sequence with parameters read at an index that is not a constant"));
@@ -1186,14 +1185,16 @@ private:
     // The same value is the same temporary within one sequence's step.
     template <typename Lines>
     std::string Declare(const std::string& value, Lines lines) {
-        // A sequence or a global has them; a limit's terms do not, and the
-        // prelude's C functions invert nothing (C261).
-        if (!temporaries_) throw Reason("a matrix inverse inside a limit's terms");
         // Checked, as an ended list may have left its address to another.
         std::size_t& at = declared_[{temporaries_, value}];
         if (at < temporaries_->size() && (*temporaries_)[at].value == value)
             return (*temporaries_)[at].name;
-        const std::string name = "t" + std::to_string(temporary_count_++) + "_";
+        // A limit's own are numbered within its function, so that a limit
+        // written again is the same text; a global's read there are not.
+        const bool own =
+            limit_ && (temporaries_ == limit_->based || temporaries_ == limit_->iterated);
+        const std::string name = own ? "v" + std::to_string(limit_->count++) + "_"
+                                     : "t" + std::to_string(temporary_count_++) + "_";
         at                     = temporaries_->size();
         temporaries_->push_back({name, value, lines(name)});
         return name;
@@ -2546,7 +2547,7 @@ private:
         // Its terms, as locals of a function of their own. 'arg_x': no name
         // of the language has a '_', and no name of the function's own
         // begins so.
-        Walked    walked{name, names, 0, {0, 0}};
+        Walked    walked{name, names, 0, {0, 0}, &lists_.emplace_back(), &lists_.emplace_back()};
         Expansion inside{{}, {}, sequence.home ? sequence.home : scope_, nullptr, {}, {}};
         for (const std::string& parameter : names) {
             const Code& argument = given.values.at(parameter);
@@ -2554,7 +2555,7 @@ private:
         }
         inside.values.insert(given.values.begin(), given.values.end());  // the sizes, constants
         Walked* const              outer_limit       = std::exchange(limit_, &walked);
-        auto* const                outer_temporaries = std::exchange(temporaries_, nullptr);
+        auto* const                outer_temporaries = std::exchange(temporaries_, walked.based);
         auto                       outer_reads       = std::exchange(read_parameters_, {});
         std::map<int, Code>        bases;
         std::vector<std::string>   general;
@@ -2577,6 +2578,7 @@ private:
                     if (clause.parameters.general()) index_ = clause.parameters.index_name();
                 if (index_.empty())
                     throw Reason(name + " has no general clause, so it has no limit");
+                temporaries_                 = walked.iterated;
                 const std::string outer_text = std::exchange(index_text_, "(double)k_");
                 std::vector<std::pair<std::string, Code>> guarded;
                 std::optional<Code>                       otherwise;
@@ -2644,13 +2646,15 @@ private:
         text += ") {\n    (void)m_;\n";
         for (const std::string& parameter : names) text += "    (void)arg_" + parameter + ";\n";
         const int depth = std::max(walked.depth, 1);
+        std::string based;
         for (int lag = 1; lag <= depth; ++lag) {
             const auto  base  = bases.find(highest - lag + 1);
             std::string value = scalar ? "0.0" : "{{0.0}}";
             if (base != bases.end())
                 value = scalar ? base->second.cells[0].text : "{" + Rows(base->second) + "}";
-            text += "    double t" + std::to_string(lag) + "_" + shape + " = " + value + ";\n";
+            based += "    double t" + std::to_string(lag) + "_" + shape + " = " + value + ";\n";
         }
+        text += Temporaries(*walked.based, based, "    ") + based;
         if (!scalar) text += "    double t_" + shape + ";\n";
         text += "    double step_ = 0.0, before_ = 0.0;\n";
         text +=
@@ -2658,11 +2662,10 @@ private:
         text += "    for (long long k_ = " + first + "; k_ <= " +
                 std::to_string(highest + static_cast<int>(Convergence<Value>::max_terms)) +
                 "; ++k_) {\n";
-        if (scalar) {
-            text += "        const double t_ = " + general[0] + ";\n";
-        } else {
-            text += each("        ", "t_", [&](std::size_t c) { return general[c]; });
-        }
+        const std::string term =
+            scalar ? "        const double t_ = " + general[0] + ";\n"
+                   : each("        ", "t_", [&](std::size_t c) { return general[c]; });
+        text += Temporaries(*walked.iterated, term, "        ") + term;
         text += "        if (started_) {\n";
         if (scalar) {
             text += "            step_ = fabs(t_ - t1_);\n";
@@ -2717,8 +2720,7 @@ private:
             limits_.push_back(text.replace(text.find(function), function.size(), named->second));
 
         // Where it is read: a matrix argument, or a matrix answer, is an
-        // array of the step's.
-        if (!scalar && !temporaries_) throw Reason("a limit of matrices inside a limit's terms");
+        // array of the step's, or of the enclosing limit's.
         std::string called = named->second + "(m_";
         for (const std::string& parameter : names) {
             const Code& argument = given.values.at(parameter);
@@ -2726,7 +2728,6 @@ private:
                 called += ", " + argument.cells[0].text;
                 continue;
             }
-            if (!temporaries_) throw Reason("a matrix argument of a limit inside a limit's terms");
             const std::string rows = Rows(argument);
             called += ", " + Declare("arg\x1f" + rows, [&](const std::string& t) {
                           return std::vector<std::string>{
@@ -4558,7 +4559,11 @@ private:
         std::vector<std::string> parameters;
         int                      depth = 0;           // how far back a term reads its own
         Extent                   size{0, 0};          // a term's, once a clause gives it
+        std::vector<Temporary>*  based;               // its temporaries, the bases'
+        std::vector<Temporary>*  iterated;            // and an iterate's
+        int                      count = 0;
     };
+    std::deque<std::vector<Temporary>> lists_;  // those, kept as a step's are
     Walked*                          limit_           = nullptr;
     int                              temporary_count_ = 0;
     std::map<std::string, Value>     places_;             // a cell's row and column, by their names

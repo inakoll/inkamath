@@ -3612,22 +3612,173 @@ that exploring seven domains asked of the interpreter, by how many asked.
   size stated twice. Accepting such a repetition is an artifact of the
   implementation, not a meaning, and hides the slip it usually is (`j, j`
   meant `j, k`). Low priority.
-- **Temporaries in a limit's function**: C140 shares a step's nested calls,
-  but a limit's terms are still written out whole, so a Riccati limit through
-  `ric(ric(P))` is 163 MB of header. About 25-35 lines; moves headers whose
-  limits multiply matrices, not their values. The doubling algorithm for the
-  Riccati equation under `lim` needs it too, its inverse a temporary (block
-  literals compiled, above). Robertson's kinetics (1966) measure it:
-  backward Euler with each step's Newton iteration under `lim` is a 210 KB
-  header with the 3x3 inverse written by hand, and 10.6 MB with grad's
-  Jacobian, which gcc -O0 builds in 258 s and 4.4 GB and -O2 did not
-  finish in 600 s, where the same Newton read at a constant count,
-  `nw(y)_12`, is 24 KB and 58 KB.
-- **A limit's previous term tested for NaN once**: inside a limit's
-  function each read of the previous term's cell carries an `isnan` of
-  all its cells, 1,464 of them in Robertson's backward Euler; normalising
-  once per iterate halves its 210 KB header. Cheaper than temporaries, and
-  apart from them.
+- `[done]` **Temporaries in a limit's function.** C140 shares a step's nested
+  calls, but a limit's function has no temporaries, so its terms are
+  written out whole: a Riccati limit through `ric(ric(P))` is 163 MB of
+  header, and Robertson's kinetics (1966) under backward Euler, each step's
+  Newton iteration under `lim`, are 237 KB at cc686c5 with the 3x3 inverse
+  by Cramer's rule written by hand, `m_->h *` written 2,169 times, and
+  12.9 MB with grad's Jacobian, which gcc -O0 builds in 435 s and 5.7 GB and
+  -O2 did not finish in 600 s; the same Newton read at a constant count,
+  `nw(y)_12`, is 24 KB and 58 KB. The paper's `^-1` is refused there
+  (C261), and so is the doubling algorithm for the Riccati equation under
+  `lim` (*Block literals compiled*), its inverse a temporary.
+
+  Decided: a limit's iterate is compiled as a step is, its loop body
+  declaring its temporaries ahead of the term's cells, by the same
+  `Shared` and `Declare` at the same places: a product's operands, a single
+  value stretched, a call nested in an argument and its part under grad
+  (C140), a matrix inverse, a matrix argument of a limit and a limit of
+  matrices, and the terms below the one read of a sequence with parameters
+  at a constant (*A sequence with parameters read at a constant*). Two
+  lists: the base clauses', declared before the loop where the walk's
+  first terms are set, and the iterate's, in the loop body, computed again
+  at each iterate. Their names are `v0_`, `v1_`, ..., numbered within the
+  function, apart from the walk's `t_` and `t1_` and from a step's `t0_`,
+  so that a limit written again is the same text and still one function
+  (`check_gate_one_limit`). The lists live as long as the compile, as a
+  step's do, since terms and declarations are remembered by a list's
+  address. Same operations in the same order: no value moves.
+
+  So four refusals go, each the absence of a list: "a matrix inverse
+  inside a limit's terms" (C261), "a sequence with parameters in a limit's
+  terms, for now", "a limit of matrices inside a limit's terms" and "a
+  matrix argument of a limit inside a limit's terms", the last three
+  unreachable and deleted. `Declare`'s refusal then guards the prelude's C
+  functions alone, and is unreachable too: given numbers, they invert only
+  1x1 matrices, which are powers, and what iterates is written where it is
+  called (C213). Deleted, with its comment.
+  - **`--float`**: nothing. The float header is the double one rewritten,
+    temporaries included.
+  - **grad**: a grad inside a limit's terms shares its parts as anywhere,
+    which is what takes the Jacobian's 12.9 MB to 22 KB. A grad of a limit
+    stays refused, "a derivative of a limit, for now": the derivative's
+    rules (C72, C215) are unchanged, and compiling them is the limit's
+    function carrying parts, an item of its own.
+  - **`--check`**: nothing. A limit's terms read no other sequence's term,
+    so its temporaries carry none of the marks `Rated` and `Checked`
+    resolve in a step's.
+  - **Guards**: a temporary is computed before the iterate's chain, an
+    untaken clause's too, as a step's are: its C is pure, so no value
+    moves, and only a limit of matrices in an untaken clause costs, as in
+    a step today.
+  - **NaN once per iterate: apart.** With temporaries, a read of the
+    previous term's cell still tests all its cells, but once per source
+    read, 16 in Robertson's iteration: 13 per cent of its header with
+    `^-1`. What remains large is the same test on any matrix read by its
+    cells, which a step pays too: Cramer's rule reads A's cells 76 times,
+    each behind nine `isnan`, 63 per cent of that header. The queued line
+    is restated below in that general form, one concern.
+
+  Weighed: **value numbering in general**, every value written twice
+  shared within a step, an iterate and across grad's directions, which
+  would also serve forward mode's guard copied per direction (*The size
+  of a forward-mode header, measured*). `Declare` already numbers values,
+  by their text within a list; what is not general is where values are
+  offered to it, and where a list exists, the limit's function being the
+  last place with code and none but the prelude's C functions. This item
+  adds the place and no policy. A policy sharing everything written twice
+  is a decision of its own: the NaN-aware analysis reads cell texts,
+  `MayNan` scanning for `NAN` and the header's functions (C211) and a
+  call's C189 test asking whether its answer writes an argument's cell,
+  and a temporary's name hides what its text holds, so it needs a cell to
+  carry whether it may be NaN, at some 15 sites; sharing at every
+  operation would turn a header into three-address code and bury the
+  equation, where sharing what is written twice keeps each line readable
+  as the source; bit-identity holds either way, the same operations on the
+  same operands with `-ffp-contract=off`; guards as above. About 60 to 100
+  lines, queued below. It would declare into the lists this item adds, and
+  undo nothing of it.
+
+  Rejected:
+  - **The iterate as a C function of its own**, called from the loop with
+    the previous terms as arguments: a second function per limit and its
+    arguments passed, for the locals a block already has.
+  - **One list for the bases and the iterate**: a base's temporary is
+    computed once, before the loop, and would be computed again at each
+    iterate or shadowed there.
+  - **Hoisting what reads only the arguments** out of the loop: the reader
+    sees one iterate as the source writes it, and hoisting is a change of
+    its own, queued below. -O2 does not do it: a limit or an inverse
+    reading only the arguments is walked again at each iterate.
+  - **Writing the walk inline in the step**: a limit read twice, or cell
+    by cell, is one function (`logistic`'s four sigmoids).
+
+  What moves, on a prototype, discarded: no golden, the interpreter being
+  untouched; no expected header, the prelude's or a float one included,
+  and no excerpt in `test/cli.cmake`; of the 55 check programs of a file
+  using `lim`, three, and `mark` of the 16 in float, their reports
+  unchanged: `smith`, 40,388 bytes to 32,386, its doubling's products
+  sharing their operands; `mark`, 32,895 to 32,703 and in float 32,969 to
+  32,774, power iteration's `A*pw`; and `steer`, 13,322 to 13,354, the
+  NaN test of grad's quotient reading its numerator from a temporary while
+  the quotient still writes it, a line more, as a step writes it today.
+  `iterates.ink`'s `h` and `blocks.ink`'s `d` compile, leaving their
+  refusals in `compile_iterates_refused` and `compile_blocks_refused`.
+  Robertson's headers: Cramer's rule 18 KB, grad's Jacobian 22 KB, built by
+  gcc -O2 in a quarter of a second, and `^-1` 8 KB.
+
+  About 3 lines of `compile.hpp`: the prototype's 15 added and 11
+  removed, the two unreachable refusals and their branches among them, a
+  line of comment, and `Declare`'s refusal and its two of comment going.
+  16,151 lines at cc686c5, by `wc -l include/inkamath/*.hpp src/*`. Past
+  5 the implementation stops and reports.
+
+  Specified in `test/compile/implicit.ink`, unwired: `kinetic`, backward
+  Euler on Robertson's kinetics, Newton under `lim` with `^-1`; `jacobian`,
+  the same by grad's Jacobian; `doubling`, the Riccati doubling packed
+  under `lim`; `inset`, `iterates.ink`'s refused `h`; `layered`, a limit of
+  matrices given a matrix argument inside a limit's terms; and in its
+  comments the cli cases, `m_->h *` 12 times in each of Robertson's three
+  headers, each under 32 KB, the inverse called once, the float header
+  holding no `double`, and the two refusals that leave. Each number worked
+  out with mpmath, sympy and Python's doubles and fractions under
+  the stopping rule transcribed, none recorded; each "within 0" argued,
+  the interpreter's terms being doubles in the step's order or, for
+  `inset`, dyadic fractions a double holds. The prototype passes every
+  case. Wired with the implementation: the checks and reports in
+  `test/CMakeLists.txt`, the cli cases and the moved refusals in
+  `test/cli.cmake`, `iterates.ink`'s and `blocks.ink`'s comments; README's
+  paragraph on the compiler gains a sentence. No transcript in
+  `test/data/spec`.
+
+  Settled: `steer`'s extra line, a temporary written beside the text it
+  holds, is not fixed here; it closes into *Shared at every value written
+  twice*, below, for steps and limits alike.
+
+  Built as specified: every case of `implicit.ink` passes as written, its
+  five check programs wired and its cli cases in `test/cli.cmake`, the two
+  refusals moved out. No golden, expected header or excerpt moves; of the
+  check programs only `smith`, `mark`, float `mark` and `steer` change,
+  32,386, 32,703, 32,774 and 13,354 bytes, as the prototype found.
+  Robertson's headers are 17,709, 22,199 and 8,101 bytes. Departures: none
+  in the code. A case added, `compile_limit_globals`: a global first read
+  in a limit's terms declares into its own list while the limit is being
+  walked, so a `v` name keys on the limit's own lists, not on a limit
+  being walked, or two such globals would both declare `v0_` in the
+  update. The reason given above for not hoisting was wrong, corrected,
+  and the hoisting queued. 3 lines of `compile.hpp`, 19 added and 16
+  removed, as costed; 16,154 lines in all.
+- **A matrix read by its cells tested for NaN once**: in a header that
+  writes NaN, each read of a cell of a matrix that is not a term carries an
+  `isnan` of all its cells, as the interpreter refuses the matrix whole:
+  Cramer's rule reads A's cells 76 times behind nine tests each, 63 per
+  cent of Robertson's header once a limit has temporaries, and a limit's
+  previous term is such a matrix, 16 reads there. Normalising it once per
+  step or iterate where it has a list, every cell NaN where one is, as a
+  term is, and reading it whole after. Moves headers, not values.
+- **A limit's invariants hoisted out of its iterate**: a limit or a
+  matrix inverse that reads only the function's arguments is declared in
+  the iterate's list, so walked again at each iterate, and gcc -O2 leaves
+  it there: `layered` in `test/compile/implicit.ink` ran 15 to 20 times
+  faster with its inner limit hoisted by hand. Declared in the bases' list
+  instead, before the loop. Moves headers, not values.
+- **Shared at every value written twice**, value numbering in general, as
+  weighed under *Temporaries in a limit's function*: forward mode's guard
+  copied per direction among what it would serve, and `steer`'s extra
+  line, a temporary written beside the text it holds (*Temporaries in a
+  limit's function*). Needs a cell to carry whether it may be NaN before
+  anything is hoisted further. About 60 to 100 lines.
 - **`--check` names the cell and step of its worst units**: a float run of
   Robertson's kinetics passed with its small concentrations negative and
   50 times off, and `outside`'s in `test/compile/robertson.ink` passes at

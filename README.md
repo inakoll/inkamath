@@ -162,8 +162,12 @@ the step: `test/compile/iterates.ink` takes a determinant by Faddeev-LeVerrier,
 grad through it, and a few steps of projected gradient. A
 limit of matrices fills an array, cell by cell: `test/compile/steady.ink`
 finds a chain's steady state and, by power iteration, a matrix's dominant
-direction at every step. A `grad` is compiled forward, each value carrying its
-part beside it by the interpreter's rules, so that the step's gradient is the
+direction at every step. A limit's iterate has temporaries as a step has, a
+matrix inverse or a call nested in an argument computed once per iterate:
+`test/compile/implicit.ink` takes each step of backward Euler on a stiff
+chemical system by Newton's method under `lim`, its inverse written as the
+paper writes it. A `grad` is compiled forward, each value carrying its part
+beside it by the interpreter's rules, so that the step's gradient is the
 interpreter's to the bit: `test/compile/grad.ink` trains a line and a logistic
 regression by it, and `test/compile/cellguards.ink` a ReLU network through
 its activation written by its cells, each cell's guards tested in the step;

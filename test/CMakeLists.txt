@@ -159,7 +159,9 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brin
                          straddle:given straddle:parted straddle:unasked
                          straddle:recalled straddle:founded steps:coast:1001 steps:coast:1
                          steps:runaway:150 steps:runaway:1000 steps:horizon:1000
-                         robertson:inside:2000 robertson:outside:2000 robertson:rober)
+                         robertson:inside:2000 robertson:outside:2000 robertson:rober
+                         implicit:kinetic implicit:jacobian implicit:doubling implicit:inset
+                         implicit:layered)
     string(REPLACE ":" ";" checked ${checked})
     list(POP_FRONT checked file instance count)
     set(name ${instance})
@@ -246,6 +248,19 @@ set_tests_properties(check_outside_2000_report PROPERTIES PASS_REGULAR_EXPRESSIO
     "^outside: ${euler40}\noutside\\.y\\[3,1\\]: 0\\.28588530803419726 at 1113, where the interpreter gives 0\\.28588530674176821\\; the interpreter's term about [0-9.e+-]+ from the exact one\n$")
 set_tests_properties(check_rober_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^rober: 100 steps from 0, against exact values until 1 and inexact ones from there\nrober\\.y: within 0${about}\n$")
+# Temporaries in a limit's function (DESIGN.md), as compile/implicit.ink
+# gives them: each limit's terms the interpreter's.
+set(implicit "100 steps from 0, against exact values until 0 and inexact ones from there")
+set_tests_properties(check_kinetic_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^kinetic: ${implicit}\nkinetic\\.y: within 0${about}\n$")
+set_tests_properties(check_jacobian_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^jacobian: ${implicit}\njacobian\\.y: within 0${about}\n$")
+set_tests_properties(check_doubling_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^doubling: ${implicit}\ndoubling\\.X: within 0${about}\ndoubling\\.F: within 0${about}\n$")
+set_tests_properties(check_inset_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^inset: ${implicit}\ninset\\.h: within 0${about}\n$")
+set_tests_properties(check_layered_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^layered: ${implicit}\nlayered\\.q: within 0${about}\n$")
 add_test(NAME check_outside_2000 COMMAND check_outside_2000)
 set_tests_properties(check_outside_2000 PROPERTIES WILL_FAIL ON)
 add_test(NAME check_runaway_1000 COMMAND check_runaway_1000)
