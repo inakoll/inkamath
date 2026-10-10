@@ -169,6 +169,9 @@ TEST_CASE("tensor") {
 TEST_CASE("gradcells") {
     check_transcript("gradcells.ink");
 }
+TEST_CASE("gradlocal") {
+    check_transcript("gradlocal.ink");
+}
 TEST_CASE("conv") {
     check_transcript("conv.ink");
 }

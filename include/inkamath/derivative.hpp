@@ -274,17 +274,27 @@ private:
                 throw std::runtime_error("grad cannot differentiate through an instance yet");
             const auto found = file->file->names.find(call->Name());
             if (found == file->file->names.end()) return Constant(x->accept(ordinary_));
-            if (call->Call().subexpr()) (void)Index(call->Call().subexpr());
-            return Call(*call, found->second, *x);
+            return Call(*call, found->second, *x, Index(call->Call()));
         }
         if (auto* x = Exactly<EqualExpression<T>>(e)) {
             EvaluationVisitor<T>::Unparametrized(*x);
             stack_.Definable(x->Name());
+            if (x->m_e1()->Children().empty()) return Bind(*x);
         }
         throw std::runtime_error("grad cannot differentiate a local definition yet");
     }
 
-    // The names a grad or a call binds, which nothing else reads.
+    // A local: its value bound in the evaluator's frame as the evaluator
+    // binds it, for what grad reads as a value, and with its parts in grad's.
+    Jet Bind(EqualExpression<T>& local) {
+        const Jet jet = Eval(local.m_e2());
+        stack_.Set(local.Name(), {}, std::make_shared<ValExpression<T>>(*jet[0]));
+        std::erase_if(frames_.back(), [&](const auto& b) { return b.first == local.Name(); });
+        frames_.back().emplace_back(local.Name(), jet);
+        return jet;
+    }
+
+    // The names a grad, a call or a local binds, which nothing else reads.
     const Jet* Lookup(const std::string& name) const {
         if (frames_.empty()) return nullptr;
         for (const auto& [bound, jet] : frames_.back())
@@ -313,15 +323,14 @@ private:
 
     Jet Call(FuncExpression<T>& call) {
         if (Lookup(call.Name()) || !Reads(call)) return Constant(call.accept(ordinary_));
-        if (call.Call().subexpr()) (void)Index(call.Call().subexpr());
-        if (stack_.Binds(call.Name()))
-            throw std::runtime_error("grad cannot differentiate a local definition yet");
-        return Call(call, stack_.Global(call.Name()), call);
+        const std::optional<int> index = Index(call.Call());
+        if (stack_.Binds(call.Name())) return Constant(call.accept(ordinary_));
+        return Call(call, stack_.Global(call.Name()), call, index);
     }
 
     // 'written' is the call as the expression has it, 'sq.f(t)' for f in a file.
     Jet Call(FuncExpression<T>& call, const typename ReferenceStack<T>::definition_type& definition,
-             Expression<T>& written) {
+             Expression<T>& written, std::optional<int> index) {
         if (!definition || !definition->Value() || definition->Clauses().empty())
             return Constant(written.accept(ordinary_));
         const ParametersCall<T>&       p          = call.Call();
@@ -368,9 +377,7 @@ private:
             for (auto& [given, jet] : arguments)
                 read = std::max(read, stack_.checked(*definition, *jet[0]));
         if (p.limit()) return Limit(*definition, p, arguments);
-        int        index   = 0;
-        const bool indexed = p.TryEvalIndex(stack_, index);
-        Jet        out     = Term(*definition, p, indexed, index, arguments);
+        Jet out = Term(*definition, p, index.has_value(), index.value_or(0), arguments);
         for (auto& part : out)
             if (read && part) part = Marked(read > 1, *part);
         // |z| squared is re^2 + im^2, whose parts past the first the real
@@ -647,9 +654,17 @@ private:
 
     // An index is a whole number, so one that moves is at a jump, as floor
     // is at a whole number (C78).
+    // Once, as the evaluator does, since it may bind a local (C304).
     int Index(const PExpression<T>& e, const std::string& what = "an index") {
-        if (Reads(*e) && Moves(Eval(e))) throw std::runtime_error(what + " jumps at " + Where());
-        return AsIndex<T>(e->accept(ordinary_));
+        if (!Reads(*e)) return AsIndex<T>(e->accept(ordinary_));
+        const Jet index = Eval(e);
+        if (Moves(index)) throw std::runtime_error(what + " jumps at " + Where());
+        return AsIndex<T>(*index[0]);
+    }
+
+    std::optional<int> Index(const ParametersCall<T>& call) {
+        if (!call.subexpr()) return std::nullopt;
+        return Index(call.subexpr());
     }
 
     Jet Cell(CellExpression<T>& cell) {
@@ -672,16 +687,16 @@ private:
     }
 
     Jet Power(PowExpression<T>& power) {
+        const Jet u = Eval(power.m_e1());
         const Jet w = Eval(power.m_e2());
         if (Moves(w)) {
             if (!Euler(*power.m_e1()))
                 throw std::runtime_error(
                     "grad cannot differentiate a power whose exponent changes with " +
                     grads_.back().first + ", unless its base is e");
-            const T value = numeric_interface<T>::pow(power.m_e1()->accept(ordinary_), *w[0]);
+            const T value = numeric_interface<T>::pow(*u[0], *w[0]);
             return Composed(w, [&value](int) { return std::optional<T>(value); }, value);
         }
-        const Jet u        = Eval(power.m_e1());
         const T&  exponent = *w[0];
         const T   value    = numeric_interface<T>::pow(*u[0], exponent);
         if (!Moves(u)) return Constant(value);
@@ -853,8 +868,13 @@ private:
             // A single value's gradient with respect to a matrix, one cell at a time.
             const Extent      extent = at.Size();
             const std::size_t cells  = at.IsScalar() ? 1 : extent.count();
+            // One pass's locals are not the next's, in either frame.
+            const bool binds = ParametersDefinition<T>::Binds(*grad.Body());
             for (std::size_t k = 0; k < cells; ++k) {
-                Jet x = Padded(point);
+                const bool                            undo = binds && k + 1 < cells;
+                typename ReferenceStack<T>::Tentative locals(stack_, undo);
+                const Arguments                       own = undo ? frames_.back() : Arguments();
+                Jet                                   x   = Padded(point);
                 T   seed(typename T::value_type(1));
                 if (!at.IsScalar()) {
                     seed           = Zero(extent);
@@ -870,6 +890,7 @@ private:
                                              " is a Jacobian, which it does not give");
                 }
                 parts.push_back(std::move(body));
+                if (undo) frames_.back() = own;
             }
         }
         Jet out(bit);
@@ -904,23 +925,33 @@ private:
     // that name would be zero for no reason the reader can see.
     void Unreached(const PExpression<T>& body, const std::string& name) {
         std::set<const Reference<T>*> seen;
-        Scan(body, name, {name}, nullptr, seen);
+        std::set<std::string>         bound{name};
+        Scan(body, name, bound, nullptr, seen);
     }
 
-    void Scan(const PExpression<T>& e, const std::string& name, std::set<std::string> bound,
+    // In the order of evaluation, a local's name being bound from its
+    // binding on, and an index or grad's name in its body alone.
+    void Scan(const PExpression<T>& e, const std::string& name, std::set<std::string>& bound,
               const Reference<T>* within, std::set<const Reference<T>*>& seen) {
         if (!e || dynamic_cast<const MemberExpression<T>*>(e.get())) return;
         if (const auto* series = dynamic_cast<const SeriesExpression<T>*>(e.get())) {
             Scan(series->Lower(), name, bound, within, seen);
             Scan(series->Upper(), name, bound, within, seen);
-            bound.insert(series->Index());
+            const bool had = !bound.insert(series->Index()).second;
             Scan(series->Body(), name, bound, within, seen);
+            if (!had) bound.erase(series->Index());
             return;
         }
         if (const auto* grad = dynamic_cast<const GradExpression<T>*>(e.get())) {
             Scan(grad->Point(), name, bound, within, seen);
-            bound.insert(grad->Variable());
+            const bool had = !bound.insert(grad->Variable()).second;
             Scan(grad->Body(), name, bound, within, seen);
+            if (!had) bound.erase(grad->Variable());
+            return;
+        }
+        if (const auto* local = dynamic_cast<const EqualExpression<T>*>(e.get())) {
+            Scan(local->m_e2(), name, bound, within, seen);
+            bound.insert(local->Name());
             return;
         }
         if ((dynamic_cast<const RefExpression<T>*>(e.get()) ||
@@ -964,7 +995,7 @@ private:
             for (const auto& size : definition.Sizes())
                 for (const auto& [given, digits] : size.bounds) bound.insert(given);
             for (const PExpression<T>& read :
-                 {clause.expression, p.guard(), p.slices(), p.rows(), p.cols()})
+                 {p.slices(), p.rows(), p.cols(), p.guard(), clause.expression})
                 Scan(read, name, bound, &definition, seen);
         }
     }
@@ -1005,6 +1036,7 @@ private:
         bool Holds(const Reference<T>&, const Clause<T>& clause, int index, int slice, int row,
                    int col) {
             typename ReferenceStack<T>::Tentative locals(d.stack_, clause.parameters.binds());
+            const Arguments own = clause.parameters.binds() ? d.frames_.back() : Arguments();
 
             const ParametersDefinition<T>& p = clause.parameters;
             const T                        guard = d.Holds(
@@ -1013,6 +1045,7 @@ private:
             rounded = rounded || !numeric_interface<T>::exact(guard);
             const bool held = numeric_interface<T>::truth(guard);
             if (held) locals.keep();
+            if (!held && clause.parameters.binds()) d.frames_.back() = own;
             return held;
         }
         void Settle(Jet& into, int slice, int row, int col) {
