@@ -163,10 +163,20 @@ private:
         return Writes(code, "NAN", from);
     }
     // Or may answer it, calling a function of the header that does (C211).
+    // Each word of it looked up, not each name searched for: the sets grow
+    // with every call under grad.
     bool MayNan(const std::string& code) const {
-        const auto writes = [&](const std::string& f) { return Writes(code, f); };
-        return WritesNan(code) || std::ranges::any_of(nan_functions_, writes) ||
-               std::ranges::any_of(nan_temporaries_, writes);
+        const auto name = [&](std::size_t at) {
+            return std::isalnum(static_cast<unsigned char>(code[at])) || code[at] == '_';
+        };
+        for (std::size_t at = 0, end; at < code.size(); at = end + 1) {
+            for (end = at; end < code.size() && name(end);) ++end;
+            if (end == at) continue;
+            const std::string word = code.substr(at, end - at);
+            if (word == "NAN" || nan_functions_.count(word) || nan_temporaries_.count(word))
+                return true;
+        }
+        return false;
     }
     static bool Writes(const std::string& code, const std::string& word, std::size_t from = 0) {
         const auto name = [&](std::size_t at) {
@@ -3179,7 +3189,7 @@ private:
             if (*place) at.push_back(Whole(Known(*place, "a cell whose place is not a constant")));
         // The interpreter refuses a matrix whole where it refuses a cell. One
         // that writes NaN in a cell not taken makes the header write it.
-        for (const Cell& c : matrix.cells) aware_ |= !matrix.constant && MayNan(c.text);
+        for (const Cell& c : matrix.cells) aware_ = aware_ || (!matrix.constant && MayNan(c.text));
         if (aware_ && !matrix.whole && !matrix.constant) matrix = Shared(matrix);
         const std::string nan = matrix.whole ? "" : Nan(matrix);
         if (!nan.empty())
