@@ -89,3 +89,27 @@ w_n = w_(n-1)/2 + c + 0*(c = 1)
 # time the next line is read.
 >> ?t
 error: t is not defined
+
+# A sum's or a product's index, and grad's variable, an outer grad's too in
+# the frame an inner one shares, are the construct's own: a local of one of
+# their names is refused, as one of i is (C299).
+>> sum_(k=1)^3 ((k = 2) + k)
+error: k is the sum's index, so a local cannot define it
+
+>> prod_(k=1)^3 ((k = 2) + k)
+error: k is the product's index, so a local cannot define it
+
+>> grad_(x = 1) x + sum_(k=1)^3 ((k = 2) + k)
+error: k is the sum's index, so a local cannot define it
+
+>> grad_(x = 1) sum_(k=1)^3 x*k*((k = 2) + k)
+error: k is the sum's index, so a local cannot define it
+
+>> grad_(x = 2) x*((x = 5) + x)
+error: x is grad's variable, so a local cannot define it
+
+>> grad_(x = 1) grad_(y = 2) ((x = 3) + y)
+error: x is grad's variable, so a local cannot define it
+
+>> (sum_(k=1)^3 k) + (k = 2) + k
+10

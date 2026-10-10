@@ -277,6 +277,7 @@ private:
             if (call->Call().subexpr()) (void)Index(call->Call().subexpr());
             return Call(*call, found->second, *x);
         }
+        if (auto* x = Exactly<EqualExpression<T>>(e)) stack_.Definable(x->Name());
         throw std::runtime_error("grad cannot differentiate a local definition yet");
     }
 
@@ -805,7 +806,7 @@ private:
         const Shadow                      hidden(*this, series.Index(), std::nullopt);
         const auto                        term = [&](int k) {
             stack_.Step();
-            stack_.BindValue(series.Index(), T(k));
+            stack_.BindValue(series.Index(), T(k), series.Role());
             return Eval(series.Body());
         };
         const auto combine = [&](const Jet& total, const Jet& next) {
@@ -844,7 +845,7 @@ private:
             std::optional<typename ReferenceStack<T>::Frame> frame;
             if (!stack_.Framed()) frame.emplace(stack_);
             typename ReferenceStack<T>::Trial bound(stack_, name);
-            stack_.BindValue(name, at);
+            stack_.BindValue(name, at, "grad's variable");
             // A single value's gradient with respect to a matrix, one cell at a time.
             const Extent      extent = at.Size();
             const std::size_t cells  = at.IsScalar() ? 1 : extent.count();

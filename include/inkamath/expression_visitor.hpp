@@ -486,7 +486,7 @@ public:
 
         const auto term = [&](int k) {
             stack_.Step();
-            stack_.BindValue(expr->Index(), T(k));
+            stack_.BindValue(expr->Index(), T(k), expr->Role());
             return expr->Body()->accept(*this);
         };
         const auto combine = [&](const T& total, const T& next) {
