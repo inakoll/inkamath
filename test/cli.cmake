@@ -705,6 +705,14 @@ file(WRITE "${OUT}/c317.ink" "relu(z)[i,j] | z[i,j] > 0 = z[i,j]\nrelu(z)[i,j] =
 set(args --compile c317.ink m -o c317.h)
 check(compile_c317)
 
+# C319: an input read bare is refused as the interpreter refuses it, where a
+# function given it refused a place in a 1x1 matrix.
+file(WRITE "${OUT}/c319.ink" "m(x_n[i<=2, j<=2]) = {\n    f(z)[i,j] = z[i,j]\n    y_n = f(x)[2,1]\n}\n")
+set(args --compile c319.ink m -o c319.h)
+set(stderr "inkamath: cannot compile y: x is a sequence; index it\n")
+set(exit 1)
+check(compile_c319)
+
 # C153: a power of 1/2 is C's sqrt, rounded correctly, where pow need not be.
 file(WRITE "${OUT}/c153.ink" "x_0 = 2\nx_n = x_(n-1)^(1/2) + x_(n-1)^0.5\n")
 set(args --compile c153.ink -o c153.h)

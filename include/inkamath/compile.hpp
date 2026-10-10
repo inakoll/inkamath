@@ -2173,6 +2173,11 @@ private:
         const Reference<Value>* definition = found.definition;
         if (!definition) {
             if (fixed_.count(key)) throw Reason(key + " is not defined");
+            // An input is a sequence, not a 1x1 field (C319).
+            if (model_ && std::ranges::any_of(model_->parameters, [&](const auto& p) {
+                    return p.name == key && !p.index.empty() && !p.fallback;
+                }))
+                throw Reason(key + " is a sequence; index it");
             return Answer(Field(key, Value(Number(NAN))));
         }
         // 'f()' is 'f', a call with every default (C169).
