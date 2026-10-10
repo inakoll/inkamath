@@ -426,5 +426,13 @@ error: a size must be at least 1, not -1
 >> bad(x[j<=4000000000]) = x
 error: a size must be between 1 and 2147483647, not 4000000000
 
+# Nor an empty list, which adds nothing: bad() = 1 was bad = 1, where a
+# local so written is refused (C314, C321).
+>> bad() = 1
+error: a parameter list cannot be empty
+
+>> bad(x_n) = { g() = 1 }
+error: a parameter list cannot be empty
+
 >> bad(1)
 error: bad is not defined
