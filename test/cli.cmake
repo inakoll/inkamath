@@ -647,6 +647,13 @@ set(args --compile c153.ink --float -o c153f.h)
 check(compile_float_c153)
 holds(compile_float_c153 c153f.h "2.0f : sqrtf(0.0f + m_->x[1]) + sqrtf(0.0f + m_->x[1]);\n")
 
+# A root of 0 to a negative power divides by an exact zero, as 0^-1 does.
+file(WRITE "${OUT}/pole.ink" "y_n = 0^(-1/2)\n")
+set(args --compile pole.ink -o pole.h)
+set(stderr "inkamath: cannot compile y: division by zero\n")
+set(exit 1)
+check(compile_pole)
+
 # C161: a float's inverse starts from the identity in floats, which MSVC's
 # /W4 asks of an int converted to one.
 file(WRITE "${OUT}/c161.ink" "z_n = [2 1; 1 n]^-1*[1; 1]\n")

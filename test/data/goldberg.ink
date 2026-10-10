@@ -391,19 +391,20 @@ X = ~(10^200)
 >> ((~3*~10^200)^2 + (~4*~10^200)^2)^(1/2)
 ~inf
 
-# Exact, the squares are far inside a thousand digits, and their root
-# 5*10^200 a double. So below the range: 10^-400's root is 10^-200.
->> ((3*10^200)^2 + (4*10^200)^2)^(1/2)
+# Exact, the squares are far inside a thousand digits, and the root of
+# their sum and 1, which is not a square, about 5*10^200, a double. So
+# below the range: 2*10^-400's root is about 1.41*10^-200.
+>> ((3*10^200)^2 + (4*10^200)^2 + 1)^(1/2)
 ~5e+200
 
->> (10^400)^(1/2)
-~1e+200
+>> (2*10^400)^(1/2)
+~1.41421356e+200
 
->> (10^-400)^(1/2)
-~1e-200
+>> (2*10^-400)^(1/2)
+~1.41421356e-200
 
->> (2^1100)^(1/4)
-~6.07084029e+82
+>> (2^1101)^(1/4)
+~7.21948646e+82
 
 # A complex exponent too: 10^200 at an angle of 400 ln 10, and 10^-200 at
 # minus that, by mpmath.

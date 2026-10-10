@@ -29,22 +29,22 @@ f(q) = 2 + (4 + q)^(1/2)
 P(f) = [2*f f; f f]
 
 >> A'*P(f(5)) + P(f(5))*A - P(f(5))*B*B'*P(f(5)) + 5*G*G'
-[~0, ~0;
- ~0, ~0]
+[0, 0;
+ 0, 0]
 
 >> B'*P(f(5))
-[~5, ~5]
+[5, 5]
 
 >> S(d) = [d d; d 2*d]
 S(d) = [d d; d 2*d]
 
 >> A*S(f(21)) + S(f(21))*A' - S(f(21))*C'*C*S(f(21)) + 21*G*G'
-[~0, ~0;
- ~0, ~0]
+[0, 0;
+ 0, 0]
 
 >> S(f(21))*C'
-[~7;
- ~7]
+[7;
+ 7]
 
 # The full system matrix, m the gain at the plant's input that only the
 # plant knows. Its characteristic polynomial moves with m in its last two

@@ -275,7 +275,7 @@ set_tests_properties(check_fall_report PROPERTIES PASS_REGULAR_EXPRESSION
 set_tests_properties(check_hinge_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^hinge: 100 steps from 0, against exact values\nhinge\\.g: within 0\n$")
 set_tests_properties(check_edge_report PROPERTIES PASS_REGULAR_EXPRESSION
-    "^edge: 100 steps from 0, against exact values until 0 and inexact ones from there\nedge\\.c: within 0\nedge\\.d: within 0\nedge\\.e: within 0${about}\nedge\\.f: within 0\nedge\\.g: within 0\nedge\\.h: within 0${about}\nedge\\.i: within 0\nedge\\.j: no value compared, the step NaN where the interpreter gives none, as at 0: a comparison jumps at t = 1\nedge\\.k: within 0\nedge\\.l: within 0\nedge\\.m: within 0\nedge\\.o: no value compared, the step NaN where the interpreter gives none, as at 0: floor jumps at t = 2\nedge\\.s: within 0${about}\nedge\\.v: no value compared, the step NaN where the interpreter gives none, as at 0: a power's derivative is infinite at t = 0\nedge\\.w: within 0\n$")
+    "^edge: 100 steps from 0, against exact values until 3 and inexact ones from there\nedge\\.c: within 0\nedge\\.d: within 0\nedge\\.e: within 0${about}\nedge\\.f: within 0\nedge\\.g: within 0\nedge\\.h: within 0${about}\nedge\\.i: within 0\nedge\\.j: no value compared, the step NaN where the interpreter gives none, as at 0: a comparison jumps at t = 1\nedge\\.k: within 0\nedge\\.l: within 0\nedge\\.m: within 0\nedge\\.o: no value compared, the step NaN where the interpreter gives none, as at 0: floor jumps at t = 2\nedge\\.s: within 1\\.1e-16\nedge\\.v: no value compared, the step NaN where the interpreter gives none, as at 0: a power's derivative is infinite at t = 0\nedge\\.w: within 0\n$")
 set_tests_properties(check_clip_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^clip: 100 steps from 0, against exact values\nclip\\.w: within 0\n$")
 set_tests_properties(check_steer_report PROPERTIES PASS_REGULAR_EXPRESSION
@@ -293,7 +293,7 @@ set_tests_properties(check_cusp_report PROPERTIES PASS_REGULAR_EXPRESSION
 set_tests_properties(check_swing_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^swing: 100 steps from 0, against exact values until 1 and inexact ones from there\n(swing\\.[A-Za-z]+: within [0-9.e+-]+(, from 1)?${about}\n)+$")
 set_tests_properties(check_over_report PROPERTIES PASS_REGULAR_EXPRESSION
-    "^over: 100 steps from 0, against exact values until 0 and inexact ones from there\nover\\.y: within 1\\.4e-20\nover\\.z: within [0-9.e+-]+${about}\n$")
+    "^over: 100 steps from 0, against exact values\nover\\.y: within 1\\.4e-20\nover\\.z: within [0-9.e+-]+\n$")
 # Its known limit, C110, held where it parts.
 set_tests_properties(check_apart_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^apart: 100 steps from 0, against exact values\napart\\.y: [-a-z()]+ at 0, where the interpreter gives 0\n$")
@@ -469,7 +469,7 @@ set_tests_properties(check_thirds_report PROPERTIES PASS_REGULAR_EXPRESSION
 set_tests_properties(check_plan_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^plan: 100 steps from 0, against exact values\nplan\\.y: within 0\n$")
 set_tests_properties(check_graph_report PROPERTIES PASS_REGULAR_EXPRESSION
-    "^graph: 100 steps from 0${inexact0}\ngraph\\.h: within 0\\; the interpreter's terms about ([0-9.e+-]+|inf) from the exact ones, past the tolerance from [0-9]+\n$")
+    "^graph: 100 steps from 0, against exact values until 1 and inexact ones from there\ngraph\\.h: within 0\\; the interpreter's terms about ([0-9.e+-]+|inf) from the exact ones, past the tolerance from [0-9]+\n$")
 set_tests_properties(check_gaps_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^gaps: 100 steps from 0, against exact values\ngaps\\.a: within 0\ngaps\\.b: within 0\n$")
 set_tests_properties(check_memo_report PROPERTIES PASS_REGULAR_EXPRESSION

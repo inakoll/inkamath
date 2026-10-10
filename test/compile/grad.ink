@@ -104,7 +104,7 @@ hinge = rect(x_n = n)
 # at the point, g at 2; a comparison read as a value where its sides meet, c
 # at 2; a power whose derivative is infinite at 0, s at 2. Elsewhere f is
 # floor(n/2), g is n, c is 0 below 2 and 1 above, and s is -1 below 2 and
-# 1 above, its power C's pow of a double as the interpreter's is; and k, a
+# 1 above, its power C's pow of a double, the interpreter's exact; and k, a
 # gradient at a constant point, is folded, 12*n, but for a jump there, as j's
 # comparison and o's floor, NaN at every n. Where the clause a function
 # takes has no part, nothing there moves, as in the interpreter, so nothing
@@ -113,7 +113,7 @@ hinge = rect(x_n = n)
 # at 2 and 1 above; w, the floor of a clamp, NaN at 0 and 2, 0 at 1 and 1
 # from 3:
 #
-#     edge: 100 steps from 0, against exact values until 0 and inexact ones from there
+#     edge: 100 steps from 0, against exact values until 3 and inexact ones from there
 #     edge.c: within 0
 #     edge.d: within 0
 #     edge.e: within 0; the interpreter's terms about <e> from the exact ones
@@ -126,7 +126,7 @@ hinge = rect(x_n = n)
 #     edge.l: within 0
 #     edge.m: within 0
 #     edge.o: no value compared, the step NaN where the interpreter gives none, as at 0: floor jumps at t = 2
-#     edge.s: within 0; the interpreter's terms about <e> from the exact ones
+#     edge.s: within 1.1e-16
 #     edge.v: no value compared, the step NaN where the interpreter gives none, as at 0: a power's derivative is infinite at t = 0
 #     edge.w: within 0
 #
@@ -348,10 +348,10 @@ apart = clamped(x_n = 6)
 # part where that clause has one, a condition that is the clauses' own
 # conditional, which was written bare before the quotient's '?': the step
 # took 1 for -2/v^3, at every step, and a power's likewise 1 for 2*v, the
-# derivative of (v^4)^(1/2). The interpreter's square root is not exact, so
-# z is held to its terms, y to the exact ones as computed in doubles:
+# derivative of (v^4)^(1/2). The interpreter's square root is exact, so
+# both are held to the exact terms, y as computed in doubles:
 #
-#     over: 100 steps from 0, against exact values until 0 and inexact ones from there
+#     over: 100 steps from 0, against exact values
 #     over.y: within 1.4e-20
 inverse(x_n) = {
     f(v) | v > 0 = v*v

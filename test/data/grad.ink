@@ -188,7 +188,7 @@ error: floor jumps at x = 0
 # A power, where its derivative is finite, and with an exponent that changes
 # with the name only where its base is e: any other base needs a logarithm.
 >> grad_(x = 4) x^(1/2)
-~0.25
+0.25
 
 >> grad_(x = 0) x^(1/2)
 error: a power's derivative is infinite at x = 0

@@ -94,10 +94,10 @@ plan = mpc(x_n = n/4 - 3)
 # filling another, so h_n is 256 terms, the interpreter's to the bit.
 # Python's doubles, and numpy's floats, give 0 for every x = n/25 below 1
 # and 1 from 1 on, where the exact terms are n/25. The interpreter's power
-# of 1/2 is inexact wherever it is taken, 4^(1/2) and at 0 too, so its terms
-# are from 0:
+# of 1/2 is exact at 0 alone, 1/25's root 1/5 having none, so its terms
+# are from 1:
 #
-#     graph: 100 steps from 0, against exact values until 0 and inexact ones from there
+#     graph: 100 steps from 0, against exact values until 1 and inexact ones from there
 #     graph.h: within 0; the interpreter's terms about <e> from the exact ones, past the tolerance from <n>
 #
 # the estimate and where it passes the tolerance being the disturbed runs',

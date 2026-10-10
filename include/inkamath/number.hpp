@@ -271,6 +271,22 @@ public:
                 return a.num_ == -1 && !odd ? Number(1) : a;
             }
         }
+        // x^(p/q) is r^p where x is r^q, r exact; 64 bits by the double's root.
+        if (a.exact() && b.exact() && !whole && !a.Negative()) {
+            if (a.small() && b.small()) {
+                const auto root = [q = static_cast<double>(b.den_)](long long n) {
+                    return n < 2 ? n : std::llround(q == 2 ? std::sqrt(n) : std::pow(n, 1 / q));
+                };
+                const Number r(root(a.num_), root(a.den_), nullptr);
+                if (const auto back = Power(r, b.den_); back && *back == a) return pow(r, b.num_);
+            } else {
+                const Big  x = a.Ratio(), y = b.Ratio();
+                const auto q = y.den.fits() ? y.den.low() : ~0ULL;
+                if (const auto n = Root(x.num, q), d = n ? Root(x.den, q) : n; d)
+                    return pow(Normalized(Big{false, *n, *d}),
+                               Normalized(Big{y.negative, y.num, Natural(1)}));
+            }
+        }
         // An exact number to a whole power gets here only past the bound.
         const bool past = (a.exact() && whole) || approximated(a) || approximated(b);
         // A whole exponent past 2^53 has no odd double, so a negative base
@@ -623,6 +639,30 @@ private:
             }
         }
         return Normalized(std::move(power));
+    }
+
+    // n's whole q-th root, if it has one: Newton's method from just above the
+    // double's, so that it converges at once, the root raised back.
+    static std::optional<Natural> Root(const Natural& n, unsigned long long q) {
+        if (q >= n.bits()) return n.bits() <= 1 ? std::optional(n) : std::nullopt;
+        // A square is one of 12 residues mod 64 and 16 mod 63, so most others
+        // are told at once.
+        if (q % 2 == 0 && ((0x202021202030213u >> (n.low() & 63)) &
+                           (0x402483012450293u >> (n % Natural(63)).low()) & 1) == 0)
+            return std::nullopt;
+        const std::size_t e = n.bits() - std::min<std::size_t>(n.bits(), 64);
+        const double t = (std::log2(Nearest(n, Natural(1).Shifted(e))) + static_cast<double>(e)) /
+                         static_cast<double>(q);
+        const double shift = std::floor(std::max(t - 52, 0.0));
+        Natural      x(static_cast<Natural::wide>(std::exp2(t - shift) * (1 + 0x1p-30)) + 1);
+        for (x = x.Shifted(static_cast<std::size_t>(shift));;) {
+            Natural lower(1);
+            for (unsigned long long k = 1; k < q; ++k) lower = lower * x;
+            Natural y = (x * Natural(q - 1) + n / lower) / Natural(q);
+            if (Natural::Compare(y, x) >= 0)
+                return lower * x == n ? std::optional(x) : std::nullopt;
+            x = std::move(y);
+        }
     }
 
     static constexpr std::uint64_t mixer = 0x9E3779B97F4A7C15u;

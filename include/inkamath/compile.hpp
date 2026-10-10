@@ -1737,9 +1737,10 @@ private:
             throw Reason("a derivative of a power whose exponent is not a constant, for now");
         const Value c = *exponent.constant, coefficient = Value(Number(1)) * (c - Value(Number(0)));
         if (coefficient(1, 1) == Number(0)) return Answer(value);
+        // u^(c-1) at 0 is C's pow's inf, where the interpreter divides by 0.
         const Value lower = c - Value(Number(1));
         const Code  power =
-            base.constant
+            base.constant && (Doubles(lower)[0] >= 0 || Doubles(*base.constant)[0] != 0.0)
                  ? Exact([&] { return numeric_interface<Value>::pow(*base.constant, lower); })
                  : Powered(base, Literal(lower));
         if (Doubles(lower)[0] < 0 && (!base.constant || Doubles(*base.constant)[0] == 0.0))

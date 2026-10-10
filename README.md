@@ -262,13 +262,13 @@ Language
 
 A literal is exact as written, and stays exact through `+`, `-`, `*`, `/` and
 whole powers: `1/3+1/3+1/3` is `1`, and `0.1+0.2` is `0.3`. What can only be
-approached — `pi`, `e`, a root, a limit — is inexact, as is anything written
-after `~`, and an inexact number makes inexact whatever it touches: a
-comparison that reads one, since a truth read from a double may be wrong, and
-the answer of a clause a guard reading one chose. An exact number that
-outgrows a thousand digits becomes inexact rather than wrong, and an answer
-that did ends in `# approximated past a thousand digits`, a comment, so it
-still reads back; so does whatever such a number touches, a truth and a
+approached — `pi`, `e`, a root that is not rational, a limit — is inexact, as
+is anything written after `~`, and an inexact number makes inexact whatever it
+touches: a comparison that reads one, since a truth read from a double may be
+wrong, and the answer of a clause a guard reading one chose. An exact number
+that outgrows a thousand digits becomes inexact rather than wrong, and an
+answer that did ends in `# approximated past a thousand digits`, a comment, so
+it still reads back; so does whatever such a number touches, a truth and a
 clause chosen too. Dividing by an exact zero is an error.
 
 Every number prints in decimal: an exact whole number in full, anything else
