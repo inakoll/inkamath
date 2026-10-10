@@ -956,6 +956,11 @@ Recorded so they are not re-litigated later, or drifted into by accident.
   cannot parse reliably. If it surfaces, it does at a C API or in an output
   format meant for programs.
 
+- **Local functions.** A local with parameters is refused (C303): bound in
+  the line's frame, it could not capture its parameters, and its answers
+  read globals instead. Cut by the owner for now; it comes back only with a
+  design that captures them, as a function's own definitions would.
+
 ## Openings
 
 Not scheduled, and not Deferred either -- Deferred is for what has been argued
