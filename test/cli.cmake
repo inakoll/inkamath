@@ -518,6 +518,15 @@ set(args --check coast.ink coast --steps 10 --steps 10 -o twice.c)
 set(stderr "inkamath: --steps is given twice\nTry 'inkamath --help'.\n")
 set(exit 2)
 check(check_steps_twice)
+# And so are -o and --float, a repetition adding nothing (C297).
+set(args --check coast.ink coast -o twice.c -o twice.c)
+set(stderr "inkamath: -o is given twice\nTry 'inkamath --help'.\n")
+set(exit 2)
+check(check_output_twice)
+set(args --check coast.ink coast --float --float -o twice.c)
+set(stderr "inkamath: --float is given twice\nTry 'inkamath --help'.\n")
+set(exit 2)
+check(check_float_twice)
 
 # Only an instance's check has steps: not a header, a transcript replayed,
 # or files run.
