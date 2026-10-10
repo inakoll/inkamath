@@ -359,8 +359,10 @@ inline constexpr const char* prelude[] = {
     "acosh(x) | x < 17/16 = logs(((x - 1)/(x + 1))^(1/2), 0)",
     "acoshr(x, r) = log(x + r) + (x - (x + r) + r)/(x + r)",
     // charpoly is det(lambda I - A), highest power first, by Faddeev and
-    // LeVerrier. hurwitz is Routh's test of every root of p in Re z < s, its
-    // column as a recurrence on the polynomial, and schurcohn of every one in
+    // LeVerrier, each A M_m remembered: a sum evaluates its term once per
+    // index, so written in the trace it is multiplied n times. hurwitz is
+    // Routh's test of every root of p in Re z < s, its column as a
+    // recurrence on the polynomial, and schurcohn of every one in
     // |z| < r, Routh's on the image of z = r(1 + w)/(1 - w). Each max(x, -x)
     // is an abs that refuses a complex argument, as one can pass the column. rho
     // and abscissa bisect on them a bracket of A/B, B = 2^e above A's cells,
@@ -371,10 +373,11 @@ inline constexpr const char* prelude[] = {
     // a thousand digits (DESIGN.md), as is one whose double is not normal
     // where its end is not 0, but for a polynomial lambda^n, whose radius is
     // 0, or lambda^k q, q stable, whose abscissa is.
+    "charpolyp(A)_m = A*charpolym(A)_m",
     "charpolym(A)_1 = A^0",
-    "charpolym(A)_m = A*charpolym(A)_(m-1) + charpolyc(A)_(m-1)*A^0",
+    "charpolym(A)_m = charpolyp(A)_(m-1) + charpolyc(A)_(m-1)*A^0",
     "charpolyc(A)_0 = 1",
-    "charpolyc(A[j<=n, k<=n])_m = -sum_(j=1)^n (A*charpolym(A)_m)[j,j]/m",
+    "charpolyc(A[j<=n, k<=n])_m = -sum_(j=1)^n charpolyp(A)_m[j,j]/m",
     "charpoly(A[j<=n, k<=n])[j<=n+1] = charpolyc(A)_(j-1)",
     "hurwitzb(a, b) = !a/(!b*!(a - b))",
     "hurwitzb(a, b) | b < 0 or b > a = 0",
