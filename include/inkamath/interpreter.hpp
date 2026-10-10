@@ -421,7 +421,7 @@ inline constexpr const char* prelude[] = {
     // A symmetric and B positive definite, every root of B's polynomial above
     // 0, certify every eigenvalue real, as Hermite's test would.
     "eig(A[j<=n, k<=n], B[j<=n, k<=n] = A^0) | rhoe([A, B]) == rhoe([A, B]) and B' == B "
-    "and eigv(charpoly(B)) == n = eigg(A, B^-1*A)",
+    "and eigv(charpoly(rhod(B, -rhoe(B)))) == n = eigg(A, B^-1*A)",
     "eigg(A, C) | A' == A or eigr(C) = eigc(C)",
     "smax(A[j<=m, k<=n]) = smaxd(eigk(rhod(A, -rhoe(A))'*rhod(A, -rhoe(A)), n)^(1/2), rhoe(A))",
     "smaxd(x, e) = rhod(x, e)",
