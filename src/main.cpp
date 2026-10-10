@@ -310,7 +310,11 @@ int main(int argc, char* argv[]) {
                 cerr << "inkamath: --steps " << why << "\nTry 'inkamath --help'.\n";
                 return 2;
             }
-        } else if (arg == "-o" && i + 1 < argc) {
+        } else if (arg == "-o") {
+            if (i + 1 == argc) {
+                cerr << "inkamath: -o takes a file to write\nTry 'inkamath --help'.\n";
+                return 2;
+            }
             target = argv[++i];
         } else if (arg == "--echo") {
             echo = true;
