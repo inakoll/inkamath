@@ -7732,10 +7732,10 @@ checked: what it asked of the compiler, each with its smallest change.
   its binding on, so with a global `t = x^2`, `t` read after `(t = 2*x)` is
   not followed to the global, and read before it is, and refused as now.
 
-  Stays refused: a local with parameters, `(g(y) = y*x)`, which binds an
-  expression and not a value, "grad cannot differentiate a local function".
-  A call of a local, `(a = 3) + grad_(x = 2) a(x)`, refused as a local
-  definition, is the evaluator's error, "a takes no arguments".
+  Stays refused: a local with parameters, `(g(y) = y*x)`, refused in both
+  evaluators since C303, "a local cannot take parameters" (Deferred, "Local
+  functions"). A call of a local, `(a = 3) + grad_(x = 2) a(x)`, refused
+  as a local definition, is the evaluator's error, "a takes no arguments".
 
   The interpreter only. `--compile` refuses every local, under `grad` or not
   (Robertson's "a local definition"), so there is no compiled local for a
@@ -7760,7 +7760,7 @@ checked: what it asked of the compiler, each with its smallest change.
   Past 51 the implementation stops and reports.
 
   Specified in `test/data/spec/gradlocal.ink`, 79 entries replayed by the
-  spec suite, 41 failing by design, those passing being definitions echoing
+  spec suite, 38 failing by design, those passing being definitions echoing
   themselves, values without `grad`, `clear`, and a local or a global read
   before the local's binding or on the next line. Covered: a local in a
   function, in grad's body and in an argument, read twice, chained, in a

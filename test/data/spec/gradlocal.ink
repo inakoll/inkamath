@@ -281,11 +281,11 @@ clear t
 >> clear x
 clear x
 
-# What stays refused. A local with parameters binds an expression, not a
-# value, and grad does not follow it; a local is a value, and a call of one
-# is the evaluator's error, as (a = 3) + a(2) is.
+# What stays refused. A local cannot take parameters (C303), under grad as
+# in the evaluator; a local is a value, and a call of one is the evaluator's
+# error, as (a = 3) + a(2) is.
 >> grad_(x = 3) ((lf(y) = y*x) + lf(x))
-error: grad cannot differentiate a local function
+error: a local cannot take parameters
 
 >> (a = 3) + grad_(x = 2) a(x)
 error: a takes no arguments
