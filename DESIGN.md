@@ -7717,8 +7717,9 @@ checked: what it asked of the compiler, each with its smallest change.
   does not move has its value alone; one the evaluator bound, before grad
   on the line or in a call grad evaluated as a constant, is read as a
   constant, as now. A guard is evaluated with its parts, so a local bound
-  in it is read by the clause it chooses with them; each term a limit walks
-  is a call in a frame of its own, as C66 has it.
+  in it is read by the clause it chooses with them, and one bound in a
+  guard that fails is taken back from both frames (C300); each term a
+  limit walks is a call in a frame of its own, as C66 has it.
 
   A gradient with respect to a matrix is one evaluation at the point that
   takes a pass per cell: the locals a pass binds, in both frames, are put
@@ -7759,8 +7760,8 @@ checked: what it asked of the compiler, each with its smallest change.
   order. 16,151 lines at cc686c5, by `wc -l include/inkamath/*.hpp src/*`.
   Past 51 the implementation stops and reports.
 
-  Specified in `test/data/spec/gradlocal.ink`, 79 entries replayed by the
-  spec suite, 38 failing by design, those passing being definitions echoing
+  Specified in `test/data/spec/gradlocal.ink`, 82 entries replayed by the
+  spec suite, 39 failing by design, those passing being definitions echoing
   themselves, values without `grad`, `clear`, and a local or a global read
   before the local's binding or on the next line. Covered: a local in a
   function, in grad's body and in an argument, read twice, chained, in a

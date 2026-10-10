@@ -90,6 +90,16 @@ pos(x) = 0
 >> grad_(x = -1) pos(x)
 0
 
+# One whose guard fails is taken back from both frames, as C300 has it.
+>> pf(x) | (t = 2*x) > 10 = 1
+pf(x) | (t = 2*x) > 10 = 1
+
+>> pf(x) = t
+pf(x) = t
+
+>> grad_(x = 1) pf(x)
+error: t is not defined
+
 # In a term, and in each term a limit walks: Newton's root with its last
 # term named, whose derivative at 4 is 1/(2*sqrt(4)).
 >> s(x)_0 = 1
