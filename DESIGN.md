@@ -3401,7 +3401,30 @@ that exploring seven domains asked of the interpreter, by how many asked.
   `ric(ric(P))` is 163 MB of header. About 25-35 lines; moves headers whose
   limits multiply matrices, not their values. The doubling algorithm for the
   Riccati equation under `lim` needs it too, its inverse a temporary (block
-  literals compiled, above).
+  literals compiled, above). Robertson's kinetics (1966) measure it:
+  backward Euler with each step's Newton iteration under `lim` is a 210 KB
+  header with the 3x3 inverse written by hand, and 10.6 MB with grad's
+  Jacobian, which gcc -O0 builds in 258 s and 4.4 GB and -O2 did not
+  finish in 600 s, where the same Newton read at a constant count,
+  `nw(y)_12`, is 24 KB and 58 KB.
+- **A limit's previous term tested for NaN once**: inside a limit's
+  function each read of the previous term's cell carries an `isnan` of
+  all its cells, 1,464 of them in Robertson's backward Euler; normalising
+  once per iterate halves its 210 KB header. Cheaper than temporaries, and
+  apart from them.
+- **`--check` names the cell and step of its worst units**: a float run of
+  Robertson's kinetics passed with its small concentrations negative and
+  50 times off, and `outside`'s in `test/compile/robertson.ink` passes at
+  1e+10 units, the line saying neither which cell nor where.
+- **`--check`'s remainder of a limit assumes linear convergence**: C36's
+  step*r/(1-r) reads the ratio of two steps, pessimistic for Newton's
+  quadratic convergence, whose last step is far below the one before.
+- **`tex` of a local definition**, refused as "tex cannot show a local
+  definition": print it as written, `(z = …)`, as Robertson's Newton
+  iteration names its iterate.
+- **The first index where a condition holds**, as a query: where the
+  explicit step's stability limit -2/lam passes h, found by bisecting
+  terms by hand. Minor.
 - `[done]` **An exact root of a perfect power**: `25^(1/2)` is `~5` and
   `(4/9)^(1/2)` `~0.666666667`, where the root is a rational, so every
   truss whose lengths come from its coordinates goes inexact and

@@ -927,6 +927,10 @@ u_n=2*n
 error: u did not converge within 100 terms (last term 200)
 ```
 
+The 1e-10 is absolute, so for a cell far below 1, where it settles few of
+the cell's own digits, a read at a count known to suffice, `f(x)_K`, gives
+the exact discrete value instead.
+
 `lim` stops when the last step is under the tolerance *and* the remainder the
 steps imply is too. A series can converge too slowly to be summed this way —
 after `n` terms of `1/n^2` the sum has moved by `1e-10` while it still has
