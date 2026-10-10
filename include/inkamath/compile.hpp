@@ -1960,10 +1960,11 @@ private:
         if (const auto* compare = dynamic_cast<CompareExpression<Value>*>(expression.get())) {
             const Code left = Emit(compare->m_e1()), right = Emit(compare->m_e2());
             const std::string l = Wrap(left.cells[0], sum), r = Wrap(right.cells[0], sum);
-            // Under grad, an equality whose sides move takes its clause at the point alone.
-            const bool equality =
-                compare->Op() == Comparison::Equal || compare->Op() == Comparison::NotEqual;
-            return Nan(left, right) + (equality ? Jumps(l + " == " + r, {&left, &right}) : "") + l +
+            // Under grad, an equality whose sides move takes its clause at the
+            // point alone; in a value, any comparison jumps there (C320).
+            const bool jumps = !guarding_ || compare->Op() == Comparison::Equal ||
+                               compare->Op() == Comparison::NotEqual;
+            return Nan(left, right) + (jumps ? Jumps(l + " == " + r, {&left, &right}) : "") + l +
                    Operator(compare->Op()) + r;
         }
         return Nan(code) + Wrap(code.cells[0], sum) + " != 0.0";
