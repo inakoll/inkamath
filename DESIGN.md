@@ -8049,27 +8049,131 @@ checked: what it asked of the compiler, each with its smallest change.
   term, which persists across terms, in a chain of guarded clauses, and in
   a model's clause, once per step.
 - **The size of a forward-mode header, measured**, before reverse mode is
-  weighed (`MANIFESTO.md`): the network's 47 weights trained by four grads
-  are 2.16 MB of header, as each direction writes a guard's dot product
-  again and each seed as `0.0*P + ... + 1.0*P`. A temporary for a guard's
-  operands, and `0.0*x` folded where x is finite, are the first two
-  measurements to take.
-  Measured with a prototype of *a compiled gradient with respect to a
-  tensor*:
-  - inkamath's own time grows near the cube of the batch: each pass
-    computes every image's loss, and copies the code of the whole argument
-    through every cell of `pad`. `tensorgrad.ink`'s network, 18 passes: a
-    49 KB header, `--compile` 3.0 s, its check program built in 0.5 s at
-    GCC -O2; on 2x3x4 images, 24 passes, 61 KB and 5.4 s; on 4x3x4, 48
-    passes, 221 KB and 86 s.
-  - exp's part is written out at each of its uses in every pass. Attention's
-    W^Q at `tensor.ink`'s size, 2x4x2, 16 passes: a 1.28 MB header, its
-    check program 57 s at GCC -O1, 4 min 40 at -O2, 2 min at Clang -O2,
-    where `heads`, forward, builds in 0.45 s. At the smallest multi-head
-    size, 2x2x1, 4 passes, 10.5 s at GCC -O2 and 2.6 s at Clang; one pass
-    alone, for one cell of W^Q, 4.3 s.
-  `tensorgrad.ink`'s `saliency` is its acceptance test, wired when its
-  `--check` takes under 30 s under the sanitizers, where it took 593 s.
+  weighed (`MANIFESTO.md`). The item named two costs, measured with a
+  prototype of *a compiled gradient with respect to a tensor*: inkamath's
+  own time near the cube of the batch on `tensorgrad.ink`'s `saliency`,
+  593 s of `--check` under the sanitizers, and exp's part written at each
+  of its uses in every pass, attention's W^Q at `tensor.ink`'s size (2x4x2,
+  16 passes) 1.28 MB of header and 4 min 40 at GCC -O2.
+
+  Measured again, by profile and by count, at b942d0d:
+  - **Most of `saliency`'s time is not the compiler's.** Its `--check` is
+    11.6 s in RelWithDebInfo: 3.0 s compiling, the rest the oracle's four
+    runs of the interpreter, exact and three disturbed, of 100 steps of 18
+    passes, 1.9 s each. Under the sanitizers the compile is 154 s and one run of
+    the interpreter 106 s; with the compile at 10 s, `--check` still takes
+    481 s, nearly all the four runs: no change to the compiler brings 100
+    steps under 30 s.
+  - **The compile is near the fourth power of the batch, B^4, and its
+    header near B^2**: one image of 3x3 to four, 0.17, 2.8, 14 and 50 s,
+    16, 45, 94 and 157 KB. 96 per cent of it compiles definitions by cells
+    again: C230 keeps a call once for the code it is given within the
+    innermost loop alone, and conv's cell is two nested sums, each opening
+    a memo of its own, so `pad(X)` is compiled again for each cell and each
+    u of every conv, and `L`'s two calls of `s`, outside any loop, compile
+    conv twice: 4,824 compilations of a definition by cells in 18 passes.
+    The header is the same either way.
+  - **In attention's header, exp's value and part are written at each
+    reading, and its argument's NaN test with them.** At `tensor.ink`'s
+    size, 36 values of exp are written 2,412 times and 324 parts 1,296
+    times, 1.17 MB of the 1.27; each argument carries the test of all 18
+    scores of its head, the score matrix being read by its cells, 1.06 MB
+    of it. grad's rules read a value again in each part, the quotient's
+    twice, so a call whose argument moves is written again by every part
+    over it.
+  - **The item's first two measurements**: a guard's dot product is already
+    a temporary, relu's guard reading conv's (`t26_ > 0.0`, C140), and
+    `0.0*x` is 72 products in `saliency`'s header and 342 in attention's,
+    a few KB, foldable only where x is known finite, which a parameter is
+    not. The network of 47 weights the item cites is not in the repository;
+    `conv.ink`'s `train`, four grads of 10 weights, is 38,617 bytes.
+
+  Decided, two changes, the header's values the same operations in the
+  same order:
+  - **A call is kept for the code it is given within a step's list, not a
+    loop's.** Within compiles a sequence with a memo for its list, and a
+    sum or a definition by cells opens one only where the list is not the
+    memo's, so a call is compiled once for the code it is given wherever
+    the step reads it. C230's argument holds as it stands: an expansion's
+    names are its own, so what a call compiles to depends on the code it is
+    given alone. As now, a call that reads a term, one inside a model's
+    expansion and one under `Reading` are not kept, and a limit's lists, a
+    derived value's and the scratch one keep a memo per loop. No header
+    moves.
+  - **Under grad, a call of a function of the header whose argument moves
+    is a temporary, its value then its part**, as an argument a call was
+    compiled in is (C140, C155). The value is declared first, explicitly:
+    C++ leaves the order of a call's arguments to the compiler, and GCC and
+    MSVC would number them apart. A temporary whose call may be NaN, by
+    `MayNan` of its text, joins `nan_functions_`, so that C189 and C211 read
+    its name as they read the call. A call whose argument does not move is
+    written where the source writes it, as now.
+
+  So the may-NaN flag *Shared at every value written twice* waits for is
+  not a prerequisite here: a call's temporary carries its NaN by its name,
+  as a function of the header does. **General value numbering is not
+  needed**, and stays its own item. The owner asked whether the compiler
+  would benefit from temporaries generally; for forward mode, measured,
+  it would not: the first cost is no text at all, and the second is one
+  kind of text, which one rule shares. With both, what is still written
+  twice in attention's step is the NaN test of a matrix read by its cells,
+  94 KB of its 215 (*A matrix read by its cells tested for NaN once*,
+  which on the prototype took the header to 162 KB and GCC's time not at
+  all), and softmax's denominators, at most 24 KB, all that general value
+  numbering would add here.
+
+  Rejected:
+  - **Sharing every call of the header's, forward too**: it moves
+    `kernel.h`'s `ceil` and the prelude's `c` step into lines of their own
+    with nothing read twice.
+  - **Sharing at the reader**, a product's or a quotient's operands under
+    grad: more sites, and every product under grad moves, read twice or
+    not.
+  - **The NaN normalisation folded in**: a third of the bytes and none of
+    GCC's time, an item of its own.
+  - **Folding `0.0*x`**: a few KB, and 0 times an infinite parameter is NaN.
+  - **One memo for the whole compile**: a list's temporaries are not
+    another's, and a step's are kept by its list's address.
+  - **Keeping 100 steps and 30 s**: unreachable by any change to the
+    compiler. Three steps hold every value `saliency` specifies, its images
+    repeating every three steps and G reading no earlier term; the
+    interpreter's own speed, and whether a run exact throughout needs its
+    three disturbed runs, are not this item's.
+
+  Measured on the prototype: `saliency`'s `--compile` 3.0 s to 0.1, and
+  B^4 to near B^2, 0.04, 0.15, 0.37 and 0.75 s for one image to four,
+  their headers byte for byte; under the sanitizers its `--compile` 154 s
+  to 10 and its `--check` of 3 steps 171 s to 23, 22 in float, 100 steps
+  593 s to 481. Attention's W^Q at `tensor.ink`'s size 1,274,039
+  bytes to 252,577, exp written 36 and 324 times, GCC -O2 214 s to 10 and
+  Clang -O2 3.5 s; `attn` in `tensorgrad.ink` 81,259 bytes to 30,684, GCC
+  -O2 3.8 s to 0.35; `attend`'s `--check` under the sanitizers 42 s to 40,
+  the interpreter's. `train` grows 38,617 bytes to 40,041, its max calls
+  written once each and now a line each.
+
+  What moves: of the recorded headers, `inkamath_prelude.h`'s `d` step
+  alone, its nine calls' values and parts as 18 temporaries; nothing in
+  `test/compile/expected`, no excerpt in `test/cli.cmake`, no golden. Of
+  the check programs, those that call a function of the header under grad,
+  `saliency`'s through max among them, their reports identical: the
+  prototype passed all 420 tests of `ctest` but `prelude_header`, and
+  `saliency`, `attend` and `small` printed the same reports byte for byte.
+
+  About 12 lines in `compile.hpp`: the prototype's 15 added and 4 removed,
+  3 for the memo and 8 for the temporaries, and 1 to declare the value
+  first. 16,252 lines in all at b942d0d, by `wc -l include/inkamath/*.hpp
+  src/*`; past 18 the implementation stops and reports.
+
+  Specified in `test/compile/tensorgrad.ink`'s comments, unwired, each
+  number worked out from the model, none recorded: `saliency` at 3 steps,
+  in double and float, `tensorgrad:saliency:3` among the checked instances
+  of `test/CMakeLists.txt` and its float checks; and `attn`'s header, the
+  cli case `compile_attend_calls` of `test/cli.cmake`: `attn_exp_jx(`
+  written 17 times, its definition and once for each of the 16 scores,
+  `attn_exp_dx(` 49, its definition and once for each score and each of
+  the three seeds its head's slice of W^Q takes, and the header under
+  40,000 bytes. Wired with the implementation, with the prelude's header
+  recorded again.
 - **A maximum or minimum over an index**, `max_(i=1)^n`, as a sum is
   written: max-pooling over a window is nested `max` calls today. Minor,
   until a second model asks.

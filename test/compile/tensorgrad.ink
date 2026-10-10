@@ -22,17 +22,21 @@
 #            53/2 0 -53/2; 53/2 -53/4 -53/4; 53 53/2 0]
 #
 # Every value on the way, parts included, is a multiple of 1/32 below 2^9,
-# which doubles and floats hold, so
+# which doubles and floats hold. G reads no earlier term, so three steps
+# hold every value it takes, and 'inkamath --check tensorgrad.ink saliency
+# --steps 3' gives
 #
-#     saliency: 100 steps from 0, against exact values
+#     saliency: 3 steps from 0, against exact values
 #     saliency.G: within 0
 #
-# and 'inkamath --check tensorgrad.ink saliency --float':
+# and with --float:
 #
-#     saliency: 100 steps from 0 in float, against exact values
+#     saliency: 3 steps from 0 in float, against exact values
 #     saliency.G: within 0, 0 units of a float
 #
-# Unwired: the queued "size of a forward-mode header, measured" wires it.
+# Unwired: the queued "size of a forward-mode header, measured" wires it,
+# as tensorgrad:saliency:3; at 100 steps the oracle's four runs of the
+# interpreter take some 470 s under the sanitizers.
 probe(K = [1 -1; 2 0], d = 1/4, W = [1 -1; 2 1], a = 1/2, X_n[b<=2, i<=3, j<=3]) = {
     pad(X)[b<=2, i<=5, j<=5] | i > 1 and i < 5 and j > 1 and j < 5 = X[b, i-1, j-1]
     pad(X)[b<=2, i<=5, j<=5] = 0
@@ -74,6 +78,19 @@ attn(eta = 1/4, X_n[b<=2, t<=2, c<=2]) = {
     WQ_n = WQ_(n-1) - eta*grad_(Q = WQ_(n-1)) J(Q, X_n)
 }
 attend = attn(X_n = [1 0; 1 1;; 0 1; 1 -1]/2)
+
+# Its header, 'inkamath --compile tensorgrad.ink attn -o attn.h', computes
+# each value of exp and each part once, a temporary (DESIGN.md, the size of
+# a forward-mode header), test/cli.cmake's compile_attend_calls, unwired.
+# A head's scores are 2x2x2, 8 values, 16 for both heads; a pass seeds one
+# cell of W^Q, so a head's slice of the seed is either of its two cells or
+# 0, three parts for each of its 8 scores, 48 for both, 0.0*x not folded:
+#
+#     'attn_exp_jx(' written 17 times: its definition, and 16 temporaries
+#     'attn_exp_dx(' written 49 times: its definition, and 48 temporaries
+#     attn.h under 40,000 bytes
+#
+# Today they are written 289 and 145 times, in 81,259 bytes.
 
 # 'small', a batch of two 2x2 states, each pulled toward its input turned a
 # quarter back and toward the other's negation: E is the sum over the cells
