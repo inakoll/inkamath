@@ -3518,7 +3518,7 @@ that exploring seven domains asked of the interpreter, by how many asked.
   40, a hundredth power 3.9 to 37; no golden over 1.9 per cent more
   instructions. Compiled, the refusal is the cli case `compile_pole`. 41
   lines landed against about 30, 6 of them comment: `number.hpp` 40,
-  `compile.hpp` 1. 16,065 lines in all.
+  `compile.hpp` 1. 16,071 lines in all, with integration.
 - **Plain definitions remembered**, specified as the language change
   phase 14 called it when it rejected memoising them (*Rejected: memoising
   a plain definition*). A plain definition is computed again at each read, so a
