@@ -3602,7 +3602,7 @@ that exploring seven domains asked of the interpreter, by how many asked.
   size stated twice. Accepting such a repetition is an artifact of the
   implementation, not a meaning, and hides the slip it usually is (`j, j`
   meant `j, k`). Low priority.
-- **Temporaries in a limit's function.** C140 shares a step's nested
+- `[done]` **Temporaries in a limit's function.** C140 shares a step's nested
   calls, but a limit's function has no temporaries, so its terms are
   written out whole: a Riccati limit through `ric(ric(P))` is 163 MB of
   header, and Robertson's kinetics (1966) under backward Euler, each step's
@@ -3732,9 +3732,23 @@ that exploring seven domains asked of the interpreter, by how many asked.
   paragraph on the compiler gains a sentence. No transcript in
   `test/data/spec`.
 
-  Open: whether `steer`'s extra line, a temporary written beside the text
-  it holds, is worth a fix in `Shared`'s caller, for steps and limits
-  alike.
+  Settled: `steer`'s extra line, a temporary written beside the text it
+  holds, is not fixed here; it closes into *Shared at every value written
+  twice*, below, for steps and limits alike.
+
+  Built as specified: every case of `implicit.ink` passes as written, its
+  five check programs wired and its cli cases in `test/cli.cmake`, the two
+  refusals moved out. No golden, expected header or excerpt moves; of the
+  check programs only `smith`, `mark`, float `mark` and `steer` change,
+  32,386, 32,703, 32,774 and 13,354 bytes, as the prototype found.
+  Robertson's headers are 17,709, 22,199 and 8,101 bytes. Departures: none
+  in the code. A case added, `compile_limit_globals`: a global first read
+  in a limit's terms declares into its own list while the limit is being
+  walked, so a `v` name keys on the limit's own lists, not on a limit
+  being walked, or two such globals would both declare `v0_` in the
+  update. The reason given above for not hoisting was wrong, corrected,
+  and the hoisting queued. 3 lines of `compile.hpp`, 19 added and 16
+  removed, as costed; 16,154 lines in all.
 - **A matrix read by its cells tested for NaN once**: in a header that
   writes NaN, each read of a cell of a matrix that is not a term carries an
   `isnan` of all its cells, as the interpreter refuses the matrix whole:
@@ -3751,9 +3765,10 @@ that exploring seven domains asked of the interpreter, by how many asked.
   instead, before the loop. Moves headers, not values.
 - **Shared at every value written twice**, value numbering in general, as
   weighed under *Temporaries in a limit's function*: forward mode's guard
-  copied per direction among what it would serve. Needs a cell to carry
-  whether it may be NaN before anything is hoisted further. About 60 to
-  100 lines.
+  copied per direction among what it would serve, and `steer`'s extra
+  line, a temporary written beside the text it holds (*Temporaries in a
+  limit's function*). Needs a cell to carry whether it may be NaN before
+  anything is hoisted further. About 60 to 100 lines.
 - **`--check` names the cell and step of its worst units**: a float run of
   Robertson's kinetics passed with its small concentrations negative and
   50 times off, and `outside`'s in `test/compile/robertson.ink` passes at
