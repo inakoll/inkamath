@@ -656,8 +656,11 @@ private:
         const double shift = std::floor(std::max(t - 52, 0.0));
         Natural      x(static_cast<Natural::wide>(std::exp2(t - shift) * (1 + 0x1p-30)) + 1);
         for (x = x.Shifted(static_cast<std::size_t>(shift));;) {
-            Natural lower(1);
-            for (unsigned long long k = 1; k < q; ++k) lower = lower * x;
+            Natural lower(1), b = x;
+            for (auto k = q - 1; k != 0; k >>= 1) {
+                if (k & 1) lower = lower * b;
+                if (k > 1) b = b * b;
+            }
             Natural y = (x * Natural(q - 1) + n / lower) / Natural(q);
             if (Natural::Compare(y, x) >= 0)
                 return lower * x == n ? std::optional(x) : std::nullopt;
