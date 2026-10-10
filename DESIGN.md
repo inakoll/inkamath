@@ -3351,7 +3351,7 @@ that exploring seven domains asked of the interpreter, by how many asked.
   paper's update must be shifted to t-1 by hand, where transcriptions slip.
 - **`--check` says how far a term parts**, not only where it first does: the
   largest difference and where, as MANIFESTO asks of how a difference grows.
-- **`atan`, `atan2`, `asin`, `acos` and `acosh` in the prelude.** Kahan's
+- `[done]` **`atan`, `atan2`, `asin`, `acos` and `acosh` in the prelude.** Kahan's
   angle formulas cannot be written without atan. Doyle 1978's phase margin
   is the angle of L(iw) at crossover, of which only cos(PM) = -Re L could
   be written, its exploration bisecting `cos` for `acos`. Apollo 11's coast
@@ -3531,6 +3531,28 @@ that exploring seven domains asked of the interpreter, by how many asked.
   emulation is that session's to the bit on 4,832 doubles, and the Python
   one on 1,200 exact arguments. And in `test/compile/atan.ink`, wired with
   the implementation; that prototype checks within 0.
+
+  Built as specified: the spec passes as written and is the golden
+  `atan.ink`, the spec suite going, it its only file;
+  `test/compile/atan.ink` checks within 0, its program defining the five and
+  calling no libm. No golden moves; translunar.ink keeps its digits.
+  Departures. An exact part walks for the four as for `tanh` and `log`,
+  since each meets it exactly before its `~`, so the header takes it rounded
+  in `exp`, `sin` and `cos` alone. The part hook walks where the header's
+  part is infinite as well as 0 or NaN, as ruled on review; at 1 and -1 the
+  header's parts are NaN already, the root's 0 tested, and the root refuses
+  either way. The parts' worst, by the skipped `sweep`'s 10^8 doubles a
+  range against a 64-bit long double, each confirmed by mpmath at 256 bits,
+  are atan 2.903 units at 1.7331089529469212, asin 5.417 at
+  -0.9655946220305717, acos 5.278 at -0.966307379845344 and acosh 5.309 at
+  1.4415185508643205, above the 20,000 points' figures;
+  `test/prelude_test.cpp` holds the table's parts within 2.91, 5.42, 5.28
+  and 5.31, which reach at most 1.90, 2.90, 1.80 and 2.14. The sweep finds
+  the values within the review's figures, atan 1.432, asin 2.440, acos 2.461
+  and acosh 3.429. 50 lines of sources against about 45: the prelude 26 and
+  its comment 5, the fast path's table 8, its refusals 7 and the part's test
+  3, and `Unapplied`'s table 1 for atan2's words; the header 96 more, 351
+  lines. 16,431 lines in all.
 - **A cell at a computed whole index, compiled**: `T[k,1]` with
   `k = floor(t/H) + 1`, an ephemeris read at the row a time falls in, is
   refused as "a cell whose place is not a constant", so Apollo 11's coast
