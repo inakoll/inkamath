@@ -162,6 +162,27 @@ Gc(n) = P(n)*(sum_(e=1)^n G(n, e)'*kg(n)*G(n, e))*P(n)'
 [~3.33333333e+149;
           ~3e+150]
 
+# B is counted over 2^e too, so its polynomial, whose last coefficient is
+# 2^-4000 of 4 unknowns in 2^-1000, does not pass a thousand digits (C281):
+# mpmath's eigenvalues of M^-1 K, scaled.
+>> eig(Kf(2), Mf(2)/2^1000)
+[~1.32591894e+302;
+ ~5.29104444e+303;
+ ~6.05250973e+304;
+ ~5.09868775e+305]
+
+>> eig(Kf(2), Mf(2)*2^1000)
+[~1.15485018e-300;
+ ~4.60839908e-299;
+ ~5.27162087e-298;
+ ~4.44086006e-297]
+
+>> eig(Kf(2)*2^1000, Mf(2)*2^1000)
+[~12.3743191;
+ ~493.793928;
+ ~5648.58713;
+ ~47584.1978]
+
 # Doubles, A's and B's, are read as the rationals they are (C275), so an
 # answer is right for the data as stored, and inexact: 0.1/0.3 as stored is
 # not 1/3, and a pencil of tenths as stored parts at the 16th digit from the
