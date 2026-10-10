@@ -3545,9 +3545,11 @@ that exploring seven domains asked of the interpreter, by how many asked.
   range against a 64-bit long double, each confirmed by mpmath at 256 bits,
   are atan 2.903 units at 1.7331089529469212, asin 5.417 at
   -0.9655946220305717, acos 5.278 at -0.966307379845344 and acosh 5.309 at
-  1.4415185508643205, above the 20,000 points' figures;
-  `test/prelude_test.cpp` holds the table's parts within 2.91, 5.42, 5.28
-  and 5.31, each farthest in the table since review. The sweep finds
+  1.4415185508643205, above the 20,000 points' figures; on review, three
+  seeds more and acos's part near 1, which the sweep lacked, find asin's
+  5.623 at -0.8652814440599897 and acos's 5.459 at 0.9663790997275507, so
+  `test/prelude_test.cpp` holds the table's parts within 2.91, 5.63, 5.46
+  and 5.31, each farthest in the table. The sweep finds
   the values within the review's figures, atan 1.432, asin 2.440, acos 2.461
   and acosh 3.429. 50 lines of sources against about 45: the prelude 26 and
   its comment 5, the fast path's table 8, its refusals 7 and the part's test

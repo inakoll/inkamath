@@ -117,8 +117,8 @@ TEST_CASE("atan, asin, acos and acosh's parts") {
     for (Reference& r : negated) r.y = -r.y, r.d = -r.d;
     const auto by = [](double (*f)(double, double)) { return [f](double x) { return f(x, 1); }; };
     within("atan's part", table("atan_dx"), by(inkamath_prelude_atan_dx), 2.91);
-    within("asin's part", table("asin_dx"), by(inkamath_prelude_asin_dx), 5.42);
-    within("acos's part", negated, by(inkamath_prelude_acos_dx), 5.28);
+    within("asin's part", table("asin_dx"), by(inkamath_prelude_asin_dx), 5.63);
+    within("acos's part", negated, by(inkamath_prelude_acos_dx), 5.46);
     within("acosh's part", table("acosh_dx"), by(inkamath_prelude_acosh_dx), 5.31);
 }
 
@@ -168,6 +168,11 @@ TEST_CASE("sweep" * doctest::skip()) {
         const L x = 1 - double(y);
         return 1 / std::sqrt((1 - x) * (1 + x));
     };
+    const auto acos_dx_1    = [](double y) { return inkamath_prelude_acos_dx(1 - y, 1); };
+    const auto of_acos_dx_1 = [](L y) {
+        const L x = 1 - double(y);
+        return -1 / std::sqrt((1 - x) * (1 + x));
+    };
     const auto acosh_dx_1    = [](double y) { return inkamath_prelude_acosh_dx(1 + y, 1); };
     const auto of_acosh_dx_1 = [](L y) {
         const L x = 1 + double(y);
@@ -210,6 +215,7 @@ TEST_CASE("sweep" * doctest::skip()) {
         {"asin's part", asin_dx, of_asin_dx, -1, 1, 100'000'000, 71, false},
         {"asin's part at 1 - y", asin_dx_1, of_asin_dx_1, -53, -1, 100'000'000, 71, true},
         {"acos's part", acos_dx, of_acos_dx, -1, 1, 100'000'000, 78, false},
+        {"acos's part at 1 - y", acos_dx_1, of_acos_dx_1, -53, -1, 100'000'000, 78, true},
         {"acosh's part", acosh_dx, of_acosh_dx, 1, 2, 100'000'000, 85, false},
         {"acosh's part", acosh_dx, of_acosh_dx, 0, 512, 100'000'000, 85, true},
         {"acosh's part at 1 + y", acosh_dx_1, of_acosh_dx_1, -52, 0, 100'000'000, 85, true},
