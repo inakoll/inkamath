@@ -162,6 +162,14 @@ error: a comparison needs a number, not -nan
 >> atan2(1, i)
 error: a comparison needs real numbers, not ~(i)
 
+# Either argument complex, refused by a comparison before any atan, as the
+# prelude's other functions of two arguments are (C290).
+>> atan2(1 + i, 1)
+error: a comparison needs real numbers, not ~(1+i)
+
+>> atan2(i, 0)
+error: a comparison needs real numbers, not ~(i)
+
 >> atan2(1, [1 2])
 error: atan2 needs single values, not a 1x2 matrix; write it by its cells
 
@@ -446,6 +454,36 @@ digits = 9
 
 >> grad_(x = 0) atan2(0, x)
 error: atan2 needs y or x other than 0
+
+# Far from the axes' diagonals the quotient is of the smaller coordinate by
+# the larger, so its partial does not overflow: -1 here, as at x = 0, where
+# atan(1/x) had 0 times inf (C290).
+>> grad_(x = ~1e-300) atan2(1, x)
+~-1
+
+>> grad_(x = ~(-1e-300)) atan2(1, x)
+~-1
+
+>> grad_(x = ~1e-300) atan2(-1, x)
+~1
+
+>> grad_(x = ~(-1e-300)) atan2(-1, x)
+~1
+
+>> grad_(y = ~1) atan2(y, ~1e-300)
+~1e-300
+
+>> grad_(y = ~1e-300) atan2(y, 1)
+~1
+
+>> grad_(y = ~1e-300) atan2(y, -1)
+~-1
+
+>> grad_(x = ~1) atan2(~1e-300, x)
+~-1e-300
+
+>> grad_(x = ~(-1)) atan2(~(-1e-300), x)
+~1e-300
 
 >> grad_(x = 0) asin(x)
 ~1
