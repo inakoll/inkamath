@@ -43,9 +43,8 @@ kinetic = backward()
 
 # 'jacobian', the same with the Jacobian taken by grad inside the limit's
 # function, each cell's part a temporary as a step's is (C140). Its
-# Jacobian rounds as the product rule does, k2*y2 + k2*y2 for 2*k2*y2,
-# where J's does not, so its terms are not kinetic's to the bit; Newton's
-# root is the residual's, and they come as close to mpmath's:
+# Jacobian is J's to the bit, k2*y2 + k2*y2 being 2*k2*y2 exactly, so its
+# terms are kinetic's, the interpreter's and Python's alike:
 #
 #     jacobian: 100 steps from 0, against exact values until 0 and inexact ones from there
 #     jacobian.y: within 0; the interpreter's terms about <e> from the exact ones
