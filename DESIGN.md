@@ -3706,10 +3706,11 @@ that exploring seven domains asked of the interpreter, by how many asked.
   Robertson's headers: Cramer's rule 18 KB, grad's Jacobian 22 KB, built by
   gcc -O2 in a quarter of a second, and `^-1` 8 KB.
 
-  About 10 lines of `compile.hpp`: the prototype's 15 added and 11
-  removed, the two unreachable refusals and their branches going, a line
-  of comment. 16,151 lines at cc686c5, by `wc -l include/inkamath/*.hpp
-  src/*`. Past 15 the implementation stops and reports.
+  About 3 lines of `compile.hpp`: the prototype's 15 added and 11
+  removed, the two unreachable refusals and their branches among them, a
+  line of comment, and `Declare`'s refusal and its two of comment going.
+  16,151 lines at cc686c5, by `wc -l include/inkamath/*.hpp src/*`. Past
+  5 the implementation stops and reports.
 
   Specified in `test/compile/implicit.ink`, unwired: `kinetic`, backward
   Euler on Robertson's kinetics, Newton under `lim` with `^-1`; `jacobian`,
