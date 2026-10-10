@@ -3635,8 +3635,9 @@ that exploring seven domains asked of the interpreter, by how many asked.
   terms, for now", "a limit of matrices inside a limit's terms" and "a
   matrix argument of a limit inside a limit's terms", the last three
   unreachable and deleted. `Declare`'s refusal then guards the prelude's C
-  functions alone, which invert nothing: deleted if unreachable, reworded
-  if not.
+  functions alone, and is unreachable too: given numbers, they invert only
+  1x1 matrices, which are powers, and what iterates is written where it is
+  called (C213). Deleted, with its comment.
   - **`--float`**: nothing. The float header is the double one rewritten,
     temporaries included.
   - **grad**: a grad inside a limit's terms shares its parts as anywhere,
