@@ -3446,7 +3446,10 @@ that exploring seven domains asked of the interpreter, by how many asked.
     is exact.
   - **grad**: nothing to add. Derivative::Power takes c u^(c-1) through the
     same power, so `grad_(x = 4) x^(1/2)` is 0.25, and a bar's length
-    `(x^2 + 16)^(1/2)` moves by 3/5 at x = 3. Its refusals are unchanged.
+    `(x^2 + 16)^(1/2)` moves by 3/5 at x = 3. Its refusals are unchanged
+    but one: at 0 a negative power is refused before its derivative,
+    `grad_(x = 0) x^(-1/2)` "division by zero" as `x^-1`'s is, where it
+    was "a power's derivative is infinite at x = 0".
   - **Compiled**: a header writes doubles, and a constant folded from the
     interpreter's value is now the double of the exact root, never an ulp
     off as `pow`'s may be; no expected header moved on the prototype. One
@@ -3485,8 +3488,8 @@ that exploring seven domains asked of the interpreter, by how many asked.
   include/inkamath/*.hpp src/*`. Past 45 the implementation stops and
   reports.
 
-  Specified in `test/data/spec/roots.ink`, 84 entries replayed by the spec
-  suite, 40 failing by design, those passing being definitions echoing
+  Specified in `test/data/spec/roots.ink`, 86 entries replayed by the spec
+  suite, 41 failing by design, those passing being definitions echoing
   themselves, the refusals, the answers that stay inexact and two exact
   ones whose nine digits are as before. Each exact
   root in sympy, the truss's displacements and forces solved again in

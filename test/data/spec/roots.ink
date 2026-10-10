@@ -230,6 +230,14 @@ R[j<=2, k<=2] = D[j,k]^(1/2)
 >> grad_(x = 0) x^(1/2)
 error: a power's derivative is infinite at x = 0
 
+# At 0 a negative power is itself a division by an exact zero, refused
+# before its derivative, as x^-1's is.
+>> grad_(x = 0) x^(-1/2)
+error: division by zero
+
+>> grad_(x = 0) x^-1
+error: division by zero
+
 # A truss's lengths from its coordinates. The 3-4-5 bar first, then
 # truss_calfem.ink's three bars with their lengths computed where that
 # golden types them; its displacements and forces are unchanged, worked
