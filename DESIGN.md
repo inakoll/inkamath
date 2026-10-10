@@ -3349,7 +3349,7 @@ that exploring seven domains asked of the interpreter, by how many asked.
   cases to `cli.cmake`'s first part; `steps.cmake` is gone. Every other
   check program and header byte for byte. 25 lines of sources written where
   about 20 were planned, 14 more in all: `main.cpp` 16 more, `check.hpp` 2
-  fewer. 16,282 lines in all.
+  fewer. 16,282 lines in all, 16,286 after C280.
 - **A cumulative sum compiled as an accumulator**, `sum_(t=1)^n e(t)`:
   refused as "a sum whose bounds are not constants", where a regret or a
   running loss is exactly that (Reddi et al. 2018).
@@ -3464,7 +3464,8 @@ that exploring seven domains asked of the interpreter, by how many asked.
     0 with c < 1 is now a division by zero, where it was inf, and the
     prototype refused `edge`'s v in `test/compile/grad.ink`, "cannot compile
     v: division by zero". Left to C's pow there, inf, v stays NaN at every
-    step as C116 made it: 1 line. A constant `0^(-1/2)`, or the same power
+    step as C116 made it: 1 line, and C286's 1 more folds it to C's inf as
+    a literal again. A constant `0^(-1/2)`, or the same power
     under `grad_(t = 0) t^(-1/2)`, is refused as `0^-1` is, "cannot compile
     y: division by zero", where it compiled.
 
@@ -3522,9 +3523,14 @@ that exploring seven domains asked of the interpreter, by how many asked.
   `reddi.ink` took a fifth more instructions. In Release, 2^(1/2) 43 ns to 54 and 2^(1/3) 64
   to 97; of a thousand digits, a non-square 3.9 us to 4.7, a square 3.8 to
   40, a hundredth power 3.9 to 37; no golden over 1.9 per cent more
-  instructions. Compiled, the refusal is the cli case `compile_pole`. 41
-  lines landed against about 30, 6 of them comment: `number.hpp` 40,
-  `compile.hpp` 1. 16,071 lines in all, with integration.
+  instructions. Compiled, the refusal is the cli case `compile_pole`.
+  Moved too, unlisted: `reddi`'s `fixed` and `gen` checks' estimates,
+  Adam's roots of exact squares exact now, fixed.x's 5.6e-16 to 6.7e-16
+  and fixed.R's 2.5e-14 to 4.6e-14, gen.x's 3.3e-16 to 4.4e-16 and gen.R's
+  2.1e-14 to 1.8e-14, held by their reports' form. 41 lines landed against
+  about 30, 6 of them comment: `number.hpp` 40, `compile.hpp` 1. 16,071
+  lines in all, with integration; 45 after C285's 3 and C286's 1,
+  `number.hpp` 43 and `compile.hpp` 2, and 16,075 in all.
 - **Plain definitions remembered**, specified as the language change
   phase 14 called it when it rejected memoising them (*Rejected: memoising
   a plain definition*). A plain definition is computed again at each read, so a
