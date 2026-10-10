@@ -3484,8 +3484,10 @@ that exploring seven domains asked of the interpreter, by how many asked.
   `--check` reports in `test/CMakeLists.txt`, terms exact further: `edge`
   until 3 and `edge.s` within 1.1e-16, `over` exact throughout, `graph`
   until 1. README.md's "a root" among what can only be approached becomes a
-  root that is not rational, and `truss_calfem.ink`'s comment on its typed
-  lengths goes stale.
+  root that is not rational, and `truss_calfem.ink` computes its lengths,
+  `L(e) = (dx(e)^2 + dy(e)^2)^(1/2)` in place of the typed `Lg`, its
+  answers unchanged: `roots.ink`'s truss, which moves there when the spec
+  becomes a golden, the 3-4-5 bar staying.
 
   About 30 lines: the prototype's 28 in `number.hpp`, 3 of them comment,
   and 2 in `compile.hpp`. 16,024 lines at 6921a84, by `wc -l

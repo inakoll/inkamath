@@ -241,8 +241,9 @@ error: division by zero
 
 # A truss's lengths from its coordinates. The 3-4-5 bar first, then
 # truss_calfem.ink's three bars with their lengths computed where that
-# golden types them; its displacements and forces are unchanged, worked
-# again in sympy from the computed lengths.
+# golden types them, which it takes in their place when this becomes a
+# golden; its displacements and forces are unchanged, worked again in
+# sympy from the computed lengths.
 >> (3^2 + 4^2)^(1/2)
 5
 
