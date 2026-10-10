@@ -995,7 +995,7 @@ private:
             for (const auto& size : definition.Sizes())
                 for (const auto& [given, digits] : size.bounds) bound.insert(given);
             for (const PExpression<T>& read :
-                 {p.guard(), clause.expression, p.slices(), p.rows(), p.cols()})
+                 {p.slices(), p.rows(), p.cols(), p.guard(), clause.expression})
                 Scan(read, name, bound, &definition, seen);
         }
     }
