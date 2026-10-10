@@ -1213,9 +1213,9 @@ multiple of pi/2 nearest theirs. An exact argument is reduced exactly, save
 within about 1e-31 of a multiple of pi/2 (C123), nothing they give is exact, and `log(0)` is refused in log's own name; so are `sin` and
 `cos` past 2^20 either way, where the reduction would round, so a growing
 phase such as `sin(w*t)` stops at 2^20. `atan` reduces by one of 0, 1/2, 1,
-2 and infinity, `atan2(y, x)` is the angle of (x, y) in (-pi, pi], `asin` and
-`acos` are `atan2` of x and the root of (1 - x)(1 + x), and `acosh` is
-log(x + root(x^2 - 1)), what the sum rounded added back. `asin` and `acos`
+2 and infinity, `atan2(y, x)` is the angle of (x, y) in (-pi, pi], `asin` is
+`atan2` of x and the root of (1 - x)(1 + x), `acos` of the root and x, and
+`acosh` is log(x + root(x^2 - 1)), what the sum rounded added back. `asin` and `acos`
 refuse past 1 either way, `acosh` below 1 and `atan2` the origin, each in its
 own words; a double's -0 is 0, so `atan2(~0*(-1), -1)` is pi, where C's is
 -pi. Compiled, each is a C function of the
