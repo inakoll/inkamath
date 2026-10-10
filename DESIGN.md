@@ -8412,3 +8412,144 @@ checked: what it asked of the compiler, each with its smallest change.
   two above. 38 lines of sources where about 50 were planned, 27 of code:
   `derivative.hpp` 17, `number.hpp` 12, `interpreter.hpp` 4, `matrix.hpp`
   2, `numeric_interface.hpp` 2 and `reference.hpp` 1. 15,911 lines in all.
+- **Reverse mode in the interpreter**, the tape first, by the owner's
+  decision; the compiler's adjoint step is a later item of its own, below.
+  The §9 exploration's tiny transformer, 1,056 weights, trains at 16 s a step
+  interpreted: forward mode evaluates the loss once per cell of each weight,
+  4,224 evaluations of 3.6 ms per step of four samples, where one
+  evaluation and a sweep back per gradient cost about two. `MANIFESTO.md`
+  deferred reverse mode until gradients limit the models written; they now
+  do.
+
+  Decided:
+  - **One notation, the mode chosen by shape.** `grad_` keeps its spelling
+    and its answers. A gradient whose variable has more than one cell, at a
+    real point, outside another grad, is evaluated in reverse mode; every
+    other in forward mode, which takes one pass for a single value and gives
+    what reverse mode does not, a matrix's derivative with respect to a
+    single value. The mode is a cost, not a meaning.
+  - **The tape is grad's own walk.** `Derivative` evaluates as now, with
+    the same clauses, guards, jumps, limits, memo, frames and cells; under
+    reverse mode a value's part is a node of a tape instead of a matrix. Each
+    operation forward mode applies to a part records a node, linear in its
+    operands, with the value it multiplies by: a sum, a product by a value on
+    either side, a quotient by one, a product cell by cell, a negation, a
+    mark, and a move of cells (a transpose, a cell, a row or slice, `re` or
+    `im` of a real part, a literal, a tensor's slices), found by mapping cells
+    numbered 1 and up, so that one rule serves every map that only moves
+    cells. A definition by cells places each cell's node into its own. The
+    variable's part is the first node; after the walk, one sweep from the
+    body's node to the first accumulates each node's adjoint, summed down to
+    its operand's shape where a single value or a matrix was widened (C81),
+    slice by slice for tensors. Recorded during evaluation, as
+    `MANIFESTO.md` puts it, the evaluation being grad's: what grad hands the
+    evaluator whole reads no part and is not on the tape.
+  - **What it meets.** A guard chooses at the point, as now, and a part a
+    clause lacks is no node. Sums and products with bounds are unrolled. A
+    call is remembered by its arguments' parts, nodes here, so a call made
+    again with the same nodes answers its own and the tape is a graph; a term
+    remembered as a value never answers for one with parts. A local binds its
+    node in grad's frame as it binds its parts now; one evaluation leaves no
+    pass's locals to put back. A function of the prelude of a moving double
+    takes the header's slope, its part at `~1`, times the adjoint; where the
+    header gives no part, at 0, an infinity or NaN, the definition is walked
+    with the node, as forward mode walks it, and refuses in its words.
+    Forward mode also walks for an exact part (C139); reverse mode does not:
+    the same value to rounding, in fewer steps and less depth.
+  - **What it gives way on.** A limit or an endless sum whose terms move
+    takes the limit of its terms' parts, walked until each part converges
+    (C72), which needs the parts' values; a complex value multiplying a part
+    needs conjugates for `re`, `im` and `abs`; a grad inside needs parts of
+    parts. Meeting one, the walk stops, its locals are put back in both
+    frames and its flags reset, as between forward mode's passes, and forward
+    mode evaluates the grad from the start; the steps the walk took stay
+    spent, a line's last few could run out where they did not. A complex point is known before,
+    and goes to forward mode at once. Every refusal keeps its words: whether
+    a part is there, all that C73, C78, C301, a moving size and the
+    staircases ask, a node answers as a matrix does, so a refusal is met
+    where forward mode's first pass meets it; and C215's stepping limit is
+    refused before any part is read.
+  - **The same answers.** Exact values are the same rationals. Doubles agree
+    to rounding: an adjoint sums its terms in another order, and the
+    header's slope rounds once where its part rounds with the part. A cell
+    is inexact where a path to it meets a double, and an exact 0 of an
+    adjoint is no path, which stays exact whatever it meets. So reverse mode
+    puts no `~` forward mode does not, and drops one where forward mode's
+    pass for the cell multiplied a 0, of its seed or of a constant, by a
+    double: `grad_(W = [1 2; 3 4]) [1 1]*W*[~1; 2]` is `[~1, 2; ~1, 2]`,
+    forward mode's `[~1, ~2; ~1, ~2]`. Both keep "a bare number is exact"
+    (C240).
+  - **Forward mode stays, and nothing is deleted.** It serves a single
+    value, a derivative of a matrix, a grad inside a grad, a complex point,
+    and whatever reverse mode gives way on. Its pass per cell, some 15 lines
+    of `Grad`, could go only by refusing a matrix variable through a moving
+    limit, a complex value or a grad inside, which forward mode answers now.
+  - **Memory.** The tape holds every node of one evaluation and the values
+    they multiply by, and goes with the grad. No cap: a tape grows as its
+    evaluation does, bounded as that is by steps and terms.
+
+  Rejected:
+  - **A second notation**, `nabla` or a mode argument: two ways to say one
+    thing, and a choice the shape already makes.
+  - **A second evaluator with a tape, or a tape in `EvaluationVisitor`**:
+    a third copy of how a call chooses its clause and how `lim` walks, where
+    *Differentiation* already names the second as one that drifts, and every
+    refusal written again. The evaluator knows no parts to record.
+  - **All cells' parts carried in one walk**, vector forward mode, or **the
+    tape replayed forward once per cell**: forward mode's roundings and
+    marks exactly, but arithmetic still per cell, so the count of weights
+    still bounds the model. Neither is reverse mode.
+  - **Forward mode's marks emulated**, or **the prelude walked for an exact
+    part** as forward mode walks it: either needs every node to carry, cell
+    by cell, whether forward mode's part would be exact, about 50 lines, for
+    marks forward mode owes to a 0 times a double and for digits past the
+    ninth.
+  - **Refusing what reverse mode gives way on**, to delete forward mode's
+    pass per cell: a regression for 15 lines.
+  - **A cap on the tape**, falling back to forward mode past it: a bound
+    nothing has needed, and answers whose cost would depend on it.
+
+  Measured with a prototype at 29bf717, not landed: every golden byte for
+  byte, 68 files and 4,081 answers, 96 gradients of them in reverse mode and
+  none giving way. Forced on every outermost grad, a single value's too, 7
+  answers move: six in `fastgrad.ink`, at the 17th digit, a subnormal part
+  at the 6th and `dive(254, t)` answering past the depth at which forward
+  mode's walk of an exact part gives up, and `trig.ink`'s `grad_(x = 0)
+  cos(x)`, `~-0` for `~0`. The transformer's step, RelWithDebInfo with GCC
+  13 on the exploration's files: 18.4 s to 0.45 s, 4,224 evaluations to 52
+  and 52 sweeps; its tape 7,400 nodes and 1.6 MB a gradient, and one step's
+  peak memory 29 MB where forward mode's is 84; ten steps 4.8 s, the first
+  and tenth losses forward mode's to 17 digits.
+  `bench/grad.ink`, a gradient of three cells, 0.24 s to 0.14; forward mode
+  unchanged where it stays.
+
+  About 355 lines, all in `derivative.hpp`, as the prototype wrote them
+  without its probes, about 390 added and 35 changed: the part, a value or a
+  node, with its operators, 45; the tape's nodes, 110; the sweep and its
+  adjoints, an exact 0 skipped in a product, 110; the walk's maps,
+  literals, placed and marked cells, the prelude's slope, memo keys and
+  limits, 50; the reverse pass in `Grad` and giving way, 40. 16,291 lines
+  at 29bf717, by `wc -l include/inkamath/*.hpp src/*`. Past 530 the
+  implementation stops and reports.
+
+  Specified in `test/data/spec/reverse.ink`, 117 answers replayed by the
+  spec suite, restored for it, 4 failing by design: the three marks above
+  and the count, `grad_(w = [1 2 3 4 5 6 7 8 9 10]) (w*w' + sum_(k=1)^120000
+  k)`, whose ten evaluations of a 120,000-step sum run out of a line's
+  million steps in forward mode, and whose one does not: the win held by the
+  interpreter's own count, not by time. The rest pass today and must still:
+  matrices, inverses and tensors exact; README's gradient; sums, products,
+  locals, cells, a ReLU at 0 and remembered terms; the prelude's functions
+  of doubles; a one-cell tensor, forward; the transformer trimmed to one
+  block of two heads, its loss, the gradients of W^Q, a tensor, and of the
+  unembedding, and the loss after one step on every weight, NumPy's by the
+  exploration's `rev.py`; the refusals, each in its words; and what gives
+  way, a moving limit and its divergent derivative, an endless sum, a
+  complex value and point, and a grad inside. README's paragraph on `grad`
+  gains that a gradient with respect to a matrix costs one evaluation and a
+  sweep back, whatever its cells.
+- **The compiler's adjoint step**, after the tape: `--compile` keeps
+  forward mode's parts, a pass per cell of a seed. An adjoint emitted by
+  transformation, with the extents the compiler knows (`MANIFESTO.md`), and
+  the window of history a step that keeps its latest terms can give it, is
+  an item of its own, not specified here.
