@@ -8048,13 +8048,14 @@ checked: what it asked of the compiler, each with its smallest change.
   its part beside it under `grad`. Open: a local in a sum unrolled term by
   term, which persists across terms, in a chain of guarded clauses, and in
   a model's clause, once per step.
-- **The size of a forward-mode header, measured**, before reverse mode is
-  weighed (`MANIFESTO.md`). The item named two costs, measured with a
-  prototype of *a compiled gradient with respect to a tensor*: inkamath's
-  own time near the cube of the batch on `tensorgrad.ink`'s `saliency`,
-  593 s of `--check` under the sanitizers, and exp's part written at each
-  of its uses in every pass, attention's W^Q at `tensor.ink`'s size (2x4x2,
-  16 passes) 1.28 MB of header and 4 min 40 at GCC -O2.
+- `[done]` **The size of a forward-mode header, measured**, before reverse
+  mode is weighed (`MANIFESTO.md`). The item named two costs, measured
+  with a prototype of *a compiled gradient with respect to a tensor*:
+  inkamath's own time near the cube of the batch on `tensorgrad.ink`'s
+  `saliency`, 593 s of `--check` under the sanitizers, and exp's part
+  written at each of its uses in every pass, attention's W^Q at
+  `tensor.ink`'s size (2x4x2, 16 passes) 1.28 MB of header and 4 min 40 at
+  GCC -O2.
 
   Measured again, by profile and by count, at b942d0d:
   - **Most of `saliency`'s time is not the compiler's.** Its `--check` is
@@ -8178,6 +8179,25 @@ checked: what it asked of the compiler, each with its smallest change.
   the three seeds its head's slice of W^Q takes, and the header under
   40,000 bytes. Wired with the implementation, with the prelude's header
   recorded again.
+
+  Built as specified, in 14 lines of `compile.hpp` against about 12: 4
+  for the memo, one of them comment, and 10 for the temporaries, a
+  function of 6 with 2 of comment and a blank line. Departures: the value
+  is declared first by a statement of its own before the part's call is
+  written, not by an order within one; and a name joins `nan_functions_`
+  only where the cell shared is a temporary's, at no line, so that a
+  call's text inside a function of the header, where nothing is shared, is
+  not taken for a name. The prelude's `d` step moves though nothing in it
+  is read twice, a move accepted and recorded in the commit that makes it.
+  `tensorgrad:saliency:3` passes as written, in double and float, and
+  `compile_attend_calls` counts 17 and 49 in 30,684 bytes. Under the
+  sanitizers in Debug, `saliency`'s `--check` of 3 steps takes 24 s, in
+  float too, its model's `--compile` 10 s, and `attend`'s `--check` 35 s;
+  in RelWithDebInfo `saliency`'s `--check` 3.0 s to 0.5. Every golden,
+  every header of `test/compile/expected` and every other recorded header
+  byte for byte, the reports of all 232 check programs, regenerated before
+  and after, identical, and `train` 38,617 bytes to 40,041 as measured.
+  16,266 lines in all, 16,252 at d041418.
 - **No disturbed runs where the exact run is exact throughout**, an
   oracle change: `--check` runs the interpreter three times more, its
   roundings and limits disturbed, and a run with no inexact term has none
