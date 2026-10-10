@@ -265,8 +265,14 @@ private:
 // cancel near 0. sin and cos reduce by k pi/2, pi/2 in five parts so that
 // every product is exact for |k| < 2^20 and every subtraction that cancels
 // is too, and pick sin r, cos r or a negative by k + c mod 4, x + pi/2 being
-// inexact; refused past 2^20, where the products round. abs, max and min are
-// README's, a guard each: at a tie the first argument's slope.
+// inexact; refused past 2^20, where the products round. atan reduces by
+// atan c, c one of 0, 1/2, 1, 2 and infinity, in two parts (Cody and Waite),
+// to |u| <= 4/15, Taylor's series to u^29; atan2 is pi/2 less atan(x/y)
+// where |y| > |x|, else atan(y/x) moved by pi, so that no partial of the
+// quotient overflows; asin and acos atan2 of x and the root of (1 -
+// x)(1 + x), exact near 1; acosh log(x + r), what x + r rounded added back,
+// and below 17/16 log's series. abs, max and min are README's, a guard
+// each: at a tie the first argument's slope.
 inline constexpr const char* prelude[] = {
     "ceil(x) = -floor(-x)",
     "mod(a, b) = a - b*floor(a/b)",
@@ -326,6 +332,32 @@ inline constexpr const char* prelude[] = {
     "cosp(r) = cosw(r*r)",
     "cosw(z) = 1 - z/2 + z*z*(1/24 - z*(1/720 - z*(1/40320 - z*(1/3628800 - z*(1/479001600 "
     "- z*(1/87178291200 - z*(1/20922789888000 - z/6402373705728000)))))))",
+    "atan(x) = atanp(x)",
+    "atan(x) | x < 0 = -atanp(-x)",
+    "atanp(t) = atans(~t)",
+    "atanp(t) | t > 15/4 = atank(1.5707963267948966, 6.123233995736766e-17, ~(-1/t))",
+    "atanp(t) | t > 11/8 = atank(1.1071487177940904, 9.40447137356638e-17, ~((t - 2)/(2*t + 1)))",
+    "atanp(t) | t > 3/4 = atank(0.7853981633974483, 3.061616997868383e-17, ~((t - 1)/(t + 1)))",
+    "atanp(t) | t > 17/64 = atank(0.4636476090008061, 2.2698777452961687e-17, "
+    "~((2*t - 1)/(2 + t)))",
+    "atank(c, d, u) = c + (d + atans(u))",
+    "atans(u) = u - u*atanz(u*u)",
+    "atanz(z) = z*(1/3 - z*(1/5 - z*(1/7 - z*(1/9 - z*(1/11 - z*(1/13 - z*(1/15 - z*(1/17 "
+    "- z*(1/19 - z*(1/21 - z*(1/23 - z*(1/25 - z*(1/27 - z/29)))))))))))))",
+    "atan2(y, x) | y > x and y > -x = 1.5707963267948966 + (6.123233995736766e-17 - atan(x/y))",
+    "atan2(y, x) | y < x and y < -x = -1.5707963267948966 - (6.123233995736766e-17 + atan(x/y))",
+    "atan2(y, x) | x > 0 = atan(y/x)",
+    "atan2(y, x) | x < 0 and y >= 0 = 3.141592653589793 + (1.2246467991473532e-16 + atan(y/x))",
+    "atan2(y, x) | x < 0 = -3.141592653589793 + (atan(y/x) - 1.2246467991473532e-16)",
+    "asin(x) = atan2(x, ((1 - x)*(1 + x))^(1/2))",
+    "asin(x) | x < -1 or x > 1 = 1/0",
+    "acos(x) = atan2(((1 - x)*(1 + x))^(1/2), x)",
+    "acos(x) | x < -1 or x > 1 = 1/0",
+    "acosh(x) = acoshr(x, ((x - 1)*(x + 1))^(1/2))",
+    "acosh(x) | x < 1 = 1/0",
+    "acosh(x) | x > 2^26 = log(x) + 0.6931471805599453",
+    "acosh(x) | x < 17/16 = logs(((x - 1)/(x + 1))^(1/2), 0)",
+    "acoshr(x, r) = log(x + r) + (x - (x + r) + r)/(x + r)",
     // charpoly is det(lambda I - A), highest power first, by Faddeev and
     // LeVerrier. hurwitz is Routh's test of every root of p in Re z < s, its
     // column as a recurrence on the polynomial, and schurcohn of every one in
@@ -506,13 +538,17 @@ Interpreter<T, U>::Interpreter() {
     // a double too.
     if constexpr (std::is_same_v<T, Number>) {
         const auto& names = stack_.Builtins().names;
-        const std::array<std::pair<const Reference<U>*, double (*)(double)>, 6> functions{{
+        const std::array<std::pair<const Reference<U>*, double (*)(double)>, 10> functions{{
             {names.at("exp").get(), inkamath_prelude_exp},
             {names.at("tanh").get(), inkamath_prelude_tanh},
             {names.at("log").get(), inkamath_prelude_log},
             {names.at("ilogb").get(), inkamath_prelude_ilogb},
             {names.at("sin").get(), inkamath_prelude_sin},
             {names.at("cos").get(), inkamath_prelude_cos},
+            {names.at("atan").get(), inkamath_prelude_atan},
+            {names.at("asin").get(), inkamath_prelude_asin},
+            {names.at("acos").get(), inkamath_prelude_acos},
+            {names.at("acosh").get(), inkamath_prelude_acosh},
         }};
         // An inexact cell inf or NaN has lost its value, and no eigenvalue or
         // norm of it is certified, inf or other (C206). Any other real one is
@@ -552,6 +588,13 @@ Interpreter<T, U>::Interpreter() {
             if ((c == inkamath_prelude_sin || c == inkamath_prelude_cos) &&
                 (a > Number(1 << 20) || a < Number(-(1 << 20))))
                 throw std::runtime_error(f.Name() + " needs a number between -2^20 and 2^20");
+            if ((c == inkamath_prelude_asin || c == inkamath_prelude_acos) &&
+                (a > Number(1) || a < Number(-1)))
+                throw std::runtime_error(f.Name() + " needs a number between -1 and 1, not " +
+                                         numeric_interface<Number>::toString(a));
+            if (c == inkamath_prelude_acosh && a < Number(1))
+                throw std::runtime_error("acosh needs a number at least 1, not " +
+                                         numeric_interface<Number>::toString(a));
             // Every run of --check walks: the one its guards listen to, and
             // the disturbed ones.
             if (stack_.guards || Number::disturbed) return {};
@@ -565,14 +608,20 @@ Interpreter<T, U>::Interpreter() {
             return U(Number(y));
         };
         // A part exact is rounded first by exp, sin and cos, as their
-        // definitions round it; a 0 or a NaN walks, which tells a clause
-        // without a part from a 0 and refuses a jump in its own words.
-        const std::array<std::pair<const Reference<U>*, double (*)(double, double)>, 5> parts{{
+        // definitions round it, and walks in the others, which meet it
+        // exactly first; a 0, an infinity or a NaN walks, which tells a
+        // clause without a part from a 0 and refuses a jump or an infinite
+        // root in its own words.
+        const std::array<std::pair<const Reference<U>*, double (*)(double, double)>, 9> parts{{
             {names.at("exp").get(), inkamath_prelude_exp_dx},
             {names.at("tanh").get(), inkamath_prelude_tanh_dx},
             {names.at("log").get(), inkamath_prelude_log_dx},
             {names.at("sin").get(), inkamath_prelude_sin_dx},
             {names.at("cos").get(), inkamath_prelude_cos_dx},
+            {names.at("atan").get(), inkamath_prelude_atan_dx},
+            {names.at("asin").get(), inkamath_prelude_asin_dx},
+            {names.at("acos").get(), inkamath_prelude_acos_dx},
+            {names.at("acosh").get(), inkamath_prelude_acosh_dx},
         }};
         stack_.differentiated = [parts](const Reference<U>& f, const U& x,
                                         const U& dx) -> std::optional<U> {
@@ -582,11 +631,12 @@ Interpreter<T, U>::Interpreter() {
             const auto    c = found->second;
             const Number& p = dx(1, 1);
             const auto    q = p.Inexact();
-            if ((p.exact() && (c == inkamath_prelude_tanh_dx || c == inkamath_prelude_log_dx)) ||
+            if ((p.exact() && c != inkamath_prelude_exp_dx && c != inkamath_prelude_sin_dx &&
+                 c != inkamath_prelude_cos_dx) ||
                 Number::approximated(p) || q.imag() != 0)
                 return {};
             const double d = c(x(1, 1).Inexact().real(), q.real());
-            if (d == 0 || std::isnan(d)) return {};
+            if (d == 0 || !std::isfinite(d)) return {};
             return U(Number(d));
         };
         stack_.stepwise = names.at("ilogb").get();

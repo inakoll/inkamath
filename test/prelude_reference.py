@@ -1,5 +1,5 @@
 # Writes data/prelude_reference.txt, the table prelude_test.cpp holds the
-# prelude's exp, log, tanh, sin and cos to: python3 prelude_reference.py >
+# prelude's exp, log, tanh, sin, cos, atan, asin, acos and acosh to: python3 prelude_reference.py >
 # data/prelude_reference.txt. Needs mpmath; the build needs only the table.
 import math
 import random
@@ -92,6 +92,31 @@ scanned = {
             "-0x1.938d4aea09348p-1 -0x1.9d77286ec93p-1 -0x1.2f97d7b99b6f8p+2 0x1.2f97d619b60b4p+2 "
             "0x1.c90a02d1b3414p+9 0x1.c92a0eb1173eap+9 0x1.c92a0cd508d58p+8 -0x1.9f89c9e9be13ap+9",
 }
+# atan's, asin's, acos's and acosh's, from the spec's sweep of the design
+# emulated in C, 10^8 doubles a range, the last the review's, 4*10^8 near
+# the farthest (DESIGN.md, next in line).
+scanned |= {
+    "atan": "-0x1.136ebc4a5d13cp-2 -0x1.112d6ec17206cp-2 0x1.10d8b8ccd05acp-2 0x1.52c682675688p-2 "
+            "0x1.14d262f7036p-2 0x1.40d88e2e70d8p-2 -0x1.18d817d8356fcp-2 -0x1.2e5873451260cp-2 "
+            "0x1.1080f264ebd8cp-2",
+    "asin": "-0x1.38962083df72cp-2 0x1.fa3f6321c6a88p-3 0x1.0e66fe34c715cp-2 -0x1.a267dc6caee93p-1 "
+            "0x1.80327cecd229fp-1 0x1.f1ad5c8eae93dp-3 -0x1.fe177c8420458p-4 -0x1.fc0fc02fcf4cap-4 "
+            "0x1.f6b395202a77bp-3",
+    "acos": "0x1.e87f307529c22p-1 0x1.ee799c18c981cp-1 0x1.ee7b2f761f038p-1 0x1.ed3312f428e37p-1 "
+            "0x1.f051bf44cde6fp-1 0x1.f029beed12917p-1 0x1.eea734faaf00bp-1",
+    "acosh": "0x1.118cad3f7bb21p+0 0x1.13293f0c7a961p+0 0x1.1252a6236737dp+0 0x1.13ae058db8da9p+0 "
+             "0x1.141677a5d4e81p+0 0x1.11fa63e8638aep+0 0x1.176f736dfa446p+0 0x1.124b5a5651565p+0 "
+             "0x1.10b36159bb631p+0",
+}
+# Their parts' farthest, from the implementation's sweep, then asin's and
+# acos's from the review's; acos's are in asin's, which prelude_test.cpp
+# negates for it.
+scanned |= {
+    "atan_dx": "0x1.bbad07414fd41p+0",
+    "asin_dx": "-0x1.ee626b15a12bbp-1 -0x1.eebfd744a36e7p-1 -0x1.bb062b602588dp-1 "
+               "0x1.eec93dc9bc4a1p-1",
+    "acosh_dx": "0x1.71075c188a213p+0",
+}
 scanned = {k: [float.fromhex(x) for x in v.split()] for k, v in scanned.items()}
 
 ln2 = mpmath.log(2)
@@ -135,6 +160,26 @@ trig_args += [x for k in rng.sample(range(0, 667544), 15) for x in near(float((k
 trig_args += near(2.0**20, 3)[:5] + near(-2.0**20, 3)[:5] + [10.0, 100.0, 355.0, 1.0] + scanned["trig"]
 trig_args = [x for x in trig_args if abs(x) <= 2**20]
 
+# Drawn after the others, which the rng leaves as they were.
+atan_args = [rng.uniform(-1, 1) for _ in range(100)]
+atan_args += [rng.uniform(-16, 16) for _ in range(100)]
+atan_args += [double(sign(), rng.randint(-1074, 1023)) for _ in range(100)]
+atan_args += [x for t in (17 / 64, 0.75, 1.375, 3.75) for x in near(t, 3)]
+atan_args += [0.0, 1.0, -1.0, 0.5, 2.0, 1e300, MAX, math.ldexp(1, -1074)] + scanned["atan"]
+
+unit_args = [rng.uniform(-1, 1) for _ in range(150)]
+unit_args += [sign() * (1 - double(1, rng.randint(-53, -2))) for _ in range(100)]
+unit_args += [double(sign(), rng.randint(-1074, -2)) for _ in range(50)]
+unit_args += [x for x in near(1.0, 4) + near(-1.0, 4) if abs(x) <= 1] + [0.0, 0.5, -0.5]
+asin_args = unit_args + scanned["asin"]
+acos_args = unit_args + scanned["acos"]
+
+acosh_args = [1 + rng.random() for _ in range(100)]
+acosh_args += [1 + double(1, rng.randint(-52, -1)) for _ in range(100)]
+acosh_args += [double(1, rng.randint(1, 1023)) for _ in range(100)]
+acosh_args += near(17 / 16, 3)[1:] + near(2.0**26, 3)[1:] + [1.0, 2.0, 10.0, MAX] + scanned["acosh"]
+acosh_args = [x for x in acosh_args if x >= 1]
+
 print("# The correctly rounded double of each function at each argument, and the")
 print("# exact value's distance from it in units of the spacing of doubles there:")
 print("# x, then the double, then the distance, x and the double as C's %a.")
@@ -145,3 +190,13 @@ section("log", mpmath.log, log_args)
 section("tanh", mpmath.tanh, tanh_args)
 section("sin", mpmath.sin, trig_args)
 section("cos", mpmath.cos, trig_args)
+section("atan", mpmath.atan, atan_args)
+section("asin", mpmath.asin, asin_args)
+section("acos", mpmath.acos, acos_args)
+section("acosh", mpmath.acosh, acosh_args)
+# The parts grad takes, where they are finite; acos's is asin's negated.
+section("atan_dx", lambda x: 1 / (1 + x * x), atan_args + scanned["atan_dx"])
+section("asin_dx", lambda x: 1 / mpmath.sqrt(1 - x * x),
+        [x for x in asin_args if abs(x) < 1] + scanned["asin_dx"])
+section("acosh_dx", lambda x: 1 / mpmath.sqrt(x * x - 1),
+        [x for x in acosh_args if x > 1] + scanned["acosh_dx"])

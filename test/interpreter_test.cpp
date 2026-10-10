@@ -193,6 +193,9 @@ TEST_CASE("fastprelude") {
 TEST_CASE("trig") {
     check_transcript("trig.ink");
 }
+TEST_CASE("atan") {
+    check_transcript("atan.ink");
+}
 TEST_CASE("cparts") {
     check_transcript("cparts.ink");
 }

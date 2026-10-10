@@ -140,7 +140,7 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brin
                          inputs:chan inputs:twirl inputs:duo inputs:mean3 inputs:mean2
                          inputs:track inputs:twain inputs:nestv inputs:fed estimate:tie
                          estimate:chaos estimate:dyad estimate:flat estimate:halved
-                         estimate:steep estimate:giant elementary:els trig:tri
+                         estimate:steep estimate:giant elementary:els trig:tri atan:bea
                          grad:line grad:fall grad:hinge grad:edge grad:clip grad:steer grad:saw
                          grad:ring grad:notch grad:apart grad:smooth grad:cusp grad:over
                          tensor:heads tensor:whirl tensor:batch tensor:spread
@@ -266,6 +266,15 @@ add_test(NAME check_tri_functions
 set_tests_properties(check_tri_functions PROPERTIES
     PASS_REGULAR_EXPRESSION "tri_abs\\(double arg_x\\).*tri_sin\\(double arg_x\\).*tri_cos\\(double arg_x\\).*tri_max\\(double arg_a, double arg_b\\).*tri_max_da\\(.*tri_abs_dx\\(.*tri_cos_dx\\(.*tri_min\\(double arg_a, double arg_b\\).*tri_min_db\\(.*tri_sin_dx\\("
     FAIL_REGULAR_EXPRESSION "[^_a-z](sin|cos)\\(")
+# atan, atan2, asin, acos and acosh as the prelude writes them (DESIGN.md),
+# and grad's parts through atan, asin and atan2: every term the interpreter's.
+set_tests_properties(check_bea_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^bea: 100 steps from 0, against exact values until 0 and inexact ones from there\nbea\\.c: within 0${about}\nbea\\.g: within 0${about}\nbea\\.k: within 0${about}\nbea\\.s: within 0${about}\nbea\\.t: within 0${about}\nbea\\.x: within 0${about}\nbea\\.y: within 0${about}\nbea\\.h: within 0${about}\n$")
+add_test(NAME check_bea_functions
+         COMMAND ${CMAKE_COMMAND} -E cat ${CMAKE_CURRENT_BINARY_DIR}/compile/bea.c)
+set_tests_properties(check_bea_functions PROPERTIES
+    PASS_REGULAR_EXPRESSION "bea_atan\\(double arg_x\\).*bea_atan2\\(double arg_y, double arg_x\\).*bea_acos\\(double arg_x\\).*bea_asin\\(double arg_x\\).*bea_acosh\\(double arg_x\\)"
+    FAIL_REGULAR_EXPRESSION "[^_a-z](atan|atan2|asin|acos|acosh)\\(")
 # grad compiled (DESIGN.md), each value carrying its part: every gradient
 # the interpreter's, as compile/grad.ink gives them.
 set_tests_properties(check_line_report PROPERTIES PASS_REGULAR_EXPRESSION
