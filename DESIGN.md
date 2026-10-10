@@ -7680,13 +7680,13 @@ checked: what it asked of the compiler, each with its smallest change.
   -1/2]`, "a tensor whose slices are single values met by a matrix, for
   now": each slice's value stretched over the other's cells in `Cellwise`, as
   the interpreter's arithmetic does; a few lines.
-- **`grad` through a local**, "grad cannot differentiate a local definition
-  yet": `(z = Q*P) ...` written once in a loss must be a call instead. The
-  CNN exploration passed every layer's parameters down, or wrote a function
-  only to name pooled activations; Robertson's and Runge-Kutta's stages are
-  locals, `(a = f(u))`. Phase 8 does not move: a local binds the value of its
-  right-hand side once, for the rest of the line, and under `grad` a value
-  carries its parts.
+- `[done]` **`grad` through a local**, "grad cannot differentiate a local
+  definition yet": `(z = Q*P) ...` written once in a loss must be a call
+  instead. The CNN exploration passed every layer's parameters down, or
+  wrote a function only to name pooled activations; Robertson's and
+  Runge-Kutta's stages are locals, `(a = f(u))`. Phase 8 does not move: a
+  local binds the value of its right-hand side once, for the rest of the
+  line, and under `grad` a value carries its parts.
 
   Decided: `Derivative::Eval`, meeting a local, evaluates its right-hand side
   with its parts and binds the jet in the innermost of grad's frames, where a
@@ -7766,8 +7766,8 @@ checked: what it asked of the compiler, each with its smallest change.
   before the local's binding or on the next line. Covered: a local in a
   function, in grad's body and in an argument, read twice, chained, in a
   power's base and its exponent, shadowing a parameter, refused for grad's
-  name and a sum's index, constant, bound in grad's point, in a guard, a term
-  and a limit's terms, a sum's body, after it and in its bound, of matrices
+  name and a sum's index, constant, bound in grad's point, in a guard that
+  holds and one that fails, a term and a limit's terms, a sum's body, after it and in its bound, of matrices
   and a tensor, a gradient with respect to a matrix, over a global and over a
   local of the line, a two-layer network beside the same network without
   locals, nested grads three ways, Runge-Kutta's stages, the extent of a call
@@ -7776,6 +7776,24 @@ checked: what it asked of the compiler, each with its smallest change.
   names; the network's gradients are also what the network without locals
   gives today, and Runge-Kutta's step what the interpreter gives without
   `grad`.
+
+  Built as specified: every entry passes as written, and the spec is the
+  golden `gradlocal.ink`; the spec suite goes, it its only file. No other
+  golden moves. Departures: a local in a sum's bound needed nothing, since
+  a bound that reads a name of grad's frame, as one rebinding a local
+  there does, is evaluated with its parts too (C301), which binds it in
+  both frames, and one that reads none leaves grad's frame no jet of the
+  name to end. A pass's locals, and a failed guard's, which C300 took back
+  from the evaluator's frame alone and which a later clause read in grad's
+  (an entry added for it), are put back by a copy of each frame, the
+  evaluator's through C300's own, taken only where the body binds a local:
+  nothing in `reference_stack.hpp`. A local by an index or by cells, a
+  definition and not a value, stays refused under `grad` in the old words,
+  which no entry asks for. 28 lines landed against about 34, all in
+  `derivative.hpp`, 5 of them comment: 11 to bind, 1 fewer for a call of a
+  local, none for a power's base first, 8 to put back a pass's and a failed
+  guard's locals, 10 for the search in order. 16,241 lines in all, 16,213
+  at 02b7b9e.
 - **Locals compiled**, "a local definition": a step written with
   Runge-Kutta's stages as locals is a call per stage in a header. A local as
   a C temporary where it is bound, read after it in the evaluator's order,
