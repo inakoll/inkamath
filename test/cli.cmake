@@ -545,6 +545,15 @@ set(args --check coast.ink coast --steps 10)
 set(stderr "inkamath: --check takes a transcript, or a file, an instance it defines and -o check.c\nTry 'inkamath --help'.\n")
 set(exit 2)
 check(check_steps_usage)
+# And so is one a word too many, with --steps or --float, where each said it
+# takes --check with an instance (C298).
+foreach(option IN ITEMS "steps;--steps;5" "float;--float")
+    list(POP_FRONT option name)
+    set(args --check coast.ink coast extra ${option} -o extra.c)
+    set(stderr "inkamath: --check takes a transcript, or a file, an instance it defines and -o check.c\nTry 'inkamath --help'.\n")
+    set(exit 2)
+    check(check_${name}_extra_usage)
+endforeach()
 
 # The step takes a single value for an input whose model states no size, so
 # an instance giving a matrix is refused by name, where it was read past its
