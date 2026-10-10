@@ -699,6 +699,12 @@ check(compile_c315)
 holds(compile_c315 c315.h "        const double v2_ = v0_ + (0.0 - arg_v);\n"
       "        const double t_ = 1.0 * t1_ / 2.0;\n")
 
+# C317: a call's memo key wrote out where its argument's part is there, a
+# graph each f shares five times: 287 s and 4 GB before, 0.02 s since.
+file(WRITE "${OUT}/c317.ink" "relu(z)[i,j] | z[i,j] > 0 = z[i,j]\nrelu(z)[i,j] = 0\nf(z)[i,j] = z[i,j] - sum_(k=1)^4 z[i,k]/4\nm(x_n[i<=1, j<=4]) = {\n    c_0 = [0 0 0 0]\n    c_n = c_(n-1) - grad_(r = c_(n-1)) sum_(j=1)^4 f(f(f(f(f(f(relu(x_n + r)))))))[1,j]^2/1000\n}\n")
+set(args --compile c317.ink m -o c317.h)
+check(compile_c317)
+
 # C153: a power of 1/2 is C's sqrt, rounded correctly, where pow need not be.
 file(WRITE "${OUT}/c153.ink" "x_0 = 2\nx_n = x_(n-1)^(1/2) + x_(n-1)^0.5\n")
 set(args --compile c153.ink -o c153.h)
