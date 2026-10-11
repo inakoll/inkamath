@@ -210,10 +210,10 @@ public:
             data += Array("const double", "want_" + id, steps * cells, want);
             data += Array("const unsigned char", "known_" + id, steps * cells, known);
             data += "static " + CompileC::Real() + " got_" + id + "[" + size + "];\n";
-            stepped += "        memcpy(&got_" + id + "[n * " + std::to_string(cells) + "], &m." +
+            stepped += "        memcpy(&got_" + id + "[n_ * " + std::to_string(cells) + "], &m_." +
                        sequence.name + "[0], sizeof(" + CompileC::Real() + ") * " +
                        std::to_string(cells) + ");\n";
-            held += "    held &= hold_(\"" + instance + "." + sequence.name + "\", " +
+            held += "    held_ &= hold_(\"" + instance + "." + sequence.name + "\", " +
                     std::to_string(sequence.size.cols) + ", " +
                     (tensors ? std::to_string(sequence.size.rows) + ", " : "") +
                     std::to_string(cells) + ", " + std::to_string(sequence.start) + ", got_" + id +
@@ -223,8 +223,8 @@ public:
         }
         std::string arguments;
         for (std::size_t k = 0; k < compiled.inputs.size(); ++k)
-            arguments += compiled.cells[k] == 1 ? ", in_" + std::to_string(k) + "[n]"
-                                                : ", &in_" + std::to_string(k) + "[n * " +
+            arguments += compiled.cells[k] == 1 ? ", in_" + std::to_string(k) + "[n_]"
+                                                : ", &in_" + std::to_string(k) + "[n_ * " +
                                                       std::to_string(compiled.cells[k]) + "]";
         // The first step at which a disturbed run takes another clause than
         // the interpreter (DESIGN.md), in a flip's words: at one step, the
@@ -324,7 +324,7 @@ public:
                 data += Array("const int", "clause_" + at, steps, want);
                 data += Array("const double", "margin_" + at, steps * clauses.size(), margin);
                 data += "static int taken_" + at + "[" + std::to_string(steps) + "];\n";
-                stepped += "        taken_" + at + "[n] = m." + name + "_clause_" +
+                stepped += "        taken_" + at + "[n_] = m_." + name + "_clause_" +
                            (cellwise ? "[" + std::to_string(c) + "]" : "") + ";\n";
                 table += "        {\"" + instance + "." + name + place + "\", " + count +
                          ", written_" + id + ", rank_" + id + ", clause_" + at + ", taken_" + at +
@@ -363,7 +363,9 @@ public:
         out += " * ones: each asked three times more, every rounding taken the other way\n";
         out += " * with probability one half and every limit moved by the remainder it\n";
         out += " * estimated, and the farthest kept. An estimate, not a bound. */\n";
-        out += compiled.header + "\n#include <stdio.h>\n\n";
+        // What reads nothing of the header comes before it, where the names
+        // the model gives it are not yet there for a local to hide (C332).
+        out += "#include <math.h>\n#include <stdio.h>\n\n";
         out += "/* A term parts from the interpreter's where they differ by more than a\n";
         out += std::string(" * ") + (floats ? "thousandth" : "billionth") +
                " of one plus the interpreter's term; where the interpreter\n";
@@ -453,19 +455,19 @@ public:
         out += "    if (past >= 0) printf(\", past the tolerance from %d\", past);\n";
         out += spent + "    printf(\"\\n\");\n    return 1;\n}\n\n";
         if (!table.empty()) out += Flips(first, steps);
-        out += data + "\nint main(void) {\n";
-        out += "    " + module + " m;\n    int held = 1;\n    " + module + "_init(&m);\n";
-        out += "    for (int n = 0; n < " + std::to_string(steps) + "; ++n) {\n";
-        out += "        " + module + "_step(&m" + arguments + ");\n" + stepped + "    }\n";
+        out += compiled.header + "\n" + data + "\nint main(void) {\n";
+        out += "    " + module + " m_;\n    int held_ = 1;\n    " + module + "_init(&m_);\n";
+        out += "    for (int n_ = 0; n_ < " + std::to_string(steps) + "; ++n_) {\n";
+        out += "        " + module + "_step(&m_" + arguments + ");\n" + stepped + "    }\n";
         out += "    printf(\"" + instance + ": " + std::to_string(steps) +
                (steps == 1 ? " step from " : " steps from ") + std::to_string(first) +
                (floats ? " in float" : "") + ", against " + against + "\\n\");\n";
         if (!straddles.empty())
             out += "    puts(" + Quoted(straddles.begin()->second.second) + ");\n";
         if (!table.empty())
-            out += "    static const guarded_ guarded[] = {\n" + table + "    };\n" +
-                   "    held &= flips_(guarded, (int)(sizeof guarded / sizeof guarded[0]));\n";
-        out += held + "    return !held;\n}\n";
+            out += "    static const guarded_ guards_[] = {\n" + table + "    };\n" +
+                   "    held_ &= flips_(guards_, (int)(sizeof guards_ / sizeof guards_[0]));\n";
+        out += held + "    return !held_;\n}\n";
         return out;
     }
 
