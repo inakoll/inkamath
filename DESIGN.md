@@ -8771,7 +8771,7 @@ checked: what it asked of the compiler, each with its smallest change.
     for forward mode: the interpreter multiplies by it.
 
   Increments, each a pipeline of its own:
-  1. **Straight line**, this entry's implementation: the tape, the sweep,
+  1. `[done]` **Straight line**, this entry's implementation: the tape, the sweep,
      the mode rule, the prelude's slopes, definitions by cells without
      guards, tensors, limits' functions and `--float`. A
      body meeting a chain of clauses with nodes gives way, as the
@@ -8843,6 +8843,47 @@ checked: what it asked of the compiler, each with its smallest change.
   compiled forward, now one by a single value, and a step's gradient by a
   matrix the interpreter's to rounding: to the bit where the interpreter's
   values are doubles. No golden moves.
+
+  The first increment built as specified, on 5f2a838, C326's oracle and
+  C327 in: every golden, every header of `test/compile/expected` and every
+  recorded header but `lsq`'s byte for byte, a grad giving way included;
+  `wide` 485,423 bytes to 68,764, `norm` 450,343 to 59,117, `attn` 30,684
+  to 22,237; of the check reports only `fall.w` 8.9e-16 to 0, `attend.WQ`
+  4.4e-16 to 1.7e-18, `thirds.g` 8.5e-14 to 2.8e-14, `poly.g` 0 to
+  4.5e-13 and in float to 0.00024, 96 units of a float, and `fit4` and
+  `token` 1.1e-16 and 6.7e-16 to 0; `swing` and `jacobian.y` as they were.
+  Departures:
+  - **`attend.WQ` 1.7e-18, not 0**, one cell at its first step by a unit
+    in the last place, from the second on to the bit. WQ_0 and X are
+    exact, so its first scores are, and a session walks exp's definition
+    at an exact argument, the header's slope taken at a double only; the
+    step takes the slope. The prototype's oracle took it at an exact
+    argument too, which C326's, a session's, does not. `thirds.g`'s
+    class: a value the interpreter keeps exact.
+  - **`attn_exp_dx(` written 15 times, not 17.** In head 1 the second
+    sequence's second token has an adjoint of exactly 0, G's 1 and 1 by
+    WO's 1 and -1, so its two scores' slopes are read by no sweep and not
+    written: the count predates the exact 0 held absent.
+  - **`fit` is `fit4`**: adam.ink has a `fit`, and a checked instance's
+    target is named after it.
+  - **What the attempt left** includes, besides the spec's, the names that
+    may be NaN, `nans_` and `nan_temporaries_`, and a limit's own count,
+    the names the forward run gives again. Giving way is a type of its
+    own, `Forward`, not a refusal, so no failed term keeps it.
+  - **C110's quotient and C118's root give no way**: under reverse mode
+    only a chain sets where a part is there, and a chain gives way first.
+  - **Derivative's shape helpers are Extent's**, `Single`, `Wider` and
+    `Product`, both tapes reading them.
+
+  16,986 lines, 278 more than 16,708 at 5f2a838: `compile.hpp` 309 added
+  and 33 removed, the tape's types 18, recording and moves 39, the sweep
+  and its arithmetic 167, the grad and its giving way some 35, the walk's
+  sites the rest; `derivative.hpp` 8 and 18, `extent.hpp` 12. Measured
+  RelWithDebInfo with GCC 13: the exploration's embedding 21.5 MB in 3.8 s
+  to 571 KB in 0.08 s, GCC -O2 compiling it in 13 s, within 0 of the
+  interpreter at 5 steps; its W^Q 27.2 MB in 5.9 s to 1.15 MB in 0.18 s,
+  its check program 45 s at -O2, within 2.8e-17 at 5 steps, its inputs
+  one-hot through decimal weights.
 - **grad's cost per term**: 600,000 remembered terms take 65 s under the
   sanitizers in reverse mode, 110 µs a term, and 36 s in forward mode;
   under callgrind, 30,000 terms of `reverse_memo.ink`'s sum cost some

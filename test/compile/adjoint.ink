@@ -9,12 +9,12 @@
 # value it multiplies by is a double there too, and its header grows with
 # the body, not with the seed's cells. Every number below is worked out
 # apart from the interpreter and the compiler, by mpmath at 50 digits, the
-# gradient by hand or by a complex step; none is recorded. Today each
-# gradient is forward mode's, a pass per cell, and parts from the
+# gradient by hand or by a complex step; none is recorded. Before it each
+# gradient was forward mode's, a pass per cell, and parts from the
 # interpreter's by rounding. Each report is the first increment's but
 # 'gate''s, the second's.
 
-# 'fit', a layer of four tanh units trained on its square error by grad
+# 'fit4', a layer of four tanh units trained on its square error by grad
 # with respect to its 4x4 weights, from an inexact start, on inputs in
 # thirds. By backpropagation written out, (tanh(z) - y)*(1 - tanh(z)^2)
 # times x', z = W*x, and by a complex step of 1e-45 for each cell:
@@ -34,8 +34,8 @@
 # step holds; so the step's gradient is the interpreter's operation for
 # operation, where forward mode's passes take x's cells in another order:
 #
-#     fit: 100 steps from 0, against exact values until 0 and inexact ones from there
-#     fit.W: within 0; the interpreter's terms about <e> from the exact ones
+#     fit4: 100 steps from 0, against exact values until 0 and inexact ones from there
+#     fit4.W: within 0; the interpreter's terms about <e> from the exact ones
 #
 # Its header, 'inkamath --compile adjoint.ink layer -o layer.h', calls tanh's
 # part function once for each of the four units, at a part of 1, its slope,
@@ -55,10 +55,10 @@ layer(eta = 1/4, x_n[i<=4], y_n[i<=4]) = {
     W_0 = ~[1 0 0 0; 0 1 0 0; 0 0 1 0; 0 0 0 1]/2
     W_n = W_(n-1) - eta*grad_(V = W_(n-1)) L(V, x_n, y_n)
 }
-fit = layer(x_n = [mod(n, 5) - 2; mod(2*n, 5) - 2; mod(3*n, 5) - 2; mod(4*n, 5) - 2]/3, y_n = [1/2; -1/4; 1/8; -1/16])
+fit4 = layer(x_n = [mod(n, 5) - 2; mod(2*n, 5) - 2; mod(3*n, 5) - 2; mod(4*n, 5) - 2]/3, y_n = [1/2; -1/4; 1/8; -1/16])
 
 # 'wide', the same layer sixteen units wide, 256 weights: forward mode
-# writes its body once for each, a header of 485,423 bytes today, and
+# writes its body once for each, a header of 485,423 bytes before, and
 # reverse mode once, with a sweep of its size. Its header,
 # 'inkamath --compile adjoint.ink wide -o wide.h', is under 100,000 bytes,
 # and 'wide_tanh_dx(' is written 17 times, its definition and sixteen
@@ -94,7 +94,7 @@ wide(eta = 1/4, x_n[i<=16], y_n[i<=16]) = {
 #     token.E: within 0; the interpreter's terms about <e> from the exact ones
 #
 # Its header, 'inkamath --compile adjoint.ink norm -o norm.h', 450,343
-# bytes today, is under 100,000: 'norm_exp_dx(' written 13 times, its
+# bytes before, is under 100,000: 'norm_exp_dx(' written 13 times, its
 # definition and the slope of each of the twelve scores, and 'norm_log_dx('
 # 4 times, its definition and one for each token.
 norm(eta = 1/2, X_n[t<=3, v<=4], Y_n[t<=3, v<=4]) = {

@@ -676,7 +676,10 @@ if(NOT calls EQUAL 3)
 endif()
 
 # Under grad, its value and part are temporaries where its argument moves:
-# exp's in attention, once for each score and each seed (compile/tensorgrad.ink).
+# exp's in attention, its value once for each score and in reverse mode its
+# slope once for each score an adjoint reaches, 14 of the 16: batch 2's
+# second token in head 1 has none, G's 1 and 1 by WO's 1 and -1 an exact 0
+# (compile/tensorgrad.ink).
 set(args --compile "${CMAKE_CURRENT_LIST_DIR}/compile/tensorgrad.ink" attn -o attn.h)
 check(compile_attend_calls)
 file(READ "${OUT}/attn.h" text)
@@ -685,10 +688,45 @@ string(REGEX MATCHALL "attn_exp_dx\\(" parts "${text}")
 list(LENGTH values values)
 list(LENGTH parts parts)
 file(SIZE "${OUT}/attn.h" size)
-if(NOT values EQUAL 17 OR NOT parts EQUAL 49 OR NOT size LESS 40000)
+if(NOT values EQUAL 17 OR NOT parts EQUAL 15 OR NOT size LESS 40000)
     message(SEND_ERROR "compile_attend_calls: attn_exp_jx( ${values} times, attn_exp_dx( "
                        "${parts}, in ${size} bytes")
 endif()
+
+# The compiler's adjoint step (DESIGN.md, compile/adjoint.ink): the body
+# written once and swept back, a function of the prelude's slope once for
+# each call, and the header under 100,000 bytes.
+function(written name file)
+    file(READ "${OUT}/${file}" text)
+    file(SIZE "${OUT}/${file}" size)
+    if(NOT size LESS 100000)
+        message(SEND_ERROR "${name}: ${file} is ${size} bytes")
+    endif()
+    math(EXPR last "${ARGC} - 1")
+    foreach(i RANGE 2 ${last} 2)
+        math(EXPR n "${i} + 1")
+        string(REGEX MATCHALL "${ARGV${i}}" found "${text}")
+        list(LENGTH found found)
+        if(NOT found EQUAL ${ARGV${n}})
+            message(SEND_ERROR "${name}: ${ARGV${i}} written ${found} times, not ${ARGV${n}}")
+        endif()
+    endforeach()
+endfunction()
+set(adjoint "${CMAKE_CURRENT_LIST_DIR}/compile/adjoint.ink")
+set(args --compile ${adjoint} layer -o layer.h)
+check(compile_adjoint_fit)
+holds(compile_adjoint_fit layer.h [[    const double t15_ = 2.0 * pow(t13_ + (0.0 - m_->y[0][3][0]), 1.0);
+    const double t16_ = 0.5 * t15_;
+    const double t17_ = t16_ * t14_;
+]] [[    m_->W[0][3][3] = m_->index_ == 0 ? 0.5 : m_->W[1][3][3] + (0.0 - m_->eta * (isnan(t24_) ? NAN : t17_ * m_->x[0][3][0]));
+]])
+written(compile_adjoint_fit layer.h "layer_tanh_dx\\(" 5)
+set(args --compile ${adjoint} wide -o wide.h)
+check(compile_adjoint_wide)
+written(compile_adjoint_wide wide.h "wide_tanh_dx\\(" 17)
+set(args --compile ${adjoint} norm -o norm.h)
+check(compile_adjoint_norm)
+written(compile_adjoint_norm norm.h "norm_exp_dx\\(" 13 "norm_log_dx\\(" 4)
 
 # C315: a temporary that may be NaN was known by its name, which a limit's
 # function names its own by: the step's t1_, atan's, and nw's v0_, exp's,
@@ -1146,8 +1184,10 @@ check(check_c104)
 set(grad "${CMAKE_CURRENT_LIST_DIR}/compile/grad.ink")
 set(args --compile ${grad} lsq -o lsq.h)
 check(compile_grad_line)
-holds(compile_grad_line lsq.h [[    m_->w[0][0][0] = m_->index_ == 0 ? 0.0 : m_->w[1][0][0] + (0.0 - m_->eta * (2.0 * pow(1.0 * m_->w[1][0][0] + 0.0 * m_->w[1][1][0] - 1.0, 1.0) * 1.0 / 8.0 + 2.0 * pow(1.0 * m_->w[1][0][0] + 1.0 * m_->w[1][1][0] - 3.0, 1.0) * 1.0 / 8.0 + 2.0 * pow(1.0 * m_->w[1][0][0] + 2.0 * m_->w[1][1][0] - 5.0, 1.0) * 1.0 / 8.0 + 2.0 * pow(1.0 * m_->w[1][0][0] + 3.0 * m_->w[1][1][0] - 7.0, 1.0) * 1.0 / 8.0));
-    m_->w[0][1][0] = m_->index_ == 0 ? 0.0 : m_->w[1][1][0] + (0.0 - m_->eta * (2.0 * pow(1.0 * m_->w[1][0][0] + 0.0 * m_->w[1][1][0] - 1.0, 1.0) * 0.0 / 8.0 + 2.0 * pow(1.0 * m_->w[1][0][0] + 1.0 * m_->w[1][1][0] - 3.0, 1.0) * 1.0 / 8.0 + 2.0 * pow(1.0 * m_->w[1][0][0] + 2.0 * m_->w[1][1][0] - 5.0, 1.0) * 2.0 / 8.0 + 2.0 * pow(1.0 * m_->w[1][0][0] + 3.0 * m_->w[1][1][0] - 7.0, 1.0) * 3.0 / 8.0));
+holds(compile_grad_line lsq.h [[    const double t0_ = 2.0 * pow(1.0 * m_->w[1][0][0] + 0.0 * m_->w[1][1][0] - 1.0, 1.0);
+]] [[    const double t7_ = 0.125 * t0_;
+    m_->w[0][0][0] = m_->index_ == 0 ? 0.0 : m_->w[1][0][0] + (0.0 - m_->eta * (1.0 * t4_ + 1.0 * t5_ + 1.0 * t6_ + 1.0 * t7_));
+    m_->w[0][1][0] = m_->index_ == 0 ? 0.0 : m_->w[1][1][0] + (0.0 - m_->eta * (3.0 * t4_ + 2.0 * t5_ + 1.0 * t6_ + 0.0 * t7_));
 ]])
 set(args --compile ${grad} descent -o fall.h)
 check(compile_grad_fall)
