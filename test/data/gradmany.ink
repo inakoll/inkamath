@@ -535,3 +535,8 @@ run = train()
 
 >> run.g.c2
 error: g.c2 is a sequence; index it (g.c2_0)
+
+# A part whose index moves is refused as a part whose arguments move, an
+# instance's as the session's: run's arguments do not move.
+>> grad_(z = 1) run.g.c2_(z + 1)
+error: grad cannot differentiate a gradient by several names yet
