@@ -967,6 +967,8 @@ private:
     // is at a whole number (C78).
     // Once, as the evaluator does, since it may bind a local (C304).
     int Index(const PExpression<T>& e, const std::string& what = "an index") {
+        if (typeid(*e) == typeid(ValExpression<T>))
+            return AsIndex<T>(static_cast<const ValExpression<T>&>(*e).value);
         if (!Reads(*e)) return AsIndex<T>(e->accept(ordinary_));
         const Jet index = Eval(e);
         if (Moves(index)) throw std::runtime_error(what + " jumps at " + Where());
