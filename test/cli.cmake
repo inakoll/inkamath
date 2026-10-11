@@ -753,6 +753,16 @@ file(SIZE "${OUT}/net.h" size)
 if(NOT size LESS 15798)
     message(SEND_ERROR "compile_gradmany_net: net.h is ${size} bytes")
 endif()
+# One whose points read its own parts is refused once, by its name, as any
+# sequence that reads itself, and so is what reads it.
+file(WRITE "${OUT}/itself.ink" "L(a, b) = (a*b - 1)^2\n"
+     "s_n = grad_(a = s.b_(n-1), b = 2) L(a, b)\ny_n = s.a_n\n")
+set(args --compile itself.ink)
+set(stdout "cannot compile s: its shape depends on itself
+cannot compile y: s, which cannot be compiled
+")
+set(exit 1)
+check(compile_gradmany_itself)
 # C328: a sequence compiled on the way by a grad keeps the names it took,
 # z's t4_, which the grad does not take again.
 file(WRITE "${OUT}/c328.ink" [[m(x_n[i<=2]) = {
