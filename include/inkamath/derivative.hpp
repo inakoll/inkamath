@@ -1010,15 +1010,20 @@ private:
     }
 
     Jet Cell(CellExpression<T>& cell) {
-        // A name bound is found again once the indices are read, as they may
-        // bind it again, where the evaluator's Stored finds it (C277, C330).
-        const Jet* bound  = Lookup(cell.Matrix()->Name());
-        const T*   kept   = bound ? nullptr : stack_.Kept(*cell.Matrix());
-        const bool named  = bound && typeid(*cell.Matrix()) == typeid(RefExpression<T>);
+        // A name bound, in grad's frame or the evaluator's, is found again
+        // once the indices are read, as they may bind it again in either,
+        // where the evaluator's Stored finds it (C277, C330).
+        const std::string& name  = cell.Matrix()->Name();
+        const Jet*         bound = Lookup(name);
+        const T*           kept  = bound ? nullptr : stack_.Kept(*cell.Matrix());
+        const bool         named =
+            (bound || stack_.Binds(name)) && typeid(*cell.Matrix()) == typeid(RefExpression<T>);
         const Jet  matrix = kept || named ? Jet() : Eval(cell.Matrix());
         const auto read   = [&](auto f) {
-            return kept ? Constant(f(*kept))
-                          : Padded(Map(named ? *Lookup(cell.Matrix()->Name()) : matrix, f));
+            if (kept) return Constant(f(*kept));
+            if (!named) return Padded(Map(matrix, f));
+            const Jet* again = Lookup(name);
+            return Padded(Map(again ? *again : Eval(cell.Matrix()), f));
         };
         if (cell.Slice()) {
             const int slice = Index(cell.Slice());
