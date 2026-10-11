@@ -420,6 +420,18 @@ cannot compile w: grad of a tensor with respect to a matrix is a Jacobian, which
 set(exit 1)
 check(compile_tensorgrad_refused)
 
+# A gradient by several names is the interpreter's alone for now, and what
+# reads its parts is refused with it (test/compile/gradmany.ink).
+set(args --compile "${CMAKE_CURRENT_LIST_DIR}/compile/gradmany.ink" net)
+set(stdout "cannot compile V: g, which cannot be compiled
+cannot compile W: g, which cannot be compiled
+cannot compile c: g, which cannot be compiled
+cannot compile d: g, which cannot be compiled
+cannot compile g: a gradient by several names, for now
+")
+set(exit 1)
+check(compile_gradmany_refused)
+
 # The prelude's mod refuses a matrix to divide by, as the interpreter does,
 # rather than compile the product of matrices it would be.
 file(WRITE "${OUT}/mod.ink" "y_n = [1 1]*mod(n, [2 3; 5 11])*[1; 1]\n")

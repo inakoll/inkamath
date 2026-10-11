@@ -1846,6 +1846,7 @@ closures need one anyway, and can bring it.
 | C331 `[fixed]` | **A step read where a part moves, a value NaN may be, as a truth, which a strict build refuses.** Under grad, a chain whose clauses' parts are there at some points only says where with a chain of 0, 1 and NaN, and its test read that value as a truth: rightly, NaN where no clause applies being one, but a float made a bool, which Clang's -Wfloat-conversion refuses, so the programs of `kink`, `edge`, `over` and `ring` and the headers of cellguards.ink's and grad.ink's `kinks`, grad.ink's `inverse` and `rounds`, and both files' sessions, double or float, failed a host's build with -Werror. Found compiling every header of `test/compile` with stricter warnings. The test is written `(...) != 0`, which answers alike, and the tests' C is now built with -Wconversion, under which GCC and Clang take every header of `test/compile` clean; -Wfloat-conversion, which it implies, leaves the float target's flags. In 6 lines, 1 of comment, and 6 removed; `check_kink`, `check_edge`, `check_over` and `check_ring` hold it under Clang. |
 | C332 `[fixed]` | **A `--check` program's locals could hide the model's names.** The program declared the header and then its own locals, `past`, `held`, `worst`, `n`, `m` and the rest, where an instance may be named so: `history.ink`'s `past` and `held` declared a local of the struct's name, which GCC's -Wshadow refuses, and the tests built C without it (the root `CMakeLists.txt` kept it to C++ for that reason). Found compiling every header of `test/compile` with stricter warnings. What reads nothing of the header now comes before it, and `main`'s locals are `m_`, `n_`, `held_` and `guards_`, a name no instance can take; the tests' C is built with -Wshadow. Two of `test/cli.cmake`'s quotations of a program move with the names. The header's own locals, `i`, `j`, `row` and the like, would hide a model so named as before. In 15 lines, 2 of comment, and 13 removed; `check_past` and `check_held` hold it under GCC. |
 | C333 `[fixed]` | **The memo hashed and compared a whole argument at every call.** A call's key holds its arguments' values, each a copy, so a matrix passed on was hashed again and, where the call was remembered, compared cell by cell again: in a transformer's forward pass, `lse(z)[b,t]` in `ce`'s sum hashed and compared its 3,072-cell z on each of its 384 calls, 8 per cent of the pass. Found profiling the interpreter on a transformer. A matrix now keeps its hash once asked, and which value hashed it is an unaltered copy of, both carried by its copies and cleared where it may be written, through `data()`; two copies of one value are the same without comparing cells. No answer moves, and equal values of different exactness are compared as before. The forward pass of 64 sequences goes from 1,557M instructions to 1,452M; bench's matrix, deep, grad and limit and the training step pay for the larger matrix, 0.3 to 1.3 per cent. A single value, hashed and compared at once, keeps neither and is not tested for them, a test fastgrad_long's 600,000 terms paid 2.5 per cent of their instructions for: the larger matrix still costs them 0.4 in a release build, and they take 1.7 fewer than before in a debug one. In 13 lines, 3 of comment, and 2 removed; matrix_test.cpp's `a hashed value is the same as its copies until one is written` holds the clearing, and no test can hold the count. |
+| C334 `[fixed]` | **Grad took an instance's member for a read of its name.** Whether a member read moves was asked of every name under it, the member's own among them, so `grad_(x = 2) x*tri().x` of `tri(a = 1) = { x = 3*a }` was refused, "grad cannot differentiate through an instance yet", for 3; reverse mode already answered. Found specifying a gradient with respect to several names, where a part `gs(1).x` is read under a grad of x. A member read moves where its object or its arguments do, never by its name. In 5 lines, 1 of comment; grad.ink holds it. |
 
 **Measure instructions, not the clock.** One of those changes made the matrix
 workload 20 per cent slower by the clock and not by a single instruction: with
@@ -8370,7 +8371,185 @@ checked: what it asked of the compiler, each with its smallest change.
   kept or replaced. Well over 20 lines.
 - **A gradient with respect to several names at once**, the nabla's
   `∇_θ`: training a transformer took 13 grads of 15 arguments, one per
-  weight. It pays only with reverse mode, being built now.
+  weight, each an evaluation and a sweep of its own. At a206c5d,
+  RelWithDebInfo with GCC 13 under callgrind, from step 3 to step 10, the
+  exploration's transformer takes 2,719 million instructions a step that
+  way, 13 sweeps for a batch of four; with a prototype of this entry, 305
+  million with one grad by the 13 names over the batch, 1 sweep, and 354
+  million with one per sample, 4 sweeps; the losses at steps 3 and 10 the
+  same to 17 digits in all three.
+
+  Decided:
+  - **The notation.** `grad_(x = a, y = b) body`: the names at their points
+    in the one subscript, as `∇_θ` names θ's parts and a call binds its
+    arguments by name. A grad of one name keeps its spelling and answers.
+    The owner approved it, and the parts read as an instance's, `g.W`, a
+    term's index on the part, `g.W_n`.
+  - **The answer is named parts**, one per name, each what grad by that
+    name alone gives, the others held at their points: its point's shape,
+    a matrix's derivatives by a single value included. It has no value of
+    its own. A definition whose whole right side it is holds it, and is
+    read after a point as an instance is, the arguments with the
+    definition's name and the index with the part: `g.x` of `g = grad_(x =
+    2, y = 3) x^2*y`, `q.x_3` of `q_n = ...`, `gs(1).x` of `gs(a) = ...`. A
+    training step reads as a paper's, `g_n = grad_(W = W_(n-1), b =
+    b_(n-1)) L(W, b, x_n)` and `W_n = W_(n-1) - eta*g.W_n`, ∂L/∂W named
+    after W. A 1x1 matrix is a single value, so single values and matrices
+    mix with no line to refuse at, and a tensor is a point as for one name.
+  - **One sweep for every part.** A part is evaluated with the definition's
+    arguments and its own index, and every part of that evaluation is
+    remembered under the same key but its own, so the others answer from
+    the memo; the definition's own key holds nothing, its value being none.
+  - **The points** are each read where the grad is written, in order,
+    before any name is bound; the names in the body only, as now: in
+    `grad_(p = 1, y = p) p*y` y's point is the global p.
+  - **The interpreter's mode rule**, extended: at a real point, every name's
+    real, outside another grad, reverse mode, whatever the names' cells: the
+    body walked once with a seed for each name, each its own node though
+    two be alike, as C323's merging would otherwise make them one, and one
+    sweep from the body's node down to the seeds, each part its seed's
+    adjoint, an exact 0 where none reaches. Two single values are one sweep
+    where forward mode takes two passes. Where reverse mode gives way, as
+    for one name, at a complex point and inside another grad, forward mode,
+    a pass for each cell of each name in the order written. A body of more than one cell
+    whose names are single values gives way too, its parts matrices as grad
+    by one single value gives; with a matrix among the names it is a
+    Jacobian, refused in today's words.
+  - **Refused**, each where today's grad refuses or a definition is made:
+    a name twice, "grad names x twice", whose two seeds would sum to a
+    meaning nobody writes; whatever grad refuses by one name, by each
+    (`Names` per name), in its words; a message naming the point names each
+    name at its own, "floor jumps at x = 2, y = 3", and one naming the
+    variable names all, "changes with x or y"; a grad by several names
+    anywhere but a definition's whole right side, "a grad by several names
+    is a definition's whole right side, its parts read after a point, as
+    g.x", at the prompt when evaluated and in a definition when made, and
+    as a local's right side, "a local cannot be a gradient by several
+    names", as a local cannot take parameters (C303); a clause beside it,
+    "q is a gradient by several names, and takes no other clause", one
+    before it too, and a guard or cells on it, "a gradient by several
+    names takes no guard and no cells"; the definition read bare, "g is a
+    gradient by several names; read one of its parts (g.x)", the read's own index and
+    an unnamed `(...)` written in, `(q.x_3)` and `(gs(...).x)`; a term's
+    part read without its index, "q.x is a sequence; index it (q.x_0)",
+    and `run.g.c2` "g.c2 is ...", as `r.v` of an instance is "v is ...",
+    no limit offered, which nobody has asked of a part; a name that is not
+    a part, "gs(...).z is not defined", as an instance's.
+  - **Models.** A model's parameters and terms are points like any value,
+    and a grad's names reach its body only: a definition of the model the
+    body reads that reads a parameter of a grad's name is refused, name by
+    name, as a global of its name is, "fit2(...).L reads the global c, which
+    grad's c does not reach". A part read under another grad is a value
+    where its arguments do not move, and refused where they do, "grad cannot
+    differentiate a gradient by several names yet", as through an instance;
+    a second derivative by several names is an item of its own when asked.
+  - **`tex`** writes the nabla, `\left.\nabla_{x,y} x^2\,y\right|_{x=2,y=3}`.
+  - **The compiler**, the second increment: the interpreter's mode rule,
+    reverse mode where forward mode's give-way cases are refused already;
+    one tape with a seed for each name, keyed by its name and not by its
+    kind and extent as one name's is, which C323's merging would make one
+    for two names of one shape, and one sweep, `Swept` giving each seed's
+    adjoints; a definition of the grad compiled as an instance is, a
+    struct of its parts, `m.g.W[0]` being g.W_n, each part a sequence of the
+    step, the body written once and each part's cells assigned from its
+    seed's adjoints; `--check` compares each part as a sequence,
+    `pair.g.W`. Until then `--compile` refuses the definition, "a gradient
+    by several names, for now", and lists what reads it.
+
+  Rejected:
+  - **A value of several parts**, a record `(grad_(...) body).W` could be
+    read from anywhere: a second kind of value for one construct, to print,
+    compare, remember and compile, where a definition already names it.
+  - **Parts by position**, a tuple or `g[2]`: a reader counts to thirteen,
+    and brackets after a value are a cell here. **A tensor of the parts**:
+    weights have different shapes.
+  - **Names on the left**, `(dW_n, db_n) = grad_(...)`: a second form of
+    definition, and each part named twice.
+  - **`g_n.W`**: a term is a value and has no names, which the parser says
+    on purpose; the index goes with the part as an instance's does.
+  - **No notation, the sweep shared** by grads at one point of one
+    function: the cache would hang on how each body is written, the paper
+    names θ at once, and the compiler would need the same recognition.
+  - **`nabla_(...)`** or any second spelling: two ways to say grad, as
+    reverse mode's entry rejected.
+  - **Forward mode for several single values**: a pass each, where the
+    construct is for one sweep.
+  - **Refusing a mixture of single values and matrices, or a tensor**: no
+    line to draw; a 1x1 is a single value, and a tensor is grad's point now.
+  - **A group in cases**: what a part means under a guard nobody has asked;
+    refused rather than kept because it parses.
+
+  Measured with a prototype at a206c5d, not landed: every golden and ctest
+  entry passes, and of the spec's 139 answers it gives 123 as written, 14
+  others the words above it lacked, and refuses `pg.x` and `pg.y`, taking
+  the part's name in `gs(1).x` for a read of grad's x, as grad by one name
+  takes `m().x` of an instance, a defect of its own. 142 lines net, 244 added and 102
+  removed, much of it the pass loop re-indented: `derivative.hpp` 64, the
+  names, seeds, passes and parts; `reference_stack.hpp` 55, the group's
+  reads and memo; `expression.hpp` 10, `interpreter.hpp` 6,
+  `expression_visitor.hpp` 6, `reference.hpp` 1.
+
+  Increments, each a pipeline of its own:
+  1. `[done]` **The interpreter**, with `--compile`'s refusal: about 175
+     lines, the prototype's and what it lacked, the definition's refusals
+     15, the messages' forms 5, the part under a grad 3, `tex` 8, the
+     compiler's refusal 3. 17,098 lines at a206c5d, by `wc -l
+     include/inkamath/*.hpp src/*`; past 262 the implementation stops and
+     reports. It lands first the fix of that defect, a row of its own: grad
+     takes an instance's member for a read of its name, so `grad_(x = 2)
+     x*m().x` of `m(a = 1) = { x = 3*a }` is refused through an instance,
+     for 3. Its refusal in the compiler is wired as
+     `compile_gradmany_refused` in `test/cli.cmake`: `--compile gradmany.ink
+     net` lists "cannot compile V: g, which cannot be compiled", W, c and d
+     alike, then "cannot compile g: a gradient by several names, for now";
+     the second increment replaces it with `compile_gradmany_net`.
+  2. **The compiler**: not prototyped. About 140 lines by reading
+     `compile.hpp`: several seeds in `Graded` and `Swept` 30, the group as
+     a struct of sequences and its term's block 80, a part's read 15,
+     `--check`'s names 10, refusals 5. Past 210 it stops and reports.
+
+  Specified in `test/data/spec/gradmany.ink`, 139 answers replayed by the
+  spec suite, restored for it, 89 failing by design, each that reads a grad
+  by several names: two names, the parts' shapes, a tensor and a single
+  value; two names alike; a term's and a function's parts; the points' scope
+  and a local; each refusal in its words; a part under another grad; reverse mode for two single
+  values, where forward mode runs out of depth, its slope 1 - tanh(1/2)^2;
+  what gives way to forward mode; a model's parameters; a two-layer ReLU
+  network exact, by sympy and by backpropagation in fractions, and its loss
+  after one step; and the transformer of `reverse.ink` by one grad of its 13
+  names, its loss after one step, then a model training it whose term is the
+  grad, its loss after two steps and the second step's gradient of c2,
+  NumPy's by a complex step of each cell. The second increment's story is
+  `test/compile/gradmany.ink`, unwired: `pair`, a two-layer tanh network by
+  one grad of four names, within 0 for each weight and each part, its
+  weights NumPy's; and `same`, two names of one shape and one start, whose
+  parts a seed keyed by its extent would make one; wired with the increment
+  as `gradmany:pair` and `gradmany:same` among the checked instances and `compile_gradmany_net` in `test/cli.cmake`,
+  `net_tanh_dx(` written 4 times, where four grads of one name write 7.
+  README's paragraph on `grad` gains a sentence and the training step.
+
+  Increment 1 built as specified: every entry passes as written, and the
+  spec is the golden `gradmany.ink`; the spec suite goes, it its only file.
+  No other golden moves; C334 landed first. Departures. A part read under a
+  grad through an instance, `fit(w = z).g.w`, is refused through the
+  instance, as the instance is, not as a gradient by several names. A part
+  read takes its steps as its own, as a remembered term does (C149). The
+  prototype scanned a point for globals after the names before it were
+  bound; the points are scanned first. 237 lines against about 176, 355
+  added and 118 removed, 34 of them comment, review's 35 among them: a
+  part's memo key an instance's own, the refusals of a read the definition
+  does not take, a term's part offered its index in the call's own form,
+  and the count of the groups a tree holds, which keeps bench's grad, hand,
+  limit and read within 0.5 per cent of 02be7db's instructions:
+  `reference_stack.hpp` 84, the group, its parts and messages;
+  `derivative.hpp` 61; `reference.hpp` 26, the definition's refusals;
+  `expression.hpp` 24, the count among them; `expression_visitor.hpp` 22;
+  `compile.hpp` 8; `interpreter.hpp` and `latex.hpp` 6 each. 17,367 lines
+  in all, integration's 02be7db merged, 17,130 without these 237. Measured
+  at 2257698, before review, as above: 307
+  million instructions a step with one grad by the 13 names over the batch,
+  357 million with one per sample, the losses at steps 3 and 10 a206c5d's
+  to 17 digits.
 - **"these matrices have different sizes" names neither size**, and calls a
   tensor a matrix: name both sizes and suggest the cell form,
   `T[b,t,j] + c[1,j]`. Broadcasting stays refused.

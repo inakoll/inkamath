@@ -1035,6 +1035,27 @@ dcube(t) = grad_(u = t) cube(u)
  4]
 ```
 
+A gradient with respect to several names at once, the nabla's `∇_θ`, names
+each at its point in the one subscript. It has a part for each name and no
+value of its own. Where `grad` answers by each name alone, the others held
+at their points, a part is what it gives by that name; where it refuses one
+name, it refuses the whole. A definition holds it, read by its parts after a
+point as an instance's names are, so a training step reads as a paper
+writes it, `g_n = grad_(W = W_(n-1), b = b_(n-1)) L(W, b, x_n)` and `W_n =
+W_(n-1) - eta*g.W_n`. At a real point it costs one evaluation and one sweep
+back, however many names it has:
+
+```
+>> dxy = grad_(x = 2, y = 3) x^2*y
+dxy = grad_(x = 2, y = 3) x^2*y
+
+>> dxy.x
+12
+
+>> dxy.y
+4
+```
+
 A definition in cases takes the slope of the clause that holds at the point,
 a definition by cells each cell's, and a limit the limit of its terms'
 slopes:

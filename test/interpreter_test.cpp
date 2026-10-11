@@ -178,6 +178,9 @@ TEST_CASE("reverse") {
 TEST_CASE("reverse_memo") {
     check_transcript("reverse_memo.ink");
 }
+TEST_CASE("gradmany") {
+    check_transcript("gradmany.ink");
+}
 TEST_CASE("conv") {
     check_transcript("conv.ink");
 }
