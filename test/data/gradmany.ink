@@ -41,6 +41,9 @@ error: g is not a sequence
 >> g(1)
 error: g takes no arguments
 
+>> g.x(1)
+error: g.x takes no arguments
+
 >> grad_(x = 2, y = 3) x*y
 error: a grad by several names is a definition's whole right side, its parts read after a point, as g.x
 
