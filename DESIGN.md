@@ -1827,6 +1827,7 @@ closures need one anyway, and can bring it.
 | C327 `[fixed]` | **A parameter could share its name with the clause's index, row, column or slice.** `f(n)_n = n` was accepted, the index hiding the parameter, so that `f(5)_2` was 2 and the parameter could never be read, the repetition C325 refused for two parameters; under grad C80 refused it, "its index n hides its parameter n". Found reviewing signatures. A definition, a clause of one and a function in a model's body are refused in Clash's words for a size, `f has a parameter and an index named n`, `f has a parameter and a cell's index named t`, and C80's refusal under grad, now unreachable, is deleted. conditional.ink's C53 entry `ar(x)_x` and grad.ink's C80 entries `gn`, `sm` and `tc` move to the refusal, their evaluations and grads gone with them. In 10 lines, 1 of comment, and 19 removed; signatures.ink holds it. |
 | C328 `[fixed]` | **A grad giving way to forward mode could declare a name twice.** Giving way put back the count of temporaries, but a sequence the attempt compiled on the way, one with no base clause the body reads, kept the names it took: in `test/cli.cmake`'s c328.ink, z's `t4_` and the gradient's, a header no C compiler takes. A global read on the way took a name too, harmlessly, in the update. Found reviewing the compiler's adjoint step. Where a list other than the grad's took names on the way, they stay taken, and the NaN sets with them; elsewhere giving way is forward mode's header byte for byte, as before. In 11 lines, 2 of comment, and 3 removed; `compile_c328` holds it. |
 | C329 `[fixed]` | **`--check`'s exact run kept what its walk of the prelude recorded where it took the slope.** C326's exact run walks a function of the prelude for its guards and then takes the header's slope, but the walk's nodes stayed on the tape and its calls stayed remembered, where a session makes neither: sin's definition calls abs on its argument, so in `sin(u) + (u^2 + 1)^(1/2) + abs(u)` the body's own abs found that call's node, recorded before the root's, and its adjoint was summed last, where a session sums it first. The step, a session's to the bit, was reported 1.1e-16 from the oracle. Found reviewing the compiler's adjoint step. Where the slope is taken, the tape goes back to the nodes it had before the walk and the calls remembered to those before it; no other report moves. In 15 lines, 2 of comment, and 2 removed; `adjoint.ink`'s `sinabs` holds it. |
+| C330 `[fixed]` | **Grad read a cell of a bound matrix from a copy taken before its indices.** A cell's read under grad evaluated its matrix first, a name bound in grad's frame copied whole, and then its indices, where the evaluator finds a stored matrix again once its indices are read (C277), as they may bind it again: `grad_(x = 2) (x*((M = [x 3*x])[1,1]*0 + M[1, ((M = [5 7])*0 + 2)[1,1]]))` was 12, M[1,2] read from `[x 3*x]`, where the evaluator's value, 14, reads it from `[5 7]` and the derivative is 7; reverse mode the same. Found reviewing the specification of grad's cost per term; a name bound outside grad, by a local or a parameter of the call grad is in, reviewing the fix: `(M = [1 2])[1,1]*0 + grad_(x = 2) x*M[1, ((M = [5 7])*0 + 2)[1,1]]` was 2 for 7. A name bound, in grad's frame or the evaluator's, is found again once the indices are read, as the evaluator's `Stored` finds it; any other matrix is evaluated first as before. In 15 lines, 3 of comment, and 3 removed; gradlocal.ink holds it. |
 
 **Measure instructions, not the clock.** One of those changes made the matrix
 workload 20 per cent slower by the clock and not by a single instruction: with
@@ -8886,11 +8887,126 @@ checked: what it asked of the compiler, each with its smallest change.
   interpreter at 5 steps; its W^Q 27.2 MB in 5.9 s to 1.15 MB in 0.18 s,
   its check program 45 s at -O2, within 2.8e-17 at 5 steps, its inputs
   one-hot through decimal weights.
-- **grad's cost per term**: 600,000 remembered terms take 65 s under the
-  sanitizers in reverse mode, 110 µs a term, and 36 s in forward mode;
-  under callgrind, 30,000 terms of `reverse_memo.ink`'s sum cost some
-  17,000 instructions each: a cell read 31 per cent, 11 of them its index,
-  `dynamic_cast` in `Reads` 15, `Key`'s strings 14, and 13 allocations.
+- `[done]` **grad's cost per term**, a refactor: every golden and every
+  `--check` report byte for byte, its first requirement. 600,000 remembered
+  terms take `reverse_memo.ink` 65 s under the sanitizers in reverse mode,
+  and `fastgrad.ink` 52 with its own in forward mode, where a golden's
+  timeout is 60; both files carry 120. Profiled at db6ac88 under callgrind,
+  in release and in Debug, the sanitizer job's build type, and by sampling
+  the sanitizer build: the cost is grad's, not the evaluator's. The
+  evaluator sums the same 30,000 terms at 24,000 Debug instructions each,
+  grad at 97,000 in reverse mode and 61,000 in forward mode, and what a term
+  of grad's asks of the evaluator, a literal index, its bound summation
+  index, a name looked up, is under a tenth. Under the sanitizers no place
+  dominates: a quarter of the samples is ASan's fake stack, paid per call,
+  the rest copies of jets, the memo's string key and what a call checks
+  before its memo answers.
+
+  Decided, seven changes, all in `derivative.hpp`, smallest first. Each
+  share is measured alone against db6ac88: Debug instructions per term of
+  30,000, reverse then forward mode, and the sanitizer build's time over
+  200,000, best of three; lines added and removed by the prototype.
+  - **`Reads` asks a node's type by `typeid`**, as `Exactly` does, not by
+    `dynamic_cast`: Debug 2 and 1 per cent, nothing measurable under the
+    sanitizers, but release 14 and 9, and `bench/grad.ink` 8. 1 for 2.
+  - **`max` and `min` known by name** before the built-ins' map is asked,
+    which builds a string to ask: Debug 2 and 4 per cent, the sanitizers 4
+    and 2. 2 for 1.
+  - **A literal index read as its value**, not through `Reads` and the
+    evaluator: Debug 3 per cent in reverse mode, the sanitizers 4. 2 for 0.
+  - **A sum of jets adds part to part**, not to a copy of one: Debug 3 and 5
+    per cent, with the others. 2 for 4.
+  - **A node's cells numbered once per extent**, kept on the tape, not each
+    time a cell of it is read, a matrix the node's size for one cell: Debug
+    3 per cent in reverse mode, the sanitizers 5, the transformer's step 9
+    per cent of its instructions. 6 for 1.
+  - **A cell of a matrix grad binds read where it is bound**, not from a
+    copy of its whole jet, the jet found again once the indices are read,
+    as the evaluator's `Stored` finds a matrix (C277): an index may bind a
+    local and move the frame's jets. The prototype held it across them and
+    read it freed, a heap-use-after-free under the sanitizers in
+    `grad_(x = 2) ((M = [x 3*x])[1,1]*0 + (j = 1) + (a = 1) + M[1, (Q = 1)
+    + j])`, or read another name's. Found again, it reads what the
+    evaluator reads where an index rebinds the matrix, where grad today
+    reads the copy taken before: `grad_(x = 2) (x*((M = [x 3*x])[1,1]*0 +
+    M[1, ((M = [5 7])*0 + 2)[1,1]]))` is 12 for the evaluator's 7. A defect
+    of its own, fixed first with its test, so that this stays a refactor.
+    Debug 9 per cent in reverse mode, 8 with the jet found again, the
+    sanitizers 12, the step 14. 15 for 7.
+  - **The memo keyed by a hash of what it compares**, a node by its number
+    and a value by `numeric_interface`'s `hash` and `same`, as the
+    evaluator's `MemoKey` and the tape's nodes already are, not by a string
+    each extent and number is written into: Debug 15 and 31 per cent, the
+    sanitizers 10 and 17. 46 for 23.
+
+  Together, by a prototype not landed: Debug instructions per term 96,900 to
+  62,300 in reverse mode, 62,900 with the jet found again, and 60,900 to
+  36,300 in forward mode, release 15,800 to 8,900 and 8,900 to 4,800,
+  allocations 12 to 6 and 6 to 4. On the machine that profiled, under the
+  sanitizers, alone: `reverse_memo.ink` 48 to 54 s down to 35 to 36,
+  `fastgrad.ink` 36 to 37 down to 26 to 28, `reverse.ink` unchanged at 10.
+  In release `bench/grad.ink` 688 to 565 million instructions, the
+  transformer's step 3,513 to 2,628 million, 0.48 s to 0.38. Every golden
+  passes, and the 183 programs `--check` writes for ctest are the same bytes
+  as db6ac88's.
+
+  The test that holds it: `fastgrad.ink`'s 120 s goes, and the golden's 60
+  holds it, its 64 s on CI about 47 by the ratio measured. `reverse_memo.ink`
+  cannot rejoin `reverse.ink`: together about 60 s alone on CI, against 60,
+  where rejoining needs the cost nearly halved. It stays apart with its 120,
+  its comment's figure updated.
+
+  Rejected:
+  - **The string key written faster**, the extent as bytes as `Number::key`
+    writes a number: still a string built per lookup, and a second encoding
+    beside `hash` and `same`, which exist so that none is written.
+  - **The evaluator's `MemoKey` reused**: its arguments are values, and a
+    part's presence and node have no place in one.
+  - **A remembered call answered before `Call`'s checks**, `Divides`, the
+    complex and staircase refusals, the checked read, `|z|`'s correction:
+    the same answers only if every check is a function of the arguments, an
+    argument to make, not a refactor.
+  - **Pointers to `abs`, `max` and `min` kept by `Derivative`**: a cache to
+    keep valid while the prelude loads, for what a name compared first gives.
+  - **The sanitizer job's fake stack turned off**, a quarter of its samples,
+    or **a timeout raised**: either hides the cost from the job meant to see
+    it.
+
+  About 77 lines added and 39 removed, net 38, the prototype with the jet
+  found again and formatted;
+  `<map>` then goes from `derivative.hpp`'s includes. 16,707 lines at
+  db6ac88. Past 115 added, or net 57, the implementation stops and reports.
+  No spec transcript: nothing new is said, so the goldens are the
+  specification, and the timeout goes with the implementation, measured on
+  the sanitizer build first.
+
+  Built as specified, a commit for each change, each leaving every golden
+  and every C file ctest writes, `--check`'s among them, the same bytes as
+  before it. Departures. The jet found again is C330, fixed first with its
+  entry in `gradlocal.ink`, and the refactor measured from that fix.
+  `fastgrad.ink`'s 600,000 terms go unchanged to `fastgrad_long.ink`, a
+  golden of their own at the default 60 s, by the owner's ruling, where the
+  plan kept them in `fastgrad.ink`; its 120 s goes. `<cstdint>` goes with
+  `<map>`, nothing left reading it, and `<algorithm>` comes, for the tape's
+  and the memo's searches. A part's sameness is a function of its own beside
+  the arguments'. `Exactly` takes a const node too, so that `Reads`, an
+  index and a cell ask a node's type by it, its finality checked. 72 lines
+  added and 42 removed, net 30, 2 of them comment; C330's fix, with the name
+  bound outside grad its review found, 15 and 3. 16,750 lines in all,
+  16,708 at 5f2a838. Debug
+  instructions per term of 30,000, from the fix: 93,000 to 63,900 in reverse
+  mode and 60,900 to 37,200 in forward mode; in release, from 5f2a838, the
+  transformer's step 3,524 to 2,656 million, 0.46 s to 0.37, its answers the
+  same bytes, and `bench/grad.ink` 688 to 566 million. Under the sanitizers
+  alone, beside another build: `reverse_memo.ink` 49 to 51 s down to 35 to
+  38, its 120 kept and its comment's figure updated; `fastgrad.ink` 11.5
+  down to 8.3, and `fastgrad_long.ink` 27 to 28 down to 21 to 22.
+- **A jet without its heap vector**, a part inline for one grad: after
+  grad's cost per term the largest share left, copies of jets in half the
+  sanitizer build's samples, but every function of `derivative.hpp` takes
+  one, hundreds of lines. What `reverse_memo.ink` would need to rejoin
+  `reverse.ink`. The exploration of the interpreter compiled, queued, may
+  subsume it.
 - **Forward mode's "no path"**: a pass cannot tell a cell no path
   reaches from a part computed to be exactly 0, so C324's products leave
   both out and a `~` marks both, and the inexact-~0 case stays NaN:

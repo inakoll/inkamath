@@ -3,11 +3,10 @@
 
 #include "inkamath/reference_stack.hpp"
 
+#include <algorithm>
 #include <bit>
 #include <cmath>
 #include <cstddef>
-#include <cstdint>
-#include <map>
 #include <memory>
 #include <optional>
 #include <set>
@@ -108,6 +107,7 @@ private:
         // same nodes is the same node, and a call made again on it is
         // remembered as forward mode remembers one by its parts' values (C323).
         std::unordered_multimap<std::size_t, std::size_t> made;
+        std::vector<T> numbered;  // each extent's cells, numbered once
 
         static bool Same(const Node& x, const Node& y) {
             return x.kind == y.kind && x.extent == y.extent && x.a == y.a && x.b == y.b &&
@@ -163,8 +163,11 @@ private:
         }
         template <typename F>
         Part Moved(const Part& a, F f) {
-            return Gather(f(Numbered(a.Size(), 0)),
-                          [&a](std::size_t k) { return Cell(a.node, k); });
+            auto known = std::find_if(numbered.begin(), numbered.end(),
+                                      [&a](const T& t) { return t.Size() == a.Size(); });
+            if (known == numbered.end())
+                known = numbered.insert(numbered.end(), Numbered(a.Size(), 0));
+            return Gather(f(*known), [&a](std::size_t k) { return Cell(a.node, k); });
         }
 
         static T Total(const T& g) {
@@ -334,10 +337,12 @@ private:
     // A map that only moves cells, as a transpose or a cell does, moves a
     // node's.
     template <typename F>
-    static Jet Map(Jet jet, F f) {
-        for (auto& part : jet)
-            if (part) part = part->node ? part->tape->Moved(*part, f) : Part(f(part->Value()));
-        return jet;
+    static Jet Map(const Jet& jet, F f) {
+        Jet out(jet.size());
+        for (std::size_t s = 0; s < jet.size(); ++s)
+            if (const auto& part = jet[s])
+                out[s] = part->node ? part->tape->Moved(*part, f) : Part(f(part->Value()));
+        return out;
     }
 
     static Jet Mark(Jet jet, bool approximated) {
@@ -360,10 +365,8 @@ private:
 
     static Jet Sum(const Jet& a, const Jet& b) {
         Jet c(a.size());
-        for (std::size_t s = 0; s < a.size(); ++s) {
-            if (a[s]) Add(c[s], *a[s]);
-            if (b[s]) Add(c[s], *b[s]);
-        }
+        for (std::size_t s = 0; s < a.size(); ++s)
+            c[s] = a[s] && b[s] ? *a[s] + *b[s] : a[s] ? a[s] : b[s];
         // A part keeps its value's shape, which adding a single value or a
         // matrix to more cells widens (DESIGN.md, C81).
         if (a[0]->Size() == b[0]->Size()) return c;
@@ -504,10 +507,11 @@ private:
     // A dynamic_cast without its search of the bases, which is most of what
     // the dispatch below cost: a node class is final, so a node has no type
     // but its own to match.
-    template <typename Node>
-    static Node* Exactly(Expression<T>& e) {
+    template <typename Node, typename E>
+    static auto* Exactly(E& e) {
         static_assert(std::is_final_v<Node>);
-        return typeid(e) == typeid(Node) ? static_cast<Node*>(&e) : nullptr;
+        using Out = std::conditional_t<std::is_const_v<E>, const Node, Node>;
+        return typeid(e) == typeid(Node) ? static_cast<Out*>(&e) : nullptr;
     }
 
     Jet Eval(Expression<T>& e) {
@@ -600,9 +604,7 @@ private:
     // Whether an expression reads a name the innermost frame binds; what does
     // not is a constant, whatever it calls, since a call sees only its own.
     bool Reads(const Expression<T>& e) const {
-        if ((dynamic_cast<const RefExpression<T>*>(&e) ||
-             dynamic_cast<const FuncExpression<T>*>(&e)) &&
-            Lookup(e.Name()))
+        if ((Exactly<RefExpression<T>>(e) || Exactly<FuncExpression<T>>(e)) && Lookup(e.Name()))
             return true;
         for (const PExpression<T>& child : e.Children())
             if (child && Reads(*child)) return true;
@@ -645,7 +647,8 @@ private:
         using Scalar       = numeric_interface<typename T::value_type>;
         const auto  cell   = [](auto f) { return [f](const T& v) { return T::Cells(v, f); }; };
         const auto& names  = stack_.Builtins().names;
-        const bool  ranked = definition == names.at("max") || definition == names.at("min");
+        const bool  ranked = (definition->Name() == "max" && definition == names.at("max")) ||
+                            (definition->Name() == "min" && definition == names.at("min"));
         if (complex_ && (definition == names.at("abs") || ranked))
             for (const auto& [given, jet] : arguments)
                 if (const std::string at = Complex(jet); !at.empty())
@@ -697,21 +700,40 @@ private:
         return out;
     }
 
-    std::string Key(const Reference<T>& definition, bool indexed, int index,
-                    const Arguments& arguments) const {
-        std::string key = std::to_string(reinterpret_cast<std::uintptr_t>(&definition)) + '#' +
-                          std::to_string(order_) + (indexed ? "_" + std::to_string(index) : "");
-        for (const auto& [name, jet] : arguments) {
-            key += '\0' + name + '=';
-            for (const auto& part : jet) {
-                key += part ? '\2' : '\1';
-                if (part && part->node)
-                    key += '\3' + std::to_string(part->node);
-                else if (part)
-                    numeric_interface<T>::key(*part, key);
-            }
-        }
-        return key;
+    // A part by its node's number, else by its value's bits, as the
+    // evaluator's MemoKey has a value.
+    struct Remembered {
+        const Reference<T>* definition;
+        int                 order, index;
+        bool                indexed;
+        Arguments           arguments;
+        Jet                 term;
+        std::size_t         stepped;  // the grads it stepped with
+    };
+
+    static bool Same(const std::optional<Part>& p, const std::optional<Part>& q) {
+        if (!p || !q) return !p && !q;
+        return p->node || q->node ? p->node == q->node : numeric_interface<T>::same(*p, *q);
+    }
+
+    static bool Same(const Arguments& a, const Arguments& b) {
+        return std::ranges::equal(a, b, [](const auto& x, const auto& y) {
+            return x.first == y.first &&
+                   std::ranges::equal(x.second, y.second,
+                                      [](const auto& p, const auto& q) { return Same(p, q); });
+        });
+    }
+
+    std::size_t Hash(const Reference<T>& definition, bool indexed, int index,
+                     const Arguments& arguments) const {
+        std::size_t hash = std::hash<const void*>()(&definition) * 31 + std::size_t(order_);
+        hash             = hash * 31 + (indexed ? std::size_t(index) * 2 + 1 : 0);
+        for (const auto& [name, jet] : arguments)
+            for (const auto& part : jet)
+                hash = hash * 31 + (!part        ? 0
+                                    : part->node ? part->node
+                                                 : numeric_interface<T>::hash(*part));
+        return hash;
     }
 
     // A call, in a frame of its own as its evaluation would be, its arguments
@@ -720,11 +742,18 @@ private:
     // term remembered without its derivative never answers for one.
     Jet Term(const Reference<T>& definition, const ParametersCall<T>& call, bool indexed, int index,
              const Arguments& arguments) {
-        const std::string key = Key(definition, indexed, index, arguments);
-        if (const auto found = memo_.find(key); found != memo_.end()) {
-            stepped_ |= found->second.second;
-            return found->second.first;
-        }
+        const std::size_t hash = Hash(definition, indexed, index, arguments);
+        for (auto [same, end] = memo_.equal_range(hash); same != end; ++same)
+            if (const Remembered& r = same->second;
+                r.definition == &definition && r.order == order_ && r.indexed == indexed &&
+                r.index == index && Same(r.arguments, arguments)) {
+                stepped_ |= r.stepped;
+                return r.term;
+            }
+        const auto remember = [&](const Jet& term, std::size_t stepped) {
+            memo_.emplace(
+                hash, Remembered{&definition, order_, index, indexed, arguments, term, stepped});
+        };
         if (indexed && !filling_ && depth_ >= ReferenceStack<T>::max_depth / 2)
             Fill(definition, call, index, arguments);
         stack_.Step();
@@ -733,7 +762,7 @@ private:
         try {
             const Deeper                       deeper(*this);
             if (std::optional<Jet> fast = Compiled(definition, indexed, arguments)) {
-                memo_.emplace(key, std::pair(*fast, std::size_t(0)));
+                remember(*fast, 0);
                 return *fast;
             }
             const std::size_t                  outer = std::exchange(stepped_, 0);
@@ -770,7 +799,7 @@ private:
                 &definition == names.at("min").get())
                 stepped_ = 0;
             stepped_ &= Size() - 1;
-            memo_.emplace(key, std::pair(result, stepped_));
+            remember(result, stepped_);
             stepped_ |= outer;
             return result;
         } catch (const NotSingle& error) {
@@ -970,6 +999,7 @@ private:
     // is at a whole number (C78).
     // Once, as the evaluator does, since it may bind a local (C304).
     int Index(const PExpression<T>& e, const std::string& what = "an index") {
+        if (const auto* literal = Exactly<ValExpression<T>>(*e)) return AsIndex<T>(literal->value);
         if (!Reads(*e)) return AsIndex<T>(e->accept(ordinary_));
         const Jet index = Eval(e);
         if (Moves(index)) throw std::runtime_error(what + " jumps at " + Where());
@@ -982,9 +1012,21 @@ private:
     }
 
     Jet Cell(CellExpression<T>& cell) {
-        const T*   kept   = Lookup(cell.Matrix()->Name()) ? nullptr : stack_.Kept(*cell.Matrix());
-        const Jet  matrix = kept ? Jet() : Eval(cell.Matrix());
-        const auto read   = [&](auto f) { return kept ? Constant(f(*kept)) : Map(matrix, f); };
+        // A name bound, in grad's frame or the evaluator's, is found again
+        // once the indices are read, as they may bind it again in either,
+        // where the evaluator's Stored finds it (C277, C330).
+        const std::string& name  = cell.Matrix()->Name();
+        const Jet*         bound = Lookup(name);
+        const T*           kept  = bound ? nullptr : stack_.Kept(*cell.Matrix());
+        const bool         named =
+            (bound || stack_.Binds(name)) && Exactly<RefExpression<T>>(*cell.Matrix());
+        const Jet  matrix = kept || named ? Jet() : Eval(cell.Matrix());
+        const auto read   = [&](auto f) {
+            if (kept) return Constant(f(*kept));
+            if (!named) return Padded(Map(matrix, f));
+            const Jet* again = Lookup(name);
+            return Padded(Map(again ? *again : Eval(cell.Matrix()), f));
+        };
         if (cell.Slice()) {
             const int slice = Index(cell.Slice());
             const int row   = Index(cell.Row());
@@ -1519,7 +1561,7 @@ private:
     int                                                   order_ = 0;
     std::vector<std::pair<std::string, std::string>>      grads_;  // name and point, innermost last
     std::vector<std::vector<std::pair<std::string, Jet>>> frames_;
-    std::map<std::string, std::pair<Jet, std::size_t>>    memo_;  // and the grads it stepped with
+    std::unordered_multimap<std::size_t, Remembered>      memo_;
     std::size_t                                           depth_   = 0;
     bool                                                  guard_   = false;
     bool                                                  filling_ = false;
