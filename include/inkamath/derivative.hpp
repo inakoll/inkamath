@@ -135,6 +135,11 @@ private:
             made.emplace(hash, nodes.size());
             return Part(this, nodes.size(), extent);
         }
+        // Back to its first n nodes, as if no other had been recorded.
+        void Forget(std::size_t n) {
+            nodes.erase(nodes.begin() + static_cast<std::ptrdiff_t>(n), nodes.end());
+            std::erase_if(made, [n](const auto& m) { return m.second > n; });
+        }
         Part Mark(const Part& a, bool approximated, std::size_t at = 0) {
             return Add(Kind::Mark, a.Size(), a.node, std::nullopt, 0, at, approximated);
         }
@@ -740,12 +745,20 @@ private:
             const Local local(*this);
             for (const auto& argument : arguments) frames_.back().push_back(argument);
             const Setting<bool> unguarded(guard_, false);
-            Jet              result = Dispatch(definition, indexed, index);
+            std::optional<std::pair<std::size_t, decltype(memo_)>> before;
+            if (stack_.guards && tape_ && !indexed && arguments.size() == 1)
+                before.emplace(tape_->nodes.size(), memo_);
+            Jet result = Dispatch(definition, indexed, index);
             // --check's exact run walks for its guards, and under reverse mode
             // takes the header's slope as a session does, not the walk's own
-            // nodes; forward mode's walk is the header's part to the bit.
+            // nodes, forgetting what the walk recorded and remembered (C329);
+            // forward mode's walk is the header's part to the bit.
             if (stack_.guards && result.size() == 2 && result[1] && result[1]->node) {
                 const Setting<decltype(stack_.guards)> quiet(stack_.guards, nullptr);
+                if (before && Compiled(definition, indexed, arguments)) {
+                    tape_->Forget(before->first);
+                    memo_ = std::move(before->second);
+                }
                 if (std::optional<Jet> fast = Compiled(definition, indexed, arguments)) {
                     (*fast)[0] = result[0];
                     result     = std::move(*fast);
