@@ -65,6 +65,20 @@ foreach(part 1 2 3)
     set_tests_properties(cli_${part} PROPERTIES TIMEOUT 120)
 endforeach()
 
+# bench's workloads, each a transcript bench/run.cmake measures, replayed so
+# that one gone stale fails here rather than at its next measure. The
+# slowest, under the sanitizers, take 7 s; train.ink is data, no transcript.
+file(GLOB workloads CONFIGURE_DEPENDS ${PROJECT_SOURCE_DIR}/bench/*.ink)
+foreach(workload IN LISTS workloads)
+    file(STRINGS ${workload} prompts REGEX "^>> " LIMIT_COUNT 1)
+    if(NOT prompts)
+        continue()
+    endif()
+    get_filename_component(name ${workload} NAME_WE)
+    add_test(NAME bench_${name} COMMAND inkamath_cli --check ${workload})
+    set_tests_properties(bench_${name} PROPERTIES TIMEOUT 60)
+endforeach()
+
 # C316: a cell's may-NaN test searched it for each name in a set that grows
 # with every call under grad. The timeout holds it: 95 s before the fix and 2 s
 # since in a release build, 632 s and 28 s under the sanitizers, which no size
@@ -158,6 +172,7 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brin
                          history:huge history:sever history:veiled history:cloaked history:two history:hid history:masked
                          nan:run nan:sign nan:shy nan:slope nan:pair
                          nan:lap nan:trim nan:any nan:cell nan:held nan:idle nan:imag nan:took nan:shut nan:root
+                         nan:passed nan:waived
                          inputs:fan inputs:grid
                          inputs:chan inputs:twirl inputs:duo inputs:mean3 inputs:mean2
                          inputs:track inputs:twain inputs:nestv inputs:fed estimate:tie
@@ -619,6 +634,10 @@ set_tests_properties(check_imag_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^imag: 100 steps from 0, against [^\n]*\nimag\\.x: within 0\nimag\\.z: within 0\n$")
 set_tests_properties(check_took_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^took: 100 steps from 0, against [^\n]*\ntook\\.w: within 0\n$")
+set_tests_properties(check_passed_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^passed: 100 steps from 0, against [^\n]*\npassed\\.y: within 0\n$")
+set_tests_properties(check_waived_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^waived: 100 steps from 0, against [^\n]*\nwaived\\.y: within 0\nwaived\\.z: within 0\n$")
 # A model's input of more than one cell (DESIGN.md, C83), every term exact.
 set_tests_properties(check_fan_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^fan: 100 steps from 0, against exact values\nfan\\.y: within 0\n$")
