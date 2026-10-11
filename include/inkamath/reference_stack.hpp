@@ -766,15 +766,15 @@ private:
     T Part(const Reference<T>& definition, Expression<T>& object, Expression<T>& part) {
         const std::vector<std::string>& names = Group(definition)->Variables();
         const auto                      at    = std::find(names.begin(), names.end(), part.Name());
-        if (at == names.end() || Call(part).arguments())
+        if (at == names.end())
             throw std::runtime_error(Label(definition) +
                                      (Call(object).arguments() ? "(...)." : ".") + part.Name() +
                                      " is not defined");
-        // As an instance's term, by its own name, no limit offered.
-        if (definition.Clauses().front().parameters.indexed() && !Call(part).subexpr()) {
-            const std::string name = definition.Name() + "." + part.Name();
+        // As an instance's member, by its own name, no limit offered.
+        const std::string name = definition.Name() + "." + part.Name();
+        if (Call(part).arguments()) throw std::runtime_error(name + " takes no arguments");
+        if (definition.Clauses().front().parameters.indexed() && !Call(part).subexpr())
             throw std::runtime_error(name + " is a sequence; index it (" + name + "_0)");
-        }
         const ParametersCall<T> call(Call(object).arguments(), Call(part).subexpr());
         MemoKey<T>              key = definition.Key(call, *this);
         key.part                    = static_cast<std::size_t>(at - names.begin()) + 1;
