@@ -213,3 +213,7 @@ doubled(x_n = n) = {
     y_n = 2*x_n
 }
 fed = doubled(x_n = 1)
+
+# The step's parameters were named as its inputs: 'x''s step took
+# 'const double x[2]', hiding its struct, which -Wshadow refuses (C338).
+x = dot(x_n = [n; 1])

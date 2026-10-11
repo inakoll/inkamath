@@ -58,10 +58,10 @@ static inline void adc_init(adc* m_) {
 }
 
 /* Advances to the next index, the first at 0, and computes its terms. */
-static inline void adc_step(adc* m_, float x) {
+static inline void adc_step(adc* m_, float x_) {
     ++m_->index_;
     m_->held[1] = m_->held[0];
-    m_->x[0] = x;
+    m_->x[0] = x_;
     m_->v[0] = m_->q * floorf(m_->x[0] / m_->q);
     const float t1_ = (isnan(m_->held[1] + (0.0f - m_->v[0])) || isnan(m_->q) ? NAN : m_->held[1] + (0.0f - m_->v[0]) < m_->q ? 1.0f : 0.0f);
     const float t2_ = (t1_ == 0.0f ? 0.0f : t1_ != t1_ ? NAN : (isnan(m_->v[0] + (0.0f - m_->held[1])) || isnan(m_->q) ? NAN : m_->v[0] + (0.0f - m_->held[1]) < m_->q ? 1.0f : 0.0f));

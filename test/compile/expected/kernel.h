@@ -59,10 +59,10 @@ static inline void kernel_init(kernel* m_) {
 }
 
 /* Advances to the next index, the first at 0, and computes its terms. */
-static inline void kernel_step(kernel* m_, double x) {
+static inline void kernel_step(kernel* m_, double x_) {
     ++m_->index_;
     memcpy(m_->u[1], m_->u[0], sizeof m_->u[1]);
-    m_->x[0] = x;
+    m_->x[0] = x_;
     m_->u[0][0][0] = m_->index_ == 0 ? 0.0 : m_->lap[0][0] * 0.0 + m_->lap[0][1] * 0.0 + m_->lap[0][2] * 0.0 + (m_->lap[1][0] * 0.0 + m_->lap[1][1] * m_->u[1][0][0] + m_->lap[1][2] * m_->u[1][0][1]) + (m_->lap[2][0] * 0.0 + m_->lap[2][1] * m_->u[1][1][0] + m_->lap[2][2] * m_->u[1][1][1]);
     m_->u[0][0][1] = m_->index_ == 0 ? 0.0 : m_->lap[0][0] * 0.0 + m_->lap[0][1] * 0.0 + m_->lap[0][2] * 0.0 + (m_->lap[1][0] * m_->u[1][0][0] + m_->lap[1][1] * m_->u[1][0][1] + m_->lap[1][2] * m_->u[1][0][2]) + (m_->lap[2][0] * m_->u[1][1][0] + m_->lap[2][1] * m_->u[1][1][1] + m_->lap[2][2] * m_->u[1][1][2]);
     m_->u[0][0][2] = m_->index_ == 0 ? 0.0 : m_->lap[0][0] * 0.0 + m_->lap[0][1] * 0.0 + m_->lap[0][2] * 0.0 + (m_->lap[1][0] * m_->u[1][0][1] + m_->lap[1][1] * m_->u[1][0][2] + m_->lap[1][2] * 0.0) + (m_->lap[2][0] * m_->u[1][1][1] + m_->lap[2][1] * m_->u[1][1][2] + m_->lap[2][2] * 0.0);
