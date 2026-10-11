@@ -43,13 +43,14 @@
 # 'layer_tanh_dx(' written 5 times, its definition and four slopes. The
 # sweep reads each square's 2*u^1 and each slope, kept from the body, and
 # each cell of the gradient is a unit's adjoint times a cell of x, unit 4's
-# first, as the sweep reaches it first:
+# first, as the sweep reaches it first, after W*x's four cells tested for
+# NaN in one flag, t4_:
 #
-#     const double t15_ = 2.0 * pow(t13_ + (0.0 - m_->y[0][3][0]), 1.0);
-#     const double t16_ = 0.5 * t15_;
-#     const double t17_ = t16_ * t14_;
+#     const double t16_ = 2.0 * pow(t14_ + (0.0 - m_->y[0][3][0]), 1.0);
+#     const double t17_ = 0.5 * t16_;
+#     const double t18_ = t17_ * t15_;
 #     ...
-#     m_->W[0][3][3] = m_->index_ == 0 ? 0.5 : m_->W[1][3][3] + (0.0 - m_->eta * (isnan(t24_) ? NAN : t17_ * m_->x[0][3][0]));
+#     m_->W[0][3][3] = m_->index_ == 0 ? 0.5 : m_->W[1][3][3] + (0.0 - m_->eta * (isnan(t25_) ? NAN : t18_ * m_->x[0][3][0]));
 layer(eta = 1/4, x_n[i<=4], y_n[i<=4]) = {
     L(W, x, y) = sum_(i=1)^4 (tanh((W*x)[i]) - y[i])^2/2
     W_0 = ~[1 0 0 0; 0 1 0 0; 0 0 1 0; 0 0 0 1]/2

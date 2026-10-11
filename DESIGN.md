@@ -3786,7 +3786,7 @@ that exploring seven domains asked of the interpreter, by how many asked.
   update. The reason given above for not hoisting was wrong, corrected,
   and the hoisting queued. 3 lines of `compile.hpp`, 19 added and 16
   removed, as costed; 16,154 lines in all.
-- **A matrix read by its cells tested for NaN once**, a refactor of
+- `[done]` **A matrix read by its cells tested for NaN once**, a refactor of
   headers: no golden, `--check` report or refusal moves. In a header that
   writes NaN the interpreter refuses a matrix whole where it refuses a
   cell, so each read of a cell of a matrix that is not a term carries
@@ -3890,6 +3890,12 @@ that exploring seven domains asked of the interpreter, by how many asked.
   log-sum-exps, 12 and 3 cells by turns. Wired with the implementation,
   with the two excerpts and their comments, `adjoint.ink`'s on `layer` and
   `implicit.ink`'s on the inverse. No transcript in `test/data/spec`.
+
+  Built as specified, departing in nothing: no golden, expected header or
+  prelude moves; the same 19 C files and the fuzzer's as the prototype,
+  all 241 reports byte for byte; `norm.h` 32,207 bytes and 94 `isnan(`,
+  `emb` 113,307 and 307, `attq` 249,050 and 747. 9 lines of
+  `compile.hpp`, 14 added and 5 removed, 1 of them comment; 17,107 in all.
 - **A limit's invariants hoisted out of its iterate**: a limit or a
   matrix inverse that reads only the function's arguments is declared in
   the iterate's list, so walked again at each iterate, and gcc -O2 leaves
