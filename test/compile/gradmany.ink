@@ -44,7 +44,7 @@
 # 'net_tanh_dx(' written 4 times, its definition and three slopes. Four
 # grads of one name each, 'W_n = W_(n-1) - eta*grad_(A = W_(n-1)) L(A,
 # c_(n-1), V_(n-1), d_(n-1), x_n, y_n)' and its like for c, V and d, write
-# it 7 times at a206c5d, a sweep each for W and c, in 15,792 bytes; the one
+# it 7 times at a206c5d, a sweep each for W and c, in 15,798 bytes; the one
 # grad's header is smaller.
 net(eta = 1/4, x_n[i<=2], y_n) = {
     h(z)[i<=3] = tanh(z[i])
