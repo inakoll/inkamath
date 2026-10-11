@@ -1254,9 +1254,7 @@ private:
         try {
             body();
         } catch (const Reason& reason) {
-            // A part's names its grad, the definition.
-            const bool part = !sequences_.at(name).parts.empty();
-            throw Refusal(part ? name.substr(0, name.rfind('.')) : name, reason.what());
+            throw Refusal(Refused(name), reason.what());
         }
         sequences_.at(name).parameters.insert(read_parameters_.begin(), read_parameters_.end());
         read_parameters_.insert(outer_parameters.begin(), outer_parameters.end());
@@ -1356,12 +1354,18 @@ private:
         });
     }
 
+    // What a refusal names: a part's grad, the definition, which is what is set
+    // aside.
+    std::string Refused(const std::string& name) const {
+        return sequences_.at(name).parts.empty() ? name : name.substr(0, name.rfind('.'));
+    }
+
     // In turn, or earlier where a reader needs a shape no base clause gives.
     void Compile(const std::string& name) {
         Sequence& sequence = sequences_.at(name);
         if (sequence.compiled || !sequence.definition) return;
         const Home home(*this, sequence.definition);
-        if (sequence.compiling) throw Refusal(name, "its shape depends on itself");
+        if (sequence.compiling) throw Refusal(Refused(name), "its shape depends on itself");
         sequence.compiling = true;
         for (const std::string& part : sequence.parts) sequences_.at(part).compiling = true;
         Bases(name);
