@@ -8313,8 +8313,10 @@ checked: what it asked of the compiler, each with its smallest change.
   - **`tex`** writes the nabla, `\left.\nabla_{x,y} x^2\,y\right|_{x=2,y=3}`.
   - **The compiler**, the second increment: the interpreter's mode rule,
     reverse mode where forward mode's give-way cases are refused already;
-    one tape with a seed for each name and one sweep, `Swept` giving each
-    seed's adjoints; a definition of the grad compiled as an instance is, a
+    one tape with a seed for each name, keyed by its name and not by its
+    kind and extent as one name's is, which C323's merging would make one
+    for two names of one shape, and one sweep, `Swept` giving each seed's
+    adjoints; a definition of the grad compiled as an instance is, a
     struct of its parts, `m.g.W[0]` being g.W_n, each part a sequence of the
     step, the body written once and each part's cells assigned from its
     seed's adjoints; `--check` compares each part as a sequence,
@@ -8382,8 +8384,9 @@ checked: what it asked of the compiler, each with its smallest change.
   NumPy's by a complex step of each cell. The second increment's story is
   `test/compile/gradmany.ink`, unwired: `pair`, a two-layer tanh network by
   one grad of four names, within 0 for each weight and each part, its
-  weights NumPy's; wired with the increment as `gradmany:pair` among the
-  checked instances and `compile_gradmany_net` in `test/cli.cmake`,
+  weights NumPy's; and `same`, two names of one shape and one start, whose
+  parts a seed keyed by its extent would make one; wired with the increment
+  as `gradmany:pair` and `gradmany:same` among the checked instances and `compile_gradmany_net` in `test/cli.cmake`,
   `net_tanh_dx(` written 4 times, where four grads of one name write 7.
   README's paragraph on `grad` gains a sentence and the training step.
 - **"these matrices have different sizes" names neither size**, and calls a

@@ -60,3 +60,33 @@ net(eta = 1/4, x_n[i<=2], y_n) = {
     d_n = d_(n-1) - eta*g.d_n
 }
 pair = net(x_n = [mod(n, 5) - 2; mod(3*n, 7) - 3]/3, y_n = mod(n, 3)/2 - 1/2)
+
+# 'same', two names of one shape and one start, so that a seed keyed by its
+# kind and extent, as one name's is (C323), would make them one node and
+# give each the sum of both parts. Its square error at A*x*(B*x) + B*x, by
+# backpropagation written out in NumPy, (A*x*(B*x) + B*x - y) times B*x
+# times x' for A, times (A*x + 1) times x' for B; step 1 within 6.9e-18 of a
+# complex step of 1e-30 for each cell, and the interpreter's terms, of one
+# grad by both and of two grads of one name each, the same to 12 digits:
+#
+#     g.A_1 = [-0.00771604938272 0]
+#     g.B_1 = [0.0385802469136 0]
+#     A_1   = [0.501929012346 -0.25]
+#     B_1   = [0.490354938272 -0.25]
+#     A_99  = [0.401683051024 -0.0596817315047]
+#     B_99  = [-0.0490246416659 -0.13266585045]
+#
+#     same: 100 steps from 0, against exact values until 0 and inexact ones from there
+#     same.A: within 0; the interpreter's terms about <e> from the exact ones
+#     same.B: within 0; the interpreter's terms about <e> from the exact ones
+#     same.g.A: within 0, from 1; the interpreter's terms about <e> from the exact ones
+#     same.g.B: within 0, from 1; the interpreter's terms about <e> from the exact ones
+twin(eta = 1/4, x_n[i<=2], y_n) = {
+    L(A, B, x, y) = (A*x*(B*x) + B*x - y)^2/2
+    A_0 = ~[1/2 -1/4]
+    B_0 = ~[1/2 -1/4]
+    g_n = grad_(A = A_(n-1), B = B_(n-1)) L(A, B, x_n, y_n)
+    A_n = A_(n-1) - eta*g.A_n
+    B_n = B_(n-1) - eta*g.B_n
+}
+same = twin(x_n = [mod(n, 5) - 2; mod(3*n, 7) - 3]/3, y_n = mod(n, 3)/2 - 1/2)
