@@ -359,3 +359,17 @@ L = [10; 20; 30]
 # again, as the evaluator reads it (C330): M[1,2] of [5 7], so 7.
 >> grad_(x = 2) (x*((M = [x 3*x])[1,1]*0 + M[1, ((M = [5 7])*0 + 2)[1,1]]))
 7
+
+# The same of a name bound outside grad, which an index binds in grad's
+# frame or the evaluator's (C330): x*7, and x*x*x through one's argument.
+>> (M = [1 2])[1,1]*0 + grad_(x = 2) x*M[1, ((M = [5 7])*0 + 2)[1,1]]
+7
+
+>> one(v) = 1
+one(v) = 1
+
+>> (M = [1 2])[1,1]*0 + grad_(x = 2) x*M[1, one(1*(M = [x*x 7*x]))]
+12
+
+>> clear one
+clear one
