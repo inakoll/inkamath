@@ -2722,7 +2722,7 @@ private:
         Walked* const              outer_limit       = std::exchange(limit_, &walked);
         auto* const                outer_temporaries = std::exchange(temporaries_, walked.based);
         // Its names are its own: a step's t1_ is not its term before (C308).
-        const Setting<std::set<std::string>> apart(nan_temporaries_, {});
+        auto                       outer_nans        = std::exchange(nan_temporaries_, {});
         auto                       outer_reads       = std::exchange(read_parameters_, {});
         std::map<int, Code>        bases;
         std::vector<std::string>   general;
@@ -2767,13 +2767,15 @@ private:
                 return Code{};
             });
         } catch (...) {
-            limit_       = outer_limit;
-            temporaries_ = outer_temporaries;
+            limit_           = outer_limit;
+            temporaries_     = outer_temporaries;
+            nan_temporaries_ = std::move(outer_nans);
             read_parameters_.insert(outer_reads.begin(), outer_reads.end());
             throw;
         }
         limit_           = outer_limit;
         temporaries_     = outer_temporaries;
+        nan_temporaries_ = std::move(outer_nans);
         const auto reads = std::exchange(read_parameters_, std::move(outer_reads));
         read_parameters_.insert(reads.begin(), reads.end());
         if (constant && reads.empty()) return Fold(expression);
@@ -2885,6 +2887,8 @@ private:
             limit_names_.emplace(text, module_ + "_lim" + std::to_string(limits_.size()));
         if (fresh)
             limits_.push_back(text.replace(text.find(function), function.size(), named->second));
+        // NaN where its walk does not converge (C336).
+        nan_functions_.insert(named->second);
 
         // Where it is read: a matrix argument, or a matrix answer, is an
         // array of the step's, or of the enclosing limit's.
@@ -2905,6 +2909,7 @@ private:
         const std::string out = Declare("lim\x1f" + called, [&](const std::string& t) {
             return std::vector<std::string>{"double " + t + shape + ";", called + ", " + t + ");"};
         });
+        nan_temporaries_.insert(out);
         return Answer(Array(out, walked.size));
     }
 

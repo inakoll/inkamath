@@ -346,3 +346,18 @@ lent(a = 1) = {
     y_n = H([log(n - 5) a])
 }
 passed = lent()
+
+# So is a limit's, whose function answers NaN where a term is or where the
+# walk does not converge: y and z answered 2 where log refuses, from step
+# 2, and y's limit's function, called nowhere, failed Clang's
+# -Wunused-function (C336).
+ignored(x_n) = {
+    G(v) = 2
+    p(s)_0 = 0
+    p(s)_k = p(s)_(k-1)/2 + log(s)
+    P(s)_0 = [0; 0]
+    P(s)_k = P(s)_(k-1)/2 + [log(s); 1]
+    y_n = G(lim p(x_n))
+    z_n = G(lim P(x_n))
+}
+waived = ignored(x_n = 2 - n)
