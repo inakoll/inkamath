@@ -12,7 +12,7 @@
 # gradient by hand or by a complex step; none is recorded. Before it each
 # gradient was forward mode's, a pass per cell, and parts from the
 # interpreter's by rounding. Each report is the first increment's but
-# 'gate3''s, the second's.
+# 'gate3''s and 'aside''s, the second's.
 
 # 'fit4', a layer of four tanh units trained on its square error by grad
 # with respect to its 4x4 weights, from an inexact start, on inputs in
@@ -139,6 +139,27 @@ relugate(eta = 1/4, x_n[i<=3], y_n) = {
     W_n = W_(n-1) - eta*grad_(M = W_(n-1)) L(M, x_n, y_n)
 }
 gate3 = relugate(x_n = [mod(n, 3) - 1; 1; mod(2*n, 5)/3 - 1/2], y_n = mod(n, 4)/4)
+
+# 'aside', the second increment's matrix written whole beside a cell's own
+# clause (C136): k's first cell is its own, its second the whole's, 2*z,
+# which the sweep reaches as a cell of the whole's node. By hand at 50
+# digits, e*[z[2]; z[1] + 2] times x', e = z[1]*z[2] + 2*z[2] - y, z = W*x,
+# and step 1 again by central differences:
+#
+#     W_1  = [1.00607638889 -0.5; 0.278645833333 1]
+#     W_99 = [0.559688031712 -0.616481484209;
+#             0.0155347422454 -0.261044498279]
+#
+#     aside: 100 steps from 0, against exact values until 0 and inexact ones from there
+#     aside.W: within 0; the interpreter's terms about <e> from the exact ones
+beside(eta = 1/8, x_n[i<=2], y_n) = {
+    k(z) = 2*z
+    k(z)[1] = z[1]*z[2]
+    L(M, x, y) = (k(M*x)[1] + k(M*x)[2] - y)^2/2
+    W_0 = ~[1 -1/2; 1/3 1]
+    W_n = W_(n-1) - eta*grad_(M = W_(n-1)) L(M, x_n, y_n)
+}
+aside = beside(x_n = [mod(n, 5)/2 - 1; mod(3*n, 7)/3 - 1], y_n = mod(n, 3)/3)
 
 # 'sinabs', C329: a session takes sin and abs of a double by their slopes,
 # and so does the step. --check's exact run walks sin's definition for its

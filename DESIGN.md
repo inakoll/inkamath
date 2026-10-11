@@ -8915,9 +8915,9 @@ checked: what it asked of the compiler, each with its smallest change.
     tested, so each holds its conditional part to a part that is not a
     node, one condition each.
   - **`gate` is `gate3`**: logistic.ink has a `gate`.
-  - **The whole beside cells is held by no test**: a model of its own,
-    not landed, is within 0 in reverse mode as it was in forward mode.
-    The prelude's functions of several arguments are held by `max`, in
+  - **The whole beside cells is held by `aside`**, added in review:
+    within 0, where the grad giving way there was within 2.2e-16. The
+    prelude's functions of several arguments are held by `max`, in
     `learn` and `saliency`.
   - **`gate3` in float**, not checked, is within 4.7e-07 as before, but
     5.3e+02 units of a float where it was 3.4e+02.
