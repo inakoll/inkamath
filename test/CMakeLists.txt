@@ -39,7 +39,7 @@ foreach(golden IN LISTS goldens)
     set_tests_properties(${case}.ink PROPERTIES TIMEOUT 60
                          FAIL_REGULAR_EXPRESSION "test cases: +0 \\|")
 endforeach()
-# fastgrad.ink's 600,000 remembered calls take 19 s under sanitizers alone.
+# fastgrad.ink's 600,000 remembered calls take 52 s under sanitizers alone, 64 on CI.
 set_tests_properties(fastgrad.ink PROPERTIES TIMEOUT 120)
 # reverse_memo.ink's one entry, its 600,000 under reverse mode, takes 65 s alone.
 set_tests_properties(reverse_memo.ink PROPERTIES TIMEOUT 120)
