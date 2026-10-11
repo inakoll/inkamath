@@ -141,6 +141,16 @@ error: gs is a gradient by several names; read one of its parts (gs(...).x)
 >> gs(1).z
 error: gs(...).z is not defined
 
+# A term of a function: the index is offered in the call's own form.
+>> qs(a)_n = grad_(x = a*n, y = n) x^2*y
+qs(a)_n = grad_(x = a*n, y = n) x^2*y
+
+>> qs(2).x_3
+36
+
+>> qs(2).x
+error: qs.x is a sequence; index it (qs(2).x_0)
+
 # Every point is read where the grad is written, before any name is bound,
 # and the names only in the body; a local of the body is bound once.
 >> p = 5
