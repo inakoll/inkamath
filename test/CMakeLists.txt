@@ -81,14 +81,13 @@ endforeach()
 
 # C316: a cell's may-NaN test searched it for each name in a set that grows
 # with every call under grad. The timeout holds it: 95 s before the fix and 2 s
-# since in a release build, 632 s and 28 s under the sanitizers, which no size
-# separates within one timeout, so theirs is 300 s, ten times since. MSVC's
+# since in a release build, 632 s and 28 s under the sanitizers. MSVC's
 # multi-config build cannot tell its Debug, whose iterators are checked and as
-# slow, so it takes theirs; the Linux release jobs hold the 60 s.
+# slow, so it takes 300 s; the Linux release jobs hold the 60 s.
 file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/c316.ink "m(x_n[i<=1000]) = {\n    w_0 = 1/2\n    w_n = w_(n-1) - grad_(v = w_(n-1)) sum_(i=1)^1000 (exp(v*x_n[i]) + exp(2*v*x_n[i]) + exp(3*v*x_n[i]))\n}\n")
 add_test(NAME compile_c316 COMMAND inkamath_cli --compile ${CMAKE_CURRENT_BINARY_DIR}/c316.ink m
                                    -o ${CMAKE_CURRENT_BINARY_DIR}/c316.h)
-if(INKAMATH_SANITIZE OR MSVC)
+if(MSVC)
     set_tests_properties(compile_c316 PROPERTIES TIMEOUT 300)
 else()
     set_tests_properties(compile_c316 PROPERTIES TIMEOUT 60)
@@ -938,3 +937,17 @@ add_executable(compile_fuzz ${fuzz_source})
 target_link_libraries(compile_fuzz PRIVATE inkamath_warnings $<$<NOT:$<C_COMPILER_ID:MSVC>>:m>)
 set_target_properties(compile_fuzz PROPERTIES C_STANDARD 11 C_STANDARD_REQUIRED ON C_EXTENSIONS OFF)
 add_test(NAME compile_fuzz COMMAND compile_fuzz)
+
+# Each timeout is for a job alone on its machine. The sanitizer job shares its
+# machine with the other jobs of two runs, and there took three times as long:
+# fastgrad_long.ink, 20 s alone, ran past 60, and cli_1, 38 s alone, past 120.
+if(INKAMATH_SANITIZE)
+    get_property(all_tests DIRECTORY PROPERTY TESTS)
+    foreach(test IN LISTS all_tests)
+        get_test_property(${test} TIMEOUT timeout)
+        if(timeout)
+            math(EXPR timeout "${timeout} * 3")
+            set_tests_properties(${test} PROPERTIES TIMEOUT ${timeout})
+        endif()
+    endforeach()
+endif()
