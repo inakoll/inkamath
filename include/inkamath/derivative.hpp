@@ -344,10 +344,12 @@ private:
     // A map that only moves cells, as a transpose or a cell does, moves a
     // node's.
     template <typename F>
-    static Jet Map(Jet jet, F f) {
-        for (auto& part : jet)
-            if (part) part = part->node ? part->tape->Moved(*part, f) : Part(f(part->Value()));
-        return jet;
+    static Jet Map(const Jet& jet, F f) {
+        Jet out(jet.size());
+        for (std::size_t s = 0; s < jet.size(); ++s)
+            if (const auto& part = jet[s])
+                out[s] = part->node ? part->tape->Moved(*part, f) : Part(f(part->Value()));
+        return out;
     }
 
     static Jet Mark(Jet jet, bool approximated) {
@@ -992,7 +994,7 @@ private:
         const Jet  matrix = kept || named ? Jet() : Eval(cell.Matrix());
         const auto read   = [&](auto f) {
             return kept ? Constant(f(*kept))
-                          : Map(named ? Padded(*Lookup(cell.Matrix()->Name())) : matrix, f);
+                          : Padded(Map(named ? *Lookup(cell.Matrix()->Name()) : matrix, f));
         };
         if (cell.Slice()) {
             const int slice = Index(cell.Slice());
