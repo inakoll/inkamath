@@ -8244,7 +8244,141 @@ checked: what it asked of the compiler, each with its smallest change.
   kept or replaced. Well over 20 lines.
 - **A gradient with respect to several names at once**, the nabla's
   `∇_θ`: training a transformer took 13 grads of 15 arguments, one per
-  weight. It pays only with reverse mode, being built now.
+  weight, each an evaluation and a sweep of its own. At a206c5d,
+  RelWithDebInfo with GCC 13, the exploration's transformer takes 0.36 s a
+  step that way, 52 sweeps for a batch of four; with a prototype of this
+  entry, 0.052 s with one grad by the 13 names per sample, 4 sweeps, and
+  0.068 s with one over the batch, 1 sweep; the losses at steps 3 and 10
+  the same to 17 digits in all three.
+
+  Decided:
+  - **The notation.** `grad_(x = a, y = b) body`: the names at their points
+    in the one subscript, as `∇_θ` names θ's parts and a call binds its
+    arguments by name. A grad of one name keeps its spelling and answers.
+  - **The answer is named parts**, one per name, each what grad by that
+    name alone gives, the others held at their points: its point's shape,
+    a matrix's derivatives by a single value included. It has no value of
+    its own. A definition whose whole right side it is holds it, and is
+    read after a point as an instance is, the arguments with the
+    definition's name and the index with the part: `g.x` of `g = grad_(x =
+    2, y = 3) x^2*y`, `q.x_3` of `q_n = ...`, `gs(1).x` of `gs(a) = ...`. A
+    training step reads as a paper's, `g_n = grad_(W = W_(n-1), b =
+    b_(n-1)) L(W, b, x_n)` and `W_n = W_(n-1) - eta*g.W_n`, ∂L/∂W named
+    after W. A 1x1 matrix is a single value, so single values and matrices
+    mix with no line to refuse at, and a tensor is a point as for one name.
+  - **One sweep for every part.** A part is evaluated with the definition's
+    arguments and its own index, and every part of that evaluation is
+    remembered under the same key but its own, so the others answer from
+    the memo; the definition's own key holds nothing, its value being none.
+  - **The points** are each read where the grad is written, in order,
+    before any name is bound; the names in the body only, as now: in
+    `grad_(p = 1, y = p) p*y` y's point is the global p.
+  - **The interpreter's mode rule**, extended: at a real point, every name's
+    real, outside another grad, reverse mode, whatever the names' cells: the
+    body walked once with a seed for each name, each its own node though
+    two be alike, as C323's merging would otherwise make them one, and one
+    sweep from the body's node down to the seeds, each part its seed's
+    adjoint, an exact 0 where none reaches. Two single values are one sweep
+    where forward mode takes two passes. Where reverse mode gives way, as
+    for one name, at a complex point and inside another grad, forward mode,
+    a pass for each cell of each name in the order written. A body of more than one cell
+    whose names are single values gives way too, its parts matrices as grad
+    by one single value gives; with a matrix among the names it is a
+    Jacobian, refused in today's words.
+  - **Refused**, each where today's grad refuses or a definition is made:
+    a name twice, "grad names x twice", whose two seeds would sum to a
+    meaning nobody writes; whatever grad refuses by one name, by each
+    (`Names` per name), in its words; a message naming the point names each
+    name at its own, "floor jumps at x = 2, y = 3", and one naming the
+    variable names all, "changes with x or y"; a grad by several names
+    anywhere but a definition's whole right side, "a grad by several names
+    is a definition's whole right side, its parts read after a point, as
+    g.x", at the prompt when evaluated and in a definition when made; a
+    clause beside it, "q is a gradient by several names, and takes no other
+    clause", and a guard or cells on it, "a gradient by several names takes
+    no guard and no cells"; the definition read bare, "g is a gradient by
+    several names; read one of its parts (g.x)", the read's own index and
+    an unnamed `(...)` written in, `(q.x_3)` and `(gs(...).x)`; a name
+    that is not a part, "gs(...).z is not defined", as an instance's.
+  - **Models.** A model's parameters and terms are points like any value,
+    and a grad's names reach its body only: a definition of the model the
+    body reads that reads a parameter of a grad's name is refused, name by
+    name, as a global of its name is, "fit2(...).L reads the global c, which
+    grad's c does not reach". A part read under another grad is a value
+    where its arguments do not move, and refused where they do, "grad cannot
+    differentiate a gradient by several names yet", as through an instance;
+    a second derivative by several names is an item of its own when asked.
+  - **`tex`** writes the nabla, `\left.\nabla_{x,y} x^2\,y\right|_{x=2,y=3}`.
+  - **The compiler**, the second increment: the interpreter's mode rule,
+    reverse mode where forward mode's give-way cases are refused already;
+    one tape with a seed for each name and one sweep, `Swept` giving each
+    seed's adjoints; a definition of the grad compiled as an instance is, a
+    struct of its parts, `m.g.W[0]` being g.W_n, each part a sequence of the
+    step, the body written once and each part's cells assigned from its
+    seed's adjoints; `--check` compares each part as a sequence,
+    `pair.g.W`. Until then `--compile` refuses the definition, "a gradient
+    by several names, for now", and lists what reads it.
+
+  Rejected:
+  - **A value of several parts**, a record `(grad_(...) body).W` could be
+    read from anywhere: a second kind of value for one construct, to print,
+    compare, remember and compile, where a definition already names it.
+  - **Parts by position**, a tuple or `g[2]`: a reader counts to thirteen,
+    and brackets after a value are a cell here. **A tensor of the parts**:
+    weights have different shapes.
+  - **Names on the left**, `(dW_n, db_n) = grad_(...)`: a second form of
+    definition, and each part named twice.
+  - **`g_n.W`**: a term is a value and has no names, which the parser says
+    on purpose; the index goes with the part as an instance's does.
+  - **No notation, the sweep shared** by grads at one point of one
+    function: the cache would hang on how each body is written, the paper
+    names θ at once, and the compiler would need the same recognition.
+  - **`nabla_(...)`** or any second spelling: two ways to say grad, as
+    reverse mode's entry rejected.
+  - **Forward mode for several single values**: a pass each, where the
+    construct is for one sweep.
+  - **Refusing a mixture of single values and matrices, or a tensor**: no
+    line to draw; a 1x1 is a single value, and a tensor is grad's point now.
+  - **A group in cases**: what a part means under a guard nobody has asked;
+    refused rather than kept because it parses.
+
+  Measured with a prototype at a206c5d, not landed: every golden and ctest
+  entry passes, and of the spec's 130 answers it gives 121 as written, the
+  other 9 the words above it lacked. 142 lines net, 244 added and 102
+  removed, much of it the pass loop re-indented: `derivative.hpp` 64, the
+  names, seeds, passes and parts; `reference_stack.hpp` 55, the group's
+  reads and memo; `expression.hpp` 10, `interpreter.hpp` 6,
+  `expression_visitor.hpp` 6, `reference.hpp` 1.
+
+  Increments, each a pipeline of its own:
+  1. **The interpreter**, with `--compile`'s refusal: about 175 lines, the
+     prototype's and what it lacked, the definition's refusals 15, the
+     messages' forms 5, the part under a grad 3, `tex` 8, the compiler's
+     refusal 3. 17,098 lines at a206c5d, by `wc -l include/inkamath/*.hpp
+     src/*`; past 262 the implementation stops and reports.
+  2. **The compiler**: not prototyped. About 140 lines by reading
+     `compile.hpp`: several seeds in `Graded` and `Swept` 30, the group as
+     a struct of sequences and its term's block 80, a part's read 15,
+     `--check`'s names 10, refusals 5. Past 210 it stops and reports.
+
+  Specified in `test/data/spec/gradmany.ink`, 130 answers replayed by the
+  spec suite, restored for it, 81 failing by design, each that reads a grad
+  by several names: two names, the parts' shapes, a tensor and a single
+  value; two names alike; a term's and a function's parts; the points' scope
+  and a local; each refusal in its words; reverse mode for two single
+  values, where forward mode runs out of depth, its slope 1 - tanh(1/2)^2;
+  what gives way to forward mode; a model's parameters; a two-layer ReLU
+  network exact, by sympy and by backpropagation in fractions, and its loss
+  after one step; and the transformer of `reverse.ink` by one grad of its 13
+  names, its loss after one step, then a model training it whose term is the
+  grad, its loss after two steps and the second step's gradient of c2,
+  NumPy's by a complex step of each cell. The second increment's story is
+  `test/compile/gradmany.ink`, unwired: `pair`, a two-layer tanh network by
+  one grad of four names, within 0 for each weight and each part, its
+  weights NumPy's; wired with the increment as `gradmany:pair` among the
+  checked instances and `compile_gradmany_net` in `test/cli.cmake`,
+  `net_tanh_dx(` written 4 times, where four grads of one name write 7.
+  README's paragraph on `grad` gains a sentence and the training step.
 - **"these matrices have different sizes" names neither size**, and calls a
   tensor a matrix: name both sizes and suggest the cell form,
   `T[b,t,j] + c[1,j]`. Broadcasting stays refused.

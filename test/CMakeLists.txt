@@ -43,7 +43,7 @@ endforeach()
 # take 22 s, and reverse_memo.ink's one entry, its 600,000 under reverse
 # mode, 38.
 set_tests_properties(reverse_memo.ink PROPERTIES TIMEOUT 120)
-foreach(suite IN ITEMS bignum line_editor matrix prelude)
+foreach(suite IN ITEMS bignum line_editor matrix prelude spec)
     add_test(NAME ${suite} COMMAND inkamath_tests --test-suite=${suite} --no-intro)
     set_tests_properties(${suite} PROPERTIES TIMEOUT 60)
 endforeach()
