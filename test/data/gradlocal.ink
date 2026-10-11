@@ -356,6 +356,6 @@ L = [10; 20; 30]
 12
 
 # A cell of a bound matrix is read once its indices are, which may bind it
-# again, as the evaluator reads it (C328): M[1,2] of [5 7], so 7.
+# again, as the evaluator reads it (C330): M[1,2] of [5 7], so 7.
 >> grad_(x = 2) (x*((M = [x 3*x])[1,1]*0 + M[1, ((M = [5 7])*0 + 2)[1,1]]))
 7

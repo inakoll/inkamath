@@ -1011,7 +1011,7 @@ private:
 
     Jet Cell(CellExpression<T>& cell) {
         // A name bound is found again once the indices are read, as they may
-        // bind it again, where the evaluator's Stored finds it (C277, C328).
+        // bind it again, where the evaluator's Stored finds it (C277, C330).
         const Jet* bound  = Lookup(cell.Matrix()->Name());
         const T*   kept   = bound ? nullptr : stack_.Kept(*cell.Matrix());
         const bool named  = bound && typeid(*cell.Matrix()) == typeid(RefExpression<T>);
