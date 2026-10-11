@@ -2,16 +2,15 @@
 # forward, one pass for each cell of the tensor, slice after slice and row
 # by row, that cell seeded with 1 and every other with 0, as the interpreter
 # seeds it, or in reverse mode as the interpreter takes it, a tape swept
-# back slice by slice (DESIGN.md, the compiler's adjoint step), where no
-# guard meets it; a single value's gradient is shaped as the tensor. Every number
-# below is worked out apart from the interpreter and the compiler; none is
-# recorded.
+# back slice by slice (DESIGN.md, the compiler's adjoint step); a single
+# value's gradient is shaped as the tensor. Every number below is worked out
+# apart from the interpreter and the compiler; none is recorded.
 
 # 'saliency', the input gradient of a small convolutional network over a
 # batch (Goodfellow, Bengio and Courville 2016, §9.5): conv.ink's 'learn'
 # with its weights held, its input a batch of two 3x3 images, and
 # G_n = grad_(V = X_n) L(V), slice b the gradient with respect to image b,
-# eighteen passes. The images repeat every three steps. By backpropagation
+# a sweep back. The images repeat every three steps. By backpropagation
 # by hand in exact fractions, and again by central differences of exact
 # fractions, which agree where no pre-activation is 0 and no pool ties, as
 # none does:
