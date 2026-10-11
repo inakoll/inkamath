@@ -8505,7 +8505,7 @@ checked: what it asked of the compiler, each with its smallest change.
      net` lists "cannot compile V: g, which cannot be compiled", W, c and d
      alike, then "cannot compile g: a gradient by several names, for now";
      the second increment replaces it with `compile_gradmany_net`.
-  2. **The compiler**: not prototyped. About 140 lines by reading
+  2. `[done]` **The compiler**: not prototyped. About 140 lines by reading
      `compile.hpp`: several seeds in `Graded` and `Swept` 30, the group as
      a struct of sequences and its term's block 80, a part's read 15,
      `--check`'s names 10, refusals 5. Past 210 it stops and reports.
@@ -8552,6 +8552,39 @@ checked: what it asked of the compiler, each with its smallest change.
   million instructions a step with one grad by the 13 names over the batch,
   357 million with one per sample, the losses at steps 3 and 10 a206c5d's
   to 17 digits.
+
+  Increment 2 built as specified: `pair` and `same` report within 0 for
+  each weight and each part, their hand-derived terms the step's to 12
+  digits, and `net_tanh_dx(` is written 4 times in 13,146 bytes. No other
+  header, `--check` program or command line output moves. Departures. The
+  report lists the parts in the step's order, each before what reads it,
+  `pair.g.W` then `pair.W`, not by name as the story had it; and `pair`'s
+  program is `check_gradmany_pair`, `nan.ink` having a `pair`. A grad by
+  several names compiles where it is a sequence: one that is a value or a
+  function is refused where a part is read, "p, a gradient by several
+  names that is not a sequence, for now", and so is one that takes
+  arguments, "r, a gradient by several names that takes arguments, for
+  now"; read whole, `g_n`, it is refused in the interpreter's words, "g is
+  a gradient by several names; read one of its parts (g.x_(...))", its
+  index as written; and one whose points read its own parts, "its shape
+  depends on itself", as any sequence with no base clause that reads
+  itself. A part read through an instance, `run.g.x_n`, is that instance's
+  sequence, and one read before its first term is computed again there
+  (C71). A refusal in the
+  body names the definition. 146 lines against about 140, 283 added and
+  137 removed, 15 of them comment, most of the removed moved: 10 in a
+  commit of their own that writes a sequence's assignments and a term's
+  read as functions, `Assigned` and `Term`; then the seeds, `Graded` by
+  several names and forward mode where it gives way, and `Swept` 42; the
+  parts as sequences, their step written with the first's, 48; a part's
+  read, at a lag too, 29; review's refusals 17. 17,520 lines in all. The exploration's
+  transformer by one grad of its 13 names compiles, in 6 s and 226 MB, to
+  a header of 17 MB, where integration's 13 grads of one name ran out of
+  13 GB in 200 s; GCC 13 -O2 builds it in 410 s and 4.5 GB, Clang 18 in
+  490 s and 1.4 GB, and a step takes 0.7 ms. From an inexact start its
+  `--check` over 3 steps is within 0 but for g.G, within 1.2e-17; from
+  the exact one, within 1.4e-16, the interpreter's exact products before
+  the first double.
 - **"these matrices have different sizes" names neither size**, and calls a
   tensor a matrix: name both sizes and suggest the cell form,
   `T[b,t,j] + c[1,j]`. Broadcasting stays refused.

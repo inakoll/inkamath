@@ -420,18 +420,6 @@ cannot compile w: grad of a tensor with respect to a matrix is a Jacobian, which
 set(exit 1)
 check(compile_tensorgrad_refused)
 
-# A gradient by several names is the interpreter's alone for now, and what
-# reads its parts is refused with it (test/compile/gradmany.ink).
-set(args --compile "${CMAKE_CURRENT_LIST_DIR}/compile/gradmany.ink" net)
-set(stdout "cannot compile V: g, which cannot be compiled
-cannot compile W: g, which cannot be compiled
-cannot compile c: g, which cannot be compiled
-cannot compile d: g, which cannot be compiled
-cannot compile g: a gradient by several names, for now
-")
-set(exit 1)
-check(compile_gradmany_refused)
-
 # The prelude's mod refuses a matrix to divide by, as the interpreter does,
 # rather than compile the product of matrices it would be.
 file(WRITE "${OUT}/mod.ink" "y_n = [1 1]*mod(n, [2 3; 5 11])*[1; 1]\n")
@@ -747,6 +735,61 @@ file(SIZE "${OUT}/norm.h" size)
 if(NOT tests LESS 150 OR NOT size LESS 40000)
     message(SEND_ERROR "compile_nan_once: isnan( ${tests} times in ${size} bytes")
 endif()
+# A gradient by several names compiled (DESIGN.md, test/compile/gradmany.ink):
+# a struct of its parts, the body written once and swept back once, tanh's
+# slope once for each unit, where four grads of one name write it 7 times in
+# 15,798 bytes.
+set(args --compile "${CMAKE_CURRENT_LIST_DIR}/compile/gradmany.ink" net -o net.h)
+check(compile_gradmany_net)
+holds(compile_gradmany_net net.h [[    struct {
+        double W[1][3][2];
+        double V[1][1][3];
+        double c[1][3][1];
+        double d[1];
+    } g;
+]])
+written(compile_gradmany_net net.h "net_tanh_dx\\(" 4)
+file(SIZE "${OUT}/net.h" size)
+if(NOT size LESS 15798)
+    message(SEND_ERROR "compile_gradmany_net: net.h is ${size} bytes")
+endif()
+# One whose points read its own parts is refused once, by its name, as any
+# sequence that reads itself, and so is what reads it.
+file(WRITE "${OUT}/itself.ink" "L(a, b) = (a*b - 1)^2\n"
+     "s_n = grad_(a = s.b_(n-1), b = 2) L(a, b)\ny_n = s.a_n\n")
+set(args --compile itself.ink)
+set(stdout "cannot compile s: its shape depends on itself
+cannot compile y: s, which cannot be compiled
+")
+set(exit 1)
+check(compile_gradmany_itself)
+# One read whole is refused in the interpreter's words, its index as written.
+file(WRITE "${OUT}/whole.ink" "L(a, b) = (a*b - 1)^2\ng_n = grad_(a = n, b = 2) L(a, b)\n"
+     "p = grad_(a = 1, b = 2) L(a, b)\nq(x) = grad_(a = x, b = 2) L(a, b)\n"
+     "r(x)_k = grad_(a = x + k, b = 2) L(a, b)\n"
+     "u_n = g_(n-1)\nv_n = p + n\nw_n = p_n\nx_n = q(n)\ny_n = r(n)_2\nz_n = g + n\n")
+set(args --compile whole.ink)
+set(stdout "cannot compile u: g is a gradient by several names; read one of its parts (g.a_(...))
+cannot compile v: p is a gradient by several names; read one of its parts (p.a)
+cannot compile w: p is not a sequence
+cannot compile x: q is a gradient by several names; read one of its parts (q(...).a)
+cannot compile y: r is a gradient by several names; read one of its parts (r(...).a_(...))
+cannot compile z: g is a gradient by several names; read one of its parts (g.a)
+")
+set(exit 1)
+check(compile_gradmany_whole)
+# A part of one that takes arguments, which the interpreter reads, is refused
+# for now, and one that takes none is read with none.
+file(WRITE "${OUT}/taking.ink" "L(a, b) = (a*b - 1)^2\ng_n = grad_(a = n, b = 2) L(a, b)\n"
+     "r(x)_k = grad_(a = x + k, b = 2) L(a, b)\nw_n = r.a_n\ny_n = r(n).a_2\n"
+     "z_n = g(1).a_n\n")
+set(args --compile taking.ink)
+set(stdout "cannot compile w: r, a gradient by several names that takes arguments, for now
+cannot compile y: r, a gradient by several names that takes arguments, for now
+cannot compile z: g takes no arguments
+")
+set(exit 1)
+check(compile_gradmany_taking)
 # C328: a sequence compiled on the way by a grad keeps the names it took,
 # z's t4_, which the grad does not take again.
 file(WRITE "${OUT}/c328.ink" [[m(x_n[i<=2]) = {

@@ -4,8 +4,7 @@
 # adjoints, in the interpreter's order. A definition of the grad compiles as
 # an instance does, a struct of its parts, each a sequence of the step, so
 # 'm.g.W[0]' is g.W_n. Every number below is worked out apart from the
-# interpreter and the compiler, none recorded. Not wired: nothing compiles a
-# grad by several names before the second increment.
+# interpreter and the compiler, none recorded.
 
 # 'pair', two layers, tanh between them by its cells, trained on its square
 # error by one grad of its four weights, from an inexact start, on inputs in
@@ -30,14 +29,14 @@
 # step from 1, where g's first term reads W_0:
 #
 #     pair: 100 steps from 0, against exact values until 0 and inexact ones from there
-#     pair.V: within 0; the interpreter's terms about <e> from the exact ones
-#     pair.W: within 0; the interpreter's terms about <e> from the exact ones
-#     pair.c: within 0; the interpreter's terms about <e> from the exact ones
-#     pair.d: within 0; the interpreter's terms about <e> from the exact ones
-#     pair.g.V: within 0, from 1; the interpreter's terms about <e> from the exact ones
 #     pair.g.W: within 0, from 1; the interpreter's terms about <e> from the exact ones
+#     pair.W: within 0; the interpreter's terms about <e> from the exact ones
+#     pair.g.V: within 0, from 1; the interpreter's terms about <e> from the exact ones
+#     pair.V: within 0; the interpreter's terms about <e> from the exact ones
 #     pair.g.c: within 0, from 1; the interpreter's terms about <e> from the exact ones
+#     pair.c: within 0; the interpreter's terms about <e> from the exact ones
 #     pair.g.d: within 0, from 1; the interpreter's terms about <e> from the exact ones
+#     pair.d: within 0; the interpreter's terms about <e> from the exact ones
 #
 # Its header, 'inkamath --compile gradmany.ink net -o net.h', calls tanh's
 # part function once for each of the three units, at a part of 1, its slope:
@@ -77,10 +76,10 @@ pair = net(x_n = [mod(n, 5) - 2; mod(3*n, 7) - 3]/3, y_n = mod(n, 3)/2 - 1/2)
 #     B_99  = [-0.0490246416659 -0.13266585045]
 #
 #     same: 100 steps from 0, against exact values until 0 and inexact ones from there
-#     same.A: within 0; the interpreter's terms about <e> from the exact ones
-#     same.B: within 0; the interpreter's terms about <e> from the exact ones
 #     same.g.A: within 0, from 1; the interpreter's terms about <e> from the exact ones
+#     same.A: within 0; the interpreter's terms about <e> from the exact ones
 #     same.g.B: within 0, from 1; the interpreter's terms about <e> from the exact ones
+#     same.B: within 0; the interpreter's terms about <e> from the exact ones
 twin(eta = 1/4, x_n[i<=2], y_n) = {
     L(A, B, x, y) = (A*x*(B*x) + B*x - y)^2/2
     A_0 = ~[1/2 -1/4]
