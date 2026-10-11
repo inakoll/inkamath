@@ -185,7 +185,7 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brin
                          implicit:kinetic implicit:jacobian implicit:doubling implicit:inset
                          implicit:layered tensorgrad:attend tensorgrad:small
                          tensorgrad:saliency:3 adjoint:fit4 adjoint:token
-                         adjoint:sinabs adjoint:gate3 adjoint:aside)
+                         adjoint:sinabs adjoint:gate3 adjoint:aside gradmany:pair gradmany:same)
     string(REPLACE ":" ";" checked ${checked})
     list(POP_FRONT checked file instance count)
     set(name ${instance})
@@ -193,6 +193,10 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brin
     if(count)
         set(name ${instance}_${count})
         set(steps --steps ${count})
+    endif()
+    # One named as another file's instance is named after its file too.
+    if(TARGET check_${name})
+        set(name ${file}_${name})
     endif()
     set(program ${CMAKE_CURRENT_BINARY_DIR}/compile/${name}.c)
     add_custom_command(OUTPUT ${program}
@@ -559,6 +563,11 @@ set_tests_properties(check_gate3_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^gate3: 100 steps from 0${inexact0}\ngate3\\.W: within 0${about}\n$")
 set_tests_properties(check_aside_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^aside: 100 steps from 0${inexact0}\naside\\.W: within 0${about}\n$")
+# A gradient by several names compiled, as compile/gradmany.ink gives it.
+set_tests_properties(check_gradmany_pair_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^pair: 100 steps from 0${inexact0}\npair\\.g\\.W: within 0, from 1${about}\npair\\.W: within 0${about}\npair\\.g\\.V: within 0, from 1${about}\npair\\.V: within 0${about}\npair\\.g\\.c: within 0, from 1${about}\npair\\.c: within 0${about}\npair\\.g\\.d: within 0, from 1${about}\npair\\.d: within 0${about}\n$")
+set_tests_properties(check_same_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^same: 100 steps from 0${inexact0}\nsame\\.g\\.A: within 0, from 1${about}\nsame\\.A: within 0${about}\nsame\\.g\\.B: within 0, from 1${about}\nsame\\.B: within 0${about}\n$")
 # C329: --check's exact run forgets what its walk of the prelude recorded.
 set_tests_properties(check_sinabs_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^sinabs: 100 steps from 0${inexact0}\nsinabs\\.W: within 0${about}\n$")

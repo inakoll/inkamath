@@ -420,18 +420,6 @@ cannot compile w: grad of a tensor with respect to a matrix is a Jacobian, which
 set(exit 1)
 check(compile_tensorgrad_refused)
 
-# A gradient by several names is the interpreter's alone for now, and what
-# reads its parts is refused with it (test/compile/gradmany.ink).
-set(args --compile "${CMAKE_CURRENT_LIST_DIR}/compile/gradmany.ink" net)
-set(stdout "cannot compile V: g, which cannot be compiled
-cannot compile W: g, which cannot be compiled
-cannot compile c: g, which cannot be compiled
-cannot compile d: g, which cannot be compiled
-cannot compile g: a gradient by several names, for now
-")
-set(exit 1)
-check(compile_gradmany_refused)
-
 # The prelude's mod refuses a matrix to divide by, as the interpreter does,
 # rather than compile the product of matrices it would be.
 file(WRITE "${OUT}/mod.ink" "y_n = [1 1]*mod(n, [2 3; 5 11])*[1; 1]\n")
@@ -746,6 +734,24 @@ list(LENGTH tests tests)
 file(SIZE "${OUT}/norm.h" size)
 if(NOT tests LESS 150 OR NOT size LESS 40000)
     message(SEND_ERROR "compile_nan_once: isnan( ${tests} times in ${size} bytes")
+endif()
+# A gradient by several names compiled (DESIGN.md, test/compile/gradmany.ink):
+# a struct of its parts, the body written once and swept back once, tanh's
+# slope once for each unit, where four grads of one name write it 7 times in
+# 15,798 bytes.
+set(args --compile "${CMAKE_CURRENT_LIST_DIR}/compile/gradmany.ink" net -o net.h)
+check(compile_gradmany_net)
+holds(compile_gradmany_net net.h [[    struct {
+        double W[1][3][2];
+        double V[1][1][3];
+        double c[1][3][1];
+        double d[1];
+    } g;
+]])
+written(compile_gradmany_net net.h "net_tanh_dx\\(" 4)
+file(SIZE "${OUT}/net.h" size)
+if(NOT size LESS 15798)
+    message(SEND_ERROR "compile_gradmany_net: net.h is ${size} bytes")
 endif()
 # C328: a sequence compiled on the way by a grad keeps the names it took,
 # z's t4_, which the grad does not take again.

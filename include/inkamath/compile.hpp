@@ -355,6 +355,8 @@ private:
         // m, each a lag once the step computing that base is known.
         std::vector<Seed> seeds;
         Reads             seeded;
+        // Of a grad by several names, its parts, which the first's step computes.
+        std::vector<std::string> parts;
     };
 
     // A read of the latest term of a sequence at another rate, 'y_(floor((n -
@@ -1182,7 +1184,14 @@ private:
             if (guarded && clause.parameters.indexed() && !clause.parameters.general())
                 throw Refusal(name, "a base clause after a guarded one");
         }
-        if (IsSequence(definition)) sequences_[name].definition = &definition;
+        if (!IsSequence(definition)) return;
+        std::vector<std::string> parts;
+        if (const auto* group = ReferenceStack<Value>::Group(definition))
+            for (const std::string& v : group->Variables()) parts.push_back(name + "." + v);
+        for (const std::string& key : parts.empty() ? std::vector{name} : parts) {
+            sequences_[key].definition = &definition;
+            sequences_[key].parts      = parts;
+        }
     }
 
     // A history is folded by init, so it may read only its index and constants,
@@ -1245,7 +1254,9 @@ private:
         try {
             body();
         } catch (const Reason& reason) {
-            throw Refusal(name, reason.what());
+            // A part's names its grad, the definition.
+            const bool part = !sequences_.at(name).parts.empty();
+            throw Refusal(part ? name.substr(0, name.rfind('.')) : name, reason.what());
         }
         sequences_.at(name).parameters.insert(read_parameters_.begin(), read_parameters_.end());
         read_parameters_.insert(outer_parameters.begin(), outer_parameters.end());
@@ -1352,7 +1363,9 @@ private:
         const Home home(*this, sequence.definition);
         if (sequence.compiling) throw Refusal(name, "its shape depends on itself");
         sequence.compiling = true;
+        for (const std::string& part : sequence.parts) sequences_.at(part).compiling = true;
         Bases(name);
+        if (!sequence.parts.empty()) return Grouped(sequence.parts);
         if (ByCells(*sequence.definition)) {
             CompileTerms(name, sequence);
             sequence.compiled = true;
@@ -1406,6 +1419,31 @@ private:
             const Extent stated = Stated(name, *input->second);
             if (sequence.size != stated)
                 throw Refusal(name, input->second->Unlike(sequence.size, stated));
+        }
+    }
+
+    // A grad by several names (DESIGN.md), its parts from one walk and one
+    // sweep, in the first's step.
+    void Grouped(const std::vector<std::string>& parts) {
+        Sequence&            first  = sequences_.at(parts[0]);
+        const Clause<Value>& clause = first.definition->Clauses().front();
+        std::vector<Code>    codes;
+        Within(parts[0], &first, clause.parameters.index_name(), [&] {
+            const Setting<std::string> text(index_text_, "(double)\x12" + parts[0] + "\x13");
+            const Setting<Reads*>      reads(clause_reads_, &first.general_reads);
+            const Setting<std::pair<const GradExpression<Value>*, std::vector<Code>*>> all(
+                grouped_, {ReferenceStack<Value>::Group(*first.definition), &codes});
+            (void)Emit(clause.expression);
+        });
+        first.compiled = true;
+        for (std::size_t k = parts.size(); k-- > 0;) {
+            Sequence& part = sequences_.at(parts[k]);
+            if (k) {
+                part = first;
+                part.temporaries.clear();
+            }
+            part.size    = codes[k].size;
+            part.general = Texts(codes[k]);
         }
     }
 
@@ -2952,6 +2990,8 @@ private:
                 return Prelude(key, *found.definition, call);
             return Answer(Call(key, *found.definition, call, nullptr));
         }
+        if (found.definition && ReferenceStack<Value>::Group(*found.definition))
+            Reasoned(EvaluationVisitor<Value>::Unread);
         return Answer(Term(key, found.definition, call));
     }
 
@@ -2979,7 +3019,9 @@ private:
             reading_->reads[key].insert(lag);
             return Array("m_->" + key + "[0]", read.size);
         }
-        if (lag > 0 && ClosedForm(read) && !histories_.count(key)) return At(read, lag);
+        const auto part =
+            static_cast<std::size_t>(std::ranges::find(read.parts, key) - read.parts.begin());
+        if (lag > 0 && ClosedForm(read) && !histories_.count(key)) return At(read, lag, part);
         (shift_ && early_ >= 0 ? earlies_[static_cast<std::size_t>(early_)].reads
          : deferring_          ? reading_->deferred
                                : reading_->reads)[key]
@@ -2994,7 +3036,7 @@ private:
             earlies_.push_back({key, lag, reading_, {}, early_});
             const int  id          = static_cast<int>(earlies_.size() - 1);
             const int  outer       = std::exchange(early_, id);
-            const Code back        = At(read, lag);
+            const Code back        = At(read, lag, part);
             early_                 = outer;
             const std::string mark = "\x04" + std::to_string(id) + "\x05";
             code.whole             = false;
@@ -3024,7 +3066,7 @@ private:
     // tried as the interpreter tries them. What each guard and value reads is
     // read that much further back, and checked where it is read: before it
     // exists the interpreter reports it, and the term is NaN.
-    Code At(const Sequence& sequence, int lag) {
+    Code At(const Sequence& sequence, int lag, std::size_t part = 0) {
         std::vector<std::pair<std::string, Code>> guarded;
         std::optional<Code>                       otherwise;
         const Home                                home(*this, sequence.definition);
@@ -3051,7 +3093,11 @@ private:
                 if (!condition) continue;
                 clause_reads_           = &value_reads;
                 const std::string test  = mark(guard_reads) + *condition;
-                Code              value = Emit(clause.expression);
+                std::vector<Code> parts;
+                const Setting<std::pair<const GradExpression<Value>*, std::vector<Code>*>> all(
+                    grouped_, {ReferenceStack<Value>::Group(*sequence.definition), &parts});
+                Code value = Emit(clause.expression);
+                if (!parts.empty()) value = parts[part];
                 if (const std::string check = mark(value_reads); !check.empty())
                     for (Cell& cell : value.cells) cell = Cell(check + cell.text, 0);
                 if (condition->empty())
@@ -3396,60 +3442,97 @@ private:
     PExpression<Value> visit(FactExpression<Value>*) override { throw Reason("a factorial"); }
     // grad compiled (DESIGN.md): its body once for each cell of the point, each
     // value carrying its part, the name's a constant seed, as the interpreter's;
-    // by a point of several cells, once, each value carrying a node of a tape
-    // swept back (DESIGN.md, the compiler's adjoint step).
+    // by a point of several cells, or by several names, once, each value
+    // carrying a node of a tape swept back (DESIGN.md, the compiler's adjoint
+    // step), but for a matrix by single values.
     PExpression<Value> visit(GradExpression<Value>* expression) override {
-        if (expression->Several()) throw Reason("a gradient by several names, for now");
+        if (expression->Several() && expression != grouped_.first)
+            Reasoned(EvaluationVisitor<Value>::Unread);
         if (!grad_.empty()) throw Reason("a derivative of a derivative, for now");
-        const Code point = Emit(expression->Point());
+        std::vector<Code> points, parts;
+        for (std::size_t v = 0; v < expression->Variables().size(); ++v)
+            points.push_back(Emit(expression->Point(v)));
         Asked([&] { Reasoned([&] { Derivative<Value>(definitions_).Names(*expression); }); }, true);
-        if (point.size.count() == 1) return Graded(*expression, point, nullptr);
-        Tape tape;
-        return Graded(*expression, point, &tape);
-    }
-    PExpression<Value> Graded(GradExpression<Value>& expression, const Code& point, Tape* tape) {
-        const std::string&   name = expression.Variable();
-        Code                 body;
-        std::vector<Code>    parts;
-        bool                 any = false;
-        const Setting<Tape*> taping(tape_, tape);
-        if (tape) ++tapes_;
-        for (std::size_t k = 0; k < (tape ? 1 : point.cells.size()); ++k) {
-            Value seed(Number(1));
-            if (!point.Scalar()) {
-                seed           = Value(point.size);
-                seed.data()[k] = Number(1);
-            }
-            Code x = point;
-            x.part = {tape ? Record(Kind::Seed, point.size, 0) : Literal(seed)};
-            Expansion bound{{{name, x}}, {}, scope_, expansion_, {}, {}};
-            auto      places = places_;
-            places.erase(name);
-            const Setting<std::map<std::string, Value>> hidden(places_, places);
-            const Setting<std::string> index(index_, index_ == name ? std::string() : index_);
-            const Setting<Expansion*>  binding(expansion_, &bound);
-            const Setting<std::string> differentiating(grad_, name);
-            body            = Emit(expression.Body());
-            const auto kind = [](const Code& c) { return c.size.slices ? "tensor" : "matrix"; };
-            if (!point.Scalar() && !body.Scalar())
-                throw Reason(std::string("grad of a ") + kind(body) + " with respect to a " +
-                             kind(point) + " is a Jacobian, which it does not give");
-            parts.push_back(body.part.empty() ? Literal(Value(body.size))
-                            : tape            ? Swept(body.part[0].node, point.size)
-                                              : body.part[0]);
-            any = any || !body.part.empty();
+        if (points.size() > 1 || points[0].size.count() > 1) {
+            Tape tape;
+            parts = Graded(*expression, points, &tape);
         }
-        Code out = point.Scalar() || tape ? parts[0] : Assembled(parts, point.size);
-        if (!any) out = Literal(Value(point.Scalar() ? body.size : point.size));
-        out.part.clear();
+        if (parts.empty()) parts = Graded(*expression, points, nullptr);
+        if (expression->Several()) *grouped_.second = parts;
+        return Answer(parts[0]);
+    }
+    // Each name's part, in the order written; none where reverse mode gives way.
+    std::vector<Code> Graded(GradExpression<Value>& expression, const std::vector<Code>& points,
+                             Tape* tape) {
+        const std::vector<std::string>& names = expression.Variables();
+        Code                            body;
+        std::vector<Code>               parts;
+        std::vector<bool>               any(names.size());
+        const Setting<Tape*>            taping(tape_, tape);
+        if (tape) ++tapes_;
+        std::string with;
+        for (const std::string& name : names) with += (with.empty() ? "" : " or ") + name;
+        for (std::size_t v = 0; v < (tape ? 1 : names.size()); ++v)
+            for (std::size_t k = 0; k < (tape ? 1 : points[v].cells.size()); ++k) {
+                Expansion   bound{{}, {}, scope_, expansion_, {}, {}};
+                auto        places = places_;
+                std::string index  = index_;
+                for (std::size_t w = 0; w < names.size(); ++w) {
+                    Code x = points[w];
+                    // Each its own node, though two be alike (C323).
+                    if (tape) x.part = {Record(Kind::Seed, x.size, 0, {}, 0, w)};
+                    if (!tape && w == v) {
+                        Value seed(Number(1));
+                        if (!x.Scalar()) {
+                            seed           = Value(x.size);
+                            seed.data()[k] = Number(1);
+                        }
+                        x.part = {Literal(seed)};
+                    }
+                    bound.values.emplace(names[w], x);
+                    places.erase(names[w]);
+                    if (index == names[w]) index.clear();
+                }
+                const Setting<std::map<std::string, Value>> hidden(places_, places);
+                const Setting<std::string>                  indexed(index_, index);
+                const Setting<Expansion*>                   binding(expansion_, &bound);
+                const Setting<std::string>                  differentiating(grad_, with);
+                body = Emit(expression.Body());
+                if (tape && names.size() > 1 && !body.Scalar() &&
+                    std::ranges::all_of(points, &Code::Scalar))
+                    return {};
+                const auto kind = [](const Code& c) { return c.size.slices ? "tensor" : "matrix"; };
+                for (const Code& point : points)
+                    if (!point.Scalar() && !body.Scalar())
+                        throw Reason(std::string("grad of a ") + kind(body) +
+                                     " with respect to a " + kind(point) +
+                                     " is a Jacobian, which it does not give");
+                if (tape && !body.part.empty()) parts = Swept(body.part[0].node, points);
+                if (!tape)
+                    parts.push_back(body.part.empty() ? Literal(Value(body.size)) : body.part[0]);
+                any[v] = any[v] || !body.part.empty();
+            }
         // NaN where the value differentiated is, in a header that writes NaN,
         // as one does where that value writes it and no part reads it (C113).
         for (const Cell& c : body.cells) aware_ |= !body.constant && WritesNan(c.text);
         const std::string nan = aware_ ? Nan(Shared(body)) : "";
-        for (Cell& cell : out.cells)
-            if (!nan.empty()) cell = Cell("(" + nan + cell.text + ")", primary);
-        if (!nan.empty()) out.constant.reset();
-        return Answer(out);
+        std::vector<Code> outs;
+        for (std::size_t v = 0, first = 0; v < names.size(); ++v) {
+            const Code&       point = points[v];
+            const std::size_t n     = tape ? 1 : point.cells.size();
+            const auto        from  = parts.begin() + static_cast<std::ptrdiff_t>(first);
+            Code out = !any[tape ? 0 : v] ? Literal(Value(point.Scalar() ? body.size : point.size))
+                       : tape || point.Scalar()
+                           ? parts[first]
+                           : Assembled({from, from + static_cast<std::ptrdiff_t>(n)}, point.size);
+            first += n;
+            out.part.clear();
+            for (Cell& cell : out.cells)
+                if (!nan.empty()) cell = Cell("(" + nan + cell.text + ")", primary);
+            if (!nan.empty()) out.constant.reset();
+            outs.push_back(std::move(out));
+        }
+        return outs;
     }
     // The sweep back, Tape::Back written out: each node's adjoint by its
     // cells, from the body's 1 back to the seed's, none where no path reaches
@@ -3562,7 +3645,7 @@ private:
                 Into(total.cells[k], Slice(g, b).cells[k]);
         return total;
     }
-    Code Swept(std::size_t body, Extent extent) {
+    std::vector<Code> Swept(std::size_t body, const std::vector<Code>& points) {
         const std::vector<Node>&             nodes = tape_->nodes;
         std::vector<std::optional<Adjoints>> adjoint(nodes.size() + 1);
         const auto at = [&](std::size_t n) -> Adjoints& {
@@ -3591,7 +3674,7 @@ private:
         };
         into(body, Adjoints{Extent{}, {Literal(Value(Number(1)))}});
         const auto times = [](const Code& c, const Code& v) { return Mul(c, v); };
-        for (std::size_t n = nodes.size(); n > 1; --n) {
+        for (std::size_t n = nodes.size(); n > points.size(); --n) {
             if (!adjoint[n]) continue;
             Adjoints g = std::move(*adjoint[n]);
             for (Adjoint& c : g.cells)
@@ -3646,14 +3729,19 @@ private:
                     break;
             }
         }
-        Code out = Literal(Value(extent));
-        for (std::size_t k = 0; adjoint[1] && k < out.cells.size(); ++k)
-            if (const Adjoint& c = adjoint[1]->cells[k]) {
-                out.cells[k] = c->cells[0];
-                if (!c->constant) out.constant.reset();
-                if (out.constant) out.constant->data()[k] = (*c->constant)(1, 1);
-            }
-        return out;
+        // Each seed's adjoints, the seeds being the first nodes.
+        std::vector<Code> parts;
+        for (std::size_t s = 1; s <= points.size(); ++s) {
+            Code out = Literal(Value(points[s - 1].size));
+            for (std::size_t k = 0; adjoint[s] && k < out.cells.size(); ++k)
+                if (const Adjoint& c = adjoint[s]->cells[k]) {
+                    out.cells[k] = c->cells[0];
+                    if (!c->constant) out.constant.reset();
+                    if (out.constant) out.constant->data()[k] = (*c->constant)(1, 1);
+                }
+            parts.push_back(std::move(out));
+        }
+        return parts;
     }
 
     // Unrolled, since each term is a line of C: a thousand is a filter no one
@@ -3710,13 +3798,34 @@ private:
     PExpression<Value> visit(MemberExpression<Value>* expression) override {
         if (const Reference<Value>* model = ModelOf(*expression->Object()))
             return Answer(Instance(*model, Call(*expression->Object()), expression->Member()));
-        // A grad by several names is refused for now, and so what reads its parts.
+        // 'g.x_n', a sequence of the step, of a grad by several names (DESIGN.md).
         if (const auto group = Reasoned([&] {
                 const typename ReferenceStack<Value>::Within within(definitions_, scope_);
                 const typename ReferenceStack<Value>::Frame  frame(definitions_);
                 return definitions_.GroupOf(*expression->Object());
-            }))
-            throw Reason(group->home->Qualified(group->Name()) + ", which cannot be compiled");
+            })) {
+            const std::string  name  = group->home->Qualified(group->Name());
+            const std::string& part  = expression->Member()->Name();
+            const auto&        names = ReferenceStack<Value>::Group(*group)->Variables();
+            const auto*        in =
+                dynamic_cast<const MemberExpression<Value>*>(expression->Object().get());
+            if (!IsSequence(*group))
+                throw Reason(name +
+                             ", a gradient by several names that is not a sequence, for now");
+            if (!in && Call(*expression->Object()).arguments())
+                throw Reason(name + " takes no arguments");
+            if (in) own_ = Reasoned([&] { return &definitions_.Resolve(*in->Object(), *scope_); });
+            if (own_ && own_->label.find('(') != std::string::npos)
+                throw Reason("an unnamed instance, " + own_->label);
+            if (std::ranges::find(names, part) == names.end())
+                throw Reason(name + "." + part + " is not defined");
+            const ParametersCall<Value>& call = Call(*expression->Member());
+            if (call.arguments()) throw Reason(name + "." + part + " takes no arguments");
+            if (!call.subexpr())
+                throw Reason(name + "." + part + " is a sequence; index it (" + name + "." + part +
+                             "_0)");
+            return Answer(Term(Lookup(group->Name()).key + "." + part, group.get(), call));
+        }
         const Scope<Value>* object =
             Reasoned([&] { return &definitions_.Resolve(*expression->Object(), *scope_); });
         if (object->label.find('(') != std::string::npos)
@@ -4308,6 +4417,8 @@ private:
         for (const auto& [name, sequence] : sequences_) {
             if (!sequence.definition) continue;
             waiting[name];
+            if (!sequence.parts.empty() && sequence.parts[0] != name)
+                waiting[name].insert(sequence.parts[0]);
             // A hold's lag is counted from the window as the held term's tick
             // leaves it, so the held sequence comes first.
             for (const std::size_t h : sequence.holds) waiting[name].insert(holds_[h].read);
@@ -4818,6 +4929,8 @@ private:
                              "[0]);\n";
         for (const std::string& name : order) {
             const Sequence&   sequence = sequences_.at(name);
+            // A grad by several names' parts are written with the first.
+            if (!sequence.parts.empty() && sequence.parts[0] != name) continue;
             const bool        rated    = sequence.period > 1;
             const bool        late     = sequence.start > earliest || rated;
             const std::string indent   = late ? "        " : "    ";
@@ -4827,8 +4940,12 @@ private:
                                     std::to_string(sequence.period) + " == 0"
                               : std::string()) +
                        ") {\n";
-            if (rated) out += shifted(name, indent);
-            const std::string assignments = Assigned(name, indent);
+            std::string assignments;
+            for (const std::string& part :
+                 sequence.parts.empty() ? std::vector{name} : sequence.parts) {
+                if (rated) out += shifted(part, indent);
+                assignments += Assigned(part, indent);
+            }
             // Resolved before what is used is known: a term read back that is
             // not computed again leaves its temporaries unread.
             std::vector<Temporary> temporaries = sequence.temporaries;
@@ -4975,6 +5092,8 @@ private:
     Code        code_;
     Tape* tape_  = nullptr;  // the grad's being compiled in reverse mode
     int   tapes_ = 0;        // how many were, so that a memo's key tells their nodes apart
+    // The grad by several names a step computes the parts of, and where they go.
+    std::pair<const GradExpression<Value>*, std::vector<Code>*> grouped_{};
 };
 
 #endif  // INKAMATH_COMPILE_HPP
