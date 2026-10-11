@@ -3366,10 +3366,18 @@ private:
             Tape tape;
             return Graded(*expression, point, &tape);
         } catch (const Forward&) {
-            int count = 0;
+            // Names another list took on the way, a sequence compiled or a
+            // global read, stay taken, and the NaN sets with them (C328).
+            int taken = 0;
+            for (std::size_t k = declared; temporaries_ && k < temporaries_->size(); ++k)
+                if ((*temporaries_)[k].name[0] == 't') ++taken;
+            int count = limit_ ? limit_->count : 0;
             if (temporaries_) temporaries_->resize(declared);
-            std::tie(temporary_count_, count, memo_, terms_, aware_, nans_, nan_temporaries_) =
-                kept;
+            if (temporary_count_ - std::get<0>(kept) == taken)
+                std::tie(temporary_count_, count, memo_, terms_, aware_, nans_, nan_temporaries_) =
+                    kept;
+            else
+                std::tie(memo_, terms_) = std::tie(std::get<2>(kept), std::get<3>(kept));
             if (limit_) limit_->count = count;
             return Graded(*expression, point, nullptr);
         }
