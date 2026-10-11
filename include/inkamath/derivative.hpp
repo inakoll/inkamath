@@ -365,10 +365,8 @@ private:
 
     static Jet Sum(const Jet& a, const Jet& b) {
         Jet c(a.size());
-        for (std::size_t s = 0; s < a.size(); ++s) {
-            if (a[s]) Add(c[s], *a[s]);
-            if (b[s]) Add(c[s], *b[s]);
-        }
+        for (std::size_t s = 0; s < a.size(); ++s)
+            c[s] = a[s] && b[s] ? *a[s] + *b[s] : a[s] ? a[s] : b[s];
         // A part keeps its value's shape, which adding a single value or a
         // matrix to more cells widens (DESIGN.md, C81).
         if (a[0]->Size() == b[0]->Size()) return c;
