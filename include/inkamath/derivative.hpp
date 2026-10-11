@@ -634,6 +634,8 @@ private:
                     throw std::runtime_error(definition->Name() + " has no complex derivative at " +
                                              at);
         for (const auto& [given, jet] : arguments) {
+            // A node's parts are real, a complex value having given way, and
+            // its value is NaN, which IsZero would take for an imaginary part.
             const Jet   im   = ranked && !tape_ ? Map(jet, cell(Scalar::imaginary)) : Jet();
             std::size_t with = 0;
             for (std::size_t s = 1; s < im.size(); ++s)
