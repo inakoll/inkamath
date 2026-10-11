@@ -8630,11 +8630,90 @@ checked: what it asked of the compiler, each with its smallest change.
   transformation, with the extents the compiler knows (`MANIFESTO.md`), and
   the window of history a step that keeps its latest terms can give it, is
   an item of its own, not specified here.
-- **grad's cost per term**: 600,000 remembered terms take 65 s under the
-  sanitizers in reverse mode, 110 µs a term, and 36 s in forward mode;
-  under callgrind, 30,000 terms of `reverse_memo.ink`'s sum cost some
-  17,000 instructions each: a cell read 31 per cent, 11 of them its index,
-  `dynamic_cast` in `Reads` 15, `Key`'s strings 14, and 13 allocations.
+- **grad's cost per term**, a refactor: every golden and every `--check`
+  report byte for byte, its first requirement. 600,000 remembered terms
+  take `reverse_memo.ink` 65 s under the sanitizers in reverse mode, and
+  `fastgrad.ink` 52 with its own in forward mode, where a golden's timeout
+  is 60; both files carry 120. Profiled at db6ac88 under callgrind, in
+  release and in Debug, the sanitizer job's build type, and by sampling
+  the sanitizer build: the cost is grad's, not the evaluator's. The
+  evaluator sums the same 30,000 terms at 24,000 Debug instructions each,
+  grad at 97,000 in reverse mode and 61,000 in forward mode, and what a
+  term of grad's asks of the evaluator, a literal index, its bound
+  summation index, a name looked up, is under a tenth. Under the
+  sanitizers no place dominates: a quarter of the samples is ASan's fake
+  stack, paid per call, the rest copies of jets, the memo's string key and
+  what a call checks before its memo answers.
+
+  Decided, seven changes, all in `derivative.hpp`, smallest first. Each
+  share is measured alone against db6ac88: Debug instructions per term of
+  30,000, reverse then forward mode, and the sanitizer build's time over
+  200,000, best of three; lines added and removed by the prototype.
+  - **`Reads` asks a node's type by `typeid`**, as `Exactly` does, not by
+    `dynamic_cast`: Debug 2 and 1 per cent, nothing measurable under the
+    sanitizers, but release 14 and 9, and `bench/grad.ink` 8. 1 for 2.
+  - **`max` and `min` known by name** before the built-ins' map is asked,
+    which builds a string to ask: Debug 2 and 4 per cent, the sanitizers 4
+    and 2. 2 for 1.
+  - **A literal index read as its value**, not through `Reads` and the
+    evaluator: Debug 3 per cent in reverse mode, the sanitizers 4. 2 for 0.
+  - **A sum of jets adds part to part**, not to a copy of one: Debug 3 and 5
+    per cent, with the others. 2 for 4.
+  - **A node's cells numbered once per extent**, kept on the tape, not each
+    time a cell of it is read, a matrix the node's size for one cell: Debug
+    3 per cent in reverse mode, the sanitizers 5, the transformer's step 9
+    per cent of its instructions. 6 for 1.
+  - **A cell of a matrix grad binds read where it is bound**, not from a
+    copy of its whole jet: Debug 9 per cent in reverse mode, the sanitizers
+    12, the step 14. 13 for 7.
+  - **The memo keyed by a hash of what it compares**, a node by its number
+    and a value by `numeric_interface`'s `hash` and `same`, as the
+    evaluator's `MemoKey` and the tape's nodes already are, not by a string
+    each extent and number is written into: Debug 15 and 31 per cent, the
+    sanitizers 10 and 17. 46 for 23.
+
+  Together, by a prototype not landed: Debug instructions per term 96,900
+  to 62,300 in reverse mode and 60,900 to 36,300 in forward mode, release
+  15,800 to 8,900 and 8,900 to 4,800, allocations 12 to 6 and 6 to 4. On
+  the machine that profiled, under the sanitizers, alone: `reverse_memo.ink`
+  48 to 54 s down to 35 to 36, `fastgrad.ink` 36 to 37 down to 26 to 28,
+  `reverse.ink` unchanged at 10. In release `bench/grad.ink` 688 to 565
+  million instructions, the transformer's step 3,513 to 2,628 million, 0.48
+  s to 0.38. Every golden passes, and the 183 programs `--check` writes for
+  ctest are the same bytes as db6ac88's.
+
+  The test that holds it: `fastgrad.ink`'s 120 s goes, and the golden's 60
+  holds it, its 64 s on CI about 47 by the ratio measured. `reverse_memo.ink`
+  cannot rejoin `reverse.ink`: together about 60 s alone on CI, against 60,
+  where rejoining needs the cost nearly halved. It stays apart with its 120,
+  its comment's figure updated.
+
+  Rejected:
+  - **The string key written faster**, the extent as bytes as `Number::key`
+    writes a number: still a string built per lookup, and a second encoding
+    beside `hash` and `same`, which exist so that none is written.
+  - **The evaluator's `MemoKey` reused**: its arguments are values, and a
+    part's presence and node have no place in one.
+  - **A jet without its heap vector**, a part inline for one grad: the
+    largest share left, copies of jets in half the sanitizer's samples, but
+    every function of `derivative.hpp` takes one, hundreds of lines. An item
+    of its own if `reverse_memo.ink` is to rejoin `reverse.ink`.
+  - **A remembered call answered before `Call`'s checks**, `Divides`, the
+    complex and staircase refusals, the checked read, `|z|`'s correction:
+    the same answers only if every check is a function of the arguments, an
+    argument to make, not a refactor.
+  - **Pointers to `abs`, `max` and `min` kept by `Derivative`**: a cache to
+    keep valid while the prelude loads, for what a name compared first gives.
+  - **The sanitizer job's fake stack turned off**, a quarter of its samples,
+    or **a timeout raised**: either hides the cost from the job meant to see
+    it.
+
+  About 72 lines added and 38 removed, net 34, as the prototype wrote them;
+  `<map>` then goes from `derivative.hpp`'s includes. 16,707 lines at
+  db6ac88. Past 108 added, or net 51, the implementation stops and reports.
+  No spec transcript: nothing new is said, so the goldens are the
+  specification, and the timeout goes with the implementation, measured on
+  the sanitizer build first.
 - **Forward mode's "no path"**: a pass cannot tell a cell no path
   reaches from a part computed to be exactly 0, so C324's products leave
   both out and a `~` marks both, and the inexact-~0 case stays NaN:
