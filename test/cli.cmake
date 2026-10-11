@@ -727,6 +727,19 @@ written(compile_adjoint_wide wide.h "wide_tanh_dx\\(" 17)
 set(args --compile ${adjoint} norm -o norm.h)
 check(compile_adjoint_norm)
 written(compile_adjoint_norm norm.h "norm_exp_dx\\(" 13 "norm_log_dx\\(" 4)
+# C328: a sequence compiled on the way by a grad that gives way keeps the
+# names it took, z's t4_, which the grad compiled forward does not take again.
+file(WRITE "${OUT}/c328.ink" [[m(x_n[i<=2]) = {
+    r(t) | t < 0 = 0
+    r(t) = t
+    W_0 = [1 -1; 1/2 1]
+    W_n = W_(n-1) - grad_(V = W_(n-1)) (exp((V*x_n)[1]) + r((V*z_n)[2]))/4
+    z_n = x_n*exp(x_n[1])
+}
+]])
+set(args --compile c328.ink m -o c328.h)
+check(compile_c328)
+written(compile_c328 c328.h "double t4_ " 1)
 
 # C315: a temporary that may be NaN was known by its name, which a limit's
 # function names its own by: the step's t1_, atan's, and nw's v0_, exp's,
