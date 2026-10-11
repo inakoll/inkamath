@@ -8535,11 +8535,12 @@ checked: what it asked of the compiler, each with its smallest change.
   implementation stops and reports.
 
   Specified in `test/data/spec/reverse.ink`, 120 answers replayed by the
-  spec suite, restored for it, 4 failing by design: the three marks above
-  and the count, `grad_(w = [1 2 3 4 5 6 7 8 9 10]) (w*w' + sum_(k=1)^120000
-  k)`, whose ten evaluations of a 120,000-step sum run out of a line's
-  million steps in forward mode, and whose one does not: the win held by the
-  interpreter's own count, not by time. The rest pass today and must still:
+  spec suite, restored for it, 3 failing by design: the three marks above,
+  the evidence that reverse mode ran. The count, `grad_(w = [1 2 3 4 5 6 7
+  8 9 10]) (w*w' + sum_(k=1)^120000 k)`, one evaluation of a 120,000-step
+  sum where forward mode takes ten, is a plain value: since C318 each of
+  forward mode's passes has steps of its own. The rest pass today and must
+  still:
   matrices, inverses and tensors exact; README's gradient; sums, products,
   locals, cells, a ReLU at 0 and remembered terms; the prelude's functions
   of doubles; a one-cell tensor, forward; the transformer trimmed to one

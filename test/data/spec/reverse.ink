@@ -119,8 +119,8 @@ c(m)[j <= 1, k <= 2] = m[j,k]*[~2 3][j,k]
 >> grad_(v = [2;;]) v[1,1,1]^3
 [12;;]
 
-# The count: forward mode evaluates the body once per cell, so ten cells
-# take ten times the sum's 120,000 steps, past a line's million; reverse
+# The count: forward mode evaluates the body once per cell, ten times the
+# sum's 120,000 steps, each pass within steps of its own (C318); reverse
 # mode once.
 >> grad_(w = 3) (w*w + sum_(k=1)^120000 k)
 6
