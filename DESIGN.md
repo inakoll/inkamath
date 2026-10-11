@@ -8605,7 +8605,11 @@ checked: what it asked of the compiler, each with its smallest change.
   16,659 lines in all, 16,325 at 3593ea7. Measured at this commit,
   RelWithDebInfo with GCC 13: the transformer's step on the exploration's
   files 18.2 s to 0.52 s, its peak memory 79 MB to 27, its terms forward
-  mode's to 16 digits; `bench/grad.ink` 0.24 s to 0.13.
+  mode's to 16 digits; `bench/grad.ink` 0.24 s to 0.13. Under callgrind,
+  after C323, forward mode where it stays costs 4.3 per cent more
+  instructions in `fastgrad.ink`, the same with reverse mode taken out,
+  each part carrying its tape, node and extent: accepted, under the 5 per
+  cent allowed; `bench/`'s other workloads move by 0.7 per cent or less.
 - **The compiler's adjoint step**, after the tape: `--compile` keeps
   forward mode's parts, a pass per cell of a seed. An adjoint emitted by
   transformation, with the extents the compiler knows (`MANIFESTO.md`), and
