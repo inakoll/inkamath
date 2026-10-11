@@ -8302,8 +8302,11 @@ checked: what it asked of the compiler, each with its smallest change.
     guard or cells on it, "a gradient by several names takes no guard and
     no cells"; the definition read bare, "g is a gradient by
     several names; read one of its parts (g.x)", the read's own index and
-    an unnamed `(...)` written in, `(q.x_3)` and `(gs(...).x)`; a name
-    that is not a part, "gs(...).z is not defined", as an instance's.
+    an unnamed `(...)` written in, `(q.x_3)` and `(gs(...).x)`; a term's
+    part read without its index, "q.x is a sequence; index it (q.x_0)",
+    and `run.g.c2` "g.c2 is ...", as `r.v` of an instance is "v is ...",
+    no limit offered, which nobody has asked of a part; a name that is not
+    a part, "gs(...).z is not defined", as an instance's.
   - **Models.** A model's parameters and terms are points like any value,
     and a grad's names reach its body only: a definition of the model the
     body reads that reads a parameter of a grad's name is refused, name by
@@ -8349,7 +8352,7 @@ checked: what it asked of the compiler, each with its smallest change.
     refused rather than kept because it parses.
 
   Measured with a prototype at a206c5d, not landed: every golden and ctest
-  entry passes, and of the spec's 135 answers it gives 122 as written, 11
+  entry passes, and of the spec's 137 answers it gives 122 as written, 13
   others the words above it lacked, and refuses `pg.x` and `pg.y`, taking
   the part's name in `gs(1).x` for a read of grad's x, as grad by one name
   takes `m().x` of an instance, a defect of its own. 142 lines net, 244 added and 102
@@ -8372,8 +8375,8 @@ checked: what it asked of the compiler, each with its smallest change.
      a struct of sequences and its term's block 80, a part's read 15,
      `--check`'s names 10, refusals 5. Past 210 it stops and reports.
 
-  Specified in `test/data/spec/gradmany.ink`, 135 answers replayed by the
-  spec suite, restored for it, 86 failing by design, each that reads a grad
+  Specified in `test/data/spec/gradmany.ink`, 137 answers replayed by the
+  spec suite, restored for it, 88 failing by design, each that reads a grad
   by several names: two names, the parts' shapes, a tensor and a single
   value; two names alike; a term's and a function's parts; the points' scope
   and a local; each refusal in its words; a part under another grad; reverse mode for two single

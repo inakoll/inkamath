@@ -97,6 +97,9 @@ q_n = grad_(x = n, y = 1/n) x^2*y
 >> q.y_3
 9
 
+>> q.x
+error: q.x is a sequence; index it (q.x_0)
+
 >> q_3
 error: q is a gradient by several names; read one of its parts (q.x_3)
 
@@ -505,3 +508,6 @@ run = train()
 
 >> run.g.c2_2
 [~-0.0800354967, ~0.0916809774, ~-0.161322507, ~0.149677026]
+
+>> run.g.c2
+error: g.c2 is a sequence; index it (g.c2_0)
