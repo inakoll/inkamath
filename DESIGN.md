@@ -8838,9 +8838,10 @@ checked: what it asked of the compiler, each with its smallest change.
       m_->w[0][1][0] = m_->index_ == 0 ? 0.0 : m_->w[1][1][0] + (0.0 - m_->eta * (3.0 * t4_ + 2.0 * t5_ + 1.0 * t6_ + 0.0 * t7_));
 
   t0_ to t3_ each square's 2*u^1, and t4_ to t7_ each times the 1/8 of the
-  loss, the fourth square's first; and README's sentence that a step's
-  gradient by a matrix is the interpreter's to rounding: to the bit where
-  the interpreter's values are doubles. No golden moves.
+  loss, the fourth square's first; and README's sentence that a `grad` is
+  compiled forward, now one by a single value, and a step's gradient by a
+  matrix the interpreter's to rounding: to the bit where the interpreter's
+  values are doubles. No golden moves.
 - **grad's cost per term**: 600,000 remembered terms take 65 s under the
   sanitizers in reverse mode, 110 µs a term, and 36 s in forward mode;
   under callgrind, 30,000 terms of `reverse_memo.ink`'s sum cost some
