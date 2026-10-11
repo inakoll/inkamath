@@ -154,6 +154,27 @@ c(m)[j <= 1, k <= 2] = m[j,k]*[~2 3][j,k]
 >> grad_(w = [1 2 3 4 5 6 7 8 9 10]) (w*w' + sum_(k=1)^120000 k)
 [2, 4, 6, 8, 10, 12, 14, 16, 18, 20]
 
+# A call made again with the same parts is remembered, as forward mode
+# remembers it (C323): a cell read again, or a product by the same value,
+# is the same node. So the tanh at the foot of dive(255, t) is the one
+# taken before it, and not one reference deeper, 2*(1 - tanh(1/2)^2); the
+# 600,000 terms are a step each, e times 600,000; and fb's 2^25 leaves are
+# 26 calls.
+>> grad_(t = [~0.5 1]) (tanh(t[1,1]) + dive(255, t[1,1]))
+[~1.57289547, ~0]
+
+>> grad_(v = [~1 1]) sum_(k=1)^600000 exp(v[1,1])
+[~1630969.1, ~0]
+
+>> fb(y, n) | n < 1 = y
+fb(y, n) | n < 1 = y
+
+>> fb(y, n) = fb(y*1, n - 1) + fb(y*1, n - 1)
+fb(y, n) = fb(y*1, n - 1) + fb(y*1, n - 1)
+
+>> grad_(v = [1 2]) fb(v[1,1], 25)
+[33554432, 0]
+
 # A tiny transformer, trimmed from the exploration's tf.ink (Vaswani et al.
 # 2017, pre-layer-norm): one block of two heads of width 2, width 4, a
 # vocabulary of 4, one sequence of three tokens and its reverse as target.
