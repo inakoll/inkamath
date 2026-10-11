@@ -775,12 +775,19 @@ private:
         // As an instance's member, by its own name, no limit offered.
         const std::string name = definition.Name() + "." + part.Name();
         if (Call(part).arguments()) throw std::runtime_error(name + " takes no arguments");
-        if (definition.Clauses().front().parameters.indexed() && !Call(part).subexpr())
-            throw std::runtime_error(name + " is a sequence; index it (" + name + "_0)");
         const ParametersCall<T> call(Call(object).arguments(), Call(part).subexpr());
+        const MemoKey<T>        key = definition.Key(call, *this);
+        if (definition.Clauses().front().parameters.indexed() && !key.indexed) {
+            // Offered in the call's own form, its arguments by their values.
+            std::string written = definition.Name();
+            for (std::size_t a = 0; a < key.arguments.size(); ++a)
+                written += (a ? ", " : "(") + numeric_interface<T>::toString(key.arguments[a].second);
+            if (!key.arguments.empty()) written += ")";
+            throw std::runtime_error(name + " is a sequence; index it (" + written + "." +
+                                     part.Name() + "_0)");
+        }
         // A part is remembered as the call given one more argument, named for
         // it: the expression's names are every instance's, the call its own.
-        const MemoKey<T> key = definition.Key(call, *this);
         const auto       keyed = [&](std::size_t place) {
             MemoKey<T> each = key;
             each.arguments.emplace_back(names[place],
