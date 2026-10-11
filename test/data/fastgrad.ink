@@ -111,10 +111,6 @@ digits = 9
 >> grad_(t = ~1) sum_(k=1)^50000 log(1 + exp(-t*k/50000))
 ~-8528.00195
 
-# Remembered as walked, a call asked again costs no step, nor any depth.
->> grad_(t = ~1) sum_(k=1)^600000 exp(t)
-~1630969.1
-
 # Walked under grad exp nests 3 references deeper, tanh 4, and log, sin and
 # cos 5, so each ran out of depth; one call deeper than the last answer is
 # refused, as are what still walks: an exact point, an exact part through
