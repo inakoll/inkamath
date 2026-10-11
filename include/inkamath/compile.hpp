@@ -1932,7 +1932,8 @@ private:
     // operand is, as the interpreter refuses it (DESIGN.md, a NaN reaches
     // every term that reads it): the test of each cell of the operands given
     // that is neither a number nor the index, written before the decision.
-    // A code's cells, where more than one, are one flag of the list.
+    // Several cells tested once per list: each read repeating the test was
+    // most of a header (DESIGN.md, a matrix read by its cells).
     template <typename... Codes>
     std::string Nan(const Codes&... codes) {
         std::string test;
