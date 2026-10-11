@@ -175,6 +175,12 @@ public:
         if (model || file)
             throw std::runtime_error(reference_name_ + (model ? " is a model" : " is a file") +
                                      Advice());
+        // A grad by several names is read by its parts after a point, so it is
+        // a definition's whole right side, and its only clause (DESIGN.md).
+        const bool group = Grouped(ai_expression);
+        if (group && (ai_parameters.guarded() || ai_parameters.cells()))
+            throw std::runtime_error("a gradient by several names takes no guard and no cells");
+        Ungrouped(*ai_expression);
 
         // One definition per name, kept as the clauses that make it up in the
         // order they were written. A clause replaces the one that names the
@@ -293,6 +299,10 @@ public:
                                  Taken(c.parameters, true) == Taken(ai_parameters, true)
                            : !c.parameters.guarded() && Shape(c) == Shape(clause);
             });
+        if (clauses_.size() + (existing == clauses_.end()) > 1 &&
+            (group || FirstThat([](const Clause<T>& c) { return Grouped(c.expression); })))
+            throw std::runtime_error(reference_name_ +
+                                     " is a gradient by several names, and takes no other clause");
         if (existing != clauses_.end())
             *existing = clause;
         else
@@ -569,7 +579,8 @@ public:
         // alone (DESIGN.md, phase 9); a local shares its name with the
         // global it shadows, so the stack says which this is. A limit is not
         // keyed -- the terms it walks are, through this same path.
-        const bool memoisable = global && !call.limit() && (indexed || !arguments.empty());
+        const bool memoisable = global && !call.limit() && (indexed || !arguments.empty()) &&
+                                !ReferenceStack<T>::Group(*this);
         if (memoisable) {
             if(const T* memoised = stack.Memoised(key)) {
                 return *memoised;
@@ -979,7 +990,7 @@ private:
         }
         for (const PExpression<T>& child : e->Children()) {
             std::vector<std::string> inner = bound;
-            if (const std::string* own = Binding(*e, child)) inner.push_back(*own);
+            for (const std::string& own : Binding(*e, child)) inner.push_back(own);
             Reads(child, p, self, inner, reads);
         }
     }
@@ -1007,21 +1018,35 @@ private:
         for (const PExpression<T>& child : e.Children()) {
             if (!child) continue;
             std::vector<std::string> inner = names;
-            if (const std::string* own = Binding(e, child)) std::erase(inner, *own);
+            for (const std::string& own : Binding(e, child)) std::erase(inner, own);
             if (!Fixed(*child, inner, self)) return false;
         }
         return true;
     }
 
-    // The name a sum or a grad binds in its body, or none.
-    static const std::string* Binding(const Expression<T>& e, const PExpression<T>& child) {
+    static bool Grouped(const PExpression<T>& e) {
+        const auto* grad = dynamic_cast<const GradExpression<T>*>(e.get());
+        return grad && grad->Several();
+    }
+    static void Ungrouped(const Expression<T>& e) {
+        if (const auto* local = dynamic_cast<const EqualExpression<T>*>(&e))
+            EvaluationVisitor<T>::Ungrouped(*local);
+        for (const PExpression<T>& child : e.Children()) {
+            if (!child) continue;
+            if (Grouped(child)) EvaluationVisitor<T>::Unread();
+            Ungrouped(*child);
+        }
+    }
+
+    // The names a sum or a grad binds in its body, or none.
+    static std::vector<std::string> Binding(const Expression<T>& e, const PExpression<T>& child) {
         if (const auto* series = dynamic_cast<const SeriesExpression<T>*>(&e);
             series && child == series->Body())
-            return &series->Index();
+            return {series->Index()};
         if (const auto* grad = dynamic_cast<const GradExpression<T>*>(&e);
             grad && child == grad->Body())
-            return &grad->Variable();
-        return nullptr;
+            return grad->Variables();
+        return {};
     }
 
     static std::string Named(const ParametersDefinition<T>& p, int d) {

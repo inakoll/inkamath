@@ -392,21 +392,33 @@ private:
 
 // 'grad_(x = a) body': the derivative of the body with respect to x at a. The
 // point is read where it is written, the name only in the body, as a sum's.
+// 'grad_(x = a, y = b) body' has a part for each name.
 template <typename T>
 class GradExpression final : public Expression<T> {
 public:
-    GradExpression(std::string variable, PExpression<T> point, PExpression<T> body)
-        : Expression<T>({point, body}), variable_(std::move(variable)) {}
+    GradExpression(std::vector<std::string> variables, std::vector<PExpression<T>> points,
+                   PExpression<T> body)
+        : Expression<T>(Joined(std::move(points), std::move(body))),
+          variables_(std::move(variables)) {}
 
-    [[nodiscard]] const std::string&    Variable() const { return variable_; }
-    [[nodiscard]] const PExpression<T>& Point() const { return this->Children()[0]; }
-    [[nodiscard]] const PExpression<T>& Body() const { return this->Children()[1]; }
+    [[nodiscard]] const std::vector<std::string>& Variables() const { return variables_; }
+    [[nodiscard]] const std::string&              Variable() const { return variables_[0]; }
+    [[nodiscard]] const PExpression<T>&           Point(std::size_t k = 0) const {
+        return this->Children()[k];
+    }
+    [[nodiscard]] const PExpression<T>& Body() const { return this->Children().back(); }
+    [[nodiscard]] bool                  Several() const { return variables_.size() > 1; }
 
     PExpression<T> accept(TransformationVisitor<T>& v) override { return v.visit(this); }
     T              accept(FoldingVisitor<T>& v) override { return v.visit(this); }
 
 private:
-    std::string variable_;
+    static std::vector<PExpression<T>> Joined(std::vector<PExpression<T>> points,
+                                              PExpression<T>              body) {
+        points.push_back(std::move(body));
+        return points;
+    }
+    std::vector<std::string> variables_;
 };
 
 template <typename T>

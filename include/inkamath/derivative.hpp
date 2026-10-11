@@ -7,6 +7,7 @@
 #include <bit>
 #include <cmath>
 #include <cstddef>
+#include <list>
 #include <memory>
 #include <optional>
 #include <set>
@@ -28,17 +29,22 @@ class Derivative {
 public:
     explicit Derivative(ReferenceStack<T>& stack) : stack_(stack), ordinary_(stack) {}
 
-    T At(GradExpression<T>& grad) {
-        const Local local(*this);
-        return *Grad(grad)[0];
+    // Each name's part, in the order written.
+    std::vector<T> At(GradExpression<T>& grad) {
+        const Local    local(*this);
+        std::vector<T> parts;
+        for (const Jet& part : Grad(grad)) parts.push_back(*part[0]);
+        return parts;
     }
 
     // What grad refuses by the names its body reads, before any value: the
     // compiler asks it too (DESIGN.md, grad compiled).
     void Names(const GradExpression<T>& grad) {
-        Unreached(grad.Body(), grad.Variable());
-        if (!Mentions(*grad.Body(), grad.Variable()))
-            throw std::runtime_error("grad's expression does not read " + grad.Variable());
+        for (const std::string& name : grad.Variables()) {
+            Unreached(grad.Body(), name);
+            if (!Mentions(*grad.Body(), name))
+                throw std::runtime_error("grad's expression does not read " + name);
+        }
     }
 
 private:
@@ -233,8 +239,8 @@ private:
             return v.IsTensor() || g.IsTensor() ? T::Sliced(g, v, f) : f(g, v);
         }
 
-        // The seed's adjoint, the body's being 1.
-        std::optional<T> Back(std::size_t body) {
+        // The seeds' adjoints, the body's being 1.
+        std::vector<std::optional<T>> Back(std::size_t body, std::size_t seeds) {
             std::vector<std::optional<T>> adjoint(nodes.size() + 1);
             adjoint[body]   = T(typename T::value_type(1));
             const auto into = [&](std::size_t n, T g) {
@@ -242,7 +248,7 @@ private:
                 g          = Reduce(std::move(g), nodes[n - 1].extent);
                 adjoint[n] = adjoint[n] ? *adjoint[n] + g : std::move(g);
             };
-            for (std::size_t n = nodes.size(); n > 1; --n) {
+            for (std::size_t n = nodes.size(); n > seeds; --n) {
                 if (!adjoint[n]) continue;
                 T           g = std::move(*adjoint[n]);
                 const Node& x = nodes[n - 1];
@@ -292,7 +298,7 @@ private:
                         break;
                 }
             }
-            return adjoint[1];
+            return {adjoint.begin() + 1, adjoint.begin() + 1 + static_cast<std::ptrdiff_t>(seeds)};
         }
     };
 
@@ -487,10 +493,8 @@ private:
         }
     }
 
-    // The innermost grad's name at its point, for a message.
-    [[nodiscard]] std::string Where() const {
-        return grads_.back().first + " = " + grads_.back().second;
-    }
+    // The innermost grad's names at their points, for a message.
+    [[nodiscard]] std::string Where() const { return grads_.back().second; }
 
     // The innermost grad u moves with whose point is complex, empty if none.
     [[nodiscard]] std::string Complex(const Jet& u) const {
@@ -498,8 +502,7 @@ private:
         for (std::size_t s = 1; s < u.size(); ++s)
             if (u[s]) with |= s;
         if (!(with & complex_)) return "";
-        const auto& [name, point] = grads_[std::bit_width(with & complex_) - 1];
-        return name + " = " + point;
+        return grads_[std::bit_width(with & complex_) - 1].second;
     }
 
     Jet Eval(const PExpression<T>& e) { return Eval(*e); }
@@ -562,9 +565,16 @@ private:
         if (auto* x = Exactly<CompareExpression<T>>(e)) return Compare(*x);
         if (auto* x = Exactly<LogicExpression<T>>(e)) return Logic(*x);
         if (auto* x = Exactly<SeriesExpression<T>>(e)) return Series(*x);
-        if (auto* x = Exactly<GradExpression<T>>(e)) return Grad(*x);
+        if (auto* x = Exactly<GradExpression<T>>(e)) {
+            if (x->Several()) EvaluationVisitor<T>::Unread();
+            return Grad(*x)[0];
+        }
         if (auto* x = Exactly<MemberExpression<T>>(e)) {
             if (!Reads(*x)) return Constant(x->accept(ordinary_));
+            // An instance's is refused as the instance is.
+            if (!Exactly<MemberExpression<T>>(*x->Object()) && stack_.GroupOf(*x->Object()))
+                throw std::runtime_error(
+                    "grad cannot differentiate a gradient by several names yet");
             // A file holds definitions, as the session does; an instance runs a model.
             auto* const call   = dynamic_cast<FuncExpression<T>*>(x->Member().get());
             auto* const object = Exactly<RefExpression<T>>(*x->Object());
@@ -633,7 +643,8 @@ private:
     // 'written' is the call as the expression has it, 'sq.f(t)' for f in a file.
     Jet Call(FuncExpression<T>& call, const typename ReferenceStack<T>::definition_type& definition,
              Expression<T>& written, std::optional<int> index) {
-        if (!definition || !definition->Value() || definition->Clauses().empty())
+        if (!definition || !definition->Value() || definition->Clauses().empty() ||
+            ReferenceStack<T>::Group(*definition))
             return Constant(written.accept(ordinary_));
         const ParametersCall<T>&       p          = call.Call();
         const ParametersDefinition<T>& parameters = definition->Clauses().front().parameters;
@@ -667,11 +678,10 @@ private:
             for (std::size_t s = 1; s < im.size(); ++s)
                 if (im[s] && !IsZero(*im[s])) with |= s;
             if (!with || !IsZero(*im[0])) continue;
-            const auto& [grad, point] = grads_[std::bit_width(with) - 1];
             throw std::runtime_error(
                 definition->Name() +
-                " has no derivative where its argument leaves the real line at " + grad + " = " +
-                point);
+                " has no derivative where its argument leaves the real line at " +
+                grads_[std::bit_width(with) - 1].second);
         }
         for (const auto& [given, jet] : arguments)
             if (Moves(jet) && stack_.staircases.contains(definition.get()))
@@ -1211,81 +1221,107 @@ private:
         walk.Fail("the " + what, "last partial " + what, total);
     }
 
-    Jet Grad(GradExpression<T>& grad) {
+    std::vector<Jet> Grad(GradExpression<T>& grad) {
         if (tape_) throw Forward();
-        const Jet          point = Eval(grad.Point());
-        const T&           at    = *point[0];
-        const std::string& name  = grad.Variable();
+        const std::vector<std::string>& names = grad.Variables();
+        std::vector<Jet>                points;
+        for (std::size_t v = 0; v < names.size(); ++v) points.push_back(Eval(grad.Point(v)));
         Names(grad);
         if (order_ == max_order)
             throw std::runtime_error("grad nests more than " + std::to_string(max_order) + " deep");
         const std::size_t bit = Size();
         std::vector<Jet>  parts;
+        std::vector<std::size_t> cells;
         bool              reversed = false;
         {
-            const Order order(*this, name, numeric_interface<T>::toString(at));
-            const bool  real =
-                IsZero(T::Cells(at, numeric_interface<typename T::value_type>::imaginary));
+            std::string with, where;
+            bool        real = true;
+            for (std::size_t v = 0; v < names.size(); ++v) {
+                const T& at = *points[v][0];
+                with += (v ? " or " : "") + names[v];
+                where += (v ? ", " : "") + names[v] + " = " + numeric_interface<T>::toString(at);
+                real = real &&
+                       IsZero(T::Cells(at, numeric_interface<typename T::value_type>::imaginary));
+                cells.push_back(at.IsScalar() ? 1 : at.Size().count());
+            }
+            const Order                order(*this, with, where);
             const Setting<std::size_t> complex(complex_, complex_ | (real ? 0 : bit));
             std::optional<typename ReferenceStack<T>::Frame> frame;
             if (!stack_.Framed()) frame.emplace(stack_);
-            typename ReferenceStack<T>::Trial bound(stack_, name);
-            stack_.BindValue(name, at, "grad's variable");
-            // A single value's gradient with respect to a matrix, one cell at a time.
-            const Extent      extent = at.Size();
-            const std::size_t cells  = at.IsScalar() ? 1 : extent.count();
+            std::list<typename ReferenceStack<T>::Trial> bound;
+            for (std::size_t v = 0; v < names.size(); ++v) {
+                bound.emplace_back(stack_, names[v]);
+                stack_.BindValue(names[v], *points[v][0], "grad's variable");
+            }
             // One pass's locals are not the next's, in either frame.
             const bool binds = ParametersDefinition<T>::Binds(*grad.Body());
-            // A single value's gradient with respect to a real matrix, in one walk.
-            reversed = bit == 1 && real && cells > 1 && Reverse(grad, point, binds, parts);
-            for (std::size_t k = reversed ? cells : 0; k < cells; ++k) {
-                // Each pass has steps of its own, as a term has (C318).
-                const typename ReferenceStack<T>::OwnSteps own_steps(stack_);
-                const bool                            undo = binds && k + 1 < cells;
-                typename ReferenceStack<T>::Tentative locals(stack_, undo);
-                const Arguments                       own = undo ? frames_.back() : Arguments();
-                Jet                                   x   = Padded(point);
-                T   seed(typename T::value_type(1));
-                if (!at.IsScalar()) {
-                    seed           = Zero(extent);
-                    seed.data()[k] = typename T::value_type(1);
+            // A single value's gradient with respect to real matrices, or to
+            // several names, in one walk.
+            reversed = bit == 1 && real && (names.size() > 1 || cells[0] > 1) &&
+                       Reverse(grad, points, binds, parts);
+            std::size_t passes = 0;
+            for (const std::size_t c : cells) passes += c;
+            for (std::size_t v = 0, pass = 0; !reversed && v < names.size(); ++v)
+                for (std::size_t k = 0; k < cells[v]; ++k, ++pass) {
+                    const T& at = *points[v][0];
+                    // Each pass has steps of its own, as a term has (C318).
+                    const typename ReferenceStack<T>::OwnSteps own_steps(stack_);
+                    const bool                                 undo = binds && pass + 1 < passes;
+                    typename ReferenceStack<T>::Tentative      locals(stack_, undo);
+                    const Arguments   own = undo ? frames_.back() : Arguments();
+                    std::list<Shadow> shadows;
+                    for (std::size_t w = 0; w < names.size(); ++w) {
+                        Jet x = Padded(points[w]);
+                        if (w == v) {
+                            T seed(typename T::value_type(1));
+                            if (!at.IsScalar()) {
+                                seed           = Zero(at.Size());
+                                seed.data()[k] = typename T::value_type(1);
+                            }
+                            x[bit] = seed;
+                        }
+                        shadows.emplace_back(*this, names[w], x);
+                    }
+                    Jet body = Eval(grad.Body());
+                    Single(at, *body[0]);
+                    parts.push_back(std::move(body));
+                    if (undo) frames_.back() = own;
                 }
-                x[bit] = seed;
-                const Shadow variable(*this, name, x);
-                Jet          body = Eval(grad.Body());
-                Single(at, *body[0]);
-                parts.push_back(std::move(body));
-                if (undo) frames_.back() = own;
-            }
         }
         // A local the body bound outlives the grad, its parts by the grad's
         // name do not: the next grad at this depth takes the same bit (C322).
         for (auto& binding : frames_.back()) binding.second.resize(bit);
-        Jet out(bit);
-        for (std::size_t s = 0; s < bit; ++s) {
-            if (at.IsScalar() || reversed) {
-                out[s] = parts[0][s | bit];
-                continue;
+        std::vector<Jet> outs;
+        for (std::size_t v = 0, first = 0; v < names.size();
+             first += reversed ? 1 : cells[v], ++v) {
+            const T& at = *points[v][0];
+            Jet      out(bit);
+            for (std::size_t s = 0; s < bit; ++s) {
+                if (at.IsScalar() || reversed) {
+                    out[s] = parts[first][s | bit];
+                    continue;
+                }
+                T    gradient = Zero(at.Size());
+                bool any      = s == 0;
+                for (std::size_t k = 0; k < cells[v]; ++k) {
+                    if (!parts[first + k][s | bit]) continue;
+                    gradient.data()[k] = parts[first + k][s | bit]->data()[0];
+                    any                = true;
+                }
+                if (any) out[s] = gradient;
             }
-            T    gradient = Zero(at.Size());
-            bool any      = s == 0;
-            for (std::size_t k = 0; k < parts.size(); ++k) {
-                if (!parts[k][s | bit]) continue;
-                gradient.data()[k] = parts[k][s | bit]->data()[0];
-                any                = true;
-            }
-            if (any) out[s] = gradient;
+            // A derivative none of the body has is 0, approximated with its value;
+            // and a part a clause lacked is 0 approximated if a guard that read an
+            // approximated number chose it, which marks whatever it might reach.
+            const bool none = !out[0];
+            if (none) out[0] = Zero(parts[first][0]->Size());
+            if (chosen_ || (none && numeric_interface<T>::approximated(*parts[first][0])))
+                out = Mark(std::move(out), true);
+            else if (rounded_)
+                out = Mark(std::move(out), false);
+            outs.push_back(std::move(out));
         }
-        // A derivative none of the body has is 0, approximated with its value;
-        // and a part a clause lacked is 0 approximated if a guard that read an
-        // approximated number chose it, which marks whatever it might reach.
-        const bool none = !out[0];
-        if (none) out[0] = Zero(parts[0][0]->Size());
-        if (chosen_ || (none && numeric_interface<T>::approximated(*parts[0][0])))
-            out = Mark(std::move(out), true);
-        else if (rounded_)
-            out = Mark(std::move(out), false);
-        return out;
+        return outs;
     }
 
     // A gradient is of a single value, not a Jacobian.
@@ -1298,7 +1334,8 @@ private:
 
     // One walk recording its parts on a tape, and one sweep back (DESIGN.md);
     // false where it gives way, which keeps nothing of it.
-    bool Reverse(GradExpression<T>& grad, const Jet& point, bool binds, std::vector<Jet>& parts) {
+    bool Reverse(GradExpression<T>& grad, const std::vector<Jet>& points, bool binds,
+                 std::vector<Jet>& parts) {
         const Setting<decltype(memo_)>        remembered(memo_, {});
         typename ReferenceStack<T>::Tentative locals(stack_, binds);
         const Arguments                       own    = binds ? frames_.back() : Arguments();
@@ -1306,19 +1343,33 @@ private:
         const std::size_t                     stepped = stepped_;
         try {
             const typename ReferenceStack<T>::OwnSteps own_steps(stack_);
-            const Extent                               extent = point[0]->Size();
             Tape                                       tape;
             const Setting<Tape*>                       taping(tape_, &tape);
-            Jet                                        x = Padded(point);
-            x[1]                                         = tape.Add(Tape::Kind::Seed, extent, 0);
-            const Shadow variable(*this, grad.Variable(), x);
-            Jet          body = Eval(grad.Body());
-            Single(*point[0], *body[0]);
-            body[1] = body[1] ? tape.Back(body[1]->node).value_or(Zero(extent)) : Zero(extent);
-            parts.push_back(std::move(body));
+            std::list<Shadow>                          shadows;
+            const std::size_t                          seeds = points.size();
+            for (std::size_t v = 0; v < seeds; ++v) {
+                Jet x = Padded(points[v]);
+                // Each its own node, though two be alike (C323).
+                x[1] = tape.Add(Tape::Kind::Seed, points[v][0]->Size(), 0, std::nullopt, 0, v + 1);
+                shadows.emplace_back(*this, grad.Variables()[v], x);
+            }
+            Jet  body   = Eval(grad.Body());
+            bool single = true;
+            for (const Jet& point : points) single = single && point[0]->IsScalar();
+            // A matrix's derivatives by single values are forward mode's.
+            if (single && !body[0]->IsScalar()) throw Forward();
+            for (const Jet& point : points) Single(*point[0], *body[0]);
+            std::vector<std::optional<T>> back =
+                body[1] ? tape.Back(body[1]->node, seeds) : std::vector<std::optional<T>>(seeds);
+            for (std::size_t v = 0; v < seeds; ++v) {
+                Jet part = body;
+                part[1]  = back[v].value_or(Zero(points[v][0]->Size()));
+                parts.push_back(std::move(part));
+            }
             locals.keep();
             return true;
         } catch (const Forward&) {
+            parts.clear();
             if (binds) frames_.back() = own;
             chosen_  = chosen;
             rounded_ = rounded;
@@ -1350,10 +1401,14 @@ private:
             return;
         }
         if (const auto* grad = dynamic_cast<const GradExpression<T>*>(e.get())) {
-            Scan(grad->Point(), name, bound, within, seen);
-            const bool had = !bound.insert(grad->Variable()).second;
+            for (std::size_t v = 0; v < grad->Variables().size(); ++v)
+                Scan(grad->Point(v), name, bound, within, seen);
+            std::set<std::string> had;
+            for (const std::string& v : grad->Variables())
+                if (!bound.insert(v).second) had.insert(v);
             Scan(grad->Body(), name, bound, within, seen);
-            if (!had) bound.erase(grad->Variable());
+            for (const std::string& v : grad->Variables())
+                if (!had.count(v)) bound.erase(v);
             return;
         }
         if (const auto* local = dynamic_cast<const EqualExpression<T>*>(e.get())) {
@@ -1564,7 +1619,7 @@ private:
     ReferenceStack<T>&                                    stack_;
     EvaluationVisitor<T>                                  ordinary_;
     int                                                   order_ = 0;
-    std::vector<std::pair<std::string, std::string>>      grads_;  // name and point, innermost last
+    std::vector<std::pair<std::string, std::string>> grads_;  // names and points, innermost last
     std::vector<std::vector<std::pair<std::string, Jet>>> frames_;
     std::unordered_multimap<std::size_t, Remembered>      memo_;
     std::size_t                                           depth_   = 0;
