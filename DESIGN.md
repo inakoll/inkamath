@@ -8345,8 +8345,10 @@ checked: what it asked of the compiler, each with its smallest change.
     refused rather than kept because it parses.
 
   Measured with a prototype at a206c5d, not landed: every golden and ctest
-  entry passes, and of the spec's 130 answers it gives 121 as written, the
-  other 9 the words above it lacked. 142 lines net, 244 added and 102
+  entry passes, and of the spec's 133 answers it gives 122 as written, 9
+  others the words above it lacked, and refuses `pg.x` and `pg.y`, taking
+  the part's name in `gs(1).x` for a read of grad's x, as grad by one name
+  takes `m().x` of an instance, a defect of its own. 142 lines net, 244 added and 102
   removed, much of it the pass loop re-indented: `derivative.hpp` 64, the
   names, seeds, passes and parts; `reference_stack.hpp` 55, the group's
   reads and memo; `expression.hpp` 10, `interpreter.hpp` 6,
@@ -8363,11 +8365,11 @@ checked: what it asked of the compiler, each with its smallest change.
      a struct of sequences and its term's block 80, a part's read 15,
      `--check`'s names 10, refusals 5. Past 210 it stops and reports.
 
-  Specified in `test/data/spec/gradmany.ink`, 130 answers replayed by the
-  spec suite, restored for it, 81 failing by design, each that reads a grad
+  Specified in `test/data/spec/gradmany.ink`, 133 answers replayed by the
+  spec suite, restored for it, 84 failing by design, each that reads a grad
   by several names: two names, the parts' shapes, a tensor and a single
   value; two names alike; a term's and a function's parts; the points' scope
-  and a local; each refusal in its words; reverse mode for two single
+  and a local; each refusal in its words; a part under another grad; reverse mode for two single
   values, where forward mode runs out of depth, its slope 1 - tanh(1/2)^2;
   what gives way to forward mode; a model's parameters; a two-layer ReLU
   network exact, by sympy and by backpropagation in fractions, and its loss

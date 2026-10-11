@@ -180,6 +180,17 @@ error: grad of a matrix with respect to a matrix is a Jacobian, which it does no
 >> grad_(z = 1) gs(z).x
 error: grad cannot differentiate a gradient by several names yet
 
+# A part's name is not the name of a grad it is read under: gs(1).x reads
+# no x of pg's.
+>> pg = grad_(x = 1, y = 2) x*y*gs(1).x
+pg = grad_(x = 1, y = 2) x*y*gs(1).x
+
+>> pg.x
+16
+
+>> pg.y
+8
+
 # Single values alone are one sweep too. Forward mode walks tanh for t's
 # exact part (C139), 254 calls deep, and refuses, as grad by t alone does;
 # reverse mode takes the header's slope, 1 - tanh(1/2)^2, and u's part is
