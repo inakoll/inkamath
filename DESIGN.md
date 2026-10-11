@@ -8742,7 +8742,7 @@ checked: what it asked of the compiler, each with its smallest change.
     exact values by rounding, in double and in float, where forward mode's
     parts were whole and exact. Accepted by the ruling on the
     interpreter's five reports: no float target agrees bit for bit
-    (`MANIFESTO.md`).
+    (`MANIFESTO.md`). Pending the owner's ruling.
 
   Rejected:
   - **A rule of the compiler's own**, reverse past a count of cells or by
@@ -8823,7 +8823,8 @@ checked: what it asked of the compiler, each with its smallest change.
   second. What moves with the first, from the fix's: `fall`'s report to
   `within 0`, with grad.ink's comment; `attend`'s to `within 0`, and `compile_attend_calls`
   to `attn_exp_dx(` written 17 times, its definition and a slope for each
-  of the 16 scores, with tensorgrad.ink's comment; `poly.g` to `within
+  of the 16 scores, with tensorgrad.ink's comment; pending the owner's
+  ruling, `poly.g` to `within
   <e>`, e under 1e-11, and in float `within <e>, <k> units of a float`, e
   under 0.01, with iterates.ink's comment that every value is whole, since
   each cell is at most 296 and its adjoints pass some 30 roundings; and
