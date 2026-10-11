@@ -649,7 +649,8 @@ private:
         using Scalar       = numeric_interface<typename T::value_type>;
         const auto  cell   = [](auto f) { return [f](const T& v) { return T::Cells(v, f); }; };
         const auto& names  = stack_.Builtins().names;
-        const bool  ranked = definition == names.at("max") || definition == names.at("min");
+        const bool  ranked = (definition->Name() == "max" && definition == names.at("max")) ||
+                            (definition->Name() == "min" && definition == names.at("min"));
         if (complex_ && (definition == names.at("abs") || ranked))
             for (const auto& [given, jet] : arguments)
                 if (const std::string at = Complex(jet); !at.empty())
