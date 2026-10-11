@@ -64,17 +64,18 @@ private:
         Part operator+(const Part& b) const {
             if (!node && !b.node) return Part(Value() + b.Value());
             return (node ? tape : b.tape)
-                ->Add(Tape::Kind::Sum, Tape::Wider(Size(), b.Size()), node, {}, b.node);
+                ->Add(Tape::Kind::Sum, Extent::Wider(Size(), b.Size()), node, {}, b.node);
         }
         Part operator*(const Part& b) const {
             if (!node && !b.node) return Part(Value() * b.Value());
-            const Extent product = Tape::Times(Size(), b.Size());
+            const Extent product = Extent::Product(Size(), b.Size());
             if (node) return tape->Add(Tape::Kind::Right, product, node, b.Value());
             return b.tape->Add(Tape::Kind::Left, product, b.node, Value());
         }
         Part operator/(const Part& b) const {
             if (!node && !b.node) return Part(Value() / b.Value());
-            return tape->Add(Tape::Kind::Quotient, Tape::Wider(Size(), b.Size()), node, b.Value());
+            return tape->Add(Tape::Kind::Quotient, Extent::Wider(Size(), b.Size()), node,
+                             b.Value());
         }
         Part operator-() const {
             return node ? tape->Add(Tape::Kind::Negative, extent, node) : Part(-Value());
@@ -134,6 +135,11 @@ private:
             made.emplace(hash, nodes.size());
             return Part(this, nodes.size(), extent);
         }
+        // Back to its first n nodes, as if no other had been recorded.
+        void Forget(std::size_t n) {
+            nodes.erase(nodes.begin() + static_cast<std::ptrdiff_t>(n), nodes.end());
+            std::erase_if(made, [n](const auto& m) { return m.second > n; });
+        }
         Part Mark(const Part& a, bool approximated, std::size_t at = 0) {
             return Add(Kind::Mark, a.Size(), a.node, std::nullopt, 0, at, approximated);
         }
@@ -164,17 +170,6 @@ private:
             return Gather(f(*known), [&a](std::size_t k) { return Cell(a.node, k); });
         }
 
-        static bool   One(Extent e) { return e.count() == 1 && !e.slices; }
-        static Extent Wider(Extent a, Extent b) {
-            if (a.slices != b.slices) return a.slices ? a : b;
-            return One(a) ? b : a;
-        }
-        static Extent Times(Extent a, Extent b) {
-            if (One(a)) return b;
-            if (One(b)) return a;
-            return {a.rows, b.cols, std::max(a.slices, b.slices)};
-        }
-
         static T Total(const T& g) {
             T sum(g.data()[0]);
             for (std::size_t k = 1; k < g.Size().count(); ++k) sum = sum + T(g.data()[k]);
@@ -183,7 +178,7 @@ private:
         // An adjoint summed down to the shape of what was widened (C81).
         static T Reduce(T g, Extent to) {
             if (g.Size() == to) return g;
-            if (One(to)) return Total(g);
+            if (to.Single()) return Total(g);
             if (!g.IsTensor() || to.slices)
                 throw std::logic_error("an adjoint of " + g.Size().toString() + " for " +
                                        to.toString());
@@ -223,7 +218,7 @@ private:
         // The adjoint of v*a, and of a*v, for a.
         static T Left(const T& v, const T& g, Extent a) {
             if (v.IsScalar()) return Zeroed(g * v, g);
-            if (One(a)) return Total(Zeroed(Derivative::Cellwise(v, g), g));
+            if (a.Single()) return Total(Zeroed(Derivative::Cellwise(v, g), g));
             const auto f = [](const T& x, const T& y) {
                 return Sparse(numeric_interface<T>::transpose(x), y, false, true);
             };
@@ -231,7 +226,7 @@ private:
         }
         static T Right(const T& v, const T& g, Extent a) {
             if (v.IsScalar()) return Zeroed(g * v, g);
-            if (One(a)) return Total(Zeroed(Derivative::Cellwise(g, v), g));
+            if (a.Single()) return Total(Zeroed(Derivative::Cellwise(g, v), g));
             const auto f = [](const T& y, const T& x) {
                 return Sparse(y, numeric_interface<T>::transpose(x), true, false);
             };
@@ -415,7 +410,7 @@ private:
     static Part Cellwise(const Part& a, const Part& b) {
         if (!a.node && !b.node) return Part(Cellwise(a.Value(), b.Value()));
         const Part& node = a.node ? a : b;
-        return node.tape->Add(Tape::Kind::Cells, Tape::Wider(a.Size(), b.Size()), node.node,
+        return node.tape->Add(Tape::Kind::Cells, Extent::Wider(a.Size(), b.Size()), node.node,
                               (a.node ? b : a).Value());
     }
 
@@ -779,12 +774,20 @@ private:
             const Local local(*this);
             for (const auto& argument : arguments) frames_.back().push_back(argument);
             const Setting<bool> unguarded(guard_, false);
-            Jet              result = Dispatch(definition, indexed, index);
+            std::optional<std::pair<std::size_t, decltype(memo_)>> before;
+            if (stack_.guards && tape_ && !indexed && arguments.size() == 1)
+                before.emplace(tape_->nodes.size(), memo_);
+            Jet result = Dispatch(definition, indexed, index);
             // --check's exact run walks for its guards, and under reverse mode
             // takes the header's slope as a session does, not the walk's own
-            // nodes; forward mode's walk is the header's part to the bit.
+            // nodes, forgetting what the walk recorded and remembered (C329);
+            // forward mode's walk is the header's part to the bit.
             if (stack_.guards && result.size() == 2 && result[1] && result[1]->node) {
                 const Setting<decltype(stack_.guards)> quiet(stack_.guards, nullptr);
+                if (before && Compiled(definition, indexed, arguments)) {
+                    tape_->Forget(before->first);
+                    memo_ = std::move(before->second);
+                }
                 if (std::optional<Jet> fast = Compiled(definition, indexed, arguments)) {
                     (*fast)[0] = result[0];
                     result     = std::move(*fast);
