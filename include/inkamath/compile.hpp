@@ -724,12 +724,12 @@ private:
         chain.part = {
             tape_ ? Record(Kind::Gather, size, 0, taken, 0, 0, clauses)
                   : Chain(parts, otherwise ? std::optional(part(*otherwise)) : std::nullopt, size)};
-        if (!always || (otherwise && there(*otherwise).cells[0].text != "1"))
-            chain.moves = std::make_shared<const Moving>(Moving{
-                Chain(where, otherwise ? std::optional(there(*otherwise)) : std::nullopt, Extent{})
-                    .cells[0]
-                    .text,
-                {}});
+        if (always && (!otherwise || there(*otherwise).cells[0].text == "1")) return chain;
+        const std::optional<Code> rest =
+            otherwise ? std::optional(there(*otherwise)) : std::nullopt;
+        // A truth, as a test reads it: NaN where no clause applies is one.
+        const std::string truth = "(" + Chain(where, rest, Extent{}).cells[0].text + ") != 0";
+        chain.moves             = std::make_shared<const Moving>(Moving{truth, {}});
         return chain;
     }
 

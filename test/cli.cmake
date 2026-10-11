@@ -468,7 +468,7 @@ set(args --check coast.ink coast --steps 1001 -o coast.c)
 check(check_steps)
 holds(check_steps coast.c
     [[printf("coast: 1001 steps from 0, against exact values\n");]]
-    "    for (int n = 0; n < 1001; ++n) {\n"
+    "    for (int n_ = 0; n_ < 1001; ++n_) {\n"
     "static const double want_0[1001] = {")
 set(args --steps 1001 --check coast.ink coast -o first.c)
 check(check_steps_first)
@@ -1174,8 +1174,8 @@ check(float_calm)
 holds(float_calm float/calm.c [[static const float in_0[100] = {
     0.0f, 0.1f, 0.2f, 0.3f,
 ]] [[static float got_0[100];
-]] [[        calm_step(&m, in_0[n]);
-        memcpy(&got_0[n * 1], &m.v[0], sizeof(float) * 1);
+]] [[        calm_step(&m_, in_0[n_]);
+        memcpy(&got_0[n_ * 1], &m_.v[0], sizeof(float) * 1);
 ]])
 
 # C103: a parameter's default of negative infinity is -INFINITY, as is one
