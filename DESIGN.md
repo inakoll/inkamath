@@ -8689,8 +8689,13 @@ checked: what it asked of the compiler, each with its smallest change.
     8.9e-16 from --check's. The exact run, not disturbed, takes the
     header's slope where a session would, the value walked as before for
     its guards; the disturbed runs walk as now. A defect of the oracle
-    found specifying this, fixed in the first increment with its row, some
-    12 lines of `derivative.hpp`.
+    found specifying this, which lands first as a fix of its own with its
+    row, some 12 lines of `derivative.hpp`, and which the first increment
+    assumes. Alone it moves `fall.w` 1.3e-15 to 8.9e-16, `attend.WQ`
+    8.9e-16 to 4.4e-16 and `swing`'s within its pattern, and takes `fit`
+    to within 0 in forward mode already: each cell of its gradient is one
+    product of two doubles, its other factors, x's cells and the halves,
+    exact in any order.
   - **Clauses, the second increment.** A guard chooses at the point as
     now. A chain's part is the taken clause's node, so a chain is no node
     of its own: an adjoint reaching it passes on as it is made, `c ? acc +
@@ -8766,15 +8771,15 @@ checked: what it asked of the compiler, each with its smallest change.
   Increments, each a pipeline of its own:
   1. **Straight line**, this entry's implementation: the tape, the sweep,
      the mode rule, the prelude's slopes, definitions by cells without
-     guards, tensors, limits' functions, `--float` and --check's slope. A
+     guards, tensors, limits' functions and `--float`. A
      body meeting a chain of clauses with nodes gives way, as the
      interpreter's walk does: the temporaries, memo, terms and `aware_`
      the attempt left are put back, and forward mode compiles the grad from
-     the start. About 340 lines: node and tape 15, recording and moves 45,
+     the start. About 325 lines: node and tape 15, recording and moves 45,
      the walk's sites in `compile.hpp` 45, the sweep's arithmetic 95, the
-     sweep 85, the grad and giving way 40, and --check's slope 12. 16,707
-     lines at db6ac88, by `wc -l include/inkamath/*.hpp src/*`; past 510
-     the implementation stops and reports.
+     sweep 85, and the grad and giving way 40. 16,707 lines at db6ac88, by
+     `wc -l include/inkamath/*.hpp src/*`; past 490 the implementation
+     stops and reports.
   2. **Clauses**: a chain passing adjoints to the clause taken, marks, a
      whole beside cells, the prelude's functions of several arguments; the
      giving way deleted. About 55 lines added and 25 removed. It takes
@@ -8782,13 +8787,13 @@ checked: what it asked of the compiler, each with its smallest change.
      gradients by a matrix into reverse mode, and `gate` to within 0; its
      own spec works out which stay within 0, exact throughout.
 
-  Measured with a prototype of the first increment at db6ac88, not landed,
-  RelWithDebInfo with GCC 13: every golden, every header of
-  `test/compile/expected` and every recorded header but `lsq`'s byte for
-  byte, and of the check reports only these: `fall.w` 1.3e-15 to 0,
-  `attend.WQ` 8.9e-16 to 0, `thirds.g` 8.5e-14 to 2.8e-14, `poly.g` 0 to
-  4.5e-13, in float 0 to 0.00024, 96 units of a float, and `swing`'s
-  within its pattern; `jacobian.y` within 0 still. `attn`'s header 30,684
+  Measured with a prototype of the first increment at db6ac88 with the
+  fix, not landed, RelWithDebInfo with GCC 13: every golden, every header
+  of `test/compile/expected` and every recorded header but `lsq`'s byte
+  for byte, and of the check reports, from the fix's, only these:
+  `fall.w` 8.9e-16 to 0, `attend.WQ` 4.4e-16 to 0, `thirds.g` 8.5e-14 to
+  2.8e-14, `poly.g` 0 to 4.5e-13, in float 0 to 0.00024, 96 units of a
+  float; `jacobian.y` within 0 still. `attn`'s header 30,684
   bytes to 23,204, `attn_exp_dx(` written 49 times to 17; `wide` 486,073
   to 68,902; `norm` 450,981 to 59,305; the exploration's embedding 21.5 MB
   in 3.7 s to 570 KB in 0.08 s, which GCC -O2 compiles in 9.6 s, within 0
@@ -8797,8 +8802,7 @@ checked: what it asked of the compiler, each with its smallest change.
   -O2, most of both headers the NaN tests of a matrix read by its cells
   (*A matrix read by its cells tested for NaN once*). 237 lines of tape
   and sweep, 107 added in `compile.hpp` and 10 removed, 22 of them the
-  giving way and 10 the prototype's own refusals, and 12 in
-  `derivative.hpp`.
+  giving way and 10 the prototype's own refusals.
 
   Specified in `test/compile/adjoint.ink`, unwired, its numbers by mpmath
   at 50 digits, gradients by hand or a complex step, none recorded: `fit`,
@@ -8809,14 +8813,15 @@ checked: what it asked of the compiler, each with its smallest change.
   bytes, `norm_exp_dx(` written 13 times and `norm_log_dx(` 4; and `gate`,
   the second increment's, within 0. Today `fit` is within 1.7e-16,
   `token` 4.4e-16 and `gate` 1.4e-17, and the four counts 21, 273, 193 and
-  49. Wired with the first increment: `adjoint:fit` and `adjoint:token`
+  49; with the fix, `fit` within 0, its header alone failing, and `token`
+  6.7e-16. Wired with the first increment: `adjoint:fit` and `adjoint:token`
   among the checked instances of `test/CMakeLists.txt`, each report
   `within 0` as the file gives it; in `test/cli.cmake`,
   `compile_adjoint_fit`, `holds` for its lines and a count as
   `compile_attend_calls` counts, and `compile_adjoint_wide` and
   `compile_adjoint_norm`, a size and counts. `adjoint:gate` with the
-  second. What moves with the first: `fall`'s report to `within 0`, with
-  grad.ink's comment; `attend`'s to `within 0`, and `compile_attend_calls`
+  second. What moves with the first, from the fix's: `fall`'s report to
+  `within 0`, with grad.ink's comment; `attend`'s to `within 0`, and `compile_attend_calls`
   to `attn_exp_dx(` written 17 times, its definition and a slope for each
   of the 16 scores, with tensorgrad.ink's comment; `poly.g` to `within
   <e>`, e under 1e-11, and in float `within <e>, <k> units of a float`, e

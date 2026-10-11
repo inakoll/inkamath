@@ -11,8 +11,9 @@
 # apart from the interpreter and the compiler, by mpmath at 50 digits, the
 # gradient by hand or by a complex step; none is recorded. Today each
 # gradient is forward mode's, a pass per cell, and parts from the
-# interpreter's by rounding. Each report is the first increment's but
-# 'gate''s, the second's.
+# interpreter's by rounding but 'fit''s, whose factors besides tanh's
+# slopes are exact in any order, so that its header alone tells the modes
+# apart. Each report is the first increment's but 'gate''s, the second's.
 
 # 'fit', a layer of four tanh units trained on its square error by grad
 # with respect to its 4x4 weights, from an inexact start. By backpropagation
