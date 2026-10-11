@@ -3786,14 +3786,109 @@ that exploring seven domains asked of the interpreter, by how many asked.
   update. The reason given above for not hoisting was wrong, corrected,
   and the hoisting queued. 3 lines of `compile.hpp`, 19 added and 16
   removed, as costed; 16,154 lines in all.
-- **A matrix read by its cells tested for NaN once**: in a header that
-  writes NaN, each read of a cell of a matrix that is not a term carries an
-  `isnan` of all its cells, as the interpreter refuses the matrix whole:
-  Cramer's rule reads A's cells 76 times behind nine tests each, 63 per
-  cent of Robertson's header once a limit has temporaries, and a limit's
-  previous term is such a matrix, 16 reads there. Normalising it once per
-  step or iterate where it has a list, every cell NaN where one is, as a
-  term is, and reading it whole after. Moves headers, not values.
+- **A matrix read by its cells tested for NaN once**, a refactor of
+  headers: no golden, `--check` report or refusal moves. In a header that
+  writes NaN the interpreter refuses a matrix whole where it refuses a
+  cell, so each read of a cell of a matrix that is not a term carries
+  `isnan` of all its cells; so does each cell a call writes where an
+  argument it does not read may be NaN (C189), and each cell of a term
+  written whole beside cells (C136). The reverse sweep made the reads
+  many. Measured at a206c5d, RelWithDebInfo, the step alone built at -O2
+  by GCC 13 and Clang 18, the tests being each `isnan(...) || ... ? NAN :`:
+  - the exploration's embedding, `emb`, 570,323 bytes, 471,474 of them
+    tests, `isnan(` 30,745 times; GCC 14.1 s and 333 MB, Clang 2.9 s;
+  - its attention block's W^Q, `attq`, 1,148,072 bytes, 931,460 tests,
+    58,449 `isnan(`; GCC 45.9 s and 620 MB, Clang 5.6 s and 174 MB;
+  - `tensorgrad.ink`'s session header 391,133 bytes, 84 per cent tests,
+    GCC 156 s; `adjoint.ink`'s `norm` 59,117, 52 per cent, 2,011
+    `isnan(`; `attn` 22,237, 316; Robertson's Cramer 17,709, grad's
+    Jacobian 20,970.
+  - The full transformer, 13 gradients over a batch of 4, does not
+    compile, before or after: `--compile` of its model ends in bad_alloc
+    at 7 GB after 107 s. One of its gradients, W^Q's through both blocks
+    at a batch of 1, is 6,366,890 bytes, half of them tests; GCC 344 s
+    and 3.8 GB, Clang 29 s and 406 MB.
+
+  Decided:
+  - **A test of a matrix's cells is a flag of the list**, `const int t5_
+    = isnan(t0_) || ... || isnan(t47_);`, declared by `Declare` where
+    `Nan` first writes it: in the list of the step, iterate, base or
+    derived value that tests it, after the cells it reads, the same cells
+    tested again there the same flag, as a value is the same temporary. A
+    read is `(t5_ ? NAN : t3_)`. A flag no kept line reads is dropped, as
+    any temporary.
+  - **In `Nan` alone**: each code's tested cells are one flag where they
+    are more than one and a list exists, a cell's read, C189's call,
+    C136's whole and `im` alike; several codes' tests are or-ed, `t5_ ||
+    isnan(x) ? NAN :`. `Nan` and `Powered` stop being const.
+  - **What stays per cell**: a code of one tested cell, so every decision
+    on single values, a comparison's and pow's (C121's `nan`); a
+    gradient's cells testing a loss of one cell (C113); a function of the
+    header's body, which has no list; the term's own test after its
+    assignment, a statement already.
+  - **The may-NaN flag is not needed first.** A read still writes `NAN`,
+    so `WritesNan`, `MayNan`, `aware_` and C189's search of what a call
+    writes read it as before; nothing NaN hides behind a name.
+  - **--float**: the same; the flag is an `int`, which --float leaves.
+
+  What moves, on a prototype, discarded: no golden, no header of
+  `test/compile/expected` nor the prelude's; of the 241 check programs, 20
+  C files, every report byte for byte, and `emb`'s and `attq`'s at 5 steps
+  the same. Two recorded excerpts of `test/cli.cmake`, each name from the
+  first flag on one more: `compile_adjoint_fit`, W*x's four cells tested
+  before tanh's values, so `t13_` to `t17_` and `t24_` become `t14_` to
+  `t18_` and `t25_`, with `adjoint.ink`'s comment; and
+  `compile_float_implicit`, the previous term's flag declared before the
+  inverse's array, `float v0_[3][3] = ` to `float v1_[3][3] = `. A test
+  written once grows by its flag's line: `c328.h` 9,211 bytes to 9,247,
+  `twice.h` 4,652 to 4,710, `took`, `shut` and `rnn` by under 60, the
+  fuzzer's program 2,040,823 to 2,044,094. Accepted.
+
+  Measured on the prototype: `emb` 113,307 bytes, 307 `isnan(`, GCC 2.6
+  s and 101 MB, Clang 0.95 s; `attq` 249,050, 747, GCC 7.3 s and 198 MB,
+  Clang 2.3 s and 151 MB; `tensorgrad.ink`'s session 81,741, GCC 1.6 s;
+  `norm` 32,207, 94; `attn` 18,383, 36; Cramer 8,159; the Jacobian
+  10,151. The transformer's one gradient 3,264,596 bytes, GCC 35.9 s and
+  823 MB, Clang 13.2 s; what is left of it is the sweep's conditions, 2.6
+  MB of lines or-ing `(t1083_ != 0)` and its like, a clause's adjoint
+  where any of several is taken, each operand's condition written again.
+
+  Rejected:
+  - **The matrix normalised into temporaries of its own**, every cell NaN
+    where one is, and read whole, as this entry first said: a line per
+    cell, read or not, where a read costs a flag's 14 bytes, 23 KB of
+    `attq`; and each name hides its `NAN` from `MayNan`, so would join
+    `nan_temporaries_` or wait for the may-NaN flag.
+  - **A flag at a cell's read alone**: C189's calls keep 114 KB of
+    `attq`'s 358.
+  - **A flag where a matrix is written**: most are never tested, and a
+    flag numbered for each moves every header that writes NaN.
+  - **A flag read once written inline**, as before: the reads counted
+    before the text is written, a pass of its own, for the few bytes above.
+  - **General value numbering instead** (*Shared at every value written
+    twice*): a test is not a value the source writes, so it is shared only
+    once made one, which is this item; and value numbering puts values
+    whose text writes NAN behind names, so it waits for the may-NaN flag
+    at some 15 sites, 60 to 100 lines, for what 10 do here. It stays
+    queued, and would share a flag as any value.
+  - **A double flag added to the cell**, `NAN` or `0.0`: `0.0 + -0.0` is
+    `+0.0`, a sign the interpreter keeps.
+
+  About 10 lines of `compile.hpp`: the prototype's 13 added and 5
+  removed, and a line of comment. 17,098 lines at a206c5d, by `wc -l
+  include/inkamath/*.hpp src/*`; past 15 the implementation stops and
+  reports.
+
+  Specified in `test/compile/adjoint.ink`'s comment on `norm`, unwired:
+  the cli case `compile_nan_once`, `norm.h` writing `isnan(` fewer than
+  150 times in under 40,000 bytes, 2,011 times and 59,117 bytes before.
+  94 by count: 16 for the gradient's cells, each testing the loss, 16 for
+  the term's own test, 17 in the prelude's exp, log and ilogb, and 45 for
+  the six matrices read by their cells, each tested once: X*E and its
+  means, the centred cells and their scales, the logits and their
+  log-sum-exps, 12 and 3 cells by turns. Wired with the implementation,
+  with the two excerpts and `adjoint.ink`'s comment on `layer`. No
+  transcript in `test/data/spec`.
 - **A limit's invariants hoisted out of its iterate**: a limit or a
   matrix inverse that reads only the function's arguments is declared in
   the iterate's list, so walked again at each iterate, and gcc -O2 leaves

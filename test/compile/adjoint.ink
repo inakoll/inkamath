@@ -97,6 +97,16 @@ wide(eta = 1/4, x_n[i<=16], y_n[i<=16]) = {
 # bytes before, is under 100,000: 'norm_exp_dx(' written 13 times, its
 # definition and the slope of each of the twelve scores, and 'norm_log_dx('
 # 4 times, its definition and one for each token.
+#
+# Each matrix it tests for NaN is tested once, a flag declared where first
+# tested and read at each cell's read (DESIGN.md, a matrix read by its
+# cells tested for NaN once), test/cli.cmake's compile_nan_once: 'isnan('
+# written fewer than 150 times, 2,011 before, and norm.h under 40,000
+# bytes, 59,117 before. By count 94: 16 for the gradient's cells, each
+# testing the loss, 16 for the term's own test, 17 in the prelude's exp,
+# log and ilogb, and 45 for the six matrices read by their cells, X*E and
+# its means, the centred cells and their scales, the logits and their
+# log-sum-exps, 12 and 3 cells by turns.
 norm(eta = 1/2, X_n[t<=3, v<=4], Y_n[t<=3, v<=4]) = {
     U = [1 -1 0 1/2; 0 1 -1 0; 1/2 0 1 -1; -1 1/2 0 1]
     mu(x)[t<=3] = sum_(j=1)^4 x[t,j]/4
