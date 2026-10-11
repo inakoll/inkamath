@@ -255,6 +255,8 @@ private:
         // interpreter's is absent, and where it is there, if not always.
         std::vector<Code> part;
         Where             moves;
+        std::size_t       node = 0;  // under reverse mode, the node of the tape it is
+        bool              zero = false;  // an adjoint 0 where its 'moves' does not hold
 
         bool Scalar() const { return cells.size() == 1 && !size.slices; }
         // Cell c of what it stretches to, as in arithmetic: a single value to
@@ -268,6 +270,22 @@ private:
     struct Moving {
         std::string        text;
         std::vector<Where> any;
+    };
+
+    // Reverse mode's tape (DESIGN.md, the compiler's adjoint step), as
+    // Derivative's, a node's value the code the sweep reads.
+    enum class Kind { Seed, Sum, Negative, Left, Right, Quotient, Cells, Mark, Gather, Place };
+    using Origin = std::pair<std::size_t, std::size_t>;  // a node's cell, from 0; node 0 for none
+    struct Node {
+        Kind                kind;
+        Extent              extent;
+        std::size_t         a, b, at;
+        std::optional<Code> value;
+        std::vector<Origin> from;
+    };
+    struct Tape {
+        std::vector<Node>                  nodes;
+        std::map<std::string, std::size_t> made;  // each by what it is, as the interpreter's (C323)
     };
 
     // A value a step computes once, before the sequence that reads it: its
@@ -586,6 +604,13 @@ private:
         }
     }
 
+    // Under reverse mode, a clause a moving guard chose is marked, as an inexact truth's is.
+    Code Chosen(Code value) {
+        if (tape_ && chosen_ && !value.part.empty())
+            value.part[0] = Record(Kind::Mark, value.part[0].size, value.part[0].node);
+        return value;
+    }
+
     // A value that is not a sequence, its clauses tried as the interpreter
     // tries them: the guarded in the order written, then the one that always
     // applies.
@@ -603,6 +628,7 @@ private:
         std::vector<std::pair<std::string, Code>> guarded;
         std::optional<Code>                       otherwise;
         const Clause<Value>* const                lowest = definition.EndBase(true);
+        const Setting<bool>                       chosen(chosen_, false);
         // Each clause sees its own index alone, as Reference::Selects binds it (C186).
         using Values                           = decltype(expansion_->values);
         const auto                     unbound = at ? expansion_->values : Values();
@@ -623,9 +649,9 @@ private:
                     p.guarded() ? Condition(p.guard()) : std::optional<std::string>("");
                 if (!condition) continue;
                 if (condition->empty())
-                    otherwise = Emit(clause.expression);
+                    otherwise = Chosen(Emit(clause.expression));
                 else
-                    guarded.emplace_back(*condition, Taken(clause.expression));
+                    guarded.emplace_back(*condition, Chosen(Taken(clause.expression)));
             }
         }
         if (guarded.empty()) {
@@ -644,8 +670,8 @@ private:
 
     // Each cell as the step tests it: the guarded values in order, then the
     // one that always applies, else NaN, as where no clause applies (C86).
-    static Code Chain(const std::vector<std::pair<std::string, Code>>& guarded,
-                      const std::optional<Code>& otherwise, Extent size) {
+    Code Chain(const std::vector<std::pair<std::string, Code>>& guarded,
+               const std::optional<Code>& otherwise, Extent size) {
         Code chain;
         chain.size = size;
         for (std::size_t c = 0; c < size.count(); ++c) {
@@ -679,8 +705,25 @@ private:
             where.emplace_back(condition, there(value));
         }
         if (!any) return chain;
+        // Under reverse mode a gather of its clauses' nodes, its value where
+        // each is taken, which the sweep passes what reaches it on to.
+        Code                taken;
+        std::vector<Origin> clauses;
+        std::string         before;
+        // Written as reals, as the temporary holding each is (MSVC's C4244).
+        const auto clause = [&](const Code& value, const std::string& condition) {
+            if (!value.part.empty()) {
+                const std::string one = condition == "1" ? "1.0" : condition + " ? 1.0 : 0.0";
+                taken.cells.emplace_back(before + one, 0);
+                clauses.emplace_back(value.part[0].node, 0);
+            }
+            before += condition + " ? 0.0 : ";
+        };
+        for (const auto& [condition, value] : guarded) clause(value, condition);
+        if (otherwise) clause(*otherwise, "1");
         chain.part = {
-            Chain(parts, otherwise ? std::optional(part(*otherwise)) : std::nullopt, size)};
+            tape_ ? Record(Kind::Gather, size, 0, taken, 0, 0, clauses)
+                  : Chain(parts, otherwise ? std::optional(part(*otherwise)) : std::nullopt, size)};
         if (!always || (otherwise && there(*otherwise).cells[0].text != "1"))
             chain.moves = std::make_shared<const Moving>(Moving{
                 Chain(where, otherwise ? std::optional(there(*otherwise)) : std::nullopt, Extent{})
@@ -786,6 +829,7 @@ private:
             if (code.constant) Value::key(*code.constant, args);
             for (const Cell& cell : code.cells) args += cell.text + '\x1f';
             args += std::to_string(Id(code.moves)) + '\x1e';
+            if (code.node) args += std::to_string(tapes_) + '#' + std::to_string(code.node);
             for (const Code& part : code.part) self(self, part);
         };
         for (const auto& [given, value] : expansion.values) text(text, value);
@@ -884,7 +928,11 @@ private:
             Staircase(function, code);
         }
         std::set<const Reference<Value>*> seen;
-        if (constant || !scalar || Iterates(function, seen))
+        // Under reverse mode, one of several arguments is written where called:
+        // its part function gives one slope, which one argument's node takes.
+        const auto parted = [](const Code& c) { return !c.part.empty(); };
+        if (constant || !scalar || Iterates(function, seen) ||
+            (tape_ && names.size() > 1 && std::any_of(arguments.begin(), arguments.end(), parted)))
             return Answer(Call(name, function, call, nullptr));
         const std::string called = module_ + "_" + name;
         std::string       signature;
@@ -902,6 +950,7 @@ private:
             Defaults(function, expansion);  // the sizes its signature names (C213)
             const Setting<Walked*>                 outside(limit_, nullptr);
             const Setting<std::vector<Temporary>*> unshared(temporaries_, nullptr);
+            const Setting<Tape*>                   forward(tape_, nullptr);
             return Inside(expansion, [&] { return Chained(name, function); });
         };
         if (!functions_.count(called)) {
@@ -958,11 +1007,15 @@ private:
         const auto& takes = parts_.at(derived);
         value             = Called(value);  // first: compilers order arguments apart
         if (!takes) return Answer(value);
+        // Under reverse mode, at a part of 1, its slope, which its node
+        // multiplies by.
         std::string taken;
         for (const auto& [part, i] : *takes)
             taken += (taken.empty() ? "" : ", ") +
-                     (part ? arguments[i].part[0] : arguments[i]).cells[0].text;
-        return Answer(Parted(value, Called(Of(Cell(derived + "(" + taken + ")", primary))), read));
+                     (part && tape_ ? Double(1.0)
+                                    : (part ? arguments[i].part[0] : arguments[i]).cells[0].text);
+        const Code part = Called(Of(Cell(derived + "(" + taken + ")", primary)));
+        return Answer(Parted(value, tape_ ? Times(part, PartOf(arguments[0])) : Part(part), read));
     }
 
     // Where its argument moves, a temporary, which every part over it reads
@@ -1387,7 +1440,8 @@ private:
     }
 
     PExpression<Value> Answer(Code code) {
-        code_ = std::move(code);
+        moved_ = moved_ || !code.part.empty();
+        code_  = std::move(code);
         return PExpression<Value>();
     }
     PExpression<Value> Answer(Cell cell) {
@@ -1549,18 +1603,64 @@ private:
             return Exact([&] { return exactly(*a->constant, *b->constant); });
         return written(*a, *b);
     }
+    // A node of the tape, the same for the same operation on the same nodes
+    // and values; a value, a temporary the sweep reads.
+    Code Record(Kind kind, Extent extent, std::size_t a, std::optional<Code> value = {},
+                std::size_t b = 0, std::size_t at = 0, std::vector<Origin> from = {}) {
+        if (value && !value->constant) value = Shared(*value);
+        std::string key = std::to_string(static_cast<int>(kind)) + ' ' + extent.toString() + ' ' +
+                          std::to_string(a) + ' ' + std::to_string(b) + ' ' + std::to_string(at);
+        for (const auto& [n, c] : from) key += ' ' + std::to_string(n) + ':' + std::to_string(c);
+        if (value && value->constant) Value::key(*value->constant, key += '\x1d');
+        for (const Cell& c : value ? value->cells : std::vector<Cell>()) key += '\x1f' + c.text;
+        const auto [found, made] = tape_->made.try_emplace(key, tape_->nodes.size() + 1);
+        if (made)
+            tape_->nodes.push_back({kind, extent, a, b, at, std::move(value), std::move(from)});
+        Code node;
+        node.size = extent;
+        node.node = found->second;
+        return node;
+    }
+    // Parts laid out by what only moves cells, a node's cells gathered from
+    // where each lands, written as an atom '@k' (Tape::Moved).
+    template <typename Lay>
+    Code Moved(std::vector<Code> parts, Lay lay) {
+        std::vector<Origin> all;
+        for (Code& part : parts) {
+            if (!part.node) continue;
+            const std::size_t node = std::exchange(part.node, 0);
+            for (std::size_t k = 0; k < part.size.count(); ++k) {
+                part.cells.push_back(Atom("@" + std::to_string(all.size())));
+                all.emplace_back(node, k);
+            }
+        }
+        const Code laid = lay(parts);
+        if (all.empty()) return laid;
+        std::vector<Origin> from(laid.cells.size());
+        for (std::size_t k = 0; k < from.size(); ++k)
+            if (laid.cells[k].text.starts_with("@"))
+                from[k] = all[std::stoul(laid.cells[k].text.substr(1))];
+        return Record(Kind::Gather, laid.size, 0, {}, 0, 0, std::move(from));
+    }
     Part Plus(const Part& a, const Part& b) {
         if (!a || !b) return a ? a : b;
+        if (a->node || b->node)
+            return Record(Kind::Sum, Extent::Wider(a->size, b->size), a->node, {}, b->node);
         return Combined(
             a, b, [&](const Code& x, const Code& y) { return Broadcast(x, y, Added); },
             std::plus<>());
     }
     Part Times(const Part& a, const Part& b) {
+        if (a && b && (a->node || b->node))
+            return a->node ? Record(Kind::Right, Extent::Product(a->size, b->size), a->node, *b)
+                           : Record(Kind::Left, Extent::Product(a->size, b->size), b->node, *a);
         return Combined(
             a, b, [&](const Code& x, const Code& y) { return Product(x, y); }, std::multiplies<>());
     }
     template <typename Exactly, typename Written>
-    static Part Mapped(const Part& part, Exactly exactly, Written written) {
+    Part Mapped(const Part& part, Exactly exactly, Written written) {
+        if (part && part->node)
+            return Moved({*part}, [&](const std::vector<Code>& p) { return written(p[0]); });
         if (part && part->constant) return Exact([&] { return exactly(*part->constant); });
         return part ? Part(written(*part)) : part;
     }
@@ -1628,18 +1728,21 @@ private:
         const Code value = left.constant && right.constant ? Exactly(std::divides<>(), left, right)
                                                            : Broadcast(left, right, Divided);
         const auto cellwise = [&](const Code& q, const Code& b) {
+            if (b.node) return Record(Kind::Cells, Extent::Wider(q.size, b.size), b.node, q);
             return q.Scalar() || b.Scalar() ? *Times(q, b) : Broadcast(q, b, Multiplied);
         };
-        const auto over = [&](const Part& a) {
+        const auto over = [&](const Part& a) -> Part {
+            if (a && a->node)
+                return Record(Kind::Quotient, Extent::Wider(a->size, right.size), a->node, right);
             return Combined(
                 a, right, [&](const Code& x, const Code& y) { return Broadcast(x, y, Divided); },
                 std::divides<>());
         };
         Part top = PartOf(left);
-        if (const Part b = PartOf(right)) top = Plus(top, Negated(cellwise(value, *b)));
+        if (const Part b = PartOf(right)) top = Plus(top, Negative(cellwise(value, *b)));
         Part part = over(top);
         // a'/b where b's clause has none, not an infinite quotient times 0 (C110).
-        if (part && right.moves) {
+        if (part && !part->node && right.moves) {
             const Part alone = over(PartOf(left));
             for (std::size_t k = 0; k < part->cells.size(); ++k)
                 part->cells[k] = Cell("(" + Whether(right.moves) + " ? " + part->cells[k].text +
@@ -1699,11 +1802,14 @@ private:
     PExpression<Value> visit(NegExpression<Value>* expression) override {
         const Code operand = Emit(expression->m_e());
         const Part part    = PartOf(operand);
-        return Answer(Parted(Negated(operand), part ? Part(Negated(*part)) : part, {&operand}));
+        return Answer(Parted(Negated(operand), part ? Part(Negative(*part)) : part, {&operand}));
     }
 
     // A subtraction from 0, as the interpreter's (C33): C's minus makes -0 of
     // +0 (C98).
+    Code Negative(const Code& part) {
+        return part.node ? Record(Kind::Negative, part.size, part.node) : Negated(part);
+    }
     static Code Negated(Code code) {
         if (code.constant) return Exact([&] { return -*code.constant; });
         const std::string zero = floats ? "0.0f - " : "0.0 - ";
@@ -1719,8 +1825,11 @@ private:
     PExpression<Value> visit(InexactExpression<Value>* expression) override {
         const Code operand = Emit(expression->m_e());
         const auto inexact = [](const Value& v) { return numeric_interface<Value>::inexact(v); };
+        const Part part    = PartOf(operand);
         return Answer(Parted(operand.constant ? Exactly(inexact, operand) : operand,
-                             Mapped(PartOf(operand), inexact, [](const Code& c) { return c; }),
+                             part && part->node
+                                 ? Record(Kind::Mark, part->size, part->node)
+                                 : Mapped(part, inexact, [](const Code& c) { return c; }),
                              {&operand}));
     }
 
@@ -1785,7 +1894,7 @@ private:
         Part part = Times(Times(Literal(coefficient), power), PartOf(base));
         // None where its base's clause has none, not 0 times an infinity, where
         // its value is finite (C118).
-        if (Doubles(lower)[0] < 0 && Doubles(c)[0] > 0 && base.moves)
+        if (Doubles(lower)[0] < 0 && Doubles(c)[0] > 0 && base.moves && !part->node)
             part = Of(
                 Cell("(" + Whether(base.moves) + " ? " + part->cells[0].text + " : 0)", primary));
         return Answer(Parted(value, part, {&base}));
@@ -1910,8 +2019,9 @@ private:
     // A guard as C tests it. Empty where it always holds, and nothing where
     // it never does.
     std::optional<std::string> Condition(const PExpression<Value>& guard) {
-        const Setting<bool> guarding(guarding_, true);
+        const Setting<bool> guarding(guarding_, true), moved(moved_, false);
         const Code          code = Quiet(guard);
+        chosen_                  = chosen_ || moved_;
         if (!code.Scalar()) throw Reason("a guard that is a matrix");
         if (code.constant) {
             if (!Holds(*code.constant)) return std::nullopt;
@@ -2117,7 +2227,8 @@ private:
         for (const Code& block : blocks) from.push_back(&block);
         Code code = Laid(blocks, expression->Size());
         if (code.constant) code = Literal(*code.constant);
-        return Answer(Parted(code, any ? Part(Laid(parts, expression->Size())) : Part(), from));
+        const auto laid = [&](const std::vector<Code>& p) { return Laid(p, expression->Size()); };
+        return Answer(Parted(code, any ? Part(Moved(parts, laid)) : Part(), from));
     }
     // Each band as tall or as wide as its largest block, a single value
     // stretched over its block and computed once per step, Shared; any
@@ -2472,19 +2583,15 @@ private:
         bool                     constant = true, any = false;
         std::vector<Code>        cells, parts;
         std::vector<const Code*> from;
-        code.size       = *extent;
-        const auto cell = [](const Code& matrix, std::size_t c) {
-            Code at;
-            at.cells = {matrix.At(c)};
-            if (matrix.constant) at.constant = Value(matrix.constant->data()[c]);
-            return at;
-        };
+        code.size = *extent;
         for (std::size_t c = 0; c < code.size.count(); ++c) {
             Code fallback = Literal(Value(Number(0)));
+            const auto cell = [&](const Value& v) { return Value(v.data()[c % v.Size().count()]); };
             if (whole)
-                fallback =
-                    Parted(cell(*whole, c),
-                           whole->part.empty() ? Part() : Part(cell(whole->part[0], c)), {&*whole});
+                fallback = Parted(
+                    Single(*whole, c),
+                    Mapped(PartOf(*whole), cell, [&](const Code& p) { return Single(p, c); }),
+                    {&*whole});
             const Code& given = cells.emplace_back(
                 CellOf(name, definition, static_cast<int>(c / (extent->rows * extent->cols)) + 1,
                        static_cast<int>(c / extent->cols % extent->rows) + 1,
@@ -2499,7 +2606,12 @@ private:
         }
         for (const Code& given : cells) from.push_back(&given);
         if (constant) code.constant = exact;
-        return Parted(code, any ? Part(Assembled(parts, code.size)) : Part(), from);
+        // Under reverse mode, each cell's node placed into the matrix's.
+        Code placed;
+        for (std::size_t k = 0; tape_ && k < parts.size(); ++k)
+            if (parts[k].node)
+                placed = Record(Kind::Place, code.size, placed.node, {}, parts[k].node, k + 1);
+        return Parted(code, !any ? Part() : tape_ ? placed : Assembled(parts, code.size), from);
     }
 
     // The size the interpreter measures (Reference::Measured), its bounds and
@@ -2529,6 +2641,7 @@ private:
                 int col, const Code& fallback) {
         std::vector<std::pair<std::string, Code>> guarded;
         std::optional<Code>                       otherwise;
+        const Setting<bool>                       chosen(chosen_, false);
         Walk(
             definition, slice, row, col, [](const Clause<Value>&) { return true; },
             [&](const Clause<Value>& clause) {
@@ -2537,7 +2650,7 @@ private:
                     p.guarded() ? Condition(p.guard()) : std::optional<std::string>("");
                 if (!condition) return false;
                 const Code value =
-                    condition->empty() ? Emit(clause.expression) : Taken(clause.expression);
+                    Chosen(condition->empty() ? Emit(clause.expression) : Taken(clause.expression));
                 if (!value.Scalar())
                     throw Reason("a cell of " + name + " must be a single value, not a " +
                                  value.size.Described());
@@ -2548,7 +2661,7 @@ private:
                 return condition->empty();
             });
         if (guarded.empty()) return otherwise ? *otherwise : fallback;
-        return Chain(guarded, otherwise ? *otherwise : fallback, Extent{});
+        return Chain(guarded, otherwise ? *otherwise : Chosen(fallback), Extent{});
     }
 
     std::size_t Size(const PExpression<Value>& expression) {
@@ -3181,7 +3294,7 @@ private:
             return Value::Stack(values);
         };
         return Answer(Parted(constant ? Exact(stacked) : Stack(slices),
-                             any ? Part(Stack(parts)) : Part(), from));
+                             any ? Part(Moved(parts, Stack)) : Part(), from));
     }
     static Code Stack(const std::vector<Code>& slices) {
         Code code;
@@ -3267,23 +3380,32 @@ private:
     }
     PExpression<Value> visit(FactExpression<Value>*) override { throw Reason("a factorial"); }
     // grad compiled (DESIGN.md): its body once for each cell of the point, each
-    // value carrying its part, the name's a constant seed, as the interpreter's.
+    // value carrying its part, the name's a constant seed, as the interpreter's;
+    // by a point of several cells, once, each value carrying a node of a tape
+    // swept back (DESIGN.md, the compiler's adjoint step).
     PExpression<Value> visit(GradExpression<Value>* expression) override {
         if (!grad_.empty()) throw Reason("a derivative of a derivative, for now");
-        const std::string& name  = expression->Variable();
-        const Code         point = Emit(expression->Point());
+        const Code point = Emit(expression->Point());
         Asked([&] { Reasoned([&] { Derivative<Value>(definitions_).Names(*expression); }); }, true);
-        Code              body;
-        std::vector<Code> parts;
-        bool              any = false;
-        for (std::size_t k = 0; k < point.cells.size(); ++k) {
+        if (point.size.count() == 1) return Graded(*expression, point, nullptr);
+        Tape tape;
+        return Graded(*expression, point, &tape);
+    }
+    PExpression<Value> Graded(GradExpression<Value>& expression, const Code& point, Tape* tape) {
+        const std::string&   name = expression.Variable();
+        Code                 body;
+        std::vector<Code>    parts;
+        bool                 any = false;
+        const Setting<Tape*> taping(tape_, tape);
+        if (tape) ++tapes_;
+        for (std::size_t k = 0; k < (tape ? 1 : point.cells.size()); ++k) {
             Value seed(Number(1));
             if (!point.Scalar()) {
                 seed           = Value(point.size);
                 seed.data()[k] = Number(1);
             }
             Code x = point;
-            x.part = {Literal(seed)};
+            x.part = {tape ? Record(Kind::Seed, point.size, 0) : Literal(seed)};
             Expansion bound{{{name, x}}, {}, scope_, expansion_, {}, {}};
             auto      places = places_;
             places.erase(name);
@@ -3291,15 +3413,17 @@ private:
             const Setting<std::string> index(index_, index_ == name ? std::string() : index_);
             const Setting<Expansion*>  binding(expansion_, &bound);
             const Setting<std::string> differentiating(grad_, name);
-            body = Emit(expression->Body());
+            body            = Emit(expression.Body());
             const auto kind = [](const Code& c) { return c.size.slices ? "tensor" : "matrix"; };
             if (!point.Scalar() && !body.Scalar())
                 throw Reason(std::string("grad of a ") + kind(body) + " with respect to a " +
                              kind(point) + " is a Jacobian, which it does not give");
-            parts.push_back(body.part.empty() ? Literal(Value(body.size)) : body.part[0]);
+            parts.push_back(body.part.empty() ? Literal(Value(body.size))
+                            : tape            ? Swept(body.part[0].node, point.size)
+                                              : body.part[0]);
             any = any || !body.part.empty();
         }
-        Code out = point.Scalar() ? parts[0] : Assembled(parts, point.size);
+        Code out = point.Scalar() || tape ? parts[0] : Assembled(parts, point.size);
         if (!any) out = Literal(Value(point.Scalar() ? body.size : point.size));
         out.part.clear();
         // NaN where the value differentiated is, in a header that writes NaN,
@@ -3311,6 +3435,211 @@ private:
         if (!nan.empty()) out.constant.reset();
         return Answer(out);
     }
+    // The sweep back, Tape::Back written out: each node's adjoint by its
+    // cells, from the body's 1 back to the seed's, none where no path reaches
+    // or it folds to an exact 0, the interpreter's Nothing, and a term with
+    // one absent left out.
+    using Adjoint = std::optional<Code>;
+    struct Adjoints {
+        Extent               size;
+        std::vector<Adjoint> cells;
+    };
+    static Code Single(const Code& code, std::size_t c) {
+        Code one;
+        one.cells = {code.At(c)};
+        if (code.constant) one.constant = Value(code.constant->data()[c % code.cells.size()]);
+        return one;
+    }
+    static Adjoint Some(Code code) {
+        const bool zero = code.constant && numeric_interface<Value>::exact(*code.constant) &&
+                          *code.constant == Value(Number(0));
+        return zero ? Adjoint() : Adjoint(std::move(code));
+    }
+    // An adjoint there only where its 'moves' holds, a clause's condition.
+    static Where Both(const Where& x, const Where& y) {
+        if (!x || !y) return x ? x : y;
+        return std::make_shared<const Moving>(Moving{"(" + Text(x) + ") && (" + Text(y) + ")", {}});
+    }
+    template <typename F>
+    static Adjoint Folded(F f, const Code& x, const Code& y,
+                          Cell (*written)(const Cell&, const Cell&)) {
+        Adjoint out =
+            Some(x.constant && y.constant ? Exactly(f, x, y) : Of(written(x.cells[0], y.cells[0])));
+        if (out) out->moves = Both(x.moves, y.moves);
+        return out;
+    }
+    static Adjoint Mul(const Code& x, const Code& y) {
+        return Folded(std::multiplies<>(), x, y, Multiplied);
+    }
+    // One there only where its condition holds is added only there, 'c ?
+    // acc + t : acc', and the sum is there where either is.
+    void Into(Adjoint& acc, const Adjoint& term) {
+        if (!term) return;
+        if (!acc && (!term->moves || term->zero)) return void(acc = term);
+        if (!term->moves) {
+            if ((acc = Folded(std::plus<>(), *acc, *term, Added))) acc->moves.reset();
+            return;
+        }
+        const Code    was   = acc ? Shared(*acc) : Literal(Value(Number(0)));
+        const Adjoint both  = acc ? Folded(std::plus<>(), was, *term, Added) : term;
+        Where         where = term->moves;
+        if (acc)
+            where = acc->moves ? std::make_shared<const Moving>(Moving{"", {acc->moves, where}})
+                               : nullptr;
+        acc = Of(Cell(Whether(term->moves) + " ? " + (both ? *both : was).cells[0].text + " : " +
+                          was.cells[0].text,
+                      0));
+        acc->moves = where;
+        acc->zero  = true;
+    }
+    Adjoint Total(const Adjoints& g) {
+        Adjoint total;
+        for (const Adjoint& c : g.cells) Into(total, c);
+        return total;
+    }
+    static Adjoints Slice(const Adjoints& g, std::size_t b) {
+        if (!g.size.slices) return g;
+        const auto n = static_cast<std::ptrdiff_t>(g.size.rows * g.size.cols);
+        return {{g.size.rows, g.size.cols, 0},
+                {g.cells.begin() + n * static_cast<std::ptrdiff_t>(b),
+                 g.cells.begin() + n * static_cast<std::ptrdiff_t>(b + 1)}};
+    }
+    // x*y, either transposed, slice by slice where either is a tensor.
+    Adjoints Sparse(const Adjoints& x, bool tx, const Adjoints& y, bool ty) {
+        const std::size_t slices = std::max(x.size.slices, y.size.slices);
+        Adjoints c{{tx ? x.size.cols : x.size.rows, ty ? y.size.rows : y.size.cols, slices}, {}};
+        const std::size_t inner = tx ? x.size.rows : x.size.cols;
+        const auto        at    = [](const Adjoints& a, bool t, std::size_t i,
+                           std::size_t j) -> const Adjoint& {
+            return t ? a.cells[j * a.size.cols + i] : a.cells[i * a.size.cols + j];
+        };
+        for (std::size_t b = 0; b < std::max<std::size_t>(slices, 1); ++b) {
+            const Adjoints l = Slice(x, b), r = Slice(y, b);
+            for (std::size_t i = 0; i < c.size.rows; ++i)
+                for (std::size_t j = 0; j < c.size.cols; ++j) {
+                    Adjoint total;
+                    for (std::size_t k = 0; k < inner; ++k)
+                        if (const Adjoint &u = at(l, tx, i, k), &v = at(r, ty, k, j); u && v)
+                            Into(total, Mul(*u, *v));
+                    c.cells.push_back(total);
+                }
+        }
+        return c;
+    }
+    // g's cells present, each with v's by f.
+    template <typename F>
+    static Adjoints Each(const Adjoints& g, const Code& v, F f) {
+        Adjoints out{Extent::Wider(g.size, v.size), {}};
+        for (std::size_t k = 0; k < out.size.count(); ++k) {
+            const Adjoint& c = g.cells[k % g.cells.size()];
+            out.cells.push_back(c ? f(*c, Single(v, k)) : Adjoint());
+        }
+        return out;
+    }
+    // Summed down to the shape of what was widened (C81).
+    Adjoints Reduce(Adjoints g, Extent to) {
+        if (g.size == to) return g;
+        if (to.Single()) return {to, {Total(g)}};
+        Adjoints total = Slice(g, 0);
+        for (std::size_t b = 1; b < g.size.slices; ++b)
+            for (std::size_t k = 0; k < total.cells.size(); ++k)
+                Into(total.cells[k], Slice(g, b).cells[k]);
+        return total;
+    }
+    Code Swept(std::size_t body, Extent extent) {
+        const std::vector<Node>&             nodes = tape_->nodes;
+        std::vector<std::optional<Adjoints>> adjoint(nodes.size() + 1);
+        const auto at = [&](std::size_t n) -> Adjoints& {
+            const Extent e = nodes[n - 1].extent;
+            return adjoint[n] ? *adjoint[n]
+                              : adjoint[n].emplace(Adjoints{e, std::vector<Adjoint>(e.count())});
+        };
+        // A chain's passed on as it is made to each clause's node, there
+        // where its condition holds.
+        const auto add = [&](const auto& self, std::size_t n, std::size_t k, Adjoint c) -> void {
+            const Node& x = nodes[n - 1];
+            if (x.kind != Kind::Gather || !x.value) return Into(at(n).cells[k], c);
+            for (std::size_t i = 0; c && i < x.from.size(); ++i) {
+                const std::size_t clause = x.from[i].first;
+                const Moving      where{Wrap(x.value->cells[i], sum) + " != 0", {}};
+                Adjoint           taken = c;
+                taken->zero             = false;
+                taken->moves            = Both(c->moves, std::make_shared<const Moving>(where));
+                self(self, clause, k % nodes[clause - 1].extent.count(), taken);
+            }
+        };
+        const auto into = [&](std::size_t n, Adjoints g) {
+            if (!n) return;
+            g = Reduce(std::move(g), nodes[n - 1].extent);
+            for (std::size_t k = 0; k < g.cells.size(); ++k) add(add, n, k, g.cells[k]);
+        };
+        into(body, Adjoints{Extent{}, {Literal(Value(Number(1)))}});
+        const auto times = [](const Code& c, const Code& v) { return Mul(c, v); };
+        for (std::size_t n = nodes.size(); n > 1; --n) {
+            if (!adjoint[n]) continue;
+            Adjoints g = std::move(*adjoint[n]);
+            for (Adjoint& c : g.cells)
+                if (c && !c->constant) c = Shared(*c);  // read by several products
+            const Node&       x = nodes[n - 1];
+            const Code* const v = x.value ? &*x.value : nullptr;
+            const Extent      a = x.a ? nodes[x.a - 1].extent : Extent{};
+            switch (x.kind) {
+                case Kind::Seed:
+                    break;
+                case Kind::Sum:
+                    into(x.b, g);
+                    into(x.a, std::move(g));
+                    break;
+                case Kind::Negative:
+                    for (Adjoint& c : g.cells)
+                        if (c) c = Negated(*c);
+                    into(x.a, std::move(g));
+                    break;
+                case Kind::Left:
+                case Kind::Right:
+                    if (v->Scalar() || a.Single()) {
+                        const Adjoints p = Each(g, *v, times);
+                        into(x.a, v->Scalar() ? p : Adjoints{a, {Total(p)}});
+                    } else {
+                        Adjoints value{v->size, {}};
+                        for (std::size_t k = 0; k < v->cells.size(); ++k)
+                            value.cells.push_back(Single(*v, k));
+                        into(x.a, x.kind == Kind::Left ? Sparse(value, true, g, false)
+                                                       : Sparse(g, false, value, true));
+                    }
+                    break;
+                case Kind::Quotient:
+                    into(x.a, Each(g, *v, [](const Code& c, const Code& d) {
+                             return Folded(std::divides<>(), c, d, Divided);
+                         }));
+                    break;
+                case Kind::Cells:
+                    into(x.a, Each(g, *v, times));
+                    break;
+                case Kind::Mark:
+                    into(x.a, std::move(g));
+                    break;
+                case Kind::Place:
+                    into(x.b, {Extent{}, {g.cells[x.at - 1]}});
+                    g.cells[x.at - 1].reset();
+                    into(x.a, std::move(g));
+                    break;
+                case Kind::Gather:
+                    for (std::size_t k = 0; k < x.from.size(); ++k)
+                        if (const auto [from, c] = x.from[k]; from) add(add, from, c, g.cells[k]);
+                    break;
+            }
+        }
+        Code out = Literal(Value(extent));
+        for (std::size_t k = 0; adjoint[1] && k < out.cells.size(); ++k)
+            if (const Adjoint& c = adjoint[1]->cells[k]) {
+                out.cells[k] = c->cells[0];
+                if (!c->constant) out.constant.reset();
+                if (out.constant) out.constant->data()[k] = (*c->constant)(1, 1);
+            }
+        return out;
+    }
+
     // Unrolled, since each term is a line of C: a thousand is a filter no one
     // would write out as one.
     static constexpr int max_terms = 1000;
@@ -4554,6 +4883,8 @@ private:
     std::map<Where, std::size_t>     ids_;              // see Id
     std::map<std::pair<std::string, std::vector<std::size_t>>, std::size_t> made_;
     bool                             guarding_ = false;  // in a guard, which asks only for values
+    bool moved_  = false;  // whether a value with a part was compiled, as a guard asks
+    bool chosen_ = false;  // whether a guard of the chain compiled read one
     std::map<std::string, Value>     known_;    // globals that read only those
     std::set<std::string>            read_parameters_;      // by the value being compiled
     bool                             read_global_ = false;  // by the value being compiled
@@ -4614,6 +4945,8 @@ private:
     int                              temporary_count_ = 0;
     std::map<std::string, Value>     places_;             // a cell's row and column, by their names
     Code        code_;
+    Tape* tape_  = nullptr;  // the grad's being compiled in reverse mode
+    int   tapes_ = 0;        // how many were, so that a memo's key tells their nodes apart
 };
 
 #endif  // INKAMATH_COMPILE_HPP

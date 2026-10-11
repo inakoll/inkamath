@@ -16,6 +16,18 @@ struct Extent
     size_t slices = 0;
 
     size_t count() const { return rows * cols * (slices ? slices : 1); }
+    bool   Single() const { return count() == 1 && !slices; }
+
+    // What arithmetic cell by cell stretches two operands to, and a product.
+    static Extent Wider(Extent a, Extent b) {
+        if (a.slices != b.slices) return a.slices ? a : b;
+        return a.Single() ? b : a;
+    }
+    static Extent Product(Extent a, Extent b) {
+        if (a.Single()) return b;
+        if (b.Single()) return a;
+        return {a.rows, b.cols, a.slices > b.slices ? a.slices : b.slices};
+    }
 
     // As the diagnostics write it: '2x3', or '2x2x3' with its slices first.
     std::string toString() const {

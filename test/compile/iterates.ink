@@ -15,14 +15,18 @@
 # [1; -(n + 5); 5n + 3; 2 - 4n] by the principal minors, d_n is 4n - 2 by
 # permutations, and g_n, grad of det through both sequences, the cofactors
 # [3n - 1, -n, 1; -2n, 2n, -2; 2, -2, 4], each cell by det at that cell 1
-# less det at it 0. Every value the step computes, parts included, is a
-# whole number below 1200, so exact in doubles and in floats:
+# less det at it 0. Every value the step computes is a whole number below
+# 1200, so exact in doubles and in floats, but g's: a gradient by a matrix,
+# swept back in reverse mode (DESIGN.md, the compiler's adjoint step), it
+# divides first, its adjoints passing fc's '/m' as 1/3 and 1/2 and some 30
+# roundings, so each cell, a whole number at most 296, is within e under
+# 1e-11 of it, and in float under 0.01:
 #
 #     poly: 100 steps from 0, against exact values
 #     poly.A: within 0
 #     poly.c: within 0
 #     poly.d: within 0
-#     poly.g: within 0
+#     poly.g: within <e>
 #
 # and 'inkamath --check iterates.ink poly --float':
 #
@@ -30,7 +34,7 @@
 #     poly.A: within 0, 0 units of a float
 #     poly.c: within 0, 0 units of a float
 #     poly.d: within 0, 0 units of a float
-#     poly.g: within 0, 0 units of a float
+#     poly.g: within <e>, <k> units of a float
 eigen(x_n) = {
     tr(M[j<=n, k<=n]) = sum_(j=1)^n M[j,j]
     id(n)[j<=n, k<=n] = j == k
@@ -53,15 +57,16 @@ poly = eigen(x_n = n)
 # x round to -0.6666666666666667 and -5.551115123125783e-17. Every value
 # below is worked out in Python's doubles in forward mode's order, a
 # matrix product's sum from its first term and grad's part of a product
-# a'*b + a*b', a matrix's at a time. The step takes the same order, and so
-# does the interpreter but for g, a gradient by a matrix it sweeps back in
-# reverse mode:
+# a'*b + a*b', a matrix's at a time. The step and the interpreter take the
+# same order but for g, a gradient by a matrix both sweep back in reverse
+# mode, the interpreter's sums exact where A's cells are and the step's
+# rounded, so g within e under 1e-11:
 #
 #     thirds: 100 steps from 0, against exact values until 0 and inexact ones from there
 #     thirds.A: within 0; the interpreter's terms about <e> from the exact ones
 #     thirds.c: within 0; the interpreter's terms about <e> from the exact ones
 #     thirds.d: within 0; the interpreter's terms about <e> from the exact ones
-#     thirds.g: within 8.5e-14; the interpreter's terms about <e> from the exact ones
+#     thirds.g: within <e>; the interpreter's terms about <e> from the exact ones
 thirds = eigen(x_n = ~(n/3))
 
 # 'plan', a model-predictive controller's few steps of projected gradient

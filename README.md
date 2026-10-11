@@ -166,14 +166,15 @@ direction at every step. A limit's iterate has temporaries as a step has, a
 matrix inverse or a call nested in an argument computed once per iterate:
 `test/compile/implicit.ink` takes each step of backward Euler on a stiff
 chemical system by Newton's method under `lim`, its inverse written as the
-paper writes it. A `grad` is compiled forward, each value carrying its part
-beside it by the interpreter's rules, so that the step's gradient is the
-interpreter's to the bit, or to rounding where the interpreter sweeps one by a
-matrix back: `test/compile/grad.ink` trains a line and a logistic
-regression by it, and `test/compile/cellguards.ink` a ReLU network through
-its activation written by its cells, each cell's guards tested in the step;
-a derivative of a derivative, of a limit or of a matrix power is refused for
-now. A tensor is an array as C keeps one,
+paper writes it. A `grad` by a single value is compiled forward, each value
+carrying its part beside it by the interpreter's rules, and one by a matrix in
+reverse mode as the interpreter takes it, the body written once and swept
+back, so that the step's gradient is the interpreter's to the bit where the
+interpreter's values are doubles: `test/compile/grad.ink` trains a line and a
+logistic regression by it, and `test/compile/cellguards.ink` a ReLU network
+through its activation written by its cells, each cell's guards tested in the
+step; a derivative of a derivative, of a limit or of a matrix power is refused
+for now. A tensor is an array as C keeps one,
 `double O[B][T][D]`, slice after slice, and is met slice by slice as the
 interpreter meets it: `test/compile/tensor.ink` runs multi-head attention
 over a batch and trains a layer on minibatches by `grad`, and

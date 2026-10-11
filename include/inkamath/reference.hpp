@@ -188,6 +188,16 @@ public:
         for (auto name = own.begin(); name != own.end(); ++name)
             if (std::find(own.begin(), name, *name) != name)
                 throw std::runtime_error(reference_name_ + " has two parameters named " + *name);
+        // And an index, a row, a column or a slice of its name would hide it.
+        for (const std::string& name : own)
+            if (const char* what = name == ai_parameters.index_name() ? "an index"
+                                   : name == ai_parameters.row_name() ||
+                                           name == ai_parameters.col_name() ||
+                                           name == ai_parameters.slice_name()
+                                       ? "a cell's index"
+                                       : nullptr)
+                throw std::runtime_error(reference_name_ + " has a parameter and " + what +
+                                         " named " + name);
         if (ai_parameters.cells() && !ai_parameters.row_name().empty())
             for (const PExpression<T>& e : {ai_parameters.guard(), ai_expression})
                 Reads(e, ai_parameters, hidden ? "" : reference_name_, {}, clause.reads);

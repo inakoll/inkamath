@@ -211,6 +211,9 @@ TEST_CASE("cparts") {
 TEST_CASE("fastgrad") {
     check_transcript("fastgrad.ink");
 }
+TEST_CASE("fastgrad_long") {
+    check_transcript("fastgrad_long.ink");
+}
 TEST_CASE("reddi") {
     check_transcript("reddi.ink");
 }

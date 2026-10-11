@@ -39,9 +39,9 @@ foreach(golden IN LISTS goldens)
     set_tests_properties(${case}.ink PROPERTIES TIMEOUT 60
                          FAIL_REGULAR_EXPRESSION "test cases: +0 \\|")
 endforeach()
-# fastgrad.ink's 600,000 remembered calls take 52 s under sanitizers alone, 64 on CI.
-set_tests_properties(fastgrad.ink PROPERTIES TIMEOUT 120)
-# reverse_memo.ink's one entry, its 600,000 under reverse mode, takes 65 s alone.
+# Under the sanitizers alone, fastgrad_long.ink's 600,000 remembered calls
+# take 22 s, and reverse_memo.ink's one entry, its 600,000 under reverse
+# mode, 38.
 set_tests_properties(reverse_memo.ink PROPERTIES TIMEOUT 120)
 foreach(suite IN ITEMS bignum line_editor matrix prelude)
     add_test(NAME ${suite} COMMAND inkamath_tests --test-suite=${suite} --no-intro)
@@ -180,7 +180,8 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brin
                          robertson:inside:2000 robertson:outside:2000 robertson:rober
                          implicit:kinetic implicit:jacobian implicit:doubling implicit:inset
                          implicit:layered tensorgrad:attend tensorgrad:small
-                         tensorgrad:saliency:3)
+                         tensorgrad:saliency:3 adjoint:fit4 adjoint:token
+                         adjoint:sinabs adjoint:gate3 adjoint:aside)
     string(REPLACE ":" ";" checked ${checked})
     list(POP_FRONT checked file instance count)
     set(name ${instance})
@@ -323,12 +324,11 @@ set_tests_properties(check_bea_functions PROPERTIES
     PASS_REGULAR_EXPRESSION "bea_atan\\(double arg_x\\).*bea_atan2\\(double arg_y, double arg_x\\).*bea_acos\\(double arg_x\\).*bea_asin\\(double arg_x\\).*bea_acosh\\(double arg_x\\)"
     FAIL_REGULAR_EXPRESSION "[^_a-z](atan|atan2|asin|acos|acosh)\\(")
 # grad compiled (DESIGN.md), each value carrying its part: every gradient
-# the interpreter's, to rounding where it is in reverse mode, as
-# compile/grad.ink gives them.
+# the interpreter's, as compile/grad.ink gives them.
 set_tests_properties(check_line_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^line: 100 steps from 0, against exact values\nline\\.w: within 4\\.4e-16\n$")
 set_tests_properties(check_fall_report PROPERTIES PASS_REGULAR_EXPRESSION
-    "^fall: 100 steps from 0, against exact values until 1 and inexact ones from there\nfall\\.u: within 0${about}\nfall\\.w: within 1\\.3e-15${about}\n$")
+    "^fall: 100 steps from 0, against exact values until 1 and inexact ones from there\nfall\\.u: within 0${about}\nfall\\.w: within 0${about}\n$")
 set_tests_properties(check_hinge_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^hinge: 100 steps from 0, against exact values\nhinge\\.g: within 0\n$")
 set_tests_properties(check_edge_report PROPERTIES PASS_REGULAR_EXPRESSION
@@ -520,9 +520,9 @@ add_test(NAME compile_signatures_header
 # compile/iterates.ink gives it; graph's estimate by its form, inf where a
 # disturbed run rounds a root above 1.
 set_tests_properties(check_poly_report PROPERTIES PASS_REGULAR_EXPRESSION
-    "^poly: 100 steps from 0, against exact values\npoly\\.A: within 0\npoly\\.c: within 0\npoly\\.d: within 0\npoly\\.g: within 0\n$")
+    "^poly: 100 steps from 0, against exact values\npoly\\.A: within 0\npoly\\.c: within 0\npoly\\.d: within 0\npoly\\.g: within [1-9](\\.[0-9])?e-1[2-9]\n$")
 set_tests_properties(check_thirds_report PROPERTIES PASS_REGULAR_EXPRESSION
-    "^thirds: 100 steps from 0${inexact0}\nthirds\\.A: within 0${about}\nthirds\\.c: within 0${about}\nthirds\\.d: within 0${about}\nthirds\\.g: within 8\\.5e-14${about}\n$")
+    "^thirds: 100 steps from 0${inexact0}\nthirds\\.A: within 0${about}\nthirds\\.c: within 0${about}\nthirds\\.d: within 0${about}\nthirds\\.g: within [1-9](\\.[0-9])?e-1[2-9]${about}\n$")
 set_tests_properties(check_plan_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^plan: 100 steps from 0, against exact values\nplan\\.y: within 0\n$")
 set_tests_properties(check_graph_report PROPERTIES PASS_REGULAR_EXPRESSION
@@ -538,13 +538,26 @@ set_tests_properties(check_see_report PROPERTIES PASS_REGULAR_EXPRESSION
 set_tests_properties(check_learn_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^learn: 100 steps from 0, against exact values\nlearn\\.K: within 0\nlearn\\.W: within 0\nlearn\\.a: within 0\nlearn\\.d: within 0\nlearn\\.E: within [1-9](\\.[0-9])?e-1[4-6]\n$")
 # A gradient with respect to a tensor compiled (DESIGN.md), as
-# compile/tensorgrad.ink gives it; attend's exp is a double's, as heads' is.
+# compile/tensorgrad.ink gives it; attend's exp is a double's, as heads' is,
+# but at its first step's exact scores, where the interpreter walks exp.
 set_tests_properties(check_attend_report PROPERTIES PASS_REGULAR_EXPRESSION
-    "^attend: 100 steps from 0, against exact values until 1 and inexact ones from there\nattend\\.WQ: within (0|[1-9](\\.[0-9])?e-1[4-9])${about}\n$")
+    "^attend: 100 steps from 0, against exact values until 1 and inexact ones from there\nattend\\.WQ: within 1\\.7e-18${about}\n$")
 set_tests_properties(check_small_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^small: 100 steps from 0, against exact values\nsmall\\.g: within 0\nsmall\\.o: within 0\nsmall\\.s: within 0\n$")
 set_tests_properties(check_saliency_3_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^saliency: 3 steps from 0, against exact values\nsaliency\\.G: within 0\n$")
+# The compiler's adjoint step (DESIGN.md), as compile/adjoint.ink gives it.
+set_tests_properties(check_fit4_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^fit4: 100 steps from 0${inexact0}\nfit4\\.W: within 0${about}\n$")
+set_tests_properties(check_token_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^token: 100 steps from 0${inexact0}\ntoken\\.E: within 0${about}\n$")
+set_tests_properties(check_gate3_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^gate3: 100 steps from 0${inexact0}\ngate3\\.W: within 0${about}\n$")
+set_tests_properties(check_aside_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^aside: 100 steps from 0${inexact0}\naside\\.W: within 0${about}\n$")
+# C329: --check's exact run forgets what its walk of the prelude recorded.
+set_tests_properties(check_sinabs_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^sinabs: 100 steps from 0${inexact0}\nsinabs\\.W: within 0${about}\n$")
 set_tests_properties(check_unread_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^unread: 100 steps from 0, against exact values\nunread\\.y: within 0\n$")
 set_tests_properties(check_lone_report PROPERTIES PASS_REGULAR_EXPRESSION
@@ -854,7 +867,7 @@ foreach(report IN ITEMS
         "needle:^needle: 100 steps from 0${inexact}\nneedle\\.heron: 0\\.0186444204 at 0, where the interpreter gives 0\\.016146540115034271\; the interpreter's term about [0-9.e+-]+ from the exact one\nneedle\\.kahan: within 5\\.3e-10, 0\\.28 units of a float${about}\n$"
         "big:^big: 100 steps from 0${in_float}\nbig\\.s: within 2e-30, 2\\.1e\\+07 units of a float\nbig\\.t: ${exact}\nbig\\.w: 0 at 0, where the interpreter gives 1\n$"
         "seven:^seven: 100 steps from 0${in_float}\nseven\\.t: within 0\nseven\\.u: within 3\\.8e-06\n$"
-        "poly:^poly: 100 steps from 0${in_float}\npoly\\.A: ${exact}\npoly\\.c: ${exact}\npoly\\.d: ${exact}\npoly\\.g: ${exact}\n$"
+        "poly:^poly: 100 steps from 0${in_float}\npoly\\.A: ${exact}\npoly\\.c: ${exact}\npoly\\.d: ${exact}\npoly\\.g: within 0\\.00[0-9]+, [0-9.e+-]+ units of a float\n$"
         "nested:^nested: 100 steps from 0${in_float}\nnested\\.S: ${exact}\nnested\\.w: ${exact}\nnested\\.M: ${exact}\nnested\\.T: ${exact}\nnested\\.y: ${exact}\n$"
         "see:^see: 100 steps from 0${in_float}\nsee\\.Xp: ${exact}\nsee\\.Z: ${exact}\nsee\\.M: ${exact}\nsee\\.s: ${exact}\n$"
         "knee:^knee: 100 steps from 0${inexact}\n${knee_r}knee\\.r: at 0 the compiled step takes 'r_n = 0' and the interpreter 'r_n \\| y_n > c = y_n - c'\\; the guard of the second is 4\\.2e-11 from its threshold\nknee\\.y: within [0-9.e+-]+, [0-9.e+-]+ units of a float\\; the interpreter's terms about 5\\.8e-11 from the exact ones\nknee\\.r: within 4\\.2e-11, 1\\.2e\\+07 units of a float\\; the interpreter's terms about 5\\.8e-11 from the exact ones\n$"
