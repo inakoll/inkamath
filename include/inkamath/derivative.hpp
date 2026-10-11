@@ -979,9 +979,16 @@ private:
     }
 
     Jet Cell(CellExpression<T>& cell) {
-        const T*   kept   = Lookup(cell.Matrix()->Name()) ? nullptr : stack_.Kept(*cell.Matrix());
-        const Jet  matrix = kept ? Jet() : Eval(cell.Matrix());
-        const auto read   = [&](auto f) { return kept ? Constant(f(*kept)) : Map(matrix, f); };
+        // A name bound is found again once the indices are read, as they may
+        // bind it again, where the evaluator's Stored finds it (C277, C328).
+        const Jet* bound  = Lookup(cell.Matrix()->Name());
+        const T*   kept   = bound ? nullptr : stack_.Kept(*cell.Matrix());
+        const bool named  = bound && typeid(*cell.Matrix()) == typeid(RefExpression<T>);
+        const Jet  matrix = kept || named ? Jet() : Eval(cell.Matrix());
+        const auto read   = [&](auto f) {
+            return kept ? Constant(f(*kept))
+                          : Map(named ? Padded(*Lookup(cell.Matrix()->Name())) : matrix, f);
+        };
         if (cell.Slice()) {
             const int slice = Index(cell.Slice());
             const int row   = Index(cell.Row());
