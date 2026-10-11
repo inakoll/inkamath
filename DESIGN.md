@@ -8664,23 +8664,34 @@ checked: what it asked of the compiler, each with its smallest change.
     3 per cent in reverse mode, the sanitizers 5, the transformer's step 9
     per cent of its instructions. 6 for 1.
   - **A cell of a matrix grad binds read where it is bound**, not from a
-    copy of its whole jet: Debug 9 per cent in reverse mode, the sanitizers
-    12, the step 14. 13 for 7.
+    copy of its whole jet, the jet found again once the indices are read,
+    as the evaluator's `Stored` finds a matrix (C277): an index may bind a
+    local and move the frame's jets. The prototype held it across them and
+    read it freed, a heap-use-after-free under the sanitizers in
+    `grad_(x = 2) ((M = [x 3*x])[1,1]*0 + (j = 1) + (a = 1) + M[1, (Q = 1)
+    + j])`, or read another name's. Found again, it reads what the
+    evaluator reads where an index rebinds the matrix, where grad today
+    reads the copy taken before: `grad_(x = 2) (x*((M = [x 3*x])[1,1]*0 +
+    M[1, ((M = [5 7])*0 + 2)[1,1]]))` is 12 for the evaluator's 7. A defect
+    of its own, fixed first with its test, so that this stays a refactor.
+    Debug 9 per cent in reverse mode, 8 with the jet found again, the
+    sanitizers 12, the step 14. 15 for 7.
   - **The memo keyed by a hash of what it compares**, a node by its number
     and a value by `numeric_interface`'s `hash` and `same`, as the
     evaluator's `MemoKey` and the tape's nodes already are, not by a string
     each extent and number is written into: Debug 15 and 31 per cent, the
     sanitizers 10 and 17. 46 for 23.
 
-  Together, by a prototype not landed: Debug instructions per term 96,900
-  to 62,300 in reverse mode and 60,900 to 36,300 in forward mode, release
-  15,800 to 8,900 and 8,900 to 4,800, allocations 12 to 6 and 6 to 4. On
-  the machine that profiled, under the sanitizers, alone: `reverse_memo.ink`
-  48 to 54 s down to 35 to 36, `fastgrad.ink` 36 to 37 down to 26 to 28,
-  `reverse.ink` unchanged at 10. In release `bench/grad.ink` 688 to 565
-  million instructions, the transformer's step 3,513 to 2,628 million, 0.48
-  s to 0.38. Every golden passes, and the 183 programs `--check` writes for
-  ctest are the same bytes as db6ac88's.
+  Together, by a prototype not landed: Debug instructions per term 96,900 to
+  62,300 in reverse mode, 62,900 with the jet found again, and 60,900 to
+  36,300 in forward mode, release 15,800 to 8,900 and 8,900 to 4,800,
+  allocations 12 to 6 and 6 to 4. On the machine that profiled, under the
+  sanitizers, alone: `reverse_memo.ink` 48 to 54 s down to 35 to 36,
+  `fastgrad.ink` 36 to 37 down to 26 to 28, `reverse.ink` unchanged at 10.
+  In release `bench/grad.ink` 688 to 565 million instructions, the
+  transformer's step 3,513 to 2,628 million, 0.48 s to 0.38. Every golden
+  passes, and the 183 programs `--check` writes for ctest are the same bytes
+  as db6ac88's.
 
   The test that holds it: `fastgrad.ink`'s 120 s goes, and the golden's 60
   holds it, its 64 s on CI about 47 by the ratio measured. `reverse_memo.ink`
@@ -8708,9 +8719,10 @@ checked: what it asked of the compiler, each with its smallest change.
     or **a timeout raised**: either hides the cost from the job meant to see
     it.
 
-  About 72 lines added and 38 removed, net 34, as the prototype wrote them;
+  About 77 lines added and 39 removed, net 38, the prototype with the jet
+  found again and formatted;
   `<map>` then goes from `derivative.hpp`'s includes. 16,707 lines at
-  db6ac88. Past 108 added, or net 51, the implementation stops and reports.
+  db6ac88. Past 115 added, or net 57, the implementation stops and reports.
   No spec transcript: nothing new is said, so the goldens are the
   specification, and the timeout goes with the implementation, measured on
   the sanitizer build first.
