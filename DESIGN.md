@@ -8255,6 +8255,8 @@ checked: what it asked of the compiler, each with its smallest change.
   - **The notation.** `grad_(x = a, y = b) body`: the names at their points
     in the one subscript, as `∇_θ` names θ's parts and a call binds its
     arguments by name. A grad of one name keeps its spelling and answers.
+    The owner approved it, and the parts read as an instance's, `g.W`, a
+    term's index on the part, `g.W_n`.
   - **The answer is named parts**, one per name, each what grad by that
     name alone gives, the others held at their points: its point's shape,
     a matrix's derivatives by a single value included. It has no value of
