@@ -291,6 +291,13 @@ fit(w = 2, c = 1) = { ... }
 >> fit().g.c
 12
 
+# Each instance has parts of its own: at 3 and 1, and at 3 and 5.
+>> fit(w = 3).g.w
+54
+
+>> fit(w = 3, c = 5).g.c
+26
+
 >> fit2(w = 2, c = 1) = {
 ..     L(s) = (3*s + c - 1)^2
 ..     g = grad_(w = w, c = c) L(w)
