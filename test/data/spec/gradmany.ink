@@ -39,6 +39,13 @@ error: a grad by several names is a definition's whole right side, its parts rea
 >> w = grad_(x = 2, y = 3) x*y + 1
 error: a grad by several names is a definition's whole right side, its parts read after a point, as g.x
 
+# A local is read by no point, so it holds no grad by several names.
+>> (lg = grad_(x = 2, y = 3) x*y) + 1
+error: a local cannot be a gradient by several names
+
+>> lw = (lg = grad_(x = 2, y = 3) x*y) + 1
+error: a local cannot be a gradient by several names
+
 >> grad_(x = 2, x = 3) x^2
 error: grad names x twice
 
