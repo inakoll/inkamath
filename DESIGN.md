@@ -3832,12 +3832,12 @@ that exploring seven domains asked of the interpreter, by how many asked.
   - **--float**: the same; the flag is an `int`, which --float leaves.
 
   What moves, on a prototype, discarded: no golden, no header of
-  `test/compile/expected` nor the prelude's; of the 241 check programs, 20
-  C files, every report byte for byte, and `emb`'s and `attq`'s at 5 steps
-  the same. Two recorded excerpts of `test/cli.cmake`, each name from the
-  first flag on one more: `compile_adjoint_fit`, W*x's four cells tested
-  before tanh's values, so `t13_` to `t17_` and `t24_` become `t14_` to
-  `t18_` and `t25_`, with `adjoint.ink`'s comment; and
+  `test/compile/expected` nor the prelude's; of the 241 check programs, 19 C
+  files, and the fuzzer's, every report byte for byte, and `emb`'s and
+  `attq`'s at 5 steps the same. Two recorded excerpts of `test/cli.cmake`,
+  each name from the first flag on one more: `compile_adjoint_fit`, W*x's
+  four cells tested before tanh's values, so `t13_` to `t17_` and `t24_`
+  become `t14_` to `t18_` and `t25_`, with `adjoint.ink`'s comment; and
   `compile_float_implicit`, the previous term's flag declared before the
   inverse's array, `float v0_[3][3] = ` to `float v1_[3][3] = `. A test
   written once grows by its flag's line: `c328.h` 9,211 bytes to 9,247,
