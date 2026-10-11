@@ -763,6 +763,21 @@ cannot compile y: s, which cannot be compiled
 ")
 set(exit 1)
 check(compile_gradmany_itself)
+# One read whole is refused in the interpreter's words, its index as written.
+file(WRITE "${OUT}/whole.ink" "L(a, b) = (a*b - 1)^2\ng_n = grad_(a = n, b = 2) L(a, b)\n"
+     "p = grad_(a = 1, b = 2) L(a, b)\nq(x) = grad_(a = x, b = 2) L(a, b)\n"
+     "r(x)_k = grad_(a = x + k, b = 2) L(a, b)\n"
+     "u_n = g_(n-1)\nv_n = p + n\nw_n = p_n\nx_n = q(n)\ny_n = r(n)_2\nz_n = g + n\n")
+set(args --compile whole.ink)
+set(stdout "cannot compile u: g is a gradient by several names; read one of its parts (g.a_(...))
+cannot compile v: p is a gradient by several names; read one of its parts (p.a)
+cannot compile w: p is not a sequence
+cannot compile x: q is a gradient by several names; read one of its parts (q(...).a)
+cannot compile y: r is a gradient by several names; read one of its parts (r(...).a_(...))
+cannot compile z: g is a gradient by several names; read one of its parts (g.a)
+")
+set(exit 1)
+check(compile_gradmany_whole)
 # C328: a sequence compiled on the way by a grad keeps the names it took,
 # z's t4_, which the grad does not take again.
 file(WRITE "${OUT}/c328.ink" [[m(x_n[i<=2]) = {
