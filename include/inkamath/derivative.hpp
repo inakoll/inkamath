@@ -67,14 +67,12 @@ private:
         }
         friend Part operator*(const Part& a, const Part& b) {
             if (!a.node && !b.node) return Part(a.Value() * b.Value());
-            if (a.node && b.node) throw Forward();
             const Extent extent = Tape::Times(a.Size(), b.Size());
             if (a.node) return a.tape->Add(Tape::Kind::Right, extent, a.node, b.Value());
             return b.tape->Add(Tape::Kind::Left, extent, b.node, a.Value());
         }
         friend Part operator/(const Part& a, const Part& b) {
             if (!a.node && !b.node) return Part(a.Value() / b.Value());
-            if (b.node) throw Forward();
             return a.tape->Add(Tape::Kind::Quotient, Tape::Wider(a.Size(), b.Size()), a.node,
                                b.Value());
         }
@@ -391,7 +389,6 @@ private:
 
     static Part Cellwise(const Part& a, const Part& b) {
         if (!a.node && !b.node) return Part(Cellwise(a.Value(), b.Value()));
-        if (a.node && b.node) throw Forward();
         const Part& node = a.node ? a : b;
         return node.tape->Add(Tape::Kind::Cells, Tape::Wider(a.Size(), b.Size()), node.node,
                               (a.node ? b : a).Value());
@@ -1251,7 +1248,6 @@ private:
             const Shadow variable(*this, grad.Variable(), x);
             Jet          body = Eval(grad.Body());
             Single(*point[0], *body[0]);
-            if (body[1] && !body[1]->node) throw Forward();
             body[1] = body[1] ? tape.Back(body[1]->node).value_or(Zero(extent)) : Zero(extent);
             parts.push_back(std::move(body));
             locals.keep();
