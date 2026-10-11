@@ -338,3 +338,11 @@ rooted(x_n) = {
     g_n = grad_(v = [1, 2; 3, x_n]) v[2,2]^(1/2)
 }
 root = rooted(x_n = 2 - n)
+
+# So is a cell of a matrix given to a function that reads it, the matrix's
+# NaN log's: y answered a where log refuses, at steps 0 to 5 (C335).
+lent(a = 1) = {
+    H(M) = M[1,2]
+    y_n = H([log(n - 5) a])
+}
+passed = lent()
