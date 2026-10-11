@@ -797,13 +797,15 @@ private:
     // A name's value, where it has one; most are plain values.
     T Evaluate(const Reference<T>& definition, const ParametersCall<T>& call) {
         if (const GradExpression<T>* group = Group(definition)) {
-            int               index   = 0;
-            const bool        indexed = call.TryEvalIndex(*this, index);
-            const std::string label   = Label(definition);
+            // What the definition does not take is refused first, as any name's.
+            const MemoKey<T>  key   = definition.Key(call, *this);
+            if (key.indexed && !definition.Clauses().front().parameters.indexed())
+                throw std::runtime_error(definition.Name() + " is not a sequence");
+            const std::string label = Label(definition);
             throw std::runtime_error(
                 label + " is a gradient by several names; read one of its parts (" + label +
                 (call.arguments() ? "(...)." : ".") + group->Variable() +
-                (indexed ? "_" + std::to_string(index) : "") + ")");
+                (key.indexed ? "_" + std::to_string(key.index) : "") + ")");
         }
         if (definition.Value() && !definition.Applied()) return definition.Eval(call, *this, true);
         return Applied(definition, call);
