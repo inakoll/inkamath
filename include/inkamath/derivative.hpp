@@ -606,6 +606,11 @@ private:
     bool Reads(const Expression<T>& e) const {
         if ((Exactly<RefExpression<T>>(e) || Exactly<FuncExpression<T>>(e)) && Lookup(e.Name()))
             return true;
+        // A member's name is the instance's, not one grad binds (C331).
+        if (const auto* member = Exactly<MemberExpression<T>>(e))
+            return Reads(*member->Object()) ||
+                   std::ranges::any_of(member->Member()->Children(),
+                                       [&](const auto& child) { return child && Reads(*child); });
         for (const PExpression<T>& child : e.Children())
             if (child && Reads(*child)) return true;
         return false;
