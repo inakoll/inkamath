@@ -3896,6 +3896,12 @@ that exploring seven domains asked of the interpreter, by how many asked.
   all 241 reports byte for byte; `norm.h` 32,207 bytes and 94 `isnan(`,
   `emb` 113,307 and 307, `attq` 249,050 and 747. 9 lines of
   `compile.hpp`, 14 added and 5 removed, 1 of them comment; 17,107 in all.
+- **The reverse sweep's conditions written once**: a clause's adjoint
+  where any of several is taken ors each operand's condition, `(t1083_ !=
+  0) || ...`, written again for each clause, 2.6 MB of the transformer's
+  one gradient after *A matrix read by its cells tested for NaN once*.
+  The full transformer's `--compile`, 13 gradients over a batch of 4,
+  still ends in bad_alloc at 7 GB after 107 s.
 - **A limit's invariants hoisted out of its iterate**: a limit or a
   matrix inverse that reads only the function's arguments is declared in
   the iterate's list, so walked again at each iterate, and gcc -O2 leaves
