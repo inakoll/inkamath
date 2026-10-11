@@ -8364,19 +8364,19 @@ checked: what it asked of the compiler, each with its smallest change.
   `expression_visitor.hpp` 6, `reference.hpp` 1.
 
   Increments, each a pipeline of its own:
-  1. **The interpreter**, with `--compile`'s refusal: about 175 lines, the
-     prototype's and what it lacked, the definition's refusals 15, the
-     messages' forms 5, the part under a grad 3, `tex` 8, the compiler's
-     refusal 3. 17,098 lines at a206c5d, by `wc -l include/inkamath/*.hpp
-     src/*`; past 262 the implementation stops and reports. It lands
-     first the fix of that defect, a row of its own: grad takes an
-     instance's member for a read of its name, so `grad_(x = 2) x*m().x`
-     of `m(a = 1) = { x = 3*a }` is refused through an instance, for 3.
-     Its refusal in the compiler is wired as `compile_gradmany_refused` in
-     `test/cli.cmake`: `--compile gradmany.ink net` lists "cannot compile
-     V: g, which cannot be compiled", W, c and d alike, then "cannot
-     compile g: a gradient by several names, for now"; the second
-     increment replaces it with `compile_gradmany_net`.
+  1. `[done]` **The interpreter**, with `--compile`'s refusal: about 175
+     lines, the prototype's and what it lacked, the definition's refusals
+     15, the messages' forms 5, the part under a grad 3, `tex` 8, the
+     compiler's refusal 3. 17,098 lines at a206c5d, by `wc -l
+     include/inkamath/*.hpp src/*`; past 262 the implementation stops and
+     reports. It lands first the fix of that defect, a row of its own: grad
+     takes an instance's member for a read of its name, so `grad_(x = 2)
+     x*m().x` of `m(a = 1) = { x = 3*a }` is refused through an instance,
+     for 3. Its refusal in the compiler is wired as
+     `compile_gradmany_refused` in `test/cli.cmake`: `--compile gradmany.ink
+     net` lists "cannot compile V: g, which cannot be compiled", W, c and d
+     alike, then "cannot compile g: a gradient by several names, for now";
+     the second increment replaces it with `compile_gradmany_net`.
   2. **The compiler**: not prototyped. About 140 lines by reading
      `compile.hpp`: several seeds in `Graded` and `Swept` 30, the group as
      a struct of sequences and its term's block 80, a part's read 15,
@@ -8401,6 +8401,23 @@ checked: what it asked of the compiler, each with its smallest change.
   as `gradmany:pair` and `gradmany:same` among the checked instances and `compile_gradmany_net` in `test/cli.cmake`,
   `net_tanh_dx(` written 4 times, where four grads of one name write 7.
   README's paragraph on `grad` gains a sentence and the training step.
+
+  Increment 1 built as specified: every entry passes as written, and the
+  spec is the golden `gradmany.ink`; the spec suite goes, it its only file.
+  No other golden moves; C331 landed first. Departures. A part read under a
+  grad through an instance, `fit(w = z).g.w`, is refused through the
+  instance, as the instance is, not as a gradient by several names. A part
+  read takes its steps as its own, as a remembered term does (C149). The
+  prototype scanned a point for globals after the names before it were
+  bound; the points are scanned first. 202 lines against about 176, 317
+  added and 115 removed, 25 of them comment: `reference_stack.hpp` 69, the
+  group, its parts and messages; `derivative.hpp` 55; `reference.hpp` 25,
+  the definition's refusals; `expression_visitor.hpp` 21; `expression.hpp`
+  12; `compile.hpp` 8; `interpreter.hpp` and `latex.hpp` 6 each. 17,305
+  lines in all, 17,103 at f236f46. Measured at this commit, as above: 307
+  million instructions a step with one grad by the 13 names over the batch,
+  357 million with one per sample, the losses at steps 3 and 10 a206c5d's
+  to 17 digits.
 - **"these matrices have different sizes" names neither size**, and calls a
   tensor a matrix: name both sizes and suggest the cell form,
   `T[b,t,j] + c[1,j]`. Broadcasting stays refused.
