@@ -1376,7 +1376,6 @@ private:
             locals.keep();
             return true;
         } catch (const Forward&) {
-            parts.clear();
             if (binds) frames_.back() = own;
             chosen_  = chosen;
             rounded_ = rounded;
