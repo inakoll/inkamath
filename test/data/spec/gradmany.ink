@@ -109,6 +109,12 @@ error: q is a gradient by several names, and takes no other clause
 >> r_n | n > 1 = grad_(x = n, y = 1) x*y
 error: a gradient by several names takes no guard and no cells
 
+>> qa_0 = 1
+qa_0 = 1
+
+>> qa_n = grad_(x = n, y = 1) x*y
+error: qa is a gradient by several names, and takes no other clause
+
 >> gs(a) = grad_(x = a, y = 2*a) x*y^3
 gs(a) = grad_(x = a, y = 2*a) x*y^3
 
