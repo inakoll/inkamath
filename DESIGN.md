@@ -8233,6 +8233,15 @@ checked: what it asked of the compiler, each with its smallest change.
   through the ordinary evaluator too, which a subtree that does not read
   grad's frame goes to whole, and the compiler's use of the static search
   kept or replaced. Well over 20 lines.
+- **A gradient with respect to several names at once**, the nabla's
+  `∇_θ`: training a transformer took 13 grads of 15 arguments, one per
+  weight. It pays only with reverse mode, being built now.
+- **"these matrices have different sizes" names neither size**, and calls a
+  tensor a matrix: name both sizes and suggest the cell form,
+  `T[b,t,j] + c[1,j]`. Broadcasting stays refused.
+- **Layer norm by cells, a README example**: the exploration wrote five
+  definitions, row statistics split out by hand; `transformer.ink` needs
+  two. Deferred with the README.
 - `[done]` **A bare number is exact, and a truth read from a double is
   not** (C240, C241). `~` says only that the digits shown are not all of the value, so
   `~0.5`, `dhinf(1/2, 1, 1)` and `rho([0 1; 0 0])` print `0.5`, `2` and `0`,
