@@ -43,13 +43,14 @@
 # 'layer_tanh_dx(' written 5 times, its definition and four slopes. The
 # sweep reads each square's 2*u^1 and each slope, kept from the body, and
 # each cell of the gradient is a unit's adjoint times a cell of x, unit 4's
-# first, as the sweep reaches it first:
+# first, as the sweep reaches it first, after W*x's four cells tested for
+# NaN in one flag, t4_:
 #
-#     const double t15_ = 2.0 * pow(t13_ + (0.0 - m_->y[0][3][0]), 1.0);
-#     const double t16_ = 0.5 * t15_;
-#     const double t17_ = t16_ * t14_;
+#     const double t16_ = 2.0 * pow(t14_ + (0.0 - m_->y[0][3][0]), 1.0);
+#     const double t17_ = 0.5 * t16_;
+#     const double t18_ = t17_ * t15_;
 #     ...
-#     m_->W[0][3][3] = m_->index_ == 0 ? 0.5 : m_->W[1][3][3] + (0.0 - m_->eta * (isnan(t24_) ? NAN : t17_ * m_->x[0][3][0]));
+#     m_->W[0][3][3] = m_->index_ == 0 ? 0.5 : m_->W[1][3][3] + (0.0 - m_->eta * (isnan(t25_) ? NAN : t18_ * m_->x[0][3][0]));
 layer(eta = 1/4, x_n[i<=4], y_n[i<=4]) = {
     L(W, x, y) = sum_(i=1)^4 (tanh((W*x)[i]) - y[i])^2/2
     W_0 = ~[1 0 0 0; 0 1 0 0; 0 0 1 0; 0 0 0 1]/2
@@ -97,6 +98,16 @@ wide(eta = 1/4, x_n[i<=16], y_n[i<=16]) = {
 # bytes before, is under 100,000: 'norm_exp_dx(' written 13 times, its
 # definition and the slope of each of the twelve scores, and 'norm_log_dx('
 # 4 times, its definition and one for each token.
+#
+# Each matrix it tests for NaN is tested once, a flag declared where first
+# tested and read at each cell's read (DESIGN.md, a matrix read by its
+# cells tested for NaN once), test/cli.cmake's compile_nan_once: 'isnan('
+# written fewer than 150 times, 2,011 before, and norm.h under 40,000
+# bytes, 59,117 before. By count 94: 16 for the gradient's cells, each
+# testing the loss, 16 for the term's own test, 17 in the prelude's exp,
+# log and ilogb, and 45 for the six matrices read by their cells, X*E and
+# its means, the centred cells and their scales, the logits and their
+# log-sum-exps, 12 and 3 cells by turns.
 norm(eta = 1/2, X_n[t<=3, v<=4], Y_n[t<=3, v<=4]) = {
     U = [1 -1 0 1/2; 0 1 -1 0; 1/2 0 1 -1; -1 1/2 0 1]
     mu(x)[t<=3] = sum_(j=1)^4 x[t,j]/4
