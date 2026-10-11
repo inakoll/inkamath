@@ -9,6 +9,7 @@
 #include <stdexcept>
 #include <string>
 #include <tuple>
+#include <typeinfo>
 #include <unordered_map>
 #include <utility>
 #include <vector>
@@ -392,9 +393,10 @@ public:
     // read by its parts.
     static GradExpression<T>* Group(const Reference<T>& definition) {
         if (!definition.Value() || definition.Clauses().size() != 1) return nullptr;
-        auto* grad =
-            dynamic_cast<GradExpression<T>*>(definition.Clauses().front().expression.get());
-        return grad && grad->Several() ? grad : nullptr;
+        Expression<T>& e = *definition.Clauses().front().expression;
+        if (!e.Groups() || typeid(e) != typeid(GradExpression<T>)) return nullptr;
+        auto& grad = static_cast<GradExpression<T>&>(e);
+        return grad.Several() ? &grad : nullptr;
     }
     definition_type GroupOf(Expression<T>& object) {
         definition_type definition;
@@ -776,9 +778,17 @@ private:
         if (definition.Clauses().front().parameters.indexed() && !Call(part).subexpr())
             throw std::runtime_error(name + " is a sequence; index it (" + name + "_0)");
         const ParametersCall<T> call(Call(object).arguments(), Call(part).subexpr());
-        MemoKey<T>              key = definition.Key(call, *this);
-        key.part                    = static_cast<std::size_t>(at - names.begin()) + 1;
-        if (const T* known = Memoised(key)) return *known;
+        // A part is remembered as the call given one more argument, named for
+        // it: the expression's names are every instance's, the call its own.
+        const MemoKey<T> key = definition.Key(call, *this);
+        const auto       keyed = [&](std::size_t place) {
+            MemoKey<T> each = key;
+            each.arguments.emplace_back(names[place],
+                                        T(typename T::value_type(static_cast<int>(place))));
+            return each;
+        };
+        const auto read = static_cast<std::size_t>(at - names.begin());
+        if (const T* known = Memoised(keyed(read))) return *known;
         std::vector<T> parts;
         {
             const OwnSteps                                                      own(*this);
@@ -786,12 +796,8 @@ private:
                 parts_, {Group(definition), &parts});
             (void)definition.Eval(call, *this, true);
         }
-        for (std::size_t k = 0; k < names.size(); ++k) {
-            MemoKey<T> each = key;
-            each.part       = k + 1;
-            Memoise(std::move(each), parts[k]);
-        }
-        return parts[static_cast<std::size_t>(at - names.begin())];
+        for (std::size_t each = 0; each < names.size(); ++each) Memoise(keyed(each), parts[each]);
+        return parts[read];
     }
 
     // A name's value, where it has one; most are plain values.

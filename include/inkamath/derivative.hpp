@@ -239,7 +239,7 @@ private:
             return v.IsTensor() || g.IsTensor() ? T::Sliced(g, v, f) : f(g, v);
         }
 
-        // The seeds' adjoints, the body's being 1.
+        // Every node's adjoint, the body's being 1, by node: the seeds' at 1 on.
         std::vector<std::optional<T>> Back(std::size_t body, std::size_t seeds) {
             std::vector<std::optional<T>> adjoint(nodes.size() + 1);
             adjoint[body]   = T(typename T::value_type(1));
@@ -298,7 +298,7 @@ private:
                         break;
                 }
             }
-            return {adjoint.begin() + 1, adjoint.begin() + 1 + static_cast<std::ptrdiff_t>(seeds)};
+            return adjoint;
         }
     };
 
@@ -615,16 +615,22 @@ private:
     // Whether an expression reads a name the innermost frame binds; what does
     // not is a constant, whatever it calls, since a call sees only its own.
     bool Reads(const Expression<T>& e) const {
-        if ((Exactly<RefExpression<T>>(e) || Exactly<FuncExpression<T>>(e)) && Lookup(e.Name()))
+        // Most nodes have no name, and are not asked their type.
+        if (!e.Name().empty() &&
+            (Exactly<RefExpression<T>>(e) || Exactly<FuncExpression<T>>(e)) && Lookup(e.Name()))
             return true;
-        // A member's name is the instance's, not one grad binds (C334).
-        if (const auto* member = Exactly<MemberExpression<T>>(e))
-            return Reads(*member->Object()) ||
-                   std::ranges::any_of(member->Member()->Children(),
-                                       [&](const auto& child) { return child && Reads(*child); });
         for (const PExpression<T>& child : e.Children())
-            if (child && Reads(*child)) return true;
+            if (child && Reads(*child) && !Named(e, *child)) return true;
         return false;
+    }
+
+    // Whether a child read is e's member, read only by its name, which is the
+    // instance's, not one grad binds (C334). Asked only where the child reads,
+    // so that a walk of what reads nothing tests no node's type.
+    bool Named(const Expression<T>& e, const Expression<T>& child) const {
+        return &child == e.Children().back().get() && Exactly<MemberExpression<T>>(e) &&
+               std::ranges::none_of(child.Children(),
+                                    [&](const auto& c) { return c && Reads(*c); });
     }
 
     Jet Name(RefExpression<T>& ref) {
@@ -1361,10 +1367,10 @@ private:
             if (single && !body[0]->IsScalar()) throw Forward();
             for (const Jet& point : points) Single(*point[0], *body[0]);
             std::vector<std::optional<T>> back =
-                body[1] ? tape.Back(body[1]->node, seeds) : std::vector<std::optional<T>>(seeds);
+                body[1] ? tape.Back(body[1]->node, seeds) : std::vector<std::optional<T>>(seeds + 1);
             for (std::size_t v = 0; v < seeds; ++v) {
                 Jet part = body;
-                part[1]  = back[v].value_or(Zero(points[v][0]->Size()));
+                part[1]  = back[v + 1].value_or(Zero(points[v][0]->Size()));
                 parts.push_back(std::move(part));
             }
             locals.keep();

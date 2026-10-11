@@ -18,6 +18,7 @@
 #include <set>
 #include <stdexcept>
 #include <tuple>
+#include <typeinfo>
 #include <unordered_map>
 #include <utility>
 #include <vector>
@@ -38,13 +39,9 @@ struct MemoKey {
     bool                                   indexed    = false;
     int                                    index      = 0;
     std::vector<std::pair<std::string, T>> arguments;
-    // Which part of a grad by several names, from 1: the expression is every
-    // instance's, the definition each instance's own.
-    std::size_t part = 0;
 
     bool operator==(const MemoKey& other) const {
         return definition == other.definition && indexed == other.indexed && index == other.index &&
-               part == other.part &&
                std::equal(arguments.begin(), arguments.end(), other.arguments.begin(),
                           other.arguments.end(), [](const auto& a, const auto& b) {
                               return a.first == b.first &&
@@ -58,7 +55,6 @@ struct MemoHash {
     std::size_t operator()(const MemoKey<T>& key) const {
         std::size_t hash = std::hash<const void*>()(key.definition);
         hash             = hash * 31 + std::hash<int>()(key.index) * 2 + (key.indexed ? 1 : 0);
-        hash             = hash * 31 + key.part;
         for (const auto& argument : key.arguments)
             hash = hash * 31 + numeric_interface<T>::hash(argument.second);
         return hash;
@@ -185,7 +181,7 @@ public:
         const bool group = Grouped(ai_expression);
         if (group && (ai_parameters.guarded() || ai_parameters.cells()))
             throw std::runtime_error("a gradient by several names takes no guard and no cells");
-        Ungrouped(*ai_expression);
+        if (ai_expression->Groups() > (group ? 1u : 0u)) Ungrouped(*ai_expression);
 
         // One definition per name, kept as the clauses that make it up in the
         // order they were written. A clause replaces the one that names the
@@ -1030,12 +1026,12 @@ private:
     }
 
     static bool Grouped(const PExpression<T>& e) {
-        const auto* grad = dynamic_cast<const GradExpression<T>*>(e.get());
-        return grad && grad->Several();
+        return e->Groups() && typeid(*e) == typeid(GradExpression<T>) &&
+               static_cast<const GradExpression<T>&>(*e).Several();
     }
     static void Ungrouped(const Expression<T>& e) {
-        if (const auto* local = dynamic_cast<const EqualExpression<T>*>(&e))
-            EvaluationVisitor<T>::Ungrouped(*local);
+        if (typeid(e) == typeid(EqualExpression<T>))
+            EvaluationVisitor<T>::Ungrouped(static_cast<const EqualExpression<T>&>(e));
         for (const PExpression<T>& child : e.Children()) {
             if (!child) continue;
             if (Grouped(child)) EvaluationVisitor<T>::Unread();

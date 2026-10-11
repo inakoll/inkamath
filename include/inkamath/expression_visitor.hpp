@@ -6,6 +6,7 @@
 #include <vector>
 #include <map>
 #include <tuple>
+#include <typeinfo>
 #include <string>
 #include <stdexcept>
 #include <algorithm>
@@ -308,8 +309,8 @@ public:
 
     // A local is read by no point, so it holds no grad by several names.
     static void Ungrouped(const EqualExpression<T>& local) {
-        if (const auto* grad = dynamic_cast<const GradExpression<T>*>(local.m_e2().get());
-            grad && grad->Several())
+        if (local.m_e2()->Groups() && typeid(*local.m_e2()) == typeid(GradExpression<T>) &&
+            static_cast<const GradExpression<T>&>(*local.m_e2()).Several())
             throw std::runtime_error("a local cannot be a gradient by several names");
     }
 
