@@ -100,7 +100,7 @@ purpose.
 
 ## 5. Build and CI
 
-- **C++20**, `-Wall -Wextra -Wpedantic`, warning-free. CI builds with
+- **C++20**, `-Wall -Wextra -Wpedantic -Wshadow`, warning-free. CI builds with
   `-Werror` on GCC and Clang; a warning is a build failure, not a suggestion.
 - **No new dependencies.** The project depends on the standard library and on
   doctest (vendored, header-only, tests only). Adding a third is a decision to
