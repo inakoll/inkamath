@@ -8643,8 +8643,7 @@ checked: what it asked of the compiler, each with its smallest change.
     one cell is compiled in reverse mode, one by a single value in forward
     mode's one pass, the interpreter's to the bit. What the interpreter
     gives way on, a moving limit, a complex value and a grad inside, the
-    compiler refuses already in its own words, so nothing else gives way;
-    until the second increment, below, a body meeting a guard does.
+    compiler refuses already in its own words, so nothing else gives way.
   - **The tape is the compiler's grad walk.** The body is compiled once,
     its clauses, calls, memo, cells and temporaries as now, and where
     forward mode carries a part a value carries a node of a tape the
@@ -8785,7 +8784,7 @@ checked: what it asked of the compiler, each with its smallest change.
      sweep 85, and the grad and giving way 40. 16,707 lines at db6ac88, by
      `wc -l include/inkamath/*.hpp src/*`; past 490 the implementation
      stops and reports.
-  2. **Clauses**: a chain passing adjoints to the clause taken, marks, a
+  2. `[done]` **Clauses**: a chain passing adjoints to the clause taken, marks, a
      whole beside cells, the prelude's functions of several arguments; the
      giving way deleted. About 55 lines added and 25 removed. It takes
      `hinge`, `rfit`, `tfit`, `learn`, `saliency` and the other guarded
@@ -8887,6 +8886,53 @@ checked: what it asked of the compiler, each with its smallest change.
   interpreter at 5 steps; its W^Q 27.2 MB in 5.9 s to 1.15 MB in 0.18 s,
   its check program 45 s at -O2, within 2.8e-17 at 5 steps, its inputs
   one-hot through decimal weights.
+
+  The second increment built as specified, on 25afb27, C328 and C329 in:
+  the giving way deleted, the state it put back and `Forward` with it.
+  Every golden and every header byte for byte but those of the grads that
+  gave way: `relugate` 14,632 bytes to 4,562, `relunet` 8,159 to 5,665,
+  `trelunet` 9,197 to 6,706, `train` 38,405 to 37,257, `probe` 30,540 to
+  27,631, `rect` 1,738 to 1,770, the session headers of `adjoint.ink`,
+  `cellguards.ink`, `conv.ink`, `grad.ink` and `tensorgrad.ink`, and
+  `test/cli.cmake`'s c317.h 14,801 to 6,761 and c328.h 9,974 to 9,207.
+  Of the check reports only `gate3`'s, 1.4e-17 to 0; `hinge`, `rfit`,
+  `tfit`, `learn` and `saliency`, in double and in float, as they were.
+  `compile_c328` still means something, a sequence compiled on the way by
+  a grad declaring its names once, and stays. Departures:
+  - **A chain is a gather with a value**, its clauses' nodes and where
+    each is taken, `c1 ? 0 : c2` for the second, a temporary: the sweep
+    passes on what reaches it as it is made and never sweeps it, so no
+    kind of node of its own.
+  - **An adjoint there only where a clause is taken** carries the
+    condition as its `moves`, as a product of it does; added, it is `c ?
+    acc + t : acc`, or `c ? t : 0.0` where the sum had nothing, which is
+    0 off its condition and so is not wrapped again where it passes on
+    whole. A condition is read `t != 0`: a float read as a truth is an
+    error under Clang's -Wfloat-conversion, which `--float`'s checks are
+    built with.
+  - **C110's quotient and C118's root skip a node**: under reverse mode a
+    chain says where its part is, as under forward mode, for the jumps
+    tested, so each holds its conditional part to a part that is not a
+    node, one condition each.
+  - **`gate` is `gate3`**: logistic.ink has a `gate`.
+  - **A clause is marked where its guard reads a value that moves**, the
+    interpreter's where a guard it tried is inexact, which a header cannot
+    know: the mark orders the sweep's sums, so a guard reading an inexact
+    value that does not move, an input given `~` or a term of the model
+    passed beside the variable, is within 1.4e-17 for 0, found in review.
+    Marking wherever a guard reads what is not a constant was rejected:
+    it moves the same error to a guard reading exact inputs, 0 to 1.4e-17.
+  - **The whole beside cells is held by `aside`**, added in review:
+    within 0, where the grad giving way there was within 2.2e-16. The
+    prelude's functions of several arguments are held by `max`, in
+    `learn` and `saliency`.
+  - **`gate3` in float**, not checked, is within 4.7e-07 as before, but
+    5.3e+02 units of a float where it was 3.4e+02.
+
+  17,051 lines, 44 more than 17,007 at 25afb27, under the 45 of one and
+  a half times the spec's 30: `compile.hpp` 108 added and 64 removed, the
+  giving way 24 of them, the chain 14, marks 12, the sweep's conditions
+  some 35, the whole and the prelude's several arguments 6.
 - `[done]` **grad's cost per term**, a refactor: every golden and every
   `--check` report byte for byte, its first requirement. 600,000 remembered
   terms take `reverse_memo.ink` 65 s under the sanitizers in reverse mode,
