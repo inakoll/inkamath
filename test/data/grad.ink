@@ -473,29 +473,17 @@ e = 3
 >> grad_(x = 0) e^x
 error: grad cannot differentiate a power whose exponent changes with x, unless its base is e
 
-# C80: an index, a row or a slice that hides a parameter of the same name is
-# refused under grad, which would read the parameter where the clause reads
-# its own name. Evaluated, the clause's name wins.
+# C80: an index, a row or a slice that hid a parameter of the same name
+# was refused under grad, which would read the parameter where the clause
+# reads its own name. It is now refused where it is written (C327).
 >> gn(n)_n = n
-gn(n)_n = n
-
->> gn(5)_2
-2
-
->> grad_(x = 1) gn(x)_2
-error: grad cannot differentiate gn yet: its index n hides its parameter n
+error: gn has a parameter and an index named n
 
 >> sm(z, t)[t<=2] = z[t]*t
-sm(z, t)[t<=2] = z[t]*t
-
->> grad_(v = [1; 1]) [1 1]*sm(v, 10)
-error: grad cannot differentiate sm yet: its row t hides its parameter t
+error: sm has a parameter and a cell's index named t
 
 >> tc(b)[b<=2, j<=1, k<=1] = b
-tc(b)[b<=2, j<=1, k<=1] = b
-
->> grad_(x = 1) tc(x)[2,1,1]
-error: grad cannot differentiate tc yet: its slice b hides its parameter b
+error: tc has a parameter and a cell's index named b
 
 # C78: an index is a whole number, so one that moves with grad's name is at
 # a jump, as floor is at a whole number, and is refused, by the structure of

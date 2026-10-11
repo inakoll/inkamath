@@ -749,9 +749,18 @@ private:
             definition.BindDefaults(call, ordinary_);
             const Local local(*this);
             for (const auto& argument : arguments) frames_.back().push_back(argument);
-            Hidden(definition, arguments);
             const Setting<bool> unguarded(guard_, false);
             Jet              result = Dispatch(definition, indexed, index);
+            // --check's exact run walks for its guards, and under reverse mode
+            // takes the header's slope as a session does, not the walk's own
+            // nodes; forward mode's walk is the header's part to the bit.
+            if (stack_.guards && result.size() == 2 && result[1] && result[1]->node) {
+                const Setting<decltype(stack_.guards)> quiet(stack_.guards, nullptr);
+                if (std::optional<Jet> fast = Compiled(definition, indexed, arguments)) {
+                    (*fast)[0] = result[0];
+                    result     = std::move(*fast);
+                }
+            }
             // abs, max and min are continuous where their guards step.
             const auto& names = stack_.Builtins().names;
             if (&definition == names.at("abs").get() || &definition == names.at("max").get() ||
@@ -790,24 +799,6 @@ private:
             x.size() == 2 ? stack_.differentiated(f, *x[0], *x[1]) : std::nullopt;
         if (!part) return {};
         return Jet{Part(*value), Part(*part)};
-    }
-
-    // A clause's own names hide a parameter evaluated, but the walk binds them
-    // where Lookup does not see them, so the parameter would be read (C80).
-    static void Hidden(const Reference<T>& definition, const Arguments& arguments) {
-        for (const Clause<T>& clause : definition.Clauses()) {
-            const ParametersDefinition<T>& p = clause.parameters;
-            for (const auto& [kind, name] :
-                 {std::pair<const char*, const std::string*>{"index", &p.index_name()},
-                  {"slice", &p.slice_name()},
-                  {"row", &p.row_name()},
-                  {"column", &p.col_name()}})
-                for (const auto& argument : arguments)
-                    if (!name->empty() && argument.first == *name)
-                        throw std::runtime_error("grad cannot differentiate " + definition.Name() +
-                                                 " yet: its " + kind + " " + *name +
-                                                 " hides its parameter " + *name);
-        }
     }
 
     // A term far from its base, filled from the base up so that each finds

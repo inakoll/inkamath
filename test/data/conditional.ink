@@ -289,7 +289,7 @@ sv(x) | x == [pi[1]][1,1] = 20
 # A guard that does not hold must leave nothing behind. The index was bound
 # before the guard was tested and never removed, so a rejected clause shadowed
 # a global, clobbered an argument, and poisoned the guards written after it
-# (DESIGN.md, C53).
+# (DESIGN.md, C53). An index named as an argument is now refused (C327).
 >> nn = 7
 nn = 7
 
@@ -303,13 +303,7 @@ rg_0 = nn
 7
 
 >> ar(x)_x | x > 5 = 1
-ar(x)_x | x > 5 = 1
-
->> ar(x)_0 = x
-ar(x)_0 = x
-
->> ar(7)_0
-7
+error: ar has a parameter and an index named x
 
 >> cg = 10
 cg = 10

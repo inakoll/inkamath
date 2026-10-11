@@ -328,7 +328,7 @@ set_tests_properties(check_bea_functions PROPERTIES
 set_tests_properties(check_line_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^line: 100 steps from 0, against exact values\nline\\.w: within 4\\.4e-16\n$")
 set_tests_properties(check_fall_report PROPERTIES PASS_REGULAR_EXPRESSION
-    "^fall: 100 steps from 0, against exact values until 1 and inexact ones from there\nfall\\.u: within 0${about}\nfall\\.w: within 1\\.3e-15${about}\n$")
+    "^fall: 100 steps from 0, against exact values until 1 and inexact ones from there\nfall\\.u: within 0${about}\nfall\\.w: within 8\\.9e-16${about}\n$")
 set_tests_properties(check_hinge_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^hinge: 100 steps from 0, against exact values\nhinge\\.g: within 0\n$")
 set_tests_properties(check_edge_report PROPERTIES PASS_REGULAR_EXPRESSION
@@ -540,7 +540,7 @@ set_tests_properties(check_learn_report PROPERTIES PASS_REGULAR_EXPRESSION
 # A gradient with respect to a tensor compiled (DESIGN.md), as
 # compile/tensorgrad.ink gives it; attend's exp is a double's, as heads' is.
 set_tests_properties(check_attend_report PROPERTIES PASS_REGULAR_EXPRESSION
-    "^attend: 100 steps from 0, against exact values until 1 and inexact ones from there\nattend\\.WQ: within (0|[1-9](\\.[0-9])?e-1[4-9])${about}\n$")
+    "^attend: 100 steps from 0, against exact values until 1 and inexact ones from there\nattend\\.WQ: within 4\\.4e-16${about}\n$")
 set_tests_properties(check_small_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^small: 100 steps from 0, against exact values\nsmall\\.g: within 0\nsmall\\.o: within 0\nsmall\\.s: within 0\n$")
 set_tests_properties(check_saliency_3_report PROPERTIES PASS_REGULAR_EXPRESSION

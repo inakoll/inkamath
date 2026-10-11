@@ -396,6 +396,14 @@ error: bad has two parameters named x
 >> bad(x, v[j<=n], v = [1; 2])_k | k > 0 = x
 error: bad has two parameters named v
 
+# Nor an index's or a cell's index's, which would hide the parameter:
+# the clause could never read it (C327).
+>> bad(n)_n = n
+error: bad has a parameter and an index named n
+
+>> bad(k)[j<=2, k<=2] = j + k
+error: bad has a parameter and a cell's index named k
+
 # A size is bound once a parameter is, so a default reads only the sizes
 # stated before it.
 >> late(s = n, v[j<=n] = [1; 2]) = s
