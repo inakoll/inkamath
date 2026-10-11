@@ -1,9 +1,10 @@
 # Reverse mode (DESIGN.md, next in line): a single value's gradient with
 # respect to a matrix or a tensor of more than one cell, at a real point, is
 # one evaluation recording its parts on a tape and one sweep back, where
-# forward mode evaluates the body once per cell. Same notation, same answers:
-# exact values are those of the closed forms, by sympy; doubles are mpmath's
-# or NumPy's to the digits shown. Written by hand, never recorded.
+# forward mode evaluates the body once per cell. Same notation, same answers
+# but where noted: exact values are those of the closed forms, by sympy;
+# doubles are mpmath's or NumPy's to the digits shown. Written by hand,
+# never recorded.
 >> grad_(W = [1 2; 3 4]) [1 1]*W*[1; 2]
 [1, 2;
  1, 2]
