@@ -710,12 +710,14 @@ private:
         Code                taken;
         std::vector<Origin> clauses;
         std::string         before;
-        const auto          clause = [&](const Code& value, const std::string& condition) {
+        // Written as reals, as the temporary holding each is (MSVC's C4244).
+        const auto clause = [&](const Code& value, const std::string& condition) {
             if (!value.part.empty()) {
-                taken.cells.emplace_back(before + condition, 0);
+                const std::string one = condition == "1" ? "1.0" : condition + " ? 1.0 : 0.0";
+                taken.cells.emplace_back(before + one, 0);
                 clauses.emplace_back(value.part[0].node, 0);
             }
-            before += condition + " ? 0 : ";
+            before += condition + " ? 0.0 : ";
         };
         for (const auto& [condition, value] : guarded) clause(value, condition);
         if (otherwise) clause(*otherwise, "1");
