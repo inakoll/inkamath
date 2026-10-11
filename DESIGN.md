@@ -8359,7 +8359,10 @@ checked: what it asked of the compiler, each with its smallest change.
      prototype's and what it lacked, the definition's refusals 15, the
      messages' forms 5, the part under a grad 3, `tex` 8, the compiler's
      refusal 3. 17,098 lines at a206c5d, by `wc -l include/inkamath/*.hpp
-     src/*`; past 262 the implementation stops and reports.
+     src/*`; past 262 the implementation stops and reports. It lands
+     first the fix of that defect, a row of its own: grad takes an
+     instance's member for a read of its name, so `grad_(x = 2) x*m().x`
+     of `m(a = 1) = { x = 3*a }` is refused through an instance, for 3.
   2. **The compiler**: not prototyped. About 140 lines by reading
      `compile.hpp`: several seeds in `Graded` and `Swept` 30, the group as
      a struct of sequences and its term's block 80, a part's read 15,
