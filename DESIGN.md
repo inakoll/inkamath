@@ -8412,8 +8412,9 @@ checked: what it asked of the compiler, each with its smallest change.
   two above. 38 lines of sources where about 50 were planned, 27 of code:
   `derivative.hpp` 17, `number.hpp` 12, `interpreter.hpp` 4, `matrix.hpp`
   2, `numeric_interface.hpp` 2 and `reference.hpp` 1. 15,911 lines in all.
-- **Reverse mode in the interpreter**, the tape first, by the owner's
-  decision; the compiler's adjoint step is a later item of its own, below.
+- `[done]` **Reverse mode in the interpreter**, the tape first, by the
+  owner's decision; the compiler's adjoint step is a later item of its own,
+  below.
   The §9 exploration's tiny transformer, 1,056 weights, trains at 16 s a step
   interpreted: forward mode evaluates the loss once per cell of each weight,
   4,224 evaluations of 3.6 ms per step of four samples, where one
@@ -8560,6 +8561,32 @@ checked: what it asked of the compiler, each with its smallest change.
   after a sum of 200,000 steps. README's paragraph on `grad` gains that a
   gradient with respect to a matrix costs one evaluation and a sweep back,
   whatever its cells.
+
+  Built as specified: every entry passes as written, and the spec is the
+  golden `reverse.ink`; the spec suite goes, it its only file. No other
+  golden moves. Departures. Two --check reports move, which the plan did not
+  foresee: `test/compile/grad.ink`'s fall.w and `iterates.ink`'s thirds.g,
+  gradients by a matrix that the compiled step takes in forward mode's order
+  and the interpreter now sweeps back, are within 1.3e-15 and 8.5e-14 of the
+  interpreter's where they were within 0; the compiler's adjoint step,
+  below, can take the interpreter's order again, and until it does a step's
+  gradient by a matrix is the interpreter's to rounding, not to the bit, as
+  README now says. The plan's "every golden byte for byte" held; the reports
+  are not goldens. An exact 0 of an adjoint stays exact through a mark too, a
+  `~` or a clause a guard chose, not only through a product, as "an exact 0
+  of an adjoint is no path" reads; no entry tells the two apart. The walk's
+  remembered terms are its own: those before it are set aside while it runs
+  and put back whether it answers or gives way, since a node's number means
+  nothing past its tape. Forward mode's refusal of a Jacobian is one
+  function both modes call. 334 lines against about 355, all in
+  `derivative.hpp`, 23 of them comment, 376 added and 42 removed: the part
+  and its operators 44, the tape's nodes 56, the sweep and its adjoints 136,
+  the walk's maps, literals, placed and marked cells, the prelude's slope,
+  memo keys and limits about 55, the walk in `Grad` and giving way about 40.
+  16,659 lines in all, 16,325 at 3593ea7. Measured at this commit,
+  RelWithDebInfo with GCC 13: the transformer's step on the exploration's
+  files 18.2 s to 0.52 s, its peak memory 79 MB to 27, its terms forward
+  mode's to 16 digits; `bench/grad.ink` 0.24 s to 0.13.
 - **The compiler's adjoint step**, after the tape: `--compile` keeps
   forward mode's parts, a pass per cell of a seed. An adjoint emitted by
   transformation, with the extents the compiler knows (`MANIFESTO.md`), and
