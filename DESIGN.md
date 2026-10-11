@@ -1849,6 +1849,9 @@ closures need one anyway, and can bring it.
 | C334 `[fixed]` | **Grad took an instance's member for a read of its name.** Whether a member read moves was asked of every name under it, the member's own among them, so `grad_(x = 2) x*tri().x` of `tri(a = 1) = { x = 3*a }` was refused, "grad cannot differentiate through an instance yet", for 3; reverse mode already answered. Found specifying a gradient with respect to several names, where a part `gs(1).x` is read under a grad of x. A member read moves where its object or its arguments do, never by its name. In 5 lines, 1 of comment; grad.ink holds it. |
 | C335 `[fixed]` | **A cell of a matrix given to a function lost its NaN test.** A call keeps an argument that may be NaN and that its value does not read whole (C189), but its value read a cell of it: with `H(M) = M[1,2]`, `H([log(n - 5) a])` answered a where log refuses, since the cell read asked whether the parameter's cells may be NaN of their text alone, which a temporary holding an argument's cell does not show. It asks too what the call bound as may-NaN, as the binding does. In 3 lines, 1 of comment, and 1 removed; `nan.ink`'s `passed` holds it. |
 | C336 `[fixed]` | **A limit given to a function that ignores it answered where the interpreter refuses it.** C189's gap: a limit's function answers NaN where a term is or where its walk does not converge, but its call was not counted as a value that may be NaN, so with `G(v) = 2`, `G(lim p(x_n))` answered 2 where p's terms read log of 0, and the limit's function, called nowhere, failed Clang's -Wunused-function. A matrix limit's array was no more, and could not be: the names a limit's terms keep apart from the step's were restored past it, over the array's mark. Both count now. In 8 lines, 1 of comment, and 3 removed; `nan.ink`'s `waived` holds both. |
+| C337 `[fixed]` | **A header's inverse helper could hide the model's name.** C332's gap: the Gauss-Jordan helper a matrix inverse calls declared `a`, `r`, `i`, `j`, `row`, `col`, `pivot`, `s`, `t`, `scale` and `factor`, any of which a model or instance may be named, so an instance `row` of a model inverting a matrix declared a loop's `row` over the struct's name, which GCC's -Wshadow refuses. Found by C332. Each now ends in an underscore, which no name of the language can; `heat.h` and `kalman2.h` in `test/compile/expected`, and C161's quotation in `test/cli.cmake`, move with the names. In 38 lines, renamed, and 38 removed; `nan.ink`'s `row` holds it under GCC. |
+| C338 `[fixed]` | **A header's step could hide the model's name by an input's.** C332's gap again: the step's parameters were named as its inputs, so an instance named after its own input, `x = dot(x_n = [n; 1])`, declared `x_step(x* m_, const double x[2])`, the parameter over the struct's name, which GCC's -Wshadow refuses. Found fixing C337. Each parameter now ends in an underscore, as every other name the header declares does; the expected headers in `test/compile/expected` and `test/cli.cmake`'s quotations of a step move with the names and by nothing else. In 4 lines, renamed, and 4 removed; `inputs.ink`'s `x` holds it under GCC. |
+| C339 `[fixed]` | **A matrix passed to a remembered call was a copy kept for each.** A call's key holds its arguments, each a copy of all its cells, so `f(S, n)` at each step of a model, S of 100x100, kept 10,000 cells for each n and copied, hashed and compared them anew: 930 MB and 0.39 s at the 2,000th step, where `g(n)` reading S itself took 13 MB and 0.01 s, and up to the memo's hundred thousand entries. C333's hash and origin went only with the copy that was hashed, not with the value copied from. Found exploring a transformer, whose forward pass kept 0.7 MB a call. A matrix's copies now share its cells and their hash until one is written, through `data()`, and two that share them are the same; the origin goes. At 9,000 steps `f(S, n)` takes 24 MB and 289M instructions, `g(n)` 23 MB and 270M, where it took 4.1 GB and 1.8 s; the forward pass keeps 0.2 MB a call, the distinct values its inner calls are given. No answer moves; bench's deep and limit take 8 and 9 per cent fewer instructions, grad 4 and harmonic 2, the others alike. In 19 lines, 4 of comment, and 15 removed; matrix_test.cpp's `a copy shares its cells until one is written` holds it, as no transcript can hold memory. |
 
 **Measure instructions, not the clock.** One of those changes made the matrix
 workload 20 per cent slower by the clock and not by a single instruction: with
@@ -9094,6 +9097,19 @@ checked: what it asked of the compiler, each with its smallest change.
     parts were whole and exact. Accepted by the ruling on the
     interpreter's five reports: no float target agrees bit for bit
     (`MANIFESTO.md`).
+    A known departure: the tape merges two reads whose values happen to
+    be equal at run time (C323, so that a call is remembered), and sums
+    their adjoints before the one product, which a sweep fixed at compile
+    time cannot know. So `--check` reports about 1e-16 where inputs
+    coincide, not 0. `G_n = G_(n-1) - grad_(A = G_(n-1)) sum_(t=1)^6
+    sum_(j=1)^2 (A[1,j]*x_n[t,j]/(t + 1/3))^2/8` from `G_0 = ~[1 1/2]`, on
+    `x_n = ~[1 -1/2; 1/2 1; 0 1/4; -1/4 0; 1 1/3; 1/7 -2]*(1 + mod(n, 3)/5)`,
+    is within 1.1e-16: x_n[1,1] = x_n[5,1] makes one node of the two
+    products, so A[1,1]'s adjoint is (g5 + g1)*x where the step sums g5*x
+    and g1*x. With x_n[5,1] = 3/4 instead, it is within 0. The §9
+    transformer's `g.G`, within 1.2e-17, is expected to be the same: its
+    first layer norm's rows are equal where a batch repeats a token (not
+    traced).
 
   Rejected:
   - **A rule of the compiler's own**, reverse past a count of cells or by

@@ -49,13 +49,13 @@ static inline void back_init(back* m_) {
 }
 
 /* Advances to the next index, the first at 0, and computes its terms. */
-static inline void back_step(back* m_, double u) {
+static inline void back_step(back* m_, double u_) {
     ++m_->index_;
     m_->u[2] = m_->u[1];
     m_->u[1] = m_->u[0];
     m_->a[1] = m_->a[0];
     m_->c[1] = m_->c[0];
-    m_->u[0] = u;
+    m_->u[0] = u_;
     m_->a[0] = (double)m_->index_ > 2.0 ? (m_->index_ < 1 ? NAN : m_->u[1]) : 0.125;
     m_->b[0] = (m_->index_ < 1 ? (double)(m_->index_ - 1) > 2.0 ? m_->index_ < 2 ? NAN : m_->u[2] : 0.125 : m_->a[1]) / 2.0;
     m_->c[0] = (double)m_->index_ < 0.0 ? (m_->index_ < 1 ? NAN : m_->u[1]) : 1.0;
