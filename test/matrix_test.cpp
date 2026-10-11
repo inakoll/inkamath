@@ -1,6 +1,7 @@
 #include <doctest/doctest.h>
 
 #include "inkamath/matrix.hpp"
+#include "inkamath/number.hpp"
 
 #include <complex>
 #include <string>
@@ -147,6 +148,25 @@ TEST_CASE("the numeric interface is defined only where it means something") {
 
     CHECK(Mat::fact(Mat(Scalar(5))) == doctest::Approx(120.0));
     CHECK(Mat::abs(Mat(Scalar(-3))) == doctest::Approx(3.0));
+}
+
+// A memo's argument keeps its hash and is the same as its copies (C333),
+// until one is written: then it is hashed and compared cell by cell again.
+TEST_CASE("a hashed value is the same as its copies until one is written") {
+    using Exact = Matrix<Number>;
+    const Exact a(Extent{1, 3}, Number(1));
+    const auto  hash = Exact::hash(a);
+    Exact       b    = a;
+    CHECK(Exact::same(a, b));
+    CHECK(Exact::hash(b) == hash);
+    b(1, 2) = Number(1.0);
+    Exact inexact(Extent{1, 3}, Number(1));
+    inexact(1, 2) = Number(1.0);
+    CHECK_FALSE(Exact::same(a, b));
+    CHECK(Exact::hash(b) == Exact::hash(inexact));
+    b(1, 2) = Number(1);
+    CHECK(Exact::same(a, b));
+    CHECK(Exact::hash(b) == hash);
 }
 
 TEST_SUITE_END();
