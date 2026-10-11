@@ -8743,7 +8743,7 @@ checked: what it asked of the compiler, each with its smallest change.
     exact values by rounding, in double and in float, where forward mode's
     parts were whole and exact. Accepted by the ruling on the
     interpreter's five reports: no float target agrees bit for bit
-    (`MANIFESTO.md`). Pending the owner's ruling.
+    (`MANIFESTO.md`).
 
   Rejected:
   - **A rule of the compiler's own**, reverse past a count of cells or by
