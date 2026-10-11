@@ -7,8 +7,6 @@
 #include <bit>
 #include <cmath>
 #include <cstddef>
-#include <cstdint>
-#include <map>
 #include <memory>
 #include <optional>
 #include <set>
@@ -707,21 +705,40 @@ private:
         return out;
     }
 
-    std::string Key(const Reference<T>& definition, bool indexed, int index,
-                    const Arguments& arguments) const {
-        std::string key = std::to_string(reinterpret_cast<std::uintptr_t>(&definition)) + '#' +
-                          std::to_string(order_) + (indexed ? "_" + std::to_string(index) : "");
-        for (const auto& [name, jet] : arguments) {
-            key += '\0' + name + '=';
-            for (const auto& part : jet) {
-                key += part ? '\2' : '\1';
-                if (part && part->node)
-                    key += '\3' + std::to_string(part->node);
-                else if (part)
-                    numeric_interface<T>::key(*part, key);
-            }
-        }
-        return key;
+    // A term remembered by its arguments' every part, a node by its number and
+    // a value by its bits, as the evaluator's MemoKey has them.
+    struct Remembered {
+        const Reference<T>* definition;
+        int                 order, index;
+        bool                indexed;
+        Arguments           arguments;
+        Jet                 term;
+        std::size_t         stepped;  // the grads it stepped with
+    };
+
+    static bool Same(const std::optional<Part>& p, const std::optional<Part>& q) {
+        if (!p || !q) return !p && !q;
+        return p->node || q->node ? p->node == q->node : numeric_interface<T>::same(*p, *q);
+    }
+
+    static bool Same(const Arguments& a, const Arguments& b) {
+        return std::ranges::equal(a, b, [](const auto& x, const auto& y) {
+            return x.first == y.first &&
+                   std::ranges::equal(x.second, y.second,
+                                      [](const auto& p, const auto& q) { return Same(p, q); });
+        });
+    }
+
+    std::size_t Hash(const Reference<T>& definition, bool indexed, int index,
+                     const Arguments& arguments) const {
+        std::size_t hash = std::hash<const void*>()(&definition) * 31 + std::size_t(order_);
+        hash             = hash * 31 + (indexed ? std::size_t(index) * 2 + 1 : 0);
+        for (const auto& [name, jet] : arguments)
+            for (const auto& part : jet)
+                hash = hash * 31 + (!part        ? 0
+                                    : part->node ? part->node
+                                                 : numeric_interface<T>::hash(*part));
+        return hash;
     }
 
     // A call, in a frame of its own as its evaluation would be, its arguments
@@ -730,11 +747,18 @@ private:
     // term remembered without its derivative never answers for one.
     Jet Term(const Reference<T>& definition, const ParametersCall<T>& call, bool indexed, int index,
              const Arguments& arguments) {
-        const std::string key = Key(definition, indexed, index, arguments);
-        if (const auto found = memo_.find(key); found != memo_.end()) {
-            stepped_ |= found->second.second;
-            return found->second.first;
-        }
+        const std::size_t hash = Hash(definition, indexed, index, arguments);
+        for (auto [same, end] = memo_.equal_range(hash); same != end; ++same)
+            if (const Remembered& r = same->second;
+                r.definition == &definition && r.order == order_ && r.indexed == indexed &&
+                r.index == index && Same(r.arguments, arguments)) {
+                stepped_ |= r.stepped;
+                return r.term;
+            }
+        const auto remember = [&](const Jet& term, std::size_t stepped) {
+            memo_.emplace(
+                hash, Remembered{&definition, order_, index, indexed, arguments, term, stepped});
+        };
         if (indexed && !filling_ && depth_ >= ReferenceStack<T>::max_depth / 2)
             Fill(definition, call, index, arguments);
         stack_.Step();
@@ -743,7 +767,7 @@ private:
         try {
             const Deeper                       deeper(*this);
             if (std::optional<Jet> fast = Compiled(definition, indexed, arguments)) {
-                memo_.emplace(key, std::pair(*fast, std::size_t(0)));
+                remember(*fast, 0);
                 return *fast;
             }
             const std::size_t                  outer = std::exchange(stepped_, 0);
@@ -772,7 +796,7 @@ private:
                 &definition == names.at("min").get())
                 stepped_ = 0;
             stepped_ &= Size() - 1;
-            memo_.emplace(key, std::pair(result, stepped_));
+            remember(result, stepped_);
             stepped_ |= outer;
             return result;
         } catch (const NotSingle& error) {
@@ -1530,7 +1554,7 @@ private:
     int                                                   order_ = 0;
     std::vector<std::pair<std::string, std::string>>      grads_;  // name and point, innermost last
     std::vector<std::vector<std::pair<std::string, Jet>>> frames_;
-    std::map<std::string, std::pair<Jet, std::size_t>>    memo_;  // and the grads it stepped with
+    std::unordered_multimap<std::size_t, Remembered>      memo_;
     std::size_t                                           depth_   = 0;
     bool                                                  guard_   = false;
     bool                                                  filling_ = false;
