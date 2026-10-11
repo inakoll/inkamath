@@ -8773,9 +8773,9 @@ checked: what it asked of the compiler, each with its smallest change.
      the mode rule, the prelude's slopes, definitions by cells without
      guards, tensors, limits' functions and `--float`. A
      body meeting a chain of clauses with nodes gives way, as the
-     interpreter's walk does: the temporaries, memo, terms and `aware_`
-     the attempt left are put back, and forward mode compiles the grad from
-     the start. About 325 lines: node and tape 15, recording and moves 45,
+     interpreter's walk does: the temporaries and their count, memo, terms
+     and `aware_` the attempt left are put back, and forward mode compiles
+     the grad from the start, today's header byte for byte. About 325 lines: node and tape 15, recording and moves 45,
      the walk's sites in `compile.hpp` 45, the sweep's arithmetic 95, the
      sweep 85, and the grad and giving way 40. 16,707 lines at db6ac88, by
      `wc -l include/inkamath/*.hpp src/*`; past 490 the implementation
