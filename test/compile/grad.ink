@@ -1,10 +1,11 @@
 # grad compiled (DESIGN.md, next in line): forward, as the interpreter takes
-# it, each value compiled carrying its part, the derivative's cells beside its
-# own, made by the interpreter's rules in its order. So the step's gradient is
-# the interpreter's to the bit, and --check holds it so. Every number below is
-# worked out apart from the interpreter: by hand, with exact fractions, with
-# the step's operations in doubles and in floats, in C and in numpy, and with
-# mpmath at 50 digits; none is recorded. Today each model is refused, 'cannot
+# it but for a matrix, each value compiled carrying its part, the derivative's
+# cells beside its own, made by the interpreter's rules in its order. So the
+# step's gradient is the interpreter's to the bit, or to rounding where the
+# interpreter sweeps one by a matrix back in reverse mode, and --check holds
+# it so. Every number below is worked out apart from the interpreter: by
+# hand, with exact fractions, with the step's operations in doubles and in
+# floats, in C and in numpy, and with mpmath at 50 digits; none is recorded. Today each model is refused, 'cannot
 # compile w: a derivative, for now'.
 #
 # 'line', least squares by gradient descent on data a line fits exactly,
@@ -45,12 +46,13 @@ line = lsq()
 
 # 'fall', prelude.ink's logistic regression trained on its log loss, as a
 # model: w by grad through the prelude's exp and log, and beside it u by the
-# gradient written by hand (MANIFESTO.md, A paper conformance suite). Each
-# is the interpreter's to the bit, the estimates the seeds':
+# gradient written by hand (MANIFESTO.md, A paper conformance suite). u is
+# the interpreter's to the bit, and w to rounding, its gradient by a matrix
+# the interpreter's in reverse mode; the estimates the seeds':
 #
 #     fall: 100 steps from 0, against exact values until 1 and inexact ones from there
 #     fall.u: within 0; the interpreter's terms about <e> from the exact ones
-#     fall.w: within 0; the interpreter's terms about <e> from the exact ones
+#     fall.w: within 1.3e-15; the interpreter's terms about <e> from the exact ones
 #
 # The exact descent, by mpmath, is at w_10 = [-2.10089640888; 1.71241565141]
 # and w_100 = [-6.37603325128; 4.42991214595].

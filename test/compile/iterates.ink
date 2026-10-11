@@ -51,15 +51,17 @@ poly = eigen(x_n = n)
 # shows: at 1, taken one after another as written, d is -0.6666666666666675
 # and g's first cell -6.661338147750939e-16, where 4x - 2 and 3x - 1 at that
 # x round to -0.6666666666666667 and -5.551115123125783e-17. Every value
-# below is worked out in Python's doubles in the interpreter's order, a
+# below is worked out in Python's doubles in forward mode's order, a
 # matrix product's sum from its first term and grad's part of a product
-# a'*b + a*b', a matrix's at a time; the step takes the same order, so:
+# a'*b + a*b', a matrix's at a time. The step takes the same order, and so
+# does the interpreter but for g, a gradient by a matrix it sweeps back in
+# reverse mode:
 #
 #     thirds: 100 steps from 0, against exact values until 0 and inexact ones from there
 #     thirds.A: within 0; the interpreter's terms about <e> from the exact ones
 #     thirds.c: within 0; the interpreter's terms about <e> from the exact ones
 #     thirds.d: within 0; the interpreter's terms about <e> from the exact ones
-#     thirds.g: within 0; the interpreter's terms about <e> from the exact ones
+#     thirds.g: within 8.5e-14; the interpreter's terms about <e> from the exact ones
 thirds = eigen(x_n = ~(n/3))
 
 # 'plan', a model-predictive controller's few steps of projected gradient

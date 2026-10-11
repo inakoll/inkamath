@@ -168,7 +168,8 @@ matrix inverse or a call nested in an argument computed once per iterate:
 chemical system by Newton's method under `lim`, its inverse written as the
 paper writes it. A `grad` is compiled forward, each value carrying its part
 beside it by the interpreter's rules, so that the step's gradient is the
-interpreter's to the bit: `test/compile/grad.ink` trains a line and a logistic
+interpreter's to the bit, or to rounding where the interpreter sweeps one by a
+matrix back: `test/compile/grad.ink` trains a line and a logistic
 regression by it, and `test/compile/cellguards.ink` a ReLU network through
 its activation written by its cells, each cell's guards tested in the step;
 a derivative of a derivative, of a limit or of a matrix power is refused for
@@ -1013,7 +1014,7 @@ point is read around it, the name only in the body, which is a term as a sum's
 is. What the body reads through definitions is differentiated with it, exactly
 where its parts are exact. A derivative at a parameter is the derivative as a
 function, and a single value's gradient with respect to a matrix has the
-matrix's shape:
+matrix's shape and costs one evaluation and a sweep back, whatever its cells:
 
 ```
 >> grad_(x = 2) x^3
