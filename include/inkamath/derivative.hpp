@@ -512,10 +512,11 @@ private:
     // A dynamic_cast without its search of the bases, which is most of what
     // the dispatch below cost: a node class is final, so a node has no type
     // but its own to match.
-    template <typename Node>
-    static Node* Exactly(Expression<T>& e) {
+    template <typename Node, typename E>
+    static auto* Exactly(E& e) {
         static_assert(std::is_final_v<Node>);
-        return typeid(e) == typeid(Node) ? static_cast<Node*>(&e) : nullptr;
+        using Out = std::conditional_t<std::is_const_v<E>, const Node, Node>;
+        return typeid(e) == typeid(Node) ? static_cast<Out*>(&e) : nullptr;
     }
 
     Jet Eval(Expression<T>& e) {
@@ -608,8 +609,7 @@ private:
     // Whether an expression reads a name the innermost frame binds; what does
     // not is a constant, whatever it calls, since a call sees only its own.
     bool Reads(const Expression<T>& e) const {
-        if ((typeid(e) == typeid(RefExpression<T>) || typeid(e) == typeid(FuncExpression<T>)) &&
-            Lookup(e.Name()))
+        if ((Exactly<RefExpression<T>>(e) || Exactly<FuncExpression<T>>(e)) && Lookup(e.Name()))
             return true;
         for (const PExpression<T>& child : e.Children())
             if (child && Reads(*child)) return true;
@@ -996,8 +996,7 @@ private:
     // is at a whole number (C78).
     // Once, as the evaluator does, since it may bind a local (C304).
     int Index(const PExpression<T>& e, const std::string& what = "an index") {
-        if (typeid(*e) == typeid(ValExpression<T>))
-            return AsIndex<T>(static_cast<const ValExpression<T>&>(*e).value);
+        if (const auto* literal = Exactly<ValExpression<T>>(*e)) return AsIndex<T>(literal->value);
         if (!Reads(*e)) return AsIndex<T>(e->accept(ordinary_));
         const Jet index = Eval(e);
         if (Moves(index)) throw std::runtime_error(what + " jumps at " + Where());
@@ -1017,7 +1016,7 @@ private:
         const Jet*         bound = Lookup(name);
         const T*           kept  = bound ? nullptr : stack_.Kept(*cell.Matrix());
         const bool         named =
-            (bound || stack_.Binds(name)) && typeid(*cell.Matrix()) == typeid(RefExpression<T>);
+            (bound || stack_.Binds(name)) && Exactly<RefExpression<T>>(*cell.Matrix());
         const Jet  matrix = kept || named ? Jet() : Eval(cell.Matrix());
         const auto read   = [&](auto f) {
             if (kept) return Constant(f(*kept));
