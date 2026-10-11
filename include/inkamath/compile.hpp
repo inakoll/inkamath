@@ -3834,6 +3834,8 @@ private:
             if (!IsSequence(*group))
                 throw Reason(name +
                              ", a gradient by several names that is not a sequence, for now");
+            if (!group->Clauses().front().parameters.parameters_names().empty())
+                throw Reason(name + ", a gradient by several names that takes arguments, for now");
             if (!in && Call(*expression->Object()).arguments())
                 throw Reason(name + " takes no arguments");
             if (in) own_ = Reasoned([&] { return &definitions_.Resolve(*in->Object(), *scope_); });

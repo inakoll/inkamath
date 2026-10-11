@@ -8562,13 +8562,15 @@ checked: what it asked of the compiler, each with its smallest change.
   program is `check_gradmany_pair`, `nan.ink` having a `pair`. A grad by
   several names compiles where it is a sequence: one that is a value or a
   function is refused where a part is read, "p, a gradient by several
-  names that is not a sequence, for now"; read whole, `g_n`, it is refused
-  in the interpreter's words, "g is a gradient by several names; read one
-  of its parts (g.x_(...))", its index as written; and
-  one whose points read its own parts, "its shape depends on itself", as
-  any sequence with no base clause that reads itself. A part read through
-  an instance, `run.g.x_n`, is that instance's sequence, and one read
-  before its first term is computed again there (C71). A refusal in the
+  names that is not a sequence, for now", and so is one that takes
+  arguments, "r, a gradient by several names that takes arguments, for
+  now"; read whole, `g_n`, it is refused in the interpreter's words, "g is
+  a gradient by several names; read one of its parts (g.x_(...))", its
+  index as written; and one whose points read its own parts, "its shape
+  depends on itself", as any sequence with no base clause that reads
+  itself. A part read through an instance, `run.g.x_n`, is that instance's
+  sequence, and one read before its first term is computed again there
+  (C71). A refusal in the
   body names the definition. 129 lines against about 140, 260 added and
   131 removed, 13 of them comment, most of the removed moved: 10 in a
   commit of their own that writes a sequence's assignments and a term's
