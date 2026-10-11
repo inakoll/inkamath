@@ -8733,8 +8733,11 @@ checked: what it asked of the compiler, each with its smallest change.
   plan kept them in `fastgrad.ink`; its 120 s goes. `<cstdint>` goes with
   `<map>`, nothing left reading it, and `<algorithm>` comes, for the tape's
   and the memo's searches. A part's sameness is a function of its own beside
-  the arguments'. 70 lines added and 39 removed, net 31, 2 of them comment;
-  C330's fix 10 and 3. 16,746 lines in all, 16,715 after C330. Debug
+  the arguments'. `Exactly` takes a const node too, so that `Reads`, an
+  index and a cell ask a node's type by it, its finality checked. 72 lines
+  added and 42 removed, net 30, 2 of them comment; C330's fix, with the name
+  bound outside grad its review found, 15 and 3. 16,750 lines in all,
+  16,708 at 5f2a838. Debug
   instructions per term of 30,000, from the fix: 93,000 to 63,900 in reverse
   mode and 60,900 to 37,200 in forward mode; in release, from 5f2a838, the
   transformer's step 3,524 to 2,656 million, 0.46 s to 0.37, its answers the
