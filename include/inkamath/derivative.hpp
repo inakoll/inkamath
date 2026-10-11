@@ -65,17 +65,18 @@ private:
         Part operator+(const Part& b) const {
             if (!node && !b.node) return Part(Value() + b.Value());
             return (node ? tape : b.tape)
-                ->Add(Tape::Kind::Sum, Tape::Wider(Size(), b.Size()), node, {}, b.node);
+                ->Add(Tape::Kind::Sum, Extent::Wider(Size(), b.Size()), node, {}, b.node);
         }
         Part operator*(const Part& b) const {
             if (!node && !b.node) return Part(Value() * b.Value());
-            const Extent product = Tape::Times(Size(), b.Size());
+            const Extent product = Extent::Product(Size(), b.Size());
             if (node) return tape->Add(Tape::Kind::Right, product, node, b.Value());
             return b.tape->Add(Tape::Kind::Left, product, b.node, Value());
         }
         Part operator/(const Part& b) const {
             if (!node && !b.node) return Part(Value() / b.Value());
-            return tape->Add(Tape::Kind::Quotient, Tape::Wider(Size(), b.Size()), node, b.Value());
+            return tape->Add(Tape::Kind::Quotient, Extent::Wider(Size(), b.Size()), node,
+                             b.Value());
         }
         Part operator-() const {
             return node ? tape->Add(Tape::Kind::Negative, extent, node) : Part(-Value());
@@ -161,17 +162,6 @@ private:
                           [&a](std::size_t k) { return Cell(a.node, k); });
         }
 
-        static bool   One(Extent e) { return e.count() == 1 && !e.slices; }
-        static Extent Wider(Extent a, Extent b) {
-            if (a.slices != b.slices) return a.slices ? a : b;
-            return One(a) ? b : a;
-        }
-        static Extent Times(Extent a, Extent b) {
-            if (One(a)) return b;
-            if (One(b)) return a;
-            return {a.rows, b.cols, std::max(a.slices, b.slices)};
-        }
-
         static T Total(const T& g) {
             T sum(g.data()[0]);
             for (std::size_t k = 1; k < g.Size().count(); ++k) sum = sum + T(g.data()[k]);
@@ -180,7 +170,7 @@ private:
         // An adjoint summed down to the shape of what was widened (C81).
         static T Reduce(T g, Extent to) {
             if (g.Size() == to) return g;
-            if (One(to)) return Total(g);
+            if (to.Single()) return Total(g);
             if (!g.IsTensor() || to.slices)
                 throw std::logic_error("an adjoint of " + g.Size().toString() + " for " +
                                        to.toString());
@@ -220,7 +210,7 @@ private:
         // The adjoint of v*a, and of a*v, for a.
         static T Left(const T& v, const T& g, Extent a) {
             if (v.IsScalar()) return Zeroed(g * v, g);
-            if (One(a)) return Total(Zeroed(Derivative::Cellwise(v, g), g));
+            if (a.Single()) return Total(Zeroed(Derivative::Cellwise(v, g), g));
             const auto f = [](const T& x, const T& y) {
                 return Sparse(numeric_interface<T>::transpose(x), y, false, true);
             };
@@ -228,7 +218,7 @@ private:
         }
         static T Right(const T& v, const T& g, Extent a) {
             if (v.IsScalar()) return Zeroed(g * v, g);
-            if (One(a)) return Total(Zeroed(Derivative::Cellwise(g, v), g));
+            if (a.Single()) return Total(Zeroed(Derivative::Cellwise(g, v), g));
             const auto f = [](const T& y, const T& x) {
                 return Sparse(y, numeric_interface<T>::transpose(x), true, false);
             };
@@ -412,7 +402,7 @@ private:
     static Part Cellwise(const Part& a, const Part& b) {
         if (!a.node && !b.node) return Part(Cellwise(a.Value(), b.Value()));
         const Part& node = a.node ? a : b;
-        return node.tape->Add(Tape::Kind::Cells, Tape::Wider(a.Size(), b.Size()), node.node,
+        return node.tape->Add(Tape::Kind::Cells, Extent::Wider(a.Size(), b.Size()), node.node,
                               (a.node ? b : a).Value());
     }
 
