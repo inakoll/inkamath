@@ -95,6 +95,31 @@ x(W)_n = W*x(W)_(n-1)
 >> grad_(v = [1 2]) tanh(v*[1; 1])
 [~0.00986603717, ~0.00986603717]
 
+# Where the modes differ, reverse mode's answers. Forward mode walks tanh
+# for the exact part of t's first cell (C139), 254 calls deep, and refuses,
+# "evaluation nests more than 256 references deep"; reverse mode takes the
+# header's slope, 1 - tanh(1/2)^2.
+>> dive(k, t) = dive(k - 1, t)
+dive(k, t) = dive(k - 1, t)
+
+>> dive(k, t) | k < 1 = tanh(t)
+dive(k, t) | k < 1 = tanh(t)
+
+>> grad_(t = [~0.5 1]) dive(254, t[1,1])
+[~0.786447733, ~0]
+
+# A part in the subnormals: forward mode rounds the slope times
+# 599492/10^318 once, ~4.71469124e-313; reverse mode divides the slope by
+# 10^318 first, into a subnormal of some 17 bits, and multiplies by 599492
+# after, as Python's doubles do in that order. Then the same with ~0.5 for
+# the slope, forward mode's ~2.99746e-313, and its second cell ~0, a 0
+# times ~0.5.
+>> grad_(t = [~0 1]) tanh(~0.5 + t[1,1]*599492/10^318)
+[~4.71469737e-313, ~0]
+
+>> grad_(v = [1 2]) ~0.5*(v[1,1]*599492/10^318)
+[~2.99745625e-313, 0]
+
 # A cell is inexact where a path to it meets a double. A cell no path
 # reaches is an exact 0, and a cell whose paths meet only exact numbers is
 # exact, where forward mode's pass for it multiplied a 0 by a double.

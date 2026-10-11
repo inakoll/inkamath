@@ -8427,7 +8427,10 @@ checked: what it asked of the compiler, each with its smallest change.
     real point, outside another grad, is evaluated in reverse mode; every
     other in forward mode, which takes one pass for a single value and gives
     what reverse mode does not, a matrix's derivative with respect to a
-    single value. The mode is a cost, not a meaning.
+    single value. The mode is a cost, not a meaning: it may tell answers
+    apart only by rounding, at the printed digits where a part is
+    subnormal, and by a resource, reverse mode answering where forward mode
+    runs out of depth.
   - **The tape is grad's own walk.** `Derivative` evaluates as now, with
     the same clauses, guards, jumps, limits, memo, frames and cells; under
     reverse mode a value's part is a node of a tape instead of a matrix. Each
@@ -8455,7 +8458,9 @@ checked: what it asked of the compiler, each with its smallest change.
     header gives no part, at 0, an infinity or NaN, the definition is walked
     with the node, as forward mode walks it, and refuses in its words.
     Forward mode also walks for an exact part (C139); reverse mode does not:
-    the same value to rounding, in fewer steps and less depth.
+    the same value to rounding, in fewer steps and less depth, so reverse
+    mode may answer where forward mode refuses, "evaluation nests more than
+    256 references deep".
   - **What it gives way on.** A limit or an endless sum whose terms move
     takes the limit of its terms' parts, walked until each part converges
     (C72), which needs the parts' values; a complex value multiplying a part
@@ -8471,8 +8476,10 @@ checked: what it asked of the compiler, each with its smallest change.
     a refusal is met where forward mode's first pass meets it; and C215's
     stepping limit is refused before any part is read.
   - **The same answers.** Exact values are the same rationals. Doubles agree
-    to rounding: an adjoint sums its terms in another order, and the
-    header's slope rounds once where its part rounds with the part. A cell
+    to rounding where they are normal: an adjoint sums its terms in another
+    order, and the header's slope rounds once where its part rounds with the
+    part. In the subnormals, whose bits are fewer, they may differ at the
+    printed digits: a product rounded there in another order. A cell
     is inexact where a path to it meets a double, and an exact 0 of an
     adjoint is no path, which stays exact whatever it meets. So reverse mode
     puts no `~` forward mode does not, and drops one where forward mode's
@@ -8534,23 +8541,25 @@ checked: what it asked of the compiler, each with its smallest change.
   at 29bf717, by `wc -l include/inkamath/*.hpp src/*`. Past 530 the
   implementation stops and reports.
 
-  Specified in `test/data/spec/reverse.ink`, 121 answers replayed by the
-  spec suite, restored for it, 3 failing by design: the three marks above,
-  the evidence that reverse mode ran. The count, `grad_(w = [1 2 3 4 5 6 7 8
-  9 10]) (w*w' + sum_(k=1)^120000 k)`, one evaluation of a 120,000-step sum
-  where forward mode takes ten, is a plain value: since C318 each of forward
-  mode's passes has steps of its own. The rest pass today and must still:
-  matrices, inverses and tensors exact; README's gradient; sums, products,
-  locals, cells, a ReLU at 0 and remembered terms; the prelude's functions
-  of doubles; a one-cell tensor, forward; the transformer trimmed to one
-  block of two heads, its loss, the gradients of W^Q, a tensor, and of the
-  unembedding, and the loss after one step on every weight, NumPy's by the
-  exploration's `rev.py`; the refusals, each in its words; and what gives
-  way, a moving limit and its divergent derivative, an endless sum, a
-  complex value and point, and a grad inside, after a clause an inexact
-  truth chose in a term the walk remembered, and after a sum of 200,000
-  steps. README's paragraph on `grad` gains that a gradient with respect to
-  a matrix costs one evaluation and a sweep back, whatever its cells.
+  Specified in `test/data/spec/reverse.ink`, 126 answers replayed by the
+  spec suite, restored for it, 6 failing by design: the three marks above,
+  the evidence that reverse mode ran, and its three answers where the modes
+  differ, past forward mode's depth and in the subnormals. The count,
+  `grad_(w = [1 2 3 4 5 6 7 8 9 10]) (w*w' + sum_(k=1)^120000 k)`, one
+  evaluation of a 120,000-step sum where forward mode takes ten, is a plain
+  value: since C318 each of forward mode's passes has steps of its own. The
+  rest pass today and must still: matrices, inverses and tensors exact;
+  README's gradient; sums, products, locals, cells, a ReLU at 0 and
+  remembered terms; the prelude's functions of doubles; a one-cell tensor,
+  forward; the transformer trimmed to one block of two heads, its loss, the
+  gradients of W^Q, a tensor, and of the unembedding, and the loss after one
+  step on every weight, NumPy's by the exploration's `rev.py`; the refusals,
+  each in its words; and what gives way, a moving limit and its divergent
+  derivative, an endless sum, a complex value and point, and a grad inside,
+  after a clause an inexact truth chose in a term the walk remembered, and
+  after a sum of 200,000 steps. README's paragraph on `grad` gains that a
+  gradient with respect to a matrix costs one evaluation and a sweep back,
+  whatever its cells.
 - **The compiler's adjoint step**, after the tape: `--compile` keeps
   forward mode's parts, a pass per cell of a seed. An adjoint emitted by
   transformation, with the extents the compiler knows (`MANIFESTO.md`), and
