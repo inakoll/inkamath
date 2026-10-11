@@ -8245,11 +8245,12 @@ checked: what it asked of the compiler, each with its smallest change.
 - **A gradient with respect to several names at once**, the nabla's
   `∇_θ`: training a transformer took 13 grads of 15 arguments, one per
   weight, each an evaluation and a sweep of its own. At a206c5d,
-  RelWithDebInfo with GCC 13, the exploration's transformer takes 0.36 s a
-  step that way, 52 sweeps for a batch of four; with a prototype of this
-  entry, 0.052 s with one grad by the 13 names per sample, 4 sweeps, and
-  0.068 s with one over the batch, 1 sweep; the losses at steps 3 and 10
-  the same to 17 digits in all three.
+  RelWithDebInfo with GCC 13 under callgrind, from step 3 to step 10, the
+  exploration's transformer takes 2,719 million instructions a step that
+  way, 13 sweeps for a batch of four; with a prototype of this entry, 305
+  million with one grad by the 13 names over the batch, 1 sweep, and 354
+  million with one per sample, 4 sweeps; the losses at steps 3 and 10 the
+  same to 17 digits in all three.
 
   Decided:
   - **The notation.** `grad_(x = a, y = b) body`: the names at their points
