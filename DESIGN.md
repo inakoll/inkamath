@@ -8635,3 +8635,13 @@ checked: what it asked of the compiler, each with its smallest change.
   under callgrind, 30,000 terms of `reverse_memo.ink`'s sum cost some
   17,000 instructions each: a cell read 31 per cent, 11 of them its index,
   `dynamic_cast` in `Reads` 15, `Key`'s strings 14, and 13 allocations.
+- **Forward mode's "no path"**: a pass cannot tell a cell no path
+  reaches from a part computed to be exactly 0, so C324's products leave
+  both out and a `~` marks both, and the inexact-~0 case stays NaN:
+  `grad_(v = [800 1]) grad_(w = 1) w*v[1,2]/(1/exp(v[1,1]))` is
+  `[-nan, -nan]` for reverse mode's `[-nan, ~inf]`, expk's `~` making the
+  pass's exact 0 a ~0 that meets exp's inf. Keeping an exact 0 through
+  `~` gives `[-nan, ~inf]` and moves gradcells.ink:495 to reverse mode's
+  `[1, ~inf]`, but drops a mark reverse mode keeps: `grad_(t = 1)
+  ~(t - t)` would be 0 for ~0. A fix gives a seed's 0 cells no part at
+  all, which touches C73's checks of whether a part is there.
