@@ -8915,6 +8915,13 @@ checked: what it asked of the compiler, each with its smallest change.
     tested, so each holds its conditional part to a part that is not a
     node, one condition each.
   - **`gate` is `gate3`**: logistic.ink has a `gate`.
+  - **A clause is marked where its guard reads a value that moves**, the
+    interpreter's where a guard it tried is inexact, which a header cannot
+    know: the mark orders the sweep's sums, so a guard reading an inexact
+    value that does not move, an input given `~` or a term of the model
+    passed beside the variable, is within 1.4e-17 for 0, found in review.
+    Marking wherever a guard reads what is not a constant was rejected:
+    it moves the same error to a guard reading exact inputs, 0 to 1.4e-17.
   - **The whole beside cells is held by `aside`**, added in review:
     within 0, where the grad giving way there was within 2.2e-16. The
     prelude's functions of several arguments are held by `max`, in
