@@ -1,11 +1,13 @@
 # grad compiled (DESIGN.md, next in line): forward, as the interpreter takes
-# it, each value compiled carrying its part, the derivative's cells beside its
-# own, made by the interpreter's rules in its order. So the step's gradient is
-# the interpreter's to the bit, and --check holds it so. Every number below is
-# worked out apart from the interpreter: by hand, with exact fractions, with
-# the step's operations in doubles and in floats, in C and in numpy, and with
-# mpmath at 50 digits; none is recorded. Today each model is refused, 'cannot
-# compile w: a derivative, for now'.
+# it but for a matrix, each value compiled carrying its part, the derivative's
+# cells beside its own, made by the interpreter's rules in its order. So the
+# step's gradient is the interpreter's to the bit, or to rounding where the
+# interpreter sweeps one by a matrix back in reverse mode, and --check holds
+# it so. Every number below is worked out apart from the interpreter: by
+# hand, with exact fractions, with the step's operations in doubles and in
+# floats, in C and in numpy, and with mpmath at 50 digits; none is
+# recorded. Today each model is refused, 'cannot compile w: a derivative,
+# for now'.
 #
 # 'line', least squares by gradient descent on data a line fits exactly,
 # w = [1; 2]. Its terms are exact fractions, w_2 = [253/400; 537/400], and
@@ -45,12 +47,13 @@ line = lsq()
 
 # 'fall', prelude.ink's logistic regression trained on its log loss, as a
 # model: w by grad through the prelude's exp and log, and beside it u by the
-# gradient written by hand (MANIFESTO.md, A paper conformance suite). Each
-# is the interpreter's to the bit, the estimates the seeds':
+# gradient written by hand (MANIFESTO.md, A paper conformance suite). u is
+# the interpreter's to the bit, and w to rounding, its gradient by a matrix
+# the interpreter's in reverse mode; the estimates the seeds':
 #
 #     fall: 100 steps from 0, against exact values until 1 and inexact ones from there
 #     fall.u: within 0; the interpreter's terms about <e> from the exact ones
-#     fall.w: within 0; the interpreter's terms about <e> from the exact ones
+#     fall.w: within 1.3e-15; the interpreter's terms about <e> from the exact ones
 #
 # The exact descent, by mpmath, is at w_10 = [-2.10089640888; 1.71241565141]
 # and w_100 = [-6.37603325128; 4.42991214595].
@@ -104,7 +107,7 @@ hinge = rect(x_n = n)
 # at the point, g at 2; a comparison read as a value where its sides meet, c
 # at 2; a power whose derivative is infinite at 0, s at 2. Elsewhere f is
 # floor(n/2), g is n, c is 0 below 2 and 1 above, and s is -1 below 2 and
-# 1 above, its power C's pow of a double as the interpreter's is; and k, a
+# 1 above, its power C's pow of a double, the interpreter's exact; and k, a
 # gradient at a constant point, is folded, 12*n, but for a jump there, as j's
 # comparison and o's floor, NaN at every n. Where the clause a function
 # takes has no part, nothing there moves, as in the interpreter, so nothing
@@ -113,7 +116,8 @@ hinge = rect(x_n = n)
 # at 2 and 1 above; w, the floor of a clamp, NaN at 0 and 2, 0 at 1 and 1
 # from 3:
 #
-#     edge: 100 steps from 0, against exact values until 0 and inexact ones from there
+#     edge: 100 steps from 0, against exact values until 3 and inexact ones from there
+#     edge.a: within 0
 #     edge.c: within 0
 #     edge.d: within 0
 #     edge.e: within 0; the interpreter's terms about <e> from the exact ones
@@ -126,7 +130,7 @@ hinge = rect(x_n = n)
 #     edge.l: within 0
 #     edge.m: within 0
 #     edge.o: no value compared, the step NaN where the interpreter gives none, as at 0: floor jumps at t = 2
-#     edge.s: within 0; the interpreter's terms about <e> from the exact ones
+#     edge.s: within 1.1e-16
 #     edge.v: no value compared, the step NaN where the interpreter gives none, as at 0: a power's derivative is infinite at t = 0
 #     edge.w: within 0
 #
@@ -143,7 +147,9 @@ hinge = rect(x_n = n)
 # being n/2 - 1 (C118); i, its inverse, NaN to 2, the interpreter dividing
 # by 0, then -1/t^2. e, a third over the ReLU plus t, t being n/2 - 5/4, is
 # 1 to 2, where the unit is dead and its quotient has no part to be
-# infinite, as in the interpreter, then 1 - 1/(3t^2) (C110).
+# infinite, as in the interpreter, then 1 - 1/(3t^2) (C110). a, its
+# comparisons inside 'and', t being n/2 - 1, is 1 but NaN at 2 and 6, where
+# t > 0 jumps and then t < 2 does, as c's does alone (C320).
 kinks(x_n) = {
     q(t) = t^2
     q(t) | t == 1 = 1
@@ -151,6 +157,7 @@ kinks(x_n) = {
     r(t) | t < 0 = 0
     p(t) = t
     p(t) | t > 1 = 1
+    a_n = grad_(t = x_n - 1) ((t > 0 and t < 2) + t)
     c_n = grad_(t = x_n) t*(t > 1)
     d_n = grad_(t = x_n - 1) t*(r(t) > 0)
     e_n = grad_(t = x_n - 5/4) (~(1/3)/r(t) + t)
@@ -348,10 +355,10 @@ apart = clamped(x_n = 6)
 # part where that clause has one, a condition that is the clauses' own
 # conditional, which was written bare before the quotient's '?': the step
 # took 1 for -2/v^3, at every step, and a power's likewise 1 for 2*v, the
-# derivative of (v^4)^(1/2). The interpreter's square root is not exact, so
-# z is held to its terms, y to the exact ones as computed in doubles:
+# derivative of (v^4)^(1/2). The interpreter's square root is exact, so
+# both are held to the exact terms, y as computed in doubles:
 #
-#     over: 100 steps from 0, against exact values until 0 and inexact ones from there
+#     over: 100 steps from 0, against exact values
 #     over.y: within 1.4e-20
 inverse(x_n) = {
     f(v) | v > 0 = v*v

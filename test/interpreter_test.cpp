@@ -109,6 +109,9 @@ TEST_CASE("series") {
 TEST_CASE("exact") {
     check_transcript("exact.ink");
 }
+TEST_CASE("roots") {
+    check_transcript("roots.ink");
+}
 TEST_CASE("decimals") {
     check_transcript("decimals.ink");
 }
@@ -166,6 +169,15 @@ TEST_CASE("tensor") {
 TEST_CASE("gradcells") {
     check_transcript("gradcells.ink");
 }
+TEST_CASE("gradlocal") {
+    check_transcript("gradlocal.ink");
+}
+TEST_CASE("reverse") {
+    check_transcript("reverse.ink");
+}
+TEST_CASE("reverse_memo") {
+    check_transcript("reverse_memo.ink");
+}
 TEST_CASE("conv") {
     check_transcript("conv.ink");
 }
@@ -189,6 +201,9 @@ TEST_CASE("fastprelude") {
 }
 TEST_CASE("trig") {
     check_transcript("trig.ink");
+}
+TEST_CASE("atan") {
+    check_transcript("atan.ink");
 }
 TEST_CASE("cparts") {
     check_transcript("cparts.ink");
@@ -244,8 +259,41 @@ TEST_CASE("doyle") {
 TEST_CASE("translunar") {
     check_transcript("translunar.ink");
 }
+TEST_CASE("truss_calfem") {
+    check_transcript("truss_calfem.ink");
+}
+TEST_CASE("truss_pratt") {
+    check_transcript("truss_pratt.ink");
+}
+TEST_CASE("beam") {
+    check_transcript("beam.ink");
+}
+TEST_CASE("modal") {
+    check_transcript("modal.ink");
+}
+TEST_CASE("geneig") {
+    check_transcript("geneig.ink");
+}
+TEST_CASE("geneig_cantilever") {
+    check_transcript("geneig_cantilever.ink");
+}
+TEST_CASE("cook") {
+    check_transcript("cook.ink");
+}
+TEST_CASE("dynamics") {
+    check_transcript("dynamics.ink");
+}
 TEST_CASE("inexact") {
     check_transcript("inexact.ink");
+}
+TEST_CASE("explicit") {
+    check_transcript("explicit.ink");
+}
+TEST_CASE("implicit") {
+    check_transcript("implicit.ink");
+}
+TEST_CASE("transformer") {
+    check_transcript("transformer.ink");
 }
 TEST_CASE("readme") {
     check_readme();

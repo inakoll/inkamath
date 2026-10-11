@@ -222,12 +222,13 @@ gm(x, k = [1  -2]) | x < 0 = k
 >> gm(-1)
 [1, -2]
 
-# A line's local keeps no text, and its tokens stand in, with that space.
+# A line's local cannot take parameters (C303), so its clauses, which keep
+# no text, are not quoted.
 >> lq(x) = (q(x, k = [1 -2]) | x > 0 = 1) + (q(x) = 2)
 lq(x) = (q(x, k = [1 -2]) | x > 0 = 1) + (q(x) = 2)
 
 >> lq(1)
-error: q takes (x, k = [1 -2]), so a clause cannot take (x)
+error: a local cannot take parameters
 
 # A model and a file are each one statement. Written again a model replaces
 # itself, and its instances follow; a clause cannot join either, nor either

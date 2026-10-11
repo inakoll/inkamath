@@ -407,15 +407,73 @@ error: ~1 was approximated past a thousand digits, so it has no exact fraction
 >> grad_(x = ~3) [exp(x) 5]
 [~20.0855369, ~0]
 
-# Values the rule must not move. A matrix of doubles is bisected in
-# doubles now, and stops where the bracket's ends are adjacent doubles,
-# unmarked as before.
+# Values the rule must not move. A matrix of doubles is bisected as the
+# rationals they are (C275), unmarked as before.
 >> rho([~0.5 1; -1 0.5])
 ~1.11803399
 
 >> eig([~2 1; 1 3])
 [~1.38196601;
  ~3.61803399]
+
+# Each double is the rational it stores, so the eigenvalues are 1 to 10^6
+# exactly; counted from a characteristic polynomial in doubles they were
+# 0.993 and 10.007 and the abscissa -0.993, unmarked, and of D(8) 2.59
+# twice and 754 twice (C275).
+>> D(n)[j<=n, k<=n] = (j == k)*~10^(j-1)
+D(n)[j<=n, k<=n] = (j == k)*~10^(j-1)
+
+>> eig(D(7))
+[      ~1;
+      ~10;
+     ~100;
+    ~1000;
+   ~10000;
+  ~100000;
+ ~1000000]
+
+>> abscissa(-D(7))
+~-1
+
+>> eigb(D(7), 1)_64
+[~1;
+ ~1]
+
+# A k-fold eigenvalue lost about 16/k digits: 1/3's double four times was
+# 0.33339 by rho and 0.33333341 by smax.
+>> T(n)[j<=n, k<=n] = (j == k)*~(1/3)
+T(n)[j<=n, k<=n] = (j == k)*~(1/3)
+
+>> rho(T(4))
+~0.333333333
+
+>> smax(T(4))
+~0.333333333
+
+# A cell approximated past a thousand digits is read as its double too, and
+# the answer keeps its mark: ua's double is 1, so the eigenvalues are 1 to
+# 10^6, the abscissa -1 and the peak of 1/(s + 1) + 1/(s + 10), at s = 0,
+# 1.1; read rounded they were D(7)'s above, and refused (C296).
+>> ua = 1 + 1/3^2100
+ua = 1 + 1/3^2100
+
+>> Du(n)[j<=n, k<=n] = (j == k)*10^(j-1)*ua
+Du(n)[j<=n, k<=n] = (j == k)*10^(j-1)*ua
+
+>> eig(Du(7))
+[      ~1;
+      ~10;
+     ~100;
+    ~1000;
+   ~10000;
+  ~100000;
+ ~1000000]  # approximated past a thousand digits
+
+>> grad_(x = 1) x*abscissa(-Du(7))
+~-1  # approximated past a thousand digits
+
+>> hinf(-Du(2), [1; 1], [1 1])
+~1.1  # approximated past a thousand digits
 
 # log of a double scales by 2^ilogb, inexact now: an exact part past a
 # double's range is still divided exactly (C242). The slope is 1/t.

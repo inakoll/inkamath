@@ -388,6 +388,14 @@ error: bad has an index and a size named n
 >> bad(x[j<=k])[k<=2] = x[1]
 error: bad has a cell's index and a size named k
 
+# A parameter's name is its own too: a second binds what the first does,
+# and is refused as a model's is (C325).
+>> bad(x, x) = 1
+error: bad has two parameters named x
+
+>> bad(x, v[j<=n], v = [1; 2])_k | k > 0 = x
+error: bad has two parameters named v
+
 # A size is bound once a parameter is, so a default reads only the sizes
 # stated before it.
 >> late(s = n, v[j<=n] = [1; 2]) = s
@@ -425,6 +433,14 @@ error: a size must be at least 1, not -1
 # In a size's words, not an index's (C172).
 >> bad(x[j<=4000000000]) = x
 error: a size must be between 1 and 2147483647, not 4000000000
+
+# Nor an empty list, which adds nothing: bad() = 1 was bad = 1, where a
+# local so written is refused (C314, C321).
+>> bad() = 1
+error: a parameter list cannot be empty
+
+>> bad(x_n) = { g() = 1 }
+error: a parameter list cannot be empty
 
 >> bad(1)
 error: bad is not defined

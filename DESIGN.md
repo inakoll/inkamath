@@ -956,6 +956,11 @@ Recorded so they are not re-litigated later, or drifted into by accident.
   cannot parse reliably. If it surfaces, it does at a C API or in an output
   format meant for programs.
 
+- **Local functions.** A local with parameters is refused (C303): bound in
+  the line's frame, it could not capture its parameters, and its answers
+  read globals instead. Cut by the owner for now; it comes back only with a
+  design that captures them, as a function's own definitions would.
+
 ## Openings
 
 Not scheduled, and not Deferred either -- Deferred is for what has been argued
@@ -1777,6 +1782,47 @@ closures need one anyway, and can bring it.
 | C272 `[fixed]` | **`rho`, `abscissa`, `eig` and `smax` of an exact cell past a double beside an inexact one refused with a NaN.** C196's residual: the sum of |A[j,k]| is a double, inf, and so is it over 4^n where a cell is itself past a double, so `rhop`'s `0*s` made B's power NaN: `rho([~1 0; 0 10^400])` was "a comparison needs a number, not -nan" where `rho([~1 0; 0 10^309])` is inf, marked. The cell is no inf, as C206's is: its value is exact, and the radius 10^400's, inf as a double and marked, as C191's of an exact matrix. Where the sum is still inf over 4^n, the power is taken of the largest cell's, which `ilogb` takes of an exact number past a double, raised by m + n, in 4 lines and 2 of comment; an exact sum never takes the clause. charpoly.ink and eig.ink hold it, and no other answer moved. |
 | C273 `[fixed]` | **An inexact -0 printed as +0.** A double's 0 has a sign, which 1/x tells, but C240's print dropped it: `~-10^-400` was `~0` where `1/~-10^-400` is `~-inf`. It prints `~-0` now, in 1 line; inexact.ink holds it, and errors.ink's `min(~0, -10^-400)`, -10^-400's double, moved to `~-0`. Reading it back still gives +0, so `1/` of what was printed is `~inf`: `~` takes the exact 0 of `-0`, and negation is `0 - x` (C33), so `-~0` is +0 too; only `~0*(-1)` writes -0. A complex number's -0 part, left out of `~(…)`, is lost alike. |
 | C274 `[fixed]` | **`--check --float` counted a small term's error in units of a float at 1.** README says at the term, but the check took the spacing at 1 for any term smaller, so a term lost whole hid below 1's spacing: `y_n = (1 + a*u_n) - 1`, a = 1e-8, is 0 in float against the exact 1e-8, and its line said "within 1e-08, 0.084 units of a float", where at y's own spacing, 2^-50, it is 1.1e+07. Each term is now measured at its own spacing, 2^-149 below the normal floats; a term of 0 counts no unit, since its spacing says nothing of the error, and a line none of whose terms is anything else gives "within" alone. In 7 lines for 6 and 3 of comment; float.ink's `tiny` holds it. No check passes or fails otherwise, as units decide neither; 21 reports moved, each where its largest unit is at a term below 1: gate.p, ball, big.s, cls.z, cls.s, cls.loss, drone.y, hum.y, fixed.x, gen.h, gen.x, gen.R, gen.m, knee.r, line.w, needle.kahan, sums.c and thm1.h and x, and seven.t, seven.u and sums.comp, whose terms are all 0, lost their units. |
+| C275 `[fixed]` | **`eig`, `rho`, `abscissa` and `smax` of doubles were wrong, unmarked.** Their counts read a characteristic polynomial computed in doubles, whose rounding sends roots off the real line: with `D(n)[j<=n, k<=n] = (j == k)*~10^(j-1)`, `eig(D(8))` was 2.59 twice and 754 twice for 1 to 10^7, `abscissa(-D(8))` 778 for -1, and `rho` of 1/3's double four times 0.33339. Each inexact cell is now read as the rational its double is, as hinf's are (*An inexact system* under `hinf`), through the same `checked` hook for every staircase, so an answer is right for the data as stored, certified or marked at the thousand-digit horizon as an exact matrix's; and the answer is inexact still (C240), a bracket too, which the hook now says, in 14 lines and 2 of comment. No golden moved; inexact.ink holds it. Hermite's test is exact of doubles too: answered up to 7x7 where the rounded one refused from 5x5, refused from 8x8 past a thousand digits. Of random full doubles, `rho` is certified up to 6x6 and `abscissa` 8x8, as of tenths, and a symmetric `eig` up to 24x24 at least. It costs time where the matrix grows: a symmetric 10x10 of doubles 1.6 s for 0.14, 18x18 38 s for 0.66, in Release; the goldens under the sanitizers, eig.ink 17 s to 21, charpoly.ink 18 to 20, inexact.ink 2.4 to 3.1 before its entries. |
+| C276 `[fixed]` | **`tex` dropped the brackets of a comparison that is a whole right-hand side.** A comparison binds loosest, so after the definition's `=` it was set bare: `I[j<=2, k<=2] = j == k` was `I_{j,k} = j = k`, a chain, and `pos(x) = x > 0 and x < 1` `\operatorname{pos}(x) = x > 0 \land x < 1`. The right-hand side is now bracketed where it binds more loosely than a sum, as inside a product, `I_{j,k} = (j = k)`, in 1 line, 2 changed and 1 of comment; a value in `cases` keeps none, its row saying where it ends. tex.ink holds it, and no other answer moved. |
+| C277 `[fixed]` | **Reading one cell of a stored matrix copied the whole of it.** A cell's read evaluated its matrix, and the answer a term remembers, a parameter's value and a local's were each returned by copy: with `T_n[p<=200, q<=200] = p == q`, summing `T_1[p,q]` over its cells took 7.8 s, against 0.34 s at 100x100, and as long through a parameter, longer through a local. Only a literal was read where it is kept. Now a term or call remembered, a parameter and a local are too, found again once the cell's place is read, as reading it may bind or remember and so move them; a matrix not remembered is evaluated as before, and so is any error, in the same order. At 300x300 the three sums took 177 s and take 0.17 s, in Release. In 32 lines and 5 of comment, the term's key being Eval's own, moved out of it to be asked first. matrices.ink holds it, its entries passing the 60 s timeout threefold before; no other answer moved. |
+| C278 `[fixed]` | **An index read past where its sum's body ended was only "not defined".** A sum's body is a term, ending at the next '+' or '-', so `sum_(k=1)^3 (k<>1) + (k<>2)` reads k outside it, and said "k is not defined", which hid why. Now such an error, on a line whose sum or product ended its body at a '+' or '-' before a read of its index, says "k is bound in the sum's body alone, which ended at the '+'", in 12 lines and 2 of comment. Only the line typed is known so: a definition's sum read through a later call, `f(x) = sum_(k=1)^3 x + k` then `f(1)`, still says "k is not defined". series.ink holds it, and no other answer moved. |
+| C279 `[fixed]` | **`lim` stopped at a term repeated once, wrong and unmarked.** C36's remainder, `step*r/(1-r)`, is 0 for a step of 0 whatever the step before it, so a term equal to the one before ended the walk: with the binary digits of x, `r(x)_n = r(x)_(n-1) + (r(x)_(n-1) + 2^-n <= x)*2^-n`, `lim r(1/3)` was 0.25, since r_2 = r_3, where the limit is 1/3. A step of 0 now forms no ratio either, as the step after one already did not, and the step before it is what may be left: the walk goes on past a pause and stops within 2^-34/3 of 1/3, and --check moves such a limit by that step. The compiled walk takes the same rule, and a float's stop on floats a unit or two apart, which a step of 0 passed too, leaves such a step to it, in 3 lines, 2 changed and 3 of comment; `float_gate` in `test/cli.cmake` quotes the new stop. A sequence that stays where it repeated after a step over the tolerance stops a term later on the same value and remainder, and after one within it stops where it did, moved by that step rather than by 0; no golden moved; one repeated twice running, `lim r(1/5)` at 0, still stops, as any rule over a few terms can be fooled. A series without an upper bound stopped so too, `sum_(k=0) (k<>2)/2^k` at 3/2 for 7/4. sequences.ink and series.ink hold it, and `halves` in `test/compile/newton.ink` the compiled walk, in double and in float. |
+| C280 `[fixed]` | **`-o` last on the line was an unknown option.** `--check coast.ink coast -o` said "unknown option '-o'", where `--steps` last says what it takes. Found reviewing the specification of `--steps n`. Now `-o` last says "-o takes a file to write", exit 2; `check_output_missing` in `test/cli.cmake` holds it. |
+| C281 `[fixed]` | **`eig(A, B)` of a B whose cells are far from 1 refused it, or with a NaN.** Its test of B positive definite counted the roots of B's characteristic polynomial unscaled, whose last coefficient is det(B), 10^-1200 for 4 unknowns in 10^-300, past a thousand digits: `eig(Kf(2), Mf(2)/10^300)` was refused "by a guard approximated past a thousand digits", `eig(Kf(2), Mf(2)*10^300)` "a comparison needs a number, not -nan", and so was `eig(Kf(4), Mf(4)*10^150)`, which now answers, marked past a thousand digits in B^-1 A's own count. B is counted over 2^e now, as eig counts B^-1 A, so a double's 2^e never passes the digits: `eig(I, I*~10^-300)` of 4 unknowns was refused too. In 1 line changed; geneig.ink holds it, and no other answer moved. |
+| C285 `[fixed]` | **An exact root of a large q raised its guess to q - 1 by q - 2 products.** Each of Newton's steps in `Root` took x^(q-1) a factor at a time, so a q-th root of a thousand digits cost about q^2 limbs and q allocations: `(2^3321)^(1/3321)` 1.2 ms in Release and 56 ms under the sanitizers, where it was 6 us before exact roots. By squaring now, as `BigPower` does, in 3 lines: 15 us, 1.1 ms under the sanitizers. `roots.ink` holds it, its sum of 3000 such roots passing the 60 s timeout under the sanitizers before and the file 3.5 s there now, 3.6 s to 0.06 s in Release; no other answer moved. Found reviewing exact roots. |
+| C286 `[fixed]` | **grad compiled wrote u^(c-1) at a constant 0 as a call of `pow`, where it folded to `INFINITY`.** Exact roots made 0^(-1/2) a division by zero, so the power at a constant base 0 was left to C, and `grad_(t = 0) t^(1/2)` compiled to `0.5 * pow(0.0, -0.5) * 1.0` where it was `INFINITY`, a constant ~0 base too: the same value, a header moved and less readable. It is C's inf as a literal now, in 1 line; `compile_c286` in `test/cli.cmake` holds it, and every header is the one before exact roots. Found reviewing exact roots. |
+| C290 `[fixed]` | **`atan2`'s partial in x was NaN far from the x axis, and it refused a complex y in atan's words.** Off the y axis it was atan(y/x), whose partial in x is atan's part times -y/x^2: once that overflowed, 0 times inf, so `grad_(x = ~1e-300) atan2(1, x)` was `-nan` where x = 0 gave -1; and `atan2(1 + i, 1)` said "atan needs real numbers". Found reviewing the implementation of the inverse functions. It is pi/2 less atan(x/y) wherever \|y\| > \|x\| now, its first two guards `y > x and y > -x` and its mirror, so the quotient is of the smaller coordinate by the larger, and either argument complex meets a comparison first, "a comparison needs real numbers", as hurwitz's and hinf's do. atan2(4, 3) moves a unit, to 0.9272952180016123, 0.59 from mpmath's; acos(1/2) is correctly rounded now; asin past 1/root 2 and acos within it move, within their bounds, and asin's part is acos's negated. In 1 line more, the clauses reordered; atan.ink holds it. |
+| C295 `[fixed]` | **`tex` of a limit dropped its arguments and reused the index they read.** Its term was set as `Name(name) + \"_n\"` whatever the call: with `t(x)_k = t(x)_(k-1)/2 + 1`, `b_n = lim t(b_(n-1))` was `b_n = \lim_{n \to \infty} t_n`. Its arguments are set as a call's now, and its index is the first of n, k, m, j, i, p, q that the call does not read, `\lim_{k \to \infty} t(b_{n-1})_k`, rather than the index t's definition uses, which `tex` of one expression does not see and which the arguments may read as well; a limit without arguments keeps n. In 9 lines, 2 changed and 2 of comment; latex.ink holds it, and no other answer moved. Found integrating Robertson's kinetics. |
+| C296 `[fixed]` | **`eig`, `abscissa`, `rho`, `smax`, `hinf` and `dhinf` of a cell approximated past a thousand digits kept their rounded tests.** C275 read every inexact cell as the rational its double is but one approximated, to keep its mark, so such a cell's tests were rounded as before C275, marked yet wildly wrong: with `ua = 1 + 1/3^2100` and `Du(n)[j<=n, k<=n] = (j == k)*10^(j-1)*ua`, `eig(Du(8))` was 2.59 twice and 754 twice for 1 to 10^7, and `abscissa(-Du(8))` 778 for -1, both marked, where README says a marked answer is within a double's accuracy; `hinf(-Du(2), [1; 1], [1 1])` was refused, 'needs tests within a thousand digits'. Such a cell is read as its double too now, and the answer marked rather than inexact, as `rhoa`'s `+ 0*10^-1000` marks one, under grad as well: the hook says which it read, in 3 lines more, 8 changed and 2 of comment. inexact.ink holds it at 7x7, where eig gave 0.993 for 1 and the abscissa -0.993, and `hinf`; `dhinf(Du(2)/100, [1; 1], [1 1])` answers 100/99 + 10/9 alike, marked. No other answer moved. Found integrating Robertson's kinetics. |
+| C297 `[fixed]` | **A repeated `-o` or `--float` was accepted, where a repeated `--steps` is refused.** `-o a.c -o b.c` wrote b.c alone and `--float --float` was one, a repetition that adds nothing (CLAUDE.md, section 2). Each says \"is given twice\" now, exit 2, as `--steps` does, in 5 lines and 2 changed; `check_output_twice` and `check_float_twice` in `test/cli.cmake` hold it. `--compile`, `--check`, `--echo` and `-i` repeated are still one. Found reviewing `--steps n`. |
+| C298 `[fixed]` | **`--check` with a word too many beside `--steps` or `--float` was told the option needs an instance.** Each refused unless the files were two, so `--check f inst extra --steps 5 -o x.c` said \"--steps takes --check with an instance\" where both were given, and `--float` alike. Each is refused in its own words now only where no `--check` but a transcript's replay is asked, any other check malformed told `--check`'s usage, in 1 line, 2 changed and 2 of comment; `check_steps_extra_usage` and `check_float_extra_usage` in `test/cli.cmake` hold it. Found reviewing `--steps n`. |
+| C299 `[fixed]` | **A local could rebind a sum's or a product's index, or grad's variable.** The frame is shared, so `sum_(k=1)^3 ((k = 2) + k)` gave 12, each term reading the local 2 where its index was, `prod_` alike, and grad, which refuses locals, read the same through the evaluator it leaves a sum to. Found specifying grad through a local. Each binding names its role now, and a local of its name is refused, "k is the sum's index, so a local cannot define it", "x is grad's variable" in grad's own walk too and for an outer grad's within an inner one, as `i` is refused; in 18 lines and 4 changed. locals.ink holds it. |
+| C300 `[fixed]` | **A local bound in a guard that did not hold stayed bound.** C53 took back the index a failed guard was asked with, not what the guard itself bound, so after `r(x) \| (u = x) > 5 = 1` and `r(x) = u`, `r(1)` was 1, the clause taken reading the failed guard's local where it should have read the frame as the guard found it; a local of a parameter's name clobbered the argument, `rp(x) \| (x = 9) > 10 = 1` then `rp(2)` 9 for 2, a term's and a cell's guard alike, and grad's through an argument it leaves to the evaluator. Found specifying grad through a local. The frame is kept before a guard that binds a local, known when the clause is made, and put back if the guard fails, as C53's index is: `r(1)` says "u is not defined", which is what the clause reads. In 34 lines, 2 changed and 2 of comment; the C300 entries in conditional.ink hold it. |
+| C301 `[fixed]` | **A sum's bound that moves with grad's name answered as if it did not.** C78 refuses an index that moves, and a bound is the sum's first or last index, but grad read the bounds through the evaluator alone, so `grad_(x = 3) sum_(k=1)^x k*x` was 6, the sum of three terms' derivatives, and `prod_(k=x)^4 x` 6 alike. Found specifying grad through a local. The bounds are read as an index is now, refused where they move, "the sum's bound jumps at x = 3", and a bound through floor away from a jump is only a bound; in 1 line more and 5 changed. The compiled grad refuses every bound that is not a constant already. The C301 entries in grad.ink hold it. |
+| C302 `[fixed]` | **A repeated `--compile`, `--check`, `--echo` or `-i` was accepted.** C297's remainder: each was one however often given, a repetition that adds nothing (CLAUDE.md, section 2). Each says "is given twice" now, exit 2, as `--float` does, the five flags one test, in 10 lines where there were 12; `twice_--compile` and its three siblings in `test/cli.cmake` hold it. Found reviewing `--steps n`. |
+| C303 `[fixed]` | **A local could take parameters.** A local is a value bound on the line; with parameters it was a function bound in the frame, whose binding answered its own left-hand side, so `(g(y) = y + 1) + g(2)` said "y is not defined", and 5 with a global `y = 1`, reading the global; in a function it could not capture the parameters (C29), `(g(y = 0) = y + x) + g(1)` "x is not defined"; and that a default made one answer is not a meaning (CLAUDE.md, section 2). Found specifying grad through a local. Refused now, "a local cannot take parameters", in the evaluator and first in grad's walk, as C299 is; a local by an index or by cells is as it was. Two outputs moved: `lq(1)` in clauses.ink, whose C158 quoting of a local's clauses no longer arises, and `(ee(x) = x+100)*0 + ff(2)` in references.ink, whose point, that a callee does not see the caller's local, is kept by `(ee = 5)`. In 12 lines and 1 changed; locals.ink holds it. |
+| C304 `[fixed]` | **grad evaluated an index more than once.** A call's index was read for a jump and again for the term, and an index that reads grad's frame, a cell's or a sum's bound, with its parts and again by the evaluator: a local bound in one was bound each time, so `(m = 1) + (grad_(x = 2) s(x)_((m = m + 1))) + m` read `s(x)_3` where the evaluator reads `s(x)_2`, and under grad through a local `L[(i = i + 1)]` read `L[3]`, the evaluator's frame a step past grad's. Found reviewing grad through a local. An index is evaluated once, with its parts where it reads grad's frame, and a call's is passed to the term; in 5 lines more, 1 of comment, and 10 changed. The C304 entries in gradlocal.ink hold it. |
+| C305 `[fixed]` | **grad's search for a global of its name took a clause's local as bound before the clause's size.** Grad through a local scans a clause in the order of evaluation, its guard before its expression, but the sizes it reads after both, where the walk reads them first: with globals `x = 100` and `t = x^2`, `fz(v)[j <= floor(t/5000)] = (t = 2)*v` and `grad_(x = 2) ([1 1]*fz(x))` answered 4, the size reading the global t that reads the global x while the search took t for the local. Found reviewing grad through a local. The sizes come first now, refused "t reads the global x, which grad's x does not reach"; in 1 line changed. The C305 entry in gradlocal.ink holds it. |
+| C306 `[fixed]` | **`charpoly` multiplied A M_m n times for each coefficient.** Its coefficient c_m = -tr(A M_m)/m was written `sum_(j=1)^n (A*charpolym(A)_m)[j,j]`, and a sum evaluates its term once per index, so each step took n + 1 products of n by n where one is the work, felt by every staircase that counts on it: of the 8x8 B^-1 A of `eig(Kf(4), Mf(4))` in geneig.ink, charpoly took 4.5 s under the sanitizers and the entry 21 s, which took the file to 38 s and past the 60 s timeout on a shared machine. A M_m is remembered now, as `charpolyp`, and read for the trace and for M_(m+1), in 1 line more, 2 changed and 3 of comment: 0.8 s and 10 s, the same products, so no answer moved. Found by geneig.ink's timeout in CI. |
+| C307 `[fixed]` | **A tensor's gradient with respect to a matrix was refused as a matrix's.** The compiled grad had one wording for a Jacobian, so `grad_(v = [n 1]) v*T`, T a 2x2x2 tensor, was refused "grad of a matrix with respect to a matrix is a Jacobian, which it does not give", where the interpreter says "grad of a tensor with respect to a matrix". Found specifying a compiled gradient with respect to a tensor, and fixed by its lines, which name each kind as the interpreter does; `w` among `test/compile/tensorgrad.ink`'s refusals, `compile_tensorgrad_refused` in `test/cli.cmake`, holds it. |
+| C308 `[fixed]` | **A compiled call answered where an argument it never reads is a singular inverse.** C189's gap after C211: the header's helper writes NaN into an inverse's temporary, whose cells the argument only names, so with `F(M) = 1`, `x_n = F([n - 2, 0; 0, 1]^-1)` checked "1 at 2, where the interpreter gives none: a singular matrix has no inverse", and a limit through `F([b, 1; 1, b]^-1)` 2 at 0. The temporary is known to hold NaN now, as such a function is, in 1 line, 1 of comment and 1 changed; `shut` in `test/compile/nan.ink` holds it. |
+| C309 `[fixed]` | **A local could take an index.** An index is a parameter, which C303 left: `(s_n = n) + s_3` read n as the global, "n is not defined", and 40 with a global `n = 1` for `(s_n = 10*n) + s_3`. Refused now, "a local cannot take an index", in the evaluator and first in grad's walk, as C303 is, in 2 lines and 1 of comment; locals.ink holds it. Three outputs moved: `(cc_0 = 99)+0`, twice, and `(dd_0 = 99)+0` in references.ink, C49's locals by an index, which no longer arise. |
+| C310 `[fixed]` | **A local by cells could not read its line's values.** It is a definition bound in the frame, read in a frame of its own as a call is, where the line is out of sight, as C29 found for a local before phase 8: `h2(x) = (M[j<=2] = j*x) + M` then `h2(3)` said "x is not defined", and `(t = 2) + (M[j<=2] = j*t) + M` "t is not defined". It takes the frame's values along now, the parameters and the line's locals that are values, as an unnamed instance's argument does, in 7 lines more, 2 of comment and 2 changed; locals.ink holds it. Another local by cells is not a value and stays out of sight: `(N[j<=2] = j) + (M[j<=2] = 2*N[j]) + M` says "N is not defined". |
+| C311 `[fixed]` | **grad took a power's base for a local e its exponent binds.** It asked whether the base is the built-in e after it had read the exponent, so `grad_(x = 1) e^((e = 2)*x)` was refused "unless its base is e", where the evaluator reads the base first, the built-in e, and answers e^2. It asks as the base is read now and answers 2e^2, in 1 line more, 2 changed and 1 of comment; gradlocal.ink holds it. The compiler refuses a local. |
+| C312 `[fixed]` | **`--check` held a cell of a matrix that is not real to the interpreter's real one.** The step writes a matrix NaN whole where a cell is (C221), and a root of a negative number is NaN in C, so where `g_n = grad_(v = [1, 2; 3, x_n]) v[2,2]^(1/2)` reads -1 every cell is NaN, while the interpreter gives `[~0, ~0; ~0, ~(3.061617e-17-i*0.5)]`; the check said "nan at 3, where the interpreter gives 0" of g[1,1], the cell that is real, rather than why there is no real answer, as it says of a scalar. Each cell of a matrix with a cell that is not real is held to that now, "where the interpreter's term is not a real matrix", in 4 lines and 2 of comment; `root` in `test/compile/nan.ink` holds it. The check still fails there, as it does wherever the interpreter's term is not real. |
+| C313 `[open]` | **grad's search for a global of its name takes a local bound where evaluation does not reach as bound.** The search is static, in the order of evaluation (C305), and cannot know that a short-circuit skips its right side or that a sum has no terms: with globals `x = 100` and `t = x^2`, `grad_(x = 2) (((x > 5) and ((t = x) > 0)) + t)` and `grad_(x = 2) ((sum_(k=1)^0 (t = k*x)) + t)` answer 0, the global t's derivative through a global x that grad's x does not reach, where "t reads the global x, which grad's x does not reach" is due. Found reviewing grad through a local. Not fixed statically: a local in a sum's body or a short-circuit's right side taken as not bound would refuse where it is, as `grad_(x = 2) ((sum_(k=1)^3 (t = k*x)) + t)`, 9, and a false refusal is no better than this rare wrong answer. The fix is the check done during evaluation, in "Next in line". gradlocal.ink records both answers, wrong on purpose. |
+| C314 `[fixed]` | **A local could take an empty parameter list.** The parser reads `g()` as `g`, as an instance's `gain()` is gain, so C303 did not see it: `(lg() = 1) + lg()` was 2, a list that adds nothing (CLAUDE.md, section 2). Found reviewing C309. The definition says it was written with one now, and a local so written is refused as C303's are, "a local cannot take parameters", in the evaluator and grad's walk; `g() = 1` as a statement is `g = 1` still. In 6 lines, 2 of comment, and 3 changed; locals.ink holds it. |
+| C315 `[fixed]` | **A temporary that may be NaN was known by a name a limit's function gives its own.** Under grad a call of the header's whose argument moves is a temporary, and one that may be NaN joined `nan_functions_` by its name; a limit's function names its term before `t1_` and its temporaries `v0_` on, so a step's `t1_`, atan's, or another limit's `v0_`, exp's, made an argument there reading its own `t1_` or `v0_` tested for a NaN nothing gives it, C189's `isnan(...) ? NAN :`, in a limit where nothing moves: the same values in a longer header. Found reviewing the size of a forward-mode header. They are a set of their own, `nan_temporaries_`, which a limit's function starts empty; in 3 lines more, 1 of comment, and 4 changed. `compile_c315` in `test/cli.cmake` holds it. |
+| C316 `[fixed]` | **Whether a cell may be NaN took a time that grew with every call compiled under grad.** C315's `MayNan` searched a cell's text for each name of `nan_functions_` and `nan_temporaries_`, and the second gains a name at each call temporary of every pass, so a loss calling exp or log compiled in a time growing as a power of its size: `w_n = w_(n-1) - grad_(v = w_(n-1)) sum_(i=1)^N exp(v[i]*x_n)/N` in 0.23 s at N = 50, 2.25 s at 100, 30.6 s at 200, where a square for exp took 0.10, 0.29 and 1.8 s. Found training a transformer. Each word of the text is looked up in the sets now, and a cell's reading stops looking once the step is to be aware of NaN: 0.17, 0.71 and 4.9 s, the rest the time a square takes, copying the parts of a vector at each reading. In 13 lines for 3, 2 of comment, and 1 changed; `compile_c316` in `test/CMakeLists.txt` holds it by its timeout, 95 s before and 2 s since, 632 s and 28 s under the sanitizers, which have a timeout of their own. |
+| C317 `[fixed]` | **Under grad, compiling a call took time and memory exponential in how deep it was past a guard by cells.** Where a value's part is there is a graph of the conditions it joins (C231), and a cell of `f(z)[i,j] = z[i,j] - sum_(k=1)^4 z[i,k]/4` joins its own cell's and the four of its row, so D calls of f share each condition below 5^D times; the memo key of a call (C140, C187) wrote the graph out as its text, once for each path: beside `relu(z)[i,j] \| z[i,j] > 0 = z[i,j]` and `relu(z)[i,j] = 0`, `grad_(r = c_(n-1)) sum_(j=1)^4 f^D(relu(x_n + r))[1,j]^2` compiled in 0.16 s and 19 MB at D = 4, 5.7 s and 229 MB at 5, 287 s and 4 GB at 6, and ran out of memory at 7. Found training a transformer. The key holds an id for the graph now, the same for the same leaves joined alike, and so for the same text, made once for each node: 0.02 s at D = 7, and no header moved. In 13 lines, 3 of comment, and 2 changed; `compile_c317` in `test/cli.cmake` holds it at D = 6 by its timeout. |
+| C318 `[fixed]` | **A grad by a matrix shared one million steps among its cells.** A grad by a matrix evaluates its body once for each cell, and every pass counted against the term or line that asked it, so the budget bounded the gradient's size rather than a runaway: `grad_(a = [1 2 3 4]) sum_(k=1)^300000 a[1,3]*k` gave up after a million steps where each pass takes some three hundred thousand, and a transformer's loss by its 128 query weights answered over one sequence and gave up over two. Found training a transformer. Each pass has a million steps of its own now, as a memoised term has (C149), and counts as one of the line's ten million terms, `max_filled`, so a runaway still stops within a pass and a line's time is bounded as C149 bounds it; a grad by a single value is one pass and has its own too. No recorded output moved. In 2 lines, 1 of comment; recursion.ink holds it. |
+| C319 `[fixed]` | **The compiler refused an input read bare for a reason that was not the interpreter's.** A model's input has no definition, and a name without one is a field of the header, 1x1 until the step reads it: so `y_n = x` was refused late, "x is read both as a value and as a sequence", and beside `f(z)[i,j] = z[i,j]`, `y_n = f(x)[2,1]` for "row 2, column 1 is outside a 1x1 matrix", where the interpreter says "x is a sequence; index it (x_0) or take its limit (lim x)". Found training a transformer. An input read bare is refused where it is read now, in the words the compiler gives a defined sequence read bare, "x is a sequence; index it"; a file without a model reading an undefined x both bare and as x_n is still refused at the end. In 5 lines, 1 of comment; `compile_c319` in `test/cli.cmake` holds it. |
+| C320 `[fixed]` | **Compiled, a comparison inside `and` or `or` read as a value did not jump under grad.** A comparison read as a value is refused by the interpreter where its sides meet and move, and the compiler tests for that, NaN there (C114); inside `and` or `or` the test is the logic's own, which tested only an equality, as a guard does: `y_n = grad_(t = x_n) ((t > 0 and t < 5) + t)` at `x_n = n/2 - 1` was 1 at 2, where the interpreter says "a comparison jumps at t = 0", and `--check` failed; without the `and` it held. Found training a transformer. The logic's test jumps as the comparison read alone does now, every comparison in a value and an equality in a guard. In 1 line more, of comment, and 4 changed; `edge.a` in `test/compile/grad.ink` holds it, NaN at 2 and 6. |
+| C321 `[fixed]` | **A statement could take an empty parameter list.** C314 refused `lg() = 1` as a local and kept `g() = 1` as a statement, defining g = 1, a list that adds nothing (CLAUDE.md, section 2), in the session, a file and a model's body alike. Found training a transformer. It is refused as a statement and in a model's body, "a parameter list cannot be empty", C314's words for a local being about a local; a model written `m() = { ... }` and a call `g()` with every default (C169) are untouched, and no golden or README.md example wrote one. In 3 lines more, 1 of comment, and 3 changed; signatures.ink holds it. |
+| C322 `[fixed]` | **A local bound in a grad's body kept that grad's parts after it.** A local outlives the grad that binds it, and grad's frame kept its parts by that grad's name, whose bit the next grad at the same depth takes for its own: `grad_(x = grad_(y = 1) ((a = 3*y) + 0)) x*a` was 12 for 3, a's part by y read as one by x, and `grad_(x = 1) x*(grad_(y = 2) ((a = 3*y) + 0) + grad_(z = 1) z*a)` 12 for 9. Under reverse mode the part was a node of a tape gone with the inner grad, and reading it read freed memory: `grad_(x = (grad_(v = [1 2]) ((a = 3*v[1,1] + v[1,2]) + 0))[1,1]) x*a` was NaN or a crash for 5. Found reviewing reverse mode. A grad leaves each local of its frame the parts of the grads around it, as a grad nested in it reads them, and no more. In 3 lines, 2 of comment; gradlocal.ink holds it. |
+| C323 `[fixed]` | **Reverse mode did not remember a call made again on the same cells.** A call is remembered by its arguments' parts, nodes under reverse mode, and each reading of a cell, each product by a value, recorded a node of its own, where forward mode's parts are values and equal: so under reverse mode `grad_(t = [~0.5 1]) (tanh(t[1,1]) + dive(255, t[1,1]))` beside reverse.ink's dive was "evaluation nests more than 256 references deep", tanh at its foot one reference deeper where forward mode finds it remembered, `grad_(v = [~1 1]) sum_(k=1)^600000 exp(v[1,1])` gave up after a million steps, a step for each exp, and a function calling itself twice on `y*1` took 2^n calls, all of which forward mode answers; softmax by its cells called exp once per pair of cells, gradcells.ink 17 per cent slower than forward mode under callgrind. Found reviewing reverse mode. A node is now the node already made for the same operation on the same nodes by the same value: the three answer, gradcells.ink is 20 per cent faster than forward mode, and the transformer's step 4.7 per cent slower, hashing each node. What forward mode remembers by values equal on different paths, `y*k/k` for each k, reverse mode still does not. In 26 lines, 3 of comment, and 6 removed; reverse.ink and reverse_memo.ink hold it. |
+| C324 `[fixed]` | **Forward mode's gradient by a matrix is NaN in a cell where a value is infinite.** Each cell's pass carries every other cell's part as an exact 0, and multiplies it by the values it meets: at a point where exp overflows, `grad_(v = [800 1]) exp(v[1,1])*v[1,2]` is `[-nan, ~inf]` in forward mode, the pass for the first cell taking v[1,2]'s part, 0, times exp's value, inf, where the derivative is the single value's, `[~inf, ~inf]`, as reverse mode answers; at 1001, `[-nan, ~inf]` for `[0, ~inf]`. Reverse mode leaves an exact 0 of an adjoint out of a product, so the NaN remains where forward mode still takes a gradient by a matrix: inside another grad, at a complex point, and where reverse mode gives way. Found reviewing reverse mode. A term whose factor is a part and an exact 0 is now left out of a product, a product cell by cell or a quotient, as reverse mode leaves out an exact 0 of an adjoint: the two answer as reverse mode does under a grad inside, as do a matrix product, e's power, a quotient by ~0 and a second part, each -nan before. Forward mode's marks follow reverse mode's where its pass multiplied an exact 0 of a part by a double: `grad_(W = [1 2; 3 4]) grad_(w = 1) w*[1 1]*W*[~1; 2]` is `[~1, 2; ~1, 2]`, where it was `[~1, ~2; ~1, ~2]`; no golden held one. A part ~0, as the prelude walked with an exact 0 gives exp's past a double, is no exact 0 and still meets an infinity: `grad_(v = [800 1]) grad_(w = 1) w*v[1,2]/(1/exp(v[1,1]))` is `[-nan, -nan]` for reverse mode's `[-nan, ~inf]`. An inverse is left as it was: where its value is infinite a cell of it is already NaN. In 34 lines, 3 of comment, and 10 removed; gradcells.ink holds it. |
+| C325 `[fixed]` | **A function's parameter could be named twice.** `f(x, x) = 1` was accepted, and called with two arguments bound x to the second, where a model's parameters were already refused, "has two parameters named": a repetition that adds nothing. Found reviewing signatures. A definition, a clause of one and a function in a model's body are refused in a model's words, `f has two parameters named x`; a local takes no parameters. In 4 lines, 1 of comment; signatures.ink holds it. |
 
 **Measure instructions, not the clock.** One of those changes made the matrix
 workload 20 per cent slower by the clock and not by a single instruction: with
@@ -2842,9 +2888,6 @@ that exploring seven domains asked of the interpreter, by how many asked.
   checked with its reader's, after compiling, which is where the refusal of
   `v` in `compile_rates_refused` now comes from, in the same words. The
   refusals are in `test/cli.cmake`, with C74's.
-- **Steps and tolerance as options**, when a model asks: a hundred steps is
-  short of what a slow filter settles in, and a billionth is loose for a
-  well-conditioned step.
 - `[done]` **The parts and modulus of a complex number**: a frequency
   response |T(e^{jw})| cannot be written, as `abs` refuses a complex value and nothing
   gives its real or imaginary part. Decided: `re(z)` and `im(z)` built in,
@@ -3226,12 +3269,120 @@ that exploring seven domains asked of the interpreter, by how many asked.
   (r(x)_(n-1) + 2^-n <= x)*2^-n`, x's binary digits, answers
   `lim r(1/3)` 0.25 from its terms 0, 0, 1/4, 1/4. The smallest change to
   weigh: two zero steps in a row, or README saying that one ends it.
-- **`--check`'s hundred steps as an option**, with `lim`'s. Doyle 1978's
-  loop at dt = 1/10 is ten time units in them, where the nominal loop has
-  not settled, [-1.18; 1.50] from [1; 0], and the one past its margin,
-  m = 6/5, has not run away; a thousand show both. Apollo 11's translunar
+- `[done]` **`--check`'s hundred steps as an option, `--steps n`.** Doyle 1978's loop
+  at dt = 1/10 is ten time units in a hundred steps, where the nominal loop
+  has not settled, [-1.18; 1.50] from [1; 0], and the one past its margin, m
+  = 6/5, has not run away; a thousand show both. Apollo 11's translunar
   coast is a thousand Runge-Kutta steps of 177 s, of which its check can
-  hold only a hundred of 1767 s.
+  hold only a hundred of 1767 s. A slow filter settles later still.
+
+  Decided:
+  - **`--steps n`**, beside `--check file instance -o check.c`, anywhere on
+    the line as the other options are, with `--float` or without. n is
+    written in decimal digits, the first not 0, from 1 to 100000. Without
+    it, a hundred, so no report moves, and `--steps 100` writes the same
+    program byte for byte.
+  - **n counts the step's calls**, as the first line already does: terms
+    from the first to the first plus n - 1. A model of N steps after its
+    initial term is checked whole with N + 1, Apollo's coast, y_0 to y_1000,
+    with 1001. The check reads no parameter of the model: `N` is a name the
+    user chose, and Doyle's loop has a dt and none.
+  - **The first line says n**, `coast: 1001 steps from 0, against exact
+    values`, and `1 step` for one. Nothing else in the report changes words:
+    the values, the estimate, the flips and the straddles each cover the n
+    steps.
+  - **Refused, before anything runs**, as an unknown option is, exit 2:
+    every value that is not such a number, in one sentence, `--steps takes a
+    whole number from 1 to 100000`: 0, -5, 2.5, 1e3, 100001, and --steps
+    last on the line; and `+5` and `0100`, forms that add nothing (CLAUDE.md
+    §2). Given twice, `--steps is given twice`, even alike. With
+    `--compile`, a transcript's `--check` or files run, `--steps takes
+    --check with an instance`, as `--float` is refused: a header has no run,
+    and a transcript no steps.
+  - **The limit, 100000, is a judgement**, as `lim`'s hundred terms are
+    (C36), not a technical bound: a hundred times the most a model has
+    asked. The program holds every term of every cell as an initializer, its
+    value, its estimate and what is known of it, some 50 bytes a term: 5 MB
+    a cell at the limit, and a layer's thousand cells 5 GB, past what a
+    compiler builds as a test; the program's int index, steps by cells,
+    passes 2^31 only in one of 100 GB. The interpreter's own cost is n terms
+    four times, each asked upward in an evaluation of its own and finding
+    the one before memoised, so n spends none of its million steps; a term
+    that does is reported as today, "ran out of steps at K". The memo keeps
+    100000 results and, filling, its newer half, which is what a walk upward
+    reads.
+  - **Exact terms grow with n**, a rational recurrence's by digits each
+    step, to the thousand, where the interpreter approximates and goes on in
+    doubles: a term costs at most a thousand digits' arithmetic, and the
+    first line says where as it does now, `until 334 and inexact ones from
+    there`. Nothing new to report.
+  - **The estimate's three runs** take the same n steps, so a check costs
+    four walks of n terms, as it costs four of a hundred now; "past the
+    tolerance from K" and the straddle look over n. The flips' table is n
+    long.
+
+  Rejected:
+  - **The tolerances as options**, the rest of the line queued as "Steps and
+    tolerance as options", which this entry replaces. `lim`'s 1e-10, on its
+    step and its remainder, and its hundred terms are what `lim` means: an
+    option would make a transcript's answers depend on the command line that
+    replays it, and the compiled walk takes the same rule so that the check
+    compares like with like. `--check`'s billionth only decides the exit:
+    the report already prints the largest difference, `line.w: within
+    4.4e-16`, which says how well conditioned a step is, and a test that
+    wants it tighter holds those digits, as `test/CMakeLists.txt` does. No
+    model has asked for another verdict (CLAUDE.md §2); one that does is an
+    entry of its own.
+  - **A count written in the file**, a definition or the model's `N`: a file
+    holds definitions, and one only `--check` reads is a second language
+    inside the first; nothing tells a parameter is a count of steps; and one
+    instance checked at two counts would need two files.
+  - **An environment variable**: invisible in the command that runs the
+    check, where a ctest line should say everything it does.
+  - **`--steps=n` or `-n`**: one spelling, as `-o` has.
+  - **n as the last index**: the option would count one thing and the first
+    line another.
+  - **A thousand by default**: 338 report lines in the stories and
+    `test/CMakeLists.txt` move, and every check takes ten times as long.
+
+  About 20 lines of sources: `main.cpp` 14, the option read and refused,
+  passed to `check`, and the help's two lines; `check.hpp` 6, the step count
+  a parameter of `Program` and `Flips` where it is a constant, and `1 step`.
+  Past 30 the implementation stops and reports. README's paragraph on
+  `--check` gains a sentence saying plainly that n counts the step's calls,
+  the first term's among them, so that a model of N steps after its initial
+  term is checked whole with `--steps` N + 1. About 16,000 lines in all.
+
+  Specified in `test/compile/steps.ink`: `coast`, a body thrown up and
+  falling back by semi-implicit Euler, a thousand steps of 1/8, whole at
+  1001, every term within 0 in double and in float, and at 1 step;
+  `runaway`, 4^n, within 0 at 150 steps and parting at 512 at a thousand,
+  where 2^1024 is no double; `horizon`, a filter of time constant a
+  thousand, exact until 334 and inexact from there. And in
+  `test/compile/steps.cmake`, in `test/cli.cmake`'s form: the programs'
+  first lines and sizes, `--steps 100` as the default byte for byte, 100000
+  read, the refusals, nine of a value, one twice and three of a mode, the
+  usage without `-o`, and `--help`. Unwired, every case failing today on the
+  unknown option: the implementation moves the cases into `test/cli.cmake`
+  and deletes the file, and wires each report the file gives, `coast` at
+  1001 and 1, `runaway` at 150 and 1000 and `horizon` at 1000 beside the
+  other checks in `test/CMakeLists.txt`, and `coast` at 1001 beside the
+  float ones, an entry `file:instance:n` in both lists naming its target
+  after both, `runaway` at 1000 failing as `wild` does. Expected lines by
+  hand: `coast` by its closed forms, v_n = 64 - n/8 and y_n = 8n -
+  n(n+1)/128, multiples of 1/64 below 2^11;
+  `runaway` by powers of two; `horizon`'s 334 by its denominator, 10^(3n) in
+  lowest terms, and its difference, 1.1e-16, by the step simulated in Python
+  against exact fractions, its estimate's digits being the seeds'; the
+  programs' lines by `check.hpp`'s text.
+
+  Built as specified: every line of `steps.ink` passes as written,
+  `horizon`'s estimate 1.7e-15, held by its form. Departures, the review's:
+  the help's two lines go to the `help` case, not a `help_steps`, and the
+  cases to `cli.cmake`'s first part; `steps.cmake` is gone. Every other
+  check program and header byte for byte. 25 lines of sources written where
+  about 20 were planned, 14 more in all: `main.cpp` 16 more, `check.hpp` 2
+  fewer. 16,282 lines in all, 16,286 after C280.
 - **A cumulative sum compiled as an accumulator**, `sum_(t=1)^n e(t)`:
   refused as "a sum whose bounds are not constants", where a regret or a
   running loss is exactly that (Reddi et al. 2018).
@@ -3239,14 +3390,219 @@ that exploring seven domains asked of the interpreter, by how many asked.
   paper's update must be shifted to t-1 by hand, where transcriptions slip.
 - **`--check` says how far a term parts**, not only where it first does: the
   largest difference and where, as MANIFESTO asks of how a difference grows.
-- **`atan` in the prelude**, written as `exp` and `log` are, `asin` and
-  `acos` from it: Kahan's angle formulas cannot be written without. Doyle
-  1978 asks for `arg` too, its phase margin being arg L(iw) at crossover,
-  of which only cos(PM) = -Re L can be written now. Apollo 11's coast
-  writes `asin`, a flight path angle, as a Newton limit and `acosh`, the
-  hyperbolic anomaly at pericynthion, from `log`; reading its state back
-  in the Mission Report's latitude, longitude and heading needs `atan2`,
-  which its check did in Python.
+- `[done]` **`atan`, `atan2`, `asin`, `acos` and `acosh` in the prelude.** Kahan's
+  angle formulas cannot be written without atan. Doyle 1978's phase margin
+  is the angle of L(iw) at crossover, of which only cos(PM) = -Re L could
+  be written, its exploration bisecting `cos` for `acos`. Apollo 11's coast
+  writes `asin`, a flight path angle, as a Newton limit, and `acosh`, the
+  hyperbolic anomaly at pericynthion, from `log`, which loses every digit
+  near 1 where the anomaly is 0; reading its state back in the Mission
+  Report's longitude and heading needs `atan2`, which its check did in
+  Python. No model asked for `asinh`, `atanh` or `tan`, so none is added.
+
+  Decided as for `exp` and `sin`: written in inkamath, no libm, the
+  interpreter and the compiled step the same operations on the same doubles,
+  with one more, the root: `x^(1/2)` of a positive double is C's `sqrt` in
+  both since C153, correctly rounded, and `abs` already takes it. The
+  design, measured before it was written down:
+
+      atan(x) = atanp(x)
+      atan(x) | x < 0 = -atanp(-x)
+      atanp(t) = atans(~t)
+      atanp(t) | t > 15/4 = atank(1.5707963267948966, 6.123233995736766e-17, ~(-1/t))
+      atanp(t) | t > 11/8 = atank(1.1071487177940904, 9.40447137356638e-17, ~((t - 2)/(2*t + 1)))
+      atanp(t) | t > 3/4 = atank(0.7853981633974483, 3.061616997868383e-17, ~((t - 1)/(t + 1)))
+      atanp(t) | t > 17/64 = atank(0.4636476090008061, 2.2698777452961687e-17, ~((2*t - 1)/(2 + t)))
+      atank(c, d, u) = c + (d + atans(u))
+      atans(u) = u - u*atanz(u*u)
+      atanz(z) = z*(1/3 - z*(1/5 - z*(1/7 - z*(1/9 - z*(1/11 - z*(1/13 - z*(1/15 - z*(1/17 - z*(1/19 - z*(1/21 - z*(1/23 - z*(1/25 - z*(1/27 - z/29)))))))))))))
+      atan2(y, x) | y > x and y > -x = 1.5707963267948966 + (6.123233995736766e-17 - atan(x/y))
+      atan2(y, x) | y < x and y < -x = -1.5707963267948966 - (6.123233995736766e-17 + atan(x/y))
+      atan2(y, x) | x > 0 = atan(y/x)
+      atan2(y, x) | x < 0 and y >= 0 = 3.141592653589793 + (1.2246467991473532e-16 + atan(y/x))
+      atan2(y, x) | x < 0 = -3.141592653589793 + (atan(y/x) - 1.2246467991473532e-16)
+      asin(x) = atan2(x, ((1 - x)*(1 + x))^(1/2))
+      asin(x) | x < -1 or x > 1 = 1/0
+      acos(x) = atan2(((1 - x)*(1 + x))^(1/2), x)
+      acos(x) | x < -1 or x > 1 = 1/0
+      acosh(x) = acoshr(x, ((x - 1)*(x + 1))^(1/2))
+      acosh(x) | x < 1 = 1/0
+      acosh(x) | x > 2^26 = log(x) + 0.6931471805599453
+      acosh(x) | x < 17/16 = logs(((x - 1)/(x + 1))^(1/2), 0)
+      acoshr(x, r) = log(x + r) + (x - (x + r) + r)/(x + r)
+
+  `atan` is odd by its guard, as `tanh` is, and reduces t = |x| by c, one of
+  0, 1/2, 1, 2 and infinity as the thresholds below choose,
+  atan t = atan c + atan u with u = (t - c)/(1 + tc), so |u| <= 4/15, which
+  u = -1/t reaches at 15/4, every other branch's bound below it; atan c is a
+  double and its remainder (Cody and Waite), the remainder added to the
+  series first. The thresholds 17/64, 3/4, 11/8 and 15/4 are dyadic, so that
+  a guard compares a double with what a double holds, as the prelude's do;
+  17/64 rather than 1/4 keeps atan c + atan u at 1/4 or above, 1.44 units at
+  worst for 1.92. 2t - 1 and t - 1 are exact where they cancel (Sterbenz).
+  atan u is Taylor's series to u^29 in Horner's form, remainder below 2^-62
+  of u, its coefficients reciprocals of whole numbers. An exact argument is
+  reduced exactly and rounded once, at the `~`.
+
+  `atan2(y, x)`, y first, as C, Fortran and the papers write it: the angle
+  of (x, y) in (-pi, pi]. Where |y| > |x|, the y axis too, pi/2 less
+  atan(x/y), which keeps the partial in x for `grad` there and from
+  overflowing near it (C290), and where not atan(y/x), moved by pi, in two
+  parts, for x < 0; a complex argument meets a comparison first, "a
+  comparison needs real numbers", as in the prelude's other functions of
+  two. The negative x axis is pi, its clause the one from above. A double's -0 is 0, as it is everywhere in the language (C33,
+  C98, `sin(-0)`): `atan2(-0, -1)` is pi where C's is -pi, an exact 0 has no
+  sign, and an angle would otherwise depend on how its 0 was reached. The
+  origin has no angle: no clause holds, "atan2 needs y or x other than 0",
+  eigg's way of wording a guard (`Unapplied`), where C answers 0 or pi by
+  the zeros' signs. Two infinities give inf/inf, refused as NaN is, "a
+  comparison needs a number, not -nan": a known limit, as C101 was, which a
+  guard would cost a clause to word. Exact arguments are divided exactly.
+
+  `asin` and `acos` are atan2 of x and the root of (1 - x)(1 + x), so that 1
+  - x is exact from 1/2 to 1, where 1 - x^2 would cancel: acos(1 - 10^-10)
+  keeps all its digits, where pi/2 - asin(x) is 2.4e7 units off near 1, and
+  asin(1) and acos(-1) are pi/2 and pi to the double, through atan2's axes,
+  where atan(x/root) divides by 0. Past 1 either way refused in plain words,
+  "asin needs a number between -1 and 1, not 2", before the walk as C156
+  refuses log of 0, and NaN in a header, which `1/0` gives: the prelude's
+  functions are real, as `log(-1)` is refused while `(-1)^(1/2)`, the power
+  operator, takes its complex branch. An exact number just past 1 is refused
+  and its double, 1, is not.
+
+  `acosh` is log(x + r), r the root of (x - 1)(x + 1), x - 1 exact up to 2,
+  with what x + r lost in rounding added back, (x - (x + r)) + r being that
+  loss exactly (Dekker); below 17/16 it is 2 atanh of the root of (x - 1)/(x
+  + 1), which is `logs` at k = 0, the series `log` takes where its argument
+  is near 1, its remainder below 2^-60 there, where log's own error would
+  otherwise be the answer's; past 2^26 it is log(2x), as x^2 overflows from
+  2^512. Apollo's log(x + root(x^2 - 1)) is 2.5e7 units off near 1. Refused
+  below 1, "acosh needs a number at least 1, not 0.5".
+
+  Nothing they give is exact, as `sin(0)` is not: atan(0), asin(0), acos(1),
+  acosh(1) and atan2(0, 1) are a double's 0, since `grad` refuses a clause
+  that holds at a point alone. atan(1), atan2(1, 0), asin(1) and acos(-1)
+  are pi/4, pi/2, pi/2 and pi to the double, so `4*atan(1) == pi`.
+
+  Accuracy over doubles, against atanl, asinl, acosl, acoshl and atan2l at
+  64 bits on 10^8 points a range, then the review's 4*10^8 near each
+  farthest against libquadmath, which moved five, the farthest of each
+  confirmed by mpmath at 256 bits, and no bound:
+
+  | | worst | correctly rounded |
+  |---|---|---|
+  | `atan` on [-1, 1] | 1.437 units, at 0.26611689320540033 | 92.2% |
+  | `atan` on [-16, 16] | 1.086, at 0.2703338111176379 | 95.0% |
+  | `atan`, every exponent | 1.394, at -0.2742618299210873 | 100.0% |
+  | `atan2`, \|x\| and \|y\| from 2^-60 to 2^60 | 1.893, at 0.51329973818231467, 1.9305107949267404 | 96.9% |
+  | `asin` on [-1, 1] | 2.613, at 0.24545971397793295 | 69.0% |
+  | `asin`, \|x\| from 2^-1074 to 1/2 | 2.442, at 0.24300644216948256 | 98.5% |
+  | `asin`, 1 - 2^-k | 2.185, at 0.8278614485044568 | 97.5% |
+  | `acos` on [-1, 1] | 2.612, at 0.96611943779089537 | 84.0% |
+  | `acos`, 1 - 2^-k | 2.466, at 0.9632802889868292 | 79.9% |
+  | `acosh` on [1, 2] | 3.567, at 1.0652371257850854 | 69.8% |
+  | `acosh`, every exponent | 2.658, at 1.0702269022327004 | 80.7% |
+
+  atan2's correctly rounded and asin's and acos's three rows are the
+  review's, after C290 moved atan2's clauses, by its count of 10^8 doubles
+  a range, 2*10^7 pairs for atan2, which gave 82.0%, 72.2%, 1.785 units and
+  98.0%, and 77.4% before. acosh's worst is log's own, near its fold at
+  root 2, just above 17/16.
+  Rejected: `asin` by Newton under `lim` and `acos` by bisection, the
+  explorations', unbounded in their steps and refused compiled; fdlibm's
+  breakpoints, 7/16 to 39/16, |u| to 7/16, 23 terms of Taylor's series
+  where its constants are minimax; two branches, pi/4 and pi/2 alone,
+  |u| <= 7/16 in 23 terms, 2.19 units at 0.4517; a minimax polynomial,
+  whose constants are no reciprocals; halving by atan x = 2 atan(x/(1 +
+  root(1 + x^2))), a root and its roundings each time; asin as atan(x/root(1
+  - x^2)), which divides by 0 at 1; acos as 2 atan(root((1 - x)/(1 + x))),
+  at -1; C's signed zeros; answering atan2(0, 0); answering a complex asin.
+
+  `grad` differentiates the definitions, guards taking their side at a
+  threshold, where the parts are continuous. The parts, 1/(1 + x^2),
+  1/root(1 - x^2) and 1/root(x^2 - 1), are within about 2.5 units for atan,
+  4.1 for asin, 3.9 for acos and 3.0 for acosh on 20,000 points, forward
+  mode emulated over doubles; the implementation's sweep sets their bounds.
+  atan2's partials, x/(x^2 + y^2) and -y/(x^2 + y^2), come through both
+  halves' clauses. Where a part is infinite, asin and acos at 1 and -1, acosh
+  at 1, the root refuses, "a power's derivative is infinite at x = 1"; at
+  the origin atan2 refuses in its words.
+
+  Called compiled by the interpreter as `sin` is: `inkamath_prelude.ink`'s
+  sequences add atan, asin, acos and acosh and their parts, and a call of
+  one on a real double takes the header's function, the domain refused first
+  in its own words, under grad too, and a part that is infinite walks to the
+  root's refusal. Walked, each nests two to six references deeper. `atan2`
+  stays walked, two arguments, as `max` does; the atan it calls is compiled.
+  Compiled in a model where called, as `sin` is, with no change to the
+  compiler.
+
+  Held to mpmath as C225 holds the others: `test/data/prelude_reference.txt`
+  gains sections atan, asin, acos and acosh, 345, 322, 320 and 325
+  arguments, and the parts atan_dx, asin_dx and acosh_dx (acos's is asin's
+  negated, as cos's is sin's), written by `test/prelude_reference.py` with
+  the old sections' bytes unchanged: thresholds and their neighbours, 1 -
+  2^-k, 1 + 2^-k, subnormals, the largest double and the sweep's farthest.
+  The design emulated has 1.437, 2.613, 2.612 and 3.567 there, so
+  `test/prelude_test.cpp` holds atan, asin, acos and acosh within 1.44,
+  2.62, 2.62 and 3.57, and the parts within what the implementation's sweep
+  measures; its skipped `sweep` gains their ranges.
+
+  What moves, in the implementation's commit: no golden. `apollo11.ink`
+  deletes its own `asn`, `asin` and `acosh`, the prelude's now, and
+  `translunar.ink`'s answers, at the digits they show, are to stay; the
+  header `inkamath_prelude.h` is recorded again; README's paragraph on the
+  prelude names the five; `test/compile/atan.ink` is wired as `trig.ink` is,
+  its report every term within 0 and its program defining the five and no
+  libm atan, asin, acos or acosh.
+
+  About 45 lines of sources: 25 in the prelude and 5 of its comment, 15 in
+  the interpreter's fast path and its refusals and 1 in `Unapplied`'s table,
+  the header generated aside. 16,285 lines in all now, by `wc -l
+  include/inkamath/*.hpp include/inkamath/*.h src/*`. Past 68 the
+  implementation stops and reports.
+
+  Specified in `test/data/spec/atan.ink`, 168 entries replayed by the spec
+  suite, 152 failing, those passing being definitions and `digits`: values
+  at nine digits, mpmath's; at seventeen, mpmath's correctly rounded double
+  where the design gives it and the design's own where not, said so, the
+  design emulated in C and in Python with exact fractions, apart from the
+  interpreter; special values and signs, atan2 in every quadrant, on the
+  axes and with signed zeros, near 1 and -1, large arguments and subnormals,
+  refusals, `grad`, the fast path's depth, Doyle's phase margin both ways
+  and Apollo's state read back. The design, given to the interpreter as a
+  session's definitions, answers 152 of the 168 entries as written, all but
+  the 16 that need the fast path and the words of the refusals; the C
+  emulation is that session's to the bit on 4,832 doubles, and the Python
+  one on 1,200 exact arguments. And in `test/compile/atan.ink`, wired with
+  the implementation; that prototype checks within 0.
+
+  Built as specified: the spec passes as written and is the golden
+  `atan.ink`, the spec suite going, it its only file;
+  `test/compile/atan.ink` checks within 0, its program defining the five and
+  calling no libm. No golden moves; translunar.ink keeps its digits.
+  Departures. An exact part walks for the four as for `tanh` and `log`,
+  since each meets it exactly before its `~`, so the header takes it rounded
+  in `exp`, `sin` and `cos` alone. The part hook walks where the header's
+  part is infinite as well as 0 or NaN, as ruled on review; at 1 and -1 the
+  header's parts are NaN already, the root's 0 tested, and the root refuses
+  either way. The parts' worst, by the skipped `sweep`'s 10^8 doubles a
+  range against a 64-bit long double, each confirmed by mpmath at 256 bits,
+  are atan 2.903 units at 1.7331089529469212, asin 5.417 at
+  -0.9655946220305717, acos 5.278 at -0.966307379845344 and acosh 5.309 at
+  1.4415185508643205, above the 20,000 points' figures; on review, three
+  seeds more and acos's part near 1, which the sweep lacked, find acos's
+  5.459 at 0.9663790997275507, and since C290 asin's part is acos's
+  negated, so `test/prelude_test.cpp` holds the table's parts within 2.91,
+  5.46, 5.46 and 5.31, each farthest in the table. The sweep finds
+  the values within the review's figures, atan 1.432, asin 2.440, acos 2.461
+  and acosh 3.429. 51 lines of sources against about 45: the prelude 26 and
+  its comment 6, the fast path's table 8, its refusals 7 and the part's test
+  3, and `Unapplied`'s table 1 for atan2's words; the header 96 more, 351
+  lines. 16,432 lines in all. On review atan2 takes pi/2 less atan(x/y)
+  wherever |y| > |x|, not on the y axis alone (C290): atan2(4, 3), asin
+  past 1/root 2 and acos within it move, acos(1/2) is correctly rounded
+  now, and atan2's worst stays 1.893, at |y| < |x|.
 - **A cell at a computed whole index, compiled**: `T[k,1]` with
   `k = floor(t/H) + 1`, an ephemeris read at the row a time falls in, is
   refused as "a cell whose place is not a constant", so Apollo 11's coast
@@ -3278,12 +3634,335 @@ that exploring seven domains asked of the interpreter, by how many asked.
   size stated twice. Accepting such a repetition is an artifact of the
   implementation, not a meaning, and hides the slip it usually is (`j, j`
   meant `j, k`). Low priority.
-- **Temporaries in a limit's function**: C140 shares a step's nested calls,
-  but a limit's terms are still written out whole, so a Riccati limit through
-  `ric(ric(P))` is 163 MB of header. About 25-35 lines; moves headers whose
-  limits multiply matrices, not their values. The doubling algorithm for the
-  Riccati equation under `lim` needs it too, its inverse a temporary (block
-  literals compiled, above).
+- `[done]` **Temporaries in a limit's function.** C140 shares a step's nested
+  calls, but a limit's function has no temporaries, so its terms are
+  written out whole: a Riccati limit through `ric(ric(P))` is 163 MB of
+  header, and Robertson's kinetics (1966) under backward Euler, each step's
+  Newton iteration under `lim`, are 237 KB at cc686c5 with the 3x3 inverse
+  by Cramer's rule written by hand, `m_->h *` written 2,169 times, and
+  12.9 MB with grad's Jacobian, which gcc -O0 builds in 435 s and 5.7 GB and
+  -O2 did not finish in 600 s; the same Newton read at a constant count,
+  `nw(y)_12`, is 24 KB and 58 KB. The paper's `^-1` is refused there
+  (C261), and so is the doubling algorithm for the Riccati equation under
+  `lim` (*Block literals compiled*), its inverse a temporary.
+
+  Decided: a limit's iterate is compiled as a step is, its loop body
+  declaring its temporaries ahead of the term's cells, by the same
+  `Shared` and `Declare` at the same places: a product's operands, a single
+  value stretched, a call nested in an argument and its part under grad
+  (C140), a matrix inverse, a matrix argument of a limit and a limit of
+  matrices, and the terms below the one read of a sequence with parameters
+  at a constant (*A sequence with parameters read at a constant*). Two
+  lists: the base clauses', declared before the loop where the walk's
+  first terms are set, and the iterate's, in the loop body, computed again
+  at each iterate. Their names are `v0_`, `v1_`, ..., numbered within the
+  function, apart from the walk's `t_` and `t1_` and from a step's `t0_`,
+  so that a limit written again is the same text and still one function
+  (`check_gate_one_limit`). The lists live as long as the compile, as a
+  step's do, since terms and declarations are remembered by a list's
+  address. Same operations in the same order: no value moves.
+
+  So four refusals go, each the absence of a list: "a matrix inverse
+  inside a limit's terms" (C261), "a sequence with parameters in a limit's
+  terms, for now", "a limit of matrices inside a limit's terms" and "a
+  matrix argument of a limit inside a limit's terms", the last three
+  unreachable and deleted. `Declare`'s refusal then guards the prelude's C
+  functions alone, and is unreachable too: given numbers, they invert only
+  1x1 matrices, which are powers, and what iterates is written where it is
+  called (C213). Deleted, with its comment.
+  - **`--float`**: nothing. The float header is the double one rewritten,
+    temporaries included.
+  - **grad**: a grad inside a limit's terms shares its parts as anywhere,
+    which is what takes the Jacobian's 12.9 MB to 22 KB. A grad of a limit
+    stays refused, "a derivative of a limit, for now": the derivative's
+    rules (C72, C215) are unchanged, and compiling them is the limit's
+    function carrying parts, an item of its own.
+  - **`--check`**: nothing. A limit's terms read no other sequence's term,
+    so its temporaries carry none of the marks `Rated` and `Checked`
+    resolve in a step's.
+  - **Guards**: a temporary is computed before the iterate's chain, an
+    untaken clause's too, as a step's are: its C is pure, so no value
+    moves, and only a limit of matrices in an untaken clause costs, as in
+    a step today.
+  - **NaN once per iterate: apart.** With temporaries, a read of the
+    previous term's cell still tests all its cells, but once per source
+    read, 16 in Robertson's iteration: 13 per cent of its header with
+    `^-1`. What remains large is the same test on any matrix read by its
+    cells, which a step pays too: Cramer's rule reads A's cells 76 times,
+    each behind nine `isnan`, 63 per cent of that header. The queued line
+    is restated below in that general form, one concern.
+
+  Weighed: **value numbering in general**, every value written twice
+  shared within a step, an iterate and across grad's directions, which
+  would also serve forward mode's guard copied per direction (*The size
+  of a forward-mode header, measured*). `Declare` already numbers values,
+  by their text within a list; what is not general is where values are
+  offered to it, and where a list exists, the limit's function being the
+  last place with code and none but the prelude's C functions. This item
+  adds the place and no policy. A policy sharing everything written twice
+  is a decision of its own: the NaN-aware analysis reads cell texts,
+  `MayNan` scanning for `NAN` and the header's functions (C211) and a
+  call's C189 test asking whether its answer writes an argument's cell,
+  and a temporary's name hides what its text holds, so it needs a cell to
+  carry whether it may be NaN, at some 15 sites; sharing at every
+  operation would turn a header into three-address code and bury the
+  equation, where sharing what is written twice keeps each line readable
+  as the source; bit-identity holds either way, the same operations on the
+  same operands with `-ffp-contract=off`; guards as above. About 60 to 100
+  lines, queued below. It would declare into the lists this item adds, and
+  undo nothing of it.
+
+  Rejected:
+  - **The iterate as a C function of its own**, called from the loop with
+    the previous terms as arguments: a second function per limit and its
+    arguments passed, for the locals a block already has.
+  - **One list for the bases and the iterate**: a base's temporary is
+    computed once, before the loop, and would be computed again at each
+    iterate or shadowed there.
+  - **Hoisting what reads only the arguments** out of the loop: the reader
+    sees one iterate as the source writes it, and hoisting is a change of
+    its own, queued below. -O2 does not do it: a limit or an inverse
+    reading only the arguments is walked again at each iterate.
+  - **Writing the walk inline in the step**: a limit read twice, or cell
+    by cell, is one function (`logistic`'s four sigmoids).
+
+  What moves, on a prototype, discarded: no golden, the interpreter being
+  untouched; no expected header, the prelude's or a float one included,
+  and no excerpt in `test/cli.cmake`; of the 55 check programs of a file
+  using `lim`, three, and `mark` of the 16 in float, their reports
+  unchanged: `smith`, 40,388 bytes to 32,386, its doubling's products
+  sharing their operands; `mark`, 32,895 to 32,703 and in float 32,969 to
+  32,774, power iteration's `A*pw`; and `steer`, 13,322 to 13,354, the
+  NaN test of grad's quotient reading its numerator from a temporary while
+  the quotient still writes it, a line more, as a step writes it today.
+  `iterates.ink`'s `h` and `blocks.ink`'s `d` compile, leaving their
+  refusals in `compile_iterates_refused` and `compile_blocks_refused`.
+  Robertson's headers: Cramer's rule 18 KB, grad's Jacobian 22 KB, built by
+  gcc -O2 in a quarter of a second, and `^-1` 8 KB.
+
+  About 3 lines of `compile.hpp`: the prototype's 15 added and 11
+  removed, the two unreachable refusals and their branches among them, a
+  line of comment, and `Declare`'s refusal and its two of comment going.
+  16,151 lines at cc686c5, by `wc -l include/inkamath/*.hpp src/*`. Past
+  5 the implementation stops and reports.
+
+  Specified in `test/compile/implicit.ink`, unwired: `kinetic`, backward
+  Euler on Robertson's kinetics, Newton under `lim` with `^-1`; `jacobian`,
+  the same by grad's Jacobian; `doubling`, the Riccati doubling packed
+  under `lim`; `inset`, `iterates.ink`'s refused `h`; `layered`, a limit of
+  matrices given a matrix argument inside a limit's terms; and in its
+  comments the cli cases, `m_->h *` 12 times in each of Robertson's three
+  headers, each under 32 KB, the inverse called once, the float header
+  holding no `double`, and the two refusals that leave. Each number worked
+  out with mpmath, sympy and Python's doubles and fractions under
+  the stopping rule transcribed, none recorded; each "within 0" argued,
+  the interpreter's terms being doubles in the step's order or, for
+  `inset`, dyadic fractions a double holds. The prototype passes every
+  case. Wired with the implementation: the checks and reports in
+  `test/CMakeLists.txt`, the cli cases and the moved refusals in
+  `test/cli.cmake`, `iterates.ink`'s and `blocks.ink`'s comments; README's
+  paragraph on the compiler gains a sentence. No transcript in
+  `test/data/spec`.
+
+  Settled: `steer`'s extra line, a temporary written beside the text it
+  holds, is not fixed here; it closes into *Shared at every value written
+  twice*, below, for steps and limits alike.
+
+  Built as specified: every case of `implicit.ink` passes as written, its
+  five check programs wired and its cli cases in `test/cli.cmake`, the two
+  refusals moved out. No golden, expected header or excerpt moves; of the
+  check programs only `smith`, `mark`, float `mark` and `steer` change,
+  32,386, 32,703, 32,774 and 13,354 bytes, as the prototype found.
+  Robertson's headers are 17,709, 22,199 and 8,101 bytes. Departures: none
+  in the code. A case added, `compile_limit_globals`: a global first read
+  in a limit's terms declares into its own list while the limit is being
+  walked, so a `v` name keys on the limit's own lists, not on a limit
+  being walked, or two such globals would both declare `v0_` in the
+  update. The reason given above for not hoisting was wrong, corrected,
+  and the hoisting queued. 3 lines of `compile.hpp`, 19 added and 16
+  removed, as costed; 16,154 lines in all.
+- **A matrix read by its cells tested for NaN once**: in a header that
+  writes NaN, each read of a cell of a matrix that is not a term carries an
+  `isnan` of all its cells, as the interpreter refuses the matrix whole:
+  Cramer's rule reads A's cells 76 times behind nine tests each, 63 per
+  cent of Robertson's header once a limit has temporaries, and a limit's
+  previous term is such a matrix, 16 reads there. Normalising it once per
+  step or iterate where it has a list, every cell NaN where one is, as a
+  term is, and reading it whole after. Moves headers, not values.
+- **A limit's invariants hoisted out of its iterate**: a limit or a
+  matrix inverse that reads only the function's arguments is declared in
+  the iterate's list, so walked again at each iterate, and gcc -O2 leaves
+  it there: `layered` in `test/compile/implicit.ink` ran 15 to 20 times
+  faster with its inner limit hoisted by hand. Declared in the bases' list
+  instead, before the loop. Moves headers, not values.
+- **Shared at every value written twice**, value numbering in general, as
+  weighed under *Temporaries in a limit's function*: forward mode's guard
+  copied per direction among what it would serve, and `steer`'s extra
+  line, a temporary written beside the text it holds (*Temporaries in a
+  limit's function*). Needs a cell to carry whether it may be NaN before
+  anything is hoisted further. About 60 to 100 lines.
+- **`--check` names the cell and step of its worst units**: a float run of
+  Robertson's kinetics passed with its small concentrations negative and
+  50 times off, and `outside`'s in `test/compile/robertson.ink` passes at
+  1e+10 units, the line saying neither which cell nor where.
+- **`--check`'s remainder of a limit assumes linear convergence**: C36's
+  step*r/(1-r) reads the ratio of two steps, pessimistic for Newton's
+  quadratic convergence, whose last step is far below the one before.
+- **`tex` of a local definition**, refused as "tex cannot show a local
+  definition": print it as written, `(z = …)`, as Robertson's Newton
+  iteration names its iterate.
+- **The first index where a condition holds**, as a query: where the
+  explicit step's stability limit -2/lam passes h, found by bisecting
+  terms by hand. Minor.
+- `[done]` **An exact root of a perfect power**: `25^(1/2)` is `~5` and
+  `(4/9)^(1/2)` `~0.666666667`, where the root is a rational, so every
+  truss whose lengths come from its coordinates goes inexact and
+  `truss_calfem.ink` types them. MANIFESTO.md asks for exact numbers
+  "wherever the mathematics allows". Found exploring finite elements.
+
+  **The rule.** x^(p/q), x and the exponent exact, p/q reduced and not
+  whole, is exact where x >= 0 and x's reduced numerator and denominator
+  are both perfect q-th powers: it is then r^p, r their roots' quotient,
+  by the whole power's own rules, approximated past a thousand digits as a
+  whole power is, and marked so, which `(49/36)^(1185/2)` was not.
+  Anything else is as before. So `25^(1/2)` is 5, `8^(2/3)` 4,
+  `27^(-1/3)` 1/3, `(9/4)^(3/2)` 3.375, `2^(1/2)` still `~1.41421356`,
+  and a truth read from an exact root exact (C241): `25^(1/2) == 5` is 1,
+  not `~1`.
+  - **Any q.** A whole number from 2 up has a whole q-th root only for q
+    below its bit length, at most 3,322 within a thousand digits, so no cap
+    is needed: a larger q, `1^(1/10^30)`, is decided at once, 0 and 1
+    alone passing. `(2^1000)^(1/1000)` is 2.
+  - **The test** is the integer root by Newton's method from above, the
+    numerator first and the denominator only if the numerator passed,
+    checked by raising it back. On a prototype in Release: about 60 us for
+    a thousand-digit number that is not a square, 1 us for a small one, the
+    prototype taking naturals for every size; no golden's time moved.
+  - **An exponent written as a decimal** is the exact fraction it says
+    (phase 13): `25^0.5` is 5 and `16^0.75` 8, and `8^0.333` stays inexact,
+    333/1000 asking a thousandth root.
+  - **Zero.** 0 to a positive power is 0, where it was `~0`. To a negative
+    one it is a division by an exact zero, as `0^-1` is: `0^(-1/2)` was
+    `~inf` and is refused, `division by zero`. Moves an answer, for the
+    rule README.md states.
+  - **A negative base keeps its principal root** (C33, C174). The
+    principal value of x^(p/q), x < 0, is |x|^(p/q) e^(i pi p/q), never
+    real for p/q not whole, so a negative base is never exact and
+    `(-8)^(1/3)` stays `~(1+i*1.73205081)`; nothing recorded moves.
+    Rejected: the real root for an odd q, -2, which a paper's cube root of
+    -8 means. Its value would depend on exactness: `(~-8)^(1/3)` or an
+    exponent `0.3333` would keep the principal root, and whether a number
+    is exact may decide how it is shown, never which number it is. MATLAB,
+    NumPy and sympy give the principal root too, and the real one by a
+    function of its own. Here the real root is a definition in cases,
+    `cbrt(x) | x < 0 = -(-x)^(1/3)`, exact for a perfect cube under this
+    rule.
+  - **Inexact base or exponent**, a base approximated past a thousand
+    digits among them: as before, the double's root.
+  - **Matrices**: out of scope. `A^(1/2)` is refused as before; a matrix's
+    square root is not unique, its principal one needs eigenvectors, and
+    none was asked for. Cell by cell it is written by cells, and each root
+    is exact.
+  - **grad**: nothing to add. Derivative::Power takes c u^(c-1) through the
+    same power, so `grad_(x = 4) x^(1/2)` is 0.25, and a bar's length
+    `(x^2 + 16)^(1/2)` moves by 3/5 at x = 3. Its refusals are unchanged
+    but one: at 0 a negative power is refused before its derivative,
+    `grad_(x = 0) x^(-1/2)` "division by zero" as `x^-1`'s is, where it
+    was "a power's derivative is infinite at x = 0".
+  - **Compiled**: a header writes doubles, and a constant folded from the
+    interpreter's value is now the double of the exact root, never an ulp
+    off as `pow`'s may be; no expected header moved on the prototype. One
+    thing to keep: grad compiled folds u^(c-1) at a constant base, which at
+    0 with c < 1 is now a division by zero, where it was inf, and the
+    prototype refused `edge`'s v in `test/compile/grad.ink`, "cannot compile
+    v: division by zero". Left to C's pow there, inf, v stays NaN at every
+    step as C116 made it: 1 line, and C286's 1 more folds it to C's inf as
+    a literal again. A constant `0^(-1/2)`, or the same power
+    under `grad_(t = 0) t^(-1/2)`, is refused as `0^-1` is, "cannot compile
+    y: division by zero", where it compiled.
+
+  Rejected:
+  - **Square roots alone**: the test is the same for any q, and a cap
+    would make `8^(2/3)` and `16^0.25` inexact for no reason the
+    mathematics gives.
+  - **A function, `sqrt(x)` or `root(x, q)`**: a second way to write
+    x^(1/2), against MANIFESTO.md, which would still leave `25^(1/2)`
+    inexact.
+  - **Roots kept exact as algebraic numbers**, `2^(1/2)` carried as itself:
+    a computer algebra system, a non-goal.
+
+  What moves, on the prototype: `exact.ink`'s `4^(1/2)`, under "What can
+  only be approached", to 2, its comment with it; `grad.ink`'s `grad_(x = 4)
+  x^(1/2)` to 0.25; `kahan.ink`'s 128 roots then squares of 0 and of 1, to 0
+  and 1; `goldberg.ink`'s four entries for C175, its hypotenuse 5*10^200,
+  10^200 and 2^275 in full and 10^-200 bare, rewritten with `roots.ink`'s
+  four bases that are not perfect powers so that they still hold C175's
+  path, those four moving there when the spec becomes a golden, and the
+  exact cases staying in `roots.ink`; `doyle.ink`,
+  whose f(5) = 2 + 9^(1/2) and f(21) are 5 and 7 exactly, so both Riccati
+  residuals are exact zeros and the gains [5, 5] and [7; 7]; and three
+  `--check` reports in `test/CMakeLists.txt`, terms exact further: `edge`
+  until 3 and `edge.s` within 1.1e-16, `over` exact throughout, `graph`
+  until 1. README.md's "a root" among what can only be approached becomes a
+  root that is not rational, and `truss_calfem.ink` computes its lengths,
+  `L(e) = (dx(e)^2 + dy(e)^2)^(1/2)` in place of the typed `Lg`, its
+  answers unchanged: `roots.ink`'s truss, which moves there when the spec
+  becomes a golden, the 3-4-5 bar staying.
+
+  About 30 lines: the prototype's 28 in `number.hpp`, 3 of them comment,
+  and 2 in `compile.hpp`. 16,024 lines at 6921a84, by `wc -l
+  include/inkamath/*.hpp src/*`. Past 45 the implementation stops and
+  reports.
+
+  Specified in `test/data/spec/roots.ink`, 86 entries replayed by the spec
+  suite, 41 failing by design, those passing being definitions echoing
+  themselves, the refusals, the answers that stay inexact and two exact
+  ones whose nine digits are as before. Each exact
+  root in sympy, the truss's displacements and forces solved again in
+  sympy from its computed lengths, each inexact answer the double C's sqrt
+  or pow gives checked against mpmath to the nine digits shown, and all
+  printed by a transcription of `Number::Shown`. The prototype, discarded,
+  passes every entry.
+
+  Built as specified: every entry passes as written, and the spec is the
+  golden `roots.ink`, its truss gone to `truss_calfem.ink` and its four
+  bases of C175's path to `goldberg.ink`; the spec suite goes, it its only
+  file. Departures, for time: as the review asked, 64 bits take the
+  double's root, rounded and raised back, and past them Newton starts just
+  above the double's root, where from 2^ceil(bits/q) a q near 100 took 300
+  us of a thousand-digit number; and an even q asks first whether the
+  number is a square mod 64 and mod 63, without which Adam's roots in
+  `reddi.ink` took a fifth more instructions. In Release, 2^(1/2) 43 ns to 54 and 2^(1/3) 64
+  to 97; of a thousand digits, a non-square 3.9 us to 4.7, a square 3.8 to
+  40, a hundredth power 3.9 to 37; no golden over 1.9 per cent more
+  instructions. Compiled, the refusal is the cli case `compile_pole`.
+  Moved too, unlisted: `reddi`'s `fixed` and `gen` checks' estimates,
+  Adam's roots of exact squares exact now, fixed.x's 5.6e-16 to 6.7e-16
+  and fixed.R's 2.5e-14 to 4.6e-14, gen.x's 3.3e-16 to 4.4e-16 and gen.R's
+  2.1e-14 to 1.8e-14, held by their reports' form. 41 lines landed against
+  about 30, 6 of them comment: `number.hpp` 40, `compile.hpp` 1. 16,071
+  lines in all, with integration; 45 after C285's 3 and C286's 1,
+  `number.hpp` 43 and `compile.hpp` 2, and 16,075 in all.
+- **Plain definitions remembered**, specified as the language change
+  phase 14 called it when it rejected memoising them (*Rejected: memoising
+  a plain definition*). A plain definition is computed again at each read, so a
+  stiffness matrix with its supports struck by cells, reading an assembled
+  `K` at each, assembles K again for every cell; passing K as a parameter,
+  `bc(K, fx)`, evaluates it once and was ten times faster exploring finite
+  elements, an idiom no paper writes. The cost is phase 14's: a remembered
+  value skips its body's steps, so `sum_(k=1)^400 A*A` would answer where it
+  gives up.
+- **A base clause reading another sequence's base at its own index**:
+  with `v_0 = 0`, `a_0 = v_0`, `a_n = v_(n-1)` and `v_n = a_n`, the
+  interpreter answers and `--compile` refuses a, "it and the terms it reads
+  need each other". The step orders the sequences once for every index, and
+  at the base a needs v first where later v needs a. Newmark's natural start,
+  `a_0 = M^-1*(f_0 - K*u_0)`, is one; found exploring finite elements. Three
+  ways, each over 25 lines: the base steps in an order of their own, the
+  step emitted twice; the read base inlined at a seed of the same index,
+  reworking `Seeded` and `Rated`'s placeholders per cell; or a constant
+  base folded, which covers Newmark's only where `f_0` and `u_0` are
+  constants.
 - `[done]` **A definition as LaTeX**, `tex ?name`, a word at the start of a line as
   `frac` is, and reserved as it is. It renders what was parsed, not what was
   typed: the clauses for one index a line each, then those for every index,
@@ -6830,7 +7509,7 @@ that exploring seven domains asked of the interpreter, by how many asked.
   `dhinf` the refusal names hinf: naming dhinf would need the caller in
   `Unapplied`, more than 2 lines. 8 lines more and 1 for C208: 89 lines,
   15,536 in all.
-- **Doubles read exactly by rho, abscissa and eig**, as hinf reads them:
+- `[done]` **Doubles read exactly by rho, abscissa and eig**, as hinf reads them:
   each inexact cell the rational its double is, an answer certified for the
   data as stored or marked, where rounded tests misjudge unmarked. To weigh
   against the inertia count below, by its cost in time under the
@@ -6839,13 +7518,148 @@ that exploring seven domains asked of the interpreter, by how many asked.
   `hurwitz(charpoly(Acl(m, f, f)))` is 1 at m = 1 + 1/f^2, where the data
   as stored is unstable, and with f = 2 + sqrt(10^8 + 4), 0 at
   m = 1 + 1/f^2 - 10^-12, where it is stable; each decided exactly from the
-  doubles.
-- **An inertia count for inexact symmetric matrices**: the negative pivots
-  of LDL' of A - xI count the eigenvalues below x, backward stable, where the
-  rounded Descartes count of `eig` loses a k-fold eigenvalue to about 16/k
-  digits and Hermite's test refuses symmetric matrices but for rounding.
-  Rejected for `eig` only for an exact dyadic midpoint that zeroes a pivot,
-  which an inexact matrix does not meet.
+  doubles. Done by C275, smax and the brackets with them, at the cost in
+  time it gives.
+- `[done]` **The generalized eigenproblem, `eig(A, B)`**, the fifth step towards
+  eigenvalues: every lambda of A phi = lambda B phi, B symmetric positive
+  definite, as a column, smallest first, each certified as eig's are. A
+  structure's frequencies, K phi = omega^2 M phi, and its buckling loads,
+  K phi = lambda K_G phi; Fisher's discriminant, S_b w = lambda S_w w; a
+  normalized cut, (D - W) y = lambda D y. It takes the place of two lines
+  here, an inertia count for inexact symmetric matrices and `eig(K, M)` by
+  it. Exploring finite elements formed M^-1 K (`modal.ink`), which is not
+  symmetric and so asks Hermite's test: 6.3 s for 8 unknowns, 32 s for 10,
+  refused past a thousand digits from 12. The design, measured on a
+  prototype:
+
+      eig(A[j<=n, k<=n], B[j<=n, k<=n] = A^0) | rhoe([A, B]) == rhoe([A, B]) and B' == B and eigv(charpoly(B)) == n = eigg(A, B^-1*A)
+      eigg(A, C) | A' == A or eigr(C) = eigc(C)
+
+  **The count.** B^-1 A is not symmetric but is similar to L^-1 A L^-T,
+  B = L L', so where A is symmetric its eigenvalues are real, and Descartes'
+  count on its characteristic polynomial, det(lambda B - A)/det(B), is exact
+  without Hermite's test: the pencil's definiteness is the certificate that
+  test was for. So the eigenvalues are `eigc` of B^-1 A, eig's bisection,
+  scale, stop, certified 0 and marks unchanged, and the bracket is
+  eig(B^-1*A)'s where Hermite's test passes. A not symmetric asks that test
+  of B^-1 A, `eigr`, as eig(B^-1*A) does. B is positive definite where its
+  own polynomial, real-rooted as B is symmetric, has every root above 0: n
+  sign changes, `eigv(charpoly(B)) == n`, Descartes again. `rhoe([A, B])`
+  reads every cell before B^-1 A is formed, for its refusal alone.
+
+  **Name and form.** `eig(A, B)`, MATLAB's and Octave's, B a second argument
+  whose default is the identity: a definition has one parameter list, so a
+  second argument is a default or a second name. It means eig(B^-1*A) for
+  every A, B symmetric positive definite, and against CLAUDE.md's "no second
+  way to say something" earns its place where A is symmetric: it is the
+  paper's K phi = lambda M phi; it answers where eig(B^-1*A) is refused,
+  past a thousand digits from 12 unknowns, and of doubles from 8x8 (C275);
+  it is 14 times faster where both answer, 0.43 s against 6.3 at 8 unknowns;
+  and it refuses what it cannot certify. eig(B^-1*A) stays as it is, eig of
+  a matrix, which no rule refuses for having been a product. Rejected:
+  `eigh(A, B)`, SciPy's, and `geig`, a second name for eigenvalues; a
+  default that is not a value, which no signature has; and refusing a
+  non-symmetric A beside any B but the identity, which would tell the
+  identity apart from its multiples: eig(A, 2*A^0) answers as eig(A/2) does.
+  Riccati and Hamiltonian pencils are out of scope: neither has B
+  symmetric positive definite, and eig refuses both.
+
+  **Refused**, in plain words: `eig needs B symmetric positive definite`,
+  for B indefinite, singular or not symmetric, before A is looked at. One
+  set of words: which premise failed is in B, and two sets would cost a
+  guard each. A lumped mass that gives a rotation no mass is singular, and
+  condensing the rotation out is the model's to write. The words are eig's
+  guard's, in `Unapplied`'s table; eig's present words, `eig needs a matrix
+  whose eigenvalues are all real`, move there to eigg's name, for a complex
+  eigenvalue of B^-1 A, approximated guard and all. A matrix not square, or
+  A and B of different sizes, by the signature: `eig takes A[j<=n, k<=n] and
+  B[j<=n, k<=n], not a 2x2 matrix and a 1x3 matrix`. A complex cell of A or
+  B in max's words, `a comparison needs real numbers, not ~(i)`, not a cell
+  of B^-1 A. An inf cell of either, `eig needs finite cells, not ~inf`, by
+  C206's check.
+  - **Doubles read exactly**: `checked` reads every argument of a
+    staircase as the rationals its doubles are (C275), B's too, and the
+    answer is inexact. Nothing to add.
+  - **grad**: refused where A or B moves, `grad cannot differentiate eig
+    yet`, as the staircase check reads every argument; flat where neither
+    does. A simple eigenvalue's derivative, phi'(dA - lambda dB)phi with
+    phi'B phi = 1, is a later item with rho's.
+  - **Compiled**: nothing new. eig stops at `B' == B`, a comparison of
+    matrices, as it stopped at `A' == A`; compiled grad's refusal,
+    `Staircase`, reads every argument already.
+  - **`eigb`** stays of A alone: a pencil's bracket would take B before k,
+    and no model asks for one.
+
+  Rejected:
+  - **The inertia count**, the negative pivots of LDL' of A - xB, which
+    count the eigenvalues below x by Sylvester's law. Prototyped in fixes23
+    and here as a recurrence on Schur complements, its matrix a parameter,
+    and bisected exactly as `eigc`: slower at every size measured, in
+    Release. On the cantilever, 0.90 s against the reduction's 0.43 at 8
+    unknowns and 14.0 against 11.7 at 16; at 24, marked past a thousand
+    digits in 84 s where the reduction is certified in 132. On random
+    pencils of doubles, 5.3 s against 1.9 at 8x8 and 41 against 22 at
+    12x12; at 16x16, marked in 138 s where the reduction is certified in
+    118. Its three lines also lack what it needs: a pivot is 0 where a
+    midpoint is an eigenvalue of a leading sub-pencil, which a 2x2 block
+    or symmetric pivoting must step over, `[0 1; 1 0]` at the first
+    midpoint and `[1 0; 0 3]` at the fourth. Its argument, backward
+    stability in doubles, went with C275: both counts read doubles
+    exactly, and so give the same bracket.
+  - **An exact Cholesky of B**, for the symmetric L^-1 A L^-T: its square
+    roots are not rational, so its cells would be rounded. LDL', rational,
+    leaves the pencil (L^-1 A L^-T, D), similar to B^-1 A, and nothing
+    gained.
+  - **Plain eig(A) by the inertia count**, as eig(A, I): on random
+    symmetric matrices of doubles, read exactly, 1.69 s against 0.63 at
+    8x8, 4.3 against 1.7 at 10x10, 16.8 against 9.0 at 14x14. Where both
+    certify every answer is the same, the counts being exact. Not switched.
+
+  **What it costs**: eig's, of B^-1 A, with one characteristic polynomial of
+  B more; eig of one argument, that of the identity, its inverse and a
+  product. In Release, the cantilever's 8 unknowns in 0.43 s, 16 in 12 s and
+  24 in 132 s, certified; random pencils of doubles 1.9 s at 8x8, 22 s at
+  12x12 and 118 s at 16x16, certified. The spec replays in 28 s under the
+  sanitizers (Debug), 20 of them the 8 unknowns.
+
+  What moves: no golden but one. eig of one argument takes eigg's clause,
+  A' == A or Hermite's test of I^-1 A, which is A; `eig expects 1 argument,
+  got 2` goes, which nothing recorded. README's section 2 shows eig(K, M).
+  `modal.ink` moves on purpose: its Schur-complement prototype, from the
+  comment on Sylvester's law to `~br(3, 1)_60`, gives way to
+  `eig(Kf(3), Mf(3))`, worked out as the spec's: 12.3648691229,
+  488.713223585, 3901.99889943, 19788.3448179, 70089.0184261 and
+  278568.782393, at 12 digits, the first the one its comment gives.
+
+  About 6 lines: the prelude 2 more, eig's clause wrapped and eigg's, 1 of
+  C++ for eigg's words and 3 of comment. 16,000 lines at 05f1483, by `wc -l
+  include/inkamath/*.hpp src/*`. Past 9 the implementation stops and
+  reports.
+
+  Specified in `test/data/spec/geneig.ink`, 56 entries replayed by the spec
+  suite, 39 failing by design, those passing being definitions echoing
+  themselves, `digits` and eig of one argument: eigenvalues as the roots of
+  det(A - x B) in sympy, exactly, and each bracket by bisection of B^-1 A
+  over 2^e in Python's fractions with every test decided from them, printed
+  by a transcription of `Number::Shown`; the cantilever's against mpmath's
+  eigenvalues of M^-1 K at 30 digits too, and the buckling loads against 12
+  by hand and Euler's pi^2. Reviewed by another route: B^-1 A's
+  characteristic polynomial by Faddeev and LeVerrier in fractions, bisected
+  on Descartes' count of it shifted at each midpoint, each bracket holding
+  sympy's root, printed by Python's `%g`. The prototype above, defined in a
+  session, gives every answer but the refusals' words, grad's two, the inf
+  cells and the 3x3 pencil of doubles, which need the name to be the
+  prelude's staircase; put in the prelude, eigg's words in the table, it
+  gives all 56.
+
+  Built as specified, with no departure: the spec is the golden
+  `geneig.ink`, and the spec suite goes, it its only file. `modal.ink`'s
+  Schur-complement prototype gives way to `eig(Kf(3), Mf(3))`, its six
+  values as above; README's section 2 shows eig(A, B). 6 lines landed
+  against about 6: the prelude 2 more and its comment 3, and 1 of C++ for
+  eigg's words. 16,012 lines in all. The 8x8, `eig(Kf(4), Mf(4))`, is
+  since in `geneig_cantilever.ink`, a golden of its own that runs beside
+  it, where the one file took 38 s under the sanitizers, 24 s after C306.
 - `[done]` **A guard the interpreter's own error straddles.** From an outside
   review. `--check` estimates the interpreter's error by asking each term
   three times more, disturbed (*The interpreter's own error, estimated by
@@ -7019,12 +7833,103 @@ After transcribing a small convolutional network (Goodfellow, Bengio and
 Courville 2016, §9.5; LeCun et al. 1998, §II.B), its training compiled and
 checked: what it asked of the compiler, each with its smallest change.
 
-- **A compiled gradient with respect to a tensor**, "a derivative with
+- `[done]` **A compiled gradient with respect to a tensor**, "a derivative with
   respect to a tensor, for now": the seed of three indices *Tensors
   compiled* left between attention and its training, met again by an input
-  gradient over a batch of images. The seed's slice taken from its cell as
-  its row and column are, and the parts assembled into an extent with
-  slices; about 10 lines, the interpreter's seeds unchanged.
+  gradient over a batch of images. The interpreter answers it (*Tensors of
+  rank 3*); the compiler refuses it before seeding anything.
+
+  Decided:
+  - **The seed is the interpreter's.** One pass for each cell of the point,
+    slice after slice and row by row, that cell 1 and every other 0, the
+    cell found by its place among the cells, as the interpreter's
+    `seed.data()[k]` finds it, rather than by its row and column; the parts
+    assembled into the point's extent, slices with it, which `Assembled`
+    already does by place. So a single value's gradient with respect to a
+    tensor is shaped as the tensor: a batch of two 3x3 images gives a
+    2x3x3 gradient, slice b the image b's. A tensor of one cell, `[n;;]`,
+    gives a tensor of one cell, not a single value, the rank being part of
+    the value.
+  - **Whatever holds the tensor**: a model's input (the images), a
+    parameter (a field), the step's own last term (W^Q trained), a value
+    computed. The point is a value the compiler already holds, read where
+    it is; the seed is a constant beside it. Nothing tells them apart, and
+    nothing needs to.
+  - **What stays refused, in the interpreter's words**: a gradient that is
+    not a single value with respect to a tensor, "grad of a tensor with
+    respect to a tensor is a Jacobian, which it does not give", and "grad
+    of a matrix with respect to a tensor". The words name both kinds as
+    the interpreter's do, which corrects one refusal compiled today: a
+    tensor's gradient with respect to a matrix, `grad_(v = [n 1]) v*T`, is
+    refused as "grad of a matrix with respect to a matrix", C307, a defect
+    found writing this, which the same lines fix. A derivative of
+    a derivative stays "for now", tensor or not.
+  - **`--float`** writes floats, as everywhere.
+  - **The passes are a matrix's.** Forward mode seeds one pass per cell, so
+    a 2x3x4 seed costs 24 passes of the body, as a 6x4 matrix's or 24
+    single parameters' do today, and `MANIFESTO.md` accepts that for tens
+    or hundreds of weights. Acceptable as a rule; what a pass costs is the
+    queued *size of a forward-mode header*'s to measure, not this entry's.
+    Measured with a prototype, it is large where a body is: the figures
+    are in that item.
+
+  Rejected:
+  - **Seeding by slice, row and column**, as the exploration above put it:
+    three places computed from the cell's position, to write a cell that
+    position already names. The interpreter seeds by position.
+  - **A tensor of one cell taken as a single value**, or a gradient
+    flattened to a matrix: the compiled step is held to the interpreter,
+    whose gradient keeps the point's rank (C50, *Tensors of rank 3*).
+  - **Reverse mode for a tensor**: deferred by `MANIFESTO.md` until
+    gradients limit the models written; the passes cost what a matrix's
+    already do, and the queued item's measurements say where a pass's
+    cost lies.
+  - **Keeping the compiler's single wording** for a Jacobian: it miscalls a
+    tensor a matrix, and naming both kinds is a line.
+
+  What moves: `compile_tensor_refused` in `test/cli.cmake` loses its `h`,
+  which compiles, and `test/compile/tensor.ink`'s comment loses "a
+  derivative with respect to a tensor"; README's paragraph on the compiler,
+  "a tensor in a limit, or a `grad` with respect to one, is refused for
+  now", keeps the limit only. No header in `test/compile/expected` and no
+  golden: the prototype moved only that test of `ctest`.
+
+  About 6 lines, as the prototype wrote them, removing 8: the refusal
+  gone, the seed by its place, the words by kind. 16,254 lines in all
+  now, by `wc -l include/inkamath/*.hpp src/*`; past 9 the implementation
+  stops and reports.
+
+  Specified in `test/compile/tensorgrad.ink`, each value worked out apart
+  from the interpreter and the compiler: `saliency`, the network's input
+  gradient over a batch of two images, by backpropagation by hand in exact
+  fractions and by central differences of them, exact, in float too;
+  `attend`, attention's W^Q, two heads of width 1 stacked as a tensor,
+  trained as the step's term, by central differences in mpmath at 50
+  digits, held as `heads` is; `small`, a batch of two 2x2 states coupled
+  across slices, its gradient at a parameter, descended from the step's
+  own term, and at a tensor of one cell, exact in exact fractions, in
+  float too; and the three refusals above. Unwired, since a model that
+  does not compile fails the build, not a test: wired with the
+  implementation, `tensorgrad:saliency`, `tensorgrad:attend` and
+  `tensorgrad:small` among the checked instances of `test/CMakeLists.txt`
+  with their reports, the first and last among the float checks, and the
+  refusals' file as `compile_tensorgrad_refused` in `test/cli.cmake`.
+  Whether `attend`'s 10 s of GCC belongs in CI is for whoever merges.
+
+  Built as specified: `small` and `attend` pass as written, `small` in
+  float too, checked instances of `test/CMakeLists.txt` with their
+  reports, and the refusals as `compile_tensorgrad_refused`; README names
+  `tensorgrad.ink` where its refusal goes. Departure: `saliency` passes
+  as written, in double and float, but by hand: its `--check` takes 593 s
+  under the sanitizers in Debug, 125 s in Debug and 11 s in
+  RelWithDebInfo, all in inkamath's own compile time, the cube of the
+  batch below, so it waits, unwired, for the queued *size of a
+  forward-mode header*, whose acceptance test it is. Under the sanitizers
+  in Debug, `attend`'s `--check` takes 42 s and `small`'s 28 s, in double
+  and in float, their programs under a second to build; `attend`'s takes
+  10 s at GCC -O2, as specified. Every golden and recorded header byte for
+  byte. 6 lines added and 8 removed in `compile.hpp`, as planned: 16,252
+  lines in all, 16,254 at 8b5279d.
 - **A read between slow sequences of one period and phase**, refused since
   C233 as one at another rate read by another: a minibatch as time, each
   term of the weights reading two consecutive samples, trains its weights
@@ -7041,23 +7946,306 @@ checked: what it asked of the compiler, each with its smallest change.
   -1/2]`, "a tensor whose slices are single values met by a matrix, for
   now": each slice's value stretched over the other's cells in `Cellwise`, as
   the interpreter's arithmetic does; a few lines.
-- **`grad` through a local**, "grad cannot differentiate a local definition
-  yet", compiled "a local definition": `(z = Q*P) ...` written once in a
-  loss must be a call instead. A local's jet bound in the frame for the rest
-  of the line, as a call's parameters are, and compiled as an expansion's
-  value.
-- **The size of a forward-mode header, measured**, before reverse mode is
-  weighed (`MANIFESTO.md`): the network's 47 weights trained by four grads
-  are 2.16 MB of header, as each direction writes a guard's dot product
-  again and each seed as `0.0*P + ... + 1.0*P`. A temporary for a guard's
-  operands, and `0.0*x` folded where x is finite, are the first two
-  measurements to take.
+- `[done]` **`grad` through a local**, "grad cannot differentiate a local
+  definition yet": `(z = Q*P) ...` written once in a loss must be a call
+  instead. The CNN exploration passed every layer's parameters down, or
+  wrote a function only to name pooled activations; Robertson's and
+  Runge-Kutta's stages are locals, `(a = f(u))`. Phase 8 does not move: a
+  local binds the value of its right-hand side once, for the rest of the
+  line, and under `grad` a value carries its parts.
+
+  Decided: `Derivative::Eval`, meeting a local, evaluates its right-hand side
+  with its parts and binds the jet in the innermost of grad's frames, where a
+  call's parameters and grad's name are, in place of any binding of the name
+  there; and binds its value in the evaluator's frame as `EvaluationVisitor`
+  does, so that what grad reads as a value, a sum's bound, an index, a name
+  it leaves to the evaluator, reads the same local. One bound where grad
+  leaves the evaluation to the evaluator, in a sum's bounds, ends any jet of
+  its name in grad's frame, which would read a value the evaluator no longer
+  gives: in `(n = x) + (sum_(k=1)^((n = 3)) k) + n*x`, the last `n` is 3. The
+  rest follows from the frame. Left to right, a power's base before its
+  exponent as the evaluator reads it, where grad reads the exponent first
+  today, and not there before its binding, where the name is the global's or
+  not defined. It shadows a parameter; grad's own name and a sum's index it
+  cannot, refused in both evaluators by a fix that lands before this item, "k
+  is the sum's index, so a local cannot define it". Its extent is the frame:
+  a call's evaluation, whose locals die with it and so never reach what is
+  remembered, or the line, so that one bound in grad's body is read after
+  grad, at the point, its parts past grad's dropped as any value's are, as
+  `(sum_(k=1)^3 (t = k)) + t` reads the last term's. A local in an argument
+  is the caller's.
+
+  A grad opens no frame of its own, its name being bound in the one it is
+  in, so a local bound outside an inner grad is read inside it with its
+  outer parts, which multiply with the inner as any parts do, and one bound
+  inside is read after it at the inner point, moving with the outer name. A
+  matrix's or a tensor's parts have its shape, as any value's. A local that
+  does not move has its value alone; one the evaluator bound, before grad
+  on the line or in a call grad evaluated as a constant, is read as a
+  constant, as now. A guard is evaluated with its parts, so a local bound
+  in it is read by the clause it chooses with them, and one bound in a
+  guard that fails is taken back from both frames (C300); each term a
+  limit walks is a call in a frame of its own, as C66 has it.
+
+  A gradient with respect to a matrix is one evaluation at the point that
+  takes a pass per cell: the locals a pass binds, in both frames, are put
+  back before the next, so the second cell's pass does not read the first's,
+  and the last pass's stay for the line. Otherwise a gradient would depend
+  on the order of its cells.
+
+  The search for a definition reading the global of grad's name follows the
+  locals in the order they are evaluated, a guard before its clause and a
+  sum's or a grad's body before what follows it: a name is the local's from
+  its binding on, so with a global `t = x^2`, `t` read after `(t = 2*x)` is
+  not followed to the global, and read before it is, and refused as now.
+
+  Stays refused: a local with parameters, `(g(y) = y*x)`, refused in both
+  evaluators since C303, "a local cannot take parameters" (Deferred, "Local
+  functions"). A call of a local, `(a = 3) + grad_(x = 2) a(x)`, refused
+  as a local definition, is the evaluator's error, "a takes no arguments".
+
+  The interpreter only. `--compile` refuses every local, under `grad` or not
+  (Robertson's "a local definition"), so there is no compiled local for a
+  derivative to go through; compiling locals is an entry of its own, queued
+  below, and costs `grad` nothing more once it lands, since every compiled
+  value carries its part beside it. The line queued here had a local
+  "compiled as an expansion's value"; that is the other entry's.
+
+  Rejected: substituting the right-hand side for the name, the call by name
+  phase 8 rejected, which evaluates it at each read and reads what it names
+  where it is read, so `(t = 2*x) + (x = 10) + t` would read the second `x`;
+  a frame for grad's body, which would end a local there, where phase 8
+  ends it at the line; hiding a sum's index anew at each term, so that grad
+  answers the evaluator's 12 for `sum_(k=1)^3 ((k = 2) + k)`, a meaning no
+  paper gives, which the fix refuses instead; and passes per cell that share
+  their locals.
+
+  About 34 lines, all in `derivative.hpp`: 10 to bind, in place of the
+  refusal; 3 for a call of a local; 2 for one in a sum's bounds; 1 to read
+  a power's base first; 10 to put a pass's locals back; 8 for the search in
+  order. 16,151 lines at cc686c5, by `wc -l include/inkamath/*.hpp src/*`.
+  Past 51 the implementation stops and reports.
+
+  Specified in `test/data/spec/gradlocal.ink`, 82 entries replayed by the
+  spec suite, 39 failing by design, those passing being definitions echoing
+  themselves, values without `grad`, `clear`, and a local or a global read
+  before the local's binding or on the next line. Covered: a local in a
+  function, in grad's body and in an argument, read twice, chained, in a
+  power's base and its exponent, shadowing a parameter, refused for grad's
+  name and a sum's index, constant, bound in grad's point, in a guard that
+  holds and one that fails, a term and a limit's terms, a sum's body, after it and in its bound, of matrices
+  and a tensor, a gradient with respect to a matrix, over a global and over a
+  local of the line, a two-layer network beside the same network without
+  locals, nested grads three ways, Runge-Kutta's stages, the extent of a call
+  and of the line, the search past a global, and the two refusals. Every
+  value is sympy's, each local substituted by hand into the closed form it
+  names; the network's gradients are also what the network without locals
+  gives today, and Runge-Kutta's step what the interpreter gives without
+  `grad`.
+
+  Built as specified: every entry passes as written, and the spec is the
+  golden `gradlocal.ink`; the spec suite goes, it its only file. No other
+  golden moves. Departures: a local in a sum's bound needed nothing, since
+  a bound that reads a name of grad's frame, as one rebinding a local
+  there does, is evaluated with its parts too (C301), which binds it in
+  both frames, and one that reads none leaves grad's frame no jet of the
+  name to end. A pass's locals, and a failed guard's, which C300 took back
+  from the evaluator's frame alone and which a later clause read in grad's
+  (an entry added for it), are put back by a copy of each frame, the
+  evaluator's through C300's own, taken only where the body binds a local:
+  nothing in `reference_stack.hpp`. A local by an index or by cells, a
+  definition and not a value, stays refused under `grad` in the old words,
+  which no entry asks for. 28 lines landed against about 34, all in
+  `derivative.hpp`, 5 of them comment: 11 to bind, 1 fewer for a call of a
+  local, none for a power's base first, 8 to put back a pass's and a failed
+  guard's locals, 10 for the search in order. 16,241 lines in all, 16,213
+  at 02b7b9e.
+- **Locals compiled**, "a local definition": a step written with
+  Runge-Kutta's stages as locals is a call per stage in a header. A local as
+  a C temporary where it is bound, read after it in the evaluator's order,
+  its part beside it under `grad`. Open: a local in a sum unrolled term by
+  term, which persists across terms, in a chain of guarded clauses, and in
+  a model's clause, once per step.
+- `[done]` **The size of a forward-mode header, measured**, before reverse
+  mode is weighed (`MANIFESTO.md`). The item named two costs, measured
+  with a prototype of *a compiled gradient with respect to a tensor*:
+  inkamath's own time near the cube of the batch on `tensorgrad.ink`'s
+  `saliency`, 593 s of `--check` under the sanitizers, and exp's part
+  written at each of its uses in every pass, attention's W^Q at
+  `tensor.ink`'s size (2x4x2, 16 passes) 1.28 MB of header and 4 min 40 at
+  GCC -O2.
+
+  Measured again, by profile and by count, at b942d0d:
+  - **Most of `saliency`'s time is not the compiler's.** Its `--check` is
+    11.6 s in RelWithDebInfo: 3.0 s compiling, the rest the oracle's four
+    runs of the interpreter, exact and three disturbed, of 100 steps of 18
+    passes, 1.9 s each. Under the sanitizers the compile is 154 s and one run of
+    the interpreter 106 s; with the compile at 10 s, `--check` still takes
+    481 s, nearly all the four runs: no change to the compiler brings 100
+    steps under 30 s.
+  - **The compile is near the fourth power of the batch, B^4, and its
+    header near B^2**: one image of 3x3 to four, 0.17, 2.8, 14 and 50 s,
+    16, 45, 94 and 157 KB. 96 per cent of it compiles definitions by cells
+    again: C230 keeps a call once for the code it is given within the
+    innermost loop alone, and conv's cell is two nested sums, each opening
+    a memo of its own, so `pad(X)` is compiled again for each cell and each
+    u of every conv, and `L`'s two calls of `s`, outside any loop, compile
+    conv twice: 4,824 compilations of a definition by cells in 18 passes.
+    The header is the same either way.
+  - **In attention's header, exp's value and part are written at each
+    reading, and its argument's NaN test with them.** At `tensor.ink`'s
+    size, 36 values of exp are written 2,412 times and 324 parts 1,296
+    times, 1.17 MB of the 1.27; each argument carries the test of all 18
+    scores of its head, the score matrix being read by its cells, 1.06 MB
+    of it. grad's rules read a value again in each part, the quotient's
+    twice, so a call whose argument moves is written again by every part
+    over it.
+  - **The item's first two measurements**: a guard's dot product is already
+    a temporary, relu's guard reading conv's (`t26_ > 0.0`, C140), and
+    `0.0*x` is 72 products in `saliency`'s header and 342 in attention's,
+    a few KB, foldable only where x is known finite, which a parameter is
+    not. The network of 47 weights the item cites is not in the repository;
+    `conv.ink`'s `train`, four grads of 10 weights, is 38,617 bytes.
+
+  Decided, two changes, the header's values the same operations in the
+  same order:
+  - **A call is kept for the code it is given within a step's list, not a
+    loop's.** Within compiles a sequence with a memo for its list, and a
+    sum or a definition by cells opens one only where the list is not the
+    memo's, so a call is compiled once for the code it is given wherever
+    the step reads it. C230's argument holds as it stands: an expansion's
+    names are its own, so what a call compiles to depends on the code it is
+    given alone. As now, a call that reads a term, one inside a model's
+    expansion and one under `Reading` are not kept, and a limit's lists, a
+    derived value's and the scratch one keep a memo per loop. No header
+    moves.
+  - **Under grad, a call of a function of the header whose argument moves
+    is a temporary, its value then its part**, as an argument a call was
+    compiled in is (C140, C155). The value is declared first, explicitly:
+    C++ leaves the order of a call's arguments to the compiler, and the
+    prototype built by GCC declares the prelude's `exp_dx` first, by Clang
+    `exp_jx`. A temporary whose call may be NaN, by `MayNan` of its text,
+    joins `nan_temporaries_` (C315), so that C189 and C211 read its name
+    as they read the call, but where a function of the source reads a may-NaN
+    argument only through such a call: its answer writes the temporary,
+    not the argument, and C189 adds the argument's test, `isnan(...) ?
+    NAN :`, over-testing, the same values in a longer header. A call whose
+    argument does not move is written where the source writes it, as now.
+
+  So the may-NaN flag *Shared at every value written twice* waits for is
+  not a prerequisite here: a call's temporary carries its NaN by its name,
+  as a function of the header does. **General value numbering is not
+  needed**, and stays its own item. The owner asked whether the compiler
+  would benefit from temporaries generally; for forward mode, measured,
+  it would not: the first cost is no text at all, and the second is one
+  kind of text, which one rule shares. With both, what is still written
+  twice in attention's step is the NaN test of a matrix read by its cells,
+  103 KB of its 245 (*A matrix read by its cells tested for NaN once*,
+  which on the prototype took the header to 162 KB and GCC's time not at
+  all), and softmax's denominators, at most 24 KB, all that general value
+  numbering would add here.
+
+  Rejected:
+  - **Sharing every call of the header's, forward too**: it moves
+    `kernel.h`'s `ceil` and the prelude's `c` step into lines of their own
+    with nothing read twice.
+  - **Sharing at the reader**, a product's or a quotient's operands under
+    grad: more sites, and every product under grad moves, read twice or
+    not.
+  - **The NaN normalisation folded in**: a third of the bytes and none of
+    GCC's time, an item of its own.
+  - **Folding `0.0*x`**: a few KB, and 0 times an infinite parameter is NaN.
+  - **One memo for the whole compile**: a list's temporaries are not
+    another's, and a step's are kept by its list's address.
+  - **Keeping 100 steps and 30 s**: unreachable by any change to the
+    compiler. Three steps hold every value `saliency` specifies, its images
+    repeating every three steps and G reading no earlier term; the
+    interpreter's own speed, and whether a run exact throughout needs its
+    three disturbed runs (next in line), are not this item's.
+
+  Measured on the prototype: `saliency`'s `--compile` 3.0 s to 0.1, and
+  B^4 to near B^2, 0.04, 0.15, 0.37 and 0.75 s for one image to four,
+  their headers byte for byte; under the sanitizers its `--compile` 154 s
+  to 10 and its `--check` of 3 steps 171 s to 23, 22 in float, 100 steps
+  593 s to 481. Attention's W^Q at `tensor.ink`'s size 1,274,039
+  bytes to 252,577, exp written 36 and 324 times, GCC -O2 214 s to 10 and
+  Clang -O2 3.5 s; `attn` in `tensorgrad.ink` 81,259 bytes to 30,684, GCC
+  -O2 3.8 s to 0.35; `attend`'s `--check` under the sanitizers 42 s to 40,
+  the interpreter's. `train` grows 38,617 bytes to 40,041, its max calls
+  written once each and now a line each, a growth accepted.
+
+  What moves: of the recorded headers, `inkamath_prelude.h`'s `d` step
+  alone, its nine calls' values and parts as 18 temporaries; nothing in
+  `test/compile/expected`, no excerpt in `test/cli.cmake`, no golden. Of
+  the check programs, those that call a function of the header under grad,
+  `saliency`'s through max among them, their reports identical: the
+  prototype passed all 420 tests of `ctest` but `prelude_header`, and
+  `saliency`, `attend` and `small` printed the same reports byte for byte.
+
+  About 12 lines in `compile.hpp`: the prototype's 15 added and 4 removed,
+  3 for the memo and 8 for the temporaries, and 1 to declare the value
+  first. 16,252 lines in all at b942d0d, by `wc -l include/inkamath/*.hpp
+  src/*`; past 18 the implementation stops and reports.
+
+  Specified in `test/compile/tensorgrad.ink`'s comments, unwired, each
+  number worked out from the model, none recorded: `saliency` at 3 steps,
+  in double and float, `tensorgrad:saliency:3` among the checked instances
+  of `test/CMakeLists.txt` and its float checks; and `attn`'s header, the
+  cli case `compile_attend_calls` of `test/cli.cmake`: `attn_exp_jx(`
+  written 17 times, its definition and once for each of the 16 scores,
+  `attn_exp_dx(` 49, its definition and once for each score and each of
+  the three seeds its head's slice of W^Q takes, and the header under
+  40,000 bytes. Wired with the implementation, with the prelude's header
+  recorded again.
+
+  Built as specified, in 14 lines of `compile.hpp` against about 12: 4
+  for the memo, one of them comment, and 10 for the temporaries, a
+  function of 6 with 2 of comment and a blank line. Departures: the value
+  is declared first by a statement of its own before the part's call is
+  written, not by an order within one; and a name joins `nan_temporaries_`
+  only where the cell shared is a temporary's, at no line, so that a
+  call's text inside a function of the header, where nothing is shared, is
+  not taken for a name. The prelude's `d` step moves though nothing in it
+  is read twice, a move accepted and recorded in the commit that makes it.
+  `tensorgrad:saliency:3` passes as written, in double and float, and
+  `compile_attend_calls` counts 17 and 49 in 30,684 bytes. Under the
+  sanitizers in Debug, `saliency`'s `--check` of 3 steps takes 24 s, in
+  float too, its model's `--compile` 10 s, and `attend`'s `--check` 35 s;
+  in RelWithDebInfo `saliency`'s `--check` 3.0 s to 0.5. Every golden,
+  every header of `test/compile/expected` and every other recorded header
+  byte for byte, the reports of all 232 check programs, regenerated before
+  and after, identical, and `train` 38,617 bytes to 40,041 as measured.
+  16,266 lines in all, 16,252 at d041418.
+- **No disturbed runs where the exact run is exact throughout**, an
+  oracle change: `--check` runs the interpreter three times more, its
+  roundings and limits disturbed, and a run with no inexact term has none
+  to disturb. On the forward-mode header's prototype, `saliency`'s 100
+  steps take 7.7 s of `--check`, 0.16 of them compiling, and the three
+  runs three quarters of the rest.
 - **A maximum or minimum over an index**, `max_(i=1)^n`, as a sum is
   written: max-pooling over a window is nested `max` calls today. Minor,
   until a second model asks.
 - **The compiled sum's thousand terms**: a LeNet-sized layer's dot product
   over a batch would pass `max_terms`, which bounds an unrolled sum written
   as lines of C, not a loop.
+- **grad's global-name check done during evaluation** (C313). The search
+  for a global that reads grad's variable is static, so a local bound where
+  evaluation does not reach, past a short-circuit or in a sum with no
+  terms, hides the global. Static repairs refuse where they must not:
+  taking a sum's local as unbound refuses `grad_(x = 2) ((sum_(k=1)^3 (t =
+  k*x)) + t)`, 9. Checked as each global is read instead: the reads made
+  through the ordinary evaluator too, which a subtree that does not read
+  grad's frame goes to whole, and the compiler's use of the static search
+  kept or replaced. Well over 20 lines.
+- **A gradient with respect to several names at once**, the nabla's
+  `∇_θ`: training a transformer took 13 grads of 15 arguments, one per
+  weight. It pays only with reverse mode, being built now.
+- **"these matrices have different sizes" names neither size**, and calls a
+  tensor a matrix: name both sizes and suggest the cell form,
+  `T[b,t,j] + c[1,j]`. Broadcasting stays refused.
+- **Layer norm by cells, a README example**: the exploration wrote five
+  definitions, row statistics split out by hand; `transformer.ink` needs
+  two. Deferred with the README.
 - `[done]` **A bare number is exact, and a truth read from a double is
   not** (C240, C241). `~` says only that the digits shown are not all of the value, so
   `~0.5`, `dhinf(1/2, 1, 1)` and `rho([0 1; 0 0])` print `0.5`, `2` and `0`,
@@ -7237,3 +8425,211 @@ checked: what it asked of the compiler, each with its smallest change.
   two above. 38 lines of sources where about 50 were planned, 27 of code:
   `derivative.hpp` 17, `number.hpp` 12, `interpreter.hpp` 4, `matrix.hpp`
   2, `numeric_interface.hpp` 2 and `reference.hpp` 1. 15,911 lines in all.
+- `[done]` **Reverse mode in the interpreter**, the tape first, by the
+  owner's decision; the compiler's adjoint step is a later item of its own,
+  below.
+  The §9 exploration's tiny transformer, 1,056 weights, trains at 16 s a step
+  interpreted: forward mode evaluates the loss once per cell of each weight,
+  4,224 evaluations of 3.6 ms per step of four samples, where one
+  evaluation and a sweep back per gradient cost about two. `MANIFESTO.md`
+  deferred reverse mode until gradients limit the models written; they now
+  do.
+
+  Decided:
+  - **One notation, the mode chosen by shape.** `grad_` keeps its spelling
+    and its answers. A gradient whose variable has more than one cell, at a
+    real point, outside another grad, is evaluated in reverse mode; every
+    other in forward mode, which takes one pass for a single value and gives
+    what reverse mode does not, a matrix's derivative with respect to a
+    single value. The mode is a cost, not a meaning: it may tell answers
+    apart only by rounding, at the printed digits where a part is
+    subnormal, and by a resource, reverse mode answering where forward mode
+    runs out of depth.
+  - **The tape is grad's own walk.** `Derivative` evaluates as now, with
+    the same clauses, guards, jumps, limits, memo, frames and cells; under
+    reverse mode a value's part is a node of a tape instead of a matrix. Each
+    operation forward mode applies to a part records a node, linear in its
+    operands, with the value it multiplies by: a sum, a product by a value on
+    either side, a quotient by one, a product cell by cell, a negation, a
+    mark, and a move of cells (a transpose, a cell, a row or slice, `re` or
+    `im` of a real part, a literal, a tensor's slices), found by mapping cells
+    numbered 1 and up, so that one rule serves every map that only moves
+    cells. A definition by cells places each cell's node into its own. The
+    variable's part is the first node; after the walk, one sweep from the
+    body's node to the first accumulates each node's adjoint, summed down to
+    its operand's shape where a single value or a matrix was widened (C81),
+    slice by slice for tensors. Recorded during evaluation, as
+    `MANIFESTO.md` puts it, the evaluation being grad's: what grad hands the
+    evaluator whole reads no part and is not on the tape.
+  - **What it meets.** A guard chooses at the point, as now, and a part a
+    clause lacks is no node. Sums and products with bounds are unrolled. A
+    call is remembered by its arguments' parts, nodes here, so a call made
+    again with the same nodes answers its own and the tape is a graph; a term
+    remembered as a value never answers for one with parts. A local binds its
+    node in grad's frame as it binds its parts now; one evaluation leaves no
+    pass's locals to put back. A function of the prelude of a moving double
+    takes the header's slope, its part at `~1`, times the adjoint; where the
+    header gives no part, at 0, an infinity or NaN, the definition is walked
+    with the node, as forward mode walks it, and refuses in its words.
+    Forward mode also walks for an exact part (C139); reverse mode does not:
+    the same value to rounding, in fewer steps and less depth, so reverse
+    mode may answer where forward mode refuses, "evaluation nests more than
+    256 references deep".
+  - **What it gives way on.** A limit or an endless sum whose terms move
+    takes the limit of its terms' parts, walked until each part converges
+    (C72), which needs the parts' values; a complex value multiplying a part
+    needs conjugates for `re`, `im` and `abs`; a grad inside needs parts of
+    parts. Meeting one, the walk stops, its locals are put back in both
+    frames, its flags reset, its steps, its own as each of forward mode's
+    passes has its own (C318), put back, and its remembered terms forgotten,
+    since a term remembered answers without raising the flags its walk
+    raised; and forward mode evaluates the grad from the start. A complex
+    point is known before, and goes to forward mode at once. Every refusal
+    keeps its words: whether a part is there, all that C73, C78, C301, a
+    moving size and the staircases ask, a node answers as a matrix does, so
+    a refusal is met where forward mode's first pass meets it; and C215's
+    stepping limit is refused before any part is read.
+  - **The same answers.** Exact values are the same rationals. Doubles agree
+    to rounding where they are normal: an adjoint sums its terms in another
+    order, and the header's slope rounds once where its part rounds with the
+    part. In the subnormals, whose bits are fewer, they may differ at the
+    printed digits: a product rounded there in another order. A cell
+    is inexact where a path to it meets a double, and an exact 0 of an
+    adjoint is no path, which stays exact whatever it meets. So reverse mode
+    puts no `~` forward mode does not, and drops one where forward mode's
+    pass for the cell multiplied a 0, of its seed or of a constant, by a
+    double: `grad_(W = [1 2; 3 4]) [1 1]*W*[~1; 2]` is `[~1, 2; ~1, 2]`,
+    forward mode's `[~1, ~2; ~1, ~2]`. Both keep "a bare number is exact"
+    (C240). Fewer marks are the owner's decision: reverse mode is not meant
+    to match forward mode's.
+  - **Forward mode stays, and nothing is deleted.** It serves a single
+    value, a derivative of a matrix, a grad inside a grad, a complex point,
+    and whatever reverse mode gives way on. Its pass per cell, some 15 lines
+    of `Grad`, could go only by refusing a matrix variable through a moving
+    limit, a complex value or a grad inside, which forward mode answers now.
+  - **Memory.** The tape holds every node of one evaluation and the values
+    they multiply by, and goes with the grad. No cap: a tape grows as its
+    evaluation does, bounded as that is by steps and terms.
+
+  Rejected:
+  - **A second notation**, `nabla` or a mode argument: two ways to say one
+    thing, and a choice the shape already makes.
+  - **A second evaluator with a tape, or a tape in `EvaluationVisitor`**:
+    a third copy of how a call chooses its clause and how `lim` walks, where
+    *Differentiation* already names the second as one that drifts, and every
+    refusal written again. The evaluator knows no parts to record.
+  - **All cells' parts carried in one walk**, vector forward mode, or **the
+    tape replayed forward once per cell**: forward mode's roundings and
+    marks exactly, but arithmetic still per cell, so the count of weights
+    still bounds the model. Neither is reverse mode.
+  - **Forward mode's marks emulated**, or **the prelude walked for an exact
+    part** as forward mode walks it: either needs every node to carry, cell
+    by cell, whether forward mode's part would be exact, about 50 lines, for
+    marks forward mode owes to a 0 times a double and for digits past the
+    ninth.
+  - **Refusing what reverse mode gives way on**, to delete forward mode's
+    pass per cell: a regression for 15 lines.
+  - **A cap on the tape**, falling back to forward mode past it: a bound
+    nothing has needed, and answers whose cost would depend on it.
+
+  Measured with a prototype at 29bf717, not landed: every golden byte for
+  byte, 68 files and 4,081 answers, 96 gradients of them in reverse mode and
+  none giving way. Forced on every outermost grad, a single value's too, 7
+  answers move: six in `fastgrad.ink`, at the 17th digit, a subnormal part
+  at the 6th and `dive(254, t)` answering past the depth at which forward
+  mode's walk of an exact part gives up, and `trig.ink`'s `grad_(x = 0)
+  cos(x)`, `~-0` for `~0`. The transformer's step, RelWithDebInfo with GCC
+  13 on the exploration's files: 18.4 s to 0.45 s, 4,224 evaluations to 52
+  and 52 sweeps; its tape 7,400 nodes and 1.6 MB a gradient, and one step's
+  peak memory 29 MB where forward mode's is 84; ten steps 4.8 s, the first
+  and tenth losses forward mode's to 17 digits.
+  `bench/grad.ink`, a gradient of three cells, 0.24 s to 0.14; forward mode
+  unchanged where it stays.
+
+  About 355 lines, all in `derivative.hpp`, as the prototype wrote them
+  without its probes, about 390 added and 35 changed: the part, a value or a
+  node, with its operators, 45; the tape's nodes, 110; the sweep and its
+  adjoints, an exact 0 skipped in a product, 110; the walk's maps,
+  literals, placed and marked cells, the prelude's slope, memo keys and
+  limits, 50; the reverse pass in `Grad` and giving way, 40. 16,291 lines
+  at 29bf717, by `wc -l include/inkamath/*.hpp src/*`. Past 530 the
+  implementation stops and reports.
+
+  Specified in `test/data/spec/reverse.ink`, 126 answers replayed by the
+  spec suite, restored for it, 6 failing by design: the three marks above,
+  the evidence that reverse mode ran, and its three answers where the modes
+  differ, past forward mode's depth and in the subnormals. The count,
+  `grad_(w = [1 2 3 4 5 6 7 8 9 10]) (w*w' + sum_(k=1)^120000 k)`, one
+  evaluation of a 120,000-step sum where forward mode takes ten, is a plain
+  value: since C318 each of forward mode's passes has steps of its own. The
+  rest pass today and must still: matrices, inverses and tensors exact;
+  README's gradient; sums, products, locals, cells, a ReLU at 0 and
+  remembered terms; the prelude's functions of doubles; a one-cell tensor,
+  forward; the transformer trimmed to one block of two heads, its loss, the
+  gradients of W^Q, a tensor, and of the unembedding, and the loss after one
+  step on every weight, NumPy's by the exploration's `rev.py`; the refusals,
+  each in its words; and what gives way, a moving limit and its divergent
+  derivative, an endless sum, a complex value and point, and a grad inside,
+  after a clause an inexact truth chose in a term the walk remembered, and
+  after a sum of 200,000 steps. README's paragraph on `grad` gains that a
+  gradient with respect to a matrix costs one evaluation and a sweep back,
+  whatever its cells.
+
+  Built as specified: every entry passes as written, and the spec is the
+  golden `reverse.ink`; the spec suite goes, it its only file. No other
+  golden moves. Departures. Five --check reports move, which the plan did
+  not foresee, each of a gradient by a matrix that the compiled step takes
+  in forward mode's order and the interpreter now sweeps back; the figures
+  are at C323, within, then the interpreter's terms "about", each from
+  3593ea7's:
+  `test/compile/grad.ink`'s fall.w 1.3e-15 and 4.4e-15, from 0 and 5.3e-15;
+  `iterates.ink`'s thirds.g 8.5e-14 and 2.4e-13, from 0 and 9.9e-14;
+  `tensorgrad.ink`'s attend.WQ 8.9e-16 and 3.8e-15, from 0 and 3.1e-15;
+  `grad.ink`'s swing, its Jacobians by grad, Pp 2.2e-16 and 5.2e-15, from
+  2.2e-16 and 1.1e-14, xp 4.4e-16 and 5.3e-15, from 8.9e-16 and 8.9e-15, K
+  6.7e-16 and 4.5e-14, from 1.3e-15 and 8.1e-14, P 2.1e-17 and 5.2e-15,
+  from 1.7e-16 and 1e-14, x 4.4e-16 and 5.3e-15, from 8.9e-16 and 8.9e-15;
+  and `implicit.ink`'s jacobian.y, within 0 still, about 2.3e-15 from 2e-15.
+  The owner's ruling accepts them: no float target agrees bit for bit
+  (`MANIFESTO.md`). The compiler's adjoint step,
+  below, can take the interpreter's order again, and until it does a step's
+  gradient by a matrix is the interpreter's to rounding, not to the bit, as
+  README now says. The plan's "every golden byte for byte" held; the reports
+  are not goldens. An exact 0 of an adjoint stays exact through a mark too, a
+  `~` or a clause a guard chose, not only through a product, as "an exact 0
+  of an adjoint is no path" reads; no entry tells the two apart. Where a
+  value is infinite, reverse mode gives each cell the single value's
+  derivative, `[~inf, ~inf]` for `grad_(v = [800 1]) exp(v[1,1])*v[1,2]` and
+  `[0, ~inf]` at 1001, where forward mode's pass for the first cell
+  multiplies v[1,2]'s part there, 0, by inf and answers -nan for it: a
+  defect of forward mode's, C324, since fixed; `reverse.ink` holds reverse
+  mode's answers. The walk's
+  remembered terms are its own: those before it are set aside while it runs
+  and put back whether it answers or gives way, since a node's number means
+  nothing past its tape. Forward mode's refusal of a Jacobian is one
+  function both modes call. 334 lines against about 355, all in
+  `derivative.hpp`, 23 of them comment, 376 added and 42 removed: the part
+  and its operators 44, the tape's nodes 56, the sweep and its adjoints 136,
+  the walk's maps, literals, placed and marked cells, the prelude's slope,
+  memo keys and limits about 55, the walk in `Grad` and giving way about 40.
+  16,659 lines in all, 16,325 at 3593ea7. Measured at this commit,
+  RelWithDebInfo with GCC 13: the transformer's step on the exploration's
+  files 18.2 s to 0.52 s, its peak memory 79 MB to 27, its terms forward
+  mode's to 16 digits; `bench/grad.ink` 0.24 s to 0.13. Under callgrind,
+  after C323, forward mode where it stays costs 4.3 per cent more
+  instructions in `fastgrad.ink`, the same with reverse mode taken out,
+  each part carrying its tape, node and extent: accepted, under the 5 per
+  cent allowed; `bench/`'s other workloads move by 0.7 per cent or less.
+  The 600,000 remembered terms are since in `reverse_memo.ink`, a golden
+  of their own with `fastgrad.ink`'s 120 s timeout: 65 s under the
+  sanitizers alone, where `reverse.ink` stopped at 60.
+- **The compiler's adjoint step**, after the tape: `--compile` keeps
+  forward mode's parts, a pass per cell of a seed. An adjoint emitted by
+  transformation, with the extents the compiler knows (`MANIFESTO.md`), and
+  the window of history a step that keeps its latest terms can give it, is
+  an item of its own, not specified here.
+- **grad's cost per term**: 600,000 remembered terms take 65 s under the
+  sanitizers in reverse mode, 110 µs a term, and 36 s in forward mode;
+  under callgrind, 30,000 terms of `reverse_memo.ink`'s sum cost some
+  17,000 instructions each: a cell read 31 per cent, 11 of them its index,
+  `dynamic_cast` in `Reads` 15, `Key`'s strings 14, and 13 allocations.

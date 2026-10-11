@@ -52,6 +52,7 @@ public:
         std::string     name;
         T               value;
         definition_type definition;   // null when the binding is a value
+        const char*     role = nullptr;  // a sum's index or grad's variable: no local's
     };
     typedef std::vector<Binding> frame_type;
 
@@ -137,9 +138,19 @@ public:
     // or an index, which is part of the key and cannot invalidate anything.
     void Set(const std::string& ai_reference_name, const ParametersDefinition<T>& ai_parameters, PExpression<T>  ai_expression, const std::string& written = std::string()) {
         if (open_ != 0) {
+            Definable(ai_reference_name);
+            // A local by cells is evaluated in a frame of its own: it takes
+            // the values of this one along (C310).
+            Captures captured;
+            if (ai_parameters.cells())
+                for (const Binding& b : frames_[open_ - 1])
+                    if (const T* value = b.definition ? b.definition->Kept() : &b.value)
+                        captured.emplace_back(b.name, *value);
             definition_type& slot = FrameSlot(ai_reference_name).definition;
-            slot =
+            const auto       local =
                 Extended(slot, nullptr, ai_reference_name, ai_parameters, ai_expression, written);
+            local->captured = std::move(captured);
+            slot            = local;
             return;
         }
         // An answer prints the unit as 'i', so no definition may make it
@@ -205,8 +216,10 @@ public:
     // abscissab and eigb, whose bisections are staircases in A: grad
     // refuses them where A moves rather than answer the staircase's 0.
     std::set<const Reference<T>*> staircases;
-    // Their arguments, checked and read before a call, by the interpreter.
-    std::function<void(const Reference<T>&, T&)> checked;
+    // Their arguments, checked and read before a call, by the interpreter:
+    // 1 where a double was read as the rational it is, 2 where one was
+    // approximated past a thousand digits, else 0.
+    std::function<int(const Reference<T>&, T&)> checked;
 
     [[nodiscard]] Scope<T>&       Target() const { return *target_; }
     [[nodiscard]] Scope<T>&       Builtins() { return builtins_; }
@@ -280,10 +293,19 @@ public:
     // has already opened. It was a whole Reference wrapping a heap
     // ValExpression: a make_shared, a Clause and a ParametersDefinition per
     // binding, per call, and again per term of a sequence for the index.
-    void BindValue(const std::string& name, const T& value) {
+    void BindValue(const std::string& name, const T& value, const char* role = nullptr) {
         Binding& slot = FrameSlot(name);
         slot.value = value;
         slot.definition.reset();
+        slot.role = role;
+    }
+
+    // A local may shadow anything but what a construct binds for its own use.
+    void Definable(const std::string& name) const {
+        const Binding* binding = FindBinding(name);
+        if (binding && binding->role)
+            throw std::runtime_error(name + " is " + binding->role +
+                                     ", so a local cannot define it");
     }
 
     std::string Describe(const std::string& ai_reference_name, const ParametersCall<T>& ai_parameters) {
@@ -325,6 +347,35 @@ public:
         const T*              kept       = definition ? definition->Kept() : nullptr;
         if (kept) Step();
         return kept;
+    }
+
+    // A matrix whose cell is read where it is stored, a literal's, a
+    // parameter's or a remembered term's, rather than in a copy of the whole
+    // (C277): found again by what this returns, as reading the cell's place
+    // may bind or remember, and so move it. Empty for anything else.
+    std::function<const T*()> Stored(const Expression<T>& e) {
+        if (const T* kept = Kept(e)) return [kept] { return kept; };
+        const auto* call = dynamic_cast<const FuncExpression<T>*>(&e);
+        if (!call && !dynamic_cast<const RefExpression<T>*>(&e)) return {};
+        if (FindBinding(e.Name())) {
+            const auto held = [this, name = e.Name()]() -> const T* {
+                const Binding* found = FindBinding(name);
+                return !found              ? nullptr
+                       : found->definition ? found->definition->Kept()
+                                           : &found->value;
+            };
+            if (call || !held()) return {};
+            Step();
+            return held;
+        }
+        const definition_type definition = call ? FindGlobal(e.Name()) : nullptr;
+        if (!definition || !definition->Value() || call->Call().limit() ||
+            staircases.contains(definition.get()))
+            return {};
+        MemoKey<T> key = definition->Key(call->Call(), *this);
+        if (!Memoised(key)) return {};
+        Step();
+        return [this, key = std::move(key)] { return Memoised(key); };
     }
 
     // 'g.y_3': the index and the arguments are the caller's, and the name is
@@ -473,6 +524,24 @@ public:
         bool            kept_ = false;
     };
 
+    // The frame as a guard found it, put back unless the guard holds (C300).
+    struct Tentative {
+        Tentative(ReferenceStack<T>& stack, bool binds) : stack_(stack) {
+            if (binds && stack_.open_ != 0) frame_ = stack_.frames_[stack_.open_ - 1];
+        }
+        ~Tentative() {
+            if (frame_ && !kept_) stack_.frames_[stack_.open_ - 1] = std::move(*frame_);
+        }
+        void keep() { kept_ = true; }
+        Tentative(const Tentative&)            = delete;
+        Tentative& operator=(const Tentative&) = delete;
+
+    private:
+        ReferenceStack<T>&        stack_;
+        std::optional<frame_type> frame_;
+        bool                      kept_ = false;
+    };
+
     // The scope of one call's parameters.
     struct Frame {
     public:
@@ -491,6 +560,7 @@ public:
 
 private:
     friend struct Trial;
+    friend struct Tentative;
     friend class Reference<T>;
 
     definition_type Defined(const std::string& name) const {
@@ -627,10 +697,11 @@ private:
     }
 
     // Updating and initialising are the same operation.
-    static definition_type Extended(const definition_type& existing, const Scope<T>* home,
-                                    const std::string&             name,
-                                    const ParametersDefinition<T>& parameters,
-                                    PExpression<T> expression, const std::string& written) {
+    static std::shared_ptr<Reference<T>> Extended(const definition_type& existing,
+                                                  const Scope<T>* home, const std::string& name,
+                                                  const ParametersDefinition<T>& parameters,
+                                                  PExpression<T>                 expression,
+                                                  const std::string&             written) {
         std::shared_ptr<Reference<T>> updated =
             existing ? std::make_shared<Reference<T>>(*existing) : std::make_shared<Reference<T>>();
         updated->home = home;

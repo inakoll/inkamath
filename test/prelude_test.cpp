@@ -97,6 +97,31 @@ TEST_CASE("sin and cos's parts") {
     within("cos's part", sines, [](double x) { return inkamath_prelude_cos_dx(x, 1); }, 2.43);
 }
 
+TEST_CASE("atan") {
+    within("atan", table("atan"), inkamath_prelude_atan, 1.44);
+}
+TEST_CASE("asin") {
+    within("asin", table("asin"), inkamath_prelude_asin, 2.62);
+}
+TEST_CASE("acos") {
+    within("acos", table("acos"), inkamath_prelude_acos, 2.62);
+}
+TEST_CASE("acosh") {
+    within("acosh", table("acosh"), inkamath_prelude_acosh, 3.57);
+}
+
+// Their parts, where finite, within the sweep's worst: acos's is asin's
+// negated.
+TEST_CASE("atan, asin, acos and acosh's parts") {
+    std::vector<Reference> negated = table("asin_dx");
+    for (Reference& r : negated) r.y = -r.y, r.d = -r.d;
+    const auto by = [](double (*f)(double, double)) { return [f](double x) { return f(x, 1); }; };
+    within("atan's part", table("atan_dx"), by(inkamath_prelude_atan_dx), 2.91);
+    within("asin's part", table("asin_dx"), by(inkamath_prelude_asin_dx), 5.46);
+    within("acos's part", negated, by(inkamath_prelude_acos_dx), 5.46);
+    within("acosh's part", table("acosh_dx"), by(inkamath_prelude_acosh_dx), 5.31);
+}
+
 TEST_CASE("ilogb") {
     for (const Reference& r : table("log")) {
         std::ostringstream where;
@@ -120,6 +145,39 @@ TEST_CASE("sweep" * doctest::skip()) {
         unsigned  seed;
         bool      exponent;  // lo and hi bound the exponent, the mantissa uniform
     };
+    // atan, asin, acos, acosh and their parts; asin's and acos's at 1 - y
+    // and acosh's at 1 + y, where they are steepest, of the double 1 - y is.
+    const auto of_atan      = [](L x) { return std::atan(x); };
+    const auto of_asin      = [](L x) { return std::asin(x); };
+    const auto of_acos      = [](L x) { return std::acos(x); };
+    const auto of_acosh     = [](L x) { return std::acosh(x); };
+    const auto atan_dx      = [](double x) { return inkamath_prelude_atan_dx(x, 1); };
+    const auto of_atan_dx   = [](L x) { return 1 / (1 + x * x); };
+    const auto asin_dx      = [](double x) { return inkamath_prelude_asin_dx(x, 1); };
+    const auto of_asin_dx   = [](L x) { return 1 / std::sqrt((1 - x) * (1 + x)); };
+    const auto acos_dx      = [](double x) { return inkamath_prelude_acos_dx(x, 1); };
+    const auto of_acos_dx   = [](L x) { return -1 / std::sqrt((1 - x) * (1 + x)); };
+    const auto acosh_dx     = [](double x) { return inkamath_prelude_acosh_dx(x, 1); };
+    const auto of_acosh_dx  = [](L x) { return 1 / std::sqrt((x - 1) * (x + 1)); };
+    const auto asin_1       = [](double y) { return inkamath_prelude_asin(1 - y); };
+    const auto of_asin_1    = [](L y) { return std::asin(L(1 - double(y))); };
+    const auto acos_1       = [](double y) { return inkamath_prelude_acos(1 - y); };
+    const auto of_acos_1    = [](L y) { return std::acos(L(1 - double(y))); };
+    const auto asin_dx_1    = [](double y) { return inkamath_prelude_asin_dx(1 - y, 1); };
+    const auto of_asin_dx_1 = [](L y) {
+        const L x = 1 - double(y);
+        return 1 / std::sqrt((1 - x) * (1 + x));
+    };
+    const auto acos_dx_1    = [](double y) { return inkamath_prelude_acos_dx(1 - y, 1); };
+    const auto of_acos_dx_1 = [](L y) {
+        const L x = 1 - double(y);
+        return -1 / std::sqrt((1 - x) * (1 + x));
+    };
+    const auto acosh_dx_1    = [](double y) { return inkamath_prelude_acosh_dx(1 + y, 1); };
+    const auto of_acosh_dx_1 = [](L y) {
+        const L x = 1 + double(y);
+        return 1 / std::sqrt((x - 1) * (x + 1));
+    };
     const auto   of_exp  = [](L x) { return std::exp(x); };
     const auto   of_log  = [](L x) { return std::log(x); };
     const auto   of_tanh = [](L x) { return std::tanh(x); };
@@ -141,6 +199,26 @@ TEST_CASE("sweep" * doctest::skip()) {
         {"cos", inkamath_prelude_cos, of_cos, -turn, turn, 200'000'000, 29, false},
         {"cos", inkamath_prelude_cos, of_cos, -1000, 1000, 200'000'000, 29, false},
         {"cos", inkamath_prelude_cos, of_cos, -0x1p20, 0x1p20, 200'000'000, 29, false},
+        {"atan", inkamath_prelude_atan, of_atan, -1, 1, 100'000'000, 36, false},
+        {"atan", inkamath_prelude_atan, of_atan, -16, 16, 100'000'000, 36, false},
+        {"atan", inkamath_prelude_atan, of_atan, -1074, 1024, 100'000'000, 36, true},
+        {"asin", inkamath_prelude_asin, of_asin, -1, 1, 100'000'000, 43, false},
+        {"asin", inkamath_prelude_asin, of_asin, -1074, -1, 100'000'000, 43, true},
+        {"asin at 1 - y", asin_1, of_asin_1, -53, -1, 100'000'000, 43, true},
+        {"acos", inkamath_prelude_acos, of_acos, -1, 1, 100'000'000, 50, false},
+        {"acos at 1 - y", acos_1, of_acos_1, -53, -1, 100'000'000, 50, true},
+        {"acosh", inkamath_prelude_acosh, of_acosh, 1, 2, 100'000'000, 57, false},
+        {"acosh", inkamath_prelude_acosh, of_acosh, 0, 1024, 100'000'000, 57, true},
+        {"atan's part", atan_dx, of_atan_dx, -1, 1, 100'000'000, 64, false},
+        {"atan's part", atan_dx, of_atan_dx, -16, 16, 100'000'000, 64, false},
+        {"atan's part", atan_dx, of_atan_dx, -1074, 512, 100'000'000, 64, true},
+        {"asin's part", asin_dx, of_asin_dx, -1, 1, 100'000'000, 71, false},
+        {"asin's part at 1 - y", asin_dx_1, of_asin_dx_1, -53, -1, 100'000'000, 71, true},
+        {"acos's part", acos_dx, of_acos_dx, -1, 1, 100'000'000, 78, false},
+        {"acos's part at 1 - y", acos_dx_1, of_acos_dx_1, -53, -1, 100'000'000, 78, true},
+        {"acosh's part", acosh_dx, of_acosh_dx, 1, 2, 100'000'000, 85, false},
+        {"acosh's part", acosh_dx, of_acosh_dx, 0, 512, 100'000'000, 85, true},
+        {"acosh's part at 1 + y", acosh_dx_1, of_acosh_dx_1, -52, 0, 100'000'000, 85, true},
     };
     for (const Range& r : ranges) {
         std::mt19937_64                        g(r.seed);

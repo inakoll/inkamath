@@ -118,13 +118,15 @@ public:
 template <typename T>
 class EqualExpression final : public BinaryExpression<T> {
 public:
-    explicit EqualExpression(PExpression<T> e1, PExpression<T> e2)
-    : BinaryExpression<T>(e1,e2)
-    {}
+    explicit EqualExpression(PExpression<T> e1, PExpression<T> e2, bool listed = false)
+        : BinaryExpression<T>(e1, e2), listed_(listed) {}
 
     const std::string& Name() const override {
         return BinaryExpression<T>::m_e1()->Name();
     }
+
+    // 'g() = 1', a list that adds nothing, refused (C314, C321).
+    [[nodiscard]] bool Listed() const { return listed_; }
 
     PExpression<T> accept(TransformationVisitor<T> &v) override {
         return v.visit(this);
@@ -133,7 +135,9 @@ public:
     T accept(FoldingVisitor<T> &v) override {
         return v.visit(this);
     }
-protected:
+
+private:
+    bool listed_;
 };
 
 template <typename T>
@@ -196,8 +200,8 @@ template <typename T>
 class BuiltinExpression final : public UnaryExpression<T> {
 public:
     using Cell = typename T::value_type;
-    BuiltinExpression(PExpression<T> e, std::string name, Cell (*function)(const Cell&))
-        : UnaryExpression<T>(e), name(std::move(name)), function(function) {}
+    BuiltinExpression(PExpression<T> e, std::string named, Cell (*f)(const Cell&))
+        : UnaryExpression<T>(e), name(std::move(named)), function(f) {}
 
     const std::string name;
     Cell (*const function)(const Cell&);
@@ -370,6 +374,9 @@ public:
 
     [[nodiscard]] bool                  Product() const { return product_; }
     [[nodiscard]] const std::string&    Index() const { return index_; }
+    [[nodiscard]] const char*           Role() const {
+        return product_ ? "the product's index" : "the sum's index";
+    }
     [[nodiscard]] const PExpression<T>& Lower() const { return this->Children()[0]; }
     // Null for a series without an upper bound.
     [[nodiscard]] const PExpression<T>& Upper() const { return this->Children()[1]; }

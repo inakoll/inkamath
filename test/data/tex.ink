@@ -153,3 +153,17 @@ ya_n = n
 >> tex ?ya
 \mathit{ya}_0 = 5
 \mathit{ya}_n = \begin{cases} 0 & \text{if } n < 0 \\ n & \text{otherwise} \end{cases}
+
+# A comparison that is a whole right-hand side keeps its brackets, as in a
+# product: 'I_{j,k} = j = k' reads as a chain.
+>> I[j<=2, k<=2] = j == k
+I[j<=2, k<=2] = j == k
+
+>> tex ?I
+I_{j,k} = (j = k), \quad 1 \le j \le 2,\ 1 \le k \le 2
+
+>> pos(x) = x > 0 and x < 1
+pos(x) = x > 0 and x < 1
+
+>> tex ?pos
+\operatorname{pos}(x) = (x > 0 \land x < 1)

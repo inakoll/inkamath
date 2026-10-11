@@ -33,6 +33,26 @@ function(check name)
     endforeach()
 endfunction()
 
+# The lines a file written is to hold, each found as given.
+function(holds name file)
+    file(READ "${OUT}/${file}" text)
+    math(EXPR last "${ARGC} - 1")
+    foreach(i RANGE 2 ${last})
+        string(FIND "${text}" "${ARGV${i}}" at)
+        if(at EQUAL -1)
+            message(SEND_ERROR "${name}: ${file} does not hold\n${ARGV${i}}")
+        endif()
+    endforeach()
+endfunction()
+
+# Read by cases in every part.
+set(inputs "${CMAKE_CURRENT_LIST_DIR}/compile/inputs.ink")
+
+# The cases run as three tests of about equal time under the sanitizers: PART
+# 1 up to charpoly's refusal, 2 from it, 3 from eig's, and all where PART is
+# not given.
+if(NOT PART OR PART EQUAL 1)
+
 # Read from a pipe, it is a filter: no banner, no prompt, one answer for each
 # input, a definition answering with itself.
 set(input "1+1\nsum_(k=1)^10 k\na=2\na*3\n")
@@ -182,6 +202,8 @@ At a terminal the prompt edits the line and keeps its history.
               that is not the one recorded
   --float     with --compile or --check, write floats where they write
               doubles
+  --steps n   with --check and an instance, step it n times rather than
+              100, n from 1 to 100000
   --help      print this and exit
 
 A file whose first line that is not blank or a comment starts with '>>'
@@ -368,7 +390,7 @@ check(compile_c127)
 # interpreter's words where it has them; y and P compile.
 file(WRITE "${OUT}/tensor.ink" "T = [1 2; 3 4;; 5 6; 7 8]\nU = [1 2; 3 4;; 5 6; 7 8;; 9 10; 11 12]\n"
      "a_n = (n*T)[2,1]\nb_n = (n*T)^2\nc_n | n*T > 1 = 1\nc_n = 0\nd_n = n*T + U\n"
-     "f_n = [n 1;; 2 3 4]\ng_n = lim p(n*T)\nh_n = grad_(V = n*T) sum_(b=1)^2 [1 1]*V[b]*[1; 1]\n"
+     "f_n = [n 1;; 2 3 4]\ng_n = lim p(n*T)\n"
      "m_n[b<=2, i<=1, j<=1] | n > 2 = b\nm_n[b<=2, i<=1, j<=1] = 0\np(A)_0 = A\n"
      "p(A)_k = p(A)_(k-1)/2\nq_n = [n;; 1] + [1 2]\nr_n = [n;; 1]*[1 2; 3 4]\n"
      "y_0 = 0\ny_n = y_(n-1) + T[2,1,2]\nP[b<=2, j<=2, k<=2] = b\n")
@@ -379,13 +401,24 @@ cannot compile c: a comparison of matrices
 cannot compile d: a 2x2x2 tensor and a 3x2x2 tensor have different numbers of slices
 cannot compile f: the slices of a tensor have one size, not 1x2 and 1x3
 cannot compile g: a tensor in a limit, for now
-cannot compile h: a derivative with respect to a tensor, for now
 cannot compile m: a tensor's cells under a guard that is not a constant, for now
 cannot compile q: a tensor whose slices are single values met by a matrix, for now
 cannot compile r: a tensor whose slices are single values met by a matrix, for now
 ")
 set(exit 1)
 check(compile_tensor_refused)
+
+# A gradient with respect to a tensor compiled refuses a Jacobian, as the
+# interpreter does, in its words (test/compile/tensorgrad.ink).
+file(WRITE "${OUT}/tensorgrad.ink" "T = [1 2; 3 4;; 5 6; 7 8]\nh_n = grad_(V = n*T) 2*V\n"
+     "k_n = grad_(V = n*T) V[1]\nw_n = grad_(v = [n 1]) v*T\n")
+set(args --compile tensorgrad.ink)
+set(stdout "cannot compile h: grad of a tensor with respect to a tensor is a Jacobian, which it does not give
+cannot compile k: grad of a matrix with respect to a tensor is a Jacobian, which it does not give
+cannot compile w: grad of a tensor with respect to a matrix is a Jacobian, which it does not give
+")
+set(exit 1)
+check(compile_tensorgrad_refused)
 
 # The prelude's mod refuses a matrix to divide by, as the interpreter does,
 # rather than compile the product of matrices it would be.
@@ -425,6 +458,121 @@ set(args --check models.ink gain)
 set(stderr "inkamath: --check takes a transcript, or a file, an instance it defines and -o check.c\nTry 'inkamath --help'.\n")
 set(exit 2)
 check(check_usage)
+
+# --steps n: --check steps the instance n times where it stepped it a hundred.
+file(WRITE "${OUT}/coast.ink" "fall(N = 1000, T = 125, g = 1, v0 = 64) = {\n    h = T/N\n    v_0 = v0\n    v_n = v_(n-1) - g*h\n    y_0 = 0\n    y_n = y_(n-1) + h*v_n\n}\ncoast = fall()\n")
+
+# The program steps the instance n times and says so first, anywhere the
+# option is given on the line.
+set(args --check coast.ink coast --steps 1001 -o coast.c)
+check(check_steps)
+holds(check_steps coast.c
+    [[printf("coast: 1001 steps from 0, against exact values\n");]]
+    "    for (int n = 0; n < 1001; ++n) {\n"
+    "static const double want_0[1001] = {")
+set(args --steps 1001 --check coast.ink coast -o first.c)
+check(check_steps_first)
+holds(check_steps_first first.c [[printf("coast: 1001 steps from 0, against exact values\n");]])
+set(args --check coast.ink coast --float --steps 1001 -o floated.c)
+check(check_steps_float)
+holds(check_steps_float floated.c
+    [[printf("coast: 1001 steps from 0 in float, against exact values\n");]])
+set(args --check coast.ink coast --steps 1 -o one.c)
+check(check_steps_one)
+holds(check_steps_one one.c [[printf("coast: 1 step from 0, against exact values\n");]])
+
+# A hundred is the default, byte for byte.
+file(MAKE_DIRECTORY "${OUT}/plain" "${OUT}/hundred")
+set(args --check coast.ink coast -o plain/coast.c)
+check(check_steps_default)
+set(args --check coast.ink coast --steps 100 -o hundred/coast.c)
+check(check_steps_hundred)
+file(READ "${OUT}/plain/coast.c" plain)
+set(hundred "")
+if(EXISTS "${OUT}/hundred/coast.c")
+    file(READ "${OUT}/hundred/coast.c" hundred)
+endif()
+if(NOT "${plain}" STREQUAL "${hundred}")
+    message(SEND_ERROR "check_steps_hundred: --steps 100 is not the program without it")
+endif()
+
+# The largest is read: the instance is refused after it, before any term.
+set(args --check coast.ink nothing --steps 100000 -o nothing.c)
+set(stderr "inkamath: coast.ink defines no instance nothing\n")
+set(exit 1)
+check(check_steps_most)
+
+# Anything but a whole number from 1 to 100000 in decimal digits is refused
+# in one sentence, a form that adds nothing among them, before anything runs.
+set(i 0)
+foreach(n IN ITEMS 0 -5 2.5 1e3 100001 0100 +5 99999999999999999999)
+    math(EXPR i "${i} + 1")
+    set(args --check coast.ink coast --steps ${n} -o refused.c)
+    set(stderr "inkamath: --steps takes a whole number from 1 to 100000\nTry 'inkamath --help'.\n")
+    set(exit 2)
+    check(check_steps_refused_${i})
+endforeach()
+set(args --check coast.ink coast -o refused.c --steps)
+set(stderr "inkamath: --steps takes a whole number from 1 to 100000\nTry 'inkamath --help'.\n")
+set(exit 2)
+check(check_steps_missing)
+# So is -o last, where it was an unknown option (C280).
+set(args --check coast.ink coast -o)
+set(stderr "inkamath: -o takes a file to write\nTry 'inkamath --help'.\n")
+set(exit 2)
+check(check_output_missing)
+if(EXISTS "${OUT}/refused.c")
+    message(SEND_ERROR "check_steps_refused: refused.c was written")
+endif()
+
+# Given twice, even alike.
+set(args --check coast.ink coast --steps 10 --steps 10 -o twice.c)
+set(stderr "inkamath: --steps is given twice\nTry 'inkamath --help'.\n")
+set(exit 2)
+check(check_steps_twice)
+# And so are -o and --float, a repetition adding nothing (C297).
+set(args --check coast.ink coast -o twice.c -o twice.c)
+set(stderr "inkamath: -o is given twice\nTry 'inkamath --help'.\n")
+set(exit 2)
+check(check_output_twice)
+set(args --check coast.ink coast --float --float -o twice.c)
+set(stderr "inkamath: --float is given twice\nTry 'inkamath --help'.\n")
+set(exit 2)
+check(check_float_twice)
+# And the rest, each one alike (C302).
+foreach(twice IN ITEMS --compile --check --echo -i)
+    set(args ${twice} ${twice} coast.ink)
+    set(stderr "inkamath: ${twice} is given twice\nTry 'inkamath --help'.\n")
+    set(exit 2)
+    check(twice_${twice})
+endforeach()
+
+# Only an instance's check has steps: not a header, a transcript replayed,
+# or files run.
+file(WRITE "${OUT}/said.ink" ">> 1+1\n2\n")
+foreach(case IN ITEMS "compile;--compile;coast.ink;fall;-o;fall.h"
+                      "transcript;--check;said.ink"
+                      "run;coast.ink")
+    list(POP_FRONT case name)
+    set(args ${case} --steps 10)
+    set(stderr "inkamath: --steps takes --check with an instance\nTry 'inkamath --help'.\n")
+    set(exit 2)
+    check(check_steps_${name}_refused)
+endforeach()
+# An instance with no -o is told what --check takes, as without --steps.
+set(args --check coast.ink coast --steps 10)
+set(stderr "inkamath: --check takes a transcript, or a file, an instance it defines and -o check.c\nTry 'inkamath --help'.\n")
+set(exit 2)
+check(check_steps_usage)
+# And so is one a word too many, with --steps or --float, where each said it
+# takes --check with an instance (C298).
+foreach(option IN ITEMS "steps;--steps;5" "float;--float")
+    list(POP_FRONT option name)
+    set(args --check coast.ink coast extra ${option} -o extra.c)
+    set(stderr "inkamath: --check takes a transcript, or a file, an instance it defines and -o check.c\nTry 'inkamath --help'.\n")
+    set(exit 2)
+    check(check_${name}_extra_usage)
+endforeach()
 
 # The step takes a single value for an input whose model states no size, so
 # an instance giving a matrix is refused by name, where it was read past its
@@ -486,18 +634,6 @@ set(stderr "inkamath: v.x_(0): evaluation nests more than 256 references deep\n"
 set(exit 1)
 check(check_walked_asked)
 
-# The lines a file written is to hold, each found as given.
-function(holds name file)
-    file(READ "${OUT}/${file}" text)
-    math(EXPR last "${ARGC} - 1")
-    foreach(i RANGE 2 ${last})
-        string(FIND "${text}" "${ARGV${i}}" at)
-        if(at EQUAL -1)
-            message(SEND_ERROR "${name}: ${file} does not hold\n${ARGV${i}}")
-        endif()
-    endforeach()
-endfunction()
-
 # C140: a call's value given to a function is computed once, where written at
 # each reading of the parameter it tripled at each call nested here, 1.2 MB.
 file(WRITE "${OUT}/c140.ink" "f(p) = p/2 + p/3 + p/5\nx_0 = 1\nx_n = f(f(f(f(f(f(f(f(f(f(x_(n-1)))))))))))\n")
@@ -539,6 +675,44 @@ if(NOT calls EQUAL 3)
     message(SEND_ERROR "compile_c155: c155_exp written ${calls} times, not 3")
 endif()
 
+# Under grad, its value and part are temporaries where its argument moves:
+# exp's in attention, once for each score and each seed (compile/tensorgrad.ink).
+set(args --compile "${CMAKE_CURRENT_LIST_DIR}/compile/tensorgrad.ink" attn -o attn.h)
+check(compile_attend_calls)
+file(READ "${OUT}/attn.h" text)
+string(REGEX MATCHALL "attn_exp_jx\\(" values "${text}")
+string(REGEX MATCHALL "attn_exp_dx\\(" parts "${text}")
+list(LENGTH values values)
+list(LENGTH parts parts)
+file(SIZE "${OUT}/attn.h" size)
+if(NOT values EQUAL 17 OR NOT parts EQUAL 49 OR NOT size LESS 40000)
+    message(SEND_ERROR "compile_attend_calls: attn_exp_jx( ${values} times, attn_exp_dx( "
+                       "${parts}, in ${size} bytes")
+endif()
+
+# C315: a temporary that may be NaN was known by its name, which a limit's
+# function names its own by: the step's t1_, atan's, and nw's v0_, exp's,
+# made nw's t1_ and q's v1_ tested for a NaN nothing gives them.
+file(WRITE "${OUT}/c315.ink" "F(M) = 1\nG(v) = v*v\nr(s, v) = exp(s) - v\nnw(v)_0 = 0\nnw(v)_k = nw(v)_(k-1) - r(nw(v)_(k-1), v)/grad_(s = nw(v)_(k-1)) r(s, v)\nq(v)_0 = v\nq(v)_k = F(G(G(q(v)_(k-1)) + 1))*q(v)_(k-1)/2\na_n = G(G(n) + 1) + grad_(s = n) atan(s)\nb_n = lim nw(n + 1)\nc_n = lim q(n)\n")
+set(args --compile c315.ink -o c315.h)
+check(compile_c315)
+holds(compile_c315 c315.h "        const double v2_ = v0_ + (0.0 - arg_v);\n"
+      "        const double t_ = 1.0 * t1_ / 2.0;\n")
+
+# C317: a call's memo key wrote out where its argument's part is there, a
+# graph each f shares five times: 287 s and 4 GB before, 0.02 s since.
+file(WRITE "${OUT}/c317.ink" "relu(z)[i,j] | z[i,j] > 0 = z[i,j]\nrelu(z)[i,j] = 0\nf(z)[i,j] = z[i,j] - sum_(k=1)^4 z[i,k]/4\nm(x_n[i<=1, j<=4]) = {\n    c_0 = [0 0 0 0]\n    c_n = c_(n-1) - grad_(r = c_(n-1)) sum_(j=1)^4 f(f(f(f(f(f(relu(x_n + r)))))))[1,j]^2/1000\n}\n")
+set(args --compile c317.ink m -o c317.h)
+check(compile_c317)
+
+# C319: an input read bare is refused as the interpreter refuses it, where a
+# function given it refused a place in a 1x1 matrix.
+file(WRITE "${OUT}/c319.ink" "m(x_n[i<=2, j<=2]) = {\n    f(z)[i,j] = z[i,j]\n    y_n = f(x)[2,1]\n}\n")
+set(args --compile c319.ink m -o c319.h)
+set(stderr "inkamath: cannot compile y: x is a sequence; index it\n")
+set(exit 1)
+check(compile_c319)
+
 # C153: a power of 1/2 is C's sqrt, rounded correctly, where pow need not be.
 file(WRITE "${OUT}/c153.ink" "x_0 = 2\nx_n = x_(n-1)^(1/2) + x_(n-1)^0.5\n")
 set(args --compile c153.ink -o c153.h)
@@ -547,6 +721,19 @@ holds(compile_c153 c153.h "2.0 : sqrt(0.0 + m_->x[1]) + sqrt(0.0 + m_->x[1]);\n"
 set(args --compile c153.ink --float -o c153f.h)
 check(compile_float_c153)
 holds(compile_float_c153 c153f.h "2.0f : sqrtf(0.0f + m_->x[1]) + sqrtf(0.0f + m_->x[1]);\n")
+
+# A root of 0 to a negative power divides by an exact zero, as 0^-1 does.
+file(WRITE "${OUT}/pole.ink" "y_n = 0^(-1/2)\n")
+set(args --compile pole.ink -o pole.h)
+set(stderr "inkamath: cannot compile y: division by zero\n")
+set(exit 1)
+check(compile_pole)
+
+# C286: grad's u^(c-1) at a constant 0 is C's pow's inf, folded.
+file(WRITE "${OUT}/c286.ink" "y_n = grad_(t = 0) t^(1/2)\n")
+set(args --compile c286.ink -o c286.h)
+check(compile_c286)
+holds(compile_c286 c286.h "(isnan(t0_) ? NAN : INFINITY);\n")
 
 # C161: a float's inverse starts from the identity in floats, which MSVC's
 # /W4 asks of an int converted to one.
@@ -661,7 +848,6 @@ holds(check_nan_any any.c [[m_->o_clause_ = isnan(t1_) ? 0 : t1_ != 0.0 ? 1 : 2;
 
 # An input whose model states its size, x_n[j<=2], is a pointer to its cells,
 # row by row, as test/compile/inputs.ink specifies (C83).
-set(inputs "${CMAKE_CURRENT_LIST_DIR}/compile/inputs.ink")
 foreach(model IN ITEMS dot ctl turn avg)
     set(args --compile ${inputs} ${model} -o ${model}.h)
     check(compile_inputs_${model})
@@ -755,6 +941,13 @@ set(stdout "cannot compile w: tr takes M[j<=n, k<=n], not a 2x3 matrix\n")
 set(exit 1)
 check(compile_signature_refused)
 
+if(PART EQUAL 1)
+    return()
+endif()
+endif()
+
+if(NOT PART EQUAL 3)
+
 # The prelude's charpoly compiles; rho does not yet, by hurwitzb's factorial,
 # and grad refuses it and abscissa where A moves, as the interpreter does
 # (DESIGN.md, the characteristic polynomial and stability). A 1x1 matrix is
@@ -765,13 +958,8 @@ set(stdout "cannot compile g: grad cannot differentiate rho yet\ncannot compile 
 set(exit 1)
 check(compile_charpoly_refused)
 
-# Nor do eig and smax, by a comparison of matrices and hurwitzb's factorial,
-# and grad refuses them where A moves (DESIGN.md, eig and smax).
-file(WRITE "${OUT}/eig.ink" "x_n = eig([n 1; 1 2])[1]\ny_n = smax([n 2; 3 4])\ng_n = grad_(a = n) eig([a 1; 1 2])[1]\nh_n = grad_(a = n) smax([a 2; 3 4])\n")
-set(args --compile eig.ink)
-set(stdout "cannot compile g: grad cannot differentiate eig yet\ncannot compile h: grad cannot differentiate smax yet\ncannot compile x: a comparison of matrices\ncannot compile y: a factorial\n")
-set(exit 1)
-check(compile_eig_refused)
+# check_not_transcript reads the models.ink part 1 writes.
+file(WRITE "${OUT}/models.ink" "gain(k = 2, x_n) = { y_n = k*x_n + z_n }\n")
 
 # Nor do hinf and dhinf, by hurwitzb's factorial in their guards, and grad
 # refuses them where A moves (DESIGN.md, the H-infinity norm). Of a 1x1
@@ -917,7 +1105,7 @@ holds(float_gate float/gate.h "#include <float.h>\n#include <math.h>\n"
       [[        const float t_ = t1_ + (t1_ + (0.0f - t2_)) * arg_z / (float)k_;
         if (started_) {
             step_ = fabsf(t_ - t1_);
-            if (step_ <= 2 * FLT_EPSILON * fabsf(t_) && isfinite(t_) && stepped_) return t_;
+            if (step_ > 0 && step_ <= 2 * FLT_EPSILON * fabsf(t_) && isfinite(t_) && stepped_) return t_;
             if (step_ <= 1e-10f && stepped_ &&
 ]] [[    m_->p[0][0][0] = 1.0f / (1.0f + gate_lim0(m_, 0.0f + (0.0f - (0.0f * m_->w[0][0][0] + 0.0f * m_->w[0][1][0] + m_->b[0]))));
 ]])
@@ -997,6 +1185,23 @@ cannot compile c: a guarded cell of one term
 ")
 set(exit 1)
 check(compile_cellguards_refused)
+
+if(PART EQUAL 2)
+    return()
+endif()
+endif()
+
+# Made in part 2 too, which part 3 runs without.
+file(MAKE_DIRECTORY "${OUT}/float")
+
+# Nor do eig and smax, as rho does not, by a comparison of matrices and
+# hurwitzb's factorial, and grad refuses them where A moves (DESIGN.md, eig
+# and smax).
+file(WRITE "${OUT}/eig.ink" "x_n = eig([n 1; 1 2])[1]\ny_n = smax([n 2; 3 4])\ng_n = grad_(a = n) eig([a 1; 1 2])[1]\nh_n = grad_(a = n) smax([a 2; 3 4])\n")
+set(args --compile eig.ink)
+set(stdout "cannot compile g: grad cannot differentiate eig yet\ncannot compile h: grad cannot differentiate smax yet\ncannot compile x: a comparison of matrices\ncannot compile y: a factorial\n")
+set(exit 1)
+check(compile_eig_refused)
 
 # C132: a gradient with respect to a matrix that nothing moves is a zero of
 # the point's shape, not of the body's.
@@ -1202,7 +1407,6 @@ cannot compile d: z is defined by itself
 cannot compile e: p_(...): a term after the one being computed
 cannot compile f: calls nested 64 deep, which a recursion its guards do not end would pass
 cannot compile g: an index must be a whole number, not 0.5
-cannot compile h: a sequence with parameters in a limit's terms, for now
 cannot compile u: a sequence with parameters by cells, for now
 ")
 set(exit 1)
@@ -1240,7 +1444,6 @@ set(args --compile blocks.ink)
 set(stdout "cannot compile a: a tensor cannot be a block of a literal, only a matrix can
 cannot compile b: a block that does not fill its band
 cannot compile c: its clauses have different shapes
-cannot compile d: a matrix inverse inside a limit's terms
 ")
 set(exit 1)
 check(compile_blocks_refused)
@@ -1253,3 +1456,44 @@ set(args --compile c220.ink -o c220.h)
 check(compile_c220)
 holds(compile_c220 c220.h [[    m_->x[0][0][0] = m_->Q[0][0] * (double)m_->index_ + 1.0 * 1.0 + 2.0 * 1.0 + (m_->R[0][0] * (double)m_->index_ + m_->R[0][1] * 1.0);
 ]])
+
+# Temporaries in a limit's function (DESIGN.md, compile/implicit.ink): each
+# value of Robertson's Newton iterate written once, h read 12 times, by
+# Cramer's rule, through grad's Jacobian, and by the inverse called once.
+set(rober "k1 = 0.04\nk2 = 3*10^7\nk3 = 10^4\nf(y) = [-k1*y[1] + k3*y[2]*y[3]; k1*y[1] - k3*y[2]*y[3] - k2*y[2]*y[2]; k2*y[2]*y[2]]\nJ(y) = [-k1, k3*y[3], k3*y[2]; k1, -k3*y[3] - 2*k2*y[2], -k3*y[2]; 0, 2*k2*y[2], 0]\nJg(y)[j<=3, k<=3] = (grad_(v = y) f(v)[j])[k]\nI = [1 0 0; 0 1 0; 0 0 1]\nc(j) = mod(j - 1, 3) + 1\nadj(A)[j<=3, k<=3] = A[c(k+1), c(j+1)]*A[c(k+2), c(j+2)] - A[c(k+1), c(j+2)]*A[c(k+2), c(j+1)]\ndet3(A) = (A[1]*adj(A))[1,1]\nsolve(A, b) = adj(A)*b/det3(A)\nh = 1/10\nnw(yp)_0 = yp\ny_0 = [1; 0; 0]\ny_n = lim nw(y_(n-1))\nnw(yp)_k = nw(yp)_(k-1) - ")
+set(newton "nw(yp)_(k-1) - yp - h*f(nw(yp)_(k-1))")
+file(WRITE "${OUT}/solve/cramer.ink" "${rober}solve(I - h*J(nw(yp)_(k-1)), ${newton})\n")
+file(WRITE "${OUT}/grad/cramer.ink" "${rober}solve(I - h*Jg(nw(yp)_(k-1)), ${newton})\n")
+file(WRITE "${OUT}/inverse/cramer.ink" "${rober}(I - h*J(nw(yp)_(k-1)))^-1*(${newton})\n")
+foreach(form solve grad inverse)
+    set(args --compile ${form}/cramer.ink -o ${form}/cramer.h)
+    check(compile_implicit_${form})
+    file(READ "${OUT}/${form}/cramer.h" text)
+    string(REGEX MATCHALL "m_->h \\*" reads "${text}")
+    list(LENGTH reads reads)
+    file(SIZE "${OUT}/${form}/cramer.h" size)
+    if(NOT reads EQUAL 12 OR NOT size LESS 32768)
+        message(SEND_ERROR "compile_implicit_${form}: h read ${reads} times in ${size} bytes")
+    endif()
+endforeach()
+string(REGEX MATCHALL "cramer_inverse3_\\(" calls "${text}")
+list(LENGTH calls calls)
+if(NOT calls EQUAL 2)
+    message(SEND_ERROR "compile_implicit_inverse: cramer_inverse3_ written ${calls} times, not 2")
+endif()
+set(args --compile inverse/cramer.ink --float -o float/cramer.h)
+check(compile_float_implicit)
+file(READ "${OUT}/float/cramer.h" text)
+string(FIND "${text}" "double" at)
+if(NOT at EQUAL -1)
+    message(SEND_ERROR "compile_float_implicit: float/cramer.h holds 'double'")
+endif()
+holds(compile_float_implicit float/cramer.h "float v0_[3][3] = ")
+
+# A global's temporaries, read first in a limit's terms, are numbered as
+# the update's, not as that limit's: two such are two names.
+file(WRITE "${OUT}/twice.ink" "a = 1/2\nM = [a, 1; 1, a]\nP = (M + M)*(M + M)\nQ = (M - 2)*(M - 2)\ns(x)_0 = x\ns(x)_k = s(x)_(k-1)/2 + P[1,1]*x\nr(x)_0 = x\nr(x)_k = r(x)_(k-1)/2 + Q[1,1]*x\ny_n = lim s(n) + lim r(n)\n")
+set(args --compile twice.ink -o twice.h)
+check(compile_limit_globals)
+holds(compile_limit_globals twice.h "    const double t0_ = m_->a + m_->a;\n"
+      "    const double t2_ = m_->a - 2.0;\n")

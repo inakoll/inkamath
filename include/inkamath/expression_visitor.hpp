@@ -262,6 +262,8 @@ public:
     // Installing the definition, without evaluating anything. A definition at
     // the top level is a statement and never gets as far as visit().
     void Bind(EqualExpression<T>* expr, const std::string& written = std::string()) {
+        // 'g() = 1' would be 'g = 1': a list that adds nothing (C321).
+        if (expr->Listed()) throw std::runtime_error("a parameter list cannot be empty");
         this->stack_.Set(expr->Name(), Parameters(expr), expr->m_e2(), written);
     }
 
@@ -281,6 +283,7 @@ public:
     // a lookup, in the callee frame that lookup pushes, where the parameter it
     // captured is no longer visible -- which is what C29 found.
     T visit(EqualExpression<T>* expr) override {
+        Unparametrized(*expr);
         if(!expr->m_e1()->Children().empty()) {
             Bind(expr);
             return expr->m_e1()->accept(*this);
@@ -289,6 +292,17 @@ public:
         this->stack_.Set(expr->Name(), ParametersDefinition<T>(),
                          PExpression<T>(new ValExpression<T>(value)));
         return value;
+    }
+
+    // With parameters a local would be a function, which could not capture
+    // the line's names (C29): it is a value (C303). An index is a parameter,
+    // which it would read as a global (C309).
+    static void Unparametrized(const EqualExpression<T>& expr) {
+        const std::vector<PExpression<T>>& signature = expr.m_e1()->Children();
+        if ((!signature.empty() && signature[0]) || expr.Listed())
+            throw std::runtime_error("a local cannot take parameters");
+        if (!signature.empty() && signature[1])
+            throw std::runtime_error("a local cannot take an index");
     }
 
     // The two operands are sequenced: C++ leaves the order of `f(a) + f(b)`
@@ -316,19 +330,23 @@ public:
     }
 
     T visit(CellExpression<T>* expr) override {
-        const T* kept      = stack_.Kept(*expr->Matrix());
-        const T  evaluated = kept ? T() : expr->Matrix()->accept(*this);
-        const T& matrix    = kept ? *kept : evaluated;
+        const auto stored    = stack_.Stored(*expr->Matrix());
+        const T    evaluated = stored ? T() : expr->Matrix()->accept(*this);
+        T          again;
+        const auto matrix = [&]() -> const T& {
+            const T* found = stored ? stored() : &evaluated;
+            return found ? *found : again = expr->Matrix()->accept(*this);
+        };
         if (expr->Slice()) {
             const int slice = AsIndex<T>(expr->Slice()->accept(*this));
             const int row   = AsIndex<T>(expr->Row()->accept(*this));
-            return numeric_interface<T>::cell(matrix, slice, row,
-                                              AsIndex<T>(expr->Col()->accept(*this)));
+            const int col   = AsIndex<T>(expr->Col()->accept(*this));
+            return numeric_interface<T>::cell(matrix(), slice, row, col);
         }
         const int row = AsIndex<T>(expr->Row()->accept(*this));
-        if (!expr->Col()) return numeric_interface<T>::row(matrix, row);
+        if (!expr->Col()) return numeric_interface<T>::row(matrix(), row);
         const int col = AsIndex<T>(expr->Col()->accept(*this));
-        return numeric_interface<T>::cell(matrix, row, col);
+        return numeric_interface<T>::cell(matrix(), row, col);
     }
 
     T visit(NegExpression<T>* expr) override {
@@ -482,7 +500,7 @@ public:
 
         const auto term = [&](int k) {
             stack_.Step();
-            stack_.BindValue(expr->Index(), T(k));
+            stack_.BindValue(expr->Index(), T(k), expr->Role());
             return expr->Body()->accept(*this);
         };
         const auto combine = [&](const T& total, const T& next) {

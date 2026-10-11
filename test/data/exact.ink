@@ -81,8 +81,9 @@ error: ~3 was approximated, so it has no exact fraction
 >> 2^(1/2)
 ~1.41421356
 
+# But the root of a perfect power is exact.
 >> 4^(1/2)
-~2
+2
 
 # A power of 1/2 is a square root, rounded correctly, where libm's pow
 # answered 1 (C153).

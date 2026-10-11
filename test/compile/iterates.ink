@@ -51,15 +51,17 @@ poly = eigen(x_n = n)
 # shows: at 1, taken one after another as written, d is -0.6666666666666675
 # and g's first cell -6.661338147750939e-16, where 4x - 2 and 3x - 1 at that
 # x round to -0.6666666666666667 and -5.551115123125783e-17. Every value
-# below is worked out in Python's doubles in the interpreter's order, a
+# below is worked out in Python's doubles in forward mode's order, a
 # matrix product's sum from its first term and grad's part of a product
-# a'*b + a*b', a matrix's at a time; the step takes the same order, so:
+# a'*b + a*b', a matrix's at a time. The step takes the same order, and so
+# does the interpreter but for g, a gradient by a matrix it sweeps back in
+# reverse mode:
 #
 #     thirds: 100 steps from 0, against exact values until 0 and inexact ones from there
 #     thirds.A: within 0; the interpreter's terms about <e> from the exact ones
 #     thirds.c: within 0; the interpreter's terms about <e> from the exact ones
 #     thirds.d: within 0; the interpreter's terms about <e> from the exact ones
-#     thirds.g: within 0; the interpreter's terms about <e> from the exact ones
+#     thirds.g: within 8.5e-14; the interpreter's terms about <e> from the exact ones
 thirds = eigen(x_n = ~(n/3))
 
 # 'plan', a model-predictive controller's few steps of projected gradient
@@ -94,10 +96,10 @@ plan = mpc(x_n = n/4 - 3)
 # filling another, so h_n is 256 terms, the interpreter's to the bit.
 # Python's doubles, and numpy's floats, give 0 for every x = n/25 below 1
 # and 1 from 1 on, where the exact terms are n/25. The interpreter's power
-# of 1/2 is inexact wherever it is taken, 4^(1/2) and at 0 too, so its terms
-# are from 0:
+# of 1/2 is exact at 0 alone, 1/25's root 1/5 having none, so its terms
+# are from 1:
 #
-#     graph: 100 steps from 0, against exact values until 0 and inexact ones from there
+#     graph: 100 steps from 0, against exact values until 1 and inexact ones from there
 #     graph.h: within 0; the interpreter's terms about <e> from the exact ones, past the tolerance from <n>
 #
 # the estimate and where it passes the tolerance being the disturbed runs',
@@ -257,7 +259,7 @@ lone = single(x_n = n + 1)
 #     cannot compile e: p_(...): a term after the one being computed
 #     cannot compile f: calls nested 64 deep, which a recursion its guards do not end would pass
 #     cannot compile g: an index must be a whole number, not 0.5
-#     cannot compile h: a sequence with parameters in a limit's terms, for now
 #     cannot compile u: a sequence with parameters by cells, for now
 #
-# on standard output, exiting 1.
+# on standard output, exiting 1. h compiles since a limit's function has
+# temporaries (DESIGN.md), as implicit.ink's 'inset'.

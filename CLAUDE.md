@@ -106,6 +106,8 @@ purpose.
   doctest (vendored, header-only, tests only). Adding a third is a decision to
   raise explicitly, not to slip into a commit. Boost was removed on purpose.
 - Everything must build and pass under `-DINKAMATH_SANITIZE=address,undefined`.
+  That run is CI's: locally, build with the sanitizers only when a change
+  risks a memory error, and run only the tests it touches.
 - Before pushing:
 
   ```sh

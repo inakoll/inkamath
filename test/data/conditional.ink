@@ -323,6 +323,68 @@ pg_0 | cg > 5 = 2
 >> pg_0
 2
 
+# Nor a local the guard binds: the clause taken reads what the frame held
+# before it, under grad as well (C300).
+>> r(x) | (lu = x) > 5 = 1
+r(x) | (lu = x) > 5 = 1
+
+>> r(x) = lu
+r(x) = lu
+
+>> r(1)
+error: lu is not defined
+
+>> lu = 4
+lu = 4
+
+>> r(1)
+4
+
+>> clear lu
+clear lu
+
+>> rp(x) | (x = 9) > 10 = 1
+rp(x) | (x = 9) > 10 = 1
+
+>> rp(x) = x
+rp(x) = x
+
+>> rp(2)
+2
+
+>> rs_n | (lu = n) > 5 = 1
+rs_n | (lu = n) > 5 = 1
+
+>> rs_n = lu
+rs_n = lu
+
+>> rs_2
+error: lu is not defined
+
+>> rd[1] | (lu = 3) > 5 = 1
+rd[1] | (lu = 3) > 5 = 1
+
+>> rd[j<=2] | (lu = j) > 5 = 1
+rd[j<=2] | (lu = j) > 5 = 1
+
+>> rd[j<=2] = lu
+rd[j<=2] = lu
+
+>> rd
+error: lu is not defined
+
+>> hh(y) = y
+hh(y) = y
+
+>> lg(x) | hh(0 + (lu = 3)) > 5 = 1
+lg(x) | hh(0 + (lu = 3)) > 5 = 1
+
+>> lg(x) = lu*x
+lg(x) = lu*x
+
+>> grad_(x = 1) lg(x)
+error: lu is not defined
+
 # Every clause of a definition shares its parameters, because a call binds
 # them once, for whichever clause ends up answering. A clause that names them
 # differently could never be called correctly -- the argument would be bound

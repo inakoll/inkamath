@@ -102,7 +102,7 @@ public:
                          PExpression<T> row       = PExpression<T>(),
                          PExpression<T> col       = PExpression<T>(),
                          PExpression<T> slice     = PExpression<T>())
-        : guard_(guard), signature_(std::move(signature)) {
+        : guard_(guard), signature_(std::move(signature)), binds_(guard && Binds(*guard)) {
         if (params)
             for (const PExpression<T>& written : params->Children()) Parameter(written, evaluator);
         if(subexpr) {
@@ -148,6 +148,13 @@ public:
                                              : "a cell's row and column need two names");
             }
         }
+    }
+
+    static bool Binds(const Expression<T>& e) {
+        if (dynamic_cast<const EqualExpression<T>*>(&e)) return true;
+        for (const PExpression<T>& child : e.Children())
+            if (child && Binds(*child)) return true;
+        return false;
     }
 
     // A parameter is a name, 'x' or 'x = 1', or a name and its size,
@@ -289,6 +296,8 @@ public:
     PExpression<T> guard() const {return guard_;}
     const std::string& signature() const {return signature_;}
     bool guarded() const {return bool(guard_);}
+    // Whether the guard binds a local, which a guard that fails takes back.
+    bool                            binds() const { return binds_; }
     int index() const {return index_;}
     const std::string& index_name() const {return index_name_;}
     const std::vector<std::string>& parameters_names() const {return parameters_names_;}
@@ -302,6 +311,7 @@ protected:
     std::vector<Size>        sizes_;  // as this clause states them
     PExpression<T> guard_;
     std::string signature_;
+    bool                     binds_ = false;
     std::vector<std::string> parameters_names_;
     ExprDict<T> parameters_dict_;
     std::string index_name_;

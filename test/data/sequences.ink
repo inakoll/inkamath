@@ -147,6 +147,18 @@ w_n=w_(n-1)+1e-11
 >> lim w
 error: w did not converge within 100 terms (last term 1e-09)
 
+# Nor is a repeated term a limit. The binary digits of 1/3 are 0101..., and
+# at each 0 a term repeats the one before: 'lim' stopped at the first repeat,
+# 1/4 (DESIGN.md, C279). It now stops within 2^-34/3 of 1/3.
+>> dig(x)_0=0
+dig(x)_0=0
+
+>> dig(x)_n=dig(x)_(n-1)+(dig(x)_(n-1)+2^-n<=x)*2^-n
+dig(x)_n=dig(x)_(n-1)+(dig(x)_(n-1)+2^-n<=x)*2^-n
+
+>> lim dig(1/3)
+~0.333333333
+
 # And a series that converges too slowly to be summed term by term: after n
 # terms of 1/n^2 the remainder is about 1/n, so raising the cap does not help
 # -- at a hundred thousand terms it answers 1.64492407 where pi^2/6 is

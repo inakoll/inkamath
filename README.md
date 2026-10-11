@@ -162,17 +162,23 @@ the step: `test/compile/iterates.ink` takes a determinant by Faddeev-LeVerrier,
 grad through it, and a few steps of projected gradient. A
 limit of matrices fills an array, cell by cell: `test/compile/steady.ink`
 finds a chain's steady state and, by power iteration, a matrix's dominant
-direction at every step. A `grad` is compiled forward, each value carrying its
-part beside it by the interpreter's rules, so that the step's gradient is the
-interpreter's to the bit: `test/compile/grad.ink` trains a line and a logistic
+direction at every step. A limit's iterate has temporaries as a step has, a
+matrix inverse or a call nested in an argument computed once per iterate:
+`test/compile/implicit.ink` takes each step of backward Euler on a stiff
+chemical system by Newton's method under `lim`, its inverse written as the
+paper writes it. A `grad` is compiled forward, each value carrying its part
+beside it by the interpreter's rules, so that the step's gradient is the
+interpreter's to the bit, or to rounding where the interpreter sweeps one by a
+matrix back: `test/compile/grad.ink` trains a line and a logistic
 regression by it, and `test/compile/cellguards.ink` a ReLU network through
 its activation written by its cells, each cell's guards tested in the step;
 a derivative of a derivative, of a limit or of a matrix power is refused for
 now. A tensor is an array as C keeps one,
 `double O[B][T][D]`, slice after slice, and is met slice by slice as the
 interpreter meets it: `test/compile/tensor.ink` runs multi-head attention
-over a batch and trains a layer on minibatches by `grad`; a tensor in a
-limit, or a `grad` with respect to one, is refused for now. A block literal,
+over a batch and trains a layer on minibatches by `grad`, and
+`test/compile/tensorgrad.ink` takes a `grad` with respect to a tensor; a
+tensor in a limit is refused for now. A block literal,
 `[A, 0; -C, 1]`, is laid out as the interpreter lays it out (section 2),
 each block's cells written into their place: `test/compile/blocks.ink`
 packs a doubling algorithm's iterates into one term, and refuses a block
@@ -227,6 +233,11 @@ rounding's, and the check does not fail for it (`test/compile/straddle.ink`,
 where `crease`'s 0.30000000000000004 is 5.6e-17 from the double nearest its
 threshold 3/10).
 
+`--steps n` beside an instance's `--check` steps it n times rather than a
+hundred, n from 1 to 100000. n counts the step's calls, the one that computes the first
+term among them, so a model of N steps after its initial term, `y_0` to
+`y_N`, is checked whole with `--steps` N + 1 (`test/compile/steps.ink`).
+
 `--float`, beside `--compile` or an instance's `--check`, writes floats where
 the header writes doubles, every constant the nearest float, for a target that
 computes in float. Its check holds each term within a thousandth of one plus
@@ -257,13 +268,13 @@ Language
 
 A literal is exact as written, and stays exact through `+`, `-`, `*`, `/` and
 whole powers: `1/3+1/3+1/3` is `1`, and `0.1+0.2` is `0.3`. What can only be
-approached — `pi`, `e`, a root, a limit — is inexact, as is anything written
-after `~`, and an inexact number makes inexact whatever it touches: a
-comparison that reads one, since a truth read from a double may be wrong, and
-the answer of a clause a guard reading one chose. An exact number that
-outgrows a thousand digits becomes inexact rather than wrong, and an answer
-that did ends in `# approximated past a thousand digits`, a comment, so it
-still reads back; so does whatever such a number touches, a truth and a
+approached — `pi`, `e`, a root that is not rational, a limit — is inexact, as
+is anything written after `~`, and an inexact number makes inexact whatever it
+touches: a comparison that reads one, since a truth read from a double may be
+wrong, and the answer of a clause a guard reading one chose. An exact number
+that outgrows a thousand digits becomes inexact rather than wrong, and an
+answer that did ends in `# approximated past a thousand digits`, a comment, so
+it still reads back; so does whatever such a number touches, a truth and a
 clause chosen too. Dividing by an exact zero is an error.
 
 Every number prints in decimal: an exact whole number in full, anything else
@@ -281,8 +292,9 @@ functions, each cell by cell of a matrix: the largest whole number not above
 its argument, exact of an exact number, and a complex number's real and
 imaginary parts, the paper's Re and Im. `ceil(x) = -floor(-x)` and
 `mod(a, b) = a - b*floor(a/b)` come with them, from a prelude (section 5),
-and so do `exp`, `log`, `tanh`, `sin`, `cos`, `abs`, `max` and `min`, and,
-of matrices, `charpoly`, `hurwitz`, `schurcohn`, `rho`, `abscissa`, `eig`,
+and so do `exp`, `log`, `tanh`, `sin`, `cos`, `atan`, `atan2`, `asin`,
+`acos`, `acosh`, `abs`, `max` and `min`, and, of matrices, `charpoly`,
+`hurwitz`, `schurcohn`, `rho`, `abscissa`, `eig`,
 `smax`, `hinf` and `dhinf` (section 2). `abs` takes a complex number too, |z|, so a
 frequency response's magnitude |T(e^{iw})| is written as on paper.
 Any other rounding is a line of it, by the rule the model needs —
@@ -555,8 +567,8 @@ root has its real part below s, and `schurcohn(p, r = 1)` where every root
 is inside |z| < r, both strictly. `rho(A)`, the spectral radius, and
 `abscissa(A)`, the largest real part of an eigenvalue, bisect on those
 tests: `rhob(A)_m` and `abscissab(A)_m` are the brackets [lo; hi] after m
-halvings, lo at most the value and hi above it, exact of an exact matrix,
-and the answer is lo, inexact, once the bracket is within 2^-53 of its end
+halvings, lo at most the value and hi above it, and the answer is lo,
+inexact, once the bracket is within 2^-53 of its end
 nearer 0, or its ends are adjacent doubles, after 64 halvings and at most 256. It is certified while the tests
 are exact; their numbers grow with the matrix and the halvings, and past a
 thousand digits they are approximated and the answer is marked, within a
@@ -567,8 +579,13 @@ marginal system's abscissa from a small one. A nilpotent matrix's rho, its
 polynomial lambda^n, is 0 and certified, and so is an abscissa whose
 polynomial is lambda^k q, q's roots left of the axis, but not one with a
 pair on it. Of a matrix of tenths, `rho` is
-certified up to about 6x6 and `abscissa` 8x8. `grad` refuses both, a
-bisection being a staircase:
+certified up to about 6x6 and `abscissa` 8x8. An inexact cell is read as
+the exact rational its double is, as by `hinf` below, so the answer is
+right for the data as stored, certified or marked as of an exact matrix,
+and inexact, a bracket too, marked where a cell was approximated past a
+thousand digits: of full doubles, `rho` is certified up to 6x6
+and `abscissa` 8x8 as well. `grad` refuses both, a bisection being a
+staircase:
 
 ```
 >> charpoly([1 2; 3 4])
@@ -594,14 +611,17 @@ and marked as rho's: `eigb(A, k)_m` is the k-th one's bracket, and a 0 is
 certified without one. The count holds only where every eigenvalue is
 real, so `eig` refuses a matrix with a complex one rather than give its
 real ones alone; a symmetric matrix has none, and any other is asked by
-Hermite's test. Of an inexact matrix that test is rounded: it refuses
-most nonsymmetric ones from about 5x5, and symmetric ones but for rounding,
-such as `Q*D*Q'`, from 5x5 or 6x6, which `eig((A + A')/2)` asks as
-symmetric; and it may take a complex pair within about 8 digits of the real
-axis for a real one. A k-fold eigenvalue of an inexact matrix is good to
-about 16/k digits. An exact matrix whose test passes a thousand digits may
-be refused, saying so, or answered, marked. Of a symmetric matrix of
-tenths, `eig` is certified up to about 36x36. `grad` refuses both:
+Hermite's test. An inexact matrix is read as `rho` reads it, so its
+eigenvalues are those of the data as stored: a k-fold one of the matrix
+meant may be split by the rounding of its cells, and `eig` gives the split
+ones, each right. Hermite's test of doubles is exact too, and passes past
+a thousand digits from about 8x8, as the symmetric test does not: `Q*D*Q'`
+rounded, symmetric but for rounding, is answered up to 7x7 and refused
+from 8x8, saying so, which `eig((A + A')/2)` asks as symmetric. An exact
+matrix whose test passes a thousand digits may be refused, saying so, or
+answered, marked. Of a symmetric matrix of tenths, `eig` is certified up
+to about 36x36, and of full doubles up to 24x24 at least, in 200 s.
+`grad` refuses both:
 
 ```
 >> eig([2 1; 1 3])
@@ -615,6 +635,30 @@ error: eig needs a matrix whose eigenvalues are all real
 ~9.52551809
 ```
 
+`eig(A, B)` is the generalized problem's: every lambda of A phi = lambda B
+phi, a structure's frequencies K phi = omega^2 M phi or its buckling loads,
+as a column, smallest first; `eig(A)` is `eig(A, A^0)`. B must be
+symmetric positive definite, and a B indefinite, singular or not symmetric
+is refused before A is looked at. The eigenvalues are B^-1 A's, bisected,
+certified and marked as eig's; beside such a B a symmetric A has every one
+real, without Hermite's test, and any other A is asked it of B^-1 A, as
+`eig(B^-1*A)` is. So a cantilever's M^-1 K, refused past a thousand digits
+from 12 unknowns, is certified as `eig(K, M)` at 24. Doubles in A and B are
+read as the rationals they are, so the answer is right for the data as
+stored, and inexact. A B of doubles symmetric only up to rounding, as
+X'*D*X, is refused: write (B + B')/2. An A not symmetric then has B^-1 A
+exact and larger than the rounded product, marked from about 5x5 and
+refused from 6x6 where `eig(B^-1*A)` of the rounded product still answers:
+
+```
+>> eig([2 -1; -1 2], [2 1; 1 2])
+[~0.333333333;
+           ~3]
+
+>> eig([2 1; 1 2], [1 0; 0 -1])
+error: eig needs B symmetric positive definite
+```
+
 `hinf(A, B, C, D)` is the H-infinity norm of the stable system x' = Ax +
 Bu, y = Cx + Du: the largest singular value of its transfer function
 C(iwI - A)^-1 B + D over every frequency w, the peak of |T(iw)| for one
@@ -624,7 +668,8 @@ peak of section 1's T, at z = 1. Each bisects the norm's square, certified
 as rho's, on whether the Hamiltonian has an eigenvalue on the imaginary
 axis, which an exact count of real roots tells, and refuses a test whose
 numbers would pass a thousand digits rather than read it from doubles, so
-an answer is marked only where it leaves a double's range. The system is
+an answer is marked only where it leaves a double's range or a cell was
+approximated past a thousand digits. The system is
 divided by its largest cells first, exactly, so the units of its input,
 output and time cost nothing, though not its state's: a 3x3 whose states
 are scaled 10^15 apart, or 10^5 apart in doubles, is refused. An inexact
@@ -889,6 +934,10 @@ u_n=2*n
 error: u did not converge within 100 terms (last term 200)
 ```
 
+The 1e-10 is absolute, so for a cell far below 1, where it settles few of
+the cell's own digits, a read at a count known to suffice, `f(x)_K`, gives
+the exact discrete value instead.
+
 `lim` stops when the last step is under the tolerance *and* the remainder the
 steps imply is too. A series can converge too slowly to be summed this way —
 after `n` terms of `1/n^2` the sum has moved by `1e-10` while it still has
@@ -965,7 +1014,7 @@ point is read around it, the name only in the body, which is a term as a sum's
 is. What the body reads through definitions is differentiated with it, exactly
 where its parts are exact. A derivative at a parameter is the derivative as a
 function, and a single value's gradient with respect to a matrix has the
-matrix's shape:
+matrix's shape and costs one evaluation and a sweep back, whatever its cells:
 
 ```
 >> grad_(x = 2) x^3
@@ -1160,25 +1209,34 @@ of its own: the session reaches its names qualified, `filters.lowpass`, and
 `use filters (lowpass)` brings in unqualified those listed. A file is read
 once, holds definitions only, and one that cannot be read or parsed loads
 nothing and says where. The prelude that defines `ceil`, `mod`, `exp`, `log`,
-`tanh`, `sin`, `cos`, `abs`, `max`, `min`, `charpoly`, `hurwitz`,
+`tanh`, `sin`, `cos`, `atan`, `atan2`, `asin`, `acos`, `acosh`, `abs`,
+`max`, `min`, `charpoly`, `hurwitz`,
 `schurcohn`, `rho`, `rhob`, `abscissa`, `abscissab`, `eig`, `eigb`,
 `smax`, `hinf` and `dhinf`, and what they call, is included bare beneath the
 session, as the built-ins are: every scope sees it, and a session
 that defines one of its names again does so for itself
 alone, and clearing it gives the prelude's back. `exp`, `log`, `tanh`,
 `sin` and `cos` are written in it, accurate to under 3 units in the last
-place of a double, by the operations a compiled step performs:
+place of a double, and `atan`, `atan2`, `asin` and `acos` to under 2.7 and
+`acosh` to under 3.6, by the operations a compiled step performs:
 `exp(x)` is 2^k e^r, r = x - k ln 2 and e^r a polynomial, `log` reduces by
 `ilogb`, the power of two at or below its argument, and `sin` and `cos` by the
 multiple of pi/2 nearest theirs. An exact argument is reduced exactly, save
 within about 1e-31 of a multiple of pi/2 (C123), nothing they give is exact, and `log(0)` is refused in log's own name; so are `sin` and
 `cos` past 2^20 either way, where the reduction would round, so a growing
-phase such as `sin(w*t)` stops at 2^20. Compiled, each is a C function of the
+phase such as `sin(w*t)` stops at 2^20. `atan` reduces by one of 0, 1/2, 1,
+2 and infinity, `atan2(y, x)` is the angle of (x, y) in (-pi, pi], `asin` is
+`atan2` of x and the root of (1 - x)(1 + x), `acos` of the root and x, and
+`acosh` is log(x + root(x^2 - 1)), what the sum rounded added back. `asin` and `acos`
+refuse past 1 either way, `acosh` below 1 and `atan2` the origin, each in its
+own words; a double's -0 is 0, so `atan2(~0*(-1), -1)` is pi, where C's is
+-pi. Compiled, each is a C function of the
 header's own; the interpreter calls the same functions, and under `grad` their
 parts, checked in as `include/inkamath/inkamath_prelude.h`, on a double, where
 they answer what the definitions answer. Measured against mpmath, at worst
-`exp` is 1.31 units off, `log` 2.94, `tanh` 2.97, `sin` 2.43 and `cos` 2.45
-(`test/prelude_test.cpp`).
+`exp` is 1.31 units off, `log` 2.94, `tanh` 2.97, `sin` 2.43, `cos` 2.45,
+`atan` 1.44, `atan2` 1.89, `asin` 2.61, `acos` 2.61 and `acosh` 3.57, log's
+own error near its fold (`test/prelude_test.cpp`).
 `test/data/models.ink` is the whole of it.
 
 Data comes in as a file of definitions like any other, written by whatever

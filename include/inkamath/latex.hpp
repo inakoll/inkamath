@@ -66,7 +66,7 @@ public:
         for (const auto& line : lines) {
             const ParametersDefinition<T>& p = line.front()->parameters;
             if (!p.cells())
-                out += Left(name, p, p.sizes()) + " = " + Of(*line.front()->expression).text + "\n";
+                out += Left(name, p, p.sizes()) + " = " + Right(*line.front()->expression) + "\n";
             else
                 out += Entry(name, p, definition.Sizes()) + " = " + Cases(line) + Bounds(p) + "\n";
         }
@@ -149,7 +149,7 @@ private:
     // they are tried.
     static std::string Cases(const std::vector<const Clause<T>*>& cases) {
         if (cases.size() == 1 && !cases.front()->parameters.guarded())
-            return Of(*cases.front()->expression).text;
+            return Right(*cases.front()->expression);
         // A term among the cases is named by the index the others take.
         std::string index;
         for (const Clause<T>* clause : cases)
@@ -234,6 +234,9 @@ private:
         return text.level < level ? "(" + text.text + ")" : text.text;
     }
 
+    // After '=', where a comparison would read as a chain, 'j = j = k'.
+    static std::string Right(const Expression<T>& e) { return Wrapped(Of(e), sum); }
+
     // As written, in their order: a keyword's name with the index an input's
     // is written with, 'x_n = n'.
     static std::string Arguments(const ParametersCall<T>& call) {
@@ -262,6 +265,18 @@ private:
                 all.find('~') == std::string::npos)
                 return all;
         return text;
+    }
+
+    // A limit with its arguments, its index a letter they do not read:
+    // 'lim s(b_(n-1))' is '\lim_{k \to \infty} s(b_{n-1})_k'.
+    static Text Limit(const std::string& object, const FuncExpression<T>& call) {
+        std::string index;
+        for (const char letter : std::string("nkmjipq"))
+            if (!Mentions(call, index = std::string(1, letter))) break;
+        const std::string& name = call.Name();
+        const std::string  term =
+            call.m_e1() ? Operator(name) + "(" + Arguments(call.Call()) + ")" : Name(name);
+        return {"\\lim_{" + index + " \\to \\infty} " + object + term + "_" + index, Level::sum};
     }
 
     // An expression, its operators spaced unless it is an index, where
@@ -372,13 +387,12 @@ private:
         if (const auto* member = dynamic_cast<const MemberExpression<T>*>(&e)) {
             const std::string object = Of(*member->Object()).text + ".";
             const auto*       call = dynamic_cast<const FuncExpression<T>*>(member->Member().get());
-            if (call && call->limit())
-                return {"\\lim_{n \\to \\infty} " + object + Name(call->Name()) + "_n", Level::sum};
+            if (call && call->limit()) return Limit(object, *call);
             return {object + Of(*member->Member()).text};
         }
         if (const auto* call = dynamic_cast<const FuncExpression<T>*>(&e)) {
             const std::string& name = call->Name();
-            if (call->limit()) return {"\\lim_{n \\to \\infty} " + Name(name) + "_n", Level::sum};
+            if (call->limit()) return Limit("", *call);
             const ParametersCall<T>& arguments = call->Call();
             if (name == "floor" && arguments.parameters_expression().size() == 1)
                 return {"\\lfloor " + Of(*arguments.parameters_expression().front()).text +

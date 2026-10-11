@@ -184,6 +184,10 @@ public:
         // A parameter of the definition's name hides the definition.
         const std::vector<std::string>& own = ai_parameters.parameters_names();
         const bool hidden = std::find(own.begin(), own.end(), reference_name_) != own.end();
+        // As a model's: the second binds what the first does, adding nothing.
+        for (auto name = own.begin(); name != own.end(); ++name)
+            if (std::find(own.begin(), name, *name) != name)
+                throw std::runtime_error(reference_name_ + " has two parameters named " + *name);
         if (ai_parameters.cells() && !ai_parameters.row_name().empty())
             for (const PExpression<T>& e : {ai_parameters.guard(), ai_expression})
                 Reads(e, ai_parameters, hidden ? "" : reference_name_, {}, clause.reads);
@@ -192,7 +196,7 @@ public:
         // disagrees could only ever read a global under its own name (DESIGN.md,
         // C51), or a default not its own (C154).
         if (clauses_.size() == 1 && IsPlain(clauses_.front()) && IsPlain(clause)) clauses_.clear();
-        if (!clauses_.empty() && Taken(ai_parameters, false) != Taken(CallParameters(), false)) {
+        if (!clauses_.empty() && Taken(ai_parameters) != Taken(CallParameters())) {
             throw std::runtime_error(reference_name_ + " takes (" + Shown(clauses_.front()) +
                                      "), so a clause cannot take (" + Shown(clause) + ")" +
                                      Advice());
@@ -275,8 +279,8 @@ public:
         const auto existing =
             std::find_if(clauses_.begin(), clauses_.end(), [&](const Clause<T>& c) {
                 return ai_parameters.guarded()
-                           ? c.parameters.guarded() && Taken(c.parameters, false, true) ==
-                                                           Taken(ai_parameters, false, true)
+                           ? c.parameters.guarded() &&
+                                 Taken(c.parameters, true) == Taken(ai_parameters, true)
                            : !c.parameters.guarded() && Shape(c) == Shape(clause);
             });
         if (existing != clauses_.end())
@@ -318,7 +322,7 @@ public:
     // refused before the body, in the words of the parameters that state it
     // (DESIGN.md, a size bound by a signature).
     struct Measure {
-        explicit Measure(const Reference& of) : of(of) {}
+        explicit Measure(const Reference& reference) : of(reference) {}
 
         std::vector<std::pair<std::string, size_t>> operator()(size_t i, const Extent& e) {
             const auto& sizes  = of.sizes_;
@@ -352,11 +356,14 @@ public:
         std::unordered_map<std::string, std::pair<size_t, size_t>> sized;  // its extent, who first
     };
 
-    // The value of a plain definition by a literal of numbers, once built.
+    // The value of a plain definition by a literal of numbers, once built,
+    // or by a value, as a local's.
     [[nodiscard]] const T* Kept() const {
         const Clause<T>* only = clauses_.size() == 1 ? &clauses_.front() : nullptr;
         if (!Value() || !only || !IsPlain(*only) || !only->parameters.parameters_names().empty())
             return nullptr;
+        if (const auto* value = dynamic_cast<const ValExpression<T>*>(only->expression.get()))
+            return &value->value;
         const auto* literal = dynamic_cast<const MatExpression<T>*>(only->expression.get());
         return literal && literal->built ? &*literal->built : nullptr;
     }
@@ -509,21 +516,38 @@ public:
         }
     }
 
-    T Eval(const ParametersCall<T>& call, ReferenceStack<T>& stack, bool global = true) const {
+    // The index and the arguments belong to the caller, so they are
+    // evaluated before the callee's scope exists.
+    MemoKey<T> Key(const ParametersCall<T>& call, ReferenceStack<T>& stack) const {
         const ParametersDefinition<T>& parameters = CallParameters();
         parameters.CheckArity(reference_name_, call);
-
-        // The index and the arguments belong to the caller, so they are
-        // evaluated before the callee's scope exists.
         EvaluationVisitor<T> caller(stack);
         int index = 0;
         const bool indexed = call.TryEvalIndex(stack, index);
         // The key holds the arguments, so that a call copies none of them.
-        MemoKey<T> key{this, indexed, indexed ? index : 0,
-                       parameters.EvaluateArguments(call, caller)};
+        return {this, indexed, indexed ? index : 0, parameters.EvaluateArguments(call, caller)};
+    }
 
+    T Eval(const ParametersCall<T>& call, ReferenceStack<T>& stack, bool global = true) const {
+        MemoKey<T> key     = Key(call, stack);
+        const bool indexed = key.indexed;
+        const int  index   = key.index;
+
+        int read = 0;
         if (stack.checked && stack.staircases.contains(this))
-            for (auto& [name, value] : key.arguments) stack.checked(*this, value);
+            for (auto& [name, value] : key.arguments)
+                read = std::max(read, stack.checked(*this, value));
+        // Doubles read exactly still make an inexact answer (C240, C275),
+        // and approximated ones a marked answer (C296).
+        if (read > 1)
+            return numeric_interface<T>::marked(Answer(call, stack, global, indexed, index, key));
+        if (read)
+            return numeric_interface<T>::inexact(Answer(call, stack, global, indexed, index, key));
+        return Answer(call, stack, global, indexed, index, key);
+    }
+
+    T Answer(const ParametersCall<T>& call, ReferenceStack<T>& stack, bool global, bool indexed,
+             int index, MemoKey<T>& key) const {
         const auto& arguments = key.arguments;
         for (const auto& [name, value] : arguments) Divides(name, value, stack);
         if (home == &stack.builtins_ && stack.compiled && arguments.size() == 1 && !indexed &&
@@ -609,12 +633,14 @@ public:
     }
 
     // A refusal an approximated guard decided may be wrong, and says so. The
-    // prelude's eig, hinf and dhinf have one guard each, which it cannot word,
+    // prelude's eig, eigg, hinf, dhinf and atan2 have guards it cannot word,
     // and so have hinfy, hinfg and hinfp, whose guard asks whether a number
     // was approximated, which no double answers wrongly (DESIGN.md).
     std::string Unapplied(bool past) const {
         static const std::unordered_map<std::string, std::string> needs{
-            {"eig", "eig needs a matrix whose eigenvalues are all real"},
+            {"eig", "eig needs B symmetric positive definite"},
+            {"eigg", "eig needs a matrix whose eigenvalues are all real"},
+            {"atan2", "atan2 needs y or x other than 0"},
             {"hinf", "hinf needs every eigenvalue of A left of the imaginary axis"},
             {"dhinf", "dhinf needs every eigenvalue of A inside the unit circle"},
             {"hinfy", "hinf needs tests within a thousand digits"},
@@ -836,15 +862,14 @@ private:
     }
 
     // The tokens between a clause's parentheses, defaults and all: kept apart
-    // to compare, or shown spaced, as '[1 2]' and '[12]' differ (C55). With
-    // 'rest', and those after them, which name a guarded clause (C170).
-    static std::string Taken(const ParametersDefinition<T>& p, bool shown, bool rest = false) {
+    // to compare, as '[1 2]' and '[12]' differ (C55). With 'rest', and those
+    // after them, which name a guarded clause (C170).
+    static std::string Taken(const ParametersDefinition<T>& p, bool rest = false) {
         const std::string& s = p.signature();
         std::string        taken;
         int                depth = 0;
-        bool               sign  = false;  // one that begins an element, as in '[1 -2]'
-        // A parameter's size, which one clause states for all, is compared and
-        // shown apart.
+        // A parameter's size, which one clause states for all, is compared
+        // apart.
         int sized = 0, after = 0;  // tokens since the parameter began
         for (size_t at = s.find('\x1f', 1), next; at != std::string::npos; at = next) {
             next                    = s.find('\x1f', at + 1);
@@ -856,23 +881,18 @@ private:
                 sized += (token == "[") - (token == "]");
                 continue;
             }
-            after            = depth == 1 && token == "," ? 0 : after + 1;
-            const bool tight = taken.empty() || taken.back() == '(' || taken.back() == '[' ||
-                               token[0] == ' ' || sign || token == ")" || token == "]" ||
-                               token == ",";
-            taken += (!shown ? "\x1f" : tight ? "" : " ") + token;
-            sign = token == " -" || token == " +";
+            after = depth == 1 && token == "," ? 0 : after + 1;
+            taken += "\x1f" + token;
         }
         return taken;
     }
 
     // As '?f' shows them, written (C158): spaced token by token, '[1 -2]'
-    // reads '[1 - 2]'. Bound inside an expression, a clause keeps no text.
+    // reads '[1 - 2]'.
     [[nodiscard]] std::string Shown(const Clause<T>& c) const {
-        const std::string& w = c.written;
-        if (w.empty()) return Taken(c.parameters, true);
-        const size_t name = w.find(reference_name_) + reference_name_.size();
-        const size_t open = w.find_first_not_of(" \t", name);
+        const std::string& w    = c.written;
+        const size_t       name = w.find(reference_name_) + reference_name_.size();
+        const size_t       open = w.find_first_not_of(" \t", name);
         if (open == std::string::npos || w[open] != '(') return "";
         // The sizes apart, as they are compared (C173): a bracket that
         // follows a parameter's name.
@@ -1084,9 +1104,12 @@ private:
         // function's outside the prelude.
         bool Holds(const Reference& definition, const Clause<T>& clause, int index, int, int row,
                    int col) {
+            typename ReferenceStack<T>::Tentative locals(evaluator.stack(),
+                                                         clause.parameters.binds());
             const T guard   = clause.parameters.guard()->accept(evaluator);
             past            = past || numeric_interface<T>::approximated(guard);
             const bool held = numeric_interface<T>::truth(guard);
+            if (held) locals.keep();
             rounded |= !numeric_interface<T>::exact(guard);
             const ParametersDefinition<T>& p    = clause.parameters;
             if (evaluator.stack().guards &&
