@@ -705,8 +705,8 @@ private:
         return out;
     }
 
-    // A term remembered by its arguments' every part, a node by its number and
-    // a value by its bits, as the evaluator's MemoKey has them.
+    // A part by its node's number, else by its value's bits, as the
+    // evaluator's MemoKey has a value.
     struct Remembered {
         const Reference<T>* definition;
         int                 order, index;
