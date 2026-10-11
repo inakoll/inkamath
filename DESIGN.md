@@ -9088,6 +9088,19 @@ checked: what it asked of the compiler, each with its smallest change.
     parts were whole and exact. Accepted by the ruling on the
     interpreter's five reports: no float target agrees bit for bit
     (`MANIFESTO.md`).
+    A known departure: the tape merges two reads whose values happen to
+    be equal at run time (C323, so that a call is remembered), and sums
+    their adjoints before the one product, which a sweep fixed at compile
+    time cannot know. So `--check` reports about 1e-16 where inputs
+    coincide, not 0. `G_n = G_(n-1) - grad_(A = G_(n-1)) sum_(t=1)^6
+    sum_(j=1)^2 (A[1,j]*x_n[t,j]/(t + 1/3))^2/8` from `G_0 = ~[1 1/2]`, on
+    `x_n = ~[1 -1/2; 1/2 1; 0 1/4; -1/4 0; 1 1/3; 1/7 -2]*(1 + mod(n, 3)/5)`,
+    is within 1.1e-16: x_n[1,1] = x_n[5,1] makes one node of the two
+    products, so A[1,1]'s adjoint is (g5 + g1)*x where the step sums g5*x
+    and g1*x. With x_n[5,1] = 3/4 instead, it is within 0. The §9
+    transformer's `g.G`, within 1.2e-17, is expected to be the same: its
+    first layer norm's rows are equal where a batch repeats a token (not
+    traced).
 
   Rejected:
   - **A rule of the compiler's own**, reverse past a count of cells or by
