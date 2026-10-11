@@ -8535,12 +8535,15 @@ checked: what it asked of the compiler, each with its smallest change.
   instance, as the instance is, not as a gradient by several names. A part
   read takes its steps as its own, as a remembered term does (C149). The
   prototype scanned a point for globals after the names before it were
-  bound; the points are scanned first. 202 lines against about 176, 317
-  added and 115 removed, 25 of them comment: `reference_stack.hpp` 69, the
-  group, its parts and messages; `derivative.hpp` 55; `reference.hpp` 25,
-  the definition's refusals; `expression_visitor.hpp` 21; `expression.hpp`
-  12; `compile.hpp` 8; `interpreter.hpp` and `latex.hpp` 6 each. 17,305
-  lines in all, 17,103 at f236f46. Measured at this commit, as above: 307
+  bound; the points are scanned first. 210 lines against about 176, 325
+  added and 115 removed, 28 of them comment, review's 8 among them, a
+  part's memo key an instance's own and the refusals of a read the
+  definition does not take: `reference_stack.hpp` 71, the group, its parts
+  and messages; `derivative.hpp` 56; `reference.hpp` 30, the definition's
+  refusals and the part's key; `expression_visitor.hpp` 21;
+  `expression.hpp` 12; `compile.hpp` 8; `interpreter.hpp` and `latex.hpp` 6
+  each. 17,340 lines in all, integration's 02be7db merged, 17,130 without
+  these 210. Measured at 2257698, before review, as above: 307
   million instructions a step with one grad by the 13 names over the batch,
   357 million with one per sample, the losses at steps 3 and 10 a206c5d's
   to 17 digits.
