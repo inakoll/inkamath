@@ -480,7 +480,7 @@ set(args --check coast.ink coast --steps 1001 -o coast.c)
 check(check_steps)
 holds(check_steps coast.c
     [[printf("coast: 1001 steps from 0, against exact values\n");]]
-    "    for (int n = 0; n < 1001; ++n) {\n"
+    "    for (int n_ = 0; n_ < 1001; ++n_) {\n"
     "static const double want_0[1001] = {")
 set(args --steps 1001 --check coast.ink coast -o first.c)
 check(check_steps_first)
@@ -727,10 +727,10 @@ endfunction()
 set(adjoint "${CMAKE_CURRENT_LIST_DIR}/compile/adjoint.ink")
 set(args --compile ${adjoint} layer -o layer.h)
 check(compile_adjoint_fit)
-holds(compile_adjoint_fit layer.h [[    const double t15_ = 2.0 * pow(t13_ + (0.0 - m_->y[0][3][0]), 1.0);
-    const double t16_ = 0.5 * t15_;
-    const double t17_ = t16_ * t14_;
-]] [[    m_->W[0][3][3] = m_->index_ == 0 ? 0.5 : m_->W[1][3][3] + (0.0 - m_->eta * (isnan(t24_) ? NAN : t17_ * m_->x[0][3][0]));
+holds(compile_adjoint_fit layer.h [[    const double t16_ = 2.0 * pow(t14_ + (0.0 - m_->y[0][3][0]), 1.0);
+    const double t17_ = 0.5 * t16_;
+    const double t18_ = t17_ * t15_;
+]] [[    m_->W[0][3][3] = m_->index_ == 0 ? 0.5 : m_->W[1][3][3] + (0.0 - m_->eta * (isnan(t25_) ? NAN : t18_ * m_->x[0][3][0]));
 ]])
 written(compile_adjoint_fit layer.h "layer_tanh_dx\\(" 5)
 set(args --compile ${adjoint} wide -o wide.h)
@@ -739,6 +739,14 @@ written(compile_adjoint_wide wide.h "wide_tanh_dx\\(" 17)
 set(args --compile ${adjoint} norm -o norm.h)
 check(compile_adjoint_norm)
 written(compile_adjoint_norm norm.h "norm_exp_dx\\(" 13 "norm_log_dx\\(" 4)
+# A matrix read by its cells is tested for NaN once (DESIGN.md).
+file(READ "${OUT}/norm.h" text)
+string(REGEX MATCHALL "isnan\\(" tests "${text}")
+list(LENGTH tests tests)
+file(SIZE "${OUT}/norm.h" size)
+if(NOT tests LESS 150 OR NOT size LESS 40000)
+    message(SEND_ERROR "compile_nan_once: isnan( ${tests} times in ${size} bytes")
+endif()
 # C328: a sequence compiled on the way by a grad keeps the names it took,
 # z's t4_, which the grad does not take again.
 file(WRITE "${OUT}/c328.ink" [[m(x_n[i<=2]) = {
@@ -1178,8 +1186,8 @@ check(float_calm)
 holds(float_calm float/calm.c [[static const float in_0[100] = {
     0.0f, 0.1f, 0.2f, 0.3f,
 ]] [[static float got_0[100];
-]] [[        calm_step(&m, in_0[n]);
-        memcpy(&got_0[n * 1], &m.v[0], sizeof(float) * 1);
+]] [[        calm_step(&m_, in_0[n_]);
+        memcpy(&got_0[n_ * 1], &m_.v[0], sizeof(float) * 1);
 ]])
 
 # C103: a parameter's default of negative infinity is -INFINITY, as is one
@@ -1553,7 +1561,7 @@ string(FIND "${text}" "double" at)
 if(NOT at EQUAL -1)
     message(SEND_ERROR "compile_float_implicit: float/cramer.h holds 'double'")
 endif()
-holds(compile_float_implicit float/cramer.h "float v0_[3][3] = ")
+holds(compile_float_implicit float/cramer.h "float v1_[3][3] = ")
 
 # A global's temporaries, read first in a limit's terms, are numbered as
 # the update's, not as that limit's: two such are two names.

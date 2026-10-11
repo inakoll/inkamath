@@ -961,6 +961,21 @@ Recorded so they are not re-litigated later, or drifted into by accident.
   read globals instead. Cut by the owner for now; it comes back only with a
   design that captures them, as a function's own definitions would.
 
+- **Compiling definitions inside the interpreter.** A §9 measurement
+  (integration 3a0f342) turned a definition by cells, once, into a flat
+  sequence of operations with names resolved to slots, run in doubles
+  where its inputs are inexact, the tree answering anything else: 7 to 8
+  times on those definitions, 2.3 on a transformer's forward pass, 1.04 on
+  its training step, 85 per cent of which is reverse mode's own walk. In
+  full: some 700 lines for the evaluator (2 to 3 times on cellwise and
+  recurrence models), 300 to 500 more for a node of compiled cells on the
+  tape (1.6 to 1.8 times on the step), and 500 to 800 for inexact matrices
+  held as plain doubles (about 1.45). It is a second implementation of
+  Number's rules and of where the tree counts steps, each mismatch a silent
+  wrong mark. Deferred by the owner: `--compile` gives native speed now.
+  The flat sequence is what an in-process JIT would take as input; that
+  stays open, a larger work and a dependency to raise.
+
 ## Openings
 
 Not scheduled, and not Deferred either -- Deferred is for what has been argued
@@ -1828,6 +1843,9 @@ closures need one anyway, and can bring it.
 | C328 `[fixed]` | **A grad giving way to forward mode could declare a name twice.** Giving way put back the count of temporaries, but a sequence the attempt compiled on the way, one with no base clause the body reads, kept the names it took: in `test/cli.cmake`'s c328.ink, z's `t4_` and the gradient's, a header no C compiler takes. A global read on the way took a name too, harmlessly, in the update. Found reviewing the compiler's adjoint step. Where a list other than the grad's took names on the way, they stay taken, and the NaN sets with them; elsewhere giving way is forward mode's header byte for byte, as before. In 11 lines, 2 of comment, and 3 removed; `compile_c328` holds it. |
 | C329 `[fixed]` | **`--check`'s exact run kept what its walk of the prelude recorded where it took the slope.** C326's exact run walks a function of the prelude for its guards and then takes the header's slope, but the walk's nodes stayed on the tape and its calls stayed remembered, where a session makes neither: sin's definition calls abs on its argument, so in `sin(u) + (u^2 + 1)^(1/2) + abs(u)` the body's own abs found that call's node, recorded before the root's, and its adjoint was summed last, where a session sums it first. The step, a session's to the bit, was reported 1.1e-16 from the oracle. Found reviewing the compiler's adjoint step. Where the slope is taken, the tape goes back to the nodes it had before the walk and the calls remembered to those before it; no other report moves. In 15 lines, 2 of comment, and 2 removed; `adjoint.ink`'s `sinabs` holds it. |
 | C330 `[fixed]` | **Grad read a cell of a bound matrix from a copy taken before its indices.** A cell's read under grad evaluated its matrix first, a name bound in grad's frame copied whole, and then its indices, where the evaluator finds a stored matrix again once its indices are read (C277), as they may bind it again: `grad_(x = 2) (x*((M = [x 3*x])[1,1]*0 + M[1, ((M = [5 7])*0 + 2)[1,1]]))` was 12, M[1,2] read from `[x 3*x]`, where the evaluator's value, 14, reads it from `[5 7]` and the derivative is 7; reverse mode the same. Found reviewing the specification of grad's cost per term; a name bound outside grad, by a local or a parameter of the call grad is in, reviewing the fix: `(M = [1 2])[1,1]*0 + grad_(x = 2) x*M[1, ((M = [5 7])*0 + 2)[1,1]]` was 2 for 7. A name bound, in grad's frame or the evaluator's, is found again once the indices are read, as the evaluator's `Stored` finds it; any other matrix is evaluated first as before. In 15 lines, 3 of comment, and 3 removed; gradlocal.ink holds it. |
+| C331 `[fixed]` | **A step read where a part moves, a value NaN may be, as a truth, which a strict build refuses.** Under grad, a chain whose clauses' parts are there at some points only says where with a chain of 0, 1 and NaN, and its test read that value as a truth: rightly, NaN where no clause applies being one, but a float made a bool, which Clang's -Wfloat-conversion refuses, so the programs of `kink`, `edge`, `over` and `ring` and the headers of cellguards.ink's and grad.ink's `kinks`, grad.ink's `inverse` and `rounds`, and both files' sessions, double or float, failed a host's build with -Werror. Found compiling every header of `test/compile` with stricter warnings. The test is written `(...) != 0`, which answers alike, and the tests' C is now built with -Wconversion, under which GCC and Clang take every header of `test/compile` clean; -Wfloat-conversion, which it implies, leaves the float target's flags. In 6 lines, 1 of comment, and 6 removed; `check_kink`, `check_edge`, `check_over` and `check_ring` hold it under Clang. |
+| C332 `[fixed]` | **A `--check` program's locals could hide the model's names.** The program declared the header and then its own locals, `past`, `held`, `worst`, `n`, `m` and the rest, where an instance may be named so: `history.ink`'s `past` and `held` declared a local of the struct's name, which GCC's -Wshadow refuses, and the tests built C without it (the root `CMakeLists.txt` kept it to C++ for that reason). Found compiling every header of `test/compile` with stricter warnings. What reads nothing of the header now comes before it, and `main`'s locals are `m_`, `n_`, `held_` and `guards_`, a name no instance can take; the tests' C is built with -Wshadow. Two of `test/cli.cmake`'s quotations of a program move with the names. The header's own locals, `i`, `j`, `row` and the like, would hide a model so named as before. In 15 lines, 2 of comment, and 13 removed; `check_past` and `check_held` hold it under GCC. |
+| C333 `[fixed]` | **The memo hashed and compared a whole argument at every call.** A call's key holds its arguments' values, each a copy, so a matrix passed on was hashed again and, where the call was remembered, compared cell by cell again: in a transformer's forward pass, `lse(z)[b,t]` in `ce`'s sum hashed and compared its 3,072-cell z on each of its 384 calls, 8 per cent of the pass. Found profiling the interpreter on a transformer. A matrix now keeps its hash once asked, and which value hashed it is an unaltered copy of, both carried by its copies and cleared where it may be written, through `data()`; two copies of one value are the same without comparing cells. No answer moves, and equal values of different exactness are compared as before. The forward pass of 64 sequences goes from 1,557M instructions to 1,452M; bench's matrix, deep, grad and limit and the training step pay for the larger matrix, 0.3 to 1.3 per cent. A single value, hashed and compared at once, keeps neither and is not tested for them, a test fastgrad_long's 600,000 terms paid 2.5 per cent of their instructions for: the larger matrix still costs them 0.4 in a release build, and they take 1.7 fewer than before in a debug one. In 13 lines, 3 of comment, and 2 removed; matrix_test.cpp's `a hashed value is the same as its copies until one is written` holds the clearing, and no test can hold the count. |
 | C334 `[fixed]` | **Grad took an instance's member for a read of its name.** Whether a member read moves was asked of every name under it, the member's own among them, so `grad_(x = 2) x*tri().x` of `tri(a = 1) = { x = 3*a }` was refused, "grad cannot differentiate through an instance yet", for 3; reverse mode already answered. Found specifying a gradient with respect to several names, where a part `gs(1).x` is read under a grad of x. A member read moves where its object or its arguments do, never by its name. In 5 lines, 1 of comment; grad.ink holds it. |
 
 **Measure instructions, not the clock.** One of those changes made the matrix
@@ -3787,14 +3805,122 @@ that exploring seven domains asked of the interpreter, by how many asked.
   update. The reason given above for not hoisting was wrong, corrected,
   and the hoisting queued. 3 lines of `compile.hpp`, 19 added and 16
   removed, as costed; 16,154 lines in all.
-- **A matrix read by its cells tested for NaN once**: in a header that
-  writes NaN, each read of a cell of a matrix that is not a term carries an
-  `isnan` of all its cells, as the interpreter refuses the matrix whole:
-  Cramer's rule reads A's cells 76 times behind nine tests each, 63 per
-  cent of Robertson's header once a limit has temporaries, and a limit's
-  previous term is such a matrix, 16 reads there. Normalising it once per
-  step or iterate where it has a list, every cell NaN where one is, as a
-  term is, and reading it whole after. Moves headers, not values.
+- `[done]` **A matrix read by its cells tested for NaN once**, a refactor of
+  headers: no golden, `--check` report or refusal moves. In a header that
+  writes NaN the interpreter refuses a matrix whole where it refuses a
+  cell, so each read of a cell of a matrix that is not a term carries
+  `isnan` of all its cells; so does each cell a call writes where an
+  argument it does not read may be NaN (C189), and each cell of a term
+  written whole beside cells (C136). The reverse sweep made the reads
+  many. Measured at a206c5d, RelWithDebInfo, the step alone built at -O2
+  by GCC 13 and Clang 18, the tests being each `isnan(...) || ... ? NAN :`:
+  - the exploration's embedding, `emb`, 570,323 bytes, 471,474 of them
+    tests, `isnan(` 30,745 times; GCC 14.1 s and 333 MB, Clang 2.9 s;
+  - its attention block's W^Q, `attq`, 1,148,072 bytes, 931,460 tests,
+    58,449 `isnan(`; GCC 45.9 s and 620 MB, Clang 5.6 s and 174 MB;
+  - `tensorgrad.ink`'s session header 391,133 bytes, 84 per cent tests,
+    GCC 156 s; `adjoint.ink`'s `norm` 59,117, 52 per cent, 2,011
+    `isnan(`; `attn` 22,237, 316; Robertson's Cramer 17,709, grad's
+    Jacobian 20,970.
+  - The full transformer, 13 gradients over a batch of 4, does not
+    compile, before or after: `--compile` of its model ends in bad_alloc
+    at 7 GB after 107 s. One of its gradients, W^Q's through both blocks
+    at a batch of 1, is 6,366,890 bytes, half of them tests; GCC 344 s
+    and 3.8 GB, Clang 29 s and 406 MB.
+
+  Decided:
+  - **A test of a matrix's cells is a flag of the list**, `const int t5_
+    = isnan(t0_) || ... || isnan(t47_);`, declared by `Declare` where
+    `Nan` first writes it: in the list of the step, iterate, base or
+    derived value that tests it, after the cells it reads, the same cells
+    tested again there the same flag, as a value is the same temporary. A
+    read is `(t5_ ? NAN : t3_)`. A flag no kept line reads is dropped, as
+    any temporary.
+  - **In `Nan` alone**: each code's tested cells are one flag where they
+    are more than one and a list exists, a cell's read, C189's call,
+    C136's whole and `im` alike; several codes' tests are or-ed, `t5_ ||
+    isnan(x) ? NAN :`. `Nan` and `Powered` stop being const.
+  - **What stays per cell**: a code of one tested cell, so every decision
+    on single values, a comparison's and pow's (C121's `nan`); a
+    gradient's cells testing a loss of one cell (C113); a function of the
+    header's body, which has no list; the term's own test after its
+    assignment, a statement already.
+  - **The may-NaN flag is not needed first.** A read still writes `NAN`,
+    so `WritesNan`, `MayNan`, `aware_` and C189's search of what a call
+    writes read it as before; nothing NaN hides behind a name.
+  - **--float**: the same; the flag is an `int`, which --float leaves.
+
+  What moves, on a prototype, discarded: no golden, no header of
+  `test/compile/expected` nor the prelude's; of the 241 check programs, 19 C
+  files, and the fuzzer's, every report byte for byte, and `emb`'s and
+  `attq`'s at 5 steps the same. Two recorded excerpts of `test/cli.cmake`,
+  each name from the first flag on one more: `compile_adjoint_fit`, W*x's
+  four cells tested before tanh's values, so `t13_` to `t17_` and `t24_`
+  become `t14_` to `t18_` and `t25_`, with `adjoint.ink`'s comment; and
+  `compile_float_implicit`, the previous term's flag declared before the
+  inverse's array, `float v0_[3][3] = ` to `float v1_[3][3] = `, with
+  `implicit.ink`'s comment. A test written once grows by its flag's line:
+  `c328.h` 9,211 bytes to 9,247, `twice.h` 4,652 to 4,710, `took`, `shut`
+  and `rnn` by under 60, the fuzzer's program 2,040,823 to 2,044,094.
+  Accepted.
+
+  Measured on the prototype: `emb` 113,307 bytes, 307 `isnan(`, GCC 2.6
+  s and 101 MB, Clang 0.95 s; `attq` 249,050, 747, GCC 7.3 s and 198 MB,
+  Clang 2.3 s and 151 MB; `tensorgrad.ink`'s session 81,741, GCC 1.6 s;
+  `norm` 32,207, 94; `attn` 18,383, 36; Cramer 8,159; the Jacobian
+  10,151. The transformer's one gradient 3,264,596 bytes, GCC 35.9 s and
+  823 MB, Clang 13.2 s; what is left of it is the sweep's conditions, 2.6
+  MB of lines or-ing `(t1083_ != 0)` and its like, a clause's adjoint
+  where any of several is taken, each operand's condition written again.
+
+  Rejected:
+  - **The matrix normalised into temporaries of its own**, every cell NaN
+    where one is, and read whole, as this entry first said: a line per
+    cell, read or not, where a read costs a flag's 14 bytes, 23 KB of
+    `attq`; and each name hides its `NAN` from `MayNan`, so would join
+    `nan_temporaries_` or wait for the may-NaN flag.
+  - **A flag at a cell's read alone**: C189's calls keep 114 KB of
+    `attq`'s 358.
+  - **A flag where a matrix is written**: most are never tested, and a
+    flag numbered for each moves every header that writes NaN.
+  - **A flag read once written inline**, as before: the reads counted
+    before the text is written, a pass of its own, for the few bytes above.
+  - **General value numbering instead** (*Shared at every value written
+    twice*): a test is not a value the source writes, so it is shared only
+    once made one, which is this item; and value numbering puts values
+    whose text writes NAN behind names, so it waits for the may-NaN flag
+    at some 15 sites, 60 to 100 lines, for what 10 do here. It stays
+    queued, and would share a flag as any value.
+  - **A double flag added to the cell**, `NAN` or `0.0`: `0.0 + -0.0` is
+    `+0.0`, a sign the interpreter keeps.
+
+  About 10 lines of `compile.hpp`: the prototype's 13 added and 5
+  removed, and a line of comment. 17,098 lines at a206c5d, by `wc -l
+  include/inkamath/*.hpp src/*`; past 15 the implementation stops and
+  reports.
+
+  Specified in `test/compile/adjoint.ink`'s comment on `norm`, unwired:
+  the cli case `compile_nan_once`, `norm.h` writing `isnan(` fewer than
+  150 times in under 40,000 bytes, 2,011 times and 59,117 bytes before.
+  94 by count: 16 for the gradient's cells, each testing the loss, 16 for
+  the term's own test, 17 in the prelude's exp, log and ilogb, and 45 for
+  the six matrices read by their cells, each tested once: X*E and its
+  means, the centred cells and their scales, the logits and their
+  log-sum-exps, 12 and 3 cells by turns. Wired with the implementation,
+  with the two excerpts and their comments, `adjoint.ink`'s on `layer` and
+  `implicit.ink`'s on the inverse. No transcript in `test/data/spec`.
+
+  Built as specified, departing in nothing: no golden, expected header or
+  prelude moves; the same 19 C files and the fuzzer's as the prototype,
+  all 241 reports byte for byte; `norm.h` 32,207 bytes and 94 `isnan(`,
+  `emb` 113,307 and 307, `attq` 249,050 and 747. 9 lines of
+  `compile.hpp`, 14 added and 5 removed, 1 of them comment; 17,107 in all.
+- **The reverse sweep's conditions written once**: a clause's adjoint
+  where any of several is taken ors each operand's condition, `(t1083_ !=
+  0) || ...`, written again for each clause, 2.6 MB of the transformer's
+  one gradient after *A matrix read by its cells tested for NaN once*.
+  The full transformer's `--compile`, 13 gradients over a batch of 4,
+  still ends in bad_alloc at 7 GB after 107 s.
 - **A limit's invariants hoisted out of its iterate**: a limit or a
   matrix inverse that reads only the function's arguments is declared in
   the iterate's list, so walked again at each iterate, and gcc -O2 leaves
@@ -8801,7 +8927,7 @@ checked: what it asked of the compiler, each with its smallest change.
   The 600,000 remembered terms are since in `reverse_memo.ink`, a golden
   of their own with `fastgrad.ink`'s 120 s timeout: 65 s under the
   sanitizers alone, where `reverse.ink` stopped at 60.
-- **The compiler's adjoint step**, after the tape: `--compile` keeps
+- `[done]` **The compiler's adjoint step**, after the tape: `--compile` keeps
   forward mode's parts, a pass over the body per cell of a seed, so a
   header grows with the seed's cells. The §9 exploration's transformer has
   no header: its pieces wrote 9 to 62 MB of C, which GCC -O2 ran out of

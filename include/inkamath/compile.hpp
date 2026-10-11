@@ -724,12 +724,12 @@ private:
         chain.part = {
             tape_ ? Record(Kind::Gather, size, 0, taken, 0, 0, clauses)
                   : Chain(parts, otherwise ? std::optional(part(*otherwise)) : std::nullopt, size)};
-        if (!always || (otherwise && there(*otherwise).cells[0].text != "1"))
-            chain.moves = std::make_shared<const Moving>(Moving{
-                Chain(where, otherwise ? std::optional(there(*otherwise)) : std::nullopt, Extent{})
-                    .cells[0]
-                    .text,
-                {}});
+        if (always && (!otherwise || there(*otherwise).cells[0].text == "1")) return chain;
+        const std::optional<Code> rest =
+            otherwise ? std::optional(there(*otherwise)) : std::nullopt;
+        // A truth, as a test reads it: NaN where no clause applies is one.
+        const std::string truth = "(" + Chain(where, rest, Extent{}).cells[0].text + ") != 0";
+        chain.moves             = std::make_shared<const Moving>(Moving{truth, {}});
         return chain;
     }
 
@@ -1902,7 +1902,7 @@ private:
 
     // C's absorbs a NaN where the other operand is 1 or 0: pow(1, NaN) and
     // pow(NaN, 0) are 1. C's sqrt(-0) is -0, the interpreter's +0 (C163).
-    Code Powered(const Code& base, const Code& exponent) const {
+    Code Powered(const Code& base, const Code& exponent) {
         const auto other = [](const Code& c, double v) {
             return c.constant && Doubles(*c.constant)[0] != v;
         };
@@ -1932,14 +1932,24 @@ private:
     // operand is, as the interpreter refuses it (DESIGN.md, a NaN reaches
     // every term that reads it): the test of each cell of the operands given
     // that is neither a number nor the index, written before the decision.
+    // Several cells tested once per list: each read repeating the test was
+    // most of a header (DESIGN.md, a matrix read by its cells).
     template <typename... Codes>
-    std::string Nan(const Codes&... codes) const {
+    std::string Nan(const Codes&... codes) {
         std::string test;
-        for (const Code* code : {&codes...})
+        for (const Code* code : {&codes...}) {
+            std::string one;
+            std::size_t n = 0;
             for (const Cell& cell : code->cells)
                 if (aware_ && !code->constant && !cell.number)
-                    test += (test.empty() ? "isnan(" : " || isnan(") +
-                            (cell.nan.empty() ? cell.text : cell.nan) + ")";
+                    one += (n++ ? " || isnan(" : "isnan(") +
+                           (cell.nan.empty() ? cell.text : cell.nan) + ")";
+            if (n > 1 && temporaries_)
+                one = Declare("isnan\x1f" + one, [&](const std::string& t) {
+                    return std::vector<std::string>{"const int " + t + " = " + one + ";"};
+                });
+            if (n) test += (test.empty() ? "" : " || ") + one;
+        }
         return test.empty() ? test : test + " ? NAN : ";
     }
 

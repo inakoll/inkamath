@@ -2,6 +2,10 @@
 # multiply-add, contracted where the target has one, does not keep (C97).
 add_compile_options(
     $<$<AND:$<COMPILE_LANGUAGE:C>,$<C_COMPILER_ID:GNU,Clang,AppleClang>>:-ffp-contract=off>)
+# What a host's stricter build would refuse in the C the compiler writes: a
+# NaN read as a truth, Clang's float to bool (C331).
+add_compile_options(
+    $<$<AND:$<COMPILE_LANGUAGE:C>,$<C_COMPILER_ID:GNU,Clang,AppleClang>>:-Wconversion>)
 
 add_library(doctest INTERFACE)
 target_include_directories(doctest SYSTEM INTERFACE ${PROJECT_SOURCE_DIR}/third_party)
@@ -756,7 +760,7 @@ set_tests_properties(check_wild check_brink check_rift check_sill check_seam che
 # A float target (DESIGN.md): pid and adc's headers as compile/expected/float
 # has them, and compile/float.ink's checks, each built so that an operation done
 # in double is a warning.
-set(float_flags $<$<C_COMPILER_ID:GNU,Clang,AppleClang>:-Wdouble-promotion;-Wfloat-conversion>)
+set(float_flags $<$<C_COMPILER_ID:GNU,Clang,AppleClang>:-Wdouble-promotion>)
 foreach(model IN ITEMS pid adc)
     set(header ${CMAKE_CURRENT_BINARY_DIR}/compile/float/${model}.h)
     add_custom_command(OUTPUT ${header}

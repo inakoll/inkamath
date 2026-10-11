@@ -103,16 +103,21 @@ public:
     }
 
     static bool same(const Matrix<T>& a, const Matrix<T>& b) {
+        if (a.IsScalar() && b.IsScalar()) return numeric_interface<T>::same(a.scalar_, b.scalar_);
+        if (a.origin_ && a.origin_ == b.origin_) return true;
         return a.extent_ == b.extent_ &&
                std::equal(a.data(), a.data() + a.extent_.count(), b.data(),
                           [](const T& x, const T& y) { return numeric_interface<T>::same(x, y); });
     }
     static std::size_t hash(const Matrix<T>& a) {
+        if (a.IsScalar()) return 31 + numeric_interface<T>::hash(a.scalar_);  // the loop's
+        if (a.hashed_) return a.hashed_;
         std::size_t mixed = a.extent_.count();
         std::for_each(a.data(), a.data() + a.extent_.count(), [&mixed](const T& value) {
             mixed = mixed * 31 + numeric_interface<T>::hash(value);
         });
-        return mixed;
+        a.origin_        = ++origins_;
+        return a.hashed_ = mixed;
     }
 
     static bool exact(const Matrix<T>& a) {
@@ -237,7 +242,11 @@ public:
     // not a single value.
     bool     IsScalar() const { return extent_.count() == 1 && !IsTensor(); }
     bool     IsTensor() const { return extent_.slices != 0; }
-    T* data() {return IsScalar() ? &scalar_ : cells_.data();}
+    T*       data() {
+        if (IsScalar()) return &scalar_;
+        hashed_ = origin_ = 0;
+        return cells_.data();
+    }
     const T* data() const {return IsScalar() ? &scalar_ : cells_.data();}
 
     /* Implementation of the numeric interface */
@@ -619,6 +628,12 @@ private:
     Extent         extent_;
     T              scalar_ = T();   // the cell of a 1x1 matrix
     std::vector<T> cells_;          // the cells of any other
+    // hash's, and the value hashed this is an unaltered copy of, 0 until
+    // asked: a memo's argument is bound and passed on in copies, each hashed
+    // and compared again (C333). A write may follow data(), so it clears both.
+    // A single value, hashed and compared at once, keeps neither.
+    mutable std::size_t       hashed_ = 0, origin_ = 0;
+    static inline std::size_t origins_ = 0;
 };
 
 template <typename T>

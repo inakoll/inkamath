@@ -146,8 +146,9 @@ layered = layers(x_n = ~(n/3))
 # b) replaced by A^-1*b, as kinetic writes it, refused before, the header
 # holds 'm_->h *' 12 times, 'cramer_inverse3_(' twice, its definition and
 # its one call, in the limit's function, and is under 32 KB; compiled with
-# --float, it holds no 'double', and 'float v0_[3][3] = ' declares the
-# inverse's array, each value of the iterate a float as the step's are.
+# --float, it holds no 'double', and 'float v1_[3][3] = ' declares the
+# inverse's array, after v0_, the flag of the previous term's cells tested
+# for NaN, each value of the iterate a float as the step's are.
 #
 # What moves elsewhere: iterates.ink's h and blocks.ink's d compile, so
 # 'cannot compile h: a sequence with parameters in a limit's terms, for
