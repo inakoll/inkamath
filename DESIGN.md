@@ -8692,10 +8692,7 @@ checked: what it asked of the compiler, each with its smallest change.
     found specifying this, which lands first as a fix of its own with its
     row, some 12 lines of `derivative.hpp`, and which the first increment
     assumes. Alone it moves `fall.w` 1.3e-15 to 8.9e-16, `attend.WQ`
-    8.9e-16 to 4.4e-16 and `swing`'s within its pattern, and takes `fit`
-    to within 0 in forward mode already: each cell of its gradient is one
-    product of two doubles, its other factors, x's cells and the halves,
-    exact in any order.
+    8.9e-16 to 4.4e-16 and `swing`'s within its pattern.
   - **Clauses, the second increment.** A guard chooses at the point as
     now. A chain's part is the taken clause's node, so a chain is no node
     of its own: an adjoint reaching it passes on as it is made, `c ? acc +
@@ -8736,7 +8733,9 @@ checked: what it asked of the compiler, each with its smallest change.
     as a double, a cell of a term, an input or a parameter, its sweep sums
     rationals where the step rounds, as forward mode's parts did:
     `thirds.g`, A_n's whole cells, `swing`, h and g, and the exploration's
-    W^Q, its one-hot inputs through decimal weights held fixed.
+    W^Q, its one-hot inputs through decimal weights held fixed. An exact
+    value that meets only doubles is rounded where it meets one, as the
+    step holds it: `fit`'s inputs in thirds.
     And where every value is exact, reverse mode divides first: `poly.g`,
     whole numbers, comes from adjoints of 1/3 and 1/2 and parts from the
     exact values by rounding, in double and in float, where forward mode's
@@ -8811,10 +8810,9 @@ checked: what it asked of the compiler, each with its smallest change.
   bytes and `wide_tanh_dx(` written 17 times; `token`, the embedding
   through layer norm and cross-entropy, within 0, its header under 100,000
   bytes, `norm_exp_dx(` written 13 times and `norm_log_dx(` 4; and `gate`,
-  the second increment's, within 0. Today `fit` is within 1.7e-16,
+  the second increment's, within 0. Today `fit` is within 1.9e-16,
   `token` 4.4e-16 and `gate` 1.4e-17, and the four counts 21, 273, 193 and
-  49; with the fix, `fit` within 0, its header alone failing, and `token`
-  6.7e-16. Wired with the first increment: `adjoint:fit` and `adjoint:token`
+  49; with the fix, `fit` 1.1e-16 and `token` 6.7e-16. Wired with the first increment: `adjoint:fit` and `adjoint:token`
   among the checked instances of `test/CMakeLists.txt`, each report
   `within 0` as the file gives it; in `test/cli.cmake`,
   `compile_adjoint_fit`, `holds` for its lines and a count as

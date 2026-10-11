@@ -11,24 +11,28 @@
 # apart from the interpreter and the compiler, by mpmath at 50 digits, the
 # gradient by hand or by a complex step; none is recorded. Today each
 # gradient is forward mode's, a pass per cell, and parts from the
-# interpreter's by rounding but 'fit''s, whose factors besides tanh's
-# slopes are exact in any order, so that its header alone tells the modes
-# apart. Each report is the first increment's but 'gate''s, the second's.
+# interpreter's by rounding. Each report is the first increment's but
+# 'gate''s, the second's.
 
 # 'fit', a layer of four tanh units trained on its square error by grad
-# with respect to its 4x4 weights, from an inexact start. By backpropagation
-# written out, (tanh(z) - y)*(1 - tanh(z)^2) times x', z = W*x:
+# with respect to its 4x4 weights, from an inexact start, on inputs in
+# thirds. By backpropagation written out, (tanh(z) - y)*(1 - tanh(z)^2)
+# times x', z = W*x, and by a complex step of 1e-45 for each cell:
 #
-#     W_1  = [0.5 0.125 -0.125 0; 0 0.359989269017 0.140010730983 0;
-#             0 0.115434239328 0.384565760672 0; 0 -0.015625 0.015625 0.5]
-#     W_99 = [0.250015836644 -4.4199266456e-5 -0.549298917265 -0.249984163356;
-#             -3.55630430296e-7 1.03735705479e-6 0.255412519763 -3.55630430296e-7;
-#             -4.82089932614e-9 1.43478663994e-8 -0.125657218727 -4.82089932614e-9;
-#             -0.249999985717 -4.27595424689e-8 0.0625815855824 0.250000014283]
+#     W_1  = [0.446083239004 0 0.0539167609955 0.107833521991;
+#             0.0208333333333 0.5 -0.0208333333333 -0.0416666666667;
+#             0.00325381078621 0 0.496746189214 -0.00650762157242;
+#             0.0286930976446 0 -0.0286930976446 0.442613804711]
+#     W_99 = [0.172426760334 -0.124856730384 -0.0784588234266 0.124257685855;
+#             -0.148400725501 0.125674513559 0.100895561703 -0.125029199237;
+#             -0.113300049751 0.124419577379 0.137313345551 -0.124967027319;
+#             0.118515634432 -0.125024389132 -0.130852530059 0.125607446377]
 #
-# Every value its sweep multiplies by is a double in the interpreter too, or
-# a whole number or a power of two, which a double holds, so the step's
-# gradient is the interpreter's operation for operation:
+# Every value its sweep multiplies by is a double in the interpreter too, a
+# whole number or a power of two, which a double holds, or a cell of x,
+# exact there but meeting only doubles, which round it to the double the
+# step holds; so the step's gradient is the interpreter's operation for
+# operation, where forward mode's passes take x's cells in another order:
 #
 #     fit: 100 steps from 0, against exact values until 0 and inexact ones from there
 #     fit.W: within 0; the interpreter's terms about <e> from the exact ones
@@ -51,7 +55,7 @@ layer(eta = 1/4, x_n[i<=4], y_n[i<=4]) = {
     W_0 = ~[1 0 0 0; 0 1 0 0; 0 0 1 0; 0 0 0 1]/2
     W_n = W_(n-1) - eta*grad_(V = W_(n-1)) L(V, x_n, y_n)
 }
-fit = layer(x_n = [mod(n, 3) - 1; mod(2*n, 3) - 1; mod(3*n, 3) - 1; mod(4*n, 3) - 1], y_n = [1/2; -1/4; 1/8; -1/16])
+fit = layer(x_n = [mod(n, 5) - 2; mod(2*n, 5) - 2; mod(3*n, 5) - 2; mod(4*n, 5) - 2]/3, y_n = [1/2; -1/4; 1/8; -1/16])
 
 # 'wide', the same layer sixteen units wide, 256 weights: forward mode
 # writes its body once for each, a header of 485,423 bytes today, and
