@@ -121,6 +121,17 @@ dive(k, t) | k < 1 = tanh(t)
 >> grad_(v = [1 2]) ~0.5*(v[1,1]*599492/10^318)
 [~2.99745625e-313, 0]
 
+# Where a value is infinite, each cell's derivative is the single value's,
+# as elementary.ink has them: exp's slope at 800 is inf, and past a thousand
+# exp is a constant whose slope is 0. Forward mode answers -nan for the
+# first cell of each, its pass for that cell multiplying v[1,2]'s part
+# there, 0, by exp's value, inf (C324).
+>> grad_(v = [800 1]) exp(v[1,1])*v[1,2]
+[~inf, ~inf]
+
+>> grad_(v = [1001 1]) exp(v[1,1])*v[1,2]
+[0, ~inf]
+
 # A cell is inexact where a path to it meets a double. A cell no path
 # reaches is an exact 0, and a cell whose paths meet only exact numbers is
 # exact, where forward mode's pass for it multiplied a 0 by a double.
