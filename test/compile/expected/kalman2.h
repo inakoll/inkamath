@@ -49,43 +49,43 @@ typedef struct kalman2 {
 
 /* The inverse of a 2x2 matrix, in place, as the interpreter takes it: Gauss-Jordan
  * on the largest pivot, and NaN in every cell where there is none. */
-static inline void kalman2_inverse2_(double a[2][2]) {
-    double r[2][2];
-    for (int i = 0; i < 2; ++i)
-        for (int j = 0; j < 2; ++j) r[i][j] = i == j ? 1.0 : 0.0;
-    for (int col = 0; col < 2; ++col) {
-        int pivot = col;
-        for (int row = col + 1; row < 2; ++row)
-            if (fabs(a[row][col]) > fabs(a[pivot][col]) ||
-                (a[pivot][col] == 0.0 && a[row][col] != 0.0))
-                pivot = row;
-        if (a[pivot][col] == 0.0) {
-            for (int i = 0; i < 2; ++i)
-                for (int j = 0; j < 2; ++j) a[i][j] = NAN;
+static inline void kalman2_inverse2_(double a_[2][2]) {
+    double r_[2][2];
+    for (int i_ = 0; i_ < 2; ++i_)
+        for (int j_ = 0; j_ < 2; ++j_) r_[i_][j_] = i_ == j_ ? 1.0 : 0.0;
+    for (int col_ = 0; col_ < 2; ++col_) {
+        int pivot_ = col_;
+        for (int row_ = col_ + 1; row_ < 2; ++row_)
+            if (fabs(a_[row_][col_]) > fabs(a_[pivot_][col_]) ||
+                (a_[pivot_][col_] == 0.0 && a_[row_][col_] != 0.0))
+                pivot_ = row_;
+        if (a_[pivot_][col_] == 0.0) {
+            for (int i_ = 0; i_ < 2; ++i_)
+                for (int j_ = 0; j_ < 2; ++j_) a_[i_][j_] = NAN;
             return;
         }
-        for (int j = 0; j < 2; ++j) {
-            const double s = a[pivot][j], t = r[pivot][j];
-            a[pivot][j] = a[col][j];
-            r[pivot][j] = r[col][j];
-            a[col][j]   = s;
-            r[col][j]   = t;
+        for (int j_ = 0; j_ < 2; ++j_) {
+            const double s_ = a_[pivot_][j_], t_ = r_[pivot_][j_];
+            a_[pivot_][j_] = a_[col_][j_];
+            r_[pivot_][j_] = r_[col_][j_];
+            a_[col_][j_]   = s_;
+            r_[col_][j_]   = t_;
         }
-        const double scale = a[col][col];
-        for (int j = 0; j < 2; ++j) {
-            a[col][j] = a[col][j] / scale;
-            r[col][j] = r[col][j] / scale;
+        const double scale_ = a_[col_][col_];
+        for (int j_ = 0; j_ < 2; ++j_) {
+            a_[col_][j_] = a_[col_][j_] / scale_;
+            r_[col_][j_] = r_[col_][j_] / scale_;
         }
-        for (int row = 0; row < 2; ++row) {
-            const double factor = a[row][col];
-            if (row == col || factor == 0.0) continue;
-            for (int j = 0; j < 2; ++j) {
-                a[row][j] = a[row][j] - factor * a[col][j];
-                r[row][j] = r[row][j] - factor * r[col][j];
+        for (int row_ = 0; row_ < 2; ++row_) {
+            const double factor_ = a_[row_][col_];
+            if (row_ == col_ || factor_ == 0.0) continue;
+            for (int j_ = 0; j_ < 2; ++j_) {
+                a_[row_][j_] = a_[row_][j_] - factor_ * a_[col_][j_];
+                r_[row_][j_] = r_[row_][j_] - factor_ * r_[col_][j_];
             }
         }
     }
-    memcpy(a, r, sizeof r);
+    memcpy(a_, r_, sizeof r_);
 }
 
 /* Computes what derives from the parameters: call it after assigning one. */

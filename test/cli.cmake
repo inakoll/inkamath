@@ -854,7 +854,7 @@ holds(compile_c286 c286.h "(isnan(t0_) ? NAN : INFINITY);\n")
 file(WRITE "${OUT}/c161.ink" "z_n = [2 1; 1 n]^-1*[1; 1]\n")
 set(args --compile c161.ink --float -o c161.h)
 check(compile_float_c161)
-holds(compile_float_c161 c161.h "; ++j) r[i][j] = i == j ? 1.0f : 0.0f;\n")
+holds(compile_float_c161 c161.h "; ++j_) r_[i_][j_] = i_ == j_ ? 1.0f : 0.0f;\n")
 
 # C90: the clause --check keeps is 0 where a guard of 'and' reads NaN, as no
 # clause is taken, where the NaN was converted to an int.

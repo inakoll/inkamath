@@ -4511,60 +4511,60 @@ private:
                " matrix, in place, as the interpreter takes it: Gauss-Jordan\n"
                " * on the largest pivot, and NaN in every cell where there is none. */\n"
                "static inline void " +
-               module_ + "_inverse" + size + "_(double a[" + size + "][" + size +
+               module_ + "_inverse" + size + "_(double a_[" + size + "][" + size +
                "]) {\n"
-               "    double r[" +
+               "    double r_[" +
                size + "][" + size +
                "];\n"
-               "    for (int i = 0; i < " +
-               size + "; ++i)\n        for (int j = 0; j < " + size +
-               "; ++j) r[i][j] = i == j ? 1.0 : 0.0;\n"
-               "    for (int col = 0; col < " +
+               "    for (int i_ = 0; i_ < " +
+               size + "; ++i_)\n        for (int j_ = 0; j_ < " + size +
+               "; ++j_) r_[i_][j_] = i_ == j_ ? 1.0 : 0.0;\n"
+               "    for (int col_ = 0; col_ < " +
                size +
-               "; ++col) {\n"
-               "        int pivot = col;\n"
-               "        for (int row = col + 1; row < " +
+               "; ++col_) {\n"
+               "        int pivot_ = col_;\n"
+               "        for (int row_ = col_ + 1; row_ < " +
                size +
-               "; ++row)\n"
-               "            if (fabs(a[row][col]) > fabs(a[pivot][col]) ||\n"
-               "                (a[pivot][col] == 0.0 && a[row][col] != 0.0))\n"
-               "                pivot = row;\n"
-               "        if (a[pivot][col] == 0.0) {\n"
-               "            for (int i = 0; i < " +
-               size + "; ++i)\n                for (int j = 0; j < " + size +
-               "; ++j) a[i][j] = NAN;\n"
+               "; ++row_)\n"
+               "            if (fabs(a_[row_][col_]) > fabs(a_[pivot_][col_]) ||\n"
+               "                (a_[pivot_][col_] == 0.0 && a_[row_][col_] != 0.0))\n"
+               "                pivot_ = row_;\n"
+               "        if (a_[pivot_][col_] == 0.0) {\n"
+               "            for (int i_ = 0; i_ < " +
+               size + "; ++i_)\n                for (int j_ = 0; j_ < " + size +
+               "; ++j_) a_[i_][j_] = NAN;\n"
                "            return;\n"
                "        }\n"
-               "        for (int j = 0; j < " +
+               "        for (int j_ = 0; j_ < " +
                size +
-               "; ++j) {\n"
-               "            const double s = a[pivot][j], t = r[pivot][j];\n"
-               "            a[pivot][j] = a[col][j];\n"
-               "            r[pivot][j] = r[col][j];\n"
-               "            a[col][j]   = s;\n"
-               "            r[col][j]   = t;\n"
+               "; ++j_) {\n"
+               "            const double s_ = a_[pivot_][j_], t_ = r_[pivot_][j_];\n"
+               "            a_[pivot_][j_] = a_[col_][j_];\n"
+               "            r_[pivot_][j_] = r_[col_][j_];\n"
+               "            a_[col_][j_]   = s_;\n"
+               "            r_[col_][j_]   = t_;\n"
                "        }\n"
-               "        const double scale = a[col][col];\n"
-               "        for (int j = 0; j < " +
+               "        const double scale_ = a_[col_][col_];\n"
+               "        for (int j_ = 0; j_ < " +
                size +
-               "; ++j) {\n"
-               "            a[col][j] = a[col][j] / scale;\n"
-               "            r[col][j] = r[col][j] / scale;\n"
+               "; ++j_) {\n"
+               "            a_[col_][j_] = a_[col_][j_] / scale_;\n"
+               "            r_[col_][j_] = r_[col_][j_] / scale_;\n"
                "        }\n"
-               "        for (int row = 0; row < " +
+               "        for (int row_ = 0; row_ < " +
                size +
-               "; ++row) {\n"
-               "            const double factor = a[row][col];\n"
-               "            if (row == col || factor == 0.0) continue;\n"
-               "            for (int j = 0; j < " +
+               "; ++row_) {\n"
+               "            const double factor_ = a_[row_][col_];\n"
+               "            if (row_ == col_ || factor_ == 0.0) continue;\n"
+               "            for (int j_ = 0; j_ < " +
                size +
-               "; ++j) {\n"
-               "                a[row][j] = a[row][j] - factor * a[col][j];\n"
-               "                r[row][j] = r[row][j] - factor * r[col][j];\n"
+               "; ++j_) {\n"
+               "                a_[row_][j_] = a_[row_][j_] - factor_ * a_[col_][j_];\n"
+               "                r_[row_][j_] = r_[row_][j_] - factor_ * r_[col_][j_];\n"
                "            }\n"
                "        }\n"
                "    }\n"
-               "    memcpy(a, r, sizeof r);\n"
+               "    memcpy(a_, r_, sizeof r_);\n"
                "}\n\n";
     }
 

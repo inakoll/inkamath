@@ -330,6 +330,9 @@ singular() = {
     y_n = lim g(n - 1)
 }
 shut = singular()
+# The helper's locals were named as a model may be: row's loops declared
+# 'row', hiding its struct, which -Wshadow refuses (C337).
+row = singular()
 
 # A matrix with a cell that is not real is not a real matrix, which the step
 # writes NaN whole, as it writes one refused: g[1,1] was held to the ~0 the
