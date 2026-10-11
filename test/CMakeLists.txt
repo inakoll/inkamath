@@ -81,14 +81,13 @@ endforeach()
 
 # C316: a cell's may-NaN test searched it for each name in a set that grows
 # with every call under grad. The timeout holds it: 95 s before the fix and 2 s
-# since in a release build, 632 s and 28 s under the sanitizers, which no size
-# separates within one timeout, so theirs is 300 s, ten times since. MSVC's
+# since in a release build, 632 s and 28 s under the sanitizers. MSVC's
 # multi-config build cannot tell its Debug, whose iterators are checked and as
-# slow, so it takes theirs; the Linux release jobs hold the 60 s.
+# slow, so it takes 300 s; the Linux release jobs hold the 60 s.
 file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/c316.ink "m(x_n[i<=1000]) = {\n    w_0 = 1/2\n    w_n = w_(n-1) - grad_(v = w_(n-1)) sum_(i=1)^1000 (exp(v*x_n[i]) + exp(2*v*x_n[i]) + exp(3*v*x_n[i]))\n}\n")
 add_test(NAME compile_c316 COMMAND inkamath_cli --compile ${CMAKE_CURRENT_BINARY_DIR}/c316.ink m
                                    -o ${CMAKE_CURRENT_BINARY_DIR}/c316.h)
-if(INKAMATH_SANITIZE OR MSVC)
+if(MSVC)
     set_tests_properties(compile_c316 PROPERTIES TIMEOUT 300)
 else()
     set_tests_properties(compile_c316 PROPERTIES TIMEOUT 60)
@@ -200,7 +199,8 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brin
                          implicit:kinetic implicit:jacobian implicit:doubling implicit:inset
                          implicit:layered tensorgrad:attend tensorgrad:small
                          tensorgrad:saliency:3 adjoint:fit4 adjoint:token
-                         adjoint:sinabs adjoint:gate3 adjoint:aside gradmany:pair gradmany:same)
+                         adjoint:sinabs adjoint:gate3 adjoint:aside gradmany:pair gradmany:same
+                         transformer:unseen:4)
     string(REPLACE ":" ";" checked ${checked})
     list(POP_FRONT checked file instance count)
     set(name ${instance})
@@ -583,6 +583,9 @@ set_tests_properties(check_gradmany_pair_report PROPERTIES PASS_REGULAR_EXPRESSI
     "^pair: 100 steps from 0${inexact0}\npair\\.g\\.W: within 0, from 1${about}\npair\\.W: within 0${about}\npair\\.g\\.V: within 0, from 1${about}\npair\\.V: within 0${about}\npair\\.g\\.c: within 0, from 1${about}\npair\\.c: within 0${about}\npair\\.g\\.d: within 0, from 1${about}\npair\\.d: within 0${about}\n$")
 set_tests_properties(check_same_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^same: 100 steps from 0${inexact0}\nsame\\.g\\.A: within 0, from 1${about}\nsame\\.A: within 0${about}\nsame\\.g\\.B: within 0, from 1${about}\nsame\\.B: within 0${about}\n$")
+# A trained transformer, as compile/transformer.ink gives it.
+set_tests_properties(check_unseen_4_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^unseen: 4 steps from 0${inexact0}\nunseen\\.Z: within [1-9](\\.[0-9])?e-1[5-9]${about}\n$")
 # C329: --check's exact run forgets what its walk of the prelude recorded.
 set_tests_properties(check_sinabs_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^sinabs: 100 steps from 0${inexact0}\nsinabs\\.W: within 0${about}\n$")
@@ -934,3 +937,17 @@ add_executable(compile_fuzz ${fuzz_source})
 target_link_libraries(compile_fuzz PRIVATE inkamath_warnings $<$<NOT:$<C_COMPILER_ID:MSVC>>:m>)
 set_target_properties(compile_fuzz PROPERTIES C_STANDARD 11 C_STANDARD_REQUIRED ON C_EXTENSIONS OFF)
 add_test(NAME compile_fuzz COMMAND compile_fuzz)
+
+# Each timeout is for a job alone on its machine. The sanitizer job shares its
+# machine with the other jobs of two runs, and there took three times as long:
+# fastgrad_long.ink, 20 s alone, ran past 60, and cli_1, 38 s alone, past 120.
+if(INKAMATH_SANITIZE)
+    get_property(all_tests DIRECTORY PROPERTY TESTS)
+    foreach(test IN LISTS all_tests)
+        get_test_property(${test} TIMEOUT timeout)
+        if(timeout)
+            math(EXPR timeout "${timeout} * 3")
+            set_tests_properties(${test} PROPERTIES TIMEOUT ${timeout})
+        endif()
+    endforeach()
+endif()

@@ -3926,6 +3926,11 @@ that exploring seven domains asked of the interpreter, by how many asked.
   one gradient after *A matrix read by its cells tested for NaN once*.
   The full transformer's `--compile`, 13 gradients over a batch of 4,
   still ends in bad_alloc at 7 GB after 107 s.
+- **A compiled step split into functions**: the transformer trained by
+  one grad of its 13 weights compiles to a 17 MB straight-line step that
+  neither GCC nor Clang builds at -O2 within 10 minutes (Clang -O0: 24 s,
+  2.6 GB; GCC -O2 410 s and 4.5 GB once, on a quieter machine). Write each
+  name's sweep, or each part's step, as a C function of its own.
 - **A limit's invariants hoisted out of its iterate**: a limit or a
   matrix inverse that reads only the function's arguments is declared in
   the iterate's list, so walked again at each iterate, and gcc -O2 leaves
@@ -8362,6 +8367,9 @@ checked: what it asked of the compiler, each with its smallest change.
 - **A maximum or minimum over an index**, `max_(i=1)^n`, as a sum is
   written: max-pooling over a window is nested `max` calls today. Minor,
   until a second model asks.
+- **An argmax in the prelude**: a transformer's held-out accuracy had to
+  be written `prod_(v=1)^nv (Z[b,t,v] <= Z[b,t,y])`, its target's logit
+  no smaller than any.
 - **The compiled sum's thousand terms**: a LeNet-sized layer's dot product
   over a batch would pass `max_terms`, which bounds an unrolled sum written
   as lines of C, not a loop.
