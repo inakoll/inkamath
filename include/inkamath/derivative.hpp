@@ -571,8 +571,9 @@ private:
         }
         if (auto* x = Exactly<MemberExpression<T>>(e)) {
             if (!Reads(*x)) return Constant(x->accept(ordinary_));
-            // An instance's is refused as the instance is.
-            if (!Exactly<MemberExpression<T>>(*x->Object()) && stack_.GroupOf(*x->Object()))
+            // One through an instance that moves is refused as the instance is.
+            if ((!Exactly<MemberExpression<T>>(*x->Object()) || !Reads(*x->Object())) &&
+                stack_.GroupOf(*x->Object()))
                 throw std::runtime_error(
                     "grad cannot differentiate a gradient by several names yet");
             // A file holds definitions, as the session does; an instance runs a model.
