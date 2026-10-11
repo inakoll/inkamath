@@ -185,7 +185,7 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brin
                          implicit:kinetic implicit:jacobian implicit:doubling implicit:inset
                          implicit:layered tensorgrad:attend tensorgrad:small
                          tensorgrad:saliency:3 adjoint:fit4 adjoint:token
-                         adjoint:sinabs)
+                         adjoint:sinabs adjoint:gate3 adjoint:aside)
     string(REPLACE ":" ";" checked ${checked})
     list(POP_FRONT checked file instance count)
     set(name ${instance})
@@ -555,6 +555,10 @@ set_tests_properties(check_fit4_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^fit4: 100 steps from 0${inexact0}\nfit4\\.W: within 0${about}\n$")
 set_tests_properties(check_token_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^token: 100 steps from 0${inexact0}\ntoken\\.E: within 0${about}\n$")
+set_tests_properties(check_gate3_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^gate3: 100 steps from 0${inexact0}\ngate3\\.W: within 0${about}\n$")
+set_tests_properties(check_aside_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^aside: 100 steps from 0${inexact0}\naside\\.W: within 0${about}\n$")
 # C329: --check's exact run forgets what its walk of the prelude recorded.
 set_tests_properties(check_sinabs_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^sinabs: 100 steps from 0${inexact0}\nsinabs\\.W: within 0${about}\n$")

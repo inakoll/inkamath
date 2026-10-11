@@ -727,8 +727,8 @@ written(compile_adjoint_wide wide.h "wide_tanh_dx\\(" 17)
 set(args --compile ${adjoint} norm -o norm.h)
 check(compile_adjoint_norm)
 written(compile_adjoint_norm norm.h "norm_exp_dx\\(" 13 "norm_log_dx\\(" 4)
-# C328: a sequence compiled on the way by a grad that gives way keeps the
-# names it took, z's t4_, which the grad compiled forward does not take again.
+# C328: a sequence compiled on the way by a grad keeps the names it took,
+# z's t4_, which the grad does not take again.
 file(WRITE "${OUT}/c328.ink" [[m(x_n[i<=2]) = {
     r(t) | t < 0 = 0
     r(t) = t
