@@ -69,9 +69,9 @@ private:
         }
         Part operator*(const Part& b) const {
             if (!node && !b.node) return Part(Value() * b.Value());
-            const Extent extent = Tape::Times(Size(), b.Size());
-            if (node) return tape->Add(Tape::Kind::Right, extent, node, b.Value());
-            return b.tape->Add(Tape::Kind::Left, extent, b.node, Value());
+            const Extent product = Tape::Times(Size(), b.Size());
+            if (node) return tape->Add(Tape::Kind::Right, product, node, b.Value());
+            return b.tape->Add(Tape::Kind::Left, product, b.node, Value());
         }
         Part operator/(const Part& b) const {
             if (!node && !b.node) return Part(Value() / b.Value());
