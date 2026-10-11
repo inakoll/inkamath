@@ -8566,11 +8566,21 @@ checked: what it asked of the compiler, each with its smallest change.
 
   Built as specified: every entry passes as written, and the spec is the
   golden `reverse.ink`; the spec suite goes, it its only file. No other
-  golden moves. Departures. Two --check reports move, which the plan did not
-  foresee: `test/compile/grad.ink`'s fall.w and `iterates.ink`'s thirds.g,
-  gradients by a matrix that the compiled step takes in forward mode's order
-  and the interpreter now sweeps back, are within 1.3e-15 and 8.5e-14 of the
-  interpreter's where they were within 0; the compiler's adjoint step,
+  golden moves. Departures. Five --check reports move, which the plan did
+  not foresee, each of a gradient by a matrix that the compiled step takes
+  in forward mode's order and the interpreter now sweeps back; the figures
+  are at C323, within, then the interpreter's terms "about", each from
+  3593ea7's:
+  `test/compile/grad.ink`'s fall.w 1.3e-15 and 4.4e-15, from 0 and 5.3e-15;
+  `iterates.ink`'s thirds.g 8.5e-14 and 2.4e-13, from 0 and 9.9e-14;
+  `tensorgrad.ink`'s attend.WQ 8.9e-16 and 3.8e-15, from 0 and 3.1e-15;
+  `grad.ink`'s swing, its Jacobians by grad, Pp 2.2e-16 and 5.2e-15, from
+  2.2e-16 and 1.1e-14, xp 4.4e-16 and 5.3e-15, from 8.9e-16 and 8.9e-15, K
+  6.7e-16 and 4.5e-14, from 1.3e-15 and 8.1e-14, P 2.1e-17 and 5.2e-15,
+  from 1.7e-16 and 1e-14, x 4.4e-16 and 5.3e-15, from 8.9e-16 and 8.9e-15;
+  and `implicit.ink`'s jacobian.y, within 0 still, about 2.3e-15 from 2e-15.
+  The owner's ruling accepts them: no float target agrees bit for bit
+  (`MANIFESTO.md`). The compiler's adjoint step,
   below, can take the interpreter's order again, and until it does a step's
   gradient by a matrix is the interpreter's to rounding, not to the bit, as
   README now says. The plan's "every golden byte for byte" held; the reports
