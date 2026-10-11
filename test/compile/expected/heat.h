@@ -102,10 +102,10 @@ static inline void heat_init(heat* m_) {
 }
 
 /* Advances to the next index, the first at 0, and computes its terms. */
-static inline void heat_step(heat* m_, double q) {
+static inline void heat_step(heat* m_, double q_) {
     ++m_->index_;
     memcpy(m_->u[1], m_->u[0], sizeof m_->u[1]);
-    m_->q[0] = q;
+    m_->q[0] = q_;
     const double t1_ = m_->u[1][0][0] + m_->dt * 1.0 * m_->q[0];
     const double t2_ = m_->u[1][1][0] + m_->dt * 0.0 * m_->q[0];
     const double t3_ = m_->u[1][2][0] + m_->dt * 0.0 * m_->q[0];

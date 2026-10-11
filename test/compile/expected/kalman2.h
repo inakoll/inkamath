@@ -117,12 +117,12 @@ static inline void kalman2_init(kalman2* m_) {
 }
 
 /* Advances to the next index, the first at 0, and computes its terms. */
-static inline void kalman2_step(kalman2* m_, double zp, double zs) {
+static inline void kalman2_step(kalman2* m_, double zp_, double zs_) {
     ++m_->index_;
     memcpy(m_->P[1], m_->P[0], sizeof m_->P[1]);
     memcpy(m_->x[1], m_->x[0], sizeof m_->x[1]);
-    m_->zp[0] = zp;
-    m_->zs[0] = zs;
+    m_->zp[0] = zp_;
+    m_->zs[0] = zs_;
     if (m_->index_ >= 1) {
         const double t0_ = 1.0 * m_->P[1][0][0] + m_->dt * m_->P[1][1][0];
         const double t1_ = 1.0 * m_->P[1][0][1] + m_->dt * m_->P[1][1][1];

@@ -4926,8 +4926,8 @@ private:
         out += "static inline void " + module + "_step(" + module + "* m_";
         for (const std::string& name : inputs)
             out += Cells(name) == 1
-                       ? ", double " + name
-                       : ", const double " + name + "[" + std::to_string(Cells(name)) + "]";
+                       ? ", double " + name + "_"
+                       : ", const double " + name + "_[" + std::to_string(Cells(name)) + "]";
         out += ") {\n    ++m_->index_;\n";
         // A sequence's window moves when it computes a term: every step, or
         // on its ticks.
@@ -4948,8 +4948,8 @@ private:
         for (const std::string& name : inputs)
             out += Cells(name) == 1
                        ? "    m_->" + name + "[0]" + Subscript(sequences_.at(name).size, 0) +
-                             " = " + name + ";\n"
-                       : "    memcpy(m_->" + name + "[0], " + name + ", sizeof m_->" + name +
+                             " = " + name + "_;\n"
+                       : "    memcpy(m_->" + name + "[0], " + name + "_, sizeof m_->" + name +
                              "[0]);\n";
         for (const std::string& name : order) {
             const Sequence&   sequence = sequences_.at(name);
