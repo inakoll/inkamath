@@ -234,6 +234,19 @@ loss0(A, B) = (B*layer(A) - 2)*(B*layer(A) - 2) + layer(A)'*layer(A)/10
 >> grad_(x = 3) ((grad_(y = 2) (s = x*y)*y) + s)
 6
 
+# But not with its parts by the inner name, which a grad after it at the
+# same depth would read as its own (C322): beside it, in the point of one,
+# and by a matrix, whose parts are a tape gone with the inner grad. The
+# answers are 3 plus a, 6; a, 3; and a, 5.
+>> grad_(x = 1) x*(grad_(y = 2) ((a = 3*y) + 0) + grad_(z = 1) z*a)
+9
+
+>> grad_(x = grad_(y = 1) ((a = 3*y) + 0)) x*a
+3
+
+>> grad_(x = (grad_(v = [1 2]) ((a = 3*v[1,1] + v[1,2]) + 0))[1,1]) x*a
+5
+
 # Runge-Kutta's stages written as locals, each read by the next, and the
 # step's derivative with respect to its start.
 >> lg(y) = y - y^2

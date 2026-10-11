@@ -4,6 +4,7 @@
 #include "inkamath/reference_stack.hpp"
 
 #include <bit>
+#include <cmath>
 #include <cstddef>
 #include <cstdint>
 #include <map>
@@ -14,6 +15,7 @@
 #include <string>
 #include <type_traits>
 #include <typeinfo>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -41,9 +43,264 @@ public:
     }
 
 private:
+    struct Tape;
+    // What reverse mode cannot do as forward mode does: forward mode does it.
+    struct Forward {};
+
+    // A part: a value, or under reverse mode a node of the tape, whose value
+    // is NaN so that one read as a value shows.
+    struct Part : T {
+        Part(T value) : T(std::move(value)) {}
+        Part(Tape* on, std::size_t index, Extent size)
+            : T(typename T::value_type(std::nan(""))), tape(on), node(index), extent(size) {}
+        Tape*       tape = nullptr;
+        std::size_t node = 0;
+        Extent      extent;
+
+        [[nodiscard]] Extent   Size() const { return node ? extent : T::Size(); }
+        [[nodiscard]] const T& Value() const { return *this; }
+
+        // Members, not friends: a friend of Part may not name Derivative's
+        // private Tape, and MSVC holds to that.
+        Part operator+(const Part& b) const {
+            if (!node && !b.node) return Part(Value() + b.Value());
+            return (node ? tape : b.tape)
+                ->Add(Tape::Kind::Sum, Tape::Wider(Size(), b.Size()), node, {}, b.node);
+        }
+        Part operator*(const Part& b) const {
+            if (!node && !b.node) return Part(Value() * b.Value());
+            const Extent product = Tape::Times(Size(), b.Size());
+            if (node) return tape->Add(Tape::Kind::Right, product, node, b.Value());
+            return b.tape->Add(Tape::Kind::Left, product, b.node, Value());
+        }
+        Part operator/(const Part& b) const {
+            if (!node && !b.node) return Part(Value() / b.Value());
+            return tape->Add(Tape::Kind::Quotient, Tape::Wider(Size(), b.Size()), node, b.Value());
+        }
+        Part operator-() const {
+            return node ? tape->Add(Tape::Kind::Negative, extent, node) : Part(-Value());
+        }
+        friend Part operator+(const T& a, const Part& b) { return Part(a) + b; }
+        friend Part operator+(const Part& a, const T& b) { return a + Part(b); }
+        friend Part operator*(const T& a, const Part& b) { return Part(a) * b; }
+        friend Part operator*(const Part& a, const T& b) { return a * Part(b); }
+        friend Part operator/(const Part& a, const T& b) { return a / Part(b); }
+    };
+
+    // Reverse mode (DESIGN.md): one walk's parts as nodes, each linear in its
+    // operands, and the gradient their adjoints swept back.
+    struct Tape {
+        enum class Kind { Seed, Sum, Negative, Left, Right, Quotient, Cells, Mark, Gather, Place };
+        using Cell = std::pair<std::size_t, std::size_t>;  // a node's, from 0; node 0 for none
+        struct Node {
+            Kind              kind;
+            Extent            extent;
+            std::size_t       a;      // the operand's node, 0 for none
+            std::optional<T>  value;  // what it is multiplied or divided by
+            std::size_t       b;      // the other operand's node, or the cell placed's
+            std::size_t       at;     // the cell marked or placed, from 1; 0 for all
+            bool              approximated;
+            std::vector<Cell> from;  // each cell's, gathered
+        };
+        std::vector<Node> nodes;
+        // Each node by a hash of what it is, so that the same operation on the
+        // same nodes is the same node, and a call made again on it is
+        // remembered as forward mode remembers one by its parts' values (C323).
+        std::unordered_multimap<std::size_t, std::size_t> made;
+
+        static bool Same(const Node& x, const Node& y) {
+            return x.kind == y.kind && x.extent == y.extent && x.a == y.a && x.b == y.b &&
+                   x.at == y.at && x.approximated == y.approximated && x.from == y.from &&
+                   x.value.has_value() == y.value.has_value() &&
+                   (!x.value || numeric_interface<T>::same(*x.value, *y.value));
+        }
+
+        Part Add(Kind kind, Extent extent, std::size_t a, std::optional<T> value = std::nullopt,
+                 std::size_t b = 0, std::size_t at = 0, bool approximated = false,
+                 std::vector<Cell> from = {}) {
+            // A complex value would need conjugates (DESIGN.md).
+            using Scalar = numeric_interface<typename T::value_type>;
+            for (std::size_t k = 0; value && k < value->Size().count(); ++k)
+                if (!(Scalar::imaginary(value->data()[k]) == 0)) throw Forward();
+            Node node{kind, extent, a, std::move(value), b, at, approximated, std::move(from)};
+            std::size_t hash = node.value ? numeric_interface<T>::hash(*node.value) : 0;
+            for (const std::size_t field : {static_cast<std::size_t>(kind), a, b, at,
+                                            static_cast<std::size_t>(approximated), extent.count()})
+                hash = hash * 31 + field;
+            for (const auto& [operand, cell] : node.from) hash = (hash * 31 + operand) * 31 + cell;
+            for (auto [same, end] = made.equal_range(hash); same != end; ++same)
+                if (Same(nodes[same->second - 1], node)) return Part(this, same->second, extent);
+            nodes.push_back(std::move(node));
+            made.emplace(hash, nodes.size());
+            return Part(this, nodes.size(), extent);
+        }
+        Part Mark(const Part& a, bool approximated, std::size_t at = 0) {
+            return Add(Kind::Mark, a.Size(), a.node, std::nullopt, 0, at, approximated);
+        }
+        // Cells numbered from first + 1, so that where a map that only moves
+        // cells puts each says which it was.
+        static T Numbered(Extent extent, std::size_t first) {
+            T t(extent);
+            for (std::size_t k = 0; k < extent.count(); ++k)
+                t.data()[k] = typename T::value_type(static_cast<long long>(first + k + 1));
+            return t;
+        }
+        // What landed, each cell's number the cell it was.
+        template <typename F>
+        Part Gather(const T& landed, F was) {
+            std::vector<Cell> from(landed.Size().count());
+            for (std::size_t k = 0; k < from.size(); ++k)
+                if (const auto number = numeric_interface<T>::toInt(T(landed.data()[k]));
+                    number > 0)
+                    from[k] = was(static_cast<std::size_t>(number - 1));
+            return Add(Kind::Gather, landed.Size(), 0, std::nullopt, 0, 0, false, std::move(from));
+        }
+        template <typename F>
+        Part Moved(const Part& a, F f) {
+            return Gather(f(Numbered(a.Size(), 0)),
+                          [&a](std::size_t k) { return Cell(a.node, k); });
+        }
+
+        static bool   One(Extent e) { return e.count() == 1 && !e.slices; }
+        static Extent Wider(Extent a, Extent b) {
+            if (a.slices != b.slices) return a.slices ? a : b;
+            return One(a) ? b : a;
+        }
+        static Extent Times(Extent a, Extent b) {
+            if (One(a)) return b;
+            if (One(b)) return a;
+            return {a.rows, b.cols, std::max(a.slices, b.slices)};
+        }
+
+        static T Total(const T& g) {
+            T sum(g.data()[0]);
+            for (std::size_t k = 1; k < g.Size().count(); ++k) sum = sum + T(g.data()[k]);
+            return sum;
+        }
+        // An adjoint summed down to the shape of what was widened (C81).
+        static T Reduce(T g, Extent to) {
+            if (g.Size() == to) return g;
+            if (One(to)) return Total(g);
+            if (!g.IsTensor() || to.slices)
+                throw std::logic_error("an adjoint of " + g.Size().toString() + " for " +
+                                       to.toString());
+            T sum = g.Slice(1);
+            for (std::size_t k = 2; k <= g.Size().slices; ++k) sum = sum + g.Slice(k);
+            return sum;
+        }
+        // An exact 0 of an adjoint is a cell no path reaches, which stays an
+        // exact 0 whatever it meets.
+        static bool Nothing(const typename T::value_type& c) {
+            return numeric_interface<typename T::value_type>::exact(c) &&
+                   c == typename T::value_type(0);
+        }
+        static T Zeroed(T product, const T& g) {
+            if (product.Size() != g.Size()) return product;
+            for (std::size_t k = 0; k < g.Size().count(); ++k)
+                if (Nothing(g.data()[k])) product.data()[k] = g.data()[k];
+            return product;
+        }
+        // a*b, the terms whose factor of the adjoint is an exact 0 left out.
+        static T Sparse(const T& a, const T& b, bool adjoint_left) {
+            const Extent ea = a.Size(), eb = b.Size();
+            if (ea.cols != eb.rows) return a * b;
+            T c(Extent{ea.rows, eb.cols});
+            for (std::size_t i = 1; i <= ea.rows; ++i)
+                for (std::size_t j = 1; j <= eb.cols; ++j) {
+                    std::optional<typename T::value_type> sum;
+                    for (std::size_t k = 1; k <= ea.cols; ++k) {
+                        const auto &x = a(i, k), &y = b(k, j);
+                        if (Nothing(adjoint_left ? x : y)) continue;
+                        sum = sum ? *sum + x * y : x * y;
+                    }
+                    if (sum) c(i, j) = *sum;
+                }
+            return c;
+        }
+        // The adjoint of v*a, and of a*v, for a.
+        static T Left(const T& v, const T& g, Extent a) {
+            if (v.IsScalar()) return Zeroed(g * v, g);
+            if (One(a)) return Total(Zeroed(Derivative::Cellwise(v, g), g));
+            const auto f = [](const T& x, const T& y) {
+                return Sparse(numeric_interface<T>::transpose(x), y, false);
+            };
+            return v.IsTensor() || g.IsTensor() ? T::Sliced(v, g, f) : f(v, g);
+        }
+        static T Right(const T& v, const T& g, Extent a) {
+            if (v.IsScalar()) return Zeroed(g * v, g);
+            if (One(a)) return Total(Zeroed(Derivative::Cellwise(g, v), g));
+            const auto f = [](const T& y, const T& x) {
+                return Sparse(y, numeric_interface<T>::transpose(x), true);
+            };
+            return v.IsTensor() || g.IsTensor() ? T::Sliced(g, v, f) : f(g, v);
+        }
+
+        // The seed's adjoint, the body's being 1.
+        std::optional<T> Back(std::size_t body) {
+            std::vector<std::optional<T>> adjoint(nodes.size() + 1);
+            adjoint[body]   = T(typename T::value_type(1));
+            const auto into = [&](std::size_t n, T g) {
+                if (!n) return;
+                g          = Reduce(std::move(g), nodes[n - 1].extent);
+                adjoint[n] = adjoint[n] ? *adjoint[n] + g : std::move(g);
+            };
+            for (std::size_t n = nodes.size(); n > 1; --n) {
+                if (!adjoint[n]) continue;
+                T           g = std::move(*adjoint[n]);
+                const Node& x = nodes[n - 1];
+                const T*    v = x.value ? &*x.value : nullptr;
+                switch (x.kind) {
+                    case Kind::Seed:
+                        break;
+                    case Kind::Sum:
+                        into(x.b, g);
+                        into(x.a, std::move(g));
+                        break;
+                    case Kind::Negative:
+                        into(x.a, -g);
+                        break;
+                    case Kind::Left:
+                        into(x.a, Left(*v, g, nodes[x.a - 1].extent));
+                        break;
+                    case Kind::Right:
+                        into(x.a, Right(*v, g, nodes[x.a - 1].extent));
+                        break;
+                    case Kind::Quotient:
+                        into(x.a, Zeroed(g / *v, g));
+                        break;
+                    case Kind::Cells:
+                        into(x.a, Zeroed(Derivative::Cellwise(*v, g), g));
+                        break;
+                    case Kind::Mark:
+                        if (!x.at)
+                            g = Zeroed(Derivative::Marked(x.approximated, g), g);
+                        else if (auto& cell = g.data()[x.at - 1]; !Nothing(cell))
+                            cell = Derivative::Marked(x.approximated, T(cell)).data()[0];
+                        into(x.a, std::move(g));
+                        break;
+                    case Kind::Place:
+                        into(x.b, T(g.data()[x.at - 1]));
+                        g.data()[x.at - 1] = typename T::value_type(0);
+                        into(x.a, std::move(g));
+                        break;
+                    case Kind::Gather:
+                        for (std::size_t k = 0; k < x.from.size(); ++k) {
+                            const auto [from, cell] = x.from[k];
+                            if (!from) continue;
+                            if (!adjoint[from]) adjoint[from] = T(nodes[from - 1].extent);
+                            auto& sum = adjoint[from]->data()[cell];
+                            sum       = sum + g.data()[k];
+                        }
+                        break;
+                }
+            }
+            return adjoint[1];
+        }
+    };
+
     // Indexed by a set of grads as bits, [0] being the value; empty where the
     // derivative is zero, so that a zero needs no shape.
-    using Jet = std::vector<std::optional<T>>;
+    using Jet = std::vector<std::optional<Part>>;
 
     // Each grad doubles a value's parts.
     static constexpr int max_order = 8;
@@ -79,10 +336,20 @@ private:
         return false;
     }
 
+    // A map that only moves cells, as a transpose or a cell does, moves a
+    // node's.
     template <typename F>
     static Jet Map(Jet jet, F f) {
         for (auto& part : jet)
-            if (part) part = f(*part);
+            if (part) part = part->node ? part->tape->Moved(*part, f) : Part(f(part->Value()));
+        return jet;
+    }
+
+    static Jet Mark(Jet jet, bool approximated) {
+        for (auto& part : jet)
+            if (part)
+                part = part->node ? part->tape->Mark(*part, approximated)
+                                  : Part(Marked(approximated, part->Value()));
         return jet;
     }
 
@@ -92,7 +359,7 @@ private:
         return approximated ? numeric_interface<V>::marked(v) : numeric_interface<V>::inexact(v);
     }
 
-    static void Add(std::optional<T>& total, const T& term) {
+    static void Add(std::optional<Part>& total, const Part& term) {
         total = total ? *total + term : term;
     }
 
@@ -121,9 +388,17 @@ private:
         return c;
     }
 
+    static Part Cellwise(const Part& a, const Part& b) {
+        if (!a.node && !b.node) return Part(Cellwise(a.Value(), b.Value()));
+        const Part& node = a.node ? a : b;
+        return node.tape->Add(Tape::Kind::Cells, Tape::Wider(a.Size(), b.Size()), node.node,
+                              (a.node ? b : a).Value());
+    }
+
     // Cell by cell, as '/' divides.
     static T Cellwise(const T& a, const T& b) {
-        if (a.IsTensor() || b.IsTensor()) return T::Sliced(a, b, Cellwise);
+        if (a.IsTensor() || b.IsTensor())
+            return T::Sliced(a, b, [](const T& x, const T& y) { return Cellwise(x, y); });
         if (a.IsScalar() || b.IsScalar()) return a * b;
         if (a.Size() != b.Size()) throw std::runtime_error("these matrices have different sizes");
         T c(a.Size());
@@ -135,7 +410,7 @@ private:
         Jet c(a.size());
         c[0] = *a[0] / *b[0];
         for (std::size_t s = 1; s < a.size(); ++s) {
-            std::optional<T> top = a[s];
+            std::optional<Part> top = a[s];
             for (std::size_t part = s; part != 0; part = (part - 1) & s)
                 if (b[part] && c[s ^ part]) Add(top, -Cellwise(*c[s ^ part], *b[part]));
             if (top) c[s] = *top / *b[0];
@@ -149,7 +424,7 @@ private:
         Jet b(a.size());
         b[0] = numeric_interface<T>::pow(*a[0], T(-1));
         for (std::size_t s = 1; s < a.size(); ++s) {
-            std::optional<T> sum;
+            std::optional<Part> sum;
             for (std::size_t part = s; part != 0; part = (part - 1) & s)
                 if (a[part] && b[s ^ part]) Add(sum, *a[part] * *b[s ^ part]);
             if (sum) b[s] = -(*b[0] * *sum);
@@ -165,7 +440,7 @@ private:
         std::vector<std::optional<std::optional<T>>> known(static_cast<std::size_t>(order_) + 1);
         out[0] = value;
         for (std::size_t s = 1; s < u.size(); ++s) {
-            const auto each = [&](int blocks, const T& product) {
+            const auto each = [&](int blocks, const Part& product) {
                 auto& slot = known[static_cast<std::size_t>(blocks)];
                 if (!slot) slot = derivative(blocks);
                 if (*slot) Add(out[s], **slot * product);
@@ -176,8 +451,8 @@ private:
     }
 
     template <typename F>
-    static void Blocks(const Jet& u, std::size_t set, int blocks, const std::optional<T>& product,
-                       F& each) {
+    static void Blocks(const Jet& u, std::size_t set, int blocks,
+                       const std::optional<Part>& product, F& each) {
         if (set == 0) {
             each(blocks, *product);
             return;
@@ -226,8 +501,12 @@ private:
             const Jet a = Eval(x->m_e1());
             return Sum(a, Eval(x->m_e2()));
         }
-        if (auto* x = Exactly<NegExpression<T>>(e))
-            return Map(Eval(x->m_e()), [](const T& v) { return -v; });
+        if (auto* x = Exactly<NegExpression<T>>(e)) {
+            Jet u = Eval(x->m_e());
+            for (auto& part : u)
+                if (part) part = -*part;
+            return u;
+        }
         if (auto* x = Exactly<MultExpression<T>>(e)) {
             const Jet a = Eval(x->m_e1());
             return Product(a, Eval(x->m_e2()));
@@ -237,8 +516,7 @@ private:
             return Quotient(a, Eval(x->m_e2()));
         }
         if (auto* x = Exactly<PowExpression<T>>(e)) return Power(*x);
-        if (auto* x = Exactly<InexactExpression<T>>(e))
-            return Map(Eval(x->m_e()), [](const T& v) { return numeric_interface<T>::inexact(v); });
+        if (auto* x = Exactly<InexactExpression<T>>(e)) return Mark(Eval(x->m_e()), false);
         if (auto* x = Exactly<TransposeExpression<T>>(e))
             return Map(Eval(x->m_e()),
                        [](const T& v) { return numeric_interface<T>::transpose(v); });
@@ -347,7 +625,7 @@ private:
         // In its own words, not its guard's im's. max and min are defined on
         // the real line alone, so not where a real argument's parts leave it,
         // as |z| is (C205).
-        using Part         = numeric_interface<typename T::value_type>;
+        using Scalar       = numeric_interface<typename T::value_type>;
         const auto  cell   = [](auto f) { return [f](const T& v) { return T::Cells(v, f); }; };
         const auto& names  = stack_.Builtins().names;
         const bool  ranked = definition == names.at("max") || definition == names.at("min");
@@ -357,7 +635,9 @@ private:
                     throw std::runtime_error(definition->Name() + " has no complex derivative at " +
                                              at);
         for (const auto& [given, jet] : arguments) {
-            const Jet   im   = ranked ? Map(jet, cell(Part::imaginary)) : Jet();
+            // A node's parts are real, a complex value having given way, and
+            // its value is NaN, which IsZero would take for an imaginary part.
+            const Jet   im   = ranked && !tape_ ? Map(jet, cell(Scalar::imaginary)) : Jet();
             std::size_t with = 0;
             for (std::size_t s = 1; s < im.size(); ++s)
                 if (im[s] && !IsZero(*im[s])) with |= s;
@@ -378,14 +658,13 @@ private:
                 read = std::max(read, stack_.checked(*definition, *jet[0]));
         if (p.limit()) return Limit(*definition, p, arguments);
         Jet out = Term(*definition, p, index.has_value(), index.value_or(0), arguments);
-        for (auto& part : out)
-            if (read && part) part = Marked(read > 1, *part);
+        if (read) out = Mark(std::move(out), read > 1);
         // |z| squared is re^2 + im^2, whose parts past the first the real
         // clauses lack where z is real and its parts are not (C203).
         if (out.size() > 2 && arguments.size() == 1 && !IsZero(*out[0]) &&
             definition == stack_.Builtins().names.at("abs")) {
-            const Jet re     = Map(arguments[0].second, cell(Part::real));
-            const Jet im     = Map(arguments[0].second, cell(Part::imaginary));
+            const Jet re     = Map(arguments[0].second, cell(Scalar::real));
+            const Jet im     = Map(arguments[0].second, cell(Scalar::imaginary));
             const Jet square = Sum(Product(re, re), Product(im, im));
             bool      leaves = false;
             for (std::size_t s = 1; s < im.size(); ++s)
@@ -409,7 +688,10 @@ private:
             key += '\0' + name + '=';
             for (const auto& part : jet) {
                 key += part ? '\2' : '\1';
-                if (part) numeric_interface<T>::key(*part, key);
+                if (part && part->node)
+                    key += '\3' + std::to_string(part->node);
+                else if (part)
+                    numeric_interface<T>::key(*part, key);
             }
         }
         return key;
@@ -475,10 +757,17 @@ private:
         // The walk's guards read the double that moves (C271).
         rounded_ = true;
         if (&f == stack_.stepwise) return Constant(*value);
+        if (x.size() == 2 && x[1]->node) {
+            // Its slope, as the part a part of ~1 has.
+            const std::optional<T> slope = stack_.differentiated(
+                f, *x[0], numeric_interface<T>::inexact(T(typename T::value_type(1))));
+            if (!slope) return {};
+            return Jet{Part(*value), *slope * *x[1]};
+        }
         const std::optional<T> part =
             x.size() == 2 ? stack_.differentiated(f, *x[0], *x[1]) : std::nullopt;
         if (!part) return {};
-        return Jet{value, part};
+        return Jet{Part(*value), Part(*part)};
     }
 
     // A clause's own names hide a parameter evaluated, but the walk binds them
@@ -641,13 +930,22 @@ private:
         for (std::size_t s = 0; s < out.size(); ++s) {
             bool                        any = s == 0;
             std::vector<PExpression<T>> parts;
+            std::vector<typename Tape::Cell> numbered;  // a node's cells, to gather
             for (const Jet& cell : cells) {
-                any = any || cell[s];
-                parts.push_back(
-                    std::make_shared<ValExpression<T>>(cell[s] ? *cell[s] : Zero(cell[0]->Size())));
+                any    = any || cell[s];
+                T part = cell[s] ? cell[s]->Value() : Zero(cell[0]->Size());
+                if (cell[s] && cell[s]->node) {
+                    part = Tape::Numbered(cell[s]->Size(), numbered.size());
+                    for (std::size_t k = 0; k < part.Size().count(); ++k)
+                        numbered.emplace_back(cell[s]->node, k);
+                }
+                parts.push_back(std::make_shared<ValExpression<T>>(part));
             }
             if (!any) continue;
-            out[s] = make(std::move(parts))->accept(ordinary_);
+            const T built = make(std::move(parts))->accept(ordinary_);
+            out[s]        = numbered.empty()
+                                ? Part(built)
+                                : tape_->Gather(built, [&](std::size_t k) { return numbered[k]; });
         }
         return out;
     }
@@ -759,7 +1057,8 @@ private:
         bool Next(const Jet& jet) {
             bool all = true;
             for (std::size_t s = 0; s < jet.size(); ++s) {
-                settled[s] = parts[s].Next(jet[s] ? *jet[s] : Zero(jet[0]->Size()));
+                if (jet[s] && jet[s]->node) throw Forward();
+                settled[s] = parts[s].Next(jet[s] ? jet[s]->Value() : Zero(jet[0]->Size()));
                 all        = all && settled[s];
             }
             return all;
@@ -776,7 +1075,7 @@ private:
             std::size_t s = 0;
             while (s < jet.size() && settled[s]) ++s;
             if (s == jet.size()) s = 0;
-            const T value = jet[s] ? *jet[s] : Zero(jet[0]->Size());
+            const T value = jet[s] ? jet[s]->Value() : Zero(jet[0]->Size());
             throw std::runtime_error((s == 0 ? what : "the derivative of " + what) +
                                      " did not converge within " +
                                      std::to_string(Convergence<T>::max_terms) + " terms (" + last +
@@ -850,6 +1149,7 @@ private:
     }
 
     Jet Grad(GradExpression<T>& grad) {
+        if (tape_) throw Forward();
         const Jet          point = Eval(grad.Point());
         const T&           at    = *point[0];
         const std::string& name  = grad.Variable();
@@ -858,6 +1158,7 @@ private:
             throw std::runtime_error("grad nests more than " + std::to_string(max_order) + " deep");
         const std::size_t bit = Size();
         std::vector<Jet>  parts;
+        bool              reversed = false;
         {
             const Order order(*this, name, numeric_interface<T>::toString(at));
             const bool  real =
@@ -872,7 +1173,9 @@ private:
             const std::size_t cells  = at.IsScalar() ? 1 : extent.count();
             // One pass's locals are not the next's, in either frame.
             const bool binds = ParametersDefinition<T>::Binds(*grad.Body());
-            for (std::size_t k = 0; k < cells; ++k) {
+            // A single value's gradient with respect to a real matrix, in one walk.
+            reversed = bit == 1 && real && cells > 1 && Reverse(grad, point, binds, parts);
+            for (std::size_t k = reversed ? cells : 0; k < cells; ++k) {
                 // Each pass has steps of its own, as a term has (C318).
                 const typename ReferenceStack<T>::OwnSteps own_steps(stack_);
                 const bool                            undo = binds && k + 1 < cells;
@@ -887,19 +1190,17 @@ private:
                 x[bit] = seed;
                 const Shadow variable(*this, name, x);
                 Jet          body = Eval(grad.Body());
-                if (!at.IsScalar() && !body[0]->IsScalar()) {
-                    const auto kind = [](const T& v) { return v.IsTensor() ? "tensor" : "matrix"; };
-                    throw std::runtime_error(std::string("grad of a ") + kind(*body[0]) +
-                                             " with respect to a " + kind(at) +
-                                             " is a Jacobian, which it does not give");
-                }
+                Single(at, *body[0]);
                 parts.push_back(std::move(body));
                 if (undo) frames_.back() = own;
             }
         }
+        // A local the body bound outlives the grad, its parts by the grad's
+        // name do not: the next grad at this depth takes the same bit (C322).
+        for (auto& binding : frames_.back()) binding.second.resize(bit);
         Jet out(bit);
         for (std::size_t s = 0; s < bit; ++s) {
-            if (at.IsScalar()) {
+            if (at.IsScalar() || reversed) {
                 out[s] = parts[0][s | bit];
                 continue;
             }
@@ -918,10 +1219,49 @@ private:
         const bool none = !out[0];
         if (none) out[0] = Zero(parts[0][0]->Size());
         if (chosen_ || (none && numeric_interface<T>::approximated(*parts[0][0])))
-            out = Map(std::move(out), numeric_interface<T>::marked);
+            out = Mark(std::move(out), true);
         else if (rounded_)
-            out = Map(std::move(out), [](const T& v) { return Marked(false, v); });
+            out = Mark(std::move(out), false);
         return out;
+    }
+
+    // A gradient is of a single value, not a Jacobian.
+    static void Single(const T& at, const T& body) {
+        if (at.IsScalar() || body.IsScalar()) return;
+        const auto kind = [](const T& v) { return v.IsTensor() ? "tensor" : "matrix"; };
+        throw std::runtime_error(std::string("grad of a ") + kind(body) + " with respect to a " +
+                                 kind(at) + " is a Jacobian, which it does not give");
+    }
+
+    // One walk recording its parts on a tape, and one sweep back (DESIGN.md);
+    // false where it gives way, which keeps nothing of it.
+    bool Reverse(GradExpression<T>& grad, const Jet& point, bool binds, std::vector<Jet>& parts) {
+        const Setting<decltype(memo_)>        remembered(memo_, {});
+        typename ReferenceStack<T>::Tentative locals(stack_, binds);
+        const Arguments                       own    = binds ? frames_.back() : Arguments();
+        const bool                            chosen = chosen_, rounded = rounded_;
+        const std::size_t                     stepped = stepped_;
+        try {
+            const typename ReferenceStack<T>::OwnSteps own_steps(stack_);
+            const Extent                               extent = point[0]->Size();
+            Tape                                       tape;
+            const Setting<Tape*>                       taping(tape_, &tape);
+            Jet                                        x = Padded(point);
+            x[1]                                         = tape.Add(Tape::Kind::Seed, extent, 0);
+            const Shadow variable(*this, grad.Variable(), x);
+            Jet          body = Eval(grad.Body());
+            Single(*point[0], *body[0]);
+            body[1] = body[1] ? tape.Back(body[1]->node).value_or(Zero(extent)) : Zero(extent);
+            parts.push_back(std::move(body));
+            locals.keep();
+            return true;
+        } catch (const Forward&) {
+            if (binds) frames_.back() = own;
+            chosen_  = chosen;
+            rounded_ = rounded;
+            stepped_ = stepped;
+            return false;
+        }
     }
 
     // A definition reads the globals where it was written, which a grad's
@@ -1026,8 +1366,7 @@ private:
         Jet Eval(const PExpression<T>& e) {
             Jet        jet    = d.Eval(e);
             const auto marked = Chosen();
-            return marked ? Map(std::move(jet), [&](const T& v) { return Marked(*marked, v); })
-                          : jet;
+            return marked ? Mark(std::move(jet), *marked) : jet;
         }
         // A size is a whole number, so one that moves is at a jump.
         T Bound(const PExpression<T>& e) {
@@ -1052,10 +1391,19 @@ private:
             if (!held && clause.parameters.binds()) d.frames_.back() = own;
             return held;
         }
+        // A cell's place, from 1, for the tape.
+        static std::size_t At(Jet& into, int slice, int row, int col) {
+            return static_cast<std::size_t>(&Value(into)(slice, row, col) - Value(into).data()) + 1;
+        }
         void Settle(Jet& into, int slice, int row, int col) {
-            if (const auto marked = Chosen())
-                for (auto& part : into)
-                    if (part) (*part)(slice, row, col) = Marked(*marked, (*part)(slice, row, col));
+            const auto marked = Chosen();
+            for (auto& part : into) {
+                if (!marked || !part) continue;
+                if (part->node)
+                    part = part->tape->Mark(*part, *marked, At(into, slice, row, col));
+                else
+                    (*part)(slice, row, col) = Marked(*marked, (*part)(slice, row, col));
+            }
         }
         static T&   Value(Jet& jet) { return *jet[0]; }
         Jet         Blank(Extent extent) const { return d.Constant(T(extent)); }
@@ -1064,6 +1412,13 @@ private:
             (*into[0])(slice, row, col) = single;
             for (std::size_t s = 1; s < into.size(); ++s) {
                 if (!cell[s] && !into[s]) continue;
+                const std::optional<Part>& node = cell[s] && cell[s]->node ? cell[s] : into[s];
+                if (node && node->node) {
+                    into[s] = node->tape->Add(
+                        Tape::Kind::Place, Value(into).Size(), into[s] ? into[s]->node : 0,
+                        std::nullopt, cell[s] ? cell[s]->node : 0, At(into, slice, row, col));
+                    continue;
+                }
                 if (!into[s]) into[s] = Zero(into[0]->Size());
                 (*into[s])(slice, row, col) =
                     cell[s] ? (*cell[s])(1, 1) : typename T::value_type(0);
@@ -1157,6 +1512,7 @@ private:
     std::size_t                                           stepped_ = 0;
     std::size_t                                           complex_ = 0;  // grads at a complex point
     const Guarded*                                        guarded_ = nullptr;
+    Tape*                                                 tape_    = nullptr;
 };
 
 #endif  // INKAMATH_DERIVATIVE_HPP

@@ -1819,6 +1819,9 @@ closures need one anyway, and can bring it.
 | C319 `[fixed]` | **The compiler refused an input read bare for a reason that was not the interpreter's.** A model's input has no definition, and a name without one is a field of the header, 1x1 until the step reads it: so `y_n = x` was refused late, "x is read both as a value and as a sequence", and beside `f(z)[i,j] = z[i,j]`, `y_n = f(x)[2,1]` for "row 2, column 1 is outside a 1x1 matrix", where the interpreter says "x is a sequence; index it (x_0) or take its limit (lim x)". Found training a transformer. An input read bare is refused where it is read now, in the words the compiler gives a defined sequence read bare, "x is a sequence; index it"; a file without a model reading an undefined x both bare and as x_n is still refused at the end. In 5 lines, 1 of comment; `compile_c319` in `test/cli.cmake` holds it. |
 | C320 `[fixed]` | **Compiled, a comparison inside `and` or `or` read as a value did not jump under grad.** A comparison read as a value is refused by the interpreter where its sides meet and move, and the compiler tests for that, NaN there (C114); inside `and` or `or` the test is the logic's own, which tested only an equality, as a guard does: `y_n = grad_(t = x_n) ((t > 0 and t < 5) + t)` at `x_n = n/2 - 1` was 1 at 2, where the interpreter says "a comparison jumps at t = 0", and `--check` failed; without the `and` it held. Found training a transformer. The logic's test jumps as the comparison read alone does now, every comparison in a value and an equality in a guard. In 1 line more, of comment, and 4 changed; `edge.a` in `test/compile/grad.ink` holds it, NaN at 2 and 6. |
 | C321 `[fixed]` | **A statement could take an empty parameter list.** C314 refused `lg() = 1` as a local and kept `g() = 1` as a statement, defining g = 1, a list that adds nothing (CLAUDE.md, section 2), in the session, a file and a model's body alike. Found training a transformer. It is refused as a statement and in a model's body, "a parameter list cannot be empty", C314's words for a local being about a local; a model written `m() = { ... }` and a call `g()` with every default (C169) are untouched, and no golden or README.md example wrote one. In 3 lines more, 1 of comment, and 3 changed; signatures.ink holds it. |
+| C322 `[fixed]` | **A local bound in a grad's body kept that grad's parts after it.** A local outlives the grad that binds it, and grad's frame kept its parts by that grad's name, whose bit the next grad at the same depth takes for its own: `grad_(x = grad_(y = 1) ((a = 3*y) + 0)) x*a` was 12 for 3, a's part by y read as one by x, and `grad_(x = 1) x*(grad_(y = 2) ((a = 3*y) + 0) + grad_(z = 1) z*a)` 12 for 9. Under reverse mode the part was a node of a tape gone with the inner grad, and reading it read freed memory: `grad_(x = (grad_(v = [1 2]) ((a = 3*v[1,1] + v[1,2]) + 0))[1,1]) x*a` was NaN or a crash for 5. Found reviewing reverse mode. A grad leaves each local of its frame the parts of the grads around it, as a grad nested in it reads them, and no more. In 3 lines, 2 of comment; gradlocal.ink holds it. |
+| C323 `[fixed]` | **Reverse mode did not remember a call made again on the same cells.** A call is remembered by its arguments' parts, nodes under reverse mode, and each reading of a cell, each product by a value, recorded a node of its own, where forward mode's parts are values and equal: so under reverse mode `grad_(t = [~0.5 1]) (tanh(t[1,1]) + dive(255, t[1,1]))` beside reverse.ink's dive was "evaluation nests more than 256 references deep", tanh at its foot one reference deeper where forward mode finds it remembered, `grad_(v = [~1 1]) sum_(k=1)^600000 exp(v[1,1])` gave up after a million steps, a step for each exp, and a function calling itself twice on `y*1` took 2^n calls, all of which forward mode answers; softmax by its cells called exp once per pair of cells, gradcells.ink 17 per cent slower than forward mode under callgrind. Found reviewing reverse mode. A node is now the node already made for the same operation on the same nodes by the same value: the three answer, gradcells.ink is 20 per cent faster than forward mode, and the transformer's step 4.7 per cent slower, hashing each node. What forward mode remembers by values equal on different paths, `y*k/k` for each k, reverse mode still does not. In 26 lines, 3 of comment, and 6 removed; reverse.ink and reverse_memo.ink hold it. |
+| C324 `[open]` | **Forward mode's gradient by a matrix is NaN in a cell where a value is infinite.** Each cell's pass carries every other cell's part as an exact 0, and multiplies it by the values it meets: at a point where exp overflows, `grad_(v = [800 1]) exp(v[1,1])*v[1,2]` is `[-nan, ~inf]` in forward mode, the pass for the first cell taking v[1,2]'s part, 0, times exp's value, inf, where the derivative is the single value's, `[~inf, ~inf]`, as reverse mode answers; at 1001, `[-nan, ~inf]` for `[0, ~inf]`. Reverse mode leaves an exact 0 of an adjoint out of a product, so the NaN remains where forward mode still takes a gradient by a matrix: inside another grad, at a complex point, and where reverse mode gives way. Found reviewing reverse mode. To be fixed in the next batch; reverse.ink holds reverse mode's answers. |
 
 **Measure instructions, not the clock.** One of those changes made the matrix
 workload 20 per cent slower by the clock and not by a single instruction: with
@@ -8421,3 +8424,211 @@ checked: what it asked of the compiler, each with its smallest change.
   two above. 38 lines of sources where about 50 were planned, 27 of code:
   `derivative.hpp` 17, `number.hpp` 12, `interpreter.hpp` 4, `matrix.hpp`
   2, `numeric_interface.hpp` 2 and `reference.hpp` 1. 15,911 lines in all.
+- `[done]` **Reverse mode in the interpreter**, the tape first, by the
+  owner's decision; the compiler's adjoint step is a later item of its own,
+  below.
+  The §9 exploration's tiny transformer, 1,056 weights, trains at 16 s a step
+  interpreted: forward mode evaluates the loss once per cell of each weight,
+  4,224 evaluations of 3.6 ms per step of four samples, where one
+  evaluation and a sweep back per gradient cost about two. `MANIFESTO.md`
+  deferred reverse mode until gradients limit the models written; they now
+  do.
+
+  Decided:
+  - **One notation, the mode chosen by shape.** `grad_` keeps its spelling
+    and its answers. A gradient whose variable has more than one cell, at a
+    real point, outside another grad, is evaluated in reverse mode; every
+    other in forward mode, which takes one pass for a single value and gives
+    what reverse mode does not, a matrix's derivative with respect to a
+    single value. The mode is a cost, not a meaning: it may tell answers
+    apart only by rounding, at the printed digits where a part is
+    subnormal, and by a resource, reverse mode answering where forward mode
+    runs out of depth.
+  - **The tape is grad's own walk.** `Derivative` evaluates as now, with
+    the same clauses, guards, jumps, limits, memo, frames and cells; under
+    reverse mode a value's part is a node of a tape instead of a matrix. Each
+    operation forward mode applies to a part records a node, linear in its
+    operands, with the value it multiplies by: a sum, a product by a value on
+    either side, a quotient by one, a product cell by cell, a negation, a
+    mark, and a move of cells (a transpose, a cell, a row or slice, `re` or
+    `im` of a real part, a literal, a tensor's slices), found by mapping cells
+    numbered 1 and up, so that one rule serves every map that only moves
+    cells. A definition by cells places each cell's node into its own. The
+    variable's part is the first node; after the walk, one sweep from the
+    body's node to the first accumulates each node's adjoint, summed down to
+    its operand's shape where a single value or a matrix was widened (C81),
+    slice by slice for tensors. Recorded during evaluation, as
+    `MANIFESTO.md` puts it, the evaluation being grad's: what grad hands the
+    evaluator whole reads no part and is not on the tape.
+  - **What it meets.** A guard chooses at the point, as now, and a part a
+    clause lacks is no node. Sums and products with bounds are unrolled. A
+    call is remembered by its arguments' parts, nodes here, so a call made
+    again with the same nodes answers its own and the tape is a graph; a term
+    remembered as a value never answers for one with parts. A local binds its
+    node in grad's frame as it binds its parts now; one evaluation leaves no
+    pass's locals to put back. A function of the prelude of a moving double
+    takes the header's slope, its part at `~1`, times the adjoint; where the
+    header gives no part, at 0, an infinity or NaN, the definition is walked
+    with the node, as forward mode walks it, and refuses in its words.
+    Forward mode also walks for an exact part (C139); reverse mode does not:
+    the same value to rounding, in fewer steps and less depth, so reverse
+    mode may answer where forward mode refuses, "evaluation nests more than
+    256 references deep".
+  - **What it gives way on.** A limit or an endless sum whose terms move
+    takes the limit of its terms' parts, walked until each part converges
+    (C72), which needs the parts' values; a complex value multiplying a part
+    needs conjugates for `re`, `im` and `abs`; a grad inside needs parts of
+    parts. Meeting one, the walk stops, its locals are put back in both
+    frames, its flags reset, its steps, its own as each of forward mode's
+    passes has its own (C318), put back, and its remembered terms forgotten,
+    since a term remembered answers without raising the flags its walk
+    raised; and forward mode evaluates the grad from the start. A complex
+    point is known before, and goes to forward mode at once. Every refusal
+    keeps its words: whether a part is there, all that C73, C78, C301, a
+    moving size and the staircases ask, a node answers as a matrix does, so
+    a refusal is met where forward mode's first pass meets it; and C215's
+    stepping limit is refused before any part is read.
+  - **The same answers.** Exact values are the same rationals. Doubles agree
+    to rounding where they are normal: an adjoint sums its terms in another
+    order, and the header's slope rounds once where its part rounds with the
+    part. In the subnormals, whose bits are fewer, they may differ at the
+    printed digits: a product rounded there in another order. A cell
+    is inexact where a path to it meets a double, and an exact 0 of an
+    adjoint is no path, which stays exact whatever it meets. So reverse mode
+    puts no `~` forward mode does not, and drops one where forward mode's
+    pass for the cell multiplied a 0, of its seed or of a constant, by a
+    double: `grad_(W = [1 2; 3 4]) [1 1]*W*[~1; 2]` is `[~1, 2; ~1, 2]`,
+    forward mode's `[~1, ~2; ~1, ~2]`. Both keep "a bare number is exact"
+    (C240). Fewer marks are the owner's decision: reverse mode is not meant
+    to match forward mode's.
+  - **Forward mode stays, and nothing is deleted.** It serves a single
+    value, a derivative of a matrix, a grad inside a grad, a complex point,
+    and whatever reverse mode gives way on. Its pass per cell, some 15 lines
+    of `Grad`, could go only by refusing a matrix variable through a moving
+    limit, a complex value or a grad inside, which forward mode answers now.
+  - **Memory.** The tape holds every node of one evaluation and the values
+    they multiply by, and goes with the grad. No cap: a tape grows as its
+    evaluation does, bounded as that is by steps and terms.
+
+  Rejected:
+  - **A second notation**, `nabla` or a mode argument: two ways to say one
+    thing, and a choice the shape already makes.
+  - **A second evaluator with a tape, or a tape in `EvaluationVisitor`**:
+    a third copy of how a call chooses its clause and how `lim` walks, where
+    *Differentiation* already names the second as one that drifts, and every
+    refusal written again. The evaluator knows no parts to record.
+  - **All cells' parts carried in one walk**, vector forward mode, or **the
+    tape replayed forward once per cell**: forward mode's roundings and
+    marks exactly, but arithmetic still per cell, so the count of weights
+    still bounds the model. Neither is reverse mode.
+  - **Forward mode's marks emulated**, or **the prelude walked for an exact
+    part** as forward mode walks it: either needs every node to carry, cell
+    by cell, whether forward mode's part would be exact, about 50 lines, for
+    marks forward mode owes to a 0 times a double and for digits past the
+    ninth.
+  - **Refusing what reverse mode gives way on**, to delete forward mode's
+    pass per cell: a regression for 15 lines.
+  - **A cap on the tape**, falling back to forward mode past it: a bound
+    nothing has needed, and answers whose cost would depend on it.
+
+  Measured with a prototype at 29bf717, not landed: every golden byte for
+  byte, 68 files and 4,081 answers, 96 gradients of them in reverse mode and
+  none giving way. Forced on every outermost grad, a single value's too, 7
+  answers move: six in `fastgrad.ink`, at the 17th digit, a subnormal part
+  at the 6th and `dive(254, t)` answering past the depth at which forward
+  mode's walk of an exact part gives up, and `trig.ink`'s `grad_(x = 0)
+  cos(x)`, `~-0` for `~0`. The transformer's step, RelWithDebInfo with GCC
+  13 on the exploration's files: 18.4 s to 0.45 s, 4,224 evaluations to 52
+  and 52 sweeps; its tape 7,400 nodes and 1.6 MB a gradient, and one step's
+  peak memory 29 MB where forward mode's is 84; ten steps 4.8 s, the first
+  and tenth losses forward mode's to 17 digits.
+  `bench/grad.ink`, a gradient of three cells, 0.24 s to 0.14; forward mode
+  unchanged where it stays.
+
+  About 355 lines, all in `derivative.hpp`, as the prototype wrote them
+  without its probes, about 390 added and 35 changed: the part, a value or a
+  node, with its operators, 45; the tape's nodes, 110; the sweep and its
+  adjoints, an exact 0 skipped in a product, 110; the walk's maps,
+  literals, placed and marked cells, the prelude's slope, memo keys and
+  limits, 50; the reverse pass in `Grad` and giving way, 40. 16,291 lines
+  at 29bf717, by `wc -l include/inkamath/*.hpp src/*`. Past 530 the
+  implementation stops and reports.
+
+  Specified in `test/data/spec/reverse.ink`, 126 answers replayed by the
+  spec suite, restored for it, 6 failing by design: the three marks above,
+  the evidence that reverse mode ran, and its three answers where the modes
+  differ, past forward mode's depth and in the subnormals. The count,
+  `grad_(w = [1 2 3 4 5 6 7 8 9 10]) (w*w' + sum_(k=1)^120000 k)`, one
+  evaluation of a 120,000-step sum where forward mode takes ten, is a plain
+  value: since C318 each of forward mode's passes has steps of its own. The
+  rest pass today and must still: matrices, inverses and tensors exact;
+  README's gradient; sums, products, locals, cells, a ReLU at 0 and
+  remembered terms; the prelude's functions of doubles; a one-cell tensor,
+  forward; the transformer trimmed to one block of two heads, its loss, the
+  gradients of W^Q, a tensor, and of the unembedding, and the loss after one
+  step on every weight, NumPy's by the exploration's `rev.py`; the refusals,
+  each in its words; and what gives way, a moving limit and its divergent
+  derivative, an endless sum, a complex value and point, and a grad inside,
+  after a clause an inexact truth chose in a term the walk remembered, and
+  after a sum of 200,000 steps. README's paragraph on `grad` gains that a
+  gradient with respect to a matrix costs one evaluation and a sweep back,
+  whatever its cells.
+
+  Built as specified: every entry passes as written, and the spec is the
+  golden `reverse.ink`; the spec suite goes, it its only file. No other
+  golden moves. Departures. Five --check reports move, which the plan did
+  not foresee, each of a gradient by a matrix that the compiled step takes
+  in forward mode's order and the interpreter now sweeps back; the figures
+  are at C323, within, then the interpreter's terms "about", each from
+  3593ea7's:
+  `test/compile/grad.ink`'s fall.w 1.3e-15 and 4.4e-15, from 0 and 5.3e-15;
+  `iterates.ink`'s thirds.g 8.5e-14 and 2.4e-13, from 0 and 9.9e-14;
+  `tensorgrad.ink`'s attend.WQ 8.9e-16 and 3.8e-15, from 0 and 3.1e-15;
+  `grad.ink`'s swing, its Jacobians by grad, Pp 2.2e-16 and 5.2e-15, from
+  2.2e-16 and 1.1e-14, xp 4.4e-16 and 5.3e-15, from 8.9e-16 and 8.9e-15, K
+  6.7e-16 and 4.5e-14, from 1.3e-15 and 8.1e-14, P 2.1e-17 and 5.2e-15,
+  from 1.7e-16 and 1e-14, x 4.4e-16 and 5.3e-15, from 8.9e-16 and 8.9e-15;
+  and `implicit.ink`'s jacobian.y, within 0 still, about 2.3e-15 from 2e-15.
+  The owner's ruling accepts them: no float target agrees bit for bit
+  (`MANIFESTO.md`). The compiler's adjoint step,
+  below, can take the interpreter's order again, and until it does a step's
+  gradient by a matrix is the interpreter's to rounding, not to the bit, as
+  README now says. The plan's "every golden byte for byte" held; the reports
+  are not goldens. An exact 0 of an adjoint stays exact through a mark too, a
+  `~` or a clause a guard chose, not only through a product, as "an exact 0
+  of an adjoint is no path" reads; no entry tells the two apart. Where a
+  value is infinite, reverse mode gives each cell the single value's
+  derivative, `[~inf, ~inf]` for `grad_(v = [800 1]) exp(v[1,1])*v[1,2]` and
+  `[0, ~inf]` at 1001, where forward mode's pass for the first cell
+  multiplies v[1,2]'s part there, 0, by inf and answers -nan for it: a
+  defect of forward mode's, C324, open; `reverse.ink` holds reverse mode's
+  answers. The walk's
+  remembered terms are its own: those before it are set aside while it runs
+  and put back whether it answers or gives way, since a node's number means
+  nothing past its tape. Forward mode's refusal of a Jacobian is one
+  function both modes call. 334 lines against about 355, all in
+  `derivative.hpp`, 23 of them comment, 376 added and 42 removed: the part
+  and its operators 44, the tape's nodes 56, the sweep and its adjoints 136,
+  the walk's maps, literals, placed and marked cells, the prelude's slope,
+  memo keys and limits about 55, the walk in `Grad` and giving way about 40.
+  16,659 lines in all, 16,325 at 3593ea7. Measured at this commit,
+  RelWithDebInfo with GCC 13: the transformer's step on the exploration's
+  files 18.2 s to 0.52 s, its peak memory 79 MB to 27, its terms forward
+  mode's to 16 digits; `bench/grad.ink` 0.24 s to 0.13. Under callgrind,
+  after C323, forward mode where it stays costs 4.3 per cent more
+  instructions in `fastgrad.ink`, the same with reverse mode taken out,
+  each part carrying its tape, node and extent: accepted, under the 5 per
+  cent allowed; `bench/`'s other workloads move by 0.7 per cent or less.
+  The 600,000 remembered terms are since in `reverse_memo.ink`, a golden
+  of their own with `fastgrad.ink`'s 120 s timeout: 65 s under the
+  sanitizers alone, where `reverse.ink` stopped at 60.
+- **The compiler's adjoint step**, after the tape: `--compile` keeps
+  forward mode's parts, a pass per cell of a seed. An adjoint emitted by
+  transformation, with the extents the compiler knows (`MANIFESTO.md`), and
+  the window of history a step that keeps its latest terms can give it, is
+  an item of its own, not specified here.
+- **grad's cost per term**: 600,000 remembered terms take 65 s under the
+  sanitizers in reverse mode, 110 µs a term, and 36 s in forward mode;
+  under callgrind, 30,000 terms of `reverse_memo.ink`'s sum cost some
+  17,000 instructions each: a cell read 31 per cent, 11 of them its index,
+  `dynamic_cast` in `Reads` 15, `Key`'s strings 14, and 13 allocations.

@@ -39,8 +39,10 @@ foreach(golden IN LISTS goldens)
     set_tests_properties(${case}.ink PROPERTIES TIMEOUT 60
                          FAIL_REGULAR_EXPRESSION "test cases: +0 \\|")
 endforeach()
-# fastgrad.ink's 600,000 remembered calls take 19 s under sanitizers alone.
+# fastgrad.ink's 600,000 remembered calls take 52 s under sanitizers alone, 64 on CI.
 set_tests_properties(fastgrad.ink PROPERTIES TIMEOUT 120)
+# reverse_memo.ink's one entry, its 600,000 under reverse mode, takes 65 s alone.
+set_tests_properties(reverse_memo.ink PROPERTIES TIMEOUT 120)
 foreach(suite IN ITEMS bignum line_editor matrix prelude)
     add_test(NAME ${suite} COMMAND inkamath_tests --test-suite=${suite} --no-intro)
     set_tests_properties(${suite} PROPERTIES TIMEOUT 60)
@@ -321,11 +323,12 @@ set_tests_properties(check_bea_functions PROPERTIES
     PASS_REGULAR_EXPRESSION "bea_atan\\(double arg_x\\).*bea_atan2\\(double arg_y, double arg_x\\).*bea_acos\\(double arg_x\\).*bea_asin\\(double arg_x\\).*bea_acosh\\(double arg_x\\)"
     FAIL_REGULAR_EXPRESSION "[^_a-z](atan|atan2|asin|acos|acosh)\\(")
 # grad compiled (DESIGN.md), each value carrying its part: every gradient
-# the interpreter's, as compile/grad.ink gives them.
+# the interpreter's, to rounding where it is in reverse mode, as
+# compile/grad.ink gives them.
 set_tests_properties(check_line_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^line: 100 steps from 0, against exact values\nline\\.w: within 4\\.4e-16\n$")
 set_tests_properties(check_fall_report PROPERTIES PASS_REGULAR_EXPRESSION
-    "^fall: 100 steps from 0, against exact values until 1 and inexact ones from there\nfall\\.u: within 0${about}\nfall\\.w: within 0${about}\n$")
+    "^fall: 100 steps from 0, against exact values until 1 and inexact ones from there\nfall\\.u: within 0${about}\nfall\\.w: within 1\\.3e-15${about}\n$")
 set_tests_properties(check_hinge_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^hinge: 100 steps from 0, against exact values\nhinge\\.g: within 0\n$")
 set_tests_properties(check_edge_report PROPERTIES PASS_REGULAR_EXPRESSION
@@ -519,7 +522,7 @@ add_test(NAME compile_signatures_header
 set_tests_properties(check_poly_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^poly: 100 steps from 0, against exact values\npoly\\.A: within 0\npoly\\.c: within 0\npoly\\.d: within 0\npoly\\.g: within 0\n$")
 set_tests_properties(check_thirds_report PROPERTIES PASS_REGULAR_EXPRESSION
-    "^thirds: 100 steps from 0${inexact0}\nthirds\\.A: within 0${about}\nthirds\\.c: within 0${about}\nthirds\\.d: within 0${about}\nthirds\\.g: within 0${about}\n$")
+    "^thirds: 100 steps from 0${inexact0}\nthirds\\.A: within 0${about}\nthirds\\.c: within 0${about}\nthirds\\.d: within 0${about}\nthirds\\.g: within 8\\.5e-14${about}\n$")
 set_tests_properties(check_plan_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^plan: 100 steps from 0, against exact values\nplan\\.y: within 0\n$")
 set_tests_properties(check_graph_report PROPERTIES PASS_REGULAR_EXPRESSION
