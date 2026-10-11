@@ -5,6 +5,7 @@
 
 #include <complex>
 #include <string>
+#include <utility>
 
 // Matrix is the one container left, and the two defects that lived longest in
 // it -- a literal wider than two blocks, and a^n -- survived because the
@@ -167,6 +168,22 @@ TEST_CASE("a hashed value is the same as its copies until one is written") {
     b(1, 2) = Number(1);
     CHECK(Exact::same(a, b));
     CHECK(Exact::hash(b) == hash);
+}
+
+// A copy shares its cells until one of the two is written: a memo's key holds
+// its arguments, and a matrix passed at every step of a model was a copy kept
+// for each (C339).
+TEST_CASE("a copy shares its cells until one is written") {
+    Mat       a = make(2, 2, {1, 2, 3, 4});
+    const Mat b = a;
+    CHECK(std::as_const(a).data() == b.data());
+    a(1, 1) = 5;
+    CHECK(std::as_const(a).data() != b.data());
+    CHECK(b(1, 1) == Scalar(1));
+    Mat c   = b;
+    c(2, 2) = 0;
+    CHECK(b(2, 2) == Scalar(4));
+    CHECK(a(2, 2) == Scalar(4));
 }
 
 TEST_SUITE_END();
