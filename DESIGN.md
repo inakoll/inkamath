@@ -961,6 +961,21 @@ Recorded so they are not re-litigated later, or drifted into by accident.
   read globals instead. Cut by the owner for now; it comes back only with a
   design that captures them, as a function's own definitions would.
 
+- **Compiling definitions inside the interpreter.** A §9 measurement
+  (integration 3a0f342) turned a definition by cells, once, into a flat
+  sequence of operations with names resolved to slots, run in doubles
+  where its inputs are inexact, the tree answering anything else: 7 to 8
+  times on those definitions, 2.3 on a transformer's forward pass, 1.04 on
+  its training step, 85 per cent of which is reverse mode's own walk. In
+  full: some 700 lines for the evaluator (2 to 3 times on cellwise and
+  recurrence models), 300 to 500 more for a node of compiled cells on the
+  tape (1.6 to 1.8 times on the step), and 500 to 800 for inexact matrices
+  held as plain doubles (about 1.45). It is a second implementation of
+  Number's rules and of where the tree counts steps, each mismatch a silent
+  wrong mark. Deferred by the owner: `--compile` gives native speed now.
+  The flat sequence is what an in-process JIT would take as input; that
+  stays open, a larger work and a dependency to raise.
+
 ## Openings
 
 Not scheduled, and not Deferred either -- Deferred is for what has been argued
@@ -8628,7 +8643,7 @@ checked: what it asked of the compiler, each with its smallest change.
   The 600,000 remembered terms are since in `reverse_memo.ink`, a golden
   of their own with `fastgrad.ink`'s 120 s timeout: 65 s under the
   sanitizers alone, where `reverse.ink` stopped at 60.
-- **The compiler's adjoint step**, after the tape: `--compile` keeps
+- `[done]` **The compiler's adjoint step**, after the tape: `--compile` keeps
   forward mode's parts, a pass over the body per cell of a seed, so a
   header grows with the seed's cells. The §9 exploration's transformer has
   no header: its pieces wrote 9 to 62 MB of C, which GCC -O2 ran out of
