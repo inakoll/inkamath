@@ -711,8 +711,10 @@ private:
         std::vector<Origin> clauses;
         std::string         before;
         const auto          clause = [&](const Code& value, const std::string& condition) {
-            if (!value.part.empty()) taken.cells.emplace_back(before + condition, 0);
-            if (!value.part.empty()) clauses.emplace_back(value.part[0].node, 0);
+            if (!value.part.empty()) {
+                taken.cells.emplace_back(before + condition, 0);
+                clauses.emplace_back(value.part[0].node, 0);
+            }
             before += condition + " ? 0 : ";
         };
         for (const auto& [condition, value] : guarded) clause(value, condition);
