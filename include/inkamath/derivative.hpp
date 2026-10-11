@@ -60,21 +60,22 @@ private:
         [[nodiscard]] Extent   Size() const { return node ? extent : T::Size(); }
         [[nodiscard]] const T& Value() const { return *this; }
 
-        friend Part operator+(const Part& a, const Part& b) {
-            if (!a.node && !b.node) return Part(a.Value() + b.Value());
-            return (a.node ? a.tape : b.tape)
-                ->Add(Tape::Kind::Sum, Tape::Wider(a.Size(), b.Size()), a.node, {}, b.node);
+        // Members, not friends: a friend of Part may not name Derivative's
+        // private Tape, and MSVC holds to that.
+        Part operator+(const Part& b) const {
+            if (!node && !b.node) return Part(Value() + b.Value());
+            return (node ? tape : b.tape)
+                ->Add(Tape::Kind::Sum, Tape::Wider(Size(), b.Size()), node, {}, b.node);
         }
-        friend Part operator*(const Part& a, const Part& b) {
-            if (!a.node && !b.node) return Part(a.Value() * b.Value());
-            const Extent extent = Tape::Times(a.Size(), b.Size());
-            if (a.node) return a.tape->Add(Tape::Kind::Right, extent, a.node, b.Value());
-            return b.tape->Add(Tape::Kind::Left, extent, b.node, a.Value());
+        Part operator*(const Part& b) const {
+            if (!node && !b.node) return Part(Value() * b.Value());
+            const Extent extent = Tape::Times(Size(), b.Size());
+            if (node) return tape->Add(Tape::Kind::Right, extent, node, b.Value());
+            return b.tape->Add(Tape::Kind::Left, extent, b.node, Value());
         }
-        friend Part operator/(const Part& a, const Part& b) {
-            if (!a.node && !b.node) return Part(a.Value() / b.Value());
-            return a.tape->Add(Tape::Kind::Quotient, Tape::Wider(a.Size(), b.Size()), a.node,
-                               b.Value());
+        Part operator/(const Part& b) const {
+            if (!node && !b.node) return Part(Value() / b.Value());
+            return tape->Add(Tape::Kind::Quotient, Tape::Wider(Size(), b.Size()), node, b.Value());
         }
         Part operator-() const {
             return node ? tape->Add(Tape::Kind::Negative, extent, node) : Part(-Value());
