@@ -777,7 +777,7 @@ private:
         }
         const ParametersCall<T> call(Call(object).arguments(), Call(part).subexpr());
         MemoKey<T>              key = definition.Key(call, *this);
-        key.definition              = &*at;
+        key.part                    = static_cast<std::size_t>(at - names.begin()) + 1;
         if (const T* known = Memoised(key)) return *known;
         std::vector<T> parts;
         {
@@ -788,7 +788,7 @@ private:
         }
         for (std::size_t k = 0; k < names.size(); ++k) {
             MemoKey<T> each = key;
-            each.definition = &names[k];
+            each.part       = k + 1;
             Memoise(std::move(each), parts[k]);
         }
         return parts[static_cast<std::size_t>(at - names.begin())];

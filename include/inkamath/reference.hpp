@@ -38,9 +38,13 @@ struct MemoKey {
     bool                                   indexed    = false;
     int                                    index      = 0;
     std::vector<std::pair<std::string, T>> arguments;
+    // Which part of a grad by several names, from 1: the expression is every
+    // instance's, the definition each instance's own.
+    std::size_t part = 0;
 
     bool operator==(const MemoKey& other) const {
         return definition == other.definition && indexed == other.indexed && index == other.index &&
+               part == other.part &&
                std::equal(arguments.begin(), arguments.end(), other.arguments.begin(),
                           other.arguments.end(), [](const auto& a, const auto& b) {
                               return a.first == b.first &&
@@ -54,6 +58,7 @@ struct MemoHash {
     std::size_t operator()(const MemoKey<T>& key) const {
         std::size_t hash = std::hash<const void*>()(key.definition);
         hash             = hash * 31 + std::hash<int>()(key.index) * 2 + (key.indexed ? 1 : 0);
+        hash             = hash * 31 + key.part;
         for (const auto& argument : key.arguments)
             hash = hash * 31 + numeric_interface<T>::hash(argument.second);
         return hash;
