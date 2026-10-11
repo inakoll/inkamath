@@ -8618,3 +8618,8 @@ checked: what it asked of the compiler, each with its smallest change.
   transformation, with the extents the compiler knows (`MANIFESTO.md`), and
   the window of history a step that keeps its latest terms can give it, is
   an item of its own, not specified here.
+- **grad's cost per term**: 600,000 remembered terms take 65 s under the
+  sanitizers in reverse mode, 110 µs a term, and 36 s in forward mode;
+  under callgrind, 30,000 terms of `reverse_memo.ink`'s sum cost some
+  17,000 instructions each: a cell read 31 per cent, 11 of them its index,
+  `dynamic_cast` in `Reads` 15, `Key`'s strings 14, and 13 allocations.
