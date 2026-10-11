@@ -53,7 +53,7 @@ line = lsq()
 #
 #     fall: 100 steps from 0, against exact values until 1 and inexact ones from there
 #     fall.u: within 0; the interpreter's terms about <e> from the exact ones
-#     fall.w: within 1.3e-15; the interpreter's terms about <e> from the exact ones
+#     fall.w: within 8.9e-16; the interpreter's terms about <e> from the exact ones
 #
 # The exact descent, by mpmath, is at w_10 = [-2.10089640888; 1.71241565141]
 # and w_100 = [-6.37603325128; 4.42991214595].

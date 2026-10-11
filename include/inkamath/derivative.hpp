@@ -752,6 +752,16 @@ private:
             Hidden(definition, arguments);
             const Setting<bool> unguarded(guard_, false);
             Jet              result = Dispatch(definition, indexed, index);
+            // --check's exact run walks for its guards, and under reverse mode
+            // takes the header's slope as a session does, not the walk's own
+            // nodes; forward mode's walk is the header's part to the bit.
+            if (stack_.guards && result.size() == 2 && result[1] && result[1]->node) {
+                const Setting<decltype(stack_.guards)> quiet(stack_.guards, nullptr);
+                if (std::optional<Jet> fast = Compiled(definition, indexed, arguments)) {
+                    (*fast)[0] = result[0];
+                    result     = std::move(*fast);
+                }
+            }
             // abs, max and min are continuous where their guards step.
             const auto& names = stack_.Builtins().names;
             if (&definition == names.at("abs").get() || &definition == names.at("max").get() ||
