@@ -8571,13 +8571,13 @@ checked: what it asked of the compiler, each with its smallest change.
   itself. A part read through an instance, `run.g.x_n`, is that instance's
   sequence, and one read before its first term is computed again there
   (C71). A refusal in the
-  body names the definition. 129 lines against about 140, 260 added and
-  131 removed, 13 of them comment, most of the removed moved: 10 in a
+  body names the definition. 146 lines against about 140, 283 added and
+  137 removed, 15 of them comment, most of the removed moved: 10 in a
   commit of their own that writes a sequence's assignments and a term's
   read as functions, `Assigned` and `Term`; then the seeds, `Graded` by
   several names and forward mode where it gives way, and `Swept` 42; the
   parts as sequences, their step written with the first's, 48; a part's
-  read, at a lag too, 29. 17,496 lines in all. The exploration's
+  read, at a lag too, 29; review's refusals 17. 17,520 lines in all. The exploration's
   transformer by one grad of its 13 names compiles, in 6 s and 226 MB, to
   a header of 17 MB, where integration's 13 grads of one name ran out of
   13 GB in 200 s; GCC 13 -O2 builds it in 410 s and 4.5 GB, Clang 18 in
