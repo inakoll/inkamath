@@ -54,7 +54,7 @@ layer(eta = 1/4, x_n[i<=4], y_n[i<=4]) = {
 fit = layer(x_n = [mod(n, 3) - 1; mod(2*n, 3) - 1; mod(3*n, 3) - 1; mod(4*n, 3) - 1], y_n = [1/2; -1/4; 1/8; -1/16])
 
 # 'wide', the same layer sixteen units wide, 256 weights: forward mode
-# writes its body once for each, a header of 486,073 bytes today, and
+# writes its body once for each, a header of 485,423 bytes today, and
 # reverse mode once, with a sweep of its size. Its header,
 # 'inkamath --compile adjoint.ink wide -o wide.h', is under 100,000 bytes,
 # and 'wide_tanh_dx(' is written 17 times, its definition and sixteen
@@ -89,7 +89,7 @@ wide(eta = 1/4, x_n[i<=16], y_n[i<=16]) = {
 #     token: 100 steps from 0, against exact values until 0 and inexact ones from there
 #     token.E: within 0; the interpreter's terms about <e> from the exact ones
 #
-# Its header, 'inkamath --compile adjoint.ink norm -o norm.h', 450,981
+# Its header, 'inkamath --compile adjoint.ink norm -o norm.h', 450,343
 # bytes today, is under 100,000: 'norm_exp_dx(' written 13 times, its
 # definition and the slope of each of the twelve scores, and 'norm_log_dx('
 # 4 times, its definition and one for each token.

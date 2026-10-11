@@ -8630,7 +8630,7 @@ checked: what it asked of the compiler, each with its smallest change.
   header grows with the seed's cells. The §9 exploration's transformer has
   no header: its pieces wrote 9 to 62 MB of C, which GCC -O2 ran out of
   memory compiling. At db6ac88, `adjoint.ink`'s `wide`, 256 weights,
-  writes 486,073 bytes, and the exploration's embedding trained through
+  writes 485,423 bytes, and the exploration's embedding trained through
   layer norm and cross-entropy, 64 cells, 21.5 MB in 3.7 s. `MANIFESTO.md`
   puts reverse mode in the compiler as an adjoint step emitted by
   transformation, with the extents the compiler knows.
@@ -8794,8 +8794,8 @@ checked: what it asked of the compiler, each with its smallest change.
   `fall.w` 8.9e-16 to 0, `attend.WQ` 4.4e-16 to 0, `thirds.g` 8.5e-14 to
   2.8e-14, `poly.g` 0 to 4.5e-13, in float 0 to 0.00024, 96 units of a
   float; `jacobian.y` within 0 still. `attn`'s header 30,684
-  bytes to 23,204, `attn_exp_dx(` written 49 times to 17; `wide` 486,073
-  to 68,902; `norm` 450,981 to 59,305; the exploration's embedding 21.5 MB
+  bytes to 23,204, `attn_exp_dx(` written 49 times to 17; `wide` 485,423
+  to 68,764; `norm` 450,343 to 59,117; the exploration's embedding 21.5 MB
   in 3.7 s to 570 KB in 0.08 s, which GCC -O2 compiles in 9.6 s, within 0
   of the interpreter at 5 steps; its attention block's W^Q, 128 cells,
   27.1 MB in 6.2 s to 1.15 MB in 0.19 s, its check program 43 s at GCC
