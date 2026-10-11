@@ -605,8 +605,7 @@ private:
     // Whether an expression reads a name the innermost frame binds; what does
     // not is a constant, whatever it calls, since a call sees only its own.
     bool Reads(const Expression<T>& e) const {
-        if ((dynamic_cast<const RefExpression<T>*>(&e) ||
-             dynamic_cast<const FuncExpression<T>*>(&e)) &&
+        if ((typeid(e) == typeid(RefExpression<T>) || typeid(e) == typeid(FuncExpression<T>)) &&
             Lookup(e.Name()))
             return true;
         for (const PExpression<T>& child : e.Children())
