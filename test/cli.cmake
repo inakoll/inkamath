@@ -48,6 +48,21 @@ endfunction()
 # Read by cases in every part.
 set(inputs "${CMAKE_CURRENT_LIST_DIR}/compile/inputs.ink")
 
+# Specified, not yet built (DESIGN.md, the reverse sweep's conditions written
+# once): each condition of compile/adjoint.ink's 'hidden' written once, a
+# flag the cells read, where each cell of U wrote all three units'.
+if(PART STREQUAL "spec")
+    set(args --compile "${CMAKE_CURRENT_LIST_DIR}/compile/adjoint.ink" hidden -o hidden.h)
+    check(compile_sweep_conditions)
+    file(READ "${OUT}/hidden.h" text)
+    string(REGEX MATCHALL " != 0\\)" conditions "${text}")
+    list(LENGTH conditions conditions)
+    if(NOT conditions LESS 20)
+        message(SEND_ERROR "compile_sweep_conditions: ' != 0)' written ${conditions} times")
+    endif()
+    return()
+endif()
+
 # The cases run as three tests of about equal time under the sanitizers: PART
 # 1 up to charpoly's refusal, 2 from it, 3 from eig's, and all where PART is
 # not given.

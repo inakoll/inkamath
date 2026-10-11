@@ -3920,12 +3920,112 @@ that exploring seven domains asked of the interpreter, by how many asked.
   all 241 reports byte for byte; `norm.h` 32,207 bytes and 94 `isnan(`,
   `emb` 113,307 and 307, `attq` 249,050 and 747. 9 lines of
   `compile.hpp`, 14 added and 5 removed, 1 of them comment; 17,107 in all.
-- **The reverse sweep's conditions written once**: a clause's adjoint
-  where any of several is taken ors each operand's condition, `(t1083_ !=
-  0) || ...`, written again for each clause, 2.6 MB of the transformer's
-  one gradient after *A matrix read by its cells tested for NaN once*.
-  The full transformer's `--compile`, 13 gradients over a batch of 4,
-  still ends in bad_alloc at 7 GB after 107 s.
+- **The reverse sweep's conditions written once**, a refactor of
+  headers: no golden, `--check` report or refusal moves. Under grad a
+  part is there only where the clauses that reach it are taken, its
+  `moves`: a clause's condition, `(t2393_ != 0)`, or where any of several
+  is, which `Moves` makes of an operation's operands and the sweep's
+  `Into` of each sum, and which `Text` wrote out whole at each read. The
+  sweep sums an adjoint over a layer's units, one condition for each,
+  each partial sum's `any` holding the one before; every cell that sum
+  reaches wrote the chain again, `((((t2386_ != 0) || (t2387_ != 0)) ||
+  ...` eight deep, each line up to 12,358 bytes. Measured at 919a3e8,
+  RelWithDebInfo, the step alone built at -O2 by GCC 13 and Clang 18,
+  each capped at 10 minutes and 6 GB, a condition's text being each run
+  of `tN_`, `tN_ != 0`, brackets, `||` and `&&` holding one of the last
+  three:
+  - the transformer's one gradient, W^Q's through both blocks at a batch
+    of 1, `tq`, 3,263,680 bytes, 2,571,936 of them conditions, `!= 0`
+    135,936 times; GCC 36.6 s and 822 MB, Clang 13.9 s and 258 MB;
+  - the full transformer's training step, 13 gradients over a batch of
+    4, `tf`, 17,032,155 bytes, 10,759,592 conditions, 555,504 `!= 0`;
+    neither GCC nor Clang done in 10 minutes. Its `--compile` takes 5.6 s
+    and 225 MB:
+    the bad_alloc at 7 GB after 107 s that *A matrix read by its cells
+    tested for NaN once* found at a206c5d is gone. The exploration that
+    found it gone, at e265716, made 17 MB in 6.1 s and 226 MB, and Clang
+    -O0 built it in 24 s and 2.6 GB;
+  - in the tests, three check programs write an `any` of more than one:
+    `conv.ink`'s `learn`, 18 flags under reverse mode, and
+    `cellguards.ink`'s `kink` and `grad.ink`'s `edge` under forward mode.
+
+  Decided:
+  - **Where any of several is, a flag of the list**: `Text`, given an
+    `any` of more than one, declares `const int t16_ = (t3_ != 0) ||
+    (t4_ != 0);` by `Declare`, as `Nan` declares its flags, in the list
+    being written, after what it reads, and returns its name. An operand
+    that is an `any` is its own flag, so a chain of n conditions is n - 1
+    flags of one `||` each, `const int t24_ = (t16_) || (t5_ != 0);`,
+    where each read wrote all n. The same text in the same list is the
+    same flag. A flag no kept line reads is dropped, as any temporary.
+  - **In `Text` alone**, so wherever an `any` is written: the sweep's
+    `?` by `Whether`, `Both`'s conjunction, `Jumps`, a guard's `there`
+    and a jump's call, forward mode's as well as reverse's. `Text`,
+    `Whether`, `Jumps`, `Both`, `Folded` and `Mul` stop being static.
+  - **What stays as written**: a single condition, a name compared to 0;
+    an `any` of one, `(...)`, which `Moves` makes of every operation with
+    one operand that moves; `Both`'s `(t16_) && (t9_ != 0)`, its operands
+    flags already; a function of the header's body, which has no list.
+  - **--float**: the same; the flag is an `int`, which --float leaves.
+  - **Room for each name's sweep, or each part's step, as its own C
+    function**, queued after this: a flag is a temporary of the list it
+    is written in, keyed by that list as any is. A function given a list
+    of its own declares its flags there, a condition two functions read
+    declared once in each; nothing here assumes one list per step.
+
+  What moves, on a prototype, discarded: no golden, no header of
+  `test/compile/expected` nor the prelude's, no excerpt of
+  `test/cli.cmake`; of the 247 check programs 9 C files, all 247 reports
+  byte for byte, and the fuzzer's program not at all. `learn.c` 91,030
+  bytes to 90,789, `kink.c` 23,128 to 22,809 and `edge.c` 60,216 to
+  60,097 by their flags; `saliency_3.c` and its float twin 5 bytes more,
+  and `rfit.c`, `tfit.c`, their float twins and cli_1's `c231.h` the
+  same size, by names renumbered: `Both` writes its operands' text when
+  it makes a term's condition (C231 makes the text where written), so a
+  flag declared for a term that folds away is dropped and spends its
+  number. Accepted.
+
+  Measured on the prototype: `tq` 720,124 bytes, 17,232 of conditions,
+  960 `!= 0`; GCC 17.3 s and 688 MB, Clang 7.3 s and 228 MB. `tf`
+  6,466,731 bytes, 126,072 conditions, 7,568 `!= 0`; GCC 572 s and 4.4
+  GB, within the cap by 28 s, Clang not done in 10 minutes; its
+  `--compile` 5.4 s and 122 MB. What is left of `tf` is
+  values, 3.1 MB, and reads tested for NaN, 2.3 MB, in one function,
+  which the item queued after this splits. `adjoint.ink`'s and
+  `tensorgrad.ink`'s headers, `emb` and `attq` do not move but for
+  `probe`, 28,401 bytes to 28,406.
+
+  Rejected:
+  - **The chain flattened, one `any` of its n operands**: each partial
+    sum's condition is a prefix of the next, so n flags of up to n
+    operands each, quadratic where nested flags are linear.
+  - **The flag's name kept in `Moving`**: one `Moving` is read in several
+    lists, its flag a name in one; a name by list is `Declare`'s map
+    already. `--compile`'s time did not move, `tf` 5.4 s for 5.6.
+  - **An adjoint multiplied by a 0 or 1 instead of `?`**: `0 * inf` is
+    NaN and `-0.0 + 0.0` is `+0.0`, where the interpreter adds nothing.
+  - **Statements, `if (t16_) t30_ += ...`**: the step's lines are `const`
+    temporaries; a sweep written as statements belongs with its own
+    function, queued after this.
+  - **`Both` kept a tree until written**, as C231 keeps an `any`: a kind
+    of `Moving` more, lines for nothing but the renumbering above.
+  - **A flag for a single condition**: `(t2393_ != 0)` is a name already.
+
+  About 4 lines of `compile.hpp`: the prototype's 15 added and 11
+  removed, 2 of them comment. 17,524 lines at 919a3e8, by `wc -l
+  include/inkamath/*.hpp src/*`; past 6 the implementation stops and
+  reports.
+
+  Specified in `test/compile/adjoint.ink` by a model of its own, `hidden`,
+  gate3's units over a fixed W with U trained beneath them, its instance
+  `under` checked against the interpreter from now, `check_under`, a
+  report that holds before and after. Its comment gives the cli case
+  `compile_sweep_conditions`: `hidden.h` writing ` != 0)` fewer than 20
+  times, 39 before, 15 on the prototype. Wired now as `test/cli.cmake`'s
+  `spec` part, run by `cli_spec`, which passes while the count fails;
+  with the implementation the case moves into part 1 beside
+  `compile_nan_once`, and the `spec` part and `cli_spec` go. No
+  transcript in `test/data/spec`.
 - **A limit's invariants hoisted out of its iterate**: a limit or a
   matrix inverse that reads only the function's arguments is declared in
   the iterate's list, so walked again at each iterate, and gcc -O2 leaves

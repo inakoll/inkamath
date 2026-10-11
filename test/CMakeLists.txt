@@ -64,6 +64,13 @@ foreach(part 1 2 3)
                      -P ${CMAKE_CURRENT_LIST_DIR}/cli.cmake)
     set_tests_properties(cli_${part} PROPERTIES TIMEOUT 120)
 endforeach()
+# The reverse sweep's conditions written once (DESIGN.md), specified before
+# it is built: cli.cmake's spec part, held to fail by its count until then.
+add_test(NAME cli_spec
+         COMMAND ${CMAKE_COMMAND} -DEXE=$<TARGET_FILE:inkamath_cli> -DPART=spec
+                 -DOUT=${CMAKE_CURRENT_BINARY_DIR}/cli_spec -P ${CMAKE_CURRENT_LIST_DIR}/cli.cmake)
+set_tests_properties(cli_spec PROPERTIES PASS_REGULAR_EXPRESSION
+    "compile_sweep_conditions: ' != 0\\)' written [0-9]+ times")
 
 # bench's workloads, each a transcript bench/run.cmake measures, replayed so
 # that one gone stale fails here rather than at its next measure. The
@@ -200,7 +207,8 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brin
                          implicit:kinetic implicit:jacobian implicit:doubling implicit:inset
                          implicit:layered tensorgrad:attend tensorgrad:small
                          tensorgrad:saliency:3 adjoint:fit4 adjoint:token
-                         adjoint:sinabs adjoint:gate3 adjoint:aside gradmany:pair gradmany:same)
+                         adjoint:sinabs adjoint:gate3 adjoint:under adjoint:aside gradmany:pair
+                         gradmany:same)
     string(REPLACE ":" ";" checked ${checked})
     list(POP_FRONT checked file instance count)
     set(name ${instance})
@@ -576,6 +584,8 @@ set_tests_properties(check_token_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^token: 100 steps from 0${inexact0}\ntoken\\.E: within 0${about}\n$")
 set_tests_properties(check_gate3_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^gate3: 100 steps from 0${inexact0}\ngate3\\.W: within 0${about}\n$")
+set_tests_properties(check_under_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^under: 100 steps from 0${inexact0}\nunder\\.U: within 0${about}\n$")
 set_tests_properties(check_aside_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^aside: 100 steps from 0${inexact0}\naside\\.W: within 0${about}\n$")
 # A gradient by several names compiled, as compile/gradmany.ink gives it.

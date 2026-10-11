@@ -151,6 +151,39 @@ relugate(eta = 1/4, x_n[i<=3], y_n) = {
 }
 gate3 = relugate(x_n = [mod(n, 3) - 1; 1; mod(2*n, 5)/3 - 1/2], y_n = mod(n, 4)/4)
 
+# 'under', gate3's units over a fixed W and U trained beneath them, so a
+# cell of U's adjoint is there where any unit's clause is taken. By hand,
+# e*(W'*(v'.*(z > 0)))*x', z = W*U*x, e = v*relu(z) - y, no pre-activation
+# nearer 0 than 0.0039:
+#
+#     U_1  = [1 -0.467346041194 0.00544232646762;
+#             0.333333333333 0.960974537037 -0.256504243827;
+#             0 0.155399470899 0.992566578483]
+#     U_99 = [0.703720112177 -0.0210902152444 -0.120825339494;
+#             0.513782511076 0.225035443646 -0.256009481807;
+#             -0.0391518069697 -1.23205680101 0.826294405244]
+#
+#     under: 100 steps from 0, against exact values until 0 and inexact ones from there
+#     under.U: within 0; the interpreter's terms about <e> from the exact ones
+#
+# Each condition is written once (DESIGN.md, the reverse sweep's conditions
+# written once), test/cli.cmake's compile_sweep_conditions: ' != 0)'
+# written fewer than 20 times in hidden.h, 39 before. By count 15: 3 for
+# each unit's adjoint where its clause is taken, 9 for W'*(...), each of
+# its three cells summing the three units, and 3 for two flags, the first
+# two units' clauses and the third's beside them, which U's 9 cells read
+# where each wrote all three.
+hidden(eta = 1/4, x_n[i<=3], y_n) = {
+    relu(z)[i] | z[i] > 0 = z[i]
+    relu(z)[i] = 0
+    v = [1, -1/3, 1/5]
+    W = [1 -1 1/3; -1/2 1 1/5; 1/7 1/2 -1]
+    L(M, x, y) = (v*relu(W*(M*x)) - y)^2/2
+    U_0 = ~[1 -1/2 0; 1/3 1 -1/4; 0 1/5 1]
+    U_n = U_(n-1) - eta*grad_(M = U_(n-1)) L(M, x_n, y_n)
+}
+under = hidden(x_n = [mod(n, 3) - 1; 1; mod(2*n, 5)/3 - 1/2], y_n = mod(n, 4)/4)
+
 # 'aside', the second increment's matrix written whole beside a cell's own
 # clause (C136): k's first cell is its own, its second the whole's, 2*z,
 # which the sweep reaches as a cell of the whole's node. By hand at 50
