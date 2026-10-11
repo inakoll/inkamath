@@ -3839,10 +3839,11 @@ that exploring seven domains asked of the interpreter, by how many asked.
   four cells tested before tanh's values, so `t13_` to `t17_` and `t24_`
   become `t14_` to `t18_` and `t25_`, with `adjoint.ink`'s comment; and
   `compile_float_implicit`, the previous term's flag declared before the
-  inverse's array, `float v0_[3][3] = ` to `float v1_[3][3] = `. A test
-  written once grows by its flag's line: `c328.h` 9,211 bytes to 9,247,
-  `twice.h` 4,652 to 4,710, `took`, `shut` and `rnn` by under 60, the
-  fuzzer's program 2,040,823 to 2,044,094. Accepted.
+  inverse's array, `float v0_[3][3] = ` to `float v1_[3][3] = `, with
+  `implicit.ink`'s comment. A test written once grows by its flag's line:
+  `c328.h` 9,211 bytes to 9,247, `twice.h` 4,652 to 4,710, `took`, `shut`
+  and `rnn` by under 60, the fuzzer's program 2,040,823 to 2,044,094.
+  Accepted.
 
   Measured on the prototype: `emb` 113,307 bytes, 307 `isnan(`, GCC 2.6
   s and 101 MB, Clang 0.95 s; `attq` 249,050, 747, GCC 7.3 s and 198 MB,
@@ -3887,8 +3888,8 @@ that exploring seven domains asked of the interpreter, by how many asked.
   the six matrices read by their cells, each tested once: X*E and its
   means, the centred cells and their scales, the logits and their
   log-sum-exps, 12 and 3 cells by turns. Wired with the implementation,
-  with the two excerpts and `adjoint.ink`'s comment on `layer`. No
-  transcript in `test/data/spec`.
+  with the two excerpts and their comments, `adjoint.ink`'s on `layer` and
+  `implicit.ink`'s on the inverse. No transcript in `test/data/spec`.
 - **A limit's invariants hoisted out of its iterate**: a limit or a
   matrix inverse that reads only the function's arguments is declared in
   the iterate's list, so walked again at each iterate, and gcc -O2 leaves
