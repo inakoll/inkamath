@@ -1,8 +1,9 @@
 # grad compiled (DESIGN.md, next in line): forward, as the interpreter takes
 # it but for a matrix, each value compiled carrying its part, the derivative's
-# cells beside its own, made by the interpreter's rules in its order. So the
-# step's gradient is the interpreter's to the bit, or to rounding where the
-# interpreter sweeps one by a matrix back in reverse mode, and --check holds
+# cells beside its own, made by the interpreter's rules in its order; by a
+# matrix, as the interpreter, in reverse mode, a tape swept back (DESIGN.md,
+# the compiler's adjoint step). So the step's gradient is the interpreter's
+# to the bit where the interpreter's values are doubles, and --check holds
 # it so. Every number below is worked out apart from the interpreter: by
 # hand, with exact fractions, with the step's operations in doubles and in
 # floats, in C and in numpy, and with mpmath at 50 digits; none is
@@ -21,8 +22,10 @@
 #     line: 100 steps from 0 in float, against exact values
 #     line.w: within 2.7e-07, 3.7 units of a float
 #
-# Its header writes the gradient out: the part of each square is 2*u^1*u',
-# pow included, as the interpreter takes it, u' being a cell of X, folded:
+# Its header writes the gradient out as a sweep back: each square's 2*u^1,
+# pow included, as the interpreter takes it, each times the loss's 1/8, the
+# fourth square's first as the sweep reaches it first, and each cell of the
+# gradient those by a column of X, folded:
 #
 #     typedef struct lsq {
 #         double eta;
@@ -33,8 +36,11 @@
 #     static inline void lsq_step(lsq* m_) {
 #         ++m_->index_;
 #         memcpy(m_->w[1], m_->w[0], sizeof m_->w[1]);
-#         m_->w[0][0][0] = m_->index_ == 0 ? 0.0 : m_->w[1][0][0] + (0.0 - m_->eta * (2.0 * pow(1.0 * m_->w[1][0][0] + 0.0 * m_->w[1][1][0] - 1.0, 1.0) * 1.0 / 8.0 + 2.0 * pow(1.0 * m_->w[1][0][0] + 1.0 * m_->w[1][1][0] - 3.0, 1.0) * 1.0 / 8.0 + 2.0 * pow(1.0 * m_->w[1][0][0] + 2.0 * m_->w[1][1][0] - 5.0, 1.0) * 1.0 / 8.0 + 2.0 * pow(1.0 * m_->w[1][0][0] + 3.0 * m_->w[1][1][0] - 7.0, 1.0) * 1.0 / 8.0));
-#         m_->w[0][1][0] = m_->index_ == 0 ? 0.0 : m_->w[1][1][0] + (0.0 - m_->eta * (2.0 * pow(1.0 * m_->w[1][0][0] + 0.0 * m_->w[1][1][0] - 1.0, 1.0) * 0.0 / 8.0 + 2.0 * pow(1.0 * m_->w[1][0][0] + 1.0 * m_->w[1][1][0] - 3.0, 1.0) * 1.0 / 8.0 + 2.0 * pow(1.0 * m_->w[1][0][0] + 2.0 * m_->w[1][1][0] - 5.0, 1.0) * 2.0 / 8.0 + 2.0 * pow(1.0 * m_->w[1][0][0] + 3.0 * m_->w[1][1][0] - 7.0, 1.0) * 3.0 / 8.0));
+#         const double t0_ = 2.0 * pow(1.0 * m_->w[1][0][0] + 0.0 * m_->w[1][1][0] - 1.0, 1.0);
+#         ...
+#         const double t7_ = 0.125 * t0_;
+#         m_->w[0][0][0] = m_->index_ == 0 ? 0.0 : m_->w[1][0][0] + (0.0 - m_->eta * (1.0 * t4_ + 1.0 * t5_ + 1.0 * t6_ + 1.0 * t7_));
+#         m_->w[0][1][0] = m_->index_ == 0 ? 0.0 : m_->w[1][1][0] + (0.0 - m_->eta * (3.0 * t4_ + 2.0 * t5_ + 1.0 * t6_ + 0.0 * t7_));
 #     }
 lsq(eta = 1/10) = {
     X = [1, 0; 1, 1; 1, 2; 1, 3]
@@ -47,13 +53,14 @@ line = lsq()
 
 # 'fall', prelude.ink's logistic regression trained on its log loss, as a
 # model: w by grad through the prelude's exp and log, and beside it u by the
-# gradient written by hand (MANIFESTO.md, A paper conformance suite). u is
-# the interpreter's to the bit, and w to rounding, its gradient by a matrix
-# the interpreter's in reverse mode; the estimates the seeds':
+# gradient written by hand (MANIFESTO.md, A paper conformance suite). Each
+# is the interpreter's to the bit, w's gradient by a matrix swept back in
+# the interpreter's order, the prelude's by their slopes; the estimates the
+# seeds':
 #
 #     fall: 100 steps from 0, against exact values until 1 and inexact ones from there
 #     fall.u: within 0; the interpreter's terms about <e> from the exact ones
-#     fall.w: within 8.9e-16; the interpreter's terms about <e> from the exact ones
+#     fall.w: within 0; the interpreter's terms about <e> from the exact ones
 #
 # The exact descent, by mpmath, is at w_10 = [-2.10089640888; 1.71241565141]
 # and w_100 = [-6.37603325128; 4.42991214595].
