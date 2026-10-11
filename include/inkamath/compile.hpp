@@ -3384,6 +3384,7 @@ private:
     // by a point of several cells, once, each value carrying a node of a tape
     // swept back (DESIGN.md, the compiler's adjoint step).
     PExpression<Value> visit(GradExpression<Value>* expression) override {
+        if (expression->Several()) throw Reason("a gradient by several names, for now");
         if (!grad_.empty()) throw Reason("a derivative of a derivative, for now");
         const Code point = Emit(expression->Point());
         Asked([&] { Reasoned([&] { Derivative<Value>(definitions_).Names(*expression); }); }, true);
@@ -3694,6 +3695,13 @@ private:
     PExpression<Value> visit(MemberExpression<Value>* expression) override {
         if (const Reference<Value>* model = ModelOf(*expression->Object()))
             return Answer(Instance(*model, Call(*expression->Object()), expression->Member()));
+        // A grad by several names is refused for now, and so what reads its parts.
+        if (const auto group = Reasoned([&] {
+                const typename ReferenceStack<Value>::Within within(definitions_, scope_);
+                const typename ReferenceStack<Value>::Frame  frame(definitions_);
+                return definitions_.GroupOf(*expression->Object());
+            }))
+            throw Reason(group->home->Qualified(group->Name()) + ", which cannot be compiled");
         const Scope<Value>* object =
             Reasoned([&] { return &definitions_.Resolve(*expression->Object(), *scope_); });
         if (object->label.find('(') != std::string::npos)
