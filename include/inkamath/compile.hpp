@@ -2344,6 +2344,7 @@ private:
                 throw Reason(key + " is a sequence; index it");
             return Answer(Field(key, Value(Number(NAN))));
         }
+        ReadWhole(key, *definition, false, false);
         // 'f()' is 'f', a call with every default (C169).
         if (!definition->Clauses().empty() &&
             !definition->Clauses().front().parameters.parameters_names().empty()) {
@@ -2993,15 +2994,25 @@ private:
         if ((name == "floor" || name == "re" || name == "im") &&
             found.where == &definitions_.Builtins())
             return Builtin(expression);
+        if (found.definition) ReadWhole(key, *found.definition, calls, call.subexpr() != nullptr);
         if (calls) {
             if (!found.definition) throw Reason(key + " is not defined");
             if (found.where == &definitions_.Builtins() && !call.subexpr())
                 return Prelude(key, *found.definition, call);
             return Answer(Call(key, *found.definition, call, nullptr));
         }
-        if (found.definition && ReferenceStack<Value>::Group(*found.definition))
-            Reasoned(EvaluationVisitor<Value>::Unread);
         return Answer(Term(key, found.definition, call));
+    }
+
+    // A grad by several names read whole is refused in the interpreter's words.
+    static void ReadWhole(const std::string& key, const Reference<Value>& definition, bool called,
+                          bool indexed) {
+        const auto* group = ReferenceStack<Value>::Group(definition);
+        if (!group) return;
+        if (indexed && !IsSequence(definition)) throw Reason(key + " is not a sequence");
+        throw Reason(key + " is a gradient by several names; read one of its parts (" + key +
+                     (called ? "(...)." : ".") + group->Variable() + (indexed ? "_(...)" : "") +
+                     ")");
     }
 
     // A term of a sequence, read at the index the call gives.
