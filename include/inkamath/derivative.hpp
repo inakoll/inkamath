@@ -1175,6 +1175,9 @@ private:
                 if (undo) frames_.back() = own;
             }
         }
+        // A local the body bound outlives the grad, its parts by the grad's
+        // name do not: the next grad at this depth takes the same bit (C322).
+        for (auto& binding : frames_.back()) binding.second.resize(bit);
         Jet out(bit);
         for (std::size_t s = 0; s < bit; ++s) {
             if (at.IsScalar() || reversed) {
