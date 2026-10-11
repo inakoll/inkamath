@@ -163,10 +163,20 @@ private:
         return Writes(code, "NAN", from);
     }
     // Or may answer it, calling a function of the header that does (C211).
+    // Each word of it looked up, not each name searched for: the sets grow
+    // with every call under grad.
     bool MayNan(const std::string& code) const {
-        const auto writes = [&](const std::string& f) { return Writes(code, f); };
-        return WritesNan(code) || std::ranges::any_of(nan_functions_, writes) ||
-               std::ranges::any_of(nan_temporaries_, writes);
+        const auto name = [&](std::size_t at) {
+            return std::isalnum(static_cast<unsigned char>(code[at])) || code[at] == '_';
+        };
+        for (std::size_t at = 0, end; at < code.size(); at = end + 1) {
+            for (end = at; end < code.size() && name(end);) ++end;
+            if (end == at) continue;
+            const std::string word = code.substr(at, end - at);
+            if (word == "NAN" || nan_functions_.count(word) || nan_temporaries_.count(word))
+                return true;
+        }
+        return false;
     }
     static bool Writes(const std::string& code, const std::string& word, std::size_t from = 0) {
         const auto name = [&](std::size_t at) {
@@ -769,17 +779,28 @@ private:
     }
 
     // The code of each value given, its shape, exact value, cells, moves and parts.
-    static std::string Given(const Expansion& expansion) {
+    std::string Given(const Expansion& expansion) {
         std::string args;
         const auto  text = [&](const auto& self, const Code& code) -> void {
             args += code.size.toString() + '\x1d';
             if (code.constant) Value::key(*code.constant, args);
             for (const Cell& cell : code.cells) args += cell.text + '\x1f';
-            args += Text(code.moves) + '\x1e';
+            args += std::to_string(Id(code.moves)) + '\x1e';
             for (const Code& part : code.part) self(self, part);
         };
         for (const auto& [given, value] : expansion.values) text(text, value);
         return args;
+    }
+    // Where a part is there, as a key: one id for what is joined alike, and
+    // so for one text, without the text, which writes a condition shared by
+    // several paths once for each (C317).
+    std::size_t Id(const Where& where) {
+        if (!where) return 0;
+        if (const auto found = ids_.find(where); found != ids_.end()) return found->second;
+        std::vector<std::size_t> any;
+        for (const Where& one : where->any) any.push_back(Id(one));
+        const auto id = made_.try_emplace({where->text, std::move(any)}, made_.size() + 1);
+        return ids_.emplace(where, id.first->second).first->second;
     }
 
     // Filled from the lowest base, by the interpreter's stride (Reference::Filled),
@@ -1939,10 +1960,11 @@ private:
         if (const auto* compare = dynamic_cast<CompareExpression<Value>*>(expression.get())) {
             const Code left = Emit(compare->m_e1()), right = Emit(compare->m_e2());
             const std::string l = Wrap(left.cells[0], sum), r = Wrap(right.cells[0], sum);
-            // Under grad, an equality whose sides move takes its clause at the point alone.
-            const bool equality =
-                compare->Op() == Comparison::Equal || compare->Op() == Comparison::NotEqual;
-            return Nan(left, right) + (equality ? Jumps(l + " == " + r, {&left, &right}) : "") + l +
+            // Under grad, an equality whose sides move takes its clause at the
+            // point alone; in a value, any comparison jumps there (C320).
+            const bool jumps = !guarding_ || compare->Op() == Comparison::Equal ||
+                               compare->Op() == Comparison::NotEqual;
+            return Nan(left, right) + (jumps ? Jumps(l + " == " + r, {&left, &right}) : "") + l +
                    Operator(compare->Op()) + r;
         }
         return Nan(code) + Wrap(code.cells[0], sum) + " != 0.0";
@@ -2152,6 +2174,11 @@ private:
         const Reference<Value>* definition = found.definition;
         if (!definition) {
             if (fixed_.count(key)) throw Reason(key + " is not defined");
+            // An input is a sequence, not a 1x1 field (C319).
+            if (model_ && std::ranges::any_of(model_->parameters, [&](const auto& p) {
+                    return p.name == key && !p.index.empty() && !p.fallback;
+                }))
+                throw Reason(key + " is a sequence; index it");
             return Answer(Field(key, Value(Number(NAN))));
         }
         // 'f()' is 'f', a call with every default (C169).
@@ -3179,7 +3206,7 @@ private:
             if (*place) at.push_back(Whole(Known(*place, "a cell whose place is not a constant")));
         // The interpreter refuses a matrix whole where it refuses a cell. One
         // that writes NaN in a cell not taken makes the header write it.
-        for (const Cell& c : matrix.cells) aware_ |= !matrix.constant && MayNan(c.text);
+        for (const Cell& c : matrix.cells) aware_ = aware_ || (!matrix.constant && MayNan(c.text));
         if (aware_ && !matrix.whole && !matrix.constant) matrix = Shared(matrix);
         const std::string nan = matrix.whole ? "" : Nan(matrix);
         if (!nan.empty())
@@ -4524,6 +4551,8 @@ private:
     std::set<std::string>            nans_;             // arguments' cells that may be NaN
     std::set<std::string>            nan_functions_;    // the header's that may answer NaN
     std::set<std::string>            nan_temporaries_;  // and the step's or limit's, by name
+    std::map<Where, std::size_t>     ids_;              // see Id
+    std::map<std::pair<std::string, std::vector<std::size_t>>, std::size_t> made_;
     bool                             guarding_ = false;  // in a guard, which asks only for values
     std::map<std::string, Value>     known_;    // globals that read only those
     std::set<std::string>            read_parameters_;      // by the value being compiled

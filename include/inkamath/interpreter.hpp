@@ -1857,8 +1857,9 @@ std::pair<std::string, std::shared_ptr<Model<U>>> Interpreter<T, U>::ParseModel(
             ResetInterpreter();
             Lexer(statement.written);
             if (!Clearing()) statement.definition = ParseAll();
-            if (!dynamic_cast<const EqualExpression<U>*>(statement.definition.get()))
-                Fail("a model's body holds definitions, not '", statement.written, "'");
+            const auto* equal = dynamic_cast<const EqualExpression<U>*>(statement.definition.get());
+            if (!equal) Fail("a model's body holds definitions, not '", statement.written, "'");
+            if (equal->Listed()) Fail("a parameter list cannot be empty");  // C321
             statement.name = statement.definition->Name();
         }
         for (const auto& parameter : model->parameters) {

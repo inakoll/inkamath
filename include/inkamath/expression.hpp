@@ -125,7 +125,7 @@ public:
         return BinaryExpression<T>::m_e1()->Name();
     }
 
-    // 'g() = 1', which as a statement is 'g = 1' (C314).
+    // 'g() = 1', a list that adds nothing, refused (C314, C321).
     [[nodiscard]] bool Listed() const { return listed_; }
 
     PExpression<T> accept(TransformationVisitor<T> &v) override {

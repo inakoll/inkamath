@@ -59,6 +59,21 @@ foreach(part 1 2 3)
     set_tests_properties(cli_${part} PROPERTIES TIMEOUT 120)
 endforeach()
 
+# C316: a cell's may-NaN test searched it for each name in a set that grows
+# with every call under grad. The timeout holds it: 95 s before the fix and 2 s
+# since in a release build, 632 s and 28 s under the sanitizers, which no size
+# separates within one timeout, so theirs is 300 s, ten times since. MSVC's
+# multi-config build cannot tell its Debug, whose iterators are checked and as
+# slow, so it takes theirs; the Linux release jobs hold the 60 s.
+file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/c316.ink "m(x_n[i<=1000]) = {\n    w_0 = 1/2\n    w_n = w_(n-1) - grad_(v = w_(n-1)) sum_(i=1)^1000 (exp(v*x_n[i]) + exp(2*v*x_n[i]) + exp(3*v*x_n[i]))\n}\n")
+add_test(NAME compile_c316 COMMAND inkamath_cli --compile ${CMAKE_CURRENT_BINARY_DIR}/c316.ink m
+                                   -o ${CMAKE_CURRENT_BINARY_DIR}/c316.h)
+if(INKAMATH_SANITIZE OR MSVC)
+    set_tests_properties(compile_c316 PROPERTIES TIMEOUT 300)
+else()
+    set_tests_properties(compile_c316 PROPERTIES TIMEOUT 60)
+endif()
+
 # Regenerate the golden transcripts from current behaviour. Always review the
 # resulting diff: it is the record of what the change you just made did.
 add_custom_target(record_goldens
@@ -314,7 +329,7 @@ set_tests_properties(check_fall_report PROPERTIES PASS_REGULAR_EXPRESSION
 set_tests_properties(check_hinge_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^hinge: 100 steps from 0, against exact values\nhinge\\.g: within 0\n$")
 set_tests_properties(check_edge_report PROPERTIES PASS_REGULAR_EXPRESSION
-    "^edge: 100 steps from 0, against exact values until 3 and inexact ones from there\nedge\\.c: within 0\nedge\\.d: within 0\nedge\\.e: within 0${about}\nedge\\.f: within 0\nedge\\.g: within 0\nedge\\.h: within 0${about}\nedge\\.i: within 0\nedge\\.j: no value compared, the step NaN where the interpreter gives none, as at 0: a comparison jumps at t = 1\nedge\\.k: within 0\nedge\\.l: within 0\nedge\\.m: within 0\nedge\\.o: no value compared, the step NaN where the interpreter gives none, as at 0: floor jumps at t = 2\nedge\\.s: within 1\\.1e-16\nedge\\.v: no value compared, the step NaN where the interpreter gives none, as at 0: a power's derivative is infinite at t = 0\nedge\\.w: within 0\n$")
+    "^edge: 100 steps from 0, against exact values until 3 and inexact ones from there\nedge\\.a: within 0\nedge\\.c: within 0\nedge\\.d: within 0\nedge\\.e: within 0${about}\nedge\\.f: within 0\nedge\\.g: within 0\nedge\\.h: within 0${about}\nedge\\.i: within 0\nedge\\.j: no value compared, the step NaN where the interpreter gives none, as at 0: a comparison jumps at t = 1\nedge\\.k: within 0\nedge\\.l: within 0\nedge\\.m: within 0\nedge\\.o: no value compared, the step NaN where the interpreter gives none, as at 0: floor jumps at t = 2\nedge\\.s: within 1\\.1e-16\nedge\\.v: no value compared, the step NaN where the interpreter gives none, as at 0: a power's derivative is infinite at t = 0\nedge\\.w: within 0\n$")
 set_tests_properties(check_clip_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^clip: 100 steps from 0, against exact values\nclip\\.w: within 0\n$")
 set_tests_properties(check_steer_report PROPERTIES PASS_REGULAR_EXPRESSION

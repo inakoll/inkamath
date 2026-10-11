@@ -114,6 +114,7 @@ hinge = rect(x_n = n)
 # from 3:
 #
 #     edge: 100 steps from 0, against exact values until 3 and inexact ones from there
+#     edge.a: within 0
 #     edge.c: within 0
 #     edge.d: within 0
 #     edge.e: within 0; the interpreter's terms about <e> from the exact ones
@@ -143,7 +144,9 @@ hinge = rect(x_n = n)
 # being n/2 - 1 (C118); i, its inverse, NaN to 2, the interpreter dividing
 # by 0, then -1/t^2. e, a third over the ReLU plus t, t being n/2 - 5/4, is
 # 1 to 2, where the unit is dead and its quotient has no part to be
-# infinite, as in the interpreter, then 1 - 1/(3t^2) (C110).
+# infinite, as in the interpreter, then 1 - 1/(3t^2) (C110). a, its
+# comparisons inside 'and', t being n/2 - 1, is 1 but NaN at 2 and 6, where
+# t > 0 jumps and then t < 2 does, as c's does alone (C320).
 kinks(x_n) = {
     q(t) = t^2
     q(t) | t == 1 = 1
@@ -151,6 +154,7 @@ kinks(x_n) = {
     r(t) | t < 0 = 0
     p(t) = t
     p(t) | t > 1 = 1
+    a_n = grad_(t = x_n - 1) ((t > 0 and t < 2) + t)
     c_n = grad_(t = x_n) t*(t > 1)
     d_n = grad_(t = x_n - 1) t*(r(t) > 0)
     e_n = grad_(t = x_n - 5/4) (~(1/3)/r(t) + t)

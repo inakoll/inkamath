@@ -262,6 +262,8 @@ public:
     // Installing the definition, without evaluating anything. A definition at
     // the top level is a statement and never gets as far as visit().
     void Bind(EqualExpression<T>* expr, const std::string& written = std::string()) {
+        // 'g() = 1' would be 'g = 1': a list that adds nothing (C321).
+        if (expr->Listed()) throw std::runtime_error("a parameter list cannot be empty");
         this->stack_.Set(expr->Name(), Parameters(expr), expr->m_e2(), written);
     }
 
