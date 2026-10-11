@@ -778,6 +778,18 @@ cannot compile z: g is a gradient by several names; read one of its parts (g.a)
 ")
 set(exit 1)
 check(compile_gradmany_whole)
+# A part of one that takes arguments, which the interpreter reads, is refused
+# for now, and one that takes none is read with none.
+file(WRITE "${OUT}/taking.ink" "L(a, b) = (a*b - 1)^2\ng_n = grad_(a = n, b = 2) L(a, b)\n"
+     "r(x)_k = grad_(a = x + k, b = 2) L(a, b)\nw_n = r.a_n\ny_n = r(n).a_2\n"
+     "z_n = g(1).a_n\n")
+set(args --compile taking.ink)
+set(stdout "cannot compile w: r, a gradient by several names that takes arguments, for now
+cannot compile y: r, a gradient by several names that takes arguments, for now
+cannot compile z: g takes no arguments
+")
+set(exit 1)
+check(compile_gradmany_taking)
 # C328: a sequence compiled on the way by a grad keeps the names it took,
 # z's t4_, which the grad does not take again.
 file(WRITE "${OUT}/c328.ink" [[m(x_n[i<=2]) = {
