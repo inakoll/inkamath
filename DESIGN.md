@@ -8370,6 +8370,11 @@ checked: what it asked of the compiler, each with its smallest change.
      first the fix of that defect, a row of its own: grad takes an
      instance's member for a read of its name, so `grad_(x = 2) x*m().x`
      of `m(a = 1) = { x = 3*a }` is refused through an instance, for 3.
+     Its refusal in the compiler is wired as `compile_gradmany_refused` in
+     `test/cli.cmake`: `--compile gradmany.ink net` lists "cannot compile
+     V: g, which cannot be compiled", W, c and d alike, then "cannot
+     compile g: a gradient by several names, for now"; the second
+     increment replaces it with `compile_gradmany_net`.
   2. **The compiler**: not prototyped. About 140 lines by reading
      `compile.hpp`: several seeds in `Graded` and `Swept` 30, the group as
      a struct of sequences and its term's block 80, a part's read 15,
