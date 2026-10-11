@@ -8705,10 +8705,6 @@ checked: what it asked of the compiler, each with its smallest change.
     beside `hash` and `same`, which exist so that none is written.
   - **The evaluator's `MemoKey` reused**: its arguments are values, and a
     part's presence and node have no place in one.
-  - **A jet without its heap vector**, a part inline for one grad: the
-    largest share left, copies of jets in half the sanitizer's samples, but
-    every function of `derivative.hpp` takes one, hundreds of lines. An item
-    of its own if `reverse_memo.ink` is to rejoin `reverse.ink`.
   - **A remembered call answered before `Call`'s checks**, `Divides`, the
     complex and staircase refusals, the checked read, `|z|`'s correction:
     the same answers only if every check is a function of the arguments, an
@@ -8726,6 +8722,12 @@ checked: what it asked of the compiler, each with its smallest change.
   No spec transcript: nothing new is said, so the goldens are the
   specification, and the timeout goes with the implementation, measured on
   the sanitizer build first.
+- **A jet without its heap vector**, a part inline for one grad: after
+  grad's cost per term the largest share left, copies of jets in half the
+  sanitizer build's samples, but every function of `derivative.hpp` takes
+  one, hundreds of lines. What `reverse_memo.ink` would need to rejoin
+  `reverse.ink`. The exploration of the interpreter compiled, queued, may
+  subsume it.
 - **Forward mode's "no path"**: a pass cannot tell a cell no path
   reaches from a part computed to be exactly 0, so C324's products leave
   both out and a `~` marks both, and the inexact-~0 case stays NaN:
