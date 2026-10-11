@@ -2984,10 +2984,10 @@ private:
     std::optional<std::pair<int, int>> Sampled(const PExpression<Value>& index) {
         if (index_.empty() || places_.count(index_)) return std::nullopt;
         const auto multiple = [&](const PExpression<Value>& e) -> std::optional<int> {
-            const auto* product = dynamic_cast<MultExpression<Value>*>(e.get());
-            if (!product) return std::nullopt;
-            for (const auto& [side, other] : {std::pair(product->m_e1(), product->m_e2()),
-                                              std::pair(product->m_e2(), product->m_e1())}) {
+            const auto* times = dynamic_cast<MultExpression<Value>*>(e.get());
+            if (!times) return std::nullopt;
+            for (const auto& [side, other] : {std::pair(times->m_e1(), times->m_e2()),
+                                              std::pair(times->m_e2(), times->m_e1())}) {
                 const auto* ref = dynamic_cast<RefExpression<Value>*>(other.get());
                 if (!ref || ref->Name() != index_) continue;
                 if (const auto a = Constant(side); a && *a > 1) return a;
@@ -2995,10 +2995,10 @@ private:
             return std::nullopt;
         };
         if (const auto a = multiple(index)) return std::pair(*a, 0);
-        const auto* sum = dynamic_cast<AddExpression<Value>*>(index.get());
-        if (!sum) return std::nullopt;
+        const auto* plus = dynamic_cast<AddExpression<Value>*>(index.get());
+        if (!plus) return std::nullopt;
         for (const auto& [side, other] :
-             {std::pair(sum->m_e1(), sum->m_e2()), std::pair(sum->m_e2(), sum->m_e1())}) {
+             {std::pair(plus->m_e1(), plus->m_e2()), std::pair(plus->m_e2(), plus->m_e1())}) {
             if (const auto a = multiple(side))
                 if (const auto b = Constant(other)) return std::pair(*a, *b);
         }
@@ -3010,13 +3010,13 @@ private:
         if (index_.empty() || places_.count(index_)) return std::nullopt;
         Hold                     hold{std::string(), 0, 0, 0};
         const Expression<Value>* at = index.get();
-        if (const auto* sum = dynamic_cast<const AddExpression<Value>*>(at)) {
-            if (const auto d = Constant(sum->m_e2())) {
+        if (const auto* plus = dynamic_cast<const AddExpression<Value>*>(at)) {
+            if (const auto d = Constant(plus->m_e2())) {
                 hold.d = *d;
-                at     = sum->m_e1().get();
-            } else if (const auto e = Constant(sum->m_e1())) {
+                at     = plus->m_e1().get();
+            } else if (const auto e = Constant(plus->m_e1())) {
                 hold.d = *e;
-                at     = sum->m_e2().get();
+                at     = plus->m_e2().get();
             } else {
                 return std::nullopt;
             }
@@ -3035,10 +3035,10 @@ private:
         if (const auto* ref = dynamic_cast<RefExpression<Value>*>(ratio->m_e1().get());
             ref && ref->Name() == index_)
             return hold;
-        const auto* sum = dynamic_cast<AddExpression<Value>*>(ratio->m_e1().get());
-        if (!sum) return std::nullopt;
+        const auto* plus = dynamic_cast<AddExpression<Value>*>(ratio->m_e1().get());
+        if (!plus) return std::nullopt;
         for (const auto& [side, other] :
-             {std::pair(sum->m_e1(), sum->m_e2()), std::pair(sum->m_e2(), sum->m_e1())}) {
+             {std::pair(plus->m_e1(), plus->m_e2()), std::pair(plus->m_e2(), plus->m_e1())}) {
             const auto* ref = dynamic_cast<RefExpression<Value>*>(side.get());
             if (!ref || ref->Name() != index_) continue;
             if (const auto k = Constant(other)) {
@@ -3144,12 +3144,12 @@ private:
         if (ref && expansion_ && expansion_->offsets.count(ref->Name()) &&
             !places_.count(ref->Name()))
             return expansion_->offsets.at(ref->Name());
-        const auto* sum = dynamic_cast<AddExpression<Value>*>(index.get());
-        if (!sum) throw Reason(only);
-        const auto [left, left_reads]   = Reading(sum->m_e1());
-        const auto [right, right_reads] = Reading(sum->m_e2());
-        if (right.constant && !left.constant) return Offset(sum->m_e1(), written) + Whole(right);
-        if (left.constant && !right.constant) return Whole(left) + Offset(sum->m_e2(), written);
+        const auto* plus = dynamic_cast<AddExpression<Value>*>(index.get());
+        if (!plus) throw Reason(only);
+        const auto [left, left_reads]   = Reading(plus->m_e1());
+        const auto [right, right_reads] = Reading(plus->m_e2());
+        if (right.constant && !left.constant) return Offset(plus->m_e1(), written) + Whole(right);
+        if (left.constant && !right.constant) return Whole(left) + Offset(plus->m_e2(), written);
         // A lag is the depth of a window, so a parameter that gives one is fixed.
         for (const auto* reads : {&right_reads, &left_reads})
             if (!reads->empty()) throw Fix{*reads};

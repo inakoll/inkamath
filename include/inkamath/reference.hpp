@@ -322,7 +322,7 @@ public:
     // refused before the body, in the words of the parameters that state it
     // (DESIGN.md, a size bound by a signature).
     struct Measure {
-        explicit Measure(const Reference& of) : of(of) {}
+        explicit Measure(const Reference& reference) : of(reference) {}
 
         std::vector<std::pair<std::string, size_t>> operator()(size_t i, const Extent& e) {
             const auto& sizes  = of.sizes_;

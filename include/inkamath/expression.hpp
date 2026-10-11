@@ -200,8 +200,8 @@ template <typename T>
 class BuiltinExpression final : public UnaryExpression<T> {
 public:
     using Cell = typename T::value_type;
-    BuiltinExpression(PExpression<T> e, std::string name, Cell (*function)(const Cell&))
-        : UnaryExpression<T>(e), name(std::move(name)), function(function) {}
+    BuiltinExpression(PExpression<T> e, std::string named, Cell (*f)(const Cell&))
+        : UnaryExpression<T>(e), name(std::move(named)), function(f) {}
 
     const std::string name;
     Cell (*const function)(const Cell&);
