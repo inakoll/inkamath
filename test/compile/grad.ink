@@ -5,8 +5,9 @@
 # interpreter sweeps one by a matrix back in reverse mode, and --check holds
 # it so. Every number below is worked out apart from the interpreter: by
 # hand, with exact fractions, with the step's operations in doubles and in
-# floats, in C and in numpy, and with mpmath at 50 digits; none is recorded. Today each model is refused, 'cannot
-# compile w: a derivative, for now'.
+# floats, in C and in numpy, and with mpmath at 50 digits; none is
+# recorded. Today each model is refused, 'cannot compile w: a derivative,
+# for now'.
 #
 # 'line', least squares by gradient descent on data a line fits exactly,
 # w = [1; 2]. Its terms are exact fractions, w_2 = [253/400; 537/400], and
