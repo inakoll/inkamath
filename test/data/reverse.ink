@@ -123,9 +123,9 @@ dive(k, t) | k < 1 = tanh(t)
 
 # Where a value is infinite, each cell's derivative is the single value's,
 # as elementary.ink has them: exp's slope at 800 is inf, and past a thousand
-# exp is a constant whose slope is 0. Forward mode answers -nan for the
+# exp is a constant whose slope is 0. Forward mode answered -nan for the
 # first cell of each, its pass for that cell multiplying v[1,2]'s part
-# there, 0, by exp's value, inf (C324).
+# there, 0, by exp's value, inf; gradcells.ink holds its answers (C324).
 >> grad_(v = [800 1]) exp(v[1,1])*v[1,2]
 [~inf, ~inf]
 
