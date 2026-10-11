@@ -8631,20 +8631,20 @@ checked: what it asked of the compiler, each with its smallest change.
   transformation, with the extents the compiler knows (`MANIFESTO.md`), and
   the window of history a step that keeps its latest terms can give it, is
   an item of its own, not specified here.
-- **grad's cost per term**, a refactor: every golden and every `--check`
-  report byte for byte, its first requirement. 600,000 remembered terms
-  take `reverse_memo.ink` 65 s under the sanitizers in reverse mode, and
-  `fastgrad.ink` 52 with its own in forward mode, where a golden's timeout
-  is 60; both files carry 120. Profiled at db6ac88 under callgrind, in
-  release and in Debug, the sanitizer job's build type, and by sampling
+- `[done]` **grad's cost per term**, a refactor: every golden and every
+  `--check` report byte for byte, its first requirement. 600,000 remembered
+  terms take `reverse_memo.ink` 65 s under the sanitizers in reverse mode,
+  and `fastgrad.ink` 52 with its own in forward mode, where a golden's
+  timeout is 60; both files carry 120. Profiled at db6ac88 under callgrind,
+  in release and in Debug, the sanitizer job's build type, and by sampling
   the sanitizer build: the cost is grad's, not the evaluator's. The
   evaluator sums the same 30,000 terms at 24,000 Debug instructions each,
-  grad at 97,000 in reverse mode and 61,000 in forward mode, and what a
-  term of grad's asks of the evaluator, a literal index, its bound
-  summation index, a name looked up, is under a tenth. Under the
-  sanitizers no place dominates: a quarter of the samples is ASan's fake
-  stack, paid per call, the rest copies of jets, the memo's string key and
-  what a call checks before its memo answers.
+  grad at 97,000 in reverse mode and 61,000 in forward mode, and what a term
+  of grad's asks of the evaluator, a literal index, its bound summation
+  index, a name looked up, is under a tenth. Under the sanitizers no place
+  dominates: a quarter of the samples is ASan's fake stack, paid per call,
+  the rest copies of jets, the memo's string key and what a call checks
+  before its memo answers.
 
   Decided, seven changes, all in `derivative.hpp`, smallest first. Each
   share is measured alone against db6ac88: Debug instructions per term of
@@ -8723,6 +8723,25 @@ checked: what it asked of the compiler, each with its smallest change.
   No spec transcript: nothing new is said, so the goldens are the
   specification, and the timeout goes with the implementation, measured on
   the sanitizer build first.
+
+  Built as specified, a commit for each change, each leaving every golden
+  and every C file ctest writes, `--check`'s among them, the same bytes as
+  before it. Departures. The jet found again is C328, fixed first with its
+  entry in `gradlocal.ink`, and the refactor measured from that fix.
+  `fastgrad.ink`'s 600,000 terms go unchanged to `fastgrad_long.ink`, a
+  golden of their own at the default 60 s, by the owner's ruling, where the
+  plan kept them in `fastgrad.ink`; its 120 s goes. `<cstdint>` goes with
+  `<map>`, nothing left reading it, and `<algorithm>` comes, for the tape's
+  and the memo's searches. A part's sameness is a function of its own beside
+  the arguments'. 70 lines added and 39 removed, net 31, 2 of them comment;
+  C328's fix 10 and 3. 16,746 lines in all, 16,715 after C328. Debug
+  instructions per term of 30,000, from the fix: 93,000 to 63,900 in reverse
+  mode and 60,900 to 37,200 in forward mode; in release, from 5f2a838, the
+  transformer's step 3,524 to 2,656 million, 0.46 s to 0.37, its answers the
+  same bytes, and `bench/grad.ink` 688 to 566 million. Under the sanitizers
+  alone, beside another build: `reverse_memo.ink` 49 to 51 s down to 35 to
+  38, its 120 kept and its comment's figure updated; `fastgrad.ink` 11.5
+  down to 8.3, and `fastgrad_long.ink` 27 to 28 down to 21 to 22.
 - **A jet without its heap vector**, a part inline for one grad: after
   grad's cost per term the largest share left, copies of jets in half the
   sanitizer build's samples, but every function of `derivative.hpp` takes
