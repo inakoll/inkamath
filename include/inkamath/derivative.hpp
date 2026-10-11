@@ -3,6 +3,7 @@
 
 #include "inkamath/reference_stack.hpp"
 
+#include <algorithm>
 #include <bit>
 #include <cmath>
 #include <cstddef>
@@ -107,6 +108,7 @@ private:
         // same nodes is the same node, and a call made again on it is
         // remembered as forward mode remembers one by its parts' values (C323).
         std::unordered_multimap<std::size_t, std::size_t> made;
+        std::vector<T> numbered;  // each extent's cells, numbered once
 
         static bool Same(const Node& x, const Node& y) {
             return x.kind == y.kind && x.extent == y.extent && x.a == y.a && x.b == y.b &&
@@ -157,8 +159,11 @@ private:
         }
         template <typename F>
         Part Moved(const Part& a, F f) {
-            return Gather(f(Numbered(a.Size(), 0)),
-                          [&a](std::size_t k) { return Cell(a.node, k); });
+            auto known = std::find_if(numbered.begin(), numbered.end(),
+                                      [&a](const T& t) { return t.Size() == a.Size(); });
+            if (known == numbered.end())
+                known = numbered.insert(numbered.end(), Numbered(a.Size(), 0));
+            return Gather(f(*known), [&a](std::size_t k) { return Cell(a.node, k); });
         }
 
         static bool   One(Extent e) { return e.count() == 1 && !e.slices; }
