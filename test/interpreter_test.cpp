@@ -175,6 +175,9 @@ TEST_CASE("gradlocal") {
 TEST_CASE("reverse") {
     check_transcript("reverse.ink");
 }
+TEST_CASE("reverse_memo") {
+    check_transcript("reverse_memo.ink");
+}
 TEST_CASE("conv") {
     check_transcript("conv.ink");
 }

@@ -168,14 +168,11 @@ c(m)[j <= 1, k <= 2] = m[j,k]*[~2 3][j,k]
 # A call made again with the same parts is remembered, as forward mode
 # remembers it (C323): a cell read again, or a product by the same value,
 # is the same node. So the tanh at the foot of dive(255, t) is the one
-# taken before it, and not one reference deeper, 2*(1 - tanh(1/2)^2); the
-# 600,000 terms are a step each, e times 600,000; and fb's 2^25 leaves are
-# 26 calls.
+# taken before it, and not one reference deeper, 2*(1 - tanh(1/2)^2); and
+# fb's 2^25 leaves are 26 calls. reverse_memo.ink's 600,000 terms are a
+# step each.
 >> grad_(t = [~0.5 1]) (tanh(t[1,1]) + dive(255, t[1,1]))
 [~1.57289547, ~0]
-
->> grad_(v = [~1 1]) sum_(k=1)^600000 exp(v[1,1])
-[~1630969.1, ~0]
 
 >> fb(y, n) | n < 1 = y
 fb(y, n) | n < 1 = y
