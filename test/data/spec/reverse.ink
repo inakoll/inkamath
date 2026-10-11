@@ -410,9 +410,9 @@ error: the derivative of r did not converge within 100 terms (last term ~4.22550
 >> grad_(v = [1 2]) grad_(x = 3) x*v[1,1]*v[1,2]
 [2, 1]
 
-# Giving way keeps nothing of the walk but its steps: hh(a), remembered by
-# the walk, is walked again, and the clause an inexact truth chose marks the
-# answer as forward mode's (C241).
+# Giving way keeps nothing of the walk: hh(a), remembered by the walk, is
+# walked again, and the clause an inexact truth chose marks the answer as
+# forward mode's (C241).
 >> hh(x) | x > 0 = 1
 hh(x) | x > 0 = 1
 
@@ -421,6 +421,10 @@ hh(x) = 2
 
 >> grad_(v = [1 2]) ((a = ~0.5) + hh(a) + v[1,1] + grad_(y = 1) y*v[1,2])
 [~1, ~1]
+
+# Nor its steps: the walk's 200,000 are its own, and put back.
+>> grad_(v = [1 2]) (sum_(k=1)^200000 k + v[1,1] + grad_(y = 1) y*v[1,2])
+[1, 1]
 
 >> grad_(v = [i 1]) v[1,1]^2*v[1,2]
 [~(i*2), ~-1]

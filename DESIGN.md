@@ -8461,15 +8461,15 @@ checked: what it asked of the compiler, each with its smallest change.
     (C72), which needs the parts' values; a complex value multiplying a part
     needs conjugates for `re`, `im` and `abs`; a grad inside needs parts of
     parts. Meeting one, the walk stops, its locals are put back in both
-    frames, its flags reset and its remembered terms forgotten, since a term
-    remembered answers without raising the flags its walk raised, and
-    forward mode evaluates the grad from the start; the steps the walk took stay
-    spent, a line's last few could run out where they did not. A complex point is known before,
-    and goes to forward mode at once. Every refusal keeps its words: whether
-    a part is there, all that C73, C78, C301, a moving size and the
-    staircases ask, a node answers as a matrix does, so a refusal is met
-    where forward mode's first pass meets it; and C215's stepping limit is
-    refused before any part is read.
+    frames, its flags reset, its steps, its own as each of forward mode's
+    passes has its own (C318), put back, and its remembered terms forgotten,
+    since a term remembered answers without raising the flags its walk
+    raised; and forward mode evaluates the grad from the start. A complex
+    point is known before, and goes to forward mode at once. Every refusal
+    keeps its words: whether a part is there, all that C73, C78, C301, a
+    moving size and the staircases ask, a node answers as a matrix does, so
+    a refusal is met where forward mode's first pass meets it; and C215's
+    stepping limit is refused before any part is read.
   - **The same answers.** Exact values are the same rationals. Doubles agree
     to rounding: an adjoint sums its terms in another order, and the
     header's slope rounds once where its part rounds with the part. A cell
@@ -8534,13 +8534,12 @@ checked: what it asked of the compiler, each with its smallest change.
   at 29bf717, by `wc -l include/inkamath/*.hpp src/*`. Past 530 the
   implementation stops and reports.
 
-  Specified in `test/data/spec/reverse.ink`, 120 answers replayed by the
+  Specified in `test/data/spec/reverse.ink`, 121 answers replayed by the
   spec suite, restored for it, 3 failing by design: the three marks above,
-  the evidence that reverse mode ran. The count, `grad_(w = [1 2 3 4 5 6 7
-  8 9 10]) (w*w' + sum_(k=1)^120000 k)`, one evaluation of a 120,000-step
-  sum where forward mode takes ten, is a plain value: since C318 each of
-  forward mode's passes has steps of its own. The rest pass today and must
-  still:
+  the evidence that reverse mode ran. The count, `grad_(w = [1 2 3 4 5 6 7 8
+  9 10]) (w*w' + sum_(k=1)^120000 k)`, one evaluation of a 120,000-step sum
+  where forward mode takes ten, is a plain value: since C318 each of forward
+  mode's passes has steps of its own. The rest pass today and must still:
   matrices, inverses and tensors exact; README's gradient; sums, products,
   locals, cells, a ReLU at 0 and remembered terms; the prelude's functions
   of doubles; a one-cell tensor, forward; the transformer trimmed to one
@@ -8549,9 +8548,9 @@ checked: what it asked of the compiler, each with its smallest change.
   exploration's `rev.py`; the refusals, each in its words; and what gives
   way, a moving limit and its divergent derivative, an endless sum, a
   complex value and point, and a grad inside, after a clause an inexact
-  truth chose in a term the walk remembered. README's paragraph on `grad`
-  gains that a gradient with respect to a matrix costs one evaluation and a
-  sweep back, whatever its cells.
+  truth chose in a term the walk remembered, and after a sum of 200,000
+  steps. README's paragraph on `grad` gains that a gradient with respect to
+  a matrix costs one evaluation and a sweep back, whatever its cells.
 - **The compiler's adjoint step**, after the tape: `--compile` keeps
   forward mode's parts, a pass per cell of a seed. An adjoint emitted by
   transformation, with the extents the compiler knows (`MANIFESTO.md`), and
