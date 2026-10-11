@@ -142,3 +142,18 @@ relugate(eta = 1/4, x_n[i<=3], y_n) = {
     W_n = W_(n-1) - eta*grad_(M = W_(n-1)) L(M, x_n, y_n)
 }
 gate = relugate(x_n = [mod(n, 3) - 1; 1; mod(2*n, 5)/3 - 1/2], y_n = mod(n, 4)/4)
+
+# 'sinabs', C329: a session takes sin and abs of a double by their slopes,
+# and so does the step. --check's exact run walks sin's definition for its
+# guards, which calls abs on the same value: that call remembered, the
+# body's own abs found it, recorded before the root's nodes, and its
+# adjoint was summed last, where a session's is first.
+#
+#     sinabs: 100 steps from 0, against exact values until 0 and inexact ones from there
+#     sinabs.W: within 0; the interpreter's terms about <e> from the exact ones
+slopes(eta = 1/16, x_n[i<=2]) = {
+    L(W, x) = sin((W*x)[1]) + ((W*x)[1]^2 + 1)^(1/2) + abs((W*x)[1])
+    W_0 = ~[1 -1; 1/2 1]
+    W_n = W_(n-1) - eta*grad_(V = W_(n-1)) L(V, x_n)
+}
+sinabs = slopes(x_n = ~[mod(n, 3) - 1; 1/3])
