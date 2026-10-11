@@ -15,6 +15,7 @@
 #include <string>
 #include <type_traits>
 #include <typeinfo>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -103,14 +104,35 @@ private:
             std::vector<Cell> from;  // each cell's, gathered
         };
         std::vector<Node> nodes;
+        // Each node by a hash of what it is, so that the same operation on the
+        // same nodes is the same node, and a call made again on it is
+        // remembered as forward mode remembers one by its parts' values (C323).
+        std::unordered_multimap<std::size_t, std::size_t> made;
+
+        static bool Same(const Node& x, const Node& y) {
+            return x.kind == y.kind && x.extent == y.extent && x.a == y.a && x.b == y.b &&
+                   x.at == y.at && x.approximated == y.approximated && x.from == y.from &&
+                   x.value.has_value() == y.value.has_value() &&
+                   (!x.value || numeric_interface<T>::same(*x.value, *y.value));
+        }
 
         Part Add(Kind kind, Extent extent, std::size_t a, std::optional<T> value = std::nullopt,
-                 std::size_t b = 0, std::size_t at = 0, bool approximated = false) {
+                 std::size_t b = 0, std::size_t at = 0, bool approximated = false,
+                 std::vector<Cell> from = {}) {
             // A complex value would need conjugates (DESIGN.md).
             using Scalar = numeric_interface<typename T::value_type>;
             for (std::size_t k = 0; value && k < value->Size().count(); ++k)
                 if (!(Scalar::imaginary(value->data()[k]) == 0)) throw Forward();
-            nodes.push_back({kind, extent, a, std::move(value), b, at, approximated, {}});
+            Node node{kind, extent, a, std::move(value), b, at, approximated, std::move(from)};
+            std::size_t hash = node.value ? numeric_interface<T>::hash(*node.value) : 0;
+            for (const std::size_t field : {static_cast<std::size_t>(kind), a, b, at,
+                                            static_cast<std::size_t>(approximated), extent.count()})
+                hash = hash * 31 + field;
+            for (const auto& [operand, cell] : node.from) hash = (hash * 31 + operand) * 31 + cell;
+            for (auto [same, end] = made.equal_range(hash); same != end; ++same)
+                if (Same(nodes[same->second - 1], node)) return Part(this, same->second, extent);
+            nodes.push_back(std::move(node));
+            made.emplace(hash, nodes.size());
             return Part(this, nodes.size(), extent);
         }
         Part Mark(const Part& a, bool approximated, std::size_t at = 0) {
@@ -127,14 +149,12 @@ private:
         // What landed, each cell's number the cell it was.
         template <typename F>
         Part Gather(const T& landed, F was) {
-            const Part gathered = Add(Kind::Gather, landed.Size(), 0);
-            auto&      from     = nodes.back().from;
-            from.resize(landed.Size().count());
+            std::vector<Cell> from(landed.Size().count());
             for (std::size_t k = 0; k < from.size(); ++k)
                 if (const auto number = numeric_interface<T>::toInt(T(landed.data()[k]));
                     number > 0)
                     from[k] = was(static_cast<std::size_t>(number - 1));
-            return gathered;
+            return Add(Kind::Gather, landed.Size(), 0, std::nullopt, 0, 0, false, std::move(from));
         }
         template <typename F>
         Part Moved(const Part& a, F f) {
