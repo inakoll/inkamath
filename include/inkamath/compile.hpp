@@ -2952,19 +2952,24 @@ private:
                 return Prelude(key, *found.definition, call);
             return Answer(Call(key, *found.definition, call, nullptr));
         }
+        return Answer(Term(key, found.definition, call));
+    }
+
+    // A term of a sequence, read at the index the call gives.
+    Code Term(const std::string& key, const Reference<Value>* definition,
+              const ParametersCall<Value>& call) {
         if (limit_) throw Reason(key + "_...: another sequence's term in a limit's terms");
         if (!reading_ && !basing_) throw Reason(key + "_...: a term read outside a general clause");
-        const Reference<Value>* definition = found.definition;
         if (definition && !IsSequence(*definition)) throw Reason(key + " is not a sequence");
         Sequence& read = sequences_[key];
         if (!definition) {
             Unreserved(key);
             if (!read.size.rows) read.size = Extent{};
         }
-        if (!reading_) return Answer(Seeded(key, read, call.subexpr()));
+        if (!reading_) return Seeded(key, read, call.subexpr());
         if (const auto sample = Sampled(call.subexpr()))
-            return Answer(Sample(key, read, sample->first, sample->second));
-        if (const auto hold = Held(call.subexpr())) return Answer(Holding(key, read, *hold));
+            return Sample(key, read, sample->first, sample->second);
+        if (const auto hold = Held(call.subexpr())) return Holding(key, read, *hold);
         const int lag = Lag(call.subexpr(), key) + shift_;
         Bases(key);
         if (!read.size.rows) Compile(key);
@@ -2972,9 +2977,9 @@ private:
         // with no base clause is computed again.
         if (&read != reading_ && read.period > 1) {
             reading_->reads[key].insert(lag);
-            return Answer(Array("m_->" + key + "[0]", read.size));
+            return Array("m_->" + key + "[0]", read.size);
         }
-        if (lag > 0 && ClosedForm(read) && !histories_.count(key)) return Answer(At(read, lag));
+        if (lag > 0 && ClosedForm(read) && !histories_.count(key)) return At(read, lag);
         (shift_ && early_ >= 0 ? earlies_[static_cast<std::size_t>(early_)].reads
          : deferring_          ? reading_->deferred
                                : reading_->reads)[key]
@@ -2996,7 +3001,7 @@ private:
             for (std::size_t c = 0; c < code.cells.size(); ++c)
                 code.cells[c].text = mark + back.At(c).text + "\x06" + code.cells[c].text + "\x07";
         }
-        return Answer(code);
+        return code;
     }
 
     // A sequence with no base clause that reads no term is a closed form, and
@@ -4601,6 +4606,72 @@ private:
         return out;
     }
 
+    // A sequence's cells assigned in its step, in the order the interpreter
+    // tries its clauses.
+    std::string Assigned(const std::string& name, const std::string& indent) {
+        const Sequence& sequence = sequences_.at(name);
+        const bool      scalar   = sequence.general.size() == 1;
+        std::string     assignments;
+        for (std::size_t c = 0; c < sequence.general.size(); ++c) {
+            assignments += indent + "m_->" + name + "[0]" + Subscript(sequence.size, c) + " = ";
+            for (const auto& [index, base] : sequence.bases)
+                assignments += "m_->index_ == " + std::to_string(index) + " ? " + base[c] + " : ";
+            // Checked only where an index no base clause gives needs it.
+            const auto before = [&](int from, const std::string& otherwise = "NAN") {
+                for (int n = sequence.start; n < from; ++n)
+                    if (!sequence.bases.count(n))
+                        return "m_->index_ < " + std::to_string(from) + " ? " + otherwise + " : ";
+                return std::string();
+            };
+            // Ahead of the cells, which the guards cannot read.
+            if (clauses_ && c == 0 && !sequence.guarded.empty()) {
+                std::string kept = indent + "m_->" + name + "_clause_ = ";
+                for (const auto& [index, base] : sequence.bases)
+                    kept += "m_->index_ == " + std::to_string(index) + " ? 0 : ";
+                for (const Guarded& guarded : sequence.guarded)
+                    kept += before(guarded.guard_from, "0") + Picked(guarded.condition) + " ? " +
+                            std::to_string(guarded.clause + 1) + " : ";
+                assignments.insert(0, kept + std::to_string(sequence.general_clause + 1) + ";\n");
+            }
+            for (const Guarded& guarded : sequence.guarded) {
+                const std::string value = before(guarded.value_from);
+                assignments +=
+                    before(guarded.guard_from) + guarded.condition + " ? " +
+                    (value.empty() ? guarded.cells[c] : "(" + value + guarded.cells[c] + ")") +
+                    " : ";
+            }
+            if (!sequence.guarded.empty()) assignments += before(From(sequence.general_reads));
+            assignments += sequence.general[c] + ";\n";
+        }
+        // Ahead of the cells too, a cell's clause where no base term stands.
+        std::string picks;
+        for (std::size_t c = 0; c < sequence.taken.size(); ++c) {
+            picks += indent + "m_->" + name + "_clause_[" + std::to_string(c) + "] = ";
+            for (const auto& [index, base] : sequence.bases)
+                picks += "m_->index_ == " + std::to_string(index) + " ? 0 : ";
+            picks += sequence.taken[c] + ";\n";
+        }
+        assignments.insert(0, picks);
+        // The interpreter refuses a matrix term whole where it refuses a cell.
+        if (aware_ && !scalar) {
+            std::string any;
+            for (std::size_t c = 0; c < sequence.general.size(); ++c)
+                any += std::string(c ? " || " : "") + "isnan(m_->" + name + "[0]" +
+                       Subscript(sequence.size, c) + ")";
+            const std::string b = sequence.size.slices ? "    " : "";
+            assignments += indent + "if (" + any + ")\n" +
+                           (b.empty() ? ""
+                                      : indent + "    for (int b_ = 0; b_ < " +
+                                            std::to_string(sequence.size.slices) + "; ++b_)\n") +
+                           indent + b + "    for (int i_ = 0; i_ < " +
+                           std::to_string(sequence.size.rows) + "; ++i_)\n" + indent + b +
+                           "        for (int j_ = 0; j_ < " + std::to_string(sequence.size.cols) +
+                           "; ++j_) m_->" + name + "[0]" + (b.empty() ? "" : "[b_]") +
+                           "[i_][j_] = NAN;\n";
+        }
+        return assignments;
+    }
+
     Compiled Print(const std::string& module, const std::string& source) {
         for (const auto& [name, sequence] : sequences_)
             if (!sequence.definition && parameters_.count(name))
@@ -4747,7 +4818,6 @@ private:
                              "[0]);\n";
         for (const std::string& name : order) {
             const Sequence&   sequence = sequences_.at(name);
-            const bool        scalar   = sequence.general.size() == 1;
             const bool        rated    = sequence.period > 1;
             const bool        late     = sequence.start > earliest || rated;
             const std::string indent   = late ? "        " : "    ";
@@ -4758,50 +4828,7 @@ private:
                               : std::string()) +
                        ") {\n";
             if (rated) out += shifted(name, indent);
-            std::string assignments;
-            for (std::size_t c = 0; c < sequence.general.size(); ++c) {
-                assignments += indent + "m_->" + name + "[0]" + Subscript(sequence.size, c) + " = ";
-                for (const auto& [index, base] : sequence.bases)
-                    assignments +=
-                        "m_->index_ == " + std::to_string(index) + " ? " + base[c] + " : ";
-                // Checked only where an index no base clause gives needs it.
-                const auto before = [&](int from, const std::string& otherwise = "NAN") {
-                    for (int n = sequence.start; n < from; ++n)
-                        if (!sequence.bases.count(n))
-                            return "m_->index_ < " + std::to_string(from) + " ? " + otherwise +
-                                   " : ";
-                    return std::string();
-                };
-                // Ahead of the cells, which the guards cannot read.
-                if (clauses_ && c == 0 && !sequence.guarded.empty()) {
-                    std::string kept = indent + "m_->" + name + "_clause_ = ";
-                    for (const auto& [index, base] : sequence.bases)
-                        kept += "m_->index_ == " + std::to_string(index) + " ? 0 : ";
-                    for (const Guarded& guarded : sequence.guarded)
-                        kept += before(guarded.guard_from, "0") + Picked(guarded.condition) +
-                                " ? " + std::to_string(guarded.clause + 1) + " : ";
-                    assignments.insert(0,
-                                       kept + std::to_string(sequence.general_clause + 1) + ";\n");
-                }
-                for (const Guarded& guarded : sequence.guarded) {
-                    const std::string value = before(guarded.value_from);
-                    assignments +=
-                        before(guarded.guard_from) + guarded.condition + " ? " +
-                        (value.empty() ? guarded.cells[c] : "(" + value + guarded.cells[c] + ")") +
-                        " : ";
-                }
-                if (!sequence.guarded.empty()) assignments += before(From(sequence.general_reads));
-                assignments += sequence.general[c] + ";\n";
-            }
-            // Ahead of the cells too, a cell's clause where no base term stands.
-            std::string picks;
-            for (std::size_t c = 0; c < sequence.taken.size(); ++c) {
-                picks += indent + "m_->" + name + "_clause_[" + std::to_string(c) + "] = ";
-                for (const auto& [index, base] : sequence.bases)
-                    picks += "m_->index_ == " + std::to_string(index) + " ? 0 : ";
-                picks += sequence.taken[c] + ";\n";
-            }
-            assignments.insert(0, picks);
+            const std::string assignments = Assigned(name, indent);
             // Resolved before what is used is known: a term read back that is
             // not computed again leaves its temporaries unread.
             std::vector<Temporary> temporaries = sequence.temporaries;
@@ -4810,23 +4837,6 @@ private:
                     line = Checked(Rated(line, sequence), name, sequence);
             const std::string checked = Checked(Rated(assignments, sequence), name, sequence);
             out += Temporaries(temporaries, checked, indent) + checked;
-            // The interpreter refuses a matrix term whole where it refuses a cell.
-            if (aware_ && !scalar) {
-                std::string any;
-                for (std::size_t c = 0; c < sequence.general.size(); ++c)
-                    any += std::string(c ? " || " : "") + "isnan(m_->" + name + "[0]" +
-                           Subscript(sequence.size, c) + ")";
-                const std::string b = sequence.size.slices ? "    " : "";
-                out += indent + "if (" + any + ")\n" +
-                       (b.empty() ? ""
-                                  : indent + "    for (int b_ = 0; b_ < " +
-                                        std::to_string(sequence.size.slices) + "; ++b_)\n") +
-                       indent + b + "    for (int i_ = 0; i_ < " +
-                       std::to_string(sequence.size.rows) + "; ++i_)\n" + indent + b +
-                       "        for (int j_ = 0; j_ < " + std::to_string(sequence.size.cols) +
-                       "; ++j_) m_->" + name + "[0]" + (b.empty() ? "" : "[b_]") +
-                       "[i_][j_] = NAN;\n";
-            }
             if (late) out += "    }\n";
         }
         out += "}\n\n#endif\n";
