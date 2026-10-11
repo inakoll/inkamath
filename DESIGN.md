@@ -8669,7 +8669,9 @@ checked: what it asked of the compiler, each with its smallest change.
     cell's node. An adjoint cell no path reaches is absent, the
     interpreter's exact 0: it writes nothing, and a term it is a factor of
     is left out. One that is a constant folds exactly, as forward mode
-    folds a constant part: `/8` passes the body's 1 on as `0.125`.
+    folds a constant part: `/8` passes the body's 1 on as `0.125`; one
+    that folds to an exact 0 is absent too, as the interpreter takes any
+    exact 0 of an adjoint (`Tape::Nothing`), and writes no `0.0*t`.
     An adjoint is a temporary once its node is reached, as several
     products read its cells. The gradient's cells are the seed's adjoints,
     0 where none reaches.
@@ -8765,7 +8767,8 @@ checked: what it asked of the compiler, each with its smallest change.
     guarded, are the header's only on single values.
   - **Vector forward mode**, every cell's part in one pass: the header
     still grows with the cells.
-  - **Folding `0.0*t`** in the sweep, as for forward mode.
+  - **Folding `0.0*t`** in the sweep, a value's 0 times an adjoint, as
+    for forward mode: the interpreter multiplies by it.
 
   Increments, each a pipeline of its own:
   1. **Straight line**, this entry's implementation: the tape, the sweep,
