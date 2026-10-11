@@ -926,7 +926,8 @@ private:
             Staircase(function, code);
         }
         std::set<const Reference<Value>*> seen;
-        // Under reverse mode, one of several arguments is written where called.
+        // Under reverse mode, one of several arguments is written where called:
+        // its part function gives one slope, which one argument's node takes.
         const auto parted = [](const Code& c) { return !c.part.empty(); };
         if (constant || !scalar || Iterates(function, seen) ||
             (tape_ && names.size() > 1 && std::any_of(arguments.begin(), arguments.end(), parted)))
