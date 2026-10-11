@@ -477,3 +477,32 @@ err(h, j, k) = (cost(W1 + h*E(j, k), b1, W2, b2) - cost(W1 - h*E(j, k), b1, W2, 
 
 >> frac err(1/2, 3, 2)
 -5/12
+
+# Forward mode's pass for one cell carries another's part as an exact 0,
+# which stays 0 whatever it meets, as in reverse.ink: each cell's derivative
+# is the single value's, exp's slope inf at 800 and 0 past a thousand. The
+# grad inside keeps the outer one in forward mode. Then a matrix product, the
+# ~1 forward mode's mark, exp's part ~0 in the pass for v[1,1], the prelude
+# walked with an exact 0 meeting doubles; e's power; a quotient, by a ~0
+# whose part is 0 and by a ~0 that does not move; and a second part, w's
+# times v's (C324).
+>> grad_(v = [800 1]) grad_(w = 1) w*exp(v[1,1])*v[1,2]
+[~inf, ~inf]
+
+>> grad_(v = [1001 1]) grad_(w = 1) w*exp(v[1,1])*v[1,2]
+[0, ~inf]
+
+>> grad_(v = [1 800]) grad_(w = 1) w*[1 exp(v[1,2])]*v'
+[~1, ~inf]
+
+>> grad_(v = [800 1]) grad_(w = 1) w*e^(v[1,1])*v[1,2]
+[~inf, ~inf]
+
+>> grad_(v = [~800 1]) grad_(w = 1) w*v[1,2]/(v[1,1] - 800)
+[~-inf, ~inf]
+
+>> grad_(v = [1 2]) grad_(w = 1) w*v[1,1]/~0
+[~inf, 0]
+
+>> grad_(v = [1 1]) grad_(w = 1) e^(w*v[1,1]*~1e308*10)*v[1,2]
+[~inf, ~inf]

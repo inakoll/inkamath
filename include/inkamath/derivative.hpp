@@ -200,8 +200,8 @@ private:
                 if (Nothing(g.data()[k])) product.data()[k] = g.data()[k];
             return product;
         }
-        // a*b, the terms whose factor of the adjoint is an exact 0 left out.
-        static T Sparse(const T& a, const T& b, bool adjoint_left) {
+        // a*b, the terms whose factor on a side named is an exact 0 left out.
+        static T Sparse(const T& a, const T& b, bool left, bool right) {
             const Extent ea = a.Size(), eb = b.Size();
             if (ea.cols != eb.rows) return a * b;
             T c(Extent{ea.rows, eb.cols});
@@ -210,7 +210,7 @@ private:
                     std::optional<typename T::value_type> sum;
                     for (std::size_t k = 1; k <= ea.cols; ++k) {
                         const auto &x = a(i, k), &y = b(k, j);
-                        if (Nothing(adjoint_left ? x : y)) continue;
+                        if ((left && Nothing(x)) || (right && Nothing(y))) continue;
                         sum = sum ? *sum + x * y : x * y;
                     }
                     if (sum) c(i, j) = *sum;
@@ -222,7 +222,7 @@ private:
             if (v.IsScalar()) return Zeroed(g * v, g);
             if (One(a)) return Total(Zeroed(Derivative::Cellwise(v, g), g));
             const auto f = [](const T& x, const T& y) {
-                return Sparse(numeric_interface<T>::transpose(x), y, false);
+                return Sparse(numeric_interface<T>::transpose(x), y, false, true);
             };
             return v.IsTensor() || g.IsTensor() ? T::Sliced(v, g, f) : f(v, g);
         }
@@ -230,7 +230,7 @@ private:
             if (v.IsScalar()) return Zeroed(g * v, g);
             if (One(a)) return Total(Zeroed(Derivative::Cellwise(g, v), g));
             const auto f = [](const T& y, const T& x) {
-                return Sparse(y, numeric_interface<T>::transpose(x), true);
+                return Sparse(y, numeric_interface<T>::transpose(x), true, false);
             };
             return v.IsTensor() || g.IsTensor() ? T::Sliced(g, v, f) : f(g, v);
         }
@@ -382,9 +382,30 @@ private:
         Jet c(a.size());
         for (std::size_t s = 0; s < a.size(); ++s)
             for (std::size_t part = s;; part = (part - 1) & s) {
-                if (a[part] && b[s ^ part]) Add(c[s], *a[part] * *b[s ^ part]);
+                if (a[part] && b[s ^ part])
+                    Add(c[s], Times(*a[part], part != 0, *b[s ^ part], part != s));
                 if (part == 0) break;
             }
+        return c;
+    }
+
+    // a*b, a.*b or a/b, a term whose factor is a part and an exact 0 left
+    // out, as reverse mode leaves out an exact 0 of an adjoint: a cell no
+    // path reaches stays 0 where a value is infinite or zero (C324).
+    static Part Times(const Part& a, bool ap, const Part& b, bool bp, char op = '*') {
+        if (a.node || b.node || !(ap || bp))
+            return op == '*' ? a * b : op == '.' ? Cellwise(a, b) : a / b;
+        return Part(Times(a.Value(), ap, b.Value(), bp, op));
+    }
+    static T Times(const T& a, bool ap, const T& b, bool bp, char op) {
+        if (a.IsTensor() || b.IsTensor())
+            return T::Sliced(a, b, [=](const T& x, const T& y) { return Times(x, ap, y, bp, op); });
+        if (op == '*' && !a.IsScalar() && !b.IsScalar()) return Tape::Sparse(a, b, ap, bp);
+        T c = op == '*' ? a * b : op == '.' ? Cellwise(a, b) : a / b;
+        for (std::size_t k = 0; k < c.Size().count(); ++k)
+            if ((ap && Tape::Nothing(a.data()[a.IsScalar() ? 0 : k])) ||
+                (bp && Tape::Nothing(b.data()[b.IsScalar() ? 0 : k])))
+                c.data()[k] = typename T::value_type(0);
         return c;
     }
 
@@ -412,8 +433,9 @@ private:
         for (std::size_t s = 1; s < a.size(); ++s) {
             std::optional<Part> top = a[s];
             for (std::size_t part = s; part != 0; part = (part - 1) & s)
-                if (b[part] && c[s ^ part]) Add(top, -Cellwise(*c[s ^ part], *b[part]));
-            if (top) c[s] = *top / *b[0];
+                if (b[part] && c[s ^ part])
+                    Add(top, -Times(*c[s ^ part], part != s, *b[part], true, '.'));
+            if (top) c[s] = Times(*top, true, *b[0], false, '/');
         }
         return c;
     }
@@ -443,7 +465,7 @@ private:
             const auto each = [&](int blocks, const Part& product) {
                 auto& slot = known[static_cast<std::size_t>(blocks)];
                 if (!slot) slot = derivative(blocks);
-                if (*slot) Add(out[s], **slot * product);
+                if (*slot) Add(out[s], Times(**slot, false, product, true));
             };
             Blocks(u, s, 0, std::nullopt, each);
         }
@@ -461,8 +483,8 @@ private:
         for (std::size_t sub = rest;; sub = (sub - 1) & rest) {
             const std::size_t block = sub | low;
             if (u[block])
-                Blocks(u, set ^ block, blocks + 1, product ? *product * *u[block] : *u[block],
-                       each);
+                Blocks(u, set ^ block, blocks + 1,
+                       product ? Times(*product, true, *u[block], true) : *u[block], each);
             if (sub == 0) break;
         }
     }

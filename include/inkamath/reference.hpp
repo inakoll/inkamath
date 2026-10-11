@@ -184,6 +184,10 @@ public:
         // A parameter of the definition's name hides the definition.
         const std::vector<std::string>& own = ai_parameters.parameters_names();
         const bool hidden = std::find(own.begin(), own.end(), reference_name_) != own.end();
+        // As a model's: the second binds what the first does, adding nothing.
+        for (auto name = own.begin(); name != own.end(); ++name)
+            if (std::find(own.begin(), name, *name) != name)
+                throw std::runtime_error(reference_name_ + " has two parameters named " + *name);
         if (ai_parameters.cells() && !ai_parameters.row_name().empty())
             for (const PExpression<T>& e : {ai_parameters.guard(), ai_expression})
                 Reads(e, ai_parameters, hidden ? "" : reference_name_, {}, clause.reads);
@@ -318,7 +322,7 @@ public:
     // refused before the body, in the words of the parameters that state it
     // (DESIGN.md, a size bound by a signature).
     struct Measure {
-        explicit Measure(const Reference& of) : of(of) {}
+        explicit Measure(const Reference& reference) : of(reference) {}
 
         std::vector<std::pair<std::string, size_t>> operator()(size_t i, const Extent& e) {
             const auto& sizes  = of.sizes_;

@@ -23,6 +23,9 @@ set(INKAMATH_SANITIZE "" CACHE STRING "Sanitizers to enable, e.g. address,undefi
 add_library(inkamath_warnings INTERFACE)
 target_compile_options(inkamath_warnings INTERFACE
     $<$<CXX_COMPILER_ID:GNU,Clang,AppleClang>:-Wall;-Wextra;-Wpedantic>
+    # What MSVC's /W4 refuses (C4456, C4458, C4459), in the sources; the C a
+    # --check harness emits names its locals as a model may be named.
+    $<$<AND:$<COMPILE_LANGUAGE:CXX>,$<CXX_COMPILER_ID:GNU,Clang,AppleClang>>:-Wshadow>
     $<$<CXX_COMPILER_ID:MSVC>:/W4>)
 # MSVC deprecates standard functions such as getenv in favour of its own _s
 # variants, which are not standard C++.
