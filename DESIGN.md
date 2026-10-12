@@ -4030,15 +4030,19 @@ that exploring seven domains asked of the interpreter, by how many asked.
   `compile_nan_once`, and the `spec` part and `cli_spec` go. No
   transcript in `test/data/spec`.
 
-  Built as specified, departing in nothing: no golden, expected header or
-  prelude moves; the same 9 C files, `c231.h`, `under.c` and `hidden.h`
-  as the prototype, the fuzzer's not at all, all 249 reports byte for
-  byte, `under`'s as the baseline's. `tq.h` and `tf.h` are the
+  Built as specified, departing in one place, which review found: a
+  guard's `there` reads a flag as `(t2_ != 0)`, as an int beside the NaN
+  of a chain is made a float, which -Wconversion refuses, where the `||`
+  written out was a truth; grad.ink's `flag` holds it. No golden,
+  expected header or prelude moves; the same 9 C files, `c231.h`,
+  `under.c` and `hidden.h` as the prototype, the fuzzer's not at all,
+  all 250 reports byte for byte, `under`'s and `flag`'s as the
+  baseline's. `tq.h` and `tf.h` are the
   prototype's byte for byte: 720,124 bytes, 17,232 of conditions, and
   6,466,731, 126,072; `tq` at -O2 GCC 16.8 s and 688 MB, Clang 8.0 s and
-  228 MB, `tf`'s `--compile` 4.9 s and 122 MB, `tf` not built again. 4
-  lines of `compile.hpp`, 15 added and 11 removed, 2 of them comment;
-  17,528 in all.
+  228 MB, `tf`'s `--compile` 4.9 s and 122 MB, `tf` not built again. 7
+  lines of `compile.hpp`, 21 added and 14 removed, 4 of them comment;
+  17,531 in all, past the 6 by review's fix.
 - **A compiled step split into functions**: the transformer trained by
   one grad of its 13 weights compiles to a 17 MB straight-line step that
   neither GCC nor Clang builds at -O2 within 10 minutes (Clang -O0: 24 s,

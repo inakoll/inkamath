@@ -695,10 +695,13 @@ private:
             if (!c.part.empty()) return c.part[0];
             return c.cells[0].text == "NAN" ? Of(Atom("NAN")) : Literal(Value(Number(0)));
         };
+        // A flag, unlike a condition written out, which has a space, is an
+        // int, which a NaN beside it makes a float (-Wconversion).
         const auto there = [this](const Code& c) {
-            return Of(Atom(c.part.empty() && c.cells[0].text != "NAN" ? "0"
-                           : !c.moves                                 ? "1"
-                                                                      : "(" + Text(c.moves) + ")"));
+            if (c.part.empty() && c.cells[0].text != "NAN") return Of(Atom("0"));
+            if (!c.moves) return Of(Atom("1"));
+            const std::string text = Text(c.moves);
+            return Of(Atom("(" + text + (text.find(' ') == text.npos ? " != 0)" : ")")));
         };
         for (const auto& [condition, value] : guarded) {
             any    = any || !value.part.empty();
