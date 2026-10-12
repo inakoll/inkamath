@@ -124,6 +124,20 @@ layers(x_n) = {
 }
 layered = layers(x_n = ~(n/3))
 
+# 'renamed', a limit's own term read through a function whose parameter has
+# another name, y, given the limit's x: its own, so its term before (C352).
+# The terms are 2n - n/2^k, exact in doubles as inset's are, the limit 2n:
+#
+#     renamed: 100 steps from 0, against exact values until 0 and inexact ones from there
+#     renamed.z: within 0; the interpreter's terms about <e> from the exact ones
+renaming(x_n) = {
+    g(y, j) = s(y)_(j-1)
+    s(x)_0 = x
+    s(x)_k = g(x, k)/2 + x
+    z_n = lim s(x_n)
+}
+renamed = renaming(x_n = n)
+
 # The header, each value written once per iterate: 'inkamath --compile
 # cramer.ink -o cramer.h' of a file cramer.ink holding k1, k2, k3, f, J and
 # I as above and
