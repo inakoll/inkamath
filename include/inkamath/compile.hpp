@@ -3499,7 +3499,7 @@ private:
     std::vector<Code> Graded(GradExpression<Value>& expression, const std::vector<Code>& points,
                              Tape* tape) {
         const std::vector<std::string>& names = expression.Variables();
-        Code                            body;
+        Code                            body, values;
         std::vector<Code>               parts;
         std::vector<bool>               any(names.size());
         const Setting<Tape*>            taping(tape_, tape);
@@ -3541,15 +3541,19 @@ private:
                         throw Reason(std::string("grad of a ") + kind(body) +
                                      " with respect to a " + kind(point) +
                                      " is a Jacobian, which it does not give");
+                if (!body.constant)
+                    values.cells.insert(values.cells.end(), body.cells.begin(), body.cells.end());
                 if (tape && !body.part.empty()) parts = Swept(body.part[0].node, points);
                 if (!tape)
                     parts.push_back(body.part.empty() ? Literal(Value(body.size)) : body.part[0]);
                 any[v] = any[v] || !body.part.empty();
             }
         // NaN where the value differentiated is, in a header that writes NaN,
-        // as one does where that value writes it and no part reads it (C113).
-        for (const Cell& c : body.cells) aware_ |= !body.constant && WritesNan(c.text);
-        const std::string nan = aware_ ? Nan(Shared(body)) : "";
+        // as one does where that value writes it and no part reads it (C113),
+        // in any walk: each moves by its own name, and the interpreter refuses
+        // all where one jumps (C341).
+        for (const Cell& c : values.cells) aware_ |= WritesNan(c.text);
+        const std::string nan = aware_ ? Nan(Shared(values)) : "";
         std::vector<Code> outs;
         for (std::size_t v = 0, first = 0; v < names.size(); ++v) {
             const Code&       point = points[v];

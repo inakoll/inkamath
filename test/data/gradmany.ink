@@ -197,6 +197,13 @@ fl = grad_(x = 2, y = 3) floor(x*y)
 >> fl.x
 error: floor jumps at x = 2, y = 3
 
+# The whole grad, a part by a name the jump does not read too (C341).
+>> fb = grad_(a = 0, b = 1) [a; floor(a)*b]
+fb = grad_(a = 0, b = 1) [a; floor(a)*b]
+
+>> fb.b
+error: floor jumps at a = 0, b = 1
+
 >> pw = grad_(x = 2, y = 3) x^y
 pw = grad_(x = 2, y = 3) x^y
 
