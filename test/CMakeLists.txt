@@ -174,7 +174,8 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brin
                          nan:passed nan:waived
                          inputs:fan inputs:grid
                          inputs:chan inputs:twirl inputs:duo inputs:mean3 inputs:mean2
-                         inputs:track inputs:twain inputs:nestv inputs:fed inputs:x estimate:tie
+                         inputs:track inputs:twain inputs:nestv inputs:fed inputs:x inputs:clashed
+                         estimate:tie
                          estimate:chaos estimate:dyad estimate:flat estimate:halved
                          estimate:steep estimate:giant elementary:els trig:tri atan:bea
                          grad:line grad:fall grad:hinge grad:edge grad:clip grad:steer grad:saw
@@ -675,6 +676,8 @@ set_tests_properties(check_twain_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^twain: 100 steps from 0, against exact values\ntwain\\.y: within 0\n$")
 set_tests_properties(check_nestv_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^nestv: 100 steps from 0, against exact values\nnestv\\.inner\\.x: within 0\nnestv\\.inner\\.y: within 0\nnestv\\.y: within 0\n$")
+set_tests_properties(check_clashed_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^clashed: 100 steps from 0, against exact values\nclashed\\.g: within 0\nclashed\\.s: within 0\n$")
 set_tests_properties(check_boxcar_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^boxcar: 100 steps from 0, against exact values\nboxcar\\.f: within 0\nboxcar\\.t: within 0\nboxcar\\.y: within 0, from 1\nboxcar\\.w: within 0\nboxcar\\.z: within 0\nboxcar\\.q: within 0, from 3\n$")
 set_tests_properties(check_stride_report PROPERTIES PASS_REGULAR_EXPRESSION
