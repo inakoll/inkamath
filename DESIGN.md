@@ -4114,7 +4114,7 @@ that exploring seven domains asked of the interpreter, by how many asked.
   Measured on the prototype, the same way:
   - `tf` 10,382,832 bytes, 61 per cent more, its lists cut into 382
     functions of up to 49,300 bytes, the step left 159,113, the updates'
-    assignments; 32,087 values carried, 254 KB of struct on the
+    assignments; 32,087 values carried, 256 KB of struct on the
     step's stack. GCC 97.6 s and 847 MB, Clang 94.1 s and 738 MB;
     `--compile` 6.8 s and 173 MB. 0.68 ms a step built by GCC, 0.74 by
     Clang; J the baseline's to the last digit at every step printed, 0
@@ -4143,7 +4143,7 @@ that exploring seven domains asked of the interpreter, by how many asked.
     sweep reads the forward pass's values, so the forward pass again.
 
   Not settled, for review: the header grows by 45 to 87 per cent, the
-  loads and stores; the step's stack holds 254 KB for `tf`, which MSVC's
+  loads and stores; the step's stack holds 256 KB for `tf`, which MSVC's
   default 1 MB stack takes.
 
   About 87 lines of `compile.hpp`: the prototype's 106 added and 19
