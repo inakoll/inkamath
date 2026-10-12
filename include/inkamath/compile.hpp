@@ -149,9 +149,10 @@ private:
                 if (std::any_of(compiled.header.begin(), compiled.header.end(),
                                 [](unsigned char c) { return c < ' ' && c != '\n'; }))
                     throw std::runtime_error("a control character in the header, a compiler bug");
-                // One that writes NaN anywhere past the line naming its source
-                // is compiled again, aware.
-                if (aware || !WritesNan(compiled.header, compiled.header.find('\n')))
+                // One that writes NaN anywhere past the line naming its source,
+                // or a root C makes NaN (C350), is compiled again, aware.
+                if (aware ||
+                    (!compiler.roots_ && !WritesNan(compiled.header, compiled.header.find('\n'))))
                     return compiled;
                 aware = true;
             } catch (const Fix& fix) {
@@ -1969,6 +1970,9 @@ private:
         const std::string test =
             other(exponent, 0.0) || other(base, 1.0) ? "" : Nan(base, exponent);
         const double e = exponent.constant ? Doubles(*exponent.constant)[0] : 0.0;
+        if ((!exponent.constant || e != std::floor(e)) &&
+            !(base.constant && Doubles(*base.constant)[0] >= 0))
+            roots_ = true;
         const Cell&  u = base.cells[0];
         Cell         power("pow(" + u.text + ", " + exponent.cells[0].text + ")", primary);
         if (e == 0.5) power = Cell("sqrt(0.0 + " + Wrap(u, product) + ")", primary);
@@ -5288,6 +5292,7 @@ private:
     std::map<Where, std::size_t>     ids_;              // see Id
     std::map<std::pair<std::string, std::vector<std::size_t>>, std::size_t> made_;
     bool                             guarding_ = false;  // in a guard, which asks only for values
+    bool                             roots_    = false;  // whether C may take a root of x < 0
     bool moved_  = false;  // whether a value with a part was compiled, as a guard asks
     bool chosen_ = false;  // whether a guard of the chain compiled read one
     std::map<std::string, Value>     known_;    // globals that read only those

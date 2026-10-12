@@ -364,3 +364,15 @@ ignored(x_n) = {
     z_n = G(lim P(x_n))
 }
 waived = ignored(x_n = 2 - n)
+
+# A root of a number below 0 is NaN in C, where the interpreter's is not
+# real, which a comparison refuses. Nothing in the header wrote NaN, so a
+# comparison tested none: from step 2, a, b and c answered 0 and d 2 (C350).
+roots(x_n) = {
+    a_n = x_n^(1/2) < 1
+    b_n = x_n^(1/3) < 1
+    c_n = x_n^(3/2) < 1
+    d_n | x_n^(1/2) < 1 = 1
+    d_n = 2
+}
+surd = roots(x_n = 1 - n)
