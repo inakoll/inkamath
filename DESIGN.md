@@ -4268,8 +4268,7 @@ that exploring seven domains asked of the interpreter, by how many asked.
     a step by GCC, 34.5 by Clang;
   - its training step, 13 names over a batch of 4, `tf`, 10,465,215 bytes,
     the largest function the step's 159,078; `--compile` 6.7 s and 174 MB.
-    Its loads and stores are 3.47 MB, 33 per cent: *A compiled step split
-    into functions* made it 61 per cent larger, not 61 per cent loads.
+    Its loads and stores are 3.47 MB, 33 per cent.
 
   Decided:
   - **A pass over each list as it is printed, `Numbered`**: a step's
