@@ -9869,9 +9869,6 @@ they asked, each with its smallest change.
   refused where its function form compiles; integration refused both, and
   forgetting it whenever a term is filled made the halving recursion with a
   base 12 times slower. Accepted.
-- **A factorial of what moves walked**, `!(q+c)` the one before times
-  q+c, where a sum's `m_fact_` now loops q times at each term: a sum's step
-  1.5 to 1.8 times its limit form's. Found reviewing *an unbounded sum*.
 - **A halving recursion with a base runs away** at large indices:
   `w(x/2)_(k-1)` read at 1000 takes over 60 s to compile, and read ahead
   with a base at 1000, 35 s. Found reviewing *recursion from the tip*.
@@ -10166,6 +10163,17 @@ they asked, each with its smallest change.
   its report the prototype's, every bound `limv.ink`'s and only the
   interpreter's own error estimates other, its remainder taken after the
   sum's terms.
+
+  Since, `!(q+c)` in a sum or a limit's terms is walked as the power is, the
+  one before times q+c from the exact !(a+c), but where a+c < 0, which the
+  helper answers NaN; the helper keeps what else moves, the sine's `!(2*q +
+  1)` and a step's `!(n/2)`. Its products are the helper's, so exact to !22
+  and inf past a double; from a start past !22 the start alone is rounded
+  otherwise. e^x's step 32 ns for the limit's 61 with GCC 13, where it was
+  75, and 30 for 54 with Clang 18, where 67, at a load near 2; its header
+  2,983 bytes for 3,172. No report moves; of the check programs,
+  `sums.ink`'s `summed` alone. 21 lines of `compile.hpp`, 38 added and 17
+  removed, 6 of them comment.
 - **Products by a literal 0.0 kept for NaN, and block-sparse matrices
   multiplied dense**: 5.1k of the 12-state filter's 21k products, its header
   638 KB. Joins *Shared at every value written twice*.
