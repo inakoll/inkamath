@@ -10157,9 +10157,9 @@ they asked, each with its smallest change.
     within 1.1e-15, 9.1e-13 and 4e-14, for 1.2e-15, 1.1e-12 and 3e-14.
 
   About 165 lines of `compile.hpp`: the prototype's 210 added and 44
-  removed, clang-formatted, 23 of them comment; some 45 the split of
-  `Limit` into `Walk`, 40 the sum, 35 the parts that do not move, 40 the
-  walked power, 17 the factorial. 18,004 lines at e07871e, by `wc -l
+  removed, clang-formatted, 23 of them comment; net, 19 the split of
+  `Limit` into `Walk`, 45 the sum, 38 the parts that do not move, 48 the
+  walked power, `Walks` out of `Beside` included, 16 the factorial. 18,004 lines at e07871e, by `wc -l
   include/inkamath/*.hpp src/*`, 18,170 on the prototype; past 1.5, at 249
   net, the implementation stops and reports.
 
