@@ -695,7 +695,7 @@ private:
             if (!c.part.empty()) return c.part[0];
             return c.cells[0].text == "NAN" ? Of(Atom("NAN")) : Literal(Value(Number(0)));
         };
-        const auto there = [](const Code& c) {
+        const auto there = [this](const Code& c) {
             return Of(Atom(c.part.empty() && c.cells[0].text != "NAN" ? "0"
                            : !c.moves                                 ? "1"
                                                                       : "(" + Text(c.moves) + ")"));
@@ -1716,15 +1716,20 @@ private:
         }
         return any.empty() ? nullptr : std::make_shared<const Moving>(Moving{"", std::move(any)});
     }
-    static std::string Text(const Where& where) {
+    // Where any of several is, a flag of the list: a sweep's sum nests a
+    // condition for each unit, which each cell it reaches wrote whole (DESIGN.md).
+    std::string Text(const Where& where) {
         if (!where || where->any.empty()) return where ? where->text : "";
         std::string text;
         for (const Where& one : where->any)
             text += (text.empty() ? "(" : " || (") + Text(one) + ")";
-        return text;
+        if (!temporaries_ || where->any.size() == 1) return text;
+        return Declare("moves\x1f" + text, [&](const std::string& t) {
+            return std::vector<std::string>{"const int " + t + " = " + text + ";"};
+        });
     }
     // As the condition of a '?': a clause's own, itself one, bracketed (C235).
-    static std::string Whether(const Where& where) {
+    std::string Whether(const Where& where) {
         return where->any.empty() ? "(" + where->text + ")" : Text(where);
     }
     static Code Parted(Code value, const Part& part, const std::vector<const Code*>& from) {
@@ -1746,7 +1751,7 @@ private:
     }
     // Where the interpreter refuses for the point's sake, NaN: where 'meet'
     // holds and what it reads moves there.
-    static std::string Jumps(const std::string& meet, const std::vector<const Code*>& codes) {
+    std::string Jumps(const std::string& meet, const std::vector<const Code*>& codes) {
         if (std::all_of(codes.begin(), codes.end(), [](const Code* c) { return c->part.empty(); }))
             return "";
         const std::string moves = Text(Moves(codes));
@@ -3577,19 +3582,18 @@ private:
         return zero ? Adjoint() : Adjoint(std::move(code));
     }
     // An adjoint there only where its 'moves' holds, a clause's condition.
-    static Where Both(const Where& x, const Where& y) {
+    Where Both(const Where& x, const Where& y) {
         if (!x || !y) return x ? x : y;
         return std::make_shared<const Moving>(Moving{"(" + Text(x) + ") && (" + Text(y) + ")", {}});
     }
     template <typename F>
-    static Adjoint Folded(F f, const Code& x, const Code& y,
-                          Cell (*written)(const Cell&, const Cell&)) {
+    Adjoint Folded(F f, const Code& x, const Code& y, Cell (*written)(const Cell&, const Cell&)) {
         Adjoint out =
             Some(x.constant && y.constant ? Exactly(f, x, y) : Of(written(x.cells[0], y.cells[0])));
         if (out) out->moves = Both(x.moves, y.moves);
         return out;
     }
-    static Adjoint Mul(const Code& x, const Code& y) {
+    Adjoint Mul(const Code& x, const Code& y) {
         return Folded(std::multiplies<>(), x, y, Multiplied);
     }
     // One there only where its condition holds is added only there, 'c ?
@@ -3695,7 +3699,7 @@ private:
             for (std::size_t k = 0; k < g.cells.size(); ++k) add(add, n, k, g.cells[k]);
         };
         into(body, Adjoints{Extent{}, {Literal(Value(Number(1)))}});
-        const auto times = [](const Code& c, const Code& v) { return Mul(c, v); };
+        const auto times = [this](const Code& c, const Code& v) { return Mul(c, v); };
         for (std::size_t n = nodes.size(); n > points.size(); --n) {
             if (!adjoint[n]) continue;
             Adjoints g = std::move(*adjoint[n]);
@@ -3730,7 +3734,7 @@ private:
                     }
                     break;
                 case Kind::Quotient:
-                    into(x.a, Each(g, *v, [](const Code& c, const Code& d) {
+                    into(x.a, Each(g, *v, [this](const Code& c, const Code& d) {
                              return Folded(std::divides<>(), c, d, Divided);
                          }));
                     break;
