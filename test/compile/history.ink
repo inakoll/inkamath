@@ -372,3 +372,22 @@ waiting(x_n) = {
     y_m = m >= 0 and y_(m-1) + x_(2*m) > 0
 }
 waited = waiting(x_n = n - 2)
+
+# Below a slow sequence's base clause, its own term is what its guard gives,
+# folded by init where the window held 0 (C344): 'rooted' reads y_-1 at 1,
+# and 'heeded' in a guard.
+rooting(x_n) = {
+    y_0 = 1
+    y_m | m < 0 = 4
+    y_m = y_(m-2) + x_(2*m)
+    z_n = y_(floor(n/2))
+}
+rooted = rooting(x_n = n)
+
+heeding(x_n) = {
+    y_0 = 1
+    y_m | m < 0 = 4
+    y_m | y_(m-2) > 3 = 7
+    y_m = y_(m-1) + x_(2*m)
+}
+heeded = heeding(x_n = n)

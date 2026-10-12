@@ -169,6 +169,7 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brin
                          history:lit history:rise history:ajar history:sown history:nest history:kin history:vast
                          history:twice history:relayed history:pole history:grown history:paired
                          history:looped history:stepped history:opened history:waited
+                         history:rooted history:heeded
                          history:huge history:sever history:veiled history:cloaked history:two history:hid history:masked
                          nan:run nan:sign nan:shy nan:slope nan:pair
                          nan:lap nan:trim nan:any nan:cell nan:held nan:idle nan:imag nan:took nan:shut nan:row nan:root
@@ -730,6 +731,10 @@ set_tests_properties(check_stepped_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^stepped: 100 steps from 0, against exact values\nstepped\\.y: within 0\nstepped\\.z: within 0\n$")
 set_tests_properties(check_opened_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^opened: 100 steps from 0, against exact values\nopened\\.c: within 0\n$")
+set_tests_properties(check_rooted_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^rooted: 100 steps from 0, against exact values\nrooted\\.y: within 0\nrooted\\.z: within 0\n$")
+set_tests_properties(check_heeded_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^heeded: 100 steps from 0, against exact values\nheeded\\.y: within 0\n$")
 set_tests_properties(check_waited_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^waited: 100 steps from 0, against exact values\nwaited\\.y: within 0\n$")
 set_tests_properties(check_huge_report PROPERTIES PASS_REGULAR_EXPRESSION

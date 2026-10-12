@@ -4147,8 +4147,8 @@ private:
         // NaN. Only a sequence with guards has more than one path to choose.
         for (auto& [name, sequence] : sequences_) {
             for (Guarded& guarded : sequence.guarded) {
-                guarded.guard_from = From(guarded.guard);
-                guarded.value_from = From(guarded.value);
+                guarded.guard_from = From(name, guarded.guard);
+                guarded.value_from = From(name, guarded.value);
             }
         }
         // Without guards, the one clause is always evaluated, so a term it
@@ -4252,6 +4252,13 @@ private:
         return n;
     }
 
+    // Those of a clause of name's, but a slow one's own, which init folds
+    // or Cover refuses (C344).
+    int From(const std::string& name, Reads reads) const {
+        if (Own(name)) reads.erase(name);
+        return From(reads);
+    }
+
     // The first index where every term these reads name exists.
     // A sample's term exists from the stream's start, where a history is not
     // asked for one.
@@ -4302,6 +4309,12 @@ private:
         const Sequence& sequence = sequences_.at(name);
         return Recomputed(sequence) && (!sequence.own.empty() || Reaches(name, &sequence));
     }
+    // A slow one whose terms read its own back: those before its first are
+    // what init folds, or refused (C344).
+    bool Own(const std::string& name) const {
+        const Sequence& sequence = sequences_.at(name);
+        return !sequence.own.empty() && sequence.definition && !ByCells(*sequence.definition);
+    }
     bool Reaches(const std::string& from, const Sequence* to) const {
         std::set<std::string>    seen{from};
         std::vector<std::string> left{from};
@@ -4339,7 +4352,8 @@ private:
         const Reference<Value>* definition =
             history != histories_.end() ? history->second : sequences_.at(name).definition;
         // A recurrence's own term, where no input or parameter can change it.
-        const bool given = Recurrent(name) && (!Parametric(name, true) || Given(name, n));
+        const bool given =
+            (Recurrent(name) || Own(name)) && (!Parametric(name, true) || Given(name, n));
         if (fresh && definition && (given || !Parametric(name))) {
             definitions_.Forget();
             definitions_.BeginEvaluation();
@@ -4424,14 +4438,21 @@ private:
         };
         for (const auto& [read, lags] : reads) {
             // A slow one's own, in its terms, before those init folds (C343).
-            if (&sequences_.at(read) == &reader && reader.period > 1 && Recurrent(read)) {
+            if (&sequences_.at(read) == &reader && reader.period > 1 && Own(read)) {
                 for (const int lag : lags)
                     for (int m = reader.first; m - lag < reader.first - reader.filled; ++m)
-                        if (!kept_at(m))
-                            throw Refusal(name, name + "_" + std::to_string(m) + " reads " + read +
-                                                    "_" + std::to_string(m - lag) +
-                                                    ", before the stream, where " +
-                                                    Unfolded(read, m - lag));
+                        if (!kept_at(m) && !reader.bases.count(reader.period * m + reader.phase))
+                            throw Refusal(
+                                name,
+                                name + "_" + std::to_string(m) + " reads " + read + "_" +
+                                    std::to_string(m - lag) +
+                                    (reader.bases.empty()
+                                         ? ", before the stream, where " + Unfolded(read, m - lag)
+                                     : reader.guarded.empty()
+                                         ? ", before it starts at " + std::to_string(reader.first)
+                                         : ", below " + read +
+                                               "'s base clauses, where only its "
+                                               "guards could give a term"));
                 continue;
             }
             if (!Historied(read)) continue;
@@ -4454,8 +4475,7 @@ private:
     void Histories(int earliest) {
         // A slow one's own terms before its first, as a hold's are (C343).
         for (auto& [name, sequence] : sequences_)
-            while (!sequence.own.empty() && Recurrent(name) &&
-                   sequence.filled < *sequence.own.rbegin() &&
+            while (Own(name) && sequence.filled < *sequence.own.rbegin() &&
                    Folded(name, sequence.first - sequence.filled - 1))
                 ++sequence.filled;
         for (const auto& [name, last] : reach_)
@@ -4864,7 +4884,8 @@ private:
                     (value.empty() ? guarded.cells[c] : "(" + value + guarded.cells[c] + ")") +
                     " : ";
             }
-            if (!sequence.guarded.empty()) assignments += before(From(sequence.general_reads));
+            if (!sequence.guarded.empty())
+                assignments += before(From(name, sequence.general_reads));
             assignments += sequence.general[c] + ";\n";
         }
         // Ahead of the cells too, a cell's clause where no base term stands.
