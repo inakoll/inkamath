@@ -1015,18 +1015,18 @@ holds(compile_inputs_dot dot.h [[/* Using it:
     double x[1][2][1];
     double y[1];
 } dot;
-]] [[static inline void dot_step(dot* m_, const double x_[2]) {
+]] [[static inline void dot_step(dot* m_, const double x_in_[2]) {
     ++m_->index_;
-    memcpy(m_->x[0], x_, sizeof m_->x[0]);
+    memcpy(m_->x[0], x_in_, sizeof m_->x[0]);
 ]])
 holds(compile_inputs_ctl ctl.h [[
  * A step takes r_n and s_n (2x1), the inputs at its index. An input of more
  * than one cell is a pointer to its cells, row by row. After a step, m.name[k]
  * is name_(n-k) for each sequence: r, s and u.
-]] [[static inline void ctl_step(ctl* m_, double r_, const double s_[2]) {
+]] [[static inline void ctl_step(ctl* m_, double r_in_, const double s_in_[2]) {
     ++m_->index_;
-    m_->r[0] = r_;
-    memcpy(m_->s[0], s_, sizeof m_->s[0]);
+    m_->r[0] = r_in_;
+    memcpy(m_->s[0], s_in_, sizeof m_->s[0]);
 ]])
 holds(compile_inputs_turn turn.h [[static inline void turn_init(turn* m_) {
     memset(m_, 0, sizeof *m_);
@@ -1035,10 +1035,10 @@ holds(compile_inputs_turn turn.h [[static inline void turn_init(turn* m_) {
     m_->index_ = -1;
     turn_update(m_);
 }
-]] [[static inline void turn_step(turn* m_, const double x_[2]) {
+]] [[static inline void turn_step(turn* m_, const double x_in_[2]) {
     ++m_->index_;
     memcpy(m_->x[1], m_->x[0], sizeof m_->x[1]);
-    memcpy(m_->x[0], x_, sizeof m_->x[0]);
+    memcpy(m_->x[0], x_in_, sizeof m_->x[0]);
 ]])
 holds(compile_inputs_avg avg.h [[ Compiled in as constants, these
  * cannot change: d.
@@ -1180,6 +1180,19 @@ set(args --compile gained.ink gained -o gained.h)
 set(stderr "inkamath: cannot compile inner.c: inner.c_0 reads inner.x_-1, before the stream, where inner.x has no history\n")
 set(exit 1)
 check(history_gained)
+# And a recurrence's own history that reads one, which the step read as 0
+# (C343).
+refused(lifted "a = 2) = {\n    g_n | n < 0 = a\n    g_n = 2*g_(n-1)"
+        "g: g_0 reads g_-1, before the stream, where g has no history")
+# And at another rate, where it was read as 0.
+refused(slowed "a = 2, x_n) = {\n    y_m | m < 0 = a\n    y_m = y_(m-1) + x_(2*m)"
+        "y: y_0 reads y_-1, before the stream, where y has no history")
+# And below a slow sequence's base clause, where it was read as 0 (C344),
+# with or without a guard.
+refused(sunk "a = 2, x_n) = {\n    y_0 = 1\n    y_m | m < 0 = a\n    y_m = y_(m-2) + x_(2*m)"
+        "y: y_1 reads y_-1, below y's base clauses, where only its guards could give a term")
+refused(rootless "x_n) = {\n    y_0 = 1\n    y_m = y_(m-2) + x_(2*m)"
+        "y: y_1 reads y_-1, before it starts at 0")
 
 # A history of a single value for an inner input given a matrix.
 file(WRITE "${OUT}/stacked.ink" "lag(x_n) = {\n    x_n | n < 0 = 0\n    c_n = x_(n-1)\n}\n"
@@ -1235,7 +1248,7 @@ holds(float_dot float/dot.h [[typedef struct dot {
     float x[1][2][1];
     float y[1];
 } dot;
-]] [[static inline void dot_step(dot* m_, const float x_[2]) {
+]] [[static inline void dot_step(dot* m_, const float x_in_[2]) {
 ]])
 
 file(WRITE "${OUT}/vast.ink" "vast(x_n) = {\n    x_n | n < 0 = 10^39\n    c_n = x_(n-1)\n}\n")
@@ -1443,9 +1456,9 @@ holds(compile_tensor_mha mha.h [=[ *     mha_step(&m, X);  once for each index, 
     double X[1][2][3][4];
     double O[1][2][3][4];
 } mha;
-]=] [=[static inline void mha_step(mha* m_, const double X_[24]) {
+]=] [=[static inline void mha_step(mha* m_, const double X_in_[24]) {
     ++m_->index_;
-    memcpy(m_->X[0], X_, sizeof m_->X[0]);
+    memcpy(m_->X[0], X_in_, sizeof m_->X[0]);
 ]=])
 set(args --compile ${tensor} ring -o ring.h)
 check(compile_tensor_ring)
@@ -1495,11 +1508,11 @@ holds(compile_tensor_ring ring.h [=[/* Using it:
     m_->index_ = -1;
     ring_update(m_);
 }
-]=] [=[static inline void ring_step(ring* m_, const double X_[4]) {
+]=] [=[static inline void ring_step(ring* m_, const double X_in_[4]) {
     ++m_->index_;
     memcpy(m_->X[1], m_->X[0], sizeof m_->X[1]);
     memcpy(m_->s[1], m_->s[0], sizeof m_->s[1]);
-    memcpy(m_->X[0], X_, sizeof m_->X[0]);
+    memcpy(m_->X[0], X_in_, sizeof m_->X[0]);
 ]=] [=[    m_->s[0][0][0][0] = m_->index_ == 0 ? m_->s0[0][0][0] : m_->s[1][0][0][0] * 0.0 + m_->s[1][0][0][1] * -1.0 + m_->X[0][0][0][0];
     m_->s[0][0][0][1] = m_->index_ == 0 ? m_->s0[0][0][1] : m_->s[1][0][0][0] * 1.0 + m_->s[1][0][0][1] * 0.0 + m_->X[0][0][0][1];
     m_->s[0][1][0][0] = m_->index_ == 0 ? m_->s0[1][0][0] : m_->s[1][1][0][0] * 0.0 + m_->s[1][1][0][1] * -1.0 + m_->X[0][1][0][0];
@@ -1515,7 +1528,7 @@ holds(compile_tensor_ring_float float/ring.h [=[typedef struct ring {
     float s0[2][1][2];
     long long index_;
     float X[2][2][1][2];
-]=] [=[static inline void ring_step(ring* m_, const float X_[4]) {
+]=] [=[static inline void ring_step(ring* m_, const float X_in_[4]) {
 ]=] [=[    m_->s[0][1][0][0] = m_->index_ == 0 ? m_->s0[1][0][0] : m_->s[1][1][0][0] * 0.0f + m_->s[1][1][0][1] * -1.0f + m_->X[0][1][0][0];
 ]=])
 set(args --compile ${tensor} sgd -o sgd.h)
@@ -1527,7 +1540,7 @@ holds(compile_tensor_sgd sgd.h [=[typedef struct sgd {
     double Y[1][2][2][1];
     double w[2][2][1];
 } sgd;
-]=] [=[static inline void sgd_step(sgd* m_, const double X_[8], const double Y_[4]) {
+]=] [=[static inline void sgd_step(sgd* m_, const double X_in_[8], const double Y_in_[4]) {
 ]=])
 
 # A sequence with parameters read at a constant index, compiled (DESIGN.md,

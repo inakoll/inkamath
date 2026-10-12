@@ -262,3 +262,23 @@ error: x is an input of bad, so its body can give it only a history: a term or a
 ..     k = 2
 .. }
 error: k is a parameter of bad, so its body cannot define it
+
+# A computed sequence's own history: its recurrence reads it before 0, and
+# its guard answers there (C343).
+>> growth(a = 2) = {
+..     g_n | n < 0 = 1
+..     g_n = a*g_(n-1)
+.. }
+growth(a = 2) = { ... }
+
+>> grown = growth(a = 3)
+grown = growth(a = 3)
+
+>> grown.g_(-2)
+1
+
+>> grown.g_0
+3
+
+>> grown.g_4
+243

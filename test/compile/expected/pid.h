@@ -58,11 +58,11 @@ static inline void pid_init(pid* m_) {
 }
 
 /* Advances to the next index, the first at 0, and computes its terms. */
-static inline void pid_step(pid* m_, double y_) {
+static inline void pid_step(pid* m_, double y_in_) {
     ++m_->index_;
     m_->e[1] = m_->e[0];
     m_->s[1] = m_->s[0];
-    m_->y[0] = y_;
+    m_->y[0] = y_in_;
     m_->e[0] = m_->r + (0.0 - m_->y[0]);
     m_->d[0] = m_->index_ == 0 ? 0.0 : (m_->e[0] + (0.0 - m_->e[1])) / m_->dt;
     m_->s[0] = m_->index_ == 0 ? 0.0 : m_->s[1] + m_->e[0] * m_->dt;
