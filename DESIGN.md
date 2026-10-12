@@ -3983,7 +3983,8 @@ that exploring seven domains asked of the interpreter, by how many asked.
   same size, by names renumbered: `Both` writes its operands' text when
   it makes a term's condition (C231 makes the text where written), so a
   flag declared for a term that folds away is dropped and spends its
-  number. Accepted.
+  number. Accepted. `under`, which this adds, moves as well: `under.c`
+  59,224 bytes to 58,990, `hidden.h` 5,289 to 5,055.
 
   Measured on the prototype: `tq` 720,124 bytes, 17,232 of conditions,
   960 `!= 0`; GCC 17.3 s and 688 MB, Clang 7.3 s and 228 MB. `tf`
@@ -3991,8 +3992,8 @@ that exploring seven domains asked of the interpreter, by how many asked.
   GB, within the cap by 28 s, Clang not done in 10 minutes; its
   `--compile` 5.4 s and 122 MB. What is left of `tf` is
   values, 3.1 MB, and reads tested for NaN, 2.3 MB, in one function,
-  which the item queued after this splits. `adjoint.ink`'s and
-  `tensorgrad.ink`'s headers, `emb` and `attq` do not move but for
+  which the item queued after this splits. `adjoint.ink`'s headers but
+  `hidden`'s, `tensorgrad.ink`'s, `emb` and `attq` do not move but for
   `probe`, 28,401 bytes to 28,406.
 
   Rejected:
