@@ -4223,12 +4223,17 @@ that exploring seven domains asked of the interpreter, by how many asked.
   NaN tests it turns into a vector `or`. Reduced to that pass alone, it
   gathers an operand of the products from a narrower vector and leaves
   four lanes poison, which a frozen `fcmp uno` may read as true, from IR
-  holding neither poison nor undef: no undefined behaviour of ours, and
-  Clang 18 and 20 are right. Any header can trip it, and the split
-  exposed it; `|` for `||` avoids it here, but only by chance. Ruled:
-  the tests build their C with `-fno-slp-vectorize` under Clang 19, and
-  README says to; `tq` then steps about 15% slower under Clang 19, 26
-  µs to 31.
+  holding neither poison nor undef: no undefined behaviour of ours. The
+  faulty code is in every release before LLVM 23.1, which fixes it
+  (925e28445b, "[SLP]Use VF for build-vector slice size when
+  GatheredScalars were resized", llvm PR #194455), not backported to
+  19.x–22.x; Clang 20 did not trip on our case, its tree taking another
+  shape, though llvm issue #125259, the same mechanism, miscompiles on
+  20.1.2; Clang 18 is not established. Any header can trip it, and the
+  split exposed it; `|` for `||` avoids it here, but only by chance.
+  Ruled: the tests build their C with `-fno-slp-vectorize` under Clang 19
+  to 22, and README says to; `tq` then steps about 15% slower under Clang
+  19, 26 µs to 31.
 - **A limit's invariants hoisted out of its iterate**: a limit or a
   matrix inverse that reads only the function's arguments is declared in
   the iterate's list, so walked again at each iterate, and gcc -O2 leaves
