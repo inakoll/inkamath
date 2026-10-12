@@ -64,9 +64,9 @@ if(PART STREQUAL "spec")
     # its own stream ahead.
     file(WRITE "${OUT}/ahead.ink" "a_n = up(x_n)_5\nb_n = w(x_n)_1\nc_n = p(x_n)_2\nd_n = d_(n+1)\nup(x)_k | k == 3 = x\nup(x)_k = up(x)_(k+1)/2\nw(x)_k | x > k = x\nw(x)_k = w(x)_(k+1)/2\np(x)_0 = x\np(x)_k = p(x)_(k+1)/2\n")
     set(args --compile ahead.ink)
-    set(stdout "cannot compile a: calls nested 64 deep, which a recursion its guards do not end would pass
-cannot compile b: calls nested 64 deep, which a recursion its guards do not end would pass
-cannot compile c: calls nested 64 deep, which a recursion its guards do not end would pass
+    set(stdout "cannot compile a: nested 64 deep, which a recursion its guards do not end would pass
+cannot compile b: nested 64 deep, which a recursion its guards do not end would pass
+cannot compile c: nested 64 deep, which a recursion its guards do not end would pass
 cannot compile d: d_(...): a term after the one being computed
 ")
     set(exit 1)
@@ -1650,7 +1650,7 @@ cannot compile b: r_1001 is 1001 terms from its base, and a step writes out at m
 cannot compile c: q has no clause for index -1
 cannot compile d: z is defined by itself
 cannot compile e: p_(...): a term after the one being computed
-cannot compile f: calls nested 64 deep, which a recursion its guards do not end would pass
+cannot compile f: nested 64 deep, which a recursion its guards do not end would pass
 cannot compile g: an index must be a whole number, not 0.5
 cannot compile u: a sequence with parameters by cells, for now
 ")

@@ -590,7 +590,7 @@ private:
                   std::exchange(scope_, expansion.scope), std::exchange(index_, std::string()),
                   std::exchange(places_, {})};
         if (++expanded_ > max_expanded)
-            throw Reason("calls nested " + std::to_string(max_expanded) +
+            throw Reason("nested " + std::to_string(max_expanded) +
                          " deep, which a recursion its guards do not end would pass");
         const Setting<bool> unguarded(guarding_, false);
         return body();

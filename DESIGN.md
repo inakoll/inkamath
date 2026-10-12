@@ -9774,8 +9774,8 @@ they asked, each with its smallest change.
   - **Bounded as calls are**, 64 deep (`max_expanded`): a chain of 60 links
     compiles and one of 61 is refused, written either way; the interpreter
     nests 256.
-  - **Refused, in a call's words**, "calls nested 64 deep, which a
-    recursion its guards do not end would pass", as the function form is:
+  - **Refused, in a call's words**, "nested 64 deep, which a recursion
+    its guards do not end would pass", as the function form is:
     a read past the tip, `up(x_n)_5` with the guard at 3, where the
     interpreter runs out of depth; a guard that does not fold, `| x > k`,
     which the interpreter answers and a step cannot unroll; and a read
