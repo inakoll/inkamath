@@ -30,12 +30,13 @@ No domain is the centre. Control and signal processing are where the language
 started, machine learning is where most papers are written today, and both are
 tests of the same thing: **how much of a paper transcribes faithfully**, and
 whether what it transcribes into can be interpreted exactly and compiled into
-reasonably efficient code. The limit of what is within reach is not written in
-advance. It is found by transcribing, and each place the language has to grow
-is argued from an equation that needed it. Whoever reads the result, a student
-learning the mathematics or an engineer checking a paper or a backward pass,
-is served by the same three commitments. The large frameworks do not aim at
-that: their value is in hiding the machine.
+reasonably efficient code. Robotics, where rigid bodies, rotations and filters
+on manifolds meet both, is a candidate third. The limit of what is within reach
+is not written in advance. It is found by transcribing, and each place the
+language has to grow is argued from an equation that needed it. Whoever reads
+the result, a student learning the mathematics or an engineer checking a paper
+or a backward pass, is served by the same three commitments. The large
+frameworks do not aim at that: their value is in hiding the machine.
 
 ## What it is not for
 
@@ -463,3 +464,15 @@ Recorded so that they are asked before they are answered by accident.
   and does writing it remove more from the current compiler than it adds?
 - How much of a paper can be transcribed before the language has to grow, and
   is the answer to that a good measure of whether it should?
+- Is whether a limit converged a value, a guard, or a property of the
+  definition that takes it, and how does it mean the same compiled?
+- How does a signature declare an input present on some steps only, and what
+  does the static check then prove of what reads it?
+- Is an index a kind of number of its own, an input refused where it is not
+  whole, and is its base 1 at every boundary with a host?
+- Where do frames belong: in a name, as a paper's superscript, in something
+  the check enforces, or with the reader?
+- What would carry the epistemic level, exact, certified or estimated and
+  what demoted it, and what is the smallest machine-readable format to show
+  it? Carried before a C API or such a format reads it, it is an abstraction
+  with nothing to serve (`CLAUDE.md` §2), so only the question is recorded.

@@ -1101,6 +1101,22 @@ but `e`, for a Jacobian, for a body that does not read the name, and through a
 definition that reads the global of that name, which the bound name does not
 reach.
 
+A Jacobian is written by its cells, row i the gradient of output i, as a
+paper defines J_ij, and compiles so:
+
+```
+>> f(v) = [v[1]*v[2]; sin(v[1]) + v[2]^2; v[1]]
+f(v) = [v[1]*v[2]; sin(v[1]) + v[2]^2; v[1]]
+
+>> J(x)[i<=3, j<=2] = (grad_(v = x) f(v)[i])[j]
+J(x)[i<=3, j<=2] = (grad_(v = x) f(v)[i])[j]
+
+>> J([1/2; 3])
+[           3, 0.5;
+ ~0.877582562,   6;
+            1,   0]
+```
+
 A term can be defined by its cells, as a matrix is (section 2): the brackets
 after the index name the row and the column and bound them, or one index a
 column's, every cell sees the index, and a guard says which cells a clause

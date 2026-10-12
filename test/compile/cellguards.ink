@@ -3,8 +3,8 @@
 # of its clauses that the step tests in the interpreter's order, and under
 # grad each cell carries its clause's part. Every number below is worked out
 # apart from the interpreter, by hand or with exact fractions in Python, and
-# then seen to be the interpreter's; none is recorded. Today each model is
-# refused, 'a guard on cells that is not a constant', or under grad 'a
+# then seen to be the interpreter's; none is recorded. Before, each model
+# was refused, 'a guard on cells that is not a constant', or under grad 'a
 # derivative through a definition by cells, for now'.
 #
 # 'rfit', a network of two ReLU units trained by grad through the ReLU written
@@ -176,8 +176,8 @@ crest = cut()
 
 # 'mask', a guard on cells reading a parameter: k is a field the host may
 # assign and M is computed from it where the parameters are, as any value
-# reading them. Today the guard folds k's value into M and k is compiled in,
-# 'Compiled in, as a size, a bound or a lag cannot change: k.', with no
+# reading them. Before, the guard folded k's value into M and k was compiled
+# in, 'Compiled in, as a size, a bound or a lag cannot change: k.', with no
 # field; its header now declares 'double k;'. With k = 3 every cell of M is
 # 1, so y_n is 7n:
 #
@@ -235,5 +235,5 @@ order = orders(x_n = n - 2)
 #     cannot compile a: grad of a matrix with respect to a matrix is a Jacobian, which it does not give
 #     cannot compile c: a guarded cell of one term
 #
-# on standard output, exiting 1. Today a is refused as 'a guard on cells
+# on standard output, exiting 1. Before, a was refused as 'a guard on cells
 # that is not a constant'.

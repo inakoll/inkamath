@@ -5,7 +5,7 @@
 # meets it slice by slice, as in the interpreter. Every number below is worked
 # out apart from the interpreter and the compiler: by hand, with exact
 # fractions in Python, and with NumPy and mpmath at 40 digits; none is
-# recorded. Today 'inkamath --compile tensor.ink' refuses every tensor and
+# recorded. Before, 'inkamath --compile tensor.ink' refused every tensor and
 # every definition that reads one: 'cannot compile heads.X: a tensor'.
 #
 # 'heads', multi-head attention over a batch (Vaswani et al., 2017, section

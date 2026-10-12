@@ -103,11 +103,12 @@ endforeach()
 # with every call under grad. The timeout holds it: 95 s before the fix and 2 s
 # since in a release build, 632 s and 28 s under the sanitizers. MSVC's
 # multi-config build cannot tell its Debug, whose iterators are checked and as
-# slow, so it takes 300 s; the Linux release jobs hold the 60 s.
+# slow, so it takes 300 s, as a Debug build does, 11 s alone and past 60 on a
+# shared machine; the Linux release jobs hold the 60 s.
 file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/c316.ink "m(x_n[i<=1000]) = {\n    w_0 = 1/2\n    w_n = w_(n-1) - grad_(v = w_(n-1)) sum_(i=1)^1000 (exp(v*x_n[i]) + exp(2*v*x_n[i]) + exp(3*v*x_n[i]))\n}\n")
 add_test(NAME compile_c316 COMMAND inkamath_cli --compile ${CMAKE_CURRENT_BINARY_DIR}/c316.ink m
                                    -o ${CMAKE_CURRENT_BINARY_DIR}/c316.h)
-if(MSVC)
+if(MSVC OR CMAKE_BUILD_TYPE STREQUAL "Debug")
     set_tests_properties(compile_c316 PROPERTIES TIMEOUT 300)
 else()
     set_tests_properties(compile_c316 PROPERTIES TIMEOUT 60)

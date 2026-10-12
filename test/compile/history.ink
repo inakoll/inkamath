@@ -131,7 +131,7 @@
 #
 # A hold before a slow sequence's first tick, whose samples read the input
 # before the stream where no history gives it, is refused as a hold whose
-# samples could give a term; today it compiles, and --check parts at 0:
+# samples could give a term; before, it compiled, and --check parted at 0:
 #
 #     held(x_n) = {
 #         y_m = x_(2*m)

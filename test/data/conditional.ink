@@ -449,8 +449,8 @@ error: a guard needs single values, not a 1x2 matrix
 # --- a recurrence in cases --------------------------------------------------
 
 # Pascal's rule. Its base case sits at an index the parameter decides, which
-# is exactly what cannot be written today -- 'binom' has to go through
-# factorials instead (DESIGN.md, Openings).
+# is exactly what could not be written before guards -- 'binom' had to go
+# through factorials instead (DESIGN.md, Openings).
 >> c(k)_n | k < 0 = 0
 c(k)_n | k < 0 = 0
 
