@@ -52,3 +52,13 @@ named(u_n) = {
     b_n = lim nu(u_n)
 }
 twonames = named(u_n = n/10 - 1)
+
+# Wrong on purpose, a departure (C353): past about 225,000 a double cannot
+# show a step within the tolerance, and once 0.8^k no longer moves 10^14 the
+# walk stops on steps of 0, where the exact ones never settle.
+heavy(u_n) = {
+    s(x)_0 = x*10^14
+    s(x)_k = s(x)_(k-1) + 0.8^k
+    y_n = lim s(u_n)
+}
+weighed = heavy(u_n = n + 1)
