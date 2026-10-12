@@ -200,6 +200,9 @@ that carry NaN, and Clang warns of each NaN the header writes.
 `test/compile/nan.ink` has an instance of each.
 Clang before 23.1 can miscompile some headers' NaN tests at -O2 (llvm
 925e284), and Clang 19 does on the tests; build with `-fno-slp-vectorize`.
+Built at -O0, a header builds in seconds and runs about 2.4 times slower
+than at -O2: a transformer step of 13 names builds in 8 s and takes 1.7 ms a
+step, against 90 to 100 s and 0.7 ms at -O2, so -O0 pays for a short run.
 
 A sequence that reads another at `x_(2*m)` samples it, and is computed every
 second step: its terms are the input's at another rate, and `y_(floor(n/2))`
@@ -946,7 +949,9 @@ error: u did not converge within 100 terms (last term 200)
 
 The 1e-10 is absolute, so for a cell far below 1, where it settles few of
 the cell's own digits, a read at a count known to suffice, `f(x)_K`, gives
-the exact discrete value instead.
+the exact discrete value instead. So for a geometric integrator: solved by
+`lim`, the implicit midpoint rule drifts a free rigid body's invariants by
+about 4e-13 a step, and a fixed count holds them.
 
 `lim` stops when the last step is under the tolerance *and* the remainder the
 steps imply is too. A series can converge too slowly to be summed this way —

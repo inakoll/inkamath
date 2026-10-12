@@ -9741,9 +9741,6 @@ they asked, each with its smallest change.
   recursion as a function compiles. Unroll it where its guards fold.
 - **A sequence with parameters read at `lim`'s walking index** is refused,
   which blocks a series or a matrix exponential written as on paper. Allow it.
-- **`f(x)_K` for a geometric integrator.** README gives the fixed-count read
-  for a cell far below 1; `lim`'s absolute 1e-10 stop also drifts an
-  integrator's invariant, about 4e-13 a step, and README should say so.
 - **An unbounded sum is not compiled** as the limit of its partial sums.
   Compile it.
 - **Products by a literal 0.0 kept for NaN, and block-sparse matrices
