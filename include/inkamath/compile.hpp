@@ -3485,7 +3485,13 @@ private:
                 for (const auto& [reads, lags] : sequence->second.reads) next.push_back(reads);
         }
     }
-    PExpression<Value> visit(FactExpression<Value>*) override { throw Reason("a factorial"); }
+    // A factorial of a constant is one; of what moves, refused.
+    PExpression<Value> visit(FactExpression<Value>* expression) override {
+        const Code operand = Emit(expression->m_e());
+        if (!operand.constant || !operand.part.empty()) throw Reason("a factorial");
+        return Answer(Exactly([](const Value& v) { return Value(numeric_interface<Value>::fact(v)); },
+                              operand));
+    }
     // grad compiled (DESIGN.md): its body once for each cell of the point, each
     // value carrying its part, the name's a constant seed, as the interpreter's;
     // by a point of several cells, or by several names, once, each value

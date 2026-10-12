@@ -9744,8 +9744,6 @@ they asked, each with its smallest change.
 - **`f(x)_K` for a geometric integrator.** README gives the fixed-count read
   for a cell far below 1; `lim`'s absolute 1e-10 stop also drifts an
   integrator's invariant, about 4e-13 a step, and README should say so.
-- **`!k` where `k` folds to a constant** is refused by the compiler, so the
-  filter writes `prod_(r=1)^k r`. Fold it.
 - **An unbounded sum is not compiled** as the limit of its partial sums.
   Compile it.
 - **Products by a literal 0.0 kept for NaN, and block-sparse matrices
