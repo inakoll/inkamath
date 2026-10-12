@@ -166,7 +166,7 @@ add_test(NAME prelude_header
 foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brink drift:ledge
                          drift:rift drift:naught drift:zeroed drift:mirrored drift:nests drift:latch drift:toil
                          drift:late drift:radix
-                         delay:fir newton:stiff newton:halves newton:evens newton:evened logistic:gate sized:sized softmax:cls steady:mark
+                         delay:fir newton:stiff newton:halves newton:evens newton:evened newton:twonames logistic:gate sized:sized softmax:cls steady:mark
                          rnn:rnn attention:head momentum:ball adam:fit lqr:gain
                          rates:pairs rates:odd seeded:warm cascade:servo decimate:boxcar
                          decimate:stride decimate:frame decimate:lead

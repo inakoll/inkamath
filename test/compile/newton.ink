@@ -36,3 +36,19 @@ celled(u_n) = {
     y_n = lim s(u_n)
 }
 evened = celled(u_n = n/100 - 0.121)
+
+# Clauses that name their index differently, the limit's own and a sequence
+# walked beside it.
+ns(x)_0 = 1
+ns(x)_k | k < 3 = ns(x)_(k-1) + x/k
+ns(x)_j = ns(x)_(j-1) + x^j/2^j
+nt(x)_0 = 1
+nt(x)_k | k < 3 = nt(x)_(k-1)*x/k
+nt(x)_j = nt(x)_(j-1)*x/j/2
+nu(x)_0 = 0
+nu(x)_k = nu(x)_(k-1) + nt(x)_k
+named(u_n) = {
+    a_n = lim ns(u_n)
+    b_n = lim nu(u_n)
+}
+twonames = named(u_n = n/10 - 1)
