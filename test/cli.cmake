@@ -1639,6 +1639,14 @@ cannot compile u: a sequence with parameters by cells, for now
 set(exit 1)
 check(compile_iterates_refused)
 
+# C352: s(x) read through g as s(2*x) is another sequence, not lim s's own
+# term, which the interpreter makes 3 and the step made 7.6e-11.
+file(WRITE "${OUT}/rebound.ink" "g(x, j) = s(x)_(j-1)\ns(x)_0 = x\ns(x)_k = g(2*x, k)/2 + 1/2^k\ny_n = lim s(x_n)\n")
+set(args --compile rebound.ink)
+set(stdout "cannot compile y: s's term read with other arguments than its own\n")
+set(exit 1)
+check(compile_limit_rebound)
+
 # Recursion from the tip (DESIGN.md, compile/tip.ink): the arm compiled, its
 # backward pass a sequence read ahead to a guard at the tip; its values at 1
 # and 5 Euler-Lagrange's, worked by sympy; and the read-aheads that stay
