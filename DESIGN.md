@@ -4245,11 +4245,147 @@ that exploring seven domains asked of the interpreter, by how many asked.
   faster with its inner limit hoisted by hand. Declared in the bases' list
   instead, before the loop. Moves headers, not values.
 - **Shared at every value written twice**, value numbering in general, as
-  weighed under *Temporaries in a limit's function*: forward mode's guard
-  copied per direction among what it would serve, and `steer`'s extra
-  line, a temporary written beside the text it holds (*Temporaries in a
-  limit's function*). Needs a cell to carry whether it may be NaN before
-  anything is hoisted further. About 60 to 100 lines.
+  weighed under *Temporaries in a limit's function*, a refactor of
+  headers: no golden, `--check` report or refusal moves. `Declare` shares
+  what the compiler offers it, a product's operands, a value stretched, a
+  call's argument (C140), a NaN flag; any other value is written where it
+  is read, as often as it is read. Measured at 50bd43f, RelWithDebInfo,
+  the step alone built at -O2 by GCC 13.3 and Clang 18.1, the median of
+  three, one at a time:
+  - the rigid-body exploration's free body, Rodrigues' formula guarded by
+    `w'*w == 0`: `free.h`, 33,279 bytes, writes the square of w's first
+    cell 22 times for M's turn, twice in the guard of each of the nine
+    cells and 4 times in the temporaries of `sin(nrm(w))/nrm(w)` and
+    `(1 - cos(nrm(w)))/(w'*w)`, and a norm 6 times for its two turns. Its
+    attitude models, `att`, 15,415 bytes, and its planar chain by
+    Newton-Euler, `swing`, 185,012;
+  - the RIEKF exploration's 12-state filter, `riekf`, 638,473 bytes, its
+    largest function 135,377, 21,133 products, 5,061 of them by a literal
+    `0.0`; GCC 4.9 s and 258 MB, Clang 2.6 s and 133 MB; 7.6 µs a step by
+    GCC, 6.2 by Clang, the median of nine runs of 2,000 walks of 101;
+  - the transformer's one gradient, `tq`, 1,049,062 bytes, the largest
+    function 26,841; GCC 9.6 s and 331 MB, Clang 4.8 s and 146 MB; 26.6 µs
+    a step by GCC, 34.5 by Clang;
+  - its training step, 13 names over a batch of 4, `tf`, 10,465,215 bytes,
+    the largest function the step's 159,078; `--compile` 6.7 s and 174 MB.
+    Its loads and stores are 3.47 MB, 33 per cent: *A compiled step split
+    into functions* made it 61 per cent larger, not 61 per cent loads.
+
+  Decided:
+  - **A pass over each list as it is printed, `Numbered`**: a step's
+    list with its sequence's assignments, after `Rated` and `Checked` and
+    before `Split`, and a derived value's with its own. A value written
+    more than once there, the outermost first, is declared once,
+    `const double t85_ = t12_ * t12_ + t13_ * t13_ + t14_ * t14_;`,
+    before the first line that reads it, every reading its name; where
+    `free.h` wrote the sum, `isnan(t85_) ? NAN : t85_ == 0.0 ? 1.0 : ...`
+    and `sqrt(0.0 + t85_)`. A value inside one shared counts once for
+    it. A value a temporary holds already is read by its name. A name
+    needs no brackets but a call's. New names continue the compile's,
+    so after the first a header's names no longer rise as they are
+    declared.
+  - **Which values**: of more than one operation, where naming it is
+    shorter, its uses less one times its length over 40 bytes, what a
+    declaration costs. One operation on names and numbers,
+    `m_->lap[0][0] * 0.0` or `(t3_ ? NAN : t2_)`, reads as well as a
+    name and stays where it is read.
+  - **Found by marks**: `Cell`'s constructor brackets each value's text
+    in `\x14` and `\x15`, an atom's not, so the pass knows each value and
+    its place without reading C; `Print` erases them. A text compared
+    with another, `Declare`'s and the memo's keys, C189's search, carries
+    them on both sides.
+  - **No may-NaN flag**: the pass reads the texts after every decision
+    on NaN has read them, `MayNan`, `WritesNan`, `aware_` and C189's,
+    and nothing reads them after it. A shared value is the same
+    operations on the same operands, so bit-identity holds with
+    `-ffp-contract=off`, as for any temporary. The prerequisite this
+    item carried holds for sharing while compiling only.
+  - **Hoisted as any temporary**: a value first read in the assignments
+    is declared before them all, out of a guard's untaken clause and out
+    of `m_->index_ == 0 ?`, as temporaries are; its C is pure. One reading
+    a term the list assigns, `m_->x[0]`, is not shared: the assignment
+    changes it.
+  - **`--float`**: the same, its `const double` rewritten. **The split**:
+    a shared value is a temporary of the list, carried as any.
+
+  What moves, on a prototype, discarded: no golden; of the 16 headers of
+  `test/compile/expected` two, `heat.h`, its implicit matrix's cells
+  `0.25 + m_->dt * 8.0` and `0.0 + m_->dt * -4.0` written 3 and 4 times,
+  and `kernel.h`, its first and last rows' products with the padding, 3
+  times each; the prelude's not; one excerpt of `test/cli.cmake`,
+  `compile_c133s`, s's value read as `t1_` where it was written again
+  thrice; of the 280 check
+  programs 73 C files, none larger, and the fuzzer's, 2,067,423 bytes to
+  2,067,013; all 281 reports byte for byte. Many move as any list
+  writing a value of two operations twice does: `one.c` 90,542 bytes to
+  69,471, `walk_21.c` 1,105,432 to 1,041,687, `kink.c`, forward mode's
+  guard per direction, 22,871 to 22,152. Accepted.
+
+  Measured on the prototype, the same way:
+  - `free.h` 21,535 bytes, each turn's sum of squares and norm once;
+    `att` 13,182; `swing` 110,531, its list now under the split's
+    65,536, so one step of 104,525 for six parts;
+  - `riekf` 574,746 bytes, the largest function 106,496, 16,659
+    products, 3,173 by `0.0`; GCC 5.0 s and 259 MB, Clang 2.8 s and 129
+    MB; 7.8 µs a step by GCC, 6.4 by Clang, X and P after 101 steps the
+    baseline's bit for bit by each;
+  - `tq` 969,267 bytes, the largest function 27,050; GCC 9.0 s and 319
+    MB, Clang 4.5 s and 142 MB; 27.9 µs a step by GCC, 30.9 by Clang, W^Q
+    after 301 steps the baseline's bit for bit;
+  - `tf` 9,985,465 bytes; `--compile` 8.9 s and 181 MB, a second of it
+    the marks, a second the pass. What it still writes twice is values
+    of one operation, 0.68 MB again; `riekf`'s 32 KB.
+  - `compile_c316`'s header unchanged, its `--compile` 1.3 s to 1.5 s.
+
+  Step times move within their noise, a tenth between runs: no speed-up
+  is claimed, nor build time beyond tq's 7 per cent. What this buys is
+  the header read as the source: the rigid body's models lose a sixth to
+  two fifths, the large a tenth to a twentieth.
+
+  Rejected:
+  - **Sharing as values are made**, at `Declare` by text: a value's first
+    text is in its reader's before its second is made, so the first
+    stays written; shared at first sight, every operation is a line,
+    three-address code that buries the equation.
+  - **The may-NaN flag first, then sharing while compiling**: some 15
+    sites, and C189, whether a call's answer reads its argument, would
+    find a name where it looks for a text, testing NaN again. After the
+    analysis, no site.
+  - **Reading the header's C back**, a parser of the expressions it
+    writes: a substring that reads as an operand need not be one, and a
+    parser is more lines than two marks.
+  - **Compiling twice**, the second sharing what the first wrote twice:
+    sharing changes the texts that hold it, so the first's counts do not
+    name the second's values; and twice the time.
+  - **Every value written twice**, one operation too: `kernel.h`'s
+    padding products became seven names inside each cell's sum, for 1.2
+    per cent of `tf`, and `riekf` and `tq` a little larger.
+  - **A limit's function**, which `steer`'s extra line is in: its names
+    are numbered within it and its loop moves windows between its
+    statements. It stays as it is, `steer` with it; this departs from
+    the queued item, which would have closed it.
+  - **Products by a literal 0.0 dropped** (the line it was to join,
+    below): the interpreter's `0*~(-1/2)` is `~-0`, whose reciprocal is
+    `~-inf`, and `0*~inf` is NaN; a sum of such products has the sign of
+    its zero and the NaN of an infinity, which the C keeps and dropping
+    loses. A test at the matrix's level keeps NaN, not those. Each is one
+    operation, so this keeps them: 3,173 of `riekf`'s 5,061 are left.
+
+  About 110 lines of `compile.hpp`: the prototype's 113 added and 5
+  removed, 8 of them comment, as clang-format writes them; above the 60
+  to 100 queued, which counted sites, not a pass. 18,171 lines at
+  50bd43f, by `wc -l include/inkamath/*.hpp src/*`; past 165 the
+  implementation stops and reports.
+
+  Specified in `test/cli.cmake`'s `spec` part, run by `cli_spec`: the
+  case `compile_values_once`, `rod.ink`, the free body's Rodrigues
+  formula on one sequence, writing `sqrt(` once in under 8,000 bytes, 3
+  times in 11,215 today and once in 6,827 on the prototype; and C133's
+  `c133s.h` writing s's value, `m_->x[0] > 2.0`, once, 4 times today.
+  Skipped while all three are today's, and only then. With the
+  implementation the case moves into part 1, the `spec` part and
+  `cli_spec` go, `heat.h`, `kernel.h` and `compile_c133s` are recorded
+  again and read. No transcript in `test/data/spec`.
 - **`--check` names the cell and step of its worst units**: a float run of
   Robertson's kinetics passed with its small concentrations negative and
   50 times off, and `outside`'s in `test/compile/robertson.ink` passes at
@@ -10166,7 +10302,8 @@ they asked, each with its smallest change.
   sum's terms.
 - **Products by a literal 0.0 kept for NaN, and block-sparse matrices
   multiplied dense**: 5.1k of the 12-state filter's 21k products, its header
-  638 KB. Joins *Shared at every value written twice*.
+  638 KB. Does not join *Shared at every value written twice*: dropped,
+  a zero's sign and an infinity's NaN go, which the interpreter keeps.
 - **A parameter with no default compiled as a single value** is named by
   its refusal where read, but not through a function's parameter, as the
   filter's `blk(X_n)` reads `X0`. Follow the call's argument.

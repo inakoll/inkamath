@@ -48,6 +48,40 @@ endfunction()
 # Read by cases in every part.
 set(inputs "${CMAKE_CURRENT_LIST_DIR}/compile/inputs.ink")
 
+# Specified, not yet built (DESIGN.md, shared at every value written twice):
+# Rodrigues' formula of the rigid-body exploration takes its norm once, where
+# each cell wrote it three times, and C133's guard reads the value of s that
+# a temporary holds by its name, where it wrote it again thrice. Skipped while
+# both are written as today, and only then.
+if(PART STREQUAL "spec")
+    file(WRITE "${OUT}/rod.ink"
+         "hat(w) = [0, -w[3], w[2]; w[3], 0, -w[1]; -w[2], w[1], 0]\nI3[j<=3, k<=3] = j == k\n"
+         "nrm(v) = (v'*v)^(1/2)\nrod(w) | w'*w == 0 = I3\n"
+         "rod(w) = I3 + sin(nrm(w))/nrm(w)*hat(w) + (1 - cos(nrm(w)))/(w'*w)*hat(w)*hat(w)\n"
+         "M_0 = [1/20; 2; 0]\nM_n = rod(-M_(n-1)/10)*M_(n-1)\n")
+    set(args --compile rod.ink -o rod.h)
+    check(compile_values_once)
+    file(WRITE "${OUT}/c133s.ink" "s(z) = (z > 2)*z\nk(z) = 0\nk(z) | s(z) > -1 = z\nw_n = grad_(t = x_n) k(t)\n")
+    set(args --compile c133s.ink -o c133s.h)
+    check(compile_values_once)
+    file(READ "${OUT}/rod.h" rod)
+    string(LENGTH "${rod}" bytes)
+    string(REGEX MATCHALL "sqrt\\(" norms "${rod}")
+    list(LENGTH norms norms)
+    file(READ "${OUT}/c133s.h" text)
+    string(REGEX MATCHALL "m_->x\\[0\\] > 2\\.0" values "${text}")
+    list(LENGTH values values)
+    if(norms EQUAL 3 AND bytes EQUAL 11215 AND values EQUAL 4)
+        message("compile_values_once: written as today")
+        return()
+    endif()
+    if(NOT norms EQUAL 1 OR NOT bytes LESS 8000 OR NOT values EQUAL 1)
+        message(SEND_ERROR "compile_values_once: 'sqrt(' ${norms} times in ${bytes} bytes, "
+                           "s's value ${values} times")
+    endif()
+    return()
+endif()
+
 # The cases run as three tests of about equal time under the sanitizers: PART
 # 1 up to charpoly's refusal, 2 from it, 3 from eig's, and all where PART is
 # not given.
