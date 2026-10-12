@@ -8691,7 +8691,7 @@ checked: what it asked of the compiler, each with its smallest change.
   through the ordinary evaluator too, which a subtree that does not read
   grad's frame goes to whole, and the compiler's use of the static search
   kept or replaced. Well over 20 lines.
-- **A gradient with respect to several names at once**, the nabla's
+- `[done]` **A gradient with respect to several names at once**, the nabla's
   `∇_θ`: training a transformer took 13 grads of 15 arguments, one per
   weight, each an evaluation and a sweep of its own. At a206c5d,
   RelWithDebInfo with GCC 13 under callgrind, from step 3 to step 10, the
