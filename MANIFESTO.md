@@ -30,12 +30,13 @@ No domain is the centre. Control and signal processing are where the language
 started, machine learning is where most papers are written today, and both are
 tests of the same thing: **how much of a paper transcribes faithfully**, and
 whether what it transcribes into can be interpreted exactly and compiled into
-reasonably efficient code. The limit of what is within reach is not written in
-advance. It is found by transcribing, and each place the language has to grow
-is argued from an equation that needed it. Whoever reads the result, a student
-learning the mathematics or an engineer checking a paper or a backward pass,
-is served by the same three commitments. The large frameworks do not aim at
-that: their value is in hiding the machine.
+reasonably efficient code. Robotics, where rigid bodies, rotations and filters
+on manifolds meet both, is a candidate third. The limit of what is within reach
+is not written in advance. It is found by transcribing, and each place the
+language has to grow is argued from an equation that needed it. Whoever reads
+the result, a student learning the mathematics or an engineer checking a paper
+or a backward pass, is served by the same three commitments. The large
+frameworks do not aim at that: their value is in hiding the machine.
 
 ## What it is not for
 
