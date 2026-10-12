@@ -209,7 +209,7 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brin
                          tensorgrad:saliency:3 adjoint:fit4 adjoint:token
                          adjoint:sinabs adjoint:gate3 adjoint:under adjoint:aside gradmany:pair
                          gradmany:same gradmany:stair transformer:unseen:4 transformer:tuned:4
-                         split:carried:4 split:apart:4)
+                         split:carried:4 split:apart:4 pendulum:one spin:twirl:20 iekf:walk:21)
     string(REPLACE ":" ";" checked ${checked})
     list(POP_FRONT checked file instance count)
     set(name ${instance})
@@ -315,6 +315,18 @@ set_tests_properties(check_inset_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^inset: ${implicit}\ninset\\.h: within 0${about}\n$")
 set_tests_properties(check_layered_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^layered: ${implicit}\nlayered\\.q: within 0${about}\n$")
+# Rigid bodies and an invariant filter, from two explorations: a double
+# pendulum by the RNEA, a rational rotation's powers, and the contact-aided
+# RIEKF of Hartley et al. (2020) on 21 steps of a simulated walk.
+set_tests_properties(check_one_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^one: 100 steps from 0, against exact values until 0 and inexact ones from there\none\\.w: within 0${about}\none\\.q: within 0${about}\none\\.dE: within 0${about}\n$")
+set_tests_properties(check_twirl_20_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^twirl: 20 steps from 0, against exact values\ntwirl\\.R: within 3\\.8e-15\ntwirl\\.o: within 1\\.6e-28\ntwirl\\.q: within 1\\.1e-15\ntwirl\\.u: within 2\\.4e-15\n$")
+set(walk "21 steps from 0, against exact values until 1 and inexact ones from there")
+set_tests_properties(check_walk_21_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^walk: ${walk}\nwalk\\.Pp: within 1\\.5e-15, from 1${about}\nwalk\\.Rp: within 1\\.2e-15, from 1${about}\nwalk\\.Nb: within 2\\.3e-19, from 1${about}\nwalk\\.S: within 4\\.1e-18, from 1${about}\nwalk\\.K: within 2\\.6e-13, from 1${about}\nwalk\\.P: within 1\\.5e-15${about}\nwalk\\.Y: within 0\nwalk\\.pp: within 1\\.6e-15, from 1${about}\nwalk\\.vp: within 9\\.9e-15, from 1${about}\nwalk\\.Xp: within 9\\.9e-15, from 1${about}\nwalk\\.X: within 9\\.8e-15${about}\nwalk\\.R: within 1\\.2e-15${about}\nwalk\\.d: within 6\\.1e-16${about}\nwalk\\.p: within 1\\.5e-15${about}\nwalk\\.v: within 9\\.8e-15${about}\n$")
+# Its 1.1 MB of C takes GCC 10 s at -O2 and 2 at -O0, its report the same.
+target_compile_options(check_walk_21 PRIVATE $<$<C_COMPILER_ID:GNU,Clang,AppleClang>:-O0>)
 add_test(NAME check_outside_2000 COMMAND check_outside_2000)
 set_tests_properties(check_outside_2000 PROPERTIES WILL_FAIL ON)
 add_test(NAME check_runaway_1000 COMMAND check_runaway_1000)
