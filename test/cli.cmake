@@ -57,7 +57,7 @@ set(unbounded ": a sum or a product with no upper bound\n")
 if(PART STREQUAL "spec")
     execute_process(COMMAND "${EXE}" --compile ${sums} RESULT_VARIABLE refused
                     OUTPUT_VARIABLE why ERROR_QUIET)
-    if(refused AND why STREQUAL "cannot compile halving.f: a factorial\ncannot compile summed.J${unbounded}cannot compile summed.R${unbounded}cannot compile summed.p${unbounded}cannot compile summed.u${unbounded}cannot compile summed.y${unbounded}cannot compile summed.z${unbounded}")
+    if(refused AND why STREQUAL "cannot compile summed.J${unbounded}cannot compile summed.R${unbounded}cannot compile summed.p${unbounded}cannot compile summed.u${unbounded}cannot compile summed.y${unbounded}cannot compile summed.z${unbounded}")
         message("sums: refused as specified")
         return()
     endif()

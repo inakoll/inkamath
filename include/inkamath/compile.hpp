@@ -3661,10 +3661,16 @@ private:
                 for (const auto& [reads, lags] : sequence->second.reads) next.push_back(reads);
         }
     }
-    // A factorial of a constant is one; of what moves, refused.
+    // A factorial of a constant is one; of what moves, the header's helper's.
     PExpression<Value> visit(FactExpression<Value>* expression) override {
         const Code operand = Emit(expression->m_e());
-        if (!operand.constant || !operand.part.empty()) throw Reason("a factorial");
+        if (!operand.part.empty() || (!operand.constant && !operand.Scalar()))
+            throw Reason("a factorial");
+        if (!operand.constant) {
+            factorial_ = true;
+            nan_functions_.insert(module_ + "_fact_");
+            return Answer(Cell(module_ + "_fact_(" + operand.cells[0].text + ")", primary));
+        }
         return Answer(Exactly([](const Value& v) { return Value(numeric_interface<Value>::fact(v)); },
                               operand));
     }
@@ -5303,6 +5309,16 @@ private:
             "typedef struct " + module + " {\n" + Nested(members, "    ") + "} " + module + ";\n\n";
 
         for (const std::size_t n : inverses_) out += InverseHelper(n);
+        // Stopping at an infinite product, as the interpreter does (C47).
+        if (factorial_)
+            out +=
+                "/* !x, as the interpreter takes it: NaN where x is not a whole number at "
+                "least 0. */\nstatic inline double " +
+                module +
+                "_fact_(double x) {\n"
+                "    double f = 1.0, i = 1.0;\n"
+                "    if (!(x >= 0 && x == floor(x))) return NAN;\n"
+                "    while (i < x && isfinite(f)) f *= ++i;\n    return f;\n}\n\n";
         const std::size_t functions = out.size();
         for (const std::string& limit : limits_) out += limit;
 
@@ -5526,6 +5542,7 @@ private:
     std::string index_text_   = "(double)m_->index_";  // the index, as the step has it
     std::string                      module_;
     std::set<std::size_t>            inverses_;  // the sizes a helper is needed for
+    bool                               factorial_ = false;  // and whether !x's is
     std::vector<std::string>         limits_;    // a function for each limit walked
     std::vector<std::string>           prelude_;   // and for each function of the prelude called
     std::map<std::string, std::string> functions_;  // their names and values
