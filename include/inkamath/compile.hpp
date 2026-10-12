@@ -4084,6 +4084,7 @@ private:
             sequence.first = (sequence.start - sequence.phase) / sequence.period;
             earliest       = std::min(earliest.value_or(sequence.start), sequence.start);
         }
+        earliest_ = earliest.value_or(0);
         for (auto& [name, sequence] : sequences_) {
             if (!sequence.bases.empty()) continue;
             sequence.start = Tick(sequence, earliest.value_or(0));
@@ -4092,13 +4093,16 @@ private:
         // The interpreter's guarded clauses answer below the lowest base
         // clause too, where its unguarded one does not: '_(-1)' of a sequence
         // based at 0 is a term wherever a guard holds. A step has no such
-        // terms, so a read that could reach one is refused.
+        // terms, so a read that could reach one is refused, but before the
+        // stream, where init folds them (C351).
         for (const auto& [name, sequence] : sequences_) {
             int first = sequence.start;
             while (sequence.bases.count(first)) first += sequence.period;  // the general clauses
             for (const auto& [read, lags] : sequence.reads) {
                 const Sequence& other = sequences_.at(read);
-                if (other.bases.empty() || other.guarded.empty() || Descends(read)) continue;
+                if (other.bases.empty() || other.guarded.empty() || Descends(read) ||
+                    Historied(read))
+                    continue;
                 const int reached = first - *lags.rbegin();
                 if (reached < other.start)
                     throw Refusal(name,
@@ -4312,7 +4316,16 @@ private:
     // what is read of it before the stream is what init folds, or refused.
     bool Historied(const std::string& name) const {
         return histories_.count(name) || (root_.model && !sequences_.at(name).definition) ||
-               (Recurrent(name) && sequences_.at(name).own.empty());
+               (Recurrent(name) && sequences_.at(name).own.empty()) || Under(name);
+    }
+
+    // One based where the stream starts whose guards answer below: its terms
+    // before the stream are what init folds, as a history's are (C351).
+    bool Under(const std::string& name) const {
+        const Sequence& sequence = sequences_.at(name);
+        return sequence.definition && sequence.period == 1 && !sequence.guarded.empty() &&
+               !sequence.bases.empty() && sequence.bases.begin()->first == earliest_ &&
+               !ByCells(*sequence.definition) && !Descends(name);
     }
 
     // One with no base clause that reads its own terms back, through others
@@ -4367,8 +4380,8 @@ private:
         const Reference<Value>* definition =
             history != histories_.end() ? history->second : sequences_.at(name).definition;
         // A recurrence's own term, where no input or parameter can change it.
-        const bool given =
-            (Recurrent(name) || Own(name)) && (Parametric(name, true).empty() || Given(name, n));
+        const bool given = (Recurrent(name) || Own(name) || Under(name)) &&
+                           (Parametric(name, true).empty() || Given(name, n));
         const std::string parameter = given ? "" : Parametric(name);
         if (fresh && definition) {
             definitions_.Forget();
@@ -4388,7 +4401,7 @@ private:
                         unfolded_[{name, n}] = "gives a term no " + Real() + " holds";
                 }
             } catch (const std::runtime_error& error) {
-                if (definitions_.histories || given)
+                if (definitions_.histories || given || Under(name))
                     unfolded_[{name, n}] = std::string("gives none: ") + error.what();
             }
         }
