@@ -1723,10 +1723,12 @@ private:
     // condition for each unit, which each cell it reaches wrote whole (DESIGN.md).
     std::string Text(const Where& where) {
         if (!where || where->any.empty()) return where ? where->text : "";
-        std::string text;
+        std::string           text;
+        std::set<std::string> seen;
         for (const Where& one : where->any)
-            text += (text.empty() ? "(" : " || (") + Text(one) + ")";
-        if (!temporaries_ || where->any.size() == 1) return text;
+            if (const std::string t = Text(one); seen.insert(t).second)
+                text += (text.empty() ? "(" : " || (") + t + ")";
+        if (!temporaries_ || seen.size() == 1) return text;
         return Declare("moves\x1f" + text, [&](const std::string& t) {
             return std::vector<std::string>{"const int " + t + " = " + text + ";"};
         });
@@ -1986,12 +1988,14 @@ private:
     // most of a header (DESIGN.md, a matrix read by its cells).
     template <typename... Codes>
     std::string Nan(const Codes&... codes) {
-        std::string test;
+        std::string           test;
+        std::set<std::string> seen;
         for (const Code* code : {&codes...}) {
             std::string one;
             std::size_t n = 0;
             for (const Cell& cell : code->cells)
-                if (aware_ && !code->constant && !cell.number)
+                if (aware_ && !code->constant && !cell.number &&
+                    seen.insert(cell.nan.empty() ? cell.text : cell.nan).second)
                     one += (n++ ? " || isnan(" : "isnan(") +
                            (cell.nan.empty() ? cell.text : cell.nan) + ")";
             if (n > 1 && temporaries_)
@@ -3495,7 +3499,7 @@ private:
     std::vector<Code> Graded(GradExpression<Value>& expression, const std::vector<Code>& points,
                              Tape* tape) {
         const std::vector<std::string>& names = expression.Variables();
-        Code                            body;
+        Code                            body, values;
         std::vector<Code>               parts;
         std::vector<bool>               any(names.size());
         const Setting<Tape*>            taping(tape_, tape);
@@ -3537,15 +3541,19 @@ private:
                         throw Reason(std::string("grad of a ") + kind(body) +
                                      " with respect to a " + kind(point) +
                                      " is a Jacobian, which it does not give");
+                if (!body.constant)
+                    values.cells.insert(values.cells.end(), body.cells.begin(), body.cells.end());
                 if (tape && !body.part.empty()) parts = Swept(body.part[0].node, points);
                 if (!tape)
                     parts.push_back(body.part.empty() ? Literal(Value(body.size)) : body.part[0]);
                 any[v] = any[v] || !body.part.empty();
             }
         // NaN where the value differentiated is, in a header that writes NaN,
-        // as one does where that value writes it and no part reads it (C113).
-        for (const Cell& c : body.cells) aware_ |= !body.constant && WritesNan(c.text);
-        const std::string nan = aware_ ? Nan(Shared(body)) : "";
+        // as one does where that value writes it and no part reads it (C113),
+        // in any walk: each moves by its own name, and the interpreter refuses
+        // all where one jumps (C341).
+        for (const Cell& c : values.cells) aware_ |= WritesNan(c.text);
+        const std::string nan = aware_ ? Nan(Shared(values)) : "";
         std::vector<Code> outs;
         for (std::size_t v = 0, first = 0; v < names.size(); ++v) {
             const Code&       point = points[v];

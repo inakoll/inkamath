@@ -89,3 +89,16 @@ twin(eta = 1/4, x_n[i<=2], y_n) = {
     B_n = B_(n-1) - eta*g.B_n
 }
 same = twin(x_n = [mod(n, 5) - 2; mod(3*n, 7) - 3]/3, y_n = mod(n, 3)/2 - 1/2)
+
+# 'stair', a matrix body by two scalar names, each name's part from its own
+# walk: [1; 0] by a and [0; floor(n/2)] by b, but at even n, where floor
+# jumps by a, none, as the interpreter refuses the whole grad, its part by b
+# too, 'floor jumps at a = 0, b = 1':
+#
+#     stair: 100 steps from 0, against exact values
+#     stair.g.a: within 0
+#     stair.g.b: within 0
+stairs(x_n) = {
+    g_n = grad_(a = x_n, b = 1) [a; floor(a)*b]
+}
+stair = stairs(x_n = n/2)
