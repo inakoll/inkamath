@@ -4390,11 +4390,14 @@ that exploring seven domains asked of the interpreter, by how many asked.
   `cli_spec` go, `heat.h`, `kernel.h` and `compile_c133s` are recorded
   again and read. No transcript in `test/data/spec`.
 
-  Built as specified, with the review's rulings, departing in one thing:
+  Built as specified, with the review's rulings, departing in two things.
   `Split` takes the list `Numbered` leaves, every temporary in it read,
   and no longer searches it for those read. That search, made again in
   `Numbered`, was half the pass's cost: the prototype added 14 per cent
   to `tq`'s instructions, this adds 0.4; the marks alone cost about 1.
+  And a value reading a term its list assigns is no longer kept apart:
+  no list can read one, a term reading itself refused as a loop without
+  a delay and a grad's parts reading the tape, not each other.
   The case moved into part 1 beside `compile_sweep_conditions`.
 
   What moved, at 9b4d166: no golden; `heat.h`, only `0.0 + m_->dt *
