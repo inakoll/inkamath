@@ -151,9 +151,9 @@ through and a recursion unrolling where its guards fold:
 with memory written where it is read is one of its own, named after where it
 is written and the cell it is written for: `test/compile/bank.ink` is a bank
 of filters, `m.bank_smooth_1` to `_3`. The compiler refuses by name what it
-cannot yet express, such as infinite series and an instance with memory made
-anew at each step; without `-o` it writes nothing and lists every definition
-it would refuse, and why. A limit of constants is folded, and any other is a
+cannot yet express, such as an instance with memory made anew at each step;
+without `-o` it writes nothing and lists every definition it would refuse,
+and why. A limit of constants is folded, and any other is a
 function that walks the terms with the interpreter's stopping rule, NaN where
 the interpreter would say it does not converge: `test/compile/newton.ink`
 solves each step of a stiff equation by Newton's method, a sequence with
@@ -166,7 +166,8 @@ the step: `test/compile/iterates.ink` takes a determinant by Faddeev-LeVerrier,
 grad through it, and a few steps of projected gradient. One read at a
 limit's index less a constant, `t(x)_k`, is walked beside it in its loop:
 `test/compile/series.ink` writes e^x and a rotation's exponential as the
-limits of their partial sums, as on paper. A
+limits of their partial sums, as on paper, and `test/compile/sums.ink` as
+unbounded sums, `sum_(q=0) x^q/!q`, each walked as such a limit is. A
 limit of matrices fills an array, cell by cell: `test/compile/steady.ink`
 finds a chain's steady state and, by power iteration, a matrix's dominant
 direction at every step. A limit's iterate has temporaries as a step has, a

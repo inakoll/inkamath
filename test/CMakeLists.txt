@@ -210,7 +210,8 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brin
                          adjoint:sinabs adjoint:gate3 adjoint:under adjoint:aside gradmany:pair
                          gradmany:same gradmany:stair transformer:unseen:4 transformer:tuned:4
                          split:carried:4 split:apart:4 pendulum:one spin:twirl:20 iekf:walk:21
-                         tip:reach tip:rested series:taylor series:wave series:later)
+                         tip:reach tip:rested series:taylor series:wave series:later
+                         sums:summed sums:halving)
     string(REPLACE ":" ";" checked ${checked})
     list(POP_FRONT checked file instance count)
     set(name ${instance})
@@ -346,6 +347,15 @@ set_tests_properties(check_wave_report PROPERTIES PASS_REGULAR_EXPRESSION
 # later's as measured, as it has no packed form.
 set_tests_properties(check_later_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^later: ${series}\nlater\\.y: within 9\\.1e-13${about}\nlater\\.z: within 8\\.9e-16${about}\n$")
+# An unbounded sum compiled (DESIGN.md): R, u and p within the bounds of the
+# same series as limits on the baseline, their terms the same; J, y and z as
+# measured, their terms a factorial at each index, and z's a power, where the
+# limits' are a recurrence (1.2e-15, 1.1e-12 and 3e-14 on the baseline).
+# halving's factorials are whole and at most !11, exact in doubles.
+set_tests_properties(check_summed_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^summed: ${series}\nsummed\\.J: within 1\\.1e-15${about}\nsummed\\.R: within 4\\.4e-15${about}\nsummed\\.p: within 8\\.9e-16${about}\nsummed\\.u: within 1\\.1e-12${about}\nsummed\\.y: within 9\\.1e-13${about}\nsummed\\.z: within 4e-14${about}\n$")
+set_tests_properties(check_halving_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^halving: 100 steps from 0, against exact values\nhalving\\.f: within 0\n$")
 add_test(NAME check_outside_2000 COMMAND check_outside_2000)
 set_tests_properties(check_outside_2000 PROPERTIES WILL_FAIL ON)
 add_test(NAME check_runaway_1000 COMMAND check_runaway_1000)
