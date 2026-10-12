@@ -18,7 +18,7 @@ function(check name)
                     WORKING_DIRECTORY "${OUT}"
                     INPUT_FILE "${OUT}/${name}.stdin"
                     OUTPUT_VARIABLE got_stdout ERROR_VARIABLE got_stderr
-                    RESULT_VARIABLE got_exit TIMEOUT 60)
+                    RESULT_VARIABLE got_exit TIMEOUT ${CASE_TIMEOUT})
     if(NOT "${got_stdout}" STREQUAL "${stdout}")
         message(SEND_ERROR "${name}: stdout\n--- expected\n${stdout}--- got\n${got_stdout}---")
     endif()

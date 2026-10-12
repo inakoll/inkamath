@@ -62,10 +62,17 @@ add_test(NAME interpreter COMMAND inkamath_tests --test-suite=interpreter --no-i
          --test-case-exclude=${golden_cases})
 set_tests_properties(interpreter PROPERTIES TIMEOUT 60)
 
+# A case's own timeout, scaled as the tests' are below: under the sanitizers
+# compile_eig_refused takes 38 s alone.
+set(cli_case_timeout 60)
+if(INKAMATH_SANITIZE)
+    set(cli_case_timeout 180)
+endif()
 foreach(part 1 2 3)
     add_test(NAME cli_${part}
              COMMAND ${CMAKE_COMMAND} -DEXE=$<TARGET_FILE:inkamath_cli> -DPART=${part}
                      -DOUT=${CMAKE_CURRENT_BINARY_DIR}/cli_${part}
+                     -DCASE_TIMEOUT=${cli_case_timeout}
                      -P ${CMAKE_CURRENT_LIST_DIR}/cli.cmake)
     set_tests_properties(cli_${part} PROPERTIES TIMEOUT 120)
 endforeach()
