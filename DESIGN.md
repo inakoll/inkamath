@@ -10181,9 +10181,11 @@ After an external review of README, MANIFESTO and the conformance suite
   lines first: MANIFESTO's intermediate form, for a step now written out
   whole (a transformer's 90 to 100 s at -O2, 256 KB of stack). It largely
   supersedes value numbering, being built on `valnum`.
-- **Jacobians in grad**, in numerator layout, `tex` setting df/dx: the
-  rejection under *`grad` of a definition by cells* reopened once the
-  layout is settled; a matrix's by a matrix stays refused. EKF, IK.
+- **A Jacobian by cells**, the idiom, compiled and held by `--check`:
+  `J(x)[i<=3, j<=2] = (grad_(v = x) f(v)[i])[j]`, row i output i's
+  gradient as a paper defines J_ij, so the layout is the user's. grad's own
+  Jacobian stays rejected unless a transcription shows a sweep per output
+  too dear or the notation short.
 - **Small, whenever**: *A maximum, minimum or argmax over an index*; a
   Cholesky factor in the prelude, for square-root filters, the solve being
   `A^-1*b` already and the Joseph form writable now.
@@ -10203,7 +10205,8 @@ After an external review of README, MANIFESTO and the conformance suite
 
 Its robotics entries, each where it forces something new:
 
-- **An EKF on SO(3)**, its exp map a fixed-count partial sum: Jacobians.
+- **An EKF on SO(3)**, its exp map a fixed-count partial sum: F and H as
+  Jacobians by cells.
 - **A small MPC with a fallback clause**: the non-convergence clause.
 - **A visual-inertial filter over merged timestamped events**: inputs
   present on some steps only.
