@@ -6,6 +6,11 @@ add_compile_options(
 # NaN read as a truth, Clang's float to bool (C331).
 add_compile_options(
     $<$<AND:$<COMPILE_LANGUAGE:C>,$<C_COMPILER_ID:GNU,Clang,AppleClang>>:-Wconversion>)
+# Clang 19's SLP vectorizer leaves gathered lanes poison, which a NaN test
+# reads as true: tuned_4 reports NaN at -O2. Clang 18 and 20 are right
+# (DESIGN.md, a compiled step split into functions).
+add_compile_options(
+    $<$<AND:$<COMPILE_LANGUAGE:C>,$<C_COMPILER_ID:Clang>,$<VERSION_GREATER_EQUAL:$<C_COMPILER_VERSION>,19>,$<VERSION_LESS:$<C_COMPILER_VERSION>,20>>:-fno-slp-vectorize>)
 
 add_library(doctest INTERFACE)
 target_include_directories(doctest SYSTEM INTERFACE ${PROJECT_SOURCE_DIR}/third_party)
