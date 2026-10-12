@@ -3113,12 +3113,11 @@ that exploring seven domains asked of the interpreter, by how many asked.
   reads nested past 64, in a call's, as a read ahead no guard ends, `p`,
   where the interpreter runs out of depth (*Recursion from the tip*); an
   index that is not whole, in the interpreter's; and a read in a limit's
-  terms, "a sequence with parameters in a limit's terms, for now". A limit's
-  function has no temporaries, so its terms would be written whole, K deep
-  and for `fm` doubling at each. *Temporaries in a limit's function* is the
-  same mechanism, a limit's own list, and lifts that refusal when it lands:
-  Newton's shooting under `lim` waits for it, while shooting by a fixed
-  number of secant steps is two nested reads and compiles now.
+  terms, "a sequence with parameters in a limit's terms, for now", since
+  its terms would be written whole, K deep and for `fm` doubling at each,
+  until *Temporaries in a limit's function*, the same mechanism, gave a
+  limit's function its own list and lifted it. Shooting by a fixed number
+  of secant steps, two nested reads, compiled before.
 
   Rejected. The plan's loop, a function of the header's beside `lim`'s, the
   terms in rolling locals and K a counter: its one gain is a header of
