@@ -93,6 +93,23 @@ error: ~3 was approximated, so it has no exact fraction
 >> 2^(1/2)*2^(1/2)
 ~2
 
+# A square and an inverse are rounded correctly, where libm's pow need not
+# be, and a compiler folds a step's pow into them (C345).
+>> x = 1.9477379493182951 + 0*exp(1)
+x = 1.9477379493182951 + 0*exp(1)
+
+>> x^2 == x*x
+~1
+
+>> (-x)^2 == x*x
+~1
+
+>> w = 1.8299814462661743 + 0*exp(1)
+w = 1.8299814462661743 + 0*exp(1)
+
+>> w^-1 == 1/w
+~1
+
 # A complex number is inexact, even when it happens to be real and whole.
 >> frac i*i
 error: ~-1 was approximated, so it has no exact fraction

@@ -46,11 +46,12 @@
 # first, as the sweep reaches it first, after W*x's four cells tested for
 # NaN in one flag, t4_:
 #
-#     const double t16_ = 2.0 * pow(t14_ + (0.0 - m_->y[0][3][0]), 1.0);
-#     const double t17_ = 0.5 * t16_;
-#     const double t18_ = t17_ * t15_;
+#     const double t19_ = t17_ + (0.0 - m_->y[0][3][0]);
+#     const double t20_ = 2.0 * pow(t19_, 1.0);
+#     const double t21_ = 0.5 * t20_;
+#     const double t22_ = t21_ * t18_;
 #     ...
-#     m_->W[0][3][3] = m_->index_ == 0 ? 0.5 : m_->W[1][3][3] + (0.0 - m_->eta * (isnan(t25_) ? NAN : t18_ * m_->x[0][3][0]));
+#     m_->W[0][3][3] = m_->index_ == 0 ? 0.5 : m_->W[1][3][3] + (0.0 - m_->eta * (isnan(t29_) ? NAN : t22_ * m_->x[0][3][0]));
 layer(eta = 1/4, x_n[i<=4], y_n[i<=4]) = {
     L(W, x, y) = sum_(i=1)^4 (tanh((W*x)[i]) - y[i])^2/2
     W_0 = ~[1 0 0 0; 0 1 0 0; 0 0 1 0; 0 0 0 1]/2

@@ -1908,7 +1908,7 @@ private:
     // Under grad (Derivative::Power), e^w's part is e^w*w', and a constant
     // power's c*u^(c-1)*u', none where c is 0, NaN where u is 0 and c < 1.
     PExpression<Value> visit(PowExpression<Value>* expression) override {
-        const Code base = Emit(expression->m_e1());
+        Code       base = Emit(expression->m_e1());
         const Code exponent =
             base.Scalar()
                 ? Emit(expression->m_e2())
@@ -1921,6 +1921,8 @@ private:
         } else {
             if (!exponent.Scalar()) throw Reason("a matrix cannot be an exponent");
             if (!base.Scalar()) return Answer(Power(base, exponent));
+            // Read twice by its square, and once more by its part.
+            if (exponent.constant && Doubles(*exponent.constant)[0] == 2) base = Shared(base);
             value = Powered(base, exponent);
         }
         if (!exponent.part.empty()) {
@@ -1956,17 +1958,21 @@ private:
 
     // C's absorbs a NaN where the other operand is 1 or 0: pow(1, NaN) and
     // pow(NaN, 0) are 1. C's sqrt(-0) is -0, the interpreter's +0 (C163).
+    // A square and an inverse are the interpreter's, not pow, which a
+    // compiler folds into them at -O1 (C345).
     Code Powered(const Code& base, const Code& exponent) {
         const auto other = [](const Code& c, double v) {
             return c.constant && Doubles(*c.constant)[0] != v;
         };
         const std::string test =
             other(exponent, 0.0) || other(base, 1.0) ? "" : Nan(base, exponent);
-        const std::string power =
-            exponent.constant && Doubles(*exponent.constant)[0] == 0.5
-                ? "sqrt(0.0 + " + Wrap(base.cells[0], product) + ")"
-                : "pow(" + base.cells[0].text + ", " + exponent.cells[0].text + ")";
-        Cell              cell(test.empty() ? power : "(" + test + power + ")", primary);
+        const double e = exponent.constant ? Doubles(*exponent.constant)[0] : 0.0;
+        const Cell&  u = base.cells[0];
+        Cell         power("pow(" + u.text + ", " + exponent.cells[0].text + ")", primary);
+        if (e == 0.5) power = Cell("sqrt(0.0 + " + Wrap(u, product) + ")", primary);
+        if (e == 2) power = Multiplied(Shared(u), Shared(u));
+        if (e == -1) power = Divided(Atom("1.0", true), u);
+        Cell cell = test.empty() ? power : Cell("(" + test + power.text + ")", primary);
         // Of a constant above 0 but 1, NaN where its exponent is: a test reads
         // that, not a second pow, which C, setting errno, does not share.
         if (const double b = base.constant ? Doubles(*base.constant)[0] : 0.0;

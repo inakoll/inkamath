@@ -715,10 +715,11 @@ endfunction()
 set(adjoint "${CMAKE_CURRENT_LIST_DIR}/compile/adjoint.ink")
 set(args --compile ${adjoint} layer -o layer.h)
 check(compile_adjoint_fit)
-holds(compile_adjoint_fit layer.h [[    const double t16_ = 2.0 * pow(t14_ + (0.0 - m_->y[0][3][0]), 1.0);
-    const double t17_ = 0.5 * t16_;
-    const double t18_ = t17_ * t15_;
-]] [[    m_->W[0][3][3] = m_->index_ == 0 ? 0.5 : m_->W[1][3][3] + (0.0 - m_->eta * (isnan(t25_) ? NAN : t18_ * m_->x[0][3][0]));
+holds(compile_adjoint_fit layer.h [[    const double t19_ = t17_ + (0.0 - m_->y[0][3][0]);
+    const double t20_ = 2.0 * pow(t19_, 1.0);
+    const double t21_ = 0.5 * t20_;
+    const double t22_ = t21_ * t18_;
+]] [[    m_->W[0][3][3] = m_->index_ == 0 ? 0.5 : m_->W[1][3][3] + (0.0 - m_->eta * (isnan(t29_) ? NAN : t22_ * m_->x[0][3][0]));
 ]])
 written(compile_adjoint_fit layer.h "layer_tanh_dx\\(" 5)
 set(args --compile ${adjoint} wide -o wide.h)
@@ -1340,10 +1341,11 @@ check(check_c104)
 set(grad "${CMAKE_CURRENT_LIST_DIR}/compile/grad.ink")
 set(args --compile ${grad} lsq -o lsq.h)
 check(compile_grad_line)
-holds(compile_grad_line lsq.h [[    const double t0_ = 2.0 * pow(1.0 * m_->w[1][0][0] + 0.0 * m_->w[1][1][0] - 1.0, 1.0);
-]] [[    const double t7_ = 0.125 * t0_;
-    m_->w[0][0][0] = m_->index_ == 0 ? 0.0 : m_->w[1][0][0] + (0.0 - m_->eta * (1.0 * t4_ + 1.0 * t5_ + 1.0 * t6_ + 1.0 * t7_));
-    m_->w[0][1][0] = m_->index_ == 0 ? 0.0 : m_->w[1][1][0] + (0.0 - m_->eta * (3.0 * t4_ + 2.0 * t5_ + 1.0 * t6_ + 0.0 * t7_));
+holds(compile_grad_line lsq.h [[    const double t0_ = 1.0 * m_->w[1][0][0] + 0.0 * m_->w[1][1][0] - 1.0;
+    const double t1_ = 2.0 * pow(t0_, 1.0);
+]] [[    const double t11_ = 0.125 * t1_;
+    m_->w[0][0][0] = m_->index_ == 0 ? 0.0 : m_->w[1][0][0] + (0.0 - m_->eta * (1.0 * t8_ + 1.0 * t9_ + 1.0 * t10_ + 1.0 * t11_));
+    m_->w[0][1][0] = m_->index_ == 0 ? 0.0 : m_->w[1][1][0] + (0.0 - m_->eta * (3.0 * t8_ + 2.0 * t9_ + 1.0 * t10_ + 0.0 * t11_));
 ]])
 set(args --compile ${grad} descent -o fall.h)
 check(compile_grad_fall)
@@ -1444,7 +1446,7 @@ holds(compile_c136_term c136t.h "    m_->y[0] = (isnan(t0_) ? NAN : 2.0);\n")
 file(WRITE "${OUT}/c136g.ink" "f1(z)[i,j] = z[i,j]\nf1(z)[1,1] | ((z[1,1])^2)^(1/2) >= 5 = 7\nf2(z) = f1(z)\nf2(z)[1,1] = 2\nu_n = grad_(t = x_n) f2([t])\n")
 set(args --compile c136g.ink -o c136g.h)
 check(compile_c136g)
-holds(compile_c136g c136g.h "    const double t1_ = (isnan(t0_) ? NAN : 2.0);\n    m_->u[0] = (isnan(t1_) ? NAN : 0.0);\n")
+holds(compile_c136g c136g.h "    const double t2_ = (isnan(t1_) ? NAN : 2.0);\n    m_->u[0] = (isnan(t2_) ? NAN : 0.0);\n")
 
 # C115: a constant gradient at a point that moves folds with what reads it
 # from its value, not by taking the point again (C135).
@@ -1588,8 +1590,8 @@ holds(compile_iterates_roots roots.h [[    const double t0_ = sqrt(0.0 + m_->x[0
     const double t1_ = sqrt(0.0 + t0_);
 ]] [[    const double t126_ = sqrt(0.0 + t125_);
     const double t127_ = sqrt(0.0 + t126_);
-    const double t128_ = pow(t127_, 2.0);
-]] [[    m_->h[0] = pow(t254_, 2.0);
+    const double t128_ = t127_ * t127_;
+]] [[    m_->h[0] = t254_ * t254_;
 ]])
 set(args --compile ${iterates} mpc -o mpc.h)
 check(compile_iterates_mpc)

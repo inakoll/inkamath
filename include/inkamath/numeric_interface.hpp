@@ -167,6 +167,9 @@ struct numeric_interface_imp<std::complex<T>,false>
         if (a.imag() == 0 && b.imag() == 0 && (a.real() >= 0 || b.real() == std::floor(b.real()))) {
             // Rounded correctly, where libm's pow need not be (C153).
             if (b.real() == 0.5 && a.real() > 0) return std::sqrt(a.real());
+            // And a square and an inverse, as a compiler folds C's pow (C345).
+            if (b.real() == 2) return a.real() * a.real();
+            if (b.real() == -1) return 1 / a.real();
             return std::pow(a.real(), b.real());
         }
         // The principal root, exactly i of -1 where exp(log(a)/2) leaves
