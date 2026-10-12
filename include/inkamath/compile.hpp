@@ -149,9 +149,10 @@ private:
                 if (std::any_of(compiled.header.begin(), compiled.header.end(),
                                 [](unsigned char c) { return c < ' ' && c != '\n'; }))
                     throw std::runtime_error("a control character in the header, a compiler bug");
-                // One that writes NaN anywhere past the line naming its source
-                // is compiled again, aware.
-                if (aware || !WritesNan(compiled.header, compiled.header.find('\n')))
+                // One that writes NaN anywhere past the line naming its source,
+                // or a root C makes NaN (C350), is compiled again, aware.
+                if (aware ||
+                    (!compiler.roots_ && !WritesNan(compiled.header, compiled.header.find('\n'))))
                     return compiled;
                 aware = true;
             } catch (const Fix& fix) {
@@ -1969,6 +1970,9 @@ private:
         const std::string test =
             other(exponent, 0.0) || other(base, 1.0) ? "" : Nan(base, exponent);
         const double e = exponent.constant ? Doubles(*exponent.constant)[0] : 0.0;
+        if ((!exponent.constant || e != std::floor(e)) &&
+            !(base.constant && Doubles(*base.constant)[0] >= 0))
+            roots_ = true;
         const Cell&  u = base.cells[0];
         Cell         power("pow(" + u.text + ", " + exponent.cells[0].text + ")", primary);
         if (e == 0.5) power = Cell("sqrt(0.0 + " + Wrap(u, product) + ")", primary);
@@ -4080,6 +4084,7 @@ private:
             sequence.first = (sequence.start - sequence.phase) / sequence.period;
             earliest       = std::min(earliest.value_or(sequence.start), sequence.start);
         }
+        earliest_ = earliest.value_or(0);
         for (auto& [name, sequence] : sequences_) {
             if (!sequence.bases.empty()) continue;
             sequence.start = Tick(sequence, earliest.value_or(0));
@@ -4088,13 +4093,16 @@ private:
         // The interpreter's guarded clauses answer below the lowest base
         // clause too, where its unguarded one does not: '_(-1)' of a sequence
         // based at 0 is a term wherever a guard holds. A step has no such
-        // terms, so a read that could reach one is refused.
+        // terms, so a read that could reach one is refused, but before the
+        // stream, where init folds them (C351).
         for (const auto& [name, sequence] : sequences_) {
             int first = sequence.start;
             while (sequence.bases.count(first)) first += sequence.period;  // the general clauses
             for (const auto& [read, lags] : sequence.reads) {
                 const Sequence& other = sequences_.at(read);
-                if (other.bases.empty() || other.guarded.empty() || Descends(read)) continue;
+                if (other.bases.empty() || other.guarded.empty() || Descends(read) ||
+                    Historied(read))
+                    continue;
                 const int reached = first - *lags.rbegin();
                 if (reached < other.start)
                     throw Refusal(name,
@@ -4308,12 +4316,22 @@ private:
     // what is read of it before the stream is what init folds, or refused.
     bool Historied(const std::string& name) const {
         return histories_.count(name) || (root_.model && !sequences_.at(name).definition) ||
-               (Recurrent(name) && sequences_.at(name).own.empty());
+               (Recurrent(name) && sequences_.at(name).own.empty()) || Under(name);
+    }
+
+    // One based where the stream starts whose guards answer below: its terms
+    // before the stream are what init folds, as a history's are (C351).
+    bool Under(const std::string& name) const {
+        const Sequence& sequence = sequences_.at(name);
+        return sequence.definition && sequence.period == 1 && !sequence.guarded.empty() &&
+               !sequence.bases.empty() && sequence.bases.begin()->first == earliest_ &&
+               !ByCells(*sequence.definition) && !Descends(name);
     }
 
     // One with no base clause that reads its own terms back, through others
-    // too: those before the stream are what init folds, as an input's
-    // history's are (C343).
+    // with none too, below whose base clauses no term is (C349): those
+    // before the stream are what init folds, as an input's history's are
+    // (C343).
     bool Recurrent(const std::string& name) const {
         const Sequence& sequence = sequences_.at(name);
         return Recomputed(sequence) && (!sequence.own.empty() || Reaches(name, &sequence));
@@ -4333,7 +4351,8 @@ private:
             for (const Reads* each : {&sequence.reads, &sequence.deferred})
                 for (const auto& [read, lags] : *each) {
                     if (&sequences_.at(read) == to) return true;
-                    if (seen.insert(read).second) left.push_back(read);
+                    if (seen.insert(read).second && sequences_.at(read).bases.empty())
+                        left.push_back(read);
                 }
         }
         return false;
@@ -4361,8 +4380,8 @@ private:
         const Reference<Value>* definition =
             history != histories_.end() ? history->second : sequences_.at(name).definition;
         // A recurrence's own term, where no input or parameter can change it.
-        const bool given =
-            (Recurrent(name) || Own(name)) && (Parametric(name, true).empty() || Given(name, n));
+        const bool given = (Recurrent(name) || Own(name) || Under(name)) &&
+                           (Parametric(name, true).empty() || Given(name, n));
         const std::string parameter = given ? "" : Parametric(name);
         if (fresh && definition) {
             definitions_.Forget();
@@ -4382,7 +4401,7 @@ private:
                         unfolded_[{name, n}] = "gives a term no " + Real() + " holds";
                 }
             } catch (const std::runtime_error& error) {
-                if (definitions_.histories || given)
+                if (definitions_.histories || given || Under(name))
                     unfolded_[{name, n}] = std::string("gives none: ") + error.what();
             }
         }
@@ -5286,6 +5305,7 @@ private:
     std::map<Where, std::size_t>     ids_;              // see Id
     std::map<std::pair<std::string, std::vector<std::size_t>>, std::size_t> made_;
     bool                             guarding_ = false;  // in a guard, which asks only for values
+    bool                             roots_    = false;  // whether C may take a root of x < 0
     bool moved_  = false;  // whether a value with a part was compiled, as a guard asks
     bool chosen_ = false;  // whether a guard of the chain compiled read one
     std::map<std::string, Value>     known_;    // globals that read only those
