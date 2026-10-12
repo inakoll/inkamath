@@ -48,6 +48,34 @@ endfunction()
 # Read by cases in every part.
 set(inputs "${CMAKE_CURRENT_LIST_DIR}/compile/inputs.ink")
 
+# Specified, not yet built (DESIGN.md, a compiled step split into functions):
+# compile/transformer.ink's forward pass, 'inf', and U trained beneath it,
+# 'tune', a step of 272,495 and 451,298 bytes, each written as functions of
+# under 32,768 bytes, the init's weights among them.
+if(PART STREQUAL "spec")
+    foreach(model inf tune)
+        set(args --compile "${CMAKE_CURRENT_LIST_DIR}/compile/transformer.ink" ${model}
+                 -o ${model}.h)
+        check(compile_step_split_${model})
+        file(READ "${OUT}/${model}.h" rest)
+        set(largest 0)
+        string(FIND "${rest}" "\nstatic " at)
+        while(NOT at EQUAL -1)
+            string(SUBSTRING "${rest}" ${at} -1 rest)
+            string(FIND "${rest}" "\n}\n" size)
+            if(size GREATER largest)
+                set(largest ${size})
+            endif()
+            string(SUBSTRING "${rest}" ${size} -1 rest)
+            string(FIND "${rest}" "\nstatic " at)
+        endwhile()
+        if(NOT largest LESS 32768)
+            message(SEND_ERROR "compile_step_split: ${model}.h has a function of ${largest} bytes")
+        endif()
+    endforeach()
+    return()
+endif()
+
 # The cases run as three tests of about equal time under the sanitizers: PART
 # 1 up to charpoly's refusal, 2 from it, 3 from eig's, and all where PART is
 # not given.

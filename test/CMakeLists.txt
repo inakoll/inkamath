@@ -64,6 +64,13 @@ foreach(part 1 2 3)
                      -P ${CMAKE_CURRENT_LIST_DIR}/cli.cmake)
     set_tests_properties(cli_${part} PROPERTIES TIMEOUT 120)
 endforeach()
+# A compiled step split into functions (DESIGN.md), specified before it is
+# built: cli.cmake's spec part, skipped while a function is too large.
+add_test(NAME cli_spec
+         COMMAND ${CMAKE_COMMAND} -DEXE=$<TARGET_FILE:inkamath_cli> -DPART=spec
+                 -DOUT=${CMAKE_CURRENT_BINARY_DIR}/cli_spec -P ${CMAKE_CURRENT_LIST_DIR}/cli.cmake)
+set_tests_properties(cli_spec PROPERTIES TIMEOUT 120 SKIP_REGULAR_EXPRESSION
+    "compile_step_split: [a-z]+\\.h has a function of [0-9]+ bytes")
 
 # bench's workloads, each a transcript bench/run.cmake measures, replayed so
 # that one gone stale fails here rather than at its next measure. The
@@ -200,7 +207,7 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brin
                          implicit:layered tensorgrad:attend tensorgrad:small
                          tensorgrad:saliency:3 adjoint:fit4 adjoint:token
                          adjoint:sinabs adjoint:gate3 adjoint:under adjoint:aside gradmany:pair
-                         gradmany:same transformer:unseen:4)
+                         gradmany:same transformer:unseen:4 transformer:tuned:4)
     string(REPLACE ":" ";" checked ${checked})
     list(POP_FRONT checked file instance count)
     set(name ${instance})
@@ -588,6 +595,8 @@ set_tests_properties(check_same_report PROPERTIES PASS_REGULAR_EXPRESSION
 # A trained transformer, as compile/transformer.ink gives it.
 set_tests_properties(check_unseen_4_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^unseen: 4 steps from 0${inexact0}\nunseen\\.Z: within [1-9](\\.[0-9])?e-1[5-9]${about}\n$")
+set_tests_properties(check_tuned_4_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^tuned: 4 steps from 0, against exact values until 1 and inexact ones from there\ntuned\\.U: within [1-9](\\.[0-9])?e-1[5-9]${about}\n$")
 # C329: --check's exact run forgets what its walk of the prelude recorded.
 set_tests_properties(check_sinabs_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^sinabs: 100 steps from 0${inexact0}\nsinabs\\.W: within 0${about}\n$")

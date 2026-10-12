@@ -4043,11 +4043,125 @@ that exploring seven domains asked of the interpreter, by how many asked.
   228 MB, `tf`'s `--compile` 4.9 s and 122 MB, `tf` not built again. 7
   lines of `compile.hpp`, 21 added and 14 removed, 4 of them comment;
   17,531 in all, past the 6 by review's fix.
-- **A compiled step split into functions**: the transformer trained by
-  one grad of its 13 weights compiles to a 17 MB straight-line step that
-  neither GCC nor Clang builds at -O2 within 10 minutes (Clang -O0: 24 s,
-  2.6 GB; GCC -O2 410 s and 4.5 GB once, on a quieter machine). Write each
-  name's sweep, or each part's step, as a C function of its own.
+- **A compiled step split into functions**, a refactor of headers: no
+  golden, `--check` report or refusal moves. Compilers optimise one long
+  function in time and memory that grow faster than its length. Measured
+  at 3f8da19, RelWithDebInfo, the step alone built at -O2 by GCC 13 and
+  Clang 18, one at a time, each capped at 10 minutes and 6 GB:
+  - the transformer's training step, 13 gradients over a batch of 4, `tf`,
+    6,466,731 bytes, its step one function of 6,453,595: GCC 585 s and
+    4.4 GB, Clang not done in 10 minutes. Its `--compile` 5.2 s and 122
+    MB; 0.68 ms a step built by GCC, the median of three runs of 301;
+  - its one gradient, W^Q's through both blocks at a batch of 1, `tq`,
+    720,124 bytes, its step 708,313: GCC 21.2 s and 688 MB, Clang 8.3 s
+    and 227 MB;
+  - `compile_c316`'s header, a grad of 1000 cells, 565,998 bytes: GCC
+    16.4 s and 491 MB, Clang 138 s and 1.8 GB.
+
+  Where `tf`'s size sits: a grad by several names is written once and
+  swept back once (*A gradient with respect to several names at once*),
+  so its step holds one list of temporaries, g's, 4.68 MB: the forward
+  pass and one sweep whose adjoints every name's part reads, then the 13
+  parts' assignments, 145 KB of it. J's list, the loss again from the
+  updated weights, is 1.62 MB; the 13 updates are assignments, 115 KB,
+  with no temporaries.
+
+  Decided:
+  - **The unit is a run of a list's lines of bounded size**, not a name's
+    sweep nor a part's step: there is one sweep for all 13 names, and a
+    part's step is its assignments, 145 KB of 4.68 MB together. A list
+    is written as before, in order, cut between its temporaries and
+    between the statements of its assignments into functions of about
+    16,384 bytes each, `static TF_NOINLINE_ void tf_step7_(tf* m_,
+    tf_values_* v_)`, numbered through the step, which calls them in
+    order where it wrote the list.
+  - **Only a list over 65,536 bytes is cut, and only one with
+    temporaries.** A smaller one builds fast whole, and cut it carries
+    most of its values: at a single bound of 16,384, `probe` grows from
+    28,406 bytes to 37,466 and 8 check programs move for no build time.
+    Assignments alone carry nothing and are left whole: `tf`'s 13
+    updates, 115 KB in the step itself, build within the times below.
+  - **What crosses: a struct of the step's values**, `tf_values_`, a
+    member for each temporary a later function reads, declared in the
+    step, `tf_values_ m_v_;`, and passed to each. A function stores what
+    a later one reads at its end, `v_->t5_ = t5_;`, and loads what it
+    reads from an earlier one at its start, `const double t5_ =
+    v_->t5_;`, into a local of the same name: every line of the list is
+    written as before, unchanged. A flag is an `int` member, an array
+    temporary, an inverse's or a limit's, a member of its extent, copied
+    by `memcpy` both ways. The values of all a step's cut lists share
+    the struct, their names being the step's.
+  - **`TF_NOINLINE_`**, defined before the functions as
+    `__attribute__((noinline))` under `__GNUC__`, `__declspec(noinline)`
+    under `_MSC_VER`, and nothing elsewhere: Clang inlines a function
+    called once back into the step, 73 of `tf`'s 93 at a bound of 65,536,
+    163 s for 94.
+  - **`--check`: nothing moves.** The same operations on the same
+    operands in the same order; a value through memory is the same
+    double.
+  - **`--float`**: the same; the struct's members are rewritten as any
+    `double`.
+
+  What moves, on a prototype, discarded: no golden, no header of
+  `test/compile/expected` nor the prelude's, no excerpt of
+  `test/cli.cmake`; of the check programs only `unseen_4.c`, 321,653
+  bytes to 399,457 in 17 functions, its report byte for byte; the
+  fuzzer's not at all. `compile_c316`'s header, written and not built,
+  565,998 bytes to 1,056,287.
+
+  Measured on the prototype, the same way:
+  - `tf` 10,382,832 bytes, 61 per cent more, its lists cut into 382
+    functions of up to 49,300 bytes, the step left 159,113, the updates'
+    assignments; 32,087 values carried, 254 KB of struct on the
+    step's stack. GCC 97.6 s and 847 MB, Clang 94.1 s and 738 MB;
+    `--compile` 6.8 s and 173 MB. 0.68 ms a step built by GCC, 0.74 by
+    Clang; J the baseline's to the last digit at every step printed, 0
+    to 3 and each hundredth to 300, by either.
+  - `tq` 1,044,974 bytes, 45 per cent more, the largest function 26,166:
+    GCC 10.2 s and 332 MB, Clang 4.8 s and 145 MB.
+  - `compile_c316`'s: GCC 12.3 s and 327 MB, Clang 26.6 s and 263 MB.
+  - `tuned`'s check program, below, at the tests' flags: GCC 26.0 s to
+    12.5 s, Clang 11.1 s to 7.0 s, its report byte for byte.
+
+  Rejected:
+  - **Each sequence's list a function**: g's list stays 4.68 MB whole.
+  - **Reading a carried value through the struct**, `v_->t5_` at each
+    read and written there: 7.7 MB for `tf` where loads make 10.4, but
+    Clang 136 s at 16,384 and 191 s at 65,536, GCC 101 s and 135 s; with
+    locals Clang takes 94 to 99 s at either.
+  - **Larger functions**: with loads, GCC 93 s at 16,384, 114 s at
+    32,768, 132 s at 65,536 and 244 s and 1.3 GB at 262,144; Clang 94 to
+    99 s to 65,536 and 158 s at 262,144. Smaller ones, by reads through
+    the struct: 8,192, GCC 93 s, Clang 116 s; 4,096, 101 s and 92 s, in
+    1,632 functions.
+  - **The struct in the model**, `m_->v_`, which saves a parameter:
+    Clang still inlines 42 of 93, 126 s, and the host's state would hold
+    a step's scratch.
+  - **Parameters**: thousands of values cross. **Recomputing** them: the
+    sweep reads the forward pass's values, so the forward pass again.
+
+  Not settled, for review: the header grows by 45 to 87 per cent, the
+  loads and stores; the step's stack holds 254 KB for `tf`, which MSVC's
+  default 1 MB stack takes.
+
+  About 85 lines of `compile.hpp`: the prototype's 104 added and 19
+  removed, 5 of them comment; `Temporaries`' scan of names shared with
+  the cut, a list's kept temporaries returned apart from their text.
+  17,531 lines at 3f8da19, by `wc -l include/inkamath/*.hpp src/*`; past
+  128 the implementation stops and reports.
+
+  Specified in `test/compile/transformer.ink` by a model of its own,
+  `tune`, U trained beneath its weights, its instance `tuned` checked
+  against the interpreter from now, `check_tuned_4`, a report that holds
+  before and after. Its comment gives the cli case `compile_step_split`:
+  `inf.h` and `tune.h`, unseen's step of 272,495 bytes and tune's of
+  451,298 counted from the line opening each function to its closing
+  brace, writing no function of 32,768 bytes or more; on the prototype
+  the largest are the init's weights, 30,003 and 28,396. Wired now as
+  `test/cli.cmake`'s `spec` part, run by `cli_spec`, skipped while a
+  function is too large; with the implementation the case moves into
+  part 1 beside `compile_sweep_conditions`, and the `spec` part and
+  `cli_spec` go. No transcript in `test/data/spec`.
 - **A limit's invariants hoisted out of its iterate**: a limit or a
   matrix inverse that reads only the function's arguments is declared in
   the iterate's list, so walked again at each iterate, and gcc -O2 leaves
