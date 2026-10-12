@@ -9858,7 +9858,13 @@ they asked, each with its smallest change.
   s, each term of the fill trying its chain. No golden, expected header or
   report moves, and the 217 check programs are the baseline's byte for
   byte; at 60 links the headers are the prototype's. 10 lines of
-  `compile.hpp`, 24 added and 14 removed, 4 of them comment; 17,795 in all.
+  `compile.hpp`, 24 added and 14 removed, 4 of them comment; 17,795 in all,
+  past the spec's stop at 2 by the ruling that took the base clause's case
+  on. A depth's failure is kept while the terms that would end its chain
+  are filled, so `b(x)_10 + b(x)_6`, its base at 0 and tip at 70, is
+  refused where its function form compiles; integration refused both, and
+  forgetting it whenever a term is filled made the halving recursion with a
+  base 12 times slower. Accepted.
 - **A sequence with parameters read at `lim`'s walking index** is refused,
   which blocks a series or a matrix exponential written as on paper. Allow it.
 - **An unbounded sum is not compiled** as the limit of its partial sums.
