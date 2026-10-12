@@ -3989,8 +3989,10 @@ that exploring seven domains asked of the interpreter, by how many asked.
   Measured on the prototype: `tq` 720,124 bytes, 17,232 of conditions,
   960 `!= 0`; GCC 17.3 s and 688 MB, Clang 7.3 s and 228 MB. `tf`
   6,466,731 bytes, 126,072 conditions, 7,568 `!= 0`; GCC 572 s and 4.4
-  GB, within the cap by 28 s, Clang not done in 10 minutes; its
-  `--compile` 5.4 s and 122 MB. What is left of `tf` is
+  GB, Clang not done in 10 minutes; its `--compile` 5.4 s and 122 MB.
+  `tf`'s times were not taken under controlled load, and GCC built the
+  baseline once in 410 s and 4.5 GB on a quieter machine (*A compiled
+  step split into functions*): no speed-up is claimed for it. What is left of `tf` is
   values, 3.1 MB, and reads tested for NaN, 2.3 MB, in one function,
   which the item queued after this splits. `adjoint.ink`'s headers but
   `hidden`'s, `tensorgrad.ink`'s, `emb` and `attq` do not move but for
