@@ -1723,10 +1723,12 @@ private:
     // condition for each unit, which each cell it reaches wrote whole (DESIGN.md).
     std::string Text(const Where& where) {
         if (!where || where->any.empty()) return where ? where->text : "";
-        std::string text;
+        std::string           text;
+        std::set<std::string> seen;
         for (const Where& one : where->any)
-            text += (text.empty() ? "(" : " || (") + Text(one) + ")";
-        if (!temporaries_ || where->any.size() == 1) return text;
+            if (const std::string t = Text(one); seen.insert(t).second)
+                text += (text.empty() ? "(" : " || (") + t + ")";
+        if (!temporaries_ || seen.size() == 1) return text;
         return Declare("moves\x1f" + text, [&](const std::string& t) {
             return std::vector<std::string>{"const int " + t + " = " + text + ";"};
         });
@@ -1986,12 +1988,14 @@ private:
     // most of a header (DESIGN.md, a matrix read by its cells).
     template <typename... Codes>
     std::string Nan(const Codes&... codes) {
-        std::string test;
+        std::string           test;
+        std::set<std::string> seen;
         for (const Code* code : {&codes...}) {
             std::string one;
             std::size_t n = 0;
             for (const Cell& cell : code->cells)
-                if (aware_ && !code->constant && !cell.number)
+                if (aware_ && !code->constant && !cell.number &&
+                    seen.insert(cell.nan.empty() ? cell.text : cell.nan).second)
                     one += (n++ ? " || isnan(" : "isnan(") +
                            (cell.nan.empty() ? cell.text : cell.nan) + ")";
             if (n > 1 && temporaries_)
