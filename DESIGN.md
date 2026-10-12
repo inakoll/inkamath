@@ -9865,6 +9865,9 @@ they asked, each with its smallest change.
   refused where its function form compiles; integration refused both, and
   forgetting it whenever a term is filled made the halving recursion with a
   base 12 times slower. Accepted.
+- **A factorial of what moves walked**, `!(q+c)` the one before times
+  q+c, where a sum's `m_fact_` now loops q times at each term: a sum's step
+  1.5 to 1.8 times its limit form's. Found reviewing *an unbounded sum*.
 - **A halving recursion with a base runs away** at large indices:
   `w(x/2)_(k-1)` read at 1000 takes over 60 s to compile, and read ahead
   with a base at 1000, 35 s. Found reviewing *recursion from the tip*.
@@ -10092,7 +10095,7 @@ they asked, each with its smallest change.
     instance, called at sum_(q=0)'s index, for now": the function does not
     see an instance's own definitions, and sought by name would find a
     global of the same name instead.
-  - **--check**: nothing. **--float**: the helper's doubles are floats as
+  - **`--check`**: unchanged. **--float**: the helper's doubles are floats as
     the header's are, so `sum_(q=0) x^q/!q` is NaN from x about 12.6, where
     35! and x^35 overflow a float, while `lim ex(x)` holds. Only the ratio
     recurrence cures it, and whoever needs it writes it, as `series.ink`
@@ -10118,7 +10121,7 @@ they asked, each with its smallest change.
     it.
   - **A number's power left to `pow`**, as the spec had it: e^x's step 229
     ns with GCC 13 on the prototype, four times the walked one's, and no
-    bound of `--check` the better for it.
+    bound of `sums.ink`'s or `series.ink`'s checks the better for it.
   - **`Iterate` merged with `Chained`'s clause loop**, limread's
     implementation review's objection 5: a sum does not reach `Iterate`, so
     the merge is a change of its own.
@@ -10147,8 +10150,9 @@ they asked, each with its smallest change.
   `--compile series.ink` with it; `--compile estimate.ink` refuses
   `steep.x` as a derivative of a limit, no longer as an unbounded sum. Of
   `compile.hpp`, in three commits: the sum 104 lines net, 135 added and 31
-  removed; the factorial 17, 19 and 2; the walked power 47, 60 and 13; 168
-  in all, 23 of them comment, for the spec's 166; 18,172 lines, for 18,004
+  removed; the factorial 16, its helper written only where called after
+  review; the walked power 47, 60 and 13; 167 in all, 23 of them comment,
+  for the spec's 166; 18,171 lines, for 18,004
   at e07871e. Re-taken, a step the median of nine runs at -O2 on 4 cores
   at a load under 1, inputs x in [-1, 1), against `series.ink`'s limits:
   e^x 55.3 ns for 36.6 with GCC 13, 52.0 for 30.9 with Clang 18, its header
