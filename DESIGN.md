@@ -9923,7 +9923,8 @@ they asked, each with its smallest change.
     constant, `t(x)_(2*k)`, and a read ahead, `t(x)_(k+1)`, in today's words;
     and a walked term reading the limit's own at its index, "sg is defined
     by itself" since the walked term is computed first, where the
-    interpreter answers: the limit of the other sequence compiles.
+    interpreter answers: the limit of the other sequence compiles once
+    it has a base clause, g's `u(x)_0 = 1/2`.
   - **--float and --check**: nothing; a walked term is a local of the
     limit's function.
 
@@ -9971,7 +9972,7 @@ they asked, each with its smallest change.
     refused, whose window before the walk no iterate reads.
   - **Ordering a walked term after the limit's own** where it reads it at
     its index: a sort by what reads what, for a case whose other limit
-    compiles.
+    compiles given a base clause.
 
   It prepares *An unbounded sum compiled*: `Iterate` compiles any walked
   sequence's term at `k_`, the limit's own included, and a walked term is
