@@ -10360,7 +10360,7 @@ After an external review of README, MANIFESTO and the conformance suite
 - **Loops in generated code**, a phase of its own, its spec and cost in
   lines first: MANIFESTO's intermediate form, for a step now written out
   whole (a transformer's 90 to 100 s at -O2, 256 KB of stack). It largely
-  supersedes value numbering, being built on `valnum`.
+  supersedes value numbering (*Shared at every value written twice*, `[done]`).
 - **A Jacobian by cells**, the idiom, compiled and held by `--check`:
   `J(x)[i<=3, j<=2] = (grad_(v = x) f(v)[i])[j]`, row i output i's
   gradient as a paper defines J_ij, so the layout is the user's. grad's own
