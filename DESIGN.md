@@ -4245,14 +4245,14 @@ that exploring seven domains asked of the interpreter, by how many asked.
   it there: `layered` in `test/compile/implicit.ink` ran 15 to 20 times
   faster with its inner limit hoisted by hand. Declared in the bases' list
   instead, before the loop. Moves headers, not values.
-- **Shared at every value written twice**, value numbering in general, as
-  weighed under *Temporaries in a limit's function*, a refactor of
-  headers: no golden, `--check` report or refusal moves. `Declare` shares
-  what the compiler offers it, a product's operands, a value stretched, a
-  call's argument (C140), a NaN flag; any other value is written where it
-  is read, as often as it is read. Measured at 50bd43f, RelWithDebInfo,
-  the step alone built at -O2 by GCC 13.3 and Clang 18.1, the median of
-  three, one at a time:
+- `[done]` **Shared at every value written twice**, value numbering in
+  general, as weighed under *Temporaries in a limit's function*, a
+  refactor of headers: no golden, `--check` report or refusal moves.
+  `Declare` shares what the compiler offers it, a product's operands, a
+  value stretched, a call's argument (C140), a NaN flag; any other value
+  is written where it is read, as often as it is read. Measured at
+  50bd43f, RelWithDebInfo, the step alone built at -O2 by GCC 13.3 and
+  Clang 18.1, the median of three, one at a time:
   - the rigid-body exploration's free body, Rodrigues' formula guarded by
     `w'*w == 0`: `free.h`, 33,279 bytes, writes the square of w's first
     cell 22 times for M's turn, twice in the guard of each of the nine
@@ -4280,13 +4280,14 @@ that exploring seven domains asked of the interpreter, by how many asked.
     before the first line that reads it, every reading its name; where
     `free.h` wrote the sum, `isnan(t85_) ? NAN : t85_ == 0.0 ? 1.0 : ...`
     and `sqrt(0.0 + t85_)`. A value inside one shared counts once for
-    it. A value a temporary holds already is read by its name. A name
+    it. A value a temporary holds already is read by its name, found by
+    the text its line writes, which `Rated` and `Checked` rewrote. A name
     needs no brackets but a call's. New names continue the compile's,
     so after the first a header's names no longer rise as they are
     declared.
   - **Which values**: of more than one operation, where naming it is
-    shorter, its uses less one times its length over 40 bytes, what a
-    declaration costs. One operation on names and numbers,
+    shorter, its uses less one times its printed length over 40 bytes,
+    what a declaration costs. One operation on names and numbers,
     `m_->lap[0][0] * 0.0` or `(t3_ ? NAN : t2_)`, reads as well as a
     name and stays where it is read.
   - **Found by marks**: `Cell`'s constructor brackets each value's text
@@ -4302,9 +4303,7 @@ that exploring seven domains asked of the interpreter, by how many asked.
     item carried holds for sharing while compiling only.
   - **Hoisted as any temporary**: a value first read in the assignments
     is declared before them all, out of a guard's untaken clause and out
-    of `m_->index_ == 0 ?`, as temporaries are; its C is pure. One reading
-    a term the list assigns, `m_->x[0]`, is not shared: the assignment
-    changes it.
+    of `m_->index_ == 0 ?`, as temporaries are; its C is pure.
   - **`--float`**: the same, its `const double` rewritten. **The split**:
     a shared value is a temporary of the list, carried as any.
 
@@ -4390,6 +4389,36 @@ that exploring seven domains asked of the interpreter, by how many asked.
   implementation the case moves into part 1, the `spec` part and
   `cli_spec` go, `heat.h`, `kernel.h` and `compile_c133s` are recorded
   again and read. No transcript in `test/data/spec`.
+
+  Built as specified, with the review's rulings, departing in one thing:
+  `Split` takes the list `Numbered` leaves, every temporary in it read,
+  and no longer searches it for those read. That search, made again in
+  `Numbered`, was half the pass's cost: the prototype added 14 per cent
+  to `tq`'s instructions, this adds 0.4; the marks alone cost about 1.
+  The case moved into part 1 beside `compile_sweep_conditions`.
+
+  What moved, at 9b4d166: no golden; `heat.h`, only `0.0 + m_->dt *
+  -4.0` shared, as `0.25 + m_->dt * 8.0` is 19 bytes printed three
+  times; `kernel.h` as the prototype; `compile_c133s`, s's value `t1_`
+  in the guard; 72 check programs' C, `gate.c` with `--float` no longer
+  among them, none larger, `one.c` to 69,415 bytes, `walk_21.c` to
+  1,041,613, `kink.c` to 22,152, and the fuzzer's to 2,066,947; all 286
+  reports and `compile_c316`'s header byte for byte. `rod.h` is 6,827
+  bytes, `turn.h` writes its cosine once.
+
+  Measured again, at 9b4d166 then built, the same way:
+  - `free.h` 21,535 bytes, `att` 13,182, `swing` 110,250, its step one
+    function of 104,244;
+  - `riekf` 574,672 bytes, the largest function 106,496, 16,653
+    products, 3,161 by `0.0`; GCC 4.6 s and 259 MB, Clang 2.5 s and 129
+    MB, from 4.6 s and 258 MB, 2.5 s and 133 MB;
+  - `tq` 969,267 bytes, the largest function 27,050; GCC 8.3 s and 318
+    MB, Clang 4.1 s and 141 MB, from 9.1 s and 329 MB, 4.3 s and 144 MB;
+  - `tf` 9,985,465 bytes; `--compile` 7.6 s and 186 MB, from 7.0 s and
+    173 MB, 9 per cent.
+
+  119 lines of `compile.hpp`, 133 added and 14 removed, 10 of them
+  comment; 18,304 lines in all.
 - **`--check` names the cell and step of its worst units**: a float run of
   Robertson's kinetics passed with its small concentrations negative and
   50 times off, and `outside`'s in `test/compile/robertson.ink` passes at

@@ -21,6 +21,7 @@
 #include <stdexcept>
 #include <string>
 #include <tuple>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -230,7 +231,9 @@ private:
 
     struct Cell {
         Cell() = default;
-        Cell(std::string written, int precedence) : text(std::move(written)), level(precedence) {}
+        // Marked, for Numbered to find each value written; Print erases the marks.
+        Cell(std::string written, int precedence)
+            : text('\x14' + std::move(written) + '\x15'), level(precedence) {}
 
         std::string text;
         int         level = primary;
@@ -242,7 +245,8 @@ private:
     };
 
     static Cell Atom(std::string text, bool number = false) {
-        Cell cell(std::move(text), primary);
+        Cell cell;
+        cell.text   = std::move(text);
         cell.atom   = true;
         cell.number = number;
         return cell;
@@ -5008,20 +5012,132 @@ private:
         return out;
     }
 
+    // DESIGN.md, shared at every value written twice: a value of more than
+    // one operation that a list writes more than once, where a name is
+    // shorter, is declared once before its first reader, the outermost first,
+    // and one a temporary holds is read by its name. It reads the texts once
+    // every decision on NaN has: the same operations on the same operands.
+    std::vector<Temporary> Numbered(const std::vector<Temporary>& declared,
+                                    std::string&                  assignments) {
+        struct Written {
+            std::size_t                   uses = 0, length = 0;  // as printed
+            std::vector<std::string_view> within;                // the values its text writes
+            std::string                   name;
+            bool                          shared = false, declared = false;
+        };
+        std::unordered_map<std::string_view, Written> values;
+        const auto                                    scan = [&](std::string_view text) {
+            std::vector<std::tuple<std::size_t, std::size_t, std::vector<std::string_view>>> open;
+            for (std::size_t at = 0, marks = 0; at < text.size(); ++at)
+                if (text[at] == '\x14')
+                    open.emplace_back(at, marks++, std::vector<std::string_view>());
+                else if (text[at] == '\x15') {
+                    auto [from, before, within] = std::move(open.back());
+                    open.pop_back();
+                    const std::string_view value = text.substr(from, at + 1 - from);
+                    const auto [entry, fresh] = values.try_emplace(value);
+                    ++marks;
+                    if (fresh) entry->second.within = std::move(within);
+                    entry->second.length = value.size() - (marks - before);
+                    if (open.empty())
+                        ++entry->second.uses;
+                    else
+                        std::get<2>(open.back()).push_back(value);
+                }
+        };
+        const std::string written = std::move(assignments);
+        const auto        kept    = Kept(declared, written);
+        // A value held as its line writes it, which Rated and Checked rewrote.
+        std::vector<std::string_view> held;
+        for (const Temporary* t : kept) {
+            const std::string_view line = t->lines[0];
+            const std::string      head = "const double " + t->name + " = \x14";
+            held.push_back(line.starts_with(head)
+                               ? line.substr(head.size() - 1, line.size() - head.size())
+                               : "");
+            for (const std::string& text : t->lines) scan(text);
+        }
+        scan(written);
+        for (std::size_t t = 0; t < kept.size(); ++t)
+            if (const auto at = values.find(held[t]); at != values.end() && at->second.name.empty())
+                at->second.name = kept[t]->name;
+        std::vector<std::pair<const std::string_view, Written>*> order;
+        for (auto& value : values) order.push_back(&value);
+        std::ranges::sort(order,
+                          [](auto* a, auto* b) { return a->first.size() > b->first.size(); });
+        for (auto* entry : order) {
+            Written& w = entry->second;
+            w.shared   = !w.name.empty() ||
+                       (w.uses > 1 && !w.within.empty() && (w.uses - 1) * w.length > 40);
+            for (const std::string_view inner : w.within)
+                values.at(inner).uses += w.shared ? 1 : w.uses;
+        }
+        std::vector<Temporary> numbered;
+        const auto             write = [&](auto& self, std::string_view text) -> std::string {
+            std::vector<std::size_t> ends(text.size()), open;
+            for (std::size_t at = 0; at < text.size(); ++at)
+                if (text[at] == '\x14')
+                    open.push_back(at);
+                else if (text[at] == '\x15') {
+                    ends[open.back()] = at;
+                    open.pop_back();
+                }
+            std::string out;
+            for (std::size_t at = 0; at < text.size(); ++at) {
+                Written* w = nullptr;
+                if (text[at] == '\x14') w = &values.at(text.substr(at, ends[at] + 1 - at));
+                if (!w || !w->shared) {
+                    if (text[at] != '\x14' && text[at] != '\x15') out += text[at];
+                    continue;
+                }
+                if (w->name.empty()) w->name = "t" + std::to_string(temporary_count_++) + "_";
+                if (!std::exchange(w->declared, true))
+                    numbered.push_back(
+                        {w->name,
+                         "",
+                         {"const double " + w->name + " = " +
+                          self(self, text.substr(at + 1, ends[at] - at - 1)) + ";"}});
+                // A name needs no brackets, but a call's.
+                const unsigned char before = out.size() > 1 ? out[out.size() - 2] : ' ';
+                const bool bare = out.ends_with('(') && !std::isalnum(before) && before != '_' &&
+                                  text.substr(ends[at] + 1).starts_with(')');
+                out.resize(out.size() - bare);
+                out += w->name;
+                at = ends[at] + bare;
+            }
+            return out;
+        };
+        for (std::size_t t = 0; t < kept.size(); ++t) {
+            if (const auto at = values.find(held[t]);
+                at != values.end() && at->second.shared && at->second.name == kept[t]->name) {
+                write(write, at->first);
+                continue;
+            }
+            Temporary copy{kept[t]->name, kept[t]->value, {}};
+            for (const std::string& line : kept[t]->lines) copy.lines.push_back(write(write, line));
+            numbered.push_back(std::move(copy));
+        }
+        assignments = write(write, written);
+        return numbered;
+    }
+
     // A step's list over 4 * split_ bytes, which compilers optimise in time
     // that grows faster than its length, written as functions of about split_
     // bytes, in order: a temporary's lines or a statement each, so at least one.
     // A value a later one reads crosses in the step's struct of values into a
-    // local of its own name, so that every line is written as before.
-    std::string Split(const std::vector<Temporary>& declared, const std::string& assignments,
+    // local of its own name, so that every line is written as before. Every
+    // temporary is read: Numbered keeps no other.
+    std::string Split(const std::vector<Temporary>& kept, const std::string& assignments,
                       const std::string& indent) {
-        const std::string whole = Temporaries(declared, assignments, indent) + assignments;
+        std::string whole;
+        for (const Temporary& temporary : kept)
+            for (const std::string& line : temporary.lines) whole += indent + line + "\n";
+        whole += assignments;
         if (whole.size() <= 4 * split_) return whole;
-        const std::vector<const Temporary*> kept = Kept(declared, assignments);
-        std::vector<std::string>            texts;
-        for (const Temporary* temporary : kept) {
+        std::vector<std::string> texts;
+        for (const Temporary& temporary : kept) {
             texts.emplace_back();
-            for (const std::string& line : temporary->lines) texts.back() += "    " + line + "\n";
+            for (const std::string& line : temporary.lines) texts.back() += "    " + line + "\n";
         }
         for (std::size_t at = 0, end = 0; at < assignments.size(); at = end) {
             end = assignments.find('\n', at) + 1;
@@ -5045,8 +5161,8 @@ private:
         for (std::size_t f = 0; f < functions; ++f)
             for (std::size_t t = first[f]; t < first[f + 1] && t < kept.size(); ++t) {
                 // 'const double t5_ = ...;', or an array, 'double t5_[3][3] = {...};'.
-                const std::string& name  = kept[t]->name;
-                const std::string& line  = kept[t]->lines[0];
+                const std::string& name  = kept[t].name;
+                const std::string& line  = kept[t].lines[0];
                 const bool         array = !line.starts_with("const ");
                 const std::string  member =
                     array ? line.substr(0, line.find_first_of(" ;", line.find(name)))
@@ -5485,7 +5601,8 @@ private:
             for (std::size_t c = 0; c < derived.code.cells.size(); ++c)
                 assignments += "    m_->" + derived.name + Subscript(derived.code.size, c) + " = " +
                                derived.code.cells[c].text + ";\n";
-            out += Temporaries(derived.temporaries, assignments, "    ") + assignments;
+            const auto numbered = Numbered(derived.temporaries, assignments);
+            out += Temporaries(numbered, assignments, "    ") + assignments;
         }
         out += "}\n\n";
 
@@ -5560,8 +5677,9 @@ private:
             for (Temporary& temporary : temporaries)
                 for (std::string& line : temporary.lines)
                     line = Checked(Rated(line, sequence), name, sequence);
-            const std::string checked = Checked(Rated(assignments, sequence), name, sequence);
-            out += Split(temporaries, checked, indent);
+            std::string checked  = Checked(Rated(assignments, sequence), name, sequence);
+            const auto  numbered = Numbered(temporaries, checked);
+            out += Split(numbered, checked, indent);
             if (late) out += "    }\n";
         }
         out += "}\n\n#endif\n";
@@ -5602,6 +5720,7 @@ private:
         out.insert(functions, kept);
         if (Writes(kept, "DBL_EPSILON") || Writes(kept, "FLT_EPSILON"))
             out.insert(includes, "#include <float.h>\n");
+        std::erase_if(out, [](char c) { return c == '\x14' || c == '\x15'; });
         // Past the line naming the source, the words of the compiler's own C
         // for a double as a float's: every constant is written as one already.
         const auto inside = [&](std::size_t at) {
