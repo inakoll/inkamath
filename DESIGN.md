@@ -4243,9 +4243,9 @@ that exploring seven domains asked of the interpreter, by how many asked.
   matrix inverse that reads only the function's arguments is declared in
   the iterate's list, so walked again at each iterate, and neither GCC nor
   Clang moves it out at -O2: `layered` in `test/compile/implicit.ink`, a
-  limit of matrices whose terms add `[1, 1]*lim s([a; 1])`, steps in 2.1 µs
-  where its inner limit computed once takes 145 ns. A refactor of headers:
-  no golden, `--check` report or refusal moves.
+  limit whose terms add `[1, 1]*lim s([a; 1])`, a limit of matrices, steps
+  in 2.1 µs where its inner limit computed once takes 145 ns. A refactor
+  of headers: no golden, `--check` report or refusal moves.
 
   Decided:
   - **Declared in the bases' list.** `Declare`, offered a value for the
