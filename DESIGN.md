@@ -9749,7 +9749,8 @@ they asked, each with its smallest change.
 - **Products by a literal 0.0 kept for NaN, and block-sparse matrices
   multiplied dense**: 5.1k of the 12-state filter's 21k products, its header
   638 KB. Joins *Shared at every value written twice*.
-- **A parameter with no default compiled as a single value**: its refusal
-  should name the parameter and suggest its size.
+- **A parameter with no default compiled as a single value** is named by
+  its refusal where read, but not through a function's parameter, as the
+  filter's `blk(X_n)` reads `X0`. Follow the call's argument.
 - **`?file.name` and `tex file.name` refused**, and `tex` writes
   `\operatorname{sin}` for `\sin`.

@@ -623,6 +623,12 @@ set(args --compile through.ink mon -o mon.h)
 set(stderr "inkamath: cannot compile k: e reads x, a single value, as mon states no size for it: write 'x_n[j<=2]'\n")
 set(exit 1)
 check(compile_unstated_through)
+# So is a parameter with no default, read past its cell.
+file(WRITE "${OUT}/nodefault.ink" "m(A, x_n) = {\n    y_n = A[1, 2]*x_n\n}\n")
+set(args --compile nodefault.ink m -o m.h)
+set(stderr "inkamath: cannot compile y: A is a single value, as m gives it no default: give it one of its size, at least j<=1, k<=2\n")
+set(exit 1)
+check(compile_unstated_parameter)
 
 # Every run of --check walks the prelude's definitions, so that its programs
 # hold the compiled functions to the walk (DESIGN.md): log, 16 references
