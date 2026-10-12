@@ -48,6 +48,57 @@ endfunction()
 # Read by cases in every part.
 set(inputs "${CMAKE_CURRENT_LIST_DIR}/compile/inputs.ink")
 
+# Specified, not yet built (DESIGN.md, recursion from the tip): compile/tip.ink's
+# arm, its backward pass a sequence read ahead to a guard at the tip, compiled;
+# its values at 1 and 5 Euler-Lagrange's, worked by sympy; and the read-aheads
+# that stay refused, in the words of the same recursion written as a call.
+set(tip "${CMAKE_CURRENT_LIST_DIR}/compile/tip.ink")
+if(PART STREQUAL "spec")
+    file(REMOVE "${OUT}/tip.h")
+    set(args --compile ${tip} arm -o tip.h)
+    check(compile_tip)
+    if(NOT EXISTS "${OUT}/tip.h")
+        message(SEND_ERROR "compile_tip: tip.h not written")
+    endif()
+    file(COPY ${tip} DESTINATION "${OUT}")
+    file(WRITE "${OUT}/values.ink" [[
+>> use tip
+use tip
+
+>> tip.reach.y_1 == [61421137/1599000; 11300867/1199250; 146362649/23985000]
+1
+
+>> tip.reach.y_5 == [441421/23400; 427261/72150; -151031/57720]
+1
+]])
+    set(args --check values.ink)
+    set(stdout "values.ink: 3 answers, each as recorded\n")
+    check(compile_tip_values)
+    # a reads past the tip, b's guard does not fold, c has no tip, d reads
+    # its own stream ahead.
+    file(WRITE "${OUT}/ahead.ink" "a_n = up(x_n)_5\nb_n = w(x_n)_1\nc_n = p(x_n)_2\nd_n = d_(n+1)\nup(x)_k | k == 3 = x\nup(x)_k = up(x)_(k+1)/2\nw(x)_k | x > k = x\nw(x)_k = w(x)_(k+1)/2\np(x)_0 = x\np(x)_k = p(x)_(k+1)/2\n")
+    set(args --compile ahead.ink)
+    set(stdout "cannot compile a: calls nested 64 deep, which a recursion its guards do not end would pass
+cannot compile b: calls nested 64 deep, which a recursion its guards do not end would pass
+cannot compile c: calls nested 64 deep, which a recursion its guards do not end would pass
+cannot compile d: d_(...): a term after the one being computed
+")
+    set(exit 1)
+    check(compile_tip_refused)
+    return()
+endif()
+# The check program of a tip.ink instance, until then one saying it is
+# refused, which skips its report.
+if(PART STREQUAL "spec_program")
+    execute_process(COMMAND "${EXE}" --check ${tip} ${INSTANCE} -o "${PROGRAM}"
+                    RESULT_VARIABLE refused OUTPUT_QUIET ERROR_QUIET)
+    if(refused)
+        file(WRITE "${PROGRAM}"
+             "#include <stdio.h>\nint main(void) {\n    puts(\"${INSTANCE}: refused\");\n    return 0;\n}\n")
+    endif()
+    return()
+endif()
+
 # The cases run as three tests of about equal time under the sanitizers: PART
 # 1 up to charpoly's refusal, 2 from it, 3 from eig's, and all where PART is
 # not given.

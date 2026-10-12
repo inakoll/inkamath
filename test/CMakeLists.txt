@@ -69,6 +69,13 @@ foreach(part 1 2 3)
                      -P ${CMAKE_CURRENT_LIST_DIR}/cli.cmake)
     set_tests_properties(cli_${part} PROPERTIES TIMEOUT 120)
 endforeach()
+# Recursion from the tip (DESIGN.md), specified before it is built:
+# cli.cmake's spec part, skipped while tip.ink's arm is refused.
+add_test(NAME cli_spec
+         COMMAND ${CMAKE_COMMAND} -DEXE=$<TARGET_FILE:inkamath_cli> -DPART=spec
+                 -DOUT=${CMAKE_CURRENT_BINARY_DIR}/cli_spec -P ${CMAKE_CURRENT_LIST_DIR}/cli.cmake)
+set_tests_properties(cli_spec PROPERTIES TIMEOUT 120 SKIP_REGULAR_EXPRESSION
+    "compile_tip: tip\\.h not written")
 
 # bench's workloads, each a transcript bench/run.cmake measures, replayed so
 # that one gone stale fails here rather than at its next measure. The
@@ -327,6 +334,30 @@ set_tests_properties(check_walk_21_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^walk: ${walk}\nwalk\\.Pp: within 1\\.5e-15, from 1${about}\nwalk\\.Rp: within 1\\.2e-15, from 1${about}\nwalk\\.Nb: within 2\\.3e-19, from 1${about}\nwalk\\.S: within 4\\.1e-18, from 1${about}\nwalk\\.K: within 2\\.6e-13, from 1${about}\nwalk\\.P: within 1\\.5e-15${about}\nwalk\\.Y: within 0\nwalk\\.pp: within 1\\.6e-15, from 1${about}\nwalk\\.vp: within 9\\.9e-15, from 1${about}\nwalk\\.Xp: within 9\\.9e-15, from 1${about}\nwalk\\.X: within 9\\.8e-15${about}\nwalk\\.R: within 1\\.2e-15${about}\nwalk\\.d: within 6\\.1e-16${about}\nwalk\\.p: within 1\\.5e-15${about}\nwalk\\.v: within 9\\.8e-15${about}\n$")
 # Its 1.1 MB of C takes GCC 10 s at -O2 and 2 at -O0, its report the same.
 target_compile_options(check_walk_21 PRIVATE $<$<C_COMPILER_ID:GNU,Clang,AppleClang>:-O0>)
+# Recursion from the tip (DESIGN.md), specified before it is built: each
+# program cli.cmake's spec_program part writes, one saying it is refused
+# until then, which skips its report.
+foreach(instance reach rested)
+    set(program ${CMAKE_CURRENT_BINARY_DIR}/compile/${instance}.c)
+    add_custom_command(OUTPUT ${program}
+        COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/compile
+        COMMAND ${CMAKE_COMMAND} -DEXE=$<TARGET_FILE:inkamath_cli> -DPART=spec_program
+                -DINSTANCE=${instance} -DPROGRAM=${program} -P ${CMAKE_CURRENT_SOURCE_DIR}/cli.cmake
+        DEPENDS inkamath_cli compile/tip.ink cli.cmake
+        VERBATIM)
+    add_executable(check_${instance} ${program})
+    target_link_libraries(check_${instance} PRIVATE inkamath_warnings
+                          $<$<NOT:$<C_COMPILER_ID:MSVC>>:m>)
+    set_target_properties(check_${instance} PROPERTIES
+                          C_STANDARD 11 C_STANDARD_REQUIRED ON C_EXTENSIONS OFF)
+    add_test(NAME check_${instance}_report COMMAND check_${instance})
+    set_tests_properties(check_${instance}_report PROPERTIES SKIP_REGULAR_EXPRESSION
+                         "^${instance}: refused")
+endforeach()
+set_tests_properties(check_reach_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^reach: 100 steps from 0, against exact values\nreach\\.y: within 2\\.8e-14\nreach\\.d: within 0\n$")
+set_tests_properties(check_rested_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^rested: 100 steps from 0, against exact values\nrested\\.z: within 3\\.6e-15\n$")
 add_test(NAME check_outside_2000 COMMAND check_outside_2000)
 set_tests_properties(check_outside_2000 PROPERTIES WILL_FAIL ON)
 add_test(NAME check_runaway_1000 COMMAND check_runaway_1000)
