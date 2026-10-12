@@ -376,3 +376,19 @@ inverse(x_n) = {
     z_n = grad_(v = x_n) g(v)^(1/2)
 }
 over = inverse(x_n = n + 1)
+
+# 'flag', a quotient's '?' reading where a guard's clause is taken, there
+# where either of two inner clauses is: a flag of both (DESIGN.md, the
+# reverse sweep's conditions written once), an int, which the NaN beside it
+# where floor jumps made a float that -Wconversion refuses. t being n/2 - 2,
+# floor(t)/(1 - t)^2 below 0, 0 to 1 and -floor(t)/t^2 above, but NaN at
+# each whole t, where floor jumps:
+#
+#     flag: 100 steps from 0, against exact values
+#     flag.s: within 1.4e-17
+flagged(x_n) = {
+    r(t) | t < 0 = 0
+    r(t) = t
+    s_n = grad_(t = x_n) floor(t)/r(r(t) + r(1 - t))
+}
+flag = flagged(x_n = n/2 - 2)

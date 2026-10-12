@@ -178,7 +178,7 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brin
                          estimate:chaos estimate:dyad estimate:flat estimate:halved
                          estimate:steep estimate:giant elementary:els trig:tri atan:bea
                          grad:line grad:fall grad:hinge grad:edge grad:clip grad:steer grad:saw
-                         grad:ring grad:notch grad:apart grad:smooth grad:cusp grad:over
+                         grad:ring grad:notch grad:apart grad:smooth grad:cusp grad:over grad:flag
                          tensor:heads tensor:whirl tensor:batch tensor:spread
                          tensor:speck cellguards:rfit cellguards:tfit cellguards:layer
                          cellguards:kink cellguards:crest cellguards:mask cellguards:order
@@ -199,8 +199,8 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brin
                          implicit:kinetic implicit:jacobian implicit:doubling implicit:inset
                          implicit:layered tensorgrad:attend tensorgrad:small
                          tensorgrad:saliency:3 adjoint:fit4 adjoint:token
-                         adjoint:sinabs adjoint:gate3 adjoint:aside gradmany:pair gradmany:same
-                         transformer:unseen:4)
+                         adjoint:sinabs adjoint:gate3 adjoint:under adjoint:aside gradmany:pair
+                         gradmany:same transformer:unseen:4)
     string(REPLACE ":" ";" checked ${checked})
     list(POP_FRONT checked file instance count)
     set(name ${instance})
@@ -576,6 +576,8 @@ set_tests_properties(check_token_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^token: 100 steps from 0${inexact0}\ntoken\\.E: within 0${about}\n$")
 set_tests_properties(check_gate3_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^gate3: 100 steps from 0${inexact0}\ngate3\\.W: within 0${about}\n$")
+set_tests_properties(check_under_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^under: 100 steps from 0${inexact0}\nunder\\.U: within 0${about}\n$")
 set_tests_properties(check_aside_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^aside: 100 steps from 0${inexact0}\naside\\.W: within 0${about}\n$")
 # A gradient by several names compiled, as compile/gradmany.ink gives it.

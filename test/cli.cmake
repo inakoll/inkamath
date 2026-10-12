@@ -735,6 +735,27 @@ file(SIZE "${OUT}/norm.h" size)
 if(NOT tests LESS 150 OR NOT size LESS 40000)
     message(SEND_ERROR "compile_nan_once: isnan( ${tests} times in ${size} bytes")
 endif()
+# The reverse sweep's conditions written once (DESIGN.md): each condition of
+# 'hidden' once, a flag the cells read, where each cell of U wrote all three
+# units'.
+set(args --compile ${adjoint} hidden -o hidden.h)
+check(compile_sweep_conditions)
+file(READ "${OUT}/hidden.h" text)
+string(REGEX MATCHALL " != 0\\)" conditions "${text}")
+list(LENGTH conditions conditions)
+if(NOT conditions LESS 20)
+    message(SEND_ERROR "compile_sweep_conditions: ' != 0)' written ${conditions} times")
+endif()
+# Nested, not flattened, which writes 15 as well: a flag of conditions holds
+# one '||'.
+string(REGEX MATCHALL "const int t[0-9]+_ = [^;\n]*" flags "${text}")
+foreach(flag IN LISTS flags)
+    string(REGEX MATCHALL " \\|\\| " ors "${flag}")
+    list(LENGTH ors ors)
+    if(flag MATCHES " != 0" AND NOT ors EQUAL 1)
+        message(SEND_ERROR "compile_sweep_conditions: ${flag}")
+    endif()
+endforeach()
 # A gradient by several names compiled (DESIGN.md, test/compile/gradmany.ink):
 # a struct of its parts, the body written once and swept back once, tanh's
 # slope once for each unit, where four grads of one name write it 7 times in
