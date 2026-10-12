@@ -10357,10 +10357,219 @@ After an external review of README, MANIFESTO and the conformance suite
 (2026-10-12): its directions, ranked. Its open questions are in
 `MANIFESTO.md`.
 
-- **Loops in generated code**, a phase of its own, its spec and cost in
-  lines first: MANIFESTO's intermediate form, for a step now written out
-  whole (a transformer's 90 to 100 s at -O2, 256 KB of stack). It largely
-  supersedes value numbering (*Shared at every value written twice*, `[done]`).
+- **Loops in generated code**, a phase of its own, studied before any of
+  it is specified, the owner to decide on its cost. Each increment is a
+  refactor of headers: no golden, `--check` report or refusal moves.
+
+  Where the loops are lost. A value is a `Code`, its `cells` one C
+  expression each, row by row (`compile.hpp`, 262 at fefd26b), and every
+  operation writes them one by one: a product sums the inner dimension
+  for each cell (`Product`, 1862); arithmetic pairs cells (`Cellwise`,
+  1608); a definition by cells binds its names to constants and compiles
+  each cell again (`Cells` 2674, `Walk` 2526, `CellOf` 2747); a sum with
+  constant bounds binds its index to each value in turn, up to 1,000
+  (4176); a cell's guard is compiled for each cell, folding where it reads
+  only the place (`CellOf`, `Chain` 687); the tape records a node over an
+  `Extent` for each operation but sweeps adjoints cell by cell, each
+  optional and each with its condition (`Into` 4002, `Sparse` 4034,
+  `Swept` 4075); a matrix read by its cells is tested by the text of each
+  (`Nan`, 2032). Loops are printed only where they are fixed C: the
+  inverse's helper (5224), a limit's test of its steps and a term's NaN
+  fill (`Assigned`, 5462). So a header's size, build time and stack follow
+  its cells. By kind of line at fefd26b: the RIEKF's 12-state filter,
+  `riekf`, 574,672 bytes, 34 per cent dot products declared as
+  temporaries and 26 per cent the terms' assignments, most of them
+  products too; the transformer's one gradient, `tq`, 969,267 bytes, and
+  its 13-name step, `tf`, 9,985,465: the split's loads and stores 25 and
+  34 per cent, products 21 and 17, the sweep's sums under a clause's
+  condition, ReLU's, 11 and 8, reads tested for NaN 9 and 9, and most of
+  the rest the cells of definitions by cells and their parts.
+
+  Decided, for the phase:
+  - **The form is a looped temporary**: an array of the list, declared
+    and filled by a loop nest, `double t2_[12][12];` then `for (int i_
+    ...) for (int j_ ...) { double s_ = ...; for (int p_ = 1; ...) s_ = s_
+    + ...; t2_[i_][j_] = s_; }`, its cells read as `t2_[3][4]`, atoms to
+    every reader. Nothing else changes form: a `Code` stays its cells. Each
+    loop is written by the operation that makes it, which knows its kind:
+    over `b_`, `i_` and `j_` the cells, parallel; over `p_` a sum in the
+    definitions' order, a reduction. That is MANIFESTO's intermediate form
+    at its smallest: an OpenMP or SIMD printer would be a mode of these
+    few writers, a pragma each.
+  - **An operand is an array or is made one**: a term (`m_->P[1]`), a
+    parameter, an inverse, a limit's array or a looped temporary is read
+    in place, a transpose of one by its subscripts swapped; anything else
+    is declared as one, `double t13_[12][12] = {...}`, as an inverse's
+    matrix already is.
+  - **Bit for bit**: the same operations on the same operands in the same
+    order, a sum accumulated term by term from its first product, as C
+    parses `a*b + c*d + e*f`. A compiler may vectorise across cells but not
+    across the sum without -ffast-math, which the header forbids;
+    contraction is as it was, the header's warning.
+  - **NaN by name**: an array whose cells may be NaN joins
+    `nan_temporaries_`, as an inverse's does (C308), so `MayNan` and
+    C189's and C335's tests read its name as they read the cells' text. No
+    may-NaN flag per cell while cells are named.
+  - **Only where it pays**: a product of fewer than 27 multiplications, a
+    3x3 by a 3x3, stays written out. Every product looped, the rigid
+    body's chain `swing` grows from 110,250 bytes to 178,982, a loop of
+    some 350 bytes for each 2x2 product; at 27 it is 113,056.
+  - **The written-out path stays** as the reference and the fallback:
+    each writer of loops declines where it does not apply, and the cells
+    are compiled as now.
+
+  The increments, ranked by what they hold of the two models:
+  1. **Matrix products**, a value's and forward mode's parts, in
+     `Product`. About 75 lines; past 115 the implementation stops and
+     reports.
+  2. **The sweep's products**, in `Sparse`, where every adjoint of both
+     operands is there and none folds. Under a clause's condition each
+     term is added where its condition holds, `s_ = c_ ? s_ + ... : s_`, as
+     `Into` adds it, from `c_ ? t : 0.0`, and where any was is a second
+     slice of the same array, written as the loop runs. Where some
+     adjoints are absent it declines: adding an absent one as 0 would turn
+     `-0.0` into `+0.0`. About 95 lines; past 145 it stops.
+  3. **A term's assignments and its whole-term NaN test** as loops where
+     its cells are an array's (`Assigned`): `riekf`'s 453 lines of
+     assignments and 12 KB of tests, 35 per cent of what increment 1
+     leaves of it. About 40 lines; past 60 it stops.
+  4. **Definitions by cells as a loop body**: the places bound to the
+     loop's indices rather than to constants, the body compiled once into
+     a list of its own written inside the loop, a cell read at a loop index
+     from an array, a guard reading only the place tested at run time, the
+     cell compiled as now wherever a place must be a constant. A sum with
+     constant bounds inside it unrolls as now; one of many terms is a
+     reduction of its own, which lifts the 1,000 terms (*The compiled
+     sum's thousand terms*). Not prototyped: about 300 lines.
+  5. **The sweep through definitions by cells**: the tape's nodes over a
+     looped temporary, an adjoint a loop of the same extent. Not
+     prototyped: about 400 lines, the largest and least certain.
+
+  The phase: about 900 lines added and, once nothing needs the step split,
+  100 removed, 18,325 at fefd26b by `wc -l include/inkamath/*.hpp src/*`
+  to about 19,100; 800 to 1,200 added is the honest range, the last two
+  increments being estimates. MANIFESTO's open question, whether the form
+  removes more than it adds, is answered for C: it does not.
+
+  Measured on a prototype of increments 1 and 2, uncommitted and
+  discarded: 97 and 105 lines as a prototype writes them, behind switches.
+  Baseline fefd26b, RelWithDebInfo; each step built alone at -O2
+  -std=c99 by GCC 13.3 and Clang 18.1, one at a time, capped at 10 minutes
+  and 6 GB, under a load the machine shares: `tf` at fefd26b took GCC 97 s
+  once and 83 s again. Stack by GCC's -fstack-usage, the step's frame and
+  its largest part; a step's time the median of three runs, which spread
+  by up to a fifth. Each model's first row is fefd26b's, then after
+  increment 1, then after 1 and 2.
+
+  | | bytes | functions, largest | stack | GCC | Clang | a step, GCC / Clang |
+  |---|---|---|---|---|---|---|
+  | `riekf` | 574,672 | 27, 106,496 | 11 KB | 4.9 s, 260 MB | 2.9 s, 129 MB | 7.7 / 6.1 µs |
+  | 1 | 116,722 | 4, 98,890 | 15 KB | 2.7 s, 106 MB | 1.5 s, 109 MB | 7.3 / 3.5 µs |
+  | `tq` | 969,267 | 61, 27,050 | 27 KB | 8.5 s, 318 MB | 4.3 s, 142 MB | 27.1 / 29.6 µs |
+  | 1 | 828,732 | 56, 25,875 | 32 KB | 8.1 s, 333 MB | 4.2 s, 135 MB | 24.0 / 29.5 µs |
+  | 1 and 2 | 624,222 | 47, 26,730 | 36 KB | 6.2 s, 197 MB | 3.7 s, 127 MB | 26.4 / 32.5 µs |
+  | `tf` | 9,985,465 | 377, 158,241 | 269 KB | 83-97 s, 818 MB | 95 s, 640 MB | 0.86 / 0.80 ms |
+  | 1 | 7,810,271 | 294, 155,769 | | 71 s, 658 MB | 80 s, 508 MB | 0.69 / 0.77 ms |
+  | 1 and 2 | 5,562,130 | 205, 152,921 | 329 KB | 53 s, 455 MB | 59 s, 394 MB | 0.48 / 0.61 ms |
+
+  Increment 2 does not move `riekf`. `tf`'s largest function is the
+  step's assignments of its 13 updates, its largest part 47,719 bytes,
+  46,079 after both. Its `--compile` 7.5 s and 186 MB, then 6.8 s and 162
+  MB, then 4.6 s and 114 MB: cells no longer made. Bit for bit: `riekf`'s
+  X and P after 101 steps, `tq`'s W^Q after 301, and `tf`'s J and held-out
+  accuracies at 0 to 3 and each hundredth to 300, by GCC and by Clang,
+  the baseline's. All 286 check reports byte for byte under each
+  increment, and with every product looped.
+
+  What moves, at 27: increment 1 moves no golden, no expected header, no
+  excerpt or count of `test/cli.cmake`, nor the fuzzer's program; of the
+  check programs 21 C files, 18 smaller, `walk_21.c` 1,041,613 bytes to
+  583,989 and `one.c` 69,415 to 70,108 the most grown; 9 headers the cli
+  cases write, `inf.h` 595,708 to 393,037; and `signatures.h`, named and
+  numbered alike. Increment 2 adds three cli headers, `norm.h`, `wide.h`
+  and `tune.h`.
+
+  What remains of `tf` after both: the split's loads and stores, 35 per
+  cent, then the cells of layer norm, softmax, ReLU and the residual sums
+  and their parts, a fifth, and reads tested for NaN, 15 per cent, which
+  are increments 4 and 5. Of `riekf` after 1: the terms' assignments, 25
+  per cent, block literals and operands copied into arrays, 21, and the
+  series of its exponential map.
+
+  What it supersedes, measured:
+  - **The step split** (`Split`, its struct and `NOINLINE_`, about 100
+    lines) is not written where no list passes 65,536 bytes: `riekf`'s 27
+    functions become 4 after increment 1, but `tf` keeps 205 after both.
+    Deletable after increment 5 at the earliest, if no model of the tests
+    or the explorations still needs it.
+  - **Value numbering** (`Numbered`, 108 lines, and the cells' marks) is
+    not superseded, which the ranked item claimed. With increments 1 and
+    2 at 27 it still saves, of a header written without it, `riekf` 8.5
+    KB of 125, `tq` 84 of 709, the free body 11.3 of 30, `att` 2.3 of 15
+    and `swing` 44 of 157; before, 64 of 638, 80 of 1,049, 11.7, 2.2 and
+    75. Its values are those of scalar code, which loops leave.
+  - Smaller: a product's operands shared (2 lines); the 1,000-term refusal
+    and *The compiled sum's thousand terms*, with increment 4; the flags
+    of *A matrix read by its cells tested for NaN once* and of *The
+    reverse sweep's conditions written once*, written as loops or as a
+    loop's slice where their matrix is looped, but kept for the rest.
+
+  How it meets the rest:
+  - **`--check`**: unchanged, by the argument above, and measured.
+  - **NaN per cell, C189, C315**: a cell's NaN still flows through its
+    own arithmetic; arrays are known by name, and a limit's function keeps
+    its own set as C315 made it. Increment 4 needs more: a body's read at
+    a loop index carries its array's may-NaN.
+  - **Reverse mode**: increments 1 to 3 leave the tape; 2 loops where the
+    sweep's adjoints are dense; 5 changes the tape itself.
+  - **Forward mode**: parts are made by `Product` and arithmetic, so they
+    loop with the values; each direction stays a pass of its own, since
+    folding exact zeros makes the directions' code differ.
+  - **The step split**: a loop is one text, never cut; an array a later
+    part reads is carried in the struct by `memcpy`, which takes `tf`'s
+    stack from 269 KB to 329 KB, within MSVC's default 1 MB.
+  - **Value numbering**: a loop's lines carry no marks, so nothing is
+    shared out of its loop.
+  - **`--float`**: arrays and accumulators are `double` rewritten; the
+    condition slice holds 1.0 or 0.0, an int being refused there by
+    -Wconversion; the float reports are among the 286.
+  - **MSVC**: for-declarations, no VLA, automatic arrays initialised from
+    values as inverse temporaries already are. Not built here; CI's MSVC
+    job checks it as any header change. Clang 19's SLP workaround stays.
+
+  Rejected:
+  - **LLVM IR, or a JIT**: a dependency (`CLAUDE.md` §5), where inkamath
+    writes source and the host builds it (`MANIFESTO.md`, *One compiler,
+    several printers*), and not code a student reads.
+  - **Schedules after Halide or TACO**: a second language, and a schedule
+    that reorders a sum loses `--check`'s bit for bit; MANIFESTO puts one
+    after the form, if ever wanted.
+  - **Unrolling kept, with a better split**: loads and stores are a third
+    of `tf` already, and size and time would still follow the cells; *A
+    compiled step split into functions* measured its best bound.
+  - **Rerolling the written-out code as it is printed**: a parser of the
+    C it writes (rejected for value numbering for that reason), and every
+    cell still made, which is the compile's own time and memory.
+  - **A form of its own now**, a tree of loops printed by a printer: there
+    is one printer, and MANIFESTO writes a second only when a model needs
+    it; the writers of loops are where a tree would come from.
+  - **Arithmetic cell by cell as loops, each operation an array**:
+    prototyped, 41 lines: `riekf` 1.3 per cent larger, its operands copied
+    to be added, `tf` 5 per cent smaller. Fusing belongs to a body compiled
+    once, increment 4.
+  - **Every product looped**: `swing`'s 62 per cent; 27 multiplications.
+  - **Constant operands as `static const` arrays**, a copy a step saved:
+    the split takes a carried array's member from its line's first words,
+    `static` among them. Worth again without the split.
+  - **A condition as an int array apart from the values**: a name `Kept`
+    and the split would have to tie to its values'; a slice of the same
+    array instead.
+
+  Recommended: increments 1 and 2, each a refactor of its own, then 3;
+  4 and 5, some 700 lines whose gain is not measured, decided when a
+  model needs them, the transformer at a real size or PointNet. No spec
+  is written yet: the first increment's comes with its spec, by the
+  pipeline of `CLAUDE.md` §8.
 - **A Jacobian by cells**, the idiom, compiled and held by `--check`:
   `J(x)[i<=3, j<=2] = (grad_(v = x) f(v)[i])[j]`, row i output i's
   gradient as a paper defines J_ij, so the layout is the user's. grad's own
