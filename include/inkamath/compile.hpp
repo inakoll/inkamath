@@ -3029,6 +3029,7 @@ private:
                 if (otherwise || (c.guarded() || base) != guard || (base && c.index() < first))
                     continue;
                 if (base && c.guarded()) throw Reason("a guarded base clause in a limit's terms");
+                const Setting<std::string>       named(index_, base ? index_ : c.index_name());
                 const std::optional<std::string> condition =
                     base    ? "k_ == " + std::to_string(c.index())
                     : guard ? Condition(c.guard())

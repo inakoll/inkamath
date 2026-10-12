@@ -820,6 +820,8 @@ set_tests_properties(check_evens_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^evens: 100 steps from 0, against exact values until 0 and inexact ones from there\nevens\\.y: within [0-9.e-]+${about}\n$")
 set_tests_properties(check_evened_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^evened: 100 steps from 0, against exact values until 0 and inexact ones from there\nevened\\.y: within [0-9.e-]+${about}\n$")
+set_tests_properties(check_twonames_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^twonames: 100 steps from 0, against exact values until 0 and inexact ones from there\ntwonames\\.a: within [0-9.e-]+${about}\ntwonames\\.b: within [0-9.e-]+${about}\n$")
 set_tests_properties(check_fir_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^fir: 100 steps from 0, against exact values\n(fir\\.[a-z]+: within 0\n)+$")
 set_tests_properties(check_naught_report PROPERTIES PASS_REGULAR_EXPRESSION
