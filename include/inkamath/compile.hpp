@@ -761,10 +761,19 @@ private:
               const ParametersCall<Value>& call, Expansion* outer) {
         const ParametersDefinition<Value>& p = function.Clauses().front().parameters;
         Reasoned([&] { p.CheckArity(name, call); });
-        std::optional<int> at;
-        if (call.subexpr())
+        // At a limit's walking index less a constant, walked beside it, its
+        // arguments computed before the walk.
+        std::optional<int> at, lag;
+        if (call.subexpr() && limit_ && IsSequence(function) && !ByCells(function)) try {
+                lag = Lag(call.subexpr(), name);
+            } catch (const Reason&) {
+            } catch (const Fix&) {
+            }
+        if (call.subexpr() && !lag)
             at = Whole(Known(call.subexpr(),
                              "a sequence with parameters read at an index that is not a constant"));
+        std::optional<Setting<std::vector<Temporary>*>> based;
+        if (lag) based.emplace(temporaries_, limit_->based);
         ++calls_;
         Expansion expansion{{}, {}, outer ? outer->scope : function.home, outer, {}, {}};
         std::vector<Code> nans;
@@ -776,7 +785,7 @@ private:
             Code      value  = Emit(argument);
             bool      nan    = false;
             for (const Cell& c : value.cells) nan = nan || MayNan(c.text) || nans_.count(c.text);
-            if ((at || calls_ != before) && !value.constant) value = SharedAll(value);
+            if ((at || lag || calls_ != before) && !value.constant) value = SharedAll(value);
             if (nan)
                 for (const Cell& c : nans.emplace_back(value).cells) nans_.insert(c.text);
             expansion.values.emplace(given, value);
@@ -796,8 +805,10 @@ private:
                 function.Divides(given, Value(value.size), definitions_);
         });
         Defaults(function, expansion);
-        Code result =
-            at ? Term(name, function, expansion, *at) : Memoized(name, function, expansion, outer);
+        based.reset();
+        Code result = lag  ? Beside(name, function, expansion, *lag)
+                      : at ? Term(name, function, expansion, *at)
+                           : Memoized(name, function, expansion, outer);
         // The interpreter computes an argument the function does not read, so
         // its refusal is the call's (C189).
         std::string written, nan;
@@ -2802,7 +2813,7 @@ private:
         auto                       outer_nans        = std::exchange(nan_temporaries_, {});
         auto                       outer_reads       = std::exchange(read_parameters_, {});
         std::map<int, Code>        bases;
-        std::vector<std::string>   general;
+        Code                       general;
         const auto                 shaped = [&](const Code& code) {
             if (code.size.slices) throw Reason("a tensor in a limit, for now");
             if (walked.size.rows && code.size != walked.size)
@@ -2818,29 +2829,9 @@ private:
                     if (c.guarded()) throw Reason("a guarded base clause in a limit's terms");
                     bases[c.index()] = shaped(Emit(clause.expression));
                 }
-                for (const Clause<Value>& clause : sequence.Clauses())
-                    if (clause.parameters.general()) index_ = clause.parameters.index_name();
-                if (index_.empty())
-                    throw Reason(name + " has no general clause, so it has no limit");
-                temporaries_                 = walked.iterated;
-                const std::string outer_text = std::exchange(index_text_, "(double)k_");
-                std::vector<std::pair<std::string, Code>> guarded;
-                std::optional<Code>                       otherwise;
-                for (const bool guard : {true, false})
-                    for (const Clause<Value>& clause : sequence.Clauses()) {
-                        const ParametersDefinition<Value>& c = clause.parameters;
-                        if (!c.general() || c.guarded() != guard || otherwise) continue;
-                        const std::optional<std::string> condition =
-                            guard ? Condition(c.guard()) : std::optional<std::string>("");
-                        if (!condition) continue;
-                        const Code value = shaped(Emit(clause.expression));
-                        if (condition->empty())
-                            otherwise = value;
-                        else
-                            guarded.emplace_back(*condition, value);
-                    }
-                general     = Texts(Chain(guarded, otherwise, walked.size));
-                index_text_ = outer_text;
+                walked.first = (bases.empty() ? 0 : bases.rbegin()->first) + 1;
+                temporaries_ = walked.iterated;
+                general      = Iterate(name, sequence, walked.first, shaped);
                 return Code{};
             });
         } catch (...) {
@@ -2900,7 +2891,31 @@ private:
                 value = scalar ? base->second.cells[0].text : "{" + Rows(base->second) + "}";
             based += "    double t" + std::to_string(lag) + "_" + shape + " = " + value + ";\n";
         }
-        text += Temporaries(*walked.based, based, "    ") + based;
+        // Each sequence walked beside it: its window, moved on as t1_ is.
+        std::string moved;
+        for (std::size_t b = 0; b < walked.beside.size(); ++b) {
+            const auto&       window = walked.beside[b].window;
+            const Code&       term   = *walked.beside[b].term;
+            const std::size_t lags   = window.size();
+            for (std::size_t lag = 1; lag <= lags; ++lag)
+                based += "    double " + Window(b, lag) + Dimensions(term.size) + " = " +
+                         (term.Scalar() ? window[lag - 1].cells[0].text
+                                        : "{" + Rows(window[lag - 1]) + "}") +
+                         ";\n";
+            for (std::size_t lag = lags; lag > 1; --lag)
+                moved += term.Scalar()
+                             ? "        " + Window(b, lag) + " = " + Window(b, lag - 1) + ";\n"
+                             : "        memcpy(" + Window(b, lag) + ", " + Window(b, lag - 1) +
+                                   ", sizeof " + Window(b, lag) + ");\n";
+            for (std::size_t c = 0; lags && c < term.size.count(); ++c)
+                moved += "        " + Window(b, 1) + Subscript(term.size, c) + " = " +
+                         term.At(c).text + ";\n";
+        }
+        const std::string term =
+            scalar ? "        const double t_ = " + general.At(0).text + ";\n"
+                   : each("        ", "t_", [&](std::size_t c) { return general.At(c).text; });
+        const std::string iterate = Temporaries(*walked.iterated, term + moved, "        ") + term;
+        text += Temporaries(*walked.based, based + iterate + moved, "    ") + based;
         if (!scalar) text += "    double t_" + shape + ";\n";
         text += "    double step_ = 0.0, before_ = 0.0;\n";
         text +=
@@ -2908,10 +2923,7 @@ private:
         text += "    for (long long k_ = " + first + "; k_ <= " +
                 std::to_string(highest + static_cast<int>(Convergence<Value>::max_terms)) +
                 "; ++k_) {\n";
-        const std::string term =
-            scalar ? "        const double t_ = " + general[0] + ";\n"
-                   : each("        ", "t_", [&](std::size_t c) { return general[c]; });
-        text += Temporaries(*walked.iterated, term, "        ") + term;
+        text += iterate;
         text += "        if (started_) {\n";
         if (scalar) {
             text += "            step_ = fabs(t_ - t1_);\n";
@@ -2956,6 +2968,7 @@ private:
             text += scalar ? "        " + to + " = " + from + ";\n"
                            : "        memcpy(" + to + ", " + from + ", sizeof " + to + ");\n";
         }
+        text += moved;
         text += scalar ? "        t1_ = t_;\n    }\n    return NAN;\n}\n\n"
                        : "        memcpy(t1_, t_, sizeof t_);\n    }\n" +
                              each("    ", "out_", [](std::size_t) { return std::string("NAN"); }) +
@@ -2990,10 +3003,147 @@ private:
         return Answer(Array(out, walked.size));
     }
 
+    // A walked sequence's term at k_, its clauses tried as Chained tries them
+    // at an index: a base clause from where the walk starts, and the clause
+    // that always applies NaN below the lowest, as where no clause does (C86).
+    template <typename Shaped>
+    Code Iterate(const std::string& name, const Reference<Value>& sequence, int first,
+                 const Shaped& shaped) {
+        for (const Clause<Value>& clause : sequence.Clauses())
+            if (clause.parameters.general()) index_ = clause.parameters.index_name();
+        if (index_.empty())
+            throw Reason(name + " has no general clause" +
+                         (name == limit_->name ? ", so it has no limit" : ""));
+        const Setting<std::string>                text(index_text_, "(double)k_");
+        std::vector<std::pair<std::string, Code>> guarded;
+        std::optional<Code>                       otherwise;
+        for (const bool guard : {true, false})
+            for (const Clause<Value>& clause : sequence.Clauses()) {
+                const ParametersDefinition<Value>& c    = clause.parameters;
+                const bool                         base = !c.general();
+                if (otherwise || (c.guarded() || base) != guard || (base && c.index() < first))
+                    continue;
+                if (base && c.guarded()) throw Reason("a guarded base clause in a limit's terms");
+                const std::optional<std::string> condition =
+                    base    ? "k_ == " + std::to_string(c.index())
+                    : guard ? Condition(c.guard())
+                            : std::optional<std::string>("");
+                if (!condition) continue;
+                const Code value = shaped(Emit(clause.expression));
+                if (condition->empty())
+                    otherwise = value;
+                else
+                    guarded.emplace_back(*condition, value);
+            }
+        const Clause<Value>* const lowest = sequence.EndBase(true);
+        if (otherwise && lowest && lowest->parameters.index() > first) {
+            for (Cell& cell : otherwise->cells)
+                cell = Cell(
+                    "k_ < " + std::to_string(lowest->parameters.index()) + " ? NAN : " + cell.text,
+                    0);
+            otherwise->constant.reset();
+        }
+        const Extent size = otherwise         ? otherwise->size
+                            : guarded.empty() ? Extent{}
+                                              : guarded.front().second.size;
+        for (const auto& [condition, value] : guarded)
+            if (value.size != size)
+                throw Reason("the clauses of " + name + " have different shapes");
+        return Chain(guarded, otherwise, size);
+    }
+
+    static std::string Window(std::size_t b, std::size_t lag) {
+        return "w" + std::to_string(b) + "_" + std::to_string(lag) + "_";
+    }
+
+    // 't(x)_k' in a limit's terms, k its walking index less a constant: a
+    // sequence walked beside the limit's own, in its loop, its term at k_ a
+    // temporary and those before it a window, 'w0_1_', set before the loop.
+    // Its arguments are computed there too, so one that moves as the walk
+    // does is refused.
+    Code Beside(const std::string& name, const Reference<Value>& function, Expansion& expansion,
+                int lag) {
+        Walked&           walked  = *limit_;
+        const std::string read_at = name + "_(...): read at lim " + walked.name + "'s index ";
+        std::string       read;
+        for (const auto& [given, value] : expansion.values) {
+            if (!value.part.empty())
+                throw Reason(name + "_(...): a derivative of a term lim " + walked.name +
+                             " walks, for now");
+            for (const Cell& cell : value.cells) read += cell.text + ' ';
+        }
+        for (const Temporary* temporary : Kept(*walked.based, read))
+            for (const std::string& line : temporary->lines) read += line + ' ';
+        std::set<std::string> words, moving{"k_"};
+        Words(read, words);
+        for (int l = 1; l <= walked.depth; ++l) moving.insert("t" + std::to_string(l) + "_");
+        for (const Temporary& temporary : *walked.iterated) moving.insert(temporary.name);
+        for (std::size_t b = 0; b < walked.beside.size(); ++b)
+            for (std::size_t l = 1; l <= walked.beside[b].window.size(); ++l)
+                moving.insert(Window(b, l));
+        if (std::ranges::any_of(words, [&](const std::string& w) { return moving.contains(w); }))
+            throw Reason(read_at + "with arguments that change as it walks");
+        const std::string args = Given(expansion);
+        std::size_t       b    = 0;
+        while (b < walked.beside.size() &&
+               (walked.beside[b].function != &function || walked.beside[b].args != args))
+            ++b;
+        if (b == walked.beside.size()) {
+            // Its own terms read with other arguments would walk without end.
+            for (const Walked::Beside& other : walked.beside)
+                if (other.function == &function && !other.term)
+                    throw Reason(read_at + "with other arguments in its own terms");
+            Walked::Beside& beside =
+                walked.beside.emplace_back(Walked::Beside{&function, args, expansion});
+            const Setting<std::vector<Temporary>*> in(temporaries_, walked.iterated);
+            Code                                   term = Inside(beside.expansion, [&] {
+                return Iterate(name, function, walked.first, std::identity{});
+            });
+            // Each its own temporary: a window moves on from it after another moved.
+            for (Cell& cell : term.cells)
+                cell = Atom(Declare(cell.text, [&](const std::string& t) {
+                    return std::vector<std::string>{"const double " + t + " = " + cell.text + ";"};
+                }));
+            beside.term = term;
+        }
+        Walked::Beside& beside = walked.beside[b];
+        if (lag == 0 && !beside.term) throw Reason(name + " is defined by itself");
+        const Clause<Value>* const lowest = function.EndBase(true);
+        while (beside.window.size() < static_cast<std::size_t>(lag)) {
+            const Setting<std::vector<Temporary>*> before(temporaries_, walked.based);
+            const Setting<std::string>             windowing(walked.windowing, name);
+            const int  at    = walked.first - 1 - static_cast<int>(beside.window.size());
+            const bool below = lowest && at < lowest->parameters.index();
+            Code       term;
+            try {
+                term = Term(name, function, beside.expansion, at);
+            } catch (const Reason& reason) {
+                // No clause below its lowest base: NaN, as a step says (C86),
+                // in its terms' shape; a guard's term the step cannot compute
+                // is refused, which the interpreter answers.
+                if (!below ||
+                    reason.what() != name + " has no clause for index " + std::to_string(at))
+                    throw;
+                term = Term(name, function, beside.expansion, lowest->parameters.index());
+                for (Cell& cell : term.cells) cell = Atom("NAN");
+                term.constant.reset();
+            }
+            beside.window.push_back(SharedAll(term));
+        }
+        if (beside.term && !beside.window.empty() && beside.term->size != beside.window[0].size)
+            throw Reason("a limit reading " + name + ", whose terms change size");
+        return lag ? Array(Window(b, static_cast<std::size_t>(lag)), beside.window[0].size)
+                   : *beside.term;
+    }
+
     // A term of the sequence a limit walks, read back from one of its own:
     // a local of its function, 't1_' the one before. Its own are its
     // arguments' values, not their names, which a call rebinds (C352).
     Code Earlier(const ParametersCall<Value>& call) {
+        // A window is set before the loop, where the limit has no term to read.
+        if (!limit_->windowing.empty())
+            throw Reason(limit_->windowing + "_(...): its terms before the walk read lim " +
+                         limit_->name + "'s own");
         const auto same = [&](const PExpression<Value>& argument, const std::string& parameter) {
             const Code code = Emit(argument), own = Array("arg_" + parameter, code.size);
             return std::equal(code.cells.begin(), code.cells.end(), own.cells.begin(),
@@ -3008,6 +3158,12 @@ private:
             own = own && same(argument, parameter);
         if (!own) throw Reason(limit_->name + "'s term read with other arguments than its own");
         const int lag = Lag(call.subexpr(), limit_->name);
+        // A walked term is computed before the limit's own.
+        for (auto beside = limit_->beside.rbegin(); lag == 0 && beside != limit_->beside.rend();
+             ++beside)
+            if (!beside->term)
+                throw Reason(beside->function->Name() + "_(...): reads lim " + limit_->name +
+                             "'s term at its index");
         if (lag == 0) throw Reason(limit_->name + " is defined by itself");
         if (!limit_->size.rows) throw Reason("a limit whose terms read back past its base clauses");
         limit_->depth = std::max(limit_->depth, lag);
@@ -5386,6 +5542,16 @@ private:
         std::vector<Temporary>*  based;               // its temporaries, the bases'
         std::vector<Temporary>*  iterated;            // and an iterate's
         int                      count = 0;
+        int                      first = 0;  // the index its walk starts at
+        std::string              windowing = {};  // the sequence whose window is being set
+        struct Beside {
+            const Reference<Value>* function;
+            std::string             args;
+            Expansion               expansion;
+            std::optional<Code>     term   = {};  // at k_, once compiled
+            std::vector<Code>       window = {};  // its terms before the walk, by lag
+        };
+        std::deque<Beside> beside = {};  // the sequences with parameters walked beside it
     };
     std::deque<std::vector<Temporary>> lists_;  // those, kept as a step's are
     static constexpr std::size_t       split_  = 16384;  // a part's bytes; see Split

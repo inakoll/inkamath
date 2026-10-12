@@ -210,7 +210,7 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brin
                          adjoint:sinabs adjoint:gate3 adjoint:under adjoint:aside gradmany:pair
                          gradmany:same gradmany:stair transformer:unseen:4 transformer:tuned:4
                          split:carried:4 split:apart:4 pendulum:one spin:twirl:20 iekf:walk:21
-                         tip:reach tip:rested)
+                         tip:reach tip:rested series:taylor series:wave series:later)
     string(REPLACE ":" ";" checked ${checked})
     list(POP_FRONT checked file instance count)
     set(name ${instance})
@@ -336,6 +336,16 @@ set_tests_properties(check_reach_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^reach: 100 steps from 0, against exact values\nreach\\.y: within 2\\.8e-14\nreach\\.d: within 0\n$")
 set_tests_properties(check_rested_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^rested: 100 steps from 0, against exact values\nrested\\.z: within 3\\.6e-15\n$")
+# Held to the interpreter within the packed form's bounds on the baseline,
+# but y's, whose walk stops on its own steps alone (DESIGN.md).
+set(series "100 steps from 0, against exact values until 0 and inexact ones from there")
+set_tests_properties(check_taylor_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^taylor: ${series}\ntaylor\\.R: within 4\\.4e-15${about}\ntaylor\\.y: within 1\\.1e-12${about}\n$")
+set_tests_properties(check_wave_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^wave: ${series}\nwave\\.z: within 2\\.1e-15${about}\n$")
+# later's as measured, as it has no packed form.
+set_tests_properties(check_later_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^later: ${series}\nlater\\.y: within 9\\.1e-13${about}\nlater\\.z: within 8\\.9e-16${about}\n$")
 add_test(NAME check_outside_2000 COMMAND check_outside_2000)
 set_tests_properties(check_outside_2000 PROPERTIES WILL_FAIL ON)
 add_test(NAME check_runaway_1000 COMMAND check_runaway_1000)

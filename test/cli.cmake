@@ -1684,6 +1684,73 @@ cannot compile d: d_(...): a term after the one being computed
 set(exit 1)
 check(compile_tip_refused)
 
+# A sequence with parameters read at lim's walking index (DESIGN.md,
+# compile/series.ink): the series compiled; their values, e^x's at -2 and 1,
+# Rodrigues' at n = 0 and 20 and the sine's at -5 and 1/2, by mpmath, each
+# held within 1e-9 as a limit stops within about 1e-10, and answered
+# inexactly; and what stays refused.
+set(series "${CMAKE_CURRENT_LIST_DIR}/compile/series.ink")
+set(args --compile ${series} -o series.h)
+check(compile_series)
+file(COPY ${series} DESTINATION "${OUT}")
+file(WRITE "${OUT}/walked.ink" [[
+>> use series
+use series
+
+>> far(A, B) = sum_(j=1)^3 sum_(k=1)^3 abs(A[j,k] - B[j,k])
+far(A, B) = sum_(j=1)^3 sum_(k=1)^3 abs(A[j,k] - B[j,k])
+
+>> abs(series.taylor.y_0 - 0.1353352832366126918939995) < 10^-9
+~1
+
+>> abs(series.taylor.y_30 - 2.718281828459045235360287) < 10^-9
+~1
+
+>> far(series.taylor.R_0, [0.91444306659383029383, -0.24282873813667482718, -0.32377165084889976958; 0.24282873813667482718, 0.96919950397377890578, -0.041067328034961458963; 0.32377165084889976958, -0.041067328034961458963, 0.94524356262005138805]) < 10^-9
+~1
+
+>> far(series.taylor.R_20, [0.92135885972975595941, -0.35488114287926168634, -0.15861029609137275277; 0.052899164241524570488, 0.51871622154610647161, -0.85330836157128965314; 0.38509678006967558967, 0.77781286691185537418, 0.49669670227043814024]) < 10^-9
+~1
+
+>> abs(series.wave.z_0 - 0.9589242746631384688931544) < 10^-9
+~1
+
+>> abs(series.wave.z_55 - 0.4794255386042030002732879) < 10^-9
+~1
+]])
+set(args --check walked.ink)
+set(stdout "walked.ink: 8 answers, each as recorded\n")
+check(compile_series_values)
+# a and b read t elsewhere than at the walking index less a constant; c and d
+# give it arguments that change as the walk does; e differentiates through it;
+# f's term reads the limit's own at its index, and g's its own with other
+# arguments; before the walk, j's term reads the limit's own, and so does
+# h's guard below its base.
+file(WRITE "${OUT}/walking.ink" "a_n = lim sa(x_n)\nb_n = lim sb(x_n)\nc_n = lim sc(x_n)\n"
+     "d_n = lim sd(x_n)\ne_n = lim se(x_n)\nf_n = lim sf(x_n)\ng_n = lim sg(x_n)\n"
+     "h_n = lim sh(x_n)\nq(x)_3 = x\nq(x)_k | k < 3 = sh(x)_(k-1)/2\nq(x)_k = q(x)_(k-1)*x/k\n"
+     "sh(x)_0 = 1\nsh(x)_1 = 1\nsh(x)_k = sh(x)_(k-1)/2 + q(x)_(k-1)/4\n"
+     "j_n = lim sj(x_n)\nr(x)_k = sj(x)_(k-1)/4 + t(x)_k\nsj(x)_0 = 1\nsj(x)_1 = 1\n"
+     "sj(x)_k = sj(x)_(k-1)/2 + r(x)_(k-1)/2\n"
+     "t(x)_0 = 1\nt(x)_k = t(x)_(k-1)*x/k\nu(x)_k = sf(x)_k/2\nw(x)_0 = x\n"
+     "w(x)_k = w(x/2)_(k-1)/k\nsa(x)_0 = 1\nsa(x)_k = sa(x)_(k-1) + t(x)_(2*k)\nsb(x)_0 = 1\n"
+     "sb(x)_k = sb(x)_(k-1) + t(x)_(k+1)\nsc(x)_0 = 1\n"
+     "sc(x)_k = sc(x)_(k-1) + t(sc(x)_(k-1))_k\nsd(x)_0 = 1\nsd(x)_k = sd(x)_(k-1) + t(k*x)_k\n"
+     "se(x)_0 = 1\nse(x)_k = se(x)_(k-1) + grad_(y = x) t(y)_k\nsf(x)_0 = 1\n"
+     "sf(x)_k = sf(x)_(k-1)/2 + u(x)_(k-1)\nsg(x)_0 = 0\nsg(x)_k = sg(x)_(k-1) + w(x)_k\n")
+set(args --compile walking.ink)
+set(walking ": a sequence with parameters read at an index that is not a constant\n")
+set(stdout "cannot compile a${walking}cannot compile b${walking}cannot compile c: t_(...): read at lim sc's index with arguments that change as it walks
+cannot compile d: t_(...): read at lim sd's index with arguments that change as it walks
+cannot compile e: t_(...): a derivative of a term lim se walks, for now
+cannot compile f: u_(...): reads lim sf's term at its index
+cannot compile g: w_(...): read at lim sg's index with other arguments in its own terms
+cannot compile h: q_(...): its terms before the walk read lim sh's own
+cannot compile j: r_(...): its terms before the walk read lim sj's own
+")
+set(exit 1)
+check(compile_series_refused)
+
 # A frequency response does not compile: a compiled value is real, so the
 # complex e^(i*w*n) is refused, not its abs.
 file(WRITE "${OUT}/response.ink" "y_n = abs(e^(i*w*n))\n")
