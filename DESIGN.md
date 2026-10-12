@@ -9865,6 +9865,9 @@ they asked, each with its smallest change.
   refused where its function form compiles; integration refused both, and
   forgetting it whenever a term is filled made the halving recursion with a
   base 12 times slower. Accepted.
+- **A halving recursion with a base runs away** at large indices:
+  `w(x/2)_(k-1)` read at 1000 takes over 60 s to compile, and read ahead
+  with a base at 1000, 35 s. Found reviewing *recursion from the tip*.
 - **A sequence with parameters read at `lim`'s walking index** is refused,
   which blocks a series or a matrix exponential written as on paper. Allow it.
 - **An unbounded sum is not compiled** as the limit of its partial sums.
