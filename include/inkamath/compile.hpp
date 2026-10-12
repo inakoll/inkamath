@@ -772,8 +772,8 @@ private:
         if (call.subexpr() && !lag)
             at = Whole(Known(call.subexpr(),
                              "a sequence with parameters read at an index that is not a constant"));
-        std::optional<Setting<std::vector<Temporary>*>> before;
-        if (lag) before.emplace(temporaries_, limit_->based);
+        std::optional<Setting<std::vector<Temporary>*>> based;
+        if (lag) based.emplace(temporaries_, limit_->based);
         ++calls_;
         Expansion expansion{{}, {}, outer ? outer->scope : function.home, outer, {}, {}};
         std::vector<Code> nans;
@@ -781,11 +781,11 @@ private:
         const auto bind = [&](const std::string& given, const PExpression<Value>& argument) {
             // A call's value, and its part, written at each reading, would
             // multiply at each call nested in it (C140): each is computed once.
-            const int called = calls_;
+            const int before = calls_;
             Code      value  = Emit(argument);
             bool      nan    = false;
             for (const Cell& c : value.cells) nan = nan || MayNan(c.text) || nans_.count(c.text);
-            if ((at || lag || calls_ != called) && !value.constant) value = SharedAll(value);
+            if ((at || lag || calls_ != before) && !value.constant) value = SharedAll(value);
             if (nan)
                 for (const Cell& c : nans.emplace_back(value).cells) nans_.insert(c.text);
             expansion.values.emplace(given, value);
@@ -805,7 +805,7 @@ private:
                 function.Divides(given, Value(value.size), definitions_);
         });
         Defaults(function, expansion);
-        before.reset();
+        based.reset();
         Code result = lag  ? Beside(name, function, expansion, *lag)
                       : at ? Term(name, function, expansion, *at)
                            : Memoized(name, function, expansion, outer);
