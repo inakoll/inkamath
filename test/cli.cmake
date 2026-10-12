@@ -236,10 +236,10 @@ check(missing_file)
 
 # What the compiler cannot express it refuses by name, and writes nothing
 # (DESIGN.md, phase 14, step 2).
-file(WRITE "${OUT}/model.ink" "a_0 = 1\na_n = a_(n-1) + !n\n")
+file(WRITE "${OUT}/model.ink" "a_0 = 1\na_n = a_(n-1) + i*n\n")
 file(REMOVE "${OUT}/model.h")
 set(args --compile model.ink -o model.h)
-set(stderr "inkamath: cannot compile a: a factorial\n")
+set(stderr "inkamath: cannot compile a: a complex number\n")
 set(exit 1)
 check(compile_refused)
 if(EXISTS "${OUT}/model.h")
@@ -253,9 +253,9 @@ check(compile_usage)
 
 # Without -o, every definition that would not compile, and why, and nothing
 # written: one that reads a refused definition is refused in turn.
-file(WRITE "${OUT}/refused.ink" "sq(x) = x^2\na_0 = 1\na_n = a_(n-1) + !n\nb_n = a_n + 1\nc_n = sq(u_n)\ns(g = 1, u_n) = { v_0 = 0\n v_n = g*v_(n-1) + u_n }\nd_n = s(g = n, u_n = c_n).v_n\n")
+file(WRITE "${OUT}/refused.ink" "sq(x) = x^2\na_0 = 1\na_n = a_(n-1) + i*n\nb_n = a_n + 1\nc_n = sq(u_n)\ns(g = 1, u_n) = { v_0 = 0\n v_n = g*v_(n-1) + u_n }\nd_n = s(g = n, u_n = c_n).v_n\n")
 set(args --compile refused.ink)
-set(stdout "cannot compile a: a factorial\ncannot compile b: a, which cannot be compiled\ncannot compile d: an instance of s, which keeps a history, made anew at each step\n")
+set(stdout "cannot compile a: a complex number\ncannot compile b: a, which cannot be compiled\ncannot compile d: an instance of s, which keeps a history, made anew at each step\n")
 set(stderr "")
 set(exit 1)
 check(compile_refusals)
