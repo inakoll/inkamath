@@ -3979,6 +3979,8 @@ private:
             sequence.own = own->second;
             sequence.reads.erase(own);
         }
+        if (const auto own = sequence.deferred.find(name); own != sequence.deferred.end())
+            sequence.own.insert(own->second.begin(), own->second.end());
         for (const auto& [read, offsets] : sequence.samples)
             for (const int b : offsets) sequence.reads[read].insert(phase - b);
     }
@@ -4417,12 +4419,26 @@ private:
     // no history gives and nothing keeps.
     void Cover(const std::string& name, const Sequence& reader, const Reads& reads, int until,
                const std::vector<Check>& kept = {}) {
+        const auto kept_at = [&](int n) {
+            return std::ranges::any_of(kept, [&](const Check& c) { return Decides(c, n); });
+        };
         for (const auto& [read, lags] : reads) {
+            // A slow one's own, in its terms, before those init folds (C343).
+            if (&sequences_.at(read) == &reader && reader.period > 1 && Recurrent(read)) {
+                for (const int lag : lags)
+                    for (int m = reader.first; m - lag < reader.first - reader.filled; ++m)
+                        if (!kept_at(m))
+                            throw Refusal(name, name + "_" + std::to_string(m) + " reads " + read +
+                                                    "_" + std::to_string(m - lag) +
+                                                    ", before the stream, where " +
+                                                    Unfolded(read, m - lag));
+                continue;
+            }
             if (!Historied(read)) continue;
             for (const int lag : lags) {
                 for (int n = reader.start; n < std::min(until, earliest_ + lag); ++n) {
                     if (!Ticks(reader, n) || reader.bases.count(n) || Folded(read, n - lag) ||
-                        std::ranges::any_of(kept, [&](const Check& c) { return Decides(c, n); }))
+                        kept_at(n))
                         continue;
                     throw Refusal(
                         name, name + "_" + std::to_string(Floor(n - reader.phase, reader.period)) +
