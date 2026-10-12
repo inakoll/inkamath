@@ -208,6 +208,10 @@ private:
     struct Undefined : Reason {
         using Reason::Reason;
     };
+    // A depth passed, which is the read's, not the term's it reached.
+    struct Deep : Reason {
+        using Reason::Reason;
+    };
     // The interpreter's own refusal, as a reason the compiler gives.
     template <typename F>
     static auto Reasoned(F f) {
@@ -590,8 +594,8 @@ private:
                   std::exchange(scope_, expansion.scope), std::exchange(index_, std::string()),
                   std::exchange(places_, {})};
         if (++expanded_ > max_expanded)
-            throw Reason("nested " + std::to_string(max_expanded) +
-                         " deep, which a recursion its guards do not end would pass");
+            throw Deep("nested " + std::to_string(max_expanded) +
+                       " deep, which a recursion its guards do not end would pass");
         const Setting<bool> unguarded(guarding_, false);
         return body();
     }
@@ -859,27 +863,31 @@ private:
     // Filled from the lowest base, by the interpreter's stride (Reference::Filled),
     // each term once for its arguments' code, shape and exact value (C187),
     // and a temporary once a term reads it; one the fill cannot compute is
-    // refused where a read reaches it, as the interpreter's recursion is.
+    // refused where a read reaches it, as the interpreter's recursion is. A
+    // term after the one being computed is computed where it is read, as a
+    // call is, so a recursion from the tip unrolls where its guards fold.
     Code Term(const std::string& name, const Reference<Value>& function, Expansion& expansion,
               int k) {
         const std::string args = Given(expansion);
         int& computing = computing_.try_emplace({&function, args}, std::numeric_limits<int>::max())
                              .first->second;
-        if (k >= computing)
-            throw Reason(k == computing ? name + " is defined by itself"
-                                        : name + "_(...): a term after the one being computed");
+        if (k == computing) throw Reason(name + " is defined by itself");
         const auto term = [&](int j, bool inner) {
             const std::tuple<const void*, const void*, std::string, int> key{temporaries_,
                                                                              &function, args, j};
-            if (const auto failed = failed_.find(key); failed != failed_.end())
-                std::rethrow_exception(failed->second);
+            // A depth passed is the read's: it fails again as deep, not nearer the top.
+            if (const auto failed = failed_.find(key);
+                failed != failed_.end() && expanded_ >= failed->second.second)
+                std::rethrow_exception(failed->second.first);
             auto found = terms_.find(key);
             if (found == terms_.end()) try {
                     const Setting<int> within(computing, j), deeper(terming_, terming_ + 1);
                     const Code code = Inside(expansion, [&] { return Chained(name, function, j); });
                     found           = terms_.insert({key, {code, false}}).first;
-                } catch (const Reason&) {
-                    failed_.try_emplace(key, std::current_exception());
+                    failed_.erase(key);
+                } catch (const Reason& reason) {
+                    const int deep = dynamic_cast<const Deep*>(&reason) ? expanded_ : 0;
+                    failed_.insert_or_assign(key, std::pair(std::current_exception(), deep));
                     throw;
                 }
             if (inner && !found->second.second)
@@ -888,7 +896,7 @@ private:
         };
         const Clause<Value>* lowest = function.EndBase(true);
         const long long      distance =
-            lowest ? static_cast<long long>(k) - lowest->parameters.index() : 0;
+            lowest && k < computing ? static_cast<long long>(k) - lowest->parameters.index() : 0;
         if (distance > max_terms)
             throw Reason(name + "_" + std::to_string(k) + " is " + std::to_string(distance) +
                          " terms from its base, and a step writes out at most " +
@@ -5322,10 +5330,12 @@ private:
     std::map<std::pair<const void*, std::string>, std::size_t> declared_;  // each value's place
     // Terms of sequences with parameters, by the list of temporaries they are
     // in, the definition, its arguments' code and the index, and why the fill
-    // could not compute those it could not; and the index of the term of each
-    // being computed.
+    // could not compute those it could not, and how deep where a depth passed;
+    // and the index of the term of each being computed.
     std::map<std::tuple<const void*, const void*, std::string, int>, std::pair<Code, bool>> terms_;
-    std::map<std::tuple<const void*, const void*, std::string, int>, std::exception_ptr>    failed_;
+    std::map<std::tuple<const void*, const void*, std::string, int>,
+             std::pair<std::exception_ptr, int>>
+                                                       failed_;
     std::map<std::pair<const void*, std::string>, int> computing_;
     Memo                                               memo_;  // the loop's, if one binds places
     int                                                situated_ = 0;        // terms read, counted

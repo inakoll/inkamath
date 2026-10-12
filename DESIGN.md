@@ -3109,17 +3109,16 @@ that exploring seven domains asked of the interpreter, by how many asked.
   parameters read at an index that is not a constant", as a sum's bounds are;
   past 1000 terms, `r_1001 is 1001 terms from its base, and a step writes
   out at most 1000`; below the lowest base, in the interpreter's words, `q has
-  no clause for index -1`; a term reading itself, `z is defined by itself`,
-  and one ahead of it, `p_(...): a term after the one being computed`, in a
-  limit's words, where the interpreter runs out of depth; reads nested past
-  64, in a call's; an index that is not whole, in the interpreter's; and a
-  read in a limit's terms, "a sequence with parameters in a limit's terms,
-  for now". A limit's function has no temporaries, so its terms would be
-  written whole, K deep and for `fm` doubling at each. *Temporaries in a
-  limit's function* is the same mechanism, a limit's own list, and lifts
-  that refusal when it lands: Newton's shooting under `lim` waits for it,
-  while shooting by a fixed number of secant steps is two nested reads and
-  compiles now.
+  no clause for index -1`; a term reading itself, `z is defined by itself`;
+  reads nested past 64, in a call's, as a read ahead no guard ends, `p`,
+  where the interpreter runs out of depth (*Recursion from the tip*); an
+  index that is not whole, in the interpreter's; and a read in a limit's
+  terms, "a sequence with parameters in a limit's terms, for now". A limit's
+  function has no temporaries, so its terms would be written whole, K deep
+  and for `fm` doubling at each. *Temporaries in a limit's function* is the
+  same mechanism, a limit's own list, and lifts that refusal when it lands:
+  Newton's shooting under `lim` waits for it, while shooting by a fixed
+  number of secant steps is two nested reads and compiles now.
 
   Rejected. The plan's loop, a function of the header's beside `lim`'s, the
   terms in rolling locals and K a counter: its one gain is a header of
@@ -9738,7 +9737,7 @@ After exploring rotations and rigid bodies (Sola 2017; Featherstone 2008)
 and transcribing the contact-aided invariant EKF (Hartley et al. 2020): what
 they asked, each with its smallest change.
 
-- **Recursion from the tip**, a sequence with parameters read ahead to a
+- `[done]` **Recursion from the tip**, a sequence with parameters read ahead to a
   guard. Featherstone writes each backward pass over a chain as a sequence
   over the link index read *ahead*, the force on link i from link i+1's
   (RNEA, sec. 5.3 and table 5.1), the composite inertias (CRBA, table 6.2)
@@ -9845,6 +9844,21 @@ they asked, each with its smallest change.
   into part 3 beside `compile_iterates_refused`, and `cli_spec` goes. No
   transcript in `test/data/spec`: the language does not change, the
   interpreter answers all of it today.
+
+  Built as specified, departing in two places the spec review ruled on. The
+  depth's refusal drops "calls", "nested 64 deep, which a recursion its
+  guards do not end would pass", since a term read ahead is no call written;
+  it names no definition, the one the depth is passed in being often not
+  the recursion but one it calls, as in the arm. And a depth passed is not the
+  term's failure: the fill's first term met it beside a base clause, and so
+  `h(x)_0 = x` with its tip at 70, read at 10, was refused where its
+  function form compiles. It is kept with the depth it was met at, failing
+  again as deep and tried again nearer the top, `compile_tip_refused`'s `e`
+  and `f` holding it; a read at 1000 with its tip at 1060 compiles in 2.3
+  s, each term of the fill trying its chain. No golden, expected header or
+  report moves, and the 217 check programs are the baseline's byte for
+  byte; at 60 links the headers are the prototype's. 10 lines of
+  `compile.hpp`, 24 added and 14 removed, 4 of them comment; 17,795 in all.
 - **A sequence with parameters read at `lim`'s walking index** is refused,
   which blocks a series or a matrix exponential written as on paper. Allow it.
 - **`f(x)_K` for a geometric integrator.** README gives the fixed-count read
