@@ -3807,8 +3807,8 @@ that exploring seven domains asked of the interpreter, by how many asked.
   `test/data/spec`.
 
   Settled: `steer`'s extra line, a temporary written beside the text it
-  holds, is not fixed here; it closes into *Shared at every value written
-  twice*, below, for steps and limits alike.
+  holds, is not fixed here, nor by *Shared at every value written twice*,
+  below, which shares a step's lists and not a limit's.
 
   Built as specified: every case of `implicit.ink` passes as written, its
   five check programs wired and its cli cases in `test/cli.cmake`, the two
