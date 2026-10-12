@@ -121,6 +121,10 @@ with how to call it: the step's inputs, what each field holds after a step,
 and the parameters with their values. A parameter read where the step
 needs a constant, a size or an exponent, is compiled in instead, as the
 header says.
+A step too long for a compiler to optimise as one function is written as
+several, and what one computes and a later one reads is kept on the step's
+stack: about 256 KB for one training a transformer's 13 weights at once, which
+a thread with a small stack must allow for.
 `test/compile/pid.ink` is a PID controller, and `test/compile/expected/pid.h`
 is what it compiles to; `test/compile/kalman.ink` is a Kalman filter over
 matrices.
@@ -194,6 +198,8 @@ every cell, which its first comment says. Such a header is not to be built
 with `-ffinite-math-only`, which `-ffast-math` implies: GCC removes the tests
 that carry NaN, and Clang warns of each NaN the header writes.
 `test/compile/nan.ink` has an instance of each.
+Clang 19 at -O2 miscompiles some headers' NaN tests; build with
+`-fno-slp-vectorize`.
 
 A sequence that reads another at `x_(2*m)` samples it, and is computed every
 second step: its terms are the input's at another rate, and `y_(floor(n/2))`

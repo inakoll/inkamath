@@ -1,4 +1,4 @@
-# test/data/transformer_train.ink's transformer, forward only, its weights
+# test/data/transformer_train.ink's transformer, its weights
 # those 1500 steps of an exploration reached on batches of four, rounded to
 # thousandths: in NumPy they reverse every one of its 512 held-out
 # sequences, each logit chosen at least 3.1 above the next. 'unseen' reads
@@ -48,3 +48,26 @@ inf(E = tE, P = tP, Q = tQ, K = tK, Vv = tVv, O = tO, W1 = tW1, c1 = tc1, W2 = t
 }
 oh(k)[b<=1, t<=nt, v<=nv] = Te[k+1, t] == v
 unseen = inf(X_n = oh(n))
+
+# 'tune', U trained beneath those weights by grad of the cross-entropy of a
+# reversal, a step's sequence the one 'unseen' reads and its target that
+# sequence reversed. U_0 is exact and every later U reads exp's and log's
+# doubles, so its terms are within unseen's 1e-14 of the interpreter's:
+#
+#     tuned: 4 steps from 0, against exact values until 1 and inexact ones from there
+#     tuned.U: within <e>; the interpreter's terms about <e> from the exact ones
+#
+# Its step whole is one function of 451,298 bytes, the forward pass and the
+# sweep back to U, whose check program GCC 13 built at -O2 in 26 s. Split into
+# functions (DESIGN.md, a compiled step split into functions), as unseen's of
+# 272,495 bytes, it builds in 13 s: 'inkamath --compile transformer.ink tune
+# -o tune.h' and its 'inf -o inf.h' write no function of 32,768 bytes or
+# more, the init's weights among them.
+lse(z)[b,t] = log(sum_(v=1)^nv exp(z[b,t,v]))
+ce(z[b<=p, t<=q, v<=w], y) = sum_(b=1)^p sum_(t=1)^q (lse(z)[b,t] - sum_(v=1)^w y[b,t,v]*z[b,t,v])/(p*q)
+tune(eta = 1/10, E = tE, P = tP, Q = tQ, K = tK, Vv = tVv, O = tO, W1 = tW1, c1 = tc1, W2 = tW2, c2 = tc2, G = tG, Bb = tBb, X_n[b<=1, t<=nt, v<=nv], Y_n[b<=1, t<=nt, v<=nv]) = {
+    U_0 = tU
+    U_n = U_(n-1) - eta*grad_(A = U_(n-1)) ce(fwd(X_n, E, P, Q, K, Vv, O, W1, c1, W2, c2, G, Bb, A), Y_n)
+}
+rv(k)[b<=1, t<=nt, v<=nv] = Te[k+1, nt+1-t] == v
+tuned = tune(X_n = oh(n), Y_n = rv(n))
