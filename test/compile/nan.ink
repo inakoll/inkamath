@@ -14,8 +14,8 @@
 # a term before its start; 'lap' a guard inside a limit's walk reading the
 # same as 'sign' from step 2; 'trim' a guard computed in update reading it at
 # the default of its parameter, so at every step; 'any' an 'or' whose right
-# side reads it from step 4. Today each parts where the failure was made a
-# value:
+# side reads it from step 4. Before, each parted where the failure was made
+# a value:
 #
 #     run.high: 0 at 8, where the interpreter gives none: p did not converge within 100 terms (last term 1)
 #     sign.on: 0 at 4, where the interpreter gives none: no clause of r applies
@@ -31,8 +31,8 @@
 #     any.o: 0 at 4, where the interpreter gives none: no clause of r applies
 #
 # 'pair's program, built with -fsanitize=float-cast-overflow, stops at 0,
-# where its 'and' is NaN and the clause kept is an int (C90). Each is to
-# report:
+# where its 'and' is NaN and the clause kept is an int (C90). Each
+# reports:
 #
 #     run: 100 steps from 0, against exact values until 0 and inexact ones from there
 #     run.y: within <x>
