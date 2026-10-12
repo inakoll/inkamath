@@ -205,7 +205,7 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brin
                          steps:runaway:150 steps:runaway:1000 steps:horizon:1000
                          robertson:inside:2000 robertson:outside:2000 robertson:rober
                          implicit:kinetic implicit:jacobian implicit:doubling implicit:inset
-                         implicit:layered tensorgrad:attend tensorgrad:small
+                         implicit:layered implicit:renamed tensorgrad:attend tensorgrad:small
                          tensorgrad:saliency:3 adjoint:fit4 adjoint:token
                          adjoint:sinabs adjoint:gate3 adjoint:under adjoint:aside gradmany:pair
                          gradmany:same gradmany:stair transformer:unseen:4 transformer:tuned:4
@@ -316,6 +316,8 @@ set_tests_properties(check_inset_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^inset: ${implicit}\ninset\\.h: within 0${about}\n$")
 set_tests_properties(check_layered_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^layered: ${implicit}\nlayered\\.q: within 0${about}\n$")
+set_tests_properties(check_renamed_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^renamed: ${implicit}\nrenamed\\.z: within 0${about}\n$")
 # Rigid bodies and an invariant filter, from two explorations: a double
 # pendulum by the RNEA, a rational rotation's powers, and the contact-aided
 # RIEKF of Hartley et al. (2020) on 21 steps of a simulated walk.
