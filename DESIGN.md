@@ -4302,7 +4302,7 @@ that exploring seven domains asked of the interpreter, by how many asked.
     loop, which this names.
   - **Left to the C compiler with an attribute**, `pure` or `const`: not
     C11, MSVC has neither, and a limit of matrices writes its answer
-    through a pointer, which `const` forbids.
+    through a pointer, which both forbid.
   - **A pass over the iterate's list when the function is printed**,
     moving what does not walk: it must keep the order of what reads what,
     and finds nothing a base already declared.
