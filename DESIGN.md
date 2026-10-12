@@ -3932,7 +3932,7 @@ that exploring seven domains asked of the interpreter, by how many asked.
   ...` eight deep, each line up to 12,358 bytes. Measured at 919a3e8,
   RelWithDebInfo, the step alone built at -O2 by GCC 13 and Clang 18,
   each capped at 10 minutes and 6 GB, a condition's text being each run
-  of `tN_`, `tN_ != 0`, brackets, `||` and `&&` holding one of the last
+  of `tN_`, brackets, `tN_ != 0`, `||` and `&&` holding one of the last
   three:
   - the transformer's one gradient, W^Q's through both blocks at a batch
     of 1, `tq`, 3,263,680 bytes, 2,571,936 of them conditions, `!= 0`
