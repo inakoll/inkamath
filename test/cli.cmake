@@ -49,9 +49,9 @@ endfunction()
 set(inputs "${CMAKE_CURRENT_LIST_DIR}/compile/inputs.ink")
 
 # Specified, not yet built (DESIGN.md, recursion from the tip): compile/tip.ink's
-# arm, its backward pass a sequence read ahead to a guard at the tip, compiled;
-# its values at 1 and 5 Euler-Lagrange's, worked by sympy; and the read-aheads
-# that stay refused, in the words of the same recursion written as a call.
+# arm, its backward pass a sequence read ahead to a guard at the tip, compiled,
+# and the read-aheads that stay refused, in the words of the same recursion
+# written as a call.
 set(tip "${CMAKE_CURRENT_LIST_DIR}/compile/tip.ink")
 if(PART STREQUAL "spec")
     file(REMOVE "${OUT}/tip.h")
@@ -60,20 +60,6 @@ if(PART STREQUAL "spec")
     if(NOT EXISTS "${OUT}/tip.h")
         message(SEND_ERROR "compile_tip: tip.h not written")
     endif()
-    file(COPY ${tip} DESTINATION "${OUT}")
-    file(WRITE "${OUT}/values.ink" [[
->> use tip
-use tip
-
->> tip.reach.y_1 == [61421137/1599000; 11300867/1199250; 146362649/23985000]
-1
-
->> tip.reach.y_5 == [441421/23400; 427261/72150; -151031/57720]
-1
-]])
-    set(args --check values.ink)
-    set(stdout "values.ink: 3 answers, each as recorded\n")
-    check(compile_tip_values)
     # a reads past the tip, b's guard does not fold, c has no tip, d reads
     # its own stream ahead.
     file(WRITE "${OUT}/ahead.ink" "a_n = up(x_n)_5\nb_n = w(x_n)_1\nc_n = p(x_n)_2\nd_n = d_(n+1)\nup(x)_k | k == 3 = x\nup(x)_k = up(x)_(k+1)/2\nw(x)_k | x > k = x\nw(x)_k = w(x)_(k+1)/2\np(x)_0 = x\np(x)_k = p(x)_(k+1)/2\n")
@@ -1670,6 +1656,23 @@ cannot compile u: a sequence with parameters by cells, for now
 ")
 set(exit 1)
 check(compile_iterates_refused)
+
+# Recursion from the tip (DESIGN.md, compile/tip.ink): the arm's values at 1
+# and 5 are Euler-Lagrange's, worked by sympy.
+file(COPY ${tip} DESTINATION "${OUT}")
+file(WRITE "${OUT}/values.ink" [[
+>> use tip
+use tip
+
+>> tip.reach.y_1 == [61421137/1599000; 11300867/1199250; 146362649/23985000]
+1
+
+>> tip.reach.y_5 == [441421/23400; 427261/72150; -151031/57720]
+1
+]])
+set(args --check values.ink)
+set(stdout "values.ink: 3 answers, each as recorded\n")
+check(compile_tip_values)
 
 # A frequency response does not compile: a compiled value is real, so the
 # complex e^(i*w*n) is refused, not its abs.
