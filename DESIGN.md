@@ -9929,7 +9929,10 @@ they asked, each with its smallest change.
     it has a base clause, f's `u(x)_0 = 1/2`; and a walked term reading its
     own with other arguments, `w(x)_k = w(x/2)_(k-1)/k`, "w_(...): read at
     lim sg's index with other arguments in its own terms", each walked in
-    turn without end.
+    turn without end; and a window's term reading the limit's own, "r_(...):
+    its terms before the walk read lim sj's own", which the interpreter
+    answers from the limit's bases but the window, set before the loop,
+    cannot read.
   - **--float and --check**: nothing; a walked term is a local of the
     limit's function.
 
@@ -10025,8 +10028,8 @@ they asked, each with its smallest change.
   function that is not a sequence, or a sequence by cells, read at the
   walking index keeps today's words. No golden, expected header
   or report moves, and the 222 check programs are the baseline's byte for
-  byte. 160 lines of `compile.hpp`, 195 added and 35 removed, 17 of them
-  comment; 17,998 lines in all, for 17,838 at 87f2c61. Re-taken, the
+  byte. 166 lines of `compile.hpp`, 200 added and 34 removed, 18 of them
+  comment; 18,004 lines in all, for 17,838 at 87f2c61. Re-taken, the
   headers and the RIEKF's check program byte for byte the prototype's, and
   a step 33.3 and 87.5 ns with GCC 13, 33.6 and 62.6 with Clang 18, for e^x;
   210 and 496, 208 and 772, for the rotation: within 10% of the

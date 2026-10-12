@@ -3111,6 +3111,7 @@ private:
         const Clause<Value>* const lowest = function.EndBase(true);
         while (beside.window.size() < static_cast<std::size_t>(lag)) {
             const Setting<std::vector<Temporary>*> before(temporaries_, walked.based);
+            const Setting<std::string>             windowing(walked.windowing, name);
             const int  at    = walked.first - 1 - static_cast<int>(beside.window.size());
             const bool below = lowest && at < lowest->parameters.index();
             Code       term;
@@ -3139,6 +3140,10 @@ private:
     // a local of its function, 't1_' the one before. Its own are its
     // arguments' values, not their names, which a call rebinds (C352).
     Code Earlier(const ParametersCall<Value>& call) {
+        // A window is set before the loop, where the limit has no term to read.
+        if (!limit_->windowing.empty())
+            throw Reason(limit_->windowing + "_(...): its terms before the walk read lim " +
+                         limit_->name + "'s own");
         const auto same = [&](const PExpression<Value>& argument, const std::string& parameter) {
             const Code code = Emit(argument), own = Array("arg_" + parameter, code.size);
             return std::equal(code.cells.begin(), code.cells.end(), own.cells.begin(),
@@ -5538,6 +5543,7 @@ private:
         std::vector<Temporary>*  iterated;            // and an iterate's
         int                      count = 0;
         int                      first = 0;  // the index its walk starts at
+        std::string              windowing = {};  // the sequence whose window is being set
         struct Beside {
             const Reference<Value>* function;
             std::string             args;
