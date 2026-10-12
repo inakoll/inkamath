@@ -9868,8 +9868,142 @@ they asked, each with its smallest change.
 - **A halving recursion with a base runs away** at large indices:
   `w(x/2)_(k-1)` read at 1000 takes over 60 s to compile, and read ahead
   with a base at 1000, 35 s. Found reviewing *recursion from the tip*.
-- **A sequence with parameters read at `lim`'s walking index** is refused,
-  which blocks a series or a matrix exponential written as on paper. Allow it.
+- **A sequence with parameters read at `lim`'s walking index**, a series
+  written as on paper: its partial sums under `lim`, its term a sequence of
+  its own.
+
+  ```
+  t(x)_0 = 1
+  t(x)_k = t(x)_(k-1)*x/k
+  s(x)_0 = 1
+  s(x)_k = s(x)_(k-1) + t(x)_k
+  ```
+
+  The interpreter answers `lim s(x)`. `--compile` refuses it, "a sequence
+  with parameters read at an index that is not a constant": `Limit` walks one
+  sequence, its own terms behind read from its window `t1_` (`Earlier`), and
+  any other sequence with parameters is a `Call`, whose index must fold
+  (*A sequence with parameters read at a constant index, compiled*); k is
+  the loop's `k_`. Found by the rotations exploration, whose exponential map
+  packs `[sum, term]` into one block term, and by the RIEKF's, which writes
+  (48) with the term as a difference of partial sums.
+
+  Decided:
+  - **Walked beside the limit's own, in its loop.** A read `t(args)_(k-c)`,
+    k the walking index less a constant however written (`Lag`, so through
+    a function's parameter too), makes t a sequence of the limit's
+    function: its term at `k_` an iterate's temporary, computed before the
+    limit's own term, and its c terms before it a window, `w0_1_`,
+    `w0_2_`, ..., set before the loop to its terms at the walk's first index
+    less 1, 2, ... by the constant read (`Term`), and moved on after the
+    stopping test as `t1_` is. One for each sequence and arguments, so `t`
+    read twice is one term; one that reads another walks it too, in the
+    order read.
+  - **Its arguments computed before the loop**, among the bases'
+    temporaries, as its window's first terms read them there: the one value
+    the source writes in the iterate and the function computes outside it,
+    which *Temporaries in a limit's function* declined for others. An
+    argument that reads the walking index, the limit's terms or a
+    walked term is refused, "t_(...): read at lim s's index with arguments
+    that change as it walks", the interpreter computing such a term from its
+    base at each iterate; one carrying a part under grad, "a derivative of a
+    limit, for now", as the limit's own argument is.
+  - **Its clauses the limit's own way**, one `Iterate` for both: its general
+    clauses a chain at `k_`, and a base clause at or past the walk's first
+    index `k_ == b` before them, which the sine from its first term at 1,
+    beside partial sums from 0, needs. A window's term below its lowest base
+    is NaN, as where no clause applies (C86): a base clause taken first never
+    reads it, and read it makes the limit NaN where the interpreter has no
+    clause. A lowest base above the walk's first index is refused in the
+    interpreter's words, "p has no clause for index 1".
+  - **The stopping rule is the limit's own sequence's**, unchanged: a walked
+    term's steps are not measured, as the interpreter measures only the
+    sequence under `lim`. The packed form measures both and walks further.
+  - **What stays refused**: an index that is not the walking index less a
+    constant, `t(x)_(2*k)`, and a read ahead, `t(x)_(k+1)`, in today's words;
+    and a walked term reading the limit's own at its index, "sg is defined
+    by itself" since the walked term is computed first, where the
+    interpreter answers: the limit of the other sequence compiles.
+  - **--float and --check**: nothing; a walked term is a local of the
+    limit's function.
+
+  Found writing it, a defect of its own, fixed first with its test as C330
+  was: `Earlier` takes a read of the limit's own sequence for its window by
+  the names of its arguments, not their values, so through a function's
+  parameter of the same name another term is read as its own. With `g(x, j)
+  = s(x)_(j-1)`, `s(x)_0 = x` and `s(x)_k = g(2*x, k)/2 + 1/2^k`, `lim
+  s(3)` is 3 and compiled 7.6e-11; a walked term's clause reaches it too,
+  `u(x)_k = s(x)_(k-1)/4` read as `u(2*x)_k`, 3 and 9.6e-11. The arguments'
+  code compared with the function's `arg_` arrays fixes both.
+
+  What moves, on a prototype, discarded: nothing. No golden, no header of
+  `test/compile/expected` nor the prelude's, no excerpt in `test/cli.cmake`,
+  and the 221 check programs of 0f22401 byte for byte.
+
+  Measured on the prototype, a step the median of nine runs at -O2 on 4
+  cores at a load under 1, inputs x in [-1, 1):
+  - the series of e^x, written as on paper and packed (`[sum, term]`, as
+    the rotations exploration had it): headers 2,905 and 3,503 bytes, a
+    step 37.5 and 86.4 ns with GCC 13, 30.9 and 61.5 with Clang 18;
+  - the exponential of a rotation vector's hat, `w = [x; -1/3; 1/4]`, the
+    same two ways: headers 6,089 and 7,843 bytes, a step 190 and 458 ns with
+    GCC 13, 176 and 809 with Clang 18;
+  - their doubles part where the packed form walks further, by at most
+    6.5e-12 in both. Each held by `--check` to the interpreter's limit as
+    it is written, on `series.ink`'s inputs, both forms are within the same
+    bound to the digit shown but y, 1.1e-12 as on paper and 9.1e-13 packed;
+  - the RIEKF's (48) written as on paper, beside `limv.ink`'s workaround:
+    its check program 690,109 bytes for 690,366, every bound of its 5
+    steps' report the same. Smith's doubling, `blocks.ink`'s `smith`,
+    written as two sequences rather than packed, compiles too.
+
+  Rejected:
+  - **The compiler packing them**, the walked terms beside the limit's own
+    in one term: the stopping rule would measure them, which the
+    interpreter does not.
+  - **Arguments only the limit's own**, as `Earlier` asks of its own
+    reads: some 12 lines fewer, but `t(x^2)_k` and `T(hat(w))_k` refused,
+    which do not change as the walk does and which the interpreter answers.
+  - **The term computed from its base at each iterate**, as a constant read
+    is: a walk inside the walk, its terms quadratic in the iterates, for
+    what a window keeps.
+  - **Refusing a window's term below the lowest base**: the sine from 1
+    refused, whose window before the walk no iterate reads.
+  - **Ordering a walked term after the limit's own** where it reads it at
+    its index: a sort by what reads what, for a case whose other limit
+    compiles.
+
+  It prepares *An unbounded sum compiled*: `Iterate` compiles any walked
+  sequence's term at `k_`, the limit's own included, and a walked term is
+  computed in the loop and not measured. A sum `sum_(k=a) f(k)` is a walk
+  whose own term is its partial sum, `t1_` plus the summand at `k_`, and a
+  summand that is a sequence with parameters read at k is this entry's
+  walked term.
+
+  About 120 lines of `compile.hpp`: the prototype's 156 added and 34
+  removed, 12 of them comment, 22 the limit's general clause moved into
+  `Iterate`. 17,835 lines at 0f22401, by `wc -l include/inkamath/*.hpp
+  src/*`, 17,957 on the prototype; past 1.5, at 183 net, the
+  implementation stops and reports.
+
+  Specified in `test/compile/series.ink`: e^x and the exponential of a
+  rotation vector's hat, `taylor`, and the sine from its first term at 1,
+  `wave`, each held by `--check` within the bounds measured above: R 4.4e-15
+  and y 1.1e-12, z 2.1e-15, the packed forms' on the baseline but y's.
+  Their values, e^x's at -2 and 1, Rodrigues' formula's at two rotations and
+  the sine's at -5 and 1/2, by mpmath, within 1e-9 as a limit stops within
+  about 1e-10: `compile_series_values` in `test/cli.cmake`'s part 3, which
+  the interpreter answers now. Until built, `test/CMakeLists.txt` writes
+  the check programs through `cli.cmake`'s `spec_program` part, one saying
+  it is refused while `--check` refuses in today's words, which skips its
+  report, any other refusal failing the build; and `cli.cmake`'s `spec`
+  part, run by `cli_spec`, skipped while `--compile` refuses the three
+  series in today's words and only then: the series compiled, and
+  `compile_series_refused`, the refusals above. With the implementation,
+  `series:taylor` and `series:wave` join the check list, the `spec_program`
+  part goes, the `spec` part's cases move into part 3, `cli_spec` goes, and
+  README's paragraph on compiled limits names `series.ink`.
+  No transcript in `test/data/spec`: the language does not change.
 - **An unbounded sum is not compiled** as the limit of its partial sums.
   Compile it.
 - **Products by a literal 0.0 kept for NaN, and block-sparse matrices

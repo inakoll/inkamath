@@ -48,6 +48,58 @@ endfunction()
 # Read by cases in every part.
 set(inputs "${CMAKE_CURRENT_LIST_DIR}/compile/inputs.ink")
 
+# Specified, not yet built (DESIGN.md, a sequence with parameters read at
+# lim's walking index): compile/series.ink's series, each term walked beside
+# its limit, compiled, and what stays refused. Skipped while the series are
+# refused in today's words, and only then.
+set(series "${CMAKE_CURRENT_LIST_DIR}/compile/series.ink")
+set(walking ": a sequence with parameters read at an index that is not a constant\n")
+if(PART STREQUAL "spec")
+    execute_process(COMMAND "${EXE}" --compile ${series} RESULT_VARIABLE refused
+                    OUTPUT_VARIABLE why ERROR_QUIET)
+    if(refused AND why STREQUAL "cannot compile taylor.R${walking}cannot compile taylor.y${walking}cannot compile wave.z${walking}")
+        message("series: refused as specified")
+        return()
+    endif()
+    set(args --compile ${series} -o series.h)
+    check(compile_series)
+    # a and b read t elsewhere than at the walking index less a constant; c
+    # and d give it arguments that change as the walk does; e
+    # differentiates through it; f has no term where the walk starts; g's
+    # term reads the limit's own at its index.
+    file(WRITE "${OUT}/walking.ink" "a_n = lim sa(x_n)\nb_n = lim sb(x_n)\nc_n = lim sc(x_n)\n"
+         "d_n = lim sd(x_n)\ne_n = lim se(x_n)\nf_n = lim sf(x_n)\ng_n = lim sg(x_n)\n"
+         "t(x)_0 = 1\nt(x)_k = t(x)_(k-1)*x/k\np(x)_3 = 1\np(x)_k = p(x)_(k-1)/2\n"
+         "u(x)_k = sg(x)_k/2\nsa(x)_0 = 1\nsa(x)_k = sa(x)_(k-1) + t(x)_(2*k)\nsb(x)_0 = 1\n"
+         "sb(x)_k = sb(x)_(k-1) + t(x)_(k+1)\nsc(x)_0 = 1\n"
+         "sc(x)_k = sc(x)_(k-1) + t(sc(x)_(k-1))_k\nsd(x)_0 = 1\nsd(x)_k = sd(x)_(k-1) + t(k*x)_k\n"
+         "se(x)_0 = 1\nse(x)_k = se(x)_(k-1) + grad_(y = x) t(y)_k\nsf(x)_0 = 1\n"
+         "sf(x)_k = sf(x)_(k-1) + p(x)_k\nsg(x)_0 = 1\nsg(x)_k = sg(x)_(k-1)/2 + u(x)_(k-1)\n")
+    set(args --compile walking.ink)
+    set(stdout "cannot compile a${walking}cannot compile b${walking}cannot compile c: t_(...): read at lim sc's index with arguments that change as it walks
+cannot compile d: t_(...): read at lim sd's index with arguments that change as it walks
+cannot compile e: a derivative of a limit, for now
+cannot compile f: p has no clause for index 1
+cannot compile g: sg is defined by itself
+")
+    set(exit 1)
+    check(compile_series_refused)
+    return()
+endif()
+# The check program of a series.ink instance, until then one saying it is
+# refused, which skips its report; refused otherwise, it fails the build.
+if(PART STREQUAL "spec_program")
+    execute_process(COMMAND "${EXE}" --check ${series} ${INSTANCE} -o "${PROGRAM}"
+                    RESULT_VARIABLE refused OUTPUT_QUIET ERROR_VARIABLE why)
+    if(refused AND why MATCHES "^inkamath: cannot compile [Rz]${walking}$")
+        file(WRITE "${PROGRAM}"
+             "#include <stdio.h>\nint main(void) {\n    puts(\"${INSTANCE}: refused\");\n    return 0;\n}\n")
+    elseif(refused)
+        message(FATAL_ERROR "${why}")
+    endif()
+    return()
+endif()
+
 # The cases run as three tests of about equal time under the sanitizers: PART
 # 1 up to charpoly's refusal, 2 from it, 3 from eig's, and all where PART is
 # not given.
@@ -1675,6 +1727,40 @@ cannot compile d: d_(...): a term after the one being computed
 ")
 set(exit 1)
 check(compile_tip_refused)
+
+# A sequence with parameters read at lim's walking index (DESIGN.md,
+# compile/series.ink): the series' values, e^x's at -2 and 1, Rodrigues' at
+# n = 0 and 20 and the sine's at -5 and 1/2, by mpmath. A limit stops within
+# about 1e-10, so each is held within 1e-9, and answers inexactly.
+file(COPY ${series} DESTINATION "${OUT}")
+file(WRITE "${OUT}/walked.ink" [[
+>> use series
+use series
+
+>> far(A, B) = sum_(j=1)^3 sum_(k=1)^3 abs(A[j,k] - B[j,k])
+far(A, B) = sum_(j=1)^3 sum_(k=1)^3 abs(A[j,k] - B[j,k])
+
+>> abs(series.taylor.y_0 - 0.1353352832366126918939995) < 10^-9
+~1
+
+>> abs(series.taylor.y_30 - 2.718281828459045235360287) < 10^-9
+~1
+
+>> far(series.taylor.R_0, [0.91444306659383029383, -0.24282873813667482718, -0.32377165084889976958; 0.24282873813667482718, 0.96919950397377890578, -0.041067328034961458963; 0.32377165084889976958, -0.041067328034961458963, 0.94524356262005138805]) < 10^-9
+~1
+
+>> far(series.taylor.R_20, [0.92135885972975595941, -0.35488114287926168634, -0.15861029609137275277; 0.052899164241524570488, 0.51871622154610647161, -0.85330836157128965314; 0.38509678006967558967, 0.77781286691185537418, 0.49669670227043814024]) < 10^-9
+~1
+
+>> abs(series.wave.z_0 - 0.9589242746631384688931544) < 10^-9
+~1
+
+>> abs(series.wave.z_55 - 0.4794255386042030002732879) < 10^-9
+~1
+]])
+set(args --check walked.ink)
+set(stdout "walked.ink: 8 answers, each as recorded\n")
+check(compile_series_values)
 
 # A frequency response does not compile: a compiled value is real, so the
 # complex e^(i*w*n) is refused, not its abs.
