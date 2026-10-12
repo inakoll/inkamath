@@ -3473,11 +3473,13 @@ private:
         };
         return Answer(Parted(window(matrix), Mapped(PartOf(matrix), read, window), {&matrix}));
     }
-    // A cell past an input whose model states no size, which compiles as a
-    // single value (C83), or past a single value computed from one, refused
-    // with the size that would hold it.
+    // A cell past an input whose model states no size, or a parameter it
+    // gives no default, which compile as single values (C83), or past a
+    // single value computed from one, refused with the size that would hold it.
     void Unstated(const Expression<Value>& read, const std::string& bounds) const {
-        if (!model_ || scope_ != &root_ || !dynamic_cast<const FuncExpression<Value>*>(&read))
+        if (!model_ || scope_ != &root_ ||
+            (!dynamic_cast<const FuncExpression<Value>*>(&read) &&
+             !dynamic_cast<const RefExpression<Value>*>(&read)))
             return;
         std::set<std::string>    seen;
         std::vector<std::string> next{read.Name()};
@@ -3486,18 +3488,27 @@ private:
             next.pop_back();
             if (!seen.insert(name).second) continue;
             for (const typename Model<Value>::Parameter& p : model_->parameters)
-                if (p.name == name && !p.index.empty() && !p.fallback && p.bounds.empty())
-                    throw Reason((name == read.Name() ? "" : read.Name() + " reads ") + p.name +
-                                 (name == read.Name() ? " is" : ",") + " a single value, as " +
-                                 model_->header.substr(0, model_->header.find('(')) +
-                                 " states no size for it: write '" + p.name + "_" + p.index + "[" +
-                                 bounds + "]'");
+                if (p.name == name && !p.fallback && p.bounds.empty())
+                    throw Reason(
+                        (name == read.Name() ? "" : read.Name() + " reads ") + p.name +
+                        (name == read.Name() ? " is" : ",") + " a single value, as " +
+                        model_->header.substr(0, model_->header.find('(')) +
+                        (p.index.empty()
+                             ? " gives it no default: give it one of its size, at least " + bounds
+                             : " states no size for it: write '" + p.name + "_" + p.index + "[" +
+                                   bounds + "]'"));
             const auto sequence = sequences_.find(name);
             if (sequence != sequences_.end() && sequence->second.size.count() == 1)
                 for (const auto& [reads, lags] : sequence->second.reads) next.push_back(reads);
         }
     }
-    PExpression<Value> visit(FactExpression<Value>*) override { throw Reason("a factorial"); }
+    // A factorial of a constant is one; of what moves, refused.
+    PExpression<Value> visit(FactExpression<Value>* expression) override {
+        const Code operand = Emit(expression->m_e());
+        if (!operand.constant || !operand.part.empty()) throw Reason("a factorial");
+        return Answer(Exactly([](const Value& v) { return Value(numeric_interface<Value>::fact(v)); },
+                              operand));
+    }
     // grad compiled (DESIGN.md): its body once for each cell of the point, each
     // value carrying its part, the name's a constant seed, as the interpreter's;
     // by a point of several cells, or by several names, once, each value

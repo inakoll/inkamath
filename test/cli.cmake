@@ -59,6 +59,15 @@ set(input "1+1\nsum_(k=1)^10 k\na=2\na*3\n")
 set(stdout "2\n55\na=2\n6\n")
 check(filter)
 
+# Each answer is written as it is given, so a long run written to a file
+# shows how far it went: stopped in its second input, it has given its first.
+file(WRITE "${OUT}/slow.ink" "1+1\nH[j<=80, k<=80] = 1/(j+k-1)\nsum_(j=1)^80 (H^-1)[j, 1]\n")
+execute_process(COMMAND "${EXE}" slow.ink WORKING_DIRECTORY "${OUT}"
+                OUTPUT_VARIABLE got_stdout ERROR_QUIET TIMEOUT 2)
+if(NOT "${got_stdout}" STREQUAL "2\nH[j<=80, k<=80] = 1/(j+k-1)\n")
+    message(SEND_ERROR "flushed: stdout\n--- got\n${got_stdout}---")
+endif()
+
 # A blank line and a comment are not inputs. At a terminal an empty line is
 # still 'empty expression'; in a file it is only spacing.
 set(input "1+1\n\n# a comment\n2*3\n")
@@ -250,6 +259,12 @@ set(stdout "cannot compile a: a factorial\ncannot compile b: a, which cannot be 
 set(stderr "")
 set(exit 1)
 check(compile_refusals)
+
+# A factorial of a constant is one, as a series is written.
+file(WRITE "${OUT}/series.ink" "x_n = n/4\ny_n = sum_(q=0)^4 x_n^q/!q\n")
+set(args --compile series.ink -o series.h)
+check(compile_factorial)
+holds(compile_factorial series.h " / 6.0 + pow(m_->x[0], 4.0) / 24.0;\n")
 
 # Several rates (DESIGN.md): a read at a period the sequence is not computed
 # at, one before its term is computed, and one at an index of neither form.
@@ -617,6 +632,12 @@ set(args --compile through.ink mon -o mon.h)
 set(stderr "inkamath: cannot compile k: e reads x, a single value, as mon states no size for it: write 'x_n[j<=2]'\n")
 set(exit 1)
 check(compile_unstated_through)
+# So is a parameter with no default, read past its cell.
+file(WRITE "${OUT}/nodefault.ink" "m(A, x_n) = {\n    y_n = A[1, 2]*x_n\n}\n")
+set(args --compile nodefault.ink m -o m.h)
+set(stderr "inkamath: cannot compile y: A is a single value, as m gives it no default: give it one of its size, at least j<=1, k<=2\n")
+set(exit 1)
+check(compile_unstated_parameter)
 
 # Every run of --check walks the prelude's definitions, so that its programs
 # hold the compiled functions to the walk (DESIGN.md): log, 16 references
@@ -1130,27 +1151,28 @@ endif()
 
 if(NOT PART EQUAL 3)
 
-# The prelude's charpoly compiles; rho does not yet, by hurwitzb's factorial,
-# and grad refuses it and abscissa where A moves, as the interpreter does
-# (DESIGN.md, the characteristic polynomial and stability). A 1x1 matrix is
-# refused alike, where its sizes went unbound, "n is not defined" (C213).
+# The prelude's charpoly compiles; rho does not yet, by hurwitzb's sequence
+# with parameters by cells, and grad refuses it and abscissa where A moves, as
+# the interpreter does (DESIGN.md, the characteristic polynomial and
+# stability). A 1x1 matrix is refused alike, where its sizes went unbound,
+# "n is not defined" (C213).
 file(WRITE "${OUT}/charpoly.ink" "x_n = rho([n 1; -1 1/2])\nz_n = charpoly([n 1; 2 3])[2]\ng_n = grad_(a = n) rho([a 1; -1 1/2])\nh_n = grad_(a = n) abscissa(a)\ns_n = rho([1/(n+2)])\n")
 set(args --compile charpoly.ink)
-set(stdout "cannot compile g: grad cannot differentiate rho yet\ncannot compile h: grad cannot differentiate abscissa yet\ncannot compile s: a factorial\ncannot compile x: a factorial\n")
+set(stdout "cannot compile g: grad cannot differentiate rho yet\ncannot compile h: grad cannot differentiate abscissa yet\ncannot compile s: a sequence with parameters by cells, for now\ncannot compile x: a sequence with parameters by cells, for now\n")
 set(exit 1)
 check(compile_charpoly_refused)
 
 # check_not_transcript reads the models.ink part 1 writes.
 file(WRITE "${OUT}/models.ink" "gain(k = 2, x_n) = { y_n = k*x_n + z_n }\n")
 
-# Nor do hinf and dhinf, by hurwitzb's factorial in their guards, and grad
-# refuses them where A moves (DESIGN.md, the H-infinity norm). Of a 1x1
-# matrix, dhinf's sizes went unbound, "n is not defined", and hinf's
-# sequence with parameters was "in a limit's terms", where there is none
-# (C213).
+# Nor do hinf and dhinf, by hurwitzb's sequence with parameters by cells in
+# their guards, and grad refuses them where A moves (DESIGN.md, the H-infinity
+# norm). Of a 1x1 matrix, dhinf's sizes went unbound, "n is not defined",
+# and hinf's sequence with parameters was "in a limit's terms", where there is
+# none (C213).
 file(WRITE "${OUT}/hinf.ink" "x_t = hinf(-t-1, 1, 1)\ng_t = grad_(a = t) hinf(-a-1, 1, 1)\nh_t = grad_(a = t) dhinf(1/(a+2), 1, 1)\nd_t = dhinf(1/(t+2), 1, 1)\n")
 set(args --compile hinf.ink)
-set(stdout "cannot compile d: a factorial\ncannot compile g: grad cannot differentiate hinf yet\ncannot compile h: grad cannot differentiate dhinf yet\ncannot compile x: a factorial\n")
+set(stdout "cannot compile d: a sequence with parameters by cells, for now\ncannot compile g: grad cannot differentiate hinf yet\ncannot compile h: grad cannot differentiate dhinf yet\ncannot compile x: a sequence with parameters by cells, for now\n")
 set(exit 1)
 check(compile_hinf_refused)
 
@@ -1401,12 +1423,11 @@ endif()
 # Made in part 2 too, which part 3 runs without.
 file(MAKE_DIRECTORY "${OUT}/float")
 
-# Nor do eig and smax, as rho does not, by a comparison of matrices and
-# hurwitzb's factorial, and grad refuses them where A moves (DESIGN.md, eig
-# and smax).
+# Nor does eig, as rho does not, by a comparison of matrices, though smax
+# does, and grad refuses them where A moves (DESIGN.md, eig and smax).
 file(WRITE "${OUT}/eig.ink" "x_n = eig([n 1; 1 2])[1]\ny_n = smax([n 2; 3 4])\ng_n = grad_(a = n) eig([a 1; 1 2])[1]\nh_n = grad_(a = n) smax([a 2; 3 4])\n")
 set(args --compile eig.ink)
-set(stdout "cannot compile g: grad cannot differentiate eig yet\ncannot compile h: grad cannot differentiate smax yet\ncannot compile x: a comparison of matrices\ncannot compile y: a factorial\n")
+set(stdout "cannot compile g: grad cannot differentiate eig yet\ncannot compile h: grad cannot differentiate smax yet\ncannot compile x: a comparison of matrices\n")
 set(exit 1)
 check(compile_eig_refused)
 

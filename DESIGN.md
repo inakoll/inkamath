@@ -3295,9 +3295,9 @@ that exploring seven domains asked of the interpreter, by how many asked.
   blocks, `[A, x_n*A; A]`, ended by a 0 stretched over 2x2, its value
   worked out with fractions. 24 lines of sources against 25 planned, all
   in `compile.hpp`: 15,608 lines in all.
-- **`tex` of `==`, a negative fraction and `exp`**: `==` is set as `=`,
-  `\frac{-1}{2}` should be `-\frac{1}{2}`, `\operatorname{exp}` should be
-  `\exp`; and one tensor literal refuses a whole model's `tex`.
+- **`tex` of `==` and a negative fraction**: `==` is set as `=`,
+  `\frac{-1}{2}` should be `-\frac{1}{2}`; and one tensor literal refuses
+  a whole model's `tex`.
 - **A limit exact at an exact fixed point**: k-means reaches `C_3 == C_4`
   exactly, yet `lim C` is inexact and `frac lim C` refused.
 - **Matrix `==` and `<>` compiled**, refused as "a comparison of matrices".
@@ -9861,17 +9861,11 @@ they asked, each with its smallest change.
   `compile.hpp`, 24 added and 14 removed, 4 of them comment; 17,795 in all.
 - **A sequence with parameters read at `lim`'s walking index** is refused,
   which blocks a series or a matrix exponential written as on paper. Allow it.
-- **`f(x)_K` for a geometric integrator.** README gives the fixed-count read
-  for a cell far below 1; `lim`'s absolute 1e-10 stop also drifts an
-  integrator's invariant, about 4e-13 a step, and README should say so.
-- **`!k` where `k` folds to a constant** is refused by the compiler, so the
-  filter writes `prod_(r=1)^k r`. Fold it.
 - **An unbounded sum is not compiled** as the limit of its partial sums.
   Compile it.
 - **Products by a literal 0.0 kept for NaN, and block-sparse matrices
   multiplied dense**: 5.1k of the 12-state filter's 21k products, its header
   638 KB. Joins *Shared at every value written twice*.
-- **A parameter with no default compiled as a single value**: its refusal
-  should name the parameter and suggest its size.
-- **`?file.name` and `tex file.name` refused**, and `tex` writes
-  `\operatorname{sin}` for `\sin`.
+- **A parameter with no default compiled as a single value** is named by
+  its refusal where read, but not through a function's parameter, as the
+  filter's `blk(X_n)` reads `X0`. Follow the call's argument.

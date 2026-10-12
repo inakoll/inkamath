@@ -92,8 +92,7 @@ riekf(dt = 1/100, N = 12, X0 = E6, P0 = E12/100, w_n[j<=3], a_n[j<=3], h_n[j<=3]
 
     # (65), (48) to N terms, and the parts of X and of xi in R^12
     sk(f) = [0, -f[3], f[2]; f[3], 0, -f[1]; -f[2], f[1], 0]
-    fac(k) = prod_(r=1)^k r  # !k, which the compiler refuses
-    G(m, f) = sum_(q=0)^N sk(f)^q/fac(q+m)
+    G(m, f) = sum_(q=0)^N sk(f)^q/!(q+m)
     blk(X)[j<=3, k<=3] = X[j, k]
     col(X, c)[j<=3] = X[j, c]
     seg(x, c)[j<=3] = x[3*c + j - 3]
@@ -109,16 +108,10 @@ riekf(dt = 1/100, N = 12, X0 = E6, P0 = E12/100, w_n[j<=3], a_n[j<=3], h_n[j<=3]
     H = [Z, Z, -I3, I3]
     Pi = [I3, Z]
     # (54) as section 5.4 has it: A is nilpotent, A^3 = 0
-    Phi = sum_(q=0)^2 (A*dt)^q/fac(q)
+    Phi = sum_(q=0)^2 (A*dt)^q/!q
 
     X_0 = X0
     P_0 = P0
-    # Each block given at 0 again only for the compiler, which refuses Rp_n
-    # reading R_(n-1) without it (C349): the interpreter needs none.
-    R_0 = blk(X0)
-    v_0 = col(X0, 4)
-    p_0 = col(X0, 5)
-    d_0 = col(X0, 6)
     R_n = blk(X_n)
     v_n = col(X_n, 4)
     p_n = col(X_n, 5)
