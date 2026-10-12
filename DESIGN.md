@@ -4212,6 +4212,19 @@ that exploring seven domains asked of the interpreter, by how many asked.
   comment; 17,639 in all. Past the 87 estimated by the parameter passed
   only where a value crosses and the header without a struct, and by
   clang-format's breaks.
+
+  Clang 19 miscompiles it. CI's Clang 19.1.7 RelWithDebInfo job failed
+  `check_tuned_4_report`, `tuned.U[1,1]` NaN at 1; `-opt-bisect-limit`
+  put the fault in the SLP vectorizer on `tuned_4_step16_`, whose 36
+  NaN tests it turns into a vector `or`. Reduced to that pass alone, it
+  gathers an operand of the products from a narrower vector and leaves
+  four lanes poison, which a frozen `fcmp uno` may read as true, from IR
+  holding neither poison nor undef: no undefined behaviour of ours, and
+  Clang 18 and 20 are right. Any header can trip it, and the split
+  exposed it; `|` for `||` avoids it here, but only by chance. Ruled:
+  the tests build their C with `-fno-slp-vectorize` under Clang 19, and
+  README says to; `tq` then steps about 15% slower under Clang 19, 26
+  µs to 31.
 - **A limit's invariants hoisted out of its iterate**: a limit or a
   matrix inverse that reads only the function's arguments is declared in
   the iterate's list, so walked again at each iterate, and gcc -O2 leaves
