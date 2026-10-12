@@ -325,3 +325,69 @@ over(x_n) = {
     y_n = x_n > 0
 }
 vast = over(x_n = ~(10^400))
+
+# A sequence's own history, read back by its recurrence, is folded by init
+# as an input's is, where the window held 0 (C343): 'grown' reads g_-1 at 0,
+# a constant whatever a is; 'paired' a column two steps back; 'looped'
+# through another sequence, and f three steps back, where compiling it
+# recursed until the stack ran out; 'stepped' at another rate. A general
+# clause's reads before the stream are asked only where no guard holds:
+# 'opened' reads x_-1 nowhere, and was refused. 'waited' reads its own y_-1
+# at another rate on the right of an 'and', where the window held 0.
+growth(a = 2) = {
+    g_n | n < 0 = 1
+    g_n = a*g_(n-1)
+}
+grown = growth()
+
+twostep(u_n) = {
+    g_n | n < 0 = [1; 2]
+    g_n = [0 1; 1 0]*g_(n-2) + [u_n; u_n]
+}
+paired = twostep(u_n = 1)
+
+through(a = 1) = {
+    g_n | n < 0 = 1
+    h_n = a*g_(n-1)
+    g_n = h_n + 1
+    f_n = g_(n-3)
+}
+looped = through()
+
+halve(x_n) = {
+    y_m | m < 0 = 1
+    y_m = y_(m-1) + x_(2*m)
+    z_n = y_(floor(n/2))
+}
+stepped = halve(x_n = n)
+
+opening(x_n) = {
+    c_n | n == 0 = 0
+    c_n = x_(n-1)
+}
+opened = opening(x_n = n)
+
+waiting(x_n) = {
+    y_m | m < 0 = 3
+    y_m = m >= 0 and y_(m-1) + x_(2*m) > 0
+}
+waited = waiting(x_n = n - 2)
+
+# Below a slow sequence's base clause, its own term is what its guard gives,
+# folded by init where the window held 0 (C344): 'rooted' reads y_-1 at 1,
+# and 'heeded' in a guard.
+rooting(x_n) = {
+    y_0 = 1
+    y_m | m < 0 = 4
+    y_m = y_(m-2) + x_(2*m)
+    z_n = y_(floor(n/2))
+}
+rooted = rooting(x_n = n)
+
+heeding(x_n) = {
+    y_0 = 1
+    y_m | m < 0 = 4
+    y_m | y_(m-2) > 3 = 7
+    y_m = y_(m-1) + x_(2*m)
+}
+heeded = heeding(x_n = n)

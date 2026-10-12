@@ -167,14 +167,17 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brin
                          decimate:stride decimate:frame decimate:lead
                          decimate:trail drift:sill drift:seam history:past history:twin
                          history:lit history:rise history:ajar history:sown history:nest history:kin history:vast
-                         history:twice history:relayed history:pole
+                         history:twice history:relayed history:pole history:grown history:paired
+                         history:looped history:stepped history:opened history:waited
+                         history:rooted history:heeded
                          history:huge history:sever history:veiled history:cloaked history:two history:hid history:masked
                          nan:run nan:sign nan:shy nan:slope nan:pair
                          nan:lap nan:trim nan:any nan:cell nan:held nan:idle nan:imag nan:took nan:shut nan:row nan:root
                          nan:passed nan:waived
                          inputs:fan inputs:grid
                          inputs:chan inputs:twirl inputs:duo inputs:mean3 inputs:mean2
-                         inputs:track inputs:twain inputs:nestv inputs:fed inputs:x estimate:tie
+                         inputs:track inputs:twain inputs:nestv inputs:fed inputs:x inputs:clashed
+                         estimate:tie
                          estimate:chaos estimate:dyad estimate:flat estimate:halved
                          estimate:steep estimate:giant elementary:els trig:tri atan:bea
                          grad:line grad:fall grad:hinge grad:edge grad:clip grad:steer grad:saw
@@ -692,6 +695,8 @@ set_tests_properties(check_twain_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^twain: 100 steps from 0, against exact values\ntwain\\.y: within 0\n$")
 set_tests_properties(check_nestv_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^nestv: 100 steps from 0, against exact values\nnestv\\.inner\\.x: within 0\nnestv\\.inner\\.y: within 0\nnestv\\.y: within 0\n$")
+set_tests_properties(check_clashed_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^clashed: 100 steps from 0, against exact values\nclashed\\.g: within 0\nclashed\\.s: within 0\n$")
 set_tests_properties(check_boxcar_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^boxcar: 100 steps from 0, against exact values\nboxcar\\.f: within 0\nboxcar\\.t: within 0\nboxcar\\.y: within 0, from 1\nboxcar\\.w: within 0\nboxcar\\.z: within 0\nboxcar\\.q: within 0, from 3\n$")
 set_tests_properties(check_stride_report PROPERTIES PASS_REGULAR_EXPRESSION
@@ -732,6 +737,23 @@ set_tests_properties(check_masked_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^masked: 100 steps from 0, against exact values\nmasked\\.e_tenth\\.d: [0-9.e+-]+ at 9, where the interpreter gives 0\\.10000000000000001\nmasked\\.e: [0-9.e+-]+ at 9, where the interpreter gives 0\\.10000000000000001\n$")
 set_tests_properties(check_pole_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^pole: 100 steps from 0, against exact values\npole\\.y: inf at 3, where the interpreter gives none: division by zero\n$")
+# A recurrence's own history, folded by init (C343).
+set_tests_properties(check_grown_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^grown: 100 steps from 0, against exact values\ngrown\\.g: within 0\n$")
+set_tests_properties(check_paired_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^paired: 100 steps from 0, against exact values\npaired\\.g: within 0\n$")
+set_tests_properties(check_looped_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^looped: 100 steps from 0, against exact values\nlooped\\.f: within 0\nlooped\\.h: within 0\nlooped\\.g: within 0\n$")
+set_tests_properties(check_stepped_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^stepped: 100 steps from 0, against exact values\nstepped\\.y: within 0\nstepped\\.z: within 0\n$")
+set_tests_properties(check_opened_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^opened: 100 steps from 0, against exact values\nopened\\.c: within 0\n$")
+set_tests_properties(check_rooted_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^rooted: 100 steps from 0, against exact values\nrooted\\.y: within 0\nrooted\\.z: within 0\n$")
+set_tests_properties(check_heeded_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^heeded: 100 steps from 0, against exact values\nheeded\\.y: within 0\n$")
+set_tests_properties(check_waited_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^waited: 100 steps from 0, against exact values\nwaited\\.y: within 0\n$")
 set_tests_properties(check_huge_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^huge: 100 steps from 0, against exact values\nhuge\\.y: inf at 31, where the interpreter's term is too large for a double\n$")
 set_tests_properties(check_root_report PROPERTIES PASS_REGULAR_EXPRESSION

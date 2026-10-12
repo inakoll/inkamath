@@ -85,14 +85,14 @@ static inline void bank_init(bank* m_) {
 }
 
 /* Advances to the next index, the first at 0, and computes its terms. */
-static inline void bank_step(bank* m_, double x_) {
+static inline void bank_step(bank* m_, double x_in_) {
     ++m_->index_;
     m_->bank_smooth_1.v[1] = m_->bank_smooth_1.v[0];
     m_->bank_smooth_2.v[1] = m_->bank_smooth_2.v[0];
     m_->bank_smooth_3.v[1] = m_->bank_smooth_3.v[0];
     m_->s_sharp.v_smooth.v[1] = m_->s_sharp.v_smooth.v[0];
     m_->y_smooth.v[1] = m_->y_smooth.v[0];
-    m_->x[0] = x_;
+    m_->x[0] = x_in_;
     m_->bank_smooth_1.u[0] = m_->x[0];
     m_->bank_smooth_1.v[0] = m_->index_ == 0 ? 0.0 : m_->bank_smooth_1.a * m_->bank_smooth_1.u[0] + (1.0 + (0.0 - m_->bank_smooth_1.a)) * m_->bank_smooth_1.v[1];
     m_->bank_smooth_2.u[0] = m_->x[0];
