@@ -69,6 +69,13 @@ foreach(part 1 2 3)
                      -P ${CMAKE_CURRENT_LIST_DIR}/cli.cmake)
     set_tests_properties(cli_${part} PROPERTIES TIMEOUT 120)
 endforeach()
+# An unbounded sum compiled (DESIGN.md), specified before it is built:
+# cli.cmake's spec part, skipped while sums.ink is refused as specified.
+add_test(NAME cli_spec
+         COMMAND ${CMAKE_COMMAND} -DEXE=$<TARGET_FILE:inkamath_cli> -DPART=spec
+                 -DOUT=${CMAKE_CURRENT_BINARY_DIR}/cli_spec -P ${CMAKE_CURRENT_LIST_DIR}/cli.cmake)
+set_tests_properties(cli_spec PROPERTIES TIMEOUT 120 SKIP_REGULAR_EXPRESSION
+    "sums: refused as specified")
 
 # bench's workloads, each a transcript bench/run.cmake measures, replayed so
 # that one gone stale fails here rather than at its next measure. The
@@ -346,6 +353,35 @@ set_tests_properties(check_wave_report PROPERTIES PASS_REGULAR_EXPRESSION
 # later's as measured, as it has no packed form.
 set_tests_properties(check_later_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^later: ${series}\nlater\\.y: within 9\\.1e-13${about}\nlater\\.z: within 8\\.9e-16${about}\n$")
+# An unbounded sum compiled (DESIGN.md), specified before it is built: each
+# program cli.cmake's spec_program part writes, one saying it is refused
+# until then, which skips its report.
+foreach(instance summed halving)
+    set(program ${CMAKE_CURRENT_BINARY_DIR}/compile/${instance}.c)
+    add_custom_command(OUTPUT ${program}
+        COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/compile
+        COMMAND ${CMAKE_COMMAND} -DEXE=$<TARGET_FILE:inkamath_cli> -DPART=spec_program
+                -DINSTANCE=${instance} -DPROGRAM=${program} -P ${CMAKE_CURRENT_SOURCE_DIR}/cli.cmake
+        DEPENDS inkamath_cli compile/sums.ink cli.cmake
+        VERBATIM)
+    add_executable(check_${instance} ${program})
+    target_link_libraries(check_${instance} PRIVATE inkamath_warnings
+                          $<$<NOT:$<C_COMPILER_ID:MSVC>>:m>)
+    set_target_properties(check_${instance} PROPERTIES
+                          C_STANDARD 11 C_STANDARD_REQUIRED ON C_EXTENSIONS OFF)
+    add_test(NAME check_${instance}_report COMMAND check_${instance})
+    set_tests_properties(check_${instance}_report PROPERTIES SKIP_REGULAR_EXPRESSION
+                         "^${instance}: refused")
+endforeach()
+# R, u and p within the bounds of the same series as limits on the baseline,
+# their terms the same; J, y and z as measured on the prototype, their terms
+# a power and a factorial at each index where the limits' are a recurrence
+# (1.2e-15, 1.1e-12 and 3e-14 on the baseline; DESIGN.md). halving's factorials
+# are whole and at most !11, exact in doubles.
+set_tests_properties(check_summed_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^summed: ${series}\nsummed\\.J: within 1\\.1e-15${about}\nsummed\\.R: within 4\\.4e-15${about}\nsummed\\.p: within 8\\.9e-16${about}\nsummed\\.u: within 1\\.1e-12${about}\nsummed\\.y: within 9\\.1e-13${about}\nsummed\\.z: within 4e-14${about}\n$")
+set_tests_properties(check_halving_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^halving: 100 steps from 0, against exact values\nhalving\\.f: within 0\n$")
 add_test(NAME check_outside_2000 COMMAND check_outside_2000)
 set_tests_properties(check_outside_2000 PROPERTIES WILL_FAIL ON)
 add_test(NAME check_runaway_1000 COMMAND check_runaway_1000)

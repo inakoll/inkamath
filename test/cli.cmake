@@ -48,6 +48,63 @@ endfunction()
 # Read by cases in every part.
 set(inputs "${CMAKE_CURRENT_LIST_DIR}/compile/inputs.ink")
 
+# Specified, not yet built (DESIGN.md, an unbounded sum compiled):
+# compile/sums.ink's series and factorial compiled, a sum's walk as long as
+# the interpreter's, and what stays refused. Skipped while sums.ink is
+# refused in today's words, and only then.
+set(sums "${CMAKE_CURRENT_LIST_DIR}/compile/sums.ink")
+set(unbounded ": a sum or a product with no upper bound\n")
+if(PART STREQUAL "spec")
+    execute_process(COMMAND "${EXE}" --compile ${sums} RESULT_VARIABLE refused
+                    OUTPUT_VARIABLE why ERROR_QUIET)
+    if(refused AND why STREQUAL "cannot compile halving.f: a factorial\ncannot compile summed.J${unbounded}cannot compile summed.R${unbounded}cannot compile summed.p${unbounded}cannot compile summed.u${unbounded}cannot compile summed.y${unbounded}cannot compile summed.z${unbounded}")
+        message("sums: refused as specified")
+        return()
+    endif()
+    set(args --compile ${sums} -o sums.h)
+    check(compile_sums)
+    # 100 partial sums at most, from 3 to 102, as the interpreter's.
+    file(WRITE "${OUT}/bound.ink" "y_n = sum_(q=3) x_n^q/!q\n")
+    set(args --compile bound.ink -o bound.h)
+    check(compile_sums_bound)
+    holds(compile_sums_bound bound.h "    for (long long k_ = 4; k_ <= 102; ++k_) {\n")
+    # a starts where the step is; b's power is at twice the index, and f's
+    # inner bound moves; c gives t arguments that change as the walk does,
+    # and e reads it ahead; d differentiates through it; h calls an
+    # instance's own function at the index.
+    file(WRITE "${OUT}/unsummed.ink" "A = [0, -1; 1, 0]/2\nt(x)_0 = 1\nt(x)_k = t(x)_(k-1)*x/k\n"
+         "mm(a = 1) = {\n    g(j) = a^j/!j\n    y = sum_(q=0) g(q)\n}\na_n = sum_(q=n) 2^-q\n"
+         "b_n = sum_(q=0) (x_n*A)^(2*q)/!(2*q)\nc_n = sum_(q=0) t(q*x_n)_q\n"
+         "d_n = grad_(y = x_n) sum_(q=0) y^q/!q\ne_n = sum_(q=0) t(x_n)_(q+1)\n"
+         "f_n = sum_(q=0) sum_(j=0)^q x_n^j/!q\nh_n = mm(a = x_n).y\n")
+    set(args --compile unsummed.ink)
+    set(bounds ": a sum or a product whose bounds are not constants\n")
+    set(stdout "cannot compile a${bounds}cannot compile b: a matrix power whose exponent is not a constant
+cannot compile c: t_(...): read at sum_(q=0)'s index with arguments that change as it walks
+cannot compile d: a derivative of a limit, for now
+cannot compile e: a sequence with parameters read at an index that is not a constant
+cannot compile f${bounds}cannot compile h: g, a function of an instance, called at sum_(q=0)'s index, for now
+")
+    set(exit 1)
+    check(compile_sums_refused)
+    return()
+endif()
+# The check program of a sums.ink instance, until then one saying it is
+# refused, which skips its report; refused otherwise, it fails the build.
+if(PART STREQUAL "spec_program")
+    execute_process(COMMAND "${EXE}" --check ${sums} ${INSTANCE} -o "${PROGRAM}"
+                    RESULT_VARIABLE refused OUTPUT_QUIET ERROR_VARIABLE why)
+    set(refusal_summed "J${unbounded}")
+    set(refusal_halving "f: a factorial\n")
+    if(refused AND why STREQUAL "inkamath: cannot compile ${refusal_${INSTANCE}}")
+        file(WRITE "${PROGRAM}"
+             "#include <stdio.h>\nint main(void) {\n    puts(\"${INSTANCE}: refused\");\n    return 0;\n}\n")
+    elseif(refused)
+        message(FATAL_ERROR "${why}")
+    endif()
+    return()
+endif()
+
 # The cases run as three tests of about equal time under the sanitizers: PART
 # 1 up to charpoly's refusal, 2 from it, 3 from eig's, and all where PART is
 # not given.
@@ -1750,6 +1807,65 @@ cannot compile j: r_(...): its terms before the walk read lim sj's own
 ")
 set(exit 1)
 check(compile_series_refused)
+
+# An unbounded sum compiled (DESIGN.md, compile/sums.ink): the series'
+# values by closed forms, e^x's at -2 and 1, the sine's at -2 and 7/2, the
+# product's 1/(1 - y^2) at y = -1/5 and 3/10, and Rodrigues' formula and the
+# left Jacobian at n = 0 and 20, by mpmath, each held within 1e-9 as a limit
+# stops within about 1e-10; and the factorial's, exact or refused.
+file(COPY ${sums} DESTINATION "${OUT}")
+file(WRITE "${OUT}/summed.ink" [[
+>> use sums
+use sums
+
+>> far(A, B) = sum_(j=1)^3 sum_(k=1)^3 abs(A[j,k] - B[j,k])
+far(A, B) = sum_(j=1)^3 sum_(k=1)^3 abs(A[j,k] - B[j,k])
+
+>> abs(sums.summed.y_0 - 0.1353352832366126918939995) < 10^-9
+~1
+
+>> abs(sums.summed.y_30 - 2.718281828459045235360287) < 10^-9
+~1
+
+>> abs(sums.summed.z_0 + 0.9092974268256816953960199) < 10^-9
+~1
+
+>> abs(sums.summed.z_55 + 0.3507832276896198481203688) < 10^-9
+~1
+
+>> abs(sums.summed.u_30 - 2.718281828459045235360287) < 10^-9
+~1
+
+>> abs(sums.summed.p_0 - 1.041666666666666666666667) < 10^-9
+~1
+
+>> abs(sums.summed.p_50 - 1.098901098901098901098901) < 10^-9
+~1
+
+>> far(sums.summed.R_0, [0.91444306659383029383, -0.24282873813667482718, -0.32377165084889976958; 0.24282873813667482718, 0.96919950397377890578, -0.041067328034961458963; 0.32377165084889976958, -0.041067328034961458963, 0.94524356262005138805]) < 10^-9
+~1
+
+>> far(sums.summed.R_20, [0.92135885972975595941, -0.35488114287926168634, -0.15861029609137275277; 0.052899164241524570488, 0.51871622154610647161, -0.85330836157128965314; 0.38509678006967558967, 0.77781286691185537418, 0.49669670227043814024]) < 10^-9
+~1
+
+>> far(sums.summed.J_0, [0.97131495254669930874, -0.12320198410488437689, -0.16426931213984583585; 0.12320198410488437689, 0.98967338291681175115, -0.013768822777584331806; 0.16426931213984583585, -0.013768822777584331806, 0.98164156962988755759]) < 10^-9
+~1
+
+>> far(sums.summed.J_20, [0.97271606719549889255, -0.16562839297379354474, -0.1117021260803869632; 0.060858091004509292148, 0.83302233123645322243, -0.46606925570276620536; 0.19027985255735015265, 0.43987668021044514221, 0.82538283005119291234]) < 10^-9
+~1
+
+>> sums.halving.f_96
+39916800
+
+>> sums.halving.f_9
+error: a factorial needs a whole number, not 0.125
+
+>> sums.halving.f_0
+error: a factorial cannot be negative
+]])
+set(args --check summed.ink)
+set(stdout "summed.ink: 16 answers, each as recorded\n")
+check(compile_sums_values)
 
 # A frequency response does not compile: a compiled value is real, so the
 # complex e^(i*w*n) is refused, not its abs.
