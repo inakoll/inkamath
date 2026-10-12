@@ -3109,17 +3109,16 @@ that exploring seven domains asked of the interpreter, by how many asked.
   parameters read at an index that is not a constant", as a sum's bounds are;
   past 1000 terms, `r_1001 is 1001 terms from its base, and a step writes
   out at most 1000`; below the lowest base, in the interpreter's words, `q has
-  no clause for index -1`; a term reading itself, `z is defined by itself`,
-  and one ahead of it, `p_(...): a term after the one being computed`, in a
-  limit's words, where the interpreter runs out of depth; reads nested past
-  64, in a call's; an index that is not whole, in the interpreter's; and a
-  read in a limit's terms, "a sequence with parameters in a limit's terms,
-  for now". A limit's function has no temporaries, so its terms would be
-  written whole, K deep and for `fm` doubling at each. *Temporaries in a
-  limit's function* is the same mechanism, a limit's own list, and lifts
-  that refusal when it lands: Newton's shooting under `lim` waits for it,
-  while shooting by a fixed number of secant steps is two nested reads and
-  compiles now.
+  no clause for index -1`; a term reading itself, `z is defined by itself`;
+  reads nested past 64, in a call's, as a read ahead no guard ends, `p`,
+  where the interpreter runs out of depth (*Recursion from the tip*); an
+  index that is not whole, in the interpreter's; and a read in a limit's
+  terms, "a sequence with parameters in a limit's terms, for now". A limit's
+  function has no temporaries, so its terms would be written whole, K deep
+  and for `fm` doubling at each. *Temporaries in a limit's function* is the
+  same mechanism, a limit's own list, and lifts that refusal when it lands:
+  Newton's shooting under `lim` waits for it, while shooting by a fixed
+  number of secant steps is two nested reads and compiles now.
 
   Rejected. The plan's loop, a function of the header's beside `lim`'s, the
   terms in rolling locals and K a counter: its one gain is a header of
@@ -9738,10 +9737,137 @@ After exploring rotations and rigid bodies (Sola 2017; Featherstone 2008)
 and transcribing the contact-aided invariant EKF (Hartley et al. 2020): what
 they asked, each with its smallest change.
 
-- **Recursion from the tip.** A sequence with parameters read ahead and
-  ended by a guard `i == N`, as every Featherstone backward pass is written,
-  is refused, "a term after the one being computed", while the same
-  recursion as a function compiles. Unroll it where its guards fold.
+- `[done]` **Recursion from the tip**, a sequence with parameters read ahead to a
+  guard. Featherstone writes each backward pass over a chain as a sequence
+  over the link index read *ahead*, the force on link i from link i+1's
+  (RNEA, sec. 5.3 and table 5.1), the composite inertias (CRBA, table 6.2)
+  and the articulated ones (ABA, ch. 7) alike, ended by a guard at the tip:
+
+  ```
+  f(..)_i | i == N = fb(..)_i
+  f(..)_i = fb(..)_i + X(c, s, i+1)'*f(..)_(i+1)
+  ```
+
+  The interpreter answers it. `--compile` refuses it, "f_(...): a term after
+  the one being computed", while the same recursion written as a function,
+  `f(.., i)`, compiles; found by the rigid-body exploration, which wrote
+  the function. The refusal is `Term`'s: `computing` holds, for each
+  function and arguments, the index of the term being compiled; a term
+  below it is filled from the lowest base, one at it is "defined by
+  itself", and one above it was refused. A term with no base clause below
+  it is already compiled where it is read, its reads nesting as calls do
+  (*A sequence with parameters read at a constant index, compiled*).
+
+  Decided:
+  - **A term read ahead is compiled where it is read**, as a call is: its
+    index bound as a constant, so its guards fold and its clause is the
+    interpreter's, its own reads nesting in it. The read ahead ends where a
+    guard folds true, at the tip, as the function form ends; written out,
+    each term a temporary once a term reads it and compiled once for its
+    arguments, as every term is.
+  - **Not filled from the lowest base**: the fill computes the terms below a
+    term read behind, in order. Filled, a term read ahead would compute again
+    the term reading it, which is being computed, and nest until refused:
+    `h(x)_0 = x` beside a guard at the tip, read at 1, is refused so where
+    the interpreter answers 7x/4.
+  - **Bounded as calls are**, 64 deep (`max_expanded`): a chain of 60 links
+    compiles and one of 61 is refused, written either way; the interpreter
+    nests 256.
+  - **Refused, in a call's words**, "nested 64 deep, which a recursion
+    its guards do not end would pass", as the function form is:
+    a read past the tip, `up(x_n)_5` with the guard at 3, where the
+    interpreter runs out of depth; a guard that does not fold, `| x > k`,
+    which the interpreter answers and a step cannot unroll; and a read
+    ahead no guard ends, iterates.ink's `p`, where the interpreter runs out
+    of depth.
+  - **What stays "a term after the one being computed"**: a stream's own read
+    ahead, `d_n = d_(n+1)` (`Lag`), a base clause's (`Seeds`) and a limit's
+    (`Earlier`). A step reads its index and its terms only behind; a term
+    read ahead here is one of a sequence with parameters, read at a constant.
+  - **--float and grad**: the same; a term is step code. The mass matrix of
+    the arm below by grad through the sequence form checks within 1.8e-15,
+    as through the function form.
+
+  What moves, on a prototype, discarded: no golden, no header of
+  `test/compile/expected` nor the prelude's; the 213 check programs of
+  9a9ab17 byte for byte, and all 270 reports. One refusal's words:
+  `compile_iterates_refused`'s `e`, iterates.ink's `p`, moves from "p_(...):
+  a term after the one being computed" to the call's words beside `f`, as do
+  iterates.ink's comment and the sentence of *A sequence with parameters
+  read at a constant index, compiled* that names it.
+
+  Measured on the prototype, the RNEA of a 3-link arm written both ways,
+  `test/compile/tip.ink`'s `arm` with `y` alone and its function form,
+  `--check`'s 100 steps:
+  - headers 8,297 bytes for the sequence and 10,009 for the function, 37
+    and 31 temporaries; at 60 links 181,661 and 276,318, `--compile` 0.19 s
+    each;
+  - the same doubles: every cell of 1000 steps equal, and both within
+    2.8e-14 of the interpreter;
+  - a step, the median of nine runs of 2,000,000 at -O2: GCC 13, 86 ns for
+    the sequence and 92 for the function; Clang 18, 125 and 118. Taken at a
+    load of 4 on 4 cores: no difference is claimed.
+
+  Rejected:
+  - **A loop from the tip down**, rolling locals: the tip is where a guard
+    folds true, and a guard may be any expression; recursion finds it for
+    nothing. A term is written out, as *A sequence with parameters read at
+    a constant index, compiled* decided; a loop is an entry of its own.
+  - **The tip found, then filled down from it**, the fill's mirror: the
+    same search, for one gain, a chain past 64 links, which the function
+    form does not have either. Raising the 64 is a decision for calls and
+    terms alike.
+  - **"A term after the one being computed" kept for a read ahead no guard
+    ends**, the depth's refusal caught where the read ahead starts: lines
+    for two words of one cause, where the function form says the call's.
+  - **Telling the user to write the function**: the paper writes the
+    sequence (`MANIFESTO.md`, the notation is the paper's).
+
+  About 1 line of `compile.hpp`: the prototype's 6 added and 5 removed, 3
+  and 1 of them comment. 17,765 lines at 9a9ab17, by `wc -l
+  include/inkamath/*.hpp src/*`; past 1.5, at 2, the implementation stops
+  and reports.
+
+  Specified in `test/compile/tip.ink`: the arm, the RNEA along a trajectory
+  of rational cosines and sines, its instance `reach` checked against the
+  interpreter, `y` within 2.8e-14 as the function form is on the baseline,
+  and `d`, the sequence less the function, within 0; and `rested`, the
+  sequence with a base at 0 read ahead from 1, within 3.6e-15. Until built,
+  `test/CMakeLists.txt` writes their check programs through `cli.cmake`'s
+  `spec_program` part, one saying it is refused while `--check` refuses,
+  which skips its report. `cli.cmake`'s `spec` part, run by `cli_spec`,
+  skipped while the arm is refused: the arm compiled; `reach.y` at 1 and 5
+  equal to Euler-Lagrange's by sympy (`compile_tip_values`), which the
+  interpreter answers now; and `compile_tip_refused`, the four refusals
+  above. With the implementation, `tip:reach` and `tip:rested` join the
+  check list, the `spec_program` part goes, the `spec` part's cases move
+  into part 3 beside `compile_iterates_refused`, and `cli_spec` goes. No
+  transcript in `test/data/spec`: the language does not change, the
+  interpreter answers all of it today.
+
+  Built as specified, departing in two places the spec review ruled on. The
+  depth's refusal drops "calls", "nested 64 deep, which a recursion its
+  guards do not end would pass", since a term read ahead is no call written;
+  it names no definition, the one the depth is passed in being often not
+  the recursion but one it calls, as in the arm. And a depth passed is not the
+  term's failure: the fill's first term met it beside a base clause, and so
+  `h(x)_0 = x` with its tip at 70, read at 10, was refused where its
+  function form compiles. It is kept with the depth it was met at, failing
+  again as deep and tried again nearer the top, `compile_tip_refused`'s `e`
+  and `f` holding it; a read at 1000 with its tip at 1060 compiles in 2.3
+  s, each term of the fill trying its chain. No golden, expected header or
+  report moves, and the 217 check programs are the baseline's byte for
+  byte; at 60 links the headers are the prototype's. 10 lines of
+  `compile.hpp`, 24 added and 14 removed, 4 of them comment; 17,795 in all,
+  past the spec's stop at 2 by the ruling that took the base clause's case
+  on. A depth's failure is kept while the terms that would end its chain
+  are filled, so `b(x)_10 + b(x)_6`, its base at 0 and tip at 70, is
+  refused where its function form compiles; integration refused both, and
+  forgetting it whenever a term is filled made the halving recursion with a
+  base 12 times slower. Accepted.
+- **A halving recursion with a base runs away** at large indices:
+  `w(x/2)_(k-1)` read at 1000 takes over 60 s to compile, and read ahead
+  with a base at 1000, 35 s. Found reviewing *recursion from the tip*.
 - **A sequence with parameters read at `lim`'s walking index** is refused,
   which blocks a series or a matrix exponential written as on paper. Allow it.
 - **An unbounded sum is not compiled** as the limit of its partial sums.

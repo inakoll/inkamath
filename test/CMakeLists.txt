@@ -209,7 +209,8 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brin
                          tensorgrad:saliency:3 adjoint:fit4 adjoint:token
                          adjoint:sinabs adjoint:gate3 adjoint:under adjoint:aside gradmany:pair
                          gradmany:same gradmany:stair transformer:unseen:4 transformer:tuned:4
-                         split:carried:4 split:apart:4 pendulum:one spin:twirl:20 iekf:walk:21)
+                         split:carried:4 split:apart:4 pendulum:one spin:twirl:20 iekf:walk:21
+                         tip:reach tip:rested)
     string(REPLACE ":" ";" checked ${checked})
     list(POP_FRONT checked file instance count)
     set(name ${instance})
@@ -327,6 +328,12 @@ set_tests_properties(check_walk_21_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^walk: ${walk}\nwalk\\.Pp: within 1\\.5e-15, from 1${about}\nwalk\\.Rp: within 1\\.2e-15, from 1${about}\nwalk\\.Nb: within 2\\.3e-19, from 1${about}\nwalk\\.S: within 4\\.1e-18, from 1${about}\nwalk\\.K: within 2\\.6e-13, from 1${about}\nwalk\\.P: within 1\\.5e-15${about}\nwalk\\.Y: within 0\nwalk\\.pp: within 1\\.6e-15, from 1${about}\nwalk\\.vp: within 9\\.9e-15, from 1${about}\nwalk\\.Xp: within 9\\.9e-15, from 1${about}\nwalk\\.X: within 9\\.8e-15${about}\nwalk\\.R: within 1\\.2e-15${about}\nwalk\\.d: within 6\\.1e-16${about}\nwalk\\.p: within 1\\.5e-15${about}\nwalk\\.v: within 9\\.8e-15${about}\n$")
 # Its 1.1 MB of C takes GCC 10 s at -O2 and 2 at -O0, its report the same.
 target_compile_options(check_walk_21 PRIVATE $<$<C_COMPILER_ID:GNU,Clang,AppleClang>:-O0>)
+# Recursion from the tip (DESIGN.md): the sequence read ahead held to the
+# interpreter as the function form is, and to the function form exactly.
+set_tests_properties(check_reach_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^reach: 100 steps from 0, against exact values\nreach\\.y: within 2\\.8e-14\nreach\\.d: within 0\n$")
+set_tests_properties(check_rested_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^rested: 100 steps from 0, against exact values\nrested\\.z: within 3\\.6e-15\n$")
 add_test(NAME check_outside_2000 COMMAND check_outside_2000)
 set_tests_properties(check_outside_2000 PROPERTIES WILL_FAIL ON)
 add_test(NAME check_runaway_1000 COMMAND check_runaway_1000)
