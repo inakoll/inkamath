@@ -81,7 +81,8 @@ static inline void heat_inverse3_(double a_[3][3]) {
 
 /* Computes what derives from the parameters: call it after assigning one. */
 static inline void heat_update(heat* m_) {
-    double t0_[3][3] = {{0.25 + m_->dt * 8.0, 0.0 + m_->dt * -4.0, 0.0 + m_->dt * 0.0}, {0.0 + m_->dt * -4.0, 0.25 + m_->dt * 8.0, 0.0 + m_->dt * -4.0}, {0.0 + m_->dt * 0.0, 0.0 + m_->dt * -4.0, 0.25 + m_->dt * 8.0}};
+    const double t4_ = 0.0 + m_->dt * -4.0;
+    double t0_[3][3] = {{0.25 + m_->dt * 8.0, t4_, 0.0 + m_->dt * 0.0}, {t4_, 0.25 + m_->dt * 8.0, t4_}, {0.0 + m_->dt * 0.0, t4_, 0.25 + m_->dt * 8.0}};
     heat_inverse3_(t0_);
     m_->A[0][0] = t0_[0][0] * 0.25;
     m_->A[0][1] = t0_[0][1] * 0.25;
