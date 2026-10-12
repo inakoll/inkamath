@@ -136,7 +136,13 @@ private:
         return "\\mathit{" + name + "}";
     }
 
+    // An operator LaTeX names is its command, '\sin' as on paper.
     static std::string Operator(const std::string& name) {
+        static const std::set<std::string> own = {
+            "arccos", "arcsin", "arctan", "arg", "cos", "cosh", "cot", "coth", "csc", "deg",
+            "det",    "dim",    "exp",    "gcd", "hom", "inf",  "ker", "lg",   "ln",  "log",
+            "max",    "min",    "Pr",     "sec", "sin", "sinh", "sup", "tan",  "tanh"};
+        if (own.count(name)) return "\\" + name;
         return name.size() == 1 ? name : "\\operatorname{" + name + "}";
     }
 

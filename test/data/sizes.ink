@@ -47,7 +47,7 @@ act(z)[i,j] = tanh(z[i,j])
 ~0.462117157
 
 >> tex ?act
-\operatorname{act}(z)_{i,j} = \operatorname{tanh}(z_{i,j})
+\operatorname{act}(z)_{i,j} = \tanh(z_{i,j})
 
 # --- a layer where it is used ------------------------------------------------
 
@@ -687,7 +687,7 @@ sm(z, K)[j] = exp(z[j])/sum_(c=1)^K exp(z[c])
   ~0.665240956]
 
 >> tex ?sm
-\operatorname{sm}(z, K)_j = \frac{\operatorname{exp}(z_{j})}{\sum_{c=1}^{K} \operatorname{exp}(z_{c})}
+\operatorname{sm}(z, K)_j = \frac{\exp(z_{j})}{\sum_{c=1}^{K} \exp(z_{c})}
 
 >> ce(z, k, K) = -log(sm(z, K)[k])
 ce(z, k, K) = -log(sm(z, K)[k])

@@ -3293,9 +3293,9 @@ that exploring seven domains asked of the interpreter, by how many asked.
   blocks, `[A, x_n*A; A]`, ended by a 0 stretched over 2x2, its value
   worked out with fractions. 24 lines of sources against 25 planned, all
   in `compile.hpp`: 15,608 lines in all.
-- **`tex` of `==`, a negative fraction and `exp`**: `==` is set as `=`,
-  `\frac{-1}{2}` should be `-\frac{1}{2}`, `\operatorname{exp}` should be
-  `\exp`; and one tensor literal refuses a whole model's `tex`.
+- **`tex` of `==` and a negative fraction**: `==` is set as `=`,
+  `\frac{-1}{2}` should be `-\frac{1}{2}`; and one tensor literal refuses
+  a whole model's `tex`.
 - **A limit exact at an exact fixed point**: k-means reaches `C_3 == C_4`
   exactly, yet `lim C` is inexact and `frac lim C` refused.
 - **Matrix `==` and `<>` compiled**, refused as "a comparison of matrices".
@@ -9752,4 +9752,3 @@ they asked, each with its smallest change.
 - **A parameter with no default compiled as a single value** is named by
   its refusal where read, but not through a function's parameter, as the
   filter's `blk(X_n)` reads `X0`. Follow the call's argument.
-- **`tex` writes `\operatorname{sin}`** for `\sin`.
