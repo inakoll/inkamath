@@ -88,13 +88,15 @@ cannot compile d: d_(...): a term after the one being computed
     return()
 endif()
 # The check program of a tip.ink instance, until then one saying it is
-# refused, which skips its report.
+# refused, which skips its report; refused otherwise, it fails the build.
 if(PART STREQUAL "spec_program")
     execute_process(COMMAND "${EXE}" --check ${tip} ${INSTANCE} -o "${PROGRAM}"
-                    RESULT_VARIABLE refused OUTPUT_QUIET ERROR_QUIET)
-    if(refused)
+                    RESULT_VARIABLE refused OUTPUT_QUIET ERROR_VARIABLE why)
+    if(refused AND why MATCHES "_\\(\\.\\.\\.\\): a term after the one being computed\n$")
         file(WRITE "${PROGRAM}"
              "#include <stdio.h>\nint main(void) {\n    puts(\"${INSTANCE}: refused\");\n    return 0;\n}\n")
+    elseif(refused)
+        message(FATAL_ERROR "${why}")
     endif()
     return()
 endif()
