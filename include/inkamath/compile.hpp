@@ -2991,11 +2991,14 @@ private:
     }
 
     // A term of the sequence a limit walks, read back from one of its own:
-    // a local of its function, 't1_' the one before.
+    // a local of its function, 't1_' the one before. Its own are its
+    // arguments' values, not their names, which a call rebinds (C352).
     Code Earlier(const ParametersCall<Value>& call) {
-        const auto same = [](const PExpression<Value>& argument, const std::string& parameter) {
-            const auto* ref = dynamic_cast<const RefExpression<Value>*>(argument.get());
-            return ref && ref->Name() == parameter;
+        const auto same = [&](const PExpression<Value>& argument, const std::string& parameter) {
+            const Code code = Emit(argument), own = Array("arg_" + parameter, code.size);
+            return std::equal(code.cells.begin(), code.cells.end(), own.cells.begin(),
+                              own.cells.end(),
+                              [](const Cell& a, const Cell& b) { return a.text == b.text; });
         };
         const auto& arguments = call.parameters_expression();
         bool own = arguments.size() + call.parameters_dict().size() == limit_->parameters.size();
