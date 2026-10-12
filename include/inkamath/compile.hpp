@@ -1479,6 +1479,8 @@ private:
     }
 
     Code Emit(const PExpression<Value>& expression) {
+        if (const auto lifted = lifted_.find(expression.get()); lifted != lifted_.end())
+            return lifted->second;
         expression->accept(*this);
         return code_;
     }
@@ -1930,7 +1932,10 @@ private:
     // Under grad (Derivative::Power), e^w's part is e^w*w', and a constant
     // power's c*u^(c-1)*u', none where c is 0, NaN where u is 0 and c < 1.
     PExpression<Value> visit(PowExpression<Value>* expression) override {
-        Code       base = Emit(expression->m_e1());
+        Code base = Emit(expression->m_e1());
+        if (limit_ && !index_.empty() && !places_.count(index_) && base.part.empty() &&
+            Mentions(*expression->m_e2(), index_))
+            if (const auto climbed = Climbed(base, expression->m_e2())) return Answer(*climbed);
         const Code exponent =
             base.Scalar()
                 ? Emit(expression->m_e2())
@@ -2790,23 +2795,48 @@ private:
         for (const auto& [parameter, argument] : call.parameters_dict())
             given.values.emplace(parameter, Emit(argument));
         Defaults(sequence, given);
-        // A limit's function fills arrays of rows and columns.
-        for (const auto& [parameter, code] : given.values) {
-            if (code.size.slices) throw Reason("a tensor in a limit, for now");
-            if (!code.part.empty()) throw Reason("a derivative of a limit, for now");
-        }
-        bool constant = true;
-        for (const auto& [parameter, code] : given.values) constant = constant && code.constant;
-        // Its terms, as locals of a function of their own. 'arg_x': no name
-        // of the language has a '_', and no name of the function's own
-        // begins so.
-        Walked    walked{name, names, 0, {0, 0}, &lists_.emplace_back(), &lists_.emplace_back()};
+        // 'arg_x': no name of the language has a '_', and no name of the
+        // function's own begins so.
         Expansion inside{{}, {}, sequence.home ? sequence.home : scope_, nullptr, {}, {}};
         for (const std::string& parameter : names) {
             const Code& argument = given.values.at(parameter);
             inside.values.emplace(parameter, Array("arg_" + parameter, argument.size));
         }
         inside.values.insert(given.values.begin(), given.values.end());  // the sizes, constants
+        return Converge(expression, name, "lim " + name, "terms", 0, names, given.values, inside,
+                        [&](Walked& walked, std::map<int, Code>& bases, const auto& shaped) {
+                            for (const Clause<Value>& clause : sequence.Clauses()) {
+                                const ParametersDefinition<Value>& c = clause.parameters;
+                                if (!c.indexed() || c.general()) continue;
+                                if (c.guarded())
+                                    throw Reason("a guarded base clause in a limit's terms");
+                                bases[c.index()] = shaped(Emit(clause.expression));
+                            }
+                            walked.first = (bases.empty() ? 0 : bases.rbegin()->first) + 1;
+                            temporaries_ = walked.iterated;
+                            return Iterate(name, sequence, walked.first, shaped);
+                        });
+    }
+
+    // A walk's terms, as locals of a function of their own given its
+    // arguments: a limit's, or an unbounded sum's partial sums. 'walk' sets
+    // its bases and answers its term at k_; 'counted' says how many of its
+    // bases the interpreter counts among its terms, a sum's first partial
+    // sum and none of a limit's.
+    template <typename Terms>
+    PExpression<Value> Converge(Expression<Value>* expression, const std::string& name,
+                                const std::string& what, const std::string& terms, int counted,
+                                const std::vector<std::string>&    names,
+                                const std::map<std::string, Code>& given, Expansion& inside,
+                                Terms walk) {
+        // A limit's function fills arrays of rows and columns.
+        for (const auto& [parameter, code] : given) {
+            if (code.size.slices) throw Reason("a tensor in a limit, for now");
+            if (!code.part.empty()) throw Reason("a derivative of a limit, for now");
+        }
+        bool constant = true;
+        for (const auto& [parameter, code] : given) constant = constant && code.constant;
+        Walked walked{name, what, names, 0, {0, 0}, &lists_.emplace_back(), &lists_.emplace_back()};
         Walked* const              outer_limit       = std::exchange(limit_, &walked);
         auto* const                outer_temporaries = std::exchange(temporaries_, walked.based);
         // Its names are its own: a step's t1_ is not its term before (C308).
@@ -2823,15 +2853,7 @@ private:
         };
         try {
             Inside(inside, [&] {
-                for (const Clause<Value>& clause : sequence.Clauses()) {
-                    const ParametersDefinition<Value>& c = clause.parameters;
-                    if (!c.indexed() || c.general()) continue;
-                    if (c.guarded()) throw Reason("a guarded base clause in a limit's terms");
-                    bases[c.index()] = shaped(Emit(clause.expression));
-                }
-                walked.first = (bases.empty() ? 0 : bases.rbegin()->first) + 1;
-                temporaries_ = walked.iterated;
-                general      = Iterate(name, sequence, walked.first, shaped);
+                general = walk(walked, bases, shaped);
                 return Code{};
             });
         } catch (...) {
@@ -2867,15 +2889,16 @@ private:
             return out;
         };
         std::string text;
-        text += "/* lim " + name + ", as the interpreter takes it: its terms from index " + first +
-                " on, until\n * two agree within " + tolerance + (scalar ? "" : " in every cell") +
+        text += "/* " + what + ", as the interpreter takes it: its " + terms + " from index " +
+                std::to_string(highest + 1 - counted) + " on, until\n * two agree within " +
+                tolerance + (scalar ? "" : " in every cell") +
                 " and so does what is left of the series, as the steps\n * shrink; NaN where "
                 "that takes more than " +
                 std::to_string(Convergence<Value>::max_terms) + " terms. */\n";
         text += "static inline " + std::string(scalar ? "double " : "void ") + function +
                 "(const " + module_ + "* m_";
         for (const std::string& parameter : names) {
-            const Code& argument = given.values.at(parameter);
+            const Code& argument = given.at(parameter);
             text += argument.Scalar() ? ", double arg_" + parameter
                                       : ", double arg_" + parameter + Dimensions(argument.size);
         }
@@ -2920,9 +2943,10 @@ private:
         text += "    double step_ = 0.0, before_ = 0.0;\n";
         text +=
             "    int    started_ = " + std::string(bases.empty() ? "0" : "1") + ", stepped_ = 0;\n";
-        text += "    for (long long k_ = " + first + "; k_ <= " +
-                std::to_string(highest + static_cast<int>(Convergence<Value>::max_terms)) +
-                "; ++k_) {\n";
+        text +=
+            "    for (long long k_ = " + first + "; k_ <= " +
+            std::to_string(highest - counted + static_cast<int>(Convergence<Value>::max_terms)) +
+            "; ++k_) {\n";
         text += iterate;
         text += "        if (started_) {\n";
         // A step within an ulp or two of the term may be an exact 0 rounded,
@@ -2989,7 +3013,7 @@ private:
         // array of the step's, or of the enclosing limit's.
         std::string called = named->second + "(m_";
         for (const std::string& parameter : names) {
-            const Code& argument = given.values.at(parameter);
+            const Code& argument = given.at(parameter);
             if (argument.Scalar()) {
                 called += ", " + argument.cells[0].text;
                 continue;
@@ -3058,6 +3082,138 @@ private:
         return Chain(guarded, otherwise, size);
     }
 
+    // Whether code read in a limit's terms changes as it walks.
+    bool Walks(std::string read) {
+        const Walked& walked = *limit_;
+        for (const Temporary* temporary : Kept(*walked.based, read))
+            for (const std::string& line : temporary->lines) read += line + ' ';
+        std::set<std::string> words, moving{"k_"};
+        Words(read, words);
+        for (int l = 1; l <= walked.depth; ++l) moving.insert("t" + std::to_string(l) + "_");
+        for (const Temporary& temporary : *walked.iterated) moving.insert(temporary.name);
+        for (std::size_t b = 0; b < walked.beside.size(); ++b)
+            for (std::size_t l = 1; l <= walked.beside[b].window.size(); ++l)
+                moving.insert(Window(b, l));
+        return std::ranges::any_of(words, [&](const std::string& w) { return moving.contains(w); });
+    }
+
+    // 'A^(k+c)' in a limit's terms, k its walking index and A the same at
+    // each: walked beside it, each power the one before times A from A^(f+c)
+    // set before the walk, f the index before its first: one product a term
+    // where squaring takes log k. Not where f+c < 0, an inverse the
+    // interpreter may never take.
+    std::optional<Code> Climbed(const Code& base, const PExpression<Value>& exponent) {
+        Walked& walked = *limit_;
+        int     c      = 0;
+        try {
+            c = Offset(exponent, "a power");
+        } catch (const Reason&) {
+            return std::nullopt;
+        } catch (const Fix&) {
+            return std::nullopt;
+        }
+        std::string read;
+        for (const Cell& cell : base.cells) read += cell.text + ' ';
+        if (walked.first - 1 + c < 0 || Walks(read)) return std::nullopt;
+        const std::string key = "^" + std::to_string(c) + " " + Rows(base);
+        std::size_t       b   = 0;
+        while (b < walked.beside.size() &&
+               (walked.beside[b].function || walked.beside[b].args != key))
+            ++b;
+        if (b < walked.beside.size()) return walked.beside[b].term;
+        Walked::Beside& beside = walked.beside.emplace_back(Walked::Beside{nullptr, key, {}});
+        {
+            const Setting<std::vector<Temporary>*> before(temporaries_, walked.based);
+            beside.window.push_back(
+                SharedAll(Power(base, Literal(Value(Number(walked.first - 1 + c))))));
+        }
+        const Setting<std::vector<Temporary>*> in(temporaries_, walked.iterated);
+        Code                                   term = Product(Array(Window(b, 1), base.size), base);
+        for (Cell& cell : term.cells)
+            cell = Atom(Declare(cell.text, [&](const std::string& t) {
+                return std::vector<std::string>{"const double " + t + " = " + cell.text + ";"};
+            }));
+        return beside.term = term;
+    }
+
+    // 'sum_(q=a) f(q)', 'prod_(q=a) f(q)': the limit of its partial sums as
+    // the interpreter takes it, walked as a limit's terms are, its base f(a)
+    // and its term at k_ t1_ plus, or times, f(k_). What f reads that does not
+    // move as q does is computed once where the sum is, the walk's arguments.
+    PExpression<Value> Sum(SeriesExpression<Value>* expression) {
+        const int first =
+            Whole(Known(expression->Lower(), "a sum or a product whose bounds are not constants"));
+        const std::string& q   = expression->Index();
+        const std::string what = std::string(expression->Product() ? "prod_(" : "sum_(") + q + "=" +
+                                 std::to_string(first) + ")";
+        std::vector<PExpression<Value>> unmoved;
+        Unmoved(expression->Body(), {q}, what, unmoved);
+        std::map<std::string, Code>              given;
+        std::map<const Expression<Value>*, Code> lifted;
+        std::vector<std::string>                 names;
+        for (const PExpression<Value>& part : unmoved) {
+            const Code code = Emit(part);
+            if (code.constant && code.part.empty()) {
+                lifted.emplace(part.get(), code);
+                continue;
+            }
+            names.push_back(std::to_string(names.size()));
+            lifted.emplace(part.get(), Array("arg_" + names.back(), code.size));
+            given.emplace(names.back(), code);
+        }
+        Expansion inside{{}, {}, scope_, nullptr, {}, {}};
+        const Setting<std::map<const Expression<Value>*, Code>> in(lifted_, lifted);
+        return Converge(
+            expression, what, what, expression->Product() ? "partial products" : "partial sums", 1,
+            names, given, inside,
+            [&](Walked& walked, std::map<int, Code>& bases, const auto& shaped) {
+                places_[q]   = Value(Number(first));
+                bases[first] = shaped(Emit(expression->Body()));
+                places_.erase(q);
+                walked.first = first + 1;
+                temporaries_ = walked.iterated;
+                index_       = q;
+                const Setting<std::string> text(index_text_, "(double)k_");
+                const Code                 term  = shaped(Emit(expression->Body()));
+                const Code                 total = Array("t1_", walked.size);
+                return expression->Product() ? Product(total, term) : Broadcast(total, term, Added);
+            });
+    }
+
+    // The largest parts of a sum's term that read neither its index nor a
+    // name bound inside it. The rest is compiled in the walk's function, which
+    // does not see an instance's own definitions: their values are its caller's.
+    void Unmoved(const PExpression<Value>& e, const std::set<std::string>& bound,
+                 const std::string& what, std::vector<PExpression<Value>>& out) {
+        if (!e) return;
+        if (std::none_of(bound.begin(), bound.end(),
+                         [&](const std::string& name) { return Mentions(*e, name); })) {
+            out.push_back(e);
+            return;
+        }
+        if (dynamic_cast<MemberExpression<Value>*>(e.get())) return;
+        if (const auto* call = dynamic_cast<FuncExpression<Value>*>(e.get())) {
+            if (Local(call->Name()).first)
+                throw Reason(call->Name() + ", a function of an instance, called at " + what +
+                             "'s index, for now");
+            for (const auto& argument : call->Call().parameters_expression())
+                Unmoved(argument, bound, what, out);
+            for (const auto& [given, argument] : call->Call().parameters_dict())
+                Unmoved(argument, bound, what, out);
+            Unmoved(call->Call().subexpr(), bound, what, out);
+            return;
+        }
+        const auto* series = dynamic_cast<SeriesExpression<Value>*>(e.get());
+        const auto* grad   = dynamic_cast<GradExpression<Value>*>(e.get());
+        for (const PExpression<Value>& child : e->Children()) {
+            std::set<std::string> inner = bound;
+            if (series && child == series->Body()) inner.insert(series->Index());
+            if (grad && child == grad->Body())
+                inner.insert(grad->Variables().begin(), grad->Variables().end());
+            Unmoved(child, inner, what, out);
+        }
+    }
+
     static std::string Window(std::size_t b, std::size_t lag) {
         return "w" + std::to_string(b) + "_" + std::to_string(lag) + "_";
     }
@@ -3070,25 +3226,15 @@ private:
     Code Beside(const std::string& name, const Reference<Value>& function, Expansion& expansion,
                 int lag) {
         Walked&           walked  = *limit_;
-        const std::string read_at = name + "_(...): read at lim " + walked.name + "'s index ";
+        const std::string read_at = name + "_(...): read at " + walked.what + "'s index ";
         std::string       read;
         for (const auto& [given, value] : expansion.values) {
             if (!value.part.empty())
-                throw Reason(name + "_(...): a derivative of a term lim " + walked.name +
+                throw Reason(name + "_(...): a derivative of a term " + walked.what +
                              " walks, for now");
             for (const Cell& cell : value.cells) read += cell.text + ' ';
         }
-        for (const Temporary* temporary : Kept(*walked.based, read))
-            for (const std::string& line : temporary->lines) read += line + ' ';
-        std::set<std::string> words, moving{"k_"};
-        Words(read, words);
-        for (int l = 1; l <= walked.depth; ++l) moving.insert("t" + std::to_string(l) + "_");
-        for (const Temporary& temporary : *walked.iterated) moving.insert(temporary.name);
-        for (std::size_t b = 0; b < walked.beside.size(); ++b)
-            for (std::size_t l = 1; l <= walked.beside[b].window.size(); ++l)
-                moving.insert(Window(b, l));
-        if (std::ranges::any_of(words, [&](const std::string& w) { return moving.contains(w); }))
-            throw Reason(read_at + "with arguments that change as it walks");
+        if (Walks(read)) throw Reason(read_at + "with arguments that change as it walks");
         const std::string args = Given(expansion);
         std::size_t       b    = 0;
         while (b < walked.beside.size() &&
@@ -3217,7 +3363,10 @@ private:
     // A term of a sequence, read at the index the call gives.
     Code Term(const std::string& key, const Reference<Value>* definition,
               const ParametersCall<Value>& call) {
-        if (limit_) throw Reason(key + "_...: another sequence's term in a limit's terms");
+        if (limit_)
+            throw Reason(key + "_...: another sequence's term in " +
+                         (limit_->what == "lim " + limit_->name ? "a limit" : limit_->what) +
+                         "'s terms");
         if (!reading_ && !basing_) throw Reason(key + "_...: a term read outside a general clause");
         if (definition && !IsSequence(*definition)) throw Reason(key + " is not a sequence");
         Sequence& read = sequences_[key];
@@ -3667,10 +3816,26 @@ private:
                 for (const auto& [reads, lags] : sequence->second.reads) next.push_back(reads);
         }
     }
-    // A factorial of a constant is one; of what moves, refused.
+    // A factorial of a constant is one; of what moves, the header's helper's.
     PExpression<Value> visit(FactExpression<Value>* expression) override {
         const Code operand = Emit(expression->m_e());
-        if (!operand.constant || !operand.part.empty()) throw Reason("a factorial");
+        if (!operand.part.empty() || (!operand.constant && !operand.Scalar()))
+            throw Reason("a factorial");
+        if (!operand.constant) {
+            // A function of the prelude, kept where something calls it, which
+            // a sum folded does not. It stops at an infinite product (C47).
+            const std::string helper = module_ + "_fact_";
+            if (nan_functions_.insert(helper).second)
+                prelude_.push_back(
+                    "/* !x, as the interpreter takes it: NaN where x is not a whole number at "
+                    "least 0. */\nstatic inline double " +
+                    helper +
+                    "(double x) {\n"
+                    "    double f = 1.0, i = 1.0;\n"
+                    "    if (!(x >= 0 && x == floor(x))) return NAN;\n"
+                    "    while (i < x && isfinite(f)) f *= ++i;\n    return f;\n}\n\n");
+            return Answer(Cell(helper + "(" + operand.cells[0].text + ")", primary));
+        }
         return Answer(Exactly([](const Value& v) { return Value(numeric_interface<Value>::fact(v)); },
                               operand));
     }
@@ -3989,7 +4154,7 @@ private:
     // as a constant, as a cell's names are: the terms that read it fold, and
     // the lags it gives are constants.
     PExpression<Value> visit(SeriesExpression<Value>* expression) override {
-        if (!expression->Upper()) throw Reason("a sum or a product with no upper bound");
+        if (!expression->Upper()) return Sum(expression);
         const Code lower =
             Known(expression->Lower(), "a sum or a product whose bounds are not constants");
         const Code upper =
@@ -5542,6 +5707,7 @@ private:
     // The sequence a limit's function is walking, while its clauses compile.
     struct Walked {
         std::string              name;
+        std::string              what;  // 'lim s', or 'sum_(q=0)', as a refusal names it
         std::vector<std::string> parameters;
         int                      depth = 0;           // how far back a term reads its own
         Extent                   size{0, 0};          // a term's, once a clause gives it
@@ -5557,13 +5723,14 @@ private:
             std::optional<Code>     term   = {};  // at k_, once compiled
             std::vector<Code>       window = {};  // its terms before the walk, by lag
         };
-        std::deque<Beside> beside = {};  // the sequences with parameters walked beside it
+        std::deque<Beside> beside = {};  // sequences with parameters, and powers, walked beside it
     };
     std::deque<std::vector<Temporary>> lists_;  // those, kept as a step's are
     static constexpr std::size_t       split_  = 16384;  // a part's bytes; see Split
     int                                splits_ = 0;      // the parts written
     std::string values_, pieces_, upper_;  // their struct's members, their functions, the guard's
     Walked*                          limit_           = nullptr;
+    std::map<const Expression<Value>*, Code> lifted_;  // an unbounded sum's arguments, by part
     int                              temporary_count_ = 0;
     std::map<std::string, Value>     places_;             // a cell's row and column, by their names
     Code        code_;
