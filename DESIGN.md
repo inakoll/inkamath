@@ -9752,5 +9752,4 @@ they asked, each with its smallest change.
 - **A parameter with no default compiled as a single value** is named by
   its refusal where read, but not through a function's parameter, as the
   filter's `blk(X_n)` reads `X0`. Follow the call's argument.
-- **`?file.name` and `tex file.name` refused**, and `tex` writes
-  `\operatorname{sin}` for `\sin`.
+- **`tex` writes `\operatorname{sin}`** for `\sin`.
