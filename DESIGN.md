@@ -4171,12 +4171,12 @@ that exploring seven domains asked of the interpreter, by how many asked.
   part 1 beside `compile_sweep_conditions`, and the `spec` part and
   `cli_spec` go. No transcript in `test/data/spec`.
 
-  Built as specified, with the review's rulings, departing in one thing:
+  Built as specified, with the review's rulings, departing in two things:
   a function that carries no value takes `m_` alone, so that a header
   whose cut lists carry nothing, as the prototype's `e3.ink` whose
   temporaries its first function alone reads, declares no struct and
-  passes none; the prototype called functions it never wrote. A list of
-  assignments alone over the bound is cut too. A carried temporary's C
+  passes none; the prototype called functions it never wrote; and a list
+  of assignments alone over the bound is cut too. A carried temporary's C
   type is still read back from its first line: carried from `Declare`,
   each of its five callers would name it, for as many lines. Added
   `test/compile/split.ink`: `carried`, an inverse and a flag of NaN
