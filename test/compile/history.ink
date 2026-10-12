@@ -332,7 +332,8 @@ vast = over(x_n = ~(10^400))
 # through another sequence, and f three steps back, where compiling it
 # recursed until the stack ran out; 'stepped' at another rate. A general
 # clause's reads before the stream are asked only where no guard holds:
-# 'opened' reads x_-1 nowhere, and was refused.
+# 'opened' reads x_-1 nowhere, and was refused. 'waited' reads its own y_-1
+# at another rate on the right of an 'and', where the window held 0.
 growth(a = 2) = {
     g_n | n < 0 = 1
     g_n = a*g_(n-1)
@@ -365,3 +366,9 @@ opening(x_n) = {
     c_n = x_(n-1)
 }
 opened = opening(x_n = n)
+
+waiting(x_n) = {
+    y_m | m < 0 = 3
+    y_m = m >= 0 and y_(m-1) + x_(2*m) > 0
+}
+waited = waiting(x_n = n - 2)

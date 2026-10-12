@@ -1184,6 +1184,9 @@ check(history_gained)
 # (C343).
 refused(lifted "a = 2) = {\n    g_n | n < 0 = a\n    g_n = 2*g_(n-1)"
         "g: g_0 reads g_-1, before the stream, where g has no history")
+# And at another rate, where it was read as 0.
+refused(slowed "a = 2, x_n) = {\n    y_m | m < 0 = a\n    y_m = y_(m-1) + x_(2*m)"
+        "y: y_0 reads y_-1, before the stream, where y has no history")
 
 # A history of a single value for an inner input given a matrix.
 file(WRITE "${OUT}/stacked.ink" "lag(x_n) = {\n    x_n | n < 0 = 0\n    c_n = x_(n-1)\n}\n"
