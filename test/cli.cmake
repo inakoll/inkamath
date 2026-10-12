@@ -60,6 +60,16 @@ if(PART STREQUAL "spec")
     if(NOT conditions LESS 20)
         message(SEND_ERROR "compile_sweep_conditions: ' != 0)' written ${conditions} times")
     endif()
+    # Nested, not flattened, which writes 15 as well: a flag of conditions
+    # holds one '||'.
+    string(REGEX MATCHALL "const int t[0-9]+_ = [^;\n]*" flags "${text}")
+    foreach(flag IN LISTS flags)
+        string(REGEX MATCHALL " \\|\\| " ors "${flag}")
+        list(LENGTH ors ors)
+        if(flag MATCHES " != 0" AND NOT ors EQUAL 1)
+            message(SEND_ERROR "compile_sweep_conditions: ${flag}")
+        endif()
+    endforeach()
     return()
 endif()
 
