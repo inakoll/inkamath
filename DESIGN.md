@@ -4240,7 +4240,7 @@ that exploring seven domains asked of the interpreter, by how many asked.
   Ruled: the tests build their C with `-fno-slp-vectorize` under Clang 19
   to 22, and README says to; `tq` then steps about 15% slower under Clang
   19, 26 µs to 31.
-- **A limit's invariants hoisted out of its iterate**: a limit or a
+- `[done]` **A limit's invariants hoisted out of its iterate**: a limit or a
   matrix inverse that reads only the function's arguments is declared in
   the iterate's list, so walked again at each iterate, and neither GCC nor
   Clang moves it out at -O2: `layered` in `test/compile/implicit.ink`, a
@@ -4361,6 +4361,20 @@ that exploring seven domains asked of the interpreter, by how many asked.
   part and `cli_spec` go, and `implicit.ink`'s `layered` comment says its
   inner limit is computed once. No transcript in `test/data/spec`: the
   language does not change.
+
+  Built as specified, departing in two places. A call is shared only
+  while the iterate's own list is written, the test `Declare` makes: on
+  the prototype a global read first in a limit's terms took a temporary
+  more, and a limit in a base clause a `v0_`; both are written as
+  today. And the factorial's helper is shared as a limit of numbers is,
+  `!(a + 2)` declared `const double v0_ = fact_fact_(arg_a + 2.0);`
+  before the loop, so that a call to a function with a loop is what this
+  names; `compile_hoisted`'s third file, `fact.ink`, holds both. What
+  moves is the prototype's: the same 4 check programs and 3 cli headers,
+  byte for byte; every report, golden and refusal as before. `layered`
+  at -O2 by GCC 13.3, the median of nine runs: 2,240 and 2,164 ns a step
+  to 141, 154 and 141. 10 lines of `compile.hpp`, 12 added and 2 removed, 3 of
+  them comment; 18,335 in all.
 - `[done]` **Shared at every value written twice**, value numbering in
   general, as weighed under *Temporaries in a limit's function*, a
   refactor of headers: no golden, `--check` report or refusal moves.

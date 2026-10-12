@@ -48,45 +48,6 @@ endfunction()
 # Read by cases in every part.
 set(inputs "${CMAKE_CURRENT_LIST_DIR}/compile/inputs.ink")
 
-# Specified, not yet built (DESIGN.md, a limit's invariants hoisted):
-# implicit.ink's layered computes its inner limit once, before its walk's
-# loop, where it computes it again at each iterate, and so does a limit of
-# numbers that reads only the arguments. Skipped while both are written as
-# today, and only then.
-if(PART STREQUAL "spec")
-    set(args --compile ${CMAKE_CURRENT_LIST_DIR}/compile/implicit.ink layers -o layered.h)
-    check(compile_hoisted)
-    file(WRITE "${OUT}/scalar.ink" "layers(x_n) = {\n    s(v)_0 = v\n    s(v)_k = s(v)_(k-1)/2 + v\n"
-         "    o(a)_0 = a\n    o(a)_k = o(a)_(k-1)/4 + lim s(a + 1)\n    q_n = lim o(x_n)\n}\n")
-    set(args --compile scalar.ink layers -o scalar.h)
-    check(compile_hoisted)
-    file(READ "${OUT}/layered.h" layered)
-    file(READ "${OUT}/scalar.h" scalar)
-    string(LENGTH "${layered}" layered_bytes)
-    string(LENGTH "${scalar}" scalar_bytes)
-    string(CONCAT walk "    double t1_ = arg_a;\n    double step_ = 0.0, before_ = 0.0;\n"
-           "    int    started_ = 1, stepped_ = 0;\n    for (long long k_ = 1; k_ <= 100; ++k_) {\n")
-    string(CONCAT today "${walk}        double v0_[2][1] = {{arg_a}, {1.0}};\n"
-           "        double v1_[2][1];\n        layered_lim0(m_, v0_, v1_);\n")
-    string(CONCAT scalar_today "${walk}"
-           "        const double t_ = t1_ / 4.0 + scalar_lim0(m_, arg_a + 1.0);\n")
-    string(FIND "${layered}" "${today}" today)
-    string(FIND "${scalar}" "${scalar_today}" scalar_today)
-    if(NOT today EQUAL -1 AND NOT scalar_today EQUAL -1 AND layered_bytes EQUAL 4589 AND
-       scalar_bytes EQUAL 4013)
-        message("compile_hoisted: walked again as today")
-        return()
-    endif()
-    string(CONCAT hoisted "    double v0_[2][1] = {{arg_a}, {1.0}};\n    double v1_[2][1];\n"
-           "    layered_lim0(m_, v0_, v1_);\n${walk}"
-           "        const double t_ = t1_ / 4.0 + (1.0 * v1_[0][0] + 1.0 * v1_[1][0]);\n")
-    string(CONCAT scalar_hoisted "    const double v0_ = scalar_lim0(m_, arg_a + 1.0);\n${walk}"
-           "        const double t_ = t1_ / 4.0 + v0_;\n")
-    holds(compile_hoisted layered.h "${hoisted}")
-    holds(compile_hoisted scalar.h "${scalar_hoisted}")
-    return()
-endif()
-
 # The cases run as three tests of about equal time under the sanitizers: PART
 # 1 up to charpoly's refusal, 2 from it, 3 from eig's, and all where PART is
 # not given.
@@ -2025,6 +1986,30 @@ if(NOT at EQUAL -1)
     message(SEND_ERROR "compile_float_implicit: float/cramer.h holds 'double'")
 endif()
 holds(compile_float_implicit float/cramer.h "float v1_[3][3] = ")
+
+# A limit's invariants hoisted (DESIGN.md): layered's inner limit computed
+# once, before its walk's loop, and so a limit of numbers and a factorial
+# that read only the arguments, but not a limit a base clause reads.
+set(args --compile ${CMAKE_CURRENT_LIST_DIR}/compile/implicit.ink layers -o layered.h)
+check(compile_hoisted)
+file(WRITE "${OUT}/scalar.ink" "layers(x_n) = {\n    s(v)_0 = v\n    s(v)_k = s(v)_(k-1)/2 + v\n"
+     "    o(a)_0 = a\n    o(a)_k = o(a)_(k-1)/4 + lim s(a + 1)\n    q_n = lim o(x_n)\n}\n")
+set(args --compile scalar.ink layers -o scalar.h)
+check(compile_hoisted)
+file(WRITE "${OUT}/fact.ink" "layers(x_n) = {\n    s(v)_0 = v\n    s(v)_k = s(v)_(k-1)/2 + v\n"
+     "    o(a)_0 = lim s(a)\n    o(a)_k = o(a)_(k-1)/4 + 1/!(a + 2)\n    q_n = lim o(x_n)\n}\n")
+set(args --compile fact.ink layers -o fact.h)
+check(compile_hoisted)
+string(CONCAT walk "    double step_ = 0.0, before_ = 0.0;\n"
+       "    int    started_ = 1, stepped_ = 0;\n    for (long long k_ = 1; k_ <= 100; ++k_) {\n")
+holds(compile_hoisted layered.h "    double v0_[2][1] = {{arg_a}, {1.0}};\n    double v1_[2][1];\n"
+      "    layered_lim0(m_, v0_, v1_);\n    double t1_ = arg_a;\n${walk}"
+      "        const double t_ = t1_ / 4.0 + (1.0 * v1_[0][0] + 1.0 * v1_[1][0]);\n")
+holds(compile_hoisted scalar.h "    const double v0_ = scalar_lim0(m_, arg_a + 1.0);\n"
+      "    double t1_ = arg_a;\n${walk}        const double t_ = t1_ / 4.0 + v0_;\n")
+holds(compile_hoisted fact.h "    const double v0_ = fact_fact_(arg_a + 2.0);\n"
+      "    double t1_ = fact_lim0(m_, arg_a);\n${walk}"
+      "        const double t_ = t1_ / 4.0 + 1.0 / v0_;\n")
 
 # A global's temporaries, read first in a limit's terms, are numbered as
 # the update's, not as that limit's: two such are two names.
