@@ -132,7 +132,8 @@ q = (a/b)^2
 >> tex ?q
 q = (\frac{a}{b})^2
 
-# A function of more than one letter is an operator's name.
+# A function of more than one letter is an operator's name, and one LaTeX
+# names is its command.
 >> sq(x) = x^2
 sq(x) = x^2
 
@@ -141,6 +142,12 @@ r = sq(3)
 
 >> tex ?r
 r = \operatorname{sq}(3)
+
+>> wave(x) = sin(x)*exp(-x) + log(cos(x))
+wave(x) = sin(x)*exp(-x) + log(cos(x))
+
+>> tex ?wave
+\operatorname{wave}(x) = \sin(x)\,\exp(-x) + \log(\cos(x))
 
 # Matrices, a transpose, a cell.
 >> A = [1 2; 3 4]

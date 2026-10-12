@@ -262,10 +262,10 @@ tanh(x) | x < 0 = -tanhp(-x)
 tanh(x) = tanhp(x)
 
 >> tex ?log
-\operatorname{log}(x) = \begin{cases} \frac{1}{0} & \text{if } x \le 0 \\ x & \text{if } \frac{1}{x} = 0 \\ \operatorname{logk}(x, \operatorname{ilogb}(x)) & \text{otherwise} \end{cases}
+\log(x) = \begin{cases} \frac{1}{0} & \text{if } x \le 0 \\ x & \text{if } \frac{1}{x} = 0 \\ \operatorname{logk}(x, \operatorname{ilogb}(x)) & \text{otherwise} \end{cases}
 
 >> tex ?tanh
-\operatorname{tanh}(x) = \begin{cases} -\operatorname{tanhp}(-x) & \text{if } x < 0 \\ \operatorname{tanhp}(x) & \text{otherwise} \end{cases}
+\tanh(x) = \begin{cases} -\operatorname{tanhp}(-x) & \text{if } x < 0 \\ \operatorname{tanhp}(x) & \text{otherwise} \end{cases}
 
 >> tex ?ilogbs
 \operatorname{ilogbs}(x, k, s) = \begin{cases} k & \text{if } k + s > 3321 \\ k + s & \text{if } k + s < -3321 \\ k + s & \text{if } x \ge 2^{k + s} \\ k & \text{otherwise} \end{cases}

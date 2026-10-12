@@ -59,6 +59,15 @@ set(input "1+1\nsum_(k=1)^10 k\na=2\na*3\n")
 set(stdout "2\n55\na=2\n6\n")
 check(filter)
 
+# Each answer is written as it is given, so a long run written to a file
+# shows how far it went: stopped in its second input, it has given its first.
+file(WRITE "${OUT}/slow.ink" "1+1\nH[j<=80, k<=80] = 1/(j+k-1)\nsum_(j=1)^80 (H^-1)[j, 1]\n")
+execute_process(COMMAND "${EXE}" slow.ink WORKING_DIRECTORY "${OUT}"
+                OUTPUT_VARIABLE got_stdout ERROR_QUIET TIMEOUT 2)
+if(NOT "${got_stdout}" STREQUAL "2\nH[j<=80, k<=80] = 1/(j+k-1)\n")
+    message(SEND_ERROR "flushed: stdout\n--- got\n${got_stdout}---")
+endif()
+
 # A blank line and a comment are not inputs. At a terminal an empty line is
 # still 'empty expression'; in a file it is only spacing.
 set(input "1+1\n\n# a comment\n2*3\n")
@@ -227,10 +236,10 @@ check(missing_file)
 
 # What the compiler cannot express it refuses by name, and writes nothing
 # (DESIGN.md, phase 14, step 2).
-file(WRITE "${OUT}/model.ink" "a_0 = 1\na_n = a_(n-1) + !n\n")
+file(WRITE "${OUT}/model.ink" "a_0 = 1\na_n = a_(n-1) + i*n\n")
 file(REMOVE "${OUT}/model.h")
 set(args --compile model.ink -o model.h)
-set(stderr "inkamath: cannot compile a: a factorial\n")
+set(stderr "inkamath: cannot compile a: a complex number\n")
 set(exit 1)
 check(compile_refused)
 if(EXISTS "${OUT}/model.h")
@@ -244,12 +253,18 @@ check(compile_usage)
 
 # Without -o, every definition that would not compile, and why, and nothing
 # written: one that reads a refused definition is refused in turn.
-file(WRITE "${OUT}/refused.ink" "sq(x) = x^2\na_0 = 1\na_n = a_(n-1) + !n\nb_n = a_n + 1\nc_n = sq(u_n)\ns(g = 1, u_n) = { v_0 = 0\n v_n = g*v_(n-1) + u_n }\nd_n = s(g = n, u_n = c_n).v_n\n")
+file(WRITE "${OUT}/refused.ink" "sq(x) = x^2\na_0 = 1\na_n = a_(n-1) + i*n\nb_n = a_n + 1\nc_n = sq(u_n)\ns(g = 1, u_n) = { v_0 = 0\n v_n = g*v_(n-1) + u_n }\nd_n = s(g = n, u_n = c_n).v_n\n")
 set(args --compile refused.ink)
-set(stdout "cannot compile a: a factorial\ncannot compile b: a, which cannot be compiled\ncannot compile d: an instance of s, which keeps a history, made anew at each step\n")
+set(stdout "cannot compile a: a complex number\ncannot compile b: a, which cannot be compiled\ncannot compile d: an instance of s, which keeps a history, made anew at each step\n")
 set(stderr "")
 set(exit 1)
 check(compile_refusals)
+
+# A factorial of a constant is one, as a series is written.
+file(WRITE "${OUT}/series.ink" "x_n = n/4\ny_n = sum_(q=0)^4 x_n^q/!q\n")
+set(args --compile series.ink -o series.h)
+check(compile_factorial)
+holds(compile_factorial series.h " / 6.0 + pow(m_->x[0], 4.0) / 24.0;\n")
 
 # Several rates (DESIGN.md): a read at a period the sequence is not computed
 # at, one before its term is computed, and one at an index of neither form.
@@ -617,6 +632,12 @@ set(args --compile through.ink mon -o mon.h)
 set(stderr "inkamath: cannot compile k: e reads x, a single value, as mon states no size for it: write 'x_n[j<=2]'\n")
 set(exit 1)
 check(compile_unstated_through)
+# So is a parameter with no default, read past its cell.
+file(WRITE "${OUT}/nodefault.ink" "m(A, x_n) = {\n    y_n = A[1, 2]*x_n\n}\n")
+set(args --compile nodefault.ink m -o m.h)
+set(stderr "inkamath: cannot compile y: A is a single value, as m gives it no default: give it one of its size, at least j<=1, k<=2\n")
+set(exit 1)
+check(compile_unstated_parameter)
 
 # Every run of --check walks the prelude's definitions, so that its programs
 # hold the compiled functions to the walk (DESIGN.md): log, 16 references
@@ -1130,27 +1151,28 @@ endif()
 
 if(NOT PART EQUAL 3)
 
-# The prelude's charpoly compiles; rho does not yet, by hurwitzb's factorial,
-# and grad refuses it and abscissa where A moves, as the interpreter does
-# (DESIGN.md, the characteristic polynomial and stability). A 1x1 matrix is
-# refused alike, where its sizes went unbound, "n is not defined" (C213).
+# The prelude's charpoly compiles; rho does not yet, by hurwitzb's sequence
+# with parameters by cells, and grad refuses it and abscissa where A moves, as
+# the interpreter does (DESIGN.md, the characteristic polynomial and
+# stability). A 1x1 matrix is refused alike, where its sizes went unbound,
+# "n is not defined" (C213).
 file(WRITE "${OUT}/charpoly.ink" "x_n = rho([n 1; -1 1/2])\nz_n = charpoly([n 1; 2 3])[2]\ng_n = grad_(a = n) rho([a 1; -1 1/2])\nh_n = grad_(a = n) abscissa(a)\ns_n = rho([1/(n+2)])\n")
 set(args --compile charpoly.ink)
-set(stdout "cannot compile g: grad cannot differentiate rho yet\ncannot compile h: grad cannot differentiate abscissa yet\ncannot compile s: a factorial\ncannot compile x: a factorial\n")
+set(stdout "cannot compile g: grad cannot differentiate rho yet\ncannot compile h: grad cannot differentiate abscissa yet\ncannot compile s: a sequence with parameters by cells, for now\ncannot compile x: a sequence with parameters by cells, for now\n")
 set(exit 1)
 check(compile_charpoly_refused)
 
 # check_not_transcript reads the models.ink part 1 writes.
 file(WRITE "${OUT}/models.ink" "gain(k = 2, x_n) = { y_n = k*x_n + z_n }\n")
 
-# Nor do hinf and dhinf, by hurwitzb's factorial in their guards, and grad
-# refuses them where A moves (DESIGN.md, the H-infinity norm). Of a 1x1
-# matrix, dhinf's sizes went unbound, "n is not defined", and hinf's
-# sequence with parameters was "in a limit's terms", where there is none
-# (C213).
+# Nor do hinf and dhinf, by hurwitzb's sequence with parameters by cells in
+# their guards, and grad refuses them where A moves (DESIGN.md, the H-infinity
+# norm). Of a 1x1 matrix, dhinf's sizes went unbound, "n is not defined",
+# and hinf's sequence with parameters was "in a limit's terms", where there is
+# none (C213).
 file(WRITE "${OUT}/hinf.ink" "x_t = hinf(-t-1, 1, 1)\ng_t = grad_(a = t) hinf(-a-1, 1, 1)\nh_t = grad_(a = t) dhinf(1/(a+2), 1, 1)\nd_t = dhinf(1/(t+2), 1, 1)\n")
 set(args --compile hinf.ink)
-set(stdout "cannot compile d: a factorial\ncannot compile g: grad cannot differentiate hinf yet\ncannot compile h: grad cannot differentiate dhinf yet\ncannot compile x: a factorial\n")
+set(stdout "cannot compile d: a sequence with parameters by cells, for now\ncannot compile g: grad cannot differentiate hinf yet\ncannot compile h: grad cannot differentiate dhinf yet\ncannot compile x: a sequence with parameters by cells, for now\n")
 set(exit 1)
 check(compile_hinf_refused)
 
@@ -1401,12 +1423,11 @@ endif()
 # Made in part 2 too, which part 3 runs without.
 file(MAKE_DIRECTORY "${OUT}/float")
 
-# Nor do eig and smax, as rho does not, by a comparison of matrices and
-# hurwitzb's factorial, and grad refuses them where A moves (DESIGN.md, eig
-# and smax).
+# Nor does eig, as rho does not, by a comparison of matrices, though smax
+# does, and grad refuses them where A moves (DESIGN.md, eig and smax).
 file(WRITE "${OUT}/eig.ink" "x_n = eig([n 1; 1 2])[1]\ny_n = smax([n 2; 3 4])\ng_n = grad_(a = n) eig([a 1; 1 2])[1]\nh_n = grad_(a = n) smax([a 2; 3 4])\n")
 set(args --compile eig.ink)
-set(stdout "cannot compile g: grad cannot differentiate eig yet\ncannot compile h: grad cannot differentiate smax yet\ncannot compile x: a comparison of matrices\ncannot compile y: a factorial\n")
+set(stdout "cannot compile g: grad cannot differentiate eig yet\ncannot compile h: grad cannot differentiate smax yet\ncannot compile x: a comparison of matrices\n")
 set(exit 1)
 check(compile_eig_refused)
 
@@ -1493,8 +1514,7 @@ holds(compile_tensor_mha mha.h [=[ *     mha_step(&m, X);  once for each index, 
  * cell is a pointer to its cells, row by row, slice after slice. After a step,
  * m.name[k] is name_(n-k) for each sequence: X and O. The parameters are
  * fields holding the model's defaults once mha_init has run: d = 2.0. After
- * assigning one, call mha_update.
- */
+ * assigning one, call mha_update. A term the interpreter would refuse is NaN,
 ]=] [=[typedef struct mha {
     double d;
     long long index_;
@@ -1611,13 +1631,223 @@ set(stdout "cannot compile a: a sequence with parameters read at an index that i
 cannot compile b: r_1001 is 1001 terms from its base, and a step writes out at most 1000
 cannot compile c: q has no clause for index -1
 cannot compile d: z is defined by itself
-cannot compile e: p_(...): a term after the one being computed
-cannot compile f: calls nested 64 deep, which a recursion its guards do not end would pass
+cannot compile e: nested 64 deep, which a recursion its guards do not end would pass
+cannot compile f: nested 64 deep, which a recursion its guards do not end would pass
 cannot compile g: an index must be a whole number, not 0.5
 cannot compile u: a sequence with parameters by cells, for now
 ")
 set(exit 1)
 check(compile_iterates_refused)
+
+# C352: s(x) read through g as s(2*x) is another sequence, not lim s's own
+# term, which the interpreter makes 3 and the step made 7.6e-11.
+file(WRITE "${OUT}/rebound.ink" "g(x, j) = s(x)_(j-1)\ns(x)_0 = x\ns(x)_k = g(2*x, k)/2 + 1/2^k\ny_n = lim s(x_n)\n")
+set(args --compile rebound.ink)
+set(stdout "cannot compile y: s's term read with other arguments than its own\n")
+set(exit 1)
+check(compile_limit_rebound)
+
+# Recursion from the tip (DESIGN.md, compile/tip.ink): the arm compiled, its
+# backward pass a sequence read ahead to a guard at the tip; its values at 1
+# and 5 Euler-Lagrange's, worked by sympy; and the read-aheads that stay
+# refused, in the words of the same recursion written as a call.
+set(tip "${CMAKE_CURRENT_LIST_DIR}/compile/tip.ink")
+set(args --compile ${tip} arm -o tip.h)
+check(compile_tip)
+file(COPY ${tip} DESTINATION "${OUT}")
+file(WRITE "${OUT}/values.ink" [[
+>> use tip
+use tip
+
+>> tip.reach.y_1 == [61421137/1599000; 11300867/1199250; 146362649/23985000]
+1
+
+>> tip.reach.y_5 == [441421/23400; 427261/72150; -151031/57720]
+1
+]])
+set(args --check values.ink)
+set(stdout "values.ink: 3 answers, each as recorded\n")
+check(compile_tip_values)
+# a reads past the tip, b's guard does not fold, c has no tip, d reads its own
+# stream ahead; e, with a base, compiles as its function form f does.
+file(WRITE "${OUT}/ahead.ink" "a_n = up(x_n)_5\nb_n = w(x_n)_1\nc_n = p(x_n)_2\nd_n = d_(n+1)\n"
+     "e_n = h(x_n)_10\nf_n = hf(x_n, 10)\nup(x)_k | k == 3 = x\nup(x)_k = up(x)_(k+1)/2\n"
+     "w(x)_k | x > k = x\nw(x)_k = w(x)_(k+1)/2\np(x)_0 = x\np(x)_k = p(x)_(k+1)/2\nh(x)_0 = x\n"
+     "h(x)_k | k == 70 = x\nh(x)_k = h(x)_(k+1)/2 + x\nhf(x, k) | k == 0 = x\n"
+     "hf(x, k) | k == 70 = x\nhf(x, k) = hf(x, k+1)/2 + x\n")
+set(args --compile ahead.ink)
+set(stdout "cannot compile a: nested 64 deep, which a recursion its guards do not end would pass
+cannot compile b: nested 64 deep, which a recursion its guards do not end would pass
+cannot compile c: nested 64 deep, which a recursion its guards do not end would pass
+cannot compile d: d_(...): a term after the one being computed
+")
+set(exit 1)
+check(compile_tip_refused)
+
+# A sequence with parameters read at lim's walking index (DESIGN.md,
+# compile/series.ink): the series compiled; their values, e^x's at -2 and 1,
+# Rodrigues' at n = 0 and 20 and the sine's at -5 and 1/2, by mpmath, each
+# held within 1e-9 as a limit stops within about 1e-10, and answered
+# inexactly; and what stays refused.
+set(series "${CMAKE_CURRENT_LIST_DIR}/compile/series.ink")
+set(args --compile ${series} -o series.h)
+check(compile_series)
+file(COPY ${series} DESTINATION "${OUT}")
+file(WRITE "${OUT}/walked.ink" [[
+>> use series
+use series
+
+>> far(A, B) = sum_(j=1)^3 sum_(k=1)^3 abs(A[j,k] - B[j,k])
+far(A, B) = sum_(j=1)^3 sum_(k=1)^3 abs(A[j,k] - B[j,k])
+
+>> abs(series.taylor.y_0 - 0.1353352832366126918939995) < 10^-9
+~1
+
+>> abs(series.taylor.y_30 - 2.718281828459045235360287) < 10^-9
+~1
+
+>> far(series.taylor.R_0, [0.91444306659383029383, -0.24282873813667482718, -0.32377165084889976958; 0.24282873813667482718, 0.96919950397377890578, -0.041067328034961458963; 0.32377165084889976958, -0.041067328034961458963, 0.94524356262005138805]) < 10^-9
+~1
+
+>> far(series.taylor.R_20, [0.92135885972975595941, -0.35488114287926168634, -0.15861029609137275277; 0.052899164241524570488, 0.51871622154610647161, -0.85330836157128965314; 0.38509678006967558967, 0.77781286691185537418, 0.49669670227043814024]) < 10^-9
+~1
+
+>> abs(series.wave.z_0 - 0.9589242746631384688931544) < 10^-9
+~1
+
+>> abs(series.wave.z_55 - 0.4794255386042030002732879) < 10^-9
+~1
+]])
+set(args --check walked.ink)
+set(stdout "walked.ink: 8 answers, each as recorded\n")
+check(compile_series_values)
+# a and b read t elsewhere than at the walking index less a constant; c and d
+# give it arguments that change as the walk does; e differentiates through it;
+# f's term reads the limit's own at its index, and g's its own with other
+# arguments; before the walk, j's term reads the limit's own, and so does
+# h's guard below its base.
+file(WRITE "${OUT}/walking.ink" "a_n = lim sa(x_n)\nb_n = lim sb(x_n)\nc_n = lim sc(x_n)\n"
+     "d_n = lim sd(x_n)\ne_n = lim se(x_n)\nf_n = lim sf(x_n)\ng_n = lim sg(x_n)\n"
+     "h_n = lim sh(x_n)\nq(x)_3 = x\nq(x)_k | k < 3 = sh(x)_(k-1)/2\nq(x)_k = q(x)_(k-1)*x/k\n"
+     "sh(x)_0 = 1\nsh(x)_1 = 1\nsh(x)_k = sh(x)_(k-1)/2 + q(x)_(k-1)/4\n"
+     "j_n = lim sj(x_n)\nr(x)_k = sj(x)_(k-1)/4 + t(x)_k\nsj(x)_0 = 1\nsj(x)_1 = 1\n"
+     "sj(x)_k = sj(x)_(k-1)/2 + r(x)_(k-1)/2\n"
+     "t(x)_0 = 1\nt(x)_k = t(x)_(k-1)*x/k\nu(x)_k = sf(x)_k/2\nw(x)_0 = x\n"
+     "w(x)_k = w(x/2)_(k-1)/k\nsa(x)_0 = 1\nsa(x)_k = sa(x)_(k-1) + t(x)_(2*k)\nsb(x)_0 = 1\n"
+     "sb(x)_k = sb(x)_(k-1) + t(x)_(k+1)\nsc(x)_0 = 1\n"
+     "sc(x)_k = sc(x)_(k-1) + t(sc(x)_(k-1))_k\nsd(x)_0 = 1\nsd(x)_k = sd(x)_(k-1) + t(k*x)_k\n"
+     "se(x)_0 = 1\nse(x)_k = se(x)_(k-1) + grad_(y = x) t(y)_k\nsf(x)_0 = 1\n"
+     "sf(x)_k = sf(x)_(k-1)/2 + u(x)_(k-1)\nsg(x)_0 = 0\nsg(x)_k = sg(x)_(k-1) + w(x)_k\n")
+set(args --compile walking.ink)
+set(walking ": a sequence with parameters read at an index that is not a constant\n")
+set(stdout "cannot compile a${walking}cannot compile b${walking}cannot compile c: t_(...): read at lim sc's index with arguments that change as it walks
+cannot compile d: t_(...): read at lim sd's index with arguments that change as it walks
+cannot compile e: t_(...): a derivative of a term lim se walks, for now
+cannot compile f: u_(...): reads lim sf's term at its index
+cannot compile g: w_(...): read at lim sg's index with other arguments in its own terms
+cannot compile h: q_(...): its terms before the walk read lim sh's own
+cannot compile j: r_(...): its terms before the walk read lim sj's own
+")
+set(exit 1)
+check(compile_series_refused)
+
+# An unbounded sum compiled (DESIGN.md, compile/sums.ink): the file
+# compiled; the series' values by closed forms, e^x's at -2 and 1, the sine's
+# at -2 and 7/2, the product's 1/(1 - y^2) at y = -1/5 and 3/10, and
+# Rodrigues' formula and the left Jacobian at n = 0 and 20, by mpmath, each
+# held within 1e-9 as a limit stops within about 1e-10; the factorial's,
+# exact or refused; a sum's walk as long as the interpreter's; and what
+# stays refused.
+set(sums "${CMAKE_CURRENT_LIST_DIR}/compile/sums.ink")
+set(args --compile ${sums} -o sums.h)
+check(compile_sums)
+file(COPY ${sums} DESTINATION "${OUT}")
+file(WRITE "${OUT}/summed.ink" [[
+>> use sums
+use sums
+
+>> far(A, B) = sum_(j=1)^3 sum_(k=1)^3 abs(A[j,k] - B[j,k])
+far(A, B) = sum_(j=1)^3 sum_(k=1)^3 abs(A[j,k] - B[j,k])
+
+>> abs(sums.summed.y_0 - 0.1353352832366126918939995) < 10^-9
+~1
+
+>> abs(sums.summed.y_30 - 2.718281828459045235360287) < 10^-9
+~1
+
+>> abs(sums.summed.z_0 + 0.9092974268256816953960199) < 10^-9
+~1
+
+>> abs(sums.summed.z_55 + 0.3507832276896198481203688) < 10^-9
+~1
+
+>> abs(sums.summed.u_30 - 2.718281828459045235360287) < 10^-9
+~1
+
+>> abs(sums.summed.p_0 - 1.041666666666666666666667) < 10^-9
+~1
+
+>> abs(sums.summed.p_50 - 1.098901098901098901098901) < 10^-9
+~1
+
+>> far(sums.summed.R_0, [0.91444306659383029383, -0.24282873813667482718, -0.32377165084889976958; 0.24282873813667482718, 0.96919950397377890578, -0.041067328034961458963; 0.32377165084889976958, -0.041067328034961458963, 0.94524356262005138805]) < 10^-9
+~1
+
+>> far(sums.summed.R_20, [0.92135885972975595941, -0.35488114287926168634, -0.15861029609137275277; 0.052899164241524570488, 0.51871622154610647161, -0.85330836157128965314; 0.38509678006967558967, 0.77781286691185537418, 0.49669670227043814024]) < 10^-9
+~1
+
+>> far(sums.summed.J_0, [0.97131495254669930874, -0.12320198410488437689, -0.16426931213984583585; 0.12320198410488437689, 0.98967338291681175115, -0.013768822777584331806; 0.16426931213984583585, -0.013768822777584331806, 0.98164156962988755759]) < 10^-9
+~1
+
+>> far(sums.summed.J_20, [0.97271606719549889255, -0.16562839297379354474, -0.1117021260803869632; 0.060858091004509292148, 0.83302233123645322243, -0.46606925570276620536; 0.19027985255735015265, 0.43987668021044514221, 0.82538283005119291234]) < 10^-9
+~1
+
+>> sums.halving.f_96
+39916800
+
+>> sums.halving.f_9
+error: a factorial needs a whole number, not 0.125
+
+>> sums.halving.f_0
+error: a factorial cannot be negative
+]])
+set(args --check summed.ink)
+set(stdout "summed.ink: 16 answers, each as recorded\n")
+check(compile_sums_values)
+# 100 partial sums at most, from 3 to 102, as the interpreter's.
+file(WRITE "${OUT}/bound.ink" "y_n = sum_(q=3) x_n^q/!q\n")
+set(args --compile bound.ink -o bound.h)
+check(compile_sums_bound)
+holds(compile_sums_bound bound.h "    for (long long k_ = 4; k_ <= 102; ++k_) {\n")
+# A sum folded calls no factorial, so none is written: a check program's
+# unused function is an error to Clang's -Werror.
+file(WRITE "${OUT}/folded.ink" "ee(x) = sum_(q=0) x^q/!q\ny_n = ee(1) + x_n\n")
+set(args --compile folded.ink -o folded.h)
+check(compile_sums_folded)
+file(READ "${OUT}/folded.h" text)
+string(FIND "${text}" "_fact_" at)
+if(NOT at EQUAL -1)
+    message(SEND_ERROR "compile_sums_folded: folded.h writes a factorial nothing calls")
+endif()
+# a starts where the step is; b's power is at twice the index, and f's
+# inner bound moves; c gives t arguments that change as the walk does, and e
+# reads it ahead; d differentiates through it; h calls an instance's own
+# function at the index.
+file(WRITE "${OUT}/unsummed.ink" "A = [0, -1; 1, 0]/2\nt(x)_0 = 1\nt(x)_k = t(x)_(k-1)*x/k\n"
+     "mm(a = 1) = {\n    g(j) = a^j/!j\n    y = sum_(q=0) g(q)\n}\na_n = sum_(q=n) 2^-q\n"
+     "b_n = sum_(q=0) (x_n*A)^(2*q)/!(2*q)\nc_n = sum_(q=0) t(q*x_n)_q\n"
+     "d_n = grad_(y = x_n) sum_(q=0) y^q/!q\ne_n = sum_(q=0) t(x_n)_(q+1)\n"
+     "f_n = sum_(q=0) sum_(j=0)^q x_n^j/!q\nh_n = mm(a = x_n).y\n")
+set(args --compile unsummed.ink)
+set(bounds ": a sum or a product whose bounds are not constants\n")
+set(stdout "cannot compile a${bounds}cannot compile b: a matrix power whose exponent is not a constant
+cannot compile c: t_(...): read at sum_(q=0)'s index with arguments that change as it walks
+cannot compile d: a derivative of a limit, for now
+cannot compile e: a sequence with parameters read at an index that is not a constant
+cannot compile f${bounds}cannot compile h: g, a function of an instance, called at sum_(q=0)'s index, for now
+")
+set(exit 1)
+check(compile_sums_refused)
 
 # A frequency response does not compile: a compiled value is real, so the
 # complex e^(i*w*n) is refused, not its abs.

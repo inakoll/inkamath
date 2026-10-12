@@ -261,8 +261,8 @@ lone = single(x_n = n + 1)
 #     cannot compile b: r_1001 is 1001 terms from its base, and a step writes out at most 1000
 #     cannot compile c: q has no clause for index -1
 #     cannot compile d: z is defined by itself
-#     cannot compile e: p_(...): a term after the one being computed
-#     cannot compile f: calls nested 64 deep, which a recursion its guards do not end would pass
+#     cannot compile e: nested 64 deep, which a recursion its guards do not end would pass
+#     cannot compile f: nested 64 deep, which a recursion its guards do not end would pass
 #     cannot compile g: an index must be a whole number, not 0.5
 #     cannot compile u: a sequence with parameters by cells, for now
 #

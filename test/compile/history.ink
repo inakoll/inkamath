@@ -391,3 +391,27 @@ heeding(x_n) = {
     y_m = y_(m-1) + x_(2*m)
 }
 heeded = heeding(x_n = n)
+
+# A cycle through a sequence with a base clause has no history: r_-1 is
+# -x_-1, of which the interpreter gives none, so 'aliased' starts y at 1,
+# where it was refused for r_-1 (C349).
+aliasing() = {
+    x_0 = 1
+    x_n = y_n - 2
+    r_n = -x_n
+    y_n = r_(n-1) + 1
+}
+aliased = aliasing()
+
+# Below a base clause, a guard gives a term, which init folds where it can, as
+# a history's (C351): 'floored' reads x_-1 at 0, directly in z and through r
+# in y; z was refused, and y NaN at 0 where the interpreter gives -1.
+flooring() = {
+    x_0 = 1
+    x_n | n < 0 = 2
+    x_n = y_n - 2
+    r_n = -x_n
+    y_n = r_(n-1) + 1
+    z_n = x_(n-1)
+}
+floored = flooring()

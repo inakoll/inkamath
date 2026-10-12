@@ -1861,6 +1861,10 @@ closures need one anyway, and can bring it.
 | C346 `[fixed]` | **A check program named after a function of `<math.h>` was no C.** A program was named after its file, as a header is (C104), and the tests name each after its instance, so an instance `j1` or `y0` wrote `typedef struct j1` over the function GNU C's `<math.h>` declares: "'j1' redeclared as different kind of symbol". No name of the language reaches C bare otherwise: a sequence or a parameter is a member, an input `x_in_` (C342), a function `module_f`. A check program is not read as a header is, so its model is now `checked`, whatever the file, and a program needs no C name; C104's refusal of `math.c` goes, its test now holding that the program is written. In 8 lines, 3 of comment, and 8 removed; `inputs.ink`'s `j1`, built as GNU C in `test/CMakeLists.txt`, holds it. No header or golden moves; the checks of `gate`, `els`, `tri`, `bea` and `apart` that read the program's function names, `float_calm` in `test/cli.cmake` and float.ink's excerpt of it move with the name. A header keeps its file's name, and C104's gap for libm's names with it. |
 | C347 `[fixed]` | **A name spelling a macro of the headers a step includes was no C.** `NAN_n = n` compiled to `double NAN[1]`, which `<math.h>`'s macro makes `double (__builtin_nanf (""))[1]`; so did `INFINITY`, and `<stdio.h>`'s `EOF`, `NULL` and `BUFSIZ` in a check program, as a sequence, a parameter or a header's name. Found fixing C346. They are refused now as C's keywords are, "NAN is a word C keeps for itself", the five that ISO C's `<math.h>`, `<string.h>` and `<stdio.h>` define in letters and digits alone; GNU C's predefined `unix` and `linux` are not among them. In 6 lines, 1 of comment, and 3 removed; `compile_c347` in `test/cli.cmake` holds it. No header or golden moves. |
 | C348 `[fixed]` | **A history refused for a parameter was said to be none, and a slow one's at the wrong term.** A term before the stream that init does not fold because it reads a parameter, which the host may assign after init (C343), was refused as having no history: `g_n | n < 0 = a` with `g_n = 2*g_(n-1)` said "where g has no history", and so did `history_gained`'s inner input, given `a*x_n`. And init folds a slow sequence's own history back from its first term, stopping at the first it cannot fold, so `y_m | m < -1 = 1`, `y_m | m < 0 = a` and `y_m = y_(m-2) + x_(2*m)` named y_0's read of y_-2, which its history gives, where y_-1 stopped it. Found reviewing C344. Such a term is now still evaluated, its parameter recorded, and the refusal says "where g's history reads a, which the host may assign after init"; a slow sequence's names first a read of the term that stopped init, and any below it "below y_-1". In 42 lines, 4 of comment, and 26 removed, most of them reindented; `test/cli.cmake`'s `history_lifted`, `history_slowed` and `history_gained` move with the words, and `history_gapped` holds the second. No header or golden moves. |
+| C349 `[fixed]` | **A cycle through a base clause was taken for a history.** C343's regression: with `x_0 = 1`, `x_n = y_n/2`, `r_n = 3*x_n` and `y_n = r_(n-1) + 1`, r reaches itself through x, and was taken for a recurrence whose terms before the stream init folds. It has none, r_-1 being 3*x_-1, below x's base clause, so y was refused, 'y_0 reads r_-1, ... x has no clause for index -1', where the interpreter gives y from 1 and C343's parent compiled it. Found transcribing a filter, `R_n = blk(X_n)` read as `R_(n-1)`. A recurrence is now sought through sequences with no base clause only, and y starts at 1 again, as do an alias of an alias, one read two steps back and one of a matrix; one at a slow rate cannot be written. No header and no recorded answer moves. In 5 lines, 3 of comment, and 3 removed; `compile/history.ink`'s `aliased` holds it. |
+| C350 `[fixed]` | **A root C makes NaN reached a comparison untested.** nan.ink's rule tests for NaN only in a header that writes NaN, and a root of a number below 0 writes none: C's `sqrt` and `pow` answer NaN, where the interpreter's root is not real and a comparison refuses it. So `y_n = u_n^(1/2) < 1` with `u_n = 1 - n` answered 0 from step 2, and a guard reading it took the clause after it; so did a power of 1/3 or 3/2. Found by an exploration, a falling ball's contact test at step 987. A header with a power whose exponent is not a whole constant, of a base not a constant at or above 0, is now compiled aware; d's root makes a parameter such a base, so `peak`'s float report parts at A[1,1], its A NaN whole, where A[3,1] alone was, and `test/cli.cmake`'s quotation of `mha` gains the paragraph on NaN. No expected header moves; 22 of 267 check programs do. A quotient by 0 is as it was (C189, `pole`): the interpreter's is infinite where its divisor is inexact (`naught`, `radix`), and a step cannot tell an exact divisor from one that is not. In 8 lines, 2 of comment, and 3 removed; `compile/nan.ink`'s `surd` holds it. |
+| C351 `[fixed]` | **A term a guard gives below a base clause was refused, or NaN through an alias.** With `x_0 = 1`, `x_n | n < 0 = 2` and `x_n = y_n/2`, the interpreter gives x_-1 = 2, so `y_n = 3*x_(n-1) + 1` gives 7 at 0; read directly, it was refused, 'below x's base clauses, where only its guards could give a term', and read through `r_n = 3*x_n` as `r_(n-1)`, r was computed again from a window init left empty, and y was NaN at 0. Predates C343, found fixing C349. Such a sequence at the input's rate, based where the stream starts and whose first guard does not read it back, now has its terms before the stream folded by init as C343 folds a recurrence's, where no input or parameter can change them or a guard gives a constant, and both reads give 7; elsewhere both are refused, as a history is, saying why: 'x's history gives none: u_-1 is an input, and nothing defines it'. No header, check program or recorded answer moves. In 19 lines, 4 of comment, and 6 removed; `compile/history.ink`'s `floored` holds it. |
+| C352 `[fixed]` | **A limit's own term was told by its arguments' names, not their values.** With `g(x, j) = s(x)_(j-1)`, `s(x)_0 = x` and `s(x)_k = g(2*x, k)/2 + 1/2^k`, g reads s(2*x)'s term, but under the name x, so `lim s(3)` took it for s(3)'s term before and answered 7.6e-11 where the interpreter gives 3. Found by the `limread` spec. A read is now the limit's own where each argument's code is the limit's parameter, `arg_x`; elsewhere it is refused as before, 's's term read with other arguments than its own', another sequence's term at an index that is not a constant being compiled nowhere. So `g(y, j) = s(y)_(j-1)` called as `g(x, k)`, refused before, now compiles and holds, as `compile/implicit.ink`'s `renamed` does. No header, check program or recorded answer moves. In 7 lines, 2 of comment, and 4 removed; `test/cli.cmake`'s `compile_limit_rebound` holds it. |
 
 **Measure instructions, not the clock.** One of those changes made the matrix
 workload 20 per cent slower by the clock and not by a single instruction: with
@@ -3106,17 +3110,15 @@ that exploring seven domains asked of the interpreter, by how many asked.
   parameters read at an index that is not a constant", as a sum's bounds are;
   past 1000 terms, `r_1001 is 1001 terms from its base, and a step writes
   out at most 1000`; below the lowest base, in the interpreter's words, `q has
-  no clause for index -1`; a term reading itself, `z is defined by itself`,
-  and one ahead of it, `p_(...): a term after the one being computed`, in a
-  limit's words, where the interpreter runs out of depth; reads nested past
-  64, in a call's; an index that is not whole, in the interpreter's; and a
-  read in a limit's terms, "a sequence with parameters in a limit's terms,
-  for now". A limit's function has no temporaries, so its terms would be
-  written whole, K deep and for `fm` doubling at each. *Temporaries in a
-  limit's function* is the same mechanism, a limit's own list, and lifts
-  that refusal when it lands: Newton's shooting under `lim` waits for it,
-  while shooting by a fixed number of secant steps is two nested reads and
-  compiles now.
+  no clause for index -1`; a term reading itself, `z is defined by itself`;
+  reads nested past 64, in a call's, as a read ahead no guard ends, `p`,
+  where the interpreter runs out of depth (*Recursion from the tip*); an
+  index that is not whole, in the interpreter's; and a read in a limit's
+  terms, "a sequence with parameters in a limit's terms, for now", since
+  its terms would be written whole, K deep and for `fm` doubling at each,
+  until *Temporaries in a limit's function*, the same mechanism, gave a
+  limit's function its own list and lifted it. Shooting by a fixed number
+  of secant steps, two nested reads, compiled before.
 
   Rejected. The plan's loop, a function of the header's beside `lim`'s, the
   terms in rolling locals and K a counter: its one gain is a header of
@@ -3293,9 +3295,9 @@ that exploring seven domains asked of the interpreter, by how many asked.
   blocks, `[A, x_n*A; A]`, ended by a 0 stretched over 2x2, its value
   worked out with fractions. 24 lines of sources against 25 planned, all
   in `compile.hpp`: 15,608 lines in all.
-- **`tex` of `==`, a negative fraction and `exp`**: `==` is set as `=`,
-  `\frac{-1}{2}` should be `-\frac{1}{2}`, `\operatorname{exp}` should be
-  `\exp`; and one tensor literal refuses a whole model's `tex`.
+- **`tex` of `==` and a negative fraction**: `==` is set as `=`,
+  `\frac{-1}{2}` should be `-\frac{1}{2}`; and one tensor literal refuses
+  a whole model's `tex`.
 - **A limit exact at an exact fixed point**: k-means reaches `C_3 == C_4`
   exactly, yet `lim C` is inexact and `frac lim C` refused.
 - **Matrix `==` and `<>` compiled**, refused as "a comparison of matrices".
@@ -9730,3 +9732,439 @@ checked: what it asked of the compiler, each with its smallest change.
   `[1, ~inf]`, but drops a mark reverse mode keeps: `grad_(t = 1)
   ~(t - t)` would be 0 for ~0. A fix gives a seed's 0 cells no part at
   all, which touches C73's checks of whether a part is there.
+
+After exploring rotations and rigid bodies (Sola 2017; Featherstone 2008)
+and transcribing the contact-aided invariant EKF (Hartley et al. 2020): what
+they asked, each with its smallest change.
+
+- `[done]` **Recursion from the tip**, a sequence with parameters read ahead to a
+  guard. Featherstone writes each backward pass over a chain as a sequence
+  over the link index read *ahead*, the force on link i from link i+1's
+  (RNEA, sec. 5.3 and table 5.1), the composite inertias (CRBA, table 6.2)
+  and the articulated ones (ABA, ch. 7) alike, ended by a guard at the tip:
+
+  ```
+  f(..)_i | i == N = fb(..)_i
+  f(..)_i = fb(..)_i + X(c, s, i+1)'*f(..)_(i+1)
+  ```
+
+  The interpreter answers it. `--compile` refuses it, "f_(...): a term after
+  the one being computed", while the same recursion written as a function,
+  `f(.., i)`, compiles; found by the rigid-body exploration, which wrote
+  the function. The refusal is `Term`'s: `computing` holds, for each
+  function and arguments, the index of the term being compiled; a term
+  below it is filled from the lowest base, one at it is "defined by
+  itself", and one above it was refused. A term with no base clause below
+  it is already compiled where it is read, its reads nesting as calls do
+  (*A sequence with parameters read at a constant index, compiled*).
+
+  Decided:
+  - **A term read ahead is compiled where it is read**, as a call is: its
+    index bound as a constant, so its guards fold and its clause is the
+    interpreter's, its own reads nesting in it. The read ahead ends where a
+    guard folds true, at the tip, as the function form ends; written out,
+    each term a temporary once a term reads it and compiled once for its
+    arguments, as every term is.
+  - **Not filled from the lowest base**: the fill computes the terms below a
+    term read behind, in order. Filled, a term read ahead would compute again
+    the term reading it, which is being computed, and nest until refused:
+    `h(x)_0 = x` beside a guard at the tip, read at 1, is refused so where
+    the interpreter answers 7x/4.
+  - **Bounded as calls are**, 64 deep (`max_expanded`): a chain of 60 links
+    compiles and one of 61 is refused, written either way; the interpreter
+    nests 256.
+  - **Refused, in a call's words**, "nested 64 deep, which a recursion
+    its guards do not end would pass", as the function form is:
+    a read past the tip, `up(x_n)_5` with the guard at 3, where the
+    interpreter runs out of depth; a guard that does not fold, `| x > k`,
+    which the interpreter answers and a step cannot unroll; and a read
+    ahead no guard ends, iterates.ink's `p`, where the interpreter runs out
+    of depth.
+  - **What stays "a term after the one being computed"**: a stream's own read
+    ahead, `d_n = d_(n+1)` (`Lag`), a base clause's (`Seeds`) and a limit's
+    (`Earlier`). A step reads its index and its terms only behind; a term
+    read ahead here is one of a sequence with parameters, read at a constant.
+  - **--float and grad**: the same; a term is step code. The mass matrix of
+    the arm below by grad through the sequence form checks within 1.8e-15,
+    as through the function form.
+
+  What moves, on a prototype, discarded: no golden, no header of
+  `test/compile/expected` nor the prelude's; the 213 check programs of
+  9a9ab17 byte for byte, and all 270 reports. One refusal's words:
+  `compile_iterates_refused`'s `e`, iterates.ink's `p`, moves from "p_(...):
+  a term after the one being computed" to the call's words beside `f`, as do
+  iterates.ink's comment and the sentence of *A sequence with parameters
+  read at a constant index, compiled* that names it.
+
+  Measured on the prototype, the RNEA of a 3-link arm written both ways,
+  `test/compile/tip.ink`'s `arm` with `y` alone and its function form,
+  `--check`'s 100 steps:
+  - headers 8,297 bytes for the sequence and 10,009 for the function, 37
+    and 31 temporaries; at 60 links 181,661 and 276,318, `--compile` 0.19 s
+    each;
+  - the same doubles: every cell of 1000 steps equal, and both within
+    2.8e-14 of the interpreter;
+  - a step, the median of nine runs of 2,000,000 at -O2: GCC 13, 86 ns for
+    the sequence and 92 for the function; Clang 18, 125 and 118. Taken at a
+    load of 4 on 4 cores: no difference is claimed.
+
+  Rejected:
+  - **A loop from the tip down**, rolling locals: the tip is where a guard
+    folds true, and a guard may be any expression; recursion finds it for
+    nothing. A term is written out, as *A sequence with parameters read at
+    a constant index, compiled* decided; a loop is an entry of its own.
+  - **The tip found, then filled down from it**, the fill's mirror: the
+    same search, for one gain, a chain past 64 links, which the function
+    form does not have either. Raising the 64 is a decision for calls and
+    terms alike.
+  - **"A term after the one being computed" kept for a read ahead no guard
+    ends**, the depth's refusal caught where the read ahead starts: lines
+    for two words of one cause, where the function form says the call's.
+  - **Telling the user to write the function**: the paper writes the
+    sequence (`MANIFESTO.md`, the notation is the paper's).
+
+  About 1 line of `compile.hpp`: the prototype's 6 added and 5 removed, 3
+  and 1 of them comment. 17,765 lines at 9a9ab17, by `wc -l
+  include/inkamath/*.hpp src/*`; past 1.5, at 2, the implementation stops
+  and reports.
+
+  Specified in `test/compile/tip.ink`: the arm, the RNEA along a trajectory
+  of rational cosines and sines, its instance `reach` checked against the
+  interpreter, `y` within 2.8e-14 as the function form is on the baseline,
+  and `d`, the sequence less the function, within 0; and `rested`, the
+  sequence with a base at 0 read ahead from 1, within 3.6e-15. Until built,
+  `test/CMakeLists.txt` writes their check programs through `cli.cmake`'s
+  `spec_program` part, one saying it is refused while `--check` refuses,
+  which skips its report. `cli.cmake`'s `spec` part, run by `cli_spec`,
+  skipped while the arm is refused: the arm compiled; `reach.y` at 1 and 5
+  equal to Euler-Lagrange's by sympy (`compile_tip_values`), which the
+  interpreter answers now; and `compile_tip_refused`, the four refusals
+  above. With the implementation, `tip:reach` and `tip:rested` join the
+  check list, the `spec_program` part goes, the `spec` part's cases move
+  into part 3 beside `compile_iterates_refused`, and `cli_spec` goes. No
+  transcript in `test/data/spec`: the language does not change, the
+  interpreter answers all of it today.
+
+  Built as specified, departing in two places the spec review ruled on. The
+  depth's refusal drops "calls", "nested 64 deep, which a recursion its
+  guards do not end would pass", since a term read ahead is no call written;
+  it names no definition, the one the depth is passed in being often not
+  the recursion but one it calls, as in the arm. And a depth passed is not the
+  term's failure: the fill's first term met it beside a base clause, and so
+  `h(x)_0 = x` with its tip at 70, read at 10, was refused where its
+  function form compiles. It is kept with the depth it was met at, failing
+  again as deep and tried again nearer the top, `compile_tip_refused`'s `e`
+  and `f` holding it; a read at 1000 with its tip at 1060 compiles in 2.3
+  s, each term of the fill trying its chain. No golden, expected header or
+  report moves, and the 217 check programs are the baseline's byte for
+  byte; at 60 links the headers are the prototype's. 10 lines of
+  `compile.hpp`, 24 added and 14 removed, 4 of them comment; 17,795 in all,
+  past the spec's stop at 2 by the ruling that took the base clause's case
+  on. A depth's failure is kept while the terms that would end its chain
+  are filled, so `b(x)_10 + b(x)_6`, its base at 0 and tip at 70, is
+  refused where its function form compiles; integration refused both, and
+  forgetting it whenever a term is filled made the halving recursion with a
+  base 12 times slower. Accepted.
+- **A factorial of what moves walked**, `!(q+c)` the one before times
+  q+c, where a sum's `m_fact_` now loops q times at each term: a sum's step
+  1.5 to 1.8 times its limit form's. Found reviewing *an unbounded sum*.
+- **A halving recursion with a base runs away** at large indices:
+  `w(x/2)_(k-1)` read at 1000 takes over 60 s to compile, and read ahead
+  with a base at 1000, 35 s. Found reviewing *recursion from the tip*.
+- `[done]` **A sequence with parameters read at `lim`'s walking index**, a series
+  written as on paper: its partial sums under `lim`, its term a sequence of
+  its own.
+
+  ```
+  t(x)_0 = 1
+  t(x)_k = t(x)_(k-1)*x/k
+  s(x)_0 = 1
+  s(x)_k = s(x)_(k-1) + t(x)_k
+  ```
+
+  The interpreter answers `lim s(x)`. `--compile` refuses it, "a sequence
+  with parameters read at an index that is not a constant": `Limit` walks one
+  sequence, its own terms behind read from its window `t1_` (`Earlier`), and
+  any other sequence with parameters is a `Call`, whose index must fold
+  (*A sequence with parameters read at a constant index, compiled*); k is
+  the loop's `k_`. Found by the rotations exploration, whose exponential map
+  packs `[sum, term]` into one block term, and by the RIEKF's, which writes
+  (48) with the term as a difference of partial sums.
+
+  Decided:
+  - **Walked beside the limit's own, in its loop.** A read `t(args)_(k-c)`,
+    k the walking index less a constant however written (`Lag`, so through
+    a function's parameter too), makes t a sequence of the limit's
+    function: its term at `k_` an iterate's temporary, computed before the
+    limit's own term, and its c terms before it a window, `w0_1_`,
+    `w0_2_`, ..., set before the loop to its terms at the walk's first index
+    less 1, 2, ... by the constant read (`Term`), and moved on after the
+    stopping test as `t1_` is. One for each sequence and arguments, so `t`
+    read twice is one term; one that reads another walks it too, in the
+    order read.
+  - **Its arguments computed before the loop**, among the bases'
+    temporaries, as its window's first terms read them there: the one value
+    the source writes in the iterate and the function computes outside it,
+    which *Temporaries in a limit's function* declined for others. An
+    argument that reads the walking index, the limit's terms or a
+    walked term is refused, "t_(...): read at lim s's index with arguments
+    that change as it walks", the interpreter computing such a term from its
+    base at each iterate; one carrying a part under grad, "t_(...): a
+    derivative of a term lim s walks, for now", as the limit's own argument
+    is refused.
+  - **Its clauses the limit's own way**, one `Iterate` for both: its general
+    clauses a chain at `k_`, and a base clause at or past the walk's first
+    index `k_ == b` before them, which the sine from its first term at 1,
+    beside partial sums from 0, needs. Below its lowest base, its term and
+    its window's are NaN where no clause applies, as a step's are (C86),
+    `k_ < b ? NAN :` before the clause that always applies: a base clause
+    taken first never reads it, a guard can keep it unread, as
+    `series.ink`'s `later` does, and read it makes the limit NaN where the
+    interpreter has no clause, `p(x)_3 = 1` beside `p(x)_k = x/k^2` too.
+  - **The stopping rule is the limit's own sequence's**, unchanged: a walked
+    term's steps are not measured, as the interpreter measures only the
+    sequence under `lim`. The packed form measures both and walks further.
+  - **What stays refused**: an index that is not the walking index less a
+    constant, `t(x)_(2*k)`, and a read ahead, `t(x)_(k+1)`, in today's words;
+    a walked term reading the limit's own at its index, "u_(...): reads lim
+    sf's term at its index", since the walked term is computed first, where
+    the interpreter answers: the limit of the other sequence compiles once
+    it has a base clause, f's `u(x)_0 = 1/2`; and a walked term reading its
+    own with other arguments, `w(x)_k = w(x/2)_(k-1)/k`, "w_(...): read at
+    lim sg's index with other arguments in its own terms", each walked in
+    turn without end; and a window's term reading the limit's own, "r_(...):
+    its terms before the walk read lim sj's own", which the interpreter
+    answers from the limit's bases but the window, set before the loop,
+    cannot read.
+  - **--float and --check**: nothing; a walked term is a local of the
+    limit's function.
+
+  Two walked terms whose steps cancel exactly, `c_k = (-1)^k t_k`, stop
+  the walk on a step of one ulp where the interpreter's exact step is 0,
+  as any compiled limit whose terms cancel so does: `x^k/(k^2*2^k) +
+  (-x)^k/(k^2*2^k)` without a walked term stops at k = 3 on integration too.
+
+  Found writing it, a defect of its own, fixed first: C352.
+
+  What moves, on a prototype, discarded: nothing. No golden, no header of
+  `test/compile/expected` nor the prelude's, no excerpt in `test/cli.cmake`,
+  and the 221 check programs of 0f22401 byte for byte.
+
+  Measured on the prototype, a step the median of nine runs at -O2 on 4
+  cores at a load under 1, inputs x in [-1, 1):
+  - the series of e^x, written as on paper and packed (`[sum, term]`, as
+    the rotations exploration had it): headers 2,905 and 3,503 bytes, a
+    step 37.5 and 86.4 ns with GCC 13, 30.9 and 61.5 with Clang 18;
+  - the exponential of a rotation vector's hat, `w = [x; -1/3; 1/4]`, the
+    same two ways: headers 6,089 and 7,843 bytes, a step 190 and 458 ns with
+    GCC 13, 176 and 809 with Clang 18;
+  - their doubles part where the packed form walks further, by at most
+    6.5e-12 in both. Each held by `--check` to the interpreter's limit as
+    it is written, on `series.ink`'s inputs, both forms are within the same
+    bound to the digit shown but y, 1.1e-12 as on paper and 9.1e-13 packed;
+  - the RIEKF's (48) written as on paper, beside `limv.ink`'s workaround:
+    its check program 690,109 bytes for 690,366, every bound of its 5
+    steps' report the same. Smith's doubling, `blocks.ink`'s `smith`,
+    written as two sequences rather than packed, compiles too.
+
+  Rejected:
+  - **The compiler packing them**, the walked terms beside the limit's own
+    in one term: the stopping rule would measure them, which the
+    interpreter does not.
+  - **Arguments only the limit's own**, as `Earlier` asks of its own
+    reads: some 12 lines fewer, but `t(x^2)_k` and `T(hat(w))_k` refused,
+    which do not change as the walk does and which the interpreter answers.
+  - **The term computed from its base at each iterate**, as a constant read
+    is: a walk inside the walk, its terms quadratic in the iterates, for
+    what a window keeps.
+  - **Refusing a window's term below the lowest base**: the sine from 1
+    refused, whose window before the walk no iterate reads.
+  - **Ordering a walked term after the limit's own** where it reads it at
+    its index: a sort by what reads what, for a case whose other limit
+    compiles given a base clause.
+
+  It prepares *An unbounded sum compiled*: `Iterate` compiles any walked
+  sequence's term at `k_`, the limit's own included, and a walked term is
+  computed in the loop and not measured. A sum `sum_(k=a) f(k)` is a walk
+  whose own term is its partial sum, `t1_` plus the summand at `k_`, and a
+  summand that is a sequence with parameters read at k is this entry's
+  walked term.
+
+  About 120 lines of `compile.hpp`: the prototype's 156 added and 34
+  removed, 12 of them comment, 22 the limit's general clause moved into
+  `Iterate`. 17,835 lines at 0f22401, by `wc -l include/inkamath/*.hpp
+  src/*`, 17,957 on the prototype; past 1.5, at 183 net, the
+  implementation stops and reports.
+
+  Specified in `test/compile/series.ink`: e^x and the exponential of a
+  rotation vector's hat, `taylor`, and the sine from its first term at 1,
+  `wave`, each held by `--check` within the bounds measured above: R 4.4e-15
+  and y 1.1e-12, z 2.1e-15, the packed forms' on the baseline but y's.
+  Their values, e^x's at -2 and 1, Rodrigues' formula's at two rotations and
+  the sine's at -5 and 1/2, by mpmath, within 1e-9 as a limit stops within
+  about 1e-10: `compile_series_values` in `test/cli.cmake`'s part 3, which
+  the interpreter answers now. Until built, `test/CMakeLists.txt` writes
+  the check programs through `cli.cmake`'s `spec_program` part, one saying
+  it is refused while `--check` refuses in today's words, which skips its
+  report, any other refusal failing the build; and `cli.cmake`'s `spec`
+  part, run by `cli_spec`, skipped while `--compile` refuses the three
+  series in today's words and only then: the series compiled, and
+  `compile_series_refused`, the refusals above. With the implementation,
+  `series:taylor` and `series:wave` join the check list, the `spec_program`
+  part goes, the `spec` part's cases move into part 3, `cli_spec` goes, and
+  README's paragraph on compiled limits names `series.ink`.
+  No transcript in `test/data/spec`: the language does not change.
+
+  Built as specified with the spec review's rulings, which reworded three
+  refusals and made a lowest base past the walk's start NaN rather than
+  refused, `series.ink`'s `later` holding it; departing in five places
+  found building it. Each walked term is a temporary of the iterate: one
+  that is a window, `a(x)_k = a(x)_(k-2)`, was moved on after the window it
+  is, and stuck at 2 where the interpreter alternates, `later.z` holding
+  it. A window's term below the lowest base is its clauses' at that index,
+  NaN only where none applies, as the interpreter takes a guarded general
+  clause there, and refused where the step cannot compute one, as
+  `compile_series_refused`'s h, whose guard reads the limit's own. A
+  guarded base clause past the walk's start is refused as the limit's own
+  is, and clauses of different shapes as `Chained` refuses them, where
+  the prototype dropped the guard and wrote a chain of mixed shapes. And a
+  function that is not a sequence, or a sequence by cells, read at the
+  walking index keeps today's words. No golden, expected header
+  or report moves, and the 222 check programs are the baseline's byte for
+  byte. 166 lines of `compile.hpp`, 200 added and 34 removed, 18 of them
+  comment; 18,004 lines in all, for 17,838 at 87f2c61. Re-taken, the
+  headers and the RIEKF's check program byte for byte the prototype's, and
+  a step 33.3 and 87.5 ns with GCC 13, 33.6 and 62.6 with Clang 18, for e^x;
+  210 and 496, 208 and 772, for the rotation: within 10% of the
+  prototype's, run to run.
+- `[done]` **An unbounded sum compiled**, the limit of its partial sums, as a
+  paper writes a series:
+
+  ```
+  y_n = sum_(q=0) x_n^q/!q
+  G(m, f) = sum_(q=0) hat(f)^q/!(q + m)
+  ```
+
+  The interpreter answers it by `Convergence`, the rule `lim` follows
+  (README section 4): its partial sums from the first index a, until two
+  agree within 1e-10 and so does the remainder their steps estimate,
+  refused after 100 partial sums, a to a+99, where `lim` takes 100 terms
+  past its highest base. `--compile` refused it, "a sum or a product with no
+  upper bound", and two of its terms besides: `!q`, "a factorial", and
+  `A^q`, "a matrix power whose exponent is not a constant". The RIEKF
+  exploration wrote (48) to N terms (`test/compile/iekf.ink`) or as a
+  recurrence under `lim`; the rotations exploration packed e^x's term and
+  sum.
+
+  Decided:
+  - **Walked as a limit is.** `Limit` keeps what is a sequence's, its
+    arguments, bases and `Iterate`, and hands its function's text to
+    `Converge`, which the sum shares: the sum's base the summand at a, q
+    the constant a, its term at `k_` `t1_` plus the summand there, or times
+    it for `prod_(q=a)`; the loop from a+1 to a+99. The stopping test is
+    `lim`'s own text, so what `fixes41` changes in it the sum takes too.
+  - **What the summand reads that does not move is the walk's argument.**
+    The largest parts that mention neither q nor a name bound inside the
+    summand, an inner sum's index or a grad's names, are compiled where the
+    sum is and passed as `arg_0`, `arg_1`, ..., a constant being itself;
+    `Emit` answers a part so passed by its node. What is left reads q and
+    is compiled in the function, its names sought where the sum is
+    written. So `x_n` or `hat(w_n)` is computed once a step, not once a
+    term.
+  - **A sequence with parameters read at q is walked**, limread's `Beside`
+    unchanged but for its words, "read at sum_(q=0)'s index".
+  - **A power at the index plus a constant is walked**, `A^(q+c)` or
+    `x^(q+c)` whose base does not move, in a sum or a limit's terms: a term
+    beside the walk, the one before times the base, from the power before
+    the walk's first set by `Power`'s squaring. One product a term, where
+    `pow` or squaring takes more; `x^(2*q + 1)` keeps `pow`.
+  - **A factorial of what moves is the header's helper**, `m_fact_(x)`:
+    the product 1 to x in doubles, exact to !22, NaN where x is not a whole
+    number at least 0 as the interpreter refuses it (C86), and stopping at
+    an infinite product (C47). In a step too: `!(n/2)` compiles, NaN at odd
+    n.
+  - **Its refusals a limit's**: "a derivative of a limit, for now", "a
+    tensor in a limit, for now", and C336's NaN where the walk does not
+    converge.
+  - **What stays refused**: a first index that moves, `sum_(q=n)`, and an
+    inner bound that moves, `sum_(j=0)^q`, "a sum or a product whose bounds
+    are not constants"; a matrix power at another exponent, `A^(2*q)`, in
+    today's words; `t(q*x)_q` and `t(x)_(q+1)` in limread's; another
+    sequence's term, "x_...: another sequence's term in sum_(n=0)'s terms";
+    and a function of an instance called at q, "g, a function of an
+    instance, called at sum_(q=0)'s index, for now": the function does not
+    see an instance's own definitions, and sought by name would find a
+    global of the same name instead.
+  - **`--check`**: unchanged. **--float**: the helper's doubles are floats as
+    the header's are, so `sum_(q=0) x^q/!q` is NaN from x about 12.6, where
+    35! and x^35 overflow a float, while `lim ex(x)` holds. Only the ratio
+    recurrence cures it, and whoever needs it writes it, as `series.ink`
+    does.
+
+  Rejected:
+  - **The sum rewritten as a sequence under `lim`**: a definition the
+    compiler makes and nobody wrote, its parameters the free names, the
+    same lifting with a `Reference` to build.
+  - **The loop written inline where the sum is**: no argument to pass, but
+    its `k_`, `t1_` and windows clash with an enclosing limit's, and its
+    temporaries must be sorted between the loop and before it.
+  - **Only the names read passed**, `x` and `w`, the function reading n as
+    `m_->index_`: its arguments are what the step computes once, and
+    `hat(w_n)` would be built at each term.
+  - **A matrix power by squaring at run time**, a helper for each size as
+    the inverse has: any whole exponent that moves, a step's `A^n` too, but
+    log k products a term, some 30 lines, and no paper here asking for
+    `A^n` outside a series.
+  - **The factorial walked too**, `!(q+c)` the one before times q+c: one
+    product a term, but the sine's `!(2*q + 1)` refused, and `!n` in a
+    step. **`tgamma(x + 1)`**: one line, rounded as each C library rounds
+    it.
+  - **A number's power left to `pow`**, as the spec had it: e^x's step 229
+    ns with GCC 13 on the prototype, four times the walked one's, and no
+    bound of `sums.ink`'s or `series.ink`'s checks the better for it.
+  - **`Iterate` merged with `Chained`'s clause loop**, limread's
+    implementation review's objection 5: a sum does not reach `Iterate`, so
+    the merge is a change of its own.
+
+  Specified in `test/compile/sums.ink`: `summed`, e^x and the sine by
+  Taylor, e^x by `t(x)_q` walked, a product from 1, and Gamma_0 and Gamma_1
+  of a rotation vector; and `halving`, a factorial that moves. Their values
+  by closed forms through mpmath, `compile_sums_values` in `cli.cmake`'s
+  part 3, with the walk's length and the refusals above; and by `--check`,
+  R, u and p within the bounds of the same series as limits, 4.4e-15,
+  1.1e-12 and 8.9e-16, their terms the same, and J, y and z, whose terms
+  take a factorial at each index where the limits' are a recurrence, within
+  1.1e-15, 9.1e-13 and 4e-14, for 1.2e-15, 1.1e-12 and 3e-14.
+
+  Built as specified with the spec review's rulings, which walked a
+  number's power too, departing in two places found building it. A power
+  whose first before the walk is negative, `A^(q-1)` from 0, is not walked:
+  in a limit's terms the interpreter need never take it, and the
+  prototype's inverse of a singular `hat(w)` there made the limit NaN where
+  the interpreter answers; a number's takes `pow`, a matrix's is refused in
+  today's words. And a power whose base carries a part under grad is not
+  walked: the prototype's product dropped the part, `grad_(y = x) y^k/!k`
+  under `lim` 0 where the interpreter gives e^x; it is refused in today's
+  words. No golden, expected header or report moves; of the 225 check
+  programs, `series.ink`'s `later` alone, its `x^k` and `4^k` walked, and
+  `--compile series.ink` with it; `--compile estimate.ink` refuses
+  `steep.x` as a derivative of a limit, no longer as an unbounded sum. Of
+  `compile.hpp`, in three commits: the sum 104 lines net, 135 added and 31
+  removed; the factorial 16, its helper written only where called after
+  review; the walked power 47, 60 and 13; 167 in all, 23 of them comment,
+  for the spec's 166; 18,171 lines, for 18,004
+  at e07871e. Re-taken, a step the median of nine runs at -O2 on 4 cores
+  at a load under 1, inputs x in [-1, 1), against `series.ink`'s limits:
+  e^x 55.3 ns for 36.6 with GCC 13, 52.0 for 30.9 with Clang 18, its header
+  3,255 bytes for 2,905; the rotation 283 for 196 and 236 for 203, 6,413
+  bytes for 6,089. The RIEKF's (48) as `G(m, f) = sum_(q=0) sk(f)^q/!(q +
+  m)`: its check program of 5 steps 696,824 bytes for `limv.ink`'s 690,366,
+  its report the prototype's, every bound `limv.ink`'s and only the
+  interpreter's own error estimates other, its remainder taken after the
+  sum's terms.
+- **Products by a literal 0.0 kept for NaN, and block-sparse matrices
+  multiplied dense**: 5.1k of the 12-state filter's 21k products, its header
+  638 KB. Joins *Shared at every value written twice*.
+- **A parameter with no default compiled as a single value** is named by
+  its refusal where read, but not through a function's parameter, as the
+  filter's `blk(X_n)` reads `X0`. Follow the call's argument.

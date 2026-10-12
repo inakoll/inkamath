@@ -174,11 +174,11 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brin
                          history:lit history:rise history:ajar history:sown history:nest history:kin history:vast
                          history:twice history:relayed history:pole history:grown history:paired
                          history:looped history:stepped history:opened history:waited
-                         history:rooted history:heeded
+                         history:rooted history:heeded history:aliased history:floored
                          history:huge history:sever history:veiled history:cloaked history:two history:hid history:masked
                          nan:run nan:sign nan:shy nan:slope nan:pair
                          nan:lap nan:trim nan:any nan:cell nan:held nan:idle nan:imag nan:took nan:shut nan:row nan:root
-                         nan:passed nan:waived
+                         nan:passed nan:waived nan:surd
                          inputs:fan inputs:grid
                          inputs:chan inputs:twirl inputs:duo inputs:mean3 inputs:mean2
                          inputs:track inputs:twain inputs:nestv inputs:fed inputs:x inputs:clashed inputs:j1
@@ -205,11 +205,13 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brin
                          steps:runaway:150 steps:runaway:1000 steps:horizon:1000
                          robertson:inside:2000 robertson:outside:2000 robertson:rober
                          implicit:kinetic implicit:jacobian implicit:doubling implicit:inset
-                         implicit:layered tensorgrad:attend tensorgrad:small
+                         implicit:layered implicit:renamed tensorgrad:attend tensorgrad:small
                          tensorgrad:saliency:3 adjoint:fit4 adjoint:token
                          adjoint:sinabs adjoint:gate3 adjoint:under adjoint:aside gradmany:pair
                          gradmany:same gradmany:stair transformer:unseen:4 transformer:tuned:4
-                         split:carried:4 split:apart:4)
+                         split:carried:4 split:apart:4 pendulum:one spin:twirl:20 iekf:walk:21
+                         tip:reach tip:rested series:taylor series:wave series:later
+                         sums:summed sums:halving)
     string(REPLACE ":" ";" checked ${checked})
     list(POP_FRONT checked file instance count)
     set(name ${instance})
@@ -315,6 +317,45 @@ set_tests_properties(check_inset_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^inset: ${implicit}\ninset\\.h: within 0${about}\n$")
 set_tests_properties(check_layered_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^layered: ${implicit}\nlayered\\.q: within 0${about}\n$")
+set_tests_properties(check_renamed_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^renamed: ${implicit}\nrenamed\\.z: within 0${about}\n$")
+# Rigid bodies and an invariant filter, from two explorations: a double
+# pendulum by the RNEA, a rational rotation's powers, and the contact-aided
+# RIEKF of Hartley et al. (2020) on 21 steps of a simulated walk.
+set_tests_properties(check_one_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^one: 100 steps from 0, against exact values until 0 and inexact ones from there\none\\.w: within 0${about}\none\\.q: within 0${about}\none\\.dE: within 0${about}\n$")
+set_tests_properties(check_twirl_20_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^twirl: 20 steps from 0, against exact values\ntwirl\\.R: within 3\\.8e-15\ntwirl\\.o: within 1\\.6e-28\ntwirl\\.q: within 1\\.1e-15\ntwirl\\.u: within 2\\.4e-15\n$")
+set(walk "21 steps from 0, against exact values until 1 and inexact ones from there")
+set_tests_properties(check_walk_21_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^walk: ${walk}\nwalk\\.Pp: within 1\\.5e-15, from 1${about}\nwalk\\.Rp: within 1\\.2e-15, from 1${about}\nwalk\\.Nb: within 2\\.3e-19, from 1${about}\nwalk\\.S: within 4\\.1e-18, from 1${about}\nwalk\\.K: within 2\\.6e-13, from 1${about}\nwalk\\.P: within 1\\.5e-15${about}\nwalk\\.Y: within 0\nwalk\\.pp: within 1\\.6e-15, from 1${about}\nwalk\\.vp: within 9\\.9e-15, from 1${about}\nwalk\\.Xp: within 9\\.9e-15, from 1${about}\nwalk\\.X: within 9\\.8e-15${about}\nwalk\\.R: within 1\\.2e-15${about}\nwalk\\.d: within 6\\.1e-16${about}\nwalk\\.p: within 1\\.5e-15${about}\nwalk\\.v: within 9\\.8e-15${about}\n$")
+# Its 1.1 MB of C takes GCC 10 s at -O2 and 2 at -O0, its report the same.
+target_compile_options(check_walk_21 PRIVATE $<$<C_COMPILER_ID:GNU,Clang,AppleClang>:-O0>)
+# Recursion from the tip (DESIGN.md): the sequence read ahead held to the
+# interpreter as the function form is, and to the function form exactly.
+set_tests_properties(check_reach_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^reach: 100 steps from 0, against exact values\nreach\\.y: within 2\\.8e-14\nreach\\.d: within 0\n$")
+set_tests_properties(check_rested_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^rested: 100 steps from 0, against exact values\nrested\\.z: within 3\\.6e-15\n$")
+# Held to the interpreter within the packed form's bounds on the baseline,
+# but y's, whose walk stops on its own steps alone (DESIGN.md).
+set(series "100 steps from 0, against exact values until 0 and inexact ones from there")
+set_tests_properties(check_taylor_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^taylor: ${series}\ntaylor\\.R: within 4\\.4e-15${about}\ntaylor\\.y: within 1\\.1e-12${about}\n$")
+set_tests_properties(check_wave_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^wave: ${series}\nwave\\.z: within 2\\.1e-15${about}\n$")
+# later's as measured, as it has no packed form.
+set_tests_properties(check_later_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^later: ${series}\nlater\\.y: within 9\\.1e-13${about}\nlater\\.z: within 8\\.9e-16${about}\n$")
+# An unbounded sum compiled (DESIGN.md): R, u and p within the bounds of the
+# same series as limits on the baseline, their terms the same; J, y and z as
+# measured, their terms a factorial at each index, and z's a power, where the
+# limits' are a recurrence (1.2e-15, 1.1e-12 and 3e-14 on the baseline).
+# halving's factorials are whole and at most !11, exact in doubles.
+set_tests_properties(check_summed_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^summed: ${series}\nsummed\\.J: within 1\\.1e-15${about}\nsummed\\.R: within 4\\.4e-15${about}\nsummed\\.p: within 8\\.9e-16${about}\nsummed\\.u: within 1\\.1e-12${about}\nsummed\\.y: within 9\\.1e-13${about}\nsummed\\.z: within 4e-14${about}\n$")
+set_tests_properties(check_halving_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^halving: 100 steps from 0, against exact values\nhalving\\.f: within 0\n$")
 add_test(NAME check_outside_2000 COMMAND check_outside_2000)
 set_tests_properties(check_outside_2000 PROPERTIES WILL_FAIL ON)
 add_test(NAME check_runaway_1000 COMMAND check_runaway_1000)
@@ -681,6 +722,8 @@ set_tests_properties(check_passed_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^passed: 100 steps from 0, against [^\n]*\npassed\\.y: within 0\n$")
 set_tests_properties(check_waived_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^waived: 100 steps from 0, against [^\n]*\nwaived\\.y: within 0\nwaived\\.z: within 0\n$")
+set_tests_properties(check_surd_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^surd: 100 steps from 0, against [^\n]*\nsurd\\.a: within 0\nsurd\\.b: within 0\nsurd\\.c: within 0\nsurd\\.d: within 0\n$")
 # A model's input of more than one cell (DESIGN.md, C83), every term exact.
 set_tests_properties(check_fan_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^fan: 100 steps from 0, against exact values\nfan\\.y: within 0\n$")
@@ -761,6 +804,10 @@ set_tests_properties(check_heeded_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^heeded: 100 steps from 0, against exact values\nheeded\\.y: within 0\n$")
 set_tests_properties(check_waited_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^waited: 100 steps from 0, against exact values\nwaited\\.y: within 0\n$")
+set_tests_properties(check_aliased_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^aliased: 100 steps from 0, against exact values\naliased\\.y: within 0, from 1\naliased\\.x: within 0\naliased\\.r: within 0\n$")
+set_tests_properties(check_floored_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^floored: 100 steps from 0, against exact values\nfloored\\.y: within 0\nfloored\\.x: within 0\nfloored\\.r: within 0\nfloored\\.z: within 0\n$")
 set_tests_properties(check_huge_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^huge: 100 steps from 0, against exact values\nhuge\\.y: inf at 31, where the interpreter's term is too large for a double\n$")
 set_tests_properties(check_root_report PROPERTIES PASS_REGULAR_EXPRESSION
@@ -957,7 +1004,7 @@ foreach(report IN ITEMS
         "tfit:^tfit: 100 steps from 0${in_float}\ntfit\\.W: ${exact}\ntfit\\.H: ${exact}\ntfit\\.L: ${exact}\n$"
         "dies:^dies: 100 steps from 0${in_float}\ndies\\.alive: at 3 the compiled step takes 'alive_n \\| b_n > 0 = 1' and the interpreter 'alive_n = 0'\\; the guard of the first is exactly on its threshold\ndies\\.b: -0\\.0728999898 at 4, where the interpreter gives 0\ndies\\.alive: 1 at 3, where the interpreter gives 0\n$"
         "beat:^beat: 100 steps from 0${in_float}\nbeat\\.locked: at 2 the compiled step takes 'locked_n = 0' and the interpreter 'locked_n \\| e_n\\[1\\] == 0 and e_n\\[2\\] == 0 = 1'\\; the guard of the second is exactly on its threshold\n(beat\\.(x|xh|e): within [0-9.e+-]+, [0-9.e+-]+ units of a float\n)+beat\\.locked: 0 at 2, where the interpreter gives 1\n$"
-        "peak:^peak: 100 steps from 0${inexact}\npeak\\.Q: ${exact}\npeak\\.S: within ${units}\npeak\\.A\\[3,1\\]: [-a-z()]+ at 63, where the interpreter gives 1\\; the interpreter's term about [0-9.e+-]+ from the exact one\npeak\\.B: within ${units}\n$"
+        "peak:^peak: 100 steps from 0${inexact}\npeak\\.Q: ${exact}\npeak\\.S: within ${units}\npeak\\.A\\[1,1\\]: [-a-z()]+ at 63, where the interpreter gives 0\\.5\\; the interpreter's term about [0-9.e+-]+ from the exact one\npeak\\.B: within ${units}\n$"
         "thm1:^thm1: 100 steps from 0 in float${until2}\nthm1\\.h: within 1\\.2e-07, 9\\.7 units of a float, from 2${about}\nthm1\\.x: within 6\\.8e-08, 9\\.7 units of a float, from 1${about}\nthm1\\.R: within 9\\.3e-06, 2\\.4 units of a float${about}\nthm1\\.g: ${exact}, from 1\nthm1\\.m: ${exact}\nthm1\\.v: within 1e-06, 1\\.7 units of a float\n$"
         "fixed:^fixed: 100 steps from 0 in float${until2}\nfixed\\.x: within 1\\.3e-07, 3\\.6e\\+02 units of a float, from 1${about}\nfixed\\.R: within 4\\.3e-06, 2\\.2 units of a float${about}\nfixed\\.g: ${exact}, from 1\nfixed\\.v: within 1e-06, 1\\.7 units of a float\nfixed\\.w: within 1e-06, 1\\.1 units of a float\n$"
         "gen:^gen: 100 steps from 0 in float${until2}\ngen\\.h: within 1\\.8e-07, 3\\.2e\\+02 units of a float, from 2${about}\ngen\\.x: within 1\\.6e-07, 3\\.2e\\+02 units of a float, from 1${about}\ngen\\.R: within 2e-06, 59 units of a float${about}\ngen\\.g: ${exact}, from 1\ngen\\.m: within 4\\.8e-07, 2 units of a float\ngen\\.v: within 7\\.2e-06, 0\\.47 units of a float\n$"
