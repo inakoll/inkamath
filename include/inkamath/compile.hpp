@@ -4312,8 +4312,9 @@ private:
     }
 
     // One with no base clause that reads its own terms back, through others
-    // too: those before the stream are what init folds, as an input's
-    // history's are (C343).
+    // with none too, below whose base clauses no term is (C349): those
+    // before the stream are what init folds, as an input's history's are
+    // (C343).
     bool Recurrent(const std::string& name) const {
         const Sequence& sequence = sequences_.at(name);
         return Recomputed(sequence) && (!sequence.own.empty() || Reaches(name, &sequence));
@@ -4333,7 +4334,8 @@ private:
             for (const Reads* each : {&sequence.reads, &sequence.deferred})
                 for (const auto& [read, lags] : *each) {
                     if (&sequences_.at(read) == to) return true;
-                    if (seen.insert(read).second) left.push_back(read);
+                    if (seen.insert(read).second && sequences_.at(read).bases.empty())
+                        left.push_back(read);
                 }
         }
         return false;
