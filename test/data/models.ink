@@ -165,6 +165,16 @@ a0 = 5
 >> filters.a0 = 1/2
 error: filters.a0 is defined in filters.ink, and only there
 
+# A name read qualified is shown so too, and only one the file defines.
+>> ?filters.power
+power(x) = a0*x^2
+
+>> tex ?filters.power
+\operatorname{power}(x) = \mathit{a0}\,x^2
+
+>> ?filters.sin
+error: filters.sin is not defined
+
 # A model instantiates another as the session does, named or not; a named one
 # is read through the instance that holds it.
 >> frac filters.highpass(a = 1/2, u_n = 1).v_3

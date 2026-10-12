@@ -169,6 +169,7 @@ private:
     PExpression<U> ParseGrad();
     std::string ParseQuery();
     std::string    Tex();
+    std::pair<const Scope<U>*, std::string> Queried();
 
     // The reserved words. A limit is a property of a definition, so 'lim'
     // takes a name rather than an expression; 'sum' and 'prod' begin a series.
@@ -1398,7 +1399,7 @@ std::string Interpreter<T,U>::ParseQuery()
     {
         Fail("expected a name after '?', not '", Peek().text, "'");
     }
-    const std::string name = m_tokens[m_i++].text;
+    const auto [scope, name] = Queried();
     if (!AtEnd() && Peek().type == LPar)
     {
         Fail("'?' takes a name, not a call");
@@ -1408,6 +1409,7 @@ std::string Interpreter<T,U>::ParseQuery()
     {
         Fail("unexpected '", Peek().text, "'");
     }
+    const typename ReferenceStack<U>::Within within(stack_, scope);
     return stack_.Describe(name, ParametersCall<U>(PExpression<U>(), sub));
 }
 
@@ -1417,11 +1419,32 @@ std::string Interpreter<T, U>::Tex() {
     if (m_tokens.size() < 2 || m_tokens[1].type != Query)
         Fail("tex shows a definition, as 'tex ?name'");
     if (m_tokens.size() < 3 || m_tokens[2].type != Func) Fail("expected a name after '?'");
-    if (m_tokens.size() > 3) Fail("tex shows a whole definition, as 'tex ?name'");
-    const auto definition = stack_.Find(m_tokens[2].text);
-    if (!definition) Fail(m_tokens[2].text, " is not defined");
+    m_i                      = 2;
+    const auto [scope, name] = Queried();
+    if (!AtEnd()) Fail("tex shows a whole definition, as 'tex ?name'");
+    const typename ReferenceStack<U>::Within within(stack_, scope);
+    const auto definition = stack_.Global(name);
+    if (!definition) Fail(name, " is not defined");
     if (definition->model) return Latex<U>::System(*definition, *stack_.Defaults(*definition));
     return Latex<U>::Definition(*definition);
+}
+
+// The name a query reads, and for 'filters.lowpass' the scope it is sought in.
+template <Parsable T, Numeric U>
+std::pair<const Scope<U>*, std::string> Interpreter<T, U>::Queried() {
+    PExpression<U> object;
+    std::string    name = m_tokens[m_i++].text;
+    while (!AtEnd() && Peek().type == Dot) {
+        ++m_i;
+        if (AtEnd() || Peek().type != Func) Fail("expected a name after '.'");
+        PExpression<U> ref = std::make_shared<RefExpression<U>>(name);
+        object = object ? std::make_shared<MemberExpression<U>>(object, ref) : ref;
+        name   = m_tokens[m_i++].text;
+    }
+    if (!object) return {nullptr, name};
+    const Scope<U>& scope = stack_.Resolve(*object, stack_.Session());
+    if (!scope.names.count(name)) Fail(scope.Qualified(name), " is not defined");
+    return {&scope, name};
 }
 
 template <Parsable T, Numeric U>

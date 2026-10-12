@@ -442,7 +442,7 @@ int main(int argc, char* argv[]) {
             for (const char c : s) cout << (c == '\n' ? "\n.. " : string(1, c));
             cout << '\n';
         }
-        cout << answer << (echo ? "\n\n" : "\n");
+        cout << answer << (echo ? "\n\n" : "\n") << flush;
     }
     return failed ? 1 : 0;
 }
