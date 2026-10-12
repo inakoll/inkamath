@@ -48,63 +48,6 @@ endfunction()
 # Read by cases in every part.
 set(inputs "${CMAKE_CURRENT_LIST_DIR}/compile/inputs.ink")
 
-# Specified, not yet built (DESIGN.md, an unbounded sum compiled):
-# compile/sums.ink's series and factorial compiled, a sum's walk as long as
-# the interpreter's, and what stays refused. Skipped while sums.ink is
-# refused in today's words, and only then.
-set(sums "${CMAKE_CURRENT_LIST_DIR}/compile/sums.ink")
-set(unbounded ": a sum or a product with no upper bound\n")
-if(PART STREQUAL "spec")
-    execute_process(COMMAND "${EXE}" --compile ${sums} RESULT_VARIABLE refused
-                    OUTPUT_VARIABLE why ERROR_QUIET)
-    if(refused AND why STREQUAL "cannot compile summed.J${unbounded}cannot compile summed.R${unbounded}cannot compile summed.p${unbounded}cannot compile summed.u${unbounded}cannot compile summed.y${unbounded}cannot compile summed.z${unbounded}")
-        message("sums: refused as specified")
-        return()
-    endif()
-    set(args --compile ${sums} -o sums.h)
-    check(compile_sums)
-    # 100 partial sums at most, from 3 to 102, as the interpreter's.
-    file(WRITE "${OUT}/bound.ink" "y_n = sum_(q=3) x_n^q/!q\n")
-    set(args --compile bound.ink -o bound.h)
-    check(compile_sums_bound)
-    holds(compile_sums_bound bound.h "    for (long long k_ = 4; k_ <= 102; ++k_) {\n")
-    # a starts where the step is; b's power is at twice the index, and f's
-    # inner bound moves; c gives t arguments that change as the walk does,
-    # and e reads it ahead; d differentiates through it; h calls an
-    # instance's own function at the index.
-    file(WRITE "${OUT}/unsummed.ink" "A = [0, -1; 1, 0]/2\nt(x)_0 = 1\nt(x)_k = t(x)_(k-1)*x/k\n"
-         "mm(a = 1) = {\n    g(j) = a^j/!j\n    y = sum_(q=0) g(q)\n}\na_n = sum_(q=n) 2^-q\n"
-         "b_n = sum_(q=0) (x_n*A)^(2*q)/!(2*q)\nc_n = sum_(q=0) t(q*x_n)_q\n"
-         "d_n = grad_(y = x_n) sum_(q=0) y^q/!q\ne_n = sum_(q=0) t(x_n)_(q+1)\n"
-         "f_n = sum_(q=0) sum_(j=0)^q x_n^j/!q\nh_n = mm(a = x_n).y\n")
-    set(args --compile unsummed.ink)
-    set(bounds ": a sum or a product whose bounds are not constants\n")
-    set(stdout "cannot compile a${bounds}cannot compile b: a matrix power whose exponent is not a constant
-cannot compile c: t_(...): read at sum_(q=0)'s index with arguments that change as it walks
-cannot compile d: a derivative of a limit, for now
-cannot compile e: a sequence with parameters read at an index that is not a constant
-cannot compile f${bounds}cannot compile h: g, a function of an instance, called at sum_(q=0)'s index, for now
-")
-    set(exit 1)
-    check(compile_sums_refused)
-    return()
-endif()
-# The check program of a sums.ink instance, until then one saying it is
-# refused, which skips its report; refused otherwise, it fails the build.
-if(PART STREQUAL "spec_program")
-    execute_process(COMMAND "${EXE}" --check ${sums} ${INSTANCE} -o "${PROGRAM}"
-                    RESULT_VARIABLE refused OUTPUT_QUIET ERROR_VARIABLE why)
-    set(refusal_summed "J${unbounded}")
-    set(refusal_halving "f: a factorial\n")
-    if(refused AND why STREQUAL "inkamath: cannot compile ${refusal_${INSTANCE}}")
-        file(WRITE "${PROGRAM}"
-             "#include <stdio.h>\nint main(void) {\n    puts(\"${INSTANCE}: refused\");\n    return 0;\n}\n")
-    elseif(refused)
-        message(FATAL_ERROR "${why}")
-    endif()
-    return()
-endif()
-
 # The cases run as three tests of about equal time under the sanitizers: PART
 # 1 up to charpoly's refusal, 2 from it, 3 from eig's, and all where PART is
 # not given.
@@ -1808,11 +1751,16 @@ cannot compile j: r_(...): its terms before the walk read lim sj's own
 set(exit 1)
 check(compile_series_refused)
 
-# An unbounded sum compiled (DESIGN.md, compile/sums.ink): the series'
-# values by closed forms, e^x's at -2 and 1, the sine's at -2 and 7/2, the
-# product's 1/(1 - y^2) at y = -1/5 and 3/10, and Rodrigues' formula and the
-# left Jacobian at n = 0 and 20, by mpmath, each held within 1e-9 as a limit
-# stops within about 1e-10; and the factorial's, exact or refused.
+# An unbounded sum compiled (DESIGN.md, compile/sums.ink): the file
+# compiled; the series' values by closed forms, e^x's at -2 and 1, the sine's
+# at -2 and 7/2, the product's 1/(1 - y^2) at y = -1/5 and 3/10, and
+# Rodrigues' formula and the left Jacobian at n = 0 and 20, by mpmath, each
+# held within 1e-9 as a limit stops within about 1e-10; the factorial's,
+# exact or refused; a sum's walk as long as the interpreter's; and what
+# stays refused.
+set(sums "${CMAKE_CURRENT_LIST_DIR}/compile/sums.ink")
+set(args --compile ${sums} -o sums.h)
+check(compile_sums)
 file(COPY ${sums} DESTINATION "${OUT}")
 file(WRITE "${OUT}/summed.ink" [[
 >> use sums
@@ -1866,6 +1814,30 @@ error: a factorial cannot be negative
 set(args --check summed.ink)
 set(stdout "summed.ink: 16 answers, each as recorded\n")
 check(compile_sums_values)
+# 100 partial sums at most, from 3 to 102, as the interpreter's.
+file(WRITE "${OUT}/bound.ink" "y_n = sum_(q=3) x_n^q/!q\n")
+set(args --compile bound.ink -o bound.h)
+check(compile_sums_bound)
+holds(compile_sums_bound bound.h "    for (long long k_ = 4; k_ <= 102; ++k_) {\n")
+# a starts where the step is; b's power is at twice the index, and f's
+# inner bound moves; c gives t arguments that change as the walk does, and e
+# reads it ahead; d differentiates through it; h calls an instance's own
+# function at the index.
+file(WRITE "${OUT}/unsummed.ink" "A = [0, -1; 1, 0]/2\nt(x)_0 = 1\nt(x)_k = t(x)_(k-1)*x/k\n"
+     "mm(a = 1) = {\n    g(j) = a^j/!j\n    y = sum_(q=0) g(q)\n}\na_n = sum_(q=n) 2^-q\n"
+     "b_n = sum_(q=0) (x_n*A)^(2*q)/!(2*q)\nc_n = sum_(q=0) t(q*x_n)_q\n"
+     "d_n = grad_(y = x_n) sum_(q=0) y^q/!q\ne_n = sum_(q=0) t(x_n)_(q+1)\n"
+     "f_n = sum_(q=0) sum_(j=0)^q x_n^j/!q\nh_n = mm(a = x_n).y\n")
+set(args --compile unsummed.ink)
+set(bounds ": a sum or a product whose bounds are not constants\n")
+set(stdout "cannot compile a${bounds}cannot compile b: a matrix power whose exponent is not a constant
+cannot compile c: t_(...): read at sum_(q=0)'s index with arguments that change as it walks
+cannot compile d: a derivative of a limit, for now
+cannot compile e: a sequence with parameters read at an index that is not a constant
+cannot compile f${bounds}cannot compile h: g, a function of an instance, called at sum_(q=0)'s index, for now
+")
+set(exit 1)
+check(compile_sums_refused)
 
 # A frequency response does not compile: a compiled value is real, so the
 # complex e^(i*w*n) is refused, not its abs.

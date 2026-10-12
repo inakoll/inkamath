@@ -10034,7 +10034,7 @@ they asked, each with its smallest change.
   a step 33.3 and 87.5 ns with GCC 13, 33.6 and 62.6 with Clang 18, for e^x;
   210 and 496, 208 and 772, for the rotation: within 10% of the
   prototype's, run to run.
-- **An unbounded sum compiled**, the limit of its partial sums, as a
+- `[done]` **An unbounded sum compiled**, the limit of its partial sums, as a
   paper writes a series:
 
   ```
@@ -10045,144 +10045,119 @@ they asked, each with its smallest change.
   The interpreter answers it by `Convergence`, the rule `lim` follows
   (README section 4): its partial sums from the first index a, until two
   agree within 1e-10 and so does the remainder their steps estimate,
-  inexact, and refused after 100 partial sums, a to a+99. `lim` takes the
-  same tolerance and remainder, but 100 terms past its highest base, 101
-  values. `--compile` refuses it, "a sum or a product with no upper bound",
-  and two of its terms besides: `!q`, "a factorial", and `A^q`, "a matrix
-  power whose exponent is not a constant". The RIEKF exploration wrote (48)
-  to N terms (`test/compile/iekf.ink`) or as a recurrence under `lim`
-  (`limv.ink`); the rotations exploration packed e^x's term and sum.
+  refused after 100 partial sums, a to a+99, where `lim` takes 100 terms
+  past its highest base. `--compile` refused it, "a sum or a product with no
+  upper bound", and two of its terms besides: `!q`, "a factorial", and
+  `A^q`, "a matrix power whose exponent is not a constant". The RIEKF
+  exploration wrote (48) to N terms (`test/compile/iekf.ink`) or as a
+  recurrence under `lim`; the rotations exploration packed e^x's term and
+  sum.
 
   Decided:
   - **Walked as a limit is.** `Limit` keeps what is a sequence's, its
-    arguments, bases and `Iterate`, and hands the rest, its function's text,
-    to a `Walk` the sum shares: the sum's base the summand at a, with q the
-    constant a, its term at `k_` `t1_` plus the summand there, `t1_` times
-    it for `prod_(q=a)`, which the interpreter takes by the same rule; the
-    loop from a+1 to a+99. The stopping test is `lim`'s own text, so what
-    `fixes41` changes in it (C353, a step within rounding of an exact 0)
-    the sum takes unchanged: whichever merges second moves its lines.
+    arguments, bases and `Iterate`, and hands its function's text to
+    `Converge`, which the sum shares: the sum's base the summand at a, q
+    the constant a, its term at `k_` `t1_` plus the summand there, or times
+    it for `prod_(q=a)`; the loop from a+1 to a+99. The stopping test is
+    `lim`'s own text, so what `fixes41` changes in it the sum takes too.
   - **What the summand reads that does not move is the walk's argument.**
-    The largest parts of the summand that mention neither q nor a name
-    bound inside it, an inner sum's index or a grad's names, are compiled
-    where the sum is, before the call, and passed as `arg_0`, `arg_1`, ...;
-    a constant is itself, so `t(x)_(q-m)` with m a constant is a lag. What
-    is left reads q and is compiled in the function, its names sought where
-    the sum is written; `Emit` answers a part so passed by its node. The
-    function cannot read its caller's temporaries, and `x_n` or `hat(w_n)`
-    is computed once a step rather than once a term.
+    The largest parts that mention neither q nor a name bound inside the
+    summand, an inner sum's index or a grad's names, are compiled where the
+    sum is and passed as `arg_0`, `arg_1`, ..., a constant being itself;
+    `Emit` answers a part so passed by its node. What is left reads q and
+    is compiled in the function, its names sought where the sum is
+    written. So `x_n` or `hat(w_n)` is computed once a step, not once a
+    term.
   - **A sequence with parameters read at q is walked**, limread's `Beside`
     unchanged but for its words, "read at sum_(q=0)'s index".
-  - **A matrix power at q plus a constant is walked**: `A^(q+c)`, A not
-    moving, is a term beside the walk, its window A^(a+c) set before the
-    loop by `Power`'s squaring, its term the window times A; in a limit's
-    terms too, `A^k`. One product a term, where squaring at each would take
-    log k.
+  - **A power at the index plus a constant is walked**, `A^(q+c)` or
+    `x^(q+c)` whose base does not move, in a sum or a limit's terms: a term
+    beside the walk, the one before times the base, from the power before
+    the walk's first set by `Power`'s squaring. One product a term, where
+    `pow` or squaring takes more; `x^(2*q + 1)` keeps `pow`.
   - **A factorial of what moves is the header's helper**, `m_fact_(x)`:
     the product 1 to x in doubles, exact to !22, NaN where x is not a whole
     number at least 0 as the interpreter refuses it (C86), and stopping at
     an infinite product (C47). In a step too: `!(n/2)` compiles, NaN at odd
     n.
-  - **A scalar power stays `pow`**: `x^q` is `pow(x, k_)` at each term,
-    the paper's term as it reads, at the cost measured below; the
-    recurrence is limread's, for whoever writes it.
   - **Its refusals a limit's**: "a derivative of a limit, for now", "a
     tensor in a limit, for now", and C336's NaN where the walk does not
-    converge, `t1_` and the arguments being a limit's.
-  - **What stays refused**: a first index that moves, `sum_(q=n)`, "a sum
-    or a product whose bounds are not constants", the walk's start being
-    its function's constant, and an inner bound that moves, `sum_(j=0)^q`,
-    in the same words, since a bounded sum is unrolled; a matrix power at
-    another exponent, `A^(2*q)`, the cosine of a matrix, in today's words;
-    `t(q*x)_q` and `t(x)_(q+1)` in limread's; and a function of an
-    instance called at q, "g, a function of an instance, called at
-    sum_(q=0)'s index, for now": the function does not see an instance's
-    own definitions, whose values are its caller's, and sought by name
-    would find a global of the same name instead.
-  - **--float and --check**: nothing; the helper's doubles are floats as
-    the header's are, and a sum is a function of the header.
+    converge.
+  - **What stays refused**: a first index that moves, `sum_(q=n)`, and an
+    inner bound that moves, `sum_(j=0)^q`, "a sum or a product whose bounds
+    are not constants"; a matrix power at another exponent, `A^(2*q)`, in
+    today's words; `t(q*x)_q` and `t(x)_(q+1)` in limread's; another
+    sequence's term, "x_...: another sequence's term in sum_(n=0)'s terms";
+    and a function of an instance called at q, "g, a function of an
+    instance, called at sum_(q=0)'s index, for now": the function does not
+    see an instance's own definitions, and sought by name would find a
+    global of the same name instead.
+  - **--check**: nothing. **--float**: the helper's doubles are floats as
+    the header's are, so `sum_(q=0) x^q/!q` is NaN from x about 12.6, where
+    35! and x^35 overflow a float, while `lim ex(x)` holds. Only the ratio
+    recurrence cures it, and whoever needs it writes it, as `series.ink`
+    does.
 
   Rejected:
   - **The sum rewritten as a sequence under `lim`**: a definition the
-    compiler makes and nobody wrote, and its parameters the free names,
-    the same lifting with a `Reference` to build.
+    compiler makes and nobody wrote, its parameters the free names, the
+    same lifting with a `Reference` to build.
   - **The loop written inline where the sum is**: no argument to pass, but
     its `k_`, `t1_` and windows clash with an enclosing limit's, and its
-    temporaries must be sorted between the loop and before it, which a
-    function of its own does.
-  - **Only the names read passed**, `x` and `w`: `x_n` reads n, which the
-    function does not see, and `hat(w_n)` is built at each term.
+    temporaries must be sorted between the loop and before it.
+  - **Only the names read passed**, `x` and `w`, the function reading n as
+    `m_->index_`: its arguments are what the step computes once, and
+    `hat(w_n)` would be built at each term.
   - **A matrix power by squaring at run time**, a helper for each size as
     the inverse has: any whole exponent that moves, a step's `A^n` too, but
-    log k products a term, an inverse at run time for a negative one, some
-    30 lines, and no paper here asking for `A^n` outside a series.
+    log k products a term, some 30 lines, and no paper here asking for
+    `A^n` outside a series.
   - **The factorial walked too**, `!(q+c)` the one before times q+c: one
-    product a term, but the sine's `!(2*q + 1)` refused, and `!n` in a step.
-    **`tgamma(x + 1)`**: one line, rounded as each C library rounds it.
-  - **Scalar powers walked**: e^x's step near the recurrence's, but the
-    sine's `x^(2*q + 1)` refused and `pow(x, k)` hidden in a product.
+    product a term, but the sine's `!(2*q + 1)` refused, and `!n` in a
+    step. **`tgamma(x + 1)`**: one line, rounded as each C library rounds
+    it.
+  - **A number's power left to `pow`**, as the spec had it: e^x's step 229
+    ns with GCC 13 on the prototype, four times the walked one's, and no
+    bound of `--check` the better for it.
   - **`Iterate` merged with `Chained`'s clause loop**, limread's
-    implementation review's objection 5, about 15 lines: not here. A sum
-    has no clauses and does not reach `Iterate`, so the merge is a change
-    of its own, to be weighed on its own diff; the two differ in a base
-    clause's condition, the NaN below the lowest base, and a clause's index
-    bound alone, which `Chained` does and `Iterate` does not.
-
-  What moves, on a prototype, discarded: no golden, no header of
-  `test/compile/expected` nor the prelude's, no excerpt in `test/cli.cmake`,
-  and the 225 check programs of e07871e byte for byte. `!n` compiles, so
-  `cli.cmake`'s `compile_refused` and `compile_refusals` refuse `i*n`, a
-  complex number, from this specification on. README's "the compiler
-  refuses ... such as infinite series" goes, and its paragraph on compiled
-  limits names `sums.ink`.
-
-  Measured on the prototype, a step the median of nine runs at -O2 on 4
-  cores at a load under 1, inputs x in [-1, 1), against `series.ink`'s
-  forms, the limit of a sequence with a walked term:
-  - e^x as `sum_(q=0) x_n^q/!q`: header 3,209 bytes for 2,905, a step 229
-    and 37.0 ns with GCC 13, 258 and 29.5 with Clang 18, `pow` and the
-    factorial at each term;
-  - the exponential of a rotation vector's hat, `w = [x; -1/3; 1/4]`, as
-    `sum_(q=0) hat(w_n)^q/!q`: header 6,412 bytes for 6,089, a step 288 and
-    188 ns with GCC 13, 243 and 195 with Clang 18;
-  - the RIEKF's (48) as `G(m, f) = sum_(q=0) sk(f)^q/!(q + m)`: its check
-    program of 5 steps 696,821 bytes for `limv.ink`'s 690,366 and the
-    walked limit's 690,109, every bound of its report the same; only the
-    interpreter's own error estimates differ, its remainder taken after the
-    sum's terms rather than the recurrence's;
-  - `sums.ink`'s series held by `--check` within the bounds of the same
-    series written as limits on the baseline where their terms are the
-    same, R 4.4e-15, u 1.1e-12 and p 8.9e-16; J, y and z, whose terms are a
-    factorial or `pow` at each index where the limits' are a recurrence,
-    within 1.1e-15, 9.1e-13 and 4e-14, for 1.2e-15, 1.1e-12 and 3e-14.
-
-  About 165 lines of `compile.hpp`: the prototype's 210 added and 44
-  removed, clang-formatted, 23 of them comment; net, 19 the split of
-  `Limit` into `Walk`, 45 the sum, 38 the parts that do not move, 48 the
-  walked power, `Walks` out of `Beside` included, 16 the factorial. 18,004 lines at e07871e, by `wc -l
-  include/inkamath/*.hpp src/*`, 18,170 on the prototype; past 1.5, at 249
-  net, the implementation stops and reports.
+    implementation review's objection 5: a sum does not reach `Iterate`, so
+    the merge is a change of its own.
 
   Specified in `test/compile/sums.ink`: `summed`, e^x and the sine by
-  Taylor, e^x by `t(x)_q` walked, a product from 1, Gamma_0 and Gamma_1 of
-  a rotation vector, and `halving`, a factorial that moves. Their values,
+  Taylor, e^x by `t(x)_q` walked, a product from 1, and Gamma_0 and Gamma_1
+  of a rotation vector; and `halving`, a factorial that moves. Their values
   by closed forms through mpmath, `compile_sums_values` in `cli.cmake`'s
-  part 3, which the interpreter answers now. Until built,
-  `test/CMakeLists.txt` writes their check programs through `cli.cmake`'s
-  `spec_program` part, one saying it is refused while `--check` refuses in
-  today's words, which skips its report, any other refusal failing the
-  build; and `cli.cmake`'s `spec` part, run by `cli_spec`, is skipped while
-  `--compile` refuses `sums.ink` in today's words and only then: the file
-  compiled, a sum's loop to a+99, `compile_sums_bound`, and
-  `compile_sums_refused`, the refusals above. With the implementation,
-  `sums:summed` and `sums:halving` join the check list, the `spec_program`
-  part goes, the `spec` part's cases move into part 3, `cli_spec` goes, and
-  README says so. No transcript in `test/data/spec`: the language does not
-  change.
+  part 3, with the walk's length and the refusals above; and by `--check`,
+  R, u and p within the bounds of the same series as limits, 4.4e-15,
+  1.1e-12 and 8.9e-16, their terms the same, and J, y and z, whose terms
+  take a factorial at each index where the limits' are a recurrence, within
+  1.1e-15, 9.1e-13 and 4e-14, for 1.2e-15, 1.1e-12 and 3e-14.
 
-  Found writing it: the limread entry's preparation holds for a summand
-  read at q, which `Beside` walks through `Iterate`, but leaves out the
-  function's text, which `Limit` kept and a sum, having no clauses, needs.
+  Built as specified with the spec review's rulings, which walked a
+  number's power too, departing in two places found building it. A power
+  whose first before the walk is negative, `A^(q-1)` from 0, is not walked:
+  in a limit's terms the interpreter need never take it, and the
+  prototype's inverse of a singular `hat(w)` there made the limit NaN where
+  the interpreter answers; a number's takes `pow`, a matrix's is refused in
+  today's words. And a power whose base carries a part under grad is not
+  walked: the prototype's product dropped the part, `grad_(y = x) y^k/!k`
+  under `lim` 0 where the interpreter gives e^x; it is refused in today's
+  words. No golden, expected header or report moves; of the 225 check
+  programs, `series.ink`'s `later` alone, its `x^k` and `4^k` walked, and
+  `--compile series.ink` with it; `--compile estimate.ink` refuses
+  `steep.x` as a derivative of a limit, no longer as an unbounded sum. Of
+  `compile.hpp`, in three commits: the sum 104 lines net, 135 added and 31
+  removed; the factorial 17, 19 and 2; the walked power 47, 60 and 13; 168
+  in all, 23 of them comment, for the spec's 166; 18,172 lines, for 18,004
+  at e07871e. Re-taken, a step the median of nine runs at -O2 on 4 cores
+  at a load under 1, inputs x in [-1, 1), against `series.ink`'s limits:
+  e^x 55.3 ns for 36.6 with GCC 13, 52.0 for 30.9 with Clang 18, its header
+  3,255 bytes for 2,905; the rotation 283 for 196 and 236 for 203, 6,413
+  bytes for 6,089. The RIEKF's (48) as `G(m, f) = sum_(q=0) sk(f)^q/!(q +
+  m)`: its check program of 5 steps 696,824 bytes for `limv.ink`'s 690,366,
+  its report the prototype's, every bound `limv.ink`'s and only the
+  interpreter's own error estimates other, its remainder taken after the
+  sum's terms.
 - **Products by a literal 0.0 kept for NaN, and block-sparse matrices
   multiplied dense**: 5.1k of the 12-state filter's 21k products, its header
   638 KB. Joins *Shared at every value written twice*.
