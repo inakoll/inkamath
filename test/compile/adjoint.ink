@@ -168,8 +168,8 @@ gate3 = relugate(x_n = [mod(n, 3) - 1; 1; mod(2*n, 5)/3 - 1/2], y_n = mod(n, 4)/
 #
 # Each condition is written once (DESIGN.md, the reverse sweep's conditions
 # written once), test/cli.cmake's compile_sweep_conditions: ' != 0)'
-# written fewer than 20 times in hidden.h, 39 before. By count 15: 3 for
-# each unit's adjoint where its clause is taken, 9 for W'*(...), each of
+# written fewer than 20 times in hidden.h, 39 before. By count 15: 3, one
+# for each unit's adjoint where its clause is taken, 9 for W'*(...), each of
 # its three cells summing the three units, and 3 for two flags, the first
 # two units' clauses and the third's beside them, which U's 9 cells read
 # where each wrote all three.
