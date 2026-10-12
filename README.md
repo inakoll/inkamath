@@ -121,6 +121,10 @@ with how to call it: the step's inputs, what each field holds after a step,
 and the parameters with their values. A parameter read where the step
 needs a constant, a size or an exponent, is compiled in instead, as the
 header says.
+A step too long for a compiler to optimise as one function is written as
+several, and what one computes and a later one reads is kept on the step's
+stack: about 256 KB for one training a transformer's 13 weights at once, which
+a thread with a small stack must allow for.
 `test/compile/pid.ink` is a PID controller, and `test/compile/expected/pid.h`
 is what it compiles to; `test/compile/kalman.ink` is a Kalman filter over
 matrices.
@@ -174,7 +178,10 @@ interpreter's values are doubles: `test/compile/grad.ink` trains a line and a
 logistic regression by it, and `test/compile/cellguards.ink` a ReLU network
 through its activation written by its cells, each cell's guards tested in the
 step; a derivative of a derivative, of a limit or of a matrix power is refused
-for now. A tensor is an array as C keeps one,
+for now. A `grad` by several names is a struct of its parts, as an instance
+is, `m.g.W[0]` being `g.W_n`, the body written once and swept back once:
+`test/compile/gradmany.ink` trains a two-layer network by one grad of its
+four weights. A tensor is an array as C keeps one,
 `double O[B][T][D]`, slice after slice, and is met slice by slice as the
 interpreter meets it: `test/compile/tensor.ink` runs multi-head attention
 over a batch and trains a layer on minibatches by `grad`, and
@@ -191,6 +198,8 @@ every cell, which its first comment says. Such a header is not to be built
 with `-ffinite-math-only`, which `-ffast-math` implies: GCC removes the tests
 that carry NaN, and Clang warns of each NaN the header writes.
 `test/compile/nan.ink` has an instance of each.
+Clang before 23.1 can miscompile some headers' NaN tests at -O2 (llvm
+925e284), and Clang 19 does on the tests; build with `-fno-slp-vectorize`.
 
 A sequence that reads another at `x_(2*m)` samples it, and is computed every
 second step: its terms are the input's at another rate, and `y_(floor(n/2))`
@@ -1033,6 +1042,27 @@ dcube(t) = grad_(u = t) cube(u)
 >> grad_(v = [1; 2]) v'*v
 [2;
  4]
+```
+
+A gradient with respect to several names at once, the nabla's `∇_θ`, names
+each at its point in the one subscript. It has a part for each name and no
+value of its own. Where `grad` answers by each name alone, the others held
+at their points, a part is what it gives by that name; where it refuses one
+name, it refuses the whole. A definition holds it, read by its parts after a
+point as an instance's names are, so a training step reads as a paper
+writes it, `g_n = grad_(W = W_(n-1), b = b_(n-1)) L(W, b, x_n)` and `W_n =
+W_(n-1) - eta*g.W_n`. At a real point it costs one evaluation and one sweep
+back, however many names it has:
+
+```
+>> dxy = grad_(x = 2, y = 3) x^2*y
+dxy = grad_(x = 2, y = 3) x^2*y
+
+>> dxy.x
+12
+
+>> dxy.y
+4
 ```
 
 A definition in cases takes the slope of the clause that holds at the point,

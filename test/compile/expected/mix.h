@@ -50,11 +50,11 @@ static inline void mix_init(mix* m_) {
 }
 
 /* Advances to the next index, the first at 0, and computes its terms. */
-static inline void mix_step(mix* m_, double u, double b) {
+static inline void mix_step(mix* m_, double u_in_, double b_in_) {
     ++m_->index_;
     m_->v[1] = m_->v[0];
-    m_->u[0] = u;
-    m_->b[0] = b;
+    m_->u[0] = u_in_;
+    m_->b[0] = b_in_;
     m_->m[0] = m_->g * m_->u[0] + (1.0 + (0.0 - m_->g)) * m_->b[0];
     m_->v[0] = m_->index_ == 0 ? 0.0 : m_->a * m_->m[0] + (1.0 + (0.0 - m_->a)) * m_->v[1];
 }

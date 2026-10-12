@@ -9,6 +9,7 @@
 #include <stdexcept>
 #include <string>
 #include <tuple>
+#include <typeinfo>
 #include <unordered_map>
 #include <utility>
 #include <vector>
@@ -381,9 +382,36 @@ public:
     // 'g.y_3': the index and the arguments are the caller's, and the name is
     // sought in the object's scope alone.
     T Member(const MemberExpression<T>& member) {
-        Budget          budget(*this);
+        Budget budget(*this);
+        if (const definition_type group = GroupOf(*member.Object()))
+            return Part(*group, *member.Object(), *member.Member());
         const Scope<T>& scope = Object(*member.Object());
         return Evaluate(*Own(scope, member.Member()->Name()), Call(*member.Member()));
+    }
+
+    // A definition whose only clause is a grad by several names (DESIGN.md),
+    // read by its parts.
+    static GradExpression<T>* Group(const Reference<T>& definition) {
+        if (!definition.Value() || definition.Clauses().size() != 1) return nullptr;
+        Expression<T>& e = *definition.Clauses().front().expression;
+        if (!e.Groups() || typeid(e) != typeid(GradExpression<T>)) return nullptr;
+        auto& grad = static_cast<GradExpression<T>&>(e);
+        return grad.Several() ? &grad : nullptr;
+    }
+    definition_type GroupOf(Expression<T>& object) {
+        definition_type definition;
+        if (auto* member = dynamic_cast<MemberExpression<T>*>(&object)) {
+            definition = Own(Object(*member->Object()), member->Member()->Name());
+        } else if (!object.Name().empty()) {
+            definition = FindGlobal(object.Name());
+        }
+        return definition && Group(*definition) ? definition : nullptr;
+    }
+
+    // Where a grad by several names puts its parts, if it is the one read.
+    std::vector<T>* Wanted(const GradExpression<T>& grad) {
+        if (parts_.first != &grad) return nullptr;
+        return std::exchange(parts_, {}).second;
     }
 
     // 'g.k = 3', which the session may not do: an instance is changed where
@@ -735,8 +763,63 @@ private:
         return found->second;
     }
 
+    // One sweep gives every part, each remembered for the others' reads under
+    // the object's arguments and the part's index.
+    T Part(const Reference<T>& definition, Expression<T>& object, Expression<T>& part) {
+        const std::vector<std::string>& names = Group(definition)->Variables();
+        const auto                      at    = std::find(names.begin(), names.end(), part.Name());
+        if (at == names.end())
+            throw std::runtime_error(Label(definition) +
+                                     (Call(object).arguments() ? "(...)." : ".") + part.Name() +
+                                     " is not defined");
+        // As an instance's member, by its own name, no limit offered.
+        const std::string name = definition.Name() + "." + part.Name();
+        if (Call(part).arguments()) throw std::runtime_error(name + " takes no arguments");
+        const ParametersCall<T> call(Call(object).arguments(), Call(part).subexpr());
+        const MemoKey<T>        key = definition.Key(call, *this);
+        if (definition.Clauses().front().parameters.indexed() && !key.indexed) {
+            // Offered in the call's own form, its arguments by their values.
+            std::string written = definition.Name();
+            for (std::size_t a = 0; a < key.arguments.size(); ++a)
+                written += (a ? ", " : "(") + numeric_interface<T>::toString(key.arguments[a].second);
+            if (!key.arguments.empty()) written += ")";
+            throw std::runtime_error(name + " is a sequence; index it (" + written + "." +
+                                     part.Name() + "_0)");
+        }
+        // A part is remembered as the call given one more argument, named for
+        // it: the expression's names are every instance's, the call its own.
+        const auto       keyed = [&](std::size_t place) {
+            MemoKey<T> each = key;
+            each.arguments.emplace_back(names[place],
+                                        T(typename T::value_type(static_cast<int>(place))));
+            return each;
+        };
+        const auto read = static_cast<std::size_t>(at - names.begin());
+        if (const T* known = Memoised(keyed(read))) return *known;
+        std::vector<T> parts;
+        {
+            const OwnSteps                                                      own(*this);
+            const Setting<std::pair<const GradExpression<T>*, std::vector<T>*>> wanted(
+                parts_, {Group(definition), &parts});
+            (void)definition.Eval(call, *this, true);
+        }
+        for (std::size_t each = 0; each < names.size(); ++each) Memoise(keyed(each), parts[each]);
+        return parts[read];
+    }
+
     // A name's value, where it has one; most are plain values.
     T Evaluate(const Reference<T>& definition, const ParametersCall<T>& call) {
+        if (const GradExpression<T>* group = Group(definition)) {
+            // What the definition does not take is refused first, as any name's.
+            const MemoKey<T>  key   = definition.Key(call, *this);
+            if (key.indexed && !definition.Clauses().front().parameters.indexed())
+                throw std::runtime_error(definition.Name() + " is not a sequence");
+            const std::string label = Label(definition);
+            throw std::runtime_error(
+                label + " is a gradient by several names; read one of its parts (" + label +
+                (call.arguments() ? "(...)." : ".") + group->Variable() +
+                (key.indexed ? "_" + std::to_string(key.index) : "") + ")");
+        }
         if (definition.Value() && !definition.Applied()) return definition.Eval(call, *this, true);
         return Applied(definition, call);
     }
@@ -1052,6 +1135,7 @@ private:
                                              unnamed_;
     std::vector<frame_type>                  frames_;  // the open ones first, then spares
     size_t                                   open_ = 0;
+    std::pair<const GradExpression<T>*, std::vector<T>*> parts_{};
 };
 
 #include "inkamath/derivative.hpp"

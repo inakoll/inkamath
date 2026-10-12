@@ -61,12 +61,12 @@ static inline void pid_clamped_init(pid_clamped* m_) {
 }
 
 /* Advances to the next index, the first at 0, and computes its terms. */
-static inline void pid_clamped_step(pid_clamped* m_, double y) {
+static inline void pid_clamped_step(pid_clamped* m_, double y_in_) {
     ++m_->index_;
     m_->e[1] = m_->e[0];
     m_->s[1] = m_->s[0];
     m_->u[1] = m_->u[0];
-    m_->y[0] = y;
+    m_->y[0] = y_in_;
     m_->e[0] = m_->r + (0.0 - m_->y[0]);
     m_->d[0] = m_->index_ == 0 ? 0.0 : (m_->e[0] + (0.0 - m_->e[1])) / m_->dt;
     m_->s[0] = m_->index_ == 0 ? 0.0 : m_->u[1] >= m_->umax ? m_->s[1] : m_->u[1] <= 0.0 - m_->umax ? m_->s[1] : m_->s[1] + m_->e[0] * m_->dt;

@@ -108,17 +108,17 @@ static vector<Queued> inputs(istream& in, const filesystem::path& directory) {
     return queued;
 }
 
-// A header or a program is named after its file, which must be a C name, and
-// neither a word C keeps nor a standard header it includes (C104).
-static bool c_name(const string& module, const string& what) {
-    const bool kept = CompileC::keywords.count(module) || module == "math" || module == "string" ||
-                      module == "stdio";
+// A header is named after its file, which must be a C name, and neither a
+// word C keeps nor a standard header it includes (C104).
+static bool c_name(const string& module) {
+    const bool kept = CompileC::keywords.count(module) || CompileC::macros.count(module) ||
+                      module == "math" || module == "string" || module == "stdio";
     if (!kept && !module.empty() && isalpha(static_cast<unsigned char>(module[0])) &&
         all_of(module.begin(), module.end(),
                [](char c) { return isalnum(static_cast<unsigned char>(c)) || c == '_'; }))
         return true;
     cerr << "inkamath: '" << module << (kept ? "' is a name C keeps" : "' is not a C name")
-         << ", and the " << what << " is named after it\n";
+         << ", and the header is named after it\n";
     return false;
 }
 
@@ -157,7 +157,7 @@ static int compile(const string& source, const string& name, const string& targe
         return 2;
     }
     const string module = filesystem::path(target).stem().string();
-    if (!target.empty() && !c_name(module, "header")) return 2;
+    if (!target.empty() && !c_name(module)) return 2;
     const string file = filesystem::path(source).filename().string();
     Interp       p;
     p.Directory(filesystem::path(source).parent_path());
@@ -209,9 +209,9 @@ static int check(const string& source, const string& name, const string& target,
         cerr << "inkamath: cannot open '" << source << "'\n";
         return 2;
     }
-    const string module = filesystem::path(target).stem().string();
-    if (!c_name(module, "program")) return 2;
-    const string file = filesystem::path(source).filename().string();
+    // Not named after its file, which may be any C function's name (C346).
+    const string module = "checked";
+    const string file   = filesystem::path(source).filename().string();
     Interp       p;
     p.Directory(filesystem::path(source).parent_path());
     string program;

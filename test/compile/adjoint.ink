@@ -43,13 +43,15 @@
 # 'layer_tanh_dx(' written 5 times, its definition and four slopes. The
 # sweep reads each square's 2*u^1 and each slope, kept from the body, and
 # each cell of the gradient is a unit's adjoint times a cell of x, unit 4's
-# first, as the sweep reaches it first:
+# first, as the sweep reaches it first, after W*x's four cells tested for
+# NaN in one flag, t4_:
 #
-#     const double t15_ = 2.0 * pow(t13_ + (0.0 - m_->y[0][3][0]), 1.0);
-#     const double t16_ = 0.5 * t15_;
-#     const double t17_ = t16_ * t14_;
+#     const double t19_ = t17_ + (0.0 - m_->y[0][3][0]);
+#     const double t20_ = 2.0 * pow(t19_, 1.0);
+#     const double t21_ = 0.5 * t20_;
+#     const double t22_ = t21_ * t18_;
 #     ...
-#     m_->W[0][3][3] = m_->index_ == 0 ? 0.5 : m_->W[1][3][3] + (0.0 - m_->eta * (isnan(t24_) ? NAN : t17_ * m_->x[0][3][0]));
+#     m_->W[0][3][3] = m_->index_ == 0 ? 0.5 : m_->W[1][3][3] + (0.0 - m_->eta * (isnan(t29_) ? NAN : t22_ * m_->x[0][3][0]));
 layer(eta = 1/4, x_n[i<=4], y_n[i<=4]) = {
     L(W, x, y) = sum_(i=1)^4 (tanh((W*x)[i]) - y[i])^2/2
     W_0 = ~[1 0 0 0; 0 1 0 0; 0 0 1 0; 0 0 0 1]/2
@@ -97,6 +99,16 @@ wide(eta = 1/4, x_n[i<=16], y_n[i<=16]) = {
 # bytes before, is under 100,000: 'norm_exp_dx(' written 13 times, its
 # definition and the slope of each of the twelve scores, and 'norm_log_dx('
 # 4 times, its definition and one for each token.
+#
+# Each matrix it tests for NaN is tested once, a flag declared where first
+# tested and read at each cell's read (DESIGN.md, a matrix read by its
+# cells tested for NaN once), test/cli.cmake's compile_nan_once: 'isnan('
+# written fewer than 150 times, 2,011 before, and norm.h under 40,000
+# bytes, 59,117 before. By count 94: 16 for the gradient's cells, each
+# testing the loss, 16 for the term's own test, 17 in the prelude's exp,
+# log and ilogb, and 45 for the six matrices read by their cells, X*E and
+# its means, the centred cells and their scales, the logits and their
+# log-sum-exps, 12 and 3 cells by turns.
 norm(eta = 1/2, X_n[t<=3, v<=4], Y_n[t<=3, v<=4]) = {
     U = [1 -1 0 1/2; 0 1 -1 0; 1/2 0 1 -1; -1 1/2 0 1]
     mu(x)[t<=3] = sum_(j=1)^4 x[t,j]/4
@@ -139,6 +151,39 @@ relugate(eta = 1/4, x_n[i<=3], y_n) = {
     W_n = W_(n-1) - eta*grad_(M = W_(n-1)) L(M, x_n, y_n)
 }
 gate3 = relugate(x_n = [mod(n, 3) - 1; 1; mod(2*n, 5)/3 - 1/2], y_n = mod(n, 4)/4)
+
+# 'under', gate3's units over a fixed W and U trained beneath them, so a
+# cell of U's adjoint is there where any unit's clause is taken. By hand,
+# e*(W'*(v'.*(z > 0)))*x', z = W*U*x, e = v*relu(z) - y, no pre-activation
+# nearer 0 than 0.0039:
+#
+#     U_1  = [1 -0.467346041194 0.00544232646762;
+#             0.333333333333 0.960974537037 -0.256504243827;
+#             0 0.155399470899 0.992566578483]
+#     U_99 = [0.703720112177 -0.0210902152444 -0.120825339494;
+#             0.513782511076 0.225035443646 -0.256009481807;
+#             -0.0391518069697 -1.23205680101 0.826294405244]
+#
+#     under: 100 steps from 0, against exact values until 0 and inexact ones from there
+#     under.U: within 0; the interpreter's terms about <e> from the exact ones
+#
+# Each condition is written once (DESIGN.md, the reverse sweep's conditions
+# written once), test/cli.cmake's compile_sweep_conditions: ' != 0)'
+# written fewer than 20 times in hidden.h, 39 before. By count 15: 3, one
+# for each unit's adjoint where its clause is taken, 9 for W'*(...), each of
+# its three cells summing the three units, and 3 for two flags, the first
+# two units' clauses and the third's beside them, which U's 9 cells read
+# where each wrote all three.
+hidden(eta = 1/4, x_n[i<=3], y_n) = {
+    relu(z)[i] | z[i] > 0 = z[i]
+    relu(z)[i] = 0
+    v = [1, -1/3, 1/5]
+    W = [1 -1 1/3; -1/2 1 1/5; 1/7 1/2 -1]
+    L(M, x, y) = (v*relu(W*(M*x)) - y)^2/2
+    U_0 = ~[1 -1/2 0; 1/3 1 -1/4; 0 1/5 1]
+    U_n = U_(n-1) - eta*grad_(M = U_(n-1)) L(M, x_n, y_n)
+}
+under = hidden(x_n = [mod(n, 3) - 1; 1; mod(2*n, 5)/3 - 1/2], y_n = mod(n, 4)/4)
 
 # 'aside', the second increment's matrix written whole beside a cell's own
 # clause (C136): k's first cell is its own, its second the whole's, 2*z,

@@ -178,6 +178,9 @@ TEST_CASE("reverse") {
 TEST_CASE("reverse_memo") {
     check_transcript("reverse_memo.ink");
 }
+TEST_CASE("gradmany") {
+    check_transcript("gradmany.ink");
+}
 TEST_CASE("conv") {
     check_transcript("conv.ink");
 }
@@ -297,6 +300,9 @@ TEST_CASE("implicit") {
 }
 TEST_CASE("transformer") {
     check_transcript("transformer.ink");
+}
+TEST_CASE("transformer_train") {
+    check_transcript("transformer_train.ink");
 }
 TEST_CASE("readme") {
     check_readme();

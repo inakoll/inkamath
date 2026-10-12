@@ -213,3 +213,21 @@ doubled(x_n = n) = {
     y_n = 2*x_n
 }
 fed = doubled(x_n = 1)
+
+# The step's parameters were named as its inputs: 'x''s step took
+# 'const double x[2]', hiding its struct, which -Wshadow refuses (C338).
+x = dot(x_n = [n; 1])
+
+# An input was named as the step's own names: 'clashed''s step took 'double
+# m_' over its model's 'm_', and 'double t0_' beside its first temporary
+# (C342).
+named(m_n, t0_n) = {
+    g_n | n < 0 = 0
+    g_n = (t0_n < 3 or g_(n-1) > 0.5)
+    s_n = 2*m_n
+}
+clashed = named(m_n = n, t0_n = n)
+
+# An instance named as a function of <math.h>: its program, named after it,
+# declared a type 'j1' over the function (C346).
+j1 = dot(x_n = [n; 1])

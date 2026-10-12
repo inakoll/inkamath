@@ -451,6 +451,13 @@ decay(a = 1/2) = { ... }
 >> grad_(x = 1/2) decay(a = x).s_2
 error: grad cannot differentiate through an instance yet
 
+# A member's name is not grad's: tri().x reads no x of grad's (C334).
+>> tri(a = 1) = { x = 3*a }
+tri(a = 1) = { ... }
+
+>> grad_(x = 2) x*tri().x
+3
+
 >> grad_(p_1 = 3) x^2
 error: grad takes a name at a point, as 'grad_(x = 2) x^3'
 

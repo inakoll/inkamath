@@ -1517,14 +1517,20 @@ PExpression<U> Interpreter<T, U>::ParseGrad() {
     ++m_i;
     expect(Sub);
     expect(LPar);
-    const std::string variable = expect(Func);
-    expect(Equal);
-    const PExpression<U> point = [&] {
+    std::vector<std::string>    variables;
+    std::vector<PExpression<U>> points;
+    do {
+        if (!variables.empty()) ++m_i;
+        variables.push_back(expect(Func));
+        if (std::count(variables.begin(), variables.end(), variables.back()) > 1)
+            Fail("grad names ", variables.back(), " twice");
+        expect(Equal);
         const Setting<bool> at(listed_, false);
-        return ParseCompareExpr();
-    }();
+        points.push_back(ParseCompareExpr());
+    } while (!AtEnd() && Peek().type == Comma);
     expect(RPar);
-    return std::make_shared<GradExpression<U>>(variable, point, ParseMultExpr());
+    return std::make_shared<GradExpression<U>>(std::move(variables), std::move(points),
+                                               ParseMultExpr());
 }
 
 template <Parsable T, Numeric U>

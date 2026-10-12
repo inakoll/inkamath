@@ -49,12 +49,12 @@ static inline void fir_init(fir* m_) {
 }
 
 /* Advances to the next index, the first at 0, and computes its terms. */
-static inline void fir_step(fir* m_, double x) {
+static inline void fir_step(fir* m_, double x_in_) {
     ++m_->index_;
     m_->x[3] = m_->x[2];
     m_->x[2] = m_->x[1];
     m_->x[1] = m_->x[0];
-    m_->x[0] = x;
+    m_->x[0] = x_in_;
     if (m_->index_ >= 3) {
         m_->y[0] = m_->b[0][0] * m_->x[0] + m_->b[0][1] * m_->x[1] + m_->b[0][2] * m_->x[2] + m_->b[0][3] * m_->x[3];
     }

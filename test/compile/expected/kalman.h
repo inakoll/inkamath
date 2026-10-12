@@ -67,11 +67,11 @@ static inline void kalman_init(kalman* m_) {
 }
 
 /* Advances to the next index, the first at 0, and computes its terms. */
-static inline void kalman_step(kalman* m_, double z) {
+static inline void kalman_step(kalman* m_, double z_in_) {
     ++m_->index_;
     memcpy(m_->P[1], m_->P[0], sizeof m_->P[1]);
     memcpy(m_->x[1], m_->x[0], sizeof m_->x[1]);
-    m_->z[0] = z;
+    m_->z[0] = z_in_;
     if (m_->index_ >= 1) {
         const double t0_ = 1.0 * m_->P[1][0][0] + m_->dt * m_->P[1][1][0];
         const double t1_ = 1.0 * m_->P[1][0][1] + m_->dt * m_->P[1][1][1];
@@ -83,7 +83,7 @@ static inline void kalman_step(kalman* m_, double z) {
         m_->Pp[0][1][1] = t2_ * 0.0 + t3_ * 1.0 + m_->Q[1][1];
     }
     if (m_->index_ >= 1) {
-        const double t4_ = pow((m_->H[0][0] * m_->Pp[0][0][0] + m_->H[0][1] * m_->Pp[0][1][0]) * m_->H[0][0] + (m_->H[0][0] * m_->Pp[0][0][1] + m_->H[0][1] * m_->Pp[0][1][1]) * m_->H[0][1] + m_->R, -1.0);
+        const double t4_ = 1.0 / ((m_->H[0][0] * m_->Pp[0][0][0] + m_->H[0][1] * m_->Pp[0][1][0]) * m_->H[0][0] + (m_->H[0][0] * m_->Pp[0][0][1] + m_->H[0][1] * m_->Pp[0][1][1]) * m_->H[0][1] + m_->R);
         m_->K[0][0][0] = (m_->Pp[0][0][0] * m_->H[0][0] + m_->Pp[0][0][1] * m_->H[0][1]) * t4_;
         m_->K[0][1][0] = (m_->Pp[0][1][0] * m_->H[0][0] + m_->Pp[0][1][1] * m_->H[0][1]) * t4_;
     }

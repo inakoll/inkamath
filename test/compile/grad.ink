@@ -36,11 +36,12 @@
 #     static inline void lsq_step(lsq* m_) {
 #         ++m_->index_;
 #         memcpy(m_->w[1], m_->w[0], sizeof m_->w[1]);
-#         const double t0_ = 2.0 * pow(1.0 * m_->w[1][0][0] + 0.0 * m_->w[1][1][0] - 1.0, 1.0);
+#         const double t0_ = 1.0 * m_->w[1][0][0] + 0.0 * m_->w[1][1][0] - 1.0;
+#         const double t1_ = 2.0 * pow(t0_, 1.0);
 #         ...
-#         const double t7_ = 0.125 * t0_;
-#         m_->w[0][0][0] = m_->index_ == 0 ? 0.0 : m_->w[1][0][0] + (0.0 - m_->eta * (1.0 * t4_ + 1.0 * t5_ + 1.0 * t6_ + 1.0 * t7_));
-#         m_->w[0][1][0] = m_->index_ == 0 ? 0.0 : m_->w[1][1][0] + (0.0 - m_->eta * (3.0 * t4_ + 2.0 * t5_ + 1.0 * t6_ + 0.0 * t7_));
+#         const double t11_ = 0.125 * t1_;
+#         m_->w[0][0][0] = m_->index_ == 0 ? 0.0 : m_->w[1][0][0] + (0.0 - m_->eta * (1.0 * t8_ + 1.0 * t9_ + 1.0 * t10_ + 1.0 * t11_));
+#         m_->w[0][1][0] = m_->index_ == 0 ? 0.0 : m_->w[1][1][0] + (0.0 - m_->eta * (3.0 * t8_ + 2.0 * t9_ + 1.0 * t10_ + 0.0 * t11_));
 #     }
 lsq(eta = 1/10) = {
     X = [1, 0; 1, 1; 1, 2; 1, 3]
@@ -376,3 +377,19 @@ inverse(x_n) = {
     z_n = grad_(v = x_n) g(v)^(1/2)
 }
 over = inverse(x_n = n + 1)
+
+# 'flag', a quotient's '?' reading where a guard's clause is taken, there
+# where either of two inner clauses is: a flag of both (DESIGN.md, the
+# reverse sweep's conditions written once), an int, which the NaN beside it
+# where floor jumps made a float that -Wconversion refuses. t being n/2 - 2,
+# floor(t)/(1 - t)^2 below 0, 0 to 1 and -floor(t)/t^2 above, but NaN at
+# each whole t, where floor jumps:
+#
+#     flag: 100 steps from 0, against exact values
+#     flag.s: within 1.4e-17
+flagged(x_n) = {
+    r(t) | t < 0 = 0
+    r(t) = t
+    s_n = grad_(t = x_n) floor(t)/r(r(t) + r(1 - t))
+}
+flag = flagged(x_n = n/2 - 2)

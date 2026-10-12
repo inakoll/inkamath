@@ -468,7 +468,7 @@ set(args --check coast.ink coast --steps 1001 -o coast.c)
 check(check_steps)
 holds(check_steps coast.c
     [[printf("coast: 1001 steps from 0, against exact values\n");]]
-    "    for (int n = 0; n < 1001; ++n) {\n"
+    "    for (int n_ = 0; n_ < 1001; ++n_) {\n"
     "static const double want_0[1001] = {")
 set(args --steps 1001 --check coast.ink coast -o first.c)
 check(check_steps_first)
@@ -715,10 +715,11 @@ endfunction()
 set(adjoint "${CMAKE_CURRENT_LIST_DIR}/compile/adjoint.ink")
 set(args --compile ${adjoint} layer -o layer.h)
 check(compile_adjoint_fit)
-holds(compile_adjoint_fit layer.h [[    const double t15_ = 2.0 * pow(t13_ + (0.0 - m_->y[0][3][0]), 1.0);
-    const double t16_ = 0.5 * t15_;
-    const double t17_ = t16_ * t14_;
-]] [[    m_->W[0][3][3] = m_->index_ == 0 ? 0.5 : m_->W[1][3][3] + (0.0 - m_->eta * (isnan(t24_) ? NAN : t17_ * m_->x[0][3][0]));
+holds(compile_adjoint_fit layer.h [[    const double t19_ = t17_ + (0.0 - m_->y[0][3][0]);
+    const double t20_ = 2.0 * pow(t19_, 1.0);
+    const double t21_ = 0.5 * t20_;
+    const double t22_ = t21_ * t18_;
+]] [[    m_->W[0][3][3] = m_->index_ == 0 ? 0.5 : m_->W[1][3][3] + (0.0 - m_->eta * (isnan(t29_) ? NAN : t22_ * m_->x[0][3][0]));
 ]])
 written(compile_adjoint_fit layer.h "layer_tanh_dx\\(" 5)
 set(args --compile ${adjoint} wide -o wide.h)
@@ -727,6 +728,136 @@ written(compile_adjoint_wide wide.h "wide_tanh_dx\\(" 17)
 set(args --compile ${adjoint} norm -o norm.h)
 check(compile_adjoint_norm)
 written(compile_adjoint_norm norm.h "norm_exp_dx\\(" 13 "norm_log_dx\\(" 4)
+# A matrix read by its cells is tested for NaN once (DESIGN.md).
+file(READ "${OUT}/norm.h" text)
+string(REGEX MATCHALL "isnan\\(" tests "${text}")
+list(LENGTH tests tests)
+file(SIZE "${OUT}/norm.h" size)
+if(NOT tests LESS 150 OR NOT size LESS 40000)
+    message(SEND_ERROR "compile_nan_once: isnan( ${tests} times in ${size} bytes")
+endif()
+# The reverse sweep's conditions written once (DESIGN.md): each condition of
+# 'hidden' once, a flag the cells read, where each cell of U wrote all three
+# units'.
+set(args --compile ${adjoint} hidden -o hidden.h)
+check(compile_sweep_conditions)
+file(READ "${OUT}/hidden.h" text)
+string(REGEX MATCHALL " != 0\\)" conditions "${text}")
+list(LENGTH conditions conditions)
+if(NOT conditions LESS 20)
+    message(SEND_ERROR "compile_sweep_conditions: ' != 0)' written ${conditions} times")
+endif()
+# Nested, not flattened, which writes 15 as well: a flag of conditions holds
+# one '||'.
+string(REGEX MATCHALL "const int t[0-9]+_ = [^;\n]*" flags "${text}")
+foreach(flag IN LISTS flags)
+    string(REGEX MATCHALL " \\|\\| " ors "${flag}")
+    list(LENGTH ors ors)
+    if(flag MATCHES " != 0" AND NOT ors EQUAL 1)
+        message(SEND_ERROR "compile_sweep_conditions: ${flag}")
+    endif()
+endforeach()
+# A compiled step split into functions (DESIGN.md): compile/transformer.ink's
+# forward pass, 'inf', and U trained beneath it, 'tune', steps of 272,495 and
+# 451,298 bytes whole, each written as functions of under 32,768 bytes, the
+# init's weights among them.
+foreach(model inf tune)
+    set(args --compile "${CMAKE_CURRENT_LIST_DIR}/compile/transformer.ink" ${model} -o ${model}.h)
+    check(compile_step_split_${model})
+    file(READ "${OUT}/${model}.h" rest)
+    set(largest 0)
+    set(stepped OFF)
+    # Every function, whatever precedes its name: a line at the margin ending
+    # in ') {'. The step among them, or nothing was measured.
+    set(opens "\n[A-Za-z][^\n]*\\) {\n")
+    string(REGEX MATCH "${opens}" opening "${rest}")
+    while(opening)
+        string(FIND "${opening}" " ${model}_step(" named)
+        if(NOT named EQUAL -1)
+            set(stepped ON)
+        endif()
+        string(FIND "${rest}" "${opening}" at)
+        string(SUBSTRING "${rest}" ${at} -1 rest)
+        string(FIND "${rest}" "\n}\n" size)
+        if(size GREATER largest)
+            set(largest ${size})
+        endif()
+        string(SUBSTRING "${rest}" ${size} -1 rest)
+        string(REGEX MATCH "${opens}" opening "${rest}")
+    endwhile()
+    if(NOT stepped)
+        message(SEND_ERROR "compile_step_split: ${model}.h has no ${model}_step")
+    elseif(NOT largest LESS 32768)
+        message(SEND_ERROR "compile_step_split: ${model}.h has a function of ${largest} bytes")
+    endif()
+endforeach()
+# An 'any' of equal operands is the operand, a NaN test of equal cells one.
+file(WRITE "${OUT}/twice.ink" "m(x_n) = {\n    up(z)[i] | z[i] > 0 = z[i]\n    up(z)[i] = 0\n"
+     "    d_n = grad_(t = x_n) t*(up([t; t])[2] > 0)\n}\n")
+set(args --compile twice.ink m -o twice.h)
+check(compile_any_twice)
+file(READ "${OUT}/twice.h" text)
+string(REGEX MATCHALL "const int t[0-9]+_ = [^;\n]*" flags "${text}")
+foreach(flag IN LISTS flags)
+    if(flag MATCHES "= (.*) \\|\\| (.*)$" AND CMAKE_MATCH_1 STREQUAL CMAKE_MATCH_2)
+        message(SEND_ERROR "compile_any_twice: ${flag}")
+    endif()
+endforeach()
+# A gradient by several names compiled (DESIGN.md, test/compile/gradmany.ink):
+# a struct of its parts, the body written once and swept back once, tanh's
+# slope once for each unit, where four grads of one name write it 7 times in
+# 15,798 bytes.
+set(args --compile "${CMAKE_CURRENT_LIST_DIR}/compile/gradmany.ink" net -o net.h)
+check(compile_gradmany_net)
+holds(compile_gradmany_net net.h [[    struct {
+        double W[1][3][2];
+        double V[1][1][3];
+        double c[1][3][1];
+        double d[1];
+    } g;
+]])
+written(compile_gradmany_net net.h "net_tanh_dx\\(" 4)
+file(SIZE "${OUT}/net.h" size)
+if(NOT size LESS 15798)
+    message(SEND_ERROR "compile_gradmany_net: net.h is ${size} bytes")
+endif()
+# One whose points read its own parts is refused once, by its name, as any
+# sequence that reads itself, and so is what reads it.
+file(WRITE "${OUT}/itself.ink" "L(a, b) = (a*b - 1)^2\n"
+     "s_n = grad_(a = s.b_(n-1), b = 2) L(a, b)\ny_n = s.a_n\n")
+set(args --compile itself.ink)
+set(stdout "cannot compile s: its shape depends on itself
+cannot compile y: s, which cannot be compiled
+")
+set(exit 1)
+check(compile_gradmany_itself)
+# One read whole is refused in the interpreter's words, its index as written.
+file(WRITE "${OUT}/whole.ink" "L(a, b) = (a*b - 1)^2\ng_n = grad_(a = n, b = 2) L(a, b)\n"
+     "p = grad_(a = 1, b = 2) L(a, b)\nq(x) = grad_(a = x, b = 2) L(a, b)\n"
+     "r(x)_k = grad_(a = x + k, b = 2) L(a, b)\n"
+     "u_n = g_(n-1)\nv_n = p + n\nw_n = p_n\nx_n = q(n)\ny_n = r(n)_2\nz_n = g + n\n")
+set(args --compile whole.ink)
+set(stdout "cannot compile u: g is a gradient by several names; read one of its parts (g.a_(...))
+cannot compile v: p is a gradient by several names; read one of its parts (p.a)
+cannot compile w: p is not a sequence
+cannot compile x: q is a gradient by several names; read one of its parts (q(...).a)
+cannot compile y: r is a gradient by several names; read one of its parts (r(...).a_(...))
+cannot compile z: g is a gradient by several names; read one of its parts (g.a)
+")
+set(exit 1)
+check(compile_gradmany_whole)
+# A part of one that takes arguments, which the interpreter reads, is refused
+# for now, and one that takes none is read with none.
+file(WRITE "${OUT}/taking.ink" "L(a, b) = (a*b - 1)^2\ng_n = grad_(a = n, b = 2) L(a, b)\n"
+     "r(x)_k = grad_(a = x + k, b = 2) L(a, b)\nw_n = r.a_n\ny_n = r(n).a_2\n"
+     "z_n = g(1).a_n\n")
+set(args --compile taking.ink)
+set(stdout "cannot compile w: r, a gradient by several names that takes arguments, for now
+cannot compile y: r, a gradient by several names that takes arguments, for now
+cannot compile z: g takes no arguments
+")
+set(exit 1)
+check(compile_gradmany_taking)
 # C328: a sequence compiled on the way by a grad keeps the names it took,
 # z's t4_, which the grad does not take again.
 file(WRITE "${OUT}/c328.ink" [[m(x_n[i<=2]) = {
@@ -791,7 +922,7 @@ holds(compile_c286 c286.h "(isnan(t0_) ? NAN : INFINITY);\n")
 file(WRITE "${OUT}/c161.ink" "z_n = [2 1; 1 n]^-1*[1; 1]\n")
 set(args --compile c161.ink --float -o c161.h)
 check(compile_float_c161)
-holds(compile_float_c161 c161.h "; ++j) r[i][j] = i == j ? 1.0f : 0.0f;\n")
+holds(compile_float_c161 c161.h "; ++j_) r_[i_][j_] = i_ == j_ ? 1.0f : 0.0f;\n")
 
 # C90: the clause --check keeps is 0 where a guard of 'and' reads NaN, as no
 # clause is taken, where the NaN was converted to an int.
@@ -919,18 +1050,18 @@ holds(compile_inputs_dot dot.h [[/* Using it:
     double x[1][2][1];
     double y[1];
 } dot;
-]] [[static inline void dot_step(dot* m_, const double x[2]) {
+]] [[static inline void dot_step(dot* m_, const double x_in_[2]) {
     ++m_->index_;
-    memcpy(m_->x[0], x, sizeof m_->x[0]);
+    memcpy(m_->x[0], x_in_, sizeof m_->x[0]);
 ]])
 holds(compile_inputs_ctl ctl.h [[
  * A step takes r_n and s_n (2x1), the inputs at its index. An input of more
  * than one cell is a pointer to its cells, row by row. After a step, m.name[k]
  * is name_(n-k) for each sequence: r, s and u.
-]] [[static inline void ctl_step(ctl* m_, double r, const double s[2]) {
+]] [[static inline void ctl_step(ctl* m_, double r_in_, const double s_in_[2]) {
     ++m_->index_;
-    m_->r[0] = r;
-    memcpy(m_->s[0], s, sizeof m_->s[0]);
+    m_->r[0] = r_in_;
+    memcpy(m_->s[0], s_in_, sizeof m_->s[0]);
 ]])
 holds(compile_inputs_turn turn.h [[static inline void turn_init(turn* m_) {
     memset(m_, 0, sizeof *m_);
@@ -939,10 +1070,10 @@ holds(compile_inputs_turn turn.h [[static inline void turn_init(turn* m_) {
     m_->index_ = -1;
     turn_update(m_);
 }
-]] [[static inline void turn_step(turn* m_, const double x[2]) {
+]] [[static inline void turn_step(turn* m_, const double x_in_[2]) {
     ++m_->index_;
     memcpy(m_->x[1], m_->x[0], sizeof m_->x[1]);
-    memcpy(m_->x[0], x, sizeof m_->x[0]);
+    memcpy(m_->x[0], x_in_, sizeof m_->x[0]);
 ]])
 holds(compile_inputs_avg avg.h [[ Compiled in as constants, these
  * cannot change: d.
@@ -1081,9 +1212,26 @@ file(WRITE "${OUT}/gained.ink" "two(x_n) = {\n    x_(-2) = 0\n    c_n = x_(n-1) 
      "gained(a = 2, x_n) = {\n    x_n | n < 0 = 3\n    inner = two(x_n = a*x_n)\n"
      "    c_n = inner.c_n\n}\n")
 set(args --compile gained.ink gained -o gained.h)
-set(stderr "inkamath: cannot compile inner.c: inner.c_0 reads inner.x_-1, before the stream, where inner.x has no history\n")
+set(stderr "inkamath: cannot compile inner.c: inner.c_0 reads inner.x_-1, before the stream, where inner.x's history reads a, which the host may assign after init\n")
 set(exit 1)
 check(history_gained)
+# And a recurrence's own history that reads one, which the step read as 0
+# (C343).
+refused(lifted "a = 2) = {\n    g_n | n < 0 = a\n    g_n = 2*g_(n-1)"
+        "g: g_0 reads g_-1, before the stream, where g's history reads a, which the host may assign after init")
+# And at another rate, where it was read as 0.
+refused(slowed "a = 2, x_n) = {\n    y_m | m < 0 = a\n    y_m = y_(m-1) + x_(2*m)"
+        "y: y_0 reads y_-1, before the stream, where y's history reads a, which the host may assign after init")
+# Init folds a slow history back from its first term, so a term it reads
+# past one it cannot fold is refused for that one (C348).
+refused(gapped "a = 2, x_n) = {\n    y_m | m < -1 = 1\n    y_m | m < 0 = a\n    y_m = y_(m-2) + x_(2*m)"
+        "y: y_1 reads y_-1, before the stream, where y's history reads a, which the host may assign after init")
+# And below a slow sequence's base clause, where it was read as 0 (C344),
+# with or without a guard.
+refused(sunk "a = 2, x_n) = {\n    y_0 = 1\n    y_m | m < 0 = a\n    y_m = y_(m-2) + x_(2*m)"
+        "y: y_1 reads y_-1, below y's base clauses, where only its guards could give a term")
+refused(rootless "x_n) = {\n    y_0 = 1\n    y_m = y_(m-2) + x_(2*m)"
+        "y: y_1 reads y_-1, before it starts at 0")
 
 # A history of a single value for an inner input given a matrix.
 file(WRITE "${OUT}/stacked.ink" "lag(x_n) = {\n    x_n | n < 0 = 0\n    c_n = x_(n-1)\n}\n"
@@ -1139,7 +1287,7 @@ holds(float_dot float/dot.h [[typedef struct dot {
     float x[1][2][1];
     float y[1];
 } dot;
-]] [[static inline void dot_step(dot* m_, const float x[2]) {
+]] [[static inline void dot_step(dot* m_, const float x_in_[2]) {
 ]])
 
 file(WRITE "${OUT}/vast.ink" "vast(x_n) = {\n    x_n | n < 0 = 10^39\n    c_n = x_(n-1)\n}\n")
@@ -1166,8 +1314,8 @@ check(float_calm)
 holds(float_calm float/calm.c [[static const float in_0[100] = {
     0.0f, 0.1f, 0.2f, 0.3f,
 ]] [[static float got_0[100];
-]] [[        calm_step(&m, in_0[n]);
-        memcpy(&got_0[n * 1], &m.v[0], sizeof(float) * 1);
+]] [[        checked_step(&m_, in_0[n_]);
+        memcpy(&got_0[n_ * 1], &m_.v[0], sizeof(float) * 1);
 ]])
 
 # C103: a parameter's default of negative infinity is -INFINITY, as is one
@@ -1180,16 +1328,21 @@ set(args --compile c103.ink neg --float -o c103f.h)
 check(compile_c103_float)
 holds(compile_c103_float c103f.h "    m_->p = -INFINITY;\n    m_->q = -INFINITY;\n")
 
-# C104: a header or a program named after a word C keeps, or after a standard
-# header it includes, is refused.
+# C104: a header named after a word C keeps, or after a standard header it
+# includes, is refused; a program is not named after its file (C346).
 set(args --compile ${inputs} dot --float -o float.h)
 set(stderr "inkamath: 'float' is a name C keeps, and the header is named after it\n")
 set(exit 2)
 check(compile_c104)
 set(args --check ${CMAKE_CURRENT_LIST_DIR}/compile/drift.ink calm -o math.c)
-set(stderr "inkamath: 'math' is a name C keeps, and the program is named after it\n")
-set(exit 2)
 check(check_c104)
+holds(check_c104 math.c "    checked_init(&m_);\n")
+# C347: and a name a header it includes keeps for a macro.
+file(WRITE "${OUT}/c347.ink" "NAN_n = n\n")
+set(args --compile c347.ink -o c347.h)
+set(stderr "inkamath: cannot compile NAN: NAN is a word C keeps for itself\n")
+set(exit 1)
+check(compile_c347)
 
 # grad compiled (DESIGN.md, compile/grad.ink): the gradient written out, each
 # function of the prelude called on a value that moves with one for its part,
@@ -1197,10 +1350,11 @@ check(check_c104)
 set(grad "${CMAKE_CURRENT_LIST_DIR}/compile/grad.ink")
 set(args --compile ${grad} lsq -o lsq.h)
 check(compile_grad_line)
-holds(compile_grad_line lsq.h [[    const double t0_ = 2.0 * pow(1.0 * m_->w[1][0][0] + 0.0 * m_->w[1][1][0] - 1.0, 1.0);
-]] [[    const double t7_ = 0.125 * t0_;
-    m_->w[0][0][0] = m_->index_ == 0 ? 0.0 : m_->w[1][0][0] + (0.0 - m_->eta * (1.0 * t4_ + 1.0 * t5_ + 1.0 * t6_ + 1.0 * t7_));
-    m_->w[0][1][0] = m_->index_ == 0 ? 0.0 : m_->w[1][1][0] + (0.0 - m_->eta * (3.0 * t4_ + 2.0 * t5_ + 1.0 * t6_ + 0.0 * t7_));
+holds(compile_grad_line lsq.h [[    const double t0_ = 1.0 * m_->w[1][0][0] + 0.0 * m_->w[1][1][0] - 1.0;
+    const double t1_ = 2.0 * pow(t0_, 1.0);
+]] [[    const double t11_ = 0.125 * t1_;
+    m_->w[0][0][0] = m_->index_ == 0 ? 0.0 : m_->w[1][0][0] + (0.0 - m_->eta * (1.0 * t8_ + 1.0 * t9_ + 1.0 * t10_ + 1.0 * t11_));
+    m_->w[0][1][0] = m_->index_ == 0 ? 0.0 : m_->w[1][1][0] + (0.0 - m_->eta * (3.0 * t8_ + 2.0 * t9_ + 1.0 * t10_ + 0.0 * t11_));
 ]])
 set(args --compile ${grad} descent -o fall.h)
 check(compile_grad_fall)
@@ -1301,7 +1455,7 @@ holds(compile_c136_term c136t.h "    m_->y[0] = (isnan(t0_) ? NAN : 2.0);\n")
 file(WRITE "${OUT}/c136g.ink" "f1(z)[i,j] = z[i,j]\nf1(z)[1,1] | ((z[1,1])^2)^(1/2) >= 5 = 7\nf2(z) = f1(z)\nf2(z)[1,1] = 2\nu_n = grad_(t = x_n) f2([t])\n")
 set(args --compile c136g.ink -o c136g.h)
 check(compile_c136g)
-holds(compile_c136g c136g.h "    const double t1_ = (isnan(t0_) ? NAN : 2.0);\n    m_->u[0] = (isnan(t1_) ? NAN : 0.0);\n")
+holds(compile_c136g c136g.h "    const double t2_ = (isnan(t1_) ? NAN : 2.0);\n    m_->u[0] = (isnan(t2_) ? NAN : 0.0);\n")
 
 # C115: a constant gradient at a point that moves folds with what reads it
 # from its value, not by taking the point again (C135).
@@ -1347,9 +1501,9 @@ holds(compile_tensor_mha mha.h [=[ *     mha_step(&m, X);  once for each index, 
     double X[1][2][3][4];
     double O[1][2][3][4];
 } mha;
-]=] [=[static inline void mha_step(mha* m_, const double X[24]) {
+]=] [=[static inline void mha_step(mha* m_, const double X_in_[24]) {
     ++m_->index_;
-    memcpy(m_->X[0], X, sizeof m_->X[0]);
+    memcpy(m_->X[0], X_in_, sizeof m_->X[0]);
 ]=])
 set(args --compile ${tensor} ring -o ring.h)
 check(compile_tensor_ring)
@@ -1399,11 +1553,11 @@ holds(compile_tensor_ring ring.h [=[/* Using it:
     m_->index_ = -1;
     ring_update(m_);
 }
-]=] [=[static inline void ring_step(ring* m_, const double X[4]) {
+]=] [=[static inline void ring_step(ring* m_, const double X_in_[4]) {
     ++m_->index_;
     memcpy(m_->X[1], m_->X[0], sizeof m_->X[1]);
     memcpy(m_->s[1], m_->s[0], sizeof m_->s[1]);
-    memcpy(m_->X[0], X, sizeof m_->X[0]);
+    memcpy(m_->X[0], X_in_, sizeof m_->X[0]);
 ]=] [=[    m_->s[0][0][0][0] = m_->index_ == 0 ? m_->s0[0][0][0] : m_->s[1][0][0][0] * 0.0 + m_->s[1][0][0][1] * -1.0 + m_->X[0][0][0][0];
     m_->s[0][0][0][1] = m_->index_ == 0 ? m_->s0[0][0][1] : m_->s[1][0][0][0] * 1.0 + m_->s[1][0][0][1] * 0.0 + m_->X[0][0][0][1];
     m_->s[0][1][0][0] = m_->index_ == 0 ? m_->s0[1][0][0] : m_->s[1][1][0][0] * 0.0 + m_->s[1][1][0][1] * -1.0 + m_->X[0][1][0][0];
@@ -1419,7 +1573,7 @@ holds(compile_tensor_ring_float float/ring.h [=[typedef struct ring {
     float s0[2][1][2];
     long long index_;
     float X[2][2][1][2];
-]=] [=[static inline void ring_step(ring* m_, const float X[4]) {
+]=] [=[static inline void ring_step(ring* m_, const float X_in_[4]) {
 ]=] [=[    m_->s[0][1][0][0] = m_->index_ == 0 ? m_->s0[1][0][0] : m_->s[1][1][0][0] * 0.0f + m_->s[1][1][0][1] * -1.0f + m_->X[0][1][0][0];
 ]=])
 set(args --compile ${tensor} sgd -o sgd.h)
@@ -1431,7 +1585,7 @@ holds(compile_tensor_sgd sgd.h [=[typedef struct sgd {
     double Y[1][2][2][1];
     double w[2][2][1];
 } sgd;
-]=] [=[static inline void sgd_step(sgd* m_, const double X[8], const double Y[4]) {
+]=] [=[static inline void sgd_step(sgd* m_, const double X_in_[8], const double Y_in_[4]) {
 ]=])
 
 # A sequence with parameters read at a constant index, compiled (DESIGN.md,
@@ -1445,8 +1599,8 @@ holds(compile_iterates_roots roots.h [[    const double t0_ = sqrt(0.0 + m_->x[0
     const double t1_ = sqrt(0.0 + t0_);
 ]] [[    const double t126_ = sqrt(0.0 + t125_);
     const double t127_ = sqrt(0.0 + t126_);
-    const double t128_ = pow(t127_, 2.0);
-]] [[    m_->h[0] = pow(t254_, 2.0);
+    const double t128_ = t127_ * t127_;
+]] [[    m_->h[0] = t254_ * t254_;
 ]])
 set(args --compile ${iterates} mpc -o mpc.h)
 check(compile_iterates_mpc)
@@ -1541,7 +1695,7 @@ string(FIND "${text}" "double" at)
 if(NOT at EQUAL -1)
     message(SEND_ERROR "compile_float_implicit: float/cramer.h holds 'double'")
 endif()
-holds(compile_float_implicit float/cramer.h "float v0_[3][3] = ")
+holds(compile_float_implicit float/cramer.h "float v1_[3][3] = ")
 
 # A global's temporaries, read first in a limit's terms, are numbered as
 # the update's, not as that limit's: two such are two names.

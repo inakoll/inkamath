@@ -52,6 +52,10 @@ public:
     static constexpr std::size_t max_depth = 1000;
     [[nodiscard]] std::size_t    Depth() const { return depth_; }
 
+    // How many grads by several names the tree holds, so that a definition
+    // that holds none, nearly every one, is not walked for them.
+    [[nodiscard]] std::size_t Groups() const { return groups_; }
+
     virtual ~Expression() = default;
     PExpression<T> self() {
         return this->shared_from_this();
@@ -83,7 +87,10 @@ public:
 private:
     void Measure() {
         for (const PExpression<T>& child : children_)
-            if (child) depth_ = std::max(depth_, child->Depth() + 1);
+            if (child) {
+                depth_ = std::max(depth_, child->Depth() + 1);
+                groups_ += child->Groups();
+            }
         if (depth_ > max_depth)
             throw std::runtime_error("expression nests more than " + std::to_string(max_depth) +
                                      " deep");
@@ -91,6 +98,9 @@ private:
 
     std::vector<PExpression<T>> children_;
     std::size_t                 depth_ = 1;
+
+protected:
+    std::size_t groups_ = 0;
 };
 
 template <typename T>
@@ -392,21 +402,35 @@ private:
 
 // 'grad_(x = a) body': the derivative of the body with respect to x at a. The
 // point is read where it is written, the name only in the body, as a sum's.
+// 'grad_(x = a, y = b) body' has a part for each name.
 template <typename T>
 class GradExpression final : public Expression<T> {
 public:
-    GradExpression(std::string variable, PExpression<T> point, PExpression<T> body)
-        : Expression<T>({point, body}), variable_(std::move(variable)) {}
+    GradExpression(std::vector<std::string> variables, std::vector<PExpression<T>> points,
+                   PExpression<T> body)
+        : Expression<T>(Joined(std::move(points), std::move(body))),
+          variables_(std::move(variables)) {
+        this->groups_ += Several();
+    }
 
-    [[nodiscard]] const std::string&    Variable() const { return variable_; }
-    [[nodiscard]] const PExpression<T>& Point() const { return this->Children()[0]; }
-    [[nodiscard]] const PExpression<T>& Body() const { return this->Children()[1]; }
+    [[nodiscard]] const std::vector<std::string>& Variables() const { return variables_; }
+    [[nodiscard]] const std::string&              Variable() const { return variables_[0]; }
+    [[nodiscard]] const PExpression<T>&           Point(std::size_t k = 0) const {
+        return this->Children()[k];
+    }
+    [[nodiscard]] const PExpression<T>& Body() const { return this->Children().back(); }
+    [[nodiscard]] bool                  Several() const { return variables_.size() > 1; }
 
     PExpression<T> accept(TransformationVisitor<T>& v) override { return v.visit(this); }
     T              accept(FoldingVisitor<T>& v) override { return v.visit(this); }
 
 private:
-    std::string variable_;
+    static std::vector<PExpression<T>> Joined(std::vector<PExpression<T>> points,
+                                              PExpression<T>              body) {
+        points.push_back(std::move(body));
+        return points;
+    }
+    std::vector<std::string> variables_;
 };
 
 template <typename T>

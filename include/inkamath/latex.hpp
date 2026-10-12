@@ -366,9 +366,15 @@ private:
                     Level::sum};
         }
         if (const auto* grad = dynamic_cast<const GradExpression<T>*>(&e)) {
-            const std::string x = Name(grad->Variable());
-            return {"\\left.\\frac{\\partial}{\\partial " + x + "} " + Of(*grad->Body()).text +
-                        "\\right|_{" + x + "=" + Of(*grad->Point(), true).text + "}",
+            std::string names, at;
+            for (std::size_t v = 0; v < grad->Variables().size(); ++v) {
+                const std::string x = Name(grad->Variables()[v]);
+                names += (v ? "," : "") + x;
+                at += (v ? "," : "") + x + "=" + Of(*grad->Point(v), true).text;
+            }
+            return {(grad->Several() ? "\\left.\\nabla_{" + names + "} "
+                                     : "\\left.\\frac{\\partial}{\\partial " + names + "} ") +
+                        Of(*grad->Body()).text + "\\right|_{" + at + "}",
                     Level::sum};
         }
         if (const auto* matrix = dynamic_cast<const MatExpression<T>*>(&e)) {

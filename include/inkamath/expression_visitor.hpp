@@ -6,6 +6,7 @@
 #include <vector>
 #include <map>
 #include <tuple>
+#include <typeinfo>
 #include <string>
 #include <stdexcept>
 #include <algorithm>
@@ -303,6 +304,21 @@ public:
             throw std::runtime_error("a local cannot take parameters");
         if (!signature.empty() && signature[1])
             throw std::runtime_error("a local cannot take an index");
+        Ungrouped(expr);
+    }
+
+    // A local is read by no point, so it holds no grad by several names.
+    static void Ungrouped(const EqualExpression<T>& local) {
+        if (local.m_e2()->Groups() && typeid(*local.m_e2()) == typeid(GradExpression<T>) &&
+            static_cast<const GradExpression<T>&>(*local.m_e2()).Several())
+            throw std::runtime_error("a local cannot be a gradient by several names");
+    }
+
+    // A grad by several names has no value of its own (DESIGN.md).
+    [[noreturn]] static void Unread() {
+        throw std::runtime_error(
+            "a grad by several names is a definition's whole right side, "
+            "its parts read after a point, as g.x");
     }
 
     // The two operands are sequenced: C++ leaves the order of `f(a) + f(b)`
@@ -529,7 +545,13 @@ public:
                                  Convergence<T>::Last(total) + ")");
     }
 
-    T visit(GradExpression<T>* expr) override { return Derivative<T>(stack_).At(*expr); }
+    T visit(GradExpression<T>* expr) override {
+        if (!expr->Several()) return Derivative<T>(stack_).At(*expr)[0];
+        std::vector<T>* parts = stack_.Wanted(*expr);
+        if (!parts) Unread();
+        *parts = Derivative<T>(stack_).At(*expr);
+        return parts->front();
+    }
 
 private:
     ReferenceStack<T>& stack_;

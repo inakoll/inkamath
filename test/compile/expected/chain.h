@@ -67,12 +67,12 @@ static inline void chain_init(chain* m_) {
 }
 
 /* Advances to the next index, the first at 0, and computes its terms. */
-static inline void chain_step(chain* m_, double x) {
+static inline void chain_step(chain* m_, double x_in_) {
     ++m_->index_;
     m_->fast.v[1] = m_->fast.v[0];
     m_->h.low.v[1] = m_->h.low.v[0];
     m_->slow.v[1] = m_->slow.v[0];
-    m_->x[0] = x;
+    m_->x[0] = x_in_;
     m_->fast.u[0] = m_->x[0];
     m_->fast.v[0] = m_->index_ == 0 ? 0.0 : m_->k * m_->fast.u[0] + (1.0 + (0.0 - m_->k)) * m_->fast.v[1];
     m_->h.u[0] = m_->x[0];

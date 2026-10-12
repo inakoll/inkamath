@@ -2,6 +2,15 @@
 # multiply-add, contracted where the target has one, does not keep (C97).
 add_compile_options(
     $<$<AND:$<COMPILE_LANGUAGE:C>,$<C_COMPILER_ID:GNU,Clang,AppleClang>>:-ffp-contract=off>)
+# What a host's stricter build would refuse in the C the compiler writes: a
+# NaN read as a truth, Clang's float to bool (C331).
+add_compile_options(
+    $<$<AND:$<COMPILE_LANGUAGE:C>,$<C_COMPILER_ID:GNU,Clang,AppleClang>>:-Wconversion>)
+# Clang's SLP vectorizer can leave gathered lanes poison, which a NaN test
+# reads as true: tuned_4 reports NaN at -O2 under Clang 19. Fixed in 23.1 by
+# llvm 925e28445b (DESIGN.md, a compiled step split into functions).
+add_compile_options(
+    $<$<AND:$<COMPILE_LANGUAGE:C>,$<C_COMPILER_ID:Clang>,$<VERSION_GREATER_EQUAL:$<C_COMPILER_VERSION>,19>,$<VERSION_LESS:$<C_COMPILER_VERSION>,23>>:-fno-slp-vectorize>)
 
 add_library(doctest INTERFACE)
 target_include_directories(doctest SYSTEM INTERFACE ${PROJECT_SOURCE_DIR}/third_party)
@@ -61,16 +70,29 @@ foreach(part 1 2 3)
     set_tests_properties(cli_${part} PROPERTIES TIMEOUT 120)
 endforeach()
 
+# bench's workloads, each a transcript bench/run.cmake measures, replayed so
+# that one gone stale fails here rather than at its next measure. The
+# slowest, under the sanitizers, take 7 s; train.ink is data, no transcript.
+file(GLOB workloads CONFIGURE_DEPENDS ${PROJECT_SOURCE_DIR}/bench/*.ink)
+foreach(workload IN LISTS workloads)
+    file(STRINGS ${workload} prompts REGEX "^>> " LIMIT_COUNT 1)
+    if(NOT prompts)
+        continue()
+    endif()
+    get_filename_component(name ${workload} NAME_WE)
+    add_test(NAME bench_${name} COMMAND inkamath_cli --check ${workload})
+    set_tests_properties(bench_${name} PROPERTIES TIMEOUT 60)
+endforeach()
+
 # C316: a cell's may-NaN test searched it for each name in a set that grows
 # with every call under grad. The timeout holds it: 95 s before the fix and 2 s
-# since in a release build, 632 s and 28 s under the sanitizers, which no size
-# separates within one timeout, so theirs is 300 s, ten times since. MSVC's
+# since in a release build, 632 s and 28 s under the sanitizers. MSVC's
 # multi-config build cannot tell its Debug, whose iterators are checked and as
-# slow, so it takes theirs; the Linux release jobs hold the 60 s.
+# slow, so it takes 300 s; the Linux release jobs hold the 60 s.
 file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/c316.ink "m(x_n[i<=1000]) = {\n    w_0 = 1/2\n    w_n = w_(n-1) - grad_(v = w_(n-1)) sum_(i=1)^1000 (exp(v*x_n[i]) + exp(2*v*x_n[i]) + exp(3*v*x_n[i]))\n}\n")
 add_test(NAME compile_c316 COMMAND inkamath_cli --compile ${CMAKE_CURRENT_BINARY_DIR}/c316.ink m
                                    -o ${CMAKE_CURRENT_BINARY_DIR}/c316.h)
-if(INKAMATH_SANITIZE OR MSVC)
+if(MSVC)
     set_tests_properties(compile_c316 PROPERTIES TIMEOUT 300)
 else()
     set_tests_properties(compile_c316 PROPERTIES TIMEOUT 60)
@@ -150,17 +172,21 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brin
                          decimate:stride decimate:frame decimate:lead
                          decimate:trail drift:sill drift:seam history:past history:twin
                          history:lit history:rise history:ajar history:sown history:nest history:kin history:vast
-                         history:twice history:relayed history:pole
+                         history:twice history:relayed history:pole history:grown history:paired
+                         history:looped history:stepped history:opened history:waited
+                         history:rooted history:heeded
                          history:huge history:sever history:veiled history:cloaked history:two history:hid history:masked
                          nan:run nan:sign nan:shy nan:slope nan:pair
-                         nan:lap nan:trim nan:any nan:cell nan:held nan:idle nan:imag nan:took nan:shut nan:root
+                         nan:lap nan:trim nan:any nan:cell nan:held nan:idle nan:imag nan:took nan:shut nan:row nan:root
+                         nan:passed nan:waived
                          inputs:fan inputs:grid
                          inputs:chan inputs:twirl inputs:duo inputs:mean3 inputs:mean2
-                         inputs:track inputs:twain inputs:nestv inputs:fed estimate:tie
+                         inputs:track inputs:twain inputs:nestv inputs:fed inputs:x inputs:clashed inputs:j1
+                         estimate:tie
                          estimate:chaos estimate:dyad estimate:flat estimate:halved
                          estimate:steep estimate:giant elementary:els trig:tri atan:bea
                          grad:line grad:fall grad:hinge grad:edge grad:clip grad:steer grad:saw
-                         grad:ring grad:notch grad:apart grad:smooth grad:cusp grad:over
+                         grad:ring grad:notch grad:apart grad:smooth grad:cusp grad:over grad:flag
                          tensor:heads tensor:whirl tensor:batch tensor:spread
                          tensor:speck cellguards:rfit cellguards:tfit cellguards:layer
                          cellguards:kink cellguards:crest cellguards:mask cellguards:order
@@ -181,7 +207,9 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brin
                          implicit:kinetic implicit:jacobian implicit:doubling implicit:inset
                          implicit:layered tensorgrad:attend tensorgrad:small
                          tensorgrad:saliency:3 adjoint:fit4 adjoint:token
-                         adjoint:sinabs adjoint:gate3 adjoint:aside)
+                         adjoint:sinabs adjoint:gate3 adjoint:under adjoint:aside gradmany:pair
+                         gradmany:same gradmany:stair transformer:unseen:4 transformer:tuned:4
+                         split:carried:4 split:apart:4)
     string(REPLACE ":" ";" checked ${checked})
     list(POP_FRONT checked file instance count)
     set(name ${instance})
@@ -189,6 +217,10 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brin
     if(count)
         set(name ${instance}_${count})
         set(steps --steps ${count})
+    endif()
+    # One named as another file's instance is named after its file too.
+    if(TARGET check_${name})
+        set(name ${file}_${name})
     endif()
     set(program ${CMAKE_CURRENT_BINARY_DIR}/compile/${name}.c)
     add_custom_command(OUTPUT ${program}
@@ -204,6 +236,8 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brin
                           C_STANDARD 11 C_STANDARD_REQUIRED ON C_EXTENSIONS OFF)
     add_test(NAME check_${name}_report COMMAND check_${name})
 endforeach()
+# C346: in GNU C, GCC's and Clang's default, <math.h> declares j1.
+set_target_properties(check_j1 PROPERTIES C_EXTENSIONS ON)
 # The interpreter's own error, estimated where any term is inexact (DESIGN.md):
 # its digits are the seeds', so held by its form but where a limit's
 # remainder alone gives them.
@@ -292,7 +326,7 @@ set_tests_properties(check_both PROPERTIES WILL_FAIL ON)
 add_test(NAME check_gate_one_limit
          COMMAND ${CMAKE_COMMAND} -E cat ${CMAKE_CURRENT_BINARY_DIR}/compile/gate.c)
 set_tests_properties(check_gate_one_limit PROPERTIES
-                     PASS_REGULAR_EXPRESSION "gate_lim0\\(" FAIL_REGULAR_EXPRESSION "gate_lim1\\(")
+                     PASS_REGULAR_EXPRESSION "checked_lim0\\(" FAIL_REGULAR_EXPRESSION "checked_lim1\\(")
 set_tests_properties(check_gate_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^gate: 100 steps from 0, against exact values until 0 and inexact ones from there\n(gate\\.[a-z]+: within [0-9.e+-]+${about}\n)+$")
 # exp, log and tanh as the prelude writes them, each a function of the
@@ -303,7 +337,7 @@ set_tests_properties(check_els_report PROPERTIES PASS_REGULAR_EXPRESSION
 add_test(NAME check_els_functions
          COMMAND ${CMAKE_COMMAND} -E cat ${CMAKE_CURRENT_BINARY_DIR}/compile/els.c)
 set_tests_properties(check_els_functions PROPERTIES
-    PASS_REGULAR_EXPRESSION "els_exp\\(double arg_x\\).*els_log\\(double arg_x\\).*els_tanh\\(double arg_x\\)"
+    PASS_REGULAR_EXPRESSION "checked_exp\\(double arg_x\\).*checked_log\\(double arg_x\\).*checked_tanh\\(double arg_x\\)"
     FAIL_REGULAR_EXPRESSION "pow\\(2\\.718|isnan\\(pow\\(")
 # sin, cos, abs, max and min as the prelude writes them (DESIGN.md), and
 # grad's parts through each: every term the interpreter's.
@@ -312,7 +346,7 @@ set_tests_properties(check_tri_report PROPERTIES PASS_REGULAR_EXPRESSION
 add_test(NAME check_tri_functions
          COMMAND ${CMAKE_COMMAND} -E cat ${CMAKE_CURRENT_BINARY_DIR}/compile/tri.c)
 set_tests_properties(check_tri_functions PROPERTIES
-    PASS_REGULAR_EXPRESSION "tri_abs\\(double arg_x\\).*tri_sin\\(double arg_x\\).*tri_cos\\(double arg_x\\).*tri_max\\(double arg_a, double arg_b\\).*tri_max_da\\(.*tri_abs_dx\\(.*tri_cos_dx\\(.*tri_min\\(double arg_a, double arg_b\\).*tri_min_db\\(.*tri_sin_dx\\("
+    PASS_REGULAR_EXPRESSION "checked_abs\\(double arg_x\\).*checked_sin\\(double arg_x\\).*checked_cos\\(double arg_x\\).*checked_max\\(double arg_a, double arg_b\\).*checked_max_da\\(.*checked_abs_dx\\(.*checked_cos_dx\\(.*checked_min\\(double arg_a, double arg_b\\).*checked_min_db\\(.*checked_sin_dx\\("
     FAIL_REGULAR_EXPRESSION "[^_a-z](sin|cos)\\(")
 # atan, atan2, asin, acos and acosh as the prelude writes them (DESIGN.md),
 # and grad's parts through atan, asin and atan2: every term the interpreter's.
@@ -321,7 +355,7 @@ set_tests_properties(check_bea_report PROPERTIES PASS_REGULAR_EXPRESSION
 add_test(NAME check_bea_functions
          COMMAND ${CMAKE_COMMAND} -E cat ${CMAKE_CURRENT_BINARY_DIR}/compile/bea.c)
 set_tests_properties(check_bea_functions PROPERTIES
-    PASS_REGULAR_EXPRESSION "bea_atan\\(double arg_x\\).*bea_atan2\\(double arg_y, double arg_x\\).*bea_acos\\(double arg_x\\).*bea_asin\\(double arg_x\\).*bea_acosh\\(double arg_x\\)"
+    PASS_REGULAR_EXPRESSION "checked_atan\\(double arg_x\\).*checked_atan2\\(double arg_y, double arg_x\\).*checked_acos\\(double arg_x\\).*checked_asin\\(double arg_x\\).*checked_acosh\\(double arg_x\\)"
     FAIL_REGULAR_EXPRESSION "[^_a-z](atan|atan2|asin|acos|acosh)\\(")
 # grad compiled (DESIGN.md), each value carrying its part: every gradient
 # the interpreter's, as compile/grad.ink gives them.
@@ -553,8 +587,36 @@ set_tests_properties(check_token_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^token: 100 steps from 0${inexact0}\ntoken\\.E: within 0${about}\n$")
 set_tests_properties(check_gate3_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^gate3: 100 steps from 0${inexact0}\ngate3\\.W: within 0${about}\n$")
+set_tests_properties(check_under_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^under: 100 steps from 0${inexact0}\nunder\\.U: within 0${about}\n$")
 set_tests_properties(check_aside_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^aside: 100 steps from 0${inexact0}\naside\\.W: within 0${about}\n$")
+# A gradient by several names compiled, as compile/gradmany.ink gives it.
+set_tests_properties(check_gradmany_pair_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^pair: 100 steps from 0${inexact0}\npair\\.g\\.W: within 0, from 1${about}\npair\\.W: within 0${about}\npair\\.g\\.V: within 0, from 1${about}\npair\\.V: within 0${about}\npair\\.g\\.c: within 0, from 1${about}\npair\\.c: within 0${about}\npair\\.g\\.d: within 0, from 1${about}\npair\\.d: within 0${about}\n$")
+set_tests_properties(check_same_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^same: 100 steps from 0${inexact0}\nsame\\.g\\.A: within 0, from 1${about}\nsame\\.A: within 0${about}\nsame\\.g\\.B: within 0, from 1${about}\nsame\\.B: within 0${about}\n$")
+set_tests_properties(check_stair_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^stair: 100 steps from 0, against exact values\nstair\\.g\\.a: within 0\nstair\\.g\\.b: within 0\n$")
+# A trained transformer, as compile/transformer.ink gives it.
+set_tests_properties(check_unseen_4_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^unseen: 4 steps from 0${inexact0}\nunseen\\.Z: within [1-9](\\.[0-9])?e-1[5-9]${about}\n$")
+set_tests_properties(check_tuned_4_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^tuned: 4 steps from 0, against exact values until 1 and inexact ones from there\ntuned\\.U: within [1-9](\\.[0-9])?e-1[5-9]${about}\n$")
+# A compiled step split into functions (DESIGN.md), as compile/split.ink
+# gives it: carried's parts carry an array and a flag, apart's nothing.
+set_tests_properties(check_carried_4_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^carried: 4 steps from 0, against exact values\ncarried\\.x: within [1-9](\\.[0-9])?e-1[5-7]\ncarried\\.y: within [1-9](\\.[0-9])?e-1[3-5]\n$")
+set_tests_properties(check_apart_4_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^apart: 4 steps from 0, against exact values\napart\\.x: within 0\n$")
+add_test(NAME check_carried_values
+         COMMAND ${CMAKE_COMMAND} -E cat ${CMAKE_CURRENT_BINARY_DIR}/compile/carried_4.c)
+set_tests_properties(check_carried_values PROPERTIES PASS_REGULAR_EXPRESSION
+    "_values_ {\n    double t[0-9]+_\\[3\\]\\[3\\];\n    int t[0-9]+_;\n")
+add_test(NAME check_apart_values
+         COMMAND ${CMAKE_COMMAND} -E cat ${CMAKE_CURRENT_BINARY_DIR}/compile/apart_4.c)
+set_tests_properties(check_apart_values PROPERTIES PASS_REGULAR_EXPRESSION "checked_step2_\\(m_\\)"
+                     FAIL_REGULAR_EXPRESSION "_values_")
 # C329: --check's exact run forgets what its walk of the prelude recorded.
 set_tests_properties(check_sinabs_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^sinabs: 100 steps from 0${inexact0}\nsinabs\\.W: within 0${about}\n$")
@@ -615,6 +677,10 @@ set_tests_properties(check_imag_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^imag: 100 steps from 0, against [^\n]*\nimag\\.x: within 0\nimag\\.z: within 0\n$")
 set_tests_properties(check_took_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^took: 100 steps from 0, against [^\n]*\ntook\\.w: within 0\n$")
+set_tests_properties(check_passed_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^passed: 100 steps from 0, against [^\n]*\npassed\\.y: within 0\n$")
+set_tests_properties(check_waived_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^waived: 100 steps from 0, against [^\n]*\nwaived\\.y: within 0\nwaived\\.z: within 0\n$")
 # A model's input of more than one cell (DESIGN.md, C83), every term exact.
 set_tests_properties(check_fan_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^fan: 100 steps from 0, against exact values\nfan\\.y: within 0\n$")
@@ -636,6 +702,8 @@ set_tests_properties(check_twain_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^twain: 100 steps from 0, against exact values\ntwain\\.y: within 0\n$")
 set_tests_properties(check_nestv_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^nestv: 100 steps from 0, against exact values\nnestv\\.inner\\.x: within 0\nnestv\\.inner\\.y: within 0\nnestv\\.y: within 0\n$")
+set_tests_properties(check_clashed_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^clashed: 100 steps from 0, against exact values\nclashed\\.g: within 0\nclashed\\.s: within 0\n$")
 set_tests_properties(check_boxcar_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^boxcar: 100 steps from 0, against exact values\nboxcar\\.f: within 0\nboxcar\\.t: within 0\nboxcar\\.y: within 0, from 1\nboxcar\\.w: within 0\nboxcar\\.z: within 0\nboxcar\\.q: within 0, from 3\n$")
 set_tests_properties(check_stride_report PROPERTIES PASS_REGULAR_EXPRESSION
@@ -676,6 +744,23 @@ set_tests_properties(check_masked_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^masked: 100 steps from 0, against exact values\nmasked\\.e_tenth\\.d: [0-9.e+-]+ at 9, where the interpreter gives 0\\.10000000000000001\nmasked\\.e: [0-9.e+-]+ at 9, where the interpreter gives 0\\.10000000000000001\n$")
 set_tests_properties(check_pole_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^pole: 100 steps from 0, against exact values\npole\\.y: inf at 3, where the interpreter gives none: division by zero\n$")
+# A recurrence's own history, folded by init (C343).
+set_tests_properties(check_grown_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^grown: 100 steps from 0, against exact values\ngrown\\.g: within 0\n$")
+set_tests_properties(check_paired_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^paired: 100 steps from 0, against exact values\npaired\\.g: within 0\n$")
+set_tests_properties(check_looped_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^looped: 100 steps from 0, against exact values\nlooped\\.f: within 0\nlooped\\.h: within 0\nlooped\\.g: within 0\n$")
+set_tests_properties(check_stepped_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^stepped: 100 steps from 0, against exact values\nstepped\\.y: within 0\nstepped\\.z: within 0\n$")
+set_tests_properties(check_opened_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^opened: 100 steps from 0, against exact values\nopened\\.c: within 0\n$")
+set_tests_properties(check_rooted_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^rooted: 100 steps from 0, against exact values\nrooted\\.y: within 0\nrooted\\.z: within 0\n$")
+set_tests_properties(check_heeded_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^heeded: 100 steps from 0, against exact values\nheeded\\.y: within 0\n$")
+set_tests_properties(check_waited_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^waited: 100 steps from 0, against exact values\nwaited\\.y: within 0\n$")
 set_tests_properties(check_huge_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^huge: 100 steps from 0, against exact values\nhuge\\.y: inf at 31, where the interpreter's term is too large for a double\n$")
 set_tests_properties(check_root_report PROPERTIES PASS_REGULAR_EXPRESSION
@@ -704,6 +789,25 @@ set_tests_properties(check_mirrored_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^mirrored: 100 steps from 0, against exact values until 0 and inexact ones from there\nmirrored\\.y: within 0\n$")
 set_tests_properties(check_radix_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^radix: 100 steps from 0, against exact values until 0 and inexact ones from there\nradix\\.y: within 0\n$")
+# C345: built at -O0 and -O2, as a compiler folds pow(x, 2.0) from -O1.
+set(program ${CMAKE_CURRENT_BINARY_DIR}/compile/squares.c)
+add_custom_command(OUTPUT ${program}
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/compile
+    COMMAND inkamath_cli --check ${CMAKE_CURRENT_SOURCE_DIR}/compile/drift.ink squares -o ${program}
+    DEPENDS inkamath_cli compile/drift.ink
+    VERBATIM)
+foreach(level O0 O2)
+    add_executable(check_squares_${level} ${program})
+    target_compile_options(check_squares_${level} PRIVATE
+                           $<$<C_COMPILER_ID:GNU,Clang,AppleClang>:-${level}>)
+    target_link_libraries(check_squares_${level} PRIVATE inkamath_warnings
+                          $<$<NOT:$<C_COMPILER_ID:MSVC>>:m>)
+    set_target_properties(check_squares_${level} PROPERTIES
+                          C_STANDARD 11 C_STANDARD_REQUIRED ON C_EXTENSIONS OFF)
+    add_test(NAME check_squares_${level}_report COMMAND check_squares_${level})
+    set_tests_properties(check_squares_${level}_report PROPERTIES PASS_REGULAR_EXPRESSION
+        "^squares: 100 steps from 0, against exact values until 0 and inexact ones from there\nsquares\\.v: within 0${about}\nsquares\\.y: within 0${about}\nsquares\\.z: within 0${about}\n$")
+endforeach()
 set_tests_properties(check_nests_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^nests: 100 steps from 0, against exact values\nnests\\.s: within 0\nnests\\.x: within 0\n$")
 set_tests_properties(check_calm_report PROPERTIES PASS_REGULAR_EXPRESSION
@@ -756,7 +860,7 @@ set_tests_properties(check_wild check_brink check_rift check_sill check_seam che
 # A float target (DESIGN.md): pid and adc's headers as compile/expected/float
 # has them, and compile/float.ink's checks, each built so that an operation done
 # in double is a warning.
-set(float_flags $<$<C_COMPILER_ID:GNU,Clang,AppleClang>:-Wdouble-promotion;-Wfloat-conversion>)
+set(float_flags $<$<C_COMPILER_ID:GNU,Clang,AppleClang>:-Wdouble-promotion>)
 foreach(model IN ITEMS pid adc)
     set(header ${CMAKE_CURRENT_BINARY_DIR}/compile/float/${model}.h)
     add_custom_command(OUTPUT ${header}
@@ -790,7 +894,7 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:ledge logistic:gate momentu
                          goldberg:year goldberg:needle goldberg:big goldberg:seven iterates:poly
                          blocks:nested conv:see straddle:knee apollo11:whole dyn:nm dyn:cd
                          steps:coast:1001 robertson:inside:2000 robertson:outside:2000
-                         robertson:rober tensorgrad:small tensorgrad:saliency:3)
+                         robertson:rober tensorgrad:small tensorgrad:saliency:3 split:carried:4)
     string(REPLACE ":" ";" checked ${checked})
     list(POP_FRONT checked file instance count)
     set(name ${instance})
@@ -880,6 +984,7 @@ foreach(report IN ITEMS
         "cd:^cd: 100 steps from 0 in float, against exact values until 85 and inexact ones from there\n(cd\\.[a-z]+: within [1-9](\\.[0-9])?e-0[6-8], [0-9.e+-]+ units of a float${about}\n)+$"
         "small:^small: 100 steps from 0${in_float}\nsmall\\.g: ${exact}\nsmall\\.o: ${exact}\nsmall\\.s: ${exact}\n$"
         "saliency_3:^saliency: 3 steps from 0${in_float}\nsaliency\\.G: ${exact}\n$"
+        "carried_4:^carried: 4 steps from 0${in_float}\ncarried\\.x: within [0-9.e+-]+, [0-9.e+]+ units of a float\ncarried\\.y: within [0-9.e+-]+, [0-9.]+ units of a float\n$"
         "cls:^cls: 100 steps from 0${inexact}\ncls\\.z: within 2\\.4e-08, 0\\.49 units of a float\ncls\\.q: within 1\\.9e-06, 1\\.5 units of a float${about}\ncls\\.s: within 6\\.3e-08, 2\\.1 units of a float${about}\ncls\\.loss: within 4\\.1e-07, 3\\.8 units of a float${about}\n$")
     string(FIND "${report}" ":" colon)
     string(SUBSTRING "${report}" 0 ${colon} instance)
@@ -902,3 +1007,17 @@ add_executable(compile_fuzz ${fuzz_source})
 target_link_libraries(compile_fuzz PRIVATE inkamath_warnings $<$<NOT:$<C_COMPILER_ID:MSVC>>:m>)
 set_target_properties(compile_fuzz PROPERTIES C_STANDARD 11 C_STANDARD_REQUIRED ON C_EXTENSIONS OFF)
 add_test(NAME compile_fuzz COMMAND compile_fuzz)
+
+# Each timeout is for a job alone on its machine. The sanitizer job shares its
+# machine with the other jobs of two runs, and there took three times as long:
+# fastgrad_long.ink, 20 s alone, ran past 60, and cli_1, 38 s alone, past 120.
+if(INKAMATH_SANITIZE)
+    get_property(all_tests DIRECTORY PROPERTY TESTS)
+    foreach(test IN LISTS all_tests)
+        get_test_property(${test} TIMEOUT timeout)
+        if(timeout)
+            math(EXPR timeout "${timeout} * 3")
+            set_tests_properties(${test} PROPERTIES TIMEOUT ${timeout})
+        endif()
+    endforeach()
+endif()

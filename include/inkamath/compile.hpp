@@ -78,6 +78,8 @@ public:
         "goto",    "if",     "inline",   "int",    "long",     "register", "restrict",
         "return",  "short",  "signed",   "sizeof", "static",   "struct",   "switch",
         "typedef", "union",  "unsigned", "void",   "volatile", "while"};
+    // The macros of the headers a step includes that a name can spell (C347).
+    static inline const std::set<std::string> macros = {"BUFSIZ", "EOF", "INFINITY", "NAN", "NULL"};
 
     // The session's sequences, or with a model, those of its instance with
     // every default and no input given (DESIGN.md, phase 15).
@@ -322,6 +324,7 @@ private:
         Reads                    guard, value;
         int                      guard_from = 0, value_from = 0;
         int                      clause = 0;  // its place among the definition's
+        bool                     constant = false;
     };
 
     struct Sequence {
@@ -355,6 +358,8 @@ private:
         // m, each a lag once the step computing that base is known.
         std::vector<Seed> seeds;
         Reads             seeded;
+        // Of a grad by several names, its parts, which the first's step computes.
+        std::vector<std::string> parts;
     };
 
     // A read of the latest term of a sequence at another rate, 'y_(floor((n -
@@ -693,10 +698,13 @@ private:
             if (!c.part.empty()) return c.part[0];
             return c.cells[0].text == "NAN" ? Of(Atom("NAN")) : Literal(Value(Number(0)));
         };
-        const auto there = [](const Code& c) {
-            return Of(Atom(c.part.empty() && c.cells[0].text != "NAN" ? "0"
-                           : !c.moves                                 ? "1"
-                                                                      : "(" + Text(c.moves) + ")"));
+        // A flag, unlike a condition written out, which has a space, is an
+        // int, which a NaN beside it makes a float (-Wconversion).
+        const auto there = [this](const Code& c) {
+            if (c.part.empty() && c.cells[0].text != "NAN") return Of(Atom("0"));
+            if (!c.moves) return Of(Atom("1"));
+            const std::string text = Text(c.moves);
+            return Of(Atom("(" + text + (text.find(' ') == text.npos ? " != 0)" : ")")));
         };
         for (const auto& [condition, value] : guarded) {
             any    = any || !value.part.empty();
@@ -724,12 +732,12 @@ private:
         chain.part = {
             tape_ ? Record(Kind::Gather, size, 0, taken, 0, 0, clauses)
                   : Chain(parts, otherwise ? std::optional(part(*otherwise)) : std::nullopt, size)};
-        if (!always || (otherwise && there(*otherwise).cells[0].text != "1"))
-            chain.moves = std::make_shared<const Moving>(Moving{
-                Chain(where, otherwise ? std::optional(there(*otherwise)) : std::nullopt, Extent{})
-                    .cells[0]
-                    .text,
-                {}});
+        if (always && (!otherwise || there(*otherwise).cells[0].text == "1")) return chain;
+        const std::optional<Code> rest =
+            otherwise ? std::optional(there(*otherwise)) : std::nullopt;
+        // A truth, as a test reads it: NaN where no clause applies is one.
+        const std::string truth = "(" + Chain(where, rest, Extent{}).cells[0].text + ") != 0";
+        chain.moves             = std::make_shared<const Moving>(Moving{truth, {}});
         return chain;
     }
 
@@ -1182,7 +1190,14 @@ private:
             if (guarded && clause.parameters.indexed() && !clause.parameters.general())
                 throw Refusal(name, "a base clause after a guarded one");
         }
-        if (IsSequence(definition)) sequences_[name].definition = &definition;
+        if (!IsSequence(definition)) return;
+        std::vector<std::string> parts;
+        if (const auto* group = ReferenceStack<Value>::Group(definition))
+            for (const std::string& v : group->Variables()) parts.push_back(name + "." + v);
+        for (const std::string& key : parts.empty() ? std::vector{name} : parts) {
+            sequences_[key].definition = &definition;
+            sequences_[key].parts      = parts;
+        }
     }
 
     // A history is folded by init, so it may read only its index and constants,
@@ -1245,7 +1260,7 @@ private:
         try {
             body();
         } catch (const Reason& reason) {
-            throw Refusal(name, reason.what());
+            throw Refusal(Refused(name), reason.what());
         }
         sequences_.at(name).parameters.insert(read_parameters_.begin(), read_parameters_.end());
         read_parameters_.insert(outer_parameters.begin(), outer_parameters.end());
@@ -1345,14 +1360,22 @@ private:
         });
     }
 
+    // What a refusal names: a part's grad, the definition, which is what is set
+    // aside.
+    std::string Refused(const std::string& name) const {
+        return sequences_.at(name).parts.empty() ? name : name.substr(0, name.rfind('.'));
+    }
+
     // In turn, or earlier where a reader needs a shape no base clause gives.
     void Compile(const std::string& name) {
         Sequence& sequence = sequences_.at(name);
         if (sequence.compiled || !sequence.definition) return;
         const Home home(*this, sequence.definition);
-        if (sequence.compiling) throw Refusal(name, "its shape depends on itself");
+        if (sequence.compiling) throw Refusal(Refused(name), "its shape depends on itself");
         sequence.compiling = true;
+        for (const std::string& part : sequence.parts) sequences_.at(part).compiling = true;
         Bases(name);
+        if (!sequence.parts.empty()) return Grouped(sequence.parts);
         if (ByCells(*sequence.definition)) {
             CompileTerms(name, sequence);
             sequence.compiled = true;
@@ -1387,8 +1410,9 @@ private:
                         sequence.general_clause = place;
                         settled                 = true;
                     } else {
-                        sequence.guarded.push_back(
-                            {*condition, Texts(code), guard_reads, value_reads, 0, 0, place});
+                        sequence.guarded.push_back({*condition, Texts(code), guard_reads,
+                                                    value_reads, 0, 0, place,
+                                                    code.constant.has_value()});
                     }
                     index_text_ = outer_text;
                 });
@@ -1406,6 +1430,31 @@ private:
             const Extent stated = Stated(name, *input->second);
             if (sequence.size != stated)
                 throw Refusal(name, input->second->Unlike(sequence.size, stated));
+        }
+    }
+
+    // A grad by several names (DESIGN.md), its parts from one walk and one
+    // sweep, in the first's step.
+    void Grouped(const std::vector<std::string>& parts) {
+        Sequence&            first  = sequences_.at(parts[0]);
+        const Clause<Value>& clause = first.definition->Clauses().front();
+        std::vector<Code>    codes;
+        Within(parts[0], &first, clause.parameters.index_name(), [&] {
+            const Setting<std::string> text(index_text_, "(double)\x12" + parts[0] + "\x13");
+            const Setting<Reads*>      reads(clause_reads_, &first.general_reads);
+            const Setting<std::pair<const GradExpression<Value>*, std::vector<Code>*>> all(
+                grouped_, {ReferenceStack<Value>::Group(*first.definition), &codes});
+            (void)Emit(clause.expression);
+        });
+        first.compiled = true;
+        for (std::size_t k = parts.size(); k-- > 0;) {
+            Sequence& part = sequences_.at(parts[k]);
+            if (k) {
+                part = first;
+                part.temporaries.clear();
+            }
+            part.size    = codes[k].size;
+            part.general = Texts(codes[k]);
         }
     }
 
@@ -1674,15 +1723,22 @@ private:
         }
         return any.empty() ? nullptr : std::make_shared<const Moving>(Moving{"", std::move(any)});
     }
-    static std::string Text(const Where& where) {
+    // Where any of several is, a flag of the list: a sweep's sum nests a
+    // condition for each unit, which each cell it reaches wrote whole (DESIGN.md).
+    std::string Text(const Where& where) {
         if (!where || where->any.empty()) return where ? where->text : "";
-        std::string text;
+        std::string           text;
+        std::set<std::string> seen;
         for (const Where& one : where->any)
-            text += (text.empty() ? "(" : " || (") + Text(one) + ")";
-        return text;
+            if (const std::string t = Text(one); seen.insert(t).second)
+                text += (text.empty() ? "(" : " || (") + t + ")";
+        if (!temporaries_ || seen.size() == 1) return text;
+        return Declare("moves\x1f" + text, [&](const std::string& t) {
+            return std::vector<std::string>{"const int " + t + " = " + text + ";"};
+        });
     }
     // As the condition of a '?': a clause's own, itself one, bracketed (C235).
-    static std::string Whether(const Where& where) {
+    std::string Whether(const Where& where) {
         return where->any.empty() ? "(" + where->text + ")" : Text(where);
     }
     static Code Parted(Code value, const Part& part, const std::vector<const Code*>& from) {
@@ -1704,7 +1760,7 @@ private:
     }
     // Where the interpreter refuses for the point's sake, NaN: where 'meet'
     // holds and what it reads moves there.
-    static std::string Jumps(const std::string& meet, const std::vector<const Code*>& codes) {
+    std::string Jumps(const std::string& meet, const std::vector<const Code*>& codes) {
         if (std::all_of(codes.begin(), codes.end(), [](const Code* c) { return c->part.empty(); }))
             return "";
         const std::string moves = Text(Moves(codes));
@@ -1854,7 +1910,7 @@ private:
     // Under grad (Derivative::Power), e^w's part is e^w*w', and a constant
     // power's c*u^(c-1)*u', none where c is 0, NaN where u is 0 and c < 1.
     PExpression<Value> visit(PowExpression<Value>* expression) override {
-        const Code base = Emit(expression->m_e1());
+        Code       base = Emit(expression->m_e1());
         const Code exponent =
             base.Scalar()
                 ? Emit(expression->m_e2())
@@ -1867,6 +1923,8 @@ private:
         } else {
             if (!exponent.Scalar()) throw Reason("a matrix cannot be an exponent");
             if (!base.Scalar()) return Answer(Power(base, exponent));
+            // Read twice by its square, and once more by its part.
+            if (exponent.constant && Doubles(*exponent.constant)[0] == 2) base = Shared(base);
             value = Powered(base, exponent);
         }
         if (!exponent.part.empty()) {
@@ -1902,17 +1960,21 @@ private:
 
     // C's absorbs a NaN where the other operand is 1 or 0: pow(1, NaN) and
     // pow(NaN, 0) are 1. C's sqrt(-0) is -0, the interpreter's +0 (C163).
-    Code Powered(const Code& base, const Code& exponent) const {
+    // A square and an inverse are the interpreter's, not pow, which a
+    // compiler folds into them at -O1 (C345).
+    Code Powered(const Code& base, const Code& exponent) {
         const auto other = [](const Code& c, double v) {
             return c.constant && Doubles(*c.constant)[0] != v;
         };
         const std::string test =
             other(exponent, 0.0) || other(base, 1.0) ? "" : Nan(base, exponent);
-        const std::string power =
-            exponent.constant && Doubles(*exponent.constant)[0] == 0.5
-                ? "sqrt(0.0 + " + Wrap(base.cells[0], product) + ")"
-                : "pow(" + base.cells[0].text + ", " + exponent.cells[0].text + ")";
-        Cell              cell(test.empty() ? power : "(" + test + power + ")", primary);
+        const double e = exponent.constant ? Doubles(*exponent.constant)[0] : 0.0;
+        const Cell&  u = base.cells[0];
+        Cell         power("pow(" + u.text + ", " + exponent.cells[0].text + ")", primary);
+        if (e == 0.5) power = Cell("sqrt(0.0 + " + Wrap(u, product) + ")", primary);
+        if (e == 2) power = Multiplied(Shared(u), Shared(u));
+        if (e == -1) power = Divided(Atom("1.0", true), u);
+        Cell cell = test.empty() ? power : Cell("(" + test + power.text + ")", primary);
         // Of a constant above 0 but 1, NaN where its exponent is: a test reads
         // that, not a second pow, which C, setting errno, does not share.
         if (const double b = base.constant ? Doubles(*base.constant)[0] : 0.0;
@@ -1932,14 +1994,26 @@ private:
     // operand is, as the interpreter refuses it (DESIGN.md, a NaN reaches
     // every term that reads it): the test of each cell of the operands given
     // that is neither a number nor the index, written before the decision.
+    // Several cells tested once per list: each read repeating the test was
+    // most of a header (DESIGN.md, a matrix read by its cells).
     template <typename... Codes>
-    std::string Nan(const Codes&... codes) const {
-        std::string test;
-        for (const Code* code : {&codes...})
+    std::string Nan(const Codes&... codes) {
+        std::string           test;
+        std::set<std::string> seen;
+        for (const Code* code : {&codes...}) {
+            std::string one;
+            std::size_t n = 0;
             for (const Cell& cell : code->cells)
-                if (aware_ && !code->constant && !cell.number)
-                    test += (test.empty() ? "isnan(" : " || isnan(") +
-                            (cell.nan.empty() ? cell.text : cell.nan) + ")";
+                if (aware_ && !code->constant && !cell.number &&
+                    seen.insert(cell.nan.empty() ? cell.text : cell.nan).second)
+                    one += (n++ ? " || isnan(" : "isnan(") +
+                           (cell.nan.empty() ? cell.text : cell.nan) + ")";
+            if (n > 1 && temporaries_)
+                one = Declare("isnan\x1f" + one, [&](const std::string& t) {
+                    return std::vector<std::string>{"const int " + t + " = " + one + ";"};
+                });
+            if (n) test += (test.empty() ? "" : " || ") + one;
+        }
         return test.empty() ? test : test + " ? NAN : ";
     }
 
@@ -2292,6 +2366,7 @@ private:
                 throw Reason(key + " is a sequence; index it");
             return Answer(Field(key, Value(Number(NAN))));
         }
+        ReadWhole(key, *definition, false, false);
         // 'f()' is 'f', a call with every default (C169).
         if (!definition->Clauses().empty() &&
             !definition->Clauses().front().parameters.parameters_names().empty()) {
@@ -2712,7 +2787,7 @@ private:
         Walked* const              outer_limit       = std::exchange(limit_, &walked);
         auto* const                outer_temporaries = std::exchange(temporaries_, walked.based);
         // Its names are its own: a step's t1_ is not its term before (C308).
-        const Setting<std::set<std::string>> apart(nan_temporaries_, {});
+        auto                       outer_nans        = std::exchange(nan_temporaries_, {});
         auto                       outer_reads       = std::exchange(read_parameters_, {});
         std::map<int, Code>        bases;
         std::vector<std::string>   general;
@@ -2757,13 +2832,15 @@ private:
                 return Code{};
             });
         } catch (...) {
-            limit_       = outer_limit;
-            temporaries_ = outer_temporaries;
+            limit_           = outer_limit;
+            temporaries_     = outer_temporaries;
+            nan_temporaries_ = std::move(outer_nans);
             read_parameters_.insert(outer_reads.begin(), outer_reads.end());
             throw;
         }
         limit_           = outer_limit;
         temporaries_     = outer_temporaries;
+        nan_temporaries_ = std::move(outer_nans);
         const auto reads = std::exchange(read_parameters_, std::move(outer_reads));
         read_parameters_.insert(reads.begin(), reads.end());
         if (constant && reads.empty()) return Fold(expression);
@@ -2875,6 +2952,8 @@ private:
             limit_names_.emplace(text, module_ + "_lim" + std::to_string(limits_.size()));
         if (fresh)
             limits_.push_back(text.replace(text.find(function), function.size(), named->second));
+        // NaN where its walk does not converge (C336).
+        nan_functions_.insert(named->second);
 
         // Where it is read: a matrix argument, or a matrix answer, is an
         // array of the step's, or of the enclosing limit's.
@@ -2895,6 +2974,7 @@ private:
         const std::string out = Declare("lim\x1f" + called, [&](const std::string& t) {
             return std::vector<std::string>{"double " + t + shape + ";", called + ", " + t + ");"};
         });
+        nan_temporaries_.insert(out);
         return Answer(Array(out, walked.size));
     }
 
@@ -2936,25 +3016,42 @@ private:
         if ((name == "floor" || name == "re" || name == "im") &&
             found.where == &definitions_.Builtins())
             return Builtin(expression);
+        if (found.definition) ReadWhole(key, *found.definition, calls, call.subexpr() != nullptr);
         if (calls) {
             if (!found.definition) throw Reason(key + " is not defined");
             if (found.where == &definitions_.Builtins() && !call.subexpr())
                 return Prelude(key, *found.definition, call);
             return Answer(Call(key, *found.definition, call, nullptr));
         }
+        return Answer(Term(key, found.definition, call));
+    }
+
+    // A grad by several names read whole is refused in the interpreter's words.
+    static void ReadWhole(const std::string& key, const Reference<Value>& definition, bool called,
+                          bool indexed) {
+        const auto* group = ReferenceStack<Value>::Group(definition);
+        if (!group) return;
+        if (indexed && !IsSequence(definition)) throw Reason(key + " is not a sequence");
+        throw Reason(key + " is a gradient by several names; read one of its parts (" + key +
+                     (called ? "(...)." : ".") + group->Variable() + (indexed ? "_(...)" : "") +
+                     ")");
+    }
+
+    // A term of a sequence, read at the index the call gives.
+    Code Term(const std::string& key, const Reference<Value>* definition,
+              const ParametersCall<Value>& call) {
         if (limit_) throw Reason(key + "_...: another sequence's term in a limit's terms");
         if (!reading_ && !basing_) throw Reason(key + "_...: a term read outside a general clause");
-        const Reference<Value>* definition = found.definition;
         if (definition && !IsSequence(*definition)) throw Reason(key + " is not a sequence");
         Sequence& read = sequences_[key];
         if (!definition) {
             Unreserved(key);
             if (!read.size.rows) read.size = Extent{};
         }
-        if (!reading_) return Answer(Seeded(key, read, call.subexpr()));
+        if (!reading_) return Seeded(key, read, call.subexpr());
         if (const auto sample = Sampled(call.subexpr()))
-            return Answer(Sample(key, read, sample->first, sample->second));
-        if (const auto hold = Held(call.subexpr())) return Answer(Holding(key, read, *hold));
+            return Sample(key, read, sample->first, sample->second);
+        if (const auto hold = Held(call.subexpr())) return Holding(key, read, *hold);
         const int lag = Lag(call.subexpr(), key) + shift_;
         Bases(key);
         if (!read.size.rows) Compile(key);
@@ -2962,9 +3059,11 @@ private:
         // with no base clause is computed again.
         if (&read != reading_ && read.period > 1) {
             reading_->reads[key].insert(lag);
-            return Answer(Array("m_->" + key + "[0]", read.size));
+            return Array("m_->" + key + "[0]", read.size);
         }
-        if (lag > 0 && ClosedForm(read) && !histories_.count(key)) return Answer(At(read, lag));
+        const auto part =
+            static_cast<std::size_t>(std::ranges::find(read.parts, key) - read.parts.begin());
+        if (lag > 0 && ClosedForm(read) && !histories_.count(key)) return At(read, lag, part);
         (shift_ && early_ >= 0 ? earlies_[static_cast<std::size_t>(early_)].reads
          : deferring_          ? reading_->deferred
                                : reading_->reads)[key]
@@ -2974,19 +3073,21 @@ private:
         code.whole = true;
         // Before its window holds the term, one with no base clause is
         // computed again at that index, as the interpreter answers it there
-        // (DESIGN.md, C71); Checked keeps whichever the reader needs.
-        if (lag > 0 && Recomputed(read) && read.compiled && !histories_.count(key)) {
+        // (DESIGN.md, C71); Checked keeps whichever the reader needs. A
+        // recurrence's are folded by init instead (C343).
+        if (lag > 0 && Recomputed(read) && read.compiled && !Historied(key) &&
+            !Reaches(key, reading_)) {
             earlies_.push_back({key, lag, reading_, {}, early_});
             const int  id          = static_cast<int>(earlies_.size() - 1);
             const int  outer       = std::exchange(early_, id);
-            const Code back        = At(read, lag);
+            const Code back        = At(read, lag, part);
             early_                 = outer;
             const std::string mark = "\x04" + std::to_string(id) + "\x05";
             code.whole             = false;
             for (std::size_t c = 0; c < code.cells.size(); ++c)
                 code.cells[c].text = mark + back.At(c).text + "\x06" + code.cells[c].text + "\x07";
         }
-        return Answer(code);
+        return code;
     }
 
     // A sequence with no base clause that reads no term is a closed form, and
@@ -3009,7 +3110,7 @@ private:
     // tried as the interpreter tries them. What each guard and value reads is
     // read that much further back, and checked where it is read: before it
     // exists the interpreter reports it, and the term is NaN.
-    Code At(const Sequence& sequence, int lag) {
+    Code At(const Sequence& sequence, int lag, std::size_t part = 0) {
         std::vector<std::pair<std::string, Code>> guarded;
         std::optional<Code>                       otherwise;
         const Home                                home(*this, sequence.definition);
@@ -3036,7 +3137,11 @@ private:
                 if (!condition) continue;
                 clause_reads_           = &value_reads;
                 const std::string test  = mark(guard_reads) + *condition;
-                Code              value = Emit(clause.expression);
+                std::vector<Code> parts;
+                const Setting<std::pair<const GradExpression<Value>*, std::vector<Code>*>> all(
+                    grouped_, {ReferenceStack<Value>::Group(*sequence.definition), &parts});
+                Code value = Emit(clause.expression);
+                if (!parts.empty()) value = parts[part];
                 if (const std::string check = mark(value_reads); !check.empty())
                     for (Cell& cell : value.cells) cell = Cell(check + cell.text, 0);
                 if (condition->empty())
@@ -3319,7 +3424,9 @@ private:
             if (*place) at.push_back(Whole(Known(*place, "a cell whose place is not a constant")));
         // The interpreter refuses a matrix whole where it refuses a cell. One
         // that writes NaN in a cell not taken makes the header write it.
-        for (const Cell& c : matrix.cells) aware_ = aware_ || (!matrix.constant && MayNan(c.text));
+        // A parameter's cell is its argument's, NaN where that may be (C335).
+        for (const Cell& c : matrix.cells)
+            aware_ = aware_ || (!matrix.constant && (MayNan(c.text) || nans_.count(c.text)));
         if (aware_ && !matrix.whole && !matrix.constant) matrix = Shared(matrix);
         const std::string nan = matrix.whole ? "" : Nan(matrix);
         if (!nan.empty())
@@ -3381,59 +3488,101 @@ private:
     PExpression<Value> visit(FactExpression<Value>*) override { throw Reason("a factorial"); }
     // grad compiled (DESIGN.md): its body once for each cell of the point, each
     // value carrying its part, the name's a constant seed, as the interpreter's;
-    // by a point of several cells, once, each value carrying a node of a tape
-    // swept back (DESIGN.md, the compiler's adjoint step).
+    // by a point of several cells, or by several names, once, each value
+    // carrying a node of a tape swept back (DESIGN.md, the compiler's adjoint
+    // step), but for a matrix by single values.
     PExpression<Value> visit(GradExpression<Value>* expression) override {
+        if (expression->Several() && expression != grouped_.first)
+            Reasoned(EvaluationVisitor<Value>::Unread);
         if (!grad_.empty()) throw Reason("a derivative of a derivative, for now");
-        const Code point = Emit(expression->Point());
+        std::vector<Code> points, parts;
+        for (std::size_t v = 0; v < expression->Variables().size(); ++v)
+            points.push_back(Emit(expression->Point(v)));
         Asked([&] { Reasoned([&] { Derivative<Value>(definitions_).Names(*expression); }); }, true);
-        if (point.size.count() == 1) return Graded(*expression, point, nullptr);
-        Tape tape;
-        return Graded(*expression, point, &tape);
-    }
-    PExpression<Value> Graded(GradExpression<Value>& expression, const Code& point, Tape* tape) {
-        const std::string&   name = expression.Variable();
-        Code                 body;
-        std::vector<Code>    parts;
-        bool                 any = false;
-        const Setting<Tape*> taping(tape_, tape);
-        if (tape) ++tapes_;
-        for (std::size_t k = 0; k < (tape ? 1 : point.cells.size()); ++k) {
-            Value seed(Number(1));
-            if (!point.Scalar()) {
-                seed           = Value(point.size);
-                seed.data()[k] = Number(1);
-            }
-            Code x = point;
-            x.part = {tape ? Record(Kind::Seed, point.size, 0) : Literal(seed)};
-            Expansion bound{{{name, x}}, {}, scope_, expansion_, {}, {}};
-            auto      places = places_;
-            places.erase(name);
-            const Setting<std::map<std::string, Value>> hidden(places_, places);
-            const Setting<std::string> index(index_, index_ == name ? std::string() : index_);
-            const Setting<Expansion*>  binding(expansion_, &bound);
-            const Setting<std::string> differentiating(grad_, name);
-            body            = Emit(expression.Body());
-            const auto kind = [](const Code& c) { return c.size.slices ? "tensor" : "matrix"; };
-            if (!point.Scalar() && !body.Scalar())
-                throw Reason(std::string("grad of a ") + kind(body) + " with respect to a " +
-                             kind(point) + " is a Jacobian, which it does not give");
-            parts.push_back(body.part.empty() ? Literal(Value(body.size))
-                            : tape            ? Swept(body.part[0].node, point.size)
-                                              : body.part[0]);
-            any = any || !body.part.empty();
+        if (points.size() > 1 || points[0].size.count() > 1) {
+            Tape tape;
+            parts = Graded(*expression, points, &tape);
         }
-        Code out = point.Scalar() || tape ? parts[0] : Assembled(parts, point.size);
-        if (!any) out = Literal(Value(point.Scalar() ? body.size : point.size));
-        out.part.clear();
+        if (parts.empty()) parts = Graded(*expression, points, nullptr);
+        if (expression->Several()) *grouped_.second = parts;
+        return Answer(parts[0]);
+    }
+    // Each name's part, in the order written; none where reverse mode gives way.
+    std::vector<Code> Graded(GradExpression<Value>& expression, const std::vector<Code>& points,
+                             Tape* tape) {
+        const std::vector<std::string>& names = expression.Variables();
+        Code                            body, values;
+        std::vector<Code>               parts;
+        std::vector<bool>               any(names.size());
+        const Setting<Tape*>            taping(tape_, tape);
+        if (tape) ++tapes_;
+        std::string with;
+        for (const std::string& name : names) with += (with.empty() ? "" : " or ") + name;
+        for (std::size_t v = 0; v < (tape ? 1 : names.size()); ++v)
+            for (std::size_t k = 0; k < (tape ? 1 : points[v].cells.size()); ++k) {
+                Expansion   bound{{}, {}, scope_, expansion_, {}, {}};
+                auto        places = places_;
+                std::string index  = index_;
+                for (std::size_t w = 0; w < names.size(); ++w) {
+                    Code x = points[w];
+                    // Each its own node, though two be alike (C323).
+                    if (tape) x.part = {Record(Kind::Seed, x.size, 0, {}, 0, w)};
+                    if (!tape && w == v) {
+                        Value seed(Number(1));
+                        if (!x.Scalar()) {
+                            seed           = Value(x.size);
+                            seed.data()[k] = Number(1);
+                        }
+                        x.part = {Literal(seed)};
+                    }
+                    bound.values.emplace(names[w], x);
+                    places.erase(names[w]);
+                    if (index == names[w]) index.clear();
+                }
+                const Setting<std::map<std::string, Value>> hidden(places_, places);
+                const Setting<std::string>                  indexed(index_, index);
+                const Setting<Expansion*>                   binding(expansion_, &bound);
+                const Setting<std::string>                  differentiating(grad_, with);
+                body = Emit(expression.Body());
+                if (tape && names.size() > 1 && !body.Scalar() &&
+                    std::ranges::all_of(points, &Code::Scalar))
+                    return {};
+                const auto kind = [](const Code& c) { return c.size.slices ? "tensor" : "matrix"; };
+                for (const Code& point : points)
+                    if (!point.Scalar() && !body.Scalar())
+                        throw Reason(std::string("grad of a ") + kind(body) +
+                                     " with respect to a " + kind(point) +
+                                     " is a Jacobian, which it does not give");
+                if (!body.constant)
+                    values.cells.insert(values.cells.end(), body.cells.begin(), body.cells.end());
+                if (tape && !body.part.empty()) parts = Swept(body.part[0].node, points);
+                if (!tape)
+                    parts.push_back(body.part.empty() ? Literal(Value(body.size)) : body.part[0]);
+                any[v] = any[v] || !body.part.empty();
+            }
         // NaN where the value differentiated is, in a header that writes NaN,
-        // as one does where that value writes it and no part reads it (C113).
-        for (const Cell& c : body.cells) aware_ |= !body.constant && WritesNan(c.text);
-        const std::string nan = aware_ ? Nan(Shared(body)) : "";
-        for (Cell& cell : out.cells)
-            if (!nan.empty()) cell = Cell("(" + nan + cell.text + ")", primary);
-        if (!nan.empty()) out.constant.reset();
-        return Answer(out);
+        // as one does where that value writes it and no part reads it (C113),
+        // in any walk: each moves by its own name, and the interpreter refuses
+        // all where one jumps (C341).
+        for (const Cell& c : values.cells) aware_ |= WritesNan(c.text);
+        const std::string nan = aware_ ? Nan(Shared(values)) : "";
+        std::vector<Code> outs;
+        for (std::size_t v = 0, first = 0; v < names.size(); ++v) {
+            const Code&       point = points[v];
+            const std::size_t n     = tape ? 1 : point.cells.size();
+            const auto        from  = parts.begin() + static_cast<std::ptrdiff_t>(first);
+            Code out = !any[tape ? 0 : v] ? Literal(Value(point.Scalar() ? body.size : point.size))
+                       : tape || point.Scalar()
+                           ? parts[first]
+                           : Assembled({from, from + static_cast<std::ptrdiff_t>(n)}, point.size);
+            first += n;
+            out.part.clear();
+            for (Cell& cell : out.cells)
+                if (!nan.empty()) cell = Cell("(" + nan + cell.text + ")", primary);
+            if (!nan.empty()) out.constant.reset();
+            outs.push_back(std::move(out));
+        }
+        return outs;
     }
     // The sweep back, Tape::Back written out: each node's adjoint by its
     // cells, from the body's 1 back to the seed's, none where no path reaches
@@ -3456,19 +3605,18 @@ private:
         return zero ? Adjoint() : Adjoint(std::move(code));
     }
     // An adjoint there only where its 'moves' holds, a clause's condition.
-    static Where Both(const Where& x, const Where& y) {
+    Where Both(const Where& x, const Where& y) {
         if (!x || !y) return x ? x : y;
         return std::make_shared<const Moving>(Moving{"(" + Text(x) + ") && (" + Text(y) + ")", {}});
     }
     template <typename F>
-    static Adjoint Folded(F f, const Code& x, const Code& y,
-                          Cell (*written)(const Cell&, const Cell&)) {
+    Adjoint Folded(F f, const Code& x, const Code& y, Cell (*written)(const Cell&, const Cell&)) {
         Adjoint out =
             Some(x.constant && y.constant ? Exactly(f, x, y) : Of(written(x.cells[0], y.cells[0])));
         if (out) out->moves = Both(x.moves, y.moves);
         return out;
     }
-    static Adjoint Mul(const Code& x, const Code& y) {
+    Adjoint Mul(const Code& x, const Code& y) {
         return Folded(std::multiplies<>(), x, y, Multiplied);
     }
     // One there only where its condition holds is added only there, 'c ?
@@ -3546,7 +3694,7 @@ private:
                 Into(total.cells[k], Slice(g, b).cells[k]);
         return total;
     }
-    Code Swept(std::size_t body, Extent extent) {
+    std::vector<Code> Swept(std::size_t body, const std::vector<Code>& points) {
         const std::vector<Node>&             nodes = tape_->nodes;
         std::vector<std::optional<Adjoints>> adjoint(nodes.size() + 1);
         const auto at = [&](std::size_t n) -> Adjoints& {
@@ -3574,8 +3722,8 @@ private:
             for (std::size_t k = 0; k < g.cells.size(); ++k) add(add, n, k, g.cells[k]);
         };
         into(body, Adjoints{Extent{}, {Literal(Value(Number(1)))}});
-        const auto times = [](const Code& c, const Code& v) { return Mul(c, v); };
-        for (std::size_t n = nodes.size(); n > 1; --n) {
+        const auto times = [this](const Code& c, const Code& v) { return Mul(c, v); };
+        for (std::size_t n = nodes.size(); n > points.size(); --n) {
             if (!adjoint[n]) continue;
             Adjoints g = std::move(*adjoint[n]);
             for (Adjoint& c : g.cells)
@@ -3609,7 +3757,7 @@ private:
                     }
                     break;
                 case Kind::Quotient:
-                    into(x.a, Each(g, *v, [](const Code& c, const Code& d) {
+                    into(x.a, Each(g, *v, [this](const Code& c, const Code& d) {
                              return Folded(std::divides<>(), c, d, Divided);
                          }));
                     break;
@@ -3630,14 +3778,19 @@ private:
                     break;
             }
         }
-        Code out = Literal(Value(extent));
-        for (std::size_t k = 0; adjoint[1] && k < out.cells.size(); ++k)
-            if (const Adjoint& c = adjoint[1]->cells[k]) {
-                out.cells[k] = c->cells[0];
-                if (!c->constant) out.constant.reset();
-                if (out.constant) out.constant->data()[k] = (*c->constant)(1, 1);
-            }
-        return out;
+        // Each seed's adjoints, the seeds being the first nodes.
+        std::vector<Code> parts;
+        for (std::size_t s = 1; s <= points.size(); ++s) {
+            Code out = Literal(Value(points[s - 1].size));
+            for (std::size_t k = 0; adjoint[s] && k < out.cells.size(); ++k)
+                if (const Adjoint& c = adjoint[s]->cells[k]) {
+                    out.cells[k] = c->cells[0];
+                    if (!c->constant) out.constant.reset();
+                    if (out.constant) out.constant->data()[k] = (*c->constant)(1, 1);
+                }
+            parts.push_back(std::move(out));
+        }
+        return parts;
     }
 
     // Unrolled, since each term is a line of C: a thousand is a filter no one
@@ -3694,6 +3847,36 @@ private:
     PExpression<Value> visit(MemberExpression<Value>* expression) override {
         if (const Reference<Value>* model = ModelOf(*expression->Object()))
             return Answer(Instance(*model, Call(*expression->Object()), expression->Member()));
+        // 'g.x_n', a sequence of the step, of a grad by several names (DESIGN.md).
+        if (const auto group = Reasoned([&] {
+                const typename ReferenceStack<Value>::Within within(definitions_, scope_);
+                const typename ReferenceStack<Value>::Frame  frame(definitions_);
+                return definitions_.GroupOf(*expression->Object());
+            })) {
+            const std::string  name  = group->home->Qualified(group->Name());
+            const std::string& part  = expression->Member()->Name();
+            const auto&        names = ReferenceStack<Value>::Group(*group)->Variables();
+            const auto*        in =
+                dynamic_cast<const MemberExpression<Value>*>(expression->Object().get());
+            if (!IsSequence(*group))
+                throw Reason(name +
+                             ", a gradient by several names that is not a sequence, for now");
+            if (!group->Clauses().front().parameters.parameters_names().empty())
+                throw Reason(name + ", a gradient by several names that takes arguments, for now");
+            if (!in && Call(*expression->Object()).arguments())
+                throw Reason(name + " takes no arguments");
+            if (in) own_ = Reasoned([&] { return &definitions_.Resolve(*in->Object(), *scope_); });
+            if (own_ && own_->label.find('(') != std::string::npos)
+                throw Reason("an unnamed instance, " + own_->label);
+            if (std::ranges::find(names, part) == names.end())
+                throw Reason(name + "." + part + " is not defined");
+            const ParametersCall<Value>& call = Call(*expression->Member());
+            if (call.arguments()) throw Reason(name + "." + part + " takes no arguments");
+            if (!call.subexpr())
+                throw Reason(name + "." + part + " is a sequence; index it (" + name + "." + part +
+                             "_0)");
+            return Answer(Term(Lookup(group->Name()).key + "." + part, group.get(), call));
+        }
         const Scope<Value>* object =
             Reasoned([&] { return &definitions_.Resolve(*expression->Object(), *scope_); });
         if (object->label.find('(') != std::string::npos)
@@ -3738,7 +3921,8 @@ private:
         for (std::size_t start = 0; start <= key.size();) {
             const std::size_t end  = std::min(key.find('.', start), key.size());
             const std::string name = key.substr(start, end - start);
-            if (keywords.count(name)) throw Reason(name + " is a word C keeps for itself");
+            if (keywords.count(name) || macros.count(name))
+                throw Reason(name + " is a word C keeps for itself");
             start = end + 1;
         }
     }
@@ -3804,6 +3988,8 @@ private:
             sequence.own = own->second;
             sequence.reads.erase(own);
         }
+        if (const auto own = sequence.deferred.find(name); own != sequence.deferred.end())
+            sequence.own.insert(own->second.begin(), own->second.end());
         for (const auto& [read, offsets] : sequence.samples)
             for (const int b : offsets) sequence.reads[read].insert(phase - b);
     }
@@ -3970,8 +4156,8 @@ private:
         // NaN. Only a sequence with guards has more than one path to choose.
         for (auto& [name, sequence] : sequences_) {
             for (Guarded& guarded : sequence.guarded) {
-                guarded.guard_from = From(guarded.guard);
-                guarded.value_from = From(guarded.value);
+                guarded.guard_from = From(name, guarded.guard);
+                guarded.value_from = From(name, guarded.value);
             }
         }
         // Without guards, the one clause is always evaluated, so a term it
@@ -4075,6 +4261,13 @@ private:
         return n;
     }
 
+    // Those of a clause of name's, but a slow one's own, which init folds
+    // or Cover refuses (C344).
+    int From(const std::string& name, Reads reads) const {
+        if (Own(name)) reads.erase(name);
+        return From(reads);
+    }
+
     // The first index where every term these reads name exists.
     // A sample's term exists from the stream's start, where a history is not
     // asked for one.
@@ -4111,10 +4304,53 @@ private:
         return std::max(held, first);
     }
 
-    // An input of the model compiled, or one with a history: what is read of
-    // it before the stream is what init folds from that history, or refused.
+    // An input of the model compiled, one with a history, or a recurrence:
+    // what is read of it before the stream is what init folds, or refused.
     bool Historied(const std::string& name) const {
-        return histories_.count(name) || (root_.model && !sequences_.at(name).definition);
+        return histories_.count(name) || (root_.model && !sequences_.at(name).definition) ||
+               (Recurrent(name) && sequences_.at(name).own.empty());
+    }
+
+    // One with no base clause that reads its own terms back, through others
+    // too: those before the stream are what init folds, as an input's
+    // history's are (C343).
+    bool Recurrent(const std::string& name) const {
+        const Sequence& sequence = sequences_.at(name);
+        return Recomputed(sequence) && (!sequence.own.empty() || Reaches(name, &sequence));
+    }
+    // A slow one whose terms read its own back: those before its first are
+    // what init folds, or refused (C344).
+    bool Own(const std::string& name) const {
+        const Sequence& sequence = sequences_.at(name);
+        return !sequence.own.empty() && sequence.definition && !ByCells(*sequence.definition);
+    }
+    bool Reaches(const std::string& from, const Sequence* to) const {
+        std::set<std::string>    seen{from};
+        std::vector<std::string> left{from};
+        while (!left.empty()) {
+            const Sequence& sequence = sequences_.at(left.back());
+            left.pop_back();
+            for (const Reads* each : {&sequence.reads, &sequence.deferred})
+                for (const auto& [read, lags] : *each) {
+                    if (&sequences_.at(read) == to) return true;
+                    if (seen.insert(read).second) left.push_back(read);
+                }
+        }
+        return false;
+    }
+
+    // A term before the stream that a guard holding there gives as a
+    // constant, whatever a parameter is: 'g_n | n < 0 = 1'.
+    bool Given(const std::string& name, int n) {
+        const Sequence& sequence = sequences_.at(name);
+        for (const Guarded& guarded : sequence.guarded) {
+            const auto& p = sequence.definition->Clauses()[guarded.clause].parameters;
+            Check guard{{}, p.guard(), false, sequence.definition->home, p.index_name(), {}, 0};
+            if (Decides(guard, n)) return guarded.constant;
+            guard.conjunction = true;
+            if (!Decides(guard, n)) return false;
+        }
+        return false;
     }
 
     // A term before the stream as the interpreter gives it, where only a
@@ -4124,23 +4360,30 @@ private:
         const auto              history = histories_.find(name);
         const Reference<Value>* definition =
             history != histories_.end() ? history->second : sequences_.at(name).definition;
-        if (fresh && definition && !Parametric(name)) {
+        // A recurrence's own term, where no input or parameter can change it.
+        const bool given =
+            (Recurrent(name) || Own(name)) && (Parametric(name, true).empty() || Given(name, n));
+        const std::string parameter = given ? "" : Parametric(name);
+        if (fresh && definition) {
             definitions_.Forget();
             definitions_.BeginEvaluation();
             try {
                 const ParametersCall<Value> at(
                     PExpression<Value>(), std::make_shared<ValExpression<Value>>(Value(Number(n))));
                 const Value term = definition->Eval(at, definitions_, true);
-                if (definitions_.histories) {
+                if (!parameter.empty()) {
+                    unfolded_[{name, n}] =
+                        "reads " + parameter + ", which the host may assign after init";
+                } else if (definitions_.histories || given) {
                     const std::vector<double> cells = Doubles(term);
                     if (std::all_of(cells.begin(), cells.end(), Finite))
                         slot->second = term;
                     else
-                        unfolded_[{name, n}] = "a term no " + Real() + " holds";
+                        unfolded_[{name, n}] = "gives a term no " + Real() + " holds";
                 }
             } catch (const std::runtime_error& error) {
-                if (definitions_.histories)
-                    unfolded_[{name, n}] = std::string("none: ") + error.what();
+                if (definitions_.histories || given)
+                    unfolded_[{name, n}] = std::string("gives none: ") + error.what();
             }
         }
         return slot->second.has_value();
@@ -4150,19 +4393,21 @@ private:
     // or that it has none.
     std::string Unfolded(const std::string& read, int at) const {
         const auto why = unfolded_.find({read, at});
-        return why != unfolded_.end() ? read + "'s history gives " + why->second
+        return why != unfolded_.end() ? read + "'s history " + why->second
                                       : read + " has no history";
     }
 
-    // Whether a term can read a parameter, which the host may assign after
-    // init has folded it.
-    bool Parametric(const std::string& name) const {
+    // A parameter a term can read, which the host may assign after init has
+    // folded it, or with 'inputs' an input; none, empty.
+    std::string Parametric(const std::string& name, bool inputs = false) const {
         std::set<std::string>    seen{name};
         std::vector<std::string> left{name};
         while (!left.empty()) {
-            const Sequence& sequence = sequences_.at(left.back());
+            const std::string at       = left.back();
+            const Sequence&   sequence = sequences_.at(at);
             left.pop_back();
-            if (!sequence.parameters.empty()) return true;
+            if (!sequence.parameters.empty()) return *sequence.parameters.begin();
+            if (inputs && !sequence.definition) return at;
             std::vector<std::string> reads;
             for (const Reads* each :
                  {&sequence.reads, &sequence.deferred, &sequence.samples, &sequence.seeded})
@@ -4171,7 +4416,7 @@ private:
             for (const std::string& read : reads)
                 if (seen.insert(read).second) left.push_back(read);
         }
-        return false;
+        return "";
     }
 
     // Whether the left of an 'and' or 'or' decides at step n, folded there.
@@ -4202,13 +4447,44 @@ private:
     // Each read before the stream, from a reader's start until 'until', that
     // no history gives and nothing keeps.
     void Cover(const std::string& name, const Sequence& reader, const Reads& reads, int until,
-               const Check* kept = nullptr) {
+               const std::vector<Check>& kept = {}) {
+        const auto kept_at = [&](int n) {
+            return std::ranges::any_of(kept, [&](const Check& c) { return Decides(c, n); });
+        };
         for (const auto& [read, lags] : reads) {
+            // A slow one's own, in its terms, before those init folds (C343).
+            if (&sequences_.at(read) == &reader && reader.period > 1 && Own(read)) {
+                // Init folds back from the first, so a read past the term
+                // that stopped it is refused for that term, named first.
+                const int stop = reader.first - reader.filled - 1;
+                for (const bool at_stop : {true, false})
+                    for (const int lag : lags)
+                        for (int m = reader.first; m - lag < reader.first - reader.filled; ++m)
+                            if ((m - lag == stop) == at_stop && !kept_at(m) &&
+                                !reader.bases.count(reader.period * m + reader.phase))
+                                throw Refusal(
+                                    name,
+                                    name + "_" + std::to_string(m) + " reads " + read + "_" +
+                                        std::to_string(m - lag) +
+                                        (reader.bases.empty()
+                                             ? ", before the stream, " +
+                                                   (at_stop ? std::string()
+                                                            : "below " + read + "_" +
+                                                                  std::to_string(stop) + ", ") +
+                                                   "where " + Unfolded(read, stop)
+                                         : reader.guarded.empty()
+                                             ? ", before it starts at " +
+                                                   std::to_string(reader.first)
+                                             : ", below " + read +
+                                                   "'s base clauses, where only its "
+                                                   "guards could give a term"));
+                continue;
+            }
             if (!Historied(read)) continue;
             for (const int lag : lags) {
                 for (int n = reader.start; n < std::min(until, earliest_ + lag); ++n) {
                     if (!Ticks(reader, n) || reader.bases.count(n) || Folded(read, n - lag) ||
-                        (kept && Decides(*kept, n)))
+                        kept_at(n))
                         continue;
                     throw Refusal(
                         name, name + "_" + std::to_string(Floor(n - reader.phase, reader.period)) +
@@ -4222,6 +4498,11 @@ private:
     // The reads before the stream; the step's deferred ones are checked as it
     // is written.
     void Histories(int earliest) {
+        // A slow one's own terms before its first, as a hold's are (C343).
+        for (auto& [name, sequence] : sequences_)
+            while (Own(name) && sequence.filled < *sequence.own.rbegin() &&
+                   Folded(name, sequence.first - sequence.filled - 1))
+                ++sequence.filled;
         for (const auto& [name, last] : reach_)
             if (last >= earliest)
                 throw Refusal(name, "its history reaches " + name + "_" + std::to_string(earliest) +
@@ -4234,14 +4515,23 @@ private:
                 const auto& p = sequence.definition->Clauses()[guarded.clause].parameters;
                 const Check kept{guarded.value,  p.guard(), true, sequence.definition->home,
                                  p.index_name(), {},        0};
-                Cover(name, sequence, guarded.value, std::numeric_limits<int>::max(), &kept);
+                Cover(name, sequence, guarded.value, std::numeric_limits<int>::max(), {kept});
                 for (const auto& [read, lags] : guarded.value)
                     for (const int lag : lags) always[read].erase(lag);
             }
+            // The general clause's, where no guard holds (C343).
+            std::vector<Check> holds;
+            for (const Guarded& guarded : sequence.guarded) {
+                const auto& p = sequence.definition->Clauses()[guarded.clause].parameters;
+                holds.push_back(
+                    {{}, p.guard(), false, sequence.definition->home, p.index_name(), {}, 0});
+            }
+            Cover(name, sequence, sequence.general_reads, std::numeric_limits<int>::max(), holds);
+            for (const auto& [read, lags] : sequence.general_reads)
+                for (const int lag : lags) always[read].erase(lag);
             for (const Guarded& guarded : sequence.guarded)
-                for (const Reads* reads : {&guarded.guard, &sequence.general_reads})
-                    for (const auto& [read, lags] : *reads)
-                        always[read].insert(lags.begin(), lags.end());
+                for (const auto& [read, lags] : guarded.guard)
+                    always[read].insert(lags.begin(), lags.end());
             Cover(name, sequence, always, std::numeric_limits<int>::max());
             // A base clause's reads, which Cover passes over.
             for (const Seed& seed : sequence.seeds)
@@ -4285,6 +4575,8 @@ private:
         for (const auto& [name, sequence] : sequences_) {
             if (!sequence.definition) continue;
             waiting[name];
+            if (!sequence.parts.empty() && sequence.parts[0] != name)
+                waiting[name].insert(sequence.parts[0]);
             // A hold's lag is counted from the window as the held term's tick
             // leaves it, so the held sequence comes first.
             for (const std::size_t h : sequence.holds) waiting[name].insert(holds_[h].read);
@@ -4316,31 +4608,108 @@ private:
                Subscript(size.rows, size.cols);
     }
 
+    static void Words(const std::string& text, std::set<std::string>& words) {
+        const char* const word = "_0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+        for (std::size_t at = 0, end = 0; end != std::string::npos; at = end + 1) {
+            end = text.find_first_not_of(word, at);
+            words.insert(text.substr(at, end - at));
+        }
+    }
+
     // Those something reads: a cell read out of a product, or a clause that was
     // compiled only to be refused, leaves some that nothing does, and C would
     // say so.
-    static std::string Temporaries(const std::vector<Temporary>& declared,
-                                   const std::string& assignments, const std::string& indent) {
+    static std::vector<const Temporary*> Kept(const std::vector<Temporary>& declared,
+                                              const std::string&            assignments) {
         std::set<std::string> read;  // names: a search of the text kept grows with its square
-        const auto            reads = [&read](const std::string& text) {
-            const char* const word =
-                "_0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
-            for (std::size_t at = 0, end = 0; end != std::string::npos; at = end + 1) {
-                end = text.find_first_not_of(word, at);
-                read.insert(text.substr(at, end - at));
-            }
-        };
-        reads(assignments);
-        std::vector<std::string> kept;
+        Words(assignments, read);
+        std::vector<const Temporary*> kept;
         for (auto temporary = declared.rbegin(); temporary != declared.rend(); ++temporary) {
             if (!read.count(temporary->name)) continue;
-            std::string lines;
-            for (const std::string& line : temporary->lines) lines += indent + line + "\n";
-            reads(lines);
-            kept.push_back(std::move(lines));
+            for (const std::string& line : temporary->lines) Words(line, read);
+            kept.push_back(&*temporary);
         }
+        std::reverse(kept.begin(), kept.end());
+        return kept;
+    }
+    static std::string Temporaries(const std::vector<Temporary>& declared,
+                                   const std::string& assignments, const std::string& indent) {
         std::string out;
-        for (auto lines = kept.rbegin(); lines != kept.rend(); ++lines) out += *lines;
+        for (const Temporary* temporary : Kept(declared, assignments))
+            for (const std::string& line : temporary->lines) out += indent + line + "\n";
+        return out;
+    }
+
+    // A step's list over 4 * split_ bytes, which compilers optimise in time
+    // that grows faster than its length, written as functions of about split_
+    // bytes, in order: a temporary's lines or a statement each, so at least one.
+    // A value a later one reads crosses in the step's struct of values into a
+    // local of its own name, so that every line is written as before.
+    std::string Split(const std::vector<Temporary>& declared, const std::string& assignments,
+                      const std::string& indent) {
+        const std::string whole = Temporaries(declared, assignments, indent) + assignments;
+        if (whole.size() <= 4 * split_) return whole;
+        const std::vector<const Temporary*> kept = Kept(declared, assignments);
+        std::vector<std::string>            texts;
+        for (const Temporary* temporary : kept) {
+            texts.emplace_back();
+            for (const std::string& line : temporary->lines) texts.back() += "    " + line + "\n";
+        }
+        for (std::size_t at = 0, end = 0; at < assignments.size(); at = end) {
+            end = assignments.find('\n', at) + 1;
+            // A statement may run on: an 'if' and its loops.
+            if (at == 0 || assignments[at - 2] == ';') texts.emplace_back();
+            texts.back() +=
+                "    " + assignments.substr(at + indent.size(), end - at - indent.size());
+        }
+        std::vector<std::size_t> first{0};  // each function's first text
+        for (std::size_t t = 0, size = 0; t < texts.size(); size += texts[t++].size())
+            if (size && size + texts[t].size() > split_) {
+                first.push_back(t);
+                size = 0;
+            }
+        first.push_back(texts.size());
+        const std::size_t                  functions = first.size() - 1;
+        std::vector<std::set<std::string>> words(functions);
+        std::vector<std::string>           loads(functions), stores(functions);
+        for (std::size_t f = 0; f < functions; ++f)
+            for (std::size_t t = first[f]; t < first[f + 1]; ++t) Words(texts[t], words[f]);
+        for (std::size_t f = 0; f < functions; ++f)
+            for (std::size_t t = first[f]; t < first[f + 1] && t < kept.size(); ++t) {
+                // 'const double t5_ = ...;', or an array, 'double t5_[3][3] = {...};'.
+                const std::string& name  = kept[t]->name;
+                const std::string& line  = kept[t]->lines[0];
+                const bool         array = !line.starts_with("const ");
+                const std::string  member =
+                    array ? line.substr(0, line.find_first_of(" ;", line.find(name)))
+                           : line.substr(6, line.find(" = ") - 6);
+                const auto copy = [&](const std::string& to, const std::string& from) {
+                    return array ? "    memcpy(" + to + ", " + from + ", sizeof " + name + ");\n"
+                                 : "    " + to + " = " + from + ";\n";
+                };
+                bool read = false;
+                for (std::size_t later = f + 1; later < functions; ++later)
+                    if (words[later].count(name)) {
+                        read = true;
+                        loads[later] += array ? "    " + member + ";\n" + copy(name, "v_->" + name)
+                                              : "    const " + member + " = v_->" + name + ";\n";
+                    }
+                if (!read) continue;
+                values_ += "    " + member + ";\n";
+                stores[f] += copy("v_->" + name, name);
+            }
+        std::string out;
+        for (std::size_t f = 0; f < functions; ++f) {
+            // Passed the values only where it carries some: there may be none.
+            const bool  carries = !loads[f].empty() || !stores[f].empty();
+            std::string body    = (words[f].count("m_") ? "" : "    (void)m_;\n") + loads[f];
+            for (std::size_t t = first[f]; t < first[f + 1]; ++t) body += texts[t];
+            const std::string called = module_ + "_step" + std::to_string(++splits_) + "_";
+            pieces_ += "static " + upper_ + "_NOINLINE_ void " + called + "(" + module_ + "* m_" +
+                       (carries ? ", " + module_ + "_values_* v_" : "") + ") {\n" + body +
+                       stores[f] + "}\n\n";
+            out += indent + called + (carries ? "(m_, &m_v_);\n" : "(m_);\n");
+        }
         return out;
     }
 
@@ -4353,60 +4722,60 @@ private:
                " matrix, in place, as the interpreter takes it: Gauss-Jordan\n"
                " * on the largest pivot, and NaN in every cell where there is none. */\n"
                "static inline void " +
-               module_ + "_inverse" + size + "_(double a[" + size + "][" + size +
+               module_ + "_inverse" + size + "_(double a_[" + size + "][" + size +
                "]) {\n"
-               "    double r[" +
+               "    double r_[" +
                size + "][" + size +
                "];\n"
-               "    for (int i = 0; i < " +
-               size + "; ++i)\n        for (int j = 0; j < " + size +
-               "; ++j) r[i][j] = i == j ? 1.0 : 0.0;\n"
-               "    for (int col = 0; col < " +
+               "    for (int i_ = 0; i_ < " +
+               size + "; ++i_)\n        for (int j_ = 0; j_ < " + size +
+               "; ++j_) r_[i_][j_] = i_ == j_ ? 1.0 : 0.0;\n"
+               "    for (int col_ = 0; col_ < " +
                size +
-               "; ++col) {\n"
-               "        int pivot = col;\n"
-               "        for (int row = col + 1; row < " +
+               "; ++col_) {\n"
+               "        int pivot_ = col_;\n"
+               "        for (int row_ = col_ + 1; row_ < " +
                size +
-               "; ++row)\n"
-               "            if (fabs(a[row][col]) > fabs(a[pivot][col]) ||\n"
-               "                (a[pivot][col] == 0.0 && a[row][col] != 0.0))\n"
-               "                pivot = row;\n"
-               "        if (a[pivot][col] == 0.0) {\n"
-               "            for (int i = 0; i < " +
-               size + "; ++i)\n                for (int j = 0; j < " + size +
-               "; ++j) a[i][j] = NAN;\n"
+               "; ++row_)\n"
+               "            if (fabs(a_[row_][col_]) > fabs(a_[pivot_][col_]) ||\n"
+               "                (a_[pivot_][col_] == 0.0 && a_[row_][col_] != 0.0))\n"
+               "                pivot_ = row_;\n"
+               "        if (a_[pivot_][col_] == 0.0) {\n"
+               "            for (int i_ = 0; i_ < " +
+               size + "; ++i_)\n                for (int j_ = 0; j_ < " + size +
+               "; ++j_) a_[i_][j_] = NAN;\n"
                "            return;\n"
                "        }\n"
-               "        for (int j = 0; j < " +
+               "        for (int j_ = 0; j_ < " +
                size +
-               "; ++j) {\n"
-               "            const double s = a[pivot][j], t = r[pivot][j];\n"
-               "            a[pivot][j] = a[col][j];\n"
-               "            r[pivot][j] = r[col][j];\n"
-               "            a[col][j]   = s;\n"
-               "            r[col][j]   = t;\n"
+               "; ++j_) {\n"
+               "            const double s_ = a_[pivot_][j_], t_ = r_[pivot_][j_];\n"
+               "            a_[pivot_][j_] = a_[col_][j_];\n"
+               "            r_[pivot_][j_] = r_[col_][j_];\n"
+               "            a_[col_][j_]   = s_;\n"
+               "            r_[col_][j_]   = t_;\n"
                "        }\n"
-               "        const double scale = a[col][col];\n"
-               "        for (int j = 0; j < " +
+               "        const double scale_ = a_[col_][col_];\n"
+               "        for (int j_ = 0; j_ < " +
                size +
-               "; ++j) {\n"
-               "            a[col][j] = a[col][j] / scale;\n"
-               "            r[col][j] = r[col][j] / scale;\n"
+               "; ++j_) {\n"
+               "            a_[col_][j_] = a_[col_][j_] / scale_;\n"
+               "            r_[col_][j_] = r_[col_][j_] / scale_;\n"
                "        }\n"
-               "        for (int row = 0; row < " +
+               "        for (int row_ = 0; row_ < " +
                size +
-               "; ++row) {\n"
-               "            const double factor = a[row][col];\n"
-               "            if (row == col || factor == 0.0) continue;\n"
-               "            for (int j = 0; j < " +
+               "; ++row_) {\n"
+               "            const double factor_ = a_[row_][col_];\n"
+               "            if (row_ == col_ || factor_ == 0.0) continue;\n"
+               "            for (int j_ = 0; j_ < " +
                size +
-               "; ++j) {\n"
-               "                a[row][j] = a[row][j] - factor * a[col][j];\n"
-               "                r[row][j] = r[row][j] - factor * r[col][j];\n"
+               "; ++j_) {\n"
+               "                a_[row_][j_] = a_[row_][j_] - factor_ * a_[col_][j_];\n"
+               "                r_[row_][j_] = r_[row_][j_] - factor_ * r_[col_][j_];\n"
                "            }\n"
                "        }\n"
                "    }\n"
-               "    memcpy(a, r, sizeof r);\n"
+               "    memcpy(a_, r_, sizeof r_);\n"
                "}\n\n";
     }
 
@@ -4445,7 +4814,7 @@ private:
              at             = text.find('\x02', at)) {
             const std::size_t end = text.find('\x03', at);
             const Check&      kept = checks_.at(std::stoul(text.substr(at + 1, end - at - 1)));
-            Cover(name, sequence, kept.reads, std::numeric_limits<int>::max(), &kept);
+            Cover(name, sequence, kept.reads, std::numeric_limits<int>::max(), {kept});
             const int   from = From(kept.reads);
             std::string check;
             for (int n = sequence.start; n < from && check.empty(); ++n)
@@ -4583,6 +4952,73 @@ private:
         return out;
     }
 
+    // A sequence's cells assigned in its step, in the order the interpreter
+    // tries its clauses.
+    std::string Assigned(const std::string& name, const std::string& indent) {
+        const Sequence& sequence = sequences_.at(name);
+        const bool      scalar   = sequence.general.size() == 1;
+        std::string     assignments;
+        for (std::size_t c = 0; c < sequence.general.size(); ++c) {
+            assignments += indent + "m_->" + name + "[0]" + Subscript(sequence.size, c) + " = ";
+            for (const auto& [index, base] : sequence.bases)
+                assignments += "m_->index_ == " + std::to_string(index) + " ? " + base[c] + " : ";
+            // Checked only where an index no base clause gives needs it.
+            const auto before = [&](int from, const std::string& otherwise = "NAN") {
+                for (int n = sequence.start; n < from; ++n)
+                    if (!sequence.bases.count(n))
+                        return "m_->index_ < " + std::to_string(from) + " ? " + otherwise + " : ";
+                return std::string();
+            };
+            // Ahead of the cells, which the guards cannot read.
+            if (clauses_ && c == 0 && !sequence.guarded.empty()) {
+                std::string kept = indent + "m_->" + name + "_clause_ = ";
+                for (const auto& [index, base] : sequence.bases)
+                    kept += "m_->index_ == " + std::to_string(index) + " ? 0 : ";
+                for (const Guarded& guarded : sequence.guarded)
+                    kept += before(guarded.guard_from, "0") + Picked(guarded.condition) + " ? " +
+                            std::to_string(guarded.clause + 1) + " : ";
+                assignments.insert(0, kept + std::to_string(sequence.general_clause + 1) + ";\n");
+            }
+            for (const Guarded& guarded : sequence.guarded) {
+                const std::string value = before(guarded.value_from);
+                assignments +=
+                    before(guarded.guard_from) + guarded.condition + " ? " +
+                    (value.empty() ? guarded.cells[c] : "(" + value + guarded.cells[c] + ")") +
+                    " : ";
+            }
+            if (!sequence.guarded.empty())
+                assignments += before(From(name, sequence.general_reads));
+            assignments += sequence.general[c] + ";\n";
+        }
+        // Ahead of the cells too, a cell's clause where no base term stands.
+        std::string picks;
+        for (std::size_t c = 0; c < sequence.taken.size(); ++c) {
+            picks += indent + "m_->" + name + "_clause_[" + std::to_string(c) + "] = ";
+            for (const auto& [index, base] : sequence.bases)
+                picks += "m_->index_ == " + std::to_string(index) + " ? 0 : ";
+            picks += sequence.taken[c] + ";\n";
+        }
+        assignments.insert(0, picks);
+        // The interpreter refuses a matrix term whole where it refuses a cell.
+        if (aware_ && !scalar) {
+            std::string any;
+            for (std::size_t c = 0; c < sequence.general.size(); ++c)
+                any += std::string(c ? " || " : "") + "isnan(m_->" + name + "[0]" +
+                       Subscript(sequence.size, c) + ")";
+            const std::string b = sequence.size.slices ? "    " : "";
+            assignments += indent + "if (" + any + ")\n" +
+                           (b.empty() ? ""
+                                      : indent + "    for (int b_ = 0; b_ < " +
+                                            std::to_string(sequence.size.slices) + "; ++b_)\n") +
+                           indent + b + "    for (int i_ = 0; i_ < " +
+                           std::to_string(sequence.size.rows) + "; ++i_)\n" + indent + b +
+                           "        for (int j_ = 0; j_ < " + std::to_string(sequence.size.cols) +
+                           "; ++j_) m_->" + name + "[0]" + (b.empty() ? "" : "[b_]") +
+                           "[i_][j_] = NAN;\n";
+        }
+        return assignments;
+    }
+
     Compiled Print(const std::string& module, const std::string& source) {
         for (const auto& [name, sequence] : sequences_)
             if (!sequence.definition && parameters_.count(name))
@@ -4630,6 +5066,7 @@ private:
         std::string guard;
         for (const char c : module)
             guard += static_cast<char>(std::toupper(static_cast<unsigned char>(c)));
+        upper_ = guard;
         guard += "_H";
 
         std::string out;
@@ -4697,14 +5134,19 @@ private:
         out += "    m_->index_ = " + std::to_string(earliest - 1) + ";\n";
         out += "    " + module + "_update(m_);\n}\n\n";
 
+        const std::size_t stepping = out.size();
         out += "/* Advances to the next index, the first at " + std::to_string(earliest) +
                ", and computes its terms. */\n";
         out += "static inline void " + module + "_step(" + module + "* m_";
+        // An input x is 'x_in_', which neither 'm_', a temporary 't0_' nor
+        // a function 'model_f' can be named (C342).
         for (const std::string& name : inputs)
             out += Cells(name) == 1
-                       ? ", double " + name
-                       : ", const double " + name + "[" + std::to_string(Cells(name)) + "]";
-        out += ") {\n    ++m_->index_;\n";
+                       ? ", double " + name + "_in_"
+                       : ", const double " + name + "_in_[" + std::to_string(Cells(name)) + "]";
+        out += ") {\n";
+        const std::size_t opened = out.size();
+        out += "    ++m_->index_;\n";
         // A sequence's window moves when it computes a term: every step, or
         // on its ticks.
         const auto shifted = [&](const std::string& name, const std::string& indent) {
@@ -4724,12 +5166,13 @@ private:
         for (const std::string& name : inputs)
             out += Cells(name) == 1
                        ? "    m_->" + name + "[0]" + Subscript(sequences_.at(name).size, 0) +
-                             " = " + name + ";\n"
-                       : "    memcpy(m_->" + name + "[0], " + name + ", sizeof m_->" + name +
+                             " = " + name + "_in_;\n"
+                       : "    memcpy(m_->" + name + "[0], " + name + "_in_, sizeof m_->" + name +
                              "[0]);\n";
         for (const std::string& name : order) {
             const Sequence&   sequence = sequences_.at(name);
-            const bool        scalar   = sequence.general.size() == 1;
+            // A grad by several names' parts are written with the first.
+            if (!sequence.parts.empty() && sequence.parts[0] != name) continue;
             const bool        rated    = sequence.period > 1;
             const bool        late     = sequence.start > earliest || rated;
             const std::string indent   = late ? "        " : "    ";
@@ -4739,51 +5182,12 @@ private:
                                     std::to_string(sequence.period) + " == 0"
                               : std::string()) +
                        ") {\n";
-            if (rated) out += shifted(name, indent);
             std::string assignments;
-            for (std::size_t c = 0; c < sequence.general.size(); ++c) {
-                assignments += indent + "m_->" + name + "[0]" + Subscript(sequence.size, c) + " = ";
-                for (const auto& [index, base] : sequence.bases)
-                    assignments +=
-                        "m_->index_ == " + std::to_string(index) + " ? " + base[c] + " : ";
-                // Checked only where an index no base clause gives needs it.
-                const auto before = [&](int from, const std::string& otherwise = "NAN") {
-                    for (int n = sequence.start; n < from; ++n)
-                        if (!sequence.bases.count(n))
-                            return "m_->index_ < " + std::to_string(from) + " ? " + otherwise +
-                                   " : ";
-                    return std::string();
-                };
-                // Ahead of the cells, which the guards cannot read.
-                if (clauses_ && c == 0 && !sequence.guarded.empty()) {
-                    std::string kept = indent + "m_->" + name + "_clause_ = ";
-                    for (const auto& [index, base] : sequence.bases)
-                        kept += "m_->index_ == " + std::to_string(index) + " ? 0 : ";
-                    for (const Guarded& guarded : sequence.guarded)
-                        kept += before(guarded.guard_from, "0") + Picked(guarded.condition) +
-                                " ? " + std::to_string(guarded.clause + 1) + " : ";
-                    assignments.insert(0,
-                                       kept + std::to_string(sequence.general_clause + 1) + ";\n");
-                }
-                for (const Guarded& guarded : sequence.guarded) {
-                    const std::string value = before(guarded.value_from);
-                    assignments +=
-                        before(guarded.guard_from) + guarded.condition + " ? " +
-                        (value.empty() ? guarded.cells[c] : "(" + value + guarded.cells[c] + ")") +
-                        " : ";
-                }
-                if (!sequence.guarded.empty()) assignments += before(From(sequence.general_reads));
-                assignments += sequence.general[c] + ";\n";
+            for (const std::string& part :
+                 sequence.parts.empty() ? std::vector{name} : sequence.parts) {
+                if (rated) out += shifted(part, indent);
+                assignments += Assigned(part, indent);
             }
-            // Ahead of the cells too, a cell's clause where no base term stands.
-            std::string picks;
-            for (std::size_t c = 0; c < sequence.taken.size(); ++c) {
-                picks += indent + "m_->" + name + "_clause_[" + std::to_string(c) + "] = ";
-                for (const auto& [index, base] : sequence.bases)
-                    picks += "m_->index_ == " + std::to_string(index) + " ? 0 : ";
-                picks += sequence.taken[c] + ";\n";
-            }
-            assignments.insert(0, picks);
             // Resolved before what is used is known: a term read back that is
             // not computed again leaves its temporaries unread.
             std::vector<Temporary> temporaries = sequence.temporaries;
@@ -4791,27 +5195,26 @@ private:
                 for (std::string& line : temporary.lines)
                     line = Checked(Rated(line, sequence), name, sequence);
             const std::string checked = Checked(Rated(assignments, sequence), name, sequence);
-            out += Temporaries(temporaries, checked, indent) + checked;
-            // The interpreter refuses a matrix term whole where it refuses a cell.
-            if (aware_ && !scalar) {
-                std::string any;
-                for (std::size_t c = 0; c < sequence.general.size(); ++c)
-                    any += std::string(c ? " || " : "") + "isnan(m_->" + name + "[0]" +
-                           Subscript(sequence.size, c) + ")";
-                const std::string b = sequence.size.slices ? "    " : "";
-                out += indent + "if (" + any + ")\n" +
-                       (b.empty() ? ""
-                                  : indent + "    for (int b_ = 0; b_ < " +
-                                        std::to_string(sequence.size.slices) + "; ++b_)\n") +
-                       indent + b + "    for (int i_ = 0; i_ < " +
-                       std::to_string(sequence.size.rows) + "; ++i_)\n" + indent + b +
-                       "        for (int j_ = 0; j_ < " + std::to_string(sequence.size.cols) +
-                       "; ++j_) m_->" + name + "[0]" + (b.empty() ? "" : "[b_]") +
-                       "[i_][j_] = NAN;\n";
-            }
+            out += Split(temporaries, checked, indent);
             if (late) out += "    }\n";
         }
         out += "}\n\n#endif\n";
+        if (splits_) {
+            std::string values;
+            if (!values_.empty()) {
+                out.insert(opened, "    " + module + "_values_ m_v_;\n");
+                values = "/* What a part of the step computes and a later part reads. */\n" +
+                         ("typedef struct " + module + "_values_ {\n") + values_ + "} " + module +
+                         "_values_;\n\n";
+            }
+            const std::string define = "#define " + upper_ + "_NOINLINE_";
+            out.insert(stepping,
+                       "/* The step's longest lists, each written as functions, which compilers\n"
+                       " * optimise faster than one function of them all. */\n" +
+                           ("#if defined(__GNUC__)\n" + define) + " __attribute__((noinline))\n" +
+                           ("#elif defined(_MSC_VER)\n" + define) + " __declspec(noinline)\n" +
+                           ("#else\n" + define) + "\n#endif\n\n" + values + pieces_);
+        }
         out.insert(folds, Folds(earliest));
         // A function of the prelude where something calls it: the part one a
         // floor or a comparison drops nothing does.
@@ -4941,12 +5344,17 @@ private:
         int                      count = 0;
     };
     std::deque<std::vector<Temporary>> lists_;  // those, kept as a step's are
+    static constexpr std::size_t       split_  = 16384;  // a part's bytes; see Split
+    int                                splits_ = 0;      // the parts written
+    std::string values_, pieces_, upper_;  // their struct's members, their functions, the guard's
     Walked*                          limit_           = nullptr;
     int                              temporary_count_ = 0;
     std::map<std::string, Value>     places_;             // a cell's row and column, by their names
     Code        code_;
     Tape* tape_  = nullptr;  // the grad's being compiled in reverse mode
     int   tapes_ = 0;        // how many were, so that a memo's key tells their nodes apart
+    // The grad by several names a step computes the parts of, and where they go.
+    std::pair<const GradExpression<Value>*, std::vector<Code>*> grouped_{};
 };
 
 #endif  // INKAMATH_COMPILE_HPP

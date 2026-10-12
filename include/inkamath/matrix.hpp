@@ -8,6 +8,7 @@
 #include <cmath>
 #include <functional>
 #include <iomanip>
+#include <memory>
 #include <ostream>
 #include <sstream>
 #include <stdexcept>
@@ -35,7 +36,8 @@ public:
     explicit Matrix(const T& value) : scalar_(value) {}
     explicit Matrix(Extent extent, const T& value = T()) : extent_(extent), scalar_(value)
     {
-        if(!IsScalar()) cells_.assign(extent.count(), value);
+        if (!IsScalar())
+            cells_ = std::make_shared<Store>(Store{std::vector<T>(extent.count(), value)});
     }
 
     Extent Size() const {return extent_;}
@@ -103,16 +105,20 @@ public:
     }
 
     static bool same(const Matrix<T>& a, const Matrix<T>& b) {
+        if (a.IsScalar() && b.IsScalar()) return numeric_interface<T>::same(a.scalar_, b.scalar_);
+        if (a.cells_ == b.cells_) return true;
         return a.extent_ == b.extent_ &&
                std::equal(a.data(), a.data() + a.extent_.count(), b.data(),
                           [](const T& x, const T& y) { return numeric_interface<T>::same(x, y); });
     }
     static std::size_t hash(const Matrix<T>& a) {
+        if (a.IsScalar()) return 31 + numeric_interface<T>::hash(a.scalar_);  // the loop's
+        if (a.cells_->hash) return a.cells_->hash;
         std::size_t mixed = a.extent_.count();
         std::for_each(a.data(), a.data() + a.extent_.count(), [&mixed](const T& value) {
             mixed = mixed * 31 + numeric_interface<T>::hash(value);
         });
-        return mixed;
+        return a.cells_->hash = mixed;
     }
 
     static bool exact(const Matrix<T>& a) {
@@ -237,8 +243,13 @@ public:
     // not a single value.
     bool     IsScalar() const { return extent_.count() == 1 && !IsTensor(); }
     bool     IsTensor() const { return extent_.slices != 0; }
-    T* data() {return IsScalar() ? &scalar_ : cells_.data();}
-    const T* data() const {return IsScalar() ? &scalar_ : cells_.data();}
+    T*       data() {
+        if (IsScalar()) return &scalar_;
+        if (cells_.use_count() > 1) cells_ = std::make_shared<Store>(Store{cells_->values});
+        cells_->hash = 0;
+        return cells_->values.data();
+    }
+    const T* data() const { return IsScalar() ? &scalar_ : cells_->values.data(); }
 
     /* Implementation of the numeric interface */
     static Matrix<T> pow(const Matrix<T>& a, const Matrix<T>& b)
@@ -618,7 +629,15 @@ private:
 
     Extent         extent_;
     T              scalar_ = T();   // the cell of a 1x1 matrix
-    std::vector<T> cells_;          // the cells of any other
+    // The cells of any other, with their hash, 0 until asked, shared by its
+    // copies until one is written: a memo's key holds each argument, which is
+    // bound and passed on in copies (C333, C339). A write may follow data(),
+    // so it clears the hash. A single value, hashed at once, keeps none.
+    struct Store {
+        std::vector<T> values;
+        std::size_t    hash = 0;
+    };
+    std::shared_ptr<Store> cells_;
 };
 
 template <typename T>
