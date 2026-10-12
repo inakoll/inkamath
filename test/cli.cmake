@@ -1724,9 +1724,11 @@ check(compile_series_values)
 # a and b read t elsewhere than at the walking index less a constant; c and d
 # give it arguments that change as the walk does; e differentiates through it;
 # f's term reads the limit's own at its index, and g's its own with other
-# arguments.
+# arguments; h's guard below its base, before the walk, the limit's own.
 file(WRITE "${OUT}/walking.ink" "a_n = lim sa(x_n)\nb_n = lim sb(x_n)\nc_n = lim sc(x_n)\n"
      "d_n = lim sd(x_n)\ne_n = lim se(x_n)\nf_n = lim sf(x_n)\ng_n = lim sg(x_n)\n"
+     "h_n = lim sh(x_n)\nq(x)_3 = x\nq(x)_k | k < 3 = sh(x)_(k-1)/2\nq(x)_k = q(x)_(k-1)*x/k\n"
+     "sh(x)_0 = 1\nsh(x)_1 = 1\nsh(x)_k = sh(x)_(k-1)/2 + q(x)_(k-1)/4\n"
      "t(x)_0 = 1\nt(x)_k = t(x)_(k-1)*x/k\nu(x)_k = sf(x)_k/2\nw(x)_0 = x\n"
      "w(x)_k = w(x/2)_(k-1)/k\nsa(x)_0 = 1\nsa(x)_k = sa(x)_(k-1) + t(x)_(2*k)\nsb(x)_0 = 1\n"
      "sb(x)_k = sb(x)_(k-1) + t(x)_(k+1)\nsc(x)_0 = 1\n"
@@ -1740,6 +1742,7 @@ cannot compile d: t_(...): read at lim sd's index with arguments that change as 
 cannot compile e: t_(...): a derivative of a term lim se walks, for now
 cannot compile f: u_(...): reads lim sf's term at its index
 cannot compile g: w_(...): read at lim sg's index with other arguments in its own terms
+cannot compile h: sh_(...): a term read where h's index is not seen
 ")
 set(exit 1)
 check(compile_series_refused)
