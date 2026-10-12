@@ -463,3 +463,17 @@ Recorded so that they are asked before they are answered by accident.
   and does writing it remove more from the current compiler than it adds?
 - How much of a paper can be transcribed before the language has to grow, and
   is the answer to that a good measure of whether it should?
+- Is a Jacobian laid out by numerator, a row per cell of the function, and
+  does `tex` set it as df/dx?
+- Is whether a limit converged a value, a guard, or a property of the
+  definition that takes it, and how does it mean the same compiled?
+- How does a signature declare an input present on some steps only, and what
+  does the static check then prove of what reads it?
+- Is an index a kind of number of its own, an input refused where it is not
+  whole, and is its base 1 at every boundary with a host?
+- Where do frames belong: in a name, as a paper's superscript, in something
+  the check enforces, or with the reader?
+- What would carry the epistemic level, exact, certified or estimated and
+  what demoted it, and what is the smallest machine-readable format to show
+  it? Carried before a C API or such a format reads it, it is an abstraction
+  with nothing to serve (`CLAUDE.md` §2), so only the question is recorded.
