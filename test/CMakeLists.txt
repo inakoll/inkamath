@@ -343,6 +343,9 @@ set_tests_properties(check_taylor_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^taylor: ${series}\ntaylor\\.R: within 4\\.4e-15${about}\ntaylor\\.y: within 1\\.1e-12${about}\n$")
 set_tests_properties(check_wave_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^wave: ${series}\nwave\\.z: within 2\\.1e-15${about}\n$")
+# later's as measured, as it has no packed form.
+set_tests_properties(check_later_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^later: ${series}\nlater\\.y: within 9\\.1e-13${about}\nlater\\.z: within 8\\.9e-16${about}\n$")
 add_test(NAME check_outside_2000 COMMAND check_outside_2000)
 set_tests_properties(check_outside_2000 PROPERTIES WILL_FAIL ON)
 add_test(NAME check_runaway_1000 COMMAND check_runaway_1000)
