@@ -126,6 +126,20 @@ radical(x_n) = {
 }
 radix = radical(x_n = ~0*(-1))
 
+# A square and an inverse are the interpreter's at -O0 as at -O2, where a
+# compiler folds C's pow into them and libm's differs (C345):
+#
+#     squares: 100 steps from 0, against exact values until 0 and inexact ones from there
+#     squares.v: within 0; the interpreter's terms about <e> from the exact ones
+#     squares.y: within 0; the interpreter's terms about <e> from the exact ones
+#     squares.z: within 0; the interpreter's terms about <e> from the exact ones
+powered(x_n, w_n) = {
+    y_n = x_n^2
+    z_n = w_n^-1
+    v_n = (x_n + w_n)^2 + (x_n*w_n)^-1
+}
+squares = powered(x_n = ~1.9477379493182951, w_n = ~1.8299814462661743)
+
 # A call given to a function is computed once, however often the function
 # reads it, so calls nested ten deep are ten temporaries (C140):
 #

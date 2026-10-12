@@ -715,10 +715,11 @@ endfunction()
 set(adjoint "${CMAKE_CURRENT_LIST_DIR}/compile/adjoint.ink")
 set(args --compile ${adjoint} layer -o layer.h)
 check(compile_adjoint_fit)
-holds(compile_adjoint_fit layer.h [[    const double t16_ = 2.0 * pow(t14_ + (0.0 - m_->y[0][3][0]), 1.0);
-    const double t17_ = 0.5 * t16_;
-    const double t18_ = t17_ * t15_;
-]] [[    m_->W[0][3][3] = m_->index_ == 0 ? 0.5 : m_->W[1][3][3] + (0.0 - m_->eta * (isnan(t25_) ? NAN : t18_ * m_->x[0][3][0]));
+holds(compile_adjoint_fit layer.h [[    const double t19_ = t17_ + (0.0 - m_->y[0][3][0]);
+    const double t20_ = 2.0 * pow(t19_, 1.0);
+    const double t21_ = 0.5 * t20_;
+    const double t22_ = t21_ * t18_;
+]] [[    m_->W[0][3][3] = m_->index_ == 0 ? 0.5 : m_->W[1][3][3] + (0.0 - m_->eta * (isnan(t29_) ? NAN : t22_ * m_->x[0][3][0]));
 ]])
 written(compile_adjoint_fit layer.h "layer_tanh_dx\\(" 5)
 set(args --compile ${adjoint} wide -o wide.h)
@@ -1211,16 +1212,20 @@ file(WRITE "${OUT}/gained.ink" "two(x_n) = {\n    x_(-2) = 0\n    c_n = x_(n-1) 
      "gained(a = 2, x_n) = {\n    x_n | n < 0 = 3\n    inner = two(x_n = a*x_n)\n"
      "    c_n = inner.c_n\n}\n")
 set(args --compile gained.ink gained -o gained.h)
-set(stderr "inkamath: cannot compile inner.c: inner.c_0 reads inner.x_-1, before the stream, where inner.x has no history\n")
+set(stderr "inkamath: cannot compile inner.c: inner.c_0 reads inner.x_-1, before the stream, where inner.x's history reads a, which the host may assign after init\n")
 set(exit 1)
 check(history_gained)
 # And a recurrence's own history that reads one, which the step read as 0
 # (C343).
 refused(lifted "a = 2) = {\n    g_n | n < 0 = a\n    g_n = 2*g_(n-1)"
-        "g: g_0 reads g_-1, before the stream, where g has no history")
+        "g: g_0 reads g_-1, before the stream, where g's history reads a, which the host may assign after init")
 # And at another rate, where it was read as 0.
 refused(slowed "a = 2, x_n) = {\n    y_m | m < 0 = a\n    y_m = y_(m-1) + x_(2*m)"
-        "y: y_0 reads y_-1, before the stream, where y has no history")
+        "y: y_0 reads y_-1, before the stream, where y's history reads a, which the host may assign after init")
+# Init folds a slow history back from its first term, so a term it reads
+# past one it cannot fold is refused for that one (C348).
+refused(gapped "a = 2, x_n) = {\n    y_m | m < -1 = 1\n    y_m | m < 0 = a\n    y_m = y_(m-2) + x_(2*m)"
+        "y: y_1 reads y_-1, before the stream, where y's history reads a, which the host may assign after init")
 # And below a slow sequence's base clause, where it was read as 0 (C344),
 # with or without a guard.
 refused(sunk "a = 2, x_n) = {\n    y_0 = 1\n    y_m | m < 0 = a\n    y_m = y_(m-2) + x_(2*m)"
@@ -1309,7 +1314,7 @@ check(float_calm)
 holds(float_calm float/calm.c [[static const float in_0[100] = {
     0.0f, 0.1f, 0.2f, 0.3f,
 ]] [[static float got_0[100];
-]] [[        calm_step(&m_, in_0[n_]);
+]] [[        checked_step(&m_, in_0[n_]);
         memcpy(&got_0[n_ * 1], &m_.v[0], sizeof(float) * 1);
 ]])
 
@@ -1323,16 +1328,21 @@ set(args --compile c103.ink neg --float -o c103f.h)
 check(compile_c103_float)
 holds(compile_c103_float c103f.h "    m_->p = -INFINITY;\n    m_->q = -INFINITY;\n")
 
-# C104: a header or a program named after a word C keeps, or after a standard
-# header it includes, is refused.
+# C104: a header named after a word C keeps, or after a standard header it
+# includes, is refused; a program is not named after its file (C346).
 set(args --compile ${inputs} dot --float -o float.h)
 set(stderr "inkamath: 'float' is a name C keeps, and the header is named after it\n")
 set(exit 2)
 check(compile_c104)
 set(args --check ${CMAKE_CURRENT_LIST_DIR}/compile/drift.ink calm -o math.c)
-set(stderr "inkamath: 'math' is a name C keeps, and the program is named after it\n")
-set(exit 2)
 check(check_c104)
+holds(check_c104 math.c "    checked_init(&m_);\n")
+# C347: and a name a header it includes keeps for a macro.
+file(WRITE "${OUT}/c347.ink" "NAN_n = n\n")
+set(args --compile c347.ink -o c347.h)
+set(stderr "inkamath: cannot compile NAN: NAN is a word C keeps for itself\n")
+set(exit 1)
+check(compile_c347)
 
 # grad compiled (DESIGN.md, compile/grad.ink): the gradient written out, each
 # function of the prelude called on a value that moves with one for its part,
@@ -1340,10 +1350,11 @@ check(check_c104)
 set(grad "${CMAKE_CURRENT_LIST_DIR}/compile/grad.ink")
 set(args --compile ${grad} lsq -o lsq.h)
 check(compile_grad_line)
-holds(compile_grad_line lsq.h [[    const double t0_ = 2.0 * pow(1.0 * m_->w[1][0][0] + 0.0 * m_->w[1][1][0] - 1.0, 1.0);
-]] [[    const double t7_ = 0.125 * t0_;
-    m_->w[0][0][0] = m_->index_ == 0 ? 0.0 : m_->w[1][0][0] + (0.0 - m_->eta * (1.0 * t4_ + 1.0 * t5_ + 1.0 * t6_ + 1.0 * t7_));
-    m_->w[0][1][0] = m_->index_ == 0 ? 0.0 : m_->w[1][1][0] + (0.0 - m_->eta * (3.0 * t4_ + 2.0 * t5_ + 1.0 * t6_ + 0.0 * t7_));
+holds(compile_grad_line lsq.h [[    const double t0_ = 1.0 * m_->w[1][0][0] + 0.0 * m_->w[1][1][0] - 1.0;
+    const double t1_ = 2.0 * pow(t0_, 1.0);
+]] [[    const double t11_ = 0.125 * t1_;
+    m_->w[0][0][0] = m_->index_ == 0 ? 0.0 : m_->w[1][0][0] + (0.0 - m_->eta * (1.0 * t8_ + 1.0 * t9_ + 1.0 * t10_ + 1.0 * t11_));
+    m_->w[0][1][0] = m_->index_ == 0 ? 0.0 : m_->w[1][1][0] + (0.0 - m_->eta * (3.0 * t8_ + 2.0 * t9_ + 1.0 * t10_ + 0.0 * t11_));
 ]])
 set(args --compile ${grad} descent -o fall.h)
 check(compile_grad_fall)
@@ -1444,7 +1455,7 @@ holds(compile_c136_term c136t.h "    m_->y[0] = (isnan(t0_) ? NAN : 2.0);\n")
 file(WRITE "${OUT}/c136g.ink" "f1(z)[i,j] = z[i,j]\nf1(z)[1,1] | ((z[1,1])^2)^(1/2) >= 5 = 7\nf2(z) = f1(z)\nf2(z)[1,1] = 2\nu_n = grad_(t = x_n) f2([t])\n")
 set(args --compile c136g.ink -o c136g.h)
 check(compile_c136g)
-holds(compile_c136g c136g.h "    const double t1_ = (isnan(t0_) ? NAN : 2.0);\n    m_->u[0] = (isnan(t1_) ? NAN : 0.0);\n")
+holds(compile_c136g c136g.h "    const double t2_ = (isnan(t1_) ? NAN : 2.0);\n    m_->u[0] = (isnan(t2_) ? NAN : 0.0);\n")
 
 # C115: a constant gradient at a point that moves folds with what reads it
 # from its value, not by taking the point again (C135).
@@ -1588,8 +1599,8 @@ holds(compile_iterates_roots roots.h [[    const double t0_ = sqrt(0.0 + m_->x[0
     const double t1_ = sqrt(0.0 + t0_);
 ]] [[    const double t126_ = sqrt(0.0 + t125_);
     const double t127_ = sqrt(0.0 + t126_);
-    const double t128_ = pow(t127_, 2.0);
-]] [[    m_->h[0] = pow(t254_, 2.0);
+    const double t128_ = t127_ * t127_;
+]] [[    m_->h[0] = t254_ * t254_;
 ]])
 set(args --compile ${iterates} mpc -o mpc.h)
 check(compile_iterates_mpc)

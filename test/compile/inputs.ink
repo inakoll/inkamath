@@ -227,3 +227,7 @@ named(m_n, t0_n) = {
     s_n = 2*m_n
 }
 clashed = named(m_n = n, t0_n = n)
+
+# An instance named as a function of <math.h>: its program, named after it,
+# declared a type 'j1' over the function (C346).
+j1 = dot(x_n = [n; 1])

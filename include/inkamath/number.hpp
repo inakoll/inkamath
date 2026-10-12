@@ -293,7 +293,8 @@ public:
         // takes its sign from the exact exponent.
         const inexact_type base = a.Inexact();
         if (whole && base.imag() == 0 && base.real() < 0) {
-            const double magnitude = std::pow(-base.real(), b.Inexact().real());
+            const double magnitude =
+                numeric_interface<inexact_type>::pow(-base, b.Inexact()).real();
             return Approximate(rounded(odd ? -magnitude : magnitude), past);
         }
         // An exact number no normal double holds has a power of 2 taken out

@@ -78,6 +78,8 @@ public:
         "goto",    "if",     "inline",   "int",    "long",     "register", "restrict",
         "return",  "short",  "signed",   "sizeof", "static",   "struct",   "switch",
         "typedef", "union",  "unsigned", "void",   "volatile", "while"};
+    // The macros of the headers a step includes that a name can spell (C347).
+    static inline const std::set<std::string> macros = {"BUFSIZ", "EOF", "INFINITY", "NAN", "NULL"};
 
     // The session's sequences, or with a model, those of its instance with
     // every default and no input given (DESIGN.md, phase 15).
@@ -1908,7 +1910,7 @@ private:
     // Under grad (Derivative::Power), e^w's part is e^w*w', and a constant
     // power's c*u^(c-1)*u', none where c is 0, NaN where u is 0 and c < 1.
     PExpression<Value> visit(PowExpression<Value>* expression) override {
-        const Code base = Emit(expression->m_e1());
+        Code       base = Emit(expression->m_e1());
         const Code exponent =
             base.Scalar()
                 ? Emit(expression->m_e2())
@@ -1921,6 +1923,8 @@ private:
         } else {
             if (!exponent.Scalar()) throw Reason("a matrix cannot be an exponent");
             if (!base.Scalar()) return Answer(Power(base, exponent));
+            // Read twice by its square, and once more by its part.
+            if (exponent.constant && Doubles(*exponent.constant)[0] == 2) base = Shared(base);
             value = Powered(base, exponent);
         }
         if (!exponent.part.empty()) {
@@ -1956,17 +1960,21 @@ private:
 
     // C's absorbs a NaN where the other operand is 1 or 0: pow(1, NaN) and
     // pow(NaN, 0) are 1. C's sqrt(-0) is -0, the interpreter's +0 (C163).
+    // A square and an inverse are the interpreter's, not pow, which a
+    // compiler folds into them at -O1 (C345).
     Code Powered(const Code& base, const Code& exponent) {
         const auto other = [](const Code& c, double v) {
             return c.constant && Doubles(*c.constant)[0] != v;
         };
         const std::string test =
             other(exponent, 0.0) || other(base, 1.0) ? "" : Nan(base, exponent);
-        const std::string power =
-            exponent.constant && Doubles(*exponent.constant)[0] == 0.5
-                ? "sqrt(0.0 + " + Wrap(base.cells[0], product) + ")"
-                : "pow(" + base.cells[0].text + ", " + exponent.cells[0].text + ")";
-        Cell              cell(test.empty() ? power : "(" + test + power + ")", primary);
+        const double e = exponent.constant ? Doubles(*exponent.constant)[0] : 0.0;
+        const Cell&  u = base.cells[0];
+        Cell         power("pow(" + u.text + ", " + exponent.cells[0].text + ")", primary);
+        if (e == 0.5) power = Cell("sqrt(0.0 + " + Wrap(u, product) + ")", primary);
+        if (e == 2) power = Multiplied(Shared(u), Shared(u));
+        if (e == -1) power = Divided(Atom("1.0", true), u);
+        Cell cell = test.empty() ? power : Cell("(" + test + power.text + ")", primary);
         // Of a constant above 0 but 1, NaN where its exponent is: a test reads
         // that, not a second pow, which C, setting errno, does not share.
         if (const double b = base.constant ? Doubles(*base.constant)[0] : 0.0;
@@ -3913,7 +3921,8 @@ private:
         for (std::size_t start = 0; start <= key.size();) {
             const std::size_t end  = std::min(key.find('.', start), key.size());
             const std::string name = key.substr(start, end - start);
-            if (keywords.count(name)) throw Reason(name + " is a word C keeps for itself");
+            if (keywords.count(name) || macros.count(name))
+                throw Reason(name + " is a word C keeps for itself");
             start = end + 1;
         }
     }
@@ -4353,24 +4362,28 @@ private:
             history != histories_.end() ? history->second : sequences_.at(name).definition;
         // A recurrence's own term, where no input or parameter can change it.
         const bool given =
-            (Recurrent(name) || Own(name)) && (!Parametric(name, true) || Given(name, n));
-        if (fresh && definition && (given || !Parametric(name))) {
+            (Recurrent(name) || Own(name)) && (Parametric(name, true).empty() || Given(name, n));
+        const std::string parameter = given ? "" : Parametric(name);
+        if (fresh && definition) {
             definitions_.Forget();
             definitions_.BeginEvaluation();
             try {
                 const ParametersCall<Value> at(
                     PExpression<Value>(), std::make_shared<ValExpression<Value>>(Value(Number(n))));
                 const Value term = definition->Eval(at, definitions_, true);
-                if (definitions_.histories || given) {
+                if (!parameter.empty()) {
+                    unfolded_[{name, n}] =
+                        "reads " + parameter + ", which the host may assign after init";
+                } else if (definitions_.histories || given) {
                     const std::vector<double> cells = Doubles(term);
                     if (std::all_of(cells.begin(), cells.end(), Finite))
                         slot->second = term;
                     else
-                        unfolded_[{name, n}] = "a term no " + Real() + " holds";
+                        unfolded_[{name, n}] = "gives a term no " + Real() + " holds";
                 }
             } catch (const std::runtime_error& error) {
                 if (definitions_.histories || given)
-                    unfolded_[{name, n}] = std::string("none: ") + error.what();
+                    unfolded_[{name, n}] = std::string("gives none: ") + error.what();
             }
         }
         return slot->second.has_value();
@@ -4380,19 +4393,21 @@ private:
     // or that it has none.
     std::string Unfolded(const std::string& read, int at) const {
         const auto why = unfolded_.find({read, at});
-        return why != unfolded_.end() ? read + "'s history gives " + why->second
+        return why != unfolded_.end() ? read + "'s history " + why->second
                                       : read + " has no history";
     }
 
-    // Whether a term can read a parameter, which the host may assign after
-    // init has folded it, or with 'inputs' an input.
-    bool Parametric(const std::string& name, bool inputs = false) const {
+    // A parameter a term can read, which the host may assign after init has
+    // folded it, or with 'inputs' an input; none, empty.
+    std::string Parametric(const std::string& name, bool inputs = false) const {
         std::set<std::string>    seen{name};
         std::vector<std::string> left{name};
         while (!left.empty()) {
-            const Sequence& sequence = sequences_.at(left.back());
+            const std::string at       = left.back();
+            const Sequence&   sequence = sequences_.at(at);
             left.pop_back();
-            if (!sequence.parameters.empty() || (inputs && !sequence.definition)) return true;
+            if (!sequence.parameters.empty()) return *sequence.parameters.begin();
+            if (inputs && !sequence.definition) return at;
             std::vector<std::string> reads;
             for (const Reads* each :
                  {&sequence.reads, &sequence.deferred, &sequence.samples, &sequence.seeded})
@@ -4401,7 +4416,7 @@ private:
             for (const std::string& read : reads)
                 if (seen.insert(read).second) left.push_back(read);
         }
-        return false;
+        return "";
     }
 
     // Whether the left of an 'and' or 'or' decides at step n, folded there.
@@ -4439,20 +4454,30 @@ private:
         for (const auto& [read, lags] : reads) {
             // A slow one's own, in its terms, before those init folds (C343).
             if (&sequences_.at(read) == &reader && reader.period > 1 && Own(read)) {
-                for (const int lag : lags)
-                    for (int m = reader.first; m - lag < reader.first - reader.filled; ++m)
-                        if (!kept_at(m) && !reader.bases.count(reader.period * m + reader.phase))
-                            throw Refusal(
-                                name,
-                                name + "_" + std::to_string(m) + " reads " + read + "_" +
-                                    std::to_string(m - lag) +
-                                    (reader.bases.empty()
-                                         ? ", before the stream, where " + Unfolded(read, m - lag)
-                                     : reader.guarded.empty()
-                                         ? ", before it starts at " + std::to_string(reader.first)
-                                         : ", below " + read +
-                                               "'s base clauses, where only its "
-                                               "guards could give a term"));
+                // Init folds back from the first, so a read past the term
+                // that stopped it is refused for that term, named first.
+                const int stop = reader.first - reader.filled - 1;
+                for (const bool at_stop : {true, false})
+                    for (const int lag : lags)
+                        for (int m = reader.first; m - lag < reader.first - reader.filled; ++m)
+                            if ((m - lag == stop) == at_stop && !kept_at(m) &&
+                                !reader.bases.count(reader.period * m + reader.phase))
+                                throw Refusal(
+                                    name,
+                                    name + "_" + std::to_string(m) + " reads " + read + "_" +
+                                        std::to_string(m - lag) +
+                                        (reader.bases.empty()
+                                             ? ", before the stream, " +
+                                                   (at_stop ? std::string()
+                                                            : "below " + read + "_" +
+                                                                  std::to_string(stop) + ", ") +
+                                                   "where " + Unfolded(read, stop)
+                                         : reader.guarded.empty()
+                                             ? ", before it starts at " +
+                                                   std::to_string(reader.first)
+                                             : ", below " + read +
+                                                   "'s base clauses, where only its "
+                                                   "guards could give a term"));
                 continue;
             }
             if (!Historied(read)) continue;

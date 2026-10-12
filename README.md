@@ -198,8 +198,8 @@ every cell, which its first comment says. Such a header is not to be built
 with `-ffinite-math-only`, which `-ffast-math` implies: GCC removes the tests
 that carry NaN, and Clang warns of each NaN the header writes.
 `test/compile/nan.ink` has an instance of each.
-Clang 19 at -O2 miscompiles some headers' NaN tests; build with
-`-fno-slp-vectorize`.
+Clang before 23.1 can miscompile some headers' NaN tests at -O2 (llvm
+925e284), and Clang 19 does on the tests; build with `-fno-slp-vectorize`.
 
 A sequence that reads another at `x_(2*m)` samples it, and is computed every
 second step: its terms are the input's at another rate, and `y_(floor(n/2))`
