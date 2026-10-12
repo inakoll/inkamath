@@ -59,6 +59,15 @@ set(input "1+1\nsum_(k=1)^10 k\na=2\na*3\n")
 set(stdout "2\n55\na=2\n6\n")
 check(filter)
 
+# Each answer is written as it is given, so a long run written to a file
+# shows how far it went: stopped in its second input, it has given its first.
+file(WRITE "${OUT}/slow.ink" "1+1\nH[j<=80, k<=80] = 1/(j+k-1)\nsum_(j=1)^80 (H^-1)[j, 1]\n")
+execute_process(COMMAND "${EXE}" slow.ink WORKING_DIRECTORY "${OUT}"
+                OUTPUT_VARIABLE got_stdout ERROR_QUIET TIMEOUT 2)
+if(NOT "${got_stdout}" STREQUAL "2\nH[j<=80, k<=80] = 1/(j+k-1)\n")
+    message(SEND_ERROR "flushed: stdout\n--- got\n${got_stdout}---")
+endif()
+
 # A blank line and a comment are not inputs. At a terminal an empty line is
 # still 'empty expression'; in a file it is only spacing.
 set(input "1+1\n\n# a comment\n2*3\n")
