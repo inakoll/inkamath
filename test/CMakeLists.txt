@@ -166,7 +166,7 @@ add_test(NAME prelude_header
 foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brink drift:ledge
                          drift:rift drift:naught drift:zeroed drift:mirrored drift:nests drift:latch drift:toil
                          drift:late drift:radix
-                         delay:fir newton:stiff newton:halves logistic:gate sized:sized softmax:cls steady:mark
+                         delay:fir newton:stiff newton:halves newton:evens newton:evened newton:twonames newton:weighed logistic:gate sized:sized softmax:cls steady:mark
                          rnn:rnn attention:head momentum:ball adam:fit lqr:gain
                          rates:pairs rates:odd seeded:warm cascade:servo decimate:boxcar
                          decimate:stride decimate:frame decimate:lead
@@ -211,7 +211,7 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brin
                          gradmany:same gradmany:stair transformer:unseen:4 transformer:tuned:4
                          split:carried:4 split:apart:4 pendulum:one spin:twirl:20 iekf:walk:21
                          tip:reach tip:rested series:taylor series:wave series:later
-                         sums:summed sums:halving)
+                         sums:summed sums:halving sums:cancelled)
     string(REPLACE ":" ";" checked ${checked})
     list(POP_FRONT checked file instance count)
     set(name ${instance})
@@ -356,6 +356,8 @@ set_tests_properties(check_summed_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^summed: ${series}\nsummed\\.J: within 1\\.1e-15${about}\nsummed\\.R: within 4\\.4e-15${about}\nsummed\\.p: within 8\\.9e-16${about}\nsummed\\.u: within 1\\.1e-12${about}\nsummed\\.y: within 9\\.1e-13${about}\nsummed\\.z: within 4e-14${about}\n$")
 set_tests_properties(check_halving_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^halving: 100 steps from 0, against exact values\nhalving\\.f: within 0\n$")
+set_tests_properties(check_cancelled_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^cancelled: ${series}\ncancelled\\.y: within [0-9.e-]+${about}\n$")
 add_test(NAME check_outside_2000 COMMAND check_outside_2000)
 set_tests_properties(check_outside_2000 PROPERTIES WILL_FAIL ON)
 add_test(NAME check_runaway_1000 COMMAND check_runaway_1000)
@@ -826,6 +828,15 @@ set_tests_properties(check_stiff_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^stiff: 100 steps from 0, against exact values until 0 and inexact ones from there\nstiff\\.h: within 0\n(stiff\\.[a-z]+: within [0-9.e+-]+${about}\n)+$")
 set_tests_properties(check_halves_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^halves: 100 steps from 0, against exact values until 0 and inexact ones from there\nhalves\\.y: within 0${about}\n$")
+set_tests_properties(check_evens_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^evens: 100 steps from 0, against exact values until 0 and inexact ones from there\nevens\\.y: within [0-9.e-]+${about}\n$")
+set_tests_properties(check_evened_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^evened: 100 steps from 0, against exact values until 0 and inexact ones from there\nevened\\.y: within [0-9.e-]+${about}\n$")
+# C353's departure: the step answers where the interpreter refuses.
+set_tests_properties(check_weighed_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^weighed: 100 steps from 0, against exact values\nweighed\\.y: 100000000000003\\.[0-9]+ at 0, where the interpreter gives none: s did not converge within 100 terms")
+set_tests_properties(check_twonames_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^twonames: 100 steps from 0, against exact values until 0 and inexact ones from there\ntwonames\\.a: within [0-9.e-]+${about}\ntwonames\\.b: within [0-9.e-]+${about}\n$")
 set_tests_properties(check_fir_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^fir: 100 steps from 0, against exact values\n(fir\\.[a-z]+: within 0\n)+$")
 set_tests_properties(check_naught_report PROPERTIES PASS_REGULAR_EXPRESSION

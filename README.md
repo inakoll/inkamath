@@ -159,7 +159,11 @@ the interpreter would say it does not converge: `test/compile/newton.ink`
 solves each step of a stiff equation by Newton's method, a sequence with
 parameters under `lim`, and `test/compile/logistic.ink` trains a logistic
 regression, its `exp` a limit written in inkamath, as `test/compile/softmax.ink`
-writes softmax and cross-entropy, `log` being Newton's method on `exp`. A
+writes softmax and cross-entropy, `log` being Newton's method on `exp`. Past
+a term of about 225,000 a double cannot show a step within the 1e-10, so there
+it answers what the doubles converge to, and may answer where the interpreter
+does not: `s(x)_0 = x*10^14` and `s(x)_k = s(x)_(k-1) + 0.8^k` give about
+1e14 + 4, as a float target may. A
 sequence with parameters read at a constant index, `f(x)_K`, is written out
 as a sum with constant bounds is, each term below the one read a temporary of
 the step: `test/compile/iterates.ink` takes a determinant by Faddeev-LeVerrier,

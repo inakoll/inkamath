@@ -2949,8 +2949,13 @@ private:
             "; ++k_) {\n";
         text += iterate;
         text += "        if (started_) {\n";
+        // A step within an ulp or two of the term may be an exact 0 rounded,
+        // and is taken for one (C353).
+        const std::string noise = floats ? "" : " && d_ > 2 * DBL_EPSILON * fabs(t_[i_][j_])";
         if (scalar) {
             text += "            step_ = fabs(t_ - t1_);\n";
+            if (!floats)
+                text += "            if (step_ <= 2 * DBL_EPSILON * fabs(t_)) step_ = 0.0;\n";
         } else {
             text += "            step_ = 0.0;\n";
             if (floats) text += "            int near_ = 1;\n";
@@ -2959,7 +2964,7 @@ private:
             text += "                for (int j_ = 0; j_ < " + std::to_string(walked.size.cols) +
                     "; ++j_) {\n";
             text += "                    const double d_ = fabs(t_[i_][j_] - t1_[i_][j_]);\n";
-            text += "                    if (isnan(d_) || d_ > step_) step_ = d_;\n";
+            text += "                    if (isnan(d_) || (d_ > step_" + noise + ")) step_ = d_;\n";
             if (floats)
                 text +=
                     "                    near_ &= d_ <= 2 * FLT_EPSILON * fabsf(t_[i_][j_]) && "
@@ -3048,6 +3053,7 @@ private:
                 if (otherwise || (c.guarded() || base) != guard || (base && c.index() < first))
                     continue;
                 if (base && c.guarded()) throw Reason("a guarded base clause in a limit's terms");
+                const Setting<std::string>       named(index_, base ? index_ : c.index_name());
                 const std::optional<std::string> condition =
                     base    ? "k_ == " + std::to_string(c.index())
                     : guard ? Condition(c.guard())
@@ -5594,7 +5600,8 @@ private:
             kept = helper->second + kept;
         }
         out.insert(functions, kept);
-        if (Writes(kept, "FLT_EPSILON")) out.insert(includes, "#include <float.h>\n");
+        if (Writes(kept, "DBL_EPSILON") || Writes(kept, "FLT_EPSILON"))
+            out.insert(includes, "#include <float.h>\n");
         // Past the line naming the source, the words of the compiler's own C
         // for a double as a float's: every constant is written as one already.
         const auto inside = [&](std::size_t at) {
