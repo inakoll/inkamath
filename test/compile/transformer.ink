@@ -57,12 +57,12 @@ unseen = inf(X_n = oh(n))
 #     tuned: 4 steps from 0, against exact values until 1 and inexact ones from there
 #     tuned.U: within <e>; the interpreter's terms about <e> from the exact ones
 #
-# Its step is one function of 451,298 bytes, the forward pass and the sweep
-# back to U; GCC 13 builds its check program at -O2 in 26 s. Split into
+# Its step whole is one function of 451,298 bytes, the forward pass and the
+# sweep back to U, whose check program GCC 13 built at -O2 in 26 s. Split into
 # functions (DESIGN.md, a compiled step split into functions), as unseen's of
-# 272,495 bytes: 'inkamath --compile transformer.ink tune -o tune.h' and its
-# 'inf -o inf.h' write no function of 32,768 bytes or more, the init's
-# weights among them.
+# 272,495 bytes, it builds in 13 s: 'inkamath --compile transformer.ink tune
+# -o tune.h' and its 'inf -o inf.h' write no function of 32,768 bytes or
+# more, the init's weights among them.
 lse(z)[b,t] = log(sum_(v=1)^nv exp(z[b,t,v]))
 ce(z[b<=p, t<=q, v<=w], y) = sum_(b=1)^p sum_(t=1)^q (lse(z)[b,t] - sum_(v=1)^w y[b,t,v]*z[b,t,v])/(p*q)
 tune(eta = 1/10, E = tE, P = tP, Q = tQ, K = tK, Vv = tVv, O = tO, W1 = tW1, c1 = tc1, W2 = tW2, c2 = tc2, G = tG, Bb = tBb, X_n[b<=1, t<=nt, v<=nv], Y_n[b<=1, t<=nt, v<=nv]) = {

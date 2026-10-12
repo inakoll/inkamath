@@ -48,46 +48,6 @@ endfunction()
 # Read by cases in every part.
 set(inputs "${CMAKE_CURRENT_LIST_DIR}/compile/inputs.ink")
 
-# Specified, not yet built (DESIGN.md, a compiled step split into functions):
-# compile/transformer.ink's forward pass, 'inf', and U trained beneath it,
-# 'tune', a step of 272,495 and 451,298 bytes, each written as functions of
-# under 32,768 bytes, the init's weights among them.
-if(PART STREQUAL "spec")
-    foreach(model inf tune)
-        set(args --compile "${CMAKE_CURRENT_LIST_DIR}/compile/transformer.ink" ${model}
-                 -o ${model}.h)
-        file(REMOVE "${OUT}/${model}.h")
-        check(compile_step_split_${model})
-        file(READ "${OUT}/${model}.h" rest)
-        set(largest 0)
-        set(stepped OFF)
-        # Every function, whatever precedes its name: a line at the margin
-        # ending in ') {'. The step among them, or nothing was measured.
-        set(opens "\n[A-Za-z][^\n]*\\) {\n")
-        string(REGEX MATCH "${opens}" opening "${rest}")
-        while(opening)
-            string(FIND "${opening}" " ${model}_step(" named)
-            if(NOT named EQUAL -1)
-                set(stepped ON)
-            endif()
-            string(FIND "${rest}" "${opening}" at)
-            string(SUBSTRING "${rest}" ${at} -1 rest)
-            string(FIND "${rest}" "\n}\n" size)
-            if(size GREATER largest)
-                set(largest ${size})
-            endif()
-            string(SUBSTRING "${rest}" ${size} -1 rest)
-            string(REGEX MATCH "${opens}" opening "${rest}")
-        endwhile()
-        if(NOT stepped)
-            message(SEND_ERROR "compile_step_split: ${model}.h has no ${model}_step")
-        elseif(NOT largest LESS 32768)
-            message(SEND_ERROR "compile_step_split: ${model}.h has a function of ${largest} bytes")
-        endif()
-    endforeach()
-    return()
-endif()
-
 # The cases run as three tests of about equal time under the sanitizers: PART
 # 1 up to charpoly's refusal, 2 from it, 3 from eig's, and all where PART is
 # not given.
@@ -794,6 +754,40 @@ foreach(flag IN LISTS flags)
     list(LENGTH ors ors)
     if(flag MATCHES " != 0" AND NOT ors EQUAL 1)
         message(SEND_ERROR "compile_sweep_conditions: ${flag}")
+    endif()
+endforeach()
+# A compiled step split into functions (DESIGN.md): compile/transformer.ink's
+# forward pass, 'inf', and U trained beneath it, 'tune', steps of 272,495 and
+# 451,298 bytes whole, each written as functions of under 32,768 bytes, the
+# init's weights among them.
+foreach(model inf tune)
+    set(args --compile "${CMAKE_CURRENT_LIST_DIR}/compile/transformer.ink" ${model} -o ${model}.h)
+    check(compile_step_split_${model})
+    file(READ "${OUT}/${model}.h" rest)
+    set(largest 0)
+    set(stepped OFF)
+    # Every function, whatever precedes its name: a line at the margin ending
+    # in ') {'. The step among them, or nothing was measured.
+    set(opens "\n[A-Za-z][^\n]*\\) {\n")
+    string(REGEX MATCH "${opens}" opening "${rest}")
+    while(opening)
+        string(FIND "${opening}" " ${model}_step(" named)
+        if(NOT named EQUAL -1)
+            set(stepped ON)
+        endif()
+        string(FIND "${rest}" "${opening}" at)
+        string(SUBSTRING "${rest}" ${at} -1 rest)
+        string(FIND "${rest}" "\n}\n" size)
+        if(size GREATER largest)
+            set(largest ${size})
+        endif()
+        string(SUBSTRING "${rest}" ${size} -1 rest)
+        string(REGEX MATCH "${opens}" opening "${rest}")
+    endwhile()
+    if(NOT stepped)
+        message(SEND_ERROR "compile_step_split: ${model}.h has no ${model}_step")
+    elseif(NOT largest LESS 32768)
+        message(SEND_ERROR "compile_step_split: ${model}.h has a function of ${largest} bytes")
     endif()
 endforeach()
 # An 'any' of equal operands is the operand, a NaN test of equal cells one.

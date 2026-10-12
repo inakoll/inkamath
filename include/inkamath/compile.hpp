@@ -4489,31 +4489,108 @@ private:
                Subscript(size.rows, size.cols);
     }
 
+    static void Words(const std::string& text, std::set<std::string>& words) {
+        const char* const word = "_0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+        for (std::size_t at = 0, end = 0; end != std::string::npos; at = end + 1) {
+            end = text.find_first_not_of(word, at);
+            words.insert(text.substr(at, end - at));
+        }
+    }
+
     // Those something reads: a cell read out of a product, or a clause that was
     // compiled only to be refused, leaves some that nothing does, and C would
     // say so.
-    static std::string Temporaries(const std::vector<Temporary>& declared,
-                                   const std::string& assignments, const std::string& indent) {
+    static std::vector<const Temporary*> Kept(const std::vector<Temporary>& declared,
+                                              const std::string&            assignments) {
         std::set<std::string> read;  // names: a search of the text kept grows with its square
-        const auto            reads = [&read](const std::string& text) {
-            const char* const word =
-                "_0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
-            for (std::size_t at = 0, end = 0; end != std::string::npos; at = end + 1) {
-                end = text.find_first_not_of(word, at);
-                read.insert(text.substr(at, end - at));
-            }
-        };
-        reads(assignments);
-        std::vector<std::string> kept;
+        Words(assignments, read);
+        std::vector<const Temporary*> kept;
         for (auto temporary = declared.rbegin(); temporary != declared.rend(); ++temporary) {
             if (!read.count(temporary->name)) continue;
-            std::string lines;
-            for (const std::string& line : temporary->lines) lines += indent + line + "\n";
-            reads(lines);
-            kept.push_back(std::move(lines));
+            for (const std::string& line : temporary->lines) Words(line, read);
+            kept.push_back(&*temporary);
         }
+        std::reverse(kept.begin(), kept.end());
+        return kept;
+    }
+    static std::string Temporaries(const std::vector<Temporary>& declared,
+                                   const std::string& assignments, const std::string& indent) {
         std::string out;
-        for (auto lines = kept.rbegin(); lines != kept.rend(); ++lines) out += *lines;
+        for (const Temporary* temporary : Kept(declared, assignments))
+            for (const std::string& line : temporary->lines) out += indent + line + "\n";
+        return out;
+    }
+
+    // A step's list over 4 * split_ bytes, which compilers optimise in time
+    // that grows faster than its length, written as functions of about split_
+    // bytes, in order: a temporary's lines or a statement each, so at least one.
+    // A value a later one reads crosses in the step's struct of values into a
+    // local of its own name, so that every line is written as before.
+    std::string Split(const std::vector<Temporary>& declared, const std::string& assignments,
+                      const std::string& indent) {
+        const std::string whole = Temporaries(declared, assignments, indent) + assignments;
+        if (whole.size() <= 4 * split_) return whole;
+        const std::vector<const Temporary*> kept = Kept(declared, assignments);
+        std::vector<std::string>            texts;
+        for (const Temporary* temporary : kept) {
+            texts.emplace_back();
+            for (const std::string& line : temporary->lines) texts.back() += "    " + line + "\n";
+        }
+        for (std::size_t at = 0, end = 0; at < assignments.size(); at = end) {
+            end = assignments.find('\n', at) + 1;
+            // A statement may run on: an 'if' and its loops.
+            if (at == 0 || assignments[at - 2] == ';') texts.emplace_back();
+            texts.back() +=
+                "    " + assignments.substr(at + indent.size(), end - at - indent.size());
+        }
+        std::vector<std::size_t> first{0};  // each function's first text
+        for (std::size_t t = 0, size = 0; t < texts.size(); size += texts[t++].size())
+            if (size && size + texts[t].size() > split_) {
+                first.push_back(t);
+                size = 0;
+            }
+        first.push_back(texts.size());
+        const std::size_t                  functions = first.size() - 1;
+        std::vector<std::set<std::string>> words(functions);
+        std::vector<std::string>           loads(functions), stores(functions);
+        for (std::size_t f = 0; f < functions; ++f)
+            for (std::size_t t = first[f]; t < first[f + 1]; ++t) Words(texts[t], words[f]);
+        for (std::size_t f = 0; f < functions; ++f)
+            for (std::size_t t = first[f]; t < first[f + 1] && t < kept.size(); ++t) {
+                // 'const double t5_ = ...;', or an array, 'double t5_[3][3] = {...};'.
+                const std::string& name  = kept[t]->name;
+                const std::string& line  = kept[t]->lines[0];
+                const bool         array = !line.starts_with("const ");
+                const std::string  member =
+                    array ? line.substr(0, line.find_first_of(" ;", line.find(name)))
+                           : line.substr(6, line.find(" = ") - 6);
+                const auto copy = [&](const std::string& to, const std::string& from) {
+                    return array ? "    memcpy(" + to + ", " + from + ", sizeof " + name + ");\n"
+                                 : "    " + to + " = " + from + ";\n";
+                };
+                bool read = false;
+                for (std::size_t later = f + 1; later < functions; ++later)
+                    if (words[later].count(name)) {
+                        read = true;
+                        loads[later] += array ? "    " + member + ";\n" + copy(name, "v_->" + name)
+                                              : "    const " + member + " = v_->" + name + ";\n";
+                    }
+                if (!read) continue;
+                values_ += "    " + member + ";\n";
+                stores[f] += copy("v_->" + name, name);
+            }
+        std::string out;
+        for (std::size_t f = 0; f < functions; ++f) {
+            // Passed the values only where it carries some: there may be none.
+            const bool  carries = !loads[f].empty() || !stores[f].empty();
+            std::string body    = (words[f].count("m_") ? "" : "    (void)m_;\n") + loads[f];
+            for (std::size_t t = first[f]; t < first[f + 1]; ++t) body += texts[t];
+            const std::string called = module_ + "_step" + std::to_string(++splits_) + "_";
+            pieces_ += "static " + upper_ + "_NOINLINE_ void " + called + "(" + module_ + "* m_" +
+                       (carries ? ", " + module_ + "_values_* v_" : "") + ") {\n" + body +
+                       stores[f] + "}\n\n";
+            out += indent + called + (carries ? "(m_, &m_v_);\n" : "(m_);\n");
+        }
         return out;
     }
 
@@ -4869,6 +4946,7 @@ private:
         std::string guard;
         for (const char c : module)
             guard += static_cast<char>(std::toupper(static_cast<unsigned char>(c)));
+        upper_ = guard;
         guard += "_H";
 
         std::string out;
@@ -4936,6 +5014,7 @@ private:
         out += "    m_->index_ = " + std::to_string(earliest - 1) + ";\n";
         out += "    " + module + "_update(m_);\n}\n\n";
 
+        const std::size_t stepping = out.size();
         out += "/* Advances to the next index, the first at " + std::to_string(earliest) +
                ", and computes its terms. */\n";
         out += "static inline void " + module + "_step(" + module + "* m_";
@@ -4943,7 +5022,9 @@ private:
             out += Cells(name) == 1
                        ? ", double " + name + "_"
                        : ", const double " + name + "_[" + std::to_string(Cells(name)) + "]";
-        out += ") {\n    ++m_->index_;\n";
+        out += ") {\n";
+        const std::size_t opened = out.size();
+        out += "    ++m_->index_;\n";
         // A sequence's window moves when it computes a term: every step, or
         // on its ticks.
         const auto shifted = [&](const std::string& name, const std::string& indent) {
@@ -4992,10 +5073,26 @@ private:
                 for (std::string& line : temporary.lines)
                     line = Checked(Rated(line, sequence), name, sequence);
             const std::string checked = Checked(Rated(assignments, sequence), name, sequence);
-            out += Temporaries(temporaries, checked, indent) + checked;
+            out += Split(temporaries, checked, indent);
             if (late) out += "    }\n";
         }
         out += "}\n\n#endif\n";
+        if (splits_) {
+            std::string values;
+            if (!values_.empty()) {
+                out.insert(opened, "    " + module + "_values_ m_v_;\n");
+                values = "/* What a part of the step computes and a later part reads. */\n" +
+                         ("typedef struct " + module + "_values_ {\n") + values_ + "} " + module +
+                         "_values_;\n\n";
+            }
+            const std::string define = "#define " + upper_ + "_NOINLINE_";
+            out.insert(stepping,
+                       "/* The step's longest lists, each written as functions, which compilers\n"
+                       " * optimise faster than one function of them all. */\n" +
+                           ("#if defined(__GNUC__)\n" + define) + " __attribute__((noinline))\n" +
+                           ("#elif defined(_MSC_VER)\n" + define) + " __declspec(noinline)\n" +
+                           ("#else\n" + define) + "\n#endif\n\n" + values + pieces_);
+        }
         out.insert(folds, Folds(earliest));
         // A function of the prelude where something calls it: the part one a
         // floor or a comparison drops nothing does.
@@ -5125,6 +5222,9 @@ private:
         int                      count = 0;
     };
     std::deque<std::vector<Temporary>> lists_;  // those, kept as a step's are
+    static constexpr std::size_t       split_  = 16384;  // a part's bytes; see Split
+    int                                splits_ = 0;      // the parts written
+    std::string values_, pieces_, upper_;  // their struct's members, their functions, the guard's
     Walked*                          limit_           = nullptr;
     int                              temporary_count_ = 0;
     std::map<std::string, Value>     places_;             // a cell's row and column, by their names

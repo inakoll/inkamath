@@ -64,13 +64,6 @@ foreach(part 1 2 3)
                      -P ${CMAKE_CURRENT_LIST_DIR}/cli.cmake)
     set_tests_properties(cli_${part} PROPERTIES TIMEOUT 120)
 endforeach()
-# A compiled step split into functions (DESIGN.md), specified before it is
-# built: cli.cmake's spec part, skipped while a function is too large.
-add_test(NAME cli_spec
-         COMMAND ${CMAKE_COMMAND} -DEXE=$<TARGET_FILE:inkamath_cli> -DPART=spec
-                 -DOUT=${CMAKE_CURRENT_BINARY_DIR}/cli_spec -P ${CMAKE_CURRENT_LIST_DIR}/cli.cmake)
-set_tests_properties(cli_spec PROPERTIES TIMEOUT 120 SKIP_REGULAR_EXPRESSION
-    "compile_step_split: [a-z]+\\.h has a function of [0-9]+ bytes")
 
 # bench's workloads, each a transcript bench/run.cmake measures, replayed so
 # that one gone stale fails here rather than at its next measure. The
@@ -207,7 +200,8 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brin
                          implicit:layered tensorgrad:attend tensorgrad:small
                          tensorgrad:saliency:3 adjoint:fit4 adjoint:token
                          adjoint:sinabs adjoint:gate3 adjoint:under adjoint:aside gradmany:pair
-                         gradmany:same gradmany:stair transformer:unseen:4 transformer:tuned:4)
+                         gradmany:same gradmany:stair transformer:unseen:4 transformer:tuned:4
+                         split:carried:4 split:apart:4)
     string(REPLACE ":" ";" checked ${checked})
     list(POP_FRONT checked file instance count)
     set(name ${instance})
@@ -599,6 +593,20 @@ set_tests_properties(check_unseen_4_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^unseen: 4 steps from 0${inexact0}\nunseen\\.Z: within [1-9](\\.[0-9])?e-1[5-9]${about}\n$")
 set_tests_properties(check_tuned_4_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^tuned: 4 steps from 0, against exact values until 1 and inexact ones from there\ntuned\\.U: within [1-9](\\.[0-9])?e-1[5-9]${about}\n$")
+# A compiled step split into functions (DESIGN.md), as compile/split.ink
+# gives it: carried's parts carry an array and a flag, apart's nothing.
+set_tests_properties(check_carried_4_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^carried: 4 steps from 0, against exact values\ncarried\\.x: within [1-9](\\.[0-9])?e-1[5-7]\ncarried\\.y: within [1-9](\\.[0-9])?e-1[3-5]\n$")
+set_tests_properties(check_apart_4_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^apart: 4 steps from 0, against exact values\napart\\.x: within 0\n$")
+add_test(NAME check_carried_values
+         COMMAND ${CMAKE_COMMAND} -E cat ${CMAKE_CURRENT_BINARY_DIR}/compile/carried_4.c)
+set_tests_properties(check_carried_values PROPERTIES PASS_REGULAR_EXPRESSION
+    "_values_ {\n    double t[0-9]+_\\[3\\]\\[3\\];\n    int t[0-9]+_;\n")
+add_test(NAME check_apart_values
+         COMMAND ${CMAKE_COMMAND} -E cat ${CMAKE_CURRENT_BINARY_DIR}/compile/apart_4.c)
+set_tests_properties(check_apart_values PROPERTIES PASS_REGULAR_EXPRESSION "apart_4_step2_\\(m_\\)"
+                     FAIL_REGULAR_EXPRESSION "_values_")
 # C329: --check's exact run forgets what its walk of the prelude recorded.
 set_tests_properties(check_sinabs_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^sinabs: 100 steps from 0${inexact0}\nsinabs\\.W: within 0${about}\n$")
@@ -838,7 +846,7 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:ledge logistic:gate momentu
                          goldberg:year goldberg:needle goldberg:big goldberg:seven iterates:poly
                          blocks:nested conv:see straddle:knee apollo11:whole dyn:nm dyn:cd
                          steps:coast:1001 robertson:inside:2000 robertson:outside:2000
-                         robertson:rober tensorgrad:small tensorgrad:saliency:3)
+                         robertson:rober tensorgrad:small tensorgrad:saliency:3 split:carried:4)
     string(REPLACE ":" ";" checked ${checked})
     list(POP_FRONT checked file instance count)
     set(name ${instance})
@@ -928,6 +936,7 @@ foreach(report IN ITEMS
         "cd:^cd: 100 steps from 0 in float, against exact values until 85 and inexact ones from there\n(cd\\.[a-z]+: within [1-9](\\.[0-9])?e-0[6-8], [0-9.e+-]+ units of a float${about}\n)+$"
         "small:^small: 100 steps from 0${in_float}\nsmall\\.g: ${exact}\nsmall\\.o: ${exact}\nsmall\\.s: ${exact}\n$"
         "saliency_3:^saliency: 3 steps from 0${in_float}\nsaliency\\.G: ${exact}\n$"
+        "carried_4:^carried: 4 steps from 0${in_float}\ncarried\\.x: within [0-9.e+-]+, [0-9.e+]+ units of a float\ncarried\\.y: within [0-9.e+-]+, [0-9.]+ units of a float\n$"
         "cls:^cls: 100 steps from 0${inexact}\ncls\\.z: within 2\\.4e-08, 0\\.49 units of a float\ncls\\.q: within 1\\.9e-06, 1\\.5 units of a float${about}\ncls\\.s: within 6\\.3e-08, 2\\.1 units of a float${about}\ncls\\.loss: within 4\\.1e-07, 3\\.8 units of a float${about}\n$")
     string(FIND "${report}" ":" colon)
     string(SUBSTRING "${report}" 0 ${colon} instance)
