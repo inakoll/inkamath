@@ -10024,7 +10024,7 @@ they asked, each with its smallest change.
   the prototype dropped the guard and wrote a chain of mixed shapes. And a
   function that is not a sequence, or a sequence by cells, read at the
   walking index keeps today's words. No golden, expected header
-  or report moves, and the 221 check programs are the baseline's byte for
+  or report moves, and the 222 check programs are the baseline's byte for
   byte. 160 lines of `compile.hpp`, 195 added and 35 removed, 17 of them
   comment; 17,998 lines in all, for 17,838 at 87f2c61. Re-taken, the
   headers and the RIEKF's check program byte for byte the prototype's, and
