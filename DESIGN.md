@@ -9730,3 +9730,28 @@ checked: what it asked of the compiler, each with its smallest change.
   `[1, ~inf]`, but drops a mark reverse mode keeps: `grad_(t = 1)
   ~(t - t)` would be 0 for ~0. A fix gives a seed's 0 cells no part at
   all, which touches C73's checks of whether a part is there.
+
+After exploring rotations and rigid bodies (Sola 2017; Featherstone 2008)
+and transcribing the contact-aided invariant EKF (Hartley et al. 2020): what
+they asked, each with its smallest change.
+
+- **Recursion from the tip.** A sequence with parameters read ahead and
+  ended by a guard `i == N`, as every Featherstone backward pass is written,
+  is refused, "a term after the one being computed", while the same
+  recursion as a function compiles. Unroll it where its guards fold.
+- **A sequence with parameters read at `lim`'s walking index** is refused,
+  which blocks a series or a matrix exponential written as on paper. Allow it.
+- **`f(x)_K` for a geometric integrator.** README gives the fixed-count read
+  for a cell far below 1; `lim`'s absolute 1e-10 stop also drifts an
+  integrator's invariant, about 4e-13 a step, and README should say so.
+- **`!k` where `k` folds to a constant** is refused by the compiler, so the
+  filter writes `prod_(r=1)^k r`. Fold it.
+- **An unbounded sum is not compiled** as the limit of its partial sums.
+  Compile it.
+- **Products by a literal 0.0 kept for NaN, and block-sparse matrices
+  multiplied dense**: 5.1k of the 12-state filter's 21k products, its header
+  638 KB. Joins *Shared at every value written twice*.
+- **A parameter with no default compiled as a single value**: its refusal
+  should name the parameter and suggest its size.
+- **`?file.name` and `tex file.name` refused**, and `tex` writes
+  `\operatorname{sin}` for `\sin`.
