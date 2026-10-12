@@ -21,3 +21,18 @@ binary(u_n) = {
     y_n = lim dig(u_n)
 }
 halves = binary(u_n = 1/(n + 2))
+
+# A step of 0 in exact terms is one of an ulp or two in doubles, which is
+# not a limit either: odd terms that cancel exactly.
+cancel(u_n) = {
+    s(x)_0 = 0
+    s(x)_k = s(x)_(k-1) + x^k/(k^2*2^k) + (-x)^k/(k^2*2^k)
+    y_n = lim s(u_n)
+}
+evens = cancel(u_n = n/100 - 0.121)
+celled(u_n) = {
+    s(x)_0 = [0, 1]
+    s(x)_k = [s(x)_(k-1)[1,1] + x^k/(k^2*2^k) + (-x)^k/(k^2*2^k), s(x)_(k-1)[1,2]]
+    y_n = lim s(u_n)
+}
+evened = celled(u_n = n/100 - 0.121)
