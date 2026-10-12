@@ -1310,7 +1310,7 @@ check(float_calm)
 holds(float_calm float/calm.c [[static const float in_0[100] = {
     0.0f, 0.1f, 0.2f, 0.3f,
 ]] [[static float got_0[100];
-]] [[        calm_step(&m_, in_0[n_]);
+]] [[        checked_step(&m_, in_0[n_]);
         memcpy(&got_0[n_ * 1], &m_.v[0], sizeof(float) * 1);
 ]])
 
@@ -1324,16 +1324,15 @@ set(args --compile c103.ink neg --float -o c103f.h)
 check(compile_c103_float)
 holds(compile_c103_float c103f.h "    m_->p = -INFINITY;\n    m_->q = -INFINITY;\n")
 
-# C104: a header or a program named after a word C keeps, or after a standard
-# header it includes, is refused.
+# C104: a header named after a word C keeps, or after a standard header it
+# includes, is refused; a program is not named after its file (C346).
 set(args --compile ${inputs} dot --float -o float.h)
 set(stderr "inkamath: 'float' is a name C keeps, and the header is named after it\n")
 set(exit 2)
 check(compile_c104)
 set(args --check ${CMAKE_CURRENT_LIST_DIR}/compile/drift.ink calm -o math.c)
-set(stderr "inkamath: 'math' is a name C keeps, and the program is named after it\n")
-set(exit 2)
 check(check_c104)
+holds(check_c104 math.c "    checked_init(&m_);\n")
 
 # grad compiled (DESIGN.md, compile/grad.ink): the gradient written out, each
 # function of the prelude called on a value that moves with one for its part,

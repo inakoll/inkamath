@@ -172,7 +172,7 @@
 #     ...
 #     static float got_0[100];
 #     ...
-#             calm_step(&m, in_0[n]);
+#             checked_step(&m, in_0[n]);
 #             memcpy(&got_0[n * 1], &m.v[0], sizeof(float) * 1);
 #
 # A history no float holds is refused as one no double holds is: with

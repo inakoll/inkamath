@@ -181,7 +181,7 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brin
                          nan:passed nan:waived
                          inputs:fan inputs:grid
                          inputs:chan inputs:twirl inputs:duo inputs:mean3 inputs:mean2
-                         inputs:track inputs:twain inputs:nestv inputs:fed inputs:x inputs:clashed
+                         inputs:track inputs:twain inputs:nestv inputs:fed inputs:x inputs:clashed inputs:j1
                          estimate:tie
                          estimate:chaos estimate:dyad estimate:flat estimate:halved
                          estimate:steep estimate:giant elementary:els trig:tri atan:bea
@@ -236,6 +236,8 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brin
                           C_STANDARD 11 C_STANDARD_REQUIRED ON C_EXTENSIONS OFF)
     add_test(NAME check_${name}_report COMMAND check_${name})
 endforeach()
+# C346: in GNU C, GCC's and Clang's default, <math.h> declares j1.
+set_target_properties(check_j1 PROPERTIES C_EXTENSIONS ON)
 # The interpreter's own error, estimated where any term is inexact (DESIGN.md):
 # its digits are the seeds', so held by its form but where a limit's
 # remainder alone gives them.
@@ -324,7 +326,7 @@ set_tests_properties(check_both PROPERTIES WILL_FAIL ON)
 add_test(NAME check_gate_one_limit
          COMMAND ${CMAKE_COMMAND} -E cat ${CMAKE_CURRENT_BINARY_DIR}/compile/gate.c)
 set_tests_properties(check_gate_one_limit PROPERTIES
-                     PASS_REGULAR_EXPRESSION "gate_lim0\\(" FAIL_REGULAR_EXPRESSION "gate_lim1\\(")
+                     PASS_REGULAR_EXPRESSION "checked_lim0\\(" FAIL_REGULAR_EXPRESSION "checked_lim1\\(")
 set_tests_properties(check_gate_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^gate: 100 steps from 0, against exact values until 0 and inexact ones from there\n(gate\\.[a-z]+: within [0-9.e+-]+${about}\n)+$")
 # exp, log and tanh as the prelude writes them, each a function of the
@@ -335,7 +337,7 @@ set_tests_properties(check_els_report PROPERTIES PASS_REGULAR_EXPRESSION
 add_test(NAME check_els_functions
          COMMAND ${CMAKE_COMMAND} -E cat ${CMAKE_CURRENT_BINARY_DIR}/compile/els.c)
 set_tests_properties(check_els_functions PROPERTIES
-    PASS_REGULAR_EXPRESSION "els_exp\\(double arg_x\\).*els_log\\(double arg_x\\).*els_tanh\\(double arg_x\\)"
+    PASS_REGULAR_EXPRESSION "checked_exp\\(double arg_x\\).*checked_log\\(double arg_x\\).*checked_tanh\\(double arg_x\\)"
     FAIL_REGULAR_EXPRESSION "pow\\(2\\.718|isnan\\(pow\\(")
 # sin, cos, abs, max and min as the prelude writes them (DESIGN.md), and
 # grad's parts through each: every term the interpreter's.
@@ -344,7 +346,7 @@ set_tests_properties(check_tri_report PROPERTIES PASS_REGULAR_EXPRESSION
 add_test(NAME check_tri_functions
          COMMAND ${CMAKE_COMMAND} -E cat ${CMAKE_CURRENT_BINARY_DIR}/compile/tri.c)
 set_tests_properties(check_tri_functions PROPERTIES
-    PASS_REGULAR_EXPRESSION "tri_abs\\(double arg_x\\).*tri_sin\\(double arg_x\\).*tri_cos\\(double arg_x\\).*tri_max\\(double arg_a, double arg_b\\).*tri_max_da\\(.*tri_abs_dx\\(.*tri_cos_dx\\(.*tri_min\\(double arg_a, double arg_b\\).*tri_min_db\\(.*tri_sin_dx\\("
+    PASS_REGULAR_EXPRESSION "checked_abs\\(double arg_x\\).*checked_sin\\(double arg_x\\).*checked_cos\\(double arg_x\\).*checked_max\\(double arg_a, double arg_b\\).*checked_max_da\\(.*checked_abs_dx\\(.*checked_cos_dx\\(.*checked_min\\(double arg_a, double arg_b\\).*checked_min_db\\(.*checked_sin_dx\\("
     FAIL_REGULAR_EXPRESSION "[^_a-z](sin|cos)\\(")
 # atan, atan2, asin, acos and acosh as the prelude writes them (DESIGN.md),
 # and grad's parts through atan, asin and atan2: every term the interpreter's.
@@ -353,7 +355,7 @@ set_tests_properties(check_bea_report PROPERTIES PASS_REGULAR_EXPRESSION
 add_test(NAME check_bea_functions
          COMMAND ${CMAKE_COMMAND} -E cat ${CMAKE_CURRENT_BINARY_DIR}/compile/bea.c)
 set_tests_properties(check_bea_functions PROPERTIES
-    PASS_REGULAR_EXPRESSION "bea_atan\\(double arg_x\\).*bea_atan2\\(double arg_y, double arg_x\\).*bea_acos\\(double arg_x\\).*bea_asin\\(double arg_x\\).*bea_acosh\\(double arg_x\\)"
+    PASS_REGULAR_EXPRESSION "checked_atan\\(double arg_x\\).*checked_atan2\\(double arg_y, double arg_x\\).*checked_acos\\(double arg_x\\).*checked_asin\\(double arg_x\\).*checked_acosh\\(double arg_x\\)"
     FAIL_REGULAR_EXPRESSION "[^_a-z](atan|atan2|asin|acos|acosh)\\(")
 # grad compiled (DESIGN.md), each value carrying its part: every gradient
 # the interpreter's, as compile/grad.ink gives them.
@@ -613,7 +615,7 @@ set_tests_properties(check_carried_values PROPERTIES PASS_REGULAR_EXPRESSION
     "_values_ {\n    double t[0-9]+_\\[3\\]\\[3\\];\n    int t[0-9]+_;\n")
 add_test(NAME check_apart_values
          COMMAND ${CMAKE_COMMAND} -E cat ${CMAKE_CURRENT_BINARY_DIR}/compile/apart_4.c)
-set_tests_properties(check_apart_values PROPERTIES PASS_REGULAR_EXPRESSION "apart_4_step2_\\(m_\\)"
+set_tests_properties(check_apart_values PROPERTIES PASS_REGULAR_EXPRESSION "checked_step2_\\(m_\\)"
                      FAIL_REGULAR_EXPRESSION "_values_")
 # C329: --check's exact run forgets what its walk of the prelude recorded.
 set_tests_properties(check_sinabs_report PROPERTIES PASS_REGULAR_EXPRESSION
