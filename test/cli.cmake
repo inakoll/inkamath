@@ -1544,8 +1544,7 @@ holds(compile_tensor_mha mha.h [=[ *     mha_step(&m, X);  once for each index, 
  * cell is a pointer to its cells, row by row, slice after slice. After a step,
  * m.name[k] is name_(n-k) for each sequence: X and O. The parameters are
  * fields holding the model's defaults once mha_init has run: d = 2.0. After
- * assigning one, call mha_update.
- */
+ * assigning one, call mha_update. A term the interpreter would refuse is NaN,
 ]=] [=[typedef struct mha {
     double d;
     long long index_;
