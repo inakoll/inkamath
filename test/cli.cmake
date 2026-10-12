@@ -1212,16 +1212,20 @@ file(WRITE "${OUT}/gained.ink" "two(x_n) = {\n    x_(-2) = 0\n    c_n = x_(n-1) 
      "gained(a = 2, x_n) = {\n    x_n | n < 0 = 3\n    inner = two(x_n = a*x_n)\n"
      "    c_n = inner.c_n\n}\n")
 set(args --compile gained.ink gained -o gained.h)
-set(stderr "inkamath: cannot compile inner.c: inner.c_0 reads inner.x_-1, before the stream, where inner.x has no history\n")
+set(stderr "inkamath: cannot compile inner.c: inner.c_0 reads inner.x_-1, before the stream, where inner.x's history reads a, which the host may assign after init\n")
 set(exit 1)
 check(history_gained)
 # And a recurrence's own history that reads one, which the step read as 0
 # (C343).
 refused(lifted "a = 2) = {\n    g_n | n < 0 = a\n    g_n = 2*g_(n-1)"
-        "g: g_0 reads g_-1, before the stream, where g has no history")
+        "g: g_0 reads g_-1, before the stream, where g's history reads a, which the host may assign after init")
 # And at another rate, where it was read as 0.
 refused(slowed "a = 2, x_n) = {\n    y_m | m < 0 = a\n    y_m = y_(m-1) + x_(2*m)"
-        "y: y_0 reads y_-1, before the stream, where y has no history")
+        "y: y_0 reads y_-1, before the stream, where y's history reads a, which the host may assign after init")
+# Init folds a slow history back from its first term, so a term it reads
+# past one it cannot fold is refused for that one (C348).
+refused(gapped "a = 2, x_n) = {\n    y_m | m < -1 = 1\n    y_m | m < 0 = a\n    y_m = y_(m-2) + x_(2*m)"
+        "y: y_1 reads y_-1, before the stream, where y's history reads a, which the host may assign after init")
 # And below a slow sequence's base clause, where it was read as 0 (C344),
 # with or without a guard.
 refused(sunk "a = 2, x_n) = {\n    y_0 = 1\n    y_m | m < 0 = a\n    y_m = y_(m-2) + x_(2*m)"

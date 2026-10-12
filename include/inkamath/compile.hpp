@@ -4362,24 +4362,28 @@ private:
             history != histories_.end() ? history->second : sequences_.at(name).definition;
         // A recurrence's own term, where no input or parameter can change it.
         const bool given =
-            (Recurrent(name) || Own(name)) && (!Parametric(name, true) || Given(name, n));
-        if (fresh && definition && (given || !Parametric(name))) {
+            (Recurrent(name) || Own(name)) && (Parametric(name, true).empty() || Given(name, n));
+        const std::string parameter = given ? "" : Parametric(name);
+        if (fresh && definition) {
             definitions_.Forget();
             definitions_.BeginEvaluation();
             try {
                 const ParametersCall<Value> at(
                     PExpression<Value>(), std::make_shared<ValExpression<Value>>(Value(Number(n))));
                 const Value term = definition->Eval(at, definitions_, true);
-                if (definitions_.histories || given) {
+                if (!parameter.empty()) {
+                    unfolded_[{name, n}] =
+                        "reads " + parameter + ", which the host may assign after init";
+                } else if (definitions_.histories || given) {
                     const std::vector<double> cells = Doubles(term);
                     if (std::all_of(cells.begin(), cells.end(), Finite))
                         slot->second = term;
                     else
-                        unfolded_[{name, n}] = "a term no " + Real() + " holds";
+                        unfolded_[{name, n}] = "gives a term no " + Real() + " holds";
                 }
             } catch (const std::runtime_error& error) {
                 if (definitions_.histories || given)
-                    unfolded_[{name, n}] = std::string("none: ") + error.what();
+                    unfolded_[{name, n}] = std::string("gives none: ") + error.what();
             }
         }
         return slot->second.has_value();
@@ -4389,19 +4393,21 @@ private:
     // or that it has none.
     std::string Unfolded(const std::string& read, int at) const {
         const auto why = unfolded_.find({read, at});
-        return why != unfolded_.end() ? read + "'s history gives " + why->second
+        return why != unfolded_.end() ? read + "'s history " + why->second
                                       : read + " has no history";
     }
 
-    // Whether a term can read a parameter, which the host may assign after
-    // init has folded it, or with 'inputs' an input.
-    bool Parametric(const std::string& name, bool inputs = false) const {
+    // A parameter a term can read, which the host may assign after init has
+    // folded it, or with 'inputs' an input; none, empty.
+    std::string Parametric(const std::string& name, bool inputs = false) const {
         std::set<std::string>    seen{name};
         std::vector<std::string> left{name};
         while (!left.empty()) {
-            const Sequence& sequence = sequences_.at(left.back());
+            const std::string at       = left.back();
+            const Sequence&   sequence = sequences_.at(at);
             left.pop_back();
-            if (!sequence.parameters.empty() || (inputs && !sequence.definition)) return true;
+            if (!sequence.parameters.empty()) return *sequence.parameters.begin();
+            if (inputs && !sequence.definition) return at;
             std::vector<std::string> reads;
             for (const Reads* each :
                  {&sequence.reads, &sequence.deferred, &sequence.samples, &sequence.seeded})
@@ -4410,7 +4416,7 @@ private:
             for (const std::string& read : reads)
                 if (seen.insert(read).second) left.push_back(read);
         }
-        return false;
+        return "";
     }
 
     // Whether the left of an 'and' or 'or' decides at step n, folded there.
@@ -4448,20 +4454,30 @@ private:
         for (const auto& [read, lags] : reads) {
             // A slow one's own, in its terms, before those init folds (C343).
             if (&sequences_.at(read) == &reader && reader.period > 1 && Own(read)) {
-                for (const int lag : lags)
-                    for (int m = reader.first; m - lag < reader.first - reader.filled; ++m)
-                        if (!kept_at(m) && !reader.bases.count(reader.period * m + reader.phase))
-                            throw Refusal(
-                                name,
-                                name + "_" + std::to_string(m) + " reads " + read + "_" +
-                                    std::to_string(m - lag) +
-                                    (reader.bases.empty()
-                                         ? ", before the stream, where " + Unfolded(read, m - lag)
-                                     : reader.guarded.empty()
-                                         ? ", before it starts at " + std::to_string(reader.first)
-                                         : ", below " + read +
-                                               "'s base clauses, where only its "
-                                               "guards could give a term"));
+                // Init folds back from the first, so a read past the term
+                // that stopped it is refused for that term, named first.
+                const int stop = reader.first - reader.filled - 1;
+                for (const bool at_stop : {true, false})
+                    for (const int lag : lags)
+                        for (int m = reader.first; m - lag < reader.first - reader.filled; ++m)
+                            if ((m - lag == stop) == at_stop && !kept_at(m) &&
+                                !reader.bases.count(reader.period * m + reader.phase))
+                                throw Refusal(
+                                    name,
+                                    name + "_" + std::to_string(m) + " reads " + read + "_" +
+                                        std::to_string(m - lag) +
+                                        (reader.bases.empty()
+                                             ? ", before the stream, " +
+                                                   (at_stop ? std::string()
+                                                            : "below " + read + "_" +
+                                                                  std::to_string(stop) + ", ") +
+                                                   "where " + Unfolded(read, stop)
+                                         : reader.guarded.empty()
+                                             ? ", before it starts at " +
+                                                   std::to_string(reader.first)
+                                             : ", below " + read +
+                                                   "'s base clauses, where only its "
+                                                   "guards could give a term"));
                 continue;
             }
             if (!Historied(read)) continue;
