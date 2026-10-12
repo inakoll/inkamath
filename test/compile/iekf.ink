@@ -113,12 +113,6 @@ riekf(dt = 1/100, N = 12, X0 = E6, P0 = E12/100, w_n[j<=3], a_n[j<=3], h_n[j<=3]
 
     X_0 = X0
     P_0 = P0
-    # Each block given at 0 again only for the compiler, which refuses Rp_n
-    # reading R_(n-1) without it (C349): the interpreter needs none.
-    R_0 = blk(X0)
-    v_0 = col(X0, 4)
-    p_0 = col(X0, 5)
-    d_0 = col(X0, 6)
     R_n = blk(X_n)
     v_n = col(X_n, 4)
     p_n = col(X_n, 5)
