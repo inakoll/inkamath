@@ -1876,6 +1876,22 @@ string(FIND "${text}" "_fact_" at)
 if(NOT at EQUAL -1)
     message(SEND_ERROR "compile_sums_folded: folded.h writes a factorial nothing calls")
 endif()
+# C355: nor does a limit folded call an inverse, or the limit within it.
+file(WRITE "${OUT}/unwalked.ink" "q(x)_0 = x\nq(x)_k = q(x)_(k-1)/2 + 1\ns(x)_0 = x\n"
+     "s(x)_k = s(x)_(k-1)/2 + lim q(x)/2^k\np(a)_0 = [0, 0; 0, 0]\n"
+     "p(a)_k = p(a)_(k-1)/2 + (a*[1, 0; 0, 1] + k*[1, 0; 0, 1])^(-1)/2^k\n"
+     "y_n = (lim p(1))[1,1] + lim s(1) + x_n\n")
+foreach(floats "" --float)
+    set(args --compile unwalked.ink ${floats} -o unwalked.h)
+    check(compile_limits_folded${floats})
+    file(READ "${OUT}/unwalked.h" text)
+    foreach(helper _inverse2_ _lim0 float.h)
+        string(FIND "${text}" "${helper}" at)
+        if(NOT at EQUAL -1)
+            message(SEND_ERROR "compile_limits_folded${floats}: unwalked.h writes ${helper}")
+        endif()
+    endforeach()
+endforeach()
 # a starts where the step is; b's power is at twice the index, and f's
 # inner bound moves; c gives t arguments that change as the walk does, and e
 # reads it ahead; d differentiates through it; h calls an instance's own
