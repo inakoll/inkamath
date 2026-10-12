@@ -111,8 +111,8 @@ static vector<Queued> inputs(istream& in, const filesystem::path& directory) {
 // A header is named after its file, which must be a C name, and neither a
 // word C keeps nor a standard header it includes (C104).
 static bool c_name(const string& module) {
-    const bool kept = CompileC::keywords.count(module) || module == "math" || module == "string" ||
-                      module == "stdio";
+    const bool kept = CompileC::keywords.count(module) || CompileC::macros.count(module) ||
+                      module == "math" || module == "string" || module == "stdio";
     if (!kept && !module.empty() && isalpha(static_cast<unsigned char>(module[0])) &&
         all_of(module.begin(), module.end(),
                [](char c) { return isalnum(static_cast<unsigned char>(c)) || c == '_'; }))

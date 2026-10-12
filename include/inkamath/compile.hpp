@@ -78,6 +78,8 @@ public:
         "goto",    "if",     "inline",   "int",    "long",     "register", "restrict",
         "return",  "short",  "signed",   "sizeof", "static",   "struct",   "switch",
         "typedef", "union",  "unsigned", "void",   "volatile", "while"};
+    // The macros of the headers a step includes that a name can spell (C347).
+    static inline const std::set<std::string> macros = {"BUFSIZ", "EOF", "INFINITY", "NAN", "NULL"};
 
     // The session's sequences, or with a model, those of its instance with
     // every default and no input given (DESIGN.md, phase 15).
@@ -3919,7 +3921,8 @@ private:
         for (std::size_t start = 0; start <= key.size();) {
             const std::size_t end  = std::min(key.find('.', start), key.size());
             const std::string name = key.substr(start, end - start);
-            if (keywords.count(name)) throw Reason(name + " is a word C keeps for itself");
+            if (keywords.count(name) || macros.count(name))
+                throw Reason(name + " is a word C keeps for itself");
             start = end + 1;
         }
     }

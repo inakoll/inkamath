@@ -1333,6 +1333,12 @@ check(compile_c104)
 set(args --check ${CMAKE_CURRENT_LIST_DIR}/compile/drift.ink calm -o math.c)
 check(check_c104)
 holds(check_c104 math.c "    checked_init(&m_);\n")
+# C347: and a name a header it includes keeps for a macro.
+file(WRITE "${OUT}/c347.ink" "NAN_n = n\n")
+set(args --compile c347.ink -o c347.h)
+set(stderr "inkamath: cannot compile NAN: NAN is a word C keeps for itself\n")
+set(exit 1)
+check(compile_c347)
 
 # grad compiled (DESIGN.md, compile/grad.ink): the gradient written out, each
 # function of the prelude called on a value that moves with one for its part,
