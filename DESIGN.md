@@ -4146,11 +4146,12 @@ that exploring seven domains asked of the interpreter, by how many asked.
   loads and stores; the step's stack holds 254 KB for `tf`, which MSVC's
   default 1 MB stack takes.
 
-  About 85 lines of `compile.hpp`: the prototype's 104 added and 19
-  removed, 5 of them comment; `Temporaries`' scan of names shared with
-  the cut, a list's kept temporaries returned apart from their text.
-  17,531 lines at 3f8da19, by `wc -l include/inkamath/*.hpp src/*`; past
-  128 the implementation stops and reports.
+  About 87 lines of `compile.hpp`: the prototype's 106 added and 19
+  removed, 5 of them comment, 114 added as clang-format writes them;
+  `Temporaries`' scan of names shared with the cut, a list's kept
+  temporaries returned apart from their text. 17,539 lines at 980b83f,
+  by `wc -l include/inkamath/*.hpp src/*`; past 130 the implementation
+  stops and reports.
 
   Specified in `test/compile/transformer.ink` by a model of its own,
   `tune`, U trained beneath its weights, its instance `tuned` checked
