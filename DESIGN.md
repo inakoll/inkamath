@@ -3652,7 +3652,8 @@ that exploring seven domains asked of the interpreter, by how many asked.
   takes the Moon and the Sun as inputs, read by the interpreter, where the
   step could read its table itself. Compile it as a C array read, NaN
   where the index is no whole number within the table, where the
-  interpreter refuses.
+  interpreter refuses. A gather, `X[idx[s,k], c]` with `idx` an input
+  (PointNet++, from an external review), is the same read.
 - **An instance named again**, `a = thm1.adam`, then `a.x_1`.
 - **A constant folded from an approximated number, listed**: `--compile`
   folds `(2^4000 > 2^3999)` to 0.0 and `3^3000/3^2999` to NAN silently,
@@ -8843,12 +8844,12 @@ checked: what it asked of the compiler, each with its smallest change.
   to disturb. On the forward-mode header's prototype, `saliency`'s 100
   steps take 7.7 s of `--check`, 0.16 of them compiling, and the three
   runs three quarters of the rest.
-- **A maximum or minimum over an index**, `max_(i=1)^n`, as a sum is
-  written: max-pooling over a window is nested `max` calls today. Minor,
-  until a second model asks.
-- **An argmax in the prelude**: a transformer's held-out accuracy had to
-  be written `prod_(v=1)^nv (Z[b,t,v] <= Z[b,t,y])`, its target's logit
-  no smaller than any.
+- **A maximum, minimum or argmax over an index**, `max_(i=1)^n` as a sum
+  is written: max-pooling over a window is nested `max` calls today, and a
+  transformer's held-out accuracy had to be written `prod_(v=1)^nv
+  (Z[b,t,v] <= Z[b,t,y])`, its target's logit no smaller than any. Minor
+  until a second model asked; an external review's range images and
+  PointNet have.
 - **The compiled sum's thousand terms**: a LeNet-sized layer's dot product
   over a batch would pass `max_terms`, which bounds an unrolled sum written
   as lines of C, not a loop.
@@ -8861,7 +8862,7 @@ checked: what it asked of the compiler, each with its smallest change.
   through the ordinary evaluator too, which a subtree that does not read
   grad's frame goes to whole, and the compiler's use of the static search
   kept or replaced. Well over 20 lines.
-- **A gradient with respect to several names at once**, the nabla's
+- `[done]` **A gradient with respect to several names at once**, the nabla's
   `∇_θ`: training a transformer took 13 grads of 15 arguments, one per
   weight, each an evaluation and a sweep of its own. At a206c5d,
   RelWithDebInfo with GCC 13 under callgrind, from step 3 to step 10, the
@@ -10351,3 +10352,46 @@ they asked, each with its smallest change.
 - **A parameter with no default compiled as a single value** is named by
   its refusal where read, but not through a function's parameter, as the
   filter's `blk(X_n)` reads `X0`. Follow the call's argument.
+
+After an external review of README, MANIFESTO and the conformance suite
+(2026-10-12): its directions, ranked. Its open questions are in
+`MANIFESTO.md`.
+
+- **Loops in generated code**, a phase of its own, its spec and cost in
+  lines first: MANIFESTO's intermediate form, for a step now written out
+  whole (a transformer's 90 to 100 s at -O2, 256 KB of stack). It largely
+  supersedes value numbering (*Shared at every value written twice*, `[done]`).
+- **A Jacobian by cells**, the idiom, compiled and held by `--check`:
+  `J(x)[i<=3, j<=2] = (grad_(v = x) f(v)[i])[j]`, row i output i's
+  gradient as a paper defines J_ij, so the layout is the user's. grad's own
+  Jacobian stays rejected unless a transcription shows a sweep per output
+  too dear or the notation short.
+- **Small, whenever**: *A maximum, minimum or argmax over an index*; a
+  Cholesky factor in the prelude, for square-root filters, the solve being
+  `A^-1*b` already and the Joseph form writable now.
+- **A clause for a limit that does not converge**, one guard meaning the
+  same in the interpreter and the step, NaN kept where none is written; and
+  with it a tolerance relative to the term, the 1e-10 being absolute.
+- **A gather, integer inputs, inputs present on some steps only**: their
+  open questions first. The gather is *A cell at a computed whole index,
+  compiled*.
+- **Exact discretisation** as conformance entries first, `expm` an
+  unbounded sum, Van Loan and ZOH by block literals; the prelude only if
+  they show friction.
+- **A short tutorial path** through the conformance models, README being a
+  reference manual where its readers are students.
+- Not taken: **the epistemic level carried internally now**, with nothing
+  to read it before a C API (`CLAUDE.md` §2); its question is in MANIFESTO.
+
+Its robotics entries, each where it forces something new:
+
+- **An EKF on SO(3)**, its exp map a fixed-count partial sum: F and H as
+  Jacobians by cells.
+- **A small MPC with a fallback clause**: the non-convergence clause.
+- **A visual-inertial filter over merged timestamped events**: inputs
+  present on some steps only.
+- **Range-image ground segmentation and label propagation**: reductions
+  over an index; at a sensor's size, loops.
+- **PointNet**, then one **PointNet++ set-abstraction layer** whose
+  indices the host computes: max over points, then the gather and integer
+  inputs; at real scale, loops.

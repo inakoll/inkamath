@@ -145,8 +145,8 @@ digits = 17
 >> digits = 9
 digits = 9
 
-# An exact zero cannot be divided by. Today these answer a complex infinity
-# and a NaN (C31).
+# An exact zero cannot be divided by. Before, these answered a complex
+# infinity and a NaN (C31).
 >> 1/0
 error: division by zero
 

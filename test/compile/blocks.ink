@@ -5,7 +5,7 @@
 # written cell by cell gives. Every number below is worked out apart from
 # the interpreter, with exact fractions and sympy in Python and Python's
 # doubles in the step's order, numpy's and scipy's solvers beside them, then
-# seen to be the interpreter's; none is recorded. Today every model is
+# seen to be the interpreter's; none is recorded. Before, every model was
 # refused, 'a matrix built from matrices'.
 #
 # 'dare', the structure-preserving doubling algorithm for the discrete
