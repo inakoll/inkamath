@@ -10180,9 +10180,9 @@ they asked, each with its smallest change.
   README says so. No transcript in `test/data/spec`: the language does not
   change.
 
-  Found writing it: the limread entry says it prepares this by `Iterate`
-  compiling any walked term; a sum has no clauses, and what it takes is the
-  walk around `Iterate`, `Beside` and the function's text.
+  Found writing it: the limread entry's preparation holds for a summand
+  read at q, which `Beside` walks through `Iterate`, but leaves out the
+  function's text, which `Limit` kept and a sum, having no clauses, needs.
 - **Products by a literal 0.0 kept for NaN, and block-sparse matrices
   multiplied dense**: 5.1k of the 12-state filter's 21k products, its header
   638 KB. Joins *Shared at every value written twice*.
