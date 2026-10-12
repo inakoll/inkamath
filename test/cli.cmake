@@ -1819,6 +1819,16 @@ file(WRITE "${OUT}/bound.ink" "y_n = sum_(q=3) x_n^q/!q\n")
 set(args --compile bound.ink -o bound.h)
 check(compile_sums_bound)
 holds(compile_sums_bound bound.h "    for (long long k_ = 4; k_ <= 102; ++k_) {\n")
+# A sum folded calls no factorial, so none is written: a check program's
+# unused function is an error to Clang's -Werror.
+file(WRITE "${OUT}/folded.ink" "ee(x) = sum_(q=0) x^q/!q\ny_n = ee(1) + x_n\n")
+set(args --compile folded.ink -o folded.h)
+check(compile_sums_folded)
+file(READ "${OUT}/folded.h" text)
+string(FIND "${text}" "_fact_" at)
+if(NOT at EQUAL -1)
+    message(SEND_ERROR "compile_sums_folded: folded.h writes a factorial nothing calls")
+endif()
 # a starts where the step is; b's power is at twice the index, and f's
 # inner bound moves; c gives t arguments that change as the walk does, and e
 # reads it ahead; d differentiates through it; h calls an instance's own
