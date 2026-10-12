@@ -464,8 +464,6 @@ Recorded so that they are asked before they are answered by accident.
   and does writing it remove more from the current compiler than it adds?
 - How much of a paper can be transcribed before the language has to grow, and
   is the answer to that a good measure of whether it should?
-- Is a Jacobian laid out by numerator, a row per cell of the function, and
-  does `tex` set it as df/dx?
 - Is whether a limit converged a value, a guard, or a property of the
   definition that takes it, and how does it mean the same compiled?
 - How does a signature declare an input present on some steps only, and what
