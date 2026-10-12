@@ -65,11 +65,11 @@ foreach(part 1 2 3)
     set_tests_properties(cli_${part} PROPERTIES TIMEOUT 120)
 endforeach()
 # The reverse sweep's conditions written once (DESIGN.md), specified before
-# it is built: cli.cmake's spec part, held to fail by its count until then.
+# it is built: cli.cmake's spec part, skipped while its count fails.
 add_test(NAME cli_spec
          COMMAND ${CMAKE_COMMAND} -DEXE=$<TARGET_FILE:inkamath_cli> -DPART=spec
                  -DOUT=${CMAKE_CURRENT_BINARY_DIR}/cli_spec -P ${CMAKE_CURRENT_LIST_DIR}/cli.cmake)
-set_tests_properties(cli_spec PROPERTIES PASS_REGULAR_EXPRESSION
+set_tests_properties(cli_spec PROPERTIES TIMEOUT 120 SKIP_REGULAR_EXPRESSION
     "compile_sweep_conditions: ' != 0\\)' written [0-9]+ times")
 
 # bench's workloads, each a transcript bench/run.cmake measures, replayed so

@@ -4023,7 +4023,7 @@ that exploring seven domains asked of the interpreter, by how many asked.
   report that holds before and after. Its comment gives the cli case
   `compile_sweep_conditions`: `hidden.h` writing ` != 0)` fewer than 20
   times, 39 before, 15 on the prototype. Wired now as `test/cli.cmake`'s
-  `spec` part, run by `cli_spec`, which passes while the count fails;
+  `spec` part, run by `cli_spec`, skipped while the count fails;
   with the implementation the case moves into part 1 beside
   `compile_nan_once`, and the `spec` part and `cli_spec` go. No
   transcript in `test/data/spec`.
