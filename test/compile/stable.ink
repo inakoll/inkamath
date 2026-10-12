@@ -22,9 +22,10 @@ moments = stats(x_n = 4096 + mod(7*n, 11)/10)
 # Softmax over attention scores that grow with n (Vaswani et al. 2017, 3.2.1),
 # as written and shifted by its row's largest score (Goodfellow, Bengio &
 # Courville, Deep Learning, 4.1). In float, exp of the written one overflows
-# from n = 63, and inf over inf is NaN; the shifted one holds:
+# from n = 63, and inf over inf is NaN, the whole of A where d's root makes
+# the header test for NaN (C350); the shifted one holds:
 #
-#     peak.A[3,1]: -nan at 63, where the interpreter gives 1
+#     peak.A[1,1]: nan at 63, where the interpreter gives 0.5
 scores(d = 2) = {
     Q_n = [1 0; 0 1; 1 1]*n
     K = [1 1; 0 1; 1 0]
