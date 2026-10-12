@@ -307,6 +307,9 @@ TEST_CASE("transformer_train") {
 TEST_CASE("rotation") {
     check_transcript("rotation.ink");
 }
+TEST_CASE("iekf") {
+    check_transcript("iekf.ink");
+}
 TEST_CASE("readme") {
     check_readme();
 }
