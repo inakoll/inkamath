@@ -3097,37 +3097,50 @@ private:
     // where squaring takes log k. Not where f+c < 0, an inverse the
     // interpreter may never take.
     std::optional<Code> Climbed(const Code& base, const PExpression<Value>& exponent) {
-        Walked& walked = *limit_;
-        int     c      = 0;
+        const std::optional<int> c = Above(exponent, "a power");
+        std::string              read;
+        for (const Cell& cell : base.cells) read += cell.text + ' ';
+        if (!c || Walks(read)) return std::nullopt;
+        return Climb("^" + std::to_string(*c) + " " + Rows(base), base,
+                     [&](int f) { return Power(base, Literal(Value(Number(f + *c)))); });
+    }
+
+    // c where an index is a limit's walking index plus c, none where f+c < 0,
+    // f the index before its first.
+    std::optional<int> Above(const PExpression<Value>& index, const std::string& written) {
+        int c = 0;
         try {
-            c = Offset(exponent, "a power");
+            c = Offset(index, written);
         } catch (const Reason&) {
             return std::nullopt;
         } catch (const Fix&) {
             return std::nullopt;
         }
-        std::string read;
-        for (const Cell& cell : base.cells) read += cell.text + ' ';
-        if (walked.first - 1 + c < 0 || Walks(read)) return std::nullopt;
-        const std::string key = "^" + std::to_string(c) + " " + Rows(base);
-        std::size_t       b   = 0;
+        if (limit_->first - 1 + c < 0) return std::nullopt;
+        return c;
+    }
+
+    // A term walked beside a limit's, by its key: 'at(f)' before the walk,
+    // f the index before its first, then each the one before times factor.
+    Code Climb(const std::string& key, const Code& factor, const std::function<Code(int)>& at) {
+        Walked&     walked = *limit_;
+        std::size_t b      = 0;
         while (b < walked.beside.size() &&
                (walked.beside[b].function || walked.beside[b].args != key))
             ++b;
-        if (b < walked.beside.size()) return walked.beside[b].term;
+        if (b < walked.beside.size()) return *walked.beside[b].term;
         Walked::Beside& beside = walked.beside.emplace_back(Walked::Beside{nullptr, key, {}});
         {
             const Setting<std::vector<Temporary>*> before(temporaries_, walked.based);
-            beside.window.push_back(
-                SharedAll(Power(base, Literal(Value(Number(walked.first - 1 + c))))));
+            beside.window.push_back(SharedAll(at(walked.first - 1)));
         }
         const Setting<std::vector<Temporary>*> in(temporaries_, walked.iterated);
-        Code                                   term = Product(Array(Window(b, 1), base.size), base);
+        Code term = Product(Array(Window(b, 1), factor.size), factor);
         for (Cell& cell : term.cells)
             cell = Atom(Declare(cell.text, [&](const std::string& t) {
                 return std::vector<std::string>{"const double " + t + " = " + cell.text + ";"};
             }));
-        return beside.term = term;
+        return *(beside.term = term);
     }
 
     // 'sum_(q=a) f(q)', 'prod_(q=a) f(q)': the limit of its partial sums as
@@ -3810,11 +3823,20 @@ private:
                 for (const auto& [reads, lags] : sequence->second.reads) next.push_back(reads);
         }
     }
-    // A factorial of a constant is one; of what moves, the header's helper's.
+    // A factorial of a constant is one; at a limit's walking index plus a
+    // constant, the one before times that; of what else moves, the header's
+    // helper's.
     PExpression<Value> visit(FactExpression<Value>* expression) override {
+        const auto fact = [](const Value& v) { return Value(numeric_interface<Value>::fact(v)); };
         const Code operand = Emit(expression->m_e());
         if (!operand.part.empty() || (!operand.constant && !operand.Scalar()))
             throw Reason("a factorial");
+        if (!operand.constant && limit_ && !index_.empty() && !places_.count(index_) &&
+            Mentions(*expression->m_e(), index_))
+            if (const std::optional<int> c = Above(expression->m_e(), "a factorial"))
+                return Answer(Climb("!" + std::to_string(*c), operand, [&](int f) {
+                    return Exactly(fact, Literal(Value(Number(f + *c))));
+                }));
         if (!operand.constant) {
             // A function of the prelude, kept where something calls it, which
             // a sum folded does not. It stops at an infinite product (C47).
@@ -3830,8 +3852,7 @@ private:
                     "    while (i < x && isfinite(f)) f *= ++i;\n    return f;\n}\n\n");
             return Answer(Cell(helper + "(" + operand.cells[0].text + ")", primary));
         }
-        return Answer(Exactly([](const Value& v) { return Value(numeric_interface<Value>::fact(v)); },
-                              operand));
+        return Answer(Exactly(fact, operand));
     }
     // grad compiled (DESIGN.md): its body once for each cell of the point, each
     // value carrying its part, the name's a constant seed, as the interpreter's;
@@ -5717,7 +5738,7 @@ private:
             std::optional<Code>     term   = {};  // at k_, once compiled
             std::vector<Code>       window = {};  // its terms before the walk, by lag
         };
-        std::deque<Beside> beside = {};  // sequences with parameters, and powers, walked beside it
+        std::deque<Beside> beside = {};  // sequences with parameters, powers, factorials beside it
     };
     std::deque<std::vector<Temporary>> lists_;  // those, kept as a step's are
     static constexpr std::size_t       split_  = 16384;  // a part's bytes; see Split

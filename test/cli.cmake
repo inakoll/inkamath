@@ -1761,6 +1761,13 @@ check(compile_series_refused)
 set(sums "${CMAKE_CURRENT_LIST_DIR}/compile/sums.ink")
 set(args --compile ${sums} -o sums.h)
 check(compile_sums)
+# e^x's !q walked, the one before times q; the sine's !(2*q + 1) the helper's.
+file(READ "${OUT}/sums.h" text)
+string(FIND "${text}" "sums_fact_((double)k_)" at)
+if(NOT at EQUAL -1)
+    message(SEND_ERROR "compile_sums: sums.h calls the factorial for e^x's !q")
+endif()
+holds(compile_sums sums.h "sums_fact_(2.0 * (double)k_ + 1.0)")
 file(COPY ${sums} DESTINATION "${OUT}")
 file(WRITE "${OUT}/summed.ink" [[
 >> use sums
