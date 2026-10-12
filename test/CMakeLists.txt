@@ -69,15 +69,6 @@ foreach(part 1 2 3)
                      -P ${CMAKE_CURRENT_LIST_DIR}/cli.cmake)
     set_tests_properties(cli_${part} PROPERTIES TIMEOUT 120)
 endforeach()
-# A sequence with parameters read at lim's walking index (DESIGN.md),
-# specified before it is built: cli.cmake's spec part, skipped while
-# series.ink is refused as specified.
-add_test(NAME cli_spec
-         COMMAND ${CMAKE_COMMAND} -DEXE=$<TARGET_FILE:inkamath_cli> -DPART=spec
-                 -DOUT=${CMAKE_CURRENT_BINARY_DIR}/cli_spec -P ${CMAKE_CURRENT_LIST_DIR}/cli.cmake)
-set_tests_properties(cli_spec PROPERTIES TIMEOUT 120 SKIP_REGULAR_EXPRESSION
-    "series: refused as specified")
-
 # bench's workloads, each a transcript bench/run.cmake measures, replayed so
 # that one gone stale fails here rather than at its next measure. The
 # slowest, under the sanitizers, take 7 s; train.ink is data, no transcript.
@@ -218,7 +209,7 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brin
                          adjoint:sinabs adjoint:gate3 adjoint:under adjoint:aside gradmany:pair
                          gradmany:same gradmany:stair transformer:unseen:4 transformer:tuned:4
                          split:carried:4 split:apart:4 pendulum:one spin:twirl:20 iekf:walk:21
-                         tip:reach tip:rested)
+                         tip:reach tip:rested series:taylor series:wave series:later)
     string(REPLACE ":" ";" checked ${checked})
     list(POP_FRONT checked file instance count)
     set(name ${instance})
@@ -344,26 +335,6 @@ set_tests_properties(check_reach_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^reach: 100 steps from 0, against exact values\nreach\\.y: within 2\\.8e-14\nreach\\.d: within 0\n$")
 set_tests_properties(check_rested_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^rested: 100 steps from 0, against exact values\nrested\\.z: within 3\\.6e-15\n$")
-# A sequence with parameters read at lim's walking index (DESIGN.md),
-# specified before it is built: each program cli.cmake's spec_program part
-# writes, one saying it is refused until then, which skips its report.
-foreach(instance taylor wave)
-    set(program ${CMAKE_CURRENT_BINARY_DIR}/compile/${instance}.c)
-    add_custom_command(OUTPUT ${program}
-        COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/compile
-        COMMAND ${CMAKE_COMMAND} -DEXE=$<TARGET_FILE:inkamath_cli> -DPART=spec_program
-                -DINSTANCE=${instance} -DPROGRAM=${program} -P ${CMAKE_CURRENT_SOURCE_DIR}/cli.cmake
-        DEPENDS inkamath_cli compile/series.ink cli.cmake
-        VERBATIM)
-    add_executable(check_${instance} ${program})
-    target_link_libraries(check_${instance} PRIVATE inkamath_warnings
-                          $<$<NOT:$<C_COMPILER_ID:MSVC>>:m>)
-    set_target_properties(check_${instance} PROPERTIES
-                          C_STANDARD 11 C_STANDARD_REQUIRED ON C_EXTENSIONS OFF)
-    add_test(NAME check_${instance}_report COMMAND check_${instance})
-    set_tests_properties(check_${instance}_report PROPERTIES SKIP_REGULAR_EXPRESSION
-                         "^${instance}: refused")
-endforeach()
 # Held to the interpreter within the packed form's bounds on the baseline,
 # but y's, whose walk stops on its own steps alone (DESIGN.md).
 set(series "100 steps from 0, against exact values until 0 and inexact ones from there")

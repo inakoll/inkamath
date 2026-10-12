@@ -9868,7 +9868,7 @@ they asked, each with its smallest change.
 - **A halving recursion with a base runs away** at large indices:
   `w(x/2)_(k-1)` read at 1000 takes over 60 s to compile, and read ahead
   with a base at 1000, 35 s. Found reviewing *recursion from the tip*.
-- **A sequence with parameters read at `lim`'s walking index**, a series
+- `[done]` **A sequence with parameters read at `lim`'s walking index**, a series
   written as on paper: its partial sums under `lim`, its term a sequence of
   its own.
 
@@ -9906,36 +9906,39 @@ they asked, each with its smallest change.
     argument that reads the walking index, the limit's terms or a
     walked term is refused, "t_(...): read at lim s's index with arguments
     that change as it walks", the interpreter computing such a term from its
-    base at each iterate; one carrying a part under grad, "a derivative of a
-    limit, for now", as the limit's own argument is.
+    base at each iterate; one carrying a part under grad, "t_(...): a
+    derivative of a term lim s walks, for now", as the limit's own argument
+    is refused.
   - **Its clauses the limit's own way**, one `Iterate` for both: its general
     clauses a chain at `k_`, and a base clause at or past the walk's first
     index `k_ == b` before them, which the sine from its first term at 1,
-    beside partial sums from 0, needs. A window's term below its lowest base
-    is NaN, as where no clause applies (C86): a base clause taken first never
-    reads it, and read it makes the limit NaN where the interpreter has no
-    clause. A lowest base above the walk's first index is refused in the
-    interpreter's words, "p has no clause for index 1".
+    beside partial sums from 0, needs. Below its lowest base, its term and
+    its window's are NaN where no clause applies, as a step's are (C86),
+    `k_ < b ? NAN :` before the clause that always applies: a base clause
+    taken first never reads it, a guard can keep it unread, as
+    `series.ink`'s `later` does, and read it makes the limit NaN where the
+    interpreter has no clause, `p(x)_3 = 1` beside `p(x)_k = x/k^2` too.
   - **The stopping rule is the limit's own sequence's**, unchanged: a walked
     term's steps are not measured, as the interpreter measures only the
     sequence under `lim`. The packed form measures both and walks further.
   - **What stays refused**: an index that is not the walking index less a
     constant, `t(x)_(2*k)`, and a read ahead, `t(x)_(k+1)`, in today's words;
-    and a walked term reading the limit's own at its index, "sg is defined
-    by itself" since the walked term is computed first, where the
-    interpreter answers: the limit of the other sequence compiles once
-    it has a base clause, g's `u(x)_0 = 1/2`.
+    a walked term reading the limit's own at its index, "u_(...): reads lim
+    sf's term at its index", since the walked term is computed first, where
+    the interpreter answers: the limit of the other sequence compiles once
+    it has a base clause, f's `u(x)_0 = 1/2`; and a walked term reading its
+    own with other arguments, `w(x)_k = w(x/2)_(k-1)/k`, "w_(...): read at
+    lim sg's index with other arguments in its own terms", each walked in
+    turn without end.
   - **--float and --check**: nothing; a walked term is a local of the
     limit's function.
 
-  Found writing it, a defect of its own, fixed first with its test as C330
-  was: `Earlier` takes a read of the limit's own sequence for its window by
-  the names of its arguments, not their values, so through a function's
-  parameter of the same name another term is read as its own. With `g(x, j)
-  = s(x)_(j-1)`, `s(x)_0 = x` and `s(x)_k = g(2*x, k)/2 + 1/2^k`, `lim
-  s(3)` is 3 and compiled 7.6e-11; a walked term's clause reaches it too,
-  `u(x)_k = s(x)_(k-1)/4` read as `u(2*x)_k`, 3 and 9.6e-11. The arguments'
-  code compared with the function's `arg_` arrays fixes both.
+  Two walked terms whose steps cancel exactly, `c_k = (-1)^k t_k`, stop
+  the walk on a step of one ulp where the interpreter's exact step is 0,
+  as any compiled limit whose terms cancel so does: `x^k/(k^2*2^k) +
+  (-x)^k/(k^2*2^k)` without a walked term stops at k = 3 on integration too.
+
+  Found writing it, a defect of its own, fixed first: C352.
 
   What moves, on a prototype, discarded: nothing. No golden, no header of
   `test/compile/expected` nor the prelude's, no excerpt in `test/cli.cmake`,
@@ -10005,6 +10008,27 @@ they asked, each with its smallest change.
   part goes, the `spec` part's cases move into part 3, `cli_spec` goes, and
   README's paragraph on compiled limits names `series.ink`.
   No transcript in `test/data/spec`: the language does not change.
+
+  Built as specified with the spec review's rulings, which reworded three
+  refusals and made a lowest base past the walk's start NaN rather than
+  refused, `series.ink`'s `later` holding it; departing in five places
+  found building it. Each walked term is a temporary of the iterate: one
+  that is a window, `a(x)_k = a(x)_(k-2)`, was moved on after the window it
+  is, and stuck at 2 where the interpreter alternates, `later.z` holding
+  it. A window's term below the lowest base is its clauses' at that index,
+  NaN only where none applies, as the interpreter takes a guarded general
+  clause there. A guarded base clause past the walk's start is refused as
+  the limit's own is, and clauses of different shapes as `Chained` refuses
+  them, where the prototype dropped the guard and wrote a chain of mixed
+  shapes. And a function that is not a sequence, or a sequence by cells,
+  read at the walking index keeps today's words. No golden, expected header
+  or report moves, and the 221 check programs are the baseline's byte for
+  byte. 157 lines of `compile.hpp`, 192 added and 35 removed, 16 of them
+  comment; 17,995 lines in all, for 17,838 at 87f2c61. Re-taken, the
+  headers and the RIEKF's check program byte for byte the prototype's, and
+  a step 33.3 and 87.5 ns with GCC 13, 33.6 and 62.6 with Clang 18, for e^x;
+  210 and 496, 208 and 772, for the rotation: within 10% of the
+  prototype's, run to run.
 - **An unbounded sum is not compiled** as the limit of its partial sums.
   Compile it.
 - **Products by a literal 0.0 kept for NaN, and block-sparse matrices

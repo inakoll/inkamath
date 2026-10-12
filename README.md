@@ -163,7 +163,10 @@ writes softmax and cross-entropy, `log` being Newton's method on `exp`. A
 sequence with parameters read at a constant index, `f(x)_K`, is written out
 as a sum with constant bounds is, each term below the one read a temporary of
 the step: `test/compile/iterates.ink` takes a determinant by Faddeev-LeVerrier,
-grad through it, and a few steps of projected gradient. A
+grad through it, and a few steps of projected gradient. One read at a
+limit's index less a constant, `t(x)_k`, is walked beside it in its loop:
+`test/compile/series.ink` writes e^x and a rotation's exponential as the
+limits of their partial sums, as on paper. A
 limit of matrices fills an array, cell by cell: `test/compile/steady.ink`
 finds a chain's steady state and, by power iteration, a matrix's dominant
 direction at every step. A limit's iterate has temporaries as a step has, a
