@@ -4271,8 +4271,9 @@ that exploring seven domains asked of the interpreter, by how many asked.
     has no loop, and writes it where it is read as today.
   - **Guards**: a temporary is computed before the iterate's chain, an
     untaken clause's too, and is now computed once. A limit of numbers in
-    an untaken clause, which `?:` left uncomputed, is computed once per call
-    of the function: pure C, so no value moves, at the cost of one walk.
+    an untaken clause, or on the right of an `and` or `or`, which `?:` or
+    `&&` left uncomputed, is computed once per call of the function: pure C,
+    so no value moves, at the cost of one walk.
   - **NaN**: the same tests on the same operands in the same order; a flag
     of an argument's cells is computed before the loop, the test reading it
     unchanged.
@@ -4373,8 +4374,8 @@ that exploring seven domains asked of the interpreter, by how many asked.
   moves is the prototype's: the same 4 check programs and 3 cli headers,
   byte for byte; every report, golden and refusal as before. `layered`
   at -O2 by GCC 13.3, the median of nine runs: 2,240 and 2,164 ns a step
-  to 141, 154 and 141. 10 lines of `compile.hpp`, 12 added and 2 removed, 3 of
-  them comment; 18,335 in all.
+  to 141, 154 and 141. 10 lines of `compile.hpp`, 12 added and 2 removed,
+  3 of them comment; 18,335 in all.
 - `[done]` **Shared at every value written twice**, value numbering in
   general, as weighed under *Temporaries in a limit's function*, a
   refactor of headers: no golden, `--check` report or refusal moves.

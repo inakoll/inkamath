@@ -1062,10 +1062,10 @@ private:
     // Whether an iterate's value does not move as it walks, so is computed
     // before the loop (DESIGN.md, a limit's invariants hoisted); a call to a
     // function with a loop, which GCC and Clang leave in it, is shared so.
-    bool Unmoved(const std::string& value) {
+    bool Invariant(const std::string& value) {
         return limit_ && temporaries_ == limit_->iterated && !Walks(value);
     }
-    Code Looping(Code code) { return Unmoved(code.cells[0].text) ? Called(code) : code; }
+    Code Looping(Code code) { return Invariant(code.cells[0].text) ? Called(code) : code; }
 
     // Whether a function of the prelude reads a sequence with parameters,
     // itself or through what it calls, which its function in the header
@@ -1319,7 +1319,7 @@ private:
     template <typename Lines>
     std::string Declare(const std::string& value, Lines lines) {
         const Setting<std::vector<Temporary>*> hoisted(
-            temporaries_, Unmoved(value) ? limit_->based : temporaries_);
+            temporaries_, Invariant(value) ? limit_->based : temporaries_);
         // Checked, as an ended list may have left its address to another.
         std::size_t& at = declared_[{temporaries_, value}];
         if (at < temporaries_->size() && (*temporaries_)[at].value == value)
