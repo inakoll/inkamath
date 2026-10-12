@@ -51,8 +51,9 @@ set(inputs "${CMAKE_CURRENT_LIST_DIR}/compile/inputs.ink")
 # Specified, not yet built (DESIGN.md, shared at every value written twice):
 # Rodrigues' formula of the rigid-body exploration takes its norm once, where
 # each cell wrote it three times, and C133's guard reads the value of s that
-# a temporary holds by its name, where it wrote it again thrice. Skipped while
-# both are written as today, and only then.
+# a temporary holds by its name, where it wrote it again thrice; a turn by n
+# reads its cosine, a product's operand, by the operand's name, where its guard
+# wrote it again. Skipped while all are written as today, and only then.
 if(PART STREQUAL "spec")
     file(WRITE "${OUT}/rod.ink"
          "hat(w) = [0, -w[3], w[2]; w[3], 0, -w[1]; -w[2], w[1], 0]\nI3[j<=3, k<=3] = j == k\n"
@@ -64,6 +65,15 @@ if(PART STREQUAL "spec")
     file(WRITE "${OUT}/c133s.ink" "s(z) = (z > 2)*z\nk(z) = 0\nk(z) | s(z) > -1 = z\nw_n = grad_(t = x_n) k(t)\n")
     set(args --compile c133s.ink -o c133s.h)
     check(compile_values_once)
+    file(WRITE "${OUT}/turn.ink" "R(t) = [cos(t), -sin(t); sin(t), cos(t)]\nx_0 = [1, 0; 0, 1]\n"
+         "x_n | cos(n/10) > 0 = R(n/10)*x_(n-1)\nx_n = x_(n-1)\n")
+    set(args --compile turn.ink -o turn.h)
+    check(compile_values_once)
+    file(READ "${OUT}/turn.h" turn)
+    string(REGEX MATCHALL "cos\\(\\(double\\)m_->index_ / 10\\.0\\)" cosines "${turn}")
+    list(LENGTH cosines cosines)
+    string(REGEX MATCHALL "const double t[0-9]+_ = t[0-9]+_;" copies "${turn}")
+    list(LENGTH copies copies)
     file(READ "${OUT}/rod.h" rod)
     string(LENGTH "${rod}" bytes)
     string(REGEX MATCHALL "sqrt\\(" norms "${rod}")
@@ -71,13 +81,16 @@ if(PART STREQUAL "spec")
     file(READ "${OUT}/c133s.h" text)
     string(REGEX MATCHALL "m_->x\\[0\\] > 2\\.0" values "${text}")
     list(LENGTH values values)
-    if(norms EQUAL 3 AND bytes EQUAL 11215 AND values EQUAL 4)
+    if(norms EQUAL 3 AND bytes EQUAL 11215 AND values EQUAL 4 AND cosines EQUAL 9
+       AND copies EQUAL 0)
         message("compile_values_once: written as today")
         return()
     endif()
-    if(NOT norms EQUAL 1 OR NOT bytes LESS 8000 OR NOT values EQUAL 1)
+    if(NOT norms EQUAL 1 OR NOT bytes LESS 8000 OR NOT values EQUAL 1 OR NOT cosines EQUAL 1
+       OR NOT copies EQUAL 0)
         message(SEND_ERROR "compile_values_once: 'sqrt(' ${norms} times in ${bytes} bytes, "
-                           "s's value ${values} times")
+                           "s's value ${values} times, the cosine ${cosines} times and "
+                           "${copies} temporaries copying another")
     endif()
     return()
 endif()

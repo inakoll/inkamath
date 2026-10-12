@@ -4381,8 +4381,12 @@ that exploring seven domains asked of the interpreter, by how many asked.
   case `compile_values_once`, `rod.ink`, the free body's Rodrigues
   formula on one sequence, writing `sqrt(` once in under 8,000 bytes, 3
   times in 11,215 today and once in 6,827 on the prototype; and C133's
-  `c133s.h` writing s's value, `m_->x[0] > 2.0`, once, 4 times today.
-  Skipped while all three are today's, and only then. With the
+  `c133s.h` writing s's value, `m_->x[0] > 2.0`, once, 4 times today;
+  and `turn.h`, a turn by n guarded on its cosine, writing the cosine
+  once, 9 times today, and no temporary that copies another, as the
+  prototype's `const double t0_ = t3_;`: it sought a temporary's value by
+  its text before `Rated`, so missed each one reading n.
+  Skipped while all are today's, and only then. With the
   implementation the case moves into part 1, the `spec` part and
   `cli_spec` go, `heat.h`, `kernel.h` and `compile_c133s` are recorded
   again and read. No transcript in `test/data/spec`.
