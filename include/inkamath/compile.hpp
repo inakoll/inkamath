@@ -3116,10 +3116,13 @@ private:
             Code       term;
             try {
                 term = Term(name, function, beside.expansion, at);
-            } catch (const Reason&) {
-                if (!below) throw;
+            } catch (const Reason& reason) {
                 // No clause below its lowest base: NaN, as a step says (C86),
-                // in its terms' shape.
+                // in its terms' shape; a guard's term the step cannot compute
+                // is refused, which the interpreter answers.
+                if (!below ||
+                    reason.what() != name + " has no clause for index " + std::to_string(at))
+                    throw;
                 term = Term(name, function, beside.expansion, lowest->parameters.index());
                 for (Cell& cell : term.cells) cell = Atom("NAN");
                 term.constant.reset();

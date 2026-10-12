@@ -10017,14 +10017,16 @@ they asked, each with its smallest change.
   is, and stuck at 2 where the interpreter alternates, `later.z` holding
   it. A window's term below the lowest base is its clauses' at that index,
   NaN only where none applies, as the interpreter takes a guarded general
-  clause there. A guarded base clause past the walk's start is refused as
-  the limit's own is, and clauses of different shapes as `Chained` refuses
-  them, where the prototype dropped the guard and wrote a chain of mixed
-  shapes. And a function that is not a sequence, or a sequence by cells,
-  read at the walking index keeps today's words. No golden, expected header
+  clause there, and refused where the step cannot compute one, as
+  `compile_series_refused`'s h, whose guard reads the limit's own. A
+  guarded base clause past the walk's start is refused as the limit's own
+  is, and clauses of different shapes as `Chained` refuses them, where
+  the prototype dropped the guard and wrote a chain of mixed shapes. And a
+  function that is not a sequence, or a sequence by cells, read at the
+  walking index keeps today's words. No golden, expected header
   or report moves, and the 221 check programs are the baseline's byte for
-  byte. 157 lines of `compile.hpp`, 192 added and 35 removed, 16 of them
-  comment; 17,995 lines in all, for 17,838 at 87f2c61. Re-taken, the
+  byte. 160 lines of `compile.hpp`, 195 added and 35 removed, 17 of them
+  comment; 17,998 lines in all, for 17,838 at 87f2c61. Re-taken, the
   headers and the RIEKF's check program byte for byte the prototype's, and
   a step 33.3 and 87.5 ns with GCC 13, 33.6 and 62.6 with Clang 18, for e^x;
   210 and 496, 208 and 772, for the rotation: within 10% of the
