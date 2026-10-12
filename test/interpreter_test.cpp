@@ -301,6 +301,9 @@ TEST_CASE("implicit") {
 TEST_CASE("transformer") {
     check_transcript("transformer.ink");
 }
+TEST_CASE("transformer_train") {
+    check_transcript("transformer_train.ink");
+}
 TEST_CASE("readme") {
     check_readme();
 }

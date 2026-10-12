@@ -4027,6 +4027,11 @@ that exploring seven domains asked of the interpreter, by how many asked.
   with the implementation the case moves into part 1 beside
   `compile_nan_once`, and the `spec` part and `cli_spec` go. No
   transcript in `test/data/spec`.
+- **A compiled step split into functions**: the transformer trained by
+  one grad of its 13 weights compiles to a 17 MB straight-line step that
+  neither GCC nor Clang builds at -O2 within 10 minutes (Clang -O0: 24 s,
+  2.6 GB; GCC -O2 410 s and 4.5 GB once, on a quieter machine). Write each
+  name's sweep, or each part's step, as a C function of its own.
 - **A limit's invariants hoisted out of its iterate**: a limit or a
   matrix inverse that reads only the function's arguments is declared in
   the iterate's list, so walked again at each iterate, and gcc -O2 leaves
@@ -8463,6 +8468,9 @@ checked: what it asked of the compiler, each with its smallest change.
 - **A maximum or minimum over an index**, `max_(i=1)^n`, as a sum is
   written: max-pooling over a window is nested `max` calls today. Minor,
   until a second model asks.
+- **An argmax in the prelude**: a transformer's held-out accuracy had to
+  be written `prod_(v=1)^nv (Z[b,t,v] <= Z[b,t,y])`, its target's logit
+  no smaller than any.
 - **The compiled sum's thousand terms**: a LeNet-sized layer's dot product
   over a batch would pass `max_terms`, which bounds an unrolled sum written
   as lines of C, not a loop.
