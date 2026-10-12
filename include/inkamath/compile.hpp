@@ -322,6 +322,7 @@ private:
         Reads                    guard, value;
         int                      guard_from = 0, value_from = 0;
         int                      clause = 0;  // its place among the definition's
+        bool                     constant = false;
     };
 
     struct Sequence {
@@ -1407,8 +1408,9 @@ private:
                         sequence.general_clause = place;
                         settled                 = true;
                     } else {
-                        sequence.guarded.push_back(
-                            {*condition, Texts(code), guard_reads, value_reads, 0, 0, place});
+                        sequence.guarded.push_back({*condition, Texts(code), guard_reads,
+                                                    value_reads, 0, 0, place,
+                                                    code.constant.has_value()});
                     }
                     index_text_ = outer_text;
                 });
@@ -3063,8 +3065,10 @@ private:
         code.whole = true;
         // Before its window holds the term, one with no base clause is
         // computed again at that index, as the interpreter answers it there
-        // (DESIGN.md, C71); Checked keeps whichever the reader needs.
-        if (lag > 0 && Recomputed(read) && read.compiled && !histories_.count(key)) {
+        // (DESIGN.md, C71); Checked keeps whichever the reader needs. A
+        // recurrence's are folded by init instead (C343).
+        if (lag > 0 && Recomputed(read) && read.compiled && !Historied(key) &&
+            !Reaches(key, reading_)) {
             earlies_.push_back({key, lag, reading_, {}, early_});
             const int  id          = static_cast<int>(earlies_.size() - 1);
             const int  outer       = std::exchange(early_, id);
@@ -4282,10 +4286,47 @@ private:
         return std::max(held, first);
     }
 
-    // An input of the model compiled, or one with a history: what is read of
-    // it before the stream is what init folds from that history, or refused.
+    // An input of the model compiled, one with a history, or a recurrence:
+    // what is read of it before the stream is what init folds, or refused.
     bool Historied(const std::string& name) const {
-        return histories_.count(name) || (root_.model && !sequences_.at(name).definition);
+        return histories_.count(name) || (root_.model && !sequences_.at(name).definition) ||
+               (Recurrent(name) && sequences_.at(name).own.empty());
+    }
+
+    // One with no base clause that reads its own terms back, through others
+    // too: those before the stream are what init folds, as an input's
+    // history's are (C343).
+    bool Recurrent(const std::string& name) const {
+        const Sequence& sequence = sequences_.at(name);
+        return Recomputed(sequence) && (!sequence.own.empty() || Reaches(name, &sequence));
+    }
+    bool Reaches(const std::string& from, const Sequence* to) const {
+        std::set<std::string>    seen{from};
+        std::vector<std::string> left{from};
+        while (!left.empty()) {
+            const Sequence& sequence = sequences_.at(left.back());
+            left.pop_back();
+            for (const Reads* each : {&sequence.reads, &sequence.deferred})
+                for (const auto& [read, lags] : *each) {
+                    if (&sequences_.at(read) == to) return true;
+                    if (seen.insert(read).second) left.push_back(read);
+                }
+        }
+        return false;
+    }
+
+    // A term before the stream that a guard holding there gives as a
+    // constant, whatever a parameter is: 'g_n | n < 0 = 1'.
+    bool Given(const std::string& name, int n) {
+        const Sequence& sequence = sequences_.at(name);
+        for (const Guarded& guarded : sequence.guarded) {
+            const auto& p = sequence.definition->Clauses()[guarded.clause].parameters;
+            Check guard{{}, p.guard(), false, sequence.definition->home, p.index_name(), {}, 0};
+            if (Decides(guard, n)) return guarded.constant;
+            guard.conjunction = true;
+            if (!Decides(guard, n)) return false;
+        }
+        return false;
     }
 
     // A term before the stream as the interpreter gives it, where only a
@@ -4295,14 +4336,16 @@ private:
         const auto              history = histories_.find(name);
         const Reference<Value>* definition =
             history != histories_.end() ? history->second : sequences_.at(name).definition;
-        if (fresh && definition && !Parametric(name)) {
+        // A recurrence's own term, where no input or parameter can change it.
+        const bool given = Recurrent(name) && (!Parametric(name, true) || Given(name, n));
+        if (fresh && definition && (given || !Parametric(name))) {
             definitions_.Forget();
             definitions_.BeginEvaluation();
             try {
                 const ParametersCall<Value> at(
                     PExpression<Value>(), std::make_shared<ValExpression<Value>>(Value(Number(n))));
                 const Value term = definition->Eval(at, definitions_, true);
-                if (definitions_.histories) {
+                if (definitions_.histories || given) {
                     const std::vector<double> cells = Doubles(term);
                     if (std::all_of(cells.begin(), cells.end(), Finite))
                         slot->second = term;
@@ -4310,7 +4353,7 @@ private:
                         unfolded_[{name, n}] = "a term no " + Real() + " holds";
                 }
             } catch (const std::runtime_error& error) {
-                if (definitions_.histories)
+                if (definitions_.histories || given)
                     unfolded_[{name, n}] = std::string("none: ") + error.what();
             }
         }
@@ -4326,14 +4369,14 @@ private:
     }
 
     // Whether a term can read a parameter, which the host may assign after
-    // init has folded it.
-    bool Parametric(const std::string& name) const {
+    // init has folded it, or with 'inputs' an input.
+    bool Parametric(const std::string& name, bool inputs = false) const {
         std::set<std::string>    seen{name};
         std::vector<std::string> left{name};
         while (!left.empty()) {
             const Sequence& sequence = sequences_.at(left.back());
             left.pop_back();
-            if (!sequence.parameters.empty()) return true;
+            if (!sequence.parameters.empty() || (inputs && !sequence.definition)) return true;
             std::vector<std::string> reads;
             for (const Reads* each :
                  {&sequence.reads, &sequence.deferred, &sequence.samples, &sequence.seeded})
@@ -4373,13 +4416,13 @@ private:
     // Each read before the stream, from a reader's start until 'until', that
     // no history gives and nothing keeps.
     void Cover(const std::string& name, const Sequence& reader, const Reads& reads, int until,
-               const Check* kept = nullptr) {
+               const std::vector<Check>& kept = {}) {
         for (const auto& [read, lags] : reads) {
             if (!Historied(read)) continue;
             for (const int lag : lags) {
                 for (int n = reader.start; n < std::min(until, earliest_ + lag); ++n) {
                     if (!Ticks(reader, n) || reader.bases.count(n) || Folded(read, n - lag) ||
-                        (kept && Decides(*kept, n)))
+                        std::ranges::any_of(kept, [&](const Check& c) { return Decides(c, n); }))
                         continue;
                     throw Refusal(
                         name, name + "_" + std::to_string(Floor(n - reader.phase, reader.period)) +
@@ -4393,6 +4436,12 @@ private:
     // The reads before the stream; the step's deferred ones are checked as it
     // is written.
     void Histories(int earliest) {
+        // A slow one's own terms before its first, as a hold's are (C343).
+        for (auto& [name, sequence] : sequences_)
+            while (!sequence.own.empty() && Recurrent(name) &&
+                   sequence.filled < *sequence.own.rbegin() &&
+                   Folded(name, sequence.first - sequence.filled - 1))
+                ++sequence.filled;
         for (const auto& [name, last] : reach_)
             if (last >= earliest)
                 throw Refusal(name, "its history reaches " + name + "_" + std::to_string(earliest) +
@@ -4405,14 +4454,23 @@ private:
                 const auto& p = sequence.definition->Clauses()[guarded.clause].parameters;
                 const Check kept{guarded.value,  p.guard(), true, sequence.definition->home,
                                  p.index_name(), {},        0};
-                Cover(name, sequence, guarded.value, std::numeric_limits<int>::max(), &kept);
+                Cover(name, sequence, guarded.value, std::numeric_limits<int>::max(), {kept});
                 for (const auto& [read, lags] : guarded.value)
                     for (const int lag : lags) always[read].erase(lag);
             }
+            // The general clause's, where no guard holds (C343).
+            std::vector<Check> holds;
+            for (const Guarded& guarded : sequence.guarded) {
+                const auto& p = sequence.definition->Clauses()[guarded.clause].parameters;
+                holds.push_back(
+                    {{}, p.guard(), false, sequence.definition->home, p.index_name(), {}, 0});
+            }
+            Cover(name, sequence, sequence.general_reads, std::numeric_limits<int>::max(), holds);
+            for (const auto& [read, lags] : sequence.general_reads)
+                for (const int lag : lags) always[read].erase(lag);
             for (const Guarded& guarded : sequence.guarded)
-                for (const Reads* reads : {&guarded.guard, &sequence.general_reads})
-                    for (const auto& [read, lags] : *reads)
-                        always[read].insert(lags.begin(), lags.end());
+                for (const auto& [read, lags] : guarded.guard)
+                    always[read].insert(lags.begin(), lags.end());
             Cover(name, sequence, always, std::numeric_limits<int>::max());
             // A base clause's reads, which Cover passes over.
             for (const Seed& seed : sequence.seeds)
@@ -4618,7 +4676,7 @@ private:
              at             = text.find('\x02', at)) {
             const std::size_t end = text.find('\x03', at);
             const Check&      kept = checks_.at(std::stoul(text.substr(at + 1, end - at - 1)));
-            Cover(name, sequence, kept.reads, std::numeric_limits<int>::max(), &kept);
+            Cover(name, sequence, kept.reads, std::numeric_limits<int>::max(), {kept});
             const int   from = From(kept.reads);
             std::string check;
             for (int n = sequence.start; n < from && check.empty(); ++n)

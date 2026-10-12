@@ -1180,6 +1180,10 @@ set(args --compile gained.ink gained -o gained.h)
 set(stderr "inkamath: cannot compile inner.c: inner.c_0 reads inner.x_-1, before the stream, where inner.x has no history\n")
 set(exit 1)
 check(history_gained)
+# And a recurrence's own history that reads one, which the step read as 0
+# (C343).
+refused(lifted "a = 2) = {\n    g_n | n < 0 = a\n    g_n = 2*g_(n-1)"
+        "g: g_0 reads g_-1, before the stream, where g has no history")
 
 # A history of a single value for an inner input given a matrix.
 file(WRITE "${OUT}/stacked.ink" "lag(x_n) = {\n    x_n | n < 0 = 0\n    c_n = x_(n-1)\n}\n"
