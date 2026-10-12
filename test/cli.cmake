@@ -784,6 +784,18 @@ foreach(flag IN LISTS flags)
         message(SEND_ERROR "compile_sweep_conditions: ${flag}")
     endif()
 endforeach()
+# An 'any' of equal operands is the operand, a NaN test of equal cells one.
+file(WRITE "${OUT}/twice.ink" "m(x_n) = {\n    up(z)[i] | z[i] > 0 = z[i]\n    up(z)[i] = 0\n"
+     "    d_n = grad_(t = x_n) t*(up([t; t])[2] > 0)\n}\n")
+set(args --compile twice.ink m -o twice.h)
+check(compile_any_twice)
+file(READ "${OUT}/twice.h" text)
+string(REGEX MATCHALL "const int t[0-9]+_ = [^;\n]*" flags "${text}")
+foreach(flag IN LISTS flags)
+    if(flag MATCHES "= (.*) \\|\\| (.*)$" AND CMAKE_MATCH_1 STREQUAL CMAKE_MATCH_2)
+        message(SEND_ERROR "compile_any_twice: ${flag}")
+    endif()
+endforeach()
 # A gradient by several names compiled (DESIGN.md, test/compile/gradmany.ink):
 # a struct of its parts, the body written once and swept back once, tanh's
 # slope once for each unit, where four grads of one name write it 7 times in

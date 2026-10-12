@@ -207,7 +207,7 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brin
                          implicit:layered tensorgrad:attend tensorgrad:small
                          tensorgrad:saliency:3 adjoint:fit4 adjoint:token
                          adjoint:sinabs adjoint:gate3 adjoint:under adjoint:aside gradmany:pair
-                         gradmany:same transformer:unseen:4 transformer:tuned:4)
+                         gradmany:same gradmany:stair transformer:unseen:4 transformer:tuned:4)
     string(REPLACE ":" ";" checked ${checked})
     list(POP_FRONT checked file instance count)
     set(name ${instance})
@@ -592,6 +592,8 @@ set_tests_properties(check_gradmany_pair_report PROPERTIES PASS_REGULAR_EXPRESSI
     "^pair: 100 steps from 0${inexact0}\npair\\.g\\.W: within 0, from 1${about}\npair\\.W: within 0${about}\npair\\.g\\.V: within 0, from 1${about}\npair\\.V: within 0${about}\npair\\.g\\.c: within 0, from 1${about}\npair\\.c: within 0${about}\npair\\.g\\.d: within 0, from 1${about}\npair\\.d: within 0${about}\n$")
 set_tests_properties(check_same_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^same: 100 steps from 0${inexact0}\nsame\\.g\\.A: within 0, from 1${about}\nsame\\.A: within 0${about}\nsame\\.g\\.B: within 0, from 1${about}\nsame\\.B: within 0${about}\n$")
+set_tests_properties(check_stair_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^stair: 100 steps from 0, against exact values\nstair\\.g\\.a: within 0\nstair\\.g\\.b: within 0\n$")
 # A trained transformer, as compile/transformer.ink gives it.
 set_tests_properties(check_unseen_4_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^unseen: 4 steps from 0${inexact0}\nunseen\\.Z: within [1-9](\\.[0-9])?e-1[5-9]${about}\n$")
