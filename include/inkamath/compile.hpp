@@ -1930,7 +1930,10 @@ private:
     // Under grad (Derivative::Power), e^w's part is e^w*w', and a constant
     // power's c*u^(c-1)*u', none where c is 0, NaN where u is 0 and c < 1.
     PExpression<Value> visit(PowExpression<Value>* expression) override {
-        Code       base = Emit(expression->m_e1());
+        Code base = Emit(expression->m_e1());
+        if (limit_ && !index_.empty() && !places_.count(index_) && base.part.empty() &&
+            Mentions(*expression->m_e2(), index_))
+            if (const auto climbed = Climbed(base, expression->m_e2())) return Answer(*climbed);
         const Code exponent =
             base.Scalar()
                 ? Emit(expression->m_e2())
@@ -3052,6 +3055,60 @@ private:
         return Chain(guarded, otherwise, size);
     }
 
+    // Whether code read in a limit's terms changes as it walks.
+    bool Walks(std::string read) {
+        const Walked& walked = *limit_;
+        for (const Temporary* temporary : Kept(*walked.based, read))
+            for (const std::string& line : temporary->lines) read += line + ' ';
+        std::set<std::string> words, moving{"k_"};
+        Words(read, words);
+        for (int l = 1; l <= walked.depth; ++l) moving.insert("t" + std::to_string(l) + "_");
+        for (const Temporary& temporary : *walked.iterated) moving.insert(temporary.name);
+        for (std::size_t b = 0; b < walked.beside.size(); ++b)
+            for (std::size_t l = 1; l <= walked.beside[b].window.size(); ++l)
+                moving.insert(Window(b, l));
+        return std::ranges::any_of(words, [&](const std::string& w) { return moving.contains(w); });
+    }
+
+    // 'A^(k+c)' in a limit's terms, k its walking index and A the same at
+    // each: walked beside it, each power the one before times A from A^(f+c)
+    // set before the walk, f the index before its first: one product a term
+    // where squaring takes log k. Not where f+c < 0, an inverse the
+    // interpreter may never take.
+    std::optional<Code> Climbed(const Code& base, const PExpression<Value>& exponent) {
+        Walked& walked = *limit_;
+        int     c      = 0;
+        try {
+            c = Offset(exponent, "a power");
+        } catch (const Reason&) {
+            return std::nullopt;
+        } catch (const Fix&) {
+            return std::nullopt;
+        }
+        std::string read;
+        for (const Cell& cell : base.cells) read += cell.text + ' ';
+        if (walked.first - 1 + c < 0 || Walks(read)) return std::nullopt;
+        const std::string key = "^" + std::to_string(c) + " " + Rows(base);
+        std::size_t       b   = 0;
+        while (b < walked.beside.size() &&
+               (walked.beside[b].function || walked.beside[b].args != key))
+            ++b;
+        if (b < walked.beside.size()) return walked.beside[b].term;
+        Walked::Beside& beside = walked.beside.emplace_back(Walked::Beside{nullptr, key, {}});
+        {
+            const Setting<std::vector<Temporary>*> before(temporaries_, walked.based);
+            beside.window.push_back(
+                SharedAll(Power(base, Literal(Value(Number(walked.first - 1 + c))))));
+        }
+        const Setting<std::vector<Temporary>*> in(temporaries_, walked.iterated);
+        Code                                   term = Product(Array(Window(b, 1), base.size), base);
+        for (Cell& cell : term.cells)
+            cell = Atom(Declare(cell.text, [&](const std::string& t) {
+                return std::vector<std::string>{"const double " + t + " = " + cell.text + ";"};
+            }));
+        return beside.term = term;
+    }
+
     static std::string Window(std::size_t b, std::size_t lag) {
         return "w" + std::to_string(b) + "_" + std::to_string(lag) + "_";
     }
@@ -3072,17 +3129,7 @@ private:
                              " walks, for now");
             for (const Cell& cell : value.cells) read += cell.text + ' ';
         }
-        for (const Temporary* temporary : Kept(*walked.based, read))
-            for (const std::string& line : temporary->lines) read += line + ' ';
-        std::set<std::string> words, moving{"k_"};
-        Words(read, words);
-        for (int l = 1; l <= walked.depth; ++l) moving.insert("t" + std::to_string(l) + "_");
-        for (const Temporary& temporary : *walked.iterated) moving.insert(temporary.name);
-        for (std::size_t b = 0; b < walked.beside.size(); ++b)
-            for (std::size_t l = 1; l <= walked.beside[b].window.size(); ++l)
-                moving.insert(Window(b, l));
-        if (std::ranges::any_of(words, [&](const std::string& w) { return moving.contains(w); }))
-            throw Reason(read_at + "with arguments that change as it walks");
+        if (Walks(read)) throw Reason(read_at + "with arguments that change as it walks");
         const std::string args = Given(expansion);
         std::size_t       b    = 0;
         while (b < walked.beside.size() &&
@@ -5568,7 +5615,7 @@ private:
             std::optional<Code>     term   = {};  // at k_, once compiled
             std::vector<Code>       window = {};  // its terms before the walk, by lag
         };
-        std::deque<Beside> beside = {};  // the sequences with parameters walked beside it
+        std::deque<Beside> beside = {};  // sequences with parameters, and powers, walked beside it
     };
     std::deque<std::vector<Temporary>> lists_;  // those, kept as a step's are
     static constexpr std::size_t       split_  = 16384;  // a part's bytes; see Split
