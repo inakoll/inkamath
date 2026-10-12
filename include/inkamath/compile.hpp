@@ -5446,7 +5446,7 @@ private:
         out += " * closer to exact, but the step then depends on how it is built, so build\n";
         out += " * what 'inkamath --check' writes the way the step itself is built. */\n";
         out += "#ifndef " + guard + "\n#define " + guard + "\n\n";
-        if (!limits_.empty()) out += "#include <float.h>\n";
+        const std::size_t includes = out.size();
         out += "#include <math.h>\n#include <string.h>\n\n";
         out += Interface(module, inputs, fields, earliest);
         out += "/* The parameters, which the host may assign, then what derives from them,\n";
@@ -5473,9 +5473,7 @@ private:
         out +=
             "typedef struct " + module + " {\n" + Nested(members, "    ") + "} " + module + ";\n\n";
 
-        for (const std::size_t n : inverses_) out += InverseHelper(n);
         const std::size_t functions = out.size();
-        for (const std::string& limit : limits_) out += limit;
 
         out += "/* Computes what derives from the parameters: call it after assigning one. */\n";
         out += "static inline void " + module + "_update(" + module + "* m_) {\n";
@@ -5584,16 +5582,26 @@ private:
                            ("#else\n" + define) + "\n#endif\n\n" + values + pieces_);
         }
         out.insert(folds, Folds(earliest));
-        // A function of the prelude where something calls it: the part one a
-        // floor or a comparison drops nothing does.
+        // A function of the header where something calls it, which a fold, a
+        // floor or a comparison may not (C355); each calls only those before.
+        std::vector<std::pair<std::string, std::string>> helpers;
+        for (const std::size_t n : inverses_)
+            helpers.emplace_back(module_ + "_inverse" + std::to_string(n) + "_", InverseHelper(n));
+        for (const std::string& function : prelude_) {
+            const std::size_t open = function.find('('), name = function.rfind(' ', open) + 1;
+            helpers.emplace_back(function.substr(name, open - name), function);
+        }
+        for (std::size_t i = 0; i < limits_.size(); ++i)
+            helpers.emplace_back(module_ + "_lim" + std::to_string(i), limits_[i]);
         std::string kept, calls = out.substr(functions);
-        for (auto function = prelude_.rbegin(); function != prelude_.rend(); ++function) {
-            const std::size_t open = function->find('('), name = function->rfind(' ', open) + 1;
-            if (!Writes(calls, function->substr(name, open - name))) continue;
-            calls += *function;
-            kept = *function + kept;
+        for (auto helper = helpers.rbegin(); helper != helpers.rend(); ++helper) {
+            if (!Writes(calls, helper->first)) continue;
+            calls += helper->second;
+            kept = helper->second + kept;
         }
         out.insert(functions, kept);
+        if (Writes(kept, "DBL_EPSILON") || Writes(kept, "FLT_EPSILON"))
+            out.insert(includes, "#include <float.h>\n");
         // Past the line naming the source, the words of the compiler's own C
         // for a double as a float's: every constant is written as one already.
         const auto inside = [&](std::size_t at) {
