@@ -1157,16 +1157,18 @@ private:
             // A guard that reads a limit that runs out does not hold, and the
             // clause after is inexact (DESIGN.md, a clause for a limit that
             // does not converge).
-            T guard;
+            T    guard;
+            bool out = false;  // this guard's, where ran may be an earlier one's
             try {
                 guard = clause.parameters.guard()->accept(evaluator);
             } catch (const Unconverged& unconverged) {
                 ran.emplace(unconverged);
+                out = true;
             }
-            past            = past || (ran ? ran->past : numeric_interface<T>::approximated(guard));
-            const bool held = !ran && numeric_interface<T>::truth(guard);
+            past            = past || (out ? ran->past : numeric_interface<T>::approximated(guard));
+            const bool held = !out && numeric_interface<T>::truth(guard);
             if (held) locals.keep();
-            rounded |= ran || !numeric_interface<T>::exact(guard);
+            rounded |= out || !numeric_interface<T>::exact(guard);
             const ParametersDefinition<T>& p    = clause.parameters;
             if (evaluator.stack().guards &&
                 (p.general() || (!p.indexed() && definition.home != &evaluator.stack().Builtins())))

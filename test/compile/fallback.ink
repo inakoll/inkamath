@@ -144,3 +144,48 @@ inward(c_n) = {
     y_n = 0
 }
 answered = inward(c_n = 1 + mod(n, 2))
+
+# A guard that did not hold for a limit that ran out leaves the guards after
+# it their own truth: s(1)'s terms are 0, 2, 0, ..., and y_n is 2 at every
+# n, in the step as interpreted. Checked:
+#
+#     chained: 100 steps from 0, against exact values until 0 and inexact ones from there
+#     chained.y: within 0
+chain(u_n) = {
+    s(x)_k = x + (-1)^k
+    y_n | lim s(u_n) > 0 = 1
+    y_n | u_n > 0 = 2
+    y_n = 3
+}
+chained = chain(u_n = 1)
+
+# A function whose clause has answered passes on no limit's status: its
+# caller's guard is NaN only where a term it reads is refused, and the step
+# is NaN there, as the interpreter refuses. gap's value reads the limit its
+# guard read, and g's second guard holds after its first ran out. At even n
+# Newton settles near 0.618 and y_n is 1; at odd n it cycles, gap is 0 and
+# g 2, r_n is refused, and so is y_n. Checked:
+#
+#     gapped: 100 steps from 0, against exact values until 0 and inexact ones from there
+#     gapped.r: within 0
+#     gapped.y: within 0
+gapr(c_n) = {
+    nv(c)_0 = 0
+    nv(c)_k = nv(c)_(k-1) - (nv(c)_(k-1)^3 - 2*nv(c)_(k-1) + c)/(3*nv(c)_(k-1)^2 - 2)
+    gap(c) | lim nv(c) > 0 = lim nv(c)
+    gap(c) = 0
+    r_n | c_n < 2 = 1
+    y_n | gap(c_n) < 1 and r_n == 1 = 1
+    y_n = 0
+}
+gapped = gapr(c_n = 1 + mod(n, 2))
+midst(c_n) = {
+    nv(c)_0 = 0
+    nv(c)_k = nv(c)_(k-1) - (nv(c)_(k-1)^3 - 2*nv(c)_(k-1) + c)/(3*nv(c)_(k-1)^2 - 2)
+    g(c) | lim nv(c) > 0 = 1
+    g(c) | c > 0 = 2
+    r_n | c_n < 2 = 1
+    y_n | g(c_n) < 3 and r_n == 1 = 1
+    y_n = 0
+}
+middled = midst(c_n = 1 + mod(n, 2))
