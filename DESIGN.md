@@ -11024,24 +11024,32 @@ After an external review of README, MANIFESTO and the conformance suite
     refused today ("Locals compiled" above), and a limit written twice is
     called where it is written, which GCC may merge and Clang does not.
   - **Reads as the interpreter reads**: on the right of `and` or `or` only
-    where the left did not decide, and through the functions the guard
-    calls. Read on the left, the guard does not hold whatever its right
-    says: a guard that cannot be read whole has no truth. Not through a
-    term of a sequence the guard reads, nor through another limit's terms
-    or a series' partial sums, each of which is refused where the limit in
-    it does not converge, as today: there the refusal is that term's, and
-    the step's term is NaN.
+    where the left did not decide, through the functions the guard calls,
+    and in a sum's or a reduction's terms. A definition the guard calls
+    whose own guard reads one, with no clause after, is refused in the
+    limit's words, so the guard calling it does not hold either. Read on the
+    left, the guard does not hold whatever its right says: a guard that
+    cannot be read whole has no truth. Not through a term of a sequence the
+    guard reads, nor through another limit's terms or a series' partial
+    sums, each of which is refused where the limit in it does not converge,
+    as today: there the refusal is that term's, and the step's term is NaN.
   - **Which limits**: `lim`, a sum or product without an upper bound, and
     under grad a limit's derivative (interpreter only; compiled, "a
     derivative of a limit, for now").
+  - **grad of a definition whose guard reads such a limit** at the point
+    is refused, "grad cannot differentiate root at y = 0, whose guard
+    reads a limit that does not converge": the clause after was chosen by
+    no truth grad can follow, as a clause taken at a point alone is not.
   - **Only a walk that runs out**: its hundred terms, or partial sums, each
     a number and never settling. A term refused is a refusal, as today. A
     term that is NaN now refuses the limit, "hs has no limit: a term is
-    -nan", where the walk went on and said it did not converge: the step
-    cannot tell its NaN from a term the interpreter refuses, so a NaN taken
-    for a walk that ran out would choose the fallback compiled where the
-    interpreter refuses, or the other way. No comparison takes NaN either.
-    An infinite term is a number: a walk through one runs out.
+    -nan", where the walk went on and said it did not converge; so do a
+    matrix term with a NaN cell, "a term is [-nan, 1]", a NaN base term, and
+    a NaN partial sum, "the sum has no limit: a partial sum is -nan". The
+    step cannot tell its NaN from a term the interpreter refuses, so a NaN
+    taken for a walk that ran out would choose the fallback compiled where
+    the interpreter refuses, or the other way. No comparison takes NaN
+    either. An infinite term is a number: a walk through one runs out.
   - **The clause after is inexact**, `~0.5`: whether a walk settles is read
     from its steps as doubles, and within a hundred terms, as a clause a
     guard reading a double chose is (C241); marked where the walk's terms
@@ -11051,13 +11059,16 @@ After an external review of README, MANIFESTO and the conformance suite
     "NaN kept where none is written".
   - **Compiled**: a limit's function returns NaN at its first term with a
     NaN cell, where it walked on to the hundredth, and where its walk runs
-    out returns NaN and raises a flag it is given. A guard reading it
-    tests the flag where the interpreter reads it, false where raised, so
-    the chain goes on to the next clause; past the last, NaN. A limit no
-    guard reads is NaN where it runs out, as today. A host that wants the
-    status MANIFESTO's solver within a step names writes it as a sequence
-    whose guard is the plan's own test, `solved_n | abs(x_n + lim qp(x_n))
-    <= abs(x_n) = 1`, `solved_n = 0`.
+    out returns NaN and raises a flag it is given. A guard reading it tests
+    the flag where the interpreter reads it, false where raised, so the
+    chain goes on to the next clause; past the last, NaN. A limit no guard
+    reads is NaN where it runs out, as today. A sum or a reduction is
+    written out, its bounds constants, so a limit in its terms within a
+    guard is read as the guard's own: nothing to add, where a loop would
+    have needed the flag inside it. A host that wants the status MANIFESTO's
+    solver within a step names writes it as a sequence whose guard is the
+    plan's own test, `solved_n | abs(x_n + lim qp(x_n)) <= abs(x_n) = 1`,
+    `solved_n = 0`.
   - **--check**: a walk one side settles and the other does not is a guard
     taking another clause, reported first as any flip is, without a margin,
     a walk having no single threshold. A disturbed run's likewise.
@@ -11108,20 +11119,21 @@ After an external review of README, MANIFESTO and the conformance suite
   `wc -l include/inkamath/*.hpp src/*`; past 142 the implementation stops
   and reports.
 
-  Specified in `test/data/spec/unconverged.ink`, 81 entries replayed by
-  the spec suite, 17 failing today: Newton's cycle on x^3 - 2x + 2 under a
-  residual guard and a local; `and`, `or`, a call, a
-  term and another limit's terms; a series, grad; a walk refused, NaN, inf;
-  the MPC with its fallback, the same without, and Newton within a step.
-  Values in Python's fractions, README section 4's rule written again in
-  Python, roots in mpmath. Compiled, in `test/compile/fallback.ink` and
-  `fallback_test.c`, the harness `compile_fallback`: the MPC's x, u and
-  solved, Newton held, and a walk refused NaN, each against those values,
-  skipped while the step is NaN where the clause after is to be taken and
-  only then. With the implementation the spec becomes a golden, the skip
-  goes, `planned` and `held` join the checks with the reports
-  `fallback.ink` gives, and the spec suite goes if the tolerance has
-  landed.
+  Specified in `test/data/spec/unconverged.ink`, 97 entries replayed by the
+  spec suite, 23 failing today: Newton's cycle on x^3 - 2x + 2 under a
+  residual guard and a local; `and`, `or`, a call, a definition with no
+  clause after, a term and another limit's terms; a series, a sum's terms,
+  grad, grad of the guard refused; a walk refused, NaN in a term, a cell, a
+  base and a partial sum, inf; the MPC with its fallback, the same without,
+  and Newton within a step. Values in Python's fractions, README section 4's
+  rule written again in Python, roots in mpmath. Compiled, in
+  `test/compile/fallback.ink` and `fallback_test.c`, the harness
+  `compile_fallback`: the MPC's x, u and solved, Newton held, a walk refused
+  NaN, and limits in a sum's terms within a guard, `paired`, each against
+  those values, skipped while the step is NaN where the clause after is to
+  be taken and only then. With the implementation the spec becomes a golden,
+  the skip goes, `planned` and `held` join the checks with the reports
+  `fallback.ink` gives, and the spec suite goes if the tolerance has landed.
 - **A tolerance relative to the term**, the 1e-10 being absolute. Of the
   same roadmap line, but a change of its own, which may land before or
   after the clause: neither's spec reads the other.

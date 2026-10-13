@@ -109,6 +109,20 @@ r(x) = x
 >> r(-2)
 ~-1.76929235
 
+# Through a definition the guard calls that has no clause after its own
+# guard: its refusal is the limit's, so the guard calling it does not hold.
+>> ho(x) | h(x) < 0 = 1
+ho(x) | h(x) < 0 = 1
+
+>> ho(x) = 2
+ho(x) = 2
+
+>> ho(-2)
+~1
+
+>> ho(0)
+~2
+
 # Not through a term the guard reads: y_0 is refused, and a refused term is
 # not a limit that did not converge. Nor through another limit's terms,
 # each of which is refused where nw(0) is; from -2, t's terms tend to twice
@@ -157,6 +171,20 @@ geo(x) = 0
 >> geo(2)
 ~0
 
+# In a sum's terms, each limit is read as the guard's own: from 1/2 the
+# first is nw(0), from -1 they are nw(-3/2) and nw(-2), both the root.
+>> two(x) | sum_(j=1)^2 abs(F(lim nw(x - j/2))) < 1/10^6 = 1
+two(x) | sum_(j=1)^2 abs(F(lim nw(x - j/2))) < 1/10^6 = 1
+
+>> two(x) = 2
+two(x) = 2
+
+>> two(-1)
+~1
+
+>> two(1/2)
+~2
+
 # So is a limit's derivative under grad: Heron's root of x, whose slope
 # at 0 grows without end (grad.ink).
 >> sq(x)_0 = 1
@@ -176,6 +204,11 @@ d(x) = 2
 
 >> d(0)
 ~2
+
+# grad of a definition whose guard reads a limit that does not converge
+# at the point is refused: no clause is chosen there that grad can follow.
+>> grad_(y = 0) root(y)
+error: grad cannot differentiate root at y = 0, whose guard reads a limit that does not converge
 
 # A term the walk cannot take is a refusal, not a limit that does not
 # converge: from an exact 0, Newton's root of 2 divides by 0.
@@ -206,6 +239,29 @@ error: hs has no limit: a term is -nan
 
 >> hr(2)
 error: hs has no limit: a term is -nan
+
+# So are a matrix term with a NaN cell, a NaN base term, and a NaN partial
+# sum, ~inf and -~inf added, whose terms are numbers.
+>> P_0 = [0, 1]
+P_0 = [0, 1]
+
+>> P_k = [0/~0, 1]
+P_k = [0/~0, 1]
+
+>> lim P
+error: P has no limit: a term is [-nan, 1]
+
+>> b_0 = 0/~0
+b_0 = 0/~0
+
+>> b_n = b_(n-1)/2
+b_n = b_(n-1)/2
+
+>> lim b
+error: b has no limit: a term is -nan
+
+>> sum_(k=0) (-1)^k*~1e308*10
+error: the sum has no limit: a partial sum is -nan
 
 >> hs(c)_0 = 1
 hs(c)_0 = 1

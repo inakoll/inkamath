@@ -59,3 +59,15 @@ rooted(c_n) = {
     y_n | lim hs(c_n) > 0 = lim hs(c_n)
     y_n = 0
 }
+
+# A limit in a sum's terms within a guard: a sum's bounds are constants, so
+# it is written out, and each term's limit is read as the guard's own. From
+# 0, on x^3 - 2x + jc, Newton converges for j = 1 and 2 at c = 1/2, to
+# 0.2586520225 and 0.6180339887 (mpmath), and at c = 1 cycles for j = 2:
+# y_n is 1 at even n, 0 at odd.
+paired(c_n) = {
+    nv(c)_0 = 0
+    nv(c)_k = nv(c)_(k-1) - (nv(c)_(k-1)^3 - 2*nv(c)_(k-1) + c)/(3*nv(c)_(k-1)^2 - 2)
+    y_n | sum_(j=1)^2 lim nv(j*c_n) < 2 = 1
+    y_n = 0
+}

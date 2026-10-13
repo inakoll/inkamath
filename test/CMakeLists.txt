@@ -147,7 +147,7 @@ endforeach()
 # it is built: fallback.ink's models against the values its harness knows,
 # skipped while the step is NaN where the clause after is to be taken.
 set(fallback_headers "")
-foreach(model IN ITEMS mpc newton rooted)
+foreach(model IN ITEMS mpc newton rooted paired)
     set(header ${CMAKE_CURRENT_BINARY_DIR}/compile/fallback_${model}.h)
     add_custom_command(OUTPUT ${header}
         COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/compile
