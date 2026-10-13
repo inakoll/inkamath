@@ -10,16 +10,14 @@
 # it. Each is to report:
 #
 #     pooled: 100 steps from 0, against exact values
-#     pooled.m: within 0
 #     pooled.a: within 0
 #     pooled.l: within 0
+#     pooled.m: within 0
 #     pooled.p: within 0
 #
 #     shied: 100 steps from 0, against exact values
 #     shied.q: within 0
 #     shied.w: within 0
-#
-# in the order the program gives its sequences.
 pool(x_n[j<=4]) = {
     m_n = max_(k=1)^4 x_n[k]
     a_n = argmax_(k=1)^4 x_n[k]
