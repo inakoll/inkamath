@@ -32,8 +32,8 @@ error: nw did not converge within 100 terms (last term 0)
 # there: whether a walk settled is read from its steps as doubles, and
 # within a hundred terms, as a clause a guard reading a double chose is
 # (C241). From 1/10 the terms fall into the cycle, past a thousand digits
-# by the ninth (Python's fractions), and the guess is marked as a clause
-# chosen by a truth so read is (C68).
+# from the eighth, nw(1/10)_7 (Python's fractions), and the guess is
+# marked as a clause chosen by a truth so read is (C68).
 >> root(x) | abs(F(lim nw(x))) < 1/10^6 = lim nw(x)
 root(x) | abs(F(lim nw(x))) < 1/10^6 = lim nw(x)
 
@@ -251,10 +251,10 @@ p(x) = 2
 # v^2/2, that is 5/2 v^2 + 4 x v and a constant, over |v| <= 1, by
 # projected gradient with a step of 1/2, too long for the curvature 5: the
 # error is multiplied by -3/2 at each term. Where the bound holds the plan,
-# |x| >= 5/4, it settles, at -1 from 5/2 and 3/2; inside, it never does,
-# 1/2 then -1, 1/2, ... from x = 1/2. The plant moves by the plan where it
-# exists and brings x no further from 0, and otherwise by -x/2, so x_n is
-# 2^-(n-1) from n = 2, u_n -2^-n, and solved_n says which.
+# |x| >= 5/4, it settles, at -1 from 5/2 and 3/2; inside, 0 apart, it
+# never does, -1, 1/2, -1, ... from x = 1/2. The plant moves by the plan
+# where it exists and brings x no further from 0, and otherwise by -x/2,
+# so x_n is 2^-(n-1) from n = 2, u_n -2^-n, and solved_n says which.
 >> mpc(x0 = 5/2) = {
 ..     clip(v) | v > 1 = 1
 ..     clip(v) | v < -1 = -1
