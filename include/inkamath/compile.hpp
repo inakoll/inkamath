@@ -2209,9 +2209,11 @@ private:
             if (!Holds(*code.constant)) return std::nullopt;
             return std::string();
         }
-        if (!Defers(guard) && asked.empty()) return Test(guard);
+        // Under grad no clause after is taken: grad refuses there (DESIGN.md).
+        if (!Defers(guard) && (asked.empty() || !grad_.empty())) return Test(guard);
         const std::string truth = Shared(Cell(Truth(guard), primary)).text;
-        if (asked.empty()) return "isnan(" + truth + ") ? NAN : " + truth + " != 0.0";
+        if (asked.empty() || !grad_.empty())
+            return "isnan(" + truth + ") ? NAN : " + truth + " != 0.0";
         // A truth NaN where a limit it reads ran out does not hold (DESIGN.md).
         std::string ran;
         for (const std::string& status : asked) ran += (ran.empty() ? "" : " || ") + status;
