@@ -173,6 +173,20 @@ target_link_libraries(compile_powers PRIVATE inkamath_warnings
 set_target_properties(compile_powers PROPERTIES C_STANDARD 11 C_STANDARD_REQUIRED ON C_EXTENSIONS OFF)
 add_test(NAME compile_powers COMMAND compile_powers)
 
+# README's host file for pid.h, its C block taken as written there.
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${PROJECT_SOURCE_DIR}/README.md)
+file(READ ${PROJECT_SOURCE_DIR}/README.md readme)
+if(NOT readme MATCHES "```c\r?\n([^`]*)```")
+    message(FATAL_ERROR "README.md has no C block for compile_host")
+endif()
+file(CONFIGURE OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/compile/pid_host.c CONTENT "${CMAKE_MATCH_1}" @ONLY)
+add_executable(compile_host compile/host_test.c ${CMAKE_CURRENT_BINARY_DIR}/compile/pid_host.c)
+add_dependencies(compile_host compile_pid)
+target_include_directories(compile_host PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/compile)
+target_link_libraries(compile_host PRIVATE inkamath_warnings $<$<NOT:$<C_COMPILER_ID:MSVC>>:m>)
+set_target_properties(compile_host PROPERTIES C_STANDARD 11 C_STANDARD_REQUIRED ON C_EXTENSIONS OFF)
+add_test(NAME compile_host COMMAND compile_host)
+
 # The prelude's functions the interpreter calls on a double (DESIGN.md),
 # checked in so that building the interpreter needs no interpreter; recorded
 # as the goldens are, and its diff read.
@@ -246,7 +260,8 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brin
                          orthogonal:rational orthogonal:inexact orthogonal:probe
                          chol:factored chol:naive chol:sole placed:placed
                          fallback:planned fallback:held fallback:ranout
-                         fallback:tipped fallback:columned fallback:answered)
+                         fallback:tipped fallback:columned fallback:answered
+                         fallback:chained fallback:gapped fallback:middled)
     string(REPLACE ":" ";" checked ${checked})
     list(POP_FRONT checked file instance count)
     set(name ${instance})
@@ -910,6 +925,12 @@ set_tests_properties(check_columned_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^columned: 100 steps from 0, against exact values until 0 and inexact ones from there\ncolumned\\.y: within 0\n$")
 set_tests_properties(check_answered_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^answered: 100 steps from 0, against exact values until 0 and inexact ones from there\nanswered\\.r: within 0\nanswered\\.y: within 0\n$")
+set_tests_properties(check_chained_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^chained: 100 steps from 0, against exact values until 0 and inexact ones from there\nchained\\.y: within 0\n$")
+set_tests_properties(check_gapped_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^gapped: 100 steps from 0, against exact values until 0 and inexact ones from there\ngapped\\.r: within 0\ngapped\\.y: within 0\n$")
+set_tests_properties(check_middled_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^middled: 100 steps from 0, against exact values until 0 and inexact ones from there\nmiddled\\.r: within 0\nmiddled\\.y: within 0\n$")
 set_tests_properties(check_twonames_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^twonames: 100 steps from 0, against exact values until 0 and inexact ones from there\ntwonames\\.a: within [0-9.e-]+${about}\ntwonames\\.b: within [0-9.e-]+${about}\n$")
 set_tests_properties(check_fir_report PROPERTIES PASS_REGULAR_EXPRESSION

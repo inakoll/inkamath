@@ -155,7 +155,9 @@ through and a recursion unrolling where its guards fold:
 with memory written where it is read is one of its own, named after where it
 is written and the cell it is written for: `test/compile/bank.ink` is a bank
 of filters, `m.bank_smooth_1` to `_3`. The compiler refuses by name what it
-cannot yet express, such as an instance with memory made anew at each step;
+cannot yet express, such as an instance with memory made anew at each step,
+or a cell at an index the step computes, `T[k_n, 1]`, "a cell whose place is
+not a constant";
 without `-o` it writes nothing and lists every definition it would refuse,
 and why. A limit of constants is folded, and any other is a
 function that walks the terms with the interpreter's stopping rule, NaN where
@@ -164,7 +166,8 @@ solves each step of a stiff equation by Newton's method, a sequence with
 parameters under `lim`, and `test/compile/logistic.ink` trains a logistic
 regression, its `exp` a limit written in inkamath, as `test/compile/softmax.ink`
 writes softmax and cross-entropy, `log` being Newton's method on `exp`. A
-guard that reads a limit whose walk runs out does not hold, as interpreted:
+guard that reads a limit whose walk runs out does not hold, as interpreted,
+whatever else it reads, so the action to take in doubt is the later clause:
 `test/compile/fallback.ink` is an MPC whose plan falls back to a fixed gain
 where projected gradient cycles. A
 sequence with parameters read at a constant index, `f(x)_K`, is written out
@@ -214,9 +217,13 @@ that carry NaN, and Clang warns of each NaN the header writes.
 `test/compile/nan.ink` has an instance of each.
 Clang before 23.1 can miscompile some headers' NaN tests at -O2 (llvm
 925e284), and Clang 19 does on the tests; build with `-fno-slp-vectorize`.
-Built at -O0, a header builds in seconds and runs about 2.4 times slower
-than at -O2: a transformer step of 13 names builds in 8 s and takes 1.7 ms a
-step, against 90 to 100 s and 0.7 ms at -O2, so -O0 pays for a short run.
+Built at -O0, a header builds in seconds and runs about four times slower
+than at -O2: a transformer step of 13 names builds in 14 s and takes 1.9 ms a
+step, against 100 s and 0.45 ms at -O2, so -O0 pays for a short run. Loops
+in the generated code cut the -O2 build by 40 per cent; what is left goes
+mostly to what is still written cell by cell: the loads and stores between
+the step's functions, the cells of layer norm, softmax, ReLU and the
+residual sums, and the tests for NaN.
 
 A sequence that reads another at `x_(2*m)` samples it, and is computed every
 second step: its terms are the input's at another rate, and `y_(floor(n/2))`
@@ -276,6 +283,49 @@ cell and step: `outside.y: within 0.00061, 1e+10 units of a float in y[2,1]
 at step 1101`. A limit
 compiled in float also stops where a step is within twice `FLT_EPSILON` of its
 term, so it may answer where the interpreter says it does not converge.
+
+A header's functions are `static inline`, so a host that calls a shared
+library, Python's say, needs a small C file that includes the header and
+exports what the host calls (on Windows, each `__declspec(dllexport)`). For
+`pid.ink`:
+
+```c
+#include <stddef.h>
+#include "pid.h"
+
+size_t ink_size(void) { return sizeof(pid); }
+void ink_init(pid* m) { pid_init(m); }
+void ink_update(pid* m) { pid_update(m); }
+void ink_step(pid* m, double y) { pid_step(m, y); }
+void ink_run(pid* m, const double* y, long n, double* u) {
+    for (long k = 0; k < n; ++k) { pid_step(m, y[k]); u[k] = m->u[0]; }
+}
+const size_t ink_u = offsetof(pid, u), ink_kp = offsetof(pid, kp);
+```
+
+A field is read at its `offsetof`, so the host does not mirror the struct.
+Built with `cc -O2 -shared -fPIC pid_host.c -o libpid.so`, Python's ctypes
+drives it:
+
+```python
+import ctypes as C
+lib = C.CDLL("./libpid.so")
+lib.ink_size.restype = C.c_size_t
+lib.ink_init.argtypes = [C.c_void_p]
+lib.ink_run.argtypes = [C.c_void_p, C.c_void_p, C.c_long, C.c_void_p]
+m = (C.c_double * ((lib.ink_size() + 7) // 8))()
+u = C.c_double.from_buffer(m, C.c_size_t.in_dll(lib, "ink_u").value)
+y, out = (C.c_double * 3)(0, 0.1, 0.2), (C.c_double * 3)()
+lib.ink_init(m); lib.ink_run(m, y, 3, out)    # u.value is out[2]
+```
+
+Declare each function's `argtypes`: without them an address held as a
+Python int, as numpy's `a.ctypes.data` is, is passed as a C int and cut to
+32 bits. A call from Python costs about 0.7 µs, twenty times a small
+model's step, 31 to 34 ns for `test/compile/kalman.ink`: for such a model,
+batch the steps in C, as `ink_run` does, 37 to 81 ns a step from Python.
+`compile_host` builds this file as written here and holds `ink_run` to
+`ink_step`.
 
 `--check session.ink`, given a transcript alone, replays it and shows each
 answer that is not the one recorded, as recorded (`-`) and as given now (`+`),
@@ -693,12 +743,12 @@ error: eig needs B symmetric positive definite
 diagonal and L*L' = A, as a square-root filter writes `L = chol(P)`. It is
 Cholesky's recurrence written in the prelude, each cell computed once, so
 it is exact where every pivot is the square of a rational, and `grad` and
-the compiler take it as any definition. chol reads only the lower triangle
-of A: the upper one is never looked at, so a matrix that is not symmetric
-is factored as its lower triangle says, without a word. Of complex
-entries it is L L' = A with ' the plain transpose, not the Hermitian
-factor L L^H. A pivot not above 0, of a matrix indefinite or singular, is
-refused:
+the compiler take it as any definition. chol refuses a matrix that is not
+symmetric, as eig refuses such a B; compiled, where a covariance symmetric
+exactly is not in doubles, it reads only the lower triangle of A. Of
+complex entries it is L L' = A with ' the plain transpose, not the
+Hermitian factor L L^H. A pivot not above 0, of a matrix indefinite or
+singular, is refused:
 
 ```
 >> chol([4 2 -2; 2 10 1/2; -2 1/2 9/4])
@@ -712,6 +762,9 @@ refused:
 
 >> chol([1 2; 2 1])
 error: chol needs a positive definite matrix
+
+>> chol([4 1; 2 3])
+error: chol needs a symmetric matrix
 ```
 
 `hinf(A, B, C, D)` is the H-infinity norm of the stable system x' = Ax +
@@ -1033,6 +1086,10 @@ is the mathematics, and no built-in choice would be right for every series.
 A guard that reads a limit that does not converge does not hold, and the
 clause after it is tried, so a solver's answer is taken where it passes the
 paper's own test of it, a residual or a bound, and a fallback elsewhere.
+The action to take in doubt is therefore the later clause:
+`brake(x) | lim d(x) < margin = 1` before `brake(x) = 0` does not brake where
+the walk runs out, and `brake(x) | lim d(x) >= margin = 0` before
+`brake(x) = 1` does.
 Newton's method on x^3 - 2x + 2 settles from -2, and from 0 cycles 0, 1, 0,
 ... without end:
 
