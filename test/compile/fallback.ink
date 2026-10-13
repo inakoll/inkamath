@@ -194,8 +194,8 @@ braking(c_n) = {
 braked = braking(c_n = 1 + mod(n, 2))
 
 # Through a function: 'gap' has a clause after its guard, so it answers
-# where Newton runs out, 0, and the guard of 'brake' that reads it is listed
-# for nothing; 'near' has none, so the guard of 'alarm' falls too. brake_n
+# where Newton runs out, 0, and the guard of 'brake' that reads it is not
+# listed; 'near' has none, so the guard of 'alarm' falls too. brake_n
 # is 1 throughout, alarm_n 1 at even n and 0 at odd. Checked:
 #
 #     buffered: 100 steps from 0, against exact values until 0 and inexact ones from there
