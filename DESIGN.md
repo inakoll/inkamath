@@ -11180,7 +11180,11 @@ After an external review of README, MANIFESTO and the conformance suite
   remembers the statuses its limits are asked by, so that a guard calling
   it again asks them. 113 lines, 19 of them comment, 18,644 to 18,757 at
   d06a5b5: the interpreter's 64, the compiler's 49; inside the stop at
-  180.
+  180. Its review found two compiled answers where the interpreter
+  refuses: a cell no clause gives, past a guard whose limit ran out, was 0,
+  and grad of such a guard the clause after's slope. Both are NaN now, in
+  23 lines of the compiler, `fallback.ink`'s `ranout` and `tipped`; so 136
+  lines, 18,780 at 13a494d.
 - `[done]` **A tolerance relative to the term**, the 1e-10 being absolute.
   Of the same roadmap line, but a change of its own, which may land before
   or after the clause: neither's spec reads the other.
