@@ -10786,8 +10786,179 @@ After an external review of README, MANIFESTO and the conformance suite
   lines, inside the stop at 40; C357 fixes the exponential compile of any
   recurrence by cells, so it is counted on its own, though chol relies on it.
 - **A clause for a limit that does not converge**, one guard meaning the
-  same in the interpreter and the step, NaN kept where none is written; and
-  with it a tolerance relative to the term, the 1e-10 being absolute.
+  same in the interpreter and the step, NaN kept where none is written.
+  MANIFESTO asks whether converging is a value, a guard or a property of
+  the definition that takes it: a guard. The roadmap's MPC with a fallback
+  clause, and Newton's method within a step, written as a paper writes
+  them, "the solution where the iteration converges, otherwise ...":
+
+  ```
+  u_n | abs(x_n + lim qp(x_n)) <= abs(x_n) = lim qp(x_n)
+  u_n = -x_n/2
+  ```
+
+  Decided:
+  - **A guard that reads a limit that does not converge does not hold**,
+    and the clause after it is tried. No new syntax: the guard is the
+    paper's acceptance test of the solver's answer, a residual or a
+    bound, which a limit that does not exist cannot pass. Where nothing
+    more is asked, `lim s == lim s`: a value equals itself where it exists,
+    the definedness predicate of a logic of partial terms. A local
+    shortens it in the interpreter, `| (z = lim s) == z = z`; compiled, a
+    local is refused today ("Locals compiled" above), and the compiler
+    computes a limit written twice once.
+  - **Reads as the interpreter reads**: on the right of `and` or `or` only
+    where the left did not decide, and through the functions the guard
+    calls. Read on the left, the guard does not hold whatever its right
+    says: a guard that cannot be read whole has no truth. Not through a
+    term of a sequence the guard reads, nor through another limit's terms
+    or a series' partial sums, each of which is refused where the limit in
+    it does not converge, as today: there the refusal is that term's, and
+    the step's term is NaN.
+  - **Which limits**: `lim`, a sum or product without an upper bound, and
+    under grad a limit's derivative (interpreter only; compiled, "a
+    derivative of a limit, for now").
+  - **Only a walk that runs out**: its hundred terms, or partial sums, each
+    a number and never settling. A term refused is a refusal, as today. A
+    term that is NaN now refuses the limit, "hs has no limit: a term is
+    -nan", where the walk went on and said it did not converge: the step
+    cannot tell its NaN from a term the interpreter refuses, so a NaN taken
+    for a walk that ran out would choose the fallback compiled where the
+    interpreter refuses, or the other way. No comparison takes NaN either.
+    An infinite term is a number: a walk through one runs out.
+  - **The clause after is inexact**, `~0.5`: whether a walk settles is read
+    from its steps as doubles, and within a hundred terms, as a clause a
+    guard reading a double chose is (C241); marked where the walk's terms
+    passed a thousand digits (C68).
+  - **Where no clause after applies, the refusal is the limit's**, as
+    today: a definition with no fallback answers exactly as now. That is
+    "NaN kept where none is written".
+  - **Compiled**: a limit's function returns NaN at its first term with a
+    NaN cell, where it walked on to the hundredth, and where its walk runs
+    out returns NaN and raises a flag it is given. A guard reading it
+    tests the flag where the interpreter reads it, false where raised, so
+    the chain goes on to the next clause; past the last, NaN. A limit no
+    guard reads is NaN where it runs out, as today. A host that wants the
+    status MANIFESTO's solver within a step names writes it as a sequence,
+    `solved_n | lim qp(x_n) == lim qp(x_n) = 1`, `solved_n = 0`.
+  - **--check**: a walk one side settles and the other does not is a guard
+    taking another clause, reported first as any flip is, without a margin,
+    a walk having no single threshold. A disturbed run's likewise.
+    `--float`'s own stop may settle where the interpreter's runs out
+    (C102), and is reported so.
+
+  Rejected:
+  - **A value, a converged flag** (`conv s`): a second construct over a
+    sequence, a word for what the guard and a sequence of 1 and 0 say.
+    **`lim` answering NaN** where it runs out: the interpreter refuses
+    NaN everywhere else, so every reader would refuse in other words.
+  - **A property of the definition**, the clause whose value takes such a
+    limit not applying: it catches what no guard asked about, anywhere in
+    the value, and a clause tried before the default needs a guard
+    written only to order it. The sequence's own clause past a count,
+    `qp(s)_k | k > 50 = ...`, works today, but `lim` then presents the
+    fallback as a limit, and the model is tied to `max_terms`.
+  - **A fixed fallback**, `lim` answering its last term or a value set
+    once: README says `lim` reports non-convergence "rather than handing
+    back the term it stopped on"; the hundredth term of Newton's cycle is
+    0, where F is 2.
+  - **New syntax**: `lim s else v` is a second way to write cases, and
+    `exists lim s` a reserved word for what `lim s == lim s` says once a
+    guard reads limits so.
+  - **Each comparison false** where it reads such a limit, a negative free
+    logic: the same in a guard but for `or`, and outside a guard a
+    comparison would answer 0 where today it refuses, a truth with no
+    clause to fall to. A guard reading the limit elsewhere, `| f(lim s)`,
+    would need the guard's rule anyway.
+  - **Every refusal** in a guard: a misspelt name would choose the
+    fallback.
+
+  What moves, on a prototype of the interpreter's half, discarded:
+  nothing. Every golden, README session, check report and cli case
+  passes, 509 tests, and the spec's 85 entries do. No story compiled has a
+  guard reading a limit that runs out, so no report should move; every
+  check program with a limit moves in text, the flag and the NaN test.
+  README section 4 gains the Newton entries, and the paragraph on compiled
+  limits the clause. MANIFESTO's question goes, answered; the status field
+  its solver within a step proposes is a sequence the model writes.
+
+  About 95 lines: the interpreter's 50, of which the prototype's 42
+  measured (51 added, 9 removed; a refusal of its own, the guard, the term
+  boundary, NaN), grad's own guards the rest; the compiler's 45 estimated,
+  the flag and its test where a guard reads it. 18,554 lines at 28bbb18 by
+  `wc -l include/inkamath/*.hpp src/*`; past 142 the implementation stops
+  and reports.
+
+  Specified in `test/data/spec/unconverged.ink`, 85 entries replayed by
+  the spec suite, 18 failing today: Newton's cycle on x^3 - 2x + 2 under a
+  residual guard, an existence guard and a local; `and`, `or`, a call, a
+  term and another limit's terms; a series, grad; a walk refused, NaN, inf;
+  the MPC with its fallback, the same without, and Newton within a step.
+  Values in Python's fractions, README section 4's rule written again in
+  Python, roots in mpmath. Compiled, in `test/compile/fallback.ink` and
+  `fallback_test.c`, the harness `compile_fallback`: the MPC's x, u and
+  solved, Newton held, and a walk refused NaN, each against those values,
+  skipped while the step is NaN where the clause after is to be taken and
+  only then. With the implementation the spec becomes a golden, the skip
+  goes, `planned` and `held` join the checks with the reports
+  `fallback.ink` gives, and the spec suite goes if the tolerance has
+  landed.
+- **A tolerance relative to the term**, the 1e-10 being absolute. Of the
+  same roadmap line, but a change of its own, which may land before or
+  after the clause: neither's spec reads the other.
+
+  Decided:
+  - **The rule**: a step, and the remainder C36's ratio implies, are
+    measured in each cell against max(1, |the cell's term|): absolute
+    below 1, as today, relative above. The matrix's step is still its
+    largest cell's, now scaled.
+  - **Why**: past a term of about 225,000 a double cannot show a step
+    within 1e-10 (C353), so the step stops on steps of 0 where the exact
+    walk never settles, `weighed`'s departure. With a clause, that is a
+    step taking the fallback's other side. Relative, the tolerance is never
+    under 4.5e5 ulps of the term, and the two decide alike at any size.
+    The README's paragraph on it goes, and `weighed`'s comment.
+  - **The cost**: a limit above 1 is known to ten significant digits, not
+    to 1e-10: `steep`'s terms, near 800, about 4.6e-8 from the exact ones
+    where they were 1.2e-10. The nine digits shown, and `--check`'s
+    billionth, are within it.
+  - **--check** moves a limit by its remainder in the term's units, the
+    scaled one times max(1, |largest cell|). The step's C353 test, a step
+    within 2 DBL_EPSILON of its term taken for 0, stays, scaled alike.
+
+  Rejected:
+  - **Relative alone**: never stops at 0, README's `lim s`, as rho's stop
+    found (*The characteristic polynomial and stability*).
+  - **Relative to the largest cell**: a cell of (3/4)^k beside one of 10^6
+    would stop 5.65e-5 from its limit; per cell, every cell below 1 keeps
+    today's 1e-10. The README's cell far below 1 is not helped by either.
+  - **max(1e-10, 32 ulps of the term)**, today's rule wherever a double can
+    show it: it moves only `weighed`, but ties the exact interpreter's
+    rule to the double format, and a float target would want its own.
+  - **A tolerance the user sets**: deferred since C8; no model asks.
+
+  What moves, on a prototype, discarded: `sequences.ink`'s `lim
+  exp(1)-e`, -8.15347789e-13 to -1.22861721e-11, a term sooner; no other
+  golden nor README session. Reports: `weighed`'s departure goes, "within
+  2; the interpreter's terms about 4 from the exact ones"; `taylor.y` and
+  `summed.u` within 9.1e-13 for 1.1e-12; `steep`'s estimate 4.6e-8 for
+  1.2e-10, past its regex; the estimates of `taylor` and `summed`, unpinned,
+  to 6.6e-8. `cli_2`'s `float_gate` excerpt, the walk's text. No expected
+  header, which hold no limit; every check program with a limit, in text.
+
+  About 15 lines: the prototype's 12 net, the scale in `Matrix::distance`
+  and `--check`'s remainder, 4 lines of the walk's C changed; past 23 the
+  implementation stops and reports.
+
+  Specified in `test/data/spec/tolerance.ink`, 23 entries replayed by the
+  spec suite, 4 failing today and passing on the prototype: e's partial
+  sums, 10^14 + 0.8^k, each cell against its own term and not the largest,
+  what does not move below 1, a series, and what still does not converge.
+  Values by the same Python, what an answer reads rounded to doubles as
+  the interpreter rounds it. With the implementation it becomes part of
+  `sequences.ink` or a golden of its own, the reports above move in the
+  same commit, and `newton.ink`'s `weighed` is held rather than wrong on
+  purpose.
 - **A gather, integer inputs, inputs present on some steps only**: their
   open questions first. The gather is *A cell at a computed whole index,
   compiled*.
