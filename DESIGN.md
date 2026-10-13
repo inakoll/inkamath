@@ -11592,7 +11592,7 @@ After an external review of README, MANIFESTO and the conformance suite
   `rnn` 2.9e-12; `row` and `shut` 1.2e-10; `twonames` a 4.1e-10, b
   5.3e-9; each in float as in double; and the comments of `inset` and
   `layered`. Each cell scaled by its own, 7 lines fewer: 11 lines.
-- **`--check` lists which way each limit falls**: a guard reading a limit
+- `[done]` **`--check` lists which way each limit falls**: a guard reading a limit
   that runs out does not hold, and the clause after is taken (*A clause for
   a limit that does not converge*, above). That is fail-safe only where the
   guarded clause is the risky one: `brake_n | lim nv(c_n) < 1 = 1` before
@@ -11713,11 +11713,25 @@ After an external review of README, MANIFESTO and the conformance suite
   out, 'brake_n | lim nv(c_n) < 1 = 1' falls to 'brake_n = 0'` skips the
   brake where Newton fails (`test/compile/fallback.ink`)."
 
+  Built as specified and ruled: every report passes as written by hand,
+  `buffered` among them, and the skips are gone. What moved is what the
+  spec gave, eighteen reports by their lines, seventeen of `fallback.ink`
+  and `equal`, and their programs' C by a `puts` a line; no golden, header,
+  cli case or other report. Departures: C368, fixed before, since C367
+  asked a value's status where its call is NaN and `buffered.brake` would
+  have been listed, with `voided` to hold it; the limits are ordered by
+  where the clause writes them, and one read only through a function
+  comes after, by name; and a guard of an instance the model writes
+  unnamed (C84) is listed as its terms are named, `covered`, which the
+  spec did not say. 75 lines, 7 of comment, 19,070 to 19,145 from
+  b63c7ca: 51 in `check.hpp` and 24 in `compile.hpp`; with C368's 6, 81
+  from 328c497, inside the stop at 90.
+
 After a second review (2026-10-13), which took the Jacobian by cells and
 the clause for a limit that does not converge as done, the order from here:
 
-- **`--check` lists each guard that reads a limit, with the clause taken
-  where it runs out**, so that a reviewer can audit the fallback's
+- `[done]` **`--check` lists each guard that reads a limit, with the clause
+  taken where it runs out**, so that a reviewer can audit the fallback's
   direction: `brake | lim dist(...) < margin = 1` before a default of 0
   skips the brake on a failure.
 - `[done]` **`chol` refuses a matrix that is not symmetric**, as `eig(A,

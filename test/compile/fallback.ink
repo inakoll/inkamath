@@ -8,10 +8,7 @@
 # Where a limit runs out the clause after is taken, which is safe only where
 # the guarded clause is the risky one. --check lists, after the per-term
 # lines, every guard the step compiles that reads a limit, and the clause
-# after it, so that a reviewer can audit the direction (DESIGN.md, next in
-# line; specified, not yet built). rootless, coupled, braked, buffered, bent
-# and faraway give theirs; every other report below then ends with its own,
-# as test/CMakeLists.txt gives them.
+# after it, so that a reviewer can audit the direction (DESIGN.md).
 
 # A small MPC with a fallback clause: the plan minimises 2(x + v)^2 + v^2/2
 # over |v| <= 1 by projected gradient with a step of 1/2, too long for the
@@ -24,7 +21,10 @@
 #     planned: 100 steps from 0, against exact values until 0 and inexact ones from there
 #     planned.<s>: within 0
 #
-# for x, u and solved, the step taking the interpreter's clause at each.
+# for x, u and solved, the step taking the interpreter's clause at each, and
+#
+#     planned.solved: where lim qp runs out, 'solved_n | abs(x_n + lim qp(x_n)) <= abs(x_n) = 1' falls to 'solved_n = 0'
+#     planned.u: where lim qp runs out, 'u_n | abs(x_n + lim qp(x_n)) <= abs(x_n) = lim qp(x_n)' falls to 'u_n = -x_n/2'
 mpc(x0 = 5/2) = {
     clip(v) | v > 1 = 1
     clip(v) | v < -1 = -1
@@ -48,6 +48,7 @@ planned = mpc()
 #
 #     held: 100 steps from 0, against exact values until 1 and inexact ones from there
 #     held.x: within <e>; the interpreter's terms about <e> from the exact ones
+#     held.x: where lim nv runs out, 'x_n | abs(G(lim nv(c_n), c_n)) < 1/10^6 = lim nv(c_n)' falls to 'x_n = x_(n-1)'
 newton(c_n) = {
     G(x, c) = x^3 - 2*x + c
     dG(x) = 3*x^2 - 2
@@ -104,6 +105,8 @@ coupled = paired(c_n = (1 + mod(n, 2))/2)
 #     ranout: 100 steps from 0, against exact values until 0 and inexact ones from there
 #     ranout.y: within 0
 #     ranout.z: within 0
+#     ranout.f: where lim nv runs out, 'f(v)[j] | lim nv(v[j]) > 0 = j' falls to NaN
+#     ranout.y: where lim nv runs out, 'y_n[j<=2] | lim nv(j*c_n/2) > 0 = j' falls to NaN
 cellwise(c_n) = {
     nv(c)_0 = 0
     nv(c)_k = nv(c)_(k-1) - (nv(c)_(k-1)^3 - 2*nv(c)_(k-1) + c)/(3*nv(c)_(k-1)^2 - 2)
@@ -122,6 +125,7 @@ ranout = cellwise(c_n = 1 + mod(n, 2))
 #
 #     tipped: 100 steps from 0, against exact values until 0 and inexact ones from there
 #     tipped.y: within 0
+#     tipped.r: where lim nv runs out, 'r(x, c) | lim nv(c) > 0 = x^2' falls to NaN under grad
 tangent(c_n) = {
     nv(c)_0 = 0
     nv(c)_k = nv(c)_(k-1) - (nv(c)_(k-1)^3 - 2*nv(c)_(k-1) + c)/(3*nv(c)_(k-1)^2 - 2)
@@ -154,6 +158,7 @@ bent = bending(c_n = 1 + mod(n, 2))
 #
 #     columned: 100 steps from 0, against exact values until 0 and inexact ones from there
 #     columned.y: within 0
+#     columned.y: where lim M runs out, 'y_n | [1, 1]*lim M(c_n) > 0 = 1' falls to 'y_n = 0'
 columns(c_n) = {
     N(x, c) = x - (x^3 - 2*x + c)/(3*x^2 - 2)
     M(c)_0 = [0; 0]
@@ -172,6 +177,7 @@ columned = columns(c_n = 1 + mod(n, 2))
 #     answered: 100 steps from 0, against exact values until 0 and inexact ones from there
 #     answered.r: within 0
 #     answered.y: within 0
+#     answered.inner: where lim nv runs out, 'inner(c) | lim nv(c) > 0 = 1' falls to 'inner(c) = 5'
 inward(c_n) = {
     nv(c)_0 = 0
     nv(c)_k = nv(c)_(k-1) - (nv(c)_(k-1)^3 - 2*nv(c)_(k-1) + c)/(3*nv(c)_(k-1)^2 - 2)
@@ -244,6 +250,7 @@ middled = midst(c_n = 1 + mod(n, 2))
 #
 #     voided: 100 steps from 0, against exact values until 0 and inexact ones from there
 #     voided.y: within 0
+#     voided.gap: where lim nv runs out, 'gap(c) | lim nv(c) > 0 = lim nv(c)' falls to 'gap(c) = (c - c)/(c - c)'
 voiding(c_n) = {
     nv(c)_0 = 0
     nv(c)_k = nv(c)_(k-1) - (nv(c)_(k-1)^3 - 2*nv(c)_(k-1) + c)/(3*nv(c)_(k-1)^2 - 2)
@@ -280,6 +287,25 @@ braking(c_n) = {
     wheels_n[j<=2] = 0
 }
 braked = braking(c_n = 1 + mod(n, 2))
+
+# A guard of an instance the model writes unnamed is listed as its terms are
+# named (C84). u_n is 1 at even n and 0 at odd. Checked:
+#
+#     covered: 100 steps from 0, against exact values until 0 and inexact ones from there
+#     covered.y_cover.x: within 0
+#     covered.y_cover.u: within 0
+#     covered.y: within 0
+#     covered.y_cover.u: where lim nv runs out, 'u_n | lim nv(x_n) > 0 = 1' falls to 'u_n = 0'
+cover(x_n) = {
+    nv(c)_0 = 0
+    nv(c)_k = nv(c)_(k-1) - (nv(c)_(k-1)^3 - 2*nv(c)_(k-1) + c)/(3*nv(c)_(k-1)^2 - 2)
+    u_n | lim nv(x_n) > 0 = 1
+    u_n = 0
+}
+covering(c_n) = {
+    y_n = cover(x_n = c_n).u_n
+}
+covered = covering(c_n = 1 + mod(n, 2))
 
 # Through a function: 'gap' has a clause after its guard, so it answers
 # where Newton runs out, 0, and the guard of 'brake' that reads it is not

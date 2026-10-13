@@ -66,6 +66,13 @@ public:
             std::vector<std::pair<std::string, Value>> captured;
         };
         std::map<std::string, Unnamed> unnamed;
+        // Each guard reading a limit, the limits by name, and whether it was
+        // compiled outside grad and under it, for --check to list (DESIGN.md).
+        struct Fallen {
+            std::set<std::string> limits;
+            bool                  plain = false, grad = false;
+        };
+        std::map<const Expression<Value>*, Fallen> fallen;
     };
 
     // '--float' (DESIGN.md, a float target): a float wherever a double is.
@@ -864,9 +871,15 @@ private:
                 statuses_->insert(asked.begin(), asked.end());
                 return code;
             }
-            std::string ran;
-            for (const std::string& status : asked) ran += (ran.empty() ? "" : " || ") + status;
-            statuses_->insert("isnan(" + code.cells[0].text + ") && (" + ran + ")");
+            std::string           ran;
+            std::set<std::string> limits;
+            for (const std::string& status : asked) {
+                ran += (ran.empty() ? "" : " || ") + status;
+                limits.insert(what_[status].begin(), what_[status].end());
+            }
+            const std::string status = "isnan(" + code.cells[0].text + ") && (" + ran + ")";
+            statuses_->insert(status);
+            what_[status] = limits;
             return code;
         };
         if (outer || !temporaries_ || memo_.first != temporaries_) return told(compiled());
@@ -2330,6 +2343,12 @@ private:
             if (!Holds(*code.constant)) return std::nullopt;
             return std::string();
         }
+        if (!asked.empty()) {
+            Compiled::Fallen& fallen = fallen_[guard.get()];
+            for (const std::string& status : asked)
+                fallen.limits.insert(what_[status].begin(), what_[status].end());
+            (grad_.empty() ? fallen.plain : fallen.grad) = true;
+        }
         // Under grad no clause after is taken: grad refuses there (DESIGN.md).
         if (!Defers(guard) && (asked.empty() || !grad_.empty())) return Test(guard);
         const std::string truth = Shared(Cell(Truth(guard), primary)).text;
@@ -3287,11 +3306,14 @@ private:
                          });
         }
         const std::string called = named->second + "(m_" + (scalar ? ", 0" : "") + arguments;
-        if (statuses_)
-            statuses_->insert(
+        if (statuses_) {
+            const std::string status =
                 named->second + "(m_" +
                 (scalar ? ", 1" + arguments : arguments + ", (double" + shape + "){{0.0}}") +
-                ") != 0.0");
+                ") != 0.0";
+            statuses_->insert(status);
+            what_[status] = {what};
+        }
         if (scalar) return Answer(Looping(Of(Cell(called + ")", primary))));
         const std::string out = Declare("lim\x1f" + called, [&](const std::string& t) {
             return std::vector<std::string>{"double " + t + shape + ";", called + ", " + t + ");"};
@@ -6221,7 +6243,7 @@ private:
                     else
                         out.insert(at + from.size() - (from.back() == '(' ? 1 : 0), "f");
                 }
-        Compiled compiled{out, earliest, inputs, {}, {}, {}, unnamed_};
+        Compiled compiled{out, earliest, inputs, {}, {}, {}, unnamed_, fallen_};
         for (const std::string& name : inputs) compiled.cells.push_back(Cells(name));
         for (const std::string& name : order) {
             const Sequence& sequence = sequences_.at(name);
@@ -6267,6 +6289,8 @@ private:
     bool                             guarding_ = false;  // in a guard, which asks only for values
     // Where a guard's truth is NaN, what asks whether a limit it reads ran out.
     std::set<std::string>*           statuses_ = nullptr;
+    std::map<std::string, std::set<std::string>>         what_;  // each status's limits, by name
+    std::map<const Expression<Value>*, Compiled::Fallen> fallen_;
     std::string unconverged_;  // where the last guard compiled read a limit that ran out
     std::set<std::string> asked_;  // and the statuses it asked
     bool                             roots_    = false;  // whether C may take a root of x < 0
