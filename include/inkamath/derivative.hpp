@@ -1298,7 +1298,13 @@ private:
             for (std::size_t v = 0; v < names.size(); ++v) {
                 const T& at = *points[v][0];
                 with += (v ? " or " : "") + names[v];
-                where += (v ? ", " : "") + names[v] + " = " + numeric_interface<T>::toString(at);
+                // On one line, as a diagnostic is, its columns not aligned.
+                std::string point;
+                for (const char c : numeric_interface<T>::toString(at))
+                    if (c != ' ' && c != '\n') point += c;
+                    else if (!point.empty() && point.back() != ' ' && point.back() != '[')
+                        point += ' ';
+                where += (v ? ", " : "") + names[v] + " = " + point;
                 real = real &&
                        IsZero(T::Cells(at, numeric_interface<typename T::value_type>::imaginary));
                 cells.push_back(at.IsScalar() ? 1 : at.Size().count());

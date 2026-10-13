@@ -389,6 +389,10 @@ error: floor jumps at v = [1, 2]
 >> grad_(v = [1 1]) (v[1,1] > v[1,2])
 error: a comparison jumps at v = [1, 1]
 
+# A column's point on one line too (C359).
+>> grad_(v = [10; 2]) floor(v[1]*v[2])
+error: floor jumps at v = [10; 2]
+
 >> eq(v)[j <= 1, k <= 2] | v[j,k] == 1 = 0
 eq(v)[j <= 1, k <= 2] | v[j,k] == 1 = 0
 

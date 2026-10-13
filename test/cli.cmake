@@ -1314,6 +1314,9 @@ check(history_gained)
 # (C343).
 refused(lifted "a = 2) = {\n    g_n | n < 0 = a\n    g_n = 2*g_(n-1)"
         "g: g_0 reads g_-1, before the stream, where g's history reads a, which the host may assign after init")
+# And one with no default, which init cannot evaluate.
+refused(unset "a) = {\n    g_n | n < 0 = a\n    g_n = 2*g_(n-1)"
+        "g: g_0 reads g_-1, before the stream, where g's history reads a, which the host may assign after init")
 # And at another rate, where it was read as 0.
 refused(slowed "a = 2, x_n) = {\n    y_m | m < 0 = a\n    y_m = y_(m-1) + x_(2*m)"
         "y: y_0 reads y_-1, before the stream, where y's history reads a, which the host may assign after init")

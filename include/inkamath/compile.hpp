@@ -4855,6 +4855,11 @@ private:
         const bool given = (Recurrent(name) || Own(name) || Under(name)) &&
                            (Parametric(name, true).empty() || Given(name, n));
         const std::string parameter = given ? "" : Parametric(name);
+        const std::string assigned  = "reads " + parameter + ", which the host may assign after init";
+        // One with no default leaves init nothing to evaluate.
+        const bool unset = model_ && std::ranges::any_of(model_->parameters, [&](const auto& p) {
+            return p.name == parameter && p.index.empty() && !p.fallback;
+        });
         if (fresh && definition) {
             definitions_.Forget();
             definitions_.BeginEvaluation();
@@ -4863,8 +4868,7 @@ private:
                     PExpression<Value>(), std::make_shared<ValExpression<Value>>(Value(Number(n))));
                 const Value term = definition->Eval(at, definitions_, true);
                 if (!parameter.empty()) {
-                    unfolded_[{name, n}] =
-                        "reads " + parameter + ", which the host may assign after init";
+                    unfolded_[{name, n}] = assigned;
                 } else if (definitions_.histories || given) {
                     const std::vector<double> cells = Doubles(term);
                     if (std::all_of(cells.begin(), cells.end(), Finite))
@@ -4873,7 +4877,9 @@ private:
                         unfolded_[{name, n}] = "gives a term no " + Real() + " holds";
                 }
             } catch (const std::runtime_error& error) {
-                if (definitions_.histories || given || Under(name))
+                if (unset)
+                    unfolded_[{name, n}] = assigned;
+                else if (definitions_.histories || given || Under(name))
                     unfolded_[{name, n}] = std::string("gives none: ") + error.what();
             }
         }
