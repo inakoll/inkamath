@@ -155,7 +155,9 @@ through and a recursion unrolling where its guards fold:
 with memory written where it is read is one of its own, named after where it
 is written and the cell it is written for: `test/compile/bank.ink` is a bank
 of filters, `m.bank_smooth_1` to `_3`. The compiler refuses by name what it
-cannot yet express, such as an instance with memory made anew at each step;
+cannot yet express, such as an instance with memory made anew at each step,
+or a cell at an index the step computes, `T[k_n, 1]`, "a cell whose place is
+not a constant";
 without `-o` it writes nothing and lists every definition it would refuse,
 and why. A limit of constants is folded, and any other is a
 function that walks the terms with the interpreter's stopping rule, NaN where
