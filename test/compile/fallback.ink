@@ -93,3 +93,19 @@ cellwise(c_n) = {
     z_n = f([c_n/2; c_n])
 }
 ranout = cellwise(c_n = 1 + mod(n, 2))
+
+# grad of a definition whose guard reads a limit that runs out is refused,
+# as interpreted: no clause is chosen there that grad can follow. At even n
+# r's guard holds and y_n is the slope of x^2 at 1, 2; at odd n, where
+# Newton cycles, the step is NaN. Checked:
+#
+#     tipped: 100 steps from 0, against exact values until 0 and inexact ones from there
+#     tipped.y: within 0
+tangent(c_n) = {
+    nv(c)_0 = 0
+    nv(c)_k = nv(c)_(k-1) - (nv(c)_(k-1)^3 - 2*nv(c)_(k-1) + c)/(3*nv(c)_(k-1)^2 - 2)
+    r(x, c) | lim nv(c) > 0 = x^2
+    r(x, c) = 3*x
+    y_n = grad_(x = c_n/c_n) r(x, c_n)
+}
+tipped = tangent(c_n = 1 + mod(n, 2))
