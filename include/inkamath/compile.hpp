@@ -851,12 +851,12 @@ private:
 
     // A call's value read again is shared where its text is long: written
     // into each reader's, it would multiply as its readers nest, a
-    // recurrence by cells exponentially (C357). A short one is left to
-    // Numbered, which shares it as before; past 256 bytes it would too.
+    // recurrence by cells exponentially (C357). The bound only caps that
+    // growth while compiling; below it Numbered decides, as before.
     Code& Reread(Code& code) {
         for (Code& part : code.part) Reread(part);
         for (Cell& cell : code.cells)
-            if (cell.text.size() > 256) {
+            if (cell.text.size() > 1024) {
                 const bool nan = MayNan(cell.text);
                 cell           = Shared(cell);
                 if (nan && cell.atom) nan_temporaries_.insert(cell.text);
