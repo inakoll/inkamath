@@ -389,16 +389,18 @@ public:
     [[nodiscard]] bool                  Product() const { return fold_ == Fold::prod; }
     [[nodiscard]] bool                  Reduction() const { return fold_ > Fold::prod; }
     [[nodiscard]] const std::string&    Index() const { return index_; }
-    [[nodiscard]] const char*           Role() const { return role_.c_str(); }
+    [[nodiscard]] const char*           Role() const { return Noun(true); }  // a binding keeps it
     [[nodiscard]] const PExpression<T>& Lower() const { return this->Children()[0]; }
     // Null for a series without an upper bound.
     [[nodiscard]] const PExpression<T>& Upper() const { return this->Children()[1]; }
     [[nodiscard]] const PExpression<T>& Body() const { return this->Children()[2]; }
 
-    [[nodiscard]] const char* Noun() const {
-        static const char* const nouns[] = {"sum",     "product", "maximum",
-                                            "minimum", "argmax",  "argmin"};
-        return nouns[static_cast<int>(fold_)];
+    [[nodiscard]] const char* Noun(bool role = false) const {
+        static const char* const nouns[][2] = {
+            {"sum", "the sum's index"},         {"product", "the product's index"},
+            {"maximum", "the maximum's index"}, {"minimum", "the minimum's index"},
+            {"argmax", "the argmax's index"},   {"argmin", "the argmin's index"}};
+        return nouns[static_cast<int>(fold_)][role];
     }
     // A reduction refuses what max(a, b) refuses, in its own words, and
     // keeps a later term only where it ranks strictly higher, so the first
@@ -452,8 +454,6 @@ public:
 private:
     Fold        fold_;
     std::string index_;
-    // Kept by the bindings this node makes, none of which outlives it.
-    std::string role_ = std::string("the ") + Noun() + "'s index";
 };
 
 // 'grad_(x = a) body': the derivative of the body with respect to x at a. The
