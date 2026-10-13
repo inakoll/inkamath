@@ -2222,7 +2222,9 @@ private:
         for (const std::string& status : asked) ran += (ran.empty() ? "" : " || ") + status;
         asked_       = asked;
         unconverged_ = "isnan(" + truth + ") && (" + ran + ")";
-        return "isnan(" + truth + ") && !(" + ran + ") ? NAN : " + truth + " == 1.0";
+        // Before a walk's loop where neither moves, as its limits are.
+        const Code nan = Looping(Of(Cell("isnan(" + truth + ") && !(" + ran + ")", 0)));
+        return nan.cells[0].text + " ? NAN : " + truth + " == 1.0";
     }
 
     // A constant's truth, or the interpreter's refusal of it as a reason.
