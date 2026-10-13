@@ -2054,6 +2054,18 @@ holds(compile_hoisted fact.h "    const double v0_ = fact_fact_(arg_a + 2.0);\n"
       "    double t1_ = fact_lim0(m_, 0, arg_a);\n${based}${walk}"
       "        const double t_ = t1_ / 4.0 + 1.0 / v0_;\n")
 
+# So is the status of a limit a guard in the terms reads, asked with its truth.
+file(WRITE "${OUT}/asked.ink" "layers(x_n) = {\n    s(v)_0 = v\n    s(v)_k = s(v)_(k-1)/2 + v\n"
+     "    g(a) | lim s(a + 1) > 0 = 1\n    g(a) = 2\n"
+     "    o(a)_0 = a\n    o(a)_k = o(a)_(k-1)/4 + g(a)\n    q_n = lim o(x_n)\n}\n")
+set(args --compile asked.ink layers -o asked.h)
+check(compile_hoisted)
+holds(compile_hoisted asked.h "    const double v0_ = asked_lim0(m_, 0, arg_a + 1.0);\n"
+      "    const double v1_ = (isnan(v0_) ? NAN : v0_ > 0.0 ? 1.0 : 0.0);\n"
+      "    const double v2_ = isnan(v1_) && !(asked_lim0(m_, 1, arg_a + 1.0));\n"
+      "    double t1_ = arg_a;\n${based}${walk}"
+      "        const double t_ = t1_ / 4.0 + (v2_ ? NAN : v1_ == 1.0 ? 1.0 : 2.0);\n")
+
 # A global's temporaries, read first in a limit's terms, are numbered as
 # the update's, not as that limit's: two such are two names.
 file(WRITE "${OUT}/twice.ink" "a = 1/2\nM = [a, 1; 1, a]\nP = (M + M)*(M + M)\nQ = (M - 2)*(M - 2)\ns(x)_0 = x\ns(x)_k = s(x)_(k-1)/2 + P[1,1]*x\nr(x)_0 = x\nr(x)_k = r(x)_(k-1)/2 + Q[1,1]*x\ny_n = lim s(n) + lim r(n)\n")
