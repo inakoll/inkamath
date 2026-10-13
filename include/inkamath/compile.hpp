@@ -3470,6 +3470,13 @@ private:
             return Sample(key, read, sample->first, sample->second);
         if (const auto hold = Held(call.subexpr())) return Holding(key, read, *hold);
         const int lag = Lag(call.subexpr(), key) + shift_;
+        // A cycle is told by its reads (Reaches), and this one, which an
+        // early term's are not, is recorded once what it reads is compiled.
+        pending_.emplace_back(shift_ && early_ >= 0 ? nullptr : reading_, key);
+        const struct Pop {
+            decltype(pending_)& pending;
+            ~Pop() { pending.pop_back(); }
+        } pop{pending_};
         Bases(key);
         if (!read.size.rows) Compile(key);
         // Refused by its rate once the reader's is known (Rate), before one
@@ -4853,12 +4860,16 @@ private:
         while (!left.empty()) {
             const Sequence& sequence = sequences_.at(left.back());
             left.pop_back();
+            std::vector<std::string> reads;
             for (const Reads* each : {&sequence.reads, &sequence.deferred})
-                for (const auto& [read, lags] : *each) {
-                    if (&sequences_.at(read) == to) return true;
-                    if (seen.insert(read).second && sequences_.at(read).bases.empty())
-                        left.push_back(read);
-                }
+                for (const auto& [read, lags] : *each) reads.push_back(read);
+            for (const auto& [reader, read] : pending_)
+                if (reader == &sequence) reads.push_back(read);
+            for (const std::string& read : reads) {
+                if (&sequences_.at(read) == to) return true;
+                if (seen.insert(read).second && sequences_.at(read).bases.empty())
+                    left.push_back(read);
+            }
         }
         return false;
     }
@@ -5964,6 +5975,7 @@ private:
              std::pair<std::exception_ptr, int>>
                                                        failed_;
     std::map<std::pair<const void*, std::string>, int> computing_;
+    std::vector<std::pair<const Sequence*, std::string>> pending_;  // reads by reader, compiling
     // The fill's last term tried, by residue, and the deepest it was tried at.
     std::map<std::tuple<const void*, const void*, std::string, int>, std::pair<long long, int>>
                                                        filled_;
