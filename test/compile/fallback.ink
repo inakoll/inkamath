@@ -144,3 +144,17 @@ inward(c_n) = {
     y_n = 0
 }
 answered = inward(c_n = 1 + mod(n, 2))
+
+# A guard that did not hold for a limit that ran out leaves the guards after
+# it their own truth: s(1)'s terms are 0, 2, 0, ..., and y_n is 2 at every
+# n, in the step as interpreted. Checked:
+#
+#     chained: 100 steps from 0, against exact values until 0 and inexact ones from there
+#     chained.y: within 0
+chain(u_n) = {
+    s(x)_k = x + (-1)^k
+    y_n | lim s(u_n) > 0 = 1
+    y_n | u_n > 0 = 2
+    y_n = 3
+}
+chained = chain(u_n = 1)
