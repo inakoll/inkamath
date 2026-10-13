@@ -11661,3 +11661,19 @@ review:
     compiles today's headers to PTX, one instance per thread;
   - the agent experiment's design, outside the repository, when the
     owner chooses.
+
+After a §9 exploration of the CTM tutorials' motor speed and inverted
+pendulum (`test/data/ctms.ink`, `test/compile/pendloop.ink` and
+`motorloop.ink`), its friction:
+
+- **Polynomial helpers in the prelude** beside `charpoly`: `conv`,
+  `polyval` and padding to a length, which every transfer function needs.
+- **Complex `roots` by Durand-Kerner**, in the interpreter only.
+- **`care` and `dare` beside `hinf`**: the sign of the Hamiltonian and the
+  doubling algorithm, which each test now carries in five to seven lines.
+- **`lim`'s refusal for a limit that does not converge states the ratio it
+  measured** and suggests a fixed count instead.
+- **README teaches the zero-order hold by Van Loan's block** with a
+  fixed-count series, and the Riccati equation by doubling.
+- **A tutorial chapter from these two series**, which the exploration found
+  enough for *a short tutorial path*.
