@@ -1536,6 +1536,20 @@ PExpression<U> Interpreter<T, U>::ParseSeries() {
             upper = std::make_shared<ValExpression<U>>(U(m_tokens[m_i++].value));
         } else if (Peek().type == Func && !IsLimit(Peek()) && !IsSeries(Peek())) {
             upper = std::make_shared<RefExpression<U>>(m_tokens[m_i++].text);
+            // Where the body touches the name, a call was meant (C369).
+            if (!AtEnd() && Peek().type == LPar && !Peek().spaced) {
+                std::string call  = m_tokens[m_i - 1].text;
+                int         depth = 0;
+                for (std::size_t i = m_i; i < m_tokens.size(); ++i) {
+                    call += (m_tokens[i].spaced ? " " : "") + m_tokens[i].text;
+                    depth += (m_tokens[i].type == LPar) - (m_tokens[i].type == RPar);
+                    if (depth == 0) break;
+                }
+                Fail(
+                    "an upper bound is a number, a name, or parenthesised, and a name there is "
+                    "never a call: write ^(",
+                    call, ")");
+            }
         } else if (Peek().type == LPar) {
             ++m_i;
             const Setting<bool> bound(listed_, false);
