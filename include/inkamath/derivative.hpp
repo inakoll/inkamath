@@ -505,6 +505,21 @@ private:
         return grads_[std::bit_width(with & complex_) - 1].second;
     }
 
+    // Where a value real at the point moves off the real line, as max and min
+    // are not defined (C205), or "". A node's parts are real, a complex value
+    // having given way, and its value is NaN, which IsZero would take for an
+    // imaginary part.
+    [[nodiscard]] std::string Leaves(const Jet& jet) const {
+        if (tape_) return "";
+        using Scalar     = numeric_interface<typename T::value_type>;
+        const Jet   im   = Map(jet, [](const T& v) { return T::Cells(v, Scalar::imaginary); });
+        std::size_t with = 0;
+        for (std::size_t s = 1; s < im.size(); ++s)
+            if (im[s] && !IsZero(*im[s])) with |= s;
+        if (!with || !IsZero(*im[0])) return "";
+        return grads_[std::bit_width(with) - 1].second;
+    }
+
     Jet Eval(const PExpression<T>& e) { return Eval(*e); }
 
     // A dynamic_cast without its search of the bases, which is most of what
@@ -677,19 +692,11 @@ private:
                 if (const std::string at = Complex(jet); !at.empty())
                     throw std::runtime_error(definition->Name() + " has no complex derivative at " +
                                              at);
-        for (const auto& [given, jet] : arguments) {
-            // A node's parts are real, a complex value having given way, and
-            // its value is NaN, which IsZero would take for an imaginary part.
-            const Jet   im   = ranked && !tape_ ? Map(jet, cell(Scalar::imaginary)) : Jet();
-            std::size_t with = 0;
-            for (std::size_t s = 1; s < im.size(); ++s)
-                if (im[s] && !IsZero(*im[s])) with |= s;
-            if (!with || !IsZero(*im[0])) continue;
-            throw std::runtime_error(
-                definition->Name() +
-                " has no derivative where its argument leaves the real line at " +
-                grads_[std::bit_width(with) - 1].second);
-        }
+        for (const auto& [given, jet] : arguments)
+            if (const std::string at = ranked ? Leaves(jet) : ""; !at.empty())
+                throw std::runtime_error(
+                    definition->Name() +
+                    " has no derivative where its argument leaves the real line at " + at);
         for (const auto& [given, jet] : arguments)
             if (Moves(jet) && stack_.staircases.contains(definition.get()))
                 throw std::runtime_error("grad cannot differentiate " + definition->Name() +
@@ -1195,8 +1202,18 @@ private:
         walk.Fail(name, "last term", term);
     }
 
+    // A maximum's terms, as max's arguments.
+    void Real(const SeriesExpression<T>& series, const Jet& term) const {
+        const std::string noun = std::string("the ") + series.Noun();
+        if (const std::string at = Complex(term); !at.empty())
+            throw std::runtime_error(noun + " has no complex derivative at " + at);
+        if (const std::string at = Leaves(term); !at.empty())
+            throw std::runtime_error(
+                noun + " has no derivative where a term leaves the real line at " + at);
+    }
+
     Jet Series(SeriesExpression<T>& series) {
-        const std::string bound    = series.Product() ? "the product's bound" : "the sum's bound";
+        const std::string bound    = std::string("the ") + series.Noun() + "'s bound";
         const int         first    = Index(series.Lower(), bound);
         const bool        infinite = !series.Upper();
         const int         last     = infinite ? first : Index(series.Upper(), bound);
@@ -1212,6 +1229,41 @@ private:
         const auto combine = [&](const Jet& total, const Jet& next) {
             return series.Product() ? Product(total, next) : Sum(total, next);
         };
+        // The term kept carries its slope, the first of equals', as max(a, b)
+        // takes a's; an index jumps where the term kept ties with another and
+        // either moves, as a comparison; a term kept ranks strictly above
+        // every earlier one, so only a later one can tie with it.
+        if (series.Reduction()) {
+            if (last < first) throw std::runtime_error(series.Empty(first, last));
+            Jet  kept = term(first);
+            T    at   = T(first);
+            bool tied = false;
+            series.Ranked(*kept[0]);
+            if (!series.Indexes() && first != last) Real(series, kept);
+            for (int k = first; k != last;) {
+                Jet next = term(++k);
+                series.Ranked(*next[0]);
+                // A maximum is continuous as max is; an index steps (C215).
+                if (series.Indexes())
+                    Stepped(kept), Stepped(next);
+                else
+                    Real(series, next);
+                const T    truth = series.Later(*kept[0], *next[0]);
+                const bool moves = Moves(kept) || Moves(next);
+                chosen_          = chosen_ || (moves && numeric_interface<T>::approximated(truth));
+                rounded_         = rounded_ || (moves && !numeric_interface<T>::exact(truth));
+                const bool later = numeric_interface<T>::truth(truth);
+                tied             = !later && (tied || (moves && *kept[0] == *next[0]));
+                if (later) kept = std::move(next), at = T(k);
+                if (!numeric_interface<T>::exact(truth))
+                    kept[0] = Part(series.Chosen(*kept[0], truth));
+                at = series.Chosen(at, truth);
+            }
+            if (series.Indexes() && tied)
+                throw std::runtime_error(std::string("the ") + series.Noun() + " jumps at " +
+                                         Where());
+            return series.Indexes() ? Constant(at) : kept;
+        }
         if (!infinite) {
             if (last < first) return Constant(T(series.Product() ? 1 : 0));
             Jet total = term(first);

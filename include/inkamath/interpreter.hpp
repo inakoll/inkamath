@@ -177,6 +177,16 @@ private:
     static bool IsSeries(const Token<T>& token) {
         return token.type == Func && (token.text == "sum" || token.text == "prod");
     }
+    // 'max_(k=', 'min_(', 'argmax_(' and 'argmin_(' an index begin a
+    // reduction: the words stay names, max and min the prelude's.
+    bool Reduces() const {
+        if (m_i + 4 >= m_tokens.size()) return false;
+        const std::string& w = Peek().text;
+        return Peek().type == Func &&
+               (w == "max" || w == "min" || w == "argmax" || w == "argmin") &&
+               m_tokens[m_i + 1].type == Sub && m_tokens[m_i + 2].type == LPar &&
+               m_tokens[m_i + 3].type == Func && m_tokens[m_i + 4].type == Equal;
+    }
     static bool IsWord(const Token<T>& token, const char* word) {
         return token.type == Func && token.text == word;
     }
@@ -902,7 +912,7 @@ template <Parsable T, Numeric U>
 PExpression<U> Interpreter<T,U>::ParseEqualExpr()
 {
     PExpression<U> e,ref,params,expr,sub;
-    if (!AtEnd() && Peek().type == Func && !IsLimit(Peek()) && !IsSeries(Peek()) &&
+    if (!AtEnd() && Peek().type == Func && !IsLimit(Peek()) && !IsSeries(Peek()) && !Reduces() &&
         !IsGrad(Peek()) && !IsLogic(Peek())) {
         const size_t signature_begin = m_i;
         std::string name = m_tokens[m_i++].text;
@@ -1195,7 +1205,7 @@ PExpression<U> Interpreter<T, U>::ParseSimpleExpr(bool postfix) {
                 e = ParseLimit();
                 break;
             }
-            if (IsSeries(Peek())) {
+            if (IsSeries(Peek()) || Reduces()) {
                 e = ParseSeries();
                 break;
             }
@@ -1522,10 +1532,15 @@ PExpression<U> Interpreter<T, U>::ParseSeries() {
             Fail("expected the last index after '^', as in ", example, ", not '", Peek().text, "'");
         }
     }
+    static const std::map<std::string, Fold> folds = {
+        {"sum", Fold::sum}, {"prod", Fold::prod},     {"max", Fold::max},
+        {"min", Fold::min}, {"argmax", Fold::argmax}, {"argmin", Fold::argmin}};
+    const Fold fold = folds.at(word);
+    if (!upper && fold > Fold::prod) Fail("expected '^' and the last index, as in ", example);
     const auto series =
-        std::make_shared<SeriesExpression<U>>(word == "prod", index, lower, upper, ParseMultExpr());
+        std::make_shared<SeriesExpression<U>>(fold, index, lower, upper, ParseMultExpr());
     if (!AtEnd() && (Peek().type == Add || Peek().type == Min))
-        ended_.emplace_back(index, word, m_i);
+        ended_.emplace_back(index, series->Noun(), m_i);
     return series;
 }
 
@@ -1632,8 +1647,8 @@ typename Interpreter<T, U>::Result Interpreter<T, U>::Eval(const std::string& s)
             if (what == index + " is not defined" &&
                 std::any_of(m_tokens.begin() + static_cast<std::ptrdiff_t>(at), m_tokens.end(),
                             [&](const Token<T>& t) { return t.type == Func && t.text == index; }))
-                what = index + " is bound in the " + (word == "sum" ? "sum" : "product") +
-                       "'s body alone, which ended at the '" + m_tokens[at].text + "'";
+                what = index + " is bound in the " + word + "'s body alone, which ended at the '" +
+                       m_tokens[at].text + "'";
         result = Diagnostic{what};
     }
     ResetInterpreter();  // reset whatever happens and forgive the user
