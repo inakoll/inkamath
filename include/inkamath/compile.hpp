@@ -612,15 +612,21 @@ private:
 
     // A guarded value the interpreter refuses wherever it is taken, as log's
     // '| x <= 0 = 1/0', is what a step says there: NaN, as where no clause
-    // applies (C86).
+    // applies (C86). Read where its guard held, it asks no status of a limit
+    // the guard read, which did not run out there (C368).
     Code Taken(const PExpression<Value>& expression) {
+        const std::set<std::string> own = asked_;
+        std::set<std::string>       read;
+        Code                        code;
         try {
-            return Emit(expression);
+            const Setting<std::set<std::string>*> reading(statuses_, &read);
+            code = Emit(expression);
         } catch (const Undefined&) {
-            Code nan;
-            nan.cells.push_back(Atom("NAN"));
-            return nan;
+            code.cells.push_back(Atom("NAN"));
         }
+        for (const std::string& status : read)
+            if (statuses_ && !own.count(status)) statuses_->insert(status);
+        return code;
     }
 
     // Under reverse mode, a clause a moving guard chose is marked, as an inexact truth's is.
