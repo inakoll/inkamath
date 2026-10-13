@@ -856,11 +856,7 @@ private:
     Code& Reread(Code& code) {
         for (Code& part : code.part) Reread(part);
         for (Cell& cell : code.cells)
-            if (cell.text.size() > 1024) {
-                const bool nan = MayNan(cell.text);
-                cell           = Shared(cell);
-                if (nan && cell.atom) nan_temporaries_.insert(cell.text);
-            }
+            if (cell.text.size() > 1024) cell = Called(Of(cell)).cells[0];
         return code;
     }
 
