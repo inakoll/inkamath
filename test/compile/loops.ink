@@ -26,6 +26,12 @@ solve(A = [2, 1, 0; 1, 2, 1; 0, 1, 2], x0 = [1, 0, 0; 0, 1, 0; 0, 0, 1]) = {
     x_n = A^-1*x_(n-1)
 }
 
+# 'raised': an operand's cell 2^u, NaN only where u is, which no name
+# marks, so its product's cell is read untested, as written out.
+raised(A = [0, -1, 0; 1, 0, 0; 0, 0, 1], u_n) = {
+    y_n = (A*[2^u_n, 1, 0; 0, 1, 0; 0, 0, 1])[1, 2] > 0
+}
+
 # The sweep's product G*X', G the adjoint of W*X: in 'dense' every adjoint
 # there, in 'gated' each where its unit's clause holds, in 'diag' only on
 # the diagonal, which stays written out.

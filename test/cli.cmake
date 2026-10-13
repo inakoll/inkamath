@@ -1564,7 +1564,7 @@ function(strict name file)
         message(SEND_ERROR "${name}: ${file} is no strict C11\n${errors}")
     endif()
 endfunction()
-foreach(model spin solve dense gated diag)
+foreach(model spin solve dense gated diag raised)
     set(args --compile ${loops} ${model} -o ${model}.h)
     check(compile_loops)
 endforeach()
@@ -1619,6 +1619,10 @@ holds(compile_loops_nan solve.h
             }
         const int t2_ = isnan(t1_[0][0]) || isnan(t1_[0][1]) || isnan(t1_[0][2]) || isnan(t1_[1][0]) || isnan(t1_[1][1]) || isnan(t1_[1][2]) || isnan(t1_[2][0]) || isnan(t1_[2][1]) || isnan(t1_[2][2]);
         m_->s[0] = isnan((t2_ ? NAN : t1_[0][0])) ? NAN : (t2_ ? NAN : t1_[0][0]) > 0.0 ? 1.0 : 0.0;
+]])
+# A power of a constant is NaN only where its exponent is, which names
+# nothing: its product's cell is read untested, as written out.
+like(compile_loops_raised raised.h [[    m_->y[0] = (t#_[0][1] > 0.0 ? 1.0 : 0.0);
 ]])
 # The RIEKF's 12-state filter, 570,366 bytes at 9ed063c, 78,990 looped;
 # the transformer's forward pass and U trained, 595,708 and 645,563,
