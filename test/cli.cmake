@@ -1338,6 +1338,16 @@ file(WRITE "${OUT}/cycled.ink" "cycling(x_n) = {\n    a_n | n < 0 = 1\n    a_n =
      "    b_n | n < 0 = 1\n    b_n = c_(n-1)/2\n    c_n | n < 0 = 1\n    c_n = a_(n-1)/2 + x_n\n}\n")
 set(args --compile cycled.ink cycling)
 check(history_cycled)
+# And a long one, each term computed again at each read, read twice: 7.6 s at
+# 14, past 100 at 18.
+set(text "long(x_n) = {\n    s0_n | n < 0 = 1\n")
+foreach(i RANGE 17)
+    math(EXPR next "(${i} + 1) % 18")
+    string(APPEND text "    s${i}_n = (s${next}_(n-1) + s${next}_(n-2))/4\n")
+endforeach()
+file(WRITE "${OUT}/long.ink" "${text}}\n")
+set(args --compile long.ink long)
+check(history_cycled_long)
 # Init folds a slow history back from its first term, so a term it reads
 # past one it cannot fold is refused for that one (C348).
 refused(gapped "a = 2, x_n) = {\n    y_m | m < -1 = 1\n    y_m | m < 0 = a\n    y_m = y_(m-2) + x_(2*m)"
