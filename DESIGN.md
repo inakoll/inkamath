@@ -11058,16 +11058,26 @@ After an external review of README, MANIFESTO and the conformance suite
     today: a definition with no fallback answers exactly as now. That is
     "NaN kept where none is written".
   - **Compiled**: a limit's function returns NaN at its first term with a
-    NaN cell, where it walked on to the hundredth, and where its walk runs
-    out returns NaN and raises a flag it is given. A guard reading it tests
-    the flag where the interpreter reads it, false where raised, so the
-    chain goes on to the next clause; past the last, NaN. A limit no guard
-    reads is NaN where it runs out, as today. A sum or a reduction is
-    written out, its bounds constants, so a limit in its terms within a
-    guard is read as the guard's own: nothing to add, where a loop would
-    have needed the flag inside it. A host that wants the status MANIFESTO's
-    solver within a step names writes it as a sequence whose guard is the
-    plan's own test, `solved_n | abs(x_n + lim qp(x_n)) <= abs(x_n) = 1`,
+    NaN cell, where it walked on to the hundredth, and NaN where its walk
+    runs out, as today. Its status comes back from the same function: asked
+    with a flag, it answers 1 where the walk runs out and 0 where not, a
+    matrix's as its return beside the cells it fills. A guard whose truth
+    is NaN asks each limit written in it, and does not hold where one ran
+    out, so the chain goes on to the next clause; past the last, NaN. A
+    limit no guard reads is NaN where it runs out, as today. Neither the
+    status beside the value nor a shared temporary with its flag: a flag
+    is a variable the step declares, which a split step would pass between
+    its functions, and a limit hoisted out of a lazy right side would
+    raise it unread. Asked only where the truth is NaN, the status costs a
+    second walk there and nothing elsewhere. Where the truth is NaN because
+    a term the guard reads is refused, a limit in the guard that runs out
+    takes the clause after even if the interpreter reads the term first
+    and refuses; --check reports the flip. A sum or a reduction is written
+    out, its bounds constants, so a limit in its terms within a guard is
+    read as the guard's own: nothing to add, where a loop would have needed
+    the flag inside it. A host that wants the status MANIFESTO's solver
+    within a step names writes it as a sequence whose guard is the plan's
+    own test, `solved_n | abs(x_n + lim qp(x_n)) <= abs(x_n) = 1`,
     `solved_n = 0`.
   - **--check**: a walk one side settles and the other does not is a guard
     taking another clause, reported first as any flip is, without a margin,
@@ -11118,6 +11128,18 @@ After an external review of README, MANIFESTO and the conformance suite
   the flag and its test where a guard reads it. 18,554 lines at 28bbb18 by
   `wc -l include/inkamath/*.hpp src/*`; past 142 the implementation stops
   and reports.
+
+  Ruled by the owner after the spec's review: a guard reading a limit that
+  runs out does not hold as a whole; the clause after is inexact; `lim s
+  == lim s` is not the documented form; grad of such a guard refused, an
+  inner definition's refusal read by the outer guard, the NaN wordings,
+  and a limit in a sum's terms within a guard, as above; the compiler's
+  half 55 to 75 lines, as the review found. So about 120 lines: the
+  interpreter's 55, the prototype's 42, grad's refusal, an inner
+  definition's and a cell's refusal kept, a partial sum's word; the
+  compiler's 65, the flag, the status asked where a guard's truth is NaN,
+  the NaN term. 18,626 lines at the merge of bdb38ba; past 180 the
+  implementation stops and reports.
 
   Specified in `test/data/spec/unconverged.ink`, 97 entries replayed by the
   spec suite, 23 failing today: Newton's cycle on x^3 - 2x + 2 under a
@@ -11181,7 +11203,8 @@ After an external review of README, MANIFESTO and the conformance suite
 
   About 15 lines: the prototype's 12 net, the scale in `Matrix::distance`
   and `--check`'s remainder, 4 lines of the walk's C changed; past 23 the
-  implementation stops and reports.
+  implementation stops and reports. Ruled by the owner: accepted, its
+  moves as listed, README section 4 and C353's row among them.
 
   Specified in `test/data/spec/tolerance.ink`, 23 entries replayed by the
   spec suite, 4 failing today and passing on the prototype: e's partial
