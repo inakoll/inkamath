@@ -109,3 +109,18 @@ tangent(c_n) = {
     y_n = grad_(x = c_n/c_n) r(x, c_n)
 }
 tipped = tangent(c_n = 1 + mod(n, 2))
+
+# A matrix limit read by a guard, its status asked as its return: Newton's
+# iterate beside a cell that settles at 2, the matrix running out where
+# Newton cycles, at odd n. y_n is 1 at even n and 0 at odd. Checked:
+#
+#     columned: 100 steps from 0, against exact values until 0 and inexact ones from there
+#     columned.y: within 0
+columns(c_n) = {
+    N(x, c) = x - (x^3 - 2*x + c)/(3*x^2 - 2)
+    M(c)_0 = [0; 0]
+    M(c)_k = [N(M(c)_(k-1)[1,1], c); M(c)_(k-1)[2,1]/2 + 1]
+    y_n | [1, 1]*lim M(c_n) > 0 = 1
+    y_n = 0
+}
+columned = columns(c_n = 1 + mod(n, 2))
