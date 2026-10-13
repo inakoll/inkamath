@@ -10853,7 +10853,8 @@ After an external review of README, MANIFESTO and the conformance suite
 - **Loops in generated code**, a phase of its own: increments 1 to 3
   specified, about 210 lines, and 4 and 5, some 700, deferred (the owner,
   2026-10-13). Each increment is a refactor of headers: no golden,
-  `--check` report or refusal moves, and every value is the same double.
+  `--check` report or refusal moves, and every value is the same double,
+  a NaN's sign and payload aside, which C leaves to the compiler.
 
   Where the loops are lost. A value is a `Code`, its `cells` one C
   expression each, row by row, and every operation writes them one by
