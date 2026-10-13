@@ -1564,7 +1564,7 @@ function(strict name file)
         message(SEND_ERROR "${name}: ${file} is no strict C11\n${errors}")
     endif()
 endfunction()
-foreach(model spin solve dense gated diag raised)
+foreach(model spin solve dense gated diag raised turn)
     set(args --compile ${loops} ${model} -o ${model}.h)
     check(compile_loops)
 endforeach()
@@ -1702,6 +1702,10 @@ like(compile_loops_terms dense.h [[    for (int i_ = 0; i_ < 3; ++i_)
         for (int j_ = 0; j_ < 3; ++j_)
             if (isnan(m_->W[0][i_][j_])) m_->W[0][0][0] = NAN;
     if (isnan(m_->W[0][0][0]))
+]])
+# A line that calls a function, written out: a loop would call it at each
+# cell.
+like(compile_loops_terms turn.h [[    m_->x[0][0][1] = (t#_ ? NAN : m_->A[0][1]) * turn_cos(m_->u[0]) + (t#_ ? NAN : m_->B[0][1]) * turn_sin(m_->u[0]);
 ]])
 foreach(file spin.h solve.h dense.h gated.h diag.h riekf.h)
     strict(compile_loops_strict ${file})

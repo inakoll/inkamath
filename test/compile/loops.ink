@@ -32,6 +32,13 @@ raised(A = [0, -1, 0; 1, 0, 0; 0, 0, 1], u_n) = {
     y_n = (A*[2^u_n, 1, 0; 0, 1, 0; 0, 0, 1])[1, 2] > 0
 }
 
+# 'turn': cells that each call cos and sin of one value, written out, since
+# a loop would call them at every cell where the cells written out call
+# them once.
+turn(A = [1, 2, 0; 0, 1, 3; 4, 0, 1], B = [0, 1, 0; 1, 0, 1; 0, 1, 0], u_n) = {
+    x_n[i<=3, j<=3] = A[i, j]*cos(u_n) + B[i, j]*sin(u_n)
+}
+
 # The sweep's product G*X', G the adjoint of W*X: in 'dense' every adjoint
 # there, in 'gated' each where its unit's clause holds, in 'diag' only on
 # the diagonal, which stays written out.
