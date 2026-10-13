@@ -11622,7 +11622,11 @@ After an external review of README, MANIFESTO and the conformance suite
     after is the next tried as the step tries them, the guarded in the
     order written and then the one that always applies, for the same
     terms or cells: never a base clause (C254), nor a term written whole
-    for a cell (a departure of the clause, above). A later guarded clause
+    for a cell (a departure of the clause, above). It names the next clause
+    for the term as a whole, and a single-cell clause in between is not
+    named: after `y_n[j<=2] | lim nv(c_n) < 1 = j`, `y_n[1] = 0` and
+    `y_n[j<=2] = 5`, it falls to 'y_n[j<=2] = 5', though the first cell
+    falls to 0. A later guarded clause
     is quoted as tried, and the reader follows the chain from there:
 
         chained.y: where lim s runs out, 'y_n | lim s(u_n) > 0 = 1' falls to 'y_n | u_n > 0 = 2'
