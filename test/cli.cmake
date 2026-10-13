@@ -48,6 +48,48 @@ endfunction()
 # Read by cases in every part.
 set(inputs "${CMAKE_CURRENT_LIST_DIR}/compile/inputs.ink")
 
+# Specified, not yet built (DESIGN.md, a maximum, minimum or argmax over an
+# index): compile/reduce.ink's instances checked, a reduction unrolled as a
+# sum is, a later term kept where it ranks strictly higher, NaN where a term
+# is in a header that writes NaN, and refused where the interpreter refuses
+# or under grad. Skipped while a reduction is not read, and only then.
+if(PART STREQUAL "spec")
+    set(reduce ${CMAKE_CURRENT_LIST_DIR}/compile/reduce.ink)
+    file(MAKE_DIRECTORY "${OUT}")
+    execute_process(COMMAND "${EXE}" --check ${reduce} pooled -o pooled.c
+                    WORKING_DIRECTORY "${OUT}" OUTPUT_VARIABLE got ERROR_VARIABLE today
+                    RESULT_VARIABLE exit TIMEOUT ${CASE_TIMEOUT})
+    if(exit EQUAL 1 AND today MATCHES "unexpected 'x' -- the operator '\\*' is probably missing\n$")
+        message("compile_reduce: not read as today")
+        return()
+    endif()
+    unset(exit)
+    foreach(instance pooled shied)
+        set(args --check ${reduce} ${instance} -o ${instance}.c)
+        check(compile_reduce)
+    endforeach()
+    set(args --compile ${reduce} pool -o pool.h)
+    check(compile_reduce)
+    holds(compile_reduce pool.h
+          "m_->x[0][0][0] < m_->x[0][1][0] ? m_->x[0][1][0] : m_->x[0][0][0])"
+          "m_->x[0][1][0] < m_->x[0][0][0] ? 2.0 : 1.0)"
+          "m_->x[0][2][0] < m_->x[0][3][0] ? m_->x[0][3][0] : m_->x[0][2][0])")
+    file(WRITE "${OUT}/aware.ink" "r(v) | v > 0 = v\naware(x_n[j<=2]) = {\n"
+         "    q_n = max_(k=1)^2 x_n[k]\n    z_n = r(x_n[1])\n}\n")
+    set(args --compile aware.ink aware -o aware.h)
+    check(compile_reduce)
+    holds(compile_reduce aware.h "(isnan(m_->x[0][0][0]) || isnan(m_->x[0][1][0]) ? NAN : "
+          "m_->x[0][0][0] < m_->x[0][1][0] ? m_->x[0][1][0] : m_->x[0][0][0])")
+    file(WRITE "${OUT}/reduced.ink" "e_n = max_(k=3)^1 k*x_n\n"
+         "g_n = grad_(w = x_n) max_(k=1)^3 (k*w - k^2)\n")
+    set(args --compile reduced.ink)
+    string(CONCAT stdout "cannot compile e: the maximum has no terms: k runs from 3 to 1\n"
+           "cannot compile g: a derivative of a maximum, for now\n")
+    set(exit 1)
+    check(compile_reduce)
+    return()
+endif()
+
 # The cases run as three tests of about equal time under the sanitizers: PART
 # 1 up to charpoly's refusal, 2 from it, 3 from eig's, and all where PART is
 # not given.

@@ -8979,7 +8979,117 @@ checked: what it asked of the compiler, each with its smallest change.
   transformer's held-out accuracy had to be written `prod_(v=1)^nv
   (Z[b,t,v] <= Z[b,t,y])`, its target's logit no smaller than any. Minor
   until a second model asked; an external review's range images and
-  PointNet have.
+  PointNet have. It takes in *An argmax in the prelude*, queued before.
+
+  Decided:
+  - **Written as a sum**: `max_(k=a)^b`, `min_`, `argmax_` and `argmin_`,
+    the body a term, the bounds read in the scope, the index bound in the
+    body alone, its refusal naming the maximum's body as a sum's does.
+    `argmin_` is a table entry more. The words stay names: a reduction is
+    the word, `_(`, a name and `=`, which no term of a sequence is, so
+    `max(a, b)` is still the prelude's and `argmax = 4` still a definition.
+  - **The fold of `max(a, b)`**: the first term, then each later one kept
+    where it ranks strictly higher, by `<`. The value is a term, so exact
+    where the terms are; a tie keeps the first, and argmax its first
+    index, as `max(a, b)` keeps a, NumPy's and PyTorch's argmax the first,
+    and C's `<` does unasked. Over two terms it is `max(a, b)`, slopes and
+    words included. -0 is not below +0, so a maximum of the two is the
+    first, a minimum too.
+  - **Inexact**: a comparison that read an inexact term makes what it
+    chose inexact, as a guard's clause (C241); with two terms or more, one
+    inexact term makes the maximum and the index inexact, `max_(k=1)^2 [1;
+    ~0.5][k]` `~1` as `max(1, ~0.5)` is. One term is itself. An inexact
+    argmax is no index, `an index must be exact` as for any, and compared
+    with a target it is a truth as any.
+  - **Refused**, in the reduction's words: no terms, `the maximum has no
+    terms: k runs from 3 to 1`, where a sum's are 0; no last index,
+    `expected '^' and the last index`; a matrix term, `the maximum needs
+    single values, not a 1x2 matrix; write it by its cells`, as `max`
+    says; NaN, `needs a number, not -nan`, and a complex term, `needs real
+    numbers`, each term ranked, one alone too, which no comparison
+    reads.
+  - **grad**: the slope of the term kept, the first of equals', as
+    `max(a, b)` takes a's, a maximum being continuous where its choice
+    steps as abs, max and min are. An argmax is constant: 0, and refused
+    where a tie moves, `the argmax jumps at x = 3`, as a comparison's
+    sides equal and moving are. Reverse mode passes the kept term's node.
+  - **The C**: unrolled as a sum is, each kept value and index a
+    temporary so that nothing nests, `(t0_ < x ? x : t0_)` and `x < t0_`
+    for a minimum, the index `(t0_ < x ? 3.0 : t1_)`. The term kept is a
+    value the step computed, not computed again, and `<` is the exact order
+    of two doubles, so the step decides as the interpreter does wherever
+    the terms are its doubles. In a header that writes NaN, NaN where
+    either value compared is, the test a comparison writes (*A NaN reaches
+    every term that reads it*), a NaN term not kept included (C189);
+    elsewhere `<` alone, as the prelude's `max` helper. Refused where the
+    interpreter refuses at compile time, no terms or a constant term it
+    refuses, and past `max_terms`. A derivative through one compiled is refused, `a
+    derivative of a maximum, for now`: the kept part beside each kept
+    value, and in reverse mode a node chosen, for a step no model compiles
+    yet, PointNet's max being inference.
+  - **tex**: `\max_{k=1}^{3}`, `\min`, `\operatorname*{arg\,max}_{j=1}^{m}`
+    and `arg\,min`, set as a sum.
+
+  Rejected:
+  - **Reserved words**, as `sum` and `prod`: `max` and `min` are the
+    prelude's, called everywhere, and `argmax` would stop being a name for
+    no reading that needs it.
+  - **A matrix body taken cell by cell**: a second way to say what a
+    definition by cells says, `pool(x)[i<=2] = max_(k=1)^2 x[2*i - 2 +
+    k]`, and an argmax of matrices has no meaning.
+  - **A tie refused**: exact terms tie often, zero weights at the start or
+    equal logits, and a paper's argmax picks one. The accuracy as a
+    product of `<=` counted a tied target as predicted; `argmax_` counts the
+    first index only, which the README's paragraph says.
+  - **An argmax exact always**: an index read from an inexact comparison
+    is a truth read from a double, C241's case.
+  - **-inf for no terms**, sup of the empty set: a field's convention, not
+    a value an exact interpreter has.
+  - **An argmax in the prelude**, `argmax(v)`: a function of a vector,
+    where the accuracy reads a row of a tensor, and a second way to bind an
+    index beside the sum's.
+  - **Folded through the prelude's `max` calls**: its words, slopes and C
+    for nothing in the compiler, but an argmax has no prelude counterpart,
+    and a user's own `max` would change the reduction.
+  - **A loop**: sums are unrolled; *Loops in generated code* takes both.
+
+  What moves, on a prototype, discarded: nothing. Every golden, README
+  session, expected header, check report and cli case passes unchanged,
+  497 tests; no source, transcript or model wrote `max_(`, `min_(`,
+  `argmax` or `argmin`.
+
+  Measured on the prototype: `test/compile/reduce.ink`'s two instances
+  report within 0. A maximum and an argmax over 1,000 inputs compile in
+  0.6 s to a header of 239 KB, 3,020 temporaries, whose check program of
+  10 steps, built in 1.0 s at -O2 by GCC 13, reports within 0: an unrolled
+  sum's price (*The compiled sum's thousand terms*).
+
+  About 145 lines: the prototype's 154 added and 12 removed, 15 of them
+  comment; the node's fold, refusals and taint 58 net, the parser 14, the
+  evaluator 6, grad 23, tex 3, the compiler 38. 18,335 lines at d7c1ada by
+  `wc -l include/inkamath/*.hpp src/*`, 18,477 on the prototype; past 218
+  the implementation stops and reports.
+
+  Specified in `test/data/spec/reduce.ink`, 80 entries replayed by the
+  `spec` suite, 65 failing today: exact and inexact terms, ties and signed
+  zeros, the body's reach, nesting, argmax read as an index and an inexact
+  one refused there, a pooling by cells, the refusals, the words left
+  names, grad and its jumps, tex, and README's accuracy. And in
+  `test/cli.cmake`'s `spec` part, run by `cli_spec`, skipped while
+  `--check reduce.ink pooled` is refused at the parse as today, and only
+  then: both instances' check programs written, `pool`'s header holding
+  the first two inputs' maximum as `x1 < x2 ? x2 : x1`, the argmin's `x2 <
+  x1 ? 2.0 : 1.0` and the pooling's second window, a header that writes
+  NaN testing both values, and no terms and grad refused. With the
+  implementation the spec becomes a golden, `pooled` and `shied` join the
+  checks with the reports `reduce.ink` gives, the `spec` part and
+  `cli_spec` go, and README section 4, after products, gains the
+  accuracy's session, the spec's last entries (README's sessions are
+  replayed, so it waits), and: "A maximum or a minimum over an index is
+  written as a sum is, `max_(k=1)^n` and `min_(k=1)^n`, and so is the
+  index of the first largest or smallest term, `argmax_` and `argmin_`, as
+  a classifier's prediction is read from its logits. Of equal terms, the
+  first: a tied target is not counted as predicted."
 - **The compiled sum's thousand terms**: a LeNet-sized layer's dot product
   over a batch would pass `max_terms`, which bounds an unrolled sum written
   as lines of C, not a loop.
