@@ -842,10 +842,25 @@ private:
         if (outer || !temporaries_ || memo_.first != temporaries_) return compiled();
         const auto key = std::tuple(static_cast<const void*>(&function), grad_, Given(expansion));
         if (const auto found = memo_.second.find(key); found != memo_.second.end())
-            return found->second;
+            return Reread(found->second);
         const int situated = situated_;
         Code      code     = compiled();
         if (situated_ == situated) memo_.second.emplace(key, code);
+        return code;
+    }
+
+    // A call's value read again is shared where its text is long: written
+    // into each reader's, it would multiply as its readers nest, a
+    // recurrence by cells exponentially (C357). A short one is left to
+    // Numbered, which shares it as before; past 256 bytes it would too.
+    Code& Reread(Code& code) {
+        for (Code& part : code.part) Reread(part);
+        for (Cell& cell : code.cells)
+            if (cell.text.size() > 256) {
+                const bool nan = MayNan(cell.text);
+                cell           = Shared(cell);
+                if (nan && cell.atom) nan_temporaries_.insert(cell.text);
+            }
         return code;
     }
 
