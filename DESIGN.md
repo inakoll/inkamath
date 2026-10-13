@@ -3327,12 +3327,15 @@ that exploring seven domains asked of the interpreter, by how many asked.
     it and in a guard as is, as a single value's test is written. C's `==`
     of two doubles is the interpreter's of its doubles.
   - **Refused**: an order of matrices, in the interpreter's words, `a
-    comparison needs single values, not a 1x2 matrix`; and two shapes, `a
-    1x2 matrix compared with a single value, never equal`, where the
-    interpreter answers 0. That is a truth known before the step runs, the
-    trap *A matrix `==` a single value refused* (next) is to close in the
-    interpreter, Doyle's `ric(12) == 0`: not compiled for consistency with
-    what the interpreter happens to answer (CLAUDE.md §2).
+    comparison needs single values, not a 1x2 matrix`; and two shapes,
+    where the interpreter answers 0. A matrix and a single value, `a 1x2
+    matrix compared with a single value, never equal`, is the trap *A
+    matrix `==` a single value refused* (next) is to close in the
+    interpreter, Doyle's `ric(12) == 0`; two matrices of different shapes,
+    `a 1x2 matrix compared with a 2x1 matrix, never equal`, a truth the
+    shapes alone fix, most likely a missing transpose, which that item
+    closes too. Either is known before the step runs: not compiled for
+    consistency with what the interpreter happens to answer (CLAUDE.md §2).
   - **NaN** (C189): in a header that writes NaN, NaN where any cell of
     either side is, `Nan`'s test of a matrix's operands, as the interpreter
     asks every cell before comparing; nothing in one that does not.
