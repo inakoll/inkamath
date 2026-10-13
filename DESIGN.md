@@ -10858,7 +10858,7 @@ After an external review of README, MANIFESTO and the conformance suite
 `MANIFESTO.md`.
 
 - **Loops in generated code**, a phase of its own: increments 1 to 3
-  specified, about 210 lines, and 4 and 5, some 700, deferred (the owner,
+  specified, about 220 lines, and 4 and 5, some 700, deferred (the owner,
   2026-10-13). Each increment is a refactor of headers: no golden,
   `--check` report or refusal moves, and every value is the same double,
   a NaN's sign and payload aside, which C leaves to the compiler.
@@ -10972,8 +10972,11 @@ After an external review of README, MANIFESTO and the conformance suite
     it closes one, replaced by the cell's: the loop's line is the first's
     with `[i_][j_]` there, its value-numbering marks dropped, so nothing
     is shared out of the loop. A line holding any other mark rewritten
-    later, a hold's or a term read back, is written out. The text is
-    compared, not parsed, so the loop is exactly the lines it replaces.
+    later, a hold's (`\x10`) or a term read back (`\x04`), is written
+    out. The text is compared, not parsed, so the loop is exactly the
+    lines it replaces. So a value `Numbered` shares, within a cell or
+    across cells, is computed in each looped term as written, and 3 saves
+    the header's bytes only, not its build time.
     Its NaN test passes a NaN to the first cell and fills as now; the
     RIEKF's P:
 
@@ -11097,15 +11100,16 @@ After an external review of README, MANIFESTO and the conformance suite
   does not.
 
   Cost, by `wc -l include/inkamath/*.hpp src/*`, 18,626 at 9ed063c: 1
-  about 75 lines, 2 about 95, 3 about 40; the prototype wrote 97 and 105
+  about 75 lines, 2 about 95, 3 about 50; the prototype wrote 97 and 105
   behind switches. Each stops and reports past one and a half times its
-  own: 112, 142 and 60.
+  own: 112, 142 and 75.
 
   Lands as three changes, in order, each a commit with `ctest` green and
   its own part passing where it was skipped; each implemented to its own
-  stop before the next begins, one implementation review of the three
-  against `integration`, one merge. With the third, the three parts join
-  `cli.cmake`'s regular cases and their skips go.
+  stop before the next begins, an overrun stopping the work for a ruling
+  (3 does not read 2, but waits on its ruling); one implementation review
+  of the three against `integration`, one merge. With the third, the
+  three parts join `cli.cmake`'s regular cases and their skips go.
 
   Specified in `test/compile/loops.ink`, read by `test/cli.cmake`'s
   parts `loops1` to `loops3`, the tests `cli_loops_1` to `cli_loops_3`,
