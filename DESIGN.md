@@ -11169,6 +11169,9 @@ After an external review of README, MANIFESTO and the conformance suite
   Jacobian stays rejected unless a transcription shows a sweep per output
   too dear or the notation short. Already so: README's section on grad
   writes J(x), and `test/compile/grad.ink`'s `ekf` checks F and H by cells.
+  Six sweeps cost little: a 6x12 Jacobian of 12 joint values, each output
+  a sum of 12 products of a sine and a cosine, compiles in 1.1 s to 42 KB,
+  which GCC 13 -O2 builds in 0.9 s, 6.5 µs a step.
 - **Small, whenever**: *A maximum, minimum or argmax over an index*, `[done]`; a
   Cholesky factor in the prelude, for square-root filters, the solve being
   `A^-1*b` already and the Joseph form writable now.
@@ -11311,6 +11314,11 @@ After an external review of README, MANIFESTO and the conformance suite
   and C357's 11, 18,510 to 18,554 lines at c9aa165. chol and C356 are 33
   lines, inside the stop at 40; C357 fixes the exponential compile of any
   recurrence by cells, so it is counted on its own, though chol relies on it.
+  Since the second review, the interpreter refuses an A that is not
+  symmetric, `chol needs a symmetric matrix`, by a test of its value in
+  C++ that no guard, grad or disturbed run of `--check` reads, so none of
+  the prototype's three costs returns; compiled, the lower triangle alone
+  is still read, a covariance symmetric exactly not being so in doubles.
 - `[done]` **A clause for a limit that does not converge**, one guard
   meaning the same in the interpreter and the step, NaN kept where none is
   written. MANIFESTO asks whether converging is a value, a guard or a
@@ -11581,6 +11589,23 @@ After an external review of README, MANIFESTO and the conformance suite
   `rnn` 2.9e-12; `row` and `shut` 1.2e-10; `twonames` a 4.1e-10, b
   5.3e-9; each in float as in double; and the comments of `inset` and
   `layered`. Each cell scaled by its own, 7 lines fewer: 11 lines.
+
+After a second review (2026-10-13), which took the Jacobian by cells and
+the clause for a limit that does not converge as done, the order from here:
+
+- **`--check` lists each guard that reads a limit, with the clause taken
+  where it runs out**, so that a reviewer can audit the fallback's
+  direction: `brake | lim dist(...) < margin = 1` before a default of 0
+  skips the brake on a failure.
+- `[done]` **`chol` refuses a matrix that is not symmetric**, as `eig(A,
+  B)` refuses such a B, in the interpreter, where the test is exact.
+  Compiled it reads the lower triangle, as LAPACK's does: a covariance
+  symmetric exactly is not in doubles, and a test there would make a
+  square-root filter NaN.
+- *A split step's arrays read in place*, above; then increments 4 and 5 of
+  the loops decided on its measures.
+- The gather, integer and optional inputs, and exact discretisation, below.
+
 - **A gather, integer inputs, inputs present on some steps only**: their
   open questions first. The gather is *A cell at a computed whole index,
   compiled*.

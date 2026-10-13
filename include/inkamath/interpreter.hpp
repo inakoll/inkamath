@@ -596,6 +596,11 @@ Interpreter<T, U>::Interpreter() {
             return read;
         };
         stack_.compiled = [this, functions](const Reference<U>& f, const U& x) -> std::optional<U> {
+            // Here alone, where the test is exact: compiled, chol reads A's
+            // lower triangle, as do --check's disturbed runs (DESIGN.md).
+            if (f.Name() == "chol" && !Number::disturbed && !x.IsTensor() &&
+                x.Size().rows == x.Size().cols && !(x == U::transpose(x)))
+                throw std::runtime_error("chol needs a symmetric matrix");
             const auto found = std::find_if(functions.begin(), functions.end(),
                                             [&](const auto& each) { return each.first == &f; });
             if (found == functions.end() || !x.IsScalar()) return {};
