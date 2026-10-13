@@ -453,6 +453,11 @@ private:
         Expansion*                                     outer;   // the model a function is in
         std::set<std::string>                          computing;
         std::map<std::string, int>                     offsets;  // from the caller's index
+        // Each argument as written, and where: a cell read past it is refused
+        // by the name it reads (Unstated).
+        std::map<std::string,
+                 std::tuple<const Expression<Value>*, const Scope<Value>*, const Expansion*>>
+            written = {};
     };
 
     // What an expansion gives a name, if one does.
@@ -793,6 +798,7 @@ private:
             if (nan)
                 for (const Cell& c : nans.emplace_back(value).cells) nans_.insert(c.text);
             expansion.values.emplace(given, value);
+            expansion.written.emplace(given, std::tuple(argument.get(), scope_, expansion_));
             if (Plain(*argument)) try {
                     expansion.offsets.emplace(given, Offset(argument, given));
                 } catch (const Reason&) {
@@ -927,11 +933,23 @@ private:
             throw Reason(name + "_" + std::to_string(k) + " is " + std::to_string(distance) +
                          " terms from its base, and a step writes out at most " +
                          std::to_string(max_terms));
+        // Each term once for each depth it is tried at, not at each read: a
+        // halving recursion reads each term with arguments of its own.
         const int stride = function.Stride();
-        for (long long j = k - (distance - 1) / stride * stride; j < k; j += stride) try {
-                (void)term(static_cast<int>(j), true);
-            } catch (const Reason&) {
-            }
+        if (distance > 0) {
+            const long long first = k - (distance - 1) / stride * stride;
+            auto& [upto, deep]    = filled_
+                                     .try_emplace({temporaries_, &function, args, k % stride},
+                                                  first - stride, expanded_)
+                                     .first->second;
+            if (expanded_ < deep) std::tie(upto, deep) = std::pair(first - stride, expanded_);
+            for (long long j = std::max(first, upto + stride); j < k; j += stride, deep = expanded_)
+                try {
+                    (void)term(static_cast<int>(j), true);
+                } catch (const Reason&) {
+                }
+            upto = std::max(upto, static_cast<long long>(k) - stride);
+        }
         return term(k, terming_ > 0);
     }
 
@@ -2496,6 +2514,7 @@ private:
         const auto in = [&](const auto& term) { return std::get<0>(term.first) == &temporaries; };
         std::erase_if(terms_, in);
         std::erase_if(failed_, in);
+        std::erase_if(filled_, in);
         const bool reads          = std::exchange(read_global_, true);
         const auto parameters     = std::exchange(read_parameters_, std::move(outer_parameters));
         read_parameters_.insert(parameters.begin(), parameters.end());
@@ -3451,6 +3470,13 @@ private:
             return Sample(key, read, sample->first, sample->second);
         if (const auto hold = Held(call.subexpr())) return Holding(key, read, *hold);
         const int lag = Lag(call.subexpr(), key) + shift_;
+        // A cycle is told by its reads (Reaches), and this one, which an
+        // early term's are not, is recorded once what it reads is compiled.
+        pending_.emplace_back(shift_ && early_ >= 0 ? nullptr : reading_, key);
+        const struct Pop {
+            decltype(pending_)& pending;
+            ~Pop() { pending.pop_back(); }
+        } pop{pending_};
         Bases(key);
         if (!read.size.rows) Compile(key);
         // Refused by its rate once the reader's is known (Rate), before one
@@ -3861,12 +3887,24 @@ private:
     }
     // A cell past an input whose model states no size, or a parameter it
     // gives no default, which compile as single values (C83), or past a
-    // single value computed from one, refused with the size that would hold it.
-    void Unstated(const Expression<Value>& read, const std::string& bounds) const {
-        if (!model_ || scope_ != &root_ ||
-            (!dynamic_cast<const FuncExpression<Value>*>(&read) &&
-             !dynamic_cast<const RefExpression<Value>*>(&read)))
-            return;
+    // single value computed from one, refused with the size that would hold it,
+    // read where it stands or through the parameters it is given to.
+    void Unstated(const Expression<Value>& given, const std::string& bounds) const {
+        const Expression<Value>* at    = &given;
+        const Scope<Value>*      scope = scope_;
+        for (const Expansion* in = expansion_;;) {
+            if (!dynamic_cast<const FuncExpression<Value>*>(at) &&
+                !dynamic_cast<const RefExpression<Value>*>(at))
+                return;
+            while (in && !in->values.count(at->Name()) && !in->own.count(at->Name()))
+                in = in->outer;
+            if (!in) break;
+            const auto w = in->written.find(at->Name());
+            if (w == in->written.end()) return;
+            std::tie(at, scope, in) = w->second;
+        }
+        if (!model_ || scope != &root_) return;
+        const Expression<Value>& read = *at;
         std::set<std::string>    seen;
         std::vector<std::string> next{read.Name()};
         while (!next.empty()) {
@@ -3884,8 +3922,10 @@ private:
                              : " states no size for it: write '" + p.name + "_" + p.index + "[" +
                                    bounds + "]'"));
             const auto sequence = sequences_.find(name);
-            if (sequence != sequences_.end() && sequence->second.size.count() == 1)
-                for (const auto& [reads, lags] : sequence->second.reads) next.push_back(reads);
+            if (sequence == sequences_.end() || sequence->second.size.count() != 1) continue;
+            for (const auto& [reads, lags] : sequence->second.reads) next.push_back(reads);
+            next.insert(next.end(), sequence->second.parameters.begin(),
+                        sequence->second.parameters.end());
         }
     }
     // A factorial of a constant is one; at a limit's walking index plus a
@@ -4820,12 +4860,16 @@ private:
         while (!left.empty()) {
             const Sequence& sequence = sequences_.at(left.back());
             left.pop_back();
+            std::vector<std::string> reads;
             for (const Reads* each : {&sequence.reads, &sequence.deferred})
-                for (const auto& [read, lags] : *each) {
-                    if (&sequences_.at(read) == to) return true;
-                    if (seen.insert(read).second && sequences_.at(read).bases.empty())
-                        left.push_back(read);
-                }
+                for (const auto& [read, lags] : *each) reads.push_back(read);
+            for (const auto& [reader, read] : pending_)
+                if (reader == &sequence) reads.push_back(read);
+            for (const std::string& read : reads) {
+                if (&sequences_.at(read) == to) return true;
+                if (seen.insert(read).second && sequences_.at(read).bases.empty())
+                    left.push_back(read);
+            }
         }
         return false;
     }
@@ -4938,6 +4982,7 @@ private:
         const auto in = [&](const auto& term) { return std::get<0>(term.first) == &scratch; };
         std::erase_if(terms_, in);
         std::erase_if(failed_, in);
+        std::erase_if(filled_, in);
         return decides;
     }
 
@@ -5930,6 +5975,10 @@ private:
              std::pair<std::exception_ptr, int>>
                                                        failed_;
     std::map<std::pair<const void*, std::string>, int> computing_;
+    std::vector<std::pair<const Sequence*, std::string>> pending_;  // reads by reader, compiling
+    // The fill's last term tried, by residue, and the deepest it was tried at.
+    std::map<std::tuple<const void*, const void*, std::string, int>, std::pair<long long, int>>
+                                                       filled_;
     Memo                                               memo_;  // the loop's, if one binds places
     int                                                situated_ = 0;        // terms read, counted
     int                                                terming_ = 0;        // terms being computed

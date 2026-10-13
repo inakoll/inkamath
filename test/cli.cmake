@@ -659,6 +659,17 @@ set(args --compile nodefault.ink m -o m.h)
 set(stderr "inkamath: cannot compile y: A is a single value, as m gives it no default: give it one of its size, at least j<=1, k<=2\n")
 set(exit 1)
 check(compile_unstated_parameter)
+# And through a function's parameter, as iekf.ink's blk(X_n) reads X0.
+file(APPEND "${OUT}/nodefault.ink" "blk(X) = X[1, 2]\ntwice(Y) = 2*blk(Y)\n"
+     "mb(A, x_n) = {\n    X_n = A\n    y_n = twice(X_n)*x_n\n}\ncl(x_n) = {\n    y_n = blk(x_n)\n}\n")
+set(args --compile nodefault.ink mb -o mb.h)
+set(stderr "inkamath: cannot compile y: X reads A, a single value, as mb gives it no default: give it one of its size, at least j<=1, k<=2\n")
+set(exit 1)
+check(compile_unstated_argument)
+set(args --compile nodefault.ink cl -o cl.h)
+set(stderr "inkamath: cannot compile y: x is a single value, as cl states no size for it: write 'x_n[j<=1, k<=2]'\n")
+set(exit 1)
+check(compile_unstated_argument_input)
 
 # Every run of --check walks the prelude's definitions, so that its programs
 # hold the compiled functions to the walk (DESIGN.md): log, 16 references
@@ -1320,6 +1331,23 @@ refused(unset "a) = {\n    g_n | n < 0 = a\n    g_n = 2*g_(n-1)"
 # And at another rate, where it was read as 0.
 refused(slowed "a = 2, x_n) = {\n    y_m | m < 0 = a\n    y_m = y_(m-1) + x_(2*m)"
         "y: y_0 reads y_-1, before the stream, where y's history reads a, which the host may assign after init")
+# C364: a cycle of three, its terms before the stream its guards', reading an
+# input of no history: c, compiled before a's read of b was recorded, was not
+# taken for a recurrence, and computed again at -1 read x_-1.
+file(WRITE "${OUT}/cycled.ink" "cycling(x_n) = {\n    a_n | n < 0 = 1\n    a_n = b_(n-1)/2\n"
+     "    b_n | n < 0 = 1\n    b_n = c_(n-1)/2\n    c_n | n < 0 = 1\n    c_n = a_(n-1)/2 + x_n\n}\n")
+set(args --compile cycled.ink cycling)
+check(history_cycled)
+# And a long one, each term computed again at each read, read twice: 7.6 s at
+# 14, past 100 at 18.
+set(text "long(x_n) = {\n    s0_n | n < 0 = 1\n")
+foreach(i RANGE 17)
+    math(EXPR next "(${i} + 1) % 18")
+    string(APPEND text "    s${i}_n = (s${next}_(n-1) + s${next}_(n-2))/4\n")
+endforeach()
+file(WRITE "${OUT}/long.ink" "${text}}\n")
+set(args --compile long.ink long)
+check(history_cycled_long)
 # Init folds a slow history back from its first term, so a term it reads
 # past one it cannot fold is refused for that one (C348).
 refused(gapped "a = 2, x_n) = {\n    y_m | m < -1 = 1\n    y_m | m < 0 = a\n    y_m = y_(m-2) + x_(2*m)"
@@ -1760,6 +1788,14 @@ cannot compile d: d_(...): a term after the one being computed
 ")
 set(exit 1)
 check(compile_tip_refused)
+# C363: a halving recursion with a base filled each term below at every read
+# of it, 96 s to compile a, read ahead, and over 60 s for b, refused anyway.
+file(WRITE "${OUT}/halving.ink" "a_n = v(x_n)_999\nb_n = w(x_n)_1000\nv(x)_0 = x\nv(x)_k | k > 999 = x\n"
+     "v(x)_k = v(x/2)_(k+1)\nw(x)_0 = x\nw(x)_k = w(x/2)_(k-1)\n")
+set(args --compile halving.ink)
+set(stdout "cannot compile b: nested 64 deep, which a recursion its guards do not end would pass\n")
+set(exit 1)
+check(compile_c363)
 
 # A sequence with parameters read at lim's walking index (DESIGN.md,
 # compile/series.ink): the series compiled; their values, e^x's at -2 and 1,
