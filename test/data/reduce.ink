@@ -212,6 +212,15 @@ argmax = 4
 >> grad_(x = 1) max_(k=1)^2 [x; ~2][k]
 ~0
 
+# On the real line alone, as max is (C205): a term whose slope leaves it,
+# or one moving with a complex variable, refused where they answered ~(i)
+# and ~1.
+>> grad_(x = 1) max_(k=1)^2 [i*x - i; -1][k]
+error: the maximum has no derivative where a term leaves the real line at x = 1
+
+>> grad_(z = i) min_(k=1)^2 [1; z - i][k]
+error: the minimum has no complex derivative at z = ~(i)
+
 # An argmax is constant but where a tie moves, a jump, as a comparison's:
 # the terms 2, 2 and x tie at 2 where x moves, and at 1 where nothing does.
 >> grad_(x = 4) argmax_(k=1)^3 (k*x - k^2)
