@@ -214,9 +214,12 @@ that carry NaN, and Clang warns of each NaN the header writes.
 `test/compile/nan.ink` has an instance of each.
 Clang before 23.1 can miscompile some headers' NaN tests at -O2 (llvm
 925e284), and Clang 19 does on the tests; build with `-fno-slp-vectorize`.
-Built at -O0, a header builds in seconds and runs about 2.4 times slower
-than at -O2: a transformer step of 13 names builds in 8 s and takes 1.7 ms a
-step, against 90 to 100 s and 0.7 ms at -O2, so -O0 pays for a short run.
+Built at -O0, a header builds in seconds and runs about four times slower
+than at -O2: a transformer step of 13 names builds in 14 s and takes 1.9 ms a
+step, against 100 s and 0.45 ms at -O2, so -O0 pays for a short run. The
+-O2 build goes mostly to what is still written cell by cell: the loads and
+stores between the step's functions, the cells of layer norm, softmax, ReLU
+and the residual sums, and the tests for NaN.
 
 A sequence that reads another at `x_(2*m)` samples it, and is computed every
 second step: its terms are the input's at another rate, and `y_(floor(n/2))`
