@@ -11584,6 +11584,22 @@ After an external review of README, MANIFESTO and the conformance suite
   `rnn` 2.9e-12; `row` and `shut` 1.2e-10; `twonames` a 4.1e-10, b
   5.3e-9; each in float as in double; and the comments of `inset` and
   `layered`. Each cell scaled by its own, 7 lines fewer: 11 lines.
+
+After a second review (2026-10-13), which took the Jacobian by cells and
+the clause for a limit that does not converge as done, the order from here:
+
+- **`--check` lists each guard that reads a limit, with the clause taken
+  where it runs out**, so that a reviewer can audit the fallback's
+  direction: `brake | lim dist(...) < margin = 1` before a default of 0
+  skips the brake on a failure.
+- **`chol` refuses a matrix that is not symmetric**, as `eig(A, B)` refuses
+  such a B, in the interpreter, where the test is exact. Compiled it reads
+  the lower triangle, as LAPACK's does: a covariance symmetric exactly is
+  not in doubles, and a test there would make a square-root filter NaN.
+- *A split step's arrays read in place*, above; then increments 4 and 5 of
+  the loops decided on its measures.
+- The gather, integer and optional inputs, and exact discretisation, below.
+
 - **A gather, integer inputs, inputs present on some steps only**: their
   open questions first. The gather is *A cell at a computed whole index,
   compiled*.
