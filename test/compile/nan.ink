@@ -376,3 +376,14 @@ roots(x_n) = {
     d_n = 2
 }
 surd = roots(x_n = 1 - n)
+
+# A cell of a product read where another cell's operand is refused: k
+# answered 3 from step 5, where h does not converge, the operand shared
+# under a name not known to hold NaN (C365).
+apart(x_n) = {
+    A = [1, 2; 0, 1]
+    h(x)_0 = 1
+    h(x)_k = h(x)_(k-1)*x
+    k_n = (A*[lim h(x_n), 1; 0, 1])[1, 2]
+}
+kd = apart(x_n = n/4)
