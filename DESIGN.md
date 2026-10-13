@@ -11066,7 +11066,7 @@ After an external review of README, MANIFESTO and the conformance suite
 
   What moves: no golden, report, expected header (`test/compile/expected`)
   or regex of `test/CMakeLists.txt`, and no excerpt, count or bound of
-  `test/cli.cmake`: all 286 reports and every cli case pass on the
+  `test/cli.cmake`: all 303 reports and every cli case pass on the
   rebased prototype, and with its headers rewritten as 3 would write
   them, which also leaves every expected header byte for byte. The pinned
   terms that 3 could loop have 2 or 4 cells; `layer.h`'s W line reads a
