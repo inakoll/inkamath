@@ -855,14 +855,15 @@ set_tests_properties(check_mirrored_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^mirrored: 100 steps from 0, against exact values until 0 and inexact ones from there\nmirrored\\.y: within 0\n$")
 set_tests_properties(check_radix_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^radix: 100 steps from 0, against exact values until 0 and inexact ones from there\nradix\\.y: within 0\n$")
-# C345: built at -O0 and -O2, as a compiler folds pow(x, 2.0) from -O1.
-set(program ${CMAKE_CURRENT_BINARY_DIR}/compile/squares.c)
-add_custom_command(OUTPUT ${program}
-    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/compile
-    COMMAND inkamath_cli --check ${CMAKE_CURRENT_SOURCE_DIR}/compile/drift.ink squares -o ${program}
-    DEPENDS inkamath_cli compile/drift.ink
-    VERBATIM)
+# C345: built at -O0 and -O2, as a compiler folds pow(x, 2.0) from -O1. Each
+# level writes its own program: two targets writing one race under MSBuild.
 foreach(level O0 O2)
+    set(program ${CMAKE_CURRENT_BINARY_DIR}/compile/squares_${level}.c)
+    add_custom_command(OUTPUT ${program}
+        COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/compile
+        COMMAND inkamath_cli --check ${CMAKE_CURRENT_SOURCE_DIR}/compile/drift.ink squares -o ${program}
+        DEPENDS inkamath_cli compile/drift.ink
+        VERBATIM)
     add_executable(check_squares_${level} ${program})
     target_compile_options(check_squares_${level} PRIVATE
                            $<$<C_COMPILER_ID:GNU,Clang,AppleClang>:-${level}>)

@@ -1059,6 +1059,14 @@ private:
         return code;
     }
 
+    // Whether an iterate's value does not move as it walks, so is computed
+    // before the loop (DESIGN.md, a limit's invariants hoisted); a call to a
+    // function with a loop, which GCC and Clang leave in it, is shared so.
+    bool Invariant(const std::string& value) {
+        return limit_ && temporaries_ == limit_->iterated && !Walks(value);
+    }
+    Code Looping(Code code) { return Invariant(code.cells[0].text) ? Called(code) : code; }
+
     // Whether a function of the prelude reads a sequence with parameters,
     // itself or through what it calls, which its function in the header
     // cannot hold: it is written where it is called, as of a matrix (C213).
@@ -1310,6 +1318,8 @@ private:
     // The same value is the same temporary within one sequence's step.
     template <typename Lines>
     std::string Declare(const std::string& value, Lines lines) {
+        const Setting<std::vector<Temporary>*> hoisted(
+            temporaries_, Invariant(value) ? limit_->based : temporaries_);
         // Checked, as an ended list may have left its address to another.
         std::size_t& at = declared_[{temporaries_, value}];
         if (at < temporaries_->size() && (*temporaries_)[at].value == value)
@@ -3028,7 +3038,7 @@ private:
                               "double " + t + Dimensions(argument.size) + " = {" + rows + "};"};
                       });
         }
-        if (scalar) return Answer(Cell(called + ")", primary));
+        if (scalar) return Answer(Looping(Of(Cell(called + ")", primary))));
         const std::string out = Declare("lim\x1f" + called, [&](const std::string& t) {
             return std::vector<std::string>{"double " + t + shape + ";", called + ", " + t + ");"};
         });
@@ -3860,7 +3870,7 @@ private:
                     "    double f = 1.0, i = 1.0;\n"
                     "    if (!(x >= 0 && x == floor(x))) return NAN;\n"
                     "    while (i < x && isfinite(f)) f *= ++i;\n    return f;\n}\n\n");
-            return Answer(Cell(helper + "(" + operand.cells[0].text + ")", primary));
+            return Answer(Looping(Of(Cell(helper + "(" + operand.cells[0].text + ")", primary))));
         }
         return Answer(Exactly(fact, operand));
     }

@@ -4240,12 +4240,142 @@ that exploring seven domains asked of the interpreter, by how many asked.
   Ruled: the tests build their C with `-fno-slp-vectorize` under Clang 19
   to 22, and README says to; `tq` then steps about 15% slower under Clang
   19, 26 µs to 31.
-- **A limit's invariants hoisted out of its iterate**: a limit or a
+- `[done]` **A limit's invariants hoisted out of its iterate**: a limit or a
   matrix inverse that reads only the function's arguments is declared in
-  the iterate's list, so walked again at each iterate, and gcc -O2 leaves
-  it there: `layered` in `test/compile/implicit.ink` ran 15 to 20 times
-  faster with its inner limit hoisted by hand. Declared in the bases' list
-  instead, before the loop. Moves headers, not values.
+  the iterate's list, so walked again at each iterate, and neither GCC nor
+  Clang moves it out at -O2: `layered` in `test/compile/implicit.ink`, a
+  limit whose terms add `[1, 1]*lim s([a; 1])`, a limit of matrices, steps
+  in 2.1 µs where its inner limit computed once takes 145 ns. A refactor
+  of headers: no golden, `--check` report or refusal moves.
+
+  Decided:
+  - **Declared in the bases' list.** `Declare`, offered a value for the
+    iterate's list that does not move as the walk does, declares it in the
+    bases' instead: computed once, before the loop, after what the bases
+    declare and before the walk's first terms are set, the same line under
+    the same name four spaces left. What does not move is `Walks`'s, the
+    walked power's test (*An unbounded sum compiled*): it reads neither
+    `k_`, a term behind, a window, nor a temporary of the iterate, through
+    the bases' temporaries it reads. So whatever the iterate shares moves
+    where it reads only the arguments, the parameters and constants: a
+    limit of matrices and its argument's array, an inverse and its NaN
+    flag, a product's operand, a sequence read at a constant. A value a
+    base clause declared and the iterate reads again is the base's
+    temporary, found by its text as any.
+  - **A limit of numbers named.** Its answer is a call written where it is
+    read, `scalar_lim0(m_, arg_a + 1.0)` in the term, and GCC and Clang
+    leave that in the loop too. In a limit's function, where it does not
+    move, it is shared as a call nested in an argument is (`Called`, C140),
+    a temporary that may be NaN where the call may (C211), and so declared
+    before the loop. A sum's walk shares the code and takes both. A step
+    has no loop, and writes it where it is read as today.
+  - **Guards**: a temporary is computed before the iterate's chain, an
+    untaken clause's too, and is now computed once. A limit of numbers in
+    an untaken clause, or on the right of an `and` or `or`, which `?:` or
+    `&&` left uncomputed, is computed once per call of the function: pure C,
+    so no value moves, at the cost of one walk.
+  - **NaN**: the same tests on the same operands in the same order; a flag
+    of an argument's cells is computed before the loop, the test reading it
+    unchanged.
+  - **Names**: numbered within the function as they are declared, so one
+    hoisted keeps its number, and the bases' names no longer rise, as a
+    step's have not since `Numbered`.
+  - **`--float`, `--check`**: nothing. The float header is the double one
+    rewritten; every report is the baseline's byte for byte.
+
+  It reuses the bases' list (*A sequence with parameters read at `lim`'s
+  walking index*), `Walks` and `Called`; not the sum's lifting. `Unmoved`
+  splits a summand's tree by the names it mentions and computes the parts
+  where the sum is, as arguments: an invariant of an iterate reads the
+  function's parameters, `lim s([a; 1])` reading a, so lifting it to the
+  caller means rewriting it in the arguments' terms and widening the
+  function's signature, for the value the function computes once anyway
+  when declared before its loop.
+
+  Rejected:
+  - **The sum's lifting**, as above.
+  - **Only limits and inverses**: a test of each value's kind, for a rule
+    that would leave Cramer's `I - h*J` cells that read no term in the
+    loop. What is cheap costs nothing before the loop either.
+  - **Every value that does not move, inline ones too**: each invariant
+    operation a temporary, the three-address code `Numbered` rejected.
+    -O2 hoists arithmetic itself: `inset` and Cramer's rule step as fast
+    before as after. What it does not hoist is a call to a function with a
+    loop, which this names.
+  - **Left to the C compiler with an attribute**, `pure` or `const`: not
+    C11, MSVC has neither, and a limit of matrices writes its answer
+    through a pointer, which both forbid.
+  - **A pass over the iterate's list when the function is printed**,
+    moving what does not walk: it must keep the order of what reads what,
+    and finds nothing a base already declared.
+  - **The reader's iterate as the source writes it**, the reason
+    *Temporaries in a limit's function* gave for not hoisting: the bases
+    are read before the loop already, and the price was fifteen times the
+    step.
+
+  What moves, on a prototype, discarded: no golden; no header of
+  `test/compile/expected` nor the prelude's, none holding a limit; no
+  excerpt of `test/cli.cmake`; of the 286 C files the checks build, the
+  fuzzer's among them, four, `implicit.ink`'s `inset`, 13,065 bytes to
+  13,061, its `r(a)_2`, and `layered`, 15,624 to 15,612, and `nan.ink`'s
+  `shut` and `row`, 16,541 to 16,529 and 16,536 to 16,524, the inverse of
+  `[b, 1; 1, b]` and its NaN flag; of the 81 headers the cli cases write,
+  three, `solve/cramer.h`, 8,223 to 8,207, four cells of `I - h*J` that
+  read no term, `grad/cramer.h`, 10,200 to 10,192, and `twice.h`, 4,861
+  to 4,853, the NaN flags of P and Q. All 286 checks' reports byte for
+  byte, and `compile_c316`'s header. The RIEKF
+  exploration's (48) under `lim`, `limv.ink`: its header 542,921 bytes to
+  542,805, the six cells of `sk(f)` before the loop and the NaN flag of f's
+  cells the base's; its check program of 5 steps 649,139 to 649,023, its
+  report byte for byte; `iekf.ink`, to N terms, unchanged. The rigid-body
+  exploration's limits, `ex.ink`, `rb.ink`, `so3.ink` and its series,
+  byte for byte: their iterates read their terms throughout.
+
+  Measured on the prototype, the step alone at -O2 by GCC 13.3, the median
+  of nine runs, each 1,000 to 20,000 walks of 100 steps from the init, x_n
+  = n/3, on 4 cores:
+  - `layered`: 2,112 and 2,198 ns a step, two runs, to 145 and 146, 15
+    times; Clang 18 2,272 to 144.
+  - the same given a limit of numbers, `lim s(a + 1)`: 1,772 and 1,807 to
+    144 and 148; Clang 1,915 to 121.
+  - `nan.ink`'s `singular`, an inverse: 594 and 687 to 119 and 114; Clang
+    1,143 to 145.
+  - `inset`, and Robertson's Cramer's rule and grad's Jacobian of
+    `cli.cmake`: within their noise, 88 to 103 ns before and after.
+  - the RIEKF's `limv.ink`, 2,000 walks of 101: 7.65 µs to 7.53, noise; X
+    and P after 101 steps the baseline's bit for bit.
+
+  About 8 lines of `compile.hpp`: the prototype's 9 added and 1 removed, 3
+  of them comment. 18,325 lines at 26842fb, by `wc -l include/inkamath/*.hpp
+  src/*`, 18,333 on the prototype; past 12 the implementation stops and
+  reports.
+
+  Specified in `test/cli.cmake`'s `spec` part, run by `cli_spec`: the case
+  `compile_hoisted`, `layered`'s header, `--compile implicit.ink layers -o
+  layered.h`, declaring `v0_` and `v1_` and calling `layered_lim0` before
+  `double t1_ = arg_a;` and the loop, whose term then reads `v1_`; and a
+  file `scalar.ink`, the same with `lim s(a + 1)`, declaring `const double
+  v0_ = scalar_lim0(m_, arg_a + 1.0);` there, the term reading `v0_`.
+  Skipped while both are today's text, the calls in the loop and the
+  headers 4,589 and 4,013 bytes, and only then. With the implementation
+  the case moves into part 3 beside `compile_implicit_solve`, the `spec`
+  part and `cli_spec` go, and `implicit.ink`'s `layered` comment says its
+  inner limit is computed once. No transcript in `test/data/spec`: the
+  language does not change.
+
+  Built as specified, departing in two places. A call is shared only
+  while the iterate's own list is written, the test `Declare` makes: on
+  the prototype a global read first in a limit's terms took a temporary
+  more, and a limit in a base clause a `v0_`; both are written as
+  today. And the factorial's helper is shared as a limit of numbers is,
+  `!(a + 2)` declared `const double v0_ = fact_fact_(arg_a + 2.0);`
+  before the loop, so that a call to a function with a loop is what this
+  names; `compile_hoisted`'s third file, `fact.ink`, holds both. What
+  moves is the prototype's: the same 4 check programs and 3 cli headers,
+  byte for byte; every report, golden and refusal as before. `layered`
+  at -O2 by GCC 13.3, the median of nine runs: 2,240 and 2,164 ns a step
+  to 141, 154 and 141. 10 lines of `compile.hpp`, 12 added and 2 removed,
+  3 of them comment; 18,335 in all.
 - `[done]` **Shared at every value written twice**, value numbering in
   general, as weighed under *Temporaries in a limit's function*, a
   refactor of headers: no golden, `--check` report or refusal moves.

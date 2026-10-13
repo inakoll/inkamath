@@ -1987,6 +1987,30 @@ if(NOT at EQUAL -1)
 endif()
 holds(compile_float_implicit float/cramer.h "float v1_[3][3] = ")
 
+# A limit's invariants hoisted (DESIGN.md): layered's inner limit computed
+# once, before its walk's loop, and so a limit of numbers and a factorial
+# that read only the arguments, but not a limit a base clause reads.
+set(args --compile ${CMAKE_CURRENT_LIST_DIR}/compile/implicit.ink layers -o layered.h)
+check(compile_hoisted)
+file(WRITE "${OUT}/scalar.ink" "layers(x_n) = {\n    s(v)_0 = v\n    s(v)_k = s(v)_(k-1)/2 + v\n"
+     "    o(a)_0 = a\n    o(a)_k = o(a)_(k-1)/4 + lim s(a + 1)\n    q_n = lim o(x_n)\n}\n")
+set(args --compile scalar.ink layers -o scalar.h)
+check(compile_hoisted)
+file(WRITE "${OUT}/fact.ink" "layers(x_n) = {\n    s(v)_0 = v\n    s(v)_k = s(v)_(k-1)/2 + v\n"
+     "    o(a)_0 = lim s(a)\n    o(a)_k = o(a)_(k-1)/4 + 1/!(a + 2)\n    q_n = lim o(x_n)\n}\n")
+set(args --compile fact.ink layers -o fact.h)
+check(compile_hoisted)
+string(CONCAT walk "    double step_ = 0.0, before_ = 0.0;\n"
+       "    int    started_ = 1, stepped_ = 0;\n    for (long long k_ = 1; k_ <= 100; ++k_) {\n")
+holds(compile_hoisted layered.h "    double v0_[2][1] = {{arg_a}, {1.0}};\n    double v1_[2][1];\n"
+      "    layered_lim0(m_, v0_, v1_);\n    double t1_ = arg_a;\n${walk}"
+      "        const double t_ = t1_ / 4.0 + (1.0 * v1_[0][0] + 1.0 * v1_[1][0]);\n")
+holds(compile_hoisted scalar.h "    const double v0_ = scalar_lim0(m_, arg_a + 1.0);\n"
+      "    double t1_ = arg_a;\n${walk}        const double t_ = t1_ / 4.0 + v0_;\n")
+holds(compile_hoisted fact.h "    const double v0_ = fact_fact_(arg_a + 2.0);\n"
+      "    double t1_ = fact_lim0(m_, arg_a);\n${walk}"
+      "        const double t_ = t1_ / 4.0 + 1.0 / v0_;\n")
+
 # A global's temporaries, read first in a limit's terms, are numbered as
 # the update's, not as that limit's: two such are two names.
 file(WRITE "${OUT}/twice.ink" "a = 1/2\nM = [a, 1; 1, a]\nP = (M + M)*(M + M)\nQ = (M - 2)*(M - 2)\ns(x)_0 = x\ns(x)_k = s(x)_(k-1)/2 + P[1,1]*x\nr(x)_0 = x\nr(x)_k = r(x)_(k-1)/2 + Q[1,1]*x\ny_n = lim s(n) + lim r(n)\n")
