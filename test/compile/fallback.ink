@@ -374,14 +374,17 @@ afar(c_n) = {
 }
 faraway = afar(c_n = 1 + mod(n, 2))
 
-# The limits first read first: a name that begins another's is not it, and
-# a sum is named as the header names it however it is spaced. nvx(c)
-# settles at 2c and the sum at c; at even n, where Newton settles, v_n and
-# w_n are 1, and at odd n 0. Checked:
+# The limits first read first: a name that begins another's is not it, a
+# limit read through a function is where the call is, and a sum is named as
+# the header names it however it is spaced. nvx(c) settles at 2c and the
+# sum at c; at even n, where Newton settles, u_n, v_n and w_n are 1, and at
+# odd n 0. The step joins u's two statuses, bracketed (C371). Checked:
 #
 #     spelled: 100 steps from 0, against exact values until 0 and inexact ones from there
+#     spelled.u: within 0
 #     spelled.v: within 0
 #     spelled.w: within 0
+#     spelled.u: where lim nv or lim nvx runs out, 'u_n | root(c_n) > 0 and lim nvx(c_n) > 0 = 1' falls to 'u_n = 0'
 #     spelled.v: where sum_(k=1) or lim nv runs out, 'v_n | sum_(k = 1) c_n/2^k > 0 and lim nv(c_n) > 0 = 1' falls to 'v_n = 0'
 #     spelled.w: where lim nvx or lim nv runs out, 'w_n | lim nvx(c_n) > 0 and lim nv(c_n) > 0 = 1' falls to 'w_n = 0'
 spelling(c_n) = {
@@ -389,9 +392,30 @@ spelling(c_n) = {
     nv(c)_k = nv(c)_(k-1) - (nv(c)_(k-1)^3 - 2*nv(c)_(k-1) + c)/(3*nv(c)_(k-1)^2 - 2)
     nvx(c)_0 = 0
     nvx(c)_k = nvx(c)_(k-1)/2 + c
+    root(c) = lim nv(c)
+    u_n | root(c_n) > 0 and lim nvx(c_n) > 0 = 1
+    u_n = 0
     v_n | sum_(k = 1) c_n/2^k > 0 and lim nv(c_n) > 0 = 1
     v_n = 0
     w_n | lim nvx(c_n) > 0 and lim nv(c_n) > 0 = 1
     w_n = 0
 }
 spelled = spelling(c_n = 1 + mod(n, 2))
+
+# A cell no clause gives is refused where a guard of its chain ran out, the
+# two statuses joined, bracketed (C371). At even n y_n is [1; 1], and at odd
+# n, where Newton cycles at 2, [1; 2]. Checked:
+#
+#     joined: 100 steps from 0, against exact values until 0 and inexact ones from there
+#     joined.y: within 0
+#     joined.y: where lim nv runs out, 'y_n[j<=2] | lim nv(j*c_n/2) > 0 = 1' falls to 'y_n[j<=2] | lim hv(j*c_n) > 0 = 2'
+#     joined.y: where lim hv runs out, 'y_n[j<=2] | lim hv(j*c_n) > 0 = 2' falls to NaN
+joining(c_n) = {
+    nv(c)_0 = 0
+    nv(c)_k = nv(c)_(k-1) - (nv(c)_(k-1)^3 - 2*nv(c)_(k-1) + c)/(3*nv(c)_(k-1)^2 - 2)
+    hv(c)_0 = 0
+    hv(c)_k = hv(c)_(k-1)/2 + c
+    y_n[j<=2] | lim nv(j*c_n/2) > 0 = 1
+    y_n[j<=2] | lim hv(j*c_n) > 0 = 2
+}
+joined = joining(c_n = 1 + mod(n, 2))
