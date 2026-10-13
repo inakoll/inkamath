@@ -261,7 +261,8 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brin
                          chol:factored chol:naive chol:sole placed:placed
                          fallback:planned fallback:held fallback:ranout
                          fallback:tipped fallback:columned fallback:answered
-                         fallback:chained fallback:gapped fallback:middled)
+                         fallback:chained fallback:gapped fallback:middled
+                         pendloop:cart motorloop:motor)
     string(REPLACE ":" ";" checked ${checked})
     list(POP_FRONT checked file instance count)
     set(name ${instance})
@@ -377,6 +378,12 @@ set_tests_properties(check_layered_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^layered: ${implicit}\nlayered\\.q: within 0${about}\n$")
 set_tests_properties(check_renamed_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^renamed: ${implicit}\nrenamed\\.z: within 0${about}\n$")
+# The CTM tutorials' digital pendulum and motor,
+# as compile/pendloop.ink and motorloop.ink give them.
+set_tests_properties(check_cart_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^cart: 100 steps from 0, against exact values until 0 and inexact ones from there\ncart\\.s: within 0${about}\ncart\\.u: within 0${about}\n$")
+set_tests_properties(check_motor_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^motor: 100 steps from 0, against exact values until 14 and inexact ones from there\nmotor\\.x: within 3\\.6e-15${about}\nmotor\\.e: within 3\\.3e-16${about}\nmotor\\.u: within 1\\.4e-14${about}\n$")
 # Rigid bodies and an invariant filter, from two explorations: a double
 # pendulum by the RNEA, a rational rotation's powers, and the contact-aided
 # RIEKF of Hartley et al. (2020) on 21 steps of a simulated walk.
