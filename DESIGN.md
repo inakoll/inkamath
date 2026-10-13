@@ -10539,6 +10539,10 @@ they asked, each with its smallest change.
 - `[done]` **A halving recursion with a base runs away** at large indices:
   `w(x/2)_(k-1)` read at 1000 takes over 60 s to compile, and read ahead
   with a base at 1000, 35 s. Found reviewing *recursion from the tip*: C363.
+- **A cycle guarded on some of its sequences only**, where the input reaches
+  the term read before the stream, is refused, "b has no history" or "its
+  shape depends on itself", two sequences as three; the interpreter
+  answers. Found fixing C364.
 - `[done]` **A sequence with parameters read at `lim`'s walking index**, a series
   written as on paper: its partial sums under `lim`, its term a sequence of
   its own.
