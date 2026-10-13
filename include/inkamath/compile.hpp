@@ -1942,9 +1942,8 @@ private:
         return std::nullopt;
     }
     bool MayNan(const Code& code) const {
-        return std::ranges::any_of(code.cells, [&](const Cell& c) {
-            return MayNan(c.text) || nans_.count(c.text) || !c.nan.empty();
-        });
+        return std::ranges::any_of(
+            code.cells, [&](const Cell& c) { return MayNan(c.text) || nans_.count(c.text); });
     }
     Indexed Materialised(const Code& code, const std::string& type = "double") {
         if (const auto viewed = Viewed(code)) return *viewed;
