@@ -72,8 +72,8 @@ foreach(part 1 2 3)
     add_test(NAME cli_${part}
              COMMAND ${CMAKE_COMMAND} -DEXE=$<TARGET_FILE:inkamath_cli> -DPART=${part}
                      -DOUT=${CMAKE_CURRENT_BINARY_DIR}/cli_${part}
-                     -DCASE_TIMEOUT=${cli_case_timeout}
-                     -P ${CMAKE_CURRENT_LIST_DIR}/cli.cmake)
+                     -DCASE_TIMEOUT=${cli_case_timeout} -DCC=${CMAKE_C_COMPILER}
+                     -DCC_ID=${CMAKE_C_COMPILER_ID} -P ${CMAKE_CURRENT_LIST_DIR}/cli.cmake)
     set_tests_properties(cli_${part} PROPERTIES TIMEOUT 120)
 endforeach()
 # bench's workloads, each a transcript bench/run.cmake measures, replayed so
@@ -141,18 +141,6 @@ foreach(model IN ITEMS pid pid_clamped kalman kalman2 fir heat adc net mix loop 
     add_test(NAME compile_${model}_header
              COMMAND ${CMAKE_COMMAND} -E compare_files --ignore-eol
                      ${CMAKE_CURRENT_SOURCE_DIR}/compile/expected/${model}.h ${header})
-endforeach()
-# Loops in generated code (DESIGN.md), specified before it is built:
-# cli.cmake's part for each increment, skipped while its code is written out
-# as today.
-foreach(increment 1 2 3)
-    add_test(NAME cli_loops_${increment}
-             COMMAND ${CMAKE_COMMAND} -DEXE=$<TARGET_FILE:inkamath_cli> -DPART=loops${increment}
-                     -DOUT=${CMAKE_CURRENT_BINARY_DIR}/cli_loops_${increment}
-                     -DCASE_TIMEOUT=${cli_case_timeout} -DCC=${CMAKE_C_COMPILER}
-                     -DCC_ID=${CMAKE_C_COMPILER_ID} -P ${CMAKE_CURRENT_LIST_DIR}/cli.cmake)
-    set_tests_properties(cli_loops_${increment} PROPERTIES TIMEOUT 120
-                         SKIP_REGULAR_EXPRESSION "loops ${increment}: written out as today")
 endforeach()
 
 # 2^k as a step computes it, exact for every k the prelude scales by.

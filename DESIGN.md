@@ -10857,7 +10857,7 @@ After an external review of README, MANIFESTO and the conformance suite
 (2026-10-12): its directions, ranked. Its open questions are in
 `MANIFESTO.md`.
 
-- **Loops in generated code**, a phase of its own: increments 1 to 3
+- `[done]` **Loops in generated code**, a phase of its own: increments 1 to 3
   specified, about 220 lines, and 4 and 5, some 700, deferred (the owner,
   2026-10-13). Each increment is a refactor of headers: no golden,
   `--check` report or refusal moves, and every value is the same double,
@@ -11114,7 +11114,7 @@ After an external review of README, MANIFESTO and the conformance suite
   Specified in `test/compile/loops.ink`, read by `test/cli.cmake`'s
   parts `loops1` to `loops3`, the tests `cli_loops_1` to `cli_loops_3`,
   each skipped while its increment's code is written out as today, and
-  only then. `spin`: A*x_(n-1) in place, A'*x_n transposed, (A + x_n)*x_n
+  only then; now cases of `cli_2`. `spin`: A*x_(n-1) in place, A'*x_n transposed, (A + x_n)*x_n
   with its operand made an array, a tensor by A slice by slice, B*v_(n-1)
   written out; `solve`: an inverse's product read by name in a decision;
   `dense`, `gated` and `diag`: the sweep's G*X', every adjoint there,
@@ -11128,6 +11128,28 @@ After an external review of README, MANIFESTO and the conformance suite
   Each header is built by the C compiler as a strict host would, -std=c11
   -Wall -Wextra -Wpedantic -Wconversion -Wshadow -Werror, a float one
   with -Wdouble-promotion.
+
+  Done as decided, in three commits on 18,675 lines after a2c7d70: 1 in
+  84 lines against 75, 2 in 82 against 95, 3 in 33 against 50, 18,874 in
+  all. Each left every golden, check report, expected header and pinned
+  excerpt as it was; stepped beside today's header, 101 steps of 8 draws
+  with infinities, NaNs and -0.0 by GCC and Clang without contraction,
+  `riekf`, `spin`, `solve`, `dense`, `gated`, `diag` and `swing` differ
+  in no value, `spin` in a NaN's bits only. Departures: a product's key
+  names its inner extent too, as a view of part of an array has the
+  array's name; an operand is read in place only where its first cell is
+  a primary, a negation being marked an atom; 2 writes out a product
+  under conditions of a single cell, its two slices having no place; the
+  whole-term NaN fill is written by the same loops as the rest, its text
+  unchanged; and the parts' cases joined `cli_2`, the RIEKF's bound the
+  third's. Sizes, then `--compile` and GCC 13.3's -O2 at a2c7d70 and
+  after, one run each under a shared load: `riekf` 570,366 bytes to
+  112,982 after 1 and 78,990 after 3, GCC 5.3 s and 256 MB to 2.1 s and
+  87 MB, unsplit; `inf` 595,708 to 393,037 and 390,104, GCC 8.8 s to
+  5.1 s; `tune` 645,563 to 443,536, 435,219 and 433,781, GCC 10.3 s to
+  6.4 s; `tf` 9,985,465 to 5,494,171, `--compile` 8.3 s and 186 MB to
+  6.1 s and 114 MB, GCC 97 s and 820 MB to 60 s and 476 MB, 354
+  functions to 179, its stack 269 KB to 324 KB.
 - `[done]` **A Jacobian by cells**, the idiom, compiled and held by `--check`:
   `J(x)[i<=3, j<=2] = (grad_(v = x) f(v)[i])[j]`, row i output i's
   gradient as a paper defines J_ij, so the layout is the user's. grad's own

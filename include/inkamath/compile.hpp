@@ -5810,6 +5810,42 @@ private:
                 assignments += before(From(name, sequence.general_reads));
             assignments += sequence.general[c] + ";\n";
         }
+        // From 9 cells, one loop where each cell's line is the first's at its
+        // own place, without the marks Numbered shares by; written out where a
+        // hold or a term read back is marked (DESIGN.md, loops in generated code).
+        const std::size_t n     = sequence.general.size();
+        const std::string first = Subscript(sequence.size, 0), places = Places(sequence.size);
+        const std::vector<std::string> nest  = Loops(sequence.size);
+        const auto                     loops = [&](const std::string& in) {
+            std::string out;
+            for (const std::string& line : nest) out += (out.empty() ? "" : "\n") + in + line;
+            return out;
+        };
+        if (n >= 9) {
+            std::vector<std::size_t> starts;
+            for (std::size_t k = 0; k < assignments.size(); k = assignments.find('\n', k) + 1)
+                starts.push_back(k);
+            const auto line = [&](std::size_t l) {
+                std::string text =
+                    assignments.substr(starts[l], assignments.find('\n', starts[l]) - starts[l]);
+                std::erase_if(text, [](char ch) { return ch == '\x14' || ch == '\x15'; });
+                return text;
+            };
+            const auto at = [&](std::string text, const std::string& place) {
+                for (std::size_t k = 0; (k = text.find(first, k)) != std::string::npos; ++k)
+                    if (text[k + first.size()] != '[') text.replace(k, first.size(), place);
+                return text;
+            };
+            const std::size_t head = starts.size() - n;
+            const std::string one  = line(head);
+            bool              same = one.find_first_of("\x04\x10") == std::string::npos;
+            for (std::size_t c = 1; same && c < n; ++c)
+                same = at(one, Subscript(sequence.size, c)) == line(head + c);
+            if (same)
+                assignments.replace(
+                    starts[head], std::string::npos,
+                    loops(indent) + " " + at(one, places).substr(indent.size()) + "\n");
+        }
         // Ahead of the cells too, a cell's clause where no base term stands.
         std::string picks;
         for (std::size_t c = 0; c < sequence.taken.size(); ++c) {
@@ -5819,22 +5855,19 @@ private:
             picks += sequence.taken[c] + ";\n";
         }
         assignments.insert(0, picks);
-        // The interpreter refuses a matrix term whole where it refuses a cell.
+        // The interpreter refuses a matrix term whole where it refuses a cell;
+        // from 9 cells, a NaN is passed to the first, which decides.
         if (aware_ && !scalar) {
-            std::string any;
-            for (std::size_t c = 0; c < sequence.general.size(); ++c)
-                any += std::string(c ? " || " : "") + "isnan(m_->" + name + "[0]" +
-                       Subscript(sequence.size, c) + ")";
-            const std::string b = sequence.size.slices ? "    " : "";
-            assignments += indent + "if (" + any + ")\n" +
-                           (b.empty() ? ""
-                                      : indent + "    for (int b_ = 0; b_ < " +
-                                            std::to_string(sequence.size.slices) + "; ++b_)\n") +
-                           indent + b + "    for (int i_ = 0; i_ < " +
-                           std::to_string(sequence.size.rows) + "; ++i_)\n" + indent + b +
-                           "        for (int j_ = 0; j_ < " + std::to_string(sequence.size.cols) +
-                           "; ++j_) m_->" + name + "[0]" + (b.empty() ? "" : "[b_]") +
-                           "[i_][j_] = NAN;\n";
+            const std::string cell = "m_->" + name + "[0]";
+            std::string       any  = "isnan(" + cell + first + ")";
+            if (n >= 9)
+                assignments += loops(indent) + "\n" + indent + std::string(4 * nest.size(), ' ') +
+                               "if (isnan(" + cell + places + ")) " + cell + first + " = NAN;\n";
+            else
+                for (std::size_t c = 1; c < n; ++c)
+                    any += " || isnan(" + cell + Subscript(sequence.size, c) + ")";
+            assignments += indent + "if (" + any + ")\n" + loops(indent + "    ") + " " + cell +
+                           places + " = NAN;\n";
         }
         return assignments;
     }

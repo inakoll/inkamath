@@ -1,6 +1,6 @@
-# Loops in generated code (DESIGN.md, next in line), specified before it is
-# built: test/cli.cmake's loops parts compile these models and hold their
-# headers to the loops each increment writes, every value as before.
+# Loops in generated code (DESIGN.md): test/cli.cmake compiles these models
+# and holds their headers to the loops each increment writes, every value as
+# before.
 #
 # 'spin': a product of 27 multiplications or more read in place, A*x_(n-1);
 # transposed, A'*x_n; an operand made an array, (A + x_n)*x_n; a tensor by a
