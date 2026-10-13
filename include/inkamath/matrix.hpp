@@ -132,10 +132,12 @@ public:
         });
     }
 
+    // A limit's remainder is in its cells' units (Matrix::distance).
     static Matrix<T> inexact(const Matrix<T>& a, double remainder = 0) {
         Matrix<T> c(a);
         std::transform(c.data(), c.data() + c.extent_.count(), c.data(), [&](const T& value) {
-            return numeric_interface<T>::inexact(value, remainder);
+            const double m = double(numeric_interface<T>::abs(value));
+            return numeric_interface<T>::inexact(value, remainder * (m > 1 ? m : 1));
         });
         return c;
     }
@@ -435,13 +437,6 @@ public:
                            [](const T& x) { return std::isnan(numeric_interface<T>::abs(x)); });
     }
 
-    // What a distance is measured in, for the remainder --check moves a limit by.
-    static double Scale(const Matrix<T>& a) {
-        double largest = 1;
-        for (size_t k = 0; k < a.extent_.count(); ++k)
-            largest = std::max(largest, double(numeric_interface<T>::abs(a.data()[k])));
-        return largest;
-    }
 
     static auto abs(const Matrix<T>& a)
     {

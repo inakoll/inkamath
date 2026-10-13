@@ -41,9 +41,7 @@ public:
     // value was exact and it lands on a whole number (DESIGN.md,
     // phase 13). A run of --check moves it by the remainder estimated where
     // the walk stopped, in the term's units (Number::inexact).
-    T Reached(const T& value) const {
-        return numeric_interface<T>::inexact(value, remainder_ * T::Scale(value));
-    }
+    T Reached(const T& value) const { return numeric_interface<T>::inexact(value, remainder_); }
 
     // The last value, in a refusal, marked as an answer would be (C168).
     static std::string Last(const T& value) {

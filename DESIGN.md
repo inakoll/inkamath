@@ -11206,8 +11206,10 @@ After an external review of README, MANIFESTO and the conformance suite
     to 1e-10: `steep`'s terms, near 800, about 4.6e-8 from the exact ones
     where they were 1.2e-10. The nine digits shown, and `--check`'s
     billionth, are within it.
-  - **--check** moves a limit by its remainder in the term's units, the
-    scaled one times max(1, |largest cell|). The step's C353 test, a step
+  - **--check** moves a limit by its remainder in the term's units, each
+    cell by the scaled one times max(1, |the cell|), ruled by the owner
+    after the review: by the largest cell's scale, `spaced`'s cells near 1
+    were 0.0085 off, past the tolerance. The step's C353 test, a step
     within 2 DBL_EPSILON of its term taken for 0, stays, scaled alike.
 
   Rejected:
@@ -11252,7 +11254,14 @@ After an external review of README, MANIFESTO and the conformance suite
   within 9.1e-13; `steep`'s estimate 4.6e-8, `estimate.ink`'s comment with
   it; `cli_2`'s `float_gate` excerpt. The walk's C scales by `fmax`, which
   a float header writes `fmaxf` as it writes `fabsf`. 18 lines, 4 of them
-  comment, 18,626 to 18,644 at 7a59819, inside the stop at 23.
+  comment, 18,626 to 18,644 at 7a59819, inside the stop at 23. The review
+  found the unpinned estimates that moved too, each the interpreter's
+  distance from the exact terms, now: `cls` q 2.5e-10, s 2.9e-12, loss
+  2e-11; `gate` b 8.8e-12, w 1.6e-11, p 1.1e-11; `stiff` 2.9e-11; `inset`
+  4.2e-9; `later` y 3.5e-8, z 3.9e-11; `layered` 6.1e-9; `renamed` 1.2e-8;
+  `rnn` 2.9e-12; `row` and `shut` 1.2e-10; `twonames` a 4.1e-10, b
+  5.3e-9; each in float as in double; and the comments of `inset` and
+  `layered`. Each cell scaled by its own, 7 lines fewer: 11 lines.
 - **A gather, integer inputs, inputs present on some steps only**: their
   open questions first. The gather is *A cell at a computed whole index,
   compiled*.
