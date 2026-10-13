@@ -8974,12 +8974,12 @@ checked: what it asked of the compiler, each with its smallest change.
   to disturb. On the forward-mode header's prototype, `saliency`'s 100
   steps take 7.7 s of `--check`, 0.16 of them compiling, and the three
   runs three quarters of the rest.
-- **A maximum, minimum or argmax over an index**, `max_(i=1)^n` as a sum
+- `[done]` **A maximum, minimum or argmax over an index**, `max_(i=1)^n` as a sum
   is written: max-pooling over a window is nested `max` calls today, and a
   transformer's held-out accuracy had to be written `prod_(v=1)^nv
   (Z[b,t,v] <= Z[b,t,y])`, its target's logit no smaller than any. Minor
   until a second model asked; an external review's range images and
-  PointNet have. It takes in *An argmax in the prelude*, queued before.
+  PointNet have.
 
   Decided:
   - **Written as a sum**: `max_(k=a)^b`, `min_`, `argmax_` and `argmin_`,
@@ -9090,6 +9090,22 @@ checked: what it asked of the compiler, each with its smallest change.
   index of the first largest or smallest term, `argmax_` and `argmin_`, as
   a classifier's prediction is read from its logits. Of equal terms, the
   first: a tied target is counted as predicted only where it comes first."
+
+  Built as specified with the spec review's rulings: an argmax under grad
+  is refused only where the term finally kept ties with another and either
+  moves, `[x; 2; 5]` at 2 giving 0, four entries more; and past
+  `max_terms` a reduction is refused in its own words, `the argmin has
+  more than 1000 terms`, which `compile_reduce` holds. Departing in two
+  places. A bound under grad is named the reduction's, `the maximum's
+  bound jumps at x = 2`, where the prototype said the sum's. And the cli
+  part no longer writes `pooled`'s and `shied`'s programs, which the
+  checks build and run. A reduction whose bounds are not constants is
+  still refused in a sum's words, `a sum or a product whose bounds are
+  not constants`, as the spec leaves it. `reduce.ink` is a golden; the
+  `spec` suite, the cli `spec` part and `cli_spec` go; no other golden,
+  expected header, check report or cli case moves. 151 lines net, 169
+  added and 18 removed: the node 56, the compiler 42, grad 29, the parser
+  15, the evaluator 6, tex 3; 18,486 in all.
 - **The compiled sum's thousand terms**: a LeNet-sized layer's dot product
   over a batch would pass `max_terms`, which bounds an unrolled sum written
   as lines of C, not a loop.
@@ -10606,7 +10622,7 @@ After an external review of README, MANIFESTO and the conformance suite
   gradient as a paper defines J_ij, so the layout is the user's. grad's own
   Jacobian stays rejected unless a transcription shows a sweep per output
   too dear or the notation short.
-- **Small, whenever**: *A maximum, minimum or argmax over an index*; a
+- **Small, whenever**: *A maximum, minimum or argmax over an index*, `[done]`; a
   Cholesky factor in the prelude, for square-root filters, the solve being
   `A^-1*b` already and the Joseph form writable now.
 - **A clause for a limit that does not converge**, one guard meaning the

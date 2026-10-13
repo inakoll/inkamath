@@ -1031,6 +1031,26 @@ it:
 error: the sum did not converge within 100 terms (last partial sum ~1.6349839)
 ```
 
+A maximum or a minimum over an index is written as a sum is, `max_(k=1)^n`
+and `min_(k=1)^n`, and so is the index of the first largest or smallest term,
+`argmax_` and `argmin_`, as a classifier's prediction is read from its logits.
+Of equal terms, the first: a tied target is counted as predicted only where it
+comes first.
+
+```
+>> acc(Z[b<=m, j<=c], y) = sum_(b=1)^m (argmax_(v=1)^c Z[b,v] == y[b])/m
+acc(Z[b<=m, j<=c], y) = sum_(b=1)^m (argmax_(v=1)^c Z[b,v] == y[b])/m
+
+>> Z = [1/2 3 -1 3; 2 0 2 1; -1 -2 -3 -1/2]
+Z = [1/2 3 -1 3; 2 0 2 1; -1 -2 -3 -1/2]
+
+>> frac acc(Z, [2; 3; 4])
+2/3
+
+>> frac acc(Z, [2; 1; 4])
+1
+```
+
 The derivative of an expression with respect to a name at a point is written
 as a paper writes it there, and binds the name as a sum binds its index: the
 point is read around it, the name only in the body, which is a term as a sum's
