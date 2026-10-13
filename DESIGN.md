@@ -10974,10 +10974,15 @@ After an external review of README, MANIFESTO and the conformance suite
     with `[i_][j_]` there, its value-numbering marks dropped, so nothing
     is shared out of the loop. A line holding any other mark rewritten
     later, a hold's (`\x10`) or a term read back (`\x04`), is written
-    out. The text is compared, not parsed, so the loop is exactly the
-    lines it replaces. So a value `Numbered` shares, within a cell or
-    across cells, is computed in each looped term as written, and 3 saves
-    the header's bytes only, not its build time.
+    out, and so is one that calls a function, the header's, libm's or a
+    limit's, `isnan` aside: a loop would call it at each cell, where the
+    cells written out let a compiler call it once, 7 times slower by GCC
+    for `A[i, j]*cos(u_n)` (the review). The text is compared, not
+    parsed, so the loop is exactly the lines it replaces. So a value
+    `Numbered` shares, within a cell or across cells, is computed in each
+    looped term as written, arithmetic a compiler hoists, and 3 changes
+    neither the values nor the step's speed: it saves the header's bytes,
+    not its build time.
     Its NaN test passes a NaN to the first cell and fills as now; the
     RIEKF's P:
 
