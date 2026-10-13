@@ -541,6 +541,16 @@ inline constexpr const char* prelude[] = {
     "dhinf(A[j<=n, k<=n], B[j<=n, k<=m], C[j<=p, k<=n], D[j<=p, k<=m] = 0*C*B) | "
     "schurcohn(charpoly(A)) = hinf((A + A^0)^-1*(A - A^0), 2*(A + A^0)^-1*B, C*(A + A^0)^-1, D - "
     "C*(A + A^0)^-1*B)",
+    // chol is L of A = L L', lower triangular with a positive diagonal, by
+    // Cholesky's recurrence, each cell remembered: A's lower triangle alone
+    // is read, as LAPACK's, so rounding that parts its triangles is no
+    // matter. A pivot not above 0 has no clause.
+    "chol(A[j<=n, k<=n])[i<=n, k<=n] = cholr(A, i, k)",
+    "cholr(A, i, k) | i < k = 0",
+    "cholr(A, i, k) | i == k and cholp(A, k) > 0 = cholp(A, k)^(1/2)",
+    "cholr(A, i, k) | i > k = "
+    "(A[i,k] - sum_(q=1)^(k-1) cholr(A, i, q)*cholr(A, k, q))/cholr(A, k, k)",
+    "cholp(A, k) = A[k,k] - sum_(q=1)^(k-1) cholr(A, k, q)^2",
 };
 
 template <Parsable T, Numeric U>

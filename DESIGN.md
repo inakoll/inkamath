@@ -10646,7 +10646,7 @@ After an external review of README, MANIFESTO and the conformance suite
 - **Small, whenever**: *A maximum, minimum or argmax over an index*, `[done]`; a
   Cholesky factor in the prelude, for square-root filters, the solve being
   `A^-1*b` already and the Joseph form writable now.
-- **A Cholesky factor in the prelude, `chol(A)`**: L lower triangular with
+- `[done]` **A Cholesky factor in the prelude, `chol(A)`**: L lower triangular with
   a positive diagonal and A = L L', which square-root filters and
   estimation papers write `L = chol(P)`. The design, measured on a
   prototype:
@@ -10661,7 +10661,8 @@ After an external review of README, MANIFESTO and the conformance suite
   and Van Loan (section 4.2) and the papers write it: L_kk the root of
   the pivot A_kk - sum L_kq^2, L_ik the pivot's row less sum L_iq L_kq
   over L_kk. The language says it already: a call is remembered, so each
-  cell is computed once, and `chol(L*L') == L` of an exact 20x20 L
+  cell is computed once, by the interpreter and, since C357, by the
+  compiler, and `chol(L*L') == L` of an exact 20x20 L
   answers in 14 ms, the session's start included. No language change.
 
   **Name**: `chol`, the lower factor, as numpy's, Eigen's LLT and
@@ -10765,6 +10766,23 @@ After an external review of README, MANIFESTO and the conformance suite
   defined; the reports its comments give, `naive` NaN at 1 in float and
   its program failing, join the checks with chol. The spec suite and
   `cli_spec` return until they pass.
+
+  Built as specified, departing only in where its single value's lines
+  are counted: in C356's row, 22 of them with each clause's guard walked
+  too, as the review asked. Every entry passes as written, and the spec is
+  the golden `chol.ink`; the spec suite and `cli_spec` go, chol their only
+  case. `factored`, `naive` and `sole` are checks in double and in float,
+  their reports as the story's comments give them, `naive`'s float
+  program failing as said. A recurrence by cells compiles in time
+  polynomial in n since C357: chol's header at 16x16 in 0.62 s, as an
+  inverse and charpoly's 0.60, and at 20x20 in 1.9 s, where the same five
+  lines written by a user took 47 s at 14x14 and ran out of memory at 16.
+  README's sections 1, 2 and 5 name chol, section 2 saying that it reads
+  the lower triangle alone and that of complex entries it is L L' with the
+  plain transpose, not the Hermitian factor. 11 lines landed against the
+  spec's 10, 4 of them comment: the prelude's 6, its long clause split in
+  two for the column limit, and 4, 1 of C++ for its words; with C356's 22
+  and C357's 15, 18,510 to 18,558 lines at c9aa165.
 - **A clause for a limit that does not converge**, one guard meaning the
   same in the interpreter and the step, NaN kept where none is written; and
   with it a tolerance relative to the term, the 1e-10 being absolute.

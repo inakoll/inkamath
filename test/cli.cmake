@@ -48,38 +48,6 @@ endfunction()
 # Read by cases in every part.
 set(inputs "${CMAKE_CURRENT_LIST_DIR}/compile/inputs.ink")
 
-# Specified, not yet built (DESIGN.md, a Cholesky factor in the prelude):
-# compile/chol.ink's instances written as check programs, in double and
-# in float, their reports there. Skipped while each is refused as today,
-# chol not defined, and only then.
-if(PART STREQUAL "spec")
-    set(story "${CMAKE_CURRENT_LIST_DIR}/compile/chol.ink")
-    set(refused 0)
-    foreach(case IN ITEMS "factored;;Sp" "naive;--float;L" "sole;;g")
-        list(GET case 0 instance)
-        list(GET case 1 float)
-        list(GET case 2 first)
-        execute_process(COMMAND "${EXE}" --check "${story}" ${instance} ${float} -o x.c
-                        WORKING_DIRECTORY "${OUT}" OUTPUT_VARIABLE out ERROR_VARIABLE err
-                        RESULT_VARIABLE code TIMEOUT ${CASE_TIMEOUT})
-        if("${out}${code}" STREQUAL "1" AND
-           "${err}" STREQUAL "inkamath: cannot compile ${first}: chol is not defined\n")
-            math(EXPR refused "${refused} + 1")
-        endif()
-    endforeach()
-    if(refused EQUAL 3)
-        message("check_chol: chol not defined, as today")
-        return()
-    endif()
-    foreach(instance IN ITEMS factored naive sole)
-        set(args --check ${story} ${instance} -o ${instance}.c)
-        check(check_chol_${instance})
-        set(args --check ${story} ${instance} --float -o ${instance}_float.c)
-        check(check_chol_${instance}_float)
-    endforeach()
-    return()
-endif()
-
 # The cases run as three tests of about equal time under the sanitizers: PART
 # 1 up to charpoly's refusal, 2 from it, 3 from eig's, and all where PART is
 # not given.
