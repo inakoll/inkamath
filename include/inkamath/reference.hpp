@@ -610,7 +610,12 @@ public:
                     throw std::runtime_error(reference_name_ +
                                              " has no general clause, so it has no limit");
                 }
-                return Converge(arguments, call, stack, global);
+                auto* const kept =
+                    global && !ReferenceStack<T>::Group(*this) ? stack.limits : nullptr;
+                if (kept && kept->contains(key)) return kept->at(key);
+                const T limit = Converge(arguments, call, stack, global);
+                if (kept) kept->emplace(key, limit);
+                return limit;
             }
             // Storing after the call returns, so that an evaluation which ran out
             // of budget is retried rather than remembered.

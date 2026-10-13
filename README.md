@@ -198,7 +198,10 @@ tensor in a limit is refused for now. A block literal,
 `[A, 0; -C, 1]`, is laid out as the interpreter lays it out (section 2),
 each block's cells written into their place: `test/compile/blocks.ink`
 packs a doubling algorithm's iterates into one term, and refuses a block
-that does not fill its band. A header that
+that does not fill its band. Two matrices are compared whole, `R'*R == I3`
+as the equalities of their cells: `test/compile/orthogonal.ink` has a
+rational rotation the step takes out of SO(3) at its first step, which the
+interpreter never does. A header that
 writes NaN anywhere carries it to every term that reads it, as the
 interpreter refuses them: a guard, a comparison and a power reading NaN
 answer NaN, and a matrix or tensor term with a NaN cell is NaN in
@@ -264,7 +267,10 @@ the header writes doubles, every constant the nearest float, for a target that
 computes in float. Its check holds each term within a thousandth of one plus
 the interpreter's and says the most any term came in units of a float, the
 spacing of floats at the interpreter's term, a term of 0 counting none:
-`test/compile/float.ink`. A limit
+`test/compile/float.ink`. Where that most reaches 2^23 units, as a term a
+normal float holds does when lost whole or of the other sign, it names the
+cell and step: `outside.y: within 0.00061, 1e+10 units of a float in y[2,1]
+at step 1101`. A limit
 compiled in float also stops where a step is within twice `FLT_EPSILON` of its
 term, so it may answer where the interpreter says it does not converge.
 

@@ -412,7 +412,7 @@ file(WRITE "${OUT}/tensor.ink" "T = [1 2; 3 4;; 5 6; 7 8]\nU = [1 2; 3 4;; 5 6; 
 set(args --compile tensor.ink)
 set(stdout "cannot compile a: a 2x2x2 tensor takes one index or three, not two
 cannot compile b: only a matrix has a power, not a 2x2x2 tensor
-cannot compile c: a comparison of matrices
+cannot compile c: a comparison needs single values, not a 2x2x2 tensor
 cannot compile d: a 2x2x2 tensor and a 3x2x2 tensor have different numbers of slices
 cannot compile f: the slices of a tensor have one size, not 1x2 and 1x3
 cannot compile g: a tensor in a limit, for now
@@ -422,6 +422,27 @@ cannot compile r: a tensor whose slices are single values met by a matrix, for n
 ")
 set(exit 1)
 check(compile_tensor_refused)
+
+# Two matrices compared whole (DESIGN.md, test/compile/orthogonal.ink): equal
+# where every cell is, NaN where a cell is in a header that writes NaN, and
+# an order of matrices or two shapes refused, constant or not.
+file(WRITE "${OUT}/same.ink" "r(v) | v > 0 = v\nsame(x_n[j<=2]) = {\n"
+     "    e_n = x_n == [1; 2]\n    u_n = x_n <> [1; 2]\n    z_n = r(x_n[1])\n}\n")
+set(args --compile same.ink same -o same.h)
+check(compile_mateq)
+set(meet "(m_->x[0][0][0] == 1.0 && m_->x[0][1][0] == 2.0) ? 1.0 : 0.0);")
+holds(compile_mateq same.h "_ = isnan(m_->x[0][0][0]) || isnan(m_->x[0][1][0]);"
+      "_ ? NAN : ${meet}" "_ ? NAN : !${meet}")
+file(WRITE "${OUT}/apart.ink" "c_n = [n, 1] < [2, 2]\nd_n = [n, 1] == 0\n"
+     "f_n = [n, 1] == [n; 1]\ng_n = n*([1, 1] == [1; 1])\nh_n = n*([1, 1] == 1)\n")
+set(args --compile apart.ink)
+string(CONCAT stdout "cannot compile c: a comparison needs single values, not a 1x2 matrix\n"
+       "cannot compile d: a 1x2 matrix compared with a single value, never equal\n"
+       "cannot compile f: a 1x2 matrix compared with a 2x1 matrix, never equal\n"
+       "cannot compile g: a 1x2 matrix compared with a 2x1 matrix, never equal\n"
+       "cannot compile h: a 1x2 matrix compared with a single value, never equal\n")
+set(exit 1)
+check(compile_mateq_refused)
 
 # A gradient with respect to a tensor compiled refuses a Jacobian, as the
 # interpreter does, in its words (test/compile/tensorgrad.ink).
@@ -1293,6 +1314,9 @@ check(history_gained)
 # (C343).
 refused(lifted "a = 2) = {\n    g_n | n < 0 = a\n    g_n = 2*g_(n-1)"
         "g: g_0 reads g_-1, before the stream, where g's history reads a, which the host may assign after init")
+# And one with no default, which init cannot evaluate.
+refused(unset "a) = {\n    g_n | n < 0 = a\n    g_n = 2*g_(n-1)"
+        "g: g_0 reads g_-1, before the stream, where g's history reads a, which the host may assign after init")
 # And at another rate, where it was read as 0.
 refused(slowed "a = 2, x_n) = {\n    y_m | m < 0 = a\n    y_m = y_(m-1) + x_(2*m)"
         "y: y_0 reads y_-1, before the stream, where y's history reads a, which the host may assign after init")
@@ -1475,11 +1499,12 @@ endif()
 # Made in part 2 too, which part 3 runs without.
 file(MAKE_DIRECTORY "${OUT}/float")
 
-# Nor does eig, as rho does not, by a comparison of matrices, though smax
-# does, and grad refuses them where A moves (DESIGN.md, eig and smax).
-file(WRITE "${OUT}/eig.ink" "x_n = eig([n 1; 1 2])[1]\ny_n = smax([n 2; 3 4])\ng_n = grad_(a = n) eig([a 1; 1 2])[1]\nh_n = grad_(a = n) smax([a 2; 3 4])\n")
+# grad refuses eig and smax where A moves (DESIGN.md, eig and smax). An eig
+# where A moves compiles since two matrices compare, its header 1.7 MB, too
+# slow a case for the sanitizers to write.
+file(WRITE "${OUT}/eig.ink" "y_n = smax([n 2; 3 4])\ng_n = grad_(a = n) eig([a 1; 1 2])[1]\nh_n = grad_(a = n) smax([a 2; 3 4])\n")
 set(args --compile eig.ink)
-set(stdout "cannot compile g: grad cannot differentiate eig yet\ncannot compile h: grad cannot differentiate smax yet\ncannot compile x: a comparison of matrices\n")
+set(stdout "cannot compile g: grad cannot differentiate eig yet\ncannot compile h: grad cannot differentiate smax yet\n")
 set(exit 1)
 check(compile_eig_refused)
 

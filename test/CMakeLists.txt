@@ -76,7 +76,6 @@ foreach(part 1 2 3)
                      -P ${CMAKE_CURRENT_LIST_DIR}/cli.cmake)
     set_tests_properties(cli_${part} PROPERTIES TIMEOUT 120)
 endforeach()
-
 # bench's workloads, each a transcript bench/run.cmake measures, replayed so
 # that one gone stale fails here rather than at its next measure. The
 # slowest, under the sanitizers, take 7 s; train.ink is data, no transcript.
@@ -232,7 +231,8 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brin
                          blocks:deadbeat blocks:nested blocks:sloped conv:see conv:learn
                          straddle:knee straddle:crease straddle:plain straddle:both straddle:acc
                          straddle:given straddle:parted straddle:unasked
-                         straddle:recalled straddle:founded steps:coast:1001 steps:coast:1
+                         straddle:recalled straddle:founded straddle:reread straddle:equal
+                         straddle:folded steps:coast:1001 steps:coast:1
                          steps:runaway:150 steps:runaway:1000 steps:horizon:1000
                          robertson:inside:2000 robertson:outside:2000 robertson:rober
                          implicit:kinetic implicit:jacobian implicit:doubling implicit:inset
@@ -243,6 +243,7 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brin
                          split:carried:4 split:apart:4 pendulum:one spin:twirl:20 iekf:walk:21
                          tip:reach tip:rested series:taylor series:wave series:later
                          sums:summed sums:halving sums:cancelled reduce:pooled reduce:shied
+                         orthogonal:rational orthogonal:inexact orthogonal:probe
                          chol:factored chol:naive chol:sole placed:placed)
     string(REPLACE ":" ";" checked ${checked})
     list(POP_FRONT checked file instance count)
@@ -314,6 +315,12 @@ set_tests_properties(check_recalled_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^recalled: ${straddled}\nrecalled\\.y: within 0${about}\nrecalled\\.z: within 0${about}\nrecalled\\.x: within 0\n$")
 set_tests_properties(check_founded_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^founded: 100 steps from 0, against exact values until 0 and inexact ones from there\nfounded\\.x: at 0 a disturbed run takes 's\\(c\\)_k \\| lim half\\(1\\) >= c = 1' and the interpreter 's\\(c\\)_k = 0'\\; the guard of the first is 4\\.8e-11 from its threshold\nfounded\\.x: within 0\\; the interpreter's terms about 1 from the exact ones, past the tolerance from 0\n$")
+set_tests_properties(check_reread_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^reread: ${straddled}\nreread\\.y: within 0\nreread\\.g: within 0\n$")
+set_tests_properties(check_equal_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^equal: ${straddled}\nequal\\.y: within 1\\.1e-16${about}\n$")
+set_tests_properties(check_folded_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^folded: ${straddled}\nfolded\\.g: at 0 a disturbed run takes 'g_n \\| lim half\\(1\\) >= 1/2 - 1/10\\^11 = 1' and the interpreter 'g_n = 0'\\; the guard of the first is 4\\.8e-11 from its threshold\nfolded\\.g: within 0\\; the interpreter's terms about 1 from the exact ones, past the tolerance from 0\n$")
 # compile/steps.ink, each over its --steps n: runaway at 1000 fails as wild does.
 set(coast "coast\\.v: within 0\ncoast\\.y: within 0\n$")
 set_tests_properties(check_coast_1001_report PROPERTIES PASS_REGULAR_EXPRESSION
@@ -395,6 +402,18 @@ set_tests_properties(check_pooled_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^pooled: 100 steps from 0, against exact values\npooled\\.a: within 0\npooled\\.l: within 0\npooled\\.m: within 0\npooled\\.p: within 0\n$")
 set_tests_properties(check_shied_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^shied: 100 steps from 0, against exact values\nshied\\.q: within 0\nshied\\.w: within 0\n$")
+# Two matrices compared (DESIGN.md), as compile/orthogonal.ink gives them:
+# rational leaves SO(3) at its first step, where the interpreter never does.
+set(rational_k "rational\\.k: at 1 the compiled step takes 'k_n \\| R_n'\\*R_n <> I3 = k_\\(n-1\\) \\+ 1' and the interpreter 'k_n = k_\\(n-1\\)'\\; the guard of the first is exactly on its threshold\n")
+set(rational_ko "rational\\.k: 1 at 1, where the interpreter gives 0\nrational\\.o: 0 at 1, where the interpreter gives 1\n")
+set_tests_properties(check_rational_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^rational: 100 steps from 0, against exact values\n${rational_k}rational\\.R: within 1\\.9e-14\n${rational_ko}$")
+set_tests_properties(check_inexact_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^inexact: 100 steps from 0, against exact values until 1 and inexact ones from there\ninexact\\.R: within 0${about}\ninexact\\.k: within 0\ninexact\\.o: within 0\n$")
+set_tests_properties(check_probe_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^probe: 100 steps from 0, against exact values\nprobe\\.e: within 0\nprobe\\.g: within 0\nprobe\\.h: within 0\n$")
+add_test(NAME check_rational COMMAND check_rational)
+set_tests_properties(check_rational PROPERTIES WILL_FAIL ON)
 add_test(NAME check_outside_2000 COMMAND check_outside_2000)
 set_tests_properties(check_outside_2000 PROPERTIES WILL_FAIL ON)
 add_test(NAME check_runaway_1000 COMMAND check_runaway_1000)
@@ -1002,7 +1021,7 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:ledge logistic:gate momentu
                          blocks:nested conv:see straddle:knee apollo11:whole dyn:nm dyn:cd
                          steps:coast:1001 robertson:inside:2000 robertson:outside:2000
                          robertson:rober tensorgrad:small tensorgrad:saliency:3 split:carried:4
-                         chol:factored chol:naive chol:sole)
+                         orthogonal:rational chol:factored chol:naive chol:sole float:shove)
     string(REPLACE ":" ";" checked ${checked})
     list(POP_FRONT checked file instance count)
     set(name ${instance})
@@ -1031,7 +1050,8 @@ set_tests_properties(check_float_wild check_float_ledge check_float_far check_fl
                      check_float_steep check_float_dies check_float_beat check_float_peak
                      check_float_muller check_float_rounded check_float_surprise
                      check_float_solveur check_float_rump check_float_needle check_float_big
-                     check_float_knee check_float_nm check_float_naive PROPERTIES WILL_FAIL ON)
+                     check_float_knee check_float_nm check_float_naive check_float_rational
+                     PROPERTIES WILL_FAIL ON)
 # Each report as compile/float.ink gives it; what a libm or the seeds decide,
 # by its form.
 set(in_float " in float, against exact values")
@@ -1056,7 +1076,7 @@ foreach(report IN ITEMS
         "drone:^drone: 100 steps from 0${in_float}\ndrone\\.y: within 5\\.6e-06, 2\\.3e\\+03 units of a float\n$"
         "far:^far: 100 steps from 0${in_float}\nfar\\.x: within 0\\.99, 16 units of a float\nfar\\.d: 0 at 1, where the interpreter gives 0\\.01\n$"
         "tally:^tally: 100 steps from 0${in_float}\ntally\\.c: within 50, 25 units of a float\n$"
-        "tiny:^tiny: 100 steps from 0${in_float}\ntiny\\.y: within 1e-08, 1\\.1e\\+07 units of a float\ntiny\\.z: within 1e-08\n$"
+        "tiny:^tiny: 100 steps from 0${in_float}\ntiny\\.y: within 1e-08, 1\\.1e\\+07 units of a float at step 0\ntiny\\.z: within 1e-08\n$"
         "steep:^steep: 100 steps from 0${inexact}\nsteep\\.e: inf at 67, where the interpreter gives [0-9.e+-]+\; the interpreter's term about [0-9.e+-]+ from the exact one\n$"
         "blast:^blast: 100 steps from 0${in_float}\nblast\\.y: no value compared, the step NaN where the interpreter gives none, as at 0: p did not converge within 100 terms \\(last term [^)]+\\)\nblast\\.z: no value compared, the step NaN where the interpreter gives none, as at 0: v did not converge within 100 terms \\(last term [^)]+\\)\n$"
         "mark:^mark: 100 steps from 0${inexact}\nmark\\.d: within ${units}\nmark\\.s: within ${units}\n$"
@@ -1079,23 +1099,25 @@ foreach(report IN ITEMS
         "rump:^rump: 100 steps from 0${in_float}\nrump\\.g: 1\\.17260396 at 0, where the interpreter gives -0\\.82739605994682142\n$"
         "year:^year: 100 steps from 0${inexact}\nyear\\.naive: within [0-9.]+, [1-9](\\.[0-9])?e\\+02 units of a float${about}\nyear\\.thm4: within [0-9.e-]+, [1-9](\\.[0-9])? units of a float${about}\n$"
         "needle:^needle: 100 steps from 0${inexact}\nneedle\\.heron: 0\\.0186444204 at 0, where the interpreter gives 0\\.016146540115034271\; the interpreter's term about [0-9.e+-]+ from the exact one\nneedle\\.kahan: within 5\\.3e-10, 0\\.28 units of a float${about}\n$"
-        "big:^big: 100 steps from 0${in_float}\nbig\\.s: within 2e-30, 2\\.1e\\+07 units of a float\nbig\\.t: ${exact}\nbig\\.w: 0 at 0, where the interpreter gives 1\n$"
+        "big:^big: 100 steps from 0${in_float}\nbig\\.s: within 2e-30, 2\\.1e\\+07 units of a float at step 0\nbig\\.t: ${exact}\nbig\\.w: 0 at 0, where the interpreter gives 1\n$"
         "seven:^seven: 100 steps from 0${in_float}\nseven\\.t: within 0\nseven\\.u: within 3\\.8e-06\n$"
         "poly:^poly: 100 steps from 0${in_float}\npoly\\.A: ${exact}\npoly\\.c: ${exact}\npoly\\.d: ${exact}\npoly\\.g: within 0\\.00[0-9]+, [0-9.e+-]+ units of a float\n$"
         "nested:^nested: 100 steps from 0${in_float}\nnested\\.S: ${exact}\nnested\\.w: ${exact}\nnested\\.M: ${exact}\nnested\\.T: ${exact}\nnested\\.y: ${exact}\n$"
         "see:^see: 100 steps from 0${in_float}\nsee\\.Xp: ${exact}\nsee\\.Z: ${exact}\nsee\\.M: ${exact}\nsee\\.s: ${exact}\n$"
-        "knee:^knee: 100 steps from 0${inexact}\n${knee_r}knee\\.r: at 0 the compiled step takes 'r_n = 0' and the interpreter 'r_n \\| y_n > c = y_n - c'\\; the guard of the second is 4\\.2e-11 from its threshold\nknee\\.y: within [0-9.e+-]+, [0-9.e+-]+ units of a float\\; the interpreter's terms about 5\\.8e-11 from the exact ones\nknee\\.r: within 4\\.2e-11, 1\\.2e\\+07 units of a float\\; the interpreter's terms about 5\\.8e-11 from the exact ones\n$"
+        "knee:^knee: 100 steps from 0${inexact}\n${knee_r}knee\\.r: at 0 the compiled step takes 'r_n = 0' and the interpreter 'r_n \\| y_n > c = y_n - c'\\; the guard of the second is 4\\.2e-11 from its threshold\nknee\\.y: within [0-9.e+-]+, [0-9.e+-]+ units of a float\\; the interpreter's terms about 5\\.8e-11 from the exact ones\nknee\\.r: within 4\\.2e-11, 1\\.2e\\+07 units of a float at step 0\\; the interpreter's terms about 5\\.8e-11 from the exact ones\n$"
         "whole:^whole: 100 steps from 0${inexact}\n(whole\\.k[1-4]: within [1-9](\\.[0-9])?e-0[67], [1-9](\\.[0-9])?e\\+0[2-5] units of a float, from 1${about}\n)+whole\\.y: within 0\\.[0-9]+, [1-9](\\.[0-9])?e\\+0[2-5] units of a float${about}\n$"
         "nm:^nm: 100 steps from 0 in float, against exact values until 35 and inexact ones from there\nnm\\.a\\[[0-9],1\\]: [-0-9.e+]+ at [0-9]+, where the interpreter gives [-0-9.e+]+(\\; the interpreter's term about [0-9.e+-]+ from the exact one)?\n(nm\\.[a-z]+: within [0-9.e+-]+, [0-9.e+-]+ units of a float${about}\n)+$"
         "coast_1001:^coast: 1001 steps from 0${in_float}\ncoast\\.v: ${exact}\ncoast\\.y: ${exact}\n$"
         "inside_2000:^inside: 2000 steps from 0 in float, against exact values until 6 and inexact ones from there\ninside\\.y: within 2e-05, 3\\.3e\\+02 units of a float${about}\n$"
-        "outside_2000:^outside: 2000 steps from 0 in float, against exact values until 6 and inexact ones from there\noutside\\.y: within 0\\.00061, 1e\\+10 units of a float${about}\n$"
+        "outside_2000:^outside: 2000 steps from 0 in float, against exact values until 6 and inexact ones from there\noutside\\.y: within 0\\.00061, 1e\\+10 units of a float in y\\[2,1\\] at step 1101${about}\n$"
         "rober:^rober: 100 steps from 0 in float, against exact values until 1 and inexact ones from there\nrober\\.y: within 2\\.6e-07, 4\\.4 units of a float${about}\n$"
         "cd:^cd: 100 steps from 0 in float, against exact values until 85 and inexact ones from there\n(cd\\.[a-z]+: within [1-9](\\.[0-9])?e-0[6-8], [0-9.e+-]+ units of a float${about}\n)+$"
         "small:^small: 100 steps from 0${in_float}\nsmall\\.g: ${exact}\nsmall\\.o: ${exact}\nsmall\\.s: ${exact}\n$"
         "saliency_3:^saliency: 3 steps from 0${in_float}\nsaliency\\.G: ${exact}\n$"
+        "rational:^rational: 100 steps from 0${in_float}\n${rational_k}rational\\.R: within 6\\.5e-06, 1e\\+04 units of a float\n${rational_ko}$"
         "carried_4:^carried: 4 steps from 0${in_float}\ncarried\\.x: within [0-9.e+-]+, [0-9.e+]+ units of a float\ncarried\\.y: within [0-9.e+-]+, [0-9.]+ units of a float\n$"
-        "factored:^factored: 100 steps from 0 in float, ${until1f}\n(factored\\.(Sp|K|N): within ${floats}, from 1${about}\n)+factored\\.S: within ${floats}${about}\nfactored\\.x: within [0-9.e+-]+, [1-9](\\.[0-9])? units of a float${about}\n$"
+        "factored:^factored: 100 steps from 0 in float, ${until1f}\n(factored\\.(Sp|K|N): within ${floats}( in N\\[[12],[1-3]\\] at step [0-9]+)?, from 1${about}\n)+factored\\.S: within ${floats}${about}\nfactored\\.x: within [0-9.e+-]+, [1-9](\\.[0-9])? units of a float${about}\n$"
+        "shove:^shove: 100 steps from 0${in_float}\nshove\\.s: within 5\\.9e-08, 1\\.4e\\+07 units of a float at step 5\nshove\\.y: within 5\\.9e-08, 1\\.4e\\+07 units of a float in y\\[2,1,1\\] at step 7\n$"
         "naive:^naive: 100 steps from 0 in float, ${until1f}\n(naive\\.(Pp|K|P): within [^\n]+\n)+naive\\.L\\[1,1\\]: [-a-z()]+ at 1, where the interpreter gives 0\\.00099999999750012493\\; the interpreter's term about [0-9.e+-]+ from the exact one\nnaive\\.x: within [^\n]+\n$"
         "sole:^sole: 100 steps from 0${inexact}\n(sole\\.[gy]: within [0-9.e+-]+, 0\\.[0-9]+ units of a float${about}\n)+$"
         "cls:^cls: 100 steps from 0${inexact}\ncls\\.z: within 2\\.4e-08, 0\\.49 units of a float\ncls\\.q: within 1\\.9e-06, 1\\.5 units of a float${about}\ncls\\.s: within 6\\.3e-08, 2\\.1 units of a float${about}\ncls\\.loss: within 4\\.1e-07, 3\\.8 units of a float${about}\n$")
