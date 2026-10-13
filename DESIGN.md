@@ -9011,8 +9011,8 @@ checked: what it asked of the compiler, each with its smallest change.
   - **grad**: the slope of the term kept, the first of equals', as
     `max(a, b)` takes a's, a maximum being continuous where its choice
     steps as abs, max and min are. An argmax is constant: 0, and refused
-    where a tie moves, `the argmax jumps at x = 3`, as a comparison's
-    sides equal and moving are. Reverse mode passes the kept term's node.
+    where the term kept ties with another and either moves, `the argmax
+    jumps at x = 3`, as a comparison's sides equal and moving are. Reverse mode passes the kept term's node.
   - **The C**: unrolled as a sum is, each kept value and index a
     temporary so that nothing nests, `(t0_ < x ? x : t0_)` and `x < t0_`
     for a minimum, the index `(t0_ < x ? 3.0 : t1_)`. The term kept is a
@@ -9070,8 +9070,8 @@ checked: what it asked of the compiler, each with its smallest change.
   `wc -l include/inkamath/*.hpp src/*`, 18,477 on the prototype; past 218
   the implementation stops and reports.
 
-  Specified in `test/data/spec/reduce.ink`, 78 entries replayed by the
-  `spec` suite, 65 failing today: exact and inexact terms, ties and signed
+  Specified in `test/data/spec/reduce.ink`, 82 entries replayed by the
+  `spec` suite, 69 failing today: exact and inexact terms, ties and signed
   zeros, the body's reach, nesting, argmax read as an index and an inexact
   one refused there, a pooling by cells, the refusals, the words left
   names, grad and its jumps, tex, and README's accuracy. And in

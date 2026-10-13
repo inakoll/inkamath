@@ -232,6 +232,20 @@ t(k, x) | k == 3 = x
 >> grad_(x = 2) argmax_(k=1)^3 t(k, x)
 error: the argmax jumps at x = 2
 
+# A tie that does not reach the term kept moves nothing: at 2, x ties with 2
+# below 5, which stays the largest, and above 0, which stays the smallest.
+>> grad_(x = 2) argmax_(k=1)^3 [x; 2; 5][k]
+0
+
+>> grad_(x = 2) argmax_(k=1)^3 [2; x; 5][k]
+0
+
+>> grad_(x = 2) argmin_(k=1)^3 [x; 2; 0][k]
+0
+
+>> grad_(x = 2) argmin_(k=1)^3 [2; x; 0][k]
+0
+
 # tex sets them as a paper does.
 >> f(x) = max_(k=1)^3 x^k + 1
 f(x) = max_(k=1)^3 x^k + 1
