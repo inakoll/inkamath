@@ -49,23 +49,9 @@ root(x) = x
 >> root(1/10)
 ~0.1  # approximated past a thousand digits
 
-# Where nothing more is asked than that the limit exists: a value equals
-# itself where it exists, so the guard holds exactly there.
->> sol(x) | lim nw(x) == lim nw(x) = lim nw(x)
-sol(x) | lim nw(x) == lim nw(x) = lim nw(x)
-
->> sol(x) = x
-sol(x) = x
-
->> sol(-2)
-~-1.76929235
-
->> sol(0)
-~0
-
-# The same with a local, which the clause's value reads.
->> loc(x) | (z = lim nw(x)) == z = z
-loc(x) | (z = lim nw(x)) == z = z
+# A local the guard binds, which the clause's value reads.
+>> loc(x) | abs((z = lim nw(x))^3 - 2*z + 2) < 1/10^6 = z
+loc(x) | abs((z = lim nw(x))^3 - 2*z + 2) < 1/10^6 = z
 
 >> loc(x) = x
 loc(x) = x
@@ -263,7 +249,7 @@ p(x) = 2
 ..     qp(s)_k = clip(qp(s)_(k-1) - (5*qp(s)_(k-1) + 4*s)/2)
 ..     u_n | abs(x_n + lim qp(x_n)) <= abs(x_n) = lim qp(x_n)
 ..     u_n = -x_n/2
-..     solved_n | lim qp(x_n) == lim qp(x_n) = 1
+..     solved_n | abs(x_n + lim qp(x_n)) <= abs(x_n) = 1
 ..     solved_n = 0
 ..     x_0 = x0
 ..     x_n = x_(n-1) + u_(n-1)

@@ -24,7 +24,7 @@ mpc(x0 = 5/2) = {
     qp(s)_k = clip(qp(s)_(k-1) - (5*qp(s)_(k-1) + 4*s)/2)
     u_n | abs(x_n + lim qp(x_n)) <= abs(x_n) = lim qp(x_n)
     u_n = -x_n/2
-    solved_n | lim qp(x_n) == lim qp(x_n) = 1
+    solved_n | abs(x_n + lim qp(x_n)) <= abs(x_n) = 1
     solved_n = 0
     x_0 = x0
     x_n = x_(n-1) + u_(n-1)

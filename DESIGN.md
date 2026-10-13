@@ -11018,14 +11018,11 @@ After an external review of README, MANIFESTO and the conformance suite
   - **A guard that reads a limit that does not converge does not hold**,
     and the clause after it is tried. No new syntax: the guard is the
     paper's acceptance test of the solver's answer, a residual or a
-    bound, which a limit that does not exist cannot pass. Where nothing
-    more is asked, `lim s == lim s`: a value equals itself where it exists,
-    the definedness predicate of a logic of partial terms. A local
-    shortens it in the interpreter, `| (z = lim s) == z = z`; compiled, a
-    local is refused today ("Locals compiled" above), and a limit written
-    twice is called where it is written, which GCC merges and Clang does
-    not: `planned`'s step walks qp once under GCC -O2, five times under
-    Clang.
+    bound, which a limit that does not exist cannot pass; it is the one
+    form documented. A local binds the limit once in the interpreter,
+    `| abs((z = lim s)^3 - 2*z + 2) < 1/10^6 = z`; compiled, a local is
+    refused today ("Locals compiled" above), and a limit written twice is
+    called where it is written, which GCC may merge and Clang does not.
   - **Reads as the interpreter reads**: on the right of `and` or `or` only
     where the left did not decide, and through the functions the guard
     calls. Read on the left, the guard does not hold whatever its right
@@ -11058,8 +11055,9 @@ After an external review of README, MANIFESTO and the conformance suite
     tests the flag where the interpreter reads it, false where raised, so
     the chain goes on to the next clause; past the last, NaN. A limit no
     guard reads is NaN where it runs out, as today. A host that wants the
-    status MANIFESTO's solver within a step names writes it as a sequence,
-    `solved_n | lim qp(x_n) == lim qp(x_n) = 1`, `solved_n = 0`.
+    status MANIFESTO's solver within a step names writes it as a sequence
+    whose guard is the plan's own test, `solved_n | abs(x_n + lim qp(x_n))
+    <= abs(x_n) = 1`, `solved_n = 0`.
   - **--check**: a walk one side settles and the other does not is a guard
     taking another clause, reported first as any flip is, without a margin,
     a walk having no single threshold. A disturbed run's likewise.
@@ -11082,8 +11080,10 @@ After an external review of README, MANIFESTO and the conformance suite
     back the term it stopped on"; the hundredth term of Newton's cycle is
     0, where F is 2.
   - **New syntax**: `lim s else v` is a second way to write cases, and
-    `exists lim s` a reserved word for what `lim s == lim s` says once a
-    guard reads limits so.
+    `exists lim s` a reserved word for what the residual already says.
+  - **`lim s == lim s`** for "where the limit exists", a value equal to
+    itself where it is one: dropped by the owner's ruling, nowhere
+    advertised. It tests nothing the solver's acceptance test does not.
   - **Each comparison false** where it reads such a limit, a negative free
     logic: the same in a guard but for `or`, and outside a guard a
     comparison would answer 0 where today it refuses, a truth with no
@@ -11108,9 +11108,9 @@ After an external review of README, MANIFESTO and the conformance suite
   `wc -l include/inkamath/*.hpp src/*`; past 142 the implementation stops
   and reports.
 
-  Specified in `test/data/spec/unconverged.ink`, 85 entries replayed by
-  the spec suite, 18 failing today: Newton's cycle on x^3 - 2x + 2 under a
-  residual guard, an existence guard and a local; `and`, `or`, a call, a
+  Specified in `test/data/spec/unconverged.ink`, 81 entries replayed by
+  the spec suite, 17 failing today: Newton's cycle on x^3 - 2x + 2 under a
+  residual guard and a local; `and`, `or`, a call, a
   term and another limit's terms; a series, grad; a walk refused, NaN, inf;
   the MPC with its fallback, the same without, and Newton within a step.
   Values in Python's fractions, README section 4's rule written again in
