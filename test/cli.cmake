@@ -1771,6 +1771,14 @@ cannot compile d: d_(...): a term after the one being computed
 ")
 set(exit 1)
 check(compile_tip_refused)
+# C363: a halving recursion with a base filled each term below at every read
+# of it, 96 s to compile a, read ahead, and over 60 s for b, refused anyway.
+file(WRITE "${OUT}/halving.ink" "a_n = v(x_n)_999\nb_n = w(x_n)_1000\nv(x)_0 = x\nv(x)_k | k > 999 = x\n"
+     "v(x)_k = v(x/2)_(k+1)\nw(x)_0 = x\nw(x)_k = w(x/2)_(k-1)\n")
+set(args --compile halving.ink)
+set(stdout "cannot compile b: nested 64 deep, which a recursion its guards do not end would pass\n")
+set(exit 1)
+check(compile_c363)
 
 # A sequence with parameters read at lim's walking index (DESIGN.md,
 # compile/series.ink): the series compiled; their values, e^x's at -2 and 1,
