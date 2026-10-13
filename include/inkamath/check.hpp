@@ -15,6 +15,7 @@
 #include <stdexcept>
 #include <string>
 #include <tuple>
+#include <unordered_map>
 #include <variant>
 #include <vector>
 
@@ -134,6 +135,7 @@ public:
         std::map<std::pair<std::string, int>, std::vector<std::optional<Value>>> again;
         for (std::uint64_t seed = 1; seed <= 3; ++seed) {
             Number::Disturbance disturbance{seed, seed == 1 ? 1 : seed == 2 ? -1 : 0};
+            std::map<int, std::unordered_map<MemoKey<Value>, Value, MemoHash<Value>>> limits;
             stack.Apart([&] {
                 const Setting<Number::Disturbance*> disturbing(Number::disturbed, &disturbance);
                 const Setting<decltype(stack.guards)> heard(stack.guards, hook);
@@ -142,6 +144,7 @@ public:
                     for (int n = first; n < first + steps; ++n) {
                         if (n < sequence.start && sequence.period > 1) continue;
                         now              = {&sequence, n};
+                        const Setting<decltype(stack.limits)> kept(stack.limits, &limits[n]);
                         const int  index = Floor(n - sequence.phase, sequence.period);
                         const Term term  = ask(sequence, index);
                         again[{instance + "." + sequence.name, index}].push_back(
@@ -258,14 +261,30 @@ public:
             if (!fresh && seen.heard < at->second.first) at->second = {seen.heard, line};
         };
         std::string table;
-        for (std::size_t k = 0; k < compiled.guarded.size(); ++k) {
-            const std::string& name = compiled.guarded[k];
+        // A sequence whose guards the step folds keeps no clause, and a run
+        // straddles them all the same (C361).
+        // None for a part of a group, which no scope names.
+        const auto named = [&](const Sequence& s) -> const Reference<Value>* {
+            if (!s.unnamed) return Resolve(stack, definition, s.name);
+            const std::size_t dot = s.name.rfind('.');
+            const auto        at  = made.find(s.name.substr(0, dot));
+            if (at == made.end()) return nullptr;
+            const auto found = at->second->names.find(s.name.substr(dot + 1));
+            return found == at->second->names.end() ? nullptr : found->second.get();
+        };
+        std::vector<std::string> straddled = compiled.guarded;
+        for (const auto& s : compiled.sequences)
+            if (std::find(straddled.begin(), straddled.end(), s.name) == straddled.end() &&
+                named(s))
+                straddled.push_back(s.name);
+        for (std::size_t k = 0; k < straddled.size(); ++k) {
+            const std::string& name = straddled[k];
+            const bool         kept = k < compiled.guarded.size();
             const auto found = std::find_if(compiled.sequences.begin(), compiled.sequences.end(),
                                             [&](const auto& s) { return s.name == name; });
-            const std::size_t       dot = name.rfind('.');
-            const Reference<Value>& reference =
-                found->unnamed ? *made.at(name.substr(0, dot))->names.at(name.substr(dot + 1))
-                               : Resolve(stack, definition, name);
+            const Reference<Value>* const own = named(*found);
+            if (!own) throw std::runtime_error("the instance has no sequence " + name);
+            const Reference<Value>&  reference = *own;
             const auto&              clauses   = reference.Clauses();
             const std::string        id = std::to_string(k), count = std::to_string(clauses.size());
             // A term chosen cell by cell is reported cell by cell; the clause
@@ -285,8 +304,10 @@ public:
                 rank.push_back(
                     std::to_string(p.general() && p.guarded() ? tried++ : clauses.size()));
             }
-            data += Array("const char* const", "written_" + id, clauses.size() + 1, written);
-            data += Array("const int", "rank_" + id, clauses.size() + 1, rank);
+            if (kept) {
+                data += Array("const char* const", "written_" + id, clauses.size() + 1, written);
+                data += Array("const int", "rank_" + id, clauses.size() + 1, rank);
+            }
             // At another rate, the clause of the latest term computed, none before.
             const auto term = [&](int n) {
                 return found->period > 1 && n < found->start
@@ -321,6 +342,7 @@ public:
                         margin.push_back(distance ? Double(distance->Inexact().real()) : "-1.0");
                     }
                 }
+                if (!kept) continue;
                 data += Array("const int", "clause_" + at, steps, want);
                 data += Array("const double", "margin_" + at, steps * clauses.size(), margin);
                 data += "static int taken_" + at + "[" + std::to_string(steps) + "];\n";
@@ -528,7 +550,7 @@ private:
     }
 
     // A sequence of the instance, from its name in the struct, 'h.low.v'.
-    static const Reference<Value>& Resolve(ReferenceStack<Value>& stack,
+    static const Reference<Value>* Resolve(ReferenceStack<Value>& stack,
                                            const Definition& definition, const std::string& name) {
         const Scope<Value>* scope = stack.InstanceScope(definition);
         std::size_t         at    = 0;
@@ -539,9 +561,9 @@ private:
         }
         if (scope) {
             const auto found = scope->names.find(name.substr(at));
-            if (found != scope->names.end()) return *found->second;
+            if (found != scope->names.end()) return found->second.get();
         }
-        throw std::runtime_error("the instance has no sequence " + name);
+        return nullptr;
     }
 
     static std::string Flips(int first, int steps) {

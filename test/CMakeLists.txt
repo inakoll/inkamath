@@ -208,7 +208,8 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brin
                          blocks:deadbeat blocks:nested blocks:sloped conv:see conv:learn
                          straddle:knee straddle:crease straddle:plain straddle:both straddle:acc
                          straddle:given straddle:parted straddle:unasked
-                         straddle:recalled straddle:founded steps:coast:1001 steps:coast:1
+                         straddle:recalled straddle:founded straddle:reread straddle:equal
+                         straddle:folded steps:coast:1001 steps:coast:1
                          steps:runaway:150 steps:runaway:1000 steps:horizon:1000
                          robertson:inside:2000 robertson:outside:2000 robertson:rober
                          implicit:kinetic implicit:jacobian implicit:doubling implicit:inset
@@ -291,6 +292,12 @@ set_tests_properties(check_recalled_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^recalled: ${straddled}\nrecalled\\.y: within 0${about}\nrecalled\\.z: within 0${about}\nrecalled\\.x: within 0\n$")
 set_tests_properties(check_founded_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^founded: 100 steps from 0, against exact values until 0 and inexact ones from there\nfounded\\.x: at 0 a disturbed run takes 's\\(c\\)_k \\| lim half\\(1\\) >= c = 1' and the interpreter 's\\(c\\)_k = 0'\\; the guard of the first is 4\\.8e-11 from its threshold\nfounded\\.x: within 0\\; the interpreter's terms about 1 from the exact ones, past the tolerance from 0\n$")
+set_tests_properties(check_reread_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^reread: ${straddled}\nreread\\.y: within 0\nreread\\.g: within 0\n$")
+set_tests_properties(check_equal_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^equal: ${straddled}\nequal\\.y: within 1\\.1e-16${about}\n$")
+set_tests_properties(check_folded_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^folded: ${straddled}\nfolded\\.g: at 0 a disturbed run takes 'g_n \\| lim half\\(1\\) >= 1/2 - 1/10\\^11 = 1' and the interpreter 'g_n = 0'\\; the guard of the first is 4\\.8e-11 from its threshold\nfolded\\.g: within 0\\; the interpreter's terms about 1 from the exact ones, past the tolerance from 0\n$")
 # compile/steps.ink, each over its --steps n: runaway at 1000 fails as wild does.
 set(coast "coast\\.v: within 0\ncoast\\.y: within 0\n$")
 set_tests_properties(check_coast_1001_report PROPERTIES PASS_REGULAR_EXPRESSION

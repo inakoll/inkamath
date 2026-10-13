@@ -81,6 +81,10 @@ public:
         histories = 0;
     }
 
+    // Each limit a disturbed run reads at a step, by its call: read again
+    // there, it is the value it was, as in a compiled step (C360).
+    std::unordered_map<MemoKey<T>, T, MemoHash<T>>* limits = nullptr;
+
     // A run of --check that disturbs the arithmetic (Number::disturbed) sees
     // nothing memoised, nothing made unnamed and no listener from before it,
     // and leaves nothing behind, as what it computes is disturbed.
