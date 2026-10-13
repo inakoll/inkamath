@@ -33,8 +33,8 @@ planned = mpc()
 
 # Newton's method within a step, its fallback the term before: from 0, on
 # x^3 - 2x + c, it cycles 0, 1, 0, ... at c = 2, and at c = 1 converges at
-# its sixth term to (sqrt(5) - 1)/2, the double 0.6180339887498949 within
-# 7e-24 (mpmath). So x_n is 1/2 at 0 and 1, and the root from 2 on.
+# its sixth term, within 7e-24 of (sqrt(5) - 1)/2 (mpmath), whose double is
+# 0.6180339887498949. So x_n is 1/2 at 0 and 1, and the root from 2 on.
 # Checked, it is to report
 #
 #     held: 100 steps from 0, against exact values until 1 and inexact ones from there
