@@ -2241,8 +2241,11 @@ private:
         asked_       = asked;
         unconverged_ = "isnan(" + truth + ") && (" + ran + ")";
         // Before a walk's loop where neither moves, as its limits are.
-        const Code nan = Looping(Of(Cell("isnan(" + truth + ") && !(" + ran + ")", 0)));
-        return nan.cells[0].text + " ? NAN : " + truth + " == 1.0";
+        const std::string flag = "isnan(" + truth + ") && !(" + ran + ")";
+        const std::string nan  = Looping(Of(Cell(flag, 0))).cells[0].text;
+        // Hoisted or shared, the flag is a double.
+        const std::string held = nan.find('(') == std::string::npos ? nan : "(" + nan + ")";
+        return held + " != 0.0 ? NAN : " + truth + " == 1.0";
     }
 
     // A constant's truth, or the interpreter's refusal of it as a reason.
@@ -3187,7 +3190,8 @@ private:
         if (statuses_)
             statuses_->insert(
                 named->second + "(m_" +
-                (scalar ? ", 1" + arguments : arguments + ", (double" + shape + "){{0.0}}") + ")");
+                (scalar ? ", 1" + arguments : arguments + ", (double" + shape + "){{0.0}}") +
+                ") != 0.0");
         if (scalar) return Answer(Looping(Of(Cell(called + ")", primary))));
         const std::string out = Declare("lim\x1f" + called, [&](const std::string& t) {
             return std::vector<std::string>{"double " + t + shape + ";", called + ", " + t + ");"};

@@ -2098,9 +2098,9 @@ set(args --compile asked.ink layers -o asked.h)
 check(compile_hoisted)
 holds(compile_hoisted asked.h "    const double v0_ = asked_lim0(m_, 0, arg_a + 1.0);\n"
       "    const double v1_ = (isnan(v0_) ? NAN : v0_ > 0.0 ? 1.0 : 0.0);\n"
-      "    const double v2_ = isnan(v1_) && !(asked_lim0(m_, 1, arg_a + 1.0));\n"
+      "    const double v2_ = isnan(v1_) && !(asked_lim0(m_, 1, arg_a + 1.0) != 0.0);\n"
       "    double t1_ = arg_a;\n${based}${walk}"
-      "        const double t_ = t1_ / 4.0 + (v2_ ? NAN : v1_ == 1.0 ? 1.0 : 2.0);\n")
+      "        const double t_ = t1_ / 4.0 + (v2_ != 0.0 ? NAN : v1_ == 1.0 ? 1.0 : 2.0);\n")
 
 # A global's temporaries, read first in a limit's terms, are numbered as
 # the update's, not as that limit's: two such are two names.
