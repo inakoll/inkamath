@@ -9110,9 +9110,20 @@ checked: what it asked of the compiler, each with its smallest change.
   where `x >= 0` would take its clause's slope, 1; a refusal, not a wrong
   answer, and left so. `reduce.ink` is a golden; the
   `spec` suite, the cli `spec` part and `cli_spec` go; no other golden,
-  expected header, check report or cli case moves. 151 lines net, 169
-  added and 18 removed: the node 56, the compiler 42, grad 29, the parser
-  15, the evaluator 6, tex 3; 18,486 in all.
+  expected header, check report or cli case moves.
+
+  The implementation review found three departures from the spec, each
+  fixed after a test of its own, five entries more. A limit whose terms
+  read an argmax moving with grad's variable answered `[0; 0]` for a
+  bisection; it is refused as at a comparison (C215). grad through a
+  maximum answered `~(i)` where a term's slope leaves the real line and
+  `~1` for a term moving with a complex variable, where `max(a, b)`
+  refuses; it refuses so, `the maximum has no derivative where a term
+  leaves the real line at x = 1` (C205). And the compiler wrote `a
+  derivative of a argmax`. The role a binding keeps is a literal, as the
+  noun is. `reduce.ink` holds 87 entries. 175 lines net, 206 added and 31
+  removed: the node 56, the compiler 43, grad 52, the parser 15, the
+  evaluator 6, tex 3; 18,510 in all.
 - **The compiled sum's thousand terms**: a LeNet-sized layer's dot product
   over a batch would pass `max_terms`, which bounds an unrolled sum written
   as lines of C, not a loop.
