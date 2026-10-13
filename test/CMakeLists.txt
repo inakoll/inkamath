@@ -220,7 +220,7 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brin
                          split:carried:4 split:apart:4 pendulum:one spin:twirl:20 iekf:walk:21
                          tip:reach tip:rested series:taylor series:wave series:later
                          sums:summed sums:halving sums:cancelled reduce:pooled reduce:shied
-                         chol:factored chol:naive chol:sole)
+                         chol:factored chol:naive chol:sole placed:placed)
     string(REPLACE ":" ";" checked ${checked})
     list(POP_FRONT checked file instance count)
     set(name ${instance})
@@ -920,6 +920,8 @@ set_tests_properties(check_naive_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^naive: ${until1}\n(naive\\.(Pp|K): within [0-9.e+-]+, from 1\n)+naive\\.P: within [0-9.e+-]+\nnaive\\.L: within [1-9](\\.[0-9])?e-12${about}\nnaive\\.x: within [0-9.e+-]+\n$")
 set_tests_properties(check_sole_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^sole: 100 steps from 0, against exact values until 0 and inexact ones from there\n(sole\\.[gy]: within 0${about}\n)+$")
+set_tests_properties(check_placed_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^placed: 100 steps from 0, against exact values\nplaced\\.y: within 0\n$")
 add_test(NAME check_moments COMMAND check_moments)
 add_test(NAME check_calm COMMAND check_calm)
 add_test(NAME check_wild COMMAND check_wild)

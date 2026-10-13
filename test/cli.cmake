@@ -1904,11 +1904,6 @@ foreach(floats "" --float)
         endif()
     endforeach()
 endforeach()
-# C356: a function of the prelude reading a cell at a parameter, called on
-# numbers, is written where it is called, its places constants there.
-file(WRITE "${OUT}/placed.ink" "f() = {\n    y_n = hurwitzc(n, 1)\n}\nh = f()\n")
-set(args --check placed.ink h -o placed.c)
-check(check_placed)
 # a starts where the step is; b's power is at twice the index, and f's
 # inner bound moves; c gives t arguments that change as the walk does, and e
 # reads it ahead; d differentiates through it; h calls an instance's own
