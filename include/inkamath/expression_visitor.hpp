@@ -523,6 +523,12 @@ public:
             return expr->Product() ? total * next : total + next;
         };
 
+        if (expr->Reduction()) {
+            if (last < first) throw std::runtime_error(expr->Empty(first, last));
+            std::vector<T> terms{expr->Ranked(term(first))};
+            for (int k = first; k != last;) terms.push_back(expr->Ranked(term(++k)));
+            return expr->Reduced(terms, first);
+        }
         if (!infinite) {
             if (last < first) return expr->Product() ? T(1) : T(0);
             T total = term(first);

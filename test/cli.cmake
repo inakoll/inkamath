@@ -412,7 +412,7 @@ file(WRITE "${OUT}/tensor.ink" "T = [1 2; 3 4;; 5 6; 7 8]\nU = [1 2; 3 4;; 5 6; 
 set(args --compile tensor.ink)
 set(stdout "cannot compile a: a 2x2x2 tensor takes one index or three, not two
 cannot compile b: only a matrix has a power, not a 2x2x2 tensor
-cannot compile c: a comparison of matrices
+cannot compile c: a comparison needs single values, not a 2x2x2 tensor
 cannot compile d: a 2x2x2 tensor and a 3x2x2 tensor have different numbers of slices
 cannot compile f: the slices of a tensor have one size, not 1x2 and 1x3
 cannot compile g: a tensor in a limit, for now
@@ -422,6 +422,27 @@ cannot compile r: a tensor whose slices are single values met by a matrix, for n
 ")
 set(exit 1)
 check(compile_tensor_refused)
+
+# Two matrices compared whole (DESIGN.md, test/compile/orthogonal.ink): equal
+# where every cell is, NaN where a cell is in a header that writes NaN, and
+# an order of matrices or two shapes refused, constant or not.
+file(WRITE "${OUT}/same.ink" "r(v) | v > 0 = v\nsame(x_n[j<=2]) = {\n"
+     "    e_n = x_n == [1; 2]\n    u_n = x_n <> [1; 2]\n    z_n = r(x_n[1])\n}\n")
+set(args --compile same.ink same -o same.h)
+check(compile_mateq)
+set(meet "(m_->x[0][0][0] == 1.0 && m_->x[0][1][0] == 2.0) ? 1.0 : 0.0);")
+holds(compile_mateq same.h "_ = isnan(m_->x[0][0][0]) || isnan(m_->x[0][1][0]);"
+      "_ ? NAN : ${meet}" "_ ? NAN : !${meet}")
+file(WRITE "${OUT}/apart.ink" "c_n = [n, 1] < [2, 2]\nd_n = [n, 1] == 0\n"
+     "f_n = [n, 1] == [n; 1]\ng_n = n*([1, 1] == [1; 1])\nh_n = n*([1, 1] == 1)\n")
+set(args --compile apart.ink)
+string(CONCAT stdout "cannot compile c: a comparison needs single values, not a 1x2 matrix\n"
+       "cannot compile d: a 1x2 matrix compared with a single value, never equal\n"
+       "cannot compile f: a 1x2 matrix compared with a 2x1 matrix, never equal\n"
+       "cannot compile g: a 1x2 matrix compared with a 2x1 matrix, never equal\n"
+       "cannot compile h: a 1x2 matrix compared with a single value, never equal\n")
+set(exit 1)
+check(compile_mateq_refused)
 
 # A gradient with respect to a tensor compiled refuses a Jacobian, as the
 # interpreter does, in its words (test/compile/tensorgrad.ink).
@@ -678,6 +699,21 @@ file(APPEND "${OUT}/c230.ink" "y_n = sum_(i=1)^300 h(n)[i] + sum_(i=1)^4 g10(n)[
 set(args --compile c230.ink -o c230.h)
 check(compile_c230)
 holds(compile_c230 c230.h "(double)m_->index_ * 300.0 + 1.0) + ((double)m_->index_ * 1.0 + 1.0 + 1.0 + 1.0 + 1.0 + 1.0 + 1.0 + 1.0 + 1.0 + 1.0 + 1.0 + ((double)m_->index_ * 2.0 + 1.0")
+
+# C357: a call read again was written into each reader's text, so Cholesky's
+# recurrence by cells took 47 s at 14x14 and ran out of memory at 16x16.
+file(WRITE "${OUT}/c357.ink" [=[
+mc(A[j<=n, k<=n])[i<=n, k<=n] = mr(A, i, k)
+mr(A, i, k) | i < k = 0
+mr(A, i, k) | i == k and mp(A, k) > 0 = mp(A, k)^(1/2)
+mr(A, i, k) | i > k = (A[i,k] - sum_(q=1)^(k-1) mr(A, i, q)*mr(A, k, q))/mr(A, k, k)
+mp(A, k) = A[k,k] - sum_(q=1)^(k-1) mr(A, k, q)^2
+big(A_n[j<=16, k<=16]) = {
+    e_n = mc(A_n)
+}
+]=])
+set(args --compile c357.ink big -o c357.h)
+check(compile_c357)
 
 # C231: under grad, where a sum's part is there was written out at each
 # partial sum, each term's being where any cell of m's is: 999^2 times 22 KB.
@@ -1278,6 +1314,9 @@ check(history_gained)
 # (C343).
 refused(lifted "a = 2) = {\n    g_n | n < 0 = a\n    g_n = 2*g_(n-1)"
         "g: g_0 reads g_-1, before the stream, where g's history reads a, which the host may assign after init")
+# And one with no default, which init cannot evaluate.
+refused(unset "a) = {\n    g_n | n < 0 = a\n    g_n = 2*g_(n-1)"
+        "g: g_0 reads g_-1, before the stream, where g's history reads a, which the host may assign after init")
 # And at another rate, where it was read as 0.
 refused(slowed "a = 2, x_n) = {\n    y_m | m < 0 = a\n    y_m = y_(m-1) + x_(2*m)"
         "y: y_0 reads y_-1, before the stream, where y's history reads a, which the host may assign after init")
@@ -1460,11 +1499,12 @@ endif()
 # Made in part 2 too, which part 3 runs without.
 file(MAKE_DIRECTORY "${OUT}/float")
 
-# Nor does eig, as rho does not, by a comparison of matrices, though smax
-# does, and grad refuses them where A moves (DESIGN.md, eig and smax).
-file(WRITE "${OUT}/eig.ink" "x_n = eig([n 1; 1 2])[1]\ny_n = smax([n 2; 3 4])\ng_n = grad_(a = n) eig([a 1; 1 2])[1]\nh_n = grad_(a = n) smax([a 2; 3 4])\n")
+# grad refuses eig and smax where A moves (DESIGN.md, eig and smax). An eig
+# where A moves compiles since two matrices compare, its header 1.7 MB, too
+# slow a case for the sanitizers to write.
+file(WRITE "${OUT}/eig.ink" "y_n = smax([n 2; 3 4])\ng_n = grad_(a = n) eig([a 1; 1 2])[1]\nh_n = grad_(a = n) smax([a 2; 3 4])\n")
 set(args --compile eig.ink)
-set(stdout "cannot compile g: grad cannot differentiate eig yet\ncannot compile h: grad cannot differentiate smax yet\ncannot compile x: a comparison of matrices\n")
+set(stdout "cannot compile g: grad cannot differentiate eig yet\ncannot compile h: grad cannot differentiate smax yet\n")
 set(exit 1)
 check(compile_eig_refused)
 
@@ -1987,6 +2027,30 @@ if(NOT at EQUAL -1)
 endif()
 holds(compile_float_implicit float/cramer.h "float v1_[3][3] = ")
 
+# A limit's invariants hoisted (DESIGN.md): layered's inner limit computed
+# once, before its walk's loop, and so a limit of numbers and a factorial
+# that read only the arguments, but not a limit a base clause reads.
+set(args --compile ${CMAKE_CURRENT_LIST_DIR}/compile/implicit.ink layers -o layered.h)
+check(compile_hoisted)
+file(WRITE "${OUT}/scalar.ink" "layers(x_n) = {\n    s(v)_0 = v\n    s(v)_k = s(v)_(k-1)/2 + v\n"
+     "    o(a)_0 = a\n    o(a)_k = o(a)_(k-1)/4 + lim s(a + 1)\n    q_n = lim o(x_n)\n}\n")
+set(args --compile scalar.ink layers -o scalar.h)
+check(compile_hoisted)
+file(WRITE "${OUT}/fact.ink" "layers(x_n) = {\n    s(v)_0 = v\n    s(v)_k = s(v)_(k-1)/2 + v\n"
+     "    o(a)_0 = lim s(a)\n    o(a)_k = o(a)_(k-1)/4 + 1/!(a + 2)\n    q_n = lim o(x_n)\n}\n")
+set(args --compile fact.ink layers -o fact.h)
+check(compile_hoisted)
+string(CONCAT walk "    double step_ = 0.0, before_ = 0.0;\n"
+       "    int    started_ = 1, stepped_ = 0;\n    for (long long k_ = 1; k_ <= 100; ++k_) {\n")
+holds(compile_hoisted layered.h "    double v0_[2][1] = {{arg_a}, {1.0}};\n    double v1_[2][1];\n"
+      "    layered_lim0(m_, v0_, v1_);\n    double t1_ = arg_a;\n${walk}"
+      "        const double t_ = t1_ / 4.0 + (1.0 * v1_[0][0] + 1.0 * v1_[1][0]);\n")
+holds(compile_hoisted scalar.h "    const double v0_ = scalar_lim0(m_, arg_a + 1.0);\n"
+      "    double t1_ = arg_a;\n${walk}        const double t_ = t1_ / 4.0 + v0_;\n")
+holds(compile_hoisted fact.h "    const double v0_ = fact_fact_(arg_a + 2.0);\n"
+      "    double t1_ = fact_lim0(m_, arg_a);\n${walk}"
+      "        const double t_ = t1_ / 4.0 + 1.0 / v0_;\n")
+
 # A global's temporaries, read first in a limit's terms, are numbered as
 # the update's, not as that limit's: two such are two names.
 file(WRITE "${OUT}/twice.ink" "a = 1/2\nM = [a, 1; 1, a]\nP = (M + M)*(M + M)\nQ = (M - 2)*(M - 2)\ns(x)_0 = x\ns(x)_k = s(x)_(k-1)/2 + P[1,1]*x\nr(x)_0 = x\nr(x)_k = r(x)_(k-1)/2 + Q[1,1]*x\ny_n = lim s(n) + lim r(n)\n")
@@ -1994,3 +2058,30 @@ set(args --compile twice.ink -o twice.h)
 check(compile_limit_globals)
 holds(compile_limit_globals twice.h "    const double t0_ = m_->a + m_->a;\n"
       "    const double t2_ = m_->a - 2.0;\n")
+
+# Reductions over an index (DESIGN.md), unrolled as a sum is, a later term
+# kept where it ranks strictly higher, NaN where a term is in a header that
+# writes NaN, and refused where the interpreter refuses, past max_terms or
+# under grad.
+set(args --compile ${CMAKE_CURRENT_LIST_DIR}/compile/reduce.ink pool -o pool.h)
+check(compile_reduce)
+holds(compile_reduce pool.h
+      "m_->x[0][0][0] < m_->x[0][1][0] ? m_->x[0][1][0] : m_->x[0][0][0])"
+      "m_->x[0][1][0] < m_->x[0][0][0] ? 2.0 : 1.0)"
+      "m_->x[0][2][0] < m_->x[0][3][0] ? m_->x[0][3][0] : m_->x[0][2][0])")
+file(WRITE "${OUT}/aware.ink" "r(v) | v > 0 = v\naware(x_n[j<=2]) = {\n"
+     "    q_n = max_(k=1)^2 x_n[k]\n    z_n = r(x_n[1])\n}\n")
+set(args --compile aware.ink aware -o aware.h)
+check(compile_reduce)
+holds(compile_reduce aware.h "(isnan(m_->x[0][0][0]) || isnan(m_->x[0][1][0]) ? NAN : "
+      "m_->x[0][0][0] < m_->x[0][1][0] ? m_->x[0][1][0] : m_->x[0][0][0])")
+file(WRITE "${OUT}/reduced.ink" "e_n = max_(k=3)^1 k*x_n\n"
+     "g_n = grad_(w = x_n) max_(k=1)^3 (k*w - k^2)\nh_n = argmin_(k=0)^1000 k*x_n\n"
+     "a_n = grad_(w = x_n) argmax_(k=1)^3 (k*w - k^2)\n")
+set(args --compile reduced.ink)
+string(CONCAT stdout "cannot compile a: a derivative of an argmax, for now\n"
+       "cannot compile e: the maximum has no terms: k runs from 3 to 1\n"
+       "cannot compile g: a derivative of a maximum, for now\n"
+       "cannot compile h: the argmin has more than 1000 terms\n")
+set(exit 1)
+check(compile_reduce)

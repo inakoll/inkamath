@@ -106,11 +106,17 @@ TEST_CASE("fill") {
 TEST_CASE("series") {
     check_transcript("series.ink");
 }
+TEST_CASE("reduce") {
+    check_transcript("reduce.ink");
+}
 TEST_CASE("exact") {
     check_transcript("exact.ink");
 }
 TEST_CASE("roots") {
     check_transcript("roots.ink");
+}
+TEST_CASE("chol") {
+    check_transcript("chol.ink");
 }
 TEST_CASE("decimals") {
     check_transcript("decimals.ink");

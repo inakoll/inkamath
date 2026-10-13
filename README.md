@@ -198,7 +198,10 @@ tensor in a limit is refused for now. A block literal,
 `[A, 0; -C, 1]`, is laid out as the interpreter lays it out (section 2),
 each block's cells written into their place: `test/compile/blocks.ink`
 packs a doubling algorithm's iterates into one term, and refuses a block
-that does not fill its band. A header that
+that does not fill its band. Two matrices are compared whole, `R'*R == I3`
+as the equalities of their cells: `test/compile/orthogonal.ink` has a
+rational rotation the step takes out of SO(3) at its first step, which the
+interpreter never does. A header that
 writes NaN anywhere carries it to every term that reads it, as the
 interpreter refuses them: a guard, a comparison and a power reading NaN
 answer NaN, and a matrix or tensor term with a NaN cell is NaN in
@@ -264,7 +267,10 @@ the header writes doubles, every constant the nearest float, for a target that
 computes in float. Its check holds each term within a thousandth of one plus
 the interpreter's and says the most any term came in units of a float, the
 spacing of floats at the interpreter's term, a term of 0 counting none:
-`test/compile/float.ink`. A limit
+`test/compile/float.ink`. Where that most reaches 2^23 units, as a term a
+normal float holds does when lost whole or of the other sign, it names the
+cell and step: `outside.y: within 0.00061, 1e+10 units of a float in y[2,1]
+at step 1101`. A limit
 compiled in float also stops where a step is within twice `FLT_EPSILON` of its
 term, so it may answer where the interpreter says it does not converge.
 
@@ -315,7 +321,7 @@ imaginary parts, the paper's Re and Im. `ceil(x) = -floor(-x)` and
 `mod(a, b) = a - b*floor(a/b)` come with them, from a prelude (section 5),
 and so do `exp`, `log`, `tanh`, `sin`, `cos`, `atan`, `atan2`, `asin`,
 `acos`, `acosh`, `abs`, `max` and `min`, and, of matrices, `charpoly`,
-`hurwitz`, `schurcohn`, `rho`, `abscissa`, `eig`,
+`hurwitz`, `schurcohn`, `rho`, `abscissa`, `eig`, `chol`,
 `smax`, `hinf` and `dhinf` (section 2). `abs` takes a complex number too, |z|, so a
 frequency response's magnitude |T(e^{iw})| is written as on paper.
 Any other rounding is a line of it, by the rule the model needs —
@@ -680,6 +686,31 @@ refused from 6x6 where `eig(B^-1*A)` of the rounded product still answers:
 error: eig needs B symmetric positive definite
 ```
 
+`chol(A)` is the Cholesky factor, L lower triangular with a positive
+diagonal and L*L' = A, as a square-root filter writes `L = chol(P)`. It is
+Cholesky's recurrence written in the prelude, each cell computed once, so
+it is exact where every pivot is the square of a rational, and `grad` and
+the compiler take it as any definition. chol reads only the lower triangle
+of A: the upper one is never looked at, so a matrix that is not symmetric
+is factored as its lower triangle says, without a word. Of complex
+entries it is L L' = A with ' the plain transpose, not the Hermitian
+factor L L^H. A pivot not above 0, of a matrix indefinite or singular, is
+refused:
+
+```
+>> chol([4 2 -2; 2 10 1/2; -2 1/2 9/4])
+[ 2,   0, 0;
+  1,   3, 0;
+ -1, 0.5, 1]
+
+>> chol([4 2; 2 3])
+[2,           0;
+ 1, ~1.41421356]
+
+>> chol([1 2; 2 1])
+error: chol needs a positive definite matrix
+```
+
 `hinf(A, B, C, D)` is the H-infinity norm of the stable system x' = Ax +
 Bu, y = Cx + Du: the largest singular value of its transfer function
 C(iwI - A)^-1 B + D over every frequency w, the peak of |T(iw)| for one
@@ -1031,6 +1062,26 @@ it:
 error: the sum did not converge within 100 terms (last partial sum ~1.6349839)
 ```
 
+A maximum or a minimum over an index is written as a sum is, `max_(k=1)^n`
+and `min_(k=1)^n`, and so is the index of the first largest or smallest term,
+`argmax_` and `argmin_`, as a classifier's prediction is read from its logits.
+Of equal terms, the first: a tied target is counted as predicted only where it
+comes first.
+
+```
+>> acc(Z[b<=m, j<=c], y) = sum_(b=1)^m (argmax_(v=1)^c Z[b,v] == y[b])/m
+acc(Z[b<=m, j<=c], y) = sum_(b=1)^m (argmax_(v=1)^c Z[b,v] == y[b])/m
+
+>> Z = [1/2 3 -1 3; 2 0 2 1; -1 -2 -3 -1/2]
+Z = [1/2 3 -1 3; 2 0 2 1; -1 -2 -3 -1/2]
+
+>> frac acc(Z, [2; 3; 4])
+2/3
+
+>> frac acc(Z, [2; 1; 4])
+1
+```
+
 The derivative of an expression with respect to a name at a point is written
 as a paper writes it there, and binds the name as a sum binds its index: the
 point is read around it, the name only in the body, which is a term as a sum's
@@ -1271,7 +1322,7 @@ once, holds definitions only, and one that cannot be read or parsed loads
 nothing and says where. The prelude that defines `ceil`, `mod`, `exp`, `log`,
 `tanh`, `sin`, `cos`, `atan`, `atan2`, `asin`, `acos`, `acosh`, `abs`,
 `max`, `min`, `charpoly`, `hurwitz`,
-`schurcohn`, `rho`, `rhob`, `abscissa`, `abscissab`, `eig`, `eigb`,
+`schurcohn`, `rho`, `rhob`, `abscissa`, `abscissab`, `eig`, `eigb`, `chol`,
 `smax`, `hinf` and `dhinf`, and what they call, is included bare beneath the
 session, as the built-ins are: every scope sees it, and a session
 that defines one of its names again does so for itself

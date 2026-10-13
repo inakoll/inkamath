@@ -842,10 +842,21 @@ private:
         if (outer || !temporaries_ || memo_.first != temporaries_) return compiled();
         const auto key = std::tuple(static_cast<const void*>(&function), grad_, Given(expansion));
         if (const auto found = memo_.second.find(key); found != memo_.second.end())
-            return found->second;
+            return Reread(found->second);
         const int situated = situated_;
         Code      code     = compiled();
         if (situated_ == situated) memo_.second.emplace(key, code);
+        return code;
+    }
+
+    // A call's value read again is shared where its text is long: written
+    // into each reader's, it would multiply as its readers nest, a
+    // recurrence by cells exponentially (C357). The bound only caps that
+    // growth while compiling; below it Numbered decides, as before.
+    Code& Reread(Code& code) {
+        for (Code& part : code.part) Reread(part);
+        for (Cell& cell : code.cells)
+            if (cell.text.size() > 1024) cell = Called(Of(cell)).cells[0];
         return code;
     }
 
@@ -963,7 +974,7 @@ private:
         // Under reverse mode, one of several arguments is written where called:
         // its part function gives one slope, which one argument's node takes.
         const auto parted = [](const Code& c) { return !c.part.empty(); };
-        if (constant || !scalar || Iterates(function, seen) ||
+        if (constant || !scalar || Iterates(function, seen) || Placed(function) ||
             (tape_ && names.size() > 1 && std::any_of(arguments.begin(), arguments.end(), parted)))
             return Answer(Call(name, function, call, nullptr));
         const std::string called = module_ + "_" + name;
@@ -1057,6 +1068,36 @@ private:
         code           = Shared(code);
         if (nan && code.cells[0].atom) nan_temporaries_.insert(code.cells[0].text);
         return code;
+    }
+
+    // Whether an iterate's value does not move as it walks, so is computed
+    // before the loop (DESIGN.md, a limit's invariants hoisted); a call to a
+    // function with a loop, which GCC and Clang leave in it, is shared so.
+    bool Invariant(const std::string& value) {
+        return limit_ && temporaries_ == limit_->iterated && !Walks(value);
+    }
+    Code Looping(Code code) { return Invariant(code.cells[0].text) ? Called(code) : code; }
+
+    // Whether a function of the prelude reads a cell at one of its
+    // parameters, which a function of the header, its parameters doubles,
+    // cannot place: it is written where it is called, its places constants
+    // there (C356).
+    static bool Placed(const Reference<Value>& function) {
+        const auto& names = function.Clauses().front().parameters.parameters_names();
+        const auto  reads = [&](const auto& self, const PExpression<Value>& e, bool place) -> bool {
+            if (!e) return false;
+            if (place && std::find(names.begin(), names.end(), e->Name()) != names.end())
+                return true;
+            const bool cell = dynamic_cast<const CellExpression<Value>*>(e.get());
+            for (std::size_t i = 0; i < e->Children().size(); ++i)
+                if (self(self, e->Children()[i], place || (cell && i > 0))) return true;
+            return false;
+        };
+        return std::any_of(function.Clauses().begin(), function.Clauses().end(),
+                           [&](const Clause<Value>& c) {
+                               return reads(reads, c.expression, false) ||
+                                      reads(reads, c.parameters.guard(), false);
+                           });
     }
 
     // Whether a function of the prelude reads a sequence with parameters,
@@ -1310,6 +1351,8 @@ private:
     // The same value is the same temporary within one sequence's step.
     template <typename Lines>
     std::string Declare(const std::string& value, Lines lines) {
+        const Setting<std::vector<Temporary>*> hoisted(
+            temporaries_, Invariant(value) ? limit_->based : temporaries_);
         // Checked, as an ended list may have left its address to another.
         std::size_t& at = declared_[{temporaries_, value}];
         if (at < temporaries_->size() && (*temporaries_)[at].value == value)
@@ -2103,7 +2146,16 @@ private:
     }
 
     PExpression<Value> visit(CompareExpression<Value>* expression) override {
-        const Code left = Emit(expression->m_e1()), right = Emit(expression->m_e2());
+        const Code       left = Emit(expression->m_e1()), right = Emit(expression->m_e2());
+        const Comparison op = expression->Op();
+        if (!(left.Scalar() && right.Scalar()) && op != Comparison::Equal &&
+            op != Comparison::NotEqual)
+            throw Reason("a comparison needs single values, not a " +
+                         (left.Scalar() ? right : left).size.Described());
+        // Answered 0 by the interpreter, a truth the shapes alone fix (DESIGN.md).
+        if (left.size != right.size)
+            throw Reason(left.size.Called() + " compared with " + right.size.Called() +
+                         ", never equal");
         // At a constant point too, a jump is tested, not folded.
         if (left.constant && right.constant && left.part.empty() && right.part.empty())
             return Answer(Exactly(
@@ -2111,15 +2163,25 @@ private:
                     return numeric_interface<Value>::compare(a, b, expression->Op());
                 },
                 left, right));
-        if (!left.Scalar() || !right.Scalar()) throw Reason("a comparison of matrices");
-        const std::string l = Wrap(left.cells[0], sum), r = Wrap(right.cells[0], sum);
-        // In a guard, only an equality jumps, as the interpreter's Holds.
-        const bool jumps = !guarding_ || expression->Op() == Comparison::Equal ||
-                           expression->Op() == Comparison::NotEqual;
-        return Answer(Cell("(" + Nan(left, right) +
-                               (jumps ? Jumps(l + " == " + r, {&left, &right}) : "") + l +
-                               Operator(expression->Op()) + r + " ? 1.0 : 0.0)",
-                           primary));
+        return Answer(Cell("(" + Compared(op, left, right) + " ? 1.0 : 0.0)", primary));
+    }
+
+    // A comparison as C tests it, NaN first where it reads one or jumps; two
+    // matrices are equal where every cell is, as interpreted.
+    std::string Compared(Comparison op, const Code& left, const Code& right) {
+        std::string meet;
+        for (std::size_t c = 0; c < left.cells.size(); ++c)
+            meet +=
+                (c ? " && " : "") + Wrap(left.cells[c], sum) + " == " + Wrap(right.cells[c], sum);
+        const bool        equality = op == Comparison::Equal || op == Comparison::NotEqual;
+        const std::string test =
+            left.Scalar() ? Wrap(left.cells[0], sum) + Operator(op) + Wrap(right.cells[0], sum)
+                          : (op == Comparison::Equal ? "(" : "!(") + meet + ")";
+        // Under grad, an equality whose sides move takes its clause at the
+        // point alone, as the interpreter's Holds; in a value, any comparison
+        // jumps there (C320).
+        return Nan(left, right) + (!guarding_ || equality ? Jumps(meet, {&left, &right}) : "") +
+               test;
     }
 
     // A guard as C tests it. Empty where it always holds, and nothing where
@@ -2174,14 +2236,7 @@ private:
         const Code code = Emit(expression);
         if (code.constant) return Holds(*code.constant) ? "1" : "0";
         if (const auto* compare = dynamic_cast<CompareExpression<Value>*>(expression.get())) {
-            const Code left = Emit(compare->m_e1()), right = Emit(compare->m_e2());
-            const std::string l = Wrap(left.cells[0], sum), r = Wrap(right.cells[0], sum);
-            // Under grad, an equality whose sides move takes its clause at the
-            // point alone; in a value, any comparison jumps there (C320).
-            const bool jumps = !guarding_ || compare->Op() == Comparison::Equal ||
-                               compare->Op() == Comparison::NotEqual;
-            return Nan(left, right) + (jumps ? Jumps(l + " == " + r, {&left, &right}) : "") + l +
-                   Operator(compare->Op()) + r;
+            return Compared(compare->Op(), Emit(compare->m_e1()), Emit(compare->m_e2()));
         }
         return Nan(code) + Wrap(code.cells[0], sum) + " != 0.0";
     }
@@ -3028,7 +3083,7 @@ private:
                               "double " + t + Dimensions(argument.size) + " = {" + rows + "};"};
                       });
         }
-        if (scalar) return Answer(Cell(called + ")", primary));
+        if (scalar) return Answer(Looping(Of(Cell(called + ")", primary))));
         const std::string out = Declare("lim\x1f" + called, [&](const std::string& t) {
             return std::vector<std::string>{"double " + t + shape + ";", called + ", " + t + ");"};
         });
@@ -3860,7 +3915,7 @@ private:
                     "    double f = 1.0, i = 1.0;\n"
                     "    if (!(x >= 0 && x == floor(x))) return NAN;\n"
                     "    while (i < x && isfinite(f)) f *= ++i;\n    return f;\n}\n\n");
-            return Answer(Cell(helper + "(" + operand.cells[0].text + ")", primary));
+            return Answer(Looping(Of(Cell(helper + "(" + operand.cells[0].text + ")", primary))));
         }
         return Answer(Exactly(fact, operand));
     }
@@ -4185,9 +4240,13 @@ private:
         const Code upper =
             Known(expression->Upper(), "a sum or a product whose bounds are not constants");
         const int first = Whole(lower), last = Whole(upper);
+        if (expression->Reduction() && last < first) throw Reason(expression->Empty(first, last));
         if (last < first) return Answer(Literal(Value(Number(expression->Product() ? 1 : 0))));
+        const std::string many = expression->Reduction()
+                                     ? std::string("the ") + expression->Noun() + " has"
+                                     : "a sum or a product of";
         if (last - first >= max_terms)
-            throw Reason("a sum or a product of more than " + std::to_string(max_terms) + " terms");
+            throw Reason(many + " more than " + std::to_string(max_terms) + " terms");
         const std::string&         name  = expression->Index();
         const auto                 found = places_.find(name);
         const std::optional<Value> outer =
@@ -4197,9 +4256,14 @@ private:
         std::vector<Value> terms;
         std::optional<Setting<Memo>> memo;
         if (memo_.first != temporaries_) memo.emplace(memo_, Memo{temporaries_, {}});
+        std::vector<Code> ranked;
         for (int k = first; k <= last; ++k) {
             places_[name]   = Value(Number(k));
             const Code term = Emit(expression->Body());
+            if (expression->Reduction()) {
+                ranked.push_back(Ranked(*expression, term));
+                continue;
+            }
             constant        = constant && term.constant;
             if (constant) terms.push_back(*term.constant);
             total           = k == first              ? term
@@ -4210,6 +4274,7 @@ private:
             places_[name] = *outer;
         else
             places_.erase(name);
+        if (expression->Reduction()) return Answer(Reduced(*expression, ranked, first));
         const auto exact = [&] {
             Value value = terms[0];
             for (std::size_t k = 1; k < terms.size(); ++k)
@@ -4217,6 +4282,39 @@ private:
             return value;
         };
         return Answer(constant ? Parted(Exact(exact), PartOf(total), {&total}) : total);
+    }
+    // A reduction's term, as the interpreter ranks it; under grad, for now, refused.
+    static const Code& Ranked(const SeriesExpression<Value>& series, const Code& term) {
+        if (!term.part.empty())
+            throw Reason(std::string("a derivative of ") + (series.Indexes() ? "an " : "a ") +
+                         series.Noun() + ", for now");
+        if (!term.constant && !term.Scalar())
+            throw Reason(std::string("the ") + series.Noun() + " needs single values, not a " +
+                         term.size.Described() + "; write it by its cells");
+        if (term.constant) (void)Exact([&] { return series.Ranked(*term.constant); });
+        return term;
+    }
+
+    // Unrolled as a sum is: a later term kept where it ranks strictly higher,
+    // the index beside it, NaN where a term is in a header that writes NaN.
+    Code Reduced(const SeriesExpression<Value>& series, const std::vector<Code>& terms, int first) {
+        if (std::all_of(terms.begin(), terms.end(), [](const Code& c) { return c.constant; }))
+            return Exact([&] {
+                std::vector<Value> values;
+                for (const Code& term : terms) values.push_back(*term.constant);
+                return series.Reduced(values, first);
+            });
+        Code kept = Shared(terms[0]), at = Literal(Value(Number(first)));
+        for (std::size_t k = 1; k < terms.size(); ++k) {
+            const Code        next = Shared(terms[k]);
+            const std::string a = Wrap(kept.cells[0], sum), b = Wrap(next.cells[0], sum);
+            const std::string i = Literal(Value(Number(first + static_cast<int>(k)))).cells[0].text;
+            const std::string test =
+                "(" + Nan(kept, next) + (series.High() ? a + " < " + b : b + " < " + a) + " ? ";
+            at   = Shared(Of(Cell(test + i + " : " + at.cells[0].text + ")", primary)));
+            kept = Shared(Of(Cell(test + b + " : " + a + ")", primary)));
+        }
+        return series.Indexes() ? at : kept;
     }
     PExpression<Value> visit_other(Expression<Value>*) override { throw Reason("this expression"); }
 
@@ -4757,6 +4855,11 @@ private:
         const bool given = (Recurrent(name) || Own(name) || Under(name)) &&
                            (Parametric(name, true).empty() || Given(name, n));
         const std::string parameter = given ? "" : Parametric(name);
+        const std::string assigned  = "reads " + parameter + ", which the host may assign after init";
+        // One with no default leaves init nothing to evaluate.
+        const bool unset = model_ && std::ranges::any_of(model_->parameters, [&](const auto& p) {
+            return p.name == parameter && p.index.empty() && !p.fallback;
+        });
         if (fresh && definition) {
             definitions_.Forget();
             definitions_.BeginEvaluation();
@@ -4765,8 +4868,7 @@ private:
                     PExpression<Value>(), std::make_shared<ValExpression<Value>>(Value(Number(n))));
                 const Value term = definition->Eval(at, definitions_, true);
                 if (!parameter.empty()) {
-                    unfolded_[{name, n}] =
-                        "reads " + parameter + ", which the host may assign after init";
+                    unfolded_[{name, n}] = assigned;
                 } else if (definitions_.histories || given) {
                     const std::vector<double> cells = Doubles(term);
                     if (std::all_of(cells.begin(), cells.end(), Finite))
@@ -4775,7 +4877,9 @@ private:
                         unfolded_[{name, n}] = "gives a term no " + Real() + " holds";
                 }
             } catch (const std::runtime_error& error) {
-                if (definitions_.histories || given || Under(name))
+                if (unset)
+                    unfolded_[{name, n}] = assigned;
+                else if (definitions_.histories || given || Under(name))
                     unfolded_[{name, n}] = std::string("gives none: ") + error.what();
             }
         }

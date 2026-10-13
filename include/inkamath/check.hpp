@@ -15,6 +15,7 @@
 #include <stdexcept>
 #include <string>
 #include <tuple>
+#include <unordered_map>
 #include <variant>
 #include <vector>
 
@@ -134,6 +135,7 @@ public:
         std::map<std::pair<std::string, int>, std::vector<std::optional<Value>>> again;
         for (std::uint64_t seed = 1; seed <= 3; ++seed) {
             Number::Disturbance disturbance{seed, seed == 1 ? 1 : seed == 2 ? -1 : 0};
+            std::map<int, std::unordered_map<MemoKey<Value>, Value, MemoHash<Value>>> limits;
             stack.Apart([&] {
                 const Setting<Number::Disturbance*> disturbing(Number::disturbed, &disturbance);
                 const Setting<decltype(stack.guards)> heard(stack.guards, hook);
@@ -142,6 +144,7 @@ public:
                     for (int n = first; n < first + steps; ++n) {
                         if (n < sequence.start && sequence.period > 1) continue;
                         now              = {&sequence, n};
+                        const Setting<decltype(stack.limits)> kept(stack.limits, &limits[n]);
                         const int  index = Floor(n - sequence.phase, sequence.period);
                         const Term term  = ask(sequence, index);
                         again[{instance + "." + sequence.name, index}].push_back(
@@ -258,14 +261,30 @@ public:
             if (!fresh && seen.heard < at->second.first) at->second = {seen.heard, line};
         };
         std::string table;
-        for (std::size_t k = 0; k < compiled.guarded.size(); ++k) {
-            const std::string& name = compiled.guarded[k];
+        // A sequence whose guards the step folds keeps no clause, and a run
+        // straddles them all the same (C361).
+        // None for a part of a group, which no scope names.
+        const auto named = [&](const Sequence& s) -> const Reference<Value>* {
+            if (!s.unnamed) return Resolve(stack, definition, s.name);
+            const std::size_t dot = s.name.rfind('.');
+            const auto        at  = made.find(s.name.substr(0, dot));
+            if (at == made.end()) return nullptr;
+            const auto found = at->second->names.find(s.name.substr(dot + 1));
+            return found == at->second->names.end() ? nullptr : found->second.get();
+        };
+        std::vector<std::string> straddled = compiled.guarded;
+        for (const auto& s : compiled.sequences)
+            if (std::find(straddled.begin(), straddled.end(), s.name) == straddled.end() &&
+                named(s))
+                straddled.push_back(s.name);
+        for (std::size_t k = 0; k < straddled.size(); ++k) {
+            const std::string& name = straddled[k];
+            const bool         kept = k < compiled.guarded.size();
             const auto found = std::find_if(compiled.sequences.begin(), compiled.sequences.end(),
                                             [&](const auto& s) { return s.name == name; });
-            const std::size_t       dot = name.rfind('.');
-            const Reference<Value>& reference =
-                found->unnamed ? *made.at(name.substr(0, dot))->names.at(name.substr(dot + 1))
-                               : Resolve(stack, definition, name);
+            const Reference<Value>* const own = named(*found);
+            if (!own) throw std::runtime_error("the instance has no sequence " + name);
+            const Reference<Value>&  reference = *own;
             const auto&              clauses   = reference.Clauses();
             const std::string        id = std::to_string(k), count = std::to_string(clauses.size());
             // A term chosen cell by cell is reported cell by cell; the clause
@@ -285,8 +304,10 @@ public:
                 rank.push_back(
                     std::to_string(p.general() && p.guarded() ? tried++ : clauses.size()));
             }
-            data += Array("const char* const", "written_" + id, clauses.size() + 1, written);
-            data += Array("const int", "rank_" + id, clauses.size() + 1, rank);
+            if (kept) {
+                data += Array("const char* const", "written_" + id, clauses.size() + 1, written);
+                data += Array("const int", "rank_" + id, clauses.size() + 1, rank);
+            }
             // At another rate, the clause of the latest term computed, none before.
             const auto term = [&](int n) {
                 return found->period > 1 && n < found->start
@@ -321,6 +342,7 @@ public:
                         margin.push_back(distance ? Double(distance->Inexact().real()) : "-1.0");
                     }
                 }
+                if (!kept) continue;
                 data += Array("const int", "clause_" + at, steps, want);
                 data += Array("const double", "margin_" + at, steps * clauses.size(), margin);
                 data += "static int taken_" + at + "[" + std::to_string(steps) + "];\n";
@@ -374,6 +396,15 @@ public:
         out += " * term, 2 none, 3 one before the start, 4 one that is no finite double,\n";
         out += " * 5 none, the interpreter out of steps;\n";
         out += " * 'about' is each term's estimate, or none where every one is 0. */\n";
+        const std::string place = "k, cols, " + std::string(tensors ? "rows, " : "") + "cells);\n";
+        out += "static void cell_(const char* in, const char* name, int k, int cols, " + rows +
+               "int cells) {\n    printf(\"%s%s\", in, name);\n";
+        if (tensors)
+            out +=
+                "    if (cells > rows * cols)\n        printf(\"[%d,%d,%d]\", k % cells / "
+                "(rows * cols) + 1, k % (rows * cols) / cols + 1, k % cols + 1);\n    else ";
+        out += std::string(tensors ? "" : "    ") + "if (cells > 1)\n";
+        out += "        printf(\"[%d,%d]\", k % cells / cols + 1, k % cells % cols + 1);\n}\n\n";
         out += "static int hold_(const char* name, int cols, " + rows + "int cells, int from,\n";
         out += "                 const " + CompileC::Real() + "* got, const double* want,\n";
         out += "                 const unsigned char* known, const char* const* why,\n";
@@ -381,7 +412,7 @@ public:
         out += "    double worst = 0.0, most = 0.0" + std::string(floats ? ", units = 0.0" : "") +
                ";\n";
         out += "    int    past  = -1, compared = 0, spent = -1, more = 0" +
-               std::string(floats ? ", measured = 0" : "") + ";\n";
+               std::string(floats ? ", measured = 0, most_k = 0" : "") + ";\n";
         out += "    for (int k = 0; k < " + std::to_string(steps) + " * cells; ++k) {\n";
         out += "        const double difference = fabs(" + got + " - want[k]);\n";
         out += "        const int    n = " + std::to_string(first) + " + k / cells;\n";
@@ -398,19 +429,15 @@ public:
         // term of 0 a unit says nothing, so none is counted there.
         if (floats)
             out +=
-                "            if (want[k] != 0.0) {\n                units = fmax(units, "
-                "ldexp(difference, 23 - ilogb(fmax(fabs(want[k]), ldexp(1.0, -126)))));\n"
-                "                measured = 1;\n            }\n";
+                "            if (want[k] != 0.0) {\n                const double u = "
+                "ldexp(difference, 23 - ilogb(fmax(fabs(want[k]), ldexp(1.0, -126))));\n"
+                "                if (u > units) most_k = k;\n"
+                "                units    = fmax(units, u);\n                measured = 1;\n"
+                "            }\n";
         out += "            if (e > most) most = e;\n";
         out += "            if (past < 0 && e > " + tol + " * (1.0 + fabs(want[k]))) past = n;\n";
         out += "            continue;\n        }\n";
-        out += "        printf(\"%s\", name);\n";
-        if (tensors)
-            out +=
-                "        if (cells > rows * cols)\n            printf(\"[%d,%d,%d]\", k % cells / "
-                "(rows * cols) + 1, k % (rows * cols) / cols + 1, k % cols + 1);\n        else ";
-        out += std::string(tensors ? "" : "        ") + "if (cells > 1)\n";
-        out += "            printf(\"[%d,%d]\", k % cells / cols + 1, k % cells % cols + 1);\n";
+        out += "        cell_(\"\", name, " + place;
         out += "        if (known[k] == 3)\n";
         out += "            printf(\": none at %d, where the interpreter gives %.17g\", n,\n";
         out += "                   want[k]);\n";
@@ -447,7 +474,15 @@ public:
         out += "                break;\n            }\n";
         out += spent + "        printf(\"\\n\");\n        return 1;\n    }\n";
         out += "    printf(\"%s: within %.2g\", name, worst);\n";
-        if (floats) out += "    if (measured) printf(\", %.2g units of a float\", units);\n";
+        // From 2^23 units, as a term lost whole or of the other sign, where (DESIGN.md).
+        if (floats)
+            out +=
+                "    if (measured) printf(\", %.2g units of a float\", units);\n"
+                "    if (units >= 8388608.0) {\n        const int k = most_k;\n"
+                "        if (cells > 1) cell_(\" in \", name + " +
+                std::to_string(instance.size() + 1) + ", " + place +
+                "        printf(\" at step %d\", " + std::to_string(first) +
+                " + k / cells);\n    }\n";
         out += "    if (from > " + std::to_string(first) + ") printf(\", from %d\", from);\n";
         out += "    if (most > 0.0)\n";
         out +=
@@ -489,10 +524,14 @@ private:
             if (auto* compare = dynamic_cast<CompareExpression<Value>*>(&guard)) {
                 const Value a = compare->m_e1()->accept(evaluator);
                 const Value b = compare->m_e2()->accept(evaluator);
-                if (a.Size().rows * a.Size().cols != 1 || b.Size().rows * b.Size().cols != 1)
-                    return std::nullopt;
-                const Number difference = a(1, 1) - b(1, 1);
-                return difference < Number(0) ? Number(0) - difference : difference;
+                if (a.Size() != b.Size()) return std::nullopt;
+                // Of two matrices, the farthest cells', as every cell must meet.
+                Number far(0);
+                for (std::size_t c = 0; c < a.Size().count(); ++c) {
+                    const Number d = a.data()[c] - b.data()[c];
+                    far            = std::max(far, d < Number(0) ? Number(0) - d : d);
+                }
+                return far;
             }
             if (auto* logic = dynamic_cast<LogicExpression<Value>*>(&guard)) {
                 const bool both = logic->Conjunction();
@@ -511,7 +550,7 @@ private:
     }
 
     // A sequence of the instance, from its name in the struct, 'h.low.v'.
-    static const Reference<Value>& Resolve(ReferenceStack<Value>& stack,
+    static const Reference<Value>* Resolve(ReferenceStack<Value>& stack,
                                            const Definition& definition, const std::string& name) {
         const Scope<Value>* scope = stack.InstanceScope(definition);
         std::size_t         at    = 0;
@@ -522,9 +561,9 @@ private:
         }
         if (scope) {
             const auto found = scope->names.find(name.substr(at));
-            if (found != scope->names.end()) return *found->second;
+            if (found != scope->names.end()) return found->second.get();
         }
-        throw std::runtime_error("the instance has no sequence " + name);
+        return nullptr;
     }
 
     static std::string Flips(int first, int steps) {
