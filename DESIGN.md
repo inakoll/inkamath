@@ -1877,6 +1877,7 @@ closures need one anyway, and can bring it.
 | C362 `[fixed]` | **A single value read past its cell through a function's parameter was refused in words not its own.** A parameter with no default and an input with no size compile as single values, and a cell read past one is refused by its name (C83, C144), but not through a parameter, as `iekf.ink`'s `blk(X_n)` reads X, whose X_0 is X0: "row 1, column 2 is outside a 1x1 matrix"; nor through a sequence that reads such a parameter, `X_n = A` with `X_n[1, 2]`. The refusal now follows a call's argument as written where the call is, and a sequence's parameters as its inputs: "X reads X0, a single value, as riekf gives it no default". No header, check program or golden moves. In 28 lines of `compile.hpp`, 3 of comment, and 8 removed; `test/cli.cmake`'s `compile_unstated_argument` holds it. |
 | C363 `[fixed]` | **A halving recursion with a base compiled in time cubic in its index.** With `v(x)_0 = x`, `v(x)_k \| k > 999 = x` and `v(x)_k = v(x/2)_(k+1)`, `v(x_n)_999` took 96 s to compile, and `w(x)_k = w(x/2)_(k-1)` with a base at 0, read at 1000, over 60 s to be refused 64 deep. Not exponential, nor a key missing: each term reads one with arguments of its own, so each of the 64 arguments' fills from the base ran again at each read of one of its terms, each term failed throwing again, 64 times 1000 squared. The fill now tries a term once for each depth, as a failure is kept by its depth: 1.4 s and 1.3 s. No header, check program or golden moves, the 242 check programs integration's byte for byte. Found reviewing *recursion from the tip*. In 21 lines of `compile.hpp`, 3 of comment, and 4 removed; `test/cli.cmake`'s `compile_c363` holds it. |
 | C364 `[fixed]` | **A cycle of three or more sequences, its terms before the stream its guards', was refused where it read an input, and compiled in time exponential in its length.** With `a_n \| n < 0 = 1`, `a_n = b_(n-1)/2`, b and c alike and `c_n = a_(n-1)/2 + x_n`, compiling a compiles b and c to read them, and a's read of b was recorded only once b was compiled; so c, compiled first, did not reach itself, was not taken for a recurrence whose terms before the stream init folds (C343), and was computed again at -1 (C71), where it reads x_-1: "b_0 reads x_-1, before the stream, where x has no history", where the interpreter gives a_0 = 1/2. A cycle of two closes on a sequence still compiling, read from its window, and compiles. With no input, the cycle compiled, each term before the stream computed again at each read, so one whose terms read the next twice took 7.6 s to compile at 14 sequences and over 100 at 18. A read is now known to `Reaches` while what it reads compiles: 0.02 s at 40. No golden, expected header or check program moves; a cycle of three or more with no input is written shorter, its terms before the stream folded by init as a cycle of two's are. In 17 lines of `compile.hpp`, 2 of comment, and 5 removed; `compile/history.ink`'s `cycled` and `test/cli.cmake`'s `history_cycled` and `history_cycled_long` hold it. |
+| C365 `[fixed]` | **A cell of a matrix product was answered where another cell's operand is refused.** `Product` shares an operand's cells under names, and a name was not known to hold NaN where its value may, as a call's is (C189): with h a limit that does not converge, `(A*[lim h(x_n), 1; 0, 1])[1, 2]` answered 3 from step 5, where the interpreter refuses the product. Loops in generated code read the operand's own text, so from 27 multiplications the step refused it and below did not. A shared cell that may be NaN is now marked as `Called` marks one. No golden, expected header or check report moves; `dare`'s check program tests an inverse's cells it read untested. In 7 lines of `compile.hpp`, 1 of comment, and 4 removed; `compile/nan.ink`'s `kd` holds it. Found by the implementation review of loops. |
 
 **Measure instructions, not the clock.** One of those changes made the matrix
 workload 20 per cent slower by the clock and not by a single instruction: with
@@ -10857,10 +10858,311 @@ After an external review of README, MANIFESTO and the conformance suite
 (2026-10-12): its directions, ranked. Its open questions are in
 `MANIFESTO.md`.
 
-- **Loops in generated code**, a phase of its own, its spec and cost in
-  lines first: MANIFESTO's intermediate form, for a step now written out
-  whole (a transformer's 90 to 100 s at -O2, 256 KB of stack). It largely
-  supersedes value numbering (*Shared at every value written twice*, `[done]`).
+- `[done]` **Loops in generated code**, a phase of its own: increments 1 to 3
+  specified, about 220 lines, and 4 and 5, some 700, deferred (the owner,
+  2026-10-13). Each increment is a refactor of headers: no golden,
+  `--check` report or refusal moves, and every value is the same double,
+  a NaN's sign and payload aside, which C leaves to the compiler.
+
+  Where the loops are lost. A value is a `Code`, its `cells` one C
+  expression each, row by row, and every operation writes them one by
+  one: a product sums the inner dimension for each cell (`Product`);
+  arithmetic pairs cells (`Cellwise`); a definition by cells compiles each
+  cell again (`Cells`, `Walk`, `CellOf`); a sum with constant bounds
+  unrolls, up to 1,000 terms; the tape sweeps adjoints cell by cell, each
+  optional and with its condition (`Into`, `Sparse`, `Swept`). Loops are
+  printed only where they are fixed C: the inverse's helper, a limit's
+  test of its steps, a term's NaN fill. So a header's size, build time
+  and stack follow its cells. At fefd26b the RIEKF's 12-state filter,
+  `riekf`, was 574,672 bytes, 34 per cent dot products declared as
+  temporaries and 26 the terms' assignments; the exploration's transformer
+  step, `tf`, 9,985,465, the split's loads and stores 25 and 34 per cent,
+  products 21 and 17, the sweep's sums under a clause's condition 11 and
+  8, reads tested for NaN 9 and 9.
+
+  Decided:
+  - **The form is a looped temporary**: an array declared and filled by a
+    loop nest, its cells read `t2_[3][4]`, atoms to every reader. A
+    `Code` stays its cells. Each loop is written by the operation that
+    makes it, which knows its kind: over `b_`, `i_` and `j_` the cells,
+    parallel; over `p_` a sum in the definitions' order, a reduction.
+    That is MANIFESTO's intermediate form at its smallest: an OpenMP or
+    SIMD printer would be a mode of these few writers, a pragma each.
+  - **1, matrix products** (`Product`), a value's and forward mode's
+    parts: from 27 multiplications, rows by columns by inner by slices,
+    so a 3x3 by a 3x3 loops and a 2x2 by a 2x2 stays written out. (The
+    study wrote that a 3x3 by a 3x3 stays out, but measured with it
+    looped: `swing` 110,250 bytes, 113,056 at 27, 178,982 with every
+    product looped; what pays at 27 is `riekf`, 123,359 at 28 rather than
+    112,982.) Only where a list takes temporaries, as `Shared`'s.
+    In the RIEKF's step, Phi times a block matrix:
+
+            double t13_[12][12] = {{m_->X[1][0][0], m_->X[1][0][1], m_->X[1][0][2], 0.0, 0.0, ...}, ...};
+            double t14_[12][12];
+            for (int i_ = 0; i_ < 12; ++i_)
+                for (int j_ = 0; j_ < 12; ++j_) {
+                    double s_ = m_->Phi[i_][0] * t13_[0][j_];
+                    for (int p_ = 1; p_ < 12; ++p_) s_ = s_ + m_->Phi[i_][p_] * t13_[p_][j_];
+                    t14_[i_][j_] = s_;
+                }
+
+    A single cell is an array of one, `[1][1]`, so the nest has one form.
+  - **An operand is an array or is made one**: read in place where its
+    cells are one array's, `base[i][j]` or `base[b][i][j]` at their
+    places, as a term's (`m_->P[1]`), a parameter's, an inverse's or a
+    looped temporary's are; transposed, `base[j][i]`, with its
+    subscripts swapped (`m_->A[p_][i_]`); a matrix met by a tensor
+    without `b_`. Anything else is declared as an array, `double t13_[..]
+    = {...}`, its cells written as now, as an inverse's matrix is; that
+    replaces `Product`'s sharing of each operand cell.
+  - **Bit for bit**: the same operations on the same operands in the same
+    order, `s_` from the first product and then `s_ = s_ + a*b`, as C
+    parses `a*b + c*d + e*f`. A literal stays an operand: `0.0` times a
+    NaN or an infinity in `Phi` is NaN in the array's loop as `0.0 * x`
+    was written out. Contracted, it is not: Clang fuses `a*b + c*d` at
+    its first product, the loop only at its second, so with an FMA
+    (-mfma, any AArch64) Clang's default and GCC's in GNU C move the
+    RIEKF's step in its last bits; the header warns of it, and the checks
+    build with contraction off. A compiler may vectorise across cells,
+    not across a sum without -ffast-math.
+  - **NaN by name**: an array joins `nan_temporaries_` where `MayNan`
+    reads any operand cell, or an operand array is in it, or a cell's
+    text writes NaN, as an inverse's does (C308): `t5_`, whose
+    cells are `(t4_ ? NAN : ...)`, and every product read from it. So
+    `Nan`, `Called` and C189's and C335's tests read its name as they
+    read the text it replaces. No may-NaN flag per cell.
+  - **Declared as any temporary**, by `Declare`, keyed by its operands'
+    arrays, their transposition and slicing, and its extent: one product
+    once a list, `tN_`, a limit's own `vN_`; hoisted before a limit's walk
+    where neither operand walks (`Invariant`), and in a setter where both
+    read parameters alone (`Derived`); dropped by `Kept` where no line
+    reads it.
+  - **2, the sweep's products** (`Sparse`), at 27 too, where every adjoint
+    of both operands is there, each operand's are all under a clause's
+    condition or none is, and one operand has no constant cell, so that no
+    term folds or is absent. Elsewhere written out: an absent adjoint
+    added as 0 turns -0.0 into +0.0. The adjoints, shared already, are
+    made an array; under conditions each term is added where its
+    condition holds, `c_ ? s_ + t : s_` from `f_ ? t : 0.0`, as `Into`
+    adds it, and where any held is the array's second slice, as in
+    `gated` below:
+
+            int t20_[3][3] = {{(t1_ != 0), (t2_ != 0), (t3_ != 0)}, ...};
+            double t21_[2][3][3];
+            for (int i_ = 0; i_ < 3; ++i_)
+                for (int j_ = 0; j_ < 3; ++j_) {
+                    int f_ = t20_[i_][0];
+                    double s_ = f_ ? t19_[i_][0] * m_->X[0][j_][0] : 0.0;
+                    for (int p_ = 1; p_ < 3; ++p_) {
+                        const int c_ = t20_[i_][p_];
+                        s_ = c_ ? s_ + t19_[i_][p_] * m_->X[0][j_][p_] : s_;
+                        f_ = f_ || c_;
+                    }
+                    t21_[0][i_][j_] = s_;
+                    t21_[1][i_][j_] = f_ ? 1.0 : 0.0;
+                }
+
+    Each cell's adjoint is then `t21_[0][i][j]`, there where
+    `t21_[1][i][j] != 0`, 0 elsewhere (`zero`), as `Into` leaves one; so
+    every condition is an int and an operand's are its conditions as
+    written. The slice holds 1.0 and 0.0, an int refused there by
+    -Wconversion in a float header.
+  - **3, a term's assignments and its whole-term NaN test** (`Assigned`),
+    for a term of 9 cells or more. Its assignments are one loop nest where
+    every cell's line is the first's with the first's subscript, wherever
+    it closes one, replaced by the cell's: the loop's line is the first's
+    with `[i_][j_]` there, its value-numbering marks dropped, so nothing
+    is shared out of the loop. A line holding any other mark rewritten
+    later, a hold's (`\x10`) or a term read back (`\x04`), is written
+    out, and so is one that calls a function, the header's, libm's or a
+    limit's, `isnan` aside: a loop would call it at each cell, where the
+    cells written out let a compiler call it once, 7 times slower by GCC
+    for `A[i, j]*cos(u_n)` (the review). The text is compared, not
+    parsed, so the loop is exactly the lines it replaces. So a value
+    `Numbered` shares, within a cell or across cells, is computed in each
+    looped term as written, arithmetic a compiler hoists, and 3 changes
+    neither the values nor the step's speed: it saves the header's bytes,
+    not its build time.
+    Its NaN test passes a NaN to the first cell and fills as now; the
+    RIEKF's P:
+
+            for (int i_ = 0; i_ < 12; ++i_)
+                for (int j_ = 0; j_ < 12; ++j_) m_->P[0][i_][j_] = m_->index_ == 0 ? m_->P0[i_][j_] : t55_[i_][j_] + t57_[i_][j_];
+            for (int i_ = 0; i_ < 12; ++i_)
+                for (int j_ = 0; j_ < 12; ++j_)
+                    if (isnan(m_->P[0][i_][j_])) m_->P[0][0][0] = NAN;
+            if (isnan(m_->P[0][0][0]))
+                for (int i_ = 0; i_ < 12; ++i_)
+                    for (int j_ = 0; j_ < 12; ++j_) m_->P[0][i_][j_] = NAN;
+
+    Each a statement whose only `;` ends it, which the split keeps whole.
+    (The study wrote "where its cells are an array's": read so, only K,
+    Rp, Nb and X loop, 90 of the RIEKF's 453 lines, where its 35 per
+    cent counted P and Pp, whose cells are `t3_[i][j] + t19_[i][j] *
+    m_->dt`.)
+  - **The written-out path stays** as the reference and the fallback:
+    each writer of loops declines where it does not apply.
+
+  How they meet the rest:
+  - **Value numbering** (`Numbered`): a loop's lines carry no marks; a
+    made array's cells keep theirs, so a value written twice there or
+    elsewhere is shared as before. It still saves, with 1 and 2, `riekf`
+    8.5 KB of 125 and `tq` 84 of 709: not superseded.
+  - **Hoisting** (`Invariant`): by `Declare`, as above; a product reading
+    the walk stays in the loop over `k_`, its nest inside.
+  - **The step split** (`Split`, 16 KB functions): a temporary's lines are
+    one text, never cut; an array a later part reads is carried in the
+    struct by `memcpy`, its member from its first line, `double
+    t2_[12][12];`, as an inverse's. `riekf` is no longer split after 1;
+    `tf` keeps 205 functions after 1 and 2, its stack 269 KB to 329 KB,
+    within MSVC's 1 MB.
+  - **C357's reread**: a looped product's cells are atoms, never shared
+    again for their length; a made array's cells are as `Reread` left
+    them.
+  - **The `Deep` cache**: a term refused deep after declaring a loop
+    leaves it unread, and `Kept` drops it as any; a term or call cached
+    (`terms_`, `memo_`) names its list's temporaries, as now.
+  - **Forward mode**: parts are made by `Product`, so loop with values;
+    reverse mode's tape is unchanged until 5.
+  - **`--float`**: arrays and accumulators are `double` rewritten;
+    **MSVC**: for-declarations, no VLA, arrays initialised from values as
+    inverse temporaries are; CI's job builds them. Clang 19's SLP
+    workaround stays.
+
+  Rejected:
+  - **LLVM IR, or a JIT**: a dependency (`CLAUDE.md` §5), where inkamath
+    writes source a host builds and a student reads.
+  - **Schedules after Halide or TACO**: a second language, and a
+    reordered sum loses `--check`'s bit for bit.
+  - **Unrolling kept, with a better split**: loads and stores are a third
+    of `tf` already, and size and time still follow the cells.
+  - **Rerolling the code as printed**: a parser of the C it writes, and
+    every cell still made. Increment 3 compares one term's lines, made as
+    now, at its own subscripts only.
+  - **A form of its own now**, a tree of loops printed: there is one
+    printer; the writers of loops are where a tree would come from.
+  - **Cellwise arithmetic as loops**: prototyped, 41 lines, `riekf` 1.3
+    per cent larger, its operands copied to be added. Fusing belongs to
+    a body compiled once, increment 4.
+  - **Every product looped**, `swing` 62 per cent larger; **below 27**,
+    a loop of some 350 bytes for a 2x2 product.
+  - **Constant operands as `static const` arrays**: the split reads a
+    carried member from its line's first words, `static` among them.
+  - **A condition as an int array apart from the values**: a name the
+    split would have to tie to its values'; a second slice instead.
+  - **A term's NaN test as a flag declared beside it**: a declaration
+    ends in `;` and the split would cut it from its loop; the first cell
+    carries it instead.
+
+  Measured on a prototype of 1 and 2, discarded, behind switches; each
+  step at -O2 -std=c99 by GCC 13.3 and Clang 18.1, one at a time, under
+  a shared load (`tf` took GCC 83 and 97 s at fefd26b); stack by
+  -fstack-usage; a step the median of three runs. Each model's first row
+  is fefd26b's, then after 1, then after 1 and 2:
+
+  | | bytes | functions, largest | stack | GCC | Clang | a step, GCC / Clang |
+  |---|---|---|---|---|---|---|
+  | `riekf` | 574,672 | 27, 106,496 | 11 KB | 4.9 s, 260 MB | 2.9 s, 129 MB | 7.7 / 6.1 µs |
+  | 1 | 116,722 | 4, 98,890 | 15 KB | 2.7 s, 106 MB | 1.5 s, 109 MB | 7.3 / 3.5 µs |
+  | `tq` | 969,267 | 61, 27,050 | 27 KB | 8.5 s, 318 MB | 4.3 s, 142 MB | 27.1 / 29.6 µs |
+  | 1 | 828,732 | 56, 25,875 | 32 KB | 8.1 s, 333 MB | 4.2 s, 135 MB | 24.0 / 29.5 µs |
+  | 1 and 2 | 624,222 | 47, 26,730 | 36 KB | 6.2 s, 197 MB | 3.7 s, 127 MB | 26.4 / 32.5 µs |
+  | `tf` | 9,985,465 | 377, 158,241 | 269 KB | 83-97 s, 818 MB | 95 s, 640 MB | 0.86 / 0.80 ms |
+  | 1 | 7,810,271 | 294, 155,769 | | 71 s, 658 MB | 80 s, 508 MB | 0.69 / 0.77 ms |
+  | 1 and 2 | 5,562,130 | 205, 152,921 | 329 KB | 53 s, 455 MB | 59 s, 394 MB | 0.48 / 0.61 ms |
+
+  Its `--compile` of `tf` 7.5 s and 186 MB, then 6.8 and 162, then 4.6
+  and 114: cells no longer made. Bit for bit: `riekf`'s X and P after
+  101 steps, `tq`'s W^Q after 301, `tf`'s J and accuracies to 300, by
+  GCC and Clang; all 286 check reports. At 9ed063c, the prototype rebased:
+  `riekf` 570,366 bytes to 112,982 after 1, unsplit; the transformer's
+  `inf` and `tune` in `test/compile/transformer.ink` 595,708 and 645,563
+  to 393,037 and 443,536, `tune` 435,219 after 2. Increment 3, not
+  prototyped, estimated by rewriting the prototype's headers as it would:
+  `riekf` about 79,000.
+
+  What moves: no golden, report, expected header (`test/compile/expected`)
+  or regex of `test/CMakeLists.txt`, and no excerpt, count or bound of
+  `test/cli.cmake`: all 303 reports and every cli case pass on the
+  rebased prototype, and with its headers rewritten as 3 would write
+  them, which also leaves every expected header byte for byte. The pinned
+  terms that 3 could loop have 2 or 4 cells; `layer.h`'s W line reads a
+  temporary of its own at each cell. The check programs' C and these
+  cli headers change: under 1, `inf.h`, `tune.h`, `wide.h`, `norm.h`,
+  `rod.h`, `mha.h`, `series.h`, `sums.h` and `tip.h`, which grows 13,505
+  bytes to 13,935; under 2, `norm.h`, `tune.h` and `wide.h` again; under
+  3, `c357.h` and `layer.h` too.
+
+  What remains of `tf` after 1 and 2: the split's loads and stores, 35
+  per cent; the cells of layer norm, softmax, ReLU and the residual sums,
+  a fifth; reads tested for NaN, 15 per cent: increments 4 and 5. They
+  stay deferred until a model needs them, the transformer at a real size
+  or PointNet: **4**, definitions by cells as a loop body, a body
+  compiled once with its places bound to the loop's indices, which lifts
+  the 1,000 terms, about 300 lines; **5**, the sweep through them, the
+  tape's nodes over a looped temporary, about 400. The step split and
+  value numbering stay until then at least. MANIFESTO's open question,
+  whether the form removes more than it adds, is answered for C: it
+  does not.
+
+  Cost, by `wc -l include/inkamath/*.hpp src/*`, 18,626 at 9ed063c: 1
+  about 75 lines, 2 about 95, 3 about 50; the prototype wrote 97 and 105
+  behind switches. Each stops and reports past one and a half times its
+  own: 112, 142 and 75.
+
+  Lands as three changes, in order, each a commit with `ctest` green and
+  its own part passing where it was skipped; each implemented to its own
+  stop before the next begins, an overrun stopping the work for a ruling
+  (3 does not read 2, but waits on its ruling); one implementation review
+  of the three against `integration`, one merge. With the third, the
+  three parts join `cli.cmake`'s regular cases and their skips go.
+
+  Specified in `test/compile/loops.ink`, read by `test/cli.cmake`'s
+  parts `loops1` to `loops3`, the tests `cli_loops_1` to `cli_loops_3`,
+  each skipped while its increment's code is written out as today, and
+  only then; now cases of `cli_2`. `spin`: A*x_(n-1) in place, A'*x_n transposed, (A + x_n)*x_n
+  with its operand made an array, a tensor by A slice by slice, B*v_(n-1)
+  written out; `solve`: an inverse's product read by name in a decision;
+  `dense`, `gated` and `diag`: the sweep's G*X', every adjoint there,
+  each under its unit's clause, and the diagonal only, written out. Every
+  expected line is written from the rule above, exact where it fixes a
+  temporary's number and `t#_` where it does not; 1's and 2's agree with
+  the prototype's but for its conditions, written `(t1_ != 0) != 0`, and
+  3's with the rewrite. Bounds: the RIEKF's header under 125,000 bytes
+  after 1 and 90,000 after 3, `inf.h` under 430,000 and `tune.h` under
+  480,000 after 1; `tf` is not in the tests, its measures are above.
+  Each header is built by the C compiler as a strict host would, -std=c11
+  -Wall -Wextra -Wpedantic -Wconversion -Wshadow -Werror, a float one
+  with -Wdouble-promotion.
+
+  Done as decided, in three commits on 18,675 lines after a2c7d70, and
+  the review's two fixes: 1 in 83 lines against 75, 2 in 82 against 95,
+  3 in 41 against 50, 18,881 in all, and C365's 3 after them. The review
+  marks no product NaN for a power's cell, whose `nan` names its exponent,
+  and writes out a term whose cells call a function; no size below moves.
+  Each left every golden, check report, expected header and pinned
+  excerpt as it was; stepped beside today's header, 101 steps of 8 draws
+  with infinities, NaNs and -0.0 by GCC and Clang without contraction,
+  `riekf`, `spin`, `solve`, `dense`, `gated`, `diag` and `swing` differ
+  in no value, `spin` in a NaN's bits only. Departures: a product's key
+  names its inner extent too, as a view of part of an array has the
+  array's name; an operand is read in place only where its first cell is
+  a primary, a negation being marked an atom; 2 writes out a product
+  under conditions of a single cell, its two slices having no place; the
+  whole-term NaN fill is written by the same loops as the rest, its text
+  unchanged; and the parts' cases joined `cli_2`, the RIEKF's bound the
+  third's. Sizes, then `--compile` and GCC 13.3's -O2 at a2c7d70 and
+  after, one run each under a shared load: `riekf` 570,366 bytes to
+  112,982 after 1 and 78,990 after 3, GCC 5.3 s and 256 MB to 2.1 s and
+  87 MB, unsplit; `inf` 595,708 to 393,037 and 390,104, GCC 8.8 s to
+  5.1 s; `tune` 645,563 to 443,536, 435,219 and 433,781, GCC 10.3 s to
+  6.4 s; `tf` 9,985,465 to 5,494,171, `--compile` 8.3 s and 186 MB to
+  6.1 s and 114 MB, GCC 97 s and 820 MB to 60 s and 476 MB, 354
+  functions to 179, its stack 269 KB to 324 KB.
+- **A split step's arrays read in place**: the split carries a looped array
+  whole and copies it into each later part that reads it, `tf`'s stack 269
+  KB to 324 KB; the remedy is reading the carried member in place and
+  scoping each sequence's temporaries.
 - `[done]` **A Jacobian by cells**, the idiom, compiled and held by `--check`:
   `J(x)[i<=3, j<=2] = (grad_(v = x) f(v)[i])[j]`, row i output i's
   gradient as a paper defines J_ij, so the layout is the user's. grad's own

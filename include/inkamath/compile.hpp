@@ -1371,12 +1371,15 @@ private:
 
     // A cell the compiler would write out more than once -- an operand of a
     // matrix product, a single value stretched over a matrix -- is computed once
-    // per step instead, into a temporary: the same value, in fewer lines.
+    // per step instead, into a temporary: the same value, in fewer lines; a
+    // name that may be NaN where the value may, as Called's (C365).
     Cell Shared(const Cell& cell) {
         if (cell.atom || !temporaries_) return cell;
-        return Atom(Declare(cell.text, [&](const std::string& name) {
-            return std::vector<std::string>{"const double " + name + " = " + cell.text + ";"};
-        }));
+        const std::string name = Declare(cell.text, [&](const std::string& t) {
+            return std::vector<std::string>{"const double " + t + " = " + cell.text + ";"};
+        });
+        if (MayNan(cell.text)) nan_temporaries_.insert(name);
+        return Atom(name);
     }
 
     // The same value is the same temporary within one sequence's step.
@@ -1931,10 +1934,93 @@ private:
         return Answer(ProductOf(Exactly(std::multiplies<>(), left, right), left, right));
     }
 
+    // DESIGN.md, loops in generated code: an operand's C array, read in place
+    // where its cells are one array's, or declared as one.
+    struct Indexed {
+        std::string base;
+        bool        transposed = false;
+        std::string At(bool sliced, const std::string& i, const std::string& j) const {
+            return base + (sliced ? "[b_]" : "") +
+                   (transposed ? "[" + j + "][" + i + "]" : "[" + i + "][" + j + "]");
+        }
+        std::string Key(bool sliced) const {
+            return base + (transposed ? "'" : "") + (sliced ? "s" : "");
+        }
+    };
+    static std::optional<Indexed> Viewed(const Code& code) {
+        const Cell&       first = code.cells[0];
+        const std::string at    = Subscript(code.size, 0);
+        if (!first.atom || first.level != primary || !first.text.ends_with(at)) return std::nullopt;
+        const std::string base  = first.text.substr(0, first.text.size() - at.size());
+        const Extent      other = {code.size.cols, code.size.rows, code.size.slices};
+        if (Texts(Array(base, code.size)) == Texts(code)) return Indexed{base};
+        if (Texts(Transposed(Array(base, other))) == Texts(code)) return Indexed{base, true};
+        return std::nullopt;
+    }
+    bool MayNan(const Code& code) const {
+        return std::ranges::any_of(
+            code.cells, [&](const Cell& c) { return MayNan(c.text) || nans_.count(c.text); });
+    }
+    Indexed Materialised(const Code& code, const std::string& type = "double") {
+        if (const auto viewed = Viewed(code)) return *viewed;
+        std::string init = code.size.slices ? "" : Rows(code);
+        for (std::size_t b = 0; b < code.size.slices; ++b)
+            init += (b ? ", {" : "{") + Rows(code, b) + "}";
+        const std::string name = Declare("array\x1f" + type + init, [&](const std::string& t) {
+            return std::vector<std::string>{type + " " + t + Dimensions(code.size) + " = {" + init +
+                                            "};"};
+        });
+        if (MayNan(code)) nan_temporaries_.insert(name);
+        return {name};
+    }
+    // The loops over a value's cells, the innermost last.
+    static std::vector<std::string> Loops(Extent size) {
+        std::vector<std::string> lines;
+        const auto               loop = [&](const std::string& v, std::size_t n) {
+            lines.push_back(std::string(4 * lines.size(), ' ') + "for (int " + v + " = 0; " + v +
+                                          " < " + std::to_string(n) + "; ++" + v + ")");
+        };
+        if (size.slices) loop("b_", size.slices);
+        loop("i_", size.rows);
+        loop("j_", size.cols);
+        return lines;
+    }
+    static std::string Places(Extent size) { return size.slices ? "[b_][i_][j_]" : "[i_][j_]"; }
+    // Each cell's sum in the order Product writes it, 'a*b + c*d' as C parses it.
+    Code Looped(const Code& left, const Code& right, Extent size) {
+        const Indexed     a = Materialised(left), b = Materialised(right);
+        const bool        ls = left.size.slices, rs = right.size.slices;
+        const std::size_t inner = left.size.cols;
+        const std::string key   = "product\x1f" + a.Key(ls) + "*" + b.Key(rs) + " " +
+                                size.toString() + " " + std::to_string(inner);
+        const std::string name = Declare(key, [&](const std::string& t) {
+            std::vector<std::string> lines = Loops(size);
+            const std::string        in(4 * lines.size(), ' ');
+            lines.insert(lines.begin(),
+                         "double " + t + (size.Single() ? "[1][1]" : Dimensions(size)) + ";");
+            lines.back() += " {";
+            lines.push_back(in + "double s_ = " + a.At(ls, "i_", "0") + " * " +
+                            b.At(rs, "0", "j_") + ";");
+            if (inner > 1)
+                lines.push_back(in + "for (int p_ = 1; p_ < " + std::to_string(inner) +
+                                "; ++p_) s_ = s_ + " + a.At(ls, "i_", "p_") + " * " +
+                                b.At(rs, "p_", "j_") + ";");
+            lines.push_back(in + t + Places(size) + " = s_;");
+            lines.push_back(in.substr(4) + "}");
+            return lines;
+        });
+        if (MayNan(left) || MayNan(right)) nan_temporaries_.insert(name);
+        return size.Single() ? Of(Atom(name + "[0][0]")) : Array(name, size);
+    }
+
     // Each left cell is read once for each right column, each right cell once
-    // for each left row.
+    // for each left row; from 27 multiplications, as a loop.
     Code Product(Code left, Code right) {
         if (left.Scalar() || right.Scalar()) return Broadcast(left, right, Multiplied);
+        if (temporaries_ && left.size.cols == right.size.rows) {
+            const Extent size{left.size.rows, right.size.cols, Slices(left, right)};
+            if (size.count() * left.size.cols >= 27) return Looped(left, right, size);
+        }
         if (right.size.cols > 1) left = Shared(left);
         if (left.size.rows > 1) right = Shared(right);
         const std::size_t slices = Slices(left, right);
@@ -3684,13 +3770,13 @@ private:
         return size.slices ? "[" + std::to_string(c / (size.rows * size.cols)) + "]" + at : at;
     }
 
-    // A matrix as C initialises an array, '{a, b}, {c, d}'.
-    static std::string Rows(const Code& code) {
+    // A matrix as C initialises an array, '{a, b}, {c, d}', or a tensor's slice.
+    static std::string Rows(const Code& code, std::size_t b = 0) {
         std::string rows;
         for (std::size_t i = 0; i < code.size.rows; ++i) {
             rows += i ? ", {" : "{";
             for (std::size_t j = 0; j < code.size.cols; ++j)
-                rows += (j ? ", " : "") + code.At(i, j).text;
+                rows += (j ? ", " : "") + code.At(i, j, b).text;
             rows += "}";
         }
         return rows;
@@ -4216,8 +4302,90 @@ private:
                 {g.cells.begin() + n * static_cast<std::ptrdiff_t>(b),
                  g.cells.begin() + n * static_cast<std::ptrdiff_t>(b + 1)}};
     }
+    // From 27 multiplications, a loop where every adjoint is there, each
+    // operand's all under a condition or none, and no term folds: each term
+    // added where its conditions hold, as Into adds it, and where any did the
+    // array's second slice (DESIGN.md, loops in generated code).
+    std::optional<Adjoints> Looped(const Adjoints& x, bool tx, const Adjoints& y, bool ty) {
+        const auto there = [](const Adjoints& a) {
+            return std::ranges::all_of(a.cells, [&](const Adjoint& c) {
+                return c && c->cells.size() == 1 && !c->moves == !a.cells[0]->moves;
+            });
+        };
+        const auto moving = [](const Adjoints& a) {
+            return std::ranges::none_of(a.cells,
+                                        [](const Adjoint& c) { return bool(c->constant); });
+        };
+        const auto code = [](const Adjoints& a, bool t, const auto& cell) {
+            Code c;
+            c.size = a.size;
+            for (const Adjoint& one : a.cells) c.cells.push_back(cell(*one));
+            return t ? Transposed(c) : c;
+        };
+        if (!temporaries_ || !there(x) || !there(y) || (!moving(x) && !moving(y)))
+            return std::nullopt;
+        const auto   own = [](const Code& c) { return c.cells[0]; };
+        const Code   l = code(x, tx, own), r = code(y, ty, own);
+        const Extent size{l.size.rows, r.size.cols, std::max(l.size.slices, r.size.slices)};
+        if (l.Scalar() || r.Scalar() || l.size.cols != r.size.rows ||
+            size.count() * l.size.cols < 27)
+            return std::nullopt;
+        Adjoints   out{size, {}};
+        const bool cx = bool(x.cells[0]->moves), cy = bool(y.cells[0]->moves);
+        if (!cx && !cy) {
+            const Code looped = Looped(l, r, size);
+            for (std::size_t k = 0; k < size.count(); ++k) out.cells.push_back(Single(looped, k));
+            return out;
+        }
+        if (size.Single()) return std::nullopt;
+        const auto flags = [&](const Adjoints& a, bool t) {
+            return Materialised(code(a, t, [&](const Code& c) { return Atom(Whether(c.moves)); }),
+                                "int");
+        };
+        const Indexed          a = Materialised(l), b = Materialised(r);
+        const bool             ls = l.size.slices, rs = r.size.slices;
+        std::optional<Indexed> fa, fb;
+        if (cx) fa = flags(x, tx);
+        if (cy) fb = flags(y, ty);
+        const auto when = [&](const std::string& p) {
+            std::string w = fa ? fa->At(ls, "i_", p) : "";
+            return fb ? w + (fa ? " && " : "") + fb->At(rs, p, "j_") : w;
+        };
+        const auto term = [&](const std::string& p) {
+            return a.At(ls, "i_", p) + " * " + b.At(rs, p, "j_");
+        };
+        const std::string key = "conditioned\x1f" + a.Key(ls) + "*" + b.Key(rs) + "|" +
+                                (fa ? fa->base : "") + "|" + (fb ? fb->base : "") + " " +
+                                size.toString() + " " + std::to_string(l.size.cols);
+        const std::string name = Declare(key, [&](const std::string& t) {
+            std::vector<std::string> lines = Loops(size);
+            const std::string        in(4 * lines.size(), ' ');
+            lines.insert(lines.begin(), "double " + t + "[2]" + Dimensions(size) + ";");
+            lines.back() += " {";
+            for (const std::string& line : std::vector<std::string>{
+                     "int f_ = " + when("0") + ";", "double s_ = f_ ? " + term("0") + " : 0.0;",
+                     "for (int p_ = 1; p_ < " + std::to_string(l.size.cols) + "; ++p_) {",
+                     "    const int c_ = " + when("p_") + ";",
+                     "    s_ = c_ ? s_ + " + term("p_") + " : s_;", "    f_ = f_ || c_;", "}",
+                     t + "[0]" + Places(size) + " = s_;",
+                     t + "[1]" + Places(size) + " = f_ ? 1.0 : 0.0;"})
+                lines.push_back(in + line);
+            lines.push_back(in.substr(4) + "}");
+            return lines;
+        });
+        if (MayNan(l) || MayNan(r)) nan_temporaries_.insert(name);
+        const Code values = Array(name + "[0]", size), held = Array(name + "[1]", size);
+        for (std::size_t k = 0; k < size.count(); ++k) {
+            Code one  = Single(values, k);
+            one.moves = std::make_shared<const Moving>(Moving{held.cells[k].text + " != 0", {}});
+            one.zero  = true;
+            out.cells.push_back(std::move(one));
+        }
+        return out;
+    }
     // x*y, either transposed, slice by slice where either is a tensor.
     Adjoints Sparse(const Adjoints& x, bool tx, const Adjoints& y, bool ty) {
+        if (auto looped = Looped(x, tx, y, ty)) return *looped;
         const std::size_t slices = std::max(x.size.slices, y.size.slices);
         Adjoints c{{tx ? x.size.cols : x.size.rows, ty ? y.size.rows : y.size.cols, slices}, {}};
         const std::size_t inner = tx ? x.size.rows : x.size.cols;
@@ -5735,6 +5903,50 @@ private:
                 assignments += before(From(name, sequence.general_reads));
             assignments += sequence.general[c] + ";\n";
         }
+        // From 9 cells, one loop where each cell's line is the first's at its
+        // own place, without the marks Numbered shares by; written out where a
+        // hold or a term read back is marked, or a function is called, which a
+        // loop would call at each cell (DESIGN.md, loops in generated code).
+        const std::size_t n     = sequence.general.size();
+        const std::string first = Subscript(sequence.size, 0), places = Places(sequence.size);
+        const std::vector<std::string> nest  = Loops(sequence.size);
+        const auto                     loops = [&](const std::string& in) {
+            std::string out;
+            for (const std::string& line : nest) out += (out.empty() ? "" : "\n") + in + line;
+            return out;
+        };
+        if (n >= 9) {
+            std::vector<std::size_t> starts;
+            for (std::size_t k = 0; k < assignments.size(); k = assignments.find('\n', k) + 1)
+                starts.push_back(k);
+            const auto line = [&](std::size_t l) {
+                std::string text =
+                    assignments.substr(starts[l], assignments.find('\n', starts[l]) - starts[l]);
+                std::erase_if(text, [](char ch) { return ch == '\x14' || ch == '\x15'; });
+                return text;
+            };
+            const auto at = [&](std::string text, const std::string& place) {
+                for (std::size_t k = 0; (k = text.find(first, k)) != std::string::npos; ++k)
+                    if (text[k + first.size()] != '[') text.replace(k, first.size(), place);
+                return text;
+            };
+            const std::size_t head  = starts.size() - n;
+            const std::string one   = line(head);
+            const auto        calls = [&] {
+                for (std::size_t k = 0; (k = one.find('(', k + 1)) != std::string::npos;)
+                    if (k > 5 &&
+                        (std::isalnum(static_cast<unsigned char>(one[k - 1])) || one[k - 1] == '_'))
+                        if (one.compare(k - 5, 5, "isnan")) return true;
+                return false;
+            };
+            bool same = one.find_first_of("\x04\x10") == std::string::npos && !calls();
+            for (std::size_t c = 1; same && c < n; ++c)
+                same = at(one, Subscript(sequence.size, c)) == line(head + c);
+            if (same)
+                assignments.replace(
+                    starts[head], std::string::npos,
+                    loops(indent) + " " + at(one, places).substr(indent.size()) + "\n");
+        }
         // Ahead of the cells too, a cell's clause where no base term stands.
         std::string picks;
         for (std::size_t c = 0; c < sequence.taken.size(); ++c) {
@@ -5744,22 +5956,19 @@ private:
             picks += sequence.taken[c] + ";\n";
         }
         assignments.insert(0, picks);
-        // The interpreter refuses a matrix term whole where it refuses a cell.
+        // The interpreter refuses a matrix term whole where it refuses a cell;
+        // from 9 cells, a NaN is passed to the first, which decides.
         if (aware_ && !scalar) {
-            std::string any;
-            for (std::size_t c = 0; c < sequence.general.size(); ++c)
-                any += std::string(c ? " || " : "") + "isnan(m_->" + name + "[0]" +
-                       Subscript(sequence.size, c) + ")";
-            const std::string b = sequence.size.slices ? "    " : "";
-            assignments += indent + "if (" + any + ")\n" +
-                           (b.empty() ? ""
-                                      : indent + "    for (int b_ = 0; b_ < " +
-                                            std::to_string(sequence.size.slices) + "; ++b_)\n") +
-                           indent + b + "    for (int i_ = 0; i_ < " +
-                           std::to_string(sequence.size.rows) + "; ++i_)\n" + indent + b +
-                           "        for (int j_ = 0; j_ < " + std::to_string(sequence.size.cols) +
-                           "; ++j_) m_->" + name + "[0]" + (b.empty() ? "" : "[b_]") +
-                           "[i_][j_] = NAN;\n";
+            const std::string cell = "m_->" + name + "[0]";
+            std::string       any  = "isnan(" + cell + first + ")";
+            if (n >= 9)
+                assignments += loops(indent) + "\n" + indent + std::string(4 * nest.size(), ' ') +
+                               "if (isnan(" + cell + places + ")) " + cell + first + " = NAN;\n";
+            else
+                for (std::size_t c = 1; c < n; ++c)
+                    any += " || isnan(" + cell + Subscript(sequence.size, c) + ")";
+            assignments += indent + "if (" + any + ")\n" + loops(indent + "    ") + " " + cell +
+                           places + " = NAN;\n";
         }
         return assignments;
     }

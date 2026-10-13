@@ -120,10 +120,14 @@ calls and the host calls again after assigning a parameter. The header opens
 with how to call it: the step's inputs, what each field holds after a step,
 and the parameters with their values. A parameter read where the step
 needs a constant, a size or an exponent, is compiled in instead, as the
-header says.
+header says. A matrix product of 27 multiplications or more, and a term
+whose cells are each written alike and call no function, are written as
+loops, every value the same, bit for bit, as written out cell by cell (a
+NaN's bits aside), unless the C compiler contracts a multiply and an add
+(`-ffp-contract`).
 A step too long for a compiler to optimise as one function is written as
 several, and what one computes and a later one reads is kept on the step's
-stack: about 256 KB for one training a transformer's 13 weights at once, which
+stack: about 320 KB for one training a transformer's 13 weights at once, which
 a thread with a small stack must allow for.
 `test/compile/pid.ink` is a PID controller, and `test/compile/expected/pid.h`
 is what it compiles to; `test/compile/kalman.ink` is a Kalman filter over

@@ -1521,6 +1521,199 @@ cannot compile c: a guarded cell of one term
 set(exit 1)
 check(compile_cellguards_refused)
 
+# Loops in generated code (DESIGN.md): compile/loops.ink's headers holding
+# the loops each increment writes, a temporary's number written '#' where
+# the rule does not fix it, each header built as a strict host's C.
+set(loops ${CMAKE_CURRENT_LIST_DIR}/compile/loops.ink)
+set(transformer ${CMAKE_CURRENT_LIST_DIR}/compile/transformer.ink)
+file(MAKE_DIRECTORY "${OUT}/float")
+function(pattern out line)
+    string(REPLACE "\\" "\\\\" line "${line}")
+    foreach(c "^" "$" "." "|" "?" "*" "+" "(" ")" "[" "]")
+        string(REPLACE "${c}" "\\${c}" line "${line}")
+    endforeach()
+    string(REPLACE "#" "[0-9]+" line "${line}")
+    set(${out} "${line}" PARENT_SCOPE)
+endfunction()
+function(like name file)
+    file(READ "${OUT}/${file}" text)
+    math(EXPR last "${ARGC} - 1")
+    foreach(i RANGE 2 ${last})
+        pattern(line "${ARGV${i}}")
+        if(NOT text MATCHES "${line}")
+            message(SEND_ERROR "${name}: ${file} does not hold\n${ARGV${i}}")
+        endif()
+    endforeach()
+endfunction()
+function(smaller name file bytes)
+    file(SIZE "${OUT}/${file}" size)
+    if(NOT size LESS ${bytes})
+        message(SEND_ERROR "${name}: ${file} is ${size} bytes, not under ${bytes}")
+    endif()
+endfunction()
+# As a host builds it whose flags refuse more than the checks' (C331).
+function(strict name file)
+    if(NOT CC_ID MATCHES "^(GNU|Clang|AppleClang)$")
+        return()
+    endif()
+    string(MAKE_C_IDENTIFIER "${file}" unit)
+    file(WRITE "${OUT}/${unit}.c" "#include \"${file}\"\n")
+    execute_process(COMMAND "${CC}" -std=c11 -Wall -Wextra -Wpedantic -Wconversion -Wshadow
+                            -Werror ${ARGN} -fsyntax-only "${unit}.c"
+                    WORKING_DIRECTORY "${OUT}" RESULT_VARIABLE failed
+                    ERROR_VARIABLE errors OUTPUT_VARIABLE errors)
+    if(failed)
+        message(SEND_ERROR "${name}: ${file} is no strict C11\n${errors}")
+    endif()
+endfunction()
+foreach(model spin solve dense gated diag raised turn)
+    set(args --compile ${loops} ${model} -o ${model}.h)
+    check(compile_loops)
+endforeach()
+
+# 1, products of 27 multiplications or more, read in place, transposed,
+# made an array, slice by slice; fewer written out.
+holds(compile_loops_products spin.h
+      [[    m_->v[0][0][0] = m_->index_ == 0 ? 1.0 : m_->B[0][0] * m_->v[1][0][0] + m_->B[0][1] * m_->v[1][1][0];
+    m_->v[0][1][0] = m_->index_ == 0 ? 2.0 : m_->B[1][0] * m_->v[1][0][0] + m_->B[1][1] * m_->v[1][1][0];
+]] [[    double t0_[2][3][3];
+    for (int b_ = 0; b_ < 2; ++b_)
+        for (int i_ = 0; i_ < 3; ++i_)
+            for (int j_ = 0; j_ < 3; ++j_) {
+                double s_ = m_->w[1][b_][i_][0] * m_->A[0][j_];
+                for (int p_ = 1; p_ < 3; ++p_) s_ = s_ + m_->w[1][b_][i_][p_] * m_->A[p_][j_];
+                t0_[b_][i_][j_] = s_;
+            }
+    m_->w[0][0][0][0] = m_->index_ == 0 ? 1.0 : t0_[0][0][0];
+]] [[    double t1_[3][3];
+    for (int i_ = 0; i_ < 3; ++i_)
+        for (int j_ = 0; j_ < 3; ++j_) {
+            double s_ = m_->A[i_][0] * m_->x[1][0][j_];
+            for (int p_ = 1; p_ < 3; ++p_) s_ = s_ + m_->A[i_][p_] * m_->x[1][p_][j_];
+            t1_[i_][j_] = s_;
+        }
+    m_->x[0][0][0] = m_->index_ == 0 ? 1.0 : t1_[0][0];
+]] [[    double t2_[3][3];
+    for (int i_ = 0; i_ < 3; ++i_)
+        for (int j_ = 0; j_ < 3; ++j_) {
+            double s_ = m_->A[0][i_] * m_->x[0][0][j_];
+            for (int p_ = 1; p_ < 3; ++p_) s_ = s_ + m_->A[p_][i_] * m_->x[0][p_][j_];
+            t2_[i_][j_] = s_;
+        }
+]] [[    double t3_[3][3] = {{m_->A[0][0] + m_->x[0][0][0], m_->A[0][1] + m_->x[0][0][1], m_->A[0][2] + m_->x[0][0][2]}, {m_->A[1][0] + m_->x[0][1][0], m_->A[1][1] + m_->x[0][1][1], m_->A[1][2] + m_->x[0][1][2]}, {m_->A[2][0] + m_->x[0][2][0], m_->A[2][1] + m_->x[0][2][1], m_->A[2][2] + m_->x[0][2][2]}};
+    double t4_[3][3];
+    for (int i_ = 0; i_ < 3; ++i_)
+        for (int j_ = 0; j_ < 3; ++j_) {
+            double s_ = t3_[i_][0] * m_->x[0][0][j_];
+            for (int p_ = 1; p_ < 3; ++p_) s_ = s_ + t3_[i_][p_] * m_->x[0][p_][j_];
+            t4_[i_][j_] = s_;
+        }
+]])
+# An inverse's product may be NaN, and is tested by its name.
+holds(compile_loops_nan solve.h
+      [[        solve_inverse3_(t0_);
+        double t1_[3][3];
+        for (int i_ = 0; i_ < 3; ++i_)
+            for (int j_ = 0; j_ < 3; ++j_) {
+                double s_ = t0_[i_][0] * m_->x[1][0][j_];
+                for (int p_ = 1; p_ < 3; ++p_) s_ = s_ + t0_[i_][p_] * m_->x[1][p_][j_];
+                t1_[i_][j_] = s_;
+            }
+        const int t2_ = isnan(t1_[0][0]) || isnan(t1_[0][1]) || isnan(t1_[0][2]) || isnan(t1_[1][0]) || isnan(t1_[1][1]) || isnan(t1_[1][2]) || isnan(t1_[2][0]) || isnan(t1_[2][1]) || isnan(t1_[2][2]);
+        m_->s[0] = isnan((t2_ ? NAN : t1_[0][0])) ? NAN : (t2_ ? NAN : t1_[0][0]) > 0.0 ? 1.0 : 0.0;
+]])
+# A power of a constant is NaN only where its exponent is, which names
+# nothing: its product's cell is read untested, as written out.
+like(compile_loops_raised raised.h [[    m_->y[0] = (t#_[0][1] > 0.0 ? 1.0 : 0.0);
+]])
+# The RIEKF's 12-state filter, 570,366 bytes at 9ed063c, 78,990 looped;
+# the transformer's forward pass and U trained, 595,708 and 645,563,
+# 390,104 and 433,781.
+set(args --compile "${CMAKE_CURRENT_LIST_DIR}/compile/iekf.ink" riekf -o riekf.h)
+check(compile_loops_riekf)
+smaller(compile_loops_riekf riekf.h 90000)
+foreach(model inf tune)
+    set(args --compile ${transformer} ${model} -o ${model}.h)
+    check(compile_loops_${model})
+endforeach()
+smaller(compile_loops_inf inf.h 430000)
+smaller(compile_loops_tune tune.h 480000)
+
+# 2, the sweep's G*X', G's adjoints made an array, X' read in place.
+like(compile_loops_sweep dense.h
+     [[    double t#_[3][3] = {{t#_, t#_, t#_}, {t#_, t#_, t#_}, {t#_, t#_, t#_}};
+    double t#_[3][3];
+    for (int i_ = 0; i_ < 3; ++i_)
+        for (int j_ = 0; j_ < 3; ++j_) {
+            double s_ = t#_[i_][0] * m_->X[0][j_][0];
+            for (int p_ = 1; p_ < 3; ++p_) s_ = s_ + t#_[i_][p_] * m_->X[0][j_][p_];
+            t#_[i_][j_] = s_;
+        }
+]])
+# Each term added where its condition holds, and where any did the
+# array's second slice.
+like(compile_loops_sweep gated.h
+     [[    double t#_[3][3] = {{t#_, t#_, t#_}, {t#_, t#_, t#_}, {t#_, t#_, t#_}};
+    int t#_[3][3] = {{(t#_ != 0), (t#_ != 0), (t#_ != 0)}, {(t#_ != 0), (t#_ != 0), (t#_ != 0)}, {(t#_ != 0), (t#_ != 0), (t#_ != 0)}};
+    double t#_[2][3][3];
+    for (int i_ = 0; i_ < 3; ++i_)
+        for (int j_ = 0; j_ < 3; ++j_) {
+            int f_ = t#_[i_][0];
+            double s_ = f_ ? t#_[i_][0] * m_->X[0][j_][0] : 0.0;
+            for (int p_ = 1; p_ < 3; ++p_) {
+                const int c_ = t#_[i_][p_];
+                s_ = c_ ? s_ + t#_[i_][p_] * m_->X[0][j_][p_] : s_;
+                f_ = f_ || c_;
+            }
+            t#_[0][i_][j_] = s_;
+            t#_[1][i_][j_] = f_ ? 1.0 : 0.0;
+        }
+]] [[    m_->W[0][0][1] = m_->index_ == 0 ? 0.0 : m_->W[1][0][1] + (0.0 - m_->eta * t#_[0][0][1]);
+]])
+# Some adjoints absent: written out, as today.
+like(compile_loops_sweep diag.h
+     [[    m_->W[0][0][1] = m_->index_ == 0 ? 0.0 : m_->W[1][0][1] + (0.0 - m_->eta * (isnan(t#_) ? NAN : t#_ * m_->X[0][1][0]));
+]])
+set(args --compile ${loops} gated --float -o float/gated.h)
+check(compile_loops_float)
+like(compile_loops_float float/gated.h [[    float t#_[2][3][3];
+]] [[            t#_[1][i_][j_] = f_ ? 1.0f : 0.0f;
+]])
+
+# 3, a term of 9 cells or more each the first's at its place, and its
+# whole-term NaN test; a term's cells otherwise, as today.
+holds(compile_loops_terms spin.h [[    for (int i_ = 0; i_ < 3; ++i_)
+        for (int j_ = 0; j_ < 3; ++j_) m_->y[0][i_][j_] = t2_[i_][j_];
+]] [[    for (int i_ = 0; i_ < 3; ++i_)
+        for (int j_ = 0; j_ < 3; ++j_) m_->z[0][i_][j_] = t4_[i_][j_];
+]] [[    m_->w[0][1][2][2] = m_->index_ == 0 ? 1.0 : t0_[1][2][2];
+]] [[    m_->x[0][2][2] = m_->index_ == 0 ? 9.0 : t1_[2][2];
+]])
+holds(compile_loops_terms solve.h [[    for (int i_ = 0; i_ < 3; ++i_)
+        for (int j_ = 0; j_ < 3; ++j_) m_->x[0][i_][j_] = m_->index_ == 0 ? m_->x0[i_][j_] : t4_[i_][j_];
+    for (int i_ = 0; i_ < 3; ++i_)
+        for (int j_ = 0; j_ < 3; ++j_)
+            if (isnan(m_->x[0][i_][j_])) m_->x[0][0][0] = NAN;
+    if (isnan(m_->x[0][0][0]))
+        for (int i_ = 0; i_ < 3; ++i_)
+            for (int j_ = 0; j_ < 3; ++j_) m_->x[0][i_][j_] = NAN;
+]])
+like(compile_loops_terms dense.h [[    for (int i_ = 0; i_ < 3; ++i_)
+        for (int j_ = 0; j_ < 3; ++j_) m_->W[0][i_][j_] = m_->index_ == 0 ? m_->W0[i_][j_] : m_->W[1][i_][j_] + (0.0 - m_->eta * (isnan(t#_) ? NAN : t#_[i_][j_]));
+    for (int i_ = 0; i_ < 3; ++i_)
+        for (int j_ = 0; j_ < 3; ++j_)
+            if (isnan(m_->W[0][i_][j_])) m_->W[0][0][0] = NAN;
+    if (isnan(m_->W[0][0][0]))
+]])
+# A line that calls a function, written out: a loop would call it at each
+# cell.
+like(compile_loops_terms turn.h [[    m_->x[0][0][1] = (t#_ ? NAN : m_->A[0][1]) * turn_cos(m_->u[0]) + (t#_ ? NAN : m_->B[0][1]) * turn_sin(m_->u[0]);
+]])
+foreach(file spin.h solve.h dense.h gated.h diag.h riekf.h)
+    strict(compile_loops_strict ${file})
+endforeach()
+strict(compile_loops_strict float/gated.h -Wdouble-promotion)
+
 if(PART EQUAL 2)
     return()
 endif()
