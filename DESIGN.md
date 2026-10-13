@@ -11169,6 +11169,9 @@ After an external review of README, MANIFESTO and the conformance suite
   Jacobian stays rejected unless a transcription shows a sweep per output
   too dear or the notation short. Already so: README's section on grad
   writes J(x), and `test/compile/grad.ink`'s `ekf` checks F and H by cells.
+  Six sweeps cost little: a 6x12 Jacobian of 12 joint values, each output
+  a sum of 12 products of a sine and a cosine, compiles in 1.1 s to 42 KB,
+  which GCC 13 -O2 builds in 0.9 s, 6.5 µs a step.
 - **Small, whenever**: *A maximum, minimum or argmax over an index*, `[done]`; a
   Cholesky factor in the prelude, for square-root filters, the solve being
   `A^-1*b` already and the Joseph form writable now.
