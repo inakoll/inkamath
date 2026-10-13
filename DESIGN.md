@@ -3304,6 +3304,104 @@ that exploring seven domains asked of the interpreter, by how many asked.
 - **A limit exact at an exact fixed point**: k-means reaches `C_3 == C_4`
   exactly, yet `lim C` is inexact and `frac lim C` refused.
 - **Matrix `==` and `<>` compiled**, refused as "a comparison of matrices".
+  The interpreter answers `R'*R == I3`, 1 or 0, and rotation and
+  estimation models write such checks: the rigid-body exploration's
+  quaternion session did (its friction 7), `spin.ink` measures the same
+  orthogonality as a sum of squares instead, and `eig([n 1; 1 2])[1]` is
+  refused for the prelude's `A' == A`.
+
+  What the interpreter means (`Matrix::compare`): two whole matrices are
+  equal or not, one truth. Equal where the shapes are and every cell is;
+  of two shapes 0, a matrix and a single value too; a NaN cell on either
+  side refused, `a comparison needs a number`, every cell asked before any
+  is compared; inexact where a cell read is (C241). `<` and its kin need
+  single values, `a comparison needs single values, not a 1x2 matrix`.
+  Under grad the sides are compared whole: where they are equal and
+  either moves, a comparison read as a value jumps, and an equality in a
+  guard takes a clause that holds only there (C73).
+
+  Decided:
+  - **`==` and `<>` alone**, as the interpreter has them: the conjunction
+    of the cells' `==`, row by row and slice after slice, `(a == 1.0 && b
+    == 0.0 && ...)`, and `!(...)` for `<>`; in a value `? 1.0 : 0.0` after
+    it and in a guard as is, as a single value's test is written. C's `==`
+    of two doubles is the interpreter's of its doubles.
+  - **Refused**: an order of matrices, in the interpreter's words, `a
+    comparison needs single values, not a 1x2 matrix`; and two shapes, `a
+    1x2 matrix compared with a single value, never equal`, where the
+    interpreter answers 0. That is a truth known before the step runs, the
+    trap *A matrix `==` a single value refused* (next) is to close in the
+    interpreter, Doyle's `ric(12) == 0`: not compiled for consistency with
+    what the interpreter happens to answer (CLAUDE.md §2).
+  - **NaN** (C189): in a header that writes NaN, NaN where any cell of
+    either side is, `Nan`'s test of a matrix's operands, as the interpreter
+    asks every cell before comparing; nothing in one that does not.
+  - **grad** (C73, C320): NaN where every cell meets and a side moves, in
+    a value for any comparison and in a guard for an equality, which of
+    matrices is every comparison: `Jumps` of the cells' conjunction, as a
+    single value's. One function, `Compared`, writes a comparison for a
+    value and for a guard's `Test`, which each wrote for one cell; for a
+    single value its text is today's.
+  - **`--check`**: the margin of a guard comparing matrices is the
+    farthest cells' distance, every cell having to meet for the truth to
+    turn; so a flip says "exactly on its threshold" where the
+    interpreter's matrices are equal. A single value's is its distance, as
+    today.
+  - **`--float` and `~`**: nothing. The float header compares floats as a
+    single value's does; exactness is the interpreter's, and `--check`
+    holds the step to it as to any truth.
+
+  Rejected:
+  - **Two shapes compiled as answered**, 0 or 1 behind a NaN test: as above.
+  - **An order cell by cell**: a matrix of truths nothing reduces, as
+    `matrix.hpp` says.
+  - **A tolerance**, `R'*R` near `I3`: the step's equality is the
+    interpreter's, and how near is the model's to write, as `spin.ink`'s
+    sum of squares or a maximum over the cells.
+  - **A pair of equal number cells dropped**, `1.0 == 1.0` of `[t, 1] ==
+    [1, 1]`: C folds it; a tidier header is not worth the lines.
+  - **A loop over two arrays**: a cell is an expression, not always an
+    array's, and every product's cell is written inline already.
+
+  What moves, on a prototype, discarded: no golden; none of the 309 C
+  files and headers the checks build, the expected headers and the
+  fuzzer's among them, byte for byte; two cli cases, the refusals naming
+  it. `compile_tensor_refused`'s `c`, `n*T > 1`, now in the interpreter's
+  words, `a comparison needs single values, not a 2x2x2 tensor`, which
+  `tensor.ink`'s list repeats; and `compile_eig_refused`'s `x`, which
+  compiles: a header of 1.7 MB, the prelude's bisections unrolled, whose
+  check program of 100 steps at `a_n = n/10` is written in 4.2 s, built
+  in 4 s by GCC 13 at -O0 and 20 at -O2, and reports within 8.9e-16. Not
+  made a check for that size; the comment above the case changes with it.
+
+  Measured on the prototype: `test/compile/orthogonal.ink`'s three
+  instances, and `rational` in float, report as its comments give them,
+  worked out apart in Python, in fractions and in the step's doubles and
+  floats: the step's rational rotation leaves SO(3) at its first step,
+  `R_1'*R_1` 1 + 4.4e-16 on the diagonal, and R is within 1.9e-14 of
+  exact over 100 steps. Its `R'*R == I3` is nine equalities, its check
+  program 41 KB.
+
+  About 15 lines: the prototype's 36 added and 21 removed, 6 of them
+  comment and 3; `compile.hpp` 11 net, `check.hpp`'s margin 4. 18,510
+  lines at c9aa165 by `wc -l include/inkamath/*.hpp src/*`, 18,525 on the
+  prototype; past 22 the implementation stops and reports.
+
+  Specified in `test/cli.cmake`'s `spec` part, run by `cli_spec`, skipped
+  while `--check orthogonal.ink rational` is refused as today, `cannot
+  compile k: a comparison of matrices`, and only then: the check programs
+  of `rational`, `inexact` and `probe` written, and of `rational` in
+  float; `same.h`, a header that writes NaN, testing both cells of `x_n`
+  for NaN and writing `x_n == [1; 2]` as `(x1 == 1.0 && x2 == 2.0) ? 1.0 :
+  0.0` and `<>` as its `!`; and an order and two shapes refused. With the
+  implementation the three instances join the checks and `rational` the
+  float ones, with the reports `orthogonal.ink` gives; the `spec` part and
+  `cli_spec` go; the two cli cases move as above; and README's paragraph
+  on the compiler gains: "Two matrices are compared whole, `R'*R == I3`
+  as the equalities of their cells: `test/compile/orthogonal.ink` has a
+  rational rotation the step takes out of SO(3) at its first step, which
+  the interpreter never does." No transcript in `test/data/spec`: the
+  language does not change.
 - **A matrix `==` a single value refused**, naming `0*M`: Doyle 1978's
   Riccati equation checked as `ric(12) == 0` answers 0, a matrix being
   equal to no single value, where its residual is the zero matrix and

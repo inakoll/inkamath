@@ -48,6 +48,46 @@ endfunction()
 # Read by cases in every part.
 set(inputs "${CMAKE_CURRENT_LIST_DIR}/compile/inputs.ink")
 
+# Specified, not yet built (DESIGN.md, a comparison of matrices compiled):
+# compile/orthogonal.ink's instances checked, two matrices equal where every
+# cell is, a test NaN where a cell is in a header that writes NaN, and an
+# order of matrices or two shapes refused. Skipped while a comparison of
+# matrices is refused, and only then.
+if(PART STREQUAL "spec")
+    set(orthogonal ${CMAKE_CURRENT_LIST_DIR}/compile/orthogonal.ink)
+    file(MAKE_DIRECTORY "${OUT}")
+    execute_process(COMMAND "${EXE}" --check ${orthogonal} rational -o rational.c
+                    WORKING_DIRECTORY "${OUT}" OUTPUT_QUIET ERROR_VARIABLE today
+                    RESULT_VARIABLE exit TIMEOUT ${CASE_TIMEOUT})
+    if(exit EQUAL 1 AND today MATCHES "cannot compile k: a comparison of matrices\n$")
+        message("compile_mateq: refused as today")
+        return()
+    endif()
+    unset(exit)
+    foreach(instance rational inexact probe)
+        set(args --check ${orthogonal} ${instance} -o ${instance}.c)
+        check(compile_mateq)
+    endforeach()
+    set(args --check ${orthogonal} rational --float -o rational_float.c)
+    check(compile_mateq)
+    file(WRITE "${OUT}/same.ink" "r(v) | v > 0 = v\nsame(x_n[j<=2]) = {\n"
+         "    e_n = x_n == [1; 2]\n    u_n = x_n <> [1; 2]\n    z_n = r(x_n[1])\n}\n")
+    set(args --compile same.ink same -o same.h)
+    check(compile_mateq)
+    set(meet "(m_->x[0][0][0] == 1.0 && m_->x[0][1][0] == 2.0) ? 1.0 : 0.0);")
+    holds(compile_mateq same.h "_ = isnan(m_->x[0][0][0]) || isnan(m_->x[0][1][0]);"
+          "_ ? NAN : ${meet}" "_ ? NAN : !${meet}")
+    file(WRITE "${OUT}/apart.ink" "c_n = [n, 1] < [2, 2]\nd_n = [n, 1] == 0\n"
+         "f_n = [n, 1] == [n; 1]\n")
+    set(args --compile apart.ink)
+    string(CONCAT stdout "cannot compile c: a comparison needs single values, not a 1x2 matrix\n"
+           "cannot compile d: a 1x2 matrix compared with a single value, never equal\n"
+           "cannot compile f: a 1x2 matrix compared with a 2x1 matrix, never equal\n")
+    set(exit 1)
+    check(compile_mateq)
+    return()
+endif()
+
 # The cases run as three tests of about equal time under the sanitizers: PART
 # 1 up to charpoly's refusal, 2 from it, 3 from eig's, and all where PART is
 # not given.
