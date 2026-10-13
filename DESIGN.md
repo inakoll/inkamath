@@ -11581,6 +11581,117 @@ After an external review of README, MANIFESTO and the conformance suite
   `rnn` 2.9e-12; `row` and `shut` 1.2e-10; `twonames` a 4.1e-10, b
   5.3e-9; each in float as in double; and the comments of `inset` and
   `layered`. Each cell scaled by its own, 7 lines fewer: 11 lines.
+- **`--check` lists which way each limit falls**: a guard reading a limit
+  that runs out does not hold, and the clause after is taken (*A clause for
+  a limit that does not converge*, above). That is fail-safe only where the
+  guarded clause is the risky one: `brake_n | lim nv(c_n) < 1 = 1` before
+  `brake_n = 0` skips the brake where the solver fails, and a run whose
+  solver never fails shows nothing of it. Approved by the owner.
+
+  Decided:
+  - **Always, from the code**: every guard the step compiles that reads a
+    limit, whether or not a walk ran out in the run. The direction is the
+    code's, and a solver failing is the rare case a hundred replayed steps
+    may never meet: `rootless`, whose walk is refused and never runs out,
+    is listed all the same.
+  - **The form**: a line a guarded clause, its definition named as a
+    per-term line names a sequence, `planned.u`, a function the same, a
+    definition of the file outside the model by its name alone; the limits
+    it reads, as the header's comments name them, `lim qp`, `sum_(k=1)`,
+    joined by `or`; the clause as written, and the clause tried after it:
+
+        planned.u: where lim qp runs out, 'u_n | abs(x_n + lim qp(x_n)) <= abs(x_n) = lim qp(x_n)' falls to 'u_n = -x_n/2'
+
+    `falls to NaN` where no clause comes after, as the step is NaN where
+    the interpreter refuses; `falls to NaN under grad` where the guard is
+    compiled only under grad, which refuses there, `tipped.r`; and `falls
+    to 'r(x, c) = 3*x', and to NaN under grad` where both. The clause
+    after is the next tried as the step tries them, the guarded in the
+    order written and then the one that always applies, for the same
+    terms or cells: never a base clause (C254), nor a term written whole
+    for a cell (a departure of the clause, above). A later guarded clause
+    is quoted as tried; the reader follows the chain from there.
+  - **Where**: last, after the per-term lines, sorted by name and then by
+    the clause's place. A flip or a straddle says what the run did and
+    comes before the values it explains; this says what the code does.
+    It fails nothing: the exit status is the run's.
+  - **Reads as the step reads**: through a function the guard calls only
+    where that function has no clause after, as its status is asked, so
+    `answered.y` and `buffered.brake` list nothing and the function's own
+    guard has its line, `answered.inner`, `buffered.gap`; one with none
+    lists both, `buffered.near` and `buffered.alarm`. A limit of
+    constants is folded, converging or refusing the model, so it has no
+    fallback and no line: `straddle.ink`'s `parted`, `founded` and
+    `folded` do not move. A limit in a sum's terms within a guard is the
+    guard's own, `coupled.y`.
+  - **Cells**: a line a clause, not a cell. `braked.wheels` is one line
+    though its guard is asked in each cell; `ranout.y`'s is asked in its
+    second alone, the first's guard folding true.
+  - **Float**: the same lines; the list is the code's.
+
+  Rejected:
+  - **Only where a walk ran out in the run**: a run's fact, which flips
+    and per-term lines already give; a model whose replayed inputs never
+    fail the solver would show nothing, the case the audit is for.
+  - **The steps where it ran out**, `at 1, 3, ...`: a second measure on a
+    line about the code, moving with the inputs.
+  - **A line per cell**: a cell has no clause of its own to audit, and
+    `wheels` would say the same thing twice.
+  - **Before the per-term lines**: between the run's flips and the values
+    they explain, which they would no longer precede.
+  - **A warning at `--compile`**: a header is built where no one reads it,
+    and `--compile` without `-o` lists refusals, among which a note reads
+    as one. `--check` is where a step is reviewed against its model.
+  - **A pragma** naming the safe clause: a second way to write what the
+    order of the clauses says, and the language could not check it, since
+    which value is safe is the model's, 1 for a brake and 0 for a throttle.
+  - **Ordering rules the compiler enforces**, refusing a guard reading a
+    limit before a clause not marked safe: for the same reason it cannot
+    know which is, and the MPC's fixed gain is neither by its form.
+
+  Found specifying: a function with a clause after, whose guarded value
+  reads the limit its guard reads, `gap(c) | lim nv(c) > 0 = lim nv(c)`,
+  gives that limit's status to a guard calling it, though the value is
+  read only where the walk settled. With `r_n | c_n < 2 = 1`, `y_n |
+  gap(c_n) < 1 and r_n == 1 = 1` and `y_n = 0`, at c_n = 2 the interpreter
+  refuses y and the step takes 'y_n = 0': `gapped.y: 0 at 1, where the
+  interpreter gives none: no clause of r applies`. A fix of its own, before
+  this, as `answered`'s ruling missed it: a clause's value asks no status
+  its own guard asked, about 10 lines on a prototype. Built on today's
+  statuses, the list would name `buffered.brake`, which cannot fall.
+
+  What moves, on a prototype, discarded: no golden, expected header or cli
+  case, and no check program's C but where such a guard is, by a line each.
+  Of the 263 instances in `test/compile`, seven list a guard, each report
+  ending with its lines in `test/CMakeLists.txt`: `fallback.ink`'s
+  `planned`, `held`, `ranout`, `tipped`, `columned` and `answered`, and
+  `straddle.ink`'s `equal`; their recorded comments with them. No float
+  check has such a guard.
+
+  About 60 lines: the prototype's 56 net, formatted and with no comment,
+  44 in `check.hpp` walking the instance's definitions and writing the
+  lines and 12 in `compile.hpp` recording each guard's limits by name and
+  whether under grad; then the file's own definitions and both grad forms.
+  19,049 lines at acb6fdc by `wc -l include/inkamath/*.hpp src/*`; past 90
+  the implementation stops and reports.
+
+  Specified in `test/CMakeLists.txt`: the seven reports above, each
+  skipped while it ends as today, and only then; and four instances in
+  `test/compile/fallback.ink`, likewise, whose comments give their reports.
+  `rootless` and `coupled` are `rooted` and `paired`, which had none;
+  `braked` a brake whose guard reads Newton's limit, the risky clause
+  first, beside `careful`, the safe order, and `wheels`, a clause per
+  cell; `buffered` the same through functions, `gap` with a clause after
+  and `near` without. Newton from 0 on x^3 - 2x + c in Python's fractions:
+  it settles at c = 1/2 and 1, at 0.25865202250415276 and
+  0.6180339887498949, and cycles 0, 1 at 2. With the implementation the
+  skips go, the seven comments gain their lines, and README's paragraph
+  on `--check` gains: "After the values it lists, from the code and not
+  the run, every guard the step compiles that reads a limit and the
+  clause tried where that limit runs out, so that a reviewer can see
+  which way each falls: `braked.brake: where lim nv runs out, 'brake_n |
+  lim nv(c_n) < 1 = 1' falls to 'brake_n = 0'` skips the brake where
+  Newton fails (`test/compile/fallback.ink`)."
 - **A gather, integer inputs, inputs present on some steps only**: their
   open questions first. The gather is *A cell at a computed whole index,
   compiled*.
