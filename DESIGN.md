@@ -9015,7 +9015,8 @@ checked: what it asked of the compiler, each with its smallest change.
     `max(a, b)` takes a's, a maximum being continuous where its choice
     steps as abs, max and min are. An argmax is constant: 0, and refused
     where the term kept ties with another and either moves, `the argmax
-    jumps at x = 3`, as a comparison's sides equal and moving are. Reverse mode passes the kept term's node.
+    jumps at x = 3`, as a comparison's sides equal and moving are. Reverse
+    mode passes the kept term's node.
   - **The C**: unrolled as a sum is, each kept value and index a
     temporary so that nothing nests, `(t0_ < x ? x : t0_)` and `x < t0_`
     for a minimum, the index `(t0_ < x ? 3.0 : t1_)`. The term kept is a
@@ -9026,10 +9027,10 @@ checked: what it asked of the compiler, each with its smallest change.
     every term that reads it*), a NaN term not kept included (C189);
     elsewhere `<` alone, as the prelude's `max` helper. Refused where the
     interpreter refuses at compile time, no terms or a constant term it
-    refuses, and past `max_terms`. A derivative through one compiled is refused, `a
-    derivative of a maximum, for now`: the kept part beside each kept
-    value, and in reverse mode a node chosen, for a step no model compiles
-    yet, PointNet's max being inference.
+    refuses, and past `max_terms`. A derivative through one compiled is
+    refused, `a derivative of a maximum, for now`: the kept part beside
+    each kept value, and in reverse mode a node chosen, for a step no model
+    compiles yet, PointNet's max being inference.
   - **tex**: `\max_{k=1}^{3}`, `\min`, `\operatorname*{arg\,max}_{j=1}^{m}`
     and `arg\,min`, set as a sum.
 
