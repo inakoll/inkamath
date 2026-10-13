@@ -11719,15 +11719,17 @@ After an external review of README, MANIFESTO and the conformance suite
   and `equal`, and their programs' C by a `puts` a line; no golden, header,
   cli case or other report. Departures: C368, fixed before, since C367
   asked a value's status where its call is NaN and `buffered.brake` would
-  have been listed, with `voided` to hold it; the limits are ordered by
-  where the clause writes them, and one read only through a function
-  comes after, by name; and a guard of an instance the model writes
-  unnamed (C84) is listed as its terms are named, `covered`, which the
-  spec did not say. 75 lines, 7 of comment, 19,070 to 19,145 from
-  b63c7ca: 51 in `check.hpp` and 24 in `compile.hpp`; with C368's 17,
-  92 from 328c497, past the stop at 90 by the review's fix of C368: a
-  guard holding by an `or` that never read its limit, `ored`, lost its
-  value's status, and a correct answer outweighs two lines.
+  have been listed, with `voided` to hold it; and a guard of an instance
+  the model writes unnamed (C84) is listed as its terms are named,
+  `covered`, which the spec did not say. The limits were ordered by where
+  the clause wrote them, which took `lim nv` for the start of `lim nvx`
+  and missed `sum_(k = 1)`; by the review's ruling they are first read
+  first, as specified, a limit read through a function where the call
+  is, `spelled`. 79 lines, 6 of comment: 45 in `check.hpp` and 34 in
+  `compile.hpp`; with C368's 17, 96 from 328c497, 19,064 to 19,160, past
+  the stop at 90 by the review's fix of C368, where a guard holding by an
+  `or` that never read its limit, `ored`, lost its value's status: a
+  correct answer outweighs two lines, and the first-read order four.
 
 After a second review (2026-10-13), which took the Jacobian by cells and
 the clause for a limit that does not converge as done, the order from here:

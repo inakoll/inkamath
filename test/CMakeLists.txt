@@ -249,7 +249,8 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brin
                          fallback:tipped fallback:columned fallback:answered
                          fallback:rootless fallback:coupled fallback:chained fallback:gapped
                          fallback:middled fallback:braked fallback:buffered fallback:bent
-                         fallback:faraway fallback:voided fallback:covered fallback:ored)
+                         fallback:faraway fallback:voided fallback:covered fallback:ored
+                         fallback:spelled)
     string(REPLACE ":" ";" checked ${checked})
     list(POP_FRONT checked file instance count)
     set(name ${instance})
@@ -929,6 +930,8 @@ set_tests_properties(check_bent_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^bent: 100 steps from 0, against exact values until 0 and inexact ones from there\nbent\\.y: within 0\nbent\\.z: within 0\nbent\\.r: where lim nv runs out, 'r\\(x, c\\) \\| lim nv\\(c\\) > 0 = x\\^2' falls to 'r\\(x, c\\) = 3\\*x', and to NaN under grad\n$")
 set_tests_properties(check_faraway_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^faraway: 100 steps from 0, against exact values until 0 and inexact ones from there\nfaraway\\.w: within 0\nfaraway\\.y: within 0\nfaraway\\.w: where lim nv or lim hv runs out, 'w_n \\| lim nv\\(c_n\\) > 0 and lim hv\\(c_n\\) > 0 = 1' falls to 'w_n = 0'\noutside: where lim nf runs out, 'outside\\(c\\) \\| lim nf\\(c\\) > 0 = 1' falls to 'outside\\(c\\) = 5'\n$")
+set_tests_properties(check_spelled_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^spelled: 100 steps from 0, against exact values until 0 and inexact ones from there\nspelled\\.v: within 0\nspelled\\.w: within 0\nspelled\\.v: where sum_\\(k=1\\) or lim nv runs out, 'v_n \\| sum_\\(k = 1\\) c_n/2\\^k > 0 and lim nv\\(c_n\\) > 0 = 1' falls to 'v_n = 0'\nspelled\\.w: where lim nvx or lim nv runs out, 'w_n \\| lim nvx\\(c_n\\) > 0 and lim nv\\(c_n\\) > 0 = 1' falls to 'w_n = 0'\n$")
 set_tests_properties(check_chained_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^chained: 100 steps from 0, against exact values until 0 and inexact ones from there\nchained\\.y: within 0\nchained\\.y: where lim s runs out, 'y_n \\| lim s\\(u_n\\) > 0 = 1' falls to 'y_n \\| u_n > 0 = 2'\n$")
 set_tests_properties(check_gapped_report PROPERTIES PASS_REGULAR_EXPRESSION

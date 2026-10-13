@@ -400,16 +400,10 @@ public:
                         if (same(clauses[q].parameters, true)) next = clauses[q].written;
                     for (const auto& o : clauses)
                         if (next.empty() && same(o.parameters, false)) next = o.written;
-                    // As written, those read through a function after.
-                    const std::string&       written = clauses[c].written;
-                    std::vector<std::string> limits(found->second.limits.begin(),
-                                                    found->second.limits.end());
-                    std::stable_sort(limits.begin(), limits.end(),
-                                     [&](const auto& x, const auto& y) {
-                                         return written.find(x) < written.find(y);
-                                     });
-                    std::string read;
-                    for (const std::string& l : limits) read += (read.empty() ? "" : " or ") + l;
+                    const std::string& written = clauses[c].written;
+                    std::string        read;
+                    for (const std::string& l : found->second.limits)
+                        read += (read.empty() ? "" : " or ") + l;
                     std::string to = next.empty() ? "NaN" : "'" + next + "'";
                     if (!found->second.plain)
                         to = "NaN under grad";

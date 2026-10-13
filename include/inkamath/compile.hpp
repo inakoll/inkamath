@@ -69,8 +69,8 @@ public:
         // Each guard reading a limit, the limits by name, and whether it was
         // compiled outside grad and under it, for --check to list (DESIGN.md).
         struct Fallen {
-            std::set<std::string> limits;
-            bool                  plain = false, grad = false;
+            std::vector<std::string> limits;
+            bool                     plain = false, grad = false;
         };
         std::map<const Expression<Value>*, Fallen> fallen;
     };
@@ -866,6 +866,8 @@ private:
         };
         // A call that answered ran out of nothing, whichever limit it read.
         const auto told = [&](Code code) {
+            for (const std::string& status : asked)
+                if (read_) read_->insert(read_->end(), what_[status].begin(), what_[status].end());
             if (!statuses_ || asked.empty()) return code;
             if (!code.Scalar()) {
                 statuses_->insert(asked.begin(), asked.end());
@@ -2332,7 +2334,9 @@ private:
     // it never does.
     std::optional<std::string> Condition(const PExpression<Value>& guard) {
         std::set<std::string>                 asked, unsure;
+        std::vector<std::string>                 read;
         const Setting<std::set<std::string>*> asking(statuses_, &asked), doubting(unsure_, &unsure);
+        const Setting<std::vector<std::string>*> reading(read_, &read);
         const Setting<bool> guarding(guarding_, true), moved(moved_, false);
         const Code          code = Quiet(guard);
         chosen_                  = chosen_ || moved_;
@@ -2345,9 +2349,13 @@ private:
             return std::string();
         }
         if (!asked.empty()) {
-            Compiled::Fallen& fallen = fallen_[guard.get()];
+            Compiled::Fallen&     fallen = fallen_[guard.get()];
+            std::set<std::string> limits;
             for (const std::string& status : asked)
-                fallen.limits.insert(what_[status].begin(), what_[status].end());
+                limits.insert(what_[status].begin(), what_[status].end());
+            for (const std::string& l : read)
+                if (limits.count(l) && !std::count(fallen.limits.begin(), fallen.limits.end(), l))
+                    fallen.limits.push_back(l);
             (grad_.empty() ? fallen.plain : fallen.grad) = true;
         }
         // Under grad no clause after is taken: grad refuses there (DESIGN.md).
@@ -3322,6 +3330,7 @@ private:
                 ") != 0.0";
             statuses_->insert(status);
             what_[status] = {what};
+            if (read_) read_->push_back(what);
         }
         if (scalar) return Answer(Looping(Of(Cell(called + ")", primary))));
         const std::string out = Declare("lim\x1f" + called, [&](const std::string& t) {
@@ -6304,6 +6313,7 @@ private:
     std::set<std::string> asked_;  // and the statuses it asked
     std::set<std::string>  sure_;   // of those, the ones read where it holds (C368)
     std::set<std::string>* unsure_             = nullptr;  // read on an 'or''s right alone
+    std::vector<std::string>*        read_ = nullptr;  // the limits a guard reads, first read first
     bool                             roots_    = false;  // whether C may take a root of x < 0
     bool moved_  = false;  // whether a value with a part was compiled, as a guard asks
     bool chosen_ = false;  // whether a guard of the chain compiled read one

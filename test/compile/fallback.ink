@@ -373,3 +373,25 @@ afar(c_n) = {
     y_n = outside(c_n)
 }
 faraway = afar(c_n = 1 + mod(n, 2))
+
+# The limits first read first: a name that begins another's is not it, and
+# a sum is named as the header names it however it is spaced. nvx(c)
+# settles at 2c and the sum at c; at even n, where Newton settles, v_n and
+# w_n are 1, and at odd n 0. Checked:
+#
+#     spelled: 100 steps from 0, against exact values until 0 and inexact ones from there
+#     spelled.v: within 0
+#     spelled.w: within 0
+#     spelled.v: where sum_(k=1) or lim nv runs out, 'v_n | sum_(k = 1) c_n/2^k > 0 and lim nv(c_n) > 0 = 1' falls to 'v_n = 0'
+#     spelled.w: where lim nvx or lim nv runs out, 'w_n | lim nvx(c_n) > 0 and lim nv(c_n) > 0 = 1' falls to 'w_n = 0'
+spelling(c_n) = {
+    nv(c)_0 = 0
+    nv(c)_k = nv(c)_(k-1) - (nv(c)_(k-1)^3 - 2*nv(c)_(k-1) + c)/(3*nv(c)_(k-1)^2 - 2)
+    nvx(c)_0 = 0
+    nvx(c)_k = nvx(c)_(k-1)/2 + c
+    v_n | sum_(k = 1) c_n/2^k > 0 and lim nv(c_n) > 0 = 1
+    v_n = 0
+    w_n | lim nvx(c_n) > 0 and lim nv(c_n) > 0 = 1
+    w_n = 0
+}
+spelled = spelling(c_n = 1 + mod(n, 2))
