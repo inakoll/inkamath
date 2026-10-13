@@ -9070,7 +9070,7 @@ checked: what it asked of the compiler, each with its smallest change.
   `wc -l include/inkamath/*.hpp src/*`, 18,477 on the prototype; past 218
   the implementation stops and reports.
 
-  Specified in `test/data/spec/reduce.ink`, 80 entries replayed by the
+  Specified in `test/data/spec/reduce.ink`, 78 entries replayed by the
   `spec` suite, 65 failing today: exact and inexact terms, ties and signed
   zeros, the body's reach, nesting, argmax read as an index and an inexact
   one refused there, a pooling by cells, the refusals, the words left
