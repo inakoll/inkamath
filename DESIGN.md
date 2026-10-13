@@ -8992,9 +8992,9 @@ checked: what it asked of the compiler, each with its smallest change.
     where it ranks strictly higher, by `<`. The value is a term, so exact
     where the terms are; a tie keeps the first, and argmax its first
     index, as `max(a, b)` keeps a, NumPy's and PyTorch's argmax the first,
-    and C's `<` does unasked. Over two terms it is `max(a, b)`, slopes and
-    words included. -0 is not below +0, so a maximum of the two is the
-    first, a minimum too.
+    and C's `<` does unasked. Over two terms it is `max(a, b)`, slopes
+    included, its refusals in its own words. -0 is not below +0, so a
+    maximum of the two is the first, a minimum too.
   - **Inexact**: a comparison that read an inexact term makes what it
     chose inexact, as a guard's clause (C241); with two terms or more, one
     inexact term makes the maximum and the index inexact, `max_(k=1)^2 [1;
