@@ -11660,3 +11660,111 @@ review:
     compiles today's headers to PTX, one instance per thread;
   - the agent experiment's design, outside the repository, when the
     owner chooses.
+
+After a §9 transcription of the CTM tutorials (branch `ctms`), which wrote
+a product of polynomials or a value of one on nearly every page:
+
+- **Polynomials in the prelude, `conv(p, q)` and `polyval(p, x)`**: the
+  product of two polynomials and a polynomial's value, each polynomial a
+  column, highest power first, as `charpoly` writes one and `hurwitz`
+  reads one; MATLAB's and numpy's names, and the pages'. The design,
+  measured on a prototype:
+
+      conv(p[j<=a], q[k<=b])[r<=a+b-1] = sum_(j=max(1, r+1-b))^(min(a, r)) p[j]*q[r+1-j]
+      polyval(p[j<=m], x[r<=n, c<=n]) = polyvalh(p, x)_m
+      polyvalh(p, x)_1 = p[1]*x^0
+      polyvalh(p, x)_k = polyvalh(p, x)_(k-1)*x + p[k]*x^0
+
+  **Written in inkamath**: c_r the sum of p_j q_(r+1-j) over the j where
+  both exist, so columns of unequal length need no padding; the value by
+  Horner's rule, b_k = b_(k-1) x + p_k, a recurrence as charpoly's
+  Faddeev and LeVerrier is. Exact of exact coefficients at an exact x.
+  No language change.
+
+  **The convention, refused rather than guessed**: a column. A single
+  value is a column of one, the constant polynomial, so the motor page's
+  `conv(num, numa)` with num = 50 K is `conv(50*K, [1; 1])`. A row is
+  refused by the signature, `conv takes q[k<=b], not a 1x2 matrix`, as
+  `hurwitz` refuses one: it is MATLAB's convention, and reading it as a
+  column would guess that it was meant as one. So are a matrix and a
+  tensor. There is no empty case, a matrix having at least one cell; the
+  zero polynomial is 0.
+
+  **The length is a + b - 1**: a leading zero is kept, as MATLAB's conv
+  keeps it. Trimming would make a length depend on a value, which a
+  compiled shape cannot.
+
+  **Complex coefficients** are multiplied as written, not conjugated:
+  (s + 5 - i)(s + 5 + i) is `conv([1; 5 - i], [1; 5 + i])`, [1; ~10;
+  ~26], inexact as anything i touches. At a complex x, Horner's rule in
+  complex doubles: the motor's |P(10i)|, the page's 0.0139.
+
+  **At a square matrix, `polyval` is the matrix polynomial**, sum p_j
+  A^(m-j), MATLAB's polyvalm and not its cellwise polyval. A paper's p(A)
+  is this one: Cayley and Hamilton's, and Ackermann's phi(A), which the
+  motor's pole placement needs and `ctms.ink` writes out as `A^2 + 10*A +
+  26*A^0`. The language already reads a function of a matrix as the
+  matrix operation (MANIFESTO.md, *Tensors*); the cellwise value is
+  written by cells, `Y[j<=n, k<=m] = polyval(p, X[j,k])`. It costs x^0
+  alone: a matrix plus a number adds it to every cell, so p_k x^0 is what
+  makes the constant p_k I. Refusing would cost a guard and lose both
+  uses. A matrix not square is refused by the signature, `polyval takes
+  x[r<=n, c<=n], not a 1x3 matrix`.
+
+  **Compiled**, each is written where it is called, as a function of the
+  prelude of a matrix is: conv's cells as sums whose bounds are constants
+  once the cell is, polyval as m - 1 products and sums. At a single value
+  that moves, x^0 is `pow(x, 0.0)`, 1 for every x in C, a NaN too (C11
+  F.10.4.4), which GCC 13 and Clang 18 fold away. No C++ for either.
+
+  **grad** follows the definitions, products and sums: with respect to x,
+  to the coefficients, or to a gain inside them. x^0's derivative is 0 at
+  0 too, so p'(0) is p's coefficient of x.
+
+  Rejected:
+  - **MATLAB's row convention**: `charpoly`, `hurwitz` and `schurcohn`
+    take and give a column, and a second convention would be a second
+    way to say one thing; accepting both is the guess refused above.
+  - **A polynomial type**: a value of its own, with its printing, a sum
+    that pads the shorter and conv for its product, which the
+    interpreter, grad and the compiler would each learn, where a column
+    already is one and the prelude reads it. Its one gain, a sum of
+    unequal lengths, is a block literal here: `[0; q]`.
+  - **A sum of powers**, `sum_(j=1)^m p[j]*x^(m-j)`, the exploration's:
+    one line, but a power of x per coefficient, `pow` in C. Horner's
+    rule is m - 1 products, as MATLAB's and numpy's polyval compute it.
+  - **polyval cellwise at a matrix, or refused there**: above.
+  - **conv over a helper that reads 0 outside a column**, as `hurwitzc`
+    does: more lines, and products by 0 compiled.
+  - **Out of scope**, as decided: `roots`, a padding helper, `care` and
+    `dare`, `expm`, and step-response metrics.
+
+  What moves: nothing recorded. On the prototype every golden, expected
+  header, report and `test/cli.cmake` case passes, 536 tests. The files
+  that define a conv of their own, `minibatch.ink`, `compile/conv.ink`
+  and `tensorgrad.ink`, and `kernel.ink` and `decimate.ink` whose model
+  is named conv, define it for themselves, as a session may any name of
+  the prelude. README's section 2 gives them a paragraph after
+  charpoly's example, with the spec's closed loop and Cayley and
+  Hamilton as its own; sections 1 and 5 name both. README is replayed,
+  so it comes with them.
+
+  7 lines by `wc -l include/inkamath/*.hpp src/*`, 19,064 to 19,071 at
+  17ab090: the prelude's 4 and 3 of comment. Past 10 the implementation
+  stops and reports.
+
+  Specified in `test/data/spec/polyconv.ink`, 59 entries replayed by the
+  spec suite, 39 failing by design, those passing definitions and a
+  column's display: the pendulum's products from `pend/invPID.html` and
+  `pend/invRL.html`, its closed loop against `ctms.ink`'s, the motor's
+  from `motor/freq2.html` and its Ackermann gain, the edges above, and
+  grad. Exact values in Python's fractions, each product again by
+  collecting powers and each value by a sum of powers; |P(10i)| in mpmath
+  at 30 digits. All 59 pass on the prototype. Compiled in
+  `test/compile/polyconv.ink`: `tune`, a PI loop's closed-loop
+  denominator by conv, its value and its derivative in the gain, and its
+  companion matrix's polyval, 0 by Cayley and Hamilton, each number a
+  multiple of 1/8 below 64, exact in double and in float.
+  `test/cli.cmake`'s spec part writes its check program in each, skipped
+  while polyval is not defined; the reports its comments give join the
+  checks with them. The spec suite and `cli_spec` return until they pass.
