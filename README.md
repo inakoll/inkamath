@@ -164,7 +164,8 @@ solves each step of a stiff equation by Newton's method, a sequence with
 parameters under `lim`, and `test/compile/logistic.ink` trains a logistic
 regression, its `exp` a limit written in inkamath, as `test/compile/softmax.ink`
 writes softmax and cross-entropy, `log` being Newton's method on `exp`. A
-guard that reads a limit whose walk runs out does not hold, as interpreted:
+guard that reads a limit whose walk runs out does not hold, as interpreted,
+whatever else it reads, so the action to take in doubt is the later clause:
 `test/compile/fallback.ink` is an MPC whose plan falls back to a fixed gain
 where projected gradient cycles. A
 sequence with parameters read at a constant index, `f(x)_K`, is written out
@@ -1036,6 +1037,10 @@ is the mathematics, and no built-in choice would be right for every series.
 A guard that reads a limit that does not converge does not hold, and the
 clause after it is tried, so a solver's answer is taken where it passes the
 paper's own test of it, a residual or a bound, and a fallback elsewhere.
+The action to take in doubt is therefore the later clause:
+`brake(x) | lim d(x) < margin = 1` before `brake(x) = 0` does not brake where
+the walk runs out, and `brake(x) | lim d(x) >= margin = 0` before
+`brake(x) = 1` does.
 Newton's method on x^3 - 2x + 2 settles from -2, and from 0 cycles 0, 1, 0,
 ... without end:
 
