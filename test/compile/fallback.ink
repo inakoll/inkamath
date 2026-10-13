@@ -261,6 +261,24 @@ voiding(c_n) = {
 }
 voided = voiding(c_n = 1 + mod(n, 2))
 
+# But a guard may hold by an 'or' that never read its limit: at odd n gap's
+# value reads Newton where it cycles, and y falls to 0, as interpreted.
+# Checked:
+#
+#     ored: 100 steps from 0, against exact values until 0 and inexact ones from there
+#     ored.y: within 0
+#     ored.gap: where lim nv runs out, 'gap(c) | c > 1 or lim nv(c) > 0 = lim nv(c)' falls to 'gap(c) = 0'
+#     ored.y: where lim nv runs out, 'y_n | gap(c_n) < 1 = 1' falls to 'y_n = 0'
+oring(c_n) = {
+    nv(c)_0 = 0
+    nv(c)_k = nv(c)_(k-1) - (nv(c)_(k-1)^3 - 2*nv(c)_(k-1) + c)/(3*nv(c)_(k-1)^2 - 2)
+    gap(c) | c > 1 or lim nv(c) > 0 = lim nv(c)
+    gap(c) = 0
+    y_n | gap(c_n) < 1 = 1
+    y_n = 0
+}
+ored = oring(c_n = 1 + mod(n, 2))
+
 # A brake whose guard reads a solver's limit, the risky clause first: where
 # Newton runs out, 'brake' falls to 0 and does not brake. 'careful' asks the
 # opposite question, and falls to braking. Newton from 0 on x^3 - 2x + c

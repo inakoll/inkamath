@@ -249,7 +249,7 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brin
                          fallback:tipped fallback:columned fallback:answered
                          fallback:rootless fallback:coupled fallback:chained fallback:gapped
                          fallback:middled fallback:braked fallback:buffered fallback:bent
-                         fallback:faraway fallback:voided fallback:covered)
+                         fallback:faraway fallback:voided fallback:covered fallback:ored)
     string(REPLACE ":" ";" checked ${checked})
     list(POP_FRONT checked file instance count)
     set(name ${instance})
@@ -937,6 +937,8 @@ set_tests_properties(check_middled_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^middled: 100 steps from 0, against exact values until 0 and inexact ones from there\nmiddled\\.r: within 0\nmiddled\\.y: within 0\nmiddled\\.g: where lim nv runs out, 'g\\(c\\) \\| lim nv\\(c\\) > 0 = 1' falls to 'g\\(c\\) \\| c > 0 = 2'\nmiddled\\.y: where lim nv runs out, 'y_n \\| g\\(c_n\\) < 3 and r_n == 1 = 1' falls to 'y_n = 0'\n$")
 set_tests_properties(check_voided_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^voided: 100 steps from 0, against exact values until 0 and inexact ones from there\nvoided\\.y: within 0\nvoided\\.gap: where lim nv runs out, 'gap\\(c\\) \\| lim nv\\(c\\) > 0 = lim nv\\(c\\)' falls to 'gap\\(c\\) = \\(c - c\\)/\\(c - c\\)'\n$")
+set_tests_properties(check_ored_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^ored: 100 steps from 0, against exact values until 0 and inexact ones from there\nored\\.y: within 0\nored\\.gap: where lim nv runs out, 'gap\\(c\\) \\| c > 1 or lim nv\\(c\\) > 0 = lim nv\\(c\\)' falls to 'gap\\(c\\) = 0'\nored\\.y: where lim nv runs out, 'y_n \\| gap\\(c_n\\) < 1 = 1' falls to 'y_n = 0'\n$")
 set_tests_properties(check_twonames_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^twonames: 100 steps from 0, against exact values until 0 and inexact ones from there\ntwonames\\.a: within [0-9.e-]+${about}\ntwonames\\.b: within [0-9.e-]+${about}\n$")
 set_tests_properties(check_fir_report PROPERTIES PASS_REGULAR_EXPRESSION
