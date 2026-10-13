@@ -10909,9 +10909,12 @@ After an external review of README, MANIFESTO and the conformance suite
     order, `s_` from the first product and then `s_ = s_ + a*b`, as C
     parses `a*b + c*d + e*f`. A literal stays an operand: `0.0` times a
     NaN or an infinity in `Phi` is NaN in the array's loop as `0.0 * x`
-    was written out. Contraction is as before, each `s_ + a*b` what
-    `a*b + c*d` was, and the checks build with it off. A compiler may
-    vectorise across cells, not across a sum without -ffast-math.
+    was written out. Contracted, it is not: Clang fuses `a*b + c*d` at
+    its first product, the loop only at its second, so with an FMA
+    (-mfma, any AArch64) Clang's default and GCC's in GNU C move the
+    RIEKF's step in its last bits; the header warns of it, and the checks
+    build with contraction off. A compiler may vectorise across cells,
+    not across a sum without -ffast-math.
   - **NaN by name**: an array joins `nan_temporaries_` where `MayNan`
     reads any operand cell, or an operand array is in it, or a cell
     carries a NaN of its own, as an inverse's does (C308): `t5_`, whose
