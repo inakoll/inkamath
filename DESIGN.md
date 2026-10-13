@@ -11621,7 +11621,10 @@ After an external review of README, MANIFESTO and the conformance suite
     order written and then the one that always applies, for the same
     terms or cells: never a base clause (C254), nor a term written whole
     for a cell (a departure of the clause, above). A later guarded clause
-    is quoted as tried; the reader follows the chain from there.
+    is quoted as tried, and the reader follows the chain from there:
+
+        chained.y: where lim s runs out, 'y_n | lim s(u_n) > 0 = 1' falls to 'y_n | u_n > 0 = 2'
+
   - **Where**: last, after the per-term lines, sorted by name and then by
     the clause's place. A flip or a straddle says what the run did and
     comes before the values it explains; this says what the code does.
