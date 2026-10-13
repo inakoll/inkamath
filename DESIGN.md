@@ -3303,7 +3303,7 @@ that exploring seven domains asked of the interpreter, by how many asked.
   a whole model's `tex`.
 - **A limit exact at an exact fixed point**: k-means reaches `C_3 == C_4`
   exactly, yet `lim C` is inexact and `frac lim C` refused.
-- **Matrix `==` and `<>` compiled**, refused as "a comparison of matrices".
+- `[done]` **Matrix `==` and `<>` compiled**, refused as "a comparison of matrices".
   The interpreter answers `R'*R == I3`, 1 or 0, and rotation and
   estimation models write such checks: the rigid-body exploration's
   quaternion session did (its friction 7), `spin.ink` measures the same
@@ -3405,6 +3405,16 @@ that exploring seven domains asked of the interpreter, by how many asked.
   rational rotation the step takes out of SO(3) at its first step, which
   the interpreter never does." No transcript in `test/data/spec`: the
   language does not change.
+
+  Built as specified, departing in one thing: both refusals come before a
+  constant is folded, so `n*([1, 1] == [1; 1])` is refused as two shapes,
+  where the prototype folded it to 0 as the interpreter answers. The three
+  instances and `rational` in float are checks, each reporting as
+  `orthogonal.ink` gives it; the `spec` part's header and refusals are
+  `cli.cmake`'s `compile_mateq` and `compile_mateq_refused`; the two cli
+  cases moved as declared. Every other check program, header and report
+  byte for byte. 16 lines net, `compile.hpp` 12 and `check.hpp` 4: 18,526
+  lines by `wc -l include/inkamath/*.hpp src/*`.
 - **A matrix `==` a single value refused**, naming `0*M`: Doyle 1978's
   Riccati equation checked as `ric(12) == 0` answers 0, a matrix being
   equal to no single value, where its residual is the zero matrix and

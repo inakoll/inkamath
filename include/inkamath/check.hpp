@@ -489,10 +489,14 @@ private:
             if (auto* compare = dynamic_cast<CompareExpression<Value>*>(&guard)) {
                 const Value a = compare->m_e1()->accept(evaluator);
                 const Value b = compare->m_e2()->accept(evaluator);
-                if (a.Size().rows * a.Size().cols != 1 || b.Size().rows * b.Size().cols != 1)
-                    return std::nullopt;
-                const Number difference = a(1, 1) - b(1, 1);
-                return difference < Number(0) ? Number(0) - difference : difference;
+                if (a.Size() != b.Size()) return std::nullopt;
+                // Of two matrices, the farthest cells', as every cell must meet.
+                Number far(0);
+                for (std::size_t c = 0; c < a.Size().count(); ++c) {
+                    const Number d = a.data()[c] - b.data()[c];
+                    far            = std::max(far, d < Number(0) ? Number(0) - d : d);
+                }
+                return far;
             }
             if (auto* logic = dynamic_cast<LogicExpression<Value>*>(&guard)) {
                 const bool both = logic->Conjunction();

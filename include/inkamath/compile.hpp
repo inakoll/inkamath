@@ -2113,7 +2113,16 @@ private:
     }
 
     PExpression<Value> visit(CompareExpression<Value>* expression) override {
-        const Code left = Emit(expression->m_e1()), right = Emit(expression->m_e2());
+        const Code       left = Emit(expression->m_e1()), right = Emit(expression->m_e2());
+        const Comparison op = expression->Op();
+        if (!(left.Scalar() && right.Scalar()) && op != Comparison::Equal &&
+            op != Comparison::NotEqual)
+            throw Reason("a comparison needs single values, not a " +
+                         (left.Scalar() ? right : left).size.Described());
+        // Answered 0 by the interpreter, a truth the shapes alone fix (DESIGN.md).
+        if (left.size != right.size)
+            throw Reason(left.size.Called() + " compared with " + right.size.Called() +
+                         ", never equal");
         // At a constant point too, a jump is tested, not folded.
         if (left.constant && right.constant && left.part.empty() && right.part.empty())
             return Answer(Exactly(
@@ -2121,15 +2130,25 @@ private:
                     return numeric_interface<Value>::compare(a, b, expression->Op());
                 },
                 left, right));
-        if (!left.Scalar() || !right.Scalar()) throw Reason("a comparison of matrices");
-        const std::string l = Wrap(left.cells[0], sum), r = Wrap(right.cells[0], sum);
-        // In a guard, only an equality jumps, as the interpreter's Holds.
-        const bool jumps = !guarding_ || expression->Op() == Comparison::Equal ||
-                           expression->Op() == Comparison::NotEqual;
-        return Answer(Cell("(" + Nan(left, right) +
-                               (jumps ? Jumps(l + " == " + r, {&left, &right}) : "") + l +
-                               Operator(expression->Op()) + r + " ? 1.0 : 0.0)",
-                           primary));
+        return Answer(Cell("(" + Compared(op, left, right) + " ? 1.0 : 0.0)", primary));
+    }
+
+    // A comparison as C tests it, NaN first where it reads one or jumps; two
+    // matrices are equal where every cell is, as interpreted.
+    std::string Compared(Comparison op, const Code& left, const Code& right) {
+        std::string meet;
+        for (std::size_t c = 0; c < left.cells.size(); ++c)
+            meet +=
+                (c ? " && " : "") + Wrap(left.cells[c], sum) + " == " + Wrap(right.cells[c], sum);
+        const bool        equality = op == Comparison::Equal || op == Comparison::NotEqual;
+        const std::string test =
+            left.Scalar() ? Wrap(left.cells[0], sum) + Operator(op) + Wrap(right.cells[0], sum)
+                          : (op == Comparison::Equal ? "(" : "!(") + meet + ")";
+        // Under grad, an equality whose sides move takes its clause at the
+        // point alone, as the interpreter's Holds; in a value, any comparison
+        // jumps there (C320).
+        return Nan(left, right) + (!guarding_ || equality ? Jumps(meet, {&left, &right}) : "") +
+               test;
     }
 
     // A guard as C tests it. Empty where it always holds, and nothing where
@@ -2184,14 +2203,7 @@ private:
         const Code code = Emit(expression);
         if (code.constant) return Holds(*code.constant) ? "1" : "0";
         if (const auto* compare = dynamic_cast<CompareExpression<Value>*>(expression.get())) {
-            const Code left = Emit(compare->m_e1()), right = Emit(compare->m_e2());
-            const std::string l = Wrap(left.cells[0], sum), r = Wrap(right.cells[0], sum);
-            // Under grad, an equality whose sides move takes its clause at the
-            // point alone; in a value, any comparison jumps there (C320).
-            const bool jumps = !guarding_ || compare->Op() == Comparison::Equal ||
-                               compare->Op() == Comparison::NotEqual;
-            return Nan(left, right) + (jumps ? Jumps(l + " == " + r, {&left, &right}) : "") + l +
-                   Operator(compare->Op()) + r;
+            return Compared(compare->Op(), Emit(compare->m_e1()), Emit(compare->m_e2()));
         }
         return Nan(code) + Wrap(code.cells[0], sum) + " != 0.0";
     }
