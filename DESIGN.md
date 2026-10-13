@@ -10782,7 +10782,9 @@ After an external review of README, MANIFESTO and the conformance suite
   plain transpose, not the Hermitian factor. 11 lines landed against the
   spec's 10, 4 of them comment: the prelude's 6, its long clause split in
   two for the column limit, and 4, 1 of C++ for its words; with C356's 22
-  and C357's 15, 18,510 to 18,558 lines at c9aa165.
+  and C357's 15, 18,510 to 18,558 lines at c9aa165. chol and C356 are 33
+  lines, inside the stop at 40; C357 fixes the exponential compile of any
+  recurrence by cells, so it is counted on its own, though chol relies on it.
 - **A clause for a limit that does not converge**, one guard meaning the
   same in the interpreter and the step, NaN kept where none is written; and
   with it a tolerance relative to the term, the 1e-10 being absolute.
