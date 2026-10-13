@@ -453,6 +453,11 @@ private:
         Expansion*                                     outer;   // the model a function is in
         std::set<std::string>                          computing;
         std::map<std::string, int>                     offsets;  // from the caller's index
+        // Each argument as written, and where: a cell read past it is refused
+        // by the name it reads (Unstated).
+        std::map<std::string,
+                 std::tuple<const Expression<Value>*, const Scope<Value>*, const Expansion*>>
+            written = {};
     };
 
     // What an expansion gives a name, if one does.
@@ -793,6 +798,7 @@ private:
             if (nan)
                 for (const Cell& c : nans.emplace_back(value).cells) nans_.insert(c.text);
             expansion.values.emplace(given, value);
+            expansion.written.emplace(given, std::tuple(argument.get(), scope_, expansion_));
             if (Plain(*argument)) try {
                     expansion.offsets.emplace(given, Offset(argument, given));
                 } catch (const Reason&) {
@@ -3861,12 +3867,24 @@ private:
     }
     // A cell past an input whose model states no size, or a parameter it
     // gives no default, which compile as single values (C83), or past a
-    // single value computed from one, refused with the size that would hold it.
-    void Unstated(const Expression<Value>& read, const std::string& bounds) const {
-        if (!model_ || scope_ != &root_ ||
-            (!dynamic_cast<const FuncExpression<Value>*>(&read) &&
-             !dynamic_cast<const RefExpression<Value>*>(&read)))
-            return;
+    // single value computed from one, refused with the size that would hold it,
+    // read where it stands or through the parameters it is given to.
+    void Unstated(const Expression<Value>& given, const std::string& bounds) const {
+        const Expression<Value>* at    = &given;
+        const Scope<Value>*      scope = scope_;
+        for (const Expansion* in = expansion_;;) {
+            if (!dynamic_cast<const FuncExpression<Value>*>(at) &&
+                !dynamic_cast<const RefExpression<Value>*>(at))
+                return;
+            while (in && !in->values.count(at->Name()) && !in->own.count(at->Name()))
+                in = in->outer;
+            if (!in) break;
+            const auto w = in->written.find(at->Name());
+            if (w == in->written.end()) return;
+            std::tie(at, scope, in) = w->second;
+        }
+        if (!model_ || scope != &root_) return;
+        const Expression<Value>& read = *at;
         std::set<std::string>    seen;
         std::vector<std::string> next{read.Name()};
         while (!next.empty()) {
@@ -3884,8 +3902,10 @@ private:
                              : " states no size for it: write '" + p.name + "_" + p.index + "[" +
                                    bounds + "]'"));
             const auto sequence = sequences_.find(name);
-            if (sequence != sequences_.end() && sequence->second.size.count() == 1)
-                for (const auto& [reads, lags] : sequence->second.reads) next.push_back(reads);
+            if (sequence == sequences_.end() || sequence->second.size.count() != 1) continue;
+            for (const auto& [reads, lags] : sequence->second.reads) next.push_back(reads);
+            next.insert(next.end(), sequence->second.parameters.begin(),
+                        sequence->second.parameters.end());
         }
     }
     // A factorial of a constant is one; at a limit's walking index plus a
