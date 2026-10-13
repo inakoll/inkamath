@@ -1358,12 +1358,15 @@ private:
 
     // A cell the compiler would write out more than once -- an operand of a
     // matrix product, a single value stretched over a matrix -- is computed once
-    // per step instead, into a temporary: the same value, in fewer lines.
+    // per step instead, into a temporary: the same value, in fewer lines; a
+    // name that may be NaN where the value may, as Called's (C365).
     Cell Shared(const Cell& cell) {
         if (cell.atom || !temporaries_) return cell;
-        return Atom(Declare(cell.text, [&](const std::string& name) {
-            return std::vector<std::string>{"const double " + name + " = " + cell.text + ";"};
-        }));
+        const std::string name = Declare(cell.text, [&](const std::string& t) {
+            return std::vector<std::string>{"const double " + t + " = " + cell.text + ";"};
+        });
+        if (MayNan(cell.text)) nan_temporaries_.insert(name);
+        return Atom(name);
     }
 
     // The same value is the same temporary within one sequence's step.
