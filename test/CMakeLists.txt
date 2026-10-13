@@ -52,7 +52,7 @@ endforeach()
 # take 22 s, and reverse_memo.ink's one entry, its 600,000 under reverse
 # mode, 38.
 set_tests_properties(reverse_memo.ink PROPERTIES TIMEOUT 120)
-foreach(suite IN ITEMS bignum line_editor matrix prelude)
+foreach(suite IN ITEMS bignum line_editor matrix prelude spec)
     add_test(NAME ${suite} COMMAND inkamath_tests --test-suite=${suite} --no-intro)
     set_tests_properties(${suite} PROPERTIES TIMEOUT 60)
 endforeach()
@@ -143,6 +143,29 @@ foreach(model IN ITEMS pid pid_clamped kalman kalman2 fir heat adc net mix loop 
              COMMAND ${CMAKE_COMMAND} -E compare_files --ignore-eol
                      ${CMAKE_CURRENT_SOURCE_DIR}/compile/expected/${model}.h ${header})
 endforeach()
+
+# A clause for a limit that does not converge (DESIGN.md), specified before
+# it is built: fallback.ink's models against the values its harness knows,
+# skipped while the step is NaN where the clause after is to be taken.
+set(fallback_headers "")
+foreach(model IN ITEMS mpc newton rooted)
+    set(header ${CMAKE_CURRENT_BINARY_DIR}/compile/fallback_${model}.h)
+    add_custom_command(OUTPUT ${header}
+        COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/compile
+        COMMAND inkamath_cli --compile ${CMAKE_CURRENT_SOURCE_DIR}/compile/fallback.ink ${model}
+                -o ${header}
+        DEPENDS inkamath_cli compile/fallback.ink
+        VERBATIM)
+    list(APPEND fallback_headers ${header})
+endforeach()
+add_executable(compile_fallback compile/fallback_test.c ${fallback_headers})
+target_include_directories(compile_fallback PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/compile)
+target_link_libraries(compile_fallback PRIVATE inkamath_warnings
+                      $<$<NOT:$<C_COMPILER_ID:MSVC>>:m>)
+set_target_properties(compile_fallback PROPERTIES
+                      C_STANDARD 11 C_STANDARD_REQUIRED ON C_EXTENSIONS OFF)
+add_test(NAME compile_fallback COMMAND compile_fallback)
+set_tests_properties(compile_fallback PROPERTIES SKIP_RETURN_CODE 77)
 
 # 2^k as a step computes it, exact for every k the prelude scales by.
 add_executable(compile_powers compile/powers.c)

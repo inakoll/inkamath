@@ -1,0 +1,338 @@
+# A clause for a limit that does not converge (DESIGN.md, next in line): a
+# guard that reads a limit that does not converge does not hold, so the
+# clause after it is tried, and its answer is inexact. Every value was
+# worked out apart from the interpreter: the terms in Python's fractions,
+# walked by README section 4's rule written again in Python, the roots in
+# mpmath at 50 digits.
+
+# Newton's method on F(x) = x^3 - 2x + 2. From -2 it converges to the real
+# root, -1.76929235423863 by mpmath, at its fifth term; from 0 its terms are
+# 0, 1, 0, 1, ... exactly, F(0)/F'(0) being 2/-2 and F(1)/F'(1) 1/1, so the
+# hundredth is 0.
+>> F(x) = x^3 - 2*x + 2
+F(x) = x^3 - 2*x + 2
+
+>> dF(x) = 3*x^2 - 2
+dF(x) = 3*x^2 - 2
+
+>> nw(x)_0 = x
+nw(x)_0 = x
+
+>> nw(x)_k = nw(x)_(k-1) - F(nw(x)_(k-1))/dF(nw(x)_(k-1))
+nw(x)_k = nw(x)_(k-1) - F(nw(x)_(k-1))/dF(nw(x)_(k-1))
+
+>> lim nw(-2)
+~-1.76929235
+
+>> lim nw(0)
+error: nw did not converge within 100 terms (last term 0)
+
+# A guard reading the limit: the root, where Newton finds one that F takes
+# to within a millionth of 0, and otherwise the guess. The guess is inexact
+# there: whether a walk settled is read from its steps as doubles, and
+# within a hundred terms, as a clause a guard reading a double chose is
+# (C241). From 1/10 the terms fall into the cycle, past a thousand digits
+# by the ninth (Python's fractions), and the guess is marked as a clause
+# chosen by a truth so read is (C68).
+>> root(x) | abs(F(lim nw(x))) < 1/10^6 = lim nw(x)
+root(x) | abs(F(lim nw(x))) < 1/10^6 = lim nw(x)
+
+>> root(x) = x
+root(x) = x
+
+>> root(-2)
+~-1.76929235
+
+>> root(0)
+~0
+
+>> root(1/10)
+~0.1  # approximated past a thousand digits
+
+# Where nothing more is asked than that the limit exists: a value equals
+# itself where it exists, so the guard holds exactly there.
+>> sol(x) | lim nw(x) == lim nw(x) = lim nw(x)
+sol(x) | lim nw(x) == lim nw(x) = lim nw(x)
+
+>> sol(x) = x
+sol(x) = x
+
+>> sol(-2)
+~-1.76929235
+
+>> sol(0)
+~0
+
+# The same with a local, which the clause's value reads.
+>> loc(x) | (z = lim nw(x)) == z = z
+loc(x) | (z = lim nw(x)) == z = z
+
+>> loc(x) = x
+loc(x) = x
+
+>> loc(-2)
+~-1.76929235
+
+>> loc(0)
+~0
+
+# Where no clause after it applies, the refusal is the limit's, as today.
+>> h(x) | abs(F(lim nw(x))) < 1/10^6 = lim nw(x)
+h(x) | abs(F(lim nw(x))) < 1/10^6 = lim nw(x)
+
+>> h(0)
+error: nw did not converge within 100 terms (last term 0)
+
+# Read as the guard reads it: on the right of 'or', only where the left
+# has not decided; on the left, the guard does not hold whatever its right
+# side says.
+>> v(x) | x < 1 or lim nw(x) < 0 = 1
+v(x) | x < 1 or lim nw(x) < 0 = 1
+
+>> v(x) = 2
+v(x) = 2
+
+>> v(0)
+1
+
+>> v(1)
+~2
+
+>> w(x) | lim nw(x) < 0 or x < 1 = 1
+w(x) | lim nw(x) < 0 or x < 1 = 1
+
+>> w(x) = 2
+w(x) = 2
+
+>> w(0)
+~2
+
+# Through a function the guard calls.
+>> ok(x) = abs(F(lim nw(x))) < 1/10^6
+ok(x) = abs(F(lim nw(x))) < 1/10^6
+
+>> r(x) | ok(x) = lim nw(x)
+r(x) | ok(x) = lim nw(x)
+
+>> r(x) = x
+r(x) = x
+
+>> r(0)
+~0
+
+>> r(-2)
+~-1.76929235
+
+# Not through a term the guard reads: y_0 is refused, and a refused term is
+# not a limit that did not converge. Nor through another limit's terms,
+# each of which is refused where nw(0) is; from -2, t's terms tend to twice
+# the root.
+>> y_n = lim nw(n)
+y_n = lim nw(n)
+
+>> z_n | y_n < 0 = 1
+z_n | y_n < 0 = 1
+
+>> z_n = 2
+z_n = 2
+
+>> z_0
+error: nw did not converge within 100 terms (last term 0)
+
+>> t(x)_0 = 0
+t(x)_0 = 0
+
+>> t(x)_k = t(x)_(k-1)/2 + lim nw(x)
+t(x)_k = t(x)_(k-1)/2 + lim nw(x)
+
+>> q(x) | lim t(x) < 0 = 1
+q(x) | lim t(x) < 0 = 1
+
+>> q(x) = 2
+q(x) = 2
+
+>> q(-2)
+~1
+
+>> q(0)
+error: nw did not converge within 100 terms (last term 0)
+
+# A series without an upper bound is such a limit: its partial sums 2^(k+1)
+# - 1 from 2, and 2 - 2^-k from 1/2.
+>> geo(x) | sum_(k=0) x^k > 0 = sum_(k=0) x^k
+geo(x) | sum_(k=0) x^k > 0 = sum_(k=0) x^k
+
+>> geo(x) = 0
+geo(x) = 0
+
+>> geo(1/2)
+~2
+
+>> geo(2)
+~0
+
+# So is a limit's derivative under grad: Heron's root of x, whose slope
+# at 0 grows without end (grad.ink).
+>> sq(x)_0 = 1
+sq(x)_0 = 1
+
+>> sq(x)_n = (sq(x)_(n-1) + x/sq(x)_(n-1))/2
+sq(x)_n = (sq(x)_(n-1) + x/sq(x)_(n-1))/2
+
+>> d(x) | grad_(y = x) lim sq(y) > 0 = 1
+d(x) | grad_(y = x) lim sq(y) > 0 = 1
+
+>> d(x) = 2
+d(x) = 2
+
+>> d(4)
+~1
+
+>> d(0)
+~2
+
+# A term the walk cannot take is a refusal, not a limit that does not
+# converge: from an exact 0, Newton's root of 2 divides by 0.
+>> hs(c)_0 = 0
+hs(c)_0 = 0
+
+>> hs(c)_k = hs(c)_(k-1) - (hs(c)_(k-1)^2 - c)/(2*hs(c)_(k-1))
+hs(c)_k = hs(c)_(k-1) - (hs(c)_(k-1)^2 - c)/(2*hs(c)_(k-1))
+
+>> hr(c) | lim hs(c) > 0 = lim hs(c)
+hr(c) | lim hs(c) > 0 = lim hs(c)
+
+>> hr(c) = 0
+hr(c) = 0
+
+>> hr(2)
+error: division by zero
+
+# From an inexact 0, as a step computes it, the first term is ~inf and the
+# second inf - inf/inf, NaN: refused there too, since a step cannot tell
+# its NaN from a term the interpreter refuses. It ran to a hundred terms
+# and said it did not converge.
+>> hs(c)_0 = ~0
+hs(c)_0 = ~0
+
+>> lim hs(2)
+error: hs has no limit: a term is -nan
+
+>> hr(2)
+error: hs has no limit: a term is -nan
+
+>> hs(c)_0 = 1
+hs(c)_0 = 1
+
+>> hr(2)
+~1.41421356
+
+# An infinite term is a number: a walk through one does not converge
+# (sequences.ink), and the clause after is tried.
+>> o_0 = ~1e308
+o_0 = ~1e308
+
+>> o_n = o_(n-1) + o_(n-1)
+o_n = o_(n-1) + o_(n-1)
+
+>> lim o
+error: o did not converge within 100 terms (last term ~inf)
+
+>> p(x) | lim o > 0 = 1
+p(x) | lim o > 0 = 1
+
+>> p(x) = 2
+p(x) = 2
+
+>> p(0)
+~2
+
+# A small MPC with a fallback clause. The plan minimises 2(x + v)^2 +
+# v^2/2, that is 5/2 v^2 + 4 x v and a constant, over |v| <= 1, by
+# projected gradient with a step of 1/2, too long for the curvature 5: the
+# error is multiplied by -3/2 at each term. Where the bound holds the plan,
+# |x| >= 5/4, it settles, at -1 from 5/2 and 3/2; inside, it never does,
+# 1/2 then -1, 1/2, ... from x = 1/2. The plant moves by the plan where it
+# exists and brings x no further from 0, and otherwise by -x/2, so x_n is
+# 2^-(n-1) from n = 2, u_n -2^-n, and solved_n says which.
+>> mpc(x0 = 5/2) = {
+..     clip(v) | v > 1 = 1
+..     clip(v) | v < -1 = -1
+..     clip(v) = v
+..     qp(s)_0 = 0
+..     qp(s)_k = clip(qp(s)_(k-1) - (5*qp(s)_(k-1) + 4*s)/2)
+..     u_n | abs(x_n + lim qp(x_n)) <= abs(x_n) = lim qp(x_n)
+..     u_n = -x_n/2
+..     solved_n | lim qp(x_n) == lim qp(x_n) = 1
+..     solved_n = 0
+..     x_0 = x0
+..     x_n = x_(n-1) + u_(n-1)
+.. }
+mpc(x0 = 5/2) = { ... }
+
+>> m = mpc()
+m = mpc()
+
+>> m.u_0
+~-1
+
+>> m.x_2
+~0.5
+
+>> m.u_2
+~-0.25
+
+>> m.solved_1
+~1
+
+>> m.solved_2
+~0
+
+>> m.x_3
+~0.25
+
+>> m.x_20
+~1.90734863e-06
+
+# Without the fallback, as today: the plan from x_2 is refused, and the
+# hundredth term of its cycle is 1/2.
+>> bare(x0 = 5/2) = {
+..     clip(v) | v > 1 = 1
+..     clip(v) | v < -1 = -1
+..     clip(v) = v
+..     qp(s)_0 = 0
+..     qp(s)_k = clip(qp(s)_(k-1) - (5*qp(s)_(k-1) + 4*s)/2)
+..     u_n = lim qp(x_n)
+..     x_0 = x0
+..     x_n = x_(n-1) + u_(n-1)
+.. }
+bare(x0 = 5/2) = { ... }
+
+>> bare().u_2
+error: qp did not converge within 100 terms (last term ~0.5)
+
+# Newton's method within a step, its fallback the term before: c_n is 2 at
+# odd n, where Newton cycles from 0, and 1 at even n, where it converges at
+# its sixth term to the root (sqrt(5) - 1)/2, 0.618033988749895 by mpmath.
+>> newton(c_n) = {
+..     G(x, c) = x^3 - 2*x + c
+..     dG(x) = 3*x^2 - 2
+..     nv(c)_0 = 0
+..     nv(c)_k = nv(c)_(k-1) - G(nv(c)_(k-1), c)/dG(nv(c)_(k-1))
+..     x_0 = 1/2
+..     x_n | abs(G(lim nv(c_n), c_n)) < 1/10^6 = lim nv(c_n)
+..     x_n = x_(n-1)
+.. }
+newton(c_n) = { ... }
+
+>> s = newton(c_n = 1 + mod(n, 2))
+s = newton(c_n = 1 + mod(n, 2))
+
+>> s.x_1
+~0.5
+
+>> s.x_2
+~0.618033989
+
+>> s.x_3
+~0.618033989
