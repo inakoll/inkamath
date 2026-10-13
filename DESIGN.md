@@ -9104,7 +9104,11 @@ checked: what it asked of the compiler, each with its smallest change.
   part no longer writes `pooled`'s and `shied`'s programs, which the
   checks build and run. A reduction whose bounds are not constants is
   still refused in a sum's words, `a sum or a product whose bounds are
-  not constants`, as the spec leaves it. `reduce.ink` is a golden; the
+  not constants`, as the spec leaves it. An argmax in a guard is stricter
+  under grad than a comparison there: beside `f(x) = 0`, `f(x) |
+  argmax_(k=1)^2 [x; 0][k] == 1 = x` at 0 is `the argmax jumps at x = 0`,
+  where `x >= 0` would take its clause's slope, 1; a refusal, not a wrong
+  answer, and left so. `reduce.ink` is a golden; the
   `spec` suite, the cli `spec` part and `cli_spec` go; no other golden,
   expected header, check report or cli case moves. 151 lines net, 169
   added and 18 removed: the node 56, the compiler 42, grad 29, the parser
