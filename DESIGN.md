@@ -9089,7 +9089,7 @@ checked: what it asked of the compiler, each with its smallest change.
   written as a sum is, `max_(k=1)^n` and `min_(k=1)^n`, and so is the
   index of the first largest or smallest term, `argmax_` and `argmin_`, as
   a classifier's prediction is read from its logits. Of equal terms, the
-  first: a tied target is not counted as predicted."
+  first: a tied target is counted as predicted only where it comes first."
 - **The compiled sum's thousand terms**: a LeNet-sized layer's dot product
   over a batch would pass `max_terms`, which bounds an unrolled sum written
   as lines of C, not a loop.
