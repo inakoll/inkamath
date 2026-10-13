@@ -951,9 +951,9 @@ set_tests_properties(check_bent_report PROPERTIES SKIP_REGULAR_EXPRESSION
     PASS_REGULAR_EXPRESSION
     "^bent: 100 steps from 0, against exact values until 0 and inexact ones from there\nbent\\.y: within 0\nbent\\.z: within 0\nbent\\.r: where lim nv runs out, 'r\\(x, c\\) \\| lim nv\\(c\\) > 0 = x\\^2' falls to 'r\\(x, c\\) = 3\\*x', and to NaN under grad\n$")
 set_tests_properties(check_faraway_report PROPERTIES SKIP_REGULAR_EXPRESSION
-    "^faraway: 100 steps from 0, against exact values until 0 and inexact ones from there\nfaraway\\.y: within 0\n$"
+    "^faraway: 100 steps from 0, against exact values until 0 and inexact ones from there\nfaraway\\.w: within 0\nfaraway\\.y: within 0\n$"
     PASS_REGULAR_EXPRESSION
-    "^faraway: 100 steps from 0, against exact values until 0 and inexact ones from there\nfaraway\\.y: within 0\noutside: where lim nf runs out, 'outside\\(c\\) \\| lim nf\\(c\\) > 0 = 1' falls to 'outside\\(c\\) = 5'\n$")
+    "^faraway: 100 steps from 0, against exact values until 0 and inexact ones from there\nfaraway\\.w: within 0\nfaraway\\.y: within 0\nfaraway\\.w: where lim nv or lim hv runs out, 'w_n \\| lim nv\\(c_n\\) > 0 and lim hv\\(c_n\\) > 0 = 1' falls to 'w_n = 0'\noutside: where lim nf runs out, 'outside\\(c\\) \\| lim nf\\(c\\) > 0 = 1' falls to 'outside\\(c\\) = 5'\n$")
 set_tests_properties(check_chained_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^chained: 100 steps from 0, against exact values until 0 and inexact ones from there\nchained\\.y: within 0\n$")
 set_tests_properties(check_gapped_report PROPERTIES PASS_REGULAR_EXPRESSION

@@ -280,16 +280,26 @@ relaying(c_n) = {
 buffered = relaying(c_n = 1 + mod(n, 2))
 
 # A guarded function of the file, outside the model, is named by its name
-# alone. y_n is 1 at even n, where Newton settles, and 5 at odd. Checked:
+# alone, and a guard reading two limits names them as written, not sorted.
+# hv(c) settles at 2c. At even n, where Newton settles, y_n and w_n are 1;
+# at odd n y_n is 5 and w_n 0. Checked:
 #
 #     faraway: 100 steps from 0, against exact values until 0 and inexact ones from there
+#     faraway.w: within 0
 #     faraway.y: within 0
+#     faraway.w: where lim nv or lim hv runs out, 'w_n | lim nv(c_n) > 0 and lim hv(c_n) > 0 = 1' falls to 'w_n = 0'
 #     outside: where lim nf runs out, 'outside(c) | lim nf(c) > 0 = 1' falls to 'outside(c) = 5'
 nf(c)_0 = 0
 nf(c)_k = nf(c)_(k-1) - (nf(c)_(k-1)^3 - 2*nf(c)_(k-1) + c)/(3*nf(c)_(k-1)^2 - 2)
 outside(c) | lim nf(c) > 0 = 1
 outside(c) = 5
 afar(c_n) = {
+    nv(c)_0 = 0
+    nv(c)_k = nv(c)_(k-1) - (nv(c)_(k-1)^3 - 2*nv(c)_(k-1) + c)/(3*nv(c)_(k-1)^2 - 2)
+    hv(c)_0 = 0
+    hv(c)_k = hv(c)_(k-1)/2 + c
+    w_n | lim nv(c_n) > 0 and lim hv(c_n) > 0 = 1
+    w_n = 0
     y_n = outside(c_n)
 }
 faraway = afar(c_n = 1 + mod(n, 2))

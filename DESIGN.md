@@ -11608,7 +11608,8 @@ After an external review of README, MANIFESTO and the conformance suite
     per-term line names a sequence, `planned.u`, a function the same, a
     definition of the file outside the model by its name alone; the limits
     it reads, as the header's comments name them, `lim qp`, `sum_(k=1)`,
-    joined by `or`; the clause as written, and the clause tried after it:
+    in the order written, the first read first, not sorted, and joined by
+    `or`, `faraway.w`; the clause as written, and the clause tried after it:
 
         planned.u: where lim qp runs out, 'u_n | abs(x_n + lim qp(x_n)) <= abs(x_n) = lim qp(x_n)' falls to 'u_n = -x_n/2'
 
