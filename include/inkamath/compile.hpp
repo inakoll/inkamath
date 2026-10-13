@@ -620,9 +620,9 @@ private:
     // A guarded value the interpreter refuses wherever it is taken, as log's
     // '| x <= 0 = 1/0', is what a step says there: NaN, as where no clause
     // applies (C86). Read where its guard held, it asks no status of a limit
-    // the guard read, which did not run out there (C368).
+    // the guard read to hold, which did not run out there (C368).
     Code Taken(const PExpression<Value>& expression) {
-        const std::set<std::string> own = asked_;
+        const std::set<std::string> own = sure_;
         std::set<std::string>       read;
         Code                        code;
         try {
@@ -2331,13 +2331,14 @@ private:
     // A guard as C tests it. Empty where it always holds, and nothing where
     // it never does.
     std::optional<std::string> Condition(const PExpression<Value>& guard) {
-        std::set<std::string>                 asked;
-        const Setting<std::set<std::string>*> asking(statuses_, &asked);
+        std::set<std::string>                 asked, unsure;
+        const Setting<std::set<std::string>*> asking(statuses_, &asked), doubting(unsure_, &unsure);
         const Setting<bool> guarding(guarding_, true), moved(moved_, false);
         const Code          code = Quiet(guard);
         chosen_                  = chosen_ || moved_;
         unconverged_.clear();
         asked_.clear();
+        sure_.clear();
         if (!code.Scalar()) throw Reason("a guard that is a matrix");
         if (code.constant) {
             if (!Holds(*code.constant)) return std::nullopt;
@@ -2358,6 +2359,8 @@ private:
         std::string ran;
         for (const std::string& status : asked) ran += (ran.empty() ? "" : " || ") + status;
         asked_       = asked;
+        std::set_difference(asked.begin(), asked.end(), unsure.begin(), unsure.end(),
+                            std::inserter(sure_, sure_.end()));
         unconverged_ = "isnan(" + truth + ") && (" + ran + ")";
         // Before a walk's loop where neither moves, as its limits are.
         const std::string flag = "isnan(" + truth + ") && !(" + ran + ")";
@@ -2497,7 +2500,13 @@ private:
         const std::optional<bool> left = truth(Emit(expression->m_e1()));
         if (left && *left != expression->Conjunction())
             return Answer(Literal(Value(Number(*left ? 1 : 0))));
-        const std::optional<bool> right = truth(Quiet(expression->m_e2()));
+        // What an 'or' reads on its right alone may have run out where it holds.
+        const bool                  either = statuses_ && unsure_ && !expression->Conjunction();
+        const std::set<std::string> before = either ? *statuses_ : std::set<std::string>();
+        const std::optional<bool>   right  = truth(Quiet(expression->m_e2()));
+        if (either)
+            for (const std::string& status : *statuses_)
+                if (!before.count(status)) unsure_->insert(status);
         if (left && right) return Answer(Literal(Value(Number(*right ? 1 : 0))));
         const PExpression<Value> self = expression->self();
         if (Defers(self)) return Answer(Cell(Truth(self), primary));
@@ -6293,6 +6302,8 @@ private:
     std::map<const Expression<Value>*, Compiled::Fallen> fallen_;
     std::string unconverged_;  // where the last guard compiled read a limit that ran out
     std::set<std::string> asked_;  // and the statuses it asked
+    std::set<std::string>  sure_;   // of those, the ones read where it holds (C368)
+    std::set<std::string>* unsure_             = nullptr;  // read on an 'or''s right alone
     bool                             roots_    = false;  // whether C may take a root of x < 0
     bool moved_  = false;  // whether a value with a part was compiled, as a guard asks
     bool chosen_ = false;  // whether a guard of the chain compiled read one
