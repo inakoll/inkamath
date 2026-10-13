@@ -11631,3 +11631,32 @@ Its robotics entries, each where it forces something new:
 - **PointNet**, then one **PointNet++ set-abstraction layer** whose
   indices the host computes: max over points, then the gather and integer
   inputs; at real scale, loops.
+
+After a study of hosting a compiled model from Python, and an external
+review:
+
+- **Structured diagnostics**: `--check` and `--compile` failures in a form
+  a program reads, with shapes, whether a value was approximated, and
+  source locations, for agents and CI. Found by an external review.
+- **A tolerance floor for small limits**: below 1 the tolerance is the
+  absolute 1e-10, so `lim N(2/10^20)` is 19% off. A floor scaled by where
+  the walk starts, perhaps; a design question first.
+- **The end-to-end exploration (`CLAUDE.md` §9)**: a sensor, a learned
+  correction, an estimator, a controller and an actuator command at two
+  rates, with an injected sensor failure. After the fallback audit above
+  and *a split step's arrays read in place*.
+- `[done]` **Python hosting**, with no compiler change: README's paragraph
+  after `--float`, a C file exporting the header's functions and each
+  field's `offsetof` to ctypes, held by `compile_host`. A call from Python
+  costs 0.6 to 0.75 µs, a step batched in C 37 to 81 ns for `kalman.ink`.
+  Deferred:
+  - a field table the compiler generates behind a macro, about 35 lines,
+    until a host asks for it;
+  - a definition the host implements, held by `--check` to its inkamath
+    reference, about 50 lines for a single value, until an entry needs it;
+  - a CUDA printer, a batch of instances as structure of arrays with its
+    parameters placed, about 250 lines, until an entry needs instance
+    width and `--check` on a device has a GPU runner; Clang already
+    compiles today's headers to PTX, one instance per thread;
+  - the agent experiment's design, outside the repository, when the
+    owner chooses.
