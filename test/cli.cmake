@@ -51,26 +51,44 @@ set(inputs "${CMAKE_CURRENT_LIST_DIR}/compile/inputs.ink")
 # Specified, not yet built (DESIGN.md, loops in generated code): each
 # increment's part, compile/loops.ink's headers holding the loops it writes,
 # a temporary's number written '#' where the rule does not fix it, each
-# header built as a strict host's C. Skipped while that increment's code is
-# written out as today, and only then.
+# header built as a strict host's C. Skipped while every site the part holds
+# is written out as today, and only then: half an increment fails.
 if(PART MATCHES "^loops([123])$")
     set(increment ${CMAKE_MATCH_1})
     set(loops ${CMAKE_CURRENT_LIST_DIR}/compile/loops.ink)
     set(transformer ${CMAKE_CURRENT_LIST_DIR}/compile/transformer.ink)
     file(MAKE_DIRECTORY "${OUT}/float")
+    function(pattern out line)
+        string(REPLACE "\\" "\\\\" line "${line}")
+        foreach(c "^" "$" "." "|" "?" "*" "+" "(" ")" "[" "]")
+            string(REPLACE "${c}" "\\${c}" line "${line}")
+        endforeach()
+        string(REPLACE "#" "[0-9]+" line "${line}")
+        set(${out} "${line}" PARENT_SCOPE)
+    endfunction()
     function(like name file)
         file(READ "${OUT}/${file}" text)
         math(EXPR last "${ARGC} - 1")
         foreach(i RANGE 2 ${last})
-            string(REPLACE "\\" "\\\\" pattern "${ARGV${i}}")
-            foreach(c "^" "$" "." "|" "?" "*" "+" "(" ")" "[" "]")
-                string(REPLACE "${c}" "\\${c}" pattern "${pattern}")
-            endforeach()
-            string(REPLACE "#" "[0-9]+" pattern "${pattern}")
-            if(NOT text MATCHES "${pattern}")
+            pattern(line "${ARGV${i}}")
+            if(NOT text MATCHES "${line}")
                 message(SEND_ERROR "${name}: ${file} does not hold\n${ARGV${i}}")
             endif()
         endforeach()
+    endfunction()
+    # Each file and line, every one as today, or the part runs.
+    function(today)
+        set(today TRUE)
+        math(EXPR last "${ARGC} - 1")
+        foreach(i RANGE 1 ${last} 2)
+            math(EXPR file "${i} - 1")
+            file(READ "${OUT}/${ARGV${file}}" text)
+            pattern(line "${ARGV${i}}")
+            if(NOT text MATCHES "${line}")
+                set(today FALSE)
+            endif()
+        endforeach()
+        set(as_today ${today} PARENT_SCOPE)
     endfunction()
     function(smaller name file bytes)
         file(SIZE "${OUT}/${file}" size)
@@ -97,13 +115,14 @@ if(PART MATCHES "^loops([123])$")
         set(args --compile ${loops} ${model} -o ${model}.h)
         check(compile_loops)
     endforeach()
-    file(READ "${OUT}/spin.h" spin)
-    file(READ "${OUT}/solve.h" solve)
-    file(READ "${OUT}/dense.h" dense)
 
     if(increment EQUAL 1)
-        string(FIND "${spin}" "m_->x[0][0][0] = m_->index_ == 0 ? 1.0 : m_->A[0][0] * m_->x[1][0][0] + " at)
-        if(NOT at EQUAL -1)
+        today(spin.h "    m_->w[0][0][0][0] = m_->index_ == 0 ? 1.0 : m_->w[1][0][0][0] * m_->A[0][0] + "
+              spin.h "    m_->x[0][0][0] = m_->index_ == 0 ? 1.0 : m_->A[0][0] * m_->x[1][0][0] + "
+              spin.h "    m_->y[0][0][0] = m_->A[0][0] * m_->x[0][0][0] + "
+              spin.h "    m_->z[0][0][0] = t#_ * m_->x[0][0][0] + "
+              solve.h "        const double t#_ = t0_[0][0] * m_->x[1][0][0] + ")
+        if(as_today)
             message("loops 1: written out as today")
             return()
         endif()
@@ -176,7 +195,9 @@ if(PART MATCHES "^loops([123])$")
     endif()
 
     if(increment EQUAL 2)
-        if(dense MATCHES "isnan\\(t[0-9]+_\\) \\? NAN : t[0-9]+_ \\* m_->X\\[0\\]\\[0\\]\\[0\\] \\+ ")
+        today(dense.h "isnan(t#_) ? NAN : t#_ * m_->X[0][0][0] + "
+              gated.h "(t#_ != 0) ? t#_ + t#_ * m_->X[0][1][2] : t#_));")
+        if(as_today)
             message("loops 2: written out as today")
             return()
         endif()
@@ -227,8 +248,12 @@ if(PART MATCHES "^loops([123])$")
     endif()
 
     if(increment EQUAL 3)
-        string(FIND "${solve}" "    m_->x[0][0][1] = m_->index_ == 0 ? m_->x0[0][1] : " at)
-        if(NOT at EQUAL -1)
+        today(solve.h "    m_->x[0][0][1] = m_->index_ == 0 ? m_->x0[0][1] : "
+              solve.h "    if (isnan(m_->x[0][0][0]) || isnan(m_->x[0][0][1]) || "
+              spin.h "    m_->y[0][0][1] = "
+              spin.h "    m_->z[0][0][1] = "
+              dense.h "    m_->W[0][0][1] = m_->index_ == 0 ? m_->W0[0][1] : ")
+        if(as_today)
             message("loops 3: written out as today")
             return()
         endif()
