@@ -52,7 +52,7 @@ endforeach()
 # take 22 s, and reverse_memo.ink's one entry, its 600,000 under reverse
 # mode, 38.
 set_tests_properties(reverse_memo.ink PROPERTIES TIMEOUT 120)
-foreach(suite IN ITEMS bignum line_editor matrix prelude)
+foreach(suite IN ITEMS bignum line_editor matrix prelude spec)
     add_test(NAME ${suite} COMMAND inkamath_tests --test-suite=${suite} --no-intro)
     set_tests_properties(${suite} PROPERTIES TIMEOUT 60)
 endforeach()
@@ -76,6 +76,14 @@ foreach(part 1 2 3)
                      -P ${CMAKE_CURRENT_LIST_DIR}/cli.cmake)
     set_tests_properties(cli_${part} PROPERTIES TIMEOUT 120)
 endforeach()
+# chol compiled (DESIGN.md), specified before it is built: cli.cmake's spec
+# part, skipped while chol is not defined.
+add_test(NAME cli_spec
+         COMMAND ${CMAKE_COMMAND} -DEXE=$<TARGET_FILE:inkamath_cli> -DPART=spec
+                 -DOUT=${CMAKE_CURRENT_BINARY_DIR}/cli_spec -DCASE_TIMEOUT=${cli_case_timeout}
+                 -P ${CMAKE_CURRENT_LIST_DIR}/cli.cmake)
+set_tests_properties(cli_spec PROPERTIES TIMEOUT 120 SKIP_REGULAR_EXPRESSION
+    "check_chol: chol not defined, as today")
 
 # bench's workloads, each a transcript bench/run.cmake measures, replayed so
 # that one gone stale fails here rather than at its next measure. The

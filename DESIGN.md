@@ -10500,6 +10500,125 @@ After an external review of README, MANIFESTO and the conformance suite
 - **Small, whenever**: *A maximum, minimum or argmax over an index*; a
   Cholesky factor in the prelude, for square-root filters, the solve being
   `A^-1*b` already and the Joseph form writable now.
+- **A Cholesky factor in the prelude, `chol(A)`**: L lower triangular with
+  a positive diagonal and A = L L', which square-root filters and
+  estimation papers write `L = chol(P)`. The design, measured on a
+  prototype:
+
+      chol(A[j<=n, k<=n])[i<=n, k<=n] = cholr(A, i, k)
+      cholr(A, i, k) | i < k = 0
+      cholr(A, i, k) | i == k and cholp(A, k) > 0 = cholp(A, k)^(1/2)
+      cholr(A, i, k) | i > k = (A[i,k] - sum_(q=1)^(k-1) cholr(A, i, q)*cholr(A, k, q))/cholr(A, k, k)
+      cholp(A, k) = A[k,k] - sum_(q=1)^(k-1) cholr(A, k, q)^2
+
+  **Written in inkamath**, by its cells, Cholesky's recurrence as Golub
+  and Van Loan (section 4.2) and the papers write it: L_kk the root of
+  the pivot A_kk - sum L_kq^2, L_ik the pivot's row less sum L_iq L_kq
+  over L_kk. The language says it already: a call is remembered, so each
+  cell is computed once, and `chol(L*L') == L` of an exact 20x20 L
+  answers in 14 ms, the session's start included. No language change.
+
+  **Name**: `chol`, the lower factor, as numpy's, Eigen's LLT and
+  LAPACK's with `uplo = 'L'`, and as the papers' P = S S'. MATLAB's upper
+  R, A = R'R, is `chol(A)'`.
+
+  **Exact** where every pivot is the square of a rational, as of L L' for
+  L rational with a positive diagonal: section 1's root keeps an exact
+  square exact (*An exact root of a perfect power*). The first pivot that
+  is not a square has an inexact root, and so has every cell that reads
+  it; the cells before it stay exact, `chol([4 2; 2 3])` being `[2, 0; 1,
+  ~1.41421356]`. A rational matrix in general has no rational factor
+  (*The generalized eigenproblem*, its exact Cholesky rejected); its LDL'
+  has, rejected below.
+
+  **A's lower triangle alone is read**, as LAPACK's, numpy's and Eigen's
+  are, so `chol([4 100; 2 3])` is `chol([4 2; 2 3])`. Refusing a matrix
+  not symmetric, as first asked, is rejected: a prototype guarding chol
+  by its symmetry, an equality of cells, paid three times. `grad` refused
+  it wherever A moves (C73: an equality whose sides move), along a
+  symmetric path too, in words that said the clause held only there, so
+  the gradient of a likelihood through log det was lost. `--check`'s
+  disturbed runs part a symmetric product's two triangles, so a filter
+  factoring its inexact covariance had its estimate "about inf" from its
+  second step. And compiled, a Kalman filter's (I - K H) Pp rounded in
+  doubles parts its triangles, and its factor was NaN from the first
+  step, where the interpreter, exact, answered. What reading one
+  triangle costs: an asymmetric matrix is factored as its lower triangle
+  says, silently, which README says. Symmetrizing, (A[i,k] + A[k,i])/2,
+  is rejected too: it reads both and factors a matrix not given.
+
+  **Refused**, where a pivot is not above 0: `chol needs a positive
+  definite matrix`, in `Unapplied`'s table under `cholr`'s name, one set
+  of words for indefinite, singular and negative, as a singular matrix
+  has no inverse. Not square, by the signature. A complex pivot in a
+  comparison's words; a complex cell below the diagonal is factored as
+  the recurrence takes it, L L' = A by a quote that does not conjugate,
+  since refusing it would take the equality rejected above.
+
+  **Compiled**, written where it is called as any function of the
+  prelude of a matrix: C's `sqrt` behind the guard's test of the pivot,
+  so no root of a negative is taken (C350), and NaN wherever a pivot is
+  not above 0, every cell then, as for any term the interpreter refuses.
+  A 3x3 input's header is 3,406 bytes and a 6x6's 6,630, a step 10.7 ns
+  and 102 ns at -O2 (GCC 13, 4 cores, load 2.6). Of a single value,
+  `chol(x)` is a function of the header's own, as `exp` is, which the
+  prototype found refused, "a cell whose place is not a constant":
+  `cholr(A, i, k)` of a number is a function whose places are doubles.
+  So is `hurwitzc(n, 1)` today (C356). Such a function, one reading a
+  cell at a parameter, is written where it is called instead, its places
+  constants there, by a test beside `Iterates`.
+
+  **grad** follows the definition: a root, products and a quotient; the
+  guards read places and a pivot's sign, no equality of A. A pivot that
+  moves to 0 leaves every clause, and is refused so. Compiled too.
+
+  Rejected:
+  - **A helper in C++, as the inverse's**: more C++, in the interpreter
+    and the compiler both, a derivative of its own under grad, and a
+    definition `?chol` and `tex` could not show. The prelude's definition
+    gets grad, `--check` and the C target for nothing.
+  - **LDL'**: rational of every rational A, without roots, but no paper
+    of this kind writes it, and L D^(1/2) is chol. A model that wants it
+    writes it by its cells.
+  - **None**: a model can write the five lines, and every square-root
+    filter would (MANIFESTO.md, *Functions a paper takes for granted*).
+  - **The right-looking recurrence**, Schur complements as a sequence with
+    parameters: not the paper's formula, and its terms by cells do not
+    compile.
+
+  **Accuracy**, against mpmath at 200 bits, on random symmetric positive
+  definite matrices of doubles, A = B B' + n I with B uniform in [-1, 1],
+  3,000 at 3x3 and 3,000 at 6x6 for each of two seeds, in the compiled
+  step: max|A - L L'| at most 2.81 units of 2^-53 of max|A|, and max|L -
+  L*| 1.43 of max|L*|, the same as numpy's LAPACK on the same matrices.
+  A cell's own error in units of its last place reaches 122 at 3x3 and
+  32,500 at 6x6, at cells that cancel close to 0, LAPACK's 342 and
+  20,700: a forward error of the factor that conditioning sets. Of B B'
+  alone, often ill-conditioned, backward 2.66 and forward as LAPACK's.
+  No table in `test/prelude_test.cpp`: chol is no function of the
+  header, and `--check` holds its compiled step to the interpreter.
+
+  What moves: nothing recorded. On the prototype every golden, expected
+  header, report and `test/cli.cmake` case passes, 497 tests. README's
+  sections 1, 2 and 5 name chol, section 2 with the spec's last three
+  entries as its example; README is replayed, so it comes with chol.
+
+  27 lines by `wc -l include/inkamath/*.hpp src/*`, 18,335 to 18,362 at
+  d7c1ada: the prelude's 5 and 4 of comment, 1 of C++ for its words, and
+  18 of `compile.hpp` for a single value, 3 of them comment. Past 40 the
+  implementation stops and reports.
+
+  Specified in `test/data/spec/chol.ink`, 29 entries replayed by the spec
+  suite, 23 failing by design, those passing definitions echoing
+  themselves, a matrix and `tex`: the exact factors in Python's
+  fractions, the roots by hand and in mpmath at 50 digits. Compiled in
+  `test/compile/chol.ink`: a tracker whose sensor is 10,000 times finer
+  than its prior, carried as a factor and as P, and a single value with
+  grad through chol. `test/cli.cmake`'s spec part writes the check
+  program of each, in double and in float, skipped while chol is not
+  defined; the reports its comments give, `naive` NaN at 1 in float and
+  its program failing, join the checks with chol. The spec suite and
+  `cli_spec` return until they pass.
 - **A clause for a limit that does not converge**, one guard meaning the
   same in the interpreter and the step, NaN kept where none is written; and
   with it a tolerance relative to the term, the 1e-10 being absolute.
