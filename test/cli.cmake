@@ -48,6 +48,34 @@ endfunction()
 # Read by cases in every part.
 set(inputs "${CMAKE_CURRENT_LIST_DIR}/compile/inputs.ink")
 
+# Specified, not yet built (DESIGN.md, polynomials in the prelude):
+# compile/polyconv.ink's instance written as a check program, in double and
+# in float, its reports there. Skipped while each is refused as today,
+# polyval not defined, and only then.
+if(PART STREQUAL "spec")
+    file(MAKE_DIRECTORY "${OUT}")
+    set(story "${CMAKE_CURRENT_LIST_DIR}/compile/polyconv.ink")
+    set(refused 0)
+    foreach(float IN ITEMS "" --float)
+        execute_process(COMMAND "${EXE}" --check "${story}" tune ${float} -o x.c
+                        WORKING_DIRECTORY "${OUT}" OUTPUT_VARIABLE out ERROR_VARIABLE err
+                        RESULT_VARIABLE code TIMEOUT ${CASE_TIMEOUT})
+        if("${out}${code}" STREQUAL "1" AND
+           "${err}" STREQUAL "inkamath: cannot compile Z: polyval is not defined\n")
+            math(EXPR refused "${refused} + 1")
+        endif()
+    endforeach()
+    if(refused EQUAL 2)
+        message("check_polyconv: polyval not defined, as today")
+        return()
+    endif()
+    set(args --check ${story} tune -o tune.c)
+    check(check_polyconv_tune)
+    set(args --check ${story} tune --float -o tune_float.c)
+    check(check_polyconv_tune_float)
+    return()
+endif()
+
 # The cases run as three tests of about equal time under the sanitizers: PART
 # 1 up to charpoly's refusal, 2 from it, 3 from eig's, and all where PART is
 # not given.
