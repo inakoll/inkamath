@@ -136,7 +136,7 @@
 #
 #     shove: 100 steps from 0 in float, against exact values
 #     shove.s: within 5.9e-08, 1.4e+07 units of a float at step 5
-#     shove.y: within 5.9e-08, 1.4e+07 units of a float in [2,1,1] at step 7
+#     shove.y: within 5.9e-08, 1.4e+07 units of a float in y[2,1,1] at step 7
 #
 # tiny.y's line then ends 'at step 0', all its terms alike.
 #

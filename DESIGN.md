@@ -4564,14 +4564,15 @@ that exploring seven domains asked of the interpreter, by how many asked.
   term, and of the other sign.
 
   Decided:
-  - **The form**: after the units, ` in [r,c]` for a matrix's cell or
-    ` in [s,r,c]` for a tensor's, as a parting line names it, then
-    ` at step n`; before `, from K` and the estimate, which say other
-    things:
+  - **The form**: after the units, ` in y[r,c]` for a matrix's cell or
+    ` in y[s,r,c]` for a tensor's, by the term's name as a parting line
+    names it, so that `units of a float in [2,1]` cannot read as an
+    interval, then ` at step n`, a scalar's alone; before `, from K` and
+    the estimate, which say other things:
 
-        outside.y: within 0.00061, 1e+10 units of a float in [2,1] at step 1101; the interpreter's terms about <e> from the exact ones
+        outside.y: within 0.00061, 1e+10 units of a float in y[2,1] at step 1101; the interpreter's terms about <e> from the exact ones
         shove.s: within 5.9e-08, 1.4e+07 units of a float at step 5
-        shove.y: within 5.9e-08, 1.4e+07 units of a float in [2,1,1] at step 7
+        shove.y: within 5.9e-08, 1.4e+07 units of a float in y[2,1,1] at step 7
 
     `step`, where a parting line says `at 1113` alone: after "units of a
     float", `at 0` reads as the spacing at 0. The first line already
@@ -4617,11 +4618,11 @@ that exploring seven domains asked of the interpreter, by how many asked.
   What moves, on a prototype, discarded: no golden; every check
   program's C, its parting cell printed by a function the units line
   shares; and in `test/CMakeLists.txt` five float reports, `tiny.y`,
-  `big.s` and `knee.r` ending `at step 0`, `outside.y` `in [2,1] at
+  `big.s` and `knee.r` ending `at step 0`, `outside.y` `in y[2,1] at
   step 1101`, and `factored.N`, a libm's, by its form,
-  `( in \[[12],[1-3]\] at step [0-9]+)?` before `, from 1` (`in [2,1]
-  at step 2` on the prototype). `naive.P`, 8.8e+06 units, `in [1,1] at
-  step 1` there, moves within its `[^\n]+`. The recorded lines of
+  `( in N\[[12],[1-3]\] at step [0-9]+)?` before `, from 1` (`in
+  N[2,1] at step 2` on the prototype). `naive.P`, 8.8e+06 units, `in
+  P[1,1] at step 1` there, moves within its `[^\n]+`. The recorded lines of
   `float.ink`'s `tiny.y` and `straddle.ink`'s `knee.r` change with them;
   `goldberg.ink`, `chol.ink` and `robertson.ink` record no float line
   that moves.
@@ -4644,7 +4645,7 @@ that exploring seven domains asked of the interpreter, by how many asked.
   join the report list, the `_cell` tests and the skips go, and README's
   float paragraph gains: "Where that most reaches 2^23 units, as a term
   lost whole or of the other sign does, it names the cell and step:
-  `outside.y: within 0.00061, 1e+10 units of a float in [2,1] at step
+  `outside.y: within 0.00061, 1e+10 units of a float in y[2,1] at step
   1101`."
 - **`--check`'s remainder of a limit assumes linear convergence**: C36's
   step*r/(1-r) reads the ratio of two steps, pessimistic for Newton's

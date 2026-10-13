@@ -1088,14 +1088,14 @@ add_test(NAME check_float_outside_2000_cell COMMAND check_float_outside_2000)
 add_test(NAME check_float_tiny_cell COMMAND check_float_tiny)
 set_tests_properties(check_float_outside_2000_cell PROPERTIES
     SKIP_REGULAR_EXPRESSION "1e\\+10 units of a float\\;" PASS_REGULAR_EXPRESSION
-    "^outside: 2000 steps from 0 in float, against exact values until 6 and inexact ones from there\noutside\\.y: within 0\\.00061, 1e\\+10 units of a float in \\[2,1\\] at step 1101${about}\n$")
+    "^outside: 2000 steps from 0 in float, against exact values until 6 and inexact ones from there\noutside\\.y: within 0\\.00061, 1e\\+10 units of a float in y\\[2,1\\] at step 1101${about}\n$")
 set_tests_properties(check_float_tiny_cell PROPERTIES
     SKIP_REGULAR_EXPRESSION "1\\.1e\\+07 units of a float\n" PASS_REGULAR_EXPRESSION
     "^tiny: 100 steps from 0${in_float}\ntiny\\.y: within 1e-08, 1\\.1e\\+07 units of a float at step 0\ntiny\\.z: within 1e-08\n$")
 set_tests_properties(check_float_shove_report PROPERTIES
     SKIP_REGULAR_EXPRESSION "^shove: 100 steps from 0${in_float}\nshove\\.s: within 5\\.9e-08, 1\\.4e\\+07 units of a float\nshove\\.y: within 5\\.9e-08, 1\\.4e\\+07 units of a float\n$"
     PASS_REGULAR_EXPRESSION
-    "^shove: 100 steps from 0${in_float}\nshove\\.s: within 5\\.9e-08, 1\\.4e\\+07 units of a float at step 5\nshove\\.y: within 5\\.9e-08, 1\\.4e\\+07 units of a float in \\[2,1,1\\] at step 7\n$")
+    "^shove: 100 steps from 0${in_float}\nshove\\.s: within 5\\.9e-08, 1\\.4e\\+07 units of a float at step 5\nshove\\.y: within 5\\.9e-08, 1\\.4e\\+07 units of a float in y\\[2,1,1\\] at step 7\n$")
 
 # Random models, compiled and held to the interpreter's answers: the generator
 # runs both at build time and writes one C file, built and run like the others.
