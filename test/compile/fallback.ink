@@ -189,6 +189,7 @@ answered = inward(c_n = 1 + mod(n, 2))
 #
 #     chained: 100 steps from 0, against exact values until 0 and inexact ones from there
 #     chained.y: within 0
+#     chained.y: where lim s runs out, 'y_n | lim s(u_n) > 0 = 1' falls to 'y_n | u_n > 0 = 2'
 chain(u_n) = {
     s(x)_k = x + (-1)^k
     y_n | lim s(u_n) > 0 = 1
@@ -202,11 +203,20 @@ chained = chain(u_n = 1)
 # is NaN there, as the interpreter refuses. gap's value reads the limit its
 # guard read, and g's second guard holds after its first ran out. At even n
 # Newton settles near 0.618 and y_n is 1; at odd n it cycles, gap is 0 and
-# g 2, r_n is refused, and so is y_n. Checked:
+# g 2, r_n is refused, and so is y_n. gap has a clause that always applies,
+# so y's guard reading it is not listed; g has none, and in middled y's is.
+# Checked:
 #
 #     gapped: 100 steps from 0, against exact values until 0 and inexact ones from there
 #     gapped.r: within 0
 #     gapped.y: within 0
+#     gapped.gap: where lim nv runs out, 'gap(c) | lim nv(c) > 0 = lim nv(c)' falls to 'gap(c) = 0'
+#
+#     middled: 100 steps from 0, against exact values until 0 and inexact ones from there
+#     middled.r: within 0
+#     middled.y: within 0
+#     middled.g: where lim nv runs out, 'g(c) | lim nv(c) > 0 = 1' falls to 'g(c) | c > 0 = 2'
+#     middled.y: where lim nv runs out, 'y_n | g(c_n) < 3 and r_n == 1 = 1' falls to 'y_n = 0'
 gapr(c_n) = {
     nv(c)_0 = 0
     nv(c)_k = nv(c)_(k-1) - (nv(c)_(k-1)^3 - 2*nv(c)_(k-1) + c)/(3*nv(c)_(k-1)^2 - 2)

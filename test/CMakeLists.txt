@@ -954,12 +954,18 @@ set_tests_properties(check_faraway_report PROPERTIES SKIP_REGULAR_EXPRESSION
     "^faraway: 100 steps from 0, against exact values until 0 and inexact ones from there\nfaraway\\.w: within 0\nfaraway\\.y: within 0\n$"
     PASS_REGULAR_EXPRESSION
     "^faraway: 100 steps from 0, against exact values until 0 and inexact ones from there\nfaraway\\.w: within 0\nfaraway\\.y: within 0\nfaraway\\.w: where lim nv or lim hv runs out, 'w_n \\| lim nv\\(c_n\\) > 0 and lim hv\\(c_n\\) > 0 = 1' falls to 'w_n = 0'\noutside: where lim nf runs out, 'outside\\(c\\) \\| lim nf\\(c\\) > 0 = 1' falls to 'outside\\(c\\) = 5'\n$")
-set_tests_properties(check_chained_report PROPERTIES PASS_REGULAR_EXPRESSION
-    "^chained: 100 steps from 0, against exact values until 0 and inexact ones from there\nchained\\.y: within 0\n$")
-set_tests_properties(check_gapped_report PROPERTIES PASS_REGULAR_EXPRESSION
-    "^gapped: 100 steps from 0, against exact values until 0 and inexact ones from there\ngapped\\.r: within 0\ngapped\\.y: within 0\n$")
-set_tests_properties(check_middled_report PROPERTIES PASS_REGULAR_EXPRESSION
-    "^middled: 100 steps from 0, against exact values until 0 and inexact ones from there\nmiddled\\.r: within 0\nmiddled\\.y: within 0\n$")
+set_tests_properties(check_chained_report PROPERTIES SKIP_REGULAR_EXPRESSION
+    "^chained: 100 steps from 0, against exact values until 0 and inexact ones from there\nchained\\.y: within 0\n$"
+    PASS_REGULAR_EXPRESSION
+    "^chained: 100 steps from 0, against exact values until 0 and inexact ones from there\nchained\\.y: within 0\nchained\\.y: where lim s runs out, 'y_n \\| lim s\\(u_n\\) > 0 = 1' falls to 'y_n \\| u_n > 0 = 2'\n$")
+set_tests_properties(check_gapped_report PROPERTIES SKIP_REGULAR_EXPRESSION
+    "^gapped: 100 steps from 0, against exact values until 0 and inexact ones from there\ngapped\\.r: within 0\ngapped\\.y: within 0\n$"
+    PASS_REGULAR_EXPRESSION
+    "^gapped: 100 steps from 0, against exact values until 0 and inexact ones from there\ngapped\\.r: within 0\ngapped\\.y: within 0\ngapped\\.gap: where lim nv runs out, 'gap\\(c\\) \\| lim nv\\(c\\) > 0 = lim nv\\(c\\)' falls to 'gap\\(c\\) = 0'\n$")
+set_tests_properties(check_middled_report PROPERTIES SKIP_REGULAR_EXPRESSION
+    "^middled: 100 steps from 0, against exact values until 0 and inexact ones from there\nmiddled\\.r: within 0\nmiddled\\.y: within 0\n$"
+    PASS_REGULAR_EXPRESSION
+    "^middled: 100 steps from 0, against exact values until 0 and inexact ones from there\nmiddled\\.r: within 0\nmiddled\\.y: within 0\nmiddled\\.g: where lim nv runs out, 'g\\(c\\) \\| lim nv\\(c\\) > 0 = 1' falls to 'g\\(c\\) \\| c > 0 = 2'\nmiddled\\.y: where lim nv runs out, 'y_n \\| g\\(c_n\\) < 3 and r_n == 1 = 1' falls to 'y_n = 0'\n$")
 set_tests_properties(check_twonames_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^twonames: 100 steps from 0, against exact values until 0 and inexact ones from there\ntwonames\\.a: within [0-9.e-]+${about}\ntwonames\\.b: within [0-9.e-]+${about}\n$")
 set_tests_properties(check_fir_report PROPERTIES PASS_REGULAR_EXPRESSION

@@ -11633,7 +11633,10 @@ After an external review of README, MANIFESTO and the conformance suite
     where that function has no clause after, as its status is asked, so
     `answered.y` and `buffered.brake` list nothing and the function's own
     guard has its line, `answered.inner`, `buffered.gap`; one with none
-    lists both, `buffered.near` and `buffered.alarm`. A limit of
+    lists both, `buffered.near` and `buffered.alarm`. A clause after is
+    one that always applies: `middled`'s g has a guarded clause after its
+    first and none that always does, so `middled.y` is listed beside
+    `middled.g`; `gapped.y`, as `buffered.brake`, is not. A limit of
     constants is folded, converging or refusing the model, so it has no
     fallback and no line: `straddle.ink`'s `parted`, `founded` and
     `folded` do not move. A limit in a sum's terms within a guard is the
@@ -11680,7 +11683,8 @@ After an external review of README, MANIFESTO and the conformance suite
   ending with its lines in `test/CMakeLists.txt`: `fallback.ink`'s
   `planned`, `held`, `ranout`, `tipped`, `columned` and `answered`, and
   `straddle.ink`'s `equal`; their recorded comments with them. No float
-  check has such a guard.
+  check has such a guard. With fixes49's `chained`, `gapped` and
+  `middled`, ten of 266, by the rule and written by hand.
 
   About 60 lines: the prototype's 56 net, formatted and with no comment,
   44 in `check.hpp` walking the instance's definitions and writing the
@@ -11700,13 +11704,13 @@ After an external review of README, MANIFESTO and the conformance suite
   outside grad too, and `faraway`, a guarded function of the file. Newton
   from 0 on x^3 - 2x + c in Python's fractions: it settles at c = 1/2 and
   1, at 0.25865202250415276 and 0.6180339887498949, and cycles 0, 1 at 2.
-  With the implementation the skips go, the seven comments gain their
-  lines, and README's paragraph on `--check` gains: "After the values it lists, from the code and not
-  the run, every guard the step compiles that reads a limit and the
-  clause tried where that limit runs out, so that a reviewer can see
-  which way each falls: `braked.brake: where lim nv runs out, 'brake_n |
-  lim nv(c_n) < 1 = 1' falls to 'brake_n = 0'` skips the brake where
-  Newton fails (`test/compile/fallback.ink`)."
+  With the implementation the skips go, the comments gain their lines,
+  and README's paragraph on `--check` gains: "After the values it lists,
+  from the code and not the run, every guard the step compiles that reads
+  a limit and the clause tried where that limit runs out, so that a
+  reviewer can see which way each falls: `braked.brake: where lim nv runs
+  out, 'brake_n | lim nv(c_n) < 1 = 1' falls to 'brake_n = 0'` skips the
+  brake where Newton fails (`test/compile/fallback.ink`)."
 
 After a second review (2026-10-13), which took the Jacobian by cells and
 the clause for a limit that does not converge as done, the order from here:
