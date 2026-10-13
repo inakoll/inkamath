@@ -4241,7 +4241,8 @@ private:
     // A reduction's term, as the interpreter ranks it; under grad, for now, refused.
     static const Code& Ranked(const SeriesExpression<Value>& series, const Code& term) {
         if (!term.part.empty())
-            throw Reason(std::string("a derivative of a ") + series.Noun() + ", for now");
+            throw Reason(std::string("a derivative of ") + (series.Indexes() ? "an " : "a ") +
+                         series.Noun() + ", for now");
         if (!term.constant && !term.Scalar())
             throw Reason(std::string("the ") + series.Noun() + " needs single values, not a " +
                          term.size.Described() + "; write it by its cells");
