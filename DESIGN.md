@@ -10805,8 +10805,10 @@ After an external review of README, MANIFESTO and the conformance suite
     more is asked, `lim s == lim s`: a value equals itself where it exists,
     the definedness predicate of a logic of partial terms. A local
     shortens it in the interpreter, `| (z = lim s) == z = z`; compiled, a
-    local is refused today ("Locals compiled" above), and the compiler
-    computes a limit written twice once.
+    local is refused today ("Locals compiled" above), and a limit written
+    twice is called where it is written, which GCC merges and Clang does
+    not: `planned`'s step walks qp once under GCC -O2, five times under
+    Clang.
   - **Reads as the interpreter reads**: on the right of `and` or `or` only
     where the left did not decide, and through the functions the guard
     calls. Read on the left, the guard does not hold whatever its right
