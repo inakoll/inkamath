@@ -979,7 +979,7 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:ledge logistic:gate momentu
                          blocks:nested conv:see straddle:knee apollo11:whole dyn:nm dyn:cd
                          steps:coast:1001 robertson:inside:2000 robertson:outside:2000
                          robertson:rober tensorgrad:small tensorgrad:saliency:3 split:carried:4
-                         chol:factored chol:naive chol:sole)
+                         chol:factored chol:naive chol:sole float:shove)
     string(REPLACE ":" ";" checked ${checked})
     list(POP_FRONT checked file instance count)
     set(name ${instance})
@@ -1082,6 +1082,19 @@ foreach(report IN ITEMS
     string(SUBSTRING "${report}" ${colon} -1 expected)
     set_tests_properties(check_float_${instance}_report PROPERTIES PASS_REGULAR_EXPRESSION "${expected}")
 endforeach()
+# --check naming the cell and step of its worst units (DESIGN.md), specified
+# before it is built: each skipped while its line names neither, as today.
+add_test(NAME check_float_outside_2000_cell COMMAND check_float_outside_2000)
+add_test(NAME check_float_tiny_cell COMMAND check_float_tiny)
+set_tests_properties(check_float_outside_2000_cell PROPERTIES
+    SKIP_REGULAR_EXPRESSION "1e\\+10 units of a float\\;" PASS_REGULAR_EXPRESSION
+    "^outside: 2000 steps from 0 in float, against exact values until 6 and inexact ones from there\noutside\\.y: within 0\\.00061, 1e\\+10 units of a float in \\[2,1\\] at step 1101${about}\n$")
+set_tests_properties(check_float_tiny_cell PROPERTIES
+    SKIP_REGULAR_EXPRESSION "1\\.1e\\+07 units of a float\n" PASS_REGULAR_EXPRESSION
+    "^tiny: 100 steps from 0${in_float}\ntiny\\.y: within 1e-08, 1\\.1e\\+07 units of a float at step 0\ntiny\\.z: within 1e-08\n$")
+set_tests_properties(check_float_shove_report PROPERTIES
+    SKIP_REGULAR_EXPRESSION "units of a float\n" PASS_REGULAR_EXPRESSION
+    "^shove: 100 steps from 0${in_float}\nshove\\.s: within 5\\.9e-08, 1\\.4e\\+07 units of a float at step 5\nshove\\.y: within 5\\.9e-08, 1\\.4e\\+07 units of a float in \\[2,1,1\\] at step 7\n$")
 
 # Random models, compiled and held to the interpreter's answers: the generator
 # runs both at build time and writes one C file, built and run like the others.
