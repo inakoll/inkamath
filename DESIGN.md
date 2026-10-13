@@ -4644,7 +4644,8 @@ that exploring seven domains asked of the interpreter, by how many asked.
   `float.ink` says, and in float32. With the implementation the three
   join the report list, the `_cell` tests and the skips go, and README's
   float paragraph gains: "Where that most reaches 2^23 units, as a term
-  lost whole or of the other sign does, it names the cell and step:
+  a normal float holds does when lost whole or of the other sign, it
+  names the cell and step:
   `outside.y: within 0.00061, 1e+10 units of a float in y[2,1] at step
   1101`."
 - **`--check`'s remainder of a limit assumes linear convergence**: C36's
