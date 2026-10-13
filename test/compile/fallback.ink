@@ -9,9 +9,9 @@
 # the guarded clause is the risky one. --check lists, after the per-term
 # lines, every guard the step compiles that reads a limit, and the clause
 # after it, so that a reviewer can audit the direction (DESIGN.md, next in
-# line; specified, not yet built). rootless, coupled, braked and buffered
-# give theirs; every other report below then ends with its own, as
-# test/CMakeLists.txt gives them.
+# line; specified, not yet built). rootless, coupled, braked, buffered, bent
+# and faraway give theirs; every other report below then ends with its own,
+# as test/CMakeLists.txt gives them.
 
 # A small MPC with a fallback clause: the plan minimises 2(x + v)^2 + v^2/2
 # over |v| <= 1 by projected gradient with a step of 1/2, too long for the
@@ -130,6 +130,23 @@ tangent(c_n) = {
     y_n = grad_(x = c_n/c_n) r(x, c_n)
 }
 tipped = tangent(c_n = 1 + mod(n, 2))
+
+# r called outside grad too, where its clause after is taken: at even n y_n
+# is 2 and z_n 1; at odd n y_n is NaN and z_n 3*2 = 6. Checked:
+#
+#     bent: 100 steps from 0, against exact values until 0 and inexact ones from there
+#     bent.y: within 0
+#     bent.z: within 0
+#     bent.r: where lim nv runs out, 'r(x, c) | lim nv(c) > 0 = x^2' falls to 'r(x, c) = 3*x', and to NaN under grad
+bending(c_n) = {
+    nv(c)_0 = 0
+    nv(c)_k = nv(c)_(k-1) - (nv(c)_(k-1)^3 - 2*nv(c)_(k-1) + c)/(3*nv(c)_(k-1)^2 - 2)
+    r(x, c) | lim nv(c) > 0 = x^2
+    r(x, c) = 3*x
+    y_n = grad_(x = c_n/c_n) r(x, c_n)
+    z_n = r(c_n, c_n)
+}
+bent = bending(c_n = 1 + mod(n, 2))
 
 # A matrix limit read by a guard, its status asked as its return: Newton's
 # iterate beside a cell that settles at 2, the matrix running out where
@@ -261,3 +278,18 @@ relaying(c_n) = {
     alarm_n = 0
 }
 buffered = relaying(c_n = 1 + mod(n, 2))
+
+# A guarded function of the file, outside the model, is named by its name
+# alone. y_n is 1 at even n, where Newton settles, and 5 at odd. Checked:
+#
+#     faraway: 100 steps from 0, against exact values until 0 and inexact ones from there
+#     faraway.y: within 0
+#     outside: where lim nf runs out, 'outside(c) | lim nf(c) > 0 = 1' falls to 'outside(c) = 5'
+nf(c)_0 = 0
+nf(c)_k = nf(c)_(k-1) - (nf(c)_(k-1)^3 - 2*nf(c)_(k-1) + c)/(3*nf(c)_(k-1)^2 - 2)
+outside(c) | lim nf(c) > 0 = 1
+outside(c) = 5
+afar(c_n) = {
+    y_n = outside(c_n)
+}
+faraway = afar(c_n = 1 + mod(n, 2))

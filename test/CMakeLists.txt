@@ -248,7 +248,8 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brin
                          fallback:planned fallback:held fallback:ranout
                          fallback:tipped fallback:columned fallback:answered
                          fallback:rootless fallback:coupled fallback:chained fallback:gapped
-                         fallback:middled fallback:braked fallback:buffered)
+                         fallback:middled fallback:braked fallback:buffered fallback:bent
+                         fallback:faraway)
     string(REPLACE ":" ";" checked ${checked})
     list(POP_FRONT checked file instance count)
     set(name ${instance})
@@ -945,6 +946,14 @@ set_tests_properties(check_buffered_report PROPERTIES SKIP_REGULAR_EXPRESSION
     "^buffered: 100 steps from 0, against exact values until 0 and inexact ones from there\nbuffered\\.alarm: within 0\nbuffered\\.brake: within 0\n$"
     PASS_REGULAR_EXPRESSION
     "^buffered: 100 steps from 0, against exact values until 0 and inexact ones from there\nbuffered\\.alarm: within 0\nbuffered\\.brake: within 0\nbuffered\\.alarm: where lim nv runs out, 'alarm_n \\| near\\(c_n\\) == 1 = 1' falls to 'alarm_n = 0'\nbuffered\\.gap: where lim nv runs out, 'gap\\(c\\) \\| lim nv\\(c\\) > 0 = lim nv\\(c\\)' falls to 'gap\\(c\\) = 0'\nbuffered\\.near: where lim nv runs out, 'near\\(c\\) \\| lim nv\\(c\\) < 1 = 1' falls to NaN\n$")
+set_tests_properties(check_bent_report PROPERTIES SKIP_REGULAR_EXPRESSION
+    "^bent: 100 steps from 0, against exact values until 0 and inexact ones from there\nbent\\.y: within 0\nbent\\.z: within 0\n$"
+    PASS_REGULAR_EXPRESSION
+    "^bent: 100 steps from 0, against exact values until 0 and inexact ones from there\nbent\\.y: within 0\nbent\\.z: within 0\nbent\\.r: where lim nv runs out, 'r\\(x, c\\) \\| lim nv\\(c\\) > 0 = x\\^2' falls to 'r\\(x, c\\) = 3\\*x', and to NaN under grad\n$")
+set_tests_properties(check_faraway_report PROPERTIES SKIP_REGULAR_EXPRESSION
+    "^faraway: 100 steps from 0, against exact values until 0 and inexact ones from there\nfaraway\\.y: within 0\n$"
+    PASS_REGULAR_EXPRESSION
+    "^faraway: 100 steps from 0, against exact values until 0 and inexact ones from there\nfaraway\\.y: within 0\noutside: where lim nf runs out, 'outside\\(c\\) \\| lim nf\\(c\\) > 0 = 1' falls to 'outside\\(c\\) = 5'\n$")
 set_tests_properties(check_chained_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^chained: 100 steps from 0, against exact values until 0 and inexact ones from there\nchained\\.y: within 0\n$")
 set_tests_properties(check_gapped_report PROPERTIES PASS_REGULAR_EXPRESSION

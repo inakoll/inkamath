@@ -11686,17 +11686,18 @@ After an external review of README, MANIFESTO and the conformance suite
   the implementation stops and reports.
 
   Specified in `test/CMakeLists.txt`: the seven reports above, each
-  skipped while it ends as today, and only then; and four instances in
+  skipped while it ends as today, and only then; and six instances in
   `test/compile/fallback.ink`, likewise, whose comments give their reports.
   `rootless` and `coupled` are `rooted` and `paired`, which had none;
   `braked` a brake whose guard reads Newton's limit, the risky clause
   first, beside `careful`, the safe order, and `wheels`, a clause per
   cell; `buffered` the same through functions, `gap` with a clause after
-  and `near` without. Newton from 0 on x^3 - 2x + c in Python's fractions:
-  it settles at c = 1/2 and 1, at 0.25865202250415276 and
-  0.6180339887498949, and cycles 0, 1 at 2. With the implementation the
-  skips go, the seven comments gain their lines, and README's paragraph
-  on `--check` gains: "After the values it lists, from the code and not
+  and `near` without; by the spec review, `bent`, `tipped`'s r called
+  outside grad too, and `faraway`, a guarded function of the file. Newton
+  from 0 on x^3 - 2x + c in Python's fractions: it settles at c = 1/2 and
+  1, at 0.25865202250415276 and 0.6180339887498949, and cycles 0, 1 at 2.
+  With the implementation the skips go, the seven comments gain their
+  lines, and README's paragraph on `--check` gains: "After the values it lists, from the code and not
   the run, every guard the step compiles that reads a limit and the
   clause tried where that limit runs out, so that a reviewer can see
   which way each falls: `braked.brake: where lim nv runs out, 'brake_n |
