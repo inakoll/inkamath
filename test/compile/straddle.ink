@@ -192,3 +192,30 @@ based(w = 1/10^11) = {
     x_n = s(1/2 - w)_3
 }
 founded = based()
+
+# A limit read twice at a step is one value, in each run as in the step,
+# however the third run moves it (C360): 'y' is 0 in every run.
+#
+#     reread: 100 steps from 0, against exact values until 0 and inexact ones from there
+#     reread.y: within 0
+#     reread.g: within 0
+twice() = {
+    half(a)_0 = 0
+    half(a)_k = half(a)_(k-1) + a/2^(k+1)
+    y_n = lim half(1) - lim half(1)
+    g_n | y_n < 0 = 1
+    g_n = 0
+}
+reread = twice()
+
+# The same through an input, a limit equal to itself in every run.
+#
+#     equal: 100 steps from 0, against exact values until 0 and inexact ones from there
+#     equal.y: within 1.1e-16; the interpreter's terms about <e> from the exact ones
+idiom(u_n) = {
+    h(s)_0 = 0
+    h(s)_k = h(s)_(k-1)/2 + s
+    y_n | lim h(u_n) == lim h(u_n) = lim h(u_n)
+    y_n = 0
+}
+equal = idiom(u_n = 1/(n + 3))
