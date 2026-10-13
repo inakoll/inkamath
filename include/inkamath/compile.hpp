@@ -2203,6 +2203,7 @@ private:
         const Setting<bool> guarding(guarding_, true), moved(moved_, false);
         const Code          code = Quiet(guard);
         chosen_                  = chosen_ || moved_;
+        unconverged_.clear();
         if (!code.Scalar()) throw Reason("a guard that is a matrix");
         if (code.constant) {
             if (!Holds(*code.constant)) return std::nullopt;
@@ -2215,6 +2216,7 @@ private:
         std::string ran;
         for (const std::string& status : asked) ran += (ran.empty() ? "" : " || ") + status;
         if (outer) outer->insert(asked.begin(), asked.end());
+        unconverged_ = "isnan(" + truth + ") && (" + ran + ")";
         return "isnan(" + truth + ") && !(" + ran + ") ? NAN : " + truth + " == 1.0";
     }
 
@@ -2559,7 +2561,7 @@ private:
             const int slice = static_cast<int>(c / (shape.size.rows * shape.size.cols)) + 1,
                       row   = static_cast<int>(c / shape.size.cols % shape.size.rows) + 1,
                       col   = static_cast<int>(c % shape.size.cols) + 1;
-            std::string                chain, pick;
+            std::string                chain, pick, ran;
             std::optional<std::string> last;
             int                        picked  = 0;
             const auto                 settles = [&](const Clause<Value>& clause) {
@@ -2568,6 +2570,7 @@ private:
                 const std::string outer = std::exchange(index_, p.general() ? p.index_name() : "");
                 const std::optional<std::string> condition =
                     p.guarded() ? Condition(p.guard()) : std::optional<std::string>("");
+                Ran(ran, condition);
                 // --check asks the interpreter's guards of a cell by its row and column.
                 if (p.tensor() && condition && !condition->empty())
                     throw Reason("a tensor's cells under a guard that is not a constant, for now");
@@ -2586,7 +2589,7 @@ private:
                 return condition->empty();
             };
             Walk(definition, slice, row, col, fits, settles);
-            if (!last) last = whole ? whole->At(c).text : "0.0";
+            if (!last) last = Unless(ran, whole ? whole->At(c).text : "0.0");
             cells.push_back(nan.empty() ? chain + *last : "(" + nan + chain + *last + ")");
             if (taken) taken->push_back(pick + std::to_string(picked));
         }
@@ -2821,6 +2824,7 @@ private:
                 int col, const Code& fallback) {
         std::vector<std::pair<std::string, Code>> guarded;
         std::optional<Code>                       otherwise;
+        std::string                               ran;
         const Setting<bool>                       chosen(chosen_, false);
         Walk(
             definition, slice, row, col, [](const Clause<Value>&) { return true; },
@@ -2828,6 +2832,7 @@ private:
                 const ParametersDefinition<Value>& p = clause.parameters;
                 const std::optional<std::string>   condition =
                     p.guarded() ? Condition(p.guard()) : std::optional<std::string>("");
+                Ran(ran, condition);
                 if (!condition) return false;
                 const Code value =
                     Chosen(condition->empty() ? Emit(clause.expression) : Taken(clause.expression));
@@ -2841,7 +2846,22 @@ private:
                 return condition->empty();
             });
         if (guarded.empty()) return otherwise ? *otherwise : fallback;
-        return Chain(guarded, otherwise ? *otherwise : Chosen(fallback), Extent{});
+        Code last = otherwise ? *otherwise : Chosen(fallback);
+        if (!otherwise && !ran.empty()) {
+            last.cells[0] = Cell(Unless(ran, last.cells[0].text), primary);
+            last.constant.reset();
+        }
+        return Chain(guarded, last, Extent{});
+    }
+
+    // A cell no clause gives is refused where a guard of its chain read a
+    // limit that ran out, as the interpreter refuses it (DESIGN.md).
+    void Ran(std::string& ran, const std::optional<std::string>& condition) const {
+        if (condition && !condition->empty() && !unconverged_.empty())
+            ran += (ran.empty() ? "" : " || ") + unconverged_;
+    }
+    static std::string Unless(const std::string& ran, const std::string& cell) {
+        return ran.empty() ? cell : "(" + ran + " ? NAN : " + cell + ")";
     }
 
     std::size_t Size(const PExpression<Value>& expression) {
@@ -5960,6 +5980,7 @@ private:
     bool                             guarding_ = false;  // in a guard, which asks only for values
     // Where a guard's truth is NaN, what asks whether a limit it reads ran out.
     std::set<std::string>*           statuses_ = nullptr;
+    std::string unconverged_;  // where the last guard compiled read a limit that ran out
     bool                             roots_    = false;  // whether C may take a root of x < 0
     bool moved_  = false;  // whether a value with a part was compiled, as a guard asks
     bool chosen_ = false;  // whether a guard of the chain compiled read one
