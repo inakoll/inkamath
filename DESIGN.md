@@ -8986,8 +8986,11 @@ checked: what it asked of the compiler, each with its smallest change.
     the body a term, the bounds read in the scope, the index bound in the
     body alone, its refusal naming the maximum's body as a sum's does.
     `argmin_` is a table entry more. The words stay names: a reduction is
-    the word, `_(`, a name and `=`, which no term of a sequence is, so
-    `max(a, b)` is still the prelude's and `argmax = 4` still a definition.
+    the word, `_(`, a name and `=`, so `max(a, b)` is still the prelude's
+    and `argmax = 4` still a definition. A sequence named `max`, `min`,
+    `argmax` or `argmin` read at a local definition, `max_(k=1)` beside
+    `max_1 = 4`, now reads as a reduction and is refused, where it gave 4:
+    a form that adds nothing, not kept for its own sake (CLAUDE.md §2).
   - **The fold of `max(a, b)`**: the first term, then each later one kept
     where it ranks strictly higher, by `<`. The value is a term, so exact
     where the terms are; a tie keeps the first, and argmax its first
