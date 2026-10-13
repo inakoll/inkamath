@@ -106,7 +106,8 @@ error: a comparison needs real numbers, not ~(i)
 >> grad_(a = 4) chol(a)
 0.25
 
-# log det A = 2 log L22 here, L11 being 2: d/da log(12 - a^2) at 2 is -4/8.
+# log det A is 2 log L22 and a constant here, L11 being 2: d/da log(12 - a^2)
+# at 2 is -4/8.
 >> grad_(a = 2) 2*log(chol([4 a; a 3])[2,2])
 ~-0.5
 
