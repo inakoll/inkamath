@@ -123,6 +123,64 @@ ho(x) = 2
 >> ho(0)
 ~2
 
+# A guard that did not hold for a limit that ran out leaves the guards after
+# it their own truth, and the clause that then holds is inexact: sw(1)'s
+# terms are 0, 2, 0, ... and sw(-1)'s -2, 0, -2, ..., the hundredth 0.
+>> sw(x)_n = x + (-1)^n
+sw(x)_n = x + (-1)^n
+
+>> fa(x) | lim sw(x) > 0 = 1
+fa(x) | lim sw(x) > 0 = 1
+
+>> fa(x) | x > 0 = 2
+fa(x) | x > 0 = 2
+
+>> fa(x) = 3
+fa(x) = 3
+
+>> fa(1)
+~2
+
+>> ga(x) | lim sw(x) > 0 = 1
+ga(x) | lim sw(x) > 0 = 1
+
+>> ga(x) | x > 0 = 2
+ga(x) | x > 0 = 2
+
+>> ga(1)
+~2
+
+# A second guard that reads a limit that runs out, and a third that holds;
+# where none holds, the refusal is the limit's.
+>> tri(x) | lim sw(x) > 0 = 1
+tri(x) | lim sw(x) > 0 = 1
+
+>> tri(x) | lim sw(x) < 0 = 2
+tri(x) | lim sw(x) < 0 = 2
+
+>> tri(x) | x > 0 = 3
+tri(x) | x > 0 = 3
+
+>> tri(1)
+~3
+
+>> tri(-1)
+error: sw did not converge within 100 terms (last term 0)
+
+# The same in a function an outer guard calls: tri(1) answers, and tri(-1)
+# is refused in the limit's words, so the outer guard does not hold.
+>> co(x) | tri(x) > 2 = 10
+co(x) | tri(x) > 2 = 10
+
+>> co(x) = 20
+co(x) = 20
+
+>> co(1)
+~10
+
+>> co(-1)
+~20
+
 # Not through a term the guard reads: y_0 is refused, and a refused term is
 # not a limit that did not converge. Nor through another limit's terms,
 # each of which is refused where nw(0) is; from -2, t's terms tend to twice

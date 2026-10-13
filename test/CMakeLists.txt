@@ -247,7 +247,8 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brin
                          chol:factored chol:naive chol:sole placed:placed
                          fallback:planned fallback:held fallback:ranout
                          fallback:tipped fallback:columned fallback:answered
-                         fallback:rootless fallback:coupled fallback:braked fallback:buffered)
+                         fallback:rootless fallback:coupled fallback:chained fallback:gapped
+                         fallback:middled fallback:braked fallback:buffered)
     string(REPLACE ":" ";" checked ${checked})
     list(POP_FRONT checked file instance count)
     set(name ${instance})
@@ -944,6 +945,12 @@ set_tests_properties(check_buffered_report PROPERTIES SKIP_REGULAR_EXPRESSION
     "^buffered: 100 steps from 0, against exact values until 0 and inexact ones from there\nbuffered\\.alarm: within 0\nbuffered\\.brake: within 0\n$"
     PASS_REGULAR_EXPRESSION
     "^buffered: 100 steps from 0, against exact values until 0 and inexact ones from there\nbuffered\\.alarm: within 0\nbuffered\\.brake: within 0\nbuffered\\.alarm: where lim nv runs out, 'alarm_n \\| near\\(c_n\\) == 1 = 1' falls to 'alarm_n = 0'\nbuffered\\.gap: where lim nv runs out, 'gap\\(c\\) \\| lim nv\\(c\\) > 0 = lim nv\\(c\\)' falls to 'gap\\(c\\) = 0'\nbuffered\\.near: where lim nv runs out, 'near\\(c\\) \\| lim nv\\(c\\) < 1 = 1' falls to NaN\n$")
+set_tests_properties(check_chained_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^chained: 100 steps from 0, against exact values until 0 and inexact ones from there\nchained\\.y: within 0\n$")
+set_tests_properties(check_gapped_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^gapped: 100 steps from 0, against exact values until 0 and inexact ones from there\ngapped\\.r: within 0\ngapped\\.y: within 0\n$")
+set_tests_properties(check_middled_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^middled: 100 steps from 0, against exact values until 0 and inexact ones from there\nmiddled\\.r: within 0\nmiddled\\.y: within 0\n$")
 set_tests_properties(check_twonames_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^twonames: 100 steps from 0, against exact values until 0 and inexact ones from there\ntwonames\\.a: within [0-9.e-]+${about}\ntwonames\\.b: within [0-9.e-]+${about}\n$")
 set_tests_properties(check_fir_report PROPERTIES PASS_REGULAR_EXPRESSION

@@ -851,8 +851,16 @@ private:
             const Setting<std::set<std::string>*> asking(statuses_, &asked);
             return Inside(expansion, [&] { return Chained(name, function); });
         };
+        // A call that answered ran out of nothing, whichever limit it read.
         const auto told = [&](Code code) {
-            if (statuses_) statuses_->insert(asked.begin(), asked.end());
+            if (!statuses_ || asked.empty()) return code;
+            if (!code.Scalar()) {
+                statuses_->insert(asked.begin(), asked.end());
+                return code;
+            }
+            std::string ran;
+            for (const std::string& status : asked) ran += (ran.empty() ? "" : " || ") + status;
+            statuses_->insert("isnan(" + code.cells[0].text + ") && (" + ran + ")");
             return code;
         };
         if (outer || !temporaries_ || memo_.first != temporaries_) return told(compiled());
