@@ -10885,7 +10885,8 @@ After an external review of README, MANIFESTO and the conformance suite
     so a 3x3 by a 3x3 loops and a 2x2 by a 2x2 stays written out. (The
     study wrote that a 3x3 by a 3x3 stays out, but measured with it
     looped: `swing` 110,250 bytes, 113,056 at 27, 178,982 with every
-    product looped.) Only where a list takes temporaries, as `Shared`'s.
+    product looped; what pays at 27 is `riekf`, 123,359 at 28 rather than
+    112,982.) Only where a list takes temporaries, as `Shared`'s.
     In the RIEKF's step, Phi times a block matrix:
 
             double t13_[12][12] = {{m_->X[1][0][0], m_->X[1][0][1], m_->X[1][0][2], 0.0, 0.0, ...}, ...};
