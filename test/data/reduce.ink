@@ -246,6 +246,18 @@ error: the argmax jumps at x = 2
 >> grad_(x = 2) argmin_(k=1)^3 [2; x; 0][k]
 0
 
+# An argmax steps as a comparison does, so a limit whose terms read one
+# moving is refused as grad.ink's bisection is (C215), where it answered
+# [0; 0]: this one halves toward x too.
+>> bis(x)_0 = [0; 1]
+bis(x)_0 = [0; 1]
+
+>> bis(x)_n = bis(x)_(n-1) + (bis(x)_(n-1)[2] - bis(x)_(n-1)[1])/2*([1; 0] - (argmax_(k=1)^2 [x; (bis(x)_(n-1)[1] + bis(x)_(n-1)[2])/2][k] - 1)*[1; 1])
+bis(x)_n = bis(x)_(n-1) + (bis(x)_(n-1)[2] - bis(x)_(n-1)[1])/2*([1; 0] - (argmax_(k=1)^2 [x; (bis(x)_(n-1)[1] + bis(x)_(n-1)[2])/2][k] - 1)*[1; 1])
+
+>> grad_(x = 1/3) lim bis(x)
+error: grad cannot differentiate lim bis, whose terms step with x at a comparison or a floor
+
 # tex sets them as a paper does.
 >> f(x) = max_(k=1)^3 x^k + 1
 f(x) = max_(k=1)^3 x^k + 1
