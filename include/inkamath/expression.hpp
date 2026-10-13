@@ -374,30 +374,86 @@ public:
 };
 
 // 'sum_(k=a)^b body' and 'prod_(k=a)^b body'. Without an upper bound, the
-// series itself: its partial sums or products taken to their limit.
+// series itself: its partial sums or products taken to their limit. The
+// reductions 'max_', 'min_', 'argmax_' and 'argmin_' always have one.
+enum class Fold { sum, prod, max, min, argmax, argmin };
+
 template <typename T>
 class SeriesExpression final : public Expression<T> {
 public:
-    SeriesExpression(bool product, std::string index, PExpression<T> lower, PExpression<T> upper,
+    SeriesExpression(Fold fold, std::string index, PExpression<T> lower, PExpression<T> upper,
                      PExpression<T> body)
-        : Expression<T>({lower, upper, body}), product_(product), index_(std::move(index)) {}
+        : Expression<T>({lower, upper, body}), fold_(fold), index_(std::move(index)) {}
 
-    [[nodiscard]] bool                  Product() const { return product_; }
+    [[nodiscard]] Fold                  Op() const { return fold_; }
+    [[nodiscard]] bool                  Product() const { return fold_ == Fold::prod; }
+    [[nodiscard]] bool                  Reduction() const { return fold_ > Fold::prod; }
     [[nodiscard]] const std::string&    Index() const { return index_; }
-    [[nodiscard]] const char*           Role() const {
-        return product_ ? "the product's index" : "the sum's index";
-    }
+    [[nodiscard]] const char*           Role() const { return role_.c_str(); }
     [[nodiscard]] const PExpression<T>& Lower() const { return this->Children()[0]; }
     // Null for a series without an upper bound.
     [[nodiscard]] const PExpression<T>& Upper() const { return this->Children()[1]; }
     [[nodiscard]] const PExpression<T>& Body() const { return this->Children()[2]; }
 
+    [[nodiscard]] const char* Noun() const {
+        static const char* const nouns[] = {"sum",     "product", "maximum",
+                                            "minimum", "argmax",  "argmin"};
+        return nouns[static_cast<int>(fold_)];
+    }
+    // A reduction refuses what max(a, b) refuses, in its own words, and
+    // keeps a later term only where it ranks strictly higher, so the first
+    // of equals, as max(a, b) keeps a (DESIGN.md, reductions over an index).
+    [[nodiscard]] std::string Empty(int first, int last) const {
+        return std::string("the ") + Noun() + " has no terms: " + index_ + " runs from " +
+               std::to_string(first) + " to " + std::to_string(last);
+    }
+    const T& Ranked(const T& term) const {
+        const std::string noun = std::string("the ") + Noun();
+        if (!term.IsScalar())
+            throw std::runtime_error(noun + " needs single values, not a " +
+                                     term.Size().Described() + "; write it by its cells");
+        if (!(term == term))
+            throw std::runtime_error(noun + " needs a number, not " +
+                                     numeric_interface<T>::toString(term));
+        using V = typename T::value_type;
+        if (!(numeric_interface<V>::imaginary(*term.data()) == numeric_interface<V>::zero()))
+            throw std::runtime_error(noun + " needs real numbers, not " +
+                                     numeric_interface<T>::toString(term));
+        return term;
+    }
+    [[nodiscard]] bool High() const { return fold_ == Fold::max || fold_ == Fold::argmax; }
+    [[nodiscard]] bool Indexes() const { return fold_ == Fold::argmax || fold_ == Fold::argmin; }
+    // Whether the later is kept, as a truth: inexact where it read an inexact
+    // term, which makes what it chose so, as a guard's clause (C241).
+    T Later(const T& kept, const T& next) const {
+        return numeric_interface<T>::compare(High() ? kept : next, High() ? next : kept,
+                                             Comparison::Less);
+    }
+    static T Chosen(const T& value, const T& truth) {
+        if (numeric_interface<T>::approximated(truth)) return numeric_interface<T>::marked(value);
+        return numeric_interface<T>::exact(truth) ? value : numeric_interface<T>::inexact(value);
+    }
+    // The term kept, or its index, of terms ranked, the first at 'first'.
+    T Reduced(const std::vector<T>& terms, int first) const {
+        T kept = terms[0], at = T(first);
+        for (std::size_t k = 1; k < terms.size(); ++k) {
+            const T truth = Later(kept, terms[k]);
+            if (numeric_interface<T>::truth(truth))
+                kept = terms[k], at = T(first + static_cast<int>(k));
+            kept = Chosen(kept, truth);
+            at   = Chosen(at, truth);
+        }
+        return Indexes() ? at : kept;
+    }
+
     PExpression<T> accept(TransformationVisitor<T>& v) override { return v.visit(this); }
     T              accept(FoldingVisitor<T>& v) override { return v.visit(this); }
 
 private:
-    bool        product_;
+    Fold        fold_;
     std::string index_;
+    // Kept by the bindings this node makes, none of which outlives it.
+    std::string role_ = std::string("the ") + Noun() + "'s index";
 };
 
 // 'grad_(x = a) body': the derivative of the body with respect to x at a. The

@@ -1196,7 +1196,7 @@ private:
     }
 
     Jet Series(SeriesExpression<T>& series) {
-        const std::string bound    = series.Product() ? "the product's bound" : "the sum's bound";
+        const std::string bound    = std::string("the ") + series.Noun() + "'s bound";
         const int         first    = Index(series.Lower(), bound);
         const bool        infinite = !series.Upper();
         const int         last     = infinite ? first : Index(series.Upper(), bound);
@@ -1212,6 +1212,35 @@ private:
         const auto combine = [&](const Jet& total, const Jet& next) {
             return series.Product() ? Product(total, next) : Sum(total, next);
         };
+        // The term kept carries its slope, the first of equals', as max(a, b)
+        // takes a's; an index jumps where the term kept ties with another and
+        // either moves, as a comparison; a term kept ranks strictly above
+        // every earlier one, so only a later one can tie with it.
+        if (series.Reduction()) {
+            if (last < first) throw std::runtime_error(series.Empty(first, last));
+            Jet  kept = term(first);
+            T    at   = T(first);
+            bool tied = false;
+            series.Ranked(*kept[0]);
+            for (int k = first; k != last;) {
+                Jet next = term(++k);
+                series.Ranked(*next[0]);
+                const T    truth = series.Later(*kept[0], *next[0]);
+                const bool moves = Moves(kept) || Moves(next);
+                chosen_          = chosen_ || (moves && numeric_interface<T>::approximated(truth));
+                rounded_         = rounded_ || (moves && !numeric_interface<T>::exact(truth));
+                const bool later = numeric_interface<T>::truth(truth);
+                tied             = !later && (tied || (moves && *kept[0] == *next[0]));
+                if (later) kept = std::move(next), at = T(k);
+                if (!numeric_interface<T>::exact(truth))
+                    kept[0] = Part(series.Chosen(*kept[0], truth));
+                at = series.Chosen(at, truth);
+            }
+            if (series.Indexes() && tied)
+                throw std::runtime_error(std::string("the ") + series.Noun() + " jumps at " +
+                                         Where());
+            return series.Indexes() ? Constant(at) : kept;
+        }
         if (!infinite) {
             if (last < first) return Constant(T(series.Product() ? 1 : 0));
             Jet total = term(first);
