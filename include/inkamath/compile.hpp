@@ -5839,8 +5839,8 @@ private:
                     if (text[k + first.size()] != '[') text.replace(k, first.size(), place);
                 return text;
             };
-            const std::size_t head = starts.size() - n;
-            const std::string one  = line(head);
+            const std::size_t head  = starts.size() - n;
+            const std::string one   = line(head);
             const auto        calls = [&] {
                 for (std::size_t k = 0; (k = one.find('(', k + 1)) != std::string::npos;)
                     if (k > 5 &&
