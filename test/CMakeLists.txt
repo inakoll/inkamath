@@ -219,7 +219,7 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brin
                          gradmany:same gradmany:stair transformer:unseen:4 transformer:tuned:4
                          split:carried:4 split:apart:4 pendulum:one spin:twirl:20 iekf:walk:21
                          tip:reach tip:rested series:taylor series:wave series:later
-                         sums:summed sums:halving sums:cancelled)
+                         sums:summed sums:halving sums:cancelled reduce:pooled reduce:shied)
     string(REPLACE ":" ";" checked ${checked})
     list(POP_FRONT checked file instance count)
     set(name ${instance})
@@ -366,6 +366,11 @@ set_tests_properties(check_halving_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^halving: 100 steps from 0, against exact values\nhalving\\.f: within 0\n$")
 set_tests_properties(check_cancelled_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^cancelled: ${series}\ncancelled\\.y: within [0-9.e-]+${about}\n$")
+# Reductions over an index (DESIGN.md), as compile/reduce.ink gives them.
+set_tests_properties(check_pooled_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^pooled: 100 steps from 0, against exact values\npooled\\.a: within 0\npooled\\.l: within 0\npooled\\.m: within 0\npooled\\.p: within 0\n$")
+set_tests_properties(check_shied_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^shied: 100 steps from 0, against exact values\nshied\\.q: within 0\nshied\\.w: within 0\n$")
 add_test(NAME check_outside_2000 COMMAND check_outside_2000)
 set_tests_properties(check_outside_2000 PROPERTIES WILL_FAIL ON)
 add_test(NAME check_runaway_1000 COMMAND check_runaway_1000)

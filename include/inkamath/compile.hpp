@@ -4195,9 +4195,13 @@ private:
         const Code upper =
             Known(expression->Upper(), "a sum or a product whose bounds are not constants");
         const int first = Whole(lower), last = Whole(upper);
+        if (expression->Reduction() && last < first) throw Reason(expression->Empty(first, last));
         if (last < first) return Answer(Literal(Value(Number(expression->Product() ? 1 : 0))));
+        const std::string many = expression->Reduction()
+                                     ? std::string("the ") + expression->Noun() + " has"
+                                     : "a sum or a product of";
         if (last - first >= max_terms)
-            throw Reason("a sum or a product of more than " + std::to_string(max_terms) + " terms");
+            throw Reason(many + " more than " + std::to_string(max_terms) + " terms");
         const std::string&         name  = expression->Index();
         const auto                 found = places_.find(name);
         const std::optional<Value> outer =
@@ -4207,9 +4211,14 @@ private:
         std::vector<Value> terms;
         std::optional<Setting<Memo>> memo;
         if (memo_.first != temporaries_) memo.emplace(memo_, Memo{temporaries_, {}});
+        std::vector<Code> ranked;
         for (int k = first; k <= last; ++k) {
             places_[name]   = Value(Number(k));
             const Code term = Emit(expression->Body());
+            if (expression->Reduction()) {
+                ranked.push_back(Ranked(*expression, term));
+                continue;
+            }
             constant        = constant && term.constant;
             if (constant) terms.push_back(*term.constant);
             total           = k == first              ? term
@@ -4220,6 +4229,7 @@ private:
             places_[name] = *outer;
         else
             places_.erase(name);
+        if (expression->Reduction()) return Answer(Reduced(*expression, ranked, first));
         const auto exact = [&] {
             Value value = terms[0];
             for (std::size_t k = 1; k < terms.size(); ++k)
@@ -4227,6 +4237,39 @@ private:
             return value;
         };
         return Answer(constant ? Parted(Exact(exact), PartOf(total), {&total}) : total);
+    }
+    // A reduction's term, as the interpreter ranks it; under grad, for now, refused.
+    static const Code& Ranked(const SeriesExpression<Value>& series, const Code& term) {
+        if (!term.part.empty())
+            throw Reason(std::string("a derivative of ") + (series.Indexes() ? "an " : "a ") +
+                         series.Noun() + ", for now");
+        if (!term.constant && !term.Scalar())
+            throw Reason(std::string("the ") + series.Noun() + " needs single values, not a " +
+                         term.size.Described() + "; write it by its cells");
+        if (term.constant) (void)Exact([&] { return series.Ranked(*term.constant); });
+        return term;
+    }
+
+    // Unrolled as a sum is: a later term kept where it ranks strictly higher,
+    // the index beside it, NaN where a term is in a header that writes NaN.
+    Code Reduced(const SeriesExpression<Value>& series, const std::vector<Code>& terms, int first) {
+        if (std::all_of(terms.begin(), terms.end(), [](const Code& c) { return c.constant; }))
+            return Exact([&] {
+                std::vector<Value> values;
+                for (const Code& term : terms) values.push_back(*term.constant);
+                return series.Reduced(values, first);
+            });
+        Code kept = Shared(terms[0]), at = Literal(Value(Number(first)));
+        for (std::size_t k = 1; k < terms.size(); ++k) {
+            const Code        next = Shared(terms[k]);
+            const std::string a = Wrap(kept.cells[0], sum), b = Wrap(next.cells[0], sum);
+            const std::string i = Literal(Value(Number(first + static_cast<int>(k)))).cells[0].text;
+            const std::string test =
+                "(" + Nan(kept, next) + (series.High() ? a + " < " + b : b + " < " + a) + " ? ";
+            at   = Shared(Of(Cell(test + i + " : " + at.cells[0].text + ")", primary)));
+            kept = Shared(Of(Cell(test + b + " : " + a + ")", primary)));
+        }
+        return series.Indexes() ? at : kept;
     }
     PExpression<Value> visit_other(Expression<Value>*) override { throw Reason("this expression"); }
 

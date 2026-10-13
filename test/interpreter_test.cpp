@@ -106,6 +106,9 @@ TEST_CASE("fill") {
 TEST_CASE("series") {
     check_transcript("series.ink");
 }
+TEST_CASE("reduce") {
+    check_transcript("reduce.ink");
+}
 TEST_CASE("exact") {
     check_transcript("exact.ink");
 }

@@ -2018,3 +2018,30 @@ set(args --compile twice.ink -o twice.h)
 check(compile_limit_globals)
 holds(compile_limit_globals twice.h "    const double t0_ = m_->a + m_->a;\n"
       "    const double t2_ = m_->a - 2.0;\n")
+
+# Reductions over an index (DESIGN.md), unrolled as a sum is, a later term
+# kept where it ranks strictly higher, NaN where a term is in a header that
+# writes NaN, and refused where the interpreter refuses, past max_terms or
+# under grad.
+set(args --compile ${CMAKE_CURRENT_LIST_DIR}/compile/reduce.ink pool -o pool.h)
+check(compile_reduce)
+holds(compile_reduce pool.h
+      "m_->x[0][0][0] < m_->x[0][1][0] ? m_->x[0][1][0] : m_->x[0][0][0])"
+      "m_->x[0][1][0] < m_->x[0][0][0] ? 2.0 : 1.0)"
+      "m_->x[0][2][0] < m_->x[0][3][0] ? m_->x[0][3][0] : m_->x[0][2][0])")
+file(WRITE "${OUT}/aware.ink" "r(v) | v > 0 = v\naware(x_n[j<=2]) = {\n"
+     "    q_n = max_(k=1)^2 x_n[k]\n    z_n = r(x_n[1])\n}\n")
+set(args --compile aware.ink aware -o aware.h)
+check(compile_reduce)
+holds(compile_reduce aware.h "(isnan(m_->x[0][0][0]) || isnan(m_->x[0][1][0]) ? NAN : "
+      "m_->x[0][0][0] < m_->x[0][1][0] ? m_->x[0][1][0] : m_->x[0][0][0])")
+file(WRITE "${OUT}/reduced.ink" "e_n = max_(k=3)^1 k*x_n\n"
+     "g_n = grad_(w = x_n) max_(k=1)^3 (k*w - k^2)\nh_n = argmin_(k=0)^1000 k*x_n\n"
+     "a_n = grad_(w = x_n) argmax_(k=1)^3 (k*w - k^2)\n")
+set(args --compile reduced.ink)
+string(CONCAT stdout "cannot compile a: a derivative of an argmax, for now\n"
+       "cannot compile e: the maximum has no terms: k runs from 3 to 1\n"
+       "cannot compile g: a derivative of a maximum, for now\n"
+       "cannot compile h: the argmin has more than 1000 terms\n")
+set(exit 1)
+check(compile_reduce)
