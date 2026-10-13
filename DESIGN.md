@@ -10605,7 +10605,7 @@ After an external review of README, MANIFESTO and the conformance suite
 
   27 lines by `wc -l include/inkamath/*.hpp src/*`, 18,335 to 18,362 at
   d7c1ada: the prelude's 5 and 4 of comment, 1 of C++ for its words, and
-  18 of `compile.hpp` for a single value, 3 of them comment. Past 40 the
+  17 of `compile.hpp` for a single value, 3 of them comment. Past 40 the
   implementation stops and reports.
 
   Specified in `test/data/spec/chol.ink`, 29 entries replayed by the spec
