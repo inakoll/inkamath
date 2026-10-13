@@ -72,3 +72,24 @@ paired(c_n) = {
     y_n | sum_(j=1)^2 lim nv(j*c_n) < 2 = 1
     y_n = 0
 }
+
+# A cell whose guard reads a limit that runs out, with no clause after for
+# it, refuses the matrix in the limit's words, though a cell no clause
+# gives is otherwise 0, in a sequence's cells as in a function's: at odd n,
+# Newton from 0 on x^3 - 2x + 2 cycles, and the step is NaN where the
+# interpreter refuses. At even n it settles within 7e-24 of (sqrt(5) - 1)/2
+# (mpmath), and y_n and z_n are [5; 2]. Checked:
+#
+#     ranout: 100 steps from 0, against exact values until 0 and inexact ones from there
+#     ranout.y: within 0
+#     ranout.z: within 0
+cellwise(c_n) = {
+    nv(c)_0 = 0
+    nv(c)_k = nv(c)_(k-1) - (nv(c)_(k-1)^3 - 2*nv(c)_(k-1) + c)/(3*nv(c)_(k-1)^2 - 2)
+    y_n[j<=2] | j == 1 = 5
+    y_n[j<=2] | lim nv(j*c_n/2) > 0 = j
+    f(v)[j] | j == 1 = 5
+    f(v)[j] | lim nv(v[j]) > 0 = j
+    z_n = f([c_n/2; c_n])
+}
+ranout = cellwise(c_n = 1 + mod(n, 2))
