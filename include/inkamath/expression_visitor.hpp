@@ -537,7 +537,7 @@ public:
         }
 
         const std::string what = expr->Product() ? "product" : "sum";
-        Convergence<T>    convergence("the " + what);
+        Convergence<T>    convergence("the " + what, "a partial " + what);
         T                 total;
         for (int n = 0; n < static_cast<int>(Convergence<T>::max_terms); ++n) {
             if (first > std::numeric_limits<int>::max() - n)
@@ -545,10 +545,10 @@ public:
             total = n == 0 ? term(first) : combine(total, term(first + n));
             if (convergence.Next(total)) return convergence.Reached(total);
         }
-        throw std::runtime_error("the " + what + " did not converge within " +
-                                 std::to_string(Convergence<T>::max_terms) +
-                                 " terms (last partial " + what + " " +
-                                 Convergence<T>::Last(total) + ")");
+        throw Unconverged("the " + what + " did not converge within " +
+                              std::to_string(Convergence<T>::max_terms) + " terms (last partial " +
+                              what + " " + Convergence<T>::Last(total) + ")",
+                          numeric_interface<T>::approximated(total));
     }
 
     T visit(GradExpression<T>* expr) override {

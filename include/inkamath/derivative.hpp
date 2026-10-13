@@ -787,7 +787,8 @@ private:
             Fill(definition, call, index, arguments);
         stack_.Step();
         // Refused in the name of the call, as Reference::Eval refuses it.
-        std::optional<NotSingle> refused;
+        std::optional<NotSingle>   refused;
+        std::optional<Unconverged> ran;
         try {
             const Deeper                       deeper(*this);
             if (std::optional<Jet> fast = Compiled(definition, indexed, arguments)) {
@@ -833,7 +834,12 @@ private:
             return result;
         } catch (const NotSingle& error) {
             refused = error;
+        } catch (const Unconverged& unconverged) {
+            ran = unconverged;
         }
+        // A term refuses a limit that runs out as any refusal (DESIGN.md).
+        if (ran && indexed) throw std::runtime_error(ran->what());
+        if (ran) throw *ran;
         definition.Refuse(*refused, arguments, [](const Jet& jet) { return *jet[0]; }, stack_);
     }
 
@@ -1136,9 +1142,10 @@ private:
     // Each part converging by the rule lim follows, and the limit when all
     // have at the same term.
     struct Walk {
-        explicit Walk(const std::string& what, std::size_t size) {
+        explicit Walk(const std::string& what, std::size_t size,
+                      const std::string& value = "a term") {
             for (std::size_t s = 0; s < size; ++s)
-                parts.emplace_back(s == 0 ? what : "the derivative of " + what);
+                parts.emplace_back(s == 0 ? what : "the derivative of " + what, value);
             settled.assign(size, false);
         }
         bool Next(const Jet& jet) {
@@ -1163,10 +1170,11 @@ private:
             while (s < jet.size() && settled[s]) ++s;
             if (s == jet.size()) s = 0;
             const T value = jet[s] ? jet[s]->Value() : Zero(jet[0]->Size());
-            throw std::runtime_error((s == 0 ? what : "the derivative of " + what) +
-                                     " did not converge within " +
-                                     std::to_string(Convergence<T>::max_terms) + " terms (" + last +
-                                     " " + Convergence<T>::Last(value) + ")");
+            throw Unconverged((s == 0 ? what : "the derivative of " + what) +
+                                  " did not converge within " +
+                                  std::to_string(Convergence<T>::max_terms) + " terms (" + last +
+                                  " " + Convergence<T>::Last(value) + ")",
+                              numeric_interface<T>::approximated(value));
         }
         std::vector<Convergence<T>> parts;
         std::vector<bool>           settled;
@@ -1271,7 +1279,7 @@ private:
             return total;
         }
         const std::string what = series.Product() ? "product" : "sum";
-        Walk              walk("the " + what, Size());
+        Walk              walk("the " + what, Size(), "a partial " + what);
         Jet               total;
         for (int n = 0; n < static_cast<int>(Convergence<T>::max_terms); ++n) {
             total = n == 0 ? term(first) : combine(total, term(first + n));
@@ -1564,8 +1572,15 @@ private:
             const Arguments own = clause.parameters.binds() ? d.frames_.back() : Arguments();
 
             const ParametersDefinition<T>& p = clause.parameters;
-            const T                        guard = d.Holds(
-                {definition.Name(), row != 0 ? &p : nullptr, index, slice, row, col}, p.guard());
+            const Guarded what{definition.Name(), row != 0 ? &p : nullptr, index, slice, row, col};
+            T             guard;
+            try {
+                guard = d.Holds(what, p.guard());
+            } catch (const Unconverged&) {
+                throw std::runtime_error("grad cannot differentiate " + what.Named() + " at " +
+                                         d.Where() +
+                                         ", whose guard reads a limit that does not converge");
+            }
             past    = past || numeric_interface<T>::approximated(guard);
             rounded = rounded || !numeric_interface<T>::exact(guard);
             const bool held = numeric_interface<T>::truth(guard);

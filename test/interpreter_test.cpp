@@ -118,6 +118,12 @@ TEST_CASE("roots") {
 TEST_CASE("chol") {
     check_transcript("chol.ink");
 }
+TEST_CASE("tolerance") {
+    check_transcript("tolerance.ink");
+}
+TEST_CASE("unconverged") {
+    check_transcript("unconverged.ink");
+}
 TEST_CASE("decimals") {
     check_transcript("decimals.ink");
 }

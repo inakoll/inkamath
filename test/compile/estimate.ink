@@ -78,8 +78,8 @@ halved = halving()
 
 # A limit 'grad' walks is moved as any other, its derivative by the remainder
 # of its own steps. 'steep' doubles the derivative of 'bowl', 4n exactly; the
-# interpreter's terms are 8n less what the series left, 1.2e-10 from the exact
-# ones at 2, and 2.9e-11 at 1, never past the tolerance:
+# interpreter's terms are 8n less what the series left, n/2^31 from the exact
+# ones, 4.6e-8 at 99, never past the tolerance:
 #
 #     steep: 100 steps from 0, against exact values until 0 and inexact ones from there
 #     steep.y: within 0; the interpreter's terms about <e> from the exact ones
@@ -88,6 +88,22 @@ doubling(x_n = n) = {
     y_n = 2*x_n
 }
 steep = doubling(x_n = grad_(w = n) bowl(w))
+
+# A limit's remainder is in its cells' units, each against max(1, |the
+# cell|), as its steps are, so a disturbed run moves each cell by it times
+# its own scale. 'spaced' stops on its slow cell, 7/3 less 0.7^k/0.3: its
+# cells of 10^6 n move by about 1e-10 of themselves, 0.0085 at 99, and its
+# small ones by about 1e-10. Each moved by the largest cell's scale, its
+# small cells were 0.0085 off, past the tolerance from 1:
+#
+#     spaced: 100 steps from 0, against exact values until 0 and inexact ones from there
+#     spaced.y: within <x>; the interpreter's terms about 0.0085 from the exact ones
+mixed(x_n) = {
+    M(c)_0 = [c, 0; 0, -c]
+    M(c)_k = M(c)_(k-1) + [0.5^k, 0.5^k; 0.7^k, 0.5^k]
+    y_n = lim M(x_n)
+}
+spaced = mixed(x_n = 10^6*n)
 
 # Two runs more than 2^512 apart are that far apart: the distance was the
 # root of a square, which overflowed there, and 'giant', 3*10^200 made

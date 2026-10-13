@@ -1044,7 +1044,7 @@ foreach(model IN ITEMS level pick refuse ramp both walked tuned either)
     check(compile_nan_${model})
 endforeach()
 holds(compile_nan_level level.h
-      [[    m_->y[0] = level_lim0(m_, m_->x[0]);
+      [[    m_->y[0] = level_lim0(m_, 0, m_->x[0]);
     m_->high[0] = isnan(m_->y[0]) ? NAN : m_->y[0] > 0.5 ? 1.0 : 0.0;
 ]]
       [[ * name_(n-k) for each sequence: x, y and high. A term the interpreter would
@@ -1084,7 +1084,7 @@ holds(compile_nan_both both.h
 holds(compile_nan_walked walked.h
       [[        const double t_ = isnan(arg_a) ? NAN : arg_a > 1.0 ? 0.0 : t1_ / 2.0;
 ]]
-      [[    m_->y[0] = walked_lim0(m_, isnan(m_->x[0]) ? NAN : m_->x[0] > 0.0 ? m_->x[0] : NAN);
+      [[    m_->y[0] = walked_lim0(m_, 0, isnan(m_->x[0]) ? NAN : m_->x[0] > 0.0 ? m_->x[0] : NAN);
 ]])
 holds(compile_nan_tuned tuned.h
       [[    m_->a = isnan(m_->g) ? NAN : m_->g > 0.0 ? m_->g : NAN;
@@ -1426,13 +1426,15 @@ check(float_history)
 set(args --compile ${CMAKE_CURRENT_LIST_DIR}/compile/logistic.ink logit --float -o float/gate.h)
 check(float_gate)
 holds(float_gate float/gate.h "#include <float.h>\n#include <math.h>\n"
-      [[static inline float gate_lim0(const gate* m_, float arg_z) {]]
+      [[static inline float gate_lim0(const gate* m_, int ran_, float arg_z) {]]
       [[        const float t_ = t1_ + (t1_ + (0.0f - t2_)) * arg_z / (float)k_;
+        if (isnan(t_)) return ran_ ? 0.0f : NAN;
         if (started_) {
             step_ = fabsf(t_ - t1_);
-            if (step_ > 0 && step_ <= 2 * FLT_EPSILON * fabsf(t_) && isfinite(t_) && stepped_) return t_;
+            step_ = step_ / fmaxf(1.0f, fabsf(t_));
+            if (step_ > 0 && step_ <= 2 * FLT_EPSILON * fabsf(t_) / fmaxf(1.0f, fabsf(t_)) && isfinite(t_) && stepped_) return ran_ ? 0.0f : t_;
             if (step_ <= 1e-10f && stepped_ &&
-]] [[    m_->p[0][0][0] = 1.0f / (1.0f + gate_lim0(m_, 0.0f + (0.0f - (0.0f * m_->w[0][0][0] + 0.0f * m_->w[0][1][0] + m_->b[0]))));
+]] [[    m_->p[0][0][0] = 1.0f / (1.0f + gate_lim0(m_, 0, 0.0f + (0.0f - (0.0f * m_->w[0][0][0] + 0.0f * m_->w[0][1][0] + m_->b[0]))));
 ]])
 
 set(args --check ${CMAKE_CURRENT_LIST_DIR}/compile/drift.ink calm --float -o float/calm.c)
@@ -1790,12 +1792,16 @@ set(exit 1)
 check(compile_tip_refused)
 # C363: a halving recursion with a base filled each term below at every read
 # of it, 96 s to compile a, read ahead, and over 60 s for b, refused anyway.
+# A measure of time, so in an optimised build only: 16 s in Debug, past 180
+# under the sanitizers.
+if(TIMED)
 file(WRITE "${OUT}/halving.ink" "a_n = v(x_n)_999\nb_n = w(x_n)_1000\nv(x)_0 = x\nv(x)_k | k > 999 = x\n"
      "v(x)_k = v(x/2)_(k+1)\nw(x)_0 = x\nw(x)_k = w(x/2)_(k-1)\n")
 set(args --compile halving.ink)
 set(stdout "cannot compile b: nested 64 deep, which a recursion its guards do not end would pass\n")
 set(exit 1)
 check(compile_c363)
+endif()
 
 # A sequence with parameters read at lim's walking index (DESIGN.md,
 # compile/series.ink): the series compiled; their values, e^x's at -2 and 1,
@@ -2076,16 +2082,29 @@ file(WRITE "${OUT}/fact.ink" "layers(x_n) = {\n    s(v)_0 = v\n    s(v)_k = s(v)
      "    o(a)_0 = lim s(a)\n    o(a)_k = o(a)_(k-1)/4 + 1/!(a + 2)\n    q_n = lim o(x_n)\n}\n")
 set(args --compile fact.ink layers -o fact.h)
 check(compile_hoisted)
+set(based "    if (isnan(t1_)) return ran_ ? 0.0 : NAN;\n")
 string(CONCAT walk "    double step_ = 0.0, before_ = 0.0;\n"
        "    int    started_ = 1, stepped_ = 0;\n    for (long long k_ = 1; k_ <= 100; ++k_) {\n")
 holds(compile_hoisted layered.h "    double v0_[2][1] = {{arg_a}, {1.0}};\n    double v1_[2][1];\n"
-      "    layered_lim0(m_, v0_, v1_);\n    double t1_ = arg_a;\n${walk}"
+      "    layered_lim0(m_, v0_, v1_);\n    double t1_ = arg_a;\n${based}${walk}"
       "        const double t_ = t1_ / 4.0 + (1.0 * v1_[0][0] + 1.0 * v1_[1][0]);\n")
-holds(compile_hoisted scalar.h "    const double v0_ = scalar_lim0(m_, arg_a + 1.0);\n"
-      "    double t1_ = arg_a;\n${walk}        const double t_ = t1_ / 4.0 + v0_;\n")
+holds(compile_hoisted scalar.h "    const double v0_ = scalar_lim0(m_, 0, arg_a + 1.0);\n"
+      "    double t1_ = arg_a;\n${based}${walk}        const double t_ = t1_ / 4.0 + v0_;\n")
 holds(compile_hoisted fact.h "    const double v0_ = fact_fact_(arg_a + 2.0);\n"
-      "    double t1_ = fact_lim0(m_, arg_a);\n${walk}"
+      "    double t1_ = fact_lim0(m_, 0, arg_a);\n${based}${walk}"
       "        const double t_ = t1_ / 4.0 + 1.0 / v0_;\n")
+
+# So is the status of a limit a guard in the terms reads, asked with its truth.
+file(WRITE "${OUT}/asked.ink" "layers(x_n) = {\n    s(v)_0 = v\n    s(v)_k = s(v)_(k-1)/2 + v\n"
+     "    g(a) | lim s(a + 1) > 0 = 1\n    g(a) = 2\n"
+     "    o(a)_0 = a\n    o(a)_k = o(a)_(k-1)/4 + g(a)\n    q_n = lim o(x_n)\n}\n")
+set(args --compile asked.ink layers -o asked.h)
+check(compile_hoisted)
+holds(compile_hoisted asked.h "    const double v0_ = asked_lim0(m_, 0, arg_a + 1.0);\n"
+      "    const double v1_ = (isnan(v0_) ? NAN : v0_ > 0.0 ? 1.0 : 0.0);\n"
+      "    const double v2_ = isnan(v1_) && !(asked_lim0(m_, 1, arg_a + 1.0) != 0.0);\n"
+      "    double t1_ = arg_a;\n${based}${walk}"
+      "        const double t_ = t1_ / 4.0 + (v2_ != 0.0 ? NAN : v1_ == 1.0 ? 1.0 : 2.0);\n")
 
 # A global's temporaries, read first in a limit's terms, are numbered as
 # the update's, not as that limit's: two such are two names.

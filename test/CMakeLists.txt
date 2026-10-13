@@ -73,6 +73,7 @@ foreach(part 1 2 3)
              COMMAND ${CMAKE_COMMAND} -DEXE=$<TARGET_FILE:inkamath_cli> -DPART=${part}
                      -DOUT=${CMAKE_CURRENT_BINARY_DIR}/cli_${part}
                      -DCASE_TIMEOUT=${cli_case_timeout}
+                     "-DTIMED=$<NOT:$<OR:$<CONFIG:Debug>,$<BOOL:${INKAMATH_SANITIZE}>>>"
                      -P ${CMAKE_CURRENT_LIST_DIR}/cli.cmake)
     set_tests_properties(cli_${part} PROPERTIES TIMEOUT 120)
 endforeach()
@@ -143,6 +144,27 @@ foreach(model IN ITEMS pid pid_clamped kalman kalman2 fir heat adc net mix loop 
                      ${CMAKE_CURRENT_SOURCE_DIR}/compile/expected/${model}.h ${header})
 endforeach()
 
+# A clause for a limit that does not converge (DESIGN.md): fallback.ink's
+# models against the values its harness knows.
+set(fallback_headers "")
+foreach(model IN ITEMS mpc newton rooted paired)
+    set(header ${CMAKE_CURRENT_BINARY_DIR}/compile/fallback_${model}.h)
+    add_custom_command(OUTPUT ${header}
+        COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/compile
+        COMMAND inkamath_cli --compile ${CMAKE_CURRENT_SOURCE_DIR}/compile/fallback.ink ${model}
+                -o ${header}
+        DEPENDS inkamath_cli compile/fallback.ink
+        VERBATIM)
+    list(APPEND fallback_headers ${header})
+endforeach()
+add_executable(compile_fallback compile/fallback_test.c ${fallback_headers})
+target_include_directories(compile_fallback PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/compile)
+target_link_libraries(compile_fallback PRIVATE inkamath_warnings
+                      $<$<NOT:$<C_COMPILER_ID:MSVC>>:m>)
+set_target_properties(compile_fallback PROPERTIES
+                      C_STANDARD 11 C_STANDARD_REQUIRED ON C_EXTENSIONS OFF)
+add_test(NAME compile_fallback COMMAND compile_fallback)
+
 # 2^k as a step computes it, exact for every k the prelude scales by.
 add_executable(compile_powers compile/powers.c)
 target_link_libraries(compile_powers PRIVATE inkamath_warnings
@@ -191,7 +213,7 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brin
                          inputs:track inputs:twain inputs:nestv inputs:fed inputs:x inputs:clashed inputs:j1
                          estimate:tie
                          estimate:chaos estimate:dyad estimate:flat estimate:halved
-                         estimate:steep estimate:giant elementary:els trig:tri atan:bea
+                         estimate:steep estimate:giant estimate:spaced elementary:els trig:tri atan:bea
                          grad:line grad:fall grad:hinge grad:edge grad:clip grad:steer grad:saw
                          grad:ring grad:notch grad:apart grad:smooth grad:cusp grad:over grad:flag
                          tensor:heads tensor:whirl tensor:batch tensor:spread
@@ -221,7 +243,9 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brin
                          tip:reach tip:rested series:taylor series:wave series:later
                          sums:summed sums:halving sums:cancelled reduce:pooled reduce:shied
                          orthogonal:rational orthogonal:inexact orthogonal:probe
-                         chol:factored chol:naive chol:sole placed:placed)
+                         chol:factored chol:naive chol:sole placed:placed
+                         fallback:planned fallback:held fallback:ranout
+                         fallback:tipped fallback:columned fallback:answered)
     string(REPLACE ":" ";" checked ${checked})
     list(POP_FRONT checked file instance count)
     set(name ${instance})
@@ -264,8 +288,10 @@ set_tests_properties(check_flat_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^flat: 100 steps from 0, against exact values until 0 and inexact ones from there\nflat\\.r: within 0\nflat\\.g: within 0\n$")
 set_tests_properties(check_halved_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^halved: 100 steps from 0, against exact values until 0 and inexact ones from there\nhalved\\.x: within 0\nhalved\\.y: within 0\n$")
+set_tests_properties(check_spaced_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^spaced: 100 steps from 0, against exact values until 0 and inexact ones from there\nspaced\\.y: within [0-9.e-]+\\; the interpreter's terms about 0\\.00[0-9]+ from the exact ones\n$")
 set_tests_properties(check_steep_report PROPERTIES PASS_REGULAR_EXPRESSION
-    "^steep: 100 steps from 0, against exact values until 0 and inexact ones from there\nsteep\\.y: within 0\\; the interpreter's terms about [1-9](\\.[0-9])?e-1[01] from the exact ones\n$")
+    "^steep: 100 steps from 0, against exact values until 0 and inexact ones from there\nsteep\\.y: within 0\\; the interpreter's terms about [1-9](\\.[0-9])?e-08 from the exact ones\n$")
 set_tests_properties(check_giant_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^giant: 100 steps from 0, against exact values until 0 and inexact ones from there\ngiant\\.y: within 0\\; the interpreter's terms about [1-9](\\.[0-9])?e\\+186 from the exact ones\n$")
 # A guard the disturbed runs straddle (DESIGN.md), as compile/straddle.ink
@@ -357,7 +383,7 @@ set_tests_properties(check_rested_report PROPERTIES PASS_REGULAR_EXPRESSION
 # but y's, whose walk stops on its own steps alone (DESIGN.md).
 set(series "100 steps from 0, against exact values until 0 and inexact ones from there")
 set_tests_properties(check_taylor_report PROPERTIES PASS_REGULAR_EXPRESSION
-    "^taylor: ${series}\ntaylor\\.R: within 4\\.4e-15${about}\ntaylor\\.y: within 1\\.1e-12${about}\n$")
+    "^taylor: ${series}\ntaylor\\.R: within 4\\.4e-15${about}\ntaylor\\.y: within 9\\.1e-13${about}\n$")
 set_tests_properties(check_wave_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^wave: ${series}\nwave\\.z: within 2\\.1e-15${about}\n$")
 # later's as measured, as it has no packed form.
@@ -369,7 +395,7 @@ set_tests_properties(check_later_report PROPERTIES PASS_REGULAR_EXPRESSION
 # limits' are a recurrence (1.2e-15, 1.1e-12 and 3e-14 on the baseline).
 # halving's factorials are whole and at most !11, exact in doubles.
 set_tests_properties(check_summed_report PROPERTIES PASS_REGULAR_EXPRESSION
-    "^summed: ${series}\nsummed\\.J: within 1\\.1e-15${about}\nsummed\\.R: within 4\\.4e-15${about}\nsummed\\.p: within 8\\.9e-16${about}\nsummed\\.u: within 1\\.1e-12${about}\nsummed\\.y: within 9\\.1e-13${about}\nsummed\\.z: within 4e-14${about}\n$")
+    "^summed: ${series}\nsummed\\.J: within 1\\.1e-15${about}\nsummed\\.R: within 4\\.4e-15${about}\nsummed\\.p: within 8\\.9e-16${about}\nsummed\\.u: within 9\\.1e-13${about}\nsummed\\.y: within 9\\.1e-13${about}\nsummed\\.z: within 4e-14${about}\n$")
 set_tests_properties(check_halving_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^halving: 100 steps from 0, against exact values\nhalving\\.f: within 0\n$")
 set_tests_properties(check_cancelled_report PROPERTIES PASS_REGULAR_EXPRESSION
@@ -867,9 +893,22 @@ set_tests_properties(check_evens_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^evens: 100 steps from 0, against exact values until 0 and inexact ones from there\nevens\\.y: within [0-9.e-]+${about}\n$")
 set_tests_properties(check_evened_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^evened: 100 steps from 0, against exact values until 0 and inexact ones from there\nevened\\.y: within [0-9.e-]+${about}\n$")
-# C353's departure: the step answers where the interpreter refuses.
+# C353's walk past 225,000, held now that a step is measured against its term.
 set_tests_properties(check_weighed_report PROPERTIES PASS_REGULAR_EXPRESSION
-    "^weighed: 100 steps from 0, against exact values\nweighed\\.y: 100000000000003\\.[0-9]+ at 0, where the interpreter gives none: s did not converge within 100 terms")
+    "^weighed: 100 steps from 0, against exact values until 0 and inexact ones from there\nweighed\\.y: within 2${about}\n$")
+# compile/fallback.ink: the clause after a guard reading a limit that runs out.
+set_tests_properties(check_planned_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^planned: 100 steps from 0, against exact values until 0 and inexact ones from there\nplanned\\.x: within 0\nplanned\\.solved: within 0\nplanned\\.u: within 0\n$")
+set_tests_properties(check_fallback_held_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^held: 100 steps from 0, against exact values until 1 and inexact ones from there\nheld\\.x: within [0-9.e+-]+${about}\n$")
+set_tests_properties(check_ranout_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^ranout: 100 steps from 0, against exact values until 0 and inexact ones from there\nranout\\.y: within 0\nranout\\.z: within 0\n$")
+set_tests_properties(check_tipped_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^tipped: 100 steps from 0, against exact values until 0 and inexact ones from there\ntipped\\.y: within 0\n$")
+set_tests_properties(check_columned_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^columned: 100 steps from 0, against exact values until 0 and inexact ones from there\ncolumned\\.y: within 0\n$")
+set_tests_properties(check_answered_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^answered: 100 steps from 0, against exact values until 0 and inexact ones from there\nanswered\\.r: within 0\nanswered\\.y: within 0\n$")
 set_tests_properties(check_twonames_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^twonames: 100 steps from 0, against exact values until 0 and inexact ones from there\ntwonames\\.a: within [0-9.e-]+${about}\ntwonames\\.b: within [0-9.e-]+${about}\n$")
 set_tests_properties(check_fir_report PROPERTIES PASS_REGULAR_EXPRESSION

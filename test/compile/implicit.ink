@@ -92,7 +92,7 @@ doubling = riccati(r_n = ~(1 + n/4))
 # the iterate as they are of a step. The limit is a/2 + 3. x_n = n is
 # exact, and so is every term the walk takes: each is a dyadic rational of
 # at most 47 bits, which a double holds, so the step's doubles are the
-# interpreter's fractions and stop at the same term, within 9.9e-11 of
+# interpreter's fractions and stop at the same term, within 4.3e-9 of
 # n/2 + 3, as Python's fractions and doubles both find:
 #
 #     inset: 100 steps from 0, against exact values until 0 and inexact ones from there
@@ -110,7 +110,7 @@ inset = halving(x_n = n)
 # argument: lim s(v) tends to 2v, so with v = [a; 1] each term of o adds
 # 2a + 2 and the outer limit is 4(2a + 2)/3, 8(n + 3)/9 at a = n/3. a is
 # inexact, so the interpreter's terms are doubles in the step's order;
-# Python's doubles under the limit's rule, both walks, come within 3.3e-11
+# Python's doubles under the limit's rule, both walks, come within 7.3e-11
 # of 8(n + 3)/9, relatively, to 99. Its inner limit reads only a, so it
 # is computed once, before the outer walk's loop (DESIGN.md, a limit's
 # invariants hoisted):
