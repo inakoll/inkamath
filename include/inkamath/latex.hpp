@@ -364,8 +364,11 @@ private:
             const std::string upper = series->Upper() ? Of(*series->Upper()).text : "\\infty";
             // A sum that is its body reaches to its end, as one ending a product.
             const Text body = Of(*series->Body());
-            return {std::string(series->Product() ? "\\prod" : "\\sum") + "_{" + series->Index() +
-                        "=" + Of(*series->Lower(), true).text + "}^{" + upper + "} " +
+            const char* const ops[] = {"sum", "prod", "max", "min", "arg\\,max", "arg\\,min"};
+            const std::string op    = ops[static_cast<int>(series->Op())];
+            return {(series->Indexes() ? "\\operatorname*{" + op + "}" : "\\" + op) + "_{" +
+                        series->Index() + "=" + Of(*series->Lower(), true).text + "}^{" + upper +
+                        "} " +
                         (dynamic_cast<const SeriesExpression<T>*>(series->Body().get())
                              ? body.text
                              : Wrapped(body, product)),

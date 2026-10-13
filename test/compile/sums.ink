@@ -24,3 +24,9 @@ half(x_n) = {
     f_n = !(x_n/2)
 }
 halving = half(x_n = n/4 - 2)
+
+# Odd terms that cancel, as newton.ink's evens: a step of 0 (C353).
+odds(x_n) = {
+    y_n = sum_(q=1) (x_n^q/(q^2*2^q) + (-x_n)^q/(q^2*2^q))
+}
+cancelled = odds(x_n = n/100 - 0.121)

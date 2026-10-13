@@ -5,7 +5,7 @@
 # meets it slice by slice, as in the interpreter. Every number below is worked
 # out apart from the interpreter and the compiler: by hand, with exact
 # fractions in Python, and with NumPy and mpmath at 40 digits; none is
-# recorded. Today 'inkamath --compile tensor.ink' refuses every tensor and
+# recorded. Before, 'inkamath --compile tensor.ink' refused every tensor and
 # every definition that reads one: 'cannot compile heads.X: a tensor'.
 #
 # 'heads', multi-head attention over a batch (Vaswani et al., 2017, section
@@ -270,7 +270,7 @@ speck = one(X_n = [n;;])
 #
 #     cannot compile a: a 2x2x2 tensor takes one index or three, not two
 #     cannot compile b: only a matrix has a power, not a 2x2x2 tensor
-#     cannot compile c: a comparison of matrices
+#     cannot compile c: a comparison needs single values, not a 2x2x2 tensor
 #     cannot compile d: a 2x2x2 tensor and a 3x2x2 tensor have different numbers of slices
 #     cannot compile f: the slices of a tensor have one size, not 1x2 and 1x3
 #     cannot compile g: a tensor in a limit, for now

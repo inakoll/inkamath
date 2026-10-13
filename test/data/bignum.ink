@@ -5,7 +5,7 @@
 #
 # An exact number stays exact while its reduced numerator and denominator
 # have a thousand digits or fewer each -- as many as 'digits' can show -- and
-# is approximated past that, as it is past 64 bits today. A whole number too
+# is approximated past that, as it was past 64 bits before. A whole number too
 # large for a double is then infinite: the double's limit, not the bound's.
 # An answer approximated so says it, in a comment that reading it back
 # ignores, since '~' alone cannot tell it from an exact 1/3.

@@ -610,7 +610,12 @@ public:
                     throw std::runtime_error(reference_name_ +
                                              " has no general clause, so it has no limit");
                 }
-                return Converge(arguments, call, stack, global);
+                auto* const kept =
+                    global && !ReferenceStack<T>::Group(*this) ? stack.limits : nullptr;
+                if (kept && kept->contains(key)) return kept->at(key);
+                const T limit = Converge(arguments, call, stack, global);
+                if (kept) kept->emplace(key, limit);
+                return limit;
             }
             // Storing after the call returns, so that an evaluation which ran out
             // of budget is retried rather than remembered.
@@ -663,6 +668,7 @@ public:
             {"eig", "eig needs B symmetric positive definite"},
             {"eigg", "eig needs a matrix whose eigenvalues are all real"},
             {"atan2", "atan2 needs y or x other than 0"},
+            {"cholr", "chol needs a positive definite matrix"},
             {"hinf", "hinf needs every eigenvalue of A left of the imaginary axis"},
             {"dhinf", "dhinf needs every eigenvalue of A inside the unit circle"},
             {"hinfy", "hinf needs tests within a thousand digits"},

@@ -111,7 +111,9 @@ inset = halving(x_n = n)
 # 2a + 2 and the outer limit is 4(2a + 2)/3, 8(n + 3)/9 at a = n/3. a is
 # inexact, so the interpreter's terms are doubles in the step's order;
 # Python's doubles under the limit's rule, both walks, come within 3.3e-11
-# of 8(n + 3)/9, relatively, to 99:
+# of 8(n + 3)/9, relatively, to 99. Its inner limit reads only a, so it
+# is computed once, before the outer walk's loop (DESIGN.md, a limit's
+# invariants hoisted):
 #
 #     layered: 100 steps from 0, against exact values until 0 and inexact ones from there
 #     layered.q: within 0; the interpreter's terms about <e> from the exact ones
