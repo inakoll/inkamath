@@ -5814,7 +5814,8 @@ private:
         }
         // From 9 cells, one loop where each cell's line is the first's at its
         // own place, without the marks Numbered shares by; written out where a
-        // hold or a term read back is marked (DESIGN.md, loops in generated code).
+        // hold or a term read back is marked, or a function is called, which a
+        // loop would call at each cell (DESIGN.md, loops in generated code).
         const std::size_t n     = sequence.general.size();
         const std::string first = Subscript(sequence.size, 0), places = Places(sequence.size);
         const std::vector<std::string> nest  = Loops(sequence.size);
@@ -5840,7 +5841,14 @@ private:
             };
             const std::size_t head = starts.size() - n;
             const std::string one  = line(head);
-            bool              same = one.find_first_of("\x04\x10") == std::string::npos;
+            const auto        calls = [&] {
+                for (std::size_t k = 0; (k = one.find('(', k + 1)) != std::string::npos;)
+                    if (k > 5 &&
+                        (std::isalnum(static_cast<unsigned char>(one[k - 1])) || one[k - 1] == '_'))
+                        if (one.compare(k - 5, 5, "isnan")) return true;
+                return false;
+            };
+            bool same = one.find_first_of("\x04\x10") == std::string::npos && !calls();
             for (std::size_t c = 1; same && c < n; ++c)
                 same = at(one, Subscript(sequence.size, c)) == line(head + c);
             if (same)
