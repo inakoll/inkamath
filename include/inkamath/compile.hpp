@@ -4209,8 +4209,90 @@ private:
                 {g.cells.begin() + n * static_cast<std::ptrdiff_t>(b),
                  g.cells.begin() + n * static_cast<std::ptrdiff_t>(b + 1)}};
     }
+    // From 27 multiplications, a loop where every adjoint is there, each
+    // operand's all under a condition or none, and no term folds: each term
+    // added where its conditions hold, as Into adds it, and where any did the
+    // array's second slice (DESIGN.md, loops in generated code).
+    std::optional<Adjoints> Looped(const Adjoints& x, bool tx, const Adjoints& y, bool ty) {
+        const auto there = [](const Adjoints& a) {
+            return std::ranges::all_of(a.cells, [&](const Adjoint& c) {
+                return c && c->cells.size() == 1 && !c->moves == !a.cells[0]->moves;
+            });
+        };
+        const auto moving = [](const Adjoints& a) {
+            return std::ranges::none_of(a.cells,
+                                        [](const Adjoint& c) { return bool(c->constant); });
+        };
+        const auto code = [](const Adjoints& a, bool t, const auto& cell) {
+            Code c;
+            c.size = a.size;
+            for (const Adjoint& one : a.cells) c.cells.push_back(cell(*one));
+            return t ? Transposed(c) : c;
+        };
+        if (!temporaries_ || !there(x) || !there(y) || (!moving(x) && !moving(y)))
+            return std::nullopt;
+        const auto   own = [](const Code& c) { return c.cells[0]; };
+        const Code   l = code(x, tx, own), r = code(y, ty, own);
+        const Extent size{l.size.rows, r.size.cols, std::max(l.size.slices, r.size.slices)};
+        if (l.Scalar() || r.Scalar() || l.size.cols != r.size.rows ||
+            size.count() * l.size.cols < 27)
+            return std::nullopt;
+        Adjoints   out{size, {}};
+        const bool cx = bool(x.cells[0]->moves), cy = bool(y.cells[0]->moves);
+        if (!cx && !cy) {
+            const Code looped = Looped(l, r, size);
+            for (std::size_t k = 0; k < size.count(); ++k) out.cells.push_back(Single(looped, k));
+            return out;
+        }
+        if (size.Single()) return std::nullopt;
+        const auto flags = [&](const Adjoints& a, bool t) {
+            return Materialised(code(a, t, [&](const Code& c) { return Atom(Whether(c.moves)); }),
+                                "int");
+        };
+        const Indexed          a = Materialised(l), b = Materialised(r);
+        const bool             ls = l.size.slices, rs = r.size.slices;
+        std::optional<Indexed> fa, fb;
+        if (cx) fa = flags(x, tx);
+        if (cy) fb = flags(y, ty);
+        const auto when = [&](const std::string& p) {
+            std::string w = fa ? fa->At(ls, "i_", p) : "";
+            return fb ? w + (fa ? " && " : "") + fb->At(rs, p, "j_") : w;
+        };
+        const auto term = [&](const std::string& p) {
+            return a.At(ls, "i_", p) + " * " + b.At(rs, p, "j_");
+        };
+        const std::string key = "conditioned\x1f" + a.Key(ls) + "*" + b.Key(rs) + "|" +
+                                (fa ? fa->base : "") + "|" + (fb ? fb->base : "") + " " +
+                                size.toString() + " " + std::to_string(l.size.cols);
+        const std::string name = Declare(key, [&](const std::string& t) {
+            std::vector<std::string> lines = Loops(size);
+            const std::string        in(4 * lines.size(), ' ');
+            lines.insert(lines.begin(), "double " + t + "[2]" + Dimensions(size) + ";");
+            lines.back() += " {";
+            for (const std::string& line : std::vector<std::string>{
+                     "int f_ = " + when("0") + ";", "double s_ = f_ ? " + term("0") + " : 0.0;",
+                     "for (int p_ = 1; p_ < " + std::to_string(l.size.cols) + "; ++p_) {",
+                     "    const int c_ = " + when("p_") + ";",
+                     "    s_ = c_ ? s_ + " + term("p_") + " : s_;", "    f_ = f_ || c_;", "}",
+                     t + "[0]" + Places(size) + " = s_;",
+                     t + "[1]" + Places(size) + " = f_ ? 1.0 : 0.0;"})
+                lines.push_back(in + line);
+            lines.push_back(in.substr(4) + "}");
+            return lines;
+        });
+        if (MayNan(l) || MayNan(r)) nan_temporaries_.insert(name);
+        const Code values = Array(name + "[0]", size), held = Array(name + "[1]", size);
+        for (std::size_t k = 0; k < size.count(); ++k) {
+            Code one  = Single(values, k);
+            one.moves = std::make_shared<const Moving>(Moving{held.cells[k].text + " != 0", {}});
+            one.zero  = true;
+            out.cells.push_back(std::move(one));
+        }
+        return out;
+    }
     // x*y, either transposed, slice by slice where either is a tensor.
     Adjoints Sparse(const Adjoints& x, bool tx, const Adjoints& y, bool ty) {
+        if (auto looped = Looped(x, tx, y, ty)) return *looped;
         const std::size_t slices = std::max(x.size.slices, y.size.slices);
         Adjoints c{{tx ? x.size.cols : x.size.rows, ty ? y.size.rows : y.size.cols, slices}, {}};
         const std::size_t inner = tx ? x.size.rows : x.size.cols;
