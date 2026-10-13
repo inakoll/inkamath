@@ -11765,7 +11765,8 @@ a product of polynomials or a value of one on nearly every page:
   at 30 digits. All 59 pass on the prototype. Compiled in
   `test/compile/polyconv.ink`: `tune`, a PI loop's closed-loop
   denominator by conv, its value and its derivative in the gain, and its
-  companion matrix's polyval, 0 by Cayley and Hamilton, each number a
+  companion matrix's polyval, 0 by Cayley and Hamilton, and a conv and
+  a polyval of what moves, each number a
   multiple of 1/8 below 64, exact in double and in float.
   `test/cli.cmake`'s spec part writes its check program in each, skipped
   while polyval is not defined; the reports its comments give join the
