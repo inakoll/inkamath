@@ -219,7 +219,8 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brin
                          gradmany:same gradmany:stair transformer:unseen:4 transformer:tuned:4
                          split:carried:4 split:apart:4 pendulum:one spin:twirl:20 iekf:walk:21
                          tip:reach tip:rested series:taylor series:wave series:later
-                         sums:summed sums:halving sums:cancelled reduce:pooled reduce:shied)
+                         sums:summed sums:halving sums:cancelled reduce:pooled reduce:shied
+                         chol:factored chol:naive chol:sole placed:placed)
     string(REPLACE ":" ";" checked ${checked})
     list(POP_FRONT checked file instance count)
     set(name ${instance})
@@ -910,6 +911,17 @@ set_tests_properties(check_moments_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^moments: 100 steps from 0, against exact values\n(moments\\.(S1|S2|mu|M2): within [0-9.e+-]+\n)+moments\\.naive: [0-9.e+-]+ at 1, where the interpreter gives 0\\.1225\nmoments\\.welford: within [0-9.e+-]+\n$")
 set_tests_properties(check_peak_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^peak: 100 steps from 0, against exact values until 0 and inexact ones from there\npeak\\.Q: within 0\n(peak\\.[SAB]: within [0-9.e+-]+${about}\n)+$")
+# compile/chol.ink: each step the interpreter's doubles, but naive's L,
+# read from the root of a cell cancelled to about 1e-6, some 5e-12 apart.
+set(until1 "100 steps from 0, against exact values until 1 and inexact ones from there")
+set_tests_properties(check_factored_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^factored: ${until1}\n(factored\\.(Sp|K|N): within 0, from 1${about}\n)+(factored\\.[Sx]: within 0${about}\n)+$")
+set_tests_properties(check_naive_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^naive: ${until1}\n(naive\\.(Pp|K): within [0-9.e+-]+, from 1\n)+naive\\.P: within [0-9.e+-]+\nnaive\\.L: within [1-9](\\.[0-9])?e-12${about}\nnaive\\.x: within [0-9.e+-]+\n$")
+set_tests_properties(check_sole_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^sole: 100 steps from 0, against exact values until 0 and inexact ones from there\n(sole\\.[gy]: within 0${about}\n)+$")
+set_tests_properties(check_placed_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^placed: 100 steps from 0, against exact values\nplaced\\.y: within 0\n$")
 add_test(NAME check_moments COMMAND check_moments)
 add_test(NAME check_calm COMMAND check_calm)
 add_test(NAME check_wild COMMAND check_wild)
@@ -966,7 +978,8 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:ledge logistic:gate momentu
                          goldberg:year goldberg:needle goldberg:big goldberg:seven iterates:poly
                          blocks:nested conv:see straddle:knee apollo11:whole dyn:nm dyn:cd
                          steps:coast:1001 robertson:inside:2000 robertson:outside:2000
-                         robertson:rober tensorgrad:small tensorgrad:saliency:3 split:carried:4)
+                         robertson:rober tensorgrad:small tensorgrad:saliency:3 split:carried:4
+                         chol:factored chol:naive chol:sole)
     string(REPLACE ":" ";" checked ${checked})
     list(POP_FRONT checked file instance count)
     set(name ${instance})
@@ -995,7 +1008,7 @@ set_tests_properties(check_float_wild check_float_ledge check_float_far check_fl
                      check_float_steep check_float_dies check_float_beat check_float_peak
                      check_float_muller check_float_rounded check_float_surprise
                      check_float_solveur check_float_rump check_float_needle check_float_big
-                     check_float_knee check_float_nm PROPERTIES WILL_FAIL ON)
+                     check_float_knee check_float_nm check_float_naive PROPERTIES WILL_FAIL ON)
 # Each report as compile/float.ink gives it; what a libm or the seeds decide,
 # by its form.
 set(in_float " in float, against exact values")
@@ -1003,6 +1016,8 @@ set(inexact " in float, against exact values until 0 and inexact ones from there
 set(units "[0-9.e+-]+, [0-9.]+ units of a float${about}")
 set(parts "0\\.096026361 at 6, where the interpreter gives 0\\.10000000000000001\n")
 set(exact "within 0, 0 units of a float")
+set(until1f "against exact values until 1 and inexact ones from there")
+set(floats "[0-9.e+-]+, [0-9.e+-]+ units of a float")
 foreach(report IN ITEMS
         "calm:^calm: 100 steps from 0${in_float}\ncalm\\.v: within 1\\.1e-06, 1\\.4 units of a float\n$"
         "wild:^wild: 100 steps from 0${in_float}\nwild\\.d: ${parts}$"
@@ -1057,6 +1072,9 @@ foreach(report IN ITEMS
         "small:^small: 100 steps from 0${in_float}\nsmall\\.g: ${exact}\nsmall\\.o: ${exact}\nsmall\\.s: ${exact}\n$"
         "saliency_3:^saliency: 3 steps from 0${in_float}\nsaliency\\.G: ${exact}\n$"
         "carried_4:^carried: 4 steps from 0${in_float}\ncarried\\.x: within [0-9.e+-]+, [0-9.e+]+ units of a float\ncarried\\.y: within [0-9.e+-]+, [0-9.]+ units of a float\n$"
+        "factored:^factored: 100 steps from 0 in float, ${until1f}\n(factored\\.(Sp|K|N): within ${floats}, from 1${about}\n)+factored\\.S: within ${floats}${about}\nfactored\\.x: within [0-9.e+-]+, [1-9](\\.[0-9])? units of a float${about}\n$"
+        "naive:^naive: 100 steps from 0 in float, ${until1f}\n(naive\\.(Pp|K|P): within [^\n]+\n)+naive\\.L\\[1,1\\]: [-a-z()]+ at 1, where the interpreter gives 0\\.00099999999750012493\\; the interpreter's term about [0-9.e+-]+ from the exact one\nnaive\\.x: within [^\n]+\n$"
+        "sole:^sole: 100 steps from 0${inexact}\n(sole\\.[gy]: within [0-9.e+-]+, 0\\.[0-9]+ units of a float${about}\n)+$"
         "cls:^cls: 100 steps from 0${inexact}\ncls\\.z: within 2\\.4e-08, 0\\.49 units of a float\ncls\\.q: within 1\\.9e-06, 1\\.5 units of a float${about}\ncls\\.s: within 6\\.3e-08, 2\\.1 units of a float${about}\ncls\\.loss: within 4\\.1e-07, 3\\.8 units of a float${about}\n$")
     string(FIND "${report}" ":" colon)
     string(SUBSTRING "${report}" 0 ${colon} instance)

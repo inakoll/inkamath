@@ -1868,6 +1868,8 @@ closures need one anyway, and can bring it.
 | C353 `[fixed]` | **A compiled limit stopped on the rounding of a step of 0.** The interpreter's step of 0 is no limit unless the step before it is within the tolerance (C279), but a double's step is rarely 0 where the exact one is: with odd terms that cancel, `s(x)_k = s(x)_(k-1) + x^k/(k^2*2^k) + (-x)^k/(k^2*2^k)`, the step at k = 3 was one ulp, its ratio to the step before tiny, and the walk stopped there, 3e-4 from the interpreter's limit at x = 0.439 and 5e-3 at 0.879. Found reviewing the `limread` implementation. A step within twice `DBL_EPSILON` of the term, in each cell of a matrix, is now taken for 0, and the rule of C279 applies to it; a float's own stop on floats a unit or two apart is as it was. Past a term of about 225,000, where twice `DBL_EPSILON` of it passes 1e-10, no double step can show one within the tolerance, and the interpreter's rule cannot be mirrored: the compiled limit answers what the doubles converge to, so where adding the terms no longer moves the double it answers where the interpreter refuses, as a float target may. With `s(x)_0 = x*10^14` and `s(x)_k = s(x)_(k-1) + 0.8^k` it gives about 1e14 + 4 where the interpreter does not converge within 100 terms, a departure the README records and `weighed` pins. Every limit's function gains a line and its header `<float.h>`: 22 of 225 check programs move, no report and no expected header. In 7 lines, 2 of comment, and 2 removed; `compile/newton.ink`'s `evens` and `evened` hold it. An unbounded sum's walk is the same code since `unbsum`, and takes the rule too; its summand is added whole, so a step of 0 is rarely rounded to an ulp there, and `compile/sums.ink`'s `cancelled` held before it as after. A summand rounded by more than two ulps of the sum, `(1/8 + a + b - 1/8)` with b = -a, still stops the walk early, as it would a limit's: no rule over doubles tells that from a step. |
 | C354 `[fixed]` | **A limit whose clauses name their index differently was refused.** With `s(x)_k \| k < 3 = s(x)_(k-1) + x/k` and then `s(x)_j = s(x)_(j-1) + x^j/2^j`, `lim s(x_n)` was 'k is not defined', where the interpreter answers: the limit's iterate read every clause under the last general clause's index name, j, so so did a sequence walked beside it. Found reviewing the `limread` implementation. Each general clause's guard and value are now read under its own name. No header, check program or recorded answer moves. In 1 line; `compile/newton.ink`'s `twonames` holds it. |
 | C355 `[fixed]` | **A helper a fold left uncalled was still written.** `y_n = (lim p(1))[1,1] + x_n`, with `p(a)_k = p(a)_(k-1)/2 + (a*I2 + k*I2)^(-1)/2^k`, folds the limit, but the header still wrote the 2x2 inverse it called; so was a limit walked inside one folded, and with `--float` its `float.h`, and a check program's unused function is an error to Clang's `-Werror`. Found reviewing the unbounded sum, whose factorial had the same cause. The inverses and limits are now pruned with the prelude's functions, each kept only where something kept calls it, and `float.h` included only where a limit kept reads `FLT_EPSILON`. No expected header, check program or recorded answer moves. In 17 lines, 2 of comment, and 10 removed; `test/cli.cmake`'s `compile_limits_folded` holds it. |
+| C356 `[fixed]` | **A function of the prelude reading a cell at one of its parameters, called on numbers, is refused in words not its own.** Called on single values, it is a function of the header, its parameters doubles, so `hurwitzc(n, 1)`, its `q[i]` at the double i, is "a cell whose place is not a constant", where the interpreter answers n. Found specifying chol, whose `cholr(A, i, k)` of a 1x1 matrix is such a call. Such a function, a parameter read in a cell's place in a clause or its guard, is now written where it is called, its places constants there, by `Placed` beside `Iterates`. No expected header, check program or recorded answer moves. In 22 lines of `compile.hpp`, 4 of comment; `compile/placed.ink`'s `placed` holds it, its report "within 0". |
+| C357 `[fixed]` | **A recurrence by cells compiled in time exponential in its size.** Cholesky's five lines written by a user took 0.11 s to compile at 8x8, 4.1 s at 12, 47 s at 14 and ran out of memory at 16, where an inverse and charpoly at 16x16 take 0.63 s. The call memo held, each call compiled once, but a call read again returned its text, written into each reader's, so a cell's text held its column's and each column tripled it; Numbered shared the copies only once written. A value read again whose text passes 1,024 bytes is now shared where it is read, as a term read inside another is: 0.30 s at 16x16, 0.95 s at 20. The bound only caps the growth: compile times are the same from 0 to 16 KB, and below 1,024 bytes 2 to 13 check programs move, larger, where Numbered would have shared the value on its own. Below it, Numbered shares as before, so no expected header, check program or recorded answer moves. Found reviewing chol. In 11 lines of `compile.hpp`, 4 of comment; `test/cli.cmake`'s `compile_c357` holds it. |
 
 **Measure instructions, not the clock.** One of those changes made the matrix
 workload 20 per cent slower by the clock and not by a single instruction: with
@@ -10644,6 +10646,145 @@ After an external review of README, MANIFESTO and the conformance suite
 - **Small, whenever**: *A maximum, minimum or argmax over an index*, `[done]`; a
   Cholesky factor in the prelude, for square-root filters, the solve being
   `A^-1*b` already and the Joseph form writable now.
+- `[done]` **A Cholesky factor in the prelude, `chol(A)`**: L lower triangular with
+  a positive diagonal and A = L L', which square-root filters and
+  estimation papers write `L = chol(P)`. The design, measured on a
+  prototype:
+
+      chol(A[j<=n, k<=n])[i<=n, k<=n] = cholr(A, i, k)
+      cholr(A, i, k) | i < k = 0
+      cholr(A, i, k) | i == k and cholp(A, k) > 0 = cholp(A, k)^(1/2)
+      cholr(A, i, k) | i > k = (A[i,k] - sum_(q=1)^(k-1) cholr(A, i, q)*cholr(A, k, q))/cholr(A, k, k)
+      cholp(A, k) = A[k,k] - sum_(q=1)^(k-1) cholr(A, k, q)^2
+
+  **Written in inkamath**, by its cells, Cholesky's recurrence as Golub
+  and Van Loan (section 4.2) and the papers write it: L_kk the root of
+  the pivot A_kk - sum L_kq^2, L_ik the pivot's row less sum L_iq L_kq
+  over L_kk. The language says it already: a call is remembered, so each
+  cell is computed once, by the interpreter and, since C357, by the
+  compiler, and `chol(L*L') == L` of an exact 20x20 L
+  answers in 14 ms, the session's start included. No language change.
+
+  **Name**: `chol`, the lower factor, as numpy's, Eigen's LLT and
+  LAPACK's with `uplo = 'L'`, and as the papers' P = S S'. MATLAB's upper
+  R, A = R'R, is `chol(A)'`.
+
+  **Exact** where every pivot is the square of a rational, as of L L' for
+  L rational with a positive diagonal: section 1's root keeps an exact
+  square exact (*An exact root of a perfect power*). The first pivot that
+  is not a square has an inexact root, and so has every cell that reads
+  it; the cells before it stay exact, `chol([4 2; 2 3])` being `[2, 0; 1,
+  ~1.41421356]`. A rational matrix in general has no rational factor
+  (*The generalized eigenproblem*, its exact Cholesky rejected); its LDL'
+  has, rejected below.
+
+  **A's lower triangle alone is read**, as LAPACK's, numpy's and Eigen's
+  are, so `chol([4 100; 2 3])` is `chol([4 2; 2 3])`. Refusing a matrix
+  not symmetric, as first asked, is rejected: a prototype guarding chol
+  by its symmetry, an equality of cells, paid three times. `grad` refused
+  it wherever A moves (C73: an equality whose sides move), along a
+  symmetric path too, in words that said the clause held only there, so
+  the gradient of a likelihood through log det was lost. `--check`'s
+  disturbed runs part a symmetric product's two triangles, so a filter
+  factoring its inexact covariance had its estimate "about inf" from its
+  second step. And compiled, a Kalman filter's (I - K H) Pp rounded in
+  doubles parts its triangles, and its factor was NaN from the first
+  step, where the interpreter, exact, answered. What reading one
+  triangle costs: an asymmetric matrix is factored as its lower triangle
+  says, silently, which README says. Symmetrizing, (A[i,k] + A[k,i])/2,
+  is rejected too: it reads both and factors a matrix not given.
+
+  **Refused**, where a pivot is not above 0: `chol needs a positive
+  definite matrix`, in `Unapplied`'s table under `cholr`'s name, one set
+  of words for indefinite, singular and negative, as a singular matrix
+  has no inverse. Not square, by the signature. A complex pivot in a
+  comparison's words; a complex cell below the diagonal is factored as
+  the recurrence takes it, L L' = A by a quote that does not conjugate,
+  since refusing it would take the equality rejected above.
+
+  **Compiled**, written where it is called as any function of the
+  prelude of a matrix: C's `sqrt` behind the guard's test of the pivot,
+  so no root of a negative is taken (C350), and NaN wherever a pivot is
+  not above 0, every cell then, as for any term the interpreter refuses.
+  A 3x3 input's header is 3,406 bytes and a 6x6's 6,630, a step 10.7 ns
+  and 102 ns at -O2 (GCC 13, 4 cores, load 2.6). Of a single value,
+  `chol(x)` is a function of the header's own, as `exp` is, which the
+  prototype found refused, "a cell whose place is not a constant":
+  `cholr(A, i, k)` of a number is a function whose places are doubles.
+  So is `hurwitzc(n, 1)` today (C356). Such a function, one reading a
+  cell at a parameter, is written where it is called instead, its places
+  constants there, by a test beside `Iterates`.
+
+  **grad** follows the definition: a root, products and a quotient; the
+  guards read places and a pivot's sign, no equality of A. A pivot that
+  moves to 0 leaves every clause, and is refused so. Compiled too.
+
+  Rejected:
+  - **A helper in C++, as the inverse's**: more C++, in the interpreter
+    and the compiler both, a derivative of its own under grad, and a
+    definition `?chol` and `tex` could not show. The prelude's definition
+    gets grad, `--check` and the C target for nothing.
+  - **LDL'**: rational of every rational A, without roots, but no paper
+    of this kind writes it, and L D^(1/2) is chol. A model that wants it
+    writes it by its cells.
+  - **None**: a model can write the five lines, and every square-root
+    filter would (MANIFESTO.md, *Functions a paper takes for granted*).
+  - **The right-looking recurrence**, Schur complements as a sequence with
+    parameters: not the paper's formula, and its terms by cells do not
+    compile.
+
+  **Accuracy**, against mpmath at 200 bits, on random symmetric positive
+  definite matrices of doubles, A = B B' + n I with B uniform in [-1, 1],
+  3,000 at 3x3 and 3,000 at 6x6 for each of two seeds, in the compiled
+  step: max|A - L L'| at most 2.81 units of 2^-53 of max|A|, and max|L -
+  L*| 1.43 of max|L*|, the same as numpy's LAPACK on the same matrices.
+  A cell's own error in units of its last place reaches 122 at 3x3 and
+  32,500 at 6x6, at cells that cancel close to 0, LAPACK's 342 and
+  20,700: a forward error of the factor that conditioning sets. Of B B'
+  alone, often ill-conditioned, backward 2.66 and forward as LAPACK's.
+  No table in `test/prelude_test.cpp`: chol is no function of the
+  header, and `--check` holds its compiled step to the interpreter.
+
+  What moves: nothing recorded. On the prototype every golden, expected
+  header, report and `test/cli.cmake` case passes, 497 tests. README's
+  sections 1, 2 and 5 name chol, section 2 with the spec's last three
+  entries as its example; README is replayed, so it comes with chol.
+
+  27 lines by `wc -l include/inkamath/*.hpp src/*`, 18,335 to 18,362 at
+  d7c1ada: the prelude's 5 and 4 of comment, 1 of C++ for its words, and
+  17 of `compile.hpp` for a single value, 3 of them comment. Past 40 the
+  implementation stops and reports.
+
+  Specified in `test/data/spec/chol.ink`, 29 entries replayed by the spec
+  suite, 23 failing by design, those passing definitions echoing
+  themselves, a matrix and `tex`: the exact factors in Python's
+  fractions, the roots by hand and in mpmath at 50 digits. Compiled in
+  `test/compile/chol.ink`: a tracker whose sensor is 10,000 times finer
+  than its prior, carried as a factor and as P, and a single value with
+  grad through chol. `test/cli.cmake`'s spec part writes the check
+  program of each, in double and in float, skipped while chol is not
+  defined; the reports its comments give, `naive` NaN at 1 in float and
+  its program failing, join the checks with chol. The spec suite and
+  `cli_spec` return until they pass.
+
+  Built as specified, departing only in where its single value's lines
+  are counted: in C356's row, 22 of them with each clause's guard walked
+  too, as the review asked. Every entry passes as written, and the spec is
+  the golden `chol.ink`; the spec suite and `cli_spec` go, chol their only
+  case. `factored`, `naive` and `sole` are checks in double and in float,
+  their reports as the story's comments give them, `naive`'s float
+  program failing as said. A recurrence by cells compiles in time
+  polynomial in n since C357: chol's header at 16x16 in 0.62 s, as an
+  inverse and charpoly's 0.60, and at 20x20 in 1.9 s, where the same five
+  lines written by a user took 47 s at 14x14 and ran out of memory at 16.
+  README's sections 1, 2 and 5 name chol, section 2 saying that it reads
+  the lower triangle alone and that of complex entries it is L L' with the
+  plain transpose, not the Hermitian factor. 11 lines landed against the
+  spec's 10, 4 of them comment: the prelude's 6, its long clause split in
+  two for the column limit, and 4, 1 of C++ for its words; with C356's 22
+  and C357's 11, 18,510 to 18,554 lines at c9aa165. chol and C356 are 33
+  lines, inside the stop at 40; C357 fixes the exponential compile of any
+  recurrence by cells, so it is counted on its own, though chol relies on it.
 - **A clause for a limit that does not converge**, one guard meaning the
   same in the interpreter and the step, NaN kept where none is written; and
   with it a tolerance relative to the term, the 1e-10 being absolute.
