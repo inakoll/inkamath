@@ -4674,10 +4674,107 @@ that exploring seven domains asked of the interpreter, by how many asked.
 
   119 lines of `compile.hpp`, 133 added and 14 removed, 10 of them
   comment; 18,304 lines in all.
-- **`--check` names the cell and step of its worst units**: a float run of
+- `[done]` **`--check` names the cell and step of its worst units**: a float run of
   Robertson's kinetics passed with its small concentrations negative and
   50 times off, and `outside`'s in `test/compile/robertson.ink` passes at
-  1e+10 units, the line saying neither which cell nor where.
+  1e+10 units, the line saying neither which cell nor where. They are
+  y's second cell at step 1101, where the interpreter gives -2.6e-08 and
+  the step 1.8e-05: within the tolerance, a thousandth of one plus the
+  term, and of the other sign.
+
+  Decided:
+  - **The form**: after the units, ` in y[r,c]` for a matrix's cell or
+    ` in y[s,r,c]` for a tensor's, by the term's name as a parting line
+    names it, so that `units of a float in [2,1]` cannot read as an
+    interval, then ` at step n`, a scalar's alone; before `, from K` and
+    the estimate, which say other things:
+
+        outside.y: within 0.00061, 1e+10 units of a float in y[2,1] at step 1101; the interpreter's terms about <e> from the exact ones
+        shove.s: within 5.9e-08, 1.4e+07 units of a float at step 5
+        shove.y: within 5.9e-08, 1.4e+07 units of a float in y[2,1,1] at step 7
+
+    `step`, where a parting line says `at 1113` alone: after "units of a
+    float", `at 0` reads as the spacing at 0. The first line already
+    counts steps.
+  - **Only from 2^23 units**, a difference as large as the power of two
+    of the interpreter's term. Every term the step loses whole or gives
+    the other sign reaches it, its difference at least the term; below
+    it, the step's term has the interpreter's sign and is not 0. So for
+    a term a normal float holds; below, units count at 2^-149. 6 lines
+    of the 57 float programs' move, and none of the 1.4 units where a
+    place says nothing.
+  - **Ties**: the first, the earliest step, then cells slice after
+    slice, row by row, as they are stored; tiny's every term alike,
+    `at step 0`.
+  - **Float only**: a double run counts no units, and where its largest
+    difference is belongs to *says how far a term parts*.
+
+  Rejected:
+  - **Always**: every float line with units moves, 46 regexes and 48
+    recorded lines in 10 `.ink` files, for places that say nothing at
+    1.4 units.
+  - **From about 1e4 units**, a thousandth of the term: `ball.g`, `nm.v`,
+    `whole.k2` and `whole.k3` join, a model's rounding grown, no sign
+    lost, and the bound's meaning is loose by a factor of two with the
+    significand.
+  - **The values there**, `where the step gives 1.8e-05 and the
+    interpreter -2.6e-08`: the line doubles, and `outside.y_1101` is one
+    question to a session.
+  - **The onset**, the first term past 2^23: a different measure, which
+    would need a second number on the line, where this one names where
+    its own figure is. Robertson's `outside.y` is past 2^23 from step
+    702, of the other sign first at 734, and worst at 1101, where the
+    interpreter's term is -2.6e-8.
+  - **The term's index**, `y_1101[2,1]`, which a session reads: every
+    other place in a report is a step, and at another rate the two
+    differ.
+  - **Failing the run**: that is *measures relative to the term*, its
+    tolerance. This names; that would judge. Should its tolerance become
+    a thousandth of the term, no passing line reaches 2^23 units, the
+    tolerance capping them near 2^14, and this goes: about 10 lines, not
+    worth holding for a decision not taken.
+
+  What moves, on a prototype, discarded: no golden; every check
+  program's C, its parting cell printed by a function the units line
+  shares; and in `test/CMakeLists.txt` five float reports, `tiny.y`,
+  `big.s` and `knee.r` ending `at step 0`, `outside.y` `in y[2,1] at
+  step 1101`, and `factored.N`, a libm's, by its form,
+  `( in N\[[12],[1-3]\] at step [0-9]+)?` before `, from 1` (`in
+  N[2,1] at step 2` on the prototype). `naive.P`, 8.8e+06 units, `in
+  P[1,1] at step 1` there, moves within its `[^\n]+`. The recorded lines of
+  `float.ink`'s `tiny.y` and `straddle.ink`'s `knee.r` change with them;
+  `goldberg.ink`, `chol.ink` and `robertson.ink` record no float line
+  that moves.
+
+  About 10 lines: the prototype's 21 added and 11 removed in
+  `check.hpp`, 2 of them comment; 18,554 lines at 28bbb18 by `wc -l
+  include/inkamath/*.hpp src/*`, 18,564 on the prototype. Past 15 the
+  implementation stops and reports.
+
+  Specified in `test/CMakeLists.txt`: `check_float_outside_2000_cell`
+  and `check_float_tiny_cell`, today's programs held to the lines above,
+  and `float.ink`'s `shove`, a scalar and a tensor, whose report test
+  holds its two; each skipped while its line names no place, as today,
+  and only then. Worked out apart in Python: Robertson's float run with
+  the interpreter's terms in fractions until a thousand digits and
+  doubles after, which match all 6,000 of the check program's and give
+  the double report's parting at 1113 to the digit, and the step in
+  numpy's float32 as its header writes it; `shove` by hand, as
+  `float.ink` says, and in float32. With the implementation the three
+  join the report list, the `_cell` tests and the skips go, and README's
+  float paragraph gains: "Where that most reaches 2^23 units, as a term
+  a normal float holds does when lost whole or of the other sign, it
+  names the cell and step:
+  `outside.y: within 0.00061, 1e+10 units of a float in y[2,1] at step
+  1101`."
+
+  Built as specified, and no departure in what a line says: the five
+  regexes and two recorded lines above moved, `factored.N` `in N[2,1] at
+  step 2` and `naive.P` `in P[1,1] at step 1` here too, no golden. The
+  parting cell and the units line's share `cell_`, which the units line
+  calls with the name past the instance's. 13 lines, 25 added and 12
+  removed in `check.hpp`, 1 of them comment, 3 over the prototype's;
+  18,567 lines in all, 18,554 at 28bbb18.
 - **`--check`'s remainder of a limit assumes linear convergence**: C36's
   step*r/(1-r) reads the ratio of two steps, pessimistic for Newton's
   quadratic convergence, whose last step is far below the one before.
@@ -10757,11 +10854,12 @@ After an external review of README, MANIFESTO and the conformance suite
   lines first: MANIFESTO's intermediate form, for a step now written out
   whole (a transformer's 90 to 100 s at -O2, 256 KB of stack). It largely
   supersedes value numbering (*Shared at every value written twice*, `[done]`).
-- **A Jacobian by cells**, the idiom, compiled and held by `--check`:
+- `[done]` **A Jacobian by cells**, the idiom, compiled and held by `--check`:
   `J(x)[i<=3, j<=2] = (grad_(v = x) f(v)[i])[j]`, row i output i's
   gradient as a paper defines J_ij, so the layout is the user's. grad's own
   Jacobian stays rejected unless a transcription shows a sweep per output
-  too dear or the notation short.
+  too dear or the notation short. Already so: README's section on grad
+  writes J(x), and `test/compile/grad.ink`'s `ekf` checks F and H by cells.
 - **Small, whenever**: *A maximum, minimum or argmax over an index*, `[done]`; a
   Cholesky factor in the prelude, for square-root filters, the solve being
   `A^-1*b` already and the Joseph form writable now.

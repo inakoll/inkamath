@@ -121,8 +121,24 @@
 # none of whose terms is anything else gives none:
 #
 #     tiny: 100 steps from 0 in float, against exact values
-#     tiny.y: within 1e-08, 1.1e+07 units of a float
+#     tiny.y: within 1e-08, 1.1e+07 units of a float at step 0
 #     tiny.z: within 1e-08
+#
+# Past 2^23 units, a difference as large as the interpreter's term's
+# power of two, which a term the step loses whole or gives the other sign
+# reaches, the line names the cell and step of the most, the first where
+# several tie (DESIGN.md). 'shove' lifts 1e-8 times n, and a tensor of
+# 1e-8 times 1, 2, and n - 2 twice, each lost whole below 2^-24: the most
+# is at 5e-8, 5e-8 * 2^48 = 1.4e+07 units, s's at 5 and y's at 7 in its
+# third and fourth cells, the first as stored named: slice 2, row 1 and
+# column 1. Their largest difference, 5.9e-08, is 6e-8 rounded up to
+# 2^-23, s's at 6 and y's at 8:
+#
+#     shove: 100 steps from 0 in float, against exact values
+#     shove.s: within 5.9e-08, 1.4e+07 units of a float at step 5
+#     shove.y: within 5.9e-08, 1.4e+07 units of a float in y[2,1,1] at step 7
+#
+# tiny.y's line ends 'at step 0', all its terms alike.
 #
 # And exp past a float's range, from e^-110 by three at each step: the
 # step's terms are 0 to the third, where the interpreter's are below half
@@ -234,3 +250,9 @@ lift(a = 1/100000000, u_n) = {
     z_n = (1 + a*u_n) - 1 - a*u_n
 }
 tiny = lift(u_n = 1)
+
+heave(a = 1/100000000, u_n[b<=2, j<=1, k<=2]) = {
+    s_n = (1 + a*n) - 1
+    y_n = (1 + a*u_n) - 1
+}
+shove = heave(u_n = [1 2;; (n - 2) (n - 2)])
