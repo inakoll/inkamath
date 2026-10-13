@@ -933,11 +933,23 @@ private:
             throw Reason(name + "_" + std::to_string(k) + " is " + std::to_string(distance) +
                          " terms from its base, and a step writes out at most " +
                          std::to_string(max_terms));
+        // Each term once for each depth it is tried at, not at each read: a
+        // halving recursion reads each term with arguments of its own.
         const int stride = function.Stride();
-        for (long long j = k - (distance - 1) / stride * stride; j < k; j += stride) try {
-                (void)term(static_cast<int>(j), true);
-            } catch (const Reason&) {
-            }
+        if (distance > 0) {
+            const long long first = k - (distance - 1) / stride * stride;
+            auto& [upto, deep]    = filled_
+                                     .try_emplace({temporaries_, &function, args, k % stride},
+                                                  first - stride, expanded_)
+                                     .first->second;
+            if (expanded_ < deep) std::tie(upto, deep) = std::pair(first - stride, expanded_);
+            for (long long j = std::max(first, upto + stride); j < k; j += stride, deep = expanded_)
+                try {
+                    (void)term(static_cast<int>(j), true);
+                } catch (const Reason&) {
+                }
+            upto = std::max(upto, static_cast<long long>(k) - stride);
+        }
         return term(k, terming_ > 0);
     }
 
@@ -2502,6 +2514,7 @@ private:
         const auto in = [&](const auto& term) { return std::get<0>(term.first) == &temporaries; };
         std::erase_if(terms_, in);
         std::erase_if(failed_, in);
+        std::erase_if(filled_, in);
         const bool reads          = std::exchange(read_global_, true);
         const auto parameters     = std::exchange(read_parameters_, std::move(outer_parameters));
         read_parameters_.insert(parameters.begin(), parameters.end());
@@ -4958,6 +4971,7 @@ private:
         const auto in = [&](const auto& term) { return std::get<0>(term.first) == &scratch; };
         std::erase_if(terms_, in);
         std::erase_if(failed_, in);
+        std::erase_if(filled_, in);
         return decides;
     }
 
@@ -5950,6 +5964,9 @@ private:
              std::pair<std::exception_ptr, int>>
                                                        failed_;
     std::map<std::pair<const void*, std::string>, int> computing_;
+    // The fill's last term tried, by residue, and the deepest it was tried at.
+    std::map<std::tuple<const void*, const void*, std::string, int>, std::pair<long long, int>>
+                                                       filled_;
     Memo                                               memo_;  // the loop's, if one binds places
     int                                                situated_ = 0;        // terms read, counted
     int                                                terming_ = 0;        // terms being computed

@@ -1873,6 +1873,7 @@ closures need one anyway, and can bring it.
 | C358 `[fixed]` | **A history reading a parameter with no default was said to be none.** C348's gap: init evaluates such a term before refusing it for the parameter, and a parameter with no default has no value to evaluate, so `m(a)`'s `g_n \| n < 0 = a` with `g_n = 2*g_(n-1)` said "where g has no history", and so did a slow one's, `y_m \| m < -1 = 1` and `y_m \| m < 0 = a`. Found re-checking C348. Where that evaluation fails, such a parameter's reading names it, "where g's history reads a, which the host may assign after init", as one with a default does. In 9 lines, 1 of comment, and 3 removed; `test/cli.cmake`'s `history_unset` holds it. No header or golden moves. |
 | C359 `[fixed]` | **A grad refusal quoted a matrix point across lines.** The point is printed as an answer is, a row to a line and its columns aligned, so `grad_(w = [1; 2])` at a comparison's jump said "a comparison jumps at w = [1;" and then " 2]" on a line of its own, where a row's point reads on one. Found specifying mateq. The point is now on one line, its rows parted by "; " and its columns by ", ", unaligned: "floor jumps at v = [10; 2]". In 7 lines, 1 of comment, and 1 removed; `reverse.ink` holds it. No other golden moves. |
 | C362 `[fixed]` | **A single value read past its cell through a function's parameter was refused in words not its own.** A parameter with no default and an input with no size compile as single values, and a cell read past one is refused by its name (C83, C144), but not through a parameter, as `iekf.ink`'s `blk(X_n)` reads X, whose X_0 is X0: "row 1, column 2 is outside a 1x1 matrix"; nor through a sequence that reads such a parameter, `X_n = A` with `X_n[1, 2]`. The refusal now follows a call's argument as written where the call is, and a sequence's parameters as its inputs: "X reads X0, a single value, as riekf gives it no default". No header, check program or golden moves. In 28 lines of `compile.hpp`, 3 of comment, and 8 removed; `test/cli.cmake`'s `compile_unstated_argument` holds it. |
+| C363 `[fixed]` | **A halving recursion with a base compiled in time cubic in its index.** With `v(x)_0 = x`, `v(x)_k \| k > 999 = x` and `v(x)_k = v(x/2)_(k+1)`, `v(x_n)_999` took 96 s to compile, and `w(x)_k = w(x/2)_(k-1)` with a base at 0, read at 1000, over 60 s to be refused 64 deep. Not exponential, nor a key missing: each term reads one with arguments of its own, so each of the 64 arguments' fills from the base ran again at each read of one of its terms, each term failed throwing again, 64 times 1000 squared. The fill now tries a term once for each depth, as a failure is kept by its depth: 1.4 s and 1.3 s. No header, check program or golden moves, the 242 check programs integration's byte for byte. Found reviewing *recursion from the tip*. In 21 lines of `compile.hpp`, 3 of comment, and 4 removed; `test/cli.cmake`'s `compile_c363` holds it. |
 
 **Measure instructions, not the clock.** One of those changes made the matrix
 workload 20 per cent slower by the clock and not by a single instruction: with
@@ -10532,9 +10533,9 @@ they asked, each with its smallest change.
   refused where its function form compiles; integration refused both, and
   forgetting it whenever a term is filled made the halving recursion with a
   base 12 times slower. Accepted.
-- **A halving recursion with a base runs away** at large indices:
+- `[done]` **A halving recursion with a base runs away** at large indices:
   `w(x/2)_(k-1)` read at 1000 takes over 60 s to compile, and read ahead
-  with a base at 1000, 35 s. Found reviewing *recursion from the tip*.
+  with a base at 1000, 35 s. Found reviewing *recursion from the tip*: C363.
 - `[done]` **A sequence with parameters read at `lim`'s walking index**, a series
   written as on paper: its partial sums under `lim`, its term a sequence of
   its own.
