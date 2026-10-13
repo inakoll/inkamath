@@ -3407,12 +3407,14 @@ that exploring seven domains asked of the interpreter, by how many asked.
   language does not change.
 
   Built as specified, departing in one thing: both refusals come before a
-  constant is folded, so `n*([1, 1] == [1; 1])` is refused as two shapes,
-  where the prototype folded it to 0 as the interpreter answers. The three
+  constant is folded, so `n*([1, 1] == [1; 1])` and `n*([1, 1] == 1)` are
+  refused, where the prototype and c9aa165 folded them to 0 as the
+  interpreter answers. The three
   instances and `rational` in float are checks, each reporting as
   `orthogonal.ink` gives it; the `spec` part's header and refusals are
   `cli.cmake`'s `compile_mateq` and `compile_mateq_refused`; the two cli
-  cases moved as declared. Every other check program, header and report
+  cases moved as declared, and `compile_eig_refused` lost its `x`, an eig
+  whose matrix moves, now a 1.7 MB header too slow for the sanitizer job. Every other check program, header and report
   byte for byte. 16 lines net, `compile.hpp` 12 and `check.hpp` 4: 18,526
   lines by `wc -l include/inkamath/*.hpp src/*`.
 - **A matrix `==` a single value refused**, naming `0*M`: Doyle 1978's

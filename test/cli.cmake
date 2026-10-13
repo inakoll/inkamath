@@ -434,12 +434,13 @@ set(meet "(m_->x[0][0][0] == 1.0 && m_->x[0][1][0] == 2.0) ? 1.0 : 0.0);")
 holds(compile_mateq same.h "_ = isnan(m_->x[0][0][0]) || isnan(m_->x[0][1][0]);"
       "_ ? NAN : ${meet}" "_ ? NAN : !${meet}")
 file(WRITE "${OUT}/apart.ink" "c_n = [n, 1] < [2, 2]\nd_n = [n, 1] == 0\n"
-     "f_n = [n, 1] == [n; 1]\ng_n = n*([1, 1] == [1; 1])\n")
+     "f_n = [n, 1] == [n; 1]\ng_n = n*([1, 1] == [1; 1])\nh_n = n*([1, 1] == 1)\n")
 set(args --compile apart.ink)
 string(CONCAT stdout "cannot compile c: a comparison needs single values, not a 1x2 matrix\n"
        "cannot compile d: a 1x2 matrix compared with a single value, never equal\n"
        "cannot compile f: a 1x2 matrix compared with a 2x1 matrix, never equal\n"
-       "cannot compile g: a 1x2 matrix compared with a 2x1 matrix, never equal\n")
+       "cannot compile g: a 1x2 matrix compared with a 2x1 matrix, never equal\n"
+       "cannot compile h: a 1x2 matrix compared with a single value, never equal\n")
 set(exit 1)
 check(compile_mateq_refused)
 
