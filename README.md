@@ -318,7 +318,7 @@ imaginary parts, the paper's Re and Im. `ceil(x) = -floor(-x)` and
 `mod(a, b) = a - b*floor(a/b)` come with them, from a prelude (section 5),
 and so do `exp`, `log`, `tanh`, `sin`, `cos`, `atan`, `atan2`, `asin`,
 `acos`, `acosh`, `abs`, `max` and `min`, and, of matrices, `charpoly`,
-`hurwitz`, `schurcohn`, `rho`, `abscissa`, `eig`,
+`hurwitz`, `schurcohn`, `rho`, `abscissa`, `eig`, `chol`,
 `smax`, `hinf` and `dhinf` (section 2). `abs` takes a complex number too, |z|, so a
 frequency response's magnitude |T(e^{iw})| is written as on paper.
 Any other rounding is a line of it, by the rule the model needs —
@@ -681,6 +681,31 @@ refused from 6x6 where `eig(B^-1*A)` of the rounded product still answers:
 
 >> eig([2 1; 1 2], [1 0; 0 -1])
 error: eig needs B symmetric positive definite
+```
+
+`chol(A)` is the Cholesky factor, L lower triangular with a positive
+diagonal and L*L' = A, as a square-root filter writes `L = chol(P)`. It is
+Cholesky's recurrence written in the prelude, each cell computed once, so
+it is exact where every pivot is the square of a rational, and `grad` and
+the compiler take it as any definition. chol reads only the lower triangle
+of A: the upper one is never looked at, so a matrix that is not symmetric
+is factored as its lower triangle says, without a word. Of complex
+entries it is L L' = A with ' the plain transpose, not the Hermitian
+factor L L^H. A pivot not above 0, of a matrix indefinite or singular, is
+refused:
+
+```
+>> chol([4 2 -2; 2 10 1/2; -2 1/2 9/4])
+[ 2,   0, 0;
+  1,   3, 0;
+ -1, 0.5, 1]
+
+>> chol([4 2; 2 3])
+[2,           0;
+ 1, ~1.41421356]
+
+>> chol([1 2; 2 1])
+error: chol needs a positive definite matrix
 ```
 
 `hinf(A, B, C, D)` is the H-infinity norm of the stable system x' = Ax +
@@ -1294,7 +1319,7 @@ once, holds definitions only, and one that cannot be read or parsed loads
 nothing and says where. The prelude that defines `ceil`, `mod`, `exp`, `log`,
 `tanh`, `sin`, `cos`, `atan`, `atan2`, `asin`, `acos`, `acosh`, `abs`,
 `max`, `min`, `charpoly`, `hurwitz`,
-`schurcohn`, `rho`, `rhob`, `abscissa`, `abscissab`, `eig`, `eigb`,
+`schurcohn`, `rho`, `rhob`, `abscissa`, `abscissab`, `eig`, `eigb`, `chol`,
 `smax`, `hinf` and `dhinf`, and what they call, is included bare beneath the
 session, as the built-ins are: every scope sees it, and a session
 that defines one of its names again does so for itself

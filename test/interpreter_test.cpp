@@ -115,6 +115,9 @@ TEST_CASE("exact") {
 TEST_CASE("roots") {
     check_transcript("roots.ink");
 }
+TEST_CASE("chol") {
+    check_transcript("chol.ink");
+}
 TEST_CASE("decimals") {
     check_transcript("decimals.ink");
 }

@@ -842,10 +842,21 @@ private:
         if (outer || !temporaries_ || memo_.first != temporaries_) return compiled();
         const auto key = std::tuple(static_cast<const void*>(&function), grad_, Given(expansion));
         if (const auto found = memo_.second.find(key); found != memo_.second.end())
-            return found->second;
+            return Reread(found->second);
         const int situated = situated_;
         Code      code     = compiled();
         if (situated_ == situated) memo_.second.emplace(key, code);
+        return code;
+    }
+
+    // A call's value read again is shared where its text is long: written
+    // into each reader's, it would multiply as its readers nest, a
+    // recurrence by cells exponentially (C357). The bound only caps that
+    // growth while compiling; below it Numbered decides, as before.
+    Code& Reread(Code& code) {
+        for (Code& part : code.part) Reread(part);
+        for (Cell& cell : code.cells)
+            if (cell.text.size() > 1024) cell = Called(Of(cell)).cells[0];
         return code;
     }
 
@@ -963,7 +974,7 @@ private:
         // Under reverse mode, one of several arguments is written where called:
         // its part function gives one slope, which one argument's node takes.
         const auto parted = [](const Code& c) { return !c.part.empty(); };
-        if (constant || !scalar || Iterates(function, seen) ||
+        if (constant || !scalar || Iterates(function, seen) || Placed(function) ||
             (tape_ && names.size() > 1 && std::any_of(arguments.begin(), arguments.end(), parted)))
             return Answer(Call(name, function, call, nullptr));
         const std::string called = module_ + "_" + name;
@@ -1066,6 +1077,28 @@ private:
         return limit_ && temporaries_ == limit_->iterated && !Walks(value);
     }
     Code Looping(Code code) { return Invariant(code.cells[0].text) ? Called(code) : code; }
+
+    // Whether a function of the prelude reads a cell at one of its
+    // parameters, which a function of the header, its parameters doubles,
+    // cannot place: it is written where it is called, its places constants
+    // there (C356).
+    static bool Placed(const Reference<Value>& function) {
+        const auto& names = function.Clauses().front().parameters.parameters_names();
+        const auto  reads = [&](const auto& self, const PExpression<Value>& e, bool place) -> bool {
+            if (!e) return false;
+            if (place && std::find(names.begin(), names.end(), e->Name()) != names.end())
+                return true;
+            const bool cell = dynamic_cast<const CellExpression<Value>*>(e.get());
+            for (std::size_t i = 0; i < e->Children().size(); ++i)
+                if (self(self, e->Children()[i], place || (cell && i > 0))) return true;
+            return false;
+        };
+        return std::any_of(function.Clauses().begin(), function.Clauses().end(),
+                           [&](const Clause<Value>& c) {
+                               return reads(reads, c.expression, false) ||
+                                      reads(reads, c.parameters.guard(), false);
+                           });
+    }
 
     // Whether a function of the prelude reads a sequence with parameters,
     // itself or through what it calls, which its function in the header

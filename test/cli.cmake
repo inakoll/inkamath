@@ -700,6 +700,21 @@ set(args --compile c230.ink -o c230.h)
 check(compile_c230)
 holds(compile_c230 c230.h "(double)m_->index_ * 300.0 + 1.0) + ((double)m_->index_ * 1.0 + 1.0 + 1.0 + 1.0 + 1.0 + 1.0 + 1.0 + 1.0 + 1.0 + 1.0 + 1.0 + ((double)m_->index_ * 2.0 + 1.0")
 
+# C357: a call read again was written into each reader's text, so Cholesky's
+# recurrence by cells took 47 s at 14x14 and ran out of memory at 16x16.
+file(WRITE "${OUT}/c357.ink" [=[
+mc(A[j<=n, k<=n])[i<=n, k<=n] = mr(A, i, k)
+mr(A, i, k) | i < k = 0
+mr(A, i, k) | i == k and mp(A, k) > 0 = mp(A, k)^(1/2)
+mr(A, i, k) | i > k = (A[i,k] - sum_(q=1)^(k-1) mr(A, i, q)*mr(A, k, q))/mr(A, k, k)
+mp(A, k) = A[k,k] - sum_(q=1)^(k-1) mr(A, k, q)^2
+big(A_n[j<=16, k<=16]) = {
+    e_n = mc(A_n)
+}
+]=])
+set(args --compile c357.ink big -o c357.h)
+check(compile_c357)
+
 # C231: under grad, where a sum's part is there was written out at each
 # partial sum, each term's being where any cell of m's is: 999^2 times 22 KB.
 file(WRITE "${OUT}/c231.ink" "A[i<=32] = mod(3*i, 7) - 3 + 1/2\nrelu(z)[i] | z[i] > 0 = z[i]\nrelu(z)[i] = 0\nh(m) = sum_(i=1)^999 m[1 + mod(i, 32)]\nw_0 = 1/2\nw_n = w_(n-1) - grad_(v = w_(n-1)) h(relu(relu(A*v)))/1024\n")
