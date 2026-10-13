@@ -124,3 +124,23 @@ columns(c_n) = {
     y_n = 0
 }
 columned = columns(c_n = 1 + mod(n, 2))
+
+# A function whose own guard reads a limit that runs out, and whose clause
+# after then answers, has answered: its caller's guard reads that answer,
+# and where the guard is NaN because a term it reads is refused, the step
+# is NaN, as the interpreter refuses. At even n Newton settles, inner is 1
+# and y_n 0; at odd n inner is 5, r_n is refused, and so is y_n. Checked:
+#
+#     answered: 100 steps from 0, against exact values until 0 and inexact ones from there
+#     answered.r: within 0
+#     answered.y: within 0
+inward(c_n) = {
+    nv(c)_0 = 0
+    nv(c)_k = nv(c)_(k-1) - (nv(c)_(k-1)^3 - 2*nv(c)_(k-1) + c)/(3*nv(c)_(k-1)^2 - 2)
+    inner(c) | lim nv(c) > 0 = 1
+    inner(c) = 5
+    r_n | c_n < 2 = 1
+    y_n | inner(c_n) == 5 and r_n == 1 = 1
+    y_n = 0
+}
+answered = inward(c_n = 1 + mod(n, 2))

@@ -244,7 +244,7 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brin
                          orthogonal:rational orthogonal:inexact orthogonal:probe
                          chol:factored chol:naive chol:sole placed:placed
                          fallback:planned fallback:held fallback:ranout
-                         fallback:tipped fallback:columned)
+                         fallback:tipped fallback:columned fallback:answered)
     string(REPLACE ":" ";" checked ${checked})
     list(POP_FRONT checked file instance count)
     set(name ${instance})
@@ -904,6 +904,8 @@ set_tests_properties(check_tipped_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^tipped: 100 steps from 0, against exact values until 0 and inexact ones from there\ntipped\\.y: within 0\n$")
 set_tests_properties(check_columned_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^columned: 100 steps from 0, against exact values until 0 and inexact ones from there\ncolumned\\.y: within 0\n$")
+set_tests_properties(check_answered_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^answered: 100 steps from 0, against exact values until 0 and inexact ones from there\nanswered\\.r: within 0\nanswered\\.y: within 0\n$")
 set_tests_properties(check_twonames_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^twonames: 100 steps from 0, against exact values until 0 and inexact ones from there\ntwonames\\.a: within [0-9.e-]+${about}\ntwonames\\.b: within [0-9.e-]+${about}\n$")
 set_tests_properties(check_fir_report PROPERTIES PASS_REGULAR_EXPRESSION
