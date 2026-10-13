@@ -15,6 +15,7 @@
 #include <stdexcept>
 #include <string>
 #include <tuple>
+#include <unordered_map>
 #include <variant>
 #include <vector>
 
@@ -134,6 +135,7 @@ public:
         std::map<std::pair<std::string, int>, std::vector<std::optional<Value>>> again;
         for (std::uint64_t seed = 1; seed <= 3; ++seed) {
             Number::Disturbance disturbance{seed, seed == 1 ? 1 : seed == 2 ? -1 : 0};
+            std::map<int, std::unordered_map<MemoKey<Value>, Value, MemoHash<Value>>> limits;
             stack.Apart([&] {
                 const Setting<Number::Disturbance*> disturbing(Number::disturbed, &disturbance);
                 const Setting<decltype(stack.guards)> heard(stack.guards, hook);
@@ -142,6 +144,7 @@ public:
                     for (int n = first; n < first + steps; ++n) {
                         if (n < sequence.start && sequence.period > 1) continue;
                         now              = {&sequence, n};
+                        const Setting<decltype(stack.limits)> kept(stack.limits, &limits[n]);
                         const int  index = Floor(n - sequence.phase, sequence.period);
                         const Term term  = ask(sequence, index);
                         again[{instance + "." + sequence.name, index}].push_back(
