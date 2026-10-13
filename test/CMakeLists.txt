@@ -173,6 +173,20 @@ target_link_libraries(compile_powers PRIVATE inkamath_warnings
 set_target_properties(compile_powers PROPERTIES C_STANDARD 11 C_STANDARD_REQUIRED ON C_EXTENSIONS OFF)
 add_test(NAME compile_powers COMMAND compile_powers)
 
+# README's host file for pid.h, its C block taken as written there.
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${PROJECT_SOURCE_DIR}/README.md)
+file(READ ${PROJECT_SOURCE_DIR}/README.md readme)
+if(NOT readme MATCHES "```c\r?\n([^`]*)```")
+    message(FATAL_ERROR "README.md has no C block for compile_host")
+endif()
+file(CONFIGURE OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/compile/pid_host.c CONTENT "${CMAKE_MATCH_1}" @ONLY)
+add_executable(compile_host compile/host_test.c ${CMAKE_CURRENT_BINARY_DIR}/compile/pid_host.c)
+add_dependencies(compile_host compile_pid)
+target_include_directories(compile_host PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/compile)
+target_link_libraries(compile_host PRIVATE inkamath_warnings $<$<NOT:$<C_COMPILER_ID:MSVC>>:m>)
+set_target_properties(compile_host PROPERTIES C_STANDARD 11 C_STANDARD_REQUIRED ON C_EXTENSIONS OFF)
+add_test(NAME compile_host COMMAND compile_host)
+
 # The prelude's functions the interpreter calls on a double (DESIGN.md),
 # checked in so that building the interpreter needs no interpreter; recorded
 # as the goldens are, and its diff read.

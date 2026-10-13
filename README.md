@@ -284,6 +284,48 @@ at step 1101`. A limit
 compiled in float also stops where a step is within twice `FLT_EPSILON` of its
 term, so it may answer where the interpreter says it does not converge.
 
+A header's functions are `static inline`, so a host that calls a shared
+library, Python's say, needs a small C file that includes the header and
+exports what the host calls (on Windows, each `__declspec(dllexport)`). For
+`pid.ink`:
+
+```c
+#include <stddef.h>
+#include "pid.h"
+
+size_t ink_size(void) { return sizeof(pid); }
+void ink_init(pid* m) { pid_init(m); }
+void ink_update(pid* m) { pid_update(m); }
+void ink_step(pid* m, double y) { pid_step(m, y); }
+void ink_run(pid* m, const double* y, long n, double* u) {
+    for (long k = 0; k < n; ++k) { pid_step(m, y[k]); u[k] = m->u[0]; }
+}
+const size_t ink_u = offsetof(pid, u), ink_kp = offsetof(pid, kp);
+```
+
+A field is read at its `offsetof`, so the host does not mirror the struct.
+Built with `cc -O2 -shared -fPIC pid_host.c -o libpid.so`, Python's ctypes
+drives it:
+
+```python
+import ctypes as C
+lib = C.CDLL("./libpid.so")
+lib.ink_size.restype = C.c_size_t
+lib.ink_init.argtypes = [C.c_void_p]
+lib.ink_run.argtypes = [C.c_void_p, C.c_void_p, C.c_long, C.c_void_p]
+m = (C.c_double * (lib.ink_size() // 8))()
+u = C.c_double.from_buffer(m, C.c_size_t.in_dll(lib, "ink_u").value)
+y, out = (C.c_double * 3)(0, 0.1, 0.2), (C.c_double * 3)()
+lib.ink_init(m); lib.ink_run(m, y, 3, out)    # u.value is out[2]
+```
+
+Declare each function's `argtypes`: without them an address held as a
+Python int, as numpy's `a.ctypes.data` is, is passed as a C int and cut to
+32 bits. A call from Python costs about 0.7 µs, more than a small model's
+step, which for `test/compile/kalman.ink` is 37 to 81 ns in a loop in C: for
+such a model, batch the steps in C, as `ink_run` does. `compile_host` builds
+this file as written here and holds `ink_run` to `ink_step`.
+
 `--check session.ink`, given a transcript alone, replays it and shows each
 answer that is not the one recorded, as recorded (`-`) and as given now (`+`),
 under the line it answers. It is the check the tests make of
