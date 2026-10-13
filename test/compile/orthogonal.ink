@@ -19,7 +19,7 @@
 #     inexact.k: within 0
 #     inexact.o: within 0
 #
-# and 'rational' with --float, whose R_1'*R_1 is 1 + 2^-23 at [2,2]:
+# and 'rational' with --float, whose R_1'*R_1 is 1 + 2^-23 at [2,2] and [3,3]:
 #
 #     rational: 100 steps from 0 in float, against exact values
 #     rational.k: at 1 the compiled step takes 'k_n | R_n'*R_n <> I3 = k_(n-1) + 1' and the interpreter 'k_n = k_(n-1)'; the guard of the first is exactly on its threshold
