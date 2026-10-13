@@ -11069,10 +11069,15 @@ After an external review of README, MANIFESTO and the conformance suite
     is a variable the step declares, which a split step would pass between
     its functions, and a limit hoisted out of a lazy right side would
     raise it unread. Asked only where the truth is NaN, the status costs a
-    second walk there and nothing elsewhere. Where the truth is NaN because
-    a term the guard reads is refused, a limit in the guard that runs out
-    takes the clause after even if the interpreter reads the term first
-    and refuses; --check reports the flip. A sum or a reduction is written
+    second walk there and nothing elsewhere: on the MPC's fallback path, a
+    step 2x as long with GCC and 2.9x with Clang, each guard asking its
+    own. In a walk's terms it is hoisted with the truth where neither
+    moves; before the review it was asked again at each outer term. Where
+    the truth is NaN because a term the guard reads is refused, a limit in
+    the guard that runs out takes the clause after even if the interpreter
+    reads the term first and refuses; --check reports the flip. A function
+    the guard calls is asked about only where it has no clause after: one
+    that took its own fallback has answered, as interpreted. A sum or a reduction is written
     out, its bounds constants, so a limit in its terms within a guard is
     read as the guard's own: nothing to add, where a loop would have needed
     the flag inside it. A host that wants the status MANIFESTO's solver
@@ -11080,8 +11085,8 @@ After an external review of README, MANIFESTO and the conformance suite
     own test, `solved_n | abs(x_n + lim qp(x_n)) <= abs(x_n) = 1`,
     `solved_n = 0`.
   - **--check**: a walk one side settles and the other does not is a guard
-    taking another clause, reported first as any flip is, without a margin,
-    a walk having no single threshold. A disturbed run's likewise.
+    taking another clause, reported first as any flip is, its margin
+    printed like any flip's. A disturbed run's likewise.
     `--float`'s own stop may settle where the interpreter's runs out
     (C102), and is reported so.
 
@@ -11174,7 +11179,8 @@ After an external review of README, MANIFESTO and the conformance suite
   that runs out is refused compiled, "cannot compile y: nw did not
   converge within 100 terms", where the interpreter takes the clause
   after, as a limit of constants is folded by the interpreter at compile
-  time; a cell whose guard reads such a limit, with no clause after for
+  time, and a guard folded false would be wrong where it is read on the
+  right of an 'or', `c_n > 1 or lim nv(2) > 0` 1 at c = 2; a cell whose guard reads such a limit, with no clause after for
   it, is refused in the limit's words even where a matrix written whole
   would give the cell, as before the change; a function's compiled call
   remembers the statuses its limits are asked by, so that a guard calling
@@ -11183,8 +11189,12 @@ After an external review of README, MANIFESTO and the conformance suite
   180. Its review found two compiled answers where the interpreter
   refuses: a cell no clause gives, past a guard whose limit ran out, was 0,
   and grad of such a guard the clause after's slope. Both are NaN now, in
-  23 lines of the compiler, `fallback.ink`'s `ranout` and `tipped`; so 136
-  lines, 18,780 at 13a494d.
+  23 lines of the compiler, `fallback.ink`'s `ranout` and `tipped`. By the
+  rulings on it, a called function's limits are asked only where it has
+  no clause after (`answered`, 12 lines), and a status is hoisted with its
+  truth out of a walk (`cli_3`'s `asked.h`, 2). So 150 lines, 25 of them
+  comment: the interpreter's 64, the compiler's 86; with the tolerance's
+  11, 18,626 to 18,787 at the review's last commit.
 - `[done]` **A tolerance relative to the term**, the 1e-10 being absolute.
   Of the same roadmap line, but a change of its own, which may land before
   or after the clause: neither's spec reads the other.
