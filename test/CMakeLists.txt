@@ -212,7 +212,7 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brin
                          inputs:track inputs:twain inputs:nestv inputs:fed inputs:x inputs:clashed inputs:j1
                          estimate:tie
                          estimate:chaos estimate:dyad estimate:flat estimate:halved
-                         estimate:steep estimate:giant elementary:els trig:tri atan:bea
+                         estimate:steep estimate:giant estimate:spaced elementary:els trig:tri atan:bea
                          grad:line grad:fall grad:hinge grad:edge grad:clip grad:steer grad:saw
                          grad:ring grad:notch grad:apart grad:smooth grad:cusp grad:over grad:flag
                          tensor:heads tensor:whirl tensor:batch tensor:spread
@@ -287,6 +287,8 @@ set_tests_properties(check_flat_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^flat: 100 steps from 0, against exact values until 0 and inexact ones from there\nflat\\.r: within 0\nflat\\.g: within 0\n$")
 set_tests_properties(check_halved_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^halved: 100 steps from 0, against exact values until 0 and inexact ones from there\nhalved\\.x: within 0\nhalved\\.y: within 0\n$")
+set_tests_properties(check_spaced_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^spaced: 100 steps from 0, against exact values until 0 and inexact ones from there\nspaced\\.y: within [0-9.e-]+\\; the interpreter's terms about 0\\.00[0-9]+ from the exact ones\n$")
 set_tests_properties(check_steep_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^steep: 100 steps from 0, against exact values until 0 and inexact ones from there\nsteep\\.y: within 0\\; the interpreter's terms about [1-9](\\.[0-9])?e-08 from the exact ones\n$")
 set_tests_properties(check_giant_report PROPERTIES PASS_REGULAR_EXPRESSION
