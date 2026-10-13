@@ -238,6 +238,22 @@ midst(c_n) = {
 }
 middled = midst(c_n = 1 + mod(n, 2))
 
+# Nor where its guard's limit ran out and the clause after is refused: gap's
+# value reads the limit its guard read, so its status is no answer's. At odd
+# n gap divides 0 by 0, and the interpreter refuses y. Checked:
+#
+#     voided: 100 steps from 0, against exact values until 0 and inexact ones from there
+#     voided.y: within 0
+voiding(c_n) = {
+    nv(c)_0 = 0
+    nv(c)_k = nv(c)_(k-1) - (nv(c)_(k-1)^3 - 2*nv(c)_(k-1) + c)/(3*nv(c)_(k-1)^2 - 2)
+    gap(c) | lim nv(c) > 0 = lim nv(c)
+    gap(c) = (c - c)/(c - c)
+    y_n | gap(c_n) < 1 = 1
+    y_n = 0
+}
+voided = voiding(c_n = 1 + mod(n, 2))
+
 # A brake whose guard reads a solver's limit, the risky clause first: where
 # Newton runs out, 'brake' falls to 0 and does not brake. 'careful' asks the
 # opposite question, and falls to braking. Newton from 0 on x^3 - 2x + c
