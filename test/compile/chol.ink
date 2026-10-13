@@ -11,7 +11,9 @@
 #     factored.<s>: within 0, from 1 for Sp, K and N; the interpreter's terms about <x> from the exact ones
 #
 # a line for each of Sp, K, N, S and x; naive's are within a rounding of
-# its terms, exact in the interpreter but L's.
+# its terms, exact in the interpreter, but L's: its cells divide by the
+# root of P's first cell, about 1e-6 and cancelled, and are some 5e-12
+# apart, up to 5e7 units of a double.
 #
 # In float, the first gain is 1 - 5e-9, which rounds to 1: naive's P_1
 # has 0 where the exact one has 20001/20001000100, about 1e-6, so its
