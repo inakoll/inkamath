@@ -40,7 +40,7 @@ rational = kept(q0 = [1; 2; 2; 4]/5)
 inexact = kept(q0 = ~[1; 2; 2; 4]/5)
 
 # 'probe', at x_n = n/2 - 1: e NaN where r refuses, to 2, as a comparison
-# reading a NaN cell is; g NaN at 4, t = 1, where both sides meet and move
+# reading a NaN cell is; g NaN at 4, t = 1, where the sides meet and one moves
 # and the interpreter says "a comparison jumps at t = 1"; h NaN there too,
 # "f takes a clause at t = 1 that holds only there". Elsewhere e is 1 but
 # 0 at 4, g and h 1. It is to report:
