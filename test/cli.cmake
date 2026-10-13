@@ -1331,6 +1331,13 @@ refused(unset "a) = {\n    g_n | n < 0 = a\n    g_n = 2*g_(n-1)"
 # And at another rate, where it was read as 0.
 refused(slowed "a = 2, x_n) = {\n    y_m | m < 0 = a\n    y_m = y_(m-1) + x_(2*m)"
         "y: y_0 reads y_-1, before the stream, where y's history reads a, which the host may assign after init")
+# C364: a cycle of three, its terms before the stream its guards', reading an
+# input of no history: c, compiled before a's read of b was recorded, was not
+# taken for a recurrence, and computed again at -1 read x_-1.
+file(WRITE "${OUT}/cycled.ink" "cycling(x_n) = {\n    a_n | n < 0 = 1\n    a_n = b_(n-1)/2\n"
+     "    b_n | n < 0 = 1\n    b_n = c_(n-1)/2\n    c_n | n < 0 = 1\n    c_n = a_(n-1)/2 + x_n\n}\n")
+set(args --compile cycled.ink cycling)
+check(history_cycled)
 # Init folds a slow history back from its first term, so a term it reads
 # past one it cannot fold is refused for that one (C348).
 refused(gapped "a = 2, x_n) = {\n    y_m | m < -1 = 1\n    y_m | m < 0 = a\n    y_m = y_(m-2) + x_(2*m)"
