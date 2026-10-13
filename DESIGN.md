@@ -3405,7 +3405,9 @@ that exploring seven domains asked of the interpreter, by how many asked.
 - **A matrix `==` a single value refused**, naming `0*M`: Doyle 1978's
   Riccati equation checked as `ric(12) == 0` answers 0, a matrix being
   equal to no single value, where its residual is the zero matrix and
-  `ric(12) == [0 0; 0 0]` answers 1.
+  `ric(12) == [0 0; 0 0]` answers 1. Two matrices of different shapes
+  too, `R*v == v'` answering 0: a comparison whose truth the shapes alone
+  fix, most likely a missing transpose.
 - **`lim` ends at a single repeated term**: `r(x)_n = r(x)_(n-1) +
   (r(x)_(n-1) + 2^-n <= x)*2^-n`, x's binary digits, answers
   `lim r(1/3)` 0.25 from its terms 0, 0, 1/4, 1/4. The smallest change to
