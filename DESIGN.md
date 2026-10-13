@@ -11715,7 +11715,9 @@ a product of polynomials or a value of one on nearly every page:
   prelude of a matrix is: conv's cells as sums whose bounds are constants
   once the cell is, polyval as m - 1 products and sums. At a single value
   that moves, x^0 is `pow(x, 0.0)`, 1 for every x in C, a NaN too (C11
-  F.10.4.4), which GCC 13 and Clang 18 fold away. No C++ for either.
+  F.10.4.4), which GCC 13 and Clang 18 fold away; in a header that writes
+  NaN it is `isnan(x) ? NAN : pow(x, 0.0)`, as any power reading NaN, so
+  NaN where the interpreter gives none. No C++ for either.
 
   **grad** follows the definitions, products and sums: with respect to x,
   to the coefficients, or to a gain inside them. x^0's derivative is 0 at
