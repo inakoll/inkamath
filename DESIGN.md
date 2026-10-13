@@ -11135,9 +11135,12 @@ After an external review of README, MANIFESTO and the conformance suite
   -Wall -Wextra -Wpedantic -Wconversion -Wshadow -Werror, a float one
   with -Wdouble-promotion.
 
-  Done as decided, in three commits on 18,675 lines after a2c7d70: 1 in
-  84 lines against 75, 2 in 82 against 95, 3 in 33 against 50, 18,874 in
-  all. Each left every golden, check report, expected header and pinned
+  Done as decided, in three commits on 18,675 lines after a2c7d70, and
+  the review's two fixes: 1 in 83 lines against 75, 2 in 82 against 95,
+  3 in 41 against 50, 18,881 in all, and C365's 3 after them. The review
+  marks no product NaN for a power's cell, whose `nan` names its exponent,
+  and writes out a term whose cells call a function; no size below moves.
+  Each left every golden, check report, expected header and pinned
   excerpt as it was; stepped beside today's header, 101 steps of 8 draws
   with infinities, NaNs and -0.0 by GCC and Clang without contraction,
   `riekf`, `spin`, `solve`, `dense`, `gated`, `diag` and `swing` differ
