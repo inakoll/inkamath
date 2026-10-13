@@ -11151,6 +11151,10 @@ After an external review of README, MANIFESTO and the conformance suite
   6.4 s; `tf` 9,985,465 to 5,494,171, `--compile` 8.3 s and 186 MB to
   6.1 s and 114 MB, GCC 97 s and 820 MB to 60 s and 476 MB, 354
   functions to 179, its stack 269 KB to 324 KB.
+- **A split step's arrays read in place**: the split carries a looped array
+  whole and copies it into each later part that reads it, `tf`'s stack 269
+  KB to 324 KB; the remedy is reading the carried member in place and
+  scoping each sequence's temporaries.
 - `[done]` **A Jacobian by cells**, the idiom, compiled and held by `--check`:
   `J(x)[i<=3, j<=2] = (grad_(v = x) f(v)[i])[j]`, row i output i's
   gradient as a paper defines J_ij, so the layout is the user's. grad's own
