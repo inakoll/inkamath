@@ -53,9 +53,12 @@ named(u_n) = {
 }
 twonames = named(u_n = n/10 - 1)
 
-# Wrong on purpose, a departure (C353): past about 225,000 a double cannot
-# show a step within the tolerance, and once 0.8^k no longer moves 10^14 the
-# walk stops on steps of 0, where the exact ones never settle.
+# Past about 225,000 a double cannot show a step within 1e-10 (C353), but
+# against its term the walk stops alike in doubles and exact, at k = 2, 1.44
+# past 10^14 (n + 1) where the limit is 4 past it:
+#
+#     weighed: 100 steps from 0, against exact values until 0 and inexact ones from there
+#     weighed.y: within 2; the interpreter's terms about 4 from the exact ones
 heavy(u_n) = {
     s(x)_0 = x*10^14
     s(x)_k = s(x)_(k-1) + 0.8^k

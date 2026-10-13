@@ -1865,7 +1865,7 @@ closures need one anyway, and can bring it.
 | C350 `[fixed]` | **A root C makes NaN reached a comparison untested.** nan.ink's rule tests for NaN only in a header that writes NaN, and a root of a number below 0 writes none: C's `sqrt` and `pow` answer NaN, where the interpreter's root is not real and a comparison refuses it. So `y_n = u_n^(1/2) < 1` with `u_n = 1 - n` answered 0 from step 2, and a guard reading it took the clause after it; so did a power of 1/3 or 3/2. Found by an exploration, a falling ball's contact test at step 987. A header with a power whose exponent is not a whole constant, of a base not a constant at or above 0, is now compiled aware; d's root makes a parameter such a base, so `peak`'s float report parts at A[1,1], its A NaN whole, where A[3,1] alone was, and `test/cli.cmake`'s quotation of `mha` gains the paragraph on NaN. No expected header moves; 22 of 267 check programs do. A quotient by 0 is as it was (C189, `pole`): the interpreter's is infinite where its divisor is inexact (`naught`, `radix`), and a step cannot tell an exact divisor from one that is not. In 8 lines, 2 of comment, and 3 removed; `compile/nan.ink`'s `surd` holds it. |
 | C351 `[fixed]` | **A term a guard gives below a base clause was refused, or NaN through an alias.** With `x_0 = 1`, `x_n | n < 0 = 2` and `x_n = y_n/2`, the interpreter gives x_-1 = 2, so `y_n = 3*x_(n-1) + 1` gives 7 at 0; read directly, it was refused, 'below x's base clauses, where only its guards could give a term', and read through `r_n = 3*x_n` as `r_(n-1)`, r was computed again from a window init left empty, and y was NaN at 0. Predates C343, found fixing C349. Such a sequence at the input's rate, based where the stream starts and whose first guard does not read it back, now has its terms before the stream folded by init as C343 folds a recurrence's, where no input or parameter can change them or a guard gives a constant, and both reads give 7; elsewhere both are refused, as a history is, saying why: 'x's history gives none: u_-1 is an input, and nothing defines it'. No header, check program or recorded answer moves. In 19 lines, 4 of comment, and 6 removed; `compile/history.ink`'s `floored` holds it. |
 | C352 `[fixed]` | **A limit's own term was told by its arguments' names, not their values.** With `g(x, j) = s(x)_(j-1)`, `s(x)_0 = x` and `s(x)_k = g(2*x, k)/2 + 1/2^k`, g reads s(2*x)'s term, but under the name x, so `lim s(3)` took it for s(3)'s term before and answered 7.6e-11 where the interpreter gives 3. Found by the `limread` spec. A read is now the limit's own where each argument's code is the limit's parameter, `arg_x`; elsewhere it is refused as before, 's's term read with other arguments than its own', another sequence's term at an index that is not a constant being compiled nowhere. So `g(y, j) = s(y)_(j-1)` called as `g(x, k)`, refused before, now compiles and holds, as `compile/implicit.ink`'s `renamed` does. No header, check program or recorded answer moves. In 7 lines, 2 of comment, and 4 removed; `test/cli.cmake`'s `compile_limit_rebound` holds it. |
-| C353 `[fixed]` | **A compiled limit stopped on the rounding of a step of 0.** The interpreter's step of 0 is no limit unless the step before it is within the tolerance (C279), but a double's step is rarely 0 where the exact one is: with odd terms that cancel, `s(x)_k = s(x)_(k-1) + x^k/(k^2*2^k) + (-x)^k/(k^2*2^k)`, the step at k = 3 was one ulp, its ratio to the step before tiny, and the walk stopped there, 3e-4 from the interpreter's limit at x = 0.439 and 5e-3 at 0.879. Found reviewing the `limread` implementation. A step within twice `DBL_EPSILON` of the term, in each cell of a matrix, is now taken for 0, and the rule of C279 applies to it; a float's own stop on floats a unit or two apart is as it was. Past a term of about 225,000, where twice `DBL_EPSILON` of it passes 1e-10, no double step can show one within the tolerance, and the interpreter's rule cannot be mirrored: the compiled limit answers what the doubles converge to, so where adding the terms no longer moves the double it answers where the interpreter refuses, as a float target may. With `s(x)_0 = x*10^14` and `s(x)_k = s(x)_(k-1) + 0.8^k` it gives about 1e14 + 4 where the interpreter does not converge within 100 terms, a departure the README records and `weighed` pins. Every limit's function gains a line and its header `<float.h>`: 22 of 225 check programs move, no report and no expected header. In 7 lines, 2 of comment, and 2 removed; `compile/newton.ink`'s `evens` and `evened` hold it. An unbounded sum's walk is the same code since `unbsum`, and takes the rule too; its summand is added whole, so a step of 0 is rarely rounded to an ulp there, and `compile/sums.ink`'s `cancelled` held before it as after. A summand rounded by more than two ulps of the sum, `(1/8 + a + b - 1/8)` with b = -a, still stops the walk early, as it would a limit's: no rule over doubles tells that from a step. |
+| C353 `[fixed]` | **A compiled limit stopped on the rounding of a step of 0.** The interpreter's step of 0 is no limit unless the step before it is within the tolerance (C279), but a double's step is rarely 0 where the exact one is: with odd terms that cancel, `s(x)_k = s(x)_(k-1) + x^k/(k^2*2^k) + (-x)^k/(k^2*2^k)`, the step at k = 3 was one ulp, its ratio to the step before tiny, and the walk stopped there, 3e-4 from the interpreter's limit at x = 0.439 and 5e-3 at 0.879. Found reviewing the `limread` implementation. A step within twice `DBL_EPSILON` of the term, in each cell of a matrix, is now taken for 0, and the rule of C279 applies to it; a float's own stop on floats a unit or two apart is as it was. Past a term of about 225,000, where twice `DBL_EPSILON` of it passes 1e-10, no double step could show one within the tolerance, and the interpreter's rule could not be mirrored: with `s(x)_0 = x*10^14` and `s(x)_k = s(x)_(k-1) + 0.8^k` the compiled limit gave about 1e14 + 4 where the interpreter did not converge within 100 terms, a departure `weighed` pinned until the tolerance became relative to the term (*A tolerance relative to the term*), where both stop at 1e14 + 1.44. Every limit's function gains a line and its header `<float.h>`: 22 of 225 check programs move, no report and no expected header. In 7 lines, 2 of comment, and 2 removed; `compile/newton.ink`'s `evens` and `evened` hold it. An unbounded sum's walk is the same code since `unbsum`, and takes the rule too; its summand is added whole, so a step of 0 is rarely rounded to an ulp there, and `compile/sums.ink`'s `cancelled` held before it as after. A summand rounded by more than two ulps of the sum, `(1/8 + a + b - 1/8)` with b = -a, still stops the walk early, as it would a limit's: no rule over doubles tells that from a step. |
 | C354 `[fixed]` | **A limit whose clauses name their index differently was refused.** With `s(x)_k \| k < 3 = s(x)_(k-1) + x/k` and then `s(x)_j = s(x)_(j-1) + x^j/2^j`, `lim s(x_n)` was 'k is not defined', where the interpreter answers: the limit's iterate read every clause under the last general clause's index name, j, so so did a sequence walked beside it. Found reviewing the `limread` implementation. Each general clause's guard and value are now read under its own name. No header, check program or recorded answer moves. In 1 line; `compile/newton.ink`'s `twonames` holds it. |
 | C355 `[fixed]` | **A helper a fold left uncalled was still written.** `y_n = (lim p(1))[1,1] + x_n`, with `p(a)_k = p(a)_(k-1)/2 + (a*I2 + k*I2)^(-1)/2^k`, folds the limit, but the header still wrote the 2x2 inverse it called; so was a limit walked inside one folded, and with `--float` its `float.h`, and a check program's unused function is an error to Clang's `-Werror`. Found reviewing the unbounded sum, whose factorial had the same cause. The inverses and limits are now pruned with the prelude's functions, each kept only where something kept calls it, and `float.h` included only where a limit kept reads `FLT_EPSILON`. No expected header, check program or recorded answer moves. In 17 lines, 2 of comment, and 10 removed; `test/cli.cmake`'s `compile_limits_folded` holds it. |
 | C356 `[fixed]` | **A function of the prelude reading a cell at one of its parameters, called on numbers, is refused in words not its own.** Called on single values, it is a function of the header, its parameters doubles, so `hurwitzc(n, 1)`, its `q[i]` at the double i, is "a cell whose place is not a constant", where the interpreter answers n. Found specifying chol, whose `cholr(A, i, k)` of a 1x1 matrix is such a call. Such a function, a parameter read in a cell's place in a clause or its guard, is now written where it is called, its places constants there, by `Placed` beside `Iterates`. No expected header, check program or recorded answer moves. In 22 lines of `compile.hpp`, 4 of comment; `compile/placed.ink`'s `placed` holds it, its report "within 0". |
@@ -1874,6 +1874,10 @@ closures need one anyway, and can bring it.
 | C359 `[fixed]` | **A grad refusal quoted a matrix point across lines.** The point is printed as an answer is, a row to a line and its columns aligned, so `grad_(w = [1; 2])` at a comparison's jump said "a comparison jumps at w = [1;" and then " 2]" on a line of its own, where a row's point reads on one. Found specifying mateq. The point is now on one line, its rows parted by "; " and its columns by ", ", unaligned: "floor jumps at v = [10; 2]". In 7 lines, 1 of comment, and 1 removed; `reverse.ink` holds it. No other golden moves. |
 | C360 `[fixed]` | **`--check`'s disturbed runs moved each read of a limit apart.** A limit is not remembered, and each read was moved by a coin of its own in the third run, and rounded to a double by one in each, so two reads of one limit at one step, which a compiled step gives as one value, were two: `y_n \| lim h(u_n) == lim h(u_n) = lim h(u_n)`, `h(s)_k = h(s)_(k-1)/2 + s`, said "a disturbed run takes 'y_n = 0' ... exactly on its threshold", and `lim half(1) - lim half(1)` was estimated 1.2e-10 from 0. Found reviewing a spec. A run now keeps each limit it reads at a step by its call, as the memo keeps a term, and a read again there is the value it was; a series without an upper bound, a limit grad walks and a local's limit are still moved at each read. No report moves; `layered`'s program does, its limit `lim s([a; 1])` read by each term of o's walk now one value at a step, its line's estimate as it was. In 12 lines, 2 of comment, and 1 removed; `reread` and `equal` in `test/compile/straddle.ink` hold it. |
 | C361 `[fixed]` | **A straddle of a guard the compiled step folds went unsaid by --check.** Straddles were looked for in the sequences whose clause the step keeps, the flips', and a guard whose threshold and reads are constant folds to the interpreter's clause and keeps none: `g_n \| lim half(1) >= 1/2 - 1/10^11 = 1`, tie's guard with its threshold written, was "about 1 from the exact ones" and no word of why, where tie's line says the run moved up takes the first clause. Found reviewing C360. Every sequence a scope names is looked in now, its clauses quoted as a flip's are, and only the kept ones gain the flips' arrays. No report or check program moves. In 30 lines, 3 of comment, and 11 removed; `folded` in `test/compile/straddle.ink` holds it. |
+| C362 `[fixed]` | **A single value read past its cell through a function's parameter was refused in words not its own.** A parameter with no default and an input with no size compile as single values, and a cell read past one is refused by its name (C83, C144), but not through a parameter, as `iekf.ink`'s `blk(X_n)` reads X, whose X_0 is X0: "row 1, column 2 is outside a 1x1 matrix"; nor through a sequence that reads such a parameter, `X_n = A` with `X_n[1, 2]`. The refusal now follows a call's argument as written where the call is, and a sequence's parameters as its inputs: "X reads X0, a single value, as riekf gives it no default". No header, check program or golden moves. In 28 lines of `compile.hpp`, 3 of comment, and 8 removed; `test/cli.cmake`'s `compile_unstated_argument` holds it. |
+| C363 `[fixed]` | **A halving recursion with a base compiled in time cubic in its index.** With `v(x)_0 = x`, `v(x)_k \| k > 999 = x` and `v(x)_k = v(x/2)_(k+1)`, `v(x_n)_999` took 96 s to compile, and `w(x)_k = w(x/2)_(k-1)` with a base at 0, read at 1000, over 60 s to be refused 64 deep. Not exponential, nor a key missing: each term reads one with arguments of its own, so each of the 64 arguments' fills from the base ran again at each read of one of its terms, each term failed throwing again, 64 times 1000 squared. The fill now tries a term once for each depth, as a failure is kept by its depth: 1.4 s and 1.3 s. No header, check program or golden moves, the 242 check programs integration's byte for byte. Found reviewing *recursion from the tip*. In 21 lines of `compile.hpp`, 3 of comment, and 4 removed; `test/cli.cmake`'s `compile_c363` holds it. |
+| C364 `[fixed]` | **A cycle of three or more sequences, its terms before the stream its guards', was refused where it read an input, and compiled in time exponential in its length.** With `a_n \| n < 0 = 1`, `a_n = b_(n-1)/2`, b and c alike and `c_n = a_(n-1)/2 + x_n`, compiling a compiles b and c to read them, and a's read of b was recorded only once b was compiled; so c, compiled first, did not reach itself, was not taken for a recurrence whose terms before the stream init folds (C343), and was computed again at -1 (C71), where it reads x_-1: "b_0 reads x_-1, before the stream, where x has no history", where the interpreter gives a_0 = 1/2. A cycle of two closes on a sequence still compiling, read from its window, and compiles. With no input, the cycle compiled, each term before the stream computed again at each read, so one whose terms read the next twice took 7.6 s to compile at 14 sequences and over 100 at 18. A read is now known to `Reaches` while what it reads compiles: 0.02 s at 40. No golden, expected header or check program moves; a cycle of three or more with no input is written shorter, its terms before the stream folded by init as a cycle of two's are. In 17 lines of `compile.hpp`, 2 of comment, and 5 removed; `compile/history.ink`'s `cycled` and `test/cli.cmake`'s `history_cycled` and `history_cycled_long` hold it. |
+| C365 `[fixed]` | **A cell of a matrix product was answered where another cell's operand is refused.** `Product` shares an operand's cells under names, and a name was not known to hold NaN where its value may, as a call's is (C189): with h a limit that does not converge, `(A*[lim h(x_n), 1; 0, 1])[1, 2]` answered 3 from step 5, where the interpreter refuses the product. Loops in generated code read the operand's own text, so from 27 multiplications the step refused it and below did not. A shared cell that may be NaN is now marked as `Called` marks one. No golden, expected header or check report moves; `dare`'s check program tests an inverse's cells it read untested. In 7 lines of `compile.hpp`, 1 of comment, and 4 removed; `compile/nan.ink`'s `kd` holds it. Found by the implementation review of loops. |
 
 **Measure instructions, not the clock.** One of those changes made the matrix
 workload 20 per cent slower by the clock and not by a single instruction: with
@@ -10533,9 +10537,13 @@ they asked, each with its smallest change.
   refused where its function form compiles; integration refused both, and
   forgetting it whenever a term is filled made the halving recursion with a
   base 12 times slower. Accepted.
-- **A halving recursion with a base runs away** at large indices:
+- `[done]` **A halving recursion with a base runs away** at large indices:
   `w(x/2)_(k-1)` read at 1000 takes over 60 s to compile, and read ahead
-  with a base at 1000, 35 s. Found reviewing *recursion from the tip*.
+  with a base at 1000, 35 s. Found reviewing *recursion from the tip*: C363.
+- **A cycle guarded on some of its sequences only**, where the input reaches
+  the term read before the stream, is refused, "b has no history" or "its
+  shape depends on itself", two sequences as three; the interpreter
+  answers. Found fixing C364.
 - `[done]` **A sequence with parameters read at `lim`'s walking index**, a series
   written as on paper: its partial sums under `lim`, its term a sequence of
   its own.
@@ -10842,18 +10850,319 @@ they asked, each with its smallest change.
   multiplied dense**: 5.1k of the 12-state filter's 21k products, its header
   638 KB. Does not join *Shared at every value written twice*: dropped,
   a zero's sign and an infinity's NaN go, which the interpreter keeps.
-- **A parameter with no default compiled as a single value** is named by
+- `[done]` **A parameter with no default compiled as a single value** is named by
   its refusal where read, but not through a function's parameter, as the
-  filter's `blk(X_n)` reads `X0`. Follow the call's argument.
+  filter's `blk(X_n)` reads `X0`. Follow the call's argument: C362.
 
 After an external review of README, MANIFESTO and the conformance suite
 (2026-10-12): its directions, ranked. Its open questions are in
 `MANIFESTO.md`.
 
-- **Loops in generated code**, a phase of its own, its spec and cost in
-  lines first: MANIFESTO's intermediate form, for a step now written out
-  whole (a transformer's 90 to 100 s at -O2, 256 KB of stack). It largely
-  supersedes value numbering (*Shared at every value written twice*, `[done]`).
+- `[done]` **Loops in generated code**, a phase of its own: increments 1 to 3
+  specified, about 220 lines, and 4 and 5, some 700, deferred (the owner,
+  2026-10-13). Each increment is a refactor of headers: no golden,
+  `--check` report or refusal moves, and every value is the same double,
+  a NaN's sign and payload aside, which C leaves to the compiler.
+
+  Where the loops are lost. A value is a `Code`, its `cells` one C
+  expression each, row by row, and every operation writes them one by
+  one: a product sums the inner dimension for each cell (`Product`);
+  arithmetic pairs cells (`Cellwise`); a definition by cells compiles each
+  cell again (`Cells`, `Walk`, `CellOf`); a sum with constant bounds
+  unrolls, up to 1,000 terms; the tape sweeps adjoints cell by cell, each
+  optional and with its condition (`Into`, `Sparse`, `Swept`). Loops are
+  printed only where they are fixed C: the inverse's helper, a limit's
+  test of its steps, a term's NaN fill. So a header's size, build time
+  and stack follow its cells. At fefd26b the RIEKF's 12-state filter,
+  `riekf`, was 574,672 bytes, 34 per cent dot products declared as
+  temporaries and 26 the terms' assignments; the exploration's transformer
+  step, `tf`, 9,985,465, the split's loads and stores 25 and 34 per cent,
+  products 21 and 17, the sweep's sums under a clause's condition 11 and
+  8, reads tested for NaN 9 and 9.
+
+  Decided:
+  - **The form is a looped temporary**: an array declared and filled by a
+    loop nest, its cells read `t2_[3][4]`, atoms to every reader. A
+    `Code` stays its cells. Each loop is written by the operation that
+    makes it, which knows its kind: over `b_`, `i_` and `j_` the cells,
+    parallel; over `p_` a sum in the definitions' order, a reduction.
+    That is MANIFESTO's intermediate form at its smallest: an OpenMP or
+    SIMD printer would be a mode of these few writers, a pragma each.
+  - **1, matrix products** (`Product`), a value's and forward mode's
+    parts: from 27 multiplications, rows by columns by inner by slices,
+    so a 3x3 by a 3x3 loops and a 2x2 by a 2x2 stays written out. (The
+    study wrote that a 3x3 by a 3x3 stays out, but measured with it
+    looped: `swing` 110,250 bytes, 113,056 at 27, 178,982 with every
+    product looped; what pays at 27 is `riekf`, 123,359 at 28 rather than
+    112,982.) Only where a list takes temporaries, as `Shared`'s.
+    In the RIEKF's step, Phi times a block matrix:
+
+            double t13_[12][12] = {{m_->X[1][0][0], m_->X[1][0][1], m_->X[1][0][2], 0.0, 0.0, ...}, ...};
+            double t14_[12][12];
+            for (int i_ = 0; i_ < 12; ++i_)
+                for (int j_ = 0; j_ < 12; ++j_) {
+                    double s_ = m_->Phi[i_][0] * t13_[0][j_];
+                    for (int p_ = 1; p_ < 12; ++p_) s_ = s_ + m_->Phi[i_][p_] * t13_[p_][j_];
+                    t14_[i_][j_] = s_;
+                }
+
+    A single cell is an array of one, `[1][1]`, so the nest has one form.
+  - **An operand is an array or is made one**: read in place where its
+    cells are one array's, `base[i][j]` or `base[b][i][j]` at their
+    places, as a term's (`m_->P[1]`), a parameter's, an inverse's or a
+    looped temporary's are; transposed, `base[j][i]`, with its
+    subscripts swapped (`m_->A[p_][i_]`); a matrix met by a tensor
+    without `b_`. Anything else is declared as an array, `double t13_[..]
+    = {...}`, its cells written as now, as an inverse's matrix is; that
+    replaces `Product`'s sharing of each operand cell.
+  - **Bit for bit**: the same operations on the same operands in the same
+    order, `s_` from the first product and then `s_ = s_ + a*b`, as C
+    parses `a*b + c*d + e*f`. A literal stays an operand: `0.0` times a
+    NaN or an infinity in `Phi` is NaN in the array's loop as `0.0 * x`
+    was written out. Contracted, it is not: Clang fuses `a*b + c*d` at
+    its first product, the loop only at its second, so with an FMA
+    (-mfma, any AArch64) Clang's default and GCC's in GNU C move the
+    RIEKF's step in its last bits; the header warns of it, and the checks
+    build with contraction off. A compiler may vectorise across cells,
+    not across a sum without -ffast-math.
+  - **NaN by name**: an array joins `nan_temporaries_` where `MayNan`
+    reads any operand cell, or an operand array is in it, or a cell's
+    text writes NaN, as an inverse's does (C308): `t5_`, whose
+    cells are `(t4_ ? NAN : ...)`, and every product read from it. So
+    `Nan`, `Called` and C189's and C335's tests read its name as they
+    read the text it replaces. No may-NaN flag per cell.
+  - **Declared as any temporary**, by `Declare`, keyed by its operands'
+    arrays, their transposition and slicing, and its extent: one product
+    once a list, `tN_`, a limit's own `vN_`; hoisted before a limit's walk
+    where neither operand walks (`Invariant`), and in a setter where both
+    read parameters alone (`Derived`); dropped by `Kept` where no line
+    reads it.
+  - **2, the sweep's products** (`Sparse`), at 27 too, where every adjoint
+    of both operands is there, each operand's are all under a clause's
+    condition or none is, and one operand has no constant cell, so that no
+    term folds or is absent. Elsewhere written out: an absent adjoint
+    added as 0 turns -0.0 into +0.0. The adjoints, shared already, are
+    made an array; under conditions each term is added where its
+    condition holds, `c_ ? s_ + t : s_` from `f_ ? t : 0.0`, as `Into`
+    adds it, and where any held is the array's second slice, as in
+    `gated` below:
+
+            int t20_[3][3] = {{(t1_ != 0), (t2_ != 0), (t3_ != 0)}, ...};
+            double t21_[2][3][3];
+            for (int i_ = 0; i_ < 3; ++i_)
+                for (int j_ = 0; j_ < 3; ++j_) {
+                    int f_ = t20_[i_][0];
+                    double s_ = f_ ? t19_[i_][0] * m_->X[0][j_][0] : 0.0;
+                    for (int p_ = 1; p_ < 3; ++p_) {
+                        const int c_ = t20_[i_][p_];
+                        s_ = c_ ? s_ + t19_[i_][p_] * m_->X[0][j_][p_] : s_;
+                        f_ = f_ || c_;
+                    }
+                    t21_[0][i_][j_] = s_;
+                    t21_[1][i_][j_] = f_ ? 1.0 : 0.0;
+                }
+
+    Each cell's adjoint is then `t21_[0][i][j]`, there where
+    `t21_[1][i][j] != 0`, 0 elsewhere (`zero`), as `Into` leaves one; so
+    every condition is an int and an operand's are its conditions as
+    written. The slice holds 1.0 and 0.0, an int refused there by
+    -Wconversion in a float header.
+  - **3, a term's assignments and its whole-term NaN test** (`Assigned`),
+    for a term of 9 cells or more. Its assignments are one loop nest where
+    every cell's line is the first's with the first's subscript, wherever
+    it closes one, replaced by the cell's: the loop's line is the first's
+    with `[i_][j_]` there, its value-numbering marks dropped, so nothing
+    is shared out of the loop. A line holding any other mark rewritten
+    later, a hold's (`\x10`) or a term read back (`\x04`), is written
+    out, and so is one that calls a function, the header's, libm's or a
+    limit's, `isnan` aside: a loop would call it at each cell, where the
+    cells written out let a compiler call it once, 7 times slower by GCC
+    for `A[i, j]*cos(u_n)` (the review). The text is compared, not
+    parsed, so the loop is exactly the lines it replaces. So a value
+    `Numbered` shares, within a cell or across cells, is computed in each
+    looped term as written, arithmetic a compiler hoists, and 3 changes
+    neither the values nor the step's speed: it saves the header's bytes,
+    not its build time.
+    Its NaN test passes a NaN to the first cell and fills as now; the
+    RIEKF's P:
+
+            for (int i_ = 0; i_ < 12; ++i_)
+                for (int j_ = 0; j_ < 12; ++j_) m_->P[0][i_][j_] = m_->index_ == 0 ? m_->P0[i_][j_] : t55_[i_][j_] + t57_[i_][j_];
+            for (int i_ = 0; i_ < 12; ++i_)
+                for (int j_ = 0; j_ < 12; ++j_)
+                    if (isnan(m_->P[0][i_][j_])) m_->P[0][0][0] = NAN;
+            if (isnan(m_->P[0][0][0]))
+                for (int i_ = 0; i_ < 12; ++i_)
+                    for (int j_ = 0; j_ < 12; ++j_) m_->P[0][i_][j_] = NAN;
+
+    Each a statement whose only `;` ends it, which the split keeps whole.
+    (The study wrote "where its cells are an array's": read so, only K,
+    Rp, Nb and X loop, 90 of the RIEKF's 453 lines, where its 35 per
+    cent counted P and Pp, whose cells are `t3_[i][j] + t19_[i][j] *
+    m_->dt`.)
+  - **The written-out path stays** as the reference and the fallback:
+    each writer of loops declines where it does not apply.
+
+  How they meet the rest:
+  - **Value numbering** (`Numbered`): a loop's lines carry no marks; a
+    made array's cells keep theirs, so a value written twice there or
+    elsewhere is shared as before. It still saves, with 1 and 2, `riekf`
+    8.5 KB of 125 and `tq` 84 of 709: not superseded.
+  - **Hoisting** (`Invariant`): by `Declare`, as above; a product reading
+    the walk stays in the loop over `k_`, its nest inside.
+  - **The step split** (`Split`, 16 KB functions): a temporary's lines are
+    one text, never cut; an array a later part reads is carried in the
+    struct by `memcpy`, its member from its first line, `double
+    t2_[12][12];`, as an inverse's. `riekf` is no longer split after 1;
+    `tf` keeps 205 functions after 1 and 2, its stack 269 KB to 329 KB,
+    within MSVC's 1 MB.
+  - **C357's reread**: a looped product's cells are atoms, never shared
+    again for their length; a made array's cells are as `Reread` left
+    them.
+  - **The `Deep` cache**: a term refused deep after declaring a loop
+    leaves it unread, and `Kept` drops it as any; a term or call cached
+    (`terms_`, `memo_`) names its list's temporaries, as now.
+  - **Forward mode**: parts are made by `Product`, so loop with values;
+    reverse mode's tape is unchanged until 5.
+  - **`--float`**: arrays and accumulators are `double` rewritten;
+    **MSVC**: for-declarations, no VLA, arrays initialised from values as
+    inverse temporaries are; CI's job builds them. Clang 19's SLP
+    workaround stays.
+
+  Rejected:
+  - **LLVM IR, or a JIT**: a dependency (`CLAUDE.md` §5), where inkamath
+    writes source a host builds and a student reads.
+  - **Schedules after Halide or TACO**: a second language, and a
+    reordered sum loses `--check`'s bit for bit.
+  - **Unrolling kept, with a better split**: loads and stores are a third
+    of `tf` already, and size and time still follow the cells.
+  - **Rerolling the code as printed**: a parser of the C it writes, and
+    every cell still made. Increment 3 compares one term's lines, made as
+    now, at its own subscripts only.
+  - **A form of its own now**, a tree of loops printed: there is one
+    printer; the writers of loops are where a tree would come from.
+  - **Cellwise arithmetic as loops**: prototyped, 41 lines, `riekf` 1.3
+    per cent larger, its operands copied to be added. Fusing belongs to
+    a body compiled once, increment 4.
+  - **Every product looped**, `swing` 62 per cent larger; **below 27**,
+    a loop of some 350 bytes for a 2x2 product.
+  - **Constant operands as `static const` arrays**: the split reads a
+    carried member from its line's first words, `static` among them.
+  - **A condition as an int array apart from the values**: a name the
+    split would have to tie to its values'; a second slice instead.
+  - **A term's NaN test as a flag declared beside it**: a declaration
+    ends in `;` and the split would cut it from its loop; the first cell
+    carries it instead.
+
+  Measured on a prototype of 1 and 2, discarded, behind switches; each
+  step at -O2 -std=c99 by GCC 13.3 and Clang 18.1, one at a time, under
+  a shared load (`tf` took GCC 83 and 97 s at fefd26b); stack by
+  -fstack-usage; a step the median of three runs. Each model's first row
+  is fefd26b's, then after 1, then after 1 and 2:
+
+  | | bytes | functions, largest | stack | GCC | Clang | a step, GCC / Clang |
+  |---|---|---|---|---|---|---|
+  | `riekf` | 574,672 | 27, 106,496 | 11 KB | 4.9 s, 260 MB | 2.9 s, 129 MB | 7.7 / 6.1 µs |
+  | 1 | 116,722 | 4, 98,890 | 15 KB | 2.7 s, 106 MB | 1.5 s, 109 MB | 7.3 / 3.5 µs |
+  | `tq` | 969,267 | 61, 27,050 | 27 KB | 8.5 s, 318 MB | 4.3 s, 142 MB | 27.1 / 29.6 µs |
+  | 1 | 828,732 | 56, 25,875 | 32 KB | 8.1 s, 333 MB | 4.2 s, 135 MB | 24.0 / 29.5 µs |
+  | 1 and 2 | 624,222 | 47, 26,730 | 36 KB | 6.2 s, 197 MB | 3.7 s, 127 MB | 26.4 / 32.5 µs |
+  | `tf` | 9,985,465 | 377, 158,241 | 269 KB | 83-97 s, 818 MB | 95 s, 640 MB | 0.86 / 0.80 ms |
+  | 1 | 7,810,271 | 294, 155,769 | | 71 s, 658 MB | 80 s, 508 MB | 0.69 / 0.77 ms |
+  | 1 and 2 | 5,562,130 | 205, 152,921 | 329 KB | 53 s, 455 MB | 59 s, 394 MB | 0.48 / 0.61 ms |
+
+  Its `--compile` of `tf` 7.5 s and 186 MB, then 6.8 and 162, then 4.6
+  and 114: cells no longer made. Bit for bit: `riekf`'s X and P after
+  101 steps, `tq`'s W^Q after 301, `tf`'s J and accuracies to 300, by
+  GCC and Clang; all 286 check reports. At 9ed063c, the prototype rebased:
+  `riekf` 570,366 bytes to 112,982 after 1, unsplit; the transformer's
+  `inf` and `tune` in `test/compile/transformer.ink` 595,708 and 645,563
+  to 393,037 and 443,536, `tune` 435,219 after 2. Increment 3, not
+  prototyped, estimated by rewriting the prototype's headers as it would:
+  `riekf` about 79,000.
+
+  What moves: no golden, report, expected header (`test/compile/expected`)
+  or regex of `test/CMakeLists.txt`, and no excerpt, count or bound of
+  `test/cli.cmake`: all 303 reports and every cli case pass on the
+  rebased prototype, and with its headers rewritten as 3 would write
+  them, which also leaves every expected header byte for byte. The pinned
+  terms that 3 could loop have 2 or 4 cells; `layer.h`'s W line reads a
+  temporary of its own at each cell. The check programs' C and these
+  cli headers change: under 1, `inf.h`, `tune.h`, `wide.h`, `norm.h`,
+  `rod.h`, `mha.h`, `series.h`, `sums.h` and `tip.h`, which grows 13,505
+  bytes to 13,935; under 2, `norm.h`, `tune.h` and `wide.h` again; under
+  3, `c357.h` and `layer.h` too.
+
+  What remains of `tf` after 1 and 2: the split's loads and stores, 35
+  per cent; the cells of layer norm, softmax, ReLU and the residual sums,
+  a fifth; reads tested for NaN, 15 per cent: increments 4 and 5. They
+  stay deferred until a model needs them, the transformer at a real size
+  or PointNet: **4**, definitions by cells as a loop body, a body
+  compiled once with its places bound to the loop's indices, which lifts
+  the 1,000 terms, about 300 lines; **5**, the sweep through them, the
+  tape's nodes over a looped temporary, about 400. The step split and
+  value numbering stay until then at least. MANIFESTO's open question,
+  whether the form removes more than it adds, is answered for C: it
+  does not.
+
+  Cost, by `wc -l include/inkamath/*.hpp src/*`, 18,626 at 9ed063c: 1
+  about 75 lines, 2 about 95, 3 about 50; the prototype wrote 97 and 105
+  behind switches. Each stops and reports past one and a half times its
+  own: 112, 142 and 75.
+
+  Lands as three changes, in order, each a commit with `ctest` green and
+  its own part passing where it was skipped; each implemented to its own
+  stop before the next begins, an overrun stopping the work for a ruling
+  (3 does not read 2, but waits on its ruling); one implementation review
+  of the three against `integration`, one merge. With the third, the
+  three parts join `cli.cmake`'s regular cases and their skips go.
+
+  Specified in `test/compile/loops.ink`, read by `test/cli.cmake`'s
+  parts `loops1` to `loops3`, the tests `cli_loops_1` to `cli_loops_3`,
+  each skipped while its increment's code is written out as today, and
+  only then; now cases of `cli_2`. `spin`: A*x_(n-1) in place, A'*x_n transposed, (A + x_n)*x_n
+  with its operand made an array, a tensor by A slice by slice, B*v_(n-1)
+  written out; `solve`: an inverse's product read by name in a decision;
+  `dense`, `gated` and `diag`: the sweep's G*X', every adjoint there,
+  each under its unit's clause, and the diagonal only, written out. Every
+  expected line is written from the rule above, exact where it fixes a
+  temporary's number and `t#_` where it does not; 1's and 2's agree with
+  the prototype's but for its conditions, written `(t1_ != 0) != 0`, and
+  3's with the rewrite. Bounds: the RIEKF's header under 125,000 bytes
+  after 1 and 90,000 after 3, `inf.h` under 430,000 and `tune.h` under
+  480,000 after 1; `tf` is not in the tests, its measures are above.
+  Each header is built by the C compiler as a strict host would, -std=c11
+  -Wall -Wextra -Wpedantic -Wconversion -Wshadow -Werror, a float one
+  with -Wdouble-promotion.
+
+  Done as decided, in three commits on 18,675 lines after a2c7d70, and
+  the review's two fixes: 1 in 83 lines against 75, 2 in 82 against 95,
+  3 in 41 against 50, 18,881 in all, and C365's 3 after them. The review
+  marks no product NaN for a power's cell, whose `nan` names its exponent,
+  and writes out a term whose cells call a function; no size below moves.
+  Each left every golden, check report, expected header and pinned
+  excerpt as it was; stepped beside today's header, 101 steps of 8 draws
+  with infinities, NaNs and -0.0 by GCC and Clang without contraction,
+  `riekf`, `spin`, `solve`, `dense`, `gated`, `diag` and `swing` differ
+  in no value, `spin` in a NaN's bits only. Departures: a product's key
+  names its inner extent too, as a view of part of an array has the
+  array's name; an operand is read in place only where its first cell is
+  a primary, a negation being marked an atom; 2 writes out a product
+  under conditions of a single cell, its two slices having no place; the
+  whole-term NaN fill is written by the same loops as the rest, its text
+  unchanged; and the parts' cases joined `cli_2`, the RIEKF's bound the
+  third's. Sizes, then `--compile` and GCC 13.3's -O2 at a2c7d70 and
+  after, one run each under a shared load: `riekf` 570,366 bytes to
+  112,982 after 1 and 78,990 after 3, GCC 5.3 s and 256 MB to 2.1 s and
+  87 MB, unsplit; `inf` 595,708 to 393,037 and 390,104, GCC 8.8 s to
+  5.1 s; `tune` 645,563 to 443,536, 435,219 and 433,781, GCC 10.3 s to
+  6.4 s; `tf` 9,985,465 to 5,494,171, `--compile` 8.3 s and 186 MB to
+  6.1 s and 114 MB, GCC 97 s and 820 MB to 60 s and 476 MB, 354
+  functions to 179, its stack 269 KB to 324 KB.
+- **A split step's arrays read in place**: the split carries a looped array
+  whole and copies it into each later part that reads it, `tf`'s stack 269
+  KB to 324 KB; the remedy is reading the carried member in place and
+  scoping each sequence's temporaries.
 - `[done]` **A Jacobian by cells**, the idiom, compiled and held by `--check`:
   `J(x)[i<=3, j<=2] = (grad_(v = x) f(v)[i])[j]`, row i output i's
   gradient as a paper defines J_ij, so the layout is the user's. grad's own
@@ -11002,9 +11311,276 @@ After an external review of README, MANIFESTO and the conformance suite
   and C357's 11, 18,510 to 18,554 lines at c9aa165. chol and C356 are 33
   lines, inside the stop at 40; C357 fixes the exponential compile of any
   recurrence by cells, so it is counted on its own, though chol relies on it.
-- **A clause for a limit that does not converge**, one guard meaning the
-  same in the interpreter and the step, NaN kept where none is written; and
-  with it a tolerance relative to the term, the 1e-10 being absolute.
+- `[done]` **A clause for a limit that does not converge**, one guard
+  meaning the same in the interpreter and the step, NaN kept where none is
+  written. MANIFESTO asks whether converging is a value, a guard or a
+  property of the definition that takes it: a guard. The roadmap's MPC with
+  a fallback clause, and Newton's method within a step, written as a paper
+  writes them, "the solution where the iteration converges, otherwise ...":
+
+  ```
+  u_n | abs(x_n + lim qp(x_n)) <= abs(x_n) = lim qp(x_n)
+  u_n = -x_n/2
+  ```
+
+  Decided:
+  - **A guard that reads a limit that does not converge does not hold**,
+    and the clause after it is tried. No new syntax: the guard is the
+    paper's acceptance test of the solver's answer, a residual or a
+    bound, which a limit that does not exist cannot pass; it is the one
+    form documented. A local binds the limit once in the interpreter,
+    `| abs((z = lim s)^3 - 2*z + 2) < 1/10^6 = z`; compiled, a local is
+    refused today ("Locals compiled" above), and a limit written twice is
+    called where it is written, which GCC may merge and Clang does not.
+  - **Reads as the interpreter reads**: on the right of `and` or `or` only
+    where the left did not decide, through the functions the guard calls,
+    and in a sum's or a reduction's terms. A definition the guard calls
+    whose own guard reads one, with no clause after, is refused in the
+    limit's words, so the guard calling it does not hold either. Read on the
+    left, the guard does not hold whatever its right says: a guard that
+    cannot be read whole has no truth. Not through a term of a sequence the
+    guard reads, nor through another limit's terms or a series' partial
+    sums, each of which is refused where the limit in it does not converge,
+    as today: there the refusal is that term's, and the step's term is NaN.
+  - **Which limits**: `lim`, a sum or product without an upper bound, and
+    under grad a limit's derivative (interpreter only; compiled, "a
+    derivative of a limit, for now").
+  - **grad of a definition whose guard reads such a limit** at the point
+    is refused, "grad cannot differentiate root at y = 0, whose guard
+    reads a limit that does not converge": the clause after was chosen by
+    no truth grad can follow, as a clause taken at a point alone is not.
+  - **Only a walk that runs out**: its hundred terms, or partial sums, each
+    a number and never settling. A term refused is a refusal, as today. A
+    term that is NaN now refuses the limit, "hs has no limit: a term is
+    -nan", where the walk went on and said it did not converge; so do a
+    matrix term with a NaN cell, "a term is [-nan, 1]", a NaN base term, and
+    a NaN partial sum, "the sum has no limit: a partial sum is -nan". The
+    step cannot tell its NaN from a term the interpreter refuses, so a NaN
+    taken for a walk that ran out would choose the fallback compiled where
+    the interpreter refuses, or the other way. No comparison takes NaN
+    either. An infinite term is a number: a walk through one runs out.
+  - **The clause after is inexact**, `~0.5`: whether a walk settles is read
+    from its steps as doubles, and within a hundred terms, as a clause a
+    guard reading a double chose is (C241); marked where the walk's terms
+    passed a thousand digits (C68).
+  - **Where no clause after applies, the refusal is the limit's**, as
+    today: a definition with no fallback answers exactly as now. That is
+    "NaN kept where none is written".
+  - **Compiled**: a limit's function returns NaN at its first term with a
+    NaN cell, where it walked on to the hundredth, and NaN where its walk
+    runs out, as today. Its status comes back from the same function: asked
+    with a flag, it answers 1 where the walk runs out and 0 where not, a
+    matrix's as its return beside the cells it fills. A guard whose truth
+    is NaN asks each limit written in it, and does not hold where one ran
+    out, so the chain goes on to the next clause; past the last, NaN. A
+    limit no guard reads is NaN where it runs out, as today. Neither the
+    status beside the value nor a shared temporary with its flag: a flag
+    is a variable the step declares, which a split step would pass between
+    its functions, and a limit hoisted out of a lazy right side would
+    raise it unread. Asked only where the truth is NaN, the status costs a
+    second walk there and nothing elsewhere: on the MPC's fallback path, a
+    step 2x as long with GCC and 2.9x with Clang, each guard asking its
+    own. In a walk's terms it is hoisted with the truth where neither
+    moves; before the review it was asked again at each outer term. Where
+    the truth is NaN because a term the guard reads is refused, a limit in
+    the guard that runs out takes the clause after even if the interpreter
+    reads the term first and refuses; --check reports the flip. A function
+    the guard calls is asked about only where it has no clause after: one
+    that took its own fallback has answered, as interpreted. A sum or a reduction is written
+    out, its bounds constants, so a limit in its terms within a guard is
+    read as the guard's own: nothing to add, where a loop would have needed
+    the flag inside it. A host that wants the status MANIFESTO's solver
+    within a step names writes it as a sequence whose guard is the plan's
+    own test, `solved_n | abs(x_n + lim qp(x_n)) <= abs(x_n) = 1`,
+    `solved_n = 0`.
+  - **--check**: a walk one side settles and the other does not is a guard
+    taking another clause, reported first as any flip is, its margin
+    printed like any flip's. A disturbed run's likewise.
+    `--float`'s own stop may settle where the interpreter's runs out
+    (C102), and is reported so.
+
+  Rejected:
+  - **A value, a converged flag** (`conv s`): a second construct over a
+    sequence, a word for what the guard and a sequence of 1 and 0 say.
+    **`lim` answering NaN** where it runs out: the interpreter refuses
+    NaN everywhere else, so every reader would refuse in other words.
+  - **A property of the definition**, the clause whose value takes such a
+    limit not applying: it catches what no guard asked about, anywhere in
+    the value, and a clause tried before the default needs a guard
+    written only to order it. The sequence's own clause past a count,
+    `qp(s)_k | k > 50 = ...`, works today, but `lim` then presents the
+    fallback as a limit, and the model is tied to `max_terms`.
+  - **A fixed fallback**, `lim` answering its last term or a value set
+    once: README says `lim` reports non-convergence "rather than handing
+    back the term it stopped on"; the hundredth term of Newton's cycle is
+    0, where F is 2.
+  - **New syntax**: `lim s else v` is a second way to write cases, and
+    `exists lim s` a reserved word for what the residual already says.
+  - **`lim s == lim s`** for "where the limit exists", a value equal to
+    itself where it is one: dropped by the owner's ruling, nowhere
+    advertised. It tests nothing the solver's acceptance test does not.
+  - **Each comparison false** where it reads such a limit, a negative free
+    logic: the same in a guard but for `or`, and outside a guard a
+    comparison would answer 0 where today it refuses, a truth with no
+    clause to fall to. A guard reading the limit elsewhere, `| f(lim s)`,
+    would need the guard's rule anyway.
+  - **Every refusal** in a guard: a misspelt name would choose the
+    fallback.
+
+  What moves, on a prototype of the interpreter's half, discarded:
+  nothing. Every golden, README session, check report and cli case
+  passes, 509 tests, and the spec's 85 entries do. No story compiled has a
+  guard reading a limit that runs out, so no report should move; every
+  check program with a limit moves in text, the flag and the NaN test.
+  README section 4 gains the Newton entries, and the paragraph on compiled
+  limits the clause. MANIFESTO's question goes, answered; the status field
+  its solver within a step proposes is a sequence the model writes.
+
+  About 95 lines: the interpreter's 50, of which the prototype's 42
+  measured (51 added, 9 removed; a refusal of its own, the guard, the term
+  boundary, NaN), grad's own guards the rest; the compiler's 45 estimated,
+  the flag and its test where a guard reads it. 18,554 lines at 28bbb18 by
+  `wc -l include/inkamath/*.hpp src/*`; past 142 the implementation stops
+  and reports.
+
+  Ruled by the owner after the spec's review: a guard reading a limit that
+  runs out does not hold as a whole; the clause after is inexact; `lim s
+  == lim s` is not the documented form; grad of such a guard refused, an
+  inner definition's refusal read by the outer guard, the NaN wordings,
+  and a limit in a sum's terms within a guard, as above; the compiler's
+  half 55 to 75 lines, as the review found. So about 120 lines: the
+  interpreter's 55, the prototype's 42, grad's refusal, an inner
+  definition's and a cell's refusal kept, a partial sum's word; the
+  compiler's 65, the flag, the status asked where a guard's truth is NaN,
+  the NaN term. 18,626 lines at the merge of bdb38ba; past 180 the
+  implementation stops and reports.
+
+  Specified in `test/data/spec/unconverged.ink`, 97 entries replayed by the
+  spec suite, 23 failing today: Newton's cycle on x^3 - 2x + 2 under a
+  residual guard and a local; `and`, `or`, a call, a definition with no
+  clause after, a term and another limit's terms; a series, a sum's terms,
+  grad, grad of the guard refused; a walk refused, NaN in a term, a cell, a
+  base and a partial sum, inf; the MPC with its fallback, the same without,
+  and Newton within a step. Values in Python's fractions, README section 4's
+  rule written again in Python, roots in mpmath. Compiled, in
+  `test/compile/fallback.ink` and `fallback_test.c`, the harness
+  `compile_fallback`: the MPC's x, u and solved, Newton held, a walk refused
+  NaN, and limits in a sum's terms within a guard, `paired`, each against
+  those values, skipped while the step is NaN where the clause after is to
+  be taken and only then. With the implementation the spec becomes a golden,
+  the skip goes, `planned` and `held` join the checks with the reports
+  `fallback.ink` gives, and the spec suite goes if the tolerance has landed.
+
+  Built as specified and ruled. Every entry passes as written, and the spec
+  is the golden `unconverged.ink`; the spec suite goes, the tolerance
+  having landed; `compile_fallback` passes unskipped; `planned` and `held`
+  are checks, `held` named `fallback_held` beside `nan.ink`'s. What moved:
+  no golden, report or expected header; every check program with a limit,
+  in text, a scalar limit's function taking the flag and a matrix's
+  answering its status, each with its NaN test; `test/cli.cmake`'s
+  excerpts of `level`, `walked`, `float_gate` and the hoisted walks with
+  them. README section 4 gains Newton's entries and the rule, and the
+  paragraph on compiled limits the clause; MANIFESTO's question goes, its
+  solver within a step answered by a guard and `solved_n`. Departures:
+  `planned`'s report gives no estimate, `planned.x: within 0`, every term
+  a double exactly and every walk that settles stopping on a step of 0, so
+  `fallback.ink`'s comment says so; a guard reading a limit of constants
+  that runs out is refused compiled, "cannot compile y: nw did not
+  converge within 100 terms", where the interpreter takes the clause
+  after, as a limit of constants is folded by the interpreter at compile
+  time, and a guard folded false would be wrong where it is read on the
+  right of an 'or', `c_n > 1 or lim nv(2) > 0` 1 at c = 2; a cell whose guard reads such a limit, with no clause after for
+  it, is refused in the limit's words even where a matrix written whole
+  would give the cell, as before the change; a function's compiled call
+  remembers the statuses its limits are asked by, so that a guard calling
+  it again asks them. 113 lines, 19 of them comment, 18,644 to 18,757 at
+  d06a5b5: the interpreter's 64, the compiler's 49; inside the stop at
+  180. Its review found two compiled answers where the interpreter
+  refuses: a cell no clause gives, past a guard whose limit ran out, was 0,
+  and grad of such a guard the clause after's slope. Both are NaN now, in
+  23 lines of the compiler, `fallback.ink`'s `ranout` and `tipped`. By the
+  rulings on it, a called function's limits are asked only where it has
+  no clause after (`answered`, 12 lines), and a status is hoisted with its
+  truth out of a walk (`cli_3`'s `asked.h`, 2). So 150 lines, 25 of them
+  comment: the interpreter's 64, the compiler's 86; with the tolerance's
+  11, 18,626 to 18,787 at the review's last commit.
+- `[done]` **A tolerance relative to the term**, the 1e-10 being absolute.
+  Of the same roadmap line, but a change of its own, which may land before
+  or after the clause: neither's spec reads the other.
+
+  Decided:
+  - **The rule**: a step, and the remainder C36's ratio implies, are
+    measured in each cell against max(1, |the cell's term|): absolute
+    below 1, as today, relative above. The matrix's step is still its
+    largest cell's, now scaled.
+  - **Why**: past a term of about 225,000 a double cannot show a step
+    within 1e-10 (C353), so the step stops on steps of 0 where the exact
+    walk never settles, `weighed`'s departure. With a clause, that is a
+    step taking the fallback's other side. Relative, the tolerance is never
+    under 4.5e5 ulps of the term, and the two decide alike at any size.
+    The README's paragraph on it goes, with `weighed`'s comment and the
+    departure in C353's row; section 4's "the 1e-10 is absolute" and
+    "agree to within 1e-10" say relative above 1.
+  - **The cost**: a limit above 1 is known to ten significant digits, not
+    to 1e-10: `steep`'s terms, near 800, about 4.6e-8 from the exact ones
+    where they were 1.2e-10. The nine digits shown, and `--check`'s
+    billionth, are within it.
+  - **--check** moves a limit by its remainder in the term's units, each
+    cell by the scaled one times max(1, |the cell|), ruled by the owner
+    after the review: by the largest cell's scale, `spaced`'s cells near 1
+    were 0.0085 off, past the tolerance. The step's C353 test, a step
+    within 2 DBL_EPSILON of its term taken for 0, stays, scaled alike.
+
+  Rejected:
+  - **Relative alone**: never stops at 0, README's `lim s`, as rho's stop
+    found (*The characteristic polynomial and stability*).
+  - **Relative to the largest cell**: a cell of (3/4)^k beside one of 10^6
+    would stop 5.65e-5 from its limit; per cell, every cell below 1 keeps
+    today's 1e-10. The README's cell far below 1 is not helped by either.
+  - **max(1e-10, 32 ulps of the term)**, today's rule wherever a double can
+    show it: it moves only `weighed`, but ties the exact interpreter's
+    rule to the double format, and a float target would want its own.
+  - **A tolerance the user sets**: deferred since C8; no model asks.
+
+  What moves, on a prototype, discarded: `sequences.ink`'s `lim
+  exp(1)-e`, -8.15347789e-13 to -1.22861721e-11, a term sooner; no other
+  golden nor README session. Reports: `weighed`'s departure goes, "within
+  2; the interpreter's terms about 4 from the exact ones"; `taylor.y` and
+  `summed.u` within 9.1e-13 for 1.1e-12; `steep`'s estimate 4.6e-8 for
+  1.2e-10, past its regex; the estimates of `taylor` and `summed`, unpinned,
+  to 6.6e-8. `cli_2`'s `float_gate` excerpt, the walk's text. No expected
+  header, which hold no limit; every check program with a limit, in text.
+
+  About 15 lines: the prototype's 12 net, the scale in `Matrix::distance`
+  and `--check`'s remainder, 4 lines of the walk's C changed; past 23 the
+  implementation stops and reports. Ruled by the owner: accepted, its
+  moves as listed, README section 4 and C353's row among them.
+
+  Specified in `test/data/spec/tolerance.ink`, 23 entries replayed by the
+  spec suite, 4 failing today and passing on the prototype: e's partial
+  sums, 10^14 + 0.8^k, each cell against its own term and not the largest,
+  what does not move below 1, a series, and what still does not converge.
+  Values by the same Python, what an answer reads rounded to doubles as
+  the interpreter rounds it. With the implementation it becomes part of
+  `sequences.ink` or a golden of its own, the reports above move in the
+  same commit, and `newton.ink`'s `weighed` is held rather than wrong on
+  purpose.
+
+  Built as specified. Every entry passes as written, and the spec is the
+  golden `tolerance.ink`. What moved is what the prototype found:
+  `sequences.ink`'s `lim exp(1)-e`; `weighed` held, its departure gone
+  from its comment, README and C353's row; `taylor.y` and `summed.u`
+  within 9.1e-13; `steep`'s estimate 4.6e-8, `estimate.ink`'s comment with
+  it; `cli_2`'s `float_gate` excerpt. The walk's C scales by `fmax`, which
+  a float header writes `fmaxf` as it writes `fabsf`. 18 lines, 4 of them
+  comment, 18,626 to 18,644 at 7a59819, inside the stop at 23. The review
+  found the unpinned estimates that moved too, each the interpreter's
+  distance from the exact terms, now: `cls` q 2.5e-10, s 2.9e-12, loss
+  2e-11; `gate` b 8.8e-12, w 1.6e-11, p 1.1e-11; `stiff` 2.9e-11; `inset`
+  4.2e-9; `later` y 3.5e-8, z 3.9e-11; `layered` 6.1e-9; `renamed` 1.2e-8;
+  `rnn` 2.9e-12; `row` and `shut` 1.2e-10; `twonames` a 4.1e-10, b
+  5.3e-9; each in float as in double; and the comments of `inset` and
+  `layered`. Each cell scaled by its own, 7 lines fewer: 11 lines.
 - **A gather, integer inputs, inputs present on some steps only**: their
   open questions first. The gather is *A cell at a computed whole index,
   compiled*.

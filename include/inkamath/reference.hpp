@@ -1125,8 +1125,10 @@ private:
         EvaluationVisitor<T>& evaluator;
 
         // Whether a guard read since the last clause chosen was approximated,
-        // or inexact, which makes that clause's answer so (DESIGN.md, C68, C241).
-        bool past = false, rounded = false;
+        // or inexact, which makes that clause's answer so (DESIGN.md, C68, C241);
+        // and the limit one read that ran out, the refusal where no clause is.
+        bool                       past = false, rounded = false;
+        std::optional<Unconverged> ran{};
 
         template <typename V>
         void Marked(V& value) {
@@ -1134,6 +1136,7 @@ private:
                 value = past ? numeric_interface<V>::marked(value)
                              : numeric_interface<V>::inexact(value);
             past = rounded = false;
+            ran.reset();
         }
         T Eval(const PExpression<T>& e) {
             T value = e->accept(evaluator);
@@ -1141,18 +1144,29 @@ private:
             return value;
         }
         T Bound(const PExpression<T>& e) { return e->accept(evaluator); }
-        void Settle(T& into, int slice, int row, int col) { Marked(into(slice, row, col)); }
+        void Settle(T& into, int slice, int row, int col) {
+            if (ran) throw *ran;
+            Marked(into(slice, row, col));
+        }
         // A guard, told to --check where the clause is every term's, or a
         // function's outside the prelude.
         bool Holds(const Reference& definition, const Clause<T>& clause, int index, int, int row,
                    int col) {
             typename ReferenceStack<T>::Tentative locals(evaluator.stack(),
                                                          clause.parameters.binds());
-            const T guard   = clause.parameters.guard()->accept(evaluator);
-            past            = past || numeric_interface<T>::approximated(guard);
-            const bool held = numeric_interface<T>::truth(guard);
+            // A guard that reads a limit that runs out does not hold, and the
+            // clause after is inexact (DESIGN.md, a clause for a limit that
+            // does not converge).
+            T guard;
+            try {
+                guard = clause.parameters.guard()->accept(evaluator);
+            } catch (const Unconverged& unconverged) {
+                ran.emplace(unconverged);
+            }
+            past            = past || (ran ? ran->past : numeric_interface<T>::approximated(guard));
+            const bool held = !ran && numeric_interface<T>::truth(guard);
             if (held) locals.keep();
-            rounded |= !numeric_interface<T>::exact(guard);
+            rounded |= ran || !numeric_interface<T>::exact(guard);
             const ParametersDefinition<T>& p    = clause.parameters;
             if (evaluator.stack().guards &&
                 (p.general() || (!p.indexed() && definition.home != &evaluator.stack().Builtins())))
@@ -1178,7 +1192,20 @@ private:
         return term;
     }
 
+    // A term that reads a limit that runs out is refused as any term is: a
+    // guard reading the term reads no limit (DESIGN.md).
     T EvalImp(bool indexed, int index, EvaluationVisitor<T>& evaluator) const {
+        if (!indexed) return Chosen(false, 0, evaluator);
+        std::optional<std::string> refused;
+        try {
+            return Chosen(true, index, evaluator);
+        } catch (const Unconverged& unconverged) {
+            refused = unconverged.what();
+        }
+        throw std::runtime_error(*refused);
+    }
+
+    T Chosen(bool indexed, int index, EvaluationVisitor<T>& evaluator) const {
         Values values{evaluator};
         if (std::optional<T> cells = ByCells(indexed, index, values)) return std::move(*cells);
         // Clauses are tried in the order they were written, and the clause not
@@ -1225,6 +1252,7 @@ private:
                     return EvaluateGeneralClause(*general, index, values);
                 }
             }
+            if (values.ran) throw *values.ran;
             if(Guarded()) {
                 throw std::runtime_error(Unapplied(values.past));
             }
@@ -1234,6 +1262,7 @@ private:
         if(const Clause<T>* plain = Plain()) {
             return values.Eval(plain->expression);
         }
+        if (values.ran) throw *values.ran;
         if (Guarded() && !Cells()) {
             throw std::runtime_error(Unapplied(values.past));
         }
@@ -1497,9 +1526,10 @@ private:
                 return convergence.Reached(evaluation);
             }
         }
-        throw std::runtime_error(reference_name_ + " did not converge within " +
-                                 std::to_string(Convergence<T>::max_terms) + " terms (last term " +
-                                 Convergence<T>::Last(evaluation) + ")");
+        throw Unconverged(reference_name_ + " did not converge within " +
+                              std::to_string(Convergence<T>::max_terms) + " terms (last term " +
+                              Convergence<T>::Last(evaluation) + ")",
+                          numeric_interface<T>::approximated(evaluation));
     }
 
     void SetIndex(const std::string& name, int index, ReferenceStack<T>& stack) const {

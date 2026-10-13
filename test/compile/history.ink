@@ -415,3 +415,16 @@ flooring() = {
     z_n = x_(n-1)
 }
 floored = flooring()
+
+# A cycle of three, its terms before the stream its guards', reading an input
+# of no history: compiling a, c was compiled before a's read of b was
+# recorded, and computed again at -1, where it reads x_-1 (C364).
+cycling(x_n) = {
+    a_n | n < 0 = 1
+    a_n = b_(n-1)/2
+    b_n | n < 0 = 1
+    b_n = c_(n-1)/2
+    c_n | n < 0 = 1
+    c_n = a_(n-1)/2 + x_n
+}
+cycled = cycling(x_n = n)

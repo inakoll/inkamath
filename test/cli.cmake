@@ -659,6 +659,17 @@ set(args --compile nodefault.ink m -o m.h)
 set(stderr "inkamath: cannot compile y: A is a single value, as m gives it no default: give it one of its size, at least j<=1, k<=2\n")
 set(exit 1)
 check(compile_unstated_parameter)
+# And through a function's parameter, as iekf.ink's blk(X_n) reads X0.
+file(APPEND "${OUT}/nodefault.ink" "blk(X) = X[1, 2]\ntwice(Y) = 2*blk(Y)\n"
+     "mb(A, x_n) = {\n    X_n = A\n    y_n = twice(X_n)*x_n\n}\ncl(x_n) = {\n    y_n = blk(x_n)\n}\n")
+set(args --compile nodefault.ink mb -o mb.h)
+set(stderr "inkamath: cannot compile y: X reads A, a single value, as mb gives it no default: give it one of its size, at least j<=1, k<=2\n")
+set(exit 1)
+check(compile_unstated_argument)
+set(args --compile nodefault.ink cl -o cl.h)
+set(stderr "inkamath: cannot compile y: x is a single value, as cl states no size for it: write 'x_n[j<=1, k<=2]'\n")
+set(exit 1)
+check(compile_unstated_argument_input)
 
 # Every run of --check walks the prelude's definitions, so that its programs
 # hold the compiled functions to the walk (DESIGN.md): log, 16 references
@@ -1033,7 +1044,7 @@ foreach(model IN ITEMS level pick refuse ramp both walked tuned either)
     check(compile_nan_${model})
 endforeach()
 holds(compile_nan_level level.h
-      [[    m_->y[0] = level_lim0(m_, m_->x[0]);
+      [[    m_->y[0] = level_lim0(m_, 0, m_->x[0]);
     m_->high[0] = isnan(m_->y[0]) ? NAN : m_->y[0] > 0.5 ? 1.0 : 0.0;
 ]]
       [[ * name_(n-k) for each sequence: x, y and high. A term the interpreter would
@@ -1073,7 +1084,7 @@ holds(compile_nan_both both.h
 holds(compile_nan_walked walked.h
       [[        const double t_ = isnan(arg_a) ? NAN : arg_a > 1.0 ? 0.0 : t1_ / 2.0;
 ]]
-      [[    m_->y[0] = walked_lim0(m_, isnan(m_->x[0]) ? NAN : m_->x[0] > 0.0 ? m_->x[0] : NAN);
+      [[    m_->y[0] = walked_lim0(m_, 0, isnan(m_->x[0]) ? NAN : m_->x[0] > 0.0 ? m_->x[0] : NAN);
 ]])
 holds(compile_nan_tuned tuned.h
       [[    m_->a = isnan(m_->g) ? NAN : m_->g > 0.0 ? m_->g : NAN;
@@ -1320,6 +1331,23 @@ refused(unset "a) = {\n    g_n | n < 0 = a\n    g_n = 2*g_(n-1)"
 # And at another rate, where it was read as 0.
 refused(slowed "a = 2, x_n) = {\n    y_m | m < 0 = a\n    y_m = y_(m-1) + x_(2*m)"
         "y: y_0 reads y_-1, before the stream, where y's history reads a, which the host may assign after init")
+# C364: a cycle of three, its terms before the stream its guards', reading an
+# input of no history: c, compiled before a's read of b was recorded, was not
+# taken for a recurrence, and computed again at -1 read x_-1.
+file(WRITE "${OUT}/cycled.ink" "cycling(x_n) = {\n    a_n | n < 0 = 1\n    a_n = b_(n-1)/2\n"
+     "    b_n | n < 0 = 1\n    b_n = c_(n-1)/2\n    c_n | n < 0 = 1\n    c_n = a_(n-1)/2 + x_n\n}\n")
+set(args --compile cycled.ink cycling)
+check(history_cycled)
+# And a long one, each term computed again at each read, read twice: 7.6 s at
+# 14, past 100 at 18.
+set(text "long(x_n) = {\n    s0_n | n < 0 = 1\n")
+foreach(i RANGE 17)
+    math(EXPR next "(${i} + 1) % 18")
+    string(APPEND text "    s${i}_n = (s${next}_(n-1) + s${next}_(n-2))/4\n")
+endforeach()
+file(WRITE "${OUT}/long.ink" "${text}}\n")
+set(args --compile long.ink long)
+check(history_cycled_long)
 # Init folds a slow history back from its first term, so a term it reads
 # past one it cannot fold is refused for that one (C348).
 refused(gapped "a = 2, x_n) = {\n    y_m | m < -1 = 1\n    y_m | m < 0 = a\n    y_m = y_(m-2) + x_(2*m)"
@@ -1398,13 +1426,15 @@ check(float_history)
 set(args --compile ${CMAKE_CURRENT_LIST_DIR}/compile/logistic.ink logit --float -o float/gate.h)
 check(float_gate)
 holds(float_gate float/gate.h "#include <float.h>\n#include <math.h>\n"
-      [[static inline float gate_lim0(const gate* m_, float arg_z) {]]
+      [[static inline float gate_lim0(const gate* m_, int ran_, float arg_z) {]]
       [[        const float t_ = t1_ + (t1_ + (0.0f - t2_)) * arg_z / (float)k_;
+        if (isnan(t_)) return ran_ ? 0.0f : NAN;
         if (started_) {
             step_ = fabsf(t_ - t1_);
-            if (step_ > 0 && step_ <= 2 * FLT_EPSILON * fabsf(t_) && isfinite(t_) && stepped_) return t_;
+            step_ = step_ / fmaxf(1.0f, fabsf(t_));
+            if (step_ > 0 && step_ <= 2 * FLT_EPSILON * fabsf(t_) / fmaxf(1.0f, fabsf(t_)) && isfinite(t_) && stepped_) return ran_ ? 0.0f : t_;
             if (step_ <= 1e-10f && stepped_ &&
-]] [[    m_->p[0][0][0] = 1.0f / (1.0f + gate_lim0(m_, 0.0f + (0.0f - (0.0f * m_->w[0][0][0] + 0.0f * m_->w[0][1][0] + m_->b[0]))));
+]] [[    m_->p[0][0][0] = 1.0f / (1.0f + gate_lim0(m_, 0, 0.0f + (0.0f - (0.0f * m_->w[0][0][0] + 0.0f * m_->w[0][1][0] + m_->b[0]))));
 ]])
 
 set(args --check ${CMAKE_CURRENT_LIST_DIR}/compile/drift.ink calm --float -o float/calm.c)
@@ -1490,6 +1520,199 @@ cannot compile c: a guarded cell of one term
 ")
 set(exit 1)
 check(compile_cellguards_refused)
+
+# Loops in generated code (DESIGN.md): compile/loops.ink's headers holding
+# the loops each increment writes, a temporary's number written '#' where
+# the rule does not fix it, each header built as a strict host's C.
+set(loops ${CMAKE_CURRENT_LIST_DIR}/compile/loops.ink)
+set(transformer ${CMAKE_CURRENT_LIST_DIR}/compile/transformer.ink)
+file(MAKE_DIRECTORY "${OUT}/float")
+function(pattern out line)
+    string(REPLACE "\\" "\\\\" line "${line}")
+    foreach(c "^" "$" "." "|" "?" "*" "+" "(" ")" "[" "]")
+        string(REPLACE "${c}" "\\${c}" line "${line}")
+    endforeach()
+    string(REPLACE "#" "[0-9]+" line "${line}")
+    set(${out} "${line}" PARENT_SCOPE)
+endfunction()
+function(like name file)
+    file(READ "${OUT}/${file}" text)
+    math(EXPR last "${ARGC} - 1")
+    foreach(i RANGE 2 ${last})
+        pattern(line "${ARGV${i}}")
+        if(NOT text MATCHES "${line}")
+            message(SEND_ERROR "${name}: ${file} does not hold\n${ARGV${i}}")
+        endif()
+    endforeach()
+endfunction()
+function(smaller name file bytes)
+    file(SIZE "${OUT}/${file}" size)
+    if(NOT size LESS ${bytes})
+        message(SEND_ERROR "${name}: ${file} is ${size} bytes, not under ${bytes}")
+    endif()
+endfunction()
+# As a host builds it whose flags refuse more than the checks' (C331).
+function(strict name file)
+    if(NOT CC_ID MATCHES "^(GNU|Clang|AppleClang)$")
+        return()
+    endif()
+    string(MAKE_C_IDENTIFIER "${file}" unit)
+    file(WRITE "${OUT}/${unit}.c" "#include \"${file}\"\n")
+    execute_process(COMMAND "${CC}" -std=c11 -Wall -Wextra -Wpedantic -Wconversion -Wshadow
+                            -Werror ${ARGN} -fsyntax-only "${unit}.c"
+                    WORKING_DIRECTORY "${OUT}" RESULT_VARIABLE failed
+                    ERROR_VARIABLE errors OUTPUT_VARIABLE errors)
+    if(failed)
+        message(SEND_ERROR "${name}: ${file} is no strict C11\n${errors}")
+    endif()
+endfunction()
+foreach(model spin solve dense gated diag raised turn)
+    set(args --compile ${loops} ${model} -o ${model}.h)
+    check(compile_loops)
+endforeach()
+
+# 1, products of 27 multiplications or more, read in place, transposed,
+# made an array, slice by slice; fewer written out.
+holds(compile_loops_products spin.h
+      [[    m_->v[0][0][0] = m_->index_ == 0 ? 1.0 : m_->B[0][0] * m_->v[1][0][0] + m_->B[0][1] * m_->v[1][1][0];
+    m_->v[0][1][0] = m_->index_ == 0 ? 2.0 : m_->B[1][0] * m_->v[1][0][0] + m_->B[1][1] * m_->v[1][1][0];
+]] [[    double t0_[2][3][3];
+    for (int b_ = 0; b_ < 2; ++b_)
+        for (int i_ = 0; i_ < 3; ++i_)
+            for (int j_ = 0; j_ < 3; ++j_) {
+                double s_ = m_->w[1][b_][i_][0] * m_->A[0][j_];
+                for (int p_ = 1; p_ < 3; ++p_) s_ = s_ + m_->w[1][b_][i_][p_] * m_->A[p_][j_];
+                t0_[b_][i_][j_] = s_;
+            }
+    m_->w[0][0][0][0] = m_->index_ == 0 ? 1.0 : t0_[0][0][0];
+]] [[    double t1_[3][3];
+    for (int i_ = 0; i_ < 3; ++i_)
+        for (int j_ = 0; j_ < 3; ++j_) {
+            double s_ = m_->A[i_][0] * m_->x[1][0][j_];
+            for (int p_ = 1; p_ < 3; ++p_) s_ = s_ + m_->A[i_][p_] * m_->x[1][p_][j_];
+            t1_[i_][j_] = s_;
+        }
+    m_->x[0][0][0] = m_->index_ == 0 ? 1.0 : t1_[0][0];
+]] [[    double t2_[3][3];
+    for (int i_ = 0; i_ < 3; ++i_)
+        for (int j_ = 0; j_ < 3; ++j_) {
+            double s_ = m_->A[0][i_] * m_->x[0][0][j_];
+            for (int p_ = 1; p_ < 3; ++p_) s_ = s_ + m_->A[p_][i_] * m_->x[0][p_][j_];
+            t2_[i_][j_] = s_;
+        }
+]] [[    double t3_[3][3] = {{m_->A[0][0] + m_->x[0][0][0], m_->A[0][1] + m_->x[0][0][1], m_->A[0][2] + m_->x[0][0][2]}, {m_->A[1][0] + m_->x[0][1][0], m_->A[1][1] + m_->x[0][1][1], m_->A[1][2] + m_->x[0][1][2]}, {m_->A[2][0] + m_->x[0][2][0], m_->A[2][1] + m_->x[0][2][1], m_->A[2][2] + m_->x[0][2][2]}};
+    double t4_[3][3];
+    for (int i_ = 0; i_ < 3; ++i_)
+        for (int j_ = 0; j_ < 3; ++j_) {
+            double s_ = t3_[i_][0] * m_->x[0][0][j_];
+            for (int p_ = 1; p_ < 3; ++p_) s_ = s_ + t3_[i_][p_] * m_->x[0][p_][j_];
+            t4_[i_][j_] = s_;
+        }
+]])
+# An inverse's product may be NaN, and is tested by its name.
+holds(compile_loops_nan solve.h
+      [[        solve_inverse3_(t0_);
+        double t1_[3][3];
+        for (int i_ = 0; i_ < 3; ++i_)
+            for (int j_ = 0; j_ < 3; ++j_) {
+                double s_ = t0_[i_][0] * m_->x[1][0][j_];
+                for (int p_ = 1; p_ < 3; ++p_) s_ = s_ + t0_[i_][p_] * m_->x[1][p_][j_];
+                t1_[i_][j_] = s_;
+            }
+        const int t2_ = isnan(t1_[0][0]) || isnan(t1_[0][1]) || isnan(t1_[0][2]) || isnan(t1_[1][0]) || isnan(t1_[1][1]) || isnan(t1_[1][2]) || isnan(t1_[2][0]) || isnan(t1_[2][1]) || isnan(t1_[2][2]);
+        m_->s[0] = isnan((t2_ ? NAN : t1_[0][0])) ? NAN : (t2_ ? NAN : t1_[0][0]) > 0.0 ? 1.0 : 0.0;
+]])
+# A power of a constant is NaN only where its exponent is, which names
+# nothing: its product's cell is read untested, as written out.
+like(compile_loops_raised raised.h [[    m_->y[0] = (t#_[0][1] > 0.0 ? 1.0 : 0.0);
+]])
+# The RIEKF's 12-state filter, 570,366 bytes at 9ed063c, 78,990 looped;
+# the transformer's forward pass and U trained, 595,708 and 645,563,
+# 390,104 and 433,781.
+set(args --compile "${CMAKE_CURRENT_LIST_DIR}/compile/iekf.ink" riekf -o riekf.h)
+check(compile_loops_riekf)
+smaller(compile_loops_riekf riekf.h 90000)
+foreach(model inf tune)
+    set(args --compile ${transformer} ${model} -o ${model}.h)
+    check(compile_loops_${model})
+endforeach()
+smaller(compile_loops_inf inf.h 430000)
+smaller(compile_loops_tune tune.h 480000)
+
+# 2, the sweep's G*X', G's adjoints made an array, X' read in place.
+like(compile_loops_sweep dense.h
+     [[    double t#_[3][3] = {{t#_, t#_, t#_}, {t#_, t#_, t#_}, {t#_, t#_, t#_}};
+    double t#_[3][3];
+    for (int i_ = 0; i_ < 3; ++i_)
+        for (int j_ = 0; j_ < 3; ++j_) {
+            double s_ = t#_[i_][0] * m_->X[0][j_][0];
+            for (int p_ = 1; p_ < 3; ++p_) s_ = s_ + t#_[i_][p_] * m_->X[0][j_][p_];
+            t#_[i_][j_] = s_;
+        }
+]])
+# Each term added where its condition holds, and where any did the
+# array's second slice.
+like(compile_loops_sweep gated.h
+     [[    double t#_[3][3] = {{t#_, t#_, t#_}, {t#_, t#_, t#_}, {t#_, t#_, t#_}};
+    int t#_[3][3] = {{(t#_ != 0), (t#_ != 0), (t#_ != 0)}, {(t#_ != 0), (t#_ != 0), (t#_ != 0)}, {(t#_ != 0), (t#_ != 0), (t#_ != 0)}};
+    double t#_[2][3][3];
+    for (int i_ = 0; i_ < 3; ++i_)
+        for (int j_ = 0; j_ < 3; ++j_) {
+            int f_ = t#_[i_][0];
+            double s_ = f_ ? t#_[i_][0] * m_->X[0][j_][0] : 0.0;
+            for (int p_ = 1; p_ < 3; ++p_) {
+                const int c_ = t#_[i_][p_];
+                s_ = c_ ? s_ + t#_[i_][p_] * m_->X[0][j_][p_] : s_;
+                f_ = f_ || c_;
+            }
+            t#_[0][i_][j_] = s_;
+            t#_[1][i_][j_] = f_ ? 1.0 : 0.0;
+        }
+]] [[    m_->W[0][0][1] = m_->index_ == 0 ? 0.0 : m_->W[1][0][1] + (0.0 - m_->eta * t#_[0][0][1]);
+]])
+# Some adjoints absent: written out, as today.
+like(compile_loops_sweep diag.h
+     [[    m_->W[0][0][1] = m_->index_ == 0 ? 0.0 : m_->W[1][0][1] + (0.0 - m_->eta * (isnan(t#_) ? NAN : t#_ * m_->X[0][1][0]));
+]])
+set(args --compile ${loops} gated --float -o float/gated.h)
+check(compile_loops_float)
+like(compile_loops_float float/gated.h [[    float t#_[2][3][3];
+]] [[            t#_[1][i_][j_] = f_ ? 1.0f : 0.0f;
+]])
+
+# 3, a term of 9 cells or more each the first's at its place, and its
+# whole-term NaN test; a term's cells otherwise, as today.
+holds(compile_loops_terms spin.h [[    for (int i_ = 0; i_ < 3; ++i_)
+        for (int j_ = 0; j_ < 3; ++j_) m_->y[0][i_][j_] = t2_[i_][j_];
+]] [[    for (int i_ = 0; i_ < 3; ++i_)
+        for (int j_ = 0; j_ < 3; ++j_) m_->z[0][i_][j_] = t4_[i_][j_];
+]] [[    m_->w[0][1][2][2] = m_->index_ == 0 ? 1.0 : t0_[1][2][2];
+]] [[    m_->x[0][2][2] = m_->index_ == 0 ? 9.0 : t1_[2][2];
+]])
+holds(compile_loops_terms solve.h [[    for (int i_ = 0; i_ < 3; ++i_)
+        for (int j_ = 0; j_ < 3; ++j_) m_->x[0][i_][j_] = m_->index_ == 0 ? m_->x0[i_][j_] : t4_[i_][j_];
+    for (int i_ = 0; i_ < 3; ++i_)
+        for (int j_ = 0; j_ < 3; ++j_)
+            if (isnan(m_->x[0][i_][j_])) m_->x[0][0][0] = NAN;
+    if (isnan(m_->x[0][0][0]))
+        for (int i_ = 0; i_ < 3; ++i_)
+            for (int j_ = 0; j_ < 3; ++j_) m_->x[0][i_][j_] = NAN;
+]])
+like(compile_loops_terms dense.h [[    for (int i_ = 0; i_ < 3; ++i_)
+        for (int j_ = 0; j_ < 3; ++j_) m_->W[0][i_][j_] = m_->index_ == 0 ? m_->W0[i_][j_] : m_->W[1][i_][j_] + (0.0 - m_->eta * (isnan(t#_) ? NAN : t#_[i_][j_]));
+    for (int i_ = 0; i_ < 3; ++i_)
+        for (int j_ = 0; j_ < 3; ++j_)
+            if (isnan(m_->W[0][i_][j_])) m_->W[0][0][0] = NAN;
+    if (isnan(m_->W[0][0][0]))
+]])
+# A line that calls a function, written out: a loop would call it at each
+# cell.
+like(compile_loops_terms turn.h [[    m_->x[0][0][1] = (t#_ ? NAN : m_->A[0][1]) * turn_cos(m_->u[0]) + (t#_ ? NAN : m_->B[0][1]) * turn_sin(m_->u[0]);
+]])
+foreach(file spin.h solve.h dense.h gated.h diag.h riekf.h)
+    strict(compile_loops_strict ${file})
+endforeach()
+strict(compile_loops_strict float/gated.h -Wdouble-promotion)
 
 if(PART EQUAL 2)
     return()
@@ -1760,6 +1983,18 @@ cannot compile d: d_(...): a term after the one being computed
 ")
 set(exit 1)
 check(compile_tip_refused)
+# C363: a halving recursion with a base filled each term below at every read
+# of it, 96 s to compile a, read ahead, and over 60 s for b, refused anyway.
+# A measure of time, so in an optimised build only: 16 s in Debug, past 180
+# under the sanitizers.
+if(TIMED)
+file(WRITE "${OUT}/halving.ink" "a_n = v(x_n)_999\nb_n = w(x_n)_1000\nv(x)_0 = x\nv(x)_k | k > 999 = x\n"
+     "v(x)_k = v(x/2)_(k+1)\nw(x)_0 = x\nw(x)_k = w(x/2)_(k-1)\n")
+set(args --compile halving.ink)
+set(stdout "cannot compile b: nested 64 deep, which a recursion its guards do not end would pass\n")
+set(exit 1)
+check(compile_c363)
+endif()
 
 # A sequence with parameters read at lim's walking index (DESIGN.md,
 # compile/series.ink): the series compiled; their values, e^x's at -2 and 1,
@@ -2040,16 +2275,29 @@ file(WRITE "${OUT}/fact.ink" "layers(x_n) = {\n    s(v)_0 = v\n    s(v)_k = s(v)
      "    o(a)_0 = lim s(a)\n    o(a)_k = o(a)_(k-1)/4 + 1/!(a + 2)\n    q_n = lim o(x_n)\n}\n")
 set(args --compile fact.ink layers -o fact.h)
 check(compile_hoisted)
+set(based "    if (isnan(t1_)) return ran_ ? 0.0 : NAN;\n")
 string(CONCAT walk "    double step_ = 0.0, before_ = 0.0;\n"
        "    int    started_ = 1, stepped_ = 0;\n    for (long long k_ = 1; k_ <= 100; ++k_) {\n")
 holds(compile_hoisted layered.h "    double v0_[2][1] = {{arg_a}, {1.0}};\n    double v1_[2][1];\n"
-      "    layered_lim0(m_, v0_, v1_);\n    double t1_ = arg_a;\n${walk}"
+      "    layered_lim0(m_, v0_, v1_);\n    double t1_ = arg_a;\n${based}${walk}"
       "        const double t_ = t1_ / 4.0 + (1.0 * v1_[0][0] + 1.0 * v1_[1][0]);\n")
-holds(compile_hoisted scalar.h "    const double v0_ = scalar_lim0(m_, arg_a + 1.0);\n"
-      "    double t1_ = arg_a;\n${walk}        const double t_ = t1_ / 4.0 + v0_;\n")
+holds(compile_hoisted scalar.h "    const double v0_ = scalar_lim0(m_, 0, arg_a + 1.0);\n"
+      "    double t1_ = arg_a;\n${based}${walk}        const double t_ = t1_ / 4.0 + v0_;\n")
 holds(compile_hoisted fact.h "    const double v0_ = fact_fact_(arg_a + 2.0);\n"
-      "    double t1_ = fact_lim0(m_, arg_a);\n${walk}"
+      "    double t1_ = fact_lim0(m_, 0, arg_a);\n${based}${walk}"
       "        const double t_ = t1_ / 4.0 + 1.0 / v0_;\n")
+
+# So is the status of a limit a guard in the terms reads, asked with its truth.
+file(WRITE "${OUT}/asked.ink" "layers(x_n) = {\n    s(v)_0 = v\n    s(v)_k = s(v)_(k-1)/2 + v\n"
+     "    g(a) | lim s(a + 1) > 0 = 1\n    g(a) = 2\n"
+     "    o(a)_0 = a\n    o(a)_k = o(a)_(k-1)/4 + g(a)\n    q_n = lim o(x_n)\n}\n")
+set(args --compile asked.ink layers -o asked.h)
+check(compile_hoisted)
+holds(compile_hoisted asked.h "    const double v0_ = asked_lim0(m_, 0, arg_a + 1.0);\n"
+      "    const double v1_ = (isnan(v0_) ? NAN : v0_ > 0.0 ? 1.0 : 0.0);\n"
+      "    const double v2_ = isnan(v1_) && !(asked_lim0(m_, 1, arg_a + 1.0) != 0.0);\n"
+      "    double t1_ = arg_a;\n${based}${walk}"
+      "        const double t_ = t1_ / 4.0 + (v2_ != 0.0 ? NAN : v1_ == 1.0 ? 1.0 : 2.0);\n")
 
 # A global's temporaries, read first in a limit's terms, are numbered as
 # the update's, not as that limit's: two such are two names.

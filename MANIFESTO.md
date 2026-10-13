@@ -191,12 +191,13 @@ nw(xp, u)_k = nw(xp, u)_(k-1) - F(nw(xp, u)_(k-1), xp, u)/dF(nw(xp, u)_(k-1), xp
 x_n = lim nw(x_(n-1), u_n)
 ```
 
-What is missing is in the compiler, which refuses `lim`. Compiling it as a
-bounded loop with the same stopping rule, and reporting through a status field
-whether the step converged (generated code cannot throw), would cost no new
-syntax. A variant with a fixed number of iterations is worth having for code
-whose execution time has to be bounded. The derivative remains the user's to
-write, until differentiation exists.
+Compiled, it is a bounded loop with the same stopping rule, and whether
+the step converged is a guard: one that reads a limit that runs out does not
+hold, so the clause after it is the fallback, and a status the host wants is a
+sequence the model writes with the solver's own test, `solved_n | abs(x_n +
+lim qp(x_n)) <= abs(x_n) = 1`, `solved_n = 0`. A variant with a fixed number
+of iterations is worth having for code whose execution time has to be bounded.
+The derivative is written by hand or taken by `grad`.
 
 ### Tensors
 
@@ -293,7 +294,7 @@ generator is a recurrence over `mod`, which the prelude has.
 
 Softmax, cross-entropy, sigmoid and tanh need `exp` and `log`. Written as
 series in the interpreter, as `README.md` writes `exp`, they make the reference
-inexact; in the compiler they are refused while `lim` is (*A solver within a
+inexact; in the compiler they are walks, as `lim` is (*A solver within a
 step*). Embedded deployments approximate them anyway, by polynomial or by
 pieces, which the language can express. Whether they belong in a prelude
 written in inkamath or as built-ins is the question `DESIGN.md` already
@@ -464,8 +465,6 @@ Recorded so that they are asked before they are answered by accident.
   and does writing it remove more from the current compiler than it adds?
 - How much of a paper can be transcribed before the language has to grow, and
   is the answer to that a good measure of whether it should?
-- Is whether a limit converged a value, a guard, or a property of the
-  definition that takes it, and how does it mean the same compiled?
 - How does a signature declare an input present on some steps only, and what
   does the static check then prove of what reads it?
 - Is an index a kind of number of its own, an input refused where it is not
