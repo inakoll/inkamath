@@ -313,7 +313,7 @@ lib = C.CDLL("./libpid.so")
 lib.ink_size.restype = C.c_size_t
 lib.ink_init.argtypes = [C.c_void_p]
 lib.ink_run.argtypes = [C.c_void_p, C.c_void_p, C.c_long, C.c_void_p]
-m = (C.c_double * (lib.ink_size() // 8))()
+m = (C.c_double * ((lib.ink_size() + 7) // 8))()
 u = C.c_double.from_buffer(m, C.c_size_t.in_dll(lib, "ink_u").value)
 y, out = (C.c_double * 3)(0, 0.1, 0.2), (C.c_double * 3)()
 lib.ink_init(m); lib.ink_run(m, y, 3, out)    # u.value is out[2]
@@ -321,10 +321,11 @@ lib.ink_init(m); lib.ink_run(m, y, 3, out)    # u.value is out[2]
 
 Declare each function's `argtypes`: without them an address held as a
 Python int, as numpy's `a.ctypes.data` is, is passed as a C int and cut to
-32 bits. A call from Python costs about 0.7 µs, more than a small model's
-step, which for `test/compile/kalman.ink` is 37 to 81 ns in a loop in C: for
-such a model, batch the steps in C, as `ink_run` does. `compile_host` builds
-this file as written here and holds `ink_run` to `ink_step`.
+32 bits. A call from Python costs about 0.7 µs, twenty times a small
+model's step, 31 to 34 ns for `test/compile/kalman.ink`: for such a model,
+batch the steps in C, as `ink_run` does, 37 to 81 ns a step from Python.
+`compile_host` builds this file as written here and holds `ink_run` to
+`ink_step`.
 
 `--check session.ink`, given a transcript alone, replays it and shows each
 answer that is not the one recorded, as recorded (`-`) and as given now (`+`),
