@@ -10852,11 +10852,12 @@ After an external review of README, MANIFESTO and the conformance suite
   lines first: MANIFESTO's intermediate form, for a step now written out
   whole (a transformer's 90 to 100 s at -O2, 256 KB of stack). It largely
   supersedes value numbering (*Shared at every value written twice*, `[done]`).
-- **A Jacobian by cells**, the idiom, compiled and held by `--check`:
+- `[done]` **A Jacobian by cells**, the idiom, compiled and held by `--check`:
   `J(x)[i<=3, j<=2] = (grad_(v = x) f(v)[i])[j]`, row i output i's
   gradient as a paper defines J_ij, so the layout is the user's. grad's own
   Jacobian stays rejected unless a transcription shows a sweep per output
-  too dear or the notation short.
+  too dear or the notation short. Already so: README's section on grad
+  writes J(x), and `test/compile/grad.ink`'s `ekf` checks F and H by cells.
 - **Small, whenever**: *A maximum, minimum or argmax over an index*, `[done]`; a
   Cholesky factor in the prelude, for square-root filters, the solve being
   `A^-1*b` already and the Joseph form writable now.
