@@ -374,6 +374,15 @@ public:
         out += " * term, 2 none, 3 one before the start, 4 one that is no finite double,\n";
         out += " * 5 none, the interpreter out of steps;\n";
         out += " * 'about' is each term's estimate, or none where every one is 0. */\n";
+        const std::string place = "k, cols, " + std::string(tensors ? "rows, " : "") + "cells);\n";
+        out += "static void cell_(const char* in, const char* name, int k, int cols, " + rows +
+               "int cells) {\n    printf(\"%s%s\", in, name);\n";
+        if (tensors)
+            out +=
+                "    if (cells > rows * cols)\n        printf(\"[%d,%d,%d]\", k % cells / "
+                "(rows * cols) + 1, k % (rows * cols) / cols + 1, k % cols + 1);\n    else ";
+        out += std::string(tensors ? "" : "    ") + "if (cells > 1)\n";
+        out += "        printf(\"[%d,%d]\", k % cells / cols + 1, k % cells % cols + 1);\n}\n\n";
         out += "static int hold_(const char* name, int cols, " + rows + "int cells, int from,\n";
         out += "                 const " + CompileC::Real() + "* got, const double* want,\n";
         out += "                 const unsigned char* known, const char* const* why,\n";
@@ -381,7 +390,7 @@ public:
         out += "    double worst = 0.0, most = 0.0" + std::string(floats ? ", units = 0.0" : "") +
                ";\n";
         out += "    int    past  = -1, compared = 0, spent = -1, more = 0" +
-               std::string(floats ? ", measured = 0" : "") + ";\n";
+               std::string(floats ? ", measured = 0, most_k = 0" : "") + ";\n";
         out += "    for (int k = 0; k < " + std::to_string(steps) + " * cells; ++k) {\n";
         out += "        const double difference = fabs(" + got + " - want[k]);\n";
         out += "        const int    n = " + std::to_string(first) + " + k / cells;\n";
@@ -398,19 +407,15 @@ public:
         // term of 0 a unit says nothing, so none is counted there.
         if (floats)
             out +=
-                "            if (want[k] != 0.0) {\n                units = fmax(units, "
-                "ldexp(difference, 23 - ilogb(fmax(fabs(want[k]), ldexp(1.0, -126)))));\n"
-                "                measured = 1;\n            }\n";
+                "            if (want[k] != 0.0) {\n                const double u = "
+                "ldexp(difference, 23 - ilogb(fmax(fabs(want[k]), ldexp(1.0, -126))));\n"
+                "                if (u > units) most_k = k;\n"
+                "                units    = fmax(units, u);\n                measured = 1;\n"
+                "            }\n";
         out += "            if (e > most) most = e;\n";
         out += "            if (past < 0 && e > " + tol + " * (1.0 + fabs(want[k]))) past = n;\n";
         out += "            continue;\n        }\n";
-        out += "        printf(\"%s\", name);\n";
-        if (tensors)
-            out +=
-                "        if (cells > rows * cols)\n            printf(\"[%d,%d,%d]\", k % cells / "
-                "(rows * cols) + 1, k % (rows * cols) / cols + 1, k % cols + 1);\n        else ";
-        out += std::string(tensors ? "" : "        ") + "if (cells > 1)\n";
-        out += "            printf(\"[%d,%d]\", k % cells / cols + 1, k % cells % cols + 1);\n";
+        out += "        cell_(\"\", name, " + place;
         out += "        if (known[k] == 3)\n";
         out += "            printf(\": none at %d, where the interpreter gives %.17g\", n,\n";
         out += "                   want[k]);\n";
@@ -447,7 +452,15 @@ public:
         out += "                break;\n            }\n";
         out += spent + "        printf(\"\\n\");\n        return 1;\n    }\n";
         out += "    printf(\"%s: within %.2g\", name, worst);\n";
-        if (floats) out += "    if (measured) printf(\", %.2g units of a float\", units);\n";
+        // From 2^23 units, as a term lost whole or of the other sign, where (DESIGN.md).
+        if (floats)
+            out +=
+                "    if (measured) printf(\", %.2g units of a float\", units);\n"
+                "    if (units >= 8388608.0) {\n        const int k = most_k;\n"
+                "        if (cells > 1) cell_(\" in \", name + " +
+                std::to_string(instance.size() + 1) + ", " + place +
+                "        printf(\" at step %d\", " + std::to_string(first) +
+                " + k / cells);\n    }\n";
         out += "    if (from > " + std::to_string(first) + ") printf(\", from %d\", from);\n";
         out += "    if (most > 0.0)\n";
         out +=
