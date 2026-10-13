@@ -11725,7 +11725,9 @@ After an external review of README, MANIFESTO and the conformance suite
   unnamed (C84) is listed as its terms are named, `covered`, which the
   spec did not say. 75 lines, 7 of comment, 19,070 to 19,145 from
   b63c7ca: 51 in `check.hpp` and 24 in `compile.hpp`; with C368's 17,
-  its `or` found in review, 92 from 328c497, past the stop at 90.
+  92 from 328c497, past the stop at 90 by the review's fix of C368: a
+  guard holding by an `or` that never read its limit, `ored`, lost its
+  value's status, and a correct answer outweighs two lines.
 
 After a second review (2026-10-13), which took the Jacobian by cells and
 the clause for a limit that does not converge as done, the order from here:
