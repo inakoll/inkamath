@@ -264,7 +264,10 @@ the header writes doubles, every constant the nearest float, for a target that
 computes in float. Its check holds each term within a thousandth of one plus
 the interpreter's and says the most any term came in units of a float, the
 spacing of floats at the interpreter's term, a term of 0 counting none:
-`test/compile/float.ink`. A limit
+`test/compile/float.ink`. Where that most reaches 2^23 units, as a term a
+normal float holds does when lost whole or of the other sign, it names the
+cell and step: `outside.y: within 0.00061, 1e+10 units of a float in y[2,1]
+at step 1101`. A limit
 compiled in float also stops where a step is within twice `FLT_EPSILON` of its
 term, so it may answer where the interpreter says it does not converge.
 

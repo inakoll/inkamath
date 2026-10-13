@@ -1033,7 +1033,7 @@ foreach(report IN ITEMS
         "drone:^drone: 100 steps from 0${in_float}\ndrone\\.y: within 5\\.6e-06, 2\\.3e\\+03 units of a float\n$"
         "far:^far: 100 steps from 0${in_float}\nfar\\.x: within 0\\.99, 16 units of a float\nfar\\.d: 0 at 1, where the interpreter gives 0\\.01\n$"
         "tally:^tally: 100 steps from 0${in_float}\ntally\\.c: within 50, 25 units of a float\n$"
-        "tiny:^tiny: 100 steps from 0${in_float}\ntiny\\.y: within 1e-08, 1\\.1e\\+07 units of a float\ntiny\\.z: within 1e-08\n$"
+        "tiny:^tiny: 100 steps from 0${in_float}\ntiny\\.y: within 1e-08, 1\\.1e\\+07 units of a float at step 0\ntiny\\.z: within 1e-08\n$"
         "steep:^steep: 100 steps from 0${inexact}\nsteep\\.e: inf at 67, where the interpreter gives [0-9.e+-]+\; the interpreter's term about [0-9.e+-]+ from the exact one\n$"
         "blast:^blast: 100 steps from 0${in_float}\nblast\\.y: no value compared, the step NaN where the interpreter gives none, as at 0: p did not converge within 100 terms \\(last term [^)]+\\)\nblast\\.z: no value compared, the step NaN where the interpreter gives none, as at 0: v did not converge within 100 terms \\(last term [^)]+\\)\n$"
         "mark:^mark: 100 steps from 0${inexact}\nmark\\.d: within ${units}\nmark\\.s: within ${units}\n$"
@@ -1056,23 +1056,24 @@ foreach(report IN ITEMS
         "rump:^rump: 100 steps from 0${in_float}\nrump\\.g: 1\\.17260396 at 0, where the interpreter gives -0\\.82739605994682142\n$"
         "year:^year: 100 steps from 0${inexact}\nyear\\.naive: within [0-9.]+, [1-9](\\.[0-9])?e\\+02 units of a float${about}\nyear\\.thm4: within [0-9.e-]+, [1-9](\\.[0-9])? units of a float${about}\n$"
         "needle:^needle: 100 steps from 0${inexact}\nneedle\\.heron: 0\\.0186444204 at 0, where the interpreter gives 0\\.016146540115034271\; the interpreter's term about [0-9.e+-]+ from the exact one\nneedle\\.kahan: within 5\\.3e-10, 0\\.28 units of a float${about}\n$"
-        "big:^big: 100 steps from 0${in_float}\nbig\\.s: within 2e-30, 2\\.1e\\+07 units of a float\nbig\\.t: ${exact}\nbig\\.w: 0 at 0, where the interpreter gives 1\n$"
+        "big:^big: 100 steps from 0${in_float}\nbig\\.s: within 2e-30, 2\\.1e\\+07 units of a float at step 0\nbig\\.t: ${exact}\nbig\\.w: 0 at 0, where the interpreter gives 1\n$"
         "seven:^seven: 100 steps from 0${in_float}\nseven\\.t: within 0\nseven\\.u: within 3\\.8e-06\n$"
         "poly:^poly: 100 steps from 0${in_float}\npoly\\.A: ${exact}\npoly\\.c: ${exact}\npoly\\.d: ${exact}\npoly\\.g: within 0\\.00[0-9]+, [0-9.e+-]+ units of a float\n$"
         "nested:^nested: 100 steps from 0${in_float}\nnested\\.S: ${exact}\nnested\\.w: ${exact}\nnested\\.M: ${exact}\nnested\\.T: ${exact}\nnested\\.y: ${exact}\n$"
         "see:^see: 100 steps from 0${in_float}\nsee\\.Xp: ${exact}\nsee\\.Z: ${exact}\nsee\\.M: ${exact}\nsee\\.s: ${exact}\n$"
-        "knee:^knee: 100 steps from 0${inexact}\n${knee_r}knee\\.r: at 0 the compiled step takes 'r_n = 0' and the interpreter 'r_n \\| y_n > c = y_n - c'\\; the guard of the second is 4\\.2e-11 from its threshold\nknee\\.y: within [0-9.e+-]+, [0-9.e+-]+ units of a float\\; the interpreter's terms about 5\\.8e-11 from the exact ones\nknee\\.r: within 4\\.2e-11, 1\\.2e\\+07 units of a float\\; the interpreter's terms about 5\\.8e-11 from the exact ones\n$"
+        "knee:^knee: 100 steps from 0${inexact}\n${knee_r}knee\\.r: at 0 the compiled step takes 'r_n = 0' and the interpreter 'r_n \\| y_n > c = y_n - c'\\; the guard of the second is 4\\.2e-11 from its threshold\nknee\\.y: within [0-9.e+-]+, [0-9.e+-]+ units of a float\\; the interpreter's terms about 5\\.8e-11 from the exact ones\nknee\\.r: within 4\\.2e-11, 1\\.2e\\+07 units of a float at step 0\\; the interpreter's terms about 5\\.8e-11 from the exact ones\n$"
         "whole:^whole: 100 steps from 0${inexact}\n(whole\\.k[1-4]: within [1-9](\\.[0-9])?e-0[67], [1-9](\\.[0-9])?e\\+0[2-5] units of a float, from 1${about}\n)+whole\\.y: within 0\\.[0-9]+, [1-9](\\.[0-9])?e\\+0[2-5] units of a float${about}\n$"
         "nm:^nm: 100 steps from 0 in float, against exact values until 35 and inexact ones from there\nnm\\.a\\[[0-9],1\\]: [-0-9.e+]+ at [0-9]+, where the interpreter gives [-0-9.e+]+(\\; the interpreter's term about [0-9.e+-]+ from the exact one)?\n(nm\\.[a-z]+: within [0-9.e+-]+, [0-9.e+-]+ units of a float${about}\n)+$"
         "coast_1001:^coast: 1001 steps from 0${in_float}\ncoast\\.v: ${exact}\ncoast\\.y: ${exact}\n$"
         "inside_2000:^inside: 2000 steps from 0 in float, against exact values until 6 and inexact ones from there\ninside\\.y: within 2e-05, 3\\.3e\\+02 units of a float${about}\n$"
-        "outside_2000:^outside: 2000 steps from 0 in float, against exact values until 6 and inexact ones from there\noutside\\.y: within 0\\.00061, 1e\\+10 units of a float${about}\n$"
+        "outside_2000:^outside: 2000 steps from 0 in float, against exact values until 6 and inexact ones from there\noutside\\.y: within 0\\.00061, 1e\\+10 units of a float in y\\[2,1\\] at step 1101${about}\n$"
         "rober:^rober: 100 steps from 0 in float, against exact values until 1 and inexact ones from there\nrober\\.y: within 2\\.6e-07, 4\\.4 units of a float${about}\n$"
         "cd:^cd: 100 steps from 0 in float, against exact values until 85 and inexact ones from there\n(cd\\.[a-z]+: within [1-9](\\.[0-9])?e-0[6-8], [0-9.e+-]+ units of a float${about}\n)+$"
         "small:^small: 100 steps from 0${in_float}\nsmall\\.g: ${exact}\nsmall\\.o: ${exact}\nsmall\\.s: ${exact}\n$"
         "saliency_3:^saliency: 3 steps from 0${in_float}\nsaliency\\.G: ${exact}\n$"
         "carried_4:^carried: 4 steps from 0${in_float}\ncarried\\.x: within [0-9.e+-]+, [0-9.e+]+ units of a float\ncarried\\.y: within [0-9.e+-]+, [0-9.]+ units of a float\n$"
-        "factored:^factored: 100 steps from 0 in float, ${until1f}\n(factored\\.(Sp|K|N): within ${floats}, from 1${about}\n)+factored\\.S: within ${floats}${about}\nfactored\\.x: within [0-9.e+-]+, [1-9](\\.[0-9])? units of a float${about}\n$"
+        "factored:^factored: 100 steps from 0 in float, ${until1f}\n(factored\\.(Sp|K|N): within ${floats}( in N\\[[12],[1-3]\\] at step [0-9]+)?, from 1${about}\n)+factored\\.S: within ${floats}${about}\nfactored\\.x: within [0-9.e+-]+, [1-9](\\.[0-9])? units of a float${about}\n$"
+        "shove:^shove: 100 steps from 0${in_float}\nshove\\.s: within 5\\.9e-08, 1\\.4e\\+07 units of a float at step 5\nshove\\.y: within 5\\.9e-08, 1\\.4e\\+07 units of a float in y\\[2,1,1\\] at step 7\n$"
         "naive:^naive: 100 steps from 0 in float, ${until1f}\n(naive\\.(Pp|K|P): within [^\n]+\n)+naive\\.L\\[1,1\\]: [-a-z()]+ at 1, where the interpreter gives 0\\.00099999999750012493\\; the interpreter's term about [0-9.e+-]+ from the exact one\nnaive\\.x: within [^\n]+\n$"
         "sole:^sole: 100 steps from 0${inexact}\n(sole\\.[gy]: within [0-9.e+-]+, 0\\.[0-9]+ units of a float${about}\n)+$"
         "cls:^cls: 100 steps from 0${inexact}\ncls\\.z: within 2\\.4e-08, 0\\.49 units of a float\ncls\\.q: within 1\\.9e-06, 1\\.5 units of a float${about}\ncls\\.s: within 6\\.3e-08, 2\\.1 units of a float${about}\ncls\\.loss: within 4\\.1e-07, 3\\.8 units of a float${about}\n$")
@@ -1082,20 +1083,6 @@ foreach(report IN ITEMS
     string(SUBSTRING "${report}" ${colon} -1 expected)
     set_tests_properties(check_float_${instance}_report PROPERTIES PASS_REGULAR_EXPRESSION "${expected}")
 endforeach()
-# --check naming the cell and step of its worst units (DESIGN.md), specified
-# before it is built: each skipped while its line names neither, as today.
-add_test(NAME check_float_outside_2000_cell COMMAND check_float_outside_2000)
-add_test(NAME check_float_tiny_cell COMMAND check_float_tiny)
-set_tests_properties(check_float_outside_2000_cell PROPERTIES
-    SKIP_REGULAR_EXPRESSION "1e\\+10 units of a float\\;" PASS_REGULAR_EXPRESSION
-    "^outside: 2000 steps from 0 in float, against exact values until 6 and inexact ones from there\noutside\\.y: within 0\\.00061, 1e\\+10 units of a float in y\\[2,1\\] at step 1101${about}\n$")
-set_tests_properties(check_float_tiny_cell PROPERTIES
-    SKIP_REGULAR_EXPRESSION "1\\.1e\\+07 units of a float\n" PASS_REGULAR_EXPRESSION
-    "^tiny: 100 steps from 0${in_float}\ntiny\\.y: within 1e-08, 1\\.1e\\+07 units of a float at step 0\ntiny\\.z: within 1e-08\n$")
-set_tests_properties(check_float_shove_report PROPERTIES
-    SKIP_REGULAR_EXPRESSION "^shove: 100 steps from 0${in_float}\nshove\\.s: within 5\\.9e-08, 1\\.4e\\+07 units of a float\nshove\\.y: within 5\\.9e-08, 1\\.4e\\+07 units of a float\n$"
-    PASS_REGULAR_EXPRESSION
-    "^shove: 100 steps from 0${in_float}\nshove\\.s: within 5\\.9e-08, 1\\.4e\\+07 units of a float at step 5\nshove\\.y: within 5\\.9e-08, 1\\.4e\\+07 units of a float in y\\[2,1,1\\] at step 7\n$")
 
 # Random models, compiled and held to the interpreter's answers: the generator
 # runs both at build time and writes one C file, built and run like the others.

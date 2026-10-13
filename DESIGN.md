@@ -4555,7 +4555,7 @@ that exploring seven domains asked of the interpreter, by how many asked.
 
   119 lines of `compile.hpp`, 133 added and 14 removed, 10 of them
   comment; 18,304 lines in all.
-- **`--check` names the cell and step of its worst units**: a float run of
+- `[done]` **`--check` names the cell and step of its worst units**: a float run of
   Robertson's kinetics passed with its small concentrations negative and
   50 times off, and `outside`'s in `test/compile/robertson.ink` passes at
   1e+10 units, the line saying neither which cell nor where. They are
@@ -4648,6 +4648,14 @@ that exploring seven domains asked of the interpreter, by how many asked.
   names the cell and step:
   `outside.y: within 0.00061, 1e+10 units of a float in y[2,1] at step
   1101`."
+
+  Built as specified, and no departure in what a line says: the five
+  regexes and two recorded lines above moved, `factored.N` `in N[2,1] at
+  step 2` and `naive.P` `in P[1,1] at step 1` here too, no golden. The
+  parting cell and the units line's share `cell_`, which the units line
+  calls with the name past the instance's. 13 lines, 25 added and 12
+  removed in `check.hpp`, 1 of them comment, 3 over the prototype's;
+  18,567 lines in all, 18,554 at 28bbb18.
 - **`--check`'s remainder of a limit assumes linear convergence**: C36's
   step*r/(1-r) reads the ratio of two steps, pessimistic for Newton's
   quadratic convergence, whose last step is far below the one before.
