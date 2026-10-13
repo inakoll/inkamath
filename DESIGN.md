@@ -1874,6 +1874,9 @@ closures need one anyway, and can bring it.
 | C359 `[fixed]` | **A grad refusal quoted a matrix point across lines.** The point is printed as an answer is, a row to a line and its columns aligned, so `grad_(w = [1; 2])` at a comparison's jump said "a comparison jumps at w = [1;" and then " 2]" on a line of its own, where a row's point reads on one. Found specifying mateq. The point is now on one line, its rows parted by "; " and its columns by ", ", unaligned: "floor jumps at v = [10; 2]". In 7 lines, 1 of comment, and 1 removed; `reverse.ink` holds it. No other golden moves. |
 | C360 `[fixed]` | **`--check`'s disturbed runs moved each read of a limit apart.** A limit is not remembered, and each read was moved by a coin of its own in the third run, and rounded to a double by one in each, so two reads of one limit at one step, which a compiled step gives as one value, were two: `y_n \| lim h(u_n) == lim h(u_n) = lim h(u_n)`, `h(s)_k = h(s)_(k-1)/2 + s`, said "a disturbed run takes 'y_n = 0' ... exactly on its threshold", and `lim half(1) - lim half(1)` was estimated 1.2e-10 from 0. Found reviewing a spec. A run now keeps each limit it reads at a step by its call, as the memo keeps a term, and a read again there is the value it was; a series without an upper bound, a limit grad walks and a local's limit are still moved at each read. No report moves; `layered`'s program does, its limit `lim s([a; 1])` read by each term of o's walk now one value at a step, its line's estimate as it was. In 12 lines, 2 of comment, and 1 removed; `reread` and `equal` in `test/compile/straddle.ink` hold it. |
 | C361 `[fixed]` | **A straddle of a guard the compiled step folds went unsaid by --check.** Straddles were looked for in the sequences whose clause the step keeps, the flips', and a guard whose threshold and reads are constant folds to the interpreter's clause and keeps none: `g_n \| lim half(1) >= 1/2 - 1/10^11 = 1`, tie's guard with its threshold written, was "about 1 from the exact ones" and no word of why, where tie's line says the run moved up takes the first clause. Found reviewing C360. Every sequence a scope names is looked in now, its clauses quoted as a flip's are, and only the kept ones gain the flips' arrays. No report or check program moves. In 30 lines, 3 of comment, and 11 removed; `folded` in `test/compile/straddle.ink` holds it. |
+| C362 `[fixed]` | **A single value read past its cell through a function's parameter was refused in words not its own.** A parameter with no default and an input with no size compile as single values, and a cell read past one is refused by its name (C83, C144), but not through a parameter, as `iekf.ink`'s `blk(X_n)` reads X, whose X_0 is X0: "row 1, column 2 is outside a 1x1 matrix"; nor through a sequence that reads such a parameter, `X_n = A` with `X_n[1, 2]`. The refusal now follows a call's argument as written where the call is, and a sequence's parameters as its inputs: "X reads X0, a single value, as riekf gives it no default". No header, check program or golden moves. In 28 lines of `compile.hpp`, 3 of comment, and 8 removed; `test/cli.cmake`'s `compile_unstated_argument` holds it. |
+| C363 `[fixed]` | **A halving recursion with a base compiled in time cubic in its index.** With `v(x)_0 = x`, `v(x)_k \| k > 999 = x` and `v(x)_k = v(x/2)_(k+1)`, `v(x_n)_999` took 96 s to compile, and `w(x)_k = w(x/2)_(k-1)` with a base at 0, read at 1000, over 60 s to be refused 64 deep. Not exponential, nor a key missing: each term reads one with arguments of its own, so each of the 64 arguments' fills from the base ran again at each read of one of its terms, each term failed throwing again, 64 times 1000 squared. The fill now tries a term once for each depth, as a failure is kept by its depth: 1.4 s and 1.3 s. No header, check program or golden moves, the 242 check programs integration's byte for byte. Found reviewing *recursion from the tip*. In 21 lines of `compile.hpp`, 3 of comment, and 4 removed; `test/cli.cmake`'s `compile_c363` holds it. |
+| C364 `[fixed]` | **A cycle of three or more sequences, its terms before the stream its guards', was refused where it read an input, and compiled in time exponential in its length.** With `a_n \| n < 0 = 1`, `a_n = b_(n-1)/2`, b and c alike and `c_n = a_(n-1)/2 + x_n`, compiling a compiles b and c to read them, and a's read of b was recorded only once b was compiled; so c, compiled first, did not reach itself, was not taken for a recurrence whose terms before the stream init folds (C343), and was computed again at -1 (C71), where it reads x_-1: "b_0 reads x_-1, before the stream, where x has no history", where the interpreter gives a_0 = 1/2. A cycle of two closes on a sequence still compiling, read from its window, and compiles. With no input, the cycle compiled, each term before the stream computed again at each read, so one whose terms read the next twice took 7.6 s to compile at 14 sequences and over 100 at 18. A read is now known to `Reaches` while what it reads compiles: 0.02 s at 40. No golden, expected header or check program moves; a cycle of three or more with no input is written shorter, its terms before the stream folded by init as a cycle of two's are. In 17 lines of `compile.hpp`, 2 of comment, and 5 removed; `compile/history.ink`'s `cycled` and `test/cli.cmake`'s `history_cycled` and `history_cycled_long` hold it. |
 
 **Measure instructions, not the clock.** One of those changes made the matrix
 workload 20 per cent slower by the clock and not by a single instruction: with
@@ -10533,9 +10536,13 @@ they asked, each with its smallest change.
   refused where its function form compiles; integration refused both, and
   forgetting it whenever a term is filled made the halving recursion with a
   base 12 times slower. Accepted.
-- **A halving recursion with a base runs away** at large indices:
+- `[done]` **A halving recursion with a base runs away** at large indices:
   `w(x/2)_(k-1)` read at 1000 takes over 60 s to compile, and read ahead
-  with a base at 1000, 35 s. Found reviewing *recursion from the tip*.
+  with a base at 1000, 35 s. Found reviewing *recursion from the tip*: C363.
+- **A cycle guarded on some of its sequences only**, where the input reaches
+  the term read before the stream, is refused, "b has no history" or "its
+  shape depends on itself", two sequences as three; the interpreter
+  answers. Found fixing C364.
 - `[done]` **A sequence with parameters read at `lim`'s walking index**, a series
   written as on paper: its partial sums under `lim`, its term a sequence of
   its own.
@@ -10842,9 +10849,9 @@ they asked, each with its smallest change.
   multiplied dense**: 5.1k of the 12-state filter's 21k products, its header
   638 KB. Does not join *Shared at every value written twice*: dropped,
   a zero's sign and an infinity's NaN go, which the interpreter keeps.
-- **A parameter with no default compiled as a single value** is named by
+- `[done]` **A parameter with no default compiled as a single value** is named by
   its refusal where read, but not through a function's parameter, as the
-  filter's `blk(X_n)` reads `X0`. Follow the call's argument.
+  filter's `blk(X_n)` reads `X0`. Follow the call's argument: C362.
 
 After an external review of README, MANIFESTO and the conformance suite
 (2026-10-12): its directions, ranked. Its open questions are in

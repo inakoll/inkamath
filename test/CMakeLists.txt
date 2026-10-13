@@ -202,7 +202,7 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brin
                          history:lit history:rise history:ajar history:sown history:nest history:kin history:vast
                          history:twice history:relayed history:pole history:grown history:paired
                          history:looped history:stepped history:opened history:waited
-                         history:rooted history:heeded history:aliased history:floored
+                         history:rooted history:heeded history:aliased history:floored history:cycled
                          history:huge history:sever history:veiled history:cloaked history:two history:hid history:masked
                          nan:run nan:sign nan:shy nan:slope nan:pair
                          nan:lap nan:trim nan:any nan:cell nan:held nan:idle nan:imag nan:took nan:shut nan:row nan:root
@@ -868,6 +868,8 @@ set_tests_properties(check_aliased_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^aliased: 100 steps from 0, against exact values\naliased\\.y: within 0, from 1\naliased\\.x: within 0\naliased\\.r: within 0\n$")
 set_tests_properties(check_floored_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^floored: 100 steps from 0, against exact values\nfloored\\.y: within 0\nfloored\\.x: within 0\nfloored\\.r: within 0\nfloored\\.z: within 0\n$")
+set_tests_properties(check_cycled_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^cycled: 100 steps from 0, against exact values\ncycled\\.a: within 0\ncycled\\.b: within 0\ncycled\\.c: within 0\n$")
 set_tests_properties(check_huge_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^huge: 100 steps from 0, against exact values\nhuge\\.y: inf at 31, where the interpreter's term is too large for a double\n$")
 set_tests_properties(check_root_report PROPERTIES PASS_REGULAR_EXPRESSION
