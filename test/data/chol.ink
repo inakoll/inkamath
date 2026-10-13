@@ -1,9 +1,9 @@
 # The Cholesky factor in the prelude, chol(A): L lower triangular with a
-# positive diagonal and L*L' = A, by Cholesky's recurrence, reading A's
-# lower triangle alone (DESIGN.md, next in line). Every value was worked
-# out apart from the interpreter, as its specification: the exact ones in
-# Python's fractions, the inexact ones by hand and in mpmath at 50 digits,
-# printed as the interpreter prints a matrix.
+# positive diagonal and L*L' = A, by Cholesky's recurrence, A symmetric
+# (DESIGN.md, next in line). Every value was worked out apart from the
+# interpreter, as its specification: the exact ones in Python's
+# fractions, the inexact ones by hand and in mpmath at 50 digits, printed
+# as the interpreter prints a matrix.
 
 # The factor of L*L', L lower triangular of rationals with a positive
 # diagonal, is L itself, exactly: each pivot is the square of L's diagonal.
@@ -61,12 +61,12 @@ M[j<=12, k<=12] | j >= k = (j + k)/(j*k + 1)
 [~2,           0;
  ~1, ~1.41421356]
 
-# The upper triangle is not read, as LAPACK's and numpy's factors do not
-# read it: a product rounded apart in its two triangles is factored as
-# what its lower one says.
->> chol([4 100; 2 3])
-[2,           0;
- 1, ~1.41421356]
+# Refused where A is not symmetric, as eig refuses such a B, the test
+# being exact here. Compiled, the lower triangle alone is read, as
+# LAPACK's is: a product rounded apart in its two triangles is factored
+# as what its lower one says (DESIGN.md).
+>> chol([4 1; 2 3])
+error: chol needs a symmetric matrix
 
 # Refused where a pivot is not above 0, as a singular matrix has no
 # inverse: indefinite, singular, a negative number, and a pivot 0 at the
@@ -92,7 +92,7 @@ error: chol takes A[j<=n, k<=n], not a 2x3 matrix
 >> chol([i])
 error: a comparison needs real numbers, not ~(i)
 
->> chol([4 0; i 3])
+>> chol([4 i; i 3])
 [       2,           0;
  ~(i*0.5), ~1.80277564]
 
