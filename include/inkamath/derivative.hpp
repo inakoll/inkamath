@@ -1225,6 +1225,8 @@ private:
             for (int k = first; k != last;) {
                 Jet next = term(++k);
                 series.Ranked(*next[0]);
+                // A maximum is continuous as max is; an index steps (C215).
+                if (series.Indexes()) Stepped(kept), Stepped(next);
                 const T    truth = series.Later(*kept[0], *next[0]);
                 const bool moves = Moves(kept) || Moves(next);
                 chosen_          = chosen_ || (moves && numeric_interface<T>::approximated(truth));
