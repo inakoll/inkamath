@@ -11314,6 +11314,11 @@ After an external review of README, MANIFESTO and the conformance suite
   and C357's 11, 18,510 to 18,554 lines at c9aa165. chol and C356 are 33
   lines, inside the stop at 40; C357 fixes the exponential compile of any
   recurrence by cells, so it is counted on its own, though chol relies on it.
+  Since the second review, the interpreter refuses an A that is not
+  symmetric, `chol needs a symmetric matrix`, by a test of its value in
+  C++ that no guard, grad or disturbed run of `--check` reads, so none of
+  the prototype's three costs returns; compiled, the lower triangle alone
+  is still read, a covariance symmetric exactly not being so in doubles.
 - `[done]` **A clause for a limit that does not converge**, one guard
   meaning the same in the interpreter and the step, NaN kept where none is
   written. MANIFESTO asks whether converging is a value, a guard or a
@@ -11592,10 +11597,11 @@ the clause for a limit that does not converge as done, the order from here:
   where it runs out**, so that a reviewer can audit the fallback's
   direction: `brake | lim dist(...) < margin = 1` before a default of 0
   skips the brake on a failure.
-- **`chol` refuses a matrix that is not symmetric**, as `eig(A, B)` refuses
-  such a B, in the interpreter, where the test is exact. Compiled it reads
-  the lower triangle, as LAPACK's does: a covariance symmetric exactly is
-  not in doubles, and a test there would make a square-root filter NaN.
+- `[done]` **`chol` refuses a matrix that is not symmetric**, as `eig(A,
+  B)` refuses such a B, in the interpreter, where the test is exact.
+  Compiled it reads the lower triangle, as LAPACK's does: a covariance
+  symmetric exactly is not in doubles, and a test there would make a
+  square-root filter NaN.
 - *A split step's arrays read in place*, above; then increments 4 and 5 of
   the loops decided on its measures.
 - The gather, integer and optional inputs, and exact discretisation, below.

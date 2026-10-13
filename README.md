@@ -700,12 +700,12 @@ error: eig needs B symmetric positive definite
 diagonal and L*L' = A, as a square-root filter writes `L = chol(P)`. It is
 Cholesky's recurrence written in the prelude, each cell computed once, so
 it is exact where every pivot is the square of a rational, and `grad` and
-the compiler take it as any definition. chol reads only the lower triangle
-of A: the upper one is never looked at, so a matrix that is not symmetric
-is factored as its lower triangle says, without a word. Of complex
-entries it is L L' = A with ' the plain transpose, not the Hermitian
-factor L L^H. A pivot not above 0, of a matrix indefinite or singular, is
-refused:
+the compiler take it as any definition. chol refuses a matrix that is not
+symmetric, as eig refuses such a B; compiled, where a covariance symmetric
+exactly is not in doubles, it reads only the lower triangle of A. Of
+complex entries it is L L' = A with ' the plain transpose, not the
+Hermitian factor L L^H. A pivot not above 0, of a matrix indefinite or
+singular, is refused:
 
 ```
 >> chol([4 2 -2; 2 10 1/2; -2 1/2 9/4])
@@ -719,6 +719,9 @@ refused:
 
 >> chol([1 2; 2 1])
 error: chol needs a positive definite matrix
+
+>> chol([4 1; 2 3])
+error: chol needs a symmetric matrix
 ```
 
 `hinf(A, B, C, D)` is the H-infinity norm of the stable system x' = Ax +
