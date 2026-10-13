@@ -160,6 +160,9 @@ solves each step of a stiff equation by Newton's method, a sequence with
 parameters under `lim`, and `test/compile/logistic.ink` trains a logistic
 regression, its `exp` a limit written in inkamath, as `test/compile/softmax.ink`
 writes softmax and cross-entropy, `log` being Newton's method on `exp`. A
+guard that reads a limit whose walk runs out does not hold, as interpreted:
+`test/compile/fallback.ink` is an MPC whose plan falls back to a fixed gain
+where projected gradient cycles. A
 sequence with parameters read at a constant index, `f(x)_K`, is written out
 as a sum with constant bounds is, each term below the one read a temporary of
 the step: `test/compile/iterates.ink` takes a determinant by Faddeev-LeVerrier,
@@ -1022,6 +1025,41 @@ y_n=w_n+1/n-1/(2*n^2)+1/(6*n^3)-1/(30*n^5)
 Twenty corrected terms give every digit that is printed. An acceleration is a
 sequence like any other, so which one to use stays the user's decision — it
 is the mathematics, and no built-in choice would be right for every series.
+
+A guard that reads a limit that does not converge does not hold, and the
+clause after it is tried, so a solver's answer is taken where it passes the
+paper's own test of it, a residual or a bound, and a fallback elsewhere.
+Newton's method on x^3 - 2x + 2 settles from -2, and from 0 cycles 0, 1, 0,
+... without end:
+
+```
+>> F(x) = x^3 - 2*x + 2
+F(x) = x^3 - 2*x + 2
+
+>> nw(x)_0 = x
+nw(x)_0 = x
+
+>> nw(x)_k = nw(x)_(k-1) - F(nw(x)_(k-1))/(3*nw(x)_(k-1)^2 - 2)
+nw(x)_k = nw(x)_(k-1) - F(nw(x)_(k-1))/(3*nw(x)_(k-1)^2 - 2)
+
+>> root(x) | abs(F(lim nw(x))) < 1/10^6 = lim nw(x)
+root(x) | abs(F(lim nw(x))) < 1/10^6 = lim nw(x)
+
+>> root(x) = x
+root(x) = x
+
+>> root(-2)
+~-1.76929235
+
+>> root(0)
+~0
+```
+
+The fallback is inexact: whether a walk settles is read from its steps as
+doubles. A guard that cannot be read whole does not hold, so `lim nw(x) < 0
+or x < 1` does not hold at 0; a term the guard reads, and a limit's own
+terms, refuse as they always did, and where no clause comes after, the
+limit's refusal stands. A term that is NaN refuses the limit outright.
 
 A sum or a product over an index is written as on paper, with `_` for the
 index and its first value and `^` for its last. The body is a term — it runs

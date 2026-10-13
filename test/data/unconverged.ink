@@ -1,9 +1,9 @@
-# A clause for a limit that does not converge (DESIGN.md, next in line): a
-# guard that reads a limit that does not converge does not hold, so the
-# clause after it is tried, and its answer is inexact. Every value was
-# worked out apart from the interpreter: the terms in Python's fractions,
-# walked by README section 4's rule written again in Python, the roots in
-# mpmath at 50 digits.
+# A clause for a limit that does not converge (DESIGN.md): a guard that
+# reads a limit that does not converge does not hold, so the clause after
+# it is tried, and its answer is inexact. Every value was worked out apart
+# from the interpreter: the terms in Python's fractions, walked by README
+# section 4's rule written again in Python, the roots in mpmath at 50
+# digits.
 
 # Newton's method on F(x) = x^3 - 2x + 2. From -2 it converges to the real
 # root, -1.76929235423863 by mpmath, at its fifth term; from 0 its terms are

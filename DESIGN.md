@@ -11002,12 +11002,12 @@ After an external review of README, MANIFESTO and the conformance suite
   and C357's 11, 18,510 to 18,554 lines at c9aa165. chol and C356 are 33
   lines, inside the stop at 40; C357 fixes the exponential compile of any
   recurrence by cells, so it is counted on its own, though chol relies on it.
-- **A clause for a limit that does not converge**, one guard meaning the
-  same in the interpreter and the step, NaN kept where none is written.
-  MANIFESTO asks whether converging is a value, a guard or a property of
-  the definition that takes it: a guard. The roadmap's MPC with a fallback
-  clause, and Newton's method within a step, written as a paper writes
-  them, "the solution where the iteration converges, otherwise ...":
+- `[done]` **A clause for a limit that does not converge**, one guard
+  meaning the same in the interpreter and the step, NaN kept where none is
+  written. MANIFESTO asks whether converging is a value, a guard or a
+  property of the definition that takes it: a guard. The roadmap's MPC with
+  a fallback clause, and Newton's method within a step, written as a paper
+  writes them, "the solution where the iteration converges, otherwise ...":
 
   ```
   u_n | abs(x_n + lim qp(x_n)) <= abs(x_n) = lim qp(x_n)
@@ -11156,6 +11156,31 @@ After an external review of README, MANIFESTO and the conformance suite
   be taken and only then. With the implementation the spec becomes a golden,
   the skip goes, `planned` and `held` join the checks with the reports
   `fallback.ink` gives, and the spec suite goes if the tolerance has landed.
+
+  Built as specified and ruled. Every entry passes as written, and the spec
+  is the golden `unconverged.ink`; the spec suite goes, the tolerance
+  having landed; `compile_fallback` passes unskipped; `planned` and `held`
+  are checks, `held` named `fallback_held` beside `nan.ink`'s. What moved:
+  no golden, report or expected header; every check program with a limit,
+  in text, a scalar limit's function taking the flag and a matrix's
+  answering its status, each with its NaN test; `test/cli.cmake`'s
+  excerpts of `level`, `walked`, `float_gate` and the hoisted walks with
+  them. README section 4 gains Newton's entries and the rule, and the
+  paragraph on compiled limits the clause; MANIFESTO's question goes, its
+  solver within a step answered by a guard and `solved_n`. Departures:
+  `planned`'s report gives no estimate, `planned.x: within 0`, every term
+  a double exactly and every walk that settles stopping on a step of 0, so
+  `fallback.ink`'s comment says so; a guard reading a limit of constants
+  that runs out is refused compiled, "cannot compile y: nw did not
+  converge within 100 terms", where the interpreter takes the clause
+  after, as a limit of constants is folded by the interpreter at compile
+  time; a cell whose guard reads such a limit, with no clause after for
+  it, is refused in the limit's words even where a matrix written whole
+  would give the cell, as before the change; a function's compiled call
+  remembers the statuses its limits are asked by, so that a guard calling
+  it again asks them. 113 lines, 19 of them comment, 18,644 to 18,757 at
+  d06a5b5: the interpreter's 64, the compiler's 49; inside the stop at
+  180.
 - `[done]` **A tolerance relative to the term**, the 1e-10 being absolute.
   Of the same roadmap line, but a change of its own, which may land before
   or after the clause: neither's spec reads the other.

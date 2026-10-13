@@ -52,7 +52,7 @@ endforeach()
 # take 22 s, and reverse_memo.ink's one entry, its 600,000 under reverse
 # mode, 38.
 set_tests_properties(reverse_memo.ink PROPERTIES TIMEOUT 120)
-foreach(suite IN ITEMS bignum line_editor matrix prelude spec)
+foreach(suite IN ITEMS bignum line_editor matrix prelude)
     add_test(NAME ${suite} COMMAND inkamath_tests --test-suite=${suite} --no-intro)
     set_tests_properties(${suite} PROPERTIES TIMEOUT 60)
 endforeach()
@@ -143,9 +143,8 @@ foreach(model IN ITEMS pid pid_clamped kalman kalman2 fir heat adc net mix loop 
                      ${CMAKE_CURRENT_SOURCE_DIR}/compile/expected/${model}.h ${header})
 endforeach()
 
-# A clause for a limit that does not converge (DESIGN.md), specified before
-# it is built: fallback.ink's models against the values its harness knows,
-# skipped while the step is NaN where the clause after is to be taken.
+# A clause for a limit that does not converge (DESIGN.md): fallback.ink's
+# models against the values its harness knows.
 set(fallback_headers "")
 foreach(model IN ITEMS mpc newton rooted paired)
     set(header ${CMAKE_CURRENT_BINARY_DIR}/compile/fallback_${model}.h)
@@ -164,7 +163,6 @@ target_link_libraries(compile_fallback PRIVATE inkamath_warnings
 set_target_properties(compile_fallback PROPERTIES
                       C_STANDARD 11 C_STANDARD_REQUIRED ON C_EXTENSIONS OFF)
 add_test(NAME compile_fallback COMMAND compile_fallback)
-set_tests_properties(compile_fallback PROPERTIES SKIP_RETURN_CODE 77)
 
 # 2^k as a step computes it, exact for every k the prelude scales by.
 add_executable(compile_powers compile/powers.c)
@@ -244,7 +242,8 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brin
                          tip:reach tip:rested series:taylor series:wave series:later
                          sums:summed sums:halving sums:cancelled reduce:pooled reduce:shied
                          orthogonal:rational orthogonal:inexact orthogonal:probe
-                         chol:factored chol:naive chol:sole placed:placed)
+                         chol:factored chol:naive chol:sole placed:placed
+                         fallback:planned fallback:held)
     string(REPLACE ":" ";" checked ${checked})
     list(POP_FRONT checked file instance count)
     set(name ${instance})
@@ -891,6 +890,11 @@ set_tests_properties(check_evened_report PROPERTIES PASS_REGULAR_EXPRESSION
 # C353's walk past 225,000, held now that a step is measured against its term.
 set_tests_properties(check_weighed_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^weighed: 100 steps from 0, against exact values until 0 and inexact ones from there\nweighed\\.y: within 2${about}\n$")
+# compile/fallback.ink: the clause after a guard reading a limit that runs out.
+set_tests_properties(check_planned_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^planned: 100 steps from 0, against exact values until 0 and inexact ones from there\nplanned\\.x: within 0\nplanned\\.solved: within 0\nplanned\\.u: within 0\n$")
+set_tests_properties(check_fallback_held_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^held: 100 steps from 0, against exact values until 1 and inexact ones from there\nheld\\.x: within [0-9.e+-]+${about}\n$")
 set_tests_properties(check_twonames_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^twonames: 100 steps from 0, against exact values until 0 and inexact ones from there\ntwonames\\.a: within [0-9.e-]+${about}\ntwonames\\.b: within [0-9.e-]+${about}\n$")
 set_tests_properties(check_fir_report PROPERTIES PASS_REGULAR_EXPRESSION

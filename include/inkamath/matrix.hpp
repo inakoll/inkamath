@@ -430,6 +430,11 @@ public:
         return largest;
     }
 
+    static bool Nan(const Matrix<T>& a) {
+        return std::any_of(a.data(), a.data() + a.extent_.count(),
+                           [](const T& x) { return std::isnan(numeric_interface<T>::abs(x)); });
+    }
+
     // What a distance is measured in, for the remainder --check moves a limit by.
     static double Scale(const Matrix<T>& a) {
         double largest = 1;

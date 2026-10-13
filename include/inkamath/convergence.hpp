@@ -9,6 +9,15 @@
 
 #include "inkamath/numeric_interface.hpp"
 
+// A walk that ran out, its values numbers that never settled, which a guard
+// reading it takes for one that does not hold (DESIGN.md, a clause for a
+// limit that does not converge); 'past' if its last was approximated (C68).
+struct Unconverged : std::runtime_error {
+    Unconverged(const std::string& what, bool approximated)
+        : std::runtime_error(what), past(approximated) {}
+    bool past;
+};
+
 // When a run of values has reached its limit. One rule for the language: 'lim'
 // walks the terms of a sequence with it, and a series without an upper bound
 // its partial sums.
@@ -25,7 +34,8 @@ public:
     // 'what' names the values when the reason they cannot be compared -- a
     // matrix has no absolute value, two terms have different sizes -- would
     // otherwise read as an internal error.
-    explicit Convergence(std::string what) : what_(std::move(what)) {}
+    explicit Convergence(std::string what, std::string value = "a term")
+        : what_(std::move(what)), value_(std::move(value)) {}
 
     // A limit is approached and not reached, so it is inexact even when every
     // value was exact and it lands on a whole number (DESIGN.md,
@@ -45,6 +55,10 @@ public:
     // The next value; true when it is the limit. The first is never: one value
     // has nothing to be compared with.
     [[nodiscard]] bool Next(const T& value) {
+        // A step cannot tell its NaN from a value refused, so neither is a
+        // walk that runs out.
+        if (T::Nan(value))
+            throw std::runtime_error(what_ + " has no limit: " + value_ + " is " + Last(value));
         if (started_) {
             const Step step = [&]() {
                 try {
@@ -86,7 +100,7 @@ private:
         return step * ratio / (1 - ratio);
     }
 
-    std::string what_;
+    std::string what_, value_;
     T           previous_{};
     Step        previous_step_{};
     Step        remainder_{};
