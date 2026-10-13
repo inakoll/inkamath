@@ -1480,9 +1480,10 @@ endif()
 # Made in part 2 too, which part 3 runs without.
 file(MAKE_DIRECTORY "${OUT}/float")
 
-# grad refuses eig and smax where A moves (DESIGN.md, eig and smax); x
-# compiles, its prelude's A' == A two matrices compared, its header 1.7 MB.
-file(WRITE "${OUT}/eig.ink" "x_n = eig([n 1; 1 2])[1]\ny_n = smax([n 2; 3 4])\ng_n = grad_(a = n) eig([a 1; 1 2])[1]\nh_n = grad_(a = n) smax([a 2; 3 4])\n")
+# grad refuses eig and smax where A moves (DESIGN.md, eig and smax). An eig
+# where A moves compiles since two matrices compare, its header 1.7 MB, too
+# slow a case for the sanitizers to write.
+file(WRITE "${OUT}/eig.ink" "y_n = smax([n 2; 3 4])\ng_n = grad_(a = n) eig([a 1; 1 2])[1]\nh_n = grad_(a = n) smax([a 2; 3 4])\n")
 set(args --compile eig.ink)
 set(stdout "cannot compile g: grad cannot differentiate eig yet\ncannot compile h: grad cannot differentiate smax yet\n")
 set(exit 1)
