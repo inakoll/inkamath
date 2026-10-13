@@ -246,7 +246,8 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brin
                          orthogonal:rational orthogonal:inexact orthogonal:probe
                          chol:factored chol:naive chol:sole placed:placed
                          fallback:planned fallback:held fallback:ranout
-                         fallback:tipped fallback:columned fallback:answered)
+                         fallback:tipped fallback:columned fallback:answered
+                         fallback:rootless fallback:coupled fallback:braked fallback:buffered)
     string(REPLACE ":" ";" checked ${checked})
     list(POP_FRONT checked file instance count)
     set(name ${instance})
@@ -321,8 +322,10 @@ set_tests_properties(check_founded_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^founded: 100 steps from 0, against exact values until 0 and inexact ones from there\nfounded\\.x: at 0 a disturbed run takes 's\\(c\\)_k \\| lim half\\(1\\) >= c = 1' and the interpreter 's\\(c\\)_k = 0'\\; the guard of the first is 4\\.8e-11 from its threshold\nfounded\\.x: within 0\\; the interpreter's terms about 1 from the exact ones, past the tolerance from 0\n$")
 set_tests_properties(check_reread_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^reread: ${straddled}\nreread\\.y: within 0\nreread\\.g: within 0\n$")
-set_tests_properties(check_equal_report PROPERTIES PASS_REGULAR_EXPRESSION
-    "^equal: ${straddled}\nequal\\.y: within 1\\.1e-16${about}\n$")
+set_tests_properties(check_equal_report PROPERTIES SKIP_REGULAR_EXPRESSION
+    "^equal: ${straddled}\nequal\\.y: within 1\\.1e-16${about}\n$"
+    PASS_REGULAR_EXPRESSION
+    "^equal: ${straddled}\nequal\\.y: within 1\\.1e-16${about}\nequal\\.y: where lim h runs out, 'y_n \\| lim h\\(u_n\\) == lim h\\(u_n\\) = lim h\\(u_n\\)' falls to 'y_n = 0'\n$")
 set_tests_properties(check_folded_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^folded: ${straddled}\nfolded\\.g: at 0 a disturbed run takes 'g_n \\| lim half\\(1\\) >= 1/2 - 1/10\\^11 = 1' and the interpreter 'g_n = 0'\\; the guard of the first is 4\\.8e-11 from its threshold\nfolded\\.g: within 0\\; the interpreter's terms about 1 from the exact ones, past the tolerance from 0\n$")
 # compile/steps.ink, each over its --steps n: runaway at 1000 fails as wild does.
@@ -898,18 +901,49 @@ set_tests_properties(check_evened_report PROPERTIES PASS_REGULAR_EXPRESSION
 set_tests_properties(check_weighed_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^weighed: 100 steps from 0, against exact values until 0 and inexact ones from there\nweighed\\.y: within 2${about}\n$")
 # compile/fallback.ink: the clause after a guard reading a limit that runs out.
-set_tests_properties(check_planned_report PROPERTIES PASS_REGULAR_EXPRESSION
-    "^planned: 100 steps from 0, against exact values until 0 and inexact ones from there\nplanned\\.x: within 0\nplanned\\.solved: within 0\nplanned\\.u: within 0\n$")
-set_tests_properties(check_fallback_held_report PROPERTIES PASS_REGULAR_EXPRESSION
-    "^held: 100 steps from 0, against exact values until 1 and inexact ones from there\nheld\\.x: within [0-9.e+-]+${about}\n$")
-set_tests_properties(check_ranout_report PROPERTIES PASS_REGULAR_EXPRESSION
-    "^ranout: 100 steps from 0, against exact values until 0 and inexact ones from there\nranout\\.y: within 0\nranout\\.z: within 0\n$")
-set_tests_properties(check_tipped_report PROPERTIES PASS_REGULAR_EXPRESSION
-    "^tipped: 100 steps from 0, against exact values until 0 and inexact ones from there\ntipped\\.y: within 0\n$")
-set_tests_properties(check_columned_report PROPERTIES PASS_REGULAR_EXPRESSION
-    "^columned: 100 steps from 0, against exact values until 0 and inexact ones from there\ncolumned\\.y: within 0\n$")
-set_tests_properties(check_answered_report PROPERTIES PASS_REGULAR_EXPRESSION
-    "^answered: 100 steps from 0, against exact values until 0 and inexact ones from there\nanswered\\.r: within 0\nanswered\\.y: within 0\n$")
+# Each report ends listing the guards that read a limit, and the clause after
+# each (DESIGN.md, next in line), specified before it is built: skipped while
+# it ends as today, and only then; so is straddle.ink's 'equal'.
+set_tests_properties(check_planned_report PROPERTIES SKIP_REGULAR_EXPRESSION
+    "^planned: 100 steps from 0, against exact values until 0 and inexact ones from there\nplanned\\.x: within 0\nplanned\\.solved: within 0\nplanned\\.u: within 0\n$"
+    PASS_REGULAR_EXPRESSION
+    "^planned: 100 steps from 0, against exact values until 0 and inexact ones from there\nplanned\\.x: within 0\nplanned\\.solved: within 0\nplanned\\.u: within 0\nplanned\\.solved: where lim qp runs out, 'solved_n \\| abs\\(x_n \\+ lim qp\\(x_n\\)\\) <= abs\\(x_n\\) = 1' falls to 'solved_n = 0'\nplanned\\.u: where lim qp runs out, 'u_n \\| abs\\(x_n \\+ lim qp\\(x_n\\)\\) <= abs\\(x_n\\) = lim qp\\(x_n\\)' falls to 'u_n = -x_n/2'\n$")
+set_tests_properties(check_fallback_held_report PROPERTIES SKIP_REGULAR_EXPRESSION
+    "^held: 100 steps from 0, against exact values until 1 and inexact ones from there\nheld\\.x: within [0-9.e+-]+${about}\n$"
+    PASS_REGULAR_EXPRESSION
+    "^held: 100 steps from 0, against exact values until 1 and inexact ones from there\nheld\\.x: within [0-9.e+-]+${about}\nheld\\.x: where lim nv runs out, 'x_n \\| abs\\(G\\(lim nv\\(c_n\\), c_n\\)\\) < 1/10\\^6 = lim nv\\(c_n\\)' falls to 'x_n = x_\\(n-1\\)'\n$")
+set_tests_properties(check_ranout_report PROPERTIES SKIP_REGULAR_EXPRESSION
+    "^ranout: 100 steps from 0, against exact values until 0 and inexact ones from there\nranout\\.y: within 0\nranout\\.z: within 0\n$"
+    PASS_REGULAR_EXPRESSION
+    "^ranout: 100 steps from 0, against exact values until 0 and inexact ones from there\nranout\\.y: within 0\nranout\\.z: within 0\nranout\\.f: where lim nv runs out, 'f\\(v\\)\\[j\\] \\| lim nv\\(v\\[j\\]\\) > 0 = j' falls to NaN\nranout\\.y: where lim nv runs out, 'y_n\\[j<=2\\] \\| lim nv\\(j\\*c_n/2\\) > 0 = j' falls to NaN\n$")
+set_tests_properties(check_tipped_report PROPERTIES SKIP_REGULAR_EXPRESSION
+    "^tipped: 100 steps from 0, against exact values until 0 and inexact ones from there\ntipped\\.y: within 0\n$"
+    PASS_REGULAR_EXPRESSION
+    "^tipped: 100 steps from 0, against exact values until 0 and inexact ones from there\ntipped\\.y: within 0\ntipped\\.r: where lim nv runs out, 'r\\(x, c\\) \\| lim nv\\(c\\) > 0 = x\\^2' falls to NaN under grad\n$")
+set_tests_properties(check_columned_report PROPERTIES SKIP_REGULAR_EXPRESSION
+    "^columned: 100 steps from 0, against exact values until 0 and inexact ones from there\ncolumned\\.y: within 0\n$"
+    PASS_REGULAR_EXPRESSION
+    "^columned: 100 steps from 0, against exact values until 0 and inexact ones from there\ncolumned\\.y: within 0\ncolumned\\.y: where lim M runs out, 'y_n \\| \\[1, 1\\]\\*lim M\\(c_n\\) > 0 = 1' falls to 'y_n = 0'\n$")
+set_tests_properties(check_answered_report PROPERTIES SKIP_REGULAR_EXPRESSION
+    "^answered: 100 steps from 0, against exact values until 0 and inexact ones from there\nanswered\\.r: within 0\nanswered\\.y: within 0\n$"
+    PASS_REGULAR_EXPRESSION
+    "^answered: 100 steps from 0, against exact values until 0 and inexact ones from there\nanswered\\.r: within 0\nanswered\\.y: within 0\nanswered\\.inner: where lim nv runs out, 'inner\\(c\\) \\| lim nv\\(c\\) > 0 = 1' falls to 'inner\\(c\\) = 5'\n$")
+set_tests_properties(check_rootless_report PROPERTIES SKIP_REGULAR_EXPRESSION
+    "^rootless: 100 steps from 0, against exact values\nrootless\\.y: no value compared, the step NaN where the interpreter gives none, as at 0: division by zero\n$"
+    PASS_REGULAR_EXPRESSION
+    "^rootless: 100 steps from 0, against exact values\nrootless\\.y: no value compared, the step NaN where the interpreter gives none, as at 0: division by zero\nrootless\\.y: where lim hs runs out, 'y_n \\| lim hs\\(c_n\\) > 0 = lim hs\\(c_n\\)' falls to 'y_n = 0'\n$")
+set_tests_properties(check_coupled_report PROPERTIES SKIP_REGULAR_EXPRESSION
+    "^coupled: 100 steps from 0, against exact values until 0 and inexact ones from there\ncoupled\\.y: within 0\n$"
+    PASS_REGULAR_EXPRESSION
+    "^coupled: 100 steps from 0, against exact values until 0 and inexact ones from there\ncoupled\\.y: within 0\ncoupled\\.y: where lim nv runs out, 'y_n \\| sum_\\(j=1\\)\\^2 lim nv\\(j\\*c_n\\) < 2 = 1' falls to 'y_n = 0'\n$")
+set_tests_properties(check_braked_report PROPERTIES SKIP_REGULAR_EXPRESSION
+    "^braked: 100 steps from 0, against exact values until 0 and inexact ones from there\nbraked\\.brake: within 0\nbraked\\.careful: within 0\nbraked\\.wheels: within 0\n$"
+    PASS_REGULAR_EXPRESSION
+    "^braked: 100 steps from 0, against exact values until 0 and inexact ones from there\nbraked\\.brake: within 0\nbraked\\.careful: within 0\nbraked\\.wheels: within 0\nbraked\\.brake: where lim nv runs out, 'brake_n \\| lim nv\\(c_n\\) < 1 = 1' falls to 'brake_n = 0'\nbraked\\.careful: where lim nv runs out, 'careful_n \\| lim nv\\(c_n\\) >= 1 = 0' falls to 'careful_n = 1'\nbraked\\.wheels: where lim nv runs out, 'wheels_n\\[j<=2\\] \\| lim nv\\(j\\*c_n/2\\) < 1 = 1' falls to 'wheels_n\\[j<=2\\] = 0'\n$")
+set_tests_properties(check_buffered_report PROPERTIES SKIP_REGULAR_EXPRESSION
+    "^buffered: 100 steps from 0, against exact values until 0 and inexact ones from there\nbuffered\\.alarm: within 0\nbuffered\\.brake: within 0\n$"
+    PASS_REGULAR_EXPRESSION
+    "^buffered: 100 steps from 0, against exact values until 0 and inexact ones from there\nbuffered\\.alarm: within 0\nbuffered\\.brake: within 0\nbuffered\\.alarm: where lim nv runs out, 'alarm_n \\| near\\(c_n\\) == 1 = 1' falls to 'alarm_n = 0'\nbuffered\\.gap: where lim nv runs out, 'gap\\(c\\) \\| lim nv\\(c\\) > 0 = lim nv\\(c\\)' falls to 'gap\\(c\\) = 0'\nbuffered\\.near: where lim nv runs out, 'near\\(c\\) \\| lim nv\\(c\\) < 1 = 1' falls to NaN\n$")
 set_tests_properties(check_twonames_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^twonames: 100 steps from 0, against exact values until 0 and inexact ones from there\ntwonames\\.a: within [0-9.e-]+${about}\ntwonames\\.b: within [0-9.e-]+${about}\n$")
 set_tests_properties(check_fir_report PROPERTIES PASS_REGULAR_EXPRESSION

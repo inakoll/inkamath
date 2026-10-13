@@ -4,6 +4,14 @@
 # or no clause comes after, the step is NaN as today. fallback_test.c holds
 # each model to values computed apart from the interpreter, in Python's
 # fractions and by README section 4's rule.
+#
+# Where a limit runs out the clause after is taken, which is safe only where
+# the guarded clause is the risky one. --check lists, after the per-term
+# lines, every guard the step compiles that reads a limit, and the clause
+# after it, so that a reviewer can audit the direction (DESIGN.md, next in
+# line; specified, not yet built). rootless, coupled, braked and buffered
+# give theirs; every other report below then ends with its own, as
+# test/CMakeLists.txt gives them.
 
 # A small MPC with a fallback clause: the plan minimises 2(x + v)^2 + v^2/2
 # over |v| <= 1 by projected gradient with a step of 1/2, too long for the
@@ -60,6 +68,13 @@ rooted(c_n) = {
     y_n | lim hs(c_n) > 0 = lim hs(c_n)
     y_n = 0
 }
+# The list is the code's, not the run's: no walk runs out here, and the
+# guard is listed. Checked:
+#
+#     rootless: 100 steps from 0, against exact values
+#     rootless.y: no value compared, the step NaN where the interpreter gives none, as at 0: division by zero
+#     rootless.y: where lim hs runs out, 'y_n | lim hs(c_n) > 0 = lim hs(c_n)' falls to 'y_n = 0'
+rootless = rooted(c_n = 2)
 
 # A limit in a sum's terms within a guard: a sum's bounds are constants, so
 # it is written out, and each term's limit is read as the guard's own. From
@@ -72,6 +87,12 @@ paired(c_n) = {
     y_n | sum_(j=1)^2 lim nv(j*c_n) < 2 = 1
     y_n = 0
 }
+# Checked:
+#
+#     coupled: 100 steps from 0, against exact values until 0 and inexact ones from there
+#     coupled.y: within 0
+#     coupled.y: where lim nv runs out, 'y_n | sum_(j=1)^2 lim nv(j*c_n) < 2 = 1' falls to 'y_n = 0'
+coupled = paired(c_n = (1 + mod(n, 2))/2)
 
 # A cell whose guard reads a limit that runs out, with no clause after for
 # it, refuses the matrix in the limit's words, though a cell no clause
@@ -144,3 +165,54 @@ inward(c_n) = {
     y_n = 0
 }
 answered = inward(c_n = 1 + mod(n, 2))
+
+# A brake whose guard reads a solver's limit, the risky clause first: where
+# Newton runs out, 'brake' falls to 0 and does not brake. 'careful' asks the
+# opposite question, and falls to braking. Newton from 0 on x^3 - 2x + c
+# settles at c = 1/2 and 1, near 0.2586520225 and 0.6180339887, below 1,
+# and cycles at 2. So brake_n is 1 at even n and 0 at odd, careful_n 1
+# throughout, and wheels_n, a clause per cell at c_n/2 and c_n, [1; 1] at
+# even n and [1; 0] at odd. One line a clause, not a cell. Checked:
+#
+#     braked: 100 steps from 0, against exact values until 0 and inexact ones from there
+#     braked.brake: within 0
+#     braked.careful: within 0
+#     braked.wheels: within 0
+#     braked.brake: where lim nv runs out, 'brake_n | lim nv(c_n) < 1 = 1' falls to 'brake_n = 0'
+#     braked.careful: where lim nv runs out, 'careful_n | lim nv(c_n) >= 1 = 0' falls to 'careful_n = 1'
+#     braked.wheels: where lim nv runs out, 'wheels_n[j<=2] | lim nv(j*c_n/2) < 1 = 1' falls to 'wheels_n[j<=2] = 0'
+braking(c_n) = {
+    nv(c)_0 = 0
+    nv(c)_k = nv(c)_(k-1) - (nv(c)_(k-1)^3 - 2*nv(c)_(k-1) + c)/(3*nv(c)_(k-1)^2 - 2)
+    brake_n | lim nv(c_n) < 1 = 1
+    brake_n = 0
+    careful_n | lim nv(c_n) >= 1 = 0
+    careful_n = 1
+    wheels_n[j<=2] | lim nv(j*c_n/2) < 1 = 1
+    wheels_n[j<=2] = 0
+}
+braked = braking(c_n = 1 + mod(n, 2))
+
+# Through a function: 'gap' has a clause after its guard, so it answers
+# where Newton runs out, 0, and the guard of 'brake' that reads it is listed
+# for nothing; 'near' has none, so the guard of 'alarm' falls too. brake_n
+# is 1 throughout, alarm_n 1 at even n and 0 at odd. Checked:
+#
+#     buffered: 100 steps from 0, against exact values until 0 and inexact ones from there
+#     buffered.alarm: within 0
+#     buffered.brake: within 0
+#     buffered.alarm: where lim nv runs out, 'alarm_n | near(c_n) == 1 = 1' falls to 'alarm_n = 0'
+#     buffered.gap: where lim nv runs out, 'gap(c) | lim nv(c) > 0 = lim nv(c)' falls to 'gap(c) = 0'
+#     buffered.near: where lim nv runs out, 'near(c) | lim nv(c) < 1 = 1' falls to NaN
+relaying(c_n) = {
+    nv(c)_0 = 0
+    nv(c)_k = nv(c)_(k-1) - (nv(c)_(k-1)^3 - 2*nv(c)_(k-1) + c)/(3*nv(c)_(k-1)^2 - 2)
+    gap(c) | lim nv(c) > 0 = lim nv(c)
+    gap(c) = 0
+    brake_n | gap(c_n) < 1 = 1
+    brake_n = 0
+    near(c) | lim nv(c) < 1 = 1
+    alarm_n | near(c_n) == 1 = 1
+    alarm_n = 0
+}
+buffered = relaying(c_n = 1 + mod(n, 2))

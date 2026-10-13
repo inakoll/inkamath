@@ -212,6 +212,11 @@ reread = twice()
 #
 #     equal: 100 steps from 0, against exact values until 0 and inexact ones from there
 #     equal.y: within 1.1e-16; the interpreter's terms about <e> from the exact ones
+#
+# Its guard reads a limit, so the report then ends listing it (DESIGN.md,
+# next in line; specified, not yet built):
+#
+#     equal.y: where lim h runs out, 'y_n | lim h(u_n) == lim h(u_n) = lim h(u_n)' falls to 'y_n = 0'
 idiom(u_n) = {
     h(s)_0 = 0
     h(s)_k = h(s)_(k-1)/2 + s
