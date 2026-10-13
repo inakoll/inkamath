@@ -2036,9 +2036,11 @@ check(compile_reduce)
 holds(compile_reduce aware.h "(isnan(m_->x[0][0][0]) || isnan(m_->x[0][1][0]) ? NAN : "
       "m_->x[0][0][0] < m_->x[0][1][0] ? m_->x[0][1][0] : m_->x[0][0][0])")
 file(WRITE "${OUT}/reduced.ink" "e_n = max_(k=3)^1 k*x_n\n"
-     "g_n = grad_(w = x_n) max_(k=1)^3 (k*w - k^2)\nh_n = argmin_(k=0)^1000 k*x_n\n")
+     "g_n = grad_(w = x_n) max_(k=1)^3 (k*w - k^2)\nh_n = argmin_(k=0)^1000 k*x_n\n"
+     "a_n = grad_(w = x_n) argmax_(k=1)^3 (k*w - k^2)\n")
 set(args --compile reduced.ink)
-string(CONCAT stdout "cannot compile e: the maximum has no terms: k runs from 3 to 1\n"
+string(CONCAT stdout "cannot compile a: a derivative of an argmax, for now\n"
+       "cannot compile e: the maximum has no terms: k runs from 3 to 1\n"
        "cannot compile g: a derivative of a maximum, for now\n"
        "cannot compile h: the argmin has more than 1000 terms\n")
 set(exit 1)
