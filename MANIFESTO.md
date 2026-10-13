@@ -197,7 +197,7 @@ hold, so the clause after it is the fallback, and a status the host wants is a
 sequence the model writes with the solver's own test, `solved_n | abs(x_n +
 lim qp(x_n)) <= abs(x_n) = 1`, `solved_n = 0`. A variant with a fixed number
 of iterations is worth having for code whose execution time has to be bounded.
-The derivative remains the user's to write, until differentiation exists.
+The derivative is written by hand or taken by `grad`.
 
 ### Tensors
 
