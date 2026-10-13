@@ -10926,8 +10926,8 @@ After an external review of README, MANIFESTO and the conformance suite
     build with contraction off. A compiler may vectorise across cells,
     not across a sum without -ffast-math.
   - **NaN by name**: an array joins `nan_temporaries_` where `MayNan`
-    reads any operand cell, or an operand array is in it, or a cell
-    carries a NaN of its own, as an inverse's does (C308): `t5_`, whose
+    reads any operand cell, or an operand array is in it, or a cell's
+    text writes NaN, as an inverse's does (C308): `t5_`, whose
     cells are `(t4_ ? NAN : ...)`, and every product read from it. So
     `Nan`, `Called` and C189's and C335's tests read its name as they
     read the text it replaces. No may-NaN flag per cell.
