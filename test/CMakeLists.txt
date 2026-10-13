@@ -76,7 +76,6 @@ foreach(part 1 2 3)
                      -P ${CMAKE_CURRENT_LIST_DIR}/cli.cmake)
     set_tests_properties(cli_${part} PROPERTIES TIMEOUT 120)
 endforeach()
-
 # bench's workloads, each a transcript bench/run.cmake measures, replayed so
 # that one gone stale fails here rather than at its next measure. The
 # slowest, under the sanitizers, take 7 s; train.ink is data, no transcript.
@@ -220,6 +219,7 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brin
                          split:carried:4 split:apart:4 pendulum:one spin:twirl:20 iekf:walk:21
                          tip:reach tip:rested series:taylor series:wave series:later
                          sums:summed sums:halving sums:cancelled reduce:pooled reduce:shied
+                         orthogonal:rational orthogonal:inexact orthogonal:probe
                          chol:factored chol:naive chol:sole placed:placed)
     string(REPLACE ":" ";" checked ${checked})
     list(POP_FRONT checked file instance count)
@@ -372,6 +372,18 @@ set_tests_properties(check_pooled_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^pooled: 100 steps from 0, against exact values\npooled\\.a: within 0\npooled\\.l: within 0\npooled\\.m: within 0\npooled\\.p: within 0\n$")
 set_tests_properties(check_shied_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^shied: 100 steps from 0, against exact values\nshied\\.q: within 0\nshied\\.w: within 0\n$")
+# Two matrices compared (DESIGN.md), as compile/orthogonal.ink gives them:
+# rational leaves SO(3) at its first step, where the interpreter never does.
+set(rational_k "rational\\.k: at 1 the compiled step takes 'k_n \\| R_n'\\*R_n <> I3 = k_\\(n-1\\) \\+ 1' and the interpreter 'k_n = k_\\(n-1\\)'\\; the guard of the first is exactly on its threshold\n")
+set(rational_ko "rational\\.k: 1 at 1, where the interpreter gives 0\nrational\\.o: 0 at 1, where the interpreter gives 1\n")
+set_tests_properties(check_rational_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^rational: 100 steps from 0, against exact values\n${rational_k}rational\\.R: within 1\\.9e-14\n${rational_ko}$")
+set_tests_properties(check_inexact_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^inexact: 100 steps from 0, against exact values until 1 and inexact ones from there\ninexact\\.R: within 0${about}\ninexact\\.k: within 0\ninexact\\.o: within 0\n$")
+set_tests_properties(check_probe_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^probe: 100 steps from 0, against exact values\nprobe\\.e: within 0\nprobe\\.g: within 0\nprobe\\.h: within 0\n$")
+add_test(NAME check_rational COMMAND check_rational)
+set_tests_properties(check_rational PROPERTIES WILL_FAIL ON)
 add_test(NAME check_outside_2000 COMMAND check_outside_2000)
 set_tests_properties(check_outside_2000 PROPERTIES WILL_FAIL ON)
 add_test(NAME check_runaway_1000 COMMAND check_runaway_1000)
@@ -979,7 +991,7 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:ledge logistic:gate momentu
                          blocks:nested conv:see straddle:knee apollo11:whole dyn:nm dyn:cd
                          steps:coast:1001 robertson:inside:2000 robertson:outside:2000
                          robertson:rober tensorgrad:small tensorgrad:saliency:3 split:carried:4
-                         chol:factored chol:naive chol:sole float:shove)
+                         orthogonal:rational chol:factored chol:naive chol:sole float:shove)
     string(REPLACE ":" ";" checked ${checked})
     list(POP_FRONT checked file instance count)
     set(name ${instance})
@@ -1008,7 +1020,8 @@ set_tests_properties(check_float_wild check_float_ledge check_float_far check_fl
                      check_float_steep check_float_dies check_float_beat check_float_peak
                      check_float_muller check_float_rounded check_float_surprise
                      check_float_solveur check_float_rump check_float_needle check_float_big
-                     check_float_knee check_float_nm check_float_naive PROPERTIES WILL_FAIL ON)
+                     check_float_knee check_float_nm check_float_naive check_float_rational
+                     PROPERTIES WILL_FAIL ON)
 # Each report as compile/float.ink gives it; what a libm or the seeds decide,
 # by its form.
 set(in_float " in float, against exact values")
@@ -1071,6 +1084,7 @@ foreach(report IN ITEMS
         "cd:^cd: 100 steps from 0 in float, against exact values until 85 and inexact ones from there\n(cd\\.[a-z]+: within [1-9](\\.[0-9])?e-0[6-8], [0-9.e+-]+ units of a float${about}\n)+$"
         "small:^small: 100 steps from 0${in_float}\nsmall\\.g: ${exact}\nsmall\\.o: ${exact}\nsmall\\.s: ${exact}\n$"
         "saliency_3:^saliency: 3 steps from 0${in_float}\nsaliency\\.G: ${exact}\n$"
+        "rational:^rational: 100 steps from 0${in_float}\n${rational_k}rational\\.R: within 6\\.5e-06, 1e\\+04 units of a float\n${rational_ko}$"
         "carried_4:^carried: 4 steps from 0${in_float}\ncarried\\.x: within [0-9.e+-]+, [0-9.e+]+ units of a float\ncarried\\.y: within [0-9.e+-]+, [0-9.]+ units of a float\n$"
         "factored:^factored: 100 steps from 0 in float, ${until1f}\n(factored\\.(Sp|K|N): within ${floats}( in N\\[[12],[1-3]\\] at step [0-9]+)?, from 1${about}\n)+factored\\.S: within ${floats}${about}\nfactored\\.x: within [0-9.e+-]+, [1-9](\\.[0-9])? units of a float${about}\n$"
         "shove:^shove: 100 steps from 0${in_float}\nshove\\.s: within 5\\.9e-08, 1\\.4e\\+07 units of a float at step 5\nshove\\.y: within 5\\.9e-08, 1\\.4e\\+07 units of a float in y\\[2,1,1\\] at step 7\n$"

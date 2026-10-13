@@ -198,7 +198,10 @@ tensor in a limit is refused for now. A block literal,
 `[A, 0; -C, 1]`, is laid out as the interpreter lays it out (section 2),
 each block's cells written into their place: `test/compile/blocks.ink`
 packs a doubling algorithm's iterates into one term, and refuses a block
-that does not fill its band. A header that
+that does not fill its band. Two matrices are compared whole, `R'*R == I3`
+as the equalities of their cells: `test/compile/orthogonal.ink` has a
+rational rotation the step takes out of SO(3) at its first step, which the
+interpreter never does. A header that
 writes NaN anywhere carries it to every term that reads it, as the
 interpreter refuses them: a guard, a comparison and a power reading NaN
 answer NaN, and a matrix or tensor term with a NaN cell is NaN in
