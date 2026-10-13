@@ -4600,6 +4600,11 @@ that exploring seven domains asked of the interpreter, by how many asked.
   - **The values there**, `where the step gives 1.8e-05 and the
     interpreter -2.6e-08`: the line doubles, and `outside.y_1101` is one
     question to a session.
+  - **The onset**, the first term past 2^23: a different measure, which
+    would need a second number on the line, where this one names where
+    its own figure is. Robertson's `outside.y` is past 2^23 from step
+    702, of the other sign first at 734, and worst at 1101, where the
+    interpreter's term is -2.6e-8.
   - **The term's index**, `y_1101[2,1]`, which a session reads: every
     other place in a report is a step, and at another rate the two
     differ.
