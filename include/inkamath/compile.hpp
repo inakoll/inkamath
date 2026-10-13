@@ -641,6 +641,7 @@ private:
         }
         std::vector<std::pair<std::string, Code>> guarded;
         std::optional<Code>                       otherwise;
+        std::set<std::string>                     asked;
         const Clause<Value>* const                lowest = definition.EndBase(true);
         const Setting<bool>                       chosen(chosen_, false);
         // Each clause sees its own index alone, as Reference::Selects binds it (C186).
@@ -661,6 +662,7 @@ private:
                                                         Literal(Value(Number(*at))));
                 const std::optional<std::string> condition =
                     p.guarded() ? Condition(p.guard()) : std::optional<std::string>("");
+                if (p.guarded()) asked.insert(asked_.begin(), asked_.end());
                 if (!condition) continue;
                 if (condition->empty())
                     otherwise = Chosen(Emit(clause.expression));
@@ -668,6 +670,7 @@ private:
                     guarded.emplace_back(*condition, Chosen(Taken(clause.expression)));
             }
         }
+        Told(asked, otherwise.has_value());
         if (guarded.empty()) {
             if (!otherwise)
                 throw Reason(at ? name + " has no clause for index " + std::to_string(*at)
@@ -2198,12 +2201,12 @@ private:
     // it never does.
     std::optional<std::string> Condition(const PExpression<Value>& guard) {
         std::set<std::string>                 asked;
-        std::set<std::string>* const          outer = statuses_;
         const Setting<std::set<std::string>*> asking(statuses_, &asked);
         const Setting<bool> guarding(guarding_, true), moved(moved_, false);
         const Code          code = Quiet(guard);
         chosen_                  = chosen_ || moved_;
         unconverged_.clear();
+        asked_.clear();
         if (!code.Scalar()) throw Reason("a guard that is a matrix");
         if (code.constant) {
             if (!Holds(*code.constant)) return std::nullopt;
@@ -2217,7 +2220,7 @@ private:
         // A truth NaN where a limit it reads ran out does not hold (DESIGN.md).
         std::string ran;
         for (const std::string& status : asked) ran += (ran.empty() ? "" : " || ") + status;
-        if (outer) outer->insert(asked.begin(), asked.end());
+        asked_       = asked;
         unconverged_ = "isnan(" + truth + ") && (" + ran + ")";
         return "isnan(" + truth + ") && !(" + ran + ") ? NAN : " + truth + " == 1.0";
     }
@@ -2827,6 +2830,7 @@ private:
         std::vector<std::pair<std::string, Code>> guarded;
         std::optional<Code>                       otherwise;
         std::string                               ran;
+        std::set<std::string>                     asked;
         const Setting<bool>                       chosen(chosen_, false);
         Walk(
             definition, slice, row, col, [](const Clause<Value>&) { return true; },
@@ -2835,6 +2839,7 @@ private:
                 const std::optional<std::string>   condition =
                     p.guarded() ? Condition(p.guard()) : std::optional<std::string>("");
                 Ran(ran, condition);
+                if (p.guarded()) asked.insert(asked_.begin(), asked_.end());
                 if (!condition) return false;
                 const Code value =
                     Chosen(condition->empty() ? Emit(clause.expression) : Taken(clause.expression));
@@ -2847,6 +2852,7 @@ private:
                     guarded.emplace_back(*condition, value);
                 return condition->empty();
             });
+        Told(asked, otherwise.has_value());
         if (guarded.empty()) return otherwise ? *otherwise : fallback;
         Code last = otherwise ? *otherwise : Chosen(fallback);
         if (!otherwise && !ran.empty()) {
@@ -2861,6 +2867,11 @@ private:
     void Ran(std::string& ran, const std::optional<std::string>& condition) const {
         if (condition && !condition->empty() && !unconverged_.empty())
             ran += (ran.empty() ? "" : " || ") + unconverged_;
+    }
+    // A chain with a clause after its guards has answered where their limits
+    // ran out; one without is NaN there, which its caller's guard asks about.
+    void Told(const std::set<std::string>& asked, bool answered) {
+        if (statuses_ && !answered) statuses_->insert(asked.begin(), asked.end());
     }
     static std::string Unless(const std::string& ran, const std::string& cell) {
         return ran.empty() ? cell : "(" + ran + " ? NAN : " + cell + ")";
@@ -5983,6 +5994,7 @@ private:
     // Where a guard's truth is NaN, what asks whether a limit it reads ran out.
     std::set<std::string>*           statuses_ = nullptr;
     std::string unconverged_;  // where the last guard compiled read a limit that ran out
+    std::set<std::string> asked_;  // and the statuses it asked
     bool                             roots_    = false;  // whether C may take a root of x < 0
     bool moved_  = false;  // whether a value with a part was compiled, as a guard asks
     bool chosen_ = false;  // whether a guard of the chain compiled read one
