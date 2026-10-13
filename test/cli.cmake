@@ -659,6 +659,17 @@ set(args --compile nodefault.ink m -o m.h)
 set(stderr "inkamath: cannot compile y: A is a single value, as m gives it no default: give it one of its size, at least j<=1, k<=2\n")
 set(exit 1)
 check(compile_unstated_parameter)
+# And through a function's parameter, as iekf.ink's blk(X_n) reads X0.
+file(APPEND "${OUT}/nodefault.ink" "blk(X) = X[1, 2]\ntwice(Y) = 2*blk(Y)\n"
+     "mb(A, x_n) = {\n    X_n = A\n    y_n = twice(X_n)*x_n\n}\ncl(x_n) = {\n    y_n = blk(x_n)\n}\n")
+set(args --compile nodefault.ink mb -o mb.h)
+set(stderr "inkamath: cannot compile y: X reads A, a single value, as mb gives it no default: give it one of its size, at least j<=1, k<=2\n")
+set(exit 1)
+check(compile_unstated_argument)
+set(args --compile nodefault.ink cl -o cl.h)
+set(stderr "inkamath: cannot compile y: x is a single value, as cl states no size for it: write 'x_n[j<=1, k<=2]'\n")
+set(exit 1)
+check(compile_unstated_argument_input)
 
 # Every run of --check walks the prelude's definitions, so that its programs
 # hold the compiled functions to the walk (DESIGN.md): log, 16 references
