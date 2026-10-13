@@ -191,8 +191,7 @@ nw(xp, u)_k = nw(xp, u)_(k-1) - F(nw(xp, u)_(k-1), xp, u)/dF(nw(xp, u)_(k-1), xp
 x_n = lim nw(x_(n-1), u_n)
 ```
 
-What is missing is in the compiler, which refuses `lim`. Compiling it as a
-bounded loop with the same stopping rule would cost no new syntax, and whether
+Compiled, it is a bounded loop with the same stopping rule, and whether
 the step converged is a guard: one that reads a limit that runs out does not
 hold, so the clause after it is the fallback, and a status the host wants is a
 sequence the model writes with the solver's own test, `solved_n | abs(x_n +
@@ -295,7 +294,7 @@ generator is a recurrence over `mod`, which the prelude has.
 
 Softmax, cross-entropy, sigmoid and tanh need `exp` and `log`. Written as
 series in the interpreter, as `README.md` writes `exp`, they make the reference
-inexact; in the compiler they are refused while `lim` is (*A solver within a
+inexact; in the compiler they are walks, as `lim` is (*A solver within a
 step*). Embedded deployments approximate them anyway, by polynomial or by
 pieces, which the language can express. Whether they belong in a prelude
 written in inkamath or as built-ins is the question `DESIGN.md` already
