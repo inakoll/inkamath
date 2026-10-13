@@ -10917,7 +10917,9 @@ After an external review of README, MANIFESTO and the conformance suite
     walk never settles, `weighed`'s departure. With a clause, that is a
     step taking the fallback's other side. Relative, the tolerance is never
     under 4.5e5 ulps of the term, and the two decide alike at any size.
-    The README's paragraph on it goes, and `weighed`'s comment.
+    The README's paragraph on it goes, with `weighed`'s comment and the
+    departure in C353's row; section 4's "the 1e-10 is absolute" and
+    "agree to within 1e-10" say relative above 1.
   - **The cost**: a limit above 1 is known to ten significant digits, not
     to 1e-10: `steep`'s terms, near 800, about 4.6e-8 from the exact ones
     where they were 1.2e-10. The nine digits shown, and `--check`'s
