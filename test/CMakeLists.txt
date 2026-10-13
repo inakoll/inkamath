@@ -73,7 +73,9 @@ foreach(part 1 2 3)
              COMMAND ${CMAKE_COMMAND} -DEXE=$<TARGET_FILE:inkamath_cli> -DPART=${part}
                      -DOUT=${CMAKE_CURRENT_BINARY_DIR}/cli_${part}
                      -DCASE_TIMEOUT=${cli_case_timeout} -DCC=${CMAKE_C_COMPILER}
-                     -DCC_ID=${CMAKE_C_COMPILER_ID} -P ${CMAKE_CURRENT_LIST_DIR}/cli.cmake)
+                     -DCC_ID=${CMAKE_C_COMPILER_ID}
+                     "-DTIMED=$<NOT:$<OR:$<CONFIG:Debug>,$<BOOL:${INKAMATH_SANITIZE}>>>"
+                     -P ${CMAKE_CURRENT_LIST_DIR}/cli.cmake)
     set_tests_properties(cli_${part} PROPERTIES TIMEOUT 120)
 endforeach()
 # bench's workloads, each a transcript bench/run.cmake measures, replayed so
