@@ -3009,12 +3009,17 @@ private:
         text += iterate;
         text += "        if (started_) {\n";
         // A step within an ulp or two of the term may be an exact 0 rounded,
-        // and is taken for one (C353).
-        const std::string noise = floats ? "" : " && d_ > 2 * DBL_EPSILON * fabs(t_[i_][j_])";
+        // and is taken for one (C353). Each against max(1, |its term|), as
+        // the interpreter measures it.
+        const auto scale = [](const std::string& t) { return " / fmax(1.0, fabs(" + t + "))"; };
+        const std::string cell = "t_[i_][j_]";
+        const std::string noise =
+            floats ? "" : " && d_ > 2 * DBL_EPSILON * fabs(" + cell + ")" + scale(cell);
         if (scalar) {
             text += "            step_ = fabs(t_ - t1_);\n";
             if (!floats)
                 text += "            if (step_ <= 2 * DBL_EPSILON * fabs(t_)) step_ = 0.0;\n";
+            text += "            step_ = step_" + scale("t_") + ";\n";
         } else {
             text += "            step_ = 0.0;\n";
             if (floats) text += "            int near_ = 1;\n";
@@ -3022,19 +3027,19 @@ private:
                     "; ++i_)\n";
             text += "                for (int j_ = 0; j_ < " + std::to_string(walked.size.cols) +
                     "; ++j_) {\n";
-            text += "                    const double d_ = fabs(t_[i_][j_] - t1_[i_][j_]);\n";
+            text += "                    const double d_ = fabs(t_[i_][j_] - t1_[i_][j_])" +
+                    scale(cell) + ";\n";
             text += "                    if (isnan(d_) || (d_ > step_" + noise + ")) step_ = d_;\n";
             if (floats)
-                text +=
-                    "                    near_ &= d_ <= 2 * FLT_EPSILON * fabsf(t_[i_][j_]) && "
-                    "isfinite(t_[i_][j_]);\n";
+                text += "                    near_ &= d_ <= 2 * FLT_EPSILON * fabsf(t_[i_][j_])" +
+                        scale(cell) + " && isfinite(t_[i_][j_]);\n";
             text += "                }\n";
         }
         // A float closes on finite floats a unit or two apart (DESIGN.md, a float target);
         // a step of 0 is left to the rule below, which a pause does not pass (C279).
         if (floats)
-            text += scalar ? "            if (step_ > 0 && step_ <= 2 * FLT_EPSILON * fabsf(t_) && "
-                             "isfinite(t_) && stepped_) return t_;\n"
+            text += scalar ? "            if (step_ > 0 && step_ <= 2 * FLT_EPSILON * fabsf(t_)" +
+                                 scale("t_") + " && isfinite(t_) && stepped_) return t_;\n"
                            : "            if (near_ && step_ > 0 && stepped_) {\n"
                              "                memcpy(out_, t_, sizeof t_);\n"
                              "                return;\n            }\n";
@@ -5854,7 +5859,7 @@ private:
         };
         for (std::size_t at = out.find('\n'); floats && at < out.size(); ++at)
             for (const std::string from :
-                 {"double", "fabs(", "floor(", "pow(", "sqrt(", "0.0", "1.0"})
+                 {"double", "fabs(", "fmax(", "floor(", "pow(", "sqrt(", "0.0", "1.0"})
                 if (!inside(at - 1) && out.compare(at, from.size(), from) == 0 &&
                     (from.back() == '(' || !inside(at + from.size()))) {
                     if (from == "double")

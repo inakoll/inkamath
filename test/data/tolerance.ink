@@ -1,10 +1,10 @@
-# A tolerance relative to the term (DESIGN.md, next in line): a step, and
-# the remainder its ratio implies, are measured in each cell against
-# max(1, |the cell's term|), so the 1e-10 is absolute below 1 and relative
-# above. Every value was worked out apart from the interpreter: the terms
-# in Python's fractions, walked by README section 4's rule written again in
-# Python with the steps so measured, and what an inexact answer reads
-# rounded to doubles as the interpreter rounds it.
+# A tolerance relative to the term (DESIGN.md): a step, and the remainder
+# its ratio implies, are measured in each cell against max(1, |the cell's
+# term|), so the 1e-10 is absolute below 1 and relative above. Every value
+# was worked out apart from the interpreter: the terms in Python's
+# fractions, walked by README section 4's rule written again in Python with
+# the steps so measured, and what an inexact answer reads rounded to
+# doubles as the interpreter rounds it.
 
 # The partial sums of e. Measured against e, the step 1/13! is under 1e-10
 # of it, and the remainder too, so the walk stops a term before 1/14!:

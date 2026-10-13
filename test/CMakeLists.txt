@@ -288,7 +288,7 @@ set_tests_properties(check_flat_report PROPERTIES PASS_REGULAR_EXPRESSION
 set_tests_properties(check_halved_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^halved: 100 steps from 0, against exact values until 0 and inexact ones from there\nhalved\\.x: within 0\nhalved\\.y: within 0\n$")
 set_tests_properties(check_steep_report PROPERTIES PASS_REGULAR_EXPRESSION
-    "^steep: 100 steps from 0, against exact values until 0 and inexact ones from there\nsteep\\.y: within 0\\; the interpreter's terms about [1-9](\\.[0-9])?e-1[01] from the exact ones\n$")
+    "^steep: 100 steps from 0, against exact values until 0 and inexact ones from there\nsteep\\.y: within 0\\; the interpreter's terms about [1-9](\\.[0-9])?e-08 from the exact ones\n$")
 set_tests_properties(check_giant_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^giant: 100 steps from 0, against exact values until 0 and inexact ones from there\ngiant\\.y: within 0\\; the interpreter's terms about [1-9](\\.[0-9])?e\\+186 from the exact ones\n$")
 # A guard the disturbed runs straddle (DESIGN.md), as compile/straddle.ink
@@ -380,7 +380,7 @@ set_tests_properties(check_rested_report PROPERTIES PASS_REGULAR_EXPRESSION
 # but y's, whose walk stops on its own steps alone (DESIGN.md).
 set(series "100 steps from 0, against exact values until 0 and inexact ones from there")
 set_tests_properties(check_taylor_report PROPERTIES PASS_REGULAR_EXPRESSION
-    "^taylor: ${series}\ntaylor\\.R: within 4\\.4e-15${about}\ntaylor\\.y: within 1\\.1e-12${about}\n$")
+    "^taylor: ${series}\ntaylor\\.R: within 4\\.4e-15${about}\ntaylor\\.y: within 9\\.1e-13${about}\n$")
 set_tests_properties(check_wave_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^wave: ${series}\nwave\\.z: within 2\\.1e-15${about}\n$")
 # later's as measured, as it has no packed form.
@@ -392,7 +392,7 @@ set_tests_properties(check_later_report PROPERTIES PASS_REGULAR_EXPRESSION
 # limits' are a recurrence (1.2e-15, 1.1e-12 and 3e-14 on the baseline).
 # halving's factorials are whole and at most !11, exact in doubles.
 set_tests_properties(check_summed_report PROPERTIES PASS_REGULAR_EXPRESSION
-    "^summed: ${series}\nsummed\\.J: within 1\\.1e-15${about}\nsummed\\.R: within 4\\.4e-15${about}\nsummed\\.p: within 8\\.9e-16${about}\nsummed\\.u: within 1\\.1e-12${about}\nsummed\\.y: within 9\\.1e-13${about}\nsummed\\.z: within 4e-14${about}\n$")
+    "^summed: ${series}\nsummed\\.J: within 1\\.1e-15${about}\nsummed\\.R: within 4\\.4e-15${about}\nsummed\\.p: within 8\\.9e-16${about}\nsummed\\.u: within 9\\.1e-13${about}\nsummed\\.y: within 9\\.1e-13${about}\nsummed\\.z: within 4e-14${about}\n$")
 set_tests_properties(check_halving_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^halving: 100 steps from 0, against exact values\nhalving\\.f: within 0\n$")
 set_tests_properties(check_cancelled_report PROPERTIES PASS_REGULAR_EXPRESSION
@@ -888,9 +888,9 @@ set_tests_properties(check_evens_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^evens: 100 steps from 0, against exact values until 0 and inexact ones from there\nevens\\.y: within [0-9.e-]+${about}\n$")
 set_tests_properties(check_evened_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^evened: 100 steps from 0, against exact values until 0 and inexact ones from there\nevened\\.y: within [0-9.e-]+${about}\n$")
-# C353's departure: the step answers where the interpreter refuses.
+# C353's walk past 225,000, held now that a step is measured against its term.
 set_tests_properties(check_weighed_report PROPERTIES PASS_REGULAR_EXPRESSION
-    "^weighed: 100 steps from 0, against exact values\nweighed\\.y: 100000000000003\\.[0-9]+ at 0, where the interpreter gives none: s did not converge within 100 terms")
+    "^weighed: 100 steps from 0, against exact values until 0 and inexact ones from there\nweighed\\.y: within 2${about}\n$")
 set_tests_properties(check_twonames_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^twonames: 100 steps from 0, against exact values until 0 and inexact ones from there\ntwonames\\.a: within [0-9.e-]+${about}\ntwonames\\.b: within [0-9.e-]+${about}\n$")
 set_tests_properties(check_fir_report PROPERTIES PASS_REGULAR_EXPRESSION

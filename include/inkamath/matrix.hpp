@@ -413,17 +413,28 @@ public:
     }
 
     // How far apart two terms of a limit are: their largest difference, cell
-    // by cell. Of two shapes there is no distance, where a difference would
-    // stretch a single value over the other.
+    // by cell, each against max(1, |the cell's term|), so absolute below 1
+    // and relative above (DESIGN.md, a tolerance relative to the term). Of
+    // two shapes there is no distance, where a difference would stretch a
+    // single value over the other.
     static auto distance(const Matrix<T>& a, const Matrix<T>& b) {
         if (a.extent_ != b.extent_)
             throw std::runtime_error("its terms are " + b.extent_.toString() + ", then " +
                                      a.extent_.toString());
         decltype(numeric_interface<T>::abs(a.data()[0])) largest = 0;
         for (size_t k = 0; k < a.extent_.count(); ++k) {
-            const auto d = numeric_interface<T>::abs(a.data()[k] - b.data()[k]);
+            const auto m = numeric_interface<T>::abs(a.data()[k]);
+            const auto d = numeric_interface<T>::abs(a.data()[k] - b.data()[k]) / (m > 1 ? m : 1);
             if (std::isnan(d) || d > largest) largest = d;  // NaN, once, stays
         }
+        return largest;
+    }
+
+    // What a distance is measured in, for the remainder --check moves a limit by.
+    static double Scale(const Matrix<T>& a) {
+        double largest = 1;
+        for (size_t k = 0; k < a.extent_.count(); ++k)
+            largest = std::max(largest, double(numeric_interface<T>::abs(a.data()[k])));
         return largest;
     }
 

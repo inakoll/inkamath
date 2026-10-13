@@ -78,8 +78,8 @@ halved = halving()
 
 # A limit 'grad' walks is moved as any other, its derivative by the remainder
 # of its own steps. 'steep' doubles the derivative of 'bowl', 4n exactly; the
-# interpreter's terms are 8n less what the series left, 1.2e-10 from the exact
-# ones at 2, and 2.9e-11 at 1, never past the tolerance:
+# interpreter's terms are 8n less what the series left, n/2^31 from the exact
+# ones, 4.6e-8 at 99, never past the tolerance:
 #
 #     steep: 100 steps from 0, against exact values until 0 and inexact ones from there
 #     steep.y: within 0; the interpreter's terms about <e> from the exact ones

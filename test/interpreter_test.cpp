@@ -131,6 +131,9 @@ TEST_CASE("roots") {
 TEST_CASE("chol") {
     check_transcript("chol.ink");
 }
+TEST_CASE("tolerance") {
+    check_transcript("tolerance.ink");
+}
 TEST_CASE("decimals") {
     check_transcript("decimals.ink");
 }
@@ -390,18 +393,14 @@ TEST_CASE("nested calls parse in linear time") {
 
 TEST_SUITE_END();
 
-// A clause for a limit that does not converge, and a tolerance relative to
-// the term, which the interpreter does not have yet. Marked may_fail so the
-// gap is reported on every run without gating CI, and never recorded: a
-// specification taken from the code it judges is worth nothing.
+// A clause for a limit that does not converge, which the interpreter does
+// not have yet. Marked may_fail so the gap is reported on every run without
+// gating CI, and never recorded: a specification taken from the code it
+// judges is worth nothing.
 TEST_SUITE_BEGIN("spec");
 
 TEST_CASE("unconverged" * doctest::may_fail()) {
     check_spec("spec/unconverged.ink");
-}
-
-TEST_CASE("tolerance" * doctest::may_fail()) {
-    check_spec("spec/tolerance.ink");
 }
 
 TEST_SUITE_END();

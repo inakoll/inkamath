@@ -159,11 +159,7 @@ the interpreter would say it does not converge: `test/compile/newton.ink`
 solves each step of a stiff equation by Newton's method, a sequence with
 parameters under `lim`, and `test/compile/logistic.ink` trains a logistic
 regression, its `exp` a limit written in inkamath, as `test/compile/softmax.ink`
-writes softmax and cross-entropy, `log` being Newton's method on `exp`. Past
-a term of about 225,000 a double cannot show a step within the 1e-10, so there
-it answers what the doubles converge to, and may answer where the interpreter
-does not: `s(x)_0 = x*10^14` and `s(x)_k = s(x)_(k-1) + 0.8^k` give about
-1e14 + 4, as a float target may. A
+writes softmax and cross-entropy, `log` being Newton's method on `exp`. A
 sequence with parameters read at a constant index, `f(x)_K`, is written out
 as a sum with constant bounds is, each term below the one read a temporary of
 the step: `test/compile/iterates.ink` takes a determinant by Faddeev-LeVerrier,
@@ -972,8 +968,8 @@ error: s is a sequence; index it (s_0) or take its limit (lim s)
 ```
 
 `lim` iterates the general clause until two successive terms agree to within
-1e-10, every cell of a matrix, and reports non-convergence rather than handing
-back the term it stopped on:
+1e-10, relative to the term above 1, every cell of a matrix against its own,
+and reports non-convergence rather than handing back the term it stopped on:
 
 ```
 >> lim s
@@ -986,9 +982,9 @@ u_n=2*n
 error: u did not converge within 100 terms (last term 200)
 ```
 
-The 1e-10 is absolute, so for a cell far below 1, where it settles few of
-the cell's own digits, a read at a count known to suffice, `f(x)_K`, gives
-the exact discrete value instead. So for a geometric integrator: solved by
+Below 1 the 1e-10 is absolute, so for a cell far below 1, where it settles
+few of the cell's own digits, a read at a count known to suffice, `f(x)_K`,
+gives the exact discrete value instead. So for a geometric integrator: solved by
 `lim`, the implicit midpoint rule drifts a free rigid body's invariants by
 about 4e-13 a step, and a fixed count holds them.
 
