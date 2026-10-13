@@ -1918,10 +1918,94 @@ private:
         return Answer(ProductOf(Exactly(std::multiplies<>(), left, right), left, right));
     }
 
+    // DESIGN.md, loops in generated code: an operand's C array, read in place
+    // where its cells are one array's, or declared as one.
+    struct Indexed {
+        std::string base;
+        bool        transposed = false;
+        std::string At(bool sliced, const std::string& i, const std::string& j) const {
+            return base + (sliced ? "[b_]" : "") +
+                   (transposed ? "[" + j + "][" + i + "]" : "[" + i + "][" + j + "]");
+        }
+        std::string Key(bool sliced) const {
+            return base + (transposed ? "'" : "") + (sliced ? "s" : "");
+        }
+    };
+    static std::optional<Indexed> Viewed(const Code& code) {
+        const Cell&       first = code.cells[0];
+        const std::string at    = Subscript(code.size, 0);
+        if (!first.atom || first.level != primary || !first.text.ends_with(at)) return std::nullopt;
+        const std::string base  = first.text.substr(0, first.text.size() - at.size());
+        const Extent      other = {code.size.cols, code.size.rows, code.size.slices};
+        if (Texts(Array(base, code.size)) == Texts(code)) return Indexed{base};
+        if (Texts(Transposed(Array(base, other))) == Texts(code)) return Indexed{base, true};
+        return std::nullopt;
+    }
+    bool MayNan(const Code& code) const {
+        return std::ranges::any_of(code.cells, [&](const Cell& c) {
+            return MayNan(c.text) || nans_.count(c.text) || !c.nan.empty();
+        });
+    }
+    Indexed Materialised(const Code& code, const std::string& type = "double") {
+        if (const auto viewed = Viewed(code)) return *viewed;
+        std::string init = code.size.slices ? "" : Rows(code);
+        for (std::size_t b = 0; b < code.size.slices; ++b)
+            init += (b ? ", {" : "{") + Rows(code, b) + "}";
+        const std::string name = Declare("array\x1f" + type + init, [&](const std::string& t) {
+            return std::vector<std::string>{type + " " + t + Dimensions(code.size) + " = {" + init +
+                                            "};"};
+        });
+        if (MayNan(code)) nan_temporaries_.insert(name);
+        return {name};
+    }
+    // The loops over a value's cells, the innermost last.
+    static std::vector<std::string> Loops(Extent size) {
+        std::vector<std::string> lines;
+        const auto               loop = [&](const std::string& v, std::size_t n) {
+            lines.push_back(std::string(4 * lines.size(), ' ') + "for (int " + v + " = 0; " + v +
+                                          " < " + std::to_string(n) + "; ++" + v + ")");
+        };
+        if (size.slices) loop("b_", size.slices);
+        loop("i_", size.rows);
+        loop("j_", size.cols);
+        return lines;
+    }
+    static std::string Places(Extent size) { return size.slices ? "[b_][i_][j_]" : "[i_][j_]"; }
+    // Each cell's sum in the order Product writes it, 'a*b + c*d' as C parses it.
+    Code Looped(const Code& left, const Code& right, Extent size) {
+        const Indexed     a = Materialised(left), b = Materialised(right);
+        const bool        ls = left.size.slices, rs = right.size.slices;
+        const std::size_t inner = left.size.cols;
+        const std::string key   = "product\x1f" + a.Key(ls) + "*" + b.Key(rs) + " " +
+                                size.toString() + " " + std::to_string(inner);
+        const std::string name = Declare(key, [&](const std::string& t) {
+            std::vector<std::string> lines = Loops(size);
+            const std::string        in(4 * lines.size(), ' ');
+            lines.insert(lines.begin(),
+                         "double " + t + (size.Single() ? "[1][1]" : Dimensions(size)) + ";");
+            lines.back() += " {";
+            lines.push_back(in + "double s_ = " + a.At(ls, "i_", "0") + " * " +
+                            b.At(rs, "0", "j_") + ";");
+            if (inner > 1)
+                lines.push_back(in + "for (int p_ = 1; p_ < " + std::to_string(inner) +
+                                "; ++p_) s_ = s_ + " + a.At(ls, "i_", "p_") + " * " +
+                                b.At(rs, "p_", "j_") + ";");
+            lines.push_back(in + t + Places(size) + " = s_;");
+            lines.push_back(in.substr(4) + "}");
+            return lines;
+        });
+        if (MayNan(left) || MayNan(right)) nan_temporaries_.insert(name);
+        return size.Single() ? Of(Atom(name + "[0][0]")) : Array(name, size);
+    }
+
     // Each left cell is read once for each right column, each right cell once
-    // for each left row.
+    // for each left row; from 27 multiplications, as a loop.
     Code Product(Code left, Code right) {
         if (left.Scalar() || right.Scalar()) return Broadcast(left, right, Multiplied);
+        if (temporaries_ && left.size.cols == right.size.rows) {
+            const Extent size{left.size.rows, right.size.cols, Slices(left, right)};
+            if (size.count() * left.size.cols >= 27) return Looped(left, right, size);
+        }
         if (right.size.cols > 1) left = Shared(left);
         if (left.size.rows > 1) right = Shared(right);
         const std::size_t slices = Slices(left, right);
@@ -3593,13 +3677,13 @@ private:
         return size.slices ? "[" + std::to_string(c / (size.rows * size.cols)) + "]" + at : at;
     }
 
-    // A matrix as C initialises an array, '{a, b}, {c, d}'.
-    static std::string Rows(const Code& code) {
+    // A matrix as C initialises an array, '{a, b}, {c, d}', or a tensor's slice.
+    static std::string Rows(const Code& code, std::size_t b = 0) {
         std::string rows;
         for (std::size_t i = 0; i < code.size.rows; ++i) {
             rows += i ? ", {" : "{";
             for (std::size_t j = 0; j < code.size.cols; ++j)
-                rows += (j ? ", " : "") + code.At(i, j).text;
+                rows += (j ? ", " : "") + code.At(i, j, b).text;
             rows += "}";
         }
         return rows;
