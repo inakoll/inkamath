@@ -11775,14 +11775,15 @@ a product of polynomials or a value of one on nearly every page:
   17ab090: the prelude's 4 and 3 of comment. Past 10 the implementation
   stops and reports.
 
-  Specified in `test/data/spec/polyconv.ink`, 59 entries replayed by the
-  spec suite, 39 failing by design, those passing definitions and a
-  column's display: the pendulum's products from `pend/invPID.html` and
-  `pend/invRL.html`, its closed loop against `ctms.ink`'s, the motor's
-  from `motor/freq2.html` and its Ackermann gain, the edges above, and
+  Specified in `test/data/spec/polyconv.ink`, 62 entries replayed by the
+  spec suite, 40 failing by design, those passing definitions, a
+  column's display and a user's phi(A): the pendulum's products from
+  `pend/invPID.html` and `pend/invRL.html`, its closed loop against
+  `ctms.ink`'s, the motor's from `motor/freq2.html`, its Ackermann gain
+  and its phi(A) written by a user beside polyval's, the edges above, and
   grad. Exact values in Python's fractions, each product again by
   collecting powers and each value by a sum of powers; |P(10i)| in mpmath
-  at 30 digits. All 59 pass on the prototype. Compiled in
+  at 30 digits. The first 59 pass on the prototype. Compiled in
   `test/compile/polyconv.ink`: `tune`, a PI loop's closed-loop
   denominator by conv, its value and its derivative in the gain, and its
   companion matrix's polyval, 0 by Cayley and Hamilton, a conv and a

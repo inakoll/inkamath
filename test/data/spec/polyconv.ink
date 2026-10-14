@@ -251,6 +251,21 @@ B = [0; 1/L]
 >> [0, 1]*[B, A*B]^(0-1)*polyval([1; 10; 26], A)
 [12.99, -1]
 
+# phi(x) = x^2 + 10*x + 26 written by a user adds 26 to every cell of
+# phi(A), as a matrix plus a number does; polyval's p(A) adds 26 I, the
+# phi(A) Ackermann's formula reads. MATLAB's and numpy's polyval work cell
+# by cell, A.^2 and not A^2: neither.
+>> phi(x) = x^2 + 10*x + 26
+phi(x) = x^2 + 10*x + 26
+
+>> frac phi(A)
+[1299/50,     24;
+  651/25, 499/50]
+
+>> frac polyval([1; 10; 26], A)
+[1299/50,     -2;
+    1/25, 499/50]
+
 >> polyval(charpoly(A), A)
 [0, 0;
  0, 0]
