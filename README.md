@@ -731,7 +731,8 @@ gives 1, 1.00000789 and 1.00002073, and (s + 1)^2 - 10^-16 gives
 -1.00000001 and -0.999999989 for -1 +- 10^-8; a near double root may print
 as a complex pair, (s + 1)^2 - 10^-20 as -1 +- 8.18554879e-9i for -1 +-
 10^-10. The iteration reaches a degree of about 30, and at 40 `lim` runs
-out and refuses. A root on the imaginary axis keeps a real part of
+out and refuses; so it does for roots spread over many decades, as of
+(s + 10^-7)(s + 2*10^-7)(s + 10^7)(s + 2*10^7), of degree 4. A root on the imaginary axis keeps a real part of
 rounding size: stability is `hurwitz`'s test, exact. `grad` refuses roots,
 and so does the compiler, in the words of a definition it calls. The PI
 loop above:
