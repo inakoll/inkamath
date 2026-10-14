@@ -11815,7 +11815,7 @@ pendulum (`test/data/ctms.ink`, `test/compile/pendloop.ink` and
 - **Polynomial helpers in the prelude** beside `charpoly`: `conv`,
   `polyval` (`[done]`, below) and padding to a length, which every
   transfer function needs.
-- **Complex `roots` by Durand-Kerner**, in the interpreter only.
+- **Complex `roots` by Durand-Kerner**, in the interpreter only (below).
 - **`care` and `dare` beside `hinf`**: the sign of the Hamiltonian and the
   doubling algorithm, which each test now carries in five to seven lines.
 - **`lim`'s refusal for a limit that does not converge states the ratio it
@@ -11957,3 +11957,186 @@ a product of polynomials or a value of one on nearly every page:
   and 2 lines, 1 of comment, and 1 removed, so that a matrix's x^0 takes
   no part in grad where a derivative of a matrix power was refused, held
   by the story's `G`. 19,078 to 19,091 lines at the merge of 7d8c985.
+
+The friction's second line, the closed-loop poles every control page asks
+for, which `eig` refuses complex:
+
+- **Complex roots in the prelude, `roots(p)`**: the roots of a polynomial
+  in `charpoly`'s column, highest power first, as a column, each as often
+  as its multiplicity; MATLAB's and numpy's name. In the interpreter only,
+  by Durand and Kerner's iteration as a `lim`, the owner's decision. The
+  design, measured on a prototype:
+
+      roots(p[j<=m]) = rootso(rootsr(rootst(p)))
+      rootst(p[j<=m]) = p
+      rootst(p[j<=m]) | m > 1 and p[1] == 0 = rootst(rootsu(p))
+      rootsu(p[j<=m])[r<=m-1] = p[r+1]
+      rootsd(p[j<=m])[r<=m-1] = (m-r)*p[r]
+      rootsh(a[j<=m], b[k<=n])_0 = a
+      rootsh(a[j<=m], b[k<=n])_t[r<=m-t] = rootsh(a, b)_(t-1)[r+1] - rootsh(a, b)_(t-1)[1]/b[1]*hurwitzc(b, r+1)
+      rootsq(a[j<=m], b[k<=n])[t<=m-n+1] = rootsh(a, b)_(t-1)[1]/b[1]
+      rootsg(a[j<=m], b[k<=n]) = rootsg(b, rootst(rootsh(a, b)_(m-n+1)))
+      rootsg(a, b) | b == 0*b = a
+      rootsg(a, b[k<=n]) | n == 1 = b
+      rootsr(p[j<=m]) | m == 2 = -p[2]/p[1]
+      rootsr(p[j<=m]) | m > 2 and p[m] == 0 = [rootsr(abscissat(p)); 0]
+      rootsr(p[j<=m]) | m > 2 = rootsf(p, rootsg(p, rootsd(p)))
+      rootsf(p, g[k<=n]) | n == 1 and p == re(p) = rootsy(lim rootsk(p))
+      rootsf(p, g[k<=n]) | n == 1 = lim rootsk(p)
+      rootsf(p, g) = [rootsr(rootsq(p, g)); rootsr(g)]
+      rootsk(p[j<=m])_0[r<=m-1] = abs(p[m]/p[1])^(1/(m-1))*(4/10 + 9/10*i)^(r-1)
+      rootsk(p[j<=m])_k[r<=m-1] = rootsk(p)_(k-1)[r] - polyval(p, rootsk(p)_(k-1)[r])/(p[1]*prod_(q=1)^(m-1) ((q == r) + (q <> r)*(rootsk(p)_(k-1)[r] - rootsk(p)_(k-1)[q])))
+      rootsc(z[j<=m], r) = sum_(k=1)^m z[k]*(k == argmin_(q=1)^m abs(re(z[r]) - i*im(z[r]) - z[q]))
+      rootsy(z[j<=m])[r<=m] = (z[r] + re(rootsc(z, r)) - i*im(rootsc(z, r)))/2
+      rootsb(z[j<=m], j) = 1 + sum_(k=1)^m (re(z[k]) < re(z[j]) or re(z[k]) == re(z[j]) and (im(z[k]) < im(z[j]) or im(z[k]) == im(z[j]) and k < j))
+      rootso(z[j<=m])[r<=m] = sum_(j=1)^m z[j]*(rootsb(z, j) == r)
+
+  **Written in inkamath**: z_r less p(z_r)/(p_1 prod_(q<>r) (z_r -
+  z_q)), every root at once, a `lim` over a column by cells as the CTM
+  exploration wrote it in two lines, p(z) by polyval. No language change.
+
+  **A repeated root, squarefree first.** The iteration alone, from the
+  customary start, converges only linearly to a multiple root and stalls
+  in doubles about eps^(1/k) from it: (s + 1)^2's limit answered -1 -
+  1.03e-8i and -1 + 6.09e-9i, settled after 31 terms, its imaginary parts
+  noise; (s + 1)^3
+  never settled within 300, `lim` refusing at 100 with its last term
+  6.5e-6 from -1; and z^3, a deadbeat's poles, answered three roots of
+  about 1e-11, below 1 the tolerance being absolute. So the iteration runs
+  on the squarefree part p/g, g = gcd(p, p'), whose roots are simple, and
+  roots(g) follow: a root of multiplicity k is g's k - 1 times. The gcd
+  is Euclid's, its remainder long division as a sequence whose column
+  shortens by one a term, its leading zeros dropped: exact of exact
+  coefficients. (s + 1)^2 is [-1; -1], (s + 1)^3 and z^3 exact too, and
+  (s + 1)^2 (s + 2) [~-2; ~-1; ~-1]. The others weighed against "refuse
+  rather than guess":
+  - **The `~` and a marking**: the `~` is there, and it says inexact, not
+    that the eighth digit and the imaginary parts are noise; no marking
+    says so, and inventing one is a language change.
+  - **Refusing, with a reason**: it needs the gcd, or the discriminant as
+    charpoly of Sylvester's matrix, to see the repetition at all, and
+    refuses a deadbeat's z^n and a critically damped design's double
+    pole, which a control page places on purpose.
+  - **A fixed count**: answers the stall without saying so.
+
+  A near-multiple root of a squarefree p stays what doubles make it, as in
+  every root finder in doubles, MATLAB's eig of the companion matrix too:
+  (s + 1)^2 - 10^-12's -1 +- 10^-6 to every digit printed, settled after
+  32 terms; -1 +- 10^-8, from 10^-16, the ninth digit wrong; -1 +- 10^-15
+  a complex pair, +-8.2e-9i. Within 10^-6 of a triple, (s + 1)^3 + 10^-18, the
+  limit runs out and refuses in its own words, "rootsk did not converge
+  within 100 terms", its last term the cluster. README says how digits go
+  as roots come together. An inclusion radius, n times the last correction
+  with a running bound of p's rounding, could refuse those, about 3 lines,
+  but needs a threshold the language has nowhere else: rejected until an
+  entry needs it.
+
+  **Exact where every root is.** A degree 1 is -p_2/p_1, exact, and a
+  trailing 0 a root at 0 exactly, as MATLAB strips it, so the recursion
+  makes (s + a)^k and z^k exact. A rational root otherwise comes from the
+  iteration, inexact, and one inexact root makes every root inexact: the
+  order compares them in doubles, and a cell placed by an inexact
+  comparison is inexact, as a clause an inexact guard chose. So
+  `roots([1; 2; 0])` is [-2; 0], and the pendulum's PID loop, with a
+  trailing 0, has ~0. **The rational root theorem first**, exact and cheap
+  for small integer coefficients, is rejected: the language has no
+  numerator or denominator, so its candidates are a search over divisors,
+  about 10 lines, growing with the coefficients and out of reach of a
+  double read as the rational it is; and beside one irrational root its
+  exact roots print inexact anyway, by the order. **The quadratic
+  formula** for a degree 2, exact where the discriminant is a square, is
+  rejected too: one more clause, and it loses digits where b^2 >> 4ac.
+
+  **A real root of a real polynomial is real.** The iteration starts off
+  the real line, so a real root comes out as -2 - 3.4e-24i. Of a
+  polynomial whose cells are all real, each root is averaged with the
+  conjugate of the root nearest its own conjugate: a real root's is
+  itself, so its imaginary part is exactly 0, and it prints and compares as
+  real; a complex root's is its partner, so a pair comes out exactly
+  conjugate. No tolerance. Of 300 random polynomials, degree 2 to 12,
+  integer coefficients from -9 to 9, all 552 real roots printed real and no
+  complex one, every root within the nine digits printed of mpmath's at 50
+  digits, at worst 4.9e-9 relative, and none refused. A complex
+  polynomial's roots are left as the iteration leaves them. A root on the
+  imaginary axis keeps a real part of rounding size, (s + 1)^2 (s^2 + 1)'s
+  +-i one of 1.3e-17: roots is not a stability test, `hurwitz` is, exactly.
+
+  **The order**: by real part, then imaginary part, each ascending, as eig
+  gives smallest first, equal ones as found; a pair's a - bi first. MATLAB's
+  order is its eig's and undocumented, and numpy's the same: no rule to take.
+
+  **The start**: (0.4 + 0.9i)^(r-1), the customary one, scaled by
+  |p_m/p_1|^(1/(m-1)), the geometric mean of the roots' moduli. Wilkinson's
+  (s - 1)...(s - 10) took 121 terms unscaled, refused at 100, and takes 41;
+  elsewhere scaling moved the count by at most 12 terms either way, on 11
+  polynomials of degree 2 to 20. Deterministic.
+
+  **The edges.** Leading zeros are dropped, the degree being the
+  polynomial's and not the column's, as in MATLAB's roots, where conv
+  keeps one: a length that depends on a value, which only the interpreter
+  has. A constant has no root and the zero polynomial every number, and
+  there is no empty column: both refused, "roots needs a polynomial of
+  degree 1 or more", in `Unapplied`'s table under rootsr's name; a single
+  value is a constant. A row, a matrix and a tensor are refused by the
+  signature, "roots takes p[j<=m], not a 1x3 matrix", as conv refuses one.
+  A degree 2 is the iteration's.
+
+  **Doubles read as the rationals they are**, as eig's: roots joins the
+  functions `checked` reads, so the gcd is exact of the data as stored,
+  `roots(~[1; 2; 1])` is [~-1; ~-1], a cell inf or NaN is refused in
+  roots' name, and one approximated past a thousand digits marks the
+  answer, as the pendulum's LQR loop.
+
+  **grad refuses it**, "grad cannot differentiate roots yet", by the same
+  set as eig, interpreted and compiled. The implicit derivative,
+  -p_theta(r)/p'(r), has none at a repeated root, which the squarefree path
+  tells by equalities grad refuses where they move (C73): without the
+  set, grad refused in a helper's words, "rootsf takes a clause at k = 2
+  that holds only there". Until a model needs a pole's sensitivity.
+
+  **Not compiled**: "a complex number", by name, wherever roots is called
+  in a definition compiled, before its arguments. Without it the compiler
+  refused in a helper's words, "the clauses of rootst have different
+  shapes", or at constant arguments "a sequence with parameters by cells,
+  for now".
+
+  Rejected:
+  - **A companion matrix and eig**: eig refuses a complex eigenvalue, its
+    count holding only where every one is real.
+  - **Aberth's iteration**: cubic, and better on clusters, but its
+    correction needs p' and a second sum over the others, and the
+    squarefree part removes the clusters where it would gain most.
+  - **Jenkins and Traub's**: three stages of shifts and deflation, tens of
+    lines here, hundreds in its reference Fortran.
+  - **A helper in C++**: more C++, a refusal of grad's and a reading of
+    doubles of its own, and a definition `?roots` and `tex` could not show.
+  - **The rational root theorem, the quadratic formula, the `~` with a
+    marking, refusing a repeated root and a fixed count**: above.
+
+  What moves: nothing recorded. On the prototype every golden, expected
+  header, report and `test/cli.cmake` case passes, 564 tests, the spec
+  suite and `cli_spec` among them. `compile/iterates.ink` and
+  `compile/nan.ink`, whose model is named roots, define it for themselves,
+  as a session may any name of the prelude. README's section 2 gives roots a paragraph after conv's, the
+  motor's poles as its example, with the cost of near roots and that
+  stability is hurwitz's; sections 1 and 5 name it. README is replayed,
+  so it comes with roots.
+
+  35 lines by `wc -l include/inkamath/*.hpp src/*`, 19,213 to 19,248 at
+  90335fc: the prelude's 30, 4 of them comment; 1 of C++ for its words, 1
+  adding it to the functions `checked` reads, and 3 of `compile.hpp`, 1 of
+  them comment, for the compiler's refusal. Past 52 the implementation
+  stops and reports.
+
+  Specified in `test/data/spec/polyroots.ink`, named so beside the golden
+  `roots.ink` of exact roots of powers: 44 entries replayed by the spec
+  suite, 25 failing by design, those passing definitions. The CTM motor's
+  poles, the pendulum's LQR and PID loops, README's PI loop, real roots,
+  Wilkinson's, the repeated, near and complex ones and the edges above.
+  Exact values in sympy, inexact ones in mpmath at 50 digits, the LQR
+  loop's as the stable eigenvalues of its Hamiltonian, a route apart from
+  the Riccati solution the transcript takes. `test/cli.cmake`'s spec part
+  compiles three definitions calling roots, at a moving argument, at a
+  constant one and under grad, skipped while roots is not defined. All
+  pass on the prototype. The spec suite and `cli_spec` return until they
+  pass.
