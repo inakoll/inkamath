@@ -11735,7 +11735,10 @@ a product of polynomials or a value of one on nearly every page:
   that moves, x^0 is `pow(x, 0.0)`, 1 for every x in C, a NaN too (C11
   F.10.4.4), which GCC 13 and Clang 18 fold away; in a header that writes
   NaN it is `isnan(x) ? NAN : pow(x, 0.0)`, as any power reading NaN, so
-  NaN where the interpreter gives none. No C++ for either.
+  NaN where the interpreter gives none. No C++ for either. At a matrix
+  x, p_k x^0 is p_k times each cell of the identity, so the step
+  multiplies by 0.0 and adds the cells off its diagonal: an accepted cost
+  of p(A). Folding a constant identity's zero cells could remove it later.
 
   **grad** follows the definitions, products and sums: with respect to x,
   to the coefficients, or to a gain inside them. x^0's derivative is 0 at
