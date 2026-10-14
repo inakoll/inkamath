@@ -118,6 +118,9 @@ TEST_CASE("roots") {
 TEST_CASE("chol") {
     check_transcript("chol.ink");
 }
+TEST_CASE("polyconv") {
+    check_transcript("polyconv.ink");
+}
 TEST_CASE("tolerance") {
     check_transcript("tolerance.ink");
 }
@@ -321,6 +324,9 @@ TEST_CASE("rotation") {
 }
 TEST_CASE("iekf") {
     check_transcript("iekf.ink");
+}
+TEST_CASE("ctms") {
+    check_transcript("ctms.ink");
 }
 TEST_CASE("readme") {
     check_readme();

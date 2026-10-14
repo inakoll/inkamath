@@ -265,7 +265,11 @@ another clause than the interpreter, at a sequence's guard or a function's the
 file writes, in the same words: there the estimate is a clause's, not a
 rounding's, and the check does not fail for it (`test/compile/straddle.ink`,
 where `crease`'s 0.30000000000000004 is 5.6e-17 from the double nearest its
-threshold 3/10).
+threshold 3/10). After the values it lists, from the code and not the run,
+every guard the step compiles that reads a limit and the clause tried where
+that limit runs out, so that a reviewer can see which way each falls:
+`braked.brake: where lim nv runs out, 'brake_n | lim nv(c_n) < 1 = 1' falls to
+'brake_n = 0'` skips the brake where Newton fails (`test/compile/fallback.ink`).
 
 `--steps n` beside an instance's `--check` steps it n times rather than a
 hundred, n from 1 to 100000. n counts the step's calls, the one that computes the first
@@ -374,7 +378,7 @@ imaginary parts, the paper's Re and Im. `ceil(x) = -floor(-x)` and
 `mod(a, b) = a - b*floor(a/b)` come with them, from a prelude (section 5),
 and so do `exp`, `log`, `tanh`, `sin`, `cos`, `atan`, `atan2`, `asin`,
 `acos`, `acosh`, `abs`, `max` and `min`, and, of matrices, `charpoly`,
-`hurwitz`, `schurcohn`, `rho`, `abscissa`, `eig`, `chol`,
+`conv`, `polyval`, `hurwitz`, `schurcohn`, `rho`, `abscissa`, `eig`, `chol`,
 `smax`, `hinf` and `dhinf` (section 2). `abs` takes a complex number too, |z|, so a
 frequency response's magnitude |T(e^{iw})| is written as on paper.
 Any other rounding is a line of it, by the rule the model needs —
@@ -681,6 +685,33 @@ staircase:
 
 >> abscissa([0 1; -1 -1/5])
 ~-0.1
+```
+
+`conv(p, q)` is the product of two polynomials and `polyval(p, x)` the
+value of one at x, each a column, highest power first, as `charpoly`
+writes it. A single value is a constant polynomial; a row is refused, not
+read as MATLAB's. conv's length is the sum of the two less 1, a leading
+zero kept, and polyval is Horner's rule, exact at an exact x. Of a square
+matrix, polyval is the matrix polynomial p(A), its constant term times A^0,
+so a matrix is a root of its characteristic polynomial; MATLAB's and
+numpy's `polyval` work cell by cell instead, which is written by cells
+here, `Y[j<=n, k<=m] = polyval(p, X[j,k])`. `grad` and the compiler take
+both as any definition. A PI controller (2s + 1)/s around 1/((s + 1)(s + 2)) closes
+the loop on s(s + 1)(s + 2) + 2s + 1:
+
+```
+>> conv(conv([1; 1], [1; 2]), [1; 0]) + [0; 0; 2; 1]
+[1;
+ 3;
+ 4;
+ 1]
+
+>> hurwitz(conv(conv([1; 1], [1; 2]), [1; 0]) + [0; 0; 2; 1])
+1
+
+>> polyval(charpoly([1 2; 3 4]), [1 2; 3 4])
+[0, 0;
+ 0, 0]
 ```
 
 `eig(A)` is the eigenvalues of a square matrix as a column, smallest first,
@@ -1416,7 +1447,7 @@ of its own: the session reaches its names qualified, `filters.lowpass`, and
 once, holds definitions only, and one that cannot be read or parsed loads
 nothing and says where. The prelude that defines `ceil`, `mod`, `exp`, `log`,
 `tanh`, `sin`, `cos`, `atan`, `atan2`, `asin`, `acos`, `acosh`, `abs`,
-`max`, `min`, `charpoly`, `hurwitz`,
+`max`, `min`, `charpoly`, `conv`, `polyval`, `hurwitz`,
 `schurcohn`, `rho`, `rhob`, `abscissa`, `abscissab`, `eig`, `eigb`, `chol`,
 `smax`, `hinf` and `dhinf`, and what they call, is included bare beneath the
 session, as the built-ins are: every scope sees it, and a session

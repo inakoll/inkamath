@@ -66,6 +66,13 @@ public:
             std::vector<std::pair<std::string, Value>> captured;
         };
         std::map<std::string, Unnamed> unnamed;
+        // Each guard reading a limit, the limits by name, and whether it was
+        // compiled outside grad and under it, for --check to list (DESIGN.md).
+        struct Fallen {
+            std::vector<std::string> limits;
+            bool                     plain = false, grad = false;
+        };
+        std::map<const Expression<Value>*, Fallen> fallen;
     };
 
     // '--float' (DESIGN.md, a float target): a float wherever a double is.
@@ -612,15 +619,36 @@ private:
 
     // A guarded value the interpreter refuses wherever it is taken, as log's
     // '| x <= 0 = 1/0', is what a step says there: NaN, as where no clause
-    // applies (C86).
-    Code Taken(const PExpression<Value>& expression) {
+    // applies (C86). Read where its guard held, it asks no status of a limit
+    // the guard read to hold, which did not run out there and which the audit
+    // would list (C368); the others only where the chain takes it (C370).
+    Code Taken(const PExpression<Value>& expression, const std::string& condition,
+               const std::string& before) {
+        const std::set<std::string> own = condition.empty() ? std::set<std::string>() : sure_;
+        std::set<std::string>       read;
+        Code                        code;
         try {
-            return Emit(expression);
+            const Setting<std::set<std::string>*> reading(statuses_, &read);
+            code = Emit(expression);
         } catch (const Undefined&) {
-            Code nan;
-            nan.cells.push_back(Atom("NAN"));
-            return nan;
+            if (condition.empty()) throw;
+            code.cells.push_back(Atom("NAN"));
         }
+        for (const std::string& status : read)
+            if (statuses_ && !own.count(status))
+                statuses_->insert(Joined(before, condition, status));
+        return code;
+    }
+    // A status asked only where the chain reaches what reads it: past the
+    // guards before, as Chain tests them, and where its own guard holds.
+    std::string Joined(const std::string& before, const std::string& condition,
+                       const std::string& status) {
+        if (before.empty() && condition.empty()) return status;
+        const std::string joined = "(" + before +
+                                   (condition.empty() ? "1.0" : condition + " ? 1.0 : 0.0") +
+                                   ") == 1.0 && (" + status + ")";
+        what_[joined] = what_[status];
+        return joined;
     }
 
     // Under reverse mode, a clause a moving guard chose is marked, as an inexact truth's is.
@@ -647,6 +675,7 @@ private:
         std::vector<std::pair<std::string, Code>> guarded;
         std::optional<Code>                       otherwise;
         std::set<std::string>                     asked;
+        std::string                               before;
         const Clause<Value>* const                lowest = definition.EndBase(true);
         const Setting<bool>                       chosen(chosen_, false);
         // Each clause sees its own index alone, as Reference::Selects binds it (C186).
@@ -667,12 +696,16 @@ private:
                                                         Literal(Value(Number(*at))));
                 const std::optional<std::string> condition =
                     p.guarded() ? Condition(p.guard()) : std::optional<std::string>("");
-                if (p.guarded()) asked.insert(asked_.begin(), asked_.end());
+                if (p.guarded())
+                    for (const std::string& status : asked_)
+                        asked.insert(Joined(before, "", status));
                 if (!condition) continue;
+                const Code value = Chosen(Taken(clause.expression, *condition, before));
                 if (condition->empty())
-                    otherwise = Chosen(Emit(clause.expression));
+                    otherwise = value;
                 else
-                    guarded.emplace_back(*condition, Chosen(Taken(clause.expression)));
+                    guarded.emplace_back(*condition, value);
+                before += *condition + " ? 0.0 : ";
             }
         }
         Told(asked, otherwise.has_value());
@@ -853,14 +886,22 @@ private:
         };
         // A call that answered ran out of nothing, whichever limit it read.
         const auto told = [&](Code code) {
+            for (const std::string& status : asked)
+                if (read_) read_->insert(read_->end(), what_[status].begin(), what_[status].end());
             if (!statuses_ || asked.empty()) return code;
             if (!code.Scalar()) {
                 statuses_->insert(asked.begin(), asked.end());
                 return code;
             }
-            std::string ran;
-            for (const std::string& status : asked) ran += (ran.empty() ? "" : " || ") + status;
-            statuses_->insert("isnan(" + code.cells[0].text + ") && (" + ran + ")");
+            std::string           ran;
+            std::set<std::string> limits;
+            for (const std::string& status : asked) {
+                Or(ran, status);
+                limits.insert(what_[status].begin(), what_[status].end());
+            }
+            const std::string status = "isnan(" + code.cells[0].text + ") && (" + ran + ")";
+            statuses_->insert(status);
+            what_[status] = limits;
             return code;
         };
         if (outer || !temporaries_ || memo_.first != temporaries_) return told(compiled());
@@ -2112,7 +2153,8 @@ private:
             base.Scalar()
                 ? Emit(expression->m_e2())
                 : Known(expression->m_e2(), "a matrix power whose exponent is not a constant");
-        if (!base.part.empty() && !base.Scalar())
+        // x^0 takes no part, its derivative 0, as Derivative::Power's.
+        if (!base.part.empty() && !base.Scalar() && Doubles(*exponent.constant)[0] != 0)
             throw Reason("a derivative of a matrix power, for now");
         Code value;
         if (base.constant && exponent.constant) {
@@ -2234,8 +2276,13 @@ private:
         if (whole == 0) {
             // The identity whatever the base, but not a constant: a constant is
             // what reads no name, and an enclosing fold would read this one's.
+            // NaN where a cell of the base is, as the interpreter refuses it.
             Code identity = Literal(Value::Identity(base.size));
             identity.constant.reset();
+            aware_ = aware_ || MayNan(base);
+            if (const std::string test = aware_ ? Nan(Shared(base)) : ""; !test.empty())
+                for (Cell& cell : identity.cells)
+                    cell = Cell("(" + test + cell.text + ")", primary);
             return identity;
         }
         if (whole < 0) base = Inverse(base);
@@ -2312,17 +2359,30 @@ private:
     // A guard as C tests it. Empty where it always holds, and nothing where
     // it never does.
     std::optional<std::string> Condition(const PExpression<Value>& guard) {
-        std::set<std::string>                 asked;
-        const Setting<std::set<std::string>*> asking(statuses_, &asked);
+        std::set<std::string>                 asked, unsure;
+        std::vector<std::string>                 read;
+        const Setting<std::set<std::string>*> asking(statuses_, &asked), doubting(unsure_, &unsure);
+        const Setting<std::vector<std::string>*> reading(read_, &read);
         const Setting<bool> guarding(guarding_, true), moved(moved_, false);
         const Code          code = Quiet(guard);
         chosen_                  = chosen_ || moved_;
         unconverged_.clear();
         asked_.clear();
+        sure_.clear();
         if (!code.Scalar()) throw Reason("a guard that is a matrix");
         if (code.constant) {
             if (!Holds(*code.constant)) return std::nullopt;
             return std::string();
+        }
+        if (!asked.empty()) {
+            Compiled::Fallen&     fallen = fallen_[guard.get()];
+            std::set<std::string> limits;
+            for (const std::string& status : asked)
+                limits.insert(what_[status].begin(), what_[status].end());
+            for (const std::string& l : read)
+                if (limits.count(l) && !std::count(fallen.limits.begin(), fallen.limits.end(), l))
+                    fallen.limits.push_back(l);
+            (grad_.empty() ? fallen.plain : fallen.grad) = true;
         }
         // Under grad no clause after is taken: grad refuses there (DESIGN.md).
         if (!Defers(guard) && (asked.empty() || !grad_.empty())) return Test(guard);
@@ -2331,8 +2391,10 @@ private:
             return "isnan(" + truth + ") ? NAN : " + truth + " != 0.0";
         // A truth NaN where a limit it reads ran out does not hold (DESIGN.md).
         std::string ran;
-        for (const std::string& status : asked) ran += (ran.empty() ? "" : " || ") + status;
+        for (const std::string& status : asked) Or(ran, status);
         asked_       = asked;
+        std::set_difference(asked.begin(), asked.end(), unsure.begin(), unsure.end(),
+                            std::inserter(sure_, sure_.end()));
         unconverged_ = "isnan(" + truth + ") && (" + ran + ")";
         // Before a walk's loop where neither moves, as its limits are.
         const std::string flag = "isnan(" + truth + ") && !(" + ran + ")";
@@ -2472,7 +2534,13 @@ private:
         const std::optional<bool> left = truth(Emit(expression->m_e1()));
         if (left && *left != expression->Conjunction())
             return Answer(Literal(Value(Number(*left ? 1 : 0))));
-        const std::optional<bool> right = truth(Quiet(expression->m_e2()));
+        // What an 'or' reads on its right alone may have run out where it holds.
+        const bool                  either = statuses_ && unsure_ && !expression->Conjunction();
+        const std::set<std::string> before = either ? *statuses_ : std::set<std::string>();
+        const std::optional<bool>   right  = truth(Quiet(expression->m_e2()));
+        if (either)
+            for (const std::string& status : *statuses_)
+                if (!before.count(status)) unsure_->insert(status);
         if (left && right) return Answer(Literal(Value(Number(*right ? 1 : 0))));
         const PExpression<Value> self = expression->self();
         if (Defers(self)) return Answer(Cell(Truth(self), primary));
@@ -2947,7 +3015,7 @@ private:
                 int col, const Code& fallback) {
         std::vector<std::pair<std::string, Code>> guarded;
         std::optional<Code>                       otherwise;
-        std::string                               ran;
+        std::string                               ran, before;
         std::set<std::string>                     asked;
         const Setting<bool>                       chosen(chosen_, false);
         Walk(
@@ -2957,10 +3025,11 @@ private:
                 const std::optional<std::string>   condition =
                     p.guarded() ? Condition(p.guard()) : std::optional<std::string>("");
                 Ran(ran, condition);
-                if (p.guarded()) asked.insert(asked_.begin(), asked_.end());
+                if (p.guarded())
+                    for (const std::string& status : asked_)
+                        asked.insert(Joined(before, "", status));
                 if (!condition) return false;
-                const Code value =
-                    Chosen(condition->empty() ? Emit(clause.expression) : Taken(clause.expression));
+                const Code value = Chosen(Taken(clause.expression, *condition, before));
                 if (!value.Scalar())
                     throw Reason("a cell of " + name + " must be a single value, not a " +
                                  value.size.Described());
@@ -2968,6 +3037,7 @@ private:
                     otherwise = value;
                 else
                     guarded.emplace_back(*condition, value);
+                before += *condition + " ? 0.0 : ";
                 return condition->empty();
             });
         Told(asked, otherwise.has_value());
@@ -2983,8 +3053,12 @@ private:
     // A cell no clause gives is refused where a guard of its chain read a
     // limit that ran out, as the interpreter refuses it (DESIGN.md).
     void Ran(std::string& ran, const std::optional<std::string>& condition) const {
-        if (condition && !condition->empty() && !unconverged_.empty())
-            ran += (ran.empty() ? "" : " || ") + unconverged_;
+        if (condition && !condition->empty() && !unconverged_.empty()) Or(ran, unconverged_);
+    }
+    // Statuses joined, one that is a conjunction bracketed (C371).
+    static void Or(std::string& ran, const std::string& status) {
+        const bool both = status.find("&&") != std::string::npos;
+        ran += (ran.empty() ? "" : " || ") + (both ? "(" + status + ")" : status);
     }
     // A chain with a clause after its guards has answered where their limits
     // ran out; one without is NaN there, which its caller's guard asks about.
@@ -3281,11 +3355,15 @@ private:
                          });
         }
         const std::string called = named->second + "(m_" + (scalar ? ", 0" : "") + arguments;
-        if (statuses_)
-            statuses_->insert(
+        if (statuses_) {
+            const std::string status =
                 named->second + "(m_" +
                 (scalar ? ", 1" + arguments : arguments + ", (double" + shape + "){{0.0}}") +
-                ") != 0.0");
+                ") != 0.0";
+            statuses_->insert(status);
+            what_[status] = {what};
+            if (read_) read_->push_back(what);
+        }
         if (scalar) return Answer(Looping(Of(Cell(called + ")", primary))));
         const std::string out = Declare("lim\x1f" + called, [&](const std::string& t) {
             return std::vector<std::string>{"double " + t + shape + ";", called + ", " + t + ");"};
@@ -6215,7 +6293,7 @@ private:
                     else
                         out.insert(at + from.size() - (from.back() == '(' ? 1 : 0), "f");
                 }
-        Compiled compiled{out, earliest, inputs, {}, {}, {}, unnamed_};
+        Compiled compiled{out, earliest, inputs, {}, {}, {}, unnamed_, fallen_};
         for (const std::string& name : inputs) compiled.cells.push_back(Cells(name));
         for (const std::string& name : order) {
             const Sequence& sequence = sequences_.at(name);
@@ -6261,8 +6339,13 @@ private:
     bool                             guarding_ = false;  // in a guard, which asks only for values
     // Where a guard's truth is NaN, what asks whether a limit it reads ran out.
     std::set<std::string>*           statuses_ = nullptr;
+    std::map<std::string, std::set<std::string>>         what_;  // each status's limits, by name
+    std::map<const Expression<Value>*, Compiled::Fallen> fallen_;
     std::string unconverged_;  // where the last guard compiled read a limit that ran out
     std::set<std::string> asked_;  // and the statuses it asked
+    std::set<std::string>  sure_;   // of those, the ones read where it holds (C368)
+    std::set<std::string>* unsure_             = nullptr;  // read on an 'or''s right alone
+    std::vector<std::string>*        read_ = nullptr;  // the limits a guard reads, first read first
     bool                             roots_    = false;  // whether C may take a root of x < 0
     bool moved_  = false;  // whether a value with a part was compiled, as a guard asks
     bool chosen_ = false;  // whether a guard of the chain compiled read one

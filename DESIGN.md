@@ -1775,7 +1775,6 @@ closures need one anyway, and can bring it.
 | C220 `[fixed]` | **A value derived from a parameter whose cell was a temporary of the update was read by the temporary's name, which the step does not declare.** A derived value's cell that is a name or a number is written where it is read rather than kept in a field, and a temporary's name is one: `p = 1/2`, `R = [p, 1; 2, 3]^(0-1)` and `x_n = R*[n; 1]` wrote `t0_[0][0]` in the step, a header that did not build, as did `[exp(p), [1, 2; 3, 4]]` once block literals stretch a computed value. Such a cell is read from its field now, in 3 lines of `compile.hpp` more; `cli.cmake` holds the step, and no recorded header moved. |
 | C221 `[fixed]` | **A cell taken from a matrix answered where another of its cells is NaN by a function of the header.** C211's gap: where a cell is taken, a header tests every cell of the matrix once one of them writes NaN, and a call of log, which may answer NaN, did not count: `[x_n, log(x_n)][1, 1]`, in a header nothing else made aware, answered x_n where the interpreter refuses the matrix whole. Such a call counts now, in a line changed of `compile.hpp`; `nan.ink`'s `took` holds it, and no recorded header moved. A division by zero there is still an infinity, which no test catches. |
 | C225 `[fixed]` | **The prelude's stated worst errors were sample maxima.** DESIGN gave the worst errors of `exp`, `log`, `tanh`, `sin` and `cos`, and of their parts, from 1e7 or 2e7 random points a range or 2,000 for the parts, and elementary.ink and trig.ink comments bounds from them. A sweep of 1e8 to 4e8 points a range against a 64-bit long double, its farthest confirmed by mpmath at 256 bits, passes each: `exp` 1.307 units at 635.2779388398857 (1.29 stated, "1.3 everywhere" in elementary.ink), 0.900 of 2^-1074 at -708.7539819250273 (0.89), `log` 2.938 at 1.0038647811079129 (2.87), `tanh` 2.967 at -0.20806425077771573 (2.83), `sin` 2.431 at -36502.41508093197 (2.43, "2.4" in trig.ink), `cos` 2.445 at -660945.4787059261 (2.37), and the parts 2.445 from cos and 2.426 from -sin at -660945.4787059261 and 651843.0266746085 (2.04 and 1.62). The functions stand: the figures are the sweep's now, measured and still no bound, and README states them. `--check` cannot see an error the interpreter and a header share, so `test/prelude_test.cpp` holds the five, the two parts and `ilogb` to `test/data/prelude_reference.txt`, 2,400 arguments with mpmath's correctly rounded values, written once by `test/prelude_reference.py`: the sweep's farthest, the doubles nearest a multiple of pi/2 or ln 2, subnormals and either end of `exp`'s range; its skipped case `sweep` is the sweep. Two comments moved, elementary.ink's and trig.ink's, and no answer. Found by an external review. |
-| C367 `[fixed]` | **A called function that answered passed its limits' statuses to its caller's guard.** A guard whose truth is NaN asks whether a limit it reads ran out, through the functions it calls, and asked a function's even where it had answered: a value reading the limit its guard read, `gap(c) \| lim nv(c) > 0 = lim nv(c)` with `gap(c) = 0`, and, since C366, a guarded clause holding after one whose limit ran out, `g(c) \| c > 0 = 2`. With `y_n \| gap(c_n) < 1 and r_n == 1 = 1` and r_n refused, the step took `y_n = 0` where the interpreter refuses. A call's statuses are now asked only where it is NaN. No golden, expected header or other check program moves. In 9 lines of `compile.hpp`, 1 of comment, and 1 removed; `compile/fallback.ink`'s `gapped` and `middled` hold it. Found specifying an audit of fallbacks, and fixing C366. |
 | C230 `[fixed]` | **A cell of a call compiled every cell of the call at each reading.** A function defined by its cells compiles where it is called, and a call read at one cell compiled them all: beside `f(x)[i<=N] = x*i`, `y_n = sum_(i=1)^N f(n)[i]` compiled N^2 cells, 1.4 s at N = 800 where `h(f(n))`, f's cells given once, takes 0.07 s, and a chain `f1(x)[i<=4] = f0(x)[i] + 1`, f2 of f1 and so on, compiled 4^K cells at depth K, over 2 minutes at 8 under the sanitizers. Within a loop that binds places alone, a sum's or a definition's by its cells, a call is compiled once for the code it is given now, unless it reads a term, which depends on where it is read, as a term of a sequence with parameters is kept (C187), in 26 lines and 5 of comment: 0.12 s at N = 800, and the chain linear. A cell read still takes the interpreter's answer for a value of the call's size, so the sum is still quadratic, as through an argument. `compile_c230` in `test/cli.cmake` holds it, and no expected header moved. Found transcribing a convolutional network (Goodfellow, Bengio and Courville 2016, §9.5). |
 | C231 `[fixed]` | **Under grad, a sum over the cells of a guarded definition by cells compiled in cubic time.** Where a value's part is there is a condition, the conditions of what it is computed from joined by `\|\|`, and a cell read from a matrix takes the matrix's, where any cell's part is: beside `relu(z)[i] \| z[i] > 0 = z[i]` and `relu(z)[i] = 0`, each term of `h(m) = sum_(i=1)^N m[i]` in `grad_(v = w_(n-1)) h(relu(A*v))` was N cells' conditions long, and each partial sum copied all those before it, a condition of N^2 cells never written to the header: 4.0 s at N = 512 and 28 s at 999, the header 187 KB. The condition is a tree of the ones it joins now, its text made only where it is written, in 15 lines and 3 of comment: 0.28 s and 0.84 s. `compile_c231` in `test/cli.cmake` holds it, and no expected header moved. Found transcribing a convolutional network (Goodfellow, Bengio and Courville 2016, §9.5). |
 | C232 `[fixed]` | **`tex` bracketed a sum that is a sum's body.** A sum ending a product reaches to its end, as on paper, but one that is another's body was wrapped as any operand: `h_n = sum_(j=1)^n sum_(k=1)^j j*k` was set `\sum_{j=1}^{n} (\sum_{k=1}^{j} j\,k)`, and a product in a sum likewise. A sum or a product that is a sum's or a product's body is set bare now, in 3 lines and 1 of comment; latex.ink holds it, and no other answer moved. Found transcribing a convolutional network (Goodfellow, Bengio and Courville 2016, §9.5). |
@@ -1880,6 +1879,12 @@ closures need one anyway, and can bring it.
 | C364 `[fixed]` | **A cycle of three or more sequences, its terms before the stream its guards', was refused where it read an input, and compiled in time exponential in its length.** With `a_n \| n < 0 = 1`, `a_n = b_(n-1)/2`, b and c alike and `c_n = a_(n-1)/2 + x_n`, compiling a compiles b and c to read them, and a's read of b was recorded only once b was compiled; so c, compiled first, did not reach itself, was not taken for a recurrence whose terms before the stream init folds (C343), and was computed again at -1 (C71), where it reads x_-1: "b_0 reads x_-1, before the stream, where x has no history", where the interpreter gives a_0 = 1/2. A cycle of two closes on a sequence still compiling, read from its window, and compiles. With no input, the cycle compiled, each term before the stream computed again at each read, so one whose terms read the next twice took 7.6 s to compile at 14 sequences and over 100 at 18. A read is now known to `Reaches` while what it reads compiles: 0.02 s at 40. No golden, expected header or check program moves; a cycle of three or more with no input is written shorter, its terms before the stream folded by init as a cycle of two's are. In 17 lines of `compile.hpp`, 2 of comment, and 5 removed; `compile/history.ink`'s `cycled` and `test/cli.cmake`'s `history_cycled` and `history_cycled_long` hold it. |
 | C365 `[fixed]` | **A cell of a matrix product was answered where another cell's operand is refused.** `Product` shares an operand's cells under names, and a name was not known to hold NaN where its value may, as a call's is (C189): with h a limit that does not converge, `(A*[lim h(x_n), 1; 0, 1])[1, 2]` answered 3 from step 5, where the interpreter refuses the product. Loops in generated code read the operand's own text, so from 27 multiplications the step refused it and below did not. A shared cell that may be NaN is now marked as `Called` marks one. No golden, expected header or check report moves; `dare`'s check program tests an inverse's cells it read untested. In 7 lines of `compile.hpp`, 1 of comment, and 4 removed; `compile/nan.ink`'s `kd` holds it. Found by the implementation review of loops. |
 | C366 `[fixed]` | **A guard reading a limit that ran out kept the guards after it from holding.** The run-out the interpreter keeps for the refusal where no clause holds was also read as the current guard's, so with `sw(x)_n = x + (-1)^n`, `fa(x) | lim sw(x) > 0 = 1`, `fa(x) | x > 0 = 2` and `fa(x) = 3`, `fa(1)` answered ~3, and without the last clause was refused in sw's words, where the step gives 2. Each guard now reads its own run-out apart from the one kept. No other golden or check report moves. In 6 lines of `reference.hpp`, 1 of comment, and 4 removed; `unconverged.ink`'s `fa`, `ga`, `tri` and `co`, and `compile/fallback.ink`'s `chained`, hold it. Found by an external review. |
+| C367 `[fixed]` | **A called function that answered passed its limits' statuses to its caller's guard.** A guard whose truth is NaN asks whether a limit it reads ran out, through the functions it calls, and asked a function's even where it had answered: a value reading the limit its guard read, `gap(c) \| lim nv(c) > 0 = lim nv(c)` with `gap(c) = 0`, and, since C366, a guarded clause holding after one whose limit ran out, `g(c) \| c > 0 = 2`. With `y_n \| gap(c_n) < 1 and r_n == 1 = 1` and r_n refused, the step took `y_n = 0` where the interpreter refuses. A call's statuses are now asked only where it is NaN. No golden, expected header or other check program moves. In 9 lines of `compile.hpp`, 1 of comment, and 1 removed; `compile/fallback.ink`'s `gapped` and `middled` hold it. Found specifying an audit of fallbacks, and fixing C366. |
+| C368 `[fixed]` | **A function's value passed on the status of a limit its own guard read.** A guarded clause's value is read where its guard held, so a limit both read did not run out there, but its status was asked of the caller's guard all the same, since C367 where the call is NaN: with `gap(c) \| lim nv(c) > 0 = lim nv(c)`, `gap(c) = (c - c)/(c - c)` and `y_n \| gap(c_n) < 1 = 1`, where Newton cycles the step took `y_n = 0` and the interpreter refuses y, dividing by zero. A guarded value now asks no status its own guard read to hold: one an `or` reads on its right alone, `gap(c) \| c > 1 or lim nv(c) > 0 = lim nv(c)`, may have run out where the guard holds, and is asked. No golden, expected header or check report moves. In 27 lines of `compile.hpp`, 4 of comment, and 10 removed; `compile/fallback.ink`'s `voided` and `ored` hold it. Found implementing the audit of fallbacks, where `buffered.brake` would otherwise be listed. |
+| C369 `[fixed]` | **A call written as a sum's upper bound was told what its body made of the arguments.** The bound is a number, a name, or parenthesised, and a name there is never a call (phase 11), so `sum_(j=1)^max(1, 3) j` read the bound `max` and the body `(1, 3) j`: "missing ')' after '1'"; `sum_(j=1)^floor(7/2) j` said "the operator '*' is probably missing". A name touching the parenthesis after it is now refused in the rule's words, with the bound parenthesised: "... a name there is never a call: write ^(max(1, 3))". `^n (k+1)`, spaced, is still the bound n and the body (k+1); `^n(k+1)`, which was too and which no test or example wrote, is refused so. Found by the exploration of the CTM tutorials. In 12 lines of `interpreter.hpp`, 1 of comment; `series.ink` holds it. |
+| C370 `[fixed]` | **A guarded value's status is asked where its clause was not taken.** C368 drops a status only where the value reads it as its guard did, by the status's text; elsewhere a value's status is asked of the caller's guard wherever the call is NaN, so where the clause the call took is refused, the step takes the caller's clause after where the interpreter refuses. Each with `gap(c) = (c - c)/(c - c)` after the guarded clause, `y_n \| gap(c_n) < 1 = 1`, `y_n = 0` and c_n = 1 + mod(n, 2), the step takes y_1 = 0 where the interpreter refuses, dividing by zero: the same limit through another function, `root(c) = lim nv(c)` and `gap(c) \| root(c) > 0 = lim nv(c)`, or `gap(c) \| lim nv(c) > 0 = root(c)`; a respelt argument, `gap(c) \| lim nv(c) > 0 = lim nv(c + c - c)`; and a later clause's value where an earlier one was taken, `gap(c) \| c > 1 = (c - c)/(c - c)`, `gap(c) \| c > 0 = lim nv(c)`, `gap(c) = 0`. So were the clause that always applies, `gap(c) = lim nv(c)` after `gap(c) \| c > 1 = (c - c)/(c - c)`, a later guard's, `gap(c) \| lim nv(c) > 0 = 0` after it, and a function's cells. Each status a clause reads, of its guard or its value, is now joined with the conditions before it as the chain tests them, and its value's with its own guard, so that it is asked only where the chain reaches it. C368's drop stays, for the audit alone: without it `voided.y` and `buffered.brake` would be listed, their statuses false wherever asked; a status it misses is listed, as `routed.y`. No golden, expected header or other check report moves; `ored`'s C gains the join. In 33 lines of `compile.hpp`, 4 of comment, and 11 removed; `compile/fallback.ink`'s `routed`, `returned`, `respelled`, `preceded`, `defaulted`, `sentried` and `partway` hold it. Found reviewing the audit of fallbacks; the baseline fails each too. |
+| C371 `[fixed]` | **Statuses joined by `\|\|` left a conjunction bare, which GCC and Clang warn of under `-Wall`.** A status a function passes on is `isnan(call) && (...)`, and a cell's refusal where a guard of its chain ran out is the same, so a guard reading a limit through a function and another, `u_n \| root(c_n) > 0 and lim nvx(c_n) > 0 = 1` with `root(c) = lim nv(c)`, or a cell whose two guards read limits with no clause after, wrote `a && (b) \|\| c`: right in C, and refused by `-Werror=parentheses`, as CI builds. Such a status is bracketed where statuses are joined now, in 8 lines of `compile.hpp`, 1 of comment, and 4 removed. No golden, expected header or report moves; check programs' C gains the brackets. `compile/fallback.ink`'s `spelled` and `joined` hold it. Found reviewing the audit of fallbacks; the baseline writes the same. |
+| C372 `[fixed]` | **A matrix to the power 0 compiled dropped a NaN cell.** The step wrote the identity whatever the base, so with `r(v) \| v > 0 = v` and `x_n = r(3 - a_n)`, `[x_n, 1; 0, 1]^0` answered 1 in its first cell, where the interpreter refuses it: `--check` reported `v[1,1]: 1 at 3, where the interpreter gives none`. A single value's x^0 was NaN where x is, in a header that writes NaN; a matrix's is now NaN where a cell of it is, and makes the header write NaN where a cell may be. No golden, expected header or check report moves; six check programs test the base where a series or a sum starts a power at 0, `newton.ink`'s `evens`, `evened` and `twonames`, `series.ink`'s `later`, `sums.ink`'s `summed` and `iekf.ink`'s `walk`. Found by the spec review of conv and polyval. In 5 lines of `compile.hpp`, 1 of comment; `compile/nan.ink`'s `nil` holds it. |
 
 **Measure instructions, not the clock.** One of those changes made the matrix
 workload 20 per cent slower by the clock and not by a single instruction: with
@@ -11591,12 +11596,154 @@ After an external review of README, MANIFESTO and the conformance suite
   `rnn` 2.9e-12; `row` and `shut` 1.2e-10; `twonames` a 4.1e-10, b
   5.3e-9; each in float as in double; and the comments of `inset` and
   `layered`. Each cell scaled by its own, 7 lines fewer: 11 lines.
+- `[done]` **`--check` lists which way each limit falls**: a guard reading a limit
+  that runs out does not hold, and the clause after is taken (*A clause for
+  a limit that does not converge*, above). That is fail-safe only where the
+  guarded clause is the risky one: `brake_n | lim nv(c_n) < 1 = 1` before
+  `brake_n = 0` skips the brake where the solver fails, and a run whose
+  solver never fails shows nothing of it. Approved by the owner.
+
+  Decided:
+  - **Always, from the code**: every guard the step compiles that reads a
+    limit, whether or not a walk ran out in the run. The direction is the
+    code's, and a solver failing is the rare case a hundred replayed steps
+    may never meet: `rootless`, whose walk is refused and never runs out,
+    is listed all the same.
+  - **The form**: a line a guarded clause, its definition named as a
+    per-term line names a sequence, `planned.u`, a function the same, a
+    definition of the file outside the model by its name alone; the limits
+    it reads, as the header's comments name them, `lim qp`, `sum_(k=1)`,
+    in the order written, the first read first, not sorted, and joined by
+    `or`, `faraway.w`; the clause as written, and the clause tried after it:
+
+        planned.u: where lim qp runs out, 'u_n | abs(x_n + lim qp(x_n)) <= abs(x_n) = lim qp(x_n)' falls to 'u_n = -x_n/2'
+
+    `falls to NaN` where no clause comes after, as the step is NaN where
+    the interpreter refuses; `falls to NaN under grad` where the guard is
+    compiled only under grad, which refuses there, `tipped.r`; and `falls
+    to 'r(x, c) = 3*x', and to NaN under grad` where both. The clause
+    after is the next tried as the step tries them, the guarded in the
+    order written and then the one that always applies, for the same
+    terms or cells: never a base clause (C254), nor a term written whole
+    for a cell (a departure of the clause, above). It names the next clause
+    for the term as a whole, and a single-cell clause in between is not
+    named: after `y_n[j<=2] | lim nv(c_n) < 1 = j`, `y_n[1] = 0` and
+    `y_n[j<=2] = 5`, it falls to 'y_n[j<=2] = 5', though the first cell
+    falls to 0. A later guarded clause
+    is quoted as tried, and the reader follows the chain from there:
+
+        chained.y: where lim s runs out, 'y_n | lim s(u_n) > 0 = 1' falls to 'y_n | u_n > 0 = 2'
+
+  - **Where**: last, after the per-term lines, sorted by name and then by
+    the clause's place. A flip or a straddle says what the run did and
+    comes before the values it explains; this says what the code does.
+    It fails nothing: the exit status is the run's.
+  - **Reads as the step reads**: through a function the guard calls only
+    where that function has no clause after, as its status is asked, so
+    `answered.y` and `buffered.brake` list nothing and the function's own
+    guard has its line, `answered.inner`, `buffered.gap`; one with none
+    lists both, `buffered.near` and `buffered.alarm`. A clause after is
+    one that always applies: `middled`'s g has a guarded clause after its
+    first and none that always does, so `middled.y` is listed beside
+    `middled.g`; `gapped.y`, as `buffered.brake`, is not. A limit of
+    constants is folded, converging or refusing the model, so it has no
+    fallback and no line: `straddle.ink`'s `parted`, `founded` and
+    `folded` do not move. A limit in a sum's terms within a guard is the
+    guard's own, `coupled.y`.
+  - **Cells**: a line a clause, not a cell. `braked.wheels` is one line
+    though its guard is asked in each cell; `ranout.y`'s is asked in its
+    second alone, the first's guard folding true.
+  - **Float**: the same lines; the list is the code's.
+
+  Rejected:
+  - **Only where a walk ran out in the run**: a run's fact, which flips
+    and per-term lines already give; a model whose replayed inputs never
+    fail the solver would show nothing, the case the audit is for.
+  - **The steps where it ran out**, `at 1, 3, ...`: a second measure on a
+    line about the code, moving with the inputs.
+  - **A line per cell**: a cell has no clause of its own to audit, and
+    `wheels` would say the same thing twice.
+  - **Before the per-term lines**: between the run's flips and the values
+    they explain, which they would no longer precede.
+  - **A warning at `--compile`**: a header is built where no one reads it,
+    and `--compile` without `-o` lists refusals, among which a note reads
+    as one. `--check` is where a step is reviewed against its model.
+  - **A pragma** naming the safe clause: a second way to write what the
+    order of the clauses says, and the language could not check it, since
+    which value is safe is the model's, 1 for a brake and 0 for a throttle.
+  - **Ordering rules the compiler enforces**, refusing a guard reading a
+    limit before a clause not marked safe: for the same reason it cannot
+    know which is, and the MPC's fixed gain is neither by its form.
+
+  Found specifying: a function with a clause after, whose guarded value
+  reads the limit its guard reads, `gap(c) | lim nv(c) > 0 = lim nv(c)`,
+  gives that limit's status to a guard calling it, though the value is
+  read only where the walk settled. With `r_n | c_n < 2 = 1`, `y_n |
+  gap(c_n) < 1 and r_n == 1 = 1` and `y_n = 0`, at c_n = 2 the interpreter
+  refuses y and the step takes 'y_n = 0': `gapped.y: 0 at 1, where the
+  interpreter gives none: no clause of r applies`. A fix of its own, before
+  this, as `answered`'s ruling missed it: a clause's value asks no status
+  its own guard asked, about 10 lines on a prototype. Built on today's
+  statuses, the list would name `buffered.brake`, which cannot fall.
+
+  What moves, on a prototype, discarded: no golden, expected header or cli
+  case, and no check program's C but where such a guard is, by a line each.
+  Of the 263 instances in `test/compile`, seven list a guard, each report
+  ending with its lines in `test/CMakeLists.txt`: `fallback.ink`'s
+  `planned`, `held`, `ranout`, `tipped`, `columned` and `answered`, and
+  `straddle.ink`'s `equal`; their recorded comments with them. No float
+  check has such a guard. With fixes49's `chained`, `gapped` and
+  `middled`, ten of 266, by the rule and written by hand.
+
+  About 60 lines: the prototype's 56 net, formatted and with no comment,
+  44 in `check.hpp` walking the instance's definitions and writing the
+  lines and 12 in `compile.hpp` recording each guard's limits by name and
+  whether under grad; then the file's own definitions and both grad forms.
+  19,049 lines at acb6fdc by `wc -l include/inkamath/*.hpp src/*`; past 90
+  the implementation stops and reports.
+
+  Specified in `test/CMakeLists.txt`: the seven reports above, each
+  skipped while it ends as today, and only then; and six instances in
+  `test/compile/fallback.ink`, likewise, whose comments give their reports.
+  `rootless` and `coupled` are `rooted` and `paired`, which had none;
+  `braked` a brake whose guard reads Newton's limit, the risky clause
+  first, beside `careful`, the safe order, and `wheels`, a clause per
+  cell; `buffered` the same through functions, `gap` with a clause after
+  and `near` without; by the spec review, `bent`, `tipped`'s r called
+  outside grad too, and `faraway`, a guarded function of the file. Newton
+  from 0 on x^3 - 2x + c in Python's fractions: it settles at c = 1/2 and
+  1, at 0.25865202250415276 and 0.6180339887498949, and cycles 0, 1 at 2.
+  With the implementation the skips go, the comments gain their lines,
+  and README's paragraph on `--check` gains: "After the values it lists,
+  from the code and not the run, every guard the step compiles that reads
+  a limit and the clause tried where that limit runs out, so that a
+  reviewer can see which way each falls: `braked.brake: where lim nv runs
+  out, 'brake_n | lim nv(c_n) < 1 = 1' falls to 'brake_n = 0'` skips the
+  brake where Newton fails (`test/compile/fallback.ink`)."
+
+  Built as specified and ruled: every report passes as written by hand,
+  `buffered` among them, and the skips are gone. What moved is what the
+  spec gave, eighteen reports by their lines, seventeen of `fallback.ink`
+  and `equal`, and their programs' C by a `puts` a line; no golden, header,
+  cli case or other report. Departures: C368, fixed before, since C367
+  asked a value's status where its call is NaN and `buffered.brake` would
+  have been listed, with `voided` to hold it; and a guard of an instance
+  the model writes unnamed (C84) is listed as its terms are named,
+  `covered`, which the spec did not say. The limits were ordered by where
+  the clause wrote them, which took `lim nv` for the start of `lim nvx`
+  and missed `sum_(k = 1)`; by the review's ruling they are first read
+  first, as specified, a limit read through a function where the call
+  is, `spelled`. 79 lines, 6 of comment: 45 in `check.hpp` and 34 in
+  `compile.hpp`; with C368's 17, 96 from 328c497, 19,064 to 19,160, past
+  the stop at 90 by the review's fix of C368, where a guard holding by an
+  `or` that never read its limit, `ored`, lost its value's status: a
+  correct answer outweighs two lines, and the first-read order four.
 
 After a second review (2026-10-13), which took the Jacobian by cells and
 the clause for a limit that does not converge as done, the order from here:
 
-- **`--check` lists each guard that reads a limit, with the clause taken
-  where it runs out**, so that a reviewer can audit the fallback's
+- `[done]` **`--check` lists each guard that reads a limit, with the clause
+  taken where it runs out**, so that a reviewer can audit the fallback's
   direction: `brake | lim dist(...) < margin = 1` before a default of 0
   skips the brake on a failure.
 - `[done]` **`chol` refuses a matrix that is not symmetric**, as `eig(A,
@@ -11660,3 +11807,153 @@ review:
     compiles today's headers to PTX, one instance per thread;
   - the agent experiment's design, outside the repository, when the
     owner chooses.
+
+After a §9 exploration of the CTM tutorials' motor speed and inverted
+pendulum (`test/data/ctms.ink`, `test/compile/pendloop.ink` and
+`motorloop.ink`), its friction:
+
+- **Polynomial helpers in the prelude** beside `charpoly`: `conv`,
+  `polyval` (`[done]`, below) and padding to a length, which every
+  transfer function needs.
+- **Complex `roots` by Durand-Kerner**, in the interpreter only.
+- **`care` and `dare` beside `hinf`**: the sign of the Hamiltonian and the
+  doubling algorithm, which each test now carries in five to seven lines.
+- **`lim`'s refusal for a limit that does not converge states the ratio it
+  measured** and suggests a fixed count instead.
+- **README teaches the zero-order hold by Van Loan's block** with a
+  fixed-count series, and the Riccati equation by doubling.
+- **A tutorial chapter from these two series**, which the exploration found
+  enough for *a short tutorial path*.
+
+After a §9 transcription of the CTM tutorials (branch `ctms`), which wrote
+a product of polynomials or a value of one on nearly every page:
+
+- `[done]` **Polynomials in the prelude, `conv(p, q)` and `polyval(p, x)`**: the
+  product of two polynomials and a polynomial's value, each polynomial a
+  column, highest power first, as `charpoly` writes one and `hurwitz`
+  reads one; MATLAB's and numpy's names, and the pages'. The design,
+  measured on a prototype:
+
+      conv(p[j<=a], q[k<=b])[r<=a+b-1] = sum_(j=max(1, r+1-b))^(min(a, r)) p[j]*q[r+1-j]
+      polyval(p[j<=m], x[r<=n, c<=n]) = polyvalh(p, x)_m
+      polyvalh(p, x)_1 = p[1]*x^0
+      polyvalh(p, x)_k = polyvalh(p, x)_(k-1)*x + p[k]*x^0
+
+  **Written in inkamath**: c_r the sum of p_j q_(r+1-j) over the j where
+  both exist, so columns of unequal length need no padding; the value by
+  Horner's rule, b_k = b_(k-1) x + p_k, a recurrence as charpoly's
+  Faddeev and LeVerrier is. Exact of exact coefficients at an exact x.
+  No language change.
+
+  **The convention, refused rather than guessed**: a column. A single
+  value is a column of one, the constant polynomial, so the motor page's
+  `conv(num, numa)` with num = 50 K is `conv(50*K, [1; 1])`. A row is
+  refused by the signature, `conv takes q[k<=b], not a 1x2 matrix`, as
+  `hurwitz` refuses one: it is MATLAB's convention, and reading it as a
+  column would guess that it was meant as one. So are a matrix and a
+  tensor. There is no empty case, a matrix having at least one cell; the
+  zero polynomial is 0.
+
+  **The length is a + b - 1**: a leading zero is kept, as MATLAB's conv
+  keeps it. Trimming would make a length depend on a value, which a
+  compiled shape cannot.
+
+  **Complex coefficients** are multiplied as written, not conjugated:
+  (s + 5 - i)(s + 5 + i) is `conv([1; 5 - i], [1; 5 + i])`, [1; ~10;
+  ~26], inexact as anything i touches. At a complex x, Horner's rule in
+  complex doubles: the motor's |P(10i)|, the page's 0.0139.
+
+  **At a square matrix, `polyval` is the matrix polynomial**, sum p_j
+  A^(m-j), MATLAB's polyvalm and not its cellwise polyval. A paper's p(A)
+  is this one: Cayley and Hamilton's, and Ackermann's phi(A), which the
+  motor's pole placement needs and `ctms.ink` writes out as `A^2 + 10*A +
+  26*A^0`. The language already reads a function of a matrix as the
+  matrix operation (MANIFESTO.md, *Tensors*); the cellwise value is
+  written by cells, `Y[j<=n, k<=m] = polyval(p, X[j,k])`. It costs x^0
+  alone: a matrix plus a number adds it to every cell, so p_k x^0 is what
+  makes the constant p_k I. Refusing would cost a guard and lose both
+  uses. A matrix not square is refused by the signature, `polyval takes
+  x[r<=n, c<=n], not a 1x3 matrix`.
+
+  **Compiled**, each is written where it is called, as a function of the
+  prelude of a matrix is: conv's cells as sums whose bounds are constants
+  once the cell is, polyval as m - 1 products and sums. At a single value
+  that moves, x^0 is `pow(x, 0.0)`, 1 for every x in C, a NaN too (C11
+  F.10.4.4), which GCC 13 and Clang 18 fold away; in a header that writes
+  NaN it is `isnan(x) ? NAN : pow(x, 0.0)`, as any power reading NaN, so
+  NaN where the interpreter gives none. No C++ for either. At a matrix
+  x, p_k x^0 is p_k times each cell of the identity, so the step
+  multiplies by 0.0 and adds the cells off its diagonal: an accepted cost
+  of p(A). Folding a constant identity's zero cells could remove it later.
+
+  **grad** follows the definitions, products and sums: with respect to x,
+  to the coefficients, or to a gain inside them. x^0's derivative is 0 at
+  0 too, so p'(0) is p's coefficient of x. Compiled, a matrix's x^0 takes
+  no part, as the interpreter's, where a derivative of a matrix power was
+  refused: 2 lines of `compile.hpp`, so p(A) of an A that moves has one.
+
+  Rejected:
+  - **MATLAB's row convention**: `charpoly`, `hurwitz` and `schurcohn`
+    take and give a column, and a second convention would be a second
+    way to say one thing; accepting both is the guess refused above.
+  - **A polynomial type**: a value of its own, with its printing, a sum
+    that pads the shorter and conv for its product, which the
+    interpreter, grad and the compiler would each learn, where a column
+    already is one and the prelude reads it. Its one gain, a sum of
+    unequal lengths, is a block literal here: `[0; q]`.
+  - **A sum of powers**, `sum_(j=1)^m p[j]*x^(m-j)`, the exploration's:
+    one line, but a power of x per coefficient, `pow` in C. Horner's
+    rule is m - 1 products, as MATLAB's and numpy's polyval compute it.
+  - **polyval cellwise at a matrix, or refused there**: above.
+  - **conv over a helper that reads 0 outside a column**, as `hurwitzc`
+    does: more lines, and products by 0 compiled.
+  - **Out of scope**, as decided: `roots`, a padding helper, `care` and
+    `dare`, `expm`, and step-response metrics.
+
+  What moves: nothing recorded. On the prototype every golden, expected
+  header, report and `test/cli.cmake` case passes, 536 tests. The files
+  that define a conv of their own, `minibatch.ink`, `compile/conv.ink`
+  and `tensorgrad.ink`, and `kernel.ink` and `decimate.ink` whose model
+  is named conv, define it for themselves, as a session may any name of
+  the prelude. README's section 2 gives them a paragraph after
+  charpoly's example, with the spec's closed loop and Cayley and
+  Hamilton as its own; sections 1 and 5 name both. README is replayed,
+  so it comes with them.
+
+  7 lines by `wc -l include/inkamath/*.hpp src/*`, 19,064 to 19,071 at
+  17ab090: the prelude's 4 and 3 of comment. Past 10 the implementation
+  stops and reports.
+
+  Specified in `test/data/spec/polyconv.ink`, 62 entries replayed by the
+  spec suite, 40 failing by design, those passing definitions, a
+  column's display and a user's phi(A): the pendulum's products from
+  `pend/invPID.html` and `pend/invRL.html`, its closed loop against
+  `ctms.ink`'s, the motor's from `motor/freq2.html`, its Ackermann gain
+  and its phi(A) written by a user beside polyval's, the edges above, and
+  grad. Exact values in Python's fractions, each product again by
+  collecting powers and each value by a sum of powers; |P(10i)| in mpmath
+  at 30 digits. The first 59 pass on the prototype. Compiled in
+  `test/compile/polyconv.ink`: `tune`, a PI loop's closed-loop
+  denominator by conv, its value and its derivative in the gain, and its
+  companion matrix's polyval, 0 by Cayley and Hamilton, a conv and a
+  polyval of what moves, and grad through polyval at a matrix that moves,
+  each number a multiple of 1/8 below 64, exact in double and in float.
+  `test/cli.cmake`'s spec part writes its check program in each, skipped
+  while polyval is not defined; the reports its comments give join the
+  checks with them. The spec suite and `cli_spec` return until they pass.
+
+  Built as specified: the prelude's 7 lines are the prototype's, 4 and 3
+  of comment, against the stop of 10. Every entry passes as written, and
+  the spec is the golden `polyconv.ink`; the spec suite and `cli_spec` go,
+  polyconv their only case. `tune` is a check in double and in float, its
+  reports held outright as its comment gives them. README's section 2
+  gives the paragraph after charpoly's example, saying that MATLAB's and
+  numpy's polyval work cell by cell, and sections 1 and 5 name both.
+  Departures: README's closed loop is the story's PI loop at k = 2, read
+  by `hurwitz`, not the spec's pendulum, which needs nine definitions
+  first; and two changes of `compile.hpp` the spec did not foresee, each
+  counted apart: C372, 5 lines, 1 of comment, a matrix to the power 0
+  NaN where a cell of it is, which moves six check programs and no report;
+  and 2 lines, 1 of comment, and 1 removed, so that a matrix's x^0 takes
+  no part in grad where a derivative of a matrix power was refused, held
+  by the story's `G`. 19,078 to 19,091 lines at the merge of 7d8c985.
