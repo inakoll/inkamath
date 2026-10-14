@@ -11815,7 +11815,8 @@ pendulum (`test/data/ctms.ink`, `test/compile/pendloop.ink` and
 - **Polynomial helpers in the prelude** beside `charpoly`: `conv`,
   `polyval` (`[done]`, below) and padding to a length, which every
   transfer function needs.
-- **Complex `roots` by Durand-Kerner**, in the interpreter only (below).
+- **Complex `roots` by Durand-Kerner**, in the interpreter only (`[done]`,
+  below).
 - **`care` and `dare` beside `hinf`**: the sign of the Hamiltonian and the
   doubling algorithm, which each test now carries in five to seven lines.
 - **`lim`'s refusal for a limit that does not converge states the ratio it
@@ -11961,7 +11962,7 @@ a product of polynomials or a value of one on nearly every page:
 The friction's second line, the closed-loop poles every control page asks
 for, which `eig` refuses complex:
 
-- **Complex roots in the prelude, `roots(p)`**: the roots of a polynomial
+- `[done]` **Complex roots in the prelude, `roots(p)`**: the roots of a polynomial
   in `charpoly`'s column, highest power first, as a column, each as often
   as its multiplicity; MATLAB's and numpy's name. In the interpreter only,
   by Durand and Kerner's iteration as a `lim`, the owner's decision. The
@@ -12162,3 +12163,20 @@ for, which `eig` refuses complex:
   Hamiltonian, a route apart from the Riccati solution the transcript
   takes. All pass on the prototype. The spec suite returns until it
   passes.
+
+  Built as specified, with the review's rulings: the scale, the
+  compiler's refusal left to a helper's words, verified as quoted, ties
+  by rounding, and README's limits. 34 lines, 19,213 to 19,247 at the
+  merge of 6cd0643, against the stop of 52: the prelude's 32, 4 of them
+  comment, the C++ of its words 1, and the staircases' list 1, laid out
+  by clang-format. Every entry passes as written, and the spec is the
+  golden `polyroots.ink`; the spec suite goes, polyroots its only case,
+  and `cli_spec` went with the refusal by name. No other golden, header
+  or report moved. Departures: the scale rounds to the nearest power of
+  two, not the one below the ruling gave, which converged on half the
+  random polynomials of degree 15 (above, its own commit); README's
+  example is the PI loop above it, as conv's, with (s + 1)^2 exact, not
+  the motor's poles, which need its five constants first. Of 400 random
+  polynomials, degree 2 to 12, integer coefficients from -9 to 9, all 722
+  real roots printed real, every root within 4.9e-9 of mpmath's, and none
+  refused.
