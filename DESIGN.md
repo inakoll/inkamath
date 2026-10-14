@@ -12059,7 +12059,10 @@ for, which `eig` refuses complex:
   integer coefficients from -9 to 9, all 552 real roots printed real and no
   complex one, every root within the nine digits printed of mpmath's at 50
   digits, at worst 4.9e-9 relative, and none refused. A complex
-  polynomial's roots are left as the iteration leaves them. A root on the
+  polynomial's roots are left as the iteration leaves them, and its
+  repeated ones are unreliable: a complex number is a pair of doubles, so
+  its gcd is not exact, and (s - i)^2 (s + 2) is refused, `lim` running
+  out, where (s - i)^2 is i twice. README says so. A root on the
   imaginary axis keeps a real part of rounding size, (s + 1)^2 (s^2 + 1)'s
   +-i one of 1.3e-17: roots is not a stability test, `hurwitz` is, exactly.
 
