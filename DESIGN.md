@@ -12095,7 +12095,9 @@ for, which `eig` refuses complex:
   unit circle, falls short; of 8 random polynomials of each degree,
   coefficients in [-1, 1], below converged for 4 of degree 15 and 20 and
   2 of 30, the nearest for all to 25 and 3 of 30, as the start scaled by
-  the mean itself, 6 of 30. Neither converges at 35 or 40.
+  the mean itself, 6 of 30. Neither converges at 35 or 40. A refusal's
+  last term is the scaled iterate, roots over 2^e, ~(s + 0.1)^3's near
+  -0.8: accepted, as unscaling it costs a clause for a refusal.
 
   **The edges.** Leading zeros are dropped, the degree being the
   polynomial's and not the column's, as in MATLAB's roots, where conv
