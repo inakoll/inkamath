@@ -264,7 +264,9 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brin
                          fallback:rootless fallback:coupled fallback:chained fallback:gapped
                          fallback:middled fallback:braked fallback:buffered fallback:bent
                          fallback:faraway fallback:voided fallback:covered fallback:ored
-                         fallback:spelled fallback:joined pendloop:cart motorloop:motor)
+                         fallback:spelled fallback:joined fallback:routed fallback:returned
+                         fallback:respelled fallback:preceded fallback:defaulted fallback:sentried
+                         fallback:partway pendloop:cart motorloop:motor)
     string(REPLACE ":" ";" checked ${checked})
     list(POP_FRONT checked file instance count)
     set(name ${instance})
@@ -964,6 +966,21 @@ set_tests_properties(check_voided_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^voided: 100 steps from 0, against exact values until 0 and inexact ones from there\nvoided\\.y: within 0\nvoided\\.gap: where lim nv runs out, 'gap\\(c\\) \\| lim nv\\(c\\) > 0 = lim nv\\(c\\)' falls to 'gap\\(c\\) = \\(c - c\\)/\\(c - c\\)'\n$")
 set_tests_properties(check_ored_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^ored: 100 steps from 0, against exact values until 0 and inexact ones from there\nored\\.y: within 0\nored\\.gap: where lim nv runs out, 'gap\\(c\\) \\| c > 1 or lim nv\\(c\\) > 0 = lim nv\\(c\\)' falls to 'gap\\(c\\) = 0'\nored\\.y: where lim nv runs out, 'y_n \\| gap\\(c_n\\) < 1 = 1' falls to 'y_n = 0'\n$")
+# C370: a guarded value's status is asked only where its clause is taken.
+set_tests_properties(check_routed_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^routed: 100 steps from 0, against exact values until 0 and inexact ones from there\nrouted\\.y: within 0\nrouted\\.gap: where lim nv runs out, 'gap\\(c\\) \\| root\\(c\\) > 0 = lim nv\\(c\\)' falls to 'gap\\(c\\) = \\(c - c\\)/\\(c - c\\)'\nrouted\\.y: where lim nv runs out, 'y_n \\| gap\\(c_n\\) < 1 = 1' falls to 'y_n = 0'\n$")
+set_tests_properties(check_returned_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^returned: 100 steps from 0, against exact values until 0 and inexact ones from there\nreturned\\.y: within 0\nreturned\\.gap: where lim nv runs out, 'gap\\(c\\) \\| lim nv\\(c\\) > 0 = root\\(c\\)' falls to 'gap\\(c\\) = \\(c - c\\)/\\(c - c\\)'\nreturned\\.y: where lim nv runs out, 'y_n \\| gap\\(c_n\\) < 1 = 1' falls to 'y_n = 0'\n$")
+set_tests_properties(check_respelled_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^respelled: 100 steps from 0, against exact values until 0 and inexact ones from there\nrespelled\\.y: within 0\nrespelled\\.gap: where lim nv runs out, 'gap\\(c\\) \\| lim nv\\(c\\) > 0 = lim nv\\(c \\+ c - c\\)' falls to 'gap\\(c\\) = \\(c - c\\)/\\(c - c\\)'\nrespelled\\.y: where lim nv runs out, 'y_n \\| gap\\(c_n\\) < 1 = 1' falls to 'y_n = 0'\n$")
+set_tests_properties(check_preceded_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^preceded: 100 steps from 0, against exact values until 0 and inexact ones from there\npreceded\\.y: within 0\npreceded\\.y: where lim nv runs out, 'y_n \\| gap\\(c_n\\) < 1 = 1' falls to 'y_n = 0'\n$")
+set_tests_properties(check_defaulted_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^defaulted: 100 steps from 0, against exact values until 0 and inexact ones from there\ndefaulted\\.y: within 0\ndefaulted\\.y: where lim nv runs out, 'y_n \\| gap\\(c_n\\) < 1 = 1' falls to 'y_n = 0'\n$")
+set_tests_properties(check_sentried_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^sentried: 100 steps from 0, against exact values until 0 and inexact ones from there\nsentried\\.y: within 0\nsentried\\.gap: where lim nv runs out, 'gap\\(c\\) \\| lim nv\\(c\\) > 0 = 0' falls to NaN\nsentried\\.y: where lim nv runs out, 'y_n \\| gap\\(c_n\\) < 1 = 1' falls to 'y_n = 0'\n$")
+set_tests_properties(check_partway_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^partway: 100 steps from 0, against exact values until 0 and inexact ones from there\npartway\\.y: within 0\npartway\\.y: where lim nv runs out, 'y_n \\| \\[1, 1\\]\\*gap\\(c_n\\) < 2 = 1' falls to 'y_n = 0'\n$")
 set_tests_properties(check_twonames_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^twonames: 100 steps from 0, against exact values until 0 and inexact ones from there\ntwonames\\.a: within [0-9.e-]+${about}\ntwonames\\.b: within [0-9.e-]+${about}\n$")
 set_tests_properties(check_fir_report PROPERTIES PASS_REGULAR_EXPRESSION

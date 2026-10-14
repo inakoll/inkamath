@@ -279,6 +279,123 @@ oring(c_n) = {
 }
 ored = oring(c_n = 1 + mod(n, 2))
 
+# As voided, where the value reads its guard's limit through another
+# function, either way, or respelt: a value's status is asked only where
+# the chain takes its clause (C370). At odd n gap divides 0 by 0, and the
+# interpreter refuses y. y's guard is listed: the step asks gap's value's
+# status, which it cannot tell from its guard's. Checked:
+#
+#     routed: 100 steps from 0, against exact values until 0 and inexact ones from there
+#     routed.y: within 0
+#     routed.gap: where lim nv runs out, 'gap(c) | root(c) > 0 = lim nv(c)' falls to 'gap(c) = (c - c)/(c - c)'
+#     routed.y: where lim nv runs out, 'y_n | gap(c_n) < 1 = 1' falls to 'y_n = 0'
+#
+#     returned: 100 steps from 0, against exact values until 0 and inexact ones from there
+#     returned.y: within 0
+#     returned.gap: where lim nv runs out, 'gap(c) | lim nv(c) > 0 = root(c)' falls to 'gap(c) = (c - c)/(c - c)'
+#     returned.y: where lim nv runs out, 'y_n | gap(c_n) < 1 = 1' falls to 'y_n = 0'
+#
+#     respelled: 100 steps from 0, against exact values until 0 and inexact ones from there
+#     respelled.y: within 0
+#     respelled.gap: where lim nv runs out, 'gap(c) | lim nv(c) > 0 = lim nv(c + c - c)' falls to 'gap(c) = (c - c)/(c - c)'
+#     respelled.y: where lim nv runs out, 'y_n | gap(c_n) < 1 = 1' falls to 'y_n = 0'
+viaroot(c_n) = {
+    nv(c)_0 = 0
+    nv(c)_k = nv(c)_(k-1) - (nv(c)_(k-1)^3 - 2*nv(c)_(k-1) + c)/(3*nv(c)_(k-1)^2 - 2)
+    root(c) = lim nv(c)
+    gap(c) | root(c) > 0 = lim nv(c)
+    gap(c) = (c - c)/(c - c)
+    y_n | gap(c_n) < 1 = 1
+    y_n = 0
+}
+routed = viaroot(c_n = 1 + mod(n, 2))
+rootval(c_n) = {
+    nv(c)_0 = 0
+    nv(c)_k = nv(c)_(k-1) - (nv(c)_(k-1)^3 - 2*nv(c)_(k-1) + c)/(3*nv(c)_(k-1)^2 - 2)
+    root(c) = lim nv(c)
+    gap(c) | lim nv(c) > 0 = root(c)
+    gap(c) = (c - c)/(c - c)
+    y_n | gap(c_n) < 1 = 1
+    y_n = 0
+}
+returned = rootval(c_n = 1 + mod(n, 2))
+respelt(c_n) = {
+    nv(c)_0 = 0
+    nv(c)_k = nv(c)_(k-1) - (nv(c)_(k-1)^3 - 2*nv(c)_(k-1) + c)/(3*nv(c)_(k-1)^2 - 2)
+    gap(c) | lim nv(c) > 0 = lim nv(c + c - c)
+    gap(c) = (c - c)/(c - c)
+    y_n | gap(c_n) < 1 = 1
+    y_n = 0
+}
+respelled = respelt(c_n = 1 + mod(n, 2))
+
+# Nor where an earlier clause is taken (C370): at odd n gap's first
+# divides 0 by 0, and its second, reading Newton where it cycles, is not
+# taken; the interpreter refuses y. At even n gap is the root near 0.618
+# and y_n 1. Checked:
+#
+#     preceded: 100 steps from 0, against exact values until 0 and inexact ones from there
+#     preceded.y: within 0
+#     preceded.y: where lim nv runs out, 'y_n | gap(c_n) < 1 = 1' falls to 'y_n = 0'
+earliest(c_n) = {
+    nv(c)_0 = 0
+    nv(c)_k = nv(c)_(k-1) - (nv(c)_(k-1)^3 - 2*nv(c)_(k-1) + c)/(3*nv(c)_(k-1)^2 - 2)
+    gap(c) | c > 1 = (c - c)/(c - c)
+    gap(c) | c > 0 = lim nv(c)
+    gap(c) = 0
+    y_n | gap(c_n) < 1 = 1
+    y_n = 0
+}
+preceded = earliest(c_n = 1 + mod(n, 2))
+
+# Nor the clause that always applies, nor a later guard, where an earlier
+# clause is taken: at odd n each gap divides 0 by 0, and the interpreter
+# refuses y. At even n lastly's gap is the root near 0.618 and sentry's 0,
+# and y_n is 1. Checked:
+#
+#     defaulted: 100 steps from 0, against exact values until 0 and inexact ones from there
+#     defaulted.y: within 0
+#     defaulted.y: where lim nv runs out, 'y_n | gap(c_n) < 1 = 1' falls to 'y_n = 0'
+#
+#     sentried: 100 steps from 0, against exact values until 0 and inexact ones from there
+#     sentried.y: within 0
+#     sentried.gap: where lim nv runs out, 'gap(c) | lim nv(c) > 0 = 0' falls to NaN
+#     sentried.y: where lim nv runs out, 'y_n | gap(c_n) < 1 = 1' falls to 'y_n = 0'
+lastly(c_n) = {
+    nv(c)_0 = 0
+    nv(c)_k = nv(c)_(k-1) - (nv(c)_(k-1)^3 - 2*nv(c)_(k-1) + c)/(3*nv(c)_(k-1)^2 - 2)
+    gap(c) | c > 1 = (c - c)/(c - c)
+    gap(c) = lim nv(c)
+    y_n | gap(c_n) < 1 = 1
+    y_n = 0
+}
+defaulted = lastly(c_n = 1 + mod(n, 2))
+sentry(c_n) = {
+    nv(c)_0 = 0
+    nv(c)_k = nv(c)_(k-1) - (nv(c)_(k-1)^3 - 2*nv(c)_(k-1) + c)/(3*nv(c)_(k-1)^2 - 2)
+    gap(c) | c > 1 = (c - c)/(c - c)
+    gap(c) | lim nv(c) > 0 = 0
+    y_n | gap(c_n) < 1 = 1
+    y_n = 0
+}
+sentried = sentry(c_n = 1 + mod(n, 2))
+
+# Nor in a function's cells: at even n each cell of gap is the root near
+# 0.618, and y_n is 1. Checked:
+#
+#     partway: 100 steps from 0, against exact values until 0 and inexact ones from there
+#     partway.y: within 0
+#     partway.y: where lim nv runs out, 'y_n | [1, 1]*gap(c_n) < 2 = 1' falls to 'y_n = 0'
+bycells(c_n) = {
+    nv(c)_0 = 0
+    nv(c)_k = nv(c)_(k-1) - (nv(c)_(k-1)^3 - 2*nv(c)_(k-1) + c)/(3*nv(c)_(k-1)^2 - 2)
+    gap(c)[j<=2] | c > 1 = (c - c)/(c - c)
+    gap(c)[j<=2] = lim nv(c)
+    y_n | [1, 1]*gap(c_n) < 2 = 1
+    y_n = 0
+}
+partway = bycells(c_n = 1 + mod(n, 2))
+
 # A brake whose guard reads a solver's limit, the risky clause first: where
 # Newton runs out, 'brake' falls to 0 and does not brake. 'careful' asks the
 # opposite question, and falls to braking. Newton from 0 on x^3 - 2x + c
