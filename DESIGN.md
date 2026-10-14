@@ -11387,6 +11387,9 @@ After an external review of README, MANIFESTO and the conformance suite
   programs `unseen_4.c`, `tuned_4.c` and `twins_4.c`, and `twins_4.c` in
   float, and `cli.cmake`'s `inf.h` and `tune.h`, under their bounds of
   430,000 and 480,000 bytes.
+  README's sentence that what one part computes and a later one reads is
+  kept on the step's stack, about 320 KB that a thread with a small stack
+  must allow for, says instead that the model struct holds it.
 - `[done]` **A Jacobian by cells**, the idiom, compiled and held by `--check`:
   `J(x)[i<=3, j<=2] = (grad_(v = x) f(v)[i])[j]`, row i output i's
   gradient as a paper defines J_ij, so the layout is the user's. grad's own
