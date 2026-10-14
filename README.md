@@ -724,9 +724,13 @@ comparing doubles. Equal roots are adjacent only where they come out equal
 to the bit: (s^2 + 2s + 2)(s^2 + 2s + 5) gives -1 - i, -1 + i, -1 - 2i,
 -1 + 2i, their real parts rounding apart. Of a real polynomial, a real
 root is real and a pair exactly conjugate; of a complex one, a repeated
-root is unreliable, its gcd being in doubles. Near roots cost digits, as in any root finder in
-doubles: (s + 1)^2 - 10^-16 gives -1.00000001 and -0.999999989 for -1 +-
-10^-8. The iteration reaches a degree of about 30, and at 40 `lim` runs
+root is unreliable, its gcd being in doubles. Near roots cost digits, as
+in any root finder in doubles: a cluster of k roots d apart loses about
+(k - 1) log10(1/d) of a double's 16, so (s - 1)(s - 1.00001)(s - 1.00002)
+gives 1, 1.00000789 and 1.00002073, and (s + 1)^2 - 10^-16 gives
+-1.00000001 and -0.999999989 for -1 +- 10^-8; a near double root may print
+as a complex pair, (s + 1)^2 - 10^-20 as -1 +- 8.18554879e-9i for -1 +-
+10^-10. The iteration reaches a degree of about 30, and at 40 `lim` runs
 out and refuses. A root on the imaginary axis keeps a real part of
 rounding size: stability is `hurwitz`'s test, exact. `grad` refuses roots,
 and so does the compiler, in the words of a definition it calls. The PI
