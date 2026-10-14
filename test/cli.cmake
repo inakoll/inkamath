@@ -61,7 +61,7 @@ if(PART STREQUAL "spec")
                         WORKING_DIRECTORY "${OUT}" OUTPUT_VARIABLE out ERROR_VARIABLE err
                         RESULT_VARIABLE code TIMEOUT ${CASE_TIMEOUT})
         if("${out}${code}" STREQUAL "1" AND
-           "${err}" STREQUAL "inkamath: cannot compile Z: polyval is not defined\n")
+           "${err}" STREQUAL "inkamath: cannot compile G: polyval is not defined\n")
             math(EXPR refused "${refused} + 1")
         endif()
     endforeach()

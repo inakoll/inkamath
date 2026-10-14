@@ -2112,7 +2112,8 @@ private:
             base.Scalar()
                 ? Emit(expression->m_e2())
                 : Known(expression->m_e2(), "a matrix power whose exponent is not a constant");
-        if (!base.part.empty() && !base.Scalar())
+        // x^0 takes no part, its derivative 0, as Derivative::Power's.
+        if (!base.part.empty() && !base.Scalar() && Doubles(*exponent.constant)[0] != 0)
             throw Reason("a derivative of a matrix power, for now");
         Code value;
         if (base.constant && exponent.constant) {

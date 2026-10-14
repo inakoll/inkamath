@@ -11739,7 +11739,9 @@ a product of polynomials or a value of one on nearly every page:
 
   **grad** follows the definitions, products and sums: with respect to x,
   to the coefficients, or to a gain inside them. x^0's derivative is 0 at
-  0 too, so p'(0) is p's coefficient of x.
+  0 too, so p'(0) is p's coefficient of x. Compiled, a matrix's x^0 takes
+  no part, as the interpreter's, where a derivative of a matrix power was
+  refused: 2 lines of `compile.hpp`, so p(A) of an A that moves has one.
 
   Rejected:
   - **MATLAB's row convention**: `charpoly`, `hurwitz` and `schurcohn`
@@ -11783,9 +11785,9 @@ a product of polynomials or a value of one on nearly every page:
   at 30 digits. All 59 pass on the prototype. Compiled in
   `test/compile/polyconv.ink`: `tune`, a PI loop's closed-loop
   denominator by conv, its value and its derivative in the gain, and its
-  companion matrix's polyval, 0 by Cayley and Hamilton, and a conv and
-  a polyval of what moves, each number a
-  multiple of 1/8 below 64, exact in double and in float.
+  companion matrix's polyval, 0 by Cayley and Hamilton, a conv and a
+  polyval of what moves, and grad through polyval at a matrix that moves,
+  each number a multiple of 1/8 below 64, exact in double and in float.
   `test/cli.cmake`'s spec part writes its check program in each, skipped
   while polyval is not defined; the reports its comments give join the
   checks with them. The spec suite and `cli_spec` return until they pass.
