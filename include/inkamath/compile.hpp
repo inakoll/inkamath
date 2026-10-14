@@ -2153,7 +2153,8 @@ private:
             base.Scalar()
                 ? Emit(expression->m_e2())
                 : Known(expression->m_e2(), "a matrix power whose exponent is not a constant");
-        if (!base.part.empty() && !base.Scalar())
+        // x^0 takes no part, its derivative 0, as Derivative::Power's.
+        if (!base.part.empty() && !base.Scalar() && Doubles(*exponent.constant)[0] != 0)
             throw Reason("a derivative of a matrix power, for now");
         Code value;
         if (base.constant && exponent.constant) {
@@ -2275,8 +2276,13 @@ private:
         if (whole == 0) {
             // The identity whatever the base, but not a constant: a constant is
             // what reads no name, and an enclosing fold would read this one's.
+            // NaN where a cell of the base is, as the interpreter refuses it.
             Code identity = Literal(Value::Identity(base.size));
             identity.constant.reset();
+            aware_ = aware_ || MayNan(base);
+            if (const std::string test = aware_ ? Nan(Shared(base)) : ""; !test.empty())
+                for (Cell& cell : identity.cells)
+                    cell = Cell("(" + test + cell.text + ")", primary);
             return identity;
         }
         if (whole < 0) base = Inverse(base);

@@ -551,6 +551,13 @@ inline constexpr const char* prelude[] = {
     "cholr(A, i, k) | i > k = "
     "(A[i,k] - sum_(q=1)^(k-1) cholr(A, i, q)*cholr(A, k, q))/cholr(A, k, k)",
     "cholp(A, k) = A[k,k] - sum_(q=1)^(k-1) cholr(A, k, q)^2",
+    // conv is the product of two polynomials and polyval one's value at x,
+    // by Horner's rule, each a column highest power first as charpoly's;
+    // x^0 makes polyval of a square matrix the matrix polynomial.
+    "conv(p[j<=a], q[k<=b])[r<=a+b-1] = sum_(j=max(1, r+1-b))^(min(a, r)) p[j]*q[r+1-j]",
+    "polyval(p[j<=m], x[r<=n, c<=n]) = polyvalh(p, x)_m",
+    "polyvalh(p, x)_1 = p[1]*x^0",
+    "polyvalh(p, x)_k = polyvalh(p, x)_(k-1)*x + p[k]*x^0",
 };
 
 template <Parsable T, Numeric U>

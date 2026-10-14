@@ -387,3 +387,11 @@ apart(x_n) = {
     k_n = (A*[lim h(x_n), 1; 0, 1])[1, 2]
 }
 kd = apart(x_n = n/4)
+
+# A matrix to the power 0 is NaN where a cell of it is, as the interpreter
+# refuses it: v[1,1] answered 1 from step 2, where r refuses (C372).
+zeroth(x_n) = {
+    r(v) | v > 0 = v
+    v_n = [r(x_n), 1; 0, 1]^0
+}
+nil = zeroth(x_n = 2 - n)

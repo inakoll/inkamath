@@ -1884,6 +1884,7 @@ closures need one anyway, and can bring it.
 | C369 `[fixed]` | **A call written as a sum's upper bound was told what its body made of the arguments.** The bound is a number, a name, or parenthesised, and a name there is never a call (phase 11), so `sum_(j=1)^max(1, 3) j` read the bound `max` and the body `(1, 3) j`: "missing ')' after '1'"; `sum_(j=1)^floor(7/2) j` said "the operator '*' is probably missing". A name touching the parenthesis after it is now refused in the rule's words, with the bound parenthesised: "... a name there is never a call: write ^(max(1, 3))". `^n (k+1)`, spaced, is still the bound n and the body (k+1); `^n(k+1)`, which was too and which no test or example wrote, is refused so. Found by the exploration of the CTM tutorials. In 12 lines of `interpreter.hpp`, 1 of comment; `series.ink` holds it. |
 | C370 `[fixed]` | **A guarded value's status is asked where its clause was not taken.** C368 drops a status only where the value reads it as its guard did, by the status's text; elsewhere a value's status is asked of the caller's guard wherever the call is NaN, so where the clause the call took is refused, the step takes the caller's clause after where the interpreter refuses. Each with `gap(c) = (c - c)/(c - c)` after the guarded clause, `y_n \| gap(c_n) < 1 = 1`, `y_n = 0` and c_n = 1 + mod(n, 2), the step takes y_1 = 0 where the interpreter refuses, dividing by zero: the same limit through another function, `root(c) = lim nv(c)` and `gap(c) \| root(c) > 0 = lim nv(c)`, or `gap(c) \| lim nv(c) > 0 = root(c)`; a respelt argument, `gap(c) \| lim nv(c) > 0 = lim nv(c + c - c)`; and a later clause's value where an earlier one was taken, `gap(c) \| c > 1 = (c - c)/(c - c)`, `gap(c) \| c > 0 = lim nv(c)`, `gap(c) = 0`. So were the clause that always applies, `gap(c) = lim nv(c)` after `gap(c) \| c > 1 = (c - c)/(c - c)`, a later guard's, `gap(c) \| lim nv(c) > 0 = 0` after it, and a function's cells. Each status a clause reads, of its guard or its value, is now joined with the conditions before it as the chain tests them, and its value's with its own guard, so that it is asked only where the chain reaches it. C368's drop stays, for the audit alone: without it `voided.y` and `buffered.brake` would be listed, their statuses false wherever asked; a status it misses is listed, as `routed.y`. No golden, expected header or other check report moves; `ored`'s C gains the join. In 33 lines of `compile.hpp`, 4 of comment, and 11 removed; `compile/fallback.ink`'s `routed`, `returned`, `respelled`, `preceded`, `defaulted`, `sentried` and `partway` hold it. Found reviewing the audit of fallbacks; the baseline fails each too. |
 | C371 `[fixed]` | **Statuses joined by `\|\|` left a conjunction bare, which GCC and Clang warn of under `-Wall`.** A status a function passes on is `isnan(call) && (...)`, and a cell's refusal where a guard of its chain ran out is the same, so a guard reading a limit through a function and another, `u_n \| root(c_n) > 0 and lim nvx(c_n) > 0 = 1` with `root(c) = lim nv(c)`, or a cell whose two guards read limits with no clause after, wrote `a && (b) \|\| c`: right in C, and refused by `-Werror=parentheses`, as CI builds. Such a status is bracketed where statuses are joined now, in 8 lines of `compile.hpp`, 1 of comment, and 4 removed. No golden, expected header or report moves; check programs' C gains the brackets. `compile/fallback.ink`'s `spelled` and `joined` hold it. Found reviewing the audit of fallbacks; the baseline writes the same. |
+| C372 `[fixed]` | **A matrix to the power 0 compiled dropped a NaN cell.** The step wrote the identity whatever the base, so with `r(v) \| v > 0 = v` and `x_n = r(3 - a_n)`, `[x_n, 1; 0, 1]^0` answered 1 in its first cell, where the interpreter refuses it: `--check` reported `v[1,1]: 1 at 3, where the interpreter gives none`. A single value's x^0 was NaN where x is, in a header that writes NaN; a matrix's is now NaN where a cell of it is, and makes the header write NaN where a cell may be. No golden, expected header or check report moves; six check programs test the base where a series or a sum starts a power at 0, `newton.ink`'s `evens`, `evened` and `twonames`, `series.ink`'s `later`, `sums.ink`'s `summed` and `iekf.ink`'s `walk`. Found by the spec review of conv and polyval. In 5 lines of `compile.hpp`, 1 of comment; `compile/nan.ink`'s `nil` holds it. |
 
 **Measure instructions, not the clock.** One of those changes made the matrix
 workload 20 per cent slower by the clock and not by a single instruction: with
@@ -11812,7 +11813,8 @@ pendulum (`test/data/ctms.ink`, `test/compile/pendloop.ink` and
 `motorloop.ink`), its friction:
 
 - **Polynomial helpers in the prelude** beside `charpoly`: `conv`,
-  `polyval` and padding to a length, which every transfer function needs.
+  `polyval` (`[done]`, below) and padding to a length, which every
+  transfer function needs.
 - **Complex `roots` by Durand-Kerner**, in the interpreter only.
 - **`care` and `dare` beside `hinf`**: the sign of the Hamiltonian and the
   doubling algorithm, which each test now carries in five to seven lines.
@@ -11822,3 +11824,136 @@ pendulum (`test/data/ctms.ink`, `test/compile/pendloop.ink` and
   fixed-count series, and the Riccati equation by doubling.
 - **A tutorial chapter from these two series**, which the exploration found
   enough for *a short tutorial path*.
+
+After a §9 transcription of the CTM tutorials (branch `ctms`), which wrote
+a product of polynomials or a value of one on nearly every page:
+
+- `[done]` **Polynomials in the prelude, `conv(p, q)` and `polyval(p, x)`**: the
+  product of two polynomials and a polynomial's value, each polynomial a
+  column, highest power first, as `charpoly` writes one and `hurwitz`
+  reads one; MATLAB's and numpy's names, and the pages'. The design,
+  measured on a prototype:
+
+      conv(p[j<=a], q[k<=b])[r<=a+b-1] = sum_(j=max(1, r+1-b))^(min(a, r)) p[j]*q[r+1-j]
+      polyval(p[j<=m], x[r<=n, c<=n]) = polyvalh(p, x)_m
+      polyvalh(p, x)_1 = p[1]*x^0
+      polyvalh(p, x)_k = polyvalh(p, x)_(k-1)*x + p[k]*x^0
+
+  **Written in inkamath**: c_r the sum of p_j q_(r+1-j) over the j where
+  both exist, so columns of unequal length need no padding; the value by
+  Horner's rule, b_k = b_(k-1) x + p_k, a recurrence as charpoly's
+  Faddeev and LeVerrier is. Exact of exact coefficients at an exact x.
+  No language change.
+
+  **The convention, refused rather than guessed**: a column. A single
+  value is a column of one, the constant polynomial, so the motor page's
+  `conv(num, numa)` with num = 50 K is `conv(50*K, [1; 1])`. A row is
+  refused by the signature, `conv takes q[k<=b], not a 1x2 matrix`, as
+  `hurwitz` refuses one: it is MATLAB's convention, and reading it as a
+  column would guess that it was meant as one. So are a matrix and a
+  tensor. There is no empty case, a matrix having at least one cell; the
+  zero polynomial is 0.
+
+  **The length is a + b - 1**: a leading zero is kept, as MATLAB's conv
+  keeps it. Trimming would make a length depend on a value, which a
+  compiled shape cannot.
+
+  **Complex coefficients** are multiplied as written, not conjugated:
+  (s + 5 - i)(s + 5 + i) is `conv([1; 5 - i], [1; 5 + i])`, [1; ~10;
+  ~26], inexact as anything i touches. At a complex x, Horner's rule in
+  complex doubles: the motor's |P(10i)|, the page's 0.0139.
+
+  **At a square matrix, `polyval` is the matrix polynomial**, sum p_j
+  A^(m-j), MATLAB's polyvalm and not its cellwise polyval. A paper's p(A)
+  is this one: Cayley and Hamilton's, and Ackermann's phi(A), which the
+  motor's pole placement needs and `ctms.ink` writes out as `A^2 + 10*A +
+  26*A^0`. The language already reads a function of a matrix as the
+  matrix operation (MANIFESTO.md, *Tensors*); the cellwise value is
+  written by cells, `Y[j<=n, k<=m] = polyval(p, X[j,k])`. It costs x^0
+  alone: a matrix plus a number adds it to every cell, so p_k x^0 is what
+  makes the constant p_k I. Refusing would cost a guard and lose both
+  uses. A matrix not square is refused by the signature, `polyval takes
+  x[r<=n, c<=n], not a 1x3 matrix`.
+
+  **Compiled**, each is written where it is called, as a function of the
+  prelude of a matrix is: conv's cells as sums whose bounds are constants
+  once the cell is, polyval as m - 1 products and sums. At a single value
+  that moves, x^0 is `pow(x, 0.0)`, 1 for every x in C, a NaN too (C11
+  F.10.4.4), which GCC 13 and Clang 18 fold away; in a header that writes
+  NaN it is `isnan(x) ? NAN : pow(x, 0.0)`, as any power reading NaN, so
+  NaN where the interpreter gives none. No C++ for either. At a matrix
+  x, p_k x^0 is p_k times each cell of the identity, so the step
+  multiplies by 0.0 and adds the cells off its diagonal: an accepted cost
+  of p(A). Folding a constant identity's zero cells could remove it later.
+
+  **grad** follows the definitions, products and sums: with respect to x,
+  to the coefficients, or to a gain inside them. x^0's derivative is 0 at
+  0 too, so p'(0) is p's coefficient of x. Compiled, a matrix's x^0 takes
+  no part, as the interpreter's, where a derivative of a matrix power was
+  refused: 2 lines of `compile.hpp`, so p(A) of an A that moves has one.
+
+  Rejected:
+  - **MATLAB's row convention**: `charpoly`, `hurwitz` and `schurcohn`
+    take and give a column, and a second convention would be a second
+    way to say one thing; accepting both is the guess refused above.
+  - **A polynomial type**: a value of its own, with its printing, a sum
+    that pads the shorter and conv for its product, which the
+    interpreter, grad and the compiler would each learn, where a column
+    already is one and the prelude reads it. Its one gain, a sum of
+    unequal lengths, is a block literal here: `[0; q]`.
+  - **A sum of powers**, `sum_(j=1)^m p[j]*x^(m-j)`, the exploration's:
+    one line, but a power of x per coefficient, `pow` in C. Horner's
+    rule is m - 1 products, as MATLAB's and numpy's polyval compute it.
+  - **polyval cellwise at a matrix, or refused there**: above.
+  - **conv over a helper that reads 0 outside a column**, as `hurwitzc`
+    does: more lines, and products by 0 compiled.
+  - **Out of scope**, as decided: `roots`, a padding helper, `care` and
+    `dare`, `expm`, and step-response metrics.
+
+  What moves: nothing recorded. On the prototype every golden, expected
+  header, report and `test/cli.cmake` case passes, 536 tests. The files
+  that define a conv of their own, `minibatch.ink`, `compile/conv.ink`
+  and `tensorgrad.ink`, and `kernel.ink` and `decimate.ink` whose model
+  is named conv, define it for themselves, as a session may any name of
+  the prelude. README's section 2 gives them a paragraph after
+  charpoly's example, with the spec's closed loop and Cayley and
+  Hamilton as its own; sections 1 and 5 name both. README is replayed,
+  so it comes with them.
+
+  7 lines by `wc -l include/inkamath/*.hpp src/*`, 19,064 to 19,071 at
+  17ab090: the prelude's 4 and 3 of comment. Past 10 the implementation
+  stops and reports.
+
+  Specified in `test/data/spec/polyconv.ink`, 62 entries replayed by the
+  spec suite, 40 failing by design, those passing definitions, a
+  column's display and a user's phi(A): the pendulum's products from
+  `pend/invPID.html` and `pend/invRL.html`, its closed loop against
+  `ctms.ink`'s, the motor's from `motor/freq2.html`, its Ackermann gain
+  and its phi(A) written by a user beside polyval's, the edges above, and
+  grad. Exact values in Python's fractions, each product again by
+  collecting powers and each value by a sum of powers; |P(10i)| in mpmath
+  at 30 digits. The first 59 pass on the prototype. Compiled in
+  `test/compile/polyconv.ink`: `tune`, a PI loop's closed-loop
+  denominator by conv, its value and its derivative in the gain, and its
+  companion matrix's polyval, 0 by Cayley and Hamilton, a conv and a
+  polyval of what moves, and grad through polyval at a matrix that moves,
+  each number a multiple of 1/8 below 64, exact in double and in float.
+  `test/cli.cmake`'s spec part writes its check program in each, skipped
+  while polyval is not defined; the reports its comments give join the
+  checks with them. The spec suite and `cli_spec` return until they pass.
+
+  Built as specified: the prelude's 7 lines are the prototype's, 4 and 3
+  of comment, against the stop of 10. Every entry passes as written, and
+  the spec is the golden `polyconv.ink`; the spec suite and `cli_spec` go,
+  polyconv their only case. `tune` is a check in double and in float, its
+  reports held outright as its comment gives them. README's section 2
+  gives the paragraph after charpoly's example, saying that MATLAB's and
+  numpy's polyval work cell by cell, and sections 1 and 5 name both.
+  Departures: README's closed loop is the story's PI loop at k = 2, read
+  by `hurwitz`, not the spec's pendulum, which needs nine definitions
+  first; and two changes of `compile.hpp` the spec did not foresee, each
+  counted apart: C372, 5 lines, 1 of comment, a matrix to the power 0
+  NaN where a cell of it is, which moves six check programs and no report;
+  and 2 lines, 1 of comment, and 1 removed, so that a matrix's x^0 takes
+  no part in grad where a derivative of a matrix power was refused, held
+  by the story's `G`. 19,078 to 19,091 lines at the merge of 7d8c985.
