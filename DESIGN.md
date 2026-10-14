@@ -12103,11 +12103,12 @@ for, which `eig` refuses complex:
   set, grad refused in a helper's words, "rootsf takes a clause at k = 2
   that holds only there". Until a model needs a pole's sensitivity.
 
-  **Not compiled**: "a complex number", by name, wherever roots is called
-  in a definition compiled, before its arguments. Without it the compiler
-  refused in a helper's words, "the clauses of rootst have different
-  shapes", or at constant arguments "a sequence with parameters by cells,
-  for now".
+  **Not compiled**, in a helper's words: at a moving argument "the
+  clauses of rootst have different shapes", at a constant one "a sequence
+  with parameters by cells, for now", and under grad "grad cannot
+  differentiate roots yet". Refusing it by name, "a complex number", was
+  3 lines of `compile.hpp` for clearer words: rejected, the helper's
+  being a refusal all the same.
 
   Rejected:
   - **A companion matrix and eig**: eig refuses a complex eigenvalue, its
@@ -12124,28 +12125,25 @@ for, which `eig` refuses complex:
 
   What moves: nothing recorded. On the prototype every golden, expected
   header, report and `test/cli.cmake` case passes, 564 tests, the spec
-  suite and `cli_spec` among them. `compile/iterates.ink` and
+  suite among them. `compile/iterates.ink` and
   `compile/nan.ink`, whose model is named roots, define it for themselves,
   as a session may any name of the prelude. README's section 2 gives roots a paragraph after conv's, the
   motor's poles as its example, with the cost of near roots and that
   stability is hurwitz's; sections 1 and 5 name it. README is replayed,
   so it comes with roots.
 
-  37 lines by `wc -l include/inkamath/*.hpp src/*`, 19,213 to 19,250 at
+  34 lines by `wc -l include/inkamath/*.hpp src/*`, 19,213 to 19,247 at
   90335fc: the prelude's 32, 4 of them comment and 2 the scale; 1 of C++
-  for its words, 1 adding it to the functions `checked` reads, and 3 of
-  `compile.hpp`, 1 of them comment, for the compiler's refusal. Past 52
+  for its words and 1 adding it to the functions `checked` reads. Past 52
   the implementation stops and reports.
 
   Specified in `test/data/spec/polyroots.ink`, named so beside the golden
   `roots.ink` of exact roots of powers: 46 entries replayed by the spec
   suite, 27 failing by design, those passing definitions. The CTM motor's
   poles, the pendulum's LQR and PID loops, README's PI loop, real roots,
-  Wilkinson's, roots of 10^-10 and 10^-12, the repeated, near and complex ones and the edges above.
-  Exact values in sympy, inexact ones in mpmath at 50 digits, the LQR
-  loop's as the stable eigenvalues of its Hamiltonian, a route apart from
-  the Riccati solution the transcript takes. `test/cli.cmake`'s spec part
-  compiles three definitions calling roots, at a moving argument, at a
-  constant one and under grad, skipped while roots is not defined. All
-  pass on the prototype. The spec suite and `cli_spec` return until they
-  pass.
+  Wilkinson's, roots of 10^-10 and 10^-12, the repeated, near and complex
+  ones and the edges above. Exact values in sympy, inexact ones in mpmath
+  at 50 digits, the LQR loop's as the stable eigenvalues of its
+  Hamiltonian, a route apart from the Riccati solution the transcript
+  takes. All pass on the prototype. The spec suite returns until it
+  passes.
