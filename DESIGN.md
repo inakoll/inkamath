@@ -11984,7 +11984,7 @@ for, which `eig` refuses complex:
       rootsf(p, g[k<=n]) | n == 1 and p == re(p) = rootsy(rootse(p)*lim rootsk(rootsn(p)))
       rootsf(p, g[k<=n]) | n == 1 = rootse(p)*lim rootsk(rootsn(p))
       rootsf(p, g) = [rootsr(rootsq(p, g)); rootsr(g)]
-      rootse(p[j<=m]) = 2^floor(ilogb(abs(p[m]/p[1]))/(m-1))
+      rootse(p[j<=m]) = 2^floor(ilogb(abs(p[m]/p[1]))/(m-1) + 1/2)
       rootsn(p[j<=m])[r<=m] = p[r]/rootse(p)^(r-1)
       rootsk(p[j<=m])_0[r<=m-1] = (4/10 + 9/10*i)^(r-1)
       rootsk(p[j<=m])_k[r<=m-1] = rootsk(p)_(k-1)[r] - polyval(p, rootsk(p)_(k-1)[r])/(p[1]*prod_(q=1)^(m-1) ((q == r) + (q <> r)*(rootsk(p)_(k-1)[r] - rootsk(p)_(k-1)[q])))
@@ -12072,8 +12072,8 @@ for, which `eig` refuses complex:
   rounding apart, about -5e-22 and 5e-22. README says so.
 
   **The start and the scale**: (0.4 + 0.9i)^(r-1), the customary one, on
-  p scaled by 2^e, e = floor(ilogb(|p_m/p_1|)/(m-1)), a power of two
-  within a factor 2 of the geometric mean of the roots' moduli: the
+  p scaled by 2^e, e = floor(ilogb(|p_m/p_1|)/(m-1) + 1/2), a power of
+  two near the geometric mean of the roots' moduli: the
   iteration runs on p_j/2^(e(j-1)), whose roots are p's over 2^e, and
   they are multiplied back, exactly. So the scaled roots are near 1 and
   `lim`'s tolerance, absolute below 1, is relative to them. Scaling the
@@ -12083,6 +12083,12 @@ for, which `eig` refuses complex:
   (s - 1)...(s - 10) took 121 terms unscaled, refused at 100, and takes 41
   with the start scaled; elsewhere scaling moved the count by at most 12
   terms either way, on 11 polynomials of degree 2 to 20. Deterministic.
+  The power of two is the nearest, not the one below, which the review
+  proposed: below, the scaled roots are 1 to 2 and the start, inside the
+  unit circle, falls short; of 8 random polynomials of each degree,
+  coefficients in [-1, 1], below converged for 4 of degree 15 and 20 and
+  2 of 30, the nearest for all to 25 and 3 of 30, as the start scaled by
+  the mean itself, 6 of 30. Neither converges at 35 or 40.
 
   **The edges.** Leading zeros are dropped, the degree being the
   polynomial's and not the column's, as in MATLAB's roots, where conv
