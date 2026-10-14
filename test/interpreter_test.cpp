@@ -335,6 +335,9 @@ TEST_CASE("rotation") {
 TEST_CASE("iekf") {
     check_transcript("iekf.ink");
 }
+TEST_CASE("ctms") {
+    check_transcript("ctms.ink");
+}
 TEST_CASE("readme") {
     check_readme();
 }
