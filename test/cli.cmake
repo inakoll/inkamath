@@ -48,6 +48,25 @@ endfunction()
 # Read by cases in every part.
 set(inputs "${CMAKE_CURRENT_LIST_DIR}/compile/inputs.ink")
 
+# Specified, not yet built (DESIGN.md, roots in the prelude): the compiler
+# refuses roots by name, before its arguments, wherever it is called.
+# Skipped while it is refused as today, roots not defined, and only then.
+if(PART STREQUAL "spec")
+    file(MAKE_DIRECTORY "${OUT}")
+    file(WRITE "${OUT}/poles.ink" "y_n = re(roots([1; 3; 2 + n])[1])\nz_n = n*re(roots([1; 3; 2])[1])\ng_n = grad_(a = n) re(roots([1; a])[1])\n")
+    set(args --compile poles.ink)
+    execute_process(COMMAND "${EXE}" ${args} WORKING_DIRECTORY "${OUT}"
+                    OUTPUT_VARIABLE out RESULT_VARIABLE code TIMEOUT ${CASE_TIMEOUT})
+    if("${out}${code}" STREQUAL "cannot compile g: roots is not defined\ncannot compile y: roots is not defined\ncannot compile z: roots is not defined\n1")
+        message("compile_roots_refused: roots not defined, as today")
+        return()
+    endif()
+    set(stdout "cannot compile g: a complex number\ncannot compile y: a complex number\ncannot compile z: a complex number\n")
+    set(exit 1)
+    check(compile_roots_refused)
+    return()
+endif()
+
 # The cases run as three tests of about equal time under the sanitizers: PART
 # 1 up to charpoly's refusal, 2 from it, 3 from eig's, and all where PART is
 # not given.
