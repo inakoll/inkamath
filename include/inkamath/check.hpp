@@ -373,6 +373,51 @@ public:
                         them != calls.end() && them->second.size() == heard.size())
                         straddle(n, sequence, "", clauses, fallback, them->second[c], heard[c]);
         }
+        // Each guard the step compiles that reads a limit, and the clause it
+        // falls to where the limit runs out, from the code (DESIGN.md).
+        std::map<std::pair<std::string, std::size_t>, std::string> falls;
+        const auto audit = [&](const auto& self, const Scope<Value>& scope,
+                               const std::string& prefix) -> void {
+            for (const auto& [name, reference] : scope.names) {
+                if (const Scope<Value>* inner = stack.InstanceScope(reference)) {
+                    if (!prefix.empty()) self(self, *inner, prefix + name + ".");
+                    continue;
+                }
+                const auto& clauses = reference->Clauses();
+                for (std::size_t c = 0; c < clauses.size(); ++c) {
+                    const auto& p = clauses[c].parameters;
+                    const auto  found =
+                        p.guarded() ? compiled.fallen.find(p.guard().get()) : compiled.fallen.end();
+                    if (found == compiled.fallen.end()) continue;
+                    // The next tried for the same terms or cells: no base clause (C254),
+                    // nor a term written whole for a cell.
+                    const auto same = [&](const auto& o, bool guarded) {
+                        return o.guarded() == guarded && o.general() == p.general() &&
+                               o.cells() == p.cells() && (!o.cells() || !o.row_name().empty());
+                    };
+                    std::string next;
+                    for (std::size_t q = c + 1; q < clauses.size() && next.empty(); ++q)
+                        if (same(clauses[q].parameters, true)) next = clauses[q].written;
+                    for (const auto& o : clauses)
+                        if (next.empty() && same(o.parameters, false)) next = o.written;
+                    const std::string& written = clauses[c].written;
+                    std::string        read;
+                    for (const std::string& l : found->second.limits)
+                        read += (read.empty() ? "" : " or ") + l;
+                    std::string to = next.empty() ? "NaN" : "'" + next + "'";
+                    if (!found->second.plain)
+                        to = "NaN under grad";
+                    else if (found->second.grad && !next.empty())
+                        to += ", and to NaN under grad";
+                    falls[{prefix + name, c}] = prefix + name + ": where " + read + " runs out, '" +
+                                                written + "' falls to " + to;
+                }
+            }
+        };
+        audit(audit, *stack.InstanceScope(definition), instance + ".");
+        audit(audit, *definition->home, "");
+        for (const auto& [label, scope] : made) audit(audit, *scope, instance + "." + label + ".");
+        for (const auto& [at, line] : falls) held += "    puts(" + Quoted(line) + ");\n";
         const std::string against = !inexact ? "exact values"
                                              : "exact values until " + std::to_string(*inexact) +
                                                    " and inexact ones from there";

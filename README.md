@@ -265,7 +265,11 @@ another clause than the interpreter, at a sequence's guard or a function's the
 file writes, in the same words: there the estimate is a clause's, not a
 rounding's, and the check does not fail for it (`test/compile/straddle.ink`,
 where `crease`'s 0.30000000000000004 is 5.6e-17 from the double nearest its
-threshold 3/10).
+threshold 3/10). After the values it lists, from the code and not the run,
+every guard the step compiles that reads a limit and the clause tried where
+that limit runs out, so that a reviewer can see which way each falls:
+`braked.brake: where lim nv runs out, 'brake_n | lim nv(c_n) < 1 = 1' falls to
+'brake_n = 0'` skips the brake where Newton fails (`test/compile/fallback.ink`).
 
 `--steps n` beside an instance's `--check` steps it n times rather than a
 hundred, n from 1 to 100000. n counts the step's calls, the one that computes the first
