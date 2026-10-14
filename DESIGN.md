@@ -12183,9 +12183,7 @@ for, which `eig` refuses complex:
   below 1 `lim`'s tolerance is absolute, so a root far below the mean
   settled about 10^-20 times the mean off, 1e-23 answered -3.46e-22
   beside -1 and 1e23, and 9e-8 beside -5e6 and 2e8 lost its eighth digit;
-  the step squares that error, in 3 lines. Relative convergence, each
-  root's ratio to its last read by `lim`, 1 line, was rejected: it refused
-  clusters the limit answers right, (s - 1)(s - 1.01)(s - 1.02)(s - 1.03).
-  Of 400 random polynomials, degree 2 to 12, integer coefficients from -9
+  the step squares that error, in 3 lines, where relative convergence was
+  rejected for refusing clusters the limit answers right. Of 400 random polynomials, degree 2 to 12, integer coefficients from -9
   to 9, all 722 real roots printed real, every root within 4.9e-9 of
   mpmath's, and none refused.
