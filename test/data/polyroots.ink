@@ -139,6 +139,14 @@ K2 = kq(lim sgn([A, -B*B'; -[5000, 0, 0, 0; 0, 0, 0, 0; 0, 0, 100, 0; 0, 0, 0, 0
  ~(-1.3411639e-12+i*1.1615414e-12);
                   ~-3.17672196e-13]
 
+# Roots far from their geometric mean, 1 here, where lim's tolerance is
+# absolute: (s - 10^-23)(s + 1)(s - 10^23), its roots by construction. The
+# small one answered ~-3.46262328e-22, its sign wrong.
+>> roots(conv(conv([1; -1/10^23], [1; 1]), [1; -10^23]))
+[   ~-1;
+ ~1e-23;
+ ~1e+23]
+
 # A repeated root: the roots of p/gcd(p, p'), each simple, then the gcd's,
 # whose roots are p's repeated ones, Euclid's gcd exact in exact numbers.
 # Each of these comes to factors of degree 1, so it is exact.
