@@ -11283,7 +11283,7 @@ After an external review of README, MANIFESTO and the conformance suite
     `tf` against 303,456: within one model, so left to the owner with the
     parked option below.
   - **Unsplit models, and split ones that carry nothing, byte for
-    byte**: no struct and no member. `riekf`, unsplit, is 79,006 bytes
+    byte**: no struct and no member. `riekf`, unsplit, is 78,916 bytes
     before and after.
   - **`--float`**: the members are rewritten as any `double`; an `int`
     stays.
@@ -11309,32 +11309,34 @@ After an external review of README, MANIFESTO and the conformance suite
   Measured on a prototype at d74ab86, discarded, by GCC 13.3 and Clang
   18.1 at -O2 -ffp-contract=off, one run each under a light load; the
   stack the step's frame, with its caller's into which it inlines, and
-  its largest part's, by -fstack-usage:
+  its largest part's, by -fstack-usage; the header under the model's own
+  name, as each before and after:
 
   | | values | `sizeof` model | stack | header | GCC -O2 |
   |---|---|---|---|---|---|
-  | `tf` | 305,792 | 28,440 | 324,800 | 5,545,075 | 56.7 s |
-  | in the model | | 334,232 | 18,960 | 5,542,892 | 54.6 s |
-  | `tune` | 12,544 | 9,744 | 16,976 | 435,461 | 6.3 s |
-  | in the model | | 22,288 | 4,320 | 435,269 | 6.6 s |
-  | `inf` | 10,992 | 9,224 | 15,312 | 391,256 | 5.9 s |
-  | in the model | | 20,216 | 4,304 | 391,141 | 5.5 s |
-  | `twice` | 192 | 32,384 | 1,008 | 287,413 | 5.4 s |
-  | in the model | 96 | 32,480 | 784 | 287,556 | 5.6 s |
-  | `nest` | 480 | 80,944 | 1,744 | 772,789 | 13.1 s |
-  | in the model | 192 | 81,136 | 1,248 | 773,274 | 13.7 s |
+  | `tf` | 305,792 | 28,440 | 324,800 | 5,494,168 | 56.7 s |
+  | in the model | | 334,232 | 18,960 | 5,494,609 | 54.6 s |
+  | `tune` | 12,544 | 9,744 | 16,976 | 433,781 | 6.3 s |
+  | in the model | | 22,288 | 4,320 | 433,902 | 6.6 s |
+  | `inf` | 10,992 | 9,224 | 15,312 | 390,104 | 5.9 s |
+  | in the model | | 20,216 | 4,304 | 390,221 | 5.5 s |
+  | `twice` | 192 | 32,384 | 1,008 | 286,839 | 5.4 s |
+  | in the model | 96 | 32,480 | 784 | 287,097 | 5.6 s |
+  | `nest` | 480 | 80,944 | 1,744 | 771,434 | 13.1 s |
+  | in the model | 192 | 81,136 | 1,248 | 772,190 | 13.7 s |
 
   `tf` by Clang: stack 326,488 to 20,680; its -O2 41.5 to 44.7 s, then
   45.4 to 50.1, a tenth longer in each of three runs, its memory 388 MB
   to 379; a step as fast by either, 0.20 to 0.23 ms, within the runs'
   noise. `riekf`, unsplit, byte for byte: 7,936 bytes of model and 14,128
-  of stack. A header changes by a few hundred bytes: the step's local
-  gone, 3 bytes more a call, the comment a line longer, a union its
+  of stack. A header grows by a few hundred bytes: the step's local
+  gone, 2 bytes more a call, the comment a line longer, a union its
   lines. Bit for bit: each model's state, every member before `v_`, after
   each of 101 steps of drawn inputs, 301 for `tf`, by GCC, and `tf`'s by
   Clang too; of the 342 check programs only `unseen_4.c`, `tuned_4.c`
-  and `twins_4.c`, in double and float, change, their reports byte for
-  byte; the prototype passes the whole `ctest`, `cli_scratch` included.
+  and `twins_4.c`, and `twins_4.c` in float, change, their reports
+  byte for byte; the prototype passes the whole `ctest`, `cli_scratch`
+  included.
 
   Rejected:
   - **Values by their lifetimes**: parked, below.
@@ -11382,8 +11384,9 @@ After an external review of README, MANIFESTO and the conformance suite
 
   What moves: no golden, report or expected header, none of which is
   split, nor excerpt, count or bound of `test/cli.cmake`. The check
-  programs `unseen_4.c`, `tuned_4.c` and `twins_4.c`, and `cli.cmake`'s
-  `inf.h` and `tune.h`, under their bounds of 430,000 and 480,000 bytes.
+  programs `unseen_4.c`, `tuned_4.c` and `twins_4.c`, and `twins_4.c` in
+  float, and `cli.cmake`'s `inf.h` and `tune.h`, under their bounds of
+  430,000 and 480,000 bytes.
 - `[done]` **A Jacobian by cells**, the idiom, compiled and held by `--check`:
   `J(x)[i<=3, j<=2] = (grad_(v = x) f(v)[i])[j]`, row i output i's
   gradient as a paper defines J_ij, so the layout is the user's. grad's own
