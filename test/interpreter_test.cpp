@@ -121,6 +121,9 @@ TEST_CASE("chol") {
 TEST_CASE("polyconv") {
     check_transcript("polyconv.ink");
 }
+TEST_CASE("polyroots") {
+    check_transcript("polyroots.ink");
+}
 TEST_CASE("tolerance") {
     check_transcript("tolerance.ink");
 }

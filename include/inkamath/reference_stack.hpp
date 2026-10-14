@@ -217,9 +217,9 @@ public:
     // And ilogb, whose walk under grad answers no part where compiled
     // answers, at a power of two too: no guard of it is an equality (C139).
     const Reference<T>* stepwise = nullptr;
-    // And rho, abscissa, eig, smax, hinf and dhinf, and the brackets rhob,
-    // abscissab and eigb, whose bisections are staircases in A: grad
-    // refuses them where A moves rather than answer the staircase's 0.
+    // And the functions grad refuses where their argument moves rather
+    // than answer a part that is wrong there, a bisection's staircase 0
+    // and the like; the interpreter lists them.
     std::set<const Reference<T>*> staircases;
     // Their arguments, checked and read before a call, by the interpreter:
     // 1 where a double was read as the rational it is, 2 where one was

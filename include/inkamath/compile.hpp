@@ -791,9 +791,9 @@ private:
         return chain;
     }
 
-    // rho, abscissa, eig, smax, hinf, dhinf and their brackets are staircases
-    // in A, refused where it moves, as the interpreter refuses them, rather
-    // than answer the staircase's 0.
+    // The functions the interpreter lists as staircases, refused where their
+    // argument moves, as the interpreter refuses them, rather than answer a
+    // part that is wrong there, a bisection's staircase 0 and the like.
     void Staircase(const Reference<Value>& function, const Code& argument) const {
         if (!argument.part.empty() && definitions_.staircases.contains(&function))
             throw Reason("grad cannot differentiate " + function.Name() + " yet");
