@@ -31,23 +31,30 @@ alone() = {
 }
 apart = alone()
 
-# 'paired', y's list and then z's, each about 125 KB whole and cut into 8
-# functions, each carrying an inverse, a product's cell and the flag of
-# each tested for NaN from its first function to the 7 after it. No
-# function reads or stores values of both lists, so that z's share the
-# place of y's (DESIGN.md, a split step's values by their lifetimes). Over
-# 4 steps:
+# 'twins', a bank of two instances of 'held', each y's list of about 140 KB
+# whole cut into 9 functions, carrying an inverse, a product's cell and the
+# flag of each tested for NaN from its first function to the 8 after it.
+# The two are stepped one after the other, so that their values share the
+# model's place (DESIGN.md, a split step's scratch in the model struct).
+# Over 4 steps:
 #
-#     paired: 4 steps from 0, against exact values
-#     paired.x: within <e>
-#     paired.y: within <e>
-#     paired.z: within <e>
-turns(v_n[i<=3]) = {
+#     twins: 4 steps from 0, against exact values
+#     twins.a_held.v: within 0
+#     twins.a_held.x: within <e>
+#     twins.a_held.y: within <e>
+#     twins.a: within <e>
+#     twins.b_held.v: within 0
+#     twins.b_held.x: within <e>
+#     twins.b_held.y: within <e>
+#     twins.b: within <e>
+held(v_n[i<=3]) = {
     x_0 = [1 2 3; 4 5 6; 7 8 10]
     x_n = (x_(n-1) + v_n*v_n')^-1*x_(n-1)/2
     y_0[i<=1000] = i
     y_n[i<=1000] = y_(n-1)[i]/2 + ((x_(n-1) + v_n*v_n')^-1)[1,1] + (x_(n-1)*v_n)[2,1]
-    z_0[i<=1000] = i
-    z_n[i<=1000] = z_(n-1)[i]/3 + ((x_(n-1) + v_n*v_n'/2)^-1)[2,2] + (x_(n-1)*v_n)[3,1]
 }
-paired = turns(v_n = [n; 1; 2])
+twice(v_n[i<=3]) = {
+    a_n = held(v_n = v_n).y_n[1]
+    b_n = held(v_n = 2*v_n).y_n[1]
+}
+twins = twice(v_n = [n; 1; 2])

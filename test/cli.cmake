@@ -48,64 +48,83 @@ endfunction()
 # Read by cases in every part.
 set(inputs "${CMAKE_CURRENT_LIST_DIR}/compile/inputs.ink")
 
-# Specified, not yet built (DESIGN.md, a split step's values by their
-# lifetimes): turns' two lists cut, the values of each sharing the place of
-# the other's, a group of tune's placed past others, and tune's values
-# under a third of today's. Skipped while turns.h writes its values as one
-# struct as today, and only then.
-if(PART STREQUAL "values")
-    set(args --compile "${CMAKE_CURRENT_LIST_DIR}/compile/split.ink" turns -o turns.h)
-    check(compile_values)
-    file(READ "${OUT}/turns.h" turns)
-    string(FIND "${turns}" [[
-typedef struct turns_values_ {
+# Specified, not yet built (DESIGN.md, a split step's scratch in the model
+# struct): the values a part of the step carries to a later one are a member
+# of the model, twins' two instances sharing their place, and tune's step
+# holds them no longer. Skipped while twice.h writes them on the step's stack
+# as today, and only then.
+if(PART STREQUAL "scratch")
+    set(args --compile "${CMAKE_CURRENT_LIST_DIR}/compile/split.ink" twice -o twice.h)
+    check(compile_scratch)
+    file(READ "${OUT}/twice.h" twice)
+    string(FIND "${twice}" [[
+/* What a part of the step computes and a later part reads. */
+typedef struct twice_values_ {
     double t2_[3][3];
     int t3_;
     double t5_;
     int t7_;
-    double t8_[3][3];
-    int t9_;
-    double t12_;
-    int t13_;
-} turns_values_;
-]] at)
-    if(NOT at EQUAL -1)
-        message("values: one struct as today")
+    double t10_[3][3];
+    int t11_;
+    double t13_;
+    int t15_;
+} twice_values_;
+]] today)
+    string(FIND "${twice}" "    twice_values_ m_v_;\n    ++m_->index_;\n" stack)
+    if(NOT today EQUAL -1 AND NOT stack EQUAL -1)
+        message("scratch: on the step's stack as today")
         return()
     endif()
-    holds(compile_values_shared turns.h [[
-/* What a part of the step computes and a later part reads: values that
- * no part reads or stores together share their place. */
-typedef union turns_values_ {
-    struct {
-        double t2_[3][3];
-        int t3_;
-        double t5_;
-        int t7_;
+    holds(compile_scratch_shared twice.h [[
+/* What a part of the step computes and a later part reads, held by the
+ * model rather than the stack; instances stepped in turn share a place. */
+typedef struct twice_values_ {
+    union {
+        struct {
+            double t2_[3][3];
+            int t3_;
+            double t5_;
+            int t7_;
+        };
+        struct {
+            double t10_[3][3];
+            int t11_;
+            double t13_;
+            int t15_;
+        };
     };
-    struct {
-        double t8_[3][3];
-        int t9_;
-        double t12_;
-        int t13_;
-    };
-} turns_values_;
-]] "    turns_values_ m_v_;\n")
-    set(args --compile "${CMAKE_CURRENT_LIST_DIR}/compile/transformer.ink" tune -o tune.h)
-    check(compile_values)
-    file(READ "${OUT}/tune.h" tune)
-    if(NOT tune MATCHES "\n    struct {\n        double p[0-9]+_\\[[0-9]+\\];\n        double t[0-9]+_\\[1\\]\\[6\\]\\[4\\];\n    };\n")
-        message(SEND_ERROR "compile_values_placed: tune.h places no group behind a padding")
+} twice_values_;
+
+/* The parameters, which the host may assign]] [[
+    } b_held;
+    twice_values_ v_;
+} twice;
+]] "    twice_step1_(m_, &m_->v_);\n" "    twice_step18_(m_, &m_->v_);\n")
+    if(twice MATCHES "m_v_")
+        message(SEND_ERROR "compile_scratch_shared: twice.h steps with values of its own")
     endif()
-    # 12,584 bytes as one struct, as GCC and Clang lay it out.
+    set(args --compile "${CMAKE_CURRENT_LIST_DIR}/compile/transformer.ink" tune -o tune.h)
+    check(compile_scratch)
+    holds(compile_scratch_member tune.h [[
+/* What a part of the step computes and a later part reads, held by the
+ * model rather than the stack; instances stepped in turn share a place. */
+typedef struct tune_values_ {
+]] "    tune_values_ v_;\n} tune;\n")
+    # The step's own frame, its parts apart, by -fstack-usage, which GCC and
+    # Clang write: 12,568 bytes or more while it holds tune's values.
     if(CC_ID MATCHES "^(GNU|Clang|AppleClang)$")
-        file(WRITE "${OUT}/bound.c" "#include \"tune.h\"\n_Static_assert(sizeof(tune_values_) < 4096, \"tune's values\");\n")
-        execute_process(COMMAND "${CC}" -std=c11 -Wall -Wextra -Wpedantic -Wconversion -Wshadow
-                                -Werror -fsyntax-only bound.c
+        file(WRITE "${OUT}/bound.c" "#include \"tune.h\"\nvoid stepped(tune* m, const double x[48], const double y[48]);\nvoid stepped(tune* m, const double x[48], const double y[48]) { tune_step(m, x, y); }\n")
+        execute_process(COMMAND "${CC}" -std=c11 -O0 -fstack-usage -Wall -Wextra -Wpedantic
+                                -Wconversion -Wshadow -Werror -c bound.c
                         WORKING_DIRECTORY "${OUT}" RESULT_VARIABLE failed
                         ERROR_VARIABLE errors OUTPUT_VARIABLE errors)
-        if(failed)
-            message(SEND_ERROR "compile_values_bound: tune's values not under 4,096 bytes\n${errors}")
+        set(usage "")
+        if(NOT failed)
+            file(READ "${OUT}/bound.su" usage)
+        endif()
+        if(NOT usage MATCHES ":tune_step\t([0-9]+)\t" OR NOT CMAKE_MATCH_1 LESS 4096)
+            message(SEND_ERROR "compile_scratch_stack: tune's step not under 4,096 bytes of "
+                               "stack\n${errors}${usage}")
         endif()
     endif()
     return()
