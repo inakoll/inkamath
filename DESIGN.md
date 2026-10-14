@@ -11981,10 +11981,12 @@ for, which `eig` refuses complex:
       rootsr(p[j<=m]) | m == 2 = -p[2]/p[1]
       rootsr(p[j<=m]) | m > 2 and p[m] == 0 = [rootsr(abscissat(p)); 0]
       rootsr(p[j<=m]) | m > 2 = rootsf(p, rootsg(p, rootsd(p)))
-      rootsf(p, g[k<=n]) | n == 1 and p == re(p) = rootsy(lim rootsk(p))
-      rootsf(p, g[k<=n]) | n == 1 = lim rootsk(p)
+      rootsf(p, g[k<=n]) | n == 1 and p == re(p) = rootsy(rootse(p)*lim rootsk(rootsn(p)))
+      rootsf(p, g[k<=n]) | n == 1 = rootse(p)*lim rootsk(rootsn(p))
       rootsf(p, g) = [rootsr(rootsq(p, g)); rootsr(g)]
-      rootsk(p[j<=m])_0[r<=m-1] = abs(p[m]/p[1])^(1/(m-1))*(4/10 + 9/10*i)^(r-1)
+      rootse(p[j<=m]) = 2^floor(ilogb(abs(p[m]/p[1]))/(m-1))
+      rootsn(p[j<=m])[r<=m] = p[r]/rootse(p)^(r-1)
+      rootsk(p[j<=m])_0[r<=m-1] = (4/10 + 9/10*i)^(r-1)
       rootsk(p[j<=m])_k[r<=m-1] = rootsk(p)_(k-1)[r] - polyval(p, rootsk(p)_(k-1)[r])/(p[1]*prod_(q=1)^(m-1) ((q == r) + (q <> r)*(rootsk(p)_(k-1)[r] - rootsk(p)_(k-1)[q])))
       rootsc(z[j<=m], r) = sum_(k=1)^m z[k]*(k == argmin_(q=1)^m abs(re(z[r]) - i*im(z[r]) - z[q]))
       rootsy(z[j<=m])[r<=m] = (z[r] + re(rootsc(z, r)) - i*im(rootsc(z, r)))/2
@@ -12065,11 +12067,18 @@ for, which `eig` refuses complex:
   gives smallest first, equal ones as found; a pair's a - bi first. MATLAB's
   order is its eig's and undocumented, and numpy's the same: no rule to take.
 
-  **The start**: (0.4 + 0.9i)^(r-1), the customary one, scaled by
-  |p_m/p_1|^(1/(m-1)), the geometric mean of the roots' moduli. Wilkinson's
-  (s - 1)...(s - 10) took 121 terms unscaled, refused at 100, and takes 41;
-  elsewhere scaling moved the count by at most 12 terms either way, on 11
-  polynomials of degree 2 to 20. Deterministic.
+  **The start and the scale**: (0.4 + 0.9i)^(r-1), the customary one, on
+  p scaled by 2^e, e = floor(ilogb(|p_m/p_1|)/(m-1)), a power of two
+  within a factor 2 of the geometric mean of the roots' moduli: the
+  iteration runs on p_j/2^(e(j-1)), whose roots are p's over 2^e, and
+  they are multiplied back, exactly. So the scaled roots are near 1 and
+  `lim`'s tolerance, absolute below 1, is relative to them. Scaling the
+  start alone, as first designed, left it absolute: (s - 10^-10)(s - 2 *
+  10^-10) answered 1.5e-10 +- 2.99e-11i, settled at the start's scale, and
+  README's PI loop scaled by 10^-12 a pair 2.3e-12i off. Wilkinson's
+  (s - 1)...(s - 10) took 121 terms unscaled, refused at 100, and takes 41
+  with the start scaled; elsewhere scaling moved the count by at most 12
+  terms either way, on 11 polynomials of degree 2 to 20. Deterministic.
 
   **The edges.** Leading zeros are dropped, the degree being the
   polynomial's and not the column's, as in MATLAB's roots, where conv
@@ -12122,17 +12131,17 @@ for, which `eig` refuses complex:
   stability is hurwitz's; sections 1 and 5 name it. README is replayed,
   so it comes with roots.
 
-  35 lines by `wc -l include/inkamath/*.hpp src/*`, 19,213 to 19,248 at
-  90335fc: the prelude's 30, 4 of them comment; 1 of C++ for its words, 1
-  adding it to the functions `checked` reads, and 3 of `compile.hpp`, 1 of
-  them comment, for the compiler's refusal. Past 52 the implementation
-  stops and reports.
+  37 lines by `wc -l include/inkamath/*.hpp src/*`, 19,213 to 19,250 at
+  90335fc: the prelude's 32, 4 of them comment and 2 the scale; 1 of C++
+  for its words, 1 adding it to the functions `checked` reads, and 3 of
+  `compile.hpp`, 1 of them comment, for the compiler's refusal. Past 52
+  the implementation stops and reports.
 
   Specified in `test/data/spec/polyroots.ink`, named so beside the golden
-  `roots.ink` of exact roots of powers: 44 entries replayed by the spec
-  suite, 25 failing by design, those passing definitions. The CTM motor's
+  `roots.ink` of exact roots of powers: 46 entries replayed by the spec
+  suite, 27 failing by design, those passing definitions. The CTM motor's
   poles, the pendulum's LQR and PID loops, README's PI loop, real roots,
-  Wilkinson's, the repeated, near and complex ones and the edges above.
+  Wilkinson's, roots of 10^-10 and 10^-12, the repeated, near and complex ones and the edges above.
   Exact values in sympy, inexact ones in mpmath at 50 digits, the LQR
   loop's as the stable eigenvalues of its Hamiltonian, a route apart from
   the Riccati solution the transcript takes. `test/cli.cmake`'s spec part

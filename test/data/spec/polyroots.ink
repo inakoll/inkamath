@@ -125,6 +125,20 @@ K2 = kq(lim sgn([A, -B*B'; -[5000, 0, 0, 0; 0, 0, 0, 0; 0, 0, 100, 0; 0, 0, 0, 0
   ~9;
  ~10]
 
+# Small roots: the iteration runs on p scaled by a power of two near the
+# roots' geometric mean, so lim's tolerance, absolute below 1, is relative
+# to them. (s - 10^-10)(s - 2*10^-10), exact in sympy:
+>> roots([1; -3/10^10; 2/10^20])
+[~1e-10;
+ ~2e-10]
+
+# README's PI loop scaled by 10^-12, s^3 + 3*10^-12 s^2 + 4*10^-24 s +
+# 10^-36, in mpmath: its roots times 10^-12.
+>> roots([1; 3/10^12; 4/10^24; 1/10^36])
+[~(-1.3411639e-12-i*1.1615414e-12);
+ ~(-1.3411639e-12+i*1.1615414e-12);
+                  ~-3.17672196e-13]
+
 # A repeated root: the roots of p/gcd(p, p'), each simple, then the gcd's,
 # whose roots are p's repeated ones, Euclid's gcd exact in exact numbers.
 # Each of these comes to factors of degree 1, so it is exact.
