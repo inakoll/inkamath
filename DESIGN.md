@@ -12137,9 +12137,10 @@ for, which `eig` refuses complex:
   header, report and `test/cli.cmake` case passes, 564 tests, the spec
   suite among them. `compile/iterates.ink` and
   `compile/nan.ink`, whose model is named roots, define it for themselves,
-  as a session may any name of the prelude. README's section 2 gives roots a paragraph after conv's, the
-  motor's poles as its example, with the cost of near roots and that
-  stability is hurwitz's; sections 1 and 5 name it. README is replayed,
+  as a session may any name of the prelude. README's section 2 gives
+  roots a paragraph after conv's, the motor's poles as its example, with
+  the cost of near roots, that stability is hurwitz's and the degree it
+  reaches, about 30, `lim` running out at 40; sections 1 and 5 name it. README is replayed,
   so it comes with roots.
 
   34 lines by `wc -l include/inkamath/*.hpp src/*`, 19,213 to 19,247 at
