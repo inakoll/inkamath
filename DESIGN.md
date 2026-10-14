@@ -12035,7 +12035,8 @@ for, which `eig` refuses complex:
 
   **Exact where every root is.** A degree 1 is -p_2/p_1, exact, and a
   trailing 0 a root at 0 exactly, as MATLAB strips it, so the recursion
-  makes (s + a)^k and z^k exact. A rational root otherwise comes from the
+  makes (s + a)^k and z^k exact. The scale requires that clause too, not
+  only exactness: at p_m = 0, rootse would take ilogb of 0, refused. A rational root otherwise comes from the
   iteration, inexact, and one inexact root makes every root inexact: the
   order compares them in doubles, and a cell placed by an inexact
   comparison is inexact, as a clause an inexact guard chose. So
