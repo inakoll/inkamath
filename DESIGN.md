@@ -11668,7 +11668,8 @@ pendulum (`test/data/ctms.ink`, `test/compile/pendloop.ink` and
 `motorloop.ink`), its friction:
 
 - **Polynomial helpers in the prelude** beside `charpoly`: `conv`,
-  `polyval` and padding to a length, which every transfer function needs.
+  `polyval` (`[done]`, below) and padding to a length, which every
+  transfer function needs.
 - **Complex `roots` by Durand-Kerner**, in the interpreter only.
 - **`care` and `dare` beside `hinf`**: the sign of the Hamiltonian and the
   doubling algorithm, which each test now carries in five to seven lines.
@@ -11682,7 +11683,7 @@ pendulum (`test/data/ctms.ink`, `test/compile/pendloop.ink` and
 After a §9 transcription of the CTM tutorials (branch `ctms`), which wrote
 a product of polynomials or a value of one on nearly every page:
 
-- **Polynomials in the prelude, `conv(p, q)` and `polyval(p, x)`**: the
+- `[done]` **Polynomials in the prelude, `conv(p, q)` and `polyval(p, x)`**: the
   product of two polynomials and a polynomial's value, each polynomial a
   column, highest power first, as `charpoly` writes one and `hurwitz`
   reads one; MATLAB's and numpy's names, and the pages'. The design,
@@ -11795,3 +11796,19 @@ a product of polynomials or a value of one on nearly every page:
   `test/cli.cmake`'s spec part writes its check program in each, skipped
   while polyval is not defined; the reports its comments give join the
   checks with them. The spec suite and `cli_spec` return until they pass.
+
+  Built as specified: the prelude's 7 lines are the prototype's, 4 and 3
+  of comment, against the stop of 10. Every entry passes as written, and
+  the spec is the golden `polyconv.ink`; the spec suite and `cli_spec` go,
+  polyconv their only case. `tune` is a check in double and in float, its
+  reports held outright as its comment gives them. README's section 2
+  gives the paragraph after charpoly's example, saying that MATLAB's and
+  numpy's polyval work cell by cell, and sections 1 and 5 name both.
+  Departures: README's closed loop is the story's PI loop at k = 2, read
+  by `hurwitz`, not the spec's pendulum, which needs nine definitions
+  first; and two changes of `compile.hpp` the spec did not foresee, each
+  counted apart: C372, 5 lines, 1 of comment, a matrix to the power 0
+  NaN where a cell of it is, which moves six check programs and no report;
+  and 2 lines, 1 of comment, and 1 removed, so that a matrix's x^0 takes
+  no part in grad where a derivative of a matrix power was refused, held
+  by the story's `G`. 19,078 to 19,091 lines at the merge of 7d8c985.

@@ -104,8 +104,8 @@ error: polyval takes x[r<=n, c<=n], not a 1x3 matrix
 
 # The Control Tutorials for MATLAB (CTM), as the University of Alberta
 # mirrors them under https://www.ece.ualberta.ca/~tchen/ctm/examples/, and
-# test/data/ctms.ink on branch ctms. pend/invpen.html: the pendulum's
-# angle over the force, num/den, exact.
+# test/data/ctms.ink. pend/invpen.html: the pendulum's angle over the
+# force, num/den, exact.
 >> M = 1/2
 M = 1/2
 

@@ -52,7 +52,7 @@ endforeach()
 # take 22 s, and reverse_memo.ink's one entry, its 600,000 under reverse
 # mode, 38.
 set_tests_properties(reverse_memo.ink PROPERTIES TIMEOUT 120)
-foreach(suite IN ITEMS bignum line_editor matrix prelude spec)
+foreach(suite IN ITEMS bignum line_editor matrix prelude)
     add_test(NAME ${suite} COMMAND inkamath_tests --test-suite=${suite} --no-intro)
     set_tests_properties(${suite} PROPERTIES TIMEOUT 60)
 endforeach()
@@ -78,14 +78,6 @@ foreach(part 1 2 3)
                      -P ${CMAKE_CURRENT_LIST_DIR}/cli.cmake)
     set_tests_properties(cli_${part} PROPERTIES TIMEOUT 120)
 endforeach()
-# conv and polyval compiled (DESIGN.md), specified before they are built:
-# cli.cmake's spec part, skipped while polyval is not defined.
-add_test(NAME cli_spec
-         COMMAND ${CMAKE_COMMAND} -DEXE=$<TARGET_FILE:inkamath_cli> -DPART=spec
-                 -DOUT=${CMAKE_CURRENT_BINARY_DIR}/cli_spec -DCASE_TIMEOUT=${cli_case_timeout}
-                 -P ${CMAKE_CURRENT_LIST_DIR}/cli.cmake)
-set_tests_properties(cli_spec PROPERTIES TIMEOUT 120 SKIP_REGULAR_EXPRESSION
-    "check_polyconv: polyval not defined, as today")
 # bench's workloads, each a transcript bench/run.cmake measures, replayed so
 # that one gone stale fails here rather than at its next measure. The
 # slowest, under the sanitizers, take 7 s; train.ink is data, no transcript.
@@ -266,7 +258,7 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brin
                          tip:reach tip:rested series:taylor series:wave series:later
                          sums:summed sums:halving sums:cancelled reduce:pooled reduce:shied
                          orthogonal:rational orthogonal:inexact orthogonal:probe
-                         chol:factored chol:naive chol:sole placed:placed
+                         chol:factored chol:naive chol:sole placed:placed polyconv:tune
                          fallback:planned fallback:held fallback:ranout
                          fallback:tipped fallback:columned fallback:answered
                          fallback:chained fallback:gapped fallback:middled
@@ -1019,6 +1011,9 @@ set_tests_properties(check_sole_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^sole: 100 steps from 0, against exact values until 0 and inexact ones from there\n(sole\\.[gy]: within 0${about}\n)+$")
 set_tests_properties(check_placed_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^placed: 100 steps from 0, against exact values\nplaced\\.y: within 0\n$")
+# compile/polyconv.ink: every term exact, as its comment gives it.
+set_tests_properties(check_tune_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^tune: 100 steps from 0, against exact values\ntune\\.G: within 0\ntune\\.c: within 0\ntune\\.d: within 0\ntune\\.Z: within 0\ntune\\.g: within 0\ntune\\.w: within 0\ntune\\.y: within 0\n$")
 add_test(NAME check_moments COMMAND check_moments)
 add_test(NAME check_calm COMMAND check_calm)
 add_test(NAME check_wild COMMAND check_wild)
@@ -1076,7 +1071,8 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:ledge logistic:gate momentu
                          blocks:nested conv:see straddle:knee apollo11:whole dyn:nm dyn:cd
                          steps:coast:1001 robertson:inside:2000 robertson:outside:2000
                          robertson:rober tensorgrad:small tensorgrad:saliency:3 split:carried:4
-                         orthogonal:rational chol:factored chol:naive chol:sole float:shove)
+                         orthogonal:rational chol:factored chol:naive chol:sole float:shove
+                         polyconv:tune)
     string(REPLACE ":" ";" checked ${checked})
     list(POP_FRONT checked file instance count)
     set(name ${instance})
@@ -1172,6 +1168,7 @@ foreach(report IN ITEMS
         "rational:^rational: 100 steps from 0${in_float}\n${rational_k}rational\\.R: within 6\\.5e-06, 1e\\+04 units of a float\n${rational_ko}$"
         "carried_4:^carried: 4 steps from 0${in_float}\ncarried\\.x: within [0-9.e+-]+, [0-9.e+]+ units of a float\ncarried\\.y: within [0-9.e+-]+, [0-9.]+ units of a float\n$"
         "factored:^factored: 100 steps from 0 in float, ${until1f}\n(factored\\.(Sp|K|N): within ${floats}( in N\\[[12],[1-3]\\] at step [0-9]+)?, from 1${about}\n)+factored\\.S: within ${floats}${about}\nfactored\\.x: within [0-9.e+-]+, [1-9](\\.[0-9])? units of a float${about}\n$"
+        "tune:^tune: 100 steps from 0${in_float}\ntune\\.G: ${exact}\ntune\\.c: ${exact}\ntune\\.d: ${exact}\ntune\\.Z: within 0\ntune\\.g: ${exact}\ntune\\.w: ${exact}\ntune\\.y: ${exact}\n$"
         "shove:^shove: 100 steps from 0${in_float}\nshove\\.s: within 5\\.9e-08, 1\\.4e\\+07 units of a float at step 5\nshove\\.y: within 5\\.9e-08, 1\\.4e\\+07 units of a float in y\\[2,1,1\\] at step 7\n$"
         "naive:^naive: 100 steps from 0 in float, ${until1f}\n(naive\\.(Pp|K|P): within [^\n]+\n)+naive\\.L\\[1,1\\]: [-a-z()]+ at 1, where the interpreter gives 0\\.00099999999750012493\\; the interpreter's term about [0-9.e+-]+ from the exact one\nnaive\\.x: within [^\n]+\n$"
         "sole:^sole: 100 steps from 0${inexact}\n(sole\\.[gy]: within [0-9.e+-]+, 0\\.[0-9]+ units of a float${about}\n)+$"
