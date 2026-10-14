@@ -876,7 +876,7 @@ private:
             std::string           ran;
             std::set<std::string> limits;
             for (const std::string& status : asked) {
-                ran += (ran.empty() ? "" : " || ") + status;
+                Or(ran, status);
                 limits.insert(what_[status].begin(), what_[status].end());
             }
             const std::string status = "isnan(" + code.cells[0].text + ") && (" + ran + ")";
@@ -2365,7 +2365,7 @@ private:
             return "isnan(" + truth + ") ? NAN : " + truth + " != 0.0";
         // A truth NaN where a limit it reads ran out does not hold (DESIGN.md).
         std::string ran;
-        for (const std::string& status : asked) ran += (ran.empty() ? "" : " || ") + status;
+        for (const std::string& status : asked) Or(ran, status);
         asked_       = asked;
         std::set_difference(asked.begin(), asked.end(), unsure.begin(), unsure.end(),
                             std::inserter(sure_, sure_.end()));
@@ -3025,8 +3025,12 @@ private:
     // A cell no clause gives is refused where a guard of its chain read a
     // limit that ran out, as the interpreter refuses it (DESIGN.md).
     void Ran(std::string& ran, const std::optional<std::string>& condition) const {
-        if (condition && !condition->empty() && !unconverged_.empty())
-            ran += (ran.empty() ? "" : " || ") + unconverged_;
+        if (condition && !condition->empty() && !unconverged_.empty()) Or(ran, unconverged_);
+    }
+    // Statuses joined, one that is a conjunction bracketed (C371).
+    static void Or(std::string& ran, const std::string& status) {
+        const bool both = status.find("&&") != std::string::npos;
+        ran += (ran.empty() ? "" : " || ") + (both ? "(" + status + ")" : status);
     }
     // A chain with a clause after its guards has answered where their limits
     // ran out; one without is NaN there, which its caller's guard asks about.
