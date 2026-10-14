@@ -173,6 +173,20 @@ target_link_libraries(compile_powers PRIVATE inkamath_warnings
 set_target_properties(compile_powers PROPERTIES C_STANDARD 11 C_STANDARD_REQUIRED ON C_EXTENSIONS OFF)
 add_test(NAME compile_powers COMMAND compile_powers)
 
+# README's host file for pid.h, its C block taken as written there.
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${PROJECT_SOURCE_DIR}/README.md)
+file(READ ${PROJECT_SOURCE_DIR}/README.md readme)
+if(NOT readme MATCHES "```c\r?\n([^`]*)```")
+    message(FATAL_ERROR "README.md has no C block for compile_host")
+endif()
+file(CONFIGURE OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/compile/pid_host.c CONTENT "${CMAKE_MATCH_1}" @ONLY)
+add_executable(compile_host compile/host_test.c ${CMAKE_CURRENT_BINARY_DIR}/compile/pid_host.c)
+add_dependencies(compile_host compile_pid)
+target_include_directories(compile_host PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/compile)
+target_link_libraries(compile_host PRIVATE inkamath_warnings $<$<NOT:$<C_COMPILER_ID:MSVC>>:m>)
+set_target_properties(compile_host PROPERTIES C_STANDARD 11 C_STANDARD_REQUIRED ON C_EXTENSIONS OFF)
+add_test(NAME compile_host COMMAND compile_host)
+
 # The prelude's functions the interpreter calls on a double (DESIGN.md),
 # checked in so that building the interpreter needs no interpreter; recorded
 # as the goldens are, and its diff read.
@@ -250,7 +264,7 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brin
                          fallback:rootless fallback:coupled fallback:chained fallback:gapped
                          fallback:middled fallback:braked fallback:buffered fallback:bent
                          fallback:faraway fallback:voided fallback:covered fallback:ored
-                         fallback:spelled fallback:joined)
+                         fallback:spelled fallback:joined pendloop:cart motorloop:motor)
     string(REPLACE ":" ";" checked ${checked})
     list(POP_FRONT checked file instance count)
     set(name ${instance})
@@ -366,6 +380,12 @@ set_tests_properties(check_layered_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^layered: ${implicit}\nlayered\\.q: within 0${about}\n$")
 set_tests_properties(check_renamed_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^renamed: ${implicit}\nrenamed\\.z: within 0${about}\n$")
+# The CTM tutorials' digital pendulum and motor,
+# as compile/pendloop.ink and motorloop.ink give them.
+set_tests_properties(check_cart_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^cart: 100 steps from 0, against exact values until 0 and inexact ones from there\ncart\\.s: within 0${about}\ncart\\.u: within 0${about}\n$")
+set_tests_properties(check_motor_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^motor: 100 steps from 0, against exact values until 14 and inexact ones from there\nmotor\\.x: within 3\\.6e-15${about}\nmotor\\.e: within 3\\.3e-16${about}\nmotor\\.u: within 1\\.4e-14${about}\n$")
 # Rigid bodies and an invariant filter, from two explorations: a double
 # pendulum by the RNEA, a rational rotation's powers, and the contact-aided
 # RIEKF of Hartley et al. (2020) on 21 steps of a simulated walk.

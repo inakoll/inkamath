@@ -1883,6 +1883,7 @@ closures need one anyway, and can bring it.
 | C364 `[fixed]` | **A cycle of three or more sequences, its terms before the stream its guards', was refused where it read an input, and compiled in time exponential in its length.** With `a_n \| n < 0 = 1`, `a_n = b_(n-1)/2`, b and c alike and `c_n = a_(n-1)/2 + x_n`, compiling a compiles b and c to read them, and a's read of b was recorded only once b was compiled; so c, compiled first, did not reach itself, was not taken for a recurrence whose terms before the stream init folds (C343), and was computed again at -1 (C71), where it reads x_-1: "b_0 reads x_-1, before the stream, where x has no history", where the interpreter gives a_0 = 1/2. A cycle of two closes on a sequence still compiling, read from its window, and compiles. With no input, the cycle compiled, each term before the stream computed again at each read, so one whose terms read the next twice took 7.6 s to compile at 14 sequences and over 100 at 18. A read is now known to `Reaches` while what it reads compiles: 0.02 s at 40. No golden, expected header or check program moves; a cycle of three or more with no input is written shorter, its terms before the stream folded by init as a cycle of two's are. In 17 lines of `compile.hpp`, 2 of comment, and 5 removed; `compile/history.ink`'s `cycled` and `test/cli.cmake`'s `history_cycled` and `history_cycled_long` hold it. |
 | C365 `[fixed]` | **A cell of a matrix product was answered where another cell's operand is refused.** `Product` shares an operand's cells under names, and a name was not known to hold NaN where its value may, as a call's is (C189): with h a limit that does not converge, `(A*[lim h(x_n), 1; 0, 1])[1, 2]` answered 3 from step 5, where the interpreter refuses the product. Loops in generated code read the operand's own text, so from 27 multiplications the step refused it and below did not. A shared cell that may be NaN is now marked as `Called` marks one. No golden, expected header or check report moves; `dare`'s check program tests an inverse's cells it read untested. In 7 lines of `compile.hpp`, 1 of comment, and 4 removed; `compile/nan.ink`'s `kd` holds it. Found by the implementation review of loops. |
 | C366 `[fixed]` | **A guard reading a limit that ran out kept the guards after it from holding.** The run-out the interpreter keeps for the refusal where no clause holds was also read as the current guard's, so with `sw(x)_n = x + (-1)^n`, `fa(x) | lim sw(x) > 0 = 1`, `fa(x) | x > 0 = 2` and `fa(x) = 3`, `fa(1)` answered ~3, and without the last clause was refused in sw's words, where the step gives 2. Each guard now reads its own run-out apart from the one kept. No other golden or check report moves. In 6 lines of `reference.hpp`, 1 of comment, and 4 removed; `unconverged.ink`'s `fa`, `ga`, `tri` and `co`, and `compile/fallback.ink`'s `chained`, hold it. Found by an external review. |
+| C369 `[fixed]` | **A call written as a sum's upper bound was told what its body made of the arguments.** The bound is a number, a name, or parenthesised, and a name there is never a call (phase 11), so `sum_(j=1)^max(1, 3) j` read the bound `max` and the body `(1, 3) j`: "missing ')' after '1'"; `sum_(j=1)^floor(7/2) j` said "the operator '*' is probably missing". A name touching the parenthesis after it is now refused in the rule's words, with the bound parenthesised: "... a name there is never a call: write ^(max(1, 3))". `^n (k+1)`, spaced, is still the bound n and the body (k+1); `^n(k+1)`, which was too and which no test or example wrote, is refused so. Found by the exploration of the CTM tutorials. In 12 lines of `interpreter.hpp`, 1 of comment; `series.ink` holds it. |
 
 **Measure instructions, not the clock.** One of those changes made the matrix
 workload 20 per cent slower by the clock and not by a single instruction: with
@@ -11776,3 +11777,48 @@ Its robotics entries, each where it forces something new:
 - **PointNet**, then one **PointNet++ set-abstraction layer** whose
   indices the host computes: max over points, then the gather and integer
   inputs; at real scale, loops.
+
+After a study of hosting a compiled model from Python, and an external
+review:
+
+- **Structured diagnostics**: `--check` and `--compile` failures in a form
+  a program reads, with shapes, whether a value was approximated, and
+  source locations, for agents and CI. Found by an external review.
+- **A tolerance floor for small limits**: below 1 the tolerance is the
+  absolute 1e-10, so `lim N(2/10^20)` is 19% off. A floor scaled by where
+  the walk starts, perhaps; a design question first.
+- **The end-to-end exploration (`CLAUDE.md` §9)**: a sensor, a learned
+  correction, an estimator, a controller and an actuator command at two
+  rates, with an injected sensor failure. After the fallback audit above
+  and *a split step's arrays read in place*.
+- `[done]` **Python hosting**, with no compiler change: README's paragraph
+  after `--float`, a C file exporting the header's functions and each
+  field's `offsetof` to ctypes, held by `compile_host`. A call from Python
+  costs 0.6 to 0.75 µs, a step batched in C 37 to 81 ns for `kalman.ink`.
+  Deferred:
+  - a field table the compiler generates behind a macro, about 35 lines,
+    until a host asks for it;
+  - a definition the host implements, held by `--check` to its inkamath
+    reference, about 50 lines for a single value, until an entry needs it;
+  - a CUDA printer, a batch of instances as structure of arrays with its
+    parameters placed, about 250 lines, until an entry needs instance
+    width and `--check` on a device has a GPU runner; Clang already
+    compiles today's headers to PTX, one instance per thread;
+  - the agent experiment's design, outside the repository, when the
+    owner chooses.
+
+After a §9 exploration of the CTM tutorials' motor speed and inverted
+pendulum (`test/data/ctms.ink`, `test/compile/pendloop.ink` and
+`motorloop.ink`), its friction:
+
+- **Polynomial helpers in the prelude** beside `charpoly`: `conv`,
+  `polyval` and padding to a length, which every transfer function needs.
+- **Complex `roots` by Durand-Kerner**, in the interpreter only.
+- **`care` and `dare` beside `hinf`**: the sign of the Hamiltonian and the
+  doubling algorithm, which each test now carries in five to seven lines.
+- **`lim`'s refusal for a limit that does not converge states the ratio it
+  measured** and suggests a fixed count instead.
+- **README teaches the zero-order hold by Van Loan's block** with a
+  fixed-count series, and the Riccati equation by doubling.
+- **A tutorial chapter from these two series**, which the exploration found
+  enough for *a short tutorial path*.

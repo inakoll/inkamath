@@ -179,3 +179,14 @@ error: expected an index after 'sum', as in sum_(k=1)^n, not 'k'
 
 >> sum_(k=1)^-3 k
 error: expected the last index after '^', as in sum_(k=1)^n, not '-'
+
+# A name touching a parenthesis after '^' is a call written as the upper
+# bound, and is told the rule, not what the body made of its arguments (C369).
+>> sum_(k=1)^n(k+1)
+error: an upper bound is a number, a name, or parenthesised, and a name there is never a call: write ^(n(k+1))
+
+>> sum_(j=1)^max(1, 3) j
+error: an upper bound is a number, a name, or parenthesised, and a name there is never a call: write ^(max(1, 3))
+
+>> sum_(j=1)^floor(7/2) j
+error: an upper bound is a number, a name, or parenthesised, and a name there is never a call: write ^(floor(7/2))
