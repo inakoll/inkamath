@@ -11166,155 +11166,224 @@ After an external review of README, MANIFESTO and the conformance suite
   6.4 s; `tf` 9,985,465 to 5,494,171, `--compile` 8.3 s and 186 MB to
   6.1 s and 114 MB, GCC 97 s and 820 MB to 60 s and 476 MB, 354
   functions to 179, its stack 269 KB to 324 KB.
-- **A split step's values by their lifetimes**, in place of *a split
-  step's arrays read in place*, which measured too small to take (below).
-  A refactor of headers: no golden, `--check` report or refusal moves, and
-  every value is the same double. The struct of a split step's values (*A
-  compiled step split into functions*) has a member for each value a part
-  carries, held for the whole step: `tf`'s 23,881 members, 303,456 bytes,
-  are 94 per cent of its stack, where at most 67,136 bytes cross any one
-  cut between parts. The loops grew it, 117 KB of arrays in and 76 KB of
-  scalars out, but its size was the sum of all it ever carries before them
-  too.
+- **A split step's scratch in the model struct**, in place of *a split
+  step's values by their lifetimes*, by the owner's ruling. A refactor of
+  headers: no golden, `--check` report or refusal moves, and every value
+  is the same double. The struct of a split step's values (*A compiled
+  step split into functions*) is a local of the step: `tf`'s 305,792
+  bytes are 94 per cent of its 324,800 of stack. It becomes a member of
+  the model, which the host places already, statically, on the heap at
+  startup or as a ctypes buffer: the header still allocates nothing, and
+  the model's size is still `sizeof`, a constant. This reverses the
+  split's rejection of *the struct in the model*: the host's state holds
+  the step's scratch, which the owner prefers to a stack that grows with
+  the model.
 
   Decided:
-  - **A value lives from the part that stores it to the last that reads
-    it**, both known to `Split` as it writes the loads. Values living
-    across the same parts are a group, in today's order. Groups are placed
-    in the order of their first part, then their last, each at the lowest
-    offset that no group living across any of the same parts holds (first
-    fit). Two values share storage only where no part reads or stores
-    both, so no function sees one place by two names, and every load and
-    store is written as today, `const double t5_ = v_->t5_;`.
-  - **The type is a union of the groups**, each an anonymous struct, which
-    C11 has, behind a padding of `double` cells up to its offset, `pN_`
-    numbered through the union: a member keeps its name. `turns` in
-    `test/compile/split.ink`, y's list and then z's, each cut, today:
+  - **The values are the model's last member**, `v_`, their type declared
+    before the model's comment; the step declares nothing and passes
+    `&m_->v_` where it passed `&m_v_`. A part is written as today, taking
+    `v_` and loading `const double t5_ = v_->t5_;`. `tune`, today:
 
-        typedef struct turns_values_ {
+        /* What a part of the step computes and a later part reads. */
+        typedef struct tune_values_ {
+            int t1_;
+            ...
+        static inline void tune_step(tune* m_, const double X_in_[48], const double Y_in_[48]) {
+            tune_values_ m_v_;
+            ++m_->index_;
+            ...
+            tune_step1_(m_, &m_v_);
+
+    and then:
+
+        /* What a part of the step computes and a later part reads, held by the
+         * model rather than the stack; instances stepped in turn share a place. */
+        typedef struct tune_values_ {
+            int t1_;
+            ...
+        } tune_values_;
+
+        /* The parameters, which the host may assign, then what derives from them,
+        ...
+            double U[2][8][8];
+            tune_values_ v_;
+        } tune;
+        ...
+            tune_step1_(m_, &m_->v_);
+
+    Last, so that every other member keeps its offset.
+  - **Instances stepped one after another share a place**, the call
+    stack's discipline in the struct: a model's scratch is its own
+    values, then its instances', one instance's in place and several in a
+    union of anonymous structs, one each, in the model struct's order,
+    and so on down. A model does not share with its instances. `twice`
+    in `test/compile/split.ink`, two instances of `held`, each carrying
+    from its y list:
+
+        typedef struct twice_values_ {
+            union {
+                struct {
+                    double t2_[3][3];
+                    int t3_;
+                    double t5_;
+                    int t7_;
+                };
+                struct {
+                    double t10_[3][3];
+                    int t11_;
+                    double t13_;
+                    int t15_;
+                };
+            };
+        } twice_values_;
+
+    Nested, `nest`, a y list as `held`'s and two instances of `twice`,
+    prototyped only:
+
+        typedef struct nest_values_ {
             double t2_[3][3];
             int t3_;
             double t5_;
             int t7_;
-            double t8_[3][3];
-            int t9_;
-            double t12_;
-            int t13_;
-        } turns_values_;
-
-    and its lists apart:
-
-        /* What a part of the step computes and a later part reads: values that
-         * no part reads or stores together share their place. */
-        typedef union turns_values_ {
-            struct {
-                double t2_[3][3];
-                int t3_;
-                double t5_;
-                int t7_;
+            union {
+                struct {
+                    union {
+                        struct {
+                            double t10_[3][3];
+                            ...
+                        };
+                        struct {
+                            double t26_[3][3];
+                            ...
+                        };
+                    };
+                };
+                struct {
+                    union {
+                        ...
+                    };
+                };
             };
-            struct {
-                double t8_[3][3];
-                int t9_;
-                double t12_;
-                int t13_;
-            };
-        } turns_values_;
+        } nest_values_;
 
-    A group placed past others, in `tune`'s:
+    An instance whose lists carry nothing has no member; where none
+    carries, the struct holds today's members in today's order, as for
+    `tf`, `tune` and `inf`.
+  - **An instance is not called in the generated C**: its sequences are
+    lists of its parent's step, cut into the parent's parts, their
+    temporaries numbered through the step. So its parts take the parent's
+    `v_` and name their members, which C11's anonymous structs and unions
+    reach: every load and store is written as today. And no carried value
+    outlives its list, so the rule's premise, a parent's values alive
+    across its instances' steps, does not hold here: the rule is safe, and
+    leaves apart a parent's values and its instances', and one model's
+    lists, which could share. Sharing those, a struct of each cut list in
+    the union, the predecessor measured at 6cd0643, 234,848 bytes for
+    `tf` against 303,456: within one model, so left to the owner with the
+    parked option below.
+  - **Unsplit models, and split ones that carry nothing, byte for
+    byte**: no struct and no member. `riekf`, unsplit, is 79,006 bytes
+    before and after.
+  - **`--float`**: the members are rewritten as any `double`; an `int`
+    stays.
+  - **How it meets the rest**: `init`'s `memset` zeroes the scratch with
+    the rest; `update` and its setters of derived values never name it;
+    no value stays in it from one step to the next, each stored before it
+    is read within the step. What crosses is what crossed: value
+    numbering (`Numbered`), C357's reread, hoisting (`Invariant`) and a
+    limit's `vN_` are untouched, and so are the parts' frames. The check
+    programs hold the model in `main`, `m_`, so their stack holds the
+    scratch there rather than in the step. The Python shim's `ink_size`
+    is `sizeof` the model, scratch included, so a ctypes buffer of that
+    size holds it, and every field's `offsetof` is as it was. A host that
+    saves its state by `sizeof` saves the scratch too, or the state alone
+    up to `offsetof(model, v_)`.
+  - **Threads**: one model struct per thread, as today. The step shared
+    nothing but its model, and still does not.
+  - **MSVC**: CI builds the check programs as C11 at /W4 /WX. Should it
+    warn C4201 of an anonymous struct or union, the union is written
+    between `#pragma warning(push)`, `disable: 4201` and `pop` under
+    `_MSC_VER`: CI decides, 5 lines.
 
-            struct {
-                double p2_[125];
-                double t234_[1][6][4];
-            };
+  Measured on a prototype at d74ab86, discarded, by GCC 13.3 and Clang
+  18.1 at -O2 -ffp-contract=off, one run each under a light load; the
+  stack the step's frame, with its caller's into which it inlines, and
+  its largest part's, by -fstack-usage:
 
-    An `int` counts as a `double` cell, so that `--float`, which rewrites
-    the padding with the members, places them alike.
-  - **Where no two groups share storage, the struct as today**, byte for
-    byte: `carried`'s check program, whose values all live across the
-    same parts (`check_carried_values`), and any step whose cut lists
-    carry values across every part.
-  - **How it meets the rest**: only the declaration of the values moves.
-    What crosses is what it was: value numbering (`Numbered`) decides the
-    temporaries, C357's reread their text, and hoisting (`Invariant`) and
-    a limit's `vN_` declare theirs inside a temporary's lines, which the
-    split never cuts; a looped array is a member of its extent as today.
-    The parts' frames do not move: the largest of `tf`'s stays 17,520
-    bytes.
-  - **MSVC**: CI builds the check programs as C11 at /W4. Should it warn
-    C4201 of an anonymous struct, the union is written between `#pragma
-    warning(push)`, `disable: 4201` and `pop` under `_MSC_VER`, beside
-    `TF_NOINLINE_`'s definition: CI decides, 5 lines.
+  | | values | `sizeof` model | stack | header | GCC -O2 |
+  |---|---|---|---|---|---|
+  | `tf` | 305,792 | 28,440 | 324,800 | 5,545,075 | 56.7 s |
+  | in the model | | 334,232 | 18,960 | 5,542,892 | 54.6 s |
+  | `tune` | 12,544 | 9,744 | 16,976 | 435,461 | 6.3 s |
+  | in the model | | 22,288 | 4,320 | 435,269 | 6.6 s |
+  | `inf` | 10,992 | 9,224 | 15,312 | 391,256 | 5.9 s |
+  | in the model | | 20,216 | 4,304 | 391,141 | 5.5 s |
+  | `twice` | 192 | 32,384 | 1,008 | 287,413 | 5.4 s |
+  | in the model | 96 | 32,480 | 784 | 287,556 | 5.6 s |
+  | `nest` | 480 | 80,944 | 1,744 | 772,789 | 13.1 s |
+  | in the model | 192 | 81,136 | 1,248 | 773,274 | 13.7 s |
 
-  Measured on a prototype at 6cd0643, discarded, by GCC 13.3 and Clang
-  18.1 at -O2, one run each under a shared load; stack the step's frame
-  and its largest part's, by -fstack-usage; the values' type by `sizeof`:
-
-  | | values | stack | header | GCC -O2 |
-  |---|---|---|---|---|
-  | `tf` | 303,456 | 323,952 | 5,494,168 | 58.4 s, 454 MB |
-  | by lifetimes | 80,168 | 98,560 | 5,610,913 | 58.5 s, 449 MB |
-  | `tune` | 12,584 | 17,056 | 433,781 | 7.3 s |
-  | by lifetimes | 3,312 | 7,792 | 439,980 | 6.9 s |
-  | `inf` | 11,016 | 15,376 | 390,104 | 5.8 s |
-  | by lifetimes | 3,312 | 7,680 | 395,850 | 6.0 s |
-
-  `tf` by Clang: stack 325,216 to 99,840, 47.0 s to 45.0; its
-  `--compile` 6.0 s to 6.4; its 459 groups, 443 behind a padding; a step
-  as fast, within the runs' noise. The headers grow 1.4 to 2.1 per cent,
-  the members' four more spaces and the paddings. `riekf` is not split:
-  byte for byte. Bit for bit: `tf`'s J at 0 to 3 and each hundredth to
-  300, and its whole state after 301 steps, by GCC and Clang; `riekf`'s,
-  `inf`'s and `tune`'s state after 101 steps of drawn inputs; the output
-  of all 338 check programs; `tuned`'s report in float.
+  `tf` by Clang: stack 326,488 to 20,680; its -O2 41.5 to 44.7 s, then
+  45.4 to 50.1, a tenth longer in each of three runs, its memory 388 MB
+  to 379; a step as fast by either, 0.20 to 0.23 ms, within the runs'
+  noise. `riekf`, unsplit, byte for byte: 7,936 bytes of model and 14,128
+  of stack. A header changes by a few hundred bytes: the step's local
+  gone, 3 bytes more a call, the comment a line longer, a union its
+  lines. Bit for bit: each model's state, every member before `v_`, after
+  each of 101 steps of drawn inputs, 301 for `tf`, by GCC, and `tf`'s by
+  Clang too; of the 342 check programs only `unseen_4.c`, `tuned_4.c`
+  and `twins_4.c`, in double and float, change, their reports byte for
+  byte; the prototype passes the whole `ctest`, `cli_scratch` included.
 
   Rejected:
-  - **The remedy named, carried arrays read in place and each sequence's
-    temporaries in a block**, on the same prototype: a later part's array
-    read through a pointer, `double (*const t1314_)[6][6] =
-    v_->t1314_;`, its producer writing in place where it declares the
-    array bare, and each list of the step in a block: `tf`'s stack 323,952
-    to 317,968, 2 per cent, its largest part 17,520 to 11,536, its header
-    0.1 per cent smaller, GCC's time within noise; `inf` and `tune` 5 per
-    cent; `riekf`, unsplit, 14,144 to 12,784 by its lists in blocks, which
-    indents every expected header anew. The struct, not the parts, is the
-    stack. On top of the union, the arrays in place would take `tf` from
-    98,560 to 92,576, 6 per cent, for about 12 lines: left for a model
-    whose parts' frames matter.
-  - **A struct of each cut list in the union**, `v_->g3_.t5_`: 234,848
-    bytes for `tf`, g's list alone, and every load longer.
-  - **Offsets in one array**, `v_->d_[120]`: the names gone from 60,000
-    loads and stores, for 71,616 bytes rather than 80,168.
-  - **Two levels**, values within a block of 16 parts in its struct and
-    the rest beside: 143,024 bytes.
-  - **A value stored where another sharing its place is last read**:
-    loads come first today, but any read in place later would break it.
+  - **Values by their lifetimes**: parked, below.
+  - **Carried arrays read in place**, the predecessor's measure: `tf`'s
+    stack 2 per cent smaller.
+  - **Reference counting, or the heap per value**: the header allocates
+    nothing, and a step that does is not one a controller runs.
+  - **A workspace the host passes**, `tf_step(&m, &w, X, Y)`: one scratch
+    for models a host steps in turn, the same rule a level up, but every
+    host's call changes; deferred until a host asks.
+  - **Named members**, `v_->u_.a_held.t2_`: whether siblings share is
+    known once every list is cut, so every load would be written after;
+    anonymous members leave them as they are.
+  - **`m_->v_.t5_` at each load**, a part taking `m_` alone: 3 bytes more
+    at each of `tf`'s 60,224 loads and stores, for a parameter.
 
-  Not addressed: the loads and stores, 36.7 per cent of `tf`'s bytes, by
-  either; reading a value through the struct was rejected by the split for
-  Clang's time. The loops review's 15 KB of carried arrays never read was
-  not found: at 6cd0643 every array a part loads it reads by name.
+  Parked, **for when a model runs out of RAM**: values by their lifetimes
+  within one model (9b0e18c, on the branch `splitplace`). A value lives
+  from the part storing it to the last reading it, values living across
+  the same parts are a group, and groups are placed first fit, a union of
+  anonymous structs behind `double` paddings: measured at 6cd0643, `tf`'s
+  values 303,456 bytes to 80,168 and its stack 323,952 to 98,560, `tune`'s
+  12,584 to 3,312, `inf`'s 11,016 to 3,312, headers 1.4 to 2.1 per cent
+  larger, about 35 lines. The owner judged it a code smell; in the model
+  it would shrink `sizeof` rather than the stack.
 
-  What moves: no golden, report, expected header, nor excerpt, count or
-  bound of `test/cli.cmake`; `check_carried_values` holds. The check
-  programs `unseen_4.c` and `tuned_4.c`, and `cli.cmake`'s `inf.h` and
-  `tune.h`, under their bounds of 430,000 and 480,000 bytes.
+  About 35 lines of `compile.hpp` added and 15 removed, of 19,250 at
+  d74ab86 by `wc -l include/inkamath/*.hpp src/*`: each carried value
+  recorded with its instance, 2; the scratch written, its own then its
+  instances', 18; declared before the model and a member of it, 10; the
+  step's local and its insertion gone. Past 53 added the implementation
+  stops and reports; MSVC's pragma, if CI asks for it, counts apart.
 
-  About 35 lines of `compile.hpp`, 19,213 lines in all at 6cd0643 by `wc -l
-  include/inkamath/*.hpp src/*`: the lifetimes recorded in `Split`, 7;
-  their placement and the union written, 25; the struct where nothing
-  shares, 3. Past 53 the implementation stops and reports; MSVC's pragma,
-  if CI asks for it, counts apart.
+  Specified in `test/compile/split.ink` by `twins`, a bank of two
+  instances of `held`, checked from now in double and float, reports
+  that hold before and after; and `test/cli.cmake`'s part `scratch`, run
+  by `cli_scratch`, skipped while `twice.h` writes today's struct and
+  declares it in the step, and only then: `twice`'s union above, before
+  the model's comment, its member last in the model and its parts called
+  with `&m_->v_`; `tune.h`'s comment and member; and `tune`'s step's own
+  frame under 4,096 bytes by -fstack-usage at -O0, which GCC and Clang
+  write, 12,568 or more today and 40 to 48 on the prototype. With the
+  implementation the part joins part 2 beside `compile_loops_tune`, and
+  `cli_scratch` goes. `tf` is not in the tests.
 
-  Specified in `test/compile/split.ink` by `turns`, its instance `paired`
-  checked from now in double and float, reports that hold before and
-  after; and `test/cli.cmake`'s part `values`, run by `cli_values`,
-  skipped while `turns.h` writes today's struct, and only then: the union
-  above by `holds`, a group behind a padding in `tune.h`, and `tune`'s
-  values under 4,096 bytes by a `_Static_assert` that GCC or Clang builds,
-  12,584 today and 3,312 on the prototype; `tf` is not in the tests. With
-  the implementation, the part joins part 2 beside `compile_loops_tune`,
-  and `cli_values` goes.
+  What moves: no golden, report or expected header, none of which is
+  split, nor excerpt, count or bound of `test/cli.cmake`. The check
+  programs `unseen_4.c`, `tuned_4.c` and `twins_4.c`, and `cli.cmake`'s
+  `inf.h` and `tune.h`, under their bounds of 430,000 and 480,000 bytes.
 - `[done]` **A Jacobian by cells**, the idiom, compiled and held by `--check`:
   `J(x)[i<=3, j<=2] = (grad_(v = x) f(v)[i])[j]`, row i output i's
   gradient as a paper defines J_ij, so the layout is the user's. grad's own
@@ -11896,8 +11965,8 @@ the clause for a limit that does not converge as done, the order from here:
   Compiled it reads the lower triangle, as LAPACK's does: a covariance
   symmetric exactly is not in doubles, and a test there would make a
   square-root filter NaN.
-- *A split step's values by their lifetimes*, above; then increments 4 and
-  5 of the loops decided on its measures.
+- *A split step's scratch in the model struct*, above; then increments 4
+  and 5 of the loops decided on its measures.
 - The gather, integer and optional inputs, and exact discretisation, below.
 
 - **A gather, integer inputs, inputs present on some steps only**: their
@@ -11936,7 +12005,7 @@ review:
 - **The end-to-end exploration (`CLAUDE.md` §9)**: a sensor, a learned
   correction, an estimator, a controller and an actuator command at two
   rates, with an injected sensor failure. After the fallback audit above
-  and *a split step's values by their lifetimes*.
+  and *a split step's scratch in the model struct*.
 - `[done]` **Python hosting**, with no compiler change: README's paragraph
   after `--float`, a C file exporting the header's functions and each
   field's `offsetof` to ctypes, held by `compile_host`. A call from Python
