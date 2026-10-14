@@ -620,20 +620,35 @@ private:
     // A guarded value the interpreter refuses wherever it is taken, as log's
     // '| x <= 0 = 1/0', is what a step says there: NaN, as where no clause
     // applies (C86). Read where its guard held, it asks no status of a limit
-    // the guard read to hold, which did not run out there (C368).
-    Code Taken(const PExpression<Value>& expression) {
-        const std::set<std::string> own = sure_;
+    // the guard read to hold, which did not run out there and which the audit
+    // would list (C368); the others only where the chain takes it (C370).
+    Code Taken(const PExpression<Value>& expression, const std::string& condition,
+               const std::string& before) {
+        const std::set<std::string> own = condition.empty() ? std::set<std::string>() : sure_;
         std::set<std::string>       read;
         Code                        code;
         try {
             const Setting<std::set<std::string>*> reading(statuses_, &read);
             code = Emit(expression);
         } catch (const Undefined&) {
+            if (condition.empty()) throw;
             code.cells.push_back(Atom("NAN"));
         }
         for (const std::string& status : read)
-            if (statuses_ && !own.count(status)) statuses_->insert(status);
+            if (statuses_ && !own.count(status))
+                statuses_->insert(Joined(before, condition, status));
         return code;
+    }
+    // A status asked only where the chain reaches what reads it: past the
+    // guards before, as Chain tests them, and where its own guard holds.
+    std::string Joined(const std::string& before, const std::string& condition,
+                       const std::string& status) {
+        if (before.empty() && condition.empty()) return status;
+        const std::string joined = "(" + before +
+                                   (condition.empty() ? "1.0" : condition + " ? 1.0 : 0.0") +
+                                   ") == 1.0 && (" + status + ")";
+        what_[joined] = what_[status];
+        return joined;
     }
 
     // Under reverse mode, a clause a moving guard chose is marked, as an inexact truth's is.
@@ -660,6 +675,7 @@ private:
         std::vector<std::pair<std::string, Code>> guarded;
         std::optional<Code>                       otherwise;
         std::set<std::string>                     asked;
+        std::string                               before;
         const Clause<Value>* const                lowest = definition.EndBase(true);
         const Setting<bool>                       chosen(chosen_, false);
         // Each clause sees its own index alone, as Reference::Selects binds it (C186).
@@ -680,12 +696,16 @@ private:
                                                         Literal(Value(Number(*at))));
                 const std::optional<std::string> condition =
                     p.guarded() ? Condition(p.guard()) : std::optional<std::string>("");
-                if (p.guarded()) asked.insert(asked_.begin(), asked_.end());
+                if (p.guarded())
+                    for (const std::string& status : asked_)
+                        asked.insert(Joined(before, "", status));
                 if (!condition) continue;
+                const Code value = Chosen(Taken(clause.expression, *condition, before));
                 if (condition->empty())
-                    otherwise = Chosen(Emit(clause.expression));
+                    otherwise = value;
                 else
-                    guarded.emplace_back(*condition, Chosen(Taken(clause.expression)));
+                    guarded.emplace_back(*condition, value);
+                before += *condition + " ? 0.0 : ";
             }
         }
         Told(asked, otherwise.has_value());
@@ -2989,7 +3009,7 @@ private:
                 int col, const Code& fallback) {
         std::vector<std::pair<std::string, Code>> guarded;
         std::optional<Code>                       otherwise;
-        std::string                               ran;
+        std::string                               ran, before;
         std::set<std::string>                     asked;
         const Setting<bool>                       chosen(chosen_, false);
         Walk(
@@ -2999,10 +3019,11 @@ private:
                 const std::optional<std::string>   condition =
                     p.guarded() ? Condition(p.guard()) : std::optional<std::string>("");
                 Ran(ran, condition);
-                if (p.guarded()) asked.insert(asked_.begin(), asked_.end());
+                if (p.guarded())
+                    for (const std::string& status : asked_)
+                        asked.insert(Joined(before, "", status));
                 if (!condition) return false;
-                const Code value =
-                    Chosen(condition->empty() ? Emit(clause.expression) : Taken(clause.expression));
+                const Code value = Chosen(Taken(clause.expression, *condition, before));
                 if (!value.Scalar())
                     throw Reason("a cell of " + name + " must be a single value, not a " +
                                  value.size.Described());
@@ -3010,6 +3031,7 @@ private:
                     otherwise = value;
                 else
                     guarded.emplace_back(*condition, value);
+                before += *condition + " ? 0.0 : ";
                 return condition->empty();
             });
         Told(asked, otherwise.has_value());
