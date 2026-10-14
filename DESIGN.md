@@ -11982,13 +11982,15 @@ for, which `eig` refuses complex:
       rootsr(p[j<=m]) | m == 2 = -p[2]/p[1]
       rootsr(p[j<=m]) | m > 2 and p[m] == 0 = [rootsr(abscissat(p)); 0]
       rootsr(p[j<=m]) | m > 2 = rootsf(p, rootsg(p, rootsd(p)))
-      rootsf(p, g[k<=n]) | n == 1 and p == re(p) = rootsy(rootse(p)*lim rootsk(rootsn(p)))
-      rootsf(p, g[k<=n]) | n == 1 = rootse(p)*lim rootsk(rootsn(p))
+      rootsf(p, g[k<=n]) | n == 1 and p == re(p) = rootsy(rootsl(p))
+      rootsf(p, g[k<=n]) | n == 1 = rootsl(p)
+      rootsl(p) = rootse(p)*rootsw(rootsn(p), lim rootsk(rootsn(p)))
       rootsf(p, g) = [rootsr(rootsq(p, g)); rootsr(g)]
       rootse(p[j<=m]) = 2^floor(ilogb(abs(p[m]/p[1]))/(m-1) + 1/2)
       rootsn(p[j<=m])[r<=m] = p[r]/rootse(p)^(r-1)
       rootsk(p[j<=m])_0[r<=m-1] = (4/10 + 9/10*i)^(r-1)
-      rootsk(p[j<=m])_k[r<=m-1] = rootsk(p)_(k-1)[r] - polyval(p, rootsk(p)_(k-1)[r])/(p[1]*prod_(q=1)^(m-1) ((q == r) + (q <> r)*(rootsk(p)_(k-1)[r] - rootsk(p)_(k-1)[q])))
+      rootsk(p)_k = rootsw(p, rootsk(p)_(k-1))
+      rootsw(p, z[k<=n])[r<=n] = z[r] - polyval(p, z[r])/(p[1]*prod_(q=1)^n ((q == r) + (q <> r)*(z[r] - z[q])))
       rootsc(z[j<=m], r) = sum_(k=1)^m z[k]*(k == argmin_(q=1)^m abs(re(z[r]) - i*im(z[r]) - z[q]))
       rootsy(z[j<=m])[r<=m] = (z[r] + re(rootsc(z, r)) - i*im(rootsc(z, r)))/2
       rootsb(z[j<=m], j) = 1 + sum_(k=1)^m (re(z[k]) < re(z[j]) or re(z[k]) == re(z[j]) and (im(z[k]) < im(z[j]) or im(z[k]) == im(z[j]) and k < j))
@@ -12066,15 +12068,15 @@ for, which `eig` refuses complex:
   its gcd is not exact, and (s - i)^2 (s + 2) is refused, `lim` running
   out, where (s - i)^2 is i twice. README says so. A root on the
   imaginary axis keeps a real part of rounding size, (s + 1)^2 (s^2 + 1)'s
-  +-i one of 1.3e-17: roots is not a stability test, `hurwitz` is, exactly.
+  +-i one of 9.8e-18: roots is not a stability test, `hurwitz` is, exactly.
 
   **The order**: by real part, then imaginary part, each ascending, as eig
   gives smallest first, equal ones as found; a pair's a - bi first. MATLAB's
   order is its eig's and undocumented, and numpy's the same: no rule to take.
   Equal is bit-equal, so ties are ordered by rounding: equal roots are
   adjacent only when they come out bit-equal, as a repeated one does from
-  the gcd, and (s^2 + 1)(s^2 + 4) gives -i, i, -2i, 2i, its real parts
-  rounding apart, about -5e-22 and 5e-22. README says so.
+  the gcd, and (s^2 + 2s + 2)(s^2 + 2s + 5) gives -1 - i, -1 + i, -1 - 2i,
+  -1 + 2i, its real parts rounding apart. README says so.
 
   **The start and the scale**: (0.4 + 0.9i)^(r-1), the customary one, on
   p scaled by 2^e, e = floor(ilogb(|p_m/p_1|)/(m-1) + 1/2), a power of
@@ -12166,8 +12168,8 @@ for, which `eig` refuses complex:
 
   Built as specified, with the review's rulings: the scale, the
   compiler's refusal left to a helper's words, verified as quoted, ties
-  by rounding, and README's limits. 34 lines, 19,213 to 19,247 at the
-  merge of 6cd0643, against the stop of 52: the prelude's 32, 4 of them
+  by rounding, and README's limits. 37 lines, 19,213 to 19,250 at the
+  merge of 6cd0643, against the stop of 52: the prelude's 35, 5 of them
   comment, the C++ of its words 1, and the staircases' list 1, laid out
   by clang-format. Every entry passes as written, and the spec is the
   golden `polyroots.ink`; the spec suite goes, polyroots its only case,
@@ -12176,7 +12178,14 @@ for, which `eig` refuses complex:
   two, not the one below the ruling gave, which converged on half the
   random polynomials of degree 15 (above, its own commit); README's
   example is the PI loop above it, as conv's, with (s + 1)^2 exact, not
-  the motor's poles, which need its five constants first. Of 400 random
-  polynomials, degree 2 to 12, integer coefficients from -9 to 9, all 722
-  real roots printed real, every root within 4.9e-9 of mpmath's, and none
-  refused.
+  the motor's poles, which need its five constants first; and, from the
+  implementation review, one step of the iteration after `lim`, `rootsw`:
+  below 1 `lim`'s tolerance is absolute, so a root far below the mean
+  settled about 10^-20 times the mean off, 1e-23 answered -3.46e-22
+  beside -1 and 1e23, and 9e-8 beside -5e6 and 2e8 lost its eighth digit;
+  the step squares that error, in 3 lines. Relative convergence, each
+  root's ratio to its last read by `lim`, 1 line, was rejected: it refused
+  clusters the limit answers right, (s - 1)(s - 1.01)(s - 1.02)(s - 1.03).
+  Of 400 random polynomials, degree 2 to 12, integer coefficients from -9
+  to 9, all 722 real roots printed real, every root within 4.9e-9 of
+  mpmath's, and none refused.

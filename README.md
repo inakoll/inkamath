@@ -721,8 +721,8 @@ part p/gcd(p, p'), so a repeated root converges as a simple one does.
 Where that leaves only factors of degree 1, as of (s + 1)^2 or z^3, every
 root is exact; otherwise every root is inexact, its place found by
 comparing doubles. Equal roots are adjacent only where they come out equal
-to the bit: (s^2 + 1)(s^2 + 4) gives -i, i, -2i, 2i, their real parts
-rounding apart. Of a real polynomial, a real root is real and a pair
+to the bit: (s^2 + 2s + 2)(s^2 + 2s + 5) gives -1 - i, -1 + i, -1 - 2i,
+-1 + 2i, their real parts rounding apart. Of a real polynomial, a real root is real and a pair
 exactly conjugate; of a complex one, a repeated root is unreliable, its
 gcd being in doubles. Near roots cost digits, as in any root finder in
 doubles: (s + 1)^2 - 10^-16 gives -1.00000001 and -0.999999989 for -1 +-

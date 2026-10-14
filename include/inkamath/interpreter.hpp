@@ -560,8 +560,9 @@ inline constexpr const char* prelude[] = {
     "polyvalh(p, x)_k = polyvalh(p, x)_(k-1)*x + p[k]*x^0",
     // roots by Durand and Kerner on the squarefree part p/gcd(p, p'), exact
     // by Euclid, scaled by the power of two nearest the roots' geometric
-    // mean, the gcd's own roots after: a repeated root converges once. A real
-    // p's roots are averaged with their conjugates' nearest, so a real one is real.
+    // mean, the gcd's own roots after: a repeated root converges once. A step
+    // after lim squares the error its absolute tolerance leaves a small root.
+    // A real p's roots are averaged with their conjugates' nearest, so a real one is real.
     "roots(p[j<=m]) = rootso(rootsr(rootst(p)))",
     "rootst(p[j<=m]) = p",
     "rootst(p[j<=m]) | m > 1 and p[1] == 0 = rootst(rootsu(p))",
@@ -577,14 +578,16 @@ inline constexpr const char* prelude[] = {
     "rootsr(p[j<=m]) | m == 2 = -p[2]/p[1]",
     "rootsr(p[j<=m]) | m > 2 and p[m] == 0 = [rootsr(abscissat(p)); 0]",
     "rootsr(p[j<=m]) | m > 2 = rootsf(p, rootsg(p, rootsd(p)))",
-    "rootsf(p, g[k<=n]) | n == 1 and p == re(p) = rootsy(rootse(p)*lim rootsk(rootsn(p)))",
-    "rootsf(p, g[k<=n]) | n == 1 = rootse(p)*lim rootsk(rootsn(p))",
+    "rootsf(p, g[k<=n]) | n == 1 and p == re(p) = rootsy(rootsl(p))",
+    "rootsf(p, g[k<=n]) | n == 1 = rootsl(p)",
+    "rootsl(p) = rootse(p)*rootsw(rootsn(p), lim rootsk(rootsn(p)))",
     "rootsf(p, g) = [rootsr(rootsq(p, g)); rootsr(g)]",
     "rootse(p[j<=m]) = 2^floor(ilogb(abs(p[m]/p[1]))/(m-1) + 1/2)",
     "rootsn(p[j<=m])[r<=m] = p[r]/rootse(p)^(r-1)",
     "rootsk(p[j<=m])_0[r<=m-1] = (4/10 + 9/10*i)^(r-1)",
-    "rootsk(p[j<=m])_k[r<=m-1] = rootsk(p)_(k-1)[r] - polyval(p, rootsk(p)_(k-1)[r])/(p[1]"
-    "*prod_(q=1)^(m-1) ((q == r) + (q <> r)*(rootsk(p)_(k-1)[r] - rootsk(p)_(k-1)[q])))",
+    "rootsk(p)_k = rootsw(p, rootsk(p)_(k-1))",
+    "rootsw(p, z[k<=n])[r<=n] = "
+    "z[r] - polyval(p, z[r])/(p[1]*prod_(q=1)^n ((q == r) + (q <> r)*(z[r] - z[q])))",
     "rootsc(z[j<=m], r) = sum_(k=1)^m z[k]*(k == argmin_(q=1)^m abs(re(z[r]) - i*im(z[r]) - z[q]))",
     "rootsy(z[j<=m])[r<=m] = (z[r] + re(rootsc(z, r)) - i*im(rootsc(z, r)))/2",
     "rootsb(z[j<=m], j) = 1 + sum_(k=1)^m (re(z[k]) < re(z[j]) or re(z[k]) == re(z[j]) "
