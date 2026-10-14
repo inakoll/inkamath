@@ -687,12 +687,12 @@ staircase:
 value of one at x, each a column, highest power first, as `charpoly`
 writes it. A single value is a constant polynomial; a row is refused, not
 read as MATLAB's. conv's length is the sum of the two less 1, a leading
-zero kept, and polyval is Horner's rule, exact at an exact x. Of a square matrix, polyval
-is the matrix polynomial p(A), its constant term times A^0, so a matrix is
-a root of its characteristic polynomial; MATLAB's and numpy's `polyval`
-work cell by cell instead, which is written by cells here, `Y[j<=n, k<=m]
-= polyval(p, X[j,k])`. `grad` and the compiler take both as any
-definition. A PI controller (2s + 1)/s around 1/((s + 1)(s + 2)) closes
+zero kept, and polyval is Horner's rule, exact at an exact x. Of a square
+matrix, polyval is the matrix polynomial p(A), its constant term times A^0,
+so a matrix is a root of its characteristic polynomial; MATLAB's and
+numpy's `polyval` work cell by cell instead, which is written by cells
+here, `Y[j<=n, k<=m] = polyval(p, X[j,k])`. `grad` and the compiler take
+both as any definition. A PI controller (2s + 1)/s around 1/((s + 1)(s + 2)) closes
 the loop on s(s + 1)(s + 2) + 2s + 1:
 
 ```
