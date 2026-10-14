@@ -2234,8 +2234,13 @@ private:
         if (whole == 0) {
             // The identity whatever the base, but not a constant: a constant is
             // what reads no name, and an enclosing fold would read this one's.
+            // NaN where a cell of the base is, as the interpreter refuses it.
             Code identity = Literal(Value::Identity(base.size));
             identity.constant.reset();
+            aware_ = aware_ || MayNan(base);
+            if (const std::string test = aware_ ? Nan(Shared(base)) : ""; !test.empty())
+                for (Cell& cell : identity.cells)
+                    cell = Cell("(" + test + cell.text + ")", primary);
             return identity;
         }
         if (whole < 0) base = Inverse(base);
