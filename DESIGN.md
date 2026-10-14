@@ -12066,6 +12066,10 @@ for, which `eig` refuses complex:
   **The order**: by real part, then imaginary part, each ascending, as eig
   gives smallest first, equal ones as found; a pair's a - bi first. MATLAB's
   order is its eig's and undocumented, and numpy's the same: no rule to take.
+  Equal is bit-equal, so ties are ordered by rounding: equal roots are
+  adjacent only when they come out bit-equal, as a repeated one does from
+  the gcd, and (s^2 + 1)(s^2 + 4) gives -i, i, -2i, 2i, its real parts
+  rounding apart, about -5e-22 and 5e-22. README says so.
 
   **The start and the scale**: (0.4 + 0.9i)^(r-1), the customary one, on
   p scaled by 2^e, e = floor(ilogb(|p_m/p_1|)/(m-1)), a power of two
