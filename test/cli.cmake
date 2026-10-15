@@ -1329,6 +1329,15 @@ set(args --compile gained.ink gained -o gained.h)
 set(stderr "inkamath: cannot compile inner.c: inner.c_0 reads inner.x_-1, before the stream, where inner.x's history reads a, which the host may assign after init\n")
 set(exit 1)
 check(history_gained)
+# But not where the history's own clause gives the term: 'rail' reads u_-1,
+# 1/2, where its argument reads a parameter, and was refused (C379).
+file(WRITE "${OUT}/railed.ink" "steering(k = 2, y_n) = {\n    u_n = k*(1 - y_n)\n}\n"
+     "railing(u_n) = {\n    u_n | n < 0 = 1/2\n    x_0 = 0\n    a_n = u_(n-1) - x_n\n"
+     "    x_n = x_(n-1) + a_(n-1)/2\n}\nsteer = steering(y_n = rail.x_n)\n"
+     "rail = railing(u_n = steer.u_n)\n")
+set(args --compile railed.ink -o railed.h)
+check(history_railed)
+holds(history_railed railed.h "m_->rail.u[0] = 0.5;\n")
 # And a recurrence's own history that reads one, which the step read as 0
 # (C343).
 refused(lifted "a = 2) = {\n    g_n | n < 0 = a\n    g_n = 2*g_(n-1)"
