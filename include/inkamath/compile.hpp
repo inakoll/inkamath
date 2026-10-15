@@ -1537,11 +1537,20 @@ private:
         Reads* const outer_reads = clause_reads_;
         // The guarded clauses in the order written, then the unguarded one, as
         // the interpreter tries them; a guard that always holds ends the chain.
-        bool settled = false;
-        for (const bool guarded : {true, false}) {
-            for (const Clause<Value>& clause : sequence.definition->Clauses()) {
+        // One reading its own term where no base clause gives a shape takes the
+        // unguarded one's, compiled first (C377).
+        const auto& clauses = sequence.definition->Clauses();
+        const bool shaped = !sequence.size.rows && std::ranges::any_of(clauses, [&](const auto& c) {
+            const std::string& own = sequence.definition->Name();
+            return c.parameters.guarded() &&
+                   (Mentions(*c.expression, own) || Mentions(*c.parameters.guard(), own));
+        });
+        bool       settled = false, general = false;
+        for (const bool guarded : {!shaped, shaped}) {
+            for (const Clause<Value>& clause : clauses) {
                 const ParametersDefinition<Value>& p = clause.parameters;
-                if (settled || !p.general() || p.guarded() != guarded) continue;
+                if (settled || (general && !guarded) || !p.general() || p.guarded() != guarded)
+                    continue;
                 Within(name, &sequence, p.index_name(), [&] {
                     // The index as the step has it, known once the rate is.
                     const std::string outer_text =
@@ -1561,7 +1570,8 @@ private:
                         sequence.general        = Texts(code);
                         sequence.general_reads  = value_reads;
                         sequence.general_clause = place;
-                        settled                 = true;
+                        settled                 = guarded;
+                        general                 = true;
                     } else {
                         sequence.guarded.push_back({*condition, Texts(code), guard_reads,
                                                     value_reads, 0, 0, place,
@@ -1571,10 +1581,10 @@ private:
                 });
             }
         }
-        if (!settled && sequence.guarded.empty())
+        if (!general && sequence.guarded.empty())
             throw Refusal(name, "a sequence with no general clause");
         // Where no guard holds the interpreter says so; a step can only say NaN.
-        if (!settled) sequence.general.assign(sequence.size.count(), "NAN");
+        if (!general) sequence.general.assign(sequence.size.count(), "NAN");
         clause_reads_     = outer_reads;
         sequence.compiled = true;
         // An input given a term of another size than its model states.
