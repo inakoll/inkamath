@@ -12026,9 +12026,164 @@ the clause for a limit that does not converge as done, the order from here:
   and 5 of the loops decided on its measures.
 - The gather, integer and optional inputs, and exact discretisation, below.
 
-- **A gather, integer inputs, inputs present on some steps only**: their
-  open questions first. The gather is *A cell at a computed whole index,
-  compiled*.
+- **A gather and integer inputs**: their open questions first. The gather
+  is *A cell at a computed whole index, compiled*.
+- **Optional inputs**, MANIFESTO's open question: how a signature declares
+  an input present on some steps only, and what the static check then
+  proves of what reads it. The end-to-end exploration's robot carried its
+  fix's outage as a second input, `ok_n`, beside a value that meant
+  nothing where ok was 0, and its fix failing NaN reached the actuator.
+  Approved by the owner for a spec, in the exploration's direction:
+
+  ```
+  nav(..., am_n, z_n?) = {
+      ...
+      x_n | (z_n - [1 0]*xp_n)^2 < gate^2*S_n = xp_n + Pp_n*[1; 0]*(z_n - [1 0]*xp_n)/S_n
+      x_n = xp_n
+  }
+  ```
+
+  Decided:
+  - **The mark**: `z_n?` in the signature, after the bounds of an input
+    with a size, `z_n[j<=2]?`; `?model` prints it as written. One
+    character on the declaration, no word and no value: the smallest way
+    to say it. An input not marked is as today.
+  - **Absent is a term that is not there.** A sequence is already not
+    defined where no clause applies (README section 4); an optional input
+    is absent at n where its argument itself reads a term that is not
+    there, one no clause gives or an optional input absent there.
+    Through another term it is that term's refusal, as a limit that runs
+    out is: `z_n = zd_n + 1` is absent where zd has no term, `zp_n = zd_n
+    + 1` given as z refuses there. Absent too at every step where the
+    instance leaves it out, and below 0, before the stream, where no
+    clause of its history gives it: nothing has arrived there.
+  - **A guard that reads an absent input does not hold**, and the clause
+    after is tried, read as the interpreter reads: on the right of `and`
+    or `or` only where the left did not decide, on the left whatever the
+    right says, through the functions the guard calls. Absence is exact:
+    the clause after is inexact only where an inexact truth decided that
+    the input be read, the left of an `and` or an `or` (C241).
+  - **The static check, where the model is defined**: every read of an
+    optional input sits in a guard with a clause after it, in the value
+    of a guarded clause whose guard reads it at the same index wherever
+    the guard holds, not on the right of an `or`, or is the argument of
+    an inner instance's optional input. Any other is refused, naming it:
+    "y reads z_n, an optional input of m, outside a guard with a clause
+    after it", or "in a value whose guard may hold without reading it".
+    So no value reads an absent input, by construction, and no term of
+    the model is ever absent: nothing a host or a reader receives needs a
+    flag but the input. A definition reading it does not become absent in
+    turn; it is refused, so the robot's innovation is written in the
+    guard and the value that read it, its gate twice, in `fix` and `x`.
+    Outside the model, the interpreter reads an instance's optional input
+    as any term, "e.z_4 is absent", and a guard reading it falls; the
+    compiler holds a file's definitions to the model's rule.
+  - **NaN is not absence.** Given NaN, an optional input is present and
+    NaN: a comparison of it is refused, and the step is NaN where it
+    reads it, as for an input not marked (C189, C315), so a sensor's
+    fault still reaches the outputs and `--check` sees it. NaN given to
+    an input not marked is as today. Only the flag says absent.
+  - **The host**: the step takes an int after each optional input,
+    `int z_present_in_`, 0 where it is absent, the input then not read,
+    a matrix's pointer possibly NULL; the usage line writes
+    `track_step(&m, z, z_present)` and the comment says so. The struct
+    keeps the flags in a window beside the input's, `int z_present[k]`,
+    1 where z_(n-k) was given, and the input's own cell is NaN where it
+    was not, so that no field shows a stale value as given. A compiled
+    guard whose truth is NaN asks the flags of the inputs it reads as it
+    asks a limit's status, and does not hold where one is absent; init
+    clears them, so before the stream is absent. Python's shim passes the
+    flag as one more `c_int`; a host whose driver says absent by NaN
+    converts in its own C, `track_step(&m, z, !isnan(z))`, where it is
+    seen and is its decision.
+  - **Within a compiled file**, a sibling's sequence defined on some
+    steps only, given as an optional input, passes as the flag whether a
+    clause of its chain gave the term; an optional input forwarded to an
+    inner instance's passes its flag.
+  - **`--check`** replays an absent input as the interpreter gives it, the
+    flag 0, and lists each guard that reads an optional input in the
+    fallback audit's list, form and place: `seen.x: where z is absent,
+    'x_n | ...' falls to 'x_n = xp_n'`; after the limits in one guard,
+    `where lim qp runs out or z is absent`; several by `or`, `where z or
+    w is absent`. Never "NaN under grad" for an input: grad follows the
+    clause after.
+  - **Rates, holds, the last value, grad**: sampled at a slower rate under
+    a guard, `s_m | z_(4*m) >= 0 = z_(4*m)`, and held, `s_(floor(n/4))`,
+    as any input is, its flags in its window. The last value seen is the
+    idiom the user writes, `x_n | z_n >= 0 = z_n` and `x_n = x_(n-1)`,
+    its guard the measurement's own acceptance test, a range or a gate:
+    no built-in. grad through a guard that falls for an absent input
+    takes the clause after's slope, the clause being the data's choice
+    and not the point's, where grad refuses one that falls for a limit.
+  - **Irregular arrival** is an optional input at the step's rate, the data
+    saying when, `at_n | sum_(k=1)^4 (ts[k] == n) == 1 =
+    zs[argmax_(k=1)^4 (ts[k] == n)]`. MANIFESTO's event clock, an index
+    counting arrivals, stays its own question: this keeps the one step at
+    the fast rate, the shape it calls deterministic.
+
+  Rejected:
+  - **NaN as the only signal**: a fault and an outage become one, so a
+    sensor failing NaN would take the fallback unseen; exact data has no
+    NaN to stand for absence, and a matrix with one NaN cell is neither.
+    The exploration's third mode is the case: NaN at the actuator is
+    right for a fault and wrong for a fix not taken.
+  - **An `ok` input by convention**, today's workaround: the value where
+    ok is 0 is a number nobody checks, stale or 0, which a read outside
+    the guard takes for data; two arguments must agree; neither the check
+    nor the audit can name it. The robot needed `mod(n, 10) == 0` and a
+    frozen-value test beside it.
+  - **Exceptions**, a refusal where an absent input is read: "every
+    refusal in a guard" was rejected for limits, a misspelt name taking
+    the fallback; a step has none, and one that stops loses the command.
+  - **A Maybe or Option type**: a second kind of value, every operator
+    deciding what absent plus 1 is, and every term the host reads perhaps
+    absent, a flag beside every field. **Absence carried through
+    definitions**, absent in and absent out, is the same by another name,
+    and the check would prove only where each chain ends.
+  - **A word**, `none` as a value or `z_n = none` as a default: a value is
+    the Maybe above, and a default only for signatures a longer mark.
+  - **A separate setter**, `track_set_z`: the step's signature would no
+    longer say what it reads, and a value set and not stepped would carry
+    to the next call.
+  - **A presence test**, `present(z_n)`: the acceptance test of a
+    measurement is a range or a gate the paper writes. `z_n == z_n`
+    holds where z is present and not NaN, and is not the documented form,
+    as `lim s == lim s` was not.
+
+  What moves: nothing. The mark is new syntax, which no golden, README
+  session, report or header writes. With the implementation README
+  section 5 gains optional inputs, its paragraph on compiled inputs the
+  flag and its paragraph on `--check` the audit's line, and MANIFESTO's
+  question goes, answered.
+
+  About 180 lines, estimated from what it reuses, with no prototype: the
+  interpreter's 80, the mark, absence a refusal of its own that a guard
+  catches as it catches a walk that ran out, the inexact left, the
+  history and the left-out input, and the static check, 40 of them; the
+  compiler's 80, the flag and its window, an input's flag asked as a
+  limit's status and under grad, a sibling's chain, a forwarded flag and
+  a file's definitions held to the rule; `--check`'s 20, the replay and
+  the audit's words. 19,337 lines at 88b4741 by `wc -l
+  include/inkamath/*.hpp src/*`; past 270 the implementation stops and
+  reports.
+
+  Specified in `test/data/spec/optinputs.ink`, 69 entries replayed by the
+  spec suite, 38 failing today: the hold, absence by a term not there,
+  left out, read directly or through a term, read from outside; NaN
+  against absent, marked and not; the five refusals; `or` and `and`, the
+  inexact left; a forwarded input, the stream's start and a history; a
+  slow sample and its hold, grad, a column, irregular arrival; and the
+  robot's loop with its fix optional and no `ok_n`, its outage stopping
+  at the update's clause after, and failing NaN instead, refused to the
+  command. Values by hand and in Python's fractions; the robot's by a
+  simulation of the loop in doubles, numpy with the doubling's gain,
+  which gives the flags `robot_loop.ink` records for the flagged loop.
+  Compiled, `test/compile/optional.ink` and `test/cli.cmake`'s spec part,
+  `cli_spec`: the header's flag, as strict C, and `seen`'s report, its
+  lines in any order and the guards last, skipped while the mark is
+  refused as today and only then. With the implementation the spec
+  becomes a golden, `seen` joins the checks with its report and
+  `cli_spec` and the spec suite go.
 - **Exact discretisation** as conformance entries first, `expm` an
   unbounded sum, Van Loan and ZOH by block literals; the prelude only if
   they show friction.
