@@ -11182,8 +11182,9 @@ After an external review of README, MANIFESTO and the conformance suite
   Decided:
   - **The values are the model's last member**, `v_`, their type declared
     before the model's comment; the step declares nothing and passes
-    `&m_->v_` where it passed `&m_v_`. A part is written as today, taking
-    `v_` and loading `const double t5_ = v_->t5_;`. `tune`, today:
+    `&m_->v_`, or an instance's place in it, where it passed `&m_v_`. A
+    part is written as today, taking `v_` and loading `const double t5_ =
+    v_->t5_;`. `tune`, today:
 
         /* What a part of the step computes and a later part reads. */
         typedef struct tune_values_ {
@@ -11215,66 +11216,53 @@ After an external review of README, MANIFESTO and the conformance suite
     Last, so that every other member keeps its offset.
   - **Instances stepped one after another share a place**, the call
     stack's discipline in the struct: a model's scratch is its own
-    values, then its instances', one instance's in place and several in a
-    union of anonymous structs, one each, in the model struct's order,
-    and so on down. A model does not share with its instances. `twice`
-    in `test/compile/split.ink`, two instances of `held`, each carrying
-    from its y list:
+    values, then a union `u_` of its instances', a member each named as
+    the instance, and so on down. Each instance's values are a type of
+    their own, named by the module and the instance's path, declared
+    before the type holding them. A model does not share with its
+    instances. `twice` in `test/compile/split.ink`, two instances of
+    `held`, each carrying from its y list:
 
-        typedef struct twice_values_ {
-            union {
-                struct {
-                    double t2_[3][3];
-                    int t3_;
-                    double t5_;
-                    int t7_;
-                };
-                struct {
-                    double t10_[3][3];
-                    int t11_;
-                    double t13_;
-                    int t15_;
-                };
-            };
-        } twice_values_;
-
-    Nested, `nest`, a y list as `held`'s and two instances of `twice`,
-    prototyped only:
-
-        typedef struct nest_values_ {
+        typedef struct twice_a_held_values_ {
             double t2_[3][3];
             int t3_;
             double t5_;
             int t7_;
-            union {
-                struct {
-                    union {
-                        struct {
-                            double t10_[3][3];
-                            ...
-                        };
-                        struct {
-                            double t26_[3][3];
-                            ...
-                        };
-                    };
-                };
-                struct {
-                    union {
-                        ...
-                    };
-                };
-            };
-        } nest_values_;
+        } twice_a_held_values_;
 
-    An instance whose lists carry nothing has no member; where none
-    carries, the struct holds today's members in today's order, as for
-    `tf`, `tune` and `inf`.
+        typedef struct twice_b_held_values_ {
+            double t10_[3][3];
+            int t11_;
+            double t13_;
+            int t15_;
+        } twice_b_held_values_;
+
+        typedef struct twice_values_ {
+            union {
+                twice_a_held_values_ a_held;
+                twice_b_held_values_ b_held;
+            } u_;
+        } twice_values_;
+
+    A part of `a_held`'s list takes `twice_a_held_values_* v_` and is
+    called with `&m_->v_.u_.a_held`; its loads and stores are written as
+    today, `v_->t2_`. Nested, `nest`, a y list as `held`'s and two
+    instances of `twice`, prototyped only: `nest_values_` holds its own
+    four members, then `union { nest_c_twice_values_ c_twice;
+    nest_d_twice_values_ d_twice; } u_;`, each of those a union of two
+    `held`s as `twice_values_` is, and a part of the first's first list
+    is called with `&m_->v_.u_.c_twice.u_.a_held`. An instance alone is in
+    a union of one, so that a part's path is known when it is written,
+    before the lists after it are cut. A type's name already taken, as
+    instance `u`'s `a` and an instance of `a` written in `u_n` would both
+    be `_u_a_values_`, takes a number. An instance whose lists carry
+    nothing has no member; where none carries, the struct holds today's
+    members in today's order, as for `tf`, `tune` and `inf`. The header
+    is C99 and C++ as today: no anonymous member, no pragma.
   - **An instance is not called in the generated C**: its sequences are
     lists of its parent's step, cut into the parent's parts, their
-    temporaries numbered through the step. So its parts take the parent's
-    `v_` and name their members, which C11's anonymous structs and unions
-    reach: every load and store is written as today. And no carried value
+    temporaries numbered through the step. So its parts take its own
+    type, reached through the model's `v_`. And no carried value
     outlives its list, so the rule's premise, a parent's values alive
     across its instances' steps, does not hold here: the rule is safe, and
     leaves apart a parent's values and its instances', and one model's
@@ -11301,10 +11289,6 @@ After an external review of README, MANIFESTO and the conformance suite
     up to `offsetof(model, v_)`.
   - **Threads**: one model struct per thread, as today. The step shared
     nothing but its model, and still does not.
-  - **MSVC**: CI builds the check programs as C11 at /W4 /WX. Should it
-    warn C4201 of an anonymous struct or union, the union is written
-    between `#pragma warning(push)`, `disable: 4201` and `pop` under
-    `_MSC_VER`: CI decides, 5 lines.
 
   Measured on a prototype at d74ab86, discarded, by GCC 13.3 and Clang
   18.1 at -O2 -ffp-contract=off, one run each under a light load; the
@@ -11347,9 +11331,10 @@ After an external review of README, MANIFESTO and the conformance suite
   - **A workspace the host passes**, `tf_step(&m, &w, X, Y)`: one scratch
     for models a host steps in turn, the same rule a level up, but every
     host's call changes; deferred until a host asks.
-  - **Named members**, `v_->u_.a_held.t2_`: whether siblings share is
-    known once every list is cut, so every load would be written after;
-    anonymous members leave them as they are.
+  - **Anonymous structs and unions**, the spec's first form, a part
+    taking the model's `v_` and C11 reaching the members through them:
+    not C99 nor C++, and MSVC warns C4201 of them. Named, by the owner's
+    ruling on the review.
   - **`m_->v_.t5_` at each load**, a part taking `m_` alone: 3 bytes more
     at each of `tf`'s 60,224 loads and stores, for a parameter.
 
@@ -11368,15 +11353,15 @@ After an external review of README, MANIFESTO and the conformance suite
   recorded with its instance, 2; the scratch written, its own then its
   instances', 18; declared before the model and a member of it, 10; the
   step's local and its insertion gone. Past 53 added the implementation
-  stops and reports; MSVC's pragma, if CI asks for it, counts apart.
+  stops and reports.
 
   Specified in `test/compile/split.ink` by `twins`, a bank of two
   instances of `held`, checked from now in double and float, reports
   that hold before and after; and `test/cli.cmake`'s part `scratch`, run
   by `cli_scratch`, skipped while `twice.h` writes today's struct and
-  declares it in the step, and only then: `twice`'s union above, before
+  declares it in the step, and only then: `twice`'s types above, before
   the model's comment, its member last in the model and its parts called
-  with `&m_->v_`; `tune.h`'s comment and member; and `tune`'s step's own
+  with `&m_->v_.u_.a_held` and `&m_->v_.u_.b_held`; `tune.h`'s comment and member; and `tune`'s step's own
   frame under 4,096 bytes by -fstack-usage at -O0, which GCC and Clang
   write, 12,568 or more today and 40 to 48 on the prototype. With the
   implementation the part joins part 2 beside `compile_loops_tune`, and

@@ -78,28 +78,34 @@ typedef struct twice_values_ {
     holds(compile_scratch_shared twice.h [[
 /* What a part of the step computes and a later part reads, held by the
  * model rather than the stack; instances stepped in turn share a place. */
+typedef struct twice_a_held_values_ {
+    double t2_[3][3];
+    int t3_;
+    double t5_;
+    int t7_;
+} twice_a_held_values_;
+
+typedef struct twice_b_held_values_ {
+    double t10_[3][3];
+    int t11_;
+    double t13_;
+    int t15_;
+} twice_b_held_values_;
+
 typedef struct twice_values_ {
     union {
-        struct {
-            double t2_[3][3];
-            int t3_;
-            double t5_;
-            int t7_;
-        };
-        struct {
-            double t10_[3][3];
-            int t11_;
-            double t13_;
-            int t15_;
-        };
-    };
+        twice_a_held_values_ a_held;
+        twice_b_held_values_ b_held;
+    } u_;
 } twice_values_;
 
 /* The parameters, which the host may assign]] [[
     } b_held;
     twice_values_ v_;
 } twice;
-]] "    twice_step1_(m_, &m_->v_);\n" "    twice_step18_(m_, &m_->v_);\n")
+]] "static TWICE_NOINLINE_ void twice_step1_(twice* m_, twice_a_held_values_* v_) {\n"
+       "static TWICE_NOINLINE_ void twice_step18_(twice* m_, twice_b_held_values_* v_) {\n"
+       "    twice_step1_(m_, &m_->v_.u_.a_held);\n" "    twice_step18_(m_, &m_->v_.u_.b_held);\n")
     if(twice MATCHES "m_v_")
         message(SEND_ERROR "compile_scratch_shared: twice.h steps with values of its own")
     endif()
