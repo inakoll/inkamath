@@ -754,7 +754,7 @@ set_tests_properties(check_twins_4_report PROPERTIES PASS_REGULAR_EXPRESSION
 add_test(NAME check_carried_values
          COMMAND ${CMAKE_COMMAND} -E cat ${CMAKE_CURRENT_BINARY_DIR}/compile/carried_4.c)
 set_tests_properties(check_carried_values PROPERTIES PASS_REGULAR_EXPRESSION
-    "_values_ {\n    double t[0-9]+_\\[3\\]\\[3\\];\n    int t[0-9]+_;\n")
+    "_values_ {\n    double t[0-9]+_\\[3\\]\\[3\\]\\;\n    int t[0-9]+_\\;\n")
 add_test(NAME check_apart_values
          COMMAND ${CMAKE_COMMAND} -E cat ${CMAKE_CURRENT_BINARY_DIR}/compile/apart_4.c)
 set_tests_properties(check_apart_values PROPERTIES PASS_REGULAR_EXPRESSION "checked_step2_\\(m_\\)"
