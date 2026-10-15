@@ -65,9 +65,16 @@ set_tests_properties(interpreter PROPERTIES TIMEOUT 60)
 # A case's own timeout, scaled as the tests' are below: under the sanitizers
 # compile_eig_refused takes 38 s alone.
 set(cli_case_timeout 60)
+set(cli_timeout 120)
 if(INKAMATH_SANITIZE)
     set(cli_case_timeout 180)
+elseif(MSVC)
+    # As compile_c316: MSVC's Debug interpreter took over 60 s for twice.h.
+    set(cli_case_timeout 180)
+    set(cli_timeout 360)
 endif()
+# C is enabled before the cli tests, which are given its compiler (C374).
+enable_language(C)
 foreach(part 1 2 3)
     add_test(NAME cli_${part}
              COMMAND ${CMAKE_COMMAND} -DEXE=$<TARGET_FILE:inkamath_cli> -DPART=${part}
@@ -76,7 +83,7 @@ foreach(part 1 2 3)
                      -DCC_ID=${CMAKE_C_COMPILER_ID}
                      "-DTIMED=$<NOT:$<OR:$<CONFIG:Debug>,$<BOOL:${INKAMATH_SANITIZE}>>>"
                      -P ${CMAKE_CURRENT_LIST_DIR}/cli.cmake)
-    set_tests_properties(cli_${part} PROPERTIES TIMEOUT 120)
+    set_tests_properties(cli_${part} PROPERTIES TIMEOUT ${cli_timeout})
 endforeach()
 # bench's workloads, each a transcript bench/run.cmake measures, replayed so
 # that one gone stale fails here rather than at its next measure. The
@@ -119,7 +126,6 @@ add_custom_target(record_goldens
 # for each model is the header in compile/expected, and the header it emits,
 # built as C, holds the model to exact values its harness knows. The expected
 # headers are kept apart, where a harness's #include cannot find one instead.
-enable_language(C)
 # A model a file defines is compiled by its name, which is the file's.
 set(named_models mix)
 foreach(model IN ITEMS pid pid_clamped kalman kalman2 fir heat adc net mix loop chain back kernel bank)
@@ -254,7 +260,8 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brin
                          tensorgrad:saliency:3 adjoint:fit4 adjoint:token
                          adjoint:sinabs adjoint:gate3 adjoint:under adjoint:aside gradmany:pair
                          gradmany:same gradmany:stair transformer:unseen:4 transformer:tuned:4
-                         split:carried:4 split:apart:4 pendulum:one spin:twirl:20 iekf:walk:21
+                         split:carried:4 split:apart:4 split:twins:4 pendulum:one spin:twirl:20
+                         iekf:walk:21
                          tip:reach tip:rested series:taylor series:wave series:later
                          sums:summed sums:halving sums:cancelled reduce:pooled reduce:shied
                          orthogonal:rational orthogonal:inexact orthogonal:probe
@@ -738,10 +745,13 @@ set_tests_properties(check_carried_4_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^carried: 4 steps from 0, against exact values\ncarried\\.x: within [1-9](\\.[0-9])?e-1[5-7]\ncarried\\.y: within [1-9](\\.[0-9])?e-1[3-5]\n$")
 set_tests_properties(check_apart_4_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^apart: 4 steps from 0, against exact values\napart\\.x: within 0\n$")
+# twins' two instances, stepped one after the other.
+set_tests_properties(check_twins_4_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^twins: 4 steps from 0, against exact values\ntwins\\.a_held\\.v: within 0\ntwins\\.a_held\\.x: within [1-9](\\.[0-9])?e-1[5-7]\ntwins\\.a_held\\.y: within [1-9](\\.[0-9])?e-1[3-5]\ntwins\\.a: within [1-9](\\.[0-9])?e-1[4-6]\ntwins\\.b_held\\.v: within 0\ntwins\\.b_held\\.x: within [1-9](\\.[0-9])?e-1[5-7]\ntwins\\.b_held\\.y: within [1-9](\\.[0-9])?e-1[3-5]\ntwins\\.b: within [1-9](\\.[0-9])?e-1[4-6]\n$")
 add_test(NAME check_carried_values
          COMMAND ${CMAKE_COMMAND} -E cat ${CMAKE_CURRENT_BINARY_DIR}/compile/carried_4.c)
 set_tests_properties(check_carried_values PROPERTIES PASS_REGULAR_EXPRESSION
-    "_values_ {\n    double t[0-9]+_\\[3\\]\\[3\\];\n    int t[0-9]+_;\n")
+    "_values_ {\n    double t[0-9]+_\\[3\\]\\[3\\]\\;\n    int t[0-9]+_\\;\n")
 add_test(NAME check_apart_values
          COMMAND ${CMAKE_COMMAND} -E cat ${CMAKE_CURRENT_BINARY_DIR}/compile/apart_4.c)
 set_tests_properties(check_apart_values PROPERTIES PASS_REGULAR_EXPRESSION "checked_step2_\\(m_\\)"
@@ -1114,6 +1124,7 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:ledge logistic:gate momentu
                          blocks:nested conv:see straddle:knee apollo11:whole dyn:nm dyn:cd
                          steps:coast:1001 robertson:inside:2000 robertson:outside:2000
                          robertson:rober tensorgrad:small tensorgrad:saliency:3 split:carried:4
+                         split:twins:4
                          orthogonal:rational chol:factored chol:naive chol:sole float:shove
                          polyconv:tune)
     string(REPLACE ":" ";" checked ${checked})
@@ -1210,6 +1221,7 @@ foreach(report IN ITEMS
         "saliency_3:^saliency: 3 steps from 0${in_float}\nsaliency\\.G: ${exact}\n$"
         "rational:^rational: 100 steps from 0${in_float}\n${rational_k}rational\\.R: within 6\\.5e-06, 1e\\+04 units of a float\n${rational_ko}$"
         "carried_4:^carried: 4 steps from 0${in_float}\ncarried\\.x: within [0-9.e+-]+, [0-9.e+]+ units of a float\ncarried\\.y: within [0-9.e+-]+, [0-9.]+ units of a float\n$"
+        "twins_4:^twins: 4 steps from 0${in_float}\ntwins\\.a_held\\.v: within 0, 0 units of a float\ntwins\\.a_held\\.x: within [0-9.e+-]+, [0-9.e+]+ units of a float\ntwins\\.a_held\\.y: within [0-9.e+-]+, [0-9.e+]+ units of a float\ntwins\\.a: within [0-9.e+-]+, [0-9.e+]+ units of a float\ntwins\\.b_held\\.v: within 0, 0 units of a float\ntwins\\.b_held\\.x: within [0-9.e+-]+, [0-9.e+]+ units of a float\ntwins\\.b_held\\.y: within [0-9.e+-]+, [0-9.e+]+ units of a float\ntwins\\.b: within [0-9.e+-]+, [0-9.e+]+ units of a float\n$"
         "factored:^factored: 100 steps from 0 in float, ${until1f}\n(factored\\.(Sp|K|N): within ${floats}( in N\\[[12],[1-3]\\] at step [0-9]+)?, from 1${about}\n)+factored\\.S: within ${floats}${about}\nfactored\\.x: within [0-9.e+-]+, [1-9](\\.[0-9])? units of a float${about}\n$"
         "tune:^tune: 100 steps from 0${in_float}\ntune\\.G: ${exact}\ntune\\.c: ${exact}\ntune\\.d: ${exact}\ntune\\.Z: within 0\ntune\\.g: ${exact}\ntune\\.w: ${exact}\ntune\\.y: ${exact}\n$"
         "shove:^shove: 100 steps from 0${in_float}\nshove\\.s: within 5\\.9e-08, 1\\.4e\\+07 units of a float at step 5\nshove\\.y: within 5\\.9e-08, 1\\.4e\\+07 units of a float in y\\[2,1,1\\] at step 7\n$"
