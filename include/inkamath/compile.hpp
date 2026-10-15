@@ -6302,7 +6302,8 @@ private:
         }
         out.insert(functions, kept);
         if (!scratch_.empty()) {
-            out.insert(out.find("} " + module + ";\n", declared), "    " + Typed("v_") + " v_;\n");
+            out.insert(out.find("\n} " + module + ";\n", declared) + 1,
+                       "    " + Typed("v_") + " v_;\n");
             out.insert(
                 declared,
                 "/* What a part of the step computes and a later part reads, held by the\n"

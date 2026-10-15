@@ -1679,6 +1679,10 @@ typedef struct twice_values_ {
 if(twice MATCHES "m_v_")
     message(SEND_ERROR "compile_scratch_shared: twice.h steps with values of its own")
 endif()
+set(args --compile "${CMAKE_CURRENT_LIST_DIR}/compile/split.ink" mine -o mine.h)
+check(compile_scratch)
+holds(compile_scratch_named mine.h "    } mine;\n    mine_values_ v_;\n} mine;\n")
+strict(compile_scratch_named mine.h)
 holds(compile_scratch_member tune.h [[
 /* What a part of the step computes and a later part reads, held by the
  * model rather than the stack; instances stepped in turn share a place. */

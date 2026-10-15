@@ -58,3 +58,10 @@ twice(v_n[i<=3]) = {
     b_n = held(v_n = 2*v_n).y_n[1]
 }
 twins = twice(v_n = [n; 1; 2])
+
+# 'mine', an instance named as its model: the scratch is the model's last
+# member, not the instance's, whose struct closes on the same name.
+mine(v_n[i<=3]) = {
+    mine = held(v_n = v_n)
+    a_n = mine.y_n[1]
+}

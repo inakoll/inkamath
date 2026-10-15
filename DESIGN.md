@@ -1887,6 +1887,7 @@ closures need one anyway, and can bring it.
 | C372 `[fixed]` | **A matrix to the power 0 compiled dropped a NaN cell.** The step wrote the identity whatever the base, so with `r(v) \| v > 0 = v` and `x_n = r(3 - a_n)`, `[x_n, 1; 0, 1]^0` answered 1 in its first cell, where the interpreter refuses it: `--check` reported `v[1,1]: 1 at 3, where the interpreter gives none`. A single value's x^0 was NaN where x is, in a header that writes NaN; a matrix's is now NaN where a cell of it is, and makes the header write NaN where a cell may be. No golden, expected header or check report moves; six check programs test the base where a series or a sum starts a power at 0, `newton.ink`'s `evens`, `evened` and `twonames`, `series.ink`'s `later`, `sums.ink`'s `summed` and `iekf.ink`'s `walk`. Found by the spec review of conv and polyval. In 5 lines of `compile.hpp`, 1 of comment; `compile/nan.ink`'s `nil` holds it. |
 | C373 `[fixed]` | **`check_carried_values` passed whatever `carried_4.c` held.** Its regex's `;` was CMake's list separator, so the test passed on any of three pieces, one of them a bare newline, and it went on passing once `carried`'s step, y's 500 cells, wrote about 62 KB, under the 64 KB past which a list is cut: no struct of values was left to check. The `;` is escaped as `\\;`, as `tie`'s regexes do, and `cut`'s y has 1000 cells, as `held`'s, so that `carried` is cut into 8 functions again. A test harness's defect; no golden, expected header or report moves. Found by the spec review of a split step's scratch in the model struct. |
 | C374 `[fixed]` | **The cli tests were given no C compiler.** `cli_1` to `cli_3`, and `cli_scratch`, were added before `enable_language(C)`, so on a fresh configure, as CI's, `CC` and `CC_ID` were empty, and a configure keeping a C compiler in its cache gave `CC` alone: every `strict` check (C331), a header built as C11 at -Wconversion -Werror, was skipped. C is enabled before them now, and every `strict` check passes. No golden, expected header or report moves. Found implementing a split step's scratch in the model struct, whose check of `tune`'s frame was skipped alike. |
+| C375 `[fixed]` | **An instance named as its model took the scratch into its own struct.** The scratch's member was placed before the first `} mine;` after the types, which an instance `mine` of a model `mine`, or `checked` under `--check`, closes first: its struct held `v_`, the model's did not, and the header did not build. Placed before the model's own closing line, at the line's start. `test/compile/split.ink`'s `mine`; no golden, expected header or report moves. Found by the implementation review of a split step's scratch in the model struct. |
 
 **Measure instructions, not the clock.** One of those changes made the matrix
 workload 20 per cent slower by the clock and not by a single instruction: with
@@ -11422,11 +11423,11 @@ After an external review of README, MANIFESTO and the conformance suite
   `twins_4.c` and `carried_4.c`, change, every report byte for byte;
   `riekf.h` byte for byte. Each header above builds as C99 by GCC and
   Clang and as C++ by g++, at -Wpedantic -Werror. `cli_scratch` is gone,
-  its part in part 2. 53 lines of `compile.hpp` added and 16 removed,
-  19,250 to 19,287 by `wc -l include/inkamath/*.hpp src/*`, at the stop:
-  `Kept`'s instance is kept and recorded in two plain lines, by the
-  owner's ruling, clarity over the budget, where one line squeezed both
-  for no line fewer added.
+  its part in part 2. 54 lines of `compile.hpp` added and 16 removed,
+  19,250 to 19,288 by `wc -l include/inkamath/*.hpp src/*`, one past the
+  stop, the review's fix of C375: `Kept`'s instance is kept and recorded
+  in two plain lines, by the owner's ruling, clarity over the budget,
+  where one line squeezed both for no line fewer added.
 - `[done]` **A Jacobian by cells**, the idiom, compiled and held by `--check`:
   `J(x)[i<=3, j<=2] = (grad_(v = x) f(v)[i])[j]`, row i output i's
   gradient as a paper defines J_ij, so the layout is the user's. grad's own
