@@ -105,3 +105,16 @@ behind(x_n) = {
     w_n = y_(floor((n - 3)/2) - 1)
 }
 trail = behind(x_n = n^2)
+
+# A hold in a guard, the first or a later one, as in a value: 'polled' was
+# refused, 's_(...): a hold where a term is computed again', as every guard
+# was compiled as the right of an 'and' (C378).
+polling(x_n) = {
+    s_m = x_(10*m)
+    y_n | x_n > 50 = 2
+    y_n | s_(floor(n/10)) > 0 = 1
+    y_n = 0
+    z_n | s_(floor(n/10)) < 0 = -1
+    z_n = s_(floor(n/10))
+}
+polled = polling(x_n = n - 15)

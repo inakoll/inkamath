@@ -306,6 +306,14 @@ set(stdout "cannot compile w: w_0 reads u_-1, below u's base clauses, where only
 set(exit 1)
 check(compile_slow_below_refused)
 
+# A hold on the right of 'and' or 'or', which is read only where the left has
+# not decided; it was said to be where a term is computed again (C378).
+file(WRITE "${OUT}/right.ink" "s_m = x_(10*m)\ny_n | x_n > 0 and s_(floor(n/10)) > 0 = 1\ny_n = 0\n")
+set(args --compile right.ink)
+set(stdout "cannot compile y: s_(...): a hold on the right of 'and' or 'or'\n")
+set(exit 1)
+check(compile_slow_right_refused)
+
 # A ratio that is not whole; a slow sequence read by another, which a hold at
 # the input's rate sampled says; and a hold at another period, which no hold
 # says.
