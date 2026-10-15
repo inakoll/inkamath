@@ -65,8 +65,13 @@ set_tests_properties(interpreter PROPERTIES TIMEOUT 60)
 # A case's own timeout, scaled as the tests' are below: under the sanitizers
 # compile_eig_refused takes 38 s alone.
 set(cli_case_timeout 60)
+set(cli_timeout 120)
 if(INKAMATH_SANITIZE)
     set(cli_case_timeout 180)
+elseif(MSVC)
+    # As compile_c316: MSVC's Debug interpreter took over 60 s for twice.h.
+    set(cli_case_timeout 180)
+    set(cli_timeout 360)
 endif()
 # C is enabled before the cli tests, which are given its compiler (C374).
 enable_language(C)
@@ -78,7 +83,7 @@ foreach(part 1 2 3)
                      -DCC_ID=${CMAKE_C_COMPILER_ID}
                      "-DTIMED=$<NOT:$<OR:$<CONFIG:Debug>,$<BOOL:${INKAMATH_SANITIZE}>>>"
                      -P ${CMAKE_CURRENT_LIST_DIR}/cli.cmake)
-    set_tests_properties(cli_${part} PROPERTIES TIMEOUT 120)
+    set_tests_properties(cli_${part} PROPERTIES TIMEOUT ${cli_timeout})
 endforeach()
 # bench's workloads, each a transcript bench/run.cmake measures, replayed so
 # that one gone stale fails here rather than at its next measure. The
