@@ -273,7 +273,8 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brin
                          fallback:faraway fallback:voided fallback:covered fallback:ored
                          fallback:spelled fallback:joined fallback:routed fallback:returned
                          fallback:respelled fallback:preceded fallback:defaulted fallback:sentried
-                         fallback:partway pendloop:cart motorloop:motor)
+                         fallback:partway pendloop:cart motorloop:motor robot:robot:200
+                         lcg:lcgs)
     string(REPLACE ":" ";" checked ${checked})
     list(POP_FRONT checked file instance count)
     set(name ${instance})
@@ -395,6 +396,11 @@ set_tests_properties(check_cart_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^cart: 100 steps from 0, against exact values until 0 and inexact ones from there\ncart\\.s: within 0${about}\ncart\\.u: within 0${about}\n$")
 set_tests_properties(check_motor_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^motor: 100 steps from 0, against exact values until 14 and inexact ones from there\nmotor\\.x: within 3\\.6e-15${about}\nmotor\\.e: within 3\\.3e-16${about}\nmotor\\.u: within 1\\.4e-14${about}\n$")
+# compile/robot.ink's loop, each flag exact and the fallback audited; what
+# libm's tanh decides, by its form.
+set(near "within (0|[1-9](\\.[0-9])?e-1[5-9])${about}\n")
+set_tests_properties(check_robot_200_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^robot: 200 steps from 0, against exact values until 0 and inexact ones from there\nrobot\\.f\\.Pp: ${near}robot\\.f\\.S: ${near}robot\\.g\\.ok: within 0\nrobot\\.f\\.ok: within 0\nrobot\\.g\\.r: within 0\nrobot\\.s\\.r: within 0\n(robot\\.[wgsf]\\.(p|y|z|v|a|am|ac|xp|nu): ${near})+robot\\.f\\.fix: within 0\nrobot\\.f\\.P: ${near}robot\\.f\\.lost: within 0\nrobot\\.f\\.top: within 0\n(robot\\.[wf]\\.(x|uc|u): ${near})+robot\\.f\\.kg: where lim Z runs out, 'kg\\(q\\) \\| gain\\(\\[q 0\; 0 1/10\\], ~1/10\\)\\[1,1\\] > 0 = gain\\(\\[q 0\; 0 1/10\\], ~1/10\\)' falls to 'kg\\(q\\) = \\[3 5/2\\]'\n$")
 # Rigid bodies and an invariant filter, from two explorations: a double
 # pendulum by the RNEA, a rational rotation's powers, and the contact-aided
 # RIEKF of Hartley et al. (2020) on 21 steps of a simulated walk.
@@ -580,6 +586,9 @@ set_tests_properties(check_solveur_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^solveur: 100 steps from 0, against exact values\nsolveur\\.d: within 0\nsolveur\\.z: within 0\n$")
 set_tests_properties(check_rump_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^rump: 100 steps from 0, against exact values\nrump\\.g: 1\\.1726039400531787 at 0, where the interpreter gives -0\\.82739605994682142\n$")
+# compile/lcg.ink: glibc's LCG parts where its products pass 2^53.
+set_tests_properties(check_lcgs_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^lcgs: 100 steps from 0, against exact values\nlcgs\\.q: within 0\nlcgs\\.r: 325238528 at 2, where the interpreter gives 325238575\n$")
 # Goldberg (1991): Heron's formula parting at a needle, and (x + y) + z
 # from x + (y + z) at 1e30, as the paper has them; compile/goldberg.ink.
 set_tests_properties(check_year_report PROPERTIES PASS_REGULAR_EXPRESSION
@@ -1082,9 +1091,10 @@ add_test(NAME check_muller COMMAND check_muller)
 add_test(NAME check_rump COMMAND check_rump)
 add_test(NAME check_needled COMMAND check_needled)
 add_test(NAME check_big COMMAND check_big)
+add_test(NAME check_lcgs COMMAND check_lcgs)
 set_tests_properties(check_wild check_brink check_rift check_sill check_seam check_pole
                      check_huge check_masked check_sever check_moments check_muller check_rump
-                     check_needled check_big PROPERTIES WILL_FAIL ON)
+                     check_needled check_big check_lcgs PROPERTIES WILL_FAIL ON)
 
 # A float target (DESIGN.md): pid and adc's headers as compile/expected/float
 # has them, and compile/float.ink's checks, each built so that an operation done
@@ -1126,7 +1136,7 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:ledge logistic:gate momentu
                          robertson:rober tensorgrad:small tensorgrad:saliency:3 split:carried:4
                          split:twins:4
                          orthogonal:rational chol:factored chol:naive chol:sole float:shove
-                         polyconv:tune)
+                         polyconv:tune lcg:lcgs)
     string(REPLACE ":" ";" checked ${checked})
     list(POP_FRONT checked file instance count)
     set(name ${instance})
@@ -1156,7 +1166,7 @@ set_tests_properties(check_float_wild check_float_ledge check_float_far check_fl
                      check_float_muller check_float_rounded check_float_surprise
                      check_float_solveur check_float_rump check_float_needle check_float_big
                      check_float_knee check_float_nm check_float_naive check_float_rational
-                     PROPERTIES WILL_FAIL ON)
+                     check_float_lcgs PROPERTIES WILL_FAIL ON)
 # Each report as compile/float.ink gives it; what a libm or the seeds decide,
 # by its form.
 set(in_float " in float, against exact values")
@@ -1202,6 +1212,7 @@ foreach(report IN ITEMS
         "surprise:^surprise: 100 steps from 0${inexact}\n${smooth_k}surprise\\.g: 1 at 0, where the interpreter gives 0\; the interpreter's term about [0-9.e+-]+ from the exact one\nsurprise\\.k: ${exact}${about}\n$"
         "solveur:^solveur: 100 steps from 0${in_float}\nsolveur\\.d: 0 at 0, where the interpreter gives -1\nsolveur\\.z\\[1,1\\]: [-a-z()]+ at 0, where the interpreter gives 12582909\n$"
         "rump:^rump: 100 steps from 0${in_float}\nrump\\.g: 1\\.17260396 at 0, where the interpreter gives -0\\.82739605994682142\n$"
+        "lcgs:^lcgs: 100 steps from 0${in_float}\nlcgs\\.q: 338690048 at 3, where the interpreter gives 226205932\nlcgs\\.r: 0 at 2, where the interpreter gives 325238575\n$"
         "year:^year: 100 steps from 0${inexact}\nyear\\.naive: within [0-9.]+, [1-9](\\.[0-9])?e\\+02 units of a float${about}\nyear\\.thm4: within [0-9.e-]+, [1-9](\\.[0-9])? units of a float${about}\n$"
         "needle:^needle: 100 steps from 0${inexact}\nneedle\\.heron: 0\\.0186444204 at 0, where the interpreter gives 0\\.016146540115034271\; the interpreter's term about [0-9.e+-]+ from the exact one\nneedle\\.kahan: within 5\\.3e-10, 0\\.28 units of a float${about}\n$"
         "big:^big: 100 steps from 0${in_float}\nbig\\.s: within 2e-30, 2\\.1e\\+07 units of a float at step 0\nbig\\.t: ${exact}\nbig\\.w: 0 at 0, where the interpreter gives 1\n$"
