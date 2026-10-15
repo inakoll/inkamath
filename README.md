@@ -126,9 +126,10 @@ loops, every value the same, bit for bit, as written out cell by cell (a
 NaN's bits aside), unless the C compiler contracts a multiply and an add
 (`-ffp-contract`).
 A step too long for a compiler to optimise as one function is written as
-several, and what one computes and a later one reads is kept on the step's
-stack: about 320 KB for one training a transformer's 13 weights at once, which
-a thread with a small stack must allow for.
+several, and what one computes and a later one reads is held in the model
+struct, its last member: about 300 KB for one training a transformer's 13
+weights at once. A host places that struct statically or on the heap, not as a
+local of a thread with a small stack; `sizeof` the struct counts it.
 `test/compile/pid.ink` is a PID controller, and `test/compile/expected/pid.h`
 is what it compiles to; `test/compile/kalman.ink` is a Kalman filter over
 matrices.
