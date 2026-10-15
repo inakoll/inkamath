@@ -126,9 +126,10 @@ loops, every value the same, bit for bit, as written out cell by cell (a
 NaN's bits aside), unless the C compiler contracts a multiply and an add
 (`-ffp-contract`).
 A step too long for a compiler to optimise as one function is written as
-several, and what one computes and a later one reads is kept on the step's
-stack: about 320 KB for one training a transformer's 13 weights at once, which
-a thread with a small stack must allow for.
+several, and what one computes and a later one reads is held in the model
+struct, its last member: about 300 KB for one training a transformer's 13
+weights at once. A host places that struct statically or on the heap, not as a
+local of a thread with a small stack; `sizeof` the struct counts it.
 `test/compile/pid.ink` is a PID controller, and `test/compile/expected/pid.h`
 is what it compiles to; `test/compile/kalman.ink` is a Kalman filter over
 matrices.
@@ -378,7 +379,7 @@ imaginary parts, the paper's Re and Im. `ceil(x) = -floor(-x)` and
 `mod(a, b) = a - b*floor(a/b)` come with them, from a prelude (section 5),
 and so do `exp`, `log`, `tanh`, `sin`, `cos`, `atan`, `atan2`, `asin`,
 `acos`, `acosh`, `abs`, `max` and `min`, and, of matrices, `charpoly`,
-`conv`, `polyval`, `hurwitz`, `schurcohn`, `rho`, `abscissa`, `eig`, `chol`,
+`conv`, `polyval`, `roots`, `hurwitz`, `schurcohn`, `rho`, `abscissa`, `eig`, `chol`,
 `smax`, `hinf` and `dhinf` (section 2). `abs` takes a complex number too, |z|, so a
 frequency response's magnitude |T(e^{iw})| is written as on paper.
 Any other rounding is a line of it, by the rule the model needs —
@@ -712,6 +713,40 @@ the loop on s(s + 1)(s + 2) + 2s + 1:
 >> polyval(charpoly([1 2; 3 4]), [1 2; 3 4])
 [0, 0;
  0, 0]
+```
+
+`roots(p)` is the roots of a polynomial in the same column, as a column,
+each as often as its multiplicity, by real part then imaginary part, each
+ascending. It is Durand and Kerner's iteration, a `lim`, on the squarefree
+part p/gcd(p, p'), so a repeated root converges as a simple one does.
+Where that leaves only factors of degree 1, as of (s + 1)^2 or z^3, every
+root is exact; otherwise every root is inexact, its place found by
+comparing doubles. Equal roots are adjacent only where they come out equal
+to the bit: (s^2 + 2s + 2)(s^2 + 2s + 5) gives -1 - i, -1 + i, -1 - 2i,
+-1 + 2i, their real parts rounding apart. Of a real polynomial, a real
+root is real and a pair exactly conjugate; of a complex one, a repeated
+root is unreliable, its gcd being in doubles. Near roots cost digits, as
+in any root finder in doubles: a cluster of k roots d apart loses about
+(k - 1) log10(1/d) of a double's 16, so (s - 1)(s - 1.00001)(s - 1.00002)
+gives 1, 1.00000789 and 1.00002073, and (s + 1)^2 - 10^-16 gives
+-1.00000001 and -0.999999989 for -1 +- 10^-8; a near double root may print
+as a complex pair, (s + 1)^2 - 10^-20 as -1 +- 8.18554879e-9i for -1 +-
+10^-10. The iteration reaches a degree of about 30, and at 40 `lim` runs
+out and refuses; so it does for roots spread over many decades, as of
+(s + 10^-7)(s + 2*10^-7)(s + 10^7)(s + 2*10^7), of degree 4. A root on the imaginary axis keeps a real part of
+rounding size: stability is `hurwitz`'s test, exact. `grad` refuses roots,
+and so does the compiler, in the words of a definition it calls. The PI
+loop above:
+
+```
+>> roots(conv(conv([1; 1], [1; 2]), [1; 0]) + [0; 0; 2; 1])
+[~(-1.3411639-i*1.1615414);
+ ~(-1.3411639+i*1.1615414);
+             ~-0.317672196]
+
+>> roots(conv([1; 1], [1; 1]))
+[-1;
+ -1]
 ```
 
 `eig(A)` is the eigenvalues of a square matrix as a column, smallest first,
@@ -1447,7 +1482,7 @@ of its own: the session reaches its names qualified, `filters.lowpass`, and
 once, holds definitions only, and one that cannot be read or parsed loads
 nothing and says where. The prelude that defines `ceil`, `mod`, `exp`, `log`,
 `tanh`, `sin`, `cos`, `atan`, `atan2`, `asin`, `acos`, `acosh`, `abs`,
-`max`, `min`, `charpoly`, `conv`, `polyval`, `hurwitz`,
+`max`, `min`, `charpoly`, `conv`, `polyval`, `roots`, `hurwitz`,
 `schurcohn`, `rho`, `rhob`, `abscissa`, `abscissab`, `eig`, `eigb`, `chol`,
 `smax`, `hinf` and `dhinf`, and what they call, is included bare beneath the
 session, as the built-ins are: every scope sees it, and a session

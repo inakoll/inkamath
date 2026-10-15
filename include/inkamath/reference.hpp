@@ -669,6 +669,7 @@ public:
             {"eigg", "eig needs a matrix whose eigenvalues are all real"},
             {"atan2", "atan2 needs y or x other than 0"},
             {"cholr", "chol needs a positive definite matrix"},
+            {"rootsr", "roots needs a polynomial of degree 1 or more"},
             {"hinf", "hinf needs every eigenvalue of A left of the imaginary axis"},
             {"dhinf", "dhinf needs every eigenvalue of A inside the unit circle"},
             {"hinfy", "hinf needs tests within a thousand digits"},

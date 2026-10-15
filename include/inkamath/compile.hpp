@@ -445,7 +445,9 @@ private:
             } catch (const std::runtime_error& error) {
                 throw Refusal(key, error.what());
             }
-            if (instance) Define(*instance);
+            if (!instance) continue;
+            outer_[instance] = &scope;
+            Define(*instance);
         }
     }
 
@@ -546,6 +548,7 @@ private:
             unnamed_[label] = {&model, &call, captured};
             held_.push_back(definitions_.Detached(model, call, *scope_, label, captured));
             kept = held_.back().get();
+            outer_[kept] = scope_;
             Define(*kept);
         }
         own_ = kept;
@@ -791,9 +794,9 @@ private:
         return chain;
     }
 
-    // rho, abscissa, eig, smax, hinf, dhinf and their brackets are staircases
-    // in A, refused where it moves, as the interpreter refuses them, rather
-    // than answer the staircase's 0.
+    // The functions the interpreter lists as staircases, refused where their
+    // argument moves, as the interpreter refuses them, rather than answer a
+    // part that is wrong there, a bisection's staircase 0 and the like.
     void Staircase(const Reference<Value>& function, const Code& argument) const {
         if (!argument.part.empty() && definitions_.staircases.contains(&function))
             throw Reason("grad cannot differentiate " + function.Name() + " yet");
@@ -5636,6 +5639,37 @@ private:
         return numbered;
     }
 
+    // Where the model holds what an instance's lists carry, 'v_.u_.a_held': each
+    // list in one branch of a union with its siblings', stepped in turn, as no
+    // value outlives its list. It reserves the path and every enclosing one.
+    std::string Place(const Scope<Value>* scope) {
+        const auto outer = outer_.find(scope);
+        if (outer == outer_.end()) return scratch_.try_emplace("v_").first->first;
+        const std::string& in     = outer->second->label;
+        std::string        member = scope->label.substr(in.size() + !in.empty());
+        std::replace(member.begin(), member.end(), '.', '_');
+        return scratch_.try_emplace(Place(outer->second) + ".u_." + member).first->first;
+    }
+
+    // Their type, 'twice_a_held_values_': no scope names an instance and a sequence alike.
+    std::string Typed(std::string path) const {
+        for (std::size_t at; (at = path.find(".u_.")) != path.npos;) path.replace(at, 4, "_");
+        return module_ + path.substr(2) + "_values_";
+    }
+
+    // Its own values, then a union of its instances'.
+    std::string Declared(const std::string& path) const {
+        std::string types, members = scratch_.at(path), inner;
+        for (const auto& [at, values] : scratch_)
+            if (at.starts_with(path) && at.rfind(".u_.") == path.size()) {
+                types += Declared(at);
+                inner += "        " + Typed(at) + " " + at.substr(path.size() + 4) + ";\n";
+            }
+        if (!inner.empty()) members += "    union {\n" + inner + "    } u_;\n";
+        return types + "typedef struct " + Typed(path) + " {\n" + members + "} " + Typed(path) +
+               ";\n\n";
+    }
+
     // A step's list over 4 * split_ bytes, which compilers optimise in time
     // that grows faster than its length, written as functions of about split_
     // bytes, in order: a temporary's lines or a statement each, so at least one.
@@ -5643,7 +5677,7 @@ private:
     // local of its own name, so that every line is written as before. Every
     // temporary is read: Numbered keeps no other.
     std::string Split(const std::vector<Temporary>& kept, const std::string& assignments,
-                      const std::string& indent) {
+                      const std::string& indent, const Scope<Value>* home) {
         std::string whole;
         for (const Temporary& temporary : kept)
             for (const std::string& line : temporary.lines) whole += indent + line + "\n";
@@ -5694,7 +5728,7 @@ private:
                                               : "    const " + member + " = v_->" + name + ";\n";
                     }
                 if (!read) continue;
-                values_ += "    " + member + ";\n";
+                scratch_[Place(home)] += "    " + member + ";\n";
                 stores[f] += copy("v_->" + name, name);
             }
         std::string out;
@@ -5705,9 +5739,9 @@ private:
             for (std::size_t t = first[f]; t < first[f + 1]; ++t) body += texts[t];
             const std::string called = module_ + "_step" + std::to_string(++splits_) + "_";
             pieces_ += "static " + upper_ + "_NOINLINE_ void " + called + "(" + module_ + "* m_" +
-                       (carries ? ", " + module_ + "_values_* v_" : "") + ") {\n" + body +
+                       (carries ? ", " + Typed(Place(home)) + "* v_" : "") + ") {\n" + body +
                        stores[f] + "}\n\n";
-            out += indent + called + (carries ? "(m_, &m_v_);\n" : "(m_);\n");
+            out += indent + called + (carries ? "(m_, &m_->" + Place(home) + ");\n" : "(m_);\n");
         }
         return out;
     }
@@ -6121,6 +6155,7 @@ private:
         const std::size_t includes = out.size();
         out += "#include <math.h>\n#include <string.h>\n\n";
         out += Interface(module, inputs, fields, earliest);
+        const std::size_t declared = out.size();
         out += "/* The parameters, which the host may assign, then what derives from them,\n";
         out += " * then the index of the latest step and each sequence's terms from that\n";
         out += " * index back. */\n";
@@ -6184,7 +6219,6 @@ private:
                        ? ", double " + name + "_in_"
                        : ", const double " + name + "_in_[" + std::to_string(Cells(name)) + "]";
         out += ") {\n";
-        const std::size_t opened = out.size();
         out += "    ++m_->index_;\n";
         // A sequence's window moves when it computes a term: every step, or
         // on its ticks.
@@ -6235,25 +6269,18 @@ private:
                     line = Checked(Rated(line, sequence), name, sequence);
             std::string checked  = Checked(Rated(assignments, sequence), name, sequence);
             const auto  numbered = Numbered(temporaries, checked);
-            out += Split(numbered, checked, indent);
+            out += Split(numbered, checked, indent, sequence.definition->home);
             if (late) out += "    }\n";
         }
         out += "}\n\n#endif\n";
         if (splits_) {
-            std::string values;
-            if (!values_.empty()) {
-                out.insert(opened, "    " + module + "_values_ m_v_;\n");
-                values = "/* What a part of the step computes and a later part reads. */\n" +
-                         ("typedef struct " + module + "_values_ {\n") + values_ + "} " + module +
-                         "_values_;\n\n";
-            }
             const std::string define = "#define " + upper_ + "_NOINLINE_";
             out.insert(stepping,
                        "/* The step's longest lists, each written as functions, which compilers\n"
                        " * optimise faster than one function of them all. */\n" +
                            ("#if defined(__GNUC__)\n" + define) + " __attribute__((noinline))\n" +
                            ("#elif defined(_MSC_VER)\n" + define) + " __declspec(noinline)\n" +
-                           ("#else\n" + define) + "\n#endif\n\n" + values + pieces_);
+                           ("#else\n" + define) + "\n#endif\n\n" + pieces_);
         }
         out.insert(folds, Folds(earliest));
         // A function of the header where something calls it, which a fold, a
@@ -6274,6 +6301,15 @@ private:
             kept = helper->second + kept;
         }
         out.insert(functions, kept);
+        if (!scratch_.empty()) {
+            out.insert(out.find("\n} " + module + ";\n", declared) + 1,
+                       "    " + Typed("v_") + " v_;\n");
+            out.insert(
+                declared,
+                "/* What a part of the step computes and a later part reads, held by the\n"
+                " * model rather than the stack; instances stepped in turn share a place. */\n" +
+                    Declared("v_"));
+        }
         if (Writes(kept, "DBL_EPSILON") || Writes(kept, "FLT_EPSILON"))
             out.insert(includes, "#include <float.h>\n");
         std::erase_if(out, [](char c) { return c == '\x14' || c == '\x15'; });
@@ -6424,7 +6460,9 @@ private:
     std::deque<std::vector<Temporary>> lists_;  // those, kept as a step's are
     static constexpr std::size_t       split_  = 16384;  // a part's bytes; see Split
     int                                splits_ = 0;      // the parts written
-    std::string values_, pieces_, upper_;  // their struct's members, their functions, the guard's
+    std::string                        pieces_, upper_;  // their functions, the guard's
+    std::map<std::string, std::string> scratch_;         // members, by path; see Place
+    std::map<const Scope<Value>*, const Scope<Value>*> outer_;  // where each instance is written
     Walked*                          limit_           = nullptr;
     std::map<const Expression<Value>*, Code> lifted_;  // an unbounded sum's arguments, by part
     int                              temporary_count_ = 0;

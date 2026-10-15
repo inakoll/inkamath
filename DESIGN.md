@@ -1885,6 +1885,9 @@ closures need one anyway, and can bring it.
 | C370 `[fixed]` | **A guarded value's status is asked where its clause was not taken.** C368 drops a status only where the value reads it as its guard did, by the status's text; elsewhere a value's status is asked of the caller's guard wherever the call is NaN, so where the clause the call took is refused, the step takes the caller's clause after where the interpreter refuses. Each with `gap(c) = (c - c)/(c - c)` after the guarded clause, `y_n \| gap(c_n) < 1 = 1`, `y_n = 0` and c_n = 1 + mod(n, 2), the step takes y_1 = 0 where the interpreter refuses, dividing by zero: the same limit through another function, `root(c) = lim nv(c)` and `gap(c) \| root(c) > 0 = lim nv(c)`, or `gap(c) \| lim nv(c) > 0 = root(c)`; a respelt argument, `gap(c) \| lim nv(c) > 0 = lim nv(c + c - c)`; and a later clause's value where an earlier one was taken, `gap(c) \| c > 1 = (c - c)/(c - c)`, `gap(c) \| c > 0 = lim nv(c)`, `gap(c) = 0`. So were the clause that always applies, `gap(c) = lim nv(c)` after `gap(c) \| c > 1 = (c - c)/(c - c)`, a later guard's, `gap(c) \| lim nv(c) > 0 = 0` after it, and a function's cells. Each status a clause reads, of its guard or its value, is now joined with the conditions before it as the chain tests them, and its value's with its own guard, so that it is asked only where the chain reaches it. C368's drop stays, for the audit alone: without it `voided.y` and `buffered.brake` would be listed, their statuses false wherever asked; a status it misses is listed, as `routed.y`. No golden, expected header or other check report moves; `ored`'s C gains the join. In 33 lines of `compile.hpp`, 4 of comment, and 11 removed; `compile/fallback.ink`'s `routed`, `returned`, `respelled`, `preceded`, `defaulted`, `sentried` and `partway` hold it. Found reviewing the audit of fallbacks; the baseline fails each too. |
 | C371 `[fixed]` | **Statuses joined by `\|\|` left a conjunction bare, which GCC and Clang warn of under `-Wall`.** A status a function passes on is `isnan(call) && (...)`, and a cell's refusal where a guard of its chain ran out is the same, so a guard reading a limit through a function and another, `u_n \| root(c_n) > 0 and lim nvx(c_n) > 0 = 1` with `root(c) = lim nv(c)`, or a cell whose two guards read limits with no clause after, wrote `a && (b) \|\| c`: right in C, and refused by `-Werror=parentheses`, as CI builds. Such a status is bracketed where statuses are joined now, in 8 lines of `compile.hpp`, 1 of comment, and 4 removed. No golden, expected header or report moves; check programs' C gains the brackets. `compile/fallback.ink`'s `spelled` and `joined` hold it. Found reviewing the audit of fallbacks; the baseline writes the same. |
 | C372 `[fixed]` | **A matrix to the power 0 compiled dropped a NaN cell.** The step wrote the identity whatever the base, so with `r(v) \| v > 0 = v` and `x_n = r(3 - a_n)`, `[x_n, 1; 0, 1]^0` answered 1 in its first cell, where the interpreter refuses it: `--check` reported `v[1,1]: 1 at 3, where the interpreter gives none`. A single value's x^0 was NaN where x is, in a header that writes NaN; a matrix's is now NaN where a cell of it is, and makes the header write NaN where a cell may be. No golden, expected header or check report moves; six check programs test the base where a series or a sum starts a power at 0, `newton.ink`'s `evens`, `evened` and `twonames`, `series.ink`'s `later`, `sums.ink`'s `summed` and `iekf.ink`'s `walk`. Found by the spec review of conv and polyval. In 5 lines of `compile.hpp`, 1 of comment; `compile/nan.ink`'s `nil` holds it. |
+| C373 `[fixed]` | **`check_carried_values` passed whatever `carried_4.c` held.** Its regex's `;` was CMake's list separator, so the test passed on any of three pieces, one of them a bare newline, and it went on passing once `carried`'s step, y's 500 cells, wrote about 62 KB, under the 64 KB past which a list is cut: no struct of values was left to check. The `;` is escaped as `\\;`, as `tie`'s regexes do, and `cut`'s y has 1000 cells, as `held`'s, so that `carried` is cut into 8 functions again. A test harness's defect; no golden, expected header or report moves. Found by the spec review of a split step's scratch in the model struct. |
+| C374 `[fixed]` | **The cli tests were given no C compiler.** `cli_1` to `cli_3`, and `cli_scratch`, were added before `enable_language(C)`, so on a fresh configure, as CI's, `CC` and `CC_ID` were empty, and a configure keeping a C compiler in its cache gave `CC` alone: every `strict` check (C331), a header built as C11 at -Wconversion -Werror, was skipped. C is enabled before them now, and every `strict` check passes. No golden, expected header or report moves. Found implementing a split step's scratch in the model struct, whose check of `tune`'s frame was skipped alike. |
+| C375 `[fixed]` | **An instance named as its model took the scratch into its own struct.** The scratch's member was placed before the first `} mine;` after the types, which an instance `mine` of a model `mine`, or `checked` under `--check`, closes first: its struct held `v_`, the model's did not, and the header did not build. Placed before the model's own closing line, at the line's start. `test/compile/split.ink`'s `mine`; no golden, expected header or report moves. Found by the implementation review of a split step's scratch in the model struct. |
 
 **Measure instructions, not the clock.** One of those changes made the matrix
 workload 20 per cent slower by the clock and not by a single instruction: with
@@ -11166,10 +11169,274 @@ After an external review of README, MANIFESTO and the conformance suite
   6.4 s; `tf` 9,985,465 to 5,494,171, `--compile` 8.3 s and 186 MB to
   6.1 s and 114 MB, GCC 97 s and 820 MB to 60 s and 476 MB, 354
   functions to 179, its stack 269 KB to 324 KB.
-- **A split step's arrays read in place**: the split carries a looped array
-  whole and copies it into each later part that reads it, `tf`'s stack 269
-  KB to 324 KB; the remedy is reading the carried member in place and
-  scoping each sequence's temporaries.
+- `[done]` **A split step's scratch in the model struct**, in place of *a split
+  step's values by their lifetimes*, by the owner's ruling. A refactor of
+  headers: no golden, `--check` report or refusal moves, and every value
+  is the same double. The struct of a split step's values (*A compiled
+  step split into functions*) is a local of the step: `tf`'s 305,792
+  bytes are 94 per cent of its 324,800 of stack. It becomes a member of
+  the model, which the host places already, statically, on the heap at
+  startup or as a ctypes buffer: the header still allocates nothing, and
+  the model's size is still `sizeof`, a constant. This reverses the
+  split's rejection of *the struct in the model*: the host's state holds
+  the step's scratch, which the owner prefers to a stack that grows with
+  the model.
+
+  Decided:
+  - **The values are the model's last member**, `v_`, their type declared
+    before the model's comment; the step declares nothing and passes
+    `&m_->v_`, or an instance's place in it, where it passed `&m_v_`. A
+    part is written as today, taking `v_` and loading `const double t5_ =
+    v_->t5_;`. `tune`, today:
+
+        /* What a part of the step computes and a later part reads. */
+        typedef struct tune_values_ {
+            int t1_;
+            ...
+        static inline void tune_step(tune* m_, const double X_in_[48], const double Y_in_[48]) {
+            tune_values_ m_v_;
+            ++m_->index_;
+            ...
+            tune_step1_(m_, &m_v_);
+
+    and then:
+
+        /* What a part of the step computes and a later part reads, held by the
+         * model rather than the stack; instances stepped in turn share a place. */
+        typedef struct tune_values_ {
+            int t1_;
+            ...
+        } tune_values_;
+
+        /* The parameters, which the host may assign, then what derives from them,
+        ...
+            double U[2][8][8];
+            tune_values_ v_;
+        } tune;
+        ...
+            tune_step1_(m_, &m_->v_);
+
+    Last, so that every other member keeps its offset.
+  - **Instances stepped one after another share a place**, the call
+    stack's discipline in the struct: a model's scratch is its own
+    values, then a union `u_` of its instances', a member each named as
+    the instance, and so on down. Each instance's values are a type of
+    their own, named by the module and the instance's path, declared
+    before the type holding them. A model does not share with its
+    instances. `twice` in `test/compile/split.ink`, two instances of
+    `held`, each carrying from its y list:
+
+        typedef struct twice_a_held_values_ {
+            double t2_[3][3];
+            int t3_;
+            double t5_;
+            int t7_;
+        } twice_a_held_values_;
+
+        typedef struct twice_b_held_values_ {
+            double t10_[3][3];
+            int t11_;
+            double t13_;
+            int t15_;
+        } twice_b_held_values_;
+
+        typedef struct twice_values_ {
+            union {
+                twice_a_held_values_ a_held;
+                twice_b_held_values_ b_held;
+            } u_;
+        } twice_values_;
+
+    A part of `a_held`'s list takes `twice_a_held_values_* v_` and is
+    called with `&m_->v_.u_.a_held`; its loads and stores are written as
+    today, `v_->t2_`. Nested, `nest`, a y list as `held`'s and two
+    instances of `twice`, prototyped only: `nest_values_` holds its own
+    four members, then `union { nest_c_twice_values_ c_twice;
+    nest_d_twice_values_ d_twice; } u_;`, each of those a union of two
+    `held`s as `twice_values_` is, and a part of the first's first list
+    is called with `&m_->v_.u_.c_twice.u_.a_held`. An instance alone is in
+    a union of one, so that a part's path is known when it is written,
+    before the lists after it are cut. A type's name already taken, as
+    instance `u`'s `a` and an instance of `a` written in `u_n` would both
+    be `_u_a_values_`, takes a number. An instance whose lists carry
+    nothing has no member; where none carries, the struct holds today's
+    members in today's order, as for `tf`, `tune` and `inf`. The header
+    is C99 and C++ as today: no anonymous member, no pragma.
+  - **An instance is not called in the generated C**: its sequences are
+    lists of its parent's step, cut into the parent's parts, their
+    temporaries numbered through the step. So its parts take its own
+    type, reached through the model's `v_`. And no carried value
+    outlives its list, so the rule's premise, a parent's values alive
+    across its instances' steps, does not hold here: the rule is safe, and
+    leaves apart a parent's values and its instances', and one model's
+    lists, which could share. Sharing those, a struct of each cut list in
+    the union, the predecessor measured at 6cd0643, 234,848 bytes for
+    `tf` against 303,456: within one model, so left to the owner with the
+    parked option below.
+  - **Grouped by instance**, the scope a list's definition is installed
+    in and the scope that wrote that instance, as the compiler defines
+    them, not by the text before a sequence's last `.`: a gradient by
+    several names, `g.x`, is a list of the model's own, and an unnamed
+    instance written in it, labelled `g.x_held`, is the model's instance,
+    its member `g_x_held`. Each list's values are in one branch, where its
+    parts load and store them: that invariant is what the sharing's
+    safety rests on, since no value outlives its list.
+  - **Unsplit models, and split ones that carry nothing, byte for
+    byte**: no struct and no member. `riekf`, unsplit, is 78,916 bytes
+    before and after.
+  - **`--float`**: the members are rewritten as any `double`; an `int`
+    stays.
+  - **How it meets the rest**: `init`'s `memset` zeroes the scratch with
+    the rest; `update` and its setters of derived values never name it;
+    no value stays in it from one step to the next, each stored before it
+    is read within the step. What crosses is what crossed: value
+    numbering (`Numbered`), C357's reread, hoisting (`Invariant`) and a
+    limit's `vN_` are untouched, and so are the parts' frames. The check
+    programs hold the model in `main`, `m_`, so their stack holds the
+    scratch there rather than in the step. The Python shim's `ink_size`
+    is `sizeof` the model, scratch included, so a ctypes buffer of that
+    size holds it, and every field's `offsetof` is as it was. A host that
+    saves its state by `sizeof` saves the scratch too, or the state alone
+    up to `offsetof(model, v_)`.
+  - **Threads**: one model struct per thread, as today. The step shared
+    nothing but its model, and still does not.
+
+  Measured on a prototype at d74ab86, discarded, by GCC 13.3 and Clang
+  18.1 at -O2 -ffp-contract=off, one run each under a light load; the
+  stack the step's frame, with its caller's into which it inlines, and
+  its largest part's, by -fstack-usage; the header under the model's own
+  name, as each before and after:
+
+  | | values | `sizeof` model | stack | header | GCC -O2 |
+  |---|---|---|---|---|---|
+  | `tf` | 305,792 | 28,440 | 324,800 | 5,494,168 | 56.7 s |
+  | in the model | | 334,232 | 18,960 | 5,494,609 | 54.6 s |
+  | `tune` | 12,544 | 9,744 | 16,976 | 433,781 | 6.3 s |
+  | in the model | | 22,288 | 4,320 | 433,902 | 6.6 s |
+  | `inf` | 10,992 | 9,224 | 15,312 | 390,104 | 5.9 s |
+  | in the model | | 20,216 | 4,304 | 390,221 | 5.5 s |
+  | `twice` | 192 | 32,384 | 1,008 | 286,839 | 5.4 s |
+  | in the model | 96 | 32,480 | 784 | 287,097 | 5.6 s |
+  | `nest` | 480 | 80,944 | 1,744 | 771,434 | 13.1 s |
+  | in the model | 192 | 81,136 | 1,248 | 772,190 | 13.7 s |
+
+  `tf` by Clang: stack 326,488 to 20,680; its -O2 41.5 to 44.7 s, then
+  45.4 to 50.1, a tenth longer in each of three runs, its memory 388 MB
+  to 379; a step as fast by either, 0.20 to 0.23 ms, within the runs'
+  noise. The review measured it again: 41.0 to 44.9 s, the median of six
+  pairs run in turn, about 9 per cent, half of it alias analysis, which
+  `restrict` on the parts' pointers does not help, and the step's time
+  unchanged. Accepted by the owner, a cost of the scratch in the model.
+  `riekf`, unsplit, byte for byte: 7,936 bytes of model and 14,128
+  of stack. A header grows by a few hundred bytes: the step's local
+  gone, 2 bytes more a call, the comment a line longer, a union its
+  lines. Bit for bit: each model's state, every member before `v_`, after
+  each of 101 steps of drawn inputs, 301 for `tf`, by GCC, and `tf`'s by
+  Clang too; of the 342 check programs only `unseen_4.c`, `tuned_4.c`
+  and `twins_4.c`, and `twins_4.c` in float, change, their reports
+  byte for byte; the prototype passes the whole `ctest`, `cli_scratch`
+  included.
+
+  Rejected:
+  - **Values by their lifetimes**: parked, below.
+  - **Carried arrays read in place**, the predecessor's measure: `tf`'s
+    stack 2 per cent smaller.
+  - **Reference counting, or the heap per value**: the header allocates
+    nothing, and a step that does is not one a controller runs.
+  - **A workspace the host passes**, `tf_step(&m, &w, X, Y)`: one scratch
+    for models a host steps in turn, the same rule a level up, but every
+    host's call changes; deferred until a host asks.
+  - **Anonymous structs and unions**, the spec's first form, a part
+    taking the model's `v_` and C11 reaching the members through them:
+    not C99 nor C++, and MSVC warns C4201 of them. Named, by the owner's
+    ruling on the review.
+  - **`m_->v_.t5_` at each load**, a part taking `m_` alone: 3 bytes more
+    at each of `tf`'s 60,224 loads and stores, for a parameter.
+
+  Parked, **for when a model runs out of RAM**: values by their lifetimes
+  within one model (9b0e18c, on the branch `splitplace`). A value lives
+  from the part storing it to the last reading it, values living across
+  the same parts are a group, and groups are placed first fit, a union of
+  anonymous structs behind `double` paddings: measured at 6cd0643, `tf`'s
+  values 303,456 bytes to 80,168 and its stack 323,952 to 98,560, `tune`'s
+  12,584 to 3,312, `inf`'s 11,016 to 3,312, headers 1.4 to 2.1 per cent
+  larger, about 35 lines. The owner judged it a code smell; in the model
+  it would shrink `sizeof` rather than the stack.
+
+  About 35 lines of `compile.hpp` added and 15 removed, of 19,250 at
+  d74ab86 by `wc -l include/inkamath/*.hpp src/*`: each carried value
+  recorded with its instance, 2; the scratch written, its own then its
+  instances', 18; declared before the model and a member of it, 10; the
+  step's local and its insertion gone. Past 53 added the implementation
+  stops and reports.
+
+  Specified in `test/compile/split.ink` by `twins`, a bank of two
+  instances of `held`, checked from now in double and float, reports
+  that hold before and after; and `test/cli.cmake`'s part `scratch`, run
+  by `cli_scratch`, skipped while `twice.h` writes today's struct and
+  declares it in the step, and only then: `twice`'s types above, before
+  the model's comment, its member last in the model and its parts called
+  with `&m_->v_.u_.a_held` and `&m_->v_.u_.b_held`; `tune.h`'s comment and
+  member; and `tune`'s step's own frame under 4,096 bytes by
+  -fstack-usage at -O0, which GCC and Clang write, 12,568 or more today
+  and 40 to 48 on the prototype. With the
+  implementation the part joins part 2 beside `compile_loops_tune`, and
+  `cli_scratch` goes. `tf` is not in the tests.
+
+  What moves: no golden, report or expected header, none of which is
+  split, nor excerpt, count or bound of `test/cli.cmake`. The check
+  programs `unseen_4.c`, `tuned_4.c` and `twins_4.c`, and `twins_4.c` in
+  float, and `cli.cmake`'s `inf.h` and `tune.h`, under their bounds of
+  430,000 and 480,000 bytes.
+  README's sentence that what one part computes and a later one reads is
+  kept on the step's stack, about 320 KB that a thread with a small stack
+  must allow for, says instead that the model struct holds it.
+
+  Built as specified, with the review's rulings: each instance's values
+  a type of their own, in a union `u_` named in the path, grouped by the
+  instance a list's definition is installed in, the model's own lists
+  `v_`. Departing in three places. No type takes a number: no scope names
+  an instance and a sequence alike, so the example above cannot be
+  written, and no two paths are spelt alike. `carried`'s C moves too,
+  since C373 cut it again, its reports as they were. And the part's check
+  of `tune`'s frame had never run: `cli_scratch`, as the cli tests, was
+  given no C compiler (C374). It runs now, `tune`'s step's frame 48 bytes
+  at -O0 by GCC 13.3 and 40 by Clang 18.1.
+
+  Measured at -O2 -ffp-contract=off, one run each under a light load, as
+  the prototype was: `tf`'s stack 324,800 bytes to 18,960 by GCC and 326,488 to 20,680 by
+  Clang, `sizeof` 28,440 to 334,232, its values 305,792; `inf`'s stack
+  15,312 to 4,304, `sizeof` 9,224 to 20,216; `tune`'s 16,976 to 4,320 and
+  9,744 to 22,288; `twice`'s 1,008 to 784, `nest`'s 1,744 to 1,248.
+  Headers under their own names: `tf` 5,494,168 to 5,494,609, `tune`
+  433,781 to 433,902, `inf` 390,104 to 390,221, as the prototype's;
+  `twice` 286,839 to 287,486 and `nest` 771,434 to 773,805, the types'
+  names longer than anonymous structs. `tf`'s build, the median of three
+  pairs run in turn on a quiet machine by the implementation's review,
+  69.2 to 65.8 s by GCC and 50.7 to 60.8 by Clang: a fifth longer by
+  Clang, twice the 9 per cent accepted, where single runs had 75.9 to
+  80.3 and 61.9 to 72.2. Bit for bit, by the
+  review's `poison.py`, the scratch filled with NaN's bits before every
+  step: each model's state after each of 101 steps of drawn inputs for
+  `twice`, `weave`, `mix`, `inf`, `tune` and `nest`, a model holding a
+  named instance with two unnamed ones and an unnamed one beside it, and
+  one whose grad by several names is cut, its values the model's own;
+  `tf`'s after 301, by GCC and by Clang. And by the implementation's
+  review, by both: three levels of instances, each carrying; siblings of
+  other shapes, one of them with two cut lists; two instances each
+  stepping a limit in their cut list; two each cutting a grad by several
+  names; instances in an instance's argument; a model's own cut list
+  between its instances'; and an instance named as its model (C375). Of the 340 check programs, only
+  `unseen_4.c`, `tuned_4.c`, `twins_4.c` and `carried_4.c`, and in float
+  `twins_4.c` and `carried_4.c`, change, every report byte for byte;
+  `riekf.h` byte for byte. Each header above builds as C99 by GCC and
+  Clang and as C++ by g++ and clang++, at -Wpedantic -Werror, every
+  member before `v_` at its offset as before. `cli_scratch` is gone,
+  its part in part 2. 54 lines of `compile.hpp` added and 16 removed,
+  19,250 to 19,288 by `wc -l include/inkamath/*.hpp src/*`, one past the
+  stop by the review's fix of C375. `Kept`'s instance is kept and
+  recorded in two plain lines, by the owner's ruling, clarity over the
+  budget, where one line had squeezed both for no line fewer added.
 - `[done]` **A Jacobian by cells**, the idiom, compiled and held by `--check`:
   `J(x)[i<=3, j<=2] = (grad_(v = x) f(v)[i])[j]`, row i output i's
   gradient as a paper defines J_ij, so the layout is the user's. grad's own
@@ -11751,8 +12018,8 @@ the clause for a limit that does not converge as done, the order from here:
   Compiled it reads the lower triangle, as LAPACK's does: a covariance
   symmetric exactly is not in doubles, and a test there would make a
   square-root filter NaN.
-- *A split step's arrays read in place*, above; then increments 4 and 5 of
-  the loops decided on its measures.
+- *A split step's scratch in the model struct*, above; then increments 4
+  and 5 of the loops decided on its measures.
 - The gather, integer and optional inputs, and exact discretisation, below.
 
 - **A gather, integer inputs, inputs present on some steps only**: their
@@ -11791,7 +12058,7 @@ review:
 - **The end-to-end exploration (`CLAUDE.md` §9)**: a sensor, a learned
   correction, an estimator, a controller and an actuator command at two
   rates, with an injected sensor failure. After the fallback audit above
-  and *a split step's arrays read in place*.
+  and *a split step's scratch in the model struct*.
 - `[done]` **Python hosting**, with no compiler change: README's paragraph
   after `--float`, a C file exporting the header's functions and each
   field's `offsetof` to ctypes, held by `compile_host`. A call from Python
@@ -11815,7 +12082,8 @@ pendulum (`test/data/ctms.ink`, `test/compile/pendloop.ink` and
 - **Polynomial helpers in the prelude** beside `charpoly`: `conv`,
   `polyval` (`[done]`, below) and padding to a length, which every
   transfer function needs.
-- **Complex `roots` by Durand-Kerner**, in the interpreter only.
+- **Complex `roots` by Durand-Kerner**, in the interpreter only (`[done]`,
+  below).
 - **`care` and `dare` beside `hinf`**: the sign of the Hamiltonian and the
   doubling algorithm, which each test now carries in five to seven lines.
 - **`lim`'s refusal for a limit that does not converge states the ratio it
@@ -11957,3 +12225,234 @@ a product of polynomials or a value of one on nearly every page:
   and 2 lines, 1 of comment, and 1 removed, so that a matrix's x^0 takes
   no part in grad where a derivative of a matrix power was refused, held
   by the story's `G`. 19,078 to 19,091 lines at the merge of 7d8c985.
+
+The friction's second line, the closed-loop poles every control page asks
+for, which `eig` refuses complex:
+
+- `[done]` **Complex roots in the prelude, `roots(p)`**: the roots of a polynomial
+  in `charpoly`'s column, highest power first, as a column, each as often
+  as its multiplicity; MATLAB's and numpy's name. In the interpreter only,
+  by Durand and Kerner's iteration as a `lim`, the owner's decision. The
+  design, measured on a prototype:
+
+      roots(p[j<=m]) = rootso(rootsr(rootst(p)))
+      rootst(p[j<=m]) = p
+      rootst(p[j<=m]) | m > 1 and p[1] == 0 = rootst(rootsu(p))
+      rootsu(p[j<=m])[r<=m-1] = p[r+1]
+      rootsd(p[j<=m])[r<=m-1] = (m-r)*p[r]
+      rootsh(a[j<=m], b[k<=n])_0 = a
+      rootsh(a[j<=m], b[k<=n])_t[r<=m-t] = rootsh(a, b)_(t-1)[r+1] - rootsh(a, b)_(t-1)[1]/b[1]*hurwitzc(b, r+1)
+      rootsq(a[j<=m], b[k<=n])[t<=m-n+1] = rootsh(a, b)_(t-1)[1]/b[1]
+      rootsg(a[j<=m], b[k<=n]) = rootsg(b, rootst(rootsh(a, b)_(m-n+1)))
+      rootsg(a, b) | b == 0*b = a
+      rootsg(a, b[k<=n]) | n == 1 = b
+      rootsr(p[j<=m]) | m == 2 = -p[2]/p[1]
+      rootsr(p[j<=m]) | m > 2 and p[m] == 0 = [rootsr(abscissat(p)); 0]
+      rootsr(p[j<=m]) | m > 2 = rootsf(p, rootsg(p, rootsd(p)))
+      rootsf(p, g[k<=n]) | n == 1 and p == re(p) = rootsy(rootsl(p))
+      rootsf(p, g[k<=n]) | n == 1 = rootsl(p)
+      rootsl(p) = rootse(p)*rootsw(rootsn(p), lim rootsk(rootsn(p)))
+      rootsf(p, g) = [rootsr(rootsq(p, g)); rootsr(g)]
+      rootse(p[j<=m]) = 2^floor(ilogb(abs(p[m]/p[1]))/(m-1) + 1/2)
+      rootsn(p[j<=m])[r<=m] = p[r]/rootse(p)^(r-1)
+      rootsk(p[j<=m])_0[r<=m-1] = (4/10 + 9/10*i)^(r-1)
+      rootsk(p)_k = rootsw(p, rootsk(p)_(k-1))
+      rootsw(p, z[k<=n])[r<=n] = z[r] - polyval(p, z[r])/(p[1]*prod_(q=1)^n ((q == r) + (q <> r)*(z[r] - z[q])))
+      rootsc(z[j<=m], r) = sum_(k=1)^m z[k]*(k == argmin_(q=1)^m abs(re(z[r]) - i*im(z[r]) - z[q]))
+      rootsy(z[j<=m])[r<=m] = (z[r] + re(rootsc(z, r)) - i*im(rootsc(z, r)))/2
+      rootsb(z[j<=m], j) = 1 + sum_(k=1)^m (re(z[k]) < re(z[j]) or re(z[k]) == re(z[j]) and (im(z[k]) < im(z[j]) or im(z[k]) == im(z[j]) and k < j))
+      rootso(z[j<=m])[r<=m] = sum_(j=1)^m z[j]*(rootsb(z, j) == r)
+
+  **Written in inkamath**: z_r less p(z_r)/(p_1 prod_(q<>r) (z_r -
+  z_q)), every root at once, a `lim` over a column by cells as the CTM
+  exploration wrote it in two lines, p(z) by polyval. No language change.
+
+  **A repeated root, squarefree first.** The iteration alone, from the
+  customary start, converges only linearly to a multiple root and stalls
+  in doubles about eps^(1/k) from it: (s + 1)^2's limit answered -1 -
+  1.03e-8i and -1 + 6.09e-9i, settled after 31 terms, its imaginary parts
+  noise; (s + 1)^3
+  never settled within 300, `lim` refusing at 100 with its last term
+  6.5e-6 from -1; and z^3, a deadbeat's poles, answered three roots of
+  about 1e-11, below 1 the tolerance being absolute. So the iteration runs
+  on the squarefree part p/g, g = gcd(p, p'), whose roots are simple, and
+  roots(g) follow: a root of multiplicity k is g's k - 1 times. The gcd
+  is Euclid's, its remainder long division as a sequence whose column
+  shortens by one a term, its leading zeros dropped: exact of exact
+  coefficients. (s + 1)^2 is [-1; -1], (s + 1)^3 and z^3 exact too, and
+  (s + 1)^2 (s + 2) [~-2; ~-1; ~-1]. The others weighed against "refuse
+  rather than guess":
+  - **The `~` and a marking**: the `~` is there, and it says inexact, not
+    that the eighth digit and the imaginary parts are noise; no marking
+    says so, and inventing one is a language change.
+  - **Refusing, with a reason**: it needs the gcd, or the discriminant as
+    charpoly of Sylvester's matrix, to see the repetition at all, and
+    refuses a deadbeat's z^n and a critically damped design's double
+    pole, which a control page places on purpose.
+  - **A fixed count**: answers the stall without saying so.
+
+  A near-multiple root of a squarefree p stays what doubles make it, as in
+  every root finder in doubles, MATLAB's eig of the companion matrix too:
+  (s + 1)^2 - 10^-12's -1 +- 10^-6 to every digit printed, settled after
+  32 terms; -1 +- 10^-8, from 10^-16, the ninth digit wrong; -1 +- 10^-15
+  a complex pair, +-8.2e-9i. Within 10^-6 of a triple, (s + 1)^3 + 10^-18, the
+  limit runs out and refuses in its own words, "rootsk did not converge
+  within 100 terms", its last term the cluster. README says how digits go
+  as roots come together. An inclusion radius, n times the last correction
+  with a running bound of p's rounding, could refuse those, about 3 lines,
+  but needs a threshold the language has nowhere else: rejected until an
+  entry needs it.
+
+  **Exact where every root is.** A degree 1 is -p_2/p_1, exact, and a
+  trailing 0 a root at 0 exactly, as MATLAB strips it, so the recursion
+  makes (s + a)^k and z^k exact. The scale requires that clause too, not
+  only exactness: at p_m = 0, rootse would take ilogb of 0, refused. A rational root otherwise comes from the
+  iteration, inexact, and one inexact root makes every root inexact: the
+  order compares them in doubles, and a cell placed by an inexact
+  comparison is inexact, as a clause an inexact guard chose. So
+  `roots([1; 2; 0])` is [-2; 0], and the pendulum's PID loop, with a
+  trailing 0, has ~0. **The rational root theorem first**, exact and cheap
+  for small integer coefficients, is rejected: the language has no
+  numerator or denominator, so its candidates are a search over divisors,
+  about 10 lines, growing with the coefficients and out of reach of a
+  double read as the rational it is; and beside one irrational root its
+  exact roots print inexact anyway, by the order. **The quadratic
+  formula** for a degree 2, exact where the discriminant is a square, is
+  rejected too: one more clause, and it loses digits where b^2 >> 4ac.
+
+  **A real root of a real polynomial is real.** The iteration starts off
+  the real line, so a real root comes out as -2 - 3.4e-24i. Of a
+  polynomial whose cells are all real, each root is averaged with the
+  conjugate of the root nearest its own conjugate: a real root's is
+  itself, so its imaginary part is exactly 0, and it prints and compares as
+  real; a complex root's is its partner, so a pair comes out exactly
+  conjugate. No tolerance. Of 300 random polynomials, degree 2 to 12,
+  integer coefficients from -9 to 9, all 552 real roots printed real and no
+  complex one, every root within the nine digits printed of mpmath's at 50
+  digits, at worst 4.9e-9 relative, and none refused. A complex
+  polynomial's roots are left as the iteration leaves them, and its
+  repeated ones are unreliable: a complex number is a pair of doubles, so
+  its gcd is not exact, and (s - i)^2 (s + 2) is refused, `lim` running
+  out, where (s - i)^2 is i twice. README says so. A root on the
+  imaginary axis keeps a real part of rounding size, (s + 1)^2 (s^2 + 1)'s
+  +-i one of 9.8e-18: roots is not a stability test, `hurwitz` is, exactly.
+
+  **The order**: by real part, then imaginary part, each ascending, as eig
+  gives smallest first, equal ones as found; a pair's a - bi first. MATLAB's
+  order is its eig's and undocumented, and numpy's the same: no rule to take.
+  Equal is bit-equal, so ties are ordered by rounding: equal roots are
+  adjacent only when they come out bit-equal, as a repeated one does from
+  the gcd, and (s^2 + 2s + 2)(s^2 + 2s + 5) gives -1 - i, -1 + i, -1 - 2i,
+  -1 + 2i, its real parts rounding apart. README says so.
+
+  **The start and the scale**: (0.4 + 0.9i)^(r-1), the customary one, on
+  p scaled by 2^e, e = floor(ilogb(|p_m/p_1|)/(m-1) + 1/2), a power of
+  two near the geometric mean of the roots' moduli: the
+  iteration runs on p_j/2^(e(j-1)), whose roots are p's over 2^e, and
+  they are multiplied back, exactly. So the scaled roots are near 1 and
+  `lim`'s tolerance, absolute below 1, is relative to them. Scaling the
+  start alone, as first designed, left it absolute: (s - 10^-10)(s - 2 *
+  10^-10) answered 1.5e-10 +- 2.99e-11i, settled at the start's scale, and
+  README's PI loop scaled by 10^-12 a pair 2.3e-12i off. Wilkinson's
+  (s - 1)...(s - 10) took 121 terms unscaled, refused at 100, and takes 41
+  with the start scaled; elsewhere scaling moved the count by at most 12
+  terms either way, on 11 polynomials of degree 2 to 20. Deterministic.
+  The power of two is the nearest, not the one below, which the review
+  proposed: below, the scaled roots are 1 to 2 and the start, inside the
+  unit circle, falls short; of 8 random polynomials of each degree,
+  coefficients in [-1, 1], below converged for 4 of degree 15 and 20 and
+  2 of 30, the nearest for all to 25 and 3 of 30, as the start scaled by
+  the mean itself, 6 of 30. Neither converges at 35 or 40. A refusal's
+  last term is the scaled iterate, roots over 2^e, ~(s + 0.1)^3's near
+  -0.8: accepted, as unscaling it costs a clause for a refusal.
+
+  **The edges.** Leading zeros are dropped, the degree being the
+  polynomial's and not the column's, as in MATLAB's roots, where conv
+  keeps one: a length that depends on a value, which only the interpreter
+  has. A constant has no root and the zero polynomial every number, and
+  there is no empty column: both refused, "roots needs a polynomial of
+  degree 1 or more", in `Unapplied`'s table under rootsr's name; a single
+  value is a constant. A row, a matrix and a tensor are refused by the
+  signature, "roots takes p[j<=m], not a 1x3 matrix", as conv refuses one.
+  A degree 2 is the iteration's.
+
+  **Doubles read as the rationals they are**, as eig's: roots joins the
+  functions `checked` reads, so the gcd is exact of the data as stored,
+  `roots(~[1; 2; 1])` is [~-1; ~-1], a cell inf or NaN is refused in
+  roots' name, and one approximated past a thousand digits marks the
+  answer, as the pendulum's LQR loop.
+
+  **grad refuses it**, "grad cannot differentiate roots yet", by the same
+  set as eig, interpreted and compiled. The implicit derivative,
+  -p_theta(r)/p'(r), has none at a repeated root, which the squarefree path
+  tells by equalities grad refuses where they move (C73): without the
+  set, grad refused in a helper's words, "rootsf takes a clause at k = 2
+  that holds only there". Until a model needs a pole's sensitivity.
+
+  **Not compiled**, in a helper's words: at a moving argument "the
+  clauses of rootst have different shapes", at a constant one "a sequence
+  with parameters by cells, for now", and under grad "grad cannot
+  differentiate roots yet". Refusing it by name, "a complex number", was
+  3 lines of `compile.hpp` for clearer words: rejected, the helper's
+  being a refusal all the same.
+
+  Rejected:
+  - **A companion matrix and eig**: eig refuses a complex eigenvalue, its
+    count holding only where every one is real.
+  - **Aberth's iteration**: cubic, and better on clusters, but its
+    correction needs p' and a second sum over the others, and the
+    squarefree part removes the clusters where it would gain most.
+  - **Jenkins and Traub's**: three stages of shifts and deflation, tens of
+    lines here, hundreds in its reference Fortran.
+  - **A helper in C++**: more C++, a refusal of grad's and a reading of
+    doubles of its own, and a definition `?roots` and `tex` could not show.
+  - **The rational root theorem, the quadratic formula, the `~` with a
+    marking, refusing a repeated root and a fixed count**: above.
+
+  What moves: nothing recorded. On the prototype every golden, expected
+  header, report and `test/cli.cmake` case passes, 564 tests, the spec
+  suite among them. `compile/iterates.ink` and
+  `compile/nan.ink`, whose model is named roots, define it for themselves,
+  as a session may any name of the prelude. README's section 2 gives
+  roots a paragraph after conv's, the motor's poles as its example, with
+  the cost of near roots, that stability is hurwitz's and the degree it
+  reaches, about 30, `lim` running out at 40; sections 1 and 5 name it. README is replayed,
+  so it comes with roots.
+
+  34 lines by `wc -l include/inkamath/*.hpp src/*`, 19,213 to 19,247 at
+  90335fc: the prelude's 32, 4 of them comment and 2 the scale; 1 of C++
+  for its words and 1 adding it to the functions `checked` reads. Past 52
+  the implementation stops and reports.
+
+  Specified in `test/data/spec/polyroots.ink`, named so beside the golden
+  `roots.ink` of exact roots of powers: 46 entries replayed by the spec
+  suite, 27 failing by design, those passing definitions. The CTM motor's
+  poles, the pendulum's LQR and PID loops, README's PI loop, real roots,
+  Wilkinson's, roots of 10^-10 and 10^-12, the repeated, near and complex
+  ones and the edges above. Exact values in sympy, inexact ones in mpmath
+  at 50 digits, the LQR loop's as the stable eigenvalues of its
+  Hamiltonian, a route apart from the Riccati solution the transcript
+  takes. All pass on the prototype. The spec suite returns until it
+  passes.
+
+  Built as specified, with the review's rulings: the scale, the
+  compiler's refusal left to a helper's words, verified as quoted, ties
+  by rounding, and README's limits. 37 lines, 19,213 to 19,250 at the
+  merge of 6cd0643, against the stop of 52: the prelude's 35, 5 of them
+  comment, the C++ of its words 1, and the staircases' list 1, laid out
+  by clang-format. Every entry passes as written, and the spec is the
+  golden `polyroots.ink`; the spec suite goes, polyroots its only case,
+  and `cli_spec` went with the refusal by name. No other golden, header
+  or report moved. Departures: the scale rounds to the nearest power of
+  two, not the one below the ruling gave, which converged on half the
+  random polynomials of degree 15 (above, its own commit); README's
+  example is the PI loop above it, as conv's, with (s + 1)^2 exact, not
+  the motor's poles, which need its five constants first; and, from the
+  implementation review, one step of the iteration after `lim`, `rootsw`:
+  below 1 `lim`'s tolerance is absolute, so a root far below the mean
+  settled about 10^-20 times the mean off, 1e-23 answered -3.46e-22
+  beside -1 and 1e23, and 9e-8 beside -5e6 and 2e8 lost its eighth digit;
+  the step squares that error, in 3 lines, where relative convergence was
+  rejected for refusing clusters the limit answers right. Of 400 random polynomials, degree 2 to 12, integer coefficients from -9
+  to 9, all 722 real roots printed real, every root within 4.9e-9 of
+  mpmath's, and none refused.
