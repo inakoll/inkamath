@@ -331,6 +331,9 @@ TEST_CASE("iekf") {
 TEST_CASE("ctms") {
     check_transcript("ctms.ink");
 }
+TEST_CASE("robot_loop") {
+    check_transcript("robot_loop.ink");
+}
 TEST_CASE("readme") {
     check_readme();
 }
