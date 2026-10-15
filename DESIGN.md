@@ -11312,7 +11312,11 @@ After an external review of README, MANIFESTO and the conformance suite
   `tf` by Clang: stack 326,488 to 20,680; its -O2 41.5 to 44.7 s, then
   45.4 to 50.1, a tenth longer in each of three runs, its memory 388 MB
   to 379; a step as fast by either, 0.20 to 0.23 ms, within the runs'
-  noise. `riekf`, unsplit, byte for byte: 7,936 bytes of model and 14,128
+  noise. The review measured it again: 41.0 to 44.9 s, the median of six
+  pairs run in turn, about 9 per cent, half of it alias analysis, which
+  `restrict` on the parts' pointers does not help, and the step's time
+  unchanged. Accepted by the owner, a cost of the scratch in the model.
+  `riekf`, unsplit, byte for byte: 7,936 bytes of model and 14,128
   of stack. A header grows by a few hundred bytes: the step's local
   gone, 2 bytes more a call, the comment a line longer, a union its
   lines. Bit for bit: each model's state, every member before `v_`, after
