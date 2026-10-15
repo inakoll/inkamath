@@ -214,7 +214,7 @@ add_test(NAME prelude_header
 # drifts from it, and its program says where and exits with a failure.
 # Each as file:instance, or file:instance:n with --steps n.
 foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brink drift:ledge
-                         drift:rift drift:naught drift:zeroed drift:mirrored drift:nests drift:latch drift:toil
+                         drift:rift drift:naught drift:zeroed drift:mirrored drift:nests drift:latch drift:tripped drift:toil
                          drift:late drift:radix
                          delay:fir newton:stiff newton:halves newton:evens newton:evened newton:twonames newton:weighed logistic:gate sized:sized softmax:cls steady:mark
                          rnn:rnn attention:head momentum:ball adam:fit lqr:gain

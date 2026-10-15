@@ -167,6 +167,17 @@ latched(x_n) = {
 }
 latch = latched(x_n = n/3)
 
+# A sample and hold, and a fault latched: a guarded clause reads its own term
+# back before any clause has given its shape, which the unguarded one gives,
+# so 'tripped' was refused, 'its shape depends on itself' (C377).
+tripping(p_n) = {
+    y_n | n > 5 = y_(n-1)
+    y_n = [p_n; 2*p_n]
+    f_n | n > 0 and f_(n-1) == 1 = 1
+    f_n = p_n > 2
+}
+tripped = tripping(p_n = n/3)
+
 # A term the interpreter runs out of steps for, a thousand-term sum reading
 # one at each term, is no answer, and not compared: 'toil' at 2 (C148). A
 # limit of such sums answers, each term it walks having its own steps (C149).
