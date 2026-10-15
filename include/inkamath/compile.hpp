@@ -4977,6 +4977,28 @@ private:
         for (const auto& [name, sequence] : sequences_)
             if (Recomputed(sequence) || Historied(name))
                 exists_[name] = std::numeric_limits<int>::min() / 2;
+        // One based where the stream starts has no term below it where no
+        // guard holds: a reader starts above the highest such, if no term
+        // it reads further down has one either (C376).
+        for (const auto& [name, sequence] : sequences_) {
+            if (!Under(name)) continue;
+            int deepest = 0;
+            for (const auto& [reader, other] : sequences_)
+                if (const auto read = other.reads.find(name); read != other.reads.end())
+                    deepest = std::max(deepest, *read->second.rbegin());
+            std::optional<int> none;
+            bool               below = true;
+            for (int n = earliest_ - 1; n >= earliest_ - deepest; --n) {
+                const bool held = std::ranges::any_of(sequence.guarded, [&](const Guarded& g) {
+                    const auto& p = sequence.definition->Clauses()[g.clause].parameters;
+                    return !Decides(
+                        {{}, p.guard(), true, sequence.definition->home, p.index_name(), {}, 0}, n);
+                });
+                if (!held && !none) none = n;
+                below = below && !(held && none);
+            }
+            if (none && below) exists_[name] = *none + 1;
+        }
         // A slow one, at the first tick whose samples exist.
         for (std::size_t round = 0;; ++round) {
             bool moved = false;
