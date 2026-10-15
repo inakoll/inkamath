@@ -5641,7 +5641,7 @@ private:
 
     // Where the model holds what an instance's lists carry, 'v_.u_.a_held': each
     // list in one branch of a union with its siblings', stepped in turn, as no
-    // value outlives its list.
+    // value outlives its list. It reserves the path and every enclosing one.
     std::string Place(const Scope<Value>* scope) {
         const auto outer = outer_.find(scope);
         if (outer == outer_.end()) return scratch_.try_emplace("v_").first->first;
