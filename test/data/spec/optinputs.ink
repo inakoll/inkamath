@@ -127,6 +127,27 @@ error: y reads z_(n-1), an optional input of bad, in a value whose guard may hol
 .. }
 error: y reads z_n, an optional input of bad, in a value whose guard may hold without reading it
 
+# Wherever the guard holds is the guard's reading, not its text: an 'and'
+# compared may hold with its right unread, a sum's body is read only where
+# it has terms, and z_n under a sum's own n is at another index.
+>> bad(z_n?) = {
+..     y_n | (n > 5 and z_n > 0) == 0 = z_n
+..     y_n = 0
+.. }
+error: y reads z_n, an optional input of bad, in a value whose guard may hold without reading it
+
+>> bad(z_n?) = {
+..     y_n | sum_(k=1)^(n-5) z_n >= 0 = z_n
+..     y_n = 0
+.. }
+error: y reads z_n, an optional input of bad, in a value whose guard may hold without reading it
+
+>> bad(z_n?) = {
+..     y_n | z_n > 0 = sum_(n=0)^2 z_n
+..     y_n = 0
+.. }
+error: y reads z_n, an optional input of bad, in a value whose guard may hold without reading it
+
 >> dbl(x_n) = { y_n = 2*x_n }
 dbl(x_n) = { ... }
 

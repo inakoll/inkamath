@@ -12066,8 +12066,10 @@ the clause for a limit that does not converge as done, the order from here:
   - **The static check, where the model is defined**: every read of an
     optional input sits in a guard with a clause after it, in the value
     of a guarded clause whose guard reads it at the same index wherever
-    the guard holds, not on the right of an `or`, or is the argument of
-    an inner instance's optional input. Any other is refused, naming it:
+    the guard holds: not on the right of an `or`, nor of an `and` but the
+    guard's own, nor in a sum's body, and not under a name the value
+    binds again. Or it is the argument of an inner instance's optional
+    input. Any other is refused, naming it:
     "y reads z_n, an optional input of m, outside a guard with a clause
     after it", or "in a value whose guard may hold without reading it".
     So no value reads an absent input, by construction, and no term of
@@ -12167,10 +12169,10 @@ the clause for a limit that does not converge as done, the order from here:
   include/inkamath/*.hpp src/*`; past 270 the implementation stops and
   reports.
 
-  Specified in `test/data/spec/optinputs.ink`, 69 entries replayed by the
-  spec suite, 38 failing today: the hold, absence by a term not there,
+  Specified in `test/data/spec/optinputs.ink`, 72 entries replayed by the
+  spec suite, 41 failing today: the hold, absence by a term not there,
   left out, read directly or through a term, read from outside; NaN
-  against absent, marked and not; the five refusals; `or` and `and`, the
+  against absent, marked and not; the eight refusals; `or` and `and`, the
   inexact left; a forwarded input, the stream's start and a history; a
   slow sample and its hold, grad, a column, irregular arrival; and the
   robot's loop with its fix optional and no `ok_n`, its outage stopping
