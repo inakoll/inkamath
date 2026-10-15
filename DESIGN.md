@@ -11401,7 +11401,7 @@ After an external review of README, MANIFESTO and the conformance suite
   since C373 cut it again, its reports as they were. And the part's check
   of `tune`'s frame had never run: `cli_scratch`, as the cli tests, was
   given no C compiler (C374). It runs now, `tune`'s step's frame 48 bytes
-  at -O0 by GCC 13.3 and Clang 18.1.
+  at -O0 by GCC 13.3 and 40 by Clang 18.1.
 
   Measured at -O2 -ffp-contract=off, one run each under a light load, as
   the prototype was: `tf`'s stack 324,800 bytes to 18,960 by GCC and 326,488 to 20,680 by
@@ -11411,23 +11411,32 @@ After an external review of README, MANIFESTO and the conformance suite
   Headers under their own names: `tf` 5,494,168 to 5,494,609, `tune`
   433,781 to 433,902, `inf` 390,104 to 390,221, as the prototype's;
   `twice` 286,839 to 287,486 and `nest` 771,434 to 773,805, the types'
-  names longer than anonymous structs. `tf`'s build 75.9 to 80.3 s by
-  GCC, 61.9 to 72.2 by Clang, in one run each. Bit for bit, by the
+  names longer than anonymous structs. `tf`'s build, the median of three
+  pairs run in turn on a quiet machine by the implementation's review,
+  69.2 to 65.8 s by GCC and 50.7 to 60.8 by Clang: a fifth longer by
+  Clang, twice the 9 per cent accepted, where single runs had 75.9 to
+  80.3 and 61.9 to 72.2. Bit for bit, by the
   review's `poison.py`, the scratch filled with NaN's bits before every
   step: each model's state after each of 101 steps of drawn inputs for
   `twice`, `weave`, `mix`, `inf`, `tune` and `nest`, a model holding a
   named instance with two unnamed ones and an unnamed one beside it, and
   one whose grad by several names is cut, its values the model's own;
-  `tf`'s after 301, by GCC and by Clang. Of the 342 check programs, only
+  `tf`'s after 301, by GCC and by Clang. And by the implementation's
+  review, by both: three levels of instances, each carrying; siblings of
+  other shapes, one of them with two cut lists; two instances each
+  stepping a limit in their cut list; two each cutting a grad by several
+  names; instances in an instance's argument; a model's own cut list
+  between its instances'; and an instance named as its model (C375). Of the 340 check programs, only
   `unseen_4.c`, `tuned_4.c`, `twins_4.c` and `carried_4.c`, and in float
   `twins_4.c` and `carried_4.c`, change, every report byte for byte;
   `riekf.h` byte for byte. Each header above builds as C99 by GCC and
-  Clang and as C++ by g++, at -Wpedantic -Werror. `cli_scratch` is gone,
+  Clang and as C++ by g++ and clang++, at -Wpedantic -Werror, every
+  member before `v_` at its offset as before. `cli_scratch` is gone,
   its part in part 2. 54 lines of `compile.hpp` added and 16 removed,
   19,250 to 19,288 by `wc -l include/inkamath/*.hpp src/*`, one past the
-  stop, the review's fix of C375: `Kept`'s instance is kept and recorded
-  in two plain lines, by the owner's ruling, clarity over the budget,
-  where one line squeezed both for no line fewer added.
+  stop by the review's fix of C375. `Kept`'s instance is kept and
+  recorded in two plain lines, by the owner's ruling, clarity over the
+  budget, where one line had squeezed both for no line fewer added.
 - `[done]` **A Jacobian by cells**, the idiom, compiled and held by `--check`:
   `J(x)[i<=3, j<=2] = (grad_(v = x) f(v)[i])[j]`, row i output i's
   gradient as a paper defines J_ij, so the layout is the user's. grad's own
