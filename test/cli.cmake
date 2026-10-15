@@ -48,6 +48,69 @@ endfunction()
 # Read by cases in every part.
 set(inputs "${CMAKE_CURRENT_LIST_DIR}/compile/inputs.ink")
 
+# Specified, not yet built (DESIGN.md, optional inputs): compile/optional.ink's
+# header takes a flag beside its optional input, and 'seen''s check program
+# reports every term exact and, last, each guard reading the input with the
+# clause it falls to; the other lines in any order. Skipped while the mark
+# is refused as today, and only then.
+if(PART STREQUAL "spec")
+    file(MAKE_DIRECTORY "${OUT}")
+    set(story "${CMAKE_CURRENT_LIST_DIR}/compile/optional.ink")
+    execute_process(COMMAND "${EXE}" --compile "${story}" track -o track.h
+                    WORKING_DIRECTORY "${OUT}" OUTPUT_VARIABLE out ERROR_VARIABLE err
+                    RESULT_VARIABLE code TIMEOUT ${CASE_TIMEOUT})
+    if("${out}${code}" STREQUAL "1" AND
+       "${err}" STREQUAL "inkamath: optional.ink, line 24: unexpected '?'\n")
+        message("compile_optional: the mark refused, as today")
+        return()
+    endif()
+    set(args --compile ${story} track -o track.h)
+    check(compile_optional)
+    holds(compile_optional track.h
+          "static inline void track_step(track* m_, double z_in_, int z_present_in_) {\n"
+          " *     track_step(&m, z, z_present);  once for each index, the first 0\n"
+          "    int z_present[4];\n")
+    strict(compile_optional track.h)
+    set(args --check ${story} seen -o seen.c)
+    check(check_optional)
+    if(NOT CC_ID MATCHES "^(GNU|Clang|AppleClang)$")
+        return()
+    endif()
+    execute_process(COMMAND "${CC}" -std=c11 -O2 seen.c -o seen -lm WORKING_DIRECTORY "${OUT}"
+                    RESULT_VARIABLE failed ERROR_VARIABLE errors OUTPUT_VARIABLE errors)
+    if(failed)
+        message(SEND_ERROR "check_optional: seen.c does not build\n${errors}")
+        return()
+    endif()
+    execute_process(COMMAND "${OUT}/seen" WORKING_DIRECTORY "${OUT}" OUTPUT_VARIABLE report
+                    RESULT_VARIABLE code TIMEOUT ${CASE_TIMEOUT})
+    set(audit "seen.age: where z is absent, 'age_n | (z_n - xp_n)^2 <= gate^2 = 0' falls to 'age_n = age_(n-1) + 1'\n"
+"seen.d: where z is absent, 'd_n | z_n - z_(n-3) > 0 = z_n - z_(n-3)' falls to 'd_n = 0'\n"
+"seen.x: where z is absent, 'x_n | (z_n - xp_n)^2 <= gate^2 = xp_n + a*(z_n - xp_n)' falls to 'x_n = xp_n'\n")
+    set(expected "seen: 100 steps from 0, against exact values")
+    foreach(s xp x age d u)
+        list(APPEND expected "seen.${s}: within 0")
+    endforeach()
+    string(REPLACE "\n" ";" lines "${audit}")
+    list(APPEND expected ${lines})
+    list(REMOVE_ITEM expected "")
+    string(REPLACE "\n" ";" got "${report}")
+    list(REMOVE_ITEM got "")
+    list(SORT expected)
+    list(SORT got)
+    string(LENGTH "${report}" all)
+    string(LENGTH "${audit}" last)
+    set(tail "")
+    if(all GREATER_EQUAL last)
+        math(EXPR from "${all} - ${last}")
+        string(SUBSTRING "${report}" ${from} ${last} tail)
+    endif()
+    if(NOT code EQUAL 0 OR NOT "${got}" STREQUAL "${expected}" OR NOT "${tail}" STREQUAL "${audit}")
+        message(SEND_ERROR "check_optional: seen reports, exit ${code}\n${report}--- where it is to report, the guards last\n${expected}")
+    endif()
+    return()
+endif()
+
 # The cases run as three tests of about equal time under the sanitizers: PART
 # 1 up to charpoly's refusal, 2 from it, 3 from eig's, and all where PART is
 # not given.
