@@ -2470,8 +2470,10 @@ private:
         Reads             reads;
         Reads* const      outer   = std::exchange(clause_reads_, &reads);
         const bool        was     = std::exchange(deferring_, true);
+        const bool        right   = std::exchange(right_, true);
         const std::string written = text(logic.m_e2());
         deferring_                = was;
+        right_                    = right;
         clause_reads_             = outer;
         bool read                 = true;
         for (const auto& [name, lags] : reads) {
@@ -4022,7 +4024,10 @@ private:
     // In a term computed again, it is the same hold that much earlier.
     Code Holding(const std::string& key, Sequence& read, Hold hold) {
         const std::string written = key + "_(...)";
-        if (deferring_ || limit_) throw Reason(written + ": a hold where a term is computed again");
+        if (right_) throw Reason(written + ": a hold on the right of 'and' or 'or'");
+        // A guard's is read wherever the guard is tested (C378).
+        if ((deferring_ && !guarding_) || limit_)
+            throw Reason(written + ": a hold where a term is computed again");
         Bases(key);
         Compile(key);
         if (read.period == 1)
@@ -6446,7 +6451,8 @@ private:
     int                                                situated_ = 0;        // terms read, counted
     int                                                terming_ = 0;        // terms being computed
     Reads*      clause_reads_ = nullptr;               // what the clause being compiled reads
-    bool                             deferring_ = false;  // compiling the right of an 'and' or 'or'
+    bool                       deferring_    = false;  // compiling a guard, or as right_
+    bool                       right_        = false;  // compiling the right of an 'and' or 'or'
     int                        shift_ = 0;  // how far back the term being computed again is; see At
     std::vector<Early>         earlies_;
     int                        early_ = -1;    // the one being computed again
