@@ -100,7 +100,7 @@ if(PART STREQUAL "spec")
     endif()
     execute_process(COMMAND "${OUT}/seen" WORKING_DIRECTORY "${OUT}" OUTPUT_VARIABLE report
                     RESULT_VARIABLE code TIMEOUT ${CASE_TIMEOUT})
-    set(audit "seen.age: where z is absent, 'age_n | (z_n - xp_n)^2 <= gate^2 = 0' falls to 'age_n = age_(n-1) + 1'\n"
+    string(CONCAT audit "seen.age: where z is absent, 'age_n | (z_n - xp_n)^2 <= gate^2 = 0' falls to 'age_n = age_(n-1) + 1'\n"
 "seen.d: where z is absent, 'd_n | z_n - z_(n-3) > 0 = z_n - z_(n-3)' falls to 'd_n = 0'\n"
 "seen.x: where z is absent, 'x_n | (z_n - xp_n)^2 <= gate^2 = xp_n + a*(z_n - xp_n)' falls to 'x_n = xp_n'\n")
     set(expected "seen: 100 steps from 0, against exact values")
