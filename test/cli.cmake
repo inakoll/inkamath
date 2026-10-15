@@ -45,6 +45,22 @@ function(holds name file)
     endforeach()
 endfunction()
 
+# As a host builds it whose flags refuse more than the checks' (C331).
+function(strict name file)
+    if(NOT CC_ID MATCHES "^(GNU|Clang|AppleClang)$")
+        return()
+    endif()
+    string(MAKE_C_IDENTIFIER "${file}" unit)
+    file(WRITE "${OUT}/${unit}.c" "#include \"${file}\"\n")
+    execute_process(COMMAND "${CC}" -std=c11 -Wall -Wextra -Wpedantic -Wconversion -Wshadow
+                            -Werror ${ARGN} -fsyntax-only "${unit}.c"
+                    WORKING_DIRECTORY "${OUT}" RESULT_VARIABLE failed
+                    ERROR_VARIABLE errors OUTPUT_VARIABLE errors)
+    if(failed)
+        message(SEND_ERROR "${name}: ${file} is no strict C11\n${errors}")
+    endif()
+endfunction()
+
 # Read by cases in every part.
 set(inputs "${CMAKE_CURRENT_LIST_DIR}/compile/inputs.ink")
 
@@ -1629,21 +1645,6 @@ function(smaller name file bytes)
     file(SIZE "${OUT}/${file}" size)
     if(NOT size LESS ${bytes})
         message(SEND_ERROR "${name}: ${file} is ${size} bytes, not under ${bytes}")
-    endif()
-endfunction()
-# As a host builds it whose flags refuse more than the checks' (C331).
-function(strict name file)
-    if(NOT CC_ID MATCHES "^(GNU|Clang|AppleClang)$")
-        return()
-    endif()
-    string(MAKE_C_IDENTIFIER "${file}" unit)
-    file(WRITE "${OUT}/${unit}.c" "#include \"${file}\"\n")
-    execute_process(COMMAND "${CC}" -std=c11 -Wall -Wextra -Wpedantic -Wconversion -Wshadow
-                            -Werror ${ARGN} -fsyntax-only "${unit}.c"
-                    WORKING_DIRECTORY "${OUT}" RESULT_VARIABLE failed
-                    ERROR_VARIABLE errors OUTPUT_VARIABLE errors)
-    if(failed)
-        message(SEND_ERROR "${name}: ${file} is no strict C11\n${errors}")
     endif()
 endfunction()
 foreach(model spin solve dense gated diag raised turn)
