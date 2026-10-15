@@ -5283,7 +5283,18 @@ private:
         // A recurrence's own term, where no input or parameter can change it.
         const bool given = (Recurrent(name) || Own(name) || Under(name)) &&
                            (Parametric(name, true).empty() || Given(name, n));
-        const std::string parameter = given ? "" : Parametric(name);
+        // A history's clause that holds there reads no parameter, whatever
+        // the argument it is tried before reads (C379).
+        const bool historic =
+            history != histories_.end() &&
+            std::ranges::any_of(history->second->Clauses(), [&](const Clause<Value>& c) {
+                const auto& p = c.parameters;
+                if (!p.general()) return p.index() == n;
+                const Check holds{{}, p.guard(), false, history->second->home, p.index_name(),
+                                  {}, 0};
+                return p.guarded() && Decides(holds, n);
+            });
+        const std::string parameter = given || historic ? "" : Parametric(name);
         const std::string assigned  = "reads " + parameter + ", which the host may assign after init";
         // One with no default leaves init nothing to evaluate.
         const bool unset = model_ && std::ranges::any_of(model_->parameters, [&](const auto& p) {
