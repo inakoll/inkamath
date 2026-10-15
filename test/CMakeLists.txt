@@ -225,7 +225,7 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brin
                          history:twice history:relayed history:pole history:grown history:paired
                          history:looped history:stepped history:opened history:waited
                          history:rooted history:heeded history:aliased history:floored history:cycled
-                         history:huge history:sever history:veiled history:cloaked history:two history:hid history:masked
+                         history:tenths history:huge history:sever history:veiled history:cloaked history:two history:hid history:masked
                          nan:run nan:sign nan:shy nan:slope nan:pair
                          nan:lap nan:trim nan:any nan:cell nan:held nan:idle nan:imag nan:took nan:shut nan:row nan:root
                          nan:passed nan:waived nan:surd nan:kd nan:nil
