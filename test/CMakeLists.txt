@@ -68,6 +68,8 @@ set(cli_case_timeout 60)
 if(INKAMATH_SANITIZE)
     set(cli_case_timeout 180)
 endif()
+# C is enabled before the cli tests, which are given its compiler (C374).
+enable_language(C)
 foreach(part 1 2 3)
     add_test(NAME cli_${part}
              COMMAND ${CMAKE_COMMAND} -DEXE=$<TARGET_FILE:inkamath_cli> -DPART=${part}
@@ -128,7 +130,6 @@ add_custom_target(record_goldens
 # for each model is the header in compile/expected, and the header it emits,
 # built as C, holds the model to exact values its harness knows. The expected
 # headers are kept apart, where a harness's #include cannot find one instead.
-enable_language(C)
 # A model a file defines is compiled by its name, which is the file's.
 set(named_models mix)
 foreach(model IN ITEMS pid pid_clamped kalman kalman2 fir heat adc net mix loop chain back kernel bank)
