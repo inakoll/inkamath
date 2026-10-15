@@ -11168,7 +11168,7 @@ After an external review of README, MANIFESTO and the conformance suite
   6.4 s; `tf` 9,985,465 to 5,494,171, `--compile` 8.3 s and 186 MB to
   6.1 s and 114 MB, GCC 97 s and 820 MB to 60 s and 476 MB, 354
   functions to 179, its stack 269 KB to 324 KB.
-- **A split step's scratch in the model struct**, in place of *a split
+- `[done]` **A split step's scratch in the model struct**, in place of *a split
   step's values by their lifetimes*, by the owner's ruling. A refactor of
   headers: no golden, `--check` report or refusal moves, and every value
   is the same double. The struct of a split step's values (*A compiled
@@ -11375,9 +11375,10 @@ After an external review of README, MANIFESTO and the conformance suite
   by `cli_scratch`, skipped while `twice.h` writes today's struct and
   declares it in the step, and only then: `twice`'s types above, before
   the model's comment, its member last in the model and its parts called
-  with `&m_->v_.u_.a_held` and `&m_->v_.u_.b_held`; `tune.h`'s comment and member; and `tune`'s step's own
-  frame under 4,096 bytes by -fstack-usage at -O0, which GCC and Clang
-  write, 12,568 or more today and 40 to 48 on the prototype. With the
+  with `&m_->v_.u_.a_held` and `&m_->v_.u_.b_held`; `tune.h`'s comment and
+  member; and `tune`'s step's own frame under 4,096 bytes by
+  -fstack-usage at -O0, which GCC and Clang write, 12,568 or more today
+  and 40 to 48 on the prototype. With the
   implementation the part joins part 2 beside `compile_loops_tune`, and
   `cli_scratch` goes. `tf` is not in the tests.
 
@@ -11389,6 +11390,40 @@ After an external review of README, MANIFESTO and the conformance suite
   README's sentence that what one part computes and a later one reads is
   kept on the step's stack, about 320 KB that a thread with a small stack
   must allow for, says instead that the model struct holds it.
+
+  Built as specified, with the review's rulings: each instance's values
+  a type of their own, in a union `u_` named in the path, grouped by the
+  instance a list's definition is installed in, the model's own lists
+  `v_`. Departing in three places. No type takes a number: no scope names
+  an instance and a sequence alike, so the example above cannot be
+  written, and no two paths are spelt alike. `carried`'s C moves too,
+  since C373 cut it again, its reports as they were. And the part's check
+  of `tune`'s frame had never run: `cli_scratch`, as the cli tests, was
+  given no C compiler (C374). It runs now, `tune`'s step's frame 48 bytes
+  at -O0 by GCC 13.3 and Clang 18.1.
+
+  Measured at -O2 -ffp-contract=off, one run each under a light load, as
+  the prototype was: `tf`'s stack 324,800 bytes to 18,960 by GCC and 326,488 to 20,680 by
+  Clang, `sizeof` 28,440 to 334,232, its values 305,792; `inf`'s stack
+  15,312 to 4,304, `sizeof` 9,224 to 20,216; `tune`'s 16,976 to 4,320 and
+  9,744 to 22,288; `twice`'s 1,008 to 784, `nest`'s 1,744 to 1,248.
+  Headers under their own names: `tf` 5,494,168 to 5,494,609, `tune`
+  433,781 to 433,902, `inf` 390,104 to 390,221, as the prototype's;
+  `twice` 286,839 to 287,486 and `nest` 771,434 to 773,805, the types'
+  names longer than anonymous structs. `tf`'s build 75.9 to 80.3 s by
+  GCC, 61.9 to 72.2 by Clang, in one run each. Bit for bit, by the
+  review's `poison.py`, the scratch filled with NaN's bits before every
+  step: each model's state after each of 101 steps of drawn inputs for
+  `twice`, `weave`, `mix`, `inf`, `tune` and `nest`, a model holding a
+  named instance with two unnamed ones and an unnamed one beside it, and
+  one whose grad by several names is cut, its values the model's own;
+  `tf`'s after 301, by GCC and by Clang. Of the 342 check programs, only
+  `unseen_4.c`, `tuned_4.c`, `twins_4.c` and `carried_4.c`, and in float
+  `twins_4.c` and `carried_4.c`, change, every report byte for byte;
+  `riekf.h` byte for byte. Each header above builds as C99 by GCC and
+  Clang and as C++ by g++, at -Wpedantic -Werror. `cli_scratch` is gone,
+  its part in part 2. 53 lines of `compile.hpp` added and 17 removed,
+  19,250 to 19,286 by `wc -l include/inkamath/*.hpp src/*`, at the stop.
 - `[done]` **A Jacobian by cells**, the idiom, compiled and held by `--check`:
   `J(x)[i<=3, j<=2] = (grad_(v = x) f(v)[i])[j]`, row i output i's
   gradient as a paper defines J_ij, so the layout is the user's. grad's own

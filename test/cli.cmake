@@ -48,94 +48,6 @@ endfunction()
 # Read by cases in every part.
 set(inputs "${CMAKE_CURRENT_LIST_DIR}/compile/inputs.ink")
 
-# Specified, not yet built (DESIGN.md, a split step's scratch in the model
-# struct): the values a part of the step carries to a later one are a member
-# of the model, twins' two instances sharing their place, and tune's step
-# holds them no longer. Skipped while twice.h writes them on the step's stack
-# as today, and only then.
-if(PART STREQUAL "scratch")
-    set(args --compile "${CMAKE_CURRENT_LIST_DIR}/compile/split.ink" twice -o twice.h)
-    check(compile_scratch)
-    file(READ "${OUT}/twice.h" twice)
-    string(FIND "${twice}" [[
-/* What a part of the step computes and a later part reads. */
-typedef struct twice_values_ {
-    double t2_[3][3];
-    int t3_;
-    double t5_;
-    int t7_;
-    double t10_[3][3];
-    int t11_;
-    double t13_;
-    int t15_;
-} twice_values_;
-]] today)
-    string(FIND "${twice}" "    twice_values_ m_v_;\n    ++m_->index_;\n" stack)
-    if(NOT today EQUAL -1 AND NOT stack EQUAL -1)
-        message("scratch: on the step's stack as today")
-        return()
-    endif()
-    holds(compile_scratch_shared twice.h [[
-/* What a part of the step computes and a later part reads, held by the
- * model rather than the stack; instances stepped in turn share a place. */
-typedef struct twice_a_held_values_ {
-    double t2_[3][3];
-    int t3_;
-    double t5_;
-    int t7_;
-} twice_a_held_values_;
-
-typedef struct twice_b_held_values_ {
-    double t10_[3][3];
-    int t11_;
-    double t13_;
-    int t15_;
-} twice_b_held_values_;
-
-typedef struct twice_values_ {
-    union {
-        twice_a_held_values_ a_held;
-        twice_b_held_values_ b_held;
-    } u_;
-} twice_values_;
-
-/* The parameters, which the host may assign]] [[
-    } b_held;
-    twice_values_ v_;
-} twice;
-]] "static TWICE_NOINLINE_ void twice_step1_(twice* m_, twice_a_held_values_* v_) {\n"
-       "static TWICE_NOINLINE_ void twice_step18_(twice* m_, twice_b_held_values_* v_) {\n"
-       "    twice_step1_(m_, &m_->v_.u_.a_held);\n" "    twice_step18_(m_, &m_->v_.u_.b_held);\n")
-    if(twice MATCHES "m_v_")
-        message(SEND_ERROR "compile_scratch_shared: twice.h steps with values of its own")
-    endif()
-    set(args --compile "${CMAKE_CURRENT_LIST_DIR}/compile/transformer.ink" tune -o tune.h)
-    check(compile_scratch)
-    holds(compile_scratch_member tune.h [[
-/* What a part of the step computes and a later part reads, held by the
- * model rather than the stack; instances stepped in turn share a place. */
-typedef struct tune_values_ {
-]] "    tune_values_ v_;\n} tune;\n")
-    # The step's own frame, its parts apart, by -fstack-usage, which GCC and
-    # Clang write: 12,568 bytes or more while it holds tune's values.
-    if(CC_ID MATCHES "^(GNU|Clang|AppleClang)$")
-        file(WRITE "${OUT}/bound.c" "#include \"tune.h\"\nvoid stepped(tune* m, const double x[48], const double y[48]);\nvoid stepped(tune* m, const double x[48], const double y[48]) { tune_step(m, x, y); }\n")
-        execute_process(COMMAND "${CC}" -std=c11 -O0 -fstack-usage -Wall -Wextra -Wpedantic
-                                -Wconversion -Wshadow -Werror -c bound.c
-                        WORKING_DIRECTORY "${OUT}" RESULT_VARIABLE failed
-                        ERROR_VARIABLE errors OUTPUT_VARIABLE errors)
-        set(usage "")
-        if(NOT failed)
-            file(READ "${OUT}/bound.su" usage)
-        endif()
-        if(NOT usage MATCHES ":tune_step\t([0-9]+)\t" OR NOT CMAKE_MATCH_1 LESS 4096)
-            message(SEND_ERROR "compile_scratch_stack: tune's step not under 4,096 bytes of "
-                               "stack\n${errors}${usage}")
-        endif()
-    endif()
-    return()
-endif()
-
 # The cases run as three tests of about equal time under the sanitizers: PART
 # 1 up to charpoly's refusal, 2 from it, 3 from eig's, and all where PART is
 # not given.
@@ -1726,6 +1638,69 @@ foreach(model inf tune)
 endforeach()
 smaller(compile_loops_inf inf.h 430000)
 smaller(compile_loops_tune tune.h 480000)
+
+# A split step's scratch is a member of the model (DESIGN.md, a split step's
+# scratch in the model struct): twins' two instances share their place, and
+# tune's step holds its values no longer.
+set(args --compile "${CMAKE_CURRENT_LIST_DIR}/compile/split.ink" twice -o twice.h)
+check(compile_scratch)
+file(READ "${OUT}/twice.h" twice)
+holds(compile_scratch_shared twice.h [[
+/* What a part of the step computes and a later part reads, held by the
+ * model rather than the stack; instances stepped in turn share a place. */
+typedef struct twice_a_held_values_ {
+    double t2_[3][3];
+    int t3_;
+    double t5_;
+    int t7_;
+} twice_a_held_values_;
+
+typedef struct twice_b_held_values_ {
+    double t10_[3][3];
+    int t11_;
+    double t13_;
+    int t15_;
+} twice_b_held_values_;
+
+typedef struct twice_values_ {
+    union {
+        twice_a_held_values_ a_held;
+        twice_b_held_values_ b_held;
+    } u_;
+} twice_values_;
+
+/* The parameters, which the host may assign]] [[
+    } b_held;
+    twice_values_ v_;
+} twice;
+]] "static TWICE_NOINLINE_ void twice_step1_(twice* m_, twice_a_held_values_* v_) {\n"
+   "static TWICE_NOINLINE_ void twice_step18_(twice* m_, twice_b_held_values_* v_) {\n"
+   "    twice_step1_(m_, &m_->v_.u_.a_held);\n" "    twice_step18_(m_, &m_->v_.u_.b_held);\n")
+if(twice MATCHES "m_v_")
+    message(SEND_ERROR "compile_scratch_shared: twice.h steps with values of its own")
+endif()
+holds(compile_scratch_member tune.h [[
+/* What a part of the step computes and a later part reads, held by the
+ * model rather than the stack; instances stepped in turn share a place. */
+typedef struct tune_values_ {
+]] "    tune_values_ v_;\n} tune;\n")
+# The step's own frame, its parts apart, by -fstack-usage, which GCC and
+# Clang write: 12,568 bytes or more while it held tune's values.
+if(CC_ID MATCHES "^(GNU|Clang|AppleClang)$")
+    file(WRITE "${OUT}/bound.c" "#include \"tune.h\"\nvoid stepped(tune* m, const double x[48], const double y[48]);\nvoid stepped(tune* m, const double x[48], const double y[48]) { tune_step(m, x, y); }\n")
+    execute_process(COMMAND "${CC}" -std=c11 -O0 -fstack-usage -Wall -Wextra -Wpedantic
+                            -Wconversion -Wshadow -Werror -c bound.c
+                    WORKING_DIRECTORY "${OUT}" RESULT_VARIABLE failed
+                    ERROR_VARIABLE errors OUTPUT_VARIABLE errors)
+    set(usage "")
+    if(NOT failed)
+        file(READ "${OUT}/bound.su" usage)
+    endif()
+    if(NOT usage MATCHES ":tune_step\t([0-9]+)\t" OR NOT CMAKE_MATCH_1 LESS 4096)
+        message(SEND_ERROR "compile_scratch_stack: tune's step not under 4,096 bytes of "
+                           "stack\n${errors}${usage}")
+    endif()
+endif()
 
 # 2, the sweep's G*X', G's adjoints made an array, X' read in place.
 like(compile_loops_sweep dense.h

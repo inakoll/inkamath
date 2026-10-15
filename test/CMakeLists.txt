@@ -80,15 +80,6 @@ foreach(part 1 2 3)
                      -P ${CMAKE_CURRENT_LIST_DIR}/cli.cmake)
     set_tests_properties(cli_${part} PROPERTIES TIMEOUT 120)
 endforeach()
-# A split step's scratch in the model struct (DESIGN.md), specified before
-# it is built: cli.cmake's part, skipped while it is on the step's stack.
-add_test(NAME cli_scratch
-         COMMAND ${CMAKE_COMMAND} -DEXE=$<TARGET_FILE:inkamath_cli> -DPART=scratch
-                 -DOUT=${CMAKE_CURRENT_BINARY_DIR}/cli_scratch
-                 -DCASE_TIMEOUT=${cli_case_timeout} -DCC=${CMAKE_C_COMPILER}
-                 -DCC_ID=${CMAKE_C_COMPILER_ID} -P ${CMAKE_CURRENT_LIST_DIR}/cli.cmake)
-set_tests_properties(cli_scratch PROPERTIES TIMEOUT 120
-                     SKIP_REGULAR_EXPRESSION "scratch: on the step's stack as today")
 # bench's workloads, each a transcript bench/run.cmake measures, replayed so
 # that one gone stale fails here rather than at its next measure. The
 # slowest, under the sanitizers, take 7 s; train.ink is data, no transcript.
