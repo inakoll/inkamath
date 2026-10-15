@@ -11270,6 +11270,14 @@ After an external review of README, MANIFESTO and the conformance suite
     the union, the predecessor measured at 6cd0643, 234,848 bytes for
     `tf` against 303,456: within one model, so left to the owner with the
     parked option below.
+  - **Grouped by instance**, the scope a list's definition is installed
+    in and the scope that wrote that instance, as the compiler defines
+    them, not by the text before a sequence's last `.`: a gradient by
+    several names, `g.x`, is a list of the model's own, and an unnamed
+    instance written in it, labelled `g.x_held`, is the model's instance,
+    its member `g_x_held`. Each list's values are in one branch, where its
+    parts load and store them: that invariant is what the sharing's
+    safety rests on, since no value outlives its list.
   - **Unsplit models, and split ones that carry nothing, byte for
     byte**: no struct and no member. `riekf`, unsplit, is 78,916 bytes
     before and after.
