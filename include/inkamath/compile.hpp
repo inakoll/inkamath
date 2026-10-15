@@ -547,7 +547,8 @@ private:
                 label = within_ + "_" + model.Name() + std::to_string(other) + values;
             unnamed_[label] = {&model, &call, captured};
             held_.push_back(definitions_.Detached(model, call, *scope_, label, captured));
-            outer_[kept = held_.back().get()] = scope_;
+            kept = held_.back().get();
+            outer_[kept] = scope_;
             Define(*kept);
         }
         own_ = kept;

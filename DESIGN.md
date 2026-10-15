@@ -11422,8 +11422,11 @@ After an external review of README, MANIFESTO and the conformance suite
   `twins_4.c` and `carried_4.c`, change, every report byte for byte;
   `riekf.h` byte for byte. Each header above builds as C99 by GCC and
   Clang and as C++ by g++, at -Wpedantic -Werror. `cli_scratch` is gone,
-  its part in part 2. 53 lines of `compile.hpp` added and 17 removed,
-  19,250 to 19,286 by `wc -l include/inkamath/*.hpp src/*`, at the stop.
+  its part in part 2. 53 lines of `compile.hpp` added and 16 removed,
+  19,250 to 19,287 by `wc -l include/inkamath/*.hpp src/*`, at the stop:
+  `Kept`'s instance is kept and recorded in two plain lines, by the
+  owner's ruling, clarity over the budget, where one line squeezed both
+  for no line fewer added.
 - `[done]` **A Jacobian by cells**, the idiom, compiled and held by `--check`:
   `J(x)[i<=3, j<=2] = (grad_(v = x) f(v)[i])[j]`, row i output i's
   gradient as a paper defines J_ij, so the layout is the user's. grad's own
