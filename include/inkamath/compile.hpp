@@ -1537,11 +1537,20 @@ private:
         Reads* const outer_reads = clause_reads_;
         // The guarded clauses in the order written, then the unguarded one, as
         // the interpreter tries them; a guard that always holds ends the chain.
-        bool settled = false;
-        for (const bool guarded : {true, false}) {
-            for (const Clause<Value>& clause : sequence.definition->Clauses()) {
+        // One reading its own term where no base clause gives a shape takes the
+        // unguarded one's, compiled first (C377).
+        const auto& clauses = sequence.definition->Clauses();
+        const bool shaped = !sequence.size.rows && std::ranges::any_of(clauses, [&](const auto& c) {
+            const std::string& own = sequence.definition->Name();
+            return c.parameters.guarded() &&
+                   (Mentions(*c.expression, own) || Mentions(*c.parameters.guard(), own));
+        });
+        bool       settled = false, general = false;
+        for (const bool guarded : {!shaped, shaped}) {
+            for (const Clause<Value>& clause : clauses) {
                 const ParametersDefinition<Value>& p = clause.parameters;
-                if (settled || !p.general() || p.guarded() != guarded) continue;
+                if (settled || (general && !guarded) || !p.general() || p.guarded() != guarded)
+                    continue;
                 Within(name, &sequence, p.index_name(), [&] {
                     // The index as the step has it, known once the rate is.
                     const std::string outer_text =
@@ -1561,7 +1570,8 @@ private:
                         sequence.general        = Texts(code);
                         sequence.general_reads  = value_reads;
                         sequence.general_clause = place;
-                        settled                 = true;
+                        settled                 = guarded;
+                        general                 = true;
                     } else {
                         sequence.guarded.push_back({*condition, Texts(code), guard_reads,
                                                     value_reads, 0, 0, place,
@@ -1571,10 +1581,10 @@ private:
                 });
             }
         }
-        if (!settled && sequence.guarded.empty())
+        if (!general && sequence.guarded.empty())
             throw Refusal(name, "a sequence with no general clause");
         // Where no guard holds the interpreter says so; a step can only say NaN.
-        if (!settled) sequence.general.assign(sequence.size.count(), "NAN");
+        if (!general) sequence.general.assign(sequence.size.count(), "NAN");
         clause_reads_     = outer_reads;
         sequence.compiled = true;
         // An input given a term of another size than its model states.
@@ -2460,8 +2470,10 @@ private:
         Reads             reads;
         Reads* const      outer   = std::exchange(clause_reads_, &reads);
         const bool        was     = std::exchange(deferring_, true);
+        const bool        right   = std::exchange(right_, true);
         const std::string written = text(logic.m_e2());
         deferring_                = was;
+        right_                    = right;
         clause_reads_             = outer;
         bool read                 = true;
         for (const auto& [name, lags] : reads) {
@@ -4012,7 +4024,10 @@ private:
     // In a term computed again, it is the same hold that much earlier.
     Code Holding(const std::string& key, Sequence& read, Hold hold) {
         const std::string written = key + "_(...)";
-        if (deferring_ || limit_) throw Reason(written + ": a hold where a term is computed again");
+        if (right_) throw Reason(written + ": a hold on the right of 'and' or 'or'");
+        // A guard's is read wherever the guard is tested (C378).
+        if ((deferring_ && !guarding_) || limit_)
+            throw Reason(written + ": a hold where a term is computed again");
         Bases(key);
         Compile(key);
         if (read.period == 1)
@@ -4977,6 +4992,28 @@ private:
         for (const auto& [name, sequence] : sequences_)
             if (Recomputed(sequence) || Historied(name))
                 exists_[name] = std::numeric_limits<int>::min() / 2;
+        // One based where the stream starts has no term below it where no
+        // guard holds: a reader starts above the highest such, if no term
+        // it reads further down has one either (C376).
+        for (const auto& [name, sequence] : sequences_) {
+            if (!Under(name)) continue;
+            int deepest = 0;
+            for (const auto& [reader, other] : sequences_)
+                if (const auto read = other.reads.find(name); read != other.reads.end())
+                    deepest = std::max(deepest, *read->second.rbegin());
+            std::optional<int> none;
+            bool               below = true;
+            for (int n = earliest_ - 1; n >= earliest_ - deepest; --n) {
+                const bool held = std::ranges::any_of(sequence.guarded, [&](const Guarded& g) {
+                    const auto& p = sequence.definition->Clauses()[g.clause].parameters;
+                    return !Decides(
+                        {{}, p.guard(), true, sequence.definition->home, p.index_name(), {}, 0}, n);
+                });
+                if (!held && !none) none = n;
+                below = below && !(held && none);
+            }
+            if (none && below) exists_[name] = *none + 1;
+        }
         // A slow one, at the first tick whose samples exist.
         for (std::size_t round = 0;; ++round) {
             bool moved = false;
@@ -5246,7 +5283,18 @@ private:
         // A recurrence's own term, where no input or parameter can change it.
         const bool given = (Recurrent(name) || Own(name) || Under(name)) &&
                            (Parametric(name, true).empty() || Given(name, n));
-        const std::string parameter = given ? "" : Parametric(name);
+        // A history's clause that holds there reads no parameter, whatever
+        // the argument it is tried before reads (C379).
+        const bool historic =
+            history != histories_.end() &&
+            std::ranges::any_of(history->second->Clauses(), [&](const Clause<Value>& c) {
+                const auto& p = c.parameters;
+                if (!p.general()) return p.index() == n;
+                const Check holds{{}, p.guard(), false, history->second->home, p.index_name(),
+                                  {}, 0};
+                return p.guarded() && Decides(holds, n);
+            });
+        const std::string parameter = given || historic ? "" : Parametric(name);
         const std::string assigned  = "reads " + parameter + ", which the host may assign after init";
         // One with no default leaves init nothing to evaluate.
         const bool unset = model_ && std::ranges::any_of(model_->parameters, [&](const auto& p) {
@@ -6414,7 +6462,8 @@ private:
     int                                                situated_ = 0;        // terms read, counted
     int                                                terming_ = 0;        // terms being computed
     Reads*      clause_reads_ = nullptr;               // what the clause being compiled reads
-    bool                             deferring_ = false;  // compiling the right of an 'and' or 'or'
+    bool                       deferring_    = false;  // compiling a guard, or as right_
+    bool                       right_        = false;  // compiling the right of an 'and' or 'or'
     int                        shift_ = 0;  // how far back the term being computed again is; see At
     std::vector<Early>         earlies_;
     int                        early_ = -1;    // the one being computed again
