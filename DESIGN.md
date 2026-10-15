@@ -12460,3 +12460,25 @@ for, which `eig` refuses complex:
   rejected for refusing clusters the limit answers right. Of 400 random polynomials, degree 2 to 12, integer coefficients from -9
   to 9, all 722 real roots printed real, every root within 4.9e-9 of
   mpmath's, and none refused.
+
+After the §9 end-to-end exploration of a robot loop (an IMU at 100 Hz, a
+position fix at 10 Hz that fails, an MLP correction, a Kalman filter and an
+LQR), whose defects are C376 to C379, its friction:
+
+- **A guarded constant**, `Kc | ... = ...`, is refused, "a guarded value",
+  where a guarded function compiles.
+- **A default reading another instance's term**, `W = train.W_1000`, is
+  refused: fold a default that reads no input to its value, as the header
+  already prints defaults as values.
+- **A parameter that changes mid-run, replayed by `--check`**: an instance
+  given a piecewise-constant sequence of a parameter, `--check` calling
+  `update` where it changes.
+- **The header says which inputs a step reads only every k steps.**
+- **A declared rate**: a slow recurrence that samples no input is refused,
+  evidence for MANIFESTO's clock question.
+- **`lim_n` is unusable**, `lim` being reserved, and a file name must be
+  letters then digits, so `use e2e` is refused.
+- **"No clause of x applies" names neither the instance nor the index.**
+- **MANIFESTO's *Data* line on an LCG needs a qualifier**: with glibc's
+  constants, the products pass 2^53 and a run in doubles parts from the
+  exact one at step 2.
