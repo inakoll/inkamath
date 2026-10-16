@@ -104,7 +104,8 @@ error: a comparison needs a number, not -nan
 # read sits in a guard with a clause after it, or in the value of a clause
 # whose guard reads it at the same index wherever the guard holds, or is the
 # argument of an inner instance's optional input. Any other is refused,
-# naming it, so that no term of the model is ever absent.
+# naming it, so that no term of the model is ever absent. The clauses after
+# end in an unguarded one: a base clause or another guard may fall too.
 >> bad(z_n?) = {
 ..     y_n = 2*z_n
 .. }
@@ -112,6 +113,13 @@ error: y reads z_n, an optional input of bad, outside a guard with a clause afte
 
 >> bad(z_n?) = {
 ..     y_n | z_n > 0 = 1
+.. }
+error: y reads z_n, an optional input of bad, outside a guard with a clause after it
+
+>> bad(z_n?) = {
+..     y_n | z_n > 0 = 1
+..     y_n | n > 3 = 2
+..     y_0 = 0
 .. }
 error: y reads z_n, an optional input of bad, outside a guard with a clause after it
 

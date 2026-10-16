@@ -12070,7 +12070,9 @@ the clause for a limit that does not converge as done, the order from here:
     forwards and its reads of an inner instance's optional input where an
     instance is made, and at once where the inner model is already
     defined; and again when compiling. Every read of an
-    optional input sits in a guard with a clause after it, in the value
+    optional input sits in a guard with a clause after it, the clauses
+    tried after it ending in an unguarded one and not a base clause or
+    another guard, which may fall too; in the value
     of a guarded clause whose guard reads it at the same index wherever
     the guard holds: not on the right of an `or`, nor of an `and` but the
     guard's own, nor in a sum's body, and not under a name the value
