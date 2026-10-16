@@ -12065,7 +12065,11 @@ the clause for a limit that does not converge as done, the order from here:
     right says, through the functions the guard calls. Absence is exact:
     the clause after is inexact only where an inexact truth decided that
     the input be read, the left of an `and` or an `or` (C241).
-  - **The static check, where the model is defined**: every read of an
+  - **The static check**, in stages, since an inner model is looked up
+    late: a model's own reads where it is defined; the arguments it
+    forwards and its reads of an inner instance's optional input where an
+    instance is made, and at once where the inner model is already
+    defined; and again when compiling. Every read of an
     optional input sits in a guard with a clause after it, in the value
     of a guarded clause whose guard reads it at the same index wherever
     the guard holds: not on the right of an `or`, nor of an `and` but the
