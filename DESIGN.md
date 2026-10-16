@@ -12056,7 +12056,9 @@ the clause for a limit that does not converge as done, the order from here:
     out is: `z_n = zd_n + 1` is absent where zd has no term, `zp_n = zd_n
     + 1` given as z refuses there. Absent too at every step where the
     instance leaves it out, and below 0, before the stream, where no
-    clause of its history gives it: nothing has arrived there.
+    clause of its history gives it: nothing has arrived there, and no
+    history is needed to say so. README notes the difference: an input
+    not marked reads its argument below 0.
   - **A guard that reads an absent input does not hold**, and the clause
     after is tried, read as the interpreter reads: on the right of `and`
     or `or` only where the left did not decide, on the left whatever the
@@ -12076,10 +12078,11 @@ the clause for a limit that does not converge as done, the order from here:
     the model is ever absent: nothing a host or a reader receives needs a
     flag but the input. A definition reading it does not become absent in
     turn; it is refused, so the robot's innovation is written in the
-    guard and the value that read it, its gate twice, in `fix` and `x`.
-    Outside the model, the interpreter reads an instance's optional input
-    as any term, "e.z_4 is absent", and a guard reading it falls; the
-    compiler holds a file's definitions to the model's rule.
+    guard and the value that read it, its gate twice, in `fix` and `x`,
+    accepted for now. Outside the model, the interpreter reads an
+    instance's optional input as any term, "e.z_4 is absent", and a guard
+    reading it falls; compiling, a file's definition that reads an
+    instance's optional input outside a guard is refused, as in a model.
   - **NaN is not absence.** Given NaN, an optional input is present and
     NaN: a comparison of it is refused, and the step is NaN where it
     reads it, as for an input not marked (C189, C315), so a sensor's
@@ -12088,7 +12091,8 @@ the clause for a limit that does not converge as done, the order from here:
   - **The host**: the step takes an int after each optional input,
     `int z_present_in_`, 0 where it is absent, the input then not read,
     a matrix's pointer possibly NULL; the usage line writes
-    `track_step(&m, z, z_present)` and the comment says so. The struct
+    `track_step(&m, z, z_present)`, the comment says so, and README's
+    batched `ink_run` example gains a line for it. The struct
     keeps the flags in a window beside the input's, `int z_present[k]`,
     1 where z_(n-k) was given, and the input's own cell is NaN where it
     was not, so that no field shows a stale value as given. A compiled
@@ -12147,10 +12151,11 @@ the clause for a limit that does not converge as done, the order from here:
   - **A separate setter**, `track_set_z`: the step's signature would no
     longer say what it reads, and a value set and not stepped would carry
     to the next call.
-  - **A presence test**, `present(z_n)`: the acceptance test of a
-    measurement is a range or a gate the paper writes. `z_n == z_n`
-    holds where z is present and not NaN, and is not the documented form,
-    as `lim s == lim s` was not.
+  - **A presence word**, `present(z_n)`: the acceptance test of a
+    measurement is a range or a gate the paper writes. Where an input has
+    no range to test, a setpoint or a count, README documents `z_n ==
+    z_n`: it holds where z is present, and refuses NaN as any comparison
+    does.
 
   What moves: nothing. The mark is new syntax, which no golden, README
   session, report or header writes. With the implementation README
