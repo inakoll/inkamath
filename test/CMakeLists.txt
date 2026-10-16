@@ -75,13 +75,19 @@ elseif(MSVC)
 endif()
 # C is enabled before the cli tests, which are given its compiler (C374).
 enable_language(C)
+# Decided here, not in a generator expression, where the comma in
+# address,undefined would split $<BOOL:...> (C381).
+set(timed "$<NOT:$<CONFIG:Debug>>")
+if(INKAMATH_SANITIZE)
+    set(timed 0)
+endif()
 foreach(part 1 2 3)
     add_test(NAME cli_${part}
              COMMAND ${CMAKE_COMMAND} -DEXE=$<TARGET_FILE:inkamath_cli> -DPART=${part}
                      -DOUT=${CMAKE_CURRENT_BINARY_DIR}/cli_${part}
                      -DCASE_TIMEOUT=${cli_case_timeout} -DCC=${CMAKE_C_COMPILER}
                      -DCC_ID=${CMAKE_C_COMPILER_ID}
-                     "-DTIMED=$<NOT:$<OR:$<CONFIG:Debug>,$<BOOL:${INKAMATH_SANITIZE}>>>"
+                     -DTIMED=${timed}
                      -P ${CMAKE_CURRENT_LIST_DIR}/cli.cmake)
     set_tests_properties(cli_${part} PROPERTIES TIMEOUT ${cli_timeout})
 endforeach()
