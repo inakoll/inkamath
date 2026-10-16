@@ -274,7 +274,8 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brin
                          fallback:spelled fallback:joined fallback:routed fallback:returned
                          fallback:respelled fallback:preceded fallback:defaulted fallback:sentried
                          fallback:partway pendloop:cart motorloop:motor robot:robot:200
-                         lcg:lcgs optional:seen)
+                         lcg:lcgs optional:seen optional:leaned
+                         optional:steeped)
     string(REPLACE ":" ";" checked ${checked})
     list(POP_FRONT checked file instance count)
     set(name ${instance})
@@ -593,6 +594,12 @@ set_tests_properties(check_lcgs_report PROPERTIES PASS_REGULAR_EXPRESSION
 # its flag 0, and each guard reading it with the clause it falls to.
 set_tests_properties(check_seen_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^seen: 100 steps from 0, against exact values\nseen\\.d: within 0\nseen\\.xp: within 0\nseen\\.age: within 0\nseen\\.x: within 0\nseen\\.u: within 0\nseen\\.age: where z is absent, 'age_n \\| \\(z_n - xp_n\\)\\^2 <= gate\\^2 = 0' falls to 'age_n = age_\\(n-1\\) \\+ 1'\nseen\\.d: where z is absent, 'd_n \\| z_n - z_\\(n-3\\) > 0 = z_n - z_\\(n-3\\)' falls to 'd_n = 0'\nseen\\.x: where z is absent, 'x_n \\| \\(z_n - xp_n\\)\\^2 <= gate\\^2 = xp_n \\+ a\\*\\(z_n - xp_n\\)' falls to 'x_n = xp_n'\n$")
+# Under grad, an absent input takes the clause after; only a limit that
+# runs out is NaN (compile/optional.ink).
+set_tests_properties(check_leaned_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^leaned: 100 steps from 0, against exact values until 0 and inexact ones from there\nleaned\\.g: within 0\nleaned\\.h: within 0\nleaned\\.f: where lim qp runs out or z is absent, 'f\\(a, k\\) \\| z_k > 0 and lim qp\\(k \\+ 1\\) > 0 = a\\*z_k' falls to 'f\\(a, k\\) = a\\^2', and to NaN under grad where lim qp runs out\n$")
+set_tests_properties(check_steeped_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^steeped: 100 steps from 0, against exact values until 0 and inexact ones from there\nsteeped\\.g: within 0\nsteeped\\.f: where lim qp runs out or z is absent, 'f\\(a, k\\) \\| z_k > 0 and lim qp\\(k \\+ 1\\) > 0 = a\\*z_k' falls to 'f\\(a, k\\) = a\\^2', and to NaN under grad where lim qp runs out\n$")
 # Goldberg (1991): Heron's formula parting at a needle, and (x + y) + z
 # from x + (y + z) at 1e30, as the paper has them; compile/goldberg.ink.
 set_tests_properties(check_year_report PROPERTIES PASS_REGULAR_EXPRESSION

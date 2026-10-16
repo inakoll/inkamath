@@ -38,3 +38,29 @@ track(a = 1/2, gate = 2, z_n?) = {
 zd_n | n == 30 = 40
 zd_n | mod(n, 3) == 0 and (n < 9 or n > 14) = n + 1/4
 seen = track(z_n = zd_n)
+
+# Under grad, a guard that falls for an absent input takes the clause after,
+# and only one whose limit runs out is NaN, so the audit says so of a guard
+# reading both. lean calls f outside grad and under it, steep under it alone.
+# Checked, each reports
+#
+#     leaned.f: where lim qp runs out or z is absent, 'f(a, k) | z_k > 0 and lim qp(k + 1) > 0 = a*z_k' falls to 'f(a, k) = a^2', and to NaN under grad where lim qp runs out
+#
+# and steeped.f the same.
+lean(z_n?) = {
+    qp(s)_0 = 0
+    qp(s)_k = s/2 + qp(s)_(k-1)/2
+    f(a, k) | z_k > 0 and lim qp(k + 1) > 0 = a*z_k
+    f(a, k) = a^2
+    g_n = grad_(a = 3) f(a, n)
+    h_n = f(3, n)
+}
+steep(z_n?) = {
+    qp(s)_0 = 0
+    qp(s)_k = s/2 + qp(s)_(k-1)/2
+    f(a, k) | z_k > 0 and lim qp(k + 1) > 0 = a*z_k
+    f(a, k) = a^2
+    g_n = grad_(a = 3) f(a, n)
+}
+leaned = lean(z_n = zd_n)
+steeped = steep(z_n = zd_n)
