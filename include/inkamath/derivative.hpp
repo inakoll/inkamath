@@ -836,6 +836,9 @@ private:
             refused = error;
         } catch (const Unconverged& unconverged) {
             ran = unconverged;
+        } catch (const NoTerm& none) {
+            if (!indexed) throw;
+            definition.Passed(none, index);
         }
         // A term refuses a limit that runs out as any refusal (DESIGN.md).
         if (ran && indexed) throw std::runtime_error(ran->what());
@@ -1580,6 +1583,9 @@ private:
                 throw std::runtime_error("grad cannot differentiate " + what.Named() + " at " +
                                          d.Where() +
                                          ", whose guard reads a limit that does not converge");
+            } catch (const Absent& absent) {
+                rounded = rounded || absent.inexact;
+                return false;
             }
             past    = past || numeric_interface<T>::approximated(guard);
             rounded = rounded || !numeric_interface<T>::exact(guard);

@@ -75,13 +75,19 @@ elseif(MSVC)
 endif()
 # C is enabled before the cli tests, which are given its compiler (C374).
 enable_language(C)
+# Decided here, not in a generator expression, where the comma in
+# address,undefined would split $<BOOL:...> (C381).
+set(timed "$<NOT:$<CONFIG:Debug>>")
+if(INKAMATH_SANITIZE)
+    set(timed 0)
+endif()
 foreach(part 1 2 3)
     add_test(NAME cli_${part}
              COMMAND ${CMAKE_COMMAND} -DEXE=$<TARGET_FILE:inkamath_cli> -DPART=${part}
                      -DOUT=${CMAKE_CURRENT_BINARY_DIR}/cli_${part}
                      -DCASE_TIMEOUT=${cli_case_timeout} -DCC=${CMAKE_C_COMPILER}
                      -DCC_ID=${CMAKE_C_COMPILER_ID}
-                     "-DTIMED=$<NOT:$<OR:$<CONFIG:Debug>,$<BOOL:${INKAMATH_SANITIZE}>>>"
+                     -DTIMED=${timed}
                      -P ${CMAKE_CURRENT_LIST_DIR}/cli.cmake)
     set_tests_properties(cli_${part} PROPERTIES TIMEOUT ${cli_timeout})
 endforeach()
@@ -214,18 +220,18 @@ add_test(NAME prelude_header
 # drifts from it, and its program says where and exits with a failure.
 # Each as file:instance, or file:instance:n with --steps n.
 foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brink drift:ledge
-                         drift:rift drift:naught drift:zeroed drift:mirrored drift:nests drift:latch drift:toil
+                         drift:rift drift:naught drift:zeroed drift:mirrored drift:nests drift:latch drift:tripped drift:toil
                          drift:late drift:radix
                          delay:fir newton:stiff newton:halves newton:evens newton:evened newton:twonames newton:weighed logistic:gate sized:sized softmax:cls steady:mark
                          rnn:rnn attention:head momentum:ball adam:fit lqr:gain
                          rates:pairs rates:odd seeded:warm cascade:servo decimate:boxcar
                          decimate:stride decimate:frame decimate:lead
-                         decimate:trail drift:sill drift:seam history:past history:twin
+                         decimate:trail decimate:polled drift:sill drift:seam history:past history:twin
                          history:lit history:rise history:ajar history:sown history:nest history:kin history:vast
                          history:twice history:relayed history:pole history:grown history:paired
                          history:looped history:stepped history:opened history:waited
                          history:rooted history:heeded history:aliased history:floored history:cycled
-                         history:huge history:sever history:veiled history:cloaked history:two history:hid history:masked
+                         history:tenths history:huge history:sever history:veiled history:cloaked history:two history:hid history:masked
                          nan:run nan:sign nan:shy nan:slope nan:pair
                          nan:lap nan:trim nan:any nan:cell nan:held nan:idle nan:imag nan:took nan:shut nan:row nan:root
                          nan:passed nan:waived nan:surd nan:kd nan:nil
@@ -273,7 +279,9 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brin
                          fallback:faraway fallback:voided fallback:covered fallback:ored
                          fallback:spelled fallback:joined fallback:routed fallback:returned
                          fallback:respelled fallback:preceded fallback:defaulted fallback:sentried
-                         fallback:partway pendloop:cart motorloop:motor)
+                         fallback:partway pendloop:cart motorloop:motor robot:robot:200
+                         lcg:lcgs optional:seen optional:leaned
+                         optional:steeped)
     string(REPLACE ":" ";" checked ${checked})
     list(POP_FRONT checked file instance count)
     set(name ${instance})
@@ -395,6 +403,11 @@ set_tests_properties(check_cart_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^cart: 100 steps from 0, against exact values until 0 and inexact ones from there\ncart\\.s: within 0${about}\ncart\\.u: within 0${about}\n$")
 set_tests_properties(check_motor_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^motor: 100 steps from 0, against exact values until 14 and inexact ones from there\nmotor\\.x: within 3\\.6e-15${about}\nmotor\\.e: within 3\\.3e-16${about}\nmotor\\.u: within 1\\.4e-14${about}\n$")
+# compile/robot.ink's loop, each flag exact and the fallback audited; what
+# libm's tanh decides, by its form.
+set(near "within (0|[1-9](\\.[0-9])?e-1[5-9])${about}\n")
+set_tests_properties(check_robot_200_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^robot: 200 steps from 0, against exact values until 0 and inexact ones from there\nrobot\\.f\\.Pp: ${near}robot\\.f\\.S: ${near}robot\\.g\\.ok: within 0\nrobot\\.f\\.ok: within 0\nrobot\\.g\\.r: within 0\nrobot\\.s\\.r: within 0\n(robot\\.[wgsf]\\.(p|y|z|v|a|am|ac|xp|nu): ${near})+robot\\.f\\.fix: within 0\nrobot\\.f\\.P: ${near}robot\\.f\\.lost: within 0\nrobot\\.f\\.top: within 0\n(robot\\.[wf]\\.(x|uc|u): ${near})+robot\\.f\\.kg: where lim Z runs out, 'kg\\(q\\) \\| gain\\(\\[q 0\; 0 1/10\\], ~1/10\\)\\[1,1\\] > 0 = gain\\(\\[q 0\; 0 1/10\\], ~1/10\\)' falls to 'kg\\(q\\) = \\[3 5/2\\]'\n$")
 # Rigid bodies and an invariant filter, from two explorations: a double
 # pendulum by the RNEA, a rational rotation's powers, and the contact-aided
 # RIEKF of Hartley et al. (2020) on 21 steps of a simulated walk.
@@ -580,6 +593,19 @@ set_tests_properties(check_solveur_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^solveur: 100 steps from 0, against exact values\nsolveur\\.d: within 0\nsolveur\\.z: within 0\n$")
 set_tests_properties(check_rump_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^rump: 100 steps from 0, against exact values\nrump\\.g: 1\\.1726039400531787 at 0, where the interpreter gives -0\\.82739605994682142\n$")
+# compile/lcg.ink: glibc's LCG parts where its products pass 2^53.
+set_tests_properties(check_lcgs_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^lcgs: 100 steps from 0, against exact values\nlcgs\\.q: within 0\nlcgs\\.r: 325238528 at 2, where the interpreter gives 325238575\n$")
+# An optional input (DESIGN.md): every term exact, the absent fix given as
+# its flag 0, and each guard reading it with the clause it falls to.
+set_tests_properties(check_seen_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^seen: 100 steps from 0, against exact values\nseen\\.d: within 0\nseen\\.xp: within 0\nseen\\.age: within 0\nseen\\.x: within 0\nseen\\.u: within 0\nseen\\.age: where z is absent, 'age_n \\| \\(z_n - xp_n\\)\\^2 <= gate\\^2 = 0' falls to 'age_n = age_\\(n-1\\) \\+ 1'\nseen\\.d: where z is absent, 'd_n \\| z_n - z_\\(n-3\\) > 0 = z_n - z_\\(n-3\\)' falls to 'd_n = 0'\nseen\\.x: where z is absent, 'x_n \\| \\(z_n - xp_n\\)\\^2 <= gate\\^2 = xp_n \\+ a\\*\\(z_n - xp_n\\)' falls to 'x_n = xp_n'\n$")
+# Under grad, an absent input takes the clause after; only a limit that
+# runs out is NaN (compile/optional.ink).
+set_tests_properties(check_leaned_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^leaned: 100 steps from 0, against exact values until 0 and inexact ones from there\nleaned\\.g: within 0\nleaned\\.h: within 0\nleaned\\.f: where lim qp runs out or z is absent, 'f\\(a, k\\) \\| z_k > 0 and lim qp\\(k \\+ 1\\) > 0 = a\\*z_k' falls to 'f\\(a, k\\) = a\\^2', and to NaN under grad where lim qp runs out\n$")
+set_tests_properties(check_steeped_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^steeped: 100 steps from 0, against exact values until 0 and inexact ones from there\nsteeped\\.g: within 0\nsteeped\\.f: where lim qp runs out or z is absent, 'f\\(a, k\\) \\| z_k > 0 and lim qp\\(k \\+ 1\\) > 0 = a\\*z_k' falls to 'f\\(a, k\\) = a\\^2', and to NaN under grad where lim qp runs out\n$")
 # Goldberg (1991): Heron's formula parting at a needle, and (x + y) + z
 # from x + (y + z) at 1e30, as the paper has them; compile/goldberg.ink.
 set_tests_properties(check_year_report PROPERTIES PASS_REGULAR_EXPRESSION
@@ -1082,9 +1108,10 @@ add_test(NAME check_muller COMMAND check_muller)
 add_test(NAME check_rump COMMAND check_rump)
 add_test(NAME check_needled COMMAND check_needled)
 add_test(NAME check_big COMMAND check_big)
+add_test(NAME check_lcgs COMMAND check_lcgs)
 set_tests_properties(check_wild check_brink check_rift check_sill check_seam check_pole
                      check_huge check_masked check_sever check_moments check_muller check_rump
-                     check_needled check_big PROPERTIES WILL_FAIL ON)
+                     check_needled check_big check_lcgs PROPERTIES WILL_FAIL ON)
 
 # A float target (DESIGN.md): pid and adc's headers as compile/expected/float
 # has them, and compile/float.ink's checks, each built so that an operation done
@@ -1126,7 +1153,7 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:ledge logistic:gate momentu
                          robertson:rober tensorgrad:small tensorgrad:saliency:3 split:carried:4
                          split:twins:4
                          orthogonal:rational chol:factored chol:naive chol:sole float:shove
-                         polyconv:tune)
+                         polyconv:tune lcg:lcgs)
     string(REPLACE ":" ";" checked ${checked})
     list(POP_FRONT checked file instance count)
     set(name ${instance})
@@ -1156,7 +1183,7 @@ set_tests_properties(check_float_wild check_float_ledge check_float_far check_fl
                      check_float_muller check_float_rounded check_float_surprise
                      check_float_solveur check_float_rump check_float_needle check_float_big
                      check_float_knee check_float_nm check_float_naive check_float_rational
-                     PROPERTIES WILL_FAIL ON)
+                     check_float_lcgs PROPERTIES WILL_FAIL ON)
 # Each report as compile/float.ink gives it; what a libm or the seeds decide,
 # by its form.
 set(in_float " in float, against exact values")
@@ -1202,6 +1229,7 @@ foreach(report IN ITEMS
         "surprise:^surprise: 100 steps from 0${inexact}\n${smooth_k}surprise\\.g: 1 at 0, where the interpreter gives 0\; the interpreter's term about [0-9.e+-]+ from the exact one\nsurprise\\.k: ${exact}${about}\n$"
         "solveur:^solveur: 100 steps from 0${in_float}\nsolveur\\.d: 0 at 0, where the interpreter gives -1\nsolveur\\.z\\[1,1\\]: [-a-z()]+ at 0, where the interpreter gives 12582909\n$"
         "rump:^rump: 100 steps from 0${in_float}\nrump\\.g: 1\\.17260396 at 0, where the interpreter gives -0\\.82739605994682142\n$"
+        "lcgs:^lcgs: 100 steps from 0${in_float}\nlcgs\\.q: 338690048 at 3, where the interpreter gives 226205932\nlcgs\\.r: 0 at 2, where the interpreter gives 325238575\n$"
         "year:^year: 100 steps from 0${inexact}\nyear\\.naive: within [0-9.]+, [1-9](\\.[0-9])?e\\+02 units of a float${about}\nyear\\.thm4: within [0-9.e-]+, [1-9](\\.[0-9])? units of a float${about}\n$"
         "needle:^needle: 100 steps from 0${inexact}\nneedle\\.heron: 0\\.0186444204 at 0, where the interpreter gives 0\\.016146540115034271\; the interpreter's term about [0-9.e+-]+ from the exact one\nneedle\\.kahan: within 5\\.3e-10, 0\\.28 units of a float${about}\n$"
         "big:^big: 100 steps from 0${in_float}\nbig\\.s: within 2e-30, 2\\.1e\\+07 units of a float at step 0\nbig\\.t: ${exact}\nbig\\.w: 0 at 0, where the interpreter gives 1\n$"

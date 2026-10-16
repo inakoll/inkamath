@@ -45,6 +45,22 @@ function(holds name file)
     endforeach()
 endfunction()
 
+# As a host builds it whose flags refuse more than the checks' (C331).
+function(strict name file)
+    if(NOT CC_ID MATCHES "^(GNU|Clang|AppleClang)$")
+        return()
+    endif()
+    string(MAKE_C_IDENTIFIER "${file}" unit)
+    file(WRITE "${OUT}/${unit}.c" "#include \"${file}\"\n")
+    execute_process(COMMAND "${CC}" -std=c11 -Wall -Wextra -Wpedantic -Wconversion -Wshadow
+                            -Werror ${ARGN} -fsyntax-only "${unit}.c"
+                    WORKING_DIRECTORY "${OUT}" RESULT_VARIABLE failed
+                    ERROR_VARIABLE errors OUTPUT_VARIABLE errors)
+    if(failed)
+        message(SEND_ERROR "${name}: ${file} is no strict C11\n${errors}")
+    endif()
+endfunction()
+
 # Read by cases in every part.
 set(inputs "${CMAKE_CURRENT_LIST_DIR}/compile/inputs.ink")
 
@@ -305,6 +321,14 @@ set(args --compile below.ink)
 set(stdout "cannot compile w: w_0 reads u_-1, below u's base clauses, where only its guards could give a term\n")
 set(exit 1)
 check(compile_slow_below_refused)
+
+# A hold on the right of 'and' or 'or', which is read only where the left has
+# not decided; it was said to be where a term is computed again (C378).
+file(WRITE "${OUT}/right.ink" "s_m = x_(10*m)\ny_n | x_n > 0 and s_(floor(n/10)) > 0 = 1\ny_n = 0\n")
+set(args --compile right.ink)
+set(stdout "cannot compile y: s_(...): a hold on the right of 'and' or 'or'\n")
+set(exit 1)
+check(compile_slow_right_refused)
 
 # A ratio that is not whole; a slow sequence read by another, which a hold at
 # the input's rate sampled says; and a hold at another period, which no hold
@@ -1321,6 +1345,15 @@ set(args --compile gained.ink gained -o gained.h)
 set(stderr "inkamath: cannot compile inner.c: inner.c_0 reads inner.x_-1, before the stream, where inner.x's history reads a, which the host may assign after init\n")
 set(exit 1)
 check(history_gained)
+# But not where the history's own clause gives the term: 'rail' reads u_-1,
+# 1/2, where its argument reads a parameter, and was refused (C379).
+file(WRITE "${OUT}/railed.ink" "steering(k = 2, y_n) = {\n    u_n = k*(1 - y_n)\n}\n"
+     "railing(u_n) = {\n    u_n | n < 0 = 1/2\n    x_0 = 0\n    a_n = u_(n-1) - x_n\n"
+     "    x_n = x_(n-1) + a_(n-1)/2\n}\nsteer = steering(y_n = rail.x_n)\n"
+     "rail = railing(u_n = steer.u_n)\n")
+set(args --compile railed.ink -o railed.h)
+check(history_railed)
+holds(history_railed railed.h "m_->rail.u[0] = 0.5;\n")
 # And a recurrence's own history that reads one, which the step read as 0
 # (C343).
 refused(lifted "a = 2) = {\n    g_n | n < 0 = a\n    g_n = 2*g_(n-1)"
@@ -1549,21 +1582,6 @@ function(smaller name file bytes)
     file(SIZE "${OUT}/${file}" size)
     if(NOT size LESS ${bytes})
         message(SEND_ERROR "${name}: ${file} is ${size} bytes, not under ${bytes}")
-    endif()
-endfunction()
-# As a host builds it whose flags refuse more than the checks' (C331).
-function(strict name file)
-    if(NOT CC_ID MATCHES "^(GNU|Clang|AppleClang)$")
-        return()
-    endif()
-    string(MAKE_C_IDENTIFIER "${file}" unit)
-    file(WRITE "${OUT}/${unit}.c" "#include \"${file}\"\n")
-    execute_process(COMMAND "${CC}" -std=c11 -Wall -Wextra -Wpedantic -Wconversion -Wshadow
-                            -Werror ${ARGN} -fsyntax-only "${unit}.c"
-                    WORKING_DIRECTORY "${OUT}" RESULT_VARIABLE failed
-                    ERROR_VARIABLE errors OUTPUT_VARIABLE errors)
-    if(failed)
-        message(SEND_ERROR "${name}: ${file} is no strict C11\n${errors}")
     endif()
 endfunction()
 foreach(model spin solve dense gated diag raised turn)
@@ -2400,3 +2418,20 @@ string(CONCAT stdout "cannot compile a: a derivative of an argmax, for now\n"
        "cannot compile h: the argmin has more than 1000 terms\n")
 set(exit 1)
 check(compile_reduce)
+
+# Optional inputs (DESIGN.md): the step takes a flag after its optional
+# input, the struct keeps the flags beside its window, and an inner
+# instance's optional input is refused for now.
+set(args --compile ${CMAKE_CURRENT_LIST_DIR}/compile/optional.ink track -o track.h)
+check(compile_optional)
+holds(compile_optional track.h
+      "static inline void track_step(track* m_, double z_in_, int z_present_in_) {\n"
+      " *     track_step(&m, z, z_present);  once for each index, the first 0\n"
+      "    int z_present[4];\n" "    m_->z[0] = z_present_in_ ? z_in_ : NAN;\n")
+strict(compile_optional track.h)
+file(WRITE "${OUT}/forwarded.ink" "last(z_n?) = {\n    x_0 = 0\n    x_n | z_n >= 0 = z_n\n"
+     "    x_n = x_(n-1)\n}\nfw(z_n?) = {\n    e = last(z_n = z_n)\n    y_n = e.x_n\n}\n")
+set(args --compile forwarded.ink fw -o fw.h)
+set(stderr "inkamath: cannot compile e.x: e.z, an inner instance's optional input, for now\n")
+set(exit 1)
+check(compile_optional_inner)

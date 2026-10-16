@@ -124,6 +124,9 @@ TEST_CASE("polyconv") {
 TEST_CASE("polyroots") {
     check_transcript("polyroots.ink");
 }
+TEST_CASE("optinputs") {
+    check_transcript("optinputs.ink");
+}
 TEST_CASE("tolerance") {
     check_transcript("tolerance.ink");
 }
@@ -330,6 +333,9 @@ TEST_CASE("iekf") {
 }
 TEST_CASE("ctms") {
     check_transcript("ctms.ink");
+}
+TEST_CASE("robot_loop") {
+    check_transcript("robot_loop.ink");
 }
 TEST_CASE("readme") {
     check_readme();

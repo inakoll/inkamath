@@ -428,3 +428,14 @@ cycling(x_n) = {
     c_n = a_(n-1)/2 + x_n
 }
 cycled = cycling(x_n = n)
+
+# Below a base clause where no guard holds, the interpreter gives no term, so
+# 'tenths' starts q at 1, as it does without the guard: it was refused,
+# 'q_0 reads p_-1, ... no clause of p applies' (C376).
+tenthing() = {
+    p_0 = 1
+    q_n = p_(n-1) + 1
+    p_n | mod(n, 10) == 0 = q_n/2
+    p_n = q_n
+}
+tenths = tenthing()

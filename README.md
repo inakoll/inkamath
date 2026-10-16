@@ -146,6 +146,13 @@ defaults, the only fields; a name nothing defines is refused rather than
 taken for one more input. A read of an input before the stream is a term the
 model's history gives, which `init` folds into the input's window, or is
 refused: `down` in `test/compile/decimate.ink` states `x_n | n < 0 = 0`.
+An optional input, `z_n?`, is followed in the step by its flag, `int
+z_present_in_`, 0 where it is absent, its value then not read; the struct
+keeps the flags beside the input's terms, `z_present[k]`, and the input's
+cells are NaN where it is absent, before the stream too. A guard whose truth
+is NaN where an input it reads is absent does not hold, as interpreted:
+`test/compile/optional.ink`. An inner instance's optional input is refused,
+for now.
 A file's named instances are compiled with it, into
 one step that orders all their terms together, each instance a struct of its
 own: `test/compile/loop.ink` closes a loop, `m.ctl.u[0]` and `m.plt.x[0]`,
@@ -271,6 +278,10 @@ every guard the step compiles that reads a limit and the clause tried where
 that limit runs out, so that a reviewer can see which way each falls:
 `braked.brake: where lim nv runs out, 'brake_n | lim nv(c_n) < 1 = 1' falls to
 'brake_n = 0'` skips the brake where Newton fails (`test/compile/fallback.ink`).
+A guard that reads an optional input is listed with it: `seen.x: where z is
+absent, 'x_n | ...' falls to 'x_n = xp_n'`, after the limits if it reads
+both, `where lim qp runs out or z is absent`; the check gives the step an
+absent input as its flag 0 (`test/compile/optional.ink`).
 
 `--steps n` beside an instance's `--check` steps it n times rather than a
 hundred, n from 1 to 100000. n counts the step's calls, the one that computes the first
@@ -305,6 +316,7 @@ void ink_step(pid* m, double y) { pid_step(m, y); }
 void ink_run(pid* m, const double* y, long n, double* u) {
     for (long k = 0; k < n; ++k) { pid_step(m, y[k]); u[k] = m->u[0]; }
 }
+/* An optional input z_n? takes its flag after it: track_step(m, z[k], ok[k]). */
 const size_t ink_u = offsetof(pid, u), ink_kp = offsetof(pid, kp);
 ```
 
@@ -324,7 +336,10 @@ y, out = (C.c_double * 3)(0, 0.1, 0.2), (C.c_double * 3)()
 lib.ink_init(m); lib.ink_run(m, y, 3, out)    # u.value is out[2]
 ```
 
-Declare each function's `argtypes`: without them an address held as a
+An optional input's flag is one more `int`, a `C.c_int` in `argtypes`; a
+driver that says absent by NaN converts in its own C, `track_step(m, z,
+!isnan(z))`, where the choice is seen. Declare each function's `argtypes`:
+without them an address held as a
 Python int, as numpy's `a.ctypes.data` is, is passed as a C int and cut to
 32 bits. A call from Python costs about 0.7 µs, twenty times a small
 model's step, 31 to 34 ns for `test/compile/kalman.ink`: for such a model,
@@ -1182,6 +1197,9 @@ root(x) = x
 ~0
 ```
 
+An optional input that is absent makes a guard fall as well, and exactly
+(section 5).
+
 The fallback is inexact: whether a walk settles is read from its steps as
 doubles. A guard that cannot be read whole does not hold, so `lim nw(x) < 0
 or x < 1` does not hold at 0; a term the guard reads, and a limit's own
@@ -1444,6 +1462,55 @@ error: dot(...).x_3 is a single value, where dot takes a 2x1 matrix
 A bound may be a name, which the model reads where it is defined, as it reads
 any other: the model is compiled before any argument exists, so its input
 binds no size, where a function's parameter does (section 3).
+
+An input marked `?`, `z_n?` or `z_n[j<=2]?`, is optional: present on some
+steps only. It is absent where its argument reads a term that is not there,
+one no clause gives or one below a sequence's base clauses, where the
+instance leaves it out, and before the stream unless a clause of its own
+gives it there, where an input not marked reads its argument below 0. Read
+through another definition, a term not there is that definition's refusal,
+as ever. A guard that reads it where it is absent does not hold, and the
+clause after is tried, exactly; here the last value seen is held:
+
+```
+>> kept(z_n?) = {
+..     x_0 = 0
+..     x_n | z_n >= 0 = z_n
+..     x_n = x_(n-1)
+.. }
+kept(z_n?) = { ... }
+
+>> every3_n | mod(n, 3) == 0 = n/3
+every3_n | mod(n, 3) == 0 = n/3
+
+>> [kept(z_n = every3_n).x_4, kept(z_n = every3_n).x_6, kept().x_6]
+[1, 2, 0]
+
+>> kept(z_n = every3_n).z_4
+error: kept(...).z_4 is absent
+```
+
+What reads an optional input is checked where the model is defined, and
+again where an instance is made, an inner model being sought then: each
+read sits in a guard that an unguarded clause follows, or in the value of a
+clause whose guard reads the same term wherever it holds, not on the right
+of an `or` nor in a sum's body, or is the argument of an inner instance's
+optional input. So no term of a model is ever absent, and what reads it
+need not say what to do there:
+
+```
+>> bad(z_n?) = {
+..     y_n | z_n > 0 = z_(n-1)
+..     y_n = 0
+.. }
+error: y reads z_(n-1), an optional input of bad, in a value whose guard may hold without reading it
+```
+
+Outside the model, an absent term is refused, as above, and a guard reading
+it does not hold. NaN is not absence: given NaN, the input is present, and a
+comparison of it is refused, as for any input. An input with no range to
+test, a setpoint or a count, is tested for presence by `z_n == z_n`, which
+holds where it is present and refuses NaN as any comparison does.
 
 Defining an instance evaluates nothing, so two that read each other's terms,
 a controller and the plant it drives, are written in either order:
