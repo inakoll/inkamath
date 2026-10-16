@@ -1762,7 +1762,7 @@ private:
             const auto inner = ModelOf(*member->Object());
             if (inner && *inner &&
                 Read(**inner, member->Member()->Name(), bound, f,
-                     Spelled(member->Object().get()) + ".", *member->Member(), sure))
+                     Named(member->Object().get()) + ".", *member->Member(), sure))
                 return;
             Walk(member->Object(), sure, false, bound, f);
             for (const auto& child : member->Member()->Children())
@@ -1825,6 +1825,12 @@ private:
         return true;
     }
 
+    // An instance, an unnamed one as the interpreter names it.
+    static std::string Named(const Expression<T>* object) {
+        const auto* made = dynamic_cast<const FuncExpression<T>*>(object);
+        return made ? made->Name() + "(...)" : Spelled(object);
+    }
+
     static std::string Spelled(const Expression<T>* e) {
         if (!e) return "";
         const auto c       = [&](std::size_t k) { return Spelled(e->Children()[k].get()); };
@@ -1835,7 +1841,8 @@ private:
         if (const auto* v = dynamic_cast<const ValExpression<T>*>(e))
             return numeric_interface<T>::toString(v->value);
         if (dynamic_cast<const RefExpression<T>*>(e)) return e->Name();
-        if (dynamic_cast<const MemberExpression<T>*>(e)) return c(0) + "." + c(1);
+        if (const auto* m = dynamic_cast<const MemberExpression<T>*>(e))
+            return Named(m->Object().get()) + "." + c(1);
         if (dynamic_cast<const NegExpression<T>*>(e)) return "-" + c(0);
         if (dynamic_cast<const AddExpression<T>*>(e))
             return c(0) + (c(1)[0] == '-' ? "" : "+") + c(1);
