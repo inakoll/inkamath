@@ -12237,6 +12237,11 @@ the clause for a limit that does not converge as done, the order from here:
   - Within a model only: a model's body reading another instance of the
     session's optional input is not checked, and is refused where it is
     absent, as from outside.
+- **An inner instance's optional input, compiled**, optional inputs'
+  departure: `test/compile/robot.ink` compiled without `ok_n`, its fix the
+  GPS instance's z given to the filter's optional input and checked against
+  `robot_loop.ink`'s simulation. A new compiled status, no clause of a
+  sibling's chain gave the term, and a forwarded flag; about 40 lines.
 - **A definition the host implements**, as the C-hook study sketched:
   `--compile nav.ink nav --host qp` names it, with no syntax; the header
   declares `int nav_qp(const double H[4], const double f[2], double
