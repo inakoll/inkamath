@@ -79,6 +79,17 @@ zp_n = zd_n + 1
 >> est(z_n = zp_n).x_4
 error: no clause of zd applies
 
+# Below a sequence's base clauses is a term that is not there too: z_1 reads
+# wb_(-1), absent, and z_3 reads wb_1.
+>> wb_0 = 1
+wb_0 = 1
+
+>> wb_n = 2*wb_(n-1)
+wb_n = 2*wb_(n-1)
+
+>> [est(z_n = wb_(n-2)).x_1, est(z_n = wb_(n-2)).x_3]
+[0, 2]
+
 # NaN is not absence. Given NaN, the input is present, and a guard comparing
 # it is refused, marked or not, as any comparison of NaN is; compiled, the
 # step is NaN there (C189), where an absent input takes the clause after.

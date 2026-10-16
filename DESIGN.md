@@ -12051,7 +12051,8 @@ the clause for a limit that does not converge as done, the order from here:
   - **Absent is a term that is not there.** A sequence is already not
     defined where no clause applies (README section 4); an optional input
     is absent at n where its argument itself reads a term that is not
-    there, one no clause gives or an optional input absent there.
+    there, one no clause gives, one below a sequence's base clauses or an
+    optional input absent there.
     Through another term it is that term's refusal, as a limit that runs
     out is: `z_n = zd_n + 1` is absent where zd has no term, `zp_n = zd_n
     + 1` given as z refuses there. Absent too at every step where the
