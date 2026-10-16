@@ -1835,6 +1835,7 @@ private:
         if (const auto* v = dynamic_cast<const ValExpression<T>*>(e))
             return numeric_interface<T>::toString(v->value);
         if (dynamic_cast<const RefExpression<T>*>(e)) return e->Name();
+        if (dynamic_cast<const MemberExpression<T>*>(e)) return c(0) + "." + c(1);
         if (dynamic_cast<const NegExpression<T>*>(e)) return "-" + c(0);
         if (dynamic_cast<const AddExpression<T>*>(e))
             return c(0) + (c(1)[0] == '-' ? "" : "+") + c(1);
@@ -1850,6 +1851,10 @@ private:
     // and nothing where its name is not defined yet. One a body defines is
     // an instance of a model, not of another instance.
     std::optional<const Model<T>*> ModelOf(const Expression<T>& e, bool instance = true) const {
+        if (const auto* member = dynamic_cast<const MemberExpression<T>*>(&e)) {
+            const auto outer = ModelOf(*member->Object());
+            return outer && *outer ? Unguarded(**outer).ModelOf(*member->Member()) : outer;
+        }
         const auto* call = dynamic_cast<const FuncExpression<T>*>(&e);
         if (call ? call->m_e2() || call->limit() : !dynamic_cast<const RefExpression<T>*>(&e))
             return nullptr;
