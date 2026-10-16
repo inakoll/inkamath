@@ -224,6 +224,14 @@ fw(z_n?) = { ... }
 >> fw(z_n = zd_n).y_4
 1
 
+# Read through an inner instance's own inner instance, it is held to the
+# same rule: unguarded, y_4 would be absent.
+>> nest(z_n?) = {
+..     f = fw(z_n = z_n)
+..     y_n = f.e.z_n
+.. }
+error: y reads f.e.z_n, an optional input of est, outside a guard with a clause after it
+
 # Before the stream nothing has arrived: below 0, where no clause of its
 # history gives it, it is absent. A history gives what it says.
 >> rise(z_n?) = {
