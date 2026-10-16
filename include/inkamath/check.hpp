@@ -426,8 +426,13 @@ public:
                             read += (read.empty() ? "" : " or ") + names + " " + kind;
                     }
                     const bool  ran = read.find(" runs out") != std::string::npos;
+                    const bool  absent = read.find(" is absent") != std::string::npos;
                     std::string to = next.empty() ? "NaN" : "'" + next + "'";
-                    if (ran && !found->second.plain)
+                    // Under grad an absent input still takes the clause after.
+                    if (ran && absent && found->second.grad)
+                        to += ", and to NaN under grad where " +
+                              read.substr(0, read.find(" runs out")) + " runs out";
+                    else if (ran && !found->second.plain)
                         to = "NaN under grad";
                     else if (ran && found->second.grad && !next.empty())
                         to += ", and to NaN under grad";
