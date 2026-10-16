@@ -12176,16 +12176,17 @@ the clause for a limit that does not converge as done, the order from here:
   flag and its paragraph on `--check` the audit's line, and MANIFESTO's
   question goes, answered.
 
-  About 180 lines, estimated from what it reuses, with no prototype: the
-  interpreter's 80, the mark, absence a refusal of its own that a guard
-  catches as it catches a walk that ran out, the inexact left, the
-  history and the left-out input, and the static check, 40 of them; the
-  compiler's 80, the flag and its window, an input's flag asked as a
-  limit's status and under grad, a sibling's chain, a forwarded flag and
-  a file's definitions held to the rule; `--check`'s 20, the replay and
-  the audit's words. 19,337 lines at 88b4741 by `wc -l
-  include/inkamath/*.hpp src/*`; past 270 the implementation stops and
-  reports.
+  About 265 lines, restated after the review's prototype of the
+  interpreter's runtime, 71 lines passing 33 of the 41 entries then
+  failing: the interpreter's 145, the mark, absence a refusal of its own
+  that a guard catches as it catches a walk that ran out, the inexact
+  left, the history and the left-out input, and the static check in its
+  stages, about 75 of them; the compiler's 95, the flag and its window,
+  an input's flag asked as a limit's status and under grad, the kind of
+  each, a sibling's chain, a forwarded flag and a file's definitions held
+  to the rule; `--check`'s 25, the replay and the audit's words. 19,337
+  lines at 88b4741 by `wc -l include/inkamath/*.hpp src/*`; past 400 the
+  implementation stops and reports.
 
   Specified in `test/data/spec/optinputs.ink`, 72 entries replayed by the
   spec suite, 41 failing today: the hold, absence by a term not there,
