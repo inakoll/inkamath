@@ -12107,7 +12107,11 @@ the clause for a limit that does not converge as done, the order from here:
     was not, so that no field shows a stale value as given. A compiled
     guard whose truth is NaN asks the flags of the inputs it reads as it
     asks a limit's status, and does not hold where one is absent; init
-    clears them, so before the stream is absent. Python's shim passes the
+    clears them, so before the stream is absent. Each status keeps its
+    kind, runs out, fails or is absent, which the audit's wording and grad
+    read: an input's status is asked under grad, a limit's is not. The
+    kind is recorded with the status's names, in `what_` and `Fallen`, not
+    in a list of its own, which prepares the host's definition (below). Python's shim passes the
     flag as one more `c_int`; a host whose driver says absent by NaN
     converts in its own C, `track_step(&m, z, !isnan(z))`, where it is
     seen and is its decision.
