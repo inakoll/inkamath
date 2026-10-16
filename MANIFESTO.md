@@ -465,8 +465,6 @@ Recorded so that they are asked before they are answered by accident.
   and does writing it remove more from the current compiler than it adds?
 - How much of a paper can be transcribed before the language has to grow, and
   is the answer to that a good measure of whether it should?
-- How does a signature declare an input present on some steps only, and what
-  does the static check then prove of what reads it?
 - Is an index a kind of number of its own, an input refused where it is not
   whole, and is its base 1 at every boundary with a host?
 - Where do frames belong: in a name, as a paper's superscript, in something
