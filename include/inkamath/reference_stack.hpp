@@ -1013,14 +1013,17 @@ private:
                 definition->home = given ? written : scope.get();
                 if (given) definition->captured = captured;
             }
-            // A history, tried before the argument, or a size stated, holds it.
-            if (!parameter.bounds.empty() ||
+            // A history, tried before the argument, a size stated, or the
+            // mark optional holds it.
+            if (parameter.optional || !parameter.bounds.empty() ||
                 std::any_of(m.body.begin(), m.body.end(),
                             [&](const auto& s) { return s.name == parameter.name; })) {
-                auto held      = std::make_shared<Reference<T>>(parameter.name);
+                auto held = std::make_shared<Reference<T>>(parameter.name);
+                if (parameter.optional) definition->passes = scope->Qualified(parameter.name);
                 held->argument = std::move(definition);
                 held->home     = scope.get();
                 held->declared = parameter.bounds;
+                held->optional = parameter.optional;
                 definition     = std::move(held);
             }
             scope->names[parameter.name] = std::move(definition);
@@ -1041,6 +1044,8 @@ private:
             slot        = Extended(slot, scope.get(), statement.name, evaluator.Parameters(equal),
                                    equal->m_e2(), statement.written);
         }
+        // What an inner model defined since makes its own (DESIGN.md, optional inputs).
+        if (const std::string why = Unguarded<T>(m)(); !why.empty()) throw std::runtime_error(why);
         return scope;
     }
 

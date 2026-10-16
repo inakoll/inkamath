@@ -124,6 +124,9 @@ TEST_CASE("polyconv") {
 TEST_CASE("polyroots") {
     check_transcript("polyroots.ink");
 }
+TEST_CASE("optinputs") {
+    check_transcript("optinputs.ink");
+}
 TEST_CASE("tolerance") {
     check_transcript("tolerance.ink");
 }

@@ -17,6 +17,18 @@ struct Unconverged : std::runtime_error {
         : std::runtime_error(what), past(approximated) {}
     bool past;
 };
+// A term no clause gives, which an optional input's argument reading it
+// directly makes absent, and an optional input absent, which a guard reading
+// it takes for one that does not hold; each a plain refusal past the term
+// 'from' (DESIGN.md, optional inputs).
+struct NoTerm : std::runtime_error {
+    NoTerm(const std::string& what, const void* term) : std::runtime_error(what), from(term) {}
+    const void* from;
+};
+struct Absent : NoTerm {
+    using NoTerm::NoTerm;
+    bool inexact = false;  // where an inexact truth chose to read it (C241)
+};
 
 // When a run of values has reached its limit. One rule for the language: 'lim'
 // walks the terms of a sequence with it, and a series without an upper bound

@@ -45,6 +45,22 @@ function(holds name file)
     endforeach()
 endfunction()
 
+# As a host builds it whose flags refuse more than the checks' (C331).
+function(strict name file)
+    if(NOT CC_ID MATCHES "^(GNU|Clang|AppleClang)$")
+        return()
+    endif()
+    string(MAKE_C_IDENTIFIER "${file}" unit)
+    file(WRITE "${OUT}/${unit}.c" "#include \"${file}\"\n")
+    execute_process(COMMAND "${CC}" -std=c11 -Wall -Wextra -Wpedantic -Wconversion -Wshadow
+                            -Werror ${ARGN} -fsyntax-only "${unit}.c"
+                    WORKING_DIRECTORY "${OUT}" RESULT_VARIABLE failed
+                    ERROR_VARIABLE errors OUTPUT_VARIABLE errors)
+    if(failed)
+        message(SEND_ERROR "${name}: ${file} is no strict C11\n${errors}")
+    endif()
+endfunction()
+
 # Read by cases in every part.
 set(inputs "${CMAKE_CURRENT_LIST_DIR}/compile/inputs.ink")
 
@@ -1568,21 +1584,6 @@ function(smaller name file bytes)
         message(SEND_ERROR "${name}: ${file} is ${size} bytes, not under ${bytes}")
     endif()
 endfunction()
-# As a host builds it whose flags refuse more than the checks' (C331).
-function(strict name file)
-    if(NOT CC_ID MATCHES "^(GNU|Clang|AppleClang)$")
-        return()
-    endif()
-    string(MAKE_C_IDENTIFIER "${file}" unit)
-    file(WRITE "${OUT}/${unit}.c" "#include \"${file}\"\n")
-    execute_process(COMMAND "${CC}" -std=c11 -Wall -Wextra -Wpedantic -Wconversion -Wshadow
-                            -Werror ${ARGN} -fsyntax-only "${unit}.c"
-                    WORKING_DIRECTORY "${OUT}" RESULT_VARIABLE failed
-                    ERROR_VARIABLE errors OUTPUT_VARIABLE errors)
-    if(failed)
-        message(SEND_ERROR "${name}: ${file} is no strict C11\n${errors}")
-    endif()
-endfunction()
 foreach(model spin solve dense gated diag raised turn)
     set(args --compile ${loops} ${model} -o ${model}.h)
     check(compile_loops)
@@ -2417,3 +2418,20 @@ string(CONCAT stdout "cannot compile a: a derivative of an argmax, for now\n"
        "cannot compile h: the argmin has more than 1000 terms\n")
 set(exit 1)
 check(compile_reduce)
+
+# Optional inputs (DESIGN.md): the step takes a flag after its optional
+# input, the struct keeps the flags beside its window, and an inner
+# instance's optional input is refused for now.
+set(args --compile ${CMAKE_CURRENT_LIST_DIR}/compile/optional.ink track -o track.h)
+check(compile_optional)
+holds(compile_optional track.h
+      "static inline void track_step(track* m_, double z_in_, int z_present_in_) {\n"
+      " *     track_step(&m, z, z_present);  once for each index, the first 0\n"
+      "    int z_present[4];\n" "    m_->z[0] = z_present_in_ ? z_in_ : NAN;\n")
+strict(compile_optional track.h)
+file(WRITE "${OUT}/forwarded.ink" "last(z_n?) = {\n    x_0 = 0\n    x_n | z_n >= 0 = z_n\n"
+     "    x_n = x_(n-1)\n}\nfw(z_n?) = {\n    e = last(z_n = z_n)\n    y_n = e.x_n\n}\n")
+set(args --compile forwarded.ink fw -o fw.h)
+set(stderr "inkamath: cannot compile e.x: e.z, an inner instance's optional input, for now\n")
+set(exit 1)
+check(compile_optional_inner)

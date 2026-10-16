@@ -1892,6 +1892,7 @@ closures need one anyway, and can bring it.
 | C377 `[fixed]` | **A guarded clause reading its own term was refused where no base clause gives a shape.** Clauses are compiled in the order the interpreter tries them, so a guarded one reading its own sequence asked its shape before any clause had given it: a sample and hold, `y_n \| n > 5 = y_(n-1)` and `y_n = p_n`, and a fault latched, `f_n \| n > 0 and f_(n-1) == 1 = 1` and `f_n = p_n > 2`, were refused, "its shape depends on itself", where the interpreter answers both. Where no base clause gives a shape and a guarded clause names its own sequence, the unguarded clause is now compiled first; the chain the step tests is unchanged. No golden, expected header or report moves. In 17 lines of `compile.hpp`, 2 of comment, and 7 removed; `compile/drift.ink`'s `tripped` holds it. Found by the end-to-end exploration of a robot loop, latching a sensor's failure. |
 | C378 `[fixed]` | **A hold in a guard was refused, saying a term was computed again.** A guard is compiled as the right of an `and` is, its reads deferred, and a hold was refused wherever reads were: `y_n \| s_(floor(n/10)) > 0 = 1` and `y_n = 0`, with `s_m = x_(10*m)`, was refused, "s_(...): a hold where a term is computed again", where `y_n = s_(floor(n/10)) > 0` compiles. A hold in a guard is now compiled as one in a value is; one on the right of an `and` or `or`, read only where the left has not decided, is still refused, and says so: "a hold on the right of 'and' or 'or'". No golden, expected header or report moves. In 8 lines of `compile.hpp`, 1 of comment, and 2 removed; `compile/decimate.ink`'s `polled` holds it, and `test/cli.cmake`'s `compile_slow_right_refused` the refusal. Found by the end-to-end exploration of a robot loop, its position fix read every tenth step. |
 | C379 `[fixed]` | **A history's own term was refused for what its input's argument reads.** Whether a term init folds can change with a parameter was asked of everything the input reads, its argument included, though the interpreter tries the history's clauses first: with `steering(k = 2, y_n)` giving `u_n = k*(1 - y_n)` and a plant `railing(u_n)` whose history `u_n \| n < 0 = 1/2` it reads at 0 as `u_(n-1)`, the two instances closing the loop, compiled together, were refused, "rail.u's history reads steer.k, which the host may assign after init", where the interpreter gives 1/2. Where a clause of the history holds, a base clause or a guard, init now folds its term, which a history may not read a parameter to give; where none does, the argument gives it, and a parameter it reads is refused as before, as `history_gained`. No golden, expected header or report moves. In 12 lines of `compile.hpp`, 2 of comment, and 1 removed; `test/cli.cmake`'s `history_railed` holds it. Found by the end-to-end exploration of a robot loop, its controller and plant instances of their own. |
+| C380 `[open]` | **A compiled guard takes the clause after where the interpreter refuses a NaN read before what falls.** A guard's truth NaN where a status it asks holds does not hold, whatever made it NaN, where the interpreter refuses the first comparison of NaN it reads: with `nn(z_n?)` giving `y_n \| z_n > 0 and z_(n-1) > 0 = 1` and `y_n = 0`, and z NaN and present at 3 and absent at 2, the step takes y_3 = 0 and the interpreter refuses it, "a comparison needs a number"; so with a limit that runs out, `y_n \| x_n > 0 and lim qp(x_n) > 0 = 1` where x is NaN, before optional inputs. Open: statuses would need the order of reads. Found by the implementation review of optional inputs. |
 | C381 `[fixed]` | **Configuring with two sanitizers and no build type failed.** Whether C363 is timed was decided in a generator expression, `$<BOOL:${INKAMATH_SANITIZE}>`, where the comma in `address,undefined` made two parameters: `cmake -S . -B build -G Ninja -DINKAMATH_SANITIZE=address,undefined`, the command §5 gives with the sanitizers added, stopped at generate, "$<BOOL> expression requires exactly one parameter". CI passes `Debug`, whose `$<OR:...>` never reads the rest, so it did not see it. The sanitizers are now asked in CMake itself. No golden or test moves; configuring is the test, which no ctest can hold. In 6 lines of `test/CMakeLists.txt`, 2 of comment, and 1 removed. Found by the implementation of optional inputs and its review. |
 
 **Measure instructions, not the clock.** One of those changes made the matrix
@@ -12027,9 +12028,229 @@ the clause for a limit that does not converge as done, the order from here:
   and 5 of the loops decided on its measures.
 - The gather, integer and optional inputs, and exact discretisation, below.
 
-- **A gather, integer inputs, inputs present on some steps only**: their
-  open questions first. The gather is *A cell at a computed whole index,
-  compiled*.
+- **A gather and integer inputs**: their open questions first. The gather
+  is *A cell at a computed whole index, compiled*.
+- `[done]` **Optional inputs**, MANIFESTO's open question: how a signature declares
+  an input present on some steps only, and what the static check then
+  proves of what reads it. The end-to-end exploration's robot carried its
+  fix's outage as a second input, `ok_n`, beside a value that meant
+  nothing where ok was 0, and its fix failing NaN reached the actuator.
+  Approved by the owner for a spec, in the exploration's direction:
+
+  ```
+  nav(..., am_n, z_n?) = {
+      ...
+      x_n | (z_n - [1 0]*xp_n)^2 < gate^2*S_n = xp_n + Pp_n*[1; 0]*(z_n - [1 0]*xp_n)/S_n
+      x_n = xp_n
+  }
+  ```
+
+  Decided:
+  - **The mark**: `z_n?` in the signature, after the bounds of an input
+    with a size, `z_n[j<=2]?`; `?model` prints it as written. One
+    character on the declaration, no word and no value: the smallest way
+    to say it. An input not marked is as today.
+  - **Absent is a term that is not there.** A sequence is already not
+    defined where no clause applies (README section 4); an optional input
+    is absent at n where its argument itself reads a term that is not
+    there, one no clause gives, one below a sequence's base clauses or an
+    optional input absent there.
+    Through another term it is that term's refusal, as a limit that runs
+    out is: `z_n = zd_n + 1` is absent where zd has no term, `zp_n = zd_n
+    + 1` given as z refuses there. Absent too at every step where the
+    instance leaves it out, and below 0, before the stream, where no
+    clause of its history gives it: nothing has arrived there, and no
+    history is needed to say so. README notes the difference: an input
+    not marked reads its argument below 0.
+  - **A guard that reads an absent input does not hold**, and the clause
+    after is tried, read as the interpreter reads: on the right of `and`
+    or `or` only where the left did not decide, on the left whatever the
+    right says, through the functions the guard calls. Absence is exact:
+    the clause after is inexact only where an inexact truth decided that
+    the input be read, the left of an `and` or an `or` (C241).
+  - **The static check**, in stages, since an inner model is looked up
+    late: a model's own reads where it is defined; the arguments it
+    forwards and its reads of an inner instance's optional input where an
+    instance is made, and at once where the inner model is already
+    defined; and again when compiling. Every read of an
+    optional input sits in a guard with a clause after it, the clauses
+    tried after it ending in an unguarded one and not a base clause or
+    another guard, which may fall too; in the value
+    of a guarded clause whose guard reads it at the same index wherever
+    the guard holds: not on the right of an `or`, nor of an `and` but the
+    guard's own, nor in a sum's body, and not under a name the value
+    binds again. Or it is the argument of an inner instance's optional
+    input. Any other is refused, naming it:
+    "y reads z_n, an optional input of m, outside a guard with a clause
+    after it", or "in a value whose guard may hold without reading it".
+    So no value reads an absent input, by construction, and no term of
+    the model is ever absent: nothing a host or a reader receives needs a
+    flag but the input. A definition reading it does not become absent in
+    turn; it is refused, so the robot's innovation is written in the
+    guard and the value that read it, its gate twice, in `fix` and `x`,
+    accepted for now. Outside the model, the interpreter reads an
+    instance's optional input as any term, "e.z_4 is absent", and a guard
+    reading it falls; where no clause is left to fall to, the refusal
+    names the absence, "e.z_4 is absent", as it names a limit that runs
+    out. Compiling, a file's definition that reads an
+    instance's optional input outside a guard is refused, as in a model.
+  - **NaN is not absence.** Given NaN, an optional input is present and
+    NaN: a comparison of it is refused, and the step is NaN where it
+    reads it, as for an input not marked (C189, C315), so a sensor's
+    fault still reaches the outputs and `--check` sees it. NaN given to
+    an input not marked is as today. Only the flag says absent.
+  - **The host**: the step takes an int after each optional input,
+    `int z_present_in_`, 0 where it is absent, the input then not read,
+    a matrix's pointer possibly NULL; the usage line writes
+    `track_step(&m, z, z_present)`, the comment says so, and README's
+    batched `ink_run` example gains a line for it. The struct
+    keeps the flags in a window beside the input's, `int z_present[k]`,
+    1 where z_(n-k) was given, and the input's own cell is NaN where it
+    was not, so that no field shows a stale value as given. A compiled
+    guard whose truth is NaN asks the flags of the inputs it reads as it
+    asks a limit's status, and does not hold where one is absent; init
+    clears them, so before the stream is absent. Each status keeps its
+    kind, runs out, fails or is absent, which the audit's wording and grad
+    read: an input's status is asked under grad, a limit's is not. The
+    kind is recorded with the status's names, in `what_` and `Fallen`, not
+    in a list of its own, which prepares the host's definition (below). Python's shim passes the
+    flag as one more `c_int`; a host whose driver says absent by NaN
+    converts in its own C, `track_step(&m, z, !isnan(z))`, where it is
+    seen and is its decision.
+  - **Within a compiled file**, a sibling's sequence defined on some
+    steps only, given as an optional input, passes as the flag whether a
+    clause of its chain gave the term; an optional input forwarded to an
+    inner instance's passes its flag.
+  - **`--check`** replays an absent input as the interpreter gives it, the
+    flag 0, and lists each guard that reads an optional input in the
+    fallback audit's list, form and place: `seen.x: where z is absent,
+    'x_n | ...' falls to 'x_n = xp_n'`; after the limits in one guard,
+    `where lim qp runs out or z is absent`; several by `or`, `where z or
+    w is absent`. Never "NaN under grad" for an input: grad follows the
+    clause after.
+  - **Rates, holds, the last value, grad**: sampled at a slower rate under
+    a guard, `s_m | z_(4*m) >= 0 = z_(4*m)`, and held, `s_(floor(n/4))`,
+    as any input is, its flags in its window. The last value seen is the
+    idiom the user writes, `x_n | z_n >= 0 = z_n` and `x_n = x_(n-1)`,
+    its guard the measurement's own acceptance test, a range or a gate:
+    no built-in. grad through a guard that falls for an absent input
+    takes the clause after's slope, the clause being the data's choice
+    and not the point's, where grad refuses one that falls for a limit.
+  - **Irregular arrival** is an optional input at the step's rate, the data
+    saying when, `at_n | sum_(k=1)^4 (ts[k] == n) == 1 =
+    zs[argmax_(k=1)^4 (ts[k] == n)]`. MANIFESTO's event clock, an index
+    counting arrivals, stays its own question: this keeps the one step at
+    the fast rate, the shape it calls deterministic.
+
+  Rejected:
+  - **NaN as the only signal**: a fault and an outage become one, so a
+    sensor failing NaN would take the fallback unseen; exact data has no
+    NaN to stand for absence, and a matrix with one NaN cell is neither.
+    The exploration's third mode is the case: NaN at the actuator is
+    right for a fault and wrong for a fix not taken.
+  - **An `ok` input by convention**, today's workaround: the value where
+    ok is 0 is a number nobody checks, stale or 0, which a read outside
+    the guard takes for data; two arguments must agree; neither the check
+    nor the audit can name it. The robot needed `mod(n, 10) == 0` and a
+    frozen-value test beside it.
+  - **Exceptions**, a refusal where an absent input is read: "every
+    refusal in a guard" was rejected for limits, a misspelt name taking
+    the fallback; a step has none, and one that stops loses the command.
+  - **A Maybe or Option type**: a second kind of value, every operator
+    deciding what absent plus 1 is, and every term the host reads perhaps
+    absent, a flag beside every field. **Absence carried through
+    definitions**, absent in and absent out, is the same by another name,
+    and the check would prove only where each chain ends.
+  - **A word**, `none` as a value or `z_n = none` as a default: a value is
+    the Maybe above, and a default only for signatures a longer mark.
+  - **A separate setter**, `track_set_z`: the step's signature would no
+    longer say what it reads, and a value set and not stepped would carry
+    to the next call.
+  - **A presence word**, `present(z_n)`: the acceptance test of a
+    measurement is a range or a gate the paper writes. Where an input has
+    no range to test, a setpoint or a count, README documents `z_n ==
+    z_n`: it holds where z is present, and refuses NaN as any comparison
+    does.
+
+  What moves: nothing. The mark is new syntax, which no golden, README
+  session, report or header writes. README section 5 gains optional
+  inputs, section 4's fallback a line, its paragraphs on compiled inputs
+  and on Python's host the flag and its paragraph on `--check` the
+  audit's line, and MANIFESTO's question goes, answered.
+
+  About 265 lines, restated after the review's prototype of the
+  interpreter's runtime, 71 lines passing 33 of the 41 entries then
+  failing: the interpreter's 145, the mark, absence a refusal of its own
+  that a guard catches as it catches a walk that ran out, the inexact
+  left, the history and the left-out input, and the static check in its
+  stages, about 75 of them; the compiler's 95, the flag and its window,
+  an input's flag asked as a limit's status and under grad, the kind of
+  each, a sibling's chain, a forwarded flag and a file's definitions held
+  to the rule; `--check`'s 25, the replay and the audit's words. 19,337
+  lines at 88b4741 by `wc -l include/inkamath/*.hpp src/*`; past 400 the
+  implementation stops and reports.
+
+  Specified in `test/data/spec/optinputs.ink`, 78 entries with the
+  rulings', 44 failing before it was built: the hold, absence by a term
+  not there, below the base clauses, left out, read directly or through a
+  term, read from outside, with no clause left; NaN against absent,
+  marked and not; the nine refusals; `or` and `and`, the
+  inexact left; a forwarded input, the stream's start and a history; a
+  slow sample and its hold, grad, a column, irregular arrival; and the
+  robot's loop with its fix optional and no `ok_n`, its outage stopping
+  at the update's clause after, and failing NaN instead, refused to the
+  command. Values by hand and in Python's fractions; the robot's by a
+  simulation of the loop in doubles, numpy with the doubling's gain,
+  which gives the flags `robot_loop.ink` records for the flagged loop.
+  Compiled, `test/compile/optional.ink` and `test/cli.cmake`'s spec part,
+  `cli_spec`: the header's flag, as strict C, and `seen`'s report, its
+  lines in any order and the guards last, skipped while the mark is
+  refused as today and only then.
+
+  Done in 340 lines, against the 265 restated and the stop at 400: the
+  interpreter's runtime about 70, the mark, absence a refusal a guard
+  catches, and a term below the base clauses one not there; the static
+  check about 180 where 75 were estimated, the reads walked as the
+  evaluator reads them, an index spelled to tell the guard's term from
+  the value's, and an inner model sought in the body, then where the body
+  was written; the compiler 68, the flag, its window, init's NaN, the
+  status and its kind, asked under grad; `--check` 22, the replay and the
+  audit's words. The spec is the golden `test/data/optinputs.ink`, every
+  entry as written; `seen` is checked with its report, `compile_optional`
+  holds the header and builds it strict, and `cli_spec` and the spec suite
+  are gone. The headers build strict as C99 and C++, by GCC and Clang.
+  Departures:
+  - **An inner instance's optional input is refused when compiled**, "e.z,
+    an inner instance's optional input, for now": neither a forwarded flag
+    nor a sibling's chain passed as one is built, and a file's definitions
+    reading one are refused with them, in a guard or not. Each wants a flag
+    the step computes from what the argument reads, and a chain a status of
+    its own for a term no clause gives, about 40 lines; until an entry
+    needs it. So `test/compile/robot.ink` and `test/data/robot.ink` keep
+    `ok_n`: their fix is the loop's GPS instance's, given to the filter
+    instance, which this refuses, and the spec's robot entries are the
+    interpreter's already.
+  - The definition's stage checks the arguments forwarded too where the
+    inner model is defined already, as the spec's `dbl` entry asks.
+  - A call's arguments are read wherever the call is, as the interpreter
+    evaluates them first; two indices are the same term where they are
+    spelled alike, `n-1` as `n-1`, any other form spelled in full.
+  - Within a model only: a model's body reading another instance of the
+    session's optional input is not checked, and is refused where it is
+    absent, as from outside.
+- **An inner instance's optional input, compiled**, optional inputs'
+  departure: `test/compile/robot.ink` compiled without `ok_n`, its fix the
+  GPS instance's z given to the filter's optional input and checked against
+  `robot_loop.ink`'s simulation. A new compiled status, no clause of a
+  sibling's chain gave the term, and a forwarded flag; about 40 lines.
+- **A definition the host implements**, as the C-hook study sketched:
+  `--compile nav.ink nav --host qp` names it, with no syntax; the header
+  declares `int nav_qp(const double H[4], const double f[2], double
+  out_[2])`, 1 where it answered, and a guard reading it asks its status
+  of kind *fails*, as one reading a limit asks *runs out*. `--check`
+  interposes, holds each answer to the inkamath definition within a
+  tolerance and checks that both fail together. About 200 lines; deferred
+  until an entry needs it, likely the small MPC below.
 - **Exact discretisation** as conformance entries first, `expm` an
   unbounded sum, Van Loan and ZOH by block literals; the prelude only if
   they show friction.
@@ -12071,8 +12292,7 @@ review:
   Deferred:
   - a field table the compiler generates behind a macro, about 35 lines,
     until a host asks for it;
-  - a definition the host implements, held by `--check` to its inkamath
-    reference, about 50 lines for a single value, until an entry needs it;
+  - a definition the host implements, now in the list above;
   - a CUDA printer, a batch of instances as structure of arrays with its
     parameters placed, about 250 lines, until an entry needs instance
     width and `--check` on a device has a GPU runner; Clang already

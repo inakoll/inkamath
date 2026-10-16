@@ -1897,6 +1897,7 @@ template <Parsable T, Numeric U>
 std::string Interpreter<T, U>::DefineModel(const std::string& text) {
     auto [name, model] = ParseModel(text);
     model->scope       = &stack_.Target();
+    if (const std::string why = Unguarded<U>(*model)(); !why.empty()) Fail(why);
     auto definition    = std::make_shared<Reference<U>>(name);
     definition->model  = model;
     definition->home   = &stack_.Target();
@@ -1920,7 +1921,22 @@ std::pair<std::string, std::shared_ptr<Model<U>>> Interpreter<T, U>::ParseModel(
 
     ResetInterpreter();
     if (header.empty()) Fail(form);
-    Lexer(header);
+    // 'x_n?' marks an input optional, a '?' last in its parameter (DESIGN.md).
+    std::vector<bool> marked{false};
+    std::string       unmarked = header;
+    for (std::size_t k = 0, depth = 0; k < header.size(); ++k) {
+        depth += header[k] == '(' || header[k] == '[';
+        depth -= header[k] == ')' || header[k] == ']';
+        if (header[k] == ',' && depth == 1) marked.push_back(false);
+        if (header[k] != '?' || depth != 1) continue;
+        const std::size_t next = header.find_first_not_of(' ', k + 1);
+        if (marked.back() || next == std::string::npos ||
+            (header[next] != ',' && header[next] != ')'))
+            Fail("unexpected '?'");
+        marked.back() = true;
+        unmarked[k]   = ' ';
+    }
+    Lexer(unmarked);
     const Token<T>& head = m_tokens[0];
     if (head.type != Func) Fail(form);
     if (IsLimit(head) || IsSeries(head) || IsGrad(head) || IsLogic(head) || BeginsLine(head) ||
@@ -1938,6 +1954,7 @@ std::pair<std::string, std::shared_ptr<Model<U>>> Interpreter<T, U>::ParseModel(
     for (const PExpression<U>& written : given) {
         typename Model<U>::Parameter parameter;
         const WrittenParameter<U>    w(written);
+        parameter.optional = marked[model->parameters.size()];
         parameter.fallback = w.fallback;
         for (const auto* bound : w.bounds) parameter.bounds.push_back(bound->m_e2());
         const auto* index =
@@ -1951,6 +1968,8 @@ std::pair<std::string, std::shared_ptr<Model<U>>> Interpreter<T, U>::ParseModel(
         } else {
             Fail("a model's parameter is a name, as 'k = 2', or an input, as 'x_n' or 'x_n[j<=2]'");
         }
+        if (parameter.optional && parameter.index.empty())
+            Fail(parameter.name, " is not an input, so it cannot be optional");
         // A size that moved from term to term could not be compiled.
         for (const PExpression<U>& bound : parameter.bounds)
             if (Mentions(*bound, parameter.index))
