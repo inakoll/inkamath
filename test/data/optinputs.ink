@@ -1,7 +1,7 @@
-# Optional inputs (DESIGN.md, next in line): an input present on some steps
-# only. Specified before it is built, and never recorded: the small models'
-# values by hand and in Python's fractions, the robot's by a simulation of
-# its loop in doubles apart from inkamath.
+# Optional inputs (DESIGN.md): an input present on some steps only. Every
+# value was worked out apart from the interpreter, as its specification: the
+# small models' by hand and in Python's fractions, the robot's by a
+# simulation of its loop in doubles apart from inkamath.
 
 # The signature marks an input optional, 'z_n?'. A guard that reads it where
 # it is absent does not hold, and the clause after is tried, as for a limit

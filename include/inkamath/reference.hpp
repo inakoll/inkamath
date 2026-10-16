@@ -112,6 +112,20 @@ public:
     std::shared_ptr<const Model<T>> model;
     std::shared_ptr<const Scope<T>> file;
     bool                            input = false;
+    // An optional input, and of its argument, the input it passes, by its
+    // label: absent left out, before the stream, or where the argument
+    // reads a term not there (DESIGN.md, optional inputs).
+    bool                 optional = false;
+    std::string          passes;
+    [[nodiscard]] Absent Absence(const std::string& label, int index) const {
+        return Absent(label + "_" + std::to_string(index) + " is absent", this);
+    }
+    // A term not there, refused past the term that read it.
+    [[noreturn]] void Passed(const NoTerm& none, int index) const {
+        if (!passes.empty()) throw Absence(passes, index);
+        if (none.from == this || (argument && none.from == argument.get())) throw;
+        throw std::runtime_error(none.what());
+    }
 
     // What an unnamed instance's argument read of the frame it was written in,
     // which is gone by the time the argument is evaluated.
@@ -1130,6 +1144,7 @@ private:
         // and the limit one read that ran out, the refusal where no clause is.
         bool                       past = false, rounded = false;
         std::optional<Unconverged> ran{};
+        std::optional<Absent>      gone{};  // the input a guard read absent, likewise
 
         template <typename V>
         void Marked(V& value) {
@@ -1165,6 +1180,10 @@ private:
             } catch (const Unconverged& unconverged) {
                 ran.emplace(unconverged);
                 out = true;
+            } catch (const Absent& absent) {
+                gone.emplace(absent);
+                rounded |= absent.inexact;
+                return false;
             }
             past            = past || (out ? ran->past : numeric_interface<T>::approximated(guard));
             const bool held = !out && numeric_interface<T>::truth(guard);
@@ -1204,6 +1223,8 @@ private:
             return Chosen(true, index, evaluator);
         } catch (const Unconverged& unconverged) {
             refused = unconverged.what();
+        } catch (const NoTerm& none) {
+            Passed(none, index);
         }
         throw std::runtime_error(*refused);
     }
@@ -1229,6 +1250,8 @@ private:
                 return Held(values.Eval(clause.expression), index, evaluator);
             }
         }
+        if (optional && (index < 0 || argument->input))
+            throw Absence(home->Qualified(reference_name_), index);
         if (argument) {
             T value = Held(evaluator.stack().Evaluate(
                                *argument, ParametersCall<T>(
@@ -1256,16 +1279,16 @@ private:
                 }
             }
             if (values.ran) throw *values.ran;
-            if(Guarded()) {
-                throw std::runtime_error(Unapplied(values.past));
-            }
-            throw std::runtime_error(reference_name_ + " has no clause for index "
-                                     + std::to_string(index));
+            if (values.gone) throw *values.gone;
+            if (Guarded()) throw NoTerm(Unapplied(values.past), this);
+            throw NoTerm(reference_name_ + " has no clause for index " + std::to_string(index),
+                         this);
         }
         if(const Clause<T>* plain = Plain()) {
             return values.Eval(plain->expression);
         }
         if (values.ran) throw *values.ran;
+        if (values.gone) throw *values.gone;
         if (Guarded() && !Cells()) {
             throw std::runtime_error(Unapplied(values.past));
         }
@@ -1578,6 +1601,7 @@ struct Model {
         std::string    index;     // 'n', for an input written 'x_n'
         PExpression<T> fallback;  // null for an input
         std::vector<PExpression<T>> bounds;    // the bounds of 'x_n[j<=2]', none if not stated
+        bool                        optional = false;  // 'x_n?'
     };
     struct Statement {
         std::string                     name;
@@ -1668,6 +1692,184 @@ struct Model {
         }
         return bound;
     }
+};
+
+// Where a definition may read an optional input absent (DESIGN.md, optional
+// inputs): in a guard no unguarded clause follows, or in a value whose guard
+// may hold without reading the same term. A model's own inputs are read
+// directly; an inner instance's through it, its model sought in the body,
+// then where the body was written.
+template <typename T>
+class Unguarded {
+public:
+    explicit Unguarded(const Model<T>& model) : model_(model) {}
+
+    // The refusal of the first of the model's definitions that may, or empty.
+    [[nodiscard]] std::string operator()() const {
+        std::vector<std::pair<std::string, Clauses>> definitions;
+        for (const auto& s : model_.body) {
+            if (!s.definition) continue;
+            const auto& left  = s.definition->Children()[0]->Children();
+            const auto  guard = left.size() > 2 ? left[2] : nullptr;
+            const auto* index = left.size() > 1 ? left[1].get() : nullptr;
+            auto        at    = std::find_if(definitions.begin(), definitions.end(),
+                                             [&](const auto& d) { return d.first == s.name; });
+            if (at == definitions.end()) at = definitions.insert(at, {s.name, {}});
+            at->second.emplace_back(
+                guard, s.definition->Children()[1],
+                !guard && !(index && !dynamic_cast<const RefExpression<T>*>(index)));
+        }
+        for (const auto& [name, clauses] : definitions)
+            if (std::string why = (*this)(name, clauses); !why.empty()) return why;
+        return "";
+    }
+
+private:
+    using Clauses = std::vector<std::tuple<PExpression<T>, PExpression<T>, bool>>;  // and last
+
+    std::string operator()(const std::string& name, const Clauses& clauses) const {
+        const bool  after = std::any_of(clauses.begin(), clauses.end(),
+                                        [](const auto& c) { return std::get<2>(c); });
+        std::string why;
+        const auto  refuse = [&](const std::string& read, const char* where) {
+            if (why.empty()) why = name + " reads " + read + where;
+        };
+        for (const auto& [guard, value, last] : clauses) {
+            std::set<std::string> held;  // the terms the guard reads wherever it holds
+            Walk(guard, true, true, {},
+                 [&](const std::string& read, const std::string& term, bool sure, bool) {
+                     if (sure) held.insert(term);
+                     if (!after) refuse(read, ", outside a guard with a clause after it");
+                 });
+            Walk(value, true, false, {},
+                 [&](const std::string& read, const std::string& term, bool, bool rebound) {
+                     if (!guard) refuse(read, ", outside a guard with a clause after it");
+                     if (rebound || !held.count(term))
+                         refuse(read, ", in a value whose guard may hold without reading it");
+                 });
+        }
+        return why;
+    }
+
+    // Each read of an optional input, whether it is read wherever the guard
+    // holds, and whether the value binds a name of its index again.
+    template <typename F>
+    void Walk(const PExpression<T>& e, bool sure, bool top, const std::set<std::string>& bound,
+              const F& f) const {
+        if (!e) return;
+        const auto* x = e.get();
+        if (const auto* member = dynamic_cast<const MemberExpression<T>*>(x)) {
+            const auto inner = ModelOf(*member->Object());
+            if (inner && *inner &&
+                Read(**inner, member->Member()->Name(), bound, f,
+                     Spelled(member->Object().get()) + ".", *member->Member(), sure))
+                return;
+            Walk(member->Object(), sure, false, bound, f);
+            for (const auto& child : member->Member()->Children())
+                Walk(child, false, false, bound, f);
+            return;
+        }
+        if ((dynamic_cast<const FuncExpression<T>*>(x) ||
+             dynamic_cast<const RefExpression<T>*>(x)) &&
+            Read(model_, x->Name(), bound, f, "", *x, sure))
+            return;
+        if (dynamic_cast<const EqualExpression<T>*>(x))
+            return Walk(x->Children()[1], sure, false, bound, f);
+        if (const auto* call = dynamic_cast<const FuncExpression<T>*>(x)) {
+            const auto inner = ModelOf(*x);
+            if (!inner) return;  // defined later, and checked where an instance is made
+            // An inner instance's optional input takes one forwarded.
+            if (*inner) try {
+                    const auto given = (*inner)->Bind(x->Name(), call->Call());
+                    for (std::size_t i = 0; i < given.size(); ++i)
+                        if (given[i] && !(*inner)->parameters[i].optional)
+                            Walk(given[i]->expression, false, false, bound, f);
+                    return;
+                } catch (const std::exception&) {
+                    return;
+                }
+        }
+        if (const auto* logic = dynamic_cast<const LogicExpression<T>*>(x)) {
+            const bool own = top && logic->Conjunction();  // the guard's own 'and'
+            Walk(logic->m_e1(), sure, own, bound, f);
+            return Walk(logic->m_e2(), sure && own, own, bound, f);
+        }
+        std::set<std::string> binds = bound;
+        const Expression<T>*  body  = nullptr;
+        if (const auto* series = dynamic_cast<const SeriesExpression<T>*>(x))
+            binds.insert(series->Index()), body = series->Body().get();
+        if (const auto* grad = dynamic_cast<const GradExpression<T>*>(x))
+            binds.insert(grad->Variables().begin(), grad->Variables().end()),
+                body = grad->Body().get();
+        for (const auto& child : x->Children())
+            Walk(child, sure && child.get() != body, false, child.get() == body ? binds : bound, f);
+    }
+
+    // A read of 'name' where it is an optional input of 'of', told to 'f'.
+    template <typename F>
+    static bool Read(const Model<T>& of, const std::string& name,
+                     const std::set<std::string>& bound, const F& f, const std::string& object,
+                     const Expression<T>& read, bool sure) {
+        if (std::none_of(of.parameters.begin(), of.parameters.end(),
+                         [&](const auto& p) { return p.optional && p.name == name; }))
+            return false;
+        const auto*       index = read.Children().size() > 1 ? read.Children()[1].get() : nullptr;
+        const std::string at    = Spelled(index);
+        const std::string term  = object + name +
+                                 (!index                      ? ""
+                                  : index->Children().empty() ? "_" + at
+                                                              : "_(" + at + ")");
+        f(term + ", an optional input of " + of.header.substr(0, of.header.find('(')), term, sure,
+          index && std::any_of(bound.begin(), bound.end(),
+                               [&](const std::string& b) { return Mentions(*index, b); }));
+        return true;
+    }
+
+    static std::string Spelled(const Expression<T>* e) {
+        if (!e) return "";
+        const auto c       = [&](std::size_t k) { return Spelled(e->Children()[k].get()); };
+        const auto grouped = [&](std::size_t k) {
+            const bool sum = dynamic_cast<const AddExpression<T>*>(e->Children()[k].get());
+            return sum ? "(" + c(k) + ")" : c(k);
+        };
+        if (const auto* v = dynamic_cast<const ValExpression<T>*>(e))
+            return numeric_interface<T>::toString(v->value);
+        if (dynamic_cast<const RefExpression<T>*>(e)) return e->Name();
+        if (dynamic_cast<const NegExpression<T>*>(e)) return "-" + c(0);
+        if (dynamic_cast<const AddExpression<T>*>(e))
+            return c(0) + (c(1)[0] == '-' ? "" : "+") + c(1);
+        if (dynamic_cast<const MultExpression<T>*>(e)) return grouped(0) + "*" + grouped(1);
+        if (dynamic_cast<const DivExpression<T>*>(e)) return grouped(0) + "/" + grouped(1);
+        std::string spelled;  // and two terms spelled alike are the same
+        for (const auto& child : e->Children())
+            if (child) spelled += (spelled.empty() ? "" : ",") + Spelled(child.get());
+        return e->Name().empty() ? spelled : e->Name() + "(" + spelled + ")";
+    }
+
+    // The model of the instance 'e' names or makes, null where it is none,
+    // and nothing where its name is not defined yet. One a body defines is
+    // an instance of a model, not of another instance.
+    std::optional<const Model<T>*> ModelOf(const Expression<T>& e, bool instance = true) const {
+        const auto* call = dynamic_cast<const FuncExpression<T>*>(&e);
+        if (call ? call->m_e2() || call->limit() : !dynamic_cast<const RefExpression<T>*>(&e))
+            return nullptr;
+        const auto of = [&](const Expression<T>& value) -> const Model<T>* {
+            return instance ? ModelOf(value, false).value_or(nullptr) : nullptr;
+        };
+        for (const auto& s : model_.body)
+            if (s.name == e.Name()) {
+                if (s.model) return s.model.get();
+                return s.definition->Children()[0]->Children().empty()
+                           ? of(*s.definition->Children()[1])
+                           : nullptr;
+            }
+        for (const Scope<T>* in = model_.scope; in; in = in->parent)
+            if (const auto found = in->names.find(e.Name()); found != in->names.end())
+                return found->second->model.get();
+        return std::nullopt;
+    }
+
+    const Model<T>& model_;
 };
 
 #endif // HPP_INKREFERENCE

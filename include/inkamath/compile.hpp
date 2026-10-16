@@ -66,11 +66,13 @@ public:
             std::vector<std::pair<std::string, Value>> captured;
         };
         std::map<std::string, Unnamed> unnamed;
-        // Each guard reading a limit, the limits by name, and whether it was
-        // compiled outside grad and under it, for --check to list (DESIGN.md).
+        // Each guard reading a limit or an optional input, each by name and
+        // the kind of its status, 'runs out' or 'is absent', and whether it
+        // was compiled outside grad and under it, for --check to list (DESIGN.md).
+        using Named = std::pair<std::string, std::string>;
         struct Fallen {
-            std::vector<std::string> limits;
-            bool                     plain = false, grad = false;
+            std::vector<Named> limits;
+            bool               plain = false, grad = false;
         };
         std::map<const Expression<Value>*, Fallen> fallen;
     };
@@ -896,8 +898,8 @@ private:
                 statuses_->insert(asked.begin(), asked.end());
                 return code;
             }
-            std::string           ran;
-            std::set<std::string> limits;
+            std::string               ran;
+            std::set<Compiled::Named> limits;
             for (const std::string& status : asked) {
                 Or(ran, status);
                 limits.insert(what_[status].begin(), what_[status].end());
@@ -1253,6 +1255,8 @@ private:
             const Reference<Value>& definition =
                 found->second->argument ? *found->second->argument : *found->second;
             const std::string key = scope->Qualified(name);
+            if (found->second->optional && scope != &root_)
+                throw Reason(key + ", an inner instance's optional input, for now");
             if (definition.input) {
                 if (scope == &root_) return {nullptr, scope, key};
                 throw Reason(key + " is an input nothing gives");
@@ -1264,6 +1268,13 @@ private:
         }
         if (!own && scope_ == &root_ && !root_.model) return {nullptr, &root_, name};
         throw Reason((own ? own : scope_)->Qualified(name) + " is not defined");
+    }
+
+    // An input of the model compiled marked optional (DESIGN.md).
+    bool Optional(const std::string& key) const {
+        return model_ && std::ranges::any_of(model_->parameters, [&](const auto& p) {
+                   return p.optional && p.name == key;
+               });
     }
 
     // Names in a definition are sought where it was written.
@@ -2373,9 +2384,9 @@ private:
     // it never does.
     std::optional<std::string> Condition(const PExpression<Value>& guard) {
         std::set<std::string>                 asked, unsure;
-        std::vector<std::string>                 read;
+        std::vector<Compiled::Named>          read;
         const Setting<std::set<std::string>*> asking(statuses_, &asked), doubting(unsure_, &unsure);
-        const Setting<std::vector<std::string>*> reading(read_, &read);
+        const Setting<std::vector<Compiled::Named>*> reading(read_, &read);
         const Setting<bool> guarding(guarding_, true), moved(moved_, false);
         const Code          code = Quiet(guard);
         chosen_                  = chosen_ || moved_;
@@ -2388,23 +2399,30 @@ private:
             return std::string();
         }
         if (!asked.empty()) {
-            Compiled::Fallen&     fallen = fallen_[guard.get()];
-            std::set<std::string> limits;
+            Compiled::Fallen&         fallen = fallen_[guard.get()];
+            std::set<Compiled::Named> limits;
             for (const std::string& status : asked)
                 limits.insert(what_[status].begin(), what_[status].end());
-            for (const std::string& l : read)
+            for (const Compiled::Named& l : read)
                 if (limits.count(l) && !std::count(fallen.limits.begin(), fallen.limits.end(), l))
                     fallen.limits.push_back(l);
             (grad_.empty() ? fallen.plain : fallen.grad) = true;
         }
-        // Under grad no clause after is taken: grad refuses there (DESIGN.md).
-        if (!Defers(guard) && (asked.empty() || !grad_.empty())) return Test(guard);
+        // Under grad no clause after is taken where a limit runs out: grad
+        // refuses there. It is where an input is absent (DESIGN.md).
+        const auto taken = [&](const std::string& status) {
+            return grad_.empty() || std::ranges::none_of(what_[status], [](const auto& l) {
+                       return l.second == "runs out";
+                   });
+        };
+        if (!Defers(guard) && std::ranges::none_of(asked, taken)) return Test(guard);
         const std::string truth = Shared(Cell(Truth(guard), primary)).text;
-        if (asked.empty() || !grad_.empty())
+        if (std::ranges::none_of(asked, taken))
             return "isnan(" + truth + ") ? NAN : " + truth + " != 0.0";
         // A truth NaN where a limit it reads ran out does not hold (DESIGN.md).
         std::string ran;
-        for (const std::string& status : asked) Or(ran, status);
+        for (const std::string& status : asked)
+            if (taken(status)) Or(ran, status);
         asked_       = asked;
         std::set_difference(asked.begin(), asked.end(), unsure.begin(), unsure.end(),
                             std::inserter(sure_, sure_.end()));
@@ -3376,8 +3394,8 @@ private:
                 (scalar ? ", 1" + arguments : arguments + ", (double" + shape + "){{0.0}}") +
                 ") != 0.0";
             statuses_->insert(status);
-            what_[status] = {what};
-            if (read_) read_->push_back(what);
+            what_[status] = {{what, "runs out"}};
+            if (read_) read_->push_back({what, "runs out"});
         }
         if (scalar) return Answer(Looping(Of(Cell(called + ")", primary))));
         const std::string out = Declare("lim\x1f" + called, [&](const std::string& t) {
@@ -3731,6 +3749,7 @@ private:
     // A term of a sequence, read at the index the call gives.
     Code Term(const std::string& key, const Reference<Value>* definition,
               const ParametersCall<Value>& call) {
+        std::set<std::string>* const          asking = statuses_;
         const Setting<std::set<std::string>*> unread(statuses_, nullptr);  // a term's own
         if (limit_)
             throw Reason(key + "_...: another sequence's term in " +
@@ -3744,8 +3763,10 @@ private:
             if (!read.size.rows) read.size = Extent{};
         }
         if (!reading_) return Seeded(key, read, call.subexpr());
-        if (const auto sample = Sampled(call.subexpr()))
+        if (const auto sample = Sampled(call.subexpr())) {
+            Flag(asking, key, definition, "\x0e" + std::to_string(sample->second) + "\x0f");
             return Sample(key, read, sample->first, sample->second);
+        }
         if (const auto hold = Held(call.subexpr())) return Holding(key, read, *hold);
         const int lag = Lag(call.subexpr(), key) + shift_;
         // A cycle is told by its reads (Reaches), and this one, which an
@@ -3773,6 +3794,7 @@ private:
         if (clause_reads_) (*clause_reads_)[key].insert(lag);
         Code code  = Array("m_->" + key + "[" + std::to_string(lag) + "]", read.size);
         code.whole = true;
+        Flag(asking, key, definition, std::to_string(lag));
         // Before its window holds the term, one with no base clause is
         // computed again at that index, as the interpreter answers it there
         // (DESIGN.md, C71); Checked keeps whichever the reader needs. A
@@ -3790,6 +3812,16 @@ private:
                 code.cells[c].text = mark + back.At(c).text + "\x06" + code.cells[c].text + "\x07";
         }
         return code;
+    }
+
+    // Where a guard's truth is NaN, an optional input's flag says why.
+    void Flag(std::set<std::string>* asking, const std::string& key,
+              const Reference<Value>* definition, const std::string& at) {
+        if (!asking || definition || !Optional(key)) return;
+        const std::string status = "!m_->" + key + "_present[" + at + "]";
+        asking->insert(status);
+        what_[status] = {{key, "is absent"}};
+        if (read_) read_->push_back({key, "is absent"});
     }
 
     // A sequence with no base clause that reads no term is a closed form, and
@@ -5422,7 +5454,7 @@ private:
             for (const int lag : lags) {
                 for (int n = reader.start; n < std::min(until, earliest_ + lag); ++n) {
                     if (!Ticks(reader, n) || reader.bases.count(n) || Folded(read, n - lag) ||
-                        kept_at(n))
+                        kept_at(n) || Optional(read))
                         continue;
                     throw Refusal(
                         name, name + "_" + std::to_string(Floor(n - reader.phase, reader.period)) +
@@ -5489,6 +5521,9 @@ private:
     std::string Folds(int earliest) const {
         std::string lines;
         for (const auto& [name, sequence] : sequences_) {
+            const bool optional = Optional(name);  // absent before the stream but where given
+            for (int k = 0; optional && k < sequence.depth; ++k)
+                lines += Unset(name, std::to_string(k));
             const bool slow  = sequence.period > 1;
             const int  terms = slow              ? std::min(sequence.filled, sequence.depth)
                                : Historied(name) ? sequence.depth - 1
@@ -5500,12 +5535,22 @@ private:
                 if (term->second->Size() != sequence.size)
                     throw Refusal(name, "a history of another shape");
                 for (std::size_t c = 0; c < cells.size(); ++c)
-                    if (cells[c] != 0.0)
+                    if (cells[c] != 0.0 || optional)
                         lines += "    m_->" + name + "[" + std::to_string(k) + "]" +
                                  Subscript(sequence.size, c) + " = " + Double(cells[c]) + ";\n";
+                if (optional)
+                    lines += "    m_->" + name + "_present[" + std::to_string(k) + "] = 1;\n";
             }
         }
         return lines;
+    }
+
+    // An optional input's cells at k, NaN.
+    std::string Unset(const std::string& name, const std::string& k) const {
+        const std::string at = "m_->" + name + "[" + k + "]";
+        return Cells(name) == 1 ? "    " + at + " = NAN;\n"
+                                : "    for (size_t c_ = 0; c_ < sizeof " + at +
+                                      " / sizeof(double); ++c_) ((double*)" + at + ")[c_] = NAN;\n";
     }
 
     std::vector<std::string> Order() const {
@@ -5919,7 +5964,8 @@ private:
             return joined;
         };
         std::string arguments;
-        for (const std::string& name : inputs) arguments += ", " + name;
+        for (const std::string& name : inputs)
+            arguments += ", " + name + (Optional(name) ? ", " + name + "_present" : "");
         std::vector<std::string> terms, inputs_n, parameters, rated;
         for (const std::string& name : fields) {
             const Sequence&   sequence = sequences_.at(name);
@@ -5959,6 +6005,13 @@ private:
                     ? "A step takes " + list(inputs_n) + ", the input at its index. "
                     : "A step takes " + list(inputs_n) + ", the inputs at its index. ") +
                text;
+        std::vector<std::string> flagged;
+        for (const std::string& name : inputs)
+            if (Optional(name)) flagged.push_back(name);
+        if (!flagged.empty())
+            text += " After an optional input, " + list(flagged) +
+                    ", comes its flag, 0 where it is absent and its value is not read; "
+                    "m.name_present[k] is 1 where name_(n-k) was given.";
         if (!parameters.empty())
             text += std::string(" The parameters are fields holding the ") +
                     (model_ ? "model's defaults" : "file's values") + " once " + module +
@@ -6219,6 +6272,9 @@ private:
             members.push_back(
                 {"double", name,
                  "[" + std::to_string(sequence.depth) + "]" + Dimensions(sequence.size)});
+            if (Optional(name))
+                members.push_back(
+                    {"int", name + "_present", "[" + std::to_string(sequence.depth) + "]"});
             if (clauses_ && !sequence.guarded.empty())
                 members.push_back({"int", name + "_clause_", ""});
             if (!sequence.taken.empty())
@@ -6263,9 +6319,10 @@ private:
         // An input x is 'x_in_', which neither 'm_', a temporary 't0_' nor
         // a function 'model_f' can be named (C342).
         for (const std::string& name : inputs)
-            out += Cells(name) == 1
-                       ? ", double " + name + "_in_"
-                       : ", const double " + name + "_in_[" + std::to_string(Cells(name)) + "]";
+            out += (Cells(name) == 1
+                        ? ", double " + name + "_in_"
+                        : ", const double " + name + "_in_[" + std::to_string(Cells(name)) + "]") +
+                   (Optional(name) ? ", int " + name + "_present_in_" : "");
         out += ") {\n";
         out += "    ++m_->index_;\n";
         // A sequence's window moves when it computes a term: every step, or
@@ -6279,17 +6336,28 @@ private:
                 lines += Dimensions(sequence.size).empty()
                              ? indent + to + " = " + from + ";\n"
                              : indent + "memcpy(" + to + ", " + from + ", sizeof " + to + ");\n";
+                if (Optional(name))
+                    lines += indent + "m_->" + name + "_present[" + std::to_string(k) + "] = m_->" +
+                             name + "_present[" + std::to_string(k - 1) + "];\n";
             }
             return lines;
         };
         for (const std::string& name : fields)
             if (sequences_.at(name).period == 1) out += shifted(name, "    ");
-        for (const std::string& name : inputs)
+        for (const std::string& name : inputs) {
+            // An optional input absent is NaN, and read by no value (DESIGN.md).
+            const std::string given =
+                Optional(name) ? "    if (" + name + "_present_in_)\n    " : "";
             out += Cells(name) == 1
                        ? "    m_->" + name + "[0]" + Subscript(sequences_.at(name).size, 0) +
-                             " = " + name + "_in_;\n"
-                       : "    memcpy(m_->" + name + "[0], " + name + "_in_, sizeof m_->" + name +
-                             "[0]);\n";
+                             " = " + (given.empty() ? "" : name + "_present_in_ ? ") + name +
+                             "_in_" + (given.empty() ? "" : " : NAN") + ";\n"
+                       : given + "    memcpy(m_->" + name + "[0], " + name + "_in_, sizeof m_->" +
+                             name + "[0]);\n" +
+                             (given.empty() ? "" : "    else\n    " + Unset(name, "0"));
+            if (!given.empty())
+                out += "    m_->" + name + "_present[0] = " + name + "_present_in_ != 0;\n";
+        }
         for (const std::string& name : order) {
             const Sequence&   sequence = sequences_.at(name);
             // A grad by several names' parts are written with the first.
@@ -6423,13 +6491,13 @@ private:
     bool                             guarding_ = false;  // in a guard, which asks only for values
     // Where a guard's truth is NaN, what asks whether a limit it reads ran out.
     std::set<std::string>*           statuses_ = nullptr;
-    std::map<std::string, std::set<std::string>>         what_;  // each status's limits, by name
+    std::map<std::string, std::set<Compiled::Named>>     what_;  // each status's limits, by name
     std::map<const Expression<Value>*, Compiled::Fallen> fallen_;
     std::string unconverged_;  // where the last guard compiled read a limit that ran out
     std::set<std::string> asked_;  // and the statuses it asked
     std::set<std::string>  sure_;   // of those, the ones read where it holds (C368)
     std::set<std::string>* unsure_             = nullptr;  // read on an 'or''s right alone
-    std::vector<std::string>*        read_ = nullptr;  // the limits a guard reads, first read first
+    std::vector<Compiled::Named>*    read_ = nullptr;  // the limits a guard reads, first read first
     bool                             roots_    = false;  // whether C may take a root of x < 0
     bool moved_  = false;  // whether a value with a part was compiled, as a guard asks
     bool chosen_ = false;  // whether a guard of the chain compiled read one

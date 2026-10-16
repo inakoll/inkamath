@@ -1,4 +1,4 @@
-# Optional inputs, compiled (DESIGN.md, next in line): a position measured
+# Optional inputs, compiled (DESIGN.md): a position measured
 # where it arrives, every third step but none from 9 to 14, and 40 at 30, an
 # outlier. The filter takes it where it is present and within its gate, and
 # coasts elsewhere, x_n = xp_n; age counts the steps since it last took one,

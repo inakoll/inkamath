@@ -80,10 +80,22 @@ public:
         stack.Forget();
         const int         first = compiled.first;
         std::string       data, stepped, held;
+        std::vector<bool> optional;
         for (std::size_t k = 0; k < compiled.inputs.size(); ++k) {
-            std::vector<std::string> values;
+            const std::string& name = compiled.inputs[k];
+            optional.push_back(std::ranges::any_of(unfed.model->parameters, [&](const auto& p) {
+                return p.optional && p.name == name;
+            }));
+            std::vector<std::string> values, present;
             for (int n = first; n < first + steps; ++n) {
                 const Term input = At(session, instance + "." + compiled.inputs[k], n);
+                // Absent, as the step is told: its flag 0 (DESIGN.md, optional inputs).
+                const bool absent =
+                    optional.back() &&
+                    input.error == instance + "." + name + "_" + std::to_string(n) + " is absent";
+                if (optional.back()) present.push_back(absent ? "0" : "1");
+                if (absent) values.insert(values.end(), compiled.cells[k], "0.0");
+                if (absent) continue;
                 if (!input.error.empty())
                     throw std::runtime_error(instance + "." + compiled.inputs[k] + "_(" +
                                              std::to_string(n) + "): " + input.error);
@@ -101,6 +113,8 @@ public:
             }
             data += Array("const " + CompileC::Real(), "in_" + std::to_string(k),
                           steps * compiled.cells[k], values);
+            if (optional.back())
+                data += Array("const int", "pr_" + std::to_string(k), steps, present);
         }
         // Asked again within the terms, as a disturbed run asks them, so that
         // the functions they call are heard in the same asks (C250).
@@ -226,9 +240,10 @@ public:
         }
         std::string arguments;
         for (std::size_t k = 0; k < compiled.inputs.size(); ++k)
-            arguments += compiled.cells[k] == 1 ? ", in_" + std::to_string(k) + "[n_]"
-                                                : ", &in_" + std::to_string(k) + "[n_ * " +
-                                                      std::to_string(compiled.cells[k]) + "]";
+            arguments += (compiled.cells[k] == 1 ? ", in_" + std::to_string(k) + "[n_]"
+                                                 : ", &in_" + std::to_string(k) + "[n_ * " +
+                                                       std::to_string(compiled.cells[k]) + "]") +
+                         (optional[k] ? ", pr_" + std::to_string(k) + "[n_]" : "");
         // The first step at which a disturbed run takes another clause than
         // the interpreter (DESIGN.md), in a flip's words: at one step, the
         // first sequence asked's, in it the first guard heard (C251), and the
@@ -401,16 +416,23 @@ public:
                     for (const auto& o : clauses)
                         if (next.empty() && same(o.parameters, false)) next = o.written;
                     const std::string& written = clauses[c].written;
-                    std::string        read;
-                    for (const std::string& l : found->second.limits)
-                        read += (read.empty() ? "" : " or ") + l;
+                    // The limits first, then the inputs, each kind said once.
+                    std::string read;
+                    for (const char* kind : {"runs out", "is absent"}) {
+                        std::string names;
+                        for (const auto& [l, of] : found->second.limits)
+                            if (of == kind) names += (names.empty() ? "" : " or ") + l;
+                        if (!names.empty())
+                            read += (read.empty() ? "" : " or ") + names + " " + kind;
+                    }
+                    const bool  ran = read.find(" runs out") != std::string::npos;
                     std::string to = next.empty() ? "NaN" : "'" + next + "'";
-                    if (!found->second.plain)
+                    if (ran && !found->second.plain)
                         to = "NaN under grad";
-                    else if (found->second.grad && !next.empty())
+                    else if (ran && found->second.grad && !next.empty())
                         to += ", and to NaN under grad";
-                    falls[{prefix + name, c}] = prefix + name + ": where " + read + " runs out, '" +
-                                                written + "' falls to " + to;
+                    falls[{prefix + name, c}] =
+                        prefix + name + ": where " + read + ", '" + written + "' falls to " + to;
                 }
             }
         };

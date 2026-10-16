@@ -12028,7 +12028,7 @@ the clause for a limit that does not converge as done, the order from here:
 
 - **A gather and integer inputs**: their open questions first. The gather
   is *A cell at a computed whole index, compiled*.
-- **Optional inputs**, MANIFESTO's open question: how a signature declares
+- `[done]` **Optional inputs**, MANIFESTO's open question: how a signature declares
   an input present on some steps only, and what the static check then
   proves of what reads it. The end-to-end exploration's robot carried its
   fix's outage as a second input, `ok_n`, beside a value that meant
@@ -12171,10 +12171,10 @@ the clause for a limit that does not converge as done, the order from here:
     does.
 
   What moves: nothing. The mark is new syntax, which no golden, README
-  session, report or header writes. With the implementation README
-  section 5 gains optional inputs, its paragraph on compiled inputs the
-  flag and its paragraph on `--check` the audit's line, and MANIFESTO's
-  question goes, answered.
+  session, report or header writes. README section 5 gains optional
+  inputs, section 4's fallback a line, its paragraphs on compiled inputs
+  and on Python's host the flag and its paragraph on `--check` the
+  audit's line, and MANIFESTO's question goes, answered.
 
   About 265 lines, restated after the review's prototype of the
   interpreter's runtime, 71 lines passing 33 of the 41 entries then
@@ -12188,10 +12188,11 @@ the clause for a limit that does not converge as done, the order from here:
   lines at 88b4741 by `wc -l include/inkamath/*.hpp src/*`; past 400 the
   implementation stops and reports.
 
-  Specified in `test/data/spec/optinputs.ink`, 72 entries replayed by the
-  spec suite, 41 failing today: the hold, absence by a term not there,
-  left out, read directly or through a term, read from outside; NaN
-  against absent, marked and not; the eight refusals; `or` and `and`, the
+  Specified in `test/data/spec/optinputs.ink`, 78 entries with the
+  rulings', 44 failing before it was built: the hold, absence by a term
+  not there, below the base clauses, left out, read directly or through a
+  term, read from outside, with no clause left; NaN against absent,
+  marked and not; the nine refusals; `or` and `and`, the
   inexact left; a forwarded input, the stream's start and a history; a
   slow sample and its hold, grad, a column, irregular arrival; and the
   robot's loop with its fix optional and no `ok_n`, its outage stopping
@@ -12202,9 +12203,39 @@ the clause for a limit that does not converge as done, the order from here:
   Compiled, `test/compile/optional.ink` and `test/cli.cmake`'s spec part,
   `cli_spec`: the header's flag, as strict C, and `seen`'s report, its
   lines in any order and the guards last, skipped while the mark is
-  refused as today and only then. With the implementation the spec
-  becomes a golden, `seen` joins the checks with its report and
-  `cli_spec` and the spec suite go.
+  refused as today and only then.
+
+  Done in 340 lines, against the 265 restated and the stop at 400: the
+  interpreter's runtime about 70, the mark, absence a refusal a guard
+  catches, and a term below the base clauses one not there; the static
+  check about 180 where 75 were estimated, the reads walked as the
+  evaluator reads them, an index spelled to tell the guard's term from
+  the value's, and an inner model sought in the body, then where the body
+  was written; the compiler 68, the flag, its window, init's NaN, the
+  status and its kind, asked under grad; `--check` 22, the replay and the
+  audit's words. The spec is the golden `test/data/optinputs.ink`, every
+  entry as written; `seen` is checked with its report, `compile_optional`
+  holds the header and builds it strict, and `cli_spec` and the spec suite
+  are gone. The headers build strict as C99 and C++, by GCC and Clang.
+  Departures:
+  - **An inner instance's optional input is refused when compiled**, "e.z,
+    an inner instance's optional input, for now": neither a forwarded flag
+    nor a sibling's chain passed as one is built, and a file's definitions
+    reading one are refused with them, in a guard or not. Each wants a flag
+    the step computes from what the argument reads, and a chain a status of
+    its own for a term no clause gives, about 40 lines; until an entry
+    needs it. So `test/compile/robot.ink` and `test/data/robot.ink` keep
+    `ok_n`: their fix is the loop's GPS instance's, given to the filter
+    instance, which this refuses, and the spec's robot entries are the
+    interpreter's already.
+  - The definition's stage checks the arguments forwarded too where the
+    inner model is defined already, as the spec's `dbl` entry asks.
+  - A call's arguments are read wherever the call is, as the interpreter
+    evaluates them first; two indices are the same term where they are
+    spelled alike, `n-1` as `n-1`, any other form spelled in full.
+  - Within a model only: a model's body reading another instance of the
+    session's optional input is not checked, and is refused where it is
+    absent, as from outside.
 - **A definition the host implements**, as the C-hook study sketched:
   `--compile nav.ink nav --host qp` names it, with no syntax; the header
   declares `int nav_qp(const double H[4], const double f[2], double

@@ -52,7 +52,7 @@ endforeach()
 # take 22 s, and reverse_memo.ink's one entry, its 600,000 under reverse
 # mode, 38.
 set_tests_properties(reverse_memo.ink PROPERTIES TIMEOUT 120)
-foreach(suite IN ITEMS bignum line_editor matrix prelude spec)
+foreach(suite IN ITEMS bignum line_editor matrix prelude)
     add_test(NAME ${suite} COMMAND inkamath_tests --test-suite=${suite} --no-intro)
     set_tests_properties(${suite} PROPERTIES TIMEOUT 60)
 endforeach()
@@ -85,15 +85,6 @@ foreach(part 1 2 3)
                      -P ${CMAKE_CURRENT_LIST_DIR}/cli.cmake)
     set_tests_properties(cli_${part} PROPERTIES TIMEOUT ${cli_timeout})
 endforeach()
-# Optional inputs compiled (DESIGN.md), specified before they are built:
-# cli.cmake's spec part, skipped while the mark is refused as today.
-add_test(NAME cli_spec
-         COMMAND ${CMAKE_COMMAND} -DEXE=$<TARGET_FILE:inkamath_cli> -DPART=spec
-                 -DOUT=${CMAKE_CURRENT_BINARY_DIR}/cli_spec -DCASE_TIMEOUT=${cli_case_timeout}
-                 -DCC=${CMAKE_C_COMPILER} -DCC_ID=${CMAKE_C_COMPILER_ID}
-                 -P ${CMAKE_CURRENT_LIST_DIR}/cli.cmake)
-set_tests_properties(cli_spec PROPERTIES TIMEOUT ${cli_timeout} SKIP_REGULAR_EXPRESSION
-    "compile_optional: the mark refused, as today")
 # bench's workloads, each a transcript bench/run.cmake measures, replayed so
 # that one gone stale fails here rather than at its next measure. The
 # slowest, under the sanitizers, take 7 s; train.ink is data, no transcript.
@@ -283,7 +274,7 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brin
                          fallback:spelled fallback:joined fallback:routed fallback:returned
                          fallback:respelled fallback:preceded fallback:defaulted fallback:sentried
                          fallback:partway pendloop:cart motorloop:motor robot:robot:200
-                         lcg:lcgs)
+                         lcg:lcgs optional:seen)
     string(REPLACE ":" ";" checked ${checked})
     list(POP_FRONT checked file instance count)
     set(name ${instance})
@@ -598,6 +589,10 @@ set_tests_properties(check_rump_report PROPERTIES PASS_REGULAR_EXPRESSION
 # compile/lcg.ink: glibc's LCG parts where its products pass 2^53.
 set_tests_properties(check_lcgs_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^lcgs: 100 steps from 0, against exact values\nlcgs\\.q: within 0\nlcgs\\.r: 325238528 at 2, where the interpreter gives 325238575\n$")
+# An optional input (DESIGN.md): every term exact, the absent fix given as
+# its flag 0, and each guard reading it with the clause it falls to.
+set_tests_properties(check_seen_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^seen: 100 steps from 0, against exact values\nseen\\.d: within 0\nseen\\.xp: within 0\nseen\\.age: within 0\nseen\\.x: within 0\nseen\\.u: within 0\nseen\\.age: where z is absent, 'age_n \\| \\(z_n - xp_n\\)\\^2 <= gate\\^2 = 0' falls to 'age_n = age_\\(n-1\\) \\+ 1'\nseen\\.d: where z is absent, 'd_n \\| z_n - z_\\(n-3\\) > 0 = z_n - z_\\(n-3\\)' falls to 'd_n = 0'\nseen\\.x: where z is absent, 'x_n \\| \\(z_n - xp_n\\)\\^2 <= gate\\^2 = xp_n \\+ a\\*\\(z_n - xp_n\\)' falls to 'x_n = xp_n'\n$")
 # Goldberg (1991): Heron's formula parting at a needle, and (x + y) + z
 # from x + (y + z) at 1e30, as the paper has them; compile/goldberg.ink.
 set_tests_properties(check_year_report PROPERTIES PASS_REGULAR_EXPRESSION

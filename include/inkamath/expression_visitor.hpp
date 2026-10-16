@@ -341,7 +341,13 @@ public:
         const T    first   = expr->m_e1()->accept(*this);
         const bool left    = truth(first);
         const bool decided = left != expr->Conjunction();
-        const T    second  = decided ? first : expr->m_e2()->accept(*this);
+        T          second  = first;
+        if (!decided) try {
+                second = expr->m_e2()->accept(*this);
+            } catch (Absent& absent) {
+                absent.inexact |= !numeric_interface<T>::exact(first);
+                throw;
+            }
         return T::Held(decided ? left : truth(second), first, second);
     }
 
