@@ -12205,6 +12205,14 @@ the clause for a limit that does not converge as done, the order from here:
   refused as today and only then. With the implementation the spec
   becomes a golden, `seen` joins the checks with its report and
   `cli_spec` and the spec suite go.
+- **A definition the host implements**, as the C-hook study sketched:
+  `--compile nav.ink nav --host qp` names it, with no syntax; the header
+  declares `int nav_qp(const double H[4], const double f[2], double
+  out_[2])`, 1 where it answered, and a guard reading it asks its status
+  of kind *fails*, as one reading a limit asks *runs out*. `--check`
+  interposes, holds each answer to the inkamath definition within a
+  tolerance and checks that both fail together. About 200 lines; deferred
+  until an entry needs it, likely the small MPC below.
 - **Exact discretisation** as conformance entries first, `expm` an
   unbounded sum, Van Loan and ZOH by block literals; the prelude only if
   they show friction.
@@ -12246,8 +12254,7 @@ review:
   Deferred:
   - a field table the compiler generates behind a macro, about 35 lines,
     until a host asks for it;
-  - a definition the host implements, held by `--check` to its inkamath
-    reference, about 50 lines for a single value, until an entry needs it;
+  - a definition the host implements, now in the list above;
   - a CUDA printer, a batch of instances as structure of arrays with its
     parameters placed, about 250 lines, until an entry needs instance
     width and `--check` on a device has a GPU runner; Clang already
