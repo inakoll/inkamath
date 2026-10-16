@@ -232,6 +232,13 @@ fw(z_n?) = { ... }
 .. }
 error: y reads f.e.z_n, an optional input of est, outside a guard with a clause after it
 
+# An unnamed instance is named as the interpreter names it, its arguments
+# elided.
+>> nest(z_n?) = {
+..     y_n = fw(z_n = z_n).e.z_n
+.. }
+error: y reads fw(...).e.z_n, an optional input of est, outside a guard with a clause after it
+
 # Before the stream nothing has arrived: below 0, where no clause of its
 # history gives it, it is absent. A history gives what it says.
 >> rise(z_n?) = {
