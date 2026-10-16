@@ -51,6 +51,13 @@ g(k) = 0
 >> [g(3), g(4)]
 [1, 0]
 
+# Where no clause is left to fall to, the refusal names the absence.
+>> h(k) | e.z_k > 0 = 1
+h(k) | e.z_k > 0 = 1
+
+>> h(4)
+error: e.z_4 is absent
+
 # Not marked, the same input is refused where its argument has no term, as
 # today.
 >> est2(z_n) = {

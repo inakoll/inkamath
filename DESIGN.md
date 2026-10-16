@@ -12088,7 +12088,9 @@ the clause for a limit that does not converge as done, the order from here:
     guard and the value that read it, its gate twice, in `fix` and `x`,
     accepted for now. Outside the model, the interpreter reads an
     instance's optional input as any term, "e.z_4 is absent", and a guard
-    reading it falls; compiling, a file's definition that reads an
+    reading it falls; where no clause is left to fall to, the refusal
+    names the absence, "e.z_4 is absent", as it names a limit that runs
+    out. Compiling, a file's definition that reads an
     instance's optional input outside a guard is refused, as in a model.
   - **NaN is not absence.** Given NaN, an optional input is present and
     NaN: a comparison of it is refused, and the step is NaN where it
