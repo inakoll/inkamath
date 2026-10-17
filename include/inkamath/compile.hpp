@@ -4479,6 +4479,11 @@ private:
         Asked([&] { Reasoned([&] { Derivative<Value>(definitions_).Names(*expression); }); }, true);
         const bool hessian =
             Reasoned([&] { return Derivative<Value>::Hessian(*expression, points[0].size); });
+        // Its inner grad's point reads v, where its body may not.
+        if (hessian) {
+            auto& inner = static_cast<GradExpression<Value>&>(*expression->Body());
+            Asked([&] { Reasoned([&] { Derivative<Value>(definitions_).Names(inner); }); }, true);
+        }
         if (depth_ + (hessian ? 1 : 0) > 1)
             throw Reason("a derivative of a derivative of a derivative, for now");
         // grad_ joins several names by ' or '.
