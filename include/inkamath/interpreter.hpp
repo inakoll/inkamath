@@ -1654,10 +1654,14 @@ PExpression<U> Interpreter<T, U>::ParseGrad() {
     }
     PExpression<U> body = ParseMultExpr(), nest = body;
     // Nine deep is refused as any deeper is, when evaluated.
-    for (std::size_t k = 1; k < std::min<std::size_t>(order, 9); ++k)
-        nest = std::make_shared<GradExpression<U>>(
-            variables,
-            std::vector<PExpression<U>>{std::make_shared<RefExpression<U>>(variables[0])}, nest);
+    for (std::size_t k = 1; k < std::min<std::size_t>(order, 9); ++k) {
+        // Room for the body too: grown from a list of one, GCC 14 at -O2 warns
+        // of a subscript out of bounds where there is none.
+        std::vector<PExpression<U>> at;
+        at.reserve(2);
+        at.push_back(std::make_shared<RefExpression<U>>(variables[0]));
+        nest = std::make_shared<GradExpression<U>>(variables, std::move(at), nest);
+    }
     return std::make_shared<GradExpression<U>>(std::move(variables), std::move(points), nest, order,
                                                order > 1 ? body : nullptr);
 }
