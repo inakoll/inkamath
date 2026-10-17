@@ -152,13 +152,12 @@ if(PART STREQUAL "spec")
     endif()
 
     file(WRITE "${OUT}/hessian_refused.ink"
-         "a_n = grad_(t = x_n)^n t^5\nb_n = grad_(s = x_n, r = 2) grad_(t = s) t^2*r\n"
+         "b_n = grad_(s = x_n, r = 2) grad_(t = s) t^2*r\n"
          "c_n = grad_(t = x_n)^2 lim p(t)\nd_n = grad_(v = [x_n 1; 2 3])^2 v[1,1]*v[2,2]\n"
          "e_n = grad_(v = [x_n; 1])^3 v[1]^4\nf_n = grad_(t = x_n)^9 t^9\n"
          "p(r)_0 = 1\np(r)_k = r*p(r)_(k-1)/4 + 1\n")
     set(args --compile hessian_refused.ink)
-    set(stdout "cannot compile a: a derivative whose order is not a constant
-cannot compile b: a derivative of a derivative by several names, for now
+    set(stdout "cannot compile b: a derivative of a derivative by several names, for now
 cannot compile c: a derivative of a limit, for now
 cannot compile d: a derivative of order 2 with respect to a matrix, for now
 cannot compile e: a derivative of order 3 with respect to a vector, for now

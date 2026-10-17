@@ -12270,17 +12270,15 @@ the clause for a limit that does not converge as done, the order from here:
 
   Decided:
   - **The notation**: the superscript after the subscript, as
-    `sum_(k=1)^n`, by sum's rule for its upper bound, a number, a name or
-    parentheses. It is read where grad is written, as the point is, not
-    where grad's name is bound. An exact whole number of at least 2;
-    anything else is refused, "grad's order is a whole number, 2 or more;
-    a first derivative is written without one": `^1` adds nothing
-    (`CLAUDE.md` §2), `^0` is the body and a fraction no derivative grad
-    has. Written as a number it is known when read, so a definition holding
-    it is refused; a name or parentheses where evaluated, a model's
-    parameter included. `?` prints it as written, and tex as
-    `\frac{\partial^{2}}{\partial u^{2}}`, the order in braces as a sum's
-    bound.
+    `sum_(k=1)^n`, and a whole number written, 2 or more, known when the
+    definition is read, which is refused there otherwise. A number else,
+    "grad's order is a whole number, 2 or more; a first derivative is
+    written without one": `^1` adds nothing (`CLAUDE.md` §2), `^0` is the
+    body and a fraction no derivative grad has. A name or parentheses,
+    "grad's order is written as a number". `?` prints it as written, and
+    tex as `\frac{\partial^{2}}{\partial u^{2}}`, the order in braces as a
+    sum's bound. The implementation may desugar it when parsed, into the
+    grads nested, if `?` and tex still print it as written.
   - **Of a single value, sugar**: n grads of the name nested at the point,
     their parts, refusals and depth too, "grad nests more than 8 deep" at
     `^9`. Mixed partials stay nesting, and a grad of x nested in a grad of
@@ -12306,9 +12304,7 @@ the clause for a limit that does not converge as done, the order from here:
     cell as the interpreter takes a grad inside another, so a Jacobian by
     cells of a gradient compiles; reverse mode stays for a grad neither in
     a nest nor holding one. A jump, a `floor`'s, a comparison's or an `==`
-    guard's, is NaN where any grad of the nest moves the value. The order
-    folds to a constant, a parameter compiled in as a size is, or "a
-    derivative whose order is not a constant".
+    guard's, is NaN where any grad of the nest moves the value.
   - **The header grows with the order, not as its power.** Of one name at
     one point the parts of sets of grads of one size are equal, bit for
     bit, each rule taking its terms in the same order, so `^n` keeps n + 1
@@ -12331,9 +12327,10 @@ the clause for a limit that does not converge as done, the order from here:
     x twice".
   - **`grad_(x = a, y = b)^2`**, the Hessian by several names: its parts
     would be pairs of names. An item of its own when asked.
-  - **`^1` and `^0` accepted where the order is a name**, so that a Taylor
-    sequence's first terms needed no clauses of their own: an order refused
-    written is refused given.
+  - **An order by a name, parentheses or a model's parameter**, read where
+    grad is written: with `^0` and `^1` refused it served no equation, and
+    those it suggests, Rodrigues' P_n and a Taylor sum, start at 0. An item,
+    0 and 1 given then, when one is transcribed.
   - **`\nabla^2_v` in tex**: a physicist's Laplacian, and tex cannot know
     the point's shape, which is a value.
   - **The lower triangle computed too**: twice the passes, for a Hessian
@@ -12352,28 +12349,27 @@ the clause for a limit that does not converge as done, the order from here:
   said a study was running.
 
   About 500 lines of sources, as the study estimated 450 to 550: the
-  interpreter's 130, the order parsed by sum's rule and printed, tex, the
-  two refusals when read, the nest in `Derivative::Grad`, and the Hessian
+  interpreter's 130, the order parsed and printed, tex, the refusals when
+  read, the nest in `Derivative::Grad`, and the Hessian
   by pairs of cells, its mirror and its refusals, about 60 of them; the
   compiler's 360, the prototype's arithmetic, chains, calls and powers
   over a part for each set of grads, about 250, then products, transposes
-  and cells, a pass per cell in a nest, the jumps tested by each grad, the
-  order folded, n + 1 parts for one name and the part functions by order;
+  and cells, a pass per cell in a nest, the jumps tested by each grad,
+  n + 1 parts for one name and the part functions by order;
   `--check`'s 10. 19,694 lines at 1023bc1 by `wc -l include/inkamath/*.hpp
   src/*`; past 750 the implementation stops and reports.
 
-  Specified in `test/data/spec/hessian.ink`, 48 entries, 39 failing: orders
+  Specified in `test/data/spec/hessian.ink`, 42 entries, 34 failing: orders
   to 8, nesting around and inside, a function of its point printed and in
-  tex, the order by a name and parentheses read where grad is, through the
-  prelude, a matrix and cases; the Hessian by a column and a row against
-  the Jacobian by cells, a Lagrangian's, Newton's method by it, a model's
-  parameter as the order; a double pendulum's mass matrix, Coriolis and
-  hundredth step; and the refusals. Values by hand, in Python's
+  tex, through the prelude, a matrix and cases; the Hessian by a column and
+  a row against the Jacobian by cells, a Lagrangian's, Newton's method by
+  it; a double pendulum's mass matrix, Coriolis and hundredth step; and the
+  refusals. Values by hand, in Python's
   fractions and by mpmath at 40 digits. Compiled, `test/compile/hessian.ink`
   and `test/cli.cmake`'s spec part, `cli_spec`: the pendulum from its
-  Lagrangian, `lag`, and by hand, `hand`, and a second derivative of cases
-  whose order is a parameter, `bend`, each term within 0 under `--check`;
-  the header's growth; and six refusals. Skipped while the order is refused
+  Lagrangian, `lag`, and by hand, `hand`, and a second derivative of cases,
+  `bend`, each term within 0 under `--check`; the header's growth; and five
+  refusals. Skipped while the order is refused
   as today, and only then.
 - `[done]` **Exact discretisation** as conformance entries:
   `test/compile/motorloop.ink` and `pendloop.ink`, Van Loan's block a

@@ -15,8 +15,8 @@
 # (test/data/spec/hessian.ink).
 #
 # 'b', the second derivative of a definition in cases, each side of its
-# threshold, its order a parameter compiled in: 6q above 0, -2 below and 0
-# at 0, q stepping by 1/32 from -1/2, every term a dyadic exact in a double:
+# threshold: 6q above 0, -2 below and 0 at 0, q stepping by 1/32 from
+# -1/2, every term a dyadic exact in a double:
 #
 #     b: 100 steps from 0, against exact values
 #     b.d: within 0, from 1
@@ -45,12 +45,12 @@ hand(m1 = 1, m2 = 1, l1 = 1, l2 = 1, g = 10) = {
     w_n = w_(n-1) + M_n^-1*(G_n - C_n*w_(n-1))/100
     q_n = q_(n-1) + w_n/100
 }
-bend(N = 2) = {
+bend() = {
     pc(x) | x < 0 = -x^2
     pc(x) = x^3
     q_0 = -1/2
     q_n = q_(n-1) + 1/32
-    d_n = grad_(x = q_(n-1))^N pc(x)
+    d_n = grad_(x = q_(n-1))^2 pc(x)
 }
 p = lag()
 h = hand()

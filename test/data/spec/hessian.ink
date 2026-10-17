@@ -33,20 +33,6 @@ d2(t) = grad_(u = t)^2 u^3
 >> tex ?d2
 \operatorname{d2}(t) = \left.\frac{\partial^{2}}{\partial u^{2}} u^3\right|_{u=t}
 
-# The order is read where grad is written, as its point is, by sum's rule
-# for an upper bound: a number, a name or parentheses.
->> k = 3
-k = 3
-
->> grad_(x = 2)^k x^5
-240
-
->> grad_(x = 2)^(k - 1) x^5
-160
-
->> grad_(x = 2)^x x^3
-error: x is not defined
-
 # Through the prelude, a matrix and the clause that holds at the point.
 >> grad_(x = 1/2)^2 sin(x)
 ~-0.479425539
@@ -114,21 +100,6 @@ nt = newton()
 [67108864/94852805;
  33554432/94852805]
 
-# A model's parameter as the order, read where the term is.
->> dn(N = 3) = {
-..     d_n = grad_(x = n)^N x^5
-.. }
-dn(N = 3) = { ... }
-
->> dn().d_3
-540
-
->> dn(N = 4).d_3
-360
-
->> dn(N = 1).d_3
-error: grad's order is a whole number, 2 or more; a first derivative is written without one
-
 # A double pendulum's mass matrix and Coriolis from its Lagrangian, as
 # test/compile/hessian.ink compiles them. M_1 at q_0 = [1; 1/2]; C_2 and
 # q_100 those of the recurrence written by hand, in mpmath.
@@ -159,9 +130,10 @@ p = lag()
 [~-0.276479857;
   ~-1.04368092]
 
-# Refused: an order below 2 or not whole, where it is defined when written
-# as a number; one by several names, of a matrix, and past 2 of a vector,
-# for now. A first derivative's refusals and nesting's stay.
+# Refused when read: an order below 2, not whole, or not written as a
+# number, so where it is defined; and one by several names, of a matrix,
+# and past 2 of a vector, for now. A first derivative's refusals and
+# nesting's stay.
 >> grad_(x = 2)^1 x^3
 error: grad's order is a whole number, 2 or more; a first derivative is written without one
 
@@ -171,8 +143,14 @@ error: grad's order is a whole number, 2 or more; a first derivative is written 
 >> grad_(x = 2)^0 x^3
 error: grad's order is a whole number, 2 or more; a first derivative is written without one
 
->> grad_(x = 2)^(1/2) x^3
+>> grad_(x = 2)^2.5 x^3
 error: grad's order is a whole number, 2 or more; a first derivative is written without one
+
+>> grad_(x = 2)^(1/2) x^3
+error: grad's order is written as a number
+
+>> e(k) = grad_(x = 2)^k x^5
+error: grad's order is written as a number
 
 >> grad_(x = 2, y = 3)^2 x^2*y
 error: a grad by several names takes no order, for now
