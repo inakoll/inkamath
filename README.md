@@ -347,6 +347,12 @@ batch the steps in C, as `ink_run` does, 37 to 81 ns a step from Python.
 `compile_host` builds this file as written here and holds `ink_run` to
 `ink_step`.
 
+inkamath solves no optimisation, but it writes what a solver is given: a
+model's dynamics and their Jacobians by cells (section 4), compiled and held
+to the interpreter by `--check`, are terms the host reads after each step,
+`m.A[0]` and `m.B[0]`, to build the QP that OSQP or HPIPM solves for an MPC.
+The solver, its tolerance and its failure stay the host's.
+
 `--check session.ink`, given a transcript alone, replays it and shows each
 answer that is not the one recorded, as recorded (`-`) and as given now (`+`),
 under the line it answers. It is the check the tests make of
