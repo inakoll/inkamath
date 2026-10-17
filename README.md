@@ -199,8 +199,11 @@ back, so that the step's gradient is the interpreter's to the bit where the
 interpreter's values are doubles: `test/compile/grad.ink` trains a line and a
 logistic regression by it, and `test/compile/cellguards.ink` a ReLU network
 through its activation written by its cells, each cell's guards tested in the
-step; a derivative of a derivative, of a limit or of a matrix power is refused
-for now. A `grad` by several names is a struct of its parts, as an instance
+step. A grad inside a grad is compiled forward over forward, each value
+carrying a part by each, so a Hessian and a Jacobian by cells of a gradient
+compile: `test/compile/hessian.ink` steps a double pendulum from its
+Lagrangian. A nest three deep or holding a grad by several names, and a
+derivative of a limit or of a matrix power, are refused for now. A `grad` by several names is a struct of its parts, as an instance
 is, `m.g.W[0]` being `g.W_n`, the body written once and swept back once:
 `test/compile/gradmany.ink` trains a two-layer network by one grad of its
 four weights. A tensor is an array as C keeps one,
@@ -1351,6 +1354,39 @@ J(x)[i<=3, j<=2] = (grad_(v = x) f(v)[i])[j]
 [           3, 0.5;
  ~0.877582562,   6;
             1,   0]
+```
+
+A derivative of a derivative is a grad inside a grad, and grad's order,
+after the subscript as a sum's bound is, writes n of them by one name: a
+whole number, 2 or more. With respect to a vector, order 2 is the Hessian,
+its cell (i, j) the derivative by v[i] of the derivative by v[j] and (j, i)
+the same number, so it is symmetric exactly; a Lagrangian's, at l = 1/2:
+
+```
+>> grad_(x = 1/2)^4 x^5
+60
+
+>> Lg(v, l) = (v[1] - 2)^4 + (v[1] - 2*v[2])^2 + l*(v[1]^2 - v[2])
+Lg(v, l) = (v[1] - 2)^4 + (v[1] - 2*v[2])^2 + l*(v[1]^2 - v[2])
+
+>> grad_(v = [3; 1])^2 Lg(v, 1/2)
+[15, -4;
+ -4,  8]
+```
+
+The Jacobian by cells of the gradient is the Hessian too, its cell (i, j)
+by v[j] outside v[i], so on inexact values the two may part in the last
+bit. A Hessian times a vector needs none of its cells: it is the derivative
+in that direction, one pass by the vector's cells, as a pendulum's Coriolis
+term C*w is `grad_(e = 0) grad_(v = w) L(q + e*w, v)`:
+
+```
+>> Lp(q, w) = 2*w[1]^2/2 + w[2]^2/2 + w[1]*w[2]*cos(q[1] - q[2]) + 20*cos(q[1]) + 10*cos(q[2])
+Lp(q, w) = 2*w[1]^2/2 + w[2]^2/2 + w[1]*w[2]*cos(q[1] - q[2]) + 20*cos(q[1]) + 10*cos(q[2])
+
+>> grad_(e = 0) grad_(v = [3/10; -7/10]) Lp([1; 1/2] + e*[3/10; -7/10], v)
+[ ~0.335597877;
+ ~-0.143827662]
 ```
 
 A term can be defined by its cells, as a matrix is (section 2): the brackets

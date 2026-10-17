@@ -1896,6 +1896,13 @@ closures need one anyway, and can bring it.
 | C379 `[fixed]` | **A history's own term was refused for what its input's argument reads.** Whether a term init folds can change with a parameter was asked of everything the input reads, its argument included, though the interpreter tries the history's clauses first: with `steering(k = 2, y_n)` giving `u_n = k*(1 - y_n)` and a plant `railing(u_n)` whose history `u_n \| n < 0 = 1/2` it reads at 0 as `u_(n-1)`, the two instances closing the loop, compiled together, were refused, "rail.u's history reads steer.k, which the host may assign after init", where the interpreter gives 1/2. Where a clause of the history holds, a base clause or a guard, init now folds its term, which a history may not read a parameter to give; where none does, the argument gives it, and a parameter it reads is refused as before, as `history_gained`. No golden, expected header or report moves. In 12 lines of `compile.hpp`, 2 of comment, and 1 removed; `test/cli.cmake`'s `history_railed` holds it. Found by the end-to-end exploration of a robot loop, its controller and plant instances of their own. |
 | C380 `[open]` | **A compiled guard takes the clause after where the interpreter refuses a NaN read before what falls.** A guard's truth NaN where a status it asks holds does not hold, whatever made it NaN, where the interpreter refuses the first comparison of NaN it reads: with `nn(z_n?)` giving `y_n \| z_n > 0 and z_(n-1) > 0 = 1` and `y_n = 0`, and z NaN and present at 3 and absent at 2, the step takes y_3 = 0 and the interpreter refuses it, "a comparison needs a number"; so with a limit that runs out, `y_n \| x_n > 0 and lim qp(x_n) > 0 = 1` where x is NaN, before optional inputs. Open: statuses would need the order of reads. Found by the implementation review of optional inputs. |
 | C381 `[fixed]` | **Configuring with two sanitizers and no build type failed.** Whether C363 is timed was decided in a generator expression, `$<BOOL:${INKAMATH_SANITIZE}>`, where the comma in `address,undefined` made two parameters: `cmake -S . -B build -G Ninja -DINKAMATH_SANITIZE=address,undefined`, the command §5 gives with the sanitizers added, stopped at generate, "$<BOOL> expression requires exactly one parameter". CI passes `Debug`, whose `$<OR:...>` never reads the rest, so it did not see it. The sanitizers are now asked in CMake itself. No golden or test moves; configuring is the test, which no ctest can hold. In 6 lines of `test/CMakeLists.txt`, 2 of comment, and 1 removed. Found by the implementation of optional inputs and its review. |
+| C382 `[open]` | **A gradient by a vector at an exact point parts from forward mode's in the last bit, through the prelude.** At an exact point, reverse mode takes a prelude function's slope by the walk's own nodes, where at an inexact point, and in forward mode, it takes the header's: `grad_(u = [1; 1/2]) 20*cos(u[1]) == [grad_(x = 1) 20*cos(x); 0]` is `~0`, the first an ulp from -20 sin 1, where `cos(u[1])` alone and the point `[~1; 1/2]` give `~1`. So `test/compile/hessian.ink`'s `p.G`, which the header computes as forward mode does, is 3.6e-15 from the interpreter's at 1, and C and w after it by what that moves. Open. Found by the implementation of grad's order. |
+| C383 `[fixed]` | **A compiled Hessian of a body not reading v answered 0.** A Hessian's body is its inner grad's, whose point is v, so the compiler's test that the body reads the name passed it: `c_n = grad_(v = y_(n-1))^2 3*y_(n-1)[1]` was the zero matrix, where the interpreter refuses it, "grad's expression does not read v", and `--check` exited 1. The inner grad's body is asked now, as the interpreter asks it. In 4 lines of `compile.hpp`, 1 of comment; `test/cli.cmake`'s `compile_hessian_refused` holds it. No golden, expected header or report moves. Found by the implementation review of grad's order. |
+| C384 `[fixed]` | **A compiled second derivative was infinite where a power's is, and the interpreter refuses.** A power's value is NaN at a base of 0 where its first derivative is infinite there (C116), and the test was written for c < 1 alone and only where the base moves by the inner grad: in a nest, `grad_(t = x_n^2)^2 t^(3/2)`, whose second derivative is infinite at 0, and `grad_(t = x_n^2) grad_(s = 1) s*t^(1/2)`, its base moving by the outer grad alone, were inf at x = 0, where the interpreter says "a power's derivative is infinite", and `--check` exited 1. The value is now tested where u^(c-2) is infinite too and u moves by both grads, and where u moves by the outer alone. In 14 lines of `compile.hpp`, 1 of comment, and 11 removed; `compile/hessian.ink`'s `k` holds it. No golden, expected header or report moves. Found by the implementation review of grad's order. |
+| C385 `[fixed]` | **A compiled nest took an outer part as there in every clause.** A jump in a nest was NaN wherever it was met and the value moved by the outer grad in some clause, and a fractional power's outer part was 0 times infinity where its base's clause has none: with `h(x) \| x < 0 = 0` and `h(x) = x`, `grad_(t = x_n)^2 (floor(h(t)) + t^3)` was NaN at x = -0.5, where the interpreter gives -3, and `h(t)^(1/2)`, `h(t)^(3/2)` and `grad_(t = x_n) grad_(s = 1) s*h(t)^(1/2)` NaN below 0, where it gives 0, so `--check` exited 1: the implementation's departure, "the outer grad's part is taken as there wherever a clause has it". Each outer part now says where it is there, in its own `moves`, as a value says where its part is, and a jump, a power's outer part and its cross part are tested by it. In 75 lines of `compile.hpp`, 6 of comment, and 34 removed; `compile/hessian.ink`'s `z` holds it. No golden, expected header or report moves. Found by the implementation review of grad's order. |
+| C386 `[fixed]` | **A compiled nest at constant points was computed in doubles.** A value moving by the outer grad is never a constant, so `grad_(x = 1/10)^2 ((x*3 > 3/10) + x^3)` took 0.1*3 as 0.30000000000000004 and answered 0.6, where the interpreter refuses, "a comparison jumps at x = 0.1": the implementation's departure. A nest whose innermost body, each grad's name its point's value, is a constant reading no parameter is now the interpreter's value, as a limit of numbers is, and NaN where it refuses. In 41 lines of `compile.hpp`, 4 of comment; `compile/hessian.ink`'s `c` holds it, its report expected in full. No golden, expected header or report moves. Found by the implementation review of grad's order. |
+| C387 `[fixed]` | **A nest's infinite power was refused at the innermost point, not the one that makes it so.** `grad_(t = 0) grad_(s = 1) s*t^(1/2)` said "a power's derivative is infinite at s = 1", where t = 0 makes it infinite. The refusal now names the innermost grad the base moves with, as a complex point's does. In 13 lines of `derivative.hpp`, 2 of comment, and 6 removed; `hessian.ink` holds it. No other golden moves. Found by the implementation review of grad's order. |
+| C388 `[open]` | **A comparison or a fractional power of a prelude call constant in the clause taken is NaN compiled.** A call of the prelude is a function of the header, and its part is taken as there wherever its argument's is, where the interpreter takes the clause's: `grad_(t = x_n) ((max(t, 0) > 0) + t^3)` is NaN at x = -0.75, where `max` gives the constant 0 and the interpreter 1.6875, and `grad_(t = x_n) (max(t, 0)^(1/2) + t^3)` NaN at x = -0.5, 0 times infinity, where it gives 0.75; at first order, before grad's order, and in a nest alike. Open: where a call's part is there wants a function of the header of its own, as its part has. Found by the implementation review of grad's order, on integration too. |
 
 **Measure instructions, not the clock.** One of those changes made the matrix
 workload 20 per cent slower by the clock and not by a single instruction: with
@@ -12261,8 +12268,156 @@ the clause for a limit that does not converge as done, the order from here:
   tolerance and checks that both fail together. About 200 lines; deferred
   until an entry needs it, likely one calling a QP solver, OSQP or HPIPM,
   from the step.
-- **Compiled second and higher derivatives**, refused today, "a derivative
-  of a derivative, for now"; a study is running.
+- `[done]` **grad's order, `grad_(x = a)^n body`, and second derivatives compiled.**
+  A Lagrangian's mass matrix, a Newton step and a KKT system's Hessian need
+  second derivatives. The interpreter has them by nesting, with respect to
+  a vector only through the Jacobian by cells of a gradient (README section
+  4); the compiler refuses every nest, "a derivative of a derivative, for
+  now". From a study of a prototype, forward over forward in the compiler.
+
+  Decided:
+  - **The notation**: the superscript after the subscript, as
+    `sum_(k=1)^n`, and a whole number written, 2 or more, known when the
+    definition is read, which is refused there otherwise. A number else,
+    "grad's order is a whole number, 2 or more; a first derivative is
+    written without one": `^1` adds nothing (`CLAUDE.md` §2), `^0` is the
+    body and a fraction no derivative grad has. A name or parentheses,
+    "grad's order is written as a number". `?` prints it as written, and
+    tex as `\frac{\partial^{2}}{\partial u^{2}}`, the order in braces as a
+    sum's bound. The implementation may desugar it when parsed, into the
+    grads nested, if `?` and tex still print it as written.
+  - **Of a single value, sugar**: n grads of the name nested at the point,
+    their parts, refusals and depth too, "grad nests more than 8 deep" at
+    `^9`. Mixed partials stay nesting, and a grad of x nested in a grad of
+    x stays legal, with no rule against it.
+  - **Of a vector**, a column or a row of n cells, `^2` only: the n by n
+    Hessian, not sugar. Its cell (i, j), i <= j, is the derivative by v[i]
+    of the derivative by v[j], two grads nested, each seeded with its cell,
+    and cell (j, i) the same number: n(n+1)/2 passes, and a symmetric
+    answer exactly, which `chol` tests exactly. A 1x1 matrix is a single
+    value. It is the Jacobian by cells of the gradient wherever both are
+    exact.
+  - **Refused for now**, in its words: an order on a grad by several names,
+    "a grad by several names takes no order, for now", when read; and when
+    evaluated, "a derivative of order 3 with respect to a vector, for now",
+    and of any order "with respect to a matrix" or "a tensor". A matrix
+    body by a vector is first order's Jacobian refusal.
+  - **Compiled**, forward over forward, each grad of a nest adding parts to
+    each value as in the interpreter, through all a first derivative
+    compiles through: arithmetic, constant powers, `e^w`, products,
+    transposes, literals, cells and rows, sums with constant bounds, calls,
+    each chain of clauses with its parts' chains, and the prelude. A nest
+    may be 2 deep, its grads by single values or by matrices, a pass per
+    cell as the interpreter takes a grad inside another, so a Jacobian by
+    cells of a gradient compiles; reverse mode stays for a grad neither in
+    a nest nor holding one. A jump, a `floor`'s, a comparison's or an `==`
+    guard's, is NaN where any grad of the nest moves the value.
+  - **Deeper, refused compiled for now**, "a derivative of a derivative of
+    a derivative, for now", the interpreter keeping any order to its depth
+    and its refusals coming first, order 3 by a vector's among them.
+    It waits for a part of each prelude function by order, calling the
+    order below and shared by a name's grads: the prototype's header of
+    `grad_(x = q_(n-1))^4 cos(x)*x^5` grew 3.9, 5.8 and 7 times an order,
+    8.8 KB at 1 and 1.38 MB at 4.
+  - **Still refused compiled**, as at first order: a limit, a matrix power,
+    a power whose exponent moves; and a nest holding a grad by several
+    names, "a derivative of a derivative by several names, for now".
+  - **`--check`** needs nothing new: the interpreter's parts are walked,
+    and the step's are theirs to the bit, as at first order, so a nest is
+    within 0.
+
+  Rejected:
+  - **`grad^2_(x = a)`**, a second place for a superscript, where a sum has
+    one after its subscript.
+  - **`grad_(x = a, x = a)`**, a repetition, refused already: "grad names
+    x twice".
+  - **`grad_(x = a, y = b)^2`**, the Hessian by several names: its parts
+    would be pairs of names. An item of its own when asked.
+  - **An order by a name, parentheses or a model's parameter**, read where
+    grad is written: with `^0` and `^1` refused it served no equation, and
+    those it suggests, Rodrigues' P_n and a Taylor sum, start at 0. An item,
+    0 and 1 given then, when one is transcribed.
+  - **`\nabla^2_v` in tex**: a physicist's Laplacian, and tex cannot know
+    the point's shape, which is a value.
+  - **The lower triangle computed too**: twice the passes, for a Hessian
+    symmetric only up to rounding.
+  - **Forward over reverse**, n sweeps for n(n+1)/2 passes: no tape runs
+    under another grad, in the interpreter or the compiler. An item when a
+    model with many unknowns is too slow.
+  - **Taylor coefficients for `^n`**, n + 1 parts by other rules: the
+    doubles would not be nesting's, so `^n` would not be sugar, and the
+    sharing a deeper order waits for gives the same count.
+
+  What moves: no golden. `test/cli.cmake`'s `compile_grad_refused` loses
+  its first refusal, a nest now compiled, and `test/compile/grad.ink`'s
+  comment with it; README section 4 gains the order, the Coriolis term
+  without its cells, C*w as `grad_(e = 0) grad_(v = w) L(q + e*w, v)`,
+  one pass by w's cells, that a Hessian's cell (i, j) differentiates by
+  v[i] outside v[j] and the Jacobian by cells by v[j] outside v[i], so the
+  two may part in the last bit on inexact values, and its paragraph on
+  what the compiler refuses its nests; this item replaces the line that
+  said a study was running.
+
+  About 450 lines of sources, the study's 450 to 550 less an order by a
+  name and compiled nests past 2: the interpreter's 110, the order parsed
+  and printed, tex, the refusals when read, the nest in `Derivative::Grad`,
+  and the Hessian by pairs of cells, its mirror and its refusals, about 60
+  of them; the compiler's 330, the prototype's arithmetic, chains, calls
+  and powers under a nest of 2, about 220, then `e^w`, products,
+  transposes, cells and sums, a pass per cell in a nest, so the Hessian and
+  a Jacobian by cells of a gradient, the jumps tested by each grad and the
+  refusal past 2, about 110; `--check`'s 10. 19,694 lines at 1023bc1 by
+  `wc -l include/inkamath/*.hpp src/*`; past 675, one and a half times,
+  the implementation stops and reports.
+
+  Specified in `test/data/spec/hessian.ink`, 44 entries, 34 failing: orders
+  to 8, nesting around and inside, a function of its point printed and in
+  tex, through the prelude, a matrix and cases; the Hessian by a column and
+  a row against the Jacobian by cells, a Lagrangian's, Newton's method by
+  it; a double pendulum's mass matrix, Coriolis and hundredth step, and
+  Coriolis without its cells; and the refusals. Values by hand, in Python's
+  fractions and by mpmath at 40 digits. Compiled, `test/compile/hessian.ink`
+  and `test/cli.cmake`'s spec part, `cli_spec`: the pendulum from its
+  Lagrangian, `lag`, and by hand, `hand`, and a second derivative of cases,
+  `bend`, each term within 0 under `--check`; and six refusals, two of a
+  nest 3 deep. Skipped while the order is refused as today, and only then.
+
+  Done in 334 lines, against the 450 estimated and the stop at 675: the
+  interpreter's 71, the order parsed into the grads nested, its refusals,
+  tex, and the Hessian by pairs of cells in `Derivative::Grad`, its check
+  shared with the compiler; the compiler's 263, each value's part by the
+  outer grad of a nest beside its part by the inner, carried by every
+  operation that lays out or combines cells, the cross part of a product,
+  a quotient, a constant power and `e^w` written in the interpreter's
+  order, which the part's own rule taken again is not, a function of the
+  prelude compiled once with its arguments' parts as parameters, the nest
+  itself, a reverse mode holding one giving way to forward mode, the
+  refusals, and the Hessian in `Graded`; `--check`'s none. The spec is the
+  golden `test/data/hessian.ink`, every entry as written, and README
+  section 4's order, Hessian and Coriolis without its cells replay it;
+  `test/cli.cmake`'s `compile_hessian` holds the story, its header strict,
+  and each instance's report, `cli_spec` and the spec suite are gone, and
+  `compile_grad_refused` lost its nest. Off the spec, a nest's terms were
+  within 0 on inexact values through products, quotients, powers, `e^w`,
+  the prelude, chains, cells, sums, transposes and matrix products, and a
+  nest at an exact point within the rounding of the exact values. The
+  headers build strict as C99 and C++, by GCC and Clang, and with
+  `--float`. 19,694 to 20,028 lines by `wc -l include/inkamath/*.hpp
+  src/*`, and 20,125 with the review's fixes, C383 to C387: 431 in all,
+  the interpreter's 78 and the compiler's 353, where each outer part is
+  there and a nest at constant points folded among them.
+  Departures:
+  - **p's G is an ulp from the interpreter's at 1**, a gradient by a
+    vector at an exact point, where reverse mode takes the prelude's slope
+    by the walk's own nodes (C382), and C and w after it within 1e-17 and
+    2.1e-17; the spec's check was corrected to hold them as they are, in a
+    commit of its own. M and q are within 0, and h and b in full.
+  - **A prelude function in a nest is a function of the header for its
+    value and each part**, numbered, `lag_cos_n14`, some the same text as
+    first order's under another name; sharing them is about 10 lines,
+    until a header's size asks for it.
+  - An order past 8 is nine grads nested, refused when evaluated as nine
+    written are, "grad nests more than 8 deep".
 - `[done]` **Exact discretisation** as conformance entries:
   `test/compile/motorloop.ink` and `pendloop.ink`, Van Loan's block a
   fixed-count series. An unbounded `expm` dropped by the owner, and the

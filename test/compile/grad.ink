@@ -287,7 +287,6 @@ cusp = quotient(z_n = ~0)
 
 # What stays refused, each named in 'inkamath --compile' of a file of
 #
-#     a_n = grad_(t = x_n) grad_(s = t) s^3
 #     b_n = grad_(t = x_n) lim p(t)
 #     c_n = grad_(v = [x_n; 1]) 2*v
 #     d_n = grad_(t = x_n) 2^t
@@ -304,10 +303,9 @@ cusp = quotient(z_n = ~0)
 #     sq = t^2
 #     t = 3
 #
-# where the interpreter, given x_n = 2, answers a, b, f and g and refuses
+# where the interpreter, given x_n = 2, answers b, f and g and refuses
 # the rest in the words the compiler takes:
 #
-#     cannot compile a: a derivative of a derivative, for now
 #     cannot compile b: a derivative of a limit, for now
 #     cannot compile c: grad of a matrix with respect to a matrix is a Jacobian, which it does not give
 #     cannot compile d: grad cannot differentiate a power whose exponent changes with t, unless its base is e

@@ -458,14 +458,17 @@ private:
 
 // 'grad_(x = a) body': the derivative of the body with respect to x at a. The
 // point is read where it is written, the name only in the body, as a sum's.
-// 'grad_(x = a, y = b) body' has a part for each name.
+// 'grad_(x = a, y = b) body' has a part for each name. 'grad_(x = a)^n
+// body' is n grads of x nested, its body the innermost's.
 template <typename T>
 class GradExpression final : public Expression<T> {
 public:
     GradExpression(std::vector<std::string> variables, std::vector<PExpression<T>> points,
-                   PExpression<T> body)
+                   PExpression<T> body, std::size_t order = 1, PExpression<T> written = nullptr)
         : Expression<T>(Joined(std::move(points), std::move(body))),
-          variables_(std::move(variables)) {
+          variables_(std::move(variables)),
+          order_(order),
+          written_(std::move(written)) {
         this->groups_ += Several();
     }
 
@@ -476,6 +479,8 @@ public:
     }
     [[nodiscard]] const PExpression<T>& Body() const { return this->Children().back(); }
     [[nodiscard]] bool                  Several() const { return variables_.size() > 1; }
+    [[nodiscard]] std::size_t           Order() const { return order_; }
+    [[nodiscard]] const PExpression<T>& Written() const { return written_ ? written_ : Body(); }
 
     PExpression<T> accept(TransformationVisitor<T>& v) override { return v.visit(this); }
     T              accept(FoldingVisitor<T>& v) override { return v.visit(this); }
@@ -487,6 +492,8 @@ private:
         return points;
     }
     std::vector<std::string> variables_;
+    std::size_t              order_;
+    PExpression<T>           written_;
 };
 
 template <typename T>
