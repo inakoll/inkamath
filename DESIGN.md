@@ -12300,19 +12300,18 @@ the clause for a limit that does not converge as done, the order from here:
     compiles through: arithmetic, constant powers, `e^w`, products,
     transposes, literals, cells and rows, sums with constant bounds, calls,
     each chain of clauses with its parts' chains, and the prelude. A nest
-    may be 8 deep, its grads by single values or by matrices, a pass per
+    may be 2 deep, its grads by single values or by matrices, a pass per
     cell as the interpreter takes a grad inside another, so a Jacobian by
     cells of a gradient compiles; reverse mode stays for a grad neither in
     a nest nor holding one. A jump, a `floor`'s, a comparison's or an `==`
     guard's, is NaN where any grad of the nest moves the value.
-  - **The header grows with the order, not as its power.** Of one name at
-    one point the parts of sets of grads of one size are equal, bit for
-    bit, each rule taking its terms in the same order, so `^n` keeps n + 1
-    parts where n names keep 2^n; and a prelude function's part has one
-    header function for each order, calling the order below, not one for
-    each place it is read. Measured: `grad_(x = q_(n-1))^4 cos(x)*x^5`'s
-    header at most 4 times the first derivative's, where the prototype's
-    was 8.8 KB at 1 and 1.38 MB at 4.
+  - **Deeper, refused compiled for now**, "a derivative of a derivative of
+    a derivative, for now", the interpreter keeping any order to its depth
+    and its refusals coming first, order 3 by a vector's among them.
+    It waits for a part of each prelude function by order, calling the
+    order below and shared by a name's grads: the prototype's header of
+    `grad_(x = q_(n-1))^4 cos(x)*x^5` grew 3.9, 5.8 and 7 times an order,
+    8.8 KB at 1 and 1.38 MB at 4.
   - **Still refused compiled**, as at first order: a limit, a matrix power,
     a power whose exponent moves; and a nest holding a grad by several
     names, "a derivative of a derivative by several names, for now".
@@ -12340,7 +12339,7 @@ the clause for a limit that does not converge as done, the order from here:
     model with many unknowns is too slow.
   - **Taylor coefficients for `^n`**, n + 1 parts by other rules: the
     doubles would not be nesting's, so `^n` would not be sugar, and the
-    sharing above gives the same count.
+    sharing a deeper order waits for gives the same count.
 
   What moves: no golden. `test/cli.cmake`'s `compile_grad_refused` loses
   its first refusal, a nest now compiled, and `test/compile/grad.ink`'s
@@ -12354,8 +12353,7 @@ the clause for a limit that does not converge as done, the order from here:
   by pairs of cells, its mirror and its refusals, about 60 of them; the
   compiler's 360, the prototype's arithmetic, chains, calls and powers
   over a part for each set of grads, about 250, then products, transposes
-  and cells, a pass per cell in a nest, the jumps tested by each grad,
-  n + 1 parts for one name and the part functions by order;
+  and cells, a pass per cell in a nest, the jumps tested by each grad;
   `--check`'s 10. 19,694 lines at 1023bc1 by `wc -l include/inkamath/*.hpp
   src/*`; past 750 the implementation stops and reports.
 
@@ -12368,8 +12366,8 @@ the clause for a limit that does not converge as done, the order from here:
   fractions and by mpmath at 40 digits. Compiled, `test/compile/hessian.ink`
   and `test/cli.cmake`'s spec part, `cli_spec`: the pendulum from its
   Lagrangian, `lag`, and by hand, `hand`, and a second derivative of cases,
-  `bend`, each term within 0 under `--check`; the header's growth; and five
-  refusals. Skipped while the order is refused
+  `bend`, each term within 0 under `--check`; and six refusals, two of a
+  nest 3 deep. Skipped while the order is refused
   as today, and only then.
 - `[done]` **Exact discretisation** as conformance entries:
   `test/compile/motorloop.ink` and `pendloop.ink`, Van Loan's block a

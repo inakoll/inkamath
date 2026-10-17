@@ -65,9 +65,7 @@ endfunction()
 set(inputs "${CMAKE_CURRENT_LIST_DIR}/compile/inputs.ink")
 
 # Specified, not yet built (DESIGN.md, grad's order): compile/hessian.ink's
-# instances each within 0 of the interpreter, the header of a fourth
-# derivative through cos at most four times a first's, and the nests still
-# refused. Skipped while the order is refused as today, and only then.
+# instances each within 0 of the interpreter, and the nests still refused. Skipped while the order is refused as today, and only then.
 if(PART STREQUAL "spec")
     file(MAKE_DIRECTORY "${OUT}")
     set(story "${CMAKE_CURRENT_LIST_DIR}/compile/hessian.ink")
@@ -133,35 +131,18 @@ if(PART STREQUAL "spec")
         endif()
     endforeach()
 
-    # A prelude function's part has one function of the header for each
-    # order, calling the order below, not one for each place it is read.
-    foreach(order 1 4)
-        set(sup "^${order}")
-        if(order EQUAL 1)
-            set(sup "")
-        endif()
-        file(WRITE "${OUT}/order${order}.ink"
-             "q_0 = 1/3\nq_n = q_(n-1) + 1/100\nd_n = grad_(x = q_(n-1))${sup} cos(x)*x^5\n")
-        set(args --compile order${order}.ink -o order${order}.h)
-        check(compile_hessian_order${order})
-        file(SIZE "${OUT}/order${order}.h" size${order})
-    endforeach()
-    math(EXPR bound "4 * ${size1}")
-    if(size4 GREATER bound)
-        message(SEND_ERROR "compile_hessian_order: order 4's header is ${size4} bytes, past 4 times order 1's ${size1}")
-    endif()
-
     file(WRITE "${OUT}/hessian_refused.ink"
-         "b_n = grad_(s = x_n, r = 2) grad_(t = s) t^2*r\n"
+         "a_n = grad_(t = x_n)^3 t^5\nb_n = grad_(s = x_n, r = 2) grad_(t = s) t^2*r\n"
          "c_n = grad_(t = x_n)^2 lim p(t)\nd_n = grad_(v = [x_n 1; 2 3])^2 v[1,1]*v[2,2]\n"
-         "e_n = grad_(v = [x_n; 1])^3 v[1]^4\nf_n = grad_(t = x_n)^9 t^9\n"
+         "e_n = grad_(v = [x_n; 1])^3 v[1]^4\nf_n = grad_(t = x_n)^2 grad_(s = 2) t^2*s^2\n"
          "p(r)_0 = 1\np(r)_k = r*p(r)_(k-1)/4 + 1\n")
     set(args --compile hessian_refused.ink)
-    set(stdout "cannot compile b: a derivative of a derivative by several names, for now
+    set(stdout "cannot compile a: a derivative of a derivative of a derivative, for now
+cannot compile b: a derivative of a derivative by several names, for now
 cannot compile c: a derivative of a limit, for now
 cannot compile d: a derivative of order 2 with respect to a matrix, for now
 cannot compile e: a derivative of order 3 with respect to a vector, for now
-cannot compile f: grad nests more than 8 deep
+cannot compile f: a derivative of a derivative of a derivative, for now
 ")
     set(exit 1)
     check(compile_hessian_refused)
