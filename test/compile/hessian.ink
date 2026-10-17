@@ -24,6 +24,10 @@
 #     b: 100 steps from 0, against exact values
 #     b.d: within 0, from 1
 #     b.q: within 0
+#
+# 'k', a power whose second derivative is infinite at 0 where its first is
+# not, t^(3/2), and one moving by the outer grad alone, t^(1/2): NaN at 3,
+# where t = 0 and the interpreter refuses, as a first derivative's is.
 lag(m1 = 1, m2 = 1, l1 = 1, l2 = 1, g = 10) = {
     L(q, w) = (m1 + m2)*l1^2*w[1]^2/2 + m2*l2^2*w[2]^2/2 + m2*l1*l2*w[1]*w[2]*cos(q[1] - q[2]) + (m1 + m2)*g*l1*cos(q[1]) + m2*g*l2*cos(q[2])
     q_0 = [1; 1/2]
@@ -52,6 +56,13 @@ bend() = {
     q_n = q_(n-1) + 1/32
     d_n = grad_(x = q_(n-1))^2 pc(x)
 }
+cusp() = {
+    x_0 = -1/2
+    x_n = x_(n-1) + 1/4
+    r_n = grad_(t = x_(n-1)^2)^2 t^(3/2)
+    s_n = grad_(t = x_(n-1)^2) grad_(s = 1) s*t^(1/2)
+}
 p = lag()
 h = hand()
 b = bend()
+k = cusp()
