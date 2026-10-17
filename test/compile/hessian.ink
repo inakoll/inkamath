@@ -32,6 +32,10 @@
 # 'z', the same through a definition in cases constant below 0, h: each
 # clause's parts by each grad where that clause has them, so no NaN below 0
 # where the interpreter answers, and NaN at each jump of floor above it.
+#
+# 'c', nests at constant points folded exactly, as a first derivative's
+# are: 0.1*3 is 3/10, where the comparison jumps and the interpreter
+# refuses, NaN at every step; the others within 0.
 lag(m1 = 1, m2 = 1, l1 = 1, l2 = 1, g = 10) = {
     L(q, w) = (m1 + m2)*l1^2*w[1]^2/2 + m2*l2^2*w[2]^2/2 + m2*l1*l2*w[1]*w[2]*cos(q[1] - q[2]) + (m1 + m2)*g*l1*cos(q[1]) + m2*g*l2*cos(q[2])
     q_0 = [1; 1/2]
@@ -76,8 +80,17 @@ kink() = {
     u_n = grad_(t = x_(n-1))^2 h(t)^(3/2)
     s_n = grad_(t = x_(n-1)) grad_(s = 1) s*h(t)^(1/2)
 }
+fixed() = {
+    y_0 = 0
+    y_n = y_(n-1) + 1
+    a_n = grad_(x = 1/10)^2 ((x*3 > 3/10) + x^3)
+    d_n = grad_(x = 1/3)^2 x^3/(1 + x^2)
+    f_n = grad_(x = 1/3) grad_(s = 2) s*x^3/(1 + x^2)
+    g_n = grad_(v = [1/3; 1/7])^2 v[1]^3/(1 + v[2]^2)
+}
 p = lag()
 h = hand()
 b = bend()
 k = cusp()
 z = kink()
+c = fixed()
