@@ -2352,29 +2352,32 @@ private:
         if (Still(base)) return Answer(value);
         if (!exponent.constant)
             throw Reason("a derivative of a power whose exponent is not a constant, for now");
-        if (base.part.empty()) return Answer(value);
         const Value c = *exponent.constant, coefficient = Value(Number(1)) * (c - Value(Number(0)));
         if (coefficient(1, 1) == Number(0)) return Answer(value);
-        // u^(c-1) at 0 is C's pow's inf, where the interpreter divides by 0.
+        // u^(c-1) at 0 is C's pow's inf, where the interpreter divides by 0;
+        // in a nest, u^(c-2) too where u moves by both grads.
         const Value lower = c - Value(Number(1));
-        const Code  power =
-            !base.constant ? Powered(base, Literal(lower))
-            : Doubles(lower)[0] < 0 && Doubles(*base.constant)[0] == 0.0
-                ? Literal(Value(Number(HUGE_VAL)))
-                : Exact([&] { return numeric_interface<Value>::pow(*base.constant, lower); });
-        if (Doubles(lower)[0] < 0 && (!base.constant || Doubles(*base.constant)[0] == 0.0)) {
+        const Value second = coefficient * (c - Value(Number(1)));
+        const Value below  = lower - Value(Number(1));
+        const bool  deeper = !base.part.empty() && !base.outer.empty() && Doubles(second)[0] != 0;
+        if ((Doubles(lower)[0] < 0 || (deeper && Doubles(below)[0] < 0)) &&
+            (!base.constant || Doubles(*base.constant)[0] == 0.0)) {
             value.cells[0] = Cell("(" + Jumps(Wrap(base.cells[0], sum) + " == 0.0", {&base}) +
                                       value.cells[0].text + ")",
                                   primary);
             value.constant.reset();
         }
+        if (base.part.empty()) return Answer(value);
+        const Code power =
+            !base.constant ? Powered(base, Literal(lower))
+            : Doubles(lower)[0] < 0 && Doubles(*base.constant)[0] == 0.0
+                ? Literal(Value(Number(HUGE_VAL)))
+                : Exact([&] { return numeric_interface<Value>::pow(*base.constant, lower); });
         const Part slope = Times(Literal(coefficient), power);
         Part       part  = Times(slope, PartOf(base));
         // In a nest, its cross part f'*u12 + f''*(u^*u'), as Derivative::Composed.
         if (part && !part->node && !part->outer.empty()) {
-            const Value second = coefficient * (c - Value(Number(1)));
-            const Value below  = lower - Value(Number(1));
-            Part        cross  = Times(Inner(*slope), OuterOf(base.part[0]));
+            Part cross = Times(Inner(*slope), OuterOf(base.part[0]));
             if (Doubles(second)[0] != 0)
                 cross =
                     Plus(cross,
