@@ -281,7 +281,7 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brin
                          fallback:respelled fallback:preceded fallback:defaulted fallback:sentried
                          fallback:partway pendloop:cart motorloop:motor robot:robot:200
                          lcg:lcgs optional:seen optional:leaned
-                         optional:steeped hessian:k)
+                         optional:steeped hessian:k hessian:z)
     string(REPLACE ":" ";" checked ${checked})
     list(POP_FRONT checked file instance count)
     set(name ${instance})

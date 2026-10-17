@@ -28,6 +28,10 @@
 # 'k', a power whose second derivative is infinite at 0 where its first is
 # not, t^(3/2), and one moving by the outer grad alone, t^(1/2): NaN at 3,
 # where t = 0 and the interpreter refuses, as a first derivative's is.
+#
+# 'z', the same through a definition in cases constant below 0, h: each
+# clause's parts by each grad where that clause has them, so no NaN below 0
+# where the interpreter answers, and NaN at each jump of floor above it.
 lag(m1 = 1, m2 = 1, l1 = 1, l2 = 1, g = 10) = {
     L(q, w) = (m1 + m2)*l1^2*w[1]^2/2 + m2*l2^2*w[2]^2/2 + m2*l1*l2*w[1]*w[2]*cos(q[1] - q[2]) + (m1 + m2)*g*l1*cos(q[1]) + m2*g*l2*cos(q[2])
     q_0 = [1; 1/2]
@@ -62,7 +66,18 @@ cusp() = {
     r_n = grad_(t = x_(n-1)^2)^2 t^(3/2)
     s_n = grad_(t = x_(n-1)^2) grad_(s = 1) s*t^(1/2)
 }
+kink() = {
+    h(x) | x < 0 = 0
+    h(x) = x
+    x_0 = ~-0.5
+    x_n = x_(n-1) + ~0.25
+    d_n = grad_(t = x_(n-1))^2 (floor(h(t)) + t^3)
+    r_n = grad_(t = x_(n-1))^2 h(t)^(1/2)
+    u_n = grad_(t = x_(n-1))^2 h(t)^(3/2)
+    s_n = grad_(t = x_(n-1)) grad_(s = 1) s*h(t)^(1/2)
+}
 p = lag()
 h = hand()
 b = bend()
 k = cusp()
+z = kink()
