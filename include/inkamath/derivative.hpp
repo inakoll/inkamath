@@ -509,14 +509,21 @@ private:
 
     // The innermost grad's names at their points, for a message.
     [[nodiscard]] std::string Where() const { return grads_.back().second; }
-
-    // The innermost grad u moves with whose point is complex, empty if none.
-    [[nodiscard]] std::string Complex(const Jet& u) const {
+    // The innermost grad u moves with, which may not be the innermost.
+    [[nodiscard]] std::string Where(const Jet& u) const {
+        return grads_[std::bit_width(With(u)) - 1].second;
+    }
+    static std::size_t With(const Jet& u) {
         std::size_t with = 0;
         for (std::size_t s = 1; s < u.size(); ++s)
             if (u[s]) with |= s;
-        if (!(with & complex_)) return "";
-        return grads_[std::bit_width(with & complex_) - 1].second;
+        return with;
+    }
+
+    // The innermost grad u moves with whose point is complex, empty if none.
+    [[nodiscard]] std::string Complex(const Jet& u) const {
+        if (!(With(u) & complex_)) return "";
+        return grads_[std::bit_width(With(u) & complex_) - 1].second;
     }
 
     // Where a value real at the point moves off the real line, as max and min
@@ -1134,7 +1141,7 @@ private:
             const T lower = exponent - T(j);
             if (IsZero(*u[0]) && numeric_interface<T>::truth(
                                      numeric_interface<T>::compare(lower, T(0), Comparison::Less)))
-                throw std::runtime_error("a power's derivative is infinite at " + Where());
+                throw std::runtime_error("a power's derivative is infinite at " + Where(u));
             return coefficient * numeric_interface<T>::pow(*u[0], lower);
         };
         return Composed(u, derivative, value);
