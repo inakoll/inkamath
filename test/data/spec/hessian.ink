@@ -130,6 +130,16 @@ p = lag()
 [~-0.276479857;
   ~-1.04368092]
 
+# Coriolis without its cells: C*w is the derivative in the direction w,
+# one pass by w's cells. lag's L at q = [1; 1/2], w = [3/10; -7/10]: by
+# hand, sin(1/2)*(w[2] - w[1])*[w[2]; w[1]].
+>> Lp(q, w) = 2*w[1]^2/2 + w[2]^2/2 + w[1]*w[2]*cos(q[1] - q[2]) + 20*cos(q[1]) + 10*cos(q[2])
+Lp(q, w) = 2*w[1]^2/2 + w[2]^2/2 + w[1]*w[2]*cos(q[1] - q[2]) + 20*cos(q[1]) + 10*cos(q[2])
+
+>> grad_(e = 0) grad_(v = [3/10; -7/10]) Lp([1; 1/2] + e*[3/10; -7/10], v)
+[ ~0.335597877;
+ ~-0.143827662]
+
 # Refused when read: an order below 2, not whole, or not written as a
 # number, so where it is defined; and one by several names, of a matrix,
 # and past 2 of a vector, for now. A first derivative's refusals and

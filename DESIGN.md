@@ -12343,8 +12343,10 @@ the clause for a limit that does not converge as done, the order from here:
 
   What moves: no golden. `test/cli.cmake`'s `compile_grad_refused` loses
   its first refusal, a nest now compiled, and `test/compile/grad.ink`'s
-  comment with it; README section 4 gains the order, and its paragraph on
-  what the compiler refuses its nests; this item replaces the line that
+  comment with it; README section 4 gains the order, the Coriolis term
+  without its cells, C*w as `grad_(e = 0) grad_(v = w) L(q + e*w, v)`,
+  one pass by w's cells, and its paragraph on what the compiler refuses
+  its nests; this item replaces the line that
   said a study was running.
 
   About 450 lines of sources, the study's 450 to 550 less an order by a
@@ -12359,12 +12361,12 @@ the clause for a limit that does not converge as done, the order from here:
   `wc -l include/inkamath/*.hpp src/*`; past 675, one and a half times,
   the implementation stops and reports.
 
-  Specified in `test/data/spec/hessian.ink`, 42 entries, 34 failing: orders
+  Specified in `test/data/spec/hessian.ink`, 44 entries, 34 failing: orders
   to 8, nesting around and inside, a function of its point printed and in
   tex, through the prelude, a matrix and cases; the Hessian by a column and
   a row against the Jacobian by cells, a Lagrangian's, Newton's method by
-  it; a double pendulum's mass matrix, Coriolis and hundredth step; and the
-  refusals. Values by hand, in Python's
+  it; a double pendulum's mass matrix, Coriolis and hundredth step, and
+  Coriolis without its cells; and the refusals. Values by hand, in Python's
   fractions and by mpmath at 40 digits. Compiled, `test/compile/hessian.ink`
   and `test/cli.cmake`'s spec part, `cli_spec`: the pendulum from its
   Lagrangian, `lag`, and by hand, `hand`, and a second derivative of cases,
