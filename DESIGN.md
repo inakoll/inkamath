@@ -12261,6 +12261,8 @@ the clause for a limit that does not converge as done, the order from here:
   tolerance and checks that both fail together. About 200 lines; deferred
   until an entry needs it, likely one calling a QP solver, OSQP or HPIPM,
   from the step.
+- **Compiled second and higher derivatives**, refused today, "a derivative
+  of a derivative, for now"; a study is running.
 - `[done]` **Exact discretisation** as conformance entries:
   `test/compile/motorloop.ink` and `pendloop.ink`, Van Loan's block a
   fixed-count series. An unbounded `expm` dropped by the owner, and the
