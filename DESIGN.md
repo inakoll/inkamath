@@ -12262,7 +12262,7 @@ the clause for a limit that does not converge as done, the order from here:
   tolerance and checks that both fail together. About 200 lines; deferred
   until an entry needs it, likely one calling a QP solver, OSQP or HPIPM,
   from the step.
-- **grad's order, `grad_(x = a)^n body`, and second derivatives compiled.**
+- `[done]` **grad's order, `grad_(x = a)^n body`, and second derivatives compiled.**
   A Lagrangian's mass matrix, a Newton step and a KKT system's Hessian need
   second derivatives. The interpreter has them by nesting, with respect to
   a vector only through the Jacobian by cells of a gradient (README section
@@ -12375,6 +12375,48 @@ the clause for a limit that does not converge as done, the order from here:
   Lagrangian, `lag`, and by hand, `hand`, and a second derivative of cases,
   `bend`, each term within 0 under `--check`; and six refusals, two of a
   nest 3 deep. Skipped while the order is refused as today, and only then.
+
+  Done in 334 lines, against the 450 estimated and the stop at 675: the
+  interpreter's 71, the order parsed into the grads nested, its refusals,
+  tex, and the Hessian by pairs of cells in `Derivative::Grad`, its check
+  shared with the compiler; the compiler's 263, each value's part by the
+  outer grad of a nest beside its part by the inner, carried by every
+  operation that lays out or combines cells, the cross part of a product,
+  a quotient, a constant power and `e^w` written in the interpreter's
+  order, which the part's own rule taken again is not, a function of the
+  prelude compiled once with its arguments' parts as parameters, the nest
+  itself, a reverse mode holding one giving way to forward mode, the
+  refusals, and the Hessian in `Graded`; `--check`'s none. The spec is the
+  golden `test/data/hessian.ink`, every entry as written, and README
+  section 4's order, Hessian and Coriolis without its cells replay it;
+  `test/cli.cmake`'s `compile_hessian` holds the story, its header strict,
+  and each instance's report, `cli_spec` and the spec suite are gone, and
+  `compile_grad_refused` lost its nest. Off the spec, a nest's terms were
+  within 0 on inexact values through products, quotients, powers, `e^w`,
+  the prelude, chains, cells, sums, transposes and matrix products, and a
+  nest at an exact point within the rounding of the exact values. The
+  headers build strict as C99 and C++, by GCC and Clang, and with
+  `--float`. 19,694 to 20,028 lines by `wc -l include/inkamath/*.hpp
+  src/*`.
+  Departures:
+  - **p's G is an ulp from the interpreter's at 1**, a gradient by a
+    vector at an exact point, where reverse mode takes the prelude's slope
+    by the walk's own nodes (C382), and C and w after it within 1e-17 and
+    2.1e-17; the spec's check was corrected to hold them as they are, in a
+    commit of its own. M and q are within 0, and h and b in full.
+  - **A value moving by the outer grad is never a constant**, so a nest
+    at a constant point is computed in doubles where first order folds:
+    `grad_(x = 1/3)^2 x^3/(1 + x^2)` parts from the interpreter's exact
+    value by its rounding.
+  - **The outer grad's part is taken as there wherever a clause has it**:
+    a jump in a nest is NaN where it is met and the value moves by the
+    outer grad in any clause, not only in the clause taken.
+  - **A prelude function in a nest is a function of the header for its
+    value and each part**, numbered, `lag_cos_n14`, some the same text as
+    first order's under another name; sharing them is about 10 lines,
+    until a header's size asks for it.
+  - An order past 8 is nine grads nested, refused when evaluated as nine
+    written are, "grad nests more than 8 deep".
 - `[done]` **Exact discretisation** as conformance entries:
   `test/compile/motorloop.ink` and `pendloop.ink`, Van Loan's block a
   fixed-count series. An unbounded `expm` dropped by the owner, and the

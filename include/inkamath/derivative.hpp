@@ -47,6 +47,20 @@ public:
         }
     }
 
+    // Whether an order asks for the Hessian, by a vector at order 2, any
+    // other shape refused for now (DESIGN.md, grad's order).
+    static bool Hessian(const GradExpression<T>& grad, Extent size) {
+        if (grad.Order() < 2 || size.Single()) return false;
+        const char* kind = size.slices                      ? "tensor"
+                           : size.rows > 1 && size.cols > 1 ? "matrix"
+                           : grad.Order() > 2               ? "vector"
+                                                            : nullptr;
+        if (kind)
+            throw std::runtime_error("a derivative of order " + std::to_string(grad.Order()) +
+                                     " with respect to a " + kind + ", for now");
+        return true;
+    }
+
 private:
     struct Tape;
     // What reverse mode cannot do as forward mode does: forward mode does it.
@@ -1297,7 +1311,11 @@ private:
         std::vector<Jet>                points;
         for (std::size_t v = 0; v < names.size(); ++v) points.push_back(Eval(grad.Point(v)));
         Names(grad);
-        if (order_ == max_order)
+        // Its cell (i, j), i <= j, by v[i] around v[j], and (j, i) the same.
+        const bool hessian = Hessian(grad, points[0][0]->Size());
+        auto*      inner   = hessian ? static_cast<GradExpression<T>*>(&*grad.Body()) : nullptr;
+        if (hessian) Names(*inner);
+        if (order_ + (hessian ? 1 : 0) >= max_order)
             throw std::runtime_error("grad nests more than " + std::to_string(max_order) + " deep");
         const std::size_t bit = Size();
         std::vector<Jet>  parts;
@@ -1320,7 +1338,11 @@ private:
                        IsZero(T::Cells(at, numeric_interface<typename T::value_type>::imaginary));
                 cells.push_back(at.IsScalar() ? 1 : at.Size().count());
             }
+            const std::size_t n = cells[0];
+            if (hessian) cells[0] = n * (n + 1) / 2;
             const Order                order(*this, with, where);
+            std::optional<Order>       around;
+            if (hessian) around.emplace(*this, with, where);
             const Setting<std::size_t> complex(complex_, complex_ | (real ? 0 : bit));
             std::optional<typename ReferenceStack<T>::Frame> frame;
             if (!stack_.Framed()) frame.emplace(stack_);
@@ -1333,7 +1355,7 @@ private:
             const bool binds = ParametersDefinition<T>::Binds(*grad.Body());
             // A single value's gradient with respect to real matrices, or to
             // several names, in one walk.
-            reversed = bit == 1 && real && (names.size() > 1 || cells[0] > 1) &&
+            reversed = bit == 1 && real && !hessian && (names.size() > 1 || cells[0] > 1) &&
                        Reverse(grad, points, binds, parts);
             std::size_t passes = 0;
             for (const std::size_t c : cells) passes += c;
@@ -1346,19 +1368,26 @@ private:
                     typename ReferenceStack<T>::Tentative      locals(stack_, undo);
                     const Arguments   own = undo ? frames_.back() : Arguments();
                     std::list<Shadow> shadows;
+                    const auto                                 seed = [&](std::size_t c) {
+                        T one(typename T::value_type(1));
+                        if (at.IsScalar()) return one;
+                        T cell         = Zero(at.Size());
+                        cell.data()[c] = typename T::value_type(1);
+                        return cell;
+                    };
                     for (std::size_t w = 0; w < names.size(); ++w) {
                         Jet x = Padded(points[w]);
-                        if (w == v) {
-                            T seed(typename T::value_type(1));
-                            if (!at.IsScalar()) {
-                                seed           = Zero(at.Size());
-                                seed.data()[k] = typename T::value_type(1);
-                            }
-                            x[bit] = seed;
+                        if (w == v && hessian) {
+                            std::size_t i = 0, j = k;
+                            for (; j >= n - i; ++i) j -= n - i;
+                            x[bit]     = seed(i);
+                            x[2 * bit] = seed(i + j);
+                        } else if (w == v) {
+                            x[bit] = seed(k);
                         }
                         shadows.emplace_back(*this, names[w], x);
                     }
-                    Jet body = Eval(grad.Body());
+                    Jet body = Eval(hessian ? inner->Body() : grad.Body());
                     Single(at, *body[0]);
                     parts.push_back(std::move(body));
                     if (undo) frames_.back() = own;
@@ -1373,6 +1402,19 @@ private:
             const T& at = *points[v][0];
             Jet      out(bit);
             for (std::size_t s = 0; s < bit; ++s) {
+                if (hessian) {
+                    const std::size_t n   = at.Size().count();
+                    T                 h   = Zero(Extent{n, n});
+                    bool              any = s == 0;
+                    for (std::size_t i = 0, p = 0; i < n; ++i)
+                        for (std::size_t j = i; j < n; ++j, ++p)
+                            if (const auto& c = parts[p][s | 3 * bit]) {
+                                h.data()[i * n + j] = h.data()[j * n + i] = c->data()[0];
+                                any                                       = true;
+                            }
+                    if (any) out[s] = h;
+                    continue;
+                }
                 if (at.IsScalar() || reversed) {
                     out[s] = parts[first][s | bit];
                     continue;

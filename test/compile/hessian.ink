@@ -1,4 +1,4 @@
-# Second derivatives compiled (DESIGN.md, next in line): a double pendulum
+# Second derivatives compiled (DESIGN.md): a double pendulum
 # from its Lagrangian, M = d2L/dw2 by grad's order and C = d2L/dw dq by a
 # Jacobian by cells of grad's gradient, beside the same equations written
 # by hand, w' = M^-1*(dL/dq - C*w), semi-implicit Euler at h = 1/100. Each
@@ -24,9 +24,6 @@
 #     b: 100 steps from 0, against exact values
 #     b.d: within 0, from 1
 #     b.q: within 0
-#
-# Before, every model was refused, 'a derivative of a derivative, for now',
-# and the order 'unexpected ^'.
 lag(m1 = 1, m2 = 1, l1 = 1, l2 = 1, g = 10) = {
     L(q, w) = (m1 + m2)*l1^2*w[1]^2/2 + m2*l2^2*w[2]^2/2 + m2*l1*l2*w[1]*w[2]*cos(q[1] - q[2]) + (m1 + m2)*g*l1*cos(q[1]) + m2*g*l2*cos(q[2])
     q_0 = [1; 1/2]

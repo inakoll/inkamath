@@ -381,9 +381,12 @@ private:
                 names += (v ? "," : "") + x;
                 at += (v ? "," : "") + x + "=" + Of(*grad->Point(v), true).text;
             }
+            const std::string order =
+                grad->Order() > 1 ? "^{" + std::to_string(grad->Order()) + "}" : "";
             return {(grad->Several() ? "\\left.\\nabla_{" + names + "} "
-                                     : "\\left.\\frac{\\partial}{\\partial " + names + "} ") +
-                        Of(*grad->Body()).text + "\\right|_{" + at + "}",
+                                     : "\\left.\\frac{\\partial" + order + "}{\\partial " + names +
+                                           order + "} ") +
+                        Of(*grad->Written()).text + "\\right|_{" + at + "}",
                     Level::sum};
         }
         if (const auto* matrix = dynamic_cast<const MatExpression<T>*>(&e)) {

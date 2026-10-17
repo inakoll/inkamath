@@ -1,9 +1,9 @@
-# grad's order (DESIGN.md, next in line): 'grad_(x = a)^n body', the
-# superscript after the subscript, as sum's. With respect to a single value,
-# the n-th derivative, n grads of x nested; with respect to a vector, at
-# order 2, the Hessian. Exact values by hand and in Python's fractions,
-# inexact ones by mpmath at 40 digits, its numerical derivatives besides;
-# written before it was built, never recorded.
+# grad's order (DESIGN.md): 'grad_(x = a)^n body', the superscript after
+# the subscript, as sum's. With respect to a single value, the n-th
+# derivative, n grads of x nested; with respect to a vector, at order 2, the
+# Hessian. Every value was worked out apart from the interpreter, as its
+# specification: exact ones by hand and in Python's fractions, inexact ones
+# by mpmath at 40 digits, its numerical derivatives besides.
 >> grad_(x = 2)^2 x^3
 12
 

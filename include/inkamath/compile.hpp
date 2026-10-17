@@ -274,6 +274,9 @@ private:
         // Under grad (DESIGN.md, grad compiled): its part, none where the
         // interpreter's is absent, and where it is there, if not always.
         std::vector<Code> part;
+        // In a nest of two grads, the part by the outer, a first derivative's
+        // own, 'part' being the inner's (DESIGN.md, grad's order).
+        std::vector<Code> outer;
         Where             moves;
         std::size_t       node = 0;  // under reverse mode, the node of the tape it is
         bool              zero = false;  // an adjoint 0 where its 'moves' does not hold
@@ -745,6 +748,19 @@ private:
             cell += otherwise ? otherwise->At(c).text : "NAN";
             chain.cells.emplace_back(cell, 0);  // a conditional, below every operator
         }
+        // In a nest, the outer part of the clause taken, as the part below.
+        const auto outer = [](const Code& c) {
+            if (!c.outer.empty()) return c.outer[0];
+            return c.cells[0].text == "NAN" ? Of(Atom("NAN")) : Literal(Value(Number(0)));
+        };
+        if ((otherwise && !otherwise->outer.empty()) ||
+            std::ranges::any_of(guarded, [](const auto& g) { return !g.second.outer.empty(); })) {
+            std::vector<std::pair<std::string, Code>> outers;
+            for (const auto& [condition, value] : guarded)
+                outers.emplace_back(condition, outer(value));
+            chain.outer = {
+                Chain(outers, otherwise ? std::optional(outer(*otherwise)) : std::nullopt, size)};
+        }
         // Under grad, the part of the clause taken: 0 where it has none, NaN
         // where it is refused wherever taken, and beside it where it is there.
         bool any = otherwise && !otherwise->part.empty(), always = true;
@@ -800,7 +816,7 @@ private:
     // argument moves, as the interpreter refuses them, rather than answer a
     // part that is wrong there, a bisection's staircase 0 and the like.
     void Staircase(const Reference<Value>& function, const Code& argument) const {
-        if (!argument.part.empty() && definitions_.staircases.contains(&function))
+        if (!Still(argument) && definitions_.staircases.contains(&function))
             throw Reason("grad cannot differentiate " + function.Name() + " yet");
     }
 
@@ -942,6 +958,7 @@ private:
             args += std::to_string(Id(code.moves)) + '\x1e';
             if (code.node) args += std::to_string(tapes_) + '#' + std::to_string(code.node);
             for (const Code& part : code.part) self(self, part);
+            for (const Code& outer : code.outer) (args += '\x1c', self(self, outer));
         };
         for (const auto& [given, value] : expansion.values) text(text, value);
         return args;
@@ -1062,6 +1079,10 @@ private:
         if (constant || !scalar || Iterates(function, seen) || Placed(function) ||
             (tape_ && names.size() > 1 && std::any_of(arguments.begin(), arguments.end(), parted)))
             return Answer(Call(name, function, call, nullptr));
+        if (std::ranges::any_of(arguments, [](const Code& c) {
+                return !c.outer.empty() || (!c.part.empty() && !c.part[0].outer.empty());
+            }))
+            return Answer(Nested(name, function, arguments));
         const std::string called = module_ + "_" + name;
         std::string       signature;
         for (const std::string& parameter : names)
@@ -1146,6 +1167,55 @@ private:
         return Answer(Parted(value, tape_ ? Times(part, PartOf(arguments[0])) : Part(part), read));
     }
 
+    // In a nest, its body compiled once with each argument's value and parts
+    // as parameters, 'arg_x_p' and 'arg_x_o' by the inner and outer grads,
+    // and its value and each part a function of the header of those it reads.
+    Code Nested(const std::string& name, const Reference<Value>& function,
+                const std::vector<Code>& arguments) {
+        std::vector<std::pair<std::string, std::string>> leaves;  // a parameter, and its argument
+        const auto mirror = [&](auto& self, const Code& given, const std::string& as) -> Code {
+            Code code = Array(as, Extent{});
+            leaves.emplace_back(as, given.cells[0].text);
+            if (!given.part.empty()) code.part = {self(self, given.part[0], as + "_p")};
+            if (!given.outer.empty()) code.outer = {self(self, given.outer[0], as + "_o")};
+            return code;
+        };
+        const auto& names = function.Clauses().front().parameters.parameters_names();
+        Expansion   expansion{{}, {}, function.home, nullptr, {}, {}};
+        for (std::size_t i = 0; i < names.size(); ++i)
+            expansion.values.emplace(names[i], mirror(mirror, arguments[i], "arg_" + names[i]));
+        Defaults(function, expansion);
+        Code body;
+        {
+            const Setting<Walked*>                 outside(limit_, nullptr);
+            const Setting<std::vector<Temporary>*> unshared(temporaries_, nullptr);
+            body = Inside(expansion, [&] { return Chained(name, function); });
+        }
+        const auto out = [&](auto& self, const Code& node) -> Code {
+            if (node.constant) return node;
+            const std::string& text = node.cells[0].text;
+            std::string        parameters, given;
+            for (const auto& [parameter, argument] : leaves)
+                if (Writes(text, parameter)) {
+                    parameters += (parameters.empty() ? "double " : ", double ") + parameter;
+                    given += (given.empty() ? "" : ", ") + argument;
+                }
+            const std::string key = name + '\x1f' + parameters + '\x1f' + text;
+            if (!nested_.count(key)) {
+                nested_[key] = module_ + "_" + name + "_n" + std::to_string(nested_.size());
+                if (MayNan(text)) nan_functions_.insert(nested_[key]);
+                prelude_.push_back("static inline double " + nested_[key] + "(" + parameters +
+                                   ") {\n    return " + text + ";\n}\n\n");
+            }
+            Code code = Called(Of(Cell(nested_[key] + "(" + given + ")", primary)));
+            if (!node.part.empty()) code.part = {self(self, node.part[0])};
+            if (!node.outer.empty()) code.outer = {self(self, node.outer[0])};
+            return code;
+        };
+        ++calls_;
+        return out(out, body);
+    }
+
     // Where its argument moves, a temporary, which every part over it reads
     // again (C140), a name that may be NaN where the call may (C189, C211).
     Code Called(Code code) {
@@ -1227,8 +1297,7 @@ private:
             const Code& given =
                 expansion.values.emplace(m.parameters[i].name, Emit(bound[i]->expression))
                     .first->second;
-            if (!given.part.empty())
-                throw Reason("grad cannot differentiate through an instance yet");
+            if (!Still(given)) throw Reason("grad cannot differentiate through an instance yet");
         }
         for (const auto& [name, definition] : held_.back()->names)
             if (!expansion.values.count(name)) expansion.own.emplace(name, definition.get());
@@ -1474,13 +1543,30 @@ private:
         return Shared(code);
     }
 
-    template <typename Combine>
-    Code Broadcast(Code left, Code right, Combine combine) {
+    Code Broadcast(Code left, Code right, Cell (*combine)(const Cell&, const Cell&)) {
         if (!right.Scalar() && (left.Scalar() || left.size.slices < right.size.slices))
             left = Shared(left);
         if (!left.Scalar() && (right.Scalar() || right.size.slices < left.size.slices))
             right = Shared(right);
-        return Cellwise(left, right, combine);
+        Code code = Cellwise(left, right, combine);
+        if (left.outer.empty() && right.outer.empty()) return code;
+        // In a nest, its part by the outer grad: a^ + b^, a^*b + a*b^ or
+        // (a^ - q*b^)/b, as Derivative's Sum, Product and Quotient.
+        const Part a = Inner(left), b = Inner(right), l = OuterOf(left), r = OuterOf(right);
+        const auto times = [&](const Part& x, const Part& y) -> Part {
+            if (!x || !y || x->Scalar() || y->Scalar()) return Times(x, y);
+            return Broadcast(*x, *y, Multiplied);
+        };
+        Part d = combine == Added        ? Plus(l, r)
+                 : combine == Multiplied ? Plus(times(l, b), times(a, r))
+                                         : Plus(l, r ? Part(Negative(*times(code, r))) : r);
+        if (combine == Divided)
+            d = Combined(
+                d, b, [&](const Code& x, const Code& y) { return Broadcast(x, y, Divided); },
+                std::divides<>());
+        if (combine == Added && d->size != code.size) d = Plus(d, Literal(Value(code.size)));
+        code.outer = {*d};
+        return code;
     }
 
     void Shape(Sequence& sequence, const Code& code) {
@@ -1811,6 +1897,23 @@ private:
     // a part absent where its is, and exactly where both are constants.
     using Part = std::optional<Code>;
     static Part PartOf(const Code& code) { return code.part.empty() ? Part() : code.part[0]; }
+    static Part OuterOf(const Code& code) { return code.outer.empty() ? Part() : code.outer[0]; }
+    static bool Still(const Code& code) { return code.part.empty() && code.outer.empty(); }
+    static Code Inner(Code code) {
+        code.outer.clear();
+        return code;
+    }
+    // What lays out cells lays out their parts by the outer grad of a nest
+    // too, 0 where one has none.
+    template <typename Lay>
+    static Code Outer(Code code, const std::vector<Code>& from, Lay lay) {
+        if (std::ranges::all_of(from, [](const Code& c) { return c.outer.empty(); })) return code;
+        std::vector<Code> outers;
+        for (const Code& c : from)
+            outers.push_back(c.outer.empty() ? Literal(Value(c.size)) : c.outer[0]);
+        code.outer = {lay(outers)};
+        return code;
+    }
     template <typename F>
     static Code Exact(F f) {
         try {
@@ -1932,14 +2035,31 @@ private:
         return Parted(std::move(value), part, {&a, &b});
     }
     Code ProductOf(Code value, const Code& a, const Code& b) {
-        return Parted(std::move(value), Plus(Times(PartOf(a), b), Times(a, PartOf(b))), {&a, &b});
+        Part part = Plus(Times(PartOf(a), b), Times(a, PartOf(b)));
+        // In a nest, its cross part in the interpreter's order, which the
+        // part's own by the outer grad is not (Derivative::Product).
+        if (part && !part->node && !part->outer.empty()) {
+            const Part p = PartOf(a), q = PartOf(b);
+            const Part in[] = {p ? Part(Inner(*p)) : p, q ? Part(Inner(*q)) : q};
+            part->outer.clear();
+            Part cross;
+            for (const Part& term :
+                 {Times(p ? OuterOf(*p) : p, Inner(b)), Times(in[0], OuterOf(b)),
+                  Times(OuterOf(a), in[1]), Times(Inner(a), q ? OuterOf(*q) : q)})
+                cross = Plus(cross, term);
+            if (cross) part->outer = {*cross};
+        }
+        return Parted(std::move(value), part, {&a, &b});
     }
     // Where the interpreter refuses for the point's sake, NaN: where 'meet'
     // holds and what it reads moves there.
     std::string Jumps(const std::string& meet, const std::vector<const Code*>& codes) {
-        if (std::all_of(codes.begin(), codes.end(), [](const Code* c) { return c->part.empty(); }))
+        if (std::all_of(codes.begin(), codes.end(), [](const Code* c) { return Still(*c); }))
             return "";
-        const std::string moves = Text(Moves(codes));
+        // An outer grad's part is taken as always there.
+        const bool outer =
+            std::ranges::any_of(codes, [](const Code* c) { return !c->outer.empty(); });
+        const std::string moves = outer ? "" : Text(Moves(codes));
         return meet + (moves.empty() ? "" : " && (" + moves + ")") + " ? NAN : ";
     }
 
@@ -1973,6 +2093,21 @@ private:
         Part top = PartOf(left);
         if (const Part b = PartOf(right)) top = Plus(top, Negative(cellwise(value, *b)));
         Part part = over(top);
+        // In a nest, its cross part in the interpreter's order (Derivative::Quotient).
+        if (part && !part->node && !part->outer.empty()) {
+            const Part a = PartOf(left), b = PartOf(right), d = Inner(*part);
+            Part       cross = a ? OuterOf(*a) : a;
+            for (const auto& [x, y] :
+                 {std::pair(Part(Inner(value)), b ? OuterOf(*b) : b),
+                  std::pair(OuterOf(value), b ? Part(Inner(*b)) : b), std::pair(d, OuterOf(right))})
+                if (x && y) cross = Plus(cross, Negative(cellwise(*x, *y)));
+            part->outer.clear();
+            if (cross)
+                part->outer = {*Combined(
+                    cross, Inner(right),
+                    [&](const Code& x, const Code& y) { return Broadcast(x, y, Divided); },
+                    std::divides<>())};
+        }
         // a'/b where b's clause has none, not an infinite quotient times 0 (C110).
         if (part && !part->node && right.moves) {
             const Part alone = over(PartOf(left));
@@ -2090,6 +2225,12 @@ private:
     // for each left row; from 27 multiplications, as a loop.
     Code Product(Code left, Code right) {
         if (left.Scalar() || right.Scalar()) return Broadcast(left, right, Multiplied);
+        if (!left.outer.empty() || !right.outer.empty()) {
+            Code code  = Product(Inner(left), Inner(right));
+            code.outer = {
+                *Plus(Times(OuterOf(left), Inner(right)), Times(Inner(left), OuterOf(right)))};
+            return code;
+        }
         if (temporaries_ && left.size.cols == right.size.rows) {
             const Extent size{left.size.rows, right.size.cols, Slices(left, right)};
             if (size.count() * left.size.cols >= 27) return Looped(left, right, size);
@@ -2134,6 +2275,7 @@ private:
             negation.atom            = cell.atom;
             cell                     = negation;
         }
+        for (Code& outer : code.outer) outer = Negated(outer);
         return code;
     }
 
@@ -2163,6 +2305,7 @@ private:
             for (std::size_t i = 0; i < code.size.rows; ++i)
                 for (std::size_t j = 0; j < code.size.cols; ++j)
                     code.cells.push_back(operand.At(j, i, b));
+        for (const Code& outer : operand.outer) code.outer.push_back(Transposed(outer));
         return code;
     }
 
@@ -2170,7 +2313,7 @@ private:
     // power's c*u^(c-1)*u', none where c is 0, NaN where u is 0 and c < 1.
     PExpression<Value> visit(PowExpression<Value>* expression) override {
         Code base = Emit(expression->m_e1());
-        if (limit_ && !index_.empty() && !places_.count(index_) && base.part.empty() &&
+        if (limit_ && !index_.empty() && !places_.count(index_) && Still(base) &&
             Mentions(*expression->m_e2(), index_))
             if (const auto climbed = Climbed(base, expression->m_e2())) return Answer(*climbed);
         const Code exponent =
@@ -2178,7 +2321,7 @@ private:
                 ? Emit(expression->m_e2())
                 : Known(expression->m_e2(), "a matrix power whose exponent is not a constant");
         // x^0 takes no part, its derivative 0, as Derivative::Power's.
-        if (!base.part.empty() && !base.Scalar() && Doubles(*exponent.constant)[0] != 0)
+        if (!Still(base) && !base.Scalar() && Doubles(*exponent.constant)[0] != 0)
             throw Reason("a derivative of a matrix power, for now");
         Code value;
         if (base.constant && exponent.constant) {
@@ -2190,15 +2333,26 @@ private:
             if (exponent.constant && Doubles(*exponent.constant)[0] == 2) base = Shared(base);
             value = Powered(base, exponent);
         }
-        if (!exponent.part.empty()) {
+        if (!Still(exponent)) {
             if (!Euler(*expression->m_e1()))
                 throw Reason("grad cannot differentiate a power whose exponent changes with " +
                              grad_ + ", unless its base is e");
-            return Answer(Parted(value, Times(value, PartOf(exponent)), {&exponent}));
+            Part part = Times(value, PartOf(exponent));
+            // In a nest, e^w*w12 + e^w*(w^*w'), as Derivative::Composed.
+            if (part && !part->node && !part->outer.empty()) {
+                const Code& w = exponent.part[0];
+                part->outer.clear();
+                if (const Part cross =
+                        Plus(Times(Inner(value), OuterOf(w)),
+                             Times(Inner(value), Times(OuterOf(exponent), Inner(w)))))
+                    part->outer = {*cross};
+            }
+            return Answer(Parted(value, part, {&exponent}));
         }
-        if (base.part.empty()) return Answer(value);
+        if (Still(base)) return Answer(value);
         if (!exponent.constant)
             throw Reason("a derivative of a power whose exponent is not a constant, for now");
+        if (base.part.empty()) return Answer(value);
         const Value c = *exponent.constant, coefficient = Value(Number(1)) * (c - Value(Number(0)));
         if (coefficient(1, 1) == Number(0)) return Answer(value);
         // u^(c-1) at 0 is C's pow's inf, where the interpreter divides by 0.
@@ -2208,16 +2362,36 @@ private:
             : Doubles(lower)[0] < 0 && Doubles(*base.constant)[0] == 0.0
                 ? Literal(Value(Number(HUGE_VAL)))
                 : Exact([&] { return numeric_interface<Value>::pow(*base.constant, lower); });
-        if (Doubles(lower)[0] < 0 && (!base.constant || Doubles(*base.constant)[0] == 0.0))
-            value = Of(Cell("(" + Jumps(Wrap(base.cells[0], sum) + " == 0.0", {&base}) +
-                                value.cells[0].text + ")",
-                            primary));
-        Part part = Times(Times(Literal(coefficient), power), PartOf(base));
+        if (Doubles(lower)[0] < 0 && (!base.constant || Doubles(*base.constant)[0] == 0.0)) {
+            value.cells[0] = Cell("(" + Jumps(Wrap(base.cells[0], sum) + " == 0.0", {&base}) +
+                                      value.cells[0].text + ")",
+                                  primary);
+            value.constant.reset();
+        }
+        const Part slope = Times(Literal(coefficient), power);
+        Part       part  = Times(slope, PartOf(base));
+        // In a nest, its cross part f'*u12 + f''*(u^*u'), as Derivative::Composed.
+        if (part && !part->node && !part->outer.empty()) {
+            const Value second = coefficient * (c - Value(Number(1)));
+            const Value below  = lower - Value(Number(1));
+            Part        cross  = Times(Inner(*slope), OuterOf(base.part[0]));
+            if (Doubles(second)[0] != 0)
+                cross =
+                    Plus(cross,
+                         Times(Doubles(below)[0] == 0
+                                   ? Literal(second)
+                                   : *Times(Literal(second), Powered(Inner(base), Literal(below))),
+                               Times(OuterOf(base), Inner(base.part[0]))));
+            part->outer.clear();
+            if (cross) part->outer = {*cross};
+        }
         // None where its base's clause has none, not 0 times an infinity, where
         // its value is finite (C118).
-        if (Doubles(lower)[0] < 0 && Doubles(c)[0] > 0 && base.moves && !part->node)
-            part = Of(
-                Cell("(" + Whether(base.moves) + " ? " + part->cells[0].text + " : 0)", primary));
+        if (Doubles(lower)[0] < 0 && Doubles(c)[0] > 0 && base.moves && !part->node) {
+            part->cells[0] =
+                Cell("(" + Whether(base.moves) + " ? " + part->cells[0].text + " : 0)", primary);
+            part->constant.reset();
+        }
         return Answer(Parted(value, part, {&base}));
     }
 
@@ -2246,7 +2420,18 @@ private:
         if (const double b = base.constant ? Doubles(*base.constant)[0] : 0.0;
             b > 0 && (floats ? static_cast<float>(b) != 1.0f : b != 1.0))
             cell.nan = exponent.cells[0].text;
-        return Of(cell);
+        // In a nest, its part by the outer grad, e^w*w^ or c*u^(c-1)*u^, as
+        // Derivative::Power's first.
+        Code out = Of(cell);
+        if (const Part w = OuterOf(exponent)) {
+            out.outer = {*Times(Of(cell), w)};
+        } else if (const Part moves = OuterOf(base);
+                   moves && exponent.constant && Doubles(*exponent.constant)[0] != 0) {
+            const Value c = *exponent.constant;
+            out.outer     = {*Times(
+                Times(Literal(c), Powered(Inner(base), Literal(c - Value(Number(1))))), moves)};
+        }
+        return out;
     }
 
     // The built-in e, as Derivative::Euler has it.
@@ -2663,7 +2848,8 @@ private:
                                 block.constant->data()[at];
                     }
                 }
-        return code;
+        return Outer(code, blocks,
+                     [&](const std::vector<Code>& outers) { return Laid(outers, bands); });
     }
     // A matrix or tensor of single parts, by place, exact where each is.
     static Code Assembled(const std::vector<Code>& parts, Extent size) {
@@ -2673,7 +2859,8 @@ private:
             if (!parts[k].constant) code.constant.reset();
             if (code.constant) code.constant->data()[k] = (*parts[k].constant)(1, 1);
         }
-        return code;
+        return Outer(code, parts,
+                     [&](const std::vector<Code>& outers) { return Assembled(outers, size); });
     }
 
     PExpression<Value> visit(RefExpression<Value>* expression) override {
@@ -3013,6 +3200,8 @@ private:
         }
         for (const Code& given : cells) from.push_back(&given);
         if (constant) code.constant = exact;
+        code =
+            Outer(code, cells, [&](const std::vector<Code>& o) { return Assembled(o, *extent); });
         // Under reverse mode, each cell's node placed into the matrix's.
         Code placed;
         for (std::size_t k = 0; tape_ && k < parts.size(); ++k)
@@ -3167,7 +3356,7 @@ private:
         // A limit's function fills arrays of rows and columns.
         for (const auto& [parameter, code] : given) {
             if (code.size.slices) throw Reason("a tensor in a limit, for now");
-            if (!code.part.empty()) throw Reason("a derivative of a limit, for now");
+            if (!Still(code)) throw Reason("a derivative of a limit, for now");
         }
         bool constant = true;
         for (const auto& [parameter, code] : given) constant = constant && code.constant;
@@ -3615,7 +3804,7 @@ private:
         const std::string read_at = name + "_(...): read at " + walked.what + "'s index ";
         std::string       read;
         for (const auto& [given, value] : expansion.values) {
-            if (!value.part.empty())
+            if (!Still(value))
                 throw Reason(name + "_(...): a derivative of a term " + walked.what +
                              " walks, for now");
             for (const Cell& cell : value.cells) read += cell.text + ' ';
@@ -4147,7 +4336,7 @@ private:
                              slices[0].size.toString() + " and " + slice.size.toString());
             code.cells.insert(code.cells.end(), slice.cells.begin(), slice.cells.end());
         }
-        return code;
+        return Outer(code, slices, Stack);
     }
 
     // A row, a cell, or a tensor's slice or cell, its places constants, and so
@@ -4190,11 +4379,15 @@ private:
             throw Reason(error.what());
         }
         const auto window = [&](const Code& m) {
-            Code c;
-            c.size = taken.Size();
-            for (std::size_t k = 0; k < c.size.count(); ++k)
-                c.cells.push_back(m.At(static_cast<std::size_t>(taken.data()[k].Inexact().real())));
-            return c;
+            const auto cells = [&](const Code& from) {
+                Code c;
+                c.size = taken.Size();
+                for (std::size_t k = 0; k < c.size.count(); ++k)
+                    c.cells.push_back(
+                        from.At(static_cast<std::size_t>(taken.data()[k].Inexact().real())));
+                return c;
+            };
+            return Outer(cells(m), {m}, [&](const std::vector<Code>& o) { return cells(o[0]); });
         };
         return Answer(Parted(window(matrix), Mapped(PartOf(matrix), read, window), {&matrix}));
     }
@@ -4247,7 +4440,7 @@ private:
     PExpression<Value> visit(FactExpression<Value>* expression) override {
         const auto fact = [](const Value& v) { return Value(numeric_interface<Value>::fact(v)); };
         const Code operand = Emit(expression->m_e());
-        if (!operand.part.empty() || (!operand.constant && !operand.Scalar()))
+        if (!Still(operand) || (!operand.constant && !operand.Scalar()))
             throw Reason("a factorial");
         if (!operand.constant && limit_ && !index_.empty() && !places_.count(index_) &&
             Mentions(*expression->m_e(), index_))
@@ -4280,22 +4473,66 @@ private:
     PExpression<Value> visit(GradExpression<Value>* expression) override {
         if (expression->Several() && expression != grouped_.first)
             Reasoned(EvaluationVisitor<Value>::Unread);
-        if (!grad_.empty()) throw Reason("a derivative of a derivative, for now");
         std::vector<Code> points, parts;
         for (std::size_t v = 0; v < expression->Variables().size(); ++v)
             points.push_back(Emit(expression->Point(v)));
         Asked([&] { Reasoned([&] { Derivative<Value>(definitions_).Names(*expression); }); }, true);
-        if (points.size() > 1 || points[0].size.count() > 1) {
-            Tape tape;
-            parts = Graded(*expression, points, &tape);
-        }
-        if (parts.empty()) parts = Graded(*expression, points, nullptr);
+        const bool hessian =
+            Reasoned([&] { return Derivative<Value>::Hessian(*expression, points[0].size); });
+        if (depth_ + (hessian ? 1 : 0) > 1)
+            throw Reason("a derivative of a derivative of a derivative, for now");
+        // grad_ joins several names by ' or '.
+        if (depth_ && (expression->Several() || grad_.find(" or ") != std::string::npos))
+            throw Reason("a derivative of a derivative by several names, for now");
+        if (depth_ && tape_) throw Forward();
+        if (depth_) return Answer(Nest(*expression, points[0]));
+        if (!hessian && (points.size() > 1 || points[0].size.count() > 1)) try {
+                Tape tape;
+                parts = Graded(*expression, points, &tape);
+            } catch (const Forward&) {
+            }
+        if (parts.empty()) parts = Graded(*expression, points, nullptr, hessian);
         if (expression->Several()) *grouped_.second = parts;
         return Answer(parts[0]);
     }
-    // Each name's part, in the order written; none where reverse mode gives way.
+    // Forward over forward (DESIGN.md, grad's order): the inner grad's pass
+    // as at first order, the values it reads moving by the outer grad by
+    // their outer parts, and its part's outer part the outer grad's part.
+    Code Nest(GradExpression<Value>& expression, Code point) {
+        const auto inward = [](Code& c) {
+            if (c.part.empty()) return;
+            c.outer = std::move(c.part);
+            c.part.clear();
+            c.constant.reset();
+            c.moves.reset();
+        };
+        std::vector<std::pair<Expansion*, std::map<std::string, Code>>> saved;
+        for (Expansion* e = expansion_; e; e = e->outer) {
+            saved.emplace_back(e, e->values);
+            for (auto& [name, code] : e->values) inward(code);
+        }
+        inward(point);
+        struct Restore {
+            std::vector<std::pair<Expansion*, std::map<std::string, Code>>>& each;
+            ~Restore() {
+                for (auto& [e, values] : each) e->values = std::move(values);
+            }
+        } restore{saved};
+        Code out = Graded(expression, {point}, nullptr)[0];
+        out.part = std::move(out.outer);
+        out.outer.clear();
+        out.moves.reset();
+        if (!out.part.empty()) out.constant.reset();
+        return out;
+    }
+    // A grad holding a nest, in reverse mode, gives way to forward mode.
+    struct Forward {};
+
+    // Each name's part, in the order written; none where reverse mode gives
+    // way. Of a Hessian, a pass for each cell (i, j), i <= j, by v[i] around
+    // v[j], each mirrored.
     std::vector<Code> Graded(GradExpression<Value>& expression, const std::vector<Code>& points,
-                             Tape* tape) {
+                             Tape* tape, bool hessian = false) {
         const std::vector<std::string>& names = expression.Variables();
         Code                            body, values;
         std::vector<Code>               parts;
@@ -4304,8 +4541,16 @@ private:
         if (tape) ++tapes_;
         std::string with;
         for (const std::string& name : names) with += (with.empty() ? "" : " or ") + name;
+        const std::size_t n  = points[0].cells.size();
+        const auto        at = [&](std::size_t i, std::size_t j) {
+            if (i > j) std::swap(i, j);
+            return i * n - i * (i - 1) / 2 + j - i;
+        };
         for (std::size_t v = 0; v < (tape ? 1 : names.size()); ++v)
-            for (std::size_t k = 0; k < (tape ? 1 : points[v].cells.size()); ++k) {
+            for (std::size_t k = 0; k < (tape      ? 1
+                                         : hessian ? n * (n + 1) / 2
+                                                   : points[v].cells.size());
+                 ++k) {
                 Expansion   bound{{}, {}, scope_, expansion_, {}, {}};
                 auto        places = places_;
                 std::string index  = index_;
@@ -4313,13 +4558,19 @@ private:
                     Code x = points[w];
                     // Each its own node, though two be alike (C323).
                     if (tape) x.part = {Record(Kind::Seed, x.size, 0, {}, 0, w)};
-                    if (!tape && w == v) {
-                        Value seed(Number(1));
-                        if (!x.Scalar()) {
-                            seed           = Value(x.size);
-                            seed.data()[k] = Number(1);
-                        }
-                        x.part = {Literal(seed)};
+                    const auto seed = [&](std::size_t c) {
+                        Value one(Number(1));
+                        if (x.Scalar()) return Literal(one);
+                        Value cell     = Value(x.size);
+                        cell.data()[c] = Number(1);
+                        return Literal(cell);
+                    };
+                    std::size_t i = 0, j = k;
+                    for (; hessian && j >= n - i; ++i) j -= n - i;
+                    if (!tape && w == v) x.part = {seed(hessian ? i + j : k)};
+                    if (!tape && w == v && hessian) {
+                        x.outer = {seed(i)};
+                        x.constant.reset();
                     }
                     bound.values.emplace(names[w], x);
                     places.erase(names[w]);
@@ -4329,7 +4580,9 @@ private:
                 const Setting<std::string>                  indexed(index_, index);
                 const Setting<Expansion*>                   binding(expansion_, &bound);
                 const Setting<std::string>                  differentiating(grad_, with);
-                body = Emit(expression.Body());
+                const Setting<std::size_t> deeper(depth_, depth_ + (hessian ? 2 : 1));
+                body = Emit(hessian ? static_cast<GradExpression<Value>&>(*expression.Body()).Body()
+                                    : expression.Body());
                 if (tape && names.size() > 1 && !body.Scalar() &&
                     std::ranges::all_of(points, &Code::Scalar))
                     return {};
@@ -4342,9 +4595,10 @@ private:
                 if (!body.constant)
                     values.cells.insert(values.cells.end(), body.cells.begin(), body.cells.end());
                 if (tape && !body.part.empty()) parts = Swept(body.part[0].node, points);
-                if (!tape)
-                    parts.push_back(body.part.empty() ? Literal(Value(body.size)) : body.part[0]);
-                any[v] = any[v] || !body.part.empty();
+                const Part part =
+                    hessian && !body.part.empty() ? OuterOf(body.part[0]) : PartOf(body);
+                if (!tape) parts.push_back(part ? *part : Literal(Value(body.size)));
+                any[v] = any[v] || part;
             }
         // NaN where the value differentiated is, in a header that writes NaN,
         // as one does where that value writes it and no part reads it (C113),
@@ -4355,13 +4609,19 @@ private:
         std::vector<Code> outs;
         for (std::size_t v = 0, first = 0; v < names.size(); ++v) {
             const Code&       point = points[v];
-            const std::size_t n     = tape ? 1 : point.cells.size();
+            const std::size_t cells = tape ? 1 : point.cells.size();
             const auto        from  = parts.begin() + static_cast<std::ptrdiff_t>(first);
-            Code out = !any[tape ? 0 : v] ? Literal(Value(point.Scalar() ? body.size : point.size))
-                       : tape || point.Scalar()
-                           ? parts[first]
-                           : Assembled({from, from + static_cast<std::ptrdiff_t>(n)}, point.size);
-            first += n;
+            std::vector<Code> square;
+            for (std::size_t i = 0; hessian && i < n; ++i)
+                for (std::size_t j = 0; j < n; ++j) square.push_back(parts[at(i, j)]);
+            const Extent size = hessian ? Extent{n, n} : point.Scalar() ? body.size : point.size;
+            Code         out =
+                !any[tape ? 0 : v] ? Literal(Value(size))
+                        : hessian          ? Assembled(square, size)
+                        : tape || point.Scalar()
+                            ? parts[first]
+                            : Assembled({from, from + static_cast<std::ptrdiff_t>(cells)}, point.size);
+            first += cells;
             out.part.clear();
             for (Cell& cell : out.cells)
                 if (!nan.empty()) cell = Cell("(" + nan + cell.text + ")", primary);
@@ -4383,6 +4643,7 @@ private:
         Code one;
         one.cells = {code.At(c)};
         if (code.constant) one.constant = Value(code.constant->data()[c % code.cells.size()]);
+        for (const Code& outer : code.outer) one.outer.push_back(Single(outer, c));
         return one;
     }
     static Adjoint Some(Code code) {
@@ -4720,7 +4981,7 @@ private:
     }
     // A reduction's term, as the interpreter ranks it; under grad, for now, refused.
     static const Code& Ranked(const SeriesExpression<Value>& series, const Code& term) {
-        if (!term.part.empty())
+        if (!Still(term))
             throw Reason(std::string("a derivative of ") + (series.Indexes() ? "an " : "a ") +
                          series.Noun() + ", for now");
         if (!term.constant && !term.Scalar())
@@ -6586,6 +6847,8 @@ private:
     std::map<std::string, Value>     places_;             // a cell's row and column, by their names
     Code        code_;
     Tape* tape_  = nullptr;  // the grad's being compiled in reverse mode
+    std::size_t                        depth_ = 0;        // the grads around, a nest's 2
+    std::map<std::string, std::string> nested_;  // a nest's prelude functions, by what they compute
     int   tapes_ = 0;        // how many were, so that a memo's key tells their nodes apart
     // The grad by several names a step computes the parts of, and where they go.
     std::pair<const GradExpression<Value>*, std::vector<Code>*> grouped_{};

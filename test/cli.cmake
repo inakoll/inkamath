@@ -64,103 +64,6 @@ endfunction()
 # Read by cases in every part.
 set(inputs "${CMAKE_CURRENT_LIST_DIR}/compile/inputs.ink")
 
-# Specified, not yet built (DESIGN.md, grad's order): compile/hessian.ink's
-# instances each within 0 of the interpreter, and the nests still refused. Skipped while the order is refused as today, and only then.
-if(PART STREQUAL "spec")
-    file(MAKE_DIRECTORY "${OUT}")
-    set(story "${CMAKE_CURRENT_LIST_DIR}/compile/hessian.ink")
-    execute_process(COMMAND "${EXE}" --compile "${story}" lag -o lag.h
-                    WORKING_DIRECTORY "${OUT}" OUTPUT_VARIABLE out ERROR_VARIABLE err
-                    RESULT_VARIABLE code TIMEOUT ${CASE_TIMEOUT})
-    if("${out}${code}" STREQUAL "1" AND
-       "${err}" MATCHES "^inkamath: hessian.ink, line [0-9]+: unexpected '\\^'\n$")
-        message("compile_hessian: the order refused, as today")
-        return()
-    endif()
-    set(args --compile ${story} lag -o lag.h)
-    check(compile_hessian)
-    strict(compile_hessian lag.h)
-
-    set(inexact "against exact values until 1 and inexact ones from there")
-    # p.G an ulp from the interpreter's at 1, where reverse mode at an exact
-    # point is not forward mode's (C382), and C and w after it by what it moves.
-    set(parted "p.C: within 1e-17, from 1" "p.G: within 3.6e-15, from 1" "p.w: within 2.1e-17")
-    foreach(checked IN ITEMS "p:${inexact}:M q" "h:${inexact}:k s M C G w q"
-                             "b:against exact values:d q")
-        string(REPLACE ":" ";" checked "${checked}")
-        list(POP_FRONT checked instance against terms)
-        set(args --check ${story} ${instance} -o ${instance}.c)
-        check(check_hessian_${instance})
-        if(NOT CC_ID MATCHES "^(GNU|Clang|AppleClang)$")
-            continue()
-        endif()
-        # Uncontracted, as test/CMakeLists.txt builds a check (C97).
-        execute_process(COMMAND "${CC}" -std=c11 -O2 -ffp-contract=off ${instance}.c
-                                -o ${instance} -lm
-                        WORKING_DIRECTORY "${OUT}" RESULT_VARIABLE failed
-                        ERROR_VARIABLE errors OUTPUT_VARIABLE errors)
-        if(failed)
-            message(SEND_ERROR "check_hessian_${instance}: ${instance}.c does not build\n${errors}")
-            continue()
-        endif()
-        execute_process(COMMAND "${OUT}/${instance}" WORKING_DIRECTORY "${OUT}"
-                        OUTPUT_VARIABLE report RESULT_VARIABLE code TIMEOUT ${CASE_TIMEOUT})
-        # A list splits at ';', which a line's estimate holds.
-        string(REPLACE ";" "," lines "${report}")
-        string(REPLACE "\n" ";" lines "${lines}")
-        list(REMOVE_ITEM lines "")
-        list(POP_FRONT lines first)
-        separate_arguments(terms)
-        list(LENGTH terms want)
-        list(LENGTH lines got)
-        set(bad "")
-        foreach(line IN LISTS parted)
-            string(FIND "\n${report}" "\n${line}" at)
-            if(line MATCHES "^${instance}\\.")
-                math(EXPR want "${want} + 1")
-                if(at EQUAL -1)
-                    set(bad 1)
-                endif()
-            endif()
-        endforeach()
-        if(NOT code EQUAL 0 OR NOT "${first}" STREQUAL "${instance}: 100 steps from 0, ${against}"
-           OR NOT got EQUAL want)
-            set(bad 1)
-        endif()
-        foreach(s IN LISTS terms)
-            set(found "")
-            foreach(line IN LISTS lines)
-                if(line MATCHES "^${instance}\\.${s}: within 0(, from 1)?(,.*)?$")
-                    set(found 1)
-                endif()
-            endforeach()
-            if(NOT found)
-                set(bad 1)
-            endif()
-        endforeach()
-        if(bad)
-            message(SEND_ERROR "check_hessian_${instance}: exit ${code}\n${report}--- where each of ${terms} is to be within 0, and ${parted} as given")
-        endif()
-    endforeach()
-
-    file(WRITE "${OUT}/hessian_refused.ink"
-         "a_n = grad_(t = x_n)^3 t^5\nb_n = grad_(s = x_n, r = 2) grad_(t = s) t^2*r\n"
-         "c_n = grad_(t = x_n)^2 lim p(t)\nd_n = grad_(v = [x_n 1; 2 3])^2 v[1,1]*v[2,2]\n"
-         "e_n = grad_(v = [x_n; 1])^3 v[1]^4\nf_n = grad_(t = x_n)^2 grad_(s = 2) t^2*s^2\n"
-         "p(r)_0 = 1\np(r)_k = r*p(r)_(k-1)/4 + 1\n")
-    set(args --compile hessian_refused.ink)
-    set(stdout "cannot compile a: a derivative of a derivative of a derivative, for now
-cannot compile b: a derivative of a derivative by several names, for now
-cannot compile c: a derivative of a limit, for now
-cannot compile d: a derivative of order 2 with respect to a matrix, for now
-cannot compile e: a derivative of order 3 with respect to a vector, for now
-cannot compile f: a derivative of a derivative of a derivative, for now
-")
-    set(exit 1)
-    check(compile_hessian_refused)
-    return()
-endif()
-
 # The cases run as three tests of about equal time under the sanitizers: PART
 # 1 up to charpoly's refusal, 2 from it, 3 from eig's, and all where PART is
 # not given.
@@ -1623,9 +1526,9 @@ holds(compile_grad_fall fall.h [[static inline double fall_exp_dx(double arg_x, 
     return 2.0 * part_s * fall_logp(arg_s * arg_s) + 2.0 * arg_s * fall_logp_dz(arg_s * arg_s, part_s * arg_s + arg_s * part_s);
 }
 ]])
-file(WRITE "${OUT}/grad_refused.ink" "a_n = grad_(t = x_n) grad_(s = t) s^3\nb_n = grad_(t = x_n) lim p(t)\nc_n = grad_(v = [x_n; 1]) 2*v\nd_n = grad_(t = x_n) 2^t\nf_n = grad_(t = x_n) t^x_n\ng_n = grad_(t = x_n) [1 1]*[t 1; 0 t]^2*[1; 1]\nh_n = grad_(t = x_n) 5\nk_n = grad_(t = x_n) sq\nm_n = grad_(t = x_n) amp(k = t).y\namp(k = 1) = {\n    y = 2*k\n}\np(r)_0 = 1\np(r)_k = r*p(r)_(k-1)/4 + 1\nsq = t^2\nt = 3\n")
+file(WRITE "${OUT}/grad_refused.ink" "b_n = grad_(t = x_n) lim p(t)\nc_n = grad_(v = [x_n; 1]) 2*v\nd_n = grad_(t = x_n) 2^t\nf_n = grad_(t = x_n) t^x_n\ng_n = grad_(t = x_n) [1 1]*[t 1; 0 t]^2*[1; 1]\nh_n = grad_(t = x_n) 5\nk_n = grad_(t = x_n) sq\nm_n = grad_(t = x_n) amp(k = t).y\namp(k = 1) = {\n    y = 2*k\n}\np(r)_0 = 1\np(r)_k = r*p(r)_(k-1)/4 + 1\nsq = t^2\nt = 3\n")
 set(args --compile grad_refused.ink)
-set(stdout "cannot compile a: a derivative of a derivative, for now\ncannot compile b: a derivative of a limit, for now\ncannot compile c: grad of a matrix with respect to a matrix is a Jacobian, which it does not give\ncannot compile d: grad cannot differentiate a power whose exponent changes with t, unless its base is e\ncannot compile f: a derivative of a power whose exponent is not a constant, for now\ncannot compile g: a derivative of a matrix power, for now\ncannot compile h: grad's expression does not read t\ncannot compile k: sq reads the global t, which grad's t does not reach\ncannot compile m: grad cannot differentiate through an instance yet\n")
+set(stdout "cannot compile b: a derivative of a limit, for now\ncannot compile c: grad of a matrix with respect to a matrix is a Jacobian, which it does not give\ncannot compile d: grad cannot differentiate a power whose exponent changes with t, unless its base is e\ncannot compile f: a derivative of a power whose exponent is not a constant, for now\ncannot compile g: a derivative of a matrix power, for now\ncannot compile h: grad's expression does not read t\ncannot compile k: sq reads the global t, which grad's t does not reach\ncannot compile m: grad cannot differentiate through an instance yet\n")
 set(exit 1)
 check(compile_grad_refused)
 
@@ -2532,3 +2435,88 @@ set(args --compile forwarded.ink fw -o fw.h)
 set(stderr "inkamath: cannot compile e.x: e.z, an inner instance's optional input, for now\n")
 set(exit 1)
 check(compile_optional_inner)
+
+# grad's order compiled (DESIGN.md): compile/hessian.ink's instances each
+# within 0 of the interpreter, and the nests still refused.
+set(story "${CMAKE_CURRENT_LIST_DIR}/compile/hessian.ink")
+set(args --compile ${story} lag -o lag.h)
+check(compile_hessian)
+strict(compile_hessian lag.h)
+
+set(inexact "against exact values until 1 and inexact ones from there")
+# p.G an ulp from the interpreter's at 1, where reverse mode at an exact
+# point is not forward mode's (C382), and C and w after it by what it moves.
+set(parted "p.C: within 1e-17, from 1" "p.G: within 3.6e-15, from 1" "p.w: within 2.1e-17")
+foreach(checked IN ITEMS "p:${inexact}:M q" "h:${inexact}:k s M C G w q"
+                         "b:against exact values:d q")
+    string(REPLACE ":" ";" checked "${checked}")
+    list(POP_FRONT checked instance against terms)
+    set(args --check ${story} ${instance} -o ${instance}.c)
+    check(check_hessian_${instance})
+    if(NOT CC_ID MATCHES "^(GNU|Clang|AppleClang)$")
+        continue()
+    endif()
+    # Uncontracted, as test/CMakeLists.txt builds a check (C97).
+    execute_process(COMMAND "${CC}" -std=c11 -O2 -ffp-contract=off ${instance}.c
+                            -o ${instance} -lm
+                    WORKING_DIRECTORY "${OUT}" RESULT_VARIABLE failed
+                    ERROR_VARIABLE errors OUTPUT_VARIABLE errors)
+    if(failed)
+        message(SEND_ERROR "check_hessian_${instance}: ${instance}.c does not build\n${errors}")
+        continue()
+    endif()
+    execute_process(COMMAND "${OUT}/${instance}" WORKING_DIRECTORY "${OUT}"
+                    OUTPUT_VARIABLE report RESULT_VARIABLE code TIMEOUT ${CASE_TIMEOUT})
+    # A list splits at ';', which a line's estimate holds.
+    string(REPLACE ";" "," lines "${report}")
+    string(REPLACE "\n" ";" lines "${lines}")
+    list(REMOVE_ITEM lines "")
+    list(POP_FRONT lines first)
+    separate_arguments(terms)
+    list(LENGTH terms want)
+    list(LENGTH lines got)
+    set(bad "")
+    foreach(line IN LISTS parted)
+        string(FIND "\n${report}" "\n${line}" at)
+        if(line MATCHES "^${instance}\\.")
+            math(EXPR want "${want} + 1")
+            if(at EQUAL -1)
+                set(bad 1)
+            endif()
+        endif()
+    endforeach()
+    if(NOT code EQUAL 0 OR NOT "${first}" STREQUAL "${instance}: 100 steps from 0, ${against}"
+       OR NOT got EQUAL want)
+        set(bad 1)
+    endif()
+    foreach(s IN LISTS terms)
+        set(found "")
+        foreach(line IN LISTS lines)
+            if(line MATCHES "^${instance}\\.${s}: within 0(, from 1)?(,.*)?$")
+                set(found 1)
+            endif()
+        endforeach()
+        if(NOT found)
+            set(bad 1)
+        endif()
+    endforeach()
+    if(bad)
+        message(SEND_ERROR "check_hessian_${instance}: exit ${code}\n${report}--- where each of ${terms} is to be within 0, and ${parted} as given")
+    endif()
+endforeach()
+
+file(WRITE "${OUT}/hessian_refused.ink"
+     "a_n = grad_(t = x_n)^3 t^5\nb_n = grad_(s = x_n, r = 2) grad_(t = s) t^2*r\n"
+     "c_n = grad_(t = x_n)^2 lim p(t)\nd_n = grad_(v = [x_n 1; 2 3])^2 v[1,1]*v[2,2]\n"
+     "e_n = grad_(v = [x_n; 1])^3 v[1]^4\nf_n = grad_(t = x_n)^2 grad_(s = 2) t^2*s^2\n"
+     "p(r)_0 = 1\np(r)_k = r*p(r)_(k-1)/4 + 1\n")
+set(args --compile hessian_refused.ink)
+set(stdout "cannot compile a: a derivative of a derivative of a derivative, for now
+cannot compile b: a derivative of a derivative by several names, for now
+cannot compile c: a derivative of a limit, for now
+cannot compile d: a derivative of order 2 with respect to a matrix, for now
+cannot compile e: a derivative of order 3 with respect to a vector, for now
+cannot compile f: a derivative of a derivative of a derivative, for now
+")
+set(exit 1)
+check(compile_hessian_refused)
