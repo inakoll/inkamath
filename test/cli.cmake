@@ -93,7 +93,9 @@ if(PART STREQUAL "spec")
         if(NOT CC_ID MATCHES "^(GNU|Clang|AppleClang)$")
             continue()
         endif()
-        execute_process(COMMAND "${CC}" -std=c11 -O2 ${instance}.c -o ${instance} -lm
+        # Uncontracted, as test/CMakeLists.txt builds a check (C97).
+        execute_process(COMMAND "${CC}" -std=c11 -O2 -ffp-contract=off ${instance}.c
+                                -o ${instance} -lm
                         WORKING_DIRECTORY "${OUT}" RESULT_VARIABLE failed
                         ERROR_VARIABLE errors OUTPUT_VARIABLE errors)
         if(failed)
