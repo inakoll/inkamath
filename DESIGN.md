@@ -12261,8 +12261,120 @@ the clause for a limit that does not converge as done, the order from here:
   tolerance and checks that both fail together. About 200 lines; deferred
   until an entry needs it, likely one calling a QP solver, OSQP or HPIPM,
   from the step.
-- **Compiled second and higher derivatives**, refused today, "a derivative
-  of a derivative, for now"; a study is running.
+- **grad's order, `grad_(x = a)^n body`, and second derivatives compiled.**
+  A Lagrangian's mass matrix, a Newton step and a KKT system's Hessian need
+  second derivatives. The interpreter has them by nesting, with respect to
+  a vector only through the Jacobian by cells of a gradient (README section
+  4); the compiler refuses every nest, "a derivative of a derivative, for
+  now". From a study of a prototype, forward over forward in the compiler.
+
+  Decided:
+  - **The notation**: the superscript after the subscript, as
+    `sum_(k=1)^n`, by sum's rule for its upper bound, a number, a name or
+    parentheses. It is read where grad is written, as the point is, not
+    where grad's name is bound. An exact whole number of at least 2;
+    anything else is refused, "grad's order is a whole number, 2 or more;
+    a first derivative is written without one": `^1` adds nothing
+    (`CLAUDE.md` §2), `^0` is the body and a fraction no derivative grad
+    has. Written as a number it is known when read, so a definition holding
+    it is refused; a name or parentheses where evaluated, a model's
+    parameter included. `?` prints it as written, and tex as
+    `\frac{\partial^{2}}{\partial u^{2}}`, the order in braces as a sum's
+    bound.
+  - **Of a single value, sugar**: n grads of the name nested at the point,
+    their parts, refusals and depth too, "grad nests more than 8 deep" at
+    `^9`. Mixed partials stay nesting, and a grad of x nested in a grad of
+    x stays legal, with no rule against it.
+  - **Of a vector**, a column or a row of n cells, `^2` only: the n by n
+    Hessian, not sugar. Its cell (i, j), i <= j, is the derivative by v[i]
+    of the derivative by v[j], two grads nested, each seeded with its cell,
+    and cell (j, i) the same number: n(n+1)/2 passes, and a symmetric
+    answer exactly, which `chol` tests exactly. A 1x1 matrix is a single
+    value. It is the Jacobian by cells of the gradient wherever both are
+    exact.
+  - **Refused for now**, in its words: an order on a grad by several names,
+    "a grad by several names takes no order, for now", when read; and when
+    evaluated, "a derivative of order 3 with respect to a vector, for now",
+    and of any order "with respect to a matrix" or "a tensor". A matrix
+    body by a vector is first order's Jacobian refusal.
+  - **Compiled**, forward over forward, each grad of a nest adding parts to
+    each value as in the interpreter, through all a first derivative
+    compiles through: arithmetic, constant powers, `e^w`, products,
+    transposes, literals, cells and rows, sums with constant bounds, calls,
+    each chain of clauses with its parts' chains, and the prelude. A nest
+    may be 8 deep, its grads by single values or by matrices, a pass per
+    cell as the interpreter takes a grad inside another, so a Jacobian by
+    cells of a gradient compiles; reverse mode stays for a grad neither in
+    a nest nor holding one. A jump, a `floor`'s, a comparison's or an `==`
+    guard's, is NaN where any grad of the nest moves the value. The order
+    folds to a constant, a parameter compiled in as a size is, or "a
+    derivative whose order is not a constant".
+  - **The header grows with the order, not as its power.** Of one name at
+    one point the parts of sets of grads of one size are equal, bit for
+    bit, each rule taking its terms in the same order, so `^n` keeps n + 1
+    parts where n names keep 2^n; and a prelude function's part has one
+    header function for each order, calling the order below, not one for
+    each place it is read. Measured: `grad_(x = q_(n-1))^4 cos(x)*x^5`'s
+    header at most 4 times the first derivative's, where the prototype's
+    was 8.8 KB at 1 and 1.38 MB at 4.
+  - **Still refused compiled**, as at first order: a limit, a matrix power,
+    a power whose exponent moves; and a nest holding a grad by several
+    names, "a derivative of a derivative by several names, for now".
+  - **`--check`** needs nothing new: the interpreter's parts are walked,
+    and the step's are theirs to the bit, as at first order, so a nest is
+    within 0.
+
+  Rejected:
+  - **`grad^2_(x = a)`**, a second place for a superscript, where a sum has
+    one after its subscript.
+  - **`grad_(x = a, x = a)`**, a repetition, refused already: "grad names
+    x twice".
+  - **`grad_(x = a, y = b)^2`**, the Hessian by several names: its parts
+    would be pairs of names. An item of its own when asked.
+  - **`^1` and `^0` accepted where the order is a name**, so that a Taylor
+    sequence's first terms needed no clauses of their own: an order refused
+    written is refused given.
+  - **`\nabla^2_v` in tex**: a physicist's Laplacian, and tex cannot know
+    the point's shape, which is a value.
+  - **The lower triangle computed too**: twice the passes, for a Hessian
+    symmetric only up to rounding.
+  - **Forward over reverse**, n sweeps for n(n+1)/2 passes: no tape runs
+    under another grad, in the interpreter or the compiler. An item when a
+    model with many unknowns is too slow.
+  - **Taylor coefficients for `^n`**, n + 1 parts by other rules: the
+    doubles would not be nesting's, so `^n` would not be sugar, and the
+    sharing above gives the same count.
+
+  What moves: no golden. `test/cli.cmake`'s `compile_grad_refused` loses
+  its first refusal, a nest now compiled, and `test/compile/grad.ink`'s
+  comment with it; README section 4 gains the order, and its paragraph on
+  what the compiler refuses its nests; this item replaces the line that
+  said a study was running.
+
+  About 500 lines of sources, as the study estimated 450 to 550: the
+  interpreter's 130, the order parsed by sum's rule and printed, tex, the
+  two refusals when read, the nest in `Derivative::Grad`, and the Hessian
+  by pairs of cells, its mirror and its refusals, about 60 of them; the
+  compiler's 360, the prototype's arithmetic, chains, calls and powers
+  over a part for each set of grads, about 250, then products, transposes
+  and cells, a pass per cell in a nest, the jumps tested by each grad, the
+  order folded, n + 1 parts for one name and the part functions by order;
+  `--check`'s 10. 19,694 lines at 1023bc1 by `wc -l include/inkamath/*.hpp
+  src/*`; past 750 the implementation stops and reports.
+
+  Specified in `test/data/spec/hessian.ink`, 48 entries, 39 failing: orders
+  to 8, nesting around and inside, a function of its point printed and in
+  tex, the order by a name and parentheses read where grad is, through the
+  prelude, a matrix and cases; the Hessian by a column and a row against
+  the Jacobian by cells, a Lagrangian's, Newton's method by it, a model's
+  parameter as the order; a double pendulum's mass matrix, Coriolis and
+  hundredth step; and the refusals. Values by hand, in Python's
+  fractions and by mpmath at 40 digits. Compiled, `test/compile/hessian.ink`
+  and `test/cli.cmake`'s spec part, `cli_spec`: the pendulum from its
+  Lagrangian, `lag`, and by hand, `hand`, and a second derivative of cases
+  whose order is a parameter, `bend`, each term within 0 under `--check`;
+  the header's growth; and six refusals. Skipped while the order is refused
+  as today, and only then.
 - `[done]` **Exact discretisation** as conformance entries:
   `test/compile/motorloop.ink` and `pendloop.ink`, Van Loan's block a
   fixed-count series. An unbounded `expm` dropped by the owner, and the
