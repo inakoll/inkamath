@@ -31,7 +31,7 @@ started, machine learning is where most papers are written today, and both are
 tests of the same thing: **how much of a paper transcribes faithfully**, and
 whether what it transcribes into can be interpreted exactly and compiled into
 reasonably efficient code. Robotics, where rigid bodies, rotations and filters
-on manifolds meet both, is a candidate third. The limit of what is within reach
+on manifolds meet both, is the third. The limit of what is within reach
 is not written in advance. It is found by transcribing, and each place the
 language has to grow is argued from an equation that needed it. Whoever reads
 the result, a student learning the mathematics or an engineer checking a paper
@@ -56,10 +56,11 @@ discretisation exactly.
 **Not a framework.** No model zoo, no data pipeline, no training
 infrastructure. A model is a file of definitions.
 
-**Not yet a library.** A C API, and Python bindings over it, will be needed to
-put a model inside a program that is not inkamath's, and would let the
-oracle's harness run interactively. They are not the end, and they freeze an
-interface; they wait until the language has stopped moving.
+**Not yet a library.** A compiled header is hosted from Python already, by a
+C file of a few lines and ctypes (`README.md`, after `--float`), with no API
+of inkamath's. A C API, and bindings over it, would let the oracle's harness
+run interactively. They are not the end, and they freeze an interface; they
+wait until the language has stopped moving.
 
 The size constraint at the top of `DESIGN.md` governs everything below.
 Several of these directions could each double the program. Where one does, the
@@ -105,13 +106,16 @@ generalises that, generating the harness from a transcript rather than writing
 it by hand, and running it under CTest. Each new target becomes testable the
 day it exists, which is the condition for having a second one at all.
 
+Taken: `--check file instance -o check.c` writes that harness from an
+instance, run under CTest (`DESIGN.md`, *The first check*).
+
 ## Directions
 
 ### Number types for targets
 
-Today the compiler writes doubles. For most of what follows, double is the
-*least* interesting target: the oracle earns its keep where precision is what
-is at risk.
+The compiler writes doubles, and floats under `--float`. For most of what
+follows, double is the *least* interesting target: the oracle earns its keep
+where precision is what is at risk.
 
 - **float32**, because it is what CPUs vectorise widely and what GPUs are fast
   at, and because large coordinates and long sums go wrong in it in ways worth
@@ -128,6 +132,9 @@ the number, so a `Number` is exact or not and says which. What is open is the
 target's side. A parameter or a sequence would be annotated with the type its
 compiled form should have, while the interpreter keeps computing exactly beside
 it, and the question is what carries that annotation.
+
+Taken for float32: `--float` makes it the compilation's, checked in units of
+a float (`README.md`). Fixed point and int8 are open.
 
 ### Time: several rates, and events
 
@@ -146,6 +153,10 @@ value. The compiler's new task would be to recognise index expressions of the
 form `a*n+b` and `floor((n-b)/a)`, infer a period for each sequence, and refuse
 a read whose index is neither, which is the clock calculus of synchronous
 languages reduced to divisibility of integers.
+
+Taken for periodic rates: one step at the input's rate (`README.md`, after
+`--compile`; `test/compile/rates.ink`). Event clocks and a step per rate are
+not; irregular arrival is an optional input, `z_n?`, at the fast rate.
 
 Aperiodic events do not have closed forms, but the same two maps generalise.
 A clock is a monotone correspondence between two indices: `t_m`, the base
@@ -195,17 +206,19 @@ Compiled, it is a bounded loop with the same stopping rule, and whether
 the step converged is a guard: one that reads a limit that runs out does not
 hold, so the clause after it is the fallback, and a status the host wants is a
 sequence the model writes with the solver's own test, `solved_n | abs(x_n +
-lim qp(x_n)) <= abs(x_n) = 1`, `solved_n = 0`. A variant with a fixed number
-of iterations is worth having for code whose execution time has to be bounded.
+lim qp(x_n)) <= abs(x_n) = 1`, `solved_n = 0`. A fixed number of iterations,
+for code whose execution time has to be bounded, is the term at a constant
+index, `nw(xp, u)_5`, written out (`test/compile/iterates.ink`).
 The derivative is written by hand or taken by `grad`.
 
 ### Tensors
 
 The largest change, and the one most papers will force first. Machine learning
-is written in rank 3 and rank 4: batch, channel, height, width, heads. Matrices
-stop at rank 2, and rank 1 is a matrix of one column that still takes two
-indices. The way forward should be **indexed tensors of any rank**, defined by
-their cells exactly as matrices are now, and not matrices of matrices.
+is written in rank 3 and rank 4: batch, channel, height, width, heads. Tensors
+stop at rank 3, interpreted and compiled (`README.md` section 2), and a column
+is read by one index. The way forward should be **indexed tensors of any
+rank**, defined by their cells exactly as matrices are now, and not matrices of
+matrices.
 
 What the language already has is the right foundation. A definition by cells
 with its bounds, `W[j<=n, k<=m]`, is what Dex calls an index set, so shapes are
@@ -229,9 +242,9 @@ Three notational decisions have to be made out loud before anything else:
   Attention will be the test.
 - **Slices.** `a[1]` as a whole row, which would make a reduction natural
   rather than a recurrence over cells, and give chained indexing a reason to
-  exist: today `a[1,2][1,1]` is a no-op because every index yields a single
-  cell. At rank 3 they stop being a convenience, since a head, a batch element
-  and a channel are each a slice.
+  exist. At rank 3 they stop being a convenience, since a head, a batch
+  element and a channel are each a slice. Taken: one index reads a tensor's
+  slice, so `B[2][1,2]` chains (`README.md` section 2).
 - **Subscripts.** Papers use one notation for time and for components, `x_t`
   and `W_jk`. This language separates them, `_` and `[,]`. The separation is
   defensible and should probably stay, but it is the first thing a student will
@@ -241,7 +254,7 @@ Three notational decisions have to be made out loud before anything else:
 
 Training is gradient descent, and gradient descent is a recurrence:
 `w_k = w_(k-1) - eta*g_k`. Momentum and the moments of Adam are more sequences.
-Sums over a batch exist. What is missing is the gradient.
+Sums over a batch exist, and so does the gradient.
 
 Hints, in the order they cost:
 
@@ -265,6 +278,11 @@ Hints, in the order they cost:
   conflicts with a step that keeps only its latest terms; a fixed window of
   truncation is a lag, and lags are already compiled in as sizes.
 
+Taken: `grad_(w = point) L`, an expression by a name at a point (`README.md`
+section 4); forward mode as parts carried beside each value, not a dual type;
+reverse mode for a matrix, a tape in the interpreter and an adjoint step
+compiled (`DESIGN.md`, *Differentiation*, *Reverse mode in the interpreter*).
+
 The objection that sank symbolic simplification, that the identities are
 unsound over matrices whose extents are unknown before evaluation, does not
 apply to forward mode: it is mechanical per node and happens during
@@ -281,33 +299,41 @@ are trying to rule out.
 
 Compiled code already receives inputs as the arguments of its step, so a
 stream of samples is an input sequence indexed by sample and a minibatch is
-index arithmetic over it. The interpreter needs a way to bind such a sequence
-from a file. A tool outside the language can already turn a file of samples
-into definitions, a matrix literal, which keeps files holding definitions only;
-anything more would be the language's first real input from outside, and
-deserves its own decision.
+index arithmetic over it. The interpreter reads such a sequence from a file
+of definitions, a matrix literal written by whatever holds the samples and
+read by `use` (`README.md` section 5), which keeps files holding definitions
+only; anything more, a stream or a sensor, would be the language's first real
+input from outside, and deserves its own decision.
 
 A deterministic shuffle needs no new construct: a linear congruential
-generator is a recurrence over `mod`, which the prelude has.
+generator is a recurrence over `mod`, which the prelude has. Its terms are
+exact interpreted, and compiled only while its products stay within the
+target's integers, 2^53 in double and 2^24 in float: glibc's constants part at
+the second step in double, Park and Miller's hold (`test/compile/lcg.ink`).
 
 ### Functions a paper takes for granted
 
-Softmax, cross-entropy, sigmoid and tanh need `exp` and `log`. Written as
-series in the interpreter, as `README.md` writes `exp`, they make the reference
-inexact; in the compiler they are walks, as `lim` is (*A solver within a
-step*). Embedded deployments approximate them anyway, by polynomial or by
-pieces, which the language can express. Whether they belong in a prelude
-written in inkamath or as built-ins is the question `DESIGN.md` already
-defers, with the tolerance question in front of it.
+Softmax, cross-entropy, sigmoid and tanh need `exp` and `log`. Embedded
+deployments approximate them anyway, by polynomial or by pieces, which the
+language can express. Taken: a prelude written in inkamath, no built-in, a
+polynomial after a reduction, within 3 units in the last place of a double and
+compiled as the header's own C functions (`README.md` section 5; `DESIGN.md`,
+*`exp`, `log` and `tanh` accurate, bounded and compiled*).
 
 ### One compiler, several printers
 
-The generated code is today written from the definitions directly. Before a
+The generated code is written from the definitions directly. Before a
 second target, an intermediate form is worth having, small and of the
 language's own making: loops marked as **parallel** (over cells, over
 instances), **reductions** (sums, products, gradients over a batch) or
 **sequential** (recurrences), each value with its extent. A target is then a
 printer of that form, and most targets turn out to be modes of one printer.
+
+Taken at its smallest: a product, the sweep and same-shaped terms are loops,
+each written by the operation that knows its kind, parallel over cells or a
+reduction (`DESIGN.md`, *Loops in generated code*), and `--float` is a mode of
+the one printer. A tree of loops is not written: for C it would remove less
+than it adds.
 
 None of these is written until an entry of the conformance suite needs it: a
 printer is justified by a model that cannot be served without it, and arrives
@@ -340,8 +366,9 @@ Two things are worth deciding before any of this is written:
   and each step is spread across that width. The bank of filters the compiler
   already makes, one instance per cell, is the shape to grow from.
 - **Layout.** One struct per instance is the natural C and the wrong GPU
-  layout. Structures of arrays across the instance dimension should be decided
-  while the generated interface has no users.
+  layout. It stays: its fields' offsets are the host's contract, read by
+  ctypes (`README.md`), and structures of arrays across the instance
+  dimension are a GPU printer's to decide.
 
 And one thing to keep: the compiler emits source, and the host's toolchain
 builds it. That is how inkamath stays free of a C compiler today, and it is how
@@ -356,7 +383,8 @@ Two features that would do more for a student than any target:
   paper: the source is typed in plain text and read as the equation it
   transcribes, and a transcription mistake becomes a visible difference from
   the page. This gives what Fortress wanted, source that looks like
-  mathematics, without paying for it in the parser.
+  mathematics, without paying for it in the parser. Taken: `tex ?name`
+  (`README.md` section 6).
 - **Numerical lessons the oracle can teach.** Softmax written naively
   overflows in float32 where the exact result is a perfectly good number, and
   the log-sum-exp form stays within bound of it. A variance computed by the
@@ -371,6 +399,8 @@ The method `DESIGN.md` uses for the language itself carries over:
 specify by transcripts before implementing. The specification should be a set
 of canonical equations, transcribed as closely to the page as the notation
 allows, drawn from more than one field because no field is the centre.
+Each entry below but the perceptron now has a model in `test/compile`, held
+to the interpreter by `--check`.
 
 From machine learning:
 
@@ -383,8 +413,7 @@ From machine learning:
 - a two-dimensional convolution;
 - scaled dot-product attention, per head and per batch.
 
-From control and signal processing, where several are already in
-`test/compile`:
+From control and signal processing:
 
 - a PID with anti-windup (`pid_clamped.ink`);
 - a Kalman filter (`kalman.ink`), the bridge between the two lists;
@@ -451,18 +480,15 @@ rather than one more axis of an array, is what this language would add.
 
 Recorded so that they are asked before they are answered by accident.
 
-- Is a target's kind of number, float32 or fixed point or int8, a property of
-  a definition, of a sequence, or of the compilation?
-- If the cell form proves too heavy, does a function written over numbers map
-  over cells, and how does a definition then say that it means the matrix
-  operation instead?
+- Is a target's kind of number, fixed point or int8, a property of a
+  definition, of a sequence, or of the compilation, as `--float` makes
+  float32?
 - Is a clock a property of an instance, of a sequence, or of an index?
-- Does the gradient construct take a definition, a name, or an expression, and
-  what does it mean on a definition in cases whose guard depends on the
-  variable?
-- Where does data come from in a language whose files hold definitions only?
-- What is the smallest intermediate form that serves C, OpenMP and CUDA alike,
-  and does writing it remove more from the current compiler than it adds?
+- Where does data come from beyond files of definitions, a stream or a
+  sensor?
+- Do the loops' writers serve OpenMP and CUDA as modes, as they serve C, or
+  does a second target need a tree of loops, and would it remove more than it
+  adds?
 - How much of a paper can be transcribed before the language has to grow, and
   is the answer to that a good measure of whether it should?
 - Is an index a kind of number of its own, an input refused where it is not

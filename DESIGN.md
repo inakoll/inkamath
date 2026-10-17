@@ -843,7 +843,8 @@ Recorded so they are not re-litigated later, or drifted into by accident.
 
 - **Numbers the user cannot tune.** Two constants decide every answer's
   accuracy and neither can be reached from the prompt: `lim` stops at a
-  tolerance of `1e-10`, and results print to nine significant digits
+  tolerance of `1e-10`, relative to the term above 1 since *A tolerance
+  relative to the term*, and results print to nine significant digits
   (`numeric_interface_precision`). Where it shows: `cos` and `sin` defined as
   series -- the way `sequences.ink` defines them -- give `rot(pi/2)` a
   `5.26e-13` where zero belongs, which is the tolerance and not the
@@ -1010,7 +1011,8 @@ its accuracy is bounded by `lim`'s tolerance, so *Numbers the user cannot tune*
 comes first. **Built-in elementary functions** are accurate and fast and
 contradict `README.md`, which says there are none as a statement of design
 rather than an apology. Deciding which of those two sentences is true is the
-whole of the work.
+whole of the work. Taken: a prelude in inkamath and no built-in (*`exp`,
+`log` and `tanh` accurate, bounded and compiled*).
 
 **A conditional.** Done -- phase 10. It was the one opening specified before
 it was built, and the specification is what found both of its mistakes.
@@ -2618,10 +2620,10 @@ that exploring seven domains asked of the interpreter, by how many asked.
   its arguments keep those values. One whose argument reads the step's index
   would be made anew at each step and run from its base at every one, and is
   refused, as is one inside a call. No header compiled before moved.
-- **`--check`, reserved** for two checks: that a compiled header answers
-  what the interpreter answers, to within how far doubles drift from the
-  exact values; and that a transcript's recorded answers are what the
-  interpreter gives now.
+- `[done]` **`--check`, reserved** for two checks, both below: that a
+  compiled header answers what the interpreter answers, to within how far
+  doubles drift from the exact values; and that a transcript's recorded
+  answers are what the interpreter gives now.
 - `[done]` **The first check, `--check file instance -o check.c`**, the oracle
   of `MANIFESTO.md`. What is checked is an instance, not a file: the instance
   is the drive, written in the language, its parameters the ones compiled and
@@ -2731,9 +2733,10 @@ that exploring seven domains asked of the interpreter, by how many asked.
   anything new: one index reads a cell of the column an affine map gives,
   `tanh` and softmax are `exp` under `lim`, and `i` indexes rows as on
   paper. Per head and per batch, attention needs a tensor of rank 3.
-- **What the conformance suite asks next, by what each unlocks for what it
-  costs**, sized against what landed (one index 57 lines, matrix limits 115,
-  a compiled `lim` 167, guard flips 206, `tex` 237):
+- `[done]` **What the conformance suite asks next, by what each unlocks for
+  what it costs**, every row since landed, sized against what landed (one
+  index 57 lines, matrix limits 115, a compiled `lim` 167, guard flips 206,
+  `tex` 237):
 
   | | cost | to decide first | unlocks |
   |---|---|---|---|
@@ -3449,7 +3452,7 @@ that exploring seven domains asked of the interpreter, by how many asked.
   `ric(12) == [0 0; 0 0]` answers 1. Two matrices of different shapes
   too, `R*v == v'` answering 0: a comparison whose truth the shapes alone
   fix, most likely a missing transpose.
-- **`lim` ends at a single repeated term**: `r(x)_n = r(x)_(n-1) +
+- `[done]` **`lim` ends at a single repeated term** (C279): `r(x)_n = r(x)_(n-1) +
   (r(x)_(n-1) + 2^-n <= x)*2^-n`, x's binary digits, answers
   `lim r(1/3)` 0.25 from its terms 0, 0, 1/4, 1/4. The smallest change to
   weigh: two zero steps in a row, or README saying that one ends it.
@@ -11421,7 +11424,8 @@ After an external review of README, MANIFESTO and the conformance suite
   pairs run in turn on a quiet machine by the implementation's review,
   69.2 to 65.8 s by GCC and 50.7 to 60.8 by Clang: a fifth longer by
   Clang, twice the 9 per cent accepted, where single runs had 75.9 to
-  80.3 and 61.9 to 72.2. Bit for bit, by the
+  80.3 and 61.9 to 72.2. Accepted by the owner after the merge, as the 9
+  per cent was. Bit for bit, by the
   review's `poison.py`, the scratch filled with NaN's bits before every
   step: each model's state after each of 101 steps of drawn inputs for
   `twice`, `weave`, `mix`, `inf`, `tune` and `nest`, a model holding a
@@ -11452,9 +11456,10 @@ After an external review of README, MANIFESTO and the conformance suite
   Six sweeps cost little: a 6x12 Jacobian of 12 joint values, each output
   a sum of 12 products of a sine and a cosine, compiles in 1.1 s to 42 KB,
   which GCC 13 -O2 builds in 0.9 s, 6.5 µs a step.
-- **Small, whenever**: *A maximum, minimum or argmax over an index*, `[done]`; a
-  Cholesky factor in the prelude, for square-root filters, the solve being
-  `A^-1*b` already and the Joseph form writable now.
+- `[done]` **Small, whenever**: *A maximum, minimum or argmax over an
+  index*, `[done]`; a Cholesky factor in the prelude, `[done]` below, for
+  square-root filters, the solve being `A^-1*b` already and the Joseph form
+  writable now.
 - `[done]` **A Cholesky factor in the prelude, `chol(A)`**: L lower triangular with
   a positive diagonal and A = L L', which square-root filters and
   estimation papers write `L = chol(P)`. The design, measured on a
@@ -12024,9 +12029,11 @@ the clause for a limit that does not converge as done, the order from here:
   Compiled it reads the lower triangle, as LAPACK's does: a covariance
   symmetric exactly is not in doubles, and a test there would make a
   square-root filter NaN.
-- *A split step's scratch in the model struct*, above; then increments 4
-  and 5 of the loops decided on its measures.
-- The gather, integer and optional inputs, and exact discretisation, below.
+- `[done]` *A split step's scratch in the model struct*, above. Increments
+  4 and 5 of the loops stay deferred on its measures, by the owner, `tf`'s
+  stack 18,960 bytes after it.
+- The gather, integer and optional inputs, and exact discretisation, below;
+  optional inputs and exact discretisation `[done]`.
 
 - **A gather and integer inputs**: their open questions first. The gather
   is *A cell at a computed whole index, compiled*.
@@ -12219,6 +12226,8 @@ the clause for a limit that does not converge as done, the order from here:
   entry as written; `seen` is checked with its report, `compile_optional`
   holds the header and builds it strict, and `cli_spec` and the spec suite
   are gone. The headers build strict as C99 and C++, by GCC and Clang.
+  19,337 to 19,677 lines at 6fe04c0 by `wc -l include/inkamath/*.hpp
+  src/*`, and 19,694 with the review's fixes at a2915a7.
   Departures:
   - **An inner instance's optional input is refused when compiled**, "e.z,
     an inner instance's optional input, for now": neither a forwarded flag
@@ -12250,10 +12259,14 @@ the clause for a limit that does not converge as done, the order from here:
   of kind *fails*, as one reading a limit asks *runs out*. `--check`
   interposes, holds each answer to the inkamath definition within a
   tolerance and checks that both fail together. About 200 lines; deferred
-  until an entry needs it, likely the small MPC below.
-- **Exact discretisation** as conformance entries first, `expm` an
-  unbounded sum, Van Loan and ZOH by block literals; the prelude only if
-  they show friction.
+  until an entry needs it, likely one calling a QP solver, OSQP or HPIPM,
+  from the step.
+- **Compiled second and higher derivatives**, refused today, "a derivative
+  of a derivative, for now"; a study is running.
+- `[done]` **Exact discretisation** as conformance entries:
+  `test/compile/motorloop.ink` and `pendloop.ink`, Van Loan's block a
+  fixed-count series. An unbounded `expm` dropped by the owner, and the
+  prelude not needed.
 - **A short tutorial path** through the conformance models, README being a
   reference manual where its readers are students.
 - Not taken: **the epistemic level carried internally now**, with nothing
@@ -12263,7 +12276,8 @@ Its robotics entries, each where it forces something new:
 
 - **An EKF on SO(3)**, its exp map a fixed-count partial sum: F and H as
   Jacobians by cells.
-- **A small MPC with a fallback clause**: the non-convergence clause.
+- `[done]` **A small MPC with a fallback clause**: the non-convergence
+  clause, `test/compile/fallback.ink`'s `planned`.
 - **A visual-inertial filter over merged timestamped events**: inputs
   present on some steps only.
 - **Range-image ground segmentation and label propagation**: reductions
@@ -12281,10 +12295,11 @@ review:
 - **A tolerance floor for small limits**: below 1 the tolerance is the
   absolute 1e-10, so `lim N(2/10^20)` is 19% off. A floor scaled by where
   the walk starts, perhaps; a design question first.
-- **The end-to-end exploration (`CLAUDE.md` §9)**: a sensor, a learned
+- `[done]` **The end-to-end exploration (`CLAUDE.md` §9)**: a sensor, a learned
   correction, an estimator, a controller and an actuator command at two
   rates, with an injected sensor failure. After the fallback audit above
-  and *a split step's scratch in the model struct*.
+  and *a split step's scratch in the model struct*. Its defects and
+  friction are below.
 - `[done]` **Python hosting**, with no compiler change: README's paragraph
   after `--float`, a C file exporting the header's functions and each
   field's `offsetof` to ctypes, held by `compile_host`. A call from Python
@@ -12304,19 +12319,20 @@ After a §9 exploration of the CTM tutorials' motor speed and inverted
 pendulum (`test/data/ctms.ink`, `test/compile/pendloop.ink` and
 `motorloop.ink`), its friction:
 
-- **Polynomial helpers in the prelude** beside `charpoly`: `conv`,
-  `polyval` (`[done]`, below) and padding to a length, which every
-  transfer function needs.
-- **Complex `roots` by Durand-Kerner**, in the interpreter only (`[done]`,
-  below).
+- `[done]` **Polynomial helpers in the prelude** beside `charpoly`: `conv`,
+  `polyval` (below) and padding to a length, which every transfer function
+  needs, padding being a block literal, `[0; q]`.
+- `[done]` **Complex `roots` by Durand-Kerner**, in the interpreter only
+  (below).
 - **`care` and `dare` beside `hinf`**: the sign of the Hamiltonian and the
   doubling algorithm, which each test now carries in five to seven lines.
 - **`lim`'s refusal for a limit that does not converge states the ratio it
   measured** and suggests a fixed count instead.
 - **README teaches the zero-order hold by Van Loan's block** with a
   fixed-count series, and the Riccati equation by doubling.
-- **A tutorial chapter from these two series**, which the exploration found
-  enough for *a short tutorial path*.
+- On hold, by the owner: **a tutorial chapter from these two series**,
+  which the exploration found enough for *a short tutorial path*. No CTM
+  tutorial is ported, for attribution.
 
 After a §9 transcription of the CTM tutorials (branch `ctms`), which wrote
 a product of polynomials or a value of one on nearly every page:
@@ -12684,7 +12700,8 @@ for, which `eig` refuses complex:
 
 After the §9 end-to-end exploration of a robot loop (an IMU at 100 Hz, a
 position fix at 10 Hz that fails, an MLP correction, a Kalman filter and an
-LQR), whose defects are C376 to C379, its friction:
+LQR), whose defects are C376 to C379, 49 lines, 19,288 to 19,337 at
+9a38c14, its friction:
 
 - **A guarded constant**, `Kc | ... = ...`, is refused, "a guarded value",
   where a guarded function compiles.
@@ -12700,6 +12717,6 @@ LQR), whose defects are C376 to C379, its friction:
 - **`lim_n` is unusable**, `lim` being reserved, and a file name must be
   letters then digits, so `use e2e` is refused.
 - **"No clause of x applies" names neither the instance nor the index.**
-- **MANIFESTO's *Data* line on an LCG needs a qualifier**: with glibc's
+- `[done]` **MANIFESTO's *Data* line on an LCG needs a qualifier**: with glibc's
   constants, the products pass 2^53 and a run in doubles parts from the
   exact one at step 2.
