@@ -12347,15 +12347,17 @@ the clause for a limit that does not converge as done, the order from here:
   what the compiler refuses its nests; this item replaces the line that
   said a study was running.
 
-  About 500 lines of sources, as the study estimated 450 to 550: the
-  interpreter's 130, the order parsed and printed, tex, the refusals when
-  read, the nest in `Derivative::Grad`, and the Hessian
-  by pairs of cells, its mirror and its refusals, about 60 of them; the
-  compiler's 360, the prototype's arithmetic, chains, calls and powers
-  over a part for each set of grads, about 250, then products, transposes
-  and cells, a pass per cell in a nest, the jumps tested by each grad;
-  `--check`'s 10. 19,694 lines at 1023bc1 by `wc -l include/inkamath/*.hpp
-  src/*`; past 750 the implementation stops and reports.
+  About 450 lines of sources, the study's 450 to 550 less an order by a
+  name and compiled nests past 2: the interpreter's 110, the order parsed
+  and printed, tex, the refusals when read, the nest in `Derivative::Grad`,
+  and the Hessian by pairs of cells, its mirror and its refusals, about 60
+  of them; the compiler's 330, the prototype's arithmetic, chains, calls
+  and powers under a nest of 2, about 220, then `e^w`, products,
+  transposes, cells and sums, a pass per cell in a nest, so the Hessian and
+  a Jacobian by cells of a gradient, the jumps tested by each grad and the
+  refusal past 2, about 110; `--check`'s 10. 19,694 lines at 1023bc1 by
+  `wc -l include/inkamath/*.hpp src/*`; past 675, one and a half times,
+  the implementation stops and reports.
 
   Specified in `test/data/spec/hessian.ink`, 42 entries, 34 failing: orders
   to 8, nesting around and inside, a function of its point printed and in
