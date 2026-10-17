@@ -5,6 +5,7 @@
 #include <array>
 #include <cctype>  // isalpha
 #include <concepts>
+#include <cstdlib>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
@@ -1639,8 +1640,30 @@ PExpression<U> Interpreter<T, U>::ParseGrad() {
         points.push_back(ParseCompareExpr());
     } while (!AtEnd() && Peek().type == Comma);
     expect(RPar);
-    return std::make_shared<GradExpression<U>>(std::move(variables), std::move(points),
-                                               ParseMultExpr());
+    std::size_t order = 1;
+    if (!AtEnd() && Peek().type == Pow) {
+        ++m_i;
+        if (variables.size() > 1) Fail("a grad by several names takes no order, for now");
+        if (AtEnd() || Peek().type != Val) Fail("grad's order is written as a number");
+        const std::string& written = m_tokens[m_i++].text;
+        if (!std::ranges::all_of(written, [](char c) { return c >= '0' && c <= '9'; }) ||
+            (order = std::strtoull(written.c_str(), nullptr, 10)) < 2)
+            Fail(
+                "grad's order is a whole number, 2 or more; a first derivative is written "
+                "without one");
+    }
+    PExpression<U> body = ParseMultExpr(), nest = body;
+    // Nine deep is refused as any deeper is, when evaluated.
+    for (std::size_t k = 1; k < std::min<std::size_t>(order, 9); ++k) {
+        // Room for the body too: grown from a list of one, GCC 14 at -O2 warns
+        // of a subscript out of bounds where there is none.
+        std::vector<PExpression<U>> at;
+        at.reserve(2);
+        at.push_back(std::make_shared<RefExpression<U>>(variables[0]));
+        nest = std::make_shared<GradExpression<U>>(variables, std::move(at), nest);
+    }
+    return std::make_shared<GradExpression<U>>(std::move(variables), std::move(points), nest, order,
+                                               order > 1 ? body : nullptr);
 }
 
 template <Parsable T, Numeric U>

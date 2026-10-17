@@ -281,7 +281,7 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brin
                          fallback:respelled fallback:preceded fallback:defaulted fallback:sentried
                          fallback:partway pendloop:cart motorloop:motor robot:robot:200
                          lcg:lcgs optional:seen optional:leaned
-                         optional:steeped)
+                         optional:steeped hessian:k hessian:z hessian:c)
     string(REPLACE ":" ";" checked ${checked})
     list(POP_FRONT checked file instance count)
     set(name ${instance})
@@ -314,6 +314,9 @@ set_target_properties(check_j1 PROPERTIES C_EXTENSIONS ON)
 # its digits are the seeds', so held by its form but where a limit's
 # remainder alone gives them.
 set(about "\\; the interpreter's terms about [0-9.e+-]+ from the exact ones")
+# A nest at constant points folded exactly (DESIGN.md, grad's order).
+set_tests_properties(check_c_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^c: 100 steps from 0, against exact values\nc\\.a: no value compared, the step NaN where the interpreter gives none, as at 0: a comparison jumps at x = 0\\.1\nc\\.d: within 0\nc\\.f: within 0\nc\\.g: within 0\nc\\.y: within 0\n$")
 set_tests_properties(check_tie_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^tie: 100 steps from 0, against exact values until 0 and inexact ones from there\ntie\\.g: at 0 a disturbed run takes 'g_n \\| y_n >= 1/2 - w = 1' and the interpreter 'g_n = 0'\\; the guard of the first is 4\\.8e-11 from its threshold\ntie\\.y: within 0\\; the interpreter's terms about 5\\.8e-11 from the exact ones\ntie\\.g: within 0\\; the interpreter's terms about 1 from the exact ones, past the tolerance from 0\n$")
 set_tests_properties(check_chaos_report PROPERTIES PASS_REGULAR_EXPRESSION
