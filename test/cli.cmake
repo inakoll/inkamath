@@ -64,6 +64,109 @@ endfunction()
 # Read by cases in every part.
 set(inputs "${CMAKE_CURRENT_LIST_DIR}/compile/inputs.ink")
 
+# Specified, not yet built (DESIGN.md, grad's order): compile/hessian.ink's
+# instances each within 0 of the interpreter, the header of a fourth
+# derivative through cos at most four times a first's, and the nests still
+# refused. Skipped while the order is refused as today, and only then.
+if(PART STREQUAL "spec")
+    file(MAKE_DIRECTORY "${OUT}")
+    set(story "${CMAKE_CURRENT_LIST_DIR}/compile/hessian.ink")
+    execute_process(COMMAND "${EXE}" --compile "${story}" lag -o lag.h
+                    WORKING_DIRECTORY "${OUT}" OUTPUT_VARIABLE out ERROR_VARIABLE err
+                    RESULT_VARIABLE code TIMEOUT ${CASE_TIMEOUT})
+    if("${out}${code}" STREQUAL "1" AND
+       "${err}" MATCHES "^inkamath: hessian.ink, line [0-9]+: unexpected '\\^'\n$")
+        message("compile_hessian: the order refused, as today")
+        return()
+    endif()
+    set(args --compile ${story} lag -o lag.h)
+    check(compile_hessian)
+    strict(compile_hessian lag.h)
+
+    set(inexact "against exact values until 1 and inexact ones from there")
+    foreach(checked IN ITEMS "p:${inexact}:M C G w q" "h:${inexact}:k s M C G w q"
+                             "b:against exact values:d q")
+        string(REPLACE ":" ";" checked "${checked}")
+        list(POP_FRONT checked instance against terms)
+        set(args --check ${story} ${instance} -o ${instance}.c)
+        check(check_hessian_${instance})
+        if(NOT CC_ID MATCHES "^(GNU|Clang|AppleClang)$")
+            continue()
+        endif()
+        execute_process(COMMAND "${CC}" -std=c11 -O2 ${instance}.c -o ${instance} -lm
+                        WORKING_DIRECTORY "${OUT}" RESULT_VARIABLE failed
+                        ERROR_VARIABLE errors OUTPUT_VARIABLE errors)
+        if(failed)
+            message(SEND_ERROR "check_hessian_${instance}: ${instance}.c does not build\n${errors}")
+            continue()
+        endif()
+        execute_process(COMMAND "${OUT}/${instance}" WORKING_DIRECTORY "${OUT}"
+                        OUTPUT_VARIABLE report RESULT_VARIABLE code TIMEOUT ${CASE_TIMEOUT})
+        # A list splits at ';', which a line's estimate holds.
+        string(REPLACE ";" "," lines "${report}")
+        string(REPLACE "\n" ";" lines "${lines}")
+        list(REMOVE_ITEM lines "")
+        list(POP_FRONT lines first)
+        separate_arguments(terms)
+        list(LENGTH terms want)
+        list(LENGTH lines got)
+        set(bad "")
+        if(NOT code EQUAL 0 OR NOT "${first}" STREQUAL "${instance}: 100 steps from 0, ${against}"
+           OR NOT got EQUAL want)
+            set(bad 1)
+        endif()
+        foreach(s IN LISTS terms)
+            set(found "")
+            foreach(line IN LISTS lines)
+                if(line MATCHES "^${instance}\\.${s}: within 0(, from 1)?(,.*)?$")
+                    set(found 1)
+                endif()
+            endforeach()
+            if(NOT found)
+                set(bad 1)
+            endif()
+        endforeach()
+        if(bad)
+            message(SEND_ERROR "check_hessian_${instance}: exit ${code}\n${report}--- where each of ${terms} is to be within 0")
+        endif()
+    endforeach()
+
+    # A prelude function's part has one function of the header for each
+    # order, calling the order below, not one for each place it is read.
+    foreach(order 1 4)
+        set(sup "^${order}")
+        if(order EQUAL 1)
+            set(sup "")
+        endif()
+        file(WRITE "${OUT}/order${order}.ink"
+             "q_0 = 1/3\nq_n = q_(n-1) + 1/100\nd_n = grad_(x = q_(n-1))${sup} cos(x)*x^5\n")
+        set(args --compile order${order}.ink -o order${order}.h)
+        check(compile_hessian_order${order})
+        file(SIZE "${OUT}/order${order}.h" size${order})
+    endforeach()
+    math(EXPR bound "4 * ${size1}")
+    if(size4 GREATER bound)
+        message(SEND_ERROR "compile_hessian_order: order 4's header is ${size4} bytes, past 4 times order 1's ${size1}")
+    endif()
+
+    file(WRITE "${OUT}/hessian_refused.ink"
+         "a_n = grad_(t = x_n)^n t^5\nb_n = grad_(s = x_n, r = 2) grad_(t = s) t^2*r\n"
+         "c_n = grad_(t = x_n)^2 lim p(t)\nd_n = grad_(v = [x_n 1; 2 3])^2 v[1,1]*v[2,2]\n"
+         "e_n = grad_(v = [x_n; 1])^3 v[1]^4\nf_n = grad_(t = x_n)^9 t^9\n"
+         "p(r)_0 = 1\np(r)_k = r*p(r)_(k-1)/4 + 1\n")
+    set(args --compile hessian_refused.ink)
+    set(stdout "cannot compile a: a derivative whose order is not a constant
+cannot compile b: a derivative of a derivative by several names, for now
+cannot compile c: a derivative of a limit, for now
+cannot compile d: a derivative of order 2 with respect to a matrix, for now
+cannot compile e: a derivative of order 3 with respect to a vector, for now
+cannot compile f: grad nests more than 8 deep
+")
+    set(exit 1)
+    check(compile_hessian_refused)
+    return()
+endif()
+
 # The cases run as three tests of about equal time under the sanitizers: PART
 # 1 up to charpoly's refusal, 2 from it, 3 from eig's, and all where PART is
 # not given.
