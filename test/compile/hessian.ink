@@ -3,12 +3,15 @@
 # Jacobian by cells of grad's gradient, beside the same equations written
 # by hand, w' = M^-1*(dL/dq - C*w), semi-implicit Euler at h = 1/100. Each
 # is held to the interpreter by --check, the derivatives to the bit as a
-# first derivative is, so every term is within 0:
+# first derivative is:
 #
 #     p: 100 steps from 0, against exact values until 1 and inexact ones from there
 #     p.<s>: within 0 ...
 #
-# for M, C, G, w and q, and h's alike for k, s, M, C, G, w and q. The two
+# for M and q, and h's alike for k, s, M, C, G, w and q. p's G, a gradient
+# by a vector, is an ulp from the interpreter's at 1, where reverse mode at
+# an exact point parts from forward mode (C382), and C and w after it by
+# what that moves, within 1e-17 and 2.1e-17. The two
 # agree to the digits the interpreter prints: q_100 = [-0.276479857066503;
 # -1.04368092424307] by the hand-written recurrence in mpmath at 40 digits,
 # M_1 and C_2 by mpmath's numerical derivatives of L besides
