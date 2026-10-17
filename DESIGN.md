@@ -12403,7 +12403,9 @@ the clause for a limit that does not converge as done, the order from here:
   nest at an exact point within the rounding of the exact values. The
   headers build strict as C99 and C++, by GCC and Clang, and with
   `--float`. 19,694 to 20,028 lines by `wc -l include/inkamath/*.hpp
-  src/*`.
+  src/*`, and 20,125 with the review's fixes, C383 to C387: 431 in all,
+  the interpreter's 78 and the compiler's 353, where each outer part is
+  there and a nest at constant points folded among them.
   Departures:
   - **p's G is an ulp from the interpreter's at 1**, a gradient by a
     vector at an exact point, where reverse mode takes the prelude's slope
