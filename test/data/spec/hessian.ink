@@ -140,10 +140,10 @@ Lp(q, w) = 2*w[1]^2/2 + w[2]^2/2 + w[1]*w[2]*cos(q[1] - q[2]) + 20*cos(q[1]) + 1
 [ ~0.335597877;
  ~-0.143827662]
 
-# Refused when read: an order below 2, not whole, or not written as a
-# number, so where it is defined; and one by several names, of a matrix,
-# and past 2 of a vector, for now. A first derivative's refusals and
-# nesting's stay.
+# Refused when read, so where it is defined: an order below 2, not whole or
+# not written as a number, and one by several names; for now, an order by a
+# matrix and past 2 by a vector. A first derivative's refusals and nesting's
+# stay.
 >> grad_(x = 2)^1 x^3
 error: grad's order is a whole number, 2 or more; a first derivative is written without one
 

@@ -12373,8 +12373,7 @@ the clause for a limit that does not converge as done, the order from here:
   and `test/cli.cmake`'s spec part, `cli_spec`: the pendulum from its
   Lagrangian, `lag`, and by hand, `hand`, and a second derivative of cases,
   `bend`, each term within 0 under `--check`; and six refusals, two of a
-  nest 3 deep. Skipped while the order is refused
-  as today, and only then.
+  nest 3 deep. Skipped while the order is refused as today, and only then.
 - `[done]` **Exact discretisation** as conformance entries:
   `test/compile/motorloop.ink` and `pendloop.ink`, Van Loan's block a
   fixed-count series. An unbounded `expm` dropped by the owner, and the
