@@ -11424,7 +11424,8 @@ After an external review of README, MANIFESTO and the conformance suite
   pairs run in turn on a quiet machine by the implementation's review,
   69.2 to 65.8 s by GCC and 50.7 to 60.8 by Clang: a fifth longer by
   Clang, twice the 9 per cent accepted, where single runs had 75.9 to
-  80.3 and 61.9 to 72.2. Bit for bit, by the
+  80.3 and 61.9 to 72.2. Accepted by the owner after the merge, as the 9
+  per cent was. Bit for bit, by the
   review's `poison.py`, the scratch filled with NaN's bits before every
   step: each model's state after each of 101 steps of drawn inputs for
   `twice`, `weave`, `mix`, `inf`, `tune` and `nest`, a model holding a
@@ -12028,9 +12029,11 @@ the clause for a limit that does not converge as done, the order from here:
   Compiled it reads the lower triangle, as LAPACK's does: a covariance
   symmetric exactly is not in doubles, and a test there would make a
   square-root filter NaN.
-- *A split step's scratch in the model struct*, above; then increments 4
-  and 5 of the loops decided on its measures.
-- The gather, integer and optional inputs, and exact discretisation, below.
+- `[done]` *A split step's scratch in the model struct*, above. Increments
+  4 and 5 of the loops stay deferred on its measures, by the owner, `tf`'s
+  stack 18,960 bytes after it.
+- The gather, integer and optional inputs, and exact discretisation, below;
+  optional inputs and exact discretisation `[done]`.
 
 - **A gather and integer inputs**: their open questions first. The gather
   is *A cell at a computed whole index, compiled*.
@@ -12256,10 +12259,12 @@ the clause for a limit that does not converge as done, the order from here:
   of kind *fails*, as one reading a limit asks *runs out*. `--check`
   interposes, holds each answer to the inkamath definition within a
   tolerance and checks that both fail together. About 200 lines; deferred
-  until an entry needs it, likely the small MPC below.
-- **Exact discretisation** as conformance entries first, `expm` an
-  unbounded sum, Van Loan and ZOH by block literals; the prelude only if
-  they show friction.
+  until an entry needs it, likely one calling a QP solver, OSQP or HPIPM,
+  from the step.
+- `[done]` **Exact discretisation** as conformance entries:
+  `test/compile/motorloop.ink` and `pendloop.ink`, Van Loan's block a
+  fixed-count series. An unbounded `expm` dropped by the owner, and the
+  prelude not needed.
 - **A short tutorial path** through the conformance models, README being a
   reference manual where its readers are students.
 - Not taken: **the epistemic level carried internally now**, with nothing
@@ -12269,7 +12274,8 @@ Its robotics entries, each where it forces something new:
 
 - **An EKF on SO(3)**, its exp map a fixed-count partial sum: F and H as
   Jacobians by cells.
-- **A small MPC with a fallback clause**: the non-convergence clause.
+- `[done]` **A small MPC with a fallback clause**: the non-convergence
+  clause, `test/compile/fallback.ink`'s `planned`.
 - **A visual-inertial filter over merged timestamped events**: inputs
   present on some steps only.
 - **Range-image ground segmentation and label propagation**: reductions
@@ -12322,8 +12328,9 @@ pendulum (`test/data/ctms.ink`, `test/compile/pendloop.ink` and
   measured** and suggests a fixed count instead.
 - **README teaches the zero-order hold by Van Loan's block** with a
   fixed-count series, and the Riccati equation by doubling.
-- **A tutorial chapter from these two series**, which the exploration found
-  enough for *a short tutorial path*.
+- On hold, by the owner: **a tutorial chapter from these two series**,
+  which the exploration found enough for *a short tutorial path*. No CTM
+  tutorial is ported, for attribution.
 
 After a §9 transcription of the CTM tutorials (branch `ctms`), which wrote
 a product of polynomials or a value of one on nearly every page:
