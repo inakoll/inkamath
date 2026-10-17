@@ -4539,8 +4539,49 @@ private:
             } catch (const Forward&) {
             }
         if (parts.empty()) parts = Graded(*expression, points, nullptr, hessian);
+        // A nest at constant points reading nothing that moves is folded, as
+        // a first derivative's values are, and NaN where the interpreter refuses.
+        if (!depth_ && dynamic_cast<GradExpression<Value>*>(expression->Body().get()) &&
+            Fixed(*expression, points))
+            try {
+                return Fold(expression);
+            } catch (const Undefined&) {
+                for (Cell& cell : parts[0].cells) cell = Atom("NAN");
+                parts[0].constant.reset();
+            }
         if (expression->Several()) *grouped_.second = parts;
         return Answer(parts[0]);
+    }
+    // Whether a nest's innermost body, each grad's name its point's value, is
+    // a constant that reads no parameter.
+    bool Fixed(GradExpression<Value>& grad, std::vector<Code> points) {
+        if (!std::ranges::all_of(points, [](const Code& p) { return p.constant.has_value(); }))
+            return false;
+        const auto                                  reads = std::exchange(read_parameters_, {});
+        Expansion                                   bound{{}, {}, scope_, expansion_, {}, {}};
+        const Setting<Expansion*>                   binding(expansion_, &bound);
+        const Setting<std::map<std::string, Value>> places(places_, places_);
+        const Setting<std::string>                  indexed(index_, index_);
+        Code                                        body;
+        try {
+            for (GradExpression<Value>* g = &grad; g;) {
+                for (std::size_t v = 0; v < points.size(); ++v) {
+                    bound.values.insert_or_assign(g->Variables()[v], points[v]);
+                    places_.erase(g->Variables()[v]);
+                    if (index_ == g->Variables()[v]) index_.clear();
+                }
+                auto* inner = dynamic_cast<GradExpression<Value>*>(g->Body().get());
+                if (!inner) body = Emit(g->Body());
+                points.clear();
+                for (std::size_t v = 0; inner && v < inner->Variables().size(); ++v)
+                    points.push_back(Emit(inner->Point(v)));
+                g = inner;
+            }
+        } catch (const Undefined&) {
+        }
+        const bool fixed = body.constant && read_parameters_.empty();
+        read_parameters_.insert(reads.begin(), reads.end());
+        return fixed;
     }
     // Forward over forward (DESIGN.md, grad's order): the inner grad's pass
     // as at first order, the values it reads moving by the outer grad by
