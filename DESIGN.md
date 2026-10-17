@@ -12255,10 +12255,95 @@ the clause for a limit that does not converge as done, the order from here:
     session's optional input is not checked, and is refused where it is
     absent, as from outside.
 - **An inner instance's optional input, compiled**, optional inputs'
-  departure: `test/compile/robot.ink` compiled without `ok_n`, its fix the
-  GPS instance's z given to the filter's optional input and checked against
-  `robot_loop.ink`'s simulation. A new compiled status, no clause of a
-  sibling's chain gave the term, and a forwarded flag; about 40 lines.
+  departure: the robot's loop compiled without `ok_n`, its fix the GPS
+  instance's z given to the filter's optional input. The interpreter
+  answers all of it already, so its answers are the oracle and nothing in
+  it changes; the step is to give them.
+
+  Decided:
+  - **The flag is the argument's.** An inner instance's optional input
+    given the outer model's own optional input takes its flag, forwarded;
+    given a sibling's sequence, 1 where a clause of that sequence's chain
+    gave the term and 0 where none did, a new status of the step, through
+    the argument's arithmetic too, `2*s.z_n` as `s.z_n`, as the interpreter
+    reads an argument (optional inputs, *absent is a term that is not
+    there*); given anything else, a plain input or a closed form, 1.
+    Before the stream it is absent whatever the argument gives there, as
+    interpreted: in `sib`, e's z_-3 is absent where s's term is -11/4.
+  - **Where a clause gave NaN, the term is present.** The chain's status
+    is its end, every guard false. A clause whose value is NaN gave the
+    term, and a guard reading it is NaN and refused, as for the model's own
+    input; a guard of the chain that is NaN is the term's refusal, present
+    too, as the interpreter refuses it rather than finding it absent.
+  - **The inner input keeps its window and flags** in its instance's
+    struct, `int z_present[k]` beside `z[k]` as the model's own does,
+    filled at each step from the argument, its cells NaN where absent;
+    init clears them, so that before the stream is absent with no case of
+    its own. The step's signature does not change: a forwarded flag is the
+    step's `z_present_in_`, a sibling's the step computes.
+  - **The audit names the input as the guard writes it**, `robot.f.x:
+    where z is absent`, as it names `lim Z`: the clause quoted beside it
+    says whose.
+  - **A file's definition** reading an instance's optional input compiles
+    in a guard, and outside one is refused as in a model, "cannot compile
+    r: r reads e.z_n, an optional input of last, outside a guard with a
+    clause after it", where the interpreter reads it as any term.
+  - **The robot**: `test/compile/inner.ink`'s `robot` is `robot_loop.ink`'s
+    loop, `P_0` 1/100, the fix out from 300 to 490 and the reference
+    stepping at 350, so that the flags the simulation gives are those of
+    the step checked, over 600 steps; `test/compile/robot.ink`, a 200-step
+    loop with `ok_n`, goes with its check. `test/data/robot.ink` loses
+    `ok_n` too, `fc2`'s frozen test written in guards, and `robot_loop.ink`
+    does not move: rewritten so in the spec's scratch, its 13 answers were
+    as recorded. That needs no compiler, so the departure was wrong to tie
+    it to this item; it can go first, in a commit of its own.
+
+  Rejected:
+  - **NaN as a sibling's flag**, `!isnan(g.z)`: no status to add, but a
+    clause that gives NaN, a fault, would be taken for an outage, which
+    optional inputs rejected for the model's own input. `sib` holds it:
+    its x would be 73/4 at 20, where it is refused.
+  - **The argument's window read in place of the input's own**: a lagged
+    read would ask a sibling's status at a past index, a window of flags
+    beside each sequence an argument reads, and before the stream the
+    argument's term computed again there, s.z_-3, would be present.
+  - **A flag argument on the step for each inner input**: the host would
+    give what the step computes, and could give it wrong.
+  - **Refusing an argument other than a bare term**: its flag is the
+    statuses its reads ask, as a guard's are, so refusing `2*s.z_n` would
+    cost a test and buy nothing.
+
+  Still refused, or open: a read of an inner instance's optional input
+  outside a guard, in a model where it is defined and in a file when
+  compiled, as above; and C380 through a sibling, a guard reading first a
+  term whose chain's guard is NaN and then one absent, which the step
+  falls from where the interpreter refuses. The story does not reach it.
+
+  What moves: `test/compile/robot.ink` and its check, for `inner.ink`'s
+  `robot`; `test/data/robot.ink`, `robot_loop.ink` unchanged; README
+  section 5's "An inner instance's optional input is refused, for now",
+  for the flag's rule. No golden or other report.
+
+  About 45 lines: the interpreter's none; the compiler's 40, the refusal
+  gone, the inner input's window and flags as the model's own, filled at
+  each step from the statuses its argument asks, the end of a sibling's
+  chain as a status, and a file's definitions held to the model's check;
+  `--check`'s 5, the audit's name as written, its replay as it is since
+  the step takes no new input. 20,129 lines at ab4d0de by `wc -l
+  include/inkamath/*.hpp src/*`; past 68 the implementation stops and
+  reports.
+
+  Specified in `test/data/spec/inner.ink`, 28 entries, each passing today
+  since the interpreter gives it: the forwarded and plain inputs before
+  the stream, the sibling's chain and its NaN, and the loop as one
+  instance; values by hand and in Python's fractions, the loop's by a
+  simulation in doubles apart from inkamath with scipy's gain, which gives
+  `robot_loop.ink`'s flags and u_300 = -0.0848377303296. What fails by
+  design is compiled: `test/compile/inner.ink` and `test/cli.cmake`'s spec
+  part, `cli_spec`: the headers of `fw` and `loop`, strict C; the file
+  compiled whole with nothing to list; the read outside a guard refused;
+  and the reports of `robot`, `fwd` and `sib`. Skipped while e.z is
+  refused as today, and only then.
 - **A definition the host implements**, as the C-hook study sketched:
   `--compile nav.ink nav --host qp` names it, with no syntax; the header
   declares `int nav_qp(const double H[4], const double f[2], double
