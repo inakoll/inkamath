@@ -748,18 +748,23 @@ private:
             cell += otherwise ? otherwise->At(c).text : "NAN";
             chain.cells.emplace_back(cell, 0);  // a conditional, below every operator
         }
-        // In a nest, the outer part of the clause taken, as the part below.
-        const auto outer = [](const Code& c) {
-            if (!c.outer.empty()) return c.outer[0];
-            return c.cells[0].text == "NAN" ? Of(Atom("NAN")) : Literal(Value(Number(0)));
+        // In a nest, the outer part of the clause taken, chained as the part
+        // below, of each clause as a value whose part it is.
+        const auto outward = [](Code c) {
+            c.part  = std::move(c.outer);
+            c.moves = c.part.empty() ? nullptr : c.part[0].moves;
+            c.outer.clear();
+            return c;
         };
         if ((otherwise && !otherwise->outer.empty()) ||
             std::ranges::any_of(guarded, [](const auto& g) { return !g.second.outer.empty(); })) {
             std::vector<std::pair<std::string, Code>> outers;
             for (const auto& [condition, value] : guarded)
-                outers.emplace_back(condition, outer(value));
-            chain.outer = {
-                Chain(outers, otherwise ? std::optional(outer(*otherwise)) : std::nullopt, size)};
+                outers.emplace_back(condition, outward(value));
+            const Code by =
+                Chain(outers, otherwise ? std::optional(outward(*otherwise)) : std::nullopt, size);
+            chain.outer = by.part;
+            if (!by.part.empty()) chain.outer[0].moves = by.moves;
         }
         // Under grad, the part of the clause taken: 0 where it has none, NaN
         // where it is refused wherever taken, and beside it where it is there.
@@ -1213,7 +1218,12 @@ private:
             return code;
         };
         ++calls_;
-        return out(out, body);
+        std::vector<const Code*> read;
+        for (const Code& argument : arguments) read.push_back(&argument);
+        Code code = out(out, body);
+        if (!code.part.empty()) code.moves = Moves(read);
+        if (!code.outer.empty()) code.outer[0].moves = Moves(read, true);
+        return code;
     }
 
     // Where its argument moves, a temporary, which every part over it reads
@@ -1565,7 +1575,8 @@ private:
                 d, b, [&](const Code& x, const Code& y) { return Broadcast(x, y, Divided); },
                 std::divides<>());
         if (combine == Added && d->size != code.size) d = Plus(d, Literal(Value(code.size)));
-        code.outer = {*d};
+        code.outer          = {*d};
+        code.outer[0].moves = Moves({&left, &right}, true);
         return code;
     }
 
@@ -1908,10 +1919,14 @@ private:
     template <typename Lay>
     static Code Outer(Code code, const std::vector<Code>& from, Lay lay) {
         if (std::ranges::all_of(from, [](const Code& c) { return c.outer.empty(); })) return code;
-        std::vector<Code> outers;
-        for (const Code& c : from)
+        std::vector<Code>        outers;
+        std::vector<const Code*> each;
+        for (const Code& c : from) {
             outers.push_back(c.outer.empty() ? Literal(Value(c.size)) : c.outer[0]);
-        code.outer = {lay(outers)};
+            each.push_back(&c);
+        }
+        code.outer          = {lay(outers)};
+        code.outer[0].moves = Moves(each, true);
         return code;
     }
     template <typename F>
@@ -1993,12 +2008,16 @@ private:
         return part ? Part(written(*part)) : part;
     }
     // Where any of these has its part: always, where one always has.
-    static Where Moves(const std::vector<const Code*>& codes) {
+    // Of their parts by the outer grad of a nest with 'outer', each kept in
+    // its own 'moves'.
+    static Where Moves(const std::vector<const Code*>& codes, bool outer = false) {
         std::vector<Where> any;
         for (const Code* code : codes) {
-            if (code->part.empty()) continue;
-            if (!code->moves) return nullptr;
-            any.push_back(code->moves);
+            const std::vector<Code>& part = outer ? code->outer : code->part;
+            if (part.empty()) continue;
+            const Where& where = outer ? part[0].moves : code->moves;
+            if (!where) return nullptr;
+            any.push_back(where);
         }
         return any.empty() ? nullptr : std::make_shared<const Moving>(Moving{"", std::move(any)});
     }
@@ -2019,6 +2038,14 @@ private:
     // As the condition of a '?': a clause's own, itself one, bracketed (C235).
     std::string Whether(const Where& where) {
         return where->any.empty() ? "(" + where->text + ")" : Text(where);
+    }
+    // 0 where 'where' does not hold, as a part absent there.
+    Code Unless(Code code, const Where& where) {
+        if (!where) return code;
+        for (Cell& cell : code.cells)
+            cell = Cell("(" + Whether(where) + " ? " + cell.text + " : 0)", primary);
+        code.constant.reset();
+        return code;
     }
     static Code Parted(Code value, const Part& part, const std::vector<const Code*>& from) {
         value.part.clear();
@@ -2056,10 +2083,18 @@ private:
     std::string Jumps(const std::string& meet, const std::vector<const Code*>& codes) {
         if (std::all_of(codes.begin(), codes.end(), [](const Code* c) { return Still(*c); }))
             return "";
-        // An outer grad's part is taken as always there.
-        const bool outer =
-            std::ranges::any_of(codes, [](const Code* c) { return !c->outer.empty(); });
-        const std::string moves = outer ? "" : Text(Moves(codes));
+        std::vector<Where> any;
+        bool               always = false;
+        for (const bool outer : {false, true}) {
+            if (const Where where = Moves(codes, outer))
+                any.insert(any.end(), where->any.begin(), where->any.end());
+            else
+                always = always || std::ranges::any_of(codes, [&](const Code* c) {
+                             return !(outer ? c->outer : c->part).empty();
+                         });
+        }
+        const std::string moves =
+            always ? "" : Text(std::make_shared<const Moving>(Moving{"", std::move(any)}));
         return meet + (moves.empty() ? "" : " && (" + moves + ")") + " ? NAN : ";
     }
 
@@ -2229,6 +2264,7 @@ private:
             Code code  = Product(Inner(left), Inner(right));
             code.outer = {
                 *Plus(Times(OuterOf(left), Inner(right)), Times(Inner(left), OuterOf(right)))};
+            code.outer[0].moves = Moves({&left, &right}, true);
             return code;
         }
         if (temporaries_ && left.size.cols == right.size.rows) {
@@ -2305,7 +2341,8 @@ private:
             for (std::size_t i = 0; i < code.size.rows; ++i)
                 for (std::size_t j = 0; j < code.size.cols; ++j)
                     code.cells.push_back(operand.At(j, i, b));
-        for (const Code& outer : operand.outer) code.outer.push_back(Transposed(outer));
+        for (const Code& outer : operand.outer)
+            (code.outer.push_back(Transposed(outer)), code.outer[0].moves = outer.moves);
         return code;
     }
 
@@ -2378,23 +2415,21 @@ private:
         // In a nest, its cross part f'*u12 + f''*(u^*u'), as Derivative::Composed.
         if (part && !part->node && !part->outer.empty()) {
             Part cross = Times(Inner(*slope), OuterOf(base.part[0]));
-            if (Doubles(second)[0] != 0)
+            if (Doubles(second)[0] != 0 && !base.outer.empty())
                 cross =
-                    Plus(cross,
-                         Times(Doubles(below)[0] == 0
-                                   ? Literal(second)
-                                   : *Times(Literal(second), Powered(Inner(base), Literal(below))),
-                               Times(OuterOf(base), Inner(base.part[0]))));
+                    Plus(cross, Unless(*Times(Doubles(below)[0] == 0
+                                                  ? Literal(second)
+                                                  : *Times(Literal(second),
+                                                           Powered(Inner(base), Literal(below))),
+                                              Times(OuterOf(base), Inner(base.part[0]))),
+                                       Doubles(below)[0] < 0 ? base.outer[0].moves : nullptr));
             part->outer.clear();
-            if (cross) part->outer = {*cross};
+            if (cross) part->outer = {Doubles(c)[0] < 2 ? Unless(*cross, base.moves) : *cross};
         }
         // None where its base's clause has none, not 0 times an infinity, where
         // its value is finite (C118).
-        if (Doubles(lower)[0] < 0 && Doubles(c)[0] > 0 && base.moves && !part->node) {
-            part->cells[0] =
-                Cell("(" + Whether(base.moves) + " ? " + part->cells[0].text + " : 0)", primary);
-            part->constant.reset();
-        }
+        if (Doubles(lower)[0] < 0 && Doubles(c)[0] > 0 && !part->node)
+            part = Unless(*part, base.moves);
         return Answer(Parted(value, part, {&base}));
     }
 
@@ -2428,11 +2463,15 @@ private:
         Code out = Of(cell);
         if (const Part w = OuterOf(exponent)) {
             out.outer = {*Times(Of(cell), w)};
+            out.outer[0].moves = w->moves;
         } else if (const Part moves = OuterOf(base);
                    moves && exponent.constant && Doubles(*exponent.constant)[0] != 0) {
             const Value c = *exponent.constant;
             out.outer     = {*Times(
                 Times(Literal(c), Powered(Inner(base), Literal(c - Value(Number(1))))), moves)};
+            // None where its clause has none, not 0 times u^(c-1) at 0 (C118).
+            if (Doubles(c)[0] < 1) out.outer[0] = Unless(out.outer[0], moves->moves);
+            out.outer[0].moves = moves->moves;
         }
         return out;
     }
@@ -4511,6 +4550,7 @@ private:
             if (c.part.empty()) return;
             c.outer = std::move(c.part);
             c.part.clear();
+            c.outer[0].moves = c.moves;
             c.constant.reset();
             c.moves.reset();
         };
@@ -4651,7 +4691,8 @@ private:
         Code one;
         one.cells = {code.At(c)};
         if (code.constant) one.constant = Value(code.constant->data()[c % code.cells.size()]);
-        for (const Code& outer : code.outer) one.outer.push_back(Single(outer, c));
+        for (const Code& outer : code.outer)
+            (one.outer.push_back(Single(outer, c)), one.outer[0].moves = outer.moves);
         return one;
     }
     static Adjoint Some(Code code) {
