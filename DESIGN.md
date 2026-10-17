@@ -12345,8 +12345,10 @@ the clause for a limit that does not converge as done, the order from here:
   its first refusal, a nest now compiled, and `test/compile/grad.ink`'s
   comment with it; README section 4 gains the order, the Coriolis term
   without its cells, C*w as `grad_(e = 0) grad_(v = w) L(q + e*w, v)`,
-  one pass by w's cells, and its paragraph on what the compiler refuses
-  its nests; this item replaces the line that
+  one pass by w's cells, that a Hessian's cell (i, j) differentiates by
+  v[i] outside v[j] and the Jacobian by cells by v[j] outside v[i], so the
+  two may part in the last bit on inexact values, and its paragraph on
+  what the compiler refuses its nests; this item replaces the line that
   said a study was running.
 
   About 450 lines of sources, the study's 450 to 550 less an order by a
