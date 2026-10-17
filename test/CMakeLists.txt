@@ -737,10 +737,9 @@ set_tests_properties(check_see_report PROPERTIES PASS_REGULAR_EXPRESSION
 set_tests_properties(check_learn_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^learn: 100 steps from 0, against exact values\nlearn\\.K: within 0\nlearn\\.W: within 0\nlearn\\.a: within 0\nlearn\\.d: within 0\nlearn\\.E: within [1-9](\\.[0-9])?e-1[4-6]\n$")
 # A gradient with respect to a tensor compiled (DESIGN.md), as
-# compile/tensorgrad.ink gives it; attend's exp is a double's, as heads' is,
-# but at its first step's exact scores, where the interpreter walks exp.
+# compile/tensorgrad.ink gives it; attend's exp is a double's, as heads' is.
 set_tests_properties(check_attend_report PROPERTIES PASS_REGULAR_EXPRESSION
-    "^attend: 100 steps from 0, against exact values until 1 and inexact ones from there\nattend\\.WQ: within 1\\.7e-18${about}\n$")
+    "^attend: 100 steps from 0, against exact values until 1 and inexact ones from there\nattend\\.WQ: within 0${about}\n$")
 set_tests_properties(check_small_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^small: 100 steps from 0, against exact values\nsmall\\.g: within 0\nsmall\\.o: within 0\nsmall\\.s: within 0\n$")
 set_tests_properties(check_saliency_3_report PROPERTIES PASS_REGULAR_EXPRESSION
