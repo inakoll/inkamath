@@ -11,7 +11,7 @@
 # for M, C, G, w and q, and h's alike for k, s, M, C, G, w and q. The two
 # agree to the digits the interpreter prints: q_100 = [-0.276479857066503;
 # -1.04368092424307] by the hand-written recurrence in mpmath at 40 digits,
-# M_2 and C_2 by mpmath's numerical derivatives of L besides
+# M_1 and C_2 by mpmath's numerical derivatives of L besides
 # (test/data/spec/hessian.ink).
 #
 # 'b', the second derivative of a definition in cases, each side of its
