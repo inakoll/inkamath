@@ -64,6 +64,137 @@ endfunction()
 # Read by cases in every part.
 set(inputs "${CMAKE_CURRENT_LIST_DIR}/compile/inputs.ink")
 
+# Specified, not yet built (DESIGN.md, an inner instance's optional input
+# compiled): compile/inner.ink's headers, the file compiled whole, a read
+# outside a guard refused, and the reports of robot, fwd and sib. Skipped
+# while e.z is refused as today, and only then.
+if(PART STREQUAL "spec")
+    file(MAKE_DIRECTORY "${OUT}")
+    set(story "${CMAKE_CURRENT_LIST_DIR}/compile/inner.ink")
+    execute_process(COMMAND "${EXE}" --compile "${story}" fw -o fw.h
+                    WORKING_DIRECTORY "${OUT}" OUTPUT_VARIABLE out ERROR_VARIABLE err
+                    RESULT_VARIABLE code TIMEOUT ${CASE_TIMEOUT})
+    if("${out}${code}" STREQUAL "1" AND "${err}" STREQUAL
+       "inkamath: cannot compile e.d: e.z, an inner instance's optional input, for now\n")
+        message("compile_inner: e.z refused, as today")
+        return()
+    endif()
+    set(args --compile ${story} fw -o fw.h)
+    check(compile_inner)
+    holds(compile_inner fw.h
+          "static inline void fw_step(fw* m_, double z_in_, int z_present_in_, double w_in_) {\n"
+          "        int z_present[4];\n")
+    strict(compile_inner fw.h)
+    set(args --compile ${story} loop -o loop.h)
+    check(compile_inner_loop)
+    holds(compile_inner_loop loop.h "static inline void loop_step(loop* m_) {\n"
+          "        int z_present[1];\n")
+    strict(compile_inner_loop loop.h)
+    set(args --compile ${story})
+    check(compile_inner_file)
+    file(WRITE "${OUT}/read.ink" "last(z_n?) = {\n    x_0 = 0\n    x_n | z_n >= 0 = z_n\n"
+         "    x_n = x_(n-1)\n}\nzd_n | mod(n, 3) == 0 = n\ne = last(z_n = zd_n)\n"
+         "q_n | e.z_n > 1 = 1\nq_n = 0\nr_n = e.z_n\n")
+    set(args --compile read.ink)
+    set(stdout "cannot compile r: r reads e.z_n, an optional input of last, outside a guard with a clause after it\n")
+    set(exit 1)
+    check(compile_inner_read)
+    if(NOT CC_ID MATCHES "^(GNU|Clang|AppleClang)$")
+        return()
+    endif()
+
+    # A report's first line, then a line for each pattern in any order, then
+    # the guards' lines as given; ';' read as ',', which a list splits at.
+    function(reported instance steps status first guards)
+        set(args --check ${story} ${instance} --steps ${steps} -o ${instance}.c)
+        check(check_inner_${instance})
+        # Uncontracted, as test/CMakeLists.txt builds a check (C97).
+        execute_process(COMMAND "${CC}" -std=c11 -O2 -ffp-contract=off ${instance}.c
+                                -o ${instance} -lm
+                        WORKING_DIRECTORY "${OUT}" RESULT_VARIABLE failed
+                        ERROR_VARIABLE errors OUTPUT_VARIABLE errors)
+        if(failed)
+            message(SEND_ERROR "check_inner_${instance}: ${instance}.c does not build\n${errors}")
+            return()
+        endif()
+        execute_process(COMMAND "${OUT}/${instance}" WORKING_DIRECTORY "${OUT}"
+                        OUTPUT_VARIABLE report RESULT_VARIABLE code TIMEOUT ${CASE_TIMEOUT})
+        string(REPLACE ";" "," text "${report}")
+        string(REPLACE ";" "," guards "${guards}")
+        string(LENGTH "${text}" all)
+        string(LENGTH "${guards}" last)
+        set(bad "")
+        set(head "")
+        if(all LESS last)
+            set(bad 1)
+        else()
+            math(EXPR from "${all} - ${last}")
+            string(SUBSTRING "${text}" ${from} ${last} tail)
+            string(SUBSTRING "${text}" 0 ${from} head)
+            if(NOT "${tail}" STREQUAL "${guards}")
+                set(bad 1)
+            endif()
+        endif()
+        string(REPLACE "\n" ";" lines "${head}")
+        list(REMOVE_ITEM lines "")
+        list(POP_FRONT lines top)
+        list(LENGTH lines got)
+        list(LENGTH ARGN want)
+        if(NOT code EQUAL status OR NOT got EQUAL want OR
+           NOT "${top}" STREQUAL "${instance}: ${steps} steps from 0, ${first}")
+            set(bad 1)
+        endif()
+        foreach(pattern IN LISTS ARGN)
+            set(found "")
+            foreach(line IN LISTS lines)
+                if(line MATCHES "^${instance}\\.${pattern}$")
+                    set(found 1)
+                endif()
+            endforeach()
+            if(NOT found)
+                set(bad 1)
+            endif()
+        endforeach()
+        if(bad)
+            string(REPLACE ";" "\n" each "${ARGN}")
+            message(SEND_ERROR "check_inner_${instance}: exit ${code}\n${report}--- where it is to exit ${status}, say '${first}', then a line for each of\n${each}\n--- in any order, then\n${guards}")
+        endif()
+    endfunction()
+
+    set(inexact "against exact values until 0 and inexact ones from there")
+    set(near "within (0|[1-9](\\.[0-9])?e-1[5-9])(, the interpreter's terms about [0-9.e+-]+ from the exact ones)?")
+    set(terms "")
+    foreach(s s.r g.r f.r f.fix f.lost f.top)
+        string(REPLACE "." "\\." s "${s}")
+        list(APPEND terms "${s}: within 0")
+    endforeach()
+    foreach(s f.Pp f.S w.p g.p g.z f.z w.v s.v w.a s.a s.am f.am f.ac f.xp f.P f.x f.uc f.u w.u)
+        string(REPLACE "." "\\." s "${s}")
+        list(APPEND terms "${s}: ${near}")
+    endforeach()
+    string(CONCAT guards
+           "robot.f.fix: where z is absent, 'fix_n | (z_n - [1 0]*xp_n)^2 < gate^2*S_n = 1' falls to 'fix_n = 0'\n"
+           "robot.f.kg: where lim Z runs out, 'kg(q) | gain([q 0; 0 1/10], ~1/10)[1,1] > 0 = gain([q 0; 0 1/10], ~1/10)' falls to 'kg(q) = [3 5/2]'\n"
+           "robot.f.x: where z is absent, 'x_n | (z_n - [1 0]*xp_n)^2 < gate^2*S_n = xp_n + Pp_n*[1; 0]*(z_n - [1 0]*xp_n)/S_n' falls to 'x_n = xp_n'\n")
+    reported(robot 600 0 "${inexact}" "${guards}" ${terms})
+
+    set(last "")
+    foreach(i e k)
+        string(APPEND last
+               "@.${i}.d: where z is absent, 'd_n | z_n - z_(n-3) > 0 = z_n - z_(n-3)' falls to 'd_n = 0'\n"
+               "@.${i}.x: where z is absent, 'x_n | z_n >= 0 = z_n' falls to 'x_n = x_(n-1)'\n")
+    endforeach()
+    string(REPLACE "@" "fwd" guards "${last}")
+    reported(fwd 100 0 "against exact values" "${guards}" "e\\.z: within 0" "e\\.x: within 0"
+             "e\\.d: within 0" "k\\.z: within 0" "k\\.x: within 0" "k\\.d: within 0" "y: within 0")
+    string(REPLACE "@" "sib" guards "${last}")
+    set(nan "-?nan at 20, where the interpreter's term is not a finite number")
+    reported(sib 100 1 "against exact values until 20 and inexact ones from there" "${guards}"
+             "s\\.z: ${nan}" "e\\.z: ${nan}" "k\\.z: ${nan}" "e\\.x: within 0" "e\\.d: within 0"
+             "k\\.x: within 0" "k\\.d: within 0")
+    return()
+endif()
+
 # The cases run as three tests of about equal time under the sanitizers: PART
 # 1 up to charpoly's refusal, 2 from it, 3 from eig's, and all where PART is
 # not given.
