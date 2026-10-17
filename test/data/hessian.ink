@@ -176,3 +176,7 @@ error: grad of a matrix with respect to a matrix is a Jacobian, which it does no
 
 >> grad_(x = 1)^9 x^9
 error: grad nests more than 8 deep
+
+# A nest's refusal names the point that makes it so, here the outer one.
+>> grad_(t = 0) grad_(s = 1) s*t^(1/2)
+error: a power's derivative is infinite at t = 0
