@@ -423,7 +423,7 @@ again, and given back by `clear`.
 | `expr^expr` | power; of a square matrix, a whole one, negative for the inverse |
 | `expr<expr` `expr>expr` | comparison, answering 1 or 0, inexact where a side read is |
 | `expr<=expr` `expr>=expr` | the same, or equal |
-| `expr==expr` `expr<>expr` | equal, not equal, of numbers or whole matrices |
+| `expr==expr` `expr<>expr` | equal, not equal, of numbers or whole matrices of one shape |
 | `expr and expr` `expr or expr` | both, either: 1 or 0, inexact where a side read is, the right read only if needed |
 | `name = expr` | definition (section 3) |
 | `name \| cond = expr` | a definition in cases (section 3) |

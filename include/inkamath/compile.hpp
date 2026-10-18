@@ -2619,10 +2619,7 @@ private:
             op != Comparison::NotEqual)
             throw Reason("a comparison needs single values, not a " +
                          (left.Scalar() ? right : left).size.Described());
-        // Answered 0 by the interpreter, a truth the shapes alone fix (DESIGN.md).
-        if (left.size != right.size)
-            throw Reason(left.size.Called() + " compared with " + right.size.Called() +
-                         ", never equal");
+        if (left.size != right.size) throw Reason(Value::Unequal(left.size, right.size));
         // At a constant point too, a jump is tested, not folded.
         if (left.constant && right.constant && left.part.empty() && right.part.empty())
             return Answer(Exactly(

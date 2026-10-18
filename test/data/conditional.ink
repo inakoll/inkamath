@@ -68,8 +68,7 @@ error: a comparison needs real numbers, not ~(i)
 error: a comparison needs single values, not a 1x2 matrix
 
 # Equality is not cell by cell: two whole matrices are equal or not, which is
-# one truth. So a matrix read back can be checked against what printed it, and
-# two of different shapes are simply unequal, as a matrix and a number are.
+# one truth. So a matrix read back can be checked against what printed it.
 >> [1 2;3 4]/3 == [1/3, 2/3; 1, 4/3]
 1
 
@@ -79,11 +78,23 @@ error: a comparison needs single values, not a 1x2 matrix
 >> [1 2] <> [2 1]
 1
 
+# Two of different shapes are never equal, a truth the shapes alone fix and
+# most likely a missing transpose, and a matrix is equal to no single value,
+# so that 'M == 0' would ask nothing of M's cells: each is refused (C398).
 >> [1 2] == [1 2 3]
-0
+error: a 1x2 matrix compared with a 1x3 matrix, never equal
+
+>> [1; 2] <> [1 2]
+error: a 2x1 matrix compared with a 1x2 matrix, never equal
 
 >> [1 1] == 1
-0
+error: a 1x2 matrix compared with a single value, never equal; compare with 0*M, M's zero matrix, or a cell, M[j,k]
+
+>> 0 <> [0 0]
+error: a single value compared with a 1x2 matrix, never equal; compare with 0*M, M's zero matrix, or a cell, M[j,k]
+
+>> [0 0] == 0*[1 2]
+1
 
 # --- a definition in cases --------------------------------------------------
 
