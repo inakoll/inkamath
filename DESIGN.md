@@ -12290,9 +12290,11 @@ the clause for a limit that does not converge as done, the order from here:
     where z is absent`, as it names `lim Z`: the clause quoted beside it
     says whose.
   - **A file's definition** reading an instance's optional input compiles
-    in a guard, and outside one is refused as in a model, "cannot compile
-    r: r reads e.z_n, an optional input of last, outside a guard with a
-    clause after it", where the interpreter reads it as any term.
+    as the interpreter reads it, as any term, in a guard or outside one:
+    `r_n = fwd.e.z_n` is NaN where the interpreter refuses it as absent,
+    as the step answers a refusal (C86). Refusing it as in a model, where
+    the interpreter refuses it too, would cost lines to refuse what the
+    step gives faithfully.
   - **The robot**: `test/compile/inner.ink`'s `robot` is `robot_loop.ink`'s
     loop, `P_0` 1/100, the fix out from 300 to 490 and the reference
     stepping at 350, so that the flags the simulation gives are those of
@@ -12319,8 +12321,8 @@ the clause for a limit that does not converge as done, the order from here:
     cost a test and buy nothing.
 
   Still refused, or open: a read of an inner instance's optional input
-  outside a guard, in a model where it is defined and in a file when
-  compiled, as above; an argument reading back in time a term whose chain
+  outside a guard in a model where it is defined, as the interpreter
+  refuses it; an argument reading back in time a term whose chain
   may give none, `h = last(z_n = s.z_(n-1))`, which the interpreter
   answers and the step would answer only with that chain's status kept at
   past indices, refused for now, "cannot compile h.x: h.z is given
@@ -12337,7 +12339,7 @@ the clause for a limit that does not converge as done, the order from here:
   About 45 lines: the interpreter's none; the compiler's 40, the refusal
   gone, the inner input's window and flags as the model's own, filled at
   each step from the statuses its argument asks, the end of a sibling's
-  chain as a status, and a file's definitions held to the model's check;
+  chain as a status;
   `--check`'s 5, the audit's name as written, its replay as it is since
   the step takes no new input. 20,129 lines at ab4d0de by `wc -l
   include/inkamath/*.hpp src/*`; past 68 the implementation stops and
@@ -12351,8 +12353,8 @@ the clause for a limit that does not converge as done, the order from here:
   `robot_loop.ink`'s flags and u_300 = -0.0848377303296. What fails by
   design is compiled: `test/compile/inner.ink` and `test/cli.cmake`'s spec
   part, `cli_spec`: the headers of `fw` and `loop`, strict C; the file
-  compiled whole with nothing to list; the read outside a guard refused;
-  the lagged sibling refused; and the reports of `robot`, `fwd` and `sib`. Skipped while e.z is
+  compiled whole with nothing to list, `r` among it; the lagged sibling
+  refused; and the reports of `robot`, `fwd` and `sib`. Skipped while e.z is
   refused as today, and only then.
 - **A definition the host implements**, as the C-hook study sketched:
   `--compile nav.ink nav --host qp` names it, with no syntax; the header

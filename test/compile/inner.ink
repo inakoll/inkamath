@@ -122,6 +122,10 @@ fw(z_n?, w_n) = {
 }
 zd_n | mod(n, 3) == 0 and (n < 9 or n > 14) = n + 1/4
 fwd = fw(z_n = zd_n, w_n = n + 1/4)
+# A file's definition reads it as the interpreter does, as any term: NaN
+# where the interpreter refuses fwd.e.z as absent (C86). The file compiles
+# whole with nothing to list.
+r_n = fwd.e.z_n
 
 # 'sib', a sibling's chain, zd's but NaN at 20, given to e as it is and to
 # k doubled. NaN is no absence: a clause gave it, so the guard of x refuses

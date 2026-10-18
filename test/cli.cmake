@@ -65,9 +65,8 @@ endfunction()
 set(inputs "${CMAKE_CURRENT_LIST_DIR}/compile/inputs.ink")
 
 # Specified, not yet built (DESIGN.md, an inner instance's optional input
-# compiled): compile/inner.ink's headers, the file compiled whole, a read
-# outside a guard and a lagged sibling refused, and the reports of robot,
-# fwd and sib. Skipped while e.z is refused as today, and only then.
+# compiled): compile/inner.ink's headers, the file compiled whole, a
+# lagged sibling refused, and the reports of robot, fwd and sib. Skipped while e.z is refused as today, and only then.
 if(PART STREQUAL "spec")
     file(MAKE_DIRECTORY "${OUT}")
     set(story "${CMAKE_CURRENT_LIST_DIR}/compile/inner.ink")
@@ -92,13 +91,6 @@ if(PART STREQUAL "spec")
     strict(compile_inner_loop loop.h)
     set(args --compile ${story})
     check(compile_inner_file)
-    file(WRITE "${OUT}/read.ink" "last(z_n?) = {\n    x_0 = 0\n    x_n | z_n >= 0 = z_n\n"
-         "    x_n = x_(n-1)\n}\nzd_n | mod(n, 3) == 0 = n\ne = last(z_n = zd_n)\n"
-         "q_n | e.z_n > 1 = 1\nq_n = 0\nr_n = e.z_n\n")
-    set(args --compile read.ink)
-    set(stdout "cannot compile r: r reads e.z_n, an optional input of last, outside a guard with a clause after it\n")
-    set(exit 1)
-    check(compile_inner_read)
     file(WRITE "${OUT}/lag.ink" "held(z_n?) = {\n    x_0 = 0\n    x_n | z_n >= 0 = z_n\n"
          "    x_n = x_(n-1)\n}\nsrc() = {\n    z_n | mod(n, 3) == 0 = n\n}\n"
          "lag() = {\n    s = src()\n    h = held(z_n = s.z_(n-1))\n}\n")
