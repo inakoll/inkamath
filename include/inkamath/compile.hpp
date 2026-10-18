@@ -4036,7 +4036,11 @@ private:
             Flag(asking, key, "\x0e" + std::to_string(sample->second) + "\x0f");
             return Sample(key, read, sample->first, sample->second);
         }
-        if (const auto hold = Held(call.subexpr())) return Holding(key, read, *hold);
+        if (const auto hold = Held(call.subexpr())) {
+            Code code = Holding(key, read, *hold);
+            Flag(asking, key, "");  // its status at the term held is not kept
+            return code;
+        }
         const int lag = Lag(call.subexpr(), key) + shift_;
         // A cycle is told by its reads (Reaches), and this one, which an
         // early term's are not, is recorded once what it reads is compiled.
@@ -4097,12 +4101,15 @@ private:
                            });
         // Refused where a guard reads the input that is given it.
         if (chain && at != "0") {
-            back_[within_] = within_ + " is given " + written + "_(" + index_ + "-" + at +
-                             "), whose chain may give none, read back in time, for now";
+            back_[within_] = within_ + " is given " + written +
+                             (at.empty() ? "_(...), whose chain may give none, held, for now"
+                                         : "_(" + index_ + "-" + at +
+                                               "), whose chain may give none, read back in time, "
+                                               "for now");
             return;
         }
         if (asking && back_.count(key)) throw Reason(back_.at(key));
-        if (!asking || !(chain || Optional(key))) return;
+        if (!asking || at.empty() || !(chain || Optional(key))) return;
         const std::string status = "!m_->" + key + (chain ? "_given_" : "_present[" + at + "]");
         if (chain) chains_.insert(key);
         asking->insert(status);

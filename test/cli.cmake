@@ -2453,6 +2453,14 @@ set(args --compile lag.ink lag -o lag.h)
 set(stderr "inkamath: cannot compile h.x: h.z is given s.z_(n-1), whose chain may give none, read back in time, for now\n")
 set(exit 1)
 check(compile_inner_lag)
+# A slow chain held, whose status at the term held the step does not keep.
+file(WRITE "${OUT}/hold.ink" "held(z_n?) = {\n    x_0 = 0\n    x_n | z_n >= 0 = z_n\n"
+     "    x_n = x_(n-1)\n}\nslow(x_n) = {\n    y_m | mod(m, 3) == 0 = x_(2*m)\n}\n"
+     "hold() = {\n    s = slow(x_n = n)\n    h = held(z_n = s.y_(floor(n/2)))\n}\n")
+set(args --compile hold.ink hold -o hold.h)
+set(stderr "inkamath: cannot compile h.x: h.z is given s.y_(...), whose chain may give none, held, for now\n")
+set(exit 1)
+check(compile_inner_hold)
 if(CC_ID MATCHES "^(GNU|Clang|AppleClang)$")
     # A report's first line, then a line for each pattern in any order, then
     # the guards' lines as given; ';' read as ',', which a list splits at.

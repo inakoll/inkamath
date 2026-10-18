@@ -155,7 +155,7 @@ is NaN where an input it reads is absent does not hold, as interpreted:
 argument's flag: an optional input's, forwarded; a sequence's, 1 where a
 clause of its chain gave the term, NaN included, and 0 where none did; any
 other's, 1 (`test/compile/inner.ink`). An argument reading such a chain back
-in time is refused, for now.
+in time, or holding it, is refused, for now.
 A file's named instances are compiled with it, into
 one step that orders all their terms together, each instance a struct of its
 own: `test/compile/loop.ink` closes a loop, `m.ctl.u[0]` and `m.plt.x[0]`,
