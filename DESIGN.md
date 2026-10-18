@@ -1909,6 +1909,7 @@ closures need one anyway, and can bring it.
 | C392 `[fixed]` | **A refusal of an inner optional input's lagged or held argument named its two terms from two places.** The input was qualified from where it is compiled and the term given it from its own model, so a file's instance read "lg.h.z is given s.z_(n-1)". Both are qualified alike now, "lg.h.z is given lg.s.z_(n-1)"; a model compiled reads as before. In 1 line of `compile.hpp`, changed; `compile_inner_lag_file` in `test/cli.cmake` holds it. Found by the implementation review of an inner instance's optional input. |
 | C393 `[fixed]` | **A guard reading a matrix limit's status was no C++.** The status passed the limit's answer a compound literal, `robot_lim0(m_, t18_, 0.1, (double[6][2]){{0.0}})` in `test/compile/robot.ink`'s `loop`, now `inner.ink`'s,, with `--float` too, which C++ refuses, "taking address of temporary array", where the headers are said to build strict as C++; nothing built them so. It is passed an array of the step's now, unread. `strict` builds each header as C++17 too, and `compile_status_strict` holds loop's. No golden, expected header or report moves; loop's header declares the array, and its temporaries after it are numbered one higher. In 8 lines of `compile.hpp`, 1 of comment, and 4 removed. Found by the implementation review of an inner instance's optional input. |
 | C394 `[open]` | **A compiled guard falls where an operand reads a sibling's refused term before an absent one.** C380's second reproducer: with `rise(z_n?)` giving `d_n \| z_n - z_(n-3) > 0 = z_n - z_(n-3)` and `d_n = 0`, and `src()` giving `t_n \| mod(n, 4) == 0 = n` and `z_n \| mod(n, 2) == 0 = t_n`, `r = rise(z_n = s.z_n)` has its z given and refused at 2, s.t_2 having no clause, and z_-1 absent, so the step takes d_2 = 0 where the interpreter refuses it, "no clause of t applies"; so does C391's reproducer at d_0, z_0 refused and z_-3 absent. Since C380 a guard stops at its first operand that stops, but within one operand an absence falls whatever was read before it, which is right for a NaN given, `sib`'s e.d_20, and wrong for a refusal: the step says both by NaN (C86). Open: a chain's status would say refused beside given, through the terms its value reads, and each read its place in the operand. Split from C380 by its fix. |
+| C399 `[fixed]` | **An inner optional input its instance left out was refused compiled.** With `last(z_n?)` holding the last value seen, `alone(w_n)` writing `f = fw(w_n = w_n)` left f's z out, which fw forwards to f.e, and `--check` was refused, "cannot compile e.d: e.z is an input nothing gives", and so was a file's `el = last()`, where the interpreter answers z absent at every step, and before the stream but where a history gives it: f.e.x holds 0. Left out, the input is a sequence of the step whose cells are NaN and flag 0 at every step, its window and history as a given one's, its size the one its model states; forwarded, it passes that flag, as an optional input does. No golden, expected header or other generated text moves. In 15 lines of `compile.hpp`, 1 of comment, and 4 removed; `compile/inner.ink`'s `lo`, its report and its header, `compile_inner_alone`, hold it, and `el` compiles with the file. Found by the implementation of an inner instance's optional input, a departure. |
 
 **Measure instructions, not the clock.** One of those changes made the matrix
 workload 20 per cent slower by the clock and not by a single instruction: with
@@ -12387,15 +12388,15 @@ the clause for a limit that does not converge as done, the order from here:
     `h.x`, as specified, but recorded where the argument is compiled.
   - An inner optional input its instance leaves out is refused, "e.z is an
     input nothing gives", where the interpreter answers it absent at every
-    step.
+    step. Lifted by C399.
   - The robot's report is checked in `test/CMakeLists.txt`'s list,
     `check_robot_600_report`, MSVC's build too, as `check_robot_200_report`
     was, its lines in the order the program writes them; the other stories'
     reports are cli.cmake's, under GCC and Clang only.
-- **An inner optional input left out, compiled** as absent at every step, as
-  interpreted: the model without one of its sensors, the robot's filter with
-  no fix, where it is refused today, "e.z is an input nothing gives"; about
-  10 to 15 lines.
+- `[done]` **An inner optional input left out, compiled** as absent at
+  every step, as interpreted: the model without one of its sensors, the
+  robot's filter with no fix, where it is refused today, "e.z is an input
+  nothing gives"; about 10 to 15 lines: C399, in 11.
 - **A definition the host implements**, as the C-hook study sketched:
   `--compile nav.ink nav --host qp` names it, with no syntax; the header
   declares `int nav_qp(const double H[4], const double f[2], double

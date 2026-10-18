@@ -2451,7 +2451,7 @@ strict(compile_optional track.h)
 
 # An inner instance's optional input (DESIGN.md): compile/inner.ink's headers,
 # the file compiled whole, a lagged sibling refused, and the reports of
-# fwd, sib, dp, ow, gp, hs, gb and lt; test/CMakeLists.txt checks its robot.
+# fwd, sib, dp, ow, gp, hs, gb, lt and lo; test/CMakeLists.txt checks its robot.
 set(story "${CMAKE_CURRENT_LIST_DIR}/compile/inner.ink")
 set(args --compile ${story} fw -o fw.h)
 check(compile_inner)
@@ -2464,6 +2464,10 @@ check(compile_inner_loop)
 holds(compile_inner_loop loop.h "static inline void loop_step(loop* m_) {\n"
       "        int z_present[1];\n")
 strict(compile_inner_loop loop.h)
+set(args --compile ${story} alone -o alone.h)
+check(compile_inner_alone)
+holds(compile_inner_alone alone.h "    m_->f.e.z_present[0] = m_->f.z_present[0];\n")
+strict(compile_inner_alone alone.h)
 set(args --compile ${story})
 check(compile_inner_file)
 file(WRITE "${OUT}/lag.ink" "held(z_n?) = {\n    x_0 = 0\n    x_n | z_n >= 0 = z_n\n"
@@ -2591,6 +2595,18 @@ if(CC_ID MATCHES "^(GNU|Clang|AppleClang)$")
     reported(lt 100 0 "against exact values" "${guards}" "s\\.y: within 0"
              "s\\.z: within 0, from 1" "e\\.z: within 0" "e\\.x: within 0" "e\\.d: within 0"
              "b\\.z: within 0" "b\\.x: within 0" "b\\.d: within 0")
+    string(REPLACE "@" "lo.f" guards "${last}")
+    string(APPEND guards "lo.p.c: where z is absent, 'c_n | [1 0]*z_(n-3) < 0 = [1 0]*z_(n-3)' falls to 'c_n = 1'\n")
+    set(terms "")
+    foreach(s f.w f.e.x f.e.d f.k.z f.k.x f.k.d f.y p.c y)
+        string(REPLACE "." "\\." s "${s}")
+        list(APPEND terms "${s}: within 0")
+    endforeach()
+    foreach(s f.z f.e.z p.z)
+        string(REPLACE "." "\\." s "${s}")
+        list(APPEND terms "${s}: no value compared, the step NaN where the interpreter gives none, as at 0: lo\\.${s}_0 is absent")
+    endforeach()
+    reported(lo 100 0 "against exact values" "${guards}" ${terms})
 endif()
 
 # grad's order compiled (DESIGN.md): compile/hessian.ink's instances each
