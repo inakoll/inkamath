@@ -67,7 +67,10 @@ set_tests_properties(interpreter PROPERTIES TIMEOUT 60)
 set(cli_case_timeout 60)
 set(cli_timeout 120)
 if(INKAMATH_SANITIZE)
-    set(cli_case_timeout 180)
+    # compile_scratch takes 61 s alone and ran out of 180, its part 312 s of
+    # 360, on CI's shared runner.
+    set(cli_case_timeout 300)
+    set(cli_timeout 240)
 elseif(MSVC)
     # As compile_c316: MSVC's Debug interpreter took over 60 s for twice.h.
     set(cli_case_timeout 180)
