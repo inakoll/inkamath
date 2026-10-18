@@ -151,8 +151,11 @@ z_present_in_`, 0 where it is absent, its value then not read; the struct
 keeps the flags beside the input's terms, `z_present[k]`, and the input's
 cells are NaN where it is absent, before the stream too. A guard whose truth
 is NaN where an input it reads is absent does not hold, as interpreted:
-`test/compile/optional.ink`. An inner instance's optional input is refused,
-for now.
+`test/compile/optional.ink`. An inner instance's optional input takes its
+argument's flag: an optional input's, forwarded; a sequence's, 1 where a
+clause of its chain gave the term, NaN included, and 0 where none did; any
+other's, 1 (`test/compile/inner.ink`). An argument reading such a chain back
+in time is refused, for now.
 A file's named instances are compiled with it, into
 one step that orders all their terms together, each instance a struct of its
 own: `test/compile/loop.ink` closes a loop, `m.ctl.u[0]` and `m.plt.x[0]`,
