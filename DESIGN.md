@@ -12380,7 +12380,8 @@ the clause for a limit that does not converge as done, the order from here:
   name the guard writes. `--check` needed none of its 5: the audit names
   what `Flag` records. The spec is the golden `test/data/inner.ink`, every
   entry as written; `test/compile/inner.ink` is a cli case, its robot
-  checked over 600 steps in place of `test/compile/robot.ink`'s 200, and
+  checked over 600 steps by `check_robot_600_report`, in place of
+  `test/compile/robot.ink`'s 200, and
   `cli_spec` and the spec suite are gone. 20,160 to 20,207 lines at
   20aca6e's merge by `wc -l include/inkamath/*.hpp src/*`, 20,129 to
   20,176 from ab4d0de.
@@ -12394,8 +12395,10 @@ the clause for a limit that does not converge as done, the order from here:
   - An inner optional input its instance leaves out is refused, "e.z is an
     input nothing gives", where the interpreter answers it absent at every
     step.
-  - The robot's report is checked by cli.cmake, under GCC and Clang only,
-    where `check_robot_200_report` was built by MSVC too.
+  - The robot's report is checked in `test/CMakeLists.txt`'s list,
+    `check_robot_600_report`, MSVC's build too, as `check_robot_200_report`
+    was, its lines in the order the program writes them; the other stories'
+    reports are cli.cmake's, under GCC and Clang only.
 - **An inner optional input left out, compiled** as absent at every step, as
   interpreted: the model without one of its sensors, the robot's filter with
   no fix, where it is refused today, "e.z is an input nothing gives"; about

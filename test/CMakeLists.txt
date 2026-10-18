@@ -280,7 +280,7 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brin
                          fallback:faraway fallback:voided fallback:covered fallback:ored
                          fallback:spelled fallback:joined fallback:routed fallback:returned
                          fallback:respelled fallback:preceded fallback:defaulted fallback:sentried
-                         fallback:partway pendloop:cart motorloop:motor
+                         fallback:partway pendloop:cart motorloop:motor inner:robot:600
                          lcg:lcgs optional:seen optional:leaned
                          optional:steeped hessian:k hessian:z hessian:c)
     string(REPLACE ":" ";" checked ${checked})
@@ -407,6 +407,25 @@ set_tests_properties(check_cart_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^cart: 100 steps from 0, against exact values until 0 and inexact ones from there\ncart\\.s: within 0${about}\ncart\\.u: within 0${about}\n$")
 set_tests_properties(check_motor_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^motor: 100 steps from 0, against exact values until 14 and inexact ones from there\nmotor\\.x: within 3\\.6e-15${about}\nmotor\\.e: within 3\\.3e-16${about}\nmotor\\.u: within 1\\.4e-14${about}\n$")
+# compile/inner.ink's robot, each flag exact and the guards audited; what
+# libm's tanh decides, by its form: 0 or below 1e-15 by the fail pattern, as
+# a pattern holds no more than 9 groups.
+set(near "within [0-9.e-]+${about}\n")
+set(robot "^robot: 600 steps from 0, against exact values until 0 and inexact ones from there\n")
+foreach(term IN ITEMS f.Pp~ f.S~ f.r g.r s.r w.p~ g.p~ g.z~ f.z~ w.v~ s.v~ w.a~ s.a~ s.am~ f.am~
+                      f.ac~ f.xp~ f.fix f.P~ f.lost f.top f.x~ f.uc~ f.u~ w.u~)
+    string(REPLACE "~" "" name ${term})
+    string(REPLACE "." "\\." name ${name})
+    if(term MATCHES "~")
+        string(APPEND robot "robot\\.${name}: ${near}")
+    else()
+        string(APPEND robot "robot\\.${name}: within 0\n")
+    endif()
+endforeach()
+set(gated "\\(z_n - \\[1 0\\]\\*xp_n\\)\\^2 < gate\\^2\\*S_n")
+set_tests_properties(check_robot_600_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "${robot}robot\\.f\\.fix: where z is absent, 'fix_n \\| ${gated} = 1' falls to 'fix_n = 0'\nrobot\\.f\\.kg: where lim Z runs out, 'kg\\(q\\) \\| gain\\(\\[q 0\; 0 1/10\\], ~1/10\\)\\[1,1\\] > 0 = gain\\(\\[q 0\; 0 1/10\\], ~1/10\\)' falls to 'kg\\(q\\) = \\[3 5/2\\]'\nrobot\\.f\\.x: where z is absent, 'x_n \\| ${gated} = xp_n \\+ Pp_n\\*\\[1\; 0\\]\\*\\(z_n - \\[1 0\\]\\*xp_n\\)/S_n' falls to 'x_n = xp_n'\n$"
+    FAIL_REGULAR_EXPRESSION "within ((0\\.|[1-9])[0-9.]*|[0-9.]+e-(0[0-9]|1[0-4]))\;")
 # Rigid bodies and an invariant filter, from two explorations: a double
 # pendulum by the RNEA, a rational rotation's powers, and the contact-aided
 # RIEKF of Hartley et al. (2020) on 21 steps of a simulated walk.
