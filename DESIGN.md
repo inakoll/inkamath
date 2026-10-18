@@ -12263,11 +12263,13 @@ the clause for a limit that does not converge as done, the order from here:
   Decided:
   - **The flag is the argument's.** An inner instance's optional input
     given the outer model's own optional input takes its flag, forwarded;
-    given a sibling's sequence, 1 where a clause of that sequence's chain
-    gave the term and 0 where none did, a new status of the step, through
-    the argument's arithmetic too, `2*s.z_n` as `s.z_n`, as the interpreter
-    reads an argument (optional inputs, *absent is a term that is not
-    there*); given anything else, a plain input or a closed form, 1.
+    given a sequence, a sibling's, the model's own or the file's, 1 where a
+    clause of its chain gave the term and 0 where none did, a new status
+    of the step, a guarded closed form's too, as `zd` gives the file's
+    `fwd.z`, through the argument's arithmetic too, `2*s.z_n` as `s.z_n`,
+    as the interpreter reads an argument (optional inputs, *absent is a
+    term that is not there*); given anything else, a plain input or the
+    index alone, 1.
     Before the stream it is absent whatever the argument gives there, as
     interpreted: in `sib`, e's z_-3 is absent where s's term is -11/4.
   - **Where a clause gave NaN, the term is present.** The chain's status
