@@ -252,6 +252,7 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brin
                          estimate:steep estimate:giant estimate:spaced elementary:els trig:tri atan:bea
                          grad:line grad:fall grad:hinge grad:edge grad:clip grad:steer grad:saw
                          grad:ring grad:notch grad:apart grad:smooth grad:cusp grad:over grad:flag
+                         grad:maxed
                          tensor:heads tensor:whirl tensor:batch tensor:spread
                          tensor:speck cellguards:rfit cellguards:tfit cellguards:layer
                          cellguards:kink cellguards:crest cellguards:mask cellguards:order
@@ -546,6 +547,8 @@ set_tests_properties(check_swing_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^swing: 100 steps from 0, against exact values until 1 and inexact ones from there\n(swing\\.[A-Za-z]+: within [0-9.e+-]+(, from 1)?${about}\n)+$")
 set_tests_properties(check_over_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^over: 100 steps from 0, against exact values\nover\\.y: within 1\\.4e-20\nover\\.z: within [0-9.e+-]+\n$")
+set_tests_properties(check_maxed_report PROPERTIES PASS_REGULAR_EXPRESSION
+    "^maxed: 100 steps from 0, against exact values until 3 and inexact ones from there\nmaxed\\.a: within 0\nmaxed\\.b: within 0${about}\nmaxed\\.c: within 0\nmaxed\\.d: within 0${about}\n$")
 # Its known limit, C110, held where it parts.
 set_tests_properties(check_apart_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^apart: 100 steps from 0, against exact values\napart\\.y: [-a-z()]+ at 0, where the interpreter gives 0\n$")
@@ -746,10 +749,9 @@ set_tests_properties(check_see_report PROPERTIES PASS_REGULAR_EXPRESSION
 set_tests_properties(check_learn_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^learn: 100 steps from 0, against exact values\nlearn\\.K: within 0\nlearn\\.W: within 0\nlearn\\.a: within 0\nlearn\\.d: within 0\nlearn\\.E: within [1-9](\\.[0-9])?e-1[4-6]\n$")
 # A gradient with respect to a tensor compiled (DESIGN.md), as
-# compile/tensorgrad.ink gives it; attend's exp is a double's, as heads' is,
-# but at its first step's exact scores, where the interpreter walks exp.
+# compile/tensorgrad.ink gives it; attend's exp is a double's, as heads' is.
 set_tests_properties(check_attend_report PROPERTIES PASS_REGULAR_EXPRESSION
-    "^attend: 100 steps from 0, against exact values until 1 and inexact ones from there\nattend\\.WQ: within 1\\.7e-18${about}\n$")
+    "^attend: 100 steps from 0, against exact values until 1 and inexact ones from there\nattend\\.WQ: within 0${about}\n$")
 set_tests_properties(check_small_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^small: 100 steps from 0, against exact values\nsmall\\.g: within 0\nsmall\\.o: within 0\nsmall\\.s: within 0\n$")
 set_tests_properties(check_saliency_3_report PROPERTIES PASS_REGULAR_EXPRESSION

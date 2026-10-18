@@ -391,3 +391,21 @@ flagged(x_n) = {
     s_n = grad_(t = x_n) floor(t)/r(r(t) + r(1 - t))
 }
 flag = flagged(x_n = n/2 - 2)
+
+# C388: 'maxed', a comparison and a fractional power of a prelude call
+# constant in the clause taken, max(t, 0) below 0, which has no part there,
+# NaN no more, t being n/2 - 3/4: a and b 3t^2 below 0, b 1/(2 sqrt(t)) +
+# 3t^2 above; in a nest, c 6t, and d 0 below 0 and 1/(2 sqrt(t)) above:
+#
+#     maxed: 100 steps from 0, against exact values until 3 and inexact ones from there
+#     maxed.a: within 0
+#     maxed.b: within 0; the interpreter's terms about <e> from the exact ones
+#     maxed.c: within 0
+#     maxed.d: within 0; the interpreter's terms about <e> from the exact ones
+peaked(x_n) = {
+    a_n = grad_(t = x_n) ((max(t, 0) > 0) + t^3)
+    b_n = grad_(t = x_n) (max(t, 0)^(1/2) + t^3)
+    c_n = grad_(t = x_n)^2 ((max(t, 0) > 0) + t^3)
+    d_n = grad_(t = x_n) grad_(s = 1) s*max(t, 0)^(1/2)
+}
+maxed = peaked(x_n = n/2 - 3/4)

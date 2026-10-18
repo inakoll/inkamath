@@ -1127,8 +1127,17 @@ private:
         // Under grad, its part is a function too, 'exp_dx', of the values its
         // part reads and then the parts (DESIGN.md, grad compiled).
         const std::string derived = called + "_d" + moving, jumped = called + "_j" + moving;
+        const std::string present = called + "_m" + moving;
         if (!parts_.count(derived)) {
             const Code body = inside(true);
+            // Where its part is there, 'max_ma', its clause's, as the
+            // interpreter takes it, not wherever an argument's is (C388).
+            if (body.moves) {
+                const Setting<std::vector<Temporary>*> unshared(temporaries_, nullptr);
+                functions_.emplace(present, Text(body.moves));
+                prelude_.push_back("static inline int " + present + "(" + signature +
+                                   ") {\n    return " + functions_.at(present) + ";\n}\n\n");
+            }
             // Its value where an argument moves, 'mod_ja', where that tests
             // for a jump, a floor's or an equality's, as the interpreter does.
             if (body.cells[0].text != functions_.at(called)) {
@@ -1172,7 +1181,12 @@ private:
                      (part && tape_ ? Double(1.0)
                                     : (part ? arguments[i].part[0] : arguments[i]).cells[0].text);
         const Code part = Called(Of(Cell(derived + "(" + taken + ")", primary)));
-        return Answer(Parted(value, tape_ ? Times(part, PartOf(arguments[0])) : Part(part), read));
+        value = Parted(value, tape_ ? Times(part, PartOf(arguments[0])) : Part(part), read);
+        if (functions_.count(present))
+            value.moves =
+                Both(value.moves,
+                     std::make_shared<const Moving>(Moving{present + "(" + given + ")", {}}));
+        return Answer(value);
     }
 
     // In a nest, its body compiled once with each argument's value and parts
@@ -1199,10 +1213,8 @@ private:
             const Setting<std::vector<Temporary>*> unshared(temporaries_, nullptr);
             body = Inside(expansion, [&] { return Chained(name, function); });
         }
-        const auto out = [&](auto& self, const Code& node) -> Code {
-            if (node.constant) return node;
-            const std::string& text = node.cells[0].text;
-            std::string        parameters, given;
+        const auto called = [&](const std::string& text, const std::string& type) {
+            std::string parameters, given;
             for (const auto& [parameter, argument] : leaves)
                 if (Writes(text, parameter)) {
                     parameters += (parameters.empty() ? "double " : ", double ") + parameter;
@@ -1211,11 +1223,15 @@ private:
             const std::string key = name + '\x1f' + parameters + '\x1f' + text;
             if (!nested_.count(key)) {
                 nested_[key] = module_ + "_" + name + "_n" + std::to_string(nested_.size());
-                if (MayNan(text)) nan_functions_.insert(nested_[key]);
-                prelude_.push_back("static inline double " + nested_[key] + "(" + parameters +
+                if (type == "double" && MayNan(text)) nan_functions_.insert(nested_[key]);
+                prelude_.push_back("static inline " + type + " " + nested_[key] + "(" + parameters +
                                    ") {\n    return " + text + ";\n}\n\n");
             }
-            Code code = Called(Of(Cell(nested_[key] + "(" + given + ")", primary)));
+            return nested_[key] + "(" + given + ")";
+        };
+        const auto out = [&](auto& self, const Code& node) -> Code {
+            if (node.constant) return node;
+            Code code = Called(Of(Cell(called(node.cells[0].text, "double"), primary)));
             if (!node.part.empty()) code.part = {self(self, node.part[0])};
             if (!node.outer.empty()) code.outer = {self(self, node.outer[0])};
             return code;
@@ -1223,9 +1239,18 @@ private:
         ++calls_;
         std::vector<const Code*> read;
         for (const Code& argument : arguments) read.push_back(&argument);
+        // Where each part is there, its clause's, not wherever an argument's
+        // is (C388).
+        const auto there = [&](const Where& inside, const Where& given) {
+            if (!inside) return given;
+            const Setting<std::vector<Temporary>*> unshared(temporaries_, nullptr);
+            return Both(given,
+                        std::make_shared<const Moving>(Moving{called(Text(inside), "int"), {}}));
+        };
         Code code = out(out, body);
-        if (!code.part.empty()) code.moves = Moves(read);
-        if (!code.outer.empty()) code.outer[0].moves = Moves(read, true);
+        if (!code.part.empty()) code.moves = there(body.moves, Moves(read));
+        if (!code.outer.empty())
+            code.outer[0].moves = there(body.outer[0].moves, Moves(read, true));
         return code;
     }
 

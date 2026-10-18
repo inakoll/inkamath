@@ -2587,10 +2587,7 @@ check(compile_hessian)
 strict(compile_hessian lag.h)
 
 set(inexact "against exact values until 1 and inexact ones from there")
-# p.G an ulp from the interpreter's at 1, where reverse mode at an exact
-# point is not forward mode's (C382), and C and w after it by what it moves.
-set(parted "p.C: within 1e-17, from 1" "p.G: within 3.6e-15, from 1" "p.w: within 2.1e-17")
-foreach(checked IN ITEMS "p:${inexact}:M q" "h:${inexact}:k s M C G w q"
+foreach(checked IN ITEMS "p:${inexact}:M C G w q" "h:${inexact}:k s M C G w q"
                          "b:against exact values:d q")
     string(REPLACE ":" ";" checked "${checked}")
     list(POP_FRONT checked instance against terms)
@@ -2619,15 +2616,6 @@ foreach(checked IN ITEMS "p:${inexact}:M q" "h:${inexact}:k s M C G w q"
     list(LENGTH terms want)
     list(LENGTH lines got)
     set(bad "")
-    foreach(line IN LISTS parted)
-        string(FIND "\n${report}" "\n${line}" at)
-        if(line MATCHES "^${instance}\\.")
-            math(EXPR want "${want} + 1")
-            if(at EQUAL -1)
-                set(bad 1)
-            endif()
-        endif()
-    endforeach()
     if(NOT code EQUAL 0 OR NOT "${first}" STREQUAL "${instance}: 100 steps from 0, ${against}"
        OR NOT got EQUAL want)
         set(bad 1)
@@ -2644,7 +2632,7 @@ foreach(checked IN ITEMS "p:${inexact}:M q" "h:${inexact}:k s M C G w q"
         endif()
     endforeach()
     if(bad)
-        message(SEND_ERROR "check_hessian_${instance}: exit ${code}\n${report}--- where each of ${terms} is to be within 0, and ${parted} as given")
+        message(SEND_ERROR "check_hessian_${instance}: exit ${code}\n${report}--- where each of ${terms} is to be within 0")
     endif()
 endforeach()
 

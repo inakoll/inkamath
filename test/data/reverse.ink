@@ -96,6 +96,12 @@ x(W)_n = W*x(W)_(n-1)
 >> grad_(v = [1 2]) tanh(v*[1; 1])
 [~0.00986603717, ~0.00986603717]
 
+# At an exact point a slope of the header's is forward mode's walk, which
+# reverse mode's own nodes part from in the last bit, so it gives way
+# there (C382).
+>> grad_(u = [1; 1/2]) 20*cos(u[1]) == [grad_(x = 1) 20*cos(x); 0]
+~1
+
 # Where the modes differ, reverse mode's answers. Forward mode walks tanh
 # for the exact part of t's first cell (C139), 254 calls deep, and refuses,
 # "evaluation nests more than 256 references deep"; reverse mode takes the
