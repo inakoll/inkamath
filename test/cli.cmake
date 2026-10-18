@@ -45,20 +45,24 @@ function(holds name file)
     endforeach()
 endfunction()
 
-# As a host builds it whose flags refuse more than the checks' (C331).
+# As a host builds it whose flags refuse more than the checks' (C331), as C
+# and as C++ (C393).
 function(strict name file)
     if(NOT CC_ID MATCHES "^(GNU|Clang|AppleClang)$")
         return()
     endif()
     string(MAKE_C_IDENTIFIER "${file}" unit)
     file(WRITE "${OUT}/${unit}.c" "#include \"${file}\"\n")
-    execute_process(COMMAND "${CC}" -std=c11 -Wall -Wextra -Wpedantic -Wconversion -Wshadow
-                            -Werror ${ARGN} -fsyntax-only "${unit}.c"
-                    WORKING_DIRECTORY "${OUT}" RESULT_VARIABLE failed
-                    ERROR_VARIABLE errors OUTPUT_VARIABLE errors)
-    if(failed)
-        message(SEND_ERROR "${name}: ${file} is no strict C11\n${errors}")
-    endif()
+    foreach(language "C11;-std=c11" "C++17;-x;c++;-std=c++17")
+        list(POP_FRONT language standard)
+        execute_process(COMMAND "${CC}" ${language} -Wall -Wextra -Wpedantic -Wconversion
+                                -Wshadow -Werror ${ARGN} -fsyntax-only "${unit}.c"
+                        WORKING_DIRECTORY "${OUT}" RESULT_VARIABLE failed
+                        ERROR_VARIABLE errors OUTPUT_VARIABLE errors)
+        if(failed)
+            message(SEND_ERROR "${name}: ${file} is no strict ${standard}\n${errors}")
+        endif()
+    endforeach()
 endfunction()
 
 # Read by cases in every part.
@@ -2442,6 +2446,14 @@ set(story "${CMAKE_CURRENT_LIST_DIR}/compile/hessian.ink")
 set(args --compile ${story} lag -o lag.h)
 check(compile_hessian)
 strict(compile_hessian lag.h)
+
+# A guard reading a matrix limit's status, built as C++ too (C393).
+foreach(flags "robot.h" "float/robot.h;--float")
+    list(POP_FRONT flags header)
+    set(args --compile ${CMAKE_CURRENT_LIST_DIR}/compile/robot.ink loop ${flags} -o ${header})
+    check(compile_status_strict)
+    strict(compile_status_strict ${header})
+endforeach()
 
 set(inexact "against exact values until 1 and inexact ones from there")
 foreach(checked IN ITEMS "p:${inexact}:M C G w q" "h:${inexact}:k s M C G w q"
