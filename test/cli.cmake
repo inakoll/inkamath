@@ -2442,7 +2442,7 @@ strict(compile_optional track.h)
 
 # An inner instance's optional input (DESIGN.md): compile/inner.ink's headers,
 # the file compiled whole, a lagged sibling refused, and the reports of
-# fwd, sib, dp, ow, gp, hs and gb; test/CMakeLists.txt checks its robot.
+# fwd, sib, dp, ow, gp, hs, gb and lt; test/CMakeLists.txt checks its robot.
 set(story "${CMAKE_CURRENT_LIST_DIR}/compile/inner.ink")
 set(args --compile ${story} fw -o fw.h)
 check(compile_inner)
@@ -2573,6 +2573,15 @@ if(CC_ID MATCHES "^(GNU|Clang|AppleClang)$")
     reported(gb 100 0 "against exact values"
              "gb.e.x: where z is absent, 'x_n | z_n >= 0 = z_n' falls to 'x_n = x_(n-1)'\n"
              "s\\.y: within 0" "s\\.z: within 0" "e\\.z: within 0" "e\\.x: within 0")
+    set(guards "")
+    foreach(i b e)
+        string(APPEND guards
+               "lt.${i}.d: where z is absent, 'd_n | z_(n-3) >= 0 and z_n > z_(n-3) = z_n - z_(n-3)' falls to 'd_n = 0'\n"
+               "lt.${i}.x: where z is absent, 'x_n | z_n >= 0 = z_n' falls to 'x_n = -1'\n")
+    endforeach()
+    reported(lt 100 0 "against exact values" "${guards}" "s\\.y: within 0"
+             "s\\.z: within 0, from 1" "e\\.z: within 0" "e\\.x: within 0" "e\\.d: within 0"
+             "b\\.z: within 0" "b\\.x: within 0" "b\\.d: within 0")
 endif()
 
 # grad's order compiled (DESIGN.md): compile/hessian.ink's instances each

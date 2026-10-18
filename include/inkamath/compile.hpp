@@ -5503,7 +5503,8 @@ private:
             }
             for (auto& [name, sequence] : sequences_) {
                 if (!sequence.bases.empty() || !sequence.definition) continue;
-                const int answers = Answers(sequence);
+                // An inner optional input starts with the stream, as its argument may not (C391).
+                const int answers = Optional(name) ? earliest.value_or(0) : Answers(sequence);
                 // Before the stream, a history gives its terms, or Cover refuses.
                 const int exists = Historied(name) && answers <= earliest.value_or(0)
                                        ? std::numeric_limits<int>::min() / 2
@@ -5539,7 +5540,7 @@ private:
         // Without guards, the one clause is always evaluated, so a term it
         // reads before that term exists is an error in the model, said now.
         for (const auto& [name, sequence] : sequences_) {
-            if (!sequence.guarded.empty()) continue;
+            if (!sequence.guarded.empty() || Optional(name)) continue;
             for (const auto& [read, lags] : sequence.reads) {
                 const int begins = Exists(read);
                 for (const int lag : lags) {
@@ -6559,7 +6560,7 @@ private:
                     (value.empty() ? guarded.cells[c] : "(" + value + guarded.cells[c] + ")") +
                     " : ";
             }
-            if (!sequence.guarded.empty())
+            if (!sequence.guarded.empty() || Optional(name))
                 assignments += before(From(name, sequence.general_reads));
             assignments += sequence.general[c] + ";\n";
         }
@@ -6817,9 +6818,22 @@ private:
                 if (rated) out += shifted(part, indent);
                 assignments += Assigned(part, indent);
                 const Sequence& given = sequences_.at(part);
-                if (Optional(part))
-                    assignments += indent + "m_->" + part + "_present[0] = " +
-                                   (given.present.empty() ? "1" : given.present) + ";\n";
+                // Before its argument's reads begin, absent below the base
+                // clauses of one it reads, and refused before the start of
+                // one that has none (C391).
+                if (Optional(part)) {
+                    int below = std::numeric_limits<int>::min();
+                    for (const auto& [term, lags] : given.general_reads)
+                        if (!sequences_.at(term).bases.empty())
+                            below = std::max(below, Exists(term) + *lags.rbegin());
+                    const int begins = From(part, given.general_reads);
+                    assignments +=
+                        indent + "m_->" + part + "_present[0] = " +
+                        (begins <= given.start ? ""
+                                               : "m_->index_ < " + std::to_string(begins) +
+                                                     (below < begins ? " ? 1 : " : " ? 0 : ")) +
+                        (given.present.empty() ? "1" : given.present) + ";\n";
+                }
                 // A chain gave the term where a guard held or was NaN, a double (C331).
                 std::string gave = indent + "m_->" + part + "_given_ = ";
                 for (const auto& [index, base] : given.bases)
