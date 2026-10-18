@@ -81,6 +81,9 @@ public:
     static inline bool floats = false;
     static std::string Real() { return floats ? "float" : "double"; }
     static bool Finite(double x) { return std::isfinite(floats ? static_cast<float>(x) : x); }
+    // A constant folded from a number approximated past a thousand digits,
+    // which the interpreter marks and a double cannot (C395).
+    static inline bool approximated_ = false;
     friend class CheckC;  // which writes its inputs as constants are
     static inline const std::set<std::string> keywords = {
         "auto",    "break",  "case",     "char",   "const",    "continue", "default",
@@ -1524,11 +1527,13 @@ private:
         const bool outer_deferring  = std::exchange(deferring_, false);
         const Setting<Memo> memo(memo_, {temporaries_, {}});
         auto       outer_parameters = std::exchange(read_parameters_, {});
+        const bool          outer_approximated = std::exchange(approximated_, false);
         try {
             body();
         } catch (const Reason& reason) {
             throw Refusal(Refused(name), reason.what());
         }
+        if (std::exchange(approximated_, outer_approximated)) approximated_in_.insert(name);
         sequences_.at(name).parameters.insert(read_parameters_.begin(), read_parameters_.end());
         read_parameters_.insert(outer_parameters.begin(), outer_parameters.end());
         reading_     = outer_reading;
@@ -1851,6 +1856,7 @@ private:
     }
 
     static std::vector<double> Doubles(const Value& value) {
+        approximated_ = approximated_ || Value::approximated(value);
         std::vector<double> doubles;
         for (std::size_t c = 0; c < value.Size().count(); ++c) {
             const auto number = value.data()[c].Inexact();
@@ -5785,10 +5791,12 @@ private:
                     unfolded_[{name, n}] = assigned;
                 } else if (definitions_.histories || given) {
                     const std::vector<double> cells = Doubles(term);
-                    if (std::all_of(cells.begin(), cells.end(), Finite))
+                    if (std::all_of(cells.begin(), cells.end(), Finite)) {
                         slot->second = term;
-                    else
+                        if (Value::approximated(term)) approximated_in_.insert(name);
+                    } else {
                         unfolded_[{name, n}] = "gives a term no " + Real() + " holds";
+                    }
                 }
             } catch (const std::runtime_error& error) {
                 if (unset)
@@ -6462,6 +6470,11 @@ private:
         std::vector<std::string> fixed(fixed_.begin(), fixed_.end());
         if (!fixed.empty())
             text += " Compiled in as constants, these cannot change: " + list(fixed) + ".";
+        std::vector<std::string> approximated(approximated_in_.begin(), approximated_in_.end());
+        if (!approximated.empty())
+            text += " A value folded for " + list(approximated) +
+                    " from a number approximated past a thousand digits, as the interpreter "
+                    "marks it, may be far from exact.";
         if (floats) text += " Every value is a float, and every operation rounds to one.";
         if (aware_)
             text +=
@@ -6956,6 +6969,7 @@ private:
     std::map<std::string, Parameter> parameters_;
     std::vector<Derived>             derived_;  // each after those it reads
     std::set<std::string>            fixed_;    // parameters compiled as constants; see Fix
+    std::set<std::string>            approximated_in_;  // what reads one approximated_ says
     std::set<std::string>            aside_;    // definitions refused; see Refusals
     bool                             clauses_ = false;  // whether the step keeps them; see Build
     bool                             aware_ = false;  // whether it writes NaN, and so tests for it

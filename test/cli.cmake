@@ -1059,6 +1059,16 @@ set(args --compile c286.ink -o c286.h)
 check(compile_c286)
 holds(compile_c286 c286.h "(isnan(t0_) ? NAN : INFINITY);\n")
 
+# C395: a constant folded from a number approximated past a thousand digits,
+# which the interpreter marks, is named in the header: 2^4000 > 2^3999 is 0
+# there, and 3^3000/3^2999 NaN.
+file(WRITE "${OUT}/c395.ink" "y_n = n + (2^4000 > 2^3999)\nz_n = n*(3^3000/3^2999)\nw_n = n\n")
+set(args --compile c395.ink -o c395.h)
+check(compile_c395)
+holds(compile_c395 c395.h [[ * sequence: w, y and z. A value folded for y and z from a number approximated
+ * past a thousand digits, as the interpreter marks it, may be far from exact.
+]])
+
 # C161: a float's inverse starts from the identity in floats, which MSVC's
 # /W4 asks of an int converted to one.
 file(WRITE "${OUT}/c161.ink" "z_n = [2 1; 1 n]^-1*[1; 1]\n")
