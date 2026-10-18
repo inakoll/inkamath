@@ -2431,7 +2431,7 @@ strict(compile_optional track.h)
 
 # An inner instance's optional input (DESIGN.md): compile/inner.ink's headers,
 # the file compiled whole, a lagged sibling refused, and the reports of
-# robot, fwd, sib, dp, ow, gp and hs.
+# robot, fwd, sib, dp, ow, gp, hs and gb.
 set(story "${CMAKE_CURRENT_LIST_DIR}/compile/inner.ink")
 set(args --compile ${story} fw -o fw.h)
 check(compile_inner)
@@ -2562,6 +2562,9 @@ if(CC_ID MATCHES "^(GNU|Clang|AppleClang)$")
     reported(hs 100 0 "against exact values"
              "hs.e.d: where z is absent, 'd_n | z_n - z_(n-3) > 0 = z_n - z_(n-3)' falls to 'd_n = -1'\n"
              "q: within 0" "e\\.z: within 0" "e\\.d: within 0")
+    reported(gb 100 0 "against exact values"
+             "gb.e.x: where z is absent, 'x_n | z_n >= 0 = z_n' falls to 'x_n = x_(n-1)'\n"
+             "s\\.y: within 0" "s\\.z: within 0" "e\\.z: within 0" "e\\.x: within 0")
 endif()
 
 # grad's order compiled (DESIGN.md): compile/hessian.ink's instances each

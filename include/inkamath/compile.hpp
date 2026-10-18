@@ -6792,8 +6792,16 @@ private:
                 std::string gave = indent + "m_->" + part + "_given_ = ";
                 for (const auto& [index, base] : given.bases)
                     gave += "m_->index_ == " + std::to_string(index) + " ? 1 : ";
-                for (const Guarded& guarded : given.guarded)
+                for (const Guarded& guarded : given.guarded) {
+                    // Before its guard's reads begin the term is refused, NaN, as Assigned writes.
+                    const std::string from = std::to_string(guarded.guard_from);
+                    for (int n = given.start; n < guarded.guard_from; ++n)
+                        if (!given.bases.count(n)) {
+                            gave += "m_->index_ < " + from + " ? 1 : ";
+                            break;
+                        }
                     gave += "(" + guarded.condition + ") != 0.0 ? 1 : ";
+                }
                 if (chains_.count(part))
                     assignments += gave + (given.general_clause < 0 ? "0" : "1") + ";\n";
             }

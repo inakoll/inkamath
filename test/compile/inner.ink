@@ -206,3 +206,25 @@ hist(w_n) = {
     e = lh(z_n = q_n)
 }
 hs = hist(w_n = n + 1/4)
+
+# 'gb', a sibling's chain whose guard reads y_-1 at 1, before the stream:
+# the interpreter refuses s.z_1, so e's z is there and refused, not absent,
+# and e.x is refused at 1 and 2, where taking it for absence would give 0;
+# z_2 is absent, y_0 being 5, and e.x_3 is 3. Checked, s.y, s.z, e.z and
+# e.x within 0 against the interpreter's refusals, the guard as fwd's e.x.
+kept(z_n?) = {
+    x_0 = 0
+    x_n | z_n >= 0 = z_n
+    x_n = x_(n-1)
+}
+bsrc() = {
+    y_0 = 5
+    y_n = y_(n-1) + 1
+    z_0 = 1
+    z_n | y_(n-2) > 5 = n
+}
+bpair() = {
+    s = bsrc()
+    e = kept(z_n = s.z_n)
+}
+gb = bpair()
