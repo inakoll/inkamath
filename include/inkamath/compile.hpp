@@ -444,7 +444,15 @@ private:
                 // An inner optional input is absent before the stream but where a history gives it.
                 if (!definition->Clauses().empty() || (definition->optional && &scope != &root_))
                     History(key, *definition);
-                if (definition->argument->input) continue;
+                if (definition->argument->input) {
+                    // An inner optional input its instance leaves out, absent at every step.
+                    if (!definition->optional || &scope == &root_) continue;
+                    Sequence& left  = sequences_[key];
+                    left.definition = definition->argument.get();
+                    const Home there(*this, definition.get());
+                    if (!definition->declared.empty()) left.size = Stated(key, *definition);
+                    continue;
+                }
                 Define(key, *definition->argument);
                 if (!definition->declared.empty()) stated_[key] = definition.get();
                 continue;
@@ -1366,7 +1374,7 @@ private:
                 found->second->argument ? *found->second->argument : *found->second;
             const std::string key = scope->Qualified(name);
             if (definition.input) {
-                if (scope == &root_) return {nullptr, scope, key};
+                if (scope == &root_ || !definition.passes.empty()) return {nullptr, scope, key};
                 throw Reason(key + " is an input nothing gives");
             }
             if (definition.model) throw Reason("an instance of " + key + " read as a value");
@@ -1732,7 +1740,10 @@ private:
                 });
             }
         }
-        if (!general && sequence.guarded.empty())
+        if (sequence.definition->input) {
+            if (!sequence.size.rows) sequence.size = Extent{};
+            sequence.present = "0";
+        } else if (!general && sequence.guarded.empty())
             throw Refusal(name, "a sequence with no general clause");
         // Where no guard holds the interpreter says so; a step can only say NaN.
         if (!general) sequence.general.assign(sequence.size.count(), "NAN");
@@ -4123,7 +4134,7 @@ private:
         const std::string  written =
             key.starts_with(label + ".") ? key.substr(label.size() + 1) : key;
         const Reference<Value>* read = sequences_.at(key).definition;  // a chain that may give none
-        const bool              chain = asking && asking == given_ && read && !ByCells(*read) &&
+        const bool chain = asking && asking == given_ && read && !read->input && !ByCells(*read) &&
                            std::ranges::none_of(read->Clauses(), [](const Clause<Value>& c) {
                                return c.parameters.general() && !c.parameters.guarded();
                            });
