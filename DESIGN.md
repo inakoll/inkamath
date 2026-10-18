@@ -12271,8 +12271,9 @@ the clause for a limit that does not converge as done, the order from here:
     as the interpreter reads an argument (optional inputs, *absent is a
     term that is not there*); given anything else, a plain input or the
     index alone, 1.
-    Before the stream it is absent whatever the argument gives there, as
-    interpreted: in `sib`, e's z_-3 is absent where s's term is -11/4.
+    Before the stream it is absent whatever the argument gives there, but
+    where a history of the inner model's gives it, as interpreted: in
+    `sib`, e's z_-3 is absent where s's term is -11/4.
   - **Where a clause gave NaN, the term is present.** The chain's status
     is its end, every guard false. A clause whose value is NaN gave the
     term, and a guard reading it is NaN and refused, as for the model's own
@@ -12281,8 +12282,9 @@ the clause for a limit that does not converge as done, the order from here:
   - **The inner input keeps its window and flags** in its instance's
     struct, `int z_present[k]` beside `z[k]` as the model's own does,
     filled at each step from the argument, its cells NaN where absent;
-    init clears them, so that before the stream is absent with no case of
-    its own. The step's signature does not change: a forwarded flag is the
+    init clears them but where a history gives a term, folded as the
+    model's own, so that before the stream is absent with no case of its
+    own. The step's signature does not change: a forwarded flag is the
     step's `z_present_in_`, a sibling's the step computes.
   - **The audit names the input as the guard writes it**, `robot.f.x:
     where z is absent`, as it names `lim Z`: the clause quoted beside it
