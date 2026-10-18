@@ -12396,6 +12396,10 @@ the clause for a limit that does not converge as done, the order from here:
     step.
   - The robot's report is checked by cli.cmake, under GCC and Clang only,
     where `check_robot_200_report` was built by MSVC too.
+- **An inner optional input left out, compiled** as absent at every step, as
+  interpreted: the model without one of its sensors, the robot's filter with
+  no fix, where it is refused today, "e.z is an input nothing gives"; about
+  10 to 15 lines.
 - **A definition the host implements**, as the C-hook study sketched:
   `--compile nav.ink nav --host qp` names it, with no syntax; the header
   declares `int nav_qp(const double H[4], const double f[2], double
