@@ -60,13 +60,15 @@ poly = eigen(x_n = n)
 # a'*b + a*b', a matrix's at a time. The step and the interpreter take the
 # same order but for g, a gradient by a matrix both sweep back in reverse
 # mode, the interpreter's sums exact where A's cells are and the step's
-# rounded, so g within e under 1e-11:
+# rounded, so g within e under 1e-11; g[1,2] at 0, exactly 0, the
+# interpreter's -1.1e-16 and the step's another, is past 2^52 units of a
+# double at the interpreter's term (C397):
 #
 #     thirds: 100 steps from 0, against exact values until 0 and inexact ones from there
 #     thirds.A: within 0; the interpreter's terms about <e> from the exact ones
 #     thirds.c: within 0; the interpreter's terms about <e> from the exact ones
 #     thirds.d: within 0; the interpreter's terms about <e> from the exact ones
-#     thirds.g: within <e>; the interpreter's terms about <e> from the exact ones
+#     thirds.g: within <e>, <u> units of a double in g[1,2] at step 0; the interpreter's terms about <e> from the exact ones
 thirds = eigen(x_n = ~(n/3))
 
 # 'plan', a model-predictive controller's few steps of projected gradient

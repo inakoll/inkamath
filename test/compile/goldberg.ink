@@ -24,8 +24,9 @@ needle = area(b = 9/2 + 3/2^21, c = 9/2 + 3/2^21)
 needled = area(b = 9/2 + 3/2^50, c = 9/2 + 3/2^50)
 
 # The IEEE Standard, Operations and Ambiguity: ((2e-30 + 1e30) - 1e30) - 1e-30
-# is -1e-30 for 1e-30, which --check passes, measuring absolutely below 1
-# (Next in line); (x + y) + z against x + (y + z) at 1e30, -1e30, 1 parts.
+# is -1e-30 for 1e-30, which --check passes, its tolerance absolute below 1,
+# and names, past 2^52 units of a double at the term (C397); (x + y) + z
+# against x + (y + z) at 1e30, -1e30, 1 parts.
 assoc(x_n) = {
     s_n = ((2*10^-30 + x_n) - x_n) - 10^-30
     t_n = (x_n + (0 - x_n)) + 1

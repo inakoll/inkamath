@@ -260,7 +260,9 @@ step that computes a sequence's first term, which it names where that is
 after the first. Before it the interpreter must have no term either; from it,
 a term the interpreter cannot give parts, unless the step's is NaN. Where every
 term is within a billionth of one plus the interpreter's, it prints the largest
-difference; otherwise the first term that parts and what the interpreter gives
+difference, and where a term below 1 was lost whole or of the other sign, 2^52
+units of a double at the interpreter's term, its cell and step:
+`gone.y: within 1e-200, 6.9e+15 units of a double at step 0`; otherwise the first term that parts and what the interpreter gives
 there, and it exits with a failure. It also says whether the interpreter's
 terms were exact throughout, and, where they were not, about how far they are
 from the exact ones: each is asked three times more with every rounding taken
