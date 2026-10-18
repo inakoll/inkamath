@@ -81,6 +81,10 @@ public:
     static inline bool floats = false;
     static std::string Real() { return floats ? "float" : "double"; }
     static bool Finite(double x) { return std::isfinite(floats ? static_cast<float>(x) : x); }
+    // A constant folded from a number approximated past a thousand digits,
+    // which the interpreter marks and a double cannot (C395).
+    static inline bool approximated_ = false;
+    static constexpr char rounded       = '\x16';
     friend class CheckC;  // which writes its inputs as constants are
     static inline const std::set<std::string> keywords = {
         "auto",    "break",  "case",     "char",   "const",    "continue", "default",
@@ -1532,11 +1536,14 @@ private:
         const bool outer_deferring  = std::exchange(deferring_, false);
         const Setting<Memo> memo(memo_, {temporaries_, {}});
         auto       outer_parameters = std::exchange(read_parameters_, {});
+        const bool          outer_approximated = std::exchange(approximated_, false);
         try {
             body();
         } catch (const Reason& reason) {
             throw Refusal(Refused(name), reason.what());
         }
+        if (std::exchange(approximated_, outer_approximated)) approximated_in_.insert(name);
+        if (Rounded(sequences_.at(name))) rounded_in_.insert(name);
         sequences_.at(name).parameters.insert(read_parameters_.begin(), read_parameters_.end());
         read_parameters_.insert(outer_parameters.begin(), outer_parameters.end());
         reading_     = outer_reading;
@@ -1546,6 +1553,19 @@ private:
         places_      = outer_places;
         shift_       = outer_shift;
         deferring_   = outer_deferring;
+    }
+
+    static bool Rounded(const Sequence& s) {
+        std::string text = s.present;
+        for (const auto& [n, cells] : s.bases) text += Joined(cells);
+        for (const Guarded& g : s.guarded) text += g.condition + Joined(g.cells);
+        for (const Temporary& t : s.temporaries) text += t.value + Joined(t.lines);
+        return (text + Joined(s.general)).find(rounded) != std::string::npos;
+    }
+    static std::string Joined(const std::vector<std::string>& lines) {
+        std::string joined;
+        for (const std::string& line : lines) joined += line;
+        return joined;
     }
 
     // A cell the compiler would write out more than once -- an operand of a
@@ -1862,6 +1882,7 @@ private:
     }
 
     static std::vector<double> Doubles(const Value& value) {
+        approximated_ = approximated_ || Value::approximated(value);
         std::vector<double> doubles;
         for (std::size_t c = 0; c < value.Size().count(); ++c) {
             const auto number = value.data()[c].Inexact();
@@ -1875,8 +1896,14 @@ private:
         Code code;
         code.size     = value.Size();
         code.constant = value;
-        for (const double x : Doubles(value)) {
-            Cell cell = Atom(Double(std::abs(x)), !std::isnan(x));
+        const std::vector<double> doubles = Doubles(value);
+        for (std::size_t c = 0; c < doubles.size(); ++c) {
+            const double x    = doubles[c];
+            Cell         cell = Atom(Double(std::abs(x)), !std::isnan(x));
+            // Folded in double from inexact numbers, where a float step may compute
+            // another (C396): marked, for Within to find written.
+            if (floats && !Number::exact(value.data()[c]) && x != 0 && Finite(x))
+                cell.text += rounded;
             if (std::signbit(x)) {
                 cell.magnitude = cell.text;
                 cell.text      = "-" + cell.text;
@@ -2368,7 +2395,14 @@ private:
         const Code operand = Emit(expression->m_e());
         const auto inexact = [](const Value& v) { return numeric_interface<Value>::inexact(v); };
         const Part part    = PartOf(operand);
-        return Answer(Parted(operand.constant ? Exactly(inexact, operand) : operand,
+        Code       value   = operand.constant ? Exactly(inexact, operand) : operand;
+        // A number made inexact is rounded once, as a float step rounds it (C396).
+        if (operand.constant && Value::exact(*operand.constant))
+            for (Cell& cell : value.cells) {
+                std::erase(cell.text, rounded);
+                std::erase(cell.magnitude, rounded);
+            }
+        return Answer(Parted(value,
                              part && part->node
                                  ? Record(Kind::Mark, part->size, part->node)
                                  : Mapped(part, inexact, [](const Code& c) { return c; }),
@@ -2624,10 +2658,7 @@ private:
             op != Comparison::NotEqual)
             throw Reason("a comparison needs single values, not a " +
                          (left.Scalar() ? right : left).size.Described());
-        // Answered 0 by the interpreter, a truth the shapes alone fix (DESIGN.md).
-        if (left.size != right.size)
-            throw Reason(left.size.Called() + " compared with " + right.size.Called() +
-                         ", never equal");
+        if (left.size != right.size) throw Reason(Value::Unequal(left.size, right.size));
         // At a constant point too, a jump is tested, not folded.
         if (left.constant && right.constant && left.part.empty() && right.part.empty())
             return Answer(Exactly(
@@ -5796,10 +5827,12 @@ private:
                     unfolded_[{name, n}] = assigned;
                 } else if (definitions_.histories || given) {
                     const std::vector<double> cells = Doubles(term);
-                    if (std::all_of(cells.begin(), cells.end(), Finite))
+                    if (std::all_of(cells.begin(), cells.end(), Finite)) {
                         slot->second = term;
-                    else
+                        if (Value::approximated(term)) approximated_in_.insert(name);
+                    } else {
                         unfolded_[{name, n}] = "gives a term no " + Real() + " holds";
+                    }
                 }
             } catch (const std::runtime_error& error) {
                 if (unset)
@@ -6473,7 +6506,17 @@ private:
         std::vector<std::string> fixed(fixed_.begin(), fixed_.end());
         if (!fixed.empty())
             text += " Compiled in as constants, these cannot change: " + list(fixed) + ".";
+        std::vector<std::string> approximated(approximated_in_.begin(), approximated_in_.end());
+        if (!approximated.empty())
+            text += " A value folded for " + list(approximated) +
+                    " from a number approximated past a thousand digits, as the interpreter "
+                    "marks it, may be far from exact.";
         if (floats) text += " Every value is a float, and every operation rounds to one.";
+        std::vector<std::string> doubled(rounded_in_.begin(), rounded_in_.end());
+        if (!doubled.empty())
+            text += " A value folded for " + list(doubled) +
+                    " from inexact numbers was computed at the interpreter's precision, not a "
+                    "float's, and a float step may compute another.";
         if (aware_)
             text +=
                 " A term the interpreter would refuse is NaN, and so is every term that reads "
@@ -6596,7 +6639,8 @@ private:
             const auto line = [&](std::size_t l) {
                 std::string text =
                     assignments.substr(starts[l], assignments.find('\n', starts[l]) - starts[l]);
-                std::erase_if(text, [](char ch) { return ch == '\x14' || ch == '\x15'; });
+                std::erase_if(
+                    text, [](char ch) { return ch == '\x14' || ch == '\x15' || ch == rounded; });
                 return text;
             };
             const auto at = [&](std::string text, const std::string& place) {
@@ -6915,7 +6959,7 @@ private:
         }
         if (Writes(kept, "DBL_EPSILON") || Writes(kept, "FLT_EPSILON"))
             out.insert(includes, "#include <float.h>\n");
-        std::erase_if(out, [](char c) { return c == '\x14' || c == '\x15'; });
+        std::erase_if(out, [](char c) { return c == '\x14' || c == '\x15' || c == rounded; });
         // Past the line naming the source, the words of the compiler's own C
         // for a double as a float's: every constant is written as one already.
         const auto inside = [&](std::size_t at) {
@@ -6967,6 +7011,8 @@ private:
     std::map<std::string, Parameter> parameters_;
     std::vector<Derived>             derived_;  // each after those it reads
     std::set<std::string>            fixed_;    // parameters compiled as constants; see Fix
+    std::set<std::string>            approximated_in_;  // what reads one approximated_ says
+    std::set<std::string>            rounded_in_;       // what writes a constant marked rounded
     std::set<std::string>            aside_;    // definitions refused; see Refusals
     bool                             clauses_ = false;  // whether the step keeps them; see Build
     bool                             aware_ = false;  // whether it writes NaN, and so tests for it

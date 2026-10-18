@@ -261,7 +261,9 @@ step that computes a sequence's first term, which it names where that is
 after the first. Before it the interpreter must have no term either; from it,
 a term the interpreter cannot give parts, unless the step's is NaN. Where every
 term is within a billionth of one plus the interpreter's, it prints the largest
-difference; otherwise the first term that parts and what the interpreter gives
+difference, and where a term below 1 was lost whole or of the other sign, 2^52
+units of a double at the interpreter's term, its cell and step:
+`gone.y: within 1e-200, 6.9e+15 units of a double at step 0`; otherwise the first term that parts and what the interpreter gives
 there, and it exits with a failure. It also says whether the interpreter's
 terms were exact throughout, and, where they were not, about how far they are
 from the exact ones: each is asked three times more with every rounding taken
@@ -297,7 +299,8 @@ term among them, so a model of N steps after its initial term, `y_0` to
 
 `--float`, beside `--compile` or an instance's `--check`, writes floats where
 the header writes doubles, every constant the nearest float, for a target that
-computes in float. Its check holds each term within a thousandth of one plus
+computes in float; its first comment names what reads a constant folded from
+inexact numbers, computed at the interpreter's precision, not a float's. Its check holds each term within a thousandth of one plus
 the interpreter's and says the most any term came in units of a float, the
 spacing of floats at the interpreter's term, a term of 0 counting none:
 `test/compile/float.ink`. Where that most reaches 2^23 units, as a term a
@@ -424,7 +427,7 @@ again, and given back by `clear`.
 | `expr^expr` | power; of a square matrix, a whole one, negative for the inverse |
 | `expr<expr` `expr>expr` | comparison, answering 1 or 0, inexact where a side read is |
 | `expr<=expr` `expr>=expr` | the same, or equal |
-| `expr==expr` `expr<>expr` | equal, not equal, of numbers or whole matrices |
+| `expr==expr` `expr<>expr` | equal, not equal, of numbers or whole matrices of one shape |
 | `expr and expr` `expr or expr` | both, either: 1 or 0, inexact where a side read is, the right read only if needed |
 | `name = expr` | definition (section 3) |
 | `name \| cond = expr` | a definition in cases (section 3) |

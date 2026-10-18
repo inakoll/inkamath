@@ -206,12 +206,21 @@ public:
         // Two whole matrices are equal or not, which is one truth; an order
         // cell by cell would be a matrix of them.
         if (op == Comparison::Equal || op == Comparison::NotEqual) {
+            if (a.extent_ != b.extent_) throw std::runtime_error(Unequal(a.extent_, b.extent_));
             for (const Matrix<T>* m : {&a, &b})
                 std::for_each(m->data(), m->data() + m->extent_.count(),
                               [](const T& x) { Numeric(x); });
             return Held((op == Comparison::Equal) == (a == b), a, b);
         }
         return Held(Ordered(Numeric(a.Comparable()), op, Numeric(b.Comparable())), a, b);
+    }
+
+    // A truth the shapes alone fix, most likely a slip (C398).
+    static std::string Unequal(const Extent& a, const Extent& b) {
+        const auto single = [](const Extent& e) { return e.count() == 1 && !e.slices; };
+        return a.Called() + " compared with " + b.Called() + ", never equal" +
+               (single(a) || single(b) ? "; compare with 0*M, M's zero matrix, or a cell, M[j,k]"
+                                       : "");
     }
 
     // A truth read from an inexact number is inexact, and from one

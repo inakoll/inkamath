@@ -465,10 +465,12 @@ file(WRITE "${OUT}/apart.ink" "c_n = [n, 1] < [2, 2]\nd_n = [n, 1] == 0\n"
      "f_n = [n, 1] == [n; 1]\ng_n = n*([1, 1] == [1; 1])\nh_n = n*([1, 1] == 1)\n")
 set(args --compile apart.ink)
 string(CONCAT stdout "cannot compile c: a comparison needs single values, not a 1x2 matrix\n"
-       "cannot compile d: a 1x2 matrix compared with a single value, never equal\n"
+       "cannot compile d: a 1x2 matrix compared with a single value, never equal; "
+       "compare with 0*M, M's zero matrix, or a cell, M[j,k]\n"
        "cannot compile f: a 1x2 matrix compared with a 2x1 matrix, never equal\n"
        "cannot compile g: a 1x2 matrix compared with a 2x1 matrix, never equal\n"
-       "cannot compile h: a 1x2 matrix compared with a single value, never equal\n")
+       "cannot compile h: a 1x2 matrix compared with a single value, never equal; "
+       "compare with 0*M, M's zero matrix, or a cell, M[j,k]\n")
 set(exit 1)
 check(compile_mateq_refused)
 
@@ -1058,6 +1060,29 @@ file(WRITE "${OUT}/c286.ink" "y_n = grad_(t = 0) t^(1/2)\n")
 set(args --compile c286.ink -o c286.h)
 check(compile_c286)
 holds(compile_c286 c286.h "(isnan(t0_) ? NAN : INFINITY);\n")
+
+# C395: a constant folded from a number approximated past a thousand digits,
+# which the interpreter marks, is named in the header: 2^4000 > 2^3999 is 0
+# there, and 3^3000/3^2999 NaN.
+file(WRITE "${OUT}/c395.ink" "y_n = n + (2^4000 > 2^3999)\nz_n = n*(3^3000/3^2999)\nw_n = n\n")
+set(args --compile c395.ink -o c395.h)
+check(compile_c395)
+holds(compile_c395 c395.h [[ * sequence: w, y and z. A value folded for y and z from a number approximated
+ * past a thousand digits, as the interpreter marks it, may be far from exact.
+]])
+
+# C396: with --float, a constant folded in double from inexact numbers, a
+# machine epsilon by halving, is named in the header: 2^-52, where a float's
+# halving gives 2^-23. A number made inexact, ~(17/4), is not.
+file(WRITE "${OUT}/c396.ink" "ep(x) | 1 + x/2 > 1 = ep(x/2)\nep(x) = x\n"
+     "y_n = n*ep(~1)\nz_n = n*~(17/4)\n")
+set(args --compile c396.ink --float -o c396.h)
+check(compile_float_c396)
+holds(compile_float_c396 c396.h [[ * sequence: y and z. Every value is a float, and every operation rounds to
+ * one. A value folded for y from inexact numbers was computed at the
+ * interpreter's precision, not a float's, and a float step may compute
+ * another.
+]])
 
 # C161: a float's inverse starts from the identity in floats, which MSVC's
 # /W4 asks of an int converted to one.

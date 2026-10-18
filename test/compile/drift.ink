@@ -204,3 +204,14 @@ offset() = {
     x_n = x_(n-1)/2
 }
 late = offset()
+
+# A term lost whole below 1, which the tolerance, a billionth of one plus
+# the term, passes: the line counts the difference in units of a double at
+# the interpreter's term, and says where, from 2^52 (C397).
+#
+#     gone: 100 steps from 0, against exact values
+#     gone.y: within 1e-200, 6.9e+15 units of a double at step 0
+lost(x_n) = {
+    y_n = (1 + x_n) - 1
+}
+gone = lost(x_n = 10^-200)

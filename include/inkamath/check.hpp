@@ -481,10 +481,9 @@ public:
         out += "                 const " + CompileC::Real() + "* got, const double* want,\n";
         out += "                 const unsigned char* known, const char* const* why,\n";
         out += "                 const double* about) {\n";
-        out += "    double worst = 0.0, most = 0.0" + std::string(floats ? ", units = 0.0" : "") +
-               ";\n";
-        out += "    int    past  = -1, compared = 0, spent = -1, more = 0" +
-               std::string(floats ? ", measured = 0, most_k = 0" : "") + ";\n";
+        out += "    double worst = 0.0, most = 0.0, units = 0.0;\n";
+        out += "    int    past  = -1, compared = 0, spent = -1, more = 0, most_k = 0" +
+               std::string(floats ? ", measured = 0" : "") + ";\n";
         out += "    for (int k = 0; k < " + std::to_string(steps) + " * cells; ++k) {\n";
         out += "        const double difference = fabs(" + got + " - want[k]);\n";
         out += "        const int    n = " + std::to_string(first) + " + k / cells;\n";
@@ -496,16 +495,17 @@ public:
             "        if (known[k] == 1 && difference <= " + tol + " * (1.0 + fabs(want[k]))) {\n";
         out += "            ++compared;\n";
         out += "            if (difference > worst) worst = difference;\n";
-        // In units of a float at the interpreter's term, not at 1, so that a small term
-        // cannot hide below 1's spacing (C274): 2^-149 below the normal floats. At a
-        // term of 0 a unit says nothing, so none is counted there.
-        if (floats)
-            out +=
-                "            if (want[k] != 0.0) {\n                const double u = "
-                "ldexp(difference, 23 - ilogb(fmax(fabs(want[k]), ldexp(1.0, -126))));\n"
-                "                if (u > units) most_k = k;\n"
-                "                units    = fmax(units, u);\n                measured = 1;\n"
-                "            }\n";
+        // In units of the target at the interpreter's term, not at 1, so that a small term
+        // cannot hide below 1's spacing (C274, C397): 2^-149 below the normal floats,
+        // 2^-1074 below the doubles. At a term of 0 a unit says nothing, so none is
+        // counted there.
+        const std::string digits = floats ? "23" : "52", least = floats ? "-126" : "-1022";
+        out += "            if (want[k] != 0.0) {\n";
+        out += "                const double u = ldexp(difference, " + digits +
+               " - ilogb(fmax(fabs(want[k]), ldexp(1.0, " + least + "))));\n";
+        out += "                if (u > units) most_k = k;\n";
+        out += "                units    = fmax(units, u);\n";
+        out += std::string(floats ? "                measured = 1;\n" : "") + "            }\n";
         out += "            if (e > most) most = e;\n";
         out += "            if (past < 0 && e > " + tol + " * (1.0 + fabs(want[k]))) past = n;\n";
         out += "            continue;\n        }\n";
@@ -546,15 +546,16 @@ public:
         out += "                break;\n            }\n";
         out += spent + "        printf(\"\\n\");\n        return 1;\n    }\n";
         out += "    printf(\"%s: within %.2g\", name, worst);\n";
-        // From 2^23 units, as a term lost whole or of the other sign, where (DESIGN.md).
-        if (floats)
-            out +=
-                "    if (measured) printf(\", %.2g units of a float\", units);\n"
-                "    if (units >= 8388608.0) {\n        const int k = most_k;\n"
-                "        if (cells > 1) cell_(\" in \", name + " +
-                std::to_string(instance.size() + 1) + ", " + place +
-                "        printf(\" at step %d\", " + std::to_string(first) +
-                " + k / cells);\n    }\n";
+        // From 2^23 units, as a term lost whole or of the other sign, where (DESIGN.md);
+        // in double from 2^52 alone, where the tolerance absolute below 1 passes it (C397).
+        if (floats) out += "    if (measured) printf(\", %.2g units of a float\", units);\n";
+        out += std::string("    if (units >= ") + (floats ? "8388608.0" : "4503599627370496.0") +
+               ") {\n" + (floats ? "" : "        printf(\", %.2g units of a double\", units);\n") +
+               "        const int k = most_k;\n"
+               "        if (cells > 1) cell_(\" in \", name + " +
+               std::to_string(instance.size() + 1) + ", " + place +
+               "        printf(\" at step %d\", " + std::to_string(first) +
+               " + k / cells);\n    }\n";
         out += "    if (from > " + std::to_string(first) + ") printf(\", from %d\", from);\n";
         out += "    if (most > 0.0)\n";
         out +=
