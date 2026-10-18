@@ -2673,27 +2673,19 @@ private:
                     fallen.limits.push_back(l);
             (grad_.empty() ? fallen.plain : fallen.grad) = true;
         }
-        // Under grad no clause after is taken where a limit runs out: grad
-        // refuses there. It is where an input is absent (DESIGN.md).
-        const auto taken = [&](const std::string& status) {
-            return grad_.empty() || std::ranges::none_of(what_[status], [](const auto& l) {
-                       return l.second == "runs out";
-                   });
-        };
+        const auto taken = [this](const std::string& status) { return Falls(status); };
         if (!Defers(guard) && std::ranges::none_of(asked, taken)) return Test(guard);
-        const std::string truth = Shared(Cell(Truth(guard), primary)).text;
+        std::string       fell;
+        const std::string truth = Shared(Cell(Truth(guard, &fell), primary)).text;
         if (std::ranges::none_of(asked, taken))
             return "isnan(" + truth + ") ? NAN : " + truth + " != 0.0";
-        // A truth NaN where a limit it reads ran out does not hold (DESIGN.md).
-        std::string ran;
-        for (const std::string& status : asked)
-            if (taken(status)) Or(ran, status);
+        // A truth NaN where it fell for a status does not hold (DESIGN.md).
         asked_       = asked;
         std::set_difference(asked.begin(), asked.end(), unsure.begin(), unsure.end(),
                             std::inserter(sure_, sure_.end()));
-        unconverged_ = "isnan(" + truth + ") && (" + ran + ")";
+        unconverged_ = "isnan(" + truth + ") && (" + fell + ")";
         // Before a walk's loop where neither moves, as its limits are.
-        const std::string flag = "isnan(" + truth + ") && !(" + ran + ")";
+        const std::string flag = "isnan(" + truth + ") && !(" + fell + ")";
         const std::string nan  = Looping(Of(Cell(flag, 0))).cells[0].text;
         // Hoisted or shared, the flag is a double.
         const std::string held = nan.find('(') == std::string::npos ? nan : "(" + nan + ")";
@@ -2810,13 +2802,42 @@ private:
         return defers || nested;
     }
 
+    // Under grad no clause after is taken where a limit runs out: grad
+    // refuses there. It is where an input is absent (DESIGN.md).
+    bool Falls(const std::string& status) {
+        return grad_.empty() || std::ranges::none_of(what_[status], [](const auto& l) {
+                   return l.second == "runs out";
+               });
+    }
+
     // A truth as a double: 1, 0, or NaN where a term it needed did not exist.
-    std::string Truth(const PExpression<Value>& expression) {
+    // Given fell, where it is NaN, whether the first operand that stopped it
+    // asked a status that held, as the interpreter stops at the first refusal
+    // it reads, an absence or a limit run out falling and NaN refused (C380).
+    std::string Truth(const PExpression<Value>& expression, std::string* fell = nullptr) {
         const auto* logic = dynamic_cast<LogicExpression<Value>*>(expression.get());
-        if (!logic) return "(" + Test(expression) + " ? 1.0 : 0.0)";
-        const std::string left = Shared(Cell(Truth(logic->m_e1()), primary)).text;
-        auto [right, check] =
-            Right(*logic, [this](const PExpression<Value>& side) { return Truth(side); });
+        if (!logic) {
+            std::set<std::string> own;
+            std::string           test;
+            {
+                const Setting<std::set<std::string>*> asking(statuses_, fell ? &own : statuses_);
+                test = Test(expression);
+            }
+            for (const std::string& status : own) {
+                statuses_->insert(status);
+                if (Falls(status)) Or(*fell, status);
+            }
+            return "(" + test + " ? 1.0 : 0.0)";
+        }
+        std::string       fl, fr;
+        const std::string left =
+            Shared(Cell(Truth(logic->m_e1(), fell ? &fl : nullptr), primary)).text;
+        auto [right, check] = Right(*logic, [&](const PExpression<Value>& side) {
+            return Truth(side, fell ? &fr : nullptr);
+        });
+        if (!fr.empty())
+            Or(fl, left + (logic->Conjunction() ? " == 1.0" : " == 0.0") + " && (" + fr + ")");
+        if (fell) *fell = fl;
         if (check) right = "(" + *check + right + ")";
         return "(" + left + " == 0.0 ? " + (logic->Conjunction() ? "0.0" : right) + " : " + left +
                " != " + left + " ? NAN : " + (logic->Conjunction() ? right : "1.0") + ")";
@@ -5484,7 +5505,8 @@ private:
             }
             for (auto& [name, sequence] : sequences_) {
                 if (!sequence.bases.empty() || !sequence.definition) continue;
-                const int answers = Answers(sequence);
+                // An inner optional input starts with the stream, as its argument may not (C391).
+                const int answers = Optional(name) ? earliest.value_or(0) : Answers(sequence);
                 // Before the stream, a history gives its terms, or Cover refuses.
                 const int exists = Historied(name) && answers <= earliest.value_or(0)
                                        ? std::numeric_limits<int>::min() / 2
@@ -5520,7 +5542,7 @@ private:
         // Without guards, the one clause is always evaluated, so a term it
         // reads before that term exists is an error in the model, said now.
         for (const auto& [name, sequence] : sequences_) {
-            if (!sequence.guarded.empty()) continue;
+            if (!sequence.guarded.empty() || Optional(name)) continue;
             for (const auto& [read, lags] : sequence.reads) {
                 const int begins = Exists(read);
                 for (const int lag : lags) {
@@ -6540,7 +6562,7 @@ private:
                     (value.empty() ? guarded.cells[c] : "(" + value + guarded.cells[c] + ")") +
                     " : ";
             }
-            if (!sequence.guarded.empty())
+            if (!sequence.guarded.empty() || Optional(name))
                 assignments += before(From(name, sequence.general_reads));
             assignments += sequence.general[c] + ";\n";
         }
@@ -6798,9 +6820,22 @@ private:
                 if (rated) out += shifted(part, indent);
                 assignments += Assigned(part, indent);
                 const Sequence& given = sequences_.at(part);
-                if (Optional(part))
-                    assignments += indent + "m_->" + part + "_present[0] = " +
-                                   (given.present.empty() ? "1" : given.present) + ";\n";
+                // Before its argument's reads begin, absent below the base
+                // clauses of one it reads, and refused before the start of
+                // one that has none (C391).
+                if (Optional(part)) {
+                    int below = std::numeric_limits<int>::min();
+                    for (const auto& [term, lags] : given.general_reads)
+                        if (!sequences_.at(term).bases.empty())
+                            below = std::max(below, Exists(term) + *lags.rbegin());
+                    const int begins = From(part, given.general_reads);
+                    assignments +=
+                        indent + "m_->" + part + "_present[0] = " +
+                        (begins <= given.start ? ""
+                                               : "m_->index_ < " + std::to_string(begins) +
+                                                     (below < begins ? " ? 1 : " : " ? 0 : ")) +
+                        (given.present.empty() ? "1" : given.present) + ";\n";
+                }
                 // A chain gave the term where a guard held or was NaN, a double (C331).
                 std::string gave = indent + "m_->" + part + "_given_ = ";
                 for (const auto& [index, base] : given.bases)
