@@ -52,7 +52,7 @@ endforeach()
 # take 22 s, and reverse_memo.ink's one entry, its 600,000 under reverse
 # mode, 38.
 set_tests_properties(reverse_memo.ink PROPERTIES TIMEOUT 120)
-foreach(suite IN ITEMS bignum line_editor matrix prelude spec)
+foreach(suite IN ITEMS bignum line_editor matrix prelude)
     add_test(NAME ${suite} COMMAND inkamath_tests --test-suite=${suite} --no-intro)
     set_tests_properties(${suite} PROPERTIES TIMEOUT 60)
 endforeach()
@@ -91,15 +91,6 @@ foreach(part 1 2 3)
                      -P ${CMAKE_CURRENT_LIST_DIR}/cli.cmake)
     set_tests_properties(cli_${part} PROPERTIES TIMEOUT ${cli_timeout})
 endforeach()
-# An inner instance's optional input compiled (DESIGN.md), specified before
-# it is built: cli.cmake's spec part, skipped while it is refused as today.
-add_test(NAME cli_spec
-         COMMAND ${CMAKE_COMMAND} -DEXE=$<TARGET_FILE:inkamath_cli> -DPART=spec
-                 -DOUT=${CMAKE_CURRENT_BINARY_DIR}/cli_spec -DCASE_TIMEOUT=${cli_case_timeout}
-                 -DCC=${CMAKE_C_COMPILER} -DCC_ID=${CMAKE_C_COMPILER_ID}
-                 -P ${CMAKE_CURRENT_LIST_DIR}/cli.cmake)
-set_tests_properties(cli_spec PROPERTIES TIMEOUT ${cli_timeout} SKIP_REGULAR_EXPRESSION
-    "compile_inner: e.z refused, as today")
 # bench's workloads, each a transcript bench/run.cmake measures, replayed so
 # that one gone stale fails here rather than at its next measure. The
 # slowest, under the sanitizers, take 7 s; train.ink is data, no transcript.
@@ -289,7 +280,7 @@ foreach(checked IN ITEMS drift:calm drift:wild drift:spin drift:rough drift:brin
                          fallback:faraway fallback:voided fallback:covered fallback:ored
                          fallback:spelled fallback:joined fallback:routed fallback:returned
                          fallback:respelled fallback:preceded fallback:defaulted fallback:sentried
-                         fallback:partway pendloop:cart motorloop:motor robot:robot:200
+                         fallback:partway pendloop:cart motorloop:motor
                          lcg:lcgs optional:seen optional:leaned
                          optional:steeped hessian:k hessian:z hessian:c)
     string(REPLACE ":" ";" checked ${checked})
@@ -416,11 +407,6 @@ set_tests_properties(check_cart_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^cart: 100 steps from 0, against exact values until 0 and inexact ones from there\ncart\\.s: within 0${about}\ncart\\.u: within 0${about}\n$")
 set_tests_properties(check_motor_report PROPERTIES PASS_REGULAR_EXPRESSION
     "^motor: 100 steps from 0, against exact values until 14 and inexact ones from there\nmotor\\.x: within 3\\.6e-15${about}\nmotor\\.e: within 3\\.3e-16${about}\nmotor\\.u: within 1\\.4e-14${about}\n$")
-# compile/robot.ink's loop, each flag exact and the fallback audited; what
-# libm's tanh decides, by its form.
-set(near "within (0|[1-9](\\.[0-9])?e-1[5-9])${about}\n")
-set_tests_properties(check_robot_200_report PROPERTIES PASS_REGULAR_EXPRESSION
-    "^robot: 200 steps from 0, against exact values until 0 and inexact ones from there\nrobot\\.f\\.Pp: ${near}robot\\.f\\.S: ${near}robot\\.g\\.ok: within 0\nrobot\\.f\\.ok: within 0\nrobot\\.g\\.r: within 0\nrobot\\.s\\.r: within 0\n(robot\\.[wgsf]\\.(p|y|z|v|a|am|ac|xp|nu): ${near})+robot\\.f\\.fix: within 0\nrobot\\.f\\.P: ${near}robot\\.f\\.lost: within 0\nrobot\\.f\\.top: within 0\n(robot\\.[wf]\\.(x|uc|u): ${near})+robot\\.f\\.kg: where lim Z runs out, 'kg\\(q\\) \\| gain\\(\\[q 0\; 0 1/10\\], ~1/10\\)\\[1,1\\] > 0 = gain\\(\\[q 0\; 0 1/10\\], ~1/10\\)' falls to 'kg\\(q\\) = \\[3 5/2\\]'\n$")
 # Rigid bodies and an invariant filter, from two explorations: a double
 # pendulum by the RNEA, a rational rotation's powers, and the contact-aided
 # RIEKF of Hartley et al. (2020) on 21 steps of a simulated walk.

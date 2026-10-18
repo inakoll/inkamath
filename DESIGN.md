@@ -12245,7 +12245,7 @@ the clause for a limit that does not converge as done, the order from here:
     needs it. So `test/compile/robot.ink` and `test/data/robot.ink` keep
     `ok_n`: their fix is the loop's GPS instance's, given to the filter
     instance, which this refuses, and the spec's robot entries are the
-    interpreter's already.
+    interpreter's already. Lifted by the entry below.
   - The definition's stage checks the arguments forwarded too where the
     inner model is defined already, as the spec's `dbl` entry asks.
   - A call's arguments are read wherever the call is, as the interpreter
@@ -12254,7 +12254,7 @@ the clause for a limit that does not converge as done, the order from here:
   - Within a model only: a model's body reading another instance of the
     session's optional input is not checked, and is refused where it is
     absent, as from outside.
-- **An inner instance's optional input, compiled**, optional inputs'
+- `[done]` **An inner instance's optional input, compiled**, optional inputs'
   departure: the robot's loop compiled without `ok_n`, its fix the GPS
   instance's z given to the filter's optional input. The interpreter
   answers all of it already, so its answers are the oracle and nothing in
@@ -12365,6 +12365,32 @@ the clause for a limit that does not converge as done, the order from here:
   form, `gp`, a sibling's guard NaN, and `hs`, a history on the inner
   input, their values by hand. Skipped while e.z is refused as today, and
   only then.
+
+  Done in 47 lines, against the 45 estimated and the stop at 68, all the
+  compiler's: `Optional` taking an inner input by its argument's mark, a
+  history registered for each so that init folds it as the model's own,
+  and `Recomputed` leaving it out; the argument compiled asking the
+  statuses of what it reads, its flag their conjunction; a chain's status
+  as the step's chain tries it, a NaN guard giving the term; `Flag` by the
+  name the guard writes. `--check` needed none of its 5: the audit names
+  what `Flag` records. The spec is the golden `test/data/inner.ink`, every
+  entry as written; `test/compile/inner.ink` is a cli case, its robot
+  checked over 600 steps in place of `test/compile/robot.ink`'s 200, and
+  `cli_spec` and the spec suite are gone. 20,160 to 20,207 lines at
+  20aca6e's merge by `wc -l include/inkamath/*.hpp src/*`, 20,129 to
+  20,176 from ab4d0de.
+  Departures:
+  - **The chain's status is a field**, `int z_given_` in the struct beside
+    a sequence an inner input's argument reads, where the spec said a
+    status of the step: a step split into functions would not reach a
+    local.
+  - The lagged sibling is refused where a guard reads the inner input,
+    `h.x`, as specified, but recorded where the argument is compiled.
+  - An inner optional input its instance leaves out is refused, "e.z is an
+    input nothing gives", where the interpreter answers it absent at every
+    step.
+  - The robot's report is checked by cli.cmake, under GCC and Clang only,
+    where `check_robot_200_report` was built by MSVC too.
 - **A definition the host implements**, as the C-hook study sketched:
   `--compile nav.ink nav --host qp` names it, with no syntax; the header
   declares `int nav_qp(const double H[4], const double f[2], double
